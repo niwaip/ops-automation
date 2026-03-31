@@ -1,0 +1,380 @@
+下面我把你前面所有已确认的选择，**重新整体收敛**成一份“可进入方案评审/立项”的文档：**全体需求定义（SRS）**、**系统架构定义**、**数据流（含时序）**，以及 **前后端技术选型与实现要点**。我会严格以你已拍板的要件为准，并把与开源基座/协议相关的事实引用来源。
+
+***
+
+# 0. 范围与目标（Executive Summary）
+
+## 0.1 目标
+
+构建一套企业内可控的“浏览器工作负载自动化平台”，实现：
+
+*   **人录制为主**：对复杂业务流程进行录制，形成可复用模板。 [\[docs.openadapt.ai\]](https://docs.openadapt.ai/packages/openadapt/), [\[blog.csdn.net\]](https://blog.csdn.net/2301_80171004/article/details/149911570), [\[bing.com\]](https://bing.com/search?q=rrweb+session+replay+open+source+GitHub)
+*   **回放由 AI 编排**：运行期由 AI 进行参数识别、模板选择、参数嵌入、异常分流；浏览器动作由确定性回放引擎执行（非自由 agent loop）。 [\[blog.csdn.net\]](https://blog.csdn.net/gitblog_00011/article/details/146807283)
+*   **随时人工接管**：当系统判定需要人工介入时，通过 noVNC 提供实时可视可交互接管；接管期间冻结回放引擎输入，直至用户点击继续。 [\[blog.csdn.net\]](https://blog.csdn.net/gitblog_00011/article/details/146807283)
+*   **企业级权限/控制**：账号密码起步（自建用户库），区分员工与回放引擎身份；管理员配置权限与策略；可审计（Step-level log）。
+*   **每员工 profile 持久化**：Profile 存在 **PVC/NFS** 上；**只在 session close 写回**；**写锁直接拒绝并发 RW**；**一任务一会话**；K8s 部署。
+
+## 0.2 非目标（Out of Scope，当前阶段不做/后续演进）
+
+*   SSO/LDAP/AD 联邦：后续对接（当前自建用户库）
+*   默认外网允许，但白名单/更严格 egress 管控属于后续增强（现阶段提供开关与策略框架）
+*   Trace/录像/rrweb 强证据链可作为增强（现阶段 Step-level log 为主；Trace 可选） [\[quaily.com\]](https://quaily.com/silico-anatomy/p/analyze-browser-use-project-deep-understanding-agent-layer), [\[juejin.cn\]](https://juejin.cn/post/7556863932343091236)
+
+***
+
+# 1. 需求定义（SRS）
+
+## 1.1 角色与身份（Actors & Identities）
+
+1.  **员工（Human User）**
+
+*   登录 Portal
+*   创建任务会话（选模板/参数或自然语言）
+*   查看执行进度与日志
+*   异常时接管（noVNC）并点击继续
+
+2.  **回放引擎身份（Replay Engine / Agent Identity）**
+
+*   以服务身份（非员工）调用浏览器 CDP 执行模板动作
+*   必须可被控制面冻结/恢复输入（接管控制锁）
+*   产生 step-level log
+
+3.  **管理员（Admin）**
+
+*   管理用户/角色/权限
+*   管理模板：审核、发布、禁用、版本
+*   管理策略：外网/白名单、下载/上传/剪贴板开关、会话 TTL、写锁策略等
+
+4.  **控制面服务（Control Plane services）**
+
+*   认证/授权
+*   会话分配与生命周期管理
+*   Profile Registry（元数据）与 Lock（写锁）
+*   审计日志汇聚
+
+***
+
+## 1.2 功能需求（Functional Requirements）
+
+### FR-1 用户认证与授权（账号密码起步）
+
+*   系统提供自建用户库（username/password，密码哈希存储）
+*   必须区分“员工身份”和“回放引擎身份”
+*   管理员可配置 RBAC（角色权限）与 Policy（策略）
+
+### FR-2 模板录制（人录制为主）
+
+*   提供录制入口：以 Playwright 的 **codegen/test generator** 作为录制基础能力，生成可执行动作序列并偏好稳定定位器（role/text/testid）。 [\[docs.openadapt.ai\]](https://docs.openadapt.ai/packages/openadapt/), [\[blog.csdn.net\]](https://blog.csdn.net/2301_80171004/article/details/149911570), [\[bing.com\]](https://bing.com/search?q=rrweb+session+replay+open+source+GitHub)
+*   录制人员与实际运行人员不同：模板需经过审核/发布后才可被普通员工调用（模板治理）
+
+### FR-3 模板格式（JSON，Playwright-like IR）
+
+*   模板以 **JSON** 形式存储，结构接近 Playwright 操作语义
+*   模板包含：步骤（step id）、定位（role/label/text 优先）、参数占位符、断言（postconditions）、重试策略、失败处理策略（retry / takeover / stop）
+*   模板必须可版本化与可回滚
+
+### FR-4 回放执行（确定性引擎）
+
+*   回放引擎读取模板 + 参数，执行动作
+*   **语义定位为主**：role/label/text 作为主定位策略（CSS/XPath 仅做兜底）
+*   **一任务一会话**：每个任务绑定一个浏览器会话（Browser Context/Worker）
+*   **从失败 step 重试**：当 step 失败，按模板 retry 策略重试同一 step；必要时触发接管
+
+### FR-5 人工接管（noVNC）与恢复
+
+*   当系统判定需要人工介入（验证码/风控确认/关键操作二次确认等）：
+    *   进入 HUMAN\_CONTROL 状态
+    *   **冻结回放引擎所有输入**（不允许再发送 CDP Input 类事件） [\[blog.csdn.net\]](https://blog.csdn.net/gitblog_00011/article/details/146807283)
+    *   允许员工通过 noVNC 操作同一会话
+*   员工完成后点击“继续”：
+    *   状态回到 AGENT\_RUNNING
+    *   引擎从失败 step 重试（你已确定）
+
+### FR-6 Profile 管理（PVC/NFS + 默认写回 + 写锁拒绝）
+
+*   每员工一个 Profile（Chrome user-data-dir）
+*   **PVC/NFS 挂载**到浏览器 Worker
+*   **只在 session close 写回**（意味着：运行中只写到挂载卷，关闭会话时才“确认写回并更新元数据/审计”）
+*   **写锁**：同一 user profile 同时仅允许一个 RW 会话；若冲突**直接拒绝**（不降级只读、不克隆）
+*   Profile Registry 维护元数据（owner、版本、最后使用时间、策略标签）
+
+### FR-7 网络/下载/上传/剪贴板策略（默认允许，可配置）
+
+*   默认允许外网访问；后续可启用白名单策略（策略框架预留）
+*   默认允许下载/上传/剪贴板；后续可在 policy 中配置禁用或限制
+
+### FR-8 审计与日志（Step-level log）
+
+*   系统必须记录 step-level log：
+    *   step\_id、动作类型、定位器、参数摘要、耗时、结果、错误码/错误信息、是否触发接管等
+*   管理员可查询审计日志；员工可查看自己会话日志
+*   （可选增强）Playwright trace/Trace Viewer 作为更强证据链能力，后续纳入 [\[quaily.com\]](https://quaily.com/silico-anatomy/p/analyze-browser-use-project-deep-understanding-agent-layer), [\[juejin.cn\]](https://juejin.cn/post/7556863932343091236)
+
+***
+
+## 1.3 非功能需求（Non-Functional Requirements）
+
+*   **稳定性**：优先语义定位（role/label/text）降低页面变更导致的失效概率（与 Playwright test generator 的定位器策略一致） [\[docs.openadapt.ai\]](https://docs.openadapt.ai/packages/openadapt/), [\[blog.csdn.net\]](https://blog.csdn.net/2301_80171004/article/details/149911570)
+*   **安全边界清晰**：权限/策略/锁不在浏览器容器内实现；浏览器 Worker 仅提供会话与通道能力（noVNC/CDP）。 [\[oliverstec....github.io\]](https://oliverstech.github.io/webui/)
+*   **隔离性**：一任务一会话；profile 写锁防止并发写污染
+*   **可扩展性**：K8s 部署，Worker 可水平扩展
+*   **可运维性**：会话 TTL、资源限制（CPU/mem/shm）、健康检查、告警
+
+***
+
+# 2. 系统架构定义（System Architecture Definition）
+
+## 2.1 分层架构（Control / Execution / Runtime）
+
+### A) Control Plane（控制平面）
+
+职责：身份认证、授权、策略、会话/锁、模板治理、审计汇聚  
+组件：
+
+*   **Auth Service**（账号密码；后续 LDAP/AD）
+*   **Policy Service (PDP/PEP)**（RBAC/ABAC + 配置策略）
+*   **Profile Registry**（profile 元数据）
+*   **Profile Lock Service（Redis）**（写锁：user\_id → session\_id + TTL）
+*   **Session Broker**（分配 Worker、维护 session 状态机、签发访问令牌/URL）
+*   **Audit/Log Service**（step log 落库）
+
+### B) Execution Plane（执行平面）
+
+职责：模板解析与确定性回放；AI 编排参数与异常决策  
+组件：
+
+*   **Replay Engine**：解析 JSON 模板，执行 step，重试/断言/幂等，产生日志
+*   **AI Orchestrator**：参数识别、模板选择、参数嵌入、异常分流（但不直接做 DOM 操作）
+*   **CDP Adapter**：连接 CDP 并发送浏览器动作；注意 CDP Input 能派发鼠标/键盘事件，因此需要可冻结机制 [\[blog.csdn.net\]](https://blog.csdn.net/gitblog_00011/article/details/146807283)
+
+### C) Runtime Plane（运行时平面）
+
+职责：提供“可见的浏览器会话”与两条控制通道  
+组件：
+
+*   **Browser Worker（基于 `johnymoo/chrome-novnc-docker` 派生）**：
+    *   headed Chrome + Xvfb
+    *   noVNC（Web 访问）
+    *   CDP（9222）
+    *   VNC（可选）  
+        该仓库的 README 明确给出 noVNC(8080)、VNC(5900)、CDP(9222) 等端口与使用方式。 [\[oliverstec....github.io\]](https://oliverstech.github.io/webui/)
+*   **Profile PVC/NFS**：挂载到 Worker（RW），Chrome `--user-data-dir` 指向挂载路径
+*   **K8s**：Deployment/StatefulSet（Worker 多副本）、PVC、Ingress、NetworkPolicy（后续白名单）
+
+***
+
+## 2.2 关键状态机（Session State Machine）
+
+### Session 状态
+
+*   `CREATED` → `AGENT_RUNNING` →（失败）→ `HUMAN_CONTROL` → `AGENT_RUNNING` → `CLOSED`
+*   接管期间：Replay Engine 输入冻结；冻结的对象包括 CDP Input 派发（mouse/key） [\[blog.csdn.net\]](https://blog.csdn.net/gitblog_00011/article/details/146807283)
+
+### Profile 写锁
+
+*   `LOCKED(user_id, session_id)`：会话创建成功后持有
+*   会话 close 时释放
+*   冲突直接拒绝（HTTP 409 / 自定义错误码）
+
+***
+
+# 3. 数据流定义（Data Flow & Sequence）
+
+## 3.1 核心数据对象（Data Objects）
+
+### 1) Template（模板）
+
+*   template\_id, version, owner\_team, status(DRAFT/REVIEW/PUBLISHED/REVOKED)
+*   params\_schema（JSON Schema）
+*   steps\[]（playwright-like IR）
+*   policy hints（允许外网/下载等默认策略标记）
+
+### 2) Profile
+
+*   user\_id
+*   pvc\_path（如 `/profiles/{user_id}/chrome`）
+*   version\_meta（仅记录元数据；因为 PVC 直接写回）
+*   last\_used\_at / last\_closed\_at
+
+### 3) Session
+
+*   session\_id, user\_id, template\_id\@version
+*   worker\_id / pod\_name
+*   state
+*   endpoints（noVNC url, CDP endpoint）
+*   lock\_status
+
+### 4) StepLog
+
+*   session\_id, step\_id, action, locator\_summary, param\_hash/summary
+*   start\_ts, end\_ts, duration\_ms
+*   result(success/fail), error\_class, error\_message
+*   takeover\_triggered(bool), retry\_count
+
+***
+
+## 3.2 时序流（关键路径）
+
+### Flow A：模板录制与发布（人录制为主）
+
+1.  录制人员使用 Playwright codegen / VSCode test generator 录制流程，生成可执行动作序列（role/text/testid 优先定位器）。 [\[docs.openadapt.ai\]](https://docs.openadapt.ai/packages/openadapt/), [\[blog.csdn.net\]](https://blog.csdn.net/2301_80171004/article/details/149911570), [\[bing.com\]](https://bing.com/search?q=rrweb+session+replay+open+source+GitHub)
+2.  Template Compiler 将录制结果编译为 JSON 模板：参数化、补断言、加 step\_id、加 retry/on\_fail。
+3.  管理员审核：合规（域名/下载等）、稳定性（定位器策略）、可回归。
+4.  发布到 Template Registry（PUBLISHED）。
+
+### Flow B：任务执行（AI 编排 + 确定性回放）
+
+1.  员工登录 Portal → 创建任务（选择模板或自然语言）
+2.  Control Plane：
+    *   AuthN/AuthZ
+    *   Redis 写锁：`LOCK user_id`（已锁则拒绝）
+    *   分配 Worker Pod + 挂载 PVC/NFS profile
+    *   返回 noVNC/CDP endpoints（可通过网关） [\[oliverstec....github.io\]](https://oliverstech.github.io/webui/)
+3.  AI Orchestrator：
+    *   参数识别（从任务输入生成 params）
+    *   调用 Replay Engine 执行模板
+4.  Replay Engine：
+    *   通过 CDP 连接 Worker（9222）执行 step
+    *   每步写 StepLog
+    *   失败按模板策略重试；仍失败则进入接管
+
+### Flow C：异常接管与继续（冻结输入 + 从失败 step 重试）
+
+1.  Replay Engine 判定 `TAKEOVER_REQUIRED`
+2.  Control Plane 将 Session → HUMAN\_CONTROL
+3.  Replay Engine 冻结输入（停止所有 CDP Input 派发） [\[blog.csdn.net\]](https://blog.csdn.net/gitblog_00011/article/details/146807283)
+4.  员工打开 noVNC URL 接管处理（验证码/确认）
+5.  员工点击“继续”
+6.  Control Plane → AGENT\_RUNNING
+7.  Replay Engine 从失败 step 重试（你已明确）
+
+### Flow D：会话关闭与写回（仅 close 时写回）
+
+1.  任务完成/用户关闭 → Session close
+2.  因 PVC/NFS RW 挂载已包含变更：close 时只需要
+    *   更新 profile 元数据（last\_closed\_at，版本号可选）
+    *   写审计汇总
+    *   释放 Redis 写锁
+3.  会话资源回收（Pod delete / TTL）
+
+***
+
+# 4. 前后端技术选型与实现要点（Frontend/Backend Tech）
+
+> 这里我按你现在的需求强相关点来选：**账号密码起步、K8s、Redis 锁、Playwright/CDP、noVNC、JSON 模板**。并且尽量选企业里常见、易维护的栈。
+
+***
+
+## 4.1 前端（Portal UI）
+
+### 目标功能
+
+*   登录（账号密码）
+*   创建任务（选择模板/填写参数/或自然语言输入）
+*   会话列表（状态：运行/接管/已完成）
+*   noVNC 接管入口（打开新窗口/iframe 由网关控制）
+*   Step log 展示（按 step\_id 展开）
+*   “继续”按钮（从接管恢复）
+*   管理员页面：用户/角色/策略/模板发布审核（后续）
+
+### 推荐技术
+
+*   **React + TypeScript + Vite**（企业内最常用组合，组件生态成熟）
+*   UI 组件：MUI / Ant Design（任一即可，取决于你们内部习惯）
+*   状态管理：React Query / TanStack Query（用于会话状态轮询/订阅）
+*   实时更新：WebSocket 或 SSE（建议 SSE 足够，简单稳定）
+*   权限控制：前端只做展示过滤，**最终以后端 AuthZ 为准**
+
+***
+
+## 4.2 后端（Control Plane + Replay Engine）
+
+### 总体建议：拆成 3 个服务（更清晰）
+
+1.  **control-plane-api**
+2.  **replay-engine**
+3.  **template-registry**（也可合并到 control-plane）
+
+#### (1) control-plane-api（认证/授权/会话/锁/策略/审计）
+
+*   语言：**Go / Java(Spring Boot) / Node.js(NestJS)** 三选一
+    *   Go：高并发、部署简单
+    *   Spring：企业治理与权限生态成熟
+    *   NestJS：与 TS 前端同语言、开发快
+*   数据库：PostgreSQL（用户、模板元数据、会话元数据、审计索引）
+*   **Redis**：写锁（SETNX + TTL）、会话状态缓存、令牌黑名单（如有）
+*   鉴权：账号密码 + session cookie / JWT（后续可切 OIDC）
+
+关键接口（你后续可以直接做 OpenAPI）：
+
+*   `POST /auth/login`
+*   `POST /sessions`（创建会话，拿锁，分配 worker）
+*   `POST /sessions/{id}/takeover`
+*   `POST /sessions/{id}/resume`
+*   `POST /sessions/{id}/close`
+*   `GET /sessions/{id}/logs`（step logs）
+*   `POST /admin/policies` / `POST /admin/users` / `POST /admin/templates/publish`（管理员）
+
+#### (2) replay-engine（模板解析/执行）
+
+*   语言：建议 **Node.js（playwright-core）** 或 **Python（playwright）**
+*   执行方式：**connectOverCDP** 到 worker 的 CDP endpoint 执行模板动作（稳定、生态好） [\[oliverstec....github.io\]](https://oliverstech.github.io/webui/)
+*   关键能力：
+    *   JSON 模板校验（JSON Schema）
+    *   step 执行：wait/retry/postcondition
+    *   失败 step 重试
+    *   takeover hook：冻结输入、等待 resume 信号 [\[blog.csdn.net\]](https://blog.csdn.net/gitblog_00011/article/details/146807283)
+    *   step-level log 输出（写入 control-plane 或日志系统）
+
+> 如果后续你要增强调试与证据链：Playwright Trace Viewer 能提供非常强的可视化 trace 分析能力（可选增强）。 [\[quaily.com\]](https://quaily.com/silico-anatomy/p/analyze-browser-use-project-deep-understanding-agent-layer), [\[juejin.cn\]](https://juejin.cn/post/7556863932343091236)
+
+#### (3) template-registry（模板仓库/审核/版本）
+
+*   存储：Git-like（可用数据库+对象存储方式）或纯 DB
+*   关键：模板版本、状态机（DRAFT/REVIEW/PUBLISHED/REVOKED）、审批记录
+
+***
+
+## 4.3 Browser Worker（基于 `johnymoo/chrome-novnc-docker`）
+
+*   你可以直接派生镜像：加入
+    *   挂载点约定（/profiles/{user\_id}/chrome）
+    *   启动参数：Chrome `--user-data-dir` 指向挂载目录
+    *   健康检查：/health（noVNC + CDP 可用性）
+*   端口契约（建议不直接对公网暴露，至少走 Ingress / 网关）：
+    *   **8080 noVNC**
+    *   5900 VNC（可选）
+    *   **9222 CDP** [\[oliverstec....github.io\]](https://oliverstech.github.io/webui/)
+
+***
+
+## 4.4 Kubernetes（部署要点）
+
+*   Worker：Deployment（按需弹性扩容）
+*   Profile：PVC/NFS（每 user\_id 一个子目录，Pod 用 subPath 挂载）
+*   Redis：高可用（主从/哨兵或云托管）
+*   Ingress：必须支持 WebSocket（noVNC）
+*   资源限制：对 Worker 配置 `requests/limits` 与 `--shm-size`（Chrome 稳定性）
+*   Job/TTL：一任务一会话 → Session close 后回收 Pod
+
+***
+
+# 5. 仍需你确认的最小剩余项（只剩“工程参数”，不是方向）
+
+你已经给了 99% 的关键决策。为了我能把下一步的 **OpenAPI + JSONSchema + K8s YAML 草案**写死，只需你再确认 4 个参数：
+
+1.  **Profile 挂载路径约定**：是否固定为 `/profiles/{user_id}/chrome`？
+2.  **Redis 锁 TTL**：建议设置为 session TTL + buffer（例如 2h 或 8h），避免死锁。你希望默认 TTL 是多少？
+3.  **Session TTL**：无操作多久强制 close 并释放锁？
+4.  **Step log 是否包含 screenshot\_ref**（不是录像，只是失败截图引用；对排障很有价值）
+
+***
+
+## 6) 你如果同意，我下一步交付哪些“可落地文档/产物”
+
+*   ✅ **模板 JSONSchema v0.1**（可直接用于后端校验、CI 检查）
+*   ✅ **Control Plane & Replay Engine OpenAPI 草案**（接口字段级别）
+*   ✅ **K8s 部署草图**（worker、redis、api、ingress、pvc/nfs）
+*   ✅ **状态机与错误码规范**（含 takeover/resume、锁冲突、失败重试）
+
+你先回我上面 4 个参数即可，我就把“设计→可实施”推进到下一步。
