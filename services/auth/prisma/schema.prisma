@@ -1,0 +1,86 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// User role type matching PostgreSQL enum
+enum UserRoleType {
+  employee
+  admin
+  agent
+}
+
+// Users Table
+model User {
+  id            String        @id @default(uuid()) @db.Uuid
+  username      String        @unique @db.VarChar(255)
+  passwordHash  String        @db.VarChar(255)
+  email         String?       @unique @db.VarChar(255)
+  role          UserRoleType  @default(employee)
+
+  // LDAP/AD extension fields (reserved for future integration)
+  ldapDn        String?       @db.VarChar(255) @map("ldap_dn")
+  adSid         String?       @db.VarChar(255) @map("ad_sid")
+  externalId    String?       @db.VarChar(255) @map("external_id")
+
+  // Account status
+  isActive      Boolean       @default(true) @map("is_active")
+  lastLoginAt   DateTime?     @map("last_login_at") @db.Timestamptz
+
+  // Timestamps
+  createdAt     DateTime      @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt     DateTime      @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  // Relations
+  userRoles     UserRole[]
+  assignedRoles UserRole[]    @relation("AssignedBy")
+
+  @@index([username])
+  @@index([role])
+  @@index([email])
+  @@index([isActive])
+  @@map("users")
+}
+
+// Roles Table
+model Role {
+  id          String    @id @default(uuid()) @db.Uuid
+  name        String    @unique @db.VarChar(255)
+  description String?   @db.VarChar(500)
+  permissions Json      @default("{}")
+  isSystem    Boolean   @default(false) @map("is_system")
+
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt   DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  // Relations
+  userRoles   UserRole[]
+
+  @@index([name])
+  @@index([permissions])
+  @@map("roles")
+}
+
+// User Roles Junction Table
+model UserRole {
+  userId     String   @map("user_id") @db.Uuid
+  roleId     String   @map("role_id") @db.Uuid
+  assignedAt DateTime @default(now()) @map("assigned_at") @db.Timestamptz
+  assignedBy String?  @map("assigned_by") @db.Uuid
+
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role       Role     @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  assigner   User?    @relation("AssignedBy", fields: [assignedBy], references: [id])
+
+  @@id([userId, roleId])
+  @@index([userId])
+  @@index([roleId])
+  @@map("user_roles")
+}
