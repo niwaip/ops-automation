@@ -1,0 +1,33 @@
+{
+  "name": "ops-automation",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Browser Control Plane - Ops Automation Monorepo",
+  "scripts": {
+    "lint": "eslint . --ext .ts,.tsx",
+    "lint:fix": "eslint . --ext .ts,.tsx --fix",
+    "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,md}\"",
+    "format:check": "prettier --check \"**/*.{ts,tsx,js,jsx,json,md}\"",
+    "typecheck": "tsc --noEmit",
+    "clean": "rm -rf node_modules dist .turbo",
+    "docker:up": "docker compose -f docker/docker-compose.shared.yml up -d",
+    "docker:down": "docker compose -f docker/docker-compose.shared.yml down",
+    "docker:dev": "docker compose -f docker/docker-compose.shared.yml -f docker/docker-compose.dev.yml up -d"
+  },
+  "workspaces": [
+    "services/*"
+  ],
+  "devDependencies": {
+    "@types/node": "^20.10.0",
+    "@typescript-eslint/eslint-plugin": "^6.13.0",
+    "@typescript-eslint/parser": "^6.13.0",
+    "eslint": "^8.55.0",
+    "prettier": "^3.1.0",
+    "typescript": "^5.3.0"
+  },
+  "engines": {
+    "node": ">=20.0.0",
+    "pnpm": ">=8.0.0"
+  },
+  "packageManager": "pnpm@8.12.0"
+}
