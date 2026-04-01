@@ -7,6 +7,7 @@
  * - Environment configuration validation
  */
 
+import { expect, beforeAll, afterAll } from '@jest/globals';
 import { SERVICE_CONFIG } from './config';
 
 // Global test hooks
@@ -22,17 +23,6 @@ beforeAll(async () => {
 afterAll(async () => {
   console.log('[Integration Teardown] Test suite completed');
 });
-
-// Extend Jest matchers
-declare global {
-  namespace jest {
-    interface Matchers<R> {
-      toBeValidUUID(): R;
-      toBeValidSessionState(): R;
-      toBeValidTemplateStatus(): R;
-    }
-  }
-}
 
 // Custom matchers
 expect.extend({
@@ -70,6 +60,17 @@ expect.extend({
     };
   },
 });
+
+// Declare custom matchers for TypeScript
+declare global {
+  namespace jest {
+    interface Matchers<R> {
+      toBeValidUUID(): R;
+      toBeValidSessionState(): R;
+      toBeValidTemplateStatus(): R;
+    }
+  }
+}
 
 // Re-export config for convenience
 export * from './config';
