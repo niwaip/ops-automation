@@ -6,7 +6,7 @@ import { ChatMessage, OpenAICompatibleConfig } from '../interfaces';
  * Supports OpenAI, Azure OpenAI, and local/self-hosted models that implement OpenAI-compatible API
  */
 export class OpenAICompatibleClient {
-  private client: AxiosInstance;
+  protected client: AxiosInstance;
   private baseURL: string;
   private apiKey: string;
   private model: string;
@@ -180,10 +180,8 @@ export class AzureOpenAIClient extends OpenAICompatibleClient {
 
     super(azureConfig);
     // Override headers for Azure-specific authentication
-    this.client.defaults.headers = {
-      'Content-Type': 'application/json',
-      'api-key': config.apiKey,
-    };
+    this.client.defaults.headers.common['Content-Type'] = 'application/json';
+    this.client.defaults.headers.common['api-key'] = config.apiKey;
     // Add api-version query parameter
     this.client.defaults.params = { 'api-version': config.apiVersion };
   }

@@ -39,7 +39,7 @@ export class ModelService {
     // Create API key reference (not storing plaintext)
     const apiKeyRef: APIKeyReference = {
       reference_id: uuidv4(),
-      secret_type: dto.config?.secret_type as string || 'env',
+      secret_type: (dto.config?.secret_type as 'vault' | 'env' | 'k8s_secret') || 'env',
     };
 
     const model: AIModelDTO = {

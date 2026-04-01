@@ -181,21 +181,21 @@ Response format:
         case 'string':
           // Look for quoted strings or common patterns
           const stringMatch = input.match(new RegExp(`${key}[\\s]*[=:][\\s]*["']?([^"'\n,]+)["']?`, 'i'));
-          if (stringMatch) {
+          if (stringMatch && stringMatch[1]) {
             params[key] = stringMatch[1].trim();
             matchCount++;
           }
           break;
         case 'number':
           const numberMatch = input.match(new RegExp(`${key}[\\s]*[=:][\\s]*(\\d+(\\.\\d+)?)`, 'i'));
-          if (numberMatch) {
+          if (numberMatch && numberMatch[1]) {
             params[key] = parseFloat(numberMatch[1]);
             matchCount++;
           }
           break;
         case 'boolean':
           const boolMatch = input.match(new RegExp(`${key}[\\s]*[=:][\\s]*(true|false|yes|no)`, 'i'));
-          if (boolMatch) {
+          if (boolMatch && boolMatch[1]) {
             params[key] = boolMatch[1].toLowerCase() === 'true' || boolMatch[1].toLowerCase() === 'yes';
             matchCount++;
           }
