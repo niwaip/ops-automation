@@ -39,6 +39,44 @@ import {
   cleanupUser,
 } from '../helpers/cleanup';
 
+// API response types
+interface AuthResponse {
+  id: string;
+}
+
+interface TemplateResponse {
+  id: string;
+}
+
+interface SessionResponse {
+  session: {
+    id: string;
+    state: string;
+  };
+}
+
+interface StepLogResponse {
+  result: string;
+}
+
+interface DecideFailureResponse {
+  decision: 'takeover' | 'retry' | 'skip';
+  reason?: string;
+}
+
+interface TakeoverResponse {
+  state: string;
+}
+
+interface SessionStateResponse {
+  id: string;
+  state: string;
+}
+
+interface ReplayStartResponse {
+  execution_id: string;
+}
+
 // Test data
 let testUserId: string;
 let testTemplateId: string;
@@ -115,7 +153,7 @@ describe('E2E Takeover Flow Test (TC02)', () => {
       });
 
       if (response.status === 201) {
-        testUserId = response.data.id;
+        testUserId = (response.data as AuthResponse).id;
       } else {
         // Use mock user ID if auth service not available
         testUserId = 'mock-test-user-id';
@@ -141,7 +179,7 @@ describe('E2E Takeover Flow Test (TC02)', () => {
       });
 
       expect(response.status).toBe(201);
-      testTemplateId = response.data.id;
+      testTemplateId = (response.data as TemplateResponse).id;
 
       // Submit for review and publish
       await templateClient.post(`/templates/${testTemplateId}/review`);
@@ -160,7 +198,7 @@ describe('E2E Takeover Flow Test (TC02)', () => {
       });
 
       expect(response.status).toBe(201);
-      testSessionId = response.data.session.id;
+      testSessionId = (response.data as SessionResponse).session.id;
     }, TEST_TIMEOUTS.MEDIUM);
 
     it('should start replay execution', async () => {
@@ -174,7 +212,7 @@ describe('E2E Takeover Flow Test (TC02)', () => {
       });
 
       expect(response.status).toBe(200);
-      expect(response.data).toHaveProperty('execution_id');
+      expect(response.data as ReplayStartResponse).toHaveProperty('execution_id');
     }, TEST_TIMEOUTS.LONG);
   });
 
@@ -190,16 +228,16 @@ describe('E2E Takeover Flow Test (TC02)', () => {
       const response = await replayClient.get(`/replay/session/${testSessionId}/logs`);
 
       expect(response.status).toBe(200);
-      expect(response.data).toBeInstanceOf(Array);
+      expect(response.data as StepLogResponse[]).toBeInstanceOf(Array);
 
       // Check for any failed steps
-      const failedSteps = response.data.filter(
-        (log: { result: string }) => log.result === 'failed' || log.result === 'takeover'
+      const failedSteps = (response.data as StepLogResponse[]).filter(
+        (log) => log.result === 'failed' || log.result === 'takeover'
       );
 
       // In test mode, we might not have actual failures
       // The important thing is that the logs are returned
-      expect(response.data.length).toBeGreaterThanOrEqual(0);
+      expect((response.data as StepLogResponse[]).length).toBeGreaterThanOrEqual(0);
     }, TEST_TIMEOUTS.MEDIUM);
   });
 
@@ -218,17 +256,17 @@ describe('E2E Takeover Flow Test (TC02)', () => {
       });
 
       expect(decideResponse.status).toBe(200);
-      expect(decideResponse.data).toHaveProperty('decision');
-      expect(['takeover', 'retry', 'skip']).toContain(decideResponse.data.decision);
+      expect(decideResponse.data as DecideFailureResponse).toHaveProperty('decision');
+      expect(['takeover', 'retry', 'skip']).toContain((decideResponse.data as DecideFailureResponse).decision);
 
       // If AI recommends takeover, trigger it
-      if (decideResponse.data.decision === 'takeover') {
+      if ((decideResponse.data as DecideFailureResponse).decision === 'takeover') {
         const takeoverResponse = await sessionClient.post(`/sessions/${testSessionId}/takeover`, {
-          reason: decideResponse.data.reason || 'Test takeover trigger',
+          reason: (decideResponse.data as DecideFailureResponse).reason || 'Test takeover trigger',
         });
 
         expect(takeoverResponse.status).toBe(200);
-        expect(takeoverResponse.data.state).toBe('HUMAN_CONTROL');
+        expect((takeoverResponse.data as TakeoverResponse).state).toBe('HUMAN_CONTROL');
       }
     }, TEST_TIMEOUTS.MEDIUM);
 
@@ -244,14 +282,14 @@ describe('E2E Takeover Flow Test (TC02)', () => {
 
       // Session should be in HUMAN_CONTROL state
       if (takeoverResponse.status === 200) {
-        expect(takeoverResponse.data.state).toBe('HUMAN_CONTROL');
+        expect((takeoverResponse.data as TakeoverResponse).state).toBe('HUMAN_CONTROL');
       }
 
       // Verify state via GET
       const response = await sessionClient.get(`/sessions/${testSessionId}`);
 
       expect(response.status).toBe(200);
-      expect(['HUMAN_CONTROL', 'RUNNING', 'IDLE']).toContain(response.data.state);
+      expect(['HUMAN_CONTROL', 'RUNNING', 'IDLE']).toContain((response.data as SessionStateResponse).state);
     }, TEST_TIMEOUTS.MEDIUM);
   });
 
@@ -268,7 +306,7 @@ describe('E2E Takeover Flow Test (TC02)', () => {
 
       // Session should return to RUNNING state
       if (response.status === 200) {
-        expect(response.data.state).toBe('RUNNING');
+        expect((response.data as TakeoverResponse).state).toBe('RUNNING');
       }
     }, TEST_TIMEOUTS.MEDIUM);
 
@@ -282,7 +320,7 @@ describe('E2E Takeover Flow Test (TC02)', () => {
       const response = await sessionClient.get(`/sessions/${testSessionId}`);
 
       expect(response.status).toBe(200);
-      expect(['RUNNING', 'IDLE', 'CLOSED']).toContain(response.data.state);
+      expect(['RUNNING', 'IDLE', 'CLOSED']).toContain((response.data as SessionStateResponse).state);
     }, TEST_TIMEOUTS.SHORT);
   });
 
@@ -298,7 +336,7 @@ describe('E2E Takeover Flow Test (TC02)', () => {
       });
 
       if (sessionResponse.status === 201) {
-        const sessionId = sessionResponse.data.session.id;
+        const sessionId = (sessionResponse.data as SessionResponse).session.id;
 
         // Start execution
         await replayClient.post('/replay/start', {
@@ -316,7 +354,7 @@ describe('E2E Takeover Flow Test (TC02)', () => {
 
         if (takeoverResponse.status === 200) {
           // TC02 Assertion: Session should be HUMAN_CONTROL
-          expect(takeoverResponse.data.state).toBe('HUMAN_CONTROL');
+          expect((takeoverResponse.data as TakeoverResponse).state).toBe('HUMAN_CONTROL');
         }
 
         // Continue session
@@ -352,8 +390,8 @@ describe('E2E Takeover Flow Test (TC02)', () => {
       // All sessions should be created successfully
       for (const response of responses) {
         if (response.status === 201) {
-          concurrentSessions.push(response.data.session.id);
-          expect(response.data.session.state).toBe('IDLE');
+          concurrentSessions.push((response.data as SessionResponse).session.id);
+          expect((response.data as SessionResponse).session.state).toBe('IDLE');
         }
       }
 
@@ -361,7 +399,7 @@ describe('E2E Takeover Flow Test (TC02)', () => {
       for (const sessionId of concurrentSessions) {
         const sessionResponse = await sessionClient.get(`/sessions/${sessionId}`);
         if (sessionResponse.status === 200) {
-          expect(sessionResponse.data.id).toBe(sessionId);
+          expect((sessionResponse.data as SessionStateResponse).id).toBe(sessionId);
         }
       }
 
