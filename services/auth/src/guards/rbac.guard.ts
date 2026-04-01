@@ -7,6 +7,7 @@ import {
 import { Reflector } from '@nestjs/core';
 import { PrismaService } from '../prisma/prisma.service';
 import {
+  IS_PUBLIC_KEY,
   REQUIRED_PERMISSIONS_KEY,
   SKIP_RBAC_KEY,
 } from './jwt-auth.guard';
@@ -35,6 +36,16 @@ export class RbacGuard implements CanActivate {
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
+    // Skip RBAC for public endpoints
+    const isPublic = this.reflector.getAllAndOverride<boolean>(IS_PUBLIC_KEY, [
+      context.getHandler(),
+      context.getClass(),
+    ]);
+
+    if (isPublic) {
+      return true;
+    }
+
     const skipRbac = this.reflector.getAllAndOverride<boolean>(SKIP_RBAC_KEY, [
       context.getHandler(),
       context.getClass(),
