@@ -64,6 +64,9 @@ if [ ! -x "$CHROME_BIN" ]; then
     exit 1
 fi
 echo "Using Chrome binary: $CHROME_BIN"
+# Chrome binds CDP to localhost only, we use socat to expose it
+# Chrome uses internal port 9223, socat forwards 9222 to it
+INTERNAL_CDP_PORT=$((CHROME_DEBUG_PORT + 1))
 DISPLAY=:${DISPLAY_NUM} "$CHROME_BIN" \
     --no-sandbox \
     --disable-dev-shm-usage \
@@ -75,8 +78,7 @@ DISPLAY=:${DISPLAY_NUM} "$CHROME_BIN" \
     --disable-features=TranslateUI \
     --disable-ipc-flooding-protection \
     --enable-features=UseOzonePlatform \
-    --remote-debugging-address=0.0.0.0 \
-    --remote-debugging-port=${CHROME_DEBUG_PORT} \
+    --remote-debugging-port=${INTERNAL_CDP_PORT} \
     --window-size=${SCREEN_WIDTH},${SCREEN_HEIGHT} \
     --window-position=0,0 \
     --start-maximized \
@@ -87,6 +89,12 @@ DISPLAY=:${DISPLAY_NUM} "$CHROME_BIN" \
 
 CHROME_PID=$!
 sleep 3
+
+# Start socat to forward CDP port to all interfaces
+echo "  Starting socat to forward 0.0.0.0:${CHROME_DEBUG_PORT} -> 127.0.0.1:${INTERNAL_CDP_PORT}..."
+socat TCP-LISTEN:${CHROME_DEBUG_PORT},fork,reuseaddr,bind=0.0.0.0 TCP:127.0.0.1:${INTERNAL_CDP_PORT} &
+SOCAT_PID=$!
+sleep 1
 
 # Verify Chrome started
 if ! kill -0 $CHROME_PID 2>/dev/null; then
