@@ -54,7 +54,7 @@ export interface ValidationResult {
   warnings: string[];
 }
 
-const WS_URL = import.meta.env.VITE_RECORDER_WS_URL || 'ws://localhost:8080/recorder';
+const WS_URL = import.meta.env.VITE_RECORDER_WS_URL || 'ws://localhost:3006/recorder';
 
 class RecorderService {
   private ws: WebSocket | null = null;
