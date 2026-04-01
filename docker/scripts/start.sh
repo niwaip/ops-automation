@@ -126,13 +126,11 @@ echo "  VNC Address: localhost:${VNC_PORT}"
 
 # 5. Start noVNC (Web VNC client)
 echo "[5/5] Starting noVNC on port ${NOVNC_PORT}..."
-/usr/share/novnc/utils/novnc_proxy \
-    --vnc localhost:${VNC_PORT} \
-    --listen ${NOVNC_PORT} \
-    --web /usr/share/novnc &
+# Use websockify directly (novnc_proxy doesn't exist in this package)
+websockify --web=/usr/share/novnc ${NOVNC_PORT} localhost:${VNC_PORT} &
 
 NOVNC_PID=$!
-sleep 1
+sleep 2
 echo "✓ noVNC started"
 echo "  Web VNC: http://localhost:${NOVNC_PORT}/vnc.html"
 
