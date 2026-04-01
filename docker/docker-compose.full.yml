@@ -223,7 +223,6 @@ services:
       - "9222:9222"  # CDP
       - "5901:5900"  # VNC
     environment:
-      - VNC_PASSWORD=chrome123
       - SCREEN_WIDTH=1920
       - SCREEN_HEIGHT=1080
 

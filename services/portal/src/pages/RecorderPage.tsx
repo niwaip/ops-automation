@@ -176,8 +176,8 @@ const RecorderPage: React.FC = () => {
       <Title level={4}>{t('common:recorder')}</Title>
 
       <Row gutter={[16, 16]}>
-        {/* Left Column: Controls and Script Preview */}
-        <Col xs={24} lg={12}>
+        {/* Left Column: Controls */}
+        <Col xs={24} lg={8}>
           <RecorderControls
             status={recorderState.status}
             isConnected={isConnected}
@@ -199,31 +199,18 @@ const RecorderPage: React.FC = () => {
           </div>
         </Col>
 
-        {/* Right Column: Template Preview and Browser View */}
-        <Col xs={24} lg={12}>
-          {compileMutation.isLoading ? (
-            <Card>
-              <Spin tip={t('recorder:compiling')}>
-                <div style={{ height: 200 }} />
-              </Spin>
-            </Card>
-          ) : (
-            <TemplatePreview
-              template={template}
-              validation={validation}
-              onSave={handleSave}
-              saving={saveMutation.isLoading}
-            />
-          )}
-
+        {/* Right Column: Browser Preview (larger) */}
+        <Col xs={24} lg={16}>
           {/* Browser Preview - noVNC iframe */}
           <Card
             title={t('recorder:browserPreview')}
-            style={{ marginTop: 16 }}
+            style={{ height: '100%' }}
+            bodyStyle={{ height: 'calc(100% - 57px)', padding: 0 }}
           >
             <div
               style={{
-                height: 450,
+                height: '100%',
+                minHeight: 600,
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
@@ -234,7 +221,7 @@ const RecorderPage: React.FC = () => {
             >
               {recorderState.status === 'recording' || recorderState.status === 'paused' ? (
                 <iframe
-                  src="http://localhost:6080/vnc.html?autoconnect=true&resize=scale"
+                  src="http://localhost:6080/vnc.html?autoconnect=true&resize=scale&reconnect=true"
                   style={{
                     width: '100%',
                     height: '100%',
@@ -254,6 +241,24 @@ const RecorderPage: React.FC = () => {
               )}
             </div>
           </Card>
+
+          {/* Template Preview below */}
+          <div style={{ marginTop: 16 }}>
+            {compileMutation.isLoading ? (
+              <Card>
+                <Spin tip={t('recorder:compiling')}>
+                  <div style={{ height: 200 }} />
+                </Spin>
+              </Card>
+            ) : (
+              <TemplatePreview
+                template={template}
+                validation={validation}
+                onSave={handleSave}
+                saving={saveMutation.isLoading}
+              />
+            )}
+          </div>
         </Col>
       </Row>
     </div>
