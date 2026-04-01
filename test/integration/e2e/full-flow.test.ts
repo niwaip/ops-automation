@@ -40,6 +40,63 @@ import {
   cleanupUser,
 } from '../helpers/cleanup';
 
+// API response types
+interface AuthRegisterResponse {
+  id: string;
+}
+
+interface AuthLoginResponse {
+  access_token: string;
+}
+
+interface CompileTemplateResponse {
+  template: {
+    steps: Array<{ id: string; action: string }>;
+  };
+}
+
+interface TemplateResponse {
+  id: string;
+  name: string;
+  status: string;
+}
+
+interface SessionResponse {
+  session: {
+    id: string;
+    state: string;
+  };
+}
+
+interface SessionStateResponse {
+  id: string;
+  state: string;
+}
+
+interface AiRecognizeParamsResponse {
+  params: {
+    username: string;
+    password: string;
+  };
+}
+
+interface ReplayStartResponse {
+  execution_id: string;
+}
+
+interface ReplaySummaryResponse {
+  total_steps: number;
+  successful_steps: number;
+}
+
+interface ReplayStopResponse {
+  success: boolean;
+}
+
+interface DeleteSessionResponse {
+  success: boolean;
+}
+
 // Test data
 let testUserId: string;
 let testTemplateId: string;
@@ -89,8 +146,8 @@ describe('E2E Full Flow Test (TC01)', () => {
       });
 
       expect(response.status).toBe(201);
-      expect(response.data).toHaveProperty('id');
-      testUserId = response.data.id;
+      expect(response.data as AuthRegisterResponse).toHaveProperty('id');
+      testUserId = (response.data as AuthRegisterResponse).id;
     }, TEST_TIMEOUTS.MEDIUM);
 
     it('should login and get auth token', async () => {
@@ -103,7 +160,7 @@ describe('E2E Full Flow Test (TC01)', () => {
       // In test mode, auth might return 401 if not fully configured
       // For integration tests, we'll use a mock token
       if (response.status === 200) {
-        authToken = response.data.access_token;
+        authToken = (response.data as AuthLoginResponse).access_token;
         authClient.setAuthToken(authToken);
         sessionClient.setAuthToken(authToken);
         templateClient.setAuthToken(authToken);
@@ -127,10 +184,10 @@ describe('E2E Full Flow Test (TC01)', () => {
       });
 
       expect(response.status).toBe(200);
-      expect(response.data).toHaveProperty('template');
-      expect(response.data.template).toHaveProperty('steps');
-      expect(response.data.template.steps).toBeInstanceOf(Array);
-      expect(response.data.template.steps.length).toBeGreaterThan(0);
+      expect(response.data as CompileTemplateResponse).toHaveProperty('template');
+      expect((response.data as CompileTemplateResponse).template).toHaveProperty('steps');
+      expect((response.data as CompileTemplateResponse).template.steps).toBeInstanceOf(Array);
+      expect((response.data as CompileTemplateResponse).template.steps.length).toBeGreaterThan(0);
     }, TEST_TIMEOUTS.MEDIUM);
 
     it('should create and save the template', async () => {
@@ -138,7 +195,7 @@ describe('E2E Full Flow Test (TC01)', () => {
       const compileResponse = await templateClient.post('/templates/compile', {
         script: SAMPLE_SCRIPT,
       });
-      const compiledTemplate = compileResponse.data.template;
+      const compiledTemplate = (compileResponse.data as CompileTemplateResponse).template;
 
       // Create the template
       const response = await templateClient.post('/templates', {
@@ -158,10 +215,10 @@ describe('E2E Full Flow Test (TC01)', () => {
       });
 
       expect(response.status).toBe(201);
-      expect(response.data).toHaveProperty('id');
-      expect(response.data).toHaveProperty('name');
-      expect(response.data.status).toBe('DRAFT');
-      testTemplateId = response.data.id;
+      expect(response.data as TemplateResponse).toHaveProperty('id');
+      expect(response.data as TemplateResponse).toHaveProperty('name');
+      expect((response.data as TemplateResponse).status).toBe('DRAFT');
+      testTemplateId = (response.data as TemplateResponse).id;
     }, TEST_TIMEOUTS.MEDIUM);
 
     it('should submit template for review', async () => {
@@ -172,7 +229,7 @@ describe('E2E Full Flow Test (TC01)', () => {
       const response = await templateClient.post(`/templates/${testTemplateId}/review`);
 
       expect(response.status).toBe(200);
-      expect(response.data.status).toBe('REVIEW');
+      expect((response.data as TemplateResponse).status).toBe('REVIEW');
     }, TEST_TIMEOUTS.MEDIUM);
 
     it('should publish the template', async () => {
@@ -185,7 +242,7 @@ describe('E2E Full Flow Test (TC01)', () => {
       });
 
       expect(response.status).toBe(200);
-      expect(response.data.status).toBe('PUBLISHED');
+      expect((response.data as TemplateResponse).status).toBe('PUBLISHED');
     }, TEST_TIMEOUTS.MEDIUM);
   });
 
@@ -198,10 +255,10 @@ describe('E2E Full Flow Test (TC01)', () => {
       });
 
       expect(response.status).toBe(201);
-      expect(response.data).toHaveProperty('session');
-      expect(response.data.session).toHaveProperty('id');
-      expect(response.data.session.state).toBe('IDLE');
-      testSessionId = response.data.session.id;
+      expect(response.data as SessionResponse).toHaveProperty('session');
+      expect((response.data as SessionResponse).session).toHaveProperty('id');
+      expect((response.data as SessionResponse).session.state).toBe('IDLE');
+      testSessionId = (response.data as SessionResponse).session.id;
     }, TEST_TIMEOUTS.MEDIUM);
 
     it('should get session details', async () => {
@@ -212,8 +269,8 @@ describe('E2E Full Flow Test (TC01)', () => {
       const response = await sessionClient.get(`/sessions/${testSessionId}`);
 
       expect(response.status).toBe(200);
-      expect(response.data.id).toBe(testSessionId);
-      expect(response.data.state).toBeValidSessionState();
+      expect((response.data as SessionStateResponse).id).toBe(testSessionId);
+      expect((response.data as SessionStateResponse).state).toBeValidSessionState();
     }, TEST_TIMEOUTS.SHORT);
   });
 
@@ -231,9 +288,9 @@ describe('E2E Full Flow Test (TC01)', () => {
 
       // AI may return mock data in test mode
       expect(response.status).toBe(200);
-      expect(response.data).toHaveProperty('params');
-      expect(response.data.params).toHaveProperty('username');
-      expect(response.data.params).toHaveProperty('password');
+      expect(response.data as AiRecognizeParamsResponse).toHaveProperty('params');
+      expect((response.data as AiRecognizeParamsResponse).params).toHaveProperty('username');
+      expect((response.data as AiRecognizeParamsResponse).params).toHaveProperty('password');
     }, TEST_TIMEOUTS.MEDIUM);
   });
 
@@ -253,7 +310,7 @@ describe('E2E Full Flow Test (TC01)', () => {
       });
 
       expect(response.status).toBe(200);
-      expect(response.data).toHaveProperty('execution_id');
+      expect(response.data as ReplayStartResponse).toHaveProperty('execution_id');
     }, TEST_TIMEOUTS.LONG);
 
     it('should get execution status', async () => {
@@ -267,8 +324,8 @@ describe('E2E Full Flow Test (TC01)', () => {
       const response = await replayClient.get(`/replay/session/${testSessionId}/summary`);
 
       expect(response.status).toBe(200);
-      expect(response.data).toHaveProperty('total_steps');
-      expect(response.data).toHaveProperty('successful_steps');
+      expect(response.data as ReplaySummaryResponse).toHaveProperty('total_steps');
+      expect(response.data as ReplaySummaryResponse).toHaveProperty('successful_steps');
     }, TEST_TIMEOUTS.MEDIUM);
 
     it('should verify session state is RUNNING', async () => {
@@ -280,7 +337,7 @@ describe('E2E Full Flow Test (TC01)', () => {
 
       expect(response.status).toBe(200);
       // Session should be in RUNNING state after replay starts
-      expect(['RUNNING', 'IDLE']).toContain(response.data.state);
+      expect(['RUNNING', 'IDLE']).toContain((response.data as SessionStateResponse).state);
     }, TEST_TIMEOUTS.SHORT);
   });
 
@@ -296,7 +353,7 @@ describe('E2E Full Flow Test (TC01)', () => {
       });
 
       expect(stopResponse.status).toBe(200);
-      expect(stopResponse.data.success).toBe(true);
+      expect((stopResponse.data as ReplayStopResponse).success).toBe(true);
 
       // Verify session state
       await sleep(500);
@@ -304,7 +361,7 @@ describe('E2E Full Flow Test (TC01)', () => {
 
       expect(sessionResponse.status).toBe(200);
       // After completion, session should be CLOSED or ERROR
-      expect(['CLOSED', 'ERROR', 'IDLE']).toContain(sessionResponse.data.state);
+      expect(['CLOSED', 'ERROR', 'IDLE']).toContain((sessionResponse.data as SessionStateResponse).state);
     }, TEST_TIMEOUTS.LONG);
 
     it('should delete session', async () => {
@@ -315,7 +372,7 @@ describe('E2E Full Flow Test (TC01)', () => {
       const response = await sessionClient.delete(`/sessions/${testSessionId}`);
 
       expect(response.status).toBe(200);
-      expect(response.data.success).toBe(true);
+      expect((response.data as DeleteSessionResponse).success).toBe(true);
 
       // Session ID is now cleared
       testSessionId = '';
@@ -335,7 +392,7 @@ describe('E2E Full Flow Test (TC01)', () => {
       });
 
       if (sessionResponse.status === 201) {
-        const sessionId = sessionResponse.data.session.id;
+        const sessionId = (sessionResponse.data as SessionResponse).session.id;
 
         // Start execution
         const replayResponse = await replayClient.post('/replay/start', {
@@ -360,7 +417,7 @@ describe('E2E Full Flow Test (TC01)', () => {
         await cleanupSession(sessionId);
 
         // TC01 Assertion: Session should be CLOSED
-        expect(['CLOSED', 'ERROR']).toContain(finalResponse.data.state);
+        expect(['CLOSED', 'ERROR']).toContain((finalResponse.data as SessionStateResponse).state);
       }
     }, TEST_TIMEOUTS.E2E);
   });
