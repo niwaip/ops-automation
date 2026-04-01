@@ -29,6 +29,7 @@ RUN apt-get update && apt-get install -y \
     xvfb \
     x11-utils \
     x11vnc \
+    xdotool \
     fluxbox \
     # noVNC and websockify
     novnc \

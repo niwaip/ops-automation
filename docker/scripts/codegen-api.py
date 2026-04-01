@@ -38,6 +38,7 @@ def start_codegen(session_id, url):
     env["DISPLAY"] = ":99"
     env["PLAYWRIGHT_BROWSERS_PATH"] = "/root/.cache/ms-playwright"
 
+    # Start codegen - browser window will be shown via noVNC
     cmd = [
         "npx", "playwright", "codegen",
         "--target", "javascript",
@@ -55,14 +56,43 @@ def start_codegen(session_id, url):
         preexec_fn=os.setsid
     )
 
-    # Give it a moment to start
-    time.sleep(2)
+    # Give it a moment to start and windows to appear
+    time.sleep(3)
 
     if codegen_process.poll() is None:
         print(f"[INFO] Codegen started with PID: {codegen_process.pid}")
+
+        # Minimize the Playwright Inspector window
+        # The Inspector window typically has "Playwright" in title
+        try:
+            result = subprocess.run(
+                ["xdotool", "search", "--name", "Playwright", "windowminimize"],
+                capture_output=True,
+                text=True
+            )
+            print(f"[INFO] xdotool minimize result: {result.returncode}")
+            if result.stderr:
+                print(f"[DEBUG] xdotool stderr: {result.stderr}")
+        except Exception as e:
+            print(f"[WARN] Failed to minimize inspector: {e}")
+
+        # Activate and raise the Chrome browser window
+        try:
+            subprocess.run(
+                ["xdotool", "search", "--class", "chrome", "windowactivate", "sync"],
+                capture_output=True
+            )
+        except Exception as e:
+            print(f"[WARN] Failed to activate chrome window: {e}")
+
         return True
     else:
         print(f"[ERROR] Codegen failed to start")
+        stdout, stderr = codegen_process.communicate()
+        if stdout:
+            print(f"[ERROR] stdout: {stdout.decode()}")
+        if stderr:
+            print(f"[ERROR] stderr: {stderr.decode()}")
         return False
 
 def stop_codegen():
