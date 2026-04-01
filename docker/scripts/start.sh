@@ -79,6 +79,7 @@ DISPLAY=:${DISPLAY_NUM} "$CHROME_BIN" \
     --disable-ipc-flooding-protection \
     --enable-features=UseOzonePlatform \
     --remote-debugging-port=${INTERNAL_CDP_PORT} \
+    --remote-allow-origins=* \
     --window-size=${SCREEN_WIDTH},${SCREEN_HEIGHT} \
     --window-position=0,0 \
     --start-maximized \

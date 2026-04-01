@@ -117,15 +117,15 @@ services:
     environment:
       - NODE_ENV=development
       - PORT=3004
-      - CHROME_REMOTE_DEBUGGING_HOST=host.docker.internal
+      - CHROME_REMOTE_DEBUGGING_HOST=browser-chrome
       - CHROME_REMOTE_DEBUGGING_PORT=9222
     ports:
       - "3004:3004"
     volumes:
       - ../services/browser-worker:/app
       - browser_worker_node_modules:/app/node_modules
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
+    depends_on:
+      - browser-chrome
 
   template:
     image: docker.1ms.run/library/node:20-bullseye
