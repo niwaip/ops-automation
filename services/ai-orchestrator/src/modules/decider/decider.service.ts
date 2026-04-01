@@ -3,11 +3,6 @@ import { DecideFailureDTO, DecideFailureResponseDTO, ChatMessage } from '../../i
 import { OpenAICompatibleClient } from '../../client/openai-compatible';
 
 /**
- * Error classification types
- */
-type ErrorClassification = 'transient' | 'permanent' | 'human_required' | 'unknown';
-
-/**
  * Failure history record for learning
  */
 interface FailureHistoryRecord {
