@@ -81,11 +81,7 @@ jobs:
           # Generate Prisma client for auth service
           cd services/auth && npx prisma generate && cd ../..
           # Build all services
-          pnpm run build --filter @ops/auth
-          pnpm run build --filter @ops/session-broker
-          pnpm run build --filter @ops/template
-          pnpm run build --filter @ops/ai-orchestrator
-          pnpm run build --filter @ops/replay-engine
+          pnpm -r run build
 
       - name: Start services (background)
         run: |
