@@ -11,7 +11,7 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
   private pool: Pool | null = null;
 
   async onModuleInit() {
-    const databaseUrl = process.env.DATABASE_URL ?? 'postgresql://postgres:postgres@localhost:5432/ops';
+    const databaseUrl = process.env.DATABASE_URL ?? 'postgresql://ops:ops_secret@localhost:5432/ops';
     this.logger.log(`Connecting to database: ${databaseUrl}`);
 
     this.pool = new Pool({
