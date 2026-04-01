@@ -9,7 +9,7 @@
 
 import { Pool } from 'pg';
 import Redis from 'ioredis';
-import { DB_CONFIG, SERVICE_CONFIG } from '../setup';
+import { DB_CONFIG, SERVICE_CONFIG } from '../config';
 import { initCleanupConnections } from './cleanup';
 
 async function checkServiceHealth(name: string, baseUrl: string): Promise<boolean> {
