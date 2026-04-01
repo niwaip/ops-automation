@@ -71,13 +71,13 @@ DISPLAY=:${DISPLAY_NUM} "$CHROME_BIN" \
     --no-sandbox \
     --disable-dev-shm-usage \
     --disable-gpu \
-    --disable-software-rasterizer \
+    --disable-gpu-compositing \
+    --use-gl=swiftshader \
     --disable-background-timer-throttling \
     --disable-backgrounding-occluded-windows \
     --disable-renderer-backgrounding \
-    --disable-features=TranslateUI \
+    --disable-features=TranslateUI,VizDisplayCompositor \
     --disable-ipc-flooding-protection \
-    --enable-features=UseOzonePlatform \
     --remote-debugging-port=${INTERNAL_CDP_PORT} \
     --remote-allow-origins=* \
     --window-size=${SCREEN_WIDTH},${SCREEN_HEIGHT} \
