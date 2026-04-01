@@ -7,18 +7,21 @@ import zhCNAuth from './locales/zh-CN/auth.json';
 import zhCNSession from './locales/zh-CN/session.json';
 import zhCNTemplate from './locales/zh-CN/template.json';
 import zhCNAdmin from './locales/zh-CN/admin.json';
+import zhCNRecorder from './locales/zh-CN/recorder.json';
 
 import enUSCommon from './locales/en-US/common.json';
 import enUSAuth from './locales/en-US/auth.json';
 import enUSSession from './locales/en-US/session.json';
 import enUSTemplate from './locales/en-US/template.json';
 import enUSAdmin from './locales/en-US/admin.json';
+import enUSRecorder from './locales/en-US/recorder.json';
 
 import jaJPCommon from './locales/ja-JP/common.json';
 import jaJPAuth from './locales/ja-JP/auth.json';
 import jaJPSession from './locales/ja-JP/session.json';
 import jaJPTemplate from './locales/ja-JP/template.json';
 import jaJPAdmin from './locales/ja-JP/admin.json';
+import jaJPRecorder from './locales/ja-JP/recorder.json';
 
 const resources = {
   'zh-CN': {
@@ -27,6 +30,7 @@ const resources = {
     session: zhCNSession,
     template: zhCNTemplate,
     admin: zhCNAdmin,
+    recorder: zhCNRecorder,
   },
   'en-US': {
     common: enUSCommon,
@@ -34,6 +38,7 @@ const resources = {
     session: enUSSession,
     template: enUSTemplate,
     admin: enUSAdmin,
+    recorder: enUSRecorder,
   },
   'ja-JP': {
     common: jaJPCommon,
@@ -41,6 +46,7 @@ const resources = {
     session: jaJPSession,
     template: jaJPTemplate,
     admin: jaJPAdmin,
+    recorder: jaJPRecorder,
   },
 };
 
@@ -51,7 +57,7 @@ i18n
     resources,
     fallbackLng: 'zh-CN',
     defaultNS: 'common',
-    ns: ['common', 'auth', 'session', 'template', 'admin'],
+    ns: ['common', 'auth', 'session', 'template', 'admin', 'recorder'],
     interpolation: {
       escapeValue: false,
     },

@@ -67,6 +67,38 @@ export interface TemplateQueryParams {
   search?: string;
 }
 
+export interface CompileResultStep {
+  step_id: string;
+  action: string;
+  locator?: { type: string; value: string; fallback?: { type: string; value: string } };
+  params?: Record<string, string | number>;
+  wait?: { type: string; value: number | string };
+  on_fail?: string;
+  retry?: { max_attempts: number; delay_ms: number };
+}
+
+export interface CompileResult {
+  template: {
+    id: string;
+    name: string;
+    version: string;
+    status: string;
+    params_schema: ParamsSchema;
+    steps: CompileResultStep[];
+    metadata: {
+      created_by: string;
+      created_at: string;
+      updated_at: string;
+      description?: string;
+    };
+  };
+  validation: {
+    valid: boolean;
+    errors: string[];
+    warnings: string[];
+  };
+}
+
 // Template API
 export const templateApi = {
   list: async (params?: TemplateQueryParams): Promise<TemplateListResponse> => {
@@ -105,8 +137,8 @@ export const templateApi = {
     return apiClient.post<Template>(`/templates/${id}/clone`);
   },
 
-  compile: async (script: string): Promise<unknown> => {
-    return apiClient.post('/templates/compile', { script });
+  compile: async (script: string): Promise<CompileResult> => {
+    return apiClient.post<CompileResult>('/templates/compile', { script });
   },
 
   validate: async (id: string): Promise<{ valid: boolean; errors: string[] }> => {

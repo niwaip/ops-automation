@@ -1,93 +1,251 @@
-import React from 'react';
-import { Card, Typography, Button, Space, message } from 'antd';
-import { PlayCircleOutlined } from '@ant-design/icons';
+import React, { useState, useEffect, useCallback } from 'react';
+import { Typography, Row, Col, message, Spin, Card } from 'antd';
 import { useTranslation } from 'react-i18next';
 import { useMutation } from 'react-query';
-import { sessionApi } from '../api/session';
+import { RecorderControls, ScriptPreview, TemplatePreview } from '../components/recorder';
+import recorderService, { RecorderStatus, CompiledTemplate, ValidationResult } from '../services/recorder.service';
+import { templateApi, CompileResult } from '../api/template';
+import { useAuthStore } from '../store/authStore';
 
-const { Title, Paragraph } = Typography;
+const { Title } = Typography;
+
+interface RecorderState {
+  status: RecorderStatus;
+  script: string;
+  targetUrl: string;
+  error?: string;
+}
 
 const RecorderPage: React.FC = () => {
-  const { t } = useTranslation(['common', 'session']);
+  const { t } = useTranslation(['common', 'recorder']);
+  const { user } = useAuthStore();
 
-  const createSessionMutation = useMutation(sessionApi.create, {
-    onSuccess: (session) => {
-      message.success(t('common:success'));
-      // Navigate to session detail or open noVNC
-      if (session.noVncUrl) {
-        window.open(session.noVncUrl, '_blank');
-      }
-    },
-    onError: () => {
-      message.error(t('common:error'));
-    },
+  const [recorderState, setRecorderState] = useState<RecorderState>({
+    status: 'idle',
+    script: '',
+    targetUrl: '',
   });
 
-  const handleStartRecording = () => {
-    createSessionMutation.mutate({
-      name: `Recording ${new Date().toISOString()}`,
-      type: 'record',
-    });
-  };
+  const [isConnected, setIsConnected] = useState(false);
+  const [template, setTemplate] = useState<CompiledTemplate | null>(null);
+  const [validation, setValidation] = useState<ValidationResult | null>(null);
+
+  // Compile mutation
+  const compileMutation = useMutation(
+    (script: string) => templateApi.compile(script),
+    {
+      onSuccess: (result: CompileResult) => {
+        setTemplate(result.template as CompiledTemplate);
+        setValidation(result.validation);
+        message.success(t('recorder:compileSuccess'));
+      },
+      onError: () => {
+        message.error(t('recorder:compileFailed'));
+      },
+    }
+  );
+
+  // Save template mutation
+  const saveMutation = useMutation(
+    (compiledTemplate: CompiledTemplate) =>
+      templateApi.create({
+        name: compiledTemplate.name,
+        version: compiledTemplate.version,
+        description: compiledTemplate.metadata.description,
+        params_schema: compiledTemplate.params_schema,
+        steps: compiledTemplate.steps.map((step) => ({
+          type: step.locator?.type || 'text',
+          action: step.action,
+          selector: step.locator?.value,
+          value: step.params?.value as string | undefined,
+          timeout: step.wait?.value as number | undefined,
+          retry: step.retry?.max_attempts,
+        })),
+        created_by: user?.id || 'unknown',
+      }),
+    {
+      onSuccess: () => {
+        message.success(t('recorder:saveSuccess'));
+        // Reset state after successful save
+        setTemplate(null);
+        setValidation(null);
+        setRecorderState((prev) => ({ ...prev, script: '' }));
+      },
+      onError: () => {
+        message.error(t('recorder:saveFailed'));
+      },
+    }
+  );
+
+  // WebSocket event handlers
+  useEffect(() => {
+    const handleStatus = (data: unknown) => {
+      const statusData = data as { status: RecorderStatus; url?: string };
+      setRecorderState((prev) => ({
+        ...prev,
+        status: statusData.status,
+        targetUrl: statusData.url || prev.targetUrl,
+      }));
+    };
+
+    const handleScript = (data: unknown) => {
+      const scriptData = data as { script: string };
+      setRecorderState((prev) => ({
+        ...prev,
+        script: scriptData.script,
+      }));
+    };
+
+    const handleError = (data: unknown) => {
+      const errorData = data as { message: string };
+      setRecorderState((prev) => ({
+        ...prev,
+        error: errorData.message,
+        status: 'error',
+      }));
+      message.error(errorData.message);
+    };
+
+    recorderService.on('status', handleStatus);
+    recorderService.on('script', handleScript);
+    recorderService.on('error', handleError);
+
+    return () => {
+      recorderService.off('status', handleStatus);
+      recorderService.off('script', handleScript);
+      recorderService.off('error', handleError);
+    };
+  }, []);
+
+  // Check connection status periodically
+  useEffect(() => {
+    const checkConnection = () => {
+      setIsConnected(recorderService.isConnected());
+    };
+    checkConnection();
+    const interval = setInterval(checkConnection, 1000);
+    return () => clearInterval(interval);
+  }, []);
+
+  // Handlers
+  const handleConnect = useCallback(async () => {
+    try {
+      await recorderService.connect();
+      setIsConnected(true);
+    } catch (error) {
+      message.error(t('recorder:connectionFailed'));
+      throw error;
+    }
+  }, [t]);
+
+  const handleDisconnect = useCallback(() => {
+    recorderService.disconnect();
+    setIsConnected(false);
+    setRecorderState({ status: 'idle', script: '', targetUrl: '' });
+  }, []);
+
+  const handleStart = useCallback((url: string) => {
+    setRecorderState((prev) => ({ ...prev, targetUrl: url, script: '' }));
+    setTemplate(null);
+    setValidation(null);
+    recorderService.startRecording(url);
+  }, []);
+
+  const handleStop = useCallback(() => {
+    recorderService.stopRecording();
+  }, []);
+
+  const handlePause = useCallback(() => {
+    recorderService.pauseRecording();
+  }, []);
+
+  const handleResume = useCallback(() => {
+    recorderService.resumeRecording();
+  }, []);
+
+  const handleCompile = useCallback((script: string) => {
+    compileMutation.mutate(script);
+  }, [compileMutation]);
+
+  const handleSave = useCallback((compiledTemplate: CompiledTemplate) => {
+    saveMutation.mutate(compiledTemplate);
+  }, [saveMutation]);
 
   return (
     <div>
-      <Title level={4}>{t('recorder')}</Title>
+      <Title level={4}>{t('common:recorder')}</Title>
 
-      <Card style={{ marginTop: 16 }}>
-        <Space direction="vertical" size="large" style={{ width: '100%' }}>
-          <Title level={5}>Start New Recording Session</Title>
-          <Paragraph>
-            Click the button below to start a new browser recording session. This will open a
-            browser window where you can interact with the page. All your actions will be recorded
-            and can be converted into a template for future automation.
-          </Paragraph>
+      <Row gutter={[16, 16]}>
+        {/* Left Column: Controls and Script Preview */}
+        <Col xs={24} lg={12}>
+          <RecorderControls
+            status={recorderState.status}
+            isConnected={isConnected}
+            onStart={handleStart}
+            onStop={handleStop}
+            onPause={handlePause}
+            onResume={handleResume}
+            onConnect={handleConnect}
+            onDisconnect={handleDisconnect}
+          />
 
-          <Space>
-            <Button
-              type="primary"
-              size="large"
-              icon={<PlayCircleOutlined />}
-              onClick={handleStartRecording}
-              loading={createSessionMutation.isLoading}
+          <div style={{ marginTop: 16 }}>
+            <ScriptPreview
+              script={recorderState.script}
+              onCompile={handleCompile}
+              disabled={recorderState.status !== 'stopped' || compileMutation.isLoading}
+              status={recorderState.status}
+            />
+          </div>
+        </Col>
+
+        {/* Right Column: Template Preview and Browser View */}
+        <Col xs={24} lg={12}>
+          {compileMutation.isLoading ? (
+            <Card>
+              <Spin tip={t('recorder:compiling')}>
+                <div style={{ height: 200 }} />
+              </Spin>
+            </Card>
+          ) : (
+            <TemplatePreview
+              template={template}
+              validation={validation}
+              onSave={handleSave}
+              saving={saveMutation.isLoading}
+            />
+          )}
+
+          {/* Browser Preview Placeholder */}
+          <Card
+            title={t('recorder:browserPreview')}
+            style={{ marginTop: 16 }}
+          >
+            <div
+              style={{
+                height: 300,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                background: '#f5f5f5',
+                borderRadius: 4,
+              }}
             >
-              {t('session:startSession')}
-            </Button>
-          </Space>
-
-          <Title level={5} style={{ marginTop: 24 }}>
-            Instructions
-          </Title>
-          <Paragraph>
-            <ul>
-              <li>Start the recording session by clicking the button above</li>
-              <li>A browser window will open - interact with the page normally</li>
-              <li>Click the "Stop" button when you're done recording</li>
-              <li>Review the recorded actions and save them as a template</li>
-              <li>Templates can be used to automate the same workflow later</li>
-            </ul>
-          </Paragraph>
-        </Space>
-      </Card>
-
-      <Card title="Recording Preview" style={{ marginTop: 16 }}>
-        <div
-          style={{
-            height: 400,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            background: '#f5f5f5',
-            borderRadius: 4,
-          }}
-        >
-          <Paragraph style={{ textAlign: 'center', color: '#999' }}>
-            Start a recording session to see the browser preview here.
-            <br />
-            The browser will be displayed via noVNC connection.
-          </Paragraph>
-        </div>
-      </Card>
+              {recorderState.status === 'recording' ? (
+                <div style={{ textAlign: 'center' }}>
+                  <Spin />
+                  <p style={{ marginTop: 8 }}>{t('recorder:recordingInProgress')}</p>
+                  <p style={{ color: '#8c8c8c', fontSize: 12 }}>{recorderState.targetUrl}</p>
+                </div>
+              ) : (
+                <p style={{ textAlign: 'center', color: '#999' }}>
+                  {t('recorder:startToPreview')}
+                </p>
+              )}
+            </div>
+          </Card>
+        </Col>
+      </Row>
     </div>
   );
 };
