@@ -24,20 +24,23 @@ NC='\033[0m' # No Color
 PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$PROJECT_ROOT"
 
-# Service ports (matching E2E test configuration)
-declare -A SERVICE_PORTS=(
-    ["ai-orchestrator"]=3000
-    ["auth"]=3001
-    ["session-broker"]=3002
-    ["control-plane"]=3003
-    ["template"]=3004
-    ["replay-engine"]=3005
-    ["browser-worker"]=3006
-    ["portal"]=5173
-)
+# Service ports (bash 3.x compatible)
+get_service_port() {
+    case "$1" in
+        "ai-orchestrator") echo 3000 ;;
+        "auth") echo 3001 ;;
+        "session-broker") echo 3002 ;;
+        "control-plane") echo 3003 ;;
+        "template") echo 3004 ;;
+        "replay-engine") echo 3005 ;;
+        "browser-worker") echo 3006 ;;
+        "portal") echo 5173 ;;
+        *) echo "" ;;
+    esac
+}
 
 # Services to start (NestJS services only, portal is separate)
-NEST_SERVICES=("ai-orchestrator" "auth" "session-broker" "control-plane" "template" "replay-engine" "browser-worker")
+NEST_SERVICES="ai-orchestrator auth session-broker control-plane template replay-engine browser-worker"
 
 # Log directory
 LOG_DIR="$PROJECT_ROOT/logs"
@@ -171,8 +174,13 @@ build_services() {
 # Function to start a single service
 start_service() {
     local service=$1
-    local port=${SERVICE_PORTS[$service]}
+    local port=$(get_service_port "$service")
     local log_file="$LOG_DIR/${service}.log"
+
+    if [ -z "$port" ]; then
+        log_error "Unknown service: $service"
+        return 1
+    fi
 
     log_info "Starting $service on port $port..."
 
@@ -213,7 +221,7 @@ start_service() {
 stop_services() {
     log_info "Stopping all services..."
 
-    for service in "${NEST_SERVICES[@]}" "portal"; do
+    for service in $NEST_SERVICES portal; do
         local pid_file="$LOG_DIR/${service}.pid"
         if [ -f "$pid_file" ]; then
             local pid=$(cat "$pid_file")
@@ -226,7 +234,7 @@ stop_services() {
     done
 
     # Also kill any node processes on our ports
-    for port in "${SERVICE_PORTS[@]}"; do
+    for port in 3000 3001 3002 3003 3004 3005 3006 5173; do
         local pids=$(lsof -ti:$port 2>/dev/null || true)
         if [ -n "$pids" ]; then
             echo "$pids" | xargs kill 2>/dev/null || true
@@ -240,14 +248,15 @@ stop_services() {
 start_all_services() {
     log_info "Starting all services..."
 
-    for service in "${NEST_SERVICES[@]}"; do
+    for service in $NEST_SERVICES; do
         start_service "$service"
         sleep 1
     done
 
     # Wait for all services to be ready
-    for service in "${NEST_SERVICES[@]}"; do
-        wait_for_service "$service" "${SERVICE_PORTS[$service]}"
+    for service in $NEST_SERVICES; do
+        local port=$(get_service_port "$service")
+        wait_for_service "$service" "$port"
     done
 
     log_success "All services started!"
@@ -261,8 +270,8 @@ show_status() {
     echo "=========================================="
     echo ""
 
-    for service in "${!SERVICE_PORTS[@]}"; do
-        local port=${SERVICE_PORTS[$service]}
+    for service in ai-orchestrator auth session-broker control-plane template replay-engine browser-worker portal; do
+        local port=$(get_service_port "$service")
         local status="NOT RUNNING"
         local color=$RED
 
@@ -290,8 +299,8 @@ SKIP_BUILD=false
 STOP_MODE=false
 ONLY_SERVICE=""
 
-while [[ $# -gt 0 ]]; do
-    case $1 in
+while [ $# -gt 0 ]; do
+    case "$1" in
         --skip-docker)
             SKIP_DOCKER=true
             shift
@@ -353,12 +362,13 @@ fi
 
 # Start services
 if [ -n "$ONLY_SERVICE" ]; then
-    if [[ -v SERVICE_PORTS["$ONLY_SERVICE"] ]]; then
+    port=$(get_service_port "$ONLY_SERVICE")
+    if [ -n "$port" ]; then
         start_service "$ONLY_SERVICE"
-        wait_for_service "$ONLY_SERVICE" "${SERVICE_PORTS[$ONLY_SERVICE]}"
+        wait_for_service "$ONLY_SERVICE" "$port"
     else
         log_error "Unknown service: $ONLY_SERVICE"
-        echo "Available services: ${!SERVICE_PORTS[@]}"
+        echo "Available services: ai-orchestrator auth session-broker control-plane template replay-engine browser-worker portal"
         exit 1
     fi
 else
