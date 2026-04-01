@@ -1,0 +1,196 @@
+name: E2E Tests
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Test environment'
+        required: false
+        default: 'docker'
+        type: choice
+        options:
+          - docker
+          - staging
+
+jobs:
+  e2e-tests:
+    name: E2E Integration Tests
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:15-alpine
+        env:
+          POSTGRES_USER: ops
+          POSTGRES_PASSWORD: ops_secret
+          POSTGRES_DB: ops
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: 8
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Setup database schema
+        run: |
+          psql -h localhost -U ops -d ops -f infra/sql/migrations/001_init.sql
+        env:
+          PGPASSWORD: ops_secret
+
+      - name: Seed test data
+        run: |
+          psql -h localhost -U ops -d ops -f infra/sql/seed.sql
+        env:
+          PGPASSWORD: ops_secret
+
+      - name: Build services
+        run: |
+          pnpm run build --filter @ops/auth
+          pnpm run build --filter @ops/session-broker
+          pnpm run build --filter @ops/template
+          pnpm run build --filter @ops/ai-orchestrator
+          pnpm run build --filter @ops/replay-engine
+        continue-on-error: true
+
+      - name: Start services (background)
+        run: |
+          # Start all services in background
+          node services/auth/dist/main.js &
+          node services/session-broker/dist/main.js &
+          node services/template/dist/src/main.js &
+          node services/ai-orchestrator/dist/main.js &
+          node services/replay-engine/dist/main.js &
+
+          # Wait for services to start
+          sleep 10
+        continue-on-error: true
+        env:
+          DATABASE_URL: postgresql://ops:ops_secret@localhost:5432/ops
+          REDIS_URL: redis://localhost:6379
+          AUTH_PORT: 3001
+          SESSION_BROKER_PORT: 3002
+          TEMPLATE_PORT: 3004
+          AI_ORCHESTRATOR_PORT: 3000
+          REPLAY_ENGINE_PORT: 3005
+          SKIP_SERVICE_HEALTH_CHECK: true
+
+      - name: Run E2E tests
+        run: |
+          pnpm exec jest --config test/integration/jest.config.js --coverage
+        env:
+          DATABASE_URL: postgresql://ops:ops_secret@localhost:5432/ops
+          REDIS_URL: redis://localhost:6379
+          AUTH_HOST: localhost
+          AUTH_PORT: 3001
+          SESSION_BROKER_HOST: localhost
+          SESSION_BROKER_PORT: 3002
+          TEMPLATE_HOST: localhost
+          TEMPLATE_PORT: 3004
+          AI_ORCHESTRATOR_HOST: localhost
+          AI_ORCHESTRATOR_PORT: 3000
+          REPLAY_ENGINE_HOST: localhost
+          REPLAY_ENGINE_PORT: 3005
+          SKIP_SERVICE_HEALTH_CHECK: true
+
+      - name: Upload coverage report
+        uses: codecov/codecov-action@v3
+        with:
+          files: ./coverage/integration/lcov.info
+          fail_ci_if_error: false
+          flags: integration
+
+      - name: Generate test report
+        if: always()
+        uses: dorny/test-reporter@v1
+        with:
+          name: E2E Test Results
+          path: coverage/integration/*.json
+          reporter: jest-junit
+        continue-on-error: true
+
+      - name: Archive test results
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: e2e-test-results
+          path: |
+            coverage/integration/
+            test-results/
+          retention-days: 7
+
+  e2e-tests-docker:
+    name: E2E Tests with Docker Compose
+    runs-on: ubuntu-latest
+    needs: e2e-tests
+    if: github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'docker'
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: 8
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Start Docker Compose
+        run: |
+          docker compose -f docker/docker-compose.shared.yml -f docker/docker-compose.dev.yml up -d
+          sleep 30
+
+      - name: Run E2E tests
+        run: pnpm exec jest --config test/integration/jest.config.js
+        env:
+          DATABASE_URL: postgresql://ops:ops_secret@postgres:5432/ops
+          REDIS_URL: redis://redis:6379
+          AUTH_HOST: auth
+          SESSION_BROKER_HOST: session-broker
+          TEMPLATE_HOST: template
+          AI_ORCHESTRATOR_HOST: ai-orchestrator
+          REPLAY_ENGINE_HOST: replay-engine
+
+      - name: Stop Docker Compose
+        if: always()
+        run: docker compose -f docker/docker-compose.shared.yml -f docker/docker-compose.dev.yml down -v

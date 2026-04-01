@@ -12,17 +12,28 @@
     "clean": "rm -rf node_modules dist .turbo",
     "docker:up": "docker compose -f docker/docker-compose.shared.yml up -d",
     "docker:down": "docker compose -f docker/docker-compose.shared.yml down",
-    "docker:dev": "docker compose -f docker/docker-compose.shared.yml -f docker/docker-compose.dev.yml up -d"
+    "docker:dev": "docker compose -f docker/docker-compose.shared.yml -f docker/docker-compose.dev.yml up -d",
+    "test:e2e": "jest --config test/integration/jest.config.js",
+    "test:e2e:coverage": "jest --config test/integration/jest.config.js --coverage",
+    "test:unit": "pnpm run test:unit --filter @ops/*",
+    "test:integration": "pnpm run test:integration --filter @ops/*"
   },
   "workspaces": [
-    "services/*"
+    "services/*",
+    "test/*"
   ],
   "devDependencies": {
+    "@types/jest": "^29.5.0",
     "@types/node": "^20.10.0",
+    "@types/pg": "^8.10.0",
     "@typescript-eslint/eslint-plugin": "^6.13.0",
     "@typescript-eslint/parser": "^6.13.0",
     "eslint": "^8.55.0",
+    "ioredis": "^5.3.0",
+    "jest": "^29.7.0",
+    "pg": "^8.11.0",
     "prettier": "^3.1.0",
+    "ts-jest": "^29.1.0",
     "typescript": "^5.3.0"
   },
   "engines": {
