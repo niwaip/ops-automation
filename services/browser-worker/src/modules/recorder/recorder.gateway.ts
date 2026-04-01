@@ -5,8 +5,9 @@ import {
   OnGatewayConnection,
   OnGatewayDisconnect,
 } from '@nestjs/websockets';
-import { Logger } from '@nestjs/common';
+import { Logger, OnModuleInit } from '@nestjs/common';
 import { Server, Socket } from 'socket.io';
+import { EventEmitter2, OnEvent } from '@nestjs/event-emitter';
 import { RecorderService } from './recorder.service';
 
 export type RecorderStatus = 'idle' | 'connecting' | 'recording' | 'paused' | 'stopped' | 'error';
@@ -25,14 +26,33 @@ interface RecorderState {
     methods: ['GET', 'POST'],
   },
 })
-export class RecorderGateway implements OnGatewayConnection, OnGatewayDisconnect {
+export class RecorderGateway implements OnGatewayConnection, OnGatewayDisconnect, OnModuleInit {
   @WebSocketServer()
   server!: Server;
 
   private readonly logger = new Logger(RecorderGateway.name);
   private recorderStates: Map<string, RecorderState> = new Map();
+  private clientSessions: Map<string, string> = new Map(); // clientId -> sessionId
 
-  constructor(private readonly recorderService: RecorderService) {}
+  constructor(
+    private readonly recorderService: RecorderService,
+    private eventEmitter: EventEmitter2,
+  ) {}
+
+  onModuleInit() {
+    // Listen for script updates from the service
+    this.eventEmitter.on('script.updated', ({ sessionId, script }) => {
+      // Find the client for this session
+      const clientId = this.clientSessions.get(sessionId);
+      if (clientId) {
+        const client = this.server.sockets.sockets.get(clientId);
+        if (client) {
+          client.emit('SCRIPT_UPDATE', { script });
+          this.logger.log(`Sent script update to client ${clientId}: ${script.length} chars`);
+        }
+      }
+    });
+  }
 
   handleConnection(client: Socket): void {
     this.logger.log(`Client connected: ${client.id}`);
@@ -52,6 +72,7 @@ export class RecorderGateway implements OnGatewayConnection, OnGatewayDisconnect
     // Stop any running browser
     await this.recorderService.stopBrowser(client.id);
     this.recorderStates.delete(client.id);
+    this.clientSessions.delete(client.id);
   }
 
   @SubscribeMessage('START')
@@ -68,6 +89,9 @@ export class RecorderGateway implements OnGatewayConnection, OnGatewayDisconnect
     try {
       // Start actual browser
       const { cdpPort } = await this.recorderService.startBrowser(client.id, payload.url);
+
+      // Store client-session mapping for event routing
+      this.clientSessions.set(client.id, client.id);
 
       state.status = 'recording';
       state.cdpPort = cdpPort;
@@ -99,13 +123,19 @@ export class RecorderGateway implements OnGatewayConnection, OnGatewayDisconnect
     if (!state) return;
 
     try {
+      // Get session before stopping (stopBrowser deletes the session)
+      const sessionBeforeStop = this.recorderService.getSession(client.id);
+
+      // Stop the browser and get the final script
       await this.recorderService.stopBrowser(client.id);
+
       state.status = 'stopped';
 
-      // Get final script
-      const session = this.recorderService.getSession(client.id);
-      if (session) {
-        client.emit('SCRIPT_UPDATE', { script: session.script });
+      // Use the script from session before it was deleted
+      if (sessionBeforeStop && sessionBeforeStop.script) {
+        state.script = sessionBeforeStop.script;
+        client.emit('SCRIPT_UPDATE', { script: sessionBeforeStop.script });
+        this.logger.log(`Sent final script: ${sessionBeforeStop.script.length} chars`);
       }
 
       client.emit('STATUS', { status: 'stopped' });

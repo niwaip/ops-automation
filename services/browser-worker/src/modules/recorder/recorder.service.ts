@@ -22,6 +22,8 @@ export class RecorderService implements OnModuleDestroy {
   private readonly codegenHost = process.env.CHROME_REMOTE_DEBUGGING_HOST || 'browser-chrome';
   private readonly codegenPort = parseInt(process.env.CODEGEN_API_PORT || '3000', 10);
 
+  constructor(private eventEmitter: EventEmitter2) {}
+
   async onModuleDestroy() {
     for (const [id, session] of this.sessions) {
       await this.stopBrowser(id);
@@ -126,6 +128,8 @@ export class RecorderService implements OnModuleDestroy {
         if (script && script !== session.script) {
           session.script = script;
           this.logger.log(`Script updated for session ${sessionId}`);
+          // Emit event for real-time updates
+          this.eventEmitter.emit('script.updated', { sessionId, script });
         }
       } catch (err) {
         this.logger.error(`Failed to poll script: ${err}`);
