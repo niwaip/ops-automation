@@ -1,61 +1,135 @@
 # Browser Worker Dockerfile
-# Based on johnymoo/chrome-novnc-docker with CDP support
+# Based on johnymoo/chrome-novnc-docker
+# Chrome + Xvfb + noVNC for browser automation with CDP support
 
-FROM johnymoo/chrome-novnc-docker:latest
+FROM docker.1ms.run/library/ubuntu:22.04
 
 LABEL maintainer="OPS Automation"
-LABEL description="Browser Worker with noVNC and Chrome DevTools Protocol"
+LABEL description="Chrome + Xvfb + noVNC for browser automation"
 
-# Environment variables
-ENV CHROME_REMOTE_DESKTOP_PORT=9222 \
-    NOVNC_PORT=8080 \
-    VNC_PORT=5900 \
-    CHROME_PROFILE_PATH=/home/chrome/.config/google-chrome
+# Prevent interactive prompts during build
+ENV DEBIAN_FRONTEND=noninteractive
+ENV DISPLAY=:99
+ENV SCREEN_WIDTH=1920
+ENV SCREEN_HEIGHT=1080
+ENV SCREEN_DEPTH=24
 
-# Switch to root for system setup
-USER root
+# Use mirrors for better connectivity
+RUN sed -i 's|http://ports.ubuntu.com|http://mirrors.tuna.tsinghua.edu.cn|g' /etc/apt/sources.list || true
 
-# Install required packages
-RUN apt-get update && apt-get install -y --no-install-recommends \
+# Install Node.js 20 (needed for Playwright)
+RUN apt-get update && apt-get install -y curl && \
+    curl -fsSL https://deb.nodesource.com/setup_20.x | bash - && \
+    apt-get install -y nodejs && \
+    rm -rf /var/lib/apt/lists/*
+
+# Install dependencies
+RUN apt-get update && apt-get install -y \
+    # X11 and display
+    xvfb \
+    x11-utils \
+    x11vnc \
+    fluxbox \
+    # noVNC and websockify
+    novnc \
+    websockify \
+    # Chrome dependencies
+    wget \
     curl \
-    netcat-openbsd \
+    gnupg \
+    ca-certificates \
+    fonts-liberation \
+    libappindicator3-1 \
+    libasound2 \
+    libatk-bridge2.0-0 \
+    libatk1.0-0 \
+    libc6 \
+    libcairo2 \
+    libcups2 \
+    libdbus-1-3 \
+    libexpat1 \
+    libfontconfig1 \
+    libgbm1 \
+    libgcc1 \
+    libglib2.0-0 \
+    libgtk-3-0 \
+    libnspr4 \
+    libnss3 \
+    libpango-1.0-0 \
+    libpangocairo-1.0-0 \
+    libstdc++6 \
+    libx11-6 \
+    libx11-xcb1 \
+    libxcb1 \
+    libxcomposite1 \
+    libxcursor1 \
+    libxdamage1 \
+    libxext6 \
+    libxfixes3 \
+    libxi6 \
+    libxrandr2 \
+    libxrender1 \
+    libxss1 \
+    libxtst6 \
+    lsb-release \
+    xdg-utils \
+    # Chinese fonts support
+    fonts-wqy-microhei \
+    fonts-noto-cjk \
+    # Utils
+    python3 \
+    python3-pip \
+    net-tools \
     procps \
-    nodejs \
-    npm \
+    sudo \
+    gosu \
     && rm -rf /var/lib/apt/lists/*
 
-# Create profile directory structure
-RUN mkdir -p ${CHROME_PROFILE_PATH} && \
-    chown -R chrome:chrome ${CHROME_PROFILE_PATH}
+# Install Chromium via Playwright (supports arm64)
+RUN npm install -g playwright && \
+    npx playwright install chromium --with-deps && \
+    echo "=== Playwright cache contents ===" && \
+    ls -la /root/.cache/ms-playwright/ && \
+    CHROMIUM_DIR=$(ls -d /root/.cache/ms-playwright/chromium-* | head -1) && \
+    echo "Found Chromium dir: ${CHROMIUM_DIR}" && \
+    ls -la "${CHROMIUM_DIR}/" && \
+    find "${CHROMIUM_DIR}" -type f -name "chrome" -o -name "chromium" | head -5 && \
+    CHROME_BIN=$(find "${CHROMIUM_DIR}" -type f -name "chrome" | head -1) && \
+    echo "Chrome binary: ${CHROME_BIN}" && \
+    # Move chromium to /opt for all users to access
+    mv "${CHROMIUM_DIR}" /opt/chromium && \
+    ln -sf /opt/chromium/chrome-linux/chrome /usr/bin/google-chrome && \
+    chmod +x /opt/chromium/chrome-linux/chrome && \
+    chmod -R a+rx /opt/chromium && \
+    ls -la /usr/bin/google-chrome && \
+    ls -la /opt/chromium/chrome-linux/
 
-# Create logs directory
-RUN mkdir -p /var/log/browser-worker && \
-    chown -R chrome:chrome /var/log/browser-worker
+# Create non-root user for Chrome
+RUN useradd -m -s /bin/bash chrome \
+    && mkdir -p /home/chrome/downloads \
+    && chown -R chrome:chrome /home/chrome
 
-# Copy entrypoint script
-COPY browser-worker.entrypoint.sh /entrypoint.sh
-RUN chmod +x /entrypoint.sh
+# Copy startup scripts
+COPY scripts/start.sh /start.sh
+COPY scripts/entrypoint.sh /entrypoint.sh
+RUN chmod +x /start.sh /entrypoint.sh
 
-# Copy health check script
-COPY browser-worker.healthcheck.sh /healthcheck.sh
-RUN chmod +x /healthcheck.sh
-
-# Switch back to chrome user
-USER chrome
+# Create necessary directories
+RUN mkdir -p /var/log/supervisor /tmp/.X11-unix && chmod 1777 /tmp/.X11-unix
 
 # Expose ports
 # 8080 - noVNC web interface
-# 9222 - Chrome DevTools Protocol (CDP)
-# 5900 - VNC (optional, for direct VNC clients)
-EXPOSE 8080 9222 5900
+# 5900 - VNC server
+# 9222 - Chrome DevTools Protocol
+EXPOSE 8080 5900 9222
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
-    CMD /healthcheck.sh || exit 1
+    CMD curl -f http://localhost:8080 || exit 1
 
-# Set default Chrome arguments
-ENV CHROME_ARGS="--remote-debugging-port=9222 --no-first-run --no-default-browser-check --disable-background-networking --disable-background-timer-throttling --disable-backgrounding-occluded-windows --disable-renderer-backgrounding --disable-infobars --disable-breakpad --disable-component-update --disable-default-apps --disable-extensions --disable-sync --metrics-recording-only --no-sandbox --disable-setuid-sandbox --disable-gpu-sandbox --disable-dev-shm-usage"
+# Set working directory
+WORKDIR /home/chrome
 
-# Entry point
+# Start services (running as root to handle setup, entrypoint will switch to chrome user)
 ENTRYPOINT ["/entrypoint.sh"]
-CMD ["--remote-debugging-port=9222"]
+CMD ["/start.sh"]
