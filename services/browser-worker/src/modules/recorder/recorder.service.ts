@@ -1,6 +1,7 @@
 import { Injectable, Logger, OnModuleDestroy } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import * as dns from 'dns';
+import WebSocket from 'ws';
 
 export type RecorderStatus = 'idle' | 'connecting' | 'recording' | 'paused' | 'stopped' | 'error';
 
@@ -18,7 +19,6 @@ export class RecorderService implements OnModuleDestroy {
   private readonly logger = new Logger(RecorderService.name);
   private sessions: Map<string, BrowserSession> = new Map();
 
-  // Chrome CDP endpoint from browser-chrome container
   private readonly chromeHost = process.env.CHROME_REMOTE_DEBUGGING_HOST || 'host.docker.internal';
   private readonly chromePort = parseInt(process.env.CHROME_REMOTE_DEBUGGING_PORT || '9222', 10);
   private resolvedIp: string | null = null;
@@ -28,18 +28,16 @@ export class RecorderService implements OnModuleDestroy {
   }
 
   private async resolveChromeHost(): Promise<void> {
-    // Resolve hostname to IP address to avoid Chrome Host header check
     if (this.chromeHost === 'localhost' || this.chromeHost === 'host.docker.internal') {
       this.resolvedIp = this.chromeHost;
       return;
     }
 
     try {
-      // Try DNS resolution
       const addresses = await new Promise<string[]>((resolve, reject) => {
-        dns.lookup(this.chromeHost, (err, addresses) => {
+        dns.lookup(this.chromeHost, (err, address) => {
           if (err) reject(err);
-          else resolve(addresses ? [addresses] : []);
+          else resolve(address ? [address] : []);
         });
       });
 
@@ -70,10 +68,7 @@ export class RecorderService implements OnModuleDestroy {
     const host = this.getChromeHost();
     this.logger.log(`Connecting to Chrome at ${host}:${this.chromePort}`);
 
-    // Check if Chrome CDP is available
     await this.waitForBrowser();
-
-    // Navigate to the target URL via CDP
     await this.navigateToUrl(startUrl);
 
     const session: BrowserSession = {
@@ -114,7 +109,6 @@ export class RecorderService implements OnModuleDestroy {
         this.logger.log(`Chrome CDP is ready at ${host}:${this.chromePort}`);
         return;
       } catch {
-        // Try resolving DNS again on failure
         await this.resolveChromeHost();
         await new Promise((r) => setTimeout(r, 500));
       }
@@ -122,17 +116,22 @@ export class RecorderService implements OnModuleDestroy {
     throw new Error('Browser failed to start - Chrome CDP not available');
   }
 
-  private async navigateToUrl(url: string): Promise<void> {
+  private async getWebSocketDebuggerUrl(): Promise<string> {
     const http = await import('http');
     const host = this.getChromeHost();
 
-    const pages = await new Promise<any[]>((resolve, reject) => {
-      const req = http.get(`http://${host}:${this.chromePort}/json/list`, (res) => {
+    return new Promise<string>((resolve, reject) => {
+      const req = http.get(`http://${host}:${this.chromePort}/json`, (res) => {
         let data = '';
         res.on('data', (chunk) => data += chunk);
         res.on('end', () => {
           try {
-            resolve(JSON.parse(data));
+            const pages = JSON.parse(data);
+            if (pages.length > 0 && pages[0].webSocketDebuggerUrl) {
+              resolve(pages[0].webSocketDebuggerUrl);
+            } else {
+              reject(new Error('No page with WebSocket URL found'));
+            }
           } catch (e) {
             reject(e);
           }
@@ -144,34 +143,71 @@ export class RecorderService implements OnModuleDestroy {
         reject(new Error('Timeout'));
       });
     });
+  }
 
-    if (pages.length > 0) {
-      const pageId = pages[0].id;
-      await new Promise<void>((resolve, reject) => {
-        const req = http.request(
-          {
-            hostname: host,
-            port: this.chromePort,
-            path: `/json/navigate?pageId=${pageId}&url=${encodeURIComponent(url)}`,
-            method: 'GET',
-          },
-          (res) => {
-            if (res.statusCode === 200) {
-              resolve();
-            } else {
-              reject(new Error(`Navigate failed: ${res.statusCode}`));
-            }
-          },
-        );
-        req.on('error', reject);
-        req.setTimeout(5000, () => {
-          req.destroy();
-          reject(new Error('Timeout'));
-        });
-        req.end();
+  private async navigateToUrl(url: string): Promise<void> {
+    const host = this.getChromeHost();
+    this.logger.log(`Navigating to ${url} via WebSocket CDP`);
+
+    // Get WebSocket debugger URL and replace localhost with actual host
+    let wsUrl = await this.getWebSocketDebuggerUrl();
+    // Replace localhost in WebSocket URL with the resolved IP
+    wsUrl = wsUrl.replace('localhost', host);
+    this.logger.log(`Connecting to WebSocket: ${wsUrl}`);
+
+    // Connect to page WebSocket
+    const ws = new WebSocket(wsUrl);
+
+    return new Promise<void>((resolve, reject) => {
+      ws.on('open', () => {
+        this.logger.log('WebSocket connected, sending Page.navigate command');
+
+        // Send Page.navigate command
+        const navigateCommand = {
+          id: 1,
+          method: 'Page.navigate',
+          params: { url }
+        };
+        ws.send(JSON.stringify(navigateCommand));
       });
-      this.logger.log(`Navigated to ${url}`);
-    }
+
+      ws.on('message', (data: Buffer) => {
+        try {
+          const response = JSON.parse(data.toString());
+          this.logger.log(`CDP response: ${JSON.stringify(response)}`);
+
+          if (response.id === 1) {
+            if (response.error) {
+              ws.close();
+              reject(new Error(`Navigate error: ${response.error.message || JSON.stringify(response.error)}`));
+            } else {
+              this.logger.log(`Successfully navigated to ${url}`);
+              ws.close();
+              resolve();
+            }
+          }
+        } catch (e) {
+          this.logger.error(`Failed to parse CDP response: ${e}`);
+        }
+      });
+
+      ws.on('error', (err) => {
+        this.logger.error(`WebSocket error: ${err.message}`);
+        reject(new Error(`WebSocket error: ${err.message}`));
+      });
+
+      ws.on('close', () => {
+        this.logger.log('WebSocket closed');
+      });
+
+      // Timeout after 10 seconds
+      setTimeout(() => {
+        if (ws.readyState !== WebSocket.CLOSED) {
+          ws.close();
+          reject(new Error('Navigate timeout'));
+        }
+      }, 10000);
+    });
   }
 
   async stopBrowser(sessionId: string): Promise<void> {
