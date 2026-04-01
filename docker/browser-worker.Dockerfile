@@ -102,8 +102,11 @@ RUN npm install -g playwright && \
     ln -sf /opt/chromium/chrome-linux/chrome /usr/bin/google-chrome && \
     chmod +x /opt/chromium/chrome-linux/chrome && \
     chmod -R a+rx /opt/chromium && \
+    # Create symlink for Playwright to find the browser
+    ln -sf /opt/chromium /root/.cache/ms-playwright/chromium-$(basename "${CHROMIUM_DIR}" | sed 's/chromium-//') && \
     ls -la /usr/bin/google-chrome && \
-    ls -la /opt/chromium/chrome-linux/
+    ls -la /opt/chromium/chrome-linux/ && \
+    ls -la /root/.cache/ms-playwright/
 
 # Create non-root user for Chrome
 RUN useradd -m -s /bin/bash chrome \
@@ -112,21 +115,24 @@ RUN useradd -m -s /bin/bash chrome \
 
 # Copy startup scripts
 COPY scripts/start.sh /start.sh
+COPY scripts/start-recorder.sh /start-recorder.sh
 COPY scripts/entrypoint.sh /entrypoint.sh
-RUN chmod +x /start.sh /entrypoint.sh
+COPY scripts/codegen-api.py /scripts/codegen-api.py
+RUN chmod +x /start.sh /start-recorder.sh /entrypoint.sh /scripts/codegen-api.py
 
 # Create necessary directories
-RUN mkdir -p /var/log/supervisor /tmp/.X11-unix && chmod 1777 /tmp/.X11-unix
+RUN mkdir -p /var/log/supervisor /tmp/.X11-unix /tmp/codegen /scripts && chmod 1777 /tmp/.X11-unix
 
 # Expose ports
 # 8080 - noVNC web interface
 # 5900 - VNC server
 # 9222 - Chrome DevTools Protocol
-EXPOSE 8080 5900 9222
+# 3000 - Codegen API
+EXPOSE 8080 5900 9222 3000
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
-    CMD curl -f http://localhost:8080 || exit 1
+    CMD curl -f http://localhost:8080 && curl -f http://localhost:3000/health || exit 1
 
 # Set working directory
 WORKDIR /home/chrome

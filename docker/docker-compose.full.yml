@@ -119,6 +119,7 @@ services:
       - PORT=3004
       - CHROME_REMOTE_DEBUGGING_HOST=browser-chrome
       - CHROME_REMOTE_DEBUGGING_PORT=9222
+      - CODEGEN_API_PORT=3000
     ports:
       - "3004:3004"
     volumes:
@@ -211,7 +212,7 @@ services:
       - browser-worker
 
   # ============================================
-  # Browser Worker (Chrome + noVNC)
+  # Browser Worker (Chrome + noVNC + Codegen)
   # ============================================
   browser-chrome:
     build:
@@ -222,9 +223,11 @@ services:
       - "6080:8080"  # noVNC
       - "9222:9222"  # CDP
       - "5901:5900"  # VNC
+      - "3000:3000"  # Codegen API
     environment:
       - SCREEN_WIDTH=1920
       - SCREEN_HEIGHT=1080
+    command: ["/start-recorder.sh"]
 
 volumes:
   postgres_data:
