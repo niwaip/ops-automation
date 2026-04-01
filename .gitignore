@@ -59,3 +59,5 @@ docker-compose.override.yml
 
 # Generated files
 *.generated.ts
+vite.config.js
+vite.config.d.ts
