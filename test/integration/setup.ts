@@ -7,8 +7,6 @@
  * - Environment configuration validation
  */
 
-import { beforeAll, afterAll, afterEach } from '@jest/globals';
-
 // Service endpoint configuration
 export const SERVICE_CONFIG = {
   AUTH: {
