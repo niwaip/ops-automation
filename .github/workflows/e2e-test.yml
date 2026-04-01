@@ -78,25 +78,26 @@ jobs:
 
       - name: Build services
         run: |
+          # Generate Prisma client for auth service
+          cd services/auth && npx prisma generate && cd ../..
+          # Build all services
           pnpm run build --filter @ops/auth
           pnpm run build --filter @ops/session-broker
           pnpm run build --filter @ops/template
           pnpm run build --filter @ops/ai-orchestrator
           pnpm run build --filter @ops/replay-engine
-        continue-on-error: true
 
       - name: Start services (background)
         run: |
           # Start all services in background
           node services/auth/dist/main.js &
           node services/session-broker/dist/main.js &
-          node services/template/dist/src/main.js &
+          node services/template/dist/main.js &
           node services/ai-orchestrator/dist/main.js &
           node services/replay-engine/dist/main.js &
 
           # Wait for services to start
           sleep 10
-        continue-on-error: true
         env:
           DATABASE_URL: postgresql://ops:ops_secret@localhost:5432/ops
           REDIS_URL: redis://localhost:6379
