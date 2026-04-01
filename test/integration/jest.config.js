@@ -1,7 +1,7 @@
 /** @type {import('jest').Config} */
 module.exports = {
   rootDir: '..',
-  testMatch: ['<rootDir>/test/integration/**/*.test.ts'],
+  testMatch: ['<rootDir>/integration/**/*.test.ts'],
   moduleFileExtensions: ['ts', 'js', 'json'],
   transform: {
     '^.+\\.ts$': ['ts-jest', {
@@ -9,13 +9,13 @@ module.exports = {
     }],
   },
   testEnvironment: 'node',
-  setupFilesAfterEnv: ['<rootDir>/test/integration/setup.ts'],
-  globalSetup: '<rootDir>/test/integration/helpers/global-setup.ts',
-  globalTeardown: '<rootDir>/test/integration/helpers/global-teardown.ts',
+  setupFilesAfterEnv: ['<rootDir>/integration/setup.ts'],
+  globalSetup: '<rootDir>/integration/helpers/global-setup.ts',
+  globalTeardown: '<rootDir>/integration/helpers/global-teardown.ts',
   testTimeout: 60000,
-  coverageDirectory: '<rootDir>/coverage/integration',
+  coverageDirectory: '<rootDir>/../coverage/integration',
   collectCoverageFrom: [
-    '<rootDir>/test/integration/**/*.ts',
+    '<rootDir>/integration/**/*.ts',
   ],
   coverageThreshold: {
     global: {
