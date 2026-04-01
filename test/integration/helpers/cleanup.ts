@@ -7,7 +7,7 @@
 
 import { Pool } from 'pg';
 import Redis from 'ioredis';
-import { DB_CONFIG } from '../setup';
+import { DB_CONFIG } from '../config';
 
 // Database connection pool
 let pgPool: Pool | null = null;
