@@ -216,31 +216,41 @@ const RecorderPage: React.FC = () => {
             />
           )}
 
-          {/* Browser Preview Placeholder */}
+          {/* Browser Preview - noVNC iframe */}
           <Card
             title={t('recorder:browserPreview')}
             style={{ marginTop: 16 }}
           >
             <div
               style={{
-                height: 300,
+                height: 450,
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
                 background: '#f5f5f5',
                 borderRadius: 4,
+                overflow: 'hidden',
               }}
             >
-              {recorderState.status === 'recording' ? (
-                <div style={{ textAlign: 'center' }}>
-                  <Spin />
-                  <p style={{ marginTop: 8 }}>{t('recorder:recordingInProgress')}</p>
-                  <p style={{ color: '#8c8c8c', fontSize: 12 }}>{recorderState.targetUrl}</p>
-                </div>
+              {recorderState.status === 'recording' || recorderState.status === 'paused' ? (
+                <iframe
+                  src="http://localhost:6080/vnc.html?autoconnect=true&resize=scale"
+                  style={{
+                    width: '100%',
+                    height: '100%',
+                    border: 'none',
+                  }}
+                  title="Browser Preview"
+                />
               ) : (
-                <p style={{ textAlign: 'center', color: '#999' }}>
-                  {t('recorder:startToPreview')}
-                </p>
+                <div style={{ textAlign: 'center' }}>
+                  <p style={{ color: '#999' }}>
+                    {t('recorder:startToPreview')}
+                  </p>
+                  <p style={{ color: '#8c8c8c', fontSize: 12, marginTop: 8 }}>
+                    {t('recorder:novncHint') || 'noVNC will show browser after recording starts'}
+                  </p>
+                </div>
               )}
             </div>
           </Card>
