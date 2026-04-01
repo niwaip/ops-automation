@@ -270,7 +270,7 @@ describe('E2E Full Flow Test (TC01)', () => {
 
       expect(response.status).toBe(200);
       expect((response.data as SessionStateResponse).id).toBe(testSessionId);
-      expect((response.data as SessionStateResponse).state).toBeValidSessionState();
+      expect(['IDLE', 'RUNNING', 'HUMAN_CONTROL', 'CLOSED', 'ERROR']).toContain((response.data as SessionStateResponse).state);
     }, TEST_TIMEOUTS.SHORT);
   });
 
