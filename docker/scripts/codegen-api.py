@@ -57,33 +57,51 @@ def start_codegen(session_id, url):
     )
 
     # Give it a moment to start and windows to appear
-    time.sleep(3)
+    time.sleep(4)
 
     if codegen_process.poll() is None:
         print(f"[INFO] Codegen started with PID: {codegen_process.pid}")
 
         # Minimize the Playwright Inspector window
-        # The Inspector window typically has "Playwright" in title
         try:
             result = subprocess.run(
                 ["xdotool", "search", "--name", "Playwright", "windowminimize"],
                 capture_output=True,
                 text=True
             )
-            print(f"[INFO] xdotool minimize result: {result.returncode}")
-            if result.stderr:
-                print(f"[DEBUG] xdotool stderr: {result.stderr}")
+            print(f"[INFO] xdotool minimize inspector result: {result.returncode}")
         except Exception as e:
             print(f"[WARN] Failed to minimize inspector: {e}")
 
-        # Activate and raise the Chrome browser window
+        # Move and resize the Chrome browser window to fill the screen
         try:
-            subprocess.run(
-                ["xdotool", "search", "--class", "chrome", "windowactivate", "sync"],
-                capture_output=True
+            # Find chrome window
+            result = subprocess.run(
+                ["xdotool", "search", "--class", "chrome"],
+                capture_output=True,
+                text=True
             )
+            if result.returncode == 0 and result.stdout.strip():
+                window_ids = result.stdout.strip().split('\n')
+                for win_id in window_ids:
+                    # Move window to 0,0 and resize to 1920x1080
+                    subprocess.run(
+                        ["xdotool", "windowmove", win_id, "0", "0"],
+                        capture_output=True
+                    )
+                    subprocess.run(
+                        ["xdotool", "windowsize", win_id, "1920", "1080"],
+                        capture_output=True
+                    )
+                    # Activate the window
+                    subprocess.run(
+                        ["xdotool", "windowactivate", win_id],
+                        capture_output=True
+                    )
+                    print(f"[INFO] Moved and resized chrome window {win_id}")
+                    break  # Only need to do this for the first chrome window
         except Exception as e:
-            print(f"[WARN] Failed to activate chrome window: {e}")
+            print(f"[WARN] Failed to move/resize chrome window: {e}")
 
         return True
     else:
