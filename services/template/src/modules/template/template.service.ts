@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException, BadRequestException, ConflictException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import { v4 as uuidv4 } from 'uuid';
 import { TemplateEntity } from './template.entity';
 import { CreateTemplateDto, UpdateTemplateDto, PublishTemplateDto } from './template.dto';
 import { TemplateJSON, ListTemplatesQuery, ListTemplatesResponse } from '../../types/template.types';
@@ -28,6 +29,7 @@ export class TemplateService {
 
     // Validate template structure before saving
     const entityToValidate = this.templateRepository.create({
+      id: uuidv4(), // Generate UUID for validation
       name: dto.name,
       version: dto.version || '1.0.0',
       description: dto.description,
@@ -224,8 +226,8 @@ export class TemplateService {
       steps: entity.steps,
       metadata: {
         created_by: entity.created_by,
-        created_at: entity.created_at.toISOString(),
-        updated_at: entity.updated_at.toISOString(),
+        created_at: entity.created_at?.toISOString() || new Date().toISOString(),
+        updated_at: entity.updated_at?.toISOString() || new Date().toISOString(),
         description: entity.description,
       },
     };

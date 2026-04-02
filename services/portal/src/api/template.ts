@@ -10,12 +10,13 @@ export interface ParamsSchema {
 }
 
 export interface TemplateStep {
-  type: string;
+  step_id: string;
   action: string;
-  selector?: string;
-  value?: string;
-  timeout?: number;
-  retry?: number;
+  locator?: { type: string; value: string; fallback?: { type: string; value: string } };
+  params?: Record<string, string | number>;
+  wait?: { type: string; value: number | string };
+  retry?: { max_attempts: number; delay_ms: number };
+  on_fail?: string;
 }
 
 export interface Template {
