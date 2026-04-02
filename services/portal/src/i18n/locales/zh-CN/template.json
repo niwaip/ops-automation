@@ -21,6 +21,7 @@
   "editTemplate": "编辑模板",
   "deleteTemplate": "删除模板",
   "publishTemplate": "发布模板",
+  "submitForReview": "提交审核",
   "reviewTemplate": "审核模板",
   "deprecateTemplate": "废弃模板",
   "revokeTemplate": "撤销模板",

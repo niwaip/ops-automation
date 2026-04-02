@@ -21,6 +21,7 @@
   "editTemplate": "テンプレート編集",
   "deleteTemplate": "テンプレート削除",
   "publishTemplate": "テンプレート公開",
+  "submitForReview": "審査提出",
   "reviewTemplate": "テンプレート審査",
   "deprecateTemplate": "テンプレート廃止",
   "revokeTemplate": "テンプレート撤回",

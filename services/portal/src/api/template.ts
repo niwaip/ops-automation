@@ -123,19 +123,23 @@ export const templateApi = {
   },
 
   publish: async (id: string, reviewedBy: string): Promise<Template> => {
-    return apiClient.patch<Template>(`/templates/${id}/publish`, { reviewed_by: reviewedBy });
+    return apiClient.post<Template>(`/templates/${id}/publish`, { reviewed_by: reviewedBy });
   },
 
   deprecate: async (id: string): Promise<Template> => {
-    return apiClient.patch<Template>(`/templates/${id}/deprecate`);
+    return apiClient.post<Template>(`/templates/${id}/deprecate`);
   },
 
   revoke: async (id: string): Promise<Template> => {
-    return apiClient.patch<Template>(`/templates/${id}/revoke`);
+    return apiClient.post<Template>(`/templates/${id}/revoke`);
   },
 
   clone: async (id: string): Promise<Template> => {
     return apiClient.post<Template>(`/templates/${id}/clone`);
+  },
+
+  submitForReview: async (id: string): Promise<Template> => {
+    return apiClient.post<Template>(`/templates/${id}/review`);
   },
 
   compile: async (script: string, intent?: string): Promise<CompileResult> => {

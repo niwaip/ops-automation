@@ -56,6 +56,16 @@ const TemplateDetailPage: React.FC = () => {
     }
   );
 
+  const submitForReviewMutation = useMutation(
+    (templateId: string) => templateApi.submitForReview(templateId),
+    {
+      onSuccess: () => {
+        message.success(t('common:success'));
+        queryClient.invalidateQueries(['template', id]);
+      },
+    }
+  );
+
   const cloneMutation = useMutation(templateApi.clone, {
     onSuccess: (newTemplate) => {
       message.success(t('common:success'));
@@ -175,7 +185,17 @@ const TemplateDetailPage: React.FC = () => {
                   {t('template:executeTemplate')}
                 </Button>
               )}
-              {template.status === 'DRAFT' && user?.role === 'admin' && (
+              {template.status === 'DRAFT' && (
+                <Button
+                  type="primary"
+                  icon={<CloudUploadOutlined />}
+                  onClick={() => submitForReviewMutation.mutate(template.id)}
+                  loading={submitForReviewMutation.isLoading}
+                >
+                  {t('template:submitForReview')}
+                </Button>
+              )}
+              {template.status === 'REVIEW' && user?.role === 'admin' && (
                 <Button
                   type="primary"
                   icon={<CloudUploadOutlined />}

@@ -21,6 +21,7 @@
   "editTemplate": "Edit Template",
   "deleteTemplate": "Delete Template",
   "publishTemplate": "Publish Template",
+  "submitForReview": "Submit for Review",
   "reviewTemplate": "Review Template",
   "deprecateTemplate": "Deprecate Template",
   "revokeTemplate": "Revoke Template",
