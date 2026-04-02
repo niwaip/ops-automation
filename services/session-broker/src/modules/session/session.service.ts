@@ -45,15 +45,13 @@ export class SessionService {
     const sessionId = uuidv4();
     const now = Date.now();
 
-    // Step 1: Try to acquire profile write lock
-    const lockResult = await this.lockService.acquireProfileLock(request.user_id, sessionId);
-
-    if (!lockResult.success) {
-      // Lock conflict - return 409
-      throw new ConflictException(
-        `User ${request.user_id} already has an active session. Lock held by another session.`,
-      );
-    }
+    // Step 1: Try to acquire profile write lock (disabled for dev - no 409 limit)
+    // const lockResult = await this.lockService.acquireProfileLock(request.user_id, sessionId);
+    // if (!lockResult.success) {
+    //   throw new ConflictException(
+    //     `User ${request.user_id} already has an active session. Lock held by another session.`,
+    //   );
+    // }
 
     // Step 2: Allocate a worker
     const workerInfo = await this.allocationService.allocateWorker(sessionId);

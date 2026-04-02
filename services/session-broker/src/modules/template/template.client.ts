@@ -16,7 +16,9 @@ export interface Template {
 @Injectable()
 export class TemplateClient {
   private readonly logger = new Logger(TemplateClient.name);
-  private readonly templateServiceUrl = process.env.TEMPLATE_SERVICE_URL || 'http://localhost:3005';
+  // In Docker, use service name; locally use localhost
+  private readonly templateServiceUrl = process.env.TEMPLATE_SERVICE_URL ||
+    (process.env.DOCKER_ENV ? 'http://ops-template:3005' : 'http://localhost:3005');
 
   async getTemplate(templateId: string): Promise<Template | null> {
     try {

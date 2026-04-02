@@ -5,7 +5,9 @@ export class CdpExecutor {
   private readonly logger = new Logger(CdpExecutor.name);
 
   // Browser-Chrome Codegen API endpoint
-  private readonly browserHost = process.env.BROWSER_HOST || 'localhost';
+  // In Docker, use service name; locally use localhost
+  private readonly browserHost = process.env.BROWSER_HOST ||
+    (process.env.DOCKER_ENV ? 'ops-browser-chrome' : 'localhost');
   private readonly browserPort = process.env.BROWSER_PORT || '3000';
 
   /**
