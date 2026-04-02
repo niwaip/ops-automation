@@ -1,18 +1,16 @@
 import React from 'react';
-import { Card, Col, Row, Statistic, Table, Typography, Tag, Space, Button } from 'antd';
+import { Card, Col, Row, Statistic, Table, Tag, Space, Button } from 'antd';
 import {
   DesktopOutlined,
   FileTextOutlined,
   CheckCircleOutlined,
-  ClockCircleOutlined,
   ReloadOutlined,
+  ThunderboltOutlined,
 } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
 import { useQuery } from 'react-query';
 import { sessionApi } from '../api/session';
 import { templateApi } from '../api/template';
-
-const { Title } = Typography;
 
 const DashboardPage: React.FC = () => {
   const { t } = useTranslation(['common', 'session', 'template']);
@@ -83,46 +81,42 @@ const DashboardPage: React.FC = () => {
 
   return (
     <div>
-      <Title level={4}>{t('dashboard')}</Title>
+      <div className="page-title">{t('dashboard')}</div>
 
-      <Row gutter={[16, 16]} style={{ marginTop: 16 }}>
+      <Row gutter={[24, 24]} style={{ marginTop: 0 }}>
         <Col xs={24} sm={12} md={6}>
-          <Card>
+          <Card className="stat-card card-gradient-1 animate-fade-in-up" bordered={false}>
             <Statistic
               title={t('sessions')}
               value={statusCounts.total}
-              prefix={<DesktopOutlined />}
-              valueStyle={{ color: '#1890ff' }}
+              prefix={<DesktopOutlined style={{ opacity: 0.9 }} />}
             />
           </Card>
         </Col>
         <Col xs={24} sm={12} md={6}>
-          <Card>
+          <Card className="stat-card card-gradient-2 animate-fade-in-up" bordered={false}>
             <Statistic
               title={t('session:statusRunning')}
               value={statusCounts.running}
-              prefix={<ClockCircleOutlined />}
-              valueStyle={{ color: '#722ed1' }}
+              prefix={<ThunderboltOutlined style={{ opacity: 0.9 }} />}
             />
           </Card>
         </Col>
         <Col xs={24} sm={12} md={6}>
-          <Card>
+          <Card className="stat-card card-gradient-3 animate-fade-in-up" bordered={false}>
             <Statistic
               title={t('session:statusCompleted')}
               value={statusCounts.completed}
-              prefix={<CheckCircleOutlined />}
-              valueStyle={{ color: '#52c41a' }}
+              prefix={<CheckCircleOutlined style={{ opacity: 0.9 }} />}
             />
           </Card>
         </Col>
         <Col xs={24} sm={12} md={6}>
-          <Card>
+          <Card className="stat-card card-gradient-4 animate-fade-in-up" bordered={false}>
             <Statistic
               title={t('templates')}
               value={templatesStatsQuery.data?.total || 0}
-              prefix={<FileTextOutlined />}
-              valueStyle={{ color: '#faad14' }}
+              prefix={<FileTextOutlined style={{ opacity: 0.9 }} />}
             />
           </Card>
         </Col>
@@ -131,13 +125,21 @@ const DashboardPage: React.FC = () => {
       <Card
         title={
           <Space style={{ width: '100%', justifyContent: 'space-between' }}>
-            <span>{t('sessions')}</span>
-            <Button icon={<ReloadOutlined />} onClick={() => sessionsQuery.refetch()}>
+            <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{t('sessions')}</span>
+            <Button
+              icon={<ReloadOutlined />}
+              onClick={() => sessionsQuery.refetch()}
+              style={{
+                borderRadius: 8,
+                fontWeight: 500,
+              }}
+            >
               {t('refresh')}
             </Button>
           </Space>
         }
         style={{ marginTop: 24 }}
+        bordered={false}
       >
         <Table
           columns={sessionColumns}
@@ -145,7 +147,7 @@ const DashboardPage: React.FC = () => {
           rowKey="id"
           loading={sessionsQuery.isLoading}
           pagination={false}
-          size="small"
+          size="middle"
         />
       </Card>
     </div>

@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
-import { Layout, Menu, Dropdown, Button, Avatar, Space, Switch } from 'antd';
+import { Layout, Menu, Dropdown, Button, Avatar, Space, Tooltip } from 'antd';
 import {
   DashboardOutlined,
   DesktopOutlined,
@@ -12,6 +12,8 @@ import {
   MenuUnfoldOutlined,
   GlobalOutlined,
   LogoutOutlined,
+  SunOutlined,
+  MoonOutlined,
 } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
 import { useAuthStore } from '../store/authStore';
@@ -24,6 +26,11 @@ const MainLayout: React.FC = () => {
   const location = useLocation();
   const { user, logout, language, setLanguage, sidebarCollapsed, toggleSidebar } = useAuthStore();
   const [theme, setTheme] = useState<'light' | 'dark'>('light');
+
+  // Apply theme to document
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', theme);
+  }, [theme]);
 
   const menuItems = [
     {
@@ -72,9 +79,9 @@ const MainLayout: React.FC = () => {
   const languageMenu = (
     <Menu
       items={[
-        { key: 'zh-CN', label: t('zh-CN') },
-        { key: 'en-US', label: t('en-US') },
-        { key: 'ja-JP', label: t('ja-JP') },
+        { key: 'zh-CN', label: '简体中文' },
+        { key: 'en-US', label: 'English' },
+        { key: 'ja-JP', label: '日本語' },
       ]}
       onClick={({ key }) => setLanguage(key as 'zh-CN' | 'en-US' | 'ja-JP')}
       selectedKeys={[language]}
@@ -124,7 +131,7 @@ const MainLayout: React.FC = () => {
         collapsible
         collapsed={sidebarCollapsed}
         onCollapse={toggleSidebar}
-        theme={theme}
+        trigger={null}
         style={{
           overflow: 'auto',
           height: '100vh',
@@ -132,78 +139,202 @@ const MainLayout: React.FC = () => {
           left: 0,
           top: 0,
           bottom: 0,
+          boxShadow: sidebarCollapsed ? '4px 0 24px rgba(0,0,0,0.15)' : '4px 0 24px rgba(0,0,0,0.1)',
+          zIndex: 100,
         }}
       >
+        {/* Logo Area */}
         <div
           style={{
-            height: 64,
+            height: 72,
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            color: theme === 'dark' ? '#fff' : '#1890ff',
-            fontSize: sidebarCollapsed ? 16 : 18,
-            fontWeight: 'bold',
-            padding: sidebarCollapsed ? 0 : 16,
+            padding: sidebarCollapsed ? '0 16px' : '0 24px',
+            borderBottom: '1px solid rgba(255,255,255,0.1)',
+            marginBottom: 8,
           }}
         >
-          {sidebarCollapsed ? 'OPS' : t('appName')}
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: sidebarCollapsed ? 0 : 12,
+            }}
+          >
+            <div
+              style={{
+                width: 36,
+                height: 36,
+                borderRadius: 10,
+                background: 'rgba(255,255,255,0.2)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: 18,
+                fontWeight: 700,
+                color: '#fff',
+                backdropFilter: 'blur(10px)',
+              }}
+            >
+              O
+            </div>
+            {!sidebarCollapsed && (
+              <span
+                style={{
+                  color: '#fff',
+                  fontSize: 18,
+                  fontWeight: 600,
+                  letterSpacing: '0.5px',
+                }}
+              >
+                {t('appName')}
+              </span>
+            )}
+          </div>
         </div>
+
         <Menu
-          theme={theme}
+          theme="dark"
           mode="inline"
           selectedKeys={[getSelectedKey()]}
           defaultOpenKeys={getOpenKey() ? [getOpenKey()!] : undefined}
           items={menuItems}
           onClick={({ key }) => navigate(key)}
-        />
-      </Sider>
-      <Layout style={{ marginLeft: sidebarCollapsed ? 80 : 200, transition: 'margin-left 0.2s' }}>
-        <Header
           style={{
-            padding: '0 16px',
-            background: theme === 'dark' ? '#001529' : '#fff',
+            background: 'transparent',
+            padding: '8px 0',
+          }}
+        />
+
+        {/* Bottom collapse button */}
+        <div
+          style={{
+            position: 'absolute',
+            bottom: 16,
+            left: 0,
+            right: 0,
             display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            position: 'sticky',
-            top: 0,
-            zIndex: 1,
-            boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+            justifyContent: 'center',
           }}
         >
           <Button
             type="text"
             icon={sidebarCollapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
             onClick={toggleSidebar}
-            style={{ fontSize: 16 }}
+            style={{
+              color: 'rgba(255,255,255,0.7)',
+              fontSize: 16,
+              width: 40,
+              height: 40,
+              borderRadius: 10,
+              background: 'rgba(255,255,255,0.1)',
+            }}
           />
-          <Space>
-            <Dropdown overlay={languageMenu} placement="bottomRight">
-              <Button type="text" icon={<GlobalOutlined />}>
-                {language}
+        </div>
+      </Sider>
+
+      <Layout
+        style={{
+          marginLeft: sidebarCollapsed ? 80 : 200,
+          transition: 'margin-left 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+          background: 'var(--bg-primary)',
+        }}
+      >
+        <Header
+          style={{
+            padding: '0 24px',
+            background: theme === 'dark' ? 'rgba(30, 41, 59, 0.95)' : 'rgba(255, 255, 255, 0.95)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            position: 'sticky',
+            top: 0,
+            zIndex: 99,
+            boxShadow: '0 1px 3px rgba(0,0,0,0.08)',
+            backdropFilter: 'blur(12px)',
+            borderBottom: `1px solid ${theme === 'dark' ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)'}`,
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+            <Button
+              type="text"
+              icon={sidebarCollapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
+              onClick={toggleSidebar}
+              style={{
+                fontSize: 18,
+                color: 'var(--text-secondary)',
+                width: 40,
+                height: 40,
+                borderRadius: 10,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            />
+          </div>
+
+          <Space size={12}>
+            <Dropdown overlay={languageMenu} placement="bottomRight" trigger={['click']}>
+              <Button
+                type="text"
+                icon={<GlobalOutlined />}
+                style={{
+                  color: 'var(--text-secondary)',
+                  borderRadius: 10,
+                  height: 36,
+                  padding: '0 12px',
+                }}
+              >
+                {language === 'zh-CN' ? '中文' : language === 'en-US' ? 'EN' : '日本語'}
               </Button>
             </Dropdown>
-            <Switch
-              checkedChildren="Dark"
-              unCheckedChildren="Light"
-              checked={theme === 'dark'}
-              onChange={(checked) => setTheme(checked ? 'dark' : 'light')}
-            />
-            <Dropdown overlay={userMenu} placement="bottomRight">
-              <Space style={{ cursor: 'pointer' }}>
-                <Avatar icon={<UserOutlined />} />
-                <span>{user?.username}</span>
+
+            <Tooltip title={theme === 'dark' ? '浅色模式' : '深色模式'}>
+              <Button
+                type="text"
+                icon={theme === 'dark' ? <SunOutlined /> : <MoonOutlined />}
+                onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+                style={{
+                  color: 'var(--text-secondary)',
+                  borderRadius: 10,
+                  width: 36,
+                  height: 36,
+                }}
+              />
+            </Tooltip>
+
+            <Dropdown overlay={userMenu} placement="bottomRight" trigger={['click']}>
+              <Space
+                style={{
+                  cursor: 'pointer',
+                  padding: '6px 12px',
+                  borderRadius: 12,
+                  background: 'var(--bg-secondary)',
+                  transition: 'all 0.2s',
+                }}
+              >
+                <Avatar
+                  size={32}
+                  style={{
+                    background: 'linear-gradient(135deg, #6366f1 0%, #f472b6 100%)',
+                  }}
+                >
+                  {user?.username?.charAt(0).toUpperCase()}
+                </Avatar>
+                <span style={{ color: 'var(--text-primary)', fontWeight: 500 }}>
+                  {user?.username}
+                </span>
               </Space>
             </Dropdown>
           </Space>
         </Header>
+
         <Content
           style={{
-            margin: 16,
-            padding: 24,
-            background: theme === 'dark' ? '#141414' : '#fff',
-            borderRadius: 8,
-            minHeight: 'calc(100vh - 64px - 32px)',
+            margin: 24,
+            padding: 0,
+            minHeight: 'calc(100vh - 64px - 48px)',
           }}
         >
           <Outlet />
