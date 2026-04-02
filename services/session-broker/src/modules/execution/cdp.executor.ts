@@ -22,8 +22,8 @@ export interface ExecutionResult {
 export class CdpExecutor implements OnModuleDestroy {
   private readonly logger = new Logger(CdpExecutor.name);
 
-  // Browser connection settings
-  private readonly cdpHost = process.env.CDP_HOST || 'localhost';
+  // Browser connection settings - use Docker service name by default
+  private readonly cdpHost = process.env.CDP_HOST || 'ops-browser-chrome';
   private readonly cdpPort = process.env.CDP_PORT || '9222';
 
   // Playwright browser instance
