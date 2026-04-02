@@ -1,20 +1,33 @@
 import { Injectable, Logger, OnModuleDestroy } from '@nestjs/common';
-import { chromium, Browser, BrowserContext, Page, Locator } from 'playwright-core';
+import * as http from 'http';
 
 export interface TemplateStep {
   step_id: string;
+  step_number?: number;
   action: string;
   params?: Record<string, unknown>;
   locator?: { type: string; value: string };
   wait?: { type: string; value?: string; timeout?: number };
   retry?: { max_attempts: number; delay_ms: number };
   on_fail?: string;
+  selector?: string;
+  target?: string;
+  value?: string;
+  url?: string;
+  text?: string;
+  key?: string;
+  duration?: number;
+  direction?: string;
+  amount?: number;
 }
 
 export interface ExecutionResult {
   success: boolean;
   step_id: string;
+  step?: number;
+  action?: string;
   error?: string;
+  message?: string;
   screenshot?: string;
 }
 
@@ -22,336 +35,271 @@ export interface ExecutionResult {
 export class CdpExecutor implements OnModuleDestroy {
   private readonly logger = new Logger(CdpExecutor.name);
 
-  // Browser connection settings - use Docker service name by default
-  private readonly cdpHost = process.env.CDP_HOST || 'ops-browser-chrome';
-  private readonly cdpPort = process.env.CDP_PORT || '9222';
-
-  // Playwright browser instance
-  private browser: Browser | null = null;
-  private context: BrowserContext | null = null;
-  private page: Page | null = null;
+  // Codegen API endpoint in browser-chrome container
+  private readonly codegenHost = process.env.CDP_HOST || 'ops-browser-chrome';
+  private readonly codegenPort = parseInt(process.env.CODEGEN_API_PORT || '3000', 10);
 
   async onModuleDestroy() {
-    await this.closeBrowser();
+    // No persistent browser connection to close
+    this.logger.log('CdpExecutor destroyed');
   }
 
   /**
-   * Connect to remote Chrome via CDP
+   * Make HTTP request to codegen API
    */
-  private async connect(): Promise<Browser> {
-    if (this.browser && this.browser.isConnected()) {
-      return this.browser;
-    }
+  private async makeRequest(path: string, method: string = 'GET', body?: any): Promise<any> {
+    return new Promise<any>((resolve, reject) => {
+      const options = {
+        hostname: this.codegenHost,
+        port: this.codegenPort,
+        path: path,
+        method: method,
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      };
 
-    const cdpEndpoint = `http://${this.cdpHost}:${this.cdpPort}`;
-    this.logger.log(`Connecting to Chrome via CDP: ${cdpEndpoint}`);
-
-    try {
-      this.browser = await chromium.connectOverCDP(cdpEndpoint);
-      this.logger.log('Connected to Chrome successfully');
-      return this.browser;
-    } catch (error) {
-      const errorMsg = error instanceof Error ? error.message : String(error);
-      this.logger.error(`Failed to connect to Chrome: ${errorMsg}`);
-      throw new Error(`Failed to connect to Chrome: ${errorMsg}`);
-    }
-  }
-
-  /**
-   * Get or create a page
-   */
-  private async getPage(): Promise<Page> {
-    if (this.page && !this.page.isClosed()) {
-      return this.page;
-    }
-
-    const browser = await this.connect();
-    const contexts = browser.contexts();
-
-    if (contexts.length > 0) {
-      this.context = contexts[0];
-    } else {
-      this.context = await browser.newContext({
-        viewport: { width: 1920, height: 1080 },
+      const req = http.request(options, (res) => {
+        let data = '';
+        res.on('data', (chunk) => data += chunk);
+        res.on('end', () => {
+          try {
+            const result = JSON.parse(data);
+            resolve(result);
+          } catch (e) {
+            reject(new Error(`Failed to parse response: ${data}`));
+          }
+        });
       });
-    }
 
-    const pages = this.context.pages();
-    if (pages.length > 0) {
-      this.page = pages[0];
-    } else {
-      this.page = await this.context.newPage();
-    }
+      req.on('error', (err) => {
+        this.logger.error(`HTTP request error: ${err.message}`);
+        reject(err);
+      });
 
-    return this.page;
+      req.setTimeout(60000, () => {
+        req.destroy();
+        reject(new Error('Request timeout'));
+      });
+
+      if (body) {
+        req.write(JSON.stringify(body));
+      }
+
+      req.end();
+    });
   }
 
   /**
-   * Close browser connection
+   * Start browser session via codegen API
    */
-  async closeBrowser(): Promise<void> {
-    if (this.browser) {
-      await this.browser.close();
-      this.browser = null;
-      this.context = null;
-      this.page = null;
-      this.logger.log('Browser connection closed');
-    }
-  }
-
-  /**
-   * Navigate to URL
-   */
-  async navigateToUrl(url: string, sessionId?: string): Promise<{ success: boolean; error?: string }> {
+  async startBrowser(sessionId: string, url: string): Promise<{ success: boolean; error?: string }> {
     try {
-      const page = await this.getPage();
-      this.logger.log(`Navigating to: ${url}`);
+      this.logger.log(`Starting browser for session ${sessionId} at ${url}`);
 
-      await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 30000 });
+      const result = await this.makeRequest(
+        `/start?session=${encodeURIComponent(sessionId)}&url=${encodeURIComponent(url)}`
+      );
 
-      this.logger.log(`Navigated to ${url} successfully`);
-      return { success: true };
+      if (result.status === 'started') {
+        this.logger.log(`Browser started successfully for session ${sessionId}`);
+        return { success: true };
+      } else {
+        this.logger.error(`Failed to start browser: ${result.error || 'Unknown error'}`);
+        return { success: false, error: result.error || 'Failed to start browser' };
+      }
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : String(error);
-      this.logger.error(`Navigation failed: ${errorMsg}`);
+      this.logger.error(`Failed to start browser: ${errorMsg}`);
       return { success: false, error: errorMsg };
     }
   }
 
   /**
-   * Execute a single step
+   * Navigate to URL (alias for startBrowser)
    */
-  async executeStep(step: TemplateStep): Promise<ExecutionResult> {
-    const page = await this.getPage();
-    const maxAttempts = step.retry?.max_attempts || 1;
-    const delayMs = step.retry?.delay_ms || 1000;
+  async navigateToUrl(url: string, sessionId?: string): Promise<{ success: boolean; error?: string }> {
+    const sid = sessionId || `session-${Date.now()}`;
+    return this.startBrowser(sid, url);
+  }
 
-    let lastError: string | undefined;
+  /**
+   * Execute a single step by calling codegen API
+   */
+  async executeStep(step: TemplateStep, sessionId?: string): Promise<ExecutionResult> {
+    this.logger.log(`Executing step ${step.step_id}: ${step.action}`);
 
-    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-      try {
-        this.logger.log(`Executing step ${step.step_id} (attempt ${attempt}/${maxAttempts}): ${step.action}`);
+    // Map step to action format expected by codegen API
+    const action = this.mapStepToAction(step);
 
-        switch (step.action) {
-          case 'navigate':
-            await this.executeNavigate(page, step);
-            break;
+    try {
+      const result = await this.makeRequest('/execute', 'POST', {
+        session: sessionId,
+        actions: [action],
+      });
 
-          case 'click':
-            await this.executeClick(page, step);
-            break;
-
-          case 'fill':
-          case 'type':
-            await this.executeFill(page, step);
-            break;
-
-          case 'wait':
-            await this.executeWait(page, step);
-            break;
-
-          case 'screenshot':
-            await this.executeScreenshot(page, step);
-            break;
-
-          case 'scroll':
-            await this.executeScroll(page, step);
-            break;
-
-          case 'press':
-            await this.executePress(page, step);
-            break;
-
-          default:
-            this.logger.warn(`Unknown action: ${step.action}`);
-        }
-
-        this.logger.log(`Step ${step.step_id} completed successfully`);
-        return { success: true, step_id: step.step_id };
-      } catch (error) {
-        lastError = error instanceof Error ? error.message : String(error);
-        this.logger.warn(`Step ${step.step_id} attempt ${attempt} failed: ${lastError}`);
-
-        if (attempt < maxAttempts) {
-          await this.sleep(delayMs);
-        }
+      if (result.status === 'completed' && result.results && result.results.length > 0) {
+        const stepResult = result.results[0];
+        return {
+          success: stepResult.success,
+          step_id: step.step_id,
+          step: stepResult.step,
+          action: stepResult.action,
+          error: stepResult.success ? undefined : stepResult.message,
+          message: stepResult.message,
+        };
+      } else if (result.error) {
+        return {
+          success: false,
+          step_id: step.step_id,
+          error: result.error,
+        };
       }
-    }
 
-    return { success: false, step_id: step.step_id, error: lastError };
-  }
-
-  /**
-   * Execute navigate action
-   */
-  private async executeNavigate(page: Page, step: TemplateStep): Promise<void> {
-    const url = step.params?.url as string;
-    if (!url) throw new Error('Navigate action requires url parameter');
-
-    await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 30000 });
-  }
-
-  /**
-   * Execute click action
-   */
-  private async executeClick(page: Page, step: TemplateStep): Promise<void> {
-    const locator = this.getLocator(page, step);
-    await locator.click({ timeout: 10000 });
-  }
-
-  /**
-   * Execute fill/type action
-   */
-  private async executeFill(page: Page, step: TemplateStep): Promise<void> {
-    const locator = this.getLocator(page, step);
-    const value = step.params?.value as string || step.params?.text as string || '';
-
-    // Clear and fill
-    await locator.clear();
-    await locator.fill(value);
-  }
-
-  /**
-   * Execute wait action
-   */
-  private async executeWait(page: Page, step: TemplateStep): Promise<void> {
-    const waitType = step.wait?.type || step.params?.type as string;
-    const waitValue = step.wait?.value || step.params?.value;
-    const timeout = step.wait?.timeout || step.params?.timeout as number || 10000;
-
-    switch (waitType) {
-      case 'selector':
-        await page.waitForSelector(waitValue as string, { timeout });
-        break;
-
-      case 'timeout':
-      case 'time':
-        await this.sleep(waitValue as number || 1000);
-        break;
-
-      case 'navigation':
-        await page.waitForURL(waitValue as string || '**/*', { timeout });
-        break;
-
-      case 'load':
-        await page.waitForLoadState('load', { timeout });
-        break;
-
-      default:
-        await this.sleep(1000);
+      return { success: true, step_id: step.step_id };
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : String(error);
+      this.logger.error(`Step ${step.step_id} failed: ${errorMsg}`);
+      return { success: false, step_id: step.step_id, error: errorMsg };
     }
   }
 
   /**
-   * Execute screenshot action
+   * Map template step to action format for codegen API
    */
-  private async executeScreenshot(page: Page, step: TemplateStep): Promise<void> {
-    const path = step.params?.path as string || `/tmp/screenshot-${Date.now()}.png`;
-    await page.screenshot({ path, fullPage: true });
-    this.logger.log(`Screenshot saved to ${path}`);
-  }
+  private mapStepToAction(step: TemplateStep): any {
+    const action: any = {
+      action: step.action,
+      step_number: step.step_number || parseInt(step.step_id.replace('step-', ''), 10) || 1,
+      on_fail: step.on_fail || 'stop',
+    };
 
-  /**
-   * Execute scroll action
-   */
-  private async executeScroll(page: Page, step: TemplateStep): Promise<void> {
-    const direction = step.params?.direction as string || 'down';
-    const amount = step.params?.amount as number || 500;
+    // Copy common fields
+    if (step.selector) action.selector = step.selector;
+    if (step.target) action.selector = step.target;
+    if (step.value) action.value = step.value;
+    if (step.url) action.url = step.url;
+    if (step.text) action.value = step.text;
+    if (step.key) action.key = step.key;
+    if (step.duration) action.duration = step.duration;
+    if (step.direction) action.direction = step.direction;
+    if (step.amount) action.amount = step.amount;
 
-    if (direction === 'down') {
-      await page.mouse.wheel(0, amount);
-    } else if (direction === 'up') {
-      await page.mouse.wheel(0, -amount);
-    }
-  }
-
-  /**
-   * Execute press action
-   */
-  private async executePress(page: Page, step: TemplateStep): Promise<void> {
-    const key = step.params?.key as string || 'Enter';
-
+    // Handle locator
     if (step.locator) {
-      const locator = this.getLocator(page, step);
-      await locator.press(key);
-    } else {
-      await page.keyboard.press(key);
+      action.selector = this.buildSelector(step.locator);
     }
+
+    // Handle params
+    if (step.params) {
+      Object.assign(action, step.params);
+      if (step.params.url) action.url = step.params.url;
+      if (step.params.value) action.value = step.params.value;
+      if (step.params.text) action.value = step.params.text;
+      if (step.params.selector) action.selector = step.params.selector;
+      if (step.params.target) action.selector = step.params.target;
+    }
+
+    // Handle wait
+    if (step.wait) {
+      action.wait_type = step.wait.type;
+      action.wait_value = step.wait.value;
+      action.timeout = step.wait.timeout;
+    }
+
+    return action;
   }
 
   /**
-   * Get Playwright locator from step definition
+   * Build CSS selector from locator
    */
-  private getLocator(page: Page, step: TemplateStep): Locator {
-    if (!step.locator) {
-      throw new Error('Step requires locator definition');
-    }
-
-    const { type, value } = step.locator;
-
-    switch (type) {
+  private buildSelector(locator: { type: string; value: string }): string {
+    switch (locator.type) {
       case 'css':
-        return page.locator(value);
+        return locator.value;
 
       case 'xpath':
-        return page.locator(`xpath=${value}`);
+        return locator.value; // XPath handled separately in execution
 
       case 'text':
-        return page.locator(`text=${value}`);
+        return `text=${locator.value}`;
 
       case 'role':
-        // Parse role selector like "button[name=\"Submit\"]"
-        const roleMatch = value.match(/(\w+)(?:\[name="([^"]+)"\])?/);
-        if (roleMatch) {
-          const role = roleMatch[1];
-          const name = roleMatch[2];
-          if (name) {
-            return page.getByRole(role as any, { name });
-          }
-          return page.getByRole(role as any);
-        }
-        return page.locator(`role=${value}`);
+        return `role=${locator.value}`;
 
       case 'placeholder':
-        return page.getByPlaceholder(value);
+        return `[placeholder="${locator.value}"]`;
 
       case 'label':
-        return page.getByLabel(value);
+        return `label:has-text("${locator.value}")`;
 
       case 'testId':
-        return page.getByTestId(value);
+        return `[data-testid="${locator.value}"]`;
 
       default:
-        return page.locator(value);
+        return locator.value;
     }
-  }
-
-  /**
-   * Sleep helper
-   */
-  private sleep(ms: number): Promise<void> {
-    return new Promise(resolve => setTimeout(resolve, ms));
   }
 
   /**
    * Execute all steps in a template
    */
   async executeSteps(steps: TemplateStep[], sessionId?: string): Promise<ExecutionResult[]> {
-    const results: ExecutionResult[] = [];
+    this.logger.log(`Executing ${steps.length} steps for session ${sessionId}`);
 
-    for (const step of steps) {
-      const result = await this.executeStep(step);
-      results.push(result);
+    // Map all steps to actions format
+    const actions = steps.map((step, index) => ({
+      ...this.mapStepToAction(step),
+      step_number: step.step_number || index + 1,
+    }));
 
-      if (!result.success && step.on_fail === 'stop') {
-        this.logger.warn(`Stopping execution due to failed step ${step.step_id}`);
-        break;
+    try {
+      // Send all actions in one request
+      const result = await this.makeRequest('/execute', 'POST', {
+        session: sessionId,
+        actions: actions,
+      });
+
+      if (result.status === 'completed' && result.results) {
+        return result.results.map((r: any, i: number) => ({
+          success: r.success,
+          step_id: steps[i]?.step_id || `step-${i + 1}`,
+          step: r.step,
+          action: r.action,
+          error: r.success ? undefined : r.message,
+          message: r.message,
+        }));
+      } else if (result.error) {
+        // All steps failed
+        return steps.map((step) => ({
+          success: false,
+          step_id: step.step_id,
+          error: result.error,
+        }));
       }
 
-      // Small delay between steps
-      await this.sleep(500);
-    }
+      return steps.map((step) => ({ success: true, step_id: step.step_id }));
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : String(error);
+      this.logger.error(`Execution failed: ${errorMsg}`);
 
-    return results;
+      return [{
+        success: false,
+        step_id: 'all',
+        error: errorMsg,
+      }];
+    }
+  }
+
+  /**
+   * Close browser connection (stop codegen)
+   */
+  async closeBrowser(sessionId?: string): Promise<void> {
+    try {
+      const result = await this.makeRequest('/stop');
+      this.logger.log(`Browser stopped: ${result.status}`);
+    } catch (error) {
+      this.logger.warn(`Failed to stop browser: ${error}`);
+    }
   }
 }
