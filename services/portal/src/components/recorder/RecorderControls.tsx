@@ -33,7 +33,7 @@ const RecorderControls: React.FC<RecorderControlsProps> = ({
   onDisconnect,
 }) => {
   const { t } = useTranslation(['common', 'recorder']);
-  const [url, setUrl] = useState('');
+  const [url, setUrl] = useState('https://');
 
   const statusColors: Record<RecorderStatus, string> = {
     idle: 'default',
@@ -45,15 +45,19 @@ const RecorderControls: React.FC<RecorderControlsProps> = ({
   };
 
   const handleStart = () => {
-    if (!url) {
+    let finalUrl = url.trim();
+
+    if (!finalUrl || finalUrl === 'https://') {
       message.warning(t('recorder:enterUrl'));
       return;
     }
-    if (!url.startsWith('http://') && !url.startsWith('https://')) {
-      message.warning(t('recorder:invalidUrl'));
-      return;
+
+    // Auto-add https:// if no protocol specified
+    if (!finalUrl.startsWith('http://') && !finalUrl.startsWith('https://')) {
+      finalUrl = 'https://' + finalUrl;
     }
-    onStart(url);
+
+    onStart(finalUrl);
   };
 
   const handleConnect = async () => {
