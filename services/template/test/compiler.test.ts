@@ -39,6 +39,45 @@ describe('PlaywrightCompiler', () => {
       }
     });
 
+    it('TC01-intent: should compile script with intent parameter', () => {
+      const script = `
+        page.goto('https://example.com/login');
+        page.fill('#username', 'testuser');
+        page.click('button[type="submit"]');
+      `;
+
+      const intent = '登录系统并验证首页显示';
+      const result = compiler.compile(script, 'test-user', intent);
+
+      expect(result.template).toBeDefined();
+      expect(result.template.metadata.description).toBe(`AI-整理: ${intent}`);
+      expect(result.template.metadata.intent).toBe(intent);
+    });
+
+    it('should use default description when intent is not provided', () => {
+      const script = `
+        page.goto('https://example.com');
+        page.click('#button');
+      `;
+
+      const result = compiler.compile(script, 'test-user');
+
+      expect(result.template.metadata.description).toBe('Auto-generated from Playwright script');
+      expect(result.template.metadata.intent).toBeUndefined();
+    });
+
+    it('should handle empty intent string', () => {
+      const script = `
+        page.goto('https://example.com');
+        page.click('#button');
+      `;
+
+      const result = compiler.compile(script, 'test-user', '');
+
+      expect(result.template.metadata.description).toBe('Auto-generated from Playwright script');
+      expect(result.template.metadata.intent).toBeUndefined();
+    });
+
     it('should parse getByRole actions with role locator', () => {
       const script = `
         page.getByRole('button', {name: 'Submit'}).click();

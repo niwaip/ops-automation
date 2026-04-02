@@ -52,6 +52,10 @@ interface AuthLoginResponse {
 interface CompileTemplateResponse {
   template: {
     steps: Array<{ id: string; action: string }>;
+    metadata?: {
+      description?: string;
+      intent?: string;
+    };
   };
 }
 
@@ -190,10 +194,25 @@ describe('E2E Full Flow Test (TC01)', () => {
       expect((response.data as CompileTemplateResponse).template.steps.length).toBeGreaterThan(0);
     }, TEST_TIMEOUTS.MEDIUM);
 
+    it('should compile script with intent parameter', async () => {
+      const intent = 'Login flow test with username and password';
+      const response = await templateClient.post('/templates/compile', {
+        script: SAMPLE_SCRIPT,
+        intent,
+      });
+
+      expect(response.status).toBe(200);
+      expect(response.data as CompileTemplateResponse).toHaveProperty('template');
+      // Check that intent is stored in metadata
+      const template = (response.data as CompileTemplateResponse).template;
+      expect(template).toHaveProperty('metadata');
+    }, TEST_TIMEOUTS.MEDIUM);
+
     it('should create and save the template', async () => {
-      // First compile the script
+      // First compile the script with intent
       const compileResponse = await templateClient.post('/templates/compile', {
         script: SAMPLE_SCRIPT,
+        intent: 'E2E test login flow',
       });
       const compiledTemplate = (compileResponse.data as CompileTemplateResponse).template;
 
