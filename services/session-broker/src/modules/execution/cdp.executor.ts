@@ -49,6 +49,9 @@ export class CdpExecutor implements OnModuleDestroy {
    */
   private async makeRequest(path: string, method: string = 'GET', body?: any): Promise<any> {
     return new Promise<any>((resolve, reject) => {
+      const bodyStr = body ? JSON.stringify(body) : '';
+      this.logger.log(`Making ${method} request to ${path} with body: ${bodyStr}`);
+
       const options = {
         hostname: this.codegenHost,
         port: this.codegenPort,
@@ -56,6 +59,7 @@ export class CdpExecutor implements OnModuleDestroy {
         method: method,
         headers: {
           'Content-Type': 'application/json',
+          'Content-Length': Buffer.byteLength(bodyStr),
         },
       };
 
@@ -65,8 +69,10 @@ export class CdpExecutor implements OnModuleDestroy {
         res.on('end', () => {
           try {
             const result = JSON.parse(data);
+            this.logger.log(`Response from ${path}: ${JSON.stringify(result)}`);
             resolve(result);
           } catch (e) {
+            this.logger.error(`Failed to parse response: ${data}`);
             reject(new Error(`Failed to parse response: ${data}`));
           }
         });
@@ -82,8 +88,8 @@ export class CdpExecutor implements OnModuleDestroy {
         reject(new Error('Request timeout'));
       });
 
-      if (body) {
-        req.write(JSON.stringify(body));
+      if (bodyStr) {
+        req.write(bodyStr);
       }
 
       req.end();
@@ -246,6 +252,7 @@ export class CdpExecutor implements OnModuleDestroy {
    */
   async executeSteps(steps: TemplateStep[], sessionId?: string): Promise<ExecutionResult[]> {
     this.logger.log(`Executing ${steps.length} steps for session ${sessionId}`);
+    this.logger.debug(`Steps: ${JSON.stringify(steps)}`);
 
     // Map all steps to actions format
     const actions = steps.map((step, index) => ({
@@ -253,12 +260,16 @@ export class CdpExecutor implements OnModuleDestroy {
       step_number: step.step_number || index + 1,
     }));
 
+    this.logger.log(`Mapped actions: ${JSON.stringify(actions)}`);
+
     try {
       // Send all actions in one request
       const result = await this.makeRequest('/execute', 'POST', {
         session: sessionId,
         actions: actions,
       });
+
+      this.logger.log(`Execution result: ${JSON.stringify(result)}`);
 
       if (result.status === 'completed' && result.results) {
         return result.results.map((r: any, i: number) => ({
