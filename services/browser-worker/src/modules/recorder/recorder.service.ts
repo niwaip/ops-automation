@@ -108,7 +108,7 @@ export class RecorderService implements OnModuleDestroy {
         this.logger.error(`Failed to start codegen: ${err.message}`);
         resolve(false);
       });
-      req.setTimeout(5000, () => {
+      req.setTimeout(15000, () => {
         req.destroy();
         resolve(false);
       });
