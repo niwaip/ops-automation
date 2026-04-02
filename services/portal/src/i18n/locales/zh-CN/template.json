@@ -32,5 +32,15 @@
   "stepValue": "步骤值",
   "stepTimeout": "超时时间",
   "stepRetry": "重试次数",
-  "filterByStatus": "按状态筛选"
+  "filterByStatus": "按状态筛选",
+  "executeTemplate": "执行模板",
+  "executeModalTitle": "执行模板参数",
+  "executeModalDesc": "请输入模板执行所需的参数",
+  "executeStarting": "正在启动执行...",
+  "executeSuccess": "执行已启动，跳转到会话详情页",
+  "executeFailed": "执行启动失败",
+  "noParams": "此模板无需参数",
+  "paramName": "参数名",
+  "paramValue": "参数值",
+  "paramDescription": "参数说明"
 }

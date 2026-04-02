@@ -9,6 +9,7 @@ import {
   DeleteOutlined,
   CloudUploadOutlined,
   CloudDownloadOutlined,
+  PlayCircleOutlined,
 } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
 import { useQuery, useMutation, useQueryClient } from 'react-query';
@@ -155,6 +156,16 @@ const TemplateListPage: React.FC = () => {
           >
             {t('common:edit')}
           </Button>
+          {record.status === 'PUBLISHED' && (
+            <Button
+              type="link"
+              size="small"
+              icon={<PlayCircleOutlined />}
+              onClick={() => navigate(`/templates/${record.id}?execute=true`)}
+            >
+              {t('template:executeTemplate')}
+            </Button>
+          )}
           {record.status === 'DRAFT' && user?.role === 'admin' && (
             <Button
               type="link"

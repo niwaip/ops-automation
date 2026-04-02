@@ -1,32 +1,50 @@
-import React from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
-import { Card, Descriptions, Tag, Button, Space, Typography, Tabs, Collapse, Spin, message } from 'antd';
+import React, { useState, useMemo, useEffect } from 'react';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
+import { Card, Descriptions, Tag, Button, Space, Typography, Tabs, Collapse, Spin, message, Modal, Form, Input } from 'antd';
 import {
   ArrowLeftOutlined,
   CloudUploadOutlined,
   CopyOutlined,
   CheckCircleOutlined,
+  PlayCircleOutlined,
 } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
 import { useQuery, useMutation, useQueryClient } from 'react-query';
-import { templateApi, TemplateStep } from '../api/template';
+import { templateApi, TemplateStep, ParamsSchema } from '../api/template';
+import { sessionApi } from '../api/session';
 import { useAuthStore } from '../store/authStore';
 
 const { Title, Text } = Typography;
 const { Panel } = Collapse;
 
+interface ParamProperty {
+  type?: string;
+  description?: string;
+}
+
 const TemplateDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
+  const [searchParams] = useSearchParams();
   const { t } = useTranslation(['common', 'template']);
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { user } = useAuthStore();
+
+  const [executeModalVisible, setExecuteModalVisible] = useState(false);
+  const [form] = Form.useForm();
 
   const templateQuery = useQuery(
     ['template', id],
     () => templateApi.getById(id!),
     { enabled: !!id }
   );
+
+  // Auto-open execute modal if execute=true in query params
+  useEffect(() => {
+    if (searchParams.get('execute') === 'true' && templateQuery.data?.status === 'PUBLISHED') {
+      setExecuteModalVisible(true);
+    }
+  }, [searchParams, templateQuery.data?.status]);
 
   const publishMutation = useMutation(
     (templateId: string) => templateApi.publish(templateId, user?.id || ''),
@@ -45,7 +63,62 @@ const TemplateDetailPage: React.FC = () => {
     },
   });
 
+  const executeMutation = useMutation(
+    async (params: Record<string, unknown>) => {
+      // Create replay session
+      const session = await sessionApi.create({
+        templateId: id!,
+        type: 'replay',
+        name: `Execute: ${template?.name}`,
+      });
+      // Start the session
+      await sessionApi.start(session.id);
+      return session;
+    },
+    {
+      onSuccess: (session) => {
+        message.success(t('template:executeSuccess'));
+        setExecuteModalVisible(false);
+        navigate(`/sessions/${session.id}`);
+      },
+      onError: () => {
+        message.error(t('template:executeFailed'));
+      },
+    }
+  );
+
   const template = templateQuery.data;
+
+  // Extract parameter definitions from params_schema
+  const paramProperties = useMemo(() => {
+    const schema = template?.params_schema as ParamsSchema | undefined;
+    if (!schema?.properties) return {};
+    return schema.properties as Record<string, ParamProperty>;
+  }, [template?.params_schema]);
+
+  const requiredParams = useMemo(() => {
+    const schema = template?.params_schema as ParamsSchema | undefined;
+    return schema?.required || [];
+  }, [template?.params_schema]);
+
+  const hasParams = Object.keys(paramProperties).length > 0;
+
+  const handleExecuteClick = () => {
+    if (hasParams) {
+      setExecuteModalVisible(true);
+    } else {
+      executeMutation.mutate({});
+    }
+  };
+
+  const handleExecuteConfirm = async () => {
+    try {
+      const values = await form.validateFields();
+      executeMutation.mutate(values);
+    } catch {
+      // Form validation failed
+    }
+  };
 
   const getStatusColor = (status: string) => {
     const colorMap: Record<string, string> = {
@@ -92,6 +165,16 @@ const TemplateDetailPage: React.FC = () => {
               {t('template:templateDetail')} - {template.name}
             </span>
             <Space>
+              {template.status === 'PUBLISHED' && (
+                <Button
+                  type="primary"
+                  icon={<PlayCircleOutlined />}
+                  onClick={handleExecuteClick}
+                  loading={executeMutation.isLoading}
+                >
+                  {t('template:executeTemplate')}
+                </Button>
+              )}
               {template.status === 'DRAFT' && user?.role === 'admin' && (
                 <Button
                   type="primary"
@@ -235,6 +318,34 @@ const TemplateDetailPage: React.FC = () => {
           </Tabs.TabPane>
         </Tabs>
       </Card>
+
+      {/* Execute Parameter Modal */}
+      <Modal
+        title={t('template:executeModalTitle')}
+        open={executeModalVisible}
+        onOk={handleExecuteConfirm}
+        onCancel={() => setExecuteModalVisible(false)}
+        confirmLoading={executeMutation.isLoading}
+        okText={t('template:executeTemplate')}
+        cancelText={t('common:cancel')}
+      >
+        <p style={{ marginBottom: 16 }}>{t('template:executeModalDesc')}</p>
+        <Form form={form} layout="vertical">
+          {Object.entries(paramProperties).map(([paramName, paramDef]) => (
+            <Form.Item
+              key={paramName}
+              name={paramName}
+              label={paramName}
+              rules={[
+                { required: requiredParams.includes(paramName), message: `${paramName} is required` },
+              ]}
+              help={paramDef.description || undefined}
+            >
+              <Input placeholder={paramDef.description || t('template:paramValue')} />
+            </Form.Item>
+          ))}
+        </Form>
+      </Modal>
     </div>
   );
 };
