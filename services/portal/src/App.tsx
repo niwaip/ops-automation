@@ -4,6 +4,7 @@ import MainLayout from './layouts/MainLayout';
 import LoginPage from './pages/LoginPage';
 import DashboardPage from './pages/DashboardPage';
 import SessionListPage from './pages/SessionListPage';
+import SessionStartPage from './pages/SessionStartPage';
 import SessionDetailPage from './pages/SessionDetailPage';
 import TemplateListPage from './pages/TemplateListPage';
 import TemplateDetailPage from './pages/TemplateDetailPage';
@@ -43,6 +44,7 @@ function App() {
           <Route index element={<Navigate to="/dashboard" replace />} />
           <Route path="dashboard" element={<DashboardPage />} />
           <Route path="sessions" element={<SessionListPage />} />
+          <Route path="sessions/new" element={<SessionStartPage />} />
           <Route path="sessions/:id" element={<SessionDetailPage />} />
           <Route path="templates" element={<TemplateListPage />} />
           <Route path="templates/:id" element={<TemplateDetailPage />} />

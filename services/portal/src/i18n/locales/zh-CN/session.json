@@ -29,5 +29,21 @@
   "sessionVideo": "会话视频",
   "noVNCConnect": "noVNC 连接",
   "liveView": "实时视图",
-  "replay": "回放"
+  "replay": "回放",
+  "startNewSession": "开始新会话",
+  "stepSelectTemplate": "步骤 1: 选择模板",
+  "stepInputDescription": "步骤 2: 输入描述",
+  "stepReviewParams": "步骤 3: 确认参数",
+  "selectTemplatePlaceholder": "请选择已发布的模板",
+  "descriptionPlaceholder": "请用自然语言描述您想要执行的任务，例如：登录系统，用户名 admin，密码 123456",
+  "aiRecognize": "AI 解析参数",
+  "recognizeSuccess": "参数解析成功",
+  "recognizeFailed": "参数解析失败",
+  "selectTemplateFirst": "请先选择模板",
+  "enterDescription": "请输入任务描述",
+  "confidenceScore": "置信度: {{score}}",
+  "suggestions": "建议",
+  "executeSession": "执行会话",
+  "startSuccess": "会话已启动",
+  "startFailed": "会话启动失败"
 }

@@ -29,5 +29,21 @@
   "sessionVideo": "動画",
   "noVNCConnect": "noVNC 接続",
   "liveView": "ライブビュー",
-  "replay": "再生"
+  "replay": "再生",
+  "startNewSession": "新規セッション開始",
+  "stepSelectTemplate": "ステップ 1: テンプレート選択",
+  "stepInputDescription": "ステップ 2: 説明入力",
+  "stepReviewParams": "ステップ 3: パラメータ確認",
+  "selectTemplatePlaceholder": "公開されたテンプレートを選択",
+  "descriptionPlaceholder": "自然言語でタスクを説明してください。例：システムにログイン、ユーザー名 admin、パスワード 123456",
+  "aiRecognize": "AI パラメータ解析",
+  "recognizeSuccess": "パラメータ解析成功",
+  "recognizeFailed": "パラメータ解析失敗",
+  "selectTemplateFirst": "先にテンプレートを選択してください",
+  "enterDescription": "タスク説明を入力してください",
+  "confidenceScore": "信頼度: {{score}}",
+  "suggestions": "提案",
+  "executeSession": "セッション実行",
+  "startSuccess": "セッションが開始されました",
+  "startFailed": "セッション開始失敗"
 }

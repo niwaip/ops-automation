@@ -139,21 +139,21 @@ export class AllocationService implements OnModuleInit {
 
   /**
    * Generate worker endpoints based on worker reference
-   * In production, this would be based on actual Kubernetes pod info
+   * Uses real ops-browser-chrome service endpoints
    */
   private generateWorkerEndpoints(workerRef: string): WorkerEndpoints {
-    // Extract worker number from reference (e.g., "worker-1" -> 1)
-    const workerNum = parseInt(workerRef.replace(/worker-/, '').replace(/pod-/, ''), 10) || 0;
+    // In Docker, use service name; locally use localhost
+    const host = process.env.DOCKER_ENV ? 'ops-browser-chrome' : 'localhost';
 
-    // Calculate ports based on worker number
-    const baseNovncPort = 8080;
-    const baseCdpPort = 9222;
-    const baseVncPort = 5900;
+    // Real browser-chrome ports (mapped from container)
+    const novncPort = process.env.DOCKER_ENV ? 8080 : 6080;
+    const cdpPort = process.env.DOCKER_ENV ? 9222 : 9222;
+    const vncPort = process.env.DOCKER_ENV ? 5900 : 5901;
 
     return {
-      novnc: `http://10.0.0.${workerNum + 1}:${baseNovncPort}/vnc.html`,
-      cdp: `ws://10.0.0.${workerNum + 1}:${baseCdpPort}`,
-      vnc: `vnc://10.0.0.${workerNum + 1}:${baseVncPort}`,
+      novnc: `http://${host}:${novncPort}/vnc.html`,
+      cdp: `ws://${host}:${cdpPort}`,
+      vnc: `vnc://${host}:${vncPort}`,
     };
   }
 }
