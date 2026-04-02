@@ -136,6 +136,11 @@ services:
     environment:
       - NODE_ENV=development
       - DATABASE_URL=postgresql://ops:ops_secret@postgres:5432/ops
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_USERNAME=ops
+      - DB_PASSWORD=ops_secret
+      - DB_DATABASE=ops
       - PORT=3005
     ports:
       - "3005:3005"
