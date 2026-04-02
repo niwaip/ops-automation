@@ -149,9 +149,9 @@ const SessionDetailPage: React.FC = () => {
             </Button>
           }
         >
-          <div style={{ width: '100%', height: 600, border: '1px solid #d9d9d9', borderRadius: 4, background: '#1e1e1e' }}>
+          <div style={{ width: '100%', height: 800, border: '1px solid #d9d9d9', borderRadius: 4, background: '#1e1e1e' }}>
             <iframe
-              src={`${session.endpoints.novnc}?autoconnect=true&resize=remote`}
+              src={`${session.endpoints.novnc}?autoconnect=true&resize=scale`}
               style={{ width: '100%', height: '100%', border: 'none' }}
               title="noVNC"
             />
