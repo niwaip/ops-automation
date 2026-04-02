@@ -75,15 +75,18 @@ const TemplateDetailPage: React.FC = () => {
 
   const executeMutation = useMutation(
     async (params: Record<string, unknown>) => {
-      // Create replay session
-      const session = await sessionApi.create({
-        templateId: id!,
-        type: 'replay',
-        name: `Execute: ${template?.name}`,
+      // Create session with user_id and template_id
+      const result = await sessionApi.create({
+        user_id: user?.id || '',
+        template_id: id!,
+        params,
       });
-      // Start the session
-      await sessionApi.start(session.id);
-      return session;
+      // Start the session with template_id and params
+      await sessionApi.start(result.session.id, {
+        template_id: id!,
+        params,
+      });
+      return result.session;
     },
     {
       onSuccess: (session) => {
