@@ -27,11 +27,19 @@ interface AuthActions {
 export const useAuthStore = create<AuthState & AuthActions>()(
   persist(
     (set) => ({
-      // Initial state
-      accessToken: null,
-      refreshToken: null,
-      user: null,
-      isAuthenticated: false,
+      // Initial state - TEST MODE: Pre-authenticated with mock admin user
+      accessToken: 'test-token',
+      refreshToken: 'test-refresh-token',
+      user: {
+        id: 'test-user-id',
+        username: 'admin',
+        email: 'admin@example.com',
+        role: 'admin',
+        isActive: true,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      },
+      isAuthenticated: true,
       language: 'zh-CN',
       sidebarCollapsed: false,
 

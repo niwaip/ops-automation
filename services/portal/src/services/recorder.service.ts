@@ -1,23 +1,16 @@
 /**
- * Recorder Service - WebSocket connection to Playwright codegen
+ * Recorder Service - Socket.IO connection to browser-worker
  */
 
-export type RecorderStatus = 'idle' | 'connecting' | 'recording' | 'paused' | 'stopped' | 'error';
+import { io, Socket } from 'socket.io-client';
 
-export interface RecorderWebSocketMessage {
-  type: 'START' | 'SCRIPT_UPDATE' | 'STOP' | 'ERROR' | 'PAUSE' | 'RESUME' | 'STATUS';
-  payload?: {
-    url?: string;
-    script?: string;
-    message?: string;
-    status?: RecorderStatus;
-  };
-}
+export type RecorderStatus = 'idle' | 'connecting' | 'recording' | 'paused' | 'stopped' | 'error';
 
 export interface RecorderState {
   status: RecorderStatus;
   script: string;
   targetUrl: string;
+  cdpPort?: number;
   error?: string;
 }
 
@@ -54,77 +47,58 @@ export interface ValidationResult {
   warnings: string[];
 }
 
-const WS_URL = import.meta.env.VITE_RECORDER_WS_URL || 'ws://localhost:8080/recorder';
+const WS_URL = import.meta.env.VITE_RECORDER_WS_URL || 'ws://localhost:3004';
+const WS_PATH = '/recorder';
 
 class RecorderService {
-  private ws: WebSocket | null = null;
+  private socket: Socket | null = null;
   private reconnectAttempts = 0;
   private maxReconnectAttempts = 5;
-  private reconnectDelay = 1000;
   private listeners: Map<string, Set<(data: unknown) => void>> = new Map();
 
   connect(): Promise<void> {
     return new Promise((resolve, reject) => {
-      if (this.ws?.readyState === WebSocket.OPEN) {
+      if (this.socket?.connected) {
         resolve();
         return;
       }
 
-      this.ws = new WebSocket(WS_URL);
+      // Parse URL to get host and path
+      const url = WS_URL.replace('/recorder', '');
+      this.socket = io(url, {
+        path: WS_PATH,
+        transports: ['websocket'],
+        reconnection: false, // We handle reconnection manually
+      });
 
-      this.ws.onopen = () => {
+      this.socket.on('connect', () => {
         this.reconnectAttempts = 0;
-        this.emit('status', { status: 'idle' });
+        this.emit('connected', { connected: true });
         resolve();
-      };
+      });
 
-      this.ws.onmessage = (event) => {
-        try {
-          const message: RecorderWebSocketMessage = JSON.parse(event.data);
-          this.handleMessage(message);
-        } catch (error) {
-          console.error('Failed to parse WebSocket message:', error);
-        }
-      };
+      this.socket.on('STATUS', (data: { status: RecorderStatus; url?: string; cdpPort?: number }) => {
+        this.emit('status', data);
+      });
 
-      this.ws.onerror = (error) => {
-        this.emit('error', { message: 'WebSocket connection error' });
+      this.socket.on('SCRIPT_UPDATE', (data: { script: string }) => {
+        this.emit('script', data);
+      });
+
+      this.socket.on('ERROR', (data: { message: string }) => {
+        this.emit('error', data);
+      });
+
+      this.socket.on('connect_error', (error: Error) => {
+        this.emit('error', { message: 'Socket connection error: ' + error.message });
         reject(error);
-      };
+      });
 
-      this.ws.onclose = () => {
+      this.socket.on('disconnect', (reason: string) => {
         this.emit('status', { status: 'stopped' });
         this.attemptReconnect();
-      };
+      });
     });
-  }
-
-  private handleMessage(message: RecorderWebSocketMessage) {
-    switch (message.type) {
-      case 'START':
-        this.emit('status', { status: 'recording', url: message.payload?.url });
-        break;
-      case 'SCRIPT_UPDATE':
-        this.emit('script', { script: message.payload?.script || '' });
-        break;
-      case 'STOP':
-        this.emit('status', { status: 'stopped' });
-        this.emit('script', { script: message.payload?.script || '' });
-        break;
-      case 'ERROR':
-        this.emit('error', { message: message.payload?.message || 'Unknown error' });
-        this.emit('status', { status: 'error' });
-        break;
-      case 'PAUSE':
-        this.emit('status', { status: 'paused' });
-        break;
-      case 'RESUME':
-        this.emit('status', { status: 'recording' });
-        break;
-      case 'STATUS':
-        this.emit('status', { status: message.payload?.status || 'idle' });
-        break;
-    }
   }
 
   private attemptReconnect() {
@@ -134,46 +108,46 @@ class RecorderService {
         this.connect().catch(() => {
           console.error('Reconnect failed');
         });
-      }, this.reconnectDelay * this.reconnectAttempts);
+      }, 1000 * this.reconnectAttempts);
     }
   }
 
   startRecording(url: string): void {
-    if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
-      this.emit('error', { message: 'WebSocket not connected' });
+    if (!this.socket?.connected) {
+      this.emit('error', { message: 'Socket not connected' });
       return;
     }
-    this.ws.send(JSON.stringify({ type: 'START', payload: { url } }));
+    this.socket.emit('START', { url });
   }
 
   stopRecording(): void {
-    if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
-      this.emit('error', { message: 'WebSocket not connected' });
+    if (!this.socket?.connected) {
+      this.emit('error', { message: 'Socket not connected' });
       return;
     }
-    this.ws.send(JSON.stringify({ type: 'STOP' }));
+    this.socket.emit('STOP');
   }
 
   pauseRecording(): void {
-    if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
-      this.emit('error', { message: 'WebSocket not connected' });
+    if (!this.socket?.connected) {
+      this.emit('error', { message: 'Socket not connected' });
       return;
     }
-    this.ws.send(JSON.stringify({ type: 'PAUSE' }));
+    this.socket.emit('PAUSE');
   }
 
   resumeRecording(): void {
-    if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
-      this.emit('error', { message: 'WebSocket not connected' });
+    if (!this.socket?.connected) {
+      this.emit('error', { message: 'Socket not connected' });
       return;
     }
-    this.ws.send(JSON.stringify({ type: 'RESUME' }));
+    this.socket.emit('RESUME');
   }
 
   disconnect(): void {
-    if (this.ws) {
-      this.ws.close();
-      this.ws = null;
+    if (this.socket) {
+      this.socket.disconnect();
+      this.socket = null;
     }
   }
 
@@ -193,7 +167,7 @@ class RecorderService {
   }
 
   isConnected(): boolean {
-    return this.ws?.readyState === WebSocket.OPEN;
+    return this.socket?.connected ?? false;
   }
 }
 
