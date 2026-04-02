@@ -11,7 +11,7 @@ async function executeActions(actions, sessionId) {
   const results = [];
 
   try {
-    // Launch browser visible on Xvfb display
+    // Launch browser visible on Xvfb display (same as noVNC)
     const browser = await chromium.launch({
       headless: false,
       args: [
@@ -19,6 +19,7 @@ async function executeActions(actions, sessionId) {
         '--disable-dev-shm-usage',
         '--window-size=1920,1080',
         '--window-position=0,0',
+        '--start-maximized',
       ],
     });
 
@@ -109,6 +110,10 @@ async function executeActions(actions, sessionId) {
       // Small delay between actions
       await new Promise(r => setTimeout(r, 500));
     }
+
+    // Keep browser open for 30 seconds so user can see the result
+    console.error('[EXECUTE] Keeping browser open for 30 seconds...');
+    await new Promise(r => setTimeout(r, 30000));
 
     await browser.close();
 
