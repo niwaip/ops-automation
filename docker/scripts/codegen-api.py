@@ -62,6 +62,9 @@ def start_codegen(session_id, url):
     if codegen_process.poll() is None:
         print(f"[INFO] Codegen started with PID: {codegen_process.pid}")
 
+        # Give browser window time to fully appear
+        time.sleep(2)
+
         # Minimize the Playwright Inspector window
         try:
             result = subprocess.run(
@@ -69,39 +72,83 @@ def start_codegen(session_id, url):
                 capture_output=True,
                 text=True
             )
-            print(f"[INFO] xdotool minimize inspector result: {result.returncode}")
+            print(f"[INFO] xdotool minimize inspector result: {result.returncode}, stdout: {result.stdout}, stderr: {result.stderr}")
         except Exception as e:
             print(f"[WARN] Failed to minimize inspector: {e}")
 
-        # Move and resize the Chrome browser window to fill the screen
+        # Move and resize the Chrome/Chromium browser window to fill the screen
+        # Try multiple ways to find the browser window
+        time.sleep(1)
+
+        # List all windows for debugging
         try:
-            # Find chrome window
             result = subprocess.run(
-                ["xdotool", "search", "--class", "chrome"],
-                capture_output=True,
-                text=True
+                ["xdotool", "search", "--onlyvisible", ".*"],
+                capture_output=True, text=True
             )
-            if result.returncode == 0 and result.stdout.strip():
-                window_ids = result.stdout.strip().split('\n')
-                for win_id in window_ids:
-                    # Move window to 0,0 and resize to 1920x1080
-                    subprocess.run(
-                        ["xdotool", "windowmove", win_id, "0", "0"],
-                        capture_output=True
-                    )
-                    subprocess.run(
-                        ["xdotool", "windowsize", win_id, "1920", "1080"],
-                        capture_output=True
-                    )
-                    # Activate the window
-                    subprocess.run(
-                        ["xdotool", "windowactivate", win_id],
-                        capture_output=True
-                    )
-                    print(f"[INFO] Moved and resized chrome window {win_id}")
-                    break  # Only need to do this for the first chrome window
+            all_windows = result.stdout.strip().split('\n') if result.stdout.strip() else []
+            print(f"[DEBUG] Found {len(all_windows)} visible windows")
+
+            for win_id in all_windows[:10]:  # Check first 10 windows
+                # Get window info
+                name_result = subprocess.run(
+                    ["xdotool", "getwindowname", win_id],
+                    capture_output=True, text=True
+                )
+                class_result = subprocess.run(
+                    ["xdotool", "getwindowclassname", win_id],
+                    capture_output=True, text=True
+                )
+                print(f"[DEBUG] Window {win_id}: name='{name_result.stdout.strip()}' class='{class_result.stdout.strip()}'")
         except Exception as e:
-            print(f"[WARN] Failed to move/resize chrome window: {e}")
+            print(f"[WARN] Failed to list windows: {e}")
+
+        # Find browser window (chromium or chrome class)
+        browser_win_id = None
+        for search_class in ["chromium", "chrome", "Chromium", "Chrome"]:
+            try:
+                result = subprocess.run(
+                    ["xdotool", "search", "--onlyvisible", "--class", search_class],
+                    capture_output=True, text=True
+                )
+                if result.returncode == 0 and result.stdout.strip():
+                    windows = result.stdout.strip().split('\n')
+                    for win_id in windows:
+                        # Skip if it's the Playwright Inspector
+                        name_result = subprocess.run(
+                            ["xdotool", "getwindowname", win_id],
+                            capture_output=True, text=True
+                        )
+                        if "Playwright" not in name_result.stdout:
+                            browser_win_id = win_id
+                            print(f"[INFO] Found browser window {win_id} with class '{search_class}'")
+                            break
+                if browser_win_id:
+                    break
+            except Exception as e:
+                print(f"[WARN] Search for class '{search_class}' failed: {e}")
+
+        if browser_win_id:
+            try:
+                # Move window to 0,0 and resize to 1920x1080
+                subprocess.run(
+                    ["xdotool", "windowmove", browser_win_id, "0", "0"],
+                    capture_output=True, text=True
+                )
+                subprocess.run(
+                    ["xdotool", "windowsize", browser_win_id, "1920", "1080"],
+                    capture_output=True, text=True
+                )
+                # Activate the window
+                subprocess.run(
+                    ["xdotool", "windowactivate", browser_win_id],
+                    capture_output=True, text=True
+                )
+                print(f"[INFO] Successfully moved and resized browser window {browser_win_id}")
+            except Exception as e:
+                print(f"[WARN] Failed to move/resize browser window: {e}")
+        else:
+            print(f"[WARN] Could not find browser window to resize")
 
         return True
     else:
