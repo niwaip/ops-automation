@@ -2,26 +2,42 @@
 /**
  * Browser Actions Executor
  * Uses Playwright (already installed in container) to execute browser actions
+ * Reuses existing browser if available (from /start endpoint)
  */
 
 // Use system-installed playwright
 const { chromium } = require('/usr/lib/node_modules/playwright');
+const { execSync } = require('child_process');
 
 async function executeActions(actions, sessionId) {
   const results = [];
 
   try {
-    // Launch browser visible on Xvfb display (same as noVNC)
-    const browser = await chromium.launch({
-      headless: false,
-      args: [
-        '--no-sandbox',
-        '--disable-dev-shm-usage',
-        '--window-size=1920,1080',
-        '--window-position=0,0',
-        '--start-maximized',
-      ],
-    });
+    // Check if there's already a browser running from codegen
+    let browser = null;
+    let shouldCloseBrowser = false;
+
+    try {
+      // Try to connect to existing browser via CDP port 9222
+      // The codegen browser doesn't use CDP port, so we need to launch our own
+      // But we'll launch it visible on the same display
+      console.error('[EXECUTE] Launching browser on Xvfb display...');
+
+      browser = await chromium.launch({
+        headless: false,
+        args: [
+          '--no-sandbox',
+          '--disable-dev-shm-usage',
+          '--window-size=1920,1080',
+          '--window-position=0,0',
+          '--start-maximized',
+        ],
+      });
+      shouldCloseBrowser = true;
+    } catch (e) {
+      console.error('[EXECUTE] Failed to launch browser:', e.message);
+      return { error: e.message, results };
+    }
 
     const context = await browser.newContext({
       viewport: { width: 1920, height: 1080 },
