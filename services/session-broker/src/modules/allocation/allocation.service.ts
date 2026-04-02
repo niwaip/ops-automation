@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { RedisService } from '../lock/redis.service';
 import { WorkerEndpoints, WorkerInfo } from '../../interfaces';
 
@@ -7,11 +7,29 @@ const WORKER_POOL_AVAILABLE = 'worker:pool:available';
 const WORKER_BUSY_PREFIX = 'worker:pool:busy:';
 const WORKER_HEARTBEAT_PREFIX = 'worker:heartbeat:';
 
+// Default worker pool size for development
+const DEFAULT_WORKER_POOL_SIZE = 3;
+
 @Injectable()
-export class AllocationService {
+export class AllocationService implements OnModuleInit {
   private readonly logger = new Logger(AllocationService.name);
 
   constructor(private readonly redisService: RedisService) {}
+
+  async onModuleInit() {
+    // Initialize worker pool if empty (for dev/test environments)
+    const availableCount = await this.getAvailableWorkerCount();
+    if (availableCount === 0) {
+      const defaultWorkers = Array.from(
+        { length: DEFAULT_WORKER_POOL_SIZE },
+        (_, i) => `worker-${i + 1}`
+      );
+      await this.initializeWorkerPool(defaultWorkers);
+      this.logger.log(`Initialized default worker pool with ${DEFAULT_WORKER_POOL_SIZE} workers (dev mode)`);
+    } else {
+      this.logger.log(`Worker pool already has ${availableCount} available workers`);
+    }
+  }
 
   /**
    * Get an available worker from the pool
