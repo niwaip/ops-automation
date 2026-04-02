@@ -1,6 +1,7 @@
 {
   "appName": "Ops Automation Platform",
   "dashboard": "Dashboard",
+  "newSession": "New Session",
   "sessions": "Sessions",
   "templates": "Templates",
   "recorder": "Recorder",

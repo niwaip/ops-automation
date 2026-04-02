@@ -14,6 +14,7 @@ import {
   LogoutOutlined,
   SunOutlined,
   MoonOutlined,
+  PlusCircleOutlined,
 } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
 import { useAuthStore } from '../store/authStore';
@@ -37,6 +38,11 @@ const MainLayout: React.FC = () => {
       key: '/dashboard',
       icon: <DashboardOutlined />,
       label: t('dashboard'),
+    },
+    {
+      key: '/sessions/new',
+      icon: <PlusCircleOutlined />,
+      label: t('newSession'),
     },
     {
       key: '/sessions',
@@ -112,6 +118,7 @@ const MainLayout: React.FC = () => {
 
   const getSelectedKey = () => {
     const path = location.pathname;
+    if (path === '/sessions/new') return '/sessions/new';
     if (path.startsWith('/sessions')) return '/sessions';
     if (path.startsWith('/templates')) return '/templates';
     if (path.startsWith('/admin/users')) return '/admin/users';
