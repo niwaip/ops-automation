@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { Card, Button, Input, Space, Typography, Empty, message, Tooltip, Alert, Modal, Form } from 'antd';
-import { CopyOutlined, FileTextOutlined, EditOutlined, CheckOutlined, TransformOutlined, BulbOutlined } from '@ant-design/icons';
+import { CopyOutlined, FileTextOutlined, EditOutlined, CheckOutlined, SwapOutlined, BulbOutlined } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
 
 const { Text } = Typography;
@@ -207,7 +207,7 @@ const ScriptPreview: React.FC<ScriptPreviewProps> = ({
             type="primary"
             size="large"
             block
-            icon={<TransformOutlined />}
+            icon={<SwapOutlined />}
             onClick={handleOpenIntentModal}
             disabled={disabled || !script.trim() || compiling}
             loading={compiling}

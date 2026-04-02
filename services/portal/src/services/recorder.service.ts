@@ -94,7 +94,7 @@ class RecorderService {
         reject(error);
       });
 
-      this.socket.on('disconnect', (reason: string) => {
+      this.socket.on('disconnect', (_reason: string) => {
         this.emit('status', { status: 'stopped' });
         this.attemptReconnect();
       });
