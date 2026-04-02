@@ -11,7 +11,7 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
       port: parseInt(process.env.REDIS_PORT || '6379', 10),
       password: process.env.REDIS_PASSWORD || undefined,
       maxRetriesPerRequest: 3,
-      lazyConnect: false,
+      lazyConnect: true,
     });
 
     this.client.on('connect', () => {

@@ -1,0 +1,244 @@
+version: '3.8'
+
+# Full development environment with all services
+# Usage: docker compose up -d
+
+services:
+  # ============================================
+  # Infrastructure Services
+  # ============================================
+  postgres:
+    image: docker.1ms.run/library/postgres:15-alpine
+    container_name: ops-postgres
+    environment:
+      POSTGRES_USER: ops
+      POSTGRES_PASSWORD: ops_secret
+      POSTGRES_DB: ops
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ops"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: docker.1ms.run/library/redis:7-alpine
+    container_name: ops-redis
+    command: redis-server --appendonly yes
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ============================================
+  # Backend Services (with code mount for hot reload)
+  # ============================================
+  auth:
+    image: docker.1ms.run/library/node:20-bullseye
+    container_name: ops-auth
+    working_dir: /app
+    command: sh -c "npm config set registry https://registry.npmmirror.com && npm install --legacy-peer-deps && npx prisma generate && npm run dev"
+    environment:
+      - NODE_ENV=development
+      - DATABASE_URL=postgresql://ops:ops_secret@postgres:5432/ops
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - JWT_SECRET=jwt_secret_key_change_in_production
+      - PORT=3001
+    ports:
+      - "3001:3001"
+    volumes:
+      - ../services/auth:/app
+      - auth_node_modules:/app/node_modules
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  session-broker:
+    image: docker.1ms.run/library/node:20-bullseye
+    container_name: ops-session-broker
+    working_dir: /app
+    command: sh -c "npm config set registry https://registry.npmmirror.com && npm install --legacy-peer-deps && npm run dev"
+    environment:
+      - NODE_ENV=development
+      - DATABASE_URL=postgresql://ops:ops_secret@postgres:5432/ops
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - PORT=3002
+    ports:
+      - "3002:3002"
+    volumes:
+      - ../services/session-broker:/app
+      - session_broker_node_modules:/app/node_modules
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  control-plane:
+    image: docker.1ms.run/library/node:20-bullseye
+    container_name: ops-control-plane
+    working_dir: /app
+    command: sh -c "npm config set registry https://registry.npmmirror.com && npm install --legacy-peer-deps && npm run dev"
+    environment:
+      - NODE_ENV=development
+      - DATABASE_URL=postgresql://ops:ops_secret@postgres:5432/ops
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - JWT_SECRET=jwt_secret_key_change_in_production
+      - PORT=3003
+    ports:
+      - "3003:3003"
+    volumes:
+      - ../services/control-plane:/app
+      - control_plane_node_modules:/app/node_modules
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  browser-worker:
+    image: docker.1ms.run/library/node:20-bullseye
+    container_name: ops-browser-worker
+    working_dir: /app
+    command: sh -c "npm config set registry https://registry.npmmirror.com && npm install --legacy-peer-deps && npm run dev"
+    environment:
+      - NODE_ENV=development
+      - PORT=3004
+      - CHROME_REMOTE_DEBUGGING_HOST=browser-chrome
+      - CHROME_REMOTE_DEBUGGING_PORT=9222
+      - CODEGEN_API_PORT=3000
+    ports:
+      - "3004:3004"
+    volumes:
+      - ../services/browser-worker:/app
+      - browser_worker_node_modules:/app/node_modules
+    depends_on:
+      - browser-chrome
+
+  template:
+    image: docker.1ms.run/library/node:20-bullseye
+    container_name: ops-template
+    working_dir: /app
+    command: sh -c "npm config set registry https://registry.npmmirror.com && npm install --legacy-peer-deps && npm run dev"
+    environment:
+      - NODE_ENV=development
+      - DATABASE_URL=postgresql://ops:ops_secret@postgres:5432/ops
+      - PORT=3005
+    ports:
+      - "3005:3005"
+    volumes:
+      - ../services/template:/app
+      - template_node_modules:/app/node_modules
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  replay-engine:
+    image: docker.1ms.run/library/node:20-bullseye
+    container_name: ops-replay-engine
+    working_dir: /app
+    command: sh -c "npm config set registry https://registry.npmmirror.com && npm install --legacy-peer-deps && npm run dev"
+    environment:
+      - NODE_ENV=development
+      - DATABASE_URL=postgresql://ops:ops_secret@postgres:5432/ops
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - PORT=3006
+    ports:
+      - "3006:3006"
+    volumes:
+      - ../services/replay-engine:/app
+      - replay_engine_node_modules:/app/node_modules
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  ai-orchestrator:
+    image: docker.1ms.run/library/node:20-bullseye
+    container_name: ops-ai-orchestrator
+    working_dir: /app
+    command: sh -c "npm config set registry https://registry.npmmirror.com && npm install --legacy-peer-deps && npm run dev"
+    environment:
+      - NODE_ENV=development
+      - DATABASE_URL=postgresql://ops:ops_secret@postgres:5432/ops
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - PORT=3007
+    ports:
+      - "3007:3007"
+    volumes:
+      - ../services/ai-orchestrator:/app
+      - ai_orchestrator_node_modules:/app/node_modules
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  # ============================================
+  # Frontend Service
+  # ============================================
+  portal:
+    image: docker.1ms.run/library/node:20-bullseye
+    container_name: ops-portal
+    working_dir: /app
+    command: sh -c "npm config set registry https://registry.npmmirror.com && npm install --legacy-peer-deps && npm run dev"
+    environment:
+      - NODE_ENV=development
+      - VITE_API_BASE_URL=http://localhost:3001
+      - VITE_RECORDER_WS_URL=ws://localhost:3004
+    ports:
+      - "5173:5173"
+    volumes:
+      - ../services/portal:/app
+      - portal_node_modules:/app/node_modules
+    depends_on:
+      - auth
+      - browser-worker
+
+  # ============================================
+  # Browser Worker (Chrome + noVNC + Codegen)
+  # ============================================
+  browser-chrome:
+    build:
+      context: .
+      dockerfile: browser-worker.Dockerfile
+    container_name: ops-browser-chrome
+    ports:
+      - "6080:8080"  # noVNC
+      - "9222:9222"  # CDP
+      - "5901:5900"  # VNC
+      - "3000:3000"  # Codegen API
+    environment:
+      - SCREEN_WIDTH=1920
+      - SCREEN_HEIGHT=1080
+    command: ["/start-recorder.sh"]
+
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+  auth_node_modules:
+  session_broker_node_modules:
+  control_plane_node_modules:
+  browser_worker_node_modules:
+  template_node_modules:
+  replay_engine_node_modules:
+  ai_orchestrator_node_modules:
+  portal_node_modules:
