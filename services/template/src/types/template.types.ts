@@ -74,6 +74,7 @@ export interface TemplateMetadata {
   updated_at: string;
   description?: string;
   tags?: string[];
+  intent?: string;
 }
 
 export interface TemplateJSON {

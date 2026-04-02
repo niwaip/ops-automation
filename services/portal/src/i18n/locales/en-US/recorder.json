@@ -33,6 +33,7 @@
   "compiling": "Compiling...",
   "compileSuccess": "Compilation successful",
   "compileFailed": "Compilation failed",
+  "compileDisabledHint": "Please stop recording before compiling",
   "templatePreview": "Template Preview",
   "noTemplateYet": "Compile script to see template here",
   "noTemplate": "No template to save",
@@ -54,12 +55,12 @@
   "browserPreview": "Browser Preview",
   "recordingInProgress": "Recording...",
   "startToPreview": "Start recording to preview browser",
-  "instructions": {
-    "title": "Instructions",
-    "step1": "1. Click \"Connect\" to connect to the recorder service",
-    "step2": "2. Enter the target URL to record",
-    "step3": "3. Click \"Start Recording\" to launch Playwright codegen",
-    "step4": "4. Interact with the browser, script will be generated automatically",
-    "step5": "5. Click \"Stop Recording\", then compile and save as template"
+  "intentModal": {
+    "title": "Compile Intent Description",
+    "label": "Operation Intent",
+    "placeholder": "Describe the purpose of this recording, e.g., login to system and submit form, create new user account, etc. AI will organize template information based on your description.",
+    "hint": "Providing operation intent helps AI better understand the script purpose and generate more accurate template description and parameter definitions.",
+    "confirm": "Start Compile",
+    "cancel": "Cancel"
   }
 }

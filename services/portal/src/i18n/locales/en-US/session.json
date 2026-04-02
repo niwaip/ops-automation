@@ -29,5 +29,21 @@
   "sessionVideo": "Video",
   "noVNCConnect": "noVNC Connect",
   "liveView": "Live View",
-  "replay": "Replay"
+  "replay": "Replay",
+  "startNewSession": "Start New Session",
+  "stepSelectTemplate": "Step 1: Select Template",
+  "stepInputDescription": "Step 2: Input Description",
+  "stepReviewParams": "Step 3: Review Parameters",
+  "selectTemplatePlaceholder": "Select a published template",
+  "descriptionPlaceholder": "Describe your task in natural language, e.g.: Login to the system with username admin and password 123456",
+  "aiRecognize": "AI Parse Parameters",
+  "recognizeSuccess": "Parameters parsed successfully",
+  "recognizeFailed": "Parameter parsing failed",
+  "selectTemplateFirst": "Please select a template first",
+  "enterDescription": "Please enter a task description",
+  "confidenceScore": "Confidence: {{score}}",
+  "suggestions": "Suggestions",
+  "executeSession": "Execute Session",
+  "startSuccess": "Session started",
+  "startFailed": "Session start failed"
 }

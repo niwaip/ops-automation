@@ -104,7 +104,7 @@ export class TemplateController {
   async compile(@Body() dto: CompileScriptDto): Promise<{ template: TemplateJSON; validation: ValidationResult }> {
     // Use a system user ID for compilation
     const systemUserId = 'system-compiler';
-    return this.compiler.compile(dto.script, systemUserId);
+    return this.compiler.compile(dto.script, systemUserId, dto.intent);
   }
 
   /**

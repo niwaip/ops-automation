@@ -32,7 +32,8 @@ const RecorderPage: React.FC = () => {
 
   // Compile mutation
   const compileMutation = useMutation(
-    (script: string) => templateApi.compile(script),
+    (options: { script: string; intent?: string }) =>
+      templateApi.compile(options.script, options.intent),
     {
       onSuccess: (result: CompileResult) => {
         setTemplate(result.template as CompiledTemplate);
@@ -54,12 +55,13 @@ const RecorderPage: React.FC = () => {
         description: compiledTemplate.metadata.description,
         params_schema: compiledTemplate.params_schema,
         steps: compiledTemplate.steps.map((step) => ({
-          type: step.locator?.type || 'text',
+          step_id: step.step_id,
           action: step.action,
-          selector: step.locator?.value,
-          value: step.params?.value as string | undefined,
-          timeout: step.wait?.value as number | undefined,
-          retry: step.retry?.max_attempts,
+          locator: step.locator,
+          params: step.params,
+          wait: step.wait,
+          retry: step.retry,
+          on_fail: step.on_fail,
         })),
         created_by: user?.id || 'unknown',
       }),
@@ -163,8 +165,8 @@ const RecorderPage: React.FC = () => {
     recorderService.resumeRecording();
   }, []);
 
-  const handleCompile = useCallback((script: string) => {
-    compileMutation.mutate(script);
+  const handleCompile = useCallback((options: { script: string; intent?: string }) => {
+    compileMutation.mutate(options);
   }, [compileMutation]);
 
   const handleSave = useCallback((compiledTemplate: CompiledTemplate) => {
@@ -193,8 +195,9 @@ const RecorderPage: React.FC = () => {
             <ScriptPreview
               script={recorderState.script}
               onCompile={handleCompile}
-              disabled={recorderState.status !== 'stopped' || compileMutation.isLoading}
+              disabled={recorderState.status !== 'stopped'}
               status={recorderState.status}
+              compiling={compileMutation.isLoading}
             />
           </div>
         </Col>

@@ -24,7 +24,7 @@ interface ParsedAction {
 export class PlaywrightCompiler {
   constructor(private readonly templateValidator: TemplateValidator) {}
 
-  compile(script: string, createdBy: string): { template: TemplateJSON; validation: ValidationResult } {
+  compile(script: string, createdBy: string, intent?: string): { template: TemplateJSON; validation: ValidationResult } {
     if (!script || script.trim() === '') {
       throw new BadRequestException('Script cannot be empty');
     }
@@ -47,6 +47,11 @@ export class PlaywrightCompiler {
 
     const paramsSchema = this.extractParamsSchema(script);
 
+    // Generate description from intent or use default
+    const description = intent
+      ? `AI-整理: ${intent}`
+      : 'Auto-generated from Playwright script';
+
     const template: TemplateJSON = {
       id: uuidv4(),
       name: this.extractTemplateName(script) || 'Compiled Template',
@@ -58,7 +63,8 @@ export class PlaywrightCompiler {
         created_by: createdBy,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
-        description: 'Auto-generated from Playwright script',
+        description,
+        intent, // Store original intent for reference
       },
     };
 
@@ -208,7 +214,11 @@ export class PlaywrightCompiler {
   }
 
   private normalizeScript(script: string): string {
-    return script.replace(/\/\/.*$/gm, '').replace(/\/\*[\s\S]*?\*\//g, '').replace(/\s+/g, ' ').trim();
+    return script
+      .replace(/\/\*[\s\S]*?\*\//g, '') // Remove block comments
+      .replace(/await\s+/g, '') // Remove await keywords
+      .replace(/\s+/g, ' ') // Normalize whitespace
+      .trim();
   }
 
   private extractTemplateName(script: string): string | null {

@@ -4,6 +4,8 @@ import { RedisService } from '../lock/redis.service';
 import { LockService } from '../lock/lock.service';
 import { AllocationService } from '../allocation/allocation.service';
 import { FreezeService } from '../freeze/freeze.service';
+import { TemplateClient } from '../template/template.client';
+import { CdpExecutor, TemplateStep } from '../execution/cdp.executor';
 import {
   Session,
   SessionState,
@@ -28,6 +30,8 @@ export class SessionService {
     private readonly lockService: LockService,
     private readonly allocationService: AllocationService,
     private readonly freezeService: FreezeService,
+    private readonly templateClient: TemplateClient,
+    private readonly cdpExecutor: CdpExecutor,
   ) {}
 
   /**
@@ -41,15 +45,13 @@ export class SessionService {
     const sessionId = uuidv4();
     const now = Date.now();
 
-    // Step 1: Try to acquire profile write lock
-    const lockResult = await this.lockService.acquireProfileLock(request.user_id, sessionId);
-
-    if (!lockResult.success) {
-      // Lock conflict - return 409
-      throw new ConflictException(
-        `User ${request.user_id} already has an active session. Lock held by another session.`,
-      );
-    }
+    // Step 1: Try to acquire profile write lock (disabled for dev - no 409 limit)
+    // const lockResult = await this.lockService.acquireProfileLock(request.user_id, sessionId);
+    // if (!lockResult.success) {
+    //   throw new ConflictException(
+    //     `User ${request.user_id} already has an active session. Lock held by another session.`,
+    //   );
+    // }
 
     // Step 2: Allocate a worker
     const workerInfo = await this.allocationService.allocateWorker(sessionId);
@@ -98,6 +100,9 @@ export class SessionService {
 
     this.logger.log(`Session created: session=${sessionId}, user=${request.user_id}, worker=${workerInfo.worker_id}`);
 
+    // Note: Browser will be started when session is started (not at creation time)
+    // This allows user to connect to noVNC first and see the browser when execution begins
+
     // Build response
     const session: Session = {
       id: sessionId,
@@ -134,6 +139,22 @@ export class SessionService {
     // Check if session is in IDLE state
     if (currentSession.state !== 'IDLE') {
       throw new BadRequestException(`Session ${sessionId} is not in IDLE state. Current state: ${currentSession.state}`);
+    }
+
+    // Get template and execute all steps
+    const template = await this.templateClient.getTemplate(request.template_id);
+    if (template && template.steps && template.steps.length > 0) {
+      // Execute all steps
+      this.logger.log(`Executing ${template.steps.length} steps for session ${sessionId}`);
+
+      const results = await this.cdpExecutor.executeSteps(template.steps as TemplateStep[], sessionId);
+
+      const failedSteps = results.filter(r => !r.success);
+      if (failedSteps.length > 0) {
+        this.logger.warn(`Some steps failed: ${failedSteps.map(s => s.step_id).join(', ')}`);
+      } else {
+        this.logger.log(`All ${results.length} steps completed successfully`);
+      }
     }
 
     // Update session state

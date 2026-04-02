@@ -10,12 +10,13 @@ export interface ParamsSchema {
 }
 
 export interface TemplateStep {
-  type: string;
+  step_id: string;
   action: string;
-  selector?: string;
-  value?: string;
-  timeout?: number;
-  retry?: number;
+  locator?: { type: string; value: string; fallback?: { type: string; value: string } };
+  params?: Record<string, string | number>;
+  wait?: { type: string; value: number | string };
+  retry?: { max_attempts: number; delay_ms: number };
+  on_fail?: string;
 }
 
 export interface Template {
@@ -122,23 +123,27 @@ export const templateApi = {
   },
 
   publish: async (id: string, reviewedBy: string): Promise<Template> => {
-    return apiClient.patch<Template>(`/templates/${id}/publish`, { reviewed_by: reviewedBy });
+    return apiClient.post<Template>(`/templates/${id}/publish`, { reviewed_by: reviewedBy });
   },
 
   deprecate: async (id: string): Promise<Template> => {
-    return apiClient.patch<Template>(`/templates/${id}/deprecate`);
+    return apiClient.post<Template>(`/templates/${id}/deprecate`);
   },
 
   revoke: async (id: string): Promise<Template> => {
-    return apiClient.patch<Template>(`/templates/${id}/revoke`);
+    return apiClient.post<Template>(`/templates/${id}/revoke`);
   },
 
   clone: async (id: string): Promise<Template> => {
     return apiClient.post<Template>(`/templates/${id}/clone`);
   },
 
-  compile: async (script: string): Promise<CompileResult> => {
-    return apiClient.post<CompileResult>('/templates/compile', { script });
+  submitForReview: async (id: string): Promise<Template> => {
+    return apiClient.post<Template>(`/templates/${id}/review`);
+  },
+
+  compile: async (script: string, intent?: string): Promise<CompileResult> => {
+    return apiClient.post<CompileResult>('/templates/compile', { script, intent });
   },
 
   validate: async (id: string): Promise<{ valid: boolean; errors: string[] }> => {

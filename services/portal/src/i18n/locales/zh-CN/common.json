@@ -1,6 +1,7 @@
 {
   "appName": "运维自动化平台",
   "dashboard": "仪表盘",
+  "newSession": "新建会话",
   "sessions": "会话管理",
   "templates": "模板管理",
   "recorder": "录制器",

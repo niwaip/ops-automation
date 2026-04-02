@@ -9,6 +9,7 @@ import {
   DeleteOutlined,
   CloudUploadOutlined,
   CloudDownloadOutlined,
+  PlayCircleOutlined,
 } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
 import { useQuery, useMutation, useQueryClient } from 'react-query';
@@ -48,6 +49,16 @@ const TemplateListPage: React.FC = () => {
     }
   );
 
+  const submitForReviewMutation = useMutation(templateApi.submitForReview, {
+    onSuccess: () => {
+      message.success(t('common:success'));
+      queryClient.invalidateQueries(['templates']);
+    },
+    onError: () => {
+      message.error(t('common:error'));
+    },
+  });
+
   const deprecateMutation = useMutation(templateApi.deprecate, {
     onSuccess: () => {
       message.success(t('common:success'));
@@ -72,6 +83,13 @@ const TemplateListPage: React.FC = () => {
     Modal.confirm({
       title: t('template:publishTemplate'),
       onOk: () => publishMutation.mutate(id),
+    });
+  };
+
+  const handleSubmitForReview = (id: string) => {
+    Modal.confirm({
+      title: t('template:submitForReview'),
+      onOk: () => submitForReviewMutation.mutate(id),
     });
   };
 
@@ -155,7 +173,27 @@ const TemplateListPage: React.FC = () => {
           >
             {t('common:edit')}
           </Button>
-          {record.status === 'DRAFT' && user?.role === 'admin' && (
+          {record.status === 'PUBLISHED' && (
+            <Button
+              type="link"
+              size="small"
+              icon={<PlayCircleOutlined />}
+              onClick={() => navigate(`/templates/${record.id}?execute=true`)}
+            >
+              {t('template:executeTemplate')}
+            </Button>
+          )}
+          {record.status === 'DRAFT' && (
+            <Button
+              type="link"
+              size="small"
+              icon={<CloudUploadOutlined />}
+              onClick={() => handleSubmitForReview(record.id)}
+            >
+              {t('template:submitForReview')}
+            </Button>
+          )}
+          {record.status === 'REVIEW' && user?.role === 'admin' && (
             <Button
               type="link"
               size="small"

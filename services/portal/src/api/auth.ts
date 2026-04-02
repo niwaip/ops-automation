@@ -7,8 +7,8 @@ export interface UserDto {
   email?: string | null;
   role: 'employee' | 'admin' | 'agent';
   isActive: boolean;
-  createdAt: Date;
-  updatedAt: Date;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface RoleDto {

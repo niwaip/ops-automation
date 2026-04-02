@@ -33,7 +33,7 @@ const RecorderControls: React.FC<RecorderControlsProps> = ({
   onDisconnect,
 }) => {
   const { t } = useTranslation(['common', 'recorder']);
-  const [url, setUrl] = useState('');
+  const [url, setUrl] = useState('https://');
 
   const statusColors: Record<RecorderStatus, string> = {
     idle: 'default',
@@ -45,15 +45,19 @@ const RecorderControls: React.FC<RecorderControlsProps> = ({
   };
 
   const handleStart = () => {
-    if (!url) {
+    let finalUrl = url.trim();
+
+    if (!finalUrl || finalUrl === 'https://') {
       message.warning(t('recorder:enterUrl'));
       return;
     }
-    if (!url.startsWith('http://') && !url.startsWith('https://')) {
-      message.warning(t('recorder:invalidUrl'));
-      return;
+
+    // Auto-add https:// if no protocol specified
+    if (!finalUrl.startsWith('http://') && !finalUrl.startsWith('https://')) {
+      finalUrl = 'https://' + finalUrl;
     }
-    onStart(url);
+
+    onStart(finalUrl);
   };
 
   const handleConnect = async () => {
@@ -158,20 +162,7 @@ const RecorderControls: React.FC<RecorderControlsProps> = ({
           )}
         </Space>
 
-        {/* Instructions */}
-        <Card size="small" type="inner">
-          <div style={{ fontSize: 12 }}>
-            <p>{t('recorder:instructions.title')}</p>
-            <ul style={{ paddingLeft: 16, margin: 0 }}>
-              <li>{t('recorder:instructions.step1')}</li>
-              <li>{t('recorder:instructions.step2')}</li>
-              <li>{t('recorder:instructions.step3')}</li>
-              <li>{t('recorder:instructions.step4')}</li>
-              <li>{t('recorder:instructions.step5')}</li>
-            </ul>
-          </div>
-        </Card>
-      </Space>
+        </Space>
     </Card>
   );
 };

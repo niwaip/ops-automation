@@ -68,6 +68,10 @@ export class PublishTemplateDto {
 export class CompileScriptDto {
   @IsString()
   script: string;
+
+  @IsOptional()
+  @IsString()
+  intent?: string;
 }
 
 export class ValidateTemplateDto {

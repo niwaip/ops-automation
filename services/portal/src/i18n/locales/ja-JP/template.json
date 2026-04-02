@@ -21,6 +21,7 @@
   "editTemplate": "テンプレート編集",
   "deleteTemplate": "テンプレート削除",
   "publishTemplate": "テンプレート公開",
+  "submitForReview": "審査提出",
   "reviewTemplate": "テンプレート審査",
   "deprecateTemplate": "テンプレート廃止",
   "revokeTemplate": "テンプレート撤回",
@@ -32,5 +33,15 @@
   "stepValue": "値",
   "stepTimeout": "タイムアウト",
   "stepRetry": "再試行回数",
-  "filterByStatus": "状態でフィルター"
+  "filterByStatus": "状態でフィルター",
+  "executeTemplate": "テンプレート実行",
+  "executeModalTitle": "実行パラメータ",
+  "executeModalDesc": "テンプレート実行に必要なパラメータを入力してください",
+  "executeStarting": "実行を開始中...",
+  "executeSuccess": "実行が開始されました。セッション詳細ページに移動します",
+  "executeFailed": "実行の開始に失敗しました",
+  "noParams": "このテンプレートにはパラメータは必要ありません",
+  "paramName": "パラメータ名",
+  "paramValue": "パラメータ値",
+  "paramDescription": "パラメータ説明"
 }

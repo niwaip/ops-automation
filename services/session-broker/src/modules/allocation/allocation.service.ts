@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { RedisService } from '../lock/redis.service';
 import { WorkerEndpoints, WorkerInfo } from '../../interfaces';
 
@@ -7,11 +7,29 @@ const WORKER_POOL_AVAILABLE = 'worker:pool:available';
 const WORKER_BUSY_PREFIX = 'worker:pool:busy:';
 const WORKER_HEARTBEAT_PREFIX = 'worker:heartbeat:';
 
+// Default worker pool size for development
+const DEFAULT_WORKER_POOL_SIZE = 3;
+
 @Injectable()
-export class AllocationService {
+export class AllocationService implements OnModuleInit {
   private readonly logger = new Logger(AllocationService.name);
 
   constructor(private readonly redisService: RedisService) {}
+
+  async onModuleInit() {
+    // Initialize worker pool if empty (for dev/test environments)
+    const availableCount = await this.getAvailableWorkerCount();
+    if (availableCount === 0) {
+      const defaultWorkers = Array.from(
+        { length: DEFAULT_WORKER_POOL_SIZE },
+        (_, i) => `worker-${i + 1}`
+      );
+      await this.initializeWorkerPool(defaultWorkers);
+      this.logger.log(`Initialized default worker pool with ${DEFAULT_WORKER_POOL_SIZE} workers (dev mode)`);
+    } else {
+      this.logger.log(`Worker pool already has ${availableCount} available workers`);
+    }
+  }
 
   /**
    * Get an available worker from the pool
@@ -121,21 +139,21 @@ export class AllocationService {
 
   /**
    * Generate worker endpoints based on worker reference
-   * In production, this would be based on actual Kubernetes pod info
+   * Uses real ops-browser-chrome service endpoints
    */
   private generateWorkerEndpoints(workerRef: string): WorkerEndpoints {
-    // Extract worker number from reference (e.g., "worker-1" -> 1)
-    const workerNum = parseInt(workerRef.replace(/worker-/, '').replace(/pod-/, ''), 10) || 0;
+    // In Docker, use service name; locally use localhost
+    const host = process.env.DOCKER_ENV ? 'ops-browser-chrome' : 'localhost';
 
-    // Calculate ports based on worker number
-    const baseNovncPort = 8080;
-    const baseCdpPort = 9222;
-    const baseVncPort = 5900;
+    // Real browser-chrome ports (mapped from container)
+    const novncPort = process.env.DOCKER_ENV ? 8080 : 6080;
+    const cdpPort = process.env.DOCKER_ENV ? 9222 : 9222;
+    const vncPort = process.env.DOCKER_ENV ? 5900 : 5901;
 
     return {
-      novnc: `http://10.0.0.${workerNum + 1}:${baseNovncPort}/vnc.html`,
-      cdp: `ws://10.0.0.${workerNum + 1}:${baseCdpPort}`,
-      vnc: `vnc://10.0.0.${workerNum + 1}:${baseVncPort}`,
+      novnc: `http://${host}:${novncPort}/vnc.html`,
+      cdp: `ws://${host}:${cdpPort}`,
+      vnc: `vnc://${host}:${vncPort}`,
     };
   }
 }

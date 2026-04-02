@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException, BadRequestException, ConflictException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import { v4 as uuidv4 } from 'uuid';
 import { TemplateEntity } from './template.entity';
 import { CreateTemplateDto, UpdateTemplateDto, PublishTemplateDto } from './template.dto';
 import { TemplateJSON, ListTemplatesQuery, ListTemplatesResponse } from '../../types/template.types';
@@ -18,18 +19,38 @@ export class TemplateService {
    * Create a new template
    */
   async create(dto: CreateTemplateDto): Promise<TemplateJSON> {
-    // Check for duplicate name+version
+    let version = dto.version || '1.0.0';
+    const baseName = dto.name;
+
+    // Auto-increment version if template with same name already exists
     const existing = await this.templateRepository.findOne({
-      where: { name: dto.name, version: dto.version || '1.0.0' },
+      where: { name: baseName, version },
+      order: { created_at: 'DESC' },
     });
+
     if (existing) {
-      throw new ConflictException(`Template with name "${dto.name}" and version "${dto.version || '1.0.0'}" already exists`);
+      // Auto-increment version (e.g., 1.0.0 -> 1.0.1)
+      const versionParts = version.split('.');
+      const patchVersion = parseInt(versionParts[2] || '0', 10) + 1;
+      version = `${versionParts[0]}.${versionParts[1]}.${patchVersion}`;
+
+      // Check again with new version
+      const existingWithNewVersion = await this.templateRepository.findOne({
+        where: { name: baseName, version },
+      });
+
+      if (existingWithNewVersion) {
+        // If still exists, try minor version increment
+        const minorVersion = parseInt(versionParts[1] || '0', 10) + 1;
+        version = `${versionParts[0]}.${minorVersion}.0`;
+      }
     }
 
     // Validate template structure before saving
     const entityToValidate = this.templateRepository.create({
-      name: dto.name,
-      version: dto.version || '1.0.0',
+      id: uuidv4(), // Generate UUID for validation
+      name: baseName,
+      version,
       description: dto.description,
       params_schema: dto.params_schema || { type: 'object', properties: {}, required: [] },
       steps: dto.steps || [],
@@ -224,8 +245,8 @@ export class TemplateService {
       steps: entity.steps,
       metadata: {
         created_by: entity.created_by,
-        created_at: entity.created_at.toISOString(),
-        updated_at: entity.updated_at.toISOString(),
+        created_at: entity.created_at?.toISOString() || new Date().toISOString(),
+        updated_at: entity.updated_at?.toISOString() || new Date().toISOString(),
         description: entity.description,
       },
     };

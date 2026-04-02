@@ -1,0 +1,35 @@
+import { Injectable, Logger } from '@nestjs/common';
+
+export interface TemplateStep {
+  step_id: string;
+  action: string;
+  params?: Record<string, unknown>;
+  on_fail?: string;
+}
+
+export interface Template {
+  id: string;
+  name: string;
+  steps: TemplateStep[];
+}
+
+@Injectable()
+export class TemplateClient {
+  private readonly logger = new Logger(TemplateClient.name);
+  // Always use Docker service name (session-broker runs in Docker)
+  private readonly templateServiceUrl = process.env.TEMPLATE_SERVICE_URL || 'http://ops-template:3005';
+
+  async getTemplate(templateId: string): Promise<Template | null> {
+    try {
+      const response = await fetch(`${this.templateServiceUrl}/templates/${templateId}`);
+      if (!response.ok) {
+        this.logger.error(`Failed to fetch template ${templateId}: ${response.status}`);
+        return null;
+      }
+      return await response.json() as Template;
+    } catch (error) {
+      this.logger.error(`Error fetching template ${templateId}:`, error);
+      return null;
+    }
+  }
+}

@@ -68,7 +68,7 @@ services:
     image: docker.1ms.run/library/node:20-bullseye
     container_name: ops-session-broker
     working_dir: /app
-    command: sh -c "npm config set registry https://registry.npmmirror.com && npm install --legacy-peer-deps && npm run dev"
+    command: sh -c "npm config set registry https://registry.npmmirror.com && npm install --legacy-peer-deps && rm -f tsconfig.tsbuildinfo && npx tsc && node dist/main.js"
     environment:
       - NODE_ENV=development
       - DATABASE_URL=postgresql://ops:ops_secret@postgres:5432/ops
@@ -136,6 +136,11 @@ services:
     environment:
       - NODE_ENV=development
       - DATABASE_URL=postgresql://ops:ops_secret@postgres:5432/ops
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_USERNAME=ops
+      - DB_PASSWORD=ops_secret
+      - DB_DATABASE=ops
       - PORT=3005
     ports:
       - "3005:3005"
@@ -200,7 +205,8 @@ services:
     command: sh -c "npm config set registry https://registry.npmmirror.com && npm install --legacy-peer-deps && npm run dev"
     environment:
       - NODE_ENV=development
-      - VITE_API_BASE_URL=http://localhost:3001
+      - DOCKER_ENV=true
+      - VITE_API_BASE_URL=/api
       - VITE_RECORDER_WS_URL=ws://localhost:3004
     ports:
       - "5173:5173"
@@ -210,6 +216,7 @@ services:
     depends_on:
       - auth
       - browser-worker
+      - template
 
   # ============================================
   # Browser Worker (Chrome + noVNC + Codegen)

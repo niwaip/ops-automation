@@ -1,102 +1,78 @@
 import { apiClient } from './client';
 
-// Session types (for session-broker service)
-export type SessionStatus = 'pending' | 'running' | 'completed' | 'failed' | 'canceled' | 'paused';
+// Session types matching session-broker DTOs
+export type SessionState = 'IDLE' | 'RUNNING' | 'HUMAN_CONTROL' | 'CLOSED' | 'ERROR';
+export type ControlMode = 'AGENT_RUNNING' | 'HUMAN_CONTROL';
+
+export interface WorkerEndpoints {
+  novnc: string;
+  cdp: string;
+  vnc?: string;
+}
 
 export interface Session {
   id: string;
-  name?: string;
-  status: SessionStatus;
-  type: 'replay' | 'live' | 'record';
-  templateId?: string;
-  template?: {
-    id: string;
-    name: string;
-  };
-  ownerId: string;
-  owner?: {
-    id: string;
-    username: string;
-  };
-  browser: string;
-  viewport: { width: number; height: number };
-  startTime: Date;
-  endTime?: Date;
-  duration?: number;
-  noVncUrl?: string;
-  result?: Record<string, unknown>;
-  error?: string;
-  logs: string[];
-  screenshots: string[];
-  videoUrl?: string;
-  createdAt: Date;
-  updatedAt: Date;
-}
-
-export interface SessionListResponse {
-  sessions: Session[];
-  total: number;
-  page: number;
-  pageSize: number;
+  user_id: string;
+  state: SessionState;
+  control_mode: ControlMode;
+  frozen: boolean;
+  worker_ref?: string;
+  endpoints?: WorkerEndpoints;
+  template_id?: string;
+  params?: Record<string, unknown>;
+  current_step?: string;
+  step_index?: number;
+  created_at: number;
+  last_activity: number;
 }
 
 export interface CreateSessionRequest {
-  name?: string;
-  templateId?: string;
-  type: 'replay' | 'live' | 'record';
-  browser?: string;
-  viewport?: { width: number; height: number };
+  user_id: string;
+  template_id?: string;
+  params?: Record<string, unknown>;
 }
 
-export interface SessionQueryParams {
-  page?: number;
-  pageSize?: number;
-  status?: SessionStatus;
-  type?: 'replay' | 'live' | 'record';
-  ownerId?: string;
-  templateId?: string;
-  search?: string;
+export interface CreateSessionResponse {
+  session: Session;
+  endpoints: WorkerEndpoints;
+}
+
+export interface StartSessionRequest {
+  template_id: string;
+  params: Record<string, unknown>;
+}
+
+export interface TakeoverSessionRequest {
+  reason: string;
+}
+
+export interface ContinueSessionRequest {
+  step_id: string;
 }
 
 // Session API
 export const sessionApi = {
-  list: async (params?: SessionQueryParams): Promise<SessionListResponse> => {
-    return apiClient.get<SessionListResponse>('/sessions', { params });
-  },
-
   getById: async (id: string): Promise<Session> => {
     return apiClient.get<Session>(`/sessions/${id}`);
   },
 
-  create: async (data: CreateSessionRequest): Promise<Session> => {
-    return apiClient.post<Session>('/sessions', data);
+  create: async (data: CreateSessionRequest): Promise<CreateSessionResponse> => {
+    return apiClient.post<CreateSessionResponse>('/sessions', data);
   },
 
-  start: async (id: string): Promise<Session> => {
-    return apiClient.patch<Session>(`/sessions/${id}/start`);
+  start: async (id: string, data: StartSessionRequest): Promise<Session> => {
+    return apiClient.post<Session>(`/sessions/${id}/start`, data);
   },
 
-  stop: async (id: string): Promise<Session> => {
-    return apiClient.patch<Session>(`/sessions/${id}/stop`);
+  takeover: async (id: string, data: TakeoverSessionRequest): Promise<Session> => {
+    return apiClient.post<Session>(`/sessions/${id}/takeover`, data);
   },
 
-  pause: async (id: string): Promise<Session> => {
-    return apiClient.patch<Session>(`/sessions/${id}/pause`);
+  continue: async (id: string, data: ContinueSessionRequest): Promise<Session> => {
+    return apiClient.post<Session>(`/sessions/${id}/continue`, data);
   },
 
-  resume: async (id: string): Promise<Session> => {
-    return apiClient.patch<Session>(`/sessions/${id}/resume`);
-  },
-
-  delete: async (id: string): Promise<void> => {
-    return apiClient.delete(`/sessions/${id}`);
-  },
-
-  getLogs: async (id: string): Promise<string[]> => {
-    return apiClient.get<string[]>(`/sessions/${id}/logs`);
-  },
-
-  getScreenshot: async (id: string): Promise<string> => {
-    return apiClient.get<string>(`/sessions/${id}/screenshot`);
+  delete: async (id: string): Promise<{ success: boolean }> => {
+    return apiClient.delete<{ success: boolean }>(`/sessions/${id}`);
   },
 };

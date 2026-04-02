@@ -9,8 +9,7 @@ async function bootstrap() {
   // Enable validation pipe globally
   app.useGlobalPipes(
     new ValidationPipe({
-      whitelist: true,
-      forbidNonWhitelisted: true,
+      whitelist: false, // Disable whitelist to allow nested objects
       transform: true,
       transformOptions: {
         enableImplicitConversion: true,

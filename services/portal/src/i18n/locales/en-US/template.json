@@ -21,6 +21,7 @@
   "editTemplate": "Edit Template",
   "deleteTemplate": "Delete Template",
   "publishTemplate": "Publish Template",
+  "submitForReview": "Submit for Review",
   "reviewTemplate": "Review Template",
   "deprecateTemplate": "Deprecate Template",
   "revokeTemplate": "Revoke Template",
@@ -32,5 +33,15 @@
   "stepValue": "Value",
   "stepTimeout": "Timeout",
   "stepRetry": "Retry Count",
-  "filterByStatus": "Filter by Status"
+  "filterByStatus": "Filter by Status",
+  "executeTemplate": "Execute Template",
+  "executeModalTitle": "Execution Parameters",
+  "executeModalDesc": "Please enter the parameters required for template execution",
+  "executeStarting": "Starting execution...",
+  "executeSuccess": "Execution started, redirecting to session detail",
+  "executeFailed": "Failed to start execution",
+  "noParams": "This template requires no parameters",
+  "paramName": "Parameter Name",
+  "paramValue": "Parameter Value",
+  "paramDescription": "Parameter Description"
 }

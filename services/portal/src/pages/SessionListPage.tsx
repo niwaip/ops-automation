@@ -199,7 +199,7 @@ const SessionListPage: React.FC = () => {
             <Button
               type="primary"
               icon={<PlusOutlined />}
-              onClick={() => navigate('/recorder')}
+              onClick={() => navigate('/sessions/new')}
             >
               {t('session:startSession')}
             </Button>

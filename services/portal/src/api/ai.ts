@@ -71,3 +71,22 @@ export const aiModelApi = {
     return apiClient.post(`/ai/models/${id}/test`, { prompt });
   },
 };
+
+// AI Parameter Recognition API
+export interface RecognizeParamsRequest {
+  template_id: string;
+  user_input: string;
+  context?: Record<string, unknown>;
+}
+
+export interface RecognizeParamsResponse {
+  params: Record<string, unknown>;
+  confidence: number;
+  suggestions?: string[];
+}
+
+export const aiApi = {
+  recognizeParams: async (data: RecognizeParamsRequest): Promise<RecognizeParamsResponse> => {
+    return apiClient.post<RecognizeParamsResponse>('/ai/recognize-params', data);
+  },
+};
