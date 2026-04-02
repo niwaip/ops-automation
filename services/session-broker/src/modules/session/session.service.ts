@@ -150,7 +150,7 @@ export class SessionService {
         const url = firstStep.params.url as string;
         this.logger.log(`Executing first step: navigate to ${url}`);
 
-        const result = await this.cdpExecutor.navigateToUrl(url);
+        const result = await this.cdpExecutor.navigateToUrl(url, sessionId);
         if (!result.success) {
           this.logger.warn(`Failed to navigate: ${result.error}`);
         }
