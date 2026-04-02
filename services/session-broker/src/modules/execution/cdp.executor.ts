@@ -4,10 +4,8 @@ import { Injectable, Logger } from '@nestjs/common';
 export class CdpExecutor {
   private readonly logger = new Logger(CdpExecutor.name);
 
-  // Browser-Chrome Codegen API endpoint
-  // In Docker, use service name; locally use localhost
-  private readonly browserHost = process.env.BROWSER_HOST ||
-    (process.env.DOCKER_ENV ? 'ops-browser-chrome' : 'localhost');
+  // Always use Docker service name (session-broker runs in Docker)
+  private readonly browserHost = process.env.BROWSER_HOST || 'ops-browser-chrome';
   private readonly browserPort = process.env.BROWSER_PORT || '3000';
 
   /**
