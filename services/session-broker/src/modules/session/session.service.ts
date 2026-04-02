@@ -4,6 +4,8 @@ import { RedisService } from '../lock/redis.service';
 import { LockService } from '../lock/lock.service';
 import { AllocationService } from '../allocation/allocation.service';
 import { FreezeService } from '../freeze/freeze.service';
+import { TemplateClient } from '../template/template.client';
+import { CdpExecutor } from '../execution/cdp.executor';
 import {
   Session,
   SessionState,
@@ -28,6 +30,8 @@ export class SessionService {
     private readonly lockService: LockService,
     private readonly allocationService: AllocationService,
     private readonly freezeService: FreezeService,
+    private readonly templateClient: TemplateClient,
+    private readonly cdpExecutor: CdpExecutor,
   ) {}
 
   /**
@@ -134,6 +138,23 @@ export class SessionService {
     // Check if session is in IDLE state
     if (currentSession.state !== 'IDLE') {
       throw new BadRequestException(`Session ${sessionId} is not in IDLE state. Current state: ${currentSession.state}`);
+    }
+
+    // Get template and execute first step
+    const template = await this.templateClient.getTemplate(request.template_id);
+    if (template && template.steps && template.steps.length > 0) {
+      const firstStep = template.steps[0];
+
+      // Execute navigate action
+      if (firstStep.action === 'navigate' && firstStep.params?.url) {
+        const url = firstStep.params.url as string;
+        this.logger.log(`Executing first step: navigate to ${url}`);
+
+        const result = await this.cdpExecutor.navigateToUrl(url);
+        if (!result.success) {
+          this.logger.warn(`Failed to navigate: ${result.error}`);
+        }
+      }
     }
 
     // Update session state
