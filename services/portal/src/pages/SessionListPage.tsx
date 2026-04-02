@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Table, Card, Button, Input, Space, Tag, Select, Typography, Modal, message } from 'antd';
+import { Table, Card, Button, Input, Space, Tag, Select, Modal, message } from 'antd';
 import {
   SearchOutlined,
   PlusOutlined,
@@ -14,7 +14,6 @@ import { useQuery, useMutation, useQueryClient } from 'react-query';
 import { sessionApi, Session, SessionStatus } from '../api/session';
 import type { ColumnsType } from 'antd/es/table';
 
-const { Title } = Typography;
 const { Option } = Select;
 
 const SessionListPage: React.FC = () => {
@@ -163,22 +162,22 @@ const SessionListPage: React.FC = () => {
 
   return (
     <div>
-      <Title level={4}>{t('session:sessionList')}</Title>
+      <div className="page-title">{t('session:sessionList')}</div>
 
-      <Card style={{ marginTop: 16 }}>
-        <Space style={{ marginBottom: 16, width: '100%', justifyContent: 'space-between' }}>
-          <Space>
+      <Card bordered={false}>
+        <Space style={{ marginBottom: 20, width: '100%', justifyContent: 'space-between' }}>
+          <Space size={12}>
             <Input
               placeholder={t('common:search')}
-              prefix={<SearchOutlined />}
+              prefix={<SearchOutlined style={{ color: 'var(--text-light)' }} />}
               value={searchText}
               onChange={(e) => setSearchText(e.target.value)}
-              style={{ width: 200 }}
+              style={{ width: 240 }}
               allowClear
             />
             <Select
               placeholder={t('template:filterByStatus')}
-              style={{ width: 150 }}
+              style={{ width: 160 }}
               value={statusFilter}
               onChange={(value) => setStatusFilter(value)}
               allowClear
@@ -190,7 +189,7 @@ const SessionListPage: React.FC = () => {
               ))}
             </Select>
           </Space>
-          <Space>
+          <Space size={12}>
             <Button
               icon={<ReloadOutlined />}
               onClick={() => sessionsQuery.refetch()}
