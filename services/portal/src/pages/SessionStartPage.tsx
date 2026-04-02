@@ -8,6 +8,8 @@ import {
   ClockCircleOutlined,
   ThunderboltOutlined,
   CalendarOutlined,
+  EyeOutlined,
+  DesktopOutlined,
 } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
 import { useQuery, useMutation } from 'react-query';
@@ -20,6 +22,9 @@ const { TextArea } = Input;
 const { Option } = Select;
 const { Title, Text } = Typography;
 const { RangePicker } = DatePicker;
+
+// noVNC URL - use environment variable or default
+const NOVNC_URL = import.meta.env.VITE_NOVNC_URL || 'http://localhost:6080/vnc.html';
 
 const SessionStartPage: React.FC = () => {
   const { t } = useTranslation(['common', 'session', 'template']);
@@ -431,6 +436,16 @@ const SessionStartPage: React.FC = () => {
               style={{ borderRadius: 10, minWidth: 100 }}
             >
               {t('common:cancel')}
+            </Button>
+          </Col>
+          <Col>
+            <Button
+              icon={<DesktopOutlined />}
+              size="large"
+              onClick={() => window.open(`${NOVNC_URL}?autoconnect=true&resize=scale`, '_blank')}
+              style={{ borderRadius: 10, minWidth: 140, height: 48 }}
+            >
+              {t('session:connectNoVNC') || '连接桌面'}
             </Button>
           </Col>
           <Col>
