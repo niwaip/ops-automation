@@ -17,6 +17,9 @@ export class CreateWorkerRequestDto {
 
   @ApiProperty({ example: '/profiles/user-123/chrome', description: 'Chrome profile path', required: false })
   profile_path?: string;
+
+  @ApiProperty({ example: 'https://example.com', description: 'Initial URL to navigate to', required: false })
+  initial_url?: string;
 }
 
 export class CreateWorkerResponseDto {
