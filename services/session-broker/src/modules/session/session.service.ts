@@ -100,14 +100,8 @@ export class SessionService {
 
     this.logger.log(`Session created: session=${sessionId}, user=${request.user_id}, worker=${workerInfo.worker_id}`);
 
-    // Step 5: Start browser for this session so user can see it in noVNC
-    if (request.template_id) {
-      // Get template to find start URL
-      const template = await this.templateClient.getTemplate(request.template_id);
-      const startUrl = template?.steps?.[0]?.params?.url || 'https://www.bing.com';
-      await this.cdpExecutor.startBrowser(sessionId, startUrl as string);
-      this.logger.log(`Browser started for session ${sessionId}`);
-    }
+    // Note: Browser will be started when session is started (not at creation time)
+    // This allows user to connect to noVNC first and see the browser when execution begins
 
     // Build response
     const session: Session = {
