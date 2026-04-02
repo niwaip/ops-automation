@@ -158,20 +158,7 @@ const RecorderControls: React.FC<RecorderControlsProps> = ({
           )}
         </Space>
 
-        {/* Instructions */}
-        <Card size="small" type="inner">
-          <div style={{ fontSize: 12 }}>
-            <p>{t('recorder:instructions.title')}</p>
-            <ul style={{ paddingLeft: 16, margin: 0 }}>
-              <li>{t('recorder:instructions.step1')}</li>
-              <li>{t('recorder:instructions.step2')}</li>
-              <li>{t('recorder:instructions.step3')}</li>
-              <li>{t('recorder:instructions.step4')}</li>
-              <li>{t('recorder:instructions.step5')}</li>
-            </ul>
-          </div>
-        </Card>
-      </Space>
+        </Space>
     </Card>
   );
 };

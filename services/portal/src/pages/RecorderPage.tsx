@@ -32,7 +32,8 @@ const RecorderPage: React.FC = () => {
 
   // Compile mutation
   const compileMutation = useMutation(
-    (script: string) => templateApi.compile(script),
+    (options: { script: string; intent?: string }) =>
+      templateApi.compile(options.script, options.intent),
     {
       onSuccess: (result: CompileResult) => {
         setTemplate(result.template as CompiledTemplate);
@@ -163,8 +164,8 @@ const RecorderPage: React.FC = () => {
     recorderService.resumeRecording();
   }, []);
 
-  const handleCompile = useCallback((script: string) => {
-    compileMutation.mutate(script);
+  const handleCompile = useCallback((options: { script: string; intent?: string }) => {
+    compileMutation.mutate(options);
   }, [compileMutation]);
 
   const handleSave = useCallback((compiledTemplate: CompiledTemplate) => {
@@ -193,8 +194,9 @@ const RecorderPage: React.FC = () => {
             <ScriptPreview
               script={recorderState.script}
               onCompile={handleCompile}
-              disabled={recorderState.status !== 'stopped' || compileMutation.isLoading}
+              disabled={recorderState.status !== 'stopped'}
               status={recorderState.status}
+              compiling={compileMutation.isLoading}
             />
           </div>
         </Col>

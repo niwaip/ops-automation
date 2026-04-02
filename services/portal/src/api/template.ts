@@ -137,8 +137,8 @@ export const templateApi = {
     return apiClient.post<Template>(`/templates/${id}/clone`);
   },
 
-  compile: async (script: string): Promise<CompileResult> => {
-    return apiClient.post<CompileResult>('/templates/compile', { script });
+  compile: async (script: string, intent?: string): Promise<CompileResult> => {
+    return apiClient.post<CompileResult>('/templates/compile', { script, intent });
   },
 
   validate: async (id: string): Promise<{ valid: boolean; errors: string[] }> => {

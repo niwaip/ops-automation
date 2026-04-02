@@ -33,6 +33,7 @@
   "compiling": "正在编译...",
   "compileSuccess": "编译成功",
   "compileFailed": "编译失败",
+  "compileDisabledHint": "请先停止录制后再编译",
   "templatePreview": "模板预览",
   "noTemplateYet": "编译脚本后将在此显示模板",
   "noTemplate": "没有可保存的模板",
@@ -54,12 +55,12 @@
   "browserPreview": "浏览器预览",
   "recordingInProgress": "正在录制...",
   "startToPreview": "开始录制以预览浏览器",
-  "instructions": {
-    "title": "使用说明",
-    "step1": "1. 点击【连接】按钮连接到录制服务",
-    "step2": "2. 输入要录制的目标网址",
-    "step3": "3. 点击【开始录制】启动 Playwright codegen",
-    "step4": "4. 在浏览器中进行操作，脚本会自动生成",
-    "step5": "5. 点击【停止录制】，然后编译并保存为模板"
+  "intentModal": {
+    "title": "编译意图说明",
+    "label": "操作意图",
+    "placeholder": "请描述这次录制操作的目的，例如：登录系统并提交表单、创建新用户账号等。AI将根据您的描述整理模板信息。",
+    "hint": "输入操作意图可以帮助AI更好地理解脚本目的，生成更准确的模板描述和参数定义。",
+    "confirm": "开始编译",
+    "cancel": "取消"
   }
 }

@@ -1,15 +1,22 @@
 import React, { useState, useMemo } from 'react';
-import { Card, Button, Input, Space, Typography, Empty, message, Tooltip, Alert } from 'antd';
-import { CopyOutlined, FileTextOutlined, EditOutlined, CheckOutlined } from '@ant-design/icons';
+import { Card, Button, Input, Space, Typography, Empty, message, Tooltip, Alert, Modal, Form } from 'antd';
+import { CopyOutlined, FileTextOutlined, EditOutlined, CheckOutlined, TransformOutlined, BulbOutlined } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
 
 const { Text } = Typography;
+const { TextArea } = Input;
+
+interface CompileOptions {
+  script: string;
+  intent?: string;
+}
 
 interface ScriptPreviewProps {
   script: string;
-  onCompile: (script: string) => void;
+  onCompile: (options: CompileOptions) => void;
   disabled?: boolean;
   status?: string;
+  compiling?: boolean;
 }
 
 const ScriptPreview: React.FC<ScriptPreviewProps> = ({
@@ -17,11 +24,15 @@ const ScriptPreview: React.FC<ScriptPreviewProps> = ({
   onCompile,
   disabled = false,
   status,
+  compiling = false,
 }) => {
   const { t } = useTranslation(['common', 'recorder']);
   const [isEditing, setIsEditing] = useState(false);
   const [editedScript, setEditedScript] = useState(script);
   const [templateName, setTemplateName] = useState('');
+  const [intentModalVisible, setIntentModalVisible] = useState(false);
+  const [compileIntent, setCompileIntent] = useState('');
+  const [form] = Form.useForm();
 
   // Parse script to highlight actions
   const highlightedScript = useMemo(() => {
@@ -66,12 +77,26 @@ const ScriptPreview: React.FC<ScriptPreviewProps> = ({
     message.success(t('recorder:scriptEdited'));
   };
 
-  const handleCompile = () => {
+  const handleOpenIntentModal = () => {
     if (!script.trim()) {
       message.warning(t('recorder:noScript'));
       return;
     }
-    onCompile(isEditing ? editedScript : script);
+    setIntentModalVisible(true);
+  };
+
+  const handleCompileConfirm = () => {
+    setIntentModalVisible(false);
+    onCompile({
+      script: isEditing ? editedScript : script,
+      intent: compileIntent.trim() || undefined,
+    });
+    setCompileIntent('');
+  };
+
+  const handleCompileCancel = () => {
+    setIntentModalVisible(false);
+    setCompileIntent('');
   };
 
   const actionCount = useMemo(() => {
@@ -177,16 +202,55 @@ const ScriptPreview: React.FC<ScriptPreviewProps> = ({
         )}
 
         {/* Compile Button */}
-        <Button
-          type="primary"
-          size="large"
-          block
-          onClick={handleCompile}
-          disabled={disabled || !script.trim()}
-        >
-          {t('recorder:compile')}
-        </Button>
+        <Tooltip title={disabled ? t('recorder:compileDisabledHint') : ''}>
+          <Button
+            type="primary"
+            size="large"
+            block
+            icon={<TransformOutlined />}
+            onClick={handleOpenIntentModal}
+            disabled={disabled || !script.trim() || compiling}
+            loading={compiling}
+          >
+            {compiling ? t('recorder:compiling') : t('recorder:compile')}
+          </Button>
+        </Tooltip>
       </Space>
+
+      {/* Intent Input Modal */}
+      <Modal
+        title={
+          <Space>
+            <BulbOutlined />
+            {t('recorder:intentModal.title')}
+          </Space>
+        }
+        open={intentModalVisible}
+        onOk={handleCompileConfirm}
+        onCancel={handleCompileCancel}
+        okText={t('recorder:intentModal.confirm')}
+        cancelText={t('recorder:intentModal.cancel')}
+        confirmLoading={compiling}
+      >
+        <Form form={form} layout="vertical">
+          <Form.Item label={t('recorder:intentModal.label')}>
+            <TextArea
+              rows={4}
+              value={compileIntent}
+              onChange={(e) => setCompileIntent(e.target.value)}
+              placeholder={t('recorder:intentModal.placeholder')}
+              showCount
+              maxLength={500}
+            />
+          </Form.Item>
+          <Alert
+            type="info"
+            showIcon
+            message={t('recorder:intentModal.hint')}
+            style={{ marginTop: 8 }}
+          />
+        </Form>
+      </Modal>
     </Card>
   );
 };
