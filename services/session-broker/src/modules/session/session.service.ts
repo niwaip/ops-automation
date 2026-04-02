@@ -5,7 +5,7 @@ import { LockService } from '../lock/lock.service';
 import { AllocationService } from '../allocation/allocation.service';
 import { FreezeService } from '../freeze/freeze.service';
 import { TemplateClient } from '../template/template.client';
-import { CdpExecutor } from '../execution/cdp.executor';
+import { CdpExecutor, TemplateStep } from '../execution/cdp.executor';
 import {
   Session,
   SessionState,
@@ -138,20 +138,19 @@ export class SessionService {
       throw new BadRequestException(`Session ${sessionId} is not in IDLE state. Current state: ${currentSession.state}`);
     }
 
-    // Get template and execute first step
+    // Get template and execute all steps
     const template = await this.templateClient.getTemplate(request.template_id);
     if (template && template.steps && template.steps.length > 0) {
-      const firstStep = template.steps[0];
+      // Execute all steps
+      this.logger.log(`Executing ${template.steps.length} steps for session ${sessionId}`);
 
-      // Execute navigate action
-      if (firstStep.action === 'navigate' && firstStep.params?.url) {
-        const url = firstStep.params.url as string;
-        this.logger.log(`Executing first step: navigate to ${url}`);
+      const results = await this.cdpExecutor.executeSteps(template.steps as TemplateStep[], sessionId);
 
-        const result = await this.cdpExecutor.navigateToUrl(url, sessionId);
-        if (!result.success) {
-          this.logger.warn(`Failed to navigate: ${result.error}`);
-        }
+      const failedSteps = results.filter(r => !r.success);
+      if (failedSteps.length > 0) {
+        this.logger.warn(`Some steps failed: ${failedSteps.map(s => s.step_id).join(', ')}`);
+      } else {
+        this.logger.log(`All ${results.length} steps completed successfully`);
       }
     }
 
