@@ -214,7 +214,11 @@ export class PlaywrightCompiler {
   }
 
   private normalizeScript(script: string): string {
-    return script.replace(/\/\/.*$/gm, '').replace(/\/\*[\s\S]*?\*\//g, '').replace(/\s+/g, ' ').trim();
+    return script
+      .replace(/\/\*[\s\S]*?\*\//g, '') // Remove block comments
+      .replace(/await\s+/g, '') // Remove await keywords
+      .replace(/\s+/g, ' ') // Normalize whitespace
+      .trim();
   }
 
   private extractTemplateName(script: string): string | null {
