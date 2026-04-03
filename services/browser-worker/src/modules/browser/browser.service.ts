@@ -140,6 +140,8 @@ export class BrowserService implements OnModuleDestroy {
         return await this.fill(command.params.selector as string, command.params.value as string);
       case 'screenshot':
         return await this.screenshot();
+      case 'snapshot':
+        return await this.snapshot();
       case 'wait':
         return await this.wait(command.params.selector as string, command.params.duration as number);
       case 'hover':
@@ -307,6 +309,31 @@ export class BrowserService implements OnModuleDestroy {
       req.setTimeout(30000, () => {
         req.destroy();
         reject(new Error('Screenshot timeout'));
+      });
+    });
+  }
+
+  private async snapshot(): Promise<{ status: string; snapshot?: any }> {
+    return new Promise((resolve, reject) => {
+      const req = http.get(
+        `http://${this.chromeHost}:${this.codegenPort}/snapshot`,
+        (res) => {
+          let data = '';
+          res.on('data', (chunk) => data += chunk);
+          res.on('end', () => {
+            try {
+              const result = JSON.parse(data);
+              resolve({ status: 'success', snapshot: result.snapshot });
+            } catch {
+              resolve({ status: 'success' });
+            }
+          });
+        }
+      );
+      req.on('error', reject);
+      req.setTimeout(15000, () => {
+        req.destroy();
+        reject(new Error('Snapshot timeout'));
       });
     });
   }

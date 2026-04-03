@@ -54,6 +54,11 @@ const BROWSER_TOOLS = [
     params: {},
   },
   {
+    name: 'snapshot',
+    description: 'Take accessibility snapshot of the page (get element UIDs for reliable clicking)',
+    params: {},
+  },
+  {
     name: 'wait',
     description: 'Wait for an element or time',
     params: {
@@ -305,6 +310,26 @@ export class BrowserCommandService {
             description: '截取当前页面',
           }],
           explanation: '将截取当前页面截图',
+        };
+      }
+    }
+
+    // Pattern: Snapshot (accessibility tree)
+    const snapshotPatterns = [
+      /^(?:快照|页面结构|获取页面|take\s*snapshot|snapshot)$/i,
+      /^(?:查看|分析)\s*(?:页面|结构)$/i,
+    ];
+
+    for (const pattern of snapshotPatterns) {
+      if (pattern.test(input)) {
+        return {
+          success: true,
+          commands: [{
+            tool: 'snapshot',
+            params: {},
+            description: '获取页面结构快照',
+          }],
+          explanation: '将获取页面可访问性结构快照',
         };
       }
     }

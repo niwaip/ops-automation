@@ -447,81 +447,296 @@ def ai_reset():
     except Exception as e:
         return {"status": "error", "message": str(e)}
 
-def ai_click_result(index=1):
-    """Click on the Nth search result"""
+def ai_snapshot():
+    """Take accessibility snapshot of the page - similar to chrome-devtools-mcp take_snapshot"""
     global ai_page, ai_mode_active
 
     if not ai_mode_active or not ai_page:
         return {"status": "error", "message": "AI browser not initialized"}
 
     try:
-        # Common search result selectors for different search engines
-        selectors = [
-            # Baidu
-            ".result.c-container a:first-child",
-            "#content_left .result .t a",
-            ".result a",
-            # Google
-            ".g .r a",
-            "#search .g div.yuRUbf > a",
-            ".g a",
-            # Bing
-            ".b_algo .b_title a",
-            ".b_algo h2 a",
-            ".b_algo a",
-            # Generic
-            "article a",
-            ".search-result a",
-            "li a",
-        ]
+        # Wait for page to be stable
+        ai_page.wait_for_load_state("domcontentloaded", timeout=5000)
 
-        clicked = False
-        for selector in selectors:
-            try:
-                # Get all matching elements
-                elements = ai_page.query_selector_all(selector)
-                if elements and len(elements) >= index:
-                    # Click on the nth element (1-indexed)
-                    target_element = elements[index - 1]
-                    target_element.click()
-                    clicked = True
-                    print(f"[INFO] Clicked result {index} using selector: {selector}")
-                    return {"status": "success", "message": f"Clicked result {index}"}
-            except Exception as e:
-                print(f"[DEBUG] Selector {selector} failed: {e}")
-                continue
+        # Get accessibility tree snapshot
+        snapshot = ai_page.evaluate("""
+            () => {
+                function buildAccessibilityTree(element, depth = 0, uid_prefix = '1') {
+                    if (depth > 10) return null;  // Limit depth
 
-        if not clicked:
-            # Try using evaluate to find and click links
-            try:
-                result = ai_page.evaluate(f"""
-                    () => {{
-                        const links = document.querySelectorAll('a');
-                        const visibleLinks = Array.from(links).filter(link => {{
-                            const style = window.getComputedStyle(link);
-                            return style.display !== 'none' &&
-                                   style.visibility !== 'hidden' &&
-                                   link.offsetWidth > 0 &&
-                                   link.offsetHeight > 0 &&
-                                   link.href &&
-                                   !link.href.includes('javascript:') &&
-                                   !link.href.includes('#');
+                    const style = window.getComputedStyle(element);
+                    if (style.display === 'none' || style.visibility === 'hidden') return null;
+
+                    const result = {
+                        uid: uid_prefix,
+                        role: element.getAttribute('role') || getImplicitRole(element),
+                        name: element.getAttribute('aria-label') ||
+                              element.getAttribute('title') ||
+                              element.alt ||
+                              element.textContent?.trim().substring(0, 100) ||
+                              '',
+                        depth: depth
+                    };
+
+                    // Add extra info for interactive elements
+                    if (element.tagName === 'A') {
+                        result.role = 'link';
+                        result.href = element.href;
+                    } else if (element.tagName === 'INPUT' || element.tagName === 'TEXTAREA') {
+                        result.role = element.type === 'button' ? 'button' : 'textbox';
+                        result.value = element.value;
+                        result.placeholder = element.placeholder;
+                    } else if (element.tagName === 'BUTTON') {
+                        result.role = 'button';
+                    } else if (element.tagName === 'IMG') {
+                        result.role = 'img';
+                        result.alt = element.alt;
+                    } else if (element.tagName === 'H1' || element.tagName === 'H2' || element.tagName === 'H3') {
+                        result.role = 'heading';
+                        result.level = parseInt(element.tagName.substring(1));
+                    }
+
+                    // Filter out empty/irrelevant elements
+                    if (!result.name && !['link', 'button', 'textbox', 'img', 'heading'].includes(result.role)) {
+                        return null;
+                    }
+
+                    // Process children
+                    const children = [];
+                    let childIndex = 0;
+                    for (const child of element.children) {
+                        const childTree = buildAccessibilityTree(child, depth + 1, `${uid_prefix}_${childIndex}`);
+                        if (childTree) {
+                            children.push(childTree);
+                            childIndex++;
+                        }
+                    }
+
+                    if (children.length > 0) {
+                        result.children = children;
+                    }
+
+                    return result;
+                }
+
+                function getImplicitRole(element) {
+                    const tag = element.tagName.toLowerCase();
+                    const roleMap = {
+                        'a': 'link',
+                        'button': 'button',
+                        'input': 'textbox',
+                        'textarea': 'textbox',
+                        'img': 'img',
+                        'h1': 'heading',
+                        'h2': 'heading',
+                        'h3': 'heading',
+                        'h4': 'heading',
+                        'nav': 'navigation',
+                        'main': 'main',
+                        'header': 'banner',
+                        'footer': 'contentinfo',
+                        'ul': 'list',
+                        'ol': 'list',
+                        'li': 'listitem',
+                        'table': 'table',
+                        'form': 'form',
+                        'article': 'article',
+                        'section': 'section'
+                    };
+                    return roleMap[tag] || 'generic';
+                }
+
+                // Build tree from body
+                const tree = buildAccessibilityTree(document.body, 0, '1');
+
+                // Also get interactive elements list for easier access
+                const interactiveElements = [];
+                document.querySelectorAll('a, button, input, textarea, select, [role="button"], [onclick]').forEach((el, i) => {
+                    const style = window.getComputedStyle(el);
+                    if (style.display !== 'none' && style.visibility !== 'hidden') {
+                        interactiveElements.push({
+                            uid: `int_${i}`,
+                            type: el.tagName.toLowerCase(),
+                            text: el.textContent?.trim().substring(0, 50) || el.value || el.placeholder || '',
+                            href: el.href || null,
+                            role: el.getAttribute('role') || el.tagName.toLowerCase()
                         });
-                        if (visibleLinks.length >= {index}) {{
-                            visibleLinks[{index} - 1].click();
-                            return true;
-                        }}
-                        return false;
-                    }}
-                """)
-                if result:
-                    return {"status": "success", "message": f"Clicked link {index}"}
-            except Exception as e:
-                print(f"[ERROR] JavaScript click failed: {e}")
+                    }
+                });
 
-        return {"status": "error", "message": f"Could not find result {index}"}
+                return {
+                    tree: tree,
+                    interactiveElements: interactiveElements.slice(0, 20),  // Limit to 20
+                    url: window.location.href,
+                    title: document.title
+                };
+            }
+        """)
+
+        print(f"[INFO] Snapshot taken: {snapshot['title']}")
+        print(f"[INFO] Found {len(snapshot['interactiveElements'])} interactive elements")
+
+        return {"status": "success", "snapshot": snapshot}
+
+    except Exception as e:
+        print(f"[ERROR] Snapshot failed: {e}")
+        import traceback
+        traceback.print_exc()
+        return {"status": "error", "message": str(e)}
+
+def ai_click_result(index=1):
+    """Click on the Nth search result - inspired by chrome-devtools-mcp snapshot approach"""
+    global ai_page, ai_mode_active
+
+    if not ai_mode_active or not ai_page:
+        return {"status": "error", "message": "AI browser not initialized"}
+
+    try:
+        # Wait for page to be stable
+        ai_page.wait_for_load_state("networkidle", timeout=5000)
+
+        # Get page structure snapshot (similar to chrome-devtools-mcp take_snapshot)
+        # Find all visible links that look like search results
+        result_links = ai_page.evaluate("""
+            () => {
+                const results = [];
+                // Helper to check if element is visible
+                function isVisible(el) {
+                    const style = window.getComputedStyle(el);
+                    return style.display !== 'none' &&
+                           style.visibility !== 'hidden' &&
+                           el.offsetWidth > 0 &&
+                           el.offsetHeight > 0;
+                }
+
+                // Helper to get element's bounding rect
+                function getRect(el) {
+                    const rect = el.getBoundingClientRect();
+                    return { x: rect.x, y: rect.y, width: rect.width, height: rect.height };
+                }
+
+                // Baidu search results
+                const baiduResults = document.querySelectorAll('#content_left .result, .result.c-container');
+                if (baiduResults.length > 0) {
+                    baiduResults.forEach((result, i) => {
+                        const link = result.querySelector('a.t, .t a, h3 a, a:first-child');
+                        if (link && isVisible(link)) {
+                            results.push({
+                                type: 'baidu_result',
+                                index: i + 1,
+                                text: link.textContent.trim(),
+                                href: link.href,
+                                rect: getRect(link),
+                                selector: link.id ? '#' + link.id : null
+                            });
+                        }
+                    });
+                }
+
+                // Google search results
+                if (results.length === 0) {
+                    const googleResults = document.querySelectorAll('#search .g, .g');
+                    googleResults.forEach((result, i) => {
+                        const link = result.querySelector('a[href]', 'h3 a');
+                        if (link && isVisible(link) && !link.href.includes('google.com/search')) {
+                            results.push({
+                                type: 'google_result',
+                                index: i + 1,
+                                text: link.textContent.trim(),
+                                href: link.href,
+                                rect: getRect(link)
+                            });
+                        }
+                    });
+                }
+
+                // Bing search results
+                if (results.length === 0) {
+                    const bingResults = document.querySelectorAll('.b_algo');
+                    bingResults.forEach((result, i) => {
+                        const link = result.querySelector('h2 a, .b_title a, a');
+                        if (link && isVisible(link)) {
+                            results.push({
+                                type: 'bing_result',
+                                index: i + 1,
+                                text: link.textContent.trim(),
+                                href: link.href,
+                                rect: getRect(link)
+                            });
+                        }
+                    });
+                }
+
+                // Generic: find all visible links that look like results (in main content area)
+                if (results.length === 0) {
+                    const mainContent = document.querySelector('main, #content, #main, .content, article');
+                    if (mainContent) {
+                        const links = mainContent.querySelectorAll('a[href]');
+                        links.forEach((link, i) => {
+                            if (isVisible(link) && link.textContent.trim().length > 10) {
+                                results.push({
+                                    type: 'generic_result',
+                                    index: i + 1,
+                                    text: link.textContent.trim().substring(0, 50),
+                                    href: link.href,
+                                    rect: getRect(link)
+                                });
+                            }
+                        });
+                    }
+                }
+
+                // Fallback: all visible links in page
+                if (results.length === 0) {
+                    const allLinks = document.querySelectorAll('a[href]');
+                    allLinks.forEach((link, i) => {
+                        if (isVisible(link) &&
+                            !link.href.includes('javascript:') &&
+                            !link.href.startsWith('#') &&
+                            link.textContent.trim().length > 5) {
+                            results.push({
+                                type: 'fallback_link',
+                                index: i + 1,
+                                text: link.textContent.trim().substring(0, 50),
+                                href: link.href,
+                                rect: getRect(link)
+                            });
+                        }
+                    });
+                }
+
+                return results;
+            }
+        """)
+
+        print(f"[INFO] Found {len(result_links)} potential result links")
+        for i, link in enumerate(result_links[:5]):
+            print(f"[DEBUG] Link {i+1}: {link['text'][:30]}... ({link['type']})")
+
+        if len(result_links) >= index:
+            target = result_links[index - 1]
+            print(f"[INFO] Clicking result {index}: {target['text'][:50]}")
+
+            # Click by coordinates (most reliable method like chrome-devtools-mcp)
+            rect = target['rect']
+            x = rect['x'] + rect['width'] / 2
+            y = rect['y'] + rect['height'] / 2
+
+            ai_page.mouse.click(x, y)
+            print(f"[INFO] Clicked at coordinates ({x}, {y})")
+
+            return {
+                "status": "success",
+                "message": f"Clicked result {index}: {target['text'][:30]}",
+                "link_info": target
+            }
+
+        return {"status": "error", "message": f"Only found {len(result_links)} results, cannot click result {index}"}
+
     except Exception as e:
         print(f"[ERROR] Click result failed: {e}")
+        import traceback
+        traceback.print_exc()
         return {"status": "error", "message": str(e)}
 
 class CodegenHandler(BaseHTTPRequestHandler):
@@ -656,6 +871,10 @@ class CodegenHandler(BaseHTTPRequestHandler):
 
         elif path == '/reset':
             result = ai_reset()
+            self.send_json(result)
+
+        elif path == '/snapshot':
+            result = ai_snapshot()
             self.send_json(result)
 
         else:
