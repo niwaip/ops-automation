@@ -361,16 +361,15 @@ def ai_fill(selector, value):
         return {"status": "error", "message": str(e)}
 
 def ai_screenshot():
-    """Take screenshot"""
+    """Take screenshot - fast and direct"""
     global ai_page, ai_mode_active
 
     if not ai_mode_active or not ai_page:
         return {"status": "error", "message": "AI browser not initialized"}
 
     try:
-        # Set timeout for screenshot operation
-        ai_page.set_default_timeout(30000)
-        screenshot_bytes = ai_page.screenshot()
+        # Direct screenshot without waiting - much faster
+        screenshot_bytes = ai_page.screenshot(timeout=5000)
         screenshot_base64 = base64.b64encode(screenshot_bytes).decode('utf-8')
         return {"status": "success", "screenshot": screenshot_base64}
     except Exception as e:
@@ -585,15 +584,15 @@ def ai_snapshot():
         return {"status": "error", "message": str(e)}
 
 def ai_click_result(index=1):
-    """Click on the Nth search result - inspired by chrome-devtools-mcp snapshot approach"""
+    """Click on the Nth search result - fast and reliable"""
     global ai_page, ai_mode_active
 
     if not ai_mode_active or not ai_page:
         return {"status": "error", "message": "AI browser not initialized"}
 
     try:
-        # Wait for page to be stable
-        ai_page.wait_for_load_state("networkidle", timeout=5000)
+        # Wait for DOM to be ready (faster than networkidle)
+        ai_page.wait_for_load_state("domcontentloaded", timeout=3000)
 
         # Get page structure snapshot (similar to chrome-devtools-mcp take_snapshot)
         # Find all visible links that look like search results
