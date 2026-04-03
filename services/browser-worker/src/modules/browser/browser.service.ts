@@ -238,7 +238,7 @@ export class BrowserService implements OnModuleDestroy {
     });
   }
 
-  private async clickResult(index: number): Promise<{ status: string }> {
+  private async clickResult(index: number): Promise<{ status: string; message?: string }> {
     return new Promise((resolve, reject) => {
       const req = http.get(
         `http://${this.chromeHost}:${this.codegenPort}/click_result?index=${index}`,
