@@ -87,6 +87,20 @@ const AIControls: React.FC<AIControlsProps> = ({ onCommandExecuted }) => {
             },
           ]);
           onCommandExecuted?.(data.commands);
+
+          // Auto-execute the commands
+          executeCommandMutation.mutate(data.commands);
+        } else if (!data.success) {
+          // Show error message
+          setHistory((prev) => [
+            ...prev,
+            {
+              id: Date.now().toString(),
+              type: 'system',
+              content: data.explanation || t('recorder:ai.parseFailed') || '无法解析命令',
+              timestamp: new Date(),
+            },
+          ]);
         }
       },
       onError: () => {

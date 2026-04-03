@@ -329,54 +329,76 @@ export class BrowserCommandService {
       };
     }
 
-    // Build prompt for AI
+    // Build prompt for AI - strict JSON output only
     const toolsDescription = BROWSER_TOOLS.map(t =>
       `- ${t.name}: ${t.description}. Params: ${JSON.stringify(t.params)}`
     ).join('\n');
 
-    const prompt = `You are a browser automation assistant. Convert the user's natural language command to MCP-style browser commands.
+    const prompt = `You are a browser automation command parser. Your ONLY job is to convert natural language to browser commands.
 
 Available tools:
 ${toolsDescription}
 
+Common URL mappings:
+- 百度/百度首页 -> https://www.baidu.com
+- 谷歌 -> https://www.google.com
+- 必应 -> https://www.bing.com
+- 淘宝 -> https://www.taobao.com
+- 京东 -> https://www.jd.com
+
 User command: "${input}"
 
-Respond with a JSON object containing:
-1. "commands": array of {tool, params, description}
-2. "explanation": brief explanation of what will happen
+CRITICAL: You MUST respond with ONLY a valid JSON object, NO other text.
 
-Example response for "打开百度搜索天气":
+Response format:
 {
   "commands": [
-    {"tool": "navigate", "params": {"url": "https://www.baidu.com"}, "description": "打开百度"},
-    {"tool": "fill", "params": {"selector": "#kw", "value": "天气"}, "description": "输入搜索词"},
-    {"tool": "click", "params": {"selector": "#su"}, "description": "点击搜索"}
+    {"tool": "tool_name", "params": {...}, "description": "..."}
   ],
-  "explanation": "将打开百度并搜索天气"
+  "explanation": "brief explanation"
 }
 
-Only respond with the JSON object, no other text.`;
+Examples:
+- "打开百度" -> {"commands":[{"tool":"navigate","params":{"url":"https://www.baidu.com"},"description":"打开百度"}],"explanation":"导航到百度首页"}
+- "在百度搜索天气" -> {"commands":[{"tool":"navigate","params":{"url":"https://www.baidu.com/s?wd=天气"},"description":"搜索天气"}],"explanation":"在百度搜索天气"}
+- "点击登录按钮" -> {"commands":[{"tool":"click","params":{"text":"登录"},"description":"点击登录"}],"explanation":"点击登录按钮"}
+- "截图" -> {"commands":[{"tool":"screenshot","params":{},"description":"截图"}],"explanation":"截取当前页面"}
+
+Respond with ONLY the JSON object:`;
 
     try {
       // Call the AI model
       const response = await this.modelService.callModel(chatModel.id, prompt);
 
-      // Parse the response
+      this.logger.debug(`AI raw response: ${response}`);
+
+      // Parse the response - try to extract JSON
+      let jsonStr = response;
+
+      // Try to find JSON in the response
       const jsonMatch = response.match(/\{[\s\S]*\}/);
       if (jsonMatch) {
-        const parsed = JSON.parse(jsonMatch[0]);
+        jsonStr = jsonMatch[0];
+      }
+
+      // Clean up common issues
+      jsonStr = jsonStr.trim();
+
+      try {
+        const parsed = JSON.parse(jsonStr);
         return {
           success: true,
           commands: parsed.commands || [],
           explanation: parsed.explanation || '',
         };
+      } catch (parseError) {
+        this.logger.error(`JSON parse error: ${parseError}, input: ${jsonStr}`);
+        return {
+          success: false,
+          commands: [],
+          explanation: `AI 返回格式错误，请重试`,
+        };
       }
-
-      return {
-        success: false,
-        commands: [],
-        explanation: '无法解析 AI 响应',
-      };
     } catch (error: unknown) {
       const errorMsg = error instanceof Error ? error.message : 'Unknown error';
       this.logger.error(`AI parsing error: ${errorMsg}`);
