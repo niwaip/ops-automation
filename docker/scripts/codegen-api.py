@@ -319,12 +319,20 @@ def ai_navigate(url):
     """Navigate to URL"""
     global ai_page, ai_mode_active
 
-    if not ai_mode_active or not ai_page:
+    if not ai_mode_active or ai_page:
         return {"status": "error", "message": "AI browser not initialized"}
 
     try:
         ai_page.goto(url, timeout=30000)
-        return {"status": "success", "url": url}
+        return {
+            "status": "success",
+            "url": url,
+            "template_info": {
+                "tool": "navigate",
+                "params": {"url": url},
+                "description": f"Navigate to {url}"
+            }
+        }
     except Exception as e:
         return {"status": "error", "message": str(e)}
 
@@ -336,14 +344,24 @@ def ai_click(selector=None, text=None):
         return {"status": "error", "message": "AI browser not initialized"}
 
     try:
+        used_selector = None
         if text:
             # Click by text content
-            ai_page.click(f"text={text}")
+            used_selector = f"text={text}"
+            ai_page.click(used_selector)
         elif selector:
+            used_selector = selector
             ai_page.click(selector)
         else:
             return {"status": "error", "message": "No selector or text provided"}
-        return {"status": "success"}
+        return {
+            "status": "success",
+            "template_info": {
+                "tool": "click",
+                "params": {"selector": used_selector},
+                "description": f"Click {used_selector}"
+            }
+        }
     except Exception as e:
         return {"status": "error", "message": str(e)}
 
@@ -356,7 +374,14 @@ def ai_fill(selector, value):
 
     try:
         ai_page.fill(selector, value)
-        return {"status": "success"}
+        return {
+            "status": "success",
+            "template_info": {
+                "tool": "fill",
+                "params": {"selector": selector, "value": value},
+                "description": f"Fill '{value}' into {selector}"
+            }
+        }
     except Exception as e:
         return {"status": "error", "message": str(e)}
 
@@ -371,7 +396,15 @@ def ai_screenshot():
         # Direct screenshot without waiting - much faster
         screenshot_bytes = ai_page.screenshot(timeout=5000)
         screenshot_base64 = base64.b64encode(screenshot_bytes).decode('utf-8')
-        return {"status": "success", "screenshot": screenshot_base64}
+        return {
+            "status": "success",
+            "screenshot": screenshot_base64,
+            "template_info": {
+                "tool": "screenshot",
+                "params": {},
+                "description": "Take screenshot"
+            }
+        }
     except Exception as e:
         print(f"[ERROR] Screenshot failed: {e}")
         return {"status": "error", "message": str(e)}
@@ -390,7 +423,14 @@ def ai_wait(selector=None, duration=None):
             ai_page.wait_for_timeout(duration)
         else:
             ai_page.wait_for_timeout(1000)
-        return {"status": "success"}
+        return {
+            "status": "success",
+            "template_info": {
+                "tool": "wait",
+                "params": {"selector": selector, "duration": duration},
+                "description": f"Wait for {selector or f'{duration}ms'}"
+            }
+        }
     except Exception as e:
         return {"status": "error", "message": str(e)}
 
@@ -403,7 +443,14 @@ def ai_hover(selector):
 
     try:
         ai_page.hover(selector)
-        return {"status": "success"}
+        return {
+            "status": "success",
+            "template_info": {
+                "tool": "hover",
+                "params": {"selector": selector},
+                "description": f"Hover over {selector}"
+            }
+        }
     except Exception as e:
         return {"status": "error", "message": str(e)}
 
@@ -416,7 +463,14 @@ def ai_press(key):
 
     try:
         ai_page.keyboard.press(key)
-        return {"status": "success"}
+        return {
+            "status": "success",
+            "template_info": {
+                "tool": "press_key",
+                "params": {"key": key},
+                "description": f"Press {key}"
+            }
+        }
     except Exception as e:
         return {"status": "error", "message": str(e)}
 
@@ -429,7 +483,15 @@ def ai_evaluate(script):
 
     try:
         result = ai_page.evaluate(script)
-        return {"status": "success", "result": result}
+        return {
+            "status": "success",
+            "result": result,
+            "template_info": {
+                "tool": "evaluate",
+                "params": {"script": script},
+                "description": "Execute JavaScript"
+            }
+        }
     except Exception as e:
         return {"status": "error", "message": str(e)}
 
@@ -442,7 +504,14 @@ def ai_reset():
 
     try:
         ai_page.goto("about:blank")
-        return {"status": "success"}
+        return {
+            "status": "success",
+            "template_info": {
+                "tool": "navigate",
+                "params": {"url": "about:blank"},
+                "description": "Reset to blank page"
+            }
+        }
     except Exception as e:
         return {"status": "error", "message": str(e)}
 
@@ -575,7 +644,15 @@ def ai_snapshot():
         print(f"[INFO] Snapshot taken: {snapshot['title']}")
         print(f"[INFO] Found {len(snapshot['interactiveElements'])} interactive elements")
 
-        return {"status": "success", "snapshot": snapshot}
+        return {
+            "status": "success",
+            "snapshot": snapshot,
+            "template_info": {
+                "tool": "snapshot",
+                "params": {},
+                "description": "Take accessibility snapshot"
+            }
+        }
 
     except Exception as e:
         print(f"[ERROR] Snapshot failed: {e}")
@@ -727,7 +804,12 @@ def ai_click_result(index=1):
             return {
                 "status": "success",
                 "message": f"Clicked result {index}: {target['text'][:30]}",
-                "link_info": target
+                "link_info": target,
+                "template_info": {
+                    "tool": "click_result",
+                    "params": {"index": index},
+                    "description": f"Click result #{index}"
+                }
             }
 
         return {"status": "error", "message": f"Only found {len(result_links)} results, cannot click result {index}"}
@@ -816,7 +898,12 @@ def ai_read_page(selector=None, max_length=5000):
 
             return {
                 "status": "success",
-                "content": content
+                "content": content,
+                "template_info": {
+                    "tool": "read_page",
+                    "params": {"selector": selector, "max_length": max_length},
+                    "description": f"Read page content"
+                }
             }
 
     except Exception as e:
@@ -846,7 +933,15 @@ def ai_drag(src_selector, dst_selector):
         ai_page.mouse.move(dst_box['x'] + dst_box['width'] / 2, dst_box['y'] + dst_box['height'] / 2)
         ai_page.mouse.up()
 
-        return {"status": "success", "message": f"Dragged from {src_selector} to {dst_selector}"}
+        return {
+            "status": "success",
+            "message": f"Dragged from {src_selector} to {dst_selector}",
+            "template_info": {
+                "tool": "drag",
+                "params": {"src": src_selector, "dst": dst_selector},
+                "description": f"Drag from {src_selector} to {dst_selector}"
+            }
+        }
     except Exception as e:
         return {"status": "error", "message": str(e)}
 
@@ -861,7 +956,15 @@ def ai_type_text(text, submit_key=None):
         ai_page.keyboard.type(text)
         if submit_key:
             ai_page.keyboard.press(submit_key)
-        return {"status": "success", "message": f"Typed: {text}"}
+        return {
+            "status": "success",
+            "message": f"Typed: {text}",
+            "template_info": {
+                "tool": "type_text",
+                "params": {"text": text, "submit_key": submit_key},
+                "description": f"Type '{text}'"
+            }
+        }
     except Exception as e:
         return {"status": "error", "message": str(e)}
 
@@ -879,7 +982,15 @@ def ai_handle_dialog(action, prompt_text=None):
             ai_page.evaluate("window.confirm = () => true; window.alert = () => {}; window.prompt = () => arguments[0] || '';")
         elif action == 'dismiss':
             ai_page.evaluate("window.confirm = () => false; window.prompt = () => null;")
-        return {"status": "success", "message": f"Dialog handler set to {action}"}
+        return {
+            "status": "success",
+            "message": f"Dialog handler set to {action}",
+            "template_info": {
+                "tool": "handle_dialog",
+                "params": {"action": action, "prompt_text": prompt_text},
+                "description": f"Handle dialog: {action}"
+            }
+        }
     except Exception as e:
         return {"status": "error", "message": str(e)}
 
@@ -892,7 +1003,15 @@ def ai_resize_page(width, height):
 
     try:
         ai_page.set_viewport_size({"width": width, "height": height})
-        return {"status": "success", "message": f"Resized to {width}x{height}"}
+        return {
+            "status": "success",
+            "message": f"Resized to {width}x{height}",
+            "template_info": {
+                "tool": "resize_page",
+                "params": {"width": width, "height": height},
+                "description": f"Resize page to {width}x{height}"
+            }
+        }
     except Exception as e:
         return {"status": "error", "message": str(e)}
 
@@ -912,7 +1031,15 @@ def ai_scroll(direction='down', amount=300):
             ai_page.evaluate("window.scrollTo(0, 0)")
         elif direction == 'bottom':
             ai_page.evaluate("window.scrollTo(0, document.body.scrollHeight)")
-        return {"status": "success", "message": f"Scrolled {direction}"}
+        return {
+            "status": "success",
+            "message": f"Scrolled {direction}",
+            "template_info": {
+                "tool": "scroll",
+                "params": {"direction": direction, "amount": amount},
+                "description": f"Scroll {direction}"
+            }
+        }
     except Exception as e:
         return {"status": "error", "message": str(e)}
 
@@ -944,7 +1071,15 @@ def ai_get_text():
                 return text.trim().substring(0, 10000);
             }
         """)
-        return {"status": "success", "text": text}
+        return {
+            "status": "success",
+            "text": text,
+            "template_info": {
+                "tool": "get_text",
+                "params": {},
+                "description": "Get page text"
+            }
+        }
     except Exception as e:
         return {"status": "error", "message": str(e)}
 
@@ -979,10 +1114,12 @@ def ai_smart_search(query):
 
         # Step 2: Find search input using multiple strategies
         search_selectors = [
+            # Bing specific
+            '#sb_form_q',  # Bing search input ID
+            'input[name="q"]',  # Common for Bing, Google, etc.
             # Common search input selectors
             'input[type="search"]',
             'input[name="wd"]',
-            'input[name="q"]',
             'input[name="query"]',
             'input[name="keyword"]',
             'input[name="search"]',
@@ -991,6 +1128,7 @@ def ai_smart_search(query):
             'input[placeholder*="查找"]',
             'input[placeholder*="search"]',
             'input[placeholder*="Search"]',
+            'input[placeholder*="web"]',  # Bing uses "Search the web"
             # ID-based
             '#search-input',
             '#kw',

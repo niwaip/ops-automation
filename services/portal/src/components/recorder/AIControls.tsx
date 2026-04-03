@@ -543,19 +543,15 @@ const AIControls: React.FC<AIControlsProps> = ({ onCommandExecuted }) => {
                                       : JSON.stringify(entry.result.snapshot, null, 2)}
                                   </pre>
                                 )}
-                                {/* Template info - for search commands */}
+                                {/* Template info - for all commands */}
                                 {entry.result.template_info && (
                                   <div style={{ marginTop: 8, padding: 8, background: '#e6f7ff', borderRadius: 4, border: '1px solid #91d5ff' }}>
-                                    <Text strong style={{ fontSize: 11 }}>模版编译信息：</Text>
-                                    <div style={{ marginTop: 4, fontSize: 10 }}>
-                                      <div>搜索框选择器: <code style={{ background: '#fff', padding: '2px 4px', borderRadius: 2 }}>{entry.result.template_info.input_selector}</code></div>
-                                      <div>提交方式: <code style={{ background: '#fff', padding: '2px 4px', borderRadius: 2 }}>{entry.result.template_info.submit_method}</code></div>
-                                      {entry.result.template_info.button_selector && (
-                                        <div>按钮选择器: <code style={{ background: '#fff', padding: '2px 4px', borderRadius: 2 }}>{entry.result.template_info.button_selector}</code></div>
-                                      )}
+                                    <Text strong style={{ fontSize: 11 }}>模版命令：</Text>
+                                    <div style={{ marginTop: 4, fontSize: 10, fontFamily: 'monospace', background: '#fff', padding: 4, borderRadius: 2 }}>
+                                      <pre style={{ margin: 0, whiteSpace: 'pre-wrap' }}>{JSON.stringify(entry.result.template_info, null, 2)}</pre>
                                     </div>
                                     <Text type="secondary" style={{ fontSize: 10 }}>
-                                      可转换为确定性命令: fill({entry.result.template_info.input_selector}) → {entry.result.template_info.submit_method === 'click' ? `click(${entry.result.template_info.button_selector})` : 'press_key(Enter)'}
+                                      可直接用于模版编译，无需 AI 解析
                                     </Text>
                                   </div>
                                 )}
