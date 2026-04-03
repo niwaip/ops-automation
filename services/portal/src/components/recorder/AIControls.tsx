@@ -9,6 +9,7 @@ import {
   DesktopOutlined,
   CopyOutlined,
   CheckCircleOutlined,
+  PlayCircleOutlined,
 } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
 import { useMutation } from 'react-query';
