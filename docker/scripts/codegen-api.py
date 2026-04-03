@@ -1077,20 +1077,24 @@ def ai_smart_search(query):
         ]
 
         search_button = None
+        button_selector = None
         for selector in search_button_selectors:
             try:
                 elements = ai_page.query_selector_all(selector)
                 for el in elements:
                     if el.is_visible():
                         search_button = el
+                        button_selector = selector
                         break
                 if search_button:
                     break
             except:
                 continue
 
+        submit_method = "enter"
         if search_button:
             search_button.click()
+            submit_method = "click"
             print("[SmartSearch] Clicked search button")
         else:
             # Press Enter to submit
@@ -1106,7 +1110,14 @@ def ai_smart_search(query):
         return {
             "status": "success",
             "message": f"Searched for: {query}",
-            "snapshot": result_snapshot.get("snapshot", "")[:1000]
+            "snapshot": result_snapshot.get("snapshot", "")[:1000],
+            # Template info - for deterministic replay
+            "template_info": {
+                "input_selector": used_selector,
+                "submit_method": submit_method,
+                "button_selector": button_selector,
+                "query": query
+            }
         }
 
     except Exception as e:
