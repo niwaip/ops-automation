@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Card, Input, Button, Space, Typography, Tag, Spin, Empty, message, Divider, Alert, Collapse } from 'antd';
+import { Card, Input, Button, Space, Typography, Tag, Spin, Empty, message, Divider, Alert, Collapse, InputNumber } from 'antd';
 import {
   SendOutlined,
   RobotOutlined,
@@ -10,6 +10,13 @@ import {
   CopyOutlined,
   CheckCircleOutlined,
   PlayCircleOutlined,
+  CameraOutlined,
+  EyeOutlined,
+  ClockCircleOutlined,
+  FileSearchOutlined,
+  ArrowDownOutlined,
+  TextToolOutlined,
+  CloudUploadOutlined,
 } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
 import { useMutation } from 'react-query';
@@ -57,6 +64,9 @@ const AIControls: React.FC<AIControlsProps> = ({ onCommandExecuted }) => {
   const [input, setInput] = useState('');
   const [history, setHistory] = useState<CommandHistoryEntry[]>([]);
   const [isBrowserReady, setIsBrowserReady] = useState(false);
+  const [waitDuration, setWaitDuration] = useState(20); // Default 20 seconds
+  const [showParamInput, setShowParamInput] = useState<string | null>(null);
+  const [paramValue, setParamValue] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // Scroll to bottom of messages
@@ -236,6 +246,75 @@ const AIControls: React.FC<AIControlsProps> = ({ onCommandExecuted }) => {
 
   const handleExecuteCommands = (commands: MCPCommand[]) => {
     executeCommandMutation.mutate(commands);
+  };
+
+  // Quick action handlers - execute commands directly
+  const handleQuickAction = async (command: string, params?: Record<string, unknown>) => {
+    const quickCommand: MCPCommand = {
+      tool: command,
+      params: params || {},
+      description: `快捷操作: ${command}`,
+    };
+
+    // Add to history
+    setHistory((prev) => [
+      ...prev,
+      {
+        id: Date.now().toString(),
+        type: 'user',
+        content: `快捷操作: ${command}${params ? ` (${JSON.stringify(params)})` : ''}`,
+        timestamp: new Date(),
+      },
+    ]);
+
+    // Auto init browser if not ready
+    if (!isBrowserReady) {
+      try {
+        await initBrowserMutation.mutateAsync();
+      } catch (e) {
+        return;
+      }
+    }
+
+    // Execute directly
+    executeCommandMutation.mutate([quickCommand]);
+  };
+
+  // AI-assisted quick actions with parameter input
+  const handleAIQuickAction = async (commandTemplate: string, paramLabel: string) => {
+    if (!paramValue.trim()) {
+      message.warning('请输入参数');
+      return;
+    }
+
+    const fullCommand = `${commandTemplate} ${paramValue.trim()}`;
+
+    // Add to history
+    setHistory((prev) => [
+      ...prev,
+      {
+        id: Date.now().toString(),
+        type: 'user',
+        content: fullCommand,
+        timestamp: new Date(),
+      },
+    ]);
+
+    // Clear param input
+    setParamValue('');
+    setShowParamInput(null);
+
+    // Auto init browser if not ready
+    if (!isBrowserReady) {
+      try {
+        await initBrowserMutation.mutateAsync();
+      } catch (e) {
+        return;
+      }
+    }
+
+    // Parse with AI
+    parseCommandMutation.mutate(fullCommand);
   };
 
   const handleClearHistory = () => {
@@ -465,6 +544,155 @@ const AIControls: React.FC<AIControlsProps> = ({ onCommandExecuted }) => {
             {t('common:send')}
           </Button>
         </Space.Compact>
+
+        {/* Quick action buttons */}
+        <div style={{ marginTop: 12 }}>
+          <Text type="secondary" style={{ fontSize: 12, marginBottom: 8, display: 'block' }}>
+            {t('recorder:ai.quickActions') || '快捷操作'}
+          </Text>
+
+          {/* Fixed commands - direct execution */}
+          <Space wrap size="small">
+            <Button
+              size="small"
+              icon={<CameraOutlined />}
+              onClick={() => handleQuickAction('screenshot')}
+              loading={isLoading && executeCommandMutation.isLoading}
+              title="截取当前页面图片"
+            >
+              {t('recorder:ai.quick.screenshot') || '截图'}
+            </Button>
+
+            <Button
+              size="small"
+              icon={<EyeOutlined />}
+              onClick={() => handleQuickAction('snapshot')}
+              loading={isLoading && executeCommandMutation.isLoading}
+              title="获取页面结构快照"
+            >
+              {t('recorder:ai.quick.snapshot') || '快照'}
+            </Button>
+
+            <Button
+              size="small"
+              icon={<ClockCircleOutlined />}
+              onClick={() => handleQuickAction('wait', { duration: waitDuration * 1000 })}
+              loading={isLoading && executeCommandMutation.isLoading}
+              title={`等待 ${waitDuration} 秒`}
+            >
+              {t('recorder:ai.quick.wait') || '等待'} {waitDuration}s
+            </Button>
+
+            {/* Wait duration input */}
+            <InputNumber
+              size="small"
+              min={1}
+              max={120}
+              value={waitDuration}
+              onChange={(val) => setWaitDuration(val || 20)}
+              style={{ width: 60 }}
+              addonAfter="s"
+            />
+
+            <Divider type="vertical" style={{ height: 24 }} />
+
+            {/* AI-assisted commands - need parameter input */}
+            <Button
+              size="small"
+              icon={<FileSearchOutlined />}
+              onClick={() => setShowParamInput(showParamInput === 'navigate' ? null : 'navigate')}
+              type={showParamInput === 'navigate' ? 'primary' : 'default'}
+              title="打开网页（AI辅助）"
+            >
+              {t('recorder:ai.quick.navigate') || '打开'}
+            </Button>
+
+            <Button
+              size="small"
+              icon={<TextToolOutlined />}
+              onClick={() => setShowParamInput(showParamInput === 'click' ? null : 'click')}
+              type={showParamInput === 'click' ? 'primary' : 'default'}
+              title="点击元素（AI辅助）"
+            >
+              {t('recorder:ai.quick.click') || '点击'}
+            </Button>
+
+            <Button
+              size="small"
+              icon={<ArrowDownOutlined />}
+              onClick={() => setShowParamInput(showParamInput === 'scroll' ? null : 'scroll')}
+              type={showParamInput === 'scroll' ? 'primary' : 'default'}
+              title="滚动页面"
+            >
+              {t('recorder:ai.quick.scroll') || '滚动'}
+            </Button>
+
+            <Button
+              size="small"
+              icon={<CloudUploadOutlined />}
+              onClick={() => handleQuickAction('scroll', { direction: 'top' })}
+              loading={isLoading && executeCommandMutation.isLoading}
+              title="滚动到顶部"
+            >
+              {t('recorder:ai.quick.scrollTop') || '顶部'}
+            </Button>
+          </Space>
+
+          {/* Parameter input modal for AI-assisted commands */}
+          {showParamInput && (
+            <div style={{ marginTop: 8, padding: 8, background: '#f5f5f5', borderRadius: 8 }}>
+              <Space.Compact style={{ width: '100%' }}>
+                <Input
+                  size="small"
+                  value={paramValue}
+                  onChange={(e) => setParamValue(e.target.value)}
+                  placeholder={
+                    showParamInput === 'navigate' ? '输入网址或网站名称（如：微博、github.com）' :
+                    showParamInput === 'click' ? '输入要点击的元素（如：登录按钮、第一个结果）' :
+                    showParamInput === 'scroll' ? '输入滚动方向（如：向下、底部、向上）' :
+                    '输入参数'
+                  }
+                  onPressEnter={(e) => {
+                    e.preventDefault();
+                    const templates: Record<string, string> = {
+                      navigate: '打开',
+                      click: '点击',
+                      scroll: '滚动',
+                    };
+                    handleAIQuickAction(templates[showParamInput] || '', showParamInput);
+                  }}
+                  style={{ borderRadius: '6px 0 0 6px' }}
+                />
+                <Button
+                  size="small"
+                  type="primary"
+                  icon={<SendOutlined />}
+                  onClick={() => {
+                    const templates: Record<string, string> = {
+                      navigate: '打开',
+                      click: '点击',
+                      scroll: '滚动',
+                    };
+                    handleAIQuickAction(templates[showParamInput] || '', showParamInput);
+                  }}
+                  disabled={!paramValue.trim()}
+                  style={{ borderRadius: '0 6px 6px 0' }}
+                >
+                  发送
+                </Button>
+                <Button
+                  size="small"
+                  onClick={() => {
+                    setShowParamInput(null);
+                    setParamValue('');
+                  }}
+                >
+                  取消
+                </Button>
+              </Space.Compact>
+            </div>
+          )}
+        </div>
 
         {/* Clear history button */}
         {history.length > 0 && (

@@ -273,8 +273,158 @@ export class BrowserCommandService {
   }
 
   private parseWithPatterns(input: string): ParseBrowserCommandResponse | null {
-    // Only match fixed, non-AI-dependent commands
-    // Navigation, search, click, fill should go through AI for verification
+    // Try pattern matching for all common commands first
+
+    // Pattern: Navigate to known sites
+    const navigatePatterns = [
+      /^(?:打开|导航到|访问|前往|goto)\s*(.+)$/i,
+      /^(?:open|navigate|go\s*to|visit)\s+(.+)$/i,
+    ];
+
+    for (const pattern of navigatePatterns) {
+      const match = input.match(pattern);
+      if (match && match[1]) {
+        const target = match[1].trim();
+        const url = this.resolveUrl(target);
+        // Only use pattern if we resolved to a known URL
+        if (url && url !== `https://${target}`) {
+          return {
+            success: true,
+            commands: [{
+              tool: 'navigate',
+              params: { url },
+              description: `导航到 ${target}`,
+            }],
+            explanation: `将打开 ${url}`,
+          };
+        }
+        // If not a known URL, return null to let AI handle it
+        // AI can handle more complex navigation like "打开微博搜索xxx"
+        return null;
+      }
+    }
+
+    // Pattern: Search on search engines
+    const searchPatterns = [
+      /^(?:在?\s*(百度|baidu)\s*搜索)\s*(.+)$/i,
+      /^(?:在?\s*(谷歌|google)\s*搜索)\s*(.+)$/i,
+      /^(?:在?\s*(必应|bing)\s*搜索)\s*(.+)$/i,
+      /^(?:search\s+(?:on\s+)?(baidu|google|bing)\s*:?\s*)(.+)$/i,
+    ];
+
+    for (const pattern of searchPatterns) {
+      const match = input.match(pattern);
+      if (match && match[1] && match[2]) {
+        const engine = match[1].toLowerCase();
+        const query = match[2].trim();
+        const searchUrls: Record<string, string> = {
+          '百度': 'https://www.baidu.com/s?wd=',
+          'baidu': 'https://www.baidu.com/s?wd=',
+          '谷歌': 'https://www.google.com/search?q=',
+          'google': 'https://www.google.com/search?q=',
+          '必应': 'https://www.bing.com/search?q=',
+          'bing': 'https://www.bing.com/search?q=',
+        };
+        const baseUrl = searchUrls[engine] || searchUrls['百度'];
+        return {
+          success: true,
+          commands: [{
+            tool: 'navigate',
+            params: { url: `${baseUrl}${encodeURIComponent(query)}` },
+            description: `在${engine}搜索 ${query}`,
+          }],
+          explanation: `将在${engine}搜索 ${query}`,
+        };
+      }
+    }
+
+    // Pattern: Click by result index (点击第一个结果 etc.)
+    const clickResultPatterns = [
+      /^(?:点击|选择)\s*(第?[一二三四五六七八九十\d]+)\s*(?:个?结果|条?结果|搜索结果)$/i,
+      /^click\s+(?:the\s+)?(?:first|second|third|fourth|fifth|\d+th)?\s*result$/i,
+    ];
+
+    const indexMap: Record<string, number> = {
+      '一': 1, '二': 2, '三': 3, '四': 4, '五': 5,
+      '六': 6, '七': 7, '八': 8, '九': 9, '十': 10,
+      'first': 1, 'second': 2, 'third': 3, 'fourth': 4, 'fifth': 5,
+    };
+
+    for (const pattern of clickResultPatterns) {
+      const match = input.match(pattern);
+      if (match && match[1]) {
+        let indexStr = match[1].replace('第', '').replace('个', '').replace('条', '').toLowerCase();
+        const index = indexMap[indexStr] || parseInt(indexStr, 10);
+        if (index > 0) {
+          return {
+            success: true,
+            commands: [{
+              tool: 'click_result',
+              params: { index },
+              description: `点击第${index}个结果`,
+            }],
+            explanation: `将点击第${index}个搜索结果`,
+          };
+        }
+      }
+    }
+
+    // Pattern: Click by text (点击登录按钮 etc.)
+    const clickPatterns = [
+      /^(?:点击|单击|按下)\s*(.+?)(?:按钮|链接|元素)?$/i,
+      /^click\s+(?:on\s+)?(.+)$/i,
+    ];
+
+    for (const pattern of clickPatterns) {
+      const match = input.match(pattern);
+      if (match && match[1]) {
+        const text = match[1].trim();
+        // Don't match if it looks like a result index (handled above)
+        if (!text.match(/第?[一二三四五六七八九十\d]+\s*(?:个?结果|条?结果)/)) {
+          return {
+            success: true,
+            commands: [{
+              tool: 'click',
+              params: { text },
+              description: `点击 ${text}`,
+            }],
+            explanation: `将点击包含"${text}"的元素`,
+          };
+        }
+      }
+    }
+
+    // Pattern: Scroll - fixed command
+    const scrollPatterns = [
+      /^(?:滚动|scroll)\s*(向下|下|up|down|向上|上|top|bottom|顶部|底部)?$/i,
+      /^(?:向下|向下滚动|向下翻页)$/i,
+      /^(?:向上|向上滚动|向上翻页)$/i,
+      /^(?:滚动到|scroll\s*to)\s*(顶部|底部|top|bottom)$/i,
+    ];
+
+    for (const pattern of scrollPatterns) {
+      const match = input.match(pattern);
+      if (match) {
+        let direction = 'down';
+        const text = match[1]?.toLowerCase() || '';
+        if (text.includes('向上') || text.includes('上') || text.includes('up') || text.includes('top') || text.includes('顶部')) {
+          direction = 'up';
+        } else if (text.includes('底部') || text.includes('bottom')) {
+          direction = 'bottom';
+        } else if (text.includes('顶部')) {
+          direction = 'top';
+        }
+        return {
+          success: true,
+          commands: [{
+            tool: 'scroll',
+            params: { direction },
+            description: `滚动页面 ${direction}`,
+          }],
+          explanation: `将向${direction === 'down' ? '下' : direction === 'up' ? '上' : direction}滚动页面`,
+        };
+      }
+    }
 
     // Pattern: Screenshot - fixed command, no AI needed
     const screenshotPatterns = [
@@ -311,6 +461,25 @@ export class BrowserCommandService {
             description: '获取页面结构快照',
           }],
           explanation: '将获取页面可访问性结构快照',
+        };
+      }
+    }
+
+    // Pattern: Get text - fixed command
+    const getTextPatterns = [
+      /^(?:获取文本|读取文本|获取页面文本|get\s*text)$/i,
+    ];
+
+    for (const pattern of getTextPatterns) {
+      if (pattern.test(input)) {
+        return {
+          success: true,
+          commands: [{
+            tool: 'get_text',
+            params: {},
+            description: '获取页面文本',
+          }],
+          explanation: '将获取页面所有可见文本',
         };
       }
     }
@@ -378,8 +547,11 @@ export class BrowserCommandService {
       }
     }
 
-    // All other commands (navigate, search, click, fill) go through AI
-    // This allows AI to verify results and handle errors
+    // If no pattern matched, return null to let AI handle it
+    // AI can handle more complex commands like:
+    // - "打开微博并搜索xxx"
+    // - "点击那个蓝色的按钮"
+    // - "在输入框输入xxx然后点击搜索"
     return null;
   }
 
