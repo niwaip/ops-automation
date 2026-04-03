@@ -58,6 +58,8 @@ export class ModelService implements OnModuleInit {
    */
   private async loadPersistedModels(): Promise<void> {
     try {
+      this.logger.log(`Checking for persisted models in ${MODELS_FILE}`);
+
       // Load models
       if (fs.existsSync(MODELS_FILE)) {
         const data = fs.readFileSync(MODELS_FILE, 'utf-8');
@@ -69,7 +71,9 @@ export class ModelService implements OnModuleInit {
           this.logger.debug(`Loaded model: ${item.model.name} (${item.model.id})`);
         }
 
-        this.logger.log(`Loaded ${persisted.length} persisted models`);
+        this.logger.log(`Loaded ${persisted.length} persisted models from file`);
+      } else {
+        this.logger.log(`No persisted models file found at ${MODELS_FILE}`);
       }
 
       // Load API keys
@@ -81,7 +85,9 @@ export class ModelService implements OnModuleInit {
           this.apiKeys.set(item.id, item.apiKey);
         }
 
-        this.logger.log(`Loaded ${keys.length} persisted API keys`);
+        this.logger.log(`Loaded ${keys.length} persisted API keys from file`);
+      } else {
+        this.logger.log(`No persisted API keys file found at ${API_KEYS_FILE}`);
       }
 
       // Initialize clients for loaded models
@@ -109,6 +115,12 @@ export class ModelService implements OnModuleInit {
    */
   private async persistModels(): Promise<void> {
     try {
+      // Ensure data directory exists
+      if (!fs.existsSync(DATA_DIR)) {
+        fs.mkdirSync(DATA_DIR, { recursive: true });
+        this.logger.log(`Created data directory: ${DATA_DIR}`);
+      }
+
       // Persist models
       const modelsData: PersistedModel[] = [];
       for (const [id, model] of this.models) {
@@ -118,6 +130,7 @@ export class ModelService implements OnModuleInit {
         }
       }
       fs.writeFileSync(MODELS_FILE, JSON.stringify(modelsData, null, 2));
+      this.logger.log(`Wrote ${modelsData.length} models to ${MODELS_FILE}`);
 
       // Persist API keys (only those with direct key input)
       const keysData: PersistedApiKey[] = [];
@@ -125,6 +138,7 @@ export class ModelService implements OnModuleInit {
         keysData.push({ id, apiKey });
       }
       fs.writeFileSync(API_KEYS_FILE, JSON.stringify(keysData, null, 2));
+      this.logger.log(`Wrote ${keysData.length} API keys to ${API_KEYS_FILE}`);
 
       this.logger.log(`Persisted ${modelsData.length} models and ${keysData.length} API keys`);
     } catch (error: unknown) {
