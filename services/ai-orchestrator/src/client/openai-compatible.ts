@@ -12,7 +12,7 @@ export class OpenAICompatibleClient {
   private model: string;
   private timeout: number;
 
-  constructor(config: OpenAICompatibleConfig, timeout: number = 30000) {
+  constructor(config: OpenAICompatibleConfig, timeout: number = 60000) {
     this.baseURL = config.baseURL;
     this.apiKey = config.apiKey;
     this.model = config.model;
