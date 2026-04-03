@@ -12,7 +12,7 @@ import {
 } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
 import { useMutation } from 'react-query';
-import { apiClient } from '../api/client';
+import { apiClient } from '../../api/client';
 
 const { TextArea } = Input;
 const { Text, Title, Paragraph } = Typography;
