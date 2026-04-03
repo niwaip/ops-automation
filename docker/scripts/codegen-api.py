@@ -259,6 +259,7 @@ def ai_start(url="about:blank"):
             viewport={"width": 1920, "height": 1080}
         )
         ai_page = ai_context.new_page()
+        ai_page.set_default_timeout(30000)  # 30 second timeout for all operations
         ai_page.goto(url)
         ai_mode_active = True
 
@@ -367,10 +368,13 @@ def ai_screenshot():
         return {"status": "error", "message": "AI browser not initialized"}
 
     try:
+        # Set timeout for screenshot operation
+        ai_page.set_default_timeout(30000)
         screenshot_bytes = ai_page.screenshot()
         screenshot_base64 = base64.b64encode(screenshot_bytes).decode('utf-8')
         return {"status": "success", "screenshot": screenshot_base64}
     except Exception as e:
+        print(f"[ERROR] Screenshot failed: {e}")
         return {"status": "error", "message": str(e)}
 
 def ai_wait(selector=None, duration=None):
