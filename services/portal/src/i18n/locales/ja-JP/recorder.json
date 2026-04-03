@@ -62,5 +62,31 @@
     "hint": "操作意図を入力すると、AIがスクリプトの目的をよりよく理解し、より正確なテンプレートの説明とパラメータ定義を生成できます。",
     "confirm": "コンパイル開始",
     "cancel": "キャンセル"
+  },
+  "ai": {
+    "title": "AI ブラウザ制御",
+    "ready": "準備完了",
+    "notReady": "未初期化",
+    "initBrowser": "ブラウザを初期化",
+    "browserReady": "ブラウザの準備ができました",
+    "browserInitFailed": "ブラウザの初期化に失敗しました",
+    "browserInitialized": "ブラウザセッションが初期化されました。コマンドを送信できます。",
+    "infoTitle": "自然言語制御",
+    "infoDesc": "自然言語の説明を入力すると、AIが自動的にブラウザコマンドに変換します。ナビゲーション、クリック、入力、スクリーンショットなどをサポートします。",
+    "examples": "コマンド例：",
+    "example": {
+      "navigate": "Baiduを開く",
+      "search": "キーワード検索",
+      "click": "要素をクリック",
+      "screenshot": "スクリーンショット"
+    },
+    "noHistory": "会話履歴がありません",
+    "inputPlaceholder": "自然言語コマンドを入力、例：Baiduを開いてMCPを検索",
+    "commands": "コマンド",
+    "execute": "コマンドを実行",
+    "parseFailed": "コマンドの解析に失敗しました",
+    "commandExecuted": "コマンドが正常に実行されました",
+    "executionFailed": "コマンドの実行に失敗しました",
+    "clearHistory": "履歴をクリア"
   }
 }

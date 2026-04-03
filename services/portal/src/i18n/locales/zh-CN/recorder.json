@@ -62,5 +62,31 @@
     "hint": "输入操作意图可以帮助AI更好地理解脚本目的，生成更准确的模板描述和参数定义。",
     "confirm": "开始编译",
     "cancel": "取消"
+  },
+  "ai": {
+    "title": "AI 浏览器控制",
+    "ready": "就绪",
+    "notReady": "未初始化",
+    "initBrowser": "初始化浏览器",
+    "browserReady": "浏览器已就绪",
+    "browserInitFailed": "浏览器初始化失败",
+    "browserInitialized": "浏览器会话已初始化，现在可以发送命令了。",
+    "infoTitle": "自然语言控制",
+    "infoDesc": "输入自然语言描述，AI 将自动转换为浏览器操作命令。支持导航、点击、填充、截图等操作。",
+    "examples": "示例命令：",
+    "example": {
+      "navigate": "打开百度首页",
+      "search": "搜索关键词",
+      "click": "点击元素",
+      "screenshot": "截图"
+    },
+    "noHistory": "暂无对话记录",
+    "inputPlaceholder": "输入自然语言命令，例如：打开百度搜索 MCP",
+    "commands": "命令",
+    "execute": "执行命令",
+    "parseFailed": "解析命令失败",
+    "commandExecuted": "命令执行成功",
+    "executionFailed": "命令执行失败",
+    "clearHistory": "清空记录"
   }
 }
