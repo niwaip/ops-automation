@@ -1,7 +1,8 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { v4 as uuidv4 } from 'uuid';
 import { AIModelDTO, CreateModelDTO, APIKeyReference } from '../../interfaces';
 import { OpenAICompatibleClient } from '../../client/openai-compatible';
+import { PRESET_MODELS, PresetModelConfig } from '../../config/preset-models';
 
 /**
  * Model Service
@@ -9,10 +10,102 @@ import { OpenAICompatibleClient } from '../../client/openai-compatible';
  * API Keys are stored as references (not plaintext)
  */
 @Injectable()
-export class ModelService {
+export class ModelService implements OnModuleInit {
+  private readonly logger = new Logger(ModelService.name);
   private models: Map<string, AIModelDTO> = new Map();
   private apiKeyReferences: Map<string, APIKeyReference> = new Map();
   private clients: Map<string, OpenAICompatibleClient> = new Map();
+
+  /**
+   * Initialize preset models on module init
+   */
+  async onModuleInit() {
+    this.logger.log('Initializing preset models...');
+    await this.initializePresetModels();
+  }
+
+  /**
+   * Initialize preset models from configuration
+   * Only initializes models that have API keys configured
+   */
+  private async initializePresetModels() {
+    for (const preset of PRESET_MODELS) {
+      const apiKey = process.env[preset.env_key];
+      if (apiKey) {
+        this.logger.log(`Initializing preset model: ${preset.name} (${preset.provider})`);
+        try {
+          await this.createModelFromPreset(preset, apiKey);
+        } catch (error: unknown) {
+          const errorMsg = error instanceof Error ? error.message : 'Unknown error';
+          this.logger.error(`Failed to initialize preset model ${preset.name}: ${errorMsg}`);
+        }
+      } else {
+        this.logger.debug(`Skipping preset model ${preset.name}: API key not configured (${preset.env_key})`);
+      }
+    }
+  }
+
+  /**
+   * Create a model from preset configuration
+   */
+  private async createModelFromPreset(preset: PresetModelConfig, apiKey: string): Promise<AIModelDTO> {
+    const id = uuidv4();
+    const now = new Date();
+
+    // Create API key reference
+    const apiKeyRef: APIKeyReference = {
+      reference_id: preset.env_key,
+      secret_type: 'env',
+    };
+
+    const model: AIModelDTO = {
+      id,
+      name: preset.model_id,
+      provider: preset.provider,
+      api_endpoint: preset.api_endpoint,
+      config: {
+        ...preset.config,
+        display_name: preset.name,
+        description: preset.description,
+        preset: true,
+      },
+      status: 'active',
+      created_at: now,
+      updated_at: now,
+    };
+
+    this.models.set(id, model);
+    this.apiKeyReferences.set(id, apiKeyRef);
+
+    // Initialize client
+    const client = new OpenAICompatibleClient({
+      baseURL: preset.api_endpoint,
+      apiKey,
+      model: preset.model_id,
+    });
+    this.clients.set(id, client);
+
+    this.logger.log(`Preset model initialized: ${preset.name} (ID: ${id})`);
+    return model;
+  }
+
+  /**
+   * List all available preset model configurations
+   */
+  listPresetModels(): PresetModelConfig[] {
+    return PRESET_MODELS;
+  }
+
+  /**
+   * Check which preset models have API keys configured
+   */
+  checkPresetModelStatus(): { name: string; provider: string; configured: boolean }[] {
+    return PRESET_MODELS.map(preset => ({
+      name: preset.name,
+      provider: preset.provider,
+      configured: !!process.env[preset.env_key],
+    }));
+  }
 
   /**
    * List all registered models
@@ -165,7 +258,13 @@ export class ModelService {
   private resolveApiKey(ref: APIKeyReference): string | null {
     switch (ref.secret_type) {
       case 'env':
-        // Get from environment variable
+        // For preset models, reference_id is the env variable name directly
+        // For custom models, reference_id is a UUID and we prefix with AI_API_KEY_
+        if (ref.reference_id.includes('_')) {
+          // Looks like an env variable name (e.g., ALIBABA_BAILIAN_API_KEY)
+          return process.env[ref.reference_id] || null;
+        }
+        // UUID-based reference for custom models
         const envKey = `AI_API_KEY_${ref.reference_id}`;
         return process.env[envKey] || null;
       case 'vault':

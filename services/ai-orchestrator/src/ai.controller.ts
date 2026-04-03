@@ -34,6 +34,14 @@ export class AIController {
     return { models };
   }
 
+  @Get('models/presets')
+  @ApiOperation({ summary: 'List all available preset model configurations' })
+  @ApiResponse({ status: 200, description: 'Returns list of preset models with configuration status' })
+  async listPresetModels(): Promise<{ presets: Array<{ name: string; provider: string; configured: boolean }> }> {
+    const presets = this.modelService.checkPresetModelStatus();
+    return { presets };
+  }
+
   @Post('models')
   @ApiOperation({ summary: 'Register a new AI model' })
   @ApiResponse({ status: 201, description: 'Model registered successfully' })

@@ -184,6 +184,13 @@ services:
       - REDIS_HOST=redis
       - REDIS_PORT=6379
       - PORT=3007
+      # AI Model API Keys - Set these in your environment or .env file
+      # Alibaba Cloud Bailian (阿里云百炼)
+      - ALIBABA_BAILIAN_API_KEY=${ALIBABA_BAILIAN_API_KEY:-}
+      # OpenAI
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      # DeepSeek
+      - DEEPSEEK_API_KEY=${DEEPSEEK_API_KEY:-}
     ports:
       - "3007:3007"
     volumes:
