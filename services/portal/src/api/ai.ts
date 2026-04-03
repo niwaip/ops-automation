@@ -29,8 +29,8 @@ export interface CreateAIModelRequest {
 
 export interface UpdateAIModelRequest {
   name?: string;
-  endpoint?: string;
-  apiKey?: string;
+  api_endpoint?: string;
+  api_key?: string;
   config?: Record<string, unknown>;
 }
 
@@ -65,7 +65,7 @@ export const aiModelApi = {
   },
 
   update: async (id: string, data: UpdateAIModelRequest): Promise<AIModel> => {
-    return apiClient.put<AIModel>(`/ai/models/${id}`, data);
+    return apiClient.patch<AIModel>(`/ai/models/${id}`, data);
   },
 
   delete: async (id: string): Promise<void> => {

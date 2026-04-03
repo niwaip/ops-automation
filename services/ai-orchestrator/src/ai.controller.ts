@@ -85,6 +85,18 @@ export class AIController {
     return this.modelService.setModelStatus(id, 'inactive');
   }
 
+  @Patch('models/:id')
+  @ApiOperation({ summary: 'Update an AI model configuration' })
+  @ApiResponse({ status: 200, description: 'Model updated successfully' })
+  @ApiResponse({ status: 404, description: 'Model not found' })
+  async updateModel(@Param('id') id: string, @Body() body: Partial<CreateModelDTO>): Promise<AIModelDTO> {
+    const model = await this.modelService.getModel(id);
+    if (!model) {
+      throw new HttpException('Model not found', HttpStatus.NOT_FOUND);
+    }
+    return this.modelService.updateModel(id, body);
+  }
+
   @Delete('models/:id')
   @ApiOperation({ summary: 'Delete an AI model' })
   @ApiResponse({ status: 200, description: 'Model deleted successfully' })

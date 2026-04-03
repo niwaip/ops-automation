@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Table, Card, Button, Input, Space, Tag, Typography, Modal, message, Form, Select, Divider, Alert, Row, Col, Tooltip } from 'antd';
+import { Table, Card, Button, Input, Space, Tag, Typography, Modal, message, Form, Select, Divider, Alert, Tooltip } from 'antd';
 import {
   SearchOutlined,
   PlusOutlined,
@@ -9,10 +9,8 @@ import {
   CheckOutlined,
   StopOutlined,
   ExperimentOutlined,
-  CloudServerOutlined,
-  CheckCircleOutlined,
-  CloseCircleOutlined,
   LockOutlined,
+  SwapOutlined,
 } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
 import { useQuery, useMutation, useQueryClient } from 'react-query';
@@ -41,6 +39,26 @@ const PRESET_ENDPOINTS: Record<string, string> = {
   'deepseek': 'https://api.deepseek.com/v1',
 };
 
+// Available models for each provider (for switching)
+const PROVIDER_MODELS: Record<string, string[]> = {
+  'alibaba-coding': [
+    'qwen3.5-plus',
+    'qwen3-max-2026-01-23',
+    'qwen3-coder-next',
+    'qwen3-coder-plus',
+    'MiniMax-M2.5',
+    'glm-5',
+    'glm-4.7',
+    'kimi-k2.5',
+  ],
+  'alibaba-bailian': ['qwen-plus', 'qwen-turbo'],
+  'openai': ['gpt-4o', 'gpt-4-turbo', 'gpt-3.5-turbo'],
+  'deepseek': ['deepseek-coder', 'deepseek-chat'],
+  'anthropic': ['claude-3-opus', 'claude-3-sonnet'],
+  'azure': [],
+  'local': [],
+};
+
 const AIModelAdminPage: React.FC = () => {
   const { t } = useTranslation(['common', 'admin']);
   const queryClient = useQueryClient();
@@ -48,12 +66,14 @@ const AIModelAdminPage: React.FC = () => {
   const [createModalVisible, setCreateModalVisible] = useState(false);
   const [editModalVisible, setEditModalVisible] = useState(false);
   const [testModalVisible, setTestModalVisible] = useState(false);
+  const [switchModelVisible, setSwitchModelVisible] = useState(false);
   const [editingModel, setEditingModel] = useState<AIModel | null>(null);
   const [createForm] = Form.useForm();
   const [editForm] = Form.useForm();
   const [testPrompt, setTestPrompt] = useState('');
   const [selectedProvider, setSelectedProvider] = useState<string>('');
   const [selectedPresetModel, setSelectedPresetModel] = useState<string>('');
+  const [newModelName, setNewModelName] = useState<string>('');
 
   const modelsQuery = useQuery(['ai-models'], () => aiModelApi.list());
   const presetsQuery = useQuery(['ai-model-presets'], () => aiModelApi.listPresets());
@@ -105,8 +125,7 @@ const AIModelAdminPage: React.FC = () => {
     onSuccess: () => {
       message.success(t('common:success'));
       queryClient.invalidateQueries(['ai-models']);
-      setCreateModalVisible(false);
-      createForm.resetFields();
+      handleCreateModalClose();
     },
     onError: (error: Error) => {
       message.error(`创建失败: ${error.message || t('common:error')}`);
@@ -188,19 +207,23 @@ const AIModelAdminPage: React.FC = () => {
   const handleSaveEdit = () => {
     editForm.validateFields().then((values) => {
       if (editingModel) {
-        updateMutation.mutate({ id: editingModel.id, data: values });
+        const payload = {
+          name: values.name,
+          api_endpoint: values.api_endpoint,
+          api_key: values.apiKey,
+        };
+        updateMutation.mutate({ id: editingModel.id, data: payload });
       }
     });
   };
 
   const handleCreate = () => {
     createForm.validateFields().then((values) => {
-      // Map frontend field names to backend API names
       const payload = {
         name: values.name,
         provider: values.provider,
         api_endpoint: values.api_endpoint,
-        api_key: values.apiKey, // Map apiKey to api_key
+        api_key: values.apiKey,
         config: {},
       };
       createMutation.mutate(payload);
@@ -256,11 +279,42 @@ const AIModelAdminPage: React.FC = () => {
     });
   };
 
+  const handleSwitchModel = (model: AIModel) => {
+    setEditingModel(model);
+    setNewModelName(model.name);
+    setSwitchModelVisible(true);
+  };
+
+  const handleConfirmSwitchModel = () => {
+    if (editingModel && newModelName && newModelName !== editingModel.name) {
+      updateMutation.mutate({
+        id: editingModel.id,
+        data: { name: newModelName, api_endpoint: editingModel.api_endpoint },
+      });
+      setSwitchModelVisible(false);
+    }
+  };
+
   const columns: ColumnsType<AIModel> = [
     {
       title: t('admin:modelName'),
       dataIndex: 'name',
       key: 'name',
+      render: (name: string, record) => (
+        <Space>
+          <Text strong>{name}</Text>
+          {PROVIDER_MODELS[record.provider] && PROVIDER_MODELS[record.provider].length > 0 && (
+            <Button
+              type="link"
+              size="small"
+              icon={<SwapOutlined />}
+              onClick={() => handleSwitchModel(record)}
+            >
+              切换
+            </Button>
+          )}
+        </Space>
+      ),
     },
     {
       title: t('admin:modelProvider'),
@@ -352,97 +406,9 @@ const AIModelAdminPage: React.FC = () => {
 
   const providerOptions: ModelProvider[] = ['alibaba-coding', 'alibaba-bailian', 'openai', 'anthropic', 'azure', 'deepseek', 'local'];
 
-  // Group presets by provider
-  const groupedPresets = presetsQuery.data?.presets?.reduce((acc, preset) => {
-    if (!acc[preset.provider]) {
-      acc[preset.provider] = [];
-    }
-    acc[preset.provider].push(preset);
-    return acc;
-  }, {} as Record<string, typeof presetsQuery.data.presets>) || {};
-
   return (
     <div>
       <Title level={4}>{t('admin:modelManagement')}</Title>
-
-      {/* Preset Models Status Card */}
-      <Card
-        style={{ marginTop: 16 }}
-        title={
-          <Space>
-            <CloudServerOutlined />
-            <span>预设模型状态</span>
-          </Space>
-        }
-        extra={
-          <Button
-            icon={<ReloadOutlined />}
-            onClick={() => presetsQuery.refetch()}
-            loading={presetsQuery.isLoading}
-          >
-            {t('common:refresh')}
-          </Button>
-        }
-      >
-        <Alert
-          type="info"
-          showIcon
-          message="配置 API Key 后，预设模型会在服务启动时自动初始化"
-          style={{ marginBottom: 16 }}
-        />
-
-        {Object.entries(groupedPresets).map(([provider, presets]) => (
-          <div key={provider} style={{ marginBottom: 16 }}>
-            <Title level={5} style={{ marginBottom: 8 }}>
-              {PROVIDER_NAMES[provider] || provider}
-              {PRESET_ENDPOINTS[provider] && (
-                <Text type="secondary" style={{ fontSize: 12, marginLeft: 8 }}>
-                  ({PRESET_ENDPOINTS[provider]})
-                </Text>
-              )}
-            </Title>
-            <Row gutter={[8, 8]}>
-              {(presets as typeof presetsQuery.data.presets).map((preset) => (
-                <Col key={preset.name}>
-                  <Space>
-                    <Tag
-                      icon={preset.configured ? <CheckCircleOutlined /> : <CloseCircleOutlined />}
-                      color={preset.configured ? 'success' : 'default'}
-                      style={{ padding: '4px 8px' }}
-                    >
-                      {preset.name}
-                      {preset.configured ? ' (已配置)' : ' (未配置)'}
-                    </Tag>
-                    {preset.default && (
-                      <Tag color="blue" style={{ marginLeft: 4 }}>默认</Tag>
-                    )}
-                    {preset.configured && (
-                      <Button
-                        type="link"
-                        size="small"
-                        icon={<CheckOutlined />}
-                        onClick={() => {
-                          // Open create modal with preset model pre-filled
-                          setSelectedProvider(provider);
-                          setSelectedPresetModel(preset.name);
-                          setCreateModalVisible(true);
-                          createForm.setFieldsValue({
-                            provider: provider,
-                            name: preset.name,
-                            api_endpoint: PRESET_ENDPOINTS[provider] || '',
-                          });
-                        }}
-                      >
-                        激活
-                      </Button>
-                    )}
-                  </Space>
-                </Col>
-              ))}
-            </Row>
-          </div>
-        ))}
-      </Card>
 
       {/* Registered Models Card */}
       <Card style={{ marginTop: 16 }}>
@@ -518,17 +484,13 @@ const AIModelAdminPage: React.FC = () => {
                   <Option key={m.name} value={m.name}>
                     <Space>
                       {m.name}
-                      {m.configured ? (
-                        <Tag color="success" style={{ marginLeft: 4 }}>已配置</Tag>
-                      ) : (
-                        <Tag color="warning" style={{ marginLeft: 4 }}>未配置</Tag>
-                      )}
+                      {m.default && <Tag color="blue">默认</Tag>}
                     </Space>
                   </Option>
                 ))}
               </Select>
               <Text type="secondary" style={{ fontSize: 12 }}>
-                选择预设模型可自动填充名称和配置
+                选择预设模型可自动填充名称
               </Text>
             </Form.Item>
           )}
@@ -559,7 +521,7 @@ const AIModelAdminPage: React.FC = () => {
           <Form.Item
             name="apiKey"
             label={t('admin:modelApiKey')}
-            rules={[{ required: !presetsQuery.data?.presets?.some(p => p.provider === selectedProvider && p.configured) }]}
+            rules={[{ required: true }]}
           >
             <Input.Password placeholder="输入 API Key" />
           </Form.Item>
@@ -632,6 +594,41 @@ const AIModelAdminPage: React.FC = () => {
             rows={4}
           />
         </Form.Item>
+      </Modal>
+
+      {/* Switch Model Modal */}
+      <Modal
+        title="切换模型"
+        open={switchModelVisible}
+        onOk={handleConfirmSwitchModel}
+        onCancel={() => setSwitchModelVisible(false)}
+        confirmLoading={updateMutation.isLoading}
+      >
+        <Form layout="vertical">
+          <Form.Item label="当前模型">
+            <Text>{editingModel?.name}</Text>
+          </Form.Item>
+          <Form.Item label="选择新模型">
+            <Select
+              value={newModelName}
+              onChange={setNewModelName}
+              style={{ width: '100%' }}
+            >
+              {PROVIDER_MODELS[editingModel?.provider || '']?.map((model) => (
+                <Option key={model} value={model}>
+                  {model}
+                  {model === 'qwen3.5-plus' && <Tag color="blue" style={{ marginLeft: 8 }}>默认</Tag>}
+                </Option>
+              ))}
+            </Select>
+          </Form.Item>
+          <Alert
+            type="info"
+            showIcon
+            message="切换模型会使用同一个 API Key，无需重新输入"
+            style={{ marginTop: 16 }}
+          />
+        </Form>
       </Modal>
     </div>
   );
