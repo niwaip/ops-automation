@@ -74,10 +74,28 @@ const AIControls: React.FC<AIControlsProps> = ({ onCommandExecuted }) => {
       onSuccess: (data) => {
         console.log('[AIControls] Commands executed successfully:', data);
         message.success(t('recorder:ai.commandExecuted'));
+        // Update last history entry with result
+        setHistory((prev) => {
+          const last = prev[prev.length - 1];
+          if (last && last.type === 'ai') {
+            return [...prev.slice(0, -1), { ...last, result: data }];
+          }
+          return prev;
+        });
       },
       onError: (error: any) => {
         console.error('[AIControls] Command execution failed:', error);
         message.error(t('recorder:ai.executionFailed'));
+        // Add error to history but don't block
+        setHistory((prev) => [
+          ...prev,
+          {
+            id: Date.now().toString(),
+            type: 'system',
+            content: `执行失败: ${error.message || '未知错误'}，可以继续尝试其他命令`,
+            timestamp: new Date(),
+          },
+        ]);
       },
     }
   );
@@ -111,13 +129,13 @@ const AIControls: React.FC<AIControlsProps> = ({ onCommandExecuted }) => {
           // Auto-execute the commands
           executeCommandMutation.mutate(data.commands);
         } else if (!data.success) {
-          // Show error message
+          // Show error message but allow continuing
           setHistory((prev) => [
             ...prev,
             {
               id: Date.now().toString(),
               type: 'system',
-              content: data.explanation || t('recorder:ai.parseFailed') || '无法解析命令',
+              content: data.explanation || t('recorder:ai.parseFailed') || '无法解析命令，请尝试其他表达方式',
               timestamp: new Date(),
             },
           ]);
@@ -125,14 +143,14 @@ const AIControls: React.FC<AIControlsProps> = ({ onCommandExecuted }) => {
       },
       onError: (error: any) => {
         console.error('[AIControls] Parse command failed:', error);
-        message.error(t('recorder:ai.parseFailed'));
-        // Add error to history
+        // Don't show message.error to avoid blocking
+        // Add error to history, allow continuing
         setHistory((prev) => [
           ...prev,
           {
             id: Date.now().toString(),
             type: 'system',
-            content: `解析失败: ${error.message || '未知错误'}`,
+            content: `解析失败: ${error.message || '未知错误'}，请尝试其他表达方式`,
             timestamp: new Date(),
           },
         ]);
@@ -155,7 +173,7 @@ const AIControls: React.FC<AIControlsProps> = ({ onCommandExecuted }) => {
           {
             id: Date.now().toString(),
             type: 'system',
-            content: t('recorder:ai.browserInitialized') || 'Browser session initialized. You can now send commands.',
+            content: t('recorder:ai.browserInitialized') || '浏览器已初始化，可以开始发送命令',
             timestamp: new Date(),
           },
         ]);
@@ -163,11 +181,27 @@ const AIControls: React.FC<AIControlsProps> = ({ onCommandExecuted }) => {
       onError: (error: any) => {
         console.error('[AIControls] Browser init failed:', error);
         message.error(t('recorder:ai.browserInitFailed'));
+        setHistory((prev) => [
+          ...prev,
+          {
+            id: Date.now().toString(),
+            type: 'system',
+            content: `初始化失败: ${error.message || '未知错误'}，请检查浏览器服务是否运行`,
+            timestamp: new Date(),
+          },
+        ]);
       },
     }
   );
 
-  const handleSend = () => {
+  // Auto init browser if needed
+  const ensureBrowserReady = async () => {
+    if (!isBrowserReady) {
+      await initBrowserMutation.mutateAsync();
+    }
+  };
+
+  const handleSend = async () => {
     if (!input.trim()) return;
 
     const userMessage = input.trim();
@@ -185,6 +219,16 @@ const AIControls: React.FC<AIControlsProps> = ({ onCommandExecuted }) => {
 
     // Clear input immediately
     setInput('');
+
+    // Auto init browser if not ready
+    if (!isBrowserReady) {
+      try {
+        await initBrowserMutation.mutateAsync();
+      } catch (e) {
+        // Init failed, but we already added error to history
+        return;
+      }
+    }
 
     // Parse the command
     parseCommandMutation.mutate(userMessage);
@@ -228,18 +272,31 @@ const AIControls: React.FC<AIControlsProps> = ({ onCommandExecuted }) => {
             {isBrowserReady ? (t('recorder:ai.ready') || '就绪') : (t('recorder:ai.notReady') || '未初始化')}
           </Tag>
           <Button
+            type={isBrowserReady ? 'default' : 'primary'}
             size="small"
             icon={<DesktopOutlined />}
             onClick={() => initBrowserMutation.mutate()}
             loading={initBrowserMutation.isLoading}
-            disabled={isBrowserReady}
           >
-            {t('recorder:ai.initBrowser') || '初始化浏览器'}
+            {isBrowserReady
+              ? (t('recorder:ai.reinitBrowser') || '重新初始化')
+              : (t('recorder:ai.initBrowser') || '初始化浏览器')}
           </Button>
         </Space>
       }
     >
       <Space direction="vertical" style={{ width: '100%' }} size="middle">
+        {/* Browser not ready alert */}
+        {!isBrowserReady && (
+          <Alert
+            message={t('recorder:ai.browserNotReadyTitle') || '浏览器未初始化'}
+            description={t('recorder:ai.browserNotReadyDesc') || '请点击"初始化浏览器"按钮，或在输入命令后自动初始化'}
+            type="warning"
+            showIcon
+            style={{ borderRadius: 8 }}
+          />
+        )}
+
         {/* Info alert */}
         <Alert
           message={t('recorder:ai.infoTitle') || '自然语言控制'}
@@ -394,7 +451,7 @@ const AIControls: React.FC<AIControlsProps> = ({ onCommandExecuted }) => {
                 handleSend();
               }
             }}
-            disabled={!isBrowserReady || isLoading}
+            disabled={isLoading}
             style={{ borderRadius: '8px 0 0 8px' }}
           />
           <Button
@@ -402,7 +459,7 @@ const AIControls: React.FC<AIControlsProps> = ({ onCommandExecuted }) => {
             icon={<SendOutlined />}
             onClick={handleSend}
             loading={isLoading}
-            disabled={!isBrowserReady || !input.trim()}
+            disabled={!input.trim()}
             style={{ height: 'auto', borderRadius: '0 8px 8px 0' }}
           >
             {t('common:send')}
