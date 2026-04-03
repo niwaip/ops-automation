@@ -87,8 +87,18 @@ export class BrowserService implements OnModuleDestroy {
   }
 
   async executeCommands(commands: MCPCommand[]): Promise<{ success: boolean; results: any[]; message?: string }> {
-    if (!this.session || this.session.status !== 'ready') {
+    if (!this.session) {
       return { success: false, results: [], message: 'Browser not initialized' };
+    }
+
+    // If session is in error state, try to recover
+    if (this.session.status === 'error') {
+      this.logger.log('Session in error state, attempting recovery...');
+      this.session.status = 'ready';
+    }
+
+    if (this.session.status !== 'ready') {
+      return { success: false, results: [], message: `Browser not ready (status: ${this.session.status})` };
     }
 
     this.session.status = 'executing';
@@ -97,8 +107,15 @@ export class BrowserService implements OnModuleDestroy {
     try {
       for (const command of commands) {
         this.logger.log(`Executing command: ${command.tool} with params: ${JSON.stringify(command.params)}`);
-        const result = await this.executeCommand(command);
-        results.push(result);
+        try {
+          const result = await this.executeCommand(command);
+          results.push(result);
+        } catch (cmdError: unknown) {
+          const cmdErrorMsg = cmdError instanceof Error ? cmdError.message : 'Unknown error';
+          this.logger.error(`Command ${command.tool} failed: ${cmdErrorMsg}`);
+          results.push({ status: 'error', message: cmdErrorMsg });
+          // Continue with next command instead of stopping
+        }
       }
 
       this.session.status = 'ready';
@@ -179,7 +196,7 @@ export class BrowserService implements OnModuleDestroy {
         }
       );
       req.on('error', reject);
-      req.setTimeout(15000, () => {
+      req.setTimeout(30000, () => {  // Increased from 15s to 30s
         req.destroy();
         reject(new Error('Navigate timeout'));
       });

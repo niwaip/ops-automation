@@ -151,36 +151,51 @@ export class BrowserCommandService {
     const searchPatterns = [
       /^(?:在\s*)?(.+?)\s*(?:搜索|查找|搜)\s*(.+)$/i,
       /^search\s+(.+?)\s+(?:for\s+)?(.+)$/i,
+      /^(?:搜索|搜)\s*(.+)$/i,  // "搜索天气" pattern
+      /^(?:查找|找)\s*(.+)$/i,  // "查找天气" pattern
     ];
 
     for (const pattern of searchPatterns) {
       const match = input.match(pattern);
-      if (match && match[1] && match[2]) {
-        const site = match[1].trim();
-        const query = match[2].trim();
-        const baseUrl = this.resolveUrl(site);
-        let searchUrl = baseUrl;
+      if (match) {
+        // For "搜索X" pattern, use default search engine (Baidu)
+        let site = '百度';
+        let query = '';
 
-        // Construct search URL based on site
-        if (baseUrl.includes('baidu')) {
-          searchUrl = `https://www.baidu.com/s?wd=${encodeURIComponent(query)}`;
-        } else if (baseUrl.includes('google')) {
-          searchUrl = `https://www.google.com/search?q=${encodeURIComponent(query)}`;
-        } else if (baseUrl.includes('bing')) {
-          searchUrl = `https://www.bing.com/search?q=${encodeURIComponent(query)}`;
+        if (match[1] && match[2]) {
+          // "在百度搜索天气" pattern
+          site = match[1].trim();
+          query = match[2].trim();
+        } else if (match[1]) {
+          // "搜索天气" pattern - use Baidu as default
+          query = match[1].trim();
         }
 
-        return {
-          success: true,
-          commands: [
-            {
-              tool: 'navigate',
-              params: { url: searchUrl },
-              description: `搜索: ${query}`,
-            },
-          ],
-          explanation: `将在 ${site} 搜索: ${query}`,
-        };
+        if (query) {
+          const baseUrl = this.resolveUrl(site);
+          let searchUrl = baseUrl;
+
+          // Construct search URL based on site
+          if (baseUrl.includes('baidu')) {
+            searchUrl = `https://www.baidu.com/s?wd=${encodeURIComponent(query)}`;
+          } else if (baseUrl.includes('google')) {
+            searchUrl = `https://www.google.com/search?q=${encodeURIComponent(query)}`;
+          } else if (baseUrl.includes('bing')) {
+            searchUrl = `https://www.bing.com/search?q=${encodeURIComponent(query)}`;
+          }
+
+          return {
+            success: true,
+            commands: [
+              {
+                tool: 'navigate',
+                params: { url: searchUrl },
+                description: `搜索: ${query}`,
+              },
+            ],
+            explanation: `将在 ${site} 搜索: ${query}`,
+          };
+        }
       }
     }
 

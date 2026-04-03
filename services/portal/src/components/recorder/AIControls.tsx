@@ -64,15 +64,35 @@ const AIControls: React.FC<AIControlsProps> = ({ onCommandExecuted }) => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [history]);
 
+  // Execute MCP commands directly
+  const executeCommandMutation = useMutation(
+    async (commands: MCPCommand[]) => {
+      console.log('[AIControls] Executing commands:', commands);
+      return apiClient.post('/browser/execute', { commands });
+    },
+    {
+      onSuccess: (data) => {
+        console.log('[AIControls] Commands executed successfully:', data);
+        message.success(t('recorder:ai.commandExecuted'));
+      },
+      onError: (error: any) => {
+        console.error('[AIControls] Command execution failed:', error);
+        message.error(t('recorder:ai.executionFailed'));
+      },
+    }
+  );
+
   // Parse natural language to MCP commands
   const parseCommandMutation = useMutation(
     async (userInput: string) => {
+      console.log('[AIControls] Parsing command:', userInput);
       return apiClient.post<AICommandResponse>('/ai/browser/parse-command', {
         input: userInput,
       });
     },
     {
       onSuccess: (data) => {
+        console.log('[AIControls] Parse result:', data);
         if (data.success && data.commands.length > 0) {
           // Add AI response to history
           setHistory((prev) => [
@@ -103,23 +123,19 @@ const AIControls: React.FC<AIControlsProps> = ({ onCommandExecuted }) => {
           ]);
         }
       },
-      onError: () => {
+      onError: (error: any) => {
+        console.error('[AIControls] Parse command failed:', error);
         message.error(t('recorder:ai.parseFailed'));
-      },
-    }
-  );
-
-  // Execute MCP commands directly
-  const executeCommandMutation = useMutation(
-    async (commands: MCPCommand[]) => {
-      return apiClient.post('/browser/execute', { commands });
-    },
-    {
-      onSuccess: (data) => {
-        message.success(t('recorder:ai.commandExecuted'));
-      },
-      onError: () => {
-        message.error(t('recorder:ai.executionFailed'));
+        // Add error to history
+        setHistory((prev) => [
+          ...prev,
+          {
+            id: Date.now().toString(),
+            type: 'system',
+            content: `解析失败: ${error.message || '未知错误'}`,
+            timestamp: new Date(),
+          },
+        ]);
       },
     }
   );
@@ -127,6 +143,7 @@ const AIControls: React.FC<AIControlsProps> = ({ onCommandExecuted }) => {
   // Initialize browser session
   const initBrowserMutation = useMutation(
     async () => {
+      console.log('[AIControls] Initializing browser');
       return apiClient.post('/browser/init');
     },
     {
@@ -143,7 +160,8 @@ const AIControls: React.FC<AIControlsProps> = ({ onCommandExecuted }) => {
           },
         ]);
       },
-      onError: () => {
+      onError: (error: any) => {
+        console.error('[AIControls] Browser init failed:', error);
         message.error(t('recorder:ai.browserInitFailed'));
       },
     }
@@ -152,19 +170,24 @@ const AIControls: React.FC<AIControlsProps> = ({ onCommandExecuted }) => {
   const handleSend = () => {
     if (!input.trim()) return;
 
+    const userMessage = input.trim();
+
     // Add user message to history
     setHistory((prev) => [
       ...prev,
       {
         id: Date.now().toString(),
         type: 'user',
-        content: input,
+        content: userMessage,
         timestamp: new Date(),
       },
     ]);
 
-    parseCommandMutation.mutate(input);
+    // Clear input immediately
     setInput('');
+
+    // Parse the command
+    parseCommandMutation.mutate(userMessage);
   };
 
   const handleExecuteCommands = (commands: MCPCommand[]) => {
@@ -180,6 +203,7 @@ const AIControls: React.FC<AIControlsProps> = ({ onCommandExecuted }) => {
     message.success(t('common:copied'));
   };
 
+  // Check if any mutation is loading
   const isLoading = parseCommandMutation.isLoading || executeCommandMutation.isLoading;
 
   // Example commands
