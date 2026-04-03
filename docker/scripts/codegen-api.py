@@ -319,7 +319,7 @@ def ai_navigate(url):
     """Navigate to URL"""
     global ai_page, ai_mode_active
 
-    if not ai_mode_active or ai_page:
+    if not ai_mode_active or not ai_page:
         return {"status": "error", "message": "AI browser not initialized"}
 
     try:
@@ -1110,7 +1110,9 @@ def ai_smart_search(query):
         # Step 1: Get accessibility snapshot to analyze page structure
         print(f"[SmartSearch] Step 1: Analyzing page structure...")
         snapshot_result = ai_snapshot()
-        snapshot_text = snapshot_result.get("snapshot", "")
+        # snapshot is a dict, convert to string for display
+        snapshot_data = snapshot_result.get("snapshot")
+        snapshot_text = json.dumps(snapshot_data, ensure_ascii=False) if snapshot_data else ""
 
         # Step 2: Find search input using multiple strategies
         search_selectors = [
@@ -1244,11 +1246,13 @@ def ai_smart_search(query):
 
         # Take a snapshot of results
         result_snapshot = ai_snapshot()
+        result_snapshot_data = result_snapshot.get("snapshot")
+        result_snapshot_str = json.dumps(result_snapshot_data, ensure_ascii=False)[:1000] if result_snapshot_data else ""
 
         return {
             "status": "success",
             "message": f"Searched for: {query}",
-            "snapshot": result_snapshot.get("snapshot", "")[:1000],
+            "snapshot": result_snapshot_str,
             # Template info - for deterministic replay
             "template_info": {
                 "input_selector": used_selector,
