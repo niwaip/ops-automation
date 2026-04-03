@@ -737,7 +737,8 @@ def ai_click_result(index=1):
                                 index: i + 1,
                                 text: link.textContent.trim(),
                                 href: link.href,
-                                rect: getRect(link)
+                                rect: getRect(link),
+                                target: link.target || '_self'
                             });
                         }
                     });
@@ -792,6 +793,23 @@ def ai_click_result(index=1):
         if len(result_links) >= index:
             target = result_links[index - 1]
             print(f"[INFO] Clicking result {index}: {target['text'][:50]}")
+
+            # Check if link opens in new tab (target="_blank")
+            link_target = target.get('target', '_self')
+            if link_target == '_blank':
+                # Navigate directly to the URL instead of clicking
+                print(f"[INFO] Link has target=_blank, navigating to: {target['href']}")
+                ai_page.goto(target['href'], timeout=30000)
+                return {
+                    "status": "success",
+                    "message": f"Navigated to result {index}: {target['text'][:30]}",
+                    "link_info": target,
+                    "template_info": {
+                        "tool": "navigate",
+                        "params": {"url": target['href']},
+                        "description": f"Navigate to result #{index}"
+                    }
+                }
 
             # Click by coordinates (most reliable method like chrome-devtools-mcp)
             rect = target['rect']
