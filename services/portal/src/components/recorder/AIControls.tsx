@@ -15,6 +15,7 @@ import {
   ArrowDownOutlined,
   ToolOutlined,
   CloudUploadOutlined,
+  CheckCircleOutlined,
 } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
 import { useMutation } from 'react-query';
@@ -244,13 +245,14 @@ const AIControls: React.FC<AIControlsProps> = ({ onCommandExecuted }) => {
       description: `快捷操作: ${command}`,
     };
 
-    // Add to history
+    // Add to history with commands for result update
     setHistory((prev) => [
       ...prev,
       {
         id: Date.now().toString(),
-        type: 'user',
+        type: 'ai',
         content: `快捷操作: ${command}${params ? ` (${JSON.stringify(params)})` : ''}`,
+        commands: [quickCommand],
         timestamp: new Date(),
       },
     ]);
@@ -451,6 +453,112 @@ const AIControls: React.FC<AIControlsProps> = ({ onCommandExecuted }) => {
                                 >
                                   {t('recorder:ai.execute') || '执行命令'}
                                 </Button>
+                              </div>
+                            ),
+                          },
+                        ]}
+                      />
+                    </div>
+                  )}
+
+                  {/* Show result if present */}
+                  {entry.result && (
+                    <div style={{ marginTop: 8 }}>
+                      <Collapse
+                        size="small"
+                        ghost
+                        items={[
+                          {
+                            key: 'result',
+                            label: (
+                              <Space>
+                                <CheckCircleOutlined style={{ color: '#52c41a' }} />
+                                <Text style={{ fontSize: 12 }}>
+                                  {t('recorder:ai.result') || '执行结果'}
+                                </Text>
+                              </Space>
+                            ),
+                            children: (
+                              <div style={{ maxHeight: 300, overflow: 'auto' }}>
+                                {/* Screenshot result */}
+                                {entry.result.screenshot && (
+                                  <img
+                                    src={entry.result.screenshot.startsWith('data:')
+                                      ? entry.result.screenshot
+                                      : `data:image/png;base64,${entry.result.screenshot}`}
+                                    alt="Screenshot"
+                                    style={{ maxWidth: '100%', borderRadius: 4 }}
+                                  />
+                                )}
+                                {/* Text/HTML content result */}
+                                {entry.result.text && (
+                                  <div
+                                    style={{
+                                      background: '#f5f5f5',
+                                      padding: 8,
+                                      borderRadius: 4,
+                                      fontSize: 11,
+                                      whiteSpace: 'pre-wrap',
+                                      wordBreak: 'break-all',
+                                      maxHeight: 200,
+                                      overflow: 'auto',
+                                    }}
+                                  >
+                                    {entry.result.text}
+                                  </div>
+                                )}
+                                {/* HTML content result */}
+                                {entry.result.html && (
+                                  <div
+                                    style={{
+                                      background: '#f5f5f5',
+                                      padding: 8,
+                                      borderRadius: 4,
+                                      fontSize: 11,
+                                      fontFamily: 'monospace',
+                                      whiteSpace: 'pre-wrap',
+                                      wordBreak: 'break-all',
+                                      maxHeight: 200,
+                                      overflow: 'auto',
+                                    }}
+                                  >
+                                    {entry.result.html}
+                                  </div>
+                                )}
+                                {/* Snapshot/Accessibility tree result */}
+                                {entry.result.snapshot && (
+                                  <pre
+                                    style={{
+                                      background: '#f5f5f5',
+                                      padding: 8,
+                                      borderRadius: 4,
+                                      fontSize: 10,
+                                      maxHeight: 200,
+                                      overflow: 'auto',
+                                      margin: 0,
+                                    }}
+                                  >
+                                    {typeof entry.result.snapshot === 'string'
+                                      ? entry.result.snapshot
+                                      : JSON.stringify(entry.result.snapshot, null, 2)}
+                                  </pre>
+                                )}
+                                {/* Generic result - show as JSON */}
+                                {!entry.result.screenshot && !entry.result.text && !entry.result.html && !entry.result.snapshot && (
+                                  <pre
+                                    style={{
+                                      background: '#f5f5f5',
+                                      padding: 8,
+                                      borderRadius: 4,
+                                      fontSize: 10,
+                                      maxHeight: 200,
+                                      overflow: 'auto',
+                                      margin: 0,
+                                    }}
+                                  >
+                                    {JSON.stringify(entry.result, null, 2)}
+                                  </pre>
+                                )}
                               </div>
                             ),
                           },
