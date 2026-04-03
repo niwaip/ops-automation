@@ -41,7 +41,7 @@ export class OpenAICompatibleClient {
       });
 
       return response.data.choices[0]?.message?.content || '';
-    } catch (error) {
+    } catch (error: unknown) {
       if (error instanceof AxiosError) {
         throw new Error(`OpenAI API Error: ${error.response?.data?.error?.message || error.message}`);
       }
@@ -93,7 +93,7 @@ export class OpenAICompatibleClient {
         stream.on('end', () => resolve(fullContent));
         stream.on('error', reject);
       });
-    } catch (error) {
+    } catch (error: unknown) {
       if (error instanceof AxiosError) {
         throw new Error(`OpenAI API Stream Error: ${error.response?.data?.error?.message || error.message}`);
       }
@@ -109,7 +109,7 @@ export class OpenAICompatibleClient {
     try {
       const response = await this.client.get('/v1/models');
       return response.data.data?.map((model: { id: string }) => model.id) || [];
-    } catch (error) {
+    } catch (error: unknown) {
       if (error instanceof AxiosError) {
         throw new Error(`OpenAI API Error: ${error.response?.data?.error?.message || error.message}`);
       }
