@@ -738,6 +738,93 @@ def ai_click_result(index=1):
         traceback.print_exc()
         return {"status": "error", "message": str(e)}
 
+def ai_read_page(selector=None, max_length=5000):
+    """Read page content - similar to chrome-devtools-mcp evaluate_script"""
+    global ai_page, ai_mode_active
+
+    if not ai_mode_active or not ai_page:
+        return {"status": "error", "message": "AI browser not initialized"}
+
+    try:
+        if selector:
+            # Read specific element
+            content = ai_page.evaluate(f"""
+                () => {{
+                    const el = document.querySelector("{selector}");
+                    if (!el) return null;
+                    return {{
+                        text: el.innerText || el.textContent || "",
+                        html: el.innerHTML || "",
+                        tagName: el.tagName,
+                        className: el.className
+                    }};
+                }}
+            """)
+            if content:
+                return {
+                    "status": "success",
+                    "content": content["text"][:max_length],
+                    "html": content["html"][:max_length * 2],
+                    "element": {
+                        "tagName": content["tagName"],
+                        "className": content["className"]
+                    }
+                }
+            return {"status": "error", "message": f"Element not found: {selector}"}
+        else:
+            # Read main page content
+            content = ai_page.evaluate(f"""
+                () => {{
+                    // Try to get main content area first
+                    const mainSelectors = [
+                        'main', 'article', '#content', '#main', '.content',
+                        '#content_left', '.main-content', 'body'
+                    ];
+
+                    let mainContent = null;
+                    for (const sel of mainSelectors) {{
+                        mainContent = document.querySelector(sel);
+                        if (mainContent) break;
+                    }}
+
+                    const text = mainContent ? mainContent.innerText : document.body.innerText;
+                    const title = document.title;
+                    const url = window.location.href;
+                    const description = document.querySelector('meta[name="description"]')?.content || "";
+
+                    // Get all headings for structure
+                    const headings = Array.from(document.querySelectorAll('h1, h2, h3'))
+                        .map(h => ({{ level: h.tagName, text: h.innerText.trim() }}))
+                        .slice(0, 20);
+
+                    // Get all links
+                    const links = Array.from(document.querySelectorAll('a[href]'))
+                        .filter(a => a.innerText.trim().length > 0)
+                        .map(a => ({{ text: a.innerText.trim().substring(0, 50), href: a.href }}))
+                        .slice(0, 30);
+
+                    return {{
+                        title,
+                        url,
+                        description,
+                        text: text.substring(0, {max_length}),
+                        headings,
+                        links
+                    }};
+                }}
+            """)
+
+            return {
+                "status": "success",
+                "content": content
+            }
+
+    except Exception as e:
+        print(f"[ERROR] Read page failed: {e}")
+        import traceback
+        traceback.print_exc()
+        return {"status": "error", "message": str(e)}
+
 class CodegenHandler(BaseHTTPRequestHandler):
     def log_message(self, format, *args):
         print(f"[HTTP] {args[0]}")
@@ -874,6 +961,12 @@ class CodegenHandler(BaseHTTPRequestHandler):
 
         elif path == '/snapshot':
             result = ai_snapshot()
+            self.send_json(result)
+
+        elif path == '/read_page':
+            selector = params.get('selector', [None])[0]
+            max_length = int(params.get('max_length', [5000])[0] or 5000)
+            result = ai_read_page(selector, max_length)
             self.send_json(result)
 
         else:

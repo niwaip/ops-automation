@@ -142,6 +142,8 @@ export class BrowserService implements OnModuleDestroy {
         return await this.screenshot();
       case 'snapshot':
         return await this.snapshot();
+      case 'read_page':
+        return await this.readPage(command.params.selector as string, command.params.max_length as number);
       case 'wait':
         return await this.wait(command.params.selector as string, command.params.duration as number);
       case 'hover':
