@@ -1,5 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ModelService } from '../model/model.service';
+import * as fs from 'fs';
+import * as path from 'path';
 
 export interface BrowserCommand {
   tool: string;
@@ -17,6 +19,16 @@ export interface ParseBrowserCommandResponse {
   commands: BrowserCommand[];
   explanation: string;
 }
+
+export interface WebsiteConfig {
+  name: string;
+  url: string;
+  aliases?: string[];
+}
+
+// Data directory for persistence
+const DATA_DIR = process.env.AI_MODELS_DATA_DIR || '/app/data';
+const WEBSITES_FILE = path.join(DATA_DIR, 'custom-websites.json');
 
 // MCP-style tool definitions
 const BROWSER_TOOLS = [
@@ -108,8 +120,96 @@ const URL_PATTERNS: Record<string, string> = {
 @Injectable()
 export class BrowserCommandService {
   private readonly logger = new Logger(BrowserCommandService.name);
+  private customWebsites: Map<string, WebsiteConfig> = new Map();
 
-  constructor(private readonly modelService: ModelService) {}
+  constructor(private readonly modelService: ModelService) {
+    this.loadCustomWebsites();
+  }
+
+  private loadCustomWebsites(): void {
+    try {
+      if (fs.existsSync(WEBSITES_FILE)) {
+        const data = fs.readFileSync(WEBSITES_FILE, 'utf-8');
+        const websites: WebsiteConfig[] = JSON.parse(data);
+        for (const site of websites) {
+          this.customWebsites.set(site.name.toLowerCase(), site);
+          if (site.aliases) {
+            for (const alias of site.aliases) {
+              this.customWebsites.set(alias.toLowerCase(), site);
+            }
+          }
+        }
+        this.logger.log(`Loaded ${websites.length} custom websites`);
+      }
+    } catch (error: unknown) {
+      const errorMsg = error instanceof Error ? error.message : 'Unknown error';
+      this.logger.error(`Failed to load custom websites: ${errorMsg}`);
+    }
+  }
+
+  private saveCustomWebsites(): void {
+    try {
+      const websites: WebsiteConfig[] = [];
+      const seen = new Set<string>();
+      for (const [_, config] of this.customWebsites) {
+        if (!seen.has(config.name)) {
+          websites.push(config);
+          seen.add(config.name);
+        }
+      }
+      fs.writeFileSync(WEBSITES_FILE, JSON.stringify(websites, null, 2));
+      this.logger.log(`Saved ${websites.length} custom websites`);
+    } catch (error: unknown) {
+      const errorMsg = error instanceof Error ? error.message : 'Unknown error';
+      this.logger.error(`Failed to save custom websites: ${errorMsg}`);
+    }
+  }
+
+  addWebsite(config: WebsiteConfig): void {
+    this.customWebsites.set(config.name.toLowerCase(), config);
+    if (config.aliases) {
+      for (const alias of config.aliases) {
+        this.customWebsites.set(alias.toLowerCase(), config);
+      }
+    }
+    this.saveCustomWebsites();
+  }
+
+  removeWebsite(name: string): boolean {
+    const config = this.customWebsites.get(name.toLowerCase());
+    if (config) {
+      this.customWebsites.delete(name.toLowerCase());
+      if (config.aliases) {
+        for (const alias of config.aliases) {
+          this.customWebsites.delete(alias.toLowerCase());
+        }
+      }
+      this.saveCustomWebsites();
+      return true;
+    }
+    return false;
+  }
+
+  listWebsites(): WebsiteConfig[] {
+    const seen = new Set<string>();
+    const result: WebsiteConfig[] = [];
+    for (const [_, config] of this.customWebsites) {
+      if (!seen.has(config.name)) {
+        result.push(config);
+        seen.add(config.name);
+      }
+    }
+    return result;
+  }
+
+  getUrlPatterns(): Record<string, string> {
+    // Merge default and custom URL patterns
+    const result: Record<string, string> = { ...URL_PATTERNS };
+    for (const [_, config] of this.customWebsites) {
+      result[config.name] = config.url;
+    }
+    return result;
+  }
 
   async parseCommand(request: ParseBrowserCommandRequest): Promise<ParseBrowserCommandResponse> {
     const { input } = request;
@@ -136,166 +236,10 @@ export class BrowserCommandService {
   }
 
   private parseWithPatterns(input: string): ParseBrowserCommandResponse | null {
-    // Pattern: Navigate to URL
-    const navPatterns = [
-      /^(?:打开|访问|前往|进入)\s*(.+)$/i,
-      /^(?:open|go to|navigate to|visit)\s*(.+)$/i,
-    ];
+    // Only match fixed, non-AI-dependent commands
+    // Navigation, search, click, fill should go through AI for verification
 
-    for (const pattern of navPatterns) {
-      const match = input.match(pattern);
-      if (match && match[1]) {
-        const target = match[1].trim();
-        const url = this.resolveUrl(target);
-        return {
-          success: true,
-          commands: [{
-            tool: 'navigate',
-            params: { url },
-            description: `导航到 ${url}`,
-          }],
-          explanation: `将打开网址: ${url}`,
-        };
-      }
-    }
-
-    // Pattern: Search
-    const searchPatterns = [
-      /^(?:在\s*)?(.+?)\s*(?:搜索|查找|搜)\s*(.+)$/i,
-      /^search\s+(.+?)\s+(?:for\s+)?(.+)$/i,
-      /^(?:搜索|搜)\s*(.+)$/i,  // "搜索天气" pattern
-      /^(?:查找|找)\s*(.+)$/i,  // "查找天气" pattern
-    ];
-
-    for (const pattern of searchPatterns) {
-      const match = input.match(pattern);
-      if (match) {
-        // For "搜索X" pattern, use default search engine (Baidu)
-        let site = '百度';
-        let query = '';
-
-        if (match[1] && match[2]) {
-          // "在百度搜索天气" pattern
-          site = match[1].trim();
-          query = match[2].trim();
-        } else if (match[1]) {
-          // "搜索天气" pattern - use Baidu as default
-          query = match[1].trim();
-        }
-
-        if (query) {
-          const baseUrl = this.resolveUrl(site);
-          let searchUrl = baseUrl;
-
-          // Construct search URL based on site
-          if (baseUrl.includes('baidu')) {
-            searchUrl = `https://www.baidu.com/s?wd=${encodeURIComponent(query)}`;
-          } else if (baseUrl.includes('google')) {
-            searchUrl = `https://www.google.com/search?q=${encodeURIComponent(query)}`;
-          } else if (baseUrl.includes('bing')) {
-            searchUrl = `https://www.bing.com/search?q=${encodeURIComponent(query)}`;
-          }
-
-          return {
-            success: true,
-            commands: [
-              {
-                tool: 'navigate',
-                params: { url: searchUrl },
-                description: `搜索: ${query}`,
-              },
-            ],
-            explanation: `将在 ${site} 搜索: ${query}`,
-          };
-        }
-      }
-    }
-
-    // Pattern: Click search result by position
-    const clickResultPatterns = [
-      /^(?:点击|单击|点)\s*(?:第\s*)?(\d+)\s*(?:个\s*)?(?:搜索|查询)?(?:结果|链接)?$/i,
-      /^(?:点击|单击|点)\s*(?:第一个|第二个|第三个|第四个|第五个)(?:搜索|查询)?(?:结果|链接)?$/i,
-      /^click\s+(?:the\s+)?(?:first|second|third|fourth|fifth|1st|2nd|3rd|4th|5th)\s+(?:result|link|search\s+result)$/i,
-      /^click\s+(?:result|link)\s+#?(\d+)$/i,
-    ];
-
-    const positionMap: Record<string, number> = {
-      '第一个': 1, '第二个': 2, '第三个': 3, '第四个': 4, '第五个': 5,
-      'first': 1, 'second': 2, 'third': 3, 'fourth': 4, 'fifth': 5,
-      '1st': 1, '2nd': 2, '3rd': 3, '4th': 4, '5th': 5,
-    };
-
-    for (const pattern of clickResultPatterns) {
-      const match = input.match(pattern);
-      if (match) {
-        let index = 1;
-        if (match[1]) {
-          // Check if it's a word position or number
-          const posKey = match[1].toLowerCase();
-          if (positionMap[posKey]) {
-            index = positionMap[posKey];
-          } else {
-            index = parseInt(match[1], 10);
-          }
-        }
-        return {
-          success: true,
-          commands: [{
-            tool: 'click_result',
-            params: { index },
-            description: `点击第 ${index} 个搜索结果`,
-          }],
-          explanation: `将点击第 ${index} 个搜索结果`,
-        };
-      }
-    }
-
-    // Pattern: Click
-    const clickPatterns = [
-      /^(?:点击|单击|点)\s*(.+)$/i,
-      /^click\s+(?:on\s+)?(.+)$/i,
-    ];
-
-    for (const pattern of clickPatterns) {
-      const match = input.match(pattern);
-      if (match && match[1]) {
-        const target = match[1].trim();
-        return {
-          success: true,
-          commands: [{
-            tool: 'click',
-            params: { text: target },
-            description: `点击: ${target}`,
-          }],
-          explanation: `将点击包含 "${target}" 的元素`,
-        };
-      }
-    }
-
-    // Pattern: Fill/Input
-    const fillPatterns = [
-      /^(?:输入|填写|填入)\s*["']?(.+?)["']?\s*(?:到|在)\s*(.+)$/i,
-      /^(?:fill|type|enter)\s+["']?(.+?)["']?\s+(?:in|into|to)\s+(.+)$/i,
-    ];
-
-    for (const pattern of fillPatterns) {
-      const match = input.match(pattern);
-      if (match && match[1] && match[2]) {
-        const value = match[1].trim();
-        const field = match[2].trim();
-        return {
-          success: true,
-          commands: [{
-            tool: 'fill',
-            params: { selector: field, value },
-            description: `输入: ${value}`,
-          }],
-          explanation: `将在 "${field}" 中输入 "${value}"`,
-        };
-      }
-    }
-
-    // Pattern: Screenshot
+    // Pattern: Screenshot - fixed command, no AI needed
     const screenshotPatterns = [
       /^(?:截图|截屏|截图保存|capture|screenshot)$/i,
     ];
@@ -314,7 +258,7 @@ export class BrowserCommandService {
       }
     }
 
-    // Pattern: Snapshot (accessibility tree)
+    // Pattern: Snapshot (accessibility tree) - fixed command, no AI needed
     const snapshotPatterns = [
       /^(?:快照|页面结构|获取页面|take\s*snapshot|snapshot)$/i,
       /^(?:查看|分析)\s*(?:页面|结构)$/i,
@@ -334,7 +278,7 @@ export class BrowserCommandService {
       }
     }
 
-    // Pattern: Wait
+    // Pattern: Wait - fixed command, no AI needed
     const waitPatterns = [
       /^(?:等待|等)\s*(\d+)\s*(?:秒|毫秒|ms|s)?$/i,
       /^wait\s+(?:for\s+)?(\d+)\s*(?:seconds?|ms|milliseconds?)?$/i,
@@ -360,7 +304,7 @@ export class BrowserCommandService {
       }
     }
 
-    // Pattern: Press key
+    // Pattern: Press key - fixed command, no AI needed
     const keyPatterns = [
       /^(?:按下|按)\s*(.+?)\s*(?:键)?$/i,
       /^press\s+(.+?)(?:\s+key)?$/i,
@@ -397,6 +341,8 @@ export class BrowserCommandService {
       }
     }
 
+    // All other commands (navigate, search, click, fill) go through AI
+    // This allows AI to verify results and handle errors
     return null;
   }
 
@@ -420,17 +366,19 @@ export class BrowserCommandService {
       `- ${t.name}: ${t.description}. Params: ${JSON.stringify(t.params)}`
     ).join('\n');
 
+    // Build URL mappings from default and custom websites
+    const urlPatterns = this.getUrlPatterns();
+    const urlMappings = Object.entries(urlPatterns)
+      .map(([name, url]) => `- ${name} -> ${url}`)
+      .join('\n');
+
     const prompt = `You are a browser automation command parser. Your ONLY job is to convert natural language to browser commands.
 
 Available tools:
 ${toolsDescription}
 
-Common URL mappings:
-- 百度/百度首页 -> https://www.baidu.com
-- 谷歌 -> https://www.google.com
-- 必应 -> https://www.bing.com
-- 淘宝 -> https://www.taobao.com
-- 京东 -> https://www.jd.com
+Website URL mappings:
+${urlMappings}
 
 User command: "${input}"
 
@@ -445,9 +393,11 @@ Response format:
 }
 
 Examples:
+- "打开微博" -> {"commands":[{"tool":"navigate","params":{"url":"https://weibo.com"},"description":"打开微博"}],"explanation":"导航到微博"}
 - "打开百度" -> {"commands":[{"tool":"navigate","params":{"url":"https://www.baidu.com"},"description":"打开百度"}],"explanation":"导航到百度首页"}
 - "在百度搜索天气" -> {"commands":[{"tool":"navigate","params":{"url":"https://www.baidu.com/s?wd=天气"},"description":"搜索天气"}],"explanation":"在百度搜索天气"}
 - "点击登录按钮" -> {"commands":[{"tool":"click","params":{"text":"登录"},"description":"点击登录"}],"explanation":"点击登录按钮"}
+- "点击第一个搜索结果" -> {"commands":[{"tool":"click_result","params":{"index":1},"description":"点击第一个结果"}],"explanation":"点击第一个搜索结果"}
 - "截图" -> {"commands":[{"tool":"screenshot","params":{},"description":"截图"}],"explanation":"截取当前页面"}
 
 Respond with ONLY the JSON object:`;
