@@ -7,13 +7,11 @@ export interface AIModel {
   id: string;
   name: string;
   provider: ModelProvider;
-  type: 'chat' | 'embedding' | 'image';
-  endpoint: string;
-  apiKey?: string;
+  api_endpoint: string;
   config: Record<string, unknown>;
-  isEnabled: boolean;
-  createdAt: Date;
-  updatedAt: Date;
+  status: 'active' | 'inactive';
+  created_at: Date;
+  updated_at: Date;
 }
 
 export interface AIModelListResponse {
@@ -24,9 +22,7 @@ export interface AIModelListResponse {
 export interface CreateAIModelRequest {
   name: string;
   provider: ModelProvider;
-  type: 'chat' | 'embedding' | 'image';
-  endpoint: string;
-  apiKey?: string;
+  api_endpoint: string;
   config?: Record<string, unknown>;
 }
 
@@ -41,6 +37,8 @@ export interface PresetModelStatus {
   name: string;
   provider: string;
   configured: boolean;
+  default?: boolean;
+  description?: string;
 }
 
 export interface PresetModelsResponse {
@@ -83,6 +81,10 @@ export const aiModelApi = {
 
   test: async (id: string, prompt: string): Promise<{ success: boolean; response?: string; error?: string }> => {
     return apiClient.post(`/ai/models/${id}/test`, { prompt });
+  },
+
+  testConfig: async (endpoint: string, apiKey: string, modelName: string): Promise<{ success: boolean; response?: string; error?: string }> => {
+    return apiClient.post('/ai/models/test-config', { endpoint, apiKey, modelName });
   },
 };
 

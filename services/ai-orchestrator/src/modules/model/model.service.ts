@@ -99,11 +99,13 @@ export class ModelService implements OnModuleInit {
   /**
    * Check which preset models have API keys configured
    */
-  checkPresetModelStatus(): { name: string; provider: string; configured: boolean }[] {
+  checkPresetModelStatus(): { name: string; provider: string; configured: boolean; default?: boolean; description?: string }[] {
     return PRESET_MODELS.map(preset => ({
       name: preset.name,
       provider: preset.provider,
       configured: !!process.env[preset.env_key],
+      default: preset.config?.default as boolean | undefined,
+      description: preset.description,
     }));
   }
 

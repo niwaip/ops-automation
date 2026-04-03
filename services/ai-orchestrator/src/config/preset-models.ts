@@ -17,54 +17,120 @@ export interface PresetModelConfig {
  * Alibaba Cloud DashScope Coding (阿里云 DashScope Coding)
  * OpenAI-compatible API endpoint for coding models
  * https://help.aliyun.com/zh/model-studio/openclaw-coding-plan
+ * Default model: qwen3.5-plus
  */
 export const ALIBABA_CODING_MODELS: PresetModelConfig[] = [
   {
-    name: 'qwen-coder-plus',
+    name: 'qwen3.5-plus',
     provider: 'alibaba-coding',
     api_endpoint: 'https://coding.dashscope.aliyuncs.com/v1',
-    model_id: 'qwen-coder-plus',
-    description: '阿里云 Coding - Qwen Coder Plus (高性能编程模型)',
+    model_id: 'qwen3.5-plus',
+    description: '阿里云 Coding - Qwen3.5 Plus (默认模型，支持文本和图像)',
     env_key: 'ALIBABA_CODING_API_KEY',
     config: {
-      max_tokens: 8192,
+      max_tokens: 65536,
       temperature: 0.7,
+      context_window: 1000000,
+      default: true,
+      input: ['text', 'image'],
     },
   },
   {
-    name: 'qwen-coder-turbo',
+    name: 'qwen3-max-2026-01-23',
     provider: 'alibaba-coding',
     api_endpoint: 'https://coding.dashscope.aliyuncs.com/v1',
-    model_id: 'qwen-coder-turbo',
-    description: '阿里云 Coding - Qwen Coder Turbo (快速响应编程模型)',
+    model_id: 'qwen3-max-2026-01-23',
+    description: '阿里云 Coding - Qwen3 Max (高性能模型)',
     env_key: 'ALIBABA_CODING_API_KEY',
     config: {
-      max_tokens: 8192,
+      max_tokens: 65536,
       temperature: 0.7,
+      context_window: 262144,
+      input: ['text'],
     },
   },
   {
-    name: 'deepseek-r1',
+    name: 'qwen3-coder-next',
     provider: 'alibaba-coding',
     api_endpoint: 'https://coding.dashscope.aliyuncs.com/v1',
-    model_id: 'deepseek-r1',
-    description: '阿里云 Coding - DeepSeek R1 (深度推理模型)',
+    model_id: 'qwen3-coder-next',
+    description: '阿里云 Coding - Qwen3 Coder Next (编程模型)',
     env_key: 'ALIBABA_CODING_API_KEY',
     config: {
-      max_tokens: 8192,
+      max_tokens: 65536,
       temperature: 0.7,
+      context_window: 262144,
+      input: ['text'],
     },
   },
   {
-    name: 'deepseek-v3',
+    name: 'qwen3-coder-plus',
     provider: 'alibaba-coding',
     api_endpoint: 'https://coding.dashscope.aliyuncs.com/v1',
-    model_id: 'deepseek-v3',
-    description: '阿里云 Coding - DeepSeek V3 (通用模型)',
+    model_id: 'qwen3-coder-plus',
+    description: '阿里云 Coding - Qwen3 Coder Plus (高性能编程模型)',
     env_key: 'ALIBABA_CODING_API_KEY',
     config: {
-      max_tokens: 8192,
+      max_tokens: 65536,
       temperature: 0.7,
+      context_window: 1000000,
+      input: ['text'],
+    },
+  },
+  {
+    name: 'MiniMax-M2.5',
+    provider: 'alibaba-coding',
+    api_endpoint: 'https://coding.dashscope.aliyuncs.com/v1',
+    model_id: 'MiniMax-M2.5',
+    description: '阿里云 Coding - MiniMax M2.5',
+    env_key: 'ALIBABA_CODING_API_KEY',
+    config: {
+      max_tokens: 32768,
+      temperature: 0.7,
+      context_window: 196608,
+      input: ['text'],
+    },
+  },
+  {
+    name: 'glm-5',
+    provider: 'alibaba-coding',
+    api_endpoint: 'https://coding.dashscope.aliyuncs.com/v1',
+    model_id: 'glm-5',
+    description: '阿里云 Coding - GLM-5 (智谱模型)',
+    env_key: 'ALIBABA_CODING_API_KEY',
+    config: {
+      max_tokens: 16384,
+      temperature: 0.7,
+      context_window: 202752,
+      input: ['text'],
+    },
+  },
+  {
+    name: 'glm-4.7',
+    provider: 'alibaba-coding',
+    api_endpoint: 'https://coding.dashscope.aliyuncs.com/v1',
+    model_id: 'glm-4.7',
+    description: '阿里云 Coding - GLM-4.7 (智谱模型)',
+    env_key: 'ALIBABA_CODING_API_KEY',
+    config: {
+      max_tokens: 16384,
+      temperature: 0.7,
+      context_window: 202752,
+      input: ['text'],
+    },
+  },
+  {
+    name: 'kimi-k2.5',
+    provider: 'alibaba-coding',
+    api_endpoint: 'https://coding.dashscope.aliyuncs.com/v1',
+    model_id: 'kimi-k2.5',
+    description: '阿里云 Coding - Kimi K2.5 (月之暗面模型，支持文本和图像)',
+    env_key: 'ALIBABA_CODING_API_KEY',
+    config: {
+      max_tokens: 32768,
+      temperature: 0.7,
+      context_window: 262144,
+      input: ['text', 'image'],
     },
   },
 ];
@@ -188,6 +254,14 @@ export const PRESET_MODELS: PresetModelConfig[] = [
  */
 export function getPresetModelsByProvider(provider: string): PresetModelConfig[] {
   return PRESET_MODELS.filter(m => m.provider === provider);
+}
+
+/**
+ * Get the default model for a provider
+ */
+export function getDefaultModelForProvider(provider: string): PresetModelConfig | null {
+  const models = getPresetModelsByProvider(provider);
+  return models.find(m => m.config?.default) || models[0] || null;
 }
 
 /**
