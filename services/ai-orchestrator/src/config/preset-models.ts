@@ -14,18 +14,18 @@ export interface PresetModelConfig {
 }
 
 /**
- * Alibaba Cloud Bailian (阿里云百炼)
- * OpenAI-compatible API endpoint
- * https://help.aliyun.com/zh/model-studio/
+ * Alibaba Cloud DashScope Coding (阿里云 DashScope Coding)
+ * OpenAI-compatible API endpoint for coding models
+ * https://help.aliyun.com/zh/model-studio/openclaw-coding-plan
  */
-export const ALIBABA_BAILIAN_MODELS: PresetModelConfig[] = [
+export const ALIBABA_CODING_MODELS: PresetModelConfig[] = [
   {
     name: 'qwen-coder-plus',
-    provider: 'alibaba-bailian',
-    api_endpoint: 'https://dashscope.aliyuncs.com/compatible-mode/v1',
+    provider: 'alibaba-coding',
+    api_endpoint: 'https://coding.dashscope.aliyuncs.com/v1',
     model_id: 'qwen-coder-plus',
-    description: '阿里云百炼 - Qwen Coder Plus (高性能编程模型)',
-    env_key: 'ALIBABA_BAILIAN_API_KEY',
+    description: '阿里云 Coding - Qwen Coder Plus (高性能编程模型)',
+    env_key: 'ALIBABA_CODING_API_KEY',
     config: {
       max_tokens: 8192,
       temperature: 0.7,
@@ -33,16 +33,48 @@ export const ALIBABA_BAILIAN_MODELS: PresetModelConfig[] = [
   },
   {
     name: 'qwen-coder-turbo',
-    provider: 'alibaba-bailian',
-    api_endpoint: 'https://dashscope.aliyuncs.com/compatible-mode/v1',
+    provider: 'alibaba-coding',
+    api_endpoint: 'https://coding.dashscope.aliyuncs.com/v1',
     model_id: 'qwen-coder-turbo',
-    description: '阿里云百炼 - Qwen Coder Turbo (快速响应编程模型)',
-    env_key: 'ALIBABA_BAILIAN_API_KEY',
+    description: '阿里云 Coding - Qwen Coder Turbo (快速响应编程模型)',
+    env_key: 'ALIBABA_CODING_API_KEY',
     config: {
       max_tokens: 8192,
       temperature: 0.7,
     },
   },
+  {
+    name: 'deepseek-r1',
+    provider: 'alibaba-coding',
+    api_endpoint: 'https://coding.dashscope.aliyuncs.com/v1',
+    model_id: 'deepseek-r1',
+    description: '阿里云 Coding - DeepSeek R1 (深度推理模型)',
+    env_key: 'ALIBABA_CODING_API_KEY',
+    config: {
+      max_tokens: 8192,
+      temperature: 0.7,
+    },
+  },
+  {
+    name: 'deepseek-v3',
+    provider: 'alibaba-coding',
+    api_endpoint: 'https://coding.dashscope.aliyuncs.com/v1',
+    model_id: 'deepseek-v3',
+    description: '阿里云 Coding - DeepSeek V3 (通用模型)',
+    env_key: 'ALIBABA_CODING_API_KEY',
+    config: {
+      max_tokens: 8192,
+      temperature: 0.7,
+    },
+  },
+];
+
+/**
+ * Alibaba Cloud Bailian (阿里云百炼)
+ * OpenAI-compatible API endpoint
+ * https://help.aliyun.com/zh/model-studio/
+ */
+export const ALIBABA_BAILIAN_MODELS: PresetModelConfig[] = [
   {
     name: 'qwen-plus',
     provider: 'alibaba-bailian',
@@ -145,6 +177,7 @@ export const DEEPSEEK_MODELS: PresetModelConfig[] = [
  * All preset models
  */
 export const PRESET_MODELS: PresetModelConfig[] = [
+  ...ALIBABA_CODING_MODELS,
   ...ALIBABA_BAILIAN_MODELS,
   ...OPENAI_MODELS,
   ...DEEPSEEK_MODELS,
