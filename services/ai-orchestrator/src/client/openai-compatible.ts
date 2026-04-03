@@ -35,7 +35,8 @@ export class OpenAICompatibleClient {
    */
   async chatCompletion(messages: ChatMessage[]): Promise<string> {
     try {
-      const response = await this.client.post('/v1/chat/completions', {
+      // Use /chat/completions since baseURL already includes /v1
+      const response = await this.client.post('/chat/completions', {
         model: this.model,
         messages,
       });
@@ -60,7 +61,8 @@ export class OpenAICompatibleClient {
     onChunk: (chunk: string) => void,
   ): Promise<string> {
     try {
-      const response = await this.client.post('/v1/chat/completions', {
+      // Use /chat/completions since baseURL already includes /v1
+      const response = await this.client.post('/chat/completions', {
         model: this.model,
         messages,
         stream: true,
@@ -107,7 +109,8 @@ export class OpenAICompatibleClient {
    */
   async listModels(): Promise<string[]> {
     try {
-      const response = await this.client.get('/v1/models');
+      // Use /models since baseURL already includes /v1
+      const response = await this.client.get('/models');
       return response.data.data?.map((model: { id: string }) => model.id) || [];
     } catch (error: unknown) {
       if (error instanceof AxiosError) {
@@ -123,7 +126,8 @@ export class OpenAICompatibleClient {
    */
   async healthCheck(): Promise<boolean> {
     try {
-      const response = await this.client.get('/v1/models', { timeout: 5000 });
+      // Use /models since baseURL already includes /v1
+      const response = await this.client.get('/models', { timeout: 5000 });
       return response.status === 200;
     } catch {
       return false;

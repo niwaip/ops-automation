@@ -108,8 +108,8 @@ const AIModelAdminPage: React.FC = () => {
       setCreateModalVisible(false);
       createForm.resetFields();
     },
-    onError: () => {
-      message.error(t('common:error'));
+    onError: (error: Error) => {
+      message.error(`创建失败: ${error.message || t('common:error')}`);
     },
   });
 
