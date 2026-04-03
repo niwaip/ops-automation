@@ -964,6 +964,107 @@ def ai_upload_file(selector, file_path):
     except Exception as e:
         return {"status": "error", "message": str(e)}
 
+def ai_smart_search(query):
+    """Smart search - analyze page and perform search operation"""
+    global ai_page, ai_mode_active
+
+    if not ai_mode_active or not ai_page:
+        return {"status": "error", "message": "AI browser not initialized"}
+
+    try:
+        # Common search input selectors
+        search_selectors = [
+            'input[type="search"]',
+            'input[name="wd"]',
+            'input[name="q"]',
+            'input[name="query"]',
+            'input[name="keyword"]',
+            'input[placeholder*="搜索"]',
+            'input[placeholder*="search"]',
+            '.search-input',
+            '#search-input',
+            '#kw',
+            '#search',
+        ]
+
+        # Common search button selectors
+        search_button_selectors = [
+            'button[type="submit"]',
+            'button:has-text("搜索")',
+            'button:has-text("搜一下")',
+            'button:has-text("Search")',
+            '.search-btn',
+            '#search-btn',
+            'input[type="submit"]',
+        ]
+
+        # Try to find search input
+        search_input = None
+        for selector in search_selectors:
+            try:
+                search_input = ai_page.query_selector(selector)
+                if search_input and search_input.is_visible():
+                    print(f"[SmartSearch] Found search input: {selector}")
+                    break
+            except:
+                continue
+
+        if not search_input:
+            # Try to find any visible input that looks like a search box
+            inputs = ai_page.query_selector_all('input[type="text"]')
+            for inp in inputs:
+                try:
+                    if inp.is_visible():
+                        placeholder = inp.get_attribute('placeholder') or ''
+                        name = inp.get_attribute('name') or ''
+                        if 'search' in placeholder.lower() or '搜索' in placeholder or \
+                           'search' in name.lower() or 'wd' in name or 'q' in name:
+                            search_input = inp
+                            print(f"[SmartSearch] Found search input by heuristic")
+                            break
+                except:
+                    continue
+
+        if not search_input:
+            return {"status": "error", "message": "No search input found on page"}
+
+        # Clear and fill search input
+        search_input.click()
+        search_input.fill('')
+        search_input.fill(query)
+        print(f"[SmartSearch] Filled query: {query}")
+
+        # Try to find and click search button
+        search_button = None
+        for selector in search_button_selectors:
+            try:
+                search_button = ai_page.query_selector(selector)
+                if search_button and search_button.is_visible():
+                    print(f"[SmartSearch] Found search button: {selector}")
+                    break
+            except:
+                continue
+
+        if search_button:
+            search_button.click()
+            print("[SmartSearch] Clicked search button")
+        else:
+            # Press Enter to submit
+            search_input.press('Enter')
+            print("[SmartSearch] Pressed Enter to search")
+
+        # Wait for navigation or results
+        time.sleep(1)
+
+        return {
+            "status": "success",
+            "message": f"Searched for: {query}"
+        }
+
+    except Exception as e:
+        print(f"[SmartSearch] Error: {e}")
+        return {"status": "error", "message": str(e)}
+
 class CodegenHandler(BaseHTTPRequestHandler):
     def log_message(self, format, *args):
         print(f"[HTTP] {args[0]}")
@@ -1155,6 +1256,14 @@ class CodegenHandler(BaseHTTPRequestHandler):
                 self.send_json({'error': 'Missing selector or file_path parameter'}, 400)
                 return
             result = ai_upload_file(selector, file_path)
+            self.send_json(result)
+
+        elif path == '/smart_search':
+            query = params.get('query', [None])[0]
+            if not query:
+                self.send_json({'error': 'Missing query parameter'}, 400)
+                return
+            result = ai_smart_search(query)
             self.send_json(result)
 
         else:

@@ -158,6 +158,8 @@ export class BrowserService implements OnModuleDestroy {
         return await this.hover(command.params.selector as string);
       case 'press_key':
         return await this.pressKey(command.params.key as string);
+      case 'search':
+        return await this.smartSearch(command.params.query as string);
       case 'evaluate':
         return await this.evaluate(command.params.script as string);
       default:
@@ -563,6 +565,39 @@ export class BrowserService implements OnModuleDestroy {
       req.setTimeout(10000, () => {
         req.destroy();
         reject(new Error('Evaluate timeout'));
+      });
+    });
+  }
+
+  // Smart search - analyze page and perform search
+  private async smartSearch(query: string): Promise<{ status: string; message?: string; snapshot?: string }> {
+    this.logger.log(`Smart search for: ${query}`);
+
+    return new Promise((resolve, reject) => {
+      // Call the smart search endpoint that analyzes page and performs search
+      const req = http.get(
+        `http://${this.chromeHost}:${this.codegenPort}/smart_search?query=${encodeURIComponent(query)}`,
+        (res) => {
+          let data = '';
+          res.on('data', (chunk) => data += chunk);
+          res.on('end', () => {
+            try {
+              const result = JSON.parse(data);
+              resolve({
+                status: result.status || 'success',
+                message: result.message,
+                snapshot: result.snapshot,
+              });
+            } catch {
+              resolve({ status: 'success', message: 'Search completed' });
+            }
+          });
+        }
+      );
+      req.on('error', reject);
+      req.setTimeout(30000, () => {
+        req.destroy();
+        reject(new Error('Smart search timeout'));
       });
     });
   }

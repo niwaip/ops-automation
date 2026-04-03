@@ -130,6 +130,13 @@ const BROWSER_TOOLS = [
     },
   },
   {
+    name: 'search',
+    description: 'Smart search on current page - automatically finds search input and submits query',
+    params: {
+      query: { type: 'string', required: true, description: 'Search query text' },
+    },
+  },
+  {
     name: 'evaluate',
     description: 'Execute JavaScript in the browser',
     params: {
@@ -304,24 +311,20 @@ export class BrowserCommandService {
       }
     }
 
-    // Pattern: Search on search engines
+    // Pattern: Search on specific search engines (explicit engine specified)
+    // Generic "搜索 xxx" will go through AI for page-aware search
     const searchPatterns = [
       /^(?:在?\s*(百度|baidu)\s*搜索)\s*(.+)$/i,
       /^(?:在?\s*(谷歌|google)\s*搜索)\s*(.+)$/i,
       /^(?:在?\s*(必应|bing)\s*搜索)\s*(.+)$/i,
       /^(?:search\s+(?:on\s+)?(baidu|google|bing)\s*:?\s*)(.+)$/i,
-      // Generic search pattern - default to Baidu
-      /^(?:搜索|search)\s+(.+)$/i,
     ];
 
     for (const pattern of searchPatterns) {
       const match = input.match(pattern);
-      if (match) {
-        // For generic search pattern, use Baidu as default
-        const engine = match[1] ? match[1].toLowerCase() : '百度';
-        const query = match[2] ? match[2].trim() : match[1]?.trim();
-
-        if (!query) continue;
+      if (match && match[1] && match[2]) {
+        const engine = match[1].toLowerCase();
+        const query = match[2].trim();
 
         const searchUrls: Record<string, string> = {
           '百度': 'https://www.baidu.com/s?wd=',
@@ -607,10 +610,16 @@ Response format:
   "explanation": "brief explanation"
 }
 
+IMPORTANT for SEARCH operations ("搜索xxx"):
+- Use "search" tool for smart search on current page - it automatically finds search input and submits
+- Example: {"tool": "search", "params": {"query": "MCP 协议"}, "description": "搜索MCP协议"}
+- Only use navigate to search engine URL when user explicitly specifies engine (e.g., "在百度搜索")
+
 Examples:
 - "打开微博" -> {"commands":[{"tool":"navigate","params":{"url":"https://weibo.com"},"description":"打开微博"}],"explanation":"导航到微博"}
 - "打开百度" -> {"commands":[{"tool":"navigate","params":{"url":"https://www.baidu.com"},"description":"打开百度"}],"explanation":"导航到百度首页"}
 - "在百度搜索天气" -> {"commands":[{"tool":"navigate","params":{"url":"https://www.baidu.com/s?wd=天气"},"description":"搜索天气"}],"explanation":"在百度搜索天气"}
+- "搜索 MCP 协议" -> {"commands":[{"tool":"search","params":{"query":"MCP 协议"},"description":"搜索MCP协议"}],"explanation":"在当前页面搜索MCP协议"}
 - "点击登录按钮" -> {"commands":[{"tool":"click","params":{"text":"登录"},"description":"点击登录"}],"explanation":"点击登录按钮"}
 - "点击第一个搜索结果" -> {"commands":[{"tool":"click_result","params":{"index":1},"description":"点击第一个结果"}],"explanation":"点击第一个搜索结果"}
 - "截图" -> {"commands":[{"tool":"screenshot","params":{},"description":"截图"}],"explanation":"截取当前页面"}
