@@ -13,7 +13,7 @@ import {
   ClockCircleOutlined,
   FileSearchOutlined,
   ArrowDownOutlined,
-  TextToolOutlined,
+  ToolOutlined,
   CloudUploadOutlined,
 } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
@@ -599,7 +599,7 @@ const AIControls: React.FC<AIControlsProps> = ({ onCommandExecuted }) => {
 
             <Button
               size="small"
-              icon={<TextToolOutlined />}
+              icon={<ToolOutlined />}
               onClick={() => setShowParamInput(showParamInput === 'click' ? null : 'click')}
               type={showParamInput === 'click' ? 'primary' : 'default'}
               title="点击元素（AI辅助）"
