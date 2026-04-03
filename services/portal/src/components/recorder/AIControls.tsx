@@ -1,14 +1,12 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Card, Input, Button, Space, Typography, Tag, Spin, Empty, message, Divider, Alert, Collapse, InputNumber } from 'antd';
+import { Card, Input, Button, Space, Typography, Tag, Empty, message, Divider, Alert, Collapse, InputNumber } from 'antd';
 import {
   SendOutlined,
   RobotOutlined,
   DeleteOutlined,
-  HistoryOutlined,
   CodeOutlined,
   DesktopOutlined,
   CopyOutlined,
-  CheckCircleOutlined,
   PlayCircleOutlined,
   CameraOutlined,
   EyeOutlined,
@@ -23,8 +21,7 @@ import { useMutation } from 'react-query';
 import { apiClient } from '../../api/client';
 
 const { TextArea } = Input;
-const { Text, Title, Paragraph } = Typography;
-const { Panel } = Collapse;
+const { Text } = Typography;
 
 // MCP-style command interface
 interface MCPCommand {
