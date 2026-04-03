@@ -972,75 +972,119 @@ def ai_smart_search(query):
         return {"status": "error", "message": "AI browser not initialized"}
 
     try:
-        # Common search input selectors
+        # Step 1: Get accessibility snapshot to analyze page structure
+        print(f"[SmartSearch] Step 1: Analyzing page structure...")
+        snapshot_result = ai_snapshot()
+        snapshot_text = snapshot_result.get("snapshot", "")
+
+        # Step 2: Find search input using multiple strategies
         search_selectors = [
+            # Common search input selectors
             'input[type="search"]',
             'input[name="wd"]',
             'input[name="q"]',
             'input[name="query"]',
             'input[name="keyword"]',
+            'input[name="search"]',
+            # Placeholder-based
             'input[placeholder*="搜索"]',
+            'input[placeholder*="查找"]',
             'input[placeholder*="search"]',
-            '.search-input',
+            'input[placeholder*="Search"]',
+            # ID-based
             '#search-input',
             '#kw',
             '#search',
-        ]
-
-        # Common search button selectors
-        search_button_selectors = [
-            'button[type="submit"]',
-            'button:has-text("搜索")',
-            'button:has-text("搜一下")',
-            'button:has-text("Search")',
-            '.search-btn',
-            '#search-btn',
-            'input[type="submit"]',
+            '#query',
+            # Class-based
+            '.search-input',
+            '.search-box',
+            '.searchbox-input',
+            # ARIA-based
+            'input[aria-label*="搜索"]',
+            'input[aria-label*="search"]',
+            # Role-based
+            '[role="searchbox"]',
+            '[role="search"] input',
         ]
 
         # Try to find search input
         search_input = None
+        used_selector = None
+
         for selector in search_selectors:
             try:
-                search_input = ai_page.query_selector(selector)
-                if search_input and search_input.is_visible():
-                    print(f"[SmartSearch] Found search input: {selector}")
+                elements = ai_page.query_selector_all(selector)
+                for el in elements:
+                    if el.is_visible():
+                        search_input = el
+                        used_selector = selector
+                        break
+                if search_input:
                     break
-            except:
+            except Exception as e:
                 continue
 
+        # If no search input found with selectors, try heuristic approach
         if not search_input:
-            # Try to find any visible input that looks like a search box
-            inputs = ai_page.query_selector_all('input[type="text"]')
+            print("[SmartSearch] Trying heuristic approach...")
+            inputs = ai_page.query_selector_all('input[type="text"], input:not([type])')
             for inp in inputs:
                 try:
-                    if inp.is_visible():
-                        placeholder = inp.get_attribute('placeholder') or ''
-                        name = inp.get_attribute('name') or ''
-                        if 'search' in placeholder.lower() or '搜索' in placeholder or \
-                           'search' in name.lower() or 'wd' in name or 'q' in name:
-                            search_input = inp
-                            print(f"[SmartSearch] Found search input by heuristic")
-                            break
-                except:
+                    if not inp.is_visible():
+                        continue
+                    placeholder = (inp.get_attribute('placeholder') or '').lower()
+                    name = (inp.get_attribute('name') or '').lower()
+                    aria_label = (inp.get_attribute('aria-label') or '').lower()
+                    cls = (inp.get_attribute('class') or '').lower()
+
+                    # Check if it looks like a search input
+                    search_keywords = ['search', '搜索', '查找', 'query', 'keyword', 'wd', 'q']
+                    if any(kw in placeholder or kw in name or kw in aria_label or kw in cls for kw in search_keywords):
+                        search_input = inp
+                        used_selector = f"heuristic: {placeholder or name or aria_label}"
+                        break
+                except Exception as e:
                     continue
 
         if not search_input:
-            return {"status": "error", "message": "No search input found on page"}
+            return {
+                "status": "error",
+                "message": "No search input found on page. Try using '快照' to see page elements.",
+                "snapshot": snapshot_text[:500] if snapshot_text else None
+            }
 
-        # Clear and fill search input
+        print(f"[SmartSearch] Found search input: {used_selector}")
+
+        # Step 3: Clear and fill search input
         search_input.click()
         search_input.fill('')
         search_input.fill(query)
         print(f"[SmartSearch] Filled query: {query}")
 
-        # Try to find and click search button
+        # Step 4: Find and click search button or press Enter
+        search_button_selectors = [
+            'button[type="submit"]',
+            'input[type="submit"]',
+            'button:has-text("搜索")',
+            'button:has-text("搜一下")',
+            'button:has-text("Search")',
+            '.search-btn',
+            '#search-btn',
+            '.search-button',
+            '[aria-label*="搜索"]',
+            '[aria-label*="search"]',
+        ]
+
         search_button = None
         for selector in search_button_selectors:
             try:
-                search_button = ai_page.query_selector(selector)
-                if search_button and search_button.is_visible():
-                    print(f"[SmartSearch] Found search button: {selector}")
+                elements = ai_page.query_selector_all(selector)
+                for el in elements:
+                    if el.is_visible():
+                        search_button = el
+                        break
+                if search_button:
                     break
             except:
                 continue
@@ -1054,15 +1098,21 @@ def ai_smart_search(query):
             print("[SmartSearch] Pressed Enter to search")
 
         # Wait for navigation or results
-        time.sleep(1)
+        time.sleep(1.5)
+
+        # Take a snapshot of results
+        result_snapshot = ai_snapshot()
 
         return {
             "status": "success",
-            "message": f"Searched for: {query}"
+            "message": f"Searched for: {query}",
+            "snapshot": result_snapshot.get("snapshot", "")[:1000]
         }
 
     except Exception as e:
         print(f"[SmartSearch] Error: {e}")
+        import traceback
+        traceback.print_exc()
         return {"status": "error", "message": str(e)}
 
 class CodegenHandler(BaseHTTPRequestHandler):

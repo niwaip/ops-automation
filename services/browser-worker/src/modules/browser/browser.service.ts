@@ -583,18 +583,31 @@ export class BrowserService implements OnModuleDestroy {
           res.on('end', () => {
             try {
               const result = JSON.parse(data);
-              resolve({
-                status: result.status || 'success',
-                message: result.message,
-                snapshot: result.snapshot,
-              });
-            } catch {
-              resolve({ status: 'success', message: 'Search completed' });
+              // Check if the result indicates an error
+              if (result.status === 'error') {
+                this.logger.error(`Smart search failed: ${result.message}`);
+                resolve({
+                  status: 'error',
+                  message: result.message || 'Search failed',
+                });
+              } else {
+                resolve({
+                  status: 'success',
+                  message: result.message,
+                  snapshot: result.snapshot,
+                });
+              }
+            } catch (e) {
+              this.logger.error(`Smart search parse error: ${e}`);
+              resolve({ status: 'error', message: 'Failed to parse response' });
             }
           });
         }
       );
-      req.on('error', reject);
+      req.on('error', (err) => {
+        this.logger.error(`Smart search request error: ${err.message}`);
+        reject(err);
+      });
       req.setTimeout(30000, () => {
         req.destroy();
         reject(new Error('Smart search timeout'));
