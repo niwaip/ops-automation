@@ -198,6 +198,7 @@ services:
     volumes:
       - ../services/ai-orchestrator:/app
       - ai_orchestrator_node_modules:/app/node_modules
+      - ai_orchestrator_data:/app/data
     depends_on:
       postgres:
         condition: service_healthy
@@ -257,4 +258,5 @@ volumes:
   template_node_modules:
   replay_engine_node_modules:
   ai_orchestrator_node_modules:
+  ai_orchestrator_data:
   portal_node_modules:

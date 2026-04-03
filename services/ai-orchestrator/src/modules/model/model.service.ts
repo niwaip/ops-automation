@@ -1,47 +1,163 @@
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
+import * as fs from 'fs';
+import * as path from 'path';
 import { v4 as uuidv4 } from 'uuid';
 import { AIModelDTO, CreateModelDTO, APIKeyReference } from '../../interfaces';
 import { OpenAICompatibleClient } from '../../client/openai-compatible';
 import { PRESET_MODELS, PresetModelConfig } from '../../config/preset-models';
 
+// Persistence file paths
+const DATA_DIR = process.env.AI_MODELS_DATA_DIR || '/app/data';
+const MODELS_FILE = path.join(DATA_DIR, 'ai-models.json');
+const API_KEYS_FILE = path.join(DATA_DIR, 'ai-api-keys.json');
+
+interface PersistedModel {
+  model: AIModelDTO;
+  apiKeyRef: APIKeyReference;
+}
+
+interface PersistedApiKey {
+  id: string;
+  apiKey: string;
+}
+
 /**
  * Model Service
  * Manages AI model registration, configuration, and health status
- * API Keys are stored as references (not plaintext)
+ * API Keys and models are persisted to files for restart survival
  */
 @Injectable()
 export class ModelService implements OnModuleInit {
   private readonly logger = new Logger(ModelService.name);
   private models: Map<string, AIModelDTO> = new Map();
   private apiKeyReferences: Map<string, APIKeyReference> = new Map();
-  private apiKeys: Map<string, string> = new Map(); // Store API keys in memory
+  private apiKeys: Map<string, string> = new Map();
   private clients: Map<string, OpenAICompatibleClient> = new Map();
 
   /**
-   * Initialize preset models on module init
+   * Initialize on module init
    */
   async onModuleInit() {
-    this.logger.log('Initializing preset models...');
+    this.logger.log('Initializing model service...');
+
+    // Ensure data directory exists
+    if (!fs.existsSync(DATA_DIR)) {
+      fs.mkdirSync(DATA_DIR, { recursive: true });
+      this.logger.log(`Created data directory: ${DATA_DIR}`);
+    }
+
+    // Load persisted models first
+    await this.loadPersistedModels();
+
+    // Then initialize preset models (only those with env keys)
     await this.initializePresetModels();
   }
 
   /**
-   * Initialize preset models from configuration
-   * Only initializes models that have API keys configured
+   * Load persisted models from file
+   */
+  private async loadPersistedModels(): Promise<void> {
+    try {
+      // Load models
+      if (fs.existsSync(MODELS_FILE)) {
+        const data = fs.readFileSync(MODELS_FILE, 'utf-8');
+        const persisted: PersistedModel[] = JSON.parse(data);
+
+        for (const item of persisted) {
+          this.models.set(item.model.id, item.model);
+          this.apiKeyReferences.set(item.model.id, item.apiKeyRef);
+          this.logger.debug(`Loaded model: ${item.model.name} (${item.model.id})`);
+        }
+
+        this.logger.log(`Loaded ${persisted.length} persisted models`);
+      }
+
+      // Load API keys
+      if (fs.existsSync(API_KEYS_FILE)) {
+        const data = fs.readFileSync(API_KEYS_FILE, 'utf-8');
+        const keys: PersistedApiKey[] = JSON.parse(data);
+
+        for (const item of keys) {
+          this.apiKeys.set(item.id, item.apiKey);
+        }
+
+        this.logger.log(`Loaded ${keys.length} persisted API keys`);
+      }
+
+      // Initialize clients for loaded models
+      for (const [id, model] of this.models) {
+        const apiKey = this.apiKeys.get(id) || this.resolveApiKey(this.apiKeyReferences.get(id)!, id);
+        if (apiKey) {
+          const client = new OpenAICompatibleClient({
+            baseURL: model.api_endpoint,
+            apiKey,
+            model: model.name,
+          });
+          this.clients.set(id, client);
+          this.logger.log(`Client initialized for model ${model.name} (${id})`);
+        }
+      }
+
+    } catch (error: unknown) {
+      const errorMsg = error instanceof Error ? error.message : 'Unknown error';
+      this.logger.error(`Failed to load persisted models: ${errorMsg}`);
+    }
+  }
+
+  /**
+   * Persist models to file
+   */
+  private async persistModels(): Promise<void> {
+    try {
+      // Persist models
+      const modelsData: PersistedModel[] = [];
+      for (const [id, model] of this.models) {
+        const apiKeyRef = this.apiKeyReferences.get(id);
+        if (apiKeyRef) {
+          modelsData.push({ model, apiKeyRef });
+        }
+      }
+      fs.writeFileSync(MODELS_FILE, JSON.stringify(modelsData, null, 2));
+
+      // Persist API keys (only those with direct key input)
+      const keysData: PersistedApiKey[] = [];
+      for (const [id, apiKey] of this.apiKeys) {
+        keysData.push({ id, apiKey });
+      }
+      fs.writeFileSync(API_KEYS_FILE, JSON.stringify(keysData, null, 2));
+
+      this.logger.log(`Persisted ${modelsData.length} models and ${keysData.length} API keys`);
+    } catch (error: unknown) {
+      const errorMsg = error instanceof Error ? error.message : 'Unknown error';
+      this.logger.error(`Failed to persist models: ${errorMsg}`);
+    }
+  }
+
+  /**
+   * Initialize preset models from environment variables
    */
   private async initializePresetModels() {
     for (const preset of PRESET_MODELS) {
       const apiKey = process.env[preset.env_key];
       if (apiKey) {
-        this.logger.log(`Initializing preset model: ${preset.name} (${preset.provider})`);
-        try {
-          await this.createModelFromPreset(preset, apiKey);
-        } catch (error: unknown) {
-          const errorMsg = error instanceof Error ? error.message : 'Unknown error';
-          this.logger.error(`Failed to initialize preset model ${preset.name}: ${errorMsg}`);
+        // Check if this preset model already exists
+        const existingModel = Array.from(this.models.values()).find(
+          m => m.config?.preset === true &&
+               m.name === preset.model_id &&
+               m.provider === preset.provider
+        );
+
+        if (!existingModel) {
+          this.logger.log(`Initializing preset model: ${preset.name} (${preset.provider})`);
+          try {
+            await this.createModelFromPreset(preset, apiKey);
+          } catch (error: unknown) {
+            const errorMsg = error instanceof Error ? error.message : 'Unknown error';
+            this.logger.error(`Failed to initialize preset model ${preset.name}: ${errorMsg}`);
+          }
+        } else {
+          this.logger.debug(`Preset model ${preset.name} already exists, skipping`);
         }
-      } else {
-        this.logger.debug(`Skipping preset model ${preset.name}: API key not configured (${preset.env_key})`);
       }
     }
   }
@@ -53,7 +169,6 @@ export class ModelService implements OnModuleInit {
     const id = uuidv4();
     const now = new Date();
 
-    // Create API key reference
     const apiKeyRef: APIKeyReference = {
       reference_id: preset.env_key,
       secret_type: 'env',
@@ -78,7 +193,6 @@ export class ModelService implements OnModuleInit {
     this.models.set(id, model);
     this.apiKeyReferences.set(id, apiKeyRef);
 
-    // Initialize client
     const client = new OpenAICompatibleClient({
       baseURL: preset.api_endpoint,
       apiKey,
@@ -87,6 +201,8 @@ export class ModelService implements OnModuleInit {
     this.clients.set(id, client);
 
     this.logger.log(`Preset model initialized: ${preset.name} (ID: ${id})`);
+    await this.persistModels();
+
     return model;
   }
 
@@ -126,18 +242,15 @@ export class ModelService implements OnModuleInit {
 
   /**
    * Register a new AI model
-   * API Key can be provided directly or through environment variable reference
    */
   async createModel(dto: CreateModelDTO): Promise<AIModelDTO> {
     const id = uuidv4();
     const now = new Date();
 
-    // Determine how to handle API key
     let apiKey: string | null = null;
     let apiKeyRef: APIKeyReference;
 
     if (dto.api_key) {
-      // Direct API key input - store in memory with UUID reference
       apiKey = dto.api_key;
       apiKeyRef = {
         reference_id: id,
@@ -146,7 +259,6 @@ export class ModelService implements OnModuleInit {
       this.apiKeys.set(id, apiKey);
       this.logger.log(`Model ${dto.name} created with direct API key input`);
     } else {
-      // Use environment variable reference
       apiKeyRef = {
         reference_id: dto.config?.env_key as string || `AI_API_KEY_${id}`,
         secret_type: (dto.config?.secret_type as 'vault' | 'env' | 'k8s_secret') || 'env',
@@ -171,7 +283,6 @@ export class ModelService implements OnModuleInit {
     this.models.set(id, model);
     this.apiKeyReferences.set(id, apiKeyRef);
 
-    // Initialize client for the model
     if (apiKey) {
       const client = new OpenAICompatibleClient({
         baseURL: dto.api_endpoint,
@@ -181,6 +292,9 @@ export class ModelService implements OnModuleInit {
       this.clients.set(id, client);
       this.logger.log(`Client initialized for model ${dto.name} (ID: ${id})`);
     }
+
+    // Persist changes
+    await this.persistModels();
 
     return model;
   }
@@ -192,7 +306,6 @@ export class ModelService implements OnModuleInit {
     const model = this.models.get(id);
     if (!model) return null;
 
-    // Update API key if provided
     if (updates.api_key) {
       this.apiKeys.set(id, updates.api_key);
     }
@@ -207,7 +320,7 @@ export class ModelService implements OnModuleInit {
 
     this.models.set(id, updatedModel);
 
-    // Reinitialize client if endpoint, model name, or API key changed
+    // Reinitialize client if needed
     if (updates.api_endpoint || updates.name || updates.api_key) {
       const apiKey = this.apiKeys.get(id) || this.resolveApiKey(this.apiKeyReferences.get(id)!, id);
       if (apiKey) {
@@ -220,6 +333,9 @@ export class ModelService implements OnModuleInit {
         this.logger.log(`Client reinitialized for model ${updatedModel.name} (ID: ${id})`);
       }
     }
+
+    // Persist changes
+    await this.persistModels();
 
     return updatedModel;
   }
@@ -238,6 +354,10 @@ export class ModelService implements OnModuleInit {
     };
 
     this.models.set(id, updatedModel);
+
+    // Persist changes
+    await this.persistModels();
+
     return updatedModel;
   }
 
@@ -251,6 +371,9 @@ export class ModelService implements OnModuleInit {
       this.apiKeyReferences.delete(id);
       this.apiKeys.delete(id);
       this.clients.delete(id);
+
+      // Persist changes
+      await this.persistModels();
     }
     return exists;
   }
@@ -281,40 +404,26 @@ export class ModelService implements OnModuleInit {
 
   /**
    * Resolve API key from reference
-   * In production, this would integrate with Vault, K8s secrets, or env variables
    */
   private resolveApiKey(ref: APIKeyReference, modelId?: string): string | null {
-    // First check in-memory storage (for directly provided API keys)
     if (modelId && this.apiKeys.has(modelId)) {
       return this.apiKeys.get(modelId) || null;
     }
 
     switch (ref.secret_type) {
       case 'env':
-        // For preset models, reference_id is the env variable name directly
-        // For custom models, reference_id is a UUID and we prefix with AI_API_KEY_
         if (ref.reference_id.includes('_')) {
-          // Looks like an env variable name (e.g., ALIBABA_CODING_API_KEY)
           return process.env[ref.reference_id] || null;
         }
-        // UUID-based reference for custom models
         const envKey = `AI_API_KEY_${ref.reference_id}`;
         return process.env[envKey] || null;
-      case 'vault':
-        // Would integrate with HashiCorp Vault in production
-        // Placeholder for vault integration
-        return null;
-      case 'k8s_secret':
-        // Would integrate with Kubernetes secrets in production
-        // Placeholder for K8s secret integration
-        return null;
       default:
         return null;
     }
   }
 
   /**
-   * Get API key reference for a model (for management purposes)
+   * Get API key reference for a model
    */
   getApiKeyReference(id: string): APIKeyReference | null {
     return this.apiKeyReferences.get(id) || null;
@@ -322,9 +431,6 @@ export class ModelService implements OnModuleInit {
 
   /**
    * Call a model with a prompt
-   * @param id - Model ID
-   * @param prompt - Text prompt
-   * @returns Model response
    */
   async callModel(id: string, prompt: string): Promise<string> {
     const client = this.clients.get(id);
