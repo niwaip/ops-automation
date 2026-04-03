@@ -1107,6 +1107,11 @@ def ai_smart_search(query):
         return {"status": "error", "message": "AI browser not initialized"}
 
     try:
+        # Wait for page to be ready before searching
+        print(f"[SmartSearch] Waiting for page to be ready...")
+        time.sleep(0.5)  # Brief wait for dynamic content
+        ai_page.wait_for_load_state('domcontentloaded', timeout=5000)
+
         # Step 1: Get accessibility snapshot to analyze page structure
         print(f"[SmartSearch] Step 1: Analyzing page structure...")
         snapshot_result = ai_snapshot()
@@ -1116,12 +1121,15 @@ def ai_smart_search(query):
 
         # Step 2: Find search input using multiple strategies
         search_selectors = [
+            # Baidu specific (highest priority)
+            '#kw',  # Baidu search input ID
+            '.s_ipt',  # Baidu search input class
+            'input[name="wd"]',  # Baidu search input name
             # Bing specific
             '#sb_form_q',  # Bing search input ID
             'input[name="q"]',  # Common for Bing, Google, etc.
             # Common search input selectors
             'input[type="search"]',
-            'input[name="wd"]',
             'input[name="query"]',
             'input[name="keyword"]',
             'input[name="search"]',
@@ -1133,7 +1141,6 @@ def ai_smart_search(query):
             'input[placeholder*="web"]',  # Bing uses "Search the web"
             # ID-based
             '#search-input',
-            '#kw',
             '#search',
             '#query',
             # Class-based
@@ -1191,7 +1198,13 @@ def ai_smart_search(query):
             return {
                 "status": "error",
                 "message": "No search input found on page. Try using '快照' to see page elements.",
-                "snapshot": snapshot_text[:500] if snapshot_text else None
+                "snapshot": snapshot_text[:500] if snapshot_text else None,
+                # Template info even on error - for debugging and potential retry
+                "template_info": {
+                    "attempted_selectors": search_selectors[:10],  # First 10 selectors tried
+                    "query": query,
+                    "error_type": "no_search_input"
+                }
             }
 
         print(f"[SmartSearch] Found search input: {used_selector}")
@@ -1266,7 +1279,15 @@ def ai_smart_search(query):
         print(f"[SmartSearch] Error: {e}")
         import traceback
         traceback.print_exc()
-        return {"status": "error", "message": str(e)}
+        return {
+            "status": "error",
+            "message": str(e),
+            "template_info": {
+                "query": query,
+                "error_type": "exception",
+                "error_message": str(e)
+            }
+        }
 
 class CodegenHandler(BaseHTTPRequestHandler):
     def log_message(self, format, *args):

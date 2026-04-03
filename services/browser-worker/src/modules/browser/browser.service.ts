@@ -570,7 +570,7 @@ export class BrowserService implements OnModuleDestroy {
   }
 
   // Smart search - analyze page and perform search
-  private async smartSearch(query: string): Promise<{ status: string; message?: string; snapshot?: string }> {
+  private async smartSearch(query: string): Promise<{ status: string; message?: string; snapshot?: string; template_info?: any }> {
     this.logger.log(`Smart search for: ${query}`);
 
     return new Promise((resolve, reject) => {
@@ -589,12 +589,15 @@ export class BrowserService implements OnModuleDestroy {
                 resolve({
                   status: 'error',
                   message: result.message || 'Search failed',
+                  snapshot: result.snapshot,
+                  template_info: result.template_info,
                 });
               } else {
                 resolve({
                   status: 'success',
                   message: result.message,
                   snapshot: result.snapshot,
+                  template_info: result.template_info,
                 });
               }
             } catch (e) {
