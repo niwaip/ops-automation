@@ -201,13 +201,6 @@ const AIControls: React.FC<AIControlsProps> = ({ onCommandExecuted }) => {
     }
   );
 
-  // Auto init browser if needed
-  const ensureBrowserReady = async () => {
-    if (!isBrowserReady) {
-      await initBrowserMutation.mutateAsync();
-    }
-  };
-
   const handleSend = async () => {
     if (!input.trim()) return;
 
@@ -278,7 +271,7 @@ const AIControls: React.FC<AIControlsProps> = ({ onCommandExecuted }) => {
   };
 
   // AI-assisted quick actions with parameter input
-  const handleAIQuickAction = async (commandTemplate: string, paramLabel: string) => {
+  const handleAIQuickAction = async (commandTemplate: string) => {
     if (!paramValue.trim()) {
       message.warning('请输入参数');
       return;
@@ -656,7 +649,7 @@ const AIControls: React.FC<AIControlsProps> = ({ onCommandExecuted }) => {
                       click: '点击',
                       scroll: '滚动',
                     };
-                    handleAIQuickAction(templates[showParamInput] || '', showParamInput);
+                    handleAIQuickAction(templates[showParamInput] || '');
                   }}
                   style={{ borderRadius: '6px 0 0 6px' }}
                 />
@@ -670,7 +663,7 @@ const AIControls: React.FC<AIControlsProps> = ({ onCommandExecuted }) => {
                       click: '点击',
                       scroll: '滚动',
                     };
-                    handleAIQuickAction(templates[showParamInput] || '', showParamInput);
+                    handleAIQuickAction(templates[showParamInput] || '');
                   }}
                   disabled={!paramValue.trim()}
                   style={{ borderRadius: '0 6px 6px 0' }}
