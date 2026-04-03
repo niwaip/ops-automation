@@ -195,7 +195,15 @@ const AIModelAdminPage: React.FC = () => {
 
   const handleCreate = () => {
     createForm.validateFields().then((values) => {
-      createMutation.mutate(values);
+      // Map frontend field names to backend API names
+      const payload = {
+        name: values.name,
+        provider: values.provider,
+        api_endpoint: values.api_endpoint,
+        api_key: values.apiKey, // Map apiKey to api_key
+        config: {},
+      };
+      createMutation.mutate(payload);
     });
   };
 

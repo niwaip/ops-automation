@@ -14,6 +14,7 @@ export class ModelService implements OnModuleInit {
   private readonly logger = new Logger(ModelService.name);
   private models: Map<string, AIModelDTO> = new Map();
   private apiKeyReferences: Map<string, APIKeyReference> = new Map();
+  private apiKeys: Map<string, string> = new Map(); // Store API keys in memory
   private clients: Map<string, OpenAICompatibleClient> = new Map();
 
   /**
@@ -125,24 +126,43 @@ export class ModelService implements OnModuleInit {
 
   /**
    * Register a new AI model
-   * API Key should be stored securely (reference only in config)
+   * API Key can be provided directly or through environment variable reference
    */
   async createModel(dto: CreateModelDTO): Promise<AIModelDTO> {
     const id = uuidv4();
     const now = new Date();
 
-    // Create API key reference (not storing plaintext)
-    const apiKeyRef: APIKeyReference = {
-      reference_id: uuidv4(),
-      secret_type: (dto.config?.secret_type as 'vault' | 'env' | 'k8s_secret') || 'env',
-    };
+    // Determine how to handle API key
+    let apiKey: string | null = null;
+    let apiKeyRef: APIKeyReference;
+
+    if (dto.api_key) {
+      // Direct API key input - store in memory with UUID reference
+      apiKey = dto.api_key;
+      apiKeyRef = {
+        reference_id: id,
+        secret_type: 'env',
+      };
+      this.apiKeys.set(id, apiKey);
+      this.logger.log(`Model ${dto.name} created with direct API key input`);
+    } else {
+      // Use environment variable reference
+      apiKeyRef = {
+        reference_id: dto.config?.env_key as string || `AI_API_KEY_${id}`,
+        secret_type: (dto.config?.secret_type as 'vault' | 'env' | 'k8s_secret') || 'env',
+      };
+      apiKey = this.resolveApiKey(apiKeyRef);
+      if (!apiKey) {
+        this.logger.warn(`No API key found for model ${dto.name}, client will not be initialized`);
+      }
+    }
 
     const model: AIModelDTO = {
       id,
       name: dto.name,
       provider: dto.provider,
       api_endpoint: dto.api_endpoint,
-      config: dto.config,
+      config: dto.config || {},
       status: 'active',
       created_at: now,
       updated_at: now,
@@ -152,7 +172,6 @@ export class ModelService implements OnModuleInit {
     this.apiKeyReferences.set(id, apiKeyRef);
 
     // Initialize client for the model
-    const apiKey = this.resolveApiKey(apiKeyRef);
     if (apiKey) {
       const client = new OpenAICompatibleClient({
         baseURL: dto.api_endpoint,
@@ -160,6 +179,7 @@ export class ModelService implements OnModuleInit {
         model: dto.name,
       });
       this.clients.set(id, client);
+      this.logger.log(`Client initialized for model ${dto.name} (ID: ${id})`);
     }
 
     return model;
@@ -172,27 +192,32 @@ export class ModelService implements OnModuleInit {
     const model = this.models.get(id);
     if (!model) return null;
 
+    // Update API key if provided
+    if (updates.api_key) {
+      this.apiKeys.set(id, updates.api_key);
+    }
+
     const updatedModel: AIModelDTO = {
       ...model,
-      ...updates,
+      name: updates.name || model.name,
+      api_endpoint: updates.api_endpoint || model.api_endpoint,
+      config: updates.config || model.config,
       updated_at: new Date(),
     };
 
     this.models.set(id, updatedModel);
 
-    // Reinitialize client if endpoint or model changed
-    if (updates.api_endpoint || updates.name) {
-      const apiKeyRef = this.apiKeyReferences.get(id);
-      if (apiKeyRef) {
-        const apiKey = this.resolveApiKey(apiKeyRef);
-        if (apiKey) {
-          const client = new OpenAICompatibleClient({
-            baseURL: updates.api_endpoint || model.api_endpoint,
-            apiKey,
-            model: updates.name || model.name,
-          });
-          this.clients.set(id, client);
-        }
+    // Reinitialize client if endpoint, model name, or API key changed
+    if (updates.api_endpoint || updates.name || updates.api_key) {
+      const apiKey = this.apiKeys.get(id) || this.resolveApiKey(this.apiKeyReferences.get(id)!, id);
+      if (apiKey) {
+        const client = new OpenAICompatibleClient({
+          baseURL: updatedModel.api_endpoint,
+          apiKey,
+          model: updatedModel.name,
+        });
+        this.clients.set(id, client);
+        this.logger.log(`Client reinitialized for model ${updatedModel.name} (ID: ${id})`);
       }
     }
 
@@ -224,6 +249,7 @@ export class ModelService implements OnModuleInit {
     if (exists) {
       this.models.delete(id);
       this.apiKeyReferences.delete(id);
+      this.apiKeys.delete(id);
       this.clients.delete(id);
     }
     return exists;
@@ -257,13 +283,18 @@ export class ModelService implements OnModuleInit {
    * Resolve API key from reference
    * In production, this would integrate with Vault, K8s secrets, or env variables
    */
-  private resolveApiKey(ref: APIKeyReference): string | null {
+  private resolveApiKey(ref: APIKeyReference, modelId?: string): string | null {
+    // First check in-memory storage (for directly provided API keys)
+    if (modelId && this.apiKeys.has(modelId)) {
+      return this.apiKeys.get(modelId) || null;
+    }
+
     switch (ref.secret_type) {
       case 'env':
         // For preset models, reference_id is the env variable name directly
         // For custom models, reference_id is a UUID and we prefix with AI_API_KEY_
         if (ref.reference_id.includes('_')) {
-          // Looks like an env variable name (e.g., ALIBABA_BAILIAN_API_KEY)
+          // Looks like an env variable name (e.g., ALIBABA_CODING_API_KEY)
           return process.env[ref.reference_id] || null;
         }
         // UUID-based reference for custom models

@@ -23,6 +23,7 @@ export interface CreateAIModelRequest {
   name: string;
   provider: ModelProvider;
   api_endpoint: string;
+  api_key?: string; // Optional API key for direct input
   config?: Record<string, unknown>;
 }
 
