@@ -71,6 +71,43 @@ const BROWSER_TOOLS = [
     params: {},
   },
   {
+    name: 'read_page',
+    description: 'Read page content (text, headings, links)',
+    params: {
+      selector: { type: 'string', required: false, description: 'CSS selector to read specific element' },
+      max_length: { type: 'number', required: false, description: 'Max text length to return' },
+    },
+  },
+  {
+    name: 'get_text',
+    description: 'Get all visible text content from the page',
+    params: {},
+  },
+  {
+    name: 'scroll',
+    description: 'Scroll the page (up, down, top, bottom)',
+    params: {
+      direction: { type: 'string', required: false, description: 'Direction: up, down, top, bottom' },
+      amount: { type: 'number', required: false, description: 'Pixels to scroll' },
+    },
+  },
+  {
+    name: 'type_text',
+    description: 'Type text using keyboard (use for typing into focused input)',
+    params: {
+      text: { type: 'string', required: true, description: 'Text to type' },
+      submit_key: { type: 'string', required: false, description: 'Key to press after typing (e.g., Enter)' },
+    },
+  },
+  {
+    name: 'drag',
+    description: 'Drag element from source to destination',
+    params: {
+      src: { type: 'string', required: true, description: 'Source element selector' },
+      dst: { type: 'string', required: true, description: 'Destination element selector' },
+    },
+  },
+  {
     name: 'wait',
     description: 'Wait for an element or time',
     params: {

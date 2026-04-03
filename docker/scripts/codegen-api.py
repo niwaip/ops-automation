@@ -825,6 +825,145 @@ def ai_read_page(selector=None, max_length=5000):
         traceback.print_exc()
         return {"status": "error", "message": str(e)}
 
+def ai_drag(src_selector, dst_selector):
+    """Drag element from source to destination"""
+    global ai_page, ai_mode_active
+
+    if not ai_mode_active or not ai_page:
+        return {"status": "error", "message": "AI browser not initialized"}
+
+    try:
+        src = ai_page.query_selector(src_selector)
+        dst = ai_page.query_selector(dst_selector)
+        if not src or not dst:
+            return {"status": "error", "message": f"Element not found: {src_selector if not src else dst_selector}"}
+
+        src_box = src.bounding_box()
+        dst_box = dst.bounding_box()
+
+        ai_page.mouse.move(src_box['x'] + src_box['width'] / 2, src_box['y'] + src_box['height'] / 2)
+        ai_page.mouse.down()
+        ai_page.mouse.move(dst_box['x'] + dst_box['width'] / 2, dst_box['y'] + dst_box['height'] / 2)
+        ai_page.mouse.up()
+
+        return {"status": "success", "message": f"Dragged from {src_selector} to {dst_selector}"}
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
+
+def ai_type_text(text, submit_key=None):
+    """Type text using keyboard"""
+    global ai_page, ai_mode_active
+
+    if not ai_mode_active or not ai_page:
+        return {"status": "error", "message": "AI browser not initialized"}
+
+    try:
+        ai_page.keyboard.type(text)
+        if submit_key:
+            ai_page.keyboard.press(submit_key)
+        return {"status": "success", "message": f"Typed: {text}"}
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
+
+def ai_handle_dialog(action, prompt_text=None):
+    """Handle browser dialog (accept/dismiss)"""
+    global ai_page, ai_mode_active
+
+    if not ai_mode_active or not ai_page:
+        return {"status": "error", "message": "AI browser not initialized"}
+
+    try:
+        # Note: Playwright handles dialogs via event listeners
+        # This is a simplified version
+        if action == 'accept':
+            ai_page.evaluate("window.confirm = () => true; window.alert = () => {}; window.prompt = () => arguments[0] || '';")
+        elif action == 'dismiss':
+            ai_page.evaluate("window.confirm = () => false; window.prompt = () => null;")
+        return {"status": "success", "message": f"Dialog handler set to {action}"}
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
+
+def ai_resize_page(width, height):
+    """Resize page viewport"""
+    global ai_page, ai_mode_active
+
+    if not ai_mode_active or not ai_page:
+        return {"status": "error", "message": "AI browser not initialized"}
+
+    try:
+        ai_page.set_viewport_size({"width": width, "height": height})
+        return {"status": "success", "message": f"Resized to {width}x{height}"}
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
+
+def ai_scroll(direction='down', amount=300):
+    """Scroll page"""
+    global ai_page, ai_mode_active
+
+    if not ai_mode_active or not ai_page:
+        return {"status": "error", "message": "AI browser not initialized"}
+
+    try:
+        if direction == 'down':
+            ai_page.evaluate(f"window.scrollBy(0, {amount})")
+        elif direction == 'up':
+            ai_page.evaluate(f"window.scrollBy(0, -{amount})")
+        elif direction == 'top':
+            ai_page.evaluate("window.scrollTo(0, 0)")
+        elif direction == 'bottom':
+            ai_page.evaluate("window.scrollTo(0, document.body.scrollHeight)")
+        return {"status": "success", "message": f"Scrolled {direction}"}
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
+
+def ai_get_text():
+    """Get all text content from page"""
+    global ai_page, ai_mode_active
+
+    if not ai_mode_active or not ai_page:
+        return {"status": "error", "message": "AI browser not initialized"}
+
+    try:
+        text = ai_page.evaluate("""
+            () => {
+                // Get visible text from body
+                const walker = document.createTreeWalker(
+                    document.body,
+                    NodeFilter.SHOW_TEXT,
+                    null,
+                    false
+                );
+                let text = '';
+                let node;
+                while (node = walker.nextNode()) {
+                    const style = window.getComputedStyle(node.parentElement);
+                    if (style.display !== 'none' && style.visibility !== 'hidden') {
+                        text += node.textContent + ' ';
+                    }
+                }
+                return text.trim().substring(0, 10000);
+            }
+        """)
+        return {"status": "success", "text": text}
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
+
+def ai_upload_file(selector, file_path):
+    """Upload file to input element"""
+    global ai_page, ai_mode_active
+
+    if not ai_mode_active or not ai_page:
+        return {"status": "error", "message": "AI browser not initialized"}
+
+    try:
+        input_el = ai_page.query_selector(selector)
+        if not input_el:
+            return {"status": "error", "message": f"Input element not found: {selector}"}
+        input_el.set_input_files(file_path)
+        return {"status": "success", "message": f"File uploaded: {file_path}"}
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
+
 class CodegenHandler(BaseHTTPRequestHandler):
     def log_message(self, format, *args):
         print(f"[HTTP] {args[0]}")
@@ -967,6 +1106,55 @@ class CodegenHandler(BaseHTTPRequestHandler):
             selector = params.get('selector', [None])[0]
             max_length = int(params.get('max_length', [5000])[0] or 5000)
             result = ai_read_page(selector, max_length)
+            self.send_json(result)
+
+        elif path == '/drag':
+            src = params.get('src', [None])[0]
+            dst = params.get('dst', [None])[0]
+            if not src or not dst:
+                self.send_json({'error': 'Missing src or dst parameter'}, 400)
+                return
+            result = ai_drag(src, dst)
+            self.send_json(result)
+
+        elif path == '/type_text':
+            text = params.get('text', [None])[0]
+            submit_key = params.get('submit_key', [None])[0]
+            if not text:
+                self.send_json({'error': 'Missing text parameter'}, 400)
+                return
+            result = ai_type_text(text, submit_key)
+            self.send_json(result)
+
+        elif path == '/handle_dialog':
+            action = params.get('action', ['accept'])[0]
+            prompt_text = params.get('prompt_text', [None])[0]
+            result = ai_handle_dialog(action, prompt_text)
+            self.send_json(result)
+
+        elif path == '/resize_page':
+            width = int(params.get('width', [1920])[0] or 1920)
+            height = int(params.get('height', [1080])[0] or 1080)
+            result = ai_resize_page(width, height)
+            self.send_json(result)
+
+        elif path == '/scroll':
+            direction = params.get('direction', ['down'])[0]
+            amount = int(params.get('amount', [300])[0] or 300)
+            result = ai_scroll(direction, amount)
+            self.send_json(result)
+
+        elif path == '/get_text':
+            result = ai_get_text()
+            self.send_json(result)
+
+        elif path == '/upload_file':
+            selector = params.get('selector', [None])[0]
+            file_path = params.get('file_path', [None])[0]
+            if not selector or not file_path:
+                self.send_json({'error': 'Missing selector or file_path parameter'}, 400)
+                return
+            result = ai_upload_file(selector, file_path)
             self.send_json(result)
 
         else:

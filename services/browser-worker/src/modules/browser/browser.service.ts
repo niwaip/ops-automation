@@ -144,6 +144,14 @@ export class BrowserService implements OnModuleDestroy {
         return await this.snapshot();
       case 'read_page':
         return await this.readPage(command.params.selector as string, command.params.max_length as number);
+      case 'drag':
+        return await this.drag(command.params.src as string, command.params.dst as string);
+      case 'type_text':
+        return await this.typeText(command.params.text as string, command.params.submit_key as string);
+      case 'scroll':
+        return await this.scroll(command.params.direction as string, command.params.amount as number);
+      case 'get_text':
+        return await this.getText();
       case 'wait':
         return await this.wait(command.params.selector as string, command.params.duration as number);
       case 'hover':
@@ -336,6 +344,142 @@ export class BrowserService implements OnModuleDestroy {
       req.setTimeout(15000, () => {
         req.destroy();
         reject(new Error('Snapshot timeout'));
+      });
+    });
+  }
+
+  private async readPage(selector?: string, maxLength?: number): Promise<{ status: string; content?: any }> {
+    let url = `http://${this.chromeHost}:${this.codegenPort}/read_page`;
+    const params: string[] = [];
+    if (selector) {
+      params.push(`selector=${encodeURIComponent(selector)}`);
+    }
+    if (maxLength) {
+      params.push(`max_length=${maxLength}`);
+    }
+    if (params.length > 0) {
+      url += '?' + params.join('&');
+    }
+
+    return new Promise((resolve, reject) => {
+      const req = http.get(url, (res) => {
+        let data = '';
+        res.on('data', (chunk) => data += chunk);
+        res.on('end', () => {
+          try {
+            const result = JSON.parse(data);
+            resolve({ status: result.status || 'success', content: result.content });
+          } catch {
+            resolve({ status: 'success' });
+          }
+        });
+      });
+      req.on('error', reject);
+      req.setTimeout(15000, () => {
+        req.destroy();
+        reject(new Error('Read page timeout'));
+      });
+    });
+  }
+
+  private async drag(src: string, dst: string): Promise<{ status: string }> {
+    return new Promise((resolve, reject) => {
+      const req = http.get(
+        `http://${this.chromeHost}:${this.codegenPort}/drag?src=${encodeURIComponent(src)}&dst=${encodeURIComponent(dst)}`,
+        (res) => {
+          let data = '';
+          res.on('data', (chunk) => data += chunk);
+          res.on('end', () => {
+            try {
+              const result = JSON.parse(data);
+              resolve({ status: result.status || 'success' });
+            } catch {
+              resolve({ status: 'success' });
+            }
+          });
+        }
+      );
+      req.on('error', reject);
+      req.setTimeout(10000, () => {
+        req.destroy();
+        reject(new Error('Drag timeout'));
+      });
+    });
+  }
+
+  private async typeText(text: string, submitKey?: string): Promise<{ status: string }> {
+    let url = `http://${this.chromeHost}:${this.codegenPort}/type_text?text=${encodeURIComponent(text)}`;
+    if (submitKey) {
+      url += `&submit_key=${encodeURIComponent(submitKey)}`;
+    }
+
+    return new Promise((resolve, reject) => {
+      const req = http.get(url, (res) => {
+        let data = '';
+        res.on('data', (chunk) => data += chunk);
+        res.on('end', () => {
+          try {
+            const result = JSON.parse(data);
+            resolve({ status: result.status || 'success' });
+          } catch {
+            resolve({ status: 'success' });
+          }
+        });
+      });
+      req.on('error', reject);
+      req.setTimeout(10000, () => {
+        req.destroy();
+        reject(new Error('Type text timeout'));
+      });
+    });
+  }
+
+  private async scroll(direction: string, amount: number): Promise<{ status: string }> {
+    return new Promise((resolve, reject) => {
+      const req = http.get(
+        `http://${this.chromeHost}:${this.codegenPort}/scroll?direction=${direction}&amount=${amount || 300}`,
+        (res) => {
+          let data = '';
+          res.on('data', (chunk) => data += chunk);
+          res.on('end', () => {
+            try {
+              const result = JSON.parse(data);
+              resolve({ status: result.status || 'success' });
+            } catch {
+              resolve({ status: 'success' });
+            }
+          });
+        }
+      );
+      req.on('error', reject);
+      req.setTimeout(10000, () => {
+        req.destroy();
+        reject(new Error('Scroll timeout'));
+      });
+    });
+  }
+
+  private async getText(): Promise<{ status: string; text?: string }> {
+    return new Promise((resolve, reject) => {
+      const req = http.get(
+        `http://${this.chromeHost}:${this.codegenPort}/get_text`,
+        (res) => {
+          let data = '';
+          res.on('data', (chunk) => data += chunk);
+          res.on('end', () => {
+            try {
+              const result = JSON.parse(data);
+              resolve({ status: result.status || 'success', text: result.text });
+            } catch {
+              resolve({ status: 'success' });
+            }
+          });
+        }
+      );
+      req.on('error', reject);
+      req.setTimeout(15000, () => {
+        req.destroy();
+        reject(new Error('Get text timeout'));
       });
     });
   }
