@@ -187,4 +187,20 @@ export class ModelService {
   getApiKeyReference(id: string): APIKeyReference | null {
     return this.apiKeyReferences.get(id) || null;
   }
+
+  /**
+   * Call a model with a prompt
+   * @param id - Model ID
+   * @param prompt - Text prompt
+   * @returns Model response
+   */
+  async callModel(id: string, prompt: string): Promise<string> {
+    const client = this.clients.get(id);
+    if (!client) {
+      throw new Error(`No client initialized for model ${id}`);
+    }
+
+    const messages = [{ role: 'user' as const, content: prompt }];
+    return client.chatCompletion(messages);
+  }
 }

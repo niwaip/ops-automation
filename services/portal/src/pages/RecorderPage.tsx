@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Typography, Row, Col, message, Spin, Card } from 'antd';
+import { Typography, Row, Col, message, Spin, Card, Tabs, Button, Space } from 'antd';
+import { PlayCircleOutlined, RobotOutlined, VideoCameraOutlined } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
 import { useMutation } from 'react-query';
-import { RecorderControls, ScriptPreview, TemplatePreview } from '../components/recorder';
+import { RecorderControls, ScriptPreview, TemplatePreview, AIControls } from '../components/recorder';
 import recorderService, { RecorderStatus, CompiledTemplate, ValidationResult } from '../services/recorder.service';
 import { templateApi, CompileResult } from '../api/template';
 import { useAuthStore } from '../store/authStore';
@@ -16,9 +17,17 @@ interface RecorderState {
   error?: string;
 }
 
+// MCP-style command
+interface MCPCommand {
+  tool: string;
+  params: Record<string, unknown>;
+}
+
 const RecorderPage: React.FC = () => {
   const { t } = useTranslation(['common', 'recorder']);
   const { user } = useAuthStore();
+
+  const [mode, setMode] = useState<'record' | 'ai'>('record');
 
   const [recorderState, setRecorderState] = useState<RecorderState>({
     status: 'idle',
@@ -68,7 +77,6 @@ const RecorderPage: React.FC = () => {
     {
       onSuccess: () => {
         message.success(t('recorder:saveSuccess'));
-        // Reset state after successful save
         setTemplate(null);
         setValidation(null);
         setRecorderState((prev) => ({ ...prev, script: '' }));
@@ -173,33 +181,67 @@ const RecorderPage: React.FC = () => {
     saveMutation.mutate(compiledTemplate);
   }, [saveMutation]);
 
+  const handleAICommandExecuted = useCallback((commands: MCPCommand[]) => {
+    console.log('AI commands generated:', commands);
+    // Commands will be executed via the AI backend service
+  }, []);
+
+  // noVNC URL
+  const NOVNC_URL = import.meta.env.VITE_NOVNC_URL || 'http://localhost:6080/vnc.html';
+
   return (
     <div>
       <Title level={4}>{t('common:recorder')}</Title>
 
+      {/* Mode selector tabs */}
+      <Card style={{ marginBottom: 16 }}>
+        <Space>
+          <Button
+            type={mode === 'record' ? 'primary' : 'default'}
+            icon={<VideoCameraOutlined />}
+            onClick={() => setMode('record')}
+          >
+            {t('recorder:modes.record') || '自动录制'}
+          </Button>
+          <Button
+            type={mode === 'ai' ? 'primary' : 'default'}
+            icon={<RobotOutlined />}
+            onClick={() => setMode('ai')}
+          >
+            {t('recorder:modes.ai') || 'AI 控制'}
+          </Button>
+        </Space>
+      </Card>
+
       <Row gutter={[16, 16]}>
         {/* Left Column: Controls */}
         <Col xs={24} lg={8}>
-          <RecorderControls
-            status={recorderState.status}
-            isConnected={isConnected}
-            onStart={handleStart}
-            onStop={handleStop}
-            onPause={handlePause}
-            onResume={handleResume}
-            onConnect={handleConnect}
-            onDisconnect={handleDisconnect}
-          />
+          {mode === 'record' ? (
+            <>
+              <RecorderControls
+                status={recorderState.status}
+                isConnected={isConnected}
+                onStart={handleStart}
+                onStop={handleStop}
+                onPause={handlePause}
+                onResume={handleResume}
+                onConnect={handleConnect}
+                onDisconnect={handleDisconnect}
+              />
 
-          <div style={{ marginTop: 16 }}>
-            <ScriptPreview
-              script={recorderState.script}
-              onCompile={handleCompile}
-              disabled={recorderState.status !== 'stopped'}
-              status={recorderState.status}
-              compiling={compileMutation.isLoading}
-            />
-          </div>
+              <div style={{ marginTop: 16 }}>
+                <ScriptPreview
+                  script={recorderState.script}
+                  onCompile={handleCompile}
+                  disabled={recorderState.status !== 'stopped'}
+                  status={recorderState.status}
+                  compiling={compileMutation.isLoading}
+                />
+              </div>
+            </>
+          ) : (
+            <AIControls onCommandExecuted={handleAICommandExecuted} />
+          )}
         </Col>
 
         {/* Right Column: Browser Preview (larger) */}
@@ -209,6 +251,15 @@ const RecorderPage: React.FC = () => {
             title={t('recorder:browserPreview')}
             style={{ height: '100%' }}
             bodyStyle={{ height: 'calc(100% - 57px)', padding: 0 }}
+            extra={
+              <Button
+                type="link"
+                size="small"
+                onClick={() => window.open(`${NOVNC_URL}?autoconnect=true&resize=scale`, '_blank')}
+              >
+                {t('session:openInNewTab') || '新标签页打开'}
+              </Button>
+            }
           >
             <div
               style={{
@@ -222,9 +273,10 @@ const RecorderPage: React.FC = () => {
                 overflow: 'hidden',
               }}
             >
-              {recorderState.status === 'recording' || recorderState.status === 'paused' ? (
+              {(mode === 'record' && (recorderState.status === 'recording' || recorderState.status === 'paused')) ||
+               (mode === 'ai') ? (
                 <iframe
-                  src="http://localhost:6080/vnc.html?autoconnect=true&resize=scale&reconnect=true"
+                  src={`${NOVNC_URL}?autoconnect=true&resize=scale&reconnect=true`}
                   style={{
                     width: '100%',
                     height: '100%',
@@ -235,7 +287,9 @@ const RecorderPage: React.FC = () => {
               ) : (
                 <div style={{ textAlign: 'center' }}>
                   <p style={{ color: '#999' }}>
-                    {t('recorder:startToPreview')}
+                    {mode === 'record'
+                      ? t('recorder:startToPreview')
+                      : t('recorder:ai.startToPreview') || '初始化浏览器后开始 AI 控制'}
                   </p>
                   <p style={{ color: '#8c8c8c', fontSize: 12, marginTop: 8 }}>
                     {t('recorder:novncHint') || 'noVNC will show browser after recording starts'}
@@ -245,23 +299,25 @@ const RecorderPage: React.FC = () => {
             </div>
           </Card>
 
-          {/* Template Preview below */}
-          <div style={{ marginTop: 16 }}>
-            {compileMutation.isLoading ? (
-              <Card>
-                <Spin tip={t('recorder:compiling')}>
-                  <div style={{ height: 200 }} />
-                </Spin>
-              </Card>
-            ) : (
-              <TemplatePreview
-                template={template}
-                validation={validation}
-                onSave={handleSave}
-                saving={saveMutation.isLoading}
-              />
-            )}
-          </div>
+          {/* Template Preview below (only for record mode) */}
+          {mode === 'record' && (
+            <div style={{ marginTop: 16 }}>
+              {compileMutation.isLoading ? (
+                <Card>
+                  <Spin tip={t('recorder:compiling')}>
+                    <div style={{ height: 200 }} />
+                  </Spin>
+                </Card>
+              ) : (
+                <TemplatePreview
+                  template={template}
+                  validation={validation}
+                  onSave={handleSave}
+                  saving={saveMutation.isLoading}
+                />
+              )}
+            </div>
+          )}
         </Col>
       </Row>
     </div>
