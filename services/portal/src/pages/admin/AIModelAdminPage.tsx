@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Table, Card, Button, Input, Space, Tag, Typography, Modal, message, Form, Select } from 'antd';
+import { Table, Card, Button, Input, Space, Tag, Typography, Modal, message, Form, Select, Divider, Alert, Row, Col } from 'antd';
 import {
   SearchOutlined,
   PlusOutlined,
@@ -9,14 +9,28 @@ import {
   CheckOutlined,
   StopOutlined,
   ExperimentOutlined,
+  CloudServerOutlined,
+  CheckCircleOutlined,
+  CloseCircleOutlined,
 } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
 import { useQuery, useMutation, useQueryClient } from 'react-query';
 import { aiModelApi, AIModel, ModelProvider } from '../../api/ai';
 import type { ColumnsType } from 'antd/es/table';
 
-const { Title } = Typography;
+const { Title, Text } = Typography;
 const { Option } = Select;
+
+// Provider display names
+const PROVIDER_NAMES: Record<string, string> = {
+  'alibaba-coding': '阿里云 Coding',
+  'alibaba-bailian': '阿里云百炼',
+  'openai': 'OpenAI',
+  'anthropic': 'Anthropic',
+  'azure': 'Azure OpenAI',
+  'deepseek': 'DeepSeek',
+  'local': '本地模型',
+};
 
 const AIModelAdminPage: React.FC = () => {
   const { t } = useTranslation(['common', 'admin']);
@@ -31,6 +45,7 @@ const AIModelAdminPage: React.FC = () => {
   const [testPrompt, setTestPrompt] = useState('');
 
   const modelsQuery = useQuery(['ai-models'], () => aiModelApi.list());
+  const presetsQuery = useQuery(['ai-model-presets'], () => aiModelApi.listPresets());
 
   const enableMutation = useMutation(aiModelApi.enable, {
     onSuccess: () => {
@@ -162,13 +177,17 @@ const AIModelAdminPage: React.FC = () => {
       title: t('admin:modelProvider'),
       dataIndex: 'provider',
       key: 'provider',
-      render: (provider: ModelProvider) => <Tag>{provider}</Tag>,
+      render: (provider: ModelProvider) => (
+        <Tag color={provider.startsWith('alibaba') ? 'orange' : 'blue'}>
+          {PROVIDER_NAMES[provider] || provider}
+        </Tag>
+      ),
     },
     {
       title: t('admin:modelType'),
       dataIndex: 'type',
       key: 'type',
-      render: (type: string) => <Tag color="blue">{type}</Tag>,
+      render: (type: string) => <Tag color="green">{type}</Tag>,
     },
     {
       title: t('admin:modelEndpoint'),
@@ -248,13 +267,72 @@ const AIModelAdminPage: React.FC = () => {
     },
   ];
 
-  const providerOptions: ModelProvider[] = ['openai', 'anthropic', 'azure', 'local'];
+  const providerOptions: ModelProvider[] = ['alibaba-coding', 'alibaba-bailian', 'openai', 'anthropic', 'azure', 'deepseek', 'local'];
   const typeOptions = ['chat', 'embedding', 'image'];
+
+  // Group presets by provider
+  const groupedPresets = presetsQuery.data?.presets?.reduce((acc, preset) => {
+    if (!acc[preset.provider]) {
+      acc[preset.provider] = [];
+    }
+    acc[preset.provider].push(preset);
+    return acc;
+  }, {} as Record<string, typeof presetsQuery.data.presets>) || {};
 
   return (
     <div>
       <Title level={4}>{t('admin:modelManagement')}</Title>
 
+      {/* Preset Models Status Card */}
+      <Card
+        style={{ marginTop: 16 }}
+        title={
+          <Space>
+            <CloudServerOutlined />
+            <span>预设模型状态</span>
+          </Space>
+        }
+        extra={
+          <Button
+            icon={<ReloadOutlined />}
+            onClick={() => presetsQuery.refetch()}
+            loading={presetsQuery.isLoading}
+          >
+            {t('common:refresh')}
+          </Button>
+        }
+      >
+        <Alert
+          type="info"
+          showIcon
+          message="配置 API Key 后，预设模型会在服务启动时自动初始化"
+          style={{ marginBottom: 16 }}
+        />
+
+        {Object.entries(groupedPresets).map(([provider, presets]) => (
+          <div key={provider} style={{ marginBottom: 16 }}>
+            <Title level={5} style={{ marginBottom: 8 }}>
+              {PROVIDER_NAMES[provider] || provider}
+            </Title>
+            <Row gutter={[8, 8]}>
+              {(presets as typeof presetsQuery.data.presets).map((preset) => (
+                <Col key={preset.name}>
+                  <Tag
+                    icon={preset.configured ? <CheckCircleOutlined /> : <CloseCircleOutlined />}
+                    color={preset.configured ? 'success' : 'default'}
+                    style={{ padding: '4px 8px' }}
+                  >
+                    {preset.name}
+                    {preset.configured ? ' (已配置)' : ' (未配置)'}
+                  </Tag>
+                </Col>
+              ))}
+            </Row>
+          </div>
+        ))}
+      </Card>
+
+      {/* Registered Models Card */}
       <Card style={{ marginTop: 16 }}>
         <Space style={{ marginBottom: 16, width: '100%', justifyContent: 'space-between' }}>
           <Input
@@ -311,7 +389,7 @@ const AIModelAdminPage: React.FC = () => {
           >
             <Select>
               {providerOptions.map((p) => (
-                <Option key={p} value={p}>{p}</Option>
+                <Option key={p} value={p}>{PROVIDER_NAMES[p] || p}</Option>
               ))}
             </Select>
           </Form.Item>

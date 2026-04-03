@@ -1,7 +1,7 @@
 import { apiClient } from './client';
 
 // AI Model types for admin page
-export type ModelProvider = 'openai' | 'anthropic' | 'azure' | 'local';
+export type ModelProvider = 'openai' | 'anthropic' | 'azure' | 'local' | 'alibaba-coding' | 'alibaba-bailian' | 'deepseek';
 
 export interface AIModel {
   id: string;
@@ -37,10 +37,24 @@ export interface UpdateAIModelRequest {
   config?: Record<string, unknown>;
 }
 
+export interface PresetModelStatus {
+  name: string;
+  provider: string;
+  configured: boolean;
+}
+
+export interface PresetModelsResponse {
+  presets: PresetModelStatus[];
+}
+
 // AI Model API
 export const aiModelApi = {
   list: async (): Promise<AIModelListResponse> => {
     return apiClient.get<AIModelListResponse>('/ai/models');
+  },
+
+  listPresets: async (): Promise<PresetModelsResponse> => {
+    return apiClient.get<PresetModelsResponse>('/ai/models/presets');
   },
 
   getById: async (id: string): Promise<AIModel> => {
