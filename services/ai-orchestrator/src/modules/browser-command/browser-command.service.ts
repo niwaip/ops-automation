@@ -34,6 +34,13 @@ const BROWSER_TOOLS = [
     },
   },
   {
+    name: 'click_result',
+    description: 'Click on the Nth search result (use when user says "点击第一个结果" or similar)',
+    params: {
+      index: { type: 'number', required: true, description: 'Result index (1 for first, 2 for second, etc.)' },
+    },
+  },
+  {
     name: 'fill',
     description: 'Fill text into an input field',
     params: {
@@ -196,6 +203,45 @@ export class BrowserCommandService {
             explanation: `将在 ${site} 搜索: ${query}`,
           };
         }
+      }
+    }
+
+    // Pattern: Click search result by position
+    const clickResultPatterns = [
+      /^(?:点击|单击|点)\s*(?:第\s*)?(\d+)\s*(?:个\s*)?(?:搜索|查询)?(?:结果|链接)?$/i,
+      /^(?:点击|单击|点)\s*(?:第一个|第二个|第三个|第四个|第五个)(?:搜索|查询)?(?:结果|链接)?$/i,
+      /^click\s+(?:the\s+)?(?:first|second|third|fourth|fifth|1st|2nd|3rd|4th|5th)\s+(?:result|link|search\s+result)$/i,
+      /^click\s+(?:result|link)\s+#?(\d+)$/i,
+    ];
+
+    const positionMap: Record<string, number> = {
+      '第一个': 1, '第二个': 2, '第三个': 3, '第四个': 4, '第五个': 5,
+      'first': 1, 'second': 2, 'third': 3, 'fourth': 4, 'fifth': 5,
+      '1st': 1, '2nd': 2, '3rd': 3, '4th': 4, '5th': 5,
+    };
+
+    for (const pattern of clickResultPatterns) {
+      const match = input.match(pattern);
+      if (match) {
+        let index = 1;
+        if (match[1]) {
+          // Check if it's a word position or number
+          const posKey = match[1].toLowerCase();
+          if (positionMap[posKey]) {
+            index = positionMap[posKey];
+          } else {
+            index = parseInt(match[1], 10);
+          }
+        }
+        return {
+          success: true,
+          commands: [{
+            tool: 'click_result',
+            params: { index },
+            description: `点击第 ${index} 个搜索结果`,
+          }],
+          explanation: `将点击第 ${index} 个搜索结果`,
+        };
       }
     }
 

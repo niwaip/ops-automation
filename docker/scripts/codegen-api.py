@@ -447,6 +447,83 @@ def ai_reset():
     except Exception as e:
         return {"status": "error", "message": str(e)}
 
+def ai_click_result(index=1):
+    """Click on the Nth search result"""
+    global ai_page, ai_mode_active
+
+    if not ai_mode_active or not ai_page:
+        return {"status": "error", "message": "AI browser not initialized"}
+
+    try:
+        # Common search result selectors for different search engines
+        selectors = [
+            # Baidu
+            ".result.c-container a:first-child",
+            "#content_left .result .t a",
+            ".result a",
+            # Google
+            ".g .r a",
+            "#search .g div.yuRUbf > a",
+            ".g a",
+            # Bing
+            ".b_algo .b_title a",
+            ".b_algo h2 a",
+            ".b_algo a",
+            # Generic
+            "article a",
+            ".search-result a",
+            "li a",
+        ]
+
+        clicked = False
+        for selector in selectors:
+            try:
+                # Get all matching elements
+                elements = ai_page.query_selector_all(selector)
+                if elements and len(elements) >= index:
+                    # Click on the nth element (1-indexed)
+                    target_element = elements[index - 1]
+                    target_element.click()
+                    clicked = True
+                    print(f"[INFO] Clicked result {index} using selector: {selector}")
+                    return {"status": "success", "message": f"Clicked result {index}"}
+            except Exception as e:
+                print(f"[DEBUG] Selector {selector} failed: {e}")
+                continue
+
+        if not clicked:
+            # Try using evaluate to find and click links
+            try:
+                result = ai_page.evaluate(f"""
+                    () => {{
+                        const links = document.querySelectorAll('a');
+                        const visibleLinks = Array.from(links).filter(link => {{
+                            const style = window.getComputedStyle(link);
+                            return style.display !== 'none' &&
+                                   style.visibility !== 'hidden' &&
+                                   link.offsetWidth > 0 &&
+                                   link.offsetHeight > 0 &&
+                                   link.href &&
+                                   !link.href.includes('javascript:') &&
+                                   !link.href.includes('#');
+                        });
+                        if (visibleLinks.length >= {index}) {{
+                            visibleLinks[{index} - 1].click();
+                            return true;
+                        }}
+                        return false;
+                    }}
+                """)
+                if result:
+                    return {"status": "success", "message": f"Clicked link {index}"}
+            except Exception as e:
+                print(f"[ERROR] JavaScript click failed: {e}")
+
+        return {"status": "error", "message": f"Could not find result {index}"}
+    except Exception as e:
+        print(f"[ERROR] Click result failed: {e}")
+        return {"status": "error", "message": str(e)}
+
 class CodegenHandler(BaseHTTPRequestHandler):
     def log_message(self, format, *args):
         print(f"[HTTP] {args[0]}")
@@ -525,6 +602,12 @@ class CodegenHandler(BaseHTTPRequestHandler):
             selector = params.get('selector', [None])[0]
             text = params.get('text', [None])[0]
             result = ai_click(selector, text)
+            self.send_json(result)
+
+        elif path == '/click_result':
+            index = params.get('index', ['1'])[0]
+            index_int = int(index) if index else 1
+            result = ai_click_result(index_int)
             self.send_json(result)
 
         elif path == '/fill':

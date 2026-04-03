@@ -134,6 +134,8 @@ export class BrowserService implements OnModuleDestroy {
         return await this.navigate(command.params.url as string);
       case 'click':
         return await this.click(command.params.selector as string, command.params.text as string);
+      case 'click_result':
+        return await this.clickResult(command.params.index as number);
       case 'fill':
         return await this.fill(command.params.selector as string, command.params.value as string);
       case 'screenshot':
@@ -230,6 +232,31 @@ export class BrowserService implements OnModuleDestroy {
       req.setTimeout(10000, () => {
         req.destroy();
         reject(new Error('Click timeout'));
+      });
+    });
+  }
+
+  private async clickResult(index: number): Promise<{ status: string }> {
+    return new Promise((resolve, reject) => {
+      const req = http.get(
+        `http://${this.chromeHost}:${this.codegenPort}/click_result?index=${index}`,
+        (res) => {
+          let data = '';
+          res.on('data', (chunk) => data += chunk);
+          res.on('end', () => {
+            try {
+              const result = JSON.parse(data);
+              resolve({ status: result.status || 'success', message: result.message });
+            } catch {
+              resolve({ status: 'success' });
+            }
+          });
+        }
+      );
+      req.on('error', reject);
+      req.setTimeout(10000, () => {
+        req.destroy();
+        reject(new Error('Click result timeout'));
       });
     });
   }
