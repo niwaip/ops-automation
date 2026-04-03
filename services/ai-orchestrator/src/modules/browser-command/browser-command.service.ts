@@ -310,13 +310,19 @@ export class BrowserCommandService {
       /^(?:在?\s*(谷歌|google)\s*搜索)\s*(.+)$/i,
       /^(?:在?\s*(必应|bing)\s*搜索)\s*(.+)$/i,
       /^(?:search\s+(?:on\s+)?(baidu|google|bing)\s*:?\s*)(.+)$/i,
+      // Generic search pattern - default to Baidu
+      /^(?:搜索|search)\s+(.+)$/i,
     ];
 
     for (const pattern of searchPatterns) {
       const match = input.match(pattern);
-      if (match && match[1] && match[2]) {
-        const engine = match[1].toLowerCase();
-        const query = match[2].trim();
+      if (match) {
+        // For generic search pattern, use Baidu as default
+        const engine = match[1] ? match[1].toLowerCase() : '百度';
+        const query = match[2] ? match[2].trim() : match[1]?.trim();
+
+        if (!query) continue;
+
         const searchUrls: Record<string, string> = {
           '百度': 'https://www.baidu.com/s?wd=',
           'baidu': 'https://www.baidu.com/s?wd=',
