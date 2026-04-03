@@ -794,11 +794,14 @@ def ai_click_result(index=1):
             target = result_links[index - 1]
             print(f"[INFO] Clicking result {index}: {target['text'][:50]}")
 
-            # Check if link opens in new tab (target="_blank")
+            # Check if link opens in new tab (target="_blank") or is Baidu redirect link
             link_target = target.get('target', '_self')
-            if link_target == '_blank':
+            is_baidu_redirect = target.get('type') == 'baidu_result' and 'baidu.com/link' in target.get('href', '')
+
+            if link_target == '_blank' or is_baidu_redirect:
                 # Navigate directly to the URL instead of clicking
-                print(f"[INFO] Link has target=_blank, navigating to: {target['href']}")
+                # Baidu redirect links and target=_blank links open in new tabs
+                print(f"[INFO] Link requires navigation (target={link_target}, is_baidu_redirect={is_baidu_redirect}), navigating to: {target['href']}")
                 ai_page.goto(target['href'], timeout=30000)
                 return {
                     "status": "success",
@@ -1129,6 +1132,31 @@ def ai_smart_search(query):
         print(f"[SmartSearch] Waiting for page to be ready...")
         time.sleep(0.5)  # Brief wait for dynamic content
         ai_page.wait_for_load_state('domcontentloaded', timeout=5000)
+
+        # Special handling for Baidu: force show search form if hidden
+        # Baidu may hide the search form due to anti-automation detection
+        current_url = ai_page.url
+        if 'baidu.com' in current_url:
+            print("[SmartSearch] Baidu detected, checking search form visibility...")
+            try:
+                form_visible = ai_page.evaluate('document.querySelector("#form") ? window.getComputedStyle(document.querySelector("#form")).display !== "none" : false')
+                if not form_visible:
+                    print("[SmartSearch] Baidu search form is hidden, forcing visibility...")
+                    ai_page.evaluate('''
+                        var form = document.querySelector("#form");
+                        if (form) {
+                            form.style.display = "block";
+                            form.style.visibility = "visible";
+                        }
+                        var kw = document.querySelector("#kw");
+                        if (kw) {
+                            kw.style.display = "inline-block";
+                            kw.style.visibility = "visible";
+                        }
+                    ''')
+                    time.sleep(0.3)  # Wait for style to apply
+            except Exception as e:
+                print(f"[SmartSearch] Warning: Failed to force show Baidu form: {e}")
 
         # Step 1: Get accessibility snapshot to analyze page structure
         print(f"[SmartSearch] Step 1: Analyzing page structure...")
