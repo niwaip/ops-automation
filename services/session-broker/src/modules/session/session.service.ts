@@ -160,10 +160,14 @@ export class SessionService {
     const totalSteps = template?.steps?.length || 0;
 
     if (template && template.steps && template.steps.length > 0) {
-      // Execute all steps
-      this.logger.log(`Executing ${template.steps.length} steps for session ${sessionId}`);
+      // Execute all steps with parameter substitution
+      this.logger.log(`Executing ${template.steps.length} steps for session ${sessionId} with params: ${JSON.stringify(request.params)}`);
 
-      const results = await this.cdpExecutor.executeSteps(template.steps as TemplateStep[], sessionId);
+      const results = await this.cdpExecutor.executeSteps(
+        template.steps as TemplateStep[],
+        sessionId,
+        request.params || {},
+      );
 
       // Store step results in Redis
       const stepsKey = `session:${sessionId}:steps`;
@@ -175,6 +179,8 @@ export class SessionService {
         error: r.error,
         message: r.message,
         screenshot: r.screenshot,
+        text: r.text,
+        html: r.html,
         timestamp: Date.now(),
       }));
       await this.redisService.set(stepsKey, JSON.stringify(stepResults), SESSION_TTL_SECONDS);

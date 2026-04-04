@@ -1,13 +1,14 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Typography, Row, Col, message, Spin, Card, Button } from 'antd';
+import { Typography, Row, Col, message, Spin, Card, Button, Space, Tag } from 'antd';
 import { useTranslation } from 'react-i18next';
 import { useMutation } from 'react-query';
+import { RobotOutlined, DesktopOutlined, FullscreenOutlined, CompressOutlined } from '@ant-design/icons';
 import { AIControls, TemplatePreview } from '../components/recorder';
 import recorderService, { RecorderStatus, CompiledTemplate, ValidationResult } from '../services/recorder.service';
 import { templateApi, CompileResult } from '../api/template';
 import { useAuthStore } from '../store/authStore';
 
-const { Title } = Typography;
+const { Title, Text } = Typography;
 
 interface RecorderState {
   status: RecorderStatus;
@@ -36,6 +37,14 @@ const RecorderPage: React.FC = () => {
   const [isBrowserInitialized, setIsBrowserInitialized] = useState(false);
   const [template, setTemplate] = useState<CompiledTemplate | null>(null);
   const [validation, setValidation] = useState<ValidationResult | null>(null);
+
+  // Track execution state for dynamic layout
+  const [hasExecuted, setHasExecuted] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(false);
+
+  // Layout sizes: initial 40/60, after execution 25/75
+  const leftSpan = hasExecuted || isExpanded ? 6 : 10;
+  const rightSpan = hasExecuted || isExpanded ? 18 : 14;
 
   // Compile mutation
   const compileMutation = useMutation(
@@ -171,56 +180,152 @@ const RecorderPage: React.FC = () => {
     recorderService.resumeRecording();
   }, []);
 
-  const handleCompile = useCallback((options: { script: string; intent?: string }) => {
-    compileMutation.mutate(options);
-  }, [compileMutation]);
-
   const handleSave = useCallback((compiledTemplate: CompiledTemplate) => {
     saveMutation.mutate(compiledTemplate);
   }, [saveMutation]);
 
   const handleAICommandExecuted = useCallback((commands: MCPCommand[]) => {
     console.log('AI commands generated:', commands);
+    // Mark that execution has happened - triggers layout change
+    setHasExecuted(true);
     // Commands will be executed via the AI backend service
   }, []);
+
+  // Toggle expanded view manually
+  const handleToggleExpand = useCallback(() => {
+    setIsExpanded((prev) => !prev);
+  }, []);
+
+  // Reset execution state when starting new recording
+  const handleStartWithReset = useCallback((url: string) => {
+    setHasExecuted(false);
+    setIsExpanded(false);
+    handleStart(url);
+  }, [handleStart]);
 
   // noVNC URL
   const NOVNC_URL = import.meta.env.VITE_NOVNC_URL || 'http://localhost:6080/vnc.html';
 
   return (
-    <div>
-      <Title level={4}>{t('common:recorder')}</Title>
+    <div
+      style={{
+        padding: '24px 48px',
+        minHeight: '100vh',
+        background: 'linear-gradient(135deg, #f5f7fa 0%, #e4e8ec 100%)',
+      }}
+    >
+      {/* Header with status */}
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          marginBottom: 24,
+        }}
+      >
+        <Space>
+          <Title level={4} style={{ margin: 0 }}>
+            {t('common:recorder')}
+          </Title>
+          <Tag color={isConnected ? 'success' : 'default'}>
+            {isConnected ? '已连接' : '未连接'}
+          </Tag>
+          {isBrowserInitialized && (
+            <Tag color="processing" icon={<RobotOutlined />}>
+              浏览器就绪
+            </Tag>
+          )}
+        </Space>
 
-      <Row gutter={[16, 16]}>
+        {/* Expand/Collapse toggle */}
+        <Space>
+          {(hasExecuted || isExpanded) && (
+            <Button
+              type="text"
+              icon={isExpanded ? <CompressOutlined /> : <FullscreenOutlined />}
+              onClick={handleToggleExpand}
+              style={{ color: '#6366f1' }}
+            >
+              {isExpanded ? '收起控制面板' : '展开浏览器'}
+            </Button>
+          )}
+        </Space>
+      </div>
+
+      <Row gutter={[24, 24]} style={{ minHeight: 'calc(100vh - 120px)' }}>
         {/* Left Column: Controls */}
-        <Col xs={24} lg={8}>
-          <AIControls
-            onCommandExecuted={handleAICommandExecuted}
-            onBrowserReady={setIsBrowserInitialized}
-            recorderStatus={recorderState.status}
-            isConnected={isConnected}
-            onStartRecording={handleStart}
-            onStopRecording={handleStop}
-            onPauseRecording={handlePause}
-            onResumeRecording={handleResume}
-            onConnect={handleConnect}
-            onDisconnect={handleDisconnect}
-            recordedScript={recorderState.script}
-          />
+        <Col
+          xs={24}
+          lg={leftSpan}
+          style={{
+            transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
+          }}
+        >
+          <Card
+            style={{
+              height: '100%',
+              borderRadius: 16,
+              boxShadow: '0 4px 20px rgba(0, 0, 0, 0.08)',
+              border: '1px solid rgba(255, 255, 255, 0.8)',
+              overflow: 'hidden',
+            }}
+            bodyStyle={{
+              padding: 20,
+              height: '100%',
+              display: 'flex',
+              flexDirection: 'column',
+            }}
+          >
+            <AIControls
+              onCommandExecuted={handleAICommandExecuted}
+              onBrowserReady={setIsBrowserInitialized}
+              recorderStatus={recorderState.status}
+              isConnected={isConnected}
+              onStartRecording={handleStartWithReset}
+              onStopRecording={handleStop}
+              onPauseRecording={handlePause}
+              onResumeRecording={handleResume}
+              onConnect={handleConnect}
+              onDisconnect={handleDisconnect}
+              recordedScript={recorderState.script}
+            />
+          </Card>
         </Col>
 
-        {/* Right Column: Browser Preview (larger) */}
-        <Col xs={24} lg={16}>
-          {/* Browser Preview - noVNC iframe */}
+        {/* Right Column: Browser Preview */}
+        <Col
+          xs={24}
+          lg={rightSpan}
+          style={{
+            transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
+          }}
+        >
           <Card
-            title={t('recorder:browserPreview')}
-            style={{ height: '100%' }}
-            bodyStyle={{ height: 'calc(100% - 57px)', padding: 0 }}
+            title={
+              <Space>
+                <DesktopOutlined />
+                <Text strong>{t('recorder:browserPreview')}</Text>
+              </Space>
+            }
+            style={{
+              height: '100%',
+              borderRadius: 16,
+              boxShadow: '0 4px 20px rgba(0, 0, 0, 0.08)',
+              border: '1px solid rgba(255, 255, 255, 0.8)',
+              display: 'flex',
+              flexDirection: 'column',
+            }}
+            bodyStyle={{
+              flex: 1,
+              padding: 0,
+              minHeight: 0,
+            }}
             extra={
               <Button
                 type="link"
                 size="small"
                 onClick={() => window.open(`${NOVNC_URL}?autoconnect=true&resize=scale`, '_blank')}
+                style={{ color: '#6366f1' }}
               >
                 {t('session:openInNewTab') || '新标签页打开'}
               </Button>
@@ -228,13 +333,12 @@ const RecorderPage: React.FC = () => {
           >
             <div
               style={{
+                width: '100%',
                 height: '100%',
-                minHeight: 600,
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                background: '#f5f5f5',
-                borderRadius: 4,
+                background: '#1a1a2e',
                 overflow: 'hidden',
               }}
             >
@@ -249,39 +353,45 @@ const RecorderPage: React.FC = () => {
                   title="Browser Preview"
                 />
               ) : (
-                <div style={{ textAlign: 'center' }}>
-                  <p style={{ color: '#999' }}>
+                <div style={{ textAlign: 'center', color: '#6b7280' }}>
+                  <DesktopOutlined style={{ fontSize: 48, marginBottom: 16, color: '#4b5563' }} />
+                  <p style={{ color: '#9ca3af', marginBottom: 8 }}>
                     {t('recorder:ai.startToPreview') || '初始化浏览器后开始控制'}
                   </p>
-                  <p style={{ color: '#8c8c8c', fontSize: 12, marginTop: 8 }}>
+                  <p style={{ color: '#6b7280', fontSize: 12 }}>
                     {t('recorder:novncHint') || 'noVNC will show browser after initialization'}
                   </p>
                 </div>
               )}
             </div>
           </Card>
-
-          {/* Template Preview below */}
-          {recorderState.status === 'stopped' && recorderState.script && (
-            <div style={{ marginTop: 16 }}>
-              {compileMutation.isLoading ? (
-                <Card>
-                  <Spin tip={t('recorder:compiling')}>
-                    <div style={{ height: 200 }} />
-                  </Spin>
-                </Card>
-              ) : (
-                <TemplatePreview
-                  template={template}
-                  validation={validation}
-                  onSave={handleSave}
-                  saving={saveMutation.isLoading}
-                />
-              )}
-            </div>
-          )}
         </Col>
       </Row>
+
+      {/* Template Preview - full width below when recording stopped */}
+      {recorderState.status === 'stopped' && recorderState.script && (
+        <div style={{ marginTop: 24 }}>
+          {compileMutation.isLoading ? (
+            <Card
+              style={{
+                borderRadius: 16,
+                boxShadow: '0 4px 20px rgba(0, 0, 0, 0.08)',
+              }}
+            >
+              <Spin tip={t('recorder:compiling')}>
+                <div style={{ height: 200 }} />
+              </Spin>
+            </Card>
+          ) : (
+            <TemplatePreview
+              template={template}
+              validation={validation}
+              onSave={handleSave}
+              saving={saveMutation.isLoading}
+            />
+          )}
+        </div>
+      )}
     </div>
   );
 };

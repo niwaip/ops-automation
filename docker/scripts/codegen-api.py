@@ -1596,13 +1596,20 @@ class CodegenHandler(BaseHTTPRequestHandler):
 
             try:
                 action_result = self.execute_single_action(action)
-                results.append({
+                result_item = {
                     'success': action_result.get('status') == 'success' or action_result.get('success', False),
                     'step': step_number,
                     'action': action_type,
                     'message': action_result.get('message', action_result.get('error', 'Action completed')),
-                    'data': action_result
-                })
+                }
+                # Extract screenshot, text, html from action_result to top level
+                if action_result.get('screenshot'):
+                    result_item['screenshot'] = action_result.get('screenshot')
+                if action_result.get('text'):
+                    result_item['text'] = action_result.get('text')
+                if action_result.get('html'):
+                    result_item['html'] = action_result.get('html')
+                results.append(result_item)
             except Exception as e:
                 results.append({
                     'success': False,

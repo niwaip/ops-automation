@@ -55,13 +55,43 @@
 /* Dark theme */
 [data-theme='dark'] {
   --bg-primary: #0f172a;
-  --bg-secondary: #1e293b;
+  --bg-secondary: #334155;
   --bg-card: #1e293b;
   --bg-header: rgba(30, 41, 59, 0.95);
-  --text-primary: #f1f5f9;
-  --text-secondary: #94a3b8;
-  --text-light: #64748b;
+  --text-primary: #f8fafc;
+  --text-secondary: #cbd5e1;
+  --text-light: #94a3b8;
   --shadow-glow: 0 0 40px rgb(99 102 241 / 0.25);
+  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.2);
+  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.3), 0 2px 4px -2px rgb(0 0 0 / 0.2);
+  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.3), 0 4px 6px -4px rgb(0 0 0 / 0.2);
+}
+
+/* Dark mode page background with subtle gradient */
+[data-theme='dark'] body,
+[data-theme='dark'] #root,
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) body,
+  :root:not([data-theme='light']) #root {
+    background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%) !important;
+  }
+}
+
+/* System dark mode support */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    --bg-primary: #0f172a;
+    --bg-secondary: #334155;
+    --bg-card: #1e293b;
+    --bg-header: rgba(30, 41, 59, 0.95);
+    --text-primary: #f8fafc;
+    --text-secondary: #cbd5e1;
+    --text-light: #94a3b8;
+    --shadow-glow: 0 0 40px rgb(99 102 241 / 0.25);
+    --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.2);
+    --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.3), 0 2px 4px -2px rgb(0 0 0 / 0.2);
+    --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.3), 0 4px 6px -4px rgb(0 0 0 / 0.2);
+  }
 }
 
 body {
@@ -187,7 +217,7 @@ body {
 
 .ant-table-thead > tr > th {
   background: var(--bg-secondary) !important;
-  color: var(--text-secondary) !important;
+  color: var(--text-primary) !important;
   font-weight: 600 !important;
   border-bottom: none !important;
   padding: 16px !important;
@@ -196,10 +226,20 @@ body {
 .ant-table-tbody > tr > td {
   padding: 16px !important;
   border-bottom: 1px solid var(--bg-secondary) !important;
+  color: var(--text-primary) !important;
 }
 
 .ant-table-tbody > tr:hover > td {
   background: var(--bg-secondary) !important;
+}
+
+/* Table cell content - ensure all text is visible */
+.ant-table-cell {
+  color: var(--text-primary) !important;
+}
+
+.ant-table-cell * {
+  color: inherit;
 }
 
 .ant-btn {
@@ -207,6 +247,7 @@ body {
   font-weight: 500;
   transition: all var(--transition-normal) !important;
   box-shadow: var(--shadow-sm);
+  border: none !important;
 }
 
 .ant-btn:hover {
@@ -218,11 +259,61 @@ body {
   background: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-dark) 100%) !important;
   border: none !important;
   box-shadow: 0 4px 14px 0 rgb(99 102 241 / 0.4) !important;
+  color: #fff !important;
 }
 
 .ant-btn-primary:hover {
   background: linear-gradient(135deg, var(--primary-light) 0%, var(--primary-color) 100%) !important;
   box-shadow: 0 6px 20px 0 rgb(99 102 241 / 0.5) !important;
+}
+
+.ant-btn-primary:disabled {
+  background: linear-gradient(135deg, #94a3b8 0%, #64748b 100%) !important;
+  box-shadow: none !important;
+  color: rgba(255, 255, 255, 0.65) !important;
+}
+
+/* Default button styling - for secondary actions like "重置池" */
+.ant-btn-default {
+  background: var(--bg-secondary) !important;
+  border: 1px solid var(--bg-secondary) !important;
+  color: var(--text-primary) !important;
+}
+
+.ant-btn-default:hover {
+  background: var(--primary-color) !important;
+  color: #fff !important;
+  border-color: var(--primary-color) !important;
+}
+
+/* Action button group styling */
+.action-btn {
+  min-width: 100px;
+  height: 40px;
+  font-size: 14px;
+}
+
+.action-btn-primary {
+  background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%) !important;
+  color: #fff !important;
+}
+
+.action-btn-secondary {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%) !important;
+  color: #fff !important;
+}
+
+.action-btn-warning {
+  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%) !important;
+  color: #fff !important;
+}
+
+/* Ensure disabled state works with custom gradient buttons */
+.ant-btn[disabled] {
+  background: linear-gradient(135deg, #94a3b8 0%, #64748b 100%) !important;
+  color: rgba(255, 255, 255, 0.65) !important;
+  box-shadow: none !important;
+  cursor: not-allowed !important;
 }
 
 .ant-input {
@@ -403,3 +494,428 @@ body {
 .ant-row > .ant-col:nth-child(2) { animation-delay: 0.2s; }
 .ant-row > .ant-col:nth-child(3) { animation-delay: 0.3s; }
 .ant-row > .ant-col:nth-child(4) { animation-delay: 0.4s; }
+
+/* ============================================
+   Dark Mode Specific Enhancements
+   ============================================ */
+
+/* Dark mode card styling - add visible border */
+[data-theme='dark'] .ant-card,
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) .ant-card {
+    border: 1px solid rgba(255, 255, 255, 0.08) !important;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3) !important;
+    background: #1e293b !important;
+  }
+}
+
+/* Dark mode card header */
+[data-theme='dark'] .ant-card-head,
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) .ant-card-head {
+    background: transparent !important;
+    border-bottom-color: #334155 !important;
+  }
+}
+
+/* Dark mode card body */
+[data-theme='dark'] .ant-card-body,
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) .ant-card-body {
+    background: transparent !important;
+  }
+}
+
+/* Dark mode input styling */
+[data-theme='dark'] .ant-input,
+[data-theme='dark'] .ant-input-affix-wrapper,
+[data-theme='dark'] .ant-select-selector,
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) .ant-input,
+  :root:not([data-theme='light']) .ant-input-affix-wrapper,
+  :root:not([data-theme='light']) .ant-select-selector {
+    background-color: #1e293b !important;
+    border-color: #475569 !important;
+    color: var(--text-primary) !important;
+  }
+}
+
+[data-theme='dark'] .ant-input::placeholder,
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) .ant-input::placeholder {
+    color: #64748b !important;
+  }
+}
+
+/* Dark mode select dropdown */
+[data-theme='dark'] .ant-select-dropdown,
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) .ant-select-dropdown {
+    background-color: #1e293b !important;
+    border: 1px solid #475569 !important;
+  }
+}
+
+[data-theme='dark'] .ant-select-item,
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) .ant-select-item {
+    color: var(--text-primary) !important;
+  }
+}
+
+[data-theme='dark'] .ant-select-item-option-active,
+[data-theme='dark'] .ant-select-item-option-selected,
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) .ant-select-item-option-active,
+  :root:not([data-theme='light']) .ant-select-item-option-selected {
+    background-color: #334155 !important;
+  }
+}
+
+/* Dark mode table */
+[data-theme='dark'] .ant-table,
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) .ant-table {
+    border: 1px solid rgba(255, 255, 255, 0.1) !important;
+    background: #1e293b !important;
+  }
+}
+
+[data-theme='dark'] .ant-table-thead > tr > th,
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) .ant-table-thead > tr > th {
+    color: #f8fafc !important;
+    background: #334155 !important;
+  }
+}
+
+[data-theme='dark'] .ant-table-tbody > tr > td,
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) .ant-table-tbody > tr > td {
+    border-bottom-color: #334155 !important;
+    color: #e2e8f0 !important;
+    background: #1e293b !important;
+  }
+}
+
+/* Dark mode table cell - force all content to be light */
+[data-theme='dark'] .ant-table-cell,
+[data-theme='dark'] .ant-table-cell span,
+[data-theme='dark'] .ant-table-cell div,
+[data-theme='dark'] .ant-table-cell p,
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) .ant-table-cell,
+  :root:not([data-theme='light']) .ant-table-cell span,
+  :root:not([data-theme='light']) .ant-table-cell div,
+  :root:not([data-theme='light']) .ant-table-cell p {
+    color: #e2e8f0 !important;
+  }
+}
+
+/* Table hover state in dark mode */
+[data-theme='dark'] .ant-table-tbody > tr:hover > td,
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) .ant-table-tbody > tr:hover > td {
+    background: #334155 !important;
+  }
+}
+
+/* Dark mode text */
+[data-theme='dark'] .ant-typography,
+[data-theme='dark'] .ant-form-item-label > label,
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) .ant-typography,
+  :root:not([data-theme='light']) .ant-form-item-label > label {
+    color: var(--text-primary) !important;
+  }
+}
+
+/* Dark mode Alert */
+[data-theme='dark'] .ant-alert,
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) .ant-alert {
+    border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  }
+}
+
+/* Dark mode Divider */
+[data-theme='dark'] .ant-divider,
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) .ant-divider {
+    border-color: #475569 !important;
+  }
+}
+
+/* Dark mode Tag text visibility */
+[data-theme='dark'] .ant-tag,
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) .ant-tag {
+    color: inherit !important;
+  }
+}
+
+/* Fix text-secondary in dark mode - make it more visible */
+[data-theme='dark'] .ant-typography.ant-typography-secondary,
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) .ant-typography.ant-typography-secondary {
+    color: #94a3b8 !important;
+  }
+}
+
+/* ============================================
+   Additional Dark Mode Text Fixes
+   ============================================ */
+
+/* Fix all Typography components */
+[data-theme='dark'] .ant-typography,
+[data-theme='dark'] .ant-typography h1,
+[data-theme='dark'] .ant-typography h2,
+[data-theme='dark'] .ant-typography h3,
+[data-theme='dark'] .ant-typography h4,
+[data-theme='dark'] .ant-typography h5,
+[data-theme='dark'] .ant-typography div,
+[data-theme='dark'] .ant-typography span,
+[data-theme='dark'] .ant-typography p,
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) .ant-typography,
+  :root:not([data-theme='light']) .ant-typography h1,
+  :root:not([data-theme='light']) .ant-typography h2,
+  :root:not([data-theme='light']) .ant-typography h3,
+  :root:not([data-theme='light']) .ant-typography h4,
+  :root:not([data-theme='light']) .ant-typography h5,
+  :root:not([data-theme='light']) .ant-typography div,
+  :root:not([data-theme='light']) .ant-typography span,
+  :root:not([data-theme='light']) .ant-typography p {
+    color: #e2e8f0 !important;
+  }
+}
+
+/* Fix Title components */
+[data-theme='dark'] h1,
+[data-theme='dark'] h2,
+[data-theme='dark'] h3,
+[data-theme='dark'] h4,
+[data-theme='dark'] h5,
+[data-theme='dark'] .ant-typography h1,
+[data-theme='dark'] .ant-typography h2,
+[data-theme='dark'] .ant-typography h3,
+[data-theme='dark'] .ant-typography h4,
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) h1,
+  :root:not([data-theme='light']) h2,
+  :root:not([data-theme='light']) h3,
+  :root:not([data-theme='light']) h4,
+  :root:not([data-theme='light']) h5,
+  :root:not([data-theme='light']) .ant-typography h1,
+  :root:not([data-theme='light']) .ant-typography h2,
+  :root:not([data-theme='light']) .ant-typography h3,
+  :root:not([data-theme='light']) .ant-typography h4 {
+    color: #f8fafc !important;
+  }
+}
+
+/* Fix card body text */
+[data-theme='dark'] .ant-card-body,
+[data-theme='dark'] .ant-card-body *:not(.ant-tag):not(.ant-btn),
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) .ant-card-body,
+  :root:not([data-theme='light']) .ant-card-body *:not(.ant-tag):not(.ant-btn) {
+    color: #e2e8f0 !important;
+  }
+}
+
+/* Fix Text with strong modifier */
+[data-theme='dark'] .ant-typography strong,
+[data-theme='dark'] strong,
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) .ant-typography strong,
+  :root:not([data-theme='light']) strong {
+    color: #f8fafc !important;
+  }
+}
+
+/* Fix code text */
+[data-theme='dark'] code,
+[data-theme='dark'] .ant-typography code,
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) code,
+  :root:not([data-theme='light']) .ant-typography code {
+    color: #fbbf24 !important;
+    background: #334155 !important;
+  }
+}
+
+/* Fix label text */
+[data-theme='dark'] label,
+[data-theme='dark'] .ant-form-item-label > label,
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) label,
+  :root:not([data-theme='light']) .ant-form-item-label > label {
+    color: #e2e8f0 !important;
+  }
+}
+
+/* Fix placeholder text to be more visible */
+[data-theme='dark'] .ant-input::placeholder,
+[data-theme='dark'] .ant-input-affix-wrapper input::placeholder,
+[data-theme='dark'] textarea::placeholder,
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) .ant-input::placeholder,
+  :root:not([data-theme='light']) .ant-input-affix-wrapper input::placeholder,
+  :root:not([data-theme='light']) textarea::placeholder {
+    color: #64748b !important;
+    opacity: 1 !important;
+  }
+}
+
+/* Fix empty state text */
+[data-theme='dark'] .ant-empty-description,
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) .ant-empty-description {
+    color: #94a3b8 !important;
+  }
+}
+
+/* Fix text inside tables more specifically */
+[data-theme='dark'] .ant-table-tbody > tr > td .ant-typography,
+[data-theme='dark'] .ant-table-tbody > tr > td span,
+[data-theme='dark'] .ant-table-tbody > tr > td div,
+[data-theme='dark'] .ant-table .ant-typography,
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) .ant-table-tbody > tr > td .ant-typography,
+  :root:not([data-theme='light']) .ant-table-tbody > tr > td span,
+  :root:not([data-theme='light']) .ant-table-tbody > tr > td div,
+  :root:not([data-theme='light']) .ant-table .ant-typography {
+    color: #e2e8f0 !important;
+  }
+}
+
+/* Fix secondary text in tables - make it visible */
+[data-theme='dark'] .ant-table .ant-typography-secondary,
+[data-theme='dark'] .ant-table-tbody .ant-typography-secondary,
+[data-theme='dark'] .ant-table-cell .ant-typography-secondary,
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) .ant-table .ant-typography-secondary,
+  :root:not([data-theme='light']) .ant-table-tbody .ant-typography-secondary,
+  :root:not([data-theme='light']) .ant-table-cell .ant-typography-secondary {
+    color: #94a3b8 !important;
+  }
+}
+
+/* Fix small text */
+[data-theme='dark'] .ant-typography-small,
+[data-theme='dark'] .ant-typography[size="small"],
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) .ant-typography-small,
+  :root:not([data-theme='light']) .ant-typography[size="small"] {
+    color: #94a3b8 !important;
+  }
+}
+
+/* ============================================
+   Force Table Content Visibility in Dark Mode
+   ============================================ */
+
+/* Target all content inside table cells */
+[data-theme='dark'] .ant-table-wrapper,
+[data-theme='dark'] .ant-table-content,
+[data-theme='dark'] .ant-table-body,
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) .ant-table-wrapper,
+  :root:not([data-theme='light']) .ant-table-content,
+  :root:not([data-theme='light']) .ant-table-body {
+    color: #e2e8f0 !important;
+  }
+}
+
+/* Force all spans and divs inside table cells to be light */
+[data-theme='dark'] .ant-table td span:not(.ant-tag),
+[data-theme='dark'] .ant-table td div,
+[data-theme='dark'] .ant-table td p,
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) .ant-table td span:not(.ant-tag),
+  :root:not([data-theme='light']) .ant-table td div,
+  :root:not([data-theme='light']) .ant-table td p {
+    color: #e2e8f0 !important;
+  }
+}
+
+/* Fix table row action column specifically */
+[data-theme='dark'] .ant-table td input,
+[data-theme='dark'] .ant-table td .ant-input,
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) .ant-table td input,
+  :root:not([data-theme='light']) .ant-table td .ant-input {
+    background-color: #334155 !important;
+    border-color: #475569 !important;
+    color: #e2e8f0 !important;
+  }
+}
+
+/* Fix table tags to have proper contrast */
+[data-theme='dark'] .ant-table .ant-tag,
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) .ant-table .ant-tag {
+    color: #fff !important;
+  }
+}
+
+/* Fix card that contains table in SessionStartPage */
+[data-theme='dark'] .ant-card .ant-table,
+[data-theme='dark'] .ant-card-body .ant-table,
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) .ant-card .ant-table,
+  :root:not([data-theme='light']) .ant-card-body .ant-table {
+    background: transparent !important;
+  }
+}
+
+/* Fix all table content inside cards */
+[data-theme='dark'] .ant-card .ant-table-cell,
+[data-theme='dark'] .ant-card .ant-table-cell span,
+[data-theme='dark'] .ant-card .ant-table-cell div,
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) .ant-card .ant-table-cell,
+  :root:not([data-theme='light']) .ant-card .ant-table-cell span,
+  :root:not([data-theme='light']) .ant-card .ant-table-cell div {
+    color: #e2e8f0 !important;
+  }
+}
+
+/* Ensure all body text in dark mode is light */
+[data-theme='dark'] body,
+[data-theme='dark'] #root,
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) body,
+  :root:not([data-theme='light']) #root {
+    color: #e2e8f0 !important;
+  }
+}
+
+/* ============================================
+   Fix Ant Design Typography secondary in dark mode
+   ============================================ */
+
+/* Override ant-typography-secondary with more visible colors */
+[data-theme='dark'] .ant-typography.ant-typography-secondary,
+[data-theme='dark'] span.ant-typography-secondary,
+[data-theme='dark'] .ant-typography-secondary,
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) .ant-typography.ant-typography-secondary,
+  :root:not([data-theme='light']) span.ant-typography-secondary,
+  :root:not([data-theme='light']) .ant-typography-secondary {
+    color: #94a3b8 !important;
+  }
+}
+
+/* Fix Text type="secondary" inside cards and tables */
+[data-theme='dark'] .ant-card .ant-typography-secondary,
+[data-theme='dark'] .ant-table .ant-typography-secondary,
+[data-theme='dark'] .ant-card-body .ant-typography-secondary,
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) .ant-card .ant-typography-secondary,
+  :root:not([data-theme='light']) .ant-table .ant-typography-secondary,
+  :root:not([data-theme='light']) .ant-card-body .ant-typography-secondary {
+    color: #94a3b8 !important;
+  }
+}

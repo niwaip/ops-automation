@@ -94,6 +94,15 @@ export interface RecognizeParamsRequest {
   template_id: string;
   user_input: string;
   context?: Record<string, unknown>;
+  // 传入模版的 params_schema，让 AI 能够正确识别参数
+  params_schema?: {
+    properties: Record<string, {
+      type: string;
+      description?: string;
+      default?: string | number | boolean;
+    }>;
+    required?: string[];
+  };
 }
 
 export interface RecognizeParamsResponse {

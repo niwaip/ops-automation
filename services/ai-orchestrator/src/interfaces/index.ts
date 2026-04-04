@@ -47,6 +47,15 @@ export interface RecognizeParamsDTO {
   template_id: string;
   user_input: string;
   context?: Record<string, unknown>;
+  // 允许直接传入 params_schema，避免需要预先注册模版
+  params_schema?: {
+    properties: Record<string, {
+      type: string;
+      description?: string;
+      default?: string | number | boolean;
+    }>;
+    required?: string[];
+  };
 }
 
 export interface RecognizeParamsResponseDTO {

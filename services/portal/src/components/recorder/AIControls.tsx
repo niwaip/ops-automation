@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Card, Input, Button, Space, Typography, Tag, Empty, message, Divider, Alert, Collapse, InputNumber, Modal, List, Tooltip, Switch } from 'antd';
+import { Input, Button, Space, Typography, Tag, Empty, message, Divider, Collapse, InputNumber, Modal, List, Tooltip, Switch, Checkbox, Radio } from 'antd';
 import {
   SendOutlined,
   RobotOutlined,
@@ -14,15 +14,12 @@ import {
   ClockCircleOutlined,
   FileSearchOutlined,
   ArrowDownOutlined,
-  ToolOutlined,
   CloudUploadOutlined,
   CheckCircleOutlined,
   CloseCircleOutlined,
   SaveOutlined,
   FileAddOutlined,
   DownloadOutlined,
-  InfoCircleOutlined,
-  EditOutlined,
   LinkOutlined,
   ApiOutlined,
   DisconnectOutlined,
@@ -69,6 +66,10 @@ interface CommandHistoryEntry {
   commands?: MCPCommand[];
   result?: any;
   timestamp: Date;
+  // For template parameter extraction
+  replaceable?: boolean;
+  commandType?: string;
+  rawParam?: string;
 }
 
 // Template step - deterministic command for replay
@@ -78,14 +79,8 @@ interface TemplateStep {
   params: Record<string, unknown>;
   description: string;
   timestamp: Date;
-}
-
-// Template
-interface Template {
-  id: string;
-  name: string;
-  steps: TemplateStep[];
-  createdAt: Date;
+  // 记录哪些参数是可替换的 (参数名 -> 是否可替换)
+  replaceableParams?: Record<string, boolean>;
 }
 
 interface AIControlsProps {
@@ -120,7 +115,21 @@ const AIControls: React.FC<AIControlsProps> = ({
   const { t } = useTranslation(['common', 'recorder']);
   const navigate = useNavigate();
   const { user } = useAuthStore();
-  const [input, setInput] = useState('');
+
+  // Predefined commands configuration
+  // 搜索: 用户指定搜索框和关键词
+  // 智搜: AI自动识别页面搜索框，用户只需提供关键词
+  const predefinedCommands = [
+    { value: 'navigate', label: '打开', prefix: '打开 ', placeholder: '输入网址，如：百度、google.com' },
+    { value: 'click', label: '点击', prefix: '点击 ', placeholder: '输入目标元素描述，如：搜索按钮、登录链接' },
+    { value: 'fill', label: '填充', prefix: '填充 ', placeholder: '输入内容和目标，如：用户名输入框填写 admin' },
+    { value: 'search', label: '搜索', prefix: '搜索 ', placeholder: '指定搜索框和关键词，如：在搜索框输入 MCP' },
+    { value: 'smart_search', label: '智搜', prefix: '智搜 ', placeholder: '输入关键词，AI自动找到搜索框，如：MCP 协议' },
+  ];
+
+  const [selectedCommand, setSelectedCommand] = useState<string>('navigate');
+  const [paramInput, setParamInput] = useState('');
+  const [isReplaceable, setIsReplaceable] = useState(true);
   const [history, setHistory] = useState<CommandHistoryEntry[]>([]);
   const [isBrowserReady, setIsBrowserReady] = useState(false);
   const [waitDuration, setWaitDuration] = useState(3); // Default 3 seconds
@@ -139,6 +148,10 @@ const AIControls: React.FC<AIControlsProps> = ({
   const [testLoading, setTestLoading] = useState(false);
   const [resetLoading, setResetLoading] = useState(false);
 
+  // Parameter editing state - maps original param name to custom name
+  const [paramNames, setParamNames] = useState<Record<string, string>>({});
+  const [paramEnabled, setParamEnabled] = useState<Record<string, boolean>>({});
+
   // Recording mode: true = AI mode, false = Manual mode
   const [isAIMode, setIsAIMode] = useState(true);
 
@@ -154,7 +167,7 @@ const AIControls: React.FC<AIControlsProps> = ({
       return apiClient.post('/browser/execute', { commands });
     },
     {
-      onSuccess: (data) => {
+      onSuccess: (data: any) => {
         console.log('[AIControls] Commands executed successfully:', data);
         message.success(t('recorder:ai.commandExecuted'));
         // Update last history entry with result
@@ -198,18 +211,28 @@ const AIControls: React.FC<AIControlsProps> = ({
       onSuccess: (data) => {
         console.log('[AIControls] Parse result:', data);
         if (data.success && data.commands.length > 0) {
-          // Add AI response to history (without result - will be updated by executeCommandMutation)
-          setHistory((prev) => [
-            ...prev,
-            {
-              id: Date.now().toString(),
-              type: 'ai',
-              content: data.explanation,
-              commands: data.commands,
-              // Don't add result here - executeCommandMutation will update it
-              timestamp: new Date(),
-            },
-          ]);
+          // Get replaceable info from the last user entry
+          setHistory((prev) => {
+            const lastUserEntry = [...prev].reverse().find(e => e.type === 'user');
+            const replaceableInfo = lastUserEntry ? {
+              replaceable: lastUserEntry.replaceable,
+              commandType: lastUserEntry.commandType,
+              rawParam: lastUserEntry.rawParam,
+            } : {};
+
+            return [...prev,
+              {
+                id: Date.now().toString(),
+                type: 'ai' as const,
+                content: data.explanation,
+                commands: data.commands,
+                // Don't add result here - executeCommandMutation will update it
+                timestamp: new Date(),
+                // Pass through replaceable info from user entry
+                ...replaceableInfo,
+              },
+            ];
+          });
           onCommandExecuted?.(data.commands);
 
           // Auto-execute the commands
@@ -282,11 +305,16 @@ const AIControls: React.FC<AIControlsProps> = ({
   );
 
   const handleSend = async () => {
-    if (!input.trim()) return;
+    // Combine command and parameter
+    const commandConfig = predefinedCommands.find(c => c.value === selectedCommand);
+    const prefix = commandConfig?.prefix || '';
+    const fullMessage = prefix + paramInput.trim();
 
-    const userMessage = input.trim();
+    if (!fullMessage.trim()) return;
 
-    // Add user message to history
+    const userMessage = fullMessage.trim();
+
+    // Add user message to history with replaceable flag
     setHistory((prev) => [
       ...prev,
       {
@@ -294,11 +322,15 @@ const AIControls: React.FC<AIControlsProps> = ({
         type: 'user',
         content: userMessage,
         timestamp: new Date(),
+        // Track if this command's parameter should be replaceable in template
+        replaceable: isReplaceable && paramInput.trim().length > 0,
+        commandType: selectedCommand,
+        rawParam: paramInput.trim(),
       },
     ]);
 
-    // Clear input immediately
-    setInput('');
+    // Clear parameter input immediately (keep command selection)
+    setParamInput('');
 
     // Auto init browser if not ready
     if (!isBrowserReady) {
@@ -387,12 +419,41 @@ const AIControls: React.FC<AIControlsProps> = ({
 
   // Add deterministic command to template
   const handleAddToTemplate = (templateInfo: { tool: string; params: Record<string, unknown>; description: string }) => {
+    // Find the last ai entry that has matching tool to get replaceable info
+    const lastAiEntry = [...history].reverse().find(e =>
+      e.type === 'ai' &&
+      e.result?.template_info?.tool === templateInfo.tool
+    );
+
+    const replaceableParams: Record<string, boolean> = {};
+    if (lastAiEntry?.replaceable && lastAiEntry?.rawParam) {
+      // 根据命令类型标记可替换参数
+      switch (templateInfo.tool) {
+        case 'navigate':
+          replaceableParams['url'] = true;
+          break;
+        case 'smart_search':
+          replaceableParams['query'] = true;
+          break;
+        case 'fill':
+          replaceableParams['value'] = true;
+          break;
+        case 'click':
+          if (templateInfo.params.text) replaceableParams['text'] = true;
+          break;
+        case 'type_text':
+          replaceableParams['text'] = true;
+          break;
+      }
+    }
+
     const step: TemplateStep = {
       id: Date.now().toString(),
       tool: templateInfo.tool,
       params: templateInfo.params,
       description: templateInfo.description,
       timestamp: new Date(),
+      replaceableParams,
     };
     setTemplateSteps((prev) => [...prev, step]);
     message.success(`已添加到模版: ${templateInfo.description}`);
@@ -436,16 +497,42 @@ const AIControls: React.FC<AIControlsProps> = ({
 
     const extractedParams = extractParameters(templateSteps);
 
+    // Only include replaceable params in params_schema
+    const replaceableParamsSchema: Record<string, { type: string; description: string; default?: string | number }> = {};
+    Object.entries(extractedParams).forEach(([name, schema]) => {
+      if (schema.replaceable) {
+        replaceableParamsSchema[name] = schema;
+      }
+    });
+
     // Convert TemplateStep to backend format with screenshot after each step
+    // Also substitute replaceable params with placeholders
     const backendSteps: any[] = [];
     let stepCounter = 1;
 
-    templateSteps.forEach((step, index) => {
-      // Add the original step
+    templateSteps.forEach((step) => {
+      // Create params with placeholder substitution for replaceable params
+      const substitutedParams = { ...step.params };
+
+      // Only substitute params that are marked as replaceable
+      Object.entries(extractedParams).forEach(([originalName, schema]) => {
+        if (schema.replaceable) {
+          const defaultValue = schema.default;
+          if (defaultValue !== undefined) {
+            Object.keys(substitutedParams).forEach(key => {
+              if (substitutedParams[key] === defaultValue) {
+                substitutedParams[key] = `\${${originalName}}`;
+              }
+            });
+          }
+        }
+      });
+
+      // Add the step with substituted params
       const backendStep: any = {
         step_id: `step_${stepCounter}`,
         action: step.tool,
-        params: step.params,
+        params: substitutedParams,
       };
 
       if (step.params.selector) {
@@ -482,11 +569,11 @@ const AIControls: React.FC<AIControlsProps> = ({
       stepCounter++;
     });
 
-    // Generate params_schema for extracted parameters
+    // Generate params_schema for replaceable parameters only
     const paramsSchema = {
       type: 'object',
-      properties: extractedParams,
-      required: Object.keys(extractedParams),
+      properties: replaceableParamsSchema,
+      required: Object.keys(replaceableParamsSchema),
     };
 
     const name = templateName || `编译模版 ${new Date().toLocaleString()}`;
@@ -494,7 +581,7 @@ const AIControls: React.FC<AIControlsProps> = ({
     try {
       const createdTemplate = await templateApi.create({
         name,
-        description: `由智能录制编译生成的模版，包含 ${templateSteps.length} 个步骤（含自动截图），${Object.keys(extractedParams).length} 个可替换参数`,
+        description: `由智能录制编译生成的模版，包含 ${templateSteps.length} 个步骤（含自动截图），${Object.keys(replaceableParamsSchema).length} 个可替换参数`,
         params_schema: paramsSchema,
         steps: backendSteps,
         created_by: user?.id || 'ai_recorder',
@@ -514,11 +601,12 @@ const AIControls: React.FC<AIControlsProps> = ({
   };
 
   // Extract parameters from template steps for later replacement
-  const extractParameters = (steps: TemplateStep[]): Record<string, { type: string; description: string; default?: string | number }> => {
-    const params: Record<string, { type: string; description: string; default?: string | number }> = {};
+  const extractParameters = (steps: TemplateStep[]): Record<string, { type: string; description: string; default?: string | number; replaceable?: boolean }> => {
+    const params: Record<string, { type: string; description: string; default?: string | number; replaceable?: boolean }> = {};
 
     steps.forEach((step, index) => {
       const stepPrefix = `step${index + 1}`;
+      const replaceableParams = step.replaceableParams || {};
 
       switch (step.tool) {
         case 'navigate':
@@ -528,6 +616,7 @@ const AIControls: React.FC<AIControlsProps> = ({
               type: 'string',
               description: `步骤${index + 1}导航URL`,
               default: step.params.url as string,
+              replaceable: replaceableParams['url'] || false,
             };
           }
           break;
@@ -539,6 +628,7 @@ const AIControls: React.FC<AIControlsProps> = ({
               type: 'string',
               description: `步骤${index + 1}输入内容`,
               default: step.params.value as string,
+              replaceable: replaceableParams['value'] || false,
             };
           }
           // Extract selector as parameter (optional)
@@ -547,6 +637,7 @@ const AIControls: React.FC<AIControlsProps> = ({
               type: 'string',
               description: `步骤${index + 1}目标选择器`,
               default: step.params.selector as string,
+              replaceable: replaceableParams['selector'] || false,
             };
           }
           break;
@@ -558,6 +649,7 @@ const AIControls: React.FC<AIControlsProps> = ({
               type: 'string',
               description: `步骤${index + 1}点击目标选择器`,
               default: step.params.selector as string,
+              replaceable: replaceableParams['selector'] || false,
             };
           }
           if (step.params.text) {
@@ -565,6 +657,7 @@ const AIControls: React.FC<AIControlsProps> = ({
               type: 'string',
               description: `步骤${index + 1}点击目标文本`,
               default: step.params.text as string,
+              replaceable: replaceableParams['text'] || false,
             };
           }
           break;
@@ -575,6 +668,7 @@ const AIControls: React.FC<AIControlsProps> = ({
               type: 'string',
               description: `步骤${index + 1}输入文本`,
               default: step.params.text as string,
+              replaceable: replaceableParams['text'] || false,
             };
           }
           break;
@@ -585,6 +679,7 @@ const AIControls: React.FC<AIControlsProps> = ({
               type: 'number',
               description: `步骤${index + 1}等待时间(ms)`,
               default: step.params.duration as number,
+              replaceable: replaceableParams['duration'] || false,
             };
           }
           break;
@@ -595,6 +690,7 @@ const AIControls: React.FC<AIControlsProps> = ({
               type: 'number',
               description: `步骤${index + 1}滚动距离`,
               default: step.params.amount as number,
+              replaceable: replaceableParams['amount'] || false,
             };
           }
           break;
@@ -606,6 +702,7 @@ const AIControls: React.FC<AIControlsProps> = ({
               type: 'string',
               description: `步骤${index + 1}搜索关键词`,
               default: step.params.query as string,
+              replaceable: replaceableParams['query'] || false,
             };
           }
           // Extract input selector as parameter (optional)
@@ -614,6 +711,7 @@ const AIControls: React.FC<AIControlsProps> = ({
               type: 'string',
               description: `步骤${index + 1}搜索输入框选择器`,
               default: step.params.input_selector as string,
+              replaceable: replaceableParams['input_selector'] || false,
             };
           }
           break;
@@ -624,7 +722,7 @@ const AIControls: React.FC<AIControlsProps> = ({
   };
 
   // Generate executable script from template steps with parameterized variables
-  const generateScript = (steps: TemplateStep[], params: Record<string, { type: string; description: string; default?: string | number }> = {}): string => {
+  const generateScript = (steps: TemplateStep[], params: Record<string, { type: string; description: string; default?: string | number; replaceable?: boolean }> = {}): string => {
     const lines: string[] = [
       '// Auto-generated browser automation script',
       '// Generated at: ' + new Date().toISOString(),
@@ -635,10 +733,15 @@ const AIControls: React.FC<AIControlsProps> = ({
       '// You can modify these values before running the script',
     ];
 
-    // Add parameter definitions
+    // Add parameter definitions with special marking for replaceable ones
     Object.entries(params).forEach(([key, param]) => {
       const defaultValue = param.type === 'number' ? param.default : `'${param.default}'`;
-      lines.push(`// ${param.description}`);
+      // 添加可替换标记的特别注释
+      if (param.replaceable) {
+        lines.push(`// ⚠️ [可替换参数] ${param.description} - AI执行时可根据用户输入自动替换`);
+      } else {
+        lines.push(`// ${param.description}`);
+      }
       lines.push(`const ${key} = ${defaultValue};`);
     });
 
@@ -736,15 +839,6 @@ const AIControls: React.FC<AIControlsProps> = ({
     return lines.join('\n');
   };
 
-  // Save template
-  const handleSaveTemplate = () => {
-    if (templateSteps.length === 0) {
-      message.warning('模版为空，请先添加命令');
-      return;
-    }
-    setShowTemplateModal(true);
-  };
-
   // Confirm save template
   const handleConfirmSaveTemplate = async () => {
     if (templateSteps.length === 0) {
@@ -754,16 +848,56 @@ const AIControls: React.FC<AIControlsProps> = ({
 
     const name = templateName || `模版 ${new Date().toLocaleString()}`;
 
+    // Extract parameters and apply custom names
+    const extractedParams = extractParameters(templateSteps);
+
+    // Only include replaceable params in final params_schema
+    // Also apply custom parameter names
+    const finalParams: Record<string, { type: string; description: string; default?: string | number }> = {};
+    Object.entries(extractedParams).forEach(([originalName, schema]) => {
+      // Only include if param is replaceable (checked by user during recording)
+      if (schema.replaceable) {
+        // Also check if manually disabled in modal
+        if (paramEnabled[originalName] !== false) {
+          const customName = paramNames[originalName] || originalName;
+          finalParams[customName] = schema;
+        }
+      }
+    });
+
     // Convert TemplateStep to backend format with screenshot after each step
+    // Also replace parameter values with ${param_name} placeholders
     const backendSteps: any[] = [];
     let stepCounter = 1;
 
-    templateSteps.forEach((step, index) => {
-      // Add the original step
+    templateSteps.forEach((step) => {
+      // Create params with placeholder substitution for replaceable params only
+      const substitutedParams = { ...step.params };
+
+      // Find which original params map to this step's params and substitute
+      // Only substitute params that are marked as replaceable
+      Object.entries(extractedParams).forEach(([originalName, schema]) => {
+        // Only substitute if param is replaceable
+        if (schema.replaceable && paramEnabled[originalName] !== false) {
+          const customName = paramNames[originalName] || originalName;
+          // Replace the value with placeholder
+          const defaultValue = schema.default;
+          if (defaultValue !== undefined) {
+            // Find and replace in params
+            Object.keys(substitutedParams).forEach(key => {
+              if (substitutedParams[key] === defaultValue) {
+                substitutedParams[key] = `\${${customName}}`;
+              }
+            });
+          }
+        }
+      });
+
+      // Add the original step with substituted params
       const backendStep: any = {
         step_id: `step_${stepCounter}`,
         action: step.tool,
-        params: step.params,
+        params: substitutedParams,
       };
 
       // Add locator for selector-based actions
@@ -801,11 +935,19 @@ const AIControls: React.FC<AIControlsProps> = ({
       stepCounter++;
     });
 
+    // Generate params_schema for custom parameters
+    const paramsSchema = {
+      type: 'object',
+      properties: finalParams,
+      required: Object.keys(finalParams),
+    };
+
     try {
       // Save to backend API
       const createdTemplate = await templateApi.create({
         name,
-        description: `由智能录制生成的模版，包含 ${templateSteps.length} 个步骤（含自动截图）`,
+        description: `由智能录制生成的模版，包含 ${templateSteps.length} 个步骤（含自动截图），${Object.keys(finalParams).length} 个可替换参数`,
+        params_schema: paramsSchema,
         steps: backendSteps,
         created_by: user?.id || 'ai_recorder',
       });
@@ -927,12 +1069,37 @@ const AIControls: React.FC<AIControlsProps> = ({
         // Skip non-deterministic commands like click_result without actual navigation
         const deterministicTools = ['navigate', 'fill', 'click', 'screenshot', 'scroll', 'wait', 'press_key', 'hover', 'type_text', 'smart_search'];
         if (deterministicTools.includes(info.tool)) {
+          // Determine which params are replaceable based on entry.replaceable and commandType
+          const replaceableParams: Record<string, boolean> = {};
+
+          if (entry.replaceable && entry.rawParam) {
+            // 根据命令类型标记可替换参数
+            switch (info.tool) {
+              case 'navigate':
+                replaceableParams['url'] = true;
+                break;
+              case 'smart_search':
+                replaceableParams['query'] = true;
+                break;
+              case 'fill':
+                replaceableParams['value'] = true;
+                break;
+              case 'click':
+                if (info.params.text) replaceableParams['text'] = true;
+                break;
+              case 'type_text':
+                replaceableParams['text'] = true;
+                break;
+            }
+          }
+
           extractedSteps.push({
             id: Date.now().toString() + Math.random(),
             tool: info.tool,
             params: info.params,
             description: info.description || `${info.tool} ${JSON.stringify(info.params)}`,
             timestamp: entry.timestamp,
+            replaceableParams,
           });
         }
       }
@@ -963,14 +1130,6 @@ const AIControls: React.FC<AIControlsProps> = ({
   // Check if any mutation is loading
   const isLoading = parseCommandMutation.isLoading || executeCommandMutation.isLoading;
 
-  // Example commands
-  const exampleCommands = [
-    { text: t('recorder:ai.example.navigate') || '打开百度首页', input: '打开百度' },
-    { text: t('recorder:ai.example.search') || '搜索关键词', input: '在百度搜索 MCP 协议' },
-    { text: t('recorder:ai.example.click') || '点击元素', input: '点击搜索按钮' },
-    { text: t('recorder:ai.example.screenshot') || '截图', input: '截取当前页面' },
-  ];
-
   // Status colors for manual mode
   const statusColors: Record<string, string> = {
     idle: 'default',
@@ -983,22 +1142,37 @@ const AIControls: React.FC<AIControlsProps> = ({
 
   const isRecording = recorderStatus === 'recording';
   const isPaused = recorderStatus === 'paused';
-  const isIdle = recorderStatus === 'idle';
-  const isStopped = recorderStatus === 'stopped';
 
   return (
-    <Card
-      title={<Text strong>录制器</Text>}
-      extra={
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', gap: 16 }}>
+      {/* Header section with controls */}
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          padding: '12px 16px',
+          background: 'linear-gradient(135deg, #f0f4ff 0%, #e8f0fe 100%)',
+          borderRadius: 12,
+          border: '1px solid rgba(99, 102, 241, 0.1)',
+        }}
+      >
         <Space>
+          <RobotOutlined style={{ color: '#6366f1', fontSize: 18 }} />
+          <Text strong style={{ color: '#4b5563' }}>智能录制</Text>
           <Switch
             checked={isAIMode}
             onChange={setIsAIMode}
             checkedChildren={<><RobotOutlined /> AI</>}
             unCheckedChildren={<><VideoCameraOutlined /> 手动</>}
           />
-          <Tag color={isBrowserReady ? 'success' : 'warning'}>
-            {isBrowserReady ? (t('recorder:ai.ready') || '就绪') : (t('recorder:ai.notReady') || '未初始化')}
+        </Space>
+        <Space>
+          <Tag
+            color={isBrowserReady ? 'success' : 'warning'}
+            style={{ borderRadius: 8, padding: '2px 8px' }}
+          >
+            {isBrowserReady ? '就绪' : '未初始化'}
           </Tag>
           <Button
             type={isBrowserReady ? 'default' : 'primary'}
@@ -1006,28 +1180,29 @@ const AIControls: React.FC<AIControlsProps> = ({
             icon={<DesktopOutlined />}
             onClick={() => initBrowserMutation.mutate()}
             loading={initBrowserMutation.isLoading}
+            style={{ borderRadius: 8 }}
           >
-            {isBrowserReady
-              ? (t('recorder:ai.reinitBrowser') || '重新初始化')
-              : (t('recorder:ai.initBrowser') || '初始化浏览器')}
+            {isBrowserReady ? '重新初始化' : '初始化浏览器'}
           </Button>
         </Space>
-      }
-    >
+      </div>
+
       {isAIMode ? (
         // AI Mode Content
-        <Space direction="vertical" style={{ width: '100%' }} size="middle">
-
-        {/* Message history */}
-        <div
-          style={{
-            height: 300,
-            overflowY: 'auto',
-            background: '#fafafa',
-            borderRadius: 8,
-            padding: 12,
-          }}
-        >
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12, flex: 1, overflow: 'hidden' }}>
+          {/* Message history */}
+          <div
+            style={{
+              flex: 1,
+              minHeight: 200,
+              maxHeight: 400,
+              overflowY: 'auto',
+              background: '#fafafa',
+              borderRadius: 12,
+              padding: 12,
+              border: '1px solid #e5e7eb',
+            }}
+          >
           {history.length === 0 ? (
             <Empty
               image={Empty.PRESENTED_IMAGE_SIMPLE}
@@ -1267,33 +1442,76 @@ const AIControls: React.FC<AIControlsProps> = ({
           <div ref={messagesEndRef} />
         </div>
 
-        {/* Input area */}
-        <Space.Compact style={{ width: '100%' }}>
-          <TextArea
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            placeholder={t('recorder:ai.inputPlaceholder') || '输入自然语言命令，例如：打开百度搜索 MCP'}
-            autoSize={{ minRows: 1, maxRows: 3 }}
-            onPressEnter={(e) => {
-              if (!e.shiftKey) {
-                e.preventDefault();
-                handleSend();
-              }
-            }}
-            disabled={isLoading}
-            style={{ borderRadius: '8px 0 0 8px' }}
-          />
-          <Button
-            type="primary"
-            icon={<SendOutlined />}
-            onClick={handleSend}
-            loading={isLoading}
-            disabled={!input.trim()}
-            style={{ height: 'auto', borderRadius: '0 8px 8px 0' }}
-          >
-            {t('common:send')}
-          </Button>
-        </Space.Compact>
+        {/* Input area - 3列2行布局 */}
+        <div style={{ marginTop: 12 }}>
+          {/* Row 1: 命令选择 - 一行最多3个 */}
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 8 }}>
+            {predefinedCommands.map(c => (
+              <Radio.Button
+                key={c.value}
+                value={c.value}
+                onClick={() => setSelectedCommand(c.value)}
+                style={{
+                  borderRadius: 16,
+                  padding: '4px 16px',
+                  height: 32,
+                  lineHeight: '24px',
+                  border: selectedCommand === c.value ? '2px solid #6366f1' : '1px solid #d9d9d9',
+                  background: selectedCommand === c.value ? '#eef2ff' : '#fff',
+                  color: selectedCommand === c.value ? '#6366f1' : '#666',
+                  fontWeight: selectedCommand === c.value ? 500 : 400,
+                  transition: 'all 0.2s ease',
+                  cursor: 'pointer',
+                }}
+              >
+                {c.label}
+              </Radio.Button>
+            ))}
+          </div>
+
+          {/* Row 2: 参数输入 | 发送按钮 | 参数可替换 */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            {/* 参数输入 */}
+            <TextArea
+              value={paramInput}
+              onChange={(e) => setParamInput(e.target.value)}
+              placeholder={predefinedCommands.find(c => c.value === selectedCommand)?.placeholder || '输入参数'}
+              autoSize={{ minRows: 1, maxRows: 3 }}
+              onPressEnter={(e) => {
+                if (!e.shiftKey) {
+                  e.preventDefault();
+                  handleSend();
+                }
+              }}
+              disabled={isLoading}
+              style={{ flex: 1, minWidth: 180, borderRadius: 16, padding: '6px 12px' }}
+            />
+
+            {/* 发送按钮 */}
+            <Button
+              type="primary"
+              icon={<SendOutlined />}
+              onClick={handleSend}
+              loading={isLoading}
+              disabled={!(predefinedCommands.find(c => c.value === selectedCommand)?.prefix + paramInput.trim()).trim()}
+              style={{ height: 32, borderRadius: 16, minWidth: 70 }}
+            >
+              {t('common:send')}
+            </Button>
+
+            {/* 参数可替换 */}
+            <Checkbox
+              checked={isReplaceable}
+              onChange={(e) => setIsReplaceable(e.target.checked)}
+              disabled={!paramInput.trim()}
+              style={{ marginLeft: 8 }}
+            >
+              <Tooltip title="勾选后，此参数在生成模版时会被标记为可替换参数">
+                <Text style={{ fontSize: 12, color: isReplaceable ? '#6366f1' : '#999' }}>可替换</Text>
+              </Tooltip>
+            </Checkbox>
+          </div>
+        </div>
 
         {/* Quick action buttons */}
         <div style={{ marginTop: 12 }}>
@@ -1381,56 +1599,6 @@ const AIControls: React.FC<AIControlsProps> = ({
                 style={{ width: 60 }}
                 addonAfter="s"
               />
-            </Space>
-          </div>
-
-          {/* Pre-input commands - click to fill input with command template */}
-          <div>
-            <Text type="secondary" style={{ fontSize: 11, marginRight: 8 }}>
-              {t('recorder:ai.preInputActions') || '预输入指令：'}
-            </Text>
-            <Space wrap size="small">
-              <Button
-                size="small"
-                icon={<DesktopOutlined />}
-                onClick={() => setInput('打开 ')}
-                title="预输入打开网页指令"
-              >
-                {t('recorder:ai.quick.navigate') || '打开'}
-              </Button>
-
-              <Button
-                size="small"
-                icon={<ToolOutlined />}
-                onClick={() => setInput('点击 ')}
-                title="预输入点击元素指令"
-              >
-                {t('recorder:ai.quick.click') || '点击'}
-              </Button>
-
-              <Button
-                size="small"
-                onClick={() => setInput('填充 ')}
-                title="预输入填充输入框指令"
-              >
-                {t('recorder:ai.quick.fill') || '填充'}
-              </Button>
-
-              <Button
-                size="small"
-                onClick={() => setInput('搜索 ')}
-                title="预输入搜索指令"
-              >
-                {t('recorder:ai.quick.search') || '搜索'}
-              </Button>
-
-              <Button
-                size="small"
-                onClick={() => setInput('滚动 ')}
-                title="预输入滚动指令"
-              >
-                {t('recorder:ai.quick.scroll') || '滚动'}
-              </Button>
             </Space>
           </div>
         </div>
@@ -1561,6 +1729,7 @@ const AIControls: React.FC<AIControlsProps> = ({
           onCancel={() => setShowTemplateModal(false)}
           okText="保存"
           cancelText="取消"
+          width={600}
         >
           <Space direction="vertical" style={{ width: '100%' }}>
             <Text>模版名称：</Text>
@@ -1572,6 +1741,54 @@ const AIControls: React.FC<AIControlsProps> = ({
             <Text type="secondary" style={{ fontSize: 12 }}>
               包含 {templateSteps.length} 个步骤
             </Text>
+
+            {/* Parameter editing section */}
+            {Object.keys(extractParameters(templateSteps)).length > 0 && (
+              <>
+                <Divider style={{ margin: '12px 0' }} />
+                <Text strong>可替换参数：</Text>
+                <Text type="secondary" style={{ fontSize: 11, display: 'block', marginBottom: 8 }}>
+                  修改参数名称使其更具语义化（如将 step2_value 改为 query），取消勾选可排除不需要替换的参数
+                </Text>
+                <List
+                  size="small"
+                  bordered
+                  dataSource={Object.entries(extractParameters(templateSteps))}
+                  renderItem={([originalName, schema]) => (
+                    <List.Item style={{ padding: '8px 12px' }}>
+                      <Space direction="vertical" style={{ width: '100%' }} size={4}>
+                        <Space style={{ width: '100%', justifyContent: 'space-between' }}>
+                          <Switch
+                            size="small"
+                            checked={paramEnabled[originalName] !== false}
+                            onChange={(checked) => {
+                              setParamEnabled(prev => ({ ...prev, [originalName]: checked }));
+                            }}
+                          />
+                          <Text code style={{ fontSize: 11 }}>{originalName}</Text>
+                          <Text type="secondary" style={{ fontSize: 11 }}>→</Text>
+                          <Input
+                            size="small"
+                            value={paramNames[originalName] || originalName}
+                            onChange={(e) => {
+                              setParamNames(prev => ({ ...prev, [originalName]: e.target.value }));
+                            }}
+                            style={{ width: 120 }}
+                            placeholder="参数名"
+                          />
+                        </Space>
+                        <Space>
+                          <Tag color="blue">{schema.type}</Tag>
+                          <Text type="secondary" style={{ fontSize: 11 }}>
+                            默认值: {String(schema.default || '-')}
+                          </Text>
+                        </Space>
+                      </Space>
+                    </List.Item>
+                  )}
+                />
+              </>
+            )}
           </Space>
         </Modal>
 
@@ -1619,10 +1836,10 @@ const AIControls: React.FC<AIControlsProps> = ({
             {compiledScript}
           </pre>
         </Modal>
-      </Space>
+      </div>
       ) : (
         // Manual Mode Content
-        <Space direction="vertical" style={{ width: '100%' }} size="middle">
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
           {/* Connection Status */}
           <Space>
             <Text strong>录制器</Text>
@@ -1730,9 +1947,9 @@ const AIControls: React.FC<AIControlsProps> = ({
               </pre>
             </div>
           )}
-        </Space>
+        </div>
       )}
-    </Card>
+    </div>
   );
 };
 
