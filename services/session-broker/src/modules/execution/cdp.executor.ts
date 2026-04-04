@@ -29,6 +29,8 @@ export interface ExecutionResult {
   error?: string;
   message?: string;
   screenshot?: string;
+  text?: string;
+  html?: string;
 }
 
 @Injectable()
@@ -279,6 +281,9 @@ export class CdpExecutor implements OnModuleDestroy {
           action: r.action,
           error: r.success ? undefined : r.message,
           message: r.message,
+          screenshot: r.screenshot,
+          text: r.text,
+          html: r.html,
         }));
       } else if (result.error) {
         // All steps failed

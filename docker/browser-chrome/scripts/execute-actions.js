@@ -101,9 +101,10 @@ async function executeActions(actions, sessionId) {
           result.message = `Scrolled ${direction} ${amount}px`;
         } else if (actionType === 'screenshot') {
           const path = `/tmp/codegen/${sessionId}_step${stepNum}.png`;
-          await page.screenshot({ path });
+          const screenshotBuffer = await page.screenshot({ path, type: 'png' });
           result.success = true;
           result.message = `Screenshot saved to ${path}`;
+          result.screenshot = screenshotBuffer.toString('base64');
         } else {
           result.message = `Unknown action type: ${actionType}`;
         }
