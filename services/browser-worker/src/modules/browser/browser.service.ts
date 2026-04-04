@@ -194,7 +194,7 @@ export class BrowserService implements OnModuleDestroy {
     });
   }
 
-  private async navigate(url: string): Promise<{ status: string; url: string }> {
+  private async navigate(url: string): Promise<{ status: string; url: string; template_info?: any }> {
     return new Promise((resolve, reject) => {
       const req = http.get(
         `http://${this.chromeHost}:${this.codegenPort}/navigate?url=${encodeURIComponent(url)}`,
@@ -204,7 +204,11 @@ export class BrowserService implements OnModuleDestroy {
           res.on('end', () => {
             try {
               const result = JSON.parse(data);
-              resolve({ status: 'success', url: result.url || url });
+              resolve({
+                status: result.status || 'success',
+                url: result.url || url,
+                template_info: result.template_info
+              });
             } catch {
               resolve({ status: 'success', url });
             }
@@ -219,7 +223,7 @@ export class BrowserService implements OnModuleDestroy {
     });
   }
 
-  private async click(selector?: string, text?: string): Promise<{ status: string }> {
+  private async click(selector?: string, text?: string): Promise<{ status: string; template_info?: any }> {
     const target = text || selector;
     if (!target) {
       throw new Error('Click requires selector or text');
@@ -236,7 +240,10 @@ export class BrowserService implements OnModuleDestroy {
         res.on('end', () => {
           try {
             const result = JSON.parse(data);
-            resolve({ status: result.status || 'success' });
+            resolve({
+              status: result.status || 'success',
+              template_info: result.template_info
+            });
           } catch {
             resolve({ status: 'success' });
           }
@@ -250,7 +257,7 @@ export class BrowserService implements OnModuleDestroy {
     });
   }
 
-  private async clickResult(index: number): Promise<{ status: string; message?: string }> {
+  private async clickResult(index: number): Promise<{ status: string; message?: string; template_info?: any; link_info?: any }> {
     return new Promise((resolve, reject) => {
       const req = http.get(
         `http://${this.chromeHost}:${this.codegenPort}/click_result?index=${index}`,
@@ -260,7 +267,12 @@ export class BrowserService implements OnModuleDestroy {
           res.on('end', () => {
             try {
               const result = JSON.parse(data);
-              resolve({ status: result.status || 'success', message: result.message });
+              resolve({
+                status: result.status || 'success',
+                message: result.message,
+                template_info: result.template_info,
+                link_info: result.link_info
+              });
             } catch {
               resolve({ status: 'success' });
             }
@@ -275,7 +287,7 @@ export class BrowserService implements OnModuleDestroy {
     });
   }
 
-  private async fill(selector: string, value: string): Promise<{ status: string }> {
+  private async fill(selector: string, value: string): Promise<{ status: string; template_info?: any }> {
     return new Promise((resolve, reject) => {
       const req = http.get(
         `http://${this.chromeHost}:${this.codegenPort}/fill?selector=${encodeURIComponent(selector)}&value=${encodeURIComponent(value)}`,
@@ -285,7 +297,10 @@ export class BrowserService implements OnModuleDestroy {
           res.on('end', () => {
             try {
               const result = JSON.parse(data);
-              resolve({ status: result.status || 'success' });
+              resolve({
+                status: result.status || 'success',
+                template_info: result.template_info
+              });
             } catch {
               resolve({ status: 'success' });
             }
@@ -300,7 +315,7 @@ export class BrowserService implements OnModuleDestroy {
     });
   }
 
-  private async screenshot(): Promise<{ status: string; screenshot?: string }> {
+  private async screenshot(): Promise<{ status: string; screenshot?: string; template_info?: any }> {
     return new Promise((resolve, reject) => {
       const req = http.get(
         `http://${this.chromeHost}:${this.codegenPort}/screenshot`,
@@ -310,7 +325,11 @@ export class BrowserService implements OnModuleDestroy {
           res.on('end', () => {
             try {
               const result = JSON.parse(data);
-              resolve({ status: 'success', screenshot: result.screenshot });
+              resolve({
+                status: result.status || 'success',
+                screenshot: result.screenshot,
+                template_info: result.template_info
+              });
             } catch {
               resolve({ status: 'success' });
             }
@@ -325,7 +344,7 @@ export class BrowserService implements OnModuleDestroy {
     });
   }
 
-  private async snapshot(): Promise<{ status: string; snapshot?: any }> {
+  private async snapshot(): Promise<{ status: string; snapshot?: any; template_info?: any }> {
     return new Promise((resolve, reject) => {
       const req = http.get(
         `http://${this.chromeHost}:${this.codegenPort}/snapshot`,
@@ -335,7 +354,11 @@ export class BrowserService implements OnModuleDestroy {
           res.on('end', () => {
             try {
               const result = JSON.parse(data);
-              resolve({ status: 'success', snapshot: result.snapshot });
+              resolve({
+                status: result.status || 'success',
+                snapshot: result.snapshot,
+                template_info: result.template_info
+              });
             } catch {
               resolve({ status: 'success' });
             }
@@ -350,7 +373,7 @@ export class BrowserService implements OnModuleDestroy {
     });
   }
 
-  private async readPage(selector?: string, maxLength?: number): Promise<{ status: string; content?: any }> {
+  private async readPage(selector?: string, maxLength?: number): Promise<{ status: string; content?: any; template_info?: any }> {
     let url = `http://${this.chromeHost}:${this.codegenPort}/read_page`;
     const params: string[] = [];
     if (selector) {
@@ -370,7 +393,11 @@ export class BrowserService implements OnModuleDestroy {
         res.on('end', () => {
           try {
             const result = JSON.parse(data);
-            resolve({ status: result.status || 'success', content: result.content });
+            resolve({
+              status: result.status || 'success',
+              content: result.content,
+              template_info: result.template_info
+            });
           } catch {
             resolve({ status: 'success' });
           }
@@ -384,7 +411,7 @@ export class BrowserService implements OnModuleDestroy {
     });
   }
 
-  private async drag(src: string, dst: string): Promise<{ status: string }> {
+  private async drag(src: string, dst: string): Promise<{ status: string; template_info?: any }> {
     return new Promise((resolve, reject) => {
       const req = http.get(
         `http://${this.chromeHost}:${this.codegenPort}/drag?src=${encodeURIComponent(src)}&dst=${encodeURIComponent(dst)}`,
@@ -394,7 +421,10 @@ export class BrowserService implements OnModuleDestroy {
           res.on('end', () => {
             try {
               const result = JSON.parse(data);
-              resolve({ status: result.status || 'success' });
+              resolve({
+                status: result.status || 'success',
+                template_info: result.template_info
+              });
             } catch {
               resolve({ status: 'success' });
             }
@@ -409,7 +439,7 @@ export class BrowserService implements OnModuleDestroy {
     });
   }
 
-  private async typeText(text: string, submitKey?: string): Promise<{ status: string }> {
+  private async typeText(text: string, submitKey?: string): Promise<{ status: string; template_info?: any }> {
     let url = `http://${this.chromeHost}:${this.codegenPort}/type_text?text=${encodeURIComponent(text)}`;
     if (submitKey) {
       url += `&submit_key=${encodeURIComponent(submitKey)}`;
@@ -422,7 +452,10 @@ export class BrowserService implements OnModuleDestroy {
         res.on('end', () => {
           try {
             const result = JSON.parse(data);
-            resolve({ status: result.status || 'success' });
+            resolve({
+              status: result.status || 'success',
+              template_info: result.template_info
+            });
           } catch {
             resolve({ status: 'success' });
           }
@@ -436,7 +469,7 @@ export class BrowserService implements OnModuleDestroy {
     });
   }
 
-  private async scroll(direction: string, amount: number): Promise<{ status: string }> {
+  private async scroll(direction: string, amount: number): Promise<{ status: string; template_info?: any }> {
     return new Promise((resolve, reject) => {
       const req = http.get(
         `http://${this.chromeHost}:${this.codegenPort}/scroll?direction=${direction}&amount=${amount || 300}`,
@@ -446,7 +479,10 @@ export class BrowserService implements OnModuleDestroy {
           res.on('end', () => {
             try {
               const result = JSON.parse(data);
-              resolve({ status: result.status || 'success' });
+              resolve({
+                status: result.status || 'success',
+                template_info: result.template_info
+              });
             } catch {
               resolve({ status: 'success' });
             }
@@ -461,7 +497,7 @@ export class BrowserService implements OnModuleDestroy {
     });
   }
 
-  private async getText(): Promise<{ status: string; text?: string }> {
+  private async getText(): Promise<{ status: string; text?: string; template_info?: any }> {
     return new Promise((resolve, reject) => {
       const req = http.get(
         `http://${this.chromeHost}:${this.codegenPort}/get_text`,
@@ -471,7 +507,11 @@ export class BrowserService implements OnModuleDestroy {
           res.on('end', () => {
             try {
               const result = JSON.parse(data);
-              resolve({ status: result.status || 'success', text: result.text });
+              resolve({
+                status: result.status || 'success',
+                text: result.text,
+                template_info: result.template_info
+              });
             } catch {
               resolve({ status: 'success' });
             }
@@ -486,7 +526,7 @@ export class BrowserService implements OnModuleDestroy {
     });
   }
 
-  private async wait(selector?: string, duration?: number): Promise<{ status: string }> {
+  private async wait(selector?: string, duration?: number): Promise<{ status: string; template_info?: any }> {
     return new Promise((resolve, reject) => {
       let url = `http://${this.chromeHost}:${this.codegenPort}/wait`;
       if (selector) {
@@ -498,7 +538,17 @@ export class BrowserService implements OnModuleDestroy {
       const req = http.get(url, (res) => {
         let data = '';
         res.on('data', (chunk) => data += chunk);
-        res.on('end', () => resolve({ status: 'success' }));
+        res.on('end', () => {
+          try {
+            const result = JSON.parse(data);
+            resolve({
+              status: result.status || 'success',
+              template_info: result.template_info
+            });
+          } catch {
+            resolve({ status: 'success' });
+          }
+        });
       });
       req.on('error', reject);
       req.setTimeout(30000, () => {
@@ -508,14 +558,24 @@ export class BrowserService implements OnModuleDestroy {
     });
   }
 
-  private async hover(selector: string): Promise<{ status: string }> {
+  private async hover(selector: string): Promise<{ status: string; template_info?: any }> {
     return new Promise((resolve, reject) => {
       const req = http.get(
         `http://${this.chromeHost}:${this.codegenPort}/hover?selector=${encodeURIComponent(selector)}`,
         (res) => {
           let data = '';
           res.on('data', (chunk) => data += chunk);
-          res.on('end', () => resolve({ status: 'success' }));
+          res.on('end', () => {
+            try {
+              const result = JSON.parse(data);
+              resolve({
+                status: result.status || 'success',
+                template_info: result.template_info
+              });
+            } catch {
+              resolve({ status: 'success' });
+            }
+          });
         }
       );
       req.on('error', reject);
@@ -526,14 +586,24 @@ export class BrowserService implements OnModuleDestroy {
     });
   }
 
-  private async pressKey(key: string): Promise<{ status: string }> {
+  private async pressKey(key: string): Promise<{ status: string; template_info?: any }> {
     return new Promise((resolve, reject) => {
       const req = http.get(
         `http://${this.chromeHost}:${this.codegenPort}/press?key=${encodeURIComponent(key)}`,
         (res) => {
           let data = '';
           res.on('data', (chunk) => data += chunk);
-          res.on('end', () => resolve({ status: 'success' }));
+          res.on('end', () => {
+            try {
+              const result = JSON.parse(data);
+              resolve({
+                status: result.status || 'success',
+                template_info: result.template_info
+              });
+            } catch {
+              resolve({ status: 'success' });
+            }
+          });
         }
       );
       req.on('error', reject);
@@ -544,7 +614,7 @@ export class BrowserService implements OnModuleDestroy {
     });
   }
 
-  private async evaluate(script: string): Promise<{ status: string; result?: any }> {
+  private async evaluate(script: string): Promise<{ status: string; result?: any; template_info?: any }> {
     return new Promise((resolve, reject) => {
       const req = http.get(
         `http://${this.chromeHost}:${this.codegenPort}/evaluate?script=${encodeURIComponent(script)}`,
@@ -554,7 +624,11 @@ export class BrowserService implements OnModuleDestroy {
           res.on('end', () => {
             try {
               const result = JSON.parse(data);
-              resolve({ status: 'success', result: result.result });
+              resolve({
+                status: result.status || 'success',
+                result: result.result,
+                template_info: result.template_info
+              });
             } catch {
               resolve({ status: 'success' });
             }
