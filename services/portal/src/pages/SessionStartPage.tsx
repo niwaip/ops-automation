@@ -305,18 +305,19 @@ const SessionStartPage: React.FC = () => {
                           title: '步骤',
                           dataIndex: 'step',
                           key: 'step',
-                          width: 60,
+                          width: 50,
                           render: (num: number) => <Tag color="purple">{num}</Tag>,
                         },
                         {
                           title: '动作',
                           dataIndex: 'actionName',
                           key: 'actionName',
-                          width: 100,
+                          width: 120,
                         },
                         {
                           title: '参数',
                           key: 'params',
+                          width: 200,
                           render: (_: any, record: any) => {
                             const params = record.params;
                             if (!params || Object.keys(params).length === 0) {
@@ -353,7 +354,7 @@ const SessionStartPage: React.FC = () => {
                         {
                           title: '执行时替换',
                           key: 'replaceable',
-                          width: 180,
+                          width: 220,
                           render: (_: any, record: any) => {
                             const params = record.params;
                             if (!params) return <Text type="secondary">-</Text>;
@@ -625,7 +626,7 @@ const SessionStartPage: React.FC = () => {
               <Button
                 type="link"
                 size="small"
-                onClick={() => window.open(`${NOVNC_URL}?autoconnect=true&resize=scale`, '_blank')}
+                onClick={() => window.open(`${NOVNC_URL}?autoconnect=true&resize=remote`, '_blank')}
                 style={{ color: '#6366f1' }}
               >
                 {t('session:openInNewTab') || '新标签页打开'}
@@ -641,7 +642,7 @@ const SessionStartPage: React.FC = () => {
               overflow: 'hidden',
             }}>
               <iframe
-                src={`${NOVNC_URL}?autoconnect=true&resize=scale`}
+                src={`${NOVNC_URL}?autoconnect=true&resize=remote`}
                 style={{ width: '100%', height: '100%', border: 'none' }}
                 title="noVNC Desktop"
               />
