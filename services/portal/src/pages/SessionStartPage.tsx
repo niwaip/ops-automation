@@ -269,37 +269,40 @@ const SessionStartPage: React.FC = () => {
                 >
                   <Text strong style={{ marginBottom: 8, display: 'block' }}>执行步骤详情</Text>
 
-                  {/* Steps Table */}
+                  {/* Steps Table - only show steps with replaceable params */}
                   {selectedTemplate.steps && selectedTemplate.steps.length > 0 && (
                     <Table
                       size="small"
                       pagination={false}
-                      dataSource={selectedTemplate.steps.map((step, index) => {
-                        // Find which params in this step can be replaced
-                        const replaceableParams: string[] = [];
-                        if (step.params) {
-                          Object.entries(step.params).forEach(([, value]) => {
-                            // Check if param value contains template reference like ${param_name}
-                            const str = String(value);
-                            if (str.includes('${') || str.includes('{{')) {
-                              const match = str.match(/\$\{(\w+)\}|\{\{(\w+)\}\}/);
-                              if (match) {
-                                replaceableParams.push(match[1] || match[2]);
+                      dataSource={selectedTemplate.steps
+                        .map((step, index) => {
+                          // Find which params in this step can be replaced
+                          const replaceableParams: string[] = [];
+                          if (step.params) {
+                            Object.entries(step.params).forEach(([, value]) => {
+                              // Check if param value contains template reference like ${param_name}
+                              const str = String(value);
+                              if (str.includes('${') || str.includes('{{')) {
+                                const match = str.match(/\$\{(\w+)\}|\{\{(\w+)\}\}/);
+                                if (match) {
+                                  replaceableParams.push(match[1] || match[2]);
+                                }
                               }
-                            }
-                          });
-                        }
+                            });
+                          }
 
-                        return {
-                          key: step.step_id || `step-${index}`,
-                          step: index + 1,
-                          action: step.action,
-                          actionName: ACTION_DESCRIPTIONS[step.action] || step.action,
-                          params: step.params || {},
-                          locator: step.locator,
-                          replaceableParams,
-                        };
-                      })}
+                          return {
+                            key: step.step_id || `step-${index}`,
+                            step: index + 1,
+                            action: step.action,
+                            actionName: ACTION_DESCRIPTIONS[step.action] || step.action,
+                            params: step.params || {},
+                            locator: step.locator,
+                            replaceableParams,
+                          };
+                        })
+                        .filter((record) => record.replaceableParams.length > 0)
+                      }
                       columns={[
                         {
                           title: '步骤',
