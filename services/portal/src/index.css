@@ -207,7 +207,7 @@ body {
 
 .ant-table-thead > tr > th {
   background: var(--bg-secondary) !important;
-  color: var(--text-secondary) !important;
+  color: var(--text-primary) !important;
   font-weight: 600 !important;
   border-bottom: none !important;
   padding: 16px !important;
@@ -216,10 +216,20 @@ body {
 .ant-table-tbody > tr > td {
   padding: 16px !important;
   border-bottom: 1px solid var(--bg-secondary) !important;
+  color: var(--text-primary) !important;
 }
 
 .ant-table-tbody > tr:hover > td {
   background: var(--bg-secondary) !important;
+}
+
+/* Table cell content - ensure all text is visible */
+.ant-table-cell {
+  color: var(--text-primary) !important;
+}
+
+.ant-table-cell * {
+  color: inherit;
 }
 
 .ant-btn {
@@ -539,13 +549,14 @@ body {
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme='light']) .ant-table {
     border: 1px solid rgba(255, 255, 255, 0.1) !important;
+    background: #1e293b !important;
   }
 }
 
 [data-theme='dark'] .ant-table-thead > tr > th,
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme='light']) .ant-table-thead > tr > th {
-    color: #e2e8f0 !important;
+    color: #f8fafc !important;
     background: #334155 !important;
   }
 }
@@ -555,18 +566,29 @@ body {
   :root:not([data-theme='light']) .ant-table-tbody > tr > td {
     border-bottom-color: #334155 !important;
     color: #e2e8f0 !important;
+    background: #1e293b !important;
   }
 }
 
-/* Dark mode table body text */
-[data-theme='dark'] .ant-table-tbody > tr,
-[data-theme='dark'] .ant-table-tbody > tr > td,
+/* Dark mode table cell - force all content to be light */
 [data-theme='dark'] .ant-table-cell,
+[data-theme='dark'] .ant-table-cell span,
+[data-theme='dark'] .ant-table-cell div,
+[data-theme='dark'] .ant-table-cell p,
 @media (prefers-color-scheme: dark) {
-  :root:not([data-theme='light']) .ant-table-tbody > tr,
-  :root:not([data-theme='light']) .ant-table-tbody > tr > td,
-  :root:not([data-theme='light']) .ant-table-cell {
+  :root:not([data-theme='light']) .ant-table-cell,
+  :root:not([data-theme='light']) .ant-table-cell span,
+  :root:not([data-theme='light']) .ant-table-cell div,
+  :root:not([data-theme='light']) .ant-table-cell p {
     color: #e2e8f0 !important;
+  }
+}
+
+/* Table hover state in dark mode */
+[data-theme='dark'] .ant-table-tbody > tr:hover > td,
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) .ant-table-tbody > tr:hover > td {
+    background: #334155 !important;
   }
 }
 
@@ -730,11 +752,25 @@ body {
 [data-theme='dark'] .ant-table-tbody > tr > td .ant-typography,
 [data-theme='dark'] .ant-table-tbody > tr > td span,
 [data-theme='dark'] .ant-table-tbody > tr > td div,
+[data-theme='dark'] .ant-table .ant-typography,
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme='light']) .ant-table-tbody > tr > td .ant-typography,
   :root:not([data-theme='light']) .ant-table-tbody > tr > td span,
-  :root:not([data-theme='light']) .ant-table-tbody > tr > td div {
+  :root:not([data-theme='light']) .ant-table-tbody > tr > td div,
+  :root:not([data-theme='light']) .ant-table .ant-typography {
     color: #e2e8f0 !important;
+  }
+}
+
+/* Fix secondary text in tables - make it visible */
+[data-theme='dark'] .ant-table .ant-typography-secondary,
+[data-theme='dark'] .ant-table-tbody .ant-typography-secondary,
+[data-theme='dark'] .ant-table-cell .ant-typography-secondary,
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) .ant-table .ant-typography-secondary,
+  :root:not([data-theme='light']) .ant-table-tbody .ant-typography-secondary,
+  :root:not([data-theme='light']) .ant-table-cell .ant-typography-secondary {
+    color: #94a3b8 !important;
   }
 }
 
@@ -745,6 +781,76 @@ body {
   :root:not([data-theme='light']) .ant-typography-small,
   :root:not([data-theme='light']) .ant-typography[size="small"] {
     color: #94a3b8 !important;
+  }
+}
+
+/* ============================================
+   Force Table Content Visibility in Dark Mode
+   ============================================ */
+
+/* Target all content inside table cells */
+[data-theme='dark'] .ant-table-wrapper,
+[data-theme='dark'] .ant-table-content,
+[data-theme='dark'] .ant-table-body,
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) .ant-table-wrapper,
+  :root:not([data-theme='light']) .ant-table-content,
+  :root:not([data-theme='light']) .ant-table-body {
+    color: #e2e8f0 !important;
+  }
+}
+
+/* Force all spans and divs inside table cells to be light */
+[data-theme='dark'] .ant-table td span:not(.ant-tag),
+[data-theme='dark'] .ant-table td div,
+[data-theme='dark'] .ant-table td p,
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) .ant-table td span:not(.ant-tag),
+  :root:not([data-theme='light']) .ant-table td div,
+  :root:not([data-theme='light']) .ant-table td p {
+    color: #e2e8f0 !important;
+  }
+}
+
+/* Fix table row action column specifically */
+[data-theme='dark'] .ant-table td input,
+[data-theme='dark'] .ant-table td .ant-input,
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) .ant-table td input,
+  :root:not([data-theme='light']) .ant-table td .ant-input {
+    background-color: #334155 !important;
+    border-color: #475569 !important;
+    color: #e2e8f0 !important;
+  }
+}
+
+/* Fix table tags to have proper contrast */
+[data-theme='dark'] .ant-table .ant-tag,
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) .ant-table .ant-tag {
+    color: #fff !important;
+  }
+}
+
+/* Fix card that contains table in SessionStartPage */
+[data-theme='dark'] .ant-card .ant-table,
+[data-theme='dark'] .ant-card-body .ant-table,
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) .ant-card .ant-table,
+  :root:not([data-theme='light']) .ant-card-body .ant-table {
+    background: transparent !important;
+  }
+}
+
+/* Fix all table content inside cards */
+[data-theme='dark'] .ant-card .ant-table-cell,
+[data-theme='dark'] .ant-card .ant-table-cell span,
+[data-theme='dark'] .ant-card .ant-table-cell div,
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) .ant-card .ant-table-cell,
+  :root:not([data-theme='light']) .ant-card .ant-table-cell span,
+  :root:not([data-theme='light']) .ant-card .ant-table-cell div {
+    color: #e2e8f0 !important;
   }
 }
 
