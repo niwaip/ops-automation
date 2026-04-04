@@ -54,20 +54,36 @@ export class RecognizerService {
    * Uses AI to extract parameters matching the template schema
    */
   async recognizeParams(dto: RecognizeParamsDTO): Promise<RecognizeParamsResponseDTO> {
-    const template = this.templates.get(dto.template_id);
-    if (!template) {
-      // Return empty params with low confidence if template not found
+    // 优先使用请求中传入的 params_schema
+    let properties: Record<string, { type: string; description?: string }> = {};
+    let templateName = dto.template_id;
+
+    if (dto.params_schema?.properties) {
+      properties = dto.params_schema.properties;
+    } else {
+      // 如果没有传入 params_schema，尝试从注册的模版中获取
+      const template = this.templates.get(dto.template_id);
+      if (!template) {
+        // Return empty params with low confidence if template not found
+        return {
+          params: {},
+          confidence: 0,
+        };
+      }
+      properties = template.params_schema.properties;
+      templateName = template.name;
+    }
+
+    // 如果没有可用的参数 schema，返回空结果
+    if (Object.keys(properties).length === 0) {
       return {
         params: {},
         confidence: 0,
       };
     }
 
-    const paramsSchema = template.params_schema;
-    const properties = paramsSchema.properties;
-
     // Build system prompt for parameter extraction
-    const systemPrompt = this.buildSystemPrompt(template);
+    const systemPrompt = this.buildSystemPromptFromSchema(templateName, properties);
 
     // Build messages for the AI
     const messages: ChatMessage[] = [
@@ -84,28 +100,35 @@ export class RecognizerService {
       const response = await this.defaultClient.chatCompletion(messages);
       return this.parseAIResponse(response, properties);
     } catch (error) {
-      // Fallback to basic pattern matching on AI failure
+      // Fallback to basic pattern matching on AI failures
       return this.basicPatternMatching(dto.user_input, properties);
     }
   }
 
   /**
-   * Build system prompt for parameter extraction
+   * Build system prompt for parameter extraction from schema
    */
-  private buildSystemPrompt(template: TemplateSchema): string {
-    const params = Object.entries(template.params_schema.properties)
-      .map(([name, schema]) => `- ${name}: ${schema.type}${schema.description ? ` (${schema.description})` : ''}`)
+  private buildSystemPromptFromSchema(
+    templateName: string,
+    properties: Record<string, { type: string; description?: string; default?: string | number | boolean }>,
+  ): string {
+    const params = Object.entries(properties)
+      .map(([name, schema]) => {
+        const defaultStr = schema.default !== undefined ? ` (默认值: ${schema.default})` : '';
+        return `- ${name}: ${schema.type}${schema.description ? ` - ${schema.description}` : ''}${defaultStr}`;
+      })
       .join('\n');
 
-    return `You are a parameter extraction assistant. Given a user's input, extract the following parameters for the template "${template.name}":
+    return `你是一个参数提取助手。根据用户的输入，为模版"${templateName}"提取以下参数：
 ${params}
 
-Return the extracted parameters as a JSON object. If you cannot confidently extract a parameter, omit it from the response. Also include a confidence score (0-1) for each parameter extraction.
+请返回提取的参数作为 JSON 对象。如果你不能确定某个参数的值，请省略它。
+同时返回整体置信度分数（0-1）。
 
-Response format:
+响应格式：
 {
-  "params": { ... extracted parameters ... },
-  "confidence": <overall confidence score 0-1>
+  "params": { ... 提取的参数 ... },
+  "confidence": <整体置信度分数 0-1>
 }`;
   }
 

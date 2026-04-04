@@ -76,6 +76,8 @@ const SessionStartPage: React.FC = () => {
     () => aiApi.recognizeParams({
       template_id: selectedTemplateId!,
       user_input: userInput,
+      // 传入模版的 params_schema，让 AI 能够正确识别参数
+      params_schema: selectedTemplate?.params_schema,
     }),
     {
       onSuccess: (data) => {
