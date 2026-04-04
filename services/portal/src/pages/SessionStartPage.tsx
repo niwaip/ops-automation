@@ -626,7 +626,7 @@ const SessionStartPage: React.FC = () => {
               <Button
                 type="link"
                 size="small"
-                onClick={() => window.open(`${NOVNC_URL}?autoconnect=true&resize=scale`, '_blank')}
+                onClick={() => window.open(`${NOVNC_URL}?autoconnect=true&resize=remote`, '_blank')}
                 style={{ color: '#6366f1' }}
               >
                 {t('session:openInNewTab') || '新标签页打开'}
@@ -642,7 +642,7 @@ const SessionStartPage: React.FC = () => {
               overflow: 'hidden',
             }}>
               <iframe
-                src={`${NOVNC_URL}?autoconnect=true&resize=scale`}
+                src={`${NOVNC_URL}?autoconnect=true&resize=remote`}
                 style={{ width: '100%', height: '100%', border: 'none' }}
                 title="noVNC Desktop"
               />

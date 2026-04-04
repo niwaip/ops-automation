@@ -230,7 +230,7 @@ const SessionDetailPage: React.FC = () => {
         >
           <div style={{ width: '100%', height: 600, border: '1px solid #d9d9d9', borderRadius: 4, background: '#1e1e1e' }}>
             <iframe
-              src={`${session.endpoints.novnc}?autoconnect=true&resize=scale`}
+              src={`${session.endpoints.novnc}?autoconnect=true&resize=remote`}
               style={{ width: '100%', height: '100%', border: 'none' }}
               title="noVNC"
             />
