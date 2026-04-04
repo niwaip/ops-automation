@@ -10,12 +10,13 @@ import {
   CalendarOutlined,
   EyeOutlined,
   DesktopOutlined,
+  ReloadOutlined,
 } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
 import { useQuery, useMutation } from 'react-query';
 import { templateApi, Template } from '../api/template';
 import { aiApi, RecognizeParamsResponse } from '../api/ai';
-import { sessionApi } from '../api/session';
+import { sessionApi, workerApi } from '../api/session';
 import { useAuthStore } from '../store/authStore';
 
 const { TextArea } = Input;
@@ -113,6 +114,22 @@ const SessionStartPage: React.FC = () => {
     }
   );
 
+  // Reset worker pool mutation
+  const resetWorkerMutation = useMutation(
+    async () => {
+      const result = await workerApi.reset();
+      return result;
+    },
+    {
+      onSuccess: (result) => {
+        message.success(result.message || t('template:workerResetSuccess'));
+      },
+      onError: () => {
+        message.error(t('template:workerResetFailed'));
+      },
+    }
+  );
+
   const handleRecognize = () => {
     if (!selectedTemplateId) {
       message.warning(t('session:selectTemplateFirst'));
@@ -134,7 +151,7 @@ const SessionStartPage: React.FC = () => {
   };
 
   const selectedTemplate = selectedTemplateQuery.data;
-  const isLoading = templatesQuery.isLoading || recognizeMutation.isLoading || executeMutation.isLoading;
+  const isLoading = templatesQuery.isLoading || recognizeMutation.isLoading || executeMutation.isLoading || resetWorkerMutation.isLoading;
 
   // Step indicator styles
   const stepStyle = {
@@ -432,6 +449,17 @@ const SessionStartPage: React.FC = () => {
 
             {/* Action Buttons */}
             <Row justify="end" gutter={16}>
+              <Col>
+                <Button
+                  icon={<ReloadOutlined />}
+                  size="large"
+                  onClick={() => resetWorkerMutation.mutate()}
+                  loading={resetWorkerMutation.isLoading}
+                  style={{ borderRadius: 10, minWidth: 160, height: 48 }}
+                >
+                  {t('template:resetWorkers')}
+                </Button>
+              </Col>
               <Col>
                 <Button
                   size="large"

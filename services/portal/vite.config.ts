@@ -34,6 +34,11 @@ export default defineConfig({
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/api/, ''),
       },
+      '/api/workers': {
+        target: getProxyTarget('ops-session-broker', 3002),
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api/, ''),
+      },
       '/api/ai': {
         target: getProxyTarget('ops-ai-orchestrator', 3007),
         changeOrigin: true,
