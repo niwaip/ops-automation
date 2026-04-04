@@ -223,17 +223,16 @@ const TemplateListPage: React.FC = () => {
               {t('template:deprecateTemplate')}
             </Button>
           )}
-          {record.status === 'DRAFT' && (
-            <Button
-              type="link"
-              size="small"
-              danger
-              icon={<DeleteOutlined />}
-              onClick={() => handleDelete(record.id)}
-            >
-              {t('common:delete')}
-            </Button>
-          )}
+          {/* Allow delete for all statuses */}
+          <Button
+            type="link"
+            size="small"
+            danger
+            icon={<DeleteOutlined />}
+            onClick={() => handleDelete(record.id)}
+          >
+            {t('common:delete')}
+          </Button>
         </Space>
       ),
     },
