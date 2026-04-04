@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Card, Select, Input, Button, Space, Spin, message, Tag, Alert, Radio, DatePicker, TimePicker, Divider, Row, Col, Typography, Tabs, Collapse } from 'antd';
+import { Card, Select, Input, Button, Space, Spin, message, Tag, Alert, Radio, DatePicker, TimePicker, Divider, Row, Col, Typography, Tabs, Table } from 'antd';
 import {
   RobotOutlined,
   PlayCircleOutlined,
@@ -10,8 +10,6 @@ import {
   CalendarOutlined,
   DesktopOutlined,
   ReloadOutlined,
-  EditOutlined,
-  CheckOutlined,
 } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
 import { useQuery, useMutation } from 'react-query';
@@ -52,7 +50,6 @@ const SessionStartPage: React.FC = () => {
   const [userInput, setUserInput] = useState('');
   const [recognizedParams, setRecognizedParams] = useState<RecognizeParamsResponse | null>(null);
   const [editedParams, setEditedParams] = useState<Record<string, unknown>>({});
-  const [isEditingParams, setIsEditingParams] = useState(false);
 
   // Schedule options
   const [executionMode, setExecutionMode] = useState<'immediate' | 'scheduled' | 'recurring'>('immediate');
@@ -240,98 +237,144 @@ const SessionStartPage: React.FC = () => {
                   size="small"
                   style={{ marginTop: 16, borderRadius: 12, background: 'var(--bg-secondary)' }}
                 >
-                  <Row gutter={[16, 12]}>
-                    <Col span={12}>
-                      <Text type="secondary">{t('template:description')}</Text>
-                      <div><Text strong>{selectedTemplate.description || '-'}</Text></div>
-                    </Col>
-                    <Col span={6}>
-                      <Text type="secondary">{t('template:stepsCount')}</Text>
-                      <div><Text strong>{selectedTemplate.steps?.length || 0}</Text></div>
-                    </Col>
-                    <Col span={6}>
-                      <Text type="secondary">{t('template:paramsSchema')}</Text>
-                      <div>
-                        {selectedTemplate.params_schema?.required && selectedTemplate.params_schema.required.length > 0
-                          ? selectedTemplate.params_schema.required.map((p: string) => (
-                              <Tag key={p} color="blue">{p}</Tag>
-                            ))
-                          : <Tag>{t('template:noParams')}</Tag>}
-                      </div>
-                    </Col>
-                  </Row>
+                  <Text strong style={{ marginBottom: 8, display: 'block' }}>执行步骤详情</Text>
 
-                  {/* Steps Detail */}
+                  {/* Steps Table */}
                   {selectedTemplate.steps && selectedTemplate.steps.length > 0 && (
-                    <div style={{ marginTop: 16 }}>
-                      <Divider style={{ margin: '12px 0' }} />
-                      <Text strong style={{ marginBottom: 8, display: 'block' }}>执行步骤详情</Text>
-                      <Collapse
-                        size="small"
-                        style={{ background: 'transparent' }}
-                        items={selectedTemplate.steps.map((step, index) => ({
-                          key: step.step_id || `step-${index}`,
-                          label: (
-                            <Space>
-                              <Tag color="purple">{index + 1}</Tag>
-                              <Text strong>{ACTION_DESCRIPTIONS[step.action] || step.action}</Text>
-                            </Space>
-                          ),
-                          children: (
-                            <div>
-                              <div style={{ marginBottom: 8 }}>
-                                <Text type="secondary">动作类型: </Text>
-                                <Tag>{step.action}</Tag>
-                              </div>
-                              {step.params && Object.keys(step.params).length > 0 && (
-                                <div style={{ marginBottom: 8 }}>
-                                  <Text type="secondary" style={{ display: 'block', marginBottom: 4 }}>参数:</Text>
-                                  <div style={{ background: '#f5f5f5', padding: 8, borderRadius: 4 }}>
-                                    {Object.entries(step.params).map(([k, v]) => (
-                                      <div key={k} style={{ marginBottom: 4 }}>
-                                        <Text code>{k}</Text>: <Text>{String(v)}</Text>
-                                      </div>
-                                    ))}
-                                  </div>
-                                </div>
-                              )}
-                              {step.locator && (
-                                <div>
-                                  <Text type="secondary">定位器: </Text>
-                                  <Text code>{step.locator.type}={step.locator.value}</Text>
-                                </div>
-                              )}
-                            </div>
-                          ),
-                        }))}
-                      />
-                    </div>
-                  )}
+                    <Table
+                      size="small"
+                      pagination={false}
+                      dataSource={selectedTemplate.steps.map((step, index) => {
+                        // Find which params in this step can be replaced
+                        const replaceableParams: string[] = [];
+                        if (step.params) {
+                          Object.entries(step.params).forEach(([, value]) => {
+                            // Check if param value contains template reference like ${param_name}
+                            const str = String(value);
+                            if (str.includes('${') || str.includes('{{')) {
+                              const match = str.match(/\$\{(\w+)\}|\{\{(\w+)\}\}/);
+                              if (match) {
+                                replaceableParams.push(match[1] || match[2]);
+                              }
+                            }
+                          });
+                        }
 
-                  {/* Default Params */}
-                  {selectedTemplate.params_schema?.properties && (
-                    <div style={{ marginTop: 16 }}>
-                      <Divider style={{ margin: '12px 0' }} />
-                      <Text strong style={{ marginBottom: 8, display: 'block' }}>模板参数定义</Text>
-                      <div style={{ background: '#f5f5f5', padding: 8, borderRadius: 4 }}>
-                        {Object.entries(selectedTemplate.params_schema.properties).map(([key, prop]: [string, any]) => (
-                          <div key={key} style={{ marginBottom: 8 }}>
-                            <Space>
-                              <Text strong>{key}</Text>
-                              {selectedTemplate.params_schema?.required?.includes(key) && (
-                                <Tag color="red">必填</Tag>
-                              )}
-                              {prop.default !== undefined && (
-                                <Tag color="green">默认: {String(prop.default)}</Tag>
-                              )}
-                            </Space>
-                            {prop.description && (
-                              <div><Text type="secondary" style={{ fontSize: 12 }}>{prop.description}</Text></div>
-                            )}
-                          </div>
-                        ))}
-                      </div>
-                    </div>
+                        return {
+                          key: step.step_id || `step-${index}`,
+                          step: index + 1,
+                          action: step.action,
+                          actionName: ACTION_DESCRIPTIONS[step.action] || step.action,
+                          params: step.params || {},
+                          locator: step.locator,
+                          replaceableParams,
+                        };
+                      })}
+                      columns={[
+                        {
+                          title: '步骤',
+                          dataIndex: 'step',
+                          key: 'step',
+                          width: 60,
+                          render: (num: number) => <Tag color="purple">{num}</Tag>,
+                        },
+                        {
+                          title: '动作',
+                          dataIndex: 'actionName',
+                          key: 'actionName',
+                          width: 100,
+                        },
+                        {
+                          title: '参数',
+                          key: 'params',
+                          render: (_: any, record: any) => {
+                            const params = record.params;
+                            if (!params || Object.keys(params).length === 0) {
+                              return <Text type="secondary">-</Text>;
+                            }
+                            return (
+                              <div>
+                                {Object.entries(params).map(([k, v]) => (
+                                  <div key={k} style={{ fontSize: 12 }}>
+                                    <Text code>{k}</Text>: <Text>{String(v)}</Text>
+                                  </div>
+                                ))}
+                              </div>
+                            );
+                          },
+                        },
+                        {
+                          title: '默认值',
+                          key: 'defaultValue',
+                          width: 120,
+                          render: (_: any, record: any) => {
+                            const params = record.params;
+                            if (!params) return <Text type="secondary">-</Text>;
+
+                            // Get default values from template params_schema
+                            const defaults: string[] = [];
+                            Object.values(params).forEach((v: any) => {
+                              const str = String(v);
+                              const match = str.match(/\$\{(\w+)\}|\{\{(\w+)\}\}/);
+                              if (match) {
+                                const paramName = match[1] || match[2];
+                                const prop = selectedTemplate.params_schema?.properties?.[paramName as any] as any;
+                                if (prop?.default !== undefined) {
+                                  defaults.push(`${paramName}: ${prop.default}`);
+                                }
+                              }
+                            });
+                            return defaults.length > 0 ? (
+                              <div style={{ fontSize: 12 }}>
+                                {defaults.map((d, i) => (
+                                  <div key={i}><Tag color="green">{d}</Tag></div>
+                                ))}
+                              </div>
+                            ) : <Text type="secondary">-</Text>;
+                          },
+                        },
+                        {
+                          title: '执行时替换',
+                          key: 'replaceable',
+                          width: 180,
+                          render: (_: any, record: any) => {
+                            const params = record.params;
+                            if (!params) return <Text type="secondary">-</Text>;
+
+                            const inputs: JSX.Element[] = [];
+                            Object.entries(params).forEach(([, v]) => {
+                              const str = String(v);
+                              const match = str.match(/\$\{(\w+)\}|\{\{(\w+)\}\}/);
+                              if (match) {
+                                const paramName = match[1] || match[2];
+                                const currentValue = editedParams[paramName] ?? '';
+                                inputs.push(
+                                  <div key={paramName} style={{ marginBottom: 4 }}>
+                                    <Text style={{ fontSize: 11 }} type="secondary">{paramName}:</Text>
+                                    <Input
+                                      size="small"
+                                      value={String(currentValue)}
+                                      placeholder={`输入${paramName}`}
+                                      onChange={(e) => {
+                                        setEditedParams(prev => ({
+                                          ...prev,
+                                          [paramName]: e.target.value,
+                                        }));
+                                      }}
+                                      style={{ marginLeft: 4, width: 100, fontSize: 12 }}
+                                    />
+                                  </div>
+                                );
+                              }
+                            });
+
+                            return inputs.length > 0 ? (
+                              <div>{inputs}</div>
+                            ) : <Text type="secondary">-</Text>;
+                          },
+                        },
+                      ]}
+                    />
                   )}
                 </Card>
               )}
@@ -365,99 +408,34 @@ const SessionStartPage: React.FC = () => {
               </Button>
             </div>
 
-            {/* Step 3: Review Params */}
-            {(recognizedParams || Object.keys(editedParams).length > 0) && (
+            {/* Step 3: AI解析结果 */}
+            {recognizedParams && Object.keys(editedParams).length > 0 && (
               <>
                 <div style={stepStyle}>
                   <div style={stepNumberStyle}>3</div>
-                  <Title level={4} style={{ margin: 0 }}>{t('session:stepReviewParams')}</Title>
-                  <Button
-                    type="link"
-                    icon={isEditingParams ? <CheckOutlined /> : <EditOutlined />}
-                    onClick={() => setIsEditingParams(!isEditingParams)}
-                    style={{ marginLeft: 8 }}
-                  >
-                    {isEditingParams ? '完成编辑' : '编辑参数'}
-                  </Button>
+                  <Title level={4} style={{ margin: 0 }}>AI参数解析结果</Title>
                 </div>
 
                 <div style={{ marginLeft: 44, marginBottom: 32 }}>
-                  {recognizedParams && (
-                    <Alert
-                      type={recognizedParams.confidence > 0.8 ? 'success' : 'warning'}
-                      message={t('session:confidenceScore', { score: recognizedParams.confidence })}
-                      style={{ marginBottom: 16, borderRadius: 10 }}
-                    />
-                  )}
-                  <Card size="small" style={{ borderRadius: 12 }}>
-                    {isEditingParams ? (
-                      // Edit mode
-                      <div>
-                        <Text type="secondary" style={{ marginBottom: 8, display: 'block' }}>
-                          编辑参数值（AI解析后可手动修改）:
-                        </Text>
-                        {Object.entries(editedParams).map(([key, value]) => (
-                          <div key={key} style={{ marginBottom: 12 }}>
-                            <Text strong style={{ marginBottom: 4, display: 'block' }}>{key}</Text>
-                            <Input
-                              value={typeof value === 'object' ? JSON.stringify(value) : String(value)}
-                              onChange={(e) => {
-                                const newValue = e.target.value;
-                                setEditedParams(prev => ({
-                                  ...prev,
-                                  [key]: newValue,
-                                }));
-                              }}
-                              style={{ borderRadius: 8 }}
-                            />
-                          </div>
-                        ))}
-                        {selectedTemplate?.params_schema?.properties && (
-                          <>
-                            <Divider style={{ margin: '12px 0' }} />
-                            <Text type="secondary" style={{ marginBottom: 8, display: 'block' }}>
-                              添加其他参数:
-                            </Text>
-                            {Object.entries(selectedTemplate.params_schema.properties)
-                              .filter(([key]) => !editedParams[key])
-                              .map(([key, prop]: [string, any]) => (
-                                <div key={key} style={{ marginBottom: 12 }}>
-                                  <Space style={{ marginBottom: 4 }}>
-                                    <Text strong>{key}</Text>
-                                    {prop.default !== undefined && (
-                                      <Tag color="green">默认: {String(prop.default)}</Tag>
-                                    )}
-                                  </Space>
-                                  <Input
-                                    placeholder={prop.description || `输入 ${key}`}
-                                    onChange={(e) => {
-                                      if (e.target.value) {
-                                        setEditedParams(prev => ({
-                                          ...prev,
-                                          [key]: e.target.value,
-                                        }));
-                                      }
-                                    }}
-                                    style={{ borderRadius: 8 }}
-                                  />
-                                </div>
-                              ))}
-                          </>
-                        )}
-                      </div>
-                    ) : (
-                      // View mode
-                      Object.entries(editedParams).length > 0 ? (
-                        Object.entries(editedParams).map(([key, value]) => (
-                          <div key={key} style={{ marginBottom: 8 }}>
-                            <Text type="secondary">{key}: </Text>
-                            <Text strong>{typeof value === 'object' ? JSON.stringify(value) : String(value)}</Text>
-                          </div>
-                        ))
-                      ) : (
-                        <Text type="secondary">暂无参数，请输入描述后点击AI解析</Text>
-                      )
-                    )}
+                  <Alert
+                    type={recognizedParams.confidence > 0.8 ? 'success' : 'warning'}
+                    message={`置信度: ${(recognizedParams.confidence * 100).toFixed(1)}% - AI已根据您的描述自动解析参数`}
+                    style={{ marginBottom: 16, borderRadius: 10 }}
+                  />
+                  <Card size="small" style={{ borderRadius: 12, background: '#f6ffed' }}>
+                    <Text type="secondary" style={{ marginBottom: 8, display: 'block' }}>
+                      解析后的参数值（可在上方表格"执行时替换"列中修改）:
+                    </Text>
+                    <Row gutter={[16, 8]}>
+                      {Object.entries(editedParams).map(([key, value]) => (
+                        <Col span={12} key={key}>
+                          <Space>
+                            <Text strong>{key}:</Text>
+                            <Tag color="blue">{typeof value === 'object' ? JSON.stringify(value) : String(value)}</Tag>
+                          </Space>
+                        </Col>
+                      ))}
+                    </Row>
                   </Card>
                 </div>
               </>
