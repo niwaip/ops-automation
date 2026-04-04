@@ -1314,10 +1314,14 @@ def ai_smart_search(query):
             "snapshot": result_snapshot_str,
             # Template info - for deterministic replay
             "template_info": {
-                "input_selector": used_selector,
-                "submit_method": submit_method,
-                "button_selector": button_selector,
-                "query": query
+                "tool": "smart_search",
+                "params": {
+                    "input_selector": used_selector,
+                    "submit_method": submit_method,
+                    "button_selector": button_selector if submit_method == "click" else None,
+                    "query": query
+                },
+                "description": f"Search for '{query}' using {submit_method} method"
             }
         }
 
@@ -1677,6 +1681,12 @@ class CodegenHandler(BaseHTTPRequestHandler):
         elif action_type == 'get_text':
             selector = action.get('selector')
             return ai_get_text(selector)
+
+        elif action_type == 'smart_search':
+            query = action.get('query')
+            if not query:
+                return {'status': 'error', 'error': 'Missing query for smart_search action'}
+            return ai_smart_search(query)
 
         else:
             return {'status': 'error', 'error': f'Unknown action type: {action_type}'}

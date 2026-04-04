@@ -337,7 +337,7 @@ const AIControls: React.FC<AIControlsProps> = ({ onCommandExecuted }) => {
   };
 
   // Compile template to executable script with parameter extraction
-  const handleCompileTemplate = async () => {
+  const handleCompileTemplate = () => {
     if (templateSteps.length === 0) {
       message.warning('模版为空，请先添加命令');
       return;
@@ -350,8 +350,17 @@ const AIControls: React.FC<AIControlsProps> = ({ onCommandExecuted }) => {
     const script = generateScript(templateSteps, extractedParams);
     setCompiledScript(script);
     setShowScriptModal(true);
+    // Don't auto-save - let user review and confirm in the modal
+  };
 
-    // Auto-save the template with extracted params_schema
+  // Save compiled template to backend
+  const handleSaveCompiledTemplate = async () => {
+    if (templateSteps.length === 0) {
+      message.warning('模版为空，请先添加命令');
+      return;
+    }
+
+    const extractedParams = extractParameters(templateSteps);
     const backendSteps = templateSteps.map((step, index) => {
       const backendStep: any = {
         step_id: `step_${index + 1}`,
@@ -376,7 +385,7 @@ const AIControls: React.FC<AIControlsProps> = ({ onCommandExecuted }) => {
       required: Object.keys(extractedParams),
     };
 
-    const name = templateName || `自动编译模版 ${new Date().toLocaleString()}`;
+    const name = templateName || `编译模版 ${new Date().toLocaleString()}`;
 
     try {
       const createdTemplate = await templateApi.create({
@@ -387,12 +396,13 @@ const AIControls: React.FC<AIControlsProps> = ({ onCommandExecuted }) => {
         created_by: user?.id || 'ai_recorder',
       });
 
-      message.success(`模版已编译并保存: ${createdTemplate.name}，包含 ${Object.keys(extractedParams).length} 个可替换参数`);
+      message.success(`模版已保存: ${createdTemplate.name}`);
+      setShowScriptModal(false);
       handleClearTemplate();
     } catch (error: any) {
       console.error('Failed to save compiled template:', error);
       const errorMsg = error.response?.data?.message || error.message || '未知错误';
-      message.error(`编译保存失败: ${errorMsg}`);
+      message.error(`保存失败: ${errorMsg}`);
     }
   };
 
@@ -481,6 +491,25 @@ const AIControls: React.FC<AIControlsProps> = ({ onCommandExecuted }) => {
             };
           }
           break;
+
+        case 'smart_search':
+          // Extract search query as parameter
+          if (step.params.query) {
+            params[`${stepPrefix}_query`] = {
+              type: 'string',
+              description: `步骤${index + 1}搜索关键词`,
+              default: step.params.query as string,
+            };
+          }
+          // Extract input selector as parameter (optional)
+          if (step.params.input_selector) {
+            params[`${stepPrefix}_input_selector`] = {
+              type: 'string',
+              description: `步骤${index + 1}搜索输入框选择器`,
+              default: step.params.input_selector as string,
+            };
+          }
+          break;
       }
     });
 
@@ -564,6 +593,18 @@ const AIControls: React.FC<AIControlsProps> = ({ onCommandExecuted }) => {
         case 'type_text':
           const textVar = params[`${stepPrefix}_text`] ? `${stepPrefix}_text` : `'${step.params.text}'`;
           lines.push(`  await page.keyboard.type(${textVar});`);
+          break;
+        case 'smart_search':
+          const searchQuery = params[`${stepPrefix}_query`] ? `${stepPrefix}_query` : `'${step.params.query}'`;
+          const searchSelector = params[`${stepPrefix}_input_selector`] ? `${stepPrefix}_input_selector` : `'${step.params.input_selector}'`;
+          lines.push(`  // Smart search: fill search input and submit`);
+          lines.push(`  const searchInput = await page.locator(${searchSelector});`);
+          lines.push(`  await searchInput.fill(${searchQuery});`);
+          if (step.params.submit_method === 'click' && step.params.button_selector) {
+            lines.push(`  await page.click('${step.params.button_selector}');`);
+          } else {
+            lines.push(`  await searchInput.press('Enter');`);
+          }
           break;
         default:
           lines.push(`  // Unknown tool: ${step.tool}`);
@@ -667,7 +708,7 @@ const AIControls: React.FC<AIControlsProps> = ({ onCommandExecuted }) => {
         const info = entry.result.template_info;
         // Only add deterministic commands (navigate, fill, click with selector, etc.)
         // Skip non-deterministic commands like click_result without actual navigation
-        const deterministicTools = ['navigate', 'fill', 'click', 'screenshot', 'scroll', 'wait', 'press_key', 'hover', 'type_text'];
+        const deterministicTools = ['navigate', 'fill', 'click', 'screenshot', 'scroll', 'wait', 'press_key', 'hover', 'type_text', 'smart_search'];
         if (deterministicTools.includes(info.tool)) {
           extractedSteps.push({
             id: Date.now().toString() + Math.random(),
@@ -1314,11 +1355,26 @@ const AIControls: React.FC<AIControlsProps> = ({ onCommandExecuted }) => {
             <Button key="copy" icon={<CopyOutlined />} onClick={handleCopyScript}>
               复制
             </Button>,
-            <Button key="download" type="primary" icon={<DownloadOutlined />} onClick={handleDownloadScript}>
+            <Button key="download" icon={<DownloadOutlined />} onClick={handleDownloadScript}>
               下载
+            </Button>,
+            <Button key="save" type="primary" icon={<SaveOutlined />} onClick={handleSaveCompiledTemplate}>
+              保存模版
             </Button>,
           ]}
         >
+          <Space direction="vertical" style={{ width: '100%', marginBottom: 16 }}>
+            <Text>模版名称：</Text>
+            <Input
+              value={templateName}
+              onChange={(e) => setTemplateName(e.target.value)}
+              placeholder={`编译模版 ${new Date().toLocaleString()}`}
+              style={{ marginBottom: 8 }}
+            />
+            <Text type="secondary" style={{ fontSize: 12 }}>
+              包含 {templateSteps.length} 个步骤，可修改参数后保存
+            </Text>
+          </Space>
           <pre
             style={{
               background: '#1e1e1e',
