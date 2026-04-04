@@ -139,6 +139,10 @@ const AIControls: React.FC<AIControlsProps> = ({
   const [testLoading, setTestLoading] = useState(false);
   const [resetLoading, setResetLoading] = useState(false);
 
+  // Parameter editing state - maps original param name to custom name
+  const [paramNames, setParamNames] = useState<Record<string, string>>({});
+  const [paramEnabled, setParamEnabled] = useState<Record<string, boolean>>({});
+
   // Recording mode: true = AI mode, false = Manual mode
   const [isAIMode, setIsAIMode] = useState(true);
 
@@ -754,16 +758,50 @@ const AIControls: React.FC<AIControlsProps> = ({
 
     const name = templateName || `模版 ${new Date().toLocaleString()}`;
 
+    // Extract parameters and apply custom names
+    const extractedParams = extractParameters(templateSteps);
+
+    // Apply custom parameter names and filter enabled params
+    const finalParams: Record<string, { type: string; description: string; default?: string | number }> = {};
+    Object.entries(extractedParams).forEach(([originalName, schema]) => {
+      // Check if param is enabled
+      if (paramEnabled[originalName] !== false) {  // default to true if not set
+        const customName = paramNames[originalName] || originalName;
+        finalParams[customName] = schema;
+      }
+    });
+
     // Convert TemplateStep to backend format with screenshot after each step
+    // Also replace parameter values with ${param_name} placeholders
     const backendSteps: any[] = [];
     let stepCounter = 1;
 
     templateSteps.forEach((step, index) => {
-      // Add the original step
+      // Create params with placeholder substitution for enabled params
+      const substitutedParams = { ...step.params };
+
+      // Find which original params map to this step's params and substitute
+      Object.entries(extractedParams).forEach(([originalName, schema]) => {
+        if (paramEnabled[originalName] !== false) {
+          const customName = paramNames[originalName] || originalName;
+          // Replace the value with placeholder
+          const defaultValue = schema.default;
+          if (defaultValue !== undefined) {
+            // Find and replace in params
+            Object.keys(substitutedParams).forEach(key => {
+              if (substitutedParams[key] === defaultValue) {
+                substitutedParams[key] = `\${${customName}}`;
+              }
+            });
+          }
+        }
+      });
+
+      // Add the original step with substituted params
       const backendStep: any = {
         step_id: `step_${stepCounter}`,
         action: step.tool,
-        params: step.params,
+        params: substitutedParams,
       };
 
       // Add locator for selector-based actions
@@ -801,11 +839,19 @@ const AIControls: React.FC<AIControlsProps> = ({
       stepCounter++;
     });
 
+    // Generate params_schema for custom parameters
+    const paramsSchema = {
+      type: 'object',
+      properties: finalParams,
+      required: Object.keys(finalParams),
+    };
+
     try {
       // Save to backend API
       const createdTemplate = await templateApi.create({
         name,
-        description: `由智能录制生成的模版，包含 ${templateSteps.length} 个步骤（含自动截图）`,
+        description: `由智能录制生成的模版，包含 ${templateSteps.length} 个步骤（含自动截图），${Object.keys(finalParams).length} 个可替换参数`,
+        params_schema: paramsSchema,
         steps: backendSteps,
         created_by: user?.id || 'ai_recorder',
       });
@@ -1561,6 +1607,7 @@ const AIControls: React.FC<AIControlsProps> = ({
           onCancel={() => setShowTemplateModal(false)}
           okText="保存"
           cancelText="取消"
+          width={600}
         >
           <Space direction="vertical" style={{ width: '100%' }}>
             <Text>模版名称：</Text>
@@ -1572,6 +1619,54 @@ const AIControls: React.FC<AIControlsProps> = ({
             <Text type="secondary" style={{ fontSize: 12 }}>
               包含 {templateSteps.length} 个步骤
             </Text>
+
+            {/* Parameter editing section */}
+            {Object.keys(extractParameters(templateSteps)).length > 0 && (
+              <>
+                <Divider style={{ margin: '12px 0' }} />
+                <Text strong>可替换参数：</Text>
+                <Text type="secondary" style={{ fontSize: 11, display: 'block', marginBottom: 8 }}>
+                  修改参数名称使其更具语义化（如将 step2_value 改为 query），取消勾选可排除不需要替换的参数
+                </Text>
+                <List
+                  size="small"
+                  bordered
+                  dataSource={Object.entries(extractParameters(templateSteps))}
+                  renderItem={([originalName, schema]) => (
+                    <List.Item style={{ padding: '8px 12px' }}>
+                      <Space direction="vertical" style={{ width: '100%' }} size={4}>
+                        <Space style={{ width: '100%', justifyContent: 'space-between' }}>
+                          <Switch
+                            size="small"
+                            checked={paramEnabled[originalName] !== false}
+                            onChange={(checked) => {
+                              setParamEnabled(prev => ({ ...prev, [originalName]: checked }));
+                            }}
+                          />
+                          <Text code style={{ fontSize: 11 }}>{originalName}</Text>
+                          <Text type="secondary" style={{ fontSize: 11 }}>→</Text>
+                          <Input
+                            size="small"
+                            value={paramNames[originalName] || originalName}
+                            onChange={(e) => {
+                              setParamNames(prev => ({ ...prev, [originalName]: e.target.value }));
+                            }}
+                            style={{ width: 120 }}
+                            placeholder="参数名"
+                          />
+                        </Space>
+                        <Space>
+                          <Tag color="blue">{schema.type}</Tag>
+                          <Text type="secondary" style={{ fontSize: 11 }}>
+                            默认值: {String(schema.default || '-')}
+                          </Text>
+                        </Space>
+                      </Space>
+                    </List.Item>
+                  )}
+                />
+              </>
+            )}
           </Space>
         </Modal>
 
