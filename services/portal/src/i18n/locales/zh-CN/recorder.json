@@ -68,6 +68,7 @@
     "ready": "就绪",
     "notReady": "未初始化",
     "initBrowser": "初始化浏览器",
+    "reinitBrowser": "重新初始化",
     "browserReady": "浏览器已就绪",
     "browserInitFailed": "浏览器初始化失败",
     "browserInitialized": "浏览器会话已初始化，现在可以发送命令了。",
@@ -87,6 +88,23 @@
     "parseFailed": "解析命令失败",
     "commandExecuted": "命令执行成功",
     "executionFailed": "命令执行失败",
-    "clearHistory": "清空记录"
+    "clearHistory": "清空记录",
+    "quickActions": "快捷操作",
+    "directActions": "直接执行：",
+    "preInputActions": "预输入指令：",
+    "quick": {
+      "screenshot": "截图",
+      "snapshot": "快照",
+      "readPage": "读取页面",
+      "getText": "获取文本",
+      "scrollDown": "向下",
+      "scrollTop": "顶部",
+      "wait": "等待",
+      "navigate": "打开",
+      "click": "点击",
+      "fill": "填充",
+      "search": "搜索",
+      "scroll": "滚动"
+    }
   }
 }

@@ -648,6 +648,8 @@ const AIControls: React.FC<AIControlsProps> = ({
         default:
           lines.push(`  // Unknown tool: ${step.tool}`);
       }
+      // Add 3 second wait after each step for stability
+      lines.push('  await page.waitForTimeout(3000);');
       lines.push('');
     });
 
@@ -810,9 +812,9 @@ const AIControls: React.FC<AIControlsProps> = ({
 
   return (
     <Card
+      title={<Text strong>录制器</Text>}
       extra={
         <Space>
-            <Text strong>录制器</Text>
           <Switch
             checked={isAIMode}
             onChange={setIsAIMode}

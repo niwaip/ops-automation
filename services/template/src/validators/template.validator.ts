@@ -40,7 +40,7 @@ export class TemplateValidator {
         }
 
         // Action validation
-        const validActions = ['click', 'fill', 'navigate', 'wait', 'select', 'check', 'screenshot', 'assert'];
+        const validActions = ['click', 'fill', 'navigate', 'wait', 'select', 'check', 'screenshot', 'assert', 'smart_search', 'hover', 'press', 'scroll', 'type_text', 'get_text', 'snapshot', 'read_page'];
         if (!validActions.includes(step.action)) {
           errors.push(`Step "${step.step_id}" has invalid action "${step.action}"`);
         }
