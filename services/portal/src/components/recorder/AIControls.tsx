@@ -336,62 +336,223 @@ const AIControls: React.FC<AIControlsProps> = ({ onCommandExecuted }) => {
     setTemplateName('');
   };
 
-  // Compile template to executable script
-  const handleCompileTemplate = () => {
+  // Compile template to executable script with parameter extraction
+  const handleCompileTemplate = async () => {
     if (templateSteps.length === 0) {
       message.warning('模版为空，请先添加命令');
       return;
     }
 
-    // Generate JavaScript code
-    const script = generateScript(templateSteps);
+    // Extract parameters from steps (URLs, search queries, etc.)
+    const extractedParams = extractParameters(templateSteps);
+
+    // Generate JavaScript code with parameterized variables
+    const script = generateScript(templateSteps, extractedParams);
     setCompiledScript(script);
     setShowScriptModal(true);
+
+    // Auto-save the template with extracted params_schema
+    const backendSteps = templateSteps.map((step, index) => {
+      const backendStep: any = {
+        step_id: `step_${index + 1}`,
+        action: step.tool,
+        params: step.params,
+      };
+
+      if (step.params.selector) {
+        backendStep.locator = {
+          type: 'css',
+          value: step.params.selector as string,
+        };
+      }
+
+      return backendStep;
+    });
+
+    // Generate params_schema for extracted parameters
+    const paramsSchema = {
+      type: 'object',
+      properties: extractedParams,
+      required: Object.keys(extractedParams),
+    };
+
+    const name = templateName || `自动编译模版 ${new Date().toLocaleString()}`;
+
+    try {
+      const createdTemplate = await templateApi.create({
+        name,
+        description: `由智能录制编译生成的模版，包含 ${templateSteps.length} 个步骤，${Object.keys(extractedParams).length} 个可替换参数`,
+        params_schema: paramsSchema,
+        steps: backendSteps,
+        created_by: user?.id || 'ai_recorder',
+      });
+
+      message.success(`模版已编译并保存: ${createdTemplate.name}，包含 ${Object.keys(extractedParams).length} 个可替换参数`);
+      handleClearTemplate();
+    } catch (error: any) {
+      console.error('Failed to save compiled template:', error);
+      const errorMsg = error.response?.data?.message || error.message || '未知错误';
+      message.error(`编译保存失败: ${errorMsg}`);
+    }
   };
 
-  // Generate executable script from template steps
-  const generateScript = (steps: TemplateStep[]): string => {
+  // Extract parameters from template steps for later replacement
+  const extractParameters = (steps: TemplateStep[]): Record<string, { type: string; description: string; default?: string | number }> => {
+    const params: Record<string, { type: string; description: string; default?: string | number }> = {};
+
+    steps.forEach((step, index) => {
+      const stepPrefix = `step${index + 1}`;
+
+      switch (step.tool) {
+        case 'navigate':
+          // Extract URL as parameter
+          if (step.params.url) {
+            params[`${stepPrefix}_url`] = {
+              type: 'string',
+              description: `步骤${index + 1}导航URL`,
+              default: step.params.url as string,
+            };
+          }
+          break;
+
+        case 'fill':
+          // Extract input value as parameter
+          if (step.params.value) {
+            params[`${stepPrefix}_value`] = {
+              type: 'string',
+              description: `步骤${index + 1}输入内容`,
+              default: step.params.value as string,
+            };
+          }
+          // Extract selector as parameter (optional)
+          if (step.params.selector) {
+            params[`${stepPrefix}_selector`] = {
+              type: 'string',
+              description: `步骤${index + 1}目标选择器`,
+              default: step.params.selector as string,
+            };
+          }
+          break;
+
+        case 'click':
+          // Extract click target selector as parameter (optional)
+          if (step.params.selector) {
+            params[`${stepPrefix}_selector`] = {
+              type: 'string',
+              description: `步骤${index + 1}点击目标选择器`,
+              default: step.params.selector as string,
+            };
+          }
+          if (step.params.text) {
+            params[`${stepPrefix}_text`] = {
+              type: 'string',
+              description: `步骤${index + 1}点击目标文本`,
+              default: step.params.text as string,
+            };
+          }
+          break;
+
+        case 'type_text':
+          if (step.params.text) {
+            params[`${stepPrefix}_text`] = {
+              type: 'string',
+              description: `步骤${index + 1}输入文本`,
+              default: step.params.text as string,
+            };
+          }
+          break;
+
+        case 'wait':
+          if (step.params.duration) {
+            params[`${stepPrefix}_duration`] = {
+              type: 'number',
+              description: `步骤${index + 1}等待时间(ms)`,
+              default: step.params.duration as number,
+            };
+          }
+          break;
+
+        case 'scroll':
+          if (step.params.amount) {
+            params[`${stepPrefix}_amount`] = {
+              type: 'number',
+              description: `步骤${index + 1}滚动距离`,
+              default: step.params.amount as number,
+            };
+          }
+          break;
+      }
+    });
+
+    return params;
+  };
+
+  // Generate executable script from template steps with parameterized variables
+  const generateScript = (steps: TemplateStep[], params: Record<string, { type: string; description: string; default?: string | number }> = {}): string => {
     const lines: string[] = [
       '// Auto-generated browser automation script',
       '// Generated at: ' + new Date().toISOString(),
       '',
       'const { chromium } = require("playwright");',
       '',
-      'async function run() {',
-      '  const browser = await chromium.launch({ headless: false });',
-      '  const context = await browser.newContext();',
-      '  const page = await context.newPage();',
-      '',
+      '// === CONFIGURABLE PARAMETERS ===',
+      '// You can modify these values before running the script',
     ];
 
+    // Add parameter definitions
+    Object.entries(params).forEach(([key, param]) => {
+      const defaultValue = param.type === 'number' ? param.default : `'${param.default}'`;
+      lines.push(`// ${param.description}`);
+      lines.push(`const ${key} = ${defaultValue};`);
+    });
+
+    lines.push('');
+    lines.push('async function run() {');
+    lines.push('  const browser = await chromium.launch({ headless: false });');
+    lines.push('  const context = await browser.newContext();');
+    lines.push('  const page = await context.newPage();');
+    lines.push('');
+
     steps.forEach((step, index) => {
+      const stepPrefix = `step${index + 1}`;
       lines.push(`  // Step ${index + 1}: ${step.description}`);
+
       switch (step.tool) {
         case 'navigate':
-          lines.push(`  await page.goto('${step.params.url}');`);
+          const urlVar = params[`${stepPrefix}_url`] ? `${stepPrefix}_url` : `'${step.params.url}'`;
+          lines.push(`  await page.goto(${urlVar});`);
           break;
         case 'click':
-          if (step.params.selector) {
+          if (params[`${stepPrefix}_selector`]) {
+            lines.push(`  await page.click(${stepPrefix}_selector);`);
+          } else if (params[`${stepPrefix}_text`]) {
+            lines.push(`  await page.click('text=' + ${stepPrefix}_text);`);
+          } else if (step.params.selector) {
             lines.push(`  await page.click('${step.params.selector}');`);
           } else if (step.params.text) {
             lines.push(`  await page.click('text=${step.params.text}');`);
           }
           break;
         case 'fill':
-          lines.push(`  await page.fill('${step.params.selector}', '${step.params.value}');`);
+          const selectorVar = params[`${stepPrefix}_selector`] ? `${stepPrefix}_selector` : `'${step.params.selector}'`;
+          const valueVar = params[`${stepPrefix}_value`] ? `${stepPrefix}_value` : `'${step.params.value}'`;
+          lines.push(`  await page.fill(${selectorVar}, ${valueVar});`);
           break;
         case 'screenshot':
           lines.push(`  await page.screenshot({ path: 'screenshot-${index + 1}.png' });`);
           break;
         case 'scroll':
           if (step.params.direction === 'down') {
-            lines.push(`  await page.evaluate(() => window.scrollBy(0, ${step.params.amount || 300}));`);
+            const amountVar = params[`${stepPrefix}_amount`] ? `${stepPrefix}_amount` : step.params.amount || 300;
+            lines.push(`  await page.evaluate(() => window.scrollBy(0, ${amountVar}));`);
           } else if (step.params.direction === 'top') {
             lines.push(`  await page.evaluate(() => window.scrollTo(0, 0));`);
           }
           break;
         case 'wait':
-          if (step.params.duration) {
+          if (params[`${stepPrefix}_duration`]) {
+            lines.push(`  await page.waitForTimeout(${stepPrefix}_duration);`);
+          } else if (step.params.duration) {
             lines.push(`  await page.waitForTimeout(${step.params.duration});`);
           } else if (step.params.selector) {
             lines.push(`  await page.waitForSelector('${step.params.selector}');`);
@@ -399,6 +560,10 @@ const AIControls: React.FC<AIControlsProps> = ({ onCommandExecuted }) => {
           break;
         case 'press_key':
           lines.push(`  await page.keyboard.press('${step.params.key}');`);
+          break;
+        case 'type_text':
+          const textVar = params[`${stepPrefix}_text`] ? `${stepPrefix}_text` : `'${step.params.text}'`;
+          lines.push(`  await page.keyboard.type(${textVar});`);
           break;
         default:
           lines.push(`  // Unknown tool: ${step.tool}`);
@@ -467,21 +632,9 @@ const AIControls: React.FC<AIControlsProps> = ({ onCommandExecuted }) => {
       handleClearTemplate();
     } catch (error: any) {
       console.error('Failed to save template:', error);
-      // Fallback to localStorage
-      const template: Template = {
-        id: Date.now().toString(),
-        name,
-        steps: templateSteps,
-        createdAt: new Date(),
-      };
-
-      const savedTemplates = JSON.parse(localStorage.getItem('browserTemplates') || '[]');
-      savedTemplates.push(template);
-      localStorage.setItem('browserTemplates', JSON.stringify(savedTemplates));
-
-      message.success(`模版已保存到本地: ${template.name}`);
-      setShowTemplateModal(false);
-      handleClearTemplate();
+      // Show the actual error message
+      const errorMsg = error.response?.data?.message || error.message || '未知错误';
+      message.error(`保存模版失败: ${errorMsg}`);
     }
   };
 
