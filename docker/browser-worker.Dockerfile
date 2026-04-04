@@ -131,7 +131,8 @@ COPY scripts/start.sh /start.sh
 COPY scripts/start-recorder.sh /start-recorder.sh
 COPY scripts/entrypoint.sh /entrypoint.sh
 COPY scripts/codegen-api.py /scripts/codegen-api.py
-RUN chmod +x /start.sh /start-recorder.sh /entrypoint.sh /scripts/codegen-api.py
+COPY browser-chrome/scripts/execute-actions.js /scripts/execute-actions.js
+RUN chmod +x /start.sh /start-recorder.sh /entrypoint.sh /scripts/codegen-api.py /scripts/execute-actions.js
 
 # Create necessary directories
 RUN mkdir -p /var/log/supervisor /tmp/.X11-unix /tmp/codegen /scripts && chmod 1777 /tmp/.X11-unix

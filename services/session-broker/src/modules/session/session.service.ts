@@ -175,6 +175,8 @@ export class SessionService {
         error: r.error,
         message: r.message,
         screenshot: r.screenshot,
+        text: r.text,
+        html: r.html,
         timestamp: Date.now(),
       }));
       await this.redisService.set(stepsKey, JSON.stringify(stepResults), SESSION_TTL_SECONDS);

@@ -101,6 +101,43 @@ async function executeActions(actions, sessionId) {
           result.success = true;
           result.message = `Screenshot saved to ${path}`;
           result.screenshot = screenshotBuffer.toString('base64');
+        } else if (actionType === 'get_text' || actionType === 'getText') {
+          const selector = action.selector || action.target || 'body';
+          const text = await page.locator(selector).textContent({ timeout: 10000 });
+          result.success = true;
+          result.message = `Got text from ${selector}`;
+          result.text = text || '';
+        } else if (actionType === 'get_html' || actionType === 'getHtml') {
+          const selector = action.selector || action.target || 'body';
+          const html = await page.locator(selector).innerHTML({ timeout: 10000 });
+          result.success = true;
+          result.message = `Got HTML from ${selector}`;
+          result.html = html || '';
+        } else if (actionType === 'smart_search') {
+          const searchText = action.value || action.text || action.search || '';
+          const selector = action.selector || `[placeholder*="search"], input[type="search"], [role="searchbox"]`;
+          if (searchText) {
+            try {
+              await page.fill(selector, searchText, { timeout: 10000 });
+              await page.keyboard.press('Enter');
+              result.success = true;
+              result.message = `Searched for: ${searchText}`;
+              result.text = searchText;
+            } catch (e) {
+              result.message = `Search failed: ${e.message}`;
+            }
+          } else {
+            result.message = 'No search text provided';
+          }
+        } else if (actionType === 'snapshot') {
+          // Take screenshot and get page content
+          const path = `/tmp/codegen/${sessionId}_step${stepNum}.png`;
+          const screenshotBuffer = await page.screenshot({ path, type: 'png' });
+          const html = await page.content();
+          result.success = true;
+          result.message = `Snapshot taken`;
+          result.screenshot = screenshotBuffer.toString('base64');
+          result.html = html;
         } else {
           result.message = `Unknown action type: ${actionType}`;
         }
