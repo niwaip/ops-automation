@@ -42,9 +42,9 @@ const RecorderPage: React.FC = () => {
   const [hasExecuted, setHasExecuted] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
 
-  // Layout sizes: initial 60/40, after execution 30/70
-  const leftSpan = hasExecuted || isExpanded ? 7 : 14;
-  const rightSpan = hasExecuted || isExpanded ? 17 : 10;
+  // Layout sizes: initial 40/60, after execution 25/75
+  const leftSpan = hasExecuted || isExpanded ? 6 : 10;
+  const rightSpan = hasExecuted || isExpanded ? 18 : 14;
 
   // Compile mutation
   const compileMutation = useMutation(

@@ -199,12 +199,25 @@ const SessionStartPage: React.FC = () => {
   };
 
   return (
-    <div style={{ maxWidth: 1400, margin: '0 auto' }}>
+    <div
+      style={{
+        padding: '24px 48px',
+        minHeight: '100vh',
+        background: 'linear-gradient(135deg, #f5f7fa 0%, #e4e8ec 100%)',
+      }}
+    >
       <Row gutter={24}>
         {/* Left Column - Configuration */}
-        <Col span={12}>
+        <Col span={10}>
           {/* Main Content Card */}
-          <Card bordered={false} style={{ borderRadius: 16, boxShadow: '0 4px 24px rgba(0,0,0,0.06)' }}>
+          <Card
+            bordered={false}
+            style={{
+              borderRadius: 16,
+              boxShadow: '0 4px 20px rgba(0, 0, 0, 0.08)',
+              border: '1px solid rgba(255, 255, 255, 0.8)',
+            }}
+          >
             {/* Step 1: Select Template */}
             <div style={stepStyle}>
               <div style={stepNumberStyle}>1</div>
@@ -573,14 +586,19 @@ const SessionStartPage: React.FC = () => {
         </Col>
 
         {/* Right Column - noVNC Desktop View */}
-        <Col span={12}>
+        <Col span={14}>
           <Card
             bordered={false}
-            style={{ borderRadius: 16, boxShadow: '0 4px 24px rgba(0,0,0,0.06)', height: '100%' }}
+            style={{
+              borderRadius: 16,
+              boxShadow: '0 4px 20px rgba(0, 0, 0, 0.08)',
+              border: '1px solid rgba(255, 255, 255, 0.8)',
+              height: '100%',
+            }}
             title={
               <Space>
-                <DesktopOutlined style={{ fontSize: 20 }} />
-                <span>{t('session:desktopView') || '桌面预览'}</span>
+                <DesktopOutlined style={{ fontSize: 20, color: '#6366f1' }} />
+                <span style={{ fontWeight: 600 }}>{t('session:desktopView') || '桌面预览'}</span>
               </Space>
             }
             extra={
@@ -588,6 +606,7 @@ const SessionStartPage: React.FC = () => {
                 type="link"
                 size="small"
                 onClick={() => window.open(`${NOVNC_URL}?autoconnect=true&resize=scale`, '_blank')}
+                style={{ color: '#6366f1' }}
               >
                 {t('session:openInNewTab') || '新标签页打开'}
               </Button>
@@ -596,9 +615,8 @@ const SessionStartPage: React.FC = () => {
             <div style={{
               width: '100%',
               height: 700,
-              border: '1px solid #d9d9d9',
-              borderRadius: 8,
-              background: '#1e1e1e',
+              borderRadius: 12,
+              background: '#1a1a2e',
               overflow: 'hidden',
             }}>
               <iframe
