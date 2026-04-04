@@ -384,6 +384,67 @@ export class SessionService {
   }
 
   /**
+   * List sessions with optional filtering
+   */
+  async listSessions(options: { page?: number; pageSize?: number; status?: string; search?: string }): Promise<{ sessions: Session[]; total: number; page: number; pageSize: number }> {
+    const page = options.page || 1;
+    const pageSize = options.pageSize || 10;
+    const status = options.status;
+    const search = options.search?.toLowerCase();
+
+    // Scan all session keys
+    const sessionKeys: string[] = [];
+    let cursor = '0';
+
+    do {
+      const result = await this.redisService.scan(cursor, 'session:*', 100);
+      cursor = result.cursor;
+      sessionKeys.push(...result.keys);
+    } while (cursor !== '0');
+
+    // Filter out non-session keys (like session:*:steps)
+    const filteredKeys = sessionKeys.filter(key => {
+      const parts = key.split(':');
+      return parts.length === 2; // Only session:{id} keys
+    });
+
+    // Get all sessions
+    const sessions: Session[] = [];
+    for (const key of filteredKeys) {
+      const sessionId = key.replace('session:', '');
+      const session = await this.getSessionFromRedis(sessionId);
+      if (session) {
+        // Apply filters
+        if (status && session.state !== status) {
+          continue;
+        }
+        if (search) {
+          const searchStr = `${session.id} ${session.template_id || ''} ${session.user_id}`.toLowerCase();
+          if (!searchStr.includes(search)) {
+            continue;
+          }
+        }
+        sessions.push(session);
+      }
+    }
+
+    // Sort by created_at descending
+    sessions.sort((a, b) => b.created_at - a.created_at);
+
+    // Paginate
+    const total = sessions.length;
+    const start = (page - 1) * pageSize;
+    const paginatedSessions = sessions.slice(start, start + pageSize);
+
+    return {
+      sessions: paginatedSessions,
+      total,
+      page,
+      pageSize,
+    };
+  }
+
+  /**
    * Helper: Get session data from Redis and convert to Session object
    */
   private async getSessionFromRedis(sessionId: string): Promise<Session | null> {

@@ -1,5 +1,5 @@
-import { Controller, Post, Delete, Get, Body, Param, HttpCode, HttpStatus } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiParam } from '@nestjs/swagger';
+import { Controller, Post, Delete, Get, Body, Param, HttpCode, HttpStatus, Query } from '@nestjs/common';
+import { ApiTags, ApiOperation, ApiResponse, ApiParam, ApiQuery } from '@nestjs/swagger';
 import { SessionService } from './session.service';
 import {
   CreateSessionRequestDto,
@@ -90,5 +90,21 @@ export class SessionController {
   @ApiResponse({ status: HttpStatus.NOT_FOUND, description: 'Session not found' })
   async getStepResults(@Param('id') sessionId: string): Promise<any[]> {
     return this.sessionService.getStepResults(sessionId);
+  }
+
+  @Get()
+  @ApiOperation({ summary: 'List sessions' })
+  @ApiQuery({ name: 'page', required: false, type: Number })
+  @ApiQuery({ name: 'pageSize', required: false, type: Number })
+  @ApiQuery({ name: 'status', required: false, type: String })
+  @ApiQuery({ name: 'search', required: false, type: String })
+  @ApiResponse({ status: HttpStatus.OK, description: 'List of sessions' })
+  async listSessions(
+    @Query('page') page?: number,
+    @Query('pageSize') pageSize?: number,
+    @Query('status') status?: string,
+    @Query('search') search?: string,
+  ): Promise<{ sessions: any[]; total: number; page: number; pageSize: number }> {
+    return this.sessionService.listSessions({ page, pageSize, status, search });
   }
 }

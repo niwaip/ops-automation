@@ -106,4 +106,13 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
   async incr(key: string): Promise<number> {
     return this.client.incr(key);
   }
+
+  // Scan for keys matching pattern
+  async scan(cursor: string, pattern: string, count: number): Promise<{ cursor: string; keys: string[] }> {
+    const result = await this.client.scan(cursor, 'MATCH', pattern, 'COUNT', count);
+    return {
+      cursor: result[0],
+      keys: result[1],
+    };
+  }
 }

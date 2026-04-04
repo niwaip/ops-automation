@@ -86,6 +86,16 @@ export const sessionApi = {
     return apiClient.get<StepResult[]>(`/sessions/${id}/steps`);
   },
 
+  list: async (params?: { page?: number; pageSize?: number; status?: string; search?: string }): Promise<{ sessions: Session[]; total: number; page: number; pageSize: number }> => {
+    const queryParams = new URLSearchParams();
+    if (params?.page) queryParams.set('page', String(params.page));
+    if (params?.pageSize) queryParams.set('pageSize', String(params.pageSize));
+    if (params?.status) queryParams.set('status', params.status);
+    if (params?.search) queryParams.set('search', params.search);
+    const query = queryParams.toString();
+    return apiClient.get<{ sessions: Session[]; total: number; page: number; pageSize: number }>(`/sessions${query ? `?${query}` : ''}`);
+  },
+
   create: async (data: CreateSessionRequest): Promise<CreateSessionResponse> => {
     return apiClient.post<CreateSessionResponse>('/sessions', data);
   },
