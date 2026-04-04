@@ -143,6 +143,8 @@ export class SessionService {
 
     // Get template and execute all steps
     const template = await this.templateClient.getTemplate(request.template_id);
+    const totalSteps = template?.steps?.length || 0;
+
     if (template && template.steps && template.steps.length > 0) {
       // Execute all steps
       this.logger.log(`Executing ${template.steps.length} steps for session ${sessionId}`);
@@ -152,20 +154,45 @@ export class SessionService {
       const failedSteps = results.filter(r => !r.success);
       if (failedSteps.length > 0) {
         this.logger.warn(`Some steps failed: ${failedSteps.map(s => s.step_id).join(', ')}`);
+        // Update session state to ERROR if any step failed
+        const lastFailedStep = failedSteps[failedSteps.length - 1];
+        const lastStepIndex = results.findIndex(r => r.step_id === lastFailedStep.step_id);
+
+        await this.redisService.hmset(sessionKey, {
+          state: 'ERROR',
+          template_id: request.template_id,
+          params: JSON.stringify(request.params),
+          current_step: lastFailedStep.step_id,
+          step_index: String(lastStepIndex >= 0 ? lastStepIndex : results.length - 1),
+          last_activity: String(Date.now()),
+        });
+
+        this.logger.error(`Session ${sessionId} failed at step ${lastFailedStep.step_id}`);
       } else {
         this.logger.log(`All ${results.length} steps completed successfully`);
-      }
-    }
+        // Update session state to CLOSED after all steps completed
+        await this.redisService.hmset(sessionKey, {
+          state: 'CLOSED',
+          template_id: request.template_id,
+          params: JSON.stringify(request.params),
+          current_step: `step_${totalSteps - 1}`,
+          step_index: String(totalSteps - 1),
+          last_activity: String(Date.now()),
+        });
 
-    // Update session state
-    await this.redisService.hmset(sessionKey, {
-      state: 'RUNNING',
-      template_id: request.template_id,
-      params: JSON.stringify(request.params),
-      current_step: 'step_0',
-      step_index: '0',
-      last_activity: String(Date.now()),
-    });
+        this.logger.log(`Session ${sessionId} completed all ${totalSteps} steps`);
+      }
+    } else {
+      // No steps to execute, just update state
+      await this.redisService.hmset(sessionKey, {
+        state: 'RUNNING',
+        template_id: request.template_id,
+        params: JSON.stringify(request.params),
+        current_step: 'step_0',
+        step_index: '0',
+        last_activity: String(Date.now()),
+      });
+    }
 
     this.logger.log(`Session started: session=${sessionId}, template=${request.template_id}`);
 
