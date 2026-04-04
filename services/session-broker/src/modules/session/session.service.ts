@@ -21,6 +21,20 @@ import {
 // Session TTL: 86400 seconds (24 hours)
 const SESSION_TTL_SECONDS = 86400;
 
+// Step result interface
+export interface StepResult {
+  step_id: string;
+  step_index: number;
+  action: string;
+  success: boolean;
+  error?: string;
+  message?: string;
+  screenshot?: string;
+  text?: string;
+  html?: string;
+  timestamp: number;
+}
+
 @Injectable()
 export class SessionService {
   private readonly logger = new Logger(SessionService.name);
@@ -143,29 +157,70 @@ export class SessionService {
 
     // Get template and execute all steps
     const template = await this.templateClient.getTemplate(request.template_id);
+    const totalSteps = template?.steps?.length || 0;
+
     if (template && template.steps && template.steps.length > 0) {
       // Execute all steps
       this.logger.log(`Executing ${template.steps.length} steps for session ${sessionId}`);
 
       const results = await this.cdpExecutor.executeSteps(template.steps as TemplateStep[], sessionId);
 
+      // Store step results in Redis
+      const stepsKey = `session:${sessionId}:steps`;
+      const stepResults: StepResult[] = results.map((r, i) => ({
+        step_id: r.step_id,
+        step_index: i,
+        action: r.action || template.steps[i].action,
+        success: r.success,
+        error: r.error,
+        message: r.message,
+        screenshot: r.screenshot,
+        timestamp: Date.now(),
+      }));
+      await this.redisService.set(stepsKey, JSON.stringify(stepResults), SESSION_TTL_SECONDS);
+
       const failedSteps = results.filter(r => !r.success);
       if (failedSteps.length > 0) {
         this.logger.warn(`Some steps failed: ${failedSteps.map(s => s.step_id).join(', ')}`);
+        // Update session state to ERROR if any step failed
+        const lastFailedStep = failedSteps[failedSteps.length - 1];
+        const lastStepIndex = results.findIndex(r => r.step_id === lastFailedStep.step_id);
+
+        await this.redisService.hmset(sessionKey, {
+          state: 'ERROR',
+          template_id: request.template_id,
+          params: JSON.stringify(request.params),
+          current_step: lastFailedStep.step_id,
+          step_index: String(lastStepIndex >= 0 ? lastStepIndex : results.length - 1),
+          last_activity: String(Date.now()),
+        });
+
+        this.logger.error(`Session ${sessionId} failed at step ${lastFailedStep.step_id}`);
       } else {
         this.logger.log(`All ${results.length} steps completed successfully`);
-      }
-    }
+        // Update session state to CLOSED after all steps completed
+        await this.redisService.hmset(sessionKey, {
+          state: 'CLOSED',
+          template_id: request.template_id,
+          params: JSON.stringify(request.params),
+          current_step: `step_${totalSteps - 1}`,
+          step_index: String(totalSteps - 1),
+          last_activity: String(Date.now()),
+        });
 
-    // Update session state
-    await this.redisService.hmset(sessionKey, {
-      state: 'RUNNING',
-      template_id: request.template_id,
-      params: JSON.stringify(request.params),
-      current_step: 'step_0',
-      step_index: '0',
-      last_activity: String(Date.now()),
-    });
+        this.logger.log(`Session ${sessionId} completed all ${totalSteps} steps`);
+      }
+    } else {
+      // No steps to execute, just update state
+      await this.redisService.hmset(sessionKey, {
+        state: 'RUNNING',
+        template_id: request.template_id,
+        params: JSON.stringify(request.params),
+        current_step: 'step_0',
+        step_index: '0',
+        last_activity: String(Date.now()),
+      });
+    }
 
     this.logger.log(`Session started: session=${sessionId}, template=${request.template_id}`);
 
@@ -300,6 +355,93 @@ export class SessionService {
   async hasActiveSession(userId: string): Promise<boolean> {
     const lockHolder = await this.lockService.checkProfileLock(userId);
     return lockHolder !== null;
+  }
+
+  /**
+   * Get step results for a session
+   */
+  async getStepResults(sessionId: string): Promise<StepResult[]> {
+    // First check if session exists
+    const session = await this.getSessionFromRedis(sessionId);
+    if (!session) {
+      throw new NotFoundException(`Session ${sessionId} not found`);
+    }
+
+    // Get step results from Redis
+    const stepsKey = `session:${sessionId}:steps`;
+    const stepsData = await this.redisService.get(stepsKey);
+
+    if (!stepsData) {
+      return [];
+    }
+
+    try {
+      return JSON.parse(stepsData) as StepResult[];
+    } catch (e) {
+      this.logger.error(`Failed to parse step results for session ${sessionId}`);
+      return [];
+    }
+  }
+
+  /**
+   * List sessions with optional filtering
+   */
+  async listSessions(options: { page?: number; pageSize?: number; status?: string; search?: string }): Promise<{ sessions: Session[]; total: number; page: number; pageSize: number }> {
+    const page = options.page || 1;
+    const pageSize = options.pageSize || 10;
+    const status = options.status;
+    const search = options.search?.toLowerCase();
+
+    // Scan all session keys
+    const sessionKeys: string[] = [];
+    let cursor = '0';
+
+    do {
+      const result = await this.redisService.scan(cursor, 'session:*', 100);
+      cursor = result.cursor;
+      sessionKeys.push(...result.keys);
+    } while (cursor !== '0');
+
+    // Filter out non-session keys (like session:*:steps)
+    const filteredKeys = sessionKeys.filter(key => {
+      const parts = key.split(':');
+      return parts.length === 2; // Only session:{id} keys
+    });
+
+    // Get all sessions
+    const sessions: Session[] = [];
+    for (const key of filteredKeys) {
+      const sessionId = key.replace('session:', '');
+      const session = await this.getSessionFromRedis(sessionId);
+      if (session) {
+        // Apply filters
+        if (status && session.state !== status) {
+          continue;
+        }
+        if (search) {
+          const searchStr = `${session.id} ${session.template_id || ''} ${session.user_id}`.toLowerCase();
+          if (!searchStr.includes(search)) {
+            continue;
+          }
+        }
+        sessions.push(session);
+      }
+    }
+
+    // Sort by created_at descending
+    sessions.sort((a, b) => b.created_at - a.created_at);
+
+    // Paginate
+    const total = sessions.length;
+    const start = (page - 1) * pageSize;
+    const paginatedSessions = sessions.slice(start, start + pageSize);
+
+    return {
+      sessions: paginatedSessions,
+      total,
+      page,
+      pageSize,
+    };
   }
 
   /**

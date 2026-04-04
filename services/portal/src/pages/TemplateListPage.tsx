@@ -10,6 +10,7 @@ import {
   CloudUploadOutlined,
   CloudDownloadOutlined,
   PlayCircleOutlined,
+  BugOutlined,
 } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
 import { useQuery, useMutation, useQueryClient } from 'react-query';
@@ -162,9 +163,9 @@ const TemplateListPage: React.FC = () => {
     {
       title: t('common:actions'),
       key: 'actions',
-      width: 250,
+      width: 400,
       render: (_, record) => (
-        <Space>
+        <Space wrap>
           <Button
             type="link"
             size="small"
@@ -172,6 +173,14 @@ const TemplateListPage: React.FC = () => {
             onClick={() => navigate(`/templates/${record.id}`)}
           >
             {t('common:edit')}
+          </Button>
+          <Button
+            type="link"
+            size="small"
+            icon={<BugOutlined />}
+            onClick={() => navigate(`/templates/${record.id}?test=true`)}
+          >
+            {t('template:testTemplate')}
           </Button>
           {record.status === 'PUBLISHED' && (
             <Button
@@ -214,17 +223,16 @@ const TemplateListPage: React.FC = () => {
               {t('template:deprecateTemplate')}
             </Button>
           )}
-          {record.status === 'DRAFT' && (
-            <Button
-              type="link"
-              size="small"
-              danger
-              icon={<DeleteOutlined />}
-              onClick={() => handleDelete(record.id)}
-            >
-              {t('common:delete')}
-            </Button>
-          )}
+          {/* Allow delete for all statuses */}
+          <Button
+            type="link"
+            size="small"
+            danger
+            icon={<DeleteOutlined />}
+            onClick={() => handleDelete(record.id)}
+          >
+            {t('common:delete')}
+          </Button>
         </Space>
       ),
     },

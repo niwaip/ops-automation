@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Param, HttpException, HttpStatus } from '@nestjs/common';
+import { Controller, Get, Post, Body, Param, Patch, Delete, HttpException, HttpStatus } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { ModelService } from './modules/model/model.service';
 import { AgentService } from './modules/agent/agent.service';
@@ -34,6 +34,14 @@ export class AIController {
     return { models };
   }
 
+  @Get('models/presets')
+  @ApiOperation({ summary: 'List all available preset model configurations' })
+  @ApiResponse({ status: 200, description: 'Returns list of preset models with configuration status' })
+  async listPresetModels(): Promise<{ presets: Array<{ name: string; provider: string; configured: boolean; default?: boolean; description?: string }> }> {
+    const presets = this.modelService.checkPresetModelStatus();
+    return { presets };
+  }
+
   @Post('models')
   @ApiOperation({ summary: 'Register a new AI model' })
   @ApiResponse({ status: 201, description: 'Model registered successfully' })
@@ -51,6 +59,93 @@ export class AIController {
       throw new HttpException('Model not found', HttpStatus.NOT_FOUND);
     }
     return model;
+  }
+
+  @Patch('models/:id/enable')
+  @ApiOperation({ summary: 'Enable an AI model' })
+  @ApiResponse({ status: 200, description: 'Model enabled successfully' })
+  @ApiResponse({ status: 404, description: 'Model not found' })
+  async enableModel(@Param('id') id: string): Promise<AIModelDTO> {
+    const model = await this.modelService.getModel(id);
+    if (!model) {
+      throw new HttpException('Model not found', HttpStatus.NOT_FOUND);
+    }
+    return this.modelService.setModelStatus(id, 'active');
+  }
+
+  @Patch('models/:id/disable')
+  @ApiOperation({ summary: 'Disable an AI model' })
+  @ApiResponse({ status: 200, description: 'Model disabled successfully' })
+  @ApiResponse({ status: 404, description: 'Model not found' })
+  async disableModel(@Param('id') id: string): Promise<AIModelDTO> {
+    const model = await this.modelService.getModel(id);
+    if (!model) {
+      throw new HttpException('Model not found', HttpStatus.NOT_FOUND);
+    }
+    return this.modelService.setModelStatus(id, 'inactive');
+  }
+
+  @Patch('models/:id')
+  @ApiOperation({ summary: 'Update an AI model configuration' })
+  @ApiResponse({ status: 200, description: 'Model updated successfully' })
+  @ApiResponse({ status: 404, description: 'Model not found' })
+  async updateModel(@Param('id') id: string, @Body() body: Partial<CreateModelDTO>): Promise<AIModelDTO> {
+    const model = await this.modelService.getModel(id);
+    if (!model) {
+      throw new HttpException('Model not found', HttpStatus.NOT_FOUND);
+    }
+    return this.modelService.updateModel(id, body);
+  }
+
+  @Delete('models/:id')
+  @ApiOperation({ summary: 'Delete an AI model' })
+  @ApiResponse({ status: 200, description: 'Model deleted successfully' })
+  @ApiResponse({ status: 404, description: 'Model not found' })
+  async deleteModel(@Param('id') id: string): Promise<{ success: boolean }> {
+    const success = await this.modelService.deleteModel(id);
+    if (!success) {
+      throw new HttpException('Model not found', HttpStatus.NOT_FOUND);
+    }
+    return { success };
+  }
+
+  @Post('models/:id/test')
+  @ApiOperation({ summary: 'Test an AI model with a prompt' })
+  @ApiResponse({ status: 200, description: 'Test result' })
+  @ApiResponse({ status: 404, description: 'Model not found' })
+  async testModel(@Param('id') id: string, @Body() body: { prompt: string }): Promise<{ success: boolean; response?: string; error?: string }> {
+    const model = await this.modelService.getModel(id);
+    if (!model) {
+      throw new HttpException('Model not found', HttpStatus.NOT_FOUND);
+    }
+    try {
+      const response = await this.modelService.callModel(id, body.prompt || 'Hello, this is a test.');
+      return { success: true, response };
+    } catch (error: unknown) {
+      const errorMsg = error instanceof Error ? error.message : 'Unknown error';
+      return { success: false, error: errorMsg };
+    }
+  }
+
+  @Post('models/test-config')
+  @ApiOperation({ summary: 'Test a model configuration before creating' })
+  @ApiResponse({ status: 200, description: 'Test result' })
+  async testConfig(@Body() body: { endpoint: string; apiKey: string; modelName: string }): Promise<{ success: boolean; response?: string; error?: string }> {
+    try {
+      // Create a temporary client to test the configuration
+      const { OpenAICompatibleClient } = await import('./client/openai-compatible');
+      const client = new OpenAICompatibleClient({
+        baseURL: body.endpoint,
+        apiKey: body.apiKey,
+        model: body.modelName,
+      });
+      const messages = [{ role: 'user' as const, content: 'Hello, this is a test message.' }];
+      const response = await client.chatCompletion(messages);
+      return { success: true, response };
+    } catch (error: unknown) {
+      const errorMsg = error instanceof Error ? error.message : 'Unknown error';
+      return { success: false, error: errorMsg };
+    }
   }
 
   // Agent endpoints

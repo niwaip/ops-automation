@@ -18,6 +18,10 @@ export default defineConfig({
   server: {
     port: 5173,
     host: '0.0.0.0',
+    // Force disable cache for development
+    headers: {
+      'Cache-Control': 'no-store',
+    },
     proxy: {
       '/api/auth': {
         target: getProxyTarget('ops-auth', 3001),
@@ -34,6 +38,11 @@ export default defineConfig({
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/api/, ''),
       },
+      '/api/workers': {
+        target: getProxyTarget('ops-session-broker', 3002),
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api/, ''),
+      },
       '/api/ai': {
         target: getProxyTarget('ops-ai-orchestrator', 3007),
         changeOrigin: true,
@@ -41,6 +50,11 @@ export default defineConfig({
       },
       '/api/replay': {
         target: getProxyTarget('ops-replay-engine', 3006),
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api/, ''),
+      },
+      '/api/browser': {
+        target: getProxyTarget('ops-browser-worker', 3004),
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/api/, ''),
       },

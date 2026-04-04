@@ -11,10 +11,13 @@ import {
 } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
 import { useQuery, useMutation, useQueryClient } from 'react-query';
-import { sessionApi, Session, SessionStatus } from '../api/session';
+import { sessionApi, Session } from '../api/session';
 import type { ColumnsType } from 'antd/es/table';
 
 const { Option } = Select;
+
+// Session state type matching backend
+type SessionState = 'IDLE' | 'RUNNING' | 'HUMAN_CONTROL' | 'CLOSED' | 'ERROR';
 
 const SessionListPage: React.FC = () => {
   const { t } = useTranslation(['common', 'session']);
@@ -23,23 +26,13 @@ const SessionListPage: React.FC = () => {
 
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
-  const [statusFilter, setStatusFilter] = useState<SessionStatus | undefined>();
+  const [statusFilter, setStatusFilter] = useState<SessionState | undefined>();
   const [searchText, setSearchText] = useState('');
 
   const sessionsQuery = useQuery(
     ['sessions', { page, pageSize, status: statusFilter, search: searchText }],
     () => sessionApi.list({ page, pageSize, status: statusFilter, search: searchText })
   );
-
-  const stopMutation = useMutation(sessionApi.stop, {
-    onSuccess: () => {
-      message.success(t('common:success'));
-      queryClient.invalidateQueries(['sessions']);
-    },
-    onError: () => {
-      message.error(t('common:error'));
-    },
-  });
 
   const deleteMutation = useMutation(sessionApi.delete, {
     onSuccess: () => {
@@ -51,15 +44,22 @@ const SessionListPage: React.FC = () => {
     },
   });
 
-  const handleStop = (id: string) => {
-    stopMutation.mutate(id);
-  };
-
   const handleDelete = (id: string) => {
     Modal.confirm({
       title: t('common:confirmDelete'),
       onOk: () => deleteMutation.mutate(id),
     });
+  };
+
+  const getStateColor = (state: SessionState) => {
+    const colorMap: Record<SessionState, string> = {
+      IDLE: 'default',
+      RUNNING: 'processing',
+      HUMAN_CONTROL: 'warning',
+      CLOSED: 'default',
+      ERROR: 'error',
+    };
+    return colorMap[state] || 'default';
   };
 
   const columns: ColumnsType<Session> = [
@@ -69,60 +69,42 @@ const SessionListPage: React.FC = () => {
       key: 'id',
       width: 120,
       ellipsis: true,
-    },
-    {
-      title: t('session:sessionName'),
-      dataIndex: 'name',
-      key: 'name',
-      render: (name: string) => name || '-',
-    },
-    {
-      title: t('session:sessionType'),
-      dataIndex: 'type',
-      key: 'type',
-      render: (type: string) => <Tag>{type}</Tag>,
-    },
-    {
-      title: t('session:sessionStatus'),
-      dataIndex: 'status',
-      key: 'status',
-      render: (status: SessionStatus) => {
-        const colorMap: Record<SessionStatus, string> = {
-          pending: 'default',
-          running: 'processing',
-          completed: 'success',
-          failed: 'error',
-          canceled: 'warning',
-          paused: 'orange',
-        };
-        return (
-          <Tag color={colorMap[status]}>
-            {t(`session:status${status.charAt(0).toUpperCase() + status.slice(1)}`)}
-          </Tag>
-        );
-      },
+      render: (id: string) => <span style={{ fontSize: 11 }}>{id.substring(0, 8)}...</span>,
     },
     {
       title: t('session:template'),
-      dataIndex: ['template', 'name'],
-      key: 'template',
-      render: (name: string) => name || '-',
+      dataIndex: 'template_id',
+      key: 'template_id',
+      width: 120,
+      ellipsis: true,
+      render: (templateId: string) => templateId ? <span style={{ fontSize: 11 }}>{templateId.substring(0, 8)}...</span> : '-',
+    },
+    {
+      title: t('session:sessionStatus'),
+      dataIndex: 'state',
+      key: 'state',
+      render: (state: SessionState) => (
+        <Tag color={getStateColor(state)}>{state}</Tag>
+      ),
     },
     {
       title: t('session:owner'),
-      dataIndex: ['owner', 'username'],
-      key: 'owner',
+      dataIndex: 'user_id',
+      key: 'user_id',
+      width: 120,
+      ellipsis: true,
+      render: (userId: string) => <span style={{ fontSize: 11 }}>{userId ? userId.substring(0, 8) + '...' : '-'}</span>,
     },
     {
       title: t('session:startTime'),
-      dataIndex: 'startTime',
-      key: 'startTime',
-      render: (time: string) => time ? new Date(time).toLocaleString() : '-',
+      dataIndex: 'created_at',
+      key: 'created_at',
+      render: (createdAt: number) => createdAt ? new Date(createdAt).toLocaleString() : '-',
     },
     {
       title: t('common:actions'),
       key: 'actions',
-      width: 200,
+      width: 250,
       render: (_, record) => (
         <Space>
           <Button
@@ -133,17 +115,6 @@ const SessionListPage: React.FC = () => {
           >
             {t('session:viewSession')}
           </Button>
-          {record.status === 'running' && (
-            <Button
-              type="link"
-              size="small"
-              danger
-              icon={<StopOutlined />}
-              onClick={() => handleStop(record.id)}
-            >
-              {t('session:stopSession')}
-            </Button>
-          )}
           <Button
             type="link"
             size="small"
@@ -158,7 +129,7 @@ const SessionListPage: React.FC = () => {
     },
   ];
 
-  const statusOptions: SessionStatus[] = ['pending', 'running', 'completed', 'failed', 'canceled', 'paused'];
+  const stateOptions: SessionState[] = ['IDLE', 'RUNNING', 'HUMAN_CONTROL', 'CLOSED', 'ERROR'];
 
   return (
     <div>
@@ -182,9 +153,9 @@ const SessionListPage: React.FC = () => {
               onChange={(value) => setStatusFilter(value)}
               allowClear
             >
-              {statusOptions.map((status) => (
-                <Option key={status} value={status}>
-                  {t(`session:status${status.charAt(0).toUpperCase() + status.slice(1)}`)}
+              {stateOptions.map((state) => (
+                <Option key={state} value={state}>
+                  {state}
                 </Option>
               ))}
             </Select>

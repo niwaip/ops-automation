@@ -87,26 +87,38 @@ RUN apt-get update && apt-get install -y \
     socat \
     && rm -rf /var/lib/apt/lists/*
 
-# Install Chromium via Playwright (supports arm64)
-RUN npm install -g playwright && \
-    npx playwright install chromium --with-deps && \
-    echo "=== Playwright cache contents ===" && \
+# Install Python Playwright for AI control mode (use China mirror)
+RUN pip3 config set global.index-url https://pypi.tuna.tsinghua.edu.cn/simple && \
+    pip3 install playwright && \
+    python3 -m playwright install chromium && \
+    echo "=== Python Playwright installed ===" && \
+    python3 -c "from playwright.sync_api import sync_playwright; print('Playwright Python OK')"
+
+# Set up Chromium from Python Playwright installation
+RUN echo "=== Playwright cache contents ===" && \
     ls -la /root/.cache/ms-playwright/ && \
-    CHROMIUM_DIR=$(ls -d /root/.cache/ms-playwright/chromium-* | head -1) && \
-    echo "Found Chromium dir: ${CHROMIUM_DIR}" && \
-    ls -la "${CHROMIUM_DIR}/" && \
-    find "${CHROMIUM_DIR}" -type f -name "chrome" -o -name "chromium" | head -5 && \
-    CHROME_BIN=$(find "${CHROMIUM_DIR}" -type f -name "chrome" | head -1) && \
-    echo "Chrome binary: ${CHROME_BIN}" && \
-    # Move chromium to /opt for all users to access
-    mv "${CHROMIUM_DIR}" /opt/chromium && \
-    ln -sf /opt/chromium/chrome-linux/chrome /usr/bin/google-chrome && \
-    chmod +x /opt/chromium/chrome-linux/chrome && \
-    chmod -R a+rx /opt/chromium && \
-    # Create symlink for Playwright to find the browser
-    ln -sf /opt/chromium /root/.cache/ms-playwright/chromium-$(basename "${CHROMIUM_DIR}" | sed 's/chromium-//') && \
-    ls -la /usr/bin/google-chrome && \
-    ls -la /opt/chromium/chrome-linux/ && \
+    CHROMIUM_DIR=$(ls -d /root/.cache/ms-playwright/chromium-* 2>/dev/null | head -1) && \
+    if [ -n "$CHROMIUM_DIR" ]; then \
+        echo "Found Chromium dir: ${CHROMIUM_DIR}" && \
+        ls -la "${CHROMIUM_DIR}/" && \
+        CHROME_BIN=$(find "${CHROMIUM_DIR}" -type f -name "chrome" | head -1) && \
+        echo "Chrome binary: ${CHROME_BIN}" && \
+        mv "${CHROMIUM_DIR}" /opt/chromium && \
+        ln -sf /opt/chromium/chrome-linux/chrome /usr/bin/google-chrome && \
+        chmod +x /opt/chromium/chrome-linux/chrome && \
+        chmod -R a+rx /opt/chromium && \
+        ln -sf /opt/chromium /root/.cache/ms-playwright/chromium-$(basename "${CHROMIUM_DIR}" | sed 's/chromium-//') && \
+        ls -la /usr/bin/google-chrome && \
+        ls -la /opt/chromium/chrome-linux/; \
+    else \
+        echo "No Chromium found, using npm playwright"; \
+        npm config set registry https://registry.npmmirror.com && \
+        npm install -g playwright && \
+        npx playwright install chromium --with-deps && \
+        CHROMIUM_DIR=$(ls -d /root/.cache/ms-playwright/chromium-* | head -1) && \
+        mv "${CHROMIUM_DIR}" /opt/chromium && \
+        ln -sf /opt/chromium/chrome-linux/chrome /usr/bin/google-chrome; \
+    fi && \
     ls -la /root/.cache/ms-playwright/
 
 # Create non-root user for Chrome

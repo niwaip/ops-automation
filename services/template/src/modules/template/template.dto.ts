@@ -1,10 +1,11 @@
-import { IsString, IsOptional, IsArray, ValidateNested, IsUUID, Matches } from 'class-validator';
+import { IsString, IsOptional, IsArray, ValidateNested, IsUUID, Matches, IsNotEmpty } from 'class-validator';
 import { Type } from 'class-transformer';
 import { TemplateStatus, TemplateStep, ParamsSchema } from '../../types/template.types';
 
 export class CreateTemplateDto {
   @IsString()
-  @Matches(/^[\w\s-]{3,255}$/)
+  @IsNotEmpty()
+  @Matches(/^.+$/, { message: 'Name must be between 1 and 255 characters' })
   name: string;
 
   @IsOptional()
@@ -28,14 +29,15 @@ export class CreateTemplateDto {
   @Type(() => Object)
   steps?: TemplateStep[];
 
-  @IsUUID()
+  @IsString()
+  @IsNotEmpty()
   created_by: string;
 }
 
 export class UpdateTemplateDto {
   @IsOptional()
   @IsString()
-  @Matches(/^[\w\s-]{3,255}$/)
+  @IsNotEmpty()
   name?: string;
 
   @IsOptional()

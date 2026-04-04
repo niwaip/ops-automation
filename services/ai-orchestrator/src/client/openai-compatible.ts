@@ -12,7 +12,7 @@ export class OpenAICompatibleClient {
   private model: string;
   private timeout: number;
 
-  constructor(config: OpenAICompatibleConfig, timeout: number = 30000) {
+  constructor(config: OpenAICompatibleConfig, timeout: number = 120000) {
     this.baseURL = config.baseURL;
     this.apiKey = config.apiKey;
     this.model = config.model;
@@ -35,7 +35,8 @@ export class OpenAICompatibleClient {
    */
   async chatCompletion(messages: ChatMessage[]): Promise<string> {
     try {
-      const response = await this.client.post('/v1/chat/completions', {
+      // Use /chat/completions since baseURL already includes /v1
+      const response = await this.client.post('/chat/completions', {
         model: this.model,
         messages,
       });
@@ -43,6 +44,10 @@ export class OpenAICompatibleClient {
       return response.data.choices[0]?.message?.content || '';
     } catch (error: unknown) {
       if (error instanceof AxiosError) {
+        // Check for timeout specifically
+        if (error.code === 'ECONNABORTED' || error.message.includes('timeout')) {
+          throw new Error(`AI 模型响应超时 (${this.timeout}ms)，请稍后重试或使用更简单的命令`);
+        }
         throw new Error(`OpenAI API Error: ${error.response?.data?.error?.message || error.message}`);
       }
       throw error;
@@ -60,7 +65,8 @@ export class OpenAICompatibleClient {
     onChunk: (chunk: string) => void,
   ): Promise<string> {
     try {
-      const response = await this.client.post('/v1/chat/completions', {
+      // Use /chat/completions since baseURL already includes /v1
+      const response = await this.client.post('/chat/completions', {
         model: this.model,
         messages,
         stream: true,
@@ -107,7 +113,8 @@ export class OpenAICompatibleClient {
    */
   async listModels(): Promise<string[]> {
     try {
-      const response = await this.client.get('/v1/models');
+      // Use /models since baseURL already includes /v1
+      const response = await this.client.get('/models');
       return response.data.data?.map((model: { id: string }) => model.id) || [];
     } catch (error: unknown) {
       if (error instanceof AxiosError) {
@@ -123,7 +130,8 @@ export class OpenAICompatibleClient {
    */
   async healthCheck(): Promise<boolean> {
     try {
-      const response = await this.client.get('/v1/models', { timeout: 5000 });
+      // Use /models since baseURL already includes /v1
+      const response = await this.client.get('/models', { timeout: 5000 });
       return response.status === 200;
     } catch {
       return false;

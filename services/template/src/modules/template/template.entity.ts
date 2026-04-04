@@ -40,10 +40,10 @@ export class TemplateEntity {
   @Column({ type: 'jsonb', default: {} })
   config: Record<string, unknown>;
 
-  @Column('uuid')
+  @Column({ length: 255, default: 'system' })
   created_by: string;
 
-  @Column('uuid', { nullable: true })
+  @Column({ length: 255, nullable: true, default: null })
   reviewed_by: string;
 
   @Column({ type: 'timestamp', nullable: true })

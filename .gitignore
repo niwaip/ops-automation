@@ -61,3 +61,6 @@ docker-compose.override.yml
 *.generated.ts
 vite.config.js
 vite.config.d.ts
+
+# AI Orchestrator data (persisted models and API keys)
+services/ai-orchestrator/data/

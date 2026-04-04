@@ -62,5 +62,31 @@
     "hint": "Providing operation intent helps AI better understand the script purpose and generate more accurate template description and parameter definitions.",
     "confirm": "Start Compile",
     "cancel": "Cancel"
+  },
+  "ai": {
+    "title": "AI Browser Control",
+    "ready": "Ready",
+    "notReady": "Not Initialized",
+    "initBrowser": "Initialize Browser",
+    "browserReady": "Browser is ready",
+    "browserInitFailed": "Browser initialization failed",
+    "browserInitialized": "Browser session initialized. You can now send commands.",
+    "infoTitle": "Natural Language Control",
+    "infoDesc": "Enter natural language descriptions and AI will automatically convert them to browser commands. Supports navigation, click, fill, screenshot and more.",
+    "examples": "Example commands:",
+    "example": {
+      "navigate": "Open Baidu",
+      "search": "Search keyword",
+      "click": "Click element",
+      "screenshot": "Take screenshot"
+    },
+    "noHistory": "No conversation history",
+    "inputPlaceholder": "Enter natural language command, e.g., Open Baidu and search MCP",
+    "commands": "commands",
+    "execute": "Execute Commands",
+    "parseFailed": "Failed to parse command",
+    "commandExecuted": "Command executed successfully",
+    "executionFailed": "Command execution failed",
+    "clearHistory": "Clear history"
   }
 }

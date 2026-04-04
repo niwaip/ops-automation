@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Card, Select, Input, Button, Space, Spin, message, Tag, Alert, Radio, DatePicker, TimePicker, Divider, Row, Col, Typography } from 'antd';
+import { Card, Select, Input, Button, Space, Spin, message, Tag, Alert, Radio, DatePicker, TimePicker, Divider, Row, Col, Typography, Tabs } from 'antd';
 import {
   RobotOutlined,
   PlayCircleOutlined,
@@ -10,12 +10,13 @@ import {
   CalendarOutlined,
   EyeOutlined,
   DesktopOutlined,
+  ReloadOutlined,
 } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
 import { useQuery, useMutation } from 'react-query';
 import { templateApi, Template } from '../api/template';
 import { aiApi, RecognizeParamsResponse } from '../api/ai';
-import { sessionApi } from '../api/session';
+import { sessionApi, workerApi } from '../api/session';
 import { useAuthStore } from '../store/authStore';
 
 const { TextArea } = Input;
@@ -113,6 +114,22 @@ const SessionStartPage: React.FC = () => {
     }
   );
 
+  // Reset worker pool mutation
+  const resetWorkerMutation = useMutation(
+    async () => {
+      const result = await workerApi.reset();
+      return result;
+    },
+    {
+      onSuccess: (result) => {
+        message.success(result.message || t('template:workerResetSuccess'));
+      },
+      onError: () => {
+        message.error(t('template:workerResetFailed'));
+      },
+    }
+  );
+
   const handleRecognize = () => {
     if (!selectedTemplateId) {
       message.warning(t('session:selectTemplateFirst'));
@@ -134,7 +151,7 @@ const SessionStartPage: React.FC = () => {
   };
 
   const selectedTemplate = selectedTemplateQuery.data;
-  const isLoading = templatesQuery.isLoading || recognizeMutation.isLoading || executeMutation.isLoading;
+  const isLoading = templatesQuery.isLoading || recognizeMutation.isLoading || executeMutation.isLoading || resetWorkerMutation.isLoading;
 
   // Step indicator styles
   const stepStyle = {
@@ -165,22 +182,6 @@ const SessionStartPage: React.FC = () => {
       <Row gutter={24}>
         {/* Left Column - Configuration */}
         <Col span={12}>
-          {/* Page Header */}
-          <div style={{
-            background: 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)',
-            borderRadius: 16,
-            padding: '24px 32px',
-            marginBottom: 24,
-            color: '#fff',
-          }}>
-            <Title level={2} style={{ color: '#fff', margin: 0, marginBottom: 8 }}>
-              {t('session:startNewSession')}
-            </Title>
-            <Text style={{ color: 'rgba(255,255,255,0.85)', fontSize: 16 }}>
-              {t('session:pageSubtitle') || '选择模板，配置参数，开始自动化任务'}
-            </Text>
-          </div>
-
           {/* Main Content Card */}
           <Card bordered={false} style={{ borderRadius: 16, boxShadow: '0 4px 24px rgba(0,0,0,0.06)' }}>
             {/* Step 1: Select Template */}
@@ -302,136 +303,107 @@ const SessionStartPage: React.FC = () => {
             </div>
 
             <div style={{ marginLeft: 44, marginBottom: 32 }}>
-              <Radio.Group
-                value={executionMode}
-                onChange={(e) => setExecutionMode(e.target.value)}
-                style={{ width: '100%' }}
-              >
-                <Space direction="vertical" style={{ width: '100%' }} size={16}>
-                  <Radio.Button
-                    value="immediate"
-                    style={{
-                      width: '100%',
-                      height: 'auto',
-                      padding: '16px 20px',
-                      borderRadius: 12,
-                      textAlign: 'left',
-                    }}
-                  >
-                    <Space>
-                      <ThunderboltOutlined style={{ fontSize: 20, color: '#6366f1' }} />
-                      <div>
-                        <Text strong>{t('session:immediateExecution') || '立即执行'}</Text>
-                        <br />
-                        <Text type="secondary" style={{ fontSize: 12 }}>
-                          {t('session:immediateExecutionDesc') || '会话创建后立即开始执行任务'}
-                        </Text>
-                      </div>
-                    </Space>
-                  </Radio.Button>
-
-                  <Radio.Button
-                    value="scheduled"
-                    style={{
-                      width: '100%',
-                      height: 'auto',
-                      padding: '16px 20px',
-                      borderRadius: 12,
-                      textAlign: 'left',
-                    }}
-                  >
-                    <Space>
-                      <CalendarOutlined style={{ fontSize: 20, color: '#10b981' }} />
-                      <div>
-                        <Text strong>{t('session:scheduledExecution') || '定时执行'}</Text>
-                        <br />
-                        <Text type="secondary" style={{ fontSize: 12 }}>
-                          {t('session:scheduledExecutionDesc') || '在指定时间执行一次任务'}
-                        </Text>
-                      </div>
-                    </Space>
-                  </Radio.Button>
-
-                  <Radio.Button
-                    value="recurring"
-                    style={{
-                      width: '100%',
-                      height: 'auto',
-                      padding: '16px 20px',
-                      borderRadius: 12,
-                      textAlign: 'left',
-                    }}
-                  >
-                    <Space>
-                      <ClockCircleOutlined style={{ fontSize: 20, color: '#f59e0b' }} />
-                      <div>
-                        <Text strong>{t('session:recurringExecution') || '周期执行'}</Text>
-                        <br />
-                        <Text type="secondary" style={{ fontSize: 12 }}>
-                          {t('session:recurringExecutionDesc') || '按天/周/月周期性执行任务'}
-                        </Text>
-                      </div>
-                    </Space>
-                  </Radio.Button>
-                </Space>
-              </Radio.Group>
-
-              {/* Schedule Configuration */}
-              {executionMode === 'scheduled' && (
-                <Card size="small" style={{ marginTop: 16, borderRadius: 12 }}>
-                  <Space size={16}>
-                    <div>
-                      <Text type="secondary">{t('session:selectDate') || '选择日期'}</Text>
-                      <DatePicker
-                        style={{ marginLeft: 8, borderRadius: 10 }}
-                        onChange={(_, dateString) => setScheduleDate(dateString as string)}
-                      />
-                    </div>
-                    <div>
-                      <Text type="secondary">{t('session:selectTime') || '选择时间'}</Text>
-                      <TimePicker
-                        style={{ marginLeft: 8, borderRadius: 10 }}
-                        format="HH:mm"
-                        onChange={(_, timeString) => setScheduleTime(timeString as string)}
-                      />
-                    </div>
-                  </Space>
-                </Card>
-              )}
-
-              {executionMode === 'recurring' && (
-                <Card size="small" style={{ marginTop: 16, borderRadius: 12 }}>
-                  <Space direction="vertical" size={12}>
-                    <div>
-                      <Text type="secondary" style={{ marginRight: 12 }}>{t('session:recurringType') || '重复周期'}</Text>
-                      <Radio.Group
-                        value={recurringType}
-                        onChange={(e) => setRecurringType(e.target.value)}
-                        optionType="button"
-                        buttonStyle="solid"
-                      >
-                        <Radio.Button value="daily">{t('session:daily') || '每天'}</Radio.Button>
-                        <Radio.Button value="weekly">{t('session:weekly') || '每周'}</Radio.Button>
-                        <Radio.Button value="monthly">{t('session:monthly') || '每月'}</Radio.Button>
-                      </Radio.Group>
-                    </div>
-                    <div>
-                      <Text type="secondary">{t('session:startTime') || '开始时间'}</Text>
-                      <TimePicker
-                        style={{ marginLeft: 8, borderRadius: 10 }}
-                        format="HH:mm"
-                        onChange={(_, timeString) => setScheduleTime(timeString as string)}
-                      />
-                    </div>
-                  </Space>
-                </Card>
-              )}
+              <Tabs
+                activeKey={executionMode}
+                onChange={(key) => setExecutionMode(key as 'immediate' | 'scheduled' | 'recurring')}
+                items={[
+                  {
+                    key: 'immediate',
+                    label: (
+                      <Space>
+                        <ThunderboltOutlined style={{ color: '#6366f1' }} />
+                        <span>{t('session:immediateExecution') || '立即执行'}</span>
+                      </Space>
+                    ),
+                    children: (
+                      <Text type="secondary">{t('session:immediateExecutionDesc') || '会话创建后立即开始执行任务'}</Text>
+                    ),
+                  },
+                  {
+                    key: 'scheduled',
+                    label: (
+                      <Space>
+                        <CalendarOutlined style={{ color: '#10b981' }} />
+                        <span>{t('session:scheduledExecution') || '定时执行'}</span>
+                      </Space>
+                    ),
+                    children: (
+                      <Space direction="vertical" size={16}>
+                        <Text type="secondary">{t('session:scheduledExecutionDesc') || '在指定时间执行一次任务'}</Text>
+                        <Space size={16}>
+                          <div>
+                            <Text type="secondary">{t('session:selectDate') || '选择日期'}</Text>
+                            <DatePicker
+                              style={{ marginLeft: 8, borderRadius: 10 }}
+                              onChange={(_, dateString) => setScheduleDate(dateString as string)}
+                            />
+                          </div>
+                          <div>
+                            <Text type="secondary">{t('session:selectTime') || '选择时间'}</Text>
+                            <TimePicker
+                              style={{ marginLeft: 8, borderRadius: 10 }}
+                              format="HH:mm"
+                              onChange={(_, timeString) => setScheduleTime(timeString as string)}
+                            />
+                          </div>
+                        </Space>
+                      </Space>
+                    ),
+                  },
+                  {
+                    key: 'recurring',
+                    label: (
+                      <Space>
+                        <ClockCircleOutlined style={{ color: '#f59e0b' }} />
+                        <span>{t('session:recurringExecution') || '周期执行'}</span>
+                      </Space>
+                    ),
+                    children: (
+                      <Space direction="vertical" size={12}>
+                        <Text type="secondary">{t('session:recurringExecutionDesc') || '按天/周/月周期性执行任务'}</Text>
+                        <div>
+                          <Text type="secondary" style={{ marginRight: 12 }}>{t('session:recurringType') || '重复周期'}</Text>
+                          <Radio.Group
+                            value={recurringType}
+                            onChange={(e) => setRecurringType(e.target.value)}
+                            optionType="button"
+                            buttonStyle="solid"
+                          >
+                            <Radio.Button value="daily">{t('session:daily') || '每天'}</Radio.Button>
+                            <Radio.Button value="weekly">{t('session:weekly') || '每周'}</Radio.Button>
+                            <Radio.Button value="monthly">{t('session:monthly') || '每月'}</Radio.Button>
+                          </Radio.Group>
+                        </div>
+                        <div>
+                          <Text type="secondary">{t('session:startTime') || '开始时间'}</Text>
+                          <TimePicker
+                            style={{ marginLeft: 8, borderRadius: 10 }}
+                            format="HH:mm"
+                            onChange={(_, timeString) => setScheduleTime(timeString as string)}
+                          />
+                        </div>
+                      </Space>
+                    ),
+                  },
+                ]}
+              />
             </div>
 
             <Divider />
 
             {/* Action Buttons */}
             <Row justify="end" gutter={16}>
+              <Col>
+                <Button
+                  icon={<ReloadOutlined />}
+                  size="large"
+                  onClick={() => resetWorkerMutation.mutate()}
+                  loading={resetWorkerMutation.isLoading}
+                  style={{ borderRadius: 10, minWidth: 160, height: 48 }}
+                >
+                  {t('template:resetWorkers')}
+                </Button>
+              </Col>
               <Col>
                 <Button
                   size="large"

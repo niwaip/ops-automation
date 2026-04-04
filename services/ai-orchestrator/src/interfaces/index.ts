@@ -26,7 +26,8 @@ export interface CreateModelDTO {
   name: string;
   provider: string;
   api_endpoint: string;
-  config: Record<string, unknown>;
+  api_key?: string; // Optional API key for direct input
+  config?: Record<string, unknown>;
 }
 
 export interface AIAgentDTO {
