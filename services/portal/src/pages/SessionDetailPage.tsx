@@ -12,6 +12,7 @@ import {
   FileTextOutlined,
   CodeOutlined,
   ClockCircleOutlined,
+  EyeOutlined,
 } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
 import { useQuery, useMutation, useQueryClient } from 'react-query';
@@ -164,6 +165,36 @@ const SessionDetailPage: React.FC = () => {
           )}
         </Space>
       </Card>
+
+      {/* Real-time noVNC View - Show during execution */}
+      {(session.state === 'RUNNING' || session.state === 'IDLE') && session.endpoints?.novnc && (
+        <Card
+          style={{ marginTop: 16 }}
+          title={
+            <Space>
+              <EyeOutlined />
+              实时画面
+              <Tag color="processing">执行中</Tag>
+            </Space>
+          }
+          extra={
+            <Button
+              type="link"
+              onClick={() => window.open(session.endpoints!.novnc, '_blank')}
+            >
+              新窗口打开
+            </Button>
+          }
+        >
+          <div style={{ width: '100%', height: 600, border: '1px solid #d9d9d9', borderRadius: 4, background: '#1e1e1e' }}>
+            <iframe
+              src={`${session.endpoints.novnc}?autoconnect=true&resize=scale`}
+              style={{ width: '100%', height: '100%', border: 'none' }}
+              title="noVNC"
+            />
+          </div>
+        </Card>
+      )}
 
       {/* Step Results Card */}
       <Card
@@ -336,8 +367,8 @@ const SessionDetailPage: React.FC = () => {
         )}
       </Card>
 
-      {/* Connection Info (collapsed) */}
-      {session.endpoints && (
+      {/* Connection Info - Only show after execution completed */}
+      {session.endpoints && (session.state === 'CLOSED' || session.state === 'ERROR') && (
         <Card style={{ marginTop: 16 }} title="Connection Info">
           <Space direction="vertical">
             <div>
