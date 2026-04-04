@@ -190,7 +190,7 @@ const SessionStartPage: React.FC = () => {
       style={{
         padding: '24px 48px',
         minHeight: '100vh',
-        background: 'linear-gradient(135deg, #f5f7fa 0%, #e4e8ec 100%)',
+        background: 'var(--bg-primary)',
       }}
     >
       <Row gutter={24} style={{ minHeight: 'calc(100vh - 120px)' }}>
@@ -206,8 +206,6 @@ const SessionStartPage: React.FC = () => {
             bordered={false}
             style={{
               borderRadius: 16,
-              boxShadow: '0 4px 20px rgba(0, 0, 0, 0.08)',
-              border: '1px solid rgba(255, 255, 255, 0.8)',
               height: '100%',
             }}
           >
@@ -485,8 +483,6 @@ const SessionStartPage: React.FC = () => {
             bordered={false}
             style={{
               borderRadius: 16,
-              boxShadow: '0 4px 20px rgba(0, 0, 0, 0.08)',
-              border: '1px solid rgba(255, 255, 255, 0.8)',
               height: '100%',
               display: 'flex',
               flexDirection: 'column',

@@ -67,6 +67,16 @@
   --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.3), 0 4px 6px -4px rgb(0 0 0 / 0.2);
 }
 
+/* Dark mode page background with subtle gradient */
+[data-theme='dark'] body,
+[data-theme='dark'] #root,
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) body,
+  :root:not([data-theme='light']) #root {
+    background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%) !important;
+  }
+}
+
 /* System dark mode support */
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme='light']) {
@@ -493,8 +503,26 @@ body {
 [data-theme='dark'] .ant-card,
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme='light']) .ant-card {
-    border: 1px solid rgba(255, 255, 255, 0.1) !important;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4) !important;
+    border: 1px solid rgba(255, 255, 255, 0.08) !important;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3) !important;
+    background: #1e293b !important;
+  }
+}
+
+/* Dark mode card header */
+[data-theme='dark'] .ant-card-head,
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) .ant-card-head {
+    background: transparent !important;
+    border-bottom-color: #334155 !important;
+  }
+}
+
+/* Dark mode card body */
+[data-theme='dark'] .ant-card-body,
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) .ant-card-body {
+    background: transparent !important;
   }
 }
 
