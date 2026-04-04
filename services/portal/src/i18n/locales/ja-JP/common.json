@@ -1,8 +1,11 @@
 {
   "appName": "運用自動化プラットフォーム",
   "dashboard": "ダッシュボード",
+  "newSession": "新規セッション",
   "sessions": "セッション管理",
   "templates": "テンプレート管理",
+  "reportTemplates": "レポートテンプレート",
+  "reports": "レポート一覧",
   "recorder": "レコーダー",
   "admin": "システム管理",
   "users": "ユーザー管理",
