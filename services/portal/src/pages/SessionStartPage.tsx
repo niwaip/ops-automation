@@ -262,8 +262,6 @@ const SessionStartPage: React.FC = () => {
                       执行
                     </Button>
                     <Button
-                      type="primary"
-                      ghost
                       icon={<ReloadOutlined />}
                       size="large"
                       onClick={() => resetWorkerMutation.mutate()}
@@ -280,7 +278,7 @@ const SessionStartPage: React.FC = () => {
               <div style={{ marginTop: 16 }}>
                 <TextArea
                   rows={3}
-                  placeholder={t('session:descriptionPlaceholder')}
+                  placeholder="输入需要替换的参数描述，然后点击「解析参数」按钮，AI将自动识别并填充参数值"
                   value={userInput}
                   onChange={(e) => setUserInput(e.target.value)}
                   disabled={!selectedTemplateId}
