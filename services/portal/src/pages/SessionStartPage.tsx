@@ -292,44 +292,31 @@ const SessionStartPage: React.FC = () => {
                             if (!params || Object.keys(params).length === 0) {
                               return <Text type="secondary">-</Text>;
                             }
-                            return (
-                              <div>
-                                {Object.entries(params).map(([k, v]) => (
-                                  <div key={k} style={{ fontSize: 12 }}>
-                                    <Text code>{k}</Text>: <Text>{String(v)}</Text>
-                                  </div>
-                                ))}
-                              </div>
-                            );
-                          },
-                        },
-                        {
-                          title: '默认值',
-                          key: 'defaultValue',
-                          width: 120,
-                          render: (_: any, record: any) => {
-                            const params = record.params;
-                            if (!params) return <Text type="secondary">-</Text>;
 
-                            // Get default values from template params_schema
-                            const defaults: string[] = [];
-                            Object.values(params).forEach((v: any) => {
+                            // 只显示可替换参数（包含 ${param_name} 占位符的）
+                            const replaceableItems: JSX.Element[] = [];
+                            Object.entries(params).forEach(([k, v]) => {
                               const str = String(v);
                               const match = str.match(/\$\{(\w+)\}|\{\{(\w+)\}\}/);
                               if (match) {
                                 const paramName = match[1] || match[2];
                                 const prop = selectedTemplate.params_schema?.properties?.[paramName as any] as any;
-                                if (prop?.default !== undefined) {
-                                  defaults.push(`${paramName}: ${prop.default}`);
-                                }
+                                const description = prop?.description || paramName;
+                                const defaultValue = prop?.default || '-';
+                                replaceableItems.push(
+                                  <div key={k} style={{ fontSize: 12, marginBottom: 4 }}>
+                                    <Tag color="blue">{paramName}</Tag>
+                                    <Text type="secondary" style={{ marginLeft: 4 }}>{description}</Text>
+                                    <Text type="secondary" style={{ marginLeft: 8, fontSize: 11 }}>
+                                      (默认: {String(defaultValue)})
+                                    </Text>
+                                  </div>
+                                );
                               }
                             });
-                            return defaults.length > 0 ? (
-                              <div style={{ fontSize: 12 }}>
-                                {defaults.map((d, i) => (
-                                  <div key={i}><Tag color="green">{d}</Tag></div>
-                                ))}
-                              </div>
+
+                            return replaceableItems.length > 0 ? (
+                              <div>{replaceableItems}</div>
                             ) : <Text type="secondary">-</Text>;
                           },
                         },
