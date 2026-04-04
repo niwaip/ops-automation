@@ -127,13 +127,13 @@ const AIControls: React.FC<AIControlsProps> = ({
 
   // Predefined commands configuration
   // 搜索: 用户指定搜索框和关键词
-  // 智能搜索: AI自动识别页面搜索框，用户只需提供关键词
+  // 智搜: AI自动识别页面搜索框，用户只需提供关键词
   const predefinedCommands = [
     { value: 'navigate', label: '打开', prefix: '打开 ', placeholder: '输入网址，如：百度、google.com' },
     { value: 'click', label: '点击', prefix: '点击 ', placeholder: '输入目标元素描述，如：搜索按钮、登录链接' },
     { value: 'fill', label: '填充', prefix: '填充 ', placeholder: '输入内容和目标，如：用户名输入框填写 admin' },
     { value: 'search', label: '搜索', prefix: '搜索 ', placeholder: '指定搜索框和关键词，如：在搜索框输入 MCP' },
-    { value: 'smart_search', label: '智能搜索', prefix: '智能搜索 ', placeholder: '输入关键词，AI自动找到搜索框，如：MCP 协议' },
+    { value: 'smart_search', label: '智搜', prefix: '智搜 ', placeholder: '输入关键词，AI自动找到搜索框，如：MCP 协议' },
   ];
 
   const [input, setInput] = useState('');
@@ -1341,73 +1341,73 @@ const AIControls: React.FC<AIControlsProps> = ({
           <div ref={messagesEndRef} />
         </div>
 
-        {/* Input area - Command + Parameter left-right layout */}
+        {/* Input area - 3列2行布局 */}
         <div style={{ marginTop: 12 }}>
-          <Space direction="vertical" style={{ width: '100%' }} size="small">
-            {/* Command and Parameter row - left-right layout */}
-            <Space style={{ width: '100%' }} align="start">
-              {/* Command selection - Radio buttons with rounded corners */}
-              <Radio.Group
-                value={selectedCommand}
-                onChange={(e) => setSelectedCommand(e.target.value)}
-                optionType="button"
-                buttonStyle="solid"
-                style={{ borderRadius: 8 }}
-              >
-                {predefinedCommands.map(c => (
-                  <Radio.Button
-                    key={c.value}
-                    value={c.value}
-                    style={{ borderRadius: 6, marginRight: 4 }}
-                  >
-                    {c.label}
-                  </Radio.Button>
-                ))}
-              </Radio.Group>
+          {/* Row 1: 命令 | 参数 | 发送 */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            {/* 命令选择 - Radio buttons with rounded corners */}
+            <Radio.Group
+              value={selectedCommand}
+              onChange={(e) => setSelectedCommand(e.target.value)}
+              optionType="button"
+              buttonStyle="solid"
+              style={{ borderRadius: 8 }}
+            >
+              {predefinedCommands.map(c => (
+                <Radio.Button
+                  key={c.value}
+                  value={c.value}
+                  style={{ borderRadius: 6, marginRight: 2 }}
+                >
+                  {c.label}
+                </Radio.Button>
+              ))}
+            </Radio.Group>
 
-              {/* Parameter input */}
-              <TextArea
-                value={paramInput}
-                onChange={(e) => setParamInput(e.target.value)}
-                placeholder={predefinedCommands.find(c => c.value === selectedCommand)?.placeholder || '输入参数'}
-                autoSize={{ minRows: 1, maxRows: 3 }}
-                onPressEnter={(e) => {
-                  if (!e.shiftKey) {
-                    e.preventDefault();
-                    handleSend();
-                  }
-                }}
-                disabled={isLoading}
-                style={{ flex: 1, minWidth: 200, borderRadius: 8 }}
-              />
+            {/* 参数输入 */}
+            <TextArea
+              value={paramInput}
+              onChange={(e) => setParamInput(e.target.value)}
+              placeholder={predefinedCommands.find(c => c.value === selectedCommand)?.placeholder || '输入参数'}
+              autoSize={{ minRows: 1, maxRows: 3 }}
+              onPressEnter={(e) => {
+                if (!e.shiftKey) {
+                  e.preventDefault();
+                  handleSend();
+                }
+              }}
+              disabled={isLoading}
+              style={{ flex: 1, minWidth: 180, borderRadius: 8 }}
+            />
 
-              {/* Send button */}
-              <Button
-                type="primary"
-                icon={<SendOutlined />}
-                onClick={handleSend}
-                loading={isLoading}
-                disabled={!(predefinedCommands.find(c => c.value === selectedCommand)?.prefix + paramInput.trim()).trim()}
-                style={{ height: 'auto', borderRadius: 8 }}
-              >
-                {t('common:send')}
-              </Button>
-            </Space>
+            {/* 发送按钮 */}
+            <Button
+              type="primary"
+              icon={<SendOutlined />}
+              onClick={handleSend}
+              loading={isLoading}
+              disabled={!(predefinedCommands.find(c => c.value === selectedCommand)?.prefix + paramInput.trim()).trim()}
+              style={{ height: 32, borderRadius: 8 }}
+            >
+              {t('common:send')}
+            </Button>
+          </div>
 
-            {/* Replaceable checkbox - below input row */}
+          {/* Row 2: 参数可替换 (在发送按钮下方) */}
+          <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 8 }}>
             <Checkbox
               checked={isReplaceable}
               onChange={(e) => setIsReplaceable(e.target.checked)}
               disabled={!paramInput.trim()}
             >
-              <Space>
+              <Space size={4}>
                 <Text style={{ fontSize: 12 }}>参数可替换</Text>
                 <Tooltip title="勾选后，此参数在生成模版时会被标记为可替换参数，AI在执行时会自动识别和替换">
                   <InfoCircleOutlined style={{ fontSize: 12, color: '#999' }} />
                 </Tooltip>
               </Space>
             </Checkbox>
-          </Space>
+          </div>
         </div>
 
         {/* Quick action buttons */}
