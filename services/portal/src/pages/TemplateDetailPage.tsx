@@ -335,6 +335,13 @@ const TemplateDetailPage: React.FC = () => {
               >
                 {t('template:testTemplate')}
               </Button>
+              <Button
+                icon={<ReloadOutlined />}
+                onClick={() => resetWorkerMutation.mutate()}
+                loading={resetWorkerMutation.isLoading}
+              >
+                {t('template:resetWorkers')}
+              </Button>
             </Space>
           </Space>
         }
