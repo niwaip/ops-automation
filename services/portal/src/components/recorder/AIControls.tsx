@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Card, Input, Button, Space, Typography, Tag, Empty, message, Divider, Alert, Collapse, InputNumber } from 'antd';
+import { Card, Input, Button, Space, Typography, Tag, Empty, message, Divider, Alert, Collapse, InputNumber, Modal, List } from 'antd';
 import {
   SendOutlined,
   RobotOutlined,
@@ -16,6 +16,9 @@ import {
   ToolOutlined,
   CloudUploadOutlined,
   CheckCircleOutlined,
+  SaveOutlined,
+  FileAddOutlined,
+  DownloadOutlined,
 } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
 import { useMutation } from 'react-query';
@@ -53,6 +56,23 @@ interface CommandHistoryEntry {
   timestamp: Date;
 }
 
+// Template step - deterministic command for replay
+interface TemplateStep {
+  id: string;
+  tool: string;
+  params: Record<string, unknown>;
+  description: string;
+  timestamp: Date;
+}
+
+// Template
+interface Template {
+  id: string;
+  name: string;
+  steps: TemplateStep[];
+  createdAt: Date;
+}
+
 interface AIControlsProps {
   onCommandExecuted?: (commands: MCPCommand[]) => void;
 }
@@ -64,6 +84,13 @@ const AIControls: React.FC<AIControlsProps> = ({ onCommandExecuted }) => {
   const [isBrowserReady, setIsBrowserReady] = useState(false);
   const [waitDuration, setWaitDuration] = useState(20); // Default 20 seconds
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  // Template state
+  const [templateSteps, setTemplateSteps] = useState<TemplateStep[]>([]);
+  const [templateName, setTemplateName] = useState('');
+  const [showTemplateModal, setShowTemplateModal] = useState(false);
+  const [compiledScript, setCompiledScript] = useState('');
+  const [showScriptModal, setShowScriptModal] = useState(false);
 
   // Scroll to bottom of messages
   useEffect(() => {
@@ -277,6 +304,156 @@ const AIControls: React.FC<AIControlsProps> = ({ onCommandExecuted }) => {
   const handleCopyCommand = (command: MCPCommand) => {
     navigator.clipboard.writeText(JSON.stringify(command, null, 2));
     message.success(t('common:copied'));
+  };
+
+  // Add deterministic command to template
+  const handleAddToTemplate = (templateInfo: { tool: string; params: Record<string, unknown>; description: string }) => {
+    const step: TemplateStep = {
+      id: Date.now().toString(),
+      tool: templateInfo.tool,
+      params: templateInfo.params,
+      description: templateInfo.description,
+      timestamp: new Date(),
+    };
+    setTemplateSteps((prev) => [...prev, step]);
+    message.success(`已添加到模版: ${templateInfo.description}`);
+  };
+
+  // Remove step from template
+  const handleRemoveTemplateStep = (stepId: string) => {
+    setTemplateSteps((prev) => prev.filter((s) => s.id !== stepId));
+  };
+
+  // Clear template
+  const handleClearTemplate = () => {
+    setTemplateSteps([]);
+    setTemplateName('');
+  };
+
+  // Compile template to executable script
+  const handleCompileTemplate = () => {
+    if (templateSteps.length === 0) {
+      message.warning('模版为空，请先添加命令');
+      return;
+    }
+
+    // Generate JavaScript code
+    const script = generateScript(templateSteps);
+    setCompiledScript(script);
+    setShowScriptModal(true);
+  };
+
+  // Generate executable script from template steps
+  const generateScript = (steps: TemplateStep[]): string => {
+    const lines: string[] = [
+      '// Auto-generated browser automation script',
+      '// Generated at: ' + new Date().toISOString(),
+      '',
+      'const { chromium } = require("playwright");',
+      '',
+      'async function run() {',
+      '  const browser = await chromium.launch({ headless: false });',
+      '  const context = await browser.newContext();',
+      '  const page = await context.newPage();',
+      '',
+    ];
+
+    steps.forEach((step, index) => {
+      lines.push(`  // Step ${index + 1}: ${step.description}`);
+      switch (step.tool) {
+        case 'navigate':
+          lines.push(`  await page.goto('${step.params.url}');`);
+          break;
+        case 'click':
+          if (step.params.selector) {
+            lines.push(`  await page.click('${step.params.selector}');`);
+          } else if (step.params.text) {
+            lines.push(`  await page.click('text=${step.params.text}');`);
+          }
+          break;
+        case 'fill':
+          lines.push(`  await page.fill('${step.params.selector}', '${step.params.value}');`);
+          break;
+        case 'screenshot':
+          lines.push(`  await page.screenshot({ path: 'screenshot-${index + 1}.png' });`);
+          break;
+        case 'scroll':
+          if (step.params.direction === 'down') {
+            lines.push(`  await page.evaluate(() => window.scrollBy(0, ${step.params.amount || 300}));`);
+          } else if (step.params.direction === 'top') {
+            lines.push(`  await page.evaluate(() => window.scrollTo(0, 0));`);
+          }
+          break;
+        case 'wait':
+          if (step.params.duration) {
+            lines.push(`  await page.waitForTimeout(${step.params.duration});`);
+          } else if (step.params.selector) {
+            lines.push(`  await page.waitForSelector('${step.params.selector}');`);
+          }
+          break;
+        case 'press_key':
+          lines.push(`  await page.keyboard.press('${step.params.key}');`);
+          break;
+        default:
+          lines.push(`  // Unknown tool: ${step.tool}`);
+      }
+      lines.push('');
+    });
+
+    lines.push('  // Keep browser open for review');
+    lines.push('  await page.waitForTimeout(5000);');
+    lines.push('  await browser.close();');
+    lines.push('}');
+    lines.push('');
+    lines.push('run().catch(console.error);');
+
+    return lines.join('\n');
+  };
+
+  // Save template
+  const handleSaveTemplate = () => {
+    if (templateSteps.length === 0) {
+      message.warning('模版为空，请先添加命令');
+      return;
+    }
+    setShowTemplateModal(true);
+  };
+
+  // Confirm save template
+  const handleConfirmSaveTemplate = () => {
+    const template: Template = {
+      id: Date.now().toString(),
+      name: templateName || `模版 ${new Date().toLocaleString()}`,
+      steps: templateSteps,
+      createdAt: new Date(),
+    };
+
+    // Save to localStorage
+    const savedTemplates = JSON.parse(localStorage.getItem('browserTemplates') || '[]');
+    savedTemplates.push(template);
+    localStorage.setItem('browserTemplates', JSON.stringify(savedTemplates));
+
+    message.success(`模版已保存: ${template.name}`);
+    setShowTemplateModal(false);
+    handleClearTemplate();
+  };
+
+  // Copy compiled script
+  const handleCopyScript = () => {
+    navigator.clipboard.writeText(compiledScript);
+    message.success('脚本已复制到剪贴板');
+  };
+
+  // Download compiled script
+  const handleDownloadScript = () => {
+    const blob = new Blob([compiledScript], { type: 'text/javascript' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `browser-script-${Date.now()}.js`;
+    a.click();
+    URL.revokeObjectURL(url);
+    message.success('脚本已下载');
   };
 
   // Check if any mutation is loading
@@ -546,13 +723,23 @@ const AIControls: React.FC<AIControlsProps> = ({ onCommandExecuted }) => {
                                 {/* Template info - for all commands */}
                                 {entry.result.template_info && (
                                   <div style={{ marginTop: 8, padding: 8, background: '#e6f7ff', borderRadius: 4, border: '1px solid #91d5ff' }}>
-                                    <Text strong style={{ fontSize: 11 }}>模版命令：</Text>
+                                    <Text strong style={{ fontSize: 11 }}>确定性命令：</Text>
                                     <div style={{ marginTop: 4, fontSize: 10, fontFamily: 'monospace', background: '#fff', padding: 4, borderRadius: 2 }}>
                                       <pre style={{ margin: 0, whiteSpace: 'pre-wrap' }}>{JSON.stringify(entry.result.template_info, null, 2)}</pre>
                                     </div>
-                                    <Text type="secondary" style={{ fontSize: 10 }}>
-                                      可直接用于模版编译，无需 AI 解析
-                                    </Text>
+                                    <Space style={{ marginTop: 8 }}>
+                                      <Button
+                                        type="primary"
+                                        size="small"
+                                        icon={<FileAddOutlined />}
+                                        onClick={() => handleAddToTemplate(entry.result.template_info)}
+                                      >
+                                        添加到模版
+                                      </Button>
+                                      <Text type="secondary" style={{ fontSize: 10 }}>
+                                        可直接用于模版编译，无需 AI 解析
+                                      </Text>
+                                    </Space>
                                   </div>
                                 )}
                                 {/* Generic result - show as JSON */}
@@ -773,6 +960,137 @@ const AIControls: React.FC<AIControlsProps> = ({ onCommandExecuted }) => {
             {t('recorder:ai.clearHistory') || '清空记录'}
           </Button>
         )}
+
+        {/* Template section */}
+        <Divider style={{ margin: '12px 0' }} />
+        <div style={{ background: '#f6f8fa', borderRadius: 8, padding: 12 }}>
+          <Space style={{ width: '100%', justifyContent: 'space-between' }}>
+            <Space>
+              <Text strong style={{ fontSize: 13 }}>
+                <FileAddOutlined style={{ marginRight: 4 }} />
+                模版录制
+              </Text>
+              <Tag color={templateSteps.length > 0 ? 'processing' : 'default'}>
+                {templateSteps.length} 步
+              </Tag>
+            </Space>
+            <Space>
+              <Button
+                type="primary"
+                size="small"
+                icon={<CodeOutlined />}
+                onClick={handleCompileTemplate}
+                disabled={templateSteps.length === 0}
+              >
+                编译模版
+              </Button>
+              <Button
+                size="small"
+                icon={<SaveOutlined />}
+                onClick={handleSaveTemplate}
+                disabled={templateSteps.length === 0}
+              >
+                保存模版
+              </Button>
+              <Button
+                size="small"
+                danger
+                icon={<DeleteOutlined />}
+                onClick={handleClearTemplate}
+                disabled={templateSteps.length === 0}
+              >
+                清空
+              </Button>
+            </Space>
+          </Space>
+
+          {/* Template steps list */}
+          {templateSteps.length > 0 && (
+            <List
+              size="small"
+              style={{ marginTop: 12, background: '#fff', borderRadius: 4 }}
+              dataSource={templateSteps}
+              renderItem={(step, index) => (
+                <List.Item
+                  actions={[
+                    <Button
+                      key="remove"
+                      type="text"
+                      size="small"
+                      danger
+                      icon={<DeleteOutlined />}
+                      onClick={() => handleRemoveTemplateStep(step.id)}
+                    />,
+                  ]}
+                >
+                  <Space>
+                    <Tag color="blue">{index + 1}</Tag>
+                    <Tag>{step.tool}</Tag>
+                    <Text style={{ fontSize: 11 }}>{step.description}</Text>
+                  </Space>
+                </List.Item>
+              )}
+            />
+          )}
+
+          {templateSteps.length === 0 && (
+            <div style={{ marginTop: 12, textAlign: 'center', color: '#999', fontSize: 12 }}>
+              执行命令后，点击"添加到模版"按钮将确定性命令添加到模版中
+            </div>
+          )}
+        </div>
+
+        {/* Template save modal */}
+        <Modal
+          title="保存模版"
+          open={showTemplateModal}
+          onOk={handleConfirmSaveTemplate}
+          onCancel={() => setShowTemplateModal(false)}
+          okText="保存"
+          cancelText="取消"
+        >
+          <Space direction="vertical" style={{ width: '100%' }}>
+            <Text>模版名称：</Text>
+            <Input
+              value={templateName}
+              onChange={(e) => setTemplateName(e.target.value)}
+              placeholder={`模版 ${new Date().toLocaleString()}`}
+            />
+            <Text type="secondary" style={{ fontSize: 12 }}>
+              包含 {templateSteps.length} 个步骤
+            </Text>
+          </Space>
+        </Modal>
+
+        {/* Compiled script modal */}
+        <Modal
+          title="编译后的脚本"
+          open={showScriptModal}
+          onCancel={() => setShowScriptModal(false)}
+          width={700}
+          footer={[
+            <Button key="copy" icon={<CopyOutlined />} onClick={handleCopyScript}>
+              复制
+            </Button>,
+            <Button key="download" type="primary" icon={<DownloadOutlined />} onClick={handleDownloadScript}>
+              下载
+            </Button>,
+          ]}
+        >
+          <pre
+            style={{
+              background: '#1e1e1e',
+              color: '#d4d4d4',
+              padding: 16,
+              borderRadius: 8,
+              maxHeight: 400,
+              overflow: 'auto',
+              fontSize: 12,
+            }}
+          >
+            {compiledScript}
+          </pre>
+        </Modal>
       </Space>
     </Card>
   );
