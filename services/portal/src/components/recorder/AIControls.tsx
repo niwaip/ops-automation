@@ -426,9 +426,15 @@ const AIControls: React.FC<AIControlsProps> = ({
     }
 
     const extractedParams = extractParameters(templateSteps);
-    const backendSteps = templateSteps.map((step, index) => {
+
+    // Convert TemplateStep to backend format with screenshot after each step
+    const backendSteps: any[] = [];
+    let stepCounter = 1;
+
+    templateSteps.forEach((step, index) => {
+      // Add the original step
       const backendStep: any = {
-        step_id: `step_${index + 1}`,
+        step_id: `step_${stepCounter}`,
         action: step.tool,
         params: step.params,
       };
@@ -440,7 +446,31 @@ const AIControls: React.FC<AIControlsProps> = ({
         };
       }
 
-      return backendStep;
+      backendSteps.push(backendStep);
+      stepCounter++;
+
+      // Add screenshot step after each step
+      // Wait 2s -> screenshot -> wait 2s
+      backendSteps.push({
+        step_id: `step_${stepCounter}`,
+        action: 'wait',
+        params: { duration: 2000 },
+      });
+      stepCounter++;
+
+      backendSteps.push({
+        step_id: `step_${stepCounter}`,
+        action: 'screenshot',
+        params: {},
+      });
+      stepCounter++;
+
+      backendSteps.push({
+        step_id: `step_${stepCounter}`,
+        action: 'wait',
+        params: { duration: 2000 },
+      });
+      stepCounter++;
     });
 
     // Generate params_schema for extracted parameters
@@ -455,7 +485,7 @@ const AIControls: React.FC<AIControlsProps> = ({
     try {
       const createdTemplate = await templateApi.create({
         name,
-        description: `由智能录制编译生成的模版，包含 ${templateSteps.length} 个步骤，${Object.keys(extractedParams).length} 个可替换参数`,
+        description: `由智能录制编译生成的模版，包含 ${templateSteps.length} 个步骤（含自动截图），${Object.keys(extractedParams).length} 个可替换参数`,
         params_schema: paramsSchema,
         steps: backendSteps,
         created_by: user?.id || 'ai_recorder',
@@ -674,8 +704,13 @@ const AIControls: React.FC<AIControlsProps> = ({
         default:
           lines.push(`  // Unknown tool: ${step.tool}`);
       }
-      // Add 3 second wait after each step for stability
-      lines.push('  await page.waitForTimeout(3000);');
+
+      // Add screenshot pattern after each step: wait 2s → screenshot → wait 2s
+      lines.push('  // Wait before screenshot');
+      lines.push('  await page.waitForTimeout(2000);');
+      lines.push(`  await page.screenshot({ path: 'screenshot-step-${index + 1}.png' });`);
+      lines.push('  // Wait after screenshot');
+      lines.push('  await page.waitForTimeout(2000);');
       lines.push('');
     });
 

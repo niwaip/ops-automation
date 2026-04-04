@@ -163,9 +163,9 @@ const TemplateListPage: React.FC = () => {
     {
       title: t('common:actions'),
       key: 'actions',
-      width: 250,
+      width: 400,
       render: (_, record) => (
-        <Space>
+        <Space wrap>
           <Button
             type="link"
             size="small"
