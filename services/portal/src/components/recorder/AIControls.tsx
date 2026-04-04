@@ -729,6 +729,9 @@ const AIControls: React.FC<AIControlsProps> = ({
       message.success(`模版已保存: ${createdTemplate.name}`);
       setShowTemplateModal(false);
       handleClearTemplate();
+
+      // Navigate to template detail page with test option
+      navigate(`/templates/${createdTemplate.id}?test=true`);
     } catch (error: any) {
       console.error('Failed to save template:', error);
       // Show the actual error message

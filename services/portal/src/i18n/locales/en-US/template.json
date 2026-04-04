@@ -31,6 +31,7 @@
   "testModalDesc": "Please enter the parameters required for template testing",
   "testSuccess": "Test started, redirecting to session detail",
   "testFailed": "Failed to start test",
+  "userNotLoggedIn": "User not logged in, please login first",
   "stepType": "Step Type",
   "stepAction": "Step Action",
   "stepSelector": "Selector",

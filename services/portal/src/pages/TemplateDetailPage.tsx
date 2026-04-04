@@ -80,9 +80,12 @@ const TemplateDetailPage: React.FC = () => {
 
   const executeMutation = useMutation(
     async (params: Record<string, unknown>) => {
+      if (!user?.id) {
+        throw new Error('用户未登录，请先登录');
+      }
       // Create session with user_id and template_id
       const result = await sessionApi.create({
-        user_id: user?.id || '',
+        user_id: user.id,
         template_id: id!,
         params,
       });
@@ -99,8 +102,9 @@ const TemplateDetailPage: React.FC = () => {
         setExecuteModalVisible(false);
         navigate(`/sessions/${session.id}`);
       },
-      onError: () => {
-        message.error(t('template:executeFailed'));
+      onError: (error: any) => {
+        const errorMsg = error.response?.data?.message || error.message || t('template:executeFailed');
+        message.error(errorMsg);
       },
     }
   );
@@ -148,9 +152,12 @@ const TemplateDetailPage: React.FC = () => {
 
   const testMutation = useMutation(
     async (params: Record<string, unknown>) => {
+      if (!user?.id) {
+        throw new Error('用户未登录，请先登录');
+      }
       // Create session with user_id and template_id for testing
       const result = await sessionApi.create({
-        user_id: user?.id || '',
+        user_id: user.id,
         template_id: id!,
         params,
       });
@@ -167,8 +174,9 @@ const TemplateDetailPage: React.FC = () => {
         setTestModalVisible(false);
         navigate(`/sessions/${session.id}`);
       },
-      onError: () => {
-        message.error(t('template:testFailed'));
+      onError: (error: any) => {
+        const errorMsg = error.response?.data?.message || error.message || t('template:testFailed');
+        message.error(errorMsg);
       },
     }
   );

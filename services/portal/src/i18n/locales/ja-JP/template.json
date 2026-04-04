@@ -31,6 +31,7 @@
   "testModalDesc": "テンプレートテストに必要なパラメータを入力してください",
   "testSuccess": "テストが開始されました。セッション詳細ページに移動します",
   "testFailed": "テストの開始に失敗しました",
+  "userNotLoggedIn": "ユーザーがログインしていません。先にログインしてください",
   "stepType": "ステップタイプ",
   "stepAction": "ステップアクション",
   "stepSelector": "セレクター",
