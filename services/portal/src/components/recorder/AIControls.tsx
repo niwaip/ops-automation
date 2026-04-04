@@ -23,6 +23,8 @@ import {
 import { useTranslation } from 'react-i18next';
 import { useMutation } from 'react-query';
 import { apiClient } from '../../api/client';
+import { templateApi } from '../../api/template';
+import { useAuthStore } from '../../store/authStore';
 
 const { TextArea } = Input;
 const { Text } = Typography;
@@ -79,6 +81,7 @@ interface AIControlsProps {
 
 const AIControls: React.FC<AIControlsProps> = ({ onCommandExecuted }) => {
   const { t } = useTranslation(['common', 'recorder']);
+  const { user } = useAuthStore();
   const [input, setInput] = useState('');
   const [history, setHistory] = useState<CommandHistoryEntry[]>([]);
   const [isBrowserReady, setIsBrowserReady] = useState(false);
@@ -423,22 +426,63 @@ const AIControls: React.FC<AIControlsProps> = ({ onCommandExecuted }) => {
   };
 
   // Confirm save template
-  const handleConfirmSaveTemplate = () => {
-    const template: Template = {
-      id: Date.now().toString(),
-      name: templateName || `模版 ${new Date().toLocaleString()}`,
-      steps: templateSteps,
-      createdAt: new Date(),
-    };
+  const handleConfirmSaveTemplate = async () => {
+    if (templateSteps.length === 0) {
+      message.warning('模版为空，请先添加命令');
+      return;
+    }
 
-    // Save to localStorage
-    const savedTemplates = JSON.parse(localStorage.getItem('browserTemplates') || '[]');
-    savedTemplates.push(template);
-    localStorage.setItem('browserTemplates', JSON.stringify(savedTemplates));
+    const name = templateName || `模版 ${new Date().toLocaleString()}`;
 
-    message.success(`模版已保存: ${template.name}`);
-    setShowTemplateModal(false);
-    handleClearTemplate();
+    // Convert TemplateStep to backend format
+    const backendSteps = templateSteps.map((step, index) => {
+      const backendStep: any = {
+        step_id: `step_${index + 1}`,
+        action: step.tool,
+        params: step.params,
+      };
+
+      // Add locator for selector-based actions
+      if (step.params.selector) {
+        backendStep.locator = {
+          type: 'css',
+          value: step.params.selector as string,
+        };
+      }
+
+      return backendStep;
+    });
+
+    try {
+      // Save to backend API
+      const createdTemplate = await templateApi.create({
+        name,
+        description: `由智能录制生成的模版，包含 ${templateSteps.length} 个步骤`,
+        steps: backendSteps,
+        created_by: user?.id || 'ai_recorder',
+      });
+
+      message.success(`模版已保存: ${createdTemplate.name}`);
+      setShowTemplateModal(false);
+      handleClearTemplate();
+    } catch (error: any) {
+      console.error('Failed to save template:', error);
+      // Fallback to localStorage
+      const template: Template = {
+        id: Date.now().toString(),
+        name,
+        steps: templateSteps,
+        createdAt: new Date(),
+      };
+
+      const savedTemplates = JSON.parse(localStorage.getItem('browserTemplates') || '[]');
+      savedTemplates.push(template);
+      localStorage.setItem('browserTemplates', JSON.stringify(savedTemplates));
+
+      message.success(`模版已保存到本地: ${template.name}`);
+      setShowTemplateModal(false);
+      handleClearTemplate();
+    }
   };
 
   // Copy compiled script
