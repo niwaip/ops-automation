@@ -357,7 +357,7 @@ const SessionStartPage: React.FC = () => {
                           render: (_: any, record: any) => {
                             const params = record.params;
                             if (!params || Object.keys(params).length === 0) {
-                              return <Text type="secondary">-</Text>;
+                              return <span style={{ color: 'var(--text-secondary)' }}>-</span>;
                             }
 
                             // 只显示可替换参数（包含 ${param_name} 占位符的）
@@ -373,10 +373,10 @@ const SessionStartPage: React.FC = () => {
                                 replaceableItems.push(
                                   <div key={k} style={{ fontSize: 12, marginBottom: 4 }}>
                                     <Tag color="blue">{paramName}</Tag>
-                                    <Text type="secondary" style={{ marginLeft: 4 }}>{description}</Text>
-                                    <Text type="secondary" style={{ marginLeft: 8, fontSize: 11 }}>
+                                    <span style={{ marginLeft: 4, color: 'var(--text-primary)' }}>{description}</span>
+                                    <span style={{ marginLeft: 8, fontSize: 11, color: 'var(--text-secondary)' }}>
                                       (默认: {String(defaultValue)})
-                                    </Text>
+                                    </span>
                                   </div>
                                 );
                               }
@@ -384,7 +384,7 @@ const SessionStartPage: React.FC = () => {
 
                             return replaceableItems.length > 0 ? (
                               <div>{replaceableItems}</div>
-                            ) : <Text type="secondary">-</Text>;
+                            ) : <span style={{ color: 'var(--text-secondary)' }}>-</span>;
                           },
                         },
                         {
@@ -393,7 +393,7 @@ const SessionStartPage: React.FC = () => {
                           width: 160,
                           render: (_: any, record: any) => {
                             const params = record.params;
-                            if (!params) return <Text type="secondary">-</Text>;
+                            if (!params) return <span style={{ color: 'var(--text-secondary)' }}>-</span>;
 
                             const inputs: JSX.Element[] = [];
                             Object.entries(params).forEach(([, v]) => {
@@ -404,7 +404,7 @@ const SessionStartPage: React.FC = () => {
                                 const currentValue = editedParams[paramName] ?? '';
                                 inputs.push(
                                   <div key={paramName} style={{ marginBottom: 4 }}>
-                                    <Text style={{ fontSize: 11 }} type="secondary">{paramName}:</Text>
+                                    <span style={{ fontSize: 11, color: 'var(--text-secondary)' }}>{paramName}:</span>
                                     <Input
                                       size="small"
                                       value={String(currentValue)}
@@ -424,7 +424,7 @@ const SessionStartPage: React.FC = () => {
 
                             return inputs.length > 0 ? (
                               <div>{inputs}</div>
-                            ) : <Text type="secondary">-</Text>;
+                            ) : <span style={{ color: 'var(--text-secondary)' }}>-</span>;
                           },
                         },
                       ]}
@@ -448,7 +448,7 @@ const SessionStartPage: React.FC = () => {
                     message={`置信度: ${(recognizedParams.confidence * 100).toFixed(1)}% - AI已根据您的描述自动解析参数`}
                     style={{ marginBottom: 16, borderRadius: 10 }}
                   />
-                  <Card size="small" style={{ borderRadius: 12, background: '#f6ffed' }}>
+                  <Card size="small" style={{ borderRadius: 12, background: 'var(--bg-card)' }}>
                     <Text type="secondary" style={{ marginBottom: 8, display: 'block' }}>
                       解析后的参数值（可在上方表格"执行时替换"列中修改）:
                     </Text>

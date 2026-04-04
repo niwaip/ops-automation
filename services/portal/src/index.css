@@ -757,3 +757,31 @@ body {
     color: #e2e8f0 !important;
   }
 }
+
+/* ============================================
+   Fix Ant Design Typography secondary in dark mode
+   ============================================ */
+
+/* Override ant-typography-secondary with more visible colors */
+[data-theme='dark'] .ant-typography.ant-typography-secondary,
+[data-theme='dark'] span.ant-typography-secondary,
+[data-theme='dark'] .ant-typography-secondary,
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) .ant-typography.ant-typography-secondary,
+  :root:not([data-theme='light']) span.ant-typography-secondary,
+  :root:not([data-theme='light']) .ant-typography-secondary {
+    color: #94a3b8 !important;
+  }
+}
+
+/* Fix Text type="secondary" inside cards and tables */
+[data-theme='dark'] .ant-card .ant-typography-secondary,
+[data-theme='dark'] .ant-table .ant-typography-secondary,
+[data-theme='dark'] .ant-card-body .ant-typography-secondary,
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) .ant-card .ant-typography-secondary,
+  :root:not([data-theme='light']) .ant-table .ant-typography-secondary,
+  :root:not([data-theme='light']) .ant-card-body .ant-typography-secondary {
+    color: #94a3b8 !important;
+  }
+}
