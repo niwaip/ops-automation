@@ -111,7 +111,10 @@ const AIControls: React.FC<AIControlsProps> = ({ onCommandExecuted }) => {
         setHistory((prev) => {
           const last = prev[prev.length - 1];
           if (last && last.type === 'ai') {
-            return [...prev.slice(0, -1), { ...last, result: data }];
+            // Extract the first result from the results array
+            // data structure: { success: true, results: [{ status, message, template_info, ... }] }
+            const firstResult = data?.results?.[0] || data;
+            return [...prev.slice(0, -1), { ...last, result: firstResult }];
           }
           return prev;
         });
@@ -454,6 +457,39 @@ const AIControls: React.FC<AIControlsProps> = ({ onCommandExecuted }) => {
     a.click();
     URL.revokeObjectURL(url);
     message.success('脚本已下载');
+  };
+
+  // Auto extract template from history
+  const handleAutoExtractTemplate = () => {
+    const extractedSteps: TemplateStep[] = [];
+
+    // Go through all history entries
+    history.forEach((entry) => {
+      // Check if entry has result with template_info
+      if (entry.result?.template_info) {
+        const info = entry.result.template_info;
+        // Only add deterministic commands (navigate, fill, click with selector, etc.)
+        // Skip non-deterministic commands like click_result without actual navigation
+        const deterministicTools = ['navigate', 'fill', 'click', 'screenshot', 'scroll', 'wait', 'press_key', 'hover', 'type_text'];
+        if (deterministicTools.includes(info.tool)) {
+          extractedSteps.push({
+            id: Date.now().toString() + Math.random(),
+            tool: info.tool,
+            params: info.params,
+            description: info.description || `${info.tool} ${JSON.stringify(info.params)}`,
+            timestamp: entry.timestamp,
+          });
+        }
+      }
+    });
+
+    if (extractedSteps.length === 0) {
+      message.warning('历史记录中没有找到确定性命令');
+      return;
+    }
+
+    setTemplateSteps(extractedSteps);
+    message.success(`已从历史记录中提取 ${extractedSteps.length} 个确定性命令`);
   };
 
   // Check if any mutation is loading
@@ -975,6 +1011,15 @@ const AIControls: React.FC<AIControlsProps> = ({ onCommandExecuted }) => {
               </Tag>
             </Space>
             <Space>
+              <Button
+                size="small"
+                icon={<RobotOutlined />}
+                onClick={handleAutoExtractTemplate}
+                disabled={history.length === 0}
+                title="从历史记录中自动提取确定性命令"
+              >
+                自动提取
+              </Button>
               <Button
                 type="primary"
                 size="small"
