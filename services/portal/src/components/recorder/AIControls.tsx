@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Card, Input, Button, Space, Typography, Tag, Empty, message, Divider, Alert, Collapse, InputNumber, Modal, List, Tooltip, Switch } from 'antd';
+import { Card, Input, Button, Space, Typography, Tag, Empty, message, Divider, Alert, Collapse, InputNumber, Modal, List, Tooltip, Switch, Select, Checkbox } from 'antd';
 import {
   SendOutlined,
   RobotOutlined,
@@ -69,6 +69,10 @@ interface CommandHistoryEntry {
   commands?: MCPCommand[];
   result?: any;
   timestamp: Date;
+  // For template parameter extraction
+  replaceable?: boolean;
+  commandType?: string;
+  rawParam?: string;
 }
 
 // Template step - deterministic command for replay
@@ -120,7 +124,24 @@ const AIControls: React.FC<AIControlsProps> = ({
   const { t } = useTranslation(['common', 'recorder']);
   const navigate = useNavigate();
   const { user } = useAuthStore();
+
+  // Predefined commands configuration
+  const predefinedCommands = [
+    { value: 'navigate', label: '打开', prefix: '打开 ', placeholder: '输入网址，如：百度、google.com' },
+    { value: 'click', label: '点击', prefix: '点击 ', placeholder: '输入目标元素描述，如：搜索按钮、登录链接' },
+    { value: 'fill', label: '填充', prefix: '填充 ', placeholder: '输入内容和目标，如：用户名输入框填写 admin' },
+    { value: 'search', label: '搜索', prefix: '搜索 ', placeholder: '输入搜索关键词，如：MCP 协议' },
+    { value: 'scroll', label: '滚动', prefix: '滚动 ', placeholder: '输入方向，如：向下、到顶部' },
+    { value: 'wait', label: '等待', prefix: '等待 ', placeholder: '输入等待时间或条件，如：3秒、元素出现' },
+    { value: 'screenshot', label: '截图', prefix: '截图', placeholder: '截图当前页面（无需输入）' },
+    { value: 'smart_search', label: '智能搜索', prefix: '智能搜索 ', placeholder: '输入搜索关键词，AI会自动找到搜索框' },
+    { value: 'read', label: '读取', prefix: '读取 ', placeholder: '读取页面内容，如：页面文本、标题' },
+  ];
+
   const [input, setInput] = useState('');
+  const [selectedCommand, setSelectedCommand] = useState<string>('navigate');
+  const [paramInput, setParamInput] = useState('');
+  const [isReplaceable, setIsReplaceable] = useState(true);
   const [history, setHistory] = useState<CommandHistoryEntry[]>([]);
   const [isBrowserReady, setIsBrowserReady] = useState(false);
   const [waitDuration, setWaitDuration] = useState(3); // Default 3 seconds
@@ -286,11 +307,16 @@ const AIControls: React.FC<AIControlsProps> = ({
   );
 
   const handleSend = async () => {
-    if (!input.trim()) return;
+    // Combine command and parameter
+    const commandConfig = predefinedCommands.find(c => c.value === selectedCommand);
+    const prefix = commandConfig?.prefix || '';
+    const fullMessage = prefix + paramInput.trim();
 
-    const userMessage = input.trim();
+    if (!fullMessage.trim()) return;
 
-    // Add user message to history
+    const userMessage = fullMessage.trim();
+
+    // Add user message to history with replaceable flag
     setHistory((prev) => [
       ...prev,
       {
@@ -298,11 +324,15 @@ const AIControls: React.FC<AIControlsProps> = ({
         type: 'user',
         content: userMessage,
         timestamp: new Date(),
+        // Track if this command's parameter should be replaceable in template
+        replaceable: isReplaceable && paramInput.trim().length > 0,
+        commandType: selectedCommand,
+        rawParam: paramInput.trim(),
       },
     ]);
 
-    // Clear input immediately
-    setInput('');
+    // Clear parameter input immediately (keep command selection)
+    setParamInput('');
 
     // Auto init browser if not ready
     if (!isBrowserReady) {
@@ -1313,33 +1343,58 @@ const AIControls: React.FC<AIControlsProps> = ({
           <div ref={messagesEndRef} />
         </div>
 
-        {/* Input area */}
-        <Space.Compact style={{ width: '100%' }}>
-          <TextArea
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            placeholder={t('recorder:ai.inputPlaceholder') || '输入自然语言命令，例如：打开百度搜索 MCP'}
-            autoSize={{ minRows: 1, maxRows: 3 }}
-            onPressEnter={(e) => {
-              if (!e.shiftKey) {
-                e.preventDefault();
-                handleSend();
-              }
-            }}
-            disabled={isLoading}
-            style={{ borderRadius: '8px 0 0 8px' }}
-          />
-          <Button
-            type="primary"
-            icon={<SendOutlined />}
-            onClick={handleSend}
-            loading={isLoading}
-            disabled={!input.trim()}
-            style={{ height: 'auto', borderRadius: '0 8px 8px 0' }}
-          >
-            {t('common:send')}
-          </Button>
-        </Space.Compact>
+        {/* Input area - Command + Parameter split */}
+        <div style={{ marginTop: 12 }}>
+          <Space direction="vertical" style={{ width: '100%' }} size="small">
+            {/* Command selection row */}
+            <Space style={{ width: '100%' }} align="start">
+              <Select
+                value={selectedCommand}
+                onChange={(value) => setSelectedCommand(value)}
+                style={{ width: 120 }}
+                options={predefinedCommands.map(c => ({ value: c.value, label: c.label }))}
+              />
+              <TextArea
+                value={paramInput}
+                onChange={(e) => setParamInput(e.target.value)}
+                placeholder={predefinedCommands.find(c => c.value === selectedCommand)?.placeholder || '输入参数'}
+                autoSize={{ minRows: 1, maxRows: 3 }}
+                onPressEnter={(e) => {
+                  if (!e.shiftKey) {
+                    e.preventDefault();
+                    handleSend();
+                  }
+                }}
+                disabled={isLoading}
+                style={{ flex: 1, minWidth: 200 }}
+              />
+              <Button
+                type="primary"
+                icon={<SendOutlined />}
+                onClick={handleSend}
+                loading={isLoading}
+                disabled={!(predefinedCommands.find(c => c.value === selectedCommand)?.prefix + paramInput.trim()).trim()}
+                style={{ height: 'auto' }}
+              >
+                {t('common:send')}
+              </Button>
+            </Space>
+
+            {/* Replaceable checkbox */}
+            <Checkbox
+              checked={isReplaceable}
+              onChange={(e) => setIsReplaceable(e.target.checked)}
+              disabled={!paramInput.trim()}
+            >
+              <Space>
+                <Text style={{ fontSize: 12 }}>参数可替换</Text>
+                <Tooltip title="勾选后，此参数在生成模版时会被标记为可替换参数，AI在执行时会自动识别和替换">
+                  <InfoCircleOutlined style={{ fontSize: 12, color: '#999' }} />
+                </Tooltip>
+              </Space>
+            </Checkbox>
+          </Space>
+        </div>
 
         {/* Quick action buttons */}
         <div style={{ marginTop: 12 }}>
@@ -1427,56 +1482,6 @@ const AIControls: React.FC<AIControlsProps> = ({
                 style={{ width: 60 }}
                 addonAfter="s"
               />
-            </Space>
-          </div>
-
-          {/* Pre-input commands - click to fill input with command template */}
-          <div>
-            <Text type="secondary" style={{ fontSize: 11, marginRight: 8 }}>
-              {t('recorder:ai.preInputActions') || '预输入指令：'}
-            </Text>
-            <Space wrap size="small">
-              <Button
-                size="small"
-                icon={<DesktopOutlined />}
-                onClick={() => setInput('打开 ')}
-                title="预输入打开网页指令"
-              >
-                {t('recorder:ai.quick.navigate') || '打开'}
-              </Button>
-
-              <Button
-                size="small"
-                icon={<ToolOutlined />}
-                onClick={() => setInput('点击 ')}
-                title="预输入点击元素指令"
-              >
-                {t('recorder:ai.quick.click') || '点击'}
-              </Button>
-
-              <Button
-                size="small"
-                onClick={() => setInput('填充 ')}
-                title="预输入填充输入框指令"
-              >
-                {t('recorder:ai.quick.fill') || '填充'}
-              </Button>
-
-              <Button
-                size="small"
-                onClick={() => setInput('搜索 ')}
-                title="预输入搜索指令"
-              >
-                {t('recorder:ai.quick.search') || '搜索'}
-              </Button>
-
-              <Button
-                size="small"
-                onClick={() => setInput('滚动 ')}
-                title="预输入滚动指令"
-              >
-                {t('recorder:ai.quick.scroll') || '滚动'}
-              </Button>
             </Space>
           </div>
         </div>
