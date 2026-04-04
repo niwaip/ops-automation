@@ -1,6 +1,6 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Card, Tag, Button, Space, Typography, message, Spin, Popconfirm, List, Collapse, Image, Empty } from 'antd';
+import { Card, Tag, Button, Space, Typography, message, Spin, Popconfirm, List, Collapse, Image, Empty, Radio, DatePicker, TimePicker, Divider } from 'antd';
 import {
   ArrowLeftOutlined,
   PlayCircleOutlined,
@@ -13,6 +13,8 @@ import {
   CodeOutlined,
   ClockCircleOutlined,
   EyeOutlined,
+  CalendarOutlined,
+  ThunderboltOutlined,
 } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
 import { useQuery, useMutation } from 'react-query';
@@ -50,10 +52,132 @@ const ScheduleDisplay: React.FC<{ schedule: Record<string, unknown> }> = ({ sche
   </Card>
 );
 
+// Schedule Config Component for re-running tasks
+const ScheduleConfig: React.FC<{
+  onSchedule: (config: { mode: 'scheduled' | 'recurring'; date?: string; time?: string; recurringType?: 'daily' | 'weekly' | 'monthly' }) => void;
+  onRecurring: (config: { mode: 'scheduled' | 'recurring'; date?: string; time?: string; recurringType?: 'daily' | 'weekly' | 'monthly' }) => void;
+  loading: boolean;
+}> = ({ onSchedule, onRecurring, loading }) => {
+  const [scheduleMode, setScheduleMode] = useState<'scheduled' | 'recurring'>('scheduled');
+  const [scheduleDate, setScheduleDate] = useState<string | null>(null);
+  const [scheduleTime, setScheduleTime] = useState<string | null>(null);
+  const [recurringType, setRecurringType] = useState<'daily' | 'weekly' | 'monthly'>('daily');
+
+  const handleSchedule = () => {
+    if (scheduleMode === 'scheduled' && (!scheduleDate || !scheduleTime)) {
+      message.warning('请选择日期和时间');
+      return;
+    }
+    if (scheduleMode === 'recurring' && !scheduleTime) {
+      message.warning('请选择执行时间');
+      return;
+    }
+
+    const config = {
+      mode: scheduleMode,
+      date: scheduleDate,
+      time: scheduleTime,
+      recurringType: scheduleMode === 'recurring' ? recurringType : undefined,
+    };
+
+    if (scheduleMode === 'scheduled') {
+      onSchedule(config);
+    } else {
+      onRecurring(config);
+    }
+  };
+
+  return (
+    <Card size="small" style={{ background: '#f0f5ff', borderRadius: 8, marginTop: 12 }}>
+      <Space direction="vertical" size={12}>
+        <Space>
+          <Radio.Group
+            value={scheduleMode}
+            onChange={(e) => setScheduleMode(e.target.value)}
+            optionType="button"
+            buttonStyle="solid"
+            size="small"
+          >
+            <Radio.Button value="scheduled">
+              <CalendarOutlined style={{ marginRight: 4 }} />
+              定时执行
+            </Radio.Button>
+            <Radio.Button value="recurring">
+              <ClockCircleOutlined style={{ marginRight: 4 }} />
+              周期执行
+            </Radio.Button>
+          </Radio.Group>
+        </Space>
+
+        {scheduleMode === 'scheduled' && (
+          <Space size={16}>
+            <div>
+              <Text type="secondary" style={{ marginRight: 8 }}>日期</Text>
+              <DatePicker
+                size="small"
+                style={{ borderRadius: 8 }}
+                onChange={(_, dateString) => setScheduleDate(dateString as string)}
+              />
+            </div>
+            <div>
+              <Text type="secondary" style={{ marginRight: 8 }}>时间</Text>
+              <TimePicker
+                size="small"
+                style={{ borderRadius: 8 }}
+                format="HH:mm"
+                onChange={(_, timeString) => setScheduleTime(timeString as string)}
+              />
+            </div>
+          </Space>
+        )}
+
+        {scheduleMode === 'recurring' && (
+          <Space direction="vertical" size={8}>
+            <Space>
+              <Text type="secondary">周期</Text>
+              <Radio.Group
+                value={recurringType}
+                onChange={(e) => setRecurringType(e.target.value)}
+                optionType="button"
+                buttonStyle="solid"
+                size="small"
+              >
+                <Radio.Button value="daily">每天</Radio.Button>
+                <Radio.Button value="weekly">每周</Radio.Button>
+                <Radio.Button value="monthly">每月</Radio.Button>
+              </Radio.Group>
+            </Space>
+            <div>
+              <Text type="secondary" style={{ marginRight: 8 }}>执行时间</Text>
+              <TimePicker
+                size="small"
+                style={{ borderRadius: 8 }}
+                format="HH:mm"
+                onChange={(_, timeString) => setScheduleTime(timeString as string)}
+              />
+            </div>
+          </Space>
+        )}
+
+        <Button
+          type="primary"
+          size="small"
+          icon={scheduleMode === 'scheduled' ? <CalendarOutlined /> : <ClockCircleOutlined />}
+          onClick={handleSchedule}
+          loading={loading}
+        >
+          {scheduleMode === 'scheduled' ? '设置定时执行' : '设置周期执行'}
+        </Button>
+      </Space>
+    </Card>
+  );
+};
+
 const SessionDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const { t } = useTranslation(['common', 'session']);
   const navigate = useNavigate();
+  const [scheduleLoading, setScheduleLoading] = useState(false);
 
   const sessionQuery = useQuery(
     ['session', id],
@@ -79,6 +203,33 @@ const SessionDetailPage: React.FC = () => {
       navigate('/sessions');
     },
   });
+
+  // Handler for creating scheduled/recurring session based on current session
+  const handleScheduleSession = async (config: { mode: 'scheduled' | 'recurring'; date?: string; time?: string; recurringType?: 'daily' | 'weekly' | 'monthly' }) => {
+    if (!session) return;
+    setScheduleLoading(true);
+    try {
+      // Create new session with same template and params but with schedule config
+      const params = session.params || {};
+      const newParams = {
+        ...params,
+        schedule: config,
+      };
+
+      const result = await sessionApi.create({
+        user_id: session.user_id || '',
+        template_id: session.template_id || '',
+        params: newParams,
+      });
+
+      message.success(config.mode === 'scheduled' ? '定时任务已创建' : '周期任务已创建');
+      navigate(`/sessions/${result.session.id}`);
+    } catch (error) {
+      message.error('创建任务失败');
+    } finally {
+      setScheduleLoading(false);
+    }
+  };
 
   const session = sessionQuery.data;
   const steps = stepsQuery.data || [];
@@ -190,6 +341,17 @@ const SessionDetailPage: React.FC = () => {
           {session.params?.schedule ? (
             <ScheduleDisplay schedule={session.params.schedule as Record<string, unknown>} />
           ) : null}
+          {/* Schedule Config - Allow re-running task with schedule */}
+          {session.template_id && (
+            <div style={{ marginTop: 8 }}>
+              <Text type="secondary">重新执行设置: </Text>
+              <ScheduleConfig
+                onSchedule={handleScheduleSession}
+                onRecurring={handleScheduleSession}
+                loading={scheduleLoading}
+              />
+            </div>
+          )}
           {/* Execution Parameters Display */}
           {session.params && Object.keys(session.params).filter(k => k !== 'schedule').length > 0 && (
             <div style={{ marginTop: 8 }}>

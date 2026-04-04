@@ -1,13 +1,10 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Card, Select, Input, Button, Space, Spin, message, Tag, Alert, Radio, DatePicker, TimePicker, Divider, Row, Col, Typography, Tabs, Table } from 'antd';
+import { Card, Select, Input, Button, Space, Spin, message, Tag, Alert, Divider, Row, Col, Typography, Table } from 'antd';
 import {
   RobotOutlined,
   PlayCircleOutlined,
   LoadingOutlined,
-  ClockCircleOutlined,
-  ThunderboltOutlined,
-  CalendarOutlined,
   DesktopOutlined,
   ReloadOutlined,
 } from '@ant-design/icons';
@@ -58,12 +55,6 @@ const SessionStartPage: React.FC = () => {
   const leftSpan = hasExecuted ? 10 : 14;
   const rightSpan = hasExecuted ? 14 : 10;
 
-  // Schedule options
-  const [executionMode, setExecutionMode] = useState<'immediate' | 'scheduled' | 'recurring'>('immediate');
-  const [scheduleDate, setScheduleDate] = useState<string | null>(null);
-  const [scheduleTime, setScheduleTime] = useState<string | null>(null);
-  const [recurringType, setRecurringType] = useState<'daily' | 'weekly' | 'monthly'>('daily');
-
   // Fetch published templates
   const templatesQuery = useQuery(
     ['templates', { status: 'PUBLISHED' }],
@@ -101,14 +92,6 @@ const SessionStartPage: React.FC = () => {
   // Create and start session mutation
   const executeMutation = useMutation(
     async () => {
-      // Build schedule config
-      const scheduleConfig = executionMode !== 'immediate' ? {
-        mode: executionMode,
-        date: scheduleDate,
-        time: scheduleTime,
-        recurringType: executionMode === 'recurring' ? recurringType : undefined,
-      } : undefined;
-
       // Use edited params (from AI recognition + manual edits)
       const finalParams = Object.keys(editedParams).length > 0 ? editedParams : {};
 
@@ -116,19 +99,14 @@ const SessionStartPage: React.FC = () => {
       const result = await sessionApi.create({
         user_id: user?.id || '',
         template_id: selectedTemplateId!,
-        params: {
-          ...finalParams,
-          schedule: scheduleConfig,
-        },
+        params: finalParams,
       });
 
-      // Start session immediately if not scheduled
-      if (executionMode === 'immediate') {
-        await sessionApi.start(result.session.id, {
-          template_id: selectedTemplateId!,
-          params: finalParams,
-        });
-      }
+      // Start session immediately
+      await sessionApi.start(result.session.id, {
+        template_id: selectedTemplateId!,
+        params: finalParams,
+      });
       return result.session;
     },
     {
@@ -240,27 +218,61 @@ const SessionStartPage: React.FC = () => {
             </div>
 
             <div style={{ marginLeft: 44, marginBottom: 32 }}>
-              <Select
-                style={{ width: '100%' }}
-                placeholder={t('session:selectTemplatePlaceholder')}
-                value={selectedTemplateId}
-                onChange={setSelectedTemplateId}
-                loading={templatesQuery.isLoading}
-                showSearch
-                size="large"
-                filterOption={(input, option) =>
-                  (option?.children as unknown as string)?.toLowerCase().includes(input.toLowerCase())
-                }
-              >
-                {templatesQuery.data?.templates.map((template: Template) => (
-                  <Option key={template.id} value={template.id}>
-                    <Space>
-                      <Tag color="purple">{template.name}</Tag>
-                      <Text type="secondary">v{template.version}</Text>
-                    </Space>
-                  </Option>
-                ))}
-              </Select>
+              <Space.Compact style={{ width: '100%' }}>
+                <Select
+                  style={{ width: 'calc(100% - 400px)' }}
+                  placeholder={t('session:selectTemplatePlaceholder')}
+                  value={selectedTemplateId}
+                  onChange={setSelectedTemplateId}
+                  loading={templatesQuery.isLoading}
+                  showSearch
+                  size="large"
+                  filterOption={(input, option) =>
+                    (option?.children as unknown as string)?.toLowerCase().includes(input.toLowerCase())
+                  }
+                >
+                  {templatesQuery.data?.templates.map((template: Template) => (
+                    <Option key={template.id} value={template.id}>
+                      <Space>
+                        <Tag color="purple">{template.name}</Tag>
+                        <Text type="secondary">v{template.version}</Text>
+                      </Space>
+                    </Option>
+                  ))}
+                </Select>
+                <Button
+                  type="primary"
+                  ghost
+                  icon={<RobotOutlined />}
+                  onClick={handleRecognize}
+                  loading={recognizeMutation.isLoading}
+                  disabled={!selectedTemplateId || !userInput.trim()}
+                  size="large"
+                  style={{ borderRadius: 0 }}
+                >
+                  {t('session:aiRecognize')}
+                </Button>
+                <Button
+                  type="primary"
+                  icon={<PlayCircleOutlined />}
+                  size="large"
+                  onClick={handleExecute}
+                  loading={executeMutation.isLoading}
+                  disabled={!selectedTemplateId}
+                  style={{ borderRadius: 0 }}
+                >
+                  {t('session:executeSession')}
+                </Button>
+                <Button
+                  icon={<ReloadOutlined />}
+                  size="large"
+                  onClick={() => resetWorkerMutation.mutate()}
+                  loading={resetWorkerMutation.isLoading}
+                  style={{ borderRadius: 0, minWidth: 100 }}
+                >
+                  {t('template:resetWorkers')}
+                </Button>
+              </Space.Compact>
 
               {selectedTemplate && (
                 <Card
@@ -416,17 +428,6 @@ const SessionStartPage: React.FC = () => {
                 disabled={!selectedTemplateId}
                 style={{ borderRadius: 12 }}
               />
-              <Button
-                type="primary"
-                ghost
-                icon={<RobotOutlined />}
-                onClick={handleRecognize}
-                loading={recognizeMutation.isLoading}
-                disabled={!selectedTemplateId || !userInput.trim()}
-                style={{ marginTop: 12, borderRadius: 10 }}
-              >
-                {t('session:aiRecognize')}
-              </Button>
             </div>
 
             {/* Step 3: AI解析结果 */}
@@ -461,141 +462,6 @@ const SessionStartPage: React.FC = () => {
                 </div>
               </>
             )}
-
-            {/* Step 4: Execution Mode */}
-            <div style={stepStyle}>
-              <div style={stepNumberStyle}>{recognizedParams ? '4' : '3'}</div>
-              <Title level={4} style={{ margin: 0 }}>{t('session:stepExecutionMode') || '执行方式'}</Title>
-            </div>
-
-            <div style={{ marginLeft: 44, marginBottom: 32 }}>
-              <Tabs
-                activeKey={executionMode}
-                onChange={(key) => setExecutionMode(key as 'immediate' | 'scheduled' | 'recurring')}
-                items={[
-                  {
-                    key: 'immediate',
-                    label: (
-                      <Space>
-                        <ThunderboltOutlined style={{ color: '#6366f1' }} />
-                        <span>{t('session:immediateExecution') || '立即执行'}</span>
-                      </Space>
-                    ),
-                    children: (
-                      <Text type="secondary">{t('session:immediateExecutionDesc') || '会话创建后立即开始执行任务'}</Text>
-                    ),
-                  },
-                  {
-                    key: 'scheduled',
-                    label: (
-                      <Space>
-                        <CalendarOutlined style={{ color: '#10b981' }} />
-                        <span>{t('session:scheduledExecution') || '定时执行'}</span>
-                      </Space>
-                    ),
-                    children: (
-                      <Space direction="vertical" size={16}>
-                        <Text type="secondary">{t('session:scheduledExecutionDesc') || '在指定时间执行一次任务'}</Text>
-                        <Space size={16}>
-                          <div>
-                            <Text type="secondary">{t('session:selectDate') || '选择日期'}</Text>
-                            <DatePicker
-                              style={{ marginLeft: 8, borderRadius: 10 }}
-                              onChange={(_, dateString) => setScheduleDate(dateString as string)}
-                            />
-                          </div>
-                          <div>
-                            <Text type="secondary">{t('session:selectTime') || '选择时间'}</Text>
-                            <TimePicker
-                              style={{ marginLeft: 8, borderRadius: 10 }}
-                              format="HH:mm"
-                              onChange={(_, timeString) => setScheduleTime(timeString as string)}
-                            />
-                          </div>
-                        </Space>
-                      </Space>
-                    ),
-                  },
-                  {
-                    key: 'recurring',
-                    label: (
-                      <Space>
-                        <ClockCircleOutlined style={{ color: '#f59e0b' }} />
-                        <span>{t('session:recurringExecution') || '周期执行'}</span>
-                      </Space>
-                    ),
-                    children: (
-                      <Space direction="vertical" size={12}>
-                        <Text type="secondary">{t('session:recurringExecutionDesc') || '按天/周/月周期性执行任务'}</Text>
-                        <div>
-                          <Text type="secondary" style={{ marginRight: 12 }}>{t('session:recurringType') || '重复周期'}</Text>
-                          <Radio.Group
-                            value={recurringType}
-                            onChange={(e) => setRecurringType(e.target.value)}
-                            optionType="button"
-                            buttonStyle="solid"
-                          >
-                            <Radio.Button value="daily">{t('session:daily') || '每天'}</Radio.Button>
-                            <Radio.Button value="weekly">{t('session:weekly') || '每周'}</Radio.Button>
-                            <Radio.Button value="monthly">{t('session:monthly') || '每月'}</Radio.Button>
-                          </Radio.Group>
-                        </div>
-                        <div>
-                          <Text type="secondary">{t('session:startTime') || '开始时间'}</Text>
-                          <TimePicker
-                            style={{ marginLeft: 8, borderRadius: 10 }}
-                            format="HH:mm"
-                            onChange={(_, timeString) => setScheduleTime(timeString as string)}
-                          />
-                        </div>
-                      </Space>
-                    ),
-                  },
-                ]}
-              />
-            </div>
-
-            <Divider />
-
-            {/* Action Buttons */}
-            <Row justify="end" gutter={16}>
-              <Col>
-                <Button
-                  icon={<ReloadOutlined />}
-                  size="large"
-                  onClick={() => resetWorkerMutation.mutate()}
-                  loading={resetWorkerMutation.isLoading}
-                  style={{ borderRadius: 10, minWidth: 160, height: 48 }}
-                >
-                  {t('template:resetWorkers')}
-                </Button>
-              </Col>
-              <Col>
-                <Button
-                  size="large"
-                  onClick={() => navigate('/sessions')}
-                  style={{ borderRadius: 10, minWidth: 100 }}
-                >
-                  {t('common:cancel')}
-                </Button>
-              </Col>
-              <Col>
-                <Button
-                  type="primary"
-                  icon={<PlayCircleOutlined />}
-                  size="large"
-                  onClick={handleExecute}
-                  loading={executeMutation.isLoading}
-                  disabled={!selectedTemplateId}
-                  style={{ borderRadius: 10, minWidth: 140, height: 48 }}
-                >
-                  {executionMode === 'immediate'
-                    ? t('session:executeSession')
-                    : t('session:scheduleSession') || '创建任务'}
-                </Button>
-              </Col>
-            </Row>
-
             {isLoading && (
               <div style={{ textAlign: 'center', marginTop: 24 }}>
                 <Spin indicator={<LoadingOutlined style={{ fontSize: 24 }} spin />} />
