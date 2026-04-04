@@ -1434,6 +1434,7 @@ const AIControls: React.FC<AIControlsProps> = ({
             {compiledScript}
           </pre>
         </Modal>
+      </Space>
       ) : (
         // Manual Mode Content
         <Space direction="vertical" style={{ width: '100%' }} size="middle">
