@@ -18,12 +18,8 @@ async function executeActions(actions, sessionId) {
   try {
     console.error('[EXECUTE] Launching browser on Xvfb :99 (visible via noVNC)...');
 
-    // Kill any existing codegen browsers to avoid conflicts
-    try {
-      execSync('pkill -f "playwright codegen" || true', { stdio: 'ignore' });
-    } catch (e) {
-      // Ignore errors
-    }
+    // Don't kill existing browsers - they might be visible via noVNC
+    // Just launch a new browser instance
 
     const browser = await chromium.launch({
       headless: false,
@@ -125,11 +121,12 @@ async function executeActions(actions, sessionId) {
       await new Promise(r => setTimeout(r, 500));
     }
 
-    // Keep browser open for 30 seconds so user can see the result
-    console.error('[EXECUTE] Keeping browser open for 30 seconds...');
-    await new Promise(r => setTimeout(r, 30000));
+    // Keep browser open so user can see the result via noVNC
+    // Browser will be cleaned up when container restarts or new session starts
+    console.error('[EXECUTE] Execution completed. Browser left open for viewing via noVNC.');
 
-    await browser.close();
+    // Don't close the browser - let user see the result
+    // await browser.close();
 
     return { status: 'completed', results };
   } catch (e) {
