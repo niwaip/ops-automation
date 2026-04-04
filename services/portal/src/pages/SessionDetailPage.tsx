@@ -15,16 +15,45 @@ import {
   EyeOutlined,
 } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
-import { useQuery, useMutation, useQueryClient } from 'react-query';
-import { sessionApi, Session, StepResult } from '../api/session';
+import { useQuery, useMutation } from 'react-query';
+import { sessionApi, StepResult } from '../api/session';
 
 const { Title, Text } = Typography;
+
+// Schedule Display Component
+const ScheduleDisplay: React.FC<{ schedule: Record<string, unknown> }> = ({ schedule }) => (
+  <Card size="small" style={{ background: '#f6ffed', borderRadius: 8, marginTop: 8 }}>
+    <Space direction="vertical" size={4}>
+      <Space>
+        <ClockCircleOutlined style={{ color: '#52c41a' }} />
+        <Text strong>
+          {schedule.mode === 'scheduled' && '定时执行'}
+          {schedule.mode === 'recurring' && '周期执行'}
+        </Text>
+      </Space>
+      {schedule.mode === 'scheduled' && (
+        <Text type="secondary">
+          执行时间: {String(schedule.date)} {String(schedule.time)}
+        </Text>
+      )}
+      {schedule.mode === 'recurring' && (
+        <Space direction="vertical" size={2}>
+          <Text type="secondary">
+            周期: {schedule.recurringType === 'daily' && '每天'}
+            {schedule.recurringType === 'weekly' && '每周'}
+            {schedule.recurringType === 'monthly' && '每月'}
+            {schedule.time ? ` ${String(schedule.time)}` : ''}
+          </Text>
+        </Space>
+      )}
+    </Space>
+  </Card>
+);
 
 const SessionDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const { t } = useTranslation(['common', 'session']);
   const navigate = useNavigate();
-  const queryClient = useQueryClient();
 
   const sessionQuery = useQuery(
     ['session', id],
@@ -157,10 +186,23 @@ const SessionDetailPage: React.FC = () => {
               <Text>{session.step_index + 1} {session.current_step ? `(${session.current_step})` : ''}</Text>
             </div>
           )}
-          {session.params && Object.keys(session.params).length > 0 && (
-            <div>
+          {/* Schedule Info Display */}
+          {session.params?.schedule ? (
+            <ScheduleDisplay schedule={session.params.schedule as Record<string, unknown>} />
+          ) : null}
+          {/* Execution Parameters Display */}
+          {session.params && Object.keys(session.params).filter(k => k !== 'schedule').length > 0 && (
+            <div style={{ marginTop: 8 }}>
               <Text type="secondary">{t('session:params')}: </Text>
-              <Text code>{JSON.stringify(session.params)}</Text>
+              <Card size="small" style={{ background: '#f5f5f5', borderRadius: 8, marginTop: 4 }}>
+                {Object.entries(session.params)
+                  .filter(([key]) => key !== 'schedule')
+                  .map(([key, value]) => (
+                    <div key={key} style={{ marginBottom: 4 }}>
+                      <Text code>{key}</Text>: <Text strong>{typeof value === 'object' ? JSON.stringify(value) : String(value)}</Text>
+                    </div>
+                  ))}
+              </Card>
             </div>
           )}
         </Space>

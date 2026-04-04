@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Card, Select, Input, Button, Space, Spin, message, Tag, Alert, Radio, DatePicker, TimePicker, Divider, Row, Col, Typography, Tabs } from 'antd';
+import { Card, Select, Input, Button, Space, Spin, message, Tag, Alert, Radio, DatePicker, TimePicker, Divider, Row, Col, Typography, Tabs, Collapse } from 'antd';
 import {
   RobotOutlined,
   PlayCircleOutlined,
@@ -8,9 +8,10 @@ import {
   ClockCircleOutlined,
   ThunderboltOutlined,
   CalendarOutlined,
-  EyeOutlined,
   DesktopOutlined,
   ReloadOutlined,
+  EditOutlined,
+  CheckOutlined,
 } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
 import { useQuery, useMutation } from 'react-query';
@@ -22,10 +23,25 @@ import { useAuthStore } from '../store/authStore';
 const { TextArea } = Input;
 const { Option } = Select;
 const { Title, Text } = Typography;
-const { RangePicker } = DatePicker;
 
 // noVNC URL - use environment variable or default
 const NOVNC_URL = import.meta.env.VITE_NOVNC_URL || 'http://localhost:6080/vnc.html';
+
+// Action descriptions mapping
+const ACTION_DESCRIPTIONS: Record<string, string> = {
+  navigate: '导航到URL',
+  click: '点击元素',
+  fill: '填写输入框',
+  screenshot: '截图',
+  wait: '等待',
+  hover: '悬停',
+  press: '按键',
+  scroll: '滚动',
+  smart_search: '智能搜索',
+  get_text: '获取文本',
+  snapshot: '快照',
+  type_text: '输入文本',
+};
 
 const SessionStartPage: React.FC = () => {
   const { t } = useTranslation(['common', 'session', 'template']);
@@ -35,6 +51,8 @@ const SessionStartPage: React.FC = () => {
   const [selectedTemplateId, setSelectedTemplateId] = useState<string | undefined>();
   const [userInput, setUserInput] = useState('');
   const [recognizedParams, setRecognizedParams] = useState<RecognizeParamsResponse | null>(null);
+  const [editedParams, setEditedParams] = useState<Record<string, unknown>>({});
+  const [isEditingParams, setIsEditingParams] = useState(false);
 
   // Schedule options
   const [executionMode, setExecutionMode] = useState<'immediate' | 'scheduled' | 'recurring'>('immediate');
@@ -65,6 +83,7 @@ const SessionStartPage: React.FC = () => {
     {
       onSuccess: (data) => {
         setRecognizedParams(data);
+        setEditedParams(data.params);
         message.success(t('session:recognizeSuccess'));
       },
       onError: () => {
@@ -84,12 +103,15 @@ const SessionStartPage: React.FC = () => {
         recurringType: executionMode === 'recurring' ? recurringType : undefined,
       } : undefined;
 
+      // Use edited params (from AI recognition + manual edits)
+      const finalParams = Object.keys(editedParams).length > 0 ? editedParams : {};
+
       // Create session
       const result = await sessionApi.create({
         user_id: user?.id || '',
         template_id: selectedTemplateId!,
         params: {
-          ...recognizedParams?.params,
+          ...finalParams,
           schedule: scheduleConfig,
         },
       });
@@ -98,7 +120,7 @@ const SessionStartPage: React.FC = () => {
       if (executionMode === 'immediate') {
         await sessionApi.start(result.session.id, {
           template_id: selectedTemplateId!,
-          params: recognizedParams?.params || {},
+          params: finalParams,
         });
       }
       return result.session;
@@ -200,7 +222,7 @@ const SessionStartPage: React.FC = () => {
                 showSearch
                 size="large"
                 filterOption={(input, option) =>
-                  (option?.children as string)?.toLowerCase().includes(input.toLowerCase())
+                  (option?.children as unknown as string)?.toLowerCase().includes(input.toLowerCase())
                 }
               >
                 {templatesQuery.data?.templates.map((template: Template) => (
@@ -230,7 +252,7 @@ const SessionStartPage: React.FC = () => {
                     <Col span={6}>
                       <Text type="secondary">{t('template:paramsSchema')}</Text>
                       <div>
-                        {selectedTemplate.params_schema?.required?.length > 0
+                        {selectedTemplate.params_schema?.required && selectedTemplate.params_schema.required.length > 0
                           ? selectedTemplate.params_schema.required.map((p: string) => (
                               <Tag key={p} color="blue">{p}</Tag>
                             ))
@@ -238,6 +260,79 @@ const SessionStartPage: React.FC = () => {
                       </div>
                     </Col>
                   </Row>
+
+                  {/* Steps Detail */}
+                  {selectedTemplate.steps && selectedTemplate.steps.length > 0 && (
+                    <div style={{ marginTop: 16 }}>
+                      <Divider style={{ margin: '12px 0' }} />
+                      <Text strong style={{ marginBottom: 8, display: 'block' }}>执行步骤详情</Text>
+                      <Collapse
+                        size="small"
+                        style={{ background: 'transparent' }}
+                        items={selectedTemplate.steps.map((step, index) => ({
+                          key: step.step_id || `step-${index}`,
+                          label: (
+                            <Space>
+                              <Tag color="purple">{index + 1}</Tag>
+                              <Text strong>{ACTION_DESCRIPTIONS[step.action] || step.action}</Text>
+                            </Space>
+                          ),
+                          children: (
+                            <div>
+                              <div style={{ marginBottom: 8 }}>
+                                <Text type="secondary">动作类型: </Text>
+                                <Tag>{step.action}</Tag>
+                              </div>
+                              {step.params && Object.keys(step.params).length > 0 && (
+                                <div style={{ marginBottom: 8 }}>
+                                  <Text type="secondary" style={{ display: 'block', marginBottom: 4 }}>参数:</Text>
+                                  <div style={{ background: '#f5f5f5', padding: 8, borderRadius: 4 }}>
+                                    {Object.entries(step.params).map(([k, v]) => (
+                                      <div key={k} style={{ marginBottom: 4 }}>
+                                        <Text code>{k}</Text>: <Text>{String(v)}</Text>
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
+                              {step.locator && (
+                                <div>
+                                  <Text type="secondary">定位器: </Text>
+                                  <Text code>{step.locator.type}={step.locator.value}</Text>
+                                </div>
+                              )}
+                            </div>
+                          ),
+                        }))}
+                      />
+                    </div>
+                  )}
+
+                  {/* Default Params */}
+                  {selectedTemplate.params_schema?.properties && (
+                    <div style={{ marginTop: 16 }}>
+                      <Divider style={{ margin: '12px 0' }} />
+                      <Text strong style={{ marginBottom: 8, display: 'block' }}>模板参数定义</Text>
+                      <div style={{ background: '#f5f5f5', padding: 8, borderRadius: 4 }}>
+                        {Object.entries(selectedTemplate.params_schema.properties).map(([key, prop]: [string, any]) => (
+                          <div key={key} style={{ marginBottom: 8 }}>
+                            <Space>
+                              <Text strong>{key}</Text>
+                              {selectedTemplate.params_schema?.required?.includes(key) && (
+                                <Tag color="red">必填</Tag>
+                              )}
+                              {prop.default !== undefined && (
+                                <Tag color="green">默认: {String(prop.default)}</Tag>
+                              )}
+                            </Space>
+                            {prop.description && (
+                              <div><Text type="secondary" style={{ fontSize: 12 }}>{prop.description}</Text></div>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </Card>
               )}
             </div>
@@ -271,26 +366,98 @@ const SessionStartPage: React.FC = () => {
             </div>
 
             {/* Step 3: Review Params */}
-            {recognizedParams && (
+            {(recognizedParams || Object.keys(editedParams).length > 0) && (
               <>
                 <div style={stepStyle}>
                   <div style={stepNumberStyle}>3</div>
                   <Title level={4} style={{ margin: 0 }}>{t('session:stepReviewParams')}</Title>
+                  <Button
+                    type="link"
+                    icon={isEditingParams ? <CheckOutlined /> : <EditOutlined />}
+                    onClick={() => setIsEditingParams(!isEditingParams)}
+                    style={{ marginLeft: 8 }}
+                  >
+                    {isEditingParams ? '完成编辑' : '编辑参数'}
+                  </Button>
                 </div>
 
                 <div style={{ marginLeft: 44, marginBottom: 32 }}>
-                  <Alert
-                    type={recognizedParams.confidence > 0.8 ? 'success' : 'warning'}
-                    message={t('session:confidenceScore', { score: recognizedParams.confidence })}
-                    style={{ marginBottom: 16, borderRadius: 10 }}
-                  />
+                  {recognizedParams && (
+                    <Alert
+                      type={recognizedParams.confidence > 0.8 ? 'success' : 'warning'}
+                      message={t('session:confidenceScore', { score: recognizedParams.confidence })}
+                      style={{ marginBottom: 16, borderRadius: 10 }}
+                    />
+                  )}
                   <Card size="small" style={{ borderRadius: 12 }}>
-                    {Object.entries(recognizedParams.params).map(([key, value]) => (
-                      <div key={key} style={{ marginBottom: 8 }}>
-                        <Text type="secondary">{key}: </Text>
-                        <Text strong>{typeof value === 'object' ? JSON.stringify(value) : String(value)}</Text>
+                    {isEditingParams ? (
+                      // Edit mode
+                      <div>
+                        <Text type="secondary" style={{ marginBottom: 8, display: 'block' }}>
+                          编辑参数值（AI解析后可手动修改）:
+                        </Text>
+                        {Object.entries(editedParams).map(([key, value]) => (
+                          <div key={key} style={{ marginBottom: 12 }}>
+                            <Text strong style={{ marginBottom: 4, display: 'block' }}>{key}</Text>
+                            <Input
+                              value={typeof value === 'object' ? JSON.stringify(value) : String(value)}
+                              onChange={(e) => {
+                                const newValue = e.target.value;
+                                setEditedParams(prev => ({
+                                  ...prev,
+                                  [key]: newValue,
+                                }));
+                              }}
+                              style={{ borderRadius: 8 }}
+                            />
+                          </div>
+                        ))}
+                        {selectedTemplate?.params_schema?.properties && (
+                          <>
+                            <Divider style={{ margin: '12px 0' }} />
+                            <Text type="secondary" style={{ marginBottom: 8, display: 'block' }}>
+                              添加其他参数:
+                            </Text>
+                            {Object.entries(selectedTemplate.params_schema.properties)
+                              .filter(([key]) => !editedParams[key])
+                              .map(([key, prop]: [string, any]) => (
+                                <div key={key} style={{ marginBottom: 12 }}>
+                                  <Space style={{ marginBottom: 4 }}>
+                                    <Text strong>{key}</Text>
+                                    {prop.default !== undefined && (
+                                      <Tag color="green">默认: {String(prop.default)}</Tag>
+                                    )}
+                                  </Space>
+                                  <Input
+                                    placeholder={prop.description || `输入 ${key}`}
+                                    onChange={(e) => {
+                                      if (e.target.value) {
+                                        setEditedParams(prev => ({
+                                          ...prev,
+                                          [key]: e.target.value,
+                                        }));
+                                      }
+                                    }}
+                                    style={{ borderRadius: 8 }}
+                                  />
+                                </div>
+                              ))}
+                          </>
+                        )}
                       </div>
-                    ))}
+                    ) : (
+                      // View mode
+                      Object.entries(editedParams).length > 0 ? (
+                        Object.entries(editedParams).map(([key, value]) => (
+                          <div key={key} style={{ marginBottom: 8 }}>
+                            <Text type="secondary">{key}: </Text>
+                            <Text strong>{typeof value === 'object' ? JSON.stringify(value) : String(value)}</Text>
+                          </div>
+                        ))
+                      ) : (
+                        <Text type="secondary">暂无参数，请输入描述后点击AI解析</Text>
+                      )
+                    )}
                   </Card>
                 </div>
               </>
