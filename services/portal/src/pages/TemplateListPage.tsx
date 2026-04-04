@@ -10,6 +10,7 @@ import {
   CloudUploadOutlined,
   CloudDownloadOutlined,
   PlayCircleOutlined,
+  BugOutlined,
 } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
 import { useQuery, useMutation, useQueryClient } from 'react-query';
@@ -172,6 +173,14 @@ const TemplateListPage: React.FC = () => {
             onClick={() => navigate(`/templates/${record.id}`)}
           >
             {t('common:edit')}
+          </Button>
+          <Button
+            type="link"
+            size="small"
+            icon={<BugOutlined />}
+            onClick={() => navigate(`/templates/${record.id}?test=true`)}
+          >
+            {t('template:testTemplate')}
           </Button>
           {record.status === 'PUBLISHED' && (
             <Button

@@ -5,8 +5,8 @@ import {
   ArrowLeftOutlined,
   CloudUploadOutlined,
   CopyOutlined,
-  CheckCircleOutlined,
   PlayCircleOutlined,
+  BugOutlined,
 } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
 import { useQuery, useMutation, useQueryClient } from 'react-query';
@@ -31,6 +31,7 @@ const TemplateDetailPage: React.FC = () => {
   const { user } = useAuthStore();
 
   const [executeModalVisible, setExecuteModalVisible] = useState(false);
+  const [testModalVisible, setTestModalVisible] = useState(false);
   const [form] = Form.useForm();
 
   const templateQuery = useQuery(
@@ -44,7 +45,11 @@ const TemplateDetailPage: React.FC = () => {
     if (searchParams.get('execute') === 'true' && templateQuery.data?.status === 'PUBLISHED') {
       setExecuteModalVisible(true);
     }
-  }, [searchParams, templateQuery.data?.status]);
+    // Auto-open test modal if test=true in query params (for any status)
+    if (searchParams.get('test') === 'true' && templateQuery.data) {
+      setTestModalVisible(true);
+    }
+  }, [searchParams, templateQuery.data?.status, templateQuery.data]);
 
   const publishMutation = useMutation(
     (templateId: string) => templateApi.publish(templateId, user?.id || ''),
@@ -123,6 +128,50 @@ const TemplateDetailPage: React.FC = () => {
       executeMutation.mutate({});
     }
   };
+
+  const handleTestClick = () => {
+    if (hasParams) {
+      setTestModalVisible(true);
+    } else {
+      testMutation.mutate({});
+    }
+  };
+
+  const handleTestConfirm = async () => {
+    try {
+      const values = await form.validateFields();
+      testMutation.mutate(values);
+    } catch {
+      // Form validation failed
+    }
+  };
+
+  const testMutation = useMutation(
+    async (params: Record<string, unknown>) => {
+      // Create session with user_id and template_id for testing
+      const result = await sessionApi.create({
+        user_id: user?.id || '',
+        template_id: id!,
+        params,
+      });
+      // Start the session with template_id and params
+      await sessionApi.start(result.session.id, {
+        template_id: id!,
+        params,
+      });
+      return result.session;
+    },
+    {
+      onSuccess: (session) => {
+        message.success(t('template:testSuccess'));
+        setTestModalVisible(false);
+        navigate(`/sessions/${session.id}`);
+      },
+      onError: () => {
+        message.error(t('template:testFailed'));
+      },
+    }
+  );
 
   const handleExecuteConfirm = async () => {
     try {
@@ -216,8 +265,9 @@ const TemplateDetailPage: React.FC = () => {
                 {t('template:cloneTemplate')}
               </Button>
               <Button
-                icon={<CheckCircleOutlined />}
-                onClick={() => templateApi.validate(template.id)}
+                icon={<BugOutlined />}
+                onClick={handleTestClick}
+                loading={testMutation.isLoading}
               >
                 {t('template:testTemplate')}
               </Button>
@@ -353,6 +403,34 @@ const TemplateDetailPage: React.FC = () => {
         cancelText={t('common:cancel')}
       >
         <p style={{ marginBottom: 16 }}>{t('template:executeModalDesc')}</p>
+        <Form form={form} layout="vertical">
+          {Object.entries(paramProperties).map(([paramName, paramDef]) => (
+            <Form.Item
+              key={paramName}
+              name={paramName}
+              label={paramName}
+              rules={[
+                { required: requiredParams.includes(paramName), message: `${paramName} is required` },
+              ]}
+              help={paramDef.description || undefined}
+            >
+              <Input placeholder={paramDef.description || t('template:paramValue')} />
+            </Form.Item>
+          ))}
+        </Form>
+      </Modal>
+
+      {/* Test Parameter Modal */}
+      <Modal
+        title={t('template:testModalTitle')}
+        open={testModalVisible}
+        onOk={handleTestConfirm}
+        onCancel={() => setTestModalVisible(false)}
+        confirmLoading={testMutation.isLoading}
+        okText={t('template:testTemplate')}
+        cancelText={t('common:cancel')}
+      >
+        <p style={{ marginBottom: 16 }}>{t('template:testModalDesc')}</p>
         <Form form={form} layout="vertical">
           {Object.entries(paramProperties).map(([paramName, paramDef]) => (
             <Form.Item
