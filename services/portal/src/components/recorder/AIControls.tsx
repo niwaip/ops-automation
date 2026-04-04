@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Card, Input, Button, Space, Typography, Tag, Empty, message, Divider, Alert, Collapse, InputNumber, Modal, List, Tooltip, Switch } from 'antd';
 import {
   SendOutlined,
@@ -27,11 +28,14 @@ import {
   PauseCircleOutlined,
   StopOutlined,
   VideoCameraOutlined,
+  BugOutlined,
+  ReloadOutlined,
 } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
 import { useMutation } from 'react-query';
 import { apiClient } from '../../api/client';
 import { templateApi } from '../../api/template';
+import { sessionApi, workerApi } from '../../api/session';
 import { useAuthStore } from '../../store/authStore';
 
 const { TextArea } = Input;
@@ -113,6 +117,7 @@ const AIControls: React.FC<AIControlsProps> = ({
   recordedScript = '',
 }) => {
   const { t } = useTranslation(['common', 'recorder']);
+  const navigate = useNavigate();
   const { user } = useAuthStore();
   const [input, setInput] = useState('');
   const [history, setHistory] = useState<CommandHistoryEntry[]>([]);
@@ -129,6 +134,9 @@ const AIControls: React.FC<AIControlsProps> = ({
   const [showTemplateModal, setShowTemplateModal] = useState(false);
   const [compiledScript, setCompiledScript] = useState('');
   const [showScriptModal, setShowScriptModal] = useState(false);
+  const [savedTemplateId, setSavedTemplateId] = useState<string | null>(null);
+  const [testLoading, setTestLoading] = useState(false);
+  const [resetLoading, setResetLoading] = useState(false);
 
   // Recording mode: true = AI mode, false = Manual mode
   const [isAIMode, setIsAIMode] = useState(true);
@@ -390,6 +398,7 @@ const AIControls: React.FC<AIControlsProps> = ({
   const handleClearTemplate = () => {
     setTemplateSteps([]);
     setTemplateName('');
+    setSavedTemplateId(null);
   };
 
   // Compile template to executable script with parameter extraction
@@ -698,10 +707,14 @@ const AIControls: React.FC<AIControlsProps> = ({
 
     const name = templateName || `模版 ${new Date().toLocaleString()}`;
 
-    // Convert TemplateStep to backend format
-    const backendSteps = templateSteps.map((step, index) => {
+    // Convert TemplateStep to backend format with screenshot after each step
+    const backendSteps: any[] = [];
+    let stepCounter = 1;
+
+    templateSteps.forEach((step, index) => {
+      // Add the original step
       const backendStep: any = {
-        step_id: `step_${index + 1}`,
+        step_id: `step_${stepCounter}`,
         action: step.tool,
         params: step.params,
       };
@@ -714,14 +727,38 @@ const AIControls: React.FC<AIControlsProps> = ({
         };
       }
 
-      return backendStep;
+      backendSteps.push(backendStep);
+      stepCounter++;
+
+      // Add screenshot step after each step
+      // Wait 2s -> screenshot -> wait 2s
+      backendSteps.push({
+        step_id: `step_${stepCounter}`,
+        action: 'wait',
+        params: { duration: 2000 },
+      });
+      stepCounter++;
+
+      backendSteps.push({
+        step_id: `step_${stepCounter}`,
+        action: 'screenshot',
+        params: {},
+      });
+      stepCounter++;
+
+      backendSteps.push({
+        step_id: `step_${stepCounter}`,
+        action: 'wait',
+        params: { duration: 2000 },
+      });
+      stepCounter++;
     });
 
     try {
       // Save to backend API
       const createdTemplate = await templateApi.create({
         name,
-        description: `由智能录制生成的模版，包含 ${templateSteps.length} 个步骤`,
+        description: `由智能录制生成的模版，包含 ${templateSteps.length} 个步骤（含自动截图）`,
         steps: backendSteps,
         created_by: user?.id || 'ai_recorder',
       });
@@ -730,13 +767,85 @@ const AIControls: React.FC<AIControlsProps> = ({
       setShowTemplateModal(false);
       handleClearTemplate();
 
-      // Navigate to template detail page with test option
-      navigate(`/templates/${createdTemplate.id}?test=true`);
+      // Store the template ID for immediate testing
+      setSavedTemplateId(createdTemplate.id);
+      message.info('模版已保存，可以点击"测试模版"按钮进行测试', 5);
     } catch (error: any) {
       console.error('Failed to save template:', error);
       // Show the actual error message
       const errorMsg = error.response?.data?.message || error.message || '未知错误';
       message.error(`保存模版失败: ${errorMsg}`);
+    }
+  };
+
+  // Test saved template
+  const handleTestSavedTemplate = async () => {
+    if (!savedTemplateId) {
+      message.warning('请先保存模版');
+      return;
+    }
+    if (!user?.id) {
+      message.warning('用户未登录，请先登录');
+      return;
+    }
+
+    setTestLoading(true);
+    try {
+      // Create session
+      const result = await sessionApi.create({
+        user_id: user.id,
+        template_id: savedTemplateId,
+        params: {},
+      });
+
+      // Start the session
+      await sessionApi.start(result.session.id, {
+        template_id: savedTemplateId,
+        params: {},
+      });
+
+      message.success('测试已启动，跳转到会话详情页');
+      navigate(`/sessions/${result.session.id}`);
+    } catch (error: any) {
+      const errorMsg = error.response?.data?.message || error.message || '测试失败';
+      if (errorMsg.includes('No available workers')) {
+        // Try to reset workers and retry
+        message.warning('Worker 不足，正在重置...');
+        try {
+          await workerApi.reset();
+          // Retry
+          const result = await sessionApi.create({
+            user_id: user.id,
+            template_id: savedTemplateId,
+            params: {},
+          });
+          await sessionApi.start(result.session.id, {
+            template_id: savedTemplateId,
+            params: {},
+          });
+          message.success('测试已启动，跳转到会话详情页');
+          navigate(`/sessions/${result.session.id}`);
+        } catch (retryError: any) {
+          message.error(retryError.response?.data?.message || retryError.message || '测试失败');
+        }
+      } else {
+        message.error(errorMsg);
+      }
+    } finally {
+      setTestLoading(false);
+    }
+  };
+
+  // Reset worker pool
+  const handleResetWorkers = async () => {
+    setResetLoading(true);
+    try {
+      const result = await workerApi.reset();
+      message.success(result.message || 'Worker Pool 已重置');
+    } catch (error: any) {
+      message.error('重置 Worker Pool 失败');
+    } finally {
+      setResetLoading(false);
     }
   };
 
@@ -1290,7 +1399,6 @@ const AIControls: React.FC<AIControlsProps> = ({
         <div style={{ background: '#f6f8fa', borderRadius: 8, padding: 12 }}>
           <Space style={{ width: '100%', justifyContent: 'space-between' }}>
             <Space>
-            <Text strong>录制器</Text>
               <Text strong style={{ fontSize: 13 }}>
                 <FileAddOutlined style={{ marginRight: 4 }} />
                 模版录制
@@ -1298,9 +1406,11 @@ const AIControls: React.FC<AIControlsProps> = ({
               <Tag color={templateSteps.length > 0 ? 'processing' : 'default'}>
                 {templateSteps.length} 步
               </Tag>
+              {savedTemplateId && (
+                <Tag color="success">已保存</Tag>
+              )}
             </Space>
             <Space>
-            <Text strong>录制器</Text>
               <Button
                 size="small"
                 icon={<RobotOutlined />}
@@ -1331,6 +1441,29 @@ const AIControls: React.FC<AIControlsProps> = ({
             </Space>
           </Space>
 
+          {/* Test and Reset buttons after saving */}
+          {savedTemplateId && (
+            <Space style={{ marginTop: 12, width: '100%' }}>
+              <Button
+                type="primary"
+                size="small"
+                icon={<BugOutlined />}
+                onClick={handleTestSavedTemplate}
+                loading={testLoading}
+              >
+                测试模版
+              </Button>
+              <Button
+                size="small"
+                icon={<ReloadOutlined />}
+                onClick={handleResetWorkers}
+                loading={resetLoading}
+              >
+                重置 Worker
+              </Button>
+            </Space>
+          )}
+
           {/* Template steps list */}
           {templateSteps.length > 0 && (
             <List
@@ -1351,7 +1484,6 @@ const AIControls: React.FC<AIControlsProps> = ({
                   ]}
                 >
                   <Space>
-            <Text strong>录制器</Text>
                     <Tag color="blue">{index + 1}</Tag>
                     <Tag>{step.tool}</Tag>
                     <Text style={{ fontSize: 11 }}>{step.description}</Text>
