@@ -213,61 +213,68 @@ const SessionStartPage: React.FC = () => {
           >
             {/* Template Selection and Actions */}
             <div style={{ marginBottom: 24 }}>
-              <Space.Compact style={{ width: '100%' }}>
-                <Select
-                  style={{ width: 'calc(100% - 400px)' }}
-                  placeholder={t('session:selectTemplatePlaceholder')}
-                  value={selectedTemplateId}
-                  onChange={setSelectedTemplateId}
-                  loading={templatesQuery.isLoading}
-                  showSearch
-                  size="large"
-                  filterOption={(input, option) =>
-                    (option?.children as unknown as string)?.toLowerCase().includes(input.toLowerCase())
-                  }
-                >
-                  {templatesQuery.data?.templates.map((template: Template) => (
-                    <Option key={template.id} value={template.id}>
-                      <Space>
-                        <Tag color="purple">{template.name}</Tag>
-                        <Text type="secondary">v{template.version}</Text>
-                      </Space>
-                    </Option>
-                  ))}
-                </Select>
-                <Button
-                  type="primary"
-                  ghost
-                  icon={<RobotOutlined />}
-                  onClick={handleRecognize}
-                  loading={recognizeMutation.isLoading}
-                  disabled={!selectedTemplateId || !userInput.trim()}
-                  size="large"
-                  style={{ borderRadius: 0 }}
-                >
-                  解析参数
-                </Button>
-                <Button
-                  type="primary"
-                  icon={<PlayCircleOutlined />}
-                  size="large"
-                  onClick={handleExecute}
-                  loading={executeMutation.isLoading}
-                  disabled={!selectedTemplateId}
-                  style={{ borderRadius: 0 }}
-                >
-                  执行
-                </Button>
-                <Button
-                  icon={<ReloadOutlined />}
-                  size="large"
-                  onClick={() => resetWorkerMutation.mutate()}
-                  loading={resetWorkerMutation.isLoading}
-                  style={{ borderRadius: 0, minWidth: 80 }}
-                >
-                  重置池
-                </Button>
-              </Space.Compact>
+              <Row gutter={16} align="middle">
+                <Col flex="auto">
+                  <Select
+                    style={{ width: '100%' }}
+                    placeholder={t('session:selectTemplatePlaceholder')}
+                    value={selectedTemplateId}
+                    onChange={setSelectedTemplateId}
+                    loading={templatesQuery.isLoading}
+                    showSearch
+                    size="large"
+                    filterOption={(input, option) =>
+                      (option?.children as unknown as string)?.toLowerCase().includes(input.toLowerCase())
+                    }
+                  >
+                    {templatesQuery.data?.templates.map((template: Template) => (
+                      <Option key={template.id} value={template.id}>
+                        <Space>
+                          <Tag color="purple">{template.name}</Tag>
+                          <Text type="secondary">v{template.version}</Text>
+                        </Space>
+                      </Option>
+                    ))}
+                  </Select>
+                </Col>
+                <Col>
+                  <Space size={12}>
+                    <Button
+                      type="primary"
+                      icon={<RobotOutlined />}
+                      onClick={handleRecognize}
+                      loading={recognizeMutation.isLoading}
+                      disabled={!selectedTemplateId || !userInput.trim()}
+                      size="large"
+                      style={{ borderRadius: 8 }}
+                    >
+                      解析参数
+                    </Button>
+                    <Button
+                      type="primary"
+                      icon={<PlayCircleOutlined />}
+                      size="large"
+                      onClick={handleExecute}
+                      loading={executeMutation.isLoading}
+                      disabled={!selectedTemplateId}
+                      style={{ borderRadius: 8 }}
+                    >
+                      执行
+                    </Button>
+                    <Button
+                      type="primary"
+                      ghost
+                      icon={<ReloadOutlined />}
+                      size="large"
+                      onClick={() => resetWorkerMutation.mutate()}
+                      loading={resetWorkerMutation.isLoading}
+                      style={{ borderRadius: 8 }}
+                    >
+                      重置池
+                    </Button>
+                  </Space>
+                </Col>
+              </Row>
 
               {/* Input Description - above the steps table */}
               <div style={{ marginTop: 16 }}>
