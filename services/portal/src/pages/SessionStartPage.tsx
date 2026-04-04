@@ -274,6 +274,18 @@ const SessionStartPage: React.FC = () => {
                 </Button>
               </Space.Compact>
 
+              {/* Input Description - above the steps table */}
+              <div style={{ marginTop: 16 }}>
+                <TextArea
+                  rows={3}
+                  placeholder={t('session:descriptionPlaceholder')}
+                  value={userInput}
+                  onChange={(e) => setUserInput(e.target.value)}
+                  disabled={!selectedTemplateId}
+                  style={{ borderRadius: 12 }}
+                />
+              </div>
+
               {selectedTemplate && (
                 <Card
                   size="small"
@@ -413,28 +425,11 @@ const SessionStartPage: React.FC = () => {
               )}
             </div>
 
-            {/* Step 2: Input Description */}
-            <div style={stepStyle}>
-              <div style={stepNumberStyle}>2</div>
-              <Title level={4} style={{ margin: 0 }}>{t('session:stepInputDescription')}</Title>
-            </div>
-
-            <div style={{ marginLeft: 44, marginBottom: 32 }}>
-              <TextArea
-                rows={4}
-                placeholder={t('session:descriptionPlaceholder')}
-                value={userInput}
-                onChange={(e) => setUserInput(e.target.value)}
-                disabled={!selectedTemplateId}
-                style={{ borderRadius: 12 }}
-              />
-            </div>
-
-            {/* Step 3: AI解析结果 */}
+            {/* Step 2: AI解析结果 */}
             {recognizedParams && Object.keys(editedParams).length > 0 && (
               <>
                 <div style={stepStyle}>
-                  <div style={stepNumberStyle}>3</div>
+                  <div style={stepNumberStyle}>2</div>
                   <Title level={4} style={{ margin: 0 }}>AI参数解析结果</Title>
                 </div>
 
