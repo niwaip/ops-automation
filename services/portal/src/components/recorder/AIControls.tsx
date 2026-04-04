@@ -17,6 +17,7 @@ import {
   ToolOutlined,
   CloudUploadOutlined,
   CheckCircleOutlined,
+  CloseCircleOutlined,
   SaveOutlined,
   FileAddOutlined,
   DownloadOutlined,
@@ -330,7 +331,15 @@ const AIControls: React.FC<AIControlsProps> = ({
     });
   };
 
-  const handleExecuteCommands = (commands: MCPCommand[]) => {
+  const handleExecuteCommands = async (commands: MCPCommand[]) => {
+    // Auto init browser if not ready
+    if (!isBrowserReady) {
+      try {
+        await initBrowserMutation.mutateAsync();
+      } catch (e) {
+        return;
+      }
+    }
     executeCommandMutation.mutate(commands);
   };
 
@@ -1125,10 +1134,16 @@ const AIControls: React.FC<AIControlsProps> = ({
                             key: 'result',
                             label: (
                               <Space>
-            <Text strong>录制器</Text>
-                                <CheckCircleOutlined style={{ color: '#52c41a' }} />
+                                <Text strong>录制器</Text>
+                                {entry.result.status === 'error' ? (
+                                  <CloseCircleOutlined style={{ color: '#ff4d4f' }} />
+                                ) : (
+                                  <CheckCircleOutlined style={{ color: '#52c41a' }} />
+                                )}
                                 <Text style={{ fontSize: 12 }}>
-                                  {t('recorder:ai.result') || '执行结果'}
+                                  {entry.result.status === 'error'
+                                    ? (entry.result.message || '执行失败')
+                                    : (t('recorder:ai.result') || '执行结果')}
                                 </Text>
                               </Space>
                             ),
