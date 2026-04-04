@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Card, Input, Button, Space, Typography, Tag, Empty, message, Divider, Alert, Collapse, InputNumber, Modal, List, Tooltip, Switch, Checkbox, Radio } from 'antd';
+import { Input, Button, Space, Typography, Tag, Empty, message, Divider, Collapse, InputNumber, Modal, List, Tooltip, Switch, Checkbox, Radio } from 'antd';
 import {
   SendOutlined,
   RobotOutlined,
@@ -14,15 +14,12 @@ import {
   ClockCircleOutlined,
   FileSearchOutlined,
   ArrowDownOutlined,
-  ToolOutlined,
   CloudUploadOutlined,
   CheckCircleOutlined,
   CloseCircleOutlined,
   SaveOutlined,
   FileAddOutlined,
   DownloadOutlined,
-  InfoCircleOutlined,
-  EditOutlined,
   LinkOutlined,
   ApiOutlined,
   DisconnectOutlined,
@@ -86,14 +83,6 @@ interface TemplateStep {
   replaceableParams?: Record<string, boolean>;
 }
 
-// Template
-interface Template {
-  id: string;
-  name: string;
-  steps: TemplateStep[];
-  createdAt: Date;
-}
-
 interface AIControlsProps {
   onCommandExecuted?: (commands: MCPCommand[]) => void;
   // Browser ready callback
@@ -138,7 +127,6 @@ const AIControls: React.FC<AIControlsProps> = ({
     { value: 'smart_search', label: '智搜', prefix: '智搜 ', placeholder: '输入关键词，AI自动找到搜索框，如：MCP 协议' },
   ];
 
-  const [input, setInput] = useState('');
   const [selectedCommand, setSelectedCommand] = useState<string>('navigate');
   const [paramInput, setParamInput] = useState('');
   const [isReplaceable, setIsReplaceable] = useState(true);
@@ -179,7 +167,7 @@ const AIControls: React.FC<AIControlsProps> = ({
       return apiClient.post('/browser/execute', { commands });
     },
     {
-      onSuccess: (data) => {
+      onSuccess: (data: any) => {
         console.log('[AIControls] Commands executed successfully:', data);
         message.success(t('recorder:ai.commandExecuted'));
         // Update last history entry with result
@@ -522,7 +510,7 @@ const AIControls: React.FC<AIControlsProps> = ({
     const backendSteps: any[] = [];
     let stepCounter = 1;
 
-    templateSteps.forEach((step, index) => {
+    templateSteps.forEach((step) => {
       // Create params with placeholder substitution for replaceable params
       const substitutedParams = { ...step.params };
 
@@ -851,15 +839,6 @@ const AIControls: React.FC<AIControlsProps> = ({
     return lines.join('\n');
   };
 
-  // Save template
-  const handleSaveTemplate = () => {
-    if (templateSteps.length === 0) {
-      message.warning('模版为空，请先添加命令');
-      return;
-    }
-    setShowTemplateModal(true);
-  };
-
   // Confirm save template
   const handleConfirmSaveTemplate = async () => {
     if (templateSteps.length === 0) {
@@ -891,7 +870,7 @@ const AIControls: React.FC<AIControlsProps> = ({
     const backendSteps: any[] = [];
     let stepCounter = 1;
 
-    templateSteps.forEach((step, index) => {
+    templateSteps.forEach((step) => {
       // Create params with placeholder substitution for replaceable params only
       const substitutedParams = { ...step.params };
 
@@ -1151,14 +1130,6 @@ const AIControls: React.FC<AIControlsProps> = ({
   // Check if any mutation is loading
   const isLoading = parseCommandMutation.isLoading || executeCommandMutation.isLoading;
 
-  // Example commands
-  const exampleCommands = [
-    { text: t('recorder:ai.example.navigate') || '打开百度首页', input: '打开百度' },
-    { text: t('recorder:ai.example.search') || '搜索关键词', input: '在百度搜索 MCP 协议' },
-    { text: t('recorder:ai.example.click') || '点击元素', input: '点击搜索按钮' },
-    { text: t('recorder:ai.example.screenshot') || '截图', input: '截取当前页面' },
-  ];
-
   // Status colors for manual mode
   const statusColors: Record<string, string> = {
     idle: 'default',
@@ -1171,22 +1142,37 @@ const AIControls: React.FC<AIControlsProps> = ({
 
   const isRecording = recorderStatus === 'recording';
   const isPaused = recorderStatus === 'paused';
-  const isIdle = recorderStatus === 'idle';
-  const isStopped = recorderStatus === 'stopped';
 
   return (
-    <Card
-      title={<Text strong>录制器</Text>}
-      extra={
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', gap: 16 }}>
+      {/* Header section with controls */}
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          padding: '12px 16px',
+          background: 'linear-gradient(135deg, #f0f4ff 0%, #e8f0fe 100%)',
+          borderRadius: 12,
+          border: '1px solid rgba(99, 102, 241, 0.1)',
+        }}
+      >
         <Space>
+          <RobotOutlined style={{ color: '#6366f1', fontSize: 18 }} />
+          <Text strong style={{ color: '#4b5563' }}>智能录制</Text>
           <Switch
             checked={isAIMode}
             onChange={setIsAIMode}
             checkedChildren={<><RobotOutlined /> AI</>}
             unCheckedChildren={<><VideoCameraOutlined /> 手动</>}
           />
-          <Tag color={isBrowserReady ? 'success' : 'warning'}>
-            {isBrowserReady ? (t('recorder:ai.ready') || '就绪') : (t('recorder:ai.notReady') || '未初始化')}
+        </Space>
+        <Space>
+          <Tag
+            color={isBrowserReady ? 'success' : 'warning'}
+            style={{ borderRadius: 8, padding: '2px 8px' }}
+          >
+            {isBrowserReady ? '就绪' : '未初始化'}
           </Tag>
           <Button
             type={isBrowserReady ? 'default' : 'primary'}
@@ -1194,28 +1180,29 @@ const AIControls: React.FC<AIControlsProps> = ({
             icon={<DesktopOutlined />}
             onClick={() => initBrowserMutation.mutate()}
             loading={initBrowserMutation.isLoading}
+            style={{ borderRadius: 8 }}
           >
-            {isBrowserReady
-              ? (t('recorder:ai.reinitBrowser') || '重新初始化')
-              : (t('recorder:ai.initBrowser') || '初始化浏览器')}
+            {isBrowserReady ? '重新初始化' : '初始化浏览器'}
           </Button>
         </Space>
-      }
-    >
+      </div>
+
       {isAIMode ? (
         // AI Mode Content
-        <Space direction="vertical" style={{ width: '100%' }} size="middle">
-
-        {/* Message history */}
-        <div
-          style={{
-            height: 300,
-            overflowY: 'auto',
-            background: '#fafafa',
-            borderRadius: 8,
-            padding: 12,
-          }}
-        >
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12, flex: 1, overflow: 'hidden' }}>
+          {/* Message history */}
+          <div
+            style={{
+              flex: 1,
+              minHeight: 200,
+              maxHeight: 400,
+              overflowY: 'auto',
+              background: '#fafafa',
+              borderRadius: 12,
+              padding: 12,
+              border: '1px solid #e5e7eb',
+            }}
+          >
           {history.length === 0 ? (
             <Empty
               image={Empty.PRESENTED_IMAGE_SIMPLE}
@@ -1849,10 +1836,10 @@ const AIControls: React.FC<AIControlsProps> = ({
             {compiledScript}
           </pre>
         </Modal>
-      </Space>
+      </div>
       ) : (
         // Manual Mode Content
-        <Space direction="vertical" style={{ width: '100%' }} size="middle">
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
           {/* Connection Status */}
           <Space>
             <Text strong>录制器</Text>
@@ -1960,9 +1947,9 @@ const AIControls: React.FC<AIControlsProps> = ({
               </pre>
             </div>
           )}
-        </Space>
+        </div>
       )}
-    </Card>
+    </div>
   );
 };
 
