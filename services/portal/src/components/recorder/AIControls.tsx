@@ -148,7 +148,7 @@ const AIControls: React.FC<AIControlsProps> = ({ onCommandExecuted }) => {
       onSuccess: (data) => {
         console.log('[AIControls] Parse result:', data);
         if (data.success && data.commands.length > 0) {
-          // Add AI response to history
+          // Add AI response to history (without result - will be updated by executeCommandMutation)
           setHistory((prev) => [
             ...prev,
             {
@@ -156,7 +156,7 @@ const AIControls: React.FC<AIControlsProps> = ({ onCommandExecuted }) => {
               type: 'ai',
               content: data.explanation,
               commands: data.commands,
-              result: data.result,
+              // Don't add result here - executeCommandMutation will update it
               timestamp: new Date(),
             },
           ]);
@@ -275,18 +275,6 @@ const AIControls: React.FC<AIControlsProps> = ({ onCommandExecuted }) => {
       description: `快捷操作: ${command}`,
     };
 
-    // Add to history with commands for result update
-    setHistory((prev) => [
-      ...prev,
-      {
-        id: Date.now().toString(),
-        type: 'ai',
-        content: `快捷操作: ${command}${params ? ` (${JSON.stringify(params)})` : ''}`,
-        commands: [quickCommand],
-        timestamp: new Date(),
-      },
-    ]);
-
     // Auto init browser if not ready
     if (!isBrowserReady) {
       try {
@@ -296,7 +284,19 @@ const AIControls: React.FC<AIControlsProps> = ({ onCommandExecuted }) => {
       }
     }
 
-    // Execute directly
+    // Add to history and execute in one update
+    const historyEntry = {
+      id: Date.now().toString(),
+      type: 'ai' as const,
+      content: `快捷操作: ${command}${params ? ` (${JSON.stringify(params)})` : ''}`,
+      commands: [quickCommand],
+      timestamp: new Date(),
+    };
+
+    // Add entry first (will be updated by onSuccess)
+    setHistory((prev) => [...prev, historyEntry]);
+
+    // Execute and update the same entry
     executeCommandMutation.mutate([quickCommand]);
   };
 
