@@ -85,6 +85,8 @@ interface Template {
 
 interface AIControlsProps {
   onCommandExecuted?: (commands: MCPCommand[]) => void;
+  // Browser ready callback
+  onBrowserReady?: (ready: boolean) => void;
   // Manual mode props
   recorderStatus?: 'idle' | 'connecting' | 'recording' | 'paused' | 'stopped' | 'error';
   isConnected?: boolean;
@@ -107,6 +109,7 @@ const AIControls: React.FC<AIControlsProps> = ({
   onResumeRecording,
   onConnect,
   onDisconnect,
+  onBrowserReady,
   recordedScript = '',
 }) => {
   const { t } = useTranslation(['common', 'recorder']);
@@ -241,6 +244,7 @@ const AIControls: React.FC<AIControlsProps> = ({
     {
       onSuccess: () => {
         setIsBrowserReady(true);
+        onBrowserReady?.(true);
         message.success(t('recorder:ai.browserReady'));
         setHistory((prev) => [
           ...prev,

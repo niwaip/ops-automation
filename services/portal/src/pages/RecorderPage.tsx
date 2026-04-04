@@ -33,6 +33,7 @@ const RecorderPage: React.FC = () => {
   });
 
   const [isConnected, setIsConnected] = useState(false);
+  const [isBrowserInitialized, setIsBrowserInitialized] = useState(false);
   const [template, setTemplate] = useState<CompiledTemplate | null>(null);
   const [validation, setValidation] = useState<ValidationResult | null>(null);
 
@@ -195,6 +196,7 @@ const RecorderPage: React.FC = () => {
         <Col xs={24} lg={8}>
           <AIControls
             onCommandExecuted={handleAICommandExecuted}
+            onBrowserReady={setIsBrowserInitialized}
             recorderStatus={recorderState.status}
             isConnected={isConnected}
             onStartRecording={handleStart}
@@ -236,7 +238,7 @@ const RecorderPage: React.FC = () => {
                 overflow: 'hidden',
               }}
             >
-              {recorderState.status === 'recording' || recorderState.status === 'paused' || isConnected ? (
+              {recorderState.status === 'recording' || recorderState.status === 'paused' || isConnected || isBrowserInitialized ? (
                 <iframe
                   src={`${NOVNC_URL}?autoconnect=true&resize=scale&reconnect=true`}
                   style={{
