@@ -19,8 +19,7 @@ export class BrowserService implements OnModuleDestroy {
   private session: BrowserSession | null = null;
 
   // Chrome CDP endpoint in browser-chrome container
-  private readonly chromeHost = process.env.CHROME_REMOTE_DEBUGGING_HOST || 'browser-chrome';
-  private readonly chromePort = parseInt(process.env.CHROME_REMOTE_DEBUGGING_PORT || '9222', 10);
+  private readonly chromeHost = process.env.CHROME_REMOTE_DEBUGGING_HOST || 'ops-browser-chrome';
   private readonly codegenPort = parseInt(process.env.CODEGEN_API_PORT || '3000', 10);
 
   async onModuleDestroy() {
