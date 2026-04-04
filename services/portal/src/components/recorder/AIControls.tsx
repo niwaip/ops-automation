@@ -509,16 +509,42 @@ const AIControls: React.FC<AIControlsProps> = ({
 
     const extractedParams = extractParameters(templateSteps);
 
+    // Only include replaceable params in params_schema
+    const replaceableParamsSchema: Record<string, { type: string; description: string; default?: string | number }> = {};
+    Object.entries(extractedParams).forEach(([name, schema]) => {
+      if (schema.replaceable) {
+        replaceableParamsSchema[name] = schema;
+      }
+    });
+
     // Convert TemplateStep to backend format with screenshot after each step
+    // Also substitute replaceable params with placeholders
     const backendSteps: any[] = [];
     let stepCounter = 1;
 
     templateSteps.forEach((step, index) => {
-      // Add the original step
+      // Create params with placeholder substitution for replaceable params
+      const substitutedParams = { ...step.params };
+
+      // Only substitute params that are marked as replaceable
+      Object.entries(extractedParams).forEach(([originalName, schema]) => {
+        if (schema.replaceable) {
+          const defaultValue = schema.default;
+          if (defaultValue !== undefined) {
+            Object.keys(substitutedParams).forEach(key => {
+              if (substitutedParams[key] === defaultValue) {
+                substitutedParams[key] = `\${${originalName}}`;
+              }
+            });
+          }
+        }
+      });
+
+      // Add the step with substituted params
       const backendStep: any = {
         step_id: `step_${stepCounter}`,
         action: step.tool,
-        params: step.params,
+        params: substitutedParams,
       };
 
       if (step.params.selector) {
@@ -555,11 +581,11 @@ const AIControls: React.FC<AIControlsProps> = ({
       stepCounter++;
     });
 
-    // Generate params_schema for extracted parameters
+    // Generate params_schema for replaceable parameters only
     const paramsSchema = {
       type: 'object',
-      properties: extractedParams,
-      required: Object.keys(extractedParams),
+      properties: replaceableParamsSchema,
+      required: Object.keys(replaceableParamsSchema),
     };
 
     const name = templateName || `编译模版 ${new Date().toLocaleString()}`;
@@ -567,7 +593,7 @@ const AIControls: React.FC<AIControlsProps> = ({
     try {
       const createdTemplate = await templateApi.create({
         name,
-        description: `由智能录制编译生成的模版，包含 ${templateSteps.length} 个步骤（含自动截图），${Object.keys(extractedParams).length} 个可替换参数`,
+        description: `由智能录制编译生成的模版，包含 ${templateSteps.length} 个步骤（含自动截图），${Object.keys(replaceableParamsSchema).length} 个可替换参数`,
         params_schema: paramsSchema,
         steps: backendSteps,
         created_by: user?.id || 'ai_recorder',
@@ -846,13 +872,17 @@ const AIControls: React.FC<AIControlsProps> = ({
     // Extract parameters and apply custom names
     const extractedParams = extractParameters(templateSteps);
 
-    // Apply custom parameter names and filter enabled params
+    // Only include replaceable params in final params_schema
+    // Also apply custom parameter names
     const finalParams: Record<string, { type: string; description: string; default?: string | number }> = {};
     Object.entries(extractedParams).forEach(([originalName, schema]) => {
-      // Check if param is enabled
-      if (paramEnabled[originalName] !== false) {  // default to true if not set
-        const customName = paramNames[originalName] || originalName;
-        finalParams[customName] = schema;
+      // Only include if param is replaceable (checked by user during recording)
+      if (schema.replaceable) {
+        // Also check if manually disabled in modal
+        if (paramEnabled[originalName] !== false) {
+          const customName = paramNames[originalName] || originalName;
+          finalParams[customName] = schema;
+        }
       }
     });
 
@@ -862,12 +892,14 @@ const AIControls: React.FC<AIControlsProps> = ({
     let stepCounter = 1;
 
     templateSteps.forEach((step, index) => {
-      // Create params with placeholder substitution for enabled params
+      // Create params with placeholder substitution for replaceable params only
       const substitutedParams = { ...step.params };
 
       // Find which original params map to this step's params and substitute
+      // Only substitute params that are marked as replaceable
       Object.entries(extractedParams).forEach(([originalName, schema]) => {
-        if (paramEnabled[originalName] !== false) {
+        // Only substitute if param is replaceable
+        if (schema.replaceable && paramEnabled[originalName] !== false) {
           const customName = paramNames[originalName] || originalName;
           // Replace the value with placeholder
           const defaultValue = schema.default;
