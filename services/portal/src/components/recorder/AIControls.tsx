@@ -1343,27 +1343,33 @@ const AIControls: React.FC<AIControlsProps> = ({
 
         {/* Input area - 3列2行布局 */}
         <div style={{ marginTop: 12 }}>
-          {/* Row 1: 命令 | 参数 | 发送 */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            {/* 命令选择 - Radio buttons with rounded corners */}
-            <Radio.Group
-              value={selectedCommand}
-              onChange={(e) => setSelectedCommand(e.target.value)}
-              optionType="button"
-              buttonStyle="solid"
-              style={{ borderRadius: 8 }}
-            >
-              {predefinedCommands.map(c => (
-                <Radio.Button
-                  key={c.value}
-                  value={c.value}
-                  style={{ borderRadius: 6, marginRight: 2 }}
-                >
-                  {c.label}
-                </Radio.Button>
-              ))}
-            </Radio.Group>
+          {/* Row 1: 命令选择 - 一行最多3个 */}
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 8 }}>
+            {predefinedCommands.map(c => (
+              <Radio.Button
+                key={c.value}
+                value={c.value}
+                onClick={() => setSelectedCommand(c.value)}
+                style={{
+                  borderRadius: 16,
+                  padding: '4px 16px',
+                  height: 32,
+                  lineHeight: '24px',
+                  border: selectedCommand === c.value ? '2px solid #6366f1' : '1px solid #d9d9d9',
+                  background: selectedCommand === c.value ? '#eef2ff' : '#fff',
+                  color: selectedCommand === c.value ? '#6366f1' : '#666',
+                  fontWeight: selectedCommand === c.value ? 500 : 400,
+                  transition: 'all 0.2s ease',
+                  cursor: 'pointer',
+                }}
+              >
+                {c.label}
+              </Radio.Button>
+            ))}
+          </div>
 
+          {/* Row 2: 参数输入 | 发送按钮 | 参数可替换 */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             {/* 参数输入 */}
             <TextArea
               value={paramInput}
@@ -1377,7 +1383,7 @@ const AIControls: React.FC<AIControlsProps> = ({
                 }
               }}
               disabled={isLoading}
-              style={{ flex: 1, minWidth: 180, borderRadius: 8 }}
+              style={{ flex: 1, minWidth: 180, borderRadius: 16, padding: '6px 12px' }}
             />
 
             {/* 发送按钮 */}
@@ -1387,25 +1393,21 @@ const AIControls: React.FC<AIControlsProps> = ({
               onClick={handleSend}
               loading={isLoading}
               disabled={!(predefinedCommands.find(c => c.value === selectedCommand)?.prefix + paramInput.trim()).trim()}
-              style={{ height: 32, borderRadius: 8 }}
+              style={{ height: 32, borderRadius: 16, minWidth: 70 }}
             >
               {t('common:send')}
             </Button>
-          </div>
 
-          {/* Row 2: 参数可替换 (在发送按钮下方) */}
-          <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 8 }}>
+            {/* 参数可替换 */}
             <Checkbox
               checked={isReplaceable}
               onChange={(e) => setIsReplaceable(e.target.checked)}
               disabled={!paramInput.trim()}
+              style={{ marginLeft: 8 }}
             >
-              <Space size={4}>
-                <Text style={{ fontSize: 12 }}>参数可替换</Text>
-                <Tooltip title="勾选后，此参数在生成模版时会被标记为可替换参数，AI在执行时会自动识别和替换">
-                  <InfoCircleOutlined style={{ fontSize: 12, color: '#999' }} />
-                </Tooltip>
-              </Space>
+              <Tooltip title="勾选后，此参数在生成模版时会被标记为可替换参数">
+                <Text style={{ fontSize: 12, color: isReplaceable ? '#6366f1' : '#999' }}>可替换</Text>
+              </Tooltip>
             </Checkbox>
           </div>
         </div>
