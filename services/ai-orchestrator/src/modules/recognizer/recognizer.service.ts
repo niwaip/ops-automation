@@ -1,6 +1,7 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { RecognizeParamsDTO, RecognizeParamsResponseDTO, ChatMessage } from '../../interfaces';
 import { OpenAICompatibleClient } from '../../client/openai-compatible';
+import { ModelService } from '../model/model.service';
 
 /**
  * Template schema interface for parameter recognition
@@ -25,14 +26,31 @@ interface TemplateSchema {
  */
 @Injectable()
 export class RecognizerService {
+  private readonly logger = new Logger(RecognizerService.name);
   private templates: Map<string, TemplateSchema> = new Map();
-  private defaultClient: OpenAICompatibleClient | null = null;
+
+  constructor(private readonly modelService: ModelService) {}
 
   /**
    * Set the default AI client for parameter recognition
    */
   setDefaultClient(client: OpenAICompatibleClient): void {
-    this.defaultClient = client;
+    // Legacy method - no longer needed as we use ModelService
+    this.logger.warn('setDefaultClient is deprecated, using ModelService instead');
+  }
+
+  /**
+   * Get the default AI client from ModelService
+   */
+  private async getDefaultClient(): Promise<OpenAICompatibleClient | null> {
+    // Get the first available active model's client
+    const models = await this.modelService.listModels();
+    const activeModels = models.filter(m => m.status === 'active');
+    if (activeModels.length === 0) {
+      return null;
+    }
+    // Use the first active model's client
+    return this.modelService.getClient(activeModels[0].id);
   }
 
   /**
@@ -91,15 +109,18 @@ export class RecognizerService {
       { role: 'user', content: this.buildUserPrompt(dto, properties) },
     ];
 
-    // If no client is available, use basic pattern matching
-    if (!this.defaultClient) {
+    // Get the default AI client from ModelService
+    const client = await this.getDefaultClient();
+    if (!client) {
+      this.logger.warn('No AI client available, using basic pattern matching');
       return this.basicPatternMatching(dto.user_input, properties);
     }
 
     try {
-      const response = await this.defaultClient.chatCompletion(messages);
+      const response = await client.chatCompletion(messages);
       return this.parseAIResponse(response, properties);
     } catch (error) {
+      this.logger.error(`AI call failed: ${error}`);
       // Fallback to basic pattern matching on AI failures
       return this.basicPatternMatching(dto.user_input, properties);
     }
