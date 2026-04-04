@@ -21,6 +21,12 @@ import {
   DownloadOutlined,
   InfoCircleOutlined,
   EditOutlined,
+  LinkOutlined,
+  ApiOutlined,
+  DisconnectOutlined,
+  PauseCircleOutlined,
+  StopOutlined,
+  VideoCameraOutlined,
 } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
 import { useMutation } from 'react-query';
@@ -79,9 +85,30 @@ interface Template {
 
 interface AIControlsProps {
   onCommandExecuted?: (commands: MCPCommand[]) => void;
+  // Manual mode props
+  recorderStatus?: 'idle' | 'connecting' | 'recording' | 'paused' | 'stopped' | 'error';
+  isConnected?: boolean;
+  onStartRecording?: (url: string) => void;
+  onStopRecording?: () => void;
+  onPauseRecording?: () => void;
+  onResumeRecording?: () => void;
+  onConnect?: () => void;
+  onDisconnect?: () => void;
+  recordedScript?: string;
 }
 
-const AIControls: React.FC<AIControlsProps> = ({ onCommandExecuted }) => {
+const AIControls: React.FC<AIControlsProps> = ({
+  onCommandExecuted,
+  recorderStatus = 'idle',
+  isConnected = false,
+  onStartRecording,
+  onStopRecording,
+  onPauseRecording,
+  onResumeRecording,
+  onConnect,
+  onDisconnect,
+  recordedScript = '',
+}) => {
   const { t } = useTranslation(['common', 'recorder']);
   const { user } = useAuthStore();
   const [input, setInput] = useState('');
@@ -89,6 +116,9 @@ const AIControls: React.FC<AIControlsProps> = ({ onCommandExecuted }) => {
   const [isBrowserReady, setIsBrowserReady] = useState(false);
   const [waitDuration, setWaitDuration] = useState(20); // Default 20 seconds
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  // Manual recording URL input
+  const [recordUrl, setRecordUrl] = useState('https://');
 
   // Template state
   const [templateSteps, setTemplateSteps] = useState<TemplateStep[]>([]);
@@ -735,6 +765,19 @@ const AIControls: React.FC<AIControlsProps> = ({ onCommandExecuted }) => {
     message.success(`已从历史记录中提取 ${extractedSteps.length} 个确定性命令`);
   };
 
+  // Handle manual recording start
+  const handleManualStart = () => {
+    let finalUrl = recordUrl.trim();
+    if (!finalUrl || finalUrl === 'https://') {
+      message.warning(t('recorder:enterUrl'));
+      return;
+    }
+    if (!finalUrl.startsWith('http://') && !finalUrl.startsWith('https://')) {
+      finalUrl = 'https://' + finalUrl;
+    }
+    onStartRecording?.(finalUrl);
+  };
+
   // Check if any mutation is loading
   const isLoading = parseCommandMutation.isLoading || executeCommandMutation.isLoading;
 
@@ -746,35 +789,31 @@ const AIControls: React.FC<AIControlsProps> = ({ onCommandExecuted }) => {
     { text: t('recorder:ai.example.screenshot') || '截图', input: '截取当前页面' },
   ];
 
+  // Status colors for manual mode
+  const statusColors: Record<string, string> = {
+    idle: 'default',
+    connecting: 'processing',
+    recording: 'success',
+    paused: 'warning',
+    stopped: 'default',
+    error: 'error',
+  };
+
+  const isRecording = recorderStatus === 'recording';
+  const isPaused = recorderStatus === 'paused';
+  const isIdle = recorderStatus === 'idle';
+  const isStopped = recorderStatus === 'stopped';
+
   return (
     <Card
-      title={
+      extra={
         <Space>
-          <Tooltip
-            title={
-              <div>
-                <div style={{ fontWeight: 'bold', marginBottom: 4 }}>自然语言控制</div>
-                <div>输入自然语言描述，AI 将自动转换为浏览器操作命令。支持导航、点击、填充、截图等操作。</div>
-              </div>
-            }
-          >
-            <Space>
-              {isAIMode ? <RobotOutlined /> : <EditOutlined />}
-              <span>录制模式</span>
-              <InfoCircleOutlined style={{ color: '#999', fontSize: 12 }} />
-            </Space>
-          </Tooltip>
           <Switch
             checked={isAIMode}
             onChange={setIsAIMode}
-            checkedChildren="AI"
-            unCheckedChildren="手动"
-            style={{ marginLeft: 8 }}
+            checkedChildren={<><RobotOutlined /> AI</>}
+            unCheckedChildren={<><VideoCameraOutlined /> 手动</>}
           />
-        </Space>
-      }
-      extra={
-        <Space>
           <Tag color={isBrowserReady ? 'success' : 'warning'}>
             {isBrowserReady ? (t('recorder:ai.ready') || '就绪') : (t('recorder:ai.notReady') || '未初始化')}
           </Tag>
@@ -792,7 +831,9 @@ const AIControls: React.FC<AIControlsProps> = ({ onCommandExecuted }) => {
         </Space>
       }
     >
-      <Space direction="vertical" style={{ width: '100%' }} size="middle">
+      {isAIMode ? (
+        // AI Mode Content
+        <Space direction="vertical" style={{ width: '100%' }} size="middle">
         {/* Example commands */}
         <div>
           <Text type="secondary" style={{ fontSize: 12 }}>
@@ -1393,7 +1434,116 @@ const AIControls: React.FC<AIControlsProps> = ({ onCommandExecuted }) => {
             {compiledScript}
           </pre>
         </Modal>
-      </Space>
+      ) : (
+        // Manual Mode Content
+        <Space direction="vertical" style={{ width: '100%' }} size="middle">
+          {/* Connection Status */}
+          <Space>
+            <Tag color={isConnected ? 'success' : 'error'}>
+              {isConnected ? (t('recorder:connected') || '已连接') : (t('recorder:disconnected') || '未连接')}
+            </Tag>
+            <Tag color={statusColors[recorderStatus]}>
+              {t(`recorder:status.${recorderStatus}`) || recorderStatus}
+            </Tag>
+          </Space>
+
+          {/* Connection Controls */}
+          <Space>
+            {!isConnected ? (
+              <Button
+                type="primary"
+                icon={<ApiOutlined />}
+                onClick={onConnect}
+                loading={recorderStatus === 'connecting'}
+              >
+                {t('recorder:connect') || '连接'}
+              </Button>
+            ) : (
+              <Button icon={<DisconnectOutlined />} onClick={onDisconnect} danger>
+                {t('recorder:disconnect') || '断开'}
+              </Button>
+            )}
+          </Space>
+
+          {/* URL Input */}
+          <Input
+            placeholder={t('recorder:urlPlaceholder') || '输入网址开始录制'}
+            prefix={<LinkOutlined />}
+            value={recordUrl}
+            onChange={(e) => setRecordUrl(e.target.value)}
+            disabled={!isConnected || isRecording}
+            onPressEnter={handleManualStart}
+            size="large"
+          />
+
+          {/* Recording Controls */}
+          <Space wrap>
+            <Button
+              type="primary"
+              size="large"
+              icon={<PlayCircleOutlined />}
+              onClick={handleManualStart}
+              disabled={!isConnected || isRecording || isPaused}
+            >
+              {t('recorder:start') || '开始录制'}
+            </Button>
+
+            {isRecording && (
+              <Button
+                size="large"
+                icon={<PauseCircleOutlined />}
+                onClick={onPauseRecording}
+              >
+                {t('recorder:pause') || '暂停'}
+              </Button>
+            )}
+
+            {isPaused && (
+              <Button
+                type="primary"
+                size="large"
+                icon={<PlayCircleOutlined />}
+                onClick={onResumeRecording}
+              >
+                {t('recorder:resume') || '继续'}
+              </Button>
+            )}
+
+            {(isRecording || isPaused) && (
+              <Button
+                size="large"
+                icon={<StopOutlined />}
+                onClick={onStopRecording}
+                danger
+              >
+                {t('recorder:stop') || '停止'}
+              </Button>
+            )}
+          </Space>
+
+          {/* Recorded Script Preview */}
+          {recordedScript && (
+            <div style={{ marginTop: 16 }}>
+              <Text strong style={{ fontSize: 13 }}>
+                {t('recorder:script') || '录制脚本'}：
+              </Text>
+              <pre
+                style={{
+                  background: '#f5f5f5',
+                  padding: 12,
+                  borderRadius: 8,
+                  maxHeight: 200,
+                  overflow: 'auto',
+                  fontSize: 11,
+                  marginTop: 8,
+                }}
+              >
+                {recordedScript}
+              </pre>
+            </div>
+          )}
+        </Space>
+      )}
     </Card>
   );
 };

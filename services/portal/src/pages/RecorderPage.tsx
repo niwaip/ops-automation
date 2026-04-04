@@ -1,9 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Typography, Row, Col, message, Spin, Card, Tabs, Button, Space } from 'antd';
-import { PlayCircleOutlined, RobotOutlined, VideoCameraOutlined } from '@ant-design/icons';
+import { Typography, Row, Col, message, Spin, Card, Button } from 'antd';
 import { useTranslation } from 'react-i18next';
 import { useMutation } from 'react-query';
-import { RecorderControls, ScriptPreview, TemplatePreview, AIControls } from '../components/recorder';
+import { AIControls, TemplatePreview } from '../components/recorder';
 import recorderService, { RecorderStatus, CompiledTemplate, ValidationResult } from '../services/recorder.service';
 import { templateApi, CompileResult } from '../api/template';
 import { useAuthStore } from '../store/authStore';
@@ -26,8 +25,6 @@ interface MCPCommand {
 const RecorderPage: React.FC = () => {
   const { t } = useTranslation(['common', 'recorder']);
   const { user } = useAuthStore();
-
-  const [mode, setMode] = useState<'record' | 'ai'>('record');
 
   const [recorderState, setRecorderState] = useState<RecorderState>({
     status: 'idle',
@@ -193,55 +190,21 @@ const RecorderPage: React.FC = () => {
     <div>
       <Title level={4}>{t('common:recorder')}</Title>
 
-      {/* Mode selector tabs */}
-      <Card style={{ marginBottom: 16 }}>
-        <Space>
-          <Button
-            type={mode === 'record' ? 'primary' : 'default'}
-            icon={<VideoCameraOutlined />}
-            onClick={() => setMode('record')}
-          >
-            {t('recorder:modes.record') || '自动录制'}
-          </Button>
-          <Button
-            type={mode === 'ai' ? 'primary' : 'default'}
-            icon={<RobotOutlined />}
-            onClick={() => setMode('ai')}
-          >
-            {t('recorder:modes.ai') || 'AI 控制'}
-          </Button>
-        </Space>
-      </Card>
-
       <Row gutter={[16, 16]}>
         {/* Left Column: Controls */}
         <Col xs={24} lg={8}>
-          {mode === 'record' ? (
-            <>
-              <RecorderControls
-                status={recorderState.status}
-                isConnected={isConnected}
-                onStart={handleStart}
-                onStop={handleStop}
-                onPause={handlePause}
-                onResume={handleResume}
-                onConnect={handleConnect}
-                onDisconnect={handleDisconnect}
-              />
-
-              <div style={{ marginTop: 16 }}>
-                <ScriptPreview
-                  script={recorderState.script}
-                  onCompile={handleCompile}
-                  disabled={recorderState.status !== 'stopped'}
-                  status={recorderState.status}
-                  compiling={compileMutation.isLoading}
-                />
-              </div>
-            </>
-          ) : (
-            <AIControls onCommandExecuted={handleAICommandExecuted} />
-          )}
+          <AIControls
+            onCommandExecuted={handleAICommandExecuted}
+            recorderStatus={recorderState.status}
+            isConnected={isConnected}
+            onStartRecording={handleStart}
+            onStopRecording={handleStop}
+            onPauseRecording={handlePause}
+            onResumeRecording={handleResume}
+            onConnect={handleConnect}
+            onDisconnect={handleDisconnect}
+            recordedScript={recorderState.script}
+          />
         </Col>
 
         {/* Right Column: Browser Preview (larger) */}
@@ -273,8 +236,7 @@ const RecorderPage: React.FC = () => {
                 overflow: 'hidden',
               }}
             >
-              {(mode === 'record' && (recorderState.status === 'recording' || recorderState.status === 'paused')) ||
-               (mode === 'ai') ? (
+              {recorderState.status === 'recording' || recorderState.status === 'paused' || isConnected ? (
                 <iframe
                   src={`${NOVNC_URL}?autoconnect=true&resize=scale&reconnect=true`}
                   style={{
@@ -287,20 +249,18 @@ const RecorderPage: React.FC = () => {
               ) : (
                 <div style={{ textAlign: 'center' }}>
                   <p style={{ color: '#999' }}>
-                    {mode === 'record'
-                      ? t('recorder:startToPreview')
-                      : t('recorder:ai.startToPreview') || '初始化浏览器后开始 AI 控制'}
+                    {t('recorder:ai.startToPreview') || '初始化浏览器后开始控制'}
                   </p>
                   <p style={{ color: '#8c8c8c', fontSize: 12, marginTop: 8 }}>
-                    {t('recorder:novncHint') || 'noVNC will show browser after recording starts'}
+                    {t('recorder:novncHint') || 'noVNC will show browser after initialization'}
                   </p>
                 </div>
               )}
             </div>
           </Card>
 
-          {/* Template Preview below (only for record mode) */}
-          {mode === 'record' && (
+          {/* Template Preview below */}
+          {recorderState.status === 'stopped' && recorderState.script && (
             <div style={{ marginTop: 16 }}>
               {compileMutation.isLoading ? (
                 <Card>
