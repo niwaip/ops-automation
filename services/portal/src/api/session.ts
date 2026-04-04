@@ -62,10 +62,28 @@ export interface WorkerPoolResetResponse {
   message: string;
 }
 
+// Step result interface
+export interface StepResult {
+  step_id: string;
+  step_index: number;
+  action: string;
+  success: boolean;
+  error?: string;
+  message?: string;
+  screenshot?: string;
+  text?: string;
+  html?: string;
+  timestamp: number;
+}
+
 // Session API
 export const sessionApi = {
   getById: async (id: string): Promise<Session> => {
     return apiClient.get<Session>(`/sessions/${id}`);
+  },
+
+  getStepResults: async (id: string): Promise<StepResult[]> => {
+    return apiClient.get<StepResult[]>(`/sessions/${id}/steps`);
   },
 
   create: async (data: CreateSessionRequest): Promise<CreateSessionResponse> => {

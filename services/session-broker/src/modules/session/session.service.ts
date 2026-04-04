@@ -21,6 +21,20 @@ import {
 // Session TTL: 86400 seconds (24 hours)
 const SESSION_TTL_SECONDS = 86400;
 
+// Step result interface
+export interface StepResult {
+  step_id: string;
+  step_index: number;
+  action: string;
+  success: boolean;
+  error?: string;
+  message?: string;
+  screenshot?: string;
+  text?: string;
+  html?: string;
+  timestamp: number;
+}
+
 @Injectable()
 export class SessionService {
   private readonly logger = new Logger(SessionService.name);
@@ -150,6 +164,20 @@ export class SessionService {
       this.logger.log(`Executing ${template.steps.length} steps for session ${sessionId}`);
 
       const results = await this.cdpExecutor.executeSteps(template.steps as TemplateStep[], sessionId);
+
+      // Store step results in Redis
+      const stepsKey = `session:${sessionId}:steps`;
+      const stepResults: StepResult[] = results.map((r, i) => ({
+        step_id: r.step_id,
+        step_index: i,
+        action: r.action || template.steps[i].action,
+        success: r.success,
+        error: r.error,
+        message: r.message,
+        screenshot: r.screenshot,
+        timestamp: Date.now(),
+      }));
+      await this.redisService.set(stepsKey, JSON.stringify(stepResults), SESSION_TTL_SECONDS);
 
       const failedSteps = results.filter(r => !r.success);
       if (failedSteps.length > 0) {
@@ -327,6 +355,32 @@ export class SessionService {
   async hasActiveSession(userId: string): Promise<boolean> {
     const lockHolder = await this.lockService.checkProfileLock(userId);
     return lockHolder !== null;
+  }
+
+  /**
+   * Get step results for a session
+   */
+  async getStepResults(sessionId: string): Promise<StepResult[]> {
+    // First check if session exists
+    const session = await this.getSessionFromRedis(sessionId);
+    if (!session) {
+      throw new NotFoundException(`Session ${sessionId} not found`);
+    }
+
+    // Get step results from Redis
+    const stepsKey = `session:${sessionId}:steps`;
+    const stepsData = await this.redisService.get(stepsKey);
+
+    if (!stepsData) {
+      return [];
+    }
+
+    try {
+      return JSON.parse(stepsData) as StepResult[];
+    } catch (e) {
+      this.logger.error(`Failed to parse step results for session ${sessionId}`);
+      return [];
+    }
   }
 
   /**

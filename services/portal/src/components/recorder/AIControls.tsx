@@ -493,7 +493,10 @@ const AIControls: React.FC<AIControlsProps> = ({
 
       message.success(`模版已保存: ${createdTemplate.name}`);
       setShowScriptModal(false);
-      handleClearTemplate();
+      // Store the template ID for immediate testing (don't clear template steps yet)
+      setSavedTemplateId(createdTemplate.id);
+      setTemplateName('');
+      message.info('模版已保存，可以点击"测试模版"按钮进行测试', 5);
     } catch (error: any) {
       console.error('Failed to save compiled template:', error);
       const errorMsg = error.response?.data?.message || error.message || '未知错误';

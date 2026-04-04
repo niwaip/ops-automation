@@ -82,4 +82,13 @@ export class SessionController {
   async getSession(@Param('id') sessionId: string): Promise<SessionDto> {
     return this.sessionService.getSession(sessionId);
   }
+
+  @Get(':id/steps')
+  @ApiOperation({ summary: 'Get session step results' })
+  @ApiParam({ name: 'id', description: 'Session ID', type: 'string' })
+  @ApiResponse({ status: HttpStatus.OK, description: 'Step results' })
+  @ApiResponse({ status: HttpStatus.NOT_FOUND, description: 'Session not found' })
+  async getStepResults(@Param('id') sessionId: string): Promise<any[]> {
+    return this.sessionService.getStepResults(sessionId);
+  }
 }
