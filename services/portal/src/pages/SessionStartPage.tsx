@@ -240,13 +240,17 @@ const SessionStartPage: React.FC = () => {
                 <Col>
                   <Space size={12}>
                     <Button
-                      type="primary"
                       icon={<RobotOutlined />}
                       onClick={handleRecognize}
                       loading={recognizeMutation.isLoading}
                       disabled={!selectedTemplateId || !userInput.trim()}
                       size="large"
-                      style={{ borderRadius: 8 }}
+                      style={{
+                        borderRadius: 8,
+                        background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+                        color: '#fff',
+                        border: 'none',
+                      }}
                     >
                       解析参数
                     </Button>
@@ -266,7 +270,12 @@ const SessionStartPage: React.FC = () => {
                       size="large"
                       onClick={() => resetWorkerMutation.mutate()}
                       loading={resetWorkerMutation.isLoading}
-                      style={{ borderRadius: 8 }}
+                      style={{
+                        borderRadius: 8,
+                        background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
+                        color: '#fff',
+                        border: 'none',
+                      }}
                     >
                       重置池
                     </Button>
