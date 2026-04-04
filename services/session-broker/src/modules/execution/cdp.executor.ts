@@ -173,9 +173,26 @@ export class CdpExecutor implements OnModuleDestroy {
   }
 
   /**
+   * Replace ${param_name} placeholders with actual values
+   */
+  private replaceParams(value: unknown, params: Record<string, unknown>): unknown {
+    if (typeof value === 'string') {
+      // Replace ${param_name} patterns
+      return value.replace(/\$\{(\w+)\}/g, (match, paramName) => {
+        if (params[paramName] !== undefined) {
+          return String(params[paramName]);
+        }
+        // Return original placeholder if param not found
+        return match;
+      });
+    }
+    return value;
+  }
+
+  /**
    * Map template step to action format for codegen API
    */
-  private mapStepToAction(step: TemplateStep): any {
+  private mapStepToAction(step: TemplateStep, params: Record<string, unknown> = {}): any {
     const action: any = {
       action: step.action,
       step_number: step.step_number || parseInt(step.step_id.replace('step-', ''), 10) || 1,
@@ -215,6 +232,11 @@ export class CdpExecutor implements OnModuleDestroy {
       action.timeout = step.wait.timeout;
     }
 
+    // Replace ${param_name} placeholders with actual values
+    for (const key of Object.keys(action)) {
+      action[key] = this.replaceParams(action[key], params);
+    }
+
     return action;
   }
 
@@ -252,13 +274,17 @@ export class CdpExecutor implements OnModuleDestroy {
   /**
    * Execute all steps in a template
    */
-  async executeSteps(steps: TemplateStep[], sessionId?: string): Promise<ExecutionResult[]> {
+  async executeSteps(
+    steps: TemplateStep[],
+    sessionId?: string,
+    params: Record<string, unknown> = {},
+  ): Promise<ExecutionResult[]> {
     this.logger.log(`Executing ${steps.length} steps for session ${sessionId}`);
-    this.logger.debug(`Steps: ${JSON.stringify(steps)}`);
+    this.logger.debug(`Steps: ${JSON.stringify(steps)}, Params: ${JSON.stringify(params)}`);
 
-    // Map all steps to actions format
+    // Map all steps to actions format with param substitution
     const actions = steps.map((step, index) => ({
-      ...this.mapStepToAction(step),
+      ...this.mapStepToAction(step, params),
       step_number: step.step_number || index + 1,
     }));
 
