@@ -322,7 +322,7 @@ const RecorderPage: React.FC = () => {
               <Button
                 type="link"
                 size="small"
-                onClick={() => window.open(`${NOVNC_URL}?autoconnect=true&resize=remote`, '_blank')}
+                onClick={() => window.open(`${NOVNC_URL}?autoconnect=true&resize=scale`, '_blank')}
                 style={{ color: '#6366f1' }}
               >
                 {t('session:openInNewTab') || '新标签页打开'}
@@ -343,7 +343,7 @@ const RecorderPage: React.FC = () => {
             >
               {recorderState.status === 'recording' || recorderState.status === 'paused' || isConnected || isBrowserInitialized ? (
                 <iframe
-                  src={`${NOVNC_URL}?autoconnect=true&resize=remote&reconnect=true`}
+                  src={`${NOVNC_URL}?autoconnect=true&resize=scale&reconnect=true`}
                   style={{
                     width: '100%',
                     height: '100%',

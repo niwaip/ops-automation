@@ -215,20 +215,12 @@ const SessionStartPage: React.FC = () => {
         background: 'linear-gradient(135deg, #f5f7fa 0%, #e4e8ec 100%)',
       }}
     >
-      <Row
-        gutter={24}
-        style={{
-          minHeight: 'calc(100vh - 120px)',
-          display: 'flex',
-          alignItems: 'stretch',
-        }}
-      >
+      <Row gutter={24} style={{ minHeight: 'calc(100vh - 120px)' }}>
         {/* Left Column - Configuration */}
         <Col
           span={leftSpan}
           style={{
             transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
-            display: 'flex',
           }}
         >
           {/* Main Content Card */}
@@ -238,11 +230,8 @@ const SessionStartPage: React.FC = () => {
               borderRadius: 16,
               boxShadow: '0 4px 20px rgba(0, 0, 0, 0.08)',
               border: '1px solid rgba(255, 255, 255, 0.8)',
-              width: '100%',
-              display: 'flex',
-              flexDirection: 'column',
+              height: '100%',
             }}
-            bodyStyle={{ flex: 1, overflow: 'auto' }}
           >
             {/* Step 1: Select Template */}
             <div style={stepStyle}>
@@ -285,7 +274,6 @@ const SessionStartPage: React.FC = () => {
                     <Table
                       size="small"
                       pagination={false}
-                      tableLayout="fixed"
                       dataSource={selectedTemplate.steps.map((step, index) => {
                         // Find which params in this step can be replaced
                         const replaceableParams: string[] = [];
@@ -317,7 +305,7 @@ const SessionStartPage: React.FC = () => {
                           title: '步骤',
                           dataIndex: 'step',
                           key: 'step',
-                          width: 50,
+                          width: 60,
                           render: (num: number) => <Tag color="purple">{num}</Tag>,
                         },
                         {
@@ -325,12 +313,10 @@ const SessionStartPage: React.FC = () => {
                           dataIndex: 'actionName',
                           key: 'actionName',
                           width: 100,
-                          ellipsis: true,
                         },
                         {
                           title: '参数',
                           key: 'params',
-                          ellipsis: true,
                           render: (_: any, record: any) => {
                             const params = record.params;
                             if (!params || Object.keys(params).length === 0) {
@@ -367,8 +353,7 @@ const SessionStartPage: React.FC = () => {
                         {
                           title: '执行时替换',
                           key: 'replaceable',
-                          width: 200,
-                          ellipsis: true,
+                          width: 180,
                           render: (_: any, record: any) => {
                             const params = record.params;
                             if (!params) return <Text type="secondary">-</Text>;
@@ -620,7 +605,6 @@ const SessionStartPage: React.FC = () => {
           span={rightSpan}
           style={{
             transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
-            display: 'flex',
           }}
         >
           <Card
@@ -629,11 +613,8 @@ const SessionStartPage: React.FC = () => {
               borderRadius: 16,
               boxShadow: '0 4px 20px rgba(0, 0, 0, 0.08)',
               border: '1px solid rgba(255, 255, 255, 0.8)',
-              width: '100%',
-              display: 'flex',
-              flexDirection: 'column',
+              height: '100%',
             }}
-            bodyStyle={{ flex: 1, overflow: 'hidden', padding: 0 }}
             title={
               <Space>
                 <DesktopOutlined style={{ fontSize: 20, color: '#6366f1' }} />
@@ -644,7 +625,7 @@ const SessionStartPage: React.FC = () => {
               <Button
                 type="link"
                 size="small"
-                onClick={() => window.open(`${NOVNC_URL}?autoconnect=true&resize=remote`, '_blank')}
+                onClick={() => window.open(`${NOVNC_URL}?autoconnect=true&resize=scale`, '_blank')}
                 style={{ color: '#6366f1' }}
               >
                 {t('session:openInNewTab') || '新标签页打开'}
@@ -653,13 +634,14 @@ const SessionStartPage: React.FC = () => {
           >
             <div style={{
               width: '100%',
-              flex: 1,
-              minHeight: 400,
+              height: 'calc(100% - 57px)',
+              minHeight: 500,
+              borderRadius: 12,
               background: '#1a1a2e',
               overflow: 'hidden',
             }}>
               <iframe
-                src={`${NOVNC_URL}?autoconnect=true&resize=remote`}
+                src={`${NOVNC_URL}?autoconnect=true&resize=scale`}
                 style={{ width: '100%', height: '100%', border: 'none' }}
                 title="noVNC Desktop"
               />
