@@ -301,8 +301,25 @@ const AIControls: React.FC<AIControlsProps> = ({
       }
     }
 
+    // Add "parsing" status message
+    const parsingId = 'parsing-' + Date.now();
+    setHistory((prev) => [
+      ...prev,
+      {
+        id: parsingId,
+        type: 'system',
+        content: '⏳ 正在解析命令，请稍候...',
+        timestamp: new Date(),
+      },
+    ]);
+
     // Parse the command
-    parseCommandMutation.mutate(userMessage);
+    parseCommandMutation.mutate(userMessage, {
+      onSettled: () => {
+        // Remove the parsing message when done
+        setHistory((prev) => prev.filter((h) => h.id !== parsingId));
+      },
+    });
   };
 
   const handleExecuteCommands = (commands: MCPCommand[]) => {
