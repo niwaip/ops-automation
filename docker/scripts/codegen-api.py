@@ -1352,6 +1352,9 @@ class CodegenHandler(BaseHTTPRequestHandler):
         parsed = urlparse(self.path)
         path = parsed.path
         params = parse_qs(parsed.query)
+        self.do_GET_with_params(path, params)
+
+    def do_GET_with_params(self, path, params):
 
         # Codegen mode endpoints
         if path == '/start':
@@ -1540,7 +1543,143 @@ class CodegenHandler(BaseHTTPRequestHandler):
             self.send_json({'error': 'Not found'}, 404)
 
     def do_POST(self):
-        self.do_GET()
+        # Read POST body
+        content_length = int(self.headers.get('Content-Length', 0))
+        post_data = self.rfile.read(content_length).decode('utf-8') if content_length > 0 else ''
+
+        try:
+            body = json.loads(post_data) if post_data else {}
+        except json.JSONDecodeError:
+            self.send_json({'error': 'Invalid JSON body'}, 400)
+            return
+
+        parsed = urlparse(self.path)
+        path = parsed.path
+        params = parse_qs(parsed.query)
+
+        # Handle /execute endpoint for batch action execution
+        if path == '/execute':
+            result = self.handle_execute(body)
+            self.send_json(result)
+            return
+
+        # For other POST endpoints, merge body params with query params and call do_GET_with_params
+        if body:
+            for key, value in body.items():
+                if key not in ['session', 'actions']:  # Skip special keys
+                    params[key] = [value]
+
+        self.do_GET_with_params(path, params)
+
+    def handle_execute(self, body):
+        """Handle batch execution of actions from session-broker"""
+        session = body.get('session')
+        actions = body.get('actions', [])
+
+        if not actions:
+            return {'status': 'completed', 'results': [], 'message': 'No actions to execute'}
+
+        # Ensure AI browser is started
+        global ai_mode_active, ai_page
+        if not ai_mode_active or ai_page is None:
+            # Start AI browser with a blank page
+            ai_start('about:blank')
+
+        results = []
+        for action in actions:
+            action_type = action.get('action')
+            step_number = action.get('step_number', 1)
+
+            try:
+                action_result = self.execute_single_action(action)
+                results.append({
+                    'success': action_result.get('status') == 'success' or action_result.get('success', False),
+                    'step': step_number,
+                    'action': action_type,
+                    'message': action_result.get('message', action_result.get('error', 'Action completed')),
+                    'data': action_result
+                })
+            except Exception as e:
+                results.append({
+                    'success': False,
+                    'step': step_number,
+                    'action': action_type,
+                    'message': str(e),
+                    'error': str(e)
+                })
+
+        return {
+            'status': 'completed',
+            'session': session,
+            'results': results
+        }
+
+    def execute_single_action(self, action):
+        """Execute a single action based on action type"""
+        action_type = action.get('action')
+
+        if action_type == 'navigate':
+            url = action.get('url')
+            if not url:
+                return {'status': 'error', 'error': 'Missing url for navigate action'}
+            return ai_navigate(url)
+
+        elif action_type == 'click':
+            selector = action.get('selector')
+            text = action.get('text')
+            return ai_click(selector, text)
+
+        elif action_type == 'fill':
+            selector = action.get('selector')
+            value = action.get('value')
+            if not selector or not value:
+                return {'status': 'error', 'error': 'Missing selector or value for fill action'}
+            return ai_fill(selector, value)
+
+        elif action_type == 'screenshot':
+            return ai_screenshot()
+
+        elif action_type == 'wait':
+            selector = action.get('selector')
+            duration = action.get('duration')
+            duration_ms = int(duration) if duration else None
+            return ai_wait(selector, duration_ms)
+
+        elif action_type == 'hover':
+            selector = action.get('selector')
+            if not selector:
+                return {'status': 'error', 'error': 'Missing selector for hover action'}
+            return ai_hover(selector)
+
+        elif action_type == 'press':
+            key = action.get('key')
+            if not key:
+                return {'status': 'error', 'error': 'Missing key for press action'}
+            return ai_press(key)
+
+        elif action_type == 'scroll':
+            direction = action.get('direction', 'down')
+            amount = action.get('amount', 300)
+            return ai_scroll(direction, amount)
+
+        elif action_type == 'evaluate':
+            script = action.get('script')
+            if not script:
+                return {'status': 'error', 'error': 'Missing script for evaluate action'}
+            return ai_evaluate(script)
+
+        elif action_type == 'type_text':
+            text = action.get('text')
+            if not text:
+                return {'status': 'error', 'error': 'Missing text for type_text action'}
+            return ai_type_text(text)
+
+        elif action_type == 'get_text':
+            selector = action.get('selector')
+            return ai_get_text(selector)
+
+        else:
+            return {'status': 'error', 'error': f'Unknown action type: {action_type}'}
 
 def run_server(port=3000):
     server = HTTPServer(('0.0.0.0', port), CodegenHandler)
