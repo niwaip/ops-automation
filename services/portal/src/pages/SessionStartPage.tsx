@@ -211,13 +211,8 @@ const SessionStartPage: React.FC = () => {
               height: '100%',
             }}
           >
-            {/* Step 1: Select Template */}
-            <div style={stepStyle}>
-              <div style={stepNumberStyle}>1</div>
-              <Title level={4} style={{ margin: 0 }}>{t('session:stepSelectTemplate')}</Title>
-            </div>
-
-            <div style={{ marginLeft: 44, marginBottom: 32 }}>
+            {/* Template Selection and Actions */}
+            <div style={{ marginBottom: 24 }}>
               <Space.Compact style={{ width: '100%' }}>
                 <Select
                   style={{ width: 'calc(100% - 400px)' }}
@@ -250,7 +245,7 @@ const SessionStartPage: React.FC = () => {
                   size="large"
                   style={{ borderRadius: 0 }}
                 >
-                  {t('session:aiRecognize')}
+                  解析参数
                 </Button>
                 <Button
                   type="primary"
@@ -261,16 +256,16 @@ const SessionStartPage: React.FC = () => {
                   disabled={!selectedTemplateId}
                   style={{ borderRadius: 0 }}
                 >
-                  {t('session:executeSession')}
+                  执行
                 </Button>
                 <Button
                   icon={<ReloadOutlined />}
                   size="large"
                   onClick={() => resetWorkerMutation.mutate()}
                   loading={resetWorkerMutation.isLoading}
-                  style={{ borderRadius: 0, minWidth: 100 }}
+                  style={{ borderRadius: 0, minWidth: 80 }}
                 >
-                  {t('template:resetWorkers')}
+                  重置池
                 </Button>
               </Space.Compact>
 
@@ -344,7 +339,7 @@ const SessionStartPage: React.FC = () => {
                         {
                           title: '参数',
                           key: 'params',
-                          width: 200,
+                          width: 280,
                           render: (_: any, record: any) => {
                             const params = record.params;
                             if (!params || Object.keys(params).length === 0) {
@@ -381,7 +376,7 @@ const SessionStartPage: React.FC = () => {
                         {
                           title: '执行时替换',
                           key: 'replaceable',
-                          width: 220,
+                          width: 160,
                           render: (_: any, record: any) => {
                             const params = record.params;
                             if (!params) return <Text type="secondary">-</Text>;
@@ -406,7 +401,7 @@ const SessionStartPage: React.FC = () => {
                                           [paramName]: e.target.value,
                                         }));
                                       }}
-                                      style={{ marginLeft: 4, width: 100, fontSize: 12 }}
+                                      style={{ marginLeft: 4, width: 80, fontSize: 12 }}
                                     />
                                   </div>
                                 );
