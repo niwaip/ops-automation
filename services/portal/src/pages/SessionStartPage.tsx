@@ -645,21 +645,20 @@ const SessionStartPage: React.FC = () => {
               height: '100%',
               background: '#1a1a2e',
               overflow: 'hidden',
-            }}>
               borderRadius: 12,
-              background: '#1a1a2e',
-              overflow: 'hidden',
+              display: 'flex',
+              flexDirection: 'column',
             }}>
               <iframe
                 src={`${NOVNC_URL}?autoconnect=true&resize=scale`}
-                style={{ width: '100%', height: '100%', border: 'none' }}
+                style={{ width: '100%', height: '100%', border: 'none', flex: 1 }}
                 title="noVNC Desktop"
               />
-            </div>
-            <div style={{ marginTop: 12, textAlign: 'center' }}>
-              <Text type="secondary" style={{ fontSize: 12 }}>
-                {t('session:desktopHint') || '点击"立即执行"后，浏览器窗口将在此显示'}
-              </Text>
+              <div style={{ padding: 12, textAlign: 'center' }}>
+                <Text type="secondary" style={{ fontSize: 12 }}>
+                  {t('session:desktopHint') || '点击"立即执行"后，浏览器窗口将在此显示'}
+                </Text>
+              </div>
             </div>
           </Card>
         </Col>
