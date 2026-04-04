@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Card, Input, Button, Space, Typography, Tag, Empty, message, Divider, Alert, Collapse, InputNumber, Modal, List, Tooltip, Switch, Select, Checkbox } from 'antd';
+import { Card, Input, Button, Space, Typography, Tag, Empty, message, Divider, Alert, Collapse, InputNumber, Modal, List, Tooltip, Switch, Checkbox, Radio } from 'antd';
 import {
   SendOutlined,
   RobotOutlined,
@@ -126,16 +126,14 @@ const AIControls: React.FC<AIControlsProps> = ({
   const { user } = useAuthStore();
 
   // Predefined commands configuration
+  // 搜索: 用户指定搜索框和关键词
+  // 智能搜索: AI自动识别页面搜索框，用户只需提供关键词
   const predefinedCommands = [
     { value: 'navigate', label: '打开', prefix: '打开 ', placeholder: '输入网址，如：百度、google.com' },
     { value: 'click', label: '点击', prefix: '点击 ', placeholder: '输入目标元素描述，如：搜索按钮、登录链接' },
     { value: 'fill', label: '填充', prefix: '填充 ', placeholder: '输入内容和目标，如：用户名输入框填写 admin' },
-    { value: 'search', label: '搜索', prefix: '搜索 ', placeholder: '输入搜索关键词，如：MCP 协议' },
-    { value: 'scroll', label: '滚动', prefix: '滚动 ', placeholder: '输入方向，如：向下、到顶部' },
-    { value: 'wait', label: '等待', prefix: '等待 ', placeholder: '输入等待时间或条件，如：3秒、元素出现' },
-    { value: 'screenshot', label: '截图', prefix: '截图', placeholder: '截图当前页面（无需输入）' },
-    { value: 'smart_search', label: '智能搜索', prefix: '智能搜索 ', placeholder: '输入搜索关键词，AI会自动找到搜索框' },
-    { value: 'read', label: '读取', prefix: '读取 ', placeholder: '读取页面内容，如：页面文本、标题' },
+    { value: 'search', label: '搜索', prefix: '搜索 ', placeholder: '指定搜索框和关键词，如：在搜索框输入 MCP' },
+    { value: 'smart_search', label: '智能搜索', prefix: '智能搜索 ', placeholder: '输入关键词，AI自动找到搜索框，如：MCP 协议' },
   ];
 
   const [input, setInput] = useState('');
@@ -1346,14 +1344,20 @@ const AIControls: React.FC<AIControlsProps> = ({
         {/* Input area - Command + Parameter split */}
         <div style={{ marginTop: 12 }}>
           <Space direction="vertical" style={{ width: '100%' }} size="small">
-            {/* Command selection row */}
+            {/* Command selection - Radio buttons (all visible, single select) */}
+            <Radio.Group
+              value={selectedCommand}
+              onChange={(e) => setSelectedCommand(e.target.value)}
+              optionType="button"
+              buttonStyle="solid"
+            >
+              {predefinedCommands.map(c => (
+                <Radio.Button key={c.value} value={c.value}>{c.label}</Radio.Button>
+              ))}
+            </Radio.Group>
+
+            {/* Parameter input and Send button */}
             <Space style={{ width: '100%' }} align="start">
-              <Select
-                value={selectedCommand}
-                onChange={(value) => setSelectedCommand(value)}
-                style={{ width: 120 }}
-                options={predefinedCommands.map(c => ({ value: c.value, label: c.label }))}
-              />
               <TextArea
                 value={paramInput}
                 onChange={(e) => setParamInput(e.target.value)}
@@ -1380,7 +1384,7 @@ const AIControls: React.FC<AIControlsProps> = ({
               </Button>
             </Space>
 
-            {/* Replaceable checkbox */}
+            {/* Replaceable checkbox - below Send button */}
             <Checkbox
               checked={isReplaceable}
               onChange={(e) => setIsReplaceable(e.target.checked)}
