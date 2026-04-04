@@ -20,7 +20,7 @@ import {
   FileAddOutlined,
   DownloadOutlined,
   InfoCircleOutlined,
-  HandOutlined,
+  EditOutlined,
 } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
 import { useMutation } from 'react-query';
@@ -759,7 +759,7 @@ const AIControls: React.FC<AIControlsProps> = ({ onCommandExecuted }) => {
             }
           >
             <Space>
-              {isAIMode ? <RobotOutlined /> : <HandOutlined />}
+              {isAIMode ? <RobotOutlined /> : <EditOutlined />}
               <span>录制模式</span>
               <InfoCircleOutlined style={{ color: '#999', fontSize: 12 }} />
             </Space>
