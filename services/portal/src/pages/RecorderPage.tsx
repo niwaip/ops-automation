@@ -312,11 +312,13 @@ const RecorderPage: React.FC = () => {
               borderRadius: 16,
               boxShadow: '0 4px 20px rgba(0, 0, 0, 0.08)',
               border: '1px solid rgba(255, 255, 255, 0.8)',
+              display: 'flex',
+              flexDirection: 'column',
             }}
             bodyStyle={{
-              height: 'calc(100% - 57px)',
+              flex: 1,
               padding: 0,
-              borderRadius: '0 0 16px 16px',
+              minHeight: 0,
             }}
             extra={
               <Button
@@ -331,13 +333,12 @@ const RecorderPage: React.FC = () => {
           >
             <div
               style={{
+                width: '100%',
                 height: '100%',
-                minHeight: 600,
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
                 background: '#1a1a2e',
-                borderRadius: '0 0 16px 16px',
                 overflow: 'hidden',
               }}
             >

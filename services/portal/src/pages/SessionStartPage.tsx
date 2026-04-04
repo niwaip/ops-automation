@@ -615,6 +615,13 @@ const SessionStartPage: React.FC = () => {
               boxShadow: '0 4px 20px rgba(0, 0, 0, 0.08)',
               border: '1px solid rgba(255, 255, 255, 0.8)',
               height: '100%',
+              display: 'flex',
+              flexDirection: 'column',
+            }}
+            bodyStyle={{
+              flex: 1,
+              padding: 0,
+              minHeight: 0,
             }}
             title={
               <Space>
@@ -635,8 +642,10 @@ const SessionStartPage: React.FC = () => {
           >
             <div style={{
               width: '100%',
-              height: 'calc(100% - 57px)',
-              minHeight: 500,
+              height: '100%',
+              background: '#1a1a2e',
+              overflow: 'hidden',
+            }}>
               borderRadius: 12,
               background: '#1a1a2e',
               overflow: 'hidden',
