@@ -54,9 +54,9 @@ const SessionStartPage: React.FC = () => {
   // Track execution state for dynamic layout
   const [hasExecuted, setHasExecuted] = useState(false);
 
-  // Layout sizes: initial 70/30, after execution 30/70
-  const leftSpan = hasExecuted ? 7 : 17;
-  const rightSpan = hasExecuted ? 17 : 7;
+  // Layout sizes: initial 60/40, after execution 40/60
+  const leftSpan = hasExecuted ? 10 : 14;
+  const rightSpan = hasExecuted ? 14 : 10;
 
   // Schedule options
   const [executionMode, setExecutionMode] = useState<'immediate' | 'scheduled' | 'recurring'>('immediate');
@@ -626,7 +626,7 @@ const SessionStartPage: React.FC = () => {
               <Button
                 type="link"
                 size="small"
-                onClick={() => window.open(`${NOVNC_URL}?autoconnect=true&resize=remote`, '_blank')}
+                onClick={() => window.open(`${NOVNC_URL}?autoconnect=true&resize=scale`, '_blank')}
                 style={{ color: '#6366f1' }}
               >
                 {t('session:openInNewTab') || '新标签页打开'}
@@ -642,7 +642,7 @@ const SessionStartPage: React.FC = () => {
               overflow: 'hidden',
             }}>
               <iframe
-                src={`${NOVNC_URL}?autoconnect=true&resize=remote`}
+                src={`${NOVNC_URL}?autoconnect=true&resize=scale`}
                 style={{ width: '100%', height: '100%', border: 'none' }}
                 title="noVNC Desktop"
               />
