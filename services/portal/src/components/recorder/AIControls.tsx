@@ -1341,23 +1341,31 @@ const AIControls: React.FC<AIControlsProps> = ({
           <div ref={messagesEndRef} />
         </div>
 
-        {/* Input area - Command + Parameter split */}
+        {/* Input area - Command + Parameter left-right layout */}
         <div style={{ marginTop: 12 }}>
           <Space direction="vertical" style={{ width: '100%' }} size="small">
-            {/* Command selection - Radio buttons (all visible, single select) */}
-            <Radio.Group
-              value={selectedCommand}
-              onChange={(e) => setSelectedCommand(e.target.value)}
-              optionType="button"
-              buttonStyle="solid"
-            >
-              {predefinedCommands.map(c => (
-                <Radio.Button key={c.value} value={c.value}>{c.label}</Radio.Button>
-              ))}
-            </Radio.Group>
-
-            {/* Parameter input and Send button */}
+            {/* Command and Parameter row - left-right layout */}
             <Space style={{ width: '100%' }} align="start">
+              {/* Command selection - Radio buttons with rounded corners */}
+              <Radio.Group
+                value={selectedCommand}
+                onChange={(e) => setSelectedCommand(e.target.value)}
+                optionType="button"
+                buttonStyle="solid"
+                style={{ borderRadius: 8 }}
+              >
+                {predefinedCommands.map(c => (
+                  <Radio.Button
+                    key={c.value}
+                    value={c.value}
+                    style={{ borderRadius: 6, marginRight: 4 }}
+                  >
+                    {c.label}
+                  </Radio.Button>
+                ))}
+              </Radio.Group>
+
+              {/* Parameter input */}
               <TextArea
                 value={paramInput}
                 onChange={(e) => setParamInput(e.target.value)}
@@ -1370,21 +1378,23 @@ const AIControls: React.FC<AIControlsProps> = ({
                   }
                 }}
                 disabled={isLoading}
-                style={{ flex: 1, minWidth: 200 }}
+                style={{ flex: 1, minWidth: 200, borderRadius: 8 }}
               />
+
+              {/* Send button */}
               <Button
                 type="primary"
                 icon={<SendOutlined />}
                 onClick={handleSend}
                 loading={isLoading}
                 disabled={!(predefinedCommands.find(c => c.value === selectedCommand)?.prefix + paramInput.trim()).trim()}
-                style={{ height: 'auto' }}
+                style={{ height: 'auto', borderRadius: 8 }}
               >
                 {t('common:send')}
               </Button>
             </Space>
 
-            {/* Replaceable checkbox - below Send button */}
+            {/* Replaceable checkbox - below input row */}
             <Checkbox
               checked={isReplaceable}
               onChange={(e) => setIsReplaceable(e.target.checked)}
