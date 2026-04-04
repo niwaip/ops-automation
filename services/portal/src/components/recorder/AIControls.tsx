@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Card, Input, Button, Space, Typography, Tag, Empty, message, Divider, Alert, Collapse, InputNumber, Modal, List } from 'antd';
+import { Card, Input, Button, Space, Typography, Tag, Empty, message, Divider, Alert, Collapse, InputNumber, Modal, List, Tooltip, Switch } from 'antd';
 import {
   SendOutlined,
   RobotOutlined,
@@ -19,6 +19,8 @@ import {
   SaveOutlined,
   FileAddOutlined,
   DownloadOutlined,
+  InfoCircleOutlined,
+  HandOutlined,
 } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
 import { useMutation } from 'react-query';
@@ -94,6 +96,9 @@ const AIControls: React.FC<AIControlsProps> = ({ onCommandExecuted }) => {
   const [showTemplateModal, setShowTemplateModal] = useState(false);
   const [compiledScript, setCompiledScript] = useState('');
   const [showScriptModal, setShowScriptModal] = useState(false);
+
+  // Recording mode: true = AI mode, false = Manual mode
+  const [isAIMode, setIsAIMode] = useState(true);
 
   // Scroll to bottom of messages
   useEffect(() => {
@@ -745,8 +750,27 @@ const AIControls: React.FC<AIControlsProps> = ({ onCommandExecuted }) => {
     <Card
       title={
         <Space>
-          <RobotOutlined />
-          {t('recorder:ai.title') || 'AI 浏览器控制'}
+          <Tooltip
+            title={
+              <div>
+                <div style={{ fontWeight: 'bold', marginBottom: 4 }}>自然语言控制</div>
+                <div>输入自然语言描述，AI 将自动转换为浏览器操作命令。支持导航、点击、填充、截图等操作。</div>
+              </div>
+            }
+          >
+            <Space>
+              {isAIMode ? <RobotOutlined /> : <HandOutlined />}
+              <span>录制模式</span>
+              <InfoCircleOutlined style={{ color: '#999', fontSize: 12 }} />
+            </Space>
+          </Tooltip>
+          <Switch
+            checked={isAIMode}
+            onChange={setIsAIMode}
+            checkedChildren="AI"
+            unCheckedChildren="手动"
+            style={{ marginLeft: 8 }}
+          />
         </Space>
       }
       extra={
@@ -769,26 +793,6 @@ const AIControls: React.FC<AIControlsProps> = ({ onCommandExecuted }) => {
       }
     >
       <Space direction="vertical" style={{ width: '100%' }} size="middle">
-        {/* Browser not ready alert */}
-        {!isBrowserReady && (
-          <Alert
-            message={t('recorder:ai.browserNotReadyTitle') || '浏览器未初始化'}
-            description={t('recorder:ai.browserNotReadyDesc') || '请点击"初始化浏览器"按钮，或在输入命令后自动初始化'}
-            type="warning"
-            showIcon
-            style={{ borderRadius: 8 }}
-          />
-        )}
-
-        {/* Info alert */}
-        <Alert
-          message={t('recorder:ai.infoTitle') || '自然语言控制'}
-          description={t('recorder:ai.infoDesc') || '输入自然语言描述，AI 将自动转换为浏览器操作命令。支持导航、点击、填充、截图等操作。'}
-          type="info"
-          showIcon
-          style={{ borderRadius: 8 }}
-        />
-
         {/* Example commands */}
         <div>
           <Text type="secondary" style={{ fontSize: 12 }}>
