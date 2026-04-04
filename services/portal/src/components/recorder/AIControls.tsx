@@ -82,6 +82,8 @@ interface TemplateStep {
   params: Record<string, unknown>;
   description: string;
   timestamp: Date;
+  // 记录哪些参数是可替换的 (参数名 -> 是否可替换)
+  replaceableParams?: Record<string, boolean>;
 }
 
 // Template
@@ -546,11 +548,12 @@ const AIControls: React.FC<AIControlsProps> = ({
   };
 
   // Extract parameters from template steps for later replacement
-  const extractParameters = (steps: TemplateStep[]): Record<string, { type: string; description: string; default?: string | number }> => {
-    const params: Record<string, { type: string; description: string; default?: string | number }> = {};
+  const extractParameters = (steps: TemplateStep[]): Record<string, { type: string; description: string; default?: string | number; replaceable?: boolean }> => {
+    const params: Record<string, { type: string; description: string; default?: string | number; replaceable?: boolean }> = {};
 
     steps.forEach((step, index) => {
       const stepPrefix = `step${index + 1}`;
+      const replaceableParams = step.replaceableParams || {};
 
       switch (step.tool) {
         case 'navigate':
@@ -560,6 +563,7 @@ const AIControls: React.FC<AIControlsProps> = ({
               type: 'string',
               description: `步骤${index + 1}导航URL`,
               default: step.params.url as string,
+              replaceable: replaceableParams['url'] || false,
             };
           }
           break;
@@ -571,6 +575,7 @@ const AIControls: React.FC<AIControlsProps> = ({
               type: 'string',
               description: `步骤${index + 1}输入内容`,
               default: step.params.value as string,
+              replaceable: replaceableParams['value'] || false,
             };
           }
           // Extract selector as parameter (optional)
@@ -579,6 +584,7 @@ const AIControls: React.FC<AIControlsProps> = ({
               type: 'string',
               description: `步骤${index + 1}目标选择器`,
               default: step.params.selector as string,
+              replaceable: replaceableParams['selector'] || false,
             };
           }
           break;
@@ -590,6 +596,7 @@ const AIControls: React.FC<AIControlsProps> = ({
               type: 'string',
               description: `步骤${index + 1}点击目标选择器`,
               default: step.params.selector as string,
+              replaceable: replaceableParams['selector'] || false,
             };
           }
           if (step.params.text) {
@@ -597,6 +604,7 @@ const AIControls: React.FC<AIControlsProps> = ({
               type: 'string',
               description: `步骤${index + 1}点击目标文本`,
               default: step.params.text as string,
+              replaceable: replaceableParams['text'] || false,
             };
           }
           break;
@@ -607,6 +615,7 @@ const AIControls: React.FC<AIControlsProps> = ({
               type: 'string',
               description: `步骤${index + 1}输入文本`,
               default: step.params.text as string,
+              replaceable: replaceableParams['text'] || false,
             };
           }
           break;
@@ -617,6 +626,7 @@ const AIControls: React.FC<AIControlsProps> = ({
               type: 'number',
               description: `步骤${index + 1}等待时间(ms)`,
               default: step.params.duration as number,
+              replaceable: replaceableParams['duration'] || false,
             };
           }
           break;
@@ -627,6 +637,7 @@ const AIControls: React.FC<AIControlsProps> = ({
               type: 'number',
               description: `步骤${index + 1}滚动距离`,
               default: step.params.amount as number,
+              replaceable: replaceableParams['amount'] || false,
             };
           }
           break;
@@ -638,6 +649,7 @@ const AIControls: React.FC<AIControlsProps> = ({
               type: 'string',
               description: `步骤${index + 1}搜索关键词`,
               default: step.params.query as string,
+              replaceable: replaceableParams['query'] || false,
             };
           }
           // Extract input selector as parameter (optional)
@@ -646,6 +658,7 @@ const AIControls: React.FC<AIControlsProps> = ({
               type: 'string',
               description: `步骤${index + 1}搜索输入框选择器`,
               default: step.params.input_selector as string,
+              replaceable: replaceableParams['input_selector'] || false,
             };
           }
           break;
@@ -656,7 +669,7 @@ const AIControls: React.FC<AIControlsProps> = ({
   };
 
   // Generate executable script from template steps with parameterized variables
-  const generateScript = (steps: TemplateStep[], params: Record<string, { type: string; description: string; default?: string | number }> = {}): string => {
+  const generateScript = (steps: TemplateStep[], params: Record<string, { type: string; description: string; default?: string | number; replaceable?: boolean }> = {}): string => {
     const lines: string[] = [
       '// Auto-generated browser automation script',
       '// Generated at: ' + new Date().toISOString(),
@@ -667,10 +680,15 @@ const AIControls: React.FC<AIControlsProps> = ({
       '// You can modify these values before running the script',
     ];
 
-    // Add parameter definitions
+    // Add parameter definitions with special marking for replaceable ones
     Object.entries(params).forEach(([key, param]) => {
       const defaultValue = param.type === 'number' ? param.default : `'${param.default}'`;
-      lines.push(`// ${param.description}`);
+      // 添加可替换标记的特别注释
+      if (param.replaceable) {
+        lines.push(`// ⚠️ [可替换参数] ${param.description} - AI执行时可根据用户输入自动替换`);
+      } else {
+        lines.push(`// ${param.description}`);
+      }
       lines.push(`const ${key} = ${defaultValue};`);
     });
 
@@ -1001,12 +1019,37 @@ const AIControls: React.FC<AIControlsProps> = ({
         // Skip non-deterministic commands like click_result without actual navigation
         const deterministicTools = ['navigate', 'fill', 'click', 'screenshot', 'scroll', 'wait', 'press_key', 'hover', 'type_text', 'smart_search'];
         if (deterministicTools.includes(info.tool)) {
+          // Determine which params are replaceable based on entry.replaceable and commandType
+          const replaceableParams: Record<string, boolean> = {};
+
+          if (entry.replaceable && entry.rawParam) {
+            // 根据命令类型标记可替换参数
+            switch (info.tool) {
+              case 'navigate':
+                replaceableParams['url'] = true;
+                break;
+              case 'smart_search':
+                replaceableParams['query'] = true;
+                break;
+              case 'fill':
+                replaceableParams['value'] = true;
+                break;
+              case 'click':
+                if (info.params.text) replaceableParams['text'] = true;
+                break;
+              case 'type_text':
+                replaceableParams['text'] = true;
+                break;
+            }
+          }
+
           extractedSteps.push({
             id: Date.now().toString() + Math.random(),
             tool: info.tool,
             params: info.params,
             description: info.description || `${info.tool} ${JSON.stringify(info.params)}`,
             timestamp: entry.timestamp,
+            replaceableParams,
           });
         }
       }
