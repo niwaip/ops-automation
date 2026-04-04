@@ -223,18 +223,28 @@ const AIControls: React.FC<AIControlsProps> = ({
       onSuccess: (data) => {
         console.log('[AIControls] Parse result:', data);
         if (data.success && data.commands.length > 0) {
-          // Add AI response to history (without result - will be updated by executeCommandMutation)
-          setHistory((prev) => [
-            ...prev,
-            {
-              id: Date.now().toString(),
-              type: 'ai',
-              content: data.explanation,
-              commands: data.commands,
-              // Don't add result here - executeCommandMutation will update it
-              timestamp: new Date(),
-            },
-          ]);
+          // Get replaceable info from the last user entry
+          setHistory((prev) => {
+            const lastUserEntry = [...prev].reverse().find(e => e.type === 'user');
+            const replaceableInfo = lastUserEntry ? {
+              replaceable: lastUserEntry.replaceable,
+              commandType: lastUserEntry.commandType,
+              rawParam: lastUserEntry.rawParam,
+            } : {};
+
+            return [...prev,
+              {
+                id: Date.now().toString(),
+                type: 'ai' as const,
+                content: data.explanation,
+                commands: data.commands,
+                // Don't add result here - executeCommandMutation will update it
+                timestamp: new Date(),
+                // Pass through replaceable info from user entry
+                ...replaceableInfo,
+              },
+            ];
+          });
           onCommandExecuted?.(data.commands);
 
           // Auto-execute the commands
@@ -421,12 +431,41 @@ const AIControls: React.FC<AIControlsProps> = ({
 
   // Add deterministic command to template
   const handleAddToTemplate = (templateInfo: { tool: string; params: Record<string, unknown>; description: string }) => {
+    // Find the last ai entry that has matching tool to get replaceable info
+    const lastAiEntry = [...history].reverse().find(e =>
+      e.type === 'ai' &&
+      e.result?.template_info?.tool === templateInfo.tool
+    );
+
+    const replaceableParams: Record<string, boolean> = {};
+    if (lastAiEntry?.replaceable && lastAiEntry?.rawParam) {
+      // 根据命令类型标记可替换参数
+      switch (templateInfo.tool) {
+        case 'navigate':
+          replaceableParams['url'] = true;
+          break;
+        case 'smart_search':
+          replaceableParams['query'] = true;
+          break;
+        case 'fill':
+          replaceableParams['value'] = true;
+          break;
+        case 'click':
+          if (templateInfo.params.text) replaceableParams['text'] = true;
+          break;
+        case 'type_text':
+          replaceableParams['text'] = true;
+          break;
+      }
+    }
+
     const step: TemplateStep = {
       id: Date.now().toString(),
       tool: templateInfo.tool,
       params: templateInfo.params,
       description: templateInfo.description,
       timestamp: new Date(),
+      replaceableParams,
     };
     setTemplateSteps((prev) => [...prev, step]);
     message.success(`已添加到模版: ${templateInfo.description}`);
