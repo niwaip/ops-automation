@@ -51,6 +51,13 @@ const SessionStartPage: React.FC = () => {
   const [recognizedParams, setRecognizedParams] = useState<RecognizeParamsResponse | null>(null);
   const [editedParams, setEditedParams] = useState<Record<string, unknown>>({});
 
+  // Track execution state for dynamic layout
+  const [hasExecuted, setHasExecuted] = useState(false);
+
+  // Layout sizes: initial 70/30, after execution 30/70
+  const leftSpan = hasExecuted ? 7 : 17;
+  const rightSpan = hasExecuted ? 17 : 7;
+
   // Schedule options
   const [executionMode, setExecutionMode] = useState<'immediate' | 'scheduled' | 'recurring'>('immediate');
   const [scheduleDate, setScheduleDate] = useState<string | null>(null);
@@ -168,6 +175,8 @@ const SessionStartPage: React.FC = () => {
       message.warning(t('session:selectTemplateFirst'));
       return;
     }
+    // Mark execution started - triggers layout change
+    setHasExecuted(true);
     executeMutation.mutate();
   };
 
@@ -206,9 +215,14 @@ const SessionStartPage: React.FC = () => {
         background: 'linear-gradient(135deg, #f5f7fa 0%, #e4e8ec 100%)',
       }}
     >
-      <Row gutter={24}>
+      <Row gutter={24} style={{ minHeight: 'calc(100vh - 120px)' }}>
         {/* Left Column - Configuration */}
-        <Col span={10}>
+        <Col
+          span={leftSpan}
+          style={{
+            transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
+          }}
+        >
           {/* Main Content Card */}
           <Card
             bordered={false}
@@ -216,6 +230,7 @@ const SessionStartPage: React.FC = () => {
               borderRadius: 16,
               boxShadow: '0 4px 20px rgba(0, 0, 0, 0.08)',
               border: '1px solid rgba(255, 255, 255, 0.8)',
+              height: '100%',
             }}
           >
             {/* Step 1: Select Template */}
@@ -586,7 +601,12 @@ const SessionStartPage: React.FC = () => {
         </Col>
 
         {/* Right Column - noVNC Desktop View */}
-        <Col span={14}>
+        <Col
+          span={rightSpan}
+          style={{
+            transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
+          }}
+        >
           <Card
             bordered={false}
             style={{
@@ -614,7 +634,8 @@ const SessionStartPage: React.FC = () => {
           >
             <div style={{
               width: '100%',
-              height: 700,
+              height: 'calc(100% - 57px)',
+              minHeight: 500,
               borderRadius: 12,
               background: '#1a1a2e',
               overflow: 'hidden',
