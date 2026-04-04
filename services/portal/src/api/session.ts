@@ -50,6 +50,18 @@ export interface ContinueSessionRequest {
   step_id: string;
 }
 
+export interface WorkerPoolStatus {
+  available_workers: number;
+  status: 'available' | 'exhausted';
+  message: string;
+}
+
+export interface WorkerPoolResetResponse {
+  success: boolean;
+  available_workers: number;
+  message: string;
+}
+
 // Session API
 export const sessionApi = {
   getById: async (id: string): Promise<Session> => {
@@ -74,5 +86,16 @@ export const sessionApi = {
 
   delete: async (id: string): Promise<{ success: boolean }> => {
     return apiClient.delete<{ success: boolean }>(`/sessions/${id}`);
+  },
+};
+
+// Worker Pool API
+export const workerApi = {
+  getStatus: async (): Promise<WorkerPoolStatus> => {
+    return apiClient.get<WorkerPoolStatus>('/workers/status');
+  },
+
+  reset: async (): Promise<WorkerPoolResetResponse> => {
+    return apiClient.post<WorkerPoolResetResponse>('/workers/reset');
   },
 };

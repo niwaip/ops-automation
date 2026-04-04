@@ -1,17 +1,18 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
-import { Card, Descriptions, Tag, Button, Space, Typography, Tabs, Collapse, Spin, message, Modal, Form, Input } from 'antd';
+import { Card, Descriptions, Tag, Button, Space, Typography, Tabs, Collapse, Spin, message, Modal, Form, Input, Alert } from 'antd';
 import {
   ArrowLeftOutlined,
   CloudUploadOutlined,
   CopyOutlined,
   PlayCircleOutlined,
   BugOutlined,
+  ReloadOutlined,
 } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
 import { useQuery, useMutation, useQueryClient } from 'react-query';
 import { templateApi, TemplateStep, ParamsSchema } from '../api/template';
-import { sessionApi } from '../api/session';
+import { sessionApi, workerApi } from '../api/session';
 import { useAuthStore } from '../store/authStore';
 
 const { Title, Text } = Typography;
@@ -32,12 +33,30 @@ const TemplateDetailPage: React.FC = () => {
 
   const [executeModalVisible, setExecuteModalVisible] = useState(false);
   const [testModalVisible, setTestModalVisible] = useState(false);
+  const [workerExhausted, setWorkerExhausted] = useState(false);
   const [form] = Form.useForm();
 
   const templateQuery = useQuery(
     ['template', id],
     () => templateApi.getById(id!),
     { enabled: !!id }
+  );
+
+  // Reset worker pool mutation
+  const resetWorkerMutation = useMutation(
+    async () => {
+      const result = await workerApi.reset();
+      setWorkerExhausted(false);
+      return result;
+    },
+    {
+      onSuccess: (result) => {
+        message.success(result.message || t('template:workerResetSuccess'));
+      },
+      onError: () => {
+        message.error(t('template:workerResetFailed'));
+      },
+    }
   );
 
   // Auto-open execute modal if execute=true in query params
@@ -100,11 +119,18 @@ const TemplateDetailPage: React.FC = () => {
       onSuccess: (session) => {
         message.success(t('template:executeSuccess'));
         setExecuteModalVisible(false);
+        setWorkerExhausted(false);
         navigate(`/sessions/${session.id}`);
       },
       onError: (error: any) => {
-        const errorMsg = error.response?.data?.message || error.message || t('template:executeFailed');
-        message.error(errorMsg);
+        const errorMsg = error.response?.data?.message || error.message || '';
+        // Check if worker pool is exhausted
+        if (errorMsg.includes('No available workers') || errorMsg.includes('workers')) {
+          setWorkerExhausted(true);
+          message.error(t('template:workerExhausted'));
+        } else {
+          message.error(errorMsg || t('template:executeFailed'));
+        }
       },
     }
   );
@@ -172,11 +198,18 @@ const TemplateDetailPage: React.FC = () => {
       onSuccess: (session) => {
         message.success(t('template:testSuccess'));
         setTestModalVisible(false);
+        setWorkerExhausted(false);
         navigate(`/sessions/${session.id}`);
       },
       onError: (error: any) => {
-        const errorMsg = error.response?.data?.message || error.message || t('template:testFailed');
-        message.error(errorMsg);
+        const errorMsg = error.response?.data?.message || error.message || '';
+        // Check if worker pool is exhausted
+        if (errorMsg.includes('No available workers') || errorMsg.includes('workers')) {
+          setWorkerExhausted(true);
+          message.error(t('template:workerExhausted'));
+        } else {
+          message.error(errorMsg || t('template:testFailed'));
+        }
       },
     }
   );
@@ -227,6 +260,29 @@ const TemplateDetailPage: React.FC = () => {
           <ArrowLeftOutlined /> {t('template:templateList')}
         </Button>
       </Space>
+
+      {/* Worker exhausted warning */}
+      {workerExhausted && (
+        <Alert
+          type="warning"
+          showIcon
+          style={{ marginBottom: 16 }}
+          message={t('template:workerExhaustedTitle')}
+          description={
+            <Space direction="vertical" size="small">
+              <span>{t('template:workerExhaustedDesc')}</span>
+              <Button
+                type="primary"
+                icon={<ReloadOutlined />}
+                onClick={() => resetWorkerMutation.mutate()}
+                loading={resetWorkerMutation.isLoading}
+              >
+                {t('template:resetWorkers')}
+              </Button>
+            </Space>
+          }
+        />
+      )}
 
       <Card
         title={
