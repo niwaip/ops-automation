@@ -554,6 +554,19 @@ body {
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme='light']) .ant-table-tbody > tr > td {
     border-bottom-color: #334155 !important;
+    color: #e2e8f0 !important;
+  }
+}
+
+/* Dark mode table body text */
+[data-theme='dark'] .ant-table-tbody > tr,
+[data-theme='dark'] .ant-table-tbody > tr > td,
+[data-theme='dark'] .ant-table-cell,
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) .ant-table-tbody > tr,
+  :root:not([data-theme='light']) .ant-table-tbody > tr > td,
+  :root:not([data-theme='light']) .ant-table-cell {
+    color: #e2e8f0 !important;
   }
 }
 
@@ -596,5 +609,151 @@ body {
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme='light']) .ant-typography.ant-typography-secondary {
     color: #94a3b8 !important;
+  }
+}
+
+/* ============================================
+   Additional Dark Mode Text Fixes
+   ============================================ */
+
+/* Fix all Typography components */
+[data-theme='dark'] .ant-typography,
+[data-theme='dark'] .ant-typography h1,
+[data-theme='dark'] .ant-typography h2,
+[data-theme='dark'] .ant-typography h3,
+[data-theme='dark'] .ant-typography h4,
+[data-theme='dark'] .ant-typography h5,
+[data-theme='dark'] .ant-typography div,
+[data-theme='dark'] .ant-typography span,
+[data-theme='dark'] .ant-typography p,
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) .ant-typography,
+  :root:not([data-theme='light']) .ant-typography h1,
+  :root:not([data-theme='light']) .ant-typography h2,
+  :root:not([data-theme='light']) .ant-typography h3,
+  :root:not([data-theme='light']) .ant-typography h4,
+  :root:not([data-theme='light']) .ant-typography h5,
+  :root:not([data-theme='light']) .ant-typography div,
+  :root:not([data-theme='light']) .ant-typography span,
+  :root:not([data-theme='light']) .ant-typography p {
+    color: #e2e8f0 !important;
+  }
+}
+
+/* Fix Title components */
+[data-theme='dark'] h1,
+[data-theme='dark'] h2,
+[data-theme='dark'] h3,
+[data-theme='dark'] h4,
+[data-theme='dark'] h5,
+[data-theme='dark'] .ant-typography h1,
+[data-theme='dark'] .ant-typography h2,
+[data-theme='dark'] .ant-typography h3,
+[data-theme='dark'] .ant-typography h4,
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) h1,
+  :root:not([data-theme='light']) h2,
+  :root:not([data-theme='light']) h3,
+  :root:not([data-theme='light']) h4,
+  :root:not([data-theme='light']) h5,
+  :root:not([data-theme='light']) .ant-typography h1,
+  :root:not([data-theme='light']) .ant-typography h2,
+  :root:not([data-theme='light']) .ant-typography h3,
+  :root:not([data-theme='light']) .ant-typography h4 {
+    color: #f8fafc !important;
+  }
+}
+
+/* Fix card body text */
+[data-theme='dark'] .ant-card-body,
+[data-theme='dark'] .ant-card-body *:not(.ant-tag):not(.ant-btn),
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) .ant-card-body,
+  :root:not([data-theme='light']) .ant-card-body *:not(.ant-tag):not(.ant-btn) {
+    color: #e2e8f0 !important;
+  }
+}
+
+/* Fix Text with strong modifier */
+[data-theme='dark'] .ant-typography strong,
+[data-theme='dark'] strong,
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) .ant-typography strong,
+  :root:not([data-theme='light']) strong {
+    color: #f8fafc !important;
+  }
+}
+
+/* Fix code text */
+[data-theme='dark'] code,
+[data-theme='dark'] .ant-typography code,
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) code,
+  :root:not([data-theme='light']) .ant-typography code {
+    color: #fbbf24 !important;
+    background: #334155 !important;
+  }
+}
+
+/* Fix label text */
+[data-theme='dark'] label,
+[data-theme='dark'] .ant-form-item-label > label,
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) label,
+  :root:not([data-theme='light']) .ant-form-item-label > label {
+    color: #e2e8f0 !important;
+  }
+}
+
+/* Fix placeholder text to be more visible */
+[data-theme='dark'] .ant-input::placeholder,
+[data-theme='dark'] .ant-input-affix-wrapper input::placeholder,
+[data-theme='dark'] textarea::placeholder,
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) .ant-input::placeholder,
+  :root:not([data-theme='light']) .ant-input-affix-wrapper input::placeholder,
+  :root:not([data-theme='light']) textarea::placeholder {
+    color: #64748b !important;
+    opacity: 1 !important;
+  }
+}
+
+/* Fix empty state text */
+[data-theme='dark'] .ant-empty-description,
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) .ant-empty-description {
+    color: #94a3b8 !important;
+  }
+}
+
+/* Fix text inside tables more specifically */
+[data-theme='dark'] .ant-table-tbody > tr > td .ant-typography,
+[data-theme='dark'] .ant-table-tbody > tr > td span,
+[data-theme='dark'] .ant-table-tbody > tr > td div,
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) .ant-table-tbody > tr > td .ant-typography,
+  :root:not([data-theme='light']) .ant-table-tbody > tr > td span,
+  :root:not([data-theme='light']) .ant-table-tbody > tr > td div {
+    color: #e2e8f0 !important;
+  }
+}
+
+/* Fix small text */
+[data-theme='dark'] .ant-typography-small,
+[data-theme='dark'] .ant-typography[size="small"],
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) .ant-typography-small,
+  :root:not([data-theme='light']) .ant-typography[size="small"] {
+    color: #94a3b8 !important;
+  }
+}
+
+/* Ensure all body text in dark mode is light */
+[data-theme='dark'] body,
+[data-theme='dark'] #root,
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) body,
+  :root:not([data-theme='light']) #root {
+    color: #e2e8f0 !important;
   }
 }
