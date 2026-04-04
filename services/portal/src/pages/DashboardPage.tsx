@@ -32,38 +32,44 @@ const DashboardPage: React.FC = () => {
       key: 'id',
       width: 100,
       ellipsis: true,
+      render: (id: string) => <span style={{ fontSize: 11 }}>{id.substring(0, 8)}...</span>,
     },
     {
-      title: t('session:sessionName'),
-      dataIndex: 'name',
-      key: 'name',
+      title: t('session:template'),
+      dataIndex: 'template_id',
+      key: 'template_id',
+      width: 100,
+      ellipsis: true,
+      render: (templateId: string) => templateId ? <span style={{ fontSize: 11 }}>{templateId.substring(0, 8)}...</span> : '-',
     },
     {
       title: t('session:sessionStatus'),
-      dataIndex: 'status',
-      key: 'status',
-      render: (status: string) => {
+      dataIndex: 'state',
+      key: 'state',
+      render: (state: string) => {
         const colorMap: Record<string, string> = {
-          pending: 'default',
-          running: 'processing',
-          completed: 'success',
-          failed: 'error',
-          canceled: 'warning',
-          paused: 'orange',
+          IDLE: 'default',
+          RUNNING: 'processing',
+          HUMAN_CONTROL: 'warning',
+          CLOSED: 'default',
+          ERROR: 'error',
         };
-        return <Tag color={colorMap[status] || 'default'}>{t(`session:status${status.charAt(0).toUpperCase() + status.slice(1)}`)}</Tag>;
+        return <Tag color={colorMap[state] || 'default'}>{state}</Tag>;
       },
     },
     {
       title: t('session:owner'),
-      dataIndex: ['owner', 'username'],
-      key: 'owner',
+      dataIndex: 'user_id',
+      key: 'user_id',
+      width: 100,
+      ellipsis: true,
+      render: (userId: string) => <span style={{ fontSize: 11 }}>{userId.substring(0, 8)}...</span>,
     },
     {
       title: t('common:createdAt'),
-      dataIndex: 'createdAt',
-      key: 'createdAt',
-      render: (date: string) => new Date(date).toLocaleString(),
+      dataIndex: 'created_at',
+      key: 'created_at',
+      render: (createdAt: number) => new Date(createdAt).toLocaleString(),
     },
   ];
 
@@ -71,9 +77,9 @@ const DashboardPage: React.FC = () => {
     const sessions = sessionsStatsQuery.data?.sessions || [];
     return {
       total: sessions.length,
-      running: sessions.filter((s) => s.status === 'running').length,
-      completed: sessions.filter((s) => s.status === 'completed').length,
-      pending: sessions.filter((s) => s.status === 'pending').length,
+      running: sessions.filter((s: any) => s.state === 'RUNNING').length,
+      completed: sessions.filter((s: any) => s.state === 'CLOSED').length,
+      pending: sessions.filter((s: any) => s.state === 'IDLE').length,
     };
   };
 
