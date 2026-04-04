@@ -117,7 +117,7 @@ const AIControls: React.FC<AIControlsProps> = ({
   const [input, setInput] = useState('');
   const [history, setHistory] = useState<CommandHistoryEntry[]>([]);
   const [isBrowserReady, setIsBrowserReady] = useState(false);
-  const [waitDuration, setWaitDuration] = useState(20); // Default 20 seconds
+  const [waitDuration, setWaitDuration] = useState(3); // Default 3 seconds
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // Manual recording URL input
@@ -812,6 +812,7 @@ const AIControls: React.FC<AIControlsProps> = ({
     <Card
       extra={
         <Space>
+            <Text strong>录制器</Text>
           <Switch
             checked={isAIMode}
             onChange={setIsAIMode}
@@ -838,25 +839,6 @@ const AIControls: React.FC<AIControlsProps> = ({
       {isAIMode ? (
         // AI Mode Content
         <Space direction="vertical" style={{ width: '100%' }} size="middle">
-        {/* Example commands */}
-        <div>
-          <Text type="secondary" style={{ fontSize: 12 }}>
-            {t('recorder:ai.examples') || '示例命令：'}
-          </Text>
-          <Space wrap style={{ marginTop: 8 }}>
-            {exampleCommands.map((cmd, i) => (
-              <Tag
-                key={i}
-                style={{ cursor: 'pointer' }}
-                onClick={() => setInput(cmd.input)}
-              >
-                {cmd.text}
-              </Tag>
-            ))}
-          </Space>
-        </div>
-
-        <Divider style={{ margin: '12px 0' }} />
 
         {/* Message history */}
         <div
@@ -910,6 +892,7 @@ const AIControls: React.FC<AIControlsProps> = ({
                             key: '1',
                             label: (
                               <Space>
+            <Text strong>录制器</Text>
                                 <CodeOutlined />
                                 <Text style={{ fontSize: 12 }}>
                                   {entry.commands.length} MCP {t('recorder:ai.commands') || '命令'}
@@ -931,6 +914,7 @@ const AIControls: React.FC<AIControlsProps> = ({
                                     }}
                                   >
                                     <Space>
+            <Text strong>录制器</Text>
                                       <Tag color="blue">{cmd.tool}</Tag>
                                       <Text code style={{ fontSize: 11 }}>
                                         {JSON.stringify(cmd.params)}
@@ -972,6 +956,7 @@ const AIControls: React.FC<AIControlsProps> = ({
                             key: 'result',
                             label: (
                               <Space>
+            <Text strong>录制器</Text>
                                 <CheckCircleOutlined style={{ color: '#52c41a' }} />
                                 <Text style={{ fontSize: 12 }}>
                                   {t('recorder:ai.result') || '执行结果'}
@@ -1128,15 +1113,9 @@ const AIControls: React.FC<AIControlsProps> = ({
 
         {/* Quick action buttons */}
         <div style={{ marginTop: 12 }}>
-          <Text type="secondary" style={{ fontSize: 12, marginBottom: 8, display: 'block' }}>
-            {t('recorder:ai.quickActions') || '快捷操作'}
-          </Text>
 
           {/* Direct execution commands - click to execute immediately */}
           <div style={{ marginBottom: 8 }}>
-            <Text type="secondary" style={{ fontSize: 11, marginRight: 8 }}>
-              {t('recorder:ai.directActions') || '直接执行：'}
-            </Text>
             <Space wrap size="small">
               <Button
                 size="small"
@@ -1214,7 +1193,7 @@ const AIControls: React.FC<AIControlsProps> = ({
                 min={1}
                 max={120}
                 value={waitDuration}
-                onChange={(val) => setWaitDuration(val || 20)}
+                onChange={(val) => setWaitDuration(val || 3)}
                 style={{ width: 60 }}
                 addonAfter="s"
               />
@@ -1289,6 +1268,7 @@ const AIControls: React.FC<AIControlsProps> = ({
         <div style={{ background: '#f6f8fa', borderRadius: 8, padding: 12 }}>
           <Space style={{ width: '100%', justifyContent: 'space-between' }}>
             <Space>
+            <Text strong>录制器</Text>
               <Text strong style={{ fontSize: 13 }}>
                 <FileAddOutlined style={{ marginRight: 4 }} />
                 模版录制
@@ -1298,6 +1278,7 @@ const AIControls: React.FC<AIControlsProps> = ({
               </Tag>
             </Space>
             <Space>
+            <Text strong>录制器</Text>
               <Button
                 size="small"
                 icon={<RobotOutlined />}
@@ -1315,14 +1296,6 @@ const AIControls: React.FC<AIControlsProps> = ({
                 disabled={templateSteps.length === 0}
               >
                 编译模版
-              </Button>
-              <Button
-                size="small"
-                icon={<SaveOutlined />}
-                onClick={handleSaveTemplate}
-                disabled={templateSteps.length === 0}
-              >
-                保存模版
               </Button>
               <Button
                 size="small"
@@ -1356,6 +1329,7 @@ const AIControls: React.FC<AIControlsProps> = ({
                   ]}
                 >
                   <Space>
+            <Text strong>录制器</Text>
                     <Tag color="blue">{index + 1}</Tag>
                     <Tag>{step.tool}</Tag>
                     <Text style={{ fontSize: 11 }}>{step.description}</Text>
@@ -1444,6 +1418,7 @@ const AIControls: React.FC<AIControlsProps> = ({
         <Space direction="vertical" style={{ width: '100%' }} size="middle">
           {/* Connection Status */}
           <Space>
+            <Text strong>录制器</Text>
             <Tag color={isConnected ? 'success' : 'error'}>
               {isConnected ? (t('recorder:connected') || '已连接') : (t('recorder:disconnected') || '未连接')}
             </Tag>
@@ -1454,6 +1429,7 @@ const AIControls: React.FC<AIControlsProps> = ({
 
           {/* Connection Controls */}
           <Space>
+            <Text strong>录制器</Text>
             {!isConnected ? (
               <Button
                 type="primary"
