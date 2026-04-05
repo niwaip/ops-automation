@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Carbone Studio - Template Editor</title>
+    <link rel="stylesheet" href="/css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/12.0.0/marked.min.js"></script>
+</head>
+<body>
+    <div class="app">
+        <!-- Header -->
+        <header class="header">
+            <div class="header-left">
+                <div class="logo">
+                    <i class="fas fa-file-code"></i>
+                    <span>Carbone Studio</span>
+                </div>
+            </div>
+            <div class="header-right">
+                <a href="/api" target="_blank" class="btn btn-outline">
+                    <i class="fas fa-book"></i> API Docs
+                </a>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main class="main">
+            <!-- Sidebar -->
+            <aside class="sidebar">
+                <div class="sidebar-section">
+                    <h3><i class="fas fa-folder"></i> Templates</h3>
+                    <div id="template-list" class="template-list">
+                        <div class="loading"><i class="fas fa-spinner fa-spin"></i> Loading...</div>
+                    </div>
+                </div>
+
+                <div class="sidebar-section">
+                    <h3><i class="fas fa-upload"></i> Upload</h3>
+                    <div class="upload-area" id="upload-area">
+                        <input type="file" id="file-input" accept=".docx,.xlsx,.pptx,.html" hidden>
+                        <i class="fas fa-cloud-upload-alt"></i>
+                        <p>Drag & drop or click to upload</p>
+                        <small>Supports: DOCX, XLSX, PPTX, HTML</small>
+                    </div>
+                </div>
+
+                <div class="sidebar-section">
+                    <h3><i class="fas fa-magic"></i> Formatters</h3>
+                    <div id="formatter-list" class="formatter-list">
+                        <div class="loading"><i class="fas fa-spinner fa-spin"></i> Loading...</div>
+                    </div>
+                </div>
+            </aside>
+
+            <!-- Content Area -->
+            <div class="content">
+                <!-- Tabs -->
+                <div class="tabs">
+                    <button class="tab active" data-tab="editor">
+                        <i class="fas fa-edit"></i> Editor
+                    </button>
+                    <button class="tab" data-tab="preview">
+                        <i class="fas fa-eye"></i> Preview
+                    </button>
+                    <button class="tab" data-tab="guide">
+                        <i class="fas fa-book"></i> Guide
+                    </button>
+                </div>
+
+                <!-- Tab Content -->
+                <div class="tab-content">
+                    <!-- Editor Tab -->
+                    <div id="editor-tab" class="tab-pane active">
+                        <div id="no-template" class="empty-state">
+                            <i class="fas fa-file-upload"></i>
+                            <h2>No Template Selected</h2>
+                            <p>Upload a template file or select one from the sidebar</p>
+                        </div>
+
+                        <div id="template-editor" class="editor-container" style="display: none;">
+                            <div class="editor-header">
+                                <div class="template-info">
+                                    <i id="template-icon" class="fas fa-file-word"></i>
+                                    <span id="template-name">template.docx</span>
+                                    <span id="template-format" class="badge">DOCX</span>
+                                    <span id="template-size" class="text-muted">0 KB</span>
+                                </div>
+                                <div class="editor-actions">
+                                    <button id="validate-btn" class="btn btn-outline">
+                                        <i class="fas fa-check-circle"></i> Validate
+                                    </button>
+                                    <button id="render-btn" class="btn btn-primary">
+                                        <i class="fas fa-play"></i> Render
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div class="editor-body">
+                                <div class="editor-section">
+                                    <h4><i class="fas fa-code"></i> Variables</h4>
+                                    <div id="variables-list" class="variables-list"></div>
+                                </div>
+
+                                <div class="editor-section">
+                                    <h4><i class="fas fa-repeat"></i> Loops</h4>
+                                    <div id="loops-list" class="loops-list"></div>
+                                </div>
+
+                                <div class="editor-section">
+                                    <h4><i class="fas fa-database"></i> Test Data (JSON)</h4>
+                                    <textarea id="test-data" placeholder='{"name": "John", "items": [{"name": "Item 1"}]}'></textarea>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Preview Tab -->
+                    <div id="preview-tab" class="tab-pane">
+                        <div id="preview-empty" class="empty-state">
+                            <i class="fas fa-eye-slash"></i>
+                            <h2>No Preview Available</h2>
+                            <p>Render a template to see the preview</p>
+                        </div>
+
+                        <div id="preview-result" style="display: none;">
+                            <div class="preview-header">
+                                <span id="preview-filename">output.docx</span>
+                                <a id="download-link" href="#" class="btn btn-primary">
+                                    <i class="fas fa-download"></i> Download
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Guide Tab -->
+                    <div id="guide-tab" class="tab-pane">
+                        <div class="guide-content">
+                            <h2><i class="fas fa-graduation-cap"></i> Template Syntax Guide</h2>
+
+                            <section class="guide-section">
+                                <h3>Variable Syntax</h3>
+                                <p>Use <code>{d.variableName}</code> to insert data into your template.</p>
+                                <div class="code-block">
+                                    <pre><code>Hello {d.name}!
+Total: {d.price}
+Date: {d.date}</code></pre>
+                                </div>
+                            </section>
+
+                            <section class="guide-section">
+                                <h3>Formatters</h3>
+                                <p>Chain formatters with <code>:</code> to transform values.</p>
+                                <div class="code-block">
+                                    <pre><code>{d.price:formatNumber(#,##0.00)}
+{d.name:upperCase}
+{d.date:formatD(YYYY-MM-DD)}
+{d.total:round(2):currency($)}</code></pre>
+                                </div>
+
+                                <h4>Available Formatters</h4>
+                                <div class="formatter-groups" id="formatter-guide"></div>
+                            </section>
+
+                            <section class="guide-section">
+                                <h3>Array Loops</h3>
+                                <p>Use <code>[i]</code> and <code>[i+1]</code> to create repeating sections.</p>
+                                <div class="code-block">
+                                    <pre><code>&lt;tr&gt;
+    &lt;td&gt;{d.items[i].name}&lt;/td&gt;
+    &lt;td&gt;{d.items[i].price}&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+    &lt;td&gt;{d.items[i+1].name}&lt;/td&gt;
+    &lt;td&gt;{d.items[i+1].price}&lt;/td&gt;
+&lt;/tr&gt;</code></pre>
+                                </div>
+                                <p>The content between <code>[i]</code> and <code>[i+1]</code> will be repeated for each item in the array.</p>
+                            </section>
+
+                            <section class="guide-section">
+                                <h3>Conditional Display</h3>
+                                <p>Show or hide content based on conditions.</p>
+                                <div class="code-block">
+                                    <pre><code>{d.isActive:show(Active)}
+{d.isDeleted:hide(Not Deleted)}
+{d.status:if(Active, Inactive)}</code></pre>
+                                </div>
+                            </section>
+
+                            <section class="guide-section">
+                                <h3>Nested Objects</h3>
+                                <p>Access nested data with dot notation.</p>
+                                <div class="code-block">
+                                    <pre><code>Company: {d.company.name}
+Manager: {d.company.manager.name}
+Email: {d.company.contact.email}</code></pre>
+                                </div>
+                            </section>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <!-- Toast Notifications -->
+        <div id="toast-container" class="toast-container"></div>
+
+        <!-- Render Modal -->
+        <div id="render-modal" class="modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3><i class="fas fa-play-circle"></i> Render Template</h3>
+                    <button class="modal-close">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label>Output Format</label>
+                        <select id="output-format">
+                            <option value="">Same as template</option>
+                            <option value="docx">DOCX (Word)</option>
+                            <option value="xlsx">XLSX (Excel)</option>
+                            <option value="pptx">PPTX (PowerPoint)</option>
+                            <option value="html">HTML</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-outline modal-cancel">Cancel</button>
+                    <button id="confirm-render" class="btn btn-primary">
+                        <i class="fas fa-play"></i> Render
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="/js/app.js"></script>
+</body>
+</html>

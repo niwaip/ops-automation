@@ -4,10 +4,15 @@
 
 import { NestFactory } from '@nestjs/core';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
+import { NestExpressApplication } from '@nestjs/platform-express';
+import { join } from 'path';
 import { AppModule } from './app.module';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create<NestExpressApplication>(AppModule);
+
+  // Serve static files from public directory
+  app.useStaticAssets(join(__dirname, '..', 'public'));
 
   // Swagger API文档
   const config = new DocumentBuilder()
@@ -29,6 +34,7 @@ async function bootstrap() {
   await app.listen(port);
   console.log(`Carbone Engine is running on: http://localhost:${port}`);
   console.log(`API Documentation: http://localhost:${port}/api`);
+  console.log(`Studio UI: http://localhost:${port}/`);
 }
 
 bootstrap();
