@@ -551,6 +551,7 @@
                     user-select: none !important;
                     -webkit-user-select: none !important;
                     cursor: pointer !important;
+                    pointer-events: auto !important;
                 }
                 .textLayer span {
                     cursor: pointer !important;
@@ -561,9 +562,10 @@
             `;
             iframeDoc.head.appendChild(style);
 
-            // 使用事件委托，在document级别监听点击，支持文本选择
+            // 使用事件委托，在document级别监听点击，支持文本和图片区域选择
             iframeDoc.addEventListener('click', (e) => {
                 const clickedSpan = e.target.closest('.textLayer span');
+                const clickedTextLayer = e.target.closest('.textLayer');
 
                 // 获取要搜索的元素列表
                 let elementsToSearch = [];
@@ -663,6 +665,29 @@
                     if (!matchingElement) {
                         matchingElement = elementsToSearch.find(el => {
                             return el.text && clickedText.includes(el.text.substring(0, 20)) && el.text.length > 10;
+                        });
+                    }
+                }
+                // 处理 textLayer 点击但不在 span 上（图片区域或空白区域）
+                else if (clickedTextLayer && !clickedSpan) {
+                    // 点击的是 textLayer 但不是文字，可能是图片区域
+                    // 尝试找到截图相关的元素
+                    matchingElement = elementsToSearch.find(el => {
+                        if (el.type === 'paragraph') {
+                            const elText = el.text || '';
+                            return elText.includes('截图') || elText.toLowerCase().includes('screenshot');
+                        }
+                        return false;
+                    });
+
+                    // 如果没有找到截图相关元素，尝试找 "Step X" 格式的段落
+                    if (!matchingElement) {
+                        matchingElement = elementsToSearch.find(el => {
+                            if (el.type === 'paragraph') {
+                                const elText = el.text || '';
+                                return elText.match(/Step\s+\d+/) !== null;
+                            }
+                            return false;
                         });
                     }
                 }
