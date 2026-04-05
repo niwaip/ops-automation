@@ -474,14 +474,14 @@
                 el.classList.remove('element-highlight');
             });
 
-            // Find matching text in PDF text layer
+            // PDF 预览：Find matching text in PDF text layer
             const textLayer = iframeDoc.querySelector('.textLayer');
             if (textLayer) {
                 const spans = textLayer.querySelectorAll('span');
                 let foundFirst = false;
 
                 spans.forEach(span => {
-                    if (span.textContent && element.text.includes(span.textContent.trim())) {
+                    if (span.textContent && element.text && element.text.includes(span.textContent.trim())) {
                         span.classList.add('element-highlight');
                         if (!foundFirst) {
                             span.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -489,6 +489,52 @@
                         }
                     }
                 });
+            }
+
+            // HTML 预览：高亮匹配的 HTML 元素
+            const docContainer = iframeDoc.querySelector('.document-container');
+            if (docContainer) {
+                if (element.type === 'table') {
+                    // 高亮表格
+                    const tables = docContainer.querySelectorAll('table');
+                    tables.forEach(table => {
+                        const headerRow = table.querySelector('tr');
+                        if (headerRow && element.headerRow) {
+                            const headers = headerRow.querySelectorAll('th, td');
+                            const headerText = Array.from(headers).map(h => h.textContent.trim()).join(' | ');
+                            if (element.headerRow.includes(headerText.substring(0, 30)) ||
+                                headerText.includes(element.headerRow.substring(0, 30))) {
+                                table.classList.add('element-highlight');
+                                table.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                            }
+                        }
+                    });
+                } else if (element.type === 'image') {
+                    // 高亮图片
+                    const images = docContainer.querySelectorAll('img');
+                    images.forEach((img, idx) => {
+                        if (idx < 2) { // 假设只有前两张图片是文档中的截图
+                            img.classList.add('element-highlight');
+                            if (idx === 0 || element.imageId?.includes('rId6')) {
+                                img.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                            }
+                        }
+                    });
+                } else if (element.text) {
+                    // 高亮段落/标题
+                    const textContent = element.text.substring(0, 50);
+                    const elements = docContainer.querySelectorAll('p, h1, h2, h3');
+                    let foundFirst = false;
+                    elements.forEach(el => {
+                        if (el.textContent && (el.textContent.includes(textContent) || textContent.includes(el.textContent.trim().substring(0, 30)))) {
+                            el.classList.add('element-highlight');
+                            if (!foundFirst) {
+                                el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                                foundFirst = true;
+                            }
+                        }
+                    });
+                }
             }
         } catch (e) {
             console.warn('Could not highlight element in preview:', e);
@@ -559,13 +605,41 @@
                 .textLayer span:hover {
                     background-color: rgba(0, 123, 255, 0.15) !important;
                 }
+                /* HTML preview element styles */
+                .document-container p, .document-container h1, .document-container h2,
+                .document-container h3, .document-container table, .document-container img {
+                    cursor: pointer !important;
+                }
+                .document-container p:hover, .document-container h1:hover,
+                .document-container h2:hover, .document-container h3:hover {
+                    background-color: rgba(0, 123, 255, 0.1) !important;
+                }
+                .document-container table:hover {
+                    outline: 2px solid #007bff !important;
+                }
+                .document-container img:hover {
+                    outline: 2px solid #007bff !important;
+                    opacity: 0.9;
+                }
             `;
             iframeDoc.head.appendChild(style);
 
+            // 检测预览类型（PDF有textLayer，HTML有document-container）
+            const isPdfPreview = iframeDoc.querySelector('.textLayer') !== null;
+            const isHtmlPreview = iframeDoc.querySelector('.document-container') !== null;
+
+            console.log('Preview type:', isPdfPreview ? 'PDF' : (isHtmlPreview ? 'HTML' : 'Unknown'));
+
             // 使用事件委托，在document级别监听点击，支持文本和图片区域选择
             iframeDoc.addEventListener('click', (e) => {
+                // PDF 预览处理
                 const clickedSpan = e.target.closest('.textLayer span');
                 const clickedTextLayer = e.target.closest('.textLayer');
+
+                // HTML 预览处理
+                const clickedParagraph = e.target.closest('.document-container p, .document-container h1, .document-container h2, .document-container h3');
+                const clickedTable = e.target.closest('.document-container table');
+                const clickedImg = e.target.closest('.document-container img');
 
                 // 获取要搜索的元素列表
                 let elementsToSearch = [];
@@ -576,6 +650,9 @@
                                 return d.headerRow && el.headerRow &&
                                        d.headerRow.includes(el.headerRow.substring(0, 30));
                             }
+                            if (el.type === 'image' && d.type === 'image') {
+                                return el.imageId && d.imageId === el.imageId;
+                            }
                             return d.text && el.text &&
                                    (d.text === el.text || d.text.includes(el.text.substring(0, 50)));
                         });
@@ -583,6 +660,8 @@
                             text: el.text,
                             type: el.type,
                             headerRow: el.headerRow,
+                            dataRows: el.dataRows,
+                            imageId: el.imageId,
                             orderIndex: el.orderIndex
                         };
                     });
@@ -592,7 +671,7 @@
 
                 let matchingElement = null;
 
-                // 处理文本点击
+                // PDF 预览：处理文本点击
                 if (clickedSpan) {
                     const clickedText = clickedSpan.textContent.trim();
                     if (!clickedText) return;
@@ -686,6 +765,69 @@
                             if (el.type === 'paragraph') {
                                 const elText = el.text || '';
                                 return elText.match(/Step\s+\d+/) !== null;
+                            }
+                            return false;
+                        });
+                    }
+                }
+                // HTML 预览：处理表格点击
+                else if (clickedTable) {
+                    // 获取表格的标题行文本
+                    const headerRow = clickedTable.querySelector('tr');
+                    let headerText = '';
+                    if (headerRow) {
+                        const headers = headerRow.querySelectorAll('th, td');
+                        headerText = Array.from(headers).map(h => h.textContent.trim()).join(' | ');
+                    }
+
+                    // 匹配表格
+                    matchingElement = elementsToSearch.find(el => {
+                        if (el.type === 'table' && el.headerRow && headerText) {
+                            return el.headerRow.includes(headerText.substring(0, 30)) ||
+                                   headerText.includes(el.headerRow.substring(0, 30));
+                        }
+                        return false;
+                    });
+
+                    // 如果没有通过标题行匹配，尝试通过文本匹配
+                    if (!matchingElement) {
+                        const tableText = clickedTable.textContent.trim().substring(0, 100);
+                        matchingElement = elementsToSearch.find(el => {
+                            if (el.type === 'table' && el.text) {
+                                return tableText.includes(el.text.substring(0, 50)) ||
+                                       el.text.includes(tableText.substring(0, 50));
+                            }
+                            return false;
+                        });
+                    }
+                }
+                // HTML 预览：处理图片点击
+                else if (clickedImg) {
+                    // 匹配图片元素
+                    matchingElement = elementsToSearch.find(el => {
+                        return el.type === 'image';
+                    });
+                }
+                // HTML 预览：处理段落/标题点击
+                else if (clickedParagraph) {
+                    const clickedText = clickedParagraph.textContent.trim();
+                    if (!clickedText) return;
+
+                    // 首先尝试精确匹配
+                    matchingElement = elementsToSearch.find(el => {
+                        if (el.type === 'paragraph' || el.type === 'title' ||
+                            el.type === 'heading1' || el.type === 'heading2' || el.type === 'heading3') {
+                            return el.text && (el.text === clickedText || clickedText === el.text.substring(0, clickedText.length));
+                        }
+                        return false;
+                    });
+
+                    // 如果没有精确匹配，尝试包含匹配
+                    if (!matchingElement) {
+                        matchingElement = elementsToSearch.find(el => {
+                            if (el.type === 'paragraph' || el.type === 'title' ||
+                                el.type === 'heading1' || el.type === 'heading2' || el.type === 'heading3') {
+                                return el.text && (el.text.includes(clickedText) || clickedText.includes(el.text.substring(0, 50)));
                             }
                             return false;
                         });
