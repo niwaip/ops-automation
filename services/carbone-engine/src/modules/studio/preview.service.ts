@@ -122,7 +122,7 @@ export class PreviewService {
   }
 
   /**
-   * 创建PDF查看器HTML（使用PDF.js）
+   * 创建PDF查看器HTML（使用PDF.js，支持文本选择）
    */
   private createPdfViewerHtml(pdfBase64: string): string {
     return `
@@ -169,14 +169,51 @@ export class PreviewService {
       padding: 20px;
       gap: 10px;
     }
-    canvas {
+    .pdf-page-wrapper {
+      position: relative;
       box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+      margin-bottom: 10px;
+    }
+    canvas {
+      display: block;
       max-width: 100%;
     }
     .loading {
       color: white;
       font-size: 16px;
       padding: 40px;
+    }
+    /* PDF.js 文本层样式 - 支持文本选择 */
+    .textLayer {
+      position: absolute;
+      left: 0;
+      top: 0;
+      right: 0;
+      bottom: 0;
+      overflow: hidden;
+      opacity: 0.2;
+      line-height: 1.0;
+    }
+    .textLayer > span {
+      color: transparent;
+      position: absolute;
+      white-space: pre;
+      cursor: text;
+      transform-origin: 0% 0%;
+    }
+    .textLayer ::selection {
+      background: rgba(0, 0, 255, 0.3);
+    }
+    .textLayer ::-moz-selection {
+      background: rgba(0, 0, 255, 0.3);
+    }
+    .textLayer br {
+      display: none;
+    }
+    /* 高亮选中的文本用于Carbone标记 */
+    .textLayer .carbone-highlight {
+      background-color: rgba(255, 193, 7, 0.4) !important;
+      border: 2px dashed #ffc107 !important;
     }
   </style>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
@@ -207,39 +244,69 @@ export class PreviewService {
     const pageInfo = document.getElementById('page-info');
     const zoomLevel = document.getElementById('zoom-level');
 
-    function renderPage(num) {
+    // 渲染PDF页面，包含文本层
+    async function renderPage(num) {
       pageRendering = true;
-      pdfDoc.getPage(num).then(function(page) {
+      try {
+        const page = await pdfDoc.getPage(num);
         const viewport = page.getViewport({ scale: scale });
+
+        // 创建页面包装器
+        const pageWrapper = document.createElement('div');
+        pageWrapper.className = 'pdf-page-wrapper';
+        pageWrapper.style.width = viewport.width + 'px';
+        pageWrapper.style.height = viewport.height + 'px';
+
+        // 创建canvas
         const canvas = document.createElement('canvas');
         canvas.id = 'pdf-canvas';
         const ctx = canvas.getContext('2d');
         canvas.height = viewport.height;
         canvas.width = viewport.width;
+        canvas.style.width = viewport.width + 'px';
+        canvas.style.height = viewport.height + 'px';
 
+        pageWrapper.appendChild(canvas);
+
+        // 创建文本层容器
+        const textLayerDiv = document.createElement('div');
+        textLayerDiv.className = 'textLayer';
+        textLayerDiv.style.width = viewport.width + 'px';
+        textLayerDiv.style.height = viewport.height + 'px';
+        pageWrapper.appendChild(textLayerDiv);
+
+        // 渲染PDF到canvas
         const renderContext = {
           canvasContext: ctx,
           viewport: viewport,
-          // 启用字体渲染优化
           enableWebGL: false,
           renderInteractiveForms: true
         };
+        await page.render(renderContext).promise;
 
-        page.render(renderContext).promise.then(function() {
-          pageRendering = false;
-          if (pageNumPending !== null) {
-            renderPage(pageNumPending);
-            pageNumPending = null;
-          }
+        // 渲染文本层（支持选择）
+        const textContent = await page.getTextContent();
+        pdfjsLib.renderTextLayer({
+          textContentSource: textContent,
+          container: textLayerDiv,
+          viewport: viewport,
+          textDivs: []
         });
 
         container.innerHTML = '';
-        container.appendChild(canvas);
+        container.appendChild(pageWrapper);
         pageInfo.textContent = 'Page ' + num + ' of ' + pdfDoc.numPages;
-      }).catch(function(err) {
+
+        pageRendering = false;
+        if (pageNumPending !== null) {
+          renderPage(pageNumPending);
+          pageNumPending = null;
+        }
+      } catch (err) {
         console.error('Page render error:', err);
         container.innerHTML = '<div class="loading">Error rendering page</div>';
-      });
+        pageRendering = false;
+      }
     }
 
     function queueRenderPage(num) {
@@ -279,20 +346,21 @@ export class PreviewService {
     document.getElementById('zoom-in').addEventListener('click', onZoomIn);
     document.getElementById('zoom-out').addEventListener('click', onZoomOut);
 
-    // Load PDF
+    // Load PDF with Chinese font support
     const binaryString = atob(pdfData);
     const bytes = new Uint8Array(binaryString.length);
     for (let i = 0; i < binaryString.length; i++) {
       bytes[i] = binaryString.charCodeAt(i);
     }
 
-    // 配置PDF.js以支持中文字体
     pdfjsLib.getDocument({
       data: bytes,
       cMapUrl: 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/cmaps/',
       cMapPacked: true,
       disableFontFace: false,
-      fontExtraMaxSize: 1024 * 1024 * 10
+      fontExtraMaxSize: 1024 * 1024 * 10,
+      isEvalSupported: false,
+      useSystemFonts: true
     }).promise.then(function(pdf) {
       pdfDoc = pdf;
       pageInfo.textContent = 'Page ' + pageNum + ' of ' + pdf.numPages;
