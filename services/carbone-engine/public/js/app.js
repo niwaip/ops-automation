@@ -15,7 +15,7 @@
         documentElements: [],
         sourceXml: '',
         currentTab: 'preview',
-        currentSourceView: 'raw',
+        currentSourceView: 'structure',  // 默认显示结构化视图
         xmlStructure: null
     };
 
@@ -212,7 +212,7 @@
         state.sourceXml = ''; // Clear cached source
         state.xmlStructure = null; // Clear cached structure
         state.currentTab = 'preview'; // Reset to preview tab
-        state.currentSourceView = 'raw'; // Reset to raw view
+        state.currentSourceView = 'structure'; // 默认结构化视图
         renderTemplateList();
 
         elements.noTemplate.style.display = 'none';
@@ -224,11 +224,11 @@
         elements.previewTabContent.classList.add('active');
         elements.sourceTabContent.classList.remove('active');
 
-        // Reset source view state
-        elements.viewRaw.classList.add('active');
-        elements.viewStructure.classList.remove('active');
-        elements.rawView.classList.add('active');
-        elements.structureView.classList.remove('active');
+        // Reset source view state - 默认显示结构化视图
+        elements.viewRaw.classList.remove('active');
+        elements.viewStructure.classList.add('active');
+        elements.rawView.classList.remove('active');
+        elements.structureView.classList.add('active');
 
         // Update header
         elements.templateName.textContent = template.fileName;
@@ -505,44 +505,51 @@
             `;
             iframeDoc.head.appendChild(style);
 
-            // Wait for textLayer to be available (PDF.js renders asynchronously)
-            const setupClickHandler = () => {
-                const textLayer = iframeDoc.querySelector('.textLayer');
-                if (textLayer && textLayer.querySelectorAll('span').length > 0) {
-                    // Add click handler for text layer to enable element selection
-                    textLayer.addEventListener('click', (e) => {
-                        const clickedSpan = e.target.closest('span');
-                        if (!clickedSpan) return;
+            // 使用事件委托，在document级别监听点击，这样所有页面的文本都可以响应
+            iframeDoc.addEventListener('click', (e) => {
+                const clickedSpan = e.target.closest('.textLayer span');
+                if (!clickedSpan) return;
 
-                        const clickedText = clickedSpan.textContent.trim();
-                        if (!clickedText) return;
+                const clickedText = clickedSpan.textContent.trim();
+                if (!clickedText) return;
 
-                        // Find matching element in document elements
-                        const matchingElement = state.documentElements.find(el => {
-                            return el.text && el.text.includes(clickedText);
-                        });
+                // Find matching element in document elements with priority:
+                // 1. Exact match (element.text === clickedText)
+                // 2. Element starts with clickedText
+                // 3. Element contains clickedText
+                let matchingElement = null;
 
-                        if (matchingElement) {
-                            selectDocumentElement(matchingElement);
-                        } else {
-                            // If no exact match, try to find element that contains this text
-                            const partialMatch = state.documentElements.find(el => {
-                                return el.text && clickedText.includes(el.text.substring(0, 20));
-                            });
-                            if (partialMatch) {
-                                selectDocumentElement(partialMatch);
-                            }
-                        }
+                // First try exact match
+                matchingElement = state.documentElements.find(el => {
+                    return el.text && el.text === clickedText;
+                });
+
+                // If no exact match, try element that starts with clicked text
+                if (!matchingElement) {
+                    matchingElement = state.documentElements.find(el => {
+                        return el.text && el.text.startsWith(clickedText);
                     });
-                    console.log('PDF text layer click handler attached');
-                } else {
-                    // Text layer not ready yet, wait and retry
-                    setTimeout(setupClickHandler, 500);
                 }
-            };
 
-            // Start checking for text layer
-            setupClickHandler();
+                // If no match, try element that contains the clicked text
+                if (!matchingElement) {
+                    matchingElement = state.documentElements.find(el => {
+                        return el.text && el.text.includes(clickedText);
+                    });
+                }
+
+                // If still no match, try partial match (clicked text contains element text)
+                if (!matchingElement) {
+                    matchingElement = state.documentElements.find(el => {
+                        return el.text && clickedText.includes(el.text.substring(0, 20)) && el.text.length > 10;
+                    });
+                }
+
+                if (matchingElement) {
+                    selectDocumentElement(matchingElement);
+                }
+            });
+            console.log('PDF click handler attached to document (works for all pages)');
 
         } catch (e) {
             console.warn('Could not setup iframe selection:', e);
