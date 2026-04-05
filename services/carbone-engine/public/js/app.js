@@ -625,12 +625,31 @@
             iframeDoc.head.appendChild(style);
 
             // 检测预览类型（PDF有textLayer，HTML有document-container）
-            const isPdfPreview = iframeDoc.querySelector('.textLayer') !== null;
-            const isHtmlPreview = iframeDoc.querySelector('.document-container') !== null;
+            // PDF.js异步渲染，需要等待textLayer出现
+            const waitForPreviewType = () => {
+                const isPdfPreview = iframeDoc.querySelector('.textLayer') !== null;
+                const isHtmlPreview = iframeDoc.querySelector('.document-container') !== null;
 
-            console.log('Preview type:', isPdfPreview ? 'PDF' : (isHtmlPreview ? 'HTML' : 'Unknown'));
+                console.log('Preview type:', isPdfPreview ? 'PDF' : (isHtmlPreview ? 'HTML' : 'Unknown'));
 
-            // 使用事件委托，在document级别监听点击，支持文本和图片区域选择
+                if (!isPdfPreview && !isHtmlPreview) {
+                    // PDF.js还没渲染完成，等待后再检测
+                    setTimeout(waitForPreviewType, 500);
+                    return;
+                }
+
+                // 预览类型确定后，设置点击事件处理
+                setupClickHandlers(iframeDoc);
+            };
+
+            waitForPreviewType();
+        } catch (error) {
+            console.error('Failed to setup iframe selection:', error);
+        }
+    }
+
+    function setupClickHandlers(iframeDoc) {
+        try {
             iframeDoc.addEventListener('click', (e) => {
                 // PDF 预览处理
                 const clickedSpan = e.target.closest('.textLayer span');
