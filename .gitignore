@@ -64,3 +64,6 @@ vite.config.d.ts
 
 # AI Orchestrator data (persisted models and API keys)
 services/ai-orchestrator/data/
+# Playwright MCP test files
+.playwright-mcp/
+*.png
