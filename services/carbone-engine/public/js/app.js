@@ -1287,7 +1287,7 @@
 
                 if (el.type === 'table' && showTables) {
                     // 表格节点 - 默认展开显示内容
-                    html += `<div class="structure-node table-node ${preserveClass}" data-type="table" data-index="${el.index}">
+                    html += `<div class="structure-node table-node ${preserveClass}" data-type="table" data-order-index="${el.orderIndex}">
                         <span class="node-toggle">▼</span>
                         <span class="node-tag">&lt;w:tbl&gt;</span>
                         <span class="node-attr">rows="${el.rows}"</span>
@@ -1330,7 +1330,7 @@
                     html += '</div>'; // node-children
                 } else if (el.type === 'paragraph' && showParagraphs) {
                     const text = el.text.substring(0, 80) + (el.text.length > 80 ? '...' : '');
-                    html += `<div class="structure-node paragraph-node ${preserveClass}" data-type="paragraph" data-index="${el.index}">
+                    html += `<div class="structure-node paragraph-node ${preserveClass}" data-type="paragraph" data-order-index="${el.orderIndex}">
                         <span class="node-tag">&lt;w:p&gt;</span>
                         ${el.hasPreserve ? '<span class="node-preserve">preserve</span>' : ''}
                         <span class="node-text">${escapeHtml(text)}</span>
@@ -1351,18 +1351,36 @@
         elements.structureTree.innerHTML = html;
 
         // Add click handlers for structure nodes
-        elements.structureTree.querySelectorAll('.structure-node[data-index]').forEach(node => {
+        elements.structureTree.querySelectorAll('.structure-node[data-order-index]').forEach(node => {
             node.addEventListener('click', () => {
                 // Remove previous selection
                 elements.structureTree.querySelectorAll('.selected').forEach(el => el.classList.remove('selected'));
                 node.classList.add('selected');
 
-                const type = node.dataset.type;
-                const index = parseInt(node.dataset.index);
+                const orderIndex = parseInt(node.dataset.orderIndex);
 
-                // Select corresponding element in document elements
-                if (type === 'paragraph' || type === 'table') {
-                    selectElementByXmlIndex(type, index);
+                // 获取xmlStructure中对应元素的文本
+                const xmlElement = state.xmlStructure?.orderedElements?.[orderIndex];
+                if (xmlElement && xmlElement.text) {
+                    // 通过文本内容匹配documentElements中的元素
+                    const element = state.documentElements.find(el => {
+                        // 对于表格，匹配标题行
+                        if (xmlElement.type === 'table' && el.type === 'table') {
+                            return el.headerRow && xmlElement.headerRow &&
+                                   el.headerRow.includes(xmlElement.headerRow.substring(0, 30));
+                        }
+                        // 对于段落，匹配文本内容
+                        return el.text && xmlElement.text &&
+                               (el.text === xmlElement.text ||
+                                el.text.includes(xmlElement.text.substring(0, 50)) ||
+                                xmlElement.text.includes(el.text.substring(0, 50)));
+                    });
+
+                    if (element) {
+                        selectDocumentElement(element);
+                    } else {
+                        showToast(`Selected ${xmlElement.type}: "${xmlElement.text.substring(0, 30)}..."`, 'info');
+                    }
                 }
             });
         });
