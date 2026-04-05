@@ -62,5 +62,9 @@
   "daily": "每天",
   "weekly": "每周",
   "monthly": "每月",
-  "startTime": "开始时间"
+  "generateReport": "生成报告",
+  "selectTemplate": "选择报告模版",
+  "selectTemplatePlaceholder": "选择一个报告模版",
+  "noTemplates": "没有可用的报告模版",
+  "createTemplate": "创建模版"
 }

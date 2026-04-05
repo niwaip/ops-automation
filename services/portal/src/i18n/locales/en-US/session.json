@@ -45,5 +45,10 @@
   "suggestions": "Suggestions",
   "executeSession": "Execute Session",
   "startSuccess": "Session started",
-  "startFailed": "Session start failed"
+  "startFailed": "Session start failed",
+  "generateReport": "Generate Report",
+  "selectTemplate": "Select Report Template",
+  "selectTemplatePlaceholder": "Choose a report template",
+  "noTemplates": "No report templates available",
+  "createTemplate": "Create a template"
 }
