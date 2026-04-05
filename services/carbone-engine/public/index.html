@@ -63,6 +63,9 @@
                     <button class="tab active" data-tab="editor">
                         <i class="fas fa-edit"></i> Editor
                     </button>
+                    <button class="tab" data-tab="source">
+                        <i class="fas fa-code"></i> Source
+                    </button>
                     <button class="tab" data-tab="preview">
                         <i class="fas fa-eye"></i> Preview
                     </button>
@@ -114,6 +117,27 @@
                                     <h4><i class="fas fa-database"></i> Test Data (JSON)</h4>
                                     <textarea id="test-data" placeholder='{"name": "John", "items": [{"name": "Item 1"}]}'></textarea>
                                 </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Source Tab -->
+                    <div id="source-tab" class="tab-pane">
+                        <div id="source-empty" class="empty-state">
+                            <i class="fas fa-file-code"></i>
+                            <h2>No Template Selected</h2>
+                            <p>Select a template to view its source content</p>
+                        </div>
+
+                        <div id="source-content" style="display: none;">
+                            <div class="source-header">
+                                <span id="source-filename">document.xml</span>
+                                <button id="copy-source" class="btn btn-outline">
+                                    <i class="fas fa-copy"></i> Copy
+                                </button>
+                            </div>
+                            <div class="source-code-container">
+                                <pre id="source-code"><code></code></pre>
                             </div>
                         </div>
                     </div>

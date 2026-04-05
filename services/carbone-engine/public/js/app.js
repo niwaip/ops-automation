@@ -37,7 +37,12 @@
         previewFilename: document.getElementById('preview-filename'),
         downloadLink: document.getElementById('download-link'),
         formatterGuide: document.getElementById('formatter-guide'),
-        toastContainer: document.getElementById('toast-container')
+        toastContainer: document.getElementById('toast-container'),
+        sourceEmpty: document.getElementById('source-empty'),
+        sourceContent: document.getElementById('source-content'),
+        sourceFilename: document.getElementById('source-filename'),
+        sourceCode: document.getElementById('source-code'),
+        copySource: document.getElementById('copy-source')
     };
 
     // Utility Functions
@@ -354,11 +359,82 @@
                 </div>
             `).join('')
             : '<span style="color: #999;">No loops detected</span>';
+
+        // Load source preview
+        loadSourcePreview(template.id);
+    }
+
+    async function loadSourcePreview(templateId) {
+        try {
+            const result = await apiRequest(`/templates/${templateId}/preview-source`);
+
+            elements.sourceEmpty.style.display = 'none';
+            elements.sourceContent.style.display = 'block';
+
+            // Set filename based on format
+            const filenames = {
+                docx: 'word/document.xml',
+                xlsx: 'xl/worksheets/sheet1.xml',
+                pptx: 'ppt/slides/slide1.xml',
+                html: 'index.html'
+            };
+            elements.sourceFilename.textContent = filenames[result.format] || 'source';
+
+            // Display content with syntax highlighting
+            let displayContent = result.content;
+
+            // Format XML for better readability (basic formatting)
+            if (result.type === 'xml') {
+                try {
+                    // Basic XML formatting
+                    displayContent = formatXml(result.content);
+                } catch (e) {
+                    // If formatting fails, show original
+                }
+            }
+
+            elements.sourceCode.querySelector('code').textContent = displayContent;
+
+            // Apply syntax highlighting if available
+            if (typeof hljs !== 'undefined') {
+                hljs.highlightElement(elements.sourceCode.querySelector('code'));
+            }
+        } catch (error) {
+            console.error('Failed to load source:', error);
+            elements.sourceEmpty.style.display = 'block';
+            elements.sourceContent.style.display = 'none';
+        }
+    }
+
+    function formatXml(xml) {
+        // Basic XML formatter
+        let formatted = '';
+        let indent = '';
+        const tab = '  ';
+
+        xml.split(/>\s*</).forEach(node => {
+            if (node.match(/^\/\w/)) {
+                // Closing tag
+                indent = indent.substring(tab.length);
+            }
+
+            formatted += indent + '<' + node + '>\n';
+
+            if (node.match(/^<?\w[^>]*[^\/]$/) && !node.startsWith('?')) {
+                // Opening tag (not self-closing)
+                indent += tab;
+            }
+        });
+
+        return formatted.substring(1, formatted.length - 2);
+    }
     }
 
     function showNoTemplate() {
         elements.noTemplate.style.display = 'block';
         elements.templateEditor.style.display = 'none';
+        elements.sourceEmpty.style.display = 'block';
+        elements.sourceContent.style.display = 'none';
     }
 
     function showPreviewResult(result) {
@@ -419,6 +495,18 @@
         elements.validateBtn.addEventListener('click', validateData);
         elements.renderBtn.addEventListener('click', openModal);
         elements.confirmRender.addEventListener('click', renderTemplate);
+
+        // Copy source button
+        if (elements.copySource) {
+            elements.copySource.addEventListener('click', () => {
+                const code = elements.sourceCode.querySelector('code').textContent;
+                navigator.clipboard.writeText(code).then(() => {
+                    showToast('Source code copied to clipboard', 'success');
+                }).catch(() => {
+                    showToast('Failed to copy', 'error');
+                });
+            });
+        }
 
         // Modal
         document.querySelector('.modal-close').addEventListener('click', closeModal);

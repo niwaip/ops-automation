@@ -384,6 +384,73 @@ export class StudioController {
     return { success: true };
   }
 
+  /**
+   * 获取模板源文件预览
+   */
+  @Get('templates/:id/preview-source')
+  @ApiOperation({ summary: 'Get template source preview' })
+  async getTemplateSourcePreview(@Param('id') id: string): Promise<{
+    content: string;
+    format: string;
+    type: 'xml' | 'html';
+  }> {
+    const meta = this.getTemplateMeta(id);
+    const templatePath = path.join(this.templatesDir, `${id}.${meta.format}`);
+
+    if (!fs.existsSync(templatePath)) {
+      throw new HttpException('Template file not found', HttpStatus.NOT_FOUND);
+    }
+
+    try {
+      const JSZip = require('jszip');
+      const buffer = fs.readFileSync(templatePath);
+      const zip = await JSZip.loadAsync(buffer);
+
+      // 根据格式获取主要内容
+      let mainXmlPath = '';
+      switch (meta.format) {
+        case 'docx':
+          mainXmlPath = 'word/document.xml';
+          break;
+        case 'xlsx':
+          mainXmlPath = 'xl/worksheets/sheet1.xml';
+          break;
+        case 'pptx':
+          mainXmlPath = 'ppt/slides/slide1.xml';
+          break;
+        case 'html':
+          // HTML直接读取文件内容
+          const htmlContent = buffer.toString('utf-8');
+          return {
+            content: htmlContent,
+            format: meta.format,
+            type: 'html'
+          };
+        default:
+          throw new HttpException('Unsupported format', HttpStatus.BAD_REQUEST);
+      }
+
+      const file = zip.file(mainXmlPath);
+      if (!file) {
+        throw new HttpException('Main content not found in template', HttpStatus.NOT_FOUND);
+      }
+
+      const content = await file.async('text');
+
+      return {
+        content,
+        format: meta.format,
+        type: 'xml'
+      };
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      throw new HttpException(
+        `Failed to read template: ${message}`,
+        HttpStatus.INTERNAL_SERVER_ERROR
+      );
+    }
+  }
+
   // Helper methods
   private getTemplateMeta(id: string): TemplateResponse {
     const metaPath = path.join(this.templatesDir, `${id}.json`);

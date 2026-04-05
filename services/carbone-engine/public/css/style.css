@@ -500,6 +500,44 @@ body {
     margin-bottom: 16px;
 }
 
+/* Source Code View */
+.source-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 16px;
+    background: var(--bg-color);
+    border-radius: 8px 8px 0 0;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.source-header span {
+    font-weight: 500;
+}
+
+.source-code-container {
+    background: #282c34;
+    border-radius: 0 0 8px 8px;
+    overflow: auto;
+    max-height: calc(100vh - 300px);
+}
+
+.source-code-container pre {
+    margin: 0;
+    padding: 16px;
+    color: #abb2bf;
+    font-family: 'Monaco', 'Menlo', 'Fira Code', monospace;
+    font-size: 13px;
+    line-height: 1.5;
+    white-space: pre-wrap;
+    word-break: break-all;
+}
+
+.source-code-container code {
+    font-family: inherit;
+    color: inherit;
+}
+
 /* Guide Content */
 .guide-content {
     max-width: 800px;
