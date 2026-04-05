@@ -558,27 +558,11 @@
                 .textLayer span:hover {
                     background-color: rgba(0, 123, 255, 0.15) !important;
                 }
-                /* Allow click on tables and images */
-                table {
-                    cursor: pointer !important;
-                }
-                table:hover {
-                    outline: 2px solid #007bff !important;
-                }
-                img {
-                    cursor: pointer !important;
-                }
-                img:hover {
-                    outline: 2px solid #007bff !important;
-                }
             `;
             iframeDoc.head.appendChild(style);
 
-            // 使用事件委托，在document级别监听点击，支持文本、表格、图片
+            // 使用事件委托，在document级别监听点击，支持文本选择
             iframeDoc.addEventListener('click', (e) => {
-                // 检查点击的元素类型
-                const clickedTable = e.target.closest('table');
-                const clickedImg = e.target.closest('img');
                 const clickedSpan = e.target.closest('.textLayer span');
 
                 // 获取要搜索的元素列表
@@ -606,63 +590,8 @@
 
                 let matchingElement = null;
 
-                // 处理表格点击
-                if (clickedTable) {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    // 获取表格的第一行作为标题行
-                    const headerRow = clickedTable.querySelector('tr');
-                    const headerText = headerRow ? headerRow.textContent.trim().replace(/\s+/g, ' ').substring(0, 100) : '';
-                    // 在elementsToSearch中查找匹配的表格
-                    matchingElement = elementsToSearch.find(el => {
-                        if (el.type !== 'table') return false;
-                        if (el.headerRow && headerText) {
-                            // 匹配标题行的部分内容
-                            return el.headerRow.includes(headerText.substring(0, 30)) ||
-                                   headerText.includes(el.headerRow.substring(0, 30));
-                        }
-                        return false;
-                    });
-                    if (!matchingElement) {
-                        // 尝试通过表格内文本匹配
-                        const tableText = clickedTable.textContent.trim().substring(0, 50);
-                        matchingElement = elementsToSearch.find(el => {
-                            if (el.type !== 'table') return false;
-                            return el.text && el.text.includes(tableText);
-                        });
-                    }
-                }
-                // 处理图片点击
-                else if (clickedImg) {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    // 获取图片的alt文本或附近的文本
-                    const imgAlt = clickedImg.alt || '';
-                    const imgSrc = clickedImg.src || '';
-                    // 查找附近的文本节点
-                    let nearbyText = '';
-                    const parent = clickedImg.parentElement;
-                    if (parent) {
-                        nearbyText = parent.textContent.trim().substring(0, 50);
-                    }
-                    // 查找包含"截图"或"screenshot"的元素
-                    matchingElement = elementsToSearch.find(el => {
-                        if (el.type === 'paragraph') {
-                            const elText = el.text || '';
-                            // 匹配截图相关的段落
-                            if (elText.includes('截图') || elText.toLowerCase().includes('screenshot')) {
-                                return true;
-                            }
-                            // 通过alt文本匹配
-                            if (imgAlt && elText.includes(imgAlt)) {
-                                return true;
-                            }
-                        }
-                        return false;
-                    });
-                }
                 // 处理文本点击
-                else if (clickedSpan) {
+                if (clickedSpan) {
                     const clickedText = clickedSpan.textContent.trim();
                     if (!clickedText) return;
 
