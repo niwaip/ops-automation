@@ -8,6 +8,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { Parser, ParsedTemplate } from './parser';
 import { Builder, BuildResult } from './builder';
+import { XmlPreprocessor } from './xml-preprocessor';
 
 export interface TemplateInfo {
   format: 'docx' | 'xlsx' | 'pptx' | 'html';
@@ -30,10 +31,12 @@ export interface OfficeDocumentStructure {
 export class FileHandler {
   private parser: Parser;
   private builder: Builder;
+  private preprocessor: XmlPreprocessor;
 
   constructor() {
     this.parser = new Parser();
     this.builder = new Builder();
+    this.preprocessor = new XmlPreprocessor();
   }
 
   /**
@@ -169,7 +172,16 @@ export class FileHandler {
 
     for (const xmlPath of xmlFiles) {
       const xml = await this.getFileContent(zip, xmlPath);
-      const result = this.builder.buildXML(xml, data);
+
+      // 预处理XML（扁平化被拆分的文本节点）
+      const { xml: processedXml, issues } = this.preprocessor.process(xml);
+
+      // 记录预处理问题（如果有）
+      if (issues.length > 0) {
+        console.warn(`Preprocessing issues in ${xmlPath}:`, issues);
+      }
+
+      const result = this.builder.buildXML(processedXml, data);
       this.setFileContent(zip, xmlPath, result.xml);
     }
 
@@ -177,6 +189,9 @@ export class FileHandler {
     if (format === 'xlsx') {
       await this.processSharedStrings(zip, data);
     }
+
+    // 处理图片替换
+    await this.processMediaFiles(zip, data, format);
 
     // 生成输出ZIP
     return zip.generateAsync({ type: 'nodebuffer' });
@@ -191,23 +206,54 @@ export class FileHandler {
     switch (format) {
       case 'docx':
         files.push('word/document.xml');
+
         // 处理headers和footers
         const headerFiles = zip.file(/word\/header\d+\.xml/);
         const footerFiles = zip.file(/word\/footer\d+\.xml/);
         headerFiles.forEach(f => files.push(f.name));
         footerFiles.forEach(f => files.push(f.name));
+
+        // 处理脚注和尾注
+        const footnotesFile = zip.file('word/footnotes.xml');
+        const endnotesFile = zip.file('word/endnotes.xml');
+        if (footnotesFile) files.push('word/footnotes.xml');
+        if (endnotesFile) files.push('word/endnotes.xml');
+
+        // 处理批注
+        const commentsFile = zip.file('word/comments.xml');
+        if (commentsFile) files.push('word/comments.xml');
+
+        // 处理图表数据
+        const chartFiles = zip.file(/word\/charts\/chart\d+\.xml/);
+        chartFiles.forEach(f => files.push(f.name));
+
+        // 处理文本框和其他drawing元素
+        const drawingFiles = zip.file(/word\/drawings\/drawing\d+\.xml/);
+        drawingFiles.forEach(f => files.push(f.name));
         break;
 
       case 'xlsx':
         // 处理所有工作表
         const sheetFiles = zip.file(/xl\/worksheets\/sheet\d+\.xml/);
         sheetFiles.forEach(f => files.push(f.name));
+
+        // 处理图表
+        const xlsxChartFiles = zip.file(/xl\/charts\/chart\d+\.xml/);
+        xlsxChartFiles.forEach(f => files.push(f.name));
         break;
 
       case 'pptx':
         // 处理所有幻灯片
         const slideFiles = zip.file(/ppt\/slides\/slide\d+\.xml/);
         slideFiles.forEach(f => files.push(f.name));
+
+        // 处理幻灯片布局
+        const slideLayoutFiles = zip.file(/ppt\/slideLayouts\/slideLayout\d+\.xml/);
+        slideLayoutFiles.forEach(f => files.push(f.name));
+
+        // 处理图表
+        const pptxChartFiles = zip.file(/ppt\/charts\/chart\d+\.xml/);
+        pptxChartFiles.forEach(f => files.push(f.name));
         break;
 
       case 'html':
@@ -231,8 +277,62 @@ export class FileHandler {
 
     if (sharedStringsFile) {
       const xml = await sharedStringsFile.async('text');
-      const result = this.builder.buildXML(xml, data);
+      const { xml: processedXml } = this.preprocessor.process(xml);
+      const result = this.builder.buildXML(processedXml, data);
       this.setFileContent(zip, sharedStringsPath, result.xml);
+    }
+  }
+
+  /**
+   * 处理媒体文件（图片替换）
+   * 支持通过数据中的图片URL或Base64数据替换模板中的图片
+   */
+  private async processMediaFiles(zip: JSZip, data: any, format: string): Promise<void> {
+    // 检查数据中是否有图片数据
+    if (!data.images && !data.d?.images && !data.screenshots && !data.d?.screenshots) {
+      return;
+    }
+
+    const imagesData = data.images || data.d?.images || data.screenshots || data.d?.screenshots || [];
+    if (!Array.isArray(imagesData) || imagesData.length === 0) {
+      return;
+    }
+
+    // 获取媒体文件夹中的图片列表
+    const mediaPath = format === 'docx' ? 'word/media' :
+                      format === 'xlsx' ? 'xl/media' :
+                      format === 'pptx' ? 'ppt/media' : null;
+
+    if (!mediaPath) return;
+
+    const mediaFiles = zip.file(new RegExp(mediaPath.replace('/', '\\/') + '\\/image\\d+\\.[a-z]+'));
+
+    // 替换图片
+    for (let i = 0; i < Math.min(imagesData.length, mediaFiles.length); i++) {
+      const imageData = imagesData[i];
+      const mediaFile = mediaFiles[i];
+
+      if (!imageData || !mediaFile) continue;
+
+      try {
+        // 支持URL或Base64数据
+        if (imageData.url) {
+          // 从URL获取图片
+          const response = await fetch(imageData.url);
+          const buffer = await response.arrayBuffer();
+          zip.file(mediaFile.name, Buffer.from(buffer));
+        } else if (imageData.base64) {
+          // 从Base64数据创建图片
+          const buffer = Buffer.from(imageData.base64, 'base64');
+          zip.file(mediaFile.name, buffer);
+        } else if (imageData.path) {
+          // 从本地文件路径读取
+          const buffer = fs.readFileSync(imageData.path);
+          zip.file(mediaFile.name, buffer);
+        }
+      } catch (error) {
+        console.warn(`Failed to replace image ${mediaFile.name}:`, error);
+      }
     }
   }
 
