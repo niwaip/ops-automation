@@ -11,7 +11,8 @@
         selectedTemplate: null,
         formatters: [],
         manualMarkings: [],
-        currentZoom: 1
+        currentZoom: 1,
+        documentElements: []
     };
 
     // DOM Elements
@@ -50,6 +51,8 @@
         elements.clearSelection = document.getElementById('clear-selection');
         elements.varsCount = document.getElementById('vars-count');
         elements.suggestionsCount = document.getElementById('suggestions-count');
+        elements.documentElementsList = document.getElementById('document-elements-list');
+        elements.elementsCount = document.getElementById('elements-count');
     }
 
     // Utility Functions
@@ -219,6 +222,149 @@
 
         // Load saved markings
         loadMarkings(template.id);
+
+        // Load document structure elements
+        loadDocumentElements(template);
+    }
+
+    async function loadDocumentElements(template) {
+        if (template.format !== 'docx') {
+            elements.documentElementsList.innerHTML = '<span class="empty-hint">Element selection only available for DOCX</span>';
+            elements.elementsCount.textContent = '0';
+            return;
+        }
+
+        try {
+            const result = await apiRequest(`/templates/${template.id}/structure`);
+            state.documentElements = result.elements || [];
+
+            elements.elementsCount.textContent = state.documentElements.length;
+
+            if (state.documentElements.length === 0) {
+                elements.documentElementsList.innerHTML = '<span class="empty-hint">No elements found</span>';
+                return;
+            }
+
+            elements.documentElementsList.innerHTML = state.documentElements.map((el, idx) => `
+                <div class="element-item element-type-${el.type}" data-index="${idx}">
+                    <div class="element-header">
+                        <span class="element-type-icon">
+                            <i class="fas ${getElementIcon(el.type)}"></i>
+                        </span>
+                        <span class="element-type-label">${getElementLabel(el.type)}</span>
+                    </div>
+                    <div class="element-content">
+                        <code>${escapeHtml(el.text.substring(0, 80))}${el.text.length > 80 ? '...' : ''}</code>
+                    </div>
+                    <div class="element-actions">
+                        <button class="btn btn-primary btn-sm btn-select-element" data-index="${idx}">
+                            <i class="fas fa-check"></i> Select
+                        </button>
+                    </div>
+                </div>
+            `).join('');
+
+            // Bind click events for element selection
+            document.querySelectorAll('.btn-select-element').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    const idx = parseInt(btn.dataset.index);
+                    selectDocumentElement(state.documentElements[idx]);
+                });
+            });
+
+            // Bind click events for element items
+            document.querySelectorAll('.element-item').forEach(item => {
+                item.addEventListener('click', () => {
+                    const idx = parseInt(item.dataset.index);
+                    selectDocumentElement(state.documentElements[idx]);
+                });
+            });
+
+        } catch (error) {
+            console.error('Failed to load document elements:', error);
+            elements.documentElementsList.innerHTML = '<span class="empty-hint">Failed to load elements</span>';
+        }
+    }
+
+    function getElementIcon(type) {
+        const icons = {
+            'title': 'fa-heading',
+            'heading1': 'fa-heading',
+            'heading2': 'fa-heading',
+            'heading3': 'fa-heading',
+            'paragraph': 'fa-paragraph',
+            'table': 'fa-table',
+            'list': 'fa-list',
+            'image': 'fa-image'
+        };
+        return icons[type] || 'fa-file-alt';
+    }
+
+    function getElementLabel(type) {
+        const labels = {
+            'title': 'Title',
+            'heading1': 'Heading 1',
+            'heading2': 'Heading 2',
+            'heading3': 'Heading 3',
+            'paragraph': 'Paragraph',
+            'table': 'Table',
+            'list': 'List',
+            'image': 'Image'
+        };
+        return labels[type] || type;
+    }
+
+    function escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+
+    function selectDocumentElement(element) {
+        // Show selection section with element info
+        elements.selectedTextDisplay.textContent = element.text;
+        elements.variablePathInput.value = suggestVariablePath(element.text);
+        elements.formattersInput.value = '';
+        elements.selectionSection.style.display = 'block';
+
+        // Store selected element
+        state.selectedElement = element;
+
+        // Highlight in preview
+        highlightElementInPreview(element);
+
+        showToast(`Selected ${element.type}: "${element.text.substring(0, 30)}..."`, 'info');
+    }
+
+    function highlightElementInPreview(element) {
+        try {
+            const iframeDoc = elements.previewIframe.contentDocument || elements.previewIframe.contentWindow.document;
+
+            // Remove existing highlights
+            iframeDoc.querySelectorAll('.element-highlight').forEach(el => {
+                el.classList.remove('element-highlight');
+            });
+
+            // Find matching text in PDF text layer
+            const textLayer = iframeDoc.querySelector('.textLayer');
+            if (textLayer) {
+                const spans = textLayer.querySelectorAll('span');
+                let foundFirst = false;
+
+                spans.forEach(span => {
+                    if (span.textContent && element.text.includes(span.textContent.trim())) {
+                        span.classList.add('element-highlight');
+                        if (!foundFirst) {
+                            span.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                            foundFirst = true;
+                        }
+                    }
+                });
+            }
+        } catch (e) {
+            console.warn('Could not highlight element in preview:', e);
+        }
     }
 
     async function loadDocumentPreview(template) {

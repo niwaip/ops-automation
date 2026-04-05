@@ -215,6 +215,12 @@ export class PreviewService {
       background-color: rgba(255, 193, 7, 0.4) !important;
       border: 2px dashed #ffc107 !important;
     }
+    /* 元素级别高亮 */
+    .textLayer .element-highlight {
+      background-color: rgba(0, 123, 255, 0.3) !important;
+      border: 2px solid #007bff !important;
+      border-radius: 2px;
+    }
   </style>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 </head>

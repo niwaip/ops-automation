@@ -840,3 +840,102 @@ body {
         min-width: 260px;
     }
 }
+/* Document Elements List */
+.document-elements-list {
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+.element-item {
+    padding: 10px;
+    margin-bottom: 8px;
+    background: #f8f9fa;
+    border-radius: 6px;
+    border: 1px solid #e9ecef;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.element-item:hover {
+    background: #e9ecef;
+    border-color: #dee2e6;
+}
+
+.element-item.element-type-title,
+.element-item.element-type-heading1 {
+    background: #fff3cd;
+    border-color: #ffc107;
+}
+
+.element-item.element-type-title:hover,
+.element-item.element-type-heading1:hover {
+    background: #ffe69c;
+}
+
+.element-item.element-type-heading2 {
+    background: #d1ecf1;
+    border-color: #bee5eb;
+}
+
+.element-item.element-type-heading2:hover {
+    background: #bee5eb;
+}
+
+.element-item.element-type-table {
+    background: #d4edda;
+    border-color: #c3e6cb;
+}
+
+.element-item.element-type-table:hover {
+    background: #c3e6cb;
+}
+
+.element-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 6px;
+}
+
+.element-type-icon {
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: white;
+    border-radius: 4px;
+    font-size: 12px;
+}
+
+.element-type-label {
+    font-size: 11px;
+    font-weight: 500;
+    color: #666;
+    text-transform: uppercase;
+}
+
+.element-content {
+    font-size: 13px;
+    color: #333;
+    margin-bottom: 8px;
+    word-break: break-word;
+}
+
+.element-content code {
+    background: transparent;
+    padding: 0;
+    font-size: inherit;
+}
+
+.element-actions {
+    display: flex;
+    gap: 6px;
+}
+
+/* Element highlight in PDF */
+.element-highlight {
+    background-color: rgba(255, 193, 7, 0.4) !important;
+    border: 2px solid #ffc107 !important;
+    border-radius: 2px;
+}

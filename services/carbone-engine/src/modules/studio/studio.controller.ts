@@ -27,6 +27,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { CarboneEngine } from '../../lib/engine';
 import { PreviewService } from './preview.service';
 import { AIIdentifierService, AIIdentifyResponse } from './ai-identifier.service';
+import { DocumentStructureService, DocumentStructure } from './document-structure.service';
 
 // DTOs with proper initialization
 export class UploadTemplateDto {
@@ -107,7 +108,8 @@ export class StudioController {
 
   constructor(
     private readonly previewService: PreviewService,
-    private readonly aiIdentifierService: AIIdentifierService
+    private readonly aiIdentifierService: AIIdentifierService,
+    private readonly documentStructureService: DocumentStructureService
   ) {
     this.engine = new CarboneEngine();
     this.templatesDir = process.env.TEMPLATES_DIR || path.join(process.cwd(), 'templates');
@@ -586,6 +588,35 @@ export class StudioController {
       markings: meta.markings || [],
       savedAt: meta.savedAt
     };
+  }
+
+  /**
+   * 获取文档结构化元素
+   */
+  @Get('templates/:id/structure')
+  @ApiOperation({ summary: 'Get document structure elements for element-level selection' })
+  async getDocumentStructure(@Param('id') id: string): Promise<DocumentStructure> {
+    const meta = this.getTemplateMeta(id);
+    const templatePath = path.join(this.templatesDir, `${id}.${meta.format}`);
+
+    if (!fs.existsSync(templatePath)) {
+      throw new HttpException('Template file not found', HttpStatus.NOT_FOUND);
+    }
+
+    if (meta.format !== 'docx') {
+      throw new HttpException('Structure parsing is only supported for DOCX files', HttpStatus.BAD_REQUEST);
+    }
+
+    try {
+      const buffer = fs.readFileSync(templatePath);
+      return await this.documentStructureService.parseDocx(buffer);
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      throw new HttpException(
+        `Failed to parse document structure: ${message}`,
+        HttpStatus.INTERNAL_SERVER_ERROR
+      );
+    }
   }
 
   // Helper methods
