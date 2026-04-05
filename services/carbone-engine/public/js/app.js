@@ -263,6 +263,29 @@
 
         // Load document structure elements
         loadDocumentElements(template);
+
+        // 预加载源XML并解析结构，用于PDF选择与结构视图保持一致
+        preloadSourceXml(template);
+    }
+
+    // 预加载源XML并解析结构
+    async function preloadSourceXml(template) {
+        if (template.format !== 'docx') return;
+
+        try {
+            const result = await apiRequest(`/templates/${template.id}/preview-source`);
+            state.sourceXml = result.content;
+            // 立即解析结构，确保PDF选择可以使用
+            if (state.sourceXml && !state.xmlStructure) {
+                parseXmlStructure();
+                // 重新渲染Document Elements列表，使用正确的顺序
+                if (state.xmlStructure?.orderedElements?.length > 0 && state.documentElements.length > 0) {
+                    renderDocumentElementsList();
+                }
+            }
+        } catch (error) {
+            console.warn('Failed to preload source XML:', error);
+        }
     }
 
     async function loadDocumentElements(template) {
@@ -283,7 +306,43 @@
                 return;
             }
 
-            elements.documentElementsList.innerHTML = state.documentElements.map((el, idx) => {
+            // 渲染文档元素列表
+            renderDocumentElementsList();
+
+        } catch (error) {
+            console.error('Failed to load document elements:', error);
+            elements.documentElementsList.innerHTML = '<span class="empty-hint">Failed to load elements</span>';
+        }
+    }
+
+    // 渲染文档元素列表，使用与结构视图相同的顺序
+    function renderDocumentElementsList() {
+        // 如果xmlStructure已解析，使用orderedElements的顺序重新排列documentElements
+        let orderedDocumentElements = state.documentElements;
+
+        if (state.xmlStructure?.orderedElements?.length > 0) {
+            // 按照xmlStructure.orderedElements的顺序重新排列
+            orderedDocumentElements = state.xmlStructure.orderedElements.map(el => {
+                // 找到对应的documentElement
+                return state.documentElements.find(d => {
+                    if (el.type === 'table' && d.type === 'table') {
+                        return d.headerRow && el.headerRow &&
+                               d.headerRow.includes(el.headerRow.substring(0, 30));
+                    }
+                    return d.text && el.text &&
+                           (d.text === el.text || d.text.includes(el.text.substring(0, 50)));
+                });
+            }).filter(el => el); // 过滤掉undefined
+        }
+
+        elements.elementsCount.textContent = orderedDocumentElements.length;
+
+        if (orderedDocumentElements.length === 0) {
+            elements.documentElementsList.innerHTML = '<span class="empty-hint">No elements found</span>';
+            return;
+        }
+
+        elements.documentElementsList.innerHTML = orderedDocumentElements.map((el, idx) => {
                 // 表格特殊显示
                 if (el.type === 'table') {
                     return `
@@ -336,27 +395,23 @@
                 `;
             }).join('');
 
-            // Bind click events for element selection
+            // Bind click events for element selection - 使用当前渲染的元素
+            const currentElements = orderedDocumentElements;
             document.querySelectorAll('.btn-select-element').forEach(btn => {
                 btn.addEventListener('click', (e) => {
                     e.stopPropagation();
                     const idx = parseInt(btn.dataset.index);
-                    selectDocumentElement(state.documentElements[idx]);
+                    selectDocumentElement(currentElements[idx]);
                 });
             });
 
-            // Bind click events for element items
+            // Bind click events for element items - 使用当前渲染的元素
             document.querySelectorAll('.element-item').forEach(item => {
                 item.addEventListener('click', () => {
                     const idx = parseInt(item.dataset.index);
-                    selectDocumentElement(state.documentElements[idx]);
+                    selectDocumentElement(currentElements[idx]);
                 });
             });
-
-        } catch (error) {
-            console.error('Failed to load document elements:', error);
-            elements.documentElementsList.innerHTML = '<span class="empty-hint">Failed to load elements</span>';
-        }
     }
 
     function getElementIcon(type) {
@@ -513,39 +568,78 @@
                 const clickedText = clickedSpan.textContent.trim();
                 if (!clickedText) return;
 
-                // Find matching element in document elements with priority:
+                // 使用与结构视图相同的orderedElements来匹配元素，保持一致性
+                // 如果xmlStructure已解析，使用orderedElements；否则使用documentElements
+                let elementsToSearch = [];
+
+                if (state.xmlStructure?.orderedElements?.length > 0) {
+                    // 将orderedElements转换为与documentElements兼容的格式
+                    elementsToSearch = state.xmlStructure.orderedElements.map((el, idx) => {
+                        // 查找对应的documentElement获取完整信息
+                        const docEl = state.documentElements.find(d => {
+                            if (el.type === 'table' && d.type === 'table') {
+                                return d.headerRow && el.headerRow &&
+                                       d.headerRow.includes(el.headerRow.substring(0, 30));
+                            }
+                            return d.text && el.text &&
+                                   (d.text === el.text || d.text.includes(el.text.substring(0, 50)));
+                        });
+                        return docEl || {
+                            text: el.text,
+                            type: el.type,
+                            headerRow: el.headerRow,
+                            orderIndex: el.orderIndex
+                        };
+                    });
+                } else {
+                    elementsToSearch = state.documentElements;
+                }
+
+                // Find matching element with priority:
                 // 1. Exact match (element.text === clickedText)
                 // 2. Element starts with clickedText
                 // 3. Element contains clickedText
                 let matchingElement = null;
 
                 // First try exact match
-                matchingElement = state.documentElements.find(el => {
+                matchingElement = elementsToSearch.find(el => {
                     return el.text && el.text === clickedText;
                 });
 
                 // If no exact match, try element that starts with clicked text
                 if (!matchingElement) {
-                    matchingElement = state.documentElements.find(el => {
+                    matchingElement = elementsToSearch.find(el => {
                         return el.text && el.text.startsWith(clickedText);
                     });
                 }
 
                 // If no match, try element that contains the clicked text
                 if (!matchingElement) {
-                    matchingElement = state.documentElements.find(el => {
+                    matchingElement = elementsToSearch.find(el => {
                         return el.text && el.text.includes(clickedText);
                     });
                 }
 
                 // If still no match, try partial match (clicked text contains element text)
                 if (!matchingElement) {
-                    matchingElement = state.documentElements.find(el => {
+                    matchingElement = elementsToSearch.find(el => {
                         return el.text && clickedText.includes(el.text.substring(0, 20)) && el.text.length > 10;
                     });
                 }
 
                 if (matchingElement) {
+                    // 如果是从orderedElements来的，需要找到对应的documentElement
+                    if (matchingElement.orderIndex !== undefined && !matchingElement.id) {
+                        const docEl = state.documentElements.find(d => {
+                            if (matchingElement.type === 'table' && d.type === 'table') {
+                                return d.headerRow && matchingElement.headerRow &&
+                                       d.headerRow.includes(matchingElement.headerRow.substring(0, 30));
+                            }
+                            return d.text && matchingElement.text &&
+                                   (d.text === matchingElement.text || d.text.includes(matchingElement.text.substring(0, 50)));
+                        });
+                        if (docEl) matchingElement = docEl;
+                    }
                     selectDocumentElement(matchingElement);
                 }
             });
