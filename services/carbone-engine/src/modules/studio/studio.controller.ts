@@ -16,14 +16,17 @@ import {
   StreamableFile,
   Header,
   Res,
+  Query,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
-import { ApiTags, ApiOperation, ApiConsumes, ApiBody, ApiResponse } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiConsumes, ApiBody, ApiResponse, ApiQuery } from '@nestjs/swagger';
 import { Response } from 'express';
 import * as fs from 'fs';
 import * as path from 'path';
 import { v4 as uuidv4 } from 'uuid';
 import { CarboneEngine } from '../../lib/engine';
+import { PreviewService } from './preview.service';
+import { AIIdentifierService, AIIdentifyResponse } from './ai-identifier.service';
 
 // DTOs with proper initialization
 export class UploadTemplateDto {
@@ -45,6 +48,20 @@ export class PreviewDto {
   maxRows?: number;
 }
 
+export class AIIdentifyDto {
+  templateId!: string;
+  context?: string;
+}
+
+export class SaveMarkingsDto {
+  templateId!: string;
+  markings!: Array<{
+    path: string;
+    text: string;
+    formatters?: string[];
+  }>;
+}
+
 export class ValidateDto {
   templateId!: string;
   data!: Record<string, any>;
@@ -57,6 +74,8 @@ export interface TemplateResponse {
   size: number;
   variables: string[];
   loops: Array<{ arrayPath: string }>;
+  markings?: Array<{ path: string; text: string; formatters?: string[] }>;
+  savedAt?: string;
 }
 
 export interface RenderResponse {
@@ -86,7 +105,10 @@ export class StudioController {
   private templatesDir: string;
   private outputsDir: string;
 
-  constructor() {
+  constructor(
+    private readonly previewService: PreviewService,
+    private readonly aiIdentifierService: AIIdentifierService
+  ) {
     this.engine = new CarboneEngine();
     this.templatesDir = process.env.TEMPLATES_DIR || path.join(process.cwd(), 'templates');
     this.outputsDir = process.env.OUTPUTS_DIR || path.join(process.cwd(), 'outputs');
@@ -459,6 +481,111 @@ export class StudioController {
         HttpStatus.INTERNAL_SERVER_ERROR
       );
     }
+  }
+
+  /**
+   * 获取模板HTML预览（用于前端iframe显示）
+   */
+  @Get('templates/:id/preview-html')
+  @ApiOperation({ summary: 'Get template HTML preview for iframe display' })
+  async getTemplateHtmlPreview(@Param('id') id: string): Promise<{ html: string; format: string }> {
+    const meta = this.getTemplateMeta(id);
+    const templatePath = path.join(this.templatesDir, `${id}.${meta.format}`);
+
+    if (!fs.existsSync(templatePath)) {
+      throw new HttpException('Template file not found', HttpStatus.NOT_FOUND);
+    }
+
+    try {
+      const result = await this.previewService.generatePreview(templatePath, meta.format);
+      return {
+        html: result.html,
+        format: result.format
+      };
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      throw new HttpException(
+        `Failed to generate preview: ${message}`,
+        HttpStatus.INTERNAL_SERVER_ERROR
+      );
+    }
+  }
+
+  /**
+   * AI自动识别模板变量
+   */
+  @Post('templates/:id/ai-identify')
+  @ApiOperation({ summary: 'AI identify potential variables in template' })
+  @ApiBody({ type: AIIdentifyDto })
+  async aiIdentifyVariables(
+    @Param('id') id: string,
+    @Body() dto: AIIdentifyDto
+  ): Promise<AIIdentifyResponse> {
+    const meta = this.getTemplateMeta(id);
+    const templatePath = path.join(this.templatesDir, `${id}.${meta.format}`);
+
+    if (!fs.existsSync(templatePath)) {
+      throw new HttpException('Template file not found', HttpStatus.NOT_FOUND);
+    }
+
+    try {
+      const result = await this.aiIdentifierService.identifyVariables(
+        templatePath,
+        meta.format,
+        dto.context
+      );
+      return result;
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      throw new HttpException(
+        `Failed to identify variables: ${message}`,
+        HttpStatus.INTERNAL_SERVER_ERROR
+      );
+    }
+  }
+
+  /**
+   * 保存模板标记配置
+   */
+  @Post('templates/:id/markings')
+  @ApiOperation({ summary: 'Save template markings' })
+  @ApiBody({ type: SaveMarkingsDto })
+  async saveMarkings(
+    @Param('id') id: string,
+    @Body() dto: SaveMarkingsDto
+  ): Promise<{ success: boolean; savedAt: string }> {
+    const meta = this.getTemplateMeta(id);
+    const metaPath = path.join(this.templatesDir, `${id}.json`);
+
+    // 更新元数据中的标记信息
+    const updatedMeta = {
+      ...meta,
+      markings: dto.markings,
+      savedAt: new Date().toISOString()
+    };
+
+    fs.writeFileSync(metaPath, JSON.stringify(updatedMeta, null, 2));
+
+    return {
+      success: true,
+      savedAt: updatedMeta.savedAt
+    };
+  }
+
+  /**
+   * 获取模板标记配置
+   */
+  @Get('templates/:id/markings')
+  @ApiOperation({ summary: 'Get template markings' })
+  async getMarkings(@Param('id') id: string): Promise<{
+    markings: Array<{ path: string; text: string; formatters?: string[] }>;
+    savedAt?: string;
+  }> {
+    const meta = this.getTemplateMeta(id);
+    return {
+      markings: meta.markings || [],
+      savedAt: meta.savedAt
+    };
   }
 
   // Helper methods

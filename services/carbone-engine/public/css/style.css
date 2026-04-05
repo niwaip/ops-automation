@@ -470,6 +470,145 @@ body {
     color: #d46b08;
 }
 
+/* AI Suggestions List */
+.ai-suggestions-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.ai-suggestion-item {
+    background: #f6ffed;
+    border: 1px solid #b7eb8f;
+    padding: 12px;
+    border-radius: 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.ai-suggestion-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.ai-suggestion-path {
+    font-family: 'Monaco', 'Menlo', monospace;
+    font-size: 13px;
+    color: #52c41a;
+    font-weight: 600;
+}
+
+.ai-suggestion-content {
+    font-size: 12px;
+    color: #666;
+}
+
+.ai-suggestion-content code {
+    background: #e6f7ff;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 12px;
+}
+
+.ai-suggestion-reason {
+    font-size: 11px;
+    color: #999;
+    font-style: italic;
+}
+
+.ai-suggestion-actions {
+    display: flex;
+    gap: 4px;
+}
+
+.ai-suggestion-actions .btn {
+    font-size: 11px;
+    padding: 2px 8px;
+}
+
+.ai-suggestion-actions .btn-accept {
+    background: #52c41a;
+    color: white;
+    border: none;
+}
+
+.ai-suggestion-actions .btn-reject {
+    background: #f0f0f0;
+    color: #666;
+    border: 1px solid #ddd;
+}
+
+/* Manual Marking Styles */
+.marking-popup {
+    position: fixed;
+    background: white;
+    border: 1px solid #d9d9d9;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    padding: 16px;
+    z-index: 1000;
+    min-width: 280px;
+    display: none;
+}
+
+.marking-popup.show {
+    display: block;
+}
+
+.marking-popup h4 {
+    margin: 0 0 12px;
+    font-size: 14px;
+    color: #333;
+}
+
+.marking-popup input {
+    width: 100%;
+    padding: 8px 12px;
+    border: 1px solid #d9d9d9;
+    border-radius: 4px;
+    font-size: 13px;
+    margin-bottom: 12px;
+}
+
+.marking-popup input:focus {
+    outline: none;
+    border-color: var(--primary-color);
+}
+
+.marking-popup-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+}
+
+/* Highlighted text in preview */
+.marked-text {
+    background: #fff7e6;
+    border: 1px dashed #faad14;
+    border-radius: 2px;
+    padding: 0 2px;
+    cursor: pointer;
+}
+
+.marked-text:hover {
+    background: #ffe7ba;
+}
+
+/* Manual marking section */
+.manual-marking-section {
+    margin-top: 16px;
+    padding-top: 16px;
+    border-top: 1px solid var(--border-color);
+}
+
+.manual-marking-hint {
+    font-size: 12px;
+    color: #999;
+    margin-bottom: 8px;
+}
+
 /* Test Data Textarea */
 #test-data {
     width: 100%;
@@ -792,6 +931,31 @@ body {
 
 ::-webkit-scrollbar-thumb:hover {
     background: #bfbfbf;
+}
+
+/* Document Preview */
+.preview-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 16px;
+    background: var(--bg-color);
+    border-radius: 8px;
+    margin-bottom: 16px;
+}
+
+.preview-iframe-container {
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    overflow: hidden;
+}
+
+#preview-iframe {
+    width: 100%;
+    height: calc(100vh - 250px);
+    min-height: 500px;
+    border: none;
 }
 
 /* Responsive */

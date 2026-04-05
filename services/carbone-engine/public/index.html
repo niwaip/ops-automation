@@ -63,11 +63,14 @@
                     <button class="tab active" data-tab="editor">
                         <i class="fas fa-edit"></i> Editor
                     </button>
+                    <button class="tab" data-tab="docpreview">
+                        <i class="fas fa-eye"></i> Document
+                    </button>
                     <button class="tab" data-tab="source">
                         <i class="fas fa-code"></i> Source
                     </button>
                     <button class="tab" data-tab="preview">
-                        <i class="fas fa-eye"></i> Preview
+                        <i class="fas fa-play-circle"></i> Output
                     </button>
                     <button class="tab" data-tab="guide">
                         <i class="fas fa-book"></i> Guide
@@ -96,6 +99,9 @@
                                     <button id="validate-btn" class="btn btn-outline">
                                         <i class="fas fa-check-circle"></i> Validate
                                     </button>
+                                    <button id="save-btn" class="btn btn-outline">
+                                        <i class="fas fa-save"></i> Save
+                                    </button>
                                     <button id="render-btn" class="btn btn-primary">
                                         <i class="fas fa-play"></i> Render
                                     </button>
@@ -111,6 +117,18 @@
                                 <div class="editor-section">
                                     <h4><i class="fas fa-repeat"></i> Loops</h4>
                                     <div id="loops-list" class="loops-list"></div>
+                                </div>
+
+                                <div class="editor-section">
+                                    <h4>
+                                        <i class="fas fa-robot"></i> AI Suggestions
+                                        <button id="ai-identify-btn" class="btn btn-sm btn-outline" style="margin-left: 8px;">
+                                            <i class="fas fa-magic"></i> Analyze
+                                        </button>
+                                    </h4>
+                                    <div id="ai-suggestions-list" class="ai-suggestions-list">
+                                        <span style="color: #999;">Click "Analyze" to detect potential variables</span>
+                                    </div>
                                 </div>
 
                                 <div class="editor-section">
@@ -138,6 +156,31 @@
                             </div>
                             <div class="source-code-container">
                                 <pre id="source-code"><code></code></pre>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Document Preview Tab -->
+                    <div id="docpreview-tab" class="tab-pane">
+                        <div id="docpreview-empty" class="empty-state">
+                            <i class="fas fa-eye"></i>
+                            <h2>No Document Preview</h2>
+                            <p>Select a template to see the visual preview</p>
+                        </div>
+
+                        <div id="docpreview-content" style="display: none;">
+                            <div class="preview-toolbar">
+                                <span id="preview-format-badge" class="badge">DOCX</span>
+                                <span id="preview-size-info" class="text-muted"></span>
+                                <button id="zoom-in" class="btn btn-outline btn-sm" title="Zoom In">
+                                    <i class="fas fa-search-plus"></i>
+                                </button>
+                                <button id="zoom-out" class="btn btn-outline btn-sm" title="Zoom Out">
+                                    <i class="fas fa-search-minus"></i>
+                                </button>
+                            </div>
+                            <div class="preview-iframe-container">
+                                <iframe id="preview-iframe" sandbox="allow-same-origin" frameborder="0"></iframe>
                             </div>
                         </div>
                     </div>
@@ -258,6 +301,21 @@ Email: {d.company.contact.email}</code></pre>
                         <i class="fas fa-play"></i> Render
                     </button>
                 </div>
+            </div>
+        </div>
+
+        <!-- Marking Popup -->
+        <div id="marking-popup" class="marking-popup">
+            <h4><i class="fas fa-tag"></i> Mark as Variable</h4>
+            <div class="manual-marking-hint">
+                Selected: <code id="selected-text"></code>
+            </div>
+            <input type="text" id="variable-path-input" placeholder="Enter variable path (e.g., d.name)">
+            <div class="marking-popup-actions">
+                <button class="btn btn-outline" id="cancel-marking">Cancel</button>
+                <button class="btn btn-primary" id="confirm-marking">
+                    <i class="fas fa-check"></i> Mark
+                </button>
             </div>
         </div>
     </div>

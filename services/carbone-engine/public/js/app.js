@@ -9,7 +9,8 @@
     const state = {
         templates: [],
         selectedTemplate: null,
-        formatters: []
+        formatters: [],
+        manualMarkings: []  // 存储手动标记
     };
 
     // DOM Elements
@@ -29,6 +30,7 @@
         testData: document.getElementById('test-data'),
         validateBtn: document.getElementById('validate-btn'),
         renderBtn: document.getElementById('render-btn'),
+        saveBtn: document.getElementById('save-btn'),
         renderModal: document.getElementById('render-modal'),
         outputFormat: document.getElementById('output-format'),
         confirmRender: document.getElementById('confirm-render'),
@@ -42,7 +44,24 @@
         sourceContent: document.getElementById('source-content'),
         sourceFilename: document.getElementById('source-filename'),
         sourceCode: document.getElementById('source-code'),
-        copySource: document.getElementById('copy-source')
+        copySource: document.getElementById('copy-source'),
+        // Document Preview elements
+        docpreviewEmpty: document.getElementById('docpreview-empty'),
+        docpreviewContent: document.getElementById('docpreview-content'),
+        previewIframe: document.getElementById('preview-iframe'),
+        previewFormatBadge: document.getElementById('preview-format-badge'),
+        previewSizeInfo: document.getElementById('preview-size-info'),
+        zoomIn: document.getElementById('zoom-in'),
+        zoomOut: document.getElementById('zoom-out'),
+        // AI Suggestion elements
+        aiIdentifyBtn: document.getElementById('ai-identify-btn'),
+        aiSuggestionsList: document.getElementById('ai-suggestions-list'),
+        // Manual marking elements
+        markingPopup: document.getElementById('marking-popup'),
+        selectedText: document.getElementById('selected-text'),
+        variablePathInput: document.getElementById('variable-path-input'),
+        cancelMarking: document.getElementById('cancel-marking'),
+        confirmMarking: document.getElementById('confirm-marking')
     };
 
     // Utility Functions
@@ -362,6 +381,33 @@
 
         // Load source preview
         loadSourcePreview(template.id);
+        // Load document preview
+        loadDocumentPreview(template);
+    }
+
+    async function loadDocumentPreview(template) {
+        try {
+            const result = await apiRequest(`/templates/${template.id}/preview-html`);
+
+            elements.docpreviewEmpty.style.display = 'none';
+            elements.docpreviewContent.style.display = 'block';
+
+            // Update format badge
+            elements.previewFormatBadge.textContent = result.format.toUpperCase();
+            elements.previewSizeInfo.textContent = formatBytes(template.size);
+
+            // Load HTML into iframe
+            const iframe = elements.previewIframe;
+            iframe.srcdoc = result.html;
+
+            // Reset zoom
+            iframe.style.transform = 'scale(1)';
+
+        } catch (error) {
+            console.error('Failed to load document preview:', error);
+            elements.docpreviewEmpty.style.display = 'block';
+            elements.docpreviewContent.style.display = 'none';
+        }
     }
 
     async function loadSourcePreview(templateId) {
@@ -434,6 +480,8 @@
         elements.templateEditor.style.display = 'none';
         elements.sourceEmpty.style.display = 'block';
         elements.sourceContent.style.display = 'none';
+        elements.docpreviewEmpty.style.display = 'block';
+        elements.docpreviewContent.style.display = 'none';
     }
 
     function showPreviewResult(result) {
@@ -494,6 +542,26 @@
         elements.validateBtn.addEventListener('click', validateData);
         elements.renderBtn.addEventListener('click', openModal);
         elements.confirmRender.addEventListener('click', renderTemplate);
+        if (elements.saveBtn) {
+            elements.saveBtn.addEventListener('click', saveMarkings);
+        }
+
+        // Zoom controls for document preview
+        let currentZoom = 1;
+        if (elements.zoomIn) {
+            elements.zoomIn.addEventListener('click', () => {
+                currentZoom = Math.min(currentZoom + 0.1, 2);
+                elements.previewIframe.style.transform = `scale(${currentZoom})`;
+                elements.previewIframe.style.transformOrigin = 'top left';
+            });
+        }
+        if (elements.zoomOut) {
+            elements.zoomOut.addEventListener('click', () => {
+                currentZoom = Math.max(currentZoom - 0.1, 0.5);
+                elements.previewIframe.style.transform = `scale(${currentZoom})`;
+                elements.previewIframe.style.transformOrigin = 'top left';
+            });
+        }
 
         // Copy source button
         if (elements.copySource) {
@@ -513,6 +581,269 @@
         elements.renderModal.addEventListener('click', (e) => {
             if (e.target === elements.renderModal) closeModal();
         });
+
+        // AI Identify button
+        if (elements.aiIdentifyBtn) {
+            elements.aiIdentifyBtn.addEventListener('click', async () => {
+                if (!state.selectedTemplate) {
+                    showToast('Please select a template first', 'warning');
+                    return;
+                }
+                await aiIdentifyVariables();
+            });
+        }
+
+        // Manual marking events
+        if (elements.cancelMarking) {
+            elements.cancelMarking.addEventListener('click', hideMarkingPopup);
+        }
+        if (elements.confirmMarking) {
+            elements.confirmMarking.addEventListener('click', confirmManualMarking);
+        }
+        if (elements.variablePathInput) {
+            elements.variablePathInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    confirmManualMarking();
+                }
+            });
+        }
+
+        // Text selection in document preview iframe
+        if (elements.previewIframe) {
+            elements.previewIframe.addEventListener('load', () => {
+                try {
+                    const iframeDoc = elements.previewIframe.contentDocument || elements.previewIframe.contentWindow.document;
+                    iframeDoc.addEventListener('mouseup', handleTextSelection);
+                } catch (e) {
+                    // Cross-origin restriction
+                }
+            });
+        }
+    }
+
+    // AI Identify Variables
+    async function aiIdentifyVariables() {
+        if (!state.selectedTemplate) return;
+
+        elements.aiSuggestionsList.innerHTML = '<div class="loading"><i class="fas fa-spinner fa-spin"></i> Analyzing...</div>';
+
+        try {
+            const result = await apiRequest(`/templates/${state.selectedTemplate.id}/ai-identify`, {
+                method: 'POST',
+                body: JSON.stringify({
+                    templateId: state.selectedTemplate.id
+                })
+            });
+
+            renderAISuggestions(result.suggestions);
+            showToast(`Found ${result.suggestions.length} potential variables`, 'success');
+        } catch (error) {
+            elements.aiSuggestionsList.innerHTML = '<span style="color: #999;">Analysis failed</span>';
+            showToast('Failed to analyze template', 'error');
+        }
+    }
+
+    function renderAISuggestions(suggestions) {
+        if (suggestions.length === 0) {
+            elements.aiSuggestionsList.innerHTML = '<span style="color: #999;">No potential variables found</span>';
+            return;
+        }
+
+        elements.aiSuggestionsList.innerHTML = suggestions.map((s, index) => `
+            <div class="ai-suggestion-item" data-index="${index}">
+                <div class="ai-suggestion-header">
+                    <span class="ai-suggestion-path">{${s.path}}</span>
+                    <span class="badge">${s.type}</span>
+                </div>
+                <div class="ai-suggestion-content">
+                    Found: <code>${s.content}</code>
+                </div>
+                <div class="ai-suggestion-reason">
+                    ${s.reason} (${Math.round(s.confidence * 100)}% confidence)
+                </div>
+                <div class="ai-suggestion-actions">
+                    <button class="btn btn-accept" data-path="${s.path}" data-content="${s.content}">
+                        <i class="fas fa-check"></i> Accept
+                    </button>
+                    <button class="btn btn-reject">
+                        <i class="fas fa-times"></i> Ignore
+                    </button>
+                </div>
+            </div>
+        `).join('');
+
+        // Bind accept/reject events
+        elements.aiSuggestionsList.querySelectorAll('.btn-accept').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const item = btn.closest('.ai-suggestion-item');
+                const path = btn.dataset.path;
+                const content = btn.dataset.content;
+
+                // Add to test data
+                addToTestData(path, content);
+
+                // Remove suggestion
+                item.style.opacity = '0.5';
+                btn.disabled = true;
+                btn.innerHTML = '<i class="fas fa-check"></i> Added';
+                showToast(`Added {${path}} to test data`, 'success');
+            });
+        });
+
+        elements.aiSuggestionsList.querySelectorAll('.btn-reject').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const item = btn.closest('.ai-suggestion-item');
+                item.remove();
+            });
+        });
+    }
+
+    function addToTestData(path, sampleValue) {
+        let data = {};
+        try {
+            const text = elements.testData.value.trim();
+            if (text) {
+                data = JSON.parse(text);
+            }
+        } catch {
+            data = {};
+        }
+
+        // Parse path like "d.user.name" -> { user: { name: ... } }
+        const pathParts = path.replace(/^d\./, '').split('.');
+        let current = data;
+
+        for (let i = 0; i < pathParts.length - 1; i++) {
+            const part = pathParts[i];
+            if (!current[part]) {
+                current[part] = {};
+            }
+            current = current[part];
+        }
+
+        // Set the final value
+        const finalKey = pathParts[pathParts.length - 1];
+        if (!current[finalKey]) {
+            current[finalKey] = sampleValue;
+        }
+
+        // Update textarea
+        elements.testData.value = JSON.stringify(data, null, 2);
+    }
+
+    // Manual Marking Functions
+    let currentSelection = null;
+
+    function handleTextSelection(e) {
+        const selection = window.getSelection ? window.getSelection() : document.selection;
+        if (!selection || selection.toString().trim() === '') {
+            return;
+        }
+
+        const selectedText = selection.toString().trim();
+
+        // Only handle selections within iframe
+        if (elements.previewIframe && elements.previewIframe.contentWindow === selection.anchorNode?.ownerDocument?.defaultView) {
+            currentSelection = {
+                text: selectedText,
+                range: selection.getRangeAt(0)
+            };
+
+            showMarkingPopup(e.clientX, e.clientY, selectedText);
+        }
+    }
+
+    function showMarkingPopup(x, y, text) {
+        elements.selectedText.textContent = text;
+        elements.variablePathInput.value = suggestVariablePath(text);
+        elements.markingPopup.style.left = `${x}px`;
+        elements.markingPopup.style.top = `${y}px`;
+        elements.markingPopup.classList.add('show');
+        elements.variablePathInput.focus();
+    }
+
+    function hideMarkingPopup() {
+        elements.markingPopup.classList.remove('show');
+        currentSelection = null;
+    }
+
+    function suggestVariablePath(text) {
+        // Simple heuristics for suggesting variable paths
+        if (/^\d{4}[-/年]\d{1,2}[-/月]\d{1,2}/.test(text)) {
+            return 'd.date';
+        }
+        if (/^[￥¥$]\s*\d/.test(text)) {
+            return 'd.amount';
+        }
+        if (/^\d+\.?\d*\s*(元|件|个|张|份)/.test(text)) {
+            return 'd.quantity';
+        }
+        if (/^\d{11}$/.test(text) || /^1[3-9]\d{9}$/.test(text)) {
+            return 'd.phone';
+        }
+        if (/^[\w.-]+@[\w.-]+\.\w+$/.test(text)) {
+            return 'd.email';
+        }
+        if (/^[\u4e00-\u9fa5]{2,4}$/.test(text)) {
+            return 'd.name';
+        }
+        return 'd.value';
+    }
+
+    function confirmManualMarking() {
+        const path = elements.variablePathInput.value.trim();
+        if (!path) {
+            showToast('Please enter a variable path', 'warning');
+            return;
+        }
+
+        if (!path.startsWith('d.') && !path.startsWith('c.') && !path.startsWith('t.')) {
+            showToast('Variable path should start with d., c., or t.', 'warning');
+            return;
+        }
+
+        const text = elements.selectedText.textContent;
+
+        // Add to manual markings
+        state.manualMarkings.push({
+            path: path,
+            text: text,
+            createdAt: new Date().toISOString()
+        });
+
+        // Add to test data
+        addToTestData(path, text);
+
+        // Add to variables list display
+        const varItem = document.createElement('div');
+        varItem.className = 'variable-item';
+        varItem.innerHTML = `<code>{${path}}</code> <small style="color:#999">(手动标记: ${text})</small>`;
+        elements.variablesList.appendChild(varItem);
+
+        hideMarkingPopup();
+        showToast(`Marked "${text}" as {${path}}`, 'success');
+    }
+
+    // Save Markings Function
+    async function saveMarkings() {
+        if (!state.selectedTemplate) {
+            showToast('No template selected', 'warning');
+            return;
+        }
+
+        try {
+            const result = await apiRequest(`/templates/${state.selectedTemplate.id}/markings`, {
+                method: 'POST',
+                body: JSON.stringify({
+                    templateId: state.selectedTemplate.id,
+                    markings: state.manualMarkings
+                })
+            });
+
+            showToast('Markings saved successfully', 'success');
+        } catch (error) {
+            showToast('Failed to save markings', 'error');
+        }
     }
 
     // Initialize
