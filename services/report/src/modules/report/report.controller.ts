@@ -6,8 +6,10 @@ import {
   Param,
   HttpException,
   HttpStatus,
+  Res,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
+import { Response } from 'express';
 import { ReportService } from './report.service';
 import { CreateReportDTOClass } from './report.dto';
 import { ReportDTO, GenerateReportResponse } from '../../interfaces';
@@ -59,7 +61,7 @@ export class ReportController {
   @ApiOperation({ summary: 'Download the generated report file' })
   @ApiResponse({ status: 200, description: 'Returns the file' })
   @ApiResponse({ status: 404, description: 'Report or file not found' })
-  async download(@Param('id') id: string): Promise<{ file_path: string; file_name: string }> {
+  async download(@Param('id') id: string, @Res() res: Response): Promise<void> {
     const report = await this.reportService.findOne(id);
 
     if (report.status !== 'completed') {
@@ -76,10 +78,25 @@ export class ReportController {
     }
 
     const fileName = path.basename(report.result_file);
-    return {
-      file_path: report.result_file,
-      file_name: fileName,
+    const fileExtension = path.extname(fileName).toLowerCase();
+
+    // Set content type based on file extension
+    const contentTypes: Record<string, string> = {
+      '.docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      '.xlsx': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      '.pdf': 'application/pdf',
     };
+
+    const contentType = contentTypes[fileExtension] || 'application/octet-stream';
+
+    // Set headers for file download
+    res.setHeader('Content-Type', contentType);
+    res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(fileName)}"`);
+    res.setHeader('Access-Control-Expose-Headers', 'Content-Disposition');
+
+    // Stream the file
+    const fileStream = fs.createReadStream(report.result_file);
+    fileStream.pipe(res);
   }
 
   @Get(':id/status')

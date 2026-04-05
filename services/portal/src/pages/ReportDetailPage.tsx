@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { Card, Typography, Descriptions, Tag, Button, Space, Divider, Collapse, List, Alert, Spin, message, Progress } from 'antd';
 import { DownloadOutlined, ReloadOutlined } from '@ant-design/icons';
 import { reportApi, Report, ReportStatus, ValidationResult, AIAnalysisResult, NotificationResult } from '../api/report';
+import { useAuthStore } from '../store/authStore';
 
 const { Title, Text } = Typography;
 const { Panel } = Collapse;
@@ -13,6 +14,8 @@ const ReportDetailPage: React.FC = () => {
   const [report, setReport] = useState<Report | null>(null);
   const [loading, setLoading] = useState(false);
   const [polling, setPolling] = useState(false);
+  const [downloading, setDownloading] = useState(false);
+  const { accessToken } = useAuthStore();
 
   useEffect(() => {
     if (id) {
@@ -70,12 +73,46 @@ const ReportDetailPage: React.FC = () => {
       message.warning('Report is not yet completed');
       return;
     }
+
+    setDownloading(true);
     try {
-      const info = await reportApi.getReportDownloadInfo(report.id);
-      message.success(`Report ready for download: ${info.file_name}`);
-      // In production, trigger actual download
+      // Use fetch to download with auth header
+      const response = await fetch(`/api/reports/${report.id}/download`, {
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error('Download failed');
+      }
+
+      // Get filename from Content-Disposition header
+      const contentDisposition = response.headers.get('Content-Disposition');
+      let filename = 'report.docx';
+      if (contentDisposition) {
+        const filenameMatch = contentDisposition.match(/filename\*?=['"]?(?:UTF-\d['"]*)?([^;]+)/i);
+        if (filenameMatch && filenameMatch[1]) {
+          filename = decodeURIComponent(filenameMatch[1].trim().replace(/['"]/g, ''));
+        }
+      }
+
+      // Create blob and download
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+
+      message.success(`Downloaded: ${filename}`);
     } catch (error) {
-      message.error('Failed to get download info');
+      message.error('Failed to download report');
+    } finally {
+      setDownloading(false);
     }
   };
 
@@ -110,6 +147,7 @@ const ReportDetailPage: React.FC = () => {
               type="primary"
               icon={<DownloadOutlined />}
               disabled={report.status !== 'completed'}
+              loading={downloading}
               onClick={handleDownload}
             >
               Download
