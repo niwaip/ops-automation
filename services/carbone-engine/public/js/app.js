@@ -666,10 +666,26 @@
                     const clickedText = clickedSpan.textContent.trim();
                     if (!clickedText) return;
 
-                    // First try exact match
-                    matchingElement = elementsToSearch.find(el => {
-                        return el.text && el.text === clickedText;
-                    });
+                    // 优先检查是否点击的是表格标题行的文字
+                    // 表格标题行格式类似 "Step | Action | Result | Status"
+                    const tableElementsByHeader = elementsToSearch.filter(el => el.type === 'table' && el.headerRow);
+                    for (const tableEl of tableElementsByHeader) {
+                        // 检查点击的文字是否在表格标题行中
+                        const headerParts = tableEl.headerRow.split(/[|,，]/).map(p => p.trim());
+                        if (headerParts.includes(clickedText) ||
+                            tableEl.headerRow.includes(clickedText)) {
+                            matchingElement = tableEl;
+                            break;
+                        }
+                    }
+
+                    // 如果没有匹配到表格，再尝试段落匹配
+                    if (!matchingElement) {
+                        // First try exact match
+                        matchingElement = elementsToSearch.find(el => {
+                            return el.text && el.text === clickedText;
+                        });
+                    }
 
                     // If no exact match, try element that starts with clicked text
                     if (!matchingElement) {
