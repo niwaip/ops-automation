@@ -1316,9 +1316,10 @@
         for (let i = 0; i < children.length; i++) {
             const child = children[i];
             const tagName = child.tagName || '';
+            const localName = child.localName || tagName.split(':').pop() || tagName;
 
             // 检查是否是表格元素 (w:tbl)
-            if (tagName.includes('tbl')) {
+            if (localName === 'tbl' || tagName.includes('tbl')) {
                 const rows = child.getElementsByTagNameNS('*', 'tr');
                 const text = extractElementText(child);
                 const apiTable = apiTables[tableIndex.value] || {};
@@ -1337,7 +1338,7 @@
                 });
             }
             // 检查是否是段落元素 (w:p) - 不在表格单元格内
-            else if (tagName.includes('p') && !tagName.includes('pPr')) {
+            else if (localName === 'p' || (tagName.includes(':p') && !tagName.includes('pPr'))) {
                 const text = extractElementText(child);
 
                 // 检查段落中是否有图片 (drawing 元素)
@@ -1368,7 +1369,8 @@
                 }
             }
             // 对于sectPr等非内容元素，跳过
-            else if (tagName.includes('sectPr') || tagName.includes('pPr') || tagName.includes('rPr')) {
+            else if (localName === 'sectPr' || localName === 'pPr' || localName === 'rPr' ||
+                     tagName.includes('sectPr') || tagName.includes('pPr') || tagName.includes('rPr')) {
                 continue;
             }
             // 递归处理其他元素的子元素
@@ -1397,7 +1399,7 @@
         // 使用后端API返回的结构化数据来丰富表格信息
         const apiTables = state.documentElements.filter(el => el.type === 'table');
         const apiImages = state.documentElements.filter(el => el.type === 'image');
-        let tableIndex = 0;
+        const tableIndex = { value: 0 };
 
         // 遍历body下的所有直接子元素，按文档顺序收集
         const body = xmlDoc.getElementsByTagNameNS('*', 'body')[0];
