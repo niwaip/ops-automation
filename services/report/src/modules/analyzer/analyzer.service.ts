@@ -87,11 +87,31 @@ export class AnalyzerService {
   }
 
   private buildContext(steps: StepResult[]): string {
+    if (steps.length === 0) {
+      return 'No step results available for this section.';
+    }
+
     return steps
       .map(s => {
-        const parts = [`Step: ${s.step_id}`, `Action: ${s.action}`, `Status: ${s.success ? 'Success' : 'Failed'}`];
-        if (s.text) parts.push(`Text: ${s.text}`);
-        if (s.error) parts.push(`Error: ${s.error}`);
+        const parts = [
+          `Step ${s.step_index !== undefined ? s.step_index + 1 : s.step_id}:`,
+          `  Action: ${s.action}`,
+          `  Status: ${s.success ? 'Success' : 'Failed'}`,
+        ];
+
+        if (s.message) parts.push(`  Message: ${s.message}`);
+        if (s.text) parts.push(`  Text: ${s.text}`);
+        if (s.error) parts.push(`  Error: ${s.error}`);
+        if (s.screenshot) parts.push(`  Screenshot: [Base64 image data available]`);
+
+        // Add metadata if available
+        if (s.metadata) {
+          const metaStr = JSON.stringify(s.metadata, null, 2);
+          if (metaStr !== '{}') {
+            parts.push(`  Metadata: ${metaStr}`);
+          }
+        }
+
         return parts.join('\n');
       })
       .join('\n\n');

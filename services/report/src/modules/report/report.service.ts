@@ -128,22 +128,22 @@ export class ReportService {
     this.logger.debug(`Fetching step results for session ${sessionId}`);
 
     try {
-      // Try Redis first
-      const keys = await this.redis.keys(`session:${sessionId}:steps:*`);
-      if (keys.length > 0) {
-        const results: StepResult[] = [];
-        for (const key of keys) {
-          const data = await this.redis.get(key);
-          if (data) {
-            results.push(JSON.parse(data));
-          }
-        }
-        return results.sort((a, b) =>
-          new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime(),
-        );
+      // Try Redis first - steps are stored as a JSON array under session:{id}:steps
+      const stepsKey = `session:${sessionId}:steps`;
+      const data = await this.redis.get(stepsKey);
+
+      if (data) {
+        const results: StepResult[] = JSON.parse(data);
+        this.logger.log(`Found ${results.length} steps in Redis for session ${sessionId}`);
+        return results.sort((a, b) => {
+          const timeA = typeof a.timestamp === 'number' ? a.timestamp : new Date(a.timestamp).getTime();
+          const timeB = typeof b.timestamp === 'number' ? b.timestamp : new Date(b.timestamp).getTime();
+          return timeA - timeB;
+        });
       }
 
       // Fallback to session broker API
+      this.logger.log(`No steps found in Redis, trying session broker API`);
       const response = await axios.get(`${this.sessionBrokerUrl}/session/${sessionId}/results`);
       return response.data.results || [];
     } catch (error) {

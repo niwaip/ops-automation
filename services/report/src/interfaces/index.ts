@@ -111,13 +111,15 @@ export interface CreateReportDTO {
 
 export interface StepResult {
   step_id: string;
+  step_index?: number;
   action: string;
   success: boolean;
+  message?: string;
   screenshot?: string;
   text?: string;
   html?: string;
   error?: string;
-  timestamp: Date;
+  timestamp: Date | number;
   metadata?: Record<string, any>;
 }
 

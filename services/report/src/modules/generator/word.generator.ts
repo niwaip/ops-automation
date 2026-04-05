@@ -250,12 +250,16 @@ export class WordGenerator {
   }
 
   private getTableRowData(result: StepResult, columns: string[]): string[] {
+    const timestamp = typeof result.timestamp === 'number'
+      ? new Date(result.timestamp).toISOString()
+      : result.timestamp.toISOString();
+
     const dataMap: Record<string, string> = {
       Step: result.step_id,
       Action: result.action,
-      Result: result.text || result.error || '',
+      Result: result.text || result.message || result.error || '',
       Status: result.success ? 'Success' : 'Failed',
-      Timestamp: result.timestamp.toISOString(),
+      Timestamp: timestamp,
       Error: result.error || '',
     };
 
