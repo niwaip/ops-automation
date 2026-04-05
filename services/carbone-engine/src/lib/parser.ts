@@ -9,6 +9,7 @@ export interface Marker {
   formatters: string[];
   isArray: boolean;
   arrayPath?: string;
+  isImplicitArray?: boolean;  // 隐式数组标记（无[i]但数据为数组）
 }
 
 export interface LoopInfo {
@@ -18,7 +19,7 @@ export interface LoopInfo {
   templateUnit: string;
   depth: number;
   parentLoop?: string;  // 父循环路径，用于嵌套循环
-  loopType: 'explicit' | 'implicit';  // 显式（{#d.xxx}）或隐式（[i]/[i+1]）
+  loopType: 'explicit' | 'implicit' | 'auto';  // 显式、隐式或自动检测
 }
 
 export interface ParsedTemplate {
@@ -26,6 +27,18 @@ export interface ParsedTemplate {
   loops: LoopInfo[];
   variables: string[];
   cleanedXml: string;
+  implicitArrays?: ImplicitArray[];  // 自动检测到的数组
+}
+
+/**
+ * 隐式数组信息
+ */
+export interface ImplicitArray {
+  path: string;           // 如 d.items.name
+  detectedPath: string;   // 推断的数组路径，如 d.items
+  occurrences: number;    // 出现次数
+  container: string;      // 所在容器类型
+  confidence: number;     // 置信度
 }
 
 // 正则表达式定义
@@ -373,10 +386,17 @@ export class Parser {
   /**
    * 完整解析模板
    */
-  parse(xml: string): ParsedTemplate {
+  parse(xml: string, data?: any): ParsedTemplate {
     const markers = this.findMarkers(xml);
     const loops = this.detectLoops(xml, markers);
     const variables = this.extractVariables(markers);
+
+    // 检测隐式数组（无[i]标记但数据为数组的情况）
+    const implicitArrays = this.detectImplicitArrays(markers, data);
+
+    // 为隐式数组自动生成循环
+    const autoLoops = this.generateAutoLoops(xml, implicitArrays, loops);
+    loops.push(...autoLoops);
 
     // 清理XML（移除标记，保留特殊占位符）
     const cleanedXml = xml.replace(CARBONE_MARKER_REGEX, '\uFFFF');
@@ -385,7 +405,165 @@ export class Parser {
       markers,
       loops,
       variables,
-      cleanedXml
+      cleanedXml,
+      implicitArrays
     };
+  }
+
+  /**
+   * 检测隐式数组
+   * 当变量路径对应的数据是数组，但模板中没有使用 [i] 标记时
+   * 自动识别为隐式数组
+   */
+  detectImplicitArrays(markers: Marker[], data?: any): ImplicitArray[] {
+    const implicitArrays: ImplicitArray[] = [];
+    if (!data) return implicitArrays;
+
+    // 收集所有非数组标记
+    const nonArrayMarkers = markers.filter(m => !m.isArray);
+
+    // 按路径前缀分组
+    const pathGroups = new Map<string, Marker[]>();
+    for (const marker of nonArrayMarkers) {
+      // 提取可能的数组路径前缀
+      // 例如: d.items.name -> d.items
+      const parts = marker.name.split('.');
+      if (parts.length >= 2) {
+        const prefix = parts.slice(0, -1).join('.');
+        const existing = pathGroups.get(prefix) || [];
+        existing.push(marker);
+        pathGroups.set(prefix, existing);
+      }
+    }
+
+    // 检查每个路径前缀是否对应数组数据
+    for (const [path, groupMarkers] of pathGroups) {
+      const arrayData = this.getValueAtPath(data, path);
+
+      if (Array.isArray(arrayData) && arrayData.length > 0) {
+        // 找到隐式数组
+        implicitArrays.push({
+          path,
+          detectedPath: path,
+          occurrences: groupMarkers.length,
+          container: this.detectContainer(groupMarkers),
+          confidence: this.calculateImplicitArrayConfidence(groupMarkers, arrayData)
+        });
+      }
+    }
+
+    return implicitArrays;
+  }
+
+  /**
+   * 为隐式数组生成自动循环
+   */
+  private generateAutoLoops(
+    xml: string,
+    implicitArrays: ImplicitArray[],
+    existingLoops: LoopInfo[]
+  ): LoopInfo[] {
+    const autoLoops: LoopInfo[] = [];
+
+    for (const implicit of implicitArrays) {
+      // 检查是否已经有这个路径的循环
+      if (existingLoops.some(l => l.arrayPath === implicit.path)) {
+        continue;
+      }
+
+      // 找到包含这些标记的表格行
+      const rowPattern = /<w:tr[^>]*>([\s\S]*?)<\/w:tr>/g;
+      let match;
+      let foundRow = false;
+
+      while ((match = rowPattern.exec(xml)) !== null) {
+        const rowContent = match[0];
+        const rowStart = match.index;
+
+        // 检查行是否包含相关标记
+        if (rowContent.includes(implicit.path.replace('d.', '{d.'))) {
+          autoLoops.push({
+            arrayPath: implicit.path,
+            startPos: rowStart,
+            endPos: rowStart + rowContent.length,
+            templateUnit: rowContent,
+            depth: 1,
+            loopType: 'auto'
+          });
+          foundRow = true;
+          break;
+        }
+      }
+
+      // 如果不在表格行中，尝试段落
+      if (!foundRow) {
+        const paraPattern = /<w:p[^>]*>([\s\S]*?)<\/w:p>/g;
+        while ((match = paraPattern.exec(xml)) !== null) {
+          const paraContent = match[0];
+          const paraStart = match.index;
+
+          if (paraContent.includes(implicit.path.replace('d.', '{d.'))) {
+            autoLoops.push({
+              arrayPath: implicit.path,
+              startPos: paraStart,
+              endPos: paraStart + paraContent.length,
+              templateUnit: paraContent,
+              depth: 1,
+              loopType: 'auto'
+            });
+            break;
+          }
+        }
+      }
+    }
+
+    return autoLoops;
+  }
+
+  /**
+   * 检测标记所在容器类型
+   */
+  private detectContainer(markers: Marker[]): string {
+    // 根据标记位置推测容器类型
+    // 这里返回通用值，实际使用时可以结合XML结构分析
+    if (markers.length > 1) {
+      return 'table-row';
+    }
+    return 'paragraph';
+  }
+
+  /**
+   * 计算隐式数组检测的置信度
+   */
+  private calculateImplicitArrayConfidence(markers: Marker[], arrayData: any[]): number {
+    let confidence = 0.5;
+
+    // 标记越多，置信度越高
+    if (markers.length > 3) confidence += 0.2;
+    else if (markers.length > 1) confidence += 0.1;
+
+    // 数组元素越多，越可能是正确的
+    if (arrayData.length > 5) confidence += 0.2;
+    else if (arrayData.length > 2) confidence += 0.1;
+
+    return Math.min(confidence, 0.95);
+  }
+
+  /**
+   * 根据路径获取值
+   */
+  private getValueAtPath(data: any, path: string): any {
+    const cleanPath = path.replace(/^[dct]\./, '');
+    const parts = cleanPath.split('.');
+    let current = data;
+
+    for (const part of parts) {
+      if (current === null || current === undefined) {
+        return undefined;
+      }
+      current = current[part];
+    }
+
+    return current;
   }
 }
