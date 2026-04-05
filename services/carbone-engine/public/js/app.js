@@ -1195,15 +1195,20 @@
                 })
             });
 
-            // Use loops from API response, or fallback to structure detection
+            // Extract data from response
+            const templateConfig = identifyResult.templateConfig;
             const loops = identifyResult.loops || [];
+            const images = identifyResult.images || [];
+            const suggestions = identifyResult.suggestions || [];
+            const contextAnalysis = identifyResult.contextAnalysis;
 
-            // Render analysis result with context analysis
-            renderAIAnalysisResult(identifyResult.suggestions, loops, identifyResult.contextAnalysis);
+            // Render analysis result with all data
+            renderAIAnalysisResult(suggestions, loops, contextAnalysis, templateConfig, images);
 
-            const totalVars = identifyResult.suggestions?.length || 0;
+            const totalVars = suggestions.length;
             const totalLoops = loops.length;
-            showToast(`分析完成：发现 ${totalVars} 个变量，${totalLoops} 个循环`, 'success');
+            const totalImages = images.length;
+            showToast(`分析完成：${totalLoops}个表格循环，${totalImages}个图片循环，${totalVars}个变量`, 'success');
         } catch (error) {
             console.error('AI analysis failed:', error);
             showToast('AI 分析失败，请重试', 'error');
@@ -1251,45 +1256,82 @@
     }
 
     // Render AI analysis result in sidebar
-    function renderAIAnalysisResult(suggestions, loops, contextAnalysis) {
+    function renderAIAnalysisResult(suggestions, loops, contextAnalysis, templateConfig, images) {
         if (!elements.aiAnalysisResult || !elements.aiResultContent) return;
 
         let html = '';
 
         // Show context analysis if available
-        if (contextAnalysis) {
+        if (contextAnalysis || templateConfig) {
+            const templateType = templateConfig?.templateType || contextAnalysis?.detectedTemplateType || '通用文档';
+            const userIntent = contextAnalysis?.userIntent || '';
+
             html += `
                 <div class="ai-result-section" style="background:#e6f7ff;padding:10px;border-radius:4px;margin-bottom:12px;">
                     <h4 style="margin:0 0 8px 0;color:#1890ff;font-size:13px;">
-                        <i class="fas fa-info-circle"></i> 模板类型: ${contextAnalysis.detectedTemplateType}
+                        <i class="fas fa-info-circle"></i> 模版类型: ${templateType}
                     </h4>
-                    ${contextAnalysis.suggestedVariables?.length > 0 ? `
-                        <div style="font-size:12px;color:#666;">
-                            建议变量: ${contextAnalysis.suggestedVariables.slice(0, 5).map(v => `<code style="background:#fff;padding:1px 4px;margin:2px;border-radius:2px;">${v}</code>`).join(' ')}
-                            ${contextAnalysis.suggestedVariables.length > 5 ? `<span style="color:#999;">+${contextAnalysis.suggestedVariables.length - 5} 更多</span>` : ''}
+                    ${userIntent ? `<div style="font-size:12px;color:#666;margin-bottom:4px;">分析指令: ${userIntent}</div>` : ''}
+                    ${templateConfig?.analysisNotes?.length > 0 ? `
+                        <div style="font-size:12px;color:#52c41a;">
+                            ${templateConfig.analysisNotes.map(n => `<div>• ${n}</div>`).join('')}
                         </div>
                     ` : ''}
                 </div>
             `;
         }
 
-        // Show detected loops first
+        // Show detected table loops
         if (loops && loops.length > 0) {
-            html += '<div class="ai-result-section"><h4 style="margin-bottom:8px;color:#d46b08;"><i class="fas fa-sync"></i> 检测到的循环</h4>';
+            html += '<div class="ai-result-section"><h4 style="margin-bottom:8px;color:#d46b08;"><i class="fas fa-sync"></i> 检测到的表格循环</h4>';
             loops.forEach((loop, idx) => {
-                const rowCount = loop.rowCount || loop.tableRows?.length - 1 || 0;
+                const rowCount = loop.dataRowCount || loop.rowCount || 0;
                 html += `
                     <div class="ai-result-loop">
                         <div class="ai-result-loop-header">
                             <code>{#${loop.arrayPath}}</code>
                             ${loop.confidence ? `<span class="badge badge-info" style="font-size:10px;">${Math.round(loop.confidence * 100)}%</span>` : ''}
                         </div>
-                        <div style="font-size:12px;color:#666;">
+                        <div style="font-size:12px;color:#666;margin-bottom:4px;">
                             表格 ${idx + 1}: ${loop.headerRow?.substring(0, 40) || '数据表格'}...
                             <br>数据行: ${rowCount} 行
                         </div>
+                        ${loop.columnMappings && loop.columnMappings.length > 0 ? `
+                            <div style="font-size:11px;color:#999;margin-bottom:4px;">
+                                列映射: ${loop.columnMappings.slice(0, 3).map(c => `<code style="background:#f0f0f0;padding:1px 3px;margin:1px;">${c.headerName}→{${c.variablePath}}</code>`).join(' ')}
+                                ${loop.columnMappings.length > 3 ? `<span>+${loop.columnMappings.length - 3}更多</span>` : ''}
+                            </div>
+                        ` : ''}
+                        <div style="font-size:11px;color:#999;margin-bottom:4px;">
+                            ${loop.reason}
+                        </div>
                         <button class="btn btn-outline btn-sm ai-apply-btn" data-type="loop" data-path="${loop.arrayPath}">
                             应用循环
+                        </button>
+                    </div>
+                `;
+            });
+            html += '</div>';
+        }
+
+        // Show detected image loops
+        if (images && images.length > 0) {
+            html += '<div class="ai-result-section"><h4 style="margin-bottom:8px;color:#722ed1;"><i class="fas fa-images"></i> 检测到的图片循环</h4>';
+            images.forEach((img, idx) => {
+                html += `
+                    <div class="ai-result-item" style="background:#f9f0ff;">
+                        <div class="ai-result-variable">
+                            <code>{#${img.arrayPath}}</code>
+                            <span class="badge badge-info" style="font-size:10px;">图片</span>
+                        </div>
+                        <div style="font-size:12px;color:#666;">
+                            图片 ${idx + 1}: ${img.altText?.substring(0, 30) || 'Image'}...
+                        </div>
+                        <div style="font-size:11px;color:#999;margin-bottom:4px;">
+                            ${img.reason}
+                        </div>
+                        <button class="btn btn-outline btn-sm ai-apply-btn" data-type="imageLoop" data-path="${img.arrayPath}">
+                            应用图片循环
                         </button>
                     </div>
                 `;
@@ -1310,6 +1352,9 @@
                         <div style="font-size:12px;color:#666;margin-bottom:4px;">
                             "${s.content?.substring(0, 30) || ''}${s.content?.length > 30 ? '...' : ''}"
                         </div>
+                        <div style="font-size:11px;color:#999;margin-bottom:4px;">
+                            ${s.reason || ''}
+                        </div>
                         <button class="btn btn-outline btn-sm ai-apply-btn" data-type="variable" data-path="${s.path}" data-content="${s.content || ''}">
                             应用变量
                         </button>
@@ -1323,7 +1368,7 @@
         }
 
         if (html === '') {
-            html = '<div style="text-align:center;color:#999;padding:20px;">未检测到明显的变量或循环</div>';
+            html = '<div style="text-align:center;color:#999;padding:20px;">未检测到明显的变量或循环结构</div>';
         }
 
         elements.aiResultContent.innerHTML = html;

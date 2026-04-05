@@ -531,10 +531,19 @@ export class StudioController {
     }
 
     try {
+      // 先获取文档结构（如果是DOCX）
+      let documentStructure = undefined;
+      if (meta.format === 'docx') {
+        const buffer = fs.readFileSync(templatePath);
+        documentStructure = await this.documentStructureService.parseDocx(buffer);
+      }
+
+      // 传递文档结构给AI分析服务
       const result = await this.aiIdentifierService.identifyVariables(
         templatePath,
         meta.format,
-        dto.context
+        dto.context,
+        documentStructure
       );
       return result;
     } catch (error: unknown) {
