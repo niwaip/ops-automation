@@ -1152,6 +1152,42 @@ body {
     background: #f0f0f0;
 }
 
+.structure-node.image-node {
+    background: #e6f7ff;
+    border-left: 3px solid #1890ff;
+}
+
+.structure-node.image-node:hover {
+    background: #bae7ff;
+}
+
+.structure-node.list-node {
+    background: #f9f0ff;
+    border-left: 3px solid #722ed1;
+}
+
+.structure-node.list-node:hover {
+    background: #efdbff;
+}
+
+.structure-node.heading-node {
+    background: #fff2e8;
+    border-left: 3px solid #fa8c16;
+}
+
+.structure-node.heading-node:hover {
+    background: #ffd8bf;
+}
+
+.structure-node.title-node {
+    background: #fff1f0;
+    border-left: 3px solid #f5222d;
+}
+
+.structure-node.title-node:hover {
+    background: #ffccc7;
+}
+
 .node-tag {
     color: #22863a;
     font-weight: 500;

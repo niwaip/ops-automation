@@ -1339,6 +1339,23 @@
             // 检查是否是段落元素 (w:p) - 不在表格单元格内
             else if (tagName.includes('p') && !tagName.includes('pPr')) {
                 const text = extractElementText(child);
+
+                // 检查段落中是否有图片 (drawing 元素)
+                const drawingElements = child.getElementsByTagNameNS('*', 'drawing');
+                if (drawingElements.length > 0) {
+                    // 添加图片元素
+                    for (let d = 0; d < drawingElements.length; d++) {
+                        structure.orderedElements.push({
+                            type: 'image',
+                            element: drawingElements[d],
+                            orderIndex: structure.orderedElements.length,
+                            text: '[图片]',
+                            hasPreserve: false
+                        });
+                    }
+                }
+
+                // 如果段落有文本，也添加段落
                 if (text.trim()) {
                     structure.orderedElements.push({
                         type: 'paragraph',
@@ -1379,12 +1396,30 @@
 
         // 使用后端API返回的结构化数据来丰富表格信息
         const apiTables = state.documentElements.filter(el => el.type === 'table');
+        const apiImages = state.documentElements.filter(el => el.type === 'image');
         let tableIndex = 0;
 
         // 遍历body下的所有直接子元素，按文档顺序收集
         const body = xmlDoc.getElementsByTagNameNS('*', 'body')[0];
         if (body) {
-            collectElementsInOrder(body, state.xmlStructure, apiTables);
+            collectElementsInOrder(body, state.xmlStructure, apiTables, tableIndex);
+        }
+
+        // 合并后端API返回的图片数据到orderedElements
+        if (apiImages.length > 0) {
+            // 找到orderedElements中的图片元素并更新数据
+            const imageElements = state.xmlStructure.orderedElements.filter(el => el.type === 'image');
+            imageElements.forEach((imgEl, idx) => {
+                const apiImage = apiImages[idx];
+                if (apiImage) {
+                    imgEl.imageId = apiImage.imageId;
+                    imgEl.text = apiImage.text;
+                    imgEl.altText = apiImage.altText;
+                    imgEl.attributes = apiImage.attributes;
+                    imgEl.imageWidth = apiImage.imageWidth;
+                    imgEl.imageHeight = apiImage.imageHeight;
+                }
+            });
         }
 
         // 更新tables数组（保持兼容）
@@ -1504,6 +1539,38 @@
                     html += `<div class="structure-node paragraph-node ${preserveClass}" data-type="paragraph" data-order-index="${el.orderIndex}">
                         <span class="node-tag">&lt;w:p&gt;</span>
                         ${el.hasPreserve ? '<span class="node-preserve">preserve</span>' : ''}
+                        <span class="node-text">${escapeHtml(text)}</span>
+                    </div>`;
+                } else if (el.type === 'image') {
+                    // 图片节点
+                    const sizeInfo = el.attributes?.widthPx ? `${el.attributes.widthPx}×${el.attributes.heightPx}px` : '';
+                    html += `<div class="structure-node image-node ${preserveClass}" data-type="image" data-order-index="${el.orderIndex}" data-image-id="${el.imageId || ''}">
+                        <span class="node-label">🖼️ 图片</span>
+                        ${el.imageId ? `<span class="node-attr">id="${el.imageId}"</span>` : ''}
+                        ${sizeInfo ? `<span class="node-attr">${sizeInfo}</span>` : ''}
+                        <span class="node-text">${escapeHtml(el.altText || el.text || '')}</span>
+                    </div>`;
+                } else if (el.type === 'list') {
+                    // 列表节点
+                    const text = el.text.substring(0, 80) + (el.text.length > 80 ? '...' : '');
+                    html += `<div class="structure-node list-node ${preserveClass}" data-type="list" data-order-index="${el.orderIndex}">
+                        <span class="node-label">📝 列表项</span>
+                        ${el.hasPreserve ? '<span class="node-preserve">preserve</span>' : ''}
+                        <span class="node-text">${escapeHtml(text)}</span>
+                    </div>`;
+                } else if (el.type === 'heading1' || el.type === 'heading2' || el.type === 'heading3') {
+                    // 标题节点
+                    const level = el.type.replace('heading', '');
+                    const text = el.text.substring(0, 80) + (el.text.length > 80 ? '...' : '');
+                    html += `<div class="structure-node heading-node ${preserveClass}" data-type="${el.type}" data-order-index="${el.orderIndex}">
+                        <span class="node-label">📌 H${level}</span>
+                        <span class="node-text">${escapeHtml(text)}</span>
+                    </div>`;
+                } else if (el.type === 'title') {
+                    // 标题节点
+                    const text = el.text.substring(0, 80) + (el.text.length > 80 ? '...' : '');
+                    html += `<div class="structure-node title-node ${preserveClass}" data-type="title" data-order-index="${el.orderIndex}">
+                        <span class="node-label">🏷️ 标题</span>
                         <span class="node-text">${escapeHtml(text)}</span>
                     </div>`;
                 }

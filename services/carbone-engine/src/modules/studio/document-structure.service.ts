@@ -21,7 +21,7 @@ export interface TableRow {
 
 export interface DocumentElement {
   id: string;
-  type: 'title' | 'heading1' | 'heading2' | 'heading3' | 'paragraph' | 'table' | 'list' | 'image';
+  type: 'title' | 'heading1' | 'heading2' | 'heading3' | 'paragraph' | 'table' | 'list' | 'image' | 'chart' | 'textbox';
   content: string;
   text: string;
   xpath: string;
@@ -34,6 +34,12 @@ export interface DocumentElement {
   tableRows?: TableRow[];
   headerRow?: string;
   dataRows?: string[];
+  // 图片特定属性
+  imageId?: string;        // relationship ID (rId)
+  imageWidth?: number;     // EMUs (English Metric Units)
+  imageHeight?: number;    // EMUs
+  imageName?: string;      // image filename in media folder
+  altText?: string;        // alternative text/description
 }
 
 export interface DocumentStructure {
@@ -164,9 +170,17 @@ export class DocumentStructureParser {
       // 遍历body下的所有元素
       for (const [key, value] of Object.entries(body)) {
         if (key === 'w:p') {
-          // 段落元素
+          // 段落元素（可能包含文本和图片）
           const paragraphs = Array.isArray(value) ? value : [value];
           for (const p of paragraphs) {
+            // 先提取段落中的图片
+            const imageElements = this.extractImagesFromParagraph(p, elementIndex);
+            for (const imgEl of imageElements) {
+              elements.push(imgEl);
+              elementIndex++;
+            }
+
+            // 再解析段落文本
             const element = this.parseParagraph(p, styles, elementIndex);
             if (element) {
               elements.push(element);
@@ -195,13 +209,13 @@ export class DocumentStructureParser {
   }
 
   /**
-   * 解析段落元素
+   * 解析段落元素（仅处理文本内容）
    */
   private parseParagraph(p: any, styles: Record<string, string>, index: number): DocumentElement | null {
     // 提取文本内容
     const text = this.extractParagraphText(p);
     if (!text.trim()) {
-      return null; // 跳过空段落
+      return null; // 跳过空段落（可能只有图片，图片已在parseDocumentXml中单独提取）
     }
 
     // 获取段落样式
@@ -231,6 +245,92 @@ export class DocumentStructureParser {
       index,
       style: styleName || styleId,
     };
+  }
+
+  /**
+   * 从段落中提取图片元素
+   */
+  private extractImagesFromParagraph(p: any, startIndex: number): DocumentElement[] {
+    const images: DocumentElement[] = [];
+    const runs = p?.['w:r'] || [];
+    const runList = Array.isArray(runs) ? runs : [runs];
+    let imageIndex = 0;
+
+    for (const run of runList) {
+      // 检查是否有drawing元素
+      const drawing = run?.['w:drawing'];
+      if (drawing) {
+        const imageElement = this.parseDrawing(drawing, startIndex + imageIndex);
+        if (imageElement) {
+          images.push(imageElement);
+          imageIndex++;
+        }
+      }
+    }
+
+    return images;
+  }
+
+  /**
+   * 解析drawing元素，提取图片信息
+   */
+  private parseDrawing(drawing: any, index: number): DocumentElement | null {
+    try {
+      // drawing可以包含inline或anchor
+      const inline = drawing?.['wp:inline'] || drawing?.['wp:anchor'];
+      if (!inline) return null;
+
+      // 获取图片尺寸 (wp:extent)
+      const extent = inline?.['wp:extent'];
+      const width = extent?.['$']?.['cx'] ? parseInt(extent['$']['cx'], 10) :
+                    extent?.['cx'] ? parseInt(extent['cx'], 10) : 0;
+      const height = extent?.['$']?.['cy'] ? parseInt(extent['$']['cy'], 10) :
+                     extent?.['cy'] ? parseInt(extent['cy'], 10) : 0;
+
+      // 获取图片引用 (a:blip中的r:embed或r:link)
+      const graphic = inline?.['a:graphic'];
+      const graphicData = graphic?.['a:graphicData'];
+      const pic = graphicData?.['pic:pic'];
+      const blipFill = pic?.['pic:blipFill'];
+      const blip = blipFill?.['a:blip'];
+
+      // 检查r:embed或r:link属性（属性可能在$对象中或直接在元素上）
+      const imageId = blip?.['$']?.['r:embed'] || blip?.['$']?.['r:link'] ||
+                      blip?.['r:embed'] || blip?.['r:link'] || '';
+
+      if (!imageId) return null;
+
+      // 获取替代文本（docPr中的descr或title）
+      const docPr = inline?.['wp:docPr'];
+      const altText = docPr?.['$']?.['descr'] || docPr?.['$']?.['title'] ||
+                     docPr?.['descr'] || docPr?.['title'] || '';
+      const name = docPr?.['$']?.['name'] || docPr?.['name'] || '';
+
+      // 转换EMU到像素 (EMU = 914400 / inch, 1 inch ≈ 96 pixels for screen)
+      const widthPx = Math.round(width / 914400 * 96);
+      const heightPx = Math.round(height / 914400 * 96);
+
+      return {
+        id: `image-${index}`,
+        type: 'image',
+        content: `[图片] ${altText || name || imageId}`,
+        text: `[图片] ${altText || name || 'Image ' + imageId}`,
+        xpath: `/w:document/w:body/w:p/w:r/w:drawing[${index}]`,
+        index,
+        attributes: {
+          widthPx: String(widthPx),
+          heightPx: String(heightPx),
+        },
+        imageId,
+        imageWidth: width,
+        imageHeight: height,
+        imageName: '', // 需要从rels文件获取实际文件名
+        altText: altText || name,
+      };
+    } catch (e) {
+      console.warn('Failed to parse drawing element:', e);
+      return null;
+    }
   }
 
   /**
