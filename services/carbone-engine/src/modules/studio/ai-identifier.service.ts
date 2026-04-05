@@ -61,8 +61,18 @@ export interface ImageLoop {
 export interface VariableMapping {
   path: string;
   content: string;
-  type: 'text' | 'number' | 'date' | 'image';
+  type: 'text' | 'number' | 'date' | 'image' | 'heading';
   reason: string;
+}
+
+/**
+ * 内容模式识别结果
+ */
+export interface ContentPattern {
+  type: 'heading' | 'table' | 'image' | 'step' | 'summary';
+  matched: boolean;
+  extractedValue?: string;
+  arrayPath?: string;
 }
 
 export interface AIIdentifyResponse {
@@ -143,9 +153,9 @@ export class AIIdentifierService {
    */
   private parseUserContext(context: string): UserIntent {
     const intent: UserIntent = {
-      preserveTitles: false,
-      preserveHeadings: false,
-      tableLoops: true,      // 默认启用表格循环
+      preserveTitles: true,     // 默认保留标题
+      preserveHeadings: true,   // 默认保留标题
+      tableLoops: true,         // 默认启用表格循环
       imageLoops: false,
       customLoops: [],
       summary: context || '通用模版分析'
@@ -153,11 +163,18 @@ export class AIIdentifierService {
 
     const lowerContext = context.toLowerCase();
 
-    // 检测保留标题的意图
+    // 检测保留标题的意图（默认保留，除非明确要求替换）
     if (lowerContext.includes('保留title') ||
         lowerContext.includes('保留标题') ||
         lowerContext.includes('keep title')) {
       intent.preserveTitles = true;
+    }
+
+    // 如果要求标题也作为参数
+    if (lowerContext.includes('标题参数') ||
+        lowerContext.includes('title参数') ||
+        lowerContext.includes('替换标题')) {
+      intent.preserveTitles = false;
     }
 
     // 检测保留标题的意图
@@ -179,8 +196,8 @@ export class AIIdentifierService {
         lowerContext.includes('image loop') ||
         lowerContext.includes('循环图片') ||
         lowerContext.includes('screenshot') ||
-        lowerContext.includes('图片') && lowerContext.includes('循环') ||
-        lowerContext.includes('image') && lowerContext.includes('loop')) {
+        (lowerContext.includes('图片') && lowerContext.includes('循环')) ||
+        (lowerContext.includes('image') && lowerContext.includes('loop'))) {
       intent.imageLoops = true;
     }
 
@@ -194,6 +211,58 @@ export class AIIdentifierService {
     }
 
     return intent;
+  }
+
+  /**
+   * 分析内容模式 - 识别标题、表格、截图等模式
+   */
+  private analyzeContentPattern(text: string): ContentPattern {
+    // 识别标题模式: ### 自动化操作执行总结
+    if (/^#{1,6}\s+/.test(text) || /^(Step\s*\d+[:：])/i.test(text)) {
+      return {
+        type: 'heading',
+        matched: true,
+        extractedValue: text.replace(/^#{1,6}\s+/, '').trim()
+      };
+    }
+
+    // 识别步骤模式: Step 3: screenshot + 图片
+    const stepMatch = text.match(/Step\s*(\d+)[:：]\s*(.+)/i);
+    if (stepMatch) {
+      return {
+        type: 'step',
+        matched: true,
+        extractedValue: stepMatch[2].trim(),
+        arrayPath: 'd.steps'
+      };
+    }
+
+    // 识别图片/截图模式
+    if (text.toLowerCase().includes('screenshot') ||
+        text.includes('截图') ||
+        text.includes('图片')) {
+      return {
+        type: 'image',
+        matched: true,
+        extractedValue: text
+      };
+    }
+
+    // 识别总结模式
+    if (text.includes('总结') ||
+        text.includes('执行上下文') ||
+        text.includes('日志')) {
+      return {
+        type: 'summary',
+        matched: true,
+        extractedValue: text
+      };
+    }
+
+    return {
+      type: 'heading',
+      matched: false
+    };
   }
 
   /**
@@ -211,20 +280,62 @@ export class AIIdentifierService {
 
     // 分析静态元素（需要保留的标题等）
     for (const el of elements) {
+      // 标题 - 默认保留作为静态内容
       if (el.type === 'title' && userIntent.preserveTitles) {
         config.staticElements.push({
           type: 'title',
           content: el.text,
           reason: '文档标题，保留作为静态内容'
         });
+        continue; // 不作为变量处理
       }
-      if ((el.type === 'heading1' || el.type === 'heading2' || el.type === 'heading3') &&
-          userIntent.preserveHeadings) {
-        config.staticElements.push({
-          type: 'heading',
-          content: el.text,
-          reason: '章节标题，保留作为静态内容'
-        });
+
+      // 标题级别 - 分析内容模式
+      if (el.type === 'heading1' || el.type === 'heading2' || el.type === 'heading3') {
+        const pattern = this.analyzeContentPattern(el.text);
+
+        if (pattern.matched && pattern.type === 'heading') {
+          // 普通标题，保留
+          if (userIntent.preserveHeadings) {
+            config.staticElements.push({
+              type: 'heading',
+              content: el.text,
+              reason: '章节标题，保留作为静态内容'
+            });
+          }
+        } else if (pattern.matched && pattern.type === 'step') {
+          // 步骤标题，可能是动态内容
+          config.variableMappings.push({
+            path: 'd.steps[].title',
+            content: el.text,
+            type: 'heading',
+            reason: '检测到步骤标题模式，建议作为动态内容'
+          });
+        }
+        continue;
+      }
+
+      // 段落 - 分析是否需要变量化
+      if (el.type === 'paragraph') {
+        const pattern = this.analyzeContentPattern(el.text);
+
+        if (pattern.matched && pattern.type === 'summary') {
+          // 总结/日志类内容，建议变量化
+          config.variableMappings.push({
+            path: 'd.summary',
+            content: el.text,
+            type: 'text',
+            reason: '检测到总结/日志内容，建议作为变量'
+          });
+        } else if (pattern.matched && pattern.type === 'step') {
+          // 步骤描述
+          config.variableMappings.push({
+            path: 'd.steps[].description',
+            content: el.text,
+            type: 'text',
+            reason: '检测到步骤描述模式'
+          });
+        }
       }
     }
 
