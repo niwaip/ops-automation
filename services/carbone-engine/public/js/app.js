@@ -12,7 +12,9 @@
         formatters: [],
         manualMarkings: [],
         currentZoom: 1,
-        documentElements: []
+        documentElements: [],
+        sourceXml: '',
+        currentTab: 'preview'
     };
 
     // DOM Elements
@@ -53,6 +55,15 @@
         elements.suggestionsCount = document.getElementById('suggestions-count');
         elements.documentElementsList = document.getElementById('document-elements-list');
         elements.elementsCount = document.getElementById('elements-count');
+        // Tab elements
+        elements.tabPreview = document.getElementById('tab-preview');
+        elements.tabSource = document.getElementById('tab-source');
+        elements.previewTabContent = document.getElementById('preview-tab-content');
+        elements.sourceTabContent = document.getElementById('source-tab-content');
+        elements.sourceCode = document.getElementById('source-code');
+        elements.sourceFileSelect = document.getElementById('source-file-select');
+        elements.copySourceBtn = document.getElementById('copy-source-btn');
+        elements.formatSourceBtn = document.getElementById('format-source-btn');
     }
 
     // Utility Functions
@@ -187,10 +198,18 @@
 
     function selectTemplate(template) {
         state.selectedTemplate = template;
+        state.sourceXml = ''; // Clear cached source
+        state.currentTab = 'preview'; // Reset to preview tab
         renderTemplateList();
 
         elements.noTemplate.style.display = 'none';
         elements.templateEditor.style.display = 'flex';
+
+        // Reset tab state
+        elements.tabPreview.classList.add('active');
+        elements.tabSource.classList.remove('active');
+        elements.previewTabContent.classList.add('active');
+        elements.sourceTabContent.classList.remove('active');
 
         // Update header
         elements.templateName.textContent = template.fileName;
@@ -863,6 +882,15 @@
         elements.applyMarking.addEventListener('click', applyManualMarking);
         elements.clearSelection.addEventListener('click', hideSelectionSection);
 
+        // Tab switching
+        elements.tabPreview.addEventListener('click', () => switchTab('preview'));
+        elements.tabSource.addEventListener('click', () => switchTab('source'));
+
+        // Source toolbar
+        elements.copySourceBtn.addEventListener('click', copySourceToClipboard);
+        elements.formatSourceBtn.addEventListener('click', formatSourceXml);
+        elements.sourceFileSelect.addEventListener('change', loadSelectedSourceFile);
+
         // Modal
         document.querySelector('.modal-close').addEventListener('click', closeModal);
         document.querySelector('.modal-cancel')?.addEventListener('click', closeModal);
@@ -872,6 +900,121 @@
 
         // Resize handle
         initResizeHandle();
+    }
+
+    // Tab Switching Functions
+    function switchTab(tabName) {
+        state.currentTab = tabName;
+
+        // Update tab buttons
+        elements.tabPreview.classList.toggle('active', tabName === 'preview');
+        elements.tabSource.classList.toggle('active', tabName === 'source');
+
+        // Update tab content
+        elements.previewTabContent.classList.toggle('active', tabName === 'preview');
+        elements.sourceTabContent.classList.toggle('active', tabName === 'source');
+
+        // Load source if switching to source tab
+        if (tabName === 'source' && !state.sourceXml && state.selectedTemplate) {
+            loadSourceXml();
+        }
+    }
+
+    async function loadSourceXml() {
+        if (!state.selectedTemplate) return;
+
+        try {
+            const result = await apiRequest(`/templates/${state.selectedTemplate.id}/preview-source`);
+            state.sourceXml = result.content;
+
+            // Display with basic syntax highlighting
+            displaySourceXml(result.content);
+
+        } catch (error) {
+            console.error('Failed to load source:', error);
+            elements.sourceCode.innerHTML = '<code style="color:red;">Failed to load source XML</code>';
+        }
+    }
+
+    function displaySourceXml(xml) {
+        // Basic XML syntax highlighting
+        let highlighted = escapeHtml(xml);
+
+        // Highlight tags
+        highlighted = highlighted.replace(/&lt;(\/?[\w:]+)/g, '&lt;<span class="hljs-tag">$1</span>');
+        highlighted = highlighted.replace(/([\w:]+)=/g, '<span class="hljs-attr">$1</span>=');
+        highlighted = highlighted.replace(/"([^"]*)"/g, '"<span class="hljs-string">$1</span>"');
+
+        elements.sourceCode.innerHTML = `<code class="xml">${highlighted}</code>`;
+    }
+
+    function escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+
+    function copySourceToClipboard() {
+        if (!state.sourceXml) {
+            showToast('No source to copy', 'warning');
+            return;
+        }
+
+        navigator.clipboard.writeText(state.sourceXml).then(() => {
+            showToast('Source copied to clipboard', 'success');
+        }).catch(err => {
+            console.error('Copy failed:', err);
+            showToast('Failed to copy', 'error');
+        });
+    }
+
+    function formatSourceXml() {
+        if (!state.sourceXml) {
+            showToast('No source to format', 'warning');
+            return;
+        }
+
+        try {
+            // Simple XML formatting
+            let formatted = state.sourceXml;
+            let indent = 0;
+            const lines = [];
+
+            // Add newlines after > and before <
+            formatted = formatted.replace(/></g, '>\n<');
+
+            // Process each line
+            formatted.split('\n').forEach(line => {
+                line = line.trim();
+                if (!line) return;
+
+                // Decrease indent for closing tags
+                if (line.startsWith('</')) {
+                    indent = Math.max(0, indent - 1);
+                }
+
+                lines.push('  '.repeat(indent) + line);
+
+                // Increase indent for opening tags (not self-closing)
+                if (line.startsWith('<') && !line.startsWith('</') && !line.endsWith('/>') && !line.match(/<.*\/>/)) {
+                    indent++;
+                }
+            });
+
+            displaySourceXml(lines.join('\n'));
+            showToast('XML formatted', 'success');
+
+        } catch (err) {
+            console.error('Format failed:', err);
+            showToast('Failed to format XML', 'error');
+        }
+    }
+
+    async function loadSelectedSourceFile() {
+        const selectedFile = elements.sourceFileSelect.value;
+        // For now, only document.xml is supported
+        // Future: add support for other files
+        await loadSourceXml();
     }
 
     function initResizeHandle() {

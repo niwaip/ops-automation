@@ -69,6 +69,16 @@
                                 <span id="template-format" class="badge">DOCX</span>
                             </span>
                             <div class="panel-tools">
+                                <!-- Tab buttons -->
+                                <div class="preview-tabs">
+                                    <button id="tab-preview" class="tab-btn active" title="Preview">
+                                        <i class="fas fa-eye"></i> Preview
+                                    </button>
+                                    <button id="tab-source" class="tab-btn" title="View XML Source">
+                                        <i class="fas fa-code"></i> Source
+                                    </button>
+                                </div>
+                                <span class="toolbar-divider"></span>
                                 <button id="zoom-out" class="btn btn-icon" title="Zoom Out">
                                     <i class="fas fa-search-minus"></i>
                                 </button>
@@ -79,8 +89,28 @@
                             </div>
                         </div>
                         <div class="panel-body">
-                            <div id="preview-container" class="preview-container">
-                                <iframe id="preview-iframe" sandbox="allow-same-origin allow-scripts" frameborder="0"></iframe>
+                            <!-- Preview Tab Content -->
+                            <div id="preview-tab-content" class="preview-tab-content active">
+                                <div id="preview-container" class="preview-container">
+                                    <iframe id="preview-iframe" sandbox="allow-same-origin allow-scripts" frameborder="0"></iframe>
+                                </div>
+                            </div>
+                            <!-- Source Tab Content -->
+                            <div id="source-tab-content" class="preview-tab-content">
+                                <div class="source-toolbar">
+                                    <select id="source-file-select">
+                                        <option value="document.xml">word/document.xml</option>
+                                    </select>
+                                    <button id="copy-source-btn" class="btn btn-outline btn-sm" title="Copy to clipboard">
+                                        <i class="fas fa-copy"></i> Copy
+                                    </button>
+                                    <button id="format-source-btn" class="btn btn-outline btn-sm" title="Format XML">
+                                        <i class="fas fa-indent"></i> Format
+                                    </button>
+                                </div>
+                                <div class="source-container">
+                                    <pre id="source-code"><code class="xml"></code></pre>
+                                </div>
                             </div>
                         </div>
                     </div>
