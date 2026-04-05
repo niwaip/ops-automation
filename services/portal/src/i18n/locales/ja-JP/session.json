@@ -45,5 +45,10 @@
   "suggestions": "提案",
   "executeSession": "セッション実行",
   "startSuccess": "セッションが開始されました",
-  "startFailed": "セッション開始失敗"
+  "startFailed": "セッション開始失敗",
+  "generateReport": "レポート生成",
+  "selectTemplate": "レポートテンプレート選択",
+  "selectTemplatePlaceholder": "レポートテンプレートを選択",
+  "noTemplates": "利用可能なレポートテンプレートがありません",
+  "createTemplate": "テンプレートを作成"
 }

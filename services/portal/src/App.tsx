@@ -11,6 +11,11 @@ import TemplateDetailPage from './pages/TemplateDetailPage';
 import RecorderPage from './pages/RecorderPage';
 import UserAdminPage from './pages/admin/UserAdminPage';
 import AIModelAdminPage from './pages/admin/AIModelAdminPage';
+import ReportTemplateListPage from './pages/ReportTemplateListPage';
+import ReportTemplateDetailPage from './pages/ReportTemplateDetailPage';
+import ReportTemplateCreatePage from './pages/ReportTemplateCreatePage';
+import ReportListPage from './pages/ReportListPage';
+import ReportDetailPage from './pages/ReportDetailPage';
 
 const PrivateRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { isAuthenticated } = useAuthStore();
@@ -49,6 +54,12 @@ function App() {
           <Route path="templates" element={<TemplateListPage />} />
           <Route path="templates/:id" element={<TemplateDetailPage />} />
           <Route path="recorder" element={<RecorderPage />} />
+          <Route path="report-templates" element={<ReportTemplateListPage />} />
+          <Route path="report-templates/new" element={<ReportTemplateCreatePage />} />
+          <Route path="report-templates/:id" element={<ReportTemplateDetailPage />} />
+          <Route path="report-templates/:id/edit" element={<ReportTemplateCreatePage />} />
+          <Route path="reports" element={<ReportListPage />} />
+          <Route path="reports/:id" element={<ReportDetailPage />} />
           <Route
             path="admin/users"
             element={

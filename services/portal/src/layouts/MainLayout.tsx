@@ -15,6 +15,8 @@ import {
   SunOutlined,
   MoonOutlined,
   PlusCircleOutlined,
+  FilePdfOutlined,
+  BarChartOutlined,
 } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
 import { useAuthStore } from '../store/authStore';
@@ -53,6 +55,16 @@ const MainLayout: React.FC = () => {
       key: '/templates',
       icon: <FileTextOutlined />,
       label: t('templates'),
+    },
+    {
+      key: '/report-templates',
+      icon: <FilePdfOutlined />,
+      label: t('reportTemplates'),
+    },
+    {
+      key: '/reports',
+      icon: <BarChartOutlined />,
+      label: t('reports'),
     },
     {
       key: '/recorder',
@@ -121,6 +133,8 @@ const MainLayout: React.FC = () => {
     if (path === '/sessions/new') return '/sessions/new';
     if (path.startsWith('/sessions')) return '/sessions';
     if (path.startsWith('/templates')) return '/templates';
+    if (path.startsWith('/report-templates')) return '/report-templates';
+    if (path.startsWith('/reports')) return '/reports';
     if (path.startsWith('/admin/users')) return '/admin/users';
     if (path.startsWith('/admin/models')) return '/admin/models';
     return path;
