@@ -96,11 +96,34 @@ async function executeActions(actions, sessionId) {
           result.success = true;
           result.message = `Scrolled ${direction} ${amount}px`;
         } else if (actionType === 'screenshot') {
-          const path = `/tmp/codegen/${sessionId}_step${stepNum}.png`;
-          const screenshotBuffer = await page.screenshot({ path, type: 'png' });
+          const path = `/tmp/codegen/${sessionId}_step${stepNum}.${action.format || 'png'}`;
+          // 支持压缩参数：format (png/jpeg), quality (0-100, 仅jpeg有效), scale (0.1-1.0)
+          const screenshotOptions = {
+            path,
+            type: action.format || 'png',
+            fullPage: action.full_page !== true, // 默认只截可视区域
+          };
+          // JPEG 格式可以设置质量参数来压缩
+          if (screenshotOptions.type === 'jpeg' && action.quality) {
+            screenshotOptions.quality = Math.min(100, Math.max(0, parseInt(action.quality) || 80));
+          }
+          // 如果指定了 scale，通过调整视窗大小来间接控制分辨率
+          if (action.scale && parseFloat(action.scale) < 1) {
+            const scale = parseFloat(action.scale);
+            const originalViewport = page.viewportSize();
+            await page.setViewportSize({
+              width: Math.round(originalViewport.width * scale),
+              height: Math.round(originalViewport.height * scale)
+            });
+          }
+          const screenshotBuffer = await page.screenshot(screenshotOptions);
           result.success = true;
           result.message = `Screenshot saved to ${path}`;
           result.screenshot = screenshotBuffer.toString('base64');
+          // 恢复原始视窗大小
+          if (action.scale && parseFloat(action.scale) < 1) {
+            await page.setViewportSize({ width: 1920, height: 1080 });
+          }
         } else if (actionType === 'get_text' || actionType === 'getText') {
           const selector = action.selector || action.target || 'body';
           const text = await page.locator(selector).textContent({ timeout: 10000 });
@@ -131,13 +154,35 @@ async function executeActions(actions, sessionId) {
           }
         } else if (actionType === 'snapshot') {
           // Take screenshot and get page content
-          const path = `/tmp/codegen/${sessionId}_step${stepNum}.png`;
-          const screenshotBuffer = await page.screenshot({ path, type: 'png' });
+          const format = action.format || 'png';
+          const path = `/tmp/codegen/${sessionId}_step${stepNum}.${format}`;
+          // 支持压缩参数
+          const screenshotOptions = {
+            path,
+            type: format,
+            fullPage: action.full_page !== true,
+          };
+          if (screenshotOptions.type === 'jpeg' && action.quality) {
+            screenshotOptions.quality = Math.min(100, Math.max(0, parseInt(action.quality) || 80));
+          }
+          if (action.scale && parseFloat(action.scale) < 1) {
+            const scale = parseFloat(action.scale);
+            const originalViewport = page.viewportSize();
+            await page.setViewportSize({
+              width: Math.round(originalViewport.width * scale),
+              height: Math.round(originalViewport.height * scale)
+            });
+          }
+          const screenshotBuffer = await page.screenshot(screenshotOptions);
           const html = await page.content();
           result.success = true;
           result.message = `Snapshot taken`;
           result.screenshot = screenshotBuffer.toString('base64');
           result.html = html;
+          // 恢复原始视窗大小
+          if (action.scale && parseFloat(action.scale) < 1) {
+            await page.setViewportSize({ width: 1920, height: 1080 });
+          }
         } else {
           result.message = `Unknown action type: ${actionType}`;
         }
