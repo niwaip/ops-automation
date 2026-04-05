@@ -75,6 +75,11 @@
         elements.showPreserve = document.getElementById('show-preserve');
         elements.showTables = document.getElementById('show-tables');
         elements.showParagraphs = document.getElementById('show-paragraphs');
+        // AI Analysis elements
+        elements.aiContextInput = document.getElementById('ai-context-input');
+        elements.aiAnalyzeBtn = document.getElementById('ai-analyze-btn');
+        elements.aiAnalysisResult = document.getElementById('ai-analysis-result');
+        elements.aiResultContent = document.getElementById('ai-result-content');
     }
 
     // Utility Functions
@@ -1167,6 +1172,233 @@
         }
     }
 
+    // Advanced AI Analysis with user context
+    async function performAIAnalysis() {
+        if (!state.selectedTemplate) {
+            showToast('请先选择一个模板', 'warning');
+            return;
+        }
+
+        const userContext = elements.aiContextInput?.value || '';
+
+        // Disable button and show loading
+        elements.aiAnalyzeBtn.disabled = true;
+        elements.aiAnalyzeBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 分析中...';
+
+        try {
+            // Call AI identify with enhanced context
+            const identifyResult = await apiRequest(`/templates/${state.selectedTemplate.id}/ai-identify`, {
+                method: 'POST',
+                body: JSON.stringify({
+                    templateId: state.selectedTemplate.id,
+                    context: userContext
+                })
+            });
+
+            // Use loops from API response, or fallback to structure detection
+            const loops = identifyResult.loops || [];
+
+            // Render analysis result with context analysis
+            renderAIAnalysisResult(identifyResult.suggestions, loops, identifyResult.contextAnalysis);
+
+            const totalVars = identifyResult.suggestions?.length || 0;
+            const totalLoops = loops.length;
+            showToast(`分析完成：发现 ${totalVars} 个变量，${totalLoops} 个循环`, 'success');
+        } catch (error) {
+            console.error('AI analysis failed:', error);
+            showToast('AI 分析失败，请重试', 'error');
+            elements.aiAnalysisResult.style.display = 'none';
+        } finally {
+            elements.aiAnalyzeBtn.disabled = false;
+            elements.aiAnalyzeBtn.innerHTML = '<i class="fas fa-magic"></i> AI 智能解析';
+        }
+    }
+
+    // Detect potential loops from document structure
+    function detectLoopsFromStructure(structure) {
+        const loops = [];
+
+        // Find tables that look like data tables
+        const tables = structure.elements?.filter(el => el.type === 'table') || [];
+
+        tables.forEach((table, index) => {
+            // Check if table has multiple data rows (more than just header)
+            const rowCount = table.tableRows?.length || 0;
+            if (rowCount > 2) {
+                // This looks like a data table that could be looped
+                const headerText = table.headerRow || '';
+
+                // Generate a loop path based on header content
+                let loopPath = `d.items`;
+                if (headerText.includes('Step') || headerText.includes('步骤')) {
+                    loopPath = 'd.steps';
+                } else if (headerText.includes('产品') || headerText.includes('商品')) {
+                    loopPath = 'd.products';
+                } else if (headerText.includes('用户') || headerText.includes('人员')) {
+                    loopPath = 'd.users';
+                }
+
+                loops.push({
+                    arrayPath: loopPath,
+                    tableIndex: index,
+                    headerRow: headerText,
+                    rowCount: rowCount
+                });
+            }
+        });
+
+        return loops;
+    }
+
+    // Render AI analysis result in sidebar
+    function renderAIAnalysisResult(suggestions, loops, contextAnalysis) {
+        if (!elements.aiAnalysisResult || !elements.aiResultContent) return;
+
+        let html = '';
+
+        // Show context analysis if available
+        if (contextAnalysis) {
+            html += `
+                <div class="ai-result-section" style="background:#e6f7ff;padding:10px;border-radius:4px;margin-bottom:12px;">
+                    <h4 style="margin:0 0 8px 0;color:#1890ff;font-size:13px;">
+                        <i class="fas fa-info-circle"></i> 模板类型: ${contextAnalysis.detectedTemplateType}
+                    </h4>
+                    ${contextAnalysis.suggestedVariables?.length > 0 ? `
+                        <div style="font-size:12px;color:#666;">
+                            建议变量: ${contextAnalysis.suggestedVariables.slice(0, 5).map(v => `<code style="background:#fff;padding:1px 4px;margin:2px;border-radius:2px;">${v}</code>`).join(' ')}
+                            ${contextAnalysis.suggestedVariables.length > 5 ? `<span style="color:#999;">+${contextAnalysis.suggestedVariables.length - 5} 更多</span>` : ''}
+                        </div>
+                    ` : ''}
+                </div>
+            `;
+        }
+
+        // Show detected loops first
+        if (loops && loops.length > 0) {
+            html += '<div class="ai-result-section"><h4 style="margin-bottom:8px;color:#d46b08;"><i class="fas fa-sync"></i> 检测到的循环</h4>';
+            loops.forEach((loop, idx) => {
+                const rowCount = loop.rowCount || loop.tableRows?.length - 1 || 0;
+                html += `
+                    <div class="ai-result-loop">
+                        <div class="ai-result-loop-header">
+                            <code>{#${loop.arrayPath}}</code>
+                            ${loop.confidence ? `<span class="badge badge-info" style="font-size:10px;">${Math.round(loop.confidence * 100)}%</span>` : ''}
+                        </div>
+                        <div style="font-size:12px;color:#666;">
+                            表格 ${idx + 1}: ${loop.headerRow?.substring(0, 40) || '数据表格'}...
+                            <br>数据行: ${rowCount} 行
+                        </div>
+                        <button class="btn btn-outline btn-sm ai-apply-btn" data-type="loop" data-path="${loop.arrayPath}">
+                            应用循环
+                        </button>
+                    </div>
+                `;
+            });
+            html += '</div>';
+        }
+
+        // Show detected variables
+        if (suggestions && suggestions.length > 0) {
+            html += '<div class="ai-result-section"><h4 style="margin-bottom:8px;color:#1890ff;"><i class="fas fa-tags"></i> 检测到的变量</h4>';
+            suggestions.slice(0, 10).forEach((s, idx) => {
+                html += `
+                    <div class="ai-result-item">
+                        <div class="ai-result-variable">
+                            <code>{${s.path}}</code>
+                            <span class="badge badge-info">${s.type}</span>
+                        </div>
+                        <div style="font-size:12px;color:#666;margin-bottom:4px;">
+                            "${s.content?.substring(0, 30) || ''}${s.content?.length > 30 ? '...' : ''}"
+                        </div>
+                        <button class="btn btn-outline btn-sm ai-apply-btn" data-type="variable" data-path="${s.path}" data-content="${s.content || ''}">
+                            应用变量
+                        </button>
+                    </div>
+                `;
+            });
+            if (suggestions.length > 10) {
+                html += `<div style="text-align:center;color:#666;font-size:12px;padding:8px;">还有 ${suggestions.length - 10} 个变量...</div>`;
+            }
+            html += '</div>';
+        }
+
+        if (html === '') {
+            html = '<div style="text-align:center;color:#999;padding:20px;">未检测到明显的变量或循环</div>';
+        }
+
+        elements.aiResultContent.innerHTML = html;
+        elements.aiAnalysisResult.style.display = 'block';
+
+        // Bind apply button events
+        elements.aiResultContent.querySelectorAll('.ai-apply-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const type = btn.dataset.type;
+                const path = btn.dataset.path;
+                const content = btn.dataset.content;
+
+                if (type === 'loop') {
+                    applyLoop(path);
+                } else {
+                    applyVariable(path, content);
+                }
+            });
+        });
+    }
+
+    // Apply a detected loop
+    function applyLoop(loopPath) {
+        // Add loop to state
+        if (!state.selectedTemplate.loops) {
+            state.selectedTemplate.loops = [];
+        }
+
+        const exists = state.selectedTemplate.loops.some(l => l.arrayPath === loopPath);
+        if (!exists) {
+            state.selectedTemplate.loops.push({ arrayPath: loopPath });
+
+            // Update loops list in UI
+            renderLoopsList();
+
+            showToast(`已添加循环: {#${loopPath}}`, 'success');
+        } else {
+            showToast('该循环已存在', 'info');
+        }
+    }
+
+    // Apply a detected variable
+    function applyVariable(path, content) {
+        // Add to test data
+        addToTestData(path, content);
+
+        // Update variables list
+        const varItem = document.createElement('div');
+        varItem.className = 'variable-item';
+        varItem.innerHTML = `<code>{${path}}</code> <small style="color:#999">(${content.substring(0, 20)})</small>`;
+        elements.variablesList.appendChild(varItem);
+
+        // Update count
+        elements.varsCount.textContent = parseInt(elements.varsCount.textContent) + 1;
+
+        showToast(`已添加变量: {${path}}`, 'success');
+    }
+
+    // Render loops list
+    function renderLoopsList() {
+        if (!elements.loopsList || !state.selectedTemplate?.loops) return;
+
+        if (state.selectedTemplate.loops.length === 0) {
+            elements.loopsList.innerHTML = '<span class="empty-hint">No loops detected</span>';
+            return;
+        }
+
+        elements.loopsList.innerHTML = state.selectedTemplate.loops.map(l => `
+            <div class="loop-item">
+                <i class="fas fa-repeat"></i>
+                <code>{#${l.arrayPath}}</code>
+            </div>
+        `).join('');
+    }
+
     function renderAISuggestions(suggestions) {
         if (suggestions.length === 0) {
             elements.aiSuggestionsList.innerHTML = '<span class="empty-hint">No potential variables found</span>';
@@ -1388,6 +1620,11 @@
 
         // AI Identify button
         elements.aiIdentifyBtn.addEventListener('click', aiIdentifyVariables);
+
+        // AI Analysis button (sidebar)
+        if (elements.aiAnalyzeBtn) {
+            elements.aiAnalyzeBtn.addEventListener('click', performAIAnalysis);
+        }
 
         // Selection controls
         elements.applyMarking.addEventListener('click', applyManualMarking);

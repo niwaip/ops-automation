@@ -47,6 +47,22 @@
                         <small>DOCX, XLSX, PPTX, HTML</small>
                     </div>
                 </div>
+
+                <div class="sidebar-section">
+                    <h3><i class="fas fa-robot"></i> AI 分析</h3>
+                    <div class="ai-input-area">
+                        <textarea id="ai-context-input" placeholder="描述模板需求，例如：&#10;- 这是一个运维报告模板&#10;- 需要替换执行人、日期&#10;- 表格数据需要循环" rows="3"></textarea>
+                        <button id="ai-analyze-btn" class="btn btn-primary btn-block">
+                            <i class="fas fa-magic"></i> AI 智能解析
+                        </button>
+                    </div>
+                    <div id="ai-analysis-result" class="ai-analysis-result" style="display: none;">
+                        <div class="ai-result-header">
+                            <i class="fas fa-check-circle"></i> 分析完成
+                        </div>
+                        <div id="ai-result-content"></div>
+                    </div>
+                </div>
             </aside>
 
             <!-- Content Area -->
