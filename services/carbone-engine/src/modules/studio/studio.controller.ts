@@ -1,0 +1,417 @@
+/**
+ * Carbone Engine - Studio Controller
+ * 可视化编辑器API接口
+ */
+
+import {
+  Controller,
+  Post,
+  Get,
+  Body,
+  Param,
+  UploadedFile,
+  UseInterceptors,
+  HttpException,
+  HttpStatus,
+  StreamableFile,
+  Header,
+  Res,
+} from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { ApiTags, ApiOperation, ApiConsumes, ApiBody, ApiResponse } from '@nestjs/swagger';
+import { Response } from 'express';
+import * as fs from 'fs';
+import * as path from 'path';
+import { v4 as uuidv4 } from 'uuid';
+import { CarboneEngine } from '../../lib/engine';
+
+// DTOs with proper initialization
+export class UploadTemplateDto {
+  fileName!: string;
+}
+
+export class ParseTemplateDto {
+  templateId!: string;
+}
+
+export class RenderDto {
+  templateId!: string;
+  data!: Record<string, any>;
+  outputFormat?: 'docx' | 'xlsx' | 'pptx' | 'pdf' | 'html';
+}
+
+export class PreviewDto {
+  templateId!: string;
+  maxRows?: number;
+}
+
+export class ValidateDto {
+  templateId!: string;
+  data!: Record<string, any>;
+}
+
+export interface TemplateResponse {
+  id: string;
+  fileName: string;
+  format: 'docx' | 'xlsx' | 'pptx' | 'html';
+  size: number;
+  variables: string[];
+  loops: Array<{ arrayPath: string }>;
+}
+
+export interface RenderResponse {
+  downloadUrl: string;
+  fileName: string;
+  format: string;
+}
+
+export interface ValidateResponse {
+  valid: boolean;
+  missing: string[];
+}
+
+// Extended TemplateInfo for validation
+interface TemplateInfoForValidation {
+  format: 'docx' | 'xlsx' | 'pptx' | 'html';
+  fileName: string;
+  size: number;
+  variables: string[];
+  loops: Array<{ arrayPath: string }>;
+}
+
+@ApiTags('studio')
+@Controller('studio')
+export class StudioController {
+  private engine: CarboneEngine;
+  private templatesDir: string;
+  private outputsDir: string;
+
+  constructor() {
+    this.engine = new CarboneEngine();
+    this.templatesDir = process.env.TEMPLATES_DIR || path.join(process.cwd(), 'templates');
+    this.outputsDir = process.env.OUTPUTS_DIR || path.join(process.cwd(), 'outputs');
+
+    // 创建目录
+    if (!fs.existsSync(this.templatesDir)) {
+      fs.mkdirSync(this.templatesDir, { recursive: true });
+    }
+    if (!fs.existsSync(this.outputsDir)) {
+      fs.mkdirSync(this.outputsDir, { recursive: true });
+    }
+  }
+
+  /**
+   * 上传模板文件
+   */
+  @Post('upload')
+  @ApiOperation({ summary: 'Upload template file (docx/xlsx/pptx/html)' })
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({ schema: { type: 'object', properties: { file: { type: 'string', format: 'binary' } } } })
+  @UseInterceptors(FileInterceptor('file'))
+  async uploadTemplate(
+    @UploadedFile() file: { buffer: Buffer; originalname: string },
+  ): Promise<TemplateResponse> {
+    if (!file) {
+      throw new HttpException('No file uploaded', HttpStatus.BAD_REQUEST);
+    }
+
+    // 验证文件格式
+    const validFormats = ['.docx', '.xlsx', '.pptx', '.html', '.htm'];
+    const ext = path.extname(file.originalname).toLowerCase();
+    if (!validFormats.includes(ext)) {
+      throw new HttpException(
+        `Invalid file format. Supported: ${validFormats.join(', ')}`,
+        HttpStatus.BAD_REQUEST
+      );
+    }
+
+    try {
+      // 解析模板
+      const info = await this.engine.parseTemplateBuffer(file.buffer, file.originalname);
+
+      // 保存模板文件
+      const templateId = uuidv4();
+      const templatePath = path.join(this.templatesDir, `${templateId}${ext}`);
+      fs.writeFileSync(templatePath, file.buffer);
+
+      // 保存元数据
+      const metaPath = path.join(this.templatesDir, `${templateId}.json`);
+      fs.writeFileSync(metaPath, JSON.stringify({
+        id: templateId,
+        fileName: file.originalname,
+        format: info.format,
+        size: info.size,
+        variables: info.variables,
+        loops: info.loops,
+        uploadedAt: new Date().toISOString()
+      }));
+
+      return {
+        id: templateId,
+        fileName: file.originalname,
+        format: info.format,
+        size: info.size,
+        variables: info.variables,
+        loops: info.loops
+      };
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      throw new HttpException(
+        `Failed to parse template: ${message}`,
+        HttpStatus.INTERNAL_SERVER_ERROR
+      );
+    }
+  }
+
+  /**
+   * 获取模板信息
+   */
+  @Get('templates/:id')
+  @ApiOperation({ summary: 'Get template information' })
+  async getTemplate(@Param('id') id: string): Promise<TemplateResponse> {
+    const metaPath = path.join(this.templatesDir, `${id}.json`);
+
+    if (!fs.existsSync(metaPath)) {
+      throw new HttpException('Template not found', HttpStatus.NOT_FOUND);
+    }
+
+    const meta = JSON.parse(fs.readFileSync(metaPath, 'utf-8'));
+    return meta;
+  }
+
+  /**
+   * 获取模板变量列表
+   */
+  @Get('templates/:id/variables')
+  @ApiOperation({ summary: 'Get template variables' })
+  async getVariables(@Param('id') id: string): Promise<{ variables: string[] }> {
+    const meta = this.getTemplateMeta(id);
+    return { variables: meta.variables };
+  }
+
+  /**
+   * 获取模板循环配置
+   */
+  @Get('templates/:id/loops')
+  @ApiOperation({ summary: 'Get template loop configurations' })
+  async getLoops(@Param('id') id: string): Promise<{ loops: Array<{ arrayPath: string }> }> {
+    const meta = this.getTemplateMeta(id);
+    return { loops: meta.loops };
+  }
+
+  /**
+   * 渲染模板
+   */
+  @Post('render')
+  @ApiOperation({ summary: 'Render template with data' })
+  @ApiBody({ type: RenderDto })
+  async renderTemplate(@Body() dto: RenderDto): Promise<RenderResponse> {
+    const meta = this.getTemplateMeta(dto.templateId);
+    const templatePath = path.join(this.templatesDir, `${dto.templateId}.${meta.format}`);
+
+    if (!fs.existsSync(templatePath)) {
+      throw new HttpException('Template file not found', HttpStatus.NOT_FOUND);
+    }
+
+    try {
+      // 验证数据
+      const validation = this.engine.validateData(meta as TemplateInfoForValidation, dto.data);
+      if (!validation.valid) {
+        console.warn(`Missing data for variables: ${validation.missing.join(', ')}`);
+      }
+
+      // 渲染模板
+      const templateBuffer = fs.readFileSync(templatePath);
+      const outputBuffer = await this.engine.render(templateBuffer, dto.data, meta.fileName);
+
+      // 保存输出文件
+      const outputId = uuidv4();
+      const outputFormat = dto.outputFormat || meta.format;
+      const outputFileName = this.generateOutputFileName(meta.fileName, outputFormat);
+      const outputPath = path.join(this.outputsDir, `${outputId}.${outputFormat}`);
+      fs.writeFileSync(outputPath, outputBuffer);
+
+      // 保存输出元数据
+      const outputMetaPath = path.join(this.outputsDir, `${outputId}.json`);
+      fs.writeFileSync(outputMetaPath, JSON.stringify({
+        id: outputId,
+        templateId: dto.templateId,
+        fileName: outputFileName,
+        format: outputFormat,
+        size: outputBuffer.length,
+        renderedAt: new Date().toISOString()
+      }));
+
+      return {
+        downloadUrl: `/studio/download/${outputId}`,
+        fileName: outputFileName,
+        format: outputFormat
+      };
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      throw new HttpException(
+        `Failed to render template: ${message}`,
+        HttpStatus.INTERNAL_SERVER_ERROR
+      );
+    }
+  }
+
+  /**
+   * 预览模板（使用示例数据）
+   */
+  @Post('preview')
+  @ApiOperation({ summary: 'Preview template with sample data' })
+  @ApiBody({ type: PreviewDto })
+  async previewTemplate(
+    @Body() dto: PreviewDto,
+    @Res({ passthrough: true }) res: Response,
+  ): Promise<{ preview: StreamableFile; sampleData: any }> {
+    const meta = this.getTemplateMeta(dto.templateId);
+    const templatePath = path.join(this.templatesDir, `${dto.templateId}.${meta.format}`);
+
+    if (!fs.existsSync(templatePath)) {
+      throw new HttpException('Template file not found', HttpStatus.NOT_FOUND);
+    }
+
+    try {
+      const templateBuffer = fs.readFileSync(templatePath);
+      const result = await this.engine.preview(templateBuffer, meta.fileName, {
+        maxRows: dto.maxRows || 3
+      });
+
+      res.setHeader('Content-Type', this.getContentType(meta.format));
+      res.setHeader('Content-Disposition', `inline; filename="preview_${meta.fileName}"`);
+
+      return {
+        preview: new StreamableFile(result.buffer),
+        sampleData: result.sampleData
+      };
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      throw new HttpException(
+        `Failed to preview template: ${message}`,
+        HttpStatus.INTERNAL_SERVER_ERROR
+      );
+    }
+  }
+
+  /**
+   * 验证数据完整性
+   */
+  @Post('validate')
+  @ApiOperation({ summary: 'Validate data against template' })
+  @ApiBody({ type: ValidateDto })
+  async validateData(@Body() dto: ValidateDto): Promise<ValidateResponse> {
+    const meta = this.getTemplateMeta(dto.templateId);
+    return this.engine.validateData(meta as TemplateInfoForValidation, dto.data);
+  }
+
+  /**
+   * 下载渲染后的文档
+   */
+  @Get('download/:id')
+  @ApiOperation({ summary: 'Download rendered document' })
+  @Header('Content-Type', 'application/octet-stream')
+  async downloadDocument(
+    @Param('id') id: string,
+    @Res({ passthrough: true }) res: Response,
+  ): Promise<StreamableFile> {
+    const metaPath = path.join(this.outputsDir, `${id}.json`);
+
+    if (!fs.existsSync(metaPath)) {
+      throw new HttpException('Document not found', HttpStatus.NOT_FOUND);
+    }
+
+    const meta = JSON.parse(fs.readFileSync(metaPath, 'utf-8'));
+    const filePath = path.join(this.outputsDir, `${id}.${meta.format}`);
+
+    if (!fs.existsSync(filePath)) {
+      throw new HttpException('Document file not found', HttpStatus.NOT_FOUND);
+    }
+
+    res.setHeader('Content-Type', this.getContentType(meta.format));
+    res.setHeader('Content-Disposition', `attachment; filename="${meta.fileName}"`);
+
+    const file = fs.createReadStream(filePath);
+    return new StreamableFile(file);
+  }
+
+  /**
+   * 获取可用格式化器列表
+   */
+  @Get('formatters')
+  @ApiOperation({ summary: 'Get available formatters' })
+  async getFormatters(): Promise<{ formatters: string[] }> {
+    return { formatters: this.engine.getAvailableFormatters() };
+  }
+
+  /**
+   * 列出所有模板
+   */
+  @Get('templates')
+  @ApiOperation({ summary: 'List all templates' })
+  async listTemplates(): Promise<{ templates: TemplateResponse[] }> {
+    const templates: TemplateResponse[] = [];
+
+    const files = fs.readdirSync(this.templatesDir);
+    for (const file of files) {
+      if (file.endsWith('.json')) {
+        const meta = JSON.parse(fs.readFileSync(path.join(this.templatesDir, file), 'utf-8'));
+        templates.push(meta);
+      }
+    }
+
+    return { templates };
+  }
+
+  /**
+   * 删除模板
+   */
+  @Post('templates/:id/delete')
+  @ApiOperation({ summary: 'Delete template' })
+  async deleteTemplate(@Param('id') id: string): Promise<{ success: boolean }> {
+    const meta = this.getTemplateMeta(id);
+    const templatePath = path.join(this.templatesDir, `${id}.${meta.format}`);
+    const metaPath = path.join(this.templatesDir, `${id}.json`);
+
+    if (fs.existsSync(templatePath)) {
+      fs.unlinkSync(templatePath);
+    }
+    if (fs.existsSync(metaPath)) {
+      fs.unlinkSync(metaPath);
+    }
+
+    return { success: true };
+  }
+
+  // Helper methods
+  private getTemplateMeta(id: string): TemplateResponse {
+    const metaPath = path.join(this.templatesDir, `${id}.json`);
+    if (!fs.existsSync(metaPath)) {
+      throw new HttpException('Template not found', HttpStatus.NOT_FOUND);
+    }
+    return JSON.parse(fs.readFileSync(metaPath, 'utf-8'));
+  }
+
+  private generateOutputFileName(templateName: string, format: string): string {
+    const baseName = templateName.replace(/\.[^/.]+$/, '');
+    return `${baseName}_${Date.now()}.${format}`;
+  }
+
+  private getContentType(format: string): string {
+    switch (format) {
+      case 'docx':
+        return 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+      case 'xlsx':
+        return 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+      case 'pptx':
+        return 'application/vnd.openxmlformats-officedocument.presentationml.presentation';
+      case 'pdf':
+        return 'application/pdf';
+      case 'html':
+        return 'text/html';
+      default:
+        return 'application/octet-stream';
+    }
+  }
+}
