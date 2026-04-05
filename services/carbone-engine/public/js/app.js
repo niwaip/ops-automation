@@ -595,14 +595,43 @@
                     const clickedText = clickedSpan.textContent.trim();
                     if (!clickedText) return;
 
-                    // 优先检查是否点击的是表格标题行的文字
-                    // 表格标题行格式类似 "Step | Action | Result | Status"
-                    const tableElementsByHeader = elementsToSearch.filter(el => el.type === 'table' && el.headerRow);
-                    for (const tableEl of tableElementsByHeader) {
-                        // 检查点击的文字是否在表格标题行中
-                        const headerParts = tableEl.headerRow.split(/[|,，]/).map(p => p.trim());
-                        if (headerParts.includes(clickedText) ||
-                            tableEl.headerRow.includes(clickedText)) {
+                    // 获取点击元素的Y坐标，用于判断是否在表格区域内
+                    const clickedRect = clickedSpan.getBoundingClientRect();
+                    const clickedY = clickedRect.top;
+
+                    // 优先检查是否点击的是表格区域内（标题行或数据行）的文字
+                    const tableElements = elementsToSearch.filter(el => el.type === 'table');
+                    for (const tableEl of tableElements) {
+                        let isTableText = false;
+
+                        // 检查标题行
+                        if (tableEl.headerRow) {
+                            const headerParts = tableEl.headerRow.split(/[|,，]/).map(p => p.trim());
+                            if (headerParts.includes(clickedText) || tableEl.headerRow.includes(clickedText)) {
+                                isTableText = true;
+                            }
+                        }
+
+                        // 检查数据行
+                        if (!isTableText && tableEl.dataRows) {
+                            for (const row of tableEl.dataRows) {
+                                if (row && row.includes(clickedText)) {
+                                    isTableText = true;
+                                    break;
+                                }
+                            }
+                        }
+
+                        // 检查表格整体文本（fallback）
+                        if (!isTableText && tableEl.text) {
+                            // 检查点击的文字是否是表格中常见的状态文字
+                            const tableKeywords = ['Success', 'success', 'Failed', 'failed', 'completed', 'navigate', 'wait', 'screenshot', 'search'];
+                            if (tableKeywords.includes(clickedText) && tableEl.text.includes(clickedText)) {
+                                isTableText = true;
+                            }
+                        }
+
+                        if (isTableText) {
                             matchingElement = tableEl;
                             break;
                         }
