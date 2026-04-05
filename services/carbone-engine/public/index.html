@@ -98,6 +98,10 @@
                             <!-- Source Tab Content -->
                             <div id="source-tab-content" class="preview-tab-content">
                                 <div class="source-toolbar">
+                                    <div class="source-view-tabs">
+                                        <button id="view-raw" class="view-btn active">Raw XML</button>
+                                        <button id="view-structure" class="view-btn">Structure</button>
+                                    </div>
                                     <select id="source-file-select">
                                         <option value="document.xml">word/document.xml</option>
                                     </select>
@@ -108,8 +112,28 @@
                                         <i class="fas fa-indent"></i> Format
                                     </button>
                                 </div>
-                                <div class="source-container">
-                                    <pre id="source-code"><code class="xml"></code></pre>
+                                <!-- Raw XML View -->
+                                <div id="raw-view" class="source-view active">
+                                    <div class="source-container">
+                                        <pre id="source-code"><code class="xml"></code></pre>
+                                    </div>
+                                </div>
+                                <!-- Structure View -->
+                                <div id="structure-view" class="source-view">
+                                    <div class="structure-toolbar">
+                                        <label class="checkbox-label">
+                                            <input type="checkbox" id="show-preserve" checked> Show preserve
+                                        </label>
+                                        <label class="checkbox-label">
+                                            <input type="checkbox" id="show-tables" checked> Highlight tables
+                                        </label>
+                                        <label class="checkbox-label">
+                                            <input type="checkbox" id="show-paragraphs" checked> Show paragraphs
+                                        </label>
+                                    </div>
+                                    <div class="structure-container">
+                                        <div id="structure-tree" class="structure-tree"></div>
+                                    </div>
                                 </div>
                             </div>
                         </div>

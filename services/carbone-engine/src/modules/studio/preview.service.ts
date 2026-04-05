@@ -183,7 +183,7 @@ export class PreviewService {
       font-size: 16px;
       padding: 40px;
     }
-    /* PDF.js 文本层样式 - 支持文本选择 */
+    /* PDF.js 文本层样式 - 禁用部分文本选择，仅支持元素级别选择 */
     .textLayer {
       position: absolute;
       left: 0;
@@ -193,19 +193,28 @@ export class PreviewService {
       overflow: hidden;
       opacity: 0.2;
       line-height: 1.0;
+      /* 禁用文本选择 */
+      user-select: none;
+      -webkit-user-select: none;
+      -moz-user-select: none;
+      -ms-user-select: none;
     }
     .textLayer > span {
       color: transparent;
       position: absolute;
       white-space: pre;
-      cursor: text;
+      cursor: pointer;
       transform-origin: 0% 0%;
+      /* 禁用单个span的选择 */
+      user-select: none;
+      -webkit-user-select: none;
     }
+    /* 完全禁用选择高亮 */
     .textLayer ::selection {
-      background: rgba(0, 0, 255, 0.3);
+      background: transparent;
     }
     .textLayer ::-moz-selection {
-      background: rgba(0, 0, 255, 0.3);
+      background: transparent;
     }
     .textLayer br {
       display: none;

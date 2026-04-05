@@ -14,7 +14,9 @@
         currentZoom: 1,
         documentElements: [],
         sourceXml: '',
-        currentTab: 'preview'
+        currentTab: 'preview',
+        currentSourceView: 'raw',
+        xmlStructure: null
     };
 
     // DOM Elements
@@ -64,6 +66,15 @@
         elements.sourceFileSelect = document.getElementById('source-file-select');
         elements.copySourceBtn = document.getElementById('copy-source-btn');
         elements.formatSourceBtn = document.getElementById('format-source-btn');
+        // Structure view elements
+        elements.viewRaw = document.getElementById('view-raw');
+        elements.viewStructure = document.getElementById('view-structure');
+        elements.rawView = document.getElementById('raw-view');
+        elements.structureView = document.getElementById('structure-view');
+        elements.structureTree = document.getElementById('structure-tree');
+        elements.showPreserve = document.getElementById('show-preserve');
+        elements.showTables = document.getElementById('show-tables');
+        elements.showParagraphs = document.getElementById('show-paragraphs');
     }
 
     // Utility Functions
@@ -199,7 +210,9 @@
     function selectTemplate(template) {
         state.selectedTemplate = template;
         state.sourceXml = ''; // Clear cached source
+        state.xmlStructure = null; // Clear cached structure
         state.currentTab = 'preview'; // Reset to preview tab
+        state.currentSourceView = 'raw'; // Reset to raw view
         renderTemplateList();
 
         elements.noTemplate.style.display = 'none';
@@ -210,6 +223,12 @@
         elements.tabSource.classList.remove('active');
         elements.previewTabContent.classList.add('active');
         elements.sourceTabContent.classList.remove('active');
+
+        // Reset source view state
+        elements.viewRaw.classList.add('active');
+        elements.viewStructure.classList.remove('active');
+        elements.rawView.classList.add('active');
+        elements.structureView.classList.remove('active');
 
         // Update header
         elements.templateName.textContent = template.fileName;
@@ -421,9 +440,13 @@
         try {
             const iframeDoc = elements.previewIframe.contentDocument || elements.previewIframe.contentWindow.document;
 
-            // Listen for text selection
-            iframeDoc.addEventListener('mouseup', handleTextSelection);
-            iframeDoc.addEventListener('touchend', handleTextSelection);
+            // Note: Text selection is disabled - use Document Elements panel for atomic element selection
+            // Add click handler for text layer spans to show element hint
+            iframeDoc.addEventListener('click', (e) => {
+                if (e.target.classList && e.target.closest('.textLayer')) {
+                    showToast('Use Document Elements panel to select entire elements', 'info');
+                }
+            });
 
             // Style for highlighted elements
             const style = iframeDoc.createElement('style');
@@ -436,8 +459,19 @@
                 .carbone-highlight:hover {
                     background-color: #ffe69c !important;
                 }
-                ::selection {
-                    background-color: #b3d7ff;
+                .element-highlight {
+                    background-color: rgba(0, 123, 255, 0.3) !important;
+                    border: 2px solid #007bff !important;
+                    border-radius: 2px;
+                }
+                /* Disable text selection in PDF */
+                .textLayer {
+                    user-select: none !important;
+                    -webkit-user-select: none !important;
+                    cursor: default !important;
+                }
+                .textLayer span {
+                    cursor: default !important;
                 }
             `;
             iframeDoc.head.appendChild(style);
@@ -447,24 +481,9 @@
         }
     }
 
+    // handleTextSelection is no longer needed - element selection is done via Document Elements panel
     function handleTextSelection(e) {
-        try {
-            const iframeDoc = elements.previewIframe.contentDocument || elements.previewIframe.contentWindow.document;
-            const selection = iframeDoc.getSelection();
-
-            if (!selection || selection.toString().trim() === '') {
-                hideSelectionSection();
-                return;
-            }
-
-            const selectedText = selection.toString().trim();
-
-            // Show selection section
-            showSelectionSection(selectedText);
-
-        } catch (e) {
-            console.warn('Selection error:', e);
-        }
+        // Disabled - use Document Elements panel for atomic element selection
     }
 
     function showSelectionSection(text) {
@@ -891,6 +910,13 @@
         elements.formatSourceBtn.addEventListener('click', formatSourceXml);
         elements.sourceFileSelect.addEventListener('change', loadSelectedSourceFile);
 
+        // Structure view controls
+        elements.viewRaw.addEventListener('click', () => switchSourceView('raw'));
+        elements.viewStructure.addEventListener('click', () => switchSourceView('structure'));
+        elements.showPreserve.addEventListener('change', renderStructureTree);
+        elements.showTables.addEventListener('change', renderStructureTree);
+        elements.showParagraphs.addEventListener('change', renderStructureTree);
+
         // Modal
         document.querySelector('.modal-close').addEventListener('click', closeModal);
         document.querySelector('.modal-cancel')?.addEventListener('click', closeModal);
@@ -1015,6 +1041,219 @@
         // For now, only document.xml is supported
         // Future: add support for other files
         await loadSourceXml();
+    }
+
+    // Source View Switching
+    function switchSourceView(viewName) {
+        state.currentSourceView = viewName;
+
+        // Update view buttons
+        elements.viewRaw.classList.toggle('active', viewName === 'raw');
+        elements.viewStructure.classList.toggle('active', viewName === 'structure');
+
+        // Update view content
+        elements.rawView.classList.toggle('active', viewName === 'raw');
+        elements.structureView.classList.toggle('active', viewName === 'structure');
+
+        // Parse and render structure if switching to structure view
+        if (viewName === 'structure' && state.sourceXml && !state.xmlStructure) {
+            parseXmlStructure();
+        }
+        if (viewName === 'structure' && state.xmlStructure) {
+            renderStructureTree();
+        }
+    }
+
+    // Parse XML Structure
+    function parseXmlStructure() {
+        if (!state.sourceXml) return;
+
+        const parser = new DOMParser();
+        const xmlDoc = parser.parseFromString(state.sourceXml, 'text/xml');
+
+        state.xmlStructure = {
+            document: xmlDoc,
+            tables: [],
+            paragraphs: [],
+            preserveElements: []
+        };
+
+        // Find all tables (w:tbl)
+        const tables = xmlDoc.getElementsByTagNameNS('*', 'tbl');
+        for (let i = 0; i < tables.length; i++) {
+            const table = tables[i];
+            const rows = table.getElementsByTagNameNS('*', 'tr');
+            const cells = table.getElementsByTagNameNS('*', 'tc');
+            const text = extractElementText(table);
+
+            state.xmlStructure.tables.push({
+                element: table,
+                index: i,
+                rows: rows.length,
+                cells: cells.length,
+                text: text.substring(0, 100),
+                hasPreserve: table.outerHTML.includes('preserve')
+            });
+        }
+
+        // Find all paragraphs (w:p)
+        const paragraphs = xmlDoc.getElementsByTagNameNS('*', 'p');
+        for (let i = 0; i < paragraphs.length; i++) {
+            const p = paragraphs[i];
+            const text = extractElementText(p);
+            if (text.trim()) {
+                state.xmlStructure.paragraphs.push({
+                    element: p,
+                    index: i,
+                    text: text,
+                    hasPreserve: p.outerHTML.includes('preserve')
+                });
+            }
+        }
+
+        // Find elements with preserve
+        const allElements = xmlDoc.getElementsByTagName('*');
+        for (let i = 0; i < allElements.length; i++) {
+            const el = allElements[i];
+            const preserveAttr = el.getAttribute('xml:space');
+            if (preserveAttr === 'preserve' || el.outerHTML.includes('preserve')) {
+                state.xmlStructure.preserveElements.push({
+                    element: el,
+                    tagName: el.tagName
+                });
+            }
+        }
+    }
+
+    // Extract text from XML element
+    function extractElementText(element) {
+        const textElements = element.getElementsByTagNameNS('*', 't');
+        let text = '';
+        for (let i = 0; i < textElements.length; i++) {
+            text += textElements[i].textContent || '';
+        }
+        return text;
+    }
+
+    // Render Structure Tree
+    function renderStructureTree() {
+        if (!state.xmlStructure) {
+            parseXmlStructure();
+        }
+
+        const showPreserve = elements.showPreserve.checked;
+        const showTables = elements.showTables.checked;
+        const showParagraphs = elements.showParagraphs.checked;
+
+        let html = '<div class="structure-content">';
+
+        // Document root
+        html += `<div class="structure-node" data-type="document">
+            <span class="node-tag">&lt;w:document&gt;</span>
+        </div>`;
+
+        html += '<div class="node-children expanded">';
+
+        // Body
+        html += `<div class="structure-node" data-type="body">
+            <span class="node-tag">&lt;w:body&gt;</span>
+        </div>`;
+
+        html += '<div class="node-children expanded">';
+
+        // Tables section
+        if (showTables && state.xmlStructure.tables.length > 0) {
+            html += `<div class="structure-node" data-type="section">
+                <span class="node-toggle">▼</span>
+                <span class="node-tag">Tables (${state.xmlStructure.tables.length})</span>
+            </div>`;
+
+            html += '<div class="node-children expanded">';
+
+            state.xmlStructure.tables.forEach((table, idx) => {
+                const preserveClass = table.hasPreserve && showPreserve ? 'preserve-node' : '';
+                html += `<div class="structure-node table-node ${preserveClass}" data-type="table" data-index="${idx}">
+                    <span class="node-tag">&lt;w:tbl&gt;</span>
+                    <span class="node-attr">rows="${table.rows}"</span>
+                    <span class="node-attr">cells="${table.cells}"</span>
+                    ${table.hasPreserve ? '<span class="node-preserve">preserve</span>' : ''}
+                    <span class="node-text">${escapeHtml(table.text)}...</span>
+                </div>`;
+            });
+
+            html += '</div>';
+        }
+
+        // Paragraphs section
+        if (showParagraphs && state.xmlStructure.paragraphs.length > 0) {
+            html += `<div class="structure-node" data-type="section">
+                <span class="node-toggle">▼</span>
+                <span class="node-tag">Paragraphs (${state.xmlStructure.paragraphs.length})</span>
+            </div>`;
+
+            html += '<div class="node-children expanded">';
+
+            state.xmlStructure.paragraphs.slice(0, 20).forEach((p, idx) => {
+                const preserveClass = p.hasPreserve && showPreserve ? 'preserve-node' : '';
+                const text = p.text.substring(0, 80) + (p.text.length > 80 ? '...' : '');
+                html += `<div class="structure-node paragraph-node ${preserveClass}" data-type="paragraph" data-index="${p.index}">
+                    <span class="node-tag">&lt;w:p&gt;</span>
+                    ${p.hasPreserve ? '<span class="node-preserve">preserve</span>' : ''}
+                    <span class="node-text">${escapeHtml(text)}</span>
+                </div>`;
+            });
+
+            if (state.xmlStructure.paragraphs.length > 20) {
+                html += `<div class="structure-node paragraph-node">
+                    <span class="node-text">... and ${state.xmlStructure.paragraphs.length - 20} more paragraphs</span>
+                </div>`;
+            }
+
+            html += '</div>';
+        }
+
+        // Preserve elements summary
+        if (showPreserve && state.xmlStructure.preserveElements.length > 0) {
+            html += `<div class="structure-node" data-type="section">
+                <span class="node-tag">Preserve Elements (${state.xmlStructure.preserveElements.length})</span>
+            </div>`;
+        }
+
+        html += '</div></div></div>';
+
+        elements.structureTree.innerHTML = html;
+
+        // Add click handlers for structure nodes
+        elements.structureTree.querySelectorAll('.structure-node[data-index]').forEach(node => {
+            node.addEventListener('click', () => {
+                // Remove previous selection
+                elements.structureTree.querySelectorAll('.selected').forEach(el => el.classList.remove('selected'));
+                node.classList.add('selected');
+
+                const type = node.dataset.type;
+                const index = parseInt(node.dataset.index);
+
+                // Select corresponding element in document elements
+                if (type === 'paragraph' || type === 'table') {
+                    selectElementByXmlIndex(type, index);
+                }
+            });
+        });
+    }
+
+    // Select element by XML index
+    function selectElementByXmlIndex(type, xmlIndex) {
+        // Map XML index to document element
+        const element = state.documentElements.find(el => {
+            return el.xpath && el.xpath.includes(`[${xmlIndex}]`);
+        });
+
+        if (element) {
+            selectDocumentElement(element);
+        } else {
+            // Use the first element if no exact match
+            showToast(`Selected ${type} at position ${xmlIndex}`, 'info');
+        }
     }
 
     function initResizeHandle() {
