@@ -283,24 +283,58 @@
                 return;
             }
 
-            elements.documentElementsList.innerHTML = state.documentElements.map((el, idx) => `
-                <div class="element-item element-type-${el.type}" data-index="${idx}">
-                    <div class="element-header">
-                        <span class="element-type-icon">
-                            <i class="fas ${getElementIcon(el.type)}"></i>
-                        </span>
-                        <span class="element-type-label">${getElementLabel(el.type)}</span>
+            elements.documentElementsList.innerHTML = state.documentElements.map((el, idx) => {
+                // 表格特殊显示
+                if (el.type === 'table') {
+                    return `
+                        <div class="element-item element-type-table" data-index="${idx}">
+                            <div class="element-header">
+                                <span class="element-type-icon">
+                                    <i class="fas fa-table"></i>
+                                </span>
+                                <span class="element-type-label">Table</span>
+                                <span class="element-badge">${el.attributes?.rows || '?'}行</span>
+                            </div>
+                            ${el.headerRow ? `
+                                <div class="element-table-header">
+                                    <span class="element-table-label">📋 标题行:</span>
+                                    <code>${escapeHtml(el.headerRow)}</code>
+                                </div>
+                            ` : ''}
+                            ${el.dataRows && el.dataRows.length > 0 ? `
+                                <div class="element-table-data">
+                                    <span class="element-table-label">🔄 数据行: ${el.dataRows.length}行可循环</span>
+                                </div>
+                            ` : ''}
+                            <div class="element-actions">
+                                <button class="btn btn-primary btn-sm btn-select-element" data-index="${idx}">
+                                    <i class="fas fa-check"></i> Select
+                                </button>
+                            </div>
+                        </div>
+                    `;
+                }
+
+                // 普通元素
+                return `
+                    <div class="element-item element-type-${el.type}" data-index="${idx}">
+                        <div class="element-header">
+                            <span class="element-type-icon">
+                                <i class="fas ${getElementIcon(el.type)}"></i>
+                            </span>
+                            <span class="element-type-label">${getElementLabel(el.type)}</span>
+                        </div>
+                        <div class="element-content">
+                            <code>${escapeHtml(el.text.substring(0, 80))}${el.text.length > 80 ? '...' : ''}</code>
+                        </div>
+                        <div class="element-actions">
+                            <button class="btn btn-primary btn-sm btn-select-element" data-index="${idx}">
+                                <i class="fas fa-check"></i> Select
+                            </button>
+                        </div>
                     </div>
-                    <div class="element-content">
-                        <code>${escapeHtml(el.text.substring(0, 80))}${el.text.length > 80 ? '...' : ''}</code>
-                    </div>
-                    <div class="element-actions">
-                        <button class="btn btn-primary btn-sm btn-select-element" data-index="${idx}">
-                            <i class="fas fa-check"></i> Select
-                        </button>
-                    </div>
-                </div>
-            `).join('');
+                `;
+            }).join('');
 
             // Bind click events for element selection
             document.querySelectorAll('.btn-select-element').forEach(btn => {
@@ -439,14 +473,6 @@
     function setupIframeSelection() {
         try {
             const iframeDoc = elements.previewIframe.contentDocument || elements.previewIframe.contentWindow.document;
-
-            // Note: Text selection is disabled - use Document Elements panel for atomic element selection
-            // Add click handler for text layer spans to show element hint
-            iframeDoc.addEventListener('click', (e) => {
-                if (e.target.classList && e.target.closest('.textLayer')) {
-                    showToast('Use Document Elements panel to select entire elements', 'info');
-                }
-            });
 
             // Style for highlighted elements
             const style = iframeDoc.createElement('style');
@@ -1078,6 +1104,9 @@
             preserveElements: []
         };
 
+        // 使用后端API返回的结构化数据来丰富表格信息
+        const apiTables = state.documentElements.filter(el => el.type === 'table');
+
         // Find all tables (w:tbl)
         const tables = xmlDoc.getElementsByTagNameNS('*', 'tbl');
         for (let i = 0; i < tables.length; i++) {
@@ -1086,13 +1115,20 @@
             const cells = table.getElementsByTagNameNS('*', 'tc');
             const text = extractElementText(table);
 
+            // 从API数据中获取详细信息
+            const apiTable = apiTables[i] || {};
+
             state.xmlStructure.tables.push({
                 element: table,
                 index: i,
                 rows: rows.length,
                 cells: cells.length,
                 text: text.substring(0, 100),
-                hasPreserve: table.outerHTML.includes('preserve')
+                hasPreserve: table.outerHTML.includes('preserve'),
+                // 从API获取的结构化数据
+                headerRow: apiTable.headerRow || '',
+                dataRows: apiTable.dataRows || [],
+                tableHeaders: apiTable.tableHeaders || []
             });
         }
 
@@ -1161,9 +1197,9 @@
 
         html += '<div class="node-children expanded">';
 
-        // Tables section
+        // Tables section - 增强表格显示
         if (showTables && state.xmlStructure.tables.length > 0) {
-            html += `<div class="structure-node" data-type="section">
+            html += `<div class="structure-node section-node" data-type="section">
                 <span class="node-toggle">▼</span>
                 <span class="node-tag">Tables (${state.xmlStructure.tables.length})</span>
             </div>`;
@@ -1172,13 +1208,49 @@
 
             state.xmlStructure.tables.forEach((table, idx) => {
                 const preserveClass = table.hasPreserve && showPreserve ? 'preserve-node' : '';
+
+                // 表格标题节点
                 html += `<div class="structure-node table-node ${preserveClass}" data-type="table" data-index="${idx}">
+                    <span class="node-toggle" onclick="event.stopPropagation(); this.parentElement.querySelector('.node-children').classList.toggle('expanded')">▶</span>
                     <span class="node-tag">&lt;w:tbl&gt;</span>
                     <span class="node-attr">rows="${table.rows}"</span>
-                    <span class="node-attr">cells="${table.cells}"</span>
                     ${table.hasPreserve ? '<span class="node-preserve">preserve</span>' : ''}
-                    <span class="node-text">${escapeHtml(table.text)}...</span>
                 </div>`;
+
+                // 表格子节点
+                html += '<div class="node-children">';
+
+                // 标题行（不可循环）
+                if (table.headerRow) {
+                    html += `<div class="structure-node table-header-node" data-type="table-header" data-table="${idx}">
+                        <span class="node-label">📋 标题行</span>
+                        <span class="node-text">${escapeHtml(table.headerRow)}</span>
+                    </div>`;
+                }
+
+                // 数据行（可循环）
+                if (table.dataRows && table.dataRows.length > 0) {
+                    html += `<div class="structure-node table-data-node" data-type="table-data" data-table="${idx}">
+                        <span class="node-label">🔄 数据行</span>
+                        <span class="node-attr">${table.dataRows.length}行可循环</span>
+                    </div>`;
+
+                    // 显示数据行内容
+                    html += '<div class="node-children">';
+                    table.dataRows.slice(0, 3).forEach((row, rowIdx) => {
+                        html += `<div class="structure-node table-row-node" data-type="table-row">
+                            <span class="node-text">${escapeHtml(row.substring(0, 60))}${row.length > 60 ? '...' : ''}</span>
+                        </div>`;
+                    });
+                    if (table.dataRows.length > 3) {
+                        html += `<div class="structure-node table-row-node">
+                            <span class="node-text">... 共${table.dataRows.length}行数据</span>
+                        </div>`;
+                    }
+                    html += '</div>';
+                }
+
+                html += '</div>'; // node-children
             });
 
             html += '</div>';
@@ -1186,7 +1258,7 @@
 
         // Paragraphs section
         if (showParagraphs && state.xmlStructure.paragraphs.length > 0) {
-            html += `<div class="structure-node" data-type="section">
+            html += `<div class="structure-node section-node" data-type="section">
                 <span class="node-toggle">▼</span>
                 <span class="node-tag">Paragraphs (${state.xmlStructure.paragraphs.length})</span>
             </div>`;
@@ -1214,7 +1286,7 @@
 
         // Preserve elements summary
         if (showPreserve && state.xmlStructure.preserveElements.length > 0) {
-            html += `<div class="structure-node" data-type="section">
+            html += `<div class="structure-node section-node" data-type="section">
                 <span class="node-tag">Preserve Elements (${state.xmlStructure.preserveElements.length})</span>
             </div>`;
         }

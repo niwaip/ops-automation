@@ -8,6 +8,17 @@ import JSZip from 'jszip';
 // @ts-ignore - xml2js没有类型定义
 import * as xml2js from 'xml2js';
 
+export interface TableHeader {
+  text: string;
+  index: number;
+}
+
+export interface TableRow {
+  cells: string[];
+  hasPreserve: boolean;
+  isHeader: boolean;
+}
+
 export interface DocumentElement {
   id: string;
   type: 'title' | 'heading1' | 'heading2' | 'heading3' | 'paragraph' | 'table' | 'list' | 'image';
@@ -18,6 +29,11 @@ export interface DocumentElement {
   style?: string;
   children?: DocumentElement[];
   attributes?: Record<string, string>;
+  // 表格特定属性
+  tableHeaders?: TableHeader[];
+  tableRows?: TableRow[];
+  headerRow?: string;
+  dataRows?: string[];
 }
 
 export interface DocumentStructure {
@@ -224,41 +240,113 @@ export class DocumentStructureParser {
     const rows = tbl?.['w:tr'] || [];
     const tableRows = Array.isArray(rows) ? rows : [rows];
 
-    // 提取表格文本
-    const textParts: string[] = [];
-    for (const row of tableRows) {
-      const cells = row?.['w:tc'] || [];
-      const tableCells = Array.isArray(cells) ? cells : [cells];
-      for (const cell of tableCells) {
-        const cellText = this.extractParagraphText(cell);
-        if (cellText.trim()) {
-          textParts.push(cellText.trim());
-        }
-      }
-    }
-
-    const text = textParts.join(' | ');
-    if (!text.trim()) {
+    if (tableRows.length === 0) {
       return null;
     }
+
+    // 解析所有行
+    const parsedRows: TableRow[] = [];
+    const headers: TableHeader[] = [];
+
+    for (let rowIndex = 0; rowIndex < tableRows.length; rowIndex++) {
+      const row = tableRows[rowIndex];
+      const cells = row?.['w:tc'] || [];
+      const tableCells = Array.isArray(cells) ? cells : [cells];
+
+      const cellTexts: string[] = [];
+      let rowHasPreserve = false;
+
+      for (const cell of tableCells) {
+        const cellText = this.extractParagraphText(cell);
+        cellTexts.push(cellText.trim());
+
+        // 检查是否有preserve属性
+        if (this.elementHasPreserve(cell)) {
+          rowHasPreserve = true;
+        }
+      }
+
+      const isHeader = rowIndex === 0;
+
+      // 第一行作为标题
+      if (isHeader) {
+        for (let i = 0; i < cellTexts.length; i++) {
+          if (cellTexts[i]) {
+            headers.push({ text: cellTexts[i], index: i });
+          }
+        }
+      }
+
+      parsedRows.push({
+        cells: cellTexts,
+        hasPreserve: rowHasPreserve,
+        isHeader
+      });
+    }
+
+    // 生成显示文本
+    const headerText = headers.map(h => h.text).join(' | ');
+    const dataRowTexts = parsedRows
+      .filter(r => !r.isHeader)
+      .map(r => r.cells.join(' | '));
+
+    const allText = [...headers.map(h => h.text), ...dataRowTexts.flat()].join(' ');
 
     return {
       id: `element-${index}`,
       type: 'table',
-      content: text,
-      text: `[表格] ${text.substring(0, 100)}...`,
+      content: allText,
+      text: `[表格] ${headerText}${dataRowTexts.length > 0 ? ` | ${dataRowTexts.length}行数据` : ''}`,
       xpath: `/w:document/w:body/w:tbl[${index}]`,
       index,
       attributes: {
         rows: String(tableRows.length),
+        cols: String(headers.length),
+        hasDataRows: String(dataRowTexts.length > 0),
       },
+      tableHeaders: headers,
+      tableRows: parsedRows,
+      headerRow: headerText,
+      dataRows: dataRowTexts.slice(0, 3), // 只显示前3行数据
     };
+  }
+
+  /**
+   * 检查元素是否有preserve属性
+   */
+  private elementHasPreserve(element: any): boolean {
+    try {
+      const str = JSON.stringify(element);
+      return str.includes('preserve');
+    } catch {
+      return false;
+    }
   }
 
   /**
    * 提取段落中的文本
    */
   private extractParagraphText(element: any): string {
+    const textParts: string[] = [];
+
+    // 先检查是否有嵌套的段落（如表格单元格中的段落）
+    const paragraphs = element?.['w:p'];
+    if (paragraphs) {
+      const pList = Array.isArray(paragraphs) ? paragraphs : [paragraphs];
+      for (const p of pList) {
+        textParts.push(this.extractRunsText(p));
+      }
+      return textParts.join(' ');
+    }
+
+    // 直接提取run中的文本
+    return this.extractRunsText(element);
+  }
+
+  /**
+   * 从run元素中提取文本
+   */
+  private extractRunsText(element: any): string {
     const textParts: string[] = [];
 
     const runs = element?.['w:r'] || [];
@@ -272,7 +360,16 @@ export class DocumentStructureParser {
         if (typeof t === 'string') {
           textParts.push(t);
         } else if (t?.['_']) {
+          // xml:space="preserve" 属性导致文本存储在 _ 中
           textParts.push(t['_']);
+        } else if (t && typeof t === 'object') {
+          // 尝试其他可能的文本存储位置
+          const keys = Object.keys(t);
+          for (const key of keys) {
+            if (typeof t[key] === 'string') {
+              textParts.push(t[key]);
+            }
+          }
         }
       }
     }

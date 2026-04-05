@@ -1210,3 +1210,80 @@ body {
 .node-children.expanded {
     display: block;
 }
+
+/* Table Structure Styles */
+.table-header-node {
+    background: #e6f7ff !important;
+    border-left: 3px solid #1890ff !important;
+}
+
+.table-header-node .node-label {
+    color: #1890ff;
+    font-weight: bold;
+    margin-right: 8px;
+}
+
+.table-data-node {
+    background: #f6ffed !important;
+    border-left: 3px solid #52c41a !important;
+}
+
+.table-data-node .node-label {
+    color: #52c41a;
+    font-weight: bold;
+    margin-right: 8px;
+}
+
+.table-row-node {
+    background: #fafafa;
+    font-size: 11px;
+    padding-left: 30px !important;
+}
+
+.section-node {
+    background: #f0f0f0;
+    font-weight: 500;
+}
+
+.node-label {
+    display: inline-block;
+    margin-right: 6px;
+}
+
+/* Table Element Styles */
+.element-type-table {
+    background: #f6ffed;
+    border-color: #b7eb8f;
+}
+
+.element-type-table:hover {
+    background: #d9f7be;
+}
+
+.element-badge {
+    background: #1890ff;
+    color: white;
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-size: 10px;
+    margin-left: 8px;
+}
+
+.element-table-header {
+    padding: 6px 10px;
+    background: #e6f7ff;
+    border-radius: 4px;
+    margin-bottom: 4px;
+}
+
+.element-table-label {
+    font-size: 11px;
+    color: #666;
+    margin-right: 6px;
+}
+
+.element-table-data {
+    padding: 6px 10px;
+    background: #f6ffed;
+    border-radius: 4px;
+}
