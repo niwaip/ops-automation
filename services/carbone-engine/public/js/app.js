@@ -428,7 +428,6 @@
 
         return formatted.substring(1, formatted.length - 2);
     }
-    }
 
     function showNoTemplate() {
         elements.noTemplate.style.display = 'block';

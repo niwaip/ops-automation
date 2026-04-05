@@ -115,9 +115,17 @@ export class StudioController {
       throw new HttpException('No file uploaded', HttpStatus.BAD_REQUEST);
     }
 
+    // 修复中文文件名编码问题 (multer默认使用latin1编码)
+    let fileName = file.originalname;
+    try {
+      fileName = Buffer.from(file.originalname, 'latin1').toString('utf8');
+    } catch {
+      // 如果转换失败，使用原始文件名
+    }
+
     // 验证文件格式
     const validFormats = ['.docx', '.xlsx', '.pptx', '.html', '.htm'];
-    const ext = path.extname(file.originalname).toLowerCase();
+    const ext = path.extname(fileName).toLowerCase();
     if (!validFormats.includes(ext)) {
       throw new HttpException(
         `Invalid file format. Supported: ${validFormats.join(', ')}`,
@@ -127,7 +135,7 @@ export class StudioController {
 
     try {
       // 解析模板
-      const info = await this.engine.parseTemplateBuffer(file.buffer, file.originalname);
+      const info = await this.engine.parseTemplateBuffer(file.buffer, fileName);
 
       // 保存模板文件
       const templateId = uuidv4();
@@ -138,7 +146,7 @@ export class StudioController {
       const metaPath = path.join(this.templatesDir, `${templateId}.json`);
       fs.writeFileSync(metaPath, JSON.stringify({
         id: templateId,
-        fileName: file.originalname,
+        fileName: fileName,
         format: info.format,
         size: info.size,
         variables: info.variables,
@@ -148,7 +156,7 @@ export class StudioController {
 
       return {
         id: templateId,
-        fileName: file.originalname,
+        fileName: fileName,
         format: info.format,
         size: info.size,
         variables: info.variables,
@@ -330,7 +338,9 @@ export class StudioController {
     }
 
     res.setHeader('Content-Type', this.getContentType(meta.format));
-    res.setHeader('Content-Disposition', `attachment; filename="${meta.fileName}"`);
+    // 使用RFC 5987编码处理中文文件名
+    const encodedFileName = encodeURIComponent(meta.fileName);
+    res.setHeader('Content-Disposition', `attachment; filename*=UTF-8''${encodedFileName}`);
 
     const file = fs.createReadStream(filePath);
     return new StreamableFile(file);
