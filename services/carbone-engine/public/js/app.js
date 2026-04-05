@@ -261,11 +261,12 @@
         // Load saved markings
         loadMarkings(template.id);
 
-        // Load document structure elements
-        loadDocumentElements(template);
-
-        // 预加载源XML并解析结构，用于PDF选择与结构视图保持一致
-        preloadSourceXml(template);
+        // Load document structure elements first, then preload source XML
+        // This ensures proper ordering for element selection
+        loadDocumentElements(template).then(() => {
+            // 预加载源XML并解析结构，用于PDF选择与结构视图保持一致
+            preloadSourceXml(template);
+        });
     }
 
     // 预加载源XML并解析结构
