@@ -558,25 +558,33 @@
                 .textLayer span:hover {
                     background-color: rgba(0, 123, 255, 0.15) !important;
                 }
+                /* Allow click on tables and images */
+                table {
+                    cursor: pointer !important;
+                }
+                table:hover {
+                    outline: 2px solid #007bff !important;
+                }
+                img {
+                    cursor: pointer !important;
+                }
+                img:hover {
+                    outline: 2px solid #007bff !important;
+                }
             `;
             iframeDoc.head.appendChild(style);
 
-            // 使用事件委托，在document级别监听点击，这样所有页面的文本都可以响应
+            // 使用事件委托，在document级别监听点击，支持文本、表格、图片
             iframeDoc.addEventListener('click', (e) => {
+                // 检查点击的元素类型
+                const clickedTable = e.target.closest('table');
+                const clickedImg = e.target.closest('img');
                 const clickedSpan = e.target.closest('.textLayer span');
-                if (!clickedSpan) return;
 
-                const clickedText = clickedSpan.textContent.trim();
-                if (!clickedText) return;
-
-                // 使用与结构视图相同的orderedElements来匹配元素，保持一致性
-                // 如果xmlStructure已解析，使用orderedElements；否则使用documentElements
+                // 获取要搜索的元素列表
                 let elementsToSearch = [];
-
                 if (state.xmlStructure?.orderedElements?.length > 0) {
-                    // 将orderedElements转换为与documentElements兼容的格式
                     elementsToSearch = state.xmlStructure.orderedElements.map((el, idx) => {
-                        // 查找对应的documentElement获取完整信息
                         const docEl = state.documentElements.find(d => {
                             if (el.type === 'table' && d.type === 'table') {
                                 return d.headerRow && el.headerRow &&
@@ -596,36 +604,93 @@
                     elementsToSearch = state.documentElements;
                 }
 
-                // Find matching element with priority:
-                // 1. Exact match (element.text === clickedText)
-                // 2. Element starts with clickedText
-                // 3. Element contains clickedText
                 let matchingElement = null;
 
-                // First try exact match
-                matchingElement = elementsToSearch.find(el => {
-                    return el.text && el.text === clickedText;
-                });
-
-                // If no exact match, try element that starts with clicked text
-                if (!matchingElement) {
+                // 处理表格点击
+                if (clickedTable) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    // 获取表格的第一行作为标题行
+                    const headerRow = clickedTable.querySelector('tr');
+                    const headerText = headerRow ? headerRow.textContent.trim().replace(/\s+/g, ' ').substring(0, 100) : '';
+                    // 在elementsToSearch中查找匹配的表格
                     matchingElement = elementsToSearch.find(el => {
-                        return el.text && el.text.startsWith(clickedText);
+                        if (el.type !== 'table') return false;
+                        if (el.headerRow && headerText) {
+                            // 匹配标题行的部分内容
+                            return el.headerRow.includes(headerText.substring(0, 30)) ||
+                                   headerText.includes(el.headerRow.substring(0, 30));
+                        }
+                        return false;
+                    });
+                    if (!matchingElement) {
+                        // 尝试通过表格内文本匹配
+                        const tableText = clickedTable.textContent.trim().substring(0, 50);
+                        matchingElement = elementsToSearch.find(el => {
+                            if (el.type !== 'table') return false;
+                            return el.text && el.text.includes(tableText);
+                        });
+                    }
+                }
+                // 处理图片点击
+                else if (clickedImg) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    // 获取图片的alt文本或附近的文本
+                    const imgAlt = clickedImg.alt || '';
+                    const imgSrc = clickedImg.src || '';
+                    // 查找附近的文本节点
+                    let nearbyText = '';
+                    const parent = clickedImg.parentElement;
+                    if (parent) {
+                        nearbyText = parent.textContent.trim().substring(0, 50);
+                    }
+                    // 查找包含"截图"或"screenshot"的元素
+                    matchingElement = elementsToSearch.find(el => {
+                        if (el.type === 'paragraph') {
+                            const elText = el.text || '';
+                            // 匹配截图相关的段落
+                            if (elText.includes('截图') || elText.toLowerCase().includes('screenshot')) {
+                                return true;
+                            }
+                            // 通过alt文本匹配
+                            if (imgAlt && elText.includes(imgAlt)) {
+                                return true;
+                            }
+                        }
+                        return false;
                     });
                 }
+                // 处理文本点击
+                else if (clickedSpan) {
+                    const clickedText = clickedSpan.textContent.trim();
+                    if (!clickedText) return;
 
-                // If no match, try element that contains the clicked text
-                if (!matchingElement) {
+                    // First try exact match
                     matchingElement = elementsToSearch.find(el => {
-                        return el.text && el.text.includes(clickedText);
+                        return el.text && el.text === clickedText;
                     });
-                }
 
-                // If still no match, try partial match (clicked text contains element text)
-                if (!matchingElement) {
-                    matchingElement = elementsToSearch.find(el => {
-                        return el.text && clickedText.includes(el.text.substring(0, 20)) && el.text.length > 10;
-                    });
+                    // If no exact match, try element that starts with clicked text
+                    if (!matchingElement) {
+                        matchingElement = elementsToSearch.find(el => {
+                            return el.text && el.text.startsWith(clickedText);
+                        });
+                    }
+
+                    // If no match, try element that contains the clicked text
+                    if (!matchingElement) {
+                        matchingElement = elementsToSearch.find(el => {
+                            return el.text && el.text.includes(clickedText);
+                        });
+                    }
+
+                    // If still no match, try partial match (clicked text contains element text)
+                    if (!matchingElement) {
+                        matchingElement = elementsToSearch.find(el => {
+                            return el.text && clickedText.includes(el.text.substring(0, 20)) && el.text.length > 10;
+                        });
+                    }
                 }
 
                 if (matchingElement) {
@@ -1110,9 +1175,17 @@
         elements.previewTabContent.classList.toggle('active', tabName === 'preview');
         elements.sourceTabContent.classList.toggle('active', tabName === 'source');
 
-        // Load source if switching to source tab
-        if (tabName === 'source' && !state.sourceXml && state.selectedTemplate) {
-            loadSourceXml();
+        // Load source and render if switching to source tab
+        if (tabName === 'source' && state.selectedTemplate) {
+            if (!state.sourceXml) {
+                loadSourceXml().then(() => {
+                    // After loading, activate the current view
+                    switchSourceView(state.currentSourceView);
+                });
+            } else {
+                // Already loaded, activate the current view which will render content
+                switchSourceView(state.currentSourceView);
+            }
         }
     }
 
@@ -1225,6 +1298,10 @@
         elements.rawView.classList.toggle('active', viewName === 'raw');
         elements.structureView.classList.toggle('active', viewName === 'structure');
 
+        // Display content for the selected view
+        if (viewName === 'raw' && state.sourceXml) {
+            displaySourceXml(state.sourceXml);
+        }
         // Parse and render structure if switching to structure view
         if (viewName === 'structure' && state.sourceXml && !state.xmlStructure) {
             parseXmlStructure();
