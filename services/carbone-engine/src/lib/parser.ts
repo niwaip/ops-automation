@@ -28,7 +28,7 @@ export interface ParsedTemplate {
 
 // 正则表达式定义
 const CARBONE_MARKER_REGEX = /\{([cdt])\.([^}]+)\}/g;
-const ARRAY_INDEX_REGEX = /\[i\]/g;
+const ARRAY_INDEX_REGEX = /\[i\]|\[i\+\d+\]/;  // 支持 [i] 和 [i+1]
 const FORMATTER_REGEX = /:([a-zA-Z]+)(?:\(([^)]*)\))?/g;
 const LOOP_PATTERN_REGEX = /\{[cdt]\.([^}]+)\[i\+1\][^}]*\}/g;
 
@@ -89,13 +89,13 @@ export class Parser {
         }
       }
 
-      // 检查是否是数组标记
+      // 检查是否是数组标记（包含 [i] 或 [i+1] 等）
       const isArray = ARRAY_INDEX_REGEX.test(pathPart);
       let arrayPath: string | undefined;
 
       if (isArray) {
-        // 提取数组路径 (例如 d.items[i].name -> d.items)
-        const arrayMatch = pathPart.match(/^([^[]+)\[i\]/);
+        // 提取数组路径 (例如 d.steps[i].name -> d.steps)
+        const arrayMatch = pathPart.match(/^([^[]+)\[i/);
         if (arrayMatch) {
           arrayPath = `${contextChar}.${arrayMatch[1]}`;
         }
@@ -118,12 +118,13 @@ export class Parser {
   /**
    * 检测循环模式
    * Carbone使用 [i] 和 [i+1] 来标记循环范围
+   * 同时支持自动检测表格行循环（只有一个[i]标记的情况）
    */
   detectLoops(xml: string, markers: Marker[]): LoopInfo[] {
     const loops: LoopInfo[] = [];
-    const arrayMarkers = markers.filter(m => m.isArray);
 
-    // 按数组路径分组
+    // 方法1: 传统的 [i] 和 [i+1] 配对检测
+    const arrayMarkers = markers.filter(m => m.isArray);
     const arrayGroups = new Map<string, Marker[]>();
     for (const marker of arrayMarkers) {
       if (marker.arrayPath) {
@@ -133,14 +134,10 @@ export class Parser {
       }
     }
 
-    // 为每个数组路径创建循环信息
     for (const [arrayPath, groupMarkers] of arrayGroups) {
       if (groupMarkers.length < 2) continue;
 
-      // 找到 [i] 和 [i+1] 标记来确定循环范围
       const sortedMarkers = groupMarkers.sort((a, b) => a.pos - b.pos);
-
-      // 查找模板单元
       const startMarker = sortedMarkers.find(m => m.name.includes('[i]') && !m.name.includes('[i+1]'));
       const endMarker = sortedMarkers.find(m => m.name.includes('[i+1]'));
 
@@ -149,10 +146,45 @@ export class Parser {
           arrayPath,
           startPos: startMarker.pos,
           endPos: endMarker.pos,
-          templateUnit: xml.substring(startMarker.pos, endMarker.pos + 10), // 包含标记本身
+          templateUnit: xml.substring(startMarker.pos, endMarker.pos + 10),
           depth: 1
         });
       }
+    }
+
+    // 方法2: 自动检测表格行循环
+    // 查找 <w:tr> 中包含 [i] 标记但没有 [i+1] 的情况
+    const tableRowPattern = /<w:tr[^>]*>([\s\S]*?)<\/w:tr>/g;
+    let rowMatch;
+    let rowIndex = 0;
+
+    while ((rowMatch = tableRowPattern.exec(xml)) !== null) {
+      const rowContent = rowMatch[1];
+      const rowFullMatch = rowMatch[0];
+      const rowStartPos = rowMatch.index;
+
+      // 检查这个行是否包含数组标记
+      const arrayInRow = markers.find(m => {
+        return m.pos >= rowStartPos &&
+               m.pos < rowStartPos + rowFullMatch.length &&
+               m.name.includes('[i]');
+      });
+
+      if (arrayInRow && arrayInRow.arrayPath) {
+        // 检查是否已经有这个数组路径的循环
+        const existingLoop = loops.find(l => l.arrayPath === arrayInRow.arrayPath);
+        if (!existingLoop) {
+          // 创建一个基于表格行的循环
+          loops.push({
+            arrayPath: arrayInRow.arrayPath,
+            startPos: rowStartPos,
+            endPos: rowStartPos + rowFullMatch.length,
+            templateUnit: rowFullMatch,
+            depth: 1
+          });
+        }
+      }
+      rowIndex++;
     }
 
     return loops;
