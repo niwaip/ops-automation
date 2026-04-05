@@ -8,12 +8,15 @@ services:
     image: docker.1ms.run/library/node:20-bullseye
     container_name: carbone-engine
     working_dir: /app
-    command: sh -c "npm config set registry https://registry.npmmirror.com && npm install --include=dev && npm run build && npm run start"
+    command: >
+      sh -c "apt-get update && apt-get install -y --no-install-recommends libreoffice-writer libreoffice-calc libreoffice-impress curl fonts-wqy-zenhei fonts-wqy-microhei fonts-noto-cjk fonts-arphic-uming fonts-arphic-ukai && apt-get clean && rm -rf /var/lib/apt/lists/* && npm config set registry https://registry.npmmirror.com && npm install --include=dev && npm run build && npm run start"
     environment:
       - NODE_ENV=production
       - PORT=3009
       - TEMPLATES_DIR=/app/templates
       - OUTPUTS_DIR=/app/outputs
+      - LIBREOFFICE_PATH=/usr/bin/soffice
+      - TMP_DIR=/tmp/carbone-preview
     ports:
       - "3009:3009"
     volumes:

@@ -10,59 +10,72 @@
         templates: [],
         selectedTemplate: null,
         formatters: [],
-        manualMarkings: []  // 存储手动标记
+        manualMarkings: [],
+        currentZoom: 1,
+        documentElements: [],
+        sourceXml: '',
+        currentTab: 'preview',
+        currentSourceView: 'structure',  // 默认显示结构化视图
+        xmlStructure: null
     };
 
     // DOM Elements
-    const elements = {
-        templateList: document.getElementById('template-list'),
-        formatterList: document.getElementById('formatter-list'),
-        uploadArea: document.getElementById('upload-area'),
-        fileInput: document.getElementById('file-input'),
-        noTemplate: document.getElementById('no-template'),
-        templateEditor: document.getElementById('template-editor'),
-        templateIcon: document.getElementById('template-icon'),
-        templateName: document.getElementById('template-name'),
-        templateFormat: document.getElementById('template-format'),
-        templateSize: document.getElementById('template-size'),
-        variablesList: document.getElementById('variables-list'),
-        loopsList: document.getElementById('loops-list'),
-        testData: document.getElementById('test-data'),
-        validateBtn: document.getElementById('validate-btn'),
-        renderBtn: document.getElementById('render-btn'),
-        saveBtn: document.getElementById('save-btn'),
-        renderModal: document.getElementById('render-modal'),
-        outputFormat: document.getElementById('output-format'),
-        confirmRender: document.getElementById('confirm-render'),
-        previewEmpty: document.getElementById('preview-empty'),
-        previewResult: document.getElementById('preview-result'),
-        previewFilename: document.getElementById('preview-filename'),
-        downloadLink: document.getElementById('download-link'),
-        formatterGuide: document.getElementById('formatter-guide'),
-        toastContainer: document.getElementById('toast-container'),
-        sourceEmpty: document.getElementById('source-empty'),
-        sourceContent: document.getElementById('source-content'),
-        sourceFilename: document.getElementById('source-filename'),
-        sourceCode: document.getElementById('source-code'),
-        copySource: document.getElementById('copy-source'),
-        // Document Preview elements
-        docpreviewEmpty: document.getElementById('docpreview-empty'),
-        docpreviewContent: document.getElementById('docpreview-content'),
-        previewIframe: document.getElementById('preview-iframe'),
-        previewFormatBadge: document.getElementById('preview-format-badge'),
-        previewSizeInfo: document.getElementById('preview-size-info'),
-        zoomIn: document.getElementById('zoom-in'),
-        zoomOut: document.getElementById('zoom-out'),
-        // AI Suggestion elements
-        aiIdentifyBtn: document.getElementById('ai-identify-btn'),
-        aiSuggestionsList: document.getElementById('ai-suggestions-list'),
-        // Manual marking elements
-        markingPopup: document.getElementById('marking-popup'),
-        selectedText: document.getElementById('selected-text'),
-        variablePathInput: document.getElementById('variable-path-input'),
-        cancelMarking: document.getElementById('cancel-marking'),
-        confirmMarking: document.getElementById('confirm-marking')
-    };
+    const elements = {};
+
+    // Initialize elements after DOM is ready
+    function initElements() {
+        elements.templateList = document.getElementById('template-list');
+        elements.uploadArea = document.getElementById('upload-area');
+        elements.fileInput = document.getElementById('file-input');
+        elements.noTemplate = document.getElementById('no-template');
+        elements.templateEditor = document.getElementById('template-editor');
+        elements.templateName = document.getElementById('template-name');
+        elements.templateFormat = document.getElementById('template-format');
+        elements.variablesList = document.getElementById('variables-list');
+        elements.loopsList = document.getElementById('loops-list');
+        elements.testData = document.getElementById('test-data');
+        elements.validateBtn = document.getElementById('validate-btn');
+        elements.renderBtn = document.getElementById('render-btn');
+        elements.saveBtn = document.getElementById('save-btn');
+        elements.renderModal = document.getElementById('render-modal');
+        elements.outputFormat = document.getElementById('output-format');
+        elements.confirmRender = document.getElementById('confirm-render');
+        elements.toastContainer = document.getElementById('toast-container');
+        elements.previewIframe = document.getElementById('preview-iframe');
+        elements.zoomIn = document.getElementById('zoom-in');
+        elements.zoomOut = document.getElementById('zoom-out');
+        elements.zoomLevel = document.getElementById('zoom-level');
+        elements.aiIdentifyBtn = document.getElementById('ai-identify-btn');
+        elements.aiSuggestionsList = document.getElementById('ai-suggestions-list');
+        elements.selectionSection = document.getElementById('selection-section');
+        elements.selectedTextDisplay = document.getElementById('selected-text-display');
+        elements.variablePathInput = document.getElementById('variable-path-input');
+        elements.formattersInput = document.getElementById('formatters-input');
+        elements.applyMarking = document.getElementById('apply-marking');
+        elements.clearSelection = document.getElementById('clear-selection');
+        elements.varsCount = document.getElementById('vars-count');
+        elements.suggestionsCount = document.getElementById('suggestions-count');
+        elements.documentElementsList = document.getElementById('document-elements-list');
+        elements.elementsCount = document.getElementById('elements-count');
+        // Tab elements
+        elements.tabPreview = document.getElementById('tab-preview');
+        elements.tabSource = document.getElementById('tab-source');
+        elements.previewTabContent = document.getElementById('preview-tab-content');
+        elements.sourceTabContent = document.getElementById('source-tab-content');
+        elements.sourceCode = document.getElementById('source-code');
+        elements.sourceFileSelect = document.getElementById('source-file-select');
+        elements.copySourceBtn = document.getElementById('copy-source-btn');
+        elements.formatSourceBtn = document.getElementById('format-source-btn');
+        // Structure view elements
+        elements.viewRaw = document.getElementById('view-raw');
+        elements.viewStructure = document.getElementById('view-structure');
+        elements.rawView = document.getElementById('raw-view');
+        elements.structureView = document.getElementById('structure-view');
+        elements.structureTree = document.getElementById('structure-tree');
+        elements.showPreserve = document.getElementById('show-preserve');
+        elements.showTables = document.getElementById('show-tables');
+        elements.showParagraphs = document.getElementById('show-paragraphs');
+    }
 
     // Utility Functions
     function formatBytes(bytes) {
@@ -119,144 +132,33 @@
 
             if (!response.ok) {
                 const error = await response.json().catch(() => ({ message: 'Request failed' }));
-                throw new Error(error.message || 'Request failed');
+                throw new Error(error.message || `HTTP ${response.status}`);
             }
 
-            return await response.json();
+            return response.json();
         } catch (error) {
             console.error('API Error:', error);
             throw error;
         }
     }
 
+    // Load Functions
     async function loadTemplates() {
         try {
-            elements.templateList.innerHTML = '<div class="loading"><i class="fas fa-spinner fa-spin"></i> Loading...</div>';
             const result = await apiRequest('/templates');
-            state.templates = result.templates || [];
+            state.templates = result.templates;
             renderTemplateList();
         } catch (error) {
-            elements.templateList.innerHTML = '<div class="loading"><i class="fas fa-exclamation-circle"></i> Failed to load</div>';
+            elements.templateList.innerHTML = '<div class="loading">Failed to load templates</div>';
         }
     }
 
     async function loadFormatters() {
         try {
             const result = await apiRequest('/formatters');
-            state.formatters = result.formatters || [];
-            renderFormatterList();
-            renderFormatterGuide();
+            state.formatters = result.formatters;
         } catch (error) {
             console.error('Failed to load formatters:', error);
-        }
-    }
-
-    async function uploadTemplate(file) {
-        const formData = new FormData();
-        formData.append('file', file);
-
-        try {
-            showToast('Uploading template...', 'info');
-            const response = await fetch(`${API_BASE}/upload`, {
-                method: 'POST',
-                body: formData
-            });
-
-            if (!response.ok) {
-                const error = await response.json();
-                throw new Error(error.message || 'Upload failed');
-            }
-
-            const template = await response.json();
-            showToast(`Template "${template.fileName}" uploaded successfully`, 'success');
-            await loadTemplates();
-            selectTemplate(template);
-        } catch (error) {
-            showToast(error.message, 'error');
-        }
-    }
-
-    async function deleteTemplate(id) {
-        if (!confirm('Are you sure you want to delete this template?')) return;
-
-        try {
-            await apiRequest(`/templates/${id}/delete`, { method: 'POST' });
-            showToast('Template deleted', 'success');
-            await loadTemplates();
-            if (state.selectedTemplate?.id === id) {
-                state.selectedTemplate = null;
-                showNoTemplate();
-            }
-        } catch (error) {
-            showToast('Failed to delete template', 'error');
-        }
-    }
-
-    async function validateData() {
-        if (!state.selectedTemplate) return;
-
-        let data = {};
-        try {
-            const text = elements.testData.value.trim();
-            if (text) {
-                data = JSON.parse(text);
-            }
-        } catch {
-            showToast('Invalid JSON data', 'error');
-            return;
-        }
-
-        try {
-            const result = await apiRequest('/validate', {
-                method: 'POST',
-                body: JSON.stringify({
-                    templateId: state.selectedTemplate.id,
-                    data
-                })
-            });
-
-            if (result.valid) {
-                showToast('Data is valid', 'success');
-            } else {
-                showToast(`Missing variables: ${result.missing.join(', ')}`, 'warning');
-            }
-        } catch (error) {
-            showToast('Validation failed', 'error');
-        }
-    }
-
-    async function renderTemplate() {
-        if (!state.selectedTemplate) return;
-
-        let data = {};
-        try {
-            const text = elements.testData.value.trim();
-            if (text) {
-                data = JSON.parse(text);
-            }
-        } catch {
-            showToast('Invalid JSON data', 'error');
-            return;
-        }
-
-        const outputFormat = elements.outputFormat.value || undefined;
-
-        try {
-            showToast('Rendering template...', 'info');
-            const result = await apiRequest('/render', {
-                method: 'POST',
-                body: JSON.stringify({
-                    templateId: state.selectedTemplate.id,
-                    data,
-                    outputFormat
-                })
-            });
-
-            showToast('Template rendered successfully', 'success');
-            showPreviewResult(result);
-            closeModal();
-        } catch (error) {
-            showToast('Render failed: ' + error.message, 'error');
         }
     }
 
@@ -274,10 +176,10 @@
                     <span class="template-item-name">${t.fileName}</span>
                 </div>
                 <div class="template-item-meta">
-                    <span class="badge">${t.format.toUpperCase()}</span>
+                    <span class="badge badge-info">${t.format.toUpperCase()}</span>
                     <span>${t.variables.length} vars</span>
                     <span>${formatBytes(t.size)}</span>
-                    <button class="btn btn-sm btn-danger delete-btn" data-id="${t.id}">
+                    <button class="btn btn-sm btn-danger delete-btn" data-id="${t.id}" title="Delete">
                         <i class="fas fa-trash"></i>
                     </button>
                 </div>
@@ -295,79 +197,53 @@
         });
 
         document.querySelectorAll('.delete-btn').forEach(btn => {
-            btn.addEventListener('click', (e) => {
+            btn.addEventListener('click', async (e) => {
                 e.stopPropagation();
-                deleteTemplate(btn.dataset.id);
+                const id = btn.dataset.id;
+                if (confirm('Delete this template?')) {
+                    await deleteTemplate(id);
+                }
             });
         });
     }
 
-    function renderFormatterList() {
-        const categories = {
-            'String': ['upperCase', 'lowerCase', 'ucFirst', 'truncate'],
-            'Number': ['formatNumber', 'round', 'add', 'currency'],
-            'Date': ['formatD', 'addDays', 'date', 'time'],
-            'Condition': ['show', 'hide', 'if', 'ifEmpty'],
-            'Array': ['arrayLen', 'arrayJoin', 'sum', 'avg']
-        };
-
-        const html = Object.entries(categories).map(([cat, items]) => `
-            <div style="margin-bottom: 8px;">
-                <small style="color: #666;">${cat}</small>
-                <div style="display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px;">
-                    ${items.filter(f => state.formatters.includes(f)).map(f => `
-                        <span class="formatter-tag" title="${f}">${f}</span>
-                    `).join('')}
-                </div>
-            </div>
-        `).join('');
-
-        elements.formatterList.innerHTML = html;
-    }
-
-    function renderFormatterGuide() {
-        const categories = {
-            'String': state.formatters.filter(f => ['upperCase', 'lowerCase', 'ucFirst', 'ucWords', 'truncate', 'stripTags', 'escapeHtml'].includes(f)),
-            'Number': state.formatters.filter(f => ['formatNumber', 'int', 'float', 'round', 'floor', 'ceil', 'abs', 'add', 'multiply', 'divide', 'currency'].includes(f)),
-            'Date': state.formatters.filter(f => ['formatD', 'addDays', 'addMonths', 'date', 'time', 'datetime', 'year', 'month'].includes(f)),
-            'Condition': state.formatters.filter(f => ['show', 'hide', 'if', 'ifEmpty', 'empty', 'notEmpty'].includes(f)),
-            'Array': state.formatters.filter(f => ['arrayLen', 'arrayJoin', 'sum', 'avg', 'min', 'max'].includes(f)),
-            'Transform': state.formatters.filter(f => ['toString', 'toNumber', 'toBoolean', 'concat', 'replace'].includes(f))
-        };
-
-        elements.formatterGuide.innerHTML = Object.entries(categories)
-            .filter(([_, items]) => items.length > 0)
-            .map(([cat, items]) => `
-                <div class="formatter-group">
-                    <h5>${cat}</h5>
-                    <div class="formatter-group-items">
-                        ${items.map(f => `<span class="formatter-tag">${f}</span>`).join('')}
-                    </div>
-                </div>
-            `).join('');
-    }
-
     function selectTemplate(template) {
         state.selectedTemplate = template;
+        state.sourceXml = ''; // Clear cached source
+        state.xmlStructure = null; // Clear cached structure
+        state.currentTab = 'preview'; // Reset to preview tab
+        state.currentSourceView = 'structure'; // 默认结构化视图
         renderTemplateList();
 
         elements.noTemplate.style.display = 'none';
-        elements.templateEditor.style.display = 'block';
+        elements.templateEditor.style.display = 'flex';
+
+        // Reset tab state
+        elements.tabPreview.classList.add('active');
+        elements.tabSource.classList.remove('active');
+        elements.previewTabContent.classList.add('active');
+        elements.sourceTabContent.classList.remove('active');
+
+        // Reset source view state - 默认显示结构化视图
+        elements.viewRaw.classList.remove('active');
+        elements.viewStructure.classList.add('active');
+        elements.rawView.classList.remove('active');
+        elements.structureView.classList.add('active');
 
         // Update header
-        elements.templateIcon.className = `fas ${getFormatIcon(template.format)}`;
         elements.templateName.textContent = template.fileName;
         elements.templateFormat.textContent = template.format.toUpperCase();
-        elements.templateSize.textContent = formatBytes(template.size);
+        elements.templateFormat.className = `badge badge-info`;
 
         // Render variables
+        elements.varsCount.textContent = template.variables.length;
         elements.variablesList.innerHTML = template.variables.length > 0
             ? template.variables.map(v => `
                 <div class="variable-item">
                     <code>{${v}}</code>
                 </div>
             `).join('')
-            : '<span style="color: #999;">No variables found</span>';
+            : '<span class="empty-hint">No variables found</span>';
 
         // Render loops
         elements.loopsList.innerHTML = template.loops.length > 0
@@ -377,253 +253,901 @@
                     <code>${l.arrayPath}</code>
                 </div>
             `).join('')
-            : '<span style="color: #999;">No loops detected</span>';
+            : '<span class="empty-hint">No loops detected</span>';
 
-        // Load source preview
-        loadSourcePreview(template.id);
         // Load document preview
         loadDocumentPreview(template);
+
+        // Load saved markings
+        loadMarkings(template.id);
+
+        // Load document structure elements first, then preload source XML
+        // This ensures proper ordering for element selection
+        loadDocumentElements(template).then(() => {
+            // 预加载源XML并解析结构，用于PDF选择与结构视图保持一致
+            preloadSourceXml(template);
+        });
+    }
+
+    // 预加载源XML并解析结构
+    async function preloadSourceXml(template) {
+        if (template.format !== 'docx') return;
+
+        try {
+            const result = await apiRequest(`/templates/${template.id}/preview-source`);
+            state.sourceXml = result.content;
+            // 立即解析结构，确保PDF选择可以使用
+            if (state.sourceXml && !state.xmlStructure) {
+                parseXmlStructure();
+                // 重新渲染Document Elements列表，使用正确的顺序
+                if (state.xmlStructure?.orderedElements?.length > 0 && state.documentElements.length > 0) {
+                    renderDocumentElementsList();
+                }
+            }
+        } catch (error) {
+            console.warn('Failed to preload source XML:', error);
+        }
+    }
+
+    async function loadDocumentElements(template) {
+        if (template.format !== 'docx') {
+            elements.documentElementsList.innerHTML = '<span class="empty-hint">Element selection only available for DOCX</span>';
+            elements.elementsCount.textContent = '0';
+            return;
+        }
+
+        try {
+            const result = await apiRequest(`/templates/${template.id}/structure`);
+            state.documentElements = result.elements || [];
+
+            elements.elementsCount.textContent = state.documentElements.length;
+
+            if (state.documentElements.length === 0) {
+                elements.documentElementsList.innerHTML = '<span class="empty-hint">No elements found</span>';
+                return;
+            }
+
+            // 渲染文档元素列表
+            renderDocumentElementsList();
+
+        } catch (error) {
+            console.error('Failed to load document elements:', error);
+            elements.documentElementsList.innerHTML = '<span class="empty-hint">Failed to load elements</span>';
+        }
+    }
+
+    // 渲染文档元素列表，使用与结构视图相同的顺序
+    function renderDocumentElementsList() {
+        // 如果xmlStructure已解析，使用orderedElements的顺序重新排列documentElements
+        let orderedDocumentElements = state.documentElements;
+
+        if (state.xmlStructure?.orderedElements?.length > 0) {
+            // 按照xmlStructure.orderedElements的顺序重新排列
+            orderedDocumentElements = state.xmlStructure.orderedElements.map(el => {
+                // 找到对应的documentElement
+                return state.documentElements.find(d => {
+                    if (el.type === 'table' && d.type === 'table') {
+                        return d.headerRow && el.headerRow &&
+                               d.headerRow.includes(el.headerRow.substring(0, 30));
+                    }
+                    return d.text && el.text &&
+                           (d.text === el.text || d.text.includes(el.text.substring(0, 50)));
+                });
+            }).filter(el => el); // 过滤掉undefined
+        }
+
+        elements.elementsCount.textContent = orderedDocumentElements.length;
+
+        if (orderedDocumentElements.length === 0) {
+            elements.documentElementsList.innerHTML = '<span class="empty-hint">No elements found</span>';
+            return;
+        }
+
+        elements.documentElementsList.innerHTML = orderedDocumentElements.map((el, idx) => {
+                // 表格特殊显示
+                if (el.type === 'table') {
+                    return `
+                        <div class="element-item element-type-table" data-index="${idx}">
+                            <div class="element-header">
+                                <span class="element-type-icon">
+                                    <i class="fas fa-table"></i>
+                                </span>
+                                <span class="element-type-label">Table</span>
+                                <span class="element-badge">${el.attributes?.rows || '?'}行</span>
+                            </div>
+                            ${el.headerRow ? `
+                                <div class="element-table-header">
+                                    <span class="element-table-label">📋 标题行:</span>
+                                    <code>${escapeHtml(el.headerRow)}</code>
+                                </div>
+                            ` : ''}
+                            ${el.dataRows && el.dataRows.length > 0 ? `
+                                <div class="element-table-data">
+                                    <span class="element-table-label">🔄 数据行: ${el.dataRows.length}行可循环</span>
+                                </div>
+                            ` : ''}
+                            <div class="element-actions">
+                                <button class="btn btn-primary btn-sm btn-select-element" data-index="${idx}">
+                                    <i class="fas fa-check"></i> Select
+                                </button>
+                            </div>
+                        </div>
+                    `;
+                }
+
+                // 普通元素
+                return `
+                    <div class="element-item element-type-${el.type}" data-index="${idx}">
+                        <div class="element-header">
+                            <span class="element-type-icon">
+                                <i class="fas ${getElementIcon(el.type)}"></i>
+                            </span>
+                            <span class="element-type-label">${getElementLabel(el.type)}</span>
+                        </div>
+                        <div class="element-content">
+                            <code>${escapeHtml(el.text.substring(0, 80))}${el.text.length > 80 ? '...' : ''}</code>
+                        </div>
+                        <div class="element-actions">
+                            <button class="btn btn-primary btn-sm btn-select-element" data-index="${idx}">
+                                <i class="fas fa-check"></i> Select
+                            </button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            // Bind click events for element selection - 使用当前渲染的元素
+            const currentElements = orderedDocumentElements;
+            document.querySelectorAll('.btn-select-element').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    const idx = parseInt(btn.dataset.index);
+                    selectDocumentElement(currentElements[idx]);
+                });
+            });
+
+            // Bind click events for element items - 使用当前渲染的元素
+            document.querySelectorAll('.element-item').forEach(item => {
+                item.addEventListener('click', () => {
+                    const idx = parseInt(item.dataset.index);
+                    selectDocumentElement(currentElements[idx]);
+                });
+            });
+    }
+
+    function getElementIcon(type) {
+        const icons = {
+            'title': 'fa-heading',
+            'heading1': 'fa-heading',
+            'heading2': 'fa-heading',
+            'heading3': 'fa-heading',
+            'paragraph': 'fa-paragraph',
+            'table': 'fa-table',
+            'list': 'fa-list',
+            'image': 'fa-image'
+        };
+        return icons[type] || 'fa-file-alt';
+    }
+
+    function getElementLabel(type) {
+        const labels = {
+            'title': 'Title',
+            'heading1': 'Heading 1',
+            'heading2': 'Heading 2',
+            'heading3': 'Heading 3',
+            'paragraph': 'Paragraph',
+            'table': 'Table',
+            'list': 'List',
+            'image': 'Image'
+        };
+        return labels[type] || type;
+    }
+
+    function escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+
+    function selectDocumentElement(element) {
+        // Show selection section with element info
+        elements.selectedTextDisplay.textContent = element.text;
+        elements.variablePathInput.value = suggestVariablePath(element.text);
+        elements.formattersInput.value = '';
+        elements.selectionSection.style.display = 'block';
+
+        // Store selected element
+        state.selectedElement = element;
+
+        // Highlight in preview
+        highlightElementInPreview(element);
+
+        showToast(`Selected ${element.type}: "${element.text.substring(0, 30)}..."`, 'info');
+    }
+
+    function highlightElementInPreview(element) {
+        try {
+            const iframeDoc = elements.previewIframe.contentDocument || elements.previewIframe.contentWindow.document;
+
+            // Remove existing highlights
+            iframeDoc.querySelectorAll('.element-highlight').forEach(el => {
+                el.classList.remove('element-highlight');
+            });
+
+            // PDF 预览：Find matching text in PDF text layer
+            const textLayer = iframeDoc.querySelector('.textLayer');
+            const canvas = iframeDoc.querySelector('#pdf-canvas');
+
+            // 处理图片类型 - PDF预览
+            if (element.type === 'image' && textLayer) {
+                // 图片在PDF中，需要找到对应的文本（如"Step X: screenshot"）
+                // 根据imageId判断是哪张图片
+                const imageId = element.imageId || '';
+                let searchPattern = '';
+
+                if (imageId.includes('rId6')) {
+                    searchPattern = 'Step 3';
+                } else if (imageId.includes('rId7')) {
+                    searchPattern = 'Step 7';
+                } else {
+                    // 默认搜索"截图"或"screenshot"
+                    searchPattern = 'screenshot';
+                }
+
+                const spans = textLayer.querySelectorAll('span');
+                let foundFirst = false;
+
+                spans.forEach(span => {
+                    const text = span.textContent || '';
+                    if (text.includes(searchPattern) || text.includes('截图')) {
+                        span.classList.add('element-highlight');
+                        if (!foundFirst) {
+                            span.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                            foundFirst = true;
+                        }
+                    }
+                });
+
+                // 如果没有找到匹配文本，显示提示
+                if (!foundFirst) {
+                    showToast(`Image selected: ${element.imageId || 'unknown'}`, 'info');
+                }
+                return;
+            }
+
+            if (textLayer && element.type !== 'image') {
+                const spans = textLayer.querySelectorAll('span');
+                let foundFirst = false;
+
+                spans.forEach(span => {
+                    if (span.textContent && element.text && element.text.includes(span.textContent.trim())) {
+                        span.classList.add('element-highlight');
+                        if (!foundFirst) {
+                            span.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                            foundFirst = true;
+                        }
+                    }
+                });
+            }
+
+            // HTML 预览：高亮匹配的 HTML 元素
+            const docContainer = iframeDoc.querySelector('.document-container');
+            if (docContainer) {
+                if (element.type === 'table') {
+                    // 高亮表格
+                    const tables = docContainer.querySelectorAll('table');
+                    tables.forEach(table => {
+                        const headerRow = table.querySelector('tr');
+                        if (headerRow && element.headerRow) {
+                            const headers = headerRow.querySelectorAll('th, td');
+                            const headerText = Array.from(headers).map(h => h.textContent.trim()).join(' | ');
+                            if (element.headerRow.includes(headerText.substring(0, 30)) ||
+                                headerText.includes(element.headerRow.substring(0, 30))) {
+                                table.classList.add('element-highlight');
+                                table.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                            }
+                        }
+                    });
+                } else if (element.type === 'image') {
+                    // 高亮图片
+                    const images = docContainer.querySelectorAll('img');
+                    images.forEach((img, idx) => {
+                        if (idx < 2) { // 假设只有前两张图片是文档中的截图
+                            img.classList.add('element-highlight');
+                            if (idx === 0 || element.imageId?.includes('rId6')) {
+                                img.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                            }
+                        }
+                    });
+                } else if (element.text) {
+                    // 高亮段落/标题
+                    const textContent = element.text.substring(0, 50);
+                    const elements = docContainer.querySelectorAll('p, h1, h2, h3');
+                    let foundFirst = false;
+                    elements.forEach(el => {
+                        if (el.textContent && (el.textContent.includes(textContent) || textContent.includes(el.textContent.trim().substring(0, 30)))) {
+                            el.classList.add('element-highlight');
+                            if (!foundFirst) {
+                                el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                                foundFirst = true;
+                            }
+                        }
+                    });
+                }
+            }
+        } catch (e) {
+            console.warn('Could not highlight element in preview:', e);
+        }
     }
 
     async function loadDocumentPreview(template) {
         try {
             const result = await apiRequest(`/templates/${template.id}/preview-html`);
 
-            elements.docpreviewEmpty.style.display = 'none';
-            elements.docpreviewContent.style.display = 'block';
-
-            // Update format badge
-            elements.previewFormatBadge.textContent = result.format.toUpperCase();
-            elements.previewSizeInfo.textContent = formatBytes(template.size);
-
             // Load HTML into iframe
-            const iframe = elements.previewIframe;
-            iframe.srcdoc = result.html;
+            elements.previewIframe.srcdoc = result.html;
 
             // Reset zoom
-            iframe.style.transform = 'scale(1)';
+            state.currentZoom = 1;
+            updateZoom();
+
+            // Setup text selection after iframe loads
+            elements.previewIframe.onload = () => {
+                setupIframeSelection();
+            };
 
         } catch (error) {
             console.error('Failed to load document preview:', error);
-            elements.docpreviewEmpty.style.display = 'block';
-            elements.docpreviewContent.style.display = 'none';
+            elements.previewIframe.srcdoc = `
+                <html>
+                <body style="display:flex;align-items:center;justify-content:center;height:100vh;background:#f5f5f5;">
+                    <div style="text-align:center;color:#999;">
+                        <i class="fas fa-exclamation-triangle" style="font-size:48px;margin-bottom:16px;"></i>
+                        <p>Failed to load document preview</p>
+                    </div>
+                </body>
+                </html>
+            `;
         }
     }
 
-    async function loadSourcePreview(templateId) {
+    function setupIframeSelection() {
         try {
-            const result = await apiRequest(`/templates/${templateId}/preview-source`);
+            const iframeDoc = elements.previewIframe.contentDocument || elements.previewIframe.contentWindow.document;
 
-            elements.sourceEmpty.style.display = 'none';
-            elements.sourceContent.style.display = 'block';
-
-            // Set filename based on format
-            const filenames = {
-                docx: 'word/document.xml',
-                xlsx: 'xl/worksheets/sheet1.xml',
-                pptx: 'ppt/slides/slide1.xml',
-                html: 'index.html'
-            };
-            elements.sourceFilename.textContent = filenames[result.format] || 'source';
-
-            // Display content with syntax highlighting
-            let displayContent = result.content;
-
-            // Format XML for better readability (basic formatting)
-            if (result.type === 'xml') {
-                try {
-                    // Basic XML formatting
-                    displayContent = formatXml(result.content);
-                } catch (e) {
-                    // If formatting fails, show original
+            // Style for highlighted elements
+            const style = iframeDoc.createElement('style');
+            style.textContent = `
+                .carbone-highlight {
+                    background-color: #fff3cd !important;
+                    border: 2px dashed #ffc107 !important;
+                    cursor: pointer;
                 }
-            }
+                .carbone-highlight:hover {
+                    background-color: #ffe69c !important;
+                }
+                .element-highlight {
+                    background-color: rgba(0, 123, 255, 0.3) !important;
+                    border: 2px solid #007bff !important;
+                    border-radius: 2px;
+                }
+                /* Allow click on text layer for element selection */
+                .textLayer {
+                    user-select: none !important;
+                    -webkit-user-select: none !important;
+                    cursor: pointer !important;
+                    pointer-events: auto !important;
+                }
+                .textLayer span {
+                    cursor: pointer !important;
+                }
+                .textLayer span:hover {
+                    background-color: rgba(0, 123, 255, 0.15) !important;
+                }
+                /* HTML preview element styles */
+                .document-container p, .document-container h1, .document-container h2,
+                .document-container h3, .document-container table, .document-container img {
+                    cursor: pointer !important;
+                }
+                .document-container p:hover, .document-container h1:hover,
+                .document-container h2:hover, .document-container h3:hover {
+                    background-color: rgba(0, 123, 255, 0.1) !important;
+                }
+                .document-container table:hover {
+                    outline: 2px solid #007bff !important;
+                }
+                .document-container img:hover {
+                    outline: 2px solid #007bff !important;
+                    opacity: 0.9;
+                }
+            `;
+            iframeDoc.head.appendChild(style);
 
-            elements.sourceCode.querySelector('code').textContent = displayContent;
+            // 检测预览类型（PDF有textLayer，HTML有document-container）
+            // PDF.js异步渲染，需要等待textLayer出现
+            const waitForPreviewType = () => {
+                const isPdfPreview = iframeDoc.querySelector('.textLayer') !== null;
+                const isHtmlPreview = iframeDoc.querySelector('.document-container') !== null;
 
-            // Apply syntax highlighting if available
-            if (typeof hljs !== 'undefined') {
-                hljs.highlightElement(elements.sourceCode.querySelector('code'));
-            }
-        } catch (error) {
-            console.error('Failed to load source:', error);
-            elements.sourceEmpty.style.display = 'block';
-            elements.sourceContent.style.display = 'none';
-        }
-    }
+                console.log('Preview type:', isPdfPreview ? 'PDF' : (isHtmlPreview ? 'HTML' : 'Unknown'));
 
-    function formatXml(xml) {
-        // Basic XML formatter
-        let formatted = '';
-        let indent = '';
-        const tab = '  ';
-
-        xml.split(/>\s*</).forEach(node => {
-            if (node.match(/^\/\w/)) {
-                // Closing tag
-                indent = indent.substring(tab.length);
-            }
-
-            formatted += indent + '<' + node + '>\n';
-
-            if (node.match(/^<?\w[^>]*[^\/]$/) && !node.startsWith('?')) {
-                // Opening tag (not self-closing)
-                indent += tab;
-            }
-        });
-
-        return formatted.substring(1, formatted.length - 2);
-    }
-
-    function showNoTemplate() {
-        elements.noTemplate.style.display = 'block';
-        elements.templateEditor.style.display = 'none';
-        elements.sourceEmpty.style.display = 'block';
-        elements.sourceContent.style.display = 'none';
-        elements.docpreviewEmpty.style.display = 'block';
-        elements.docpreviewContent.style.display = 'none';
-    }
-
-    function showPreviewResult(result) {
-        elements.previewEmpty.style.display = 'none';
-        elements.previewResult.style.display = 'block';
-        elements.previewFilename.textContent = result.fileName;
-        elements.downloadLink.href = result.downloadUrl;
-
-        // Switch to preview tab
-        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-        document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
-        document.querySelector('[data-tab="preview"]').classList.add('active');
-        document.getElementById('preview-tab').classList.add('active');
-    }
-
-    // Modal Functions
-    function openModal() {
-        elements.renderModal.classList.add('show');
-    }
-
-    function closeModal() {
-        elements.renderModal.classList.remove('show');
-    }
-
-    // Event Handlers
-    function initEvents() {
-        // Tab switching
-        document.querySelectorAll('.tab').forEach(tab => {
-            tab.addEventListener('click', () => {
-                document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-                document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
-                tab.classList.add('active');
-                document.getElementById(`${tab.dataset.tab}-tab`).classList.add('active');
-            });
-        });
-
-        // Upload area
-        elements.uploadArea.addEventListener('click', () => elements.fileInput.click());
-        elements.uploadArea.addEventListener('dragover', (e) => {
-            e.preventDefault();
-            elements.uploadArea.classList.add('dragover');
-        });
-        elements.uploadArea.addEventListener('dragleave', () => {
-            elements.uploadArea.classList.remove('dragover');
-        });
-        elements.uploadArea.addEventListener('drop', (e) => {
-            e.preventDefault();
-            elements.uploadArea.classList.remove('dragover');
-            const file = e.dataTransfer.files[0];
-            if (file) uploadTemplate(file);
-        });
-        elements.fileInput.addEventListener('change', (e) => {
-            const file = e.target.files[0];
-            if (file) uploadTemplate(file);
-        });
-
-        // Buttons
-        elements.validateBtn.addEventListener('click', validateData);
-        elements.renderBtn.addEventListener('click', openModal);
-        elements.confirmRender.addEventListener('click', renderTemplate);
-        if (elements.saveBtn) {
-            elements.saveBtn.addEventListener('click', saveMarkings);
-        }
-
-        // Zoom controls for document preview
-        let currentZoom = 1;
-        if (elements.zoomIn) {
-            elements.zoomIn.addEventListener('click', () => {
-                currentZoom = Math.min(currentZoom + 0.1, 2);
-                elements.previewIframe.style.transform = `scale(${currentZoom})`;
-                elements.previewIframe.style.transformOrigin = 'top left';
-            });
-        }
-        if (elements.zoomOut) {
-            elements.zoomOut.addEventListener('click', () => {
-                currentZoom = Math.max(currentZoom - 0.1, 0.5);
-                elements.previewIframe.style.transform = `scale(${currentZoom})`;
-                elements.previewIframe.style.transformOrigin = 'top left';
-            });
-        }
-
-        // Copy source button
-        if (elements.copySource) {
-            elements.copySource.addEventListener('click', () => {
-                const code = elements.sourceCode.querySelector('code').textContent;
-                navigator.clipboard.writeText(code).then(() => {
-                    showToast('Source code copied to clipboard', 'success');
-                }).catch(() => {
-                    showToast('Failed to copy', 'error');
-                });
-            });
-        }
-
-        // Modal
-        document.querySelector('.modal-close').addEventListener('click', closeModal);
-        document.querySelector('.modal-cancel').addEventListener('click', closeModal);
-        elements.renderModal.addEventListener('click', (e) => {
-            if (e.target === elements.renderModal) closeModal();
-        });
-
-        // AI Identify button
-        if (elements.aiIdentifyBtn) {
-            elements.aiIdentifyBtn.addEventListener('click', async () => {
-                if (!state.selectedTemplate) {
-                    showToast('Please select a template first', 'warning');
+                if (!isPdfPreview && !isHtmlPreview) {
+                    // PDF.js还没渲染完成，等待后再检测
+                    setTimeout(waitForPreviewType, 500);
                     return;
                 }
-                await aiIdentifyVariables();
-            });
-        }
 
-        // Manual marking events
-        if (elements.cancelMarking) {
-            elements.cancelMarking.addEventListener('click', hideMarkingPopup);
-        }
-        if (elements.confirmMarking) {
-            elements.confirmMarking.addEventListener('click', confirmManualMarking);
-        }
-        if (elements.variablePathInput) {
-            elements.variablePathInput.addEventListener('keypress', (e) => {
-                if (e.key === 'Enter') {
-                    confirmManualMarking();
-                }
-            });
-        }
+                // 预览类型确定后，设置点击事件处理
+                setupClickHandlers(iframeDoc);
+            };
 
-        // Text selection in document preview iframe
-        if (elements.previewIframe) {
-            elements.previewIframe.addEventListener('load', () => {
-                try {
-                    const iframeDoc = elements.previewIframe.contentDocument || elements.previewIframe.contentWindow.document;
-                    iframeDoc.addEventListener('mouseup', handleTextSelection);
-                } catch (e) {
-                    // Cross-origin restriction
-                }
-            });
+            waitForPreviewType();
+        } catch (error) {
+            console.error('Failed to setup iframe selection:', error);
         }
     }
 
-    // AI Identify Variables
-    async function aiIdentifyVariables() {
+    function setupClickHandlers(iframeDoc) {
+        try {
+            iframeDoc.addEventListener('click', (e) => {
+                // PDF 预览处理
+                const clickedSpan = e.target.closest('.textLayer span');
+                const clickedTextLayer = e.target.closest('.textLayer');
+                const clickedCanvas = e.target.closest('#pdf-canvas') || e.target.closest('canvas');
+
+                // HTML 预览处理
+                const clickedParagraph = e.target.closest('.document-container p, .document-container h1, .document-container h2, .document-container h3');
+                const clickedTable = e.target.closest('.document-container table');
+                const clickedImg = e.target.closest('.document-container img');
+
+                // 获取要搜索的元素列表
+                let elementsToSearch = [];
+                if (state.xmlStructure?.orderedElements?.length > 0) {
+                    elementsToSearch = state.xmlStructure.orderedElements.map((el, idx) => {
+                        const docEl = state.documentElements.find(d => {
+                            if (el.type === 'table' && d.type === 'table') {
+                                return d.headerRow && el.headerRow &&
+                                       d.headerRow.includes(el.headerRow.substring(0, 30));
+                            }
+                            if (el.type === 'image' && d.type === 'image') {
+                                return el.imageId && d.imageId === el.imageId;
+                            }
+                            return d.text && el.text &&
+                                   (d.text === el.text || d.text.includes(el.text.substring(0, 50)));
+                        });
+                        return docEl || {
+                            text: el.text,
+                            type: el.type,
+                            headerRow: el.headerRow,
+                            dataRows: el.dataRows,
+                            imageId: el.imageId,
+                            orderIndex: el.orderIndex
+                        };
+                    });
+                } else {
+                    elementsToSearch = state.documentElements;
+                }
+
+                let matchingElement = null;
+
+                // PDF 预览：处理文本点击
+                if (clickedSpan) {
+                    const clickedText = clickedSpan.textContent.trim();
+                    if (!clickedText) return;
+
+                    // 获取点击元素的Y坐标，用于判断是否在表格区域内
+                    const clickedRect = clickedSpan.getBoundingClientRect();
+                    const clickedY = clickedRect.top;
+
+                    // 优先检查是否点击的是表格区域内（标题行或数据行）的文字
+                    const tableElements = elementsToSearch.filter(el => el.type === 'table');
+                    for (const tableEl of tableElements) {
+                        let isTableText = false;
+
+                        // 检查标题行
+                        if (tableEl.headerRow) {
+                            const headerParts = tableEl.headerRow.split(/[|,，]/).map(p => p.trim());
+                            if (headerParts.includes(clickedText) || tableEl.headerRow.includes(clickedText)) {
+                                isTableText = true;
+                            }
+                        }
+
+                        // 检查数据行
+                        if (!isTableText && tableEl.dataRows) {
+                            for (const row of tableEl.dataRows) {
+                                if (row && row.includes(clickedText)) {
+                                    isTableText = true;
+                                    break;
+                                }
+                            }
+                        }
+
+                        // 检查表格整体文本（fallback）
+                        if (!isTableText && tableEl.text) {
+                            // 检查点击的文字是否是表格中常见的状态文字
+                            const tableKeywords = ['Success', 'success', 'Failed', 'failed', 'completed', 'navigate', 'wait', 'screenshot', 'search'];
+                            if (tableKeywords.includes(clickedText) && tableEl.text.includes(clickedText)) {
+                                isTableText = true;
+                            }
+                        }
+
+                        if (isTableText) {
+                            matchingElement = tableEl;
+                            break;
+                        }
+                    }
+
+                    // 如果没有匹配到表格，再尝试段落匹配
+                    if (!matchingElement) {
+                        // First try exact match
+                        matchingElement = elementsToSearch.find(el => {
+                            return el.text && el.text === clickedText;
+                        });
+                    }
+
+                    // If no exact match, try element that starts with clicked text
+                    if (!matchingElement) {
+                        matchingElement = elementsToSearch.find(el => {
+                            return el.text && el.text.startsWith(clickedText);
+                        });
+                    }
+
+                    // If no match, try element that contains the clicked text
+                    if (!matchingElement) {
+                        matchingElement = elementsToSearch.find(el => {
+                            return el.text && el.text.includes(clickedText);
+                        });
+                    }
+
+                    // If still no match, try partial match (clicked text contains element text)
+                    if (!matchingElement) {
+                        matchingElement = elementsToSearch.find(el => {
+                            return el.text && clickedText.includes(el.text.substring(0, 20)) && el.text.length > 10;
+                        });
+                    }
+                }
+                // 处理 textLayer 点击但不在 span 上（图片区域或空白区域）
+                else if (clickedTextLayer && !clickedSpan) {
+                    // 点击的是 textLayer 但不是文字，可能是图片区域
+                    // 获取点击坐标
+                    const clickX = e.clientX;
+                    const clickY = e.clientY;
+
+                    // 获取所有图片元素
+                    const imageElements = elementsToSearch.filter(el => el.type === 'image');
+
+                    if (imageElements.length > 0) {
+                        // 根据页面和点击位置判断选择哪张图片
+                        // 图片通常在"截图记录"标题下方，或"Step X: screenshot"后面
+                        const textLayerRect = clickedTextLayer.getBoundingClientRect();
+                        const relativeY = clickY - textLayerRect.top;
+                        const relativeX = clickX - textLayerRect.left;
+
+                        // 检查附近是否有"截图"相关文本
+                        const nearbySpans = clickedTextLayer.querySelectorAll('span');
+                        let foundScreenshotText = false;
+                        let nearbyText = '';
+
+                        nearbySpans.forEach(span => {
+                            const spanRect = span.getBoundingClientRect();
+                            const distance = Math.abs(spanRect.top - clickY);
+                            if (distance < 100) { // 100px范围内的文本
+                                nearbyText += span.textContent + ' ';
+                            }
+                        });
+
+                        // 如果附近有"截图"或"Step X: screenshot"文本，选择对应的图片
+                        if (nearbyText.includes('截图') || nearbyText.toLowerCase().includes('screenshot')) {
+                            // 尝试通过Step编号匹配图片
+                            const stepMatch = nearbyText.match(/Step\s+(\d+)/i);
+                            if (stepMatch) {
+                                const stepNum = parseInt(stepMatch[1], 10);
+                                // 找到对应Step的图片（Step 3对应第一张，Step 7对应第二张）
+                                const imageIndex = stepNum === 3 ? 0 : (stepNum === 7 ? 1 : 0);
+                                matchingElement = imageElements[imageIndex] || imageElements[0];
+                            } else {
+                                // 默认选择第一张图片
+                                matchingElement = imageElements[0];
+                            }
+                        } else {
+                            // 根据Y坐标判断：上半部分选第一张，下半部分选第二张
+                            const imageIndex = relativeY < textLayerRect.height / 2 ? 0 : 1;
+                            matchingElement = imageElements[Math.min(imageIndex, imageElements.length - 1)];
+                        }
+                    }
+
+                    // 如果没有找到图片元素，尝试找截图相关的段落
+                    if (!matchingElement) {
+                        matchingElement = elementsToSearch.find(el => {
+                            if (el.type === 'paragraph') {
+                                const elText = el.text || '';
+                                return elText.includes('截图') || elText.toLowerCase().includes('screenshot');
+                            }
+                            return false;
+                        });
+                    }
+                }
+                // HTML 预览：处理表格点击
+                else if (clickedTable) {
+                    // 获取表格的标题行文本
+                    const headerRow = clickedTable.querySelector('tr');
+                    let headerText = '';
+                    if (headerRow) {
+                        const headers = headerRow.querySelectorAll('th, td');
+                        headerText = Array.from(headers).map(h => h.textContent.trim()).join(' | ');
+                    }
+
+                    // 匹配表格
+                    matchingElement = elementsToSearch.find(el => {
+                        if (el.type === 'table' && el.headerRow && headerText) {
+                            return el.headerRow.includes(headerText.substring(0, 30)) ||
+                                   headerText.includes(el.headerRow.substring(0, 30));
+                        }
+                        return false;
+                    });
+
+                    // 如果没有通过标题行匹配，尝试通过文本匹配
+                    if (!matchingElement) {
+                        const tableText = clickedTable.textContent.trim().substring(0, 100);
+                        matchingElement = elementsToSearch.find(el => {
+                            if (el.type === 'table' && el.text) {
+                                return tableText.includes(el.text.substring(0, 50)) ||
+                                       el.text.includes(tableText.substring(0, 50));
+                            }
+                            return false;
+                        });
+                    }
+                }
+                // HTML 预览：处理图片点击
+                else if (clickedImg) {
+                    // 匹配图片元素
+                    matchingElement = elementsToSearch.find(el => {
+                        return el.type === 'image';
+                    });
+                }
+                // PDF 预览：处理canvas点击（图片区域）
+                else if (clickedCanvas) {
+                    // 点击的是PDF canvas，可能是图片区域
+                    const imageElements = elementsToSearch.filter(el => el.type === 'image');
+
+                    if (imageElements.length > 0) {
+                        // 获取点击坐标相对于canvas的位置
+                        const canvasRect = clickedCanvas.getBoundingClientRect();
+                        const relativeY = e.clientY - canvasRect.top;
+                        const relativeX = e.clientX - canvasRect.left;
+
+                        // 根据Y坐标判断选择哪张图片
+                        // 图片通常在页面的中下部分
+                        const imageIndex = relativeY > canvasRect.height * 0.4 ? 0 : 1;
+                        matchingElement = imageElements[Math.min(imageIndex, imageElements.length - 1)];
+
+                        console.log('Canvas clicked at:', relativeX, relativeY, 'Selected image index:', imageIndex);
+                    }
+                }
+                // HTML 预览：处理段落/标题点击
+                else if (clickedParagraph) {
+                    const clickedText = clickedParagraph.textContent.trim();
+                    if (!clickedText) return;
+
+                    // 首先尝试精确匹配
+                    matchingElement = elementsToSearch.find(el => {
+                        if (el.type === 'paragraph' || el.type === 'title' ||
+                            el.type === 'heading1' || el.type === 'heading2' || el.type === 'heading3') {
+                            return el.text && (el.text === clickedText || clickedText === el.text.substring(0, clickedText.length));
+                        }
+                        return false;
+                    });
+
+                    // 如果没有精确匹配，尝试包含匹配
+                    if (!matchingElement) {
+                        matchingElement = elementsToSearch.find(el => {
+                            if (el.type === 'paragraph' || el.type === 'title' ||
+                                el.type === 'heading1' || el.type === 'heading2' || el.type === 'heading3') {
+                                return el.text && (el.text.includes(clickedText) || clickedText.includes(el.text.substring(0, 50)));
+                            }
+                            return false;
+                        });
+                    }
+                }
+
+                if (matchingElement) {
+                    // 如果是从orderedElements来的，需要找到对应的documentElement
+                    if (matchingElement.orderIndex !== undefined && !matchingElement.id) {
+                        const docEl = state.documentElements.find(d => {
+                            if (matchingElement.type === 'table' && d.type === 'table') {
+                                return d.headerRow && matchingElement.headerRow &&
+                                       d.headerRow.includes(matchingElement.headerRow.substring(0, 30));
+                            }
+                            return d.text && matchingElement.text &&
+                                   (d.text === matchingElement.text || d.text.includes(matchingElement.text.substring(0, 50)));
+                        });
+                        if (docEl) matchingElement = docEl;
+                    }
+                    selectDocumentElement(matchingElement);
+                }
+            });
+            console.log('PDF click handler attached to document (works for all pages)');
+
+        } catch (e) {
+            console.warn('Could not setup iframe selection:', e);
+        }
+    }
+
+    // handleTextSelection is no longer needed - element selection is done via Document Elements panel
+    function handleTextSelection(e) {
+        // Disabled - use Document Elements panel for atomic element selection
+    }
+
+    function showSelectionSection(text) {
+        elements.selectedTextDisplay.textContent = text;
+        elements.variablePathInput.value = suggestVariablePath(text);
+        elements.formattersInput.value = '';
+        elements.selectionSection.style.display = 'block';
+    }
+
+    function hideSelectionSection() {
+        elements.selectionSection.style.display = 'none';
+    }
+
+    function suggestVariablePath(text) {
+        // Simple heuristics for suggesting variable paths
+        if (/^\d{4}[-/年]\d{1,2}[-/月]\d{1,2}/.test(text)) return 'd.date';
+        if (/^[￥¥$]\s*\d/.test(text)) return 'd.amount';
+        if (/^\d+\.?\d*\s*(元|件|个|张|份)/.test(text)) return 'd.quantity';
+        if (/^\d{11}$/.test(text) || /^1[3-9]\d{9}$/.test(text)) return 'd.phone';
+        if (/^[\w.-]+@[\w.-]+\.\w+$/.test(text)) return 'd.email';
+        if (/^[\u4e00-\u9fa5]{2,4}$/.test(text)) return 'd.name';
+        return 'd.value';
+    }
+
+    function updateZoom() {
+        elements.previewIframe.style.transform = `scale(${state.currentZoom})`;
+        elements.zoomLevel.textContent = `${Math.round(state.currentZoom * 100)}%`;
+    }
+
+    async function loadMarkings(templateId) {
+        try {
+            const result = await apiRequest(`/templates/${templateId}/markings`);
+            state.manualMarkings = result.markings || [];
+        } catch (error) {
+            state.manualMarkings = [];
+        }
+    }
+
+    // Upload Function
+    async function uploadTemplate(file) {
+        const formData = new FormData();
+        formData.append('file', file);
+
+        try {
+            showToast('Uploading template...', 'info');
+
+            const response = await fetch(`${API_BASE}/upload`, {
+                method: 'POST',
+                body: formData
+            });
+
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.message || 'Upload failed');
+            }
+
+            const result = await response.json();
+            showToast('Template uploaded successfully', 'success');
+
+            // Reload templates
+            await loadTemplates();
+
+            // Select the new template
+            const newTemplate = state.templates.find(t => t.id === result.id);
+            if (newTemplate) selectTemplate(newTemplate);
+
+        } catch (error) {
+            showToast('Upload failed: ' + error.message, 'error');
+        }
+    }
+
+    // Delete Function
+    async function deleteTemplate(id) {
+        try {
+            await apiRequest(`/templates/${id}/delete`, { method: 'POST' });
+            showToast('Template deleted', 'success');
+            state.templates = state.templates.filter(t => t.id !== id);
+            if (state.selectedTemplate?.id === id) {
+                state.selectedTemplate = null;
+                elements.noTemplate.style.display = 'flex';
+                elements.templateEditor.style.display = 'none';
+            }
+            renderTemplateList();
+        } catch (error) {
+            showToast('Failed to delete template', 'error');
+        }
+    }
+
+    // Validate Function
+    async function validateData() {
         if (!state.selectedTemplate) return;
+
+        let data = {};
+        try {
+            const text = elements.testData.value.trim();
+            if (text) {
+                data = JSON.parse(text);
+            }
+        } catch {
+            showToast('Invalid JSON in test data', 'error');
+            return;
+        }
+
+        try {
+            const result = await apiRequest('/validate', {
+                method: 'POST',
+                body: JSON.stringify({
+                    templateId: state.selectedTemplate.id,
+                    data
+                })
+            });
+
+            if (result.valid) {
+                showToast('Validation passed!', 'success');
+            } else {
+                showToast(`Missing variables: ${result.missing.join(', ')}`, 'warning');
+            }
+        } catch (error) {
+            showToast('Validation failed', 'error');
+        }
+    }
+
+    // Render Function
+    async function renderTemplate() {
+        if (!state.selectedTemplate) return;
+
+        let data = {};
+        try {
+            const text = elements.testData.value.trim();
+            if (text) {
+                data = JSON.parse(text);
+            }
+        } catch {
+            showToast('Invalid JSON in test data', 'error');
+            return;
+        }
+
+        const outputFormat = elements.outputFormat.value || undefined;
+
+        try {
+            showToast('Rendering template...', 'info');
+
+            const result = await apiRequest('/render', {
+                method: 'POST',
+                body: JSON.stringify({
+                    templateId: state.selectedTemplate.id,
+                    data,
+                    outputFormat
+                })
+            });
+
+            showToast('Template rendered successfully', 'success');
+
+            // Download file
+            const link = document.createElement('a');
+            link.href = result.downloadUrl;
+            link.download = result.fileName;
+            link.click();
+
+            closeModal();
+
+        } catch (error) {
+            showToast('Render failed: ' + error.message, 'error');
+        }
+    }
+
+    // AI Identify Function
+    async function aiIdentifyVariables() {
+        if (!state.selectedTemplate) {
+            showToast('Please select a template first', 'warning');
+            return;
+        }
 
         elements.aiSuggestionsList.innerHTML = '<div class="loading"><i class="fas fa-spinner fa-spin"></i> Analyzing...</div>';
 
@@ -638,22 +1162,26 @@
             renderAISuggestions(result.suggestions);
             showToast(`Found ${result.suggestions.length} potential variables`, 'success');
         } catch (error) {
-            elements.aiSuggestionsList.innerHTML = '<span style="color: #999;">Analysis failed</span>';
+            elements.aiSuggestionsList.innerHTML = '<span class="empty-hint">Analysis failed</span>';
             showToast('Failed to analyze template', 'error');
         }
     }
 
     function renderAISuggestions(suggestions) {
         if (suggestions.length === 0) {
-            elements.aiSuggestionsList.innerHTML = '<span style="color: #999;">No potential variables found</span>';
+            elements.aiSuggestionsList.innerHTML = '<span class="empty-hint">No potential variables found</span>';
+            elements.suggestionsCount.style.display = 'none';
             return;
         }
+
+        elements.suggestionsCount.textContent = suggestions.length;
+        elements.suggestionsCount.style.display = 'inline';
 
         elements.aiSuggestionsList.innerHTML = suggestions.map((s, index) => `
             <div class="ai-suggestion-item" data-index="${index}">
                 <div class="ai-suggestion-header">
                     <span class="ai-suggestion-path">{${s.path}}</span>
-                    <span class="badge">${s.type}</span>
+                    <span class="badge badge-info">${s.type}</span>
                 </div>
                 <div class="ai-suggestion-content">
                     Found: <code>${s.content}</code>
@@ -662,10 +1190,10 @@
                     ${s.reason} (${Math.round(s.confidence * 100)}% confidence)
                 </div>
                 <div class="ai-suggestion-actions">
-                    <button class="btn btn-accept" data-path="${s.path}" data-content="${s.content}">
+                    <button class="btn btn-primary btn-sm btn-accept" data-path="${s.path}" data-content="${s.content}">
                         <i class="fas fa-check"></i> Accept
                     </button>
-                    <button class="btn btn-reject">
+                    <button class="btn btn-outline btn-sm btn-reject">
                         <i class="fas fa-times"></i> Ignore
                     </button>
                 </div>
@@ -682,11 +1210,18 @@
                 // Add to test data
                 addToTestData(path, content);
 
+                // Add to variables list
+                const varItem = document.createElement('div');
+                varItem.className = 'variable-item';
+                varItem.innerHTML = `<code>{${path}}</code> <small style="color:#999">(${content})</small>`;
+                elements.variablesList.appendChild(varItem);
+
+                // Update count
+                elements.varsCount.textContent = parseInt(elements.varsCount.textContent) + 1;
+
                 // Remove suggestion
-                item.style.opacity = '0.5';
-                btn.disabled = true;
-                btn.innerHTML = '<i class="fas fa-check"></i> Added';
-                showToast(`Added {${path}} to test data`, 'success');
+                item.remove();
+                showToast(`Added {${path}} to variables`, 'success');
             });
         });
 
@@ -731,67 +1266,12 @@
         elements.testData.value = JSON.stringify(data, null, 2);
     }
 
-    // Manual Marking Functions
-    let currentSelection = null;
-
-    function handleTextSelection(e) {
-        const selection = window.getSelection ? window.getSelection() : document.selection;
-        if (!selection || selection.toString().trim() === '') {
-            return;
-        }
-
-        const selectedText = selection.toString().trim();
-
-        // Only handle selections within iframe
-        if (elements.previewIframe && elements.previewIframe.contentWindow === selection.anchorNode?.ownerDocument?.defaultView) {
-            currentSelection = {
-                text: selectedText,
-                range: selection.getRangeAt(0)
-            };
-
-            showMarkingPopup(e.clientX, e.clientY, selectedText);
-        }
-    }
-
-    function showMarkingPopup(x, y, text) {
-        elements.selectedText.textContent = text;
-        elements.variablePathInput.value = suggestVariablePath(text);
-        elements.markingPopup.style.left = `${x}px`;
-        elements.markingPopup.style.top = `${y}px`;
-        elements.markingPopup.classList.add('show');
-        elements.variablePathInput.focus();
-    }
-
-    function hideMarkingPopup() {
-        elements.markingPopup.classList.remove('show');
-        currentSelection = null;
-    }
-
-    function suggestVariablePath(text) {
-        // Simple heuristics for suggesting variable paths
-        if (/^\d{4}[-/年]\d{1,2}[-/月]\d{1,2}/.test(text)) {
-            return 'd.date';
-        }
-        if (/^[￥¥$]\s*\d/.test(text)) {
-            return 'd.amount';
-        }
-        if (/^\d+\.?\d*\s*(元|件|个|张|份)/.test(text)) {
-            return 'd.quantity';
-        }
-        if (/^\d{11}$/.test(text) || /^1[3-9]\d{9}$/.test(text)) {
-            return 'd.phone';
-        }
-        if (/^[\w.-]+@[\w.-]+\.\w+$/.test(text)) {
-            return 'd.email';
-        }
-        if (/^[\u4e00-\u9fa5]{2,4}$/.test(text)) {
-            return 'd.name';
-        }
-        return 'd.value';
-    }
-
-    function confirmManualMarking() {
+    // Apply Manual Marking
+    function applyManualMarking() {
         const path = elements.variablePathInput.value.trim();
+        const formatters = elements.formattersInput.value.trim();
+        const text = elements.selectedTextDisplay.textContent;
+
         if (!path) {
             showToast('Please enter a variable path', 'warning');
             return;
@@ -802,11 +1282,18 @@
             return;
         }
 
-        const text = elements.selectedText.textContent;
+        // Build final path with formatters
+        let fullPath = path;
+        if (formatters) {
+            const formatterList = formatters.split(',').map(f => f.trim()).filter(f => f);
+            if (formatterList.length > 0) {
+                fullPath += ':' + formatterList.join(':');
+            }
+        }
 
         // Add to manual markings
         state.manualMarkings.push({
-            path: path,
+            path: fullPath,
             text: text,
             createdAt: new Date().toISOString()
         });
@@ -814,17 +1301,23 @@
         // Add to test data
         addToTestData(path, text);
 
-        // Add to variables list display
+        // Add to variables list
         const varItem = document.createElement('div');
         varItem.className = 'variable-item';
-        varItem.innerHTML = `<code>{${path}}</code> <small style="color:#999">(手动标记: ${text})</small>`;
+        varItem.innerHTML = `
+            <code>{${fullPath}}</code>
+            <small style="color:#999">(${text})</small>
+        `;
         elements.variablesList.appendChild(varItem);
 
-        hideMarkingPopup();
-        showToast(`Marked "${text}" as {${path}}`, 'success');
+        // Update count
+        elements.varsCount.textContent = parseInt(elements.varsCount.textContent) + 1;
+
+        hideSelectionSection();
+        showToast(`Marked "${text}" as {${fullPath}}`, 'success');
     }
 
-    // Save Markings Function
+    // Save Markings
     async function saveMarkings() {
         if (!state.selectedTemplate) {
             showToast('No template selected', 'warning');
@@ -832,7 +1325,7 @@
         }
 
         try {
-            const result = await apiRequest(`/templates/${state.selectedTemplate.id}/markings`, {
+            await apiRequest(`/templates/${state.selectedTemplate.id}/markings`, {
                 method: 'POST',
                 body: JSON.stringify({
                     templateId: state.selectedTemplate.id,
@@ -846,8 +1339,601 @@
         }
     }
 
+    // Modal Functions
+    function openModal() {
+        elements.renderModal.classList.add('show');
+    }
+
+    function closeModal() {
+        elements.renderModal.classList.remove('show');
+    }
+
+    // Event Handlers
+    function initEvents() {
+        // Upload area
+        elements.uploadArea.addEventListener('click', () => elements.fileInput.click());
+        elements.uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            elements.uploadArea.classList.add('dragover');
+        });
+        elements.uploadArea.addEventListener('dragleave', () => {
+            elements.uploadArea.classList.remove('dragover');
+        });
+        elements.uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            elements.uploadArea.classList.remove('dragover');
+            const file = e.dataTransfer.files[0];
+            if (file) uploadTemplate(file);
+        });
+        elements.fileInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) uploadTemplate(file);
+        });
+
+        // Buttons
+        elements.validateBtn.addEventListener('click', validateData);
+        elements.renderBtn.addEventListener('click', openModal);
+        elements.confirmRender.addEventListener('click', renderTemplate);
+        elements.saveBtn.addEventListener('click', saveMarkings);
+
+        // Zoom controls
+        elements.zoomIn.addEventListener('click', () => {
+            state.currentZoom = Math.min(state.currentZoom + 0.1, 2);
+            updateZoom();
+        });
+        elements.zoomOut.addEventListener('click', () => {
+            state.currentZoom = Math.max(state.currentZoom - 0.1, 0.5);
+            updateZoom();
+        });
+
+        // AI Identify button
+        elements.aiIdentifyBtn.addEventListener('click', aiIdentifyVariables);
+
+        // Selection controls
+        elements.applyMarking.addEventListener('click', applyManualMarking);
+        elements.clearSelection.addEventListener('click', hideSelectionSection);
+
+        // Tab switching
+        elements.tabPreview.addEventListener('click', () => switchTab('preview'));
+        elements.tabSource.addEventListener('click', () => switchTab('source'));
+
+        // Source toolbar
+        elements.copySourceBtn.addEventListener('click', copySourceToClipboard);
+        elements.formatSourceBtn.addEventListener('click', formatSourceXml);
+        elements.sourceFileSelect.addEventListener('change', loadSelectedSourceFile);
+
+        // Structure view controls
+        elements.viewRaw.addEventListener('click', () => switchSourceView('raw'));
+        elements.viewStructure.addEventListener('click', () => switchSourceView('structure'));
+        elements.showPreserve.addEventListener('change', renderStructureTree);
+        elements.showTables.addEventListener('change', renderStructureTree);
+        elements.showParagraphs.addEventListener('change', renderStructureTree);
+
+        // Modal
+        document.querySelector('.modal-close').addEventListener('click', closeModal);
+        document.querySelector('.modal-cancel')?.addEventListener('click', closeModal);
+        elements.renderModal.addEventListener('click', (e) => {
+            if (e.target === elements.renderModal) closeModal();
+        });
+
+        // Resize handle
+        initResizeHandle();
+    }
+
+    // Tab Switching Functions
+    function switchTab(tabName) {
+        state.currentTab = tabName;
+
+        // Update tab buttons
+        elements.tabPreview.classList.toggle('active', tabName === 'preview');
+        elements.tabSource.classList.toggle('active', tabName === 'source');
+
+        // Update tab content
+        elements.previewTabContent.classList.toggle('active', tabName === 'preview');
+        elements.sourceTabContent.classList.toggle('active', tabName === 'source');
+
+        // Load source and render if switching to source tab
+        if (tabName === 'source' && state.selectedTemplate) {
+            if (!state.sourceXml) {
+                loadSourceXml().then(() => {
+                    // After loading, activate the current view
+                    switchSourceView(state.currentSourceView);
+                });
+            } else {
+                // Already loaded, activate the current view which will render content
+                switchSourceView(state.currentSourceView);
+            }
+        }
+    }
+
+    async function loadSourceXml() {
+        if (!state.selectedTemplate) return;
+
+        try {
+            const result = await apiRequest(`/templates/${state.selectedTemplate.id}/preview-source`);
+            state.sourceXml = result.content;
+
+            // Display with basic syntax highlighting
+            displaySourceXml(result.content);
+
+        } catch (error) {
+            console.error('Failed to load source:', error);
+            elements.sourceCode.innerHTML = '<code style="color:red;">Failed to load source XML</code>';
+        }
+    }
+
+    function displaySourceXml(xml) {
+        // Basic XML syntax highlighting
+        let highlighted = escapeHtml(xml);
+
+        // Highlight tags
+        highlighted = highlighted.replace(/&lt;(\/?[\w:]+)/g, '&lt;<span class="hljs-tag">$1</span>');
+        highlighted = highlighted.replace(/([\w:]+)=/g, '<span class="hljs-attr">$1</span>=');
+        highlighted = highlighted.replace(/"([^"]*)"/g, '"<span class="hljs-string">$1</span>"');
+
+        elements.sourceCode.innerHTML = `<code class="xml">${highlighted}</code>`;
+    }
+
+    function escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+
+    function copySourceToClipboard() {
+        if (!state.sourceXml) {
+            showToast('No source to copy', 'warning');
+            return;
+        }
+
+        navigator.clipboard.writeText(state.sourceXml).then(() => {
+            showToast('Source copied to clipboard', 'success');
+        }).catch(err => {
+            console.error('Copy failed:', err);
+            showToast('Failed to copy', 'error');
+        });
+    }
+
+    function formatSourceXml() {
+        if (!state.sourceXml) {
+            showToast('No source to format', 'warning');
+            return;
+        }
+
+        try {
+            // Simple XML formatting
+            let formatted = state.sourceXml;
+            let indent = 0;
+            const lines = [];
+
+            // Add newlines after > and before <
+            formatted = formatted.replace(/></g, '>\n<');
+
+            // Process each line
+            formatted.split('\n').forEach(line => {
+                line = line.trim();
+                if (!line) return;
+
+                // Decrease indent for closing tags
+                if (line.startsWith('</')) {
+                    indent = Math.max(0, indent - 1);
+                }
+
+                lines.push('  '.repeat(indent) + line);
+
+                // Increase indent for opening tags (not self-closing)
+                if (line.startsWith('<') && !line.startsWith('</') && !line.endsWith('/>') && !line.match(/<.*\/>/)) {
+                    indent++;
+                }
+            });
+
+            displaySourceXml(lines.join('\n'));
+            showToast('XML formatted', 'success');
+
+        } catch (err) {
+            console.error('Format failed:', err);
+            showToast('Failed to format XML', 'error');
+        }
+    }
+
+    async function loadSelectedSourceFile() {
+        const selectedFile = elements.sourceFileSelect.value;
+        // For now, only document.xml is supported
+        // Future: add support for other files
+        await loadSourceXml();
+    }
+
+    // Source View Switching
+    function switchSourceView(viewName) {
+        state.currentSourceView = viewName;
+
+        // Update view buttons
+        elements.viewRaw.classList.toggle('active', viewName === 'raw');
+        elements.viewStructure.classList.toggle('active', viewName === 'structure');
+
+        // Update view content
+        elements.rawView.classList.toggle('active', viewName === 'raw');
+        elements.structureView.classList.toggle('active', viewName === 'structure');
+
+        // Display content for the selected view
+        if (viewName === 'raw' && state.sourceXml) {
+            displaySourceXml(state.sourceXml);
+        }
+        // Parse and render structure if switching to structure view
+        if (viewName === 'structure' && state.sourceXml && !state.xmlStructure) {
+            parseXmlStructure();
+        }
+        if (viewName === 'structure' && state.xmlStructure) {
+            renderStructureTree();
+        }
+    }
+
+    // 按文档顺序收集元素
+    function collectElementsInOrder(parent, structure, apiTables, tableIndex = { value: 0 }) {
+        const children = parent.children;
+        for (let i = 0; i < children.length; i++) {
+            const child = children[i];
+            const tagName = child.tagName || '';
+            const localName = child.localName || tagName.split(':').pop() || tagName;
+
+            // 检查是否是表格元素 (w:tbl)
+            if (localName === 'tbl' || tagName.includes('tbl')) {
+                const rows = child.getElementsByTagNameNS('*', 'tr');
+                const text = extractElementText(child);
+                const apiTable = apiTables[tableIndex.value] || {};
+                tableIndex.value++;
+
+                structure.orderedElements.push({
+                    type: 'table',
+                    element: child,
+                    orderIndex: structure.orderedElements.length,
+                    index: structure.tables.length,
+                    rows: rows.length,
+                    text: text.substring(0, 100),
+                    hasPreserve: child.outerHTML.includes('preserve'),
+                    headerRow: apiTable.headerRow || '',
+                    dataRows: apiTable.dataRows || []
+                });
+            }
+            // 检查是否是段落元素 (w:p) - 不在表格单元格内
+            else if (localName === 'p' || (tagName.includes(':p') && !tagName.includes('pPr'))) {
+                const text = extractElementText(child);
+
+                // 检查段落中是否有图片 (drawing 元素)
+                const drawingElements = child.getElementsByTagNameNS('*', 'drawing');
+                if (drawingElements.length > 0) {
+                    // 添加图片元素
+                    for (let d = 0; d < drawingElements.length; d++) {
+                        structure.orderedElements.push({
+                            type: 'image',
+                            element: drawingElements[d],
+                            orderIndex: structure.orderedElements.length,
+                            text: '[图片]',
+                            hasPreserve: false
+                        });
+                    }
+                }
+
+                // 如果段落有文本，也添加段落
+                if (text.trim()) {
+                    structure.orderedElements.push({
+                        type: 'paragraph',
+                        element: child,
+                        orderIndex: structure.orderedElements.length,
+                        index: structure.paragraphs.length,
+                        text: text,
+                        hasPreserve: child.outerHTML.includes('preserve')
+                    });
+                }
+            }
+            // 对于sectPr等非内容元素，跳过
+            else if (localName === 'sectPr' || localName === 'pPr' || localName === 'rPr' ||
+                     tagName.includes('sectPr') || tagName.includes('pPr') || tagName.includes('rPr')) {
+                continue;
+            }
+            // 递归处理其他元素的子元素
+            else {
+                collectElementsInOrder(child, structure, apiTables, tableIndex);
+            }
+        }
+    }
+
+    // Parse XML Structure
+    function parseXmlStructure() {
+        if (!state.sourceXml) return;
+
+        const parser = new DOMParser();
+        const xmlDoc = parser.parseFromString(state.sourceXml, 'text/xml');
+
+        state.xmlStructure = {
+            document: xmlDoc,
+            tables: [],
+            paragraphs: [],
+            // 按文档顺序存储所有元素
+            orderedElements: [],
+            preserveElements: []
+        };
+
+        // 使用后端API返回的结构化数据来丰富表格信息
+        const apiTables = state.documentElements.filter(el => el.type === 'table');
+        const apiImages = state.documentElements.filter(el => el.type === 'image');
+        const tableIndex = { value: 0 };
+
+        // 遍历body下的所有直接子元素，按文档顺序收集
+        const body = xmlDoc.getElementsByTagNameNS('*', 'body')[0];
+        if (body) {
+            collectElementsInOrder(body, state.xmlStructure, apiTables, tableIndex);
+        }
+
+        // 合并后端API返回的图片数据到orderedElements
+        if (apiImages.length > 0) {
+            // 找到orderedElements中的图片元素并更新数据
+            const imageElements = state.xmlStructure.orderedElements.filter(el => el.type === 'image');
+            imageElements.forEach((imgEl, idx) => {
+                const apiImage = apiImages[idx];
+                if (apiImage) {
+                    imgEl.imageId = apiImage.imageId;
+                    imgEl.text = apiImage.text;
+                    imgEl.altText = apiImage.altText;
+                    imgEl.attributes = apiImage.attributes;
+                    imgEl.imageWidth = apiImage.imageWidth;
+                    imgEl.imageHeight = apiImage.imageHeight;
+                }
+            });
+        }
+
+        // 更新tables数组（保持兼容）
+        state.xmlStructure.orderedElements.forEach(el => {
+            if (el.type === 'table') {
+                state.xmlStructure.tables.push(el);
+            }
+        });
+
+        // 更新paragraphs数组（保持兼容）
+        state.xmlStructure.orderedElements.forEach(el => {
+            if (el.type === 'paragraph') {
+                state.xmlStructure.paragraphs.push(el);
+            }
+        });
+
+        // Find elements with preserve
+        const allElements = xmlDoc.getElementsByTagName('*');
+        for (let i = 0; i < allElements.length; i++) {
+            const el = allElements[i];
+            const preserveAttr = el.getAttribute('xml:space');
+            if (preserveAttr === 'preserve' || el.outerHTML.includes('preserve')) {
+                state.xmlStructure.preserveElements.push({
+                    element: el,
+                    tagName: el.tagName
+                });
+            }
+        }
+    }
+
+    // Extract text from XML element
+    function extractElementText(element) {
+        const textElements = element.getElementsByTagNameNS('*', 't');
+        let text = '';
+        for (let i = 0; i < textElements.length; i++) {
+            text += textElements[i].textContent || '';
+        }
+        return text;
+    }
+
+    // Render Structure Tree
+    function renderStructureTree() {
+        if (!state.xmlStructure) {
+            parseXmlStructure();
+        }
+
+        const showPreserve = elements.showPreserve.checked;
+        const showTables = elements.showTables.checked;
+        const showParagraphs = elements.showParagraphs.checked;
+
+        let html = '<div class="structure-content">';
+
+        // Document root
+        html += `<div class="structure-node" data-type="document">
+            <span class="node-tag">&lt;w:document&gt;</span>
+        </div>`;
+
+        html += '<div class="node-children expanded">';
+
+        // Body
+        html += `<div class="structure-node" data-type="body">
+            <span class="node-tag">&lt;w:body&gt;</span>
+        </div>`;
+
+        html += '<div class="node-children expanded">';
+
+        // 按文档顺序渲染所有元素
+        if (state.xmlStructure.orderedElements && state.xmlStructure.orderedElements.length > 0) {
+            state.xmlStructure.orderedElements.forEach((el, idx) => {
+                const preserveClass = el.hasPreserve && showPreserve ? 'preserve-node' : '';
+
+                if (el.type === 'table' && showTables) {
+                    // 表格节点 - 默认展开显示内容
+                    html += `<div class="structure-node table-node ${preserveClass}" data-type="table" data-order-index="${el.orderIndex}">
+                        <span class="node-toggle">▼</span>
+                        <span class="node-tag">&lt;w:tbl&gt;</span>
+                        <span class="node-attr">rows="${el.rows}"</span>
+                        ${el.hasPreserve ? '<span class="node-preserve">preserve</span>' : ''}
+                    </div>`;
+
+                    // 表格子节点 - 默认展开
+                    html += '<div class="node-children expanded">';
+
+                    // 标题行（不可循环）
+                    if (el.headerRow) {
+                        html += `<div class="structure-node table-header-node" data-type="table-header" data-table="${el.index}">
+                            <span class="node-label">📋 标题行</span>
+                            <span class="node-text">${escapeHtml(el.headerRow)}</span>
+                        </div>`;
+                    }
+
+                    // 数据行（可循环）
+                    if (el.dataRows && el.dataRows.length > 0) {
+                        html += `<div class="structure-node table-data-node" data-type="table-data" data-table="${el.index}">
+                            <span class="node-label">🔄 数据行</span>
+                            <span class="node-attr">${el.dataRows.length}行可循环</span>
+                        </div>`;
+
+                        // 显示数据行内容
+                        html += '<div class="node-children">';
+                        el.dataRows.slice(0, 3).forEach((row, rowIdx) => {
+                            html += `<div class="structure-node table-row-node" data-type="table-row">
+                                <span class="node-text">${escapeHtml(row.substring(0, 60))}${row.length > 60 ? '...' : ''}</span>
+                            </div>`;
+                        });
+                        if (el.dataRows.length > 3) {
+                            html += `<div class="structure-node table-row-node">
+                                <span class="node-text">... 共${el.dataRows.length}行数据</span>
+                            </div>`;
+                        }
+                        html += '</div>';
+                    }
+
+                    html += '</div>'; // node-children
+                } else if (el.type === 'paragraph' && showParagraphs) {
+                    const text = el.text.substring(0, 80) + (el.text.length > 80 ? '...' : '');
+                    html += `<div class="structure-node paragraph-node ${preserveClass}" data-type="paragraph" data-order-index="${el.orderIndex}">
+                        <span class="node-tag">&lt;w:p&gt;</span>
+                        ${el.hasPreserve ? '<span class="node-preserve">preserve</span>' : ''}
+                        <span class="node-text">${escapeHtml(text)}</span>
+                    </div>`;
+                } else if (el.type === 'image') {
+                    // 图片节点
+                    const sizeInfo = el.attributes?.widthPx ? `${el.attributes.widthPx}×${el.attributes.heightPx}px` : '';
+                    html += `<div class="structure-node image-node ${preserveClass}" data-type="image" data-order-index="${el.orderIndex}" data-image-id="${el.imageId || ''}">
+                        <span class="node-label">🖼️ 图片</span>
+                        ${el.imageId ? `<span class="node-attr">id="${el.imageId}"</span>` : ''}
+                        ${sizeInfo ? `<span class="node-attr">${sizeInfo}</span>` : ''}
+                        <span class="node-text">${escapeHtml(el.altText || el.text || '')}</span>
+                    </div>`;
+                } else if (el.type === 'list') {
+                    // 列表节点
+                    const text = el.text.substring(0, 80) + (el.text.length > 80 ? '...' : '');
+                    html += `<div class="structure-node list-node ${preserveClass}" data-type="list" data-order-index="${el.orderIndex}">
+                        <span class="node-label">📝 列表项</span>
+                        ${el.hasPreserve ? '<span class="node-preserve">preserve</span>' : ''}
+                        <span class="node-text">${escapeHtml(text)}</span>
+                    </div>`;
+                } else if (el.type === 'heading1' || el.type === 'heading2' || el.type === 'heading3') {
+                    // 标题节点
+                    const level = el.type.replace('heading', '');
+                    const text = el.text.substring(0, 80) + (el.text.length > 80 ? '...' : '');
+                    html += `<div class="structure-node heading-node ${preserveClass}" data-type="${el.type}" data-order-index="${el.orderIndex}">
+                        <span class="node-label">📌 H${level}</span>
+                        <span class="node-text">${escapeHtml(text)}</span>
+                    </div>`;
+                } else if (el.type === 'title') {
+                    // 标题节点
+                    const text = el.text.substring(0, 80) + (el.text.length > 80 ? '...' : '');
+                    html += `<div class="structure-node title-node ${preserveClass}" data-type="title" data-order-index="${el.orderIndex}">
+                        <span class="node-label">🏷️ 标题</span>
+                        <span class="node-text">${escapeHtml(text)}</span>
+                    </div>`;
+                }
+            });
+        }
+
+        // Preserve elements summary
+        if (showPreserve && state.xmlStructure.preserveElements.length > 0) {
+            html += `<div class="structure-node section-node" data-type="section">
+                <span class="node-tag">Preserve Elements (${state.xmlStructure.preserveElements.length})</span>
+            </div>`;
+        }
+
+        html += '</div></div></div>';
+
+        elements.structureTree.innerHTML = html;
+
+        // Add click handlers for structure nodes
+        elements.structureTree.querySelectorAll('.structure-node[data-order-index]').forEach(node => {
+            node.addEventListener('click', () => {
+                // Remove previous selection
+                elements.structureTree.querySelectorAll('.selected').forEach(el => el.classList.remove('selected'));
+                node.classList.add('selected');
+
+                const orderIndex = parseInt(node.dataset.orderIndex);
+
+                // 获取xmlStructure中对应元素的文本
+                const xmlElement = state.xmlStructure?.orderedElements?.[orderIndex];
+                if (xmlElement && xmlElement.text) {
+                    // 通过文本内容匹配documentElements中的元素
+                    const element = state.documentElements.find(el => {
+                        // 对于表格，匹配标题行
+                        if (xmlElement.type === 'table' && el.type === 'table') {
+                            return el.headerRow && xmlElement.headerRow &&
+                                   el.headerRow.includes(xmlElement.headerRow.substring(0, 30));
+                        }
+                        // 对于段落，匹配文本内容
+                        return el.text && xmlElement.text &&
+                               (el.text === xmlElement.text ||
+                                el.text.includes(xmlElement.text.substring(0, 50)) ||
+                                xmlElement.text.includes(el.text.substring(0, 50)));
+                    });
+
+                    if (element) {
+                        selectDocumentElement(element);
+                    } else {
+                        showToast(`Selected ${xmlElement.type}: "${xmlElement.text.substring(0, 30)}..."`, 'info');
+                    }
+                }
+            });
+        });
+    }
+
+    // Select element by XML index
+    function selectElementByXmlIndex(type, xmlIndex) {
+        // Map XML index to document element
+        const element = state.documentElements.find(el => {
+            return el.xpath && el.xpath.includes(`[${xmlIndex}]`);
+        });
+
+        if (element) {
+            selectDocumentElement(element);
+        } else {
+            // Use the first element if no exact match
+            showToast(`Selected ${type} at position ${xmlIndex}`, 'info');
+        }
+    }
+
+    function initResizeHandle() {
+        const handle = document.querySelector('.resize-handle');
+        const panelRight = document.querySelector('.panel-right');
+
+        if (!handle || !panelRight) return;
+
+        let isResizing = false;
+
+        handle.addEventListener('mousedown', (e) => {
+            isResizing = true;
+            document.body.style.cursor = 'col-resize';
+            document.body.style.userSelect = 'none';
+        });
+
+        document.addEventListener('mousemove', (e) => {
+            if (!isResizing) return;
+
+            const containerWidth = document.querySelector('.split-panel-container')?.offsetWidth || 0;
+            const newWidth = containerWidth - e.clientX + 260; // 260 is sidebar width
+
+            if (newWidth >= 300 && newWidth <= 500) {
+                panelRight.style.width = `${newWidth}px`;
+            }
+        });
+
+        document.addEventListener('mouseup', () => {
+            isResizing = false;
+            document.body.style.cursor = '';
+            document.body.style.userSelect = '';
+        });
+    }
+
     // Initialize
     function init() {
+        initElements();
         initEvents();
         loadTemplates();
         loadFormatters();

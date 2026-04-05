@@ -21,7 +21,7 @@
                 </div>
             </div>
             <div class="header-right">
-                <a href="/api" target="_blank" class="btn btn-outline">
+                <a href="/api" target="_blank" class="btn btn-outline btn-sm">
                     <i class="fas fa-book"></i> API Docs
                 </a>
             </div>
@@ -43,230 +43,199 @@
                     <div class="upload-area" id="upload-area">
                         <input type="file" id="file-input" accept=".docx,.xlsx,.pptx,.html" hidden>
                         <i class="fas fa-cloud-upload-alt"></i>
-                        <p>Drag & drop or click to upload</p>
-                        <small>Supports: DOCX, XLSX, PPTX, HTML</small>
-                    </div>
-                </div>
-
-                <div class="sidebar-section">
-                    <h3><i class="fas fa-magic"></i> Formatters</h3>
-                    <div id="formatter-list" class="formatter-list">
-                        <div class="loading"><i class="fas fa-spinner fa-spin"></i> Loading...</div>
+                        <p>Drag & drop or click</p>
+                        <small>DOCX, XLSX, PPTX, HTML</small>
                     </div>
                 </div>
             </aside>
 
             <!-- Content Area -->
             <div class="content">
-                <!-- Tabs -->
-                <div class="tabs">
-                    <button class="tab active" data-tab="editor">
-                        <i class="fas fa-edit"></i> Editor
-                    </button>
-                    <button class="tab" data-tab="docpreview">
-                        <i class="fas fa-eye"></i> Document
-                    </button>
-                    <button class="tab" data-tab="source">
-                        <i class="fas fa-code"></i> Source
-                    </button>
-                    <button class="tab" data-tab="preview">
-                        <i class="fas fa-play-circle"></i> Output
-                    </button>
-                    <button class="tab" data-tab="guide">
-                        <i class="fas fa-book"></i> Guide
-                    </button>
+                <!-- No Template State -->
+                <div id="no-template" class="empty-state full-height">
+                    <i class="fas fa-file-upload"></i>
+                    <h2>No Template Selected</h2>
+                    <p>Upload a template file or select one from the sidebar</p>
                 </div>
 
-                <!-- Tab Content -->
-                <div class="tab-content">
-                    <!-- Editor Tab -->
-                    <div id="editor-tab" class="tab-pane active">
-                        <div id="no-template" class="empty-state">
-                            <i class="fas fa-file-upload"></i>
-                            <h2>No Template Selected</h2>
-                            <p>Upload a template file or select one from the sidebar</p>
-                        </div>
-
-                        <div id="template-editor" class="editor-container" style="display: none;">
-                            <div class="editor-header">
-                                <div class="template-info">
-                                    <i id="template-icon" class="fas fa-file-word"></i>
-                                    <span id="template-name">template.docx</span>
-                                    <span id="template-format" class="badge">DOCX</span>
-                                    <span id="template-size" class="text-muted">0 KB</span>
-                                </div>
-                                <div class="editor-actions">
-                                    <button id="validate-btn" class="btn btn-outline">
-                                        <i class="fas fa-check-circle"></i> Validate
+                <!-- Split Panel Editor -->
+                <div id="template-editor" class="split-panel-container" style="display: none;">
+                    <!-- Left Panel: Document Preview -->
+                    <div class="panel-left">
+                        <div class="panel-header">
+                            <span class="panel-title">
+                                <i class="fas fa-file-alt"></i>
+                                <span id="template-name">template.docx</span>
+                                <span id="template-format" class="badge">DOCX</span>
+                            </span>
+                            <div class="panel-tools">
+                                <!-- Tab buttons -->
+                                <div class="preview-tabs">
+                                    <button id="tab-preview" class="tab-btn active" title="Preview">
+                                        <i class="fas fa-eye"></i> Preview
                                     </button>
-                                    <button id="save-btn" class="btn btn-outline">
-                                        <i class="fas fa-save"></i> Save
-                                    </button>
-                                    <button id="render-btn" class="btn btn-primary">
-                                        <i class="fas fa-play"></i> Render
+                                    <button id="tab-source" class="tab-btn" title="View XML Source">
+                                        <i class="fas fa-code"></i> Source
                                     </button>
                                 </div>
-                            </div>
-
-                            <div class="editor-body">
-                                <div class="editor-section">
-                                    <h4><i class="fas fa-code"></i> Variables</h4>
-                                    <div id="variables-list" class="variables-list"></div>
-                                </div>
-
-                                <div class="editor-section">
-                                    <h4><i class="fas fa-repeat"></i> Loops</h4>
-                                    <div id="loops-list" class="loops-list"></div>
-                                </div>
-
-                                <div class="editor-section">
-                                    <h4>
-                                        <i class="fas fa-robot"></i> AI Suggestions
-                                        <button id="ai-identify-btn" class="btn btn-sm btn-outline" style="margin-left: 8px;">
-                                            <i class="fas fa-magic"></i> Analyze
-                                        </button>
-                                    </h4>
-                                    <div id="ai-suggestions-list" class="ai-suggestions-list">
-                                        <span style="color: #999;">Click "Analyze" to detect potential variables</span>
-                                    </div>
-                                </div>
-
-                                <div class="editor-section">
-                                    <h4><i class="fas fa-database"></i> Test Data (JSON)</h4>
-                                    <textarea id="test-data" placeholder='{"name": "John", "items": [{"name": "Item 1"}]}'></textarea>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Source Tab -->
-                    <div id="source-tab" class="tab-pane">
-                        <div id="source-empty" class="empty-state">
-                            <i class="fas fa-file-code"></i>
-                            <h2>No Template Selected</h2>
-                            <p>Select a template to view its source content</p>
-                        </div>
-
-                        <div id="source-content" style="display: none;">
-                            <div class="source-header">
-                                <span id="source-filename">document.xml</span>
-                                <button id="copy-source" class="btn btn-outline">
-                                    <i class="fas fa-copy"></i> Copy
-                                </button>
-                            </div>
-                            <div class="source-code-container">
-                                <pre id="source-code"><code></code></pre>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Document Preview Tab -->
-                    <div id="docpreview-tab" class="tab-pane">
-                        <div id="docpreview-empty" class="empty-state">
-                            <i class="fas fa-eye"></i>
-                            <h2>No Document Preview</h2>
-                            <p>Select a template to see the visual preview</p>
-                        </div>
-
-                        <div id="docpreview-content" style="display: none;">
-                            <div class="preview-toolbar">
-                                <span id="preview-format-badge" class="badge">DOCX</span>
-                                <span id="preview-size-info" class="text-muted"></span>
-                                <button id="zoom-in" class="btn btn-outline btn-sm" title="Zoom In">
-                                    <i class="fas fa-search-plus"></i>
-                                </button>
-                                <button id="zoom-out" class="btn btn-outline btn-sm" title="Zoom Out">
+                                <span class="toolbar-divider"></span>
+                                <button id="zoom-out" class="btn btn-icon" title="Zoom Out">
                                     <i class="fas fa-search-minus"></i>
                                 </button>
+                                <span id="zoom-level" class="zoom-level">100%</span>
+                                <button id="zoom-in" class="btn btn-icon" title="Zoom In">
+                                    <i class="fas fa-search-plus"></i>
+                                </button>
                             </div>
-                            <div class="preview-iframe-container">
-                                <iframe id="preview-iframe" sandbox="allow-same-origin" frameborder="0"></iframe>
+                        </div>
+                        <div class="panel-body">
+                            <!-- Preview Tab Content -->
+                            <div id="preview-tab-content" class="preview-tab-content active">
+                                <div id="preview-container" class="preview-container">
+                                    <iframe id="preview-iframe" sandbox="allow-same-origin allow-scripts" frameborder="0"></iframe>
+                                </div>
+                            </div>
+                            <!-- Source Tab Content -->
+                            <div id="source-tab-content" class="preview-tab-content">
+                                <div class="source-toolbar">
+                                    <div class="source-view-tabs">
+                                        <button id="view-raw" class="view-btn active">Raw XML</button>
+                                        <button id="view-structure" class="view-btn">Structure</button>
+                                    </div>
+                                    <select id="source-file-select">
+                                        <option value="document.xml">word/document.xml</option>
+                                    </select>
+                                    <button id="copy-source-btn" class="btn btn-outline btn-sm" title="Copy to clipboard">
+                                        <i class="fas fa-copy"></i> Copy
+                                    </button>
+                                    <button id="format-source-btn" class="btn btn-outline btn-sm" title="Format XML">
+                                        <i class="fas fa-indent"></i> Format
+                                    </button>
+                                </div>
+                                <!-- Raw XML View -->
+                                <div id="raw-view" class="source-view active">
+                                    <div class="source-container">
+                                        <pre id="source-code"><code class="xml"></code></pre>
+                                    </div>
+                                </div>
+                                <!-- Structure View -->
+                                <div id="structure-view" class="source-view">
+                                    <div class="structure-toolbar">
+                                        <label class="checkbox-label">
+                                            <input type="checkbox" id="show-preserve" checked> Show preserve
+                                        </label>
+                                        <label class="checkbox-label">
+                                            <input type="checkbox" id="show-tables" checked> Highlight tables
+                                        </label>
+                                        <label class="checkbox-label">
+                                            <input type="checkbox" id="show-paragraphs" checked> Show paragraphs
+                                        </label>
+                                    </div>
+                                    <div class="structure-container">
+                                        <div id="structure-tree" class="structure-tree"></div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
 
-                    <!-- Preview Tab -->
-                    <div id="preview-tab" class="tab-pane">
-                        <div id="preview-empty" class="empty-state">
-                            <i class="fas fa-eye-slash"></i>
-                            <h2>No Preview Available</h2>
-                            <p>Render a template to see the preview</p>
-                        </div>
+                    <!-- Resize Handle -->
+                    <div class="resize-handle"></div>
 
-                        <div id="preview-result" style="display: none;">
-                            <div class="preview-header">
-                                <span id="preview-filename">output.docx</span>
-                                <a id="download-link" href="#" class="btn btn-primary">
-                                    <i class="fas fa-download"></i> Download
-                                </a>
+                    <!-- Right Panel: Editor Settings -->
+                    <div class="panel-right">
+                        <div class="panel-header">
+                            <span class="panel-title">
+                                <i class="fas fa-cog"></i> Editor
+                            </span>
+                            <div class="panel-actions">
+                                <button id="ai-identify-btn" class="btn btn-outline btn-sm">
+                                    <i class="fas fa-magic"></i> AI Analyze
+                                </button>
+                                <button id="validate-btn" class="btn btn-outline btn-sm">
+                                    <i class="fas fa-check-circle"></i> Validate
+                                </button>
+                                <button id="save-btn" class="btn btn-primary btn-sm">
+                                    <i class="fas fa-save"></i> Save
+                                </button>
+                                <button id="render-btn" class="btn btn-primary btn-sm">
+                                    <i class="fas fa-play"></i> Render
+                                </button>
                             </div>
                         </div>
-                    </div>
-
-                    <!-- Guide Tab -->
-                    <div id="guide-tab" class="tab-pane">
-                        <div class="guide-content">
-                            <h2><i class="fas fa-graduation-cap"></i> Template Syntax Guide</h2>
-
-                            <section class="guide-section">
-                                <h3>Variable Syntax</h3>
-                                <p>Use <code>{d.variableName}</code> to insert data into your template.</p>
-                                <div class="code-block">
-                                    <pre><code>Hello {d.name}!
-Total: {d.price}
-Date: {d.date}</code></pre>
+                        <div class="panel-body scrollable">
+                            <!-- Selection Info -->
+                            <div id="selection-section" class="editor-section" style="display: none;">
+                                <h4><i class="fas fa-mouse-pointer"></i> Selected Element</h4>
+                                <div class="selection-info">
+                                    <div class="selected-text-preview">
+                                        <code id="selected-text-display"></code>
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Variable Path</label>
+                                        <input type="text" id="variable-path-input" placeholder="e.g., d.name">
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Formatters (optional)</label>
+                                        <input type="text" id="formatters-input" placeholder="e.g., upperCase, formatNumber(#,##0.00)">
+                                    </div>
+                                    <div class="form-actions">
+                                        <button id="apply-marking" class="btn btn-primary btn-sm">
+                                            <i class="fas fa-check"></i> Apply
+                                        </button>
+                                        <button id="clear-selection" class="btn btn-outline btn-sm">
+                                            <i class="fas fa-times"></i> Clear
+                                        </button>
+                                    </div>
                                 </div>
-                            </section>
+                            </div>
 
-                            <section class="guide-section">
-                                <h3>Formatters</h3>
-                                <p>Chain formatters with <code>:</code> to transform values.</p>
-                                <div class="code-block">
-                                    <pre><code>{d.price:formatNumber(#,##0.00)}
-{d.name:upperCase}
-{d.date:formatD(YYYY-MM-DD)}
-{d.total:round(2):currency($)}</code></pre>
+                            <!-- Document Elements Section -->
+                            <div class="editor-section">
+                                <h4>
+                                    <i class="fas fa-sitemap"></i> Document Elements
+                                    <span id="elements-count" class="badge badge-info">0</span>
+                                </h4>
+                                <div id="document-elements-list" class="document-elements-list">
+                                    <span class="empty-hint">Select a template to view elements</span>
                                 </div>
+                            </div>
 
-                                <h4>Available Formatters</h4>
-                                <div class="formatter-groups" id="formatter-guide"></div>
-                            </section>
-
-                            <section class="guide-section">
-                                <h3>Array Loops</h3>
-                                <p>Use <code>[i]</code> and <code>[i+1]</code> to create repeating sections.</p>
-                                <div class="code-block">
-                                    <pre><code>&lt;tr&gt;
-    &lt;td&gt;{d.items[i].name}&lt;/td&gt;
-    &lt;td&gt;{d.items[i].price}&lt;/td&gt;
-&lt;/tr&gt;
-&lt;tr&gt;
-    &lt;td&gt;{d.items[i+1].name}&lt;/td&gt;
-    &lt;td&gt;{d.items[i+1].price}&lt;/td&gt;
-&lt;/tr&gt;</code></pre>
+                            <!-- Variables Section -->
+                            <div class="editor-section">
+                                <h4>
+                                    <i class="fas fa-code"></i> Variables
+                                    <span id="vars-count" class="badge badge-info">0</span>
+                                </h4>
+                                <div id="variables-list" class="variables-list">
+                                    <span class="empty-hint">No variables detected</span>
                                 </div>
-                                <p>The content between <code>[i]</code> and <code>[i+1]</code> will be repeated for each item in the array.</p>
-                            </section>
+                            </div>
 
-                            <section class="guide-section">
-                                <h3>Conditional Display</h3>
-                                <p>Show or hide content based on conditions.</p>
-                                <div class="code-block">
-                                    <pre><code>{d.isActive:show(Active)}
-{d.isDeleted:hide(Not Deleted)}
-{d.status:if(Active, Inactive)}</code></pre>
+                            <!-- AI Suggestions Section -->
+                            <div class="editor-section">
+                                <h4>
+                                    <i class="fas fa-robot"></i> AI Suggestions
+                                    <span id="suggestions-count" class="badge badge-success" style="display: none;">0</span>
+                                </h4>
+                                <div id="ai-suggestions-list" class="ai-suggestions-list">
+                                    <span class="empty-hint">Click "AI Analyze" to detect potential variables</span>
                                 </div>
-                            </section>
+                            </div>
 
-                            <section class="guide-section">
-                                <h3>Nested Objects</h3>
-                                <p>Access nested data with dot notation.</p>
-                                <div class="code-block">
-                                    <pre><code>Company: {d.company.name}
-Manager: {d.company.manager.name}
-Email: {d.company.contact.email}</code></pre>
+                            <!-- Loops Section -->
+                            <div class="editor-section">
+                                <h4><i class="fas fa-repeat"></i> Loops</h4>
+                                <div id="loops-list" class="loops-list">
+                                    <span class="empty-hint">No loops detected</span>
                                 </div>
-                            </section>
+                            </div>
+
+                            <!-- Test Data Section -->
+                            <div class="editor-section">
+                                <h4><i class="fas fa-database"></i> Test Data (JSON)</h4>
+                                <textarea id="test-data" placeholder='{"name": "John", "items": [{"name": "Item 1"}]}'></textarea>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -304,18 +273,24 @@ Email: {d.company.contact.email}</code></pre>
             </div>
         </div>
 
-        <!-- Marking Popup -->
-        <div id="marking-popup" class="marking-popup">
-            <h4><i class="fas fa-tag"></i> Mark as Variable</h4>
-            <div class="manual-marking-hint">
-                Selected: <code id="selected-text"></code>
-            </div>
-            <input type="text" id="variable-path-input" placeholder="Enter variable path (e.g., d.name)">
-            <div class="marking-popup-actions">
-                <button class="btn btn-outline" id="cancel-marking">Cancel</button>
-                <button class="btn btn-primary" id="confirm-marking">
-                    <i class="fas fa-check"></i> Mark
-                </button>
+        <!-- Source View Modal -->
+        <div id="source-modal" class="modal">
+            <div class="modal-content modal-large">
+                <div class="modal-header">
+                    <h3><i class="fas fa-code"></i> Template Source</h3>
+                    <button class="modal-close">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <div class="source-header">
+                        <span id="source-filename">document.xml</span>
+                        <button id="copy-source" class="btn btn-outline btn-sm">
+                            <i class="fas fa-copy"></i> Copy
+                        </button>
+                    </div>
+                    <div class="source-code-container">
+                        <pre id="source-code"><code></code></pre>
+                    </div>
+                </div>
             </div>
         </div>
     </div>

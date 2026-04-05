@@ -138,7 +138,12 @@ export class BrowserService implements OnModuleDestroy {
       case 'fill':
         return await this.fill(command.params.selector as string, command.params.value as string);
       case 'screenshot':
-        return await this.screenshot();
+        return await this.screenshot(
+          command.params.format as string,
+          command.params.quality as number,
+          command.params.scale as number,
+          command.params.full_page as boolean
+        );
       case 'snapshot':
         return await this.snapshot();
       case 'read_page':
@@ -314,27 +319,39 @@ export class BrowserService implements OnModuleDestroy {
     });
   }
 
-  private async screenshot(): Promise<{ status: string; screenshot?: string; template_info?: any }> {
+  private async screenshot(
+    format?: string,
+    quality?: number,
+    scale?: number,
+    fullPage?: boolean
+  ): Promise<{ status: string; screenshot?: string; template_info?: any }> {
     return new Promise((resolve, reject) => {
-      const req = http.get(
-        `http://${this.chromeHost}:${this.codegenPort}/screenshot`,
-        (res) => {
-          let data = '';
-          res.on('data', (chunk) => data += chunk);
-          res.on('end', () => {
-            try {
-              const result = JSON.parse(data);
-              resolve({
-                status: result.status || 'success',
-                screenshot: result.screenshot,
-                template_info: result.template_info
-              });
-            } catch {
-              resolve({ status: 'success' });
-            }
-          });
-        }
-      );
+      const params: string[] = [];
+      if (format) params.push(`format=${encodeURIComponent(format)}`);
+      if (quality) params.push(`quality=${quality}`);
+      if (scale) params.push(`scale=${scale}`);
+      if (fullPage !== undefined) params.push(`full_page=${fullPage}`);
+
+      const url = params.length > 0
+        ? `http://${this.chromeHost}:${this.codegenPort}/screenshot?${params.join('&')}`
+        : `http://${this.chromeHost}:${this.codegenPort}/screenshot`;
+
+      const req = http.get(url, (res) => {
+        let data = '';
+        res.on('data', (chunk) => data += chunk);
+        res.on('end', () => {
+          try {
+            const result = JSON.parse(data);
+            resolve({
+              status: result.status || 'success',
+              screenshot: result.screenshot,
+              template_info: result.template_info
+            });
+          } catch {
+            resolve({ status: 'success' });
+          }
+        });
+      });
       req.on('error', reject);
       req.setTimeout(30000, () => {
         req.destroy();
