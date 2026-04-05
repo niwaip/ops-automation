@@ -66,6 +66,7 @@ vite.config.d.ts
 services/ai-orchestrator/data/
 # Carbone Engine uploaded templates (runtime data)
 services/carbone-engine/templates/
+templates/
 # Playwright MCP test files
 .playwright-mcp/
 *.png
