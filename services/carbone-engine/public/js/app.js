@@ -490,17 +490,59 @@
                     border: 2px solid #007bff !important;
                     border-radius: 2px;
                 }
-                /* Disable text selection in PDF */
+                /* Allow click on text layer for element selection */
                 .textLayer {
                     user-select: none !important;
                     -webkit-user-select: none !important;
-                    cursor: default !important;
+                    cursor: pointer !important;
                 }
                 .textLayer span {
-                    cursor: default !important;
+                    cursor: pointer !important;
+                }
+                .textLayer span:hover {
+                    background-color: rgba(0, 123, 255, 0.15) !important;
                 }
             `;
             iframeDoc.head.appendChild(style);
+
+            // Wait for textLayer to be available (PDF.js renders asynchronously)
+            const setupClickHandler = () => {
+                const textLayer = iframeDoc.querySelector('.textLayer');
+                if (textLayer && textLayer.querySelectorAll('span').length > 0) {
+                    // Add click handler for text layer to enable element selection
+                    textLayer.addEventListener('click', (e) => {
+                        const clickedSpan = e.target.closest('span');
+                        if (!clickedSpan) return;
+
+                        const clickedText = clickedSpan.textContent.trim();
+                        if (!clickedText) return;
+
+                        // Find matching element in document elements
+                        const matchingElement = state.documentElements.find(el => {
+                            return el.text && el.text.includes(clickedText);
+                        });
+
+                        if (matchingElement) {
+                            selectDocumentElement(matchingElement);
+                        } else {
+                            // If no exact match, try to find element that contains this text
+                            const partialMatch = state.documentElements.find(el => {
+                                return el.text && clickedText.includes(el.text.substring(0, 20));
+                            });
+                            if (partialMatch) {
+                                selectDocumentElement(partialMatch);
+                            }
+                        }
+                    });
+                    console.log('PDF text layer click handler attached');
+                } else {
+                    // Text layer not ready yet, wait and retry
+                    setTimeout(setupClickHandler, 500);
+                }
+            };
+
+            // Start checking for text layer
+            setupClickHandler();
 
         } catch (e) {
             console.warn('Could not setup iframe selection:', e);
@@ -1090,6 +1132,57 @@
         }
     }
 
+    // 按文档顺序收集元素
+    function collectElementsInOrder(parent, structure, apiTables, tableIndex = { value: 0 }) {
+        const children = parent.children;
+        for (let i = 0; i < children.length; i++) {
+            const child = children[i];
+            const tagName = child.tagName || '';
+
+            // 检查是否是表格元素 (w:tbl)
+            if (tagName.includes('tbl')) {
+                const rows = child.getElementsByTagNameNS('*', 'tr');
+                const text = extractElementText(child);
+                const apiTable = apiTables[tableIndex.value] || {};
+                tableIndex.value++;
+
+                structure.orderedElements.push({
+                    type: 'table',
+                    element: child,
+                    orderIndex: structure.orderedElements.length,
+                    index: structure.tables.length,
+                    rows: rows.length,
+                    text: text.substring(0, 100),
+                    hasPreserve: child.outerHTML.includes('preserve'),
+                    headerRow: apiTable.headerRow || '',
+                    dataRows: apiTable.dataRows || []
+                });
+            }
+            // 检查是否是段落元素 (w:p) - 不在表格单元格内
+            else if (tagName.includes('p') && !tagName.includes('pPr')) {
+                const text = extractElementText(child);
+                if (text.trim()) {
+                    structure.orderedElements.push({
+                        type: 'paragraph',
+                        element: child,
+                        orderIndex: structure.orderedElements.length,
+                        index: structure.paragraphs.length,
+                        text: text,
+                        hasPreserve: child.outerHTML.includes('preserve')
+                    });
+                }
+            }
+            // 对于sectPr等非内容元素，跳过
+            else if (tagName.includes('sectPr') || tagName.includes('pPr') || tagName.includes('rPr')) {
+                continue;
+            }
+            // 递归处理其他元素的子元素
+            else {
+                collectElementsInOrder(child, structure, apiTables, tableIndex);
+            }
+        }
+    }
+
     // Parse XML Structure
     function parseXmlStructure() {
         if (!state.sourceXml) return;
@@ -1101,65 +1194,34 @@
             document: xmlDoc,
             tables: [],
             paragraphs: [],
+            // 按文档顺序存储所有元素
+            orderedElements: [],
             preserveElements: []
         };
 
         // 使用后端API返回的结构化数据来丰富表格信息
         const apiTables = state.documentElements.filter(el => el.type === 'table');
+        let tableIndex = 0;
 
-        // Find all tables (w:tbl)
-        const tables = xmlDoc.getElementsByTagNameNS('*', 'tbl');
-        for (let i = 0; i < tables.length; i++) {
-            const table = tables[i];
-            const rows = table.getElementsByTagNameNS('*', 'tr');
-            const cells = table.getElementsByTagNameNS('*', 'tc');
-            const text = extractElementText(table);
-
-            // 从API数据中获取详细信息
-            const apiTable = apiTables[i] || {};
-
-            state.xmlStructure.tables.push({
-                element: table,
-                index: i,
-                rows: rows.length,
-                cells: cells.length,
-                text: text.substring(0, 100),
-                hasPreserve: table.outerHTML.includes('preserve'),
-                // 从API获取的结构化数据
-                headerRow: apiTable.headerRow || '',
-                dataRows: apiTable.dataRows || [],
-                tableHeaders: apiTable.tableHeaders || []
-            });
+        // 遍历body下的所有直接子元素，按文档顺序收集
+        const body = xmlDoc.getElementsByTagNameNS('*', 'body')[0];
+        if (body) {
+            collectElementsInOrder(body, state.xmlStructure, apiTables);
         }
 
-        // Find all paragraphs (w:p) that are NOT inside table cells
-        const paragraphs = xmlDoc.getElementsByTagNameNS('*', 'p');
-        for (let i = 0; i < paragraphs.length; i++) {
-            const p = paragraphs[i];
-            // Check if this paragraph is inside a table cell (w:tc)
-            let parent = p.parentElement;
-            let isInsideTableCell = false;
-            while (parent) {
-                if (parent.tagName && parent.tagName.includes('tc')) {
-                    isInsideTableCell = true;
-                    break;
-                }
-                parent = parent.parentElement;
+        // 更新tables数组（保持兼容）
+        state.xmlStructure.orderedElements.forEach(el => {
+            if (el.type === 'table') {
+                state.xmlStructure.tables.push(el);
             }
+        });
 
-            // Only add paragraphs that are NOT inside table cells
-            if (!isInsideTableCell) {
-                const text = extractElementText(p);
-                if (text.trim()) {
-                    state.xmlStructure.paragraphs.push({
-                        element: p,
-                        index: i,
-                        text: text,
-                        hasPreserve: p.outerHTML.includes('preserve')
-                    });
-                }
+        // 更新paragraphs数组（保持兼容）
+        state.xmlStructure.orderedElements.forEach(el => {
+            if (el.type === 'paragraph') {
+                state.xmlStructure.paragraphs.push(el);
             }
-        }
+        });
 
         // Find elements with preserve
         const allElements = xmlDoc.getElementsByTagName('*');
@@ -1211,91 +1273,63 @@
 
         html += '<div class="node-children expanded">';
 
-        // Tables section - 增强表格显示
-        if (showTables && state.xmlStructure.tables.length > 0) {
-            html += `<div class="structure-node section-node" data-type="section">
-                <span class="node-toggle">▼</span>
-                <span class="node-tag">Tables (${state.xmlStructure.tables.length})</span>
-            </div>`;
+        // 按文档顺序渲染所有元素
+        if (state.xmlStructure.orderedElements && state.xmlStructure.orderedElements.length > 0) {
+            state.xmlStructure.orderedElements.forEach((el, idx) => {
+                const preserveClass = el.hasPreserve && showPreserve ? 'preserve-node' : '';
 
-            html += '<div class="node-children expanded">';
-
-            state.xmlStructure.tables.forEach((table, idx) => {
-                const preserveClass = table.hasPreserve && showPreserve ? 'preserve-node' : '';
-
-                // 表格节点 - 默认展开显示内容
-                html += `<div class="structure-node table-node ${preserveClass}" data-type="table" data-index="${idx}">
-                    <span class="node-toggle">▼</span>
-                    <span class="node-tag">&lt;w:tbl&gt;</span>
-                    <span class="node-attr">rows="${table.rows}"</span>
-                    ${table.hasPreserve ? '<span class="node-preserve">preserve</span>' : ''}
-                </div>`;
-
-                // 表格子节点 - 默认展开
-                html += '<div class="node-children expanded">';
-
-                // 标题行（不可循环）
-                if (table.headerRow) {
-                    html += `<div class="structure-node table-header-node" data-type="table-header" data-table="${idx}">
-                        <span class="node-label">📋 标题行</span>
-                        <span class="node-text">${escapeHtml(table.headerRow)}</span>
-                    </div>`;
-                }
-
-                // 数据行（可循环）
-                if (table.dataRows && table.dataRows.length > 0) {
-                    html += `<div class="structure-node table-data-node" data-type="table-data" data-table="${idx}">
-                        <span class="node-label">🔄 数据行</span>
-                        <span class="node-attr">${table.dataRows.length}行可循环</span>
+                if (el.type === 'table' && showTables) {
+                    // 表格节点 - 默认展开显示内容
+                    html += `<div class="structure-node table-node ${preserveClass}" data-type="table" data-index="${el.index}">
+                        <span class="node-toggle">▼</span>
+                        <span class="node-tag">&lt;w:tbl&gt;</span>
+                        <span class="node-attr">rows="${el.rows}"</span>
+                        ${el.hasPreserve ? '<span class="node-preserve">preserve</span>' : ''}
                     </div>`;
 
-                    // 显示数据行内容
-                    html += '<div class="node-children">';
-                    table.dataRows.slice(0, 3).forEach((row, rowIdx) => {
-                        html += `<div class="structure-node table-row-node" data-type="table-row">
-                            <span class="node-text">${escapeHtml(row.substring(0, 60))}${row.length > 60 ? '...' : ''}</span>
-                        </div>`;
-                    });
-                    if (table.dataRows.length > 3) {
-                        html += `<div class="structure-node table-row-node">
-                            <span class="node-text">... 共${table.dataRows.length}行数据</span>
+                    // 表格子节点 - 默认展开
+                    html += '<div class="node-children expanded">';
+
+                    // 标题行（不可循环）
+                    if (el.headerRow) {
+                        html += `<div class="structure-node table-header-node" data-type="table-header" data-table="${el.index}">
+                            <span class="node-label">📋 标题行</span>
+                            <span class="node-text">${escapeHtml(el.headerRow)}</span>
                         </div>`;
                     }
-                    html += '</div>';
+
+                    // 数据行（可循环）
+                    if (el.dataRows && el.dataRows.length > 0) {
+                        html += `<div class="structure-node table-data-node" data-type="table-data" data-table="${el.index}">
+                            <span class="node-label">🔄 数据行</span>
+                            <span class="node-attr">${el.dataRows.length}行可循环</span>
+                        </div>`;
+
+                        // 显示数据行内容
+                        html += '<div class="node-children">';
+                        el.dataRows.slice(0, 3).forEach((row, rowIdx) => {
+                            html += `<div class="structure-node table-row-node" data-type="table-row">
+                                <span class="node-text">${escapeHtml(row.substring(0, 60))}${row.length > 60 ? '...' : ''}</span>
+                            </div>`;
+                        });
+                        if (el.dataRows.length > 3) {
+                            html += `<div class="structure-node table-row-node">
+                                <span class="node-text">... 共${el.dataRows.length}行数据</span>
+                            </div>`;
+                        }
+                        html += '</div>';
+                    }
+
+                    html += '</div>'; // node-children
+                } else if (el.type === 'paragraph' && showParagraphs) {
+                    const text = el.text.substring(0, 80) + (el.text.length > 80 ? '...' : '');
+                    html += `<div class="structure-node paragraph-node ${preserveClass}" data-type="paragraph" data-index="${el.index}">
+                        <span class="node-tag">&lt;w:p&gt;</span>
+                        ${el.hasPreserve ? '<span class="node-preserve">preserve</span>' : ''}
+                        <span class="node-text">${escapeHtml(text)}</span>
+                    </div>`;
                 }
-
-                html += '</div>'; // node-children
             });
-
-            html += '</div>';
-        }
-
-        // Paragraphs section
-        if (showParagraphs && state.xmlStructure.paragraphs.length > 0) {
-            html += `<div class="structure-node section-node" data-type="section">
-                <span class="node-toggle">▼</span>
-                <span class="node-tag">Paragraphs (${state.xmlStructure.paragraphs.length})</span>
-            </div>`;
-
-            html += '<div class="node-children expanded">';
-
-            state.xmlStructure.paragraphs.slice(0, 20).forEach((p, idx) => {
-                const preserveClass = p.hasPreserve && showPreserve ? 'preserve-node' : '';
-                const text = p.text.substring(0, 80) + (p.text.length > 80 ? '...' : '');
-                html += `<div class="structure-node paragraph-node ${preserveClass}" data-type="paragraph" data-index="${p.index}">
-                    <span class="node-tag">&lt;w:p&gt;</span>
-                    ${p.hasPreserve ? '<span class="node-preserve">preserve</span>' : ''}
-                    <span class="node-text">${escapeHtml(text)}</span>
-                </div>`;
-            });
-
-            if (state.xmlStructure.paragraphs.length > 20) {
-                html += `<div class="structure-node paragraph-node">
-                    <span class="node-text">... and ${state.xmlStructure.paragraphs.length - 20} more paragraphs</span>
-                </div>`;
-            }
-
-            html += '</div>';
         }
 
         // Preserve elements summary
