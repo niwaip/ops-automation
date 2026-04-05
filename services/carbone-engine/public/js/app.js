@@ -476,7 +476,46 @@
 
             // PDF 预览：Find matching text in PDF text layer
             const textLayer = iframeDoc.querySelector('.textLayer');
-            if (textLayer) {
+            const canvas = iframeDoc.querySelector('#pdf-canvas');
+
+            // 处理图片类型 - PDF预览
+            if (element.type === 'image' && textLayer) {
+                // 图片在PDF中，需要找到对应的文本（如"Step X: screenshot"）
+                // 根据imageId判断是哪张图片
+                const imageId = element.imageId || '';
+                let searchPattern = '';
+
+                if (imageId.includes('rId6')) {
+                    searchPattern = 'Step 3';
+                } else if (imageId.includes('rId7')) {
+                    searchPattern = 'Step 7';
+                } else {
+                    // 默认搜索"截图"或"screenshot"
+                    searchPattern = 'screenshot';
+                }
+
+                const spans = textLayer.querySelectorAll('span');
+                let foundFirst = false;
+
+                spans.forEach(span => {
+                    const text = span.textContent || '';
+                    if (text.includes(searchPattern) || text.includes('截图')) {
+                        span.classList.add('element-highlight');
+                        if (!foundFirst) {
+                            span.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                            foundFirst = true;
+                        }
+                    }
+                });
+
+                // 如果没有找到匹配文本，显示提示
+                if (!foundFirst) {
+                    showToast(`Image selected: ${element.imageId || 'unknown'}`, 'info');
+                }
+                return;
+            }
+
+            if (textLayer && element.type !== 'image') {
                 const spans = textLayer.querySelectorAll('span');
                 let foundFirst = false;
 
@@ -654,6 +693,7 @@
                 // PDF 预览处理
                 const clickedSpan = e.target.closest('.textLayer span');
                 const clickedTextLayer = e.target.closest('.textLayer');
+                const clickedCanvas = e.target.closest('#pdf-canvas') || e.target.closest('canvas');
 
                 // HTML 预览处理
                 const clickedParagraph = e.target.closest('.document-container p, .document-container h1, .document-container h2, .document-container h3');
@@ -769,21 +809,59 @@
                 // 处理 textLayer 点击但不在 span 上（图片区域或空白区域）
                 else if (clickedTextLayer && !clickedSpan) {
                     // 点击的是 textLayer 但不是文字，可能是图片区域
-                    // 尝试找到截图相关的元素
-                    matchingElement = elementsToSearch.find(el => {
-                        if (el.type === 'paragraph') {
-                            const elText = el.text || '';
-                            return elText.includes('截图') || elText.toLowerCase().includes('screenshot');
-                        }
-                        return false;
-                    });
+                    // 获取点击坐标
+                    const clickX = e.clientX;
+                    const clickY = e.clientY;
 
-                    // 如果没有找到截图相关元素，尝试找 "Step X" 格式的段落
+                    // 获取所有图片元素
+                    const imageElements = elementsToSearch.filter(el => el.type === 'image');
+
+                    if (imageElements.length > 0) {
+                        // 根据页面和点击位置判断选择哪张图片
+                        // 图片通常在"截图记录"标题下方，或"Step X: screenshot"后面
+                        const textLayerRect = clickedTextLayer.getBoundingClientRect();
+                        const relativeY = clickY - textLayerRect.top;
+                        const relativeX = clickX - textLayerRect.left;
+
+                        // 检查附近是否有"截图"相关文本
+                        const nearbySpans = clickedTextLayer.querySelectorAll('span');
+                        let foundScreenshotText = false;
+                        let nearbyText = '';
+
+                        nearbySpans.forEach(span => {
+                            const spanRect = span.getBoundingClientRect();
+                            const distance = Math.abs(spanRect.top - clickY);
+                            if (distance < 100) { // 100px范围内的文本
+                                nearbyText += span.textContent + ' ';
+                            }
+                        });
+
+                        // 如果附近有"截图"或"Step X: screenshot"文本，选择对应的图片
+                        if (nearbyText.includes('截图') || nearbyText.toLowerCase().includes('screenshot')) {
+                            // 尝试通过Step编号匹配图片
+                            const stepMatch = nearbyText.match(/Step\s+(\d+)/i);
+                            if (stepMatch) {
+                                const stepNum = parseInt(stepMatch[1], 10);
+                                // 找到对应Step的图片（Step 3对应第一张，Step 7对应第二张）
+                                const imageIndex = stepNum === 3 ? 0 : (stepNum === 7 ? 1 : 0);
+                                matchingElement = imageElements[imageIndex] || imageElements[0];
+                            } else {
+                                // 默认选择第一张图片
+                                matchingElement = imageElements[0];
+                            }
+                        } else {
+                            // 根据Y坐标判断：上半部分选第一张，下半部分选第二张
+                            const imageIndex = relativeY < textLayerRect.height / 2 ? 0 : 1;
+                            matchingElement = imageElements[Math.min(imageIndex, imageElements.length - 1)];
+                        }
+                    }
+
+                    // 如果没有找到图片元素，尝试找截图相关的段落
                     if (!matchingElement) {
                         matchingElement = elementsToSearch.find(el => {
                             if (el.type === 'paragraph') {
                                 const elText = el.text || '';
-                                return elText.match(/Step\s+\d+/) !== null;
+                                return elText.includes('截图') || elText.toLowerCase().includes('screenshot');
                             }
                             return false;
                         });
@@ -826,6 +904,25 @@
                     matchingElement = elementsToSearch.find(el => {
                         return el.type === 'image';
                     });
+                }
+                // PDF 预览：处理canvas点击（图片区域）
+                else if (clickedCanvas) {
+                    // 点击的是PDF canvas，可能是图片区域
+                    const imageElements = elementsToSearch.filter(el => el.type === 'image');
+
+                    if (imageElements.length > 0) {
+                        // 获取点击坐标相对于canvas的位置
+                        const canvasRect = clickedCanvas.getBoundingClientRect();
+                        const relativeY = e.clientY - canvasRect.top;
+                        const relativeX = e.clientX - canvasRect.left;
+
+                        // 根据Y坐标判断选择哪张图片
+                        // 图片通常在页面的中下部分
+                        const imageIndex = relativeY > canvasRect.height * 0.4 ? 0 : 1;
+                        matchingElement = imageElements[Math.min(imageIndex, imageElements.length - 1)];
+
+                        console.log('Canvas clicked at:', relativeX, relativeY, 'Selected image index:', imageIndex);
+                    }
                 }
                 // HTML 预览：处理段落/标题点击
                 else if (clickedParagraph) {
