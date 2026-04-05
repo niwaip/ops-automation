@@ -1132,18 +1132,32 @@
             });
         }
 
-        // Find all paragraphs (w:p)
+        // Find all paragraphs (w:p) that are NOT inside table cells
         const paragraphs = xmlDoc.getElementsByTagNameNS('*', 'p');
         for (let i = 0; i < paragraphs.length; i++) {
             const p = paragraphs[i];
-            const text = extractElementText(p);
-            if (text.trim()) {
-                state.xmlStructure.paragraphs.push({
-                    element: p,
-                    index: i,
-                    text: text,
-                    hasPreserve: p.outerHTML.includes('preserve')
-                });
+            // Check if this paragraph is inside a table cell (w:tc)
+            let parent = p.parentElement;
+            let isInsideTableCell = false;
+            while (parent) {
+                if (parent.tagName && parent.tagName.includes('tc')) {
+                    isInsideTableCell = true;
+                    break;
+                }
+                parent = parent.parentElement;
+            }
+
+            // Only add paragraphs that are NOT inside table cells
+            if (!isInsideTableCell) {
+                const text = extractElementText(p);
+                if (text.trim()) {
+                    state.xmlStructure.paragraphs.push({
+                        element: p,
+                        index: i,
+                        text: text,
+                        hasPreserve: p.outerHTML.includes('preserve')
+                    });
+                }
             }
         }
 
@@ -1209,16 +1223,16 @@
             state.xmlStructure.tables.forEach((table, idx) => {
                 const preserveClass = table.hasPreserve && showPreserve ? 'preserve-node' : '';
 
-                // 表格标题节点
+                // 表格节点 - 默认展开显示内容
                 html += `<div class="structure-node table-node ${preserveClass}" data-type="table" data-index="${idx}">
-                    <span class="node-toggle" onclick="event.stopPropagation(); this.parentElement.querySelector('.node-children').classList.toggle('expanded')">▶</span>
+                    <span class="node-toggle">▼</span>
                     <span class="node-tag">&lt;w:tbl&gt;</span>
                     <span class="node-attr">rows="${table.rows}"</span>
                     ${table.hasPreserve ? '<span class="node-preserve">preserve</span>' : ''}
                 </div>`;
 
-                // 表格子节点
-                html += '<div class="node-children">';
+                // 表格子节点 - 默认展开
+                html += '<div class="node-children expanded">';
 
                 // 标题行（不可循环）
                 if (table.headerRow) {
