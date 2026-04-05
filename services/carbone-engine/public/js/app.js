@@ -10,59 +10,47 @@
         templates: [],
         selectedTemplate: null,
         formatters: [],
-        manualMarkings: []  // 存储手动标记
+        manualMarkings: [],
+        currentZoom: 1
     };
 
     // DOM Elements
-    const elements = {
-        templateList: document.getElementById('template-list'),
-        formatterList: document.getElementById('formatter-list'),
-        uploadArea: document.getElementById('upload-area'),
-        fileInput: document.getElementById('file-input'),
-        noTemplate: document.getElementById('no-template'),
-        templateEditor: document.getElementById('template-editor'),
-        templateIcon: document.getElementById('template-icon'),
-        templateName: document.getElementById('template-name'),
-        templateFormat: document.getElementById('template-format'),
-        templateSize: document.getElementById('template-size'),
-        variablesList: document.getElementById('variables-list'),
-        loopsList: document.getElementById('loops-list'),
-        testData: document.getElementById('test-data'),
-        validateBtn: document.getElementById('validate-btn'),
-        renderBtn: document.getElementById('render-btn'),
-        saveBtn: document.getElementById('save-btn'),
-        renderModal: document.getElementById('render-modal'),
-        outputFormat: document.getElementById('output-format'),
-        confirmRender: document.getElementById('confirm-render'),
-        previewEmpty: document.getElementById('preview-empty'),
-        previewResult: document.getElementById('preview-result'),
-        previewFilename: document.getElementById('preview-filename'),
-        downloadLink: document.getElementById('download-link'),
-        formatterGuide: document.getElementById('formatter-guide'),
-        toastContainer: document.getElementById('toast-container'),
-        sourceEmpty: document.getElementById('source-empty'),
-        sourceContent: document.getElementById('source-content'),
-        sourceFilename: document.getElementById('source-filename'),
-        sourceCode: document.getElementById('source-code'),
-        copySource: document.getElementById('copy-source'),
-        // Document Preview elements
-        docpreviewEmpty: document.getElementById('docpreview-empty'),
-        docpreviewContent: document.getElementById('docpreview-content'),
-        previewIframe: document.getElementById('preview-iframe'),
-        previewFormatBadge: document.getElementById('preview-format-badge'),
-        previewSizeInfo: document.getElementById('preview-size-info'),
-        zoomIn: document.getElementById('zoom-in'),
-        zoomOut: document.getElementById('zoom-out'),
-        // AI Suggestion elements
-        aiIdentifyBtn: document.getElementById('ai-identify-btn'),
-        aiSuggestionsList: document.getElementById('ai-suggestions-list'),
-        // Manual marking elements
-        markingPopup: document.getElementById('marking-popup'),
-        selectedText: document.getElementById('selected-text'),
-        variablePathInput: document.getElementById('variable-path-input'),
-        cancelMarking: document.getElementById('cancel-marking'),
-        confirmMarking: document.getElementById('confirm-marking')
-    };
+    const elements = {};
+
+    // Initialize elements after DOM is ready
+    function initElements() {
+        elements.templateList = document.getElementById('template-list');
+        elements.uploadArea = document.getElementById('upload-area');
+        elements.fileInput = document.getElementById('file-input');
+        elements.noTemplate = document.getElementById('no-template');
+        elements.templateEditor = document.getElementById('template-editor');
+        elements.templateName = document.getElementById('template-name');
+        elements.templateFormat = document.getElementById('template-format');
+        elements.variablesList = document.getElementById('variables-list');
+        elements.loopsList = document.getElementById('loops-list');
+        elements.testData = document.getElementById('test-data');
+        elements.validateBtn = document.getElementById('validate-btn');
+        elements.renderBtn = document.getElementById('render-btn');
+        elements.saveBtn = document.getElementById('save-btn');
+        elements.renderModal = document.getElementById('render-modal');
+        elements.outputFormat = document.getElementById('output-format');
+        elements.confirmRender = document.getElementById('confirm-render');
+        elements.toastContainer = document.getElementById('toast-container');
+        elements.previewIframe = document.getElementById('preview-iframe');
+        elements.zoomIn = document.getElementById('zoom-in');
+        elements.zoomOut = document.getElementById('zoom-out');
+        elements.zoomLevel = document.getElementById('zoom-level');
+        elements.aiIdentifyBtn = document.getElementById('ai-identify-btn');
+        elements.aiSuggestionsList = document.getElementById('ai-suggestions-list');
+        elements.selectionSection = document.getElementById('selection-section');
+        elements.selectedTextDisplay = document.getElementById('selected-text-display');
+        elements.variablePathInput = document.getElementById('variable-path-input');
+        elements.formattersInput = document.getElementById('formatters-input');
+        elements.applyMarking = document.getElementById('apply-marking');
+        elements.clearSelection = document.getElementById('clear-selection');
+        elements.varsCount = document.getElementById('vars-count');
+        elements.suggestionsCount = document.getElementById('suggestions-count');
+    }
 
     // Utility Functions
     function formatBytes(bytes) {
@@ -119,144 +107,33 @@
 
             if (!response.ok) {
                 const error = await response.json().catch(() => ({ message: 'Request failed' }));
-                throw new Error(error.message || 'Request failed');
+                throw new Error(error.message || `HTTP ${response.status}`);
             }
 
-            return await response.json();
+            return response.json();
         } catch (error) {
             console.error('API Error:', error);
             throw error;
         }
     }
 
+    // Load Functions
     async function loadTemplates() {
         try {
-            elements.templateList.innerHTML = '<div class="loading"><i class="fas fa-spinner fa-spin"></i> Loading...</div>';
             const result = await apiRequest('/templates');
-            state.templates = result.templates || [];
+            state.templates = result.templates;
             renderTemplateList();
         } catch (error) {
-            elements.templateList.innerHTML = '<div class="loading"><i class="fas fa-exclamation-circle"></i> Failed to load</div>';
+            elements.templateList.innerHTML = '<div class="loading">Failed to load templates</div>';
         }
     }
 
     async function loadFormatters() {
         try {
             const result = await apiRequest('/formatters');
-            state.formatters = result.formatters || [];
-            renderFormatterList();
-            renderFormatterGuide();
+            state.formatters = result.formatters;
         } catch (error) {
             console.error('Failed to load formatters:', error);
-        }
-    }
-
-    async function uploadTemplate(file) {
-        const formData = new FormData();
-        formData.append('file', file);
-
-        try {
-            showToast('Uploading template...', 'info');
-            const response = await fetch(`${API_BASE}/upload`, {
-                method: 'POST',
-                body: formData
-            });
-
-            if (!response.ok) {
-                const error = await response.json();
-                throw new Error(error.message || 'Upload failed');
-            }
-
-            const template = await response.json();
-            showToast(`Template "${template.fileName}" uploaded successfully`, 'success');
-            await loadTemplates();
-            selectTemplate(template);
-        } catch (error) {
-            showToast(error.message, 'error');
-        }
-    }
-
-    async function deleteTemplate(id) {
-        if (!confirm('Are you sure you want to delete this template?')) return;
-
-        try {
-            await apiRequest(`/templates/${id}/delete`, { method: 'POST' });
-            showToast('Template deleted', 'success');
-            await loadTemplates();
-            if (state.selectedTemplate?.id === id) {
-                state.selectedTemplate = null;
-                showNoTemplate();
-            }
-        } catch (error) {
-            showToast('Failed to delete template', 'error');
-        }
-    }
-
-    async function validateData() {
-        if (!state.selectedTemplate) return;
-
-        let data = {};
-        try {
-            const text = elements.testData.value.trim();
-            if (text) {
-                data = JSON.parse(text);
-            }
-        } catch {
-            showToast('Invalid JSON data', 'error');
-            return;
-        }
-
-        try {
-            const result = await apiRequest('/validate', {
-                method: 'POST',
-                body: JSON.stringify({
-                    templateId: state.selectedTemplate.id,
-                    data
-                })
-            });
-
-            if (result.valid) {
-                showToast('Data is valid', 'success');
-            } else {
-                showToast(`Missing variables: ${result.missing.join(', ')}`, 'warning');
-            }
-        } catch (error) {
-            showToast('Validation failed', 'error');
-        }
-    }
-
-    async function renderTemplate() {
-        if (!state.selectedTemplate) return;
-
-        let data = {};
-        try {
-            const text = elements.testData.value.trim();
-            if (text) {
-                data = JSON.parse(text);
-            }
-        } catch {
-            showToast('Invalid JSON data', 'error');
-            return;
-        }
-
-        const outputFormat = elements.outputFormat.value || undefined;
-
-        try {
-            showToast('Rendering template...', 'info');
-            const result = await apiRequest('/render', {
-                method: 'POST',
-                body: JSON.stringify({
-                    templateId: state.selectedTemplate.id,
-                    data,
-                    outputFormat
-                })
-            });
-
-            showToast('Template rendered successfully', 'success');
-            showPreviewResult(result);
-            closeModal();
-        } catch (error) {
-            showToast('Render failed: ' + error.message, 'error');
         }
     }
 
@@ -274,10 +151,10 @@
                     <span class="template-item-name">${t.fileName}</span>
                 </div>
                 <div class="template-item-meta">
-                    <span class="badge">${t.format.toUpperCase()}</span>
+                    <span class="badge badge-info">${t.format.toUpperCase()}</span>
                     <span>${t.variables.length} vars</span>
                     <span>${formatBytes(t.size)}</span>
-                    <button class="btn btn-sm btn-danger delete-btn" data-id="${t.id}">
+                    <button class="btn btn-sm btn-danger delete-btn" data-id="${t.id}" title="Delete">
                         <i class="fas fa-trash"></i>
                     </button>
                 </div>
@@ -295,56 +172,14 @@
         });
 
         document.querySelectorAll('.delete-btn').forEach(btn => {
-            btn.addEventListener('click', (e) => {
+            btn.addEventListener('click', async (e) => {
                 e.stopPropagation();
-                deleteTemplate(btn.dataset.id);
+                const id = btn.dataset.id;
+                if (confirm('Delete this template?')) {
+                    await deleteTemplate(id);
+                }
             });
         });
-    }
-
-    function renderFormatterList() {
-        const categories = {
-            'String': ['upperCase', 'lowerCase', 'ucFirst', 'truncate'],
-            'Number': ['formatNumber', 'round', 'add', 'currency'],
-            'Date': ['formatD', 'addDays', 'date', 'time'],
-            'Condition': ['show', 'hide', 'if', 'ifEmpty'],
-            'Array': ['arrayLen', 'arrayJoin', 'sum', 'avg']
-        };
-
-        const html = Object.entries(categories).map(([cat, items]) => `
-            <div style="margin-bottom: 8px;">
-                <small style="color: #666;">${cat}</small>
-                <div style="display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px;">
-                    ${items.filter(f => state.formatters.includes(f)).map(f => `
-                        <span class="formatter-tag" title="${f}">${f}</span>
-                    `).join('')}
-                </div>
-            </div>
-        `).join('');
-
-        elements.formatterList.innerHTML = html;
-    }
-
-    function renderFormatterGuide() {
-        const categories = {
-            'String': state.formatters.filter(f => ['upperCase', 'lowerCase', 'ucFirst', 'ucWords', 'truncate', 'stripTags', 'escapeHtml'].includes(f)),
-            'Number': state.formatters.filter(f => ['formatNumber', 'int', 'float', 'round', 'floor', 'ceil', 'abs', 'add', 'multiply', 'divide', 'currency'].includes(f)),
-            'Date': state.formatters.filter(f => ['formatD', 'addDays', 'addMonths', 'date', 'time', 'datetime', 'year', 'month'].includes(f)),
-            'Condition': state.formatters.filter(f => ['show', 'hide', 'if', 'ifEmpty', 'empty', 'notEmpty'].includes(f)),
-            'Array': state.formatters.filter(f => ['arrayLen', 'arrayJoin', 'sum', 'avg', 'min', 'max'].includes(f)),
-            'Transform': state.formatters.filter(f => ['toString', 'toNumber', 'toBoolean', 'concat', 'replace'].includes(f))
-        };
-
-        elements.formatterGuide.innerHTML = Object.entries(categories)
-            .filter(([_, items]) => items.length > 0)
-            .map(([cat, items]) => `
-                <div class="formatter-group">
-                    <h5>${cat}</h5>
-                    <div class="formatter-group-items">
-                        ${items.map(f => `<span class="formatter-tag">${f}</span>`).join('')}
-                    </div>
-                </div>
-            `).join('');
     }
 
     function selectTemplate(template) {
@@ -352,22 +187,22 @@
         renderTemplateList();
 
         elements.noTemplate.style.display = 'none';
-        elements.templateEditor.style.display = 'block';
+        elements.templateEditor.style.display = 'flex';
 
         // Update header
-        elements.templateIcon.className = `fas ${getFormatIcon(template.format)}`;
         elements.templateName.textContent = template.fileName;
         elements.templateFormat.textContent = template.format.toUpperCase();
-        elements.templateSize.textContent = formatBytes(template.size);
+        elements.templateFormat.className = `badge badge-info`;
 
         // Render variables
+        elements.varsCount.textContent = template.variables.length;
         elements.variablesList.innerHTML = template.variables.length > 0
             ? template.variables.map(v => `
                 <div class="variable-item">
                     <code>{${v}}</code>
                 </div>
             `).join('')
-            : '<span style="color: #999;">No variables found</span>';
+            : '<span class="empty-hint">No variables found</span>';
 
         // Render loops
         elements.loopsList.innerHTML = template.loops.length > 0
@@ -377,253 +212,266 @@
                     <code>${l.arrayPath}</code>
                 </div>
             `).join('')
-            : '<span style="color: #999;">No loops detected</span>';
+            : '<span class="empty-hint">No loops detected</span>';
 
-        // Load source preview
-        loadSourcePreview(template.id);
         // Load document preview
         loadDocumentPreview(template);
+
+        // Load saved markings
+        loadMarkings(template.id);
     }
 
     async function loadDocumentPreview(template) {
         try {
             const result = await apiRequest(`/templates/${template.id}/preview-html`);
 
-            elements.docpreviewEmpty.style.display = 'none';
-            elements.docpreviewContent.style.display = 'block';
-
-            // Update format badge
-            elements.previewFormatBadge.textContent = result.format.toUpperCase();
-            elements.previewSizeInfo.textContent = formatBytes(template.size);
-
             // Load HTML into iframe
-            const iframe = elements.previewIframe;
-            iframe.srcdoc = result.html;
+            elements.previewIframe.srcdoc = result.html;
 
             // Reset zoom
-            iframe.style.transform = 'scale(1)';
+            state.currentZoom = 1;
+            updateZoom();
+
+            // Setup text selection after iframe loads
+            elements.previewIframe.onload = () => {
+                setupIframeSelection();
+            };
 
         } catch (error) {
             console.error('Failed to load document preview:', error);
-            elements.docpreviewEmpty.style.display = 'block';
-            elements.docpreviewContent.style.display = 'none';
+            elements.previewIframe.srcdoc = `
+                <html>
+                <body style="display:flex;align-items:center;justify-content:center;height:100vh;background:#f5f5f5;">
+                    <div style="text-align:center;color:#999;">
+                        <i class="fas fa-exclamation-triangle" style="font-size:48px;margin-bottom:16px;"></i>
+                        <p>Failed to load document preview</p>
+                    </div>
+                </body>
+                </html>
+            `;
         }
     }
 
-    async function loadSourcePreview(templateId) {
+    function setupIframeSelection() {
         try {
-            const result = await apiRequest(`/templates/${templateId}/preview-source`);
+            const iframeDoc = elements.previewIframe.contentDocument || elements.previewIframe.contentWindow.document;
 
-            elements.sourceEmpty.style.display = 'none';
-            elements.sourceContent.style.display = 'block';
+            // Listen for text selection
+            iframeDoc.addEventListener('mouseup', handleTextSelection);
+            iframeDoc.addEventListener('touchend', handleTextSelection);
 
-            // Set filename based on format
-            const filenames = {
-                docx: 'word/document.xml',
-                xlsx: 'xl/worksheets/sheet1.xml',
-                pptx: 'ppt/slides/slide1.xml',
-                html: 'index.html'
-            };
-            elements.sourceFilename.textContent = filenames[result.format] || 'source';
-
-            // Display content with syntax highlighting
-            let displayContent = result.content;
-
-            // Format XML for better readability (basic formatting)
-            if (result.type === 'xml') {
-                try {
-                    // Basic XML formatting
-                    displayContent = formatXml(result.content);
-                } catch (e) {
-                    // If formatting fails, show original
+            // Style for highlighted elements
+            const style = iframeDoc.createElement('style');
+            style.textContent = `
+                .carbone-highlight {
+                    background-color: #fff3cd !important;
+                    border: 2px dashed #ffc107 !important;
+                    cursor: pointer;
                 }
+                .carbone-highlight:hover {
+                    background-color: #ffe69c !important;
+                }
+                ::selection {
+                    background-color: #b3d7ff;
+                }
+            `;
+            iframeDoc.head.appendChild(style);
+
+        } catch (e) {
+            console.warn('Could not setup iframe selection:', e);
+        }
+    }
+
+    function handleTextSelection(e) {
+        try {
+            const iframeDoc = elements.previewIframe.contentDocument || elements.previewIframe.contentWindow.document;
+            const selection = iframeDoc.getSelection();
+
+            if (!selection || selection.toString().trim() === '') {
+                hideSelectionSection();
+                return;
             }
 
-            elements.sourceCode.querySelector('code').textContent = displayContent;
+            const selectedText = selection.toString().trim();
 
-            // Apply syntax highlighting if available
-            if (typeof hljs !== 'undefined') {
-                hljs.highlightElement(elements.sourceCode.querySelector('code'));
+            // Show selection section
+            showSelectionSection(selectedText);
+
+        } catch (e) {
+            console.warn('Selection error:', e);
+        }
+    }
+
+    function showSelectionSection(text) {
+        elements.selectedTextDisplay.textContent = text;
+        elements.variablePathInput.value = suggestVariablePath(text);
+        elements.formattersInput.value = '';
+        elements.selectionSection.style.display = 'block';
+    }
+
+    function hideSelectionSection() {
+        elements.selectionSection.style.display = 'none';
+    }
+
+    function suggestVariablePath(text) {
+        // Simple heuristics for suggesting variable paths
+        if (/^\d{4}[-/年]\d{1,2}[-/月]\d{1,2}/.test(text)) return 'd.date';
+        if (/^[￥¥$]\s*\d/.test(text)) return 'd.amount';
+        if (/^\d+\.?\d*\s*(元|件|个|张|份)/.test(text)) return 'd.quantity';
+        if (/^\d{11}$/.test(text) || /^1[3-9]\d{9}$/.test(text)) return 'd.phone';
+        if (/^[\w.-]+@[\w.-]+\.\w+$/.test(text)) return 'd.email';
+        if (/^[\u4e00-\u9fa5]{2,4}$/.test(text)) return 'd.name';
+        return 'd.value';
+    }
+
+    function updateZoom() {
+        elements.previewIframe.style.transform = `scale(${state.currentZoom})`;
+        elements.zoomLevel.textContent = `${Math.round(state.currentZoom * 100)}%`;
+    }
+
+    async function loadMarkings(templateId) {
+        try {
+            const result = await apiRequest(`/templates/${templateId}/markings`);
+            state.manualMarkings = result.markings || [];
+        } catch (error) {
+            state.manualMarkings = [];
+        }
+    }
+
+    // Upload Function
+    async function uploadTemplate(file) {
+        const formData = new FormData();
+        formData.append('file', file);
+
+        try {
+            showToast('Uploading template...', 'info');
+
+            const response = await fetch(`${API_BASE}/upload`, {
+                method: 'POST',
+                body: formData
+            });
+
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.message || 'Upload failed');
+            }
+
+            const result = await response.json();
+            showToast('Template uploaded successfully', 'success');
+
+            // Reload templates
+            await loadTemplates();
+
+            // Select the new template
+            const newTemplate = state.templates.find(t => t.id === result.id);
+            if (newTemplate) selectTemplate(newTemplate);
+
+        } catch (error) {
+            showToast('Upload failed: ' + error.message, 'error');
+        }
+    }
+
+    // Delete Function
+    async function deleteTemplate(id) {
+        try {
+            await apiRequest(`/templates/${id}/delete`, { method: 'POST' });
+            showToast('Template deleted', 'success');
+            state.templates = state.templates.filter(t => t.id !== id);
+            if (state.selectedTemplate?.id === id) {
+                state.selectedTemplate = null;
+                elements.noTemplate.style.display = 'flex';
+                elements.templateEditor.style.display = 'none';
+            }
+            renderTemplateList();
+        } catch (error) {
+            showToast('Failed to delete template', 'error');
+        }
+    }
+
+    // Validate Function
+    async function validateData() {
+        if (!state.selectedTemplate) return;
+
+        let data = {};
+        try {
+            const text = elements.testData.value.trim();
+            if (text) {
+                data = JSON.parse(text);
+            }
+        } catch {
+            showToast('Invalid JSON in test data', 'error');
+            return;
+        }
+
+        try {
+            const result = await apiRequest('/validate', {
+                method: 'POST',
+                body: JSON.stringify({
+                    templateId: state.selectedTemplate.id,
+                    data
+                })
+            });
+
+            if (result.valid) {
+                showToast('Validation passed!', 'success');
+            } else {
+                showToast(`Missing variables: ${result.missing.join(', ')}`, 'warning');
             }
         } catch (error) {
-            console.error('Failed to load source:', error);
-            elements.sourceEmpty.style.display = 'block';
-            elements.sourceContent.style.display = 'none';
+            showToast('Validation failed', 'error');
         }
     }
 
-    function formatXml(xml) {
-        // Basic XML formatter
-        let formatted = '';
-        let indent = '';
-        const tab = '  ';
-
-        xml.split(/>\s*</).forEach(node => {
-            if (node.match(/^\/\w/)) {
-                // Closing tag
-                indent = indent.substring(tab.length);
-            }
-
-            formatted += indent + '<' + node + '>\n';
-
-            if (node.match(/^<?\w[^>]*[^\/]$/) && !node.startsWith('?')) {
-                // Opening tag (not self-closing)
-                indent += tab;
-            }
-        });
-
-        return formatted.substring(1, formatted.length - 2);
-    }
-
-    function showNoTemplate() {
-        elements.noTemplate.style.display = 'block';
-        elements.templateEditor.style.display = 'none';
-        elements.sourceEmpty.style.display = 'block';
-        elements.sourceContent.style.display = 'none';
-        elements.docpreviewEmpty.style.display = 'block';
-        elements.docpreviewContent.style.display = 'none';
-    }
-
-    function showPreviewResult(result) {
-        elements.previewEmpty.style.display = 'none';
-        elements.previewResult.style.display = 'block';
-        elements.previewFilename.textContent = result.fileName;
-        elements.downloadLink.href = result.downloadUrl;
-
-        // Switch to preview tab
-        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-        document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
-        document.querySelector('[data-tab="preview"]').classList.add('active');
-        document.getElementById('preview-tab').classList.add('active');
-    }
-
-    // Modal Functions
-    function openModal() {
-        elements.renderModal.classList.add('show');
-    }
-
-    function closeModal() {
-        elements.renderModal.classList.remove('show');
-    }
-
-    // Event Handlers
-    function initEvents() {
-        // Tab switching
-        document.querySelectorAll('.tab').forEach(tab => {
-            tab.addEventListener('click', () => {
-                document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-                document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
-                tab.classList.add('active');
-                document.getElementById(`${tab.dataset.tab}-tab`).classList.add('active');
-            });
-        });
-
-        // Upload area
-        elements.uploadArea.addEventListener('click', () => elements.fileInput.click());
-        elements.uploadArea.addEventListener('dragover', (e) => {
-            e.preventDefault();
-            elements.uploadArea.classList.add('dragover');
-        });
-        elements.uploadArea.addEventListener('dragleave', () => {
-            elements.uploadArea.classList.remove('dragover');
-        });
-        elements.uploadArea.addEventListener('drop', (e) => {
-            e.preventDefault();
-            elements.uploadArea.classList.remove('dragover');
-            const file = e.dataTransfer.files[0];
-            if (file) uploadTemplate(file);
-        });
-        elements.fileInput.addEventListener('change', (e) => {
-            const file = e.target.files[0];
-            if (file) uploadTemplate(file);
-        });
-
-        // Buttons
-        elements.validateBtn.addEventListener('click', validateData);
-        elements.renderBtn.addEventListener('click', openModal);
-        elements.confirmRender.addEventListener('click', renderTemplate);
-        if (elements.saveBtn) {
-            elements.saveBtn.addEventListener('click', saveMarkings);
-        }
-
-        // Zoom controls for document preview
-        let currentZoom = 1;
-        if (elements.zoomIn) {
-            elements.zoomIn.addEventListener('click', () => {
-                currentZoom = Math.min(currentZoom + 0.1, 2);
-                elements.previewIframe.style.transform = `scale(${currentZoom})`;
-                elements.previewIframe.style.transformOrigin = 'top left';
-            });
-        }
-        if (elements.zoomOut) {
-            elements.zoomOut.addEventListener('click', () => {
-                currentZoom = Math.max(currentZoom - 0.1, 0.5);
-                elements.previewIframe.style.transform = `scale(${currentZoom})`;
-                elements.previewIframe.style.transformOrigin = 'top left';
-            });
-        }
-
-        // Copy source button
-        if (elements.copySource) {
-            elements.copySource.addEventListener('click', () => {
-                const code = elements.sourceCode.querySelector('code').textContent;
-                navigator.clipboard.writeText(code).then(() => {
-                    showToast('Source code copied to clipboard', 'success');
-                }).catch(() => {
-                    showToast('Failed to copy', 'error');
-                });
-            });
-        }
-
-        // Modal
-        document.querySelector('.modal-close').addEventListener('click', closeModal);
-        document.querySelector('.modal-cancel').addEventListener('click', closeModal);
-        elements.renderModal.addEventListener('click', (e) => {
-            if (e.target === elements.renderModal) closeModal();
-        });
-
-        // AI Identify button
-        if (elements.aiIdentifyBtn) {
-            elements.aiIdentifyBtn.addEventListener('click', async () => {
-                if (!state.selectedTemplate) {
-                    showToast('Please select a template first', 'warning');
-                    return;
-                }
-                await aiIdentifyVariables();
-            });
-        }
-
-        // Manual marking events
-        if (elements.cancelMarking) {
-            elements.cancelMarking.addEventListener('click', hideMarkingPopup);
-        }
-        if (elements.confirmMarking) {
-            elements.confirmMarking.addEventListener('click', confirmManualMarking);
-        }
-        if (elements.variablePathInput) {
-            elements.variablePathInput.addEventListener('keypress', (e) => {
-                if (e.key === 'Enter') {
-                    confirmManualMarking();
-                }
-            });
-        }
-
-        // Text selection in document preview iframe
-        if (elements.previewIframe) {
-            elements.previewIframe.addEventListener('load', () => {
-                try {
-                    const iframeDoc = elements.previewIframe.contentDocument || elements.previewIframe.contentWindow.document;
-                    iframeDoc.addEventListener('mouseup', handleTextSelection);
-                } catch (e) {
-                    // Cross-origin restriction
-                }
-            });
-        }
-    }
-
-    // AI Identify Variables
-    async function aiIdentifyVariables() {
+    // Render Function
+    async function renderTemplate() {
         if (!state.selectedTemplate) return;
+
+        let data = {};
+        try {
+            const text = elements.testData.value.trim();
+            if (text) {
+                data = JSON.parse(text);
+            }
+        } catch {
+            showToast('Invalid JSON in test data', 'error');
+            return;
+        }
+
+        const outputFormat = elements.outputFormat.value || undefined;
+
+        try {
+            showToast('Rendering template...', 'info');
+
+            const result = await apiRequest('/render', {
+                method: 'POST',
+                body: JSON.stringify({
+                    templateId: state.selectedTemplate.id,
+                    data,
+                    outputFormat
+                })
+            });
+
+            showToast('Template rendered successfully', 'success');
+
+            // Download file
+            const link = document.createElement('a');
+            link.href = result.downloadUrl;
+            link.download = result.fileName;
+            link.click();
+
+            closeModal();
+
+        } catch (error) {
+            showToast('Render failed: ' + error.message, 'error');
+        }
+    }
+
+    // AI Identify Function
+    async function aiIdentifyVariables() {
+        if (!state.selectedTemplate) {
+            showToast('Please select a template first', 'warning');
+            return;
+        }
 
         elements.aiSuggestionsList.innerHTML = '<div class="loading"><i class="fas fa-spinner fa-spin"></i> Analyzing...</div>';
 
@@ -638,22 +486,26 @@
             renderAISuggestions(result.suggestions);
             showToast(`Found ${result.suggestions.length} potential variables`, 'success');
         } catch (error) {
-            elements.aiSuggestionsList.innerHTML = '<span style="color: #999;">Analysis failed</span>';
+            elements.aiSuggestionsList.innerHTML = '<span class="empty-hint">Analysis failed</span>';
             showToast('Failed to analyze template', 'error');
         }
     }
 
     function renderAISuggestions(suggestions) {
         if (suggestions.length === 0) {
-            elements.aiSuggestionsList.innerHTML = '<span style="color: #999;">No potential variables found</span>';
+            elements.aiSuggestionsList.innerHTML = '<span class="empty-hint">No potential variables found</span>';
+            elements.suggestionsCount.style.display = 'none';
             return;
         }
+
+        elements.suggestionsCount.textContent = suggestions.length;
+        elements.suggestionsCount.style.display = 'inline';
 
         elements.aiSuggestionsList.innerHTML = suggestions.map((s, index) => `
             <div class="ai-suggestion-item" data-index="${index}">
                 <div class="ai-suggestion-header">
                     <span class="ai-suggestion-path">{${s.path}}</span>
-                    <span class="badge">${s.type}</span>
+                    <span class="badge badge-info">${s.type}</span>
                 </div>
                 <div class="ai-suggestion-content">
                     Found: <code>${s.content}</code>
@@ -662,10 +514,10 @@
                     ${s.reason} (${Math.round(s.confidence * 100)}% confidence)
                 </div>
                 <div class="ai-suggestion-actions">
-                    <button class="btn btn-accept" data-path="${s.path}" data-content="${s.content}">
+                    <button class="btn btn-primary btn-sm btn-accept" data-path="${s.path}" data-content="${s.content}">
                         <i class="fas fa-check"></i> Accept
                     </button>
-                    <button class="btn btn-reject">
+                    <button class="btn btn-outline btn-sm btn-reject">
                         <i class="fas fa-times"></i> Ignore
                     </button>
                 </div>
@@ -682,11 +534,18 @@
                 // Add to test data
                 addToTestData(path, content);
 
+                // Add to variables list
+                const varItem = document.createElement('div');
+                varItem.className = 'variable-item';
+                varItem.innerHTML = `<code>{${path}}</code> <small style="color:#999">(${content})</small>`;
+                elements.variablesList.appendChild(varItem);
+
+                // Update count
+                elements.varsCount.textContent = parseInt(elements.varsCount.textContent) + 1;
+
                 // Remove suggestion
-                item.style.opacity = '0.5';
-                btn.disabled = true;
-                btn.innerHTML = '<i class="fas fa-check"></i> Added';
-                showToast(`Added {${path}} to test data`, 'success');
+                item.remove();
+                showToast(`Added {${path}} to variables`, 'success');
             });
         });
 
@@ -731,67 +590,12 @@
         elements.testData.value = JSON.stringify(data, null, 2);
     }
 
-    // Manual Marking Functions
-    let currentSelection = null;
-
-    function handleTextSelection(e) {
-        const selection = window.getSelection ? window.getSelection() : document.selection;
-        if (!selection || selection.toString().trim() === '') {
-            return;
-        }
-
-        const selectedText = selection.toString().trim();
-
-        // Only handle selections within iframe
-        if (elements.previewIframe && elements.previewIframe.contentWindow === selection.anchorNode?.ownerDocument?.defaultView) {
-            currentSelection = {
-                text: selectedText,
-                range: selection.getRangeAt(0)
-            };
-
-            showMarkingPopup(e.clientX, e.clientY, selectedText);
-        }
-    }
-
-    function showMarkingPopup(x, y, text) {
-        elements.selectedText.textContent = text;
-        elements.variablePathInput.value = suggestVariablePath(text);
-        elements.markingPopup.style.left = `${x}px`;
-        elements.markingPopup.style.top = `${y}px`;
-        elements.markingPopup.classList.add('show');
-        elements.variablePathInput.focus();
-    }
-
-    function hideMarkingPopup() {
-        elements.markingPopup.classList.remove('show');
-        currentSelection = null;
-    }
-
-    function suggestVariablePath(text) {
-        // Simple heuristics for suggesting variable paths
-        if (/^\d{4}[-/年]\d{1,2}[-/月]\d{1,2}/.test(text)) {
-            return 'd.date';
-        }
-        if (/^[￥¥$]\s*\d/.test(text)) {
-            return 'd.amount';
-        }
-        if (/^\d+\.?\d*\s*(元|件|个|张|份)/.test(text)) {
-            return 'd.quantity';
-        }
-        if (/^\d{11}$/.test(text) || /^1[3-9]\d{9}$/.test(text)) {
-            return 'd.phone';
-        }
-        if (/^[\w.-]+@[\w.-]+\.\w+$/.test(text)) {
-            return 'd.email';
-        }
-        if (/^[\u4e00-\u9fa5]{2,4}$/.test(text)) {
-            return 'd.name';
-        }
-        return 'd.value';
-    }
-
-    function confirmManualMarking() {
+    // Apply Manual Marking
+    function applyManualMarking() {
         const path = elements.variablePathInput.value.trim();
+        const formatters = elements.formattersInput.value.trim();
+        const text = elements.selectedTextDisplay.textContent;
+
         if (!path) {
             showToast('Please enter a variable path', 'warning');
             return;
@@ -802,11 +606,18 @@
             return;
         }
 
-        const text = elements.selectedText.textContent;
+        // Build final path with formatters
+        let fullPath = path;
+        if (formatters) {
+            const formatterList = formatters.split(',').map(f => f.trim()).filter(f => f);
+            if (formatterList.length > 0) {
+                fullPath += ':' + formatterList.join(':');
+            }
+        }
 
         // Add to manual markings
         state.manualMarkings.push({
-            path: path,
+            path: fullPath,
             text: text,
             createdAt: new Date().toISOString()
         });
@@ -814,17 +625,23 @@
         // Add to test data
         addToTestData(path, text);
 
-        // Add to variables list display
+        // Add to variables list
         const varItem = document.createElement('div');
         varItem.className = 'variable-item';
-        varItem.innerHTML = `<code>{${path}}</code> <small style="color:#999">(手动标记: ${text})</small>`;
+        varItem.innerHTML = `
+            <code>{${fullPath}}</code>
+            <small style="color:#999">(${text})</small>
+        `;
         elements.variablesList.appendChild(varItem);
 
-        hideMarkingPopup();
-        showToast(`Marked "${text}" as {${path}}`, 'success');
+        // Update count
+        elements.varsCount.textContent = parseInt(elements.varsCount.textContent) + 1;
+
+        hideSelectionSection();
+        showToast(`Marked "${text}" as {${fullPath}}`, 'success');
     }
 
-    // Save Markings Function
+    // Save Markings
     async function saveMarkings() {
         if (!state.selectedTemplate) {
             showToast('No template selected', 'warning');
@@ -832,7 +649,7 @@
         }
 
         try {
-            const result = await apiRequest(`/templates/${state.selectedTemplate.id}/markings`, {
+            await apiRequest(`/templates/${state.selectedTemplate.id}/markings`, {
                 method: 'POST',
                 body: JSON.stringify({
                     templateId: state.selectedTemplate.id,
@@ -846,8 +663,106 @@
         }
     }
 
+    // Modal Functions
+    function openModal() {
+        elements.renderModal.classList.add('show');
+    }
+
+    function closeModal() {
+        elements.renderModal.classList.remove('show');
+    }
+
+    // Event Handlers
+    function initEvents() {
+        // Upload area
+        elements.uploadArea.addEventListener('click', () => elements.fileInput.click());
+        elements.uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            elements.uploadArea.classList.add('dragover');
+        });
+        elements.uploadArea.addEventListener('dragleave', () => {
+            elements.uploadArea.classList.remove('dragover');
+        });
+        elements.uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            elements.uploadArea.classList.remove('dragover');
+            const file = e.dataTransfer.files[0];
+            if (file) uploadTemplate(file);
+        });
+        elements.fileInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) uploadTemplate(file);
+        });
+
+        // Buttons
+        elements.validateBtn.addEventListener('click', validateData);
+        elements.renderBtn.addEventListener('click', openModal);
+        elements.confirmRender.addEventListener('click', renderTemplate);
+        elements.saveBtn.addEventListener('click', saveMarkings);
+
+        // Zoom controls
+        elements.zoomIn.addEventListener('click', () => {
+            state.currentZoom = Math.min(state.currentZoom + 0.1, 2);
+            updateZoom();
+        });
+        elements.zoomOut.addEventListener('click', () => {
+            state.currentZoom = Math.max(state.currentZoom - 0.1, 0.5);
+            updateZoom();
+        });
+
+        // AI Identify button
+        elements.aiIdentifyBtn.addEventListener('click', aiIdentifyVariables);
+
+        // Selection controls
+        elements.applyMarking.addEventListener('click', applyManualMarking);
+        elements.clearSelection.addEventListener('click', hideSelectionSection);
+
+        // Modal
+        document.querySelector('.modal-close').addEventListener('click', closeModal);
+        document.querySelector('.modal-cancel')?.addEventListener('click', closeModal);
+        elements.renderModal.addEventListener('click', (e) => {
+            if (e.target === elements.renderModal) closeModal();
+        });
+
+        // Resize handle
+        initResizeHandle();
+    }
+
+    function initResizeHandle() {
+        const handle = document.querySelector('.resize-handle');
+        const panelRight = document.querySelector('.panel-right');
+
+        if (!handle || !panelRight) return;
+
+        let isResizing = false;
+
+        handle.addEventListener('mousedown', (e) => {
+            isResizing = true;
+            document.body.style.cursor = 'col-resize';
+            document.body.style.userSelect = 'none';
+        });
+
+        document.addEventListener('mousemove', (e) => {
+            if (!isResizing) return;
+
+            const containerWidth = document.querySelector('.split-panel-container')?.offsetWidth || 0;
+            const newWidth = containerWidth - e.clientX + 260; // 260 is sidebar width
+
+            if (newWidth >= 300 && newWidth <= 500) {
+                panelRight.style.width = `${newWidth}px`;
+            }
+        });
+
+        document.addEventListener('mouseup', () => {
+            isResizing = false;
+            document.body.style.cursor = '';
+            document.body.style.userSelect = '';
+        });
+    }
+
     // Initialize
     function init() {
+        initElements();
         initEvents();
         loadTemplates();
         loadFormatters();
