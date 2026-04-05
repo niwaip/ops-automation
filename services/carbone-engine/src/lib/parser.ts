@@ -17,6 +17,8 @@ export interface LoopInfo {
   endPos: number;
   templateUnit: string;
   depth: number;
+  parentLoop?: string;  // 父循环路径，用于嵌套循环
+  loopType: 'explicit' | 'implicit';  // 显式（{#d.xxx}）或隐式（[i]/[i+1]）
 }
 
 export interface ParsedTemplate {
@@ -31,6 +33,10 @@ const CARBONE_MARKER_REGEX = /\{([cdt])\.([^}]+)\}/g;
 const ARRAY_INDEX_REGEX = /\[i\]|\[i\+\d+\]/;  // 支持 [i] 和 [i+1]
 const FORMATTER_REGEX = /:([a-zA-Z]+)(?:\(([^)]*)\))?/g;
 const LOOP_PATTERN_REGEX = /\{[cdt]\.([^}]+)\[i\+1\][^}]*\}/g;
+
+// 显式循环标记: {#d.array} 和 {/d.array}
+const LOOP_START_REGEX = /\{#([cdt])\.([^}]+)\}/g;  // {#d.items}
+const LOOP_END_REGEX = /\{\/([cdt])\.([^}]+)\}/g;   // {/d.items}
 
 export class Parser {
   /**
@@ -117,15 +123,128 @@ export class Parser {
 
   /**
    * 检测循环模式
-   * Carbone使用 [i] 和 [i+1] 来标记循环范围
-   * 同时支持自动检测表格行循环（只有一个[i]标记的情况）
+   * 支持两种方式:
+   * 1. 显式循环标记: {#d.array} 和 {/d.array} (支持嵌套)
+   * 2. 隐式循环标记: [i] 和 [i+1] 配对或表格行自动检测
    */
   detectLoops(xml: string, markers: Marker[]): LoopInfo[] {
     const loops: LoopInfo[] = [];
 
-    // 方法1: 传统的 [i] 和 [i+1] 配对检测
+    // 首先检测显式循环标记 {#d.xxx} 和 {/d.xxx}
+    const explicitLoops = this.detectExplicitLoops(xml);
+    loops.push(...explicitLoops);
+
+    // 然后检测隐式循环标记（[i] 和 [i+1] 配对）
+    const implicitLoops = this.detectImplicitLoops(xml, markers, loops);
+    loops.push(...implicitLoops);
+
+    // 最后检测表格行循环
+    const tableRowLoops = this.detectTableRowLoops(xml, markers, loops);
+    loops.push(...tableRowLoops);
+
+    // 按起始位置排序
+    return loops.sort((a, b) => a.startPos - b.startPos);
+  }
+
+  /**
+   * 检测显式循环标记 {#d.array} 和 {/d.array}
+   * 支持嵌套循环
+   */
+  private detectExplicitLoops(xml: string): LoopInfo[] {
+    const loops: LoopInfo[] = [];
+    const loopStack: { arrayPath: string; startPos: number; depth: number }[] = [];
+
+    // 重置正则表达式
+    LOOP_START_REGEX.lastIndex = 0;
+    LOOP_END_REGEX.lastIndex = 0;
+
+    // 找到所有的循环开始和结束标记
+    const loopMarkers: { type: 'start' | 'end'; pos: number; arrayPath: string }[] = [];
+
+    let startMatch;
+    while ((startMatch = LOOP_START_REGEX.exec(xml)) !== null) {
+      const contextChar = startMatch[1];
+      const path = startMatch[2];
+      loopMarkers.push({
+        type: 'start',
+        pos: startMatch.index,
+        arrayPath: `${contextChar}.${path}`
+      });
+    }
+
+    let endMatch;
+    while ((endMatch = LOOP_END_REGEX.exec(xml)) !== null) {
+      const contextChar = endMatch[1];
+      const path = endMatch[2];
+      loopMarkers.push({
+        type: 'end',
+        pos: endMatch.index,
+        arrayPath: `${contextChar}.${path}`
+      });
+    }
+
+    // 按位置排序
+    loopMarkers.sort((a, b) => a.pos - b.pos);
+
+    // 处理循环嵌套
+    for (const marker of loopMarkers) {
+      if (marker.type === 'start') {
+        // 计算深度
+        const depth = loopStack.length + 1;
+        const parentPath = loopStack.length > 0 ? loopStack[loopStack.length - 1].arrayPath : undefined;
+
+        loopStack.push({
+          arrayPath: marker.arrayPath,
+          startPos: marker.pos,
+          depth
+        });
+      } else if (marker.type === 'end') {
+        // 查找匹配的开始标记
+        const matchingStart = loopStack.find(s => s.arrayPath === marker.arrayPath);
+
+        if (matchingStart) {
+          // 提取模板内容（不包括开始和结束标记）
+          const startPos = matchingStart.startPos;
+          const endPos = marker.pos + xml.substring(marker.pos).indexOf('}') + 1;
+          const templateUnit = xml.substring(startPos, endPos);
+
+          // 计算父循环路径
+          const parentLoop = loopStack.find(s =>
+            s.startPos < matchingStart.startPos &&
+            s.depth < matchingStart.depth
+          )?.arrayPath;
+
+          loops.push({
+            arrayPath: marker.arrayPath,
+            startPos: matchingStart.startPos,
+            endPos,
+            templateUnit,
+            depth: matchingStart.depth,
+            parentLoop,
+            loopType: 'explicit'
+          });
+
+          // 从栈中移除
+          const stackIndex = loopStack.findIndex(s => s.arrayPath === marker.arrayPath);
+          if (stackIndex >= 0) {
+            loopStack.splice(stackIndex, 1);
+          }
+        }
+      }
+    }
+
+    return loops;
+  }
+
+  /**
+   * 检测隐式循环标记 [i] 和 [i+1] 配对
+   */
+  private detectImplicitLoops(xml: string, markers: Marker[], existingLoops: LoopInfo[]): LoopInfo[] {
+    const loops: LoopInfo[] = [];
+
     const arrayMarkers = markers.filter(m => m.isArray);
     const arrayGroups = new Map<string, Marker[]>();
+
     for (const marker of arrayMarkers) {
       if (marker.arrayPath) {
         const existing = arrayGroups.get(marker.arrayPath) || [];
@@ -135,6 +254,11 @@ export class Parser {
     }
 
     for (const [arrayPath, groupMarkers] of arrayGroups) {
+      // 检查是否已经有显式循环
+      if (existingLoops.some(l => l.arrayPath === arrayPath && l.loopType === 'explicit')) {
+        continue;
+      }
+
       if (groupMarkers.length < 2) continue;
 
       const sortedMarkers = groupMarkers.sort((a, b) => a.pos - b.pos);
@@ -142,24 +266,35 @@ export class Parser {
       const endMarker = sortedMarkers.find(m => m.name.includes('[i+1]'));
 
       if (startMarker && endMarker) {
+        // 计算嵌套深度
+        const depth = this.calculateLoopDepth(startMarker.pos, existingLoops);
+        const parentLoop = this.findParentLoop(startMarker.pos, existingLoops);
+
         loops.push({
           arrayPath,
           startPos: startMarker.pos,
           endPos: endMarker.pos,
           templateUnit: xml.substring(startMarker.pos, endMarker.pos + 10),
-          depth: 1
+          depth,
+          parentLoop,
+          loopType: 'implicit'
         });
       }
     }
 
-    // 方法2: 自动检测表格行循环
-    // 查找 <w:tr> 中包含 [i] 标记但没有 [i+1] 的情况
+    return loops;
+  }
+
+  /**
+   * 检测表格行循环（只有一个[i]标记的情况）
+   */
+  private detectTableRowLoops(xml: string, markers: Marker[], existingLoops: LoopInfo[]): LoopInfo[] {
+    const loops: LoopInfo[] = [];
+
     const tableRowPattern = /<w:tr[^>]*>([\s\S]*?)<\/w:tr>/g;
     let rowMatch;
-    let rowIndex = 0;
 
     while ((rowMatch = tableRowPattern.exec(xml)) !== null) {
-      const rowContent = rowMatch[1];
       const rowFullMatch = rowMatch[0];
       const rowStartPos = rowMatch.index;
 
@@ -172,22 +307,52 @@ export class Parser {
 
       if (arrayInRow && arrayInRow.arrayPath) {
         // 检查是否已经有这个数组路径的循环
-        const existingLoop = loops.find(l => l.arrayPath === arrayInRow.arrayPath);
-        if (!existingLoop) {
-          // 创建一个基于表格行的循环
-          loops.push({
-            arrayPath: arrayInRow.arrayPath,
-            startPos: rowStartPos,
-            endPos: rowStartPos + rowFullMatch.length,
-            templateUnit: rowFullMatch,
-            depth: 1
-          });
+        if (existingLoops.some(l => l.arrayPath === arrayInRow.arrayPath)) {
+          continue;
         }
+
+        // 计算嵌套深度
+        const depth = this.calculateLoopDepth(rowStartPos, existingLoops);
+        const parentLoop = this.findParentLoop(rowStartPos, existingLoops);
+
+        loops.push({
+          arrayPath: arrayInRow.arrayPath,
+          startPos: rowStartPos,
+          endPos: rowStartPos + rowFullMatch.length,
+          templateUnit: rowFullMatch,
+          depth,
+          parentLoop,
+          loopType: 'implicit'
+        });
       }
-      rowIndex++;
     }
 
     return loops;
+  }
+
+  /**
+   * 计算循环嵌套深度
+   */
+  private calculateLoopDepth(pos: number, existingLoops: LoopInfo[]): number {
+    let depth = 1;
+    for (const loop of existingLoops) {
+      if (loop.startPos < pos && loop.endPos > pos) {
+        depth = Math.max(depth, loop.depth + 1);
+      }
+    }
+    return depth;
+  }
+
+  /**
+   * 查找父循环
+   */
+  private findParentLoop(pos: number, existingLoops: LoopInfo[]): string | undefined {
+    // 找到包含此位置的最内层循环
+    const containingLoops = existingLoops.filter(l =>
+      l.startPos < pos && l.endPos > pos
+    ).sort((a, b) => b.depth - a.depth);
+
+    return containingLoops[0]?.arrayPath;
   }
 
   /**
