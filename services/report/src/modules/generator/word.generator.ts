@@ -67,9 +67,8 @@ export class WordGenerator {
 
     // Process each section
     for (const section of template.sections) {
-      const content = this.processSection(section, stepResults, aiAnalysis);
-
       if (section.type === 'text') {
+        const content = this.processSection(section, stepResults, aiAnalysis);
         sections.push(
           new Paragraph({
             text: section.format?.title || section.name,
@@ -96,6 +95,7 @@ export class WordGenerator {
           sections.push(table);
         }
       } else if (section.type === 'image') {
+        // Add section title
         sections.push(
           new Paragraph({
             text: section.format?.title || section.name,
@@ -103,9 +103,10 @@ export class WordGenerator {
             spacing: { before: 300, after: 200 },
           }),
         );
-        const imageParagraph = await this.createImageParagraph(section, stepResults);
-        if (imageParagraph) {
-          sections.push(imageParagraph);
+        // Add all images
+        const imageParagraphs = await this.createImageParagraphs(section, stepResults);
+        for (const imgParagraph of imageParagraphs) {
+          sections.push(imgParagraph);
         }
       }
     }
@@ -158,7 +159,7 @@ export class WordGenerator {
     if (section.source === 'step_result') {
       const filteredResults = this.filterStepResults(section, stepResults);
       return filteredResults
-        .map(r => r.text || r.error || 'No content')
+        .map(r => r.text || r.message || r.error || 'No content')
         .join('\n');
     }
 
@@ -173,13 +174,13 @@ export class WordGenerator {
 
     if (section.step_filter) {
       const filter = section.step_filter;
-      if (filter.actions) {
+      if (filter.actions && filter.actions.length > 0) {
         results = results.filter(r => filter.actions!.includes(r.action));
       }
       if (filter.success_only) {
         results = results.filter(r => r.success);
       }
-      if (filter.step_ids) {
+      if (filter.step_ids && filter.step_ids.length > 0) {
         results = results.filter(r => filter.step_ids!.includes(r.step_id));
       }
     }
@@ -254,8 +255,10 @@ export class WordGenerator {
       ? new Date(result.timestamp).toISOString()
       : result.timestamp.toISOString();
 
+    const stepNum = result.step_index !== undefined ? result.step_index + 1 : result.step_id;
+
     const dataMap: Record<string, string> = {
-      Step: result.step_id,
+      Step: String(stepNum),
       Action: result.action,
       Result: result.text || result.message || result.error || '',
       Status: result.success ? 'Success' : 'Failed',
@@ -266,40 +269,80 @@ export class WordGenerator {
     return columns.map(col => dataMap[col] || '');
   }
 
-  private async createImageParagraph(
+  private async createImageParagraphs(
     section: ReportSection,
     stepResults: StepResult[],
-  ): Promise<Paragraph | null> {
+  ): Promise<Paragraph[]> {
+    const paragraphs: Paragraph[] = [];
     const filteredResults = this.filterStepResults(section, stepResults);
-    const resultWithScreenshot = filteredResults.find(r => r.screenshot);
+    const resultsWithScreenshots = filteredResults.filter(r => r.screenshot);
 
-    if (!resultWithScreenshot?.screenshot) {
-      return null;
+    this.logger.log(`Found ${resultsWithScreenshots.length} screenshots for section ${section.id}`);
+
+    if (resultsWithScreenshots.length === 0) {
+      this.logger.warn(`No screenshots found for section ${section.id}`);
+      paragraphs.push(
+        new Paragraph({
+          text: 'No screenshots available for this section.',
+          spacing: { after: 200 },
+        }),
+      );
+      return paragraphs;
     }
 
-    try {
-      // Handle base64 screenshot
-      const screenshotData = resultWithScreenshot.screenshot;
-      if (screenshotData.startsWith('data:image')) {
-        const base64Data = screenshotData.split(',')[1];
-        const buffer = Buffer.from(base64Data, 'base64');
+    for (const result of resultsWithScreenshots) {
+      try {
+        const screenshotData = result.screenshot!;
+        let buffer: Buffer;
 
-        return new Paragraph({
-          children: [
-            new ImageRun({
-              data: buffer,
-              transformation: {
-                width: section.format?.width || 400,
-                height: section.format?.height || 300,
-              },
-            }),
-          ],
-        });
+        // Handle both data:image format and raw base64
+        if (screenshotData.startsWith('data:image')) {
+          const base64Data = screenshotData.split(',')[1];
+          buffer = Buffer.from(base64Data, 'base64');
+        } else {
+          // Assume raw base64 PNG data
+          buffer = Buffer.from(screenshotData, 'base64');
+        }
+
+        const stepLabel = result.step_index !== undefined
+          ? `Step ${result.step_index + 1}`
+          : result.step_id;
+
+        // Add step label
+        paragraphs.push(
+          new Paragraph({
+            children: [
+              new TextRun({
+                text: `${stepLabel}: ${result.action}`,
+                bold: true,
+              }),
+            ],
+            spacing: { before: 200, after: 100 },
+          }),
+        );
+
+        // Add image
+        paragraphs.push(
+          new Paragraph({
+            children: [
+              new ImageRun({
+                data: buffer,
+                transformation: {
+                  width: section.format?.width || 500,
+                  height: section.format?.height || 350,
+                },
+              }),
+            ],
+            spacing: { after: 300 },
+          }),
+        );
+
+        this.logger.log(`Added image for ${stepLabel}`);
+      } catch (error) {
+        this.logger.error(`Failed to add image for step ${result.step_id}: ${error}`);
       }
-    } catch (error) {
-      this.logger.error(`Failed to add image: ${error}`);
     }
 
-    return null;
+    return paragraphs;
   }
 }
