@@ -154,47 +154,47 @@ export interface GenerateReportResponse {
 export const reportApi = {
   // Report Templates
   async getTemplates(): Promise<{ templates: ReportTemplate[] }> {
-    return apiClient.get('/report/templates');
+    return apiClient.get('/report-templates');
   },
 
   async getTemplate(id: string): Promise<ReportTemplate> {
-    return apiClient.get(`/report/templates/${id}`);
+    return apiClient.get(`/report-templates/${id}`);
   },
 
   async createTemplate(params: CreateReportTemplateParams): Promise<ReportTemplate> {
-    return apiClient.post('/report/templates', params);
+    return apiClient.post('/report-templates', params);
   },
 
   async updateTemplate(id: string, params: UpdateReportTemplateParams): Promise<ReportTemplate> {
-    return apiClient.patch(`/report/templates/${id}`, params);
+    return apiClient.patch(`/report-templates/${id}`, params);
   },
 
   async deleteTemplate(id: string): Promise<{ success: boolean }> {
-    return apiClient.delete(`/report/templates/${id}`);
+    return apiClient.delete(`/report-templates/${id}`);
   },
 
   // Reports
   async getReports(): Promise<{ reports: Report[] }> {
-    return apiClient.get('/report/reports');
+    return apiClient.get('/reports');
   },
 
   async getReport(id: string): Promise<Report> {
-    return apiClient.get(`/report/reports/${id}`);
+    return apiClient.get(`/reports/${id}`);
   },
 
   async getReportsBySession(sessionId: string): Promise<{ reports: Report[] }> {
-    return apiClient.get(`/report/reports/session/${sessionId}`);
+    return apiClient.get(`/reports/session/${sessionId}`);
   },
 
   async createReport(params: CreateReportParams): Promise<GenerateReportResponse> {
-    return apiClient.post('/report/reports', params);
+    return apiClient.post('/reports', params);
   },
 
   async getReportStatus(id: string): Promise<{ id: string; status: string; error?: string }> {
-    return apiClient.get(`/report/reports/${id}/status`);
+    return apiClient.get(`/reports/${id}/status`);
   },
 
   async getReportDownloadInfo(id: string): Promise<{ file_path: string; file_name: string }> {
-    return apiClient.get(`/report/reports/${id}/download`);
+    return apiClient.get(`/reports/${id}/download`);
   },
 };
