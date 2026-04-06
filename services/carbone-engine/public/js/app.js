@@ -1229,6 +1229,12 @@
                 elements.aiGenerateResult.innerHTML = resultHtml;
             }
 
+            // 启用验证按钮
+            if (elements.aiVerifyBtn) {
+                elements.aiVerifyBtn.disabled = false;
+                elements.aiVerifyBtn.classList.remove('disabled');
+            }
+
             renderAISuggestions(suggestions);
 
             const totalVars = suggestions.length;
@@ -1309,7 +1315,26 @@
             if (elements.aiGenerateResult) {
                 let resultHtml = '<h3>验证报告</h3>';
                 resultHtml += marked.parse(verifyResult.report || '验证完成');
+                resultHtml += '<hr style="margin: 15px 0; border-top: 1px solid #eee;">';
+                resultHtml += '<div style="margin-top: 10px;">';
+                resultHtml += '<button id="preview-template-btn" class="btn btn-primary btn-sm" style="margin-right: 8px;">';
+                resultHtml += '<i class="fas fa-eye"></i> 预览模版';
+                resultHtml += '</button>';
+                resultHtml += '<button id="preview-render-btn" class="btn btn-outline btn-sm">';
+                resultHtml += '<i class="fas fa-file-alt"></i> 生成示例文档';
+                resultHtml += '</button>';
+                resultHtml += '</div>';
                 elements.aiGenerateResult.innerHTML = resultHtml;
+
+                // 绑定预览按钮事件
+                const previewBtn = document.getElementById('preview-template-btn');
+                if (previewBtn) {
+                    previewBtn.addEventListener('click', previewTemplateHtml);
+                }
+                const renderBtn = document.getElementById('preview-render-btn');
+                if (renderBtn) {
+                    renderBtn.addEventListener('click', previewRenderDocument);
+                }
             }
 
             showToast('验证完成', 'success');
@@ -1357,6 +1382,96 @@
             statusEl.textContent = text || '';
             statusEl.className = 'step-status ' + status;
         }
+    }
+
+    // 预览模版HTML
+    async function previewTemplateHtml() {
+        if (!state.selectedTemplate) {
+            showToast('请先选择一个模版', 'warning');
+            return;
+        }
+
+        try {
+            updateStatus('processing', '正在生成预览...');
+            const result = await apiRequest(`/templates/${state.selectedTemplate.id}/preview-html`);
+
+            // 显示预览模态框
+            const modal = document.getElementById('preview-modal');
+            const previewContent = document.getElementById('preview-content');
+
+            if (modal && previewContent) {
+                previewContent.innerHTML = result.html;
+                modal.style.display = 'flex';
+            } else {
+                // 创建临时预览窗口
+                const previewWindow = window.open('', '_blank', 'width=800,height=600');
+                if (previewWindow) {
+                    previewWindow.document.write(`
+                        <html>
+                        <head><title>模版预览 - ${state.selectedTemplate.name}</title>
+                        <style>body { font-family: Arial, sans-serif; padding: 20px; }</style>
+                        </head>
+                        <body>${result.html}</body>
+                        </html>
+                    `);
+                    previewWindow.document.close();
+                }
+            }
+            updateStatus('success', '预览生成完成');
+            showToast('预览已生成', 'success');
+        } catch (error) {
+            console.error('Preview failed:', error);
+            updateStatus('error', '预览失败: ' + error.message);
+            showToast('预览失败: ' + error.message, 'error');
+        }
+    }
+
+    // 生成示例文档预览
+    async function previewRenderDocument() {
+        if (!state.selectedTemplate) {
+            showToast('请先选择一个模版', 'warning');
+            return;
+        }
+
+        try {
+            updateStatus('processing', '正在生成示例文档...');
+
+            // 使用预览端点生成示例文档
+            const response = await fetch(`/api/preview`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    templateId: state.selectedTemplate.id,
+                    maxRows: 5
+                })
+            });
+
+            if (!response.ok) {
+                throw new Error(`预览请求失败: ${response.status}`);
+            }
+
+            // 获取文件blob
+            const blob = await response.blob();
+            const url = window.URL.createObjectURL(blob);
+
+            // 在新窗口打开或下载
+            const previewWindow = window.open(url, '_blank');
+            if (!previewWindow) {
+                // 如果无法打开新窗口，则下载文件
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `preview_${state.selectedTemplate.name || 'document'}`;
+                a.click();
+            }
+
+            updateStatus('success', '示例文档已生成');
+            showToast('示例文档已生成', 'success');
+        } catch (error) {
+            console.error('Render preview failed:', error);
+            updateStatus('error', '生成失败: ' + error.message);
+            showToast('生成失败: ' + error.message, 'error');
+        }
+    }
     }
 
     // 构建标记摘要
@@ -2971,11 +3086,21 @@
 
             if (result.templateConfig) {
                 state.templateConfig = result.templateConfig;
-                // 如果有保存的配置，显示它
+                // 如果有保存的配置，显示它并更新状态
                 if (state.currentSourceView === 'structure') {
                     displayAIConfigResult({ templateConfig: result.templateConfig });
                 }
+                // 更新步骤状态显示生成已完成
+                updateStepStatus('generate', 'completed', '已完成');
+                // 启用验证按钮
+                if (elements.aiVerifyBtn) {
+                    elements.aiVerifyBtn.disabled = false;
+                    elements.aiVerifyBtn.classList.remove('disabled');
+                }
                 console.log('Loaded saved template config:', result.templateConfig);
+            } else {
+                // 没有保存的配置时，显示等待生成状态
+                updateStepStatus('generate', 'pending', '等待生成');
             }
         } catch (error) {
             console.error('Load template config failed:', error);
