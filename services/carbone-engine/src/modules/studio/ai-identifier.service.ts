@@ -140,21 +140,12 @@ export class AIIdentifierService {
     // 分析用户上下文，提取意图
     const userIntent = this.parseUserContext(context || '');
 
-    // 尝试使用 AI 分析文档结构
-    let templateConfig: TemplateConfig;
-    try {
-      const aiAnalysis = await this.analyzeWithAI(elements, context);
-      if (aiAnalysis) {
-        templateConfig = aiAnalysis;
-        this.logger.log('AI analysis completed successfully');
-      } else {
-        // AI 分析失败，使用规则分析
-        templateConfig = this.generateTemplateConfig(elements, userIntent);
-      }
-    } catch (error) {
-      this.logger.warn(`AI analysis failed: ${error}, falling back to rule-based analysis`);
-      templateConfig = this.generateTemplateConfig(elements, userIntent);
+    // 使用 AI 分析文档结构（不再使用规则分析fallback）
+    const templateConfig = await this.analyzeWithAI(elements, context);
+    if (!templateConfig) {
+      throw new Error('AI分析失败，请检查AI服务是否正常');
     }
+    this.logger.log('AI analysis completed successfully');
 
     // 生成变量建议
     const suggestions = this.generateVariableSuggestions(elements, templateConfig);
@@ -976,11 +967,11 @@ export class AIIdentifierService {
       // 构建 AI 分析提示词
       const prompt = this.buildAIAnalysisPrompt(elements, context);
 
-      // 调用 AI 模型
+      // 调用 AI 模型（增加超时时间到120秒）
       const testResponse = await axios.post(
         `${this.aiOrchestratorUrl}/ai/models/${activeModel.id}/test`,
         { prompt },
-        { timeout: 60000 },
+        { timeout: 120000 },
       );
 
       if (!testResponse.data.success) {
@@ -1000,65 +991,32 @@ export class AIIdentifierService {
    * 构建 AI 分析提示词
    */
   private buildAIAnalysisPrompt(elements: DocumentElement[], context?: string): string {
-    // 构建文档元素摘要
+    // 构建文档元素摘要（简化版）
     const elementSummary = elements.map((el, idx) => {
-      let summary = `${idx + 1}. [${el.type}] `;
-
       if (el.type === 'table') {
-        summary += `表格: ${el.headerRow || '无表头'}, ${el.dataRows?.length || 0}行数据`;
-        if (el.attributes?.rows) {
-          summary += `, rows="${el.attributes.rows}"`;
-        }
+        return `${idx + 1}. [TABLE] ${el.headerRow || ''}, rows=${el.attributes?.rows || el.dataRows?.length || 0}`;
       } else if (el.type === 'image') {
-        summary += `图片: id="${el.imageId}", ${el.attributes?.widthPx}×${el.attributes?.heightPx}px`;
+        return `${idx + 1}. [IMAGE] id="${el.imageId}"`;
       } else {
-        // 截取前100个字符
-        const text = el.text?.substring(0, 100) || '';
-        summary += text;
+        const text = (el.text || '').substring(0, 80);
+        return `${idx + 1}. [${el.type.toUpperCase()}] ${text}`;
       }
-
-      // 添加 preserve 标记信息
-      if (el.preserveMarker) {
-        summary += ` [preserve: ${el.preserveMarker.type}]`;
-      }
-
-      return summary;
     }).join('\n');
 
-    return `你是一个文档模版分析专家。请分析以下文档结构，识别出模版变量和静态内容。
+    return `分析以下文档结构，返回JSON：
 
-文档元素列表:
 ${elementSummary}
 
-用户上下文: ${context || '通用模版分析'}
+规则：
+1. "### xxx" 标题 → staticElements (保留)
+2. 表格有preserve或rows属性 → tableLoops (循环)
+3. "Step N: screenshot" + 相邻图片 → combinedVariables (组合变量, stepNumber=N, imageId=图片ID)
+4. 含"日志/上下文"的段落 → variableMappings
 
-请分析文档结构并返回以下 JSON 格式结果:
+返回JSON格式：
+{"templateType":"类型","staticElements":[],"tableLoops":[],"combinedVariables":[],"variableMappings":[],"analysisNotes":[]}
 
-{
-  "templateType": "模版类型（如：运维自动化报告）",
-  "staticElements": [
-    { "type": "heading", "content": "### 自动化操作执行总结", "reason": "保留为标题" }
-  ],
-  "tableLoops": [
-    { "tableIndex": 0, "arrayPath": "d.steps", "reason": "步骤表格需要循环" }
-  ],
-  "combinedVariables": [
-    { "stepNumber": 3, "textContent": "Step 3: screenshot", "imageId": "rId6", "reason": "步骤文本与图片组合为截图变量" }
-  ],
-  "variableMappings": [
-    { "path": "d.contextLog", "content": "基于提供的执行上下文日志", "type": "text", "reason": "日志内容作为参数" }
-  ],
-  "analysisNotes": ["分析说明"]
-}
-
-分析规则:
-1. preserve 标记为 "static" 的元素 → staticElements（静态保留）
-2. preserve 标记为 "loop" 的表格 → tableLoops（循环表格）
-3. "Step X: screenshot" 文本与相邻图片 → combinedVariables（组合变量）
-4. preserve 标记为 "variable" 的元素 → variableMappings（变量）
-5. 包含"日志"、"上下文"、"总结"的段落 → variableMappings
-
-请直接返回 JSON 结果，不要包含其他解释。`;
+只返回JSON，不要解释。`;
   }
 
   /**
