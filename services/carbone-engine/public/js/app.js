@@ -3355,8 +3355,105 @@
                 updateStepStatus('generate', 'pending', '等待生成');
                 updateStatus('pending', '等待生成模版配置');
             }
+            // 加载已保存的验证结果
+            loadSavedVerifyResult();
         } catch (error) {
             console.error('Load template config failed:', error);
+        }
+    }
+
+    /**
+     * Load saved verify result
+     * 加载已保存的AI验证结果
+     */
+    async function loadSavedVerifyResult() {
+        if (!state.selectedTemplate) return;
+
+        try {
+            // 获取模版元数据，其中包含verifyResult
+            const result = await apiRequest(`/templates/${state.selectedTemplate.id}`);
+
+            if (result.verifyResult) {
+                const verifyResult = result.verifyResult;
+                console.log('Loaded saved verify result:', verifyResult);
+
+                // 更新步骤状态显示验证已完成
+                updateStepStatus('verify', 'completed', '已完成');
+
+                // 在验证结果区域显示保存的结果
+                if (elements.verifyResultSection) {
+                    elements.verifyResultSection.style.display = 'block';
+                    elements.verifyResultSection.classList.add('expanded');
+                }
+                if (elements.verifyResult) {
+                    // 显示验证完成标题
+                    let fullResultHtml = '<div style="background: #f6ffed; border: 1px solid #b7eb8f; border-radius: 4px; padding: 12px; margin-bottom: 15px;">';
+                    fullResultHtml += '<div style="display: flex; align-items: center; gap: 8px; margin-bottom: 10px;">';
+                    fullResultHtml += '<i class="fas fa-check-circle" style="color: #52c41a;"></i>';
+                    fullResultHtml += '<strong style="color: #52c41a;">验证完成</strong>';
+                    if (verifyResult.verifiedAt) {
+                        const verifiedDate = new Date(verifyResult.verifiedAt);
+                        fullResultHtml += `<span style="color: #666; font-size: 12px;">(${verifiedDate.toLocaleString()})</span>`;
+                    }
+                    fullResultHtml += '</div>';
+
+                    // 显示验证报告
+                    if (verifyResult.report) {
+                        fullResultHtml += '<div style="max-height: 300px; overflow-y: auto;">';
+                        fullResultHtml += marked.parse(verifyResult.report);
+                        fullResultHtml += '</div>';
+                    }
+                    fullResultHtml += '</div>';
+
+                    // 显示生成的示例数据（可折叠）
+                    if (verifyResult.sampleData) {
+                        fullResultHtml += '<details style="margin-bottom: 15px;"><summary style="cursor: pointer; font-weight: 500;"><i class="fas fa-database"></i> 生成的示例数据</summary>';
+                        fullResultHtml += '<div style="background: #f5f5f5; padding: 10px; border-radius: 4px; font-size: 11px; max-height: 200px; overflow-y: auto;">';
+                        fullResultHtml += '<pre style="margin: 0; white-space: pre-wrap;">' + JSON.stringify(verifyResult.sampleData, null, 2) + '</pre>';
+                        fullResultHtml += '</div></details>';
+                    }
+
+                    // 显示操作按钮
+                    fullResultHtml += '<div style="margin-top: 15px; display: flex; gap: 8px; flex-wrap: wrap;">';
+                    if (verifyResult.previewUrl) {
+                        fullResultHtml += '<button id="verify-pdf-btn" class="btn btn-primary btn-sm"><i class="fas fa-file-pdf"></i> PDF预览</button>';
+                    }
+                    if (verifyResult.downloadUrl) {
+                        fullResultHtml += '<button id="verify-download-btn" class="btn btn-outline btn-sm"><i class="fas fa-download"></i> 下载文档</button>';
+                    }
+                    if (verifyResult.markedTemplateUrl) {
+                        fullResultHtml += '<button id="download-marked-template-btn" class="btn btn-outline btn-sm" style="background: #e6f7ff; border-color: #1890ff;"><i class="fas fa-file-code"></i> 下载注入模版</button>';
+                    }
+                    fullResultHtml += '</div>';
+
+                    elements.verifyResult.innerHTML = fullResultHtml;
+
+                    // 绑定按钮事件
+                    const pdfBtn = document.getElementById('verify-pdf-btn');
+                    if (pdfBtn) {
+                        pdfBtn.addEventListener('click', () => openPdfPreviewPopup(verifyResult.previewUrl));
+                    }
+                    const downloadBtn = document.getElementById('verify-download-btn');
+                    if (downloadBtn) {
+                        downloadBtn.addEventListener('click', () => downloadRenderedDocument(verifyResult.downloadUrl));
+                    }
+                    const markedTemplateBtn = document.getElementById('download-marked-template-btn');
+                    if (markedTemplateBtn) {
+                        markedTemplateBtn.addEventListener('click', () => downloadRenderedDocument(verifyResult.markedTemplateUrl));
+                    }
+                }
+            } else {
+                // 没有保存的验证结果时，显示等待验证状态
+                updateStepStatus('verify', 'pending', '等待验证');
+                if (elements.verifyResultSection) {
+                    elements.verifyResultSection.style.display = 'none';
+                }
+                if (elements.verifyResult) {
+                    elements.verifyResult.innerHTML = '';
+                }
+            }
+        } catch (error) {
+            console.error('Load verify result failed:', error);
         }
     }
 

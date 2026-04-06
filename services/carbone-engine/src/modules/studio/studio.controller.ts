@@ -102,6 +102,16 @@ export interface TemplateResponse {
   templateConfig?: any;  // AI-generated template configuration
   configSavedAt?: string;
   markedTemplateId?: string;  // 编辑后的模版ID
+  verifyResult?: {  // AI验证结果
+    report?: string;
+    downloadUrl?: string;
+    previewUrl?: string;
+    markedTemplateId?: string;
+    markedTemplateUrl?: string;
+    sampleData?: any;
+    success?: boolean;
+    verifiedAt?: string;
+  };
 }
 
 export interface RenderResponse {
@@ -355,10 +365,10 @@ export class StudioController {
   }
 
   /**
-   * 验证模版并生成文档（使用编辑后的模版和AI生成模拟数据）
+   * 验证模版并生成文档（使用编辑后的模版和保存的示例数据）
    */
   @Post('validate')
-  @ApiOperation({ summary: 'Validate template and generate document with AI sample data' })
+  @ApiOperation({ summary: 'Validate template and generate document with saved sample data' })
   @ApiBody({ type: ValidateDto })
   async validateData(@Body() dto: ValidateDto): Promise<{
     valid: boolean;
@@ -370,13 +380,16 @@ export class StudioController {
   }> {
     const meta = this.getTemplateMeta(dto.templateId);
 
+    // 检查是否有保存的验证结果和示例数据
+    const verifyResult = (meta as any).verifyResult;
+    const savedSampleData = verifyResult?.sampleData;
+
     // 检查是否有编辑后的模版（markedTemplate）
     let templatePath = path.join(this.templatesDir, `${dto.templateId}.${meta.format}`);
     let templateBuffer: Buffer = fs.readFileSync(templatePath);
     let config = meta.templateConfig || {};
+    let markedTemplateId = (meta as any).markedTemplateId || (dto.data as any)?.markedTemplateId;
 
-    // 如果有markedTemplateId，使用编辑后的模版
-    const markedTemplateId = (meta as any).markedTemplateId || (dto.data as any)?.markedTemplateId;
     if (markedTemplateId) {
       const markedMetaPath = path.join(this.templatesDir, `${markedTemplateId}.json`);
       if (fs.existsSync(markedMetaPath)) {
@@ -399,12 +412,9 @@ export class StudioController {
     // 解析模版获取变量
     const templateInfo = await this.engine.parseTemplateBuffer(templateBuffer, meta.fileName);
 
-    // 验证数据
-    const validation = this.engine.validateData(templateInfo as TemplateInfoForValidation, dto.data);
-
-    // 如果数据不完整或为空，生成模拟数据
-    let sampleData = dto.data;
-    if (!dto.data || Object.keys(dto.data).length === 0 || !validation.valid) {
+    // 使用保存的示例数据，如果没有则生成新的
+    let sampleData = savedSampleData;
+    if (!sampleData) {
       // 使用模版配置生成模拟数据
       if (config && Object.keys(config).length > 0) {
         sampleData = this.engine.generateSampleDataFromConfig(config, config.tableLoops?.[0]?.dataRowCount || 8, true);
@@ -445,7 +455,7 @@ export class StudioController {
       const message = error instanceof Error ? error.message : 'Unknown error';
       return {
         valid: false,
-        missing: validation.missing,
+        missing: [],
         sampleData: sampleData
       };
     }
@@ -1025,18 +1035,31 @@ export class StudioController {
         type: 'marked_template'  // 标记为注入后的模版
       }));
 
-      // 更新原始模版元数据，保存markedTemplateId供Validate复用
+      // 步骤6: 先生成outputId，再保存验证结果
+      const outputId = uuidv4();
+
+      // 更新原始模版元数据，保存markedTemplateId和验证结果供Validate复用
       const originalMetaPath = path.join(this.templatesDir, `${id}.json`);
       if (fs.existsSync(originalMetaPath)) {
         const originalMeta = JSON.parse(fs.readFileSync(originalMetaPath, 'utf-8'));
         originalMeta.markedTemplateId = markedTemplateId;
+        // 保存验证结果（报告、下载链接、示例数据等）
+        originalMeta.verifyResult = {
+          report: aiResponse.report,
+          downloadUrl: `/studio/download/${outputId}`,
+          previewUrl: `/studio/preview-file/${outputId}`,
+          markedTemplateId: markedTemplateId,
+          markedTemplateUrl: `/studio/download-template/${markedTemplateId}`,
+          sampleData: sampleData,
+          success: aiResponse.success,
+          verifiedAt: new Date().toISOString()
+        };
         fs.writeFileSync(originalMetaPath, JSON.stringify(originalMeta, null, 2));
       }
 
       sendProgress('save_marked', 88, '保存注入后的模版...');
 
-      // 步骤6: 保存渲染结果
-      const outputId = uuidv4();
+      // 保存渲染结果文件
       const outputPath = path.join(this.outputsDir, `${outputId}.${meta.format}`);
       const outputMetaPath = path.join(this.outputsDir, `${outputId}.json`);
 
@@ -1202,18 +1225,31 @@ export class StudioController {
         type: 'marked_template'  // 标记为注入后的模版
       }));
 
-      // 更新原始模版元数据，保存markedTemplateId供Validate复用
+      // 步骤6: 先生成outputId，再保存验证结果
+      const outputId = uuidv4();
+
+      // 更新原始模版元数据，保存markedTemplateId和验证结果供Validate复用
       const originalMetaPath = path.join(this.templatesDir, `${id}.json`);
       if (fs.existsSync(originalMetaPath)) {
         const originalMeta = JSON.parse(fs.readFileSync(originalMetaPath, 'utf-8'));
         originalMeta.markedTemplateId = markedTemplateId;
+        // 保存验证结果（报告、下载链接、示例数据等）
+        originalMeta.verifyResult = {
+          report: aiResponse.report,
+          downloadUrl: `/studio/download/${outputId}`,
+          previewUrl: `/studio/preview-file/${outputId}`,
+          markedTemplateId: markedTemplateId,
+          markedTemplateUrl: `/studio/download-template/${markedTemplateId}`,
+          sampleData: sampleData,
+          success: aiResponse.success,
+          verifiedAt: new Date().toISOString()
+        };
         fs.writeFileSync(originalMetaPath, JSON.stringify(originalMeta, null, 2));
       }
 
       sendProgress('save_marked', 88, '保存注入后的模版...');
 
-      // 步骤6: 保存渲染结果
-      const outputId = uuidv4();
+      // 保存渲染结果文件
       const outputPath = path.join(this.outputsDir, `${outputId}.${meta.format}`);
       const outputMetaPath = path.join(this.outputsDir, `${outputId}.json`);
 
