@@ -1621,6 +1621,26 @@ body {
     font-size: 12px;
 }
 
+/* Ignored group */
+.element-group-bar.ignored-group {
+    background: #fff1f0;
+    border-color: #ff4d4f;
+    opacity: 0.7;
+}
+
+.element-group-bar.ignored-group .group-label {
+    color: #ff4d4f;
+    text-decoration: line-through;
+}
+
+.element-group-bar .ignored-badge {
+    background: #ff4d4f;
+    color: white;
+    padding: 2px 8px;
+    border-radius: 3px;
+    font-size: 11px;
+}
+
 /* Structure Legend */
 .structure-legend {
     display: flex;

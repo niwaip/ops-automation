@@ -19,7 +19,8 @@
         currentSourceView: 'structure',  // 默认显示结构化视图
         xmlStructure: null,
         selectedElementIndices: [],  // 多选元素索引列表
-        elementGroups: {}  // 元素分组：{ groupId: [index1, index2, ...] }
+        elementGroups: {},  // 元素分组：{ groupId: [index1, index2, ...] }
+        ignoredGroups: {}  // 被忽略的分组：{ groupId: true } - 用于标记重复的分组
     };
 
     // DOM Elements
@@ -2079,12 +2080,19 @@
 
         // 显示已有分组
         const groups = state.elementGroups || {};
+        const ignoredGroups = state.ignoredGroups || {};
         Object.entries(groups).forEach(([groupId, indices]) => {
             if (indices && indices.length > 0) {
                 const indicesStr = indices.join(',');
-                html += `<div class="element-group-bar" data-group="${groupId}">
+                const isIgnored = ignoredGroups[groupId];
+                const ignoredClass = isIgnored ? 'ignored-group' : '';
+                html += `<div class="element-group-bar ${ignoredClass}" data-group="${groupId}">
                     <span class="group-label"><i class="fas fa-layer-group"></i> 分组 #${groupId.substring(0, 4)}</span>
                     <span class="group-info">包含 ${indices.length} 个元素 (索引: ${indicesStr})</span>
+                    ${isIgnored ? '<span class="ignored-badge"><i class="fas fa-ban"></i> 已忽略(重复)</span>' : ''}
+                    <button class="btn btn-outline btn-sm btn-toggle-ignore" data-group="${groupId}" title="${isIgnored ? '取消忽略' : '标记为重复/忽略'}">
+                        <i class="fas ${isIgnored ? 'fa-undo' : 'fa-ban'}"></i> ${isIgnored ? '恢复' : '忽略'}
+                    </button>
                     <button class="btn btn-outline btn-sm btn-remove-group" data-group="${groupId}" title="解散分组">
                         <i class="fas fa-times"></i>
                     </button>
@@ -2375,9 +2383,31 @@
                 const groupId = btn.dataset.group;
                 if (state.elementGroups[groupId]) {
                     delete state.elementGroups[groupId];
+                    // 同时清除忽略状态
+                    if (state.ignoredGroups[groupId]) {
+                        delete state.ignoredGroups[groupId];
+                    }
                     showToast('分组已解散', 'info');
                     renderStructureTree();
                 }
+            });
+        });
+
+        // Add toggle ignore button handlers
+        elements.structureTree.querySelectorAll('.btn-toggle-ignore').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const groupId = btn.dataset.group;
+                if (!state.ignoredGroups) state.ignoredGroups = {};
+
+                if (state.ignoredGroups[groupId]) {
+                    delete state.ignoredGroups[groupId];
+                    showToast('分组已恢复', 'info');
+                } else {
+                    state.ignoredGroups[groupId] = true;
+                    showToast('分组已标记为忽略(重复)', 'warning');
+                }
+                renderStructureTree();
             });
         });
 
@@ -2563,19 +2593,26 @@
 
         // 添加分组信息
         const groups = state.elementGroups || {};
+        const ignoredGroups = state.ignoredGroups || {};
         if (Object.keys(groups).length > 0) {
             markingSummary += '\n\n元素分组信息：\n';
             Object.entries(groups).forEach(([groupId, indices]) => {
                 if (indices && indices.length > 0) {
+                    const isIgnored = ignoredGroups[groupId];
                     const groupContents = indices.map(idx => {
                         const el = state.xmlStructure?.orderedElements?.[idx];
                         if (!el) return '';
                         if (el.type === 'image') return `图片(${el.imageId || ''})`;
                         return el.text?.substring(0, 30) || el.type;
                     }).join(' + ');
-                    markingSummary += `- 分组${groupId.substring(0, 4)}: 索引[${indices.join(',')}] 包含 "${groupContents}"`;
+                    markingSummary += `- 分组${groupId.substring(0, 4)}: 索引[${indices.join(',')}] 包含 "${groupContents}"${isIgnored ? ' [已忽略/重复]' : ''}\n`;
                 }
             });
+            // 添加忽略分组说明
+            const ignoredCount = Object.keys(ignoredGroups).length;
+            if (ignoredCount > 0) {
+                markingSummary += `\n注意：有 ${ignoredCount} 个分组被标记为重复/忽略，生成模板时将跳过这些分组。`;
+            }
         }
 
         // 调用AI分析API，传入手动标记
