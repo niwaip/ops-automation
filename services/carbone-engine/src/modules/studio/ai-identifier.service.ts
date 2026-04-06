@@ -7,7 +7,7 @@ import { Injectable } from '@nestjs/common';
 import * as fs from 'fs';
 import * as path from 'path';
 import JSZip from 'jszip';
-import { DocumentElement, DocumentStructure } from './document-structure.service';
+import { DocumentElement, DocumentStructure, PreserveMarker } from './document-structure.service';
 
 /**
  * 模版配置 - 描述整个模版的结构和变量映射
@@ -21,10 +21,22 @@ export interface TemplateConfig {
   tableLoops: TableLoop[];
   // 需要循环的图片
   imageLoops: ImageLoop[];
+  // 组合变量（如 Step X: screenshot + 图片）
+  combinedVariables: CombinedVariable[];
   // 变量映射建议
   variableMappings: VariableMapping[];
   // 分析说明
   analysisNotes: string[];
+}
+
+export interface CombinedVariable {
+  id: string;
+  type: 'step-screenshot';
+  stepNumber: number;
+  textContent: string;
+  imageId: string;
+  imagePath: string;  // 如 d.steps[0].screenshot
+  reason: string;
 }
 
 export interface StaticElement {
@@ -80,11 +92,13 @@ export interface AIIdentifyResponse {
   suggestions: VariableMapping[];
   loops: TableLoop[];
   images: ImageLoop[];
+  combinedVariables: CombinedVariable[];  // 组合变量（文本+图片）
   analyzedAt: string;
   documentStats: {
     totalElements: number;
     tables: number;
     images: number;
+    stepScreenshots: number;  // 步骤截图组合变量数量
     potentialLoops: number;
   };
   contextAnalysis?: {
@@ -134,11 +148,13 @@ export class AIIdentifierService {
       suggestions,
       loops,
       images,
+      combinedVariables: templateConfig.combinedVariables,
       analyzedAt: new Date().toISOString(),
       documentStats: {
         totalElements: elements.length,
         tables: elements.filter(e => e.type === 'table').length,
         images: elements.filter(e => e.type === 'image').length,
+        stepScreenshots: elements.filter(e => e.type === 'step-screenshot').length,
         potentialLoops: loops.length + images.length
       },
       contextAnalysis: {
@@ -280,204 +296,260 @@ export class AIIdentifierService {
   }
 
   /**
-   * 基于文档结构生成模版配置
-   * 根据用户需求：
-   * - ### 自动化操作执行总结 → 标题保留
-   * - 表格 → 循环参数
-   * - Step 3: screenshot + 图片 → 参数
-   * - 基于提供的执行上下文日志 → 参数
-   */
-  private generateTemplateConfig(elements: DocumentElement[], userIntent: UserIntent): TemplateConfig {
-    const config: TemplateConfig = {
-      templateType: this.detectTemplateType(elements),
-      staticElements: [],
-      tableLoops: [],
-      imageLoops: [],
-      variableMappings: [],
-      analysisNotes: []
-    };
+  * 基于文档结构生成模版配置
+  * 根据 preserve 标记决定元素的分类：
+  * - preserve static → 静态保留
+  * - preserve loop → 循环表格
+  * - preserve variable / step-screenshot → 变量
+  */
+ private generateTemplateConfig(elements: DocumentElement[], userIntent: UserIntent): TemplateConfig {
+   const config: TemplateConfig = {
+     templateType: this.detectTemplateType(elements),
+     staticElements: [],
+     tableLoops: [],
+     imageLoops: [],
+     combinedVariables: [],
+     variableMappings: [],
+     analysisNotes: []
+   };
 
-    // 收集所有步骤，用于生成数组参数
-    const steps: { stepNum: number; content: string; type: string }[] = [];
+   // 收集所有步骤截图，用于生成数组参数
+   const stepScreenshots: { stepNum: number; text: string; imageId: string }[] = [];
 
-    // 分析静态元素（需要保留的标题等）
-    for (const el of elements) {
-      const pattern = this.analyzeContentPattern(el.text);
+   for (const el of elements) {
+     const preserveMarker = el.preserveMarker;
 
-      // 文档标题 - 默认保留作为静态内容
-      if (el.type === 'title' && userIntent.preserveTitles) {
-        config.staticElements.push({
-          type: 'title',
-          content: el.text,
-          reason: '文档标题，保留作为静态内容'
-        });
-        continue;
-      }
+     // 1. 处理 step-screenshot 类型（组合元素）
+     if (el.type === 'step-screenshot') {
+       // Step X: screenshot + 图片 的组合变量
+       stepScreenshots.push({
+         stepNum: el.stepNumber || stepScreenshots.length + 1,
+         text: el.content,
+         imageId: el.combinedImage?.imageId || ''
+       });
 
-      // 处理步骤模式: Step 3: screenshot + 图片
-      if (pattern.matched && pattern.type === 'step') {
-        // 收集步骤信息
-        const stepNumMatch = el.text.match(/Step\s*(\d+)/i);
-        const stepNum = stepNumMatch ? parseInt(stepNumMatch[1], 10) : steps.length + 1;
-        steps.push({
-          stepNum,
-          content: pattern.extractedValue || '',
-          type: this.detectStepContentType(pattern.extractedValue || '')
-        });
-        continue;
-      }
+       config.combinedVariables.push({
+         id: el.id,
+         type: 'step-screenshot',
+         stepNumber: el.stepNumber || stepScreenshots.length,
+         textContent: el.content,
+         imageId: el.combinedImage?.imageId || '',
+         imagePath: `d.steps[${(el.stepNumber || stepScreenshots.length) - 1}].screenshot`,
+         reason: '段落文本与图片的组合，作为步骤截图变量'
+       });
+       continue;
+     }
 
-      // 处理标题级别 - 只有纯标题才保留
-      if (el.type === 'heading1' || el.type === 'heading2' || el.type === 'heading3') {
-        if (pattern.matched && pattern.type === 'heading') {
-          // 纯标题（### 开头），保留
-          if (userIntent.preserveHeadings) {
-            config.staticElements.push({
-              type: 'heading',
-              content: el.text,
-              reason: '章节标题，保留作为静态内容'
-            });
-          }
-        } else if (pattern.matched && pattern.type === 'image') {
-          // 标题中包含图片/截图信息，作为参数
-          config.variableMappings.push({
-            path: `d.${this.slugify(pattern.extractedValue || 'image')}`,
-            content: el.text,
-            type: 'image',
-            reason: '检测到图片/截图相关标题，建议作为参数'
-          });
-        }
-        continue;
-      }
+     // 2. 根据 preserve 标记决定分类
+     if (preserveMarker) {
+       switch (preserveMarker.type) {
+         case 'static':
+           // preserve static → 保留为静态元素
+           config.staticElements.push({
+             type: el.type === 'heading1' || el.type === 'heading2' || el.type === 'heading3' ? 'heading' : 'paragraph',
+             content: el.text,
+             reason: `根据 preserve 标记保留为静态内容: ${preserveMarker.text || ''}`
+           });
+           continue;
 
-      // 处理段落
-      if (el.type === 'paragraph') {
-        if (pattern.matched && pattern.type === 'summary') {
-          // 总结/日志类内容，建议变量化
-          config.variableMappings.push({
-            path: 'd.contextLog',
-            content: el.text,
-            type: 'text',
-            reason: '检测到执行上下文日志内容，建议作为参数'
-          });
-        } else if (pattern.matched && pattern.type === 'image') {
-          // 图片相关段落
-          config.variableMappings.push({
-            path: `d.${this.slugify(pattern.extractedValue || 'screenshot')}`,
-            content: el.text,
-            type: 'image',
-            reason: '检测到图片/截图内容，建议作为参数'
-          });
-        }
-        continue;
-      }
+         case 'loop':
+           // preserve loop → 循环表格（在表格处理中继续）
+           break;
 
-      // 处理图片
-      if (el.type === 'image') {
-        if (userIntent.imageLoops) {
-          config.imageLoops.push({
-            imageIndex: config.imageLoops.length,
-            imageId: el.imageId || '',
-            altText: el.altText || '',
-            arrayPath: 'd.screenshots',
-            reason: '检测到图片，建议作为数组循环',
-            confidence: 0.8
-          });
-        } else {
-          config.variableMappings.push({
-            path: `d.screenshot${config.imageLoops.length + 1}`,
-            content: el.altText || 'Image',
-            type: 'image',
-            reason: '检测到图片，建议作为参数'
-          });
-        }
-      }
-    }
+         case 'step-screenshot':
+           // 已经在上面处理了
+           continue;
 
-    // 如果收集到步骤，生成步骤数组参数
-    if (steps.length > 0) {
-      for (const step of steps) {
-        if (step.type === 'screenshot') {
-          config.variableMappings.push({
-            path: `d.steps[${step.stepNum - 1}].screenshot`,
-            content: step.content,
-            type: 'image',
-            reason: `步骤${step.stepNum}的截图参数`
-          });
-        } else {
-          config.variableMappings.push({
-            path: `d.steps[${step.stepNum - 1}].content`,
-            content: step.content,
-            type: 'text',
-            reason: `步骤${step.stepNum}的内容参数`
-          });
-        }
-      }
-      config.analysisNotes.push(`检测到 ${steps.length} 个步骤`);
-    }
+         case 'variable':
+           // preserve variable → 变量
+           config.variableMappings.push({
+             path: this.generateVariablePath(el),
+             content: el.text,
+             type: this.detectVariableType(el),
+             reason: `根据 preserve 标记作为变量: ${preserveMarker.text || ''}`
+           });
+           continue;
+       }
+     }
 
-    // 分析表格循环
-    const tables = elements.filter(e => e.type === 'table');
-    for (let i = 0; i < tables.length; i++) {
-      const table = tables[i];
-      const dataRows = table.dataRows || [];
-      const headerRow = table.headerRow || '';
+     // 3. 处理标题（默认保留，除非有 preserve variable 标记）
+     if (el.type === 'title') {
+       if (!preserveMarker || preserveMarker.type !== 'variable') {
+         if (userIntent.preserveTitles) {
+           config.staticElements.push({
+             type: 'title',
+             content: el.text,
+             reason: '文档标题，保留作为静态内容'
+           });
+         }
+       }
+       continue;
+     }
 
-      // 判断是否需要循环
-      if (userIntent.tableLoops && dataRows.length > 0) {
-        const arrayPath = this.inferTableArrayPath(headerRow, config.templateType, i);
-        const columnMappings = this.generateColumnMappings(headerRow, arrayPath);
+     // 4. 处理标题级别 - 纯标题（### 开头）保留
+     if (el.type === 'heading1' || el.type === 'heading2' || el.type === 'heading3') {
+       const pattern = this.analyzeContentPattern(el.text);
 
-        config.tableLoops.push({
-          tableIndex: i,
-          headerRow,
-          dataRowCount: dataRows.length,
-          arrayPath,
-          columnMappings,
-          reason: `检测到数据表格，包含 ${dataRows.length} 行数据，建议循环`,
-          confidence: this.calculateTableConfidence(table)
-        });
-      }
-    }
+       if (pattern.matched && pattern.type === 'heading') {
+         // 纯标题（### 开头），保留
+         if (!preserveMarker || preserveMarker.type !== 'variable') {
+           if (userIntent.preserveHeadings) {
+             config.staticElements.push({
+               type: 'heading',
+               content: el.text,
+               reason: '章节标题，保留作为静态内容'
+             });
+           }
+         }
+       } else if (pattern.matched && pattern.type === 'step') {
+         // 标题中包含 Step X 内容，但不是组合类型，作为变量
+         config.variableMappings.push({
+           path: `d.steps[${pattern.extractedValue || 'content'}]`,
+           content: el.text,
+           type: 'text',
+           reason: '检测到步骤相关标题，建议作为参数'
+         });
+       }
+       continue;
+     }
 
-    // 分析图片循环
-    const images = elements.filter(e => e.type === 'image');
-    if (userIntent.imageLoops && images.length > 0) {
-      // 如果有多张图片，建议放入数组循环
-      if (images.length > 1) {
-        const arrayPath = this.inferImageArrayPath(config.templateType);
-        for (let i = 0; i < images.length; i++) {
-          config.imageLoops.push({
-            imageIndex: i,
-            imageId: images[i].imageId || '',
-            altText: images[i].altText || '',
-            arrayPath,
-            reason: '检测到多张图片，建议放入数组循环',
-            confidence: 0.8
-          });
-        }
-      } else {
-        // 单张图片，可能需要变量化
-        config.variableMappings.push({
-          path: 'd.screenshot',
-          content: images[0].altText || 'Image',
-          type: 'image',
-          reason: '检测到单张图片，建议变量化'
-        });
-      }
-    }
+     // 5. 处理表格 - 根据 preserve loop 标记决定是否循环
+     if (el.type === 'table') {
+       const tableHasLoopMarker = preserveMarker?.type === 'loop' ||
+                                   el.attributes?.hasLoopMarker === 'true';
 
-    // 添加分析说明
-    config.analysisNotes.push(`检测到 ${tables.length} 个表格`);
-    if (config.tableLoops.length > 0) {
-      config.analysisNotes.push(`建议 ${config.tableLoops.length} 个表格使用循环`);
-    }
-    if (config.imageLoops.length > 0) {
-      config.analysisNotes.push(`建议 ${images.length} 张图片使用循环`);
-    }
+       if (tableHasLoopMarker || userIntent.tableLoops) {
+         const dataRows = el.dataRows || [];
+         const headerRow = el.headerRow || '';
+         const arrayPath = this.inferTableArrayPath(headerRow, config.templateType, el.index);
+         const columnMappings = this.generateColumnMappings(headerRow, arrayPath);
 
-    return config;
-  }
+         config.tableLoops.push({
+           tableIndex: config.tableLoops.length,
+           headerRow,
+           dataRowCount: dataRows.length,
+           arrayPath,
+           columnMappings,
+           reason: tableHasLoopMarker ?
+             `根据 preserve 循环标记，建议循环处理` :
+             `检测到数据表格，包含 ${dataRows.length} 行数据，建议循环`,
+           confidence: tableHasLoopMarker ? 0.95 : this.calculateTableConfidence(el)
+         });
+       }
+       continue;
+     }
+
+     // 6. 处理段落 - 检测特殊内容模式
+     if (el.type === 'paragraph') {
+       const pattern = this.analyzeContentPattern(el.text);
+
+       if (pattern.matched && pattern.type === 'summary') {
+         // 总结/日志类内容，建议变量化
+         config.variableMappings.push({
+           path: 'd.contextLog',
+           content: el.text,
+           type: 'text',
+           reason: '检测到执行上下文日志内容，建议作为参数'
+         });
+       } else if (pattern.matched && pattern.type === 'image') {
+         // 图片相关段落（但不是组合类型）
+         config.variableMappings.push({
+           path: `d.${this.slugify(pattern.extractedValue || 'screenshot')}`,
+           content: el.text,
+           type: 'image',
+           reason: '检测到图片/截图内容，建议作为参数'
+         });
+       }
+       continue;
+     }
+
+     // 7. 处理图片（非组合类型）
+     if (el.type === 'image') {
+       if (userIntent.imageLoops) {
+         config.imageLoops.push({
+           imageIndex: config.imageLoops.length,
+           imageId: el.imageId || '',
+           altText: el.altText || '',
+           arrayPath: 'd.screenshots',
+           reason: '检测到图片，建议作为数组循环',
+           confidence: 0.8
+         });
+       } else {
+         config.variableMappings.push({
+           path: `d.screenshot${config.imageLoops.length + 1}`,
+           content: el.altText || 'Image',
+           type: 'image',
+           reason: '检测到图片，建议作为参数'
+         });
+       }
+     }
+   }
+
+   // 8. 如果收集到步骤截图，生成步骤数组参数
+   if (stepScreenshots.length > 0) {
+     for (const step of stepScreenshots) {
+       config.variableMappings.push({
+         path: `d.steps[${step.stepNum - 1}].screenshot`,
+         content: step.text,
+         type: 'image',
+         reason: `步骤${step.stepNum}的截图参数 (imageId: ${step.imageId})`
+       });
+     }
+     config.analysisNotes.push(`检测到 ${stepScreenshots.length} 个步骤截图组合变量`);
+   }
+
+   // 9. 添加分析说明
+   const tables = elements.filter(e => e.type === 'table');
+   config.analysisNotes.push(`检测到 ${tables.length} 个表格`);
+   if (config.tableLoops.length > 0) {
+     config.analysisNotes.push(`建议 ${config.tableLoops.length} 个表格使用循环`);
+   }
+   if (config.combinedVariables.length > 0) {
+     config.analysisNotes.push(`检测到 ${config.combinedVariables.length} 个组合变量（文本+图片）`);
+   }
+
+   return config;
+ }
+
+ /**
+  * 生成变量路径
+  */
+ private generateVariablePath(el: DocumentElement): string {
+   const text = el.text;
+
+   // 根据内容生成路径
+   if (text.includes('上下文') || text.includes('日志')) {
+     return 'd.contextLog';
+   }
+
+   if (text.includes('总结')) {
+     return 'd.summary';
+   }
+
+   // 使用 slugify 生成路径
+   return `d.${this.slugify(text)}`;
+ }
+
+ /**
+  * 检测变量类型
+  */
+ private detectVariableType(el: DocumentElement): 'text' | 'number' | 'date' | 'image' | 'heading' {
+   const text = el.text.toLowerCase();
+
+   if (text.includes('screenshot') || text.includes('截图') || text.includes('图片')) {
+     return 'image';
+   }
+
+   if (text.includes('日期') || text.includes('date')) {
+     return 'date';
+   }
+
+   if (/^\d/.test(text)) {
+     return 'number';
+   }
+
+   return 'text';
+ }
 
   /**
    * 检测模版类型

@@ -16,12 +16,19 @@ export interface TableHeader {
 export interface TableRow {
   cells: string[];
   hasPreserve: boolean;
+  preserveType?: string;  // 'static' | 'loop' | 'variable'
   isHeader: boolean;
+}
+
+export interface PreserveMarker {
+  type: 'static' | 'loop' | 'variable' | 'step-screenshot';
+  text?: string;  // 如 '循环'、'### 自动化操作'等
+  position?: number;
 }
 
 export interface DocumentElement {
   id: string;
-  type: 'title' | 'heading1' | 'heading2' | 'heading3' | 'paragraph' | 'table' | 'list' | 'image' | 'chart' | 'textbox';
+  type: 'title' | 'heading1' | 'heading2' | 'heading3' | 'paragraph' | 'table' | 'list' | 'image' | 'chart' | 'textbox' | 'step-screenshot';  // 添加 step-screenshot 类型
   content: string;
   text: string;
   xpath: string;
@@ -29,6 +36,8 @@ export interface DocumentElement {
   style?: string;
   children?: DocumentElement[];
   attributes?: Record<string, string>;
+  // preserve标记
+  preserveMarker?: PreserveMarker;
   // 表格特定属性
   tableHeaders?: TableHeader[];
   tableRows?: TableRow[];
@@ -40,6 +49,9 @@ export interface DocumentElement {
   imageHeight?: number;    // EMUs
   imageName?: string;      // image filename in media folder
   altText?: string;        // alternative text/description
+  // 组合元素属性 (text + image)
+  combinedImage?: DocumentElement;  // 包含的图片元素
+  stepNumber?: number;     // 步骤编号 (如 Step 3)
 }
 
 export interface DocumentStructure {
@@ -152,6 +164,7 @@ export class DocumentStructureParser {
 
   /**
    * 解析文档XML，提取结构化元素
+   * 支持组合元素（text + image）和preserve标记
    */
   private async parseDocumentXml(xml: string, styles: Record<string, string>): Promise<DocumentElement[]> {
     const elements: DocumentElement[] = [];
@@ -167,32 +180,67 @@ export class DocumentStructureParser {
 
       let elementIndex = 0;
 
+      // 首先解析XML中的preserve标记（可能存储在注释中）
+      const preserveMarkers = this.extractPreserveMarkersFromXml(xml);
+
       // 遍历body下的所有元素
       for (const [key, value] of Object.entries(body)) {
         if (key === 'w:p') {
           // 段落元素（可能包含文本和图片）
           const paragraphs = Array.isArray(value) ? value : [value];
-          for (const p of paragraphs) {
-            // 先提取段落中的图片
-            const imageElements = this.extractImagesFromParagraph(p, elementIndex);
-            for (const imgEl of imageElements) {
-              elements.push(imgEl);
-              elementIndex++;
-            }
+          for (let pIdx = 0; pIdx < paragraphs.length; pIdx++) {
+            const p = paragraphs[pIdx];
+            const paragraphPosition = this.findParagraphPosition(xml, pIdx);
 
-            // 再解析段落文本
-            const element = this.parseParagraph(p, styles, elementIndex);
-            if (element) {
-              elements.push(element);
+            // 检查是否是 Step X: screenshot + 图片 的组合模式
+            const text = this.extractParagraphText(p);
+            const stepMatch = text.match(/Step\s*(\d+)[:：]\s*screenshot/i);
+
+            // 提取段落中的图片
+            const imageElements = this.extractImagesFromParagraph(p, elementIndex);
+
+            if (stepMatch && imageElements.length > 0) {
+              // 组合为 step-screenshot 类型元素
+              const combinedElement: DocumentElement = {
+                id: `step-screenshot-${elementIndex}`,
+                type: 'step-screenshot',
+                content: text,
+                text: `${text} + 图片 id="${imageElements[0].imageId}"`,
+                xpath: `/w:document/w:body/w:p[${pIdx}]`,
+                index: elementIndex,
+                style: '',
+                stepNumber: parseInt(stepMatch[1], 10),
+                combinedImage: imageElements[0],
+                preserveMarker: preserveMarkers.get(paragraphPosition)
+              };
+              elements.push(combinedElement);
               elementIndex++;
+            } else {
+              // 先单独添加图片元素
+              for (const imgEl of imageElements) {
+                imgEl.preserveMarker = preserveMarkers.get(paragraphPosition);
+                elements.push(imgEl);
+                elementIndex++;
+              }
+
+              // 再解析段落文本
+              const element = this.parseParagraph(p, styles, elementIndex);
+              if (element) {
+                element.preserveMarker = preserveMarkers.get(paragraphPosition);
+                elements.push(element);
+                elementIndex++;
+              }
             }
           }
         } else if (key === 'w:tbl') {
           // 表格元素
           const tables = Array.isArray(value) ? value : [value];
-          for (const tbl of tables) {
+          for (let tIdx = 0; tIdx < tables.length; tIdx++) {
+            const tbl = tables[tIdx];
+            const tablePosition = this.findTablePosition(xml, tIdx);
             const element = this.parseTable(tbl, elementIndex);
             if (element) {
+              element.preserveMarker = preserveMarkers.get(tablePosition);
               elements.push(element);
               elementIndex++;
             }
@@ -206,6 +254,107 @@ export class DocumentStructureParser {
     }
 
     return elements;
+  }
+
+  /**
+   * 从XML中提取preserve标记
+   * Word文档可能在注释或属性中存储 preserve 标记
+   */
+  private extractPreserveMarkersFromXml(xml: string): Map<number, PreserveMarker> {
+    const markers = new Map<number, PreserveMarker>();
+
+    // 查找 preserve 标记模式
+    // 可能格式: <!-- preserve --> 或 preserve 标题 或 preserve 循环
+    // 或者是文档中的特殊标记文本
+
+    // 查找段落中的preserve标记
+    const paraPattern = /<w:p[^>]*>([\s\S]*?)<\/w:p>/g;
+    let paraMatch;
+    let paraIndex = 0;
+
+    while ((paraMatch = paraPattern.exec(xml)) !== null) {
+      const paraContent = paraMatch[1];
+      const paraPos = paraMatch.index;
+
+      // 检查preserve标记类型
+      if (paraContent.includes('preserve') || paraContent.toLowerCase().includes('preserve')) {
+        // 提取文本内容
+        const textMatch = paraContent.match(/<w:t[^>]*>([^<]*)<\/w:t>/);
+        const text = textMatch ? textMatch[1] : '';
+
+        // 判断preserve类型
+        if (text.includes('###') || /^#{1,6}/.test(text)) {
+          // preserve ### 标题 → static
+          markers.set(paraPos, { type: 'static', text });
+        } else if (/Step\s*\d+[:：]\s*screenshot/i.test(text)) {
+          // preserve Step X: screenshot → step-screenshot (variable)
+          markers.set(paraPos, { type: 'step-screenshot', text });
+        } else {
+          // 其他 preserve → variable
+          markers.set(paraPos, { type: 'variable', text });
+        }
+      }
+
+      paraIndex++;
+    }
+
+    // 查找表格中的preserve标记
+    const tblPattern = /<w:tbl[^>]*>([\s\S]*?)<\/w:tbl>/g;
+    let tblMatch;
+    let tblIndex = 0;
+
+    while ((tblMatch = tblPattern.exec(xml)) !== null) {
+      const tblContent = tblMatch[1];
+      const tblPos = tblMatch.index;
+
+      // 检查preserve 循环标记
+      if (tblContent.includes('preserve') && tblContent.includes('循环')) {
+        markers.set(tblPos, { type: 'loop', text: '循环' });
+      }
+      // 检查 rows 属性
+      const rowsMatch = tblContent.match(/rows="(\d+)"/);
+      if (rowsMatch && tblContent.includes('preserve')) {
+        markers.set(tblPos, { type: 'loop', text: `rows="${rowsMatch[1]}" 循环` });
+      }
+
+      tblIndex++;
+    }
+
+    return markers;
+  }
+
+  /**
+   * 查找段落在XML中的位置（简化版本）
+   */
+  private findParagraphPosition(xml: string, index: number): number {
+    const pattern = /<w:p[^>]*>/g;
+    let match;
+    let count = 0;
+
+    while ((match = pattern.exec(xml)) !== null) {
+      if (count === index) {
+        return match.index;
+      }
+      count++;
+    }
+    return 0;
+  }
+
+  /**
+   * 查找表格在XML中的位置（简化版本）
+   */
+  private findTablePosition(xml: string, index: number): number {
+    const pattern = /<w:tbl[^>]*>/g;
+    let match;
+    let count = 0;
+
+    while ((match = pattern.exec(xml)) !== null) {
+      if (count === index) {
+        return match.index;
+      }
+      count++;
+    }
+    return 0;
   }
 
   /**
@@ -355,6 +504,7 @@ export class DocumentStructureParser {
 
       const cellTexts: string[] = [];
       let rowHasPreserve = false;
+      let preserveType: 'static' | 'loop' | 'variable' | undefined;
 
       for (const cell of tableCells) {
         const cellText = this.extractParagraphText(cell);
@@ -363,6 +513,15 @@ export class DocumentStructureParser {
         // 检查是否有preserve属性
         if (this.elementHasPreserve(cell)) {
           rowHasPreserve = true;
+
+          // 判断preserve类型
+          if (cellText.includes('循环')) {
+            preserveType = 'loop';
+          } else if (cellText.includes('###') || /^#{1,6}/.test(cellText)) {
+            preserveType = 'static';
+          } else {
+            preserveType = 'variable';
+          }
         }
       }
 
@@ -380,6 +539,7 @@ export class DocumentStructureParser {
       parsedRows.push({
         cells: cellTexts,
         hasPreserve: rowHasPreserve,
+        preserveType,
         isHeader
       });
     }
@@ -392,6 +552,9 @@ export class DocumentStructureParser {
 
     const allText = [...headers.map(h => h.text), ...dataRowTexts.flat()].join(' ');
 
+    // 判断表格是否有preserve 循环标记
+    const tableHasLoopMarker = parsedRows.some(r => r.preserveType === 'loop');
+
     return {
       id: `element-${index}`,
       type: 'table',
@@ -403,6 +566,7 @@ export class DocumentStructureParser {
         rows: String(tableRows.length),
         cols: String(headers.length),
         hasDataRows: String(dataRowTexts.length > 0),
+        hasLoopMarker: String(tableHasLoopMarker),
       },
       tableHeaders: headers,
       tableRows: parsedRows,
