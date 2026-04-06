@@ -11,6 +11,7 @@
         selectedTemplate: null,
         formatters: [],
         manualMarkings: {},  // 改为对象，key是元素索引
+        templateConfig: null,  // AI生成的模板配置
         currentZoom: 1,
         documentElements: [],
         sourceXml: '',
@@ -239,11 +240,15 @@
         elements.rawView.classList.remove('active');
         elements.structureView.classList.add('active');
 
-        // 加载源码并渲染结构
-        loadSourceXml().then(() => {
-            switchSourceView('structure');
-            // 结构渲染完成后加载已保存的标记
-            loadSavedMarkings();
+        // 先加载文档元素，然后再加载源码并渲染结构
+        loadDocumentElements(template).then(() => {
+            // 加载源码并渲染结构
+            loadSourceXml().then(() => {
+                switchSourceView('structure');
+                // 结构渲染完成后加载已保存的标记和模板配置
+                loadSavedMarkings();
+                loadSavedTemplateConfig();
+            });
         });
 
         // Update header
@@ -276,13 +281,6 @@
 
         // Load saved markings
         loadMarkings(template.id);
-
-        // Load document structure elements first, then preload source XML
-        // This ensures proper ordering for element selection
-        loadDocumentElements(template).then(() => {
-            // 预加载源XML并解析结构，用于PDF选择与结构视图保持一致
-            preloadSourceXml(template);
-        });
     }
 
     // 预加载源XML并解析结构
@@ -2573,13 +2571,62 @@
             // 显示AI配置结果
             displayAIConfigResult(response);
 
-            showToast('AI配置完成', 'success');
+            // 自动保存AI生成的模板配置
+            await saveTemplateConfig(response.templateConfig);
+
+            showToast('AI配置完成并已自动保存', 'success');
         } catch (error) {
             console.error('AI config failed:', error);
             showToast('AI配置失败: ' + error.message, 'error');
         } finally {
             elements.aiConfigBtn.disabled = false;
             elements.aiConfigBtn.innerHTML = '<i class="fas fa-magic"></i> AI 配置参数';
+        }
+    }
+
+    /**
+     * Save AI-generated template configuration
+     * 保存AI生成的模板配置
+     */
+    async function saveTemplateConfig(templateConfig) {
+        if (!state.selectedTemplate || !templateConfig) return;
+
+        try {
+            await apiRequest(`/templates/${state.selectedTemplate.id}/config`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    templateId: state.selectedTemplate.id,
+                    templateConfig: templateConfig
+                })
+            });
+            console.log('Template config saved:', templateConfig);
+        } catch (error) {
+            console.error('Failed to save template config:', error);
+            showToast('保存模板配置失败', 'warning');
+        }
+    }
+
+    /**
+     * Load saved template configuration
+     * 加载已保存的模板配置
+     */
+    async function loadSavedTemplateConfig() {
+        if (!state.selectedTemplate) return;
+
+        try {
+            const result = await apiRequest(`/templates/${state.selectedTemplate.id}/config`);
+
+            if (result.templateConfig) {
+                state.templateConfig = result.templateConfig;
+                // 如果有保存的配置，显示它
+                if (state.currentSourceView === 'structure') {
+                    displayAIConfigResult({ templateConfig: result.templateConfig });
+                }
+                console.log('Loaded saved template config:', result.templateConfig);
+            }
+        } catch (error) {
+            console.error('Load template config failed:', error);
         }
     }
 

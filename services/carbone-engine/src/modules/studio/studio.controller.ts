@@ -67,6 +67,11 @@ export class SaveMarkingsDto {
   }>;
 }
 
+export class SaveTemplateConfigDto {
+  templateId!: string;
+  templateConfig!: any;  // TemplateConfig from AI analysis
+}
+
 export class ValidateDto {
   templateId!: string;
   data!: Record<string, any>;
@@ -81,6 +86,8 @@ export interface TemplateResponse {
   loops: Array<{ arrayPath: string }>;
   markings?: Array<{ path: string; text: string; formatters?: string[] }>;
   savedAt?: string;
+  templateConfig?: any;  // AI-generated template configuration
+  configSavedAt?: string;
 }
 
 export interface RenderResponse {
@@ -602,6 +609,50 @@ export class StudioController {
     return {
       markings: meta.markings || [],
       savedAt: meta.savedAt
+    };
+  }
+
+  /**
+   * 保存AI生成的模板配置
+   */
+  @Post('templates/:id/config')
+  @ApiOperation({ summary: 'Save AI-generated template configuration' })
+  @ApiBody({ type: SaveTemplateConfigDto })
+  async saveTemplateConfig(
+    @Param('id') id: string,
+    @Body() dto: SaveTemplateConfigDto
+  ): Promise<{ success: boolean; savedAt: string }> {
+    const meta = this.getTemplateMeta(id);
+    const metaPath = path.join(this.templatesDir, `${id}.json`);
+
+    // 更新元数据中的模板配置信息
+    const updatedMeta = {
+      ...meta,
+      templateConfig: dto.templateConfig,
+      configSavedAt: new Date().toISOString()
+    };
+
+    fs.writeFileSync(metaPath, JSON.stringify(updatedMeta, null, 2));
+
+    return {
+      success: true,
+      savedAt: updatedMeta.configSavedAt
+    };
+  }
+
+  /**
+   * 获取AI生成的模板配置
+   */
+  @Get('templates/:id/config')
+  @ApiOperation({ summary: 'Get AI-generated template configuration' })
+  async getTemplateConfig(@Param('id') id: string): Promise<{
+    templateConfig?: any;
+    configSavedAt?: string;
+  }> {
+    const meta = this.getTemplateMeta(id);
+    return {
+      templateConfig: meta.templateConfig || null,
+      configSavedAt: meta.configSavedAt
     };
   }
 
