@@ -536,6 +536,78 @@ export class StudioController {
   }
 
   /**
+   * AI自动识别模板变量（流式响应）
+   */
+  @Post('templates/:id/ai-identify-stream')
+  @ApiOperation({ summary: 'AI identify potential variables with streaming response' })
+  async aiIdentifyVariablesStream(
+    @Param('id') id: string,
+    @Body() dto: AIIdentifyDto,
+    @Res() res: Response,
+  ): Promise<void> {
+    const meta = this.getTemplateMeta(id);
+    const templatePath = path.join(this.templatesDir, `${id}.${meta.format}`);
+
+    if (!fs.existsSync(templatePath)) {
+      res.status(404).json({ error: 'Template file not found' });
+      return;
+    }
+
+    // Set SSE headers
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Connection', 'keep-alive');
+    res.setHeader('X-Accel-Buffering', 'no');
+
+    try {
+      // 先获取文档结构（如果是DOCX）
+      let documentStructure: DocumentStructure | undefined = undefined;
+      if (meta.format === 'docx') {
+        const buffer = fs.readFileSync(templatePath);
+        documentStructure = await this.documentStructureService.parseDocx(buffer);
+      }
+
+      const elements = documentStructure?.elements || [];
+
+      // 使用流式AI分析
+      const config = await this.aiIdentifierService.analyzeWithAIStream(
+        elements,
+        dto.context,
+        dto.manualMarkings,
+        dto.markingSummary,
+        (chunk: string) => {
+          res.write(`data: ${JSON.stringify({ chunk })}\n\n`);
+        }
+      );
+
+      if (!config) {
+        res.write(`data: ${JSON.stringify({ error: 'AI分析失败，请检查AI服务是否正常' })}\n\n`);
+        res.end();
+        return;
+      }
+
+      // 生成变量建议和循环配置
+      const suggestions = this.aiIdentifierService.generateVariableSuggestions?.(elements, config) || [];
+      const loops = config.tableLoops || [];
+
+      // 返回最终结果
+      res.write(`data: ${JSON.stringify({
+        done: true,
+        templateConfig: config,
+        suggestions,
+        loops,
+        images: config.imageLoops || [],
+        combinedVariables: config.combinedVariables || [],
+      })}\n\n`);
+      res.end();
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      res.write(`data: ${JSON.stringify({ error: message })}\n\n`);
+      res.end();
+    }
+  }
+
+  /**
    * AI自动识别模板变量
    */
   @Post('templates/:id/ai-identify')

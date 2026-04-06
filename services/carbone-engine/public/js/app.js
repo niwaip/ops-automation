@@ -1173,16 +1173,16 @@
             elements.aiProgress.style.display = 'block';
         }
         if (elements.aiGenerateResult) {
-            elements.aiGenerateResult.innerHTML = '';
+            elements.aiGenerateResult.innerHTML = '<div style="color: #1890ff;">正在连接AI服务...</div>';
         }
 
-        try {
-            // Step 1: 调用AI生成模版配置
-            updateProgress(30, '正在调用AI生成模版配置...');
-            updateStatus('processing', 'AI生成模版配置...');
+        let fullResponse = '';
 
-            const identifyResult = await apiRequest(`/templates/${state.selectedTemplate.id}/ai-identify`, {
+        try {
+            // 使用SSE流式调用
+            const response = await fetch(`${API_BASE}/templates/${state.selectedTemplate.id}/ai-identify-stream`, {
                 method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     templateId: state.selectedTemplate.id,
                     context: '根据手动标记生成模版配置',
@@ -1191,60 +1191,104 @@
                 })
             });
 
-            const templateConfig = identifyResult.templateConfig;
-            const loops = identifyResult.loops || [];
-            const suggestions = identifyResult.suggestions || [];
-
-            // 检查是否成功获取配置
-            if (!templateConfig) {
-                throw new Error('AI分析失败，未生成模版配置');
+            if (!response.ok) {
+                throw new Error(`请求失败: ${response.status}`);
             }
 
-            // Step 2: 保存模版配置
-            updateProgress(60, '正在保存模版配置...');
-            updateStatus('processing', '保存模版配置...');
-
-            if (templateConfig) {
-                await apiRequest(`/templates/${state.selectedTemplate.id}/config`, {
-                    method: 'POST',
-                    body: JSON.stringify({
-                        templateId: state.selectedTemplate.id,
-                        templateConfig: templateConfig
-                    })
-                });
-                state.templateConfig = templateConfig;
+            const reader = response.body?.getReader();
+            if (!reader) {
+                throw new Error('无法读取响应流');
             }
 
-            // Step 3: 渲染AI建议
-            updateProgress(100, '完成');
-            updateStatus('success', '生成完成');
-            updateStepStatus('generate', 'completed', '已完成');
+            const decoder = new TextDecoder();
+            let progress = 30;
 
-            // 隐藏进度条
-            if (elements.aiProgress) {
-                elements.aiProgress.style.display = 'none';
+            while (true) {
+                const { done, value } = await reader.read();
+                if (done) break;
+
+                const chunk = decoder.decode(value, { stream: true });
+                const lines = chunk.split('\n');
+
+                for (const line of lines) {
+                    if (line.startsWith('data: ')) {
+                        try {
+                            const data = JSON.parse(line.slice(6));
+
+                            if (data.chunk) {
+                                fullResponse += data.chunk;
+                                // 更新进度显示
+                                progress = Math.min(progress + 1, 90);
+                                updateProgress(progress, 'AI正在生成...');
+                                if (elements.aiGenerateResult) {
+                                    elements.aiGenerateResult.innerHTML = `<pre style="white-space: pre-wrap; word-break: break-all; font-size: 11px; max-height: 200px; overflow-y: auto;">${fullResponse.substring(0, 500)}${fullResponse.length > 500 ? '...' : ''}</pre>`;
+                                }
+                            }
+
+                            if (data.done && data.templateConfig) {
+                                const templateConfig = data.templateConfig;
+                                const loops = data.loops || [];
+                                const suggestions = data.suggestions || [];
+
+                                // 检查是否成功获取配置
+                                if (!templateConfig) {
+                                    throw new Error('AI分析失败，未生成模版配置');
+                                }
+
+                                // 保存模版配置
+                                updateProgress(95, '正在保存模版配置...');
+                                updateStatus('processing', '保存模版配置...');
+
+                                await apiRequest(`/templates/${state.selectedTemplate.id}/config`, {
+                                    method: 'POST',
+                                    body: JSON.stringify({
+                                        templateId: state.selectedTemplate.id,
+                                        templateConfig: templateConfig
+                                    })
+                                });
+                                state.templateConfig = templateConfig;
+
+                                // 完成
+                                updateProgress(100, '完成');
+                                updateStatus('success', '生成完成');
+                                updateStepStatus('generate', 'completed', '已完成');
+
+                                // 隐藏进度条
+                                if (elements.aiProgress) {
+                                    elements.aiProgress.style.display = 'none';
+                                }
+
+                                // 显示结果
+                                if (elements.aiGenerateResult) {
+                                    let resultHtml = '<h3>模版生成结果</h3>';
+                                    resultHtml += `<ul><li>循环数量: ${loops.length}</li>`;
+                                    resultHtml += `<li>变量数量: ${suggestions.length}</li></ul>`;
+                                    resultHtml += '<p style="color: #52c41a;">模版配置已保存，点击"验证模版"生成验证报告</p>';
+                                    elements.aiGenerateResult.innerHTML = resultHtml;
+                                }
+
+                                // 启用验证按钮
+                                if (elements.aiVerifyBtn) {
+                                    elements.aiVerifyBtn.disabled = false;
+                                    elements.aiVerifyBtn.classList.remove('disabled');
+                                }
+
+                                renderAISuggestions(suggestions);
+
+                                const totalVars = suggestions.length;
+                                const totalLoops = loops.length;
+                                showToast(`生成完成：${totalLoops}个循环，${totalVars}个变量`, 'success');
+                            }
+
+                            if (data.error) {
+                                throw new Error(data.error);
+                            }
+                        } catch (parseError) {
+                            // Skip invalid JSON
+                        }
+                    }
+                }
             }
-
-            // 显示结果
-            if (elements.aiGenerateResult) {
-                let resultHtml = '<h3>模版生成结果</h3>';
-                resultHtml += `<ul><li>循环数量: ${loops.length}</li>`;
-                resultHtml += `<li>变量数量: ${suggestions.length}</li></ul>`;
-                resultHtml += '<p style="color: #52c41a;">模版配置已保存，点击"验证模版"生成验证报告</p>';
-                elements.aiGenerateResult.innerHTML = resultHtml;
-            }
-
-            // 启用验证按钮
-            if (elements.aiVerifyBtn) {
-                elements.aiVerifyBtn.disabled = false;
-                elements.aiVerifyBtn.classList.remove('disabled');
-            }
-
-            renderAISuggestions(suggestions);
-
-            const totalVars = suggestions.length;
-            const totalLoops = loops.length;
-            showToast(`生成完成：${totalLoops}个循环，${totalVars}个变量`, 'success');
         } catch (error) {
             console.error('AI generate failed:', error);
             updateProgress(0, '失败');

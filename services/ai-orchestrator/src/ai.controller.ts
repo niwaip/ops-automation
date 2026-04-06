@@ -1,5 +1,6 @@
-import { Controller, Get, Post, Body, Param, Patch, Delete, HttpException, HttpStatus } from '@nestjs/common';
+import { Controller, Get, Post, Body, Param, Patch, Delete, HttpException, HttpStatus, Res } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
+import { Response } from 'express';
 import { ModelService } from './modules/model/model.service';
 import { AgentService } from './modules/agent/agent.service';
 import { RecognizerService } from './modules/recognizer/recognizer.service';
@@ -124,6 +125,38 @@ export class AIController {
     } catch (error: unknown) {
       const errorMsg = error instanceof Error ? error.message : 'Unknown error';
       return { success: false, error: errorMsg };
+    }
+  }
+
+  @Post('models/:id/stream')
+  @ApiOperation({ summary: 'Test an AI model with streaming SSE response' })
+  async testModelStream(
+    @Param('id') id: string,
+    @Body() body: { prompt: string },
+    @Res() res: Response,
+  ): Promise<void> {
+    const model = await this.modelService.getModel(id);
+    if (!model) {
+      res.status(404).json({ error: 'Model not found' });
+      return;
+    }
+
+    // Set SSE headers
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Connection', 'keep-alive');
+    res.setHeader('X-Accel-Buffering', 'no');
+
+    try {
+      await this.modelService.callModelStream(id, body.prompt || 'Hello, this is a test.', (chunk: string) => {
+        res.write(`data: ${JSON.stringify({ chunk })}\n\n`);
+      });
+      res.write(`data: ${JSON.stringify({ done: true })}\n\n`);
+      res.end();
+    } catch (error: unknown) {
+      const errorMsg = error instanceof Error ? error.message : 'Unknown error';
+      res.write(`data: ${JSON.stringify({ error: errorMsg })}\n\n`);
+      res.end();
     }
   }
 

@@ -733,7 +733,7 @@ export class AIIdentifierService {
   /**
    * 生成变量建议
    */
-  private generateVariableSuggestions(elements: DocumentElement[], config: TemplateConfig): VariableMapping[] {
+  generateVariableSuggestions(elements: DocumentElement[], config: TemplateConfig): VariableMapping[] {
     const suggestions: VariableMapping[] = [];
 
     // 从表格循环中提取变量
@@ -992,6 +992,97 @@ export class AIIdentifierService {
       return this.parseAIAnalysisResponse(testResponse.data.response, elements);
     } catch (error) {
       this.logger.error(`AI analysis error: ${error}`);
+      return null;
+    }
+  }
+
+  /**
+   * 使用SSE流式调用AI模型
+   * @param elements 文档元素列表
+   * @param context 上下文
+   * @param manualMarkings 手动标记
+   * @param markingSummary 标记摘要
+   * @param onProgress 进度回调
+   */
+  async analyzeWithAIStream(
+    elements: DocumentElement[],
+    context?: string,
+    manualMarkings?: Record<string, string>,
+    markingSummary?: string,
+    onProgress?: (chunk: string) => void,
+  ): Promise<TemplateConfig | null> {
+    try {
+      // 获取活跃的AI模型
+      const modelsResponse = await axios.get(`${this.aiOrchestratorUrl}/ai/models`, {
+        timeout: 5000,
+      });
+      const models = modelsResponse.data?.models || [];
+
+      if (models.length === 0) {
+        this.logger.warn('No AI models available');
+        return null;
+      }
+
+      const activeModel = models.find((m: { status: string }) => m.status === 'active');
+      if (!activeModel) {
+        this.logger.warn('No active AI models available');
+        return null;
+      }
+
+      const prompt = this.buildAIAnalysisPrompt(elements, context, manualMarkings, markingSummary);
+
+      // 使用SSE流式调用
+      const response = await fetch(`${this.aiOrchestratorUrl}/ai/models/${activeModel.id}/stream`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt }),
+      });
+
+      if (!response.ok) {
+        this.logger.warn(`AI stream call failed: ${response.status}`);
+        return null;
+      }
+
+      const reader = response.body?.getReader();
+      if (!reader) {
+        this.logger.warn('No reader available for stream');
+        return null;
+      }
+
+      const decoder = new TextDecoder();
+      let fullResponse = '';
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        const chunk = decoder.decode(value, { stream: true });
+        const lines = chunk.split('\n');
+
+        for (const line of lines) {
+          if (line.startsWith('data: ')) {
+            try {
+              const data = JSON.parse(line.slice(6));
+              if (data.chunk) {
+                fullResponse += data.chunk;
+                if (onProgress) {
+                  onProgress(data.chunk);
+                }
+              }
+              if (data.error) {
+                this.logger.error(`AI stream error: ${data.error}`);
+                return null;
+              }
+            } catch {
+              // Skip invalid JSON
+            }
+          }
+        }
+      }
+
+      return this.parseAIAnalysisResponse(fullResponse, elements);
+    } catch (error) {
+      this.logger.error(`AI stream analysis error: ${error}`);
       return null;
     }
   }
