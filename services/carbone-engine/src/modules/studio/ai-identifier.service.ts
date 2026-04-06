@@ -125,6 +125,7 @@ export interface ColumnMapping {
   headerName: string;
   variablePath: string;    // 如 d.steps[].action
   sampleValue: string;
+  columnIndex?: number;    // 列索引（可选）
 }
 
 export interface ImageLoop {
@@ -703,15 +704,27 @@ export class AIIdentifierService {
    * 生成列映射
    */
   private generateColumnMappings(headerRow: string, arrayPath: string): ColumnMapping[] {
-    const headers = headerRow.split(/[|,，]/).map(h => h.trim()).filter(h => h);
+    // 支持多种分隔符：| , ，以及空格分隔的驼峰格式
+    let headers: string[];
+    if (headerRow.includes('|')) {
+      headers = headerRow.split('|').map(h => h.trim()).filter(h => h);
+    } else if (headerRow.includes(',')) {
+      headers = headerRow.split(',').map(h => h.trim()).filter(h => h);
+    } else {
+      // 尝试按空格或大写字母分割（驼峰格式）
+      headers = headerRow.split(/\s+/).filter(h => h);
+    }
+
     const mappings: ColumnMapping[] = [];
 
-    for (const header of headers) {
+    for (let i = 0; i < headers.length; i++) {
+      const header = headers[i];
       const varName = this.headerToVariableName(header);
       mappings.push({
         headerName: header,
         variablePath: `${arrayPath}[].${varName}`,
-        sampleValue: this.getSampleValue(varName)
+        sampleValue: this.getSampleValue(varName),
+        columnIndex: i,
       });
     }
 
@@ -1292,18 +1305,28 @@ ${elementSummary}
     for (const loop of tableLoops) {
       // AI返回的索引可能是 1-based (elementIndex)
       const elementIndex = loop.elementIndex !== undefined ? loop.elementIndex - 1 : loop.tableIndex;
-      
+
       const tableElement = elements.find((el, idx) =>
         el.type === 'table' && idx === elementIndex
       );
 
       if (tableElement) {
+        // 优先使用AI返回的列映射，如果没有则自动生成
+        let columnMappings = loop.columnMappings;
+        if (!columnMappings || columnMappings.length === 0 || (columnMappings.length === 1 && !columnMappings[0].headerName?.includes('|'))) {
+          // 使用表格结构中的表头信息生成列映射
+          columnMappings = this.generateColumnMappingsFromHeaders(tableElement, loop.arrayPath || 'd.items');
+        } else {
+          // 规范化AI返回的列映射
+          columnMappings = this.normalizeColumnMappings(columnMappings, loop.arrayPath || 'd.items');
+        }
+
         result.push({
           tableIndex: elementIndex,
           headerRow: tableElement.headerRow || '',
-          dataRowCount: tableElement.dataRows?.length || 0,
+          dataRowCount: tableElement.dataRows?.length || tableElement.dataRowCount || 0,
           arrayPath: loop.arrayPath || 'd.items',
-          columnMappings: this.generateColumnMappings(tableElement.headerRow || '', loop.arrayPath || 'd.items'),
+          columnMappings: columnMappings,
           reason: loop.reason || 'AI 识别的循环表格',
           confidence: 0.9,
         });
@@ -1311,6 +1334,50 @@ ${elementSummary}
     }
 
     return result;
+  }
+
+  /**
+   * 从表格结构生成列映射
+   */
+  private generateColumnMappingsFromHeaders(tableElement: DocumentElement, arrayPath: string): ColumnMapping[] {
+    const headers = tableElement.tableHeaders || [];
+    const mappings: ColumnMapping[] = [];
+
+    for (let i = 0; i < headers.length; i++) {
+      const header = headers[i].text || '';
+      const varName = this.headerToVariableName(header);
+      mappings.push({
+        headerName: header,
+        variablePath: `${arrayPath}[].${varName}`,
+        sampleValue: this.getSampleValue(varName),
+        columnIndex: i,
+      });
+    }
+
+    // 如果没有tableHeaders，从headerRow解析
+    if (mappings.length === 0 && tableElement.headerRow) {
+      return this.generateColumnMappings(tableElement.headerRow, arrayPath);
+    }
+
+    return mappings;
+  }
+
+  /**
+   * 规范化AI返回的列映射
+   */
+  private normalizeColumnMappings(mappings: any[], arrayPath: string): ColumnMapping[] {
+    return mappings.map((mapping, index) => {
+      // 从variablePath提取字段名
+      let varName = mapping.variablePath?.split('[].')[1] || mapping.headerName?.toLowerCase() || `col${index}`;
+      varName = varName.toLowerCase().replace(/[^a-z0-9_]/g, '');
+
+      return {
+        headerName: mapping.headerName || `Column ${index + 1}`,
+        variablePath: `${arrayPath}[].${varName}`,
+        sampleValue: mapping.sampleValue || this.getSampleValue(varName),
+        columnIndex: index,
+      };
+    });
   }
 
   /**

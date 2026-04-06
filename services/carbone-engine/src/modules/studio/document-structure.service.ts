@@ -130,34 +130,62 @@ export class DocumentStructureParser {
 
     rawElements.forEach((node, index) => {
       const localName = node.localName || node.tagName.split(':').pop();
-      
+
       if (localName === 'p') {
         const text = this.getNodeText(node);
-        if (text.trim()) {
+
+        // 检查段落中是否包含图片
+        const drawings = node.getElementsByTagNameNS('*', 'drawing');
+        const hasImage = drawings.length > 0;
+
+        if (text.trim() || hasImage) {
+          // 提取图片信息
+          const imageIds: string[] = [];
+          if (hasImage) {
+            const blips = node.getElementsByTagNameNS('*', 'blip');
+            for (let i = 0; i < blips.length; i++) {
+              const embed = blips[i].getAttribute('r:embed') || blips[i].getAttributeNS('http://schemas.openxmlformats.org/officeDocument/2006/relationships', 'embed');
+              if (embed) {
+                imageIds.push(embed);
+              }
+            }
+          }
+
           elements.push({
             id: `element-${index}`,
-            type: 'paragraph',
+            type: hasImage ? 'image' : 'paragraph',
             content: text,
-            text: text,
+            text: hasImage ? `[图片] ${text}` : text,
             xpath: `/w:document/w:body/w:p[${index}]`,
             index: index,
+            imageId: imageIds[0] || undefined,
           });
         }
       } else if (localName === 'tbl') {
         const rowNodes = node.getElementsByTagNameNS('*', 'tr');
-        const headerText = rowNodes.length > 0 ? this.getNodeText(rowNodes[0]) : '';
+        // 解析表头行，提取每列的文本
+        const headerCells: string[] = [];
+        if (rowNodes.length > 0) {
+          const headerRow = rowNodes[0];
+          const cells = headerRow.getElementsByTagNameNS('*', 'tc');
+          for (let i = 0; i < cells.length; i++) {
+            headerCells.push(this.getNodeText(cells[i]).trim());
+          }
+        }
+        const headerText = headerCells.join(' | ');
         elements.push({
           id: `element-${index}`,
           type: 'table',
           content: '',
-          text: `[表格] ${headerText.substring(0, 50)}...`,
+          text: `[表格] ${headerText.substring(0, 80)}...`,
           xpath: `/w:document/w:body/w:tbl[${index}]`,
           index: index,
           attributes: {
             rows: String(rowNodes.length)
           },
           headerRow: headerText,
-          dataRowCount: Math.max(0, rowNodes.length - 1)
+          dataRowCount: Math.max(0, rowNodes.length - 1),
+          tableHeaders: headerCells.map((text, i) => ({ text, index: i })),
         });
       }
     });
@@ -281,19 +309,21 @@ export class DocumentStructureParser {
     const cells = dataRow.getElementsByTagNameNS('*', 'tc');
     if (cells.length === 0) return;
 
-    // 注入开始标记
+    // 注入开始标记到第一个单元格
     const firstCell = cells[0];
     this.prefixTextToCell(firstCell, `{#${tableLoop.arrayPath}}`);
 
-    // 注入结束标记
+    // 注入结束标记到最后一个单元格
     const lastCell = cells[cells.length - 1];
     this.suffixTextToCell(lastCell, `{/${tableLoop.arrayPath}}`);
 
     // 处理列映射
     if (tableLoop.columnMappings && Array.isArray(tableLoop.columnMappings)) {
-      for (const mapping of tableLoop.columnMappings) {
-        if (mapping.columnIndex < cells.length && mapping.variablePath) {
-          const cell = cells[mapping.columnIndex];
+      for (let i = 0; i < tableLoop.columnMappings.length; i++) {
+        const mapping = tableLoop.columnMappings[i];
+        const columnIndex = mapping.columnIndex !== undefined ? mapping.columnIndex : i;
+        if (columnIndex < cells.length && mapping.variablePath) {
+          const cell = cells[columnIndex];
           this.injectTextToElement(cell, `{${mapping.variablePath}}`);
         }
       }
