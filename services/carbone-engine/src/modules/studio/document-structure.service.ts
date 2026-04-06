@@ -7,6 +7,7 @@ import { Injectable } from '@nestjs/common';
 import JSZip from 'jszip';
 // @ts-ignore - xml2js没有类型定义
 import * as xml2js from 'xml2js';
+import { DOMParser, XMLSerializer } from '@xmldom/xmldom';
 
 export interface TableHeader {
   text: string;
@@ -28,7 +29,7 @@ export interface PreserveMarker {
 
 export interface DocumentElement {
   id: string;
-  type: 'title' | 'heading1' | 'heading2' | 'heading3' | 'paragraph' | 'table' | 'list' | 'image' | 'chart' | 'textbox' | 'step-screenshot';  // 添加 step-screenshot 类型
+  type: 'title' | 'heading1' | 'heading2' | 'heading3' | 'paragraph' | 'table' | 'list' | 'image' | 'chart' | 'textbox' | 'step-screenshot';
   content: string;
   text: string;
   xpath: string;
@@ -36,23 +37,19 @@ export interface DocumentElement {
   style?: string;
   children?: DocumentElement[];
   attributes?: Record<string, string>;
-  // preserve标记
   preserveMarker?: PreserveMarker;
-  // 表格特定属性
   tableHeaders?: TableHeader[];
   tableRows?: TableRow[];
   headerRow?: string;
   dataRows?: string[];
-  dataRowCount?: number;  // 数据行总数
-  // 图片特定属性
-  imageId?: string;        // relationship ID (rId)
-  imageWidth?: number;     // EMUs (English Metric Units)
-  imageHeight?: number;    // EMUs
-  imageName?: string;      // image filename in media folder
-  altText?: string;        // alternative text/description
-  // 组合元素属性 (text + image)
-  combinedImage?: DocumentElement;  // 包含的图片元素
-  stepNumber?: number;     // 步骤编号 (如 Step 3)
+  dataRowCount?: number;
+  imageId?: string;
+  imageWidth?: number;
+  imageHeight?: number;
+  imageName?: string;
+  altText?: string;
+  combinedImage?: DocumentElement;
+  stepNumber?: number;
 }
 
 export interface DocumentStructure {
@@ -75,10 +72,18 @@ export class DocumentStructureService {
   async parseDocx(buffer: Buffer): Promise<DocumentStructure> {
     return this.parser.parseDocx(buffer);
   }
+
+  /**
+   * 将模版配置应用到Word文档XML中
+   * 在渲染前注入变量标记和循环标记
+   */
+  async applyConfigToDocx(buffer: Buffer, config: any): Promise<Buffer> {
+    return this.parser.applyConfigToDocx(buffer, config);
+  }
 }
 
 export class DocumentStructureParser {
-  private parser: xml2js.Parser;
+  private xml2jsParser: xml2js.Parser;
 
   // Word命名空间
   private static readonly WORD_NS = {
@@ -89,23 +94,8 @@ export class DocumentStructureParser {
     pic: 'http://schemas.openxmlformats.org/drawingml/2006/picture',
   };
 
-  // 样式映射到元素类型
-  private static readonly STYLE_TYPE_MAP: Record<string, string> = {
-    'Title': 'title',
-    'Heading1': 'heading1',
-    'Heading2': 'heading2',
-    'Heading3': 'heading3',
-    'Heading4': 'heading3',
-    'Heading5': 'heading3',
-    'Heading6': 'heading3',
-    'heading 1': 'heading1',
-    'heading 2': 'heading2',
-    'heading 3': 'heading3',
-    'title': 'title',
-  };
-
   constructor() {
-    this.parser = new xml2js.Parser({
+    this.xml2jsParser = new xml2js.Parser({
       explicitArray: false,
       mergeAttrs: false,
       attrNameProcessors: [(name: string) => name],
@@ -119,18 +109,58 @@ export class DocumentStructureParser {
     const zip = new JSZip();
     await zip.loadAsync(buffer);
 
-    // 读取document.xml
     const documentXml = await zip.file('word/document.xml')?.async('text');
     if (!documentXml) {
       throw new Error('Document.xml not found in DOCX');
     }
 
-    // 读取styles.xml
     const stylesXml = await zip.file('word/styles.xml')?.async('text');
     const styles = stylesXml ? await this.parseStyles(stylesXml) : {};
 
-    // 解析文档XML
-    const elements = await this.parseDocumentXml(documentXml, styles);
+    // 使用DOMParser进行线性解析，确保与注入逻辑索引一致
+    const doc = new DOMParser().parseFromString(documentXml, 'text/xml');
+    const body = doc.getElementsByTagNameNS('*', 'body')[0];
+    
+    if (!body) {
+      throw new Error('Document body not found');
+    }
+
+    const elements: DocumentElement[] = [];
+    const rawElements = this.collectElements(body);
+
+    rawElements.forEach((node, index) => {
+      const localName = node.localName || node.tagName.split(':').pop();
+      
+      if (localName === 'p') {
+        const text = this.getNodeText(node);
+        if (text.trim()) {
+          elements.push({
+            id: `element-${index}`,
+            type: 'paragraph',
+            content: text,
+            text: text,
+            xpath: `/w:document/w:body/w:p[${index}]`,
+            index: index,
+          });
+        }
+      } else if (localName === 'tbl') {
+        const rowNodes = node.getElementsByTagNameNS('*', 'tr');
+        const headerText = rowNodes.length > 0 ? this.getNodeText(rowNodes[0]) : '';
+        elements.push({
+          id: `element-${index}`,
+          type: 'table',
+          content: '',
+          text: `[表格] ${headerText.substring(0, 50)}...`,
+          xpath: `/w:document/w:body/w:tbl[${index}]`,
+          index: index,
+          attributes: {
+            rows: String(rowNodes.length)
+          },
+          headerRow: headerText,
+          dataRowCount: Math.max(0, rowNodes.length - 1)
+        });
+      }
+    });
 
     return {
       elements,
@@ -140,15 +170,155 @@ export class DocumentStructureParser {
   }
 
   /**
-   * 解析样式定义
+   * 将模版配置应用到Word文档XML中
    */
+  async applyConfigToDocx(buffer: Buffer, config: any): Promise<Buffer> {
+    const zip = new JSZip();
+    await zip.loadAsync(buffer);
+
+    const documentXml = await zip.file('word/document.xml')?.async('text');
+    if (!documentXml) return buffer;
+
+    const doc = new DOMParser().parseFromString(documentXml, 'text/xml');
+    const body = doc.getElementsByTagNameNS('*', 'body')[0];
+    if (!body) return buffer;
+
+    const elements = this.collectElements(body);
+
+    // 1. 应用手动标记 (Markings)
+    if (config.markings && Array.isArray(config.markings)) {
+      for (const marking of config.markings) {
+        const node = elements[marking.index];
+        if (!node) continue;
+
+        if (marking.type === 'param' && marking.path) {
+          this.injectTextToElement(node, `{${marking.path}}`);
+        } else if (marking.type === 'loop' && marking.path) {
+          // 如果是段落循环，包装标记
+          this.injectTextToElement(node, `{#${marking.path}}${this.getNodeText(node)}{/${marking.path}}`);
+        }
+      }
+    }
+
+    // 2. 应用表格循环 (Table Loops)
+    if (config.tableLoops && Array.isArray(config.tableLoops)) {
+      for (const tableLoop of config.tableLoops) {
+        const table = elements[tableLoop.tableIndex];
+        if (!table || (table.localName !== 'tbl' && table.tagName.split(':').pop() !== 'tbl')) continue;
+
+        this.applyTableLoop(doc, table, tableLoop);
+      }
+    }
+
+    const updatedXml = new XMLSerializer().serializeToString(doc);
+    zip.file('word/document.xml', updatedXml);
+
+    return zip.generateAsync({ type: 'nodebuffer' });
+  }
+
+  /**
+   * 线性收集body下的直接子元素（段落和表格）
+   */
+  private collectElements(body: any): any[] {
+    const elements: any[] = [];
+    const children = body.childNodes;
+    for (let i = 0; i < children.length; i++) {
+      const child = children[i];
+      if (child.nodeType === 1) { // Element
+        const localName = child.localName || child.tagName.split(':').pop();
+        if (localName === 'p' || localName === 'tbl') {
+          elements.push(child);
+        }
+      }
+    }
+    return elements;
+  }
+
+  /**
+   * 在元素中注入文本标记
+   */
+  private injectTextToElement(element: any, text: string): void {
+    const textNodes = element.getElementsByTagNameNS('*', 't');
+    if (textNodes.length > 0) {
+      // 清空现有文本并设置新文本
+      const firstT = textNodes[0];
+      while (firstT.firstChild) {
+        firstT.removeChild(firstT.firstChild);
+      }
+      firstT.appendChild(element.ownerDocument.createTextNode(text));
+      
+      // 移除其他文本节点
+      for (let i = 1; i < textNodes.length; i++) {
+        const t = textNodes[i];
+        if (t.parentNode) {
+          t.parentNode.removeChild(t);
+        }
+      }
+    }
+  }
+
+  /**
+   * 处理表格循环注入
+   */
+  private applyTableLoop(doc: any, table: any, tableLoop: any): void {
+    const rows = table.getElementsByTagNameNS('*', 'tr');
+    if (rows.length < 2) return;
+
+    // 假设第二行是数据行
+    const dataRow = rows[1];
+    const cells = dataRow.getElementsByTagNameNS('*', 'tc');
+    if (cells.length === 0) return;
+
+    // 注入开始标记
+    const firstCell = cells[0];
+    this.prefixTextToCell(firstCell, `{#${tableLoop.arrayPath}}`);
+
+    // 注入结束标记
+    const lastCell = cells[cells.length - 1];
+    this.suffixTextToCell(lastCell, `{/${tableLoop.arrayPath}}`);
+
+    // 处理列映射
+    if (tableLoop.columnMappings && Array.isArray(tableLoop.columnMappings)) {
+      for (const mapping of tableLoop.columnMappings) {
+        if (mapping.columnIndex < cells.length && mapping.variablePath) {
+          const cell = cells[mapping.columnIndex];
+          this.injectTextToElement(cell, `{${mapping.variablePath}}`);
+        }
+      }
+    }
+  }
+
+  private prefixTextToCell(cell: any, text: string): void {
+    const firstT = cell.getElementsByTagNameNS('*', 't')[0];
+    if (firstT) {
+      const current = firstT.textContent || '';
+      firstT.textContent = text + current;
+    }
+  }
+
+  private suffixTextToCell(cell: any, text: string): void {
+    const textNodes = cell.getElementsByTagNameNS('*', 't');
+    const lastT = textNodes[textNodes.length - 1];
+    if (lastT) {
+      const current = lastT.textContent || '';
+      lastT.textContent = current + text;
+    }
+  }
+
+  private getNodeText(node: any): string {
+    const textNodes = node.getElementsByTagNameNS('*', 't');
+    let text = '';
+    for (let i = 0; i < textNodes.length; i++) {
+      text += textNodes[i].textContent || '';
+    }
+    return text;
+  }
+
   private async parseStyles(stylesXml: string): Promise<Record<string, string>> {
     const styles: Record<string, string> = {};
-
     try {
-      const result = await this.parser.parseStringPromise(stylesXml);
+      const result = await this.xml2jsParser.parseStringPromise(stylesXml);
       const styleList = result?.['w:styles']?.['w:style'] || [];
-
       for (const style of Array.isArray(styleList) ? styleList : [styleList]) {
         if (style?.['w:styleId']) {
           const styleId = style['w:styleId'];
@@ -156,491 +326,7 @@ export class DocumentStructureParser {
           styles[styleId] = name;
         }
       }
-    } catch (e) {
-      console.warn('Failed to parse styles:', e);
-    }
-
+    } catch (e) {}
     return styles;
-  }
-
-  /**
-   * 解析文档XML，提取结构化元素
-   * 支持组合元素（text + image）和preserve标记
-   */
-  private async parseDocumentXml(xml: string, styles: Record<string, string>): Promise<DocumentElement[]> {
-    const elements: DocumentElement[] = [];
-
-    try {
-      const result = await this.parser.parseStringPromise(xml);
-      const body = result?.['w:document']?.['w:body'];
-
-      if (!body) {
-        console.warn('Document body not found');
-        return elements;
-      }
-
-      let elementIndex = 0;
-
-      // 首先解析XML中的preserve标记（可能存储在注释中）
-      const preserveMarkers = this.extractPreserveMarkersFromXml(xml);
-
-      // 遍历body下的所有元素
-      for (const [key, value] of Object.entries(body)) {
-        if (key === 'w:p') {
-          // 段落元素（可能包含文本和图片）
-          const paragraphs = Array.isArray(value) ? value : [value];
-          for (let pIdx = 0; pIdx < paragraphs.length; pIdx++) {
-            const p = paragraphs[pIdx];
-            const paragraphPosition = this.findParagraphPosition(xml, pIdx);
-
-            // 检查是否是 Step X: screenshot + 图片 的组合模式
-            const text = this.extractParagraphText(p);
-            const stepMatch = text.match(/Step\s*(\d+)[:：]\s*screenshot/i);
-
-            // 提取段落中的图片
-            const imageElements = this.extractImagesFromParagraph(p, elementIndex);
-
-            if (stepMatch && imageElements.length > 0) {
-              // 组合为 step-screenshot 类型元素
-              const combinedElement: DocumentElement = {
-                id: `step-screenshot-${elementIndex}`,
-                type: 'step-screenshot',
-                content: text,
-                text: `${text} + 图片 id="${imageElements[0].imageId}"`,
-                xpath: `/w:document/w:body/w:p[${pIdx}]`,
-                index: elementIndex,
-                style: '',
-                stepNumber: parseInt(stepMatch[1], 10),
-                combinedImage: imageElements[0],
-                preserveMarker: preserveMarkers.get(paragraphPosition)
-              };
-              elements.push(combinedElement);
-              elementIndex++;
-            } else {
-              // 先单独添加图片元素
-              for (const imgEl of imageElements) {
-                imgEl.preserveMarker = preserveMarkers.get(paragraphPosition);
-                elements.push(imgEl);
-                elementIndex++;
-              }
-
-              // 再解析段落文本
-              const element = this.parseParagraph(p, styles, elementIndex);
-              if (element) {
-                element.preserveMarker = preserveMarkers.get(paragraphPosition);
-                elements.push(element);
-                elementIndex++;
-              }
-            }
-          }
-        } else if (key === 'w:tbl') {
-          // 表格元素
-          const tables = Array.isArray(value) ? value : [value];
-          for (let tIdx = 0; tIdx < tables.length; tIdx++) {
-            const tbl = tables[tIdx];
-            const tablePosition = this.findTablePosition(xml, tIdx);
-            const element = this.parseTable(tbl, elementIndex);
-            if (element) {
-              element.preserveMarker = preserveMarkers.get(tablePosition);
-              elements.push(element);
-              elementIndex++;
-            }
-          }
-        } else if (key === 'w:sectPr') {
-          // 忽略节属性
-        }
-      }
-    } catch (e) {
-      console.error('Failed to parse document XML:', e);
-    }
-
-    return elements;
-  }
-
-  /**
-   * 从XML中提取preserve标记
-   * Word文档可能在注释或属性中存储 preserve 标记
-   */
-  private extractPreserveMarkersFromXml(xml: string): Map<number, PreserveMarker> {
-    const markers = new Map<number, PreserveMarker>();
-
-    // 查找 preserve 标记模式
-    // 可能格式: <!-- preserve --> 或 preserve 标题 或 preserve 循环
-    // 或者是文档中的特殊标记文本
-
-    // 查找段落中的preserve标记
-    const paraPattern = /<w:p[^>]*>([\s\S]*?)<\/w:p>/g;
-    let paraMatch;
-    let paraIndex = 0;
-
-    while ((paraMatch = paraPattern.exec(xml)) !== null) {
-      const paraContent = paraMatch[1];
-      const paraPos = paraMatch.index;
-
-      // 检查preserve标记类型
-      if (paraContent.includes('preserve') || paraContent.toLowerCase().includes('preserve')) {
-        // 提取文本内容
-        const textMatch = paraContent.match(/<w:t[^>]*>([^<]*)<\/w:t>/);
-        const text = textMatch ? textMatch[1] : '';
-
-        // 判断preserve类型
-        if (text.includes('###') || /^#{1,6}/.test(text)) {
-          // preserve ### 标题 → static
-          markers.set(paraPos, { type: 'static', text });
-        } else if (/Step\s*\d+[:：]\s*screenshot/i.test(text)) {
-          // preserve Step X: screenshot → step-screenshot (variable)
-          markers.set(paraPos, { type: 'step-screenshot', text });
-        } else {
-          // 其他 preserve → variable
-          markers.set(paraPos, { type: 'variable', text });
-        }
-      }
-
-      paraIndex++;
-    }
-
-    // 查找表格中的preserve标记
-    const tblPattern = /<w:tbl[^>]*>([\s\S]*?)<\/w:tbl>/g;
-    let tblMatch;
-    let tblIndex = 0;
-
-    while ((tblMatch = tblPattern.exec(xml)) !== null) {
-      const tblContent = tblMatch[1];
-      const tblPos = tblMatch.index;
-
-      // 检查preserve 循环标记
-      if (tblContent.includes('preserve') && tblContent.includes('循环')) {
-        markers.set(tblPos, { type: 'loop', text: '循环' });
-      }
-      // 检查 rows 属性
-      const rowsMatch = tblContent.match(/rows="(\d+)"/);
-      if (rowsMatch && tblContent.includes('preserve')) {
-        markers.set(tblPos, { type: 'loop', text: `rows="${rowsMatch[1]}" 循环` });
-      }
-
-      tblIndex++;
-    }
-
-    return markers;
-  }
-
-  /**
-   * 查找段落在XML中的位置（简化版本）
-   */
-  private findParagraphPosition(xml: string, index: number): number {
-    const pattern = /<w:p[^>]*>/g;
-    let match;
-    let count = 0;
-
-    while ((match = pattern.exec(xml)) !== null) {
-      if (count === index) {
-        return match.index;
-      }
-      count++;
-    }
-    return 0;
-  }
-
-  /**
-   * 查找表格在XML中的位置（简化版本）
-   */
-  private findTablePosition(xml: string, index: number): number {
-    const pattern = /<w:tbl[^>]*>/g;
-    let match;
-    let count = 0;
-
-    while ((match = pattern.exec(xml)) !== null) {
-      if (count === index) {
-        return match.index;
-      }
-      count++;
-    }
-    return 0;
-  }
-
-  /**
-   * 解析段落元素（仅处理文本内容）
-   */
-  private parseParagraph(p: any, styles: Record<string, string>, index: number): DocumentElement | null {
-    // 提取文本内容
-    const text = this.extractParagraphText(p);
-    if (!text.trim()) {
-      return null; // 跳过空段落（可能只有图片，图片已在parseDocumentXml中单独提取）
-    }
-
-    // 获取段落样式
-    const styleId = p?.['w:pPr']?.['w:pStyle']?.['w:val'] || '';
-    const styleName = styles[styleId] || styleId;
-
-    // 确定元素类型
-    let type: DocumentElement['type'] = 'paragraph';
-    if (DocumentStructureParser.STYLE_TYPE_MAP[styleName]) {
-      type = DocumentStructureParser.STYLE_TYPE_MAP[styleName] as DocumentElement['type'];
-    } else if (DocumentStructureParser.STYLE_TYPE_MAP[styleId]) {
-      type = DocumentStructureParser.STYLE_TYPE_MAP[styleId] as DocumentElement['type'];
-    }
-
-    // 检测列表
-    const numPr = p?.['w:pPr']?.['w:numPr'];
-    if (numPr) {
-      type = 'list';
-    }
-
-    return {
-      id: `element-${index}`,
-      type,
-      content: text,
-      text: text,
-      xpath: `/w:document/w:body/w:p[${index}]`,
-      index,
-      style: styleName || styleId,
-    };
-  }
-
-  /**
-   * 从段落中提取图片元素
-   */
-  private extractImagesFromParagraph(p: any, startIndex: number): DocumentElement[] {
-    const images: DocumentElement[] = [];
-    const runs = p?.['w:r'] || [];
-    const runList = Array.isArray(runs) ? runs : [runs];
-    let imageIndex = 0;
-
-    for (const run of runList) {
-      // 检查是否有drawing元素
-      const drawing = run?.['w:drawing'];
-      if (drawing) {
-        const imageElement = this.parseDrawing(drawing, startIndex + imageIndex);
-        if (imageElement) {
-          images.push(imageElement);
-          imageIndex++;
-        }
-      }
-    }
-
-    return images;
-  }
-
-  /**
-   * 解析drawing元素，提取图片信息
-   */
-  private parseDrawing(drawing: any, index: number): DocumentElement | null {
-    try {
-      // drawing可以包含inline或anchor
-      const inline = drawing?.['wp:inline'] || drawing?.['wp:anchor'];
-      if (!inline) return null;
-
-      // 获取图片尺寸 (wp:extent)
-      const extent = inline?.['wp:extent'];
-      const width = extent?.['$']?.['cx'] ? parseInt(extent['$']['cx'], 10) :
-                    extent?.['cx'] ? parseInt(extent['cx'], 10) : 0;
-      const height = extent?.['$']?.['cy'] ? parseInt(extent['$']['cy'], 10) :
-                     extent?.['cy'] ? parseInt(extent['cy'], 10) : 0;
-
-      // 获取图片引用 (a:blip中的r:embed或r:link)
-      const graphic = inline?.['a:graphic'];
-      const graphicData = graphic?.['a:graphicData'];
-      const pic = graphicData?.['pic:pic'];
-      const blipFill = pic?.['pic:blipFill'];
-      const blip = blipFill?.['a:blip'];
-
-      // 检查r:embed或r:link属性（属性可能在$对象中或直接在元素上）
-      const imageId = blip?.['$']?.['r:embed'] || blip?.['$']?.['r:link'] ||
-                      blip?.['r:embed'] || blip?.['r:link'] || '';
-
-      if (!imageId) return null;
-
-      // 获取替代文本（docPr中的descr或title）
-      const docPr = inline?.['wp:docPr'];
-      const altText = docPr?.['$']?.['descr'] || docPr?.['$']?.['title'] ||
-                     docPr?.['descr'] || docPr?.['title'] || '';
-      const name = docPr?.['$']?.['name'] || docPr?.['name'] || '';
-
-      // 转换EMU到像素 (EMU = 914400 / inch, 1 inch ≈ 96 pixels for screen)
-      const widthPx = Math.round(width / 914400 * 96);
-      const heightPx = Math.round(height / 914400 * 96);
-
-      return {
-        id: `image-${index}`,
-        type: 'image',
-        content: `[图片] ${altText || name || imageId}`,
-        text: `[图片] ${altText || name || 'Image ' + imageId}`,
-        xpath: `/w:document/w:body/w:p/w:r/w:drawing[${index}]`,
-        index,
-        attributes: {
-          widthPx: String(widthPx),
-          heightPx: String(heightPx),
-        },
-        imageId,
-        imageWidth: width,
-        imageHeight: height,
-        imageName: '', // 需要从rels文件获取实际文件名
-        altText: altText || name,
-      };
-    } catch (e) {
-      console.warn('Failed to parse drawing element:', e);
-      return null;
-    }
-  }
-
-  /**
-   * 解析表格元素
-   */
-  private parseTable(tbl: any, index: number): DocumentElement | null {
-    const rows = tbl?.['w:tr'] || [];
-    const tableRows = Array.isArray(rows) ? rows : [rows];
-
-    if (tableRows.length === 0) {
-      return null;
-    }
-
-    // 解析所有行
-    const parsedRows: TableRow[] = [];
-    const headers: TableHeader[] = [];
-
-    for (let rowIndex = 0; rowIndex < tableRows.length; rowIndex++) {
-      const row = tableRows[rowIndex];
-      const cells = row?.['w:tc'] || [];
-      const tableCells = Array.isArray(cells) ? cells : [cells];
-
-      const cellTexts: string[] = [];
-      let rowHasPreserve = false;
-      let preserveType: 'static' | 'loop' | 'variable' | undefined;
-
-      for (const cell of tableCells) {
-        const cellText = this.extractParagraphText(cell);
-        cellTexts.push(cellText.trim());
-
-        // 检查是否有preserve属性
-        if (this.elementHasPreserve(cell)) {
-          rowHasPreserve = true;
-
-          // 判断preserve类型
-          if (cellText.includes('循环')) {
-            preserveType = 'loop';
-          } else if (cellText.includes('###') || /^#{1,6}/.test(cellText)) {
-            preserveType = 'static';
-          } else {
-            preserveType = 'variable';
-          }
-        }
-      }
-
-      const isHeader = rowIndex === 0;
-
-      // 第一行作为标题
-      if (isHeader) {
-        for (let i = 0; i < cellTexts.length; i++) {
-          if (cellTexts[i]) {
-            headers.push({ text: cellTexts[i], index: i });
-          }
-        }
-      }
-
-      parsedRows.push({
-        cells: cellTexts,
-        hasPreserve: rowHasPreserve,
-        preserveType,
-        isHeader
-      });
-    }
-
-    // 生成显示文本
-    const headerText = headers.map(h => h.text).join(' | ');
-    const dataRowTexts = parsedRows
-      .filter(r => !r.isHeader)
-      .map(r => r.cells.join(' | '));
-
-    const allText = [...headers.map(h => h.text), ...dataRowTexts.flat()].join(' ');
-
-    // 判断表格是否有preserve 循环标记
-    const tableHasLoopMarker = parsedRows.some(r => r.preserveType === 'loop');
-
-    return {
-      id: `element-${index}`,
-      type: 'table',
-      content: allText,
-      text: `[表格] ${headerText}${dataRowTexts.length > 0 ? ` | ${dataRowTexts.length}行数据` : ''}`,
-      xpath: `/w:document/w:body/w:tbl[${index}]`,
-      index,
-      attributes: {
-        rows: String(tableRows.length),
-        cols: String(headers.length),
-        hasDataRows: String(dataRowTexts.length > 0),
-        hasLoopMarker: String(tableHasLoopMarker),
-        dataRowCount: String(dataRowTexts.length), // 数据行总数
-      },
-      tableHeaders: headers,
-      tableRows: parsedRows,
-      headerRow: headerText,
-      dataRows: dataRowTexts.slice(0, 10), // 显示前10行数据
-      dataRowCount: dataRowTexts.length, // 数据行总数
-    };
-  }
-
-  /**
-   * 检查元素是否有preserve属性
-   */
-  private elementHasPreserve(element: any): boolean {
-    try {
-      const str = JSON.stringify(element);
-      return str.includes('preserve');
-    } catch {
-      return false;
-    }
-  }
-
-  /**
-   * 提取段落中的文本
-   */
-  private extractParagraphText(element: any): string {
-    const textParts: string[] = [];
-
-    // 先检查是否有嵌套的段落（如表格单元格中的段落）
-    const paragraphs = element?.['w:p'];
-    if (paragraphs) {
-      const pList = Array.isArray(paragraphs) ? paragraphs : [paragraphs];
-      for (const p of pList) {
-        textParts.push(this.extractRunsText(p));
-      }
-      return textParts.join(' ');
-    }
-
-    // 直接提取run中的文本
-    return this.extractRunsText(element);
-  }
-
-  /**
-   * 从run元素中提取文本
-   */
-  private extractRunsText(element: any): string {
-    const textParts: string[] = [];
-
-    const runs = element?.['w:r'] || [];
-    const runList = Array.isArray(runs) ? runs : [runs];
-
-    for (const run of runList) {
-      const textNodes = run?.['w:t'] || [];
-      const textList = Array.isArray(textNodes) ? textNodes : [textNodes];
-
-      for (const t of textList) {
-        if (typeof t === 'string') {
-          textParts.push(t);
-        } else if (t?.['_']) {
-          // xml:space="preserve" 属性导致文本存储在 _ 中
-          textParts.push(t['_']);
-        } else if (t && typeof t === 'object') {
-          // 尝试其他可能的文本存储位置
-          const keys = Object.keys(t);
-          for (const key of keys) {
-            if (typeof t[key] === 'string') {
-              textParts.push(t[key]);
-            }
-          }
-        }
-      }
-    }
-
-    return textParts.join('');
   }
 }

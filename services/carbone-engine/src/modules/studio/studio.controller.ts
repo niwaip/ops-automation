@@ -278,7 +278,9 @@ export class StudioController {
 
       // 渲染模板
       const templateBuffer = fs.readFileSync(templatePath);
-      const outputBuffer = await this.engine.render(templateBuffer, dto.data, meta.fileName);
+      const config = meta.templateConfig || {};
+      const markedBuffer = await this.documentStructureService.applyConfigToDocx(templateBuffer, config);
+      const outputBuffer = await this.engine.render(markedBuffer, dto.data, meta.fileName);
 
       // 保存输出文件
       const outputId = uuidv4();
@@ -858,7 +860,10 @@ export class StudioController {
       // 步骤3: 生成示例数据
       sendProgress('generate_data', 55, '根据模版配置生成示例数据...');
       const templateBuffer = fs.readFileSync(templatePath);
-      const templateInfo = await this.engine.parseTemplateBuffer(templateBuffer, meta.fileName);
+      
+      // 应用模版配置标记
+      const markedBuffer = await this.documentStructureService.applyConfigToDocx(templateBuffer, config);
+      const templateInfo = await this.engine.parseTemplateBuffer(markedBuffer, meta.fileName);
 
       // 使用模版配置生成真实内容
       let sampleData = parsedTestData;
@@ -879,7 +884,7 @@ export class StudioController {
 
       // 步骤4: 渲染文档
       sendProgress('render', 70, '渲染示例文档...');
-      const outputBuffer = await this.engine.render(templateBuffer, sampleData, meta.fileName);
+      const outputBuffer = await this.engine.render(markedBuffer, sampleData, meta.fileName);
       sendProgress('render', 85, '文档渲染完成');
 
       // 步骤5: 保存渲染结果
@@ -1000,7 +1005,10 @@ export class StudioController {
       // 步骤3: 生成示例数据
       sendProgress('generate_data', 55, '根据模版配置生成示例数据...');
       const templateBuffer = fs.readFileSync(templatePath);
-      const templateInfo = await this.engine.parseTemplateBuffer(templateBuffer, meta.fileName);
+      
+      // 应用模版配置标记
+      const markedBuffer = await this.documentStructureService.applyConfigToDocx(templateBuffer, config);
+      const templateInfo = await this.engine.parseTemplateBuffer(markedBuffer, meta.fileName);
 
       // 使用模版配置生成真实内容
       let sampleData = parsedTestData;
@@ -1021,7 +1029,7 @@ export class StudioController {
 
       // 步骤4: 渲染文档
       sendProgress('render', 70, '渲染示例文档...');
-      const outputBuffer = await this.engine.render(templateBuffer, sampleData, meta.fileName);
+      const outputBuffer = await this.engine.render(markedBuffer, sampleData, meta.fileName);
       sendProgress('render', 85, '文档渲染完成');
 
       // 步骤5: 保存渲染结果
@@ -1118,7 +1126,9 @@ export class StudioController {
 
       // 生成示例数据并渲染文档
       const templateBuffer = fs.readFileSync(templatePath);
-      const templateInfo = await this.engine.parseTemplateBuffer(templateBuffer, meta.fileName);
+      const config = dto.templateConfig || meta.templateConfig || {};
+      const markedBuffer = await this.documentStructureService.applyConfigToDocx(templateBuffer, config);
+      const templateInfo = await this.engine.parseTemplateBuffer(markedBuffer, meta.fileName);
 
       let sampleData = {};
       if (dto.testData) {
@@ -1131,7 +1141,7 @@ export class StudioController {
         sampleData = this.engine.generateSampleData(templateInfo, 5);
       }
 
-      const outputBuffer = await this.engine.render(templateBuffer, sampleData, meta.fileName);
+      const outputBuffer = await this.engine.render(markedBuffer, sampleData, meta.fileName);
 
       const outputId = uuidv4();
       const outputPath = path.join(this.outputsDir, `${outputId}.${meta.format}`);
