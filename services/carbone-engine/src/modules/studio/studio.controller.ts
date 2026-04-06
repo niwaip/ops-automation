@@ -839,6 +839,9 @@ export class StudioController {
 
       // 获取模版配置
       const config = dto.templateConfig || meta.templateConfig || {};
+      console.log('AI Verify config:', JSON.stringify(config, null, 2));
+      console.log('dto.templateConfig exists:', !!dto.templateConfig);
+      console.log('meta.templateConfig exists:', !!meta.templateConfig);
 
       // 步骤2: 调用AI生成验证报告
       sendProgress('ai_call', 30, '调用AI生成验证报告...');
@@ -862,9 +865,12 @@ export class StudioController {
       if (!parsedTestData || Object.keys(parsedTestData).length === 0) {
         // 优先使用模版配置生成数据
         if (config && Object.keys(config).length > 0) {
+          console.log('Generating sample data from config...');
           sampleData = this.engine.generateSampleDataFromConfig(config, config.tableLoops?.[0]?.dataRowCount || 5);
+          console.log('Generated sampleData:', JSON.stringify(sampleData, null, 2));
         } else {
           // 否则使用模板变量生成
+          console.log('Using fallback generateSampleData, config empty');
           sampleData = this.engine.generateSampleData(templateInfo, 5);
         }
       }
@@ -1001,9 +1007,12 @@ export class StudioController {
       if (!parsedTestData || Object.keys(parsedTestData).length === 0) {
         // 优先使用模版配置生成数据
         if (config && Object.keys(config).length > 0) {
+          console.log('Generating sample data from config...');
           sampleData = this.engine.generateSampleDataFromConfig(config, config.tableLoops?.[0]?.dataRowCount || 5);
+          console.log('Generated sampleData:', JSON.stringify(sampleData, null, 2));
         } else {
           // 否则使用模板变量生成
+          console.log('Using fallback generateSampleData, config empty');
           sampleData = this.engine.generateSampleData(templateInfo, 5);
         }
       }
@@ -1071,9 +1080,12 @@ export class StudioController {
       throw new HttpException('File not found', HttpStatus.NOT_FOUND);
     }
 
-    // 设置Content-Disposition为inline以便浏览器内嵌显示
+    // 设置Content-Type
     res.setHeader('Content-Type', this.getContentType(meta.format));
-    res.setHeader('Content-Disposition', `inline; filename="${meta.fileName}"`);
+
+    // 使用RFC 5987编码文件名以支持中文字符
+    const encodedFileName = encodeURIComponent(meta.fileName);
+    res.setHeader('Content-Disposition', `inline; filename*=UTF-8''${encodedFileName}`);
 
     const file = fs.createReadStream(filePath);
     return new StreamableFile(file);

@@ -292,8 +292,7 @@
                             <div class="editor-section collapsible-section" id="ai-generate-result-section" style="display: none;">
                                 <h4 class="collapsible-header" onclick="toggleCollapsible(this)">
                                     <i class="fas fa-chevron-right collapse-icon"></i>
-                                    <span id="ai-result-header-icon"><i class="fas fa-cogs"></i></span>
-                                    <span id="ai-result-header-text">AI 结果报告</span>
+                                    <i class="fas fa-cogs"></i> AI 结果报告
                                 </h4>
                                 <div class="collapsible-content">
                                     <!-- Progress indicator -->
@@ -305,6 +304,17 @@
                                     </div>
                                     <!-- Result display -->
                                     <div id="ai-generate-result" style="background: #f6ffed; border: 1px solid #b7eb8f; border-radius: 4px; padding: 10px; font-size: 12px; max-height: 400px; overflow-y: auto;"></div>
+                                </div>
+                            </div>
+
+                            <!-- Verify Result Section - 验证结果区域 -->
+                            <div class="editor-section collapsible-section" id="verify-result-section" style="display: none;">
+                                <h4 class="collapsible-header" onclick="toggleCollapsible(this)">
+                                    <i class="fas fa-chevron-right collapse-icon"></i>
+                                    <i class="fas fa-check-double"></i> 验证结果
+                                </h4>
+                                <div class="collapsible-content">
+                                    <div id="verify-result" style="background: #f6ffed; border: 1px solid #b7eb8f; border-radius: 4px; padding: 10px; font-size: 12px; max-height: 500px; overflow-y: auto;"></div>
                                 </div>
                             </div>
                         </div>

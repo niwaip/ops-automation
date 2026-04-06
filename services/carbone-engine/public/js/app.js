@@ -64,11 +64,12 @@
         // AI Generate Result
         elements.aiGenerateResultSection = document.getElementById('ai-generate-result-section');
         elements.aiGenerateResult = document.getElementById('ai-generate-result');
-        elements.aiResultHeaderIcon = document.getElementById('ai-result-header-icon');
-        elements.aiResultHeaderText = document.getElementById('ai-result-header-text');
         elements.aiProgress = document.getElementById('ai-progress');
         elements.progressFill = document.getElementById('progress-fill');
         elements.progressText = document.getElementById('progress-text');
+        // Verify Result (separate section)
+        elements.verifyResultSection = document.getElementById('verify-result-section');
+        elements.verifyResult = document.getElementById('verify-result');
         // Tab elements
         elements.tabPreview = document.getElementById('tab-preview');
         elements.tabSource = document.getElementById('tab-source');
@@ -1184,13 +1185,6 @@
             elements.aiGenerateResultSection.style.display = 'block';
             elements.aiGenerateResultSection.classList.add('expanded');
         }
-        // 更新标题为AI结果报告
-        if (elements.aiResultHeaderIcon) {
-            elements.aiResultHeaderIcon.innerHTML = '<i class="fas fa-cogs"></i>';
-        }
-        if (elements.aiResultHeaderText) {
-            elements.aiResultHeaderText.textContent = 'AI 结果报告';
-        }
         if (elements.aiProgress) {
             elements.aiProgress.style.display = 'block';
         }
@@ -1345,36 +1339,28 @@
         elements.aiVerifyBtn.disabled = true;
         elements.aiVerifyBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 验证中...';
 
-        // 显示进度条和结果区域
-        if (elements.aiGenerateResultSection) {
-            elements.aiGenerateResultSection.style.display = 'block';
-            elements.aiGenerateResultSection.classList.add('expanded');
+        // 显示验证结果区域（独立的，不覆盖AI结果报告）
+        if (elements.verifyResultSection) {
+            elements.verifyResultSection.style.display = 'block';
+            elements.verifyResultSection.classList.add('expanded');
         }
-        // 更新标题为验证结果
-        if (elements.aiResultHeaderIcon) {
-            elements.aiResultHeaderIcon.innerHTML = '<i class="fas fa-check-double"></i>';
-        }
-        if (elements.aiResultHeaderText) {
-            elements.aiResultHeaderText.textContent = '验证结果';
-        }
-        if (elements.aiProgress) {
-            elements.aiProgress.style.display = 'block';
-        }
-        if (elements.aiGenerateResult) {
-            elements.aiGenerateResult.innerHTML = '<div style="color: #1890ff;"><i class="fas fa-spinner fa-spin"></i> 正在连接AI服务...</div>';
+        if (elements.verifyResult) {
+            elements.verifyResult.innerHTML = '<div style="color: #1890ff;"><i class="fas fa-spinner fa-spin"></i> 正在连接AI服务...</div>';
         }
 
         try {
             // 使用fetch流式调用（参考performAIGenerate）
+            const requestBody = {
+                templateId: state.selectedTemplate.id,
+                prompt: '验证模版配置是否合理，生成示例报告',
+                testData: '',
+                templateConfig: state.templateConfig || {}
+            };
+            console.log('AI Verify request:', requestBody);
             const response = await fetch(`${API_BASE}/templates/${state.selectedTemplate.id}/ai-verify-stream`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    templateId: state.selectedTemplate.id,
-                    prompt: '验证模版配置是否合理，生成示例报告',
-                    testData: '',
-                    templateConfig: state.templateConfig || {}
-                })
+                body: JSON.stringify(requestBody)
             });
 
             if (!response.ok) {
@@ -1408,7 +1394,7 @@
                                 progressMessages.push(`[${data.step}] ${data.message}`);
 
                                 // 实时更新右边栏的进度
-                                if (elements.aiGenerateResult) {
+                                if (elements.verifyResult) {
                                     let progressHtml = '<div style="margin-bottom: 10px;">';
                                     progressHtml += '<div style="display: flex; align-items: center; gap: 8px;">';
                                     progressHtml += '<i class="fas fa-spinner fa-spin" style="color: #1890ff;"></i>';
@@ -1417,7 +1403,7 @@
                                     progressHtml += '<div class="progress-bar" style="margin-top: 8px;">';
                                     progressHtml += `<div class="progress-fill" style="width: ${data.progress}%;"></div>`;
                                     progressHtml += '</div></div>';
-                                    elements.aiGenerateResult.innerHTML = progressHtml;
+                                    elements.verifyResult.innerHTML = progressHtml;
                                 }
                             } else if (data.type === 'result') {
                                 verifyResult = data.data;
@@ -1427,18 +1413,8 @@
                                 updateStatus('success', '验证完成');
                                 updateStepStatus('verify', 'completed', '已完成');
 
-                                // 隐藏进度条
-                                if (elements.aiProgress) {
-                                    elements.aiProgress.style.display = 'none';
-                                }
-
-                                // 只在右侧栏显示结果（可折叠）
-                                if (elements.aiGenerateResultSection) {
-                                    elements.aiGenerateResultSection.style.display = 'block';
-                                    elements.aiGenerateResultSection.classList.add('expanded');
-                                }
-
-                                if (elements.aiGenerateResult) {
+                                // 显示验证结果（独立的验证结果区域）
+                                if (elements.verifyResult) {
                                     // 显示验证完成标题
                                     let fullResultHtml = '<div style="background: #f6ffed; border: 1px solid #b7eb8f; border-radius: 4px; padding: 12px; margin-bottom: 15px;">';
                                     fullResultHtml += '<div style="display: flex; align-items: center; gap: 8px; margin-bottom: 10px;">';
@@ -1472,7 +1448,7 @@
                                     }
                                     fullResultHtml += '</div>';
 
-                                    elements.aiGenerateResult.innerHTML = fullResultHtml;
+                                    elements.verifyResult.innerHTML = fullResultHtml;
 
                                     // 绑定按钮事件
                                     const pdfBtn = document.getElementById('verify-pdf-btn');
@@ -1502,16 +1478,13 @@
             updateStatus('error', '验证失败: ' + error.message);
             updateStepStatus('verify', 'error', '失败');
 
-            if (elements.aiProgress) {
-                elements.aiProgress.style.display = 'none';
+            // 在验证结果区域显示错误
+            if (elements.verifyResultSection) {
+                elements.verifyResultSection.style.display = 'block';
+                elements.verifyResultSection.classList.add('expanded');
             }
-            // 只在右侧栏显示错误
-            if (elements.aiGenerateResultSection) {
-                elements.aiGenerateResultSection.style.display = 'block';
-                elements.aiGenerateResultSection.classList.add('expanded');
-            }
-            if (elements.aiGenerateResult) {
-                elements.aiGenerateResult.innerHTML = `<div style="color: #ff4d4f; background: #fff2f0; border: 1px solid #ffccc7; border-radius: 4px; padding: 12px;"><i class="fas fa-times-circle"></i> 验证失败: ${error.message}</div>`;
+            if (elements.verifyResult) {
+                elements.verifyResult.innerHTML = `<div style="color: #ff4d4f; background: #fff2f0; border: 1px solid #ffccc7; border-radius: 4px; padding: 12px;"><i class="fas fa-times-circle"></i> 验证失败: ${error.message}</div>`;
             }
             showToast('验证失败: ' + error.message, 'error');
         } finally {
