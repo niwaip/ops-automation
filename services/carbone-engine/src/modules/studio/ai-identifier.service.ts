@@ -215,18 +215,11 @@ export class AIIdentifierService {
 
   /**
    * 分析内容模式 - 识别标题、表格、截图等模式
+   * 返回的内容会被转换为参数或保留
    */
   private analyzeContentPattern(text: string): ContentPattern {
-    // 识别标题模式: ### 自动化操作执行总结
-    if (/^#{1,6}\s+/.test(text) || /^(Step\s*\d+[:：])/i.test(text)) {
-      return {
-        type: 'heading',
-        matched: true,
-        extractedValue: text.replace(/^#{1,6}\s+/, '').trim()
-      };
-    }
-
-    // 识别步骤模式: Step 3: screenshot + 图片
+    // 1. 首先检查步骤模式: Step 3: screenshot + 图片
+    // 这是最重要的模式，应该优先检测
     const stepMatch = text.match(/Step\s*(\d+)[:：]\s*(.+)/i);
     if (stepMatch) {
       return {
@@ -237,7 +230,17 @@ export class AIIdentifierService {
       };
     }
 
-    // 识别图片/截图模式
+    // 2. 检查是否是纯标题模式（以#开头）
+    // 只有以#开头的才是真正的标题，应该保留
+    if (/^#{1,6}\s+/.test(text)) {
+      return {
+        type: 'heading',
+        matched: true,
+        extractedValue: text.replace(/^#{1,6}\s+/, '').trim()
+      };
+    }
+
+    // 3. 检查图片/截图模式
     if (text.toLowerCase().includes('screenshot') ||
         text.includes('截图') ||
         text.includes('图片')) {
@@ -248,10 +251,21 @@ export class AIIdentifierService {
       };
     }
 
-    // 识别总结模式
+    // 4. 检查表格模式
+    if (text.includes('|') && text.split('|').length > 2) {
+      return {
+        type: 'table',
+        matched: true,
+        extractedValue: text
+      };
+    }
+
+    // 5. 检查总结/日志模式
     if (text.includes('总结') ||
         text.includes('执行上下文') ||
-        text.includes('日志')) {
+        text.includes('日志') ||
+        text.includes('log') ||
+        text.includes('summary')) {
       return {
         type: 'summary',
         matched: true,
@@ -267,6 +281,11 @@ export class AIIdentifierService {
 
   /**
    * 基于文档结构生成模版配置
+   * 根据用户需求：
+   * - ### 自动化操作执行总结 → 标题保留
+   * - 表格 → 循环参数
+   * - Step 3: screenshot + 图片 → 参数
+   * - 基于提供的执行上下文日志 → 参数
    */
   private generateTemplateConfig(elements: DocumentElement[], userIntent: UserIntent): TemplateConfig {
     const config: TemplateConfig = {
@@ -278,24 +297,40 @@ export class AIIdentifierService {
       analysisNotes: []
     };
 
+    // 收集所有步骤，用于生成数组参数
+    const steps: { stepNum: number; content: string; type: string }[] = [];
+
     // 分析静态元素（需要保留的标题等）
     for (const el of elements) {
-      // 标题 - 默认保留作为静态内容
+      const pattern = this.analyzeContentPattern(el.text);
+
+      // 文档标题 - 默认保留作为静态内容
       if (el.type === 'title' && userIntent.preserveTitles) {
         config.staticElements.push({
           type: 'title',
           content: el.text,
           reason: '文档标题，保留作为静态内容'
         });
-        continue; // 不作为变量处理
+        continue;
       }
 
-      // 标题级别 - 分析内容模式
-      if (el.type === 'heading1' || el.type === 'heading2' || el.type === 'heading3') {
-        const pattern = this.analyzeContentPattern(el.text);
+      // 处理步骤模式: Step 3: screenshot + 图片
+      if (pattern.matched && pattern.type === 'step') {
+        // 收集步骤信息
+        const stepNumMatch = el.text.match(/Step\s*(\d+)/i);
+        const stepNum = stepNumMatch ? parseInt(stepNumMatch[1], 10) : steps.length + 1;
+        steps.push({
+          stepNum,
+          content: pattern.extractedValue || '',
+          type: this.detectStepContentType(pattern.extractedValue || '')
+        });
+        continue;
+      }
 
+      // 处理标题级别 - 只有纯标题才保留
+      if (el.type === 'heading1' || el.type === 'heading2' || el.type === 'heading3') {
         if (pattern.matched && pattern.type === 'heading') {
-          // 普通标题，保留
+          // 纯标题（### 开头），保留
           if (userIntent.preserveHeadings) {
             config.staticElements.push({
               type: 'heading',
@@ -303,40 +338,82 @@ export class AIIdentifierService {
               reason: '章节标题，保留作为静态内容'
             });
           }
-        } else if (pattern.matched && pattern.type === 'step') {
-          // 步骤标题，可能是动态内容
+        } else if (pattern.matched && pattern.type === 'image') {
+          // 标题中包含图片/截图信息，作为参数
           config.variableMappings.push({
-            path: 'd.steps[].title',
+            path: `d.${this.slugify(pattern.extractedValue || 'image')}`,
             content: el.text,
-            type: 'heading',
-            reason: '检测到步骤标题模式，建议作为动态内容'
+            type: 'image',
+            reason: '检测到图片/截图相关标题，建议作为参数'
           });
         }
         continue;
       }
 
-      // 段落 - 分析是否需要变量化
+      // 处理段落
       if (el.type === 'paragraph') {
-        const pattern = this.analyzeContentPattern(el.text);
-
         if (pattern.matched && pattern.type === 'summary') {
           // 总结/日志类内容，建议变量化
           config.variableMappings.push({
-            path: 'd.summary',
+            path: 'd.contextLog',
             content: el.text,
             type: 'text',
-            reason: '检测到总结/日志内容，建议作为变量'
+            reason: '检测到执行上下文日志内容，建议作为参数'
           });
-        } else if (pattern.matched && pattern.type === 'step') {
-          // 步骤描述
+        } else if (pattern.matched && pattern.type === 'image') {
+          // 图片相关段落
           config.variableMappings.push({
-            path: 'd.steps[].description',
+            path: `d.${this.slugify(pattern.extractedValue || 'screenshot')}`,
             content: el.text,
-            type: 'text',
-            reason: '检测到步骤描述模式'
+            type: 'image',
+            reason: '检测到图片/截图内容，建议作为参数'
+          });
+        }
+        continue;
+      }
+
+      // 处理图片
+      if (el.type === 'image') {
+        if (userIntent.imageLoops) {
+          config.imageLoops.push({
+            imageIndex: config.imageLoops.length,
+            imageId: el.imageId || '',
+            altText: el.altText || '',
+            arrayPath: 'd.screenshots',
+            reason: '检测到图片，建议作为数组循环',
+            confidence: 0.8
+          });
+        } else {
+          config.variableMappings.push({
+            path: `d.screenshot${config.imageLoops.length + 1}`,
+            content: el.altText || 'Image',
+            type: 'image',
+            reason: '检测到图片，建议作为参数'
           });
         }
       }
+    }
+
+    // 如果收集到步骤，生成步骤数组参数
+    if (steps.length > 0) {
+      for (const step of steps) {
+        if (step.type === 'screenshot') {
+          config.variableMappings.push({
+            path: `d.steps[${step.stepNum - 1}].screenshot`,
+            content: step.content,
+            type: 'image',
+            reason: `步骤${step.stepNum}的截图参数`
+          });
+        } else {
+          config.variableMappings.push({
+            path: `d.steps[${step.stepNum - 1}].content`,
+            content: step.content,
+            type: 'text',
+            reason: `步骤${step.stepNum}的内容参数`
+          });
+        }
+      }
+      config.analysisNotes.push(`检测到 ${steps.length} 个步骤`);
     }
 
     // 分析表格循环
@@ -723,6 +800,61 @@ export class AIIdentifierService {
     }
 
     return text;
+  }
+
+  /**
+   * 检测步骤内容的类型
+   * screenshot + 图片 → screenshot
+   * 纯文本 → text
+   */
+  private detectStepContentType(content: string): string {
+    const lower = content.toLowerCase();
+    if (lower.includes('screenshot') || lower.includes('截图') || lower.includes('图片')) {
+      return 'screenshot';
+    }
+    return 'text';
+  }
+
+  /**
+   * 将文本转换为变量名
+   * screenshot + 图片 → screenshot
+   * 基于提供的执行上下文日志 → contextLog
+   */
+  private slugify(text: string): string {
+    // 移除特殊字符，转小写
+    let result = text
+      .toLowerCase()
+      .replace(/[^\w\s\u4e00-\u9fa5]/g, '') // 保留字母数字下划线和中文
+      .trim();
+
+    // 中文关键词映射
+    const chineseKeywords: Record<string, string> = {
+      '截图': 'screenshot',
+      '图片': 'image',
+      '日志': 'log',
+      '上下文': 'context',
+      '执行': 'execution',
+      '总结': 'summary',
+      '步骤': 'step',
+      '操作': 'operation'
+    };
+
+    // 替换中文关键词
+    for (const [chinese, english] of Object.entries(chineseKeywords)) {
+      if (result.includes(chinese)) {
+        result = result.replace(chinese, english);
+      }
+    }
+
+    // 如果还有中文或空白，移除
+    result = result.replace(/[\u4e00-\u9fa5]/g, '').replace(/\s+/g, '_');
+
+    // 如果结果为空，使用默认值
+    if (!result) {
+      result = 'value';
+    }
+
+    return result;
   }
 }
 
