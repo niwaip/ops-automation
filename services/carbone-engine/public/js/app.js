@@ -1015,37 +1015,87 @@
         }
     }
 
-    // Validate Function
+    // Validate Function - 使用编辑后的模版生成文档
     async function validateData() {
         if (!state.selectedTemplate) return;
 
-        let data = {};
-        try {
-            const text = elements.testData.value.trim();
-            if (text) {
-                data = JSON.parse(text);
-            }
-        } catch {
-            showToast('Invalid JSON in test data', 'error');
-            return;
-        }
+        showToast('正在验证模版并生成文档...', 'info');
 
         try {
             const result = await apiRequest('/validate', {
                 method: 'POST',
                 body: JSON.stringify({
                     templateId: state.selectedTemplate.id,
-                    data
+                    data: {}  // 空数据，让后端生成模拟数据
                 })
             });
 
-            if (result.valid) {
-                showToast('Validation passed!', 'success');
+            if (result.downloadUrl) {
+                showToast('文档生成成功！', 'success');
+
+                // 自动下载文件
+                const link = document.createElement('a');
+                link.href = result.downloadUrl;
+                link.download = result.fileName || 'validated_document.docx';
+                link.click();
+
+                // 在结果区域显示验证结果
+                if (elements.verifyResultSection) {
+                    elements.verifyResultSection.style.display = 'block';
+                    elements.verifyResultSection.classList.add('expanded');
+                }
+                if (elements.verifyResult) {
+                    let resultHtml = `
+                        <div style="margin-bottom: 15px;">
+                            <i class="fas fa-check-circle" style="color: #52c41a; margin-right: 8px;"></i>
+                            <strong>验证完成</strong>
+                        </div>
+                        <p style="margin-bottom: 10px;">模版已使用编辑后的版本和模拟数据生成文档。</p>
+                    `;
+
+                    // 显示生成的模拟数据
+                    if (result.sampleData) {
+                        resultHtml += `
+                            <details style="margin-bottom: 15px;">
+                                <summary style="cursor: pointer; font-weight: 500;">
+                                    <i class="fas fa-database"></i> 生成的模拟数据
+                                </summary>
+                                <div style="background: #f5f5f5; padding: 10px; border-radius: 4px; font-size: 11px; max-height: 200px; overflow-y: auto;">
+                                    <pre style="margin: 0; white-space: pre-wrap;">${JSON.stringify(result.sampleData, null, 2)}</pre>
+                                </div>
+                            </details>
+                        `;
+                    }
+
+                    // 显示下载按钮
+                    resultHtml += `
+                        <div style="margin-top: 15px; display: flex; gap: 8px; flex-wrap: wrap;">
+                            <button id="validate-download-btn" class="btn btn-primary btn-sm">
+                                <i class="fas fa-download"></i> 下载文档
+                            </button>
+                        </div>
+                    `;
+
+                    elements.verifyResult.innerHTML = resultHtml;
+
+                    // 绑定下载按钮事件
+                    const downloadBtn = document.getElementById('validate-download-btn');
+                    if (downloadBtn) {
+                        downloadBtn.addEventListener('click', () => {
+                            const link = document.createElement('a');
+                            link.href = result.downloadUrl;
+                            link.download = result.fileName || 'validated_document.docx';
+                            link.click();
+                        });
+                    }
+                }
+            } else if (result.missing && result.missing.length > 0) {
+                showToast(`缺少变量: ${result.missing.join(', ')}`, 'warning');
             } else {
-                showToast(`Missing variables: ${result.missing.join(', ')}`, 'warning');
+                showToast('验证失败', 'error');
             }
         } catch (error) {
-            showToast('Validation failed', 'error');
+            showToast('验证失败: ' + error.message, 'error');
         }
     }
 

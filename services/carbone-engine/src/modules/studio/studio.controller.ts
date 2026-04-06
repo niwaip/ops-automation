@@ -101,6 +101,7 @@ export interface TemplateResponse {
   savedAt?: string;
   templateConfig?: any;  // AI-generated template configuration
   configSavedAt?: string;
+  markedTemplateId?: string;  // 编辑后的模版ID
 }
 
 export interface RenderResponse {
@@ -354,14 +355,100 @@ export class StudioController {
   }
 
   /**
-   * 验证数据完整性
+   * 验证模版并生成文档（使用编辑后的模版和AI生成模拟数据）
    */
   @Post('validate')
-  @ApiOperation({ summary: 'Validate data against template' })
+  @ApiOperation({ summary: 'Validate template and generate document with AI sample data' })
   @ApiBody({ type: ValidateDto })
-  async validateData(@Body() dto: ValidateDto): Promise<ValidateResponse> {
+  async validateData(@Body() dto: ValidateDto): Promise<{
+    valid: boolean;
+    missing: string[];
+    downloadUrl?: string;
+    fileName?: string;
+    sampleData?: any;
+    markedTemplateId?: string;
+  }> {
     const meta = this.getTemplateMeta(dto.templateId);
-    return this.engine.validateData(meta as TemplateInfoForValidation, dto.data);
+
+    // 检查是否有编辑后的模版（markedTemplate）
+    let templatePath = path.join(this.templatesDir, `${dto.templateId}.${meta.format}`);
+    let templateBuffer: Buffer = fs.readFileSync(templatePath);
+    let config = meta.templateConfig || {};
+
+    // 如果有markedTemplateId，使用编辑后的模版
+    const markedTemplateId = (meta as any).markedTemplateId || (dto.data as any)?.markedTemplateId;
+    if (markedTemplateId) {
+      const markedMetaPath = path.join(this.templatesDir, `${markedTemplateId}.json`);
+      if (fs.existsSync(markedMetaPath)) {
+        const markedMeta = JSON.parse(fs.readFileSync(markedMetaPath, 'utf-8'));
+        const markedTemplatePath = path.join(this.templatesDir, `${markedTemplateId}.${meta.format}`);
+        if (fs.existsSync(markedTemplatePath)) {
+          templateBuffer = fs.readFileSync(markedTemplatePath);
+          templatePath = markedTemplatePath;
+          // 使用marked模版的配置
+          config = markedMeta.templateConfig || config;
+        }
+      }
+    } else {
+      // 没有markedTemplateId时，应用配置到原始模版
+      if (config && Object.keys(config).length > 0) {
+        templateBuffer = Buffer.from(await this.documentStructureService.applyConfigToDocx(templateBuffer, config));
+      }
+    }
+
+    // 解析模版获取变量
+    const templateInfo = await this.engine.parseTemplateBuffer(templateBuffer, meta.fileName);
+
+    // 验证数据
+    const validation = this.engine.validateData(templateInfo as TemplateInfoForValidation, dto.data);
+
+    // 如果数据不完整或为空，生成模拟数据
+    let sampleData = dto.data;
+    if (!dto.data || Object.keys(dto.data).length === 0 || !validation.valid) {
+      // 使用模版配置生成模拟数据
+      if (config && Object.keys(config).length > 0) {
+        sampleData = this.engine.generateSampleDataFromConfig(config, config.tableLoops?.[0]?.dataRowCount || 8, true);
+      } else {
+        sampleData = this.engine.generateSampleData(templateInfo, 8);
+      }
+    }
+
+    // 渲染文档
+    try {
+      const outputBuffer = await this.engine.render(templateBuffer, sampleData, meta.fileName);
+
+      // 保存渲染结果
+      const outputId = uuidv4();
+      const outputPath = path.join(this.outputsDir, `${outputId}.${meta.format}`);
+      const outputMetaPath = path.join(this.outputsDir, `${outputId}.json`);
+
+      fs.writeFileSync(outputPath, outputBuffer);
+      fs.writeFileSync(outputMetaPath, JSON.stringify({
+        id: outputId,
+        templateId: dto.templateId,
+        markedTemplateId: markedTemplateId,
+        fileName: `validate_${meta.fileName}`,
+        format: meta.format,
+        createdAt: new Date().toISOString(),
+        sampleData: sampleData
+      }));
+
+      return {
+        valid: true,
+        missing: [],
+        downloadUrl: `/studio/download/${outputId}`,
+        fileName: `validate_${meta.fileName}`,
+        sampleData: sampleData,
+        markedTemplateId: markedTemplateId
+      };
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      return {
+        valid: false,
+        missing: validation.missing,
+        sampleData: sampleData
+      };
+    }
   }
 
   /**
@@ -938,6 +1025,14 @@ export class StudioController {
         type: 'marked_template'  // 标记为注入后的模版
       }));
 
+      // 更新原始模版元数据，保存markedTemplateId供Validate复用
+      const originalMetaPath = path.join(this.templatesDir, `${id}.json`);
+      if (fs.existsSync(originalMetaPath)) {
+        const originalMeta = JSON.parse(fs.readFileSync(originalMetaPath, 'utf-8'));
+        originalMeta.markedTemplateId = markedTemplateId;
+        fs.writeFileSync(originalMetaPath, JSON.stringify(originalMeta, null, 2));
+      }
+
       sendProgress('save_marked', 88, '保存注入后的模版...');
 
       // 步骤6: 保存渲染结果
@@ -1106,6 +1201,14 @@ export class StudioController {
         templateConfig: config,
         type: 'marked_template'  // 标记为注入后的模版
       }));
+
+      // 更新原始模版元数据，保存markedTemplateId供Validate复用
+      const originalMetaPath = path.join(this.templatesDir, `${id}.json`);
+      if (fs.existsSync(originalMetaPath)) {
+        const originalMeta = JSON.parse(fs.readFileSync(originalMetaPath, 'utf-8'));
+        originalMeta.markedTemplateId = markedTemplateId;
+        fs.writeFileSync(originalMetaPath, JSON.stringify(originalMeta, null, 2));
+      }
 
       sendProgress('save_marked', 88, '保存注入后的模版...');
 
