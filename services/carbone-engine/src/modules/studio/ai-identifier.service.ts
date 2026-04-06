@@ -123,12 +123,16 @@ export class AIIdentifierService {
    * @param format 文件格式
    * @param context 用户上下文（如"需要保留title，表格循环，图片循环"）
    * @param documentStructure 可选的文档结构数据（已解析好的）
+   * @param manualMarkings 用户手动标记 { 元素索引: 'param'|'loop'|'static' }
+   * @param markingSummary 标记摘要文本
    */
   async identifyVariables(
     templatePath: string,
     format: string,
     context?: string,
-    documentStructure?: DocumentStructure
+    documentStructure?: DocumentStructure,
+    manualMarkings?: Record<string, string>,
+    markingSummary?: string
   ): Promise<AIIdentifyResponse> {
     // 如果没有提供文档结构，则解析
     if (!documentStructure && format === 'docx') {
@@ -141,7 +145,7 @@ export class AIIdentifierService {
     const userIntent = this.parseUserContext(context || '');
 
     // 使用 AI 分析文档结构（不再使用规则分析fallback）
-    const templateConfig = await this.analyzeWithAI(elements, context);
+    const templateConfig = await this.analyzeWithAI(elements, context, manualMarkings, markingSummary);
     if (!templateConfig) {
       throw new Error('AI分析失败，请检查AI服务是否正常');
     }
@@ -944,7 +948,12 @@ export class AIIdentifierService {
    * 使用 AI 分析文档结构
    * 调用 AI Orchestrator 进行智能分析
    */
-  private async analyzeWithAI(elements: DocumentElement[], context?: string): Promise<TemplateConfig | null> {
+  private async analyzeWithAI(
+    elements: DocumentElement[],
+    context?: string,
+    manualMarkings?: Record<string, string>,
+    markingSummary?: string
+  ): Promise<TemplateConfig | null> {
     try {
       // 获取可用的 AI 模型
       const modelsResponse = await axios.get(`${this.aiOrchestratorUrl}/ai/models`, {
@@ -965,7 +974,7 @@ export class AIIdentifierService {
       }
 
       // 构建 AI 分析提示词
-      const prompt = this.buildAIAnalysisPrompt(elements, context);
+      const prompt = this.buildAIAnalysisPrompt(elements, context, manualMarkings, markingSummary);
 
       // 调用 AI 模型（增加超时时间到120秒）
       const testResponse = await axios.post(
@@ -990,18 +999,55 @@ export class AIIdentifierService {
   /**
    * 构建 AI 分析提示词
    */
-  private buildAIAnalysisPrompt(elements: DocumentElement[], context?: string): string {
+  private buildAIAnalysisPrompt(
+    elements: DocumentElement[],
+    context?: string,
+    manualMarkings?: Record<string, string>,
+    markingSummary?: string
+  ): string {
     // 构建文档元素摘要（简化版）
     const elementSummary = elements.map((el, idx) => {
+      const marking = manualMarkings?.[idx.toString()];
+      const markingTag = marking ? ` [用户标记: ${marking}]` : '';
+
       if (el.type === 'table') {
-        return `${idx + 1}. [TABLE] ${el.headerRow || ''}, rows=${el.attributes?.rows || el.dataRows?.length || 0}`;
+        return `${idx + 1}. [TABLE] ${el.headerRow || ''}, rows=${el.attributes?.rows || el.dataRows?.length || 0}${markingTag}`;
       } else if (el.type === 'image') {
-        return `${idx + 1}. [IMAGE] id="${el.imageId}"`;
+        return `${idx + 1}. [IMAGE] id="${el.imageId}"${markingTag}`;
       } else {
         const text = (el.text || '').substring(0, 80);
-        return `${idx + 1}. [${el.type.toUpperCase()}] ${text}`;
+        return `${idx + 1}. [${el.type.toUpperCase()}] ${text}${markingTag}`;
       }
     }).join('\n');
+
+    // 如果有手动标记，使用更详细的提示词
+    if (manualMarkings && Object.keys(manualMarkings).length > 0) {
+      return `用户已经手动标记了以下元素：
+
+${markingSummary || ''}
+
+文档元素列表：
+${elementSummary}
+
+请根据用户的手动标记，配置具体的参数名称、类型等信息。
+
+规则：
+1. 用户标记为"param"的元素 → variableMappings，需要生成合适的变量名（如d.title、d.name）
+2. 用户标记为"loop"的元素 → tableLoops，需要生成循环路径（如d.steps）和列映射
+3. 用户标记为"static"的元素 → staticElements，保留不变
+
+返回JSON格式：
+{
+  "templateType": "类型",
+  "staticElements": [{"type": "heading", "content": "...", "reason": "..."}],
+  "tableLoops": [{"tableIndex": 0, "arrayPath": "d.steps", "reason": "...", "columnMappings": [...]}],
+  "combinedVariables": [{"stepNumber": N, "textContent": "...", "imageId": "...", "reason": "..."}],
+  "variableMappings": [{"path": "d.xxx", "content": "...", "type": "text", "reason": "..."}],
+  "analysisNotes": ["..."]
+}
+
+只返回JSON，不要解释。`;
+    }
 
     return `分析以下文档结构，返回JSON：
 

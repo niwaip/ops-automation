@@ -1427,3 +1427,124 @@ body {
     font-size: 12px;
     cursor: pointer;
 }
+
+/* Structure Node Mark Actions */
+.node-actions {
+    display: inline-flex;
+    gap: 4px;
+    margin-left: 8px;
+    opacity: 0;
+    transition: opacity 0.2s;
+}
+
+.structure-node:hover .node-actions {
+    opacity: 1;
+}
+
+.node-action-btn {
+    padding: 2px 6px;
+    font-size: 11px;
+    border-radius: 3px;
+    border: none;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-weight: 500;
+}
+
+.node-action-btn.btn-param {
+    background: #e6f7ff;
+    color: #1890ff;
+    border: 1px solid #91d5ff;
+}
+
+.node-action-btn.btn-param:hover {
+    background: #1890ff;
+    color: white;
+}
+
+.node-action-btn.btn-param.active {
+    background: #1890ff;
+    color: white;
+}
+
+.node-action-btn.btn-loop {
+    background: #fff7e6;
+    color: #fa8c16;
+    border: 1px solid #ffd591;
+}
+
+.node-action-btn.btn-loop:hover {
+    background: #fa8c16;
+    color: white;
+}
+
+.node-action-btn.btn-loop.active {
+    background: #fa8c16;
+    color: white;
+}
+
+.node-action-btn.btn-static {
+    background: #f6ffed;
+    color: #52c41a;
+    border: 1px solid #b7eb8f;
+}
+
+.node-action-btn.btn-static:hover {
+    background: #52c41a;
+    color: white;
+}
+
+.node-action-btn.btn-static.active {
+    background: #52c41a;
+    color: white;
+}
+
+/* Marked Nodes */
+.structure-node.marked-param {
+    background: #e6f7ff !important;
+    border-left: 3px solid #1890ff !important;
+}
+
+.structure-node.marked-loop {
+    background: #fff7e6 !important;
+    border-left: 3px solid #fa8c16 !important;
+}
+
+.structure-node.marked-static {
+    background: #f6ffed !important;
+    border-left: 3px solid #52c41a !important;
+}
+
+/* Structure Legend */
+.structure-legend {
+    display: flex;
+    gap: 16px;
+    padding: 8px 12px;
+    background: #fafafa;
+    border-bottom: 1px solid #e8e8e8;
+    font-size: 12px;
+}
+
+.legend-item {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.legend-color {
+    width: 12px;
+    height: 12px;
+    border-radius: 2px;
+}
+
+.legend-param {
+    background: #1890ff;
+}
+
+.legend-loop {
+    background: #fa8c16;
+}
+
+.legend-static {
+    background: #52c41a;
+}

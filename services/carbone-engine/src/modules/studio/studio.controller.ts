@@ -52,6 +52,8 @@ export class PreviewDto {
 export class AIIdentifyDto {
   templateId!: string;
   context?: string;
+  manualMarkings?: Record<string, string>;  // 用户手动标记：{ 元素索引: 'param'|'loop'|'static' }
+  markingSummary?: string;  // 标记摘要文本
 }
 
 export class SaveMarkingsDto {
@@ -543,7 +545,9 @@ export class StudioController {
         templatePath,
         meta.format,
         dto.context,
-        documentStructure
+        documentStructure,
+        dto.manualMarkings,
+        dto.markingSummary
       );
       return result;
     } catch (error: unknown) {

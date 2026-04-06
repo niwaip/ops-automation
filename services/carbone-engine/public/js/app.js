@@ -10,7 +10,7 @@
         templates: [],
         selectedTemplate: null,
         formatters: [],
-        manualMarkings: [],
+        manualMarkings: {},  // 改为对象，key是元素索引
         currentZoom: 1,
         documentElements: [],
         sourceXml: '',
@@ -75,6 +75,7 @@
         elements.showPreserve = document.getElementById('show-preserve');
         elements.showTables = document.getElementById('show-tables');
         elements.showParagraphs = document.getElementById('show-paragraphs');
+        elements.aiConfigBtn = document.getElementById('ai-config-btn');
         // AI Analysis elements
         elements.aiContextInput = document.getElementById('ai-context-input');
         elements.aiAnalyzeBtn = document.getElementById('ai-analyze-btn');
@@ -1691,6 +1692,11 @@
         elements.showTables.addEventListener('change', renderStructureTree);
         elements.showParagraphs.addEventListener('change', renderStructureTree);
 
+        // AI config button
+        if (elements.aiConfigBtn) {
+            elements.aiConfigBtn.addEventListener('click', handleAIConfig);
+        }
+
         // Modal
         document.querySelector('.modal-close').addEventListener('click', closeModal);
         document.querySelector('.modal-cancel')?.addEventListener('click', closeModal);
@@ -2032,14 +2038,34 @@
         if (state.xmlStructure.orderedElements && state.xmlStructure.orderedElements.length > 0) {
             state.xmlStructure.orderedElements.forEach((el, idx) => {
                 const preserveClass = el.hasPreserve && showPreserve ? 'preserve-node' : '';
+                const marking = state.manualMarkings?.[idx];
+                const markedClass = marking ? `marked-${marking}` : '';
+
+                // 生成操作按钮
+                const actionButtons = `
+                    <span class="node-actions">
+                        <button class="node-action-btn btn-param ${marking === 'param' ? 'active' : ''}"
+                                data-action="param" data-index="${idx}" title="标记为参数">
+                            <i class="fas fa-code"></i> 参数
+                        </button>
+                        <button class="node-action-btn btn-loop ${marking === 'loop' ? 'active' : ''}"
+                                data-action="loop" data-index="${idx}" title="标记为循环">
+                            <i class="fas fa-repeat"></i> 循环
+                        </button>
+                        <button class="node-action-btn btn-static ${marking === 'static' ? 'active' : ''}"
+                                data-action="static" data-index="${idx}" title="保留为静态">
+                            <i class="fas fa-lock"></i> 静态
+                        </button>
+                    </span>`;
 
                 if (el.type === 'table' && showTables) {
                     // 表格节点 - 默认展开显示内容
-                    html += `<div class="structure-node table-node ${preserveClass}" data-type="table" data-order-index="${el.orderIndex}">
+                    html += `<div class="structure-node table-node ${preserveClass} ${markedClass}" data-type="table" data-order-index="${el.orderIndex}">
                         <span class="node-toggle">▼</span>
                         <span class="node-tag">&lt;w:tbl&gt;</span>
                         <span class="node-attr">rows="${el.rows}"</span>
                         ${el.hasPreserve ? '<span class="node-preserve">preserve</span>' : ''}
+                        ${actionButtons}
                     </div>`;
 
                     // 表格子节点 - 默认展开
@@ -2078,42 +2104,47 @@
                     html += '</div>'; // node-children
                 } else if (el.type === 'paragraph' && showParagraphs) {
                     const text = el.text.substring(0, 80) + (el.text.length > 80 ? '...' : '');
-                    html += `<div class="structure-node paragraph-node ${preserveClass}" data-type="paragraph" data-order-index="${el.orderIndex}">
+                    html += `<div class="structure-node paragraph-node ${preserveClass} ${markedClass}" data-type="paragraph" data-order-index="${el.orderIndex}">
                         <span class="node-tag">&lt;w:p&gt;</span>
                         ${el.hasPreserve ? '<span class="node-preserve">preserve</span>' : ''}
                         <span class="node-text">${escapeHtml(text)}</span>
+                        ${actionButtons}
                     </div>`;
                 } else if (el.type === 'image') {
                     // 图片节点
                     const sizeInfo = el.attributes?.widthPx ? `${el.attributes.widthPx}×${el.attributes.heightPx}px` : '';
-                    html += `<div class="structure-node image-node ${preserveClass}" data-type="image" data-order-index="${el.orderIndex}" data-image-id="${el.imageId || ''}">
+                    html += `<div class="structure-node image-node ${preserveClass} ${markedClass}" data-type="image" data-order-index="${el.orderIndex}" data-image-id="${el.imageId || ''}">
                         <span class="node-label">🖼️ 图片</span>
                         ${el.imageId ? `<span class="node-attr">id="${el.imageId}"</span>` : ''}
                         ${sizeInfo ? `<span class="node-attr">${sizeInfo}</span>` : ''}
                         <span class="node-text">${escapeHtml(el.altText || el.text || '')}</span>
+                        ${actionButtons}
                     </div>`;
                 } else if (el.type === 'list') {
                     // 列表节点
                     const text = el.text.substring(0, 80) + (el.text.length > 80 ? '...' : '');
-                    html += `<div class="structure-node list-node ${preserveClass}" data-type="list" data-order-index="${el.orderIndex}">
+                    html += `<div class="structure-node list-node ${preserveClass} ${markedClass}" data-type="list" data-order-index="${el.orderIndex}">
                         <span class="node-label">📝 列表项</span>
                         ${el.hasPreserve ? '<span class="node-preserve">preserve</span>' : ''}
                         <span class="node-text">${escapeHtml(text)}</span>
+                        ${actionButtons}
                     </div>`;
                 } else if (el.type === 'heading1' || el.type === 'heading2' || el.type === 'heading3') {
                     // 标题节点
                     const level = el.type.replace('heading', '');
                     const text = el.text.substring(0, 80) + (el.text.length > 80 ? '...' : '');
-                    html += `<div class="structure-node heading-node ${preserveClass}" data-type="${el.type}" data-order-index="${el.orderIndex}">
+                    html += `<div class="structure-node heading-node ${preserveClass} ${markedClass}" data-type="${el.type}" data-order-index="${el.orderIndex}">
                         <span class="node-label">📌 H${level}</span>
                         <span class="node-text">${escapeHtml(text)}</span>
+                        ${actionButtons}
                     </div>`;
                 } else if (el.type === 'title') {
                     // 标题节点
                     const text = el.text.substring(0, 80) + (el.text.length > 80 ? '...' : '');
-                    html += `<div class="structure-node title-node ${preserveClass}" data-type="title" data-order-index="${el.orderIndex}">
+                    html += `<div class="structure-node title-node ${preserveClass} ${markedClass}" data-type="title" data-order-index="${el.orderIndex}">
                         <span class="node-label">🏷️ 标题</span>
                         <span class="node-text">${escapeHtml(text)}</span>
+                        ${actionButtons}
                     </div>`;
                 }
             });
@@ -2129,6 +2160,27 @@
         html += '</div></div></div>';
 
         elements.structureTree.innerHTML = html;
+
+        // Add click handlers for action buttons
+        elements.structureTree.querySelectorAll('.node-action-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const action = btn.dataset.action;
+                const index = parseInt(btn.dataset.index);
+
+                // Toggle marking
+                if (!state.manualMarkings) state.manualMarkings = {};
+
+                if (state.manualMarkings[index] === action) {
+                    delete state.manualMarkings[index];
+                } else {
+                    state.manualMarkings[index] = action;
+                }
+
+                // Re-render structure tree
+                renderStructureTree();
+            });
+        });
 
         // Add click handlers for structure nodes
         elements.structureTree.querySelectorAll('.structure-node[data-order-index]').forEach(node => {
@@ -2179,6 +2231,144 @@
             // Use the first element if no exact match
             showToast(`Selected ${type} at position ${xmlIndex}`, 'info');
         }
+    }
+
+    /**
+     * Handle AI configuration based on manual markings
+     * 根据手动标记调用AI配置参数名称、类型等信息
+     */
+    async function handleAIConfig() {
+        if (!state.selectedTemplate) {
+            showToast('请先选择模板', 'warning');
+            return;
+        }
+
+        // 检查是否有手动标记
+        const markings = state.manualMarkings;
+        const markingCount = Object.keys(markings).length;
+
+        if (markingCount === 0) {
+            showToast('请先在结构视图中标记元素（参数/循环/静态）', 'warning');
+            return;
+        }
+
+        // 构建标记摘要
+        const markingSummary = Object.entries(markings).map(([idx, type]) => {
+            const el = state.xmlStructure?.orderedElements?.[idx];
+            if (!el) return null;
+
+            let content = '';
+            if (el.type === 'table') {
+                content = `表格: ${el.headerRow || ''}, rows=${el.rows}`;
+            } else {
+                content = el.text?.substring(0, 50) || '';
+            }
+
+            return `- 索引${idx}: [${type}] ${content}`;
+        }).filter(Boolean).join('\n');
+
+        // 调用AI分析API，传入手动标记
+        try {
+            elements.aiConfigBtn.disabled = true;
+            elements.aiConfigBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> AI配置中...';
+
+            const response = await apiRequest(`/templates/${state.selectedTemplate.id}/ai-identify`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    context: '根据用户手动标记配置参数',
+                    manualMarkings: markings,
+                    markingSummary: markingSummary
+                })
+            });
+
+            // 显示AI配置结果
+            displayAIConfigResult(response);
+
+            showToast('AI配置完成', 'success');
+        } catch (error) {
+            console.error('AI config failed:', error);
+            showToast('AI配置失败: ' + error.message, 'error');
+        } finally {
+            elements.aiConfigBtn.disabled = false;
+            elements.aiConfigBtn.innerHTML = '<i class="fas fa-magic"></i> AI 配置参数';
+        }
+    }
+
+    /**
+     * Display AI configuration result
+     * 显示AI配置结果
+     */
+    function displayAIConfigResult(response) {
+        const config = response.templateConfig || {};
+
+        let html = '<div class="ai-config-result">';
+
+        // 显示模版类型
+        if (config.templateType) {
+            html += `<div class="config-section">
+                <h4><i class="fas fa-file-alt"></i> 模版类型: ${config.templateType}</h4>
+            </div>`;
+        }
+
+        // 显示静态元素
+        if (config.staticElements && config.staticElements.length > 0) {
+            html += `<div class="config-section">
+                <h4><i class="fas fa-lock"></i> 静态元素 (${config.staticElements.length})</h4>
+                <ul>`;
+            config.staticElements.forEach(el => {
+                html += `<li><code>${el.content || ''}</code> - ${el.reason || ''}</li>`;
+            });
+            html += '</ul></div>';
+        }
+
+        // 显示循环配置
+        if (config.tableLoops && config.tableLoops.length > 0) {
+            html += `<div class="config-section">
+                <h4><i class="fas fa-repeat"></i> 循环表格 (${config.tableLoops.length})</h4>
+                <ul>`;
+            config.tableLoops.forEach(loop => {
+                html += `<li>
+                    <code>${loop.arrayPath}</code> - ${loop.reason}
+                    <br><small>列映射: ${loop.columnMappings?.map(c => c.headerName + '→' + c.variablePath).join(', ')}</small>
+                </li>`;
+            });
+            html += '</ul></div>';
+        }
+
+        // 显示组合变量
+        if (config.combinedVariables && config.combinedVariables.length > 0) {
+            html += `<div class="config-section">
+                <h4><i class="fas fa-images"></i> 组合变量 (${config.combinedVariables.length})</h4>
+                <ul>`;
+            config.combinedVariables.forEach(cv => {
+                html += `<li>
+                    <code>${cv.imagePath}</code> - Step ${cv.stepNumber}
+                    <br><small>${cv.reason}</small>
+                </li>`;
+            });
+            html += '</ul></div>';
+        }
+
+        // 显示变量映射
+        if (config.variableMappings && config.variableMappings.length > 0) {
+            html += `<div class="config-section">
+                <h4><i class="fas fa-code"></i> 变量映射 (${config.variableMappings.length})</h4>
+                <ul>`;
+            config.variableMappings.forEach(vm => {
+                html += `<li>
+                    <code>${vm.path}</code> (${vm.type})
+                    <br><small>${vm.reason}</small>
+                </li>`;
+            });
+            html += '</ul></div>';
+        }
+
+        html += '</div>';
+
+        // 显示结果
+        elements.aiAnalysisResult.style.display = 'block';
+        elements.aiResultContent.innerHTML = html;
     }
 
     function initResizeHandle() {
