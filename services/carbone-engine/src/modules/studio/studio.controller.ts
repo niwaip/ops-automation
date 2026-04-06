@@ -853,14 +853,20 @@ export class StudioController {
       sendProgress('ai_call', 50, 'AI验证报告已生成');
 
       // 步骤3: 生成示例数据
-      sendProgress('generate_data', 55, '生成示例数据...');
+      sendProgress('generate_data', 55, '根据模版配置生成示例数据...');
       const templateBuffer = fs.readFileSync(templatePath);
       const templateInfo = await this.engine.parseTemplateBuffer(templateBuffer, meta.fileName);
 
-      // 使用AI生成的数据或自动生成示例数据
+      // 使用模版配置生成真实内容
       let sampleData = parsedTestData;
       if (!parsedTestData || Object.keys(parsedTestData).length === 0) {
-        sampleData = this.engine.generateSampleData(templateInfo, 5);
+        // 优先使用模版配置生成数据
+        if (config && Object.keys(config).length > 0) {
+          sampleData = this.engine.generateSampleDataFromConfig(config, config.tableLoops?.[0]?.dataRowCount || 5);
+        } else {
+          // 否则使用模板变量生成
+          sampleData = this.engine.generateSampleData(templateInfo, 5);
+        }
       }
 
       sendProgress('generate_data', 65, '示例数据已生成');
@@ -986,14 +992,20 @@ export class StudioController {
       sendProgress('ai_call', 50, 'AI验证报告已生成');
 
       // 步骤3: 生成示例数据
-      sendProgress('generate_data', 55, '生成示例数据...');
+      sendProgress('generate_data', 55, '根据模版配置生成示例数据...');
       const templateBuffer = fs.readFileSync(templatePath);
       const templateInfo = await this.engine.parseTemplateBuffer(templateBuffer, meta.fileName);
 
-      // 使用AI生成的数据或自动生成示例数据
+      // 使用模版配置生成真实内容
       let sampleData = parsedTestData;
       if (!parsedTestData || Object.keys(parsedTestData).length === 0) {
-        sampleData = this.engine.generateSampleData(templateInfo, 5);
+        // 优先使用模版配置生成数据
+        if (config && Object.keys(config).length > 0) {
+          sampleData = this.engine.generateSampleDataFromConfig(config, config.tableLoops?.[0]?.dataRowCount || 5);
+        } else {
+          // 否则使用模板变量生成
+          sampleData = this.engine.generateSampleData(templateInfo, 5);
+        }
       }
 
       sendProgress('generate_data', 65, '示例数据已生成');

@@ -64,6 +64,8 @@
         // AI Generate Result
         elements.aiGenerateResultSection = document.getElementById('ai-generate-result-section');
         elements.aiGenerateResult = document.getElementById('ai-generate-result');
+        elements.aiResultHeaderIcon = document.getElementById('ai-result-header-icon');
+        elements.aiResultHeaderText = document.getElementById('ai-result-header-text');
         elements.aiProgress = document.getElementById('ai-progress');
         elements.progressFill = document.getElementById('progress-fill');
         elements.progressText = document.getElementById('progress-text');
@@ -93,9 +95,8 @@
         elements.stepGenerateStatus = document.getElementById('step-generate-status');
         elements.stepVerifyStatus = document.getElementById('step-verify-status');
         elements.stepFinetuneStatus = document.getElementById('step-finetune-status');
-        // AI Verify button and result
+        // AI Verify button
         elements.aiVerifyBtn = document.getElementById('ai-verify-btn');
-        elements.aiVerifyResult = document.getElementById('ai-verify-result');
         // Status display
         elements.statusText = document.getElementById('status-text');
         // Execution progress
@@ -1181,6 +1182,14 @@
         // 显示进度条
         if (elements.aiGenerateResultSection) {
             elements.aiGenerateResultSection.style.display = 'block';
+            elements.aiGenerateResultSection.classList.add('expanded');
+        }
+        // 更新标题为AI结果报告
+        if (elements.aiResultHeaderIcon) {
+            elements.aiResultHeaderIcon.innerHTML = '<i class="fas fa-cogs"></i>';
+        }
+        if (elements.aiResultHeaderText) {
+            elements.aiResultHeaderText.textContent = 'AI 结果报告';
         }
         if (elements.aiProgress) {
             elements.aiProgress.style.display = 'block';
@@ -1341,16 +1350,18 @@
             elements.aiGenerateResultSection.style.display = 'block';
             elements.aiGenerateResultSection.classList.add('expanded');
         }
+        // 更新标题为验证结果
+        if (elements.aiResultHeaderIcon) {
+            elements.aiResultHeaderIcon.innerHTML = '<i class="fas fa-check-double"></i>';
+        }
+        if (elements.aiResultHeaderText) {
+            elements.aiResultHeaderText.textContent = '验证结果';
+        }
         if (elements.aiProgress) {
             elements.aiProgress.style.display = 'block';
         }
         if (elements.aiGenerateResult) {
             elements.aiGenerateResult.innerHTML = '<div style="color: #1890ff;"><i class="fas fa-spinner fa-spin"></i> 正在连接AI服务...</div>';
-        }
-
-        // 隐藏之前的验证结果
-        if (elements.aiVerifyResult) {
-            elements.aiVerifyResult.style.display = 'none';
         }
 
         try {
@@ -1421,47 +1432,29 @@
                                     elements.aiProgress.style.display = 'none';
                                 }
 
-                                // 在AI验证模版步骤下方显示结果
-                                if (elements.aiVerifyResult) {
-                                    let resultHtml = '<div class="result-header"><i class="fas fa-check-circle" style="color: #52c41a;"></i> 验证完成</div>';
-
-                                    // 显示验证报告摘要
-                                    if (verifyResult.report) {
-                                        resultHtml += '<div style="margin-bottom: 10px;">' + marked.parse(verifyResult.report.substring(0, 300) + (verifyResult.report.length > 300 ? '...' : '')) + '</div>';
-                                    }
-
-                                    // 显示操作按钮
-                                    resultHtml += '<div class="result-actions">';
-                                    if (verifyResult.previewUrl) {
-                                        resultHtml += '<button id="verify-preview-btn" class="btn btn-primary btn-sm"><i class="fas fa-eye"></i> PDF预览</button>';
-                                    }
-                                    if (verifyResult.downloadUrl) {
-                                        resultHtml += '<button id="verify-download-btn" class="btn btn-outline btn-sm"><i class="fas fa-download"></i> 下载文档</button>';
-                                    }
-                                    resultHtml += '</div>';
-
-                                    elements.aiVerifyResult.innerHTML = resultHtml;
-                                    elements.aiVerifyResult.style.display = 'block';
-
-                                    // 绑定按钮事件
-                                    const previewBtn = document.getElementById('verify-preview-btn');
-                                    if (previewBtn) {
-                                        previewBtn.addEventListener('click', () => openPdfPreviewPopup(verifyResult.previewUrl));
-                                    }
-                                    const downloadBtn = document.getElementById('verify-download-btn');
-                                    if (downloadBtn) {
-                                        downloadBtn.addEventListener('click', () => downloadRenderedDocument(verifyResult.downloadUrl));
-                                    }
+                                // 只在右侧栏显示结果（可折叠）
+                                if (elements.aiGenerateResultSection) {
+                                    elements.aiGenerateResultSection.style.display = 'block';
+                                    elements.aiGenerateResultSection.classList.add('expanded');
                                 }
 
-                                // 同时更新AI结果报告区域（可展开收缩）
                                 if (elements.aiGenerateResult) {
-                                    let fullResultHtml = '<h3 style="margin-bottom: 12px; color: #52c41a;"><i class="fas fa-check-circle"></i> 验证完成</h3>';
-                                    fullResultHtml += '<div style="background: #f6ffed; border: 1px solid #b7eb8f; border-radius: 4px; padding: 12px; margin-bottom: 15px;">';
-                                    fullResultHtml += marked.parse(verifyResult.report || '验证完成');
+                                    // 显示验证完成标题
+                                    let fullResultHtml = '<div style="background: #f6ffed; border: 1px solid #b7eb8f; border-radius: 4px; padding: 12px; margin-bottom: 15px;">';
+                                    fullResultHtml += '<div style="display: flex; align-items: center; gap: 8px; margin-bottom: 10px;">';
+                                    fullResultHtml += '<i class="fas fa-check-circle" style="color: #52c41a;"></i>';
+                                    fullResultHtml += '<strong style="color: #52c41a;">验证完成</strong>';
                                     fullResultHtml += '</div>';
 
-                                    // 显示生成的示例数据
+                                    // 显示验证报告
+                                    if (verifyResult.report) {
+                                        fullResultHtml += '<div style="max-height: 300px; overflow-y: auto;">';
+                                        fullResultHtml += marked.parse(verifyResult.report);
+                                        fullResultHtml += '</div>';
+                                    }
+                                    fullResultHtml += '</div>';
+
+                                    // 显示生成的示例数据（可折叠）
                                     if (verifyResult.sampleData) {
                                         fullResultHtml += '<details style="margin-bottom: 15px;"><summary style="cursor: pointer; font-weight: 500;"><i class="fas fa-database"></i> 生成的示例数据</summary>';
                                         fullResultHtml += '<div style="background: #f5f5f5; padding: 10px; border-radius: 4px; font-size: 11px; max-height: 200px; overflow-y: auto;">';
@@ -1469,44 +1462,26 @@
                                         fullResultHtml += '</div></details>';
                                     }
 
-                                    // 显示链接信息
-                                    if (verifyResult.previewUrl || verifyResult.downloadUrl) {
-                                        fullResultHtml += '<div style="background: #e6f7ff; padding: 10px; border-radius: 4px; margin-bottom: 15px; font-size: 12px;">';
-                                        if (verifyResult.previewUrl) {
-                                            fullResultHtml += '<div style="margin-bottom: 5px;"><i class="fas fa-link"></i> <strong>预览链接:</strong> <a href="' + verifyResult.previewUrl + '" target="_blank">' + verifyResult.previewUrl + '</a></div>';
-                                        }
-                                        if (verifyResult.downloadUrl) {
-                                            fullResultHtml += '<div><i class="fas fa-download"></i> <strong>下载链接:</strong> <a href="' + verifyResult.downloadUrl + '">' + verifyResult.downloadUrl + '</a></div>';
-                                        }
-                                        fullResultHtml += '</div>';
+                                    // 显示操作按钮
+                                    fullResultHtml += '<div style="margin-top: 15px; display: flex; gap: 8px;">';
+                                    if (verifyResult.previewUrl) {
+                                        fullResultHtml += '<button id="verify-pdf-btn" class="btn btn-primary btn-sm"><i class="fas fa-file-pdf"></i> PDF预览</button>';
                                     }
-
-                                    fullResultHtml += '<hr style="margin: 15px 0; border-top: 1px solid #eee;">';
-                                    fullResultHtml += '<div style="margin-top: 10px;">';
-                                    fullResultHtml += '<button id="preview-template-btn" class="btn btn-primary btn-sm" style="margin-right: 8px;">';
-                                    fullResultHtml += '<i class="fas fa-eye"></i> 预览模版';
-                                    fullResultHtml += '</button>';
-                                    fullResultHtml += '<button id="preview-pdf-btn" class="btn btn-outline btn-sm" style="margin-right: 8px;">';
-                                    fullResultHtml += '<i class="fas fa-file-pdf"></i> PDF预览';
-                                    fullResultHtml += '</button>';
-                                    fullResultHtml += '<button id="preview-render-btn" class="btn btn-outline btn-sm">';
-                                    fullResultHtml += '<i class="fas fa-file-alt"></i> 下载示例文档';
-                                    fullResultHtml += '</button>';
+                                    if (verifyResult.downloadUrl) {
+                                        fullResultHtml += '<button id="verify-download-btn" class="btn btn-outline btn-sm"><i class="fas fa-download"></i> 下载文档</button>';
+                                    }
                                     fullResultHtml += '</div>';
+
                                     elements.aiGenerateResult.innerHTML = fullResultHtml;
 
-                                    // 绑定预览按钮事件
-                                    const previewBtn = document.getElementById('preview-template-btn');
-                                    if (previewBtn) {
-                                        previewBtn.addEventListener('click', previewTemplateHtml);
-                                    }
-                                    const pdfBtn = document.getElementById('preview-pdf-btn');
+                                    // 绑定按钮事件
+                                    const pdfBtn = document.getElementById('verify-pdf-btn');
                                     if (pdfBtn) {
                                         pdfBtn.addEventListener('click', () => openPdfPreviewPopup(verifyResult.previewUrl));
                                     }
-                                    const renderBtn = document.getElementById('preview-render-btn');
-                                    if (renderBtn) {
-                                        renderBtn.addEventListener('click', () => downloadRenderedDocument(verifyResult.downloadUrl));
+                                    const downloadBtn = document.getElementById('verify-download-btn');
+                                    if (downloadBtn) {
+                                        downloadBtn.addEventListener('click', () => downloadRenderedDocument(verifyResult.downloadUrl));
                                     }
                                 }
 
@@ -1530,12 +1505,13 @@
             if (elements.aiProgress) {
                 elements.aiProgress.style.display = 'none';
             }
-            if (elements.aiGenerateResult) {
-                elements.aiGenerateResult.innerHTML = `<div style="color: #ff4d4f;"><i class="fas fa-times-circle"></i> 验证失败: ${error.message}</div>`;
+            // 只在右侧栏显示错误
+            if (elements.aiGenerateResultSection) {
+                elements.aiGenerateResultSection.style.display = 'block';
+                elements.aiGenerateResultSection.classList.add('expanded');
             }
-            if (elements.aiVerifyResult) {
-                elements.aiVerifyResult.innerHTML = `<div style="color: #ff4d4f;"><i class="fas fa-times-circle"></i> 验证失败: ${error.message}</div>`;
-                elements.aiVerifyResult.style.display = 'block';
+            if (elements.aiGenerateResult) {
+                elements.aiGenerateResult.innerHTML = `<div style="color: #ff4d4f; background: #fff2f0; border: 1px solid #ffccc7; border-radius: 4px; padding: 12px;"><i class="fas fa-times-circle"></i> 验证失败: ${error.message}</div>`;
             }
             showToast('验证失败: ' + error.message, 'error');
         } finally {

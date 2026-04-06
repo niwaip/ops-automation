@@ -105,8 +105,7 @@
                                     <i class="fas fa-check-double"></i> 验证模版
                                 </button>
                             </div>
-                            <!-- AI验证结果区域 -->
-                            <div id="ai-verify-result" class="verify-result" style="display: none; margin-top: 10px; padding: 10px; background: #f6ffed; border: 1px solid #b7eb8f; border-radius: 4px; font-size: 12px;"></div>
+                            <!-- AI验证结果已移至右侧栏显示 -->
                         </div>
 
                         <!-- Step 5: 人工微调 -->
@@ -289,11 +288,12 @@
                                 </div>
                             </div>
 
-                            <!-- AI Generate Result - 可展开收缩的报告区域 -->
+                            <!-- AI Result Section - 可展开收缩的报告区域 -->
                             <div class="editor-section collapsible-section" id="ai-generate-result-section" style="display: none;">
                                 <h4 class="collapsible-header" onclick="toggleCollapsible(this)">
                                     <i class="fas fa-chevron-right collapse-icon"></i>
-                                    <i class="fas fa-check-circle"></i> AI 结果报告
+                                    <span id="ai-result-header-icon"><i class="fas fa-cogs"></i></span>
+                                    <span id="ai-result-header-text">AI 结果报告</span>
                                 </h4>
                                 <div class="collapsible-content">
                                     <!-- Progress indicator -->
