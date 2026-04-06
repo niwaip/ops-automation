@@ -59,8 +59,10 @@ export class AIIdentifyDto {
 export class SaveMarkingsDto {
   templateId!: string;
   markings!: Array<{
-    path: string;
-    text: string;
+    index?: number;      // 元素索引
+    type?: string;       // 标记类型：param|loop|static
+    path?: string;       // 变量路径（可选）
+    text?: string;       // 文本内容（可选）
     formatters?: string[];
   }>;
 }

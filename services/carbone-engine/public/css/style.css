@@ -1499,6 +1499,23 @@ body {
     color: white;
 }
 
+.node-action-btn.btn-clear {
+    background: #fff1f0;
+    color: #ff4d4f;
+    border: 1px solid #ffa39e;
+    padding: 2px 4px;
+}
+
+.node-action-btn.btn-clear:hover {
+    background: #ff4d4f;
+    color: white;
+}
+
+/* Default static style (未标记的元素) */
+.structure-node.default-static {
+    opacity: 0.85;
+}
+
 /* Marked Nodes */
 .structure-node.marked-param {
     background: #e6f7ff !important;
@@ -1513,6 +1530,72 @@ body {
 .structure-node.marked-static {
     background: #f6ffed !important;
     border-left: 3px solid #52c41a !important;
+}
+
+/* Multi-selection checkbox */
+.node-checkbox {
+    margin-right: 8px;
+    cursor: pointer;
+    width: 14px;
+    height: 14px;
+}
+
+.structure-node.selected-for-multi {
+    background: #f0f5ff !important;
+    border: 1px solid #1890ff !important;
+}
+
+.structure-node.in-group {
+    border-left: 4px solid #722ed1 !important;
+}
+
+/* Group tag icon */
+.group-tag {
+    background: #f9f0ff;
+    color: #722ed1;
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-size: 10px;
+    margin-right: 4px;
+}
+
+/* Multi-select bar */
+.multi-select-bar {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 8px 12px;
+    background: #f0f5ff;
+    border: 1px solid #1890ff;
+    border-radius: 4px;
+    margin-bottom: 8px;
+}
+
+.multi-select-bar .selected-info {
+    color: #1890ff;
+    font-weight: 500;
+}
+
+/* Element group bar */
+.element-group-bar {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 8px 12px;
+    background: #f9f0ff;
+    border: 1px solid #722ed1;
+    border-radius: 4px;
+    margin-bottom: 8px;
+}
+
+.element-group-bar .group-label {
+    color: #722ed1;
+    font-weight: 500;
+}
+
+.element-group-bar .group-info {
+    color: #666;
+    font-size: 12px;
 }
 
 /* Structure Legend */
@@ -1547,4 +1630,29 @@ body {
 
 .legend-static {
     background: #52c41a;
+}
+
+/* Marking Summary */
+.marking-summary {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 12px;
+    background: #e6f7ff;
+    border-top: 1px solid #91d5ff;
+    margin-top: 12px;
+    border-radius: 0 0 4px 4px;
+}
+
+.marking-summary span {
+    font-size: 12px;
+    color: #1890ff;
+    font-weight: 500;
+}
+
+/* Node Actions Always Visible for Marked Nodes */
+.structure-node.marked-param .node-actions,
+.structure-node.marked-loop .node-actions,
+.structure-node.marked-static .node-actions {
+    opacity: 1;
 }

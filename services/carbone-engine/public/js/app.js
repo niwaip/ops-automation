@@ -16,7 +16,9 @@
         sourceXml: '',
         currentTab: 'preview',
         currentSourceView: 'structure',  // 默认显示结构化视图
-        xmlStructure: null
+        xmlStructure: null,
+        selectedElementIndices: [],  // 多选元素索引列表
+        elementGroups: {}  // 元素分组：{ groupId: [index1, index2, ...] }
     };
 
     // DOM Elements
@@ -219,6 +221,7 @@
         state.xmlStructure = null; // Clear cached structure
         state.currentTab = 'preview'; // Reset to preview tab
         state.currentSourceView = 'structure'; // 默认结构化视图
+        state.manualMarkings = {}; // 清空手动标记
         renderTemplateList();
 
         elements.noTemplate.style.display = 'none';
@@ -263,6 +266,9 @@
 
         // Load document preview
         loadDocumentPreview(template);
+
+        // 加载已保存的标记
+        loadSavedMarkings();
 
         // Load saved markings
         loadMarkings(template.id);
@@ -2034,38 +2040,99 @@
 
         html += '<div class="node-children expanded">';
 
+        // 统计标记数量
+        const markingCount = state.manualMarkings ? Object.keys(state.manualMarkings).length : 0;
+
+        // 多选操作栏
+        const selectedCount = state.selectedElementIndices.length;
+        if (selectedCount > 0) {
+            html += `<div class="multi-select-bar">
+                <span class="selected-info">已选中 ${selectedCount} 个元素</span>
+                <button class="btn btn-primary btn-sm" id="merge-selected-btn" title="将选中元素合并为一个循环项">
+                    <i class="fas fa-layer-group"></i> 合并为循环项
+                </button>
+                <button class="btn btn-outline btn-sm" id="clear-selection-btn" title="取消选择">
+                    <i class="fas fa-times"></i> 取消选择
+                </button>
+            </div>`;
+        }
+
+        // 显示已有分组
+        const groups = state.elementGroups || {};
+        Object.entries(groups).forEach(([groupId, indices]) => {
+            if (indices && indices.length > 0) {
+                const indicesStr = indices.join(',');
+                html += `<div class="element-group-bar" data-group="${groupId}">
+                    <span class="group-label"><i class="fas fa-layer-group"></i> 分组 #${groupId.substring(0, 4)}</span>
+                    <span class="group-info">包含 ${indices.length} 个元素 (索引: ${indicesStr})</span>
+                    <button class="btn btn-outline btn-sm btn-remove-group" data-group="${groupId}" title="解散分组">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>`;
+            }
+        });
+
         // 按文档顺序渲染所有元素
         if (state.xmlStructure.orderedElements && state.xmlStructure.orderedElements.length > 0) {
             state.xmlStructure.orderedElements.forEach((el, idx) => {
                 const preserveClass = el.hasPreserve && showPreserve ? 'preserve-node' : '';
                 const marking = state.manualMarkings?.[idx];
+                // 默认是静态，只有明确标记才显示
                 const markedClass = marking ? `marked-${marking}` : '';
+                const defaultMark = !marking ? 'default-static' : '';
+                const isSelected = state.selectedElementIndices.includes(idx);
+                const selectedClass = isSelected ? 'selected-for-multi' : '';
 
-                // 生成操作按钮
-                const actionButtons = `
+                // 检查是否在分组中
+                const inGroup = Object.entries(groups).find(([gId, indices]) => indices.includes(idx));
+                const groupClass = inGroup ? 'in-group' : '';
+                const groupInfo = inGroup ? `<span class="group-tag" title="分组 ${inGroup[0].substring(0, 4)}"><i class="fas fa-layer-group"></i></span>` : '';
+
+                // 多选复选框
+                const checkboxHtml = `<input type="checkbox" class="node-checkbox" data-index="${idx}" ${isSelected ? 'checked' : ''} title="按住Ctrl多选">`;
+
+                // 生成开关按钮（一个按钮切换状态）
+                // 状态循环：未设置(默认静态) → 参数 → 循环 → 静态 → 未设置
+                let statusLabel = '静态'; // 默认
+                let statusIcon = 'fa-lock';
+                let statusClass = 'btn-static';
+
+                if (marking === 'param') {
+                    statusLabel = '参数';
+                    statusIcon = 'fa-code';
+                    statusClass = 'btn-param';
+                } else if (marking === 'loop') {
+                    statusLabel = '循环';
+                    statusIcon = 'fa-repeat';
+                    statusClass = 'btn-loop';
+                } else if (marking === 'static') {
+                    statusLabel = '静态';
+                    statusIcon = 'fa-lock';
+                    statusClass = 'btn-static';
+                }
+
+                const toggleButton = `
                     <span class="node-actions">
-                        <button class="node-action-btn btn-param ${marking === 'param' ? 'active' : ''}"
-                                data-action="param" data-index="${idx}" title="标记为参数">
-                            <i class="fas fa-code"></i> 参数
+                        <button class="node-action-btn ${statusClass} ${marking ? 'active' : ''}"
+                                data-action="toggle" data-index="${idx}" title="点击切换：静态→参数→循环→静态">
+                            <i class="fas ${statusIcon}"></i> ${statusLabel}
                         </button>
-                        <button class="node-action-btn btn-loop ${marking === 'loop' ? 'active' : ''}"
-                                data-action="loop" data-index="${idx}" title="标记为循环">
-                            <i class="fas fa-repeat"></i> 循环
-                        </button>
-                        <button class="node-action-btn btn-static ${marking === 'static' ? 'active' : ''}"
-                                data-action="static" data-index="${idx}" title="保留为静态">
-                            <i class="fas fa-lock"></i> 静态
-                        </button>
+                        ${marking ? `<button class="node-action-btn btn-clear"
+                                data-action="clear" data-index="${idx}" title="清除标记">
+                            <i class="fas fa-times"></i>
+                        </button>` : ''}
                     </span>`;
 
                 if (el.type === 'table' && showTables) {
                     // 表格节点 - 默认展开显示内容
-                    html += `<div class="structure-node table-node ${preserveClass} ${markedClass}" data-type="table" data-order-index="${el.orderIndex}">
+                    html += `<div class="structure-node table-node ${preserveClass} ${markedClass} ${defaultMark} ${selectedClass} ${groupClass}" data-type="table" data-order-index="${el.orderIndex}">
+                        ${checkboxHtml}
+                        ${groupInfo}
                         <span class="node-toggle">▼</span>
                         <span class="node-tag">&lt;w:tbl&gt;</span>
                         <span class="node-attr">rows="${el.rows}"</span>
                         ${el.hasPreserve ? '<span class="node-preserve">preserve</span>' : ''}
-                        ${actionButtons}
+                        ${toggleButton}
                     </div>`;
 
                     // 表格子节点 - 默认展开
@@ -2104,47 +2171,57 @@
                     html += '</div>'; // node-children
                 } else if (el.type === 'paragraph' && showParagraphs) {
                     const text = el.text.substring(0, 80) + (el.text.length > 80 ? '...' : '');
-                    html += `<div class="structure-node paragraph-node ${preserveClass} ${markedClass}" data-type="paragraph" data-order-index="${el.orderIndex}">
+                    html += `<div class="structure-node paragraph-node ${preserveClass} ${markedClass} ${defaultMark} ${selectedClass} ${groupClass}" data-type="paragraph" data-order-index="${el.orderIndex}">
+                        ${checkboxHtml}
+                        ${groupInfo}
                         <span class="node-tag">&lt;w:p&gt;</span>
                         ${el.hasPreserve ? '<span class="node-preserve">preserve</span>' : ''}
                         <span class="node-text">${escapeHtml(text)}</span>
-                        ${actionButtons}
+                        ${toggleButton}
                     </div>`;
                 } else if (el.type === 'image') {
                     // 图片节点
                     const sizeInfo = el.attributes?.widthPx ? `${el.attributes.widthPx}×${el.attributes.heightPx}px` : '';
-                    html += `<div class="structure-node image-node ${preserveClass} ${markedClass}" data-type="image" data-order-index="${el.orderIndex}" data-image-id="${el.imageId || ''}">
+                    html += `<div class="structure-node image-node ${preserveClass} ${markedClass} ${defaultMark} ${selectedClass} ${groupClass}" data-type="image" data-order-index="${el.orderIndex}" data-image-id="${el.imageId || ''}">
+                        ${checkboxHtml}
+                        ${groupInfo}
                         <span class="node-label">🖼️ 图片</span>
                         ${el.imageId ? `<span class="node-attr">id="${el.imageId}"</span>` : ''}
                         ${sizeInfo ? `<span class="node-attr">${sizeInfo}</span>` : ''}
                         <span class="node-text">${escapeHtml(el.altText || el.text || '')}</span>
-                        ${actionButtons}
+                        ${toggleButton}
                     </div>`;
                 } else if (el.type === 'list') {
                     // 列表节点
                     const text = el.text.substring(0, 80) + (el.text.length > 80 ? '...' : '');
-                    html += `<div class="structure-node list-node ${preserveClass} ${markedClass}" data-type="list" data-order-index="${el.orderIndex}">
+                    html += `<div class="structure-node list-node ${preserveClass} ${markedClass} ${defaultMark} ${selectedClass} ${groupClass}" data-type="list" data-order-index="${el.orderIndex}">
+                        ${checkboxHtml}
+                        ${groupInfo}
                         <span class="node-label">📝 列表项</span>
                         ${el.hasPreserve ? '<span class="node-preserve">preserve</span>' : ''}
                         <span class="node-text">${escapeHtml(text)}</span>
-                        ${actionButtons}
+                        ${toggleButton}
                     </div>`;
                 } else if (el.type === 'heading1' || el.type === 'heading2' || el.type === 'heading3') {
                     // 标题节点
                     const level = el.type.replace('heading', '');
                     const text = el.text.substring(0, 80) + (el.text.length > 80 ? '...' : '');
-                    html += `<div class="structure-node heading-node ${preserveClass} ${markedClass}" data-type="${el.type}" data-order-index="${el.orderIndex}">
+                    html += `<div class="structure-node heading-node ${preserveClass} ${markedClass} ${defaultMark} ${selectedClass} ${groupClass}" data-type="${el.type}" data-order-index="${el.orderIndex}">
+                        ${checkboxHtml}
+                        ${groupInfo}
                         <span class="node-label">📌 H${level}</span>
                         <span class="node-text">${escapeHtml(text)}</span>
-                        ${actionButtons}
+                        ${toggleButton}
                     </div>`;
                 } else if (el.type === 'title') {
                     // 标题节点
                     const text = el.text.substring(0, 80) + (el.text.length > 80 ? '...' : '');
-                    html += `<div class="structure-node title-node ${preserveClass} ${markedClass}" data-type="title" data-order-index="${el.orderIndex}">
+                    html += `<div class="structure-node title-node ${preserveClass} ${markedClass} ${defaultMark} ${selectedClass} ${groupClass}" data-type="title" data-order-index="${el.orderIndex}">
+                        ${checkboxHtml}
+                        ${groupInfo}
                         <span class="node-label">🏷️ 标题</span>
                         <span class="node-text">${escapeHtml(text)}</span>
-                        ${actionButtons}
+                        ${toggleButton}
                     </div>`;
                 }
             });
@@ -2159,6 +2236,16 @@
 
         html += '</div></div></div>';
 
+        // 显示标记统计
+        if (markingCount > 0) {
+            html += `<div class="marking-summary">
+                <span>已标记 ${markingCount} 个元素</span>
+                <button id="save-markings-btn" class="btn btn-primary btn-sm">
+                    <i class="fas fa-save"></i> 保存配置
+                </button>
+            </div>`;
+        }
+
         elements.structureTree.innerHTML = html;
 
         // Add click handlers for action buttons
@@ -2168,17 +2255,81 @@
                 const action = btn.dataset.action;
                 const index = parseInt(btn.dataset.index);
 
-                // Toggle marking
                 if (!state.manualMarkings) state.manualMarkings = {};
 
-                if (state.manualMarkings[index] === action) {
+                if (action === 'toggle') {
+                    // 切换状态：未设置 → 参数 → 循环 → 静态 → 未设置
+                    const current = state.manualMarkings[index];
+                    if (!current || current === 'static') {
+                        state.manualMarkings[index] = 'param';
+                    } else if (current === 'param') {
+                        state.manualMarkings[index] = 'loop';
+                    } else if (current === 'loop') {
+                        state.manualMarkings[index] = 'static';
+                    }
+                } else if (action === 'clear') {
                     delete state.manualMarkings[index];
-                } else {
-                    state.manualMarkings[index] = action;
                 }
 
                 // Re-render structure tree
                 renderStructureTree();
+            });
+        });
+
+        // Add save button handler
+        const saveBtn = document.getElementById('save-markings-btn');
+        if (saveBtn) {
+            saveBtn.addEventListener('click', saveManualMarkings);
+        }
+
+        // Add checkbox handlers for multi-selection
+        elements.structureTree.querySelectorAll('.node-checkbox').forEach(cb => {
+            cb.addEventListener('change', (e) => {
+                e.stopPropagation();
+                const index = parseInt(cb.dataset.index);
+                if (cb.checked) {
+                    if (!state.selectedElementIndices.includes(index)) {
+                        state.selectedElementIndices.push(index);
+                    }
+                } else {
+                    state.selectedElementIndices = state.selectedElementIndices.filter(i => i !== index);
+                }
+                // Re-render to show selection
+                renderStructureTree();
+            });
+            // Prevent click propagation to node
+            cb.addEventListener('click', (e) => {
+                e.stopPropagation();
+            });
+        });
+
+        // Add merge selected button handler
+        const mergeBtn = document.getElementById('merge-selected-btn');
+        if (mergeBtn) {
+            mergeBtn.addEventListener('click', () => {
+                mergeSelectedElements();
+            });
+        }
+
+        // Add clear selection button handler
+        const clearSelectionBtn = document.getElementById('clear-selection-btn');
+        if (clearSelectionBtn) {
+            clearSelectionBtn.addEventListener('click', () => {
+                state.selectedElementIndices = [];
+                renderStructureTree();
+            });
+        }
+
+        // Add remove group button handlers
+        elements.structureTree.querySelectorAll('.btn-remove-group').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const groupId = btn.dataset.group;
+                if (state.elementGroups[groupId]) {
+                    delete state.elementGroups[groupId];
+                    showToast('分组已解散', 'info');
+                    renderStructureTree();
+                }
             });
         });
 
@@ -2234,6 +2385,101 @@
     }
 
     /**
+     * 保存手动标记到服务端
+     */
+    async function saveManualMarkings() {
+        if (!state.selectedTemplate) {
+            showToast('请先选择模板', 'warning');
+            return;
+        }
+
+        const markings = state.manualMarkings || {};
+        const markingCount = Object.keys(markings).length;
+
+        if (markingCount === 0) {
+            showToast('没有需要保存的标记', 'warning');
+            return;
+        }
+
+        try {
+            // 保存到服务端
+            await apiRequest(`/templates/${state.selectedTemplate.id}/markings`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    templateId: state.selectedTemplate.id,
+                    markings: Object.entries(markings).map(([index, type]) => ({
+                        index: parseInt(index),
+                        type: type,
+                        path: '',
+                        text: ''
+                    }))
+                })
+            });
+
+            showToast(`已保存 ${markingCount} 个标记配置`, 'success');
+        } catch (error) {
+            console.error('Save markings failed:', error);
+            showToast('保存失败: ' + error.message, 'error');
+        }
+    }
+
+    /**
+     * 合并选中的元素为一个循环项
+     */
+    function mergeSelectedElements() {
+        if (state.selectedElementIndices.length < 2) {
+            showToast('请至少选择2个元素进行合并', 'warning');
+            return;
+        }
+
+        // 排序索引确保顺序正确
+        const indices = [...state.selectedElementIndices].sort((a, b) => a - b);
+
+        // 创建新分组
+        const groupId = 'group_' + Date.now();
+        if (!state.elementGroups) state.elementGroups = {};
+        state.elementGroups[groupId] = indices;
+
+        // 清空选中状态
+        state.selectedElementIndices = [];
+
+        // 将分组的第一个元素标记为循环
+        if (!state.manualMarkings) state.manualMarkings = {};
+        state.manualMarkings[indices[0]] = 'loop';
+
+        showToast(`已将 ${indices.length} 个元素合并为循环项`, 'success');
+        renderStructureTree();
+    }
+
+    /**
+     * 加载已保存的标记
+     */
+    async function loadSavedMarkings() {
+        if (!state.selectedTemplate) return;
+
+        try {
+            const result = await apiRequest(`/templates/${state.selectedTemplate.id}/markings`);
+
+            if (result.markings && result.markings.length > 0) {
+                state.manualMarkings = {};
+                result.markings.forEach(m => {
+                    if (m.index !== undefined) {
+                        state.manualMarkings[m.index] = m.type;
+                    }
+                });
+
+                // 如果当前在结构视图，重新渲染
+                if (state.currentSourceView === 'structure') {
+                    renderStructureTree();
+                }
+            }
+        } catch (error) {
+            console.error('Load markings failed:', error);
+        }
+    }
+
+    /**
      * Handle AI configuration based on manual markings
      * 根据手动标记调用AI配置参数名称、类型等信息
      */
@@ -2253,7 +2499,7 @@
         }
 
         // 构建标记摘要
-        const markingSummary = Object.entries(markings).map(([idx, type]) => {
+        let markingSummary = Object.entries(markings).map(([idx, type]) => {
             const el = state.xmlStructure?.orderedElements?.[idx];
             if (!el) return null;
 
@@ -2266,6 +2512,23 @@
 
             return `- 索引${idx}: [${type}] ${content}`;
         }).filter(Boolean).join('\n');
+
+        // 添加分组信息
+        const groups = state.elementGroups || {};
+        if (Object.keys(groups).length > 0) {
+            markingSummary += '\n\n元素分组信息：\n';
+            Object.entries(groups).forEach(([groupId, indices]) => {
+                if (indices && indices.length > 0) {
+                    const groupContents = indices.map(idx => {
+                        const el = state.xmlStructure?.orderedElements?.[idx];
+                        if (!el) return '';
+                        if (el.type === 'image') return `图片(${el.imageId || ''})`;
+                        return el.text?.substring(0, 30) || el.type;
+                    }).join(' + ');
+                    markingSummary += `- 分组${groupId.substring(0, 4)}: 索引[${indices.join(',')}] 包含 "${groupContents}"`;
+                }
+            });
+        }
 
         // 调用AI分析API，传入手动标记
         try {
