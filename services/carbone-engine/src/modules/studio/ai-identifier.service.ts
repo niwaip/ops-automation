@@ -3,10 +3,11 @@
  * AI自动标识服务，基于结构化文档分析生成模版配置
  */
 
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import * as fs from 'fs';
 import * as path from 'path';
 import JSZip from 'jszip';
+import axios from 'axios';
 import { DocumentElement, DocumentStructure, PreserveMarker } from './document-structure.service';
 
 /**
@@ -109,6 +110,12 @@ export interface AIIdentifyResponse {
 
 @Injectable()
 export class AIIdentifierService {
+  private readonly logger = new Logger(AIIdentifierService.name);
+  private readonly aiOrchestratorUrl: string;
+
+  constructor() {
+    this.aiOrchestratorUrl = process.env.AI_ORCHESTRATOR_URL || 'http://localhost:3007';
+  }
 
   /**
    * 分析模板文档并生成模版配置
@@ -133,8 +140,21 @@ export class AIIdentifierService {
     // 分析用户上下文，提取意图
     const userIntent = this.parseUserContext(context || '');
 
-    // 基于结构分析生成模版配置
-    const templateConfig = this.generateTemplateConfig(elements, userIntent);
+    // 尝试使用 AI 分析文档结构
+    let templateConfig: TemplateConfig;
+    try {
+      const aiAnalysis = await this.analyzeWithAI(elements, context);
+      if (aiAnalysis) {
+        templateConfig = aiAnalysis;
+        this.logger.log('AI analysis completed successfully');
+      } else {
+        // AI 分析失败，使用规则分析
+        templateConfig = this.generateTemplateConfig(elements, userIntent);
+      }
+    } catch (error) {
+      this.logger.warn(`AI analysis failed: ${error}, falling back to rule-based analysis`);
+      templateConfig = this.generateTemplateConfig(elements, userIntent);
+    }
 
     // 生成变量建议
     const suggestions = this.generateVariableSuggestions(elements, templateConfig);
@@ -924,6 +944,196 @@ export class AIIdentifierService {
     // 如果结果为空，使用默认值
     if (!result) {
       result = 'value';
+    }
+
+    return result;
+  }
+
+  /**
+   * 使用 AI 分析文档结构
+   * 调用 AI Orchestrator 进行智能分析
+   */
+  private async analyzeWithAI(elements: DocumentElement[], context?: string): Promise<TemplateConfig | null> {
+    try {
+      // 获取可用的 AI 模型
+      const modelsResponse = await axios.get(`${this.aiOrchestratorUrl}/ai/models`, {
+        timeout: 5000,
+      });
+      const models = modelsResponse.data.models || [];
+
+      if (models.length === 0) {
+        this.logger.warn('No AI models available');
+        return null;
+      }
+
+      // 选择第一个活跃的模型
+      const activeModel = models.find((m: { status: string }) => m.status === 'active');
+      if (!activeModel) {
+        this.logger.warn('No active AI models available');
+        return null;
+      }
+
+      // 构建 AI 分析提示词
+      const prompt = this.buildAIAnalysisPrompt(elements, context);
+
+      // 调用 AI 模型
+      const testResponse = await axios.post(
+        `${this.aiOrchestratorUrl}/ai/models/${activeModel.id}/test`,
+        { prompt },
+        { timeout: 60000 },
+      );
+
+      if (!testResponse.data.success) {
+        this.logger.warn(`AI call failed: ${testResponse.data.error}`);
+        return null;
+      }
+
+      // 解析 AI 响应
+      return this.parseAIAnalysisResponse(testResponse.data.response, elements);
+    } catch (error) {
+      this.logger.error(`AI analysis error: ${error}`);
+      return null;
+    }
+  }
+
+  /**
+   * 构建 AI 分析提示词
+   */
+  private buildAIAnalysisPrompt(elements: DocumentElement[], context?: string): string {
+    // 构建文档元素摘要
+    const elementSummary = elements.map((el, idx) => {
+      let summary = `${idx + 1}. [${el.type}] `;
+
+      if (el.type === 'table') {
+        summary += `表格: ${el.headerRow || '无表头'}, ${el.dataRows?.length || 0}行数据`;
+        if (el.attributes?.rows) {
+          summary += `, rows="${el.attributes.rows}"`;
+        }
+      } else if (el.type === 'image') {
+        summary += `图片: id="${el.imageId}", ${el.attributes?.widthPx}×${el.attributes?.heightPx}px`;
+      } else {
+        // 截取前100个字符
+        const text = el.text?.substring(0, 100) || '';
+        summary += text;
+      }
+
+      // 添加 preserve 标记信息
+      if (el.preserveMarker) {
+        summary += ` [preserve: ${el.preserveMarker.type}]`;
+      }
+
+      return summary;
+    }).join('\n');
+
+    return `你是一个文档模版分析专家。请分析以下文档结构，识别出模版变量和静态内容。
+
+文档元素列表:
+${elementSummary}
+
+用户上下文: ${context || '通用模版分析'}
+
+请分析文档结构并返回以下 JSON 格式结果:
+
+{
+  "templateType": "模版类型（如：运维自动化报告）",
+  "staticElements": [
+    { "type": "heading", "content": "### 自动化操作执行总结", "reason": "保留为标题" }
+  ],
+  "tableLoops": [
+    { "tableIndex": 0, "arrayPath": "d.steps", "reason": "步骤表格需要循环" }
+  ],
+  "combinedVariables": [
+    { "stepNumber": 3, "textContent": "Step 3: screenshot", "imageId": "rId6", "reason": "步骤文本与图片组合为截图变量" }
+  ],
+  "variableMappings": [
+    { "path": "d.contextLog", "content": "基于提供的执行上下文日志", "type": "text", "reason": "日志内容作为参数" }
+  ],
+  "analysisNotes": ["分析说明"]
+}
+
+分析规则:
+1. preserve 标记为 "static" 的元素 → staticElements（静态保留）
+2. preserve 标记为 "loop" 的表格 → tableLoops（循环表格）
+3. "Step X: screenshot" 文本与相邻图片 → combinedVariables（组合变量）
+4. preserve 标记为 "variable" 的元素 → variableMappings（变量）
+5. 包含"日志"、"上下文"、"总结"的段落 → variableMappings
+
+请直接返回 JSON 结果，不要包含其他解释。`;
+  }
+
+  /**
+   * 解析 AI 分析响应
+   */
+  private parseAIAnalysisResponse(response: string, elements: DocumentElement[]): TemplateConfig {
+    try {
+      // 尝试提取 JSON
+      const jsonMatch = response.match(/\{[\s\S]*\}/);
+      if (!jsonMatch) {
+        throw new Error('No JSON found in AI response');
+      }
+
+      const parsed = JSON.parse(jsonMatch[0]);
+
+      const config: TemplateConfig = {
+        templateType: parsed.templateType || '通用文档',
+        staticElements: parsed.staticElements || [],
+        tableLoops: this.validateTableLoops(parsed.tableLoops || [], elements),
+        imageLoops: [],
+        combinedVariables: this.validateCombinedVariables(parsed.combinedVariables || [], elements),
+        variableMappings: parsed.variableMappings || [],
+        analysisNotes: parsed.analysisNotes || [],
+      };
+
+      return config;
+    } catch (error) {
+      this.logger.error(`Failed to parse AI response: ${error}`);
+      throw error;
+    }
+  }
+
+  /**
+   * 验证并补充表格循环配置
+   */
+  private validateTableLoops(tableLoops: any[], elements: DocumentElement[]): TableLoop[] {
+    const result: TableLoop[] = [];
+
+    for (const loop of tableLoops) {
+      const tableElement = elements.find((el, idx) =>
+        el.type === 'table' && idx === loop.tableIndex
+      );
+
+      if (tableElement) {
+        result.push({
+          tableIndex: loop.tableIndex,
+          headerRow: tableElement.headerRow || '',
+          dataRowCount: tableElement.dataRows?.length || 0,
+          arrayPath: loop.arrayPath || 'd.items',
+          columnMappings: this.generateColumnMappings(tableElement.headerRow || '', loop.arrayPath || 'd.items'),
+          reason: loop.reason || 'AI 识别的循环表格',
+          confidence: 0.9,
+        });
+      }
+    }
+
+    return result;
+  }
+
+  /**
+   * 验证并补充组合变量配置
+   */
+  private validateCombinedVariables(combinedVars: any[], elements: DocumentElement[]): CombinedVariable[] {
+    const result: CombinedVariable[] = [];
+
+    for (const cv of combinedVars) {
+      result.push({
+        id: `combined-${cv.stepNumber}`,
+        type: 'step-screenshot',
+        stepNumber: cv.stepNumber,
+        textContent: cv.textContent || '',
+        imageId: cv.imageId || '',
+        imagePath: `d.steps[${cv.stepNumber - 1}].screenshot`,
+        reason: cv.reason || 'AI 识别的组合变量',
+      });
     }
 
     return result;
