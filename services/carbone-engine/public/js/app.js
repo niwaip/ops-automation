@@ -298,10 +298,6 @@
             // 立即解析结构，确保PDF选择可以使用
             if (state.sourceXml && !state.xmlStructure) {
                 parseXmlStructure();
-                // 重新渲染Document Elements列表，使用正确的顺序
-                if (state.xmlStructure?.orderedElements?.length > 0 && state.documentElements.length > 0) {
-                    renderDocumentElementsList();
-                }
             }
         } catch (error) {
             console.warn('Failed to preload source XML:', error);
@@ -310,8 +306,6 @@
 
     async function loadDocumentElements(template) {
         if (template.format !== 'docx') {
-            elements.documentElementsList.innerHTML = '<span class="empty-hint">Element selection only available for DOCX</span>';
-            elements.elementsCount.textContent = '0';
             return;
         }
 
@@ -319,119 +313,16 @@
             const result = await apiRequest(`/templates/${template.id}/structure`);
             state.documentElements = result.elements || [];
 
-            elements.elementsCount.textContent = state.documentElements.length;
-
-            if (state.documentElements.length === 0) {
-                elements.documentElementsList.innerHTML = '<span class="empty-hint">No elements found</span>';
-                return;
-            }
-
-            // 渲染文档元素列表
-            renderDocumentElementsList();
-
+            // 不再渲染元素列表，元素信息通过结构视图选择显示
         } catch (error) {
             console.error('Failed to load document elements:', error);
-            elements.documentElementsList.innerHTML = '<span class="empty-hint">Failed to load elements</span>';
         }
     }
 
-    // 渲染文档元素列表，使用与结构视图相同的顺序
+    // 渲染文档元素列表已移除，改用结构视图选择
     function renderDocumentElementsList() {
-        // 如果xmlStructure已解析，使用orderedElements的顺序重新排列documentElements
-        let orderedDocumentElements = state.documentElements;
-
-        if (state.xmlStructure?.orderedElements?.length > 0) {
-            // 按照xmlStructure.orderedElements的顺序重新排列
-            orderedDocumentElements = state.xmlStructure.orderedElements.map(el => {
-                // 找到对应的documentElement
-                return state.documentElements.find(d => {
-                    if (el.type === 'table' && d.type === 'table') {
-                        return d.headerRow && el.headerRow &&
-                               d.headerRow.includes(el.headerRow.substring(0, 30));
-                    }
-                    return d.text && el.text &&
-                           (d.text === el.text || d.text.includes(el.text.substring(0, 50)));
-                });
-            }).filter(el => el); // 过滤掉undefined
-        }
-
-        elements.elementsCount.textContent = orderedDocumentElements.length;
-
-        if (orderedDocumentElements.length === 0) {
-            elements.documentElementsList.innerHTML = '<span class="empty-hint">No elements found</span>';
-            return;
-        }
-
-        elements.documentElementsList.innerHTML = orderedDocumentElements.map((el, idx) => {
-                // 表格特殊显示
-                if (el.type === 'table') {
-                    return `
-                        <div class="element-item element-type-table" data-index="${idx}">
-                            <div class="element-header">
-                                <span class="element-type-icon">
-                                    <i class="fas fa-table"></i>
-                                </span>
-                                <span class="element-type-label">Table</span>
-                                <span class="element-badge">${el.attributes?.rows || '?'}行</span>
-                            </div>
-                            ${el.headerRow ? `
-                                <div class="element-table-header">
-                                    <span class="element-table-label">📋 标题行:</span>
-                                    <code>${escapeHtml(el.headerRow)}</code>
-                                </div>
-                            ` : ''}
-                            ${el.dataRows && el.dataRows.length > 0 ? `
-                                <div class="element-table-data">
-                                    <span class="element-table-label">🔄 数据行: ${el.dataRows.length}行可循环</span>
-                                </div>
-                            ` : ''}
-                            <div class="element-actions">
-                                <button class="btn btn-primary btn-sm btn-select-element" data-index="${idx}">
-                                    <i class="fas fa-check"></i> Select
-                                </button>
-                            </div>
-                        </div>
-                    `;
-                }
-
-                // 普通元素
-                return `
-                    <div class="element-item element-type-${el.type}" data-index="${idx}">
-                        <div class="element-header">
-                            <span class="element-type-icon">
-                                <i class="fas ${getElementIcon(el.type)}"></i>
-                            </span>
-                            <span class="element-type-label">${getElementLabel(el.type)}</span>
-                        </div>
-                        <div class="element-content">
-                            <code>${escapeHtml(el.text.substring(0, 80))}${el.text.length > 80 ? '...' : ''}</code>
-                        </div>
-                        <div class="element-actions">
-                            <button class="btn btn-primary btn-sm btn-select-element" data-index="${idx}">
-                                <i class="fas fa-check"></i> Select
-                            </button>
-                        </div>
-                    </div>
-                `;
-            }).join('');
-
-            // Bind click events for element selection - 使用当前渲染的元素
-            const currentElements = orderedDocumentElements;
-            document.querySelectorAll('.btn-select-element').forEach(btn => {
-                btn.addEventListener('click', (e) => {
-                    e.stopPropagation();
-                    const idx = parseInt(btn.dataset.index);
-                    selectDocumentElement(currentElements[idx]);
-                });
-            });
-
-            // Bind click events for element items - 使用当前渲染的元素
-            document.querySelectorAll('.element-item').forEach(item => {
-                item.addEventListener('click', () => {
-                    const idx = parseInt(item.dataset.index);
-                    selectDocumentElement(currentElements[idx]);
-                });
-            });
+        // 元素列表已移除，现在通过结构视图选择元素
+        // 选中元素信息会显示在右侧编辑区域
     }
 
     function getElementIcon(type) {
