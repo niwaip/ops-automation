@@ -50,7 +50,7 @@
         elements.zoomIn = document.getElementById('zoom-in');
         elements.zoomOut = document.getElementById('zoom-out');
         elements.zoomLevel = document.getElementById('zoom-level');
-        elements.aiVerifyBtn = document.getElementById('ai-verify-btn');
+        elements.aiGenerateBtn = document.getElementById('ai-generate-btn');
         elements.aiSuggestionsList = document.getElementById('ai-suggestions-list');
         elements.selectionSection = document.getElementById('selection-section');
         elements.selectedTextDisplay = document.getElementById('selected-text-display');
@@ -61,10 +61,9 @@
         elements.varsCount = document.getElementById('vars-count');
         elements.suggestionsCount = document.getElementById('suggestions-count');
         elements.noSelectionHint = document.getElementById('no-selection-hint');
-        // AI Verify elements
-        elements.aiVerifyPrompt = document.getElementById('ai-verify-prompt');
-        elements.aiVerifyResult = document.getElementById('ai-verify-result');
-        elements.aiVerifyContent = document.getElementById('ai-verify-content');
+        // AI Generate Result
+        elements.aiGenerateResultSection = document.getElementById('ai-generate-result-section');
+        elements.aiGenerateResult = document.getElementById('ai-generate-result');
         // Tab elements
         elements.tabPreview = document.getElementById('tab-preview');
         elements.tabSource = document.getElementById('tab-source');
@@ -84,11 +83,6 @@
         elements.showTables = document.getElementById('show-tables');
         elements.showParagraphs = document.getElementById('show-paragraphs');
         elements.aiConfigBtn = document.getElementById('ai-config-btn');
-        // AI Analysis elements
-        elements.aiContextInput = document.getElementById('ai-context-input');
-        elements.aiAnalyzeBtn = document.getElementById('ai-analyze-btn');
-        elements.aiAnalysisResult = document.getElementById('ai-analysis-result');
-        elements.aiResultContent = document.getElementById('ai-result-content');
     }
 
     // Utility Functions
@@ -1124,6 +1118,105 @@
         }
     }
 
+    // AI Generate Function - 合并生成模版和验证
+    async function performAIGenerate() {
+        if (!state.selectedTemplate) {
+            showToast('请先选择一个模板', 'warning');
+            return;
+        }
+
+        // 禁用按钮并显示加载状态
+        elements.aiGenerateBtn.disabled = true;
+        elements.aiGenerateBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 生成中...';
+
+        try {
+            // 1. 调用AI生成模版配置
+            const identifyResult = await apiRequest(`/templates/${state.selectedTemplate.id}/ai-identify`, {
+                method: 'POST',
+                body: JSON.stringify({
+                    templateId: state.selectedTemplate.id,
+                    context: '根据手动标记生成模版配置',
+                    manualMarkings: state.manualMarkings,
+                    markingSummary: buildMarkingSummary()
+                })
+            });
+
+            const templateConfig = identifyResult.templateConfig;
+            const loops = identifyResult.loops || [];
+            const suggestions = identifyResult.suggestions || [];
+
+            // 2. 保存模版配置
+            if (templateConfig) {
+                await apiRequest(`/templates/${state.selectedTemplate.id}/config`, {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        templateId: state.selectedTemplate.id,
+                        templateConfig: templateConfig
+                    })
+                });
+                state.templateConfig = templateConfig;
+            }
+
+            // 3. 渲染AI建议
+            renderAISuggestions(suggestions);
+
+            // 4. 调用AI验证
+            const verifyResult = await apiRequest(`/templates/${state.selectedTemplate.id}/ai-verify`, {
+                method: 'POST',
+                body: JSON.stringify({
+                    templateId: state.selectedTemplate.id,
+                    prompt: '验证模版配置是否合理',
+                    templateConfig: templateConfig
+                })
+            });
+
+            // 5. 显示验证结果
+            if (elements.aiGenerateResultSection && elements.aiGenerateResult) {
+                elements.aiGenerateResultSection.style.display = 'block';
+                elements.aiGenerateResult.innerHTML = marked.parse(verifyResult.report || '验证完成');
+            }
+
+            const totalVars = suggestions.length;
+            const totalLoops = loops.length;
+            showToast(`生成完成：${totalLoops}个循环，${totalVars}个变量`, 'success');
+        } catch (error) {
+            console.error('AI generate failed:', error);
+            showToast('生成失败: ' + error.message, 'error');
+        } finally {
+            elements.aiGenerateBtn.disabled = false;
+            elements.aiGenerateBtn.innerHTML = '<i class="fas fa-magic"></i> 生成模版';
+        }
+    }
+
+    // 构建标记摘要
+    function buildMarkingSummary() {
+        const markings = state.manualMarkings || {};
+        const ignored = state.ignoredElements || {};
+        let summary = '';
+
+        if (Object.keys(markings).length > 0) {
+            summary += '已标记元素：\n';
+            Object.entries(markings).forEach(([idx, type]) => {
+                const el = state.xmlStructure?.orderedElements?.[idx];
+                if (el) {
+                    summary += `- 索引${idx}: [${type}] ${el.text?.substring(0, 30) || el.type}\n`;
+                }
+            });
+        }
+
+        if (Object.keys(ignored).length > 0) {
+            summary += '\n已忽略元素：\n';
+            Object.keys(ignored).forEach(idx => {
+                const el = state.xmlStructure?.orderedElements?.[idx];
+                if (el) {
+                    summary += `- 索引${idx}: ${el.text?.substring(0, 30) || el.type}\n`;
+                }
+            });
+        }
+
+        return summary;
+    }
+
     // AI Verify Function - 利用模版自动生成验证报告
     async function performAIVerify() {
         if (!state.selectedTemplate) {
@@ -1559,11 +1652,12 @@
                 method: 'POST',
                 body: JSON.stringify({
                     templateId: state.selectedTemplate.id,
-                    markings: state.manualMarkings
+                    markings: state.manualMarkings,
+                    ignoredElements: Object.keys(state.ignoredElements || {}).map(idx => parseInt(idx))
                 })
             });
 
-            showToast('Markings saved successfully', 'success');
+            showToast('配置已保存', 'success');
         } catch (error) {
             showToast('Failed to save markings', 'error');
         }
@@ -1616,14 +1710,9 @@
             updateZoom();
         });
 
-        // AI Verify button
-        if (elements.aiVerifyBtn) {
-            elements.aiVerifyBtn.addEventListener('click', performAIVerify);
-        }
-
-        // AI Analysis button (sidebar)
-        if (elements.aiAnalyzeBtn) {
-            elements.aiAnalyzeBtn.addEventListener('click', performAIAnalysis);
+        // AI Generate button - 合并生成和验证
+        if (elements.aiGenerateBtn) {
+            elements.aiGenerateBtn.addEventListener('click', performAIGenerate);
         }
 
         // Selection controls
