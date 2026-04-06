@@ -2835,8 +2835,10 @@
         html += '</div>';
 
         // 显示结果
-        elements.aiAnalysisResult.style.display = 'block';
-        elements.aiResultContent.innerHTML = html;
+        if (elements.aiGenerateResultSection && elements.aiGenerateResult) {
+            elements.aiGenerateResultSection.style.display = 'block';
+            elements.aiGenerateResult.innerHTML = html;
+        }
     }
 
     function initResizeHandle() {
