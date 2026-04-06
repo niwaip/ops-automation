@@ -290,18 +290,23 @@
         elements.templateFormat.textContent = template.format.toUpperCase();
         elements.templateFormat.className = `badge badge-info`;
 
-        // Render variables
-        elements.varsCount.textContent = template.variables.length;
-        elements.variablesList.innerHTML = template.variables.length > 0
-            ? template.variables.map(v => `
-                <div class="variable-item">
-                    <code>{${v}}</code>
-                </div>
-            `).join('')
-            : '<span class="empty-hint">No variables found</span>';
+        // Render variables (may be null if section removed)
+        if (elements.varsCount) {
+            elements.varsCount.textContent = template.variables.length;
+        }
+        if (elements.variablesList) {
+            elements.variablesList.innerHTML = template.variables.length > 0
+                ? template.variables.map(v => `
+                    <div class="variable-item">
+                        <code>{${v}}</code>
+                    </div>
+                `).join('')
+                : '<span class="empty-hint">No variables found</span>';
+        }
 
-        // Render loops
-        elements.loopsList.innerHTML = template.loops.length > 0
+        // Render loops (may be null if section removed)
+        if (elements.loopsList) {
+            elements.loopsList.innerHTML = template.loops.length > 0
             ? template.loops.map(l => `
                 <div class="loop-item">
                     <i class="fas fa-repeat"></i>
@@ -309,6 +314,7 @@
                 </div>
             `).join('')
             : '<span class="empty-hint">No loops detected</span>';
+        }
 
         // Load document preview
         loadDocumentPreview(template);
@@ -1315,7 +1321,7 @@
         }
     }
 
-    // AI Verify Function - 验证模版配置（SSE流式输出）
+    // AI Verify Function - 验证模版配置（使用fetch流式处理，参考生成模版）
     async function performAIVerify() {
         if (!state.selectedTemplate) {
             showToast('请先选择一个模板', 'warning');
@@ -1326,10 +1332,6 @@
         updateStatus('processing', '开始验证模版...');
         updateStepStatus('verify', 'in-progress', '验证中...');
 
-        // 显示执行进度
-        showExecutionProgress('AI验证模版中...');
-        addExecutionLog('开始验证模版配置');
-
         // 禁用按钮并显示加载状态
         elements.aiVerifyBtn.disabled = true;
         elements.aiVerifyBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 验证中...';
@@ -1337,186 +1339,190 @@
         // 显示进度条和结果区域
         if (elements.aiGenerateResultSection) {
             elements.aiGenerateResultSection.style.display = 'block';
+            elements.aiGenerateResultSection.classList.add('expanded');
         }
         if (elements.aiProgress) {
             elements.aiProgress.style.display = 'block';
         }
+        if (elements.aiGenerateResult) {
+            elements.aiGenerateResult.innerHTML = '<div style="color: #1890ff;"><i class="fas fa-spinner fa-spin"></i> 正在连接AI服务...</div>';
+        }
+
+        // 隐藏之前的验证结果
+        if (elements.aiVerifyResult) {
+            elements.aiVerifyResult.style.display = 'none';
+        }
 
         try {
-            // 使用SSE流式验证
-            const testData = elements.testData?.value || '';
-            const eventSource = new EventSource(`/studio/templates/${state.selectedTemplate.id}/ai-verify-stream?testData=${encodeURIComponent(testData)}&templateConfig=${encodeURIComponent(JSON.stringify(state.templateConfig || {}))}&prompt=${encodeURIComponent('验证模版配置是否合理，生成示例报告')}`);
+            // 使用fetch流式调用（参考performAIGenerate）
+            const response = await fetch(`${API_BASE}/templates/${state.selectedTemplate.id}/ai-verify-stream`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    templateId: state.selectedTemplate.id,
+                    prompt: '验证模版配置是否合理，生成示例报告',
+                    testData: '',
+                    templateConfig: state.templateConfig || {}
+                })
+            });
 
+            if (!response.ok) {
+                throw new Error(`请求失败: ${response.status}`);
+            }
+
+            const reader = response.body?.getReader();
+            if (!reader) {
+                throw new Error('无法读取响应流');
+            }
+
+            const decoder = new TextDecoder();
             let verifyResult = null;
+            let progressMessages = [];
 
-            eventSource.onmessage = (event) => {
-                try {
-                    const data = JSON.parse(event.data);
+            while (true) {
+                const { done, value } = await reader.read();
+                if (done) break;
 
-                    if (data.type === 'progress') {
-                        // 更新进度显示
-                        updateExecutionProgress(data.progress, data.message);
-                        updateProgress(data.progress, data.message);
-                        addExecutionLog(`[${data.step}] ${data.message}`);
-                    } else if (data.type === 'result') {
-                        verifyResult = data.data;
-                        eventSource.close();
+                const chunk = decoder.decode(value, { stream: true });
+                const lines = chunk.split('\n');
 
-                        // 显示验证结果
-                        updateExecutionProgress(100, '验证完成');
-                        updateProgress(100, '完成');
-                        updateStatus('success', '验证完成');
-                        updateStepStatus('verify', 'completed', '已完成');
+                for (const line of lines) {
+                    if (line.startsWith('data: ')) {
+                        try {
+                            const data = JSON.parse(line.slice(6));
 
-                        // 隐藏进度条
-                        if (elements.aiProgress) {
-                            elements.aiProgress.style.display = 'none';
-                        }
+                            if (data.type === 'progress') {
+                                // 更新进度显示
+                                updateProgress(data.progress, data.message);
+                                progressMessages.push(`[${data.step}] ${data.message}`);
 
-                        // 延迟隐藏执行进度
-                        setTimeout(() => {
-                            hideExecutionProgress();
-                        }, 1000);
-
-                        // 在AI验证模版右边显示结果
-                        if (elements.aiVerifyResult) {
-                            let resultHtml = '<div class="result-header"><i class="fas fa-check-circle" style="color: #52c41a;"></i> 验证完成</div>';
-
-                            // 显示验证报告摘要
-                            if (verifyResult.report) {
-                                resultHtml += '<div style="margin-bottom: 10px;">' + marked.parse(verifyResult.report.substring(0, 500) + (verifyResult.report.length > 500 ? '...' : '')) + '</div>';
-                            }
-
-                            // 显示操作按钮
-                            resultHtml += '<div class="result-actions">';
-                            if (verifyResult.previewUrl) {
-                                resultHtml += '<button id="verify-preview-btn" class="btn btn-primary btn-sm"><i class="fas fa-eye"></i> PDF预览</button>';
-                            }
-                            if (verifyResult.downloadUrl) {
-                                resultHtml += '<button id="verify-download-btn" class="btn btn-outline btn-sm"><i class="fas fa-download"></i> 下载文档</button>';
-                            }
-                            resultHtml += '</div>';
-
-                            // 显示示例数据
-                            if (verifyResult.sampleData) {
-                                resultHtml += '<details style="margin-top: 10px;"><summary style="cursor: pointer; font-weight: 500;"><i class="fas fa-database"></i> 示例数据</summary>';
-                                resultHtml += '<div class="sample-data"><pre>' + JSON.stringify(verifyResult.sampleData, null, 2) + '</pre></div>';
-                                resultHtml += '</details>';
-                            }
-
-                            elements.aiVerifyResult.innerHTML = resultHtml;
-                            elements.aiVerifyResult.style.display = 'block';
-
-                            // 绑定按钮事件
-                            const previewBtn = document.getElementById('verify-preview-btn');
-                            if (previewBtn) {
-                                previewBtn.addEventListener('click', () => openPdfPreviewPopup(verifyResult.previewUrl));
-                            }
-                            const downloadBtn = document.getElementById('verify-download-btn');
-                            if (downloadBtn) {
-                                downloadBtn.addEventListener('click', () => downloadRenderedDocument(verifyResult.downloadUrl));
-                            }
-                        }
-
-                        // 同时更新AI结果报告区域（可展开收缩）
-                        if (elements.aiGenerateResult) {
-                            elements.aiGenerateResultSection.style.display = 'block';
-                            elements.aiGenerateResultSection.classList.add('expanded'); // 默认展开
-
-                            let fullResultHtml = '<h3 style="margin-bottom: 12px;">完整验证报告</h3>';
-                            fullResultHtml += '<div style="background: #f6ffed; border: 1px solid #b7eb8f; border-radius: 4px; padding: 12px; margin-bottom: 15px;">';
-                            fullResultHtml += marked.parse(verifyResult.report || '验证完成');
-                            fullResultHtml += '</div>';
-
-                            // 显示生成的示例数据
-                            if (verifyResult.sampleData) {
-                                fullResultHtml += '<h4 style="margin-bottom: 8px;"><i class="fas fa-database"></i> 生成的示例数据</h4>';
-                                fullResultHtml += '<div style="background: #f5f5f5; padding: 10px; border-radius: 4px; margin-bottom: 15px; font-size: 12px;">';
-                                fullResultHtml += '<pre style="margin: 0; white-space: pre-wrap;">' + JSON.stringify(verifyResult.sampleData, null, 2) + '</pre>';
-                                fullResultHtml += '</div>';
-                            }
-
-                            // 显示链接信息
-                            if (verifyResult.previewUrl || verifyResult.downloadUrl) {
-                                fullResultHtml += '<h4 style="margin-bottom: 8px;"><i class="fas fa-link"></i> 生成的链接</h4>';
-                                fullResultHtml += '<div style="background: #e6f7ff; padding: 10px; border-radius: 4px; margin-bottom: 15px; font-size: 12px;">';
-                                if (verifyResult.previewUrl) {
-                                    fullResultHtml += '<div><strong>预览链接:</strong> <a href="' + verifyResult.previewUrl + '" target="_blank">' + verifyResult.previewUrl + '</a></div>';
+                                // 实时更新右边栏的进度
+                                if (elements.aiGenerateResult) {
+                                    let progressHtml = '<div style="margin-bottom: 10px;">';
+                                    progressHtml += '<div style="display: flex; align-items: center; gap: 8px;">';
+                                    progressHtml += '<i class="fas fa-spinner fa-spin" style="color: #1890ff;"></i>';
+                                    progressHtml += `<span>${data.message}</span>`;
+                                    progressHtml += '</div>';
+                                    progressHtml += '<div class="progress-bar" style="margin-top: 8px;">';
+                                    progressHtml += `<div class="progress-fill" style="width: ${data.progress}%;"></div>`;
+                                    progressHtml += '</div></div>';
+                                    elements.aiGenerateResult.innerHTML = progressHtml;
                                 }
-                                if (verifyResult.downloadUrl) {
-                                    fullResultHtml += '<div><strong>下载链接:</strong> <a href="' + verifyResult.downloadUrl + '">' + verifyResult.downloadUrl + '</a></div>';
+                            } else if (data.type === 'result') {
+                                verifyResult = data.data;
+
+                                // 完成
+                                updateProgress(100, '完成');
+                                updateStatus('success', '验证完成');
+                                updateStepStatus('verify', 'completed', '已完成');
+
+                                // 隐藏进度条
+                                if (elements.aiProgress) {
+                                    elements.aiProgress.style.display = 'none';
                                 }
-                                fullResultHtml += '</div>';
-                            }
 
-                            fullResultHtml += '<hr style="margin: 15px 0; border-top: 1px solid #eee;">';
-                            fullResultHtml += '<div style="margin-top: 10px;">';
-                            fullResultHtml += '<button id="preview-template-btn" class="btn btn-primary btn-sm" style="margin-right: 8px;">';
-                            fullResultHtml += '<i class="fas fa-eye"></i> 预览模版';
-                            fullResultHtml += '</button>';
-                            fullResultHtml += '<button id="preview-pdf-btn" class="btn btn-outline btn-sm" style="margin-right: 8px;">';
-                            fullResultHtml += '<i class="fas fa-file-pdf"></i> PDF预览';
-                            fullResultHtml += '</button>';
-                            fullResultHtml += '<button id="preview-render-btn" class="btn btn-outline btn-sm">';
-                            fullResultHtml += '<i class="fas fa-file-alt"></i> 下载示例文档';
-                            fullResultHtml += '</button>';
-                            fullResultHtml += '</div>';
-                            elements.aiGenerateResult.innerHTML = fullResultHtml;
+                                // 在AI验证模版步骤下方显示结果
+                                if (elements.aiVerifyResult) {
+                                    let resultHtml = '<div class="result-header"><i class="fas fa-check-circle" style="color: #52c41a;"></i> 验证完成</div>';
 
-                            // 绑定预览按钮事件
-                            const previewBtn = document.getElementById('preview-template-btn');
-                            if (previewBtn) {
-                                previewBtn.addEventListener('click', previewTemplateHtml);
+                                    // 显示验证报告摘要
+                                    if (verifyResult.report) {
+                                        resultHtml += '<div style="margin-bottom: 10px;">' + marked.parse(verifyResult.report.substring(0, 300) + (verifyResult.report.length > 300 ? '...' : '')) + '</div>';
+                                    }
+
+                                    // 显示操作按钮
+                                    resultHtml += '<div class="result-actions">';
+                                    if (verifyResult.previewUrl) {
+                                        resultHtml += '<button id="verify-preview-btn" class="btn btn-primary btn-sm"><i class="fas fa-eye"></i> PDF预览</button>';
+                                    }
+                                    if (verifyResult.downloadUrl) {
+                                        resultHtml += '<button id="verify-download-btn" class="btn btn-outline btn-sm"><i class="fas fa-download"></i> 下载文档</button>';
+                                    }
+                                    resultHtml += '</div>';
+
+                                    elements.aiVerifyResult.innerHTML = resultHtml;
+                                    elements.aiVerifyResult.style.display = 'block';
+
+                                    // 绑定按钮事件
+                                    const previewBtn = document.getElementById('verify-preview-btn');
+                                    if (previewBtn) {
+                                        previewBtn.addEventListener('click', () => openPdfPreviewPopup(verifyResult.previewUrl));
+                                    }
+                                    const downloadBtn = document.getElementById('verify-download-btn');
+                                    if (downloadBtn) {
+                                        downloadBtn.addEventListener('click', () => downloadRenderedDocument(verifyResult.downloadUrl));
+                                    }
+                                }
+
+                                // 同时更新AI结果报告区域（可展开收缩）
+                                if (elements.aiGenerateResult) {
+                                    let fullResultHtml = '<h3 style="margin-bottom: 12px; color: #52c41a;"><i class="fas fa-check-circle"></i> 验证完成</h3>';
+                                    fullResultHtml += '<div style="background: #f6ffed; border: 1px solid #b7eb8f; border-radius: 4px; padding: 12px; margin-bottom: 15px;">';
+                                    fullResultHtml += marked.parse(verifyResult.report || '验证完成');
+                                    fullResultHtml += '</div>';
+
+                                    // 显示生成的示例数据
+                                    if (verifyResult.sampleData) {
+                                        fullResultHtml += '<details style="margin-bottom: 15px;"><summary style="cursor: pointer; font-weight: 500;"><i class="fas fa-database"></i> 生成的示例数据</summary>';
+                                        fullResultHtml += '<div style="background: #f5f5f5; padding: 10px; border-radius: 4px; font-size: 11px; max-height: 200px; overflow-y: auto;">';
+                                        fullResultHtml += '<pre style="margin: 0; white-space: pre-wrap;">' + JSON.stringify(verifyResult.sampleData, null, 2) + '</pre>';
+                                        fullResultHtml += '</div></details>';
+                                    }
+
+                                    // 显示链接信息
+                                    if (verifyResult.previewUrl || verifyResult.downloadUrl) {
+                                        fullResultHtml += '<div style="background: #e6f7ff; padding: 10px; border-radius: 4px; margin-bottom: 15px; font-size: 12px;">';
+                                        if (verifyResult.previewUrl) {
+                                            fullResultHtml += '<div style="margin-bottom: 5px;"><i class="fas fa-link"></i> <strong>预览链接:</strong> <a href="' + verifyResult.previewUrl + '" target="_blank">' + verifyResult.previewUrl + '</a></div>';
+                                        }
+                                        if (verifyResult.downloadUrl) {
+                                            fullResultHtml += '<div><i class="fas fa-download"></i> <strong>下载链接:</strong> <a href="' + verifyResult.downloadUrl + '">' + verifyResult.downloadUrl + '</a></div>';
+                                        }
+                                        fullResultHtml += '</div>';
+                                    }
+
+                                    fullResultHtml += '<hr style="margin: 15px 0; border-top: 1px solid #eee;">';
+                                    fullResultHtml += '<div style="margin-top: 10px;">';
+                                    fullResultHtml += '<button id="preview-template-btn" class="btn btn-primary btn-sm" style="margin-right: 8px;">';
+                                    fullResultHtml += '<i class="fas fa-eye"></i> 预览模版';
+                                    fullResultHtml += '</button>';
+                                    fullResultHtml += '<button id="preview-pdf-btn" class="btn btn-outline btn-sm" style="margin-right: 8px;">';
+                                    fullResultHtml += '<i class="fas fa-file-pdf"></i> PDF预览';
+                                    fullResultHtml += '</button>';
+                                    fullResultHtml += '<button id="preview-render-btn" class="btn btn-outline btn-sm">';
+                                    fullResultHtml += '<i class="fas fa-file-alt"></i> 下载示例文档';
+                                    fullResultHtml += '</button>';
+                                    fullResultHtml += '</div>';
+                                    elements.aiGenerateResult.innerHTML = fullResultHtml;
+
+                                    // 绑定预览按钮事件
+                                    const previewBtn = document.getElementById('preview-template-btn');
+                                    if (previewBtn) {
+                                        previewBtn.addEventListener('click', previewTemplateHtml);
+                                    }
+                                    const pdfBtn = document.getElementById('preview-pdf-btn');
+                                    if (pdfBtn) {
+                                        pdfBtn.addEventListener('click', () => openPdfPreviewPopup(verifyResult.previewUrl));
+                                    }
+                                    const renderBtn = document.getElementById('preview-render-btn');
+                                    if (renderBtn) {
+                                        renderBtn.addEventListener('click', () => downloadRenderedDocument(verifyResult.downloadUrl));
+                                    }
+                                }
+
+                                showToast('验证完成', 'success');
+                            } else if (data.type === 'error') {
+                                throw new Error(data.error);
                             }
-                            const pdfBtn = document.getElementById('preview-pdf-btn');
-                            if (pdfBtn) {
-                                pdfBtn.addEventListener('click', () => openPdfPreviewPopup(verifyResult.previewUrl));
-                            }
-                            const renderBtn = document.getElementById('preview-render-btn');
-                            if (renderBtn) {
-                                renderBtn.addEventListener('click', () => downloadRenderedDocument(verifyResult.downloadUrl));
-                            }
+                        } catch (parseError) {
+                            // Skip invalid JSON
                         }
-
-                        showToast('验证完成', 'success');
-                        elements.aiVerifyBtn.disabled = false;
-                        elements.aiVerifyBtn.innerHTML = '<i class="fas fa-check-double"></i> 验证模版';
-                    } else if (data.type === 'error') {
-                        eventSource.close();
-                        addExecutionLog('验证失败: ' + data.error);
-                        updateExecutionProgress(0, '失败');
-                        updateProgress(0, '失败');
-                        updateStatus('error', '验证失败: ' + data.error);
-                        updateStepStatus('verify', 'error', '失败');
-
-                        if (elements.aiProgress) {
-                            elements.aiProgress.style.display = 'none';
-                        }
-                        if (elements.aiGenerateResult) {
-                            elements.aiGenerateResult.innerHTML = `<div style="color: #ff4d4f;">验证失败: ${data.error}</div>`;
-                        }
-                        showToast('验证失败: ' + data.error, 'error');
-                        elements.aiVerifyBtn.disabled = false;
-                        elements.aiVerifyBtn.innerHTML = '<i class="fas fa-check-double"></i> 验证模版';
                     }
-                } catch (parseError) {
-                    console.error('Parse SSE message error:', parseError);
                 }
-            };
-
-            eventSource.onerror = (error) => {
-                console.error('SSE connection error:', error);
-                eventSource.close();
-
-                // 如果SSE失败，尝试使用普通API
-                addExecutionLog('SSE连接失败，使用普通API...');
-                fallbackToNormalVerify();
-            };
+            }
 
         } catch (error) {
             console.error('AI verify failed:', error);
-            addExecutionLog('验证失败: ' + error.message);
-            updateExecutionProgress(0, '失败');
             updateProgress(0, '失败');
             updateStatus('error', '验证失败: ' + error.message);
             updateStepStatus('verify', 'error', '失败');
@@ -1525,146 +1531,11 @@
                 elements.aiProgress.style.display = 'none';
             }
             if (elements.aiGenerateResult) {
-                elements.aiGenerateResult.innerHTML = `<div style="color: #ff4d4f;">验证失败: ${error.message}</div>`;
+                elements.aiGenerateResult.innerHTML = `<div style="color: #ff4d4f;"><i class="fas fa-times-circle"></i> 验证失败: ${error.message}</div>`;
             }
-            showToast('验证失败: ' + error.message, 'error');
-            elements.aiVerifyBtn.disabled = false;
-            elements.aiVerifyBtn.innerHTML = '<i class="fas fa-check-double"></i> 验证模版';
-        }
-    }
-
-    // Fallback to normal verify API when SSE fails
-    async function fallbackToNormalVerify() {
-        try {
-            const verifyResult = await apiRequest(`/templates/${state.selectedTemplate.id}/ai-verify`, {
-                method: 'POST',
-                body: JSON.stringify({
-                    templateId: state.selectedTemplate.id,
-                    prompt: '验证模版配置是否合理',
-                    testData: elements.testData?.value || '',
-                    templateConfig: state.templateConfig
-                })
-            });
-
-            updateExecutionProgress(100, '验证完成');
-            updateProgress(100, '完成');
-            updateStatus('success', '验证完成');
-            updateStepStatus('verify', 'completed', '已完成');
-
-            if (elements.aiProgress) {
-                elements.aiProgress.style.display = 'none';
-            }
-
-            setTimeout(() => {
-                hideExecutionProgress();
-            }, 1000);
-
-            // 在AI验证模版右边显示结果
             if (elements.aiVerifyResult) {
-                let resultHtml = '<div class="result-header"><i class="fas fa-check-circle" style="color: #52c41a;"></i> 验证完成</div>';
-
-                // 显示验证报告摘要
-                if (verifyResult.report) {
-                    resultHtml += '<div style="margin-bottom: 10px;">' + marked.parse(verifyResult.report.substring(0, 500) + (verifyResult.report.length > 500 ? '...' : '')) + '</div>';
-                }
-
-                // 显示操作按钮
-                resultHtml += '<div class="result-actions">';
-                if (verifyResult.previewUrl) {
-                    resultHtml += '<button id="verify-preview-btn" class="btn btn-primary btn-sm"><i class="fas fa-eye"></i> PDF预览</button>';
-                }
-                if (verifyResult.downloadUrl) {
-                    resultHtml += '<button id="verify-download-btn" class="btn btn-outline btn-sm"><i class="fas fa-download"></i> 下载文档</button>';
-                }
-                resultHtml += '</div>';
-
-                // 显示示例数据
-                if (verifyResult.sampleData) {
-                    resultHtml += '<details style="margin-top: 10px;"><summary style="cursor: pointer; font-weight: 500;"><i class="fas fa-database"></i> 示例数据</summary>';
-                    resultHtml += '<div class="sample-data"><pre>' + JSON.stringify(verifyResult.sampleData, null, 2) + '</pre></div>';
-                    resultHtml += '</details>';
-                }
-
-                elements.aiVerifyResult.innerHTML = resultHtml;
+                elements.aiVerifyResult.innerHTML = `<div style="color: #ff4d4f;"><i class="fas fa-times-circle"></i> 验证失败: ${error.message}</div>`;
                 elements.aiVerifyResult.style.display = 'block';
-
-                // 绑定按钮事件
-                const previewBtn = document.getElementById('verify-preview-btn');
-                if (previewBtn) {
-                    previewBtn.addEventListener('click', () => openPdfPreviewPopup(verifyResult.previewUrl));
-                }
-                const downloadBtn = document.getElementById('verify-download-btn');
-                if (downloadBtn) {
-                    downloadBtn.addEventListener('click', () => downloadRenderedDocument(verifyResult.downloadUrl));
-                }
-            }
-
-            // 同时更新AI结果报告区域（可展开收缩）
-            if (elements.aiGenerateResult) {
-                elements.aiGenerateResultSection.style.display = 'block';
-                elements.aiGenerateResultSection.classList.add('expanded');
-
-                let fullResultHtml = '<h3 style="margin-bottom: 12px;">完整验证报告</h3>';
-                fullResultHtml += '<div style="background: #f6ffed; border: 1px solid #b7eb8f; border-radius: 4px; padding: 12px; margin-bottom: 15px;">';
-                fullResultHtml += marked.parse(verifyResult.report || '验证完成');
-                fullResultHtml += '</div>';
-
-                if (verifyResult.sampleData) {
-                    fullResultHtml += '<h4 style="margin-bottom: 8px;"><i class="fas fa-database"></i> 生成的示例数据</h4>';
-                    fullResultHtml += '<div style="background: #f5f5f5; padding: 10px; border-radius: 4px; margin-bottom: 15px; font-size: 12px;">';
-                    fullResultHtml += '<pre style="margin: 0; white-space: pre-wrap;">' + JSON.stringify(verifyResult.sampleData, null, 2) + '</pre>';
-                    fullResultHtml += '</div>';
-                }
-
-                // 显示链接信息
-                if (verifyResult.previewUrl || verifyResult.downloadUrl) {
-                    fullResultHtml += '<h4 style="margin-bottom: 8px;"><i class="fas fa-link"></i> 生成的链接</h4>';
-                    fullResultHtml += '<div style="background: #e6f7ff; padding: 10px; border-radius: 4px; margin-bottom: 15px; font-size: 12px;">';
-                    if (verifyResult.previewUrl) {
-                        fullResultHtml += '<div><strong>预览链接:</strong> <a href="' + verifyResult.previewUrl + '" target="_blank">' + verifyResult.previewUrl + '</a></div>';
-                    }
-                    if (verifyResult.downloadUrl) {
-                        fullResultHtml += '<div><strong>下载链接:</strong> <a href="' + verifyResult.downloadUrl + '">' + verifyResult.downloadUrl + '</a></div>';
-                    }
-                    fullResultHtml += '</div>';
-                }
-
-                fullResultHtml += '<hr style="margin: 15px 0; border-top: 1px solid #eee;">';
-                fullResultHtml += '<div style="margin-top: 10px;">';
-                fullResultHtml += '<button id="preview-template-btn" class="btn btn-primary btn-sm" style="margin-right: 8px;">';
-                fullResultHtml += '<i class="fas fa-eye"></i> 预览模版';
-                fullResultHtml += '</button>';
-                fullResultHtml += '<button id="preview-pdf-btn" class="btn btn-outline btn-sm" style="margin-right: 8px;">';
-                fullResultHtml += '<i class="fas fa-file-pdf"></i> PDF预览';
-                fullResultHtml += '</button>';
-                fullResultHtml += '<button id="preview-render-btn" class="btn btn-outline btn-sm">';
-                fullResultHtml += '<i class="fas fa-file-alt"></i> 下载示例文档';
-                fullResultHtml += '</button>';
-                fullResultHtml += '</div>';
-                elements.aiGenerateResult.innerHTML = fullResultHtml;
-
-                const previewBtn = document.getElementById('preview-template-btn');
-                if (previewBtn) {
-                    previewBtn.addEventListener('click', previewTemplateHtml);
-                }
-                const pdfBtn = document.getElementById('preview-pdf-btn');
-                if (pdfBtn) {
-                    pdfBtn.addEventListener('click', () => openPdfPreviewPopup(verifyResult.previewUrl));
-                }
-                const renderBtn = document.getElementById('preview-render-btn');
-                if (renderBtn) {
-                    renderBtn.addEventListener('click', () => downloadRenderedDocument(verifyResult.downloadUrl));
-                }
-            }
-
-            showToast('验证完成', 'success');
-        } catch (error) {
-            console.error('Fallback verify failed:', error);
-            addExecutionLog('验证失败: ' + error.message);
-            updateStatus('error', '验证失败: ' + error.message);
-            updateStepStatus('verify', 'error', '失败');
-            if (elements.aiGenerateResult) {
-                elements.aiGenerateResult.innerHTML = `<div style="color: #ff4d4f;">验证失败: ${error.message}</div>`;
             }
             showToast('验证失败: ' + error.message, 'error');
         } finally {
@@ -1905,54 +1776,6 @@
         }
 
         return summary;
-    }
-
-    // AI Verify Function - 利用模版自动生成验证报告
-    async function performAIVerify() {
-        if (!state.selectedTemplate) {
-            showToast('请先选择一个模板', 'warning');
-            return;
-        }
-
-        // 获取验证提示词
-        const verifyPrompt = elements.aiVerifyPrompt?.value || '生成一份示例报告用于验证模版配置';
-
-        // 禁用按钮并显示加载状态
-        elements.aiVerifyBtn.disabled = true;
-        elements.aiVerifyBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 验证中...';
-
-        try {
-            // 获取测试数据
-            const testData = elements.testData?.value || '{}';
-
-            // 调用AI验证API
-            const result = await apiRequest(`/templates/${state.selectedTemplate.id}/ai-verify`, {
-                method: 'POST',
-                body: JSON.stringify({
-                    templateId: state.selectedTemplate.id,
-                    prompt: verifyPrompt,
-                    testData: testData,
-                    templateConfig: state.templateConfig
-                })
-            });
-
-            // 显示验证结果
-            if (elements.aiVerifyResult && elements.aiVerifyContent) {
-                elements.aiVerifyResult.style.display = 'block';
-                elements.aiVerifyContent.innerHTML = result.report || result.message || '验证完成';
-            }
-
-            showToast('验证报告已生成', 'success');
-        } catch (error) {
-            console.error('AI verify failed:', error);
-            showToast('AI 验证失败: ' + error.message, 'error');
-            if (elements.aiVerifyResult) {
-                elements.aiVerifyResult.style.display = 'none';
-            }
-        } finally {
-            elements.aiVerifyBtn.disabled = false;
-            elements.aiVerifyBtn.innerHTML = '<i class="fas fa-check-double"></i> AI 验证';
-        }
     }
 
     // Detect potential loops from document structure

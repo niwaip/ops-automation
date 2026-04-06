@@ -783,6 +783,129 @@ export class StudioController {
    * AI验证 - 利用模版自动生成验证报告
    */
   /**
+   * AI验证模版（SSE流式输出）- POST请求用于fetch流式处理
+   * 实时显示执行过程，生成示例数据并渲染文档
+   */
+  @Post('templates/:id/ai-verify-stream')
+  @ApiOperation({ summary: 'AI verify template with SSE streaming (POST for fetch)' })
+  @ApiBody({ type: AIVerifyDto })
+  async aiVerifyTemplateStreamPost(
+    @Param('id') id: string,
+    @Body() dto: AIVerifyDto,
+    @Res({ passthrough: false }) res: Response
+  ): Promise<void> {
+    const meta = this.getTemplateMeta(id);
+    const templatePath = path.join(this.templatesDir, `${id}.${meta.format}`);
+
+    if (!fs.existsSync(templatePath)) {
+      res.status(404).json({ error: 'Template file not found' });
+      return;
+    }
+
+    // 设置SSE响应头
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Connection', 'keep-alive');
+    res.setHeader('X-Accel-Buffering', 'no');
+
+    // 发送进度事件的辅助函数
+    const sendProgress = (step: string, progress: number, message: string) => {
+      res.write(`data: ${JSON.stringify({ type: 'progress', step, progress, message })}\n\n`);
+    };
+
+    const sendResult = (data: any) => {
+      res.write(`data: ${JSON.stringify({ type: 'result', data })}\n\n`);
+    };
+
+    const sendError = (error: string) => {
+      res.write(`data: ${JSON.stringify({ type: 'error', error })}\n\n`);
+    };
+
+    try {
+      // 步骤1: 准备验证环境
+      sendProgress('prepare', 10, '准备验证环境...');
+
+      // 解析测试数据
+      let parsedTestData: any = {};
+      if (dto.testData) {
+        try {
+          parsedTestData = JSON.parse(dto.testData);
+        } catch {
+          sendProgress('prepare', 15, '测试数据解析失败，使用空对象');
+        }
+      }
+
+      sendProgress('prepare', 20, '获取模版配置...');
+
+      // 获取模版配置
+      const config = dto.templateConfig || meta.templateConfig || {};
+
+      // 步骤2: 调用AI生成验证报告
+      sendProgress('ai_call', 30, '调用AI生成验证报告...');
+      const aiResponse = await this.aiIdentifierService.verifyTemplate(
+        templatePath,
+        meta.format,
+        dto.prompt || '生成一份示例报告用于验证模版配置',
+        dto.testData || '',
+        config
+      );
+
+      sendProgress('ai_call', 50, 'AI验证报告已生成');
+
+      // 步骤3: 生成示例数据
+      sendProgress('generate_data', 55, '生成示例数据...');
+      const templateBuffer = fs.readFileSync(templatePath);
+      const templateInfo = await this.engine.parseTemplateBuffer(templateBuffer, meta.fileName);
+
+      // 使用AI生成的数据或自动生成示例数据
+      let sampleData = parsedTestData;
+      if (!parsedTestData || Object.keys(parsedTestData).length === 0) {
+        sampleData = this.engine.generateSampleData(templateInfo, 5);
+      }
+
+      sendProgress('generate_data', 65, '示例数据已生成');
+
+      // 步骤4: 渲染文档
+      sendProgress('render', 70, '渲染示例文档...');
+      const outputBuffer = await this.engine.render(templateBuffer, sampleData, meta.fileName);
+      sendProgress('render', 85, '文档渲染完成');
+
+      // 步骤5: 保存渲染结果
+      const outputId = uuidv4();
+      const outputPath = path.join(this.outputsDir, `${outputId}.${meta.format}`);
+      const outputMetaPath = path.join(this.outputsDir, `${outputId}.json`);
+
+      fs.writeFileSync(outputPath, outputBuffer);
+      fs.writeFileSync(outputMetaPath, JSON.stringify({
+        id: outputId,
+        templateId: id,
+        fileName: `verify_${meta.fileName}`,
+        format: meta.format,
+        createdAt: new Date().toISOString(),
+        sampleData: sampleData
+      }));
+
+      sendProgress('save', 95, '保存渲染结果...');
+
+      // 步骤6: 返回结果
+      sendProgress('complete', 100, '验证完成');
+      sendResult({
+        report: aiResponse.report,
+        downloadUrl: `/studio/download/${outputId}`,
+        previewUrl: `/studio/preview-file/${outputId}`,
+        sampleData: sampleData,
+        success: aiResponse.success
+      });
+
+      res.end();
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      sendError(message);
+      res.end();
+    }
+  }
+
+  /**
    * AI验证模版（SSE流式输出）- GET请求用于EventSource
    * 实时显示执行过程，生成示例数据并渲染文档
    */
