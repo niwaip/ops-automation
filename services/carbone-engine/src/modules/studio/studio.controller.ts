@@ -96,6 +96,8 @@ export interface TemplateResponse {
   loops: Array<{ arrayPath: string }>;
   markings?: Array<{ path: string; text: string; formatters?: string[] }>;
   ignoredElements?: number[];  // 被忽略的元素索引列表
+  elementGroups?: Record<string, number[]>;  // 元素分组
+  ignoredGroups?: string[];  // 被忽略的分组ID列表
   savedAt?: string;
   templateConfig?: any;  // AI-generated template configuration
   configSavedAt?: string;
@@ -690,12 +692,16 @@ export class StudioController {
   async getMarkings(@Param('id') id: string): Promise<{
     markings: Array<{ path: string; text: string; formatters?: string[] }>;
     ignoredElements?: number[];
+    elementGroups?: Record<string, number[]>;
+    ignoredGroups?: string[];
     savedAt?: string;
   }> {
     const meta = this.getTemplateMeta(id);
     return {
       markings: meta.markings || [],
       ignoredElements: meta.ignoredElements || [],
+      elementGroups: meta.elementGroups || {},
+      ignoredGroups: meta.ignoredGroups || [],
       savedAt: meta.savedAt
     };
   }
