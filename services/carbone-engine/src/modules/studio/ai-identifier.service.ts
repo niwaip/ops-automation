@@ -73,7 +73,8 @@ export interface ImageLoop {
 
 export interface VariableMapping {
   path: string;
-  content: string;
+  sampleValue: string;
+  index: number;
   type: 'text' | 'number' | 'date' | 'image' | 'heading';
   reason: string;
 }
@@ -379,7 +380,8 @@ export class AIIdentifierService {
            // preserve variable → 变量
            config.variableMappings.push({
              path: this.generateVariablePath(el),
-             content: el.text,
+             sampleValue: el.text,
+             index: el.index,
              type: this.detectVariableType(el),
              reason: `根据 preserve 标记作为变量: ${preserveMarker.text || ''}`
            });
@@ -420,7 +422,8 @@ export class AIIdentifierService {
          // 标题中包含 Step X 内容，但不是组合类型，作为变量
          config.variableMappings.push({
            path: `d.steps[${pattern.extractedValue || 'content'}]`,
-           content: el.text,
+           sampleValue: el.text,
+           index: el.index,
            type: 'text',
            reason: '检测到步骤相关标题，建议作为参数'
          });
@@ -440,7 +443,7 @@ export class AIIdentifierService {
          const columnMappings = this.generateColumnMappings(headerRow, arrayPath);
 
          config.tableLoops.push({
-           tableIndex: config.tableLoops.length,
+           tableIndex: el.index, // <--- Corrected to el.index
            headerRow,
            dataRowCount: dataRows.length,
            arrayPath,
@@ -462,7 +465,8 @@ export class AIIdentifierService {
          // 总结/日志类内容，建议变量化
          config.variableMappings.push({
            path: 'd.contextLog',
-           content: el.text,
+           sampleValue: el.text,
+           index: el.index,
            type: 'text',
            reason: '检测到执行上下文日志内容，建议作为参数'
          });
@@ -470,7 +474,8 @@ export class AIIdentifierService {
          // 图片相关段落（但不是组合类型）
          config.variableMappings.push({
            path: `d.${this.slugify(pattern.extractedValue || 'screenshot')}`,
-           content: el.text,
+           sampleValue: el.text,
+           index: el.index,
            type: 'image',
            reason: '检测到图片/截图内容，建议作为参数'
          });
@@ -482,7 +487,7 @@ export class AIIdentifierService {
      if (el.type === 'image') {
        if (userIntent.imageLoops) {
          config.imageLoops.push({
-           imageIndex: config.imageLoops.length,
+           imageIndex: el.index, // <--- Corrected to el.index
            imageId: el.imageId || '',
            altText: el.altText || '',
            arrayPath: 'd.screenshots',
@@ -492,7 +497,8 @@ export class AIIdentifierService {
        } else {
          config.variableMappings.push({
            path: `d.screenshot${config.imageLoops.length + 1}`,
-           content: el.altText || 'Image',
+           sampleValue: el.altText || 'Image',
+           index: el.index,
            type: 'image',
            reason: '检测到图片，建议作为参数'
          });
@@ -505,7 +511,8 @@ export class AIIdentifierService {
      for (const step of stepScreenshots) {
        config.variableMappings.push({
          path: `d.steps[${step.stepNum - 1}].screenshot`,
-         content: step.text,
+         sampleValue: step.text,
+         index: -1, // No specific index for this derived mapping
          type: 'image',
          reason: `步骤${step.stepNum}的截图参数 (imageId: ${step.imageId})`
        });
@@ -741,7 +748,8 @@ export class AIIdentifierService {
       for (const col of loop.columnMappings) {
         suggestions.push({
           path: col.variablePath,
-          content: col.sampleValue,
+          sampleValue: col.sampleValue,
+          index: -1,
           type: 'text',
           reason: `来自表格 "${loop.headerRow}" 的列 "${col.headerName}"`
         });
@@ -752,7 +760,8 @@ export class AIIdentifierService {
     for (const img of config.imageLoops) {
       suggestions.push({
         path: `${img.arrayPath}[].url`,
-        content: img.altText || 'image.png',
+        sampleValue: img.altText || 'image.png',
+        index: -1,
         type: 'image',
         reason: '图片URL变量'
       });
@@ -1128,43 +1137,51 @@ export class AIIdentifierService {
 
 ${markingSummary || ''}
 
-文档元素列表：
+文档元素列表（每行开头的数字是 elementIndex）：
 ${elementSummary}
 
 请根据用户的手动标记，配置具体的参数名称、类型等信息。
 
 规则：
-1. 用户标记为"param"的元素 → variableMappings，需要生成合适的变量名（如d.title、d.name）
-2. 用户标记为"loop"的元素 → tableLoops，需要生成循环路径（如d.steps）和列映射
+1. 用户标记为"param"的元素 → variableMappings，需要生成合适的变量名（如d.title、d.name），并包含该元素的 elementIndex
+2. 用户标记为"loop"的元素 → tableLoops，需要生成循环路径（如d.steps）和列映射，并包含该表格的 elementIndex (对应列表中的数字)
 3. 用户标记为"static"的元素 → staticElements，保留不变
 
 返回JSON格式：
 {
   "templateType": "类型",
   "staticElements": [{"type": "heading", "content": "...", "reason": "..."}],
-  "tableLoops": [{"tableIndex": 0, "arrayPath": "d.steps", "reason": "...", "columnMappings": [...]}],
+  "tableLoops": [{"elementIndex": N, "arrayPath": "d.steps", "reason": "...", "columnMappings": [...]}],
   "combinedVariables": [{"stepNumber": N, "textContent": "...", "imageId": "...", "reason": "..."}],
-  "variableMappings": [{"path": "d.xxx", "content": "...", "type": "text", "reason": "..."}],
+  "variableMappings": [{"elementIndex": N, "path": "d.xxx", "content": "...", "type": "text", "reason": "..."}],
   "analysisNotes": ["..."]
 }
 
-只返回JSON，不要解释。`;
+注意：elementIndex 是列表左侧的编号。只返回JSON，不要解释。`;
     }
 
     return `分析以下文档结构，返回JSON：
 
+文档元素列表（每行开头的数字是 elementIndex）：
 ${elementSummary}
 
 规则：
 1. "### xxx" 标题 → staticElements (保留)
-2. 表格有preserve或rows属性 → tableLoops (循环)
+2. 表格有preserve或rows属性 → tableLoops (循环)，必须包含 elementIndex (对应列表中的数字)
 3. "Step N: screenshot" + 相邻图片 → combinedVariables (组合变量, stepNumber=N, imageId=图片ID)
-4. 含"日志/上下文"的段落 → variableMappings
+4. 含"日志/上下文"的段落 → variableMappings，必须包含 elementIndex (对应列表中的数字)
 
 返回JSON格式：
-{"templateType":"类型","staticElements":[],"tableLoops":[],"combinedVariables":[],"variableMappings":[],"analysisNotes":[]}
+{
+  "templateType": "类型",
+  "staticElements": [],
+  "tableLoops": [{"elementIndex": N, "arrayPath": "d.items", "columnMappings": []}],
+  "combinedVariables": [],
+  "variableMappings": [{"elementIndex": N, "path": "d.xxx", "type": "text"}],
+  "analysisNotes": []
+}
 
-只返回JSON，不要解释。`;
+注意：elementIndex 是列表左侧的编号。只返回JSON，不要解释。`;
   }
 
   /**
@@ -1186,7 +1203,7 @@ ${elementSummary}
         tableLoops: this.validateTableLoops(parsed.tableLoops || [], elements),
         imageLoops: [],
         combinedVariables: this.validateCombinedVariables(parsed.combinedVariables || [], elements),
-        variableMappings: parsed.variableMappings || [],
+        variableMappings: this.validateVariableMappings(parsed.variableMappings || [], elements),
         analysisNotes: parsed.analysisNotes || [],
       };
 
@@ -1204,19 +1221,47 @@ ${elementSummary}
     const result: TableLoop[] = [];
 
     for (const loop of tableLoops) {
+      // AI返回的索引可能是 1-based (elementIndex)
+      const elementIndex = loop.elementIndex !== undefined ? loop.elementIndex - 1 : loop.tableIndex;
+      
       const tableElement = elements.find((el, idx) =>
-        el.type === 'table' && idx === loop.tableIndex
+        el.type === 'table' && idx === elementIndex
       );
 
       if (tableElement) {
         result.push({
-          tableIndex: loop.tableIndex,
+          tableIndex: elementIndex,
           headerRow: tableElement.headerRow || '',
           dataRowCount: tableElement.dataRows?.length || 0,
           arrayPath: loop.arrayPath || 'd.items',
           columnMappings: this.generateColumnMappings(tableElement.headerRow || '', loop.arrayPath || 'd.items'),
           reason: loop.reason || 'AI 识别的循环表格',
           confidence: 0.9,
+        });
+      }
+    }
+
+    return result;
+  }
+
+  /**
+   * 验证并补充变量映射配置
+   */
+  private validateVariableMappings(mappings: any[], elements: DocumentElement[]): VariableMapping[] {
+    const result: VariableMapping[] = [];
+
+    for (const mapping of mappings) {
+      // 转换 1-based 索引为 0-based
+      const index = mapping.elementIndex !== undefined ? mapping.elementIndex - 1 : mapping.index;
+      
+      if (index !== undefined && index >= 0 && index < elements.length) {
+        const element = elements[index];
+        result.push({
+          path: mapping.path || `d.var_${index}`,
+          sampleValue: element.text || mapping.sampleValue || mapping.content || '',
+          index: index,
+          type: mapping.type || 'text',
+          reason: mapping.reason || 'AI 识别的变量',
         });
       }
     }

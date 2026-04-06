@@ -200,7 +200,19 @@ export class DocumentStructureParser {
       }
     }
 
-    // 2. 应用表格循环 (Table Loops)
+    // 2. 应用变量映射 (Variable Mappings - AI生成)
+    if (config.variableMappings && Array.isArray(config.variableMappings)) {
+      for (const mapping of config.variableMappings) {
+        const node = elements[mapping.index];
+        if (!node) continue;
+
+        if (mapping.path) {
+          this.injectTextToElement(node, `{${mapping.path}}`);
+        }
+      }
+    }
+
+    // 3. 应用表格循环 (Table Loops)
     if (config.tableLoops && Array.isArray(config.tableLoops)) {
       for (const tableLoop of config.tableLoops) {
         const table = elements[tableLoop.tableIndex];
