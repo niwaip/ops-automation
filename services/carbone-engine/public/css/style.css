@@ -1632,6 +1632,12 @@ body {
     background: #52c41a;
 }
 
+.legend-count {
+    color: #666;
+    font-size: 11px;
+    margin-left: 2px;
+}
+
 /* Marking Summary */
 .marking-summary {
     display: flex;

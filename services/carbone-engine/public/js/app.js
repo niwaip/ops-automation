@@ -14,7 +14,7 @@
         currentZoom: 1,
         documentElements: [],
         sourceXml: '',
-        currentTab: 'preview',
+        currentTab: 'source',  // 默认显示代码页
         currentSourceView: 'structure',  // 默认显示结构化视图
         xmlStructure: null,
         selectedElementIndices: [],  // 多选元素索引列表
@@ -219,7 +219,7 @@
         state.selectedTemplate = template;
         state.sourceXml = ''; // Clear cached source
         state.xmlStructure = null; // Clear cached structure
-        state.currentTab = 'preview'; // Reset to preview tab
+        state.currentTab = 'source'; // 默认显示代码页
         state.currentSourceView = 'structure'; // 默认结构化视图
         state.manualMarkings = {}; // 清空手动标记
         renderTemplateList();
@@ -227,17 +227,24 @@
         elements.noTemplate.style.display = 'none';
         elements.templateEditor.style.display = 'flex';
 
-        // Reset tab state
-        elements.tabPreview.classList.add('active');
-        elements.tabSource.classList.remove('active');
-        elements.previewTabContent.classList.add('active');
-        elements.sourceTabContent.classList.remove('active');
+        // Reset tab state - 默认选中Source标签
+        elements.tabPreview.classList.remove('active');
+        elements.tabSource.classList.add('active');
+        elements.previewTabContent.classList.remove('active');
+        elements.sourceTabContent.classList.add('active');
 
         // Reset source view state - 默认显示结构化视图
         elements.viewRaw.classList.remove('active');
         elements.viewStructure.classList.add('active');
         elements.rawView.classList.remove('active');
         elements.structureView.classList.add('active');
+
+        // 加载源码并渲染结构
+        loadSourceXml().then(() => {
+            switchSourceView('structure');
+            // 结构渲染完成后加载已保存的标记
+            loadSavedMarkings();
+        });
 
         // Update header
         elements.templateName.textContent = template.fileName;
@@ -266,9 +273,6 @@
 
         // Load document preview
         loadDocumentPreview(template);
-
-        // 加载已保存的标记
-        loadSavedMarkings();
 
         // Load saved markings
         loadMarkings(template.id);
@@ -1886,7 +1890,8 @@
                     text: text.substring(0, 100),
                     hasPreserve: child.outerHTML.includes('preserve'),
                     headerRow: apiTable.headerRow || '',
-                    dataRows: apiTable.dataRows || []
+                    dataRows: apiTable.dataRows || [],
+                    dataRowCount: apiTable.dataRowCount || (apiTable.dataRows ? apiTable.dataRows.length : 0)
                 });
             }
             // 检查是否是段落元素 (w:p) - 不在表格单元格内
@@ -2024,6 +2029,23 @@
         const showTables = elements.showTables.checked;
         const showParagraphs = elements.showParagraphs.checked;
 
+        // 统计各类型标记数量
+        const markings = state.manualMarkings || {};
+        let paramCount = 0, loopCount = 0, staticCount = 0;
+        Object.values(markings).forEach(type => {
+            if (type === 'param') paramCount++;
+            else if (type === 'loop') loopCount++;
+            else if (type === 'static') staticCount++;
+        });
+
+        // 更新图例显示数量
+        const legendItems = document.querySelectorAll('.structure-legend .legend-item');
+        if (legendItems.length >= 3) {
+            legendItems[0].innerHTML = `<span class="legend-color legend-param"></span> 参数${paramCount > 0 ? ` <span class="legend-count">(${paramCount})</span>` : ''}`;
+            legendItems[1].innerHTML = `<span class="legend-color legend-loop"></span> 循环${loopCount > 0 ? ` <span class="legend-count">(${loopCount})</span>` : ''}`;
+            legendItems[2].innerHTML = `<span class="legend-color legend-static"></span> 静态${staticCount > 0 ? ` <span class="legend-count">(${staticCount})</span>` : ''}`;
+        }
+
         let html = '<div class="structure-content">';
 
         // Document root
@@ -2147,22 +2169,25 @@
                     }
 
                     // 数据行（可循环）
-                    if (el.dataRows && el.dataRows.length > 0) {
+                    if (el.dataRowCount > 0 || (el.dataRows && el.dataRows.length > 0)) {
+                        const rowCount = el.dataRowCount || (el.dataRows ? el.dataRows.length : 0);
                         html += `<div class="structure-node table-data-node" data-type="table-data" data-table="${el.index}">
                             <span class="node-label">🔄 数据行</span>
-                            <span class="node-attr">${el.dataRows.length}行可循环</span>
+                            <span class="node-attr">${rowCount}行可循环</span>
                         </div>`;
 
                         // 显示数据行内容
                         html += '<div class="node-children">';
-                        el.dataRows.slice(0, 3).forEach((row, rowIdx) => {
-                            html += `<div class="structure-node table-row-node" data-type="table-row">
-                                <span class="node-text">${escapeHtml(row.substring(0, 60))}${row.length > 60 ? '...' : ''}</span>
-                            </div>`;
-                        });
-                        if (el.dataRows.length > 3) {
+                        if (el.dataRows && el.dataRows.length > 0) {
+                            el.dataRows.slice(0, 3).forEach((row, rowIdx) => {
+                                html += `<div class="structure-node table-row-node" data-type="table-row">
+                                    <span class="node-text">${escapeHtml(row.substring(0, 60))}${row.length > 60 ? '...' : ''}</span>
+                                </div>`;
+                            });
+                        }
+                        if (rowCount > 3) {
                             html += `<div class="structure-node table-row-node">
-                                <span class="node-text">... 共${el.dataRows.length}行数据</span>
+                                <span class="node-text">... 共${rowCount}行数据</span>
                             </div>`;
                         }
                         html += '</div>';
@@ -2469,8 +2494,8 @@
                     }
                 });
 
-                // 如果当前在结构视图，重新渲染
-                if (state.currentSourceView === 'structure') {
+                // 如果当前在结构视图且xmlStructure已解析，重新渲染
+                if (state.currentSourceView === 'structure' && state.xmlStructure) {
                     renderStructureTree();
                 }
             }

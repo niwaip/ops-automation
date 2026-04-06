@@ -43,6 +43,7 @@ export interface DocumentElement {
   tableRows?: TableRow[];
   headerRow?: string;
   dataRows?: string[];
+  dataRowCount?: number;  // 数据行总数
   // 图片特定属性
   imageId?: string;        // relationship ID (rId)
   imageWidth?: number;     // EMUs (English Metric Units)
@@ -567,11 +568,13 @@ export class DocumentStructureParser {
         cols: String(headers.length),
         hasDataRows: String(dataRowTexts.length > 0),
         hasLoopMarker: String(tableHasLoopMarker),
+        dataRowCount: String(dataRowTexts.length), // 数据行总数
       },
       tableHeaders: headers,
       tableRows: parsedRows,
       headerRow: headerText,
-      dataRows: dataRowTexts.slice(0, 3), // 只显示前3行数据
+      dataRows: dataRowTexts.slice(0, 10), // 显示前10行数据
+      dataRowCount: dataRowTexts.length, // 数据行总数
     };
   }
 
