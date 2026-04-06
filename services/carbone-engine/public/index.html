@@ -248,6 +248,17 @@
                                         <span id="status-text" class="status-value">等待操作</span>
                                     </div>
                                 </div>
+                                <!-- Execution Progress -->
+                                <div id="execution-progress" style="display: none; margin-top: 12px; padding: 12px; background: #e6f7ff; border: 1px solid #91d5ff; border-radius: 4px;">
+                                    <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
+                                        <i class="fas fa-spinner fa-spin" style="color: #1890ff;"></i>
+                                        <span id="execution-title" style="font-weight: 500; color: #1890ff;">执行中...</span>
+                                    </div>
+                                    <div class="progress-bar" style="margin: 8px 0;">
+                                        <div id="execution-progress-fill" class="progress-fill" style="width: 0%; background: #1890ff;"></div>
+                                    </div>
+                                    <div id="execution-log" style="font-size: 11px; color: #666; max-height: 100px; overflow-y: auto;"></div>
+                                </div>
                             </div>
 
                             <!-- Selection Info -->

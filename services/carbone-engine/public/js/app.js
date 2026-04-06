@@ -97,6 +97,11 @@
         elements.aiVerifyBtn = document.getElementById('ai-verify-btn');
         // Status display
         elements.statusText = document.getElementById('status-text');
+        // Execution progress
+        elements.executionProgress = document.getElementById('execution-progress');
+        elements.executionTitle = document.getElementById('execution-title');
+        elements.executionProgressFill = document.getElementById('execution-progress-fill');
+        elements.executionLog = document.getElementById('execution-log');
     }
 
     // Utility Functions
@@ -1309,15 +1314,10 @@
         }
     }
 
-    // AI Verify Function - 验证模版配置
+    // AI Verify Function - 验证模版配置（SSE流式输出）
     async function performAIVerify() {
         if (!state.selectedTemplate) {
             showToast('请先选择一个模板', 'warning');
-            return;
-        }
-
-        if (!state.templateConfig) {
-            showToast('请先生成模版配置', 'warning');
             return;
         }
 
@@ -1325,11 +1325,15 @@
         updateStatus('processing', '开始验证模版...');
         updateStepStatus('verify', 'in-progress', '验证中...');
 
+        // 显示执行进度
+        showExecutionProgress('AI验证模版中...');
+        addExecutionLog('开始验证模版配置');
+
         // 禁用按钮并显示加载状态
         elements.aiVerifyBtn.disabled = true;
         elements.aiVerifyBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 验证中...';
 
-        // 显示进度条
+        // 显示进度条和结果区域
         if (elements.aiGenerateResultSection) {
             elements.aiGenerateResultSection.style.display = 'block';
         }
@@ -1338,58 +1342,124 @@
         }
 
         try {
-            // 调用AI验证
-            updateProgress(50, '正在调用AI验证...');
-            updateStatus('processing', 'AI验证模版...');
+            // 使用SSE流式验证
+            const testData = elements.testData?.value || '';
+            const eventSource = new EventSource(`/studio/templates/${state.selectedTemplate.id}/ai-verify-stream?testData=${encodeURIComponent(testData)}&templateConfig=${encodeURIComponent(JSON.stringify(state.templateConfig || {}))}&prompt=${encodeURIComponent('验证模版配置是否合理，生成示例报告')}`);
 
-            const verifyResult = await apiRequest(`/templates/${state.selectedTemplate.id}/ai-verify`, {
-                method: 'POST',
-                body: JSON.stringify({
-                    templateId: state.selectedTemplate.id,
-                    prompt: '验证模版配置是否合理',
-                    templateConfig: state.templateConfig
-                })
-            });
+            let verifyResult = null;
 
-            // 显示验证结果
-            updateProgress(100, '完成');
-            updateStatus('success', '验证完成');
-            updateStepStatus('verify', 'completed', '已完成');
+            eventSource.onmessage = (event) => {
+                try {
+                    const data = JSON.parse(event.data);
 
-            // 隐藏进度条
-            if (elements.aiProgress) {
-                elements.aiProgress.style.display = 'none';
-            }
+                    if (data.type === 'progress') {
+                        // 更新进度显示
+                        updateExecutionProgress(data.progress, data.message);
+                        updateProgress(data.progress, data.message);
+                        addExecutionLog(`[${data.step}] ${data.message}`);
+                    } else if (data.type === 'result') {
+                        verifyResult = data.data;
+                        eventSource.close();
 
-            // 显示结果
-            if (elements.aiGenerateResult) {
-                let resultHtml = '<h3>验证报告</h3>';
-                resultHtml += marked.parse(verifyResult.report || '验证完成');
-                resultHtml += '<hr style="margin: 15px 0; border-top: 1px solid #eee;">';
-                resultHtml += '<div style="margin-top: 10px;">';
-                resultHtml += '<button id="preview-template-btn" class="btn btn-primary btn-sm" style="margin-right: 8px;">';
-                resultHtml += '<i class="fas fa-eye"></i> 预览模版';
-                resultHtml += '</button>';
-                resultHtml += '<button id="preview-render-btn" class="btn btn-outline btn-sm">';
-                resultHtml += '<i class="fas fa-file-alt"></i> 生成示例文档';
-                resultHtml += '</button>';
-                resultHtml += '</div>';
-                elements.aiGenerateResult.innerHTML = resultHtml;
+                        // 显示验证结果
+                        updateExecutionProgress(100, '验证完成');
+                        updateProgress(100, '完成');
+                        updateStatus('success', '验证完成');
+                        updateStepStatus('verify', 'completed', '已完成');
 
-                // 绑定预览按钮事件
-                const previewBtn = document.getElementById('preview-template-btn');
-                if (previewBtn) {
-                    previewBtn.addEventListener('click', previewTemplateHtml);
+                        // 隐藏进度条
+                        if (elements.aiProgress) {
+                            elements.aiProgress.style.display = 'none';
+                        }
+
+                        // 延迟隐藏执行进度
+                        setTimeout(() => {
+                            hideExecutionProgress();
+                        }, 1000);
+
+                        // 显示结果
+                        if (elements.aiGenerateResult) {
+                            let resultHtml = '<h3 style="margin-bottom: 12px;">验证报告</h3>';
+                            resultHtml += '<div style="background: #f6ffed; border: 1px solid #b7eb8f; border-radius: 4px; padding: 12px; margin-bottom: 15px;">';
+                            resultHtml += marked.parse(verifyResult.report || '验证完成');
+                            resultHtml += '</div>';
+
+                            // 显示生成的示例数据
+                            if (verifyResult.sampleData) {
+                                resultHtml += '<h4 style="margin-bottom: 8px;"><i class="fas fa-database"></i> 生成的示例数据</h4>';
+                                resultHtml += '<div style="background: #f5f5f5; padding: 10px; border-radius: 4px; margin-bottom: 15px; font-size: 12px;">';
+                                resultHtml += '<pre style="margin: 0; white-space: pre-wrap;">' + JSON.stringify(verifyResult.sampleData, null, 2) + '</pre>';
+                                resultHtml += '</div>';
+                            }
+
+                            resultHtml += '<hr style="margin: 15px 0; border-top: 1px solid #eee;">';
+                            resultHtml += '<div style="margin-top: 10px;">';
+                            resultHtml += '<button id="preview-template-btn" class="btn btn-primary btn-sm" style="margin-right: 8px;">';
+                            resultHtml += '<i class="fas fa-eye"></i> 预览模版';
+                            resultHtml += '</button>';
+                            resultHtml += '<button id="preview-pdf-btn" class="btn btn-outline btn-sm" style="margin-right: 8px;">';
+                            resultHtml += '<i class="fas fa-file-pdf"></i> PDF预览';
+                            resultHtml += '</button>';
+                            resultHtml += '<button id="preview-render-btn" class="btn btn-outline btn-sm">';
+                            resultHtml += '<i class="fas fa-file-alt"></i> 下载示例文档';
+                            resultHtml += '</button>';
+                            resultHtml += '</div>';
+                            elements.aiGenerateResult.innerHTML = resultHtml;
+
+                            // 绑定预览按钮事件
+                            const previewBtn = document.getElementById('preview-template-btn');
+                            if (previewBtn) {
+                                previewBtn.addEventListener('click', previewTemplateHtml);
+                            }
+                            const pdfBtn = document.getElementById('preview-pdf-btn');
+                            if (pdfBtn) {
+                                pdfBtn.addEventListener('click', () => openPdfPreviewPopup(verifyResult.previewUrl));
+                            }
+                            const renderBtn = document.getElementById('preview-render-btn');
+                            if (renderBtn) {
+                                renderBtn.addEventListener('click', () => downloadRenderedDocument(verifyResult.downloadUrl));
+                            }
+                        }
+
+                        showToast('验证完成', 'success');
+                        elements.aiVerifyBtn.disabled = false;
+                        elements.aiVerifyBtn.innerHTML = '<i class="fas fa-check-double"></i> 验证模版';
+                    } else if (data.type === 'error') {
+                        eventSource.close();
+                        addExecutionLog('验证失败: ' + data.error);
+                        updateExecutionProgress(0, '失败');
+                        updateProgress(0, '失败');
+                        updateStatus('error', '验证失败: ' + data.error);
+                        updateStepStatus('verify', 'error', '失败');
+
+                        if (elements.aiProgress) {
+                            elements.aiProgress.style.display = 'none';
+                        }
+                        if (elements.aiGenerateResult) {
+                            elements.aiGenerateResult.innerHTML = `<div style="color: #ff4d4f;">验证失败: ${data.error}</div>`;
+                        }
+                        showToast('验证失败: ' + data.error, 'error');
+                        elements.aiVerifyBtn.disabled = false;
+                        elements.aiVerifyBtn.innerHTML = '<i class="fas fa-check-double"></i> 验证模版';
+                    }
+                } catch (parseError) {
+                    console.error('Parse SSE message error:', parseError);
                 }
-                const renderBtn = document.getElementById('preview-render-btn');
-                if (renderBtn) {
-                    renderBtn.addEventListener('click', previewRenderDocument);
-                }
-            }
+            };
 
-            showToast('验证完成', 'success');
+            eventSource.onerror = (error) => {
+                console.error('SSE connection error:', error);
+                eventSource.close();
+
+                // 如果SSE失败，尝试使用普通API
+                addExecutionLog('SSE连接失败，使用普通API...');
+                fallbackToNormalVerify();
+            };
+
         } catch (error) {
             console.error('AI verify failed:', error);
+            addExecutionLog('验证失败: ' + error.message);
+            updateExecutionProgress(0, '失败');
             updateProgress(0, '失败');
             updateStatus('error', '验证失败: ' + error.message);
             updateStepStatus('verify', 'error', '失败');
@@ -1401,10 +1471,137 @@
                 elements.aiGenerateResult.innerHTML = `<div style="color: #ff4d4f;">验证失败: ${error.message}</div>`;
             }
             showToast('验证失败: ' + error.message, 'error');
+            elements.aiVerifyBtn.disabled = false;
+            elements.aiVerifyBtn.innerHTML = '<i class="fas fa-check-double"></i> 验证模版';
+        }
+    }
+
+    // Fallback to normal verify API when SSE fails
+    async function fallbackToNormalVerify() {
+        try {
+            const verifyResult = await apiRequest(`/templates/${state.selectedTemplate.id}/ai-verify`, {
+                method: 'POST',
+                body: JSON.stringify({
+                    templateId: state.selectedTemplate.id,
+                    prompt: '验证模版配置是否合理',
+                    testData: elements.testData?.value || '',
+                    templateConfig: state.templateConfig
+                })
+            });
+
+            updateExecutionProgress(100, '验证完成');
+            updateProgress(100, '完成');
+            updateStatus('success', '验证完成');
+            updateStepStatus('verify', 'completed', '已完成');
+
+            if (elements.aiProgress) {
+                elements.aiProgress.style.display = 'none';
+            }
+
+            setTimeout(() => {
+                hideExecutionProgress();
+            }, 1000);
+
+            if (elements.aiGenerateResult) {
+                let resultHtml = '<h3 style="margin-bottom: 12px;">验证报告</h3>';
+                resultHtml += '<div style="background: #f6ffed; border: 1px solid #b7eb8f; border-radius: 4px; padding: 12px; margin-bottom: 15px;">';
+                resultHtml += marked.parse(verifyResult.report || '验证完成');
+                resultHtml += '</div>';
+
+                if (verifyResult.sampleData) {
+                    resultHtml += '<h4 style="margin-bottom: 8px;"><i class="fas fa-database"></i> 生成的示例数据</h4>';
+                    resultHtml += '<div style="background: #f5f5f5; padding: 10px; border-radius: 4px; margin-bottom: 15px; font-size: 12px;">';
+                    resultHtml += '<pre style="margin: 0; white-space: pre-wrap;">' + JSON.stringify(verifyResult.sampleData, null, 2) + '</pre>';
+                    resultHtml += '</div>';
+                }
+
+                resultHtml += '<hr style="margin: 15px 0; border-top: 1px solid #eee;">';
+                resultHtml += '<div style="margin-top: 10px;">';
+                resultHtml += '<button id="preview-template-btn" class="btn btn-primary btn-sm" style="margin-right: 8px;">';
+                resultHtml += '<i class="fas fa-eye"></i> 预览模版';
+                resultHtml += '</button>';
+                resultHtml += '<button id="preview-pdf-btn" class="btn btn-outline btn-sm" style="margin-right: 8px;">';
+                resultHtml += '<i class="fas fa-file-pdf"></i> PDF预览';
+                resultHtml += '</button>';
+                resultHtml += '<button id="preview-render-btn" class="btn btn-outline btn-sm">';
+                resultHtml += '<i class="fas fa-file-alt"></i> 下载示例文档';
+                resultHtml += '</button>';
+                resultHtml += '</div>';
+                elements.aiGenerateResult.innerHTML = resultHtml;
+
+                const previewBtn = document.getElementById('preview-template-btn');
+                if (previewBtn) {
+                    previewBtn.addEventListener('click', previewTemplateHtml);
+                }
+                const pdfBtn = document.getElementById('preview-pdf-btn');
+                if (pdfBtn) {
+                    pdfBtn.addEventListener('click', () => openPdfPreviewPopup(verifyResult.previewUrl));
+                }
+                const renderBtn = document.getElementById('preview-render-btn');
+                if (renderBtn) {
+                    renderBtn.addEventListener('click', () => downloadRenderedDocument(verifyResult.downloadUrl));
+                }
+            }
+
+            showToast('验证完成', 'success');
+        } catch (error) {
+            console.error('Fallback verify failed:', error);
+            addExecutionLog('验证失败: ' + error.message);
+            updateStatus('error', '验证失败: ' + error.message);
+            updateStepStatus('verify', 'error', '失败');
+            if (elements.aiGenerateResult) {
+                elements.aiGenerateResult.innerHTML = `<div style="color: #ff4d4f;">验证失败: ${error.message}</div>`;
+            }
+            showToast('验证失败: ' + error.message, 'error');
         } finally {
             elements.aiVerifyBtn.disabled = false;
             elements.aiVerifyBtn.innerHTML = '<i class="fas fa-check-double"></i> 验证模版';
         }
+    }
+
+    // 打开PDF预览popup
+    function openPdfPreviewPopup(previewUrl) {
+        if (!previewUrl) {
+            showToast('预览链接不可用', 'warning');
+            return;
+        }
+
+        // 创建PDF预览弹窗
+        const popupWidth = 800;
+        const popupHeight = 600;
+        const left = (window.innerWidth - popupWidth) / 2;
+        const top = (window.innerHeight - popupHeight) / 2;
+
+        // 打开popup窗口
+        const popup = window.open(
+            previewUrl,
+            'pdfPreview',
+            `width=${popupWidth},height=${popupHeight},left=${left},top=${top},resizable=yes,scrollbars=yes`
+        );
+
+        if (!popup) {
+            // 如果popup被阻止，显示提示
+            showToast('弹出窗口被阻止，请允许弹出窗口或直接点击下载', 'warning');
+            // 提供直接链接
+            window.open(previewUrl, '_blank');
+        }
+    }
+
+    // 下载渲染后的文档
+    function downloadRenderedDocument(downloadUrl) {
+        if (!downloadUrl) {
+            showToast('下载链接不可用', 'warning');
+            return;
+        }
+
+        const a = document.createElement('a');
+        a.href = downloadUrl;
+        a.download = `verify_${state.selectedTemplate?.name || 'document'}`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+
+        showToast('文档已下载', 'success');
     }
 
     // 更新进度条
@@ -1431,6 +1628,50 @@
         if (statusEl) {
             statusEl.textContent = text || '';
             statusEl.className = 'step-status ' + status;
+        }
+    }
+
+    // 显示执行进度
+    function showExecutionProgress(title) {
+        if (elements.executionProgress) {
+            elements.executionProgress.style.display = 'block';
+        }
+        if (elements.executionTitle) {
+            elements.executionTitle.textContent = title || '执行中...';
+        }
+        if (elements.executionProgressFill) {
+            elements.executionProgressFill.style.width = '0%';
+        }
+        if (elements.executionLog) {
+            elements.executionLog.innerHTML = '';
+        }
+    }
+
+    // 隐藏执行进度
+    function hideExecutionProgress() {
+        if (elements.executionProgress) {
+            elements.executionProgress.style.display = 'none';
+        }
+    }
+
+    // 更新执行进度
+    function updateExecutionProgress(percent, logMessage) {
+        if (elements.executionProgressFill) {
+            elements.executionProgressFill.style.width = percent + '%';
+        }
+        if (logMessage && elements.executionLog) {
+            const time = new Date().toLocaleTimeString();
+            elements.executionLog.innerHTML += `<div>[${time}] ${logMessage}</div>`;
+            elements.executionLog.scrollTop = elements.executionLog.scrollHeight;
+        }
+    }
+
+    // 添加执行日志
+    function addExecutionLog(message) {
+        if (elements.executionLog) {
+            const time = new Date().toLocaleTimeString();
+            elements.executionLog.innerHTML += `<div>[${time}] ${message}</div>`;
+            elements.executionLog.scrollTop = elements.executionLog.scrollHeight;
         }
     }
 

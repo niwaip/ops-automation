@@ -77,7 +77,10 @@ export class CarboneEngine {
   /**
    * 根据模板变量生成示例数据
    */
-  private generateSampleData(info: TemplateInfo, maxRows: number): any {
+  /**
+   * 根据模板变量生成示例数据（公共方法）
+   */
+  generateSampleData(info: TemplateInfo, maxRows: number): any {
     const data: any = {};
 
     // 生成简单变量示例
