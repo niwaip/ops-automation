@@ -1012,6 +1012,7 @@ export class AIIdentifierService {
     onProgress?: (chunk: string) => void,
   ): Promise<TemplateConfig | null> {
     try {
+      this.logger.log('Starting AI stream analysis...');
       // 获取活跃的AI模型
       const modelsResponse = await axios.get(`${this.aiOrchestratorUrl}/ai/models`, {
         timeout: 5000,
@@ -1030,13 +1031,17 @@ export class AIIdentifierService {
       }
 
       const prompt = this.buildAIAnalysisPrompt(elements, context, manualMarkings, markingSummary);
+      this.logger.log(`Prompt length: ${prompt.length} characters`);
 
       // 使用SSE流式调用
+      this.logger.log(`Calling AI stream: ${this.aiOrchestratorUrl}/ai/models/${activeModel.id}/stream`);
       const response = await fetch(`${this.aiOrchestratorUrl}/ai/models/${activeModel.id}/stream`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ prompt }),
       });
+
+      this.logger.log(`AI stream response status: ${response.status}`);
 
       if (!response.ok) {
         this.logger.warn(`AI stream call failed: ${response.status}`);
@@ -1051,10 +1056,14 @@ export class AIIdentifierService {
 
       const decoder = new TextDecoder();
       let fullResponse = '';
+      let chunkCount = 0;
 
       while (true) {
         const { done, value } = await reader.read();
-        if (done) break;
+        if (done) {
+          this.logger.log(`Stream completed, total chunks: ${chunkCount}`);
+          break;
+        }
 
         const chunk = decoder.decode(value, { stream: true });
         const lines = chunk.split('\n');
@@ -1065,6 +1074,7 @@ export class AIIdentifierService {
               const data = JSON.parse(line.slice(6));
               if (data.chunk) {
                 fullResponse += data.chunk;
+                chunkCount++;
                 if (onProgress) {
                   onProgress(data.chunk);
                 }
@@ -1080,6 +1090,7 @@ export class AIIdentifierService {
         }
       }
 
+      this.logger.log(`Full response length: ${fullResponse.length} characters`);
       return this.parseAIAnalysisResponse(fullResponse, elements);
     } catch (error) {
       this.logger.error(`AI stream analysis error: ${error}`);
