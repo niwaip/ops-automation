@@ -397,6 +397,38 @@ export class StudioController {
   }
 
   /**
+   * 下载注入后的模版文件
+   */
+  @Get('download-template/:id')
+  @ApiOperation({ summary: 'Download marked template file' })
+  @Header('Content-Type', 'application/octet-stream')
+  async downloadTemplate(
+    @Param('id') id: string,
+    @Res({ passthrough: true }) res: Response,
+  ): Promise<StreamableFile> {
+    const metaPath = path.join(this.templatesDir, `${id}.json`);
+
+    if (!fs.existsSync(metaPath)) {
+      throw new HttpException('Template not found', HttpStatus.NOT_FOUND);
+    }
+
+    const meta = JSON.parse(fs.readFileSync(metaPath, 'utf-8'));
+    const filePath = path.join(this.templatesDir, `${id}.${meta.format}`);
+
+    if (!fs.existsSync(filePath)) {
+      throw new HttpException('Template file not found', HttpStatus.NOT_FOUND);
+    }
+
+    res.setHeader('Content-Type', this.getContentType(meta.format));
+    // 使用RFC 5987编码处理中文文件名
+    const encodedFileName = encodeURIComponent(meta.fileName);
+    res.setHeader('Content-Disposition', `attachment; filename*=UTF-8''${encodedFileName}`);
+
+    const file = fs.createReadStream(filePath);
+    return new StreamableFile(file);
+  }
+
+  /**
    * 获取可用格式化器列表
    */
   @Get('formatters')
@@ -860,7 +892,7 @@ export class StudioController {
       // 步骤3: 生成示例数据
       sendProgress('generate_data', 55, '根据模版配置生成示例数据...');
       const templateBuffer = fs.readFileSync(templatePath);
-      
+
       // 应用模版配置标记
       const markedBuffer = await this.documentStructureService.applyConfigToDocx(templateBuffer, config);
       const templateInfo = await this.engine.parseTemplateBuffer(markedBuffer, meta.fileName);
@@ -871,7 +903,7 @@ export class StudioController {
         // 优先使用模版配置生成数据
         if (config && Object.keys(config).length > 0) {
           console.log('Generating sample data from config...');
-          sampleData = this.engine.generateSampleDataFromConfig(config, config.tableLoops?.[0]?.dataRowCount || 5);
+          sampleData = this.engine.generateSampleDataFromConfig(config, config.tableLoops?.[0]?.dataRowCount || 5, true);
           console.log('Generated sampleData:', JSON.stringify(sampleData, null, 2));
         } else {
           // 否则使用模板变量生成
@@ -887,7 +919,28 @@ export class StudioController {
       const outputBuffer = await this.engine.render(markedBuffer, sampleData, meta.fileName);
       sendProgress('render', 85, '文档渲染完成');
 
-      // 步骤5: 保存渲染结果
+      // 步骤5: 保存注入后的模版（markedBuffer）供复用
+      const markedTemplateId = uuidv4();
+      const markedTemplatePath = path.join(this.templatesDir, `${markedTemplateId}.${meta.format}`);
+      const markedMetaPath = path.join(this.templatesDir, `${markedTemplateId}.json`);
+
+      fs.writeFileSync(markedTemplatePath, markedBuffer);
+      fs.writeFileSync(markedMetaPath, JSON.stringify({
+        id: markedTemplateId,
+        originalTemplateId: id,
+        fileName: `marked_${meta.fileName}`,
+        format: meta.format,
+        size: markedBuffer.length,
+        variables: templateInfo.variables,
+        loops: templateInfo.loops,
+        createdAt: new Date().toISOString(),
+        templateConfig: config,
+        type: 'marked_template'  // 标记为注入后的模版
+      }));
+
+      sendProgress('save_marked', 88, '保存注入后的模版...');
+
+      // 步骤6: 保存渲染结果
       const outputId = uuidv4();
       const outputPath = path.join(this.outputsDir, `${outputId}.${meta.format}`);
       const outputMetaPath = path.join(this.outputsDir, `${outputId}.json`);
@@ -896,6 +949,7 @@ export class StudioController {
       fs.writeFileSync(outputMetaPath, JSON.stringify({
         id: outputId,
         templateId: id,
+        markedTemplateId: markedTemplateId,  // 关联注入后的模版
         fileName: `verify_${meta.fileName}`,
         format: meta.format,
         createdAt: new Date().toISOString(),
@@ -904,12 +958,14 @@ export class StudioController {
 
       sendProgress('save', 95, '保存渲染结果...');
 
-      // 步骤6: 返回结果
+      // 步骤7: 返回结果
       sendProgress('complete', 100, '验证完成');
       sendResult({
         report: aiResponse.report,
         downloadUrl: `/studio/download/${outputId}`,
         previewUrl: `/studio/preview-file/${outputId}`,
+        markedTemplateId: markedTemplateId,  // 注入后的模版ID
+        markedTemplateUrl: `/studio/download-template/${markedTemplateId}`,  // 下载注入后模版的URL
         sampleData: sampleData,
         success: aiResponse.success
       });
@@ -1005,7 +1061,7 @@ export class StudioController {
       // 步骤3: 生成示例数据
       sendProgress('generate_data', 55, '根据模版配置生成示例数据...');
       const templateBuffer = fs.readFileSync(templatePath);
-      
+
       // 应用模版配置标记
       const markedBuffer = await this.documentStructureService.applyConfigToDocx(templateBuffer, config);
       const templateInfo = await this.engine.parseTemplateBuffer(markedBuffer, meta.fileName);
@@ -1016,7 +1072,7 @@ export class StudioController {
         // 优先使用模版配置生成数据
         if (config && Object.keys(config).length > 0) {
           console.log('Generating sample data from config...');
-          sampleData = this.engine.generateSampleDataFromConfig(config, config.tableLoops?.[0]?.dataRowCount || 5);
+          sampleData = this.engine.generateSampleDataFromConfig(config, config.tableLoops?.[0]?.dataRowCount || 5, true);
           console.log('Generated sampleData:', JSON.stringify(sampleData, null, 2));
         } else {
           // 否则使用模板变量生成
@@ -1032,7 +1088,28 @@ export class StudioController {
       const outputBuffer = await this.engine.render(markedBuffer, sampleData, meta.fileName);
       sendProgress('render', 85, '文档渲染完成');
 
-      // 步骤5: 保存渲染结果
+      // 步骤5: 保存注入后的模版（markedBuffer）供复用
+      const markedTemplateId = uuidv4();
+      const markedTemplatePath = path.join(this.templatesDir, `${markedTemplateId}.${meta.format}`);
+      const markedMetaPath = path.join(this.templatesDir, `${markedTemplateId}.json`);
+
+      fs.writeFileSync(markedTemplatePath, markedBuffer);
+      fs.writeFileSync(markedMetaPath, JSON.stringify({
+        id: markedTemplateId,
+        originalTemplateId: id,
+        fileName: `marked_${meta.fileName}`,
+        format: meta.format,
+        size: markedBuffer.length,
+        variables: templateInfo.variables,
+        loops: templateInfo.loops,
+        createdAt: new Date().toISOString(),
+        templateConfig: config,
+        type: 'marked_template'  // 标记为注入后的模版
+      }));
+
+      sendProgress('save_marked', 88, '保存注入后的模版...');
+
+      // 步骤6: 保存渲染结果
       const outputId = uuidv4();
       const outputPath = path.join(this.outputsDir, `${outputId}.${meta.format}`);
       const outputMetaPath = path.join(this.outputsDir, `${outputId}.json`);
@@ -1041,6 +1118,7 @@ export class StudioController {
       fs.writeFileSync(outputMetaPath, JSON.stringify({
         id: outputId,
         templateId: id,
+        markedTemplateId: markedTemplateId,  // 关联注入后的模版
         fileName: `verify_${meta.fileName}`,
         format: meta.format,
         createdAt: new Date().toISOString(),
@@ -1049,12 +1127,14 @@ export class StudioController {
 
       sendProgress('save', 95, '保存渲染结果...');
 
-      // 步骤6: 返回结果
+      // 步骤7: 返回结果
       sendProgress('complete', 100, '验证完成');
       sendResult({
         report: aiResponse.report,
         downloadUrl: `/studio/download/${outputId}`,
         previewUrl: `/studio/preview-file/${outputId}`,
+        markedTemplateId: markedTemplateId,  // 注入后的模版ID
+        markedTemplateUrl: `/studio/download-template/${markedTemplateId}`,  // 下载注入后模版的URL
         sampleData: sampleData,
         success: aiResponse.success
       });

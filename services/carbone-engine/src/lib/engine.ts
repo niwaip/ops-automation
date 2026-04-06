@@ -173,9 +173,13 @@ export class CarboneEngine {
 
   /**
    * 根据模版配置生成示例数据（使用真实的配置映射）
+   * @param config 模版配置
+   * @param rowCount 数据行数
+   * @param useRealisticData 是否使用真实感数据（用于验证渲染效果）
    */
-  generateSampleDataFromConfig(config: any, rowCount: number = 5): any {
+  generateSampleDataFromConfig(config: any, rowCount: number = 5, useRealisticData: boolean = true): any {
     const data: any = {};
+    const timestamp = Date.now(); // 用于生成唯一标识
 
     // 生成变量映射数据
     if (config.variableMappings && Array.isArray(config.variableMappings)) {
@@ -235,12 +239,9 @@ export class CarboneEngine {
               const fieldMatch = varPath.match(/\[\]\.(\w+)$/);
               const fieldName = fieldMatch ? fieldMatch[1] : colMapping.headerName.toLowerCase();
 
-              // 使用sampleValue或生成示例值
-              if (colMapping.sampleValue) {
-                row[fieldName] = colMapping.sampleValue;
-              } else {
-                row[fieldName] = this.generateSampleValueByType('text', fieldName, i);
-              }
+              // 生成每行不同的数据（忽略sampleValue，使用动态生成）
+              // sampleValue仅作为类型参考，实际数据应该每行不同
+              row[fieldName] = this.generateSampleValueByType('text', fieldName, i, useRealisticData);
             }
           }
 
@@ -299,9 +300,14 @@ export class CarboneEngine {
 
   /**
    * 根据类型生成示例值
+   * @param type 数据类型
+   * @param varName 变量名
+   * @param index 索引
+   * @param useRealisticData 是否使用真实感数据
    */
-  private generateSampleValueByType(type: string, varName: string, index?: number): any {
+  private generateSampleValueByType(type: string, varName: string, index?: number, useRealisticData: boolean = true): any {
     const lowerName = varName.toLowerCase();
+    const timestamp = Date.now();
 
     if (type === 'date' || lowerName.includes('date') || lowerName.includes('time')) {
       return new Date().toLocaleString('zh-CN');
@@ -316,9 +322,37 @@ export class CarboneEngine {
       return index !== undefined ? index + 1 : 1;
     }
     if (lowerName.includes('action') || lowerName.includes('操作') || lowerName.includes('步骤')) {
+      // 使用真实感数据，生成更具区分度的操作描述
+      if (useRealisticData) {
+        const actions = [
+          '用户登录系统',
+          '查询数据列表',
+          '点击提交按钮',
+          '上传附件文件',
+          '导出报表文档',
+          '发送通知邮件',
+          '删除临时文件',
+          '刷新页面数据'
+        ];
+        return index !== undefined ? actions[index % actions.length] : '点击按钮';
+      }
       return index !== undefined ? `步骤 ${index + 1} 操作` : '点击按钮';
     }
     if (lowerName.includes('result') || lowerName.includes('结果')) {
+      // 使用真实感数据
+      if (useRealisticData) {
+        const results = [
+          '执行成功',
+          '数据已保存',
+          '操作完成',
+          '请求已发送',
+          '文件已生成',
+          '邮件已发送',
+          '清理完成',
+          '数据已更新'
+        ];
+        return index !== undefined ? results[index % results.length] : '成功';
+      }
       return '成功';
     }
     if (lowerName.includes('status') || lowerName.includes('状态')) {
@@ -331,7 +365,10 @@ export class CarboneEngine {
       return '无';
     }
 
-    // 默认返回文本示例
+    // 默认返回带有时间戳的示例数据，便于区分
+    if (useRealisticData) {
+      return index !== undefined ? `测试数据_${timestamp}_${index + 1}` : `测试值_${timestamp}`;
+    }
     return index !== undefined ? `示例数据 ${index + 1}` : `示例 ${varName}`;
   }
 

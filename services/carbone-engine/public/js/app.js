@@ -1439,12 +1439,15 @@
                                     }
 
                                     // 显示操作按钮
-                                    fullResultHtml += '<div style="margin-top: 15px; display: flex; gap: 8px;">';
+                                    fullResultHtml += '<div style="margin-top: 15px; display: flex; gap: 8px; flex-wrap: wrap;">';
                                     if (verifyResult.previewUrl) {
                                         fullResultHtml += '<button id="verify-pdf-btn" class="btn btn-primary btn-sm"><i class="fas fa-file-pdf"></i> PDF预览</button>';
                                     }
                                     if (verifyResult.downloadUrl) {
                                         fullResultHtml += '<button id="verify-download-btn" class="btn btn-outline btn-sm"><i class="fas fa-download"></i> 下载文档</button>';
+                                    }
+                                    if (verifyResult.markedTemplateUrl) {
+                                        fullResultHtml += '<button id="download-marked-template-btn" class="btn btn-outline btn-sm" style="background: #e6f7ff; border-color: #1890ff;"><i class="fas fa-file-code"></i> 下载注入模版</button>';
                                     }
                                     fullResultHtml += '</div>';
 
@@ -1458,6 +1461,10 @@
                                     const downloadBtn = document.getElementById('verify-download-btn');
                                     if (downloadBtn) {
                                         downloadBtn.addEventListener('click', () => downloadRenderedDocument(verifyResult.downloadUrl));
+                                    }
+                                    const markedTemplateBtn = document.getElementById('download-marked-template-btn');
+                                    if (markedTemplateBtn) {
+                                        markedTemplateBtn.addEventListener('click', () => downloadRenderedDocument(verifyResult.markedTemplateUrl));
                                     }
                                 }
 
