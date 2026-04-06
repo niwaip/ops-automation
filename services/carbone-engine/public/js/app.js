@@ -2066,7 +2066,7 @@
 
         // 统计标记数量
         const markingCount = state.manualMarkings ? Object.keys(state.manualMarkings).length : 0;
-        const ignoredCount = state.ignoredElements ? Object.keys(state.ignoredElements).length : 0;
+        // ignoredCount 已在上面声明
 
         // 多选操作栏
         const selectedCount = state.selectedElementIndices.length;
