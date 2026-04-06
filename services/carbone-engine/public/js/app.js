@@ -1195,6 +1195,11 @@
             const loops = identifyResult.loops || [];
             const suggestions = identifyResult.suggestions || [];
 
+            // 检查是否成功获取配置
+            if (!templateConfig) {
+                throw new Error('AI分析失败，未生成模版配置');
+            }
+
             // Step 2: 保存模版配置
             updateProgress(60, '正在保存模版配置...');
             updateStatus('processing', '保存模版配置...');
@@ -1934,6 +1939,8 @@
 
         const markings = state.manualMarkings || {};
         const ignored = state.ignoredElements || {};
+        const elementGroups = state.elementGroups || {};
+        const ignoredGroups = state.ignoredGroups || {};
         const markingCount = Object.keys(markings).length;
         const ignoredCount = Object.keys(ignored).length;
 
@@ -1954,7 +1961,9 @@
                 body: JSON.stringify({
                     templateId: state.selectedTemplate.id,
                     markings: markingsArray,
-                    ignoredElements: Object.keys(ignored).map(idx => parseInt(idx))
+                    ignoredElements: Object.keys(ignored).map(idx => parseInt(idx)),
+                    elementGroups: elementGroups,
+                    ignoredGroups: Object.keys(ignoredGroups)
                 })
             });
 
@@ -2927,6 +2936,19 @@
                 state.ignoredElements = {};
                 result.ignoredElements.forEach(idx => {
                     state.ignoredElements[idx] = true;
+                });
+            }
+
+            // 加载元素分组
+            if (result.elementGroups && Object.keys(result.elementGroups).length > 0) {
+                state.elementGroups = result.elementGroups;
+            }
+
+            // 加载忽略的分组
+            if (result.ignoredGroups && result.ignoredGroups.length > 0) {
+                state.ignoredGroups = {};
+                result.ignoredGroups.forEach(groupId => {
+                    state.ignoredGroups[groupId] = true;
                 });
             }
 

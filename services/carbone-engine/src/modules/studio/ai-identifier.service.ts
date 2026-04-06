@@ -976,11 +976,11 @@ export class AIIdentifierService {
       // 构建 AI 分析提示词
       const prompt = this.buildAIAnalysisPrompt(elements, context, manualMarkings, markingSummary);
 
-      // 调用 AI 模型（增加超时时间到120秒）
+      // 调用 AI 模型（增加超时时间到180秒）
       const testResponse = await axios.post(
         `${this.aiOrchestratorUrl}/ai/models/${activeModel.id}/test`,
         { prompt },
-        { timeout: 120000 },
+        { timeout: 180000 },
       );
 
       if (!testResponse.data.success) {

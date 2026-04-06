@@ -66,6 +66,8 @@ export class SaveMarkingsDto {
     formatters?: string[];
   }>;
   ignoredElements?: number[];  // 被忽略的元素索引列表
+  elementGroups?: Record<string, number[]>;  // 元素分组
+  ignoredGroups?: string[];  // 被忽略的分组ID列表
 }
 
 export class SaveTemplateConfigDto {
@@ -595,6 +597,8 @@ export class StudioController {
       ...meta,
       markings: dto.markings,
       ignoredElements: dto.ignoredElements || [],
+      elementGroups: dto.elementGroups || {},
+      ignoredGroups: dto.ignoredGroups || [],
       savedAt: new Date().toISOString()
     };
 
