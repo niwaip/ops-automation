@@ -20,7 +20,8 @@
         xmlStructure: null,
         selectedElementIndices: [],  // 多选元素索引列表
         elementGroups: {},  // 元素分组：{ groupId: [index1, index2, ...] }
-        ignoredGroups: {}  // 被忽略的分组：{ groupId: true } - 用于标记重复的分组
+        ignoredGroups: {},  // 被忽略的分组：{ groupId: true } - 用于标记重复的分组
+        ignoredElements: {}  // 被忽略的元素：{ index: true } - 用于标记重复/忽略的元素
     };
 
     // DOM Elements
@@ -2030,7 +2031,8 @@
 
         // 统计各类型标记数量
         const markings = state.manualMarkings || {};
-        let paramCount = 0, loopCount = 0, staticCount = 0;
+        const ignored = state.ignoredElements || {};
+        let paramCount = 0, loopCount = 0, staticCount = 0, ignoredCount = Object.keys(ignored).length;
         Object.values(markings).forEach(type => {
             if (type === 'param') paramCount++;
             else if (type === 'loop') loopCount++;
@@ -2039,10 +2041,11 @@
 
         // 更新图例显示数量
         const legendItems = document.querySelectorAll('.structure-legend .legend-item');
-        if (legendItems.length >= 3) {
+        if (legendItems.length >= 4) {
             legendItems[0].innerHTML = `<span class="legend-color legend-param"></span> 参数${paramCount > 0 ? ` <span class="legend-count">(${paramCount})</span>` : ''}`;
             legendItems[1].innerHTML = `<span class="legend-color legend-loop"></span> 循环${loopCount > 0 ? ` <span class="legend-count">(${loopCount})</span>` : ''}`;
             legendItems[2].innerHTML = `<span class="legend-color legend-static"></span> 静态${staticCount > 0 ? ` <span class="legend-count">(${staticCount})</span>` : ''}`;
+            legendItems[3].innerHTML = `<span class="legend-color legend-ignore"></span> 忽略${ignoredCount > 0 ? ` <span class="legend-count">(${ignoredCount})</span>` : ''}`;
         }
 
         let html = '<div class="structure-content">';
@@ -2063,6 +2066,7 @@
 
         // 统计标记数量
         const markingCount = state.manualMarkings ? Object.keys(state.manualMarkings).length : 0;
+        const ignoredCount = state.ignoredElements ? Object.keys(state.ignoredElements).length : 0;
 
         // 多选操作栏
         const selectedCount = state.selectedElementIndices.length;
@@ -2115,6 +2119,10 @@
                 const inGroup = Object.entries(groups).find(([gId, indices]) => indices.includes(idx));
                 const groupClass = inGroup ? 'in-group' : '';
                 const groupInfo = inGroup ? `<span class="group-tag" title="分组 ${inGroup[0].substring(0, 4)}"><i class="fas fa-layer-group"></i></span>` : '';
+
+                // 检查是否被忽略
+                const isIgnored = state.ignoredElements?.[idx];
+                const ignoredClass = isIgnored ? 'ignored-element' : '';
 
                 // 如果元素在分组中，且分组第一个元素被标记为loop，则该元素也显示循环标记
                 const isFirstInGroup = inGroup && inGroup[1][0] === idx;
@@ -2170,11 +2178,16 @@
                                 data-action="clear" data-index="${idx}" title="清除标记">
                             <i class="fas fa-times"></i>
                         </button>` : ''}
+                        <button class="node-action-btn ${isIgnored ? 'btn-ignored active' : 'btn-ignore'}"
+                                data-action="ignore" data-index="${idx}"
+                                title="${isIgnored ? '取消忽略' : '标记为忽略/重复'}">
+                            <i class="fas ${isIgnored ? 'fa-ban' : 'fa-eye-slash'}"></i>
+                        </button>
                     </span>`;
 
                 if (el.type === 'table' && showTables) {
                     // 表格节点 - 默认展开显示内容
-                    html += `<div class="structure-node table-node ${preserveClass} ${markedClass} ${defaultMark} ${selectedClass} ${groupClass} ${groupLoopClass}" data-type="table" data-order-index="${el.orderIndex}">
+                    html += `<div class="structure-node table-node ${preserveClass} ${markedClass} ${defaultMark} ${selectedClass} ${groupClass} ${groupLoopClass} ${ignoredClass}" data-type="table" data-order-index="${el.orderIndex}">
                         ${checkboxHtml}
                         ${groupInfo}
                         <span class="node-toggle">▼</span>
@@ -2227,7 +2240,7 @@
                     html += '</div>'; // node-children
                 } else if (el.type === 'paragraph' && showParagraphs) {
                     const text = el.text.substring(0, 80) + (el.text.length > 80 ? '...' : '');
-                    html += `<div class="structure-node paragraph-node ${preserveClass} ${markedClass} ${defaultMark} ${selectedClass} ${groupClass} ${groupLoopClass}" data-type="paragraph" data-order-index="${el.orderIndex}">
+                    html += `<div class="structure-node paragraph-node ${preserveClass} ${markedClass} ${defaultMark} ${selectedClass} ${groupClass} ${groupLoopClass} ${ignoredClass}" data-type="paragraph" data-order-index="${el.orderIndex}">
                         ${checkboxHtml}
                         ${groupInfo}
                         <span class="node-tag">&lt;w:p&gt;</span>
@@ -2238,7 +2251,7 @@
                 } else if (el.type === 'image') {
                     // 图片节点
                     const sizeInfo = el.attributes?.widthPx ? `${el.attributes.widthPx}×${el.attributes.heightPx}px` : '';
-                    html += `<div class="structure-node image-node ${preserveClass} ${markedClass} ${defaultMark} ${selectedClass} ${groupClass} ${groupLoopClass}" data-type="image" data-order-index="${el.orderIndex}" data-image-id="${el.imageId || ''}">
+                    html += `<div class="structure-node image-node ${preserveClass} ${markedClass} ${defaultMark} ${selectedClass} ${groupClass} ${groupLoopClass} ${ignoredClass}" data-type="image" data-order-index="${el.orderIndex}" data-image-id="${el.imageId || ''}">
                         ${checkboxHtml}
                         ${groupInfo}
                         <span class="node-label">🖼️ 图片</span>
@@ -2250,7 +2263,7 @@
                 } else if (el.type === 'list') {
                     // 列表节点
                     const text = el.text.substring(0, 80) + (el.text.length > 80 ? '...' : '');
-                    html += `<div class="structure-node list-node ${preserveClass} ${markedClass} ${defaultMark} ${selectedClass} ${groupClass} ${groupLoopClass}" data-type="list" data-order-index="${el.orderIndex}">
+                    html += `<div class="structure-node list-node ${preserveClass} ${markedClass} ${defaultMark} ${selectedClass} ${groupClass} ${groupLoopClass} ${ignoredClass}" data-type="list" data-order-index="${el.orderIndex}">
                         ${checkboxHtml}
                         ${groupInfo}
                         <span class="node-label">📝 列表项</span>
@@ -2262,7 +2275,7 @@
                     // 标题节点
                     const level = el.type.replace('heading', '');
                     const text = el.text.substring(0, 80) + (el.text.length > 80 ? '...' : '');
-                    html += `<div class="structure-node heading-node ${preserveClass} ${markedClass} ${defaultMark} ${selectedClass} ${groupClass} ${groupLoopClass}" data-type="${el.type}" data-order-index="${el.orderIndex}">
+                    html += `<div class="structure-node heading-node ${preserveClass} ${markedClass} ${defaultMark} ${selectedClass} ${groupClass} ${groupLoopClass} ${ignoredClass}" data-type="${el.type}" data-order-index="${el.orderIndex}">
                         ${checkboxHtml}
                         ${groupInfo}
                         <span class="node-label">📌 H${level}</span>
@@ -2272,7 +2285,7 @@
                 } else if (el.type === 'title') {
                     // 标题节点
                     const text = el.text.substring(0, 80) + (el.text.length > 80 ? '...' : '');
-                    html += `<div class="structure-node title-node ${preserveClass} ${markedClass} ${defaultMark} ${selectedClass} ${groupClass} ${groupLoopClass}" data-type="title" data-order-index="${el.orderIndex}">
+                    html += `<div class="structure-node title-node ${preserveClass} ${markedClass} ${defaultMark} ${selectedClass} ${groupClass} ${groupLoopClass} ${ignoredClass}" data-type="title" data-order-index="${el.orderIndex}">
                         ${checkboxHtml}
                         ${groupInfo}
                         <span class="node-label">🏷️ 标题</span>
@@ -2293,9 +2306,9 @@
         html += '</div></div></div>';
 
         // 显示标记统计
-        if (markingCount > 0) {
+        if (markingCount > 0 || ignoredCount > 0) {
             html += `<div class="marking-summary">
-                <span>已标记 ${markingCount} 个元素</span>
+                <span>已标记 ${markingCount} 个元素${ignoredCount > 0 ? `, 已忽略 ${ignoredCount} 个` : ''}</span>
                 <button id="save-markings-btn" class="btn btn-primary btn-sm">
                     <i class="fas fa-save"></i> 保存配置
                 </button>
@@ -2325,6 +2338,14 @@
                     }
                 } else if (action === 'clear') {
                     delete state.manualMarkings[index];
+                } else if (action === 'ignore') {
+                    // 切换忽略状态
+                    if (!state.ignoredElements) state.ignoredElements = {};
+                    if (state.ignoredElements[index]) {
+                        delete state.ignoredElements[index];
+                    } else {
+                        state.ignoredElements[index] = true;
+                    }
                 }
 
                 // Re-render structure tree
@@ -2472,9 +2493,11 @@
         }
 
         const markings = state.manualMarkings || {};
+        const ignored = state.ignoredElements || {};
         const markingCount = Object.keys(markings).length;
+        const ignoredCount = Object.keys(ignored).length;
 
-        if (markingCount === 0) {
+        if (markingCount === 0 && ignoredCount === 0) {
             showToast('没有需要保存的标记', 'warning');
             return;
         }
@@ -2491,11 +2514,12 @@
                         type: type,
                         path: '',
                         text: ''
-                    }))
+                    })),
+                    ignoredElements: Object.keys(ignored).map(idx => parseInt(idx))
                 })
             });
 
-            showToast(`已保存 ${markingCount} 个标记配置`, 'success');
+            showToast(`已保存 ${markingCount} 个标记配置，${ignoredCount} 个忽略元素`, 'success');
         } catch (error) {
             console.error('Save markings failed:', error);
             showToast('保存失败: ' + error.message, 'error');
@@ -2568,11 +2592,13 @@
         }
 
         // 检查是否有手动标记
-        const markings = state.manualMarkings;
+        const markings = state.manualMarkings || {};
+        const ignoredElements = state.ignoredElements || {};
         const markingCount = Object.keys(markings).length;
+        const ignoredCount = Object.keys(ignoredElements).length;
 
-        if (markingCount === 0) {
-            showToast('请先在结构视图中标记元素（参数/循环/静态）', 'warning');
+        if (markingCount === 0 && ignoredCount === 0) {
+            showToast('请先在结构视图中标记元素（参数/循环/静态）或标记忽略', 'warning');
             return;
         }
 
@@ -2590,6 +2616,18 @@
 
             return `- 索引${idx}: [${type}] ${content}`;
         }).filter(Boolean).join('\n');
+
+        // 添加忽略元素信息
+        if (ignoredCount > 0) {
+            markingSummary += '\n\n忽略的元素（重复/跳过）：\n';
+            Object.keys(ignoredElements).forEach(idx => {
+                const el = state.xmlStructure?.orderedElements?.[idx];
+                if (!el) return;
+                let content = el.type === 'image' ? `图片(${el.imageId || ''})` : el.text?.substring(0, 30) || el.type;
+                markingSummary += `- 索引${idx}: "${content}" [已忽略]\n`;
+            });
+            markingSummary += `\n注意：有 ${ignoredCount} 个元素被标记为忽略，生成模板时将跳过这些元素。`;
+        }
 
         // 添加分组信息
         const groups = state.elementGroups || {};

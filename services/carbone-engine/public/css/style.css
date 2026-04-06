@@ -1675,6 +1675,10 @@ body {
     background: #52c41a;
 }
 
+.legend-ignore {
+    background: #ff4d4f;
+}
+
 .legend-count {
     color: #666;
     font-size: 11px;
@@ -1703,5 +1707,44 @@ body {
 .structure-node.marked-param .node-actions,
 .structure-node.marked-loop .node-actions,
 .structure-node.marked-static .node-actions {
+    opacity: 1;
+}
+
+/* Ignore button styles */
+.node-action-btn.btn-ignore {
+    background: #fff1f0;
+    color: #ff4d4f;
+    border: 1px solid #ffa39e;
+}
+
+.node-action-btn.btn-ignore:hover {
+    background: #ff4d4f;
+    color: white;
+}
+
+.node-action-btn.btn-ignored {
+    background: #ff4d4f;
+    color: white;
+    border: 1px solid #ff7875;
+}
+
+.node-action-btn.btn-ignored:hover {
+    background: #ff7875;
+    color: white;
+}
+
+/* Ignored element */
+.structure-node.ignored-element {
+    opacity: 0.5;
+    background: #fff1f0 !important;
+    border-left: 3px solid #ff4d4f !important;
+}
+
+.structure-node.ignored-element .node-text {
+    color: #ff4d4f;
+    text-decoration: line-through;
+}
+
+.structure-node.ignored-element .node-actions {
     opacity: 1;
 }
