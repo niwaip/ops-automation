@@ -1142,6 +1142,111 @@ ${elementSummary}
 
     return result;
   }
+
+  /**
+   * AI验证模版 - 利用模版自动生成验证报告
+   * @param templatePath 模版文件路径
+   * @param format 文件格式
+   * @param prompt 验证提示词
+   * @param testData 测试数据（JSON字符串）
+   * @param templateConfig 模版配置
+   */
+  async verifyTemplate(
+    templatePath: string,
+    format: string,
+    prompt: string,
+    testData?: string,
+    templateConfig?: any
+  ): Promise<{ report: string; success: boolean }> {
+    this.logger.log(`AI验证模版: ${templatePath}, 提示词: ${prompt}`);
+
+    try {
+      // 解析测试数据
+      let parsedTestData: any = {};
+      if (testData) {
+        try {
+          parsedTestData = JSON.parse(testData);
+        } catch {
+          this.logger.warn('测试数据JSON解析失败，使用空对象');
+        }
+      }
+
+      // 获取模版配置或使用传入的配置
+      const config = templateConfig || {};
+
+      // 调用AI服务生成验证报告
+      const aiResponse = await this.callAIForVerify(prompt, config, parsedTestData);
+
+      return {
+        report: aiResponse.report,
+        success: true
+      };
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      this.logger.error(`AI验证失败: ${message}`);
+      return {
+        report: `验证失败: ${message}`,
+        success: false
+      };
+    }
+  }
+
+  /**
+   * 调用AI服务生成验证报告
+   */
+  private async callAIForVerify(
+    prompt: string,
+    templateConfig: any,
+    testData: any
+  ): Promise<{ report: string }> {
+    const aiUrl = process.env.AI_ORCHESTRATOR_URL || 'http://localhost:3007';
+
+    // 构建AI请求
+    const systemPrompt = `你是一个文档模版验证助手。用户会提供一个模版配置和验证需求，你需要根据这些信息生成一份示例报告内容。
+
+模版配置包含以下信息：
+- templateType: 模版类型
+- tableLoops: 表格循环配置
+- imageLoops: 图片循环配置
+- variableMappings: 变量映射
+
+请根据用户的需求生成一份简洁的验证报告，说明：
+1. 模版配置是否合理
+2. 建议的测试数据结构
+3. 生成示例内容（如果有测试数据）
+
+回复格式使用Markdown。`;
+
+    const userPrompt = `验证需求: ${prompt}
+
+模版配置:
+${JSON.stringify(templateConfig, null, 2)}
+
+测试数据:
+${JSON.stringify(testData, null, 2)}
+
+请生成验证报告。`;
+
+    try {
+      const response = await axios.post(`${aiUrl}/api/chat`, {
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: userPrompt }
+        ],
+        model: 'qwen3.5-plus'
+      }, {
+        headers: { 'Content-Type': 'application/json' },
+        timeout: 60000
+      });
+
+      const report = response.data?.choices?.[0]?.message?.content || '无法生成验证报告';
+      return { report };
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      this.logger.error(`AI服务调用失败: ${message}`);
+      return { report: `AI服务调用失败: ${message}` };
+    }
+  }
 }
 
 /**

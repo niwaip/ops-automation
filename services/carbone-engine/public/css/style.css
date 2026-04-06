@@ -1748,3 +1748,30 @@ body {
 .structure-node.ignored-element .node-actions {
     opacity: 1;
 }
+
+/* AI Verify Area */
+.ai-verify-area {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.ai-verify-area textarea {
+    width: 100%;
+    padding: 8px 10px;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    font-size: 12px;
+    font-family: inherit;
+    resize: vertical;
+}
+
+.ai-verify-area textarea:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 2px rgba(24, 144, 255, 0.1);
+}
+
+.ai-verify-area textarea::placeholder {
+    color: #999;
+}

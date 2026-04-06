@@ -49,16 +49,16 @@
                 </div>
 
                 <div class="sidebar-section">
-                    <h3><i class="fas fa-robot"></i> AI 分析</h3>
+                    <h3><i class="fas fa-robot"></i> AI 自动生成模版</h3>
                     <div class="ai-input-area">
                         <textarea id="ai-context-input" placeholder="描述模板需求，例如：&#10;- 这是一个运维报告模板&#10;- 需要替换执行人、日期&#10;- 表格数据需要循环" rows="3"></textarea>
                         <button id="ai-analyze-btn" class="btn btn-primary btn-block">
-                            <i class="fas fa-magic"></i> AI 智能解析
+                            <i class="fas fa-magic"></i> AI 自动生成模版
                         </button>
                     </div>
                     <div id="ai-analysis-result" class="ai-analysis-result" style="display: none;">
                         <div class="ai-result-header">
-                            <i class="fas fa-check-circle"></i> 分析完成
+                            <i class="fas fa-check-circle"></i> 模版生成完成
                         </div>
                         <div id="ai-result-content"></div>
                     </div>
@@ -175,8 +175,8 @@
                                 <i class="fas fa-cog"></i> Editor
                             </span>
                             <div class="panel-actions">
-                                <button id="ai-identify-btn" class="btn btn-outline btn-sm">
-                                    <i class="fas fa-magic"></i> AI Analyze
+                                <button id="ai-verify-btn" class="btn btn-outline btn-sm" title="AI验证：生成示例报告">
+                                    <i class="fas fa-check-double"></i> AI 验证
                                 </button>
                                 <button id="validate-btn" class="btn btn-outline btn-sm">
                                     <i class="fas fa-check-circle"></i> Validate
@@ -216,15 +216,10 @@
                                 </div>
                             </div>
 
-                            <!-- Document Elements Section -->
-                            <div class="editor-section">
-                                <h4>
-                                    <i class="fas fa-sitemap"></i> Document Elements
-                                    <span id="elements-count" class="badge badge-info">0</span>
-                                </h4>
-                                <div id="document-elements-list" class="document-elements-list">
-                                    <span class="empty-hint">Select a template to view elements</span>
-                                </div>
+                            <!-- No Selection Hint -->
+                            <div id="no-selection-hint" class="editor-section">
+                                <h4><i class="fas fa-info-circle"></i> Element Editor</h4>
+                                <p class="empty-hint">在左侧结构视图中点击元素进行编辑，或使用AI自动生成模版配置。</p>
                             </div>
 
                             <!-- Variables Section -->
@@ -245,7 +240,7 @@
                                     <span id="suggestions-count" class="badge badge-success" style="display: none;">0</span>
                                 </h4>
                                 <div id="ai-suggestions-list" class="ai-suggestions-list">
-                                    <span class="empty-hint">Click "AI Analyze" to detect potential variables</span>
+                                    <span class="empty-hint">使用左侧"AI 配置参数"按钮生成建议</span>
                                 </div>
                             </div>
 
@@ -261,6 +256,20 @@
                             <div class="editor-section">
                                 <h4><i class="fas fa-database"></i> Test Data (JSON)</h4>
                                 <textarea id="test-data" placeholder='{"name": "John", "items": [{"name": "Item 1"}]}'></textarea>
+                            </div>
+
+                            <!-- AI Verify Section -->
+                            <div class="editor-section">
+                                <h4><i class="fas fa-check-double"></i> AI 验证</h4>
+                                <div class="ai-verify-area">
+                                    <textarea id="ai-verify-prompt" placeholder="输入验证需求，例如：&#10;- 生成一份运维报告示例&#10;- 包含5条操作步骤&#10;- 使用测试数据" rows="2"></textarea>
+                                    <div id="ai-verify-result" style="display: none; margin-top: 12px;">
+                                        <div class="ai-result-header" style="color: var(--success-color); margin-bottom: 8px;">
+                                            <i class="fas fa-check-circle"></i> 验证报告已生成
+                                        </div>
+                                        <div id="ai-verify-content" style="background: #f6ffed; border: 1px solid #b7eb8f; border-radius: 4px; padding: 10px; font-size: 12px;"></div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>

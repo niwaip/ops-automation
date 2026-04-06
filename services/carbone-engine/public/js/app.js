@@ -50,7 +50,7 @@
         elements.zoomIn = document.getElementById('zoom-in');
         elements.zoomOut = document.getElementById('zoom-out');
         elements.zoomLevel = document.getElementById('zoom-level');
-        elements.aiIdentifyBtn = document.getElementById('ai-identify-btn');
+        elements.aiVerifyBtn = document.getElementById('ai-verify-btn');
         elements.aiSuggestionsList = document.getElementById('ai-suggestions-list');
         elements.selectionSection = document.getElementById('selection-section');
         elements.selectedTextDisplay = document.getElementById('selected-text-display');
@@ -60,8 +60,11 @@
         elements.clearSelection = document.getElementById('clear-selection');
         elements.varsCount = document.getElementById('vars-count');
         elements.suggestionsCount = document.getElementById('suggestions-count');
-        elements.documentElementsList = document.getElementById('document-elements-list');
-        elements.elementsCount = document.getElementById('elements-count');
+        elements.noSelectionHint = document.getElementById('no-selection-hint');
+        // AI Verify elements
+        elements.aiVerifyPrompt = document.getElementById('ai-verify-prompt');
+        elements.aiVerifyResult = document.getElementById('ai-verify-result');
+        elements.aiVerifyContent = document.getElementById('ai-verify-content');
         // Tab elements
         elements.tabPreview = document.getElementById('tab-preview');
         elements.tabSource = document.getElementById('tab-source');
@@ -1226,7 +1229,55 @@
             elements.aiAnalysisResult.style.display = 'none';
         } finally {
             elements.aiAnalyzeBtn.disabled = false;
-            elements.aiAnalyzeBtn.innerHTML = '<i class="fas fa-magic"></i> AI 智能解析';
+            elements.aiAnalyzeBtn.innerHTML = '<i class="fas fa-magic"></i> AI 自动生成模版';
+        }
+    }
+
+    // AI Verify Function - 利用模版自动生成验证报告
+    async function performAIVerify() {
+        if (!state.selectedTemplate) {
+            showToast('请先选择一个模板', 'warning');
+            return;
+        }
+
+        // 获取验证提示词
+        const verifyPrompt = elements.aiVerifyPrompt?.value || '生成一份示例报告用于验证模版配置';
+
+        // 禁用按钮并显示加载状态
+        elements.aiVerifyBtn.disabled = true;
+        elements.aiVerifyBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 验证中...';
+
+        try {
+            // 获取测试数据
+            const testData = elements.testData?.value || '{}';
+
+            // 调用AI验证API
+            const result = await apiRequest(`/templates/${state.selectedTemplate.id}/ai-verify`, {
+                method: 'POST',
+                body: JSON.stringify({
+                    templateId: state.selectedTemplate.id,
+                    prompt: verifyPrompt,
+                    testData: testData,
+                    templateConfig: state.templateConfig
+                })
+            });
+
+            // 显示验证结果
+            if (elements.aiVerifyResult && elements.aiVerifyContent) {
+                elements.aiVerifyResult.style.display = 'block';
+                elements.aiVerifyContent.innerHTML = result.report || result.message || '验证完成';
+            }
+
+            showToast('验证报告已生成', 'success');
+        } catch (error) {
+            console.error('AI verify failed:', error);
+            showToast('AI 验证失败: ' + error.message, 'error');
+            if (elements.aiVerifyResult) {
+                elements.aiVerifyResult.style.display = 'none';
+            }
+        } finally {
+            elements.aiVerifyBtn.disabled = false;
+            elements.aiVerifyBtn.innerHTML = '<i class="fas fa-check-double"></i> AI 验证';
         }
     }
 
@@ -1674,8 +1725,10 @@
             updateZoom();
         });
 
-        // AI Identify button
-        elements.aiIdentifyBtn.addEventListener('click', aiIdentifyVariables);
+        // AI Verify button
+        if (elements.aiVerifyBtn) {
+            elements.aiVerifyBtn.addEventListener('click', performAIVerify);
+        }
 
         // AI Analysis button (sidebar)
         if (elements.aiAnalyzeBtn) {

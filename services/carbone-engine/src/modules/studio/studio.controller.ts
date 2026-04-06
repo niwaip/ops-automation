@@ -77,6 +77,13 @@ export class ValidateDto {
   data!: Record<string, any>;
 }
 
+export class AIVerifyDto {
+  templateId!: string;
+  prompt?: string;
+  testData?: string;
+  templateConfig?: any;
+}
+
 export interface TemplateResponse {
   id: string;
   fileName: string;
@@ -680,6 +687,42 @@ export class StudioController {
       const message = error instanceof Error ? error.message : 'Unknown error';
       throw new HttpException(
         `Failed to parse document structure: ${message}`,
+        HttpStatus.INTERNAL_SERVER_ERROR
+      );
+    }
+  }
+
+  /**
+   * AI验证 - 利用模版自动生成验证报告
+   */
+  @Post('templates/:id/ai-verify')
+  @ApiOperation({ summary: 'AI verify template by generating sample report' })
+  @ApiBody({ type: AIVerifyDto })
+  async aiVerifyTemplate(
+    @Param('id') id: string,
+    @Body() dto: AIVerifyDto
+  ): Promise<{ report: string; success: boolean }> {
+    const meta = this.getTemplateMeta(id);
+    const templatePath = path.join(this.templatesDir, `${id}.${meta.format}`);
+
+    if (!fs.existsSync(templatePath)) {
+      throw new HttpException('Template file not found', HttpStatus.NOT_FOUND);
+    }
+
+    try {
+      // 调用AI验证服务
+      const result = await this.aiIdentifierService.verifyTemplate(
+        templatePath,
+        meta.format,
+        dto.prompt || '生成一份示例报告用于验证模版配置',
+        dto.testData,
+        dto.templateConfig
+      );
+      return result;
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      throw new HttpException(
+        `Failed to verify template: ${message}`,
         HttpStatus.INTERNAL_SERVER_ERROR
       );
     }
