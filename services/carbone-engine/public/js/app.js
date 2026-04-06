@@ -2108,21 +2108,41 @@
                 const groupClass = inGroup ? 'in-group' : '';
                 const groupInfo = inGroup ? `<span class="group-tag" title="分组 ${inGroup[0].substring(0, 4)}"><i class="fas fa-layer-group"></i></span>` : '';
 
+                // 如果元素在分组中，且分组第一个元素被标记为loop，则该元素也显示循环标记
+                const isFirstInGroup = inGroup && inGroup[1][0] === idx;
+                const isInGroupLoop = inGroup && state.manualMarkings?.[inGroup[1][0]] === 'loop';
+                const groupLoopClass = isInGroupLoop && !isFirstInGroup ? 'marked-loop-group' : '';
+
                 // 多选复选框
                 const checkboxHtml = `<input type="checkbox" class="node-checkbox" data-index="${idx}" ${isSelected ? 'checked' : ''} title="按住Ctrl多选">`;
 
                 // 生成开关按钮（一个按钮切换状态）
                 // 状态循环：未设置(默认静态) → 参数 → 循环 → 静态 → 未设置
+                // 对于分组中的非首元素，显示"分组循环"状态
                 let statusLabel = '静态'; // 默认
                 let statusIcon = 'fa-lock';
                 let statusClass = 'btn-static';
+                let isGroupMember = false; // 是否是分组成员（非首元素）
 
-                if (marking === 'param') {
+                if (isInGroupLoop && !isFirstInGroup) {
+                    // 分组中的非首元素，显示分组循环状态（不可单独切换）
+                    statusLabel = '分组循环';
+                    statusIcon = 'fa-layer-group';
+                    statusClass = 'btn-loop-group';
+                    isGroupMember = true;
+                } else if (marking === 'param') {
                     statusLabel = '参数';
                     statusIcon = 'fa-code';
                     statusClass = 'btn-param';
                 } else if (marking === 'loop') {
-                    statusLabel = '循环';
+                    // 对于表格，显示"循环数据行"
+                    if (el.type === 'table') {
+                        statusLabel = '循环数据行';
+                    } else if (isFirstInGroup && isInGroupLoop) {
+                        statusLabel = '分组循环';
+                    } else {
+                        statusLabel = '循环';
+                    }
                     statusIcon = 'fa-repeat';
                     statusClass = 'btn-loop';
                 } else if (marking === 'static') {
@@ -2133,11 +2153,12 @@
 
                 const toggleButton = `
                     <span class="node-actions">
-                        <button class="node-action-btn ${statusClass} ${marking ? 'active' : ''}"
-                                data-action="toggle" data-index="${idx}" title="点击切换：静态→参数→循环→静态">
+                        <button class="node-action-btn ${statusClass} ${marking || isGroupMember ? 'active' : ''}"
+                                data-action="${isGroupMember ? 'group-info' : 'toggle'}" data-index="${idx}"
+                                title="${isGroupMember ? '此元素属于分组循环，点击分组首元素可修改' : '点击切换：静态→参数→循环→静态'}">
                             <i class="fas ${statusIcon}"></i> ${statusLabel}
                         </button>
-                        ${marking ? `<button class="node-action-btn btn-clear"
+                        ${marking && !isGroupMember ? `<button class="node-action-btn btn-clear"
                                 data-action="clear" data-index="${idx}" title="清除标记">
                             <i class="fas fa-times"></i>
                         </button>` : ''}
@@ -2145,7 +2166,7 @@
 
                 if (el.type === 'table' && showTables) {
                     // 表格节点 - 默认展开显示内容
-                    html += `<div class="structure-node table-node ${preserveClass} ${markedClass} ${defaultMark} ${selectedClass} ${groupClass}" data-type="table" data-order-index="${el.orderIndex}">
+                    html += `<div class="structure-node table-node ${preserveClass} ${markedClass} ${defaultMark} ${selectedClass} ${groupClass} ${groupLoopClass}" data-type="table" data-order-index="${el.orderIndex}">
                         ${checkboxHtml}
                         ${groupInfo}
                         <span class="node-toggle">▼</span>
@@ -2158,19 +2179,23 @@
                     // 表格子节点 - 默认展开
                     html += '<div class="node-children expanded">';
 
-                    // 标题行（不可循环）
+                    // 标题行（不可循环）- 如果表格被标记为循环，标题行显示为静态
                     if (el.headerRow) {
-                        html += `<div class="structure-node table-header-node" data-type="table-header" data-table="${el.index}">
+                        const headerStaticClass = marking === 'loop' ? 'marked-static' : '';
+                        html += `<div class="structure-node table-header-node ${headerStaticClass}" data-type="table-header" data-table="${el.index}">
                             <span class="node-label">📋 标题行</span>
+                            ${marking === 'loop' ? '<span class="node-attr" style="color:#856404;background:#fff3cd;padding:2px 6px;border-radius:3px;">静态保留</span>' : ''}
                             <span class="node-text">${escapeHtml(el.headerRow)}</span>
                         </div>`;
                     }
 
-                    // 数据行（可循环）
+                    // 数据行（可循环）- 如果表格被标记为循环，数据行显示循环标记
                     if (el.dataRowCount > 0 || (el.dataRows && el.dataRows.length > 0)) {
                         const rowCount = el.dataRowCount || (el.dataRows ? el.dataRows.length : 0);
-                        html += `<div class="structure-node table-data-node" data-type="table-data" data-table="${el.index}">
+                        const dataLoopClass = marking === 'loop' ? 'marked-loop' : '';
+                        html += `<div class="structure-node table-data-node ${dataLoopClass}" data-type="table-data" data-table="${el.index}">
                             <span class="node-label">🔄 数据行</span>
+                            ${marking === 'loop' ? '<span class="node-attr" style="color:#155724;background:#d4edda;padding:2px 6px;border-radius:3px;">将循环</span>' : ''}
                             <span class="node-attr">${rowCount}行可循环</span>
                         </div>`;
 
@@ -2194,7 +2219,7 @@
                     html += '</div>'; // node-children
                 } else if (el.type === 'paragraph' && showParagraphs) {
                     const text = el.text.substring(0, 80) + (el.text.length > 80 ? '...' : '');
-                    html += `<div class="structure-node paragraph-node ${preserveClass} ${markedClass} ${defaultMark} ${selectedClass} ${groupClass}" data-type="paragraph" data-order-index="${el.orderIndex}">
+                    html += `<div class="structure-node paragraph-node ${preserveClass} ${markedClass} ${defaultMark} ${selectedClass} ${groupClass} ${groupLoopClass}" data-type="paragraph" data-order-index="${el.orderIndex}">
                         ${checkboxHtml}
                         ${groupInfo}
                         <span class="node-tag">&lt;w:p&gt;</span>
@@ -2205,7 +2230,7 @@
                 } else if (el.type === 'image') {
                     // 图片节点
                     const sizeInfo = el.attributes?.widthPx ? `${el.attributes.widthPx}×${el.attributes.heightPx}px` : '';
-                    html += `<div class="structure-node image-node ${preserveClass} ${markedClass} ${defaultMark} ${selectedClass} ${groupClass}" data-type="image" data-order-index="${el.orderIndex}" data-image-id="${el.imageId || ''}">
+                    html += `<div class="structure-node image-node ${preserveClass} ${markedClass} ${defaultMark} ${selectedClass} ${groupClass} ${groupLoopClass}" data-type="image" data-order-index="${el.orderIndex}" data-image-id="${el.imageId || ''}">
                         ${checkboxHtml}
                         ${groupInfo}
                         <span class="node-label">🖼️ 图片</span>
@@ -2217,7 +2242,7 @@
                 } else if (el.type === 'list') {
                     // 列表节点
                     const text = el.text.substring(0, 80) + (el.text.length > 80 ? '...' : '');
-                    html += `<div class="structure-node list-node ${preserveClass} ${markedClass} ${defaultMark} ${selectedClass} ${groupClass}" data-type="list" data-order-index="${el.orderIndex}">
+                    html += `<div class="structure-node list-node ${preserveClass} ${markedClass} ${defaultMark} ${selectedClass} ${groupClass} ${groupLoopClass}" data-type="list" data-order-index="${el.orderIndex}">
                         ${checkboxHtml}
                         ${groupInfo}
                         <span class="node-label">📝 列表项</span>
@@ -2229,7 +2254,7 @@
                     // 标题节点
                     const level = el.type.replace('heading', '');
                     const text = el.text.substring(0, 80) + (el.text.length > 80 ? '...' : '');
-                    html += `<div class="structure-node heading-node ${preserveClass} ${markedClass} ${defaultMark} ${selectedClass} ${groupClass}" data-type="${el.type}" data-order-index="${el.orderIndex}">
+                    html += `<div class="structure-node heading-node ${preserveClass} ${markedClass} ${defaultMark} ${selectedClass} ${groupClass} ${groupLoopClass}" data-type="${el.type}" data-order-index="${el.orderIndex}">
                         ${checkboxHtml}
                         ${groupInfo}
                         <span class="node-label">📌 H${level}</span>
@@ -2239,7 +2264,7 @@
                 } else if (el.type === 'title') {
                     // 标题节点
                     const text = el.text.substring(0, 80) + (el.text.length > 80 ? '...' : '');
-                    html += `<div class="structure-node title-node ${preserveClass} ${markedClass} ${defaultMark} ${selectedClass} ${groupClass}" data-type="title" data-order-index="${el.orderIndex}">
+                    html += `<div class="structure-node title-node ${preserveClass} ${markedClass} ${defaultMark} ${selectedClass} ${groupClass} ${groupLoopClass}" data-type="title" data-order-index="${el.orderIndex}">
                         ${checkboxHtml}
                         ${groupInfo}
                         <span class="node-label">🏷️ 标题</span>

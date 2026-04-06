@@ -1483,6 +1483,23 @@ body {
     color: white;
 }
 
+/* Group loop button style - 分组循环 */
+.node-action-btn.btn-loop-group {
+    background: #e6f7ff;
+    color: #1890ff;
+    border: 1px solid #91d5ff;
+}
+
+.node-action-btn.btn-loop-group:hover {
+    background: #1890ff;
+    color: white;
+}
+
+.node-action-btn.btn-loop-group.active {
+    background: #1890ff;
+    color: white;
+}
+
 .node-action-btn.btn-static {
     background: #f6ffed;
     color: #52c41a;
@@ -1525,6 +1542,12 @@ body {
 .structure-node.marked-loop {
     background: #fff7e6 !important;
     border-left: 3px solid #fa8c16 !important;
+}
+
+/* Group loop member - 分组循环成员 */
+.structure-node.marked-loop-group {
+    background: #e6f7ff !important;
+    border-left: 3px solid #1890ff !important;
 }
 
 .structure-node.marked-static {
