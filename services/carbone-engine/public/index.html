@@ -84,18 +84,33 @@
                                 <span class="step-title">AI生成模版</span>
                                 <span class="step-status" id="step-generate-status"></span>
                             </div>
-                            <div class="step-desc">根据标记生成模版配置并验证</div>
+                            <div class="step-desc">根据标记生成模版配置</div>
                             <div class="step-actions">
-                                <button id="ai-generate-btn" class="btn btn-primary btn-sm btn-block" title="AI生成模版配置并验证">
+                                <button id="ai-generate-btn" class="btn btn-primary btn-sm btn-block" title="AI生成模版配置">
                                     <i class="fas fa-magic"></i> 生成模版
                                 </button>
                             </div>
                         </div>
 
-                        <!-- Step 4: 人工微调 -->
+                        <!-- Step 4: AI验证模版 -->
                         <div class="operation-step">
                             <div class="step-header">
                                 <span class="step-number">4</span>
+                                <span class="step-title">AI验证模版</span>
+                                <span class="step-status" id="step-verify-status"></span>
+                            </div>
+                            <div class="step-desc">验证模版配置生成示例报告</div>
+                            <div class="step-actions">
+                                <button id="ai-verify-btn" class="btn btn-outline btn-sm btn-block" title="AI验证模版配置">
+                                    <i class="fas fa-check-double"></i> 验证模版
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Step 5: 人工微调 -->
+                        <div class="operation-step">
+                            <div class="step-header">
+                                <span class="step-number">5</span>
                                 <span class="step-title">人工微调</span>
                                 <span class="step-status" id="step-finetune-status"></span>
                             </div>

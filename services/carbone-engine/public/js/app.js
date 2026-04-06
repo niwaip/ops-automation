@@ -91,7 +91,10 @@
         elements.stepParseStatus = document.getElementById('step-parse-status');
         elements.stepConfigStatus = document.getElementById('step-config-status');
         elements.stepGenerateStatus = document.getElementById('step-generate-status');
+        elements.stepVerifyStatus = document.getElementById('step-verify-status');
         elements.stepFinetuneStatus = document.getElementById('step-finetune-status');
+        // AI Verify button
+        elements.aiVerifyBtn = document.getElementById('ai-verify-btn');
         // Status display
         elements.statusText = document.getElementById('status-text');
     }
@@ -248,6 +251,7 @@
         updateStepStatus('parse', 'completed', '已完成');
         updateStepStatus('config', 'pending', '');
         updateStepStatus('generate', 'pending', '');
+        updateStepStatus('verify', 'pending', '');
         updateStepStatus('finetune', 'pending', '');
         updateStatus('idle', '等待配置');
 
@@ -1146,7 +1150,7 @@
         }
     }
 
-    // AI Generate Function - 合并生成模版和验证
+    // AI Generate Function - 生成模版配置
     async function performAIGenerate() {
         if (!state.selectedTemplate) {
             showToast('请先选择一个模板', 'warning');
@@ -1174,7 +1178,7 @@
 
         try {
             // Step 1: 调用AI生成模版配置
-            updateProgress(20, '正在调用AI生成模版配置...');
+            updateProgress(30, '正在调用AI生成模版配置...');
             updateStatus('processing', 'AI生成模版配置...');
 
             const identifyResult = await apiRequest(`/templates/${state.selectedTemplate.id}/ai-identify`, {
@@ -1192,7 +1196,7 @@
             const suggestions = identifyResult.suggestions || [];
 
             // Step 2: 保存模版配置
-            updateProgress(40, '正在保存模版配置...');
+            updateProgress(60, '正在保存模版配置...');
             updateStatus('processing', '保存模版配置...');
 
             if (templateConfig) {
@@ -1207,24 +1211,6 @@
             }
 
             // Step 3: 渲染AI建议
-            updateProgress(60, '正在渲染AI建议...');
-            updateStatus('processing', '渲染AI建议...');
-            renderAISuggestions(suggestions);
-
-            // Step 4: 调用AI验证
-            updateProgress(80, '正在调用AI验证...');
-            updateStatus('processing', 'AI验证模版...');
-
-            const verifyResult = await apiRequest(`/templates/${state.selectedTemplate.id}/ai-verify`, {
-                method: 'POST',
-                body: JSON.stringify({
-                    templateId: state.selectedTemplate.id,
-                    prompt: '验证模版配置是否合理',
-                    templateConfig: templateConfig
-                })
-            });
-
-            // Step 5: 显示验证结果
             updateProgress(100, '完成');
             updateStatus('success', '生成完成');
             updateStepStatus('generate', 'completed', '已完成');
@@ -1239,10 +1225,11 @@
                 let resultHtml = '<h3>模版生成结果</h3>';
                 resultHtml += `<ul><li>循环数量: ${loops.length}</li>`;
                 resultHtml += `<li>变量数量: ${suggestions.length}</li></ul>`;
-                resultHtml += '<h3>验证报告</h3>';
-                resultHtml += marked.parse(verifyResult.report || '验证完成');
+                resultHtml += '<p style="color: #52c41a;">模版配置已保存，点击"验证模版"生成验证报告</p>';
                 elements.aiGenerateResult.innerHTML = resultHtml;
             }
+
+            renderAISuggestions(suggestions);
 
             const totalVars = suggestions.length;
             const totalLoops = loops.length;
@@ -1263,6 +1250,85 @@
         } finally {
             elements.aiGenerateBtn.disabled = false;
             elements.aiGenerateBtn.innerHTML = '<i class="fas fa-magic"></i> 生成模版';
+        }
+    }
+
+    // AI Verify Function - 验证模版配置
+    async function performAIVerify() {
+        if (!state.selectedTemplate) {
+            showToast('请先选择一个模板', 'warning');
+            return;
+        }
+
+        if (!state.templateConfig) {
+            showToast('请先生成模版配置', 'warning');
+            return;
+        }
+
+        // 更新状态显示
+        updateStatus('processing', '开始验证模版...');
+        updateStepStatus('verify', 'in-progress', '验证中...');
+
+        // 禁用按钮并显示加载状态
+        elements.aiVerifyBtn.disabled = true;
+        elements.aiVerifyBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 验证中...';
+
+        // 显示进度条
+        if (elements.aiGenerateResultSection) {
+            elements.aiGenerateResultSection.style.display = 'block';
+        }
+        if (elements.aiProgress) {
+            elements.aiProgress.style.display = 'block';
+        }
+
+        try {
+            // 调用AI验证
+            updateProgress(50, '正在调用AI验证...');
+            updateStatus('processing', 'AI验证模版...');
+
+            const verifyResult = await apiRequest(`/templates/${state.selectedTemplate.id}/ai-verify`, {
+                method: 'POST',
+                body: JSON.stringify({
+                    templateId: state.selectedTemplate.id,
+                    prompt: '验证模版配置是否合理',
+                    templateConfig: state.templateConfig
+                })
+            });
+
+            // 显示验证结果
+            updateProgress(100, '完成');
+            updateStatus('success', '验证完成');
+            updateStepStatus('verify', 'completed', '已完成');
+
+            // 隐藏进度条
+            if (elements.aiProgress) {
+                elements.aiProgress.style.display = 'none';
+            }
+
+            // 显示结果
+            if (elements.aiGenerateResult) {
+                let resultHtml = '<h3>验证报告</h3>';
+                resultHtml += marked.parse(verifyResult.report || '验证完成');
+                elements.aiGenerateResult.innerHTML = resultHtml;
+            }
+
+            showToast('验证完成', 'success');
+        } catch (error) {
+            console.error('AI verify failed:', error);
+            updateProgress(0, '失败');
+            updateStatus('error', '验证失败: ' + error.message);
+            updateStepStatus('verify', 'error', '失败');
+
+            if (elements.aiProgress) {
+                elements.aiProgress.style.display = 'none';
+            }
+            if (elements.aiGenerateResult) {
+                elements.aiGenerateResult.innerHTML = `<div style="color: #ff4d4f;">验证失败: ${error.message}</div>`;
+            }
+            showToast('验证失败: ' + error.message, 'error');
+        } finally {
+            elements.aiVerifyBtn.disabled = false;
+            elements.aiVerifyBtn.innerHTML = '<i class="fas fa-check-double"></i> 验证模版';
         }
     }
 
@@ -1835,9 +1901,14 @@
             updateZoom();
         });
 
-        // AI Generate button - 合并生成和验证
+        // AI Generate button
         if (elements.aiGenerateBtn) {
             elements.aiGenerateBtn.addEventListener('click', performAIGenerate);
+        }
+
+        // AI Verify button
+        if (elements.aiVerifyBtn) {
+            elements.aiVerifyBtn.addEventListener('click', performAIVerify);
         }
 
         // Selection controls
