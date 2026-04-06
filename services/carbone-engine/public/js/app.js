@@ -272,9 +272,10 @@
             // 加载源码并渲染结构
             loadSourceXml().then(() => {
                 switchSourceView('structure');
-                // 结构渲染完成后加载已保存的标记和模板配置
-                loadSavedMarkings();
-                loadSavedTemplateConfig();
+                // 先加载已保存的标记，再加载模板配置（确保状态正确更新）
+                loadSavedMarkings().then(() => {
+                    loadSavedTemplateConfig();
+                });
             });
         });
 
