@@ -1472,7 +1472,6 @@
             showToast('生成失败: ' + error.message, 'error');
         }
     }
-    }
 
     // 构建标记摘要
     function buildMarkingSummary() {
@@ -3092,6 +3091,8 @@
                 }
                 // 更新步骤状态显示生成已完成
                 updateStepStatus('generate', 'completed', '已完成');
+                // 更新状态文本
+                updateStatus('success', '模版配置已加载');
                 // 启用验证按钮
                 if (elements.aiVerifyBtn) {
                     elements.aiVerifyBtn.disabled = false;
@@ -3101,6 +3102,7 @@
             } else {
                 // 没有保存的配置时，显示等待生成状态
                 updateStepStatus('generate', 'pending', '等待生成');
+                updateStatus('pending', '等待生成模版配置');
             }
         } catch (error) {
             console.error('Load template config failed:', error);
