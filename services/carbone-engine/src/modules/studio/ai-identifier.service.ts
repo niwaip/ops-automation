@@ -1228,18 +1228,29 @@ ${JSON.stringify(testData, null, 2)}
 请生成验证报告。`;
 
     try {
-      const response = await axios.post(`${aiUrl}/api/chat`, {
-        messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: userPrompt }
-        ],
-        model: 'qwen3.5-plus'
-      }, {
-        headers: { 'Content-Type': 'application/json' },
-        timeout: 60000
-      });
+      // 获取活跃的AI模型
+      const modelsResponse = await axios.get(`${aiUrl}/ai/models`);
+      const models = modelsResponse.data?.models || [];
+      const activeModel = models.find((m: { status: string }) => m.status === 'active');
 
-      const report = response.data?.choices?.[0]?.message?.content || '无法生成验证报告';
+      if (!activeModel) {
+        this.logger.warn('No active AI models available for verification');
+        return { report: '无法验证：没有可用的AI模型' };
+      }
+
+      // 调用AI模型
+      const testResponse = await axios.post(
+        `${aiUrl}/ai/models/${activeModel.id}/test`,
+        { prompt: `${systemPrompt}\n\n${userPrompt}` },
+        { timeout: 60000 },
+      );
+
+      if (!testResponse.data.success) {
+        this.logger.warn(`AI verify call failed: ${testResponse.data.error}`);
+        return { report: `验证失败: ${testResponse.data.error}` };
+      }
+
+      const report = testResponse.data.response || '无法生成验证报告';
       return { report };
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : 'Unknown error';

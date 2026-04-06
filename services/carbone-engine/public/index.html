@@ -47,6 +47,70 @@
                         <small>DOCX, XLSX, PPTX, HTML</small>
                     </div>
                 </div>
+
+                <!-- Operations Section - 按操作顺序排列 -->
+                <div class="sidebar-section" id="operations-section" style="display: none;">
+                    <h3><i class="fas fa-tasks"></i> Operations</h3>
+                    <div class="operations-list">
+                        <!-- Step 1: 解析模版 -->
+                        <div class="operation-step">
+                            <div class="step-header">
+                                <span class="step-number">1</span>
+                                <span class="step-title">解析模版</span>
+                                <span class="step-status" id="step-parse-status"></span>
+                            </div>
+                            <div class="step-desc">上传或选择模版后自动解析</div>
+                        </div>
+
+                        <!-- Step 2: 人工配置 -->
+                        <div class="operation-step">
+                            <div class="step-header">
+                                <span class="step-number">2</span>
+                                <span class="step-title">人工配置</span>
+                                <span class="step-status" id="step-config-status"></span>
+                            </div>
+                            <div class="step-desc">在结构视图标记元素</div>
+                            <div class="step-actions">
+                                <button id="save-btn" class="btn btn-outline btn-sm btn-block">
+                                    <i class="fas fa-save"></i> Save
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Step 3: AI生成模版 -->
+                        <div class="operation-step">
+                            <div class="step-header">
+                                <span class="step-number">3</span>
+                                <span class="step-title">AI生成模版</span>
+                                <span class="step-status" id="step-generate-status"></span>
+                            </div>
+                            <div class="step-desc">根据标记生成模版配置并验证</div>
+                            <div class="step-actions">
+                                <button id="ai-generate-btn" class="btn btn-primary btn-sm btn-block" title="AI生成模版配置并验证">
+                                    <i class="fas fa-magic"></i> 生成模版
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Step 4: 人工微调 -->
+                        <div class="operation-step">
+                            <div class="step-header">
+                                <span class="step-number">4</span>
+                                <span class="step-title">人工微调</span>
+                                <span class="step-status" id="step-finetune-status"></span>
+                            </div>
+                            <div class="step-desc">查看结果并调整配置</div>
+                            <div class="step-actions">
+                                <button id="validate-btn" class="btn btn-outline btn-sm btn-block">
+                                    <i class="fas fa-check-circle"></i> Validate
+                                </button>
+                                <button id="render-btn" class="btn btn-outline btn-sm btn-block">
+                                    <i class="fas fa-play"></i> Render
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </aside>
 
             <!-- Content Area -->
@@ -152,28 +216,25 @@
                     <!-- Resize Handle -->
                     <div class="resize-handle"></div>
 
-                    <!-- Right Panel: Editor Settings -->
+                    <!-- Right Panel: Results & Status -->
                     <div class="panel-right">
                         <div class="panel-header">
                             <span class="panel-title">
-                                <i class="fas fa-cog"></i> Editor
+                                <i class="fas fa-chart-bar"></i> Results
                             </span>
-                            <div class="panel-actions">
-                                <button id="ai-generate-btn" class="btn btn-primary btn-sm" title="AI生成模版配置并验证">
-                                    <i class="fas fa-magic"></i> 生成模版
-                                </button>
-                                <button id="validate-btn" class="btn btn-outline btn-sm">
-                                    <i class="fas fa-check-circle"></i> Validate
-                                </button>
-                                <button id="save-btn" class="btn btn-outline btn-sm">
-                                    <i class="fas fa-save"></i> Save
-                                </button>
-                                <button id="render-btn" class="btn btn-outline btn-sm">
-                                    <i class="fas fa-play"></i> Render
-                                </button>
-                            </div>
                         </div>
                         <div class="panel-body scrollable">
+                            <!-- Real-time Status Section -->
+                            <div class="editor-section" id="status-section">
+                                <h4><i class="fas fa-info-circle"></i> Status</h4>
+                                <div id="current-status" class="status-display">
+                                    <div class="status-item">
+                                        <span class="status-label">当前状态：</span>
+                                        <span id="status-text" class="status-value">等待操作</span>
+                                    </div>
+                                </div>
+                            </div>
+
                             <!-- Selection Info -->
                             <div id="selection-section" class="editor-section" style="display: none;">
                                 <h4><i class="fas fa-mouse-pointer"></i> Selected Element</h4>
@@ -198,12 +259,6 @@
                                         </button>
                                     </div>
                                 </div>
-                            </div>
-
-                            <!-- No Selection Hint -->
-                            <div id="no-selection-hint" class="editor-section">
-                                <h4><i class="fas fa-info-circle"></i> Element Editor</h4>
-                                <p class="empty-hint">在左侧结构视图中标记元素（参数/循环/静态/忽略），然后点击"生成模版"。</p>
                             </div>
 
                             <!-- Variables Section -->
@@ -242,15 +297,18 @@
                                 <textarea id="test-data" placeholder='{"name": "John", "items": [{"name": "Item 1"}]}'></textarea>
                             </div>
 
-                            <!-- AI Generate Result -->
+                            <!-- AI Generate Result - Real-time status and results -->
                             <div class="editor-section" id="ai-generate-result-section" style="display: none;">
-                                <h4><i class="fas fa-check-circle"></i> AI 验证报告</h4>
-                                <div id="ai-generate-result" style="background: #f6ffed; border: 1px solid #b7eb8f; border-radius: 4px; padding: 10px; font-size: 12px; max-height: 200px; overflow-y: auto;"></div>
-                            </div>
-                        </div>
-                    </div>
+                                <h4><i class="fas fa-check-circle"></i> AI 结果报告</h4>
+                                <!-- Progress indicator -->
+                                <div id="ai-progress" style="display: none;">
+                                    <div class="progress-bar">
+                                        <div id="progress-fill" class="progress-fill" style="width: 0%;"></div>
                                     </div>
+                                    <div id="progress-text" class="progress-text">准备中...</div>
                                 </div>
+                                <!-- Result display -->
+                                <div id="ai-generate-result" style="background: #f6ffed; border: 1px solid #b7eb8f; border-radius: 4px; padding: 10px; font-size: 12px; max-height: 400px; overflow-y: auto;"></div>
                             </div>
                         </div>
                     </div>

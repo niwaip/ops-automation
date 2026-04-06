@@ -64,6 +64,9 @@
         // AI Generate Result
         elements.aiGenerateResultSection = document.getElementById('ai-generate-result-section');
         elements.aiGenerateResult = document.getElementById('ai-generate-result');
+        elements.aiProgress = document.getElementById('ai-progress');
+        elements.progressFill = document.getElementById('progress-fill');
+        elements.progressText = document.getElementById('progress-text');
         // Tab elements
         elements.tabPreview = document.getElementById('tab-preview');
         elements.tabSource = document.getElementById('tab-source');
@@ -83,6 +86,14 @@
         elements.showTables = document.getElementById('show-tables');
         elements.showParagraphs = document.getElementById('show-paragraphs');
         elements.aiConfigBtn = document.getElementById('ai-config-btn');
+        // Operations section
+        elements.operationsSection = document.getElementById('operations-section');
+        elements.stepParseStatus = document.getElementById('step-parse-status');
+        elements.stepConfigStatus = document.getElementById('step-config-status');
+        elements.stepGenerateStatus = document.getElementById('step-generate-status');
+        elements.stepFinetuneStatus = document.getElementById('step-finetune-status');
+        // Status display
+        elements.statusText = document.getElementById('status-text');
     }
 
     // Utility Functions
@@ -222,10 +233,23 @@
         state.currentTab = 'source'; // 默认显示代码页
         state.currentSourceView = 'structure'; // 默认结构化视图
         state.manualMarkings = {}; // 清空手动标记
+        state.ignoredElements = {}; // 清空忽略元素
         renderTemplateList();
 
         elements.noTemplate.style.display = 'none';
         elements.templateEditor.style.display = 'flex';
+
+        // 显示操作区域
+        if (elements.operationsSection) {
+            elements.operationsSection.style.display = 'block';
+        }
+
+        // 更新步骤状态
+        updateStepStatus('parse', 'completed', '已完成');
+        updateStepStatus('config', 'pending', '');
+        updateStepStatus('generate', 'pending', '');
+        updateStepStatus('finetune', 'pending', '');
+        updateStatus('idle', '等待配置');
 
         // Reset tab state - 默认选中Source标签
         elements.tabPreview.classList.remove('active');
@@ -961,6 +985,10 @@
                 state.selectedTemplate = null;
                 elements.noTemplate.style.display = 'flex';
                 elements.templateEditor.style.display = 'none';
+                // 隐藏操作区域
+                if (elements.operationsSection) {
+                    elements.operationsSection.style.display = 'none';
+                }
             }
             renderTemplateList();
         } catch (error) {
@@ -1125,12 +1153,30 @@
             return;
         }
 
+        // 更新状态显示
+        updateStatus('processing', '开始生成模版...');
+        updateStepStatus('generate', 'in-progress', '生成中...');
+
         // 禁用按钮并显示加载状态
         elements.aiGenerateBtn.disabled = true;
         elements.aiGenerateBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 生成中...';
 
+        // 显示进度条
+        if (elements.aiGenerateResultSection) {
+            elements.aiGenerateResultSection.style.display = 'block';
+        }
+        if (elements.aiProgress) {
+            elements.aiProgress.style.display = 'block';
+        }
+        if (elements.aiGenerateResult) {
+            elements.aiGenerateResult.innerHTML = '';
+        }
+
         try {
-            // 1. 调用AI生成模版配置
+            // Step 1: 调用AI生成模版配置
+            updateProgress(20, '正在调用AI生成模版配置...');
+            updateStatus('processing', 'AI生成模版配置...');
+
             const identifyResult = await apiRequest(`/templates/${state.selectedTemplate.id}/ai-identify`, {
                 method: 'POST',
                 body: JSON.stringify({
@@ -1145,7 +1191,10 @@
             const loops = identifyResult.loops || [];
             const suggestions = identifyResult.suggestions || [];
 
-            // 2. 保存模版配置
+            // Step 2: 保存模版配置
+            updateProgress(40, '正在保存模版配置...');
+            updateStatus('processing', '保存模版配置...');
+
             if (templateConfig) {
                 await apiRequest(`/templates/${state.selectedTemplate.id}/config`, {
                     method: 'POST',
@@ -1157,10 +1206,15 @@
                 state.templateConfig = templateConfig;
             }
 
-            // 3. 渲染AI建议
+            // Step 3: 渲染AI建议
+            updateProgress(60, '正在渲染AI建议...');
+            updateStatus('processing', '渲染AI建议...');
             renderAISuggestions(suggestions);
 
-            // 4. 调用AI验证
+            // Step 4: 调用AI验证
+            updateProgress(80, '正在调用AI验证...');
+            updateStatus('processing', 'AI验证模版...');
+
             const verifyResult = await apiRequest(`/templates/${state.selectedTemplate.id}/ai-verify`, {
                 method: 'POST',
                 body: JSON.stringify({
@@ -1170,10 +1224,24 @@
                 })
             });
 
-            // 5. 显示验证结果
-            if (elements.aiGenerateResultSection && elements.aiGenerateResult) {
-                elements.aiGenerateResultSection.style.display = 'block';
-                elements.aiGenerateResult.innerHTML = marked.parse(verifyResult.report || '验证完成');
+            // Step 5: 显示验证结果
+            updateProgress(100, '完成');
+            updateStatus('success', '生成完成');
+            updateStepStatus('generate', 'completed', '已完成');
+
+            // 隐藏进度条
+            if (elements.aiProgress) {
+                elements.aiProgress.style.display = 'none';
+            }
+
+            // 显示结果
+            if (elements.aiGenerateResult) {
+                let resultHtml = '<h3>模版生成结果</h3>';
+                resultHtml += `<ul><li>循环数量: ${loops.length}</li>`;
+                resultHtml += `<li>变量数量: ${suggestions.length}</li></ul>`;
+                resultHtml += '<h3>验证报告</h3>';
+                resultHtml += marked.parse(verifyResult.report || '验证完成');
+                elements.aiGenerateResult.innerHTML = resultHtml;
             }
 
             const totalVars = suggestions.length;
@@ -1181,10 +1249,47 @@
             showToast(`生成完成：${totalLoops}个循环，${totalVars}个变量`, 'success');
         } catch (error) {
             console.error('AI generate failed:', error);
+            updateProgress(0, '失败');
+            updateStatus('error', '生成失败: ' + error.message);
+            updateStepStatus('generate', 'error', '失败');
+
+            if (elements.aiProgress) {
+                elements.aiProgress.style.display = 'none';
+            }
+            if (elements.aiGenerateResult) {
+                elements.aiGenerateResult.innerHTML = `<div style="color: #ff4d4f;">生成失败: ${error.message}</div>`;
+            }
             showToast('生成失败: ' + error.message, 'error');
         } finally {
             elements.aiGenerateBtn.disabled = false;
             elements.aiGenerateBtn.innerHTML = '<i class="fas fa-magic"></i> 生成模版';
+        }
+    }
+
+    // 更新进度条
+    function updateProgress(percent, text) {
+        if (elements.progressFill) {
+            elements.progressFill.style.width = percent + '%';
+        }
+        if (elements.progressText) {
+            elements.progressText.textContent = text;
+        }
+    }
+
+    // 更新状态显示
+    function updateStatus(type, text) {
+        if (elements.statusText) {
+            elements.statusText.textContent = text;
+            elements.statusText.className = 'status-value ' + type;
+        }
+    }
+
+    // 更新步骤状态
+    function updateStepStatus(step, status, text) {
+        const statusEl = document.getElementById(`step-${step}-status`);
+        if (statusEl) {
+            statusEl.textContent = text || '';
+            statusEl.className = 'step-status ' + status;
         }
     }
 
@@ -1647,18 +1752,38 @@
             return;
         }
 
+        const markings = state.manualMarkings || {};
+        const ignored = state.ignoredElements || {};
+        const markingCount = Object.keys(markings).length;
+        const ignoredCount = Object.keys(ignored).length;
+
+        updateStatus('processing', '保存配置中...');
+        updateStepStatus('config', 'in-progress', '保存中...');
+
         try {
+            // 将对象转换为数组格式
+            const markingsArray = Object.entries(markings).map(([index, type]) => ({
+                index: parseInt(index),
+                type: type,
+                path: '',
+                text: ''
+            }));
+
             await apiRequest(`/templates/${state.selectedTemplate.id}/markings`, {
                 method: 'POST',
                 body: JSON.stringify({
                     templateId: state.selectedTemplate.id,
-                    markings: state.manualMarkings,
-                    ignoredElements: Object.keys(state.ignoredElements || {}).map(idx => parseInt(idx))
+                    markings: markingsArray,
+                    ignoredElements: Object.keys(ignored).map(idx => parseInt(idx))
                 })
             });
 
-            showToast('配置已保存', 'success');
+            updateStatus('success', '配置已保存');
+            updateStepStatus('config', 'completed', `${markingCount + ignoredCount}个`);
+            showToast(`配置已保存 (${markingCount}个标记, ${ignoredCount}个忽略)`, 'success');
         } catch (error) {
+            updateStatus('error', '保存失败');
+            updateStepStatus('config', 'error', '失败');
             showToast('Failed to save markings', 'error');
         }
     }
@@ -2535,6 +2660,9 @@
             return;
         }
 
+        updateStatus('processing', '保存配置中...');
+        updateStepStatus('config', 'in-progress', '保存中...');
+
         try {
             // 保存到服务端
             await apiRequest(`/templates/${state.selectedTemplate.id}/markings`, {
@@ -2552,9 +2680,13 @@
                 })
             });
 
+            updateStatus('success', '配置已保存');
+            updateStepStatus('config', 'completed', `${markingCount + ignoredCount}个`);
             showToast(`已保存 ${markingCount} 个标记配置，${ignoredCount} 个忽略元素`, 'success');
         } catch (error) {
             console.error('Save markings failed:', error);
+            updateStatus('error', '保存失败');
+            updateStepStatus('config', 'error', '失败');
             showToast('保存失败: ' + error.message, 'error');
         }
     }
@@ -2603,11 +2735,27 @@
                         state.manualMarkings[m.index] = m.type;
                     }
                 });
+            }
 
-                // 如果当前在结构视图且xmlStructure已解析，重新渲染
-                if (state.currentSourceView === 'structure' && state.xmlStructure) {
-                    renderStructureTree();
-                }
+            // 加载忽略元素
+            if (result.ignoredElements && result.ignoredElements.length > 0) {
+                state.ignoredElements = {};
+                result.ignoredElements.forEach(idx => {
+                    state.ignoredElements[idx] = true;
+                });
+            }
+
+            // 如果当前在结构视图且xmlStructure已解析，重新渲染
+            if (state.currentSourceView === 'structure' && state.xmlStructure) {
+                renderStructureTree();
+            }
+
+            // 更新配置状态
+            const markingCount = Object.keys(state.manualMarkings || {}).length;
+            const ignoredCount = Object.keys(state.ignoredElements || {}).length;
+            if (markingCount > 0 || ignoredCount > 0) {
+                updateStepStatus('config', 'completed', `${markingCount + ignoredCount}个`);
+                updateStatus('idle', '已保存配置，等待生成');
             }
         } catch (error) {
             console.error('Load markings failed:', error);

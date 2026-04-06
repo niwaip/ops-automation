@@ -65,6 +65,7 @@ export class SaveMarkingsDto {
     text?: string;       // 文本内容（可选）
     formatters?: string[];
   }>;
+  ignoredElements?: number[];  // 被忽略的元素索引列表
 }
 
 export class SaveTemplateConfigDto {
@@ -92,6 +93,7 @@ export interface TemplateResponse {
   variables: string[];
   loops: Array<{ arrayPath: string }>;
   markings?: Array<{ path: string; text: string; formatters?: string[] }>;
+  ignoredElements?: number[];  // 被忽略的元素索引列表
   savedAt?: string;
   templateConfig?: any;  // AI-generated template configuration
   configSavedAt?: string;
@@ -592,6 +594,7 @@ export class StudioController {
     const updatedMeta = {
       ...meta,
       markings: dto.markings,
+      ignoredElements: dto.ignoredElements || [],
       savedAt: new Date().toISOString()
     };
 
@@ -610,11 +613,13 @@ export class StudioController {
   @ApiOperation({ summary: 'Get template markings' })
   async getMarkings(@Param('id') id: string): Promise<{
     markings: Array<{ path: string; text: string; formatters?: string[] }>;
+    ignoredElements?: number[];
     savedAt?: string;
   }> {
     const meta = this.getTemplateMeta(id);
     return {
       markings: meta.markings || [],
+      ignoredElements: meta.ignoredElements || [],
       savedAt: meta.savedAt
     };
   }
