@@ -11,6 +11,71 @@ import axios from 'axios';
 import { DocumentElement, DocumentStructure, PreserveMarker } from './document-structure.service';
 
 /**
+ * 参数路径映射规则
+ * 用于将AI生成的变量路径规范化为标准路径
+ */
+export interface PathMappingRule {
+  patterns: string[];      // 匹配模式（支持通配符）
+  standardPath: string;    // 标准路径
+  description: string;     // 描述
+}
+
+/**
+ * 默认参数路径映射表
+ * 定义AI可能生成的变量路径到标准路径的映射
+ */
+const DEFAULT_PATH_MAPPINGS: PathMappingRule[] = [
+  // 执行摘要/总结相关
+  {
+    patterns: ['d.executionSummary', 'd.executionsummary', 'd.execution_summary', 'd.summaryText', 'd.summarytext'],
+    standardPath: 'd.summary',
+    description: '执行摘要/总结内容'
+  },
+  // 分析报告相关
+  {
+    patterns: ['d.analysisReport', 'd.analysisreport', 'd.analysis_report', 'd.analysisText', 'd.analysistext', 'd.analysisResult', 'd.analysisresult'],
+    standardPath: 'd.analysis',
+    description: '分析报告内容'
+  },
+  // 日期/时间相关
+  {
+    patterns: ['d.generatedDate', 'd.generateddate', 'd.generated_date', 'd.datetime', 'd.timestamp', 'd.createTime', 'd.createtime', 'd.createdAt'],
+    standardPath: 'd.date',
+    description: '日期/时间'
+  },
+  // 标题相关
+  {
+    patterns: ['d.docTitle', 'd.doctitle', 'd.doc_title', 'd.reportTitle', 'd.reporttitle', 'd.mainTitle', 'd.maintitle'],
+    standardPath: 'd.title',
+    description: '文档标题'
+  },
+  // 内容相关
+  {
+    patterns: ['d.mainContent', 'd.maincontent', 'd.main_content', 'd.bodyContent', 'd.bodycontent', 'd.contentText', 'd.contenttext'],
+    standardPath: 'd.content',
+    description: '主要内容'
+  },
+  // 描述相关
+  {
+    patterns: ['d.descriptionText', 'd.descriptiontext', 'd.desc', 'd.detail', 'd.details'],
+    standardPath: 'd.description',
+    description: '描述内容'
+  },
+  // 结果相关
+  {
+    patterns: ['d.resultText', 'd.resulttext', 'd.outcome', 'd.conclusion'],
+    standardPath: 'd.result',
+    description: '结果内容'
+  },
+  // 备注相关
+  {
+    patterns: ['d.noteText', 'd.notetext', 'd.comment', 'd.comments', 'd.remark'],
+    standardPath: 'd.notes',
+    description: '备注/注释'
+  },
+];
+
+/**
  * 模版配置 - 描述整个模版的结构和变量映射
  */
 export interface TemplateConfig {
@@ -1143,9 +1208,13 @@ ${elementSummary}
 请根据用户的手动标记，配置具体的参数名称、类型等信息。
 
 规则：
-1. 用户标记为"param"的元素 → variableMappings，需要生成合适的变量名（如d.title、d.name），并包含该元素的 elementIndex
-2. 用户标记为"loop"的元素 → tableLoops，需要生成循环路径（如d.steps）和列映射，并包含该表格的 elementIndex (对应列表中的数字)
+1. 用户标记为"param"的元素 → variableMappings，生成合适的变量路径（如 d.summary, d.analysis）
+2. 用户标记为"loop"的元素 → tableLoops，生成循环路径和列映射
 3. 用户标记为"static"的元素 → staticElements，保留不变
+
+表格循环配置：
+- 步骤表格使用 arrayPath: d.steps
+- 列映射示例：Step→d.steps[].step, Action→d.steps[].action
 
 返回JSON格式：
 {
@@ -1167,15 +1236,15 @@ ${elementSummary}
 
 规则：
 1. "### xxx" 标题 → staticElements (保留)
-2. 表格有preserve或rows属性 → tableLoops (循环)，必须包含 elementIndex (对应列表中的数字)
-3. "Step N: screenshot" + 相邻图片 → combinedVariables (组合变量, stepNumber=N, imageId=图片ID)
-4. 含"日志/上下文"的段落 → variableMappings，必须包含 elementIndex (对应列表中的数字)
+2. 表格有preserve或rows属性 → tableLoops (循环)，必须包含 elementIndex
+3. "Step N: screenshot" + 相邻图片 → combinedVariables (组合变量)
+4. 含"日志/上下文/总结/分析"的段落 → variableMappings
 
 返回JSON格式：
 {
   "templateType": "类型",
   "staticElements": [],
-  "tableLoops": [{"elementIndex": N, "arrayPath": "d.items", "columnMappings": []}],
+  "tableLoops": [{"elementIndex": N, "arrayPath": "d.steps", "columnMappings": [...]}],
   "combinedVariables": [],
   "variableMappings": [{"elementIndex": N, "path": "d.xxx", "type": "text"}],
   "analysisNotes": []
@@ -1246,6 +1315,7 @@ ${elementSummary}
 
   /**
    * 验证并补充变量映射配置
+   * 使用参数对照表规范化变量路径
    */
   private validateVariableMappings(mappings: any[], elements: DocumentElement[]): VariableMapping[] {
     const result: VariableMapping[] = [];
@@ -1253,11 +1323,16 @@ ${elementSummary}
     for (const mapping of mappings) {
       // 转换 1-based 索引为 0-based
       const index = mapping.elementIndex !== undefined ? mapping.elementIndex - 1 : mapping.index;
-      
+
       if (index !== undefined && index >= 0 && index < elements.length) {
         const element = elements[index];
+
+        // 修正变量路径（使用参数对照表）
+        let path = mapping.path || `d.var_${index}`;
+        path = this.normalizeVariablePath(path);
+
         result.push({
-          path: mapping.path || `d.var_${index}`,
+          path: path,
           sampleValue: element.text || mapping.sampleValue || mapping.content || '',
           index: index,
           type: mapping.type || 'text',
@@ -1267,6 +1342,128 @@ ${elementSummary}
     }
 
     return result;
+  }
+
+  /**
+   * 使用参数对照表规范化变量路径
+   * @param originalPath AI生成的原始路径
+   * @returns 规范化后的标准路径
+   */
+  private normalizeVariablePath(originalPath: string): string {
+    // 遍历参数对照表，查找匹配的规则
+    for (const rule of DEFAULT_PATH_MAPPINGS) {
+      // 检查是否精确匹配
+      if (rule.patterns.includes(originalPath)) {
+        this.logger.debug(`Path mapping: ${originalPath} -> ${rule.standardPath} (${rule.description})`);
+        return rule.standardPath;
+      }
+
+      // 检查是否匹配模式（支持简单的通配符匹配）
+      for (const pattern of rule.patterns) {
+        if (this.matchPathPattern(originalPath, pattern)) {
+          this.logger.debug(`Path mapping (pattern): ${originalPath} -> ${rule.standardPath} (${rule.description})`);
+          return rule.standardPath;
+        }
+      }
+    }
+
+    // 没有匹配的规则，检查路径格式是否正确
+    if (!originalPath.startsWith('d.')) {
+      // 尝试自动修正为 d.xxx 格式
+      const correctedPath = `d.${originalPath.replace(/[^a-zA-Z0-9_]/g, '_').toLowerCase()}`;
+      this.logger.debug(`Auto-correcting path: ${originalPath} -> ${correctedPath}`);
+      return correctedPath;
+    }
+
+    return originalPath;
+  }
+
+  /**
+   * 检查路径是否匹配模式
+   * 支持简单的通配符匹配
+   */
+  private matchPathPattern(path: string, pattern: string): boolean {
+    // 精确匹配
+    if (path === pattern) return true;
+
+    // 转换为小写后比较（不区分大小写）
+    if (path.toLowerCase() === pattern.toLowerCase()) return true;
+
+    // 驼峰转下划线后比较
+    const snakeCase = (s: string) => s.replace(/[A-Z]/g, letter => `_${letter.toLowerCase()}`);
+    if (snakeCase(path) === snakeCase(pattern)) return true;
+
+    return false;
+  }
+
+  /**
+   * 规范化模版配置
+   * 使用参数对照表规范化变量路径，确保路径一致性
+   * 此方法为公开方法，可在加载已保存的配置时调用
+   * @param config 原始模版配置
+   * @returns 规范化后的模版配置
+   */
+  normalizeTemplateConfig(config: TemplateConfig): TemplateConfig {
+    if (!config) return config;
+
+    // 规范化变量映射路径
+    if (config.variableMappings && Array.isArray(config.variableMappings)) {
+      config.variableMappings = config.variableMappings.map(mapping => ({
+        ...mapping,
+        path: this.normalizeVariablePath(mapping.path)
+      }));
+    }
+
+    // 规范化表格循环中的列映射路径
+    if (config.tableLoops && Array.isArray(config.tableLoops)) {
+      config.tableLoops = config.tableLoops.map(loop => ({
+        ...loop,
+        columnMappings: (loop.columnMappings || []).map(col => ({
+          ...col,
+          variablePath: this.normalizeColumnPath(col.variablePath)
+        }))
+      }));
+    }
+
+    return config;
+  }
+
+  /**
+   * 规范化列路径（保持数组标记）
+   * d.steps[].stepAction -> d.steps[].action
+   */
+  private normalizeColumnPath(path: string): string {
+    if (!path) return path;
+
+    // 提取数组部分和字段部分
+    const arrayMatch = path.match(/^(d\.\w+)\[\]\.(\w+)$/);
+    if (arrayMatch) {
+      const arrayPath = arrayMatch[1];
+      const fieldName = arrayMatch[2];
+      // 规范化字段名
+      const normalizedFieldName = this.normalizeFieldName(fieldName);
+      return `${arrayPath}[].${normalizedFieldName}`;
+    }
+
+    return path;
+  }
+
+  /**
+   * 规范化字段名
+   */
+  private normalizeFieldName(fieldName: string): string {
+    const fieldMappings: Record<string, string> = {
+      'stepaction': 'action',
+      'stepAction': 'action',
+      'stepResult': 'result',
+      'stepresult': 'result',
+      'stepStatus': 'status',
+      'stepstatus': 'status',
+      'resultAction': 'result',
+      'resultaction': 'result',
+    };
+
+    return fieldMappings[fieldName] || fieldName.toLowerCase();
   }
 
   /**

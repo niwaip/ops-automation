@@ -236,14 +236,7 @@ export class StudioController {
   @Get('templates/:id')
   @ApiOperation({ summary: 'Get template information' })
   async getTemplate(@Param('id') id: string): Promise<TemplateResponse> {
-    const metaPath = path.join(this.templatesDir, `${id}.json`);
-
-    if (!fs.existsSync(metaPath)) {
-      throw new HttpException('Template not found', HttpStatus.NOT_FOUND);
-    }
-
-    const meta = JSON.parse(fs.readFileSync(metaPath, 'utf-8'));
-    return meta;
+    return this.getTemplateMeta(id);
   }
 
   /**
@@ -1396,7 +1389,14 @@ export class StudioController {
     if (!fs.existsSync(metaPath)) {
       throw new HttpException('Template not found', HttpStatus.NOT_FOUND);
     }
-    return JSON.parse(fs.readFileSync(metaPath, 'utf-8'));
+    const meta = JSON.parse(fs.readFileSync(metaPath, 'utf-8'));
+
+    // 规范化模版配置中的变量路径（使用参数对照表）
+    if (meta.templateConfig) {
+      meta.templateConfig = this.aiIdentifierService.normalizeTemplateConfig(meta.templateConfig);
+    }
+
+    return meta;
   }
 
   private generateOutputFileName(templateName: string, format: string): string {
