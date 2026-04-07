@@ -92,6 +92,8 @@ export interface TemplateConfig {
   // 变量映射建议
   variableMappings: VariableMapping[];
   // 分组循环（用户手动指定的一组连续元素作为循环）
+  groupLoops?: GroupLoop[];
+  // 分组循环（用户手动指定的一组连续元素作为循环）
   elementGroups?: Record<string, number[]>;
   // 忽略的元素索引
   ignoredElements?: number[];
@@ -99,6 +101,25 @@ export interface TemplateConfig {
   ignoredGroups?: string[];
   // 分析说明
   analysisNotes: string[];
+}
+
+/**
+ * 分组循环配置
+ * 用户手动创建的一组元素，作为循环体
+ */
+export interface GroupLoop {
+  // 分组ID
+  groupId?: string;
+  // 元素索引列表
+  groupIndices: number[];
+  // 循环数组路径
+  arrayPath: string;
+  // 文本元素索引（如果分组中包含文本）
+  textElement?: number;
+  // 图片元素索引（如果分组中包含图片）
+  imageElement?: number;
+  // 原因说明
+  reason: string;
 }
 
 export interface CombinedVariable {
@@ -1244,11 +1265,21 @@ ${elementSummary}
 2. 用户标记为"loop"的元素 → tableLoops，生成循环路径和列映射
 3. 用户标记为"static"的元素 → staticElements，保留不变
 4. 图片类型的元素使用 path 格式：d.images[].url 或 d.steps[].screenshot
+5. **分组循环（重要）**：如果标记摘要中有"元素分组（循环）"，表示用户创建了一组元素作为循环体
+   - 这组元素应该生成 groupLoops 配置
+   - 例如：分组包含 "Step 3: screenshot" 文本 + 图片，表示每个步骤都有截图
+   - 应该生成：groupLoops 中包含这组元素，使用 arrayPath 如 d.steps
+   - 这样在渲染时，每个步骤都会显示对应的截图
 
 表格循环配置：
 - 步骤表格使用 arrayPath: d.steps
 - 列映射必须包含 columnIndex，对应表格列的位置（从0开始）
 - 列映射示例：columnIndex=0 → d.steps[].step, columnIndex=1 → d.steps[].action
+
+分组循环配置：
+- 当用户创建分组时，这组元素应该作为循环体重复出现
+- 例如：分组索引[7,8]包含 "Step X: screenshot" 文本 + 图片
+- 应该生成 groupLoops: [{"groupIndices": [7,8], "arrayPath": "d.steps", "textElement": 7, "imageElement": 8, "reason": "每个步骤显示截图"}]
 
 返回JSON格式：
 {
@@ -1258,6 +1289,7 @@ ${elementSummary}
   "templateType": "类型",
   "staticElements": [{"type": "heading", "content": "...", "reason": "..."}],
   "tableLoops": [{"elementIndex": N, "arrayPath": "d.steps", "reason": "...", "columnMappings": [{"columnIndex": 0, "headerName": "Step", "variablePath": "d.steps[].step"}]}],
+  "groupLoops": [{"groupIndices": [7,8], "arrayPath": "d.steps", "textElement": 7, "imageElement": 8, "reason": "每个步骤显示截图"}],
   "combinedVariables": [{"stepNumber": N, "textContent": "...", "imageId": "...", "reason": "..."}],
   "variableMappings": [{"elementIndex": N, "path": "d.xxx", "content": "...", "type": "text|image", "reason": "..."}],
   "analysisNotes": ["..."]
@@ -1266,6 +1298,7 @@ ${elementSummary}
 注意：
 - elementIndex 是列表左侧的编号（1-based）
 - columnIndex 是表格列的索引（0-based）
+- 分组循环优先级高于单独的 combinedVariables，如果用户创建了分组，应该在 groupLoops 中处理
 - 只返回JSON，不要解释`;
     }
 
@@ -1338,6 +1371,7 @@ ${elementSummary}
         staticElements: parsed.staticElements || [],
         tableLoops: this.validateTableLoops(parsed.tableLoops || [], elements, mergedMappings),
         imageLoops: [],
+        groupLoops: this.validateGroupLoops(parsed.groupLoops || []),
         combinedVariables: this.validateCombinedVariables(parsed.combinedVariables || [], elements),
         variableMappings: this.validateVariableMappings(parsed.variableMappings || [], elements, mergedMappings),
         analysisNotes: parsed.analysisNotes || [],
@@ -1678,6 +1712,28 @@ ${elementSummary}
     };
 
     return fieldMappings[fieldName] || fieldName.toLowerCase();
+  }
+
+  /**
+   * 验证并补充分组循环配置
+   */
+  private validateGroupLoops(groupLoops: any[]): GroupLoop[] {
+    const result: GroupLoop[] = [];
+
+    for (const gl of groupLoops) {
+      if (gl.groupIndices && Array.isArray(gl.groupIndices) && gl.groupIndices.length > 0) {
+        result.push({
+          groupId: gl.groupId,
+          groupIndices: gl.groupIndices,
+          arrayPath: gl.arrayPath || 'd.items',
+          textElement: gl.textElement,
+          imageElement: gl.imageElement,
+          reason: gl.reason || '用户创建的分组循环',
+        });
+      }
+    }
+
+    return result;
   }
 
   /**

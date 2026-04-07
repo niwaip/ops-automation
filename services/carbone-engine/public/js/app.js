@@ -1800,6 +1800,8 @@
     function buildMarkingSummary() {
         const markings = state.manualMarkings || {};
         const ignored = state.ignoredElements || {};
+        const elementGroups = state.elementGroups || {};
+        const ignoredGroups = state.ignoredGroups || {};
         let summary = '';
 
         if (Object.keys(markings).length > 0) {
@@ -1820,6 +1822,27 @@
                     summary += `- 索引${idx}: ${el.text?.substring(0, 30) || el.type}\n`;
                 }
             });
+        }
+
+        // 添加分组循环信息
+        if (Object.keys(elementGroups).length > 0) {
+            summary += '\n元素分组（循环）：\n';
+            Object.entries(elementGroups).forEach(([groupId, indices]) => {
+                if (indices && indices.length > 0) {
+                    const isIgnored = ignoredGroups[groupId];
+                    const groupContents = indices.map(idx => {
+                        const el = state.xmlStructure?.orderedElements?.[idx];
+                        if (!el) return '';
+                        if (el.type === 'image') return `图片(${el.imageId || ''})`;
+                        return el.text?.substring(0, 30) || el.type;
+                    }).join(' + ');
+                    summary += `- 分组${groupId.substring(0, 4)}: 索引[${indices.join(',')}] 包含 "${groupContents}"${isIgnored ? ' [已忽略/重复]' : ''}\n`;
+                    summary += `  重要：这是一个分组循环，这组元素应该作为循环体，生成类似 {#d.steps} ... {/d.steps} 的循环配置\n`;
+                }
+            });
+            if (Object.keys(ignoredGroups).length > 0) {
+                summary += `\n注意：有 ${Object.keys(ignoredGroups).length} 个分组被标记为重复/忽略，生成模板时将跳过这些分组。\n`;
+            }
         }
 
         return summary;

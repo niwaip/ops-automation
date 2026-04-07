@@ -287,12 +287,12 @@ export class DocumentStructureParser {
 
         // 检查该分组是否被忽略
         if (config.ignoredGroups && config.ignoredGroups.includes(groupId)) {
-          groupIndices.forEach(idx => ignoredIndices.add(idx));
+          groupIndices.forEach((idx: number) => ignoredIndices.add(idx));
           continue;
         }
 
         // 记录这些索引属于分组循环
-        groupIndices.forEach(idx => groupLoopIndices.add(idx));
+        groupIndices.forEach((idx: number) => groupLoopIndices.add(idx));
 
         const firstIdx = Math.min(...groupIndices);
         const lastIdx = Math.max(...groupIndices);
@@ -305,6 +305,54 @@ export class DocumentStructureParser {
           const path = groupId.startsWith('#') ? groupId.substring(1) : groupId;
           this.prefixTextToElement(firstNode, `{#${path}}`);
           this.suffixTextToElement(lastNode, `{/${path}}`);
+        }
+      }
+    }
+
+    // 1.5 处理AI生成的分组循环 (Group Loops from AI config)
+    // 这是AI根据用户分组标记生成的循环配置，使用正确的数组路径
+    if (config.groupLoops && Array.isArray(config.groupLoops)) {
+      for (const groupLoop of config.groupLoops) {
+        const groupIndices = groupLoop.groupIndices;
+        if (!groupIndices || groupIndices.length === 0) continue;
+
+        // 记录这些索引属于分组循环
+        groupIndices.forEach((idx: number) => groupLoopIndices.add(idx));
+
+        const firstIdx = Math.min(...groupIndices);
+        const lastIdx = Math.max(...groupIndices);
+
+        const firstNode = elements[firstIdx];
+        const lastNode = elements[lastIdx];
+
+        if (firstNode && lastNode) {
+          const arrayPath = groupLoop.arrayPath || 'd.items';
+
+          // 在第一个元素前添加循环开始标记
+          this.prefixTextToElement(firstNode, `{#${arrayPath}}`);
+
+          // 在最后一个元素后添加循环结束标记
+          this.suffixTextToElement(lastNode, `{/${arrayPath}}`);
+
+          // 如果指定了文本元素和图片元素，注入变量
+          if (groupLoop.textElement !== undefined) {
+            const textNode = elements[groupLoop.textElement];
+            if (textNode) {
+              // 尝试推导文本路径
+              const textPath = arrayPath.replace('d.', 'd.[].') + '.description';
+              // 简化路径：d.steps[].description -> d.steps[].description
+              const simpleTextPath = `${arrayPath}[].description`;
+              this.injectTextToElement(textNode, `{${simpleTextPath}}`);
+            }
+          }
+
+          if (groupLoop.imageElement !== undefined) {
+            const imageNode = elements[groupLoop.imageElement];
+            if (imageNode && this.isImageElement(imageNode)) {
+              const imagePath = `${arrayPath}[].screenshot`;
+              this.injectImageVariable(imageNode, imagePath);
+            }
+          }
         }
       }
     }
