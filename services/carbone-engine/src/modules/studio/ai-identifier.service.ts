@@ -91,6 +91,12 @@ export interface TemplateConfig {
   combinedVariables: CombinedVariable[];
   // 变量映射建议
   variableMappings: VariableMapping[];
+  // 分组循环（用户手动指定的一组连续元素作为循环）
+  elementGroups?: Record<string, number[]>;
+  // 忽略的元素索引
+  ignoredElements?: number[];
+  // 忽略的分组ID
+  ignoredGroups?: string[];
   // 分析说明
   analysisNotes: string[];
 }
@@ -1399,47 +1405,48 @@ ${elementSummary}
       // AI返回的索引可能是 1-based (elementIndex)
       const elementIndex = loop.elementIndex !== undefined ? loop.elementIndex - 1 : loop.tableIndex;
 
-      const tableElement = elements.find((el, idx) =>
-        el.type === 'table' && idx === elementIndex
-      );
+      // 直接通过索引检查元素是否存在且为表格
+      if (elementIndex >= 0 && elementIndex < elements.length) {
+        const tableElement = elements[elementIndex];
 
-      if (tableElement) {
-        // 检查列映射是否是AI自动生成的通用名称（如 "Column 1", "col0" 等）
-        const isGenericColumnNames = (mappings: any[]): boolean => {
-          if (!mappings || mappings.length === 0) return true;
-          // 检查是否有真实的表头名称（非 "Column N" 或 "colN" 格式）
-          const hasRealHeaderNames = mappings.some(m => {
-            const header = m.headerName || '';
-            const varPath = m.variablePath || '';
-            // 如果headerName不是 "Column N" 格式，且variablePath不是 "colN" 结尾
-            const isGenericHeader = /^Column\s+\d+$/i.test(header);
-            const isGenericVarPath = /\[\]\.col\d+$/.test(varPath);
-            return !isGenericHeader && !isGenericVarPath;
+        if (tableElement && tableElement.type === 'table') {
+          // 检查列映射是否是AI自动生成的通用名称（如 "Column 1", "col0" 等）
+          const isGenericColumnNames = (mappings: any[]): boolean => {
+            if (!mappings || mappings.length === 0) return true;
+            // 检查是否有真实的表头名称（非 "Column N" 或 "colN" 格式）
+            const hasRealHeaderNames = mappings.some(m => {
+              const header = m.headerName || '';
+              const varPath = m.variablePath || '';
+              // 如果headerName不是 "Column N" 格式，且variablePath不是 "colN" 结尾
+              const isGenericHeader = /^Column\s+\d+$/i.test(header);
+              const isGenericVarPath = /\[\]\.col\d+$/.test(varPath);
+              return !isGenericHeader && !isGenericVarPath;
+            });
+            return !hasRealHeaderNames;
+          };
+
+          let columnMappings = loop.columnMappings;
+          // 如果没有列映射，或者列映射是通用名称，则从实际表头重新生成
+          if (!columnMappings || columnMappings.length === 0 ||
+              (columnMappings.length === 1 && !columnMappings[0].headerName?.includes('|')) ||
+              isGenericColumnNames(columnMappings)) {
+            // 使用表格结构中的表头信息生成列映射
+            columnMappings = this.generateColumnMappingsFromHeaders(tableElement, loop.arrayPath || 'd.items');
+          } else {
+            // 规范化AI返回的列映射
+            columnMappings = this.normalizeColumnMappings(columnMappings, loop.arrayPath || 'd.items', pathMappings);
+          }
+
+          result.push({
+            tableIndex: elementIndex,
+            headerRow: tableElement.headerRow || '',
+            dataRowCount: tableElement.dataRows?.length || tableElement.dataRowCount || 0,
+            arrayPath: loop.arrayPath || 'd.items',
+            columnMappings: columnMappings,
+            reason: loop.reason || 'AI 识别的循环表格',
+            confidence: 0.9,
           });
-          return !hasRealHeaderNames;
-        };
-
-        let columnMappings = loop.columnMappings;
-        // 如果没有列映射，或者列映射是通用名称，则从实际表头重新生成
-        if (!columnMappings || columnMappings.length === 0 ||
-            (columnMappings.length === 1 && !columnMappings[0].headerName?.includes('|')) ||
-            isGenericColumnNames(columnMappings)) {
-          // 使用表格结构中的表头信息生成列映射
-          columnMappings = this.generateColumnMappingsFromHeaders(tableElement, loop.arrayPath || 'd.items');
-        } else {
-          // 规范化AI返回的列映射
-          columnMappings = this.normalizeColumnMappings(columnMappings, loop.arrayPath || 'd.items', pathMappings);
         }
-
-        result.push({
-          tableIndex: elementIndex,
-          headerRow: tableElement.headerRow || '',
-          dataRowCount: tableElement.dataRows?.length || tableElement.dataRowCount || 0,
-          arrayPath: loop.arrayPath || 'd.items',
-          columnMappings: columnMappings,
-          reason: loop.reason || 'AI 识别的循环表格',
-          confidence: 0.9,
-        });
       }
     }
 

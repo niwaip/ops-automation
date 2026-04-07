@@ -271,28 +271,63 @@ export class DocumentStructureParser {
 
     const elements = this.collectElements(body);
 
-    // 1. 应用手动标记 (Markings)
+    // 0. 处理忽略元素 (Ignored Elements)
+    // 必须首先处理，否则会影响后续注入
+    const ignoredIndices = new Set<number>(config.ignoredElements || []);
+    
+    // 1. 处理分组循环 (Element Groups / Group Loops)
+    // 对应用户界面中的 "分组循环"
+    if (config.elementGroups && typeof config.elementGroups === 'object') {
+      for (const [groupId, indices] of Object.entries(config.elementGroups)) {
+        const groupIndices = indices as number[];
+        if (groupIndices.length === 0) continue;
+
+        // 检查该分组是否被忽略
+        if (config.ignoredGroups && config.ignoredGroups.includes(groupId)) {
+          groupIndices.forEach(idx => ignoredIndices.add(idx));
+          continue;
+        }
+
+        const firstIdx = Math.min(...groupIndices);
+        const lastIdx = Math.max(...groupIndices);
+        
+        const firstNode = elements[firstIdx];
+        const lastNode = elements[lastIdx];
+
+        if (firstNode && lastNode) {
+          // 注入循环开始标记，使用分组ID作为路径（去掉#前缀如果存在）
+          const path = groupId.startsWith('#') ? groupId.substring(1) : groupId;
+          this.prefixTextToElement(firstNode, `{#${path}}`);
+          this.suffixTextToElement(lastNode, `{/${path}}`);
+        }
+      }
+    }
+
+    // 2. 应用标记 (Markings - 手动标记)
     if (config.markings && Array.isArray(config.markings)) {
       for (const marking of config.markings) {
+        if (ignoredIndices.has(marking.index)) continue;
+        
         const node = elements[marking.index];
         if (!node) continue;
 
         if (marking.type === 'param' && marking.path) {
           this.injectTextToElement(node, `{${marking.path}}`);
         } else if (marking.type === 'loop' && marking.path) {
-          // 如果是段落循环，包装标记
+          // 单个元素的段落循环
           this.injectTextToElement(node, `{#${marking.path}}${this.getNodeText(node)}{/${marking.path}}`);
         }
       }
     }
 
-    // 2. 应用变量映射 (Variable Mappings - AI生成)
+    // 3. 应用变量映射 (Variable Mappings - AI生成)
     if (config.variableMappings && Array.isArray(config.variableMappings)) {
       for (const mapping of config.variableMappings) {
+        if (ignoredIndices.has(mapping.index)) continue;
+        
         const node = elements[mapping.index];
         if (!node) continue;
 
-        // 检查是否是图片类型
         if (mapping.type === 'image' || this.isImageElement(node)) {
           this.injectImageVariable(node, mapping.path);
         } else if (mapping.path) {
@@ -301,80 +336,101 @@ export class DocumentStructureParser {
       }
     }
 
-    // 3. 应用表格循环 (Table Loops)
+    // 4. 应用表格循环 (Table Loops)
     if (config.tableLoops && Array.isArray(config.tableLoops)) {
       for (const tableLoop of config.tableLoops) {
+        if (ignoredIndices.has(tableLoop.tableIndex)) continue;
+        
         const table = elements[tableLoop.tableIndex];
-        if (!table || (table.localName !== 'tbl' && table.tagName.split(':').pop() !== 'tbl')) continue;
+        if (!table) continue;
+        const localName = table.localName || table.tagName.split(':').pop();
+        if (localName !== 'tbl') continue;
 
         this.applyTableLoop(doc, table, tableLoop);
       }
     }
 
-    // 4. 应用组合变量 (Combined Variables - step-screenshot)
+    // 5. 应用组合变量 (Combined Variables - step-screenshot)
     // 处理 "Step X: screenshot" 类型的文本+图片组合
-    // 文本段落和图片段落是两个独立的连续段落
-    // 类似表格循环：只保留第一对作为模板，删除其他对，用循环包裹
     if (config.combinedVariables && Array.isArray(config.combinedVariables) && config.combinedVariables.length > 0) {
       const stepPattern = /Step\s+(\d+)[:：]\s*screenshot/i;
 
       // 找到所有 step-screenshot 对（文本段落索引 -> 图片段落索引）
       const screenshotPairs: { textIndex: number; imageIndex: number; textNode: any; imageNode: any }[] = [];
 
-      for (let i = 0; i < elements.length; i++) {
+      for (let i = 0; i < elements.length - 1; i++) {
         const node = elements[i];
-        const localName = node.localName || node.tagName.split(':').pop();
-        if (localName !== 'p') continue;
+        if (ignoredIndices.has(i)) continue;
 
         const text = this.getNodeText(node);
         const match = text.match(stepPattern);
         if (!match) continue;
 
         // 找到下一个段落（应该是图片段落）
-        const nextNode = elements[i + 1];
+        let nextIndex = i + 1;
+        while (nextIndex < elements.length && ignoredIndices.has(nextIndex)) {
+          nextIndex++;
+        }
+        
+        const nextNode = elements[nextIndex];
         if (!nextNode) continue;
-        const nextLocalName = nextNode.localName || nextNode.tagName.split(':').pop();
-        if (nextLocalName !== 'p') continue;
 
-        // 检查下一个段落是否包含图片
-        if (!this.isImageElement(nextNode)) continue;
-
-        screenshotPairs.push({
-          textIndex: i,
-          imageIndex: i + 1,
-          textNode: node,
-          imageNode: nextNode
-        });
+        // 检查下一个元素是否包含图片
+        if (this.isImageElement(nextNode)) {
+          screenshotPairs.push({
+            textIndex: i,
+            imageIndex: nextIndex,
+            textNode: node,
+            imageNode: nextNode
+          });
+        }
       }
 
       // 如果找到了截图对，处理它们
       if (screenshotPairs.length > 0) {
-        // 第一对作为模板
+        // 第一对作为模版
         const templatePair = screenshotPairs[0];
 
+        // 获取路径
+        const firstConfigVar = config.combinedVariables[0];
+        const imagePath = firstConfigVar.imagePath || 'd.steps[].screenshot';
+        // 尝试推导文本路径：将 .screenshot 替换为 .description 或使用 textContent
+        const textPath = imagePath.includes('.screenshot') ? 
+                         imagePath.replace('.screenshot', '.description') : 
+                         imagePath.replace('.url', '.description');
+
         // 替换文本段落为变量
-        this.injectTextToElement(templatePair.textNode, `{d.screenshots[].description}`);
+        this.injectTextToElement(templatePair.textNode, `{${textPath}}`);
 
         // 替换图片段落为变量
-        this.injectImageVariable(templatePair.imageNode, `d.screenshots[].url`);
+        this.injectImageVariable(templatePair.imageNode, imagePath);
+
+        // 提取数组路径进行循环
+        const arrayPathMatch = imagePath.match(/^(d\.\w+)\[\]/);
+        const arrayPath = arrayPathMatch ? arrayPathMatch[1] : 'd.steps';
 
         // 在文本段落前添加循环开始标记
-        this.prefixTextToElement(templatePair.textNode, `{#d.screenshots}`);
+        this.prefixTextToElement(templatePair.textNode, `{#${arrayPath}}`);
 
         // 在图片段落后添加循环结束标记
-        this.suffixTextToElement(templatePair.imageNode, `{/d.screenshots}`);
+        this.suffixTextToElement(templatePair.imageNode, `{/${arrayPath}}`);
 
-        // 删除其他截图对（从后往前删除，避免索引问题）
-        for (let i = screenshotPairs.length - 1; i >= 1; i--) {
+        // 将其他对标记为忽略（稍后删除）
+        for (let i = 1; i < screenshotPairs.length; i++) {
           const pair = screenshotPairs[i];
-          // 先删除图片段落，再删除文本段落
-          if (pair.imageNode.parentNode) {
-            pair.imageNode.parentNode.removeChild(pair.imageNode);
-          }
-          if (pair.textNode.parentNode) {
-            pair.textNode.parentNode.removeChild(pair.textNode);
-          }
+          ignoredIndices.add(pair.textIndex);
+          ignoredIndices.add(pair.imageIndex);
         }
+      }
+    }
+
+    // 6. 物理删除被忽略的元素
+    // 从后往前删，避免索引偏移
+    const sortedIgnored = Array.from(ignoredIndices).sort((a, b) => b - a);
+    for (const idx of sortedIgnored) {
+      const node = elements[idx];
+      if (node && node.parentNode) {
+        node.parentNode.removeChild(node);
       }
     }
 
@@ -406,22 +462,37 @@ export class DocumentStructureParser {
    * 在元素中注入文本标记
    */
   private injectTextToElement(element: any, text: string): void {
-    const textNodes = element.getElementsByTagNameNS('*', 't');
+    const textNodes = Array.from(element.getElementsByTagNameNS('*', 't'));
     if (textNodes.length > 0) {
-      // 清空现有文本并设置新文本
-      const firstT = textNodes[0];
+      // 获取第一个文本节点
+      const firstT: any = textNodes[0];
+      
+      // 清空第一个节点的内容并设置新文本
       while (firstT.firstChild) {
         firstT.removeChild(firstT.firstChild);
       }
       firstT.appendChild(element.ownerDocument.createTextNode(text));
+      
+      // 确保保留空格
+      firstT.setAttribute('xml:space', 'preserve');
 
-      // 移除其他文本节点
+      // 移除其他所有文本节点
       for (let i = 1; i < textNodes.length; i++) {
-        const t = textNodes[i];
+        const t: any = textNodes[i];
         if (t.parentNode) {
           t.parentNode.removeChild(t);
         }
       }
+    } else {
+      // 如果没有文本节点，尝试创建一个新运行(r)和文本节点(t)
+      const doc = element.ownerDocument;
+      const wNS = DocumentStructureParser.WORD_NS.w;
+      const r = doc.createElementNS(wNS, 'w:r');
+      const t = doc.createElementNS(wNS, 'w:t');
+      t.setAttribute('xml:space', 'preserve');
+      t.appendChild(doc.createTextNode(text));
+      r.appendChild(t);
+      element.appendChild(r);
     }
   }
 
@@ -434,6 +505,9 @@ export class DocumentStructureParser {
       const firstT = textNodes[0];
       const current = firstT.textContent || '';
       firstT.textContent = text + current;
+      firstT.setAttribute('xml:space', 'preserve');
+    } else {
+      this.injectTextToElement(element, text);
     }
   }
 
@@ -446,6 +520,9 @@ export class DocumentStructureParser {
       const lastT = textNodes[textNodes.length - 1];
       const current = lastT.textContent || '';
       lastT.textContent = current + text;
+      lastT.setAttribute('xml:space', 'preserve');
+    } else {
+      this.injectTextToElement(element, text);
     }
   }
 
@@ -523,41 +600,42 @@ export class DocumentStructureParser {
 
   /**
    * 在图片元素中注入图片变量
-   * Carbone格式：将图片的r:embed属性替换为变量标记
+   * Carbone格式：{d.path:formatImage(rId)}
    */
   private injectImageVariable(element: any, path: string): void {
     const drawings = element.getElementsByTagNameNS('*', 'drawing');
     if (drawings.length === 0) return;
 
-    // 找到blip元素（包含图片引用）
+    // 找到blip元素获取其r:embed属性
     const blips = element.getElementsByTagNameNS('*', 'blip');
+    let rId = '';
     if (blips.length > 0) {
       const blip = blips[0];
-      // 获取当前的embed属性
-      const currentEmbed = blip.getAttribute('r:embed') ||
-        blip.getAttributeNS('http://schemas.openxmlformats.org/officeDocument/2006/relationships', 'embed');
+      rId = blip.getAttribute('r:embed') ||
+            blip.getAttributeNS('http://schemas.openxmlformats.org/officeDocument/2006/relationships', 'embed') || '';
+    }
 
-      if (currentEmbed) {
-        // Carbone图片变量格式：使用特殊的图片标记
-        // 实际渲染时需要替换图片的二进制数据
-        // 这里我们保留原图片，但添加注释标记供后续处理
-        // 更好的方式是在段落的文本部分添加变量标记，供渲染引擎识别
-        const textNodes = element.getElementsByTagNameNS('*', 't');
-        if (textNodes.length > 0) {
-          // 在现有文本节点中添加变量标记
-          const firstT = textNodes[0];
-          const currentText = firstT.textContent || '';
-          firstT.textContent = `{${path}:formatImage(${currentEmbed})}`;
-        } else {
-          // 如果没有文本节点，创建一个
-          const doc = element.ownerDocument;
-          const newRun = doc.createElementNS('http://schemas.openxmlformats.org/wordprocessingml/2006/main', 'w:r');
-          const newText = doc.createElementNS('http://schemas.openxmlformats.org/wordprocessingml/2006/main', 'w:t');
-          newText.textContent = `{${path}}`;
-          newRun.appendChild(newText);
-          element.appendChild(newRun);
-        }
-      }
+    // Carbone渲染图片通常需要在同一段落有一个包含变量的文本节点
+    // 格式为 {d.path:formatImage(rId)}
+    const tag = rId ? `{${path}:formatImage(${rId})}` : `{${path}}`;
+
+    const textNodes = Array.from(element.getElementsByTagNameNS('*', 't'));
+    if (textNodes.length > 0) {
+      // 如果已有文本节点，追加标记
+      const lastT: any = textNodes[textNodes.length - 1];
+      const current = lastT.textContent || '';
+      lastT.textContent = current + tag;
+      lastT.setAttribute('xml:space', 'preserve');
+    } else {
+      // 否则，创建一个新运行(r)和文本节点(t)来放置标记
+      const doc = element.ownerDocument;
+      const wNS = DocumentStructureParser.WORD_NS.w;
+      const r = doc.createElementNS(wNS, 'w:r');
+      const t = doc.createElementNS(wNS, 'w:t');
+      t.setAttribute('xml:space', 'preserve');
+      t.appendChild(doc.createTextNode(tag));
+      r.appendChild(t);
+      element.appendChild(r);
     }
   }
 

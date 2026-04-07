@@ -398,7 +398,11 @@ export class StudioController {
     } else {
       // 没有markedTemplateId时，应用配置到原始模版
       if (config && Object.keys(config).length > 0) {
-        templateBuffer = Buffer.from(await this.documentStructureService.applyConfigToDocx(templateBuffer, config));
+        // 确保配置路径规范化
+        const normalizedConfig = this.aiIdentifierService.normalizeTemplateConfig(config);
+        templateBuffer = Buffer.from(await this.documentStructureService.applyConfigToDocx(templateBuffer, normalizedConfig));
+        // 更新config引用，以便后续生成数据使用规范化后的路径
+        config = normalizedConfig;
       }
     }
 
