@@ -955,9 +955,51 @@
     async function loadMarkings(templateId) {
         try {
             const result = await apiRequest(`/templates/${templateId}/markings`);
-            state.manualMarkings = result.markings || [];
+
+            // 加载标记
+            if (result.markings && result.markings.length > 0) {
+                state.manualMarkings = {};
+                result.markings.forEach(m => {
+                    if (m.index !== undefined) {
+                        state.manualMarkings[m.index] = m.type;
+                    }
+                });
+            } else {
+                state.manualMarkings = {};
+            }
+
+            // 加载忽略元素
+            if (result.ignoredElements && result.ignoredElements.length > 0) {
+                state.ignoredElements = {};
+                result.ignoredElements.forEach(idx => {
+                    state.ignoredElements[idx] = true;
+                });
+            } else {
+                state.ignoredElements = {};
+            }
+
+            // 加载元素分组
+            if (result.elementGroups && Object.keys(result.elementGroups).length > 0) {
+                state.elementGroups = result.elementGroups;
+            } else {
+                state.elementGroups = {};
+            }
+
+            // 加载忽略的分组
+            if (result.ignoredGroups && result.ignoredGroups.length > 0) {
+                state.ignoredGroups = {};
+                result.ignoredGroups.forEach(groupId => {
+                    state.ignoredGroups[groupId] = true;
+                });
+            } else {
+                state.ignoredGroups = {};
+            }
         } catch (error) {
-            state.manualMarkings = [];
+            console.error('Load markings failed:', error);
+            state.manualMarkings = {};
+            state.ignoredElements = {};
+            state.elementGroups = {};
+            state.ignoredGroups = {};
         }
     }
 
@@ -2795,10 +2837,9 @@
                     if (el.dataRowCount > 0 || (el.dataRows && el.dataRows.length > 0)) {
                         const rowCount = el.dataRowCount || (el.dataRows ? el.dataRows.length : 0);
                         const dataLoopClass = marking === 'loop' ? 'marked-loop' : '';
-                        html += `<div class="structure-node table-data-node ${dataLoopClass}" data-type="table-data" data-table="${el.index}">
+                        html += `<div class="structure-node table-data-node ${dataLoopClass}" data-type="table-data" data-table="${el.index}" data-row-count="${rowCount}">
                             <span class="node-label">🔄 数据行</span>
-                            ${marking === 'loop' ? '<span class="node-attr" style="color:#155724;background:#d4edda;padding:2px 6px;border-radius:3px;">将循环</span>' : ''}
-                            <span class="node-attr">${rowCount}行可循环</span>
+                            ${marking === 'loop' ? '<span class="node-attr" style="color:#155724;background:#d4edda;padding:2px 6px;border-radius:3px;">将循环</span>' : '<span class="node-attr">可循环</span>'}
                         </div>`;
 
                         // 显示数据行内容
@@ -2812,7 +2853,7 @@
                         }
                         if (rowCount > 3) {
                             html += `<div class="structure-node table-row-node">
-                                <span class="node-text">... 共${rowCount}行数据</span>
+                                <span class="node-text">... 更多数据</span>
                             </div>`;
                         }
                         html += '</div>';
