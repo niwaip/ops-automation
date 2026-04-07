@@ -138,6 +138,10 @@ export class DocumentStructureParser {
         const drawings = node.getElementsByTagNameNS('*', 'drawing');
         const hasImage = drawings.length > 0;
 
+        // 检测 Step X: screenshot 模式
+        const stepScreenshotPattern = /^Step\s+(\d+)[:：]\s*screenshot/i;
+        const isStepScreenshotText = stepScreenshotPattern.test(text);
+
         if (text.trim() || hasImage) {
           // 提取图片信息
           const imageIds: string[] = [];
@@ -151,14 +155,68 @@ export class DocumentStructureParser {
             }
           }
 
+          // 检测 step-screenshot 组合类型
+          // "Step X: screenshot" 文本段落后面紧跟图片段落
+          let elementType: 'title' | 'heading1' | 'heading2' | 'heading3' | 'paragraph' | 'table' | 'list' | 'image' | 'chart' | 'textbox' | 'step-screenshot' = hasImage ? 'image' : 'paragraph';
+          let stepNumber: number | undefined = undefined;
+          let combinedImage: DocumentElement | undefined = undefined;
+
+          // 如果当前段落是 "Step X: screenshot" 文本（没有图片），检查下一个段落是否是图片
+          if (isStepScreenshotText && !hasImage) {
+            const match = text.match(stepScreenshotPattern);
+            if (match) {
+              stepNumber = parseInt(match[1], 10);
+              // 检查下一个段落是否包含图片
+              const nextNode = rawElements[index + 1];
+              if (nextNode) {
+                const nextLocalName = nextNode.localName || nextNode.tagName.split(':').pop();
+                if (nextLocalName === 'p') {
+                  const nextDrawings = nextNode.getElementsByTagNameNS('*', 'drawing');
+                  if (nextDrawings.length > 0) {
+                    // 这是一个 step-screenshot 组合元素（文本段落）
+                    elementType = 'step-screenshot';
+                    const nextBlips = nextNode.getElementsByTagNameNS('*', 'blip');
+                    const nextImageId = nextBlips.length > 0 ?
+                      (nextBlips[0].getAttribute('r:embed') || nextBlips[0].getAttributeNS('http://schemas.openxmlformats.org/officeDocument/2006/relationships', 'embed')) : '';
+                    combinedImage = {
+                      id: `image-${index + 1}`,
+                      type: 'image',
+                      content: '',
+                      text: '[图片]',
+                      xpath: `/w:document/w:body/w:p[${index + 1}]`,
+                      index: index + 1,
+                      imageId: nextImageId || undefined,
+                    };
+                  }
+                }
+              }
+            }
+          }
+          // 如果当前段落是图片，且前一个段落是 "Step X: screenshot" 文本，标记为图片（已被前一个段落引用）
+          else if (hasImage && !text.trim()) {
+            const prevNode = rawElements[index - 1];
+            if (prevNode) {
+              const prevLocalName = prevNode.localName || prevNode.tagName.split(':').pop();
+              if (prevLocalName === 'p') {
+                const prevText = this.getNodeText(prevNode);
+                if (stepScreenshotPattern.test(prevText)) {
+                  // 这个图片段落已经被前一个 step-screenshot 元素引用，跳过
+                  return; // 不添加为独立元素
+                }
+              }
+            }
+          }
+
           elements.push({
             id: `element-${index}`,
-            type: hasImage ? 'image' : 'paragraph',
+            type: elementType,
             content: text,
             text: hasImage ? `[图片] ${text}` : text,
             xpath: `/w:document/w:body/w:p[${index}]`,
             index: index,
             imageId: imageIds[0] || undefined,
+            stepNumber: stepNumber,
+            combinedImage: combinedImage,
           });
         }
       } else if (localName === 'tbl') {
@@ -255,36 +313,67 @@ export class DocumentStructureParser {
 
     // 4. 应用组合变量 (Combined Variables - step-screenshot)
     // 处理 "Step X: screenshot" 类型的文本+图片组合
-    if (config.combinedVariables && Array.isArray(config.combinedVariables)) {
-      for (const combinedVar of config.combinedVariables) {
-        if (combinedVar.type !== 'step-screenshot') continue;
+    // 文本段落和图片段落是两个独立的连续段落
+    // 类似表格循环：只保留第一对作为模板，删除其他对，用循环包裹
+    if (config.combinedVariables && Array.isArray(config.combinedVariables) && config.combinedVariables.length > 0) {
+      const stepPattern = /Step\s+(\d+)[:：]\s*screenshot/i;
 
-        // 查找包含 "Step X: screenshot" 文本且包含图片的段落
-        const stepPattern = /Step\s+(\d+)[:：]\s*screenshot/i;
-        for (const node of elements) {
-          const localName = node.localName || node.tagName.split(':').pop();
-          if (localName !== 'p') continue;
+      // 找到所有 step-screenshot 对（文本段落索引 -> 图片段落索引）
+      const screenshotPairs: { textIndex: number; imageIndex: number; textNode: any; imageNode: any }[] = [];
 
-          const text = this.getNodeText(node);
-          const match = text.match(stepPattern);
-          if (!match) continue;
+      for (let i = 0; i < elements.length; i++) {
+        const node = elements[i];
+        const localName = node.localName || node.tagName.split(':').pop();
+        if (localName !== 'p') continue;
 
-          const foundStepNumber = parseInt(match[1], 10);
-          // 检查是否匹配当前组合变量的步骤号
-          if (foundStepNumber !== combinedVar.stepNumber) continue;
+        const text = this.getNodeText(node);
+        const match = text.match(stepPattern);
+        if (!match) continue;
 
-          // 检查是否包含图片
-          if (!this.isImageElement(node)) continue;
+        // 找到下一个段落（应该是图片段落）
+        const nextNode = elements[i + 1];
+        if (!nextNode) continue;
+        const nextLocalName = nextNode.localName || nextNode.tagName.split(':').pop();
+        if (nextLocalName !== 'p') continue;
 
-          // 替换文本为变量 - 使用 screenshots 数组的描述字段
-          // 格式：{d.screenshots[].description} 替换 "Step X: screenshot" 文本
-          this.replaceStepScreenshotText(node, combinedVar);
+        // 检查下一个段落是否包含图片
+        if (!this.isImageElement(nextNode)) continue;
 
-          // 替换图片引用为变量
-          this.injectImageVariable(node, combinedVar.imagePath);
+        screenshotPairs.push({
+          textIndex: i,
+          imageIndex: i + 1,
+          textNode: node,
+          imageNode: nextNode
+        });
+      }
 
-          // 处理完毕，跳出循环
-          break;
+      // 如果找到了截图对，处理它们
+      if (screenshotPairs.length > 0) {
+        // 第一对作为模板
+        const templatePair = screenshotPairs[0];
+
+        // 替换文本段落为变量
+        this.injectTextToElement(templatePair.textNode, `{d.screenshots[].description}`);
+
+        // 替换图片段落为变量
+        this.injectImageVariable(templatePair.imageNode, `d.screenshots[].url`);
+
+        // 在文本段落前添加循环开始标记
+        this.prefixTextToElement(templatePair.textNode, `{#d.screenshots}`);
+
+        // 在图片段落后添加循环结束标记
+        this.suffixTextToElement(templatePair.imageNode, `{/d.screenshots}`);
+
+        // 删除其他截图对（从后往前删除，避免索引问题）
+        for (let i = screenshotPairs.length - 1; i >= 1; i--) {
+          const pair = screenshotPairs[i];
+          // 先删除图片段落，再删除文本段落
+          if (pair.imageNode.parentNode) {
+            pair.imageNode.parentNode.removeChild(pair.imageNode);
+          }
+          if (pair.textNode.parentNode) {
+            pair.textNode.parentNode.removeChild(pair.textNode);
+          }
         }
       }
     }
@@ -325,7 +414,7 @@ export class DocumentStructureParser {
         firstT.removeChild(firstT.firstChild);
       }
       firstT.appendChild(element.ownerDocument.createTextNode(text));
-      
+
       // 移除其他文本节点
       for (let i = 1; i < textNodes.length; i++) {
         const t = textNodes[i];
@@ -333,6 +422,30 @@ export class DocumentStructureParser {
           t.parentNode.removeChild(t);
         }
       }
+    }
+  }
+
+  /**
+   * 在元素文本前添加前缀
+   */
+  private prefixTextToElement(element: any, text: string): void {
+    const textNodes = element.getElementsByTagNameNS('*', 't');
+    if (textNodes.length > 0) {
+      const firstT = textNodes[0];
+      const current = firstT.textContent || '';
+      firstT.textContent = text + current;
+    }
+  }
+
+  /**
+   * 在元素文本后添加后缀
+   */
+  private suffixTextToElement(element: any, text: string): void {
+    const textNodes = element.getElementsByTagNameNS('*', 't');
+    if (textNodes.length > 0) {
+      const lastT = textNodes[textNodes.length - 1];
+      const current = lastT.textContent || '';
+      lastT.textContent = current + text;
     }
   }
 
@@ -409,32 +522,6 @@ export class DocumentStructureParser {
   private isImageElement(element: any): boolean {
     const drawings = element.getElementsByTagNameNS('*', 'drawing');
     return drawings.length > 0;
-  }
-
-  /**
-   * 替换 Step X: screenshot 文本为变量
-   * 保留段落中的其他内容，仅替换步骤截图的标记文本
-   */
-  private replaceStepScreenshotText(element: any, combinedVar: any): void {
-    const textNodes = element.getElementsByTagNameNS('*', 't');
-    if (textNodes.length === 0) return;
-
-    // 找到包含 "Step X: screenshot" 的文本节点
-    const stepPattern = /Step\s+(\d+)[:：]\s*screenshot/i;
-    for (let i = 0; i < textNodes.length; i++) {
-      const textNode = textNodes[i];
-      const text = textNode.textContent || '';
-      const match = text.match(stepPattern);
-      if (match) {
-        // 替换文本为变量标记
-        // 使用 screenshots 数组循环，因为这是独立的截图段落
-        const stepIndex = parseInt(match[1], 10) - 1;
-        // 替换为 {d.screenshots[].description} 或类似路径
-        // 注意：这里使用 screenshots 数组而不是 steps，因为这是文档中的独立截图段落
-        textNode.textContent = `{d.screenshots[].description}`;
-        break;
-      }
-    }
   }
 
   /**
