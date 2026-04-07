@@ -88,7 +88,6 @@
         elements.showPreserve = document.getElementById('show-preserve');
         elements.showTables = document.getElementById('show-tables');
         elements.showParagraphs = document.getElementById('show-paragraphs');
-        elements.aiConfigBtn = document.getElementById('ai-config-btn');
         // Operations section
         elements.operationsSection = document.getElementById('operations-section');
         elements.stepParseStatus = document.getElementById('step-parse-status');
@@ -2325,11 +2324,6 @@
         elements.showTables.addEventListener('change', renderStructureTree);
         elements.showParagraphs.addEventListener('change', renderStructureTree);
 
-        // AI config button
-        if (elements.aiConfigBtn) {
-            elements.aiConfigBtn.addEventListener('click', handleAIConfig);
-        }
-
         // Modal
         document.querySelector('.modal-close').addEventListener('click', closeModal);
         document.querySelector('.modal-cancel')?.addEventListener('click', closeModal);
@@ -3240,132 +3234,6 @@
             }
         } catch (error) {
             console.error('Load markings failed:', error);
-        }
-    }
-
-    /**
-     * Handle AI configuration based on manual markings
-     * 根据手动标记调用AI配置参数名称、类型等信息
-     */
-    async function handleAIConfig() {
-        if (!state.selectedTemplate) {
-            showToast('请先选择模板', 'warning');
-            return;
-        }
-
-        // 检查是否有手动标记
-        const markings = state.manualMarkings || {};
-        const ignoredElements = state.ignoredElements || {};
-        const markingCount = Object.keys(markings).length;
-        const ignoredCount = Object.keys(ignoredElements).length;
-
-        if (markingCount === 0 && ignoredCount === 0) {
-            showToast('请先在结构视图中标记元素（参数/循环/静态）或标记忽略', 'warning');
-            return;
-        }
-
-        // 构建标记摘要
-        let markingSummary = Object.entries(markings).map(([idx, type]) => {
-            const el = state.xmlStructure?.orderedElements?.[idx];
-            if (!el) return null;
-
-            let content = '';
-            if (el.type === 'table') {
-                content = `表格: ${el.headerRow || ''}, rows=${el.rows}`;
-            } else {
-                content = el.text?.substring(0, 50) || '';
-            }
-
-            return `- 索引${idx}: [${type}] ${content}`;
-        }).filter(Boolean).join('\n');
-
-        // 添加忽略元素信息
-        if (ignoredCount > 0) {
-            markingSummary += '\n\n忽略的元素（重复/跳过）：\n';
-            Object.keys(ignoredElements).forEach(idx => {
-                const el = state.xmlStructure?.orderedElements?.[idx];
-                if (!el) return;
-                let content = el.type === 'image' ? `图片(${el.imageId || ''})` : el.text?.substring(0, 30) || el.type;
-                markingSummary += `- 索引${idx}: "${content}" [已忽略]\n`;
-            });
-            markingSummary += `\n注意：有 ${ignoredCount} 个元素被标记为忽略，生成模板时将跳过这些元素。`;
-        }
-
-        // 添加分组信息
-        const groups = state.elementGroups || {};
-        const ignoredGroups = state.ignoredGroups || {};
-        if (Object.keys(groups).length > 0) {
-            markingSummary += '\n\n元素分组信息：\n';
-            Object.entries(groups).forEach(([groupId, indices]) => {
-                if (indices && indices.length > 0) {
-                    const isIgnored = ignoredGroups[groupId];
-                    const groupContents = indices.map(idx => {
-                        const el = state.xmlStructure?.orderedElements?.[idx];
-                        if (!el) return '';
-                        if (el.type === 'image') return `图片(${el.imageId || ''})`;
-                        return el.text?.substring(0, 30) || el.type;
-                    }).join(' + ');
-                    markingSummary += `- 分组${groupId.substring(0, 4)}: 索引[${indices.join(',')}] 包含 "${groupContents}"${isIgnored ? ' [已忽略/重复]' : ''}\n`;
-                }
-            });
-            // 添加忽略分组说明
-            const ignoredCount = Object.keys(ignoredGroups).length;
-            if (ignoredCount > 0) {
-                markingSummary += `\n注意：有 ${ignoredCount} 个分组被标记为重复/忽略，生成模板时将跳过这些分组。`;
-            }
-        }
-
-        // 调用AI分析API，传入手动标记
-        try {
-            elements.aiConfigBtn.disabled = true;
-            elements.aiConfigBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> AI配置中...';
-
-            const response = await apiRequest(`/templates/${state.selectedTemplate.id}/ai-identify`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    context: '根据用户手动标记配置参数',
-                    manualMarkings: markings,
-                    markingSummary: markingSummary
-                })
-            });
-
-            // 显示AI配置结果
-            displayAIConfigResult(response);
-
-            // 自动保存AI生成的模板配置
-            await saveTemplateConfig(response.templateConfig);
-
-            showToast('AI配置完成并已自动保存', 'success');
-        } catch (error) {
-            console.error('AI config failed:', error);
-            showToast('AI配置失败: ' + error.message, 'error');
-        } finally {
-            elements.aiConfigBtn.disabled = false;
-            elements.aiConfigBtn.innerHTML = '<i class="fas fa-magic"></i> AI 配置参数';
-        }
-    }
-
-    /**
-     * Save AI-generated template configuration
-     * 保存AI生成的模板配置
-     */
-    async function saveTemplateConfig(templateConfig) {
-        if (!state.selectedTemplate || !templateConfig) return;
-
-        try {
-            await apiRequest(`/templates/${state.selectedTemplate.id}/config`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    templateId: state.selectedTemplate.id,
-                    templateConfig: templateConfig
-                })
-            });
-            console.log('Template config saved:', templateConfig);
-        } catch (error) {
-            console.error('Failed to save template config:', error);
-            showToast('保存模板配置失败', 'warning');
         }
     }
 
