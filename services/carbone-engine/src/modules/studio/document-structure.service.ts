@@ -454,11 +454,12 @@ export class DocumentStructureParser {
    * 正确顺序：先替换单元格变量，再添加循环标记，最后删除多余数据行
    */
   private applyTableLoop(doc: any, table: any, tableLoop: any): void {
-    const rows = table.getElementsByTagNameNS('*', 'tr');
-    if (rows.length < 2) return;
+    // 获取所有行 - 使用静态数组避免live collection问题
+    const rowsArray: any[] = Array.from(table.getElementsByTagNameNS('*', 'tr'));
+    if (rowsArray.length < 2) return;
 
     // 假设第二行是数据行（rows[0]是表头，rows[1]是模板行）
-    const dataRow = rows[1];
+    const dataRow = rowsArray[1];
     const cells = dataRow.getElementsByTagNameNS('*', 'tc');
     if (cells.length === 0) return;
 
@@ -483,16 +484,12 @@ export class DocumentStructureParser {
     const lastCell = cells[cells.length - 1];
     this.suffixTextToCell(lastCell, `{/${tableLoop.arrayPath}}`);
 
-    // 4. 删除多余的数据行（rows[2]及之后的所有行）
+    // 4. 删除多余的数据行（rowsArray[2]及之后的所有行）
     // Carbone渲染时会根据数据数组长度自动复制模板行
     // 所以需要删除模板行之后的所有原始数据行
-    const rowsToDelete: any[] = [];
-    for (let i = 2; i < rows.length; i++) {
-      rowsToDelete.push(rows[i]);
-    }
     // 从后往前删除，避免索引问题
-    for (let i = rowsToDelete.length - 1; i >= 0; i--) {
-      const row = rowsToDelete[i];
+    for (let i = rowsArray.length - 1; i >= 2; i--) {
+      const row = rowsArray[i];
       if (row.parentNode) {
         row.parentNode.removeChild(row);
       }

@@ -1675,21 +1675,47 @@ ${elementSummary}
 
   /**
    * 验证并补充组合变量配置
+   * 合并AI生成的组合变量和文档中检测到的step-screenshot元素
    */
   private validateCombinedVariables(combinedVars: any[], elements: DocumentElement[]): CombinedVariable[] {
     const result: CombinedVariable[] = [];
+    const existingStepNumbers = new Set<number>();
 
+    // 1. 先添加AI生成的组合变量
     for (const cv of combinedVars) {
+      const stepNumber = cv.stepNumber || 0;
+      existingStepNumbers.add(stepNumber);
       result.push({
-        id: `combined-${cv.stepNumber}`,
+        id: `combined-${stepNumber}`,
         type: 'step-screenshot',
-        stepNumber: cv.stepNumber,
+        stepNumber: stepNumber,
         textContent: cv.textContent || '',
         imageId: cv.imageId || '',
-        imagePath: `d.steps[${cv.stepNumber - 1}].screenshot`,
+        imagePath: `d.steps[${stepNumber - 1}].screenshot`,
         reason: cv.reason || 'AI 识别的组合变量',
       });
     }
+
+    // 2. 添加文档中检测到的step-screenshot元素（如果不在AI结果中）
+    for (const el of elements) {
+      if (el.type === 'step-screenshot' && el.stepNumber) {
+        if (!existingStepNumbers.has(el.stepNumber)) {
+          existingStepNumbers.add(el.stepNumber);
+          result.push({
+            id: el.id,
+            type: 'step-screenshot',
+            stepNumber: el.stepNumber,
+            textContent: el.content || '',
+            imageId: el.combinedImage?.imageId || '',
+            imagePath: `d.steps[${el.stepNumber - 1}].screenshot`,
+            reason: '文档解析检测到的step-screenshot组合元素',
+          });
+        }
+      }
+    }
+
+    // 按步骤号排序
+    result.sort((a, b) => a.stepNumber - b.stepNumber);
 
     return result;
   }
