@@ -234,7 +234,10 @@ export class DocumentStructureParser {
         const node = elements[mapping.index];
         if (!node) continue;
 
-        if (mapping.path) {
+        // 检查是否是图片类型
+        if (mapping.type === 'image' || this.isImageElement(node)) {
+          this.injectImageVariable(node, mapping.path);
+        } else if (mapping.path) {
           this.injectTextToElement(node, `{${mapping.path}}`);
         }
       }
@@ -299,6 +302,7 @@ export class DocumentStructureParser {
 
   /**
    * 处理表格循环注入
+   * 正确顺序：先替换单元格变量，再添加循环标记
    */
   private applyTableLoop(doc: any, table: any, tableLoop: any): void {
     const rows = table.getElementsByTagNameNS('*', 'tr');
@@ -309,25 +313,26 @@ export class DocumentStructureParser {
     const cells = dataRow.getElementsByTagNameNS('*', 'tc');
     if (cells.length === 0) return;
 
-    // 注入开始标记到第一个单元格
-    const firstCell = cells[0];
-    this.prefixTextToCell(firstCell, `{#${tableLoop.arrayPath}}`);
-
-    // 注入结束标记到最后一个单元格
-    const lastCell = cells[cells.length - 1];
-    this.suffixTextToCell(lastCell, `{/${tableLoop.arrayPath}}`);
-
-    // 处理列映射
+    // 1. 先处理列映射 - 替换单元格内容为变量
     if (tableLoop.columnMappings && Array.isArray(tableLoop.columnMappings)) {
       for (let i = 0; i < tableLoop.columnMappings.length; i++) {
         const mapping = tableLoop.columnMappings[i];
         const columnIndex = mapping.columnIndex !== undefined ? mapping.columnIndex : i;
         if (columnIndex < cells.length && mapping.variablePath) {
           const cell = cells[columnIndex];
+          // 替换单元格内容为变量标记
           this.injectTextToElement(cell, `{${mapping.variablePath}}`);
         }
       }
     }
+
+    // 2. 然后在第一个单元格开头添加循环开始标记
+    const firstCell = cells[0];
+    this.prefixTextToCell(firstCell, `{#${tableLoop.arrayPath}}`);
+
+    // 3. 在最后一个单元格末尾添加循环结束标记
+    const lastCell = cells[cells.length - 1];
+    this.suffixTextToCell(lastCell, `{/${tableLoop.arrayPath}}`);
   }
 
   private prefixTextToCell(cell: any, text: string): void {
@@ -344,6 +349,54 @@ export class DocumentStructureParser {
     if (lastT) {
       const current = lastT.textContent || '';
       lastT.textContent = current + text;
+    }
+  }
+
+  /**
+   * 检查元素是否包含图片
+   */
+  private isImageElement(element: any): boolean {
+    const drawings = element.getElementsByTagNameNS('*', 'drawing');
+    return drawings.length > 0;
+  }
+
+  /**
+   * 在图片元素中注入图片变量
+   * Carbone格式：将图片的r:embed属性替换为变量标记
+   */
+  private injectImageVariable(element: any, path: string): void {
+    const drawings = element.getElementsByTagNameNS('*', 'drawing');
+    if (drawings.length === 0) return;
+
+    // 找到blip元素（包含图片引用）
+    const blips = element.getElementsByTagNameNS('*', 'blip');
+    if (blips.length > 0) {
+      const blip = blips[0];
+      // 获取当前的embed属性
+      const currentEmbed = blip.getAttribute('r:embed') ||
+        blip.getAttributeNS('http://schemas.openxmlformats.org/officeDocument/2006/relationships', 'embed');
+
+      if (currentEmbed) {
+        // Carbone图片变量格式：使用特殊的图片标记
+        // 实际渲染时需要替换图片的二进制数据
+        // 这里我们保留原图片，但添加注释标记供后续处理
+        // 更好的方式是在段落的文本部分添加变量标记，供渲染引擎识别
+        const textNodes = element.getElementsByTagNameNS('*', 't');
+        if (textNodes.length > 0) {
+          // 在现有文本节点中添加变量标记
+          const firstT = textNodes[0];
+          const currentText = firstT.textContent || '';
+          firstT.textContent = `{${path}:formatImage(${currentEmbed})}`;
+        } else {
+          // 如果没有文本节点，创建一个
+          const doc = element.ownerDocument;
+          const newRun = doc.createElementNS('http://schemas.openxmlformats.org/wordprocessingml/2006/main', 'w:r');
+          const newText = doc.createElementNS('http://schemas.openxmlformats.org/wordprocessingml/2006/main', 'w:t');
+          newText.textContent = `{${path}}`;
+          newRun.appendChild(newText);
+          element.appendChild(newRun);
+        }
+      }
     }
   }
 

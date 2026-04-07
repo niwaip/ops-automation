@@ -1187,6 +1187,8 @@ export class AIIdentifierService {
 
   /**
    * 构建 AI 分析提示词
+   * 第一步：生成参数对照表
+   * 第二步：使用对照表生成模版配置
    */
   private buildAIAnalysisPrompt(
     elements: DocumentElement[],
@@ -1200,7 +1202,8 @@ export class AIIdentifierService {
       const markingTag = marking ? ` [用户标记: ${marking}]` : '';
 
       if (el.type === 'table') {
-        return `${idx + 1}. [TABLE] ${el.headerRow || ''}, rows=${el.attributes?.rows || el.dataRows?.length || 0}${markingTag}`;
+        const headers = el.tableHeaders?.map(h => h.text).join(', ') || el.headerRow || '';
+        return `${idx + 1}. [TABLE] headers=[${headers}], rows=${el.attributes?.rows || el.dataRows?.length || 0}${markingTag}`;
       } else if (el.type === 'image') {
         return `${idx + 1}. [IMAGE] id="${el.imageId}"${markingTag}`;
       } else {
@@ -1218,56 +1221,90 @@ ${markingSummary || ''}
 文档元素列表（每行开头的数字是 elementIndex）：
 ${elementSummary}
 
-请根据用户的手动标记，配置具体的参数名称、类型等信息。
+请按两步完成分析：
+
+## 第一步：生成参数对照表
+分析文档内容，推断可能的参数路径变体，生成标准化对照表。
+例如：
+- "执行摘要"、"总结"、"summary" → d.summary
+- "分析报告"、"分析"、"analysis" → d.analysis
+- "日期"、"时间"、"date" → d.date
+
+## 第二步：使用对照表生成模版配置
+根据用户的手动标记和第一步的对照表，生成具体配置。
 
 规则：
-1. 用户标记为"param"的元素 → variableMappings，生成合适的变量路径（如 d.summary, d.analysis）
+1. 用户标记为"param"的元素 → variableMappings，使用对照表中的标准路径
 2. 用户标记为"loop"的元素 → tableLoops，生成循环路径和列映射
 3. 用户标记为"static"的元素 → staticElements，保留不变
+4. 图片类型的元素使用 path 格式：d.images[].url 或 d.steps[].screenshot
 
 表格循环配置：
 - 步骤表格使用 arrayPath: d.steps
-- 列映射示例：Step→d.steps[].step, Action→d.steps[].action
+- 列映射必须包含 columnIndex，对应表格列的位置（从0开始）
+- 列映射示例：columnIndex=0 → d.steps[].step, columnIndex=1 → d.steps[].action
 
 返回JSON格式：
 {
+  "parameterMappings": [
+    {"patterns": ["可能的路径变体"], "standardPath": "d.xxx", "description": "用途描述"}
+  ],
   "templateType": "类型",
   "staticElements": [{"type": "heading", "content": "...", "reason": "..."}],
-  "tableLoops": [{"elementIndex": N, "arrayPath": "d.steps", "reason": "...", "columnMappings": [...]}],
+  "tableLoops": [{"elementIndex": N, "arrayPath": "d.steps", "reason": "...", "columnMappings": [{"columnIndex": 0, "headerName": "Step", "variablePath": "d.steps[].step"}]}],
   "combinedVariables": [{"stepNumber": N, "textContent": "...", "imageId": "...", "reason": "..."}],
-  "variableMappings": [{"elementIndex": N, "path": "d.xxx", "content": "...", "type": "text", "reason": "..."}],
+  "variableMappings": [{"elementIndex": N, "path": "d.xxx", "content": "...", "type": "text|image", "reason": "..."}],
   "analysisNotes": ["..."]
 }
 
-注意：elementIndex 是列表左侧的编号。只返回JSON，不要解释。`;
+注意：
+- elementIndex 是列表左侧的编号（1-based）
+- columnIndex 是表格列的索引（0-based）
+- 只返回JSON，不要解释`;
     }
 
-    return `分析以下文档结构，返回JSON：
+    return `分析以下文档结构，按两步完成：
+
+## 第一步：生成参数对照表
+分析文档内容语义，推断参数路径可能的变化形式，生成标准化对照表。
+例如文档中有"执行总结"内容，可能对应路径：
+- d.executionSummary、d.summaryText、d.executionsummary → 都应该标准化为 d.summary
+
+## 第二步：使用对照表生成模版配置
+根据第一步的对照表和文档结构，生成模版配置。
 
 文档元素列表（每行开头的数字是 elementIndex）：
 ${elementSummary}
 
 规则：
 1. "### xxx" 标题 → staticElements (保留)
-2. 表格有preserve或rows属性 → tableLoops (循环)，必须包含 elementIndex
-3. "Step N: screenshot" + 相邻图片 → combinedVariables (组合变量)
-4. 含"日志/上下文/总结/分析"的段落 → variableMappings
+2. 表格 → tableLoops (循环)，必须包含 elementIndex 和 columnMappings（带 columnIndex）
+3. 图片 → variableMappings (type=image)，路径格式如 d.screenshots[].url
+4. 含"日志/上下文/总结/分析"的段落 → variableMappings，使用对照表标准路径
 
 返回JSON格式：
 {
+  "parameterMappings": [
+    {"patterns": ["可能的路径变体"], "standardPath": "d.xxx", "description": "用途描述"}
+  ],
   "templateType": "类型",
   "staticElements": [],
-  "tableLoops": [{"elementIndex": N, "arrayPath": "d.steps", "columnMappings": [...]}],
+  "tableLoops": [{"elementIndex": N, "arrayPath": "d.steps", "columnMappings": [{"columnIndex": 0, "headerName": "Step", "variablePath": "d.steps[].step"}]}],
   "combinedVariables": [],
-  "variableMappings": [{"elementIndex": N, "path": "d.xxx", "type": "text"}],
+  "variableMappings": [{"elementIndex": N, "path": "d.xxx", "type": "text|image"}],
   "analysisNotes": []
 }
 
-注意：elementIndex 是列表左侧的编号。只返回JSON，不要解释。`;
+注意：
+- elementIndex 是列表左侧的编号（1-based）
+- columnIndex 是表格列的索引（0-based）
+- 图片类型标记为 type: "image"
+- 只返回JSON，不要解释`;
   }
 
   /**
    * 解析 AI 分析响应
+   * 处理AI生成的参数对照表和模版配置
    */
   private parseAIAnalysisResponse(response: string, elements: DocumentElement[]): TemplateConfig {
     try {
@@ -1279,15 +1316,29 @@ ${elementSummary}
 
       const parsed = JSON.parse(jsonMatch[0]);
 
+      // 1. 提取并应用AI生成的参数对照表
+      let pathMappings: PathMappingRule[] = [];
+      if (parsed.parameterMappings && Array.isArray(parsed.parameterMappings)) {
+        pathMappings = this.parseAIParameterMappings(parsed.parameterMappings);
+        this.logger.log(`AI generated ${pathMappings.length} parameter mapping rules`);
+      }
+
+      // 2. 合并AI生成的对照表和默认对照表（AI生成的优先）
+      const mergedMappings = this.mergePathMappings(pathMappings, DEFAULT_PATH_MAPPINGS);
+
+      // 3. 使用合并后的对照表规范化配置中的路径
       const config: TemplateConfig = {
         templateType: parsed.templateType || '通用文档',
         staticElements: parsed.staticElements || [],
-        tableLoops: this.validateTableLoops(parsed.tableLoops || [], elements),
+        tableLoops: this.validateTableLoops(parsed.tableLoops || [], elements, mergedMappings),
         imageLoops: [],
         combinedVariables: this.validateCombinedVariables(parsed.combinedVariables || [], elements),
-        variableMappings: this.validateVariableMappings(parsed.variableMappings || [], elements),
+        variableMappings: this.validateVariableMappings(parsed.variableMappings || [], elements, mergedMappings),
         analysisNotes: parsed.analysisNotes || [],
       };
+
+      // 保存参数对照表到配置中（供后续使用）
+      (config as any).parameterMappings = mergedMappings;
 
       return config;
     } catch (error) {
@@ -1297,9 +1348,51 @@ ${elementSummary}
   }
 
   /**
+   * 解析AI生成的参数对照表
+   */
+  private parseAIParameterMappings(aiMappings: any[]): PathMappingRule[] {
+    const mappings: PathMappingRule[] = [];
+
+    for (const mapping of aiMappings) {
+      if (mapping.patterns && Array.isArray(mapping.patterns) && mapping.standardPath) {
+        mappings.push({
+          patterns: mapping.patterns,
+          standardPath: mapping.standardPath,
+          description: mapping.description || ''
+        });
+      }
+    }
+
+    return mappings;
+  }
+
+  /**
+   * 合并AI生成的参数对照表和默认对照表
+   * AI生成的规则优先（排在前面）
+   */
+  private mergePathMappings(aiMappings: PathMappingRule[], defaultMappings: PathMappingRule[]): PathMappingRule[] {
+    const merged: PathMappingRule[] = [...aiMappings];
+
+    // 添加默认映射，但跳过已被AI覆盖的标准路径
+    const aiStandardPaths = new Set(aiMappings.map(m => m.standardPath));
+
+    for (const defaultMapping of defaultMappings) {
+      if (!aiStandardPaths.has(defaultMapping.standardPath)) {
+        merged.push(defaultMapping);
+      }
+    }
+
+    return merged;
+  }
+
+  /**
    * 验证并补充表格循环配置
    */
-  private validateTableLoops(tableLoops: any[], elements: DocumentElement[]): TableLoop[] {
+  /**
+   * 验证并补充表格循环配置
+   * 使用参数对照表规范化变量路径
+   */
+  private validateTableLoops(tableLoops: any[], elements: DocumentElement[], pathMappings?: PathMappingRule[]): TableLoop[] {
     const result: TableLoop[] = [];
 
     for (const loop of tableLoops) {
@@ -1318,7 +1411,7 @@ ${elementSummary}
           columnMappings = this.generateColumnMappingsFromHeaders(tableElement, loop.arrayPath || 'd.items');
         } else {
           // 规范化AI返回的列映射
-          columnMappings = this.normalizeColumnMappings(columnMappings, loop.arrayPath || 'd.items');
+          columnMappings = this.normalizeColumnMappings(columnMappings, loop.arrayPath || 'd.items', pathMappings);
         }
 
         result.push({
@@ -1365,17 +1458,24 @@ ${elementSummary}
   /**
    * 规范化AI返回的列映射
    */
-  private normalizeColumnMappings(mappings: any[], arrayPath: string): ColumnMapping[] {
+  /**
+   * 规范化AI返回的列映射
+   * 使用参数对照表规范化变量路径
+   */
+  private normalizeColumnMappings(mappings: any[], arrayPath: string, pathMappings?: PathMappingRule[]): ColumnMapping[] {
     return mappings.map((mapping, index) => {
       // 从variablePath提取字段名
       let varName = mapping.variablePath?.split('[].')[1] || mapping.headerName?.toLowerCase() || `col${index}`;
       varName = varName.toLowerCase().replace(/[^a-z0-9_]/g, '');
 
+      // 使用columnIndex（优先AI返回的，否则使用数组索引）
+      const columnIndex = mapping.columnIndex !== undefined ? mapping.columnIndex : index;
+
       return {
-        headerName: mapping.headerName || `Column ${index + 1}`,
+        headerName: mapping.headerName || `Column ${columnIndex + 1}`,
         variablePath: `${arrayPath}[].${varName}`,
         sampleValue: mapping.sampleValue || this.getSampleValue(varName),
-        columnIndex: index,
+        columnIndex: columnIndex,
       };
     });
   }
@@ -1384,7 +1484,11 @@ ${elementSummary}
    * 验证并补充变量映射配置
    * 使用参数对照表规范化变量路径
    */
-  private validateVariableMappings(mappings: any[], elements: DocumentElement[]): VariableMapping[] {
+  /**
+   * 验证并补充变量映射配置
+   * 使用参数对照表规范化变量路径
+   */
+  private validateVariableMappings(mappings: any[], elements: DocumentElement[], pathMappings?: PathMappingRule[]): VariableMapping[] {
     const result: VariableMapping[] = [];
 
     for (const mapping of mappings) {
@@ -1396,13 +1500,19 @@ ${elementSummary}
 
         // 修正变量路径（使用参数对照表）
         let path = mapping.path || `d.var_${index}`;
-        path = this.normalizeVariablePath(path);
+        path = this.normalizeVariablePath(path, pathMappings);
+
+        // 检测元素类型，图片类型需要特殊处理
+        let type = mapping.type || 'text';
+        if (element.type === 'image' || (element.imageId && element.imageId !== '')) {
+          type = 'image';
+        }
 
         result.push({
           path: path,
           sampleValue: element.text || mapping.sampleValue || mapping.content || '',
           index: index,
-          type: mapping.type || 'text',
+          type: type,
           reason: mapping.reason || 'AI 识别的变量',
         });
       }
@@ -1414,11 +1524,15 @@ ${elementSummary}
   /**
    * 使用参数对照表规范化变量路径
    * @param originalPath AI生成的原始路径
+   * @param pathMappings 可选的参数对照表（优先使用）
    * @returns 规范化后的标准路径
    */
-  private normalizeVariablePath(originalPath: string): string {
+  private normalizeVariablePath(originalPath: string, pathMappings?: PathMappingRule[]): string {
+    // 使用传入的对照表或默认对照表
+    const mappings = pathMappings || DEFAULT_PATH_MAPPINGS;
+
     // 遍历参数对照表，查找匹配的规则
-    for (const rule of DEFAULT_PATH_MAPPINGS) {
+    for (const rule of mappings) {
       // 检查是否精确匹配
       if (rule.patterns.includes(originalPath)) {
         this.logger.debug(`Path mapping: ${originalPath} -> ${rule.standardPath} (${rule.description})`);
