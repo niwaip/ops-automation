@@ -1404,9 +1404,26 @@ ${elementSummary}
       );
 
       if (tableElement) {
-        // 优先使用AI返回的列映射，如果没有则自动生成
+        // 检查列映射是否是AI自动生成的通用名称（如 "Column 1", "col0" 等）
+        const isGenericColumnNames = (mappings: any[]): boolean => {
+          if (!mappings || mappings.length === 0) return true;
+          // 检查是否有真实的表头名称（非 "Column N" 或 "colN" 格式）
+          const hasRealHeaderNames = mappings.some(m => {
+            const header = m.headerName || '';
+            const varPath = m.variablePath || '';
+            // 如果headerName不是 "Column N" 格式，且variablePath不是 "colN" 结尾
+            const isGenericHeader = /^Column\s+\d+$/i.test(header);
+            const isGenericVarPath = /\[\]\.col\d+$/.test(varPath);
+            return !isGenericHeader && !isGenericVarPath;
+          });
+          return !hasRealHeaderNames;
+        };
+
         let columnMappings = loop.columnMappings;
-        if (!columnMappings || columnMappings.length === 0 || (columnMappings.length === 1 && !columnMappings[0].headerName?.includes('|'))) {
+        // 如果没有列映射，或者列映射是通用名称，则从实际表头重新生成
+        if (!columnMappings || columnMappings.length === 0 ||
+            (columnMappings.length === 1 && !columnMappings[0].headerName?.includes('|')) ||
+            isGenericColumnNames(columnMappings)) {
           // 使用表格结构中的表头信息生成列映射
           columnMappings = this.generateColumnMappingsFromHeaders(tableElement, loop.arrayPath || 'd.items');
         } else {
@@ -1464,12 +1481,21 @@ ${elementSummary}
    */
   private normalizeColumnMappings(mappings: any[], arrayPath: string, pathMappings?: PathMappingRule[]): ColumnMapping[] {
     return mappings.map((mapping, index) => {
-      // 从variablePath提取字段名
-      let varName = mapping.variablePath?.split('[].')[1] || mapping.headerName?.toLowerCase() || `col${index}`;
-      varName = varName.toLowerCase().replace(/[^a-z0-9_]/g, '');
-
       // 使用columnIndex（优先AI返回的，否则使用数组索引）
       const columnIndex = mapping.columnIndex !== undefined ? mapping.columnIndex : index;
+
+      // 优先使用 headerName 转换字段名，确保与表格头一致
+      let varName = '';
+      if (mapping.headerName) {
+        // 使用 headerToVariableName 方法转换表头名称
+        varName = this.headerToVariableName(mapping.headerName);
+      } else if (mapping.variablePath) {
+        // 从 variablePath 提取字段名
+        const fieldMatch = mapping.variablePath.match(/\[\]\.(\w+)$/);
+        varName = fieldMatch ? fieldMatch[1] : `col${columnIndex}`;
+      } else {
+        varName = `col${columnIndex}`;
+      }
 
       return {
         headerName: mapping.headerName || `Column ${columnIndex + 1}`,
