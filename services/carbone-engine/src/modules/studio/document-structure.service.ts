@@ -274,7 +274,10 @@ export class DocumentStructureParser {
     // 0. 处理忽略元素 (Ignored Elements)
     // 必须首先处理，否则会影响后续注入
     const ignoredIndices = new Set<number>(config.ignoredElements || []);
-    
+
+    // 收集所有在 elementGroups 中的索引，避免重复处理
+    const groupLoopIndices = new Set<number>();
+
     // 1. 处理分组循环 (Element Groups / Group Loops)
     // 对应用户界面中的 "分组循环"
     if (config.elementGroups && typeof config.elementGroups === 'object') {
@@ -288,9 +291,12 @@ export class DocumentStructureParser {
           continue;
         }
 
+        // 记录这些索引属于分组循环
+        groupIndices.forEach(idx => groupLoopIndices.add(idx));
+
         const firstIdx = Math.min(...groupIndices);
         const lastIdx = Math.max(...groupIndices);
-        
+
         const firstNode = elements[firstIdx];
         const lastNode = elements[lastIdx];
 
@@ -307,7 +313,9 @@ export class DocumentStructureParser {
     if (config.markings && Array.isArray(config.markings)) {
       for (const marking of config.markings) {
         if (ignoredIndices.has(marking.index)) continue;
-        
+        // 跳过已经在分组循环中的元素，避免重复标记
+        if (groupLoopIndices.has(marking.index)) continue;
+
         const node = elements[marking.index];
         if (!node) continue;
 

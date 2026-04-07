@@ -172,7 +172,7 @@ describe('DocumentStructureParser Tag Injection', () => {
       };
 
       const resultBuffer = await parser.applyConfigToDocx(buffer, config);
-      
+
       const resultZip = new JSZip();
       await resultZip.loadAsync(resultBuffer);
       const resultXml = await resultZip.file('word/document.xml')?.async('text');
@@ -180,6 +180,40 @@ describe('DocumentStructureParser Tag Injection', () => {
       expect(resultXml).toContain('{#loop}Group Start');
       expect(resultXml).toContain('Group End{/loop}');
       expect(resultXml).not.toContain('Delete Me');
+    });
+
+    it('should skip individual markings for elements in group loops', async () => {
+      const documentXml = `
+        <w:body xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+          <w:p><w:r><w:t>Step 3: screenshot</w:t></w:r></w:p>
+          <w:p><w:r><w:t>[Image]</w:t></w:r></w:p>
+          <w:p><w:r><w:t>Other content</w:t></w:r></w:p>
+        </w:body>
+      `;
+
+      const buffer = await createMockDocx(documentXml);
+      const config = {
+        // Element 0 is in a group loop
+        elementGroups: {
+          '#d.steps': [0, 1]
+        },
+        // But element 0 also has an individual marking (which should be ignored)
+        markings: [
+          { index: 0, type: 'loop', path: 'd.individual' }
+        ]
+      };
+
+      const resultBuffer = await parser.applyConfigToDocx(buffer, config);
+
+      const resultZip = new JSZip();
+      await resultZip.loadAsync(resultBuffer);
+      const resultXml = await resultZip.file('word/document.xml')?.async('text');
+
+      // Should use the group loop marker, not the individual one
+      expect(resultXml).toContain('{#d.steps}Step 3: screenshot');
+      expect(resultXml).toContain('[Image]{/d.steps}');
+      // Should NOT contain the individual loop marker
+      expect(resultXml).not.toContain('{#d.individual}');
     });
   });
 });
