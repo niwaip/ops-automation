@@ -253,6 +253,42 @@ export class DocumentStructureParser {
       }
     }
 
+    // 4. 应用组合变量 (Combined Variables - step-screenshot)
+    // 处理 "Step X: screenshot" 类型的文本+图片组合
+    if (config.combinedVariables && Array.isArray(config.combinedVariables)) {
+      for (const combinedVar of config.combinedVariables) {
+        if (combinedVar.type !== 'step-screenshot') continue;
+
+        // 查找包含 "Step X: screenshot" 文本且包含图片的段落
+        const stepPattern = /Step\s+(\d+)[:：]\s*screenshot/i;
+        for (const node of elements) {
+          const localName = node.localName || node.tagName.split(':').pop();
+          if (localName !== 'p') continue;
+
+          const text = this.getNodeText(node);
+          const match = text.match(stepPattern);
+          if (!match) continue;
+
+          const foundStepNumber = parseInt(match[1], 10);
+          // 检查是否匹配当前组合变量的步骤号
+          if (foundStepNumber !== combinedVar.stepNumber) continue;
+
+          // 检查是否包含图片
+          if (!this.isImageElement(node)) continue;
+
+          // 替换文本为变量 - 使用 screenshots 数组的描述字段
+          // 格式：{d.screenshots[].description} 替换 "Step X: screenshot" 文本
+          this.replaceStepScreenshotText(node, combinedVar);
+
+          // 替换图片引用为变量
+          this.injectImageVariable(node, combinedVar.imagePath);
+
+          // 处理完毕，跳出循环
+          break;
+        }
+      }
+    }
+
     const updatedXml = new XMLSerializer().serializeToString(doc);
     zip.file('word/document.xml', updatedXml);
 
@@ -302,13 +338,13 @@ export class DocumentStructureParser {
 
   /**
    * 处理表格循环注入
-   * 正确顺序：先替换单元格变量，再添加循环标记
+   * 正确顺序：先替换单元格变量，再添加循环标记，最后删除多余数据行
    */
   private applyTableLoop(doc: any, table: any, tableLoop: any): void {
     const rows = table.getElementsByTagNameNS('*', 'tr');
     if (rows.length < 2) return;
 
-    // 假设第二行是数据行
+    // 假设第二行是数据行（rows[0]是表头，rows[1]是模板行）
     const dataRow = rows[1];
     const cells = dataRow.getElementsByTagNameNS('*', 'tc');
     if (cells.length === 0) return;
@@ -333,6 +369,21 @@ export class DocumentStructureParser {
     // 3. 在最后一个单元格末尾添加循环结束标记
     const lastCell = cells[cells.length - 1];
     this.suffixTextToCell(lastCell, `{/${tableLoop.arrayPath}}`);
+
+    // 4. 删除多余的数据行（rows[2]及之后的所有行）
+    // Carbone渲染时会根据数据数组长度自动复制模板行
+    // 所以需要删除模板行之后的所有原始数据行
+    const rowsToDelete: any[] = [];
+    for (let i = 2; i < rows.length; i++) {
+      rowsToDelete.push(rows[i]);
+    }
+    // 从后往前删除，避免索引问题
+    for (let i = rowsToDelete.length - 1; i >= 0; i--) {
+      const row = rowsToDelete[i];
+      if (row.parentNode) {
+        row.parentNode.removeChild(row);
+      }
+    }
   }
 
   private prefixTextToCell(cell: any, text: string): void {
@@ -358,6 +409,32 @@ export class DocumentStructureParser {
   private isImageElement(element: any): boolean {
     const drawings = element.getElementsByTagNameNS('*', 'drawing');
     return drawings.length > 0;
+  }
+
+  /**
+   * 替换 Step X: screenshot 文本为变量
+   * 保留段落中的其他内容，仅替换步骤截图的标记文本
+   */
+  private replaceStepScreenshotText(element: any, combinedVar: any): void {
+    const textNodes = element.getElementsByTagNameNS('*', 't');
+    if (textNodes.length === 0) return;
+
+    // 找到包含 "Step X: screenshot" 的文本节点
+    const stepPattern = /Step\s+(\d+)[:：]\s*screenshot/i;
+    for (let i = 0; i < textNodes.length; i++) {
+      const textNode = textNodes[i];
+      const text = textNode.textContent || '';
+      const match = text.match(stepPattern);
+      if (match) {
+        // 替换文本为变量标记
+        // 使用 screenshots 数组循环，因为这是独立的截图段落
+        const stepIndex = parseInt(match[1], 10) - 1;
+        // 替换为 {d.screenshots[].description} 或类似路径
+        // 注意：这里使用 screenshots 数组而不是 steps，因为这是文档中的独立截图段落
+        textNode.textContent = `{d.screenshots[].description}`;
+        break;
+      }
+    }
   }
 
   /**
