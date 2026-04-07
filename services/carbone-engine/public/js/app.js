@@ -3116,10 +3116,12 @@
 
         const markings = state.manualMarkings || {};
         const ignored = state.ignoredElements || {};
+        const elementGroups = state.elementGroups || {};
+        const ignoredGroups = state.ignoredGroups || {};
         const markingCount = Object.keys(markings).length;
         const ignoredCount = Object.keys(ignored).length;
 
-        if (markingCount === 0 && ignoredCount === 0) {
+        if (markingCount === 0 && ignoredCount === 0 && Object.keys(elementGroups).length === 0) {
             showToast('没有需要保存的标记', 'warning');
             return;
         }
@@ -3140,7 +3142,9 @@
                         path: '',
                         text: ''
                     })),
-                    ignoredElements: Object.keys(ignored).map(idx => parseInt(idx))
+                    ignoredElements: Object.keys(ignored).map(idx => parseInt(idx)),
+                    elementGroups: elementGroups,
+                    ignoredGroups: Object.keys(ignoredGroups)
                 })
             });
 
