@@ -1,0 +1,26 @@
+# Office Add-in Development Docker
+# 使用 Vite dev server，支持热更新
+
+FROM node:18-alpine
+
+WORKDIR /app
+
+# 安装依赖
+COPY package.json package-lock.json* ./
+RUN npm ci
+
+# 复制源码
+COPY . .
+
+# 生成 SSL 证书（开发环境）
+RUN apk add --no-cache openssl
+RUN mkdir -p certs && \
+    openssl req -x509 -newkey rsa:2048 -keyout certs/server.key \
+    -out certs/server.crt -days 365 -nodes \
+    -subj "/C=CN/ST=Shanghai/L=Shanghai/O=Carbone/OU=Addin/CN=localhost"
+
+# 暴露端口
+EXPOSE 3000
+
+# 启动开发服务器
+CMD ["npm", "run", "dev", "--", "--host", "0.0.0.0"]

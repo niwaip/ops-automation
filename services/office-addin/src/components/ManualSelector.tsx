@@ -192,7 +192,7 @@ export const ManualSelector: React.FC<Props> = ({ onInsert }) => {
                 onChange={(e) => setArrayPath(e.target.value)}
                 placeholder="如: d.items, d.rows"
               />
-              <small>将选中内容包装为 {#d.array}...{/d.array}</small>
+              <small>将选中内容包装为 {'{#d.array}...{/d.array}'}</small>
             </div>
           )}
         </div>
