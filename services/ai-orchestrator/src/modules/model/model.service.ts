@@ -455,4 +455,20 @@ export class ModelService implements OnModuleInit {
     const messages = [{ role: 'user' as const, content: prompt }];
     return client.chatCompletion(messages);
   }
+
+  /**
+   * Call a model with streaming support
+   * @param id Model ID
+   * @param prompt Prompt to send
+   * @param onChunk Callback for each chunk
+   */
+  async callModelStream(id: string, prompt: string, onChunk: (chunk: string) => void): Promise<string> {
+    const client = this.clients.get(id);
+    if (!client) {
+      throw new Error(`No client initialized for model ${id}`);
+    }
+
+    const messages = [{ role: 'user' as const, content: prompt }];
+    return client.chatCompletionStream(messages, onChunk);
+  }
 }

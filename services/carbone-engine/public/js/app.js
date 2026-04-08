@@ -10,13 +10,18 @@
         templates: [],
         selectedTemplate: null,
         formatters: [],
-        manualMarkings: [],
+        manualMarkings: {},  // 改为对象，key是元素索引
+        templateConfig: null,  // AI生成的模板配置
         currentZoom: 1,
         documentElements: [],
         sourceXml: '',
-        currentTab: 'preview',
+        currentTab: 'source',  // 默认显示代码页
         currentSourceView: 'structure',  // 默认显示结构化视图
-        xmlStructure: null
+        xmlStructure: null,
+        selectedElementIndices: [],  // 多选元素索引列表
+        elementGroups: {},  // 元素分组：{ groupId: [index1, index2, ...] }
+        ignoredGroups: {},  // 被忽略的分组：{ groupId: true } - 用于标记重复的分组
+        ignoredElements: {}  // 被忽略的元素：{ index: true } - 用于标记重复/忽略的元素
     };
 
     // DOM Elements
@@ -45,7 +50,7 @@
         elements.zoomIn = document.getElementById('zoom-in');
         elements.zoomOut = document.getElementById('zoom-out');
         elements.zoomLevel = document.getElementById('zoom-level');
-        elements.aiIdentifyBtn = document.getElementById('ai-identify-btn');
+        elements.aiGenerateBtn = document.getElementById('ai-generate-btn');
         elements.aiSuggestionsList = document.getElementById('ai-suggestions-list');
         elements.selectionSection = document.getElementById('selection-section');
         elements.selectedTextDisplay = document.getElementById('selected-text-display');
@@ -55,8 +60,16 @@
         elements.clearSelection = document.getElementById('clear-selection');
         elements.varsCount = document.getElementById('vars-count');
         elements.suggestionsCount = document.getElementById('suggestions-count');
-        elements.documentElementsList = document.getElementById('document-elements-list');
-        elements.elementsCount = document.getElementById('elements-count');
+        elements.noSelectionHint = document.getElementById('no-selection-hint');
+        // AI Generate Result
+        elements.aiGenerateResultSection = document.getElementById('ai-generate-result-section');
+        elements.aiGenerateResult = document.getElementById('ai-generate-result');
+        elements.aiProgress = document.getElementById('ai-progress');
+        elements.progressFill = document.getElementById('progress-fill');
+        elements.progressText = document.getElementById('progress-text');
+        // Verify Result (separate section)
+        elements.verifyResultSection = document.getElementById('verify-result-section');
+        elements.verifyResult = document.getElementById('verify-result');
         // Tab elements
         elements.tabPreview = document.getElementById('tab-preview');
         elements.tabSource = document.getElementById('tab-source');
@@ -75,6 +88,22 @@
         elements.showPreserve = document.getElementById('show-preserve');
         elements.showTables = document.getElementById('show-tables');
         elements.showParagraphs = document.getElementById('show-paragraphs');
+        // Operations section
+        elements.operationsSection = document.getElementById('operations-section');
+        elements.stepParseStatus = document.getElementById('step-parse-status');
+        elements.stepConfigStatus = document.getElementById('step-config-status');
+        elements.stepGenerateStatus = document.getElementById('step-generate-status');
+        elements.stepVerifyStatus = document.getElementById('step-verify-status');
+        elements.stepFinetuneStatus = document.getElementById('step-finetune-status');
+        // AI Verify button
+        elements.aiVerifyBtn = document.getElementById('ai-verify-btn');
+        // Status display
+        elements.statusText = document.getElementById('status-text');
+        // Execution progress
+        elements.executionProgress = document.getElementById('execution-progress');
+        elements.executionTitle = document.getElementById('execution-title');
+        elements.executionProgressFill = document.getElementById('execution-progress-fill');
+        elements.executionLog = document.getElementById('execution-log');
     }
 
     // Utility Functions
@@ -211,18 +240,33 @@
         state.selectedTemplate = template;
         state.sourceXml = ''; // Clear cached source
         state.xmlStructure = null; // Clear cached structure
-        state.currentTab = 'preview'; // Reset to preview tab
+        state.currentTab = 'source'; // 默认显示代码页
         state.currentSourceView = 'structure'; // 默认结构化视图
+        state.manualMarkings = {}; // 清空手动标记
+        state.ignoredElements = {}; // 清空忽略元素
         renderTemplateList();
 
         elements.noTemplate.style.display = 'none';
         elements.templateEditor.style.display = 'flex';
 
-        // Reset tab state
-        elements.tabPreview.classList.add('active');
-        elements.tabSource.classList.remove('active');
-        elements.previewTabContent.classList.add('active');
-        elements.sourceTabContent.classList.remove('active');
+        // 显示操作区域
+        if (elements.operationsSection) {
+            elements.operationsSection.style.display = 'block';
+        }
+
+        // 更新步骤状态
+        updateStepStatus('parse', 'completed', '已完成');
+        updateStepStatus('config', 'pending', '');
+        updateStepStatus('generate', 'pending', '');
+        updateStepStatus('verify', 'pending', '');
+        updateStepStatus('finetune', 'pending', '');
+        updateStatus('idle', '等待配置');
+
+        // Reset tab state - 默认选中Source标签
+        elements.tabPreview.classList.remove('active');
+        elements.tabSource.classList.add('active');
+        elements.previewTabContent.classList.remove('active');
+        elements.sourceTabContent.classList.add('active');
 
         // Reset source view state - 默认显示结构化视图
         elements.viewRaw.classList.remove('active');
@@ -230,23 +274,40 @@
         elements.rawView.classList.remove('active');
         elements.structureView.classList.add('active');
 
+        // 先加载文档元素，然后再加载源码并渲染结构
+        loadDocumentElements(template).then(() => {
+            // 加载源码并渲染结构
+            loadSourceXml().then(() => {
+                switchSourceView('structure');
+                // 先加载已保存的标记，再加载模板配置（确保状态正确更新）
+                loadSavedMarkings().then(() => {
+                    loadSavedTemplateConfig();
+                });
+            });
+        });
+
         // Update header
         elements.templateName.textContent = template.fileName;
         elements.templateFormat.textContent = template.format.toUpperCase();
         elements.templateFormat.className = `badge badge-info`;
 
-        // Render variables
-        elements.varsCount.textContent = template.variables.length;
-        elements.variablesList.innerHTML = template.variables.length > 0
-            ? template.variables.map(v => `
-                <div class="variable-item">
-                    <code>{${v}}</code>
-                </div>
-            `).join('')
-            : '<span class="empty-hint">No variables found</span>';
+        // Render variables (may be null if section removed)
+        if (elements.varsCount) {
+            elements.varsCount.textContent = template.variables.length;
+        }
+        if (elements.variablesList) {
+            elements.variablesList.innerHTML = template.variables.length > 0
+                ? template.variables.map(v => `
+                    <div class="variable-item">
+                        <code>{${v}}</code>
+                    </div>
+                `).join('')
+                : '<span class="empty-hint">No variables found</span>';
+        }
 
-        // Render loops
-        elements.loopsList.innerHTML = template.loops.length > 0
+        // Render loops (may be null if section removed)
+        if (elements.loopsList) {
+            elements.loopsList.innerHTML = template.loops.length > 0
             ? template.loops.map(l => `
                 <div class="loop-item">
                     <i class="fas fa-repeat"></i>
@@ -254,19 +315,13 @@
                 </div>
             `).join('')
             : '<span class="empty-hint">No loops detected</span>';
+        }
 
         // Load document preview
         loadDocumentPreview(template);
 
         // Load saved markings
         loadMarkings(template.id);
-
-        // Load document structure elements first, then preload source XML
-        // This ensures proper ordering for element selection
-        loadDocumentElements(template).then(() => {
-            // 预加载源XML并解析结构，用于PDF选择与结构视图保持一致
-            preloadSourceXml(template);
-        });
     }
 
     // 预加载源XML并解析结构
@@ -279,10 +334,6 @@
             // 立即解析结构，确保PDF选择可以使用
             if (state.sourceXml && !state.xmlStructure) {
                 parseXmlStructure();
-                // 重新渲染Document Elements列表，使用正确的顺序
-                if (state.xmlStructure?.orderedElements?.length > 0 && state.documentElements.length > 0) {
-                    renderDocumentElementsList();
-                }
             }
         } catch (error) {
             console.warn('Failed to preload source XML:', error);
@@ -291,8 +342,6 @@
 
     async function loadDocumentElements(template) {
         if (template.format !== 'docx') {
-            elements.documentElementsList.innerHTML = '<span class="empty-hint">Element selection only available for DOCX</span>';
-            elements.elementsCount.textContent = '0';
             return;
         }
 
@@ -300,119 +349,16 @@
             const result = await apiRequest(`/templates/${template.id}/structure`);
             state.documentElements = result.elements || [];
 
-            elements.elementsCount.textContent = state.documentElements.length;
-
-            if (state.documentElements.length === 0) {
-                elements.documentElementsList.innerHTML = '<span class="empty-hint">No elements found</span>';
-                return;
-            }
-
-            // 渲染文档元素列表
-            renderDocumentElementsList();
-
+            // 不再渲染元素列表，元素信息通过结构视图选择显示
         } catch (error) {
             console.error('Failed to load document elements:', error);
-            elements.documentElementsList.innerHTML = '<span class="empty-hint">Failed to load elements</span>';
         }
     }
 
-    // 渲染文档元素列表，使用与结构视图相同的顺序
+    // 渲染文档元素列表已移除，改用结构视图选择
     function renderDocumentElementsList() {
-        // 如果xmlStructure已解析，使用orderedElements的顺序重新排列documentElements
-        let orderedDocumentElements = state.documentElements;
-
-        if (state.xmlStructure?.orderedElements?.length > 0) {
-            // 按照xmlStructure.orderedElements的顺序重新排列
-            orderedDocumentElements = state.xmlStructure.orderedElements.map(el => {
-                // 找到对应的documentElement
-                return state.documentElements.find(d => {
-                    if (el.type === 'table' && d.type === 'table') {
-                        return d.headerRow && el.headerRow &&
-                               d.headerRow.includes(el.headerRow.substring(0, 30));
-                    }
-                    return d.text && el.text &&
-                           (d.text === el.text || d.text.includes(el.text.substring(0, 50)));
-                });
-            }).filter(el => el); // 过滤掉undefined
-        }
-
-        elements.elementsCount.textContent = orderedDocumentElements.length;
-
-        if (orderedDocumentElements.length === 0) {
-            elements.documentElementsList.innerHTML = '<span class="empty-hint">No elements found</span>';
-            return;
-        }
-
-        elements.documentElementsList.innerHTML = orderedDocumentElements.map((el, idx) => {
-                // 表格特殊显示
-                if (el.type === 'table') {
-                    return `
-                        <div class="element-item element-type-table" data-index="${idx}">
-                            <div class="element-header">
-                                <span class="element-type-icon">
-                                    <i class="fas fa-table"></i>
-                                </span>
-                                <span class="element-type-label">Table</span>
-                                <span class="element-badge">${el.attributes?.rows || '?'}行</span>
-                            </div>
-                            ${el.headerRow ? `
-                                <div class="element-table-header">
-                                    <span class="element-table-label">📋 标题行:</span>
-                                    <code>${escapeHtml(el.headerRow)}</code>
-                                </div>
-                            ` : ''}
-                            ${el.dataRows && el.dataRows.length > 0 ? `
-                                <div class="element-table-data">
-                                    <span class="element-table-label">🔄 数据行: ${el.dataRows.length}行可循环</span>
-                                </div>
-                            ` : ''}
-                            <div class="element-actions">
-                                <button class="btn btn-primary btn-sm btn-select-element" data-index="${idx}">
-                                    <i class="fas fa-check"></i> Select
-                                </button>
-                            </div>
-                        </div>
-                    `;
-                }
-
-                // 普通元素
-                return `
-                    <div class="element-item element-type-${el.type}" data-index="${idx}">
-                        <div class="element-header">
-                            <span class="element-type-icon">
-                                <i class="fas ${getElementIcon(el.type)}"></i>
-                            </span>
-                            <span class="element-type-label">${getElementLabel(el.type)}</span>
-                        </div>
-                        <div class="element-content">
-                            <code>${escapeHtml(el.text.substring(0, 80))}${el.text.length > 80 ? '...' : ''}</code>
-                        </div>
-                        <div class="element-actions">
-                            <button class="btn btn-primary btn-sm btn-select-element" data-index="${idx}">
-                                <i class="fas fa-check"></i> Select
-                            </button>
-                        </div>
-                    </div>
-                `;
-            }).join('');
-
-            // Bind click events for element selection - 使用当前渲染的元素
-            const currentElements = orderedDocumentElements;
-            document.querySelectorAll('.btn-select-element').forEach(btn => {
-                btn.addEventListener('click', (e) => {
-                    e.stopPropagation();
-                    const idx = parseInt(btn.dataset.index);
-                    selectDocumentElement(currentElements[idx]);
-                });
-            });
-
-            // Bind click events for element items - 使用当前渲染的元素
-            document.querySelectorAll('.element-item').forEach(item => {
-                item.addEventListener('click', () => {
-                    const idx = parseInt(item.dataset.index);
-                    selectDocumentElement(currentElements[idx]);
-                });
-            });
+        // 元素列表已移除，现在通过结构视图选择元素
+        // 选中元素信息会显示在右侧编辑区域
     }
 
     function getElementIcon(type) {
@@ -1008,9 +954,51 @@
     async function loadMarkings(templateId) {
         try {
             const result = await apiRequest(`/templates/${templateId}/markings`);
-            state.manualMarkings = result.markings || [];
+
+            // 加载标记
+            if (result.markings && result.markings.length > 0) {
+                state.manualMarkings = {};
+                result.markings.forEach(m => {
+                    if (m.index !== undefined) {
+                        state.manualMarkings[m.index] = m.type;
+                    }
+                });
+            } else {
+                state.manualMarkings = {};
+            }
+
+            // 加载忽略元素
+            if (result.ignoredElements && result.ignoredElements.length > 0) {
+                state.ignoredElements = {};
+                result.ignoredElements.forEach(idx => {
+                    state.ignoredElements[idx] = true;
+                });
+            } else {
+                state.ignoredElements = {};
+            }
+
+            // 加载元素分组
+            if (result.elementGroups && Object.keys(result.elementGroups).length > 0) {
+                state.elementGroups = result.elementGroups;
+            } else {
+                state.elementGroups = {};
+            }
+
+            // 加载忽略的分组
+            if (result.ignoredGroups && result.ignoredGroups.length > 0) {
+                state.ignoredGroups = {};
+                result.ignoredGroups.forEach(groupId => {
+                    state.ignoredGroups[groupId] = true;
+                });
+            } else {
+                state.ignoredGroups = {};
+            }
         } catch (error) {
-            state.manualMarkings = [];
+            console.error('Load markings failed:', error);
+            state.manualMarkings = {};
+            state.ignoredElements = {};
+            state.elementGroups = {};
+            state.ignoredGroups = {};
         }
     }
 
@@ -1057,6 +1045,10 @@
                 state.selectedTemplate = null;
                 elements.noTemplate.style.display = 'flex';
                 elements.templateEditor.style.display = 'none';
+                // 隐藏操作区域
+                if (elements.operationsSection) {
+                    elements.operationsSection.style.display = 'none';
+                }
             }
             renderTemplateList();
         } catch (error) {
@@ -1064,37 +1056,87 @@
         }
     }
 
-    // Validate Function
+    // Validate Function - 使用编辑后的模版生成文档
     async function validateData() {
         if (!state.selectedTemplate) return;
 
-        let data = {};
-        try {
-            const text = elements.testData.value.trim();
-            if (text) {
-                data = JSON.parse(text);
-            }
-        } catch {
-            showToast('Invalid JSON in test data', 'error');
-            return;
-        }
+        showToast('正在验证模版并生成文档...', 'info');
 
         try {
             const result = await apiRequest('/validate', {
                 method: 'POST',
                 body: JSON.stringify({
                     templateId: state.selectedTemplate.id,
-                    data
+                    data: {}  // 空数据，让后端生成模拟数据
                 })
             });
 
-            if (result.valid) {
-                showToast('Validation passed!', 'success');
+            if (result.downloadUrl) {
+                showToast('文档生成成功！', 'success');
+
+                // 自动下载文件
+                const link = document.createElement('a');
+                link.href = result.downloadUrl;
+                link.download = result.fileName || 'validated_document.docx';
+                link.click();
+
+                // 在结果区域显示验证结果
+                if (elements.verifyResultSection) {
+                    elements.verifyResultSection.style.display = 'block';
+                    elements.verifyResultSection.classList.add('expanded');
+                }
+                if (elements.verifyResult) {
+                    let resultHtml = `
+                        <div style="margin-bottom: 15px;">
+                            <i class="fas fa-check-circle" style="color: #52c41a; margin-right: 8px;"></i>
+                            <strong>验证完成</strong>
+                        </div>
+                        <p style="margin-bottom: 10px;">模版已使用编辑后的版本和模拟数据生成文档。</p>
+                    `;
+
+                    // 显示生成的模拟数据
+                    if (result.sampleData) {
+                        resultHtml += `
+                            <details style="margin-bottom: 15px;">
+                                <summary style="cursor: pointer; font-weight: 500;">
+                                    <i class="fas fa-database"></i> 生成的模拟数据
+                                </summary>
+                                <div style="background: #f5f5f5; padding: 10px; border-radius: 4px; font-size: 11px; max-height: 200px; overflow-y: auto;">
+                                    <pre style="margin: 0; white-space: pre-wrap;">${JSON.stringify(result.sampleData, null, 2)}</pre>
+                                </div>
+                            </details>
+                        `;
+                    }
+
+                    // 显示下载按钮
+                    resultHtml += `
+                        <div style="margin-top: 15px; display: flex; gap: 8px; flex-wrap: wrap;">
+                            <button id="validate-download-btn" class="btn btn-primary btn-sm">
+                                <i class="fas fa-download"></i> 下载文档
+                            </button>
+                        </div>
+                    `;
+
+                    elements.verifyResult.innerHTML = resultHtml;
+
+                    // 绑定下载按钮事件
+                    const downloadBtn = document.getElementById('validate-download-btn');
+                    if (downloadBtn) {
+                        downloadBtn.addEventListener('click', () => {
+                            const link = document.createElement('a');
+                            link.href = result.downloadUrl;
+                            link.download = result.fileName || 'validated_document.docx';
+                            link.click();
+                        });
+                    }
+                }
+            } else if (result.missing && result.missing.length > 0) {
+                showToast(`缺少变量: ${result.missing.join(', ')}`, 'warning');
             } else {
-                showToast(`Missing variables: ${result.missing.join(', ')}`, 'warning');
+                showToast('验证失败', 'error');
             }
         } catch (error) {
-            showToast('Validation failed', 'error');
+            showToast('验证失败: ' + error.message, 'error');
         }
     }
 
@@ -1165,6 +1207,870 @@
             elements.aiSuggestionsList.innerHTML = '<span class="empty-hint">Analysis failed</span>';
             showToast('Failed to analyze template', 'error');
         }
+    }
+
+    // Advanced AI Analysis with user context
+    async function performAIAnalysis() {
+        if (!state.selectedTemplate) {
+            showToast('请先选择一个模板', 'warning');
+            return;
+        }
+
+        const userContext = elements.aiContextInput?.value || '';
+
+        // Disable button and show loading
+        elements.aiAnalyzeBtn.disabled = true;
+        elements.aiAnalyzeBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 分析中...';
+
+        try {
+            // Call AI identify with enhanced context
+            const identifyResult = await apiRequest(`/templates/${state.selectedTemplate.id}/ai-identify`, {
+                method: 'POST',
+                body: JSON.stringify({
+                    templateId: state.selectedTemplate.id,
+                    context: userContext
+                })
+            });
+
+            // Extract data from response
+            const templateConfig = identifyResult.templateConfig;
+            const loops = identifyResult.loops || [];
+            const images = identifyResult.images || [];
+            const suggestions = identifyResult.suggestions || [];
+            const contextAnalysis = identifyResult.contextAnalysis;
+
+            // Render analysis result with all data
+            renderAIAnalysisResult(suggestions, loops, contextAnalysis, templateConfig, images);
+
+            const totalVars = suggestions.length;
+            const totalLoops = loops.length;
+            const totalImages = images.length;
+            showToast(`分析完成：${totalLoops}个表格循环，${totalImages}个图片循环，${totalVars}个变量`, 'success');
+        } catch (error) {
+            console.error('AI analysis failed:', error);
+            showToast('AI 分析失败，请重试', 'error');
+            elements.aiAnalysisResult.style.display = 'none';
+        } finally {
+            elements.aiAnalyzeBtn.disabled = false;
+            elements.aiAnalyzeBtn.innerHTML = '<i class="fas fa-magic"></i> AI 自动生成模版';
+        }
+    }
+
+    // AI Generate Function - 生成模版配置
+    async function performAIGenerate() {
+        if (!state.selectedTemplate) {
+            showToast('请先选择一个模板', 'warning');
+            return;
+        }
+
+        // 更新状态显示
+        updateStatus('processing', '开始生成模版...');
+        updateStepStatus('generate', 'in-progress', '生成中...');
+
+        // 禁用按钮并显示加载状态
+        elements.aiGenerateBtn.disabled = true;
+        elements.aiGenerateBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 生成中...';
+
+        // 显示进度条
+        if (elements.aiGenerateResultSection) {
+            elements.aiGenerateResultSection.style.display = 'block';
+            elements.aiGenerateResultSection.classList.add('expanded');
+        }
+        if (elements.aiProgress) {
+            elements.aiProgress.style.display = 'block';
+        }
+        if (elements.aiGenerateResult) {
+            elements.aiGenerateResult.innerHTML = '<div style="color: #1890ff;">正在连接AI服务...</div>';
+        }
+
+        let fullResponse = '';
+
+        try {
+            // 使用SSE流式调用
+            const response = await fetch(`${API_BASE}/templates/${state.selectedTemplate.id}/ai-identify-stream`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    templateId: state.selectedTemplate.id,
+                    context: '根据手动标记生成模版配置',
+                    manualMarkings: state.manualMarkings,
+                    markingSummary: buildMarkingSummary()
+                })
+            });
+
+            if (!response.ok) {
+                throw new Error(`请求失败: ${response.status}`);
+            }
+
+            const reader = response.body?.getReader();
+            if (!reader) {
+                throw new Error('无法读取响应流');
+            }
+
+            const decoder = new TextDecoder();
+            let progress = 30;
+
+            while (true) {
+                const { done, value } = await reader.read();
+                if (done) break;
+
+                const chunk = decoder.decode(value, { stream: true });
+                const lines = chunk.split('\n');
+
+                for (const line of lines) {
+                    if (line.startsWith('data: ')) {
+                        try {
+                            const data = JSON.parse(line.slice(6));
+
+                            if (data.chunk) {
+                                fullResponse += data.chunk;
+                                // 更新进度显示
+                                progress = Math.min(progress + 1, 90);
+                                updateProgress(progress, 'AI正在生成...');
+                                if (elements.aiGenerateResult) {
+                                    elements.aiGenerateResult.innerHTML = `<pre style="white-space: pre-wrap; word-break: break-all; font-size: 11px; max-height: 200px; overflow-y: auto;">${fullResponse.substring(0, 500)}${fullResponse.length > 500 ? '...' : ''}</pre>`;
+                                }
+                            }
+
+                            if (data.done && data.templateConfig) {
+                                const templateConfig = data.templateConfig;
+                                const loops = data.loops || [];
+                                const suggestions = data.suggestions || [];
+
+                                // 检查是否成功获取配置
+                                if (!templateConfig) {
+                                    throw new Error('AI分析失败，未生成模版配置');
+                                }
+
+                                // 保存模版配置
+                                updateProgress(95, '正在保存模版配置...');
+                                updateStatus('processing', '保存模版配置...');
+
+                                await apiRequest(`/templates/${state.selectedTemplate.id}/config`, {
+                                    method: 'POST',
+                                    body: JSON.stringify({
+                                        templateId: state.selectedTemplate.id,
+                                        templateConfig: templateConfig
+                                    })
+                                });
+                                state.templateConfig = templateConfig;
+
+                                // 完成
+                                updateProgress(100, '完成');
+                                updateStatus('success', '生成完成');
+                                updateStepStatus('generate', 'completed', '已完成');
+
+                                // 隐藏进度条
+                                if (elements.aiProgress) {
+                                    elements.aiProgress.style.display = 'none';
+                                }
+
+                                // 显示结果
+                                if (elements.aiGenerateResult) {
+                                    let resultHtml = '<h3>模版生成结果</h3>';
+                                    resultHtml += `<ul><li>循环数量: ${loops.length}</li>`;
+                                    resultHtml += `<li>变量数量: ${suggestions.length}</li></ul>`;
+                                    resultHtml += '<p style="color: #52c41a;">模版配置已保存，点击"验证模版"生成验证报告</p>';
+                                    elements.aiGenerateResult.innerHTML = resultHtml;
+                                }
+
+                                // 启用验证按钮
+                                if (elements.aiVerifyBtn) {
+                                    elements.aiVerifyBtn.disabled = false;
+                                    elements.aiVerifyBtn.classList.remove('disabled');
+                                }
+
+                                renderAISuggestions(suggestions);
+
+                                const totalVars = suggestions.length;
+                                const totalLoops = loops.length;
+                                showToast(`生成完成：${totalLoops}个循环，${totalVars}个变量`, 'success');
+                            }
+
+                            if (data.error) {
+                                throw new Error(data.error);
+                            }
+                        } catch (parseError) {
+                            // Skip invalid JSON
+                        }
+                    }
+                }
+            }
+        } catch (error) {
+            console.error('AI generate failed:', error);
+            updateProgress(0, '失败');
+            updateStatus('error', '生成失败: ' + error.message);
+            updateStepStatus('generate', 'error', '失败');
+
+            if (elements.aiProgress) {
+                elements.aiProgress.style.display = 'none';
+            }
+            if (elements.aiGenerateResult) {
+                elements.aiGenerateResult.innerHTML = `<div style="color: #ff4d4f;">生成失败: ${error.message}</div>`;
+            }
+            showToast('生成失败: ' + error.message, 'error');
+        } finally {
+            elements.aiGenerateBtn.disabled = false;
+            elements.aiGenerateBtn.innerHTML = '<i class="fas fa-magic"></i> 生成模版';
+        }
+    }
+
+    // AI Verify Function - 验证模版配置（使用fetch流式处理，参考生成模版）
+    async function performAIVerify() {
+        if (!state.selectedTemplate) {
+            showToast('请先选择一个模板', 'warning');
+            return;
+        }
+
+        // 更新状态显示
+        updateStatus('processing', '开始验证模版...');
+        updateStepStatus('verify', 'in-progress', '验证中...');
+
+        // 禁用按钮并显示加载状态
+        elements.aiVerifyBtn.disabled = true;
+        elements.aiVerifyBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 验证中...';
+
+        // 显示验证结果区域（独立的，不覆盖AI结果报告）
+        if (elements.verifyResultSection) {
+            elements.verifyResultSection.style.display = 'block';
+            elements.verifyResultSection.classList.add('expanded');
+        }
+        if (elements.verifyResult) {
+            elements.verifyResult.innerHTML = '<div style="color: #1890ff;"><i class="fas fa-spinner fa-spin"></i> 正在连接AI服务...</div>';
+        }
+
+        try {
+            // 使用fetch流式调用（参考performAIGenerate）
+            const requestBody = {
+                templateId: state.selectedTemplate.id,
+                prompt: '验证模版配置是否合理，生成示例报告',
+                testData: '',
+                templateConfig: state.templateConfig || {}
+            };
+            console.log('AI Verify request:', requestBody);
+            const response = await fetch(`${API_BASE}/templates/${state.selectedTemplate.id}/ai-verify-stream`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(requestBody)
+            });
+
+            if (!response.ok) {
+                throw new Error(`请求失败: ${response.status}`);
+            }
+
+            const reader = response.body?.getReader();
+            if (!reader) {
+                throw new Error('无法读取响应流');
+            }
+
+            const decoder = new TextDecoder();
+            let verifyResult = null;
+            let progressMessages = [];
+
+            while (true) {
+                const { done, value } = await reader.read();
+                if (done) break;
+
+                const chunk = decoder.decode(value, { stream: true });
+                const lines = chunk.split('\n');
+
+                for (const line of lines) {
+                    if (line.startsWith('data: ')) {
+                        try {
+                            const data = JSON.parse(line.slice(6));
+
+                            if (data.type === 'progress') {
+                                // 更新进度显示
+                                updateProgress(data.progress, data.message);
+                                progressMessages.push(`[${data.step}] ${data.message}`);
+
+                                // 实时更新右边栏的进度
+                                if (elements.verifyResult) {
+                                    let progressHtml = '<div style="margin-bottom: 10px;">';
+                                    progressHtml += '<div style="display: flex; align-items: center; gap: 8px;">';
+                                    progressHtml += '<i class="fas fa-spinner fa-spin" style="color: #1890ff;"></i>';
+                                    progressHtml += `<span>${data.message}</span>`;
+                                    progressHtml += '</div>';
+                                    progressHtml += '<div class="progress-bar" style="margin-top: 8px;">';
+                                    progressHtml += `<div class="progress-fill" style="width: ${data.progress}%;"></div>`;
+                                    progressHtml += '</div></div>';
+                                    elements.verifyResult.innerHTML = progressHtml;
+                                }
+                            } else if (data.type === 'result') {
+                                verifyResult = data.data;
+
+                                // 完成
+                                updateProgress(100, '完成');
+                                updateStatus('success', '验证完成');
+                                updateStepStatus('verify', 'completed', '已完成');
+
+                                // 显示验证结果（独立的验证结果区域）
+                                if (elements.verifyResult) {
+                                    // 显示验证完成标题
+                                    let fullResultHtml = '<div style="background: #f6ffed; border: 1px solid #b7eb8f; border-radius: 4px; padding: 12px; margin-bottom: 15px;">';
+                                    fullResultHtml += '<div style="display: flex; align-items: center; gap: 8px; margin-bottom: 10px;">';
+                                    fullResultHtml += '<i class="fas fa-check-circle" style="color: #52c41a;"></i>';
+                                    fullResultHtml += '<strong style="color: #52c41a;">验证完成</strong>';
+                                    fullResultHtml += '</div>';
+
+                                    // 显示验证报告
+                                    if (verifyResult.report) {
+                                        fullResultHtml += '<div style="max-height: 300px; overflow-y: auto;">';
+                                        fullResultHtml += marked.parse(verifyResult.report);
+                                        fullResultHtml += '</div>';
+                                    }
+                                    fullResultHtml += '</div>';
+
+                                    // 显示生成的示例数据（可折叠）
+                                    if (verifyResult.sampleData) {
+                                        fullResultHtml += '<details style="margin-bottom: 15px;"><summary style="cursor: pointer; font-weight: 500;"><i class="fas fa-database"></i> 生成的示例数据</summary>';
+                                        fullResultHtml += '<div style="background: #f5f5f5; padding: 10px; border-radius: 4px; font-size: 11px; max-height: 200px; overflow-y: auto;">';
+                                        fullResultHtml += '<pre style="margin: 0; white-space: pre-wrap;">' + JSON.stringify(verifyResult.sampleData, null, 2) + '</pre>';
+                                        fullResultHtml += '</div></details>';
+                                    }
+
+                                    // 显示操作按钮
+                                    fullResultHtml += '<div style="margin-top: 15px; display: flex; gap: 8px; flex-wrap: wrap;">';
+                                    if (verifyResult.previewUrl) {
+                                        fullResultHtml += '<button id="verify-pdf-btn" class="btn btn-primary btn-sm"><i class="fas fa-file-pdf"></i> PDF预览</button>';
+                                    }
+                                    if (verifyResult.downloadUrl) {
+                                        fullResultHtml += '<button id="verify-download-btn" class="btn btn-outline btn-sm"><i class="fas fa-download"></i> 下载文档</button>';
+                                    }
+                                    if (verifyResult.markedTemplateUrl) {
+                                        fullResultHtml += '<button id="download-marked-template-btn" class="btn btn-outline btn-sm" style="background: #e6f7ff; border-color: #1890ff;"><i class="fas fa-file-code"></i> 下载注入模版</button>';
+                                    }
+                                    fullResultHtml += '</div>';
+
+                                    elements.verifyResult.innerHTML = fullResultHtml;
+
+                                    // 绑定按钮事件
+                                    const pdfBtn = document.getElementById('verify-pdf-btn');
+                                    if (pdfBtn) {
+                                        pdfBtn.addEventListener('click', () => openPdfPreviewPopup(verifyResult.previewUrl));
+                                    }
+                                    const downloadBtn = document.getElementById('verify-download-btn');
+                                    if (downloadBtn) {
+                                        downloadBtn.addEventListener('click', () => downloadRenderedDocument(verifyResult.downloadUrl));
+                                    }
+                                    const markedTemplateBtn = document.getElementById('download-marked-template-btn');
+                                    if (markedTemplateBtn) {
+                                        markedTemplateBtn.addEventListener('click', () => downloadRenderedDocument(verifyResult.markedTemplateUrl));
+                                    }
+                                }
+
+                                showToast('验证完成', 'success');
+                            } else if (data.type === 'error') {
+                                throw new Error(data.error);
+                            }
+                        } catch (parseError) {
+                            // Skip invalid JSON
+                        }
+                    }
+                }
+            }
+
+        } catch (error) {
+            console.error('AI verify failed:', error);
+            updateProgress(0, '失败');
+            updateStatus('error', '验证失败: ' + error.message);
+            updateStepStatus('verify', 'error', '失败');
+
+            // 在验证结果区域显示错误
+            if (elements.verifyResultSection) {
+                elements.verifyResultSection.style.display = 'block';
+                elements.verifyResultSection.classList.add('expanded');
+            }
+            if (elements.verifyResult) {
+                elements.verifyResult.innerHTML = `<div style="color: #ff4d4f; background: #fff2f0; border: 1px solid #ffccc7; border-radius: 4px; padding: 12px;"><i class="fas fa-times-circle"></i> 验证失败: ${error.message}</div>`;
+            }
+            showToast('验证失败: ' + error.message, 'error');
+        } finally {
+            elements.aiVerifyBtn.disabled = false;
+            elements.aiVerifyBtn.innerHTML = '<i class="fas fa-check-double"></i> 验证模版';
+        }
+    }
+
+    // 打开PDF预览popup
+    function openPdfPreviewPopup(previewUrl) {
+        if (!previewUrl) {
+            showToast('预览链接不可用', 'warning');
+            return;
+        }
+
+        // 创建PDF预览弹窗
+        const popupWidth = 800;
+        const popupHeight = 600;
+        const left = (window.innerWidth - popupWidth) / 2;
+        const top = (window.innerHeight - popupHeight) / 2;
+
+        // 打开popup窗口
+        const popup = window.open(
+            previewUrl,
+            'pdfPreview',
+            `width=${popupWidth},height=${popupHeight},left=${left},top=${top},resizable=yes,scrollbars=yes`
+        );
+
+        if (!popup) {
+            // 如果popup被阻止，显示提示
+            showToast('弹出窗口被阻止，请允许弹出窗口或直接点击下载', 'warning');
+            // 提供直接链接
+            window.open(previewUrl, '_blank');
+        }
+    }
+
+    // 下载渲染后的文档
+    function downloadRenderedDocument(downloadUrl) {
+        if (!downloadUrl) {
+            showToast('下载链接不可用', 'warning');
+            return;
+        }
+
+        const a = document.createElement('a');
+        a.href = downloadUrl;
+        a.download = `verify_${state.selectedTemplate?.name || 'document'}`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+
+        showToast('文档已下载', 'success');
+    }
+
+    // 更新进度条
+    function updateProgress(percent, text) {
+        if (elements.progressFill) {
+            elements.progressFill.style.width = percent + '%';
+        }
+        if (elements.progressText) {
+            elements.progressText.textContent = text;
+        }
+    }
+
+    // 更新状态显示
+    function updateStatus(type, text) {
+        if (elements.statusText) {
+            elements.statusText.textContent = text;
+            elements.statusText.className = 'status-value ' + type;
+        }
+    }
+
+    // 更新步骤状态
+    function updateStepStatus(step, status, text) {
+        const statusEl = document.getElementById(`step-${step}-status`);
+        if (statusEl) {
+            statusEl.textContent = text || '';
+            statusEl.className = 'step-status ' + status;
+        }
+    }
+
+    // 显示执行进度
+    function showExecutionProgress(title) {
+        if (elements.executionProgress) {
+            elements.executionProgress.style.display = 'block';
+        }
+        if (elements.executionTitle) {
+            elements.executionTitle.textContent = title || '执行中...';
+        }
+        if (elements.executionProgressFill) {
+            elements.executionProgressFill.style.width = '0%';
+        }
+        if (elements.executionLog) {
+            elements.executionLog.innerHTML = '';
+        }
+    }
+
+    // 隐藏执行进度
+    function hideExecutionProgress() {
+        if (elements.executionProgress) {
+            elements.executionProgress.style.display = 'none';
+        }
+    }
+
+    // 更新执行进度
+    function updateExecutionProgress(percent, logMessage) {
+        if (elements.executionProgressFill) {
+            elements.executionProgressFill.style.width = percent + '%';
+        }
+        if (logMessage && elements.executionLog) {
+            const time = new Date().toLocaleTimeString();
+            elements.executionLog.innerHTML += `<div>[${time}] ${logMessage}</div>`;
+            elements.executionLog.scrollTop = elements.executionLog.scrollHeight;
+        }
+    }
+
+    // 添加执行日志
+    function addExecutionLog(message) {
+        if (elements.executionLog) {
+            const time = new Date().toLocaleTimeString();
+            elements.executionLog.innerHTML += `<div>[${time}] ${message}</div>`;
+            elements.executionLog.scrollTop = elements.executionLog.scrollHeight;
+        }
+    }
+
+    // 预览模版HTML
+    async function previewTemplateHtml() {
+        if (!state.selectedTemplate) {
+            showToast('请先选择一个模版', 'warning');
+            return;
+        }
+
+        try {
+            updateStatus('processing', '正在生成预览...');
+            const result = await apiRequest(`/templates/${state.selectedTemplate.id}/preview-html`);
+
+            // 显示预览模态框
+            const modal = document.getElementById('preview-modal');
+            const previewContent = document.getElementById('preview-content');
+
+            if (modal && previewContent) {
+                previewContent.innerHTML = result.html;
+                modal.style.display = 'flex';
+            } else {
+                // 创建临时预览窗口
+                const previewWindow = window.open('', '_blank', 'width=800,height=600');
+                if (previewWindow) {
+                    previewWindow.document.write(`
+                        <html>
+                        <head><title>模版预览 - ${state.selectedTemplate.name}</title>
+                        <style>body { font-family: Arial, sans-serif; padding: 20px; }</style>
+                        </head>
+                        <body>${result.html}</body>
+                        </html>
+                    `);
+                    previewWindow.document.close();
+                }
+            }
+            updateStatus('success', '预览生成完成');
+            showToast('预览已生成', 'success');
+        } catch (error) {
+            console.error('Preview failed:', error);
+            updateStatus('error', '预览失败: ' + error.message);
+            showToast('预览失败: ' + error.message, 'error');
+        }
+    }
+
+    // 生成示例文档预览
+    async function previewRenderDocument() {
+        if (!state.selectedTemplate) {
+            showToast('请先选择一个模版', 'warning');
+            return;
+        }
+
+        try {
+            updateStatus('processing', '正在生成示例文档...');
+
+            // 使用预览端点生成示例文档
+            const response = await fetch(`/api/preview`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    templateId: state.selectedTemplate.id,
+                    maxRows: 5
+                })
+            });
+
+            if (!response.ok) {
+                throw new Error(`预览请求失败: ${response.status}`);
+            }
+
+            // 获取文件blob
+            const blob = await response.blob();
+            const url = window.URL.createObjectURL(blob);
+
+            // 在新窗口打开或下载
+            const previewWindow = window.open(url, '_blank');
+            if (!previewWindow) {
+                // 如果无法打开新窗口，则下载文件
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `preview_${state.selectedTemplate.name || 'document'}`;
+                a.click();
+            }
+
+            updateStatus('success', '示例文档已生成');
+            showToast('示例文档已生成', 'success');
+        } catch (error) {
+            console.error('Render preview failed:', error);
+            updateStatus('error', '生成失败: ' + error.message);
+            showToast('生成失败: ' + error.message, 'error');
+        }
+    }
+
+    // 构建标记摘要
+    function buildMarkingSummary() {
+        const markings = state.manualMarkings || {};
+        const ignored = state.ignoredElements || {};
+        const elementGroups = state.elementGroups || {};
+        const ignoredGroups = state.ignoredGroups || {};
+        let summary = '';
+
+        if (Object.keys(markings).length > 0) {
+            summary += '已标记元素：\n';
+            Object.entries(markings).forEach(([idx, type]) => {
+                const el = state.xmlStructure?.orderedElements?.[idx];
+                if (el) {
+                    summary += `- 索引${idx}: [${type}] ${el.text?.substring(0, 30) || el.type}\n`;
+                }
+            });
+        }
+
+        if (Object.keys(ignored).length > 0) {
+            summary += '\n已忽略元素：\n';
+            Object.keys(ignored).forEach(idx => {
+                const el = state.xmlStructure?.orderedElements?.[idx];
+                if (el) {
+                    summary += `- 索引${idx}: ${el.text?.substring(0, 30) || el.type}\n`;
+                }
+            });
+        }
+
+        // 添加分组循环信息
+        if (Object.keys(elementGroups).length > 0) {
+            summary += '\n元素分组（循环）：\n';
+            Object.entries(elementGroups).forEach(([groupId, indices]) => {
+                if (indices && indices.length > 0) {
+                    const isIgnored = ignoredGroups[groupId];
+                    const groupContents = indices.map(idx => {
+                        const el = state.xmlStructure?.orderedElements?.[idx];
+                        if (!el) return '';
+                        if (el.type === 'image') return `图片(${el.imageId || ''})`;
+                        return el.text?.substring(0, 30) || el.type;
+                    }).join(' + ');
+                    summary += `- 分组${groupId.substring(0, 4)}: 索引[${indices.join(',')}] 包含 "${groupContents}"${isIgnored ? ' [已忽略/重复]' : ''}\n`;
+                    summary += `  重要：这是一个分组循环，这组元素应该作为循环体，生成类似 {#d.steps} ... {/d.steps} 的循环配置\n`;
+                }
+            });
+            if (Object.keys(ignoredGroups).length > 0) {
+                summary += `\n注意：有 ${Object.keys(ignoredGroups).length} 个分组被标记为重复/忽略，生成模板时将跳过这些分组。\n`;
+            }
+        }
+
+        return summary;
+    }
+
+    // Detect potential loops from document structure
+    function detectLoopsFromStructure(structure) {
+        const loops = [];
+
+        // Find tables that look like data tables
+        const tables = structure.elements?.filter(el => el.type === 'table') || [];
+
+        tables.forEach((table, index) => {
+            // Check if table has multiple data rows (more than just header)
+            const rowCount = table.tableRows?.length || 0;
+            if (rowCount > 2) {
+                // This looks like a data table that could be looped
+                const headerText = table.headerRow || '';
+
+                // Generate a loop path based on header content
+                let loopPath = `d.items`;
+                if (headerText.includes('Step') || headerText.includes('步骤')) {
+                    loopPath = 'd.steps';
+                } else if (headerText.includes('产品') || headerText.includes('商品')) {
+                    loopPath = 'd.products';
+                } else if (headerText.includes('用户') || headerText.includes('人员')) {
+                    loopPath = 'd.users';
+                }
+
+                loops.push({
+                    arrayPath: loopPath,
+                    tableIndex: index,
+                    headerRow: headerText,
+                    rowCount: rowCount
+                });
+            }
+        });
+
+        return loops;
+    }
+
+    // Render AI analysis result in sidebar
+    function renderAIAnalysisResult(suggestions, loops, contextAnalysis, templateConfig, images) {
+        if (!elements.aiAnalysisResult || !elements.aiResultContent) return;
+
+        let html = '';
+
+        // Show context analysis if available
+        if (contextAnalysis || templateConfig) {
+            const templateType = templateConfig?.templateType || contextAnalysis?.detectedTemplateType || '通用文档';
+            const userIntent = contextAnalysis?.userIntent || '';
+
+            html += `
+                <div class="ai-result-section" style="background:#e6f7ff;padding:10px;border-radius:4px;margin-bottom:12px;">
+                    <h4 style="margin:0 0 8px 0;color:#1890ff;font-size:13px;">
+                        <i class="fas fa-info-circle"></i> 模版类型: ${templateType}
+                    </h4>
+                    ${userIntent ? `<div style="font-size:12px;color:#666;margin-bottom:4px;">分析指令: ${userIntent}</div>` : ''}
+                    ${templateConfig?.analysisNotes?.length > 0 ? `
+                        <div style="font-size:12px;color:#52c41a;">
+                            ${templateConfig.analysisNotes.map(n => `<div>• ${n}</div>`).join('')}
+                        </div>
+                    ` : ''}
+                </div>
+            `;
+        }
+
+        // Show detected table loops
+        if (loops && loops.length > 0) {
+            html += '<div class="ai-result-section"><h4 style="margin-bottom:8px;color:#d46b08;"><i class="fas fa-sync"></i> 检测到的表格循环</h4>';
+            loops.forEach((loop, idx) => {
+                const rowCount = loop.dataRowCount || loop.rowCount || 0;
+                html += `
+                    <div class="ai-result-loop">
+                        <div class="ai-result-loop-header">
+                            <code>{#${loop.arrayPath}}</code>
+                            ${loop.confidence ? `<span class="badge badge-info" style="font-size:10px;">${Math.round(loop.confidence * 100)}%</span>` : ''}
+                        </div>
+                        <div style="font-size:12px;color:#666;margin-bottom:4px;">
+                            表格 ${idx + 1}: ${loop.headerRow?.substring(0, 40) || '数据表格'}...
+                            <br>数据行: ${rowCount} 行
+                        </div>
+                        ${loop.columnMappings && loop.columnMappings.length > 0 ? `
+                            <div style="font-size:11px;color:#999;margin-bottom:4px;">
+                                列映射: ${loop.columnMappings.slice(0, 3).map(c => `<code style="background:#f0f0f0;padding:1px 3px;margin:1px;">${c.headerName}→{${c.variablePath}}</code>`).join(' ')}
+                                ${loop.columnMappings.length > 3 ? `<span>+${loop.columnMappings.length - 3}更多</span>` : ''}
+                            </div>
+                        ` : ''}
+                        <div style="font-size:11px;color:#999;margin-bottom:4px;">
+                            ${loop.reason}
+                        </div>
+                        <button class="btn btn-outline btn-sm ai-apply-btn" data-type="loop" data-path="${loop.arrayPath}">
+                            应用循环
+                        </button>
+                    </div>
+                `;
+            });
+            html += '</div>';
+        }
+
+        // Show detected image loops
+        if (images && images.length > 0) {
+            html += '<div class="ai-result-section"><h4 style="margin-bottom:8px;color:#722ed1;"><i class="fas fa-images"></i> 检测到的图片循环</h4>';
+            images.forEach((img, idx) => {
+                html += `
+                    <div class="ai-result-item" style="background:#f9f0ff;">
+                        <div class="ai-result-variable">
+                            <code>{#${img.arrayPath}}</code>
+                            <span class="badge badge-info" style="font-size:10px;">图片</span>
+                        </div>
+                        <div style="font-size:12px;color:#666;">
+                            图片 ${idx + 1}: ${img.altText?.substring(0, 30) || 'Image'}...
+                        </div>
+                        <div style="font-size:11px;color:#999;margin-bottom:4px;">
+                            ${img.reason}
+                        </div>
+                        <button class="btn btn-outline btn-sm ai-apply-btn" data-type="imageLoop" data-path="${img.arrayPath}">
+                            应用图片循环
+                        </button>
+                    </div>
+                `;
+            });
+            html += '</div>';
+        }
+
+        // Show detected variables
+        if (suggestions && suggestions.length > 0) {
+            html += '<div class="ai-result-section"><h4 style="margin-bottom:8px;color:#1890ff;"><i class="fas fa-tags"></i> 检测到的变量</h4>';
+            suggestions.slice(0, 10).forEach((s, idx) => {
+                html += `
+                    <div class="ai-result-item">
+                        <div class="ai-result-variable">
+                            <code>{${s.path}}</code>
+                            <span class="badge badge-info">${s.type}</span>
+                        </div>
+                        <div style="font-size:12px;color:#666;margin-bottom:4px;">
+                            "${s.content?.substring(0, 30) || ''}${s.content?.length > 30 ? '...' : ''}"
+                        </div>
+                        <div style="font-size:11px;color:#999;margin-bottom:4px;">
+                            ${s.reason || ''}
+                        </div>
+                        <button class="btn btn-outline btn-sm ai-apply-btn" data-type="variable" data-path="${s.path}" data-content="${s.content || ''}">
+                            应用变量
+                        </button>
+                    </div>
+                `;
+            });
+            if (suggestions.length > 10) {
+                html += `<div style="text-align:center;color:#666;font-size:12px;padding:8px;">还有 ${suggestions.length - 10} 个变量...</div>`;
+            }
+            html += '</div>';
+        }
+
+        if (html === '') {
+            html = '<div style="text-align:center;color:#999;padding:20px;">未检测到明显的变量或循环结构</div>';
+        }
+
+        elements.aiResultContent.innerHTML = html;
+        elements.aiAnalysisResult.style.display = 'block';
+
+        // Bind apply button events
+        elements.aiResultContent.querySelectorAll('.ai-apply-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const type = btn.dataset.type;
+                const path = btn.dataset.path;
+                const content = btn.dataset.content;
+
+                if (type === 'loop') {
+                    applyLoop(path);
+                } else {
+                    applyVariable(path, content);
+                }
+            });
+        });
+    }
+
+    // Apply a detected loop
+    function applyLoop(loopPath) {
+        // Add loop to state
+        if (!state.selectedTemplate.loops) {
+            state.selectedTemplate.loops = [];
+        }
+
+        const exists = state.selectedTemplate.loops.some(l => l.arrayPath === loopPath);
+        if (!exists) {
+            state.selectedTemplate.loops.push({ arrayPath: loopPath });
+
+            // Update loops list in UI
+            renderLoopsList();
+
+            showToast(`已添加循环: {#${loopPath}}`, 'success');
+        } else {
+            showToast('该循环已存在', 'info');
+        }
+    }
+
+    // Apply a detected variable
+    function applyVariable(path, content) {
+        // Add to test data
+        addToTestData(path, content);
+
+        // Update variables list
+        const varItem = document.createElement('div');
+        varItem.className = 'variable-item';
+        varItem.innerHTML = `<code>{${path}}</code> <small style="color:#999">(${content.substring(0, 20)})</small>`;
+        elements.variablesList.appendChild(varItem);
+
+        // Update count
+        elements.varsCount.textContent = parseInt(elements.varsCount.textContent) + 1;
+
+        showToast(`已添加变量: {${path}}`, 'success');
+    }
+
+    // Render loops list
+    function renderLoopsList() {
+        if (!elements.loopsList || !state.selectedTemplate?.loops) return;
+
+        if (state.selectedTemplate.loops.length === 0) {
+            elements.loopsList.innerHTML = '<span class="empty-hint">No loops detected</span>';
+            return;
+        }
+
+        elements.loopsList.innerHTML = state.selectedTemplate.loops.map(l => `
+            <div class="loop-item">
+                <i class="fas fa-repeat"></i>
+                <code>{#${l.arrayPath}}</code>
+            </div>
+        `).join('');
     }
 
     function renderAISuggestions(suggestions) {
@@ -1324,17 +2230,42 @@
             return;
         }
 
+        const markings = state.manualMarkings || {};
+        const ignored = state.ignoredElements || {};
+        const elementGroups = state.elementGroups || {};
+        const ignoredGroups = state.ignoredGroups || {};
+        const markingCount = Object.keys(markings).length;
+        const ignoredCount = Object.keys(ignored).length;
+
+        updateStatus('processing', '保存配置中...');
+        updateStepStatus('config', 'in-progress', '保存中...');
+
         try {
+            // 将对象转换为数组格式
+            const markingsArray = Object.entries(markings).map(([index, type]) => ({
+                index: parseInt(index),
+                type: type,
+                path: '',
+                text: ''
+            }));
+
             await apiRequest(`/templates/${state.selectedTemplate.id}/markings`, {
                 method: 'POST',
                 body: JSON.stringify({
                     templateId: state.selectedTemplate.id,
-                    markings: state.manualMarkings
+                    markings: markingsArray,
+                    ignoredElements: Object.keys(ignored).map(idx => parseInt(idx)),
+                    elementGroups: elementGroups,
+                    ignoredGroups: Object.keys(ignoredGroups)
                 })
             });
 
-            showToast('Markings saved successfully', 'success');
+            updateStatus('success', '配置已保存');
+            updateStepStatus('config', 'completed', `${markingCount + ignoredCount}个`);
+            showToast(`配置已保存 (${markingCount}个标记, ${ignoredCount}个忽略)`, 'success');
         } catch (error) {
+            updateStatus('error', '保存失败');
+            updateStepStatus('config', 'error', '失败');
             showToast('Failed to save markings', 'error');
         }
     }
@@ -1386,8 +2317,15 @@
             updateZoom();
         });
 
-        // AI Identify button
-        elements.aiIdentifyBtn.addEventListener('click', aiIdentifyVariables);
+        // AI Generate button
+        if (elements.aiGenerateBtn) {
+            elements.aiGenerateBtn.addEventListener('click', performAIGenerate);
+        }
+
+        // AI Verify button
+        if (elements.aiVerifyBtn) {
+            elements.aiVerifyBtn.addEventListener('click', performAIVerify);
+        }
 
         // Selection controls
         elements.applyMarking.addEventListener('click', applyManualMarking);
@@ -1592,7 +2530,8 @@
                     text: text.substring(0, 100),
                     hasPreserve: child.outerHTML.includes('preserve'),
                     headerRow: apiTable.headerRow || '',
-                    dataRows: apiTable.dataRows || []
+                    dataRows: apiTable.dataRows || [],
+                    dataRowCount: apiTable.dataRowCount || (apiTable.dataRows ? apiTable.dataRows.length : 0)
                 });
             }
             // 检查是否是段落元素 (w:p) - 不在表格单元格内
@@ -1730,6 +2669,25 @@
         const showTables = elements.showTables.checked;
         const showParagraphs = elements.showParagraphs.checked;
 
+        // 统计各类型标记数量
+        const markings = state.manualMarkings || {};
+        const ignored = state.ignoredElements || {};
+        let paramCount = 0, loopCount = 0, staticCount = 0, ignoredCount = Object.keys(ignored).length;
+        Object.values(markings).forEach(type => {
+            if (type === 'param') paramCount++;
+            else if (type === 'loop') loopCount++;
+            else if (type === 'static') staticCount++;
+        });
+
+        // 更新图例显示数量
+        const legendItems = document.querySelectorAll('.structure-legend .legend-item');
+        if (legendItems.length >= 4) {
+            legendItems[0].innerHTML = `<span class="legend-color legend-param"></span> 参数${paramCount > 0 ? ` <span class="legend-count">(${paramCount})</span>` : ''}`;
+            legendItems[1].innerHTML = `<span class="legend-color legend-loop"></span> 循环${loopCount > 0 ? ` <span class="legend-count">(${loopCount})</span>` : ''}`;
+            legendItems[2].innerHTML = `<span class="legend-color legend-static"></span> 静态${staticCount > 0 ? ` <span class="legend-count">(${staticCount})</span>` : ''}`;
+            legendItems[3].innerHTML = `<span class="legend-color legend-ignore"></span> 忽略${ignoredCount > 0 ? ` <span class="legend-count">(${ignoredCount})</span>` : ''}`;
+        }
+
         let html = '<div class="structure-content">';
 
         // Document root
@@ -1746,48 +2704,173 @@
 
         html += '<div class="node-children expanded">';
 
+        // 统计标记数量
+        const markingCount = state.manualMarkings ? Object.keys(state.manualMarkings).length : 0;
+        // ignoredCount 已在上面声明
+
+        // 多选操作栏
+        const selectedCount = state.selectedElementIndices.length;
+        if (selectedCount > 0) {
+            html += `<div class="multi-select-bar">
+                <span class="selected-info">已选中 ${selectedCount} 个元素</span>
+                <button class="btn btn-primary btn-sm" id="merge-selected-btn" title="将选中元素合并为一个循环项">
+                    <i class="fas fa-layer-group"></i> 合并为循环项
+                </button>
+                <button class="btn btn-outline btn-sm" id="clear-selection-btn" title="取消选择">
+                    <i class="fas fa-times"></i> 取消选择
+                </button>
+            </div>`;
+        }
+
+        // 显示已有分组
+        const groups = state.elementGroups || {};
+        const ignoredGroups = state.ignoredGroups || {};
+        Object.entries(groups).forEach(([groupId, indices]) => {
+            if (indices && indices.length > 0) {
+                const indicesStr = indices.join(',');
+                const isIgnored = ignoredGroups[groupId];
+                const ignoredClass = isIgnored ? 'ignored-group' : '';
+                html += `<div class="element-group-bar ${ignoredClass}" data-group="${groupId}">
+                    <span class="group-label"><i class="fas fa-layer-group"></i> 分组 #${groupId.substring(0, 4)}</span>
+                    <span class="group-info">包含 ${indices.length} 个元素 (索引: ${indicesStr})</span>
+                    ${isIgnored ? '<span class="ignored-badge"><i class="fas fa-ban"></i> 已忽略(重复)</span>' : ''}
+                    <button class="btn btn-outline btn-sm btn-toggle-ignore" data-group="${groupId}" title="${isIgnored ? '取消忽略' : '标记为重复/忽略'}">
+                        <i class="fas ${isIgnored ? 'fa-undo' : 'fa-ban'}"></i> ${isIgnored ? '恢复' : '忽略'}
+                    </button>
+                    <button class="btn btn-outline btn-sm btn-remove-group" data-group="${groupId}" title="解散分组">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>`;
+            }
+        });
+
         // 按文档顺序渲染所有元素
         if (state.xmlStructure.orderedElements && state.xmlStructure.orderedElements.length > 0) {
             state.xmlStructure.orderedElements.forEach((el, idx) => {
                 const preserveClass = el.hasPreserve && showPreserve ? 'preserve-node' : '';
+                const marking = state.manualMarkings?.[idx];
+                // 默认是静态，只有明确标记才显示
+                const markedClass = marking ? `marked-${marking}` : '';
+                const defaultMark = !marking ? 'default-static' : '';
+                const isSelected = state.selectedElementIndices.includes(idx);
+                const selectedClass = isSelected ? 'selected-for-multi' : '';
+
+                // 检查是否在分组中
+                const inGroup = Object.entries(groups).find(([gId, indices]) => indices.includes(idx));
+                const groupClass = inGroup ? 'in-group' : '';
+                const groupInfo = inGroup ? `<span class="group-tag" title="分组 ${inGroup[0].substring(0, 4)}"><i class="fas fa-layer-group"></i></span>` : '';
+
+                // 检查是否被忽略
+                const isIgnored = state.ignoredElements?.[idx];
+                const ignoredClass = isIgnored ? 'ignored-element' : '';
+
+                // 如果元素在分组中，且分组第一个元素被标记为loop，则该元素也显示循环标记
+                const isFirstInGroup = inGroup && inGroup[1][0] === idx;
+                const isInGroupLoop = inGroup && state.manualMarkings?.[inGroup[1][0]] === 'loop';
+                const groupLoopClass = isInGroupLoop && !isFirstInGroup ? 'marked-loop-group' : '';
+
+                // 多选复选框
+                const checkboxHtml = `<input type="checkbox" class="node-checkbox" data-index="${idx}" ${isSelected ? 'checked' : ''} title="按住Ctrl多选">`;
+
+                // 生成开关按钮（一个按钮切换状态）
+                // 状态循环：未设置(默认静态) → 参数 → 循环 → 静态 → 未设置
+                // 对于分组中的非首元素，显示"分组循环"状态
+                let statusLabel = '静态'; // 默认
+                let statusIcon = 'fa-lock';
+                let statusClass = 'btn-static';
+                let isGroupMember = false; // 是否是分组成员（非首元素）
+
+                if (isInGroupLoop && !isFirstInGroup) {
+                    // 分组中的非首元素，显示分组循环状态（不可单独切换）
+                    statusLabel = '分组循环';
+                    statusIcon = 'fa-layer-group';
+                    statusClass = 'btn-loop-group';
+                    isGroupMember = true;
+                } else if (marking === 'param') {
+                    statusLabel = '参数';
+                    statusIcon = 'fa-code';
+                    statusClass = 'btn-param';
+                } else if (marking === 'loop') {
+                    // 对于表格，显示"循环数据行"
+                    if (el.type === 'table') {
+                        statusLabel = '循环数据行';
+                    } else if (isFirstInGroup && isInGroupLoop) {
+                        statusLabel = '分组循环';
+                    } else {
+                        statusLabel = '循环';
+                    }
+                    statusIcon = 'fa-repeat';
+                    statusClass = 'btn-loop';
+                } else if (marking === 'static') {
+                    statusLabel = '静态';
+                    statusIcon = 'fa-lock';
+                    statusClass = 'btn-static';
+                }
+
+                const toggleButton = `
+                    <span class="node-actions">
+                        <button class="node-action-btn ${statusClass} ${marking || isGroupMember ? 'active' : ''}"
+                                data-action="${isGroupMember ? 'group-info' : 'toggle'}" data-index="${idx}"
+                                title="${isGroupMember ? '此元素属于分组循环，点击分组首元素可修改' : '点击切换：静态→参数→循环→静态'}">
+                            <i class="fas ${statusIcon}"></i> ${statusLabel}
+                        </button>
+                        ${marking && !isGroupMember ? `<button class="node-action-btn btn-clear"
+                                data-action="clear" data-index="${idx}" title="清除标记">
+                            <i class="fas fa-times"></i>
+                        </button>` : ''}
+                        <button class="node-action-btn ${isIgnored ? 'btn-ignored active' : 'btn-ignore'}"
+                                data-action="ignore" data-index="${idx}"
+                                title="${isIgnored ? '取消忽略' : '标记为忽略/重复'}">
+                            <i class="fas ${isIgnored ? 'fa-ban' : 'fa-eye-slash'}"></i>
+                        </button>
+                    </span>`;
 
                 if (el.type === 'table' && showTables) {
                     // 表格节点 - 默认展开显示内容
-                    html += `<div class="structure-node table-node ${preserveClass}" data-type="table" data-order-index="${el.orderIndex}">
+                    html += `<div class="structure-node table-node ${preserveClass} ${markedClass} ${defaultMark} ${selectedClass} ${groupClass} ${groupLoopClass} ${ignoredClass}" data-type="table" data-order-index="${el.orderIndex}">
+                        ${checkboxHtml}
+                        ${groupInfo}
                         <span class="node-toggle">▼</span>
                         <span class="node-tag">&lt;w:tbl&gt;</span>
                         <span class="node-attr">rows="${el.rows}"</span>
                         ${el.hasPreserve ? '<span class="node-preserve">preserve</span>' : ''}
+                        ${toggleButton}
                     </div>`;
 
                     // 表格子节点 - 默认展开
                     html += '<div class="node-children expanded">';
 
-                    // 标题行（不可循环）
+                    // 标题行（不可循环）- 如果表格被标记为循环，标题行显示为静态
                     if (el.headerRow) {
-                        html += `<div class="structure-node table-header-node" data-type="table-header" data-table="${el.index}">
+                        const headerStaticClass = marking === 'loop' ? 'marked-static' : '';
+                        html += `<div class="structure-node table-header-node ${headerStaticClass}" data-type="table-header" data-table="${el.index}">
                             <span class="node-label">📋 标题行</span>
+                            ${marking === 'loop' ? '<span class="node-attr" style="color:#856404;background:#fff3cd;padding:2px 6px;border-radius:3px;">静态保留</span>' : ''}
                             <span class="node-text">${escapeHtml(el.headerRow)}</span>
                         </div>`;
                     }
 
-                    // 数据行（可循环）
-                    if (el.dataRows && el.dataRows.length > 0) {
-                        html += `<div class="structure-node table-data-node" data-type="table-data" data-table="${el.index}">
+                    // 数据行（可循环）- 如果表格被标记为循环，数据行显示循环标记
+                    if (el.dataRowCount > 0 || (el.dataRows && el.dataRows.length > 0)) {
+                        const rowCount = el.dataRowCount || (el.dataRows ? el.dataRows.length : 0);
+                        const dataLoopClass = marking === 'loop' ? 'marked-loop' : '';
+                        html += `<div class="structure-node table-data-node ${dataLoopClass}" data-type="table-data" data-table="${el.index}" data-row-count="${rowCount}">
                             <span class="node-label">🔄 数据行</span>
-                            <span class="node-attr">${el.dataRows.length}行可循环</span>
+                            ${marking === 'loop' ? '<span class="node-attr" style="color:#155724;background:#d4edda;padding:2px 6px;border-radius:3px;">将循环</span>' : '<span class="node-attr">可循环</span>'}
                         </div>`;
 
                         // 显示数据行内容
                         html += '<div class="node-children">';
-                        el.dataRows.slice(0, 3).forEach((row, rowIdx) => {
-                            html += `<div class="structure-node table-row-node" data-type="table-row">
-                                <span class="node-text">${escapeHtml(row.substring(0, 60))}${row.length > 60 ? '...' : ''}</span>
-                            </div>`;
-                        });
-                        if (el.dataRows.length > 3) {
+                        if (el.dataRows && el.dataRows.length > 0) {
+                            el.dataRows.slice(0, 3).forEach((row, rowIdx) => {
+                                html += `<div class="structure-node table-row-node" data-type="table-row">
+                                    <span class="node-text">${escapeHtml(row.substring(0, 60))}${row.length > 60 ? '...' : ''}</span>
+                                </div>`;
+                            });
+                        }
+                        if (rowCount > 3) {
                             html += `<div class="structure-node table-row-node">
-                                <span class="node-text">... 共${el.dataRows.length}行数据</span>
+                                <span class="node-text">... 更多数据</span>
                             </div>`;
                         }
                         html += '</div>';
@@ -1796,42 +2879,57 @@
                     html += '</div>'; // node-children
                 } else if (el.type === 'paragraph' && showParagraphs) {
                     const text = el.text.substring(0, 80) + (el.text.length > 80 ? '...' : '');
-                    html += `<div class="structure-node paragraph-node ${preserveClass}" data-type="paragraph" data-order-index="${el.orderIndex}">
+                    html += `<div class="structure-node paragraph-node ${preserveClass} ${markedClass} ${defaultMark} ${selectedClass} ${groupClass} ${groupLoopClass} ${ignoredClass}" data-type="paragraph" data-order-index="${el.orderIndex}">
+                        ${checkboxHtml}
+                        ${groupInfo}
                         <span class="node-tag">&lt;w:p&gt;</span>
                         ${el.hasPreserve ? '<span class="node-preserve">preserve</span>' : ''}
                         <span class="node-text">${escapeHtml(text)}</span>
+                        ${toggleButton}
                     </div>`;
                 } else if (el.type === 'image') {
                     // 图片节点
                     const sizeInfo = el.attributes?.widthPx ? `${el.attributes.widthPx}×${el.attributes.heightPx}px` : '';
-                    html += `<div class="structure-node image-node ${preserveClass}" data-type="image" data-order-index="${el.orderIndex}" data-image-id="${el.imageId || ''}">
+                    html += `<div class="structure-node image-node ${preserveClass} ${markedClass} ${defaultMark} ${selectedClass} ${groupClass} ${groupLoopClass} ${ignoredClass}" data-type="image" data-order-index="${el.orderIndex}" data-image-id="${el.imageId || ''}">
+                        ${checkboxHtml}
+                        ${groupInfo}
                         <span class="node-label">🖼️ 图片</span>
                         ${el.imageId ? `<span class="node-attr">id="${el.imageId}"</span>` : ''}
                         ${sizeInfo ? `<span class="node-attr">${sizeInfo}</span>` : ''}
                         <span class="node-text">${escapeHtml(el.altText || el.text || '')}</span>
+                        ${toggleButton}
                     </div>`;
                 } else if (el.type === 'list') {
                     // 列表节点
                     const text = el.text.substring(0, 80) + (el.text.length > 80 ? '...' : '');
-                    html += `<div class="structure-node list-node ${preserveClass}" data-type="list" data-order-index="${el.orderIndex}">
+                    html += `<div class="structure-node list-node ${preserveClass} ${markedClass} ${defaultMark} ${selectedClass} ${groupClass} ${groupLoopClass} ${ignoredClass}" data-type="list" data-order-index="${el.orderIndex}">
+                        ${checkboxHtml}
+                        ${groupInfo}
                         <span class="node-label">📝 列表项</span>
                         ${el.hasPreserve ? '<span class="node-preserve">preserve</span>' : ''}
                         <span class="node-text">${escapeHtml(text)}</span>
+                        ${toggleButton}
                     </div>`;
                 } else if (el.type === 'heading1' || el.type === 'heading2' || el.type === 'heading3') {
                     // 标题节点
                     const level = el.type.replace('heading', '');
                     const text = el.text.substring(0, 80) + (el.text.length > 80 ? '...' : '');
-                    html += `<div class="structure-node heading-node ${preserveClass}" data-type="${el.type}" data-order-index="${el.orderIndex}">
+                    html += `<div class="structure-node heading-node ${preserveClass} ${markedClass} ${defaultMark} ${selectedClass} ${groupClass} ${groupLoopClass} ${ignoredClass}" data-type="${el.type}" data-order-index="${el.orderIndex}">
+                        ${checkboxHtml}
+                        ${groupInfo}
                         <span class="node-label">📌 H${level}</span>
                         <span class="node-text">${escapeHtml(text)}</span>
+                        ${toggleButton}
                     </div>`;
                 } else if (el.type === 'title') {
                     // 标题节点
                     const text = el.text.substring(0, 80) + (el.text.length > 80 ? '...' : '');
-                    html += `<div class="structure-node title-node ${preserveClass}" data-type="title" data-order-index="${el.orderIndex}">
+                    html += `<div class="structure-node title-node ${preserveClass} ${markedClass} ${defaultMark} ${selectedClass} ${groupClass} ${groupLoopClass} ${ignoredClass}" data-type="title" data-order-index="${el.orderIndex}">
+                        ${checkboxHtml}
+                        ${groupInfo}
                         <span class="node-label">🏷️ 标题</span>
                         <span class="node-text">${escapeHtml(text)}</span>
+                        ${toggleButton}
                     </div>`;
                 }
             });
@@ -1846,7 +2944,132 @@
 
         html += '</div></div></div>';
 
+        // 显示标记统计
+        if (markingCount > 0 || ignoredCount > 0) {
+            html += `<div class="marking-summary">
+                <span>已标记 ${markingCount} 个元素${ignoredCount > 0 ? `, 已忽略 ${ignoredCount} 个` : ''}</span>
+                <button id="save-markings-btn" class="btn btn-primary btn-sm">
+                    <i class="fas fa-save"></i> 保存配置
+                </button>
+            </div>`;
+        }
+
         elements.structureTree.innerHTML = html;
+
+        // Add click handlers for action buttons
+        elements.structureTree.querySelectorAll('.node-action-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const action = btn.dataset.action;
+                const index = parseInt(btn.dataset.index);
+
+                if (!state.manualMarkings) state.manualMarkings = {};
+
+                if (action === 'toggle') {
+                    // 切换状态：未设置 → 参数 → 循环 → 静态 → 未设置
+                    const current = state.manualMarkings[index];
+                    if (!current || current === 'static') {
+                        state.manualMarkings[index] = 'param';
+                    } else if (current === 'param') {
+                        state.manualMarkings[index] = 'loop';
+                    } else if (current === 'loop') {
+                        state.manualMarkings[index] = 'static';
+                    }
+                } else if (action === 'clear') {
+                    delete state.manualMarkings[index];
+                } else if (action === 'ignore') {
+                    // 切换忽略状态
+                    if (!state.ignoredElements) state.ignoredElements = {};
+                    if (state.ignoredElements[index]) {
+                        delete state.ignoredElements[index];
+                    } else {
+                        state.ignoredElements[index] = true;
+                    }
+                }
+
+                // Re-render structure tree
+                renderStructureTree();
+            });
+        });
+
+        // Add save button handler
+        const saveBtn = document.getElementById('save-markings-btn');
+        if (saveBtn) {
+            saveBtn.addEventListener('click', saveManualMarkings);
+        }
+
+        // Add checkbox handlers for multi-selection
+        elements.structureTree.querySelectorAll('.node-checkbox').forEach(cb => {
+            cb.addEventListener('change', (e) => {
+                e.stopPropagation();
+                const index = parseInt(cb.dataset.index);
+                if (cb.checked) {
+                    if (!state.selectedElementIndices.includes(index)) {
+                        state.selectedElementIndices.push(index);
+                    }
+                } else {
+                    state.selectedElementIndices = state.selectedElementIndices.filter(i => i !== index);
+                }
+                // Re-render to show selection
+                renderStructureTree();
+            });
+            // Prevent click propagation to node
+            cb.addEventListener('click', (e) => {
+                e.stopPropagation();
+            });
+        });
+
+        // Add merge selected button handler
+        const mergeBtn = document.getElementById('merge-selected-btn');
+        if (mergeBtn) {
+            mergeBtn.addEventListener('click', () => {
+                mergeSelectedElements();
+            });
+        }
+
+        // Add clear selection button handler
+        const clearSelectionBtn = document.getElementById('clear-selection-btn');
+        if (clearSelectionBtn) {
+            clearSelectionBtn.addEventListener('click', () => {
+                state.selectedElementIndices = [];
+                renderStructureTree();
+            });
+        }
+
+        // Add remove group button handlers
+        elements.structureTree.querySelectorAll('.btn-remove-group').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const groupId = btn.dataset.group;
+                if (state.elementGroups[groupId]) {
+                    delete state.elementGroups[groupId];
+                    // 同时清除忽略状态
+                    if (state.ignoredGroups[groupId]) {
+                        delete state.ignoredGroups[groupId];
+                    }
+                    showToast('分组已解散', 'info');
+                    renderStructureTree();
+                }
+            });
+        });
+
+        // Add toggle ignore button handlers
+        elements.structureTree.querySelectorAll('.btn-toggle-ignore').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const groupId = btn.dataset.group;
+                if (!state.ignoredGroups) state.ignoredGroups = {};
+
+                if (state.ignoredGroups[groupId]) {
+                    delete state.ignoredGroups[groupId];
+                    showToast('分组已恢复', 'info');
+                } else {
+                    state.ignoredGroups[groupId] = true;
+                    showToast('分组已标记为忽略(重复)', 'warning');
+                }
+                renderStructureTree();
+            });
+        });
 
         // Add click handlers for structure nodes
         elements.structureTree.querySelectorAll('.structure-node[data-order-index]').forEach(node => {
@@ -1896,6 +3119,355 @@
         } else {
             // Use the first element if no exact match
             showToast(`Selected ${type} at position ${xmlIndex}`, 'info');
+        }
+    }
+
+    /**
+     * 保存手动标记到服务端
+     */
+    async function saveManualMarkings() {
+        if (!state.selectedTemplate) {
+            showToast('请先选择模板', 'warning');
+            return;
+        }
+
+        const markings = state.manualMarkings || {};
+        const ignored = state.ignoredElements || {};
+        const elementGroups = state.elementGroups || {};
+        const ignoredGroups = state.ignoredGroups || {};
+        const markingCount = Object.keys(markings).length;
+        const ignoredCount = Object.keys(ignored).length;
+
+        if (markingCount === 0 && ignoredCount === 0 && Object.keys(elementGroups).length === 0) {
+            showToast('没有需要保存的标记', 'warning');
+            return;
+        }
+
+        updateStatus('processing', '保存配置中...');
+        updateStepStatus('config', 'in-progress', '保存中...');
+
+        try {
+            // 保存到服务端
+            await apiRequest(`/templates/${state.selectedTemplate.id}/markings`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    templateId: state.selectedTemplate.id,
+                    markings: Object.entries(markings).map(([index, type]) => ({
+                        index: parseInt(index),
+                        type: type,
+                        path: '',
+                        text: ''
+                    })),
+                    ignoredElements: Object.keys(ignored).map(idx => parseInt(idx)),
+                    elementGroups: elementGroups,
+                    ignoredGroups: Object.keys(ignoredGroups)
+                })
+            });
+
+            updateStatus('success', '配置已保存');
+            updateStepStatus('config', 'completed', `${markingCount + ignoredCount}个`);
+            showToast(`已保存 ${markingCount} 个标记配置，${ignoredCount} 个忽略元素`, 'success');
+        } catch (error) {
+            console.error('Save markings failed:', error);
+            updateStatus('error', '保存失败');
+            updateStepStatus('config', 'error', '失败');
+            showToast('保存失败: ' + error.message, 'error');
+        }
+    }
+
+    /**
+     * 合并选中的元素为一个循环项
+     */
+    function mergeSelectedElements() {
+        if (state.selectedElementIndices.length < 2) {
+            showToast('请至少选择2个元素进行合并', 'warning');
+            return;
+        }
+
+        // 排序索引确保顺序正确
+        const indices = [...state.selectedElementIndices].sort((a, b) => a - b);
+
+        // 创建新分组
+        const groupId = 'group_' + Date.now();
+        if (!state.elementGroups) state.elementGroups = {};
+        state.elementGroups[groupId] = indices;
+
+        // 清空选中状态
+        state.selectedElementIndices = [];
+
+        // 将分组的第一个元素标记为循环
+        if (!state.manualMarkings) state.manualMarkings = {};
+        state.manualMarkings[indices[0]] = 'loop';
+
+        showToast(`已将 ${indices.length} 个元素合并为循环项`, 'success');
+        renderStructureTree();
+    }
+
+    /**
+     * 加载已保存的标记
+     */
+    async function loadSavedMarkings() {
+        if (!state.selectedTemplate) return;
+
+        try {
+            const result = await apiRequest(`/templates/${state.selectedTemplate.id}/markings`);
+
+            if (result.markings && result.markings.length > 0) {
+                state.manualMarkings = {};
+                result.markings.forEach(m => {
+                    if (m.index !== undefined) {
+                        state.manualMarkings[m.index] = m.type;
+                    }
+                });
+            }
+
+            // 加载忽略元素
+            if (result.ignoredElements && result.ignoredElements.length > 0) {
+                state.ignoredElements = {};
+                result.ignoredElements.forEach(idx => {
+                    state.ignoredElements[idx] = true;
+                });
+            }
+
+            // 加载元素分组
+            if (result.elementGroups && Object.keys(result.elementGroups).length > 0) {
+                state.elementGroups = result.elementGroups;
+            }
+
+            // 加载忽略的分组
+            if (result.ignoredGroups && result.ignoredGroups.length > 0) {
+                state.ignoredGroups = {};
+                result.ignoredGroups.forEach(groupId => {
+                    state.ignoredGroups[groupId] = true;
+                });
+            }
+
+            // 如果当前在结构视图且xmlStructure已解析，重新渲染
+            if (state.currentSourceView === 'structure' && state.xmlStructure) {
+                renderStructureTree();
+            }
+
+            // 更新配置状态
+            const markingCount = Object.keys(state.manualMarkings || {}).length;
+            const ignoredCount = Object.keys(state.ignoredElements || {}).length;
+            if (markingCount > 0 || ignoredCount > 0) {
+                updateStepStatus('config', 'completed', `${markingCount + ignoredCount}个`);
+                updateStatus('idle', '已保存配置，等待生成');
+            }
+        } catch (error) {
+            console.error('Load markings failed:', error);
+        }
+    }
+
+    /**
+     * Load saved template configuration
+     * 加载已保存的模板配置
+     */
+    async function loadSavedTemplateConfig() {
+        if (!state.selectedTemplate) return;
+
+        try {
+            const result = await apiRequest(`/templates/${state.selectedTemplate.id}/config`);
+
+            if (result.templateConfig) {
+                state.templateConfig = result.templateConfig;
+                // 如果有保存的配置，显示它并更新状态
+                if (state.currentSourceView === 'structure') {
+                    displayAIConfigResult({ templateConfig: result.templateConfig });
+                }
+                // 更新步骤状态显示生成已完成
+                updateStepStatus('generate', 'completed', '已完成');
+                // 更新状态文本
+                updateStatus('success', '模版配置已加载');
+                // 启用验证按钮
+                if (elements.aiVerifyBtn) {
+                    elements.aiVerifyBtn.disabled = false;
+                    elements.aiVerifyBtn.classList.remove('disabled');
+                }
+                console.log('Loaded saved template config:', result.templateConfig);
+            } else {
+                // 没有保存的配置时，显示等待生成状态
+                updateStepStatus('generate', 'pending', '等待生成');
+                updateStatus('pending', '等待生成模版配置');
+            }
+            // 加载已保存的验证结果
+            loadSavedVerifyResult();
+        } catch (error) {
+            console.error('Load template config failed:', error);
+        }
+    }
+
+    /**
+     * Load saved verify result
+     * 加载已保存的AI验证结果
+     */
+    async function loadSavedVerifyResult() {
+        if (!state.selectedTemplate) return;
+
+        try {
+            // 获取模版元数据，其中包含verifyResult
+            const result = await apiRequest(`/templates/${state.selectedTemplate.id}`);
+
+            if (result.verifyResult) {
+                const verifyResult = result.verifyResult;
+                console.log('Loaded saved verify result:', verifyResult);
+
+                // 更新步骤状态显示验证已完成
+                updateStepStatus('verify', 'completed', '已完成');
+
+                // 在验证结果区域显示保存的结果
+                if (elements.verifyResultSection) {
+                    elements.verifyResultSection.style.display = 'block';
+                    elements.verifyResultSection.classList.add('expanded');
+                }
+                if (elements.verifyResult) {
+                    // 显示验证完成标题
+                    let fullResultHtml = '<div style="background: #f6ffed; border: 1px solid #b7eb8f; border-radius: 4px; padding: 12px; margin-bottom: 15px;">';
+                    fullResultHtml += '<div style="display: flex; align-items: center; gap: 8px; margin-bottom: 10px;">';
+                    fullResultHtml += '<i class="fas fa-check-circle" style="color: #52c41a;"></i>';
+                    fullResultHtml += '<strong style="color: #52c41a;">验证完成</strong>';
+                    if (verifyResult.verifiedAt) {
+                        const verifiedDate = new Date(verifyResult.verifiedAt);
+                        fullResultHtml += `<span style="color: #666; font-size: 12px;">(${verifiedDate.toLocaleString()})</span>`;
+                    }
+                    fullResultHtml += '</div>';
+
+                    // 显示验证报告
+                    if (verifyResult.report) {
+                        fullResultHtml += '<div style="max-height: 300px; overflow-y: auto;">';
+                        fullResultHtml += marked.parse(verifyResult.report);
+                        fullResultHtml += '</div>';
+                    }
+                    fullResultHtml += '</div>';
+
+                    // 显示生成的示例数据（可折叠）
+                    if (verifyResult.sampleData) {
+                        fullResultHtml += '<details style="margin-bottom: 15px;"><summary style="cursor: pointer; font-weight: 500;"><i class="fas fa-database"></i> 生成的示例数据</summary>';
+                        fullResultHtml += '<div style="background: #f5f5f5; padding: 10px; border-radius: 4px; font-size: 11px; max-height: 200px; overflow-y: auto;">';
+                        fullResultHtml += '<pre style="margin: 0; white-space: pre-wrap;">' + JSON.stringify(verifyResult.sampleData, null, 2) + '</pre>';
+                        fullResultHtml += '</div></details>';
+                    }
+
+                    // 显示操作按钮
+                    fullResultHtml += '<div style="margin-top: 15px; display: flex; gap: 8px; flex-wrap: wrap;">';
+                    if (verifyResult.previewUrl) {
+                        fullResultHtml += '<button id="verify-pdf-btn" class="btn btn-primary btn-sm"><i class="fas fa-file-pdf"></i> PDF预览</button>';
+                    }
+                    if (verifyResult.downloadUrl) {
+                        fullResultHtml += '<button id="verify-download-btn" class="btn btn-outline btn-sm"><i class="fas fa-download"></i> 下载文档</button>';
+                    }
+                    if (verifyResult.markedTemplateUrl) {
+                        fullResultHtml += '<button id="download-marked-template-btn" class="btn btn-outline btn-sm" style="background: #e6f7ff; border-color: #1890ff;"><i class="fas fa-file-code"></i> 下载注入模版</button>';
+                    }
+                    fullResultHtml += '</div>';
+
+                    elements.verifyResult.innerHTML = fullResultHtml;
+
+                    // 绑定按钮事件
+                    const pdfBtn = document.getElementById('verify-pdf-btn');
+                    if (pdfBtn) {
+                        pdfBtn.addEventListener('click', () => openPdfPreviewPopup(verifyResult.previewUrl));
+                    }
+                    const downloadBtn = document.getElementById('verify-download-btn');
+                    if (downloadBtn) {
+                        downloadBtn.addEventListener('click', () => downloadRenderedDocument(verifyResult.downloadUrl));
+                    }
+                    const markedTemplateBtn = document.getElementById('download-marked-template-btn');
+                    if (markedTemplateBtn) {
+                        markedTemplateBtn.addEventListener('click', () => downloadRenderedDocument(verifyResult.markedTemplateUrl));
+                    }
+                }
+            } else {
+                // 没有保存的验证结果时，显示等待验证状态
+                updateStepStatus('verify', 'pending', '等待验证');
+                if (elements.verifyResultSection) {
+                    elements.verifyResultSection.style.display = 'none';
+                }
+                if (elements.verifyResult) {
+                    elements.verifyResult.innerHTML = '';
+                }
+            }
+        } catch (error) {
+            console.error('Load verify result failed:', error);
+        }
+    }
+
+    /**
+     * Display AI configuration result
+     * 显示AI配置结果
+     */
+    function displayAIConfigResult(response) {
+        const config = response.templateConfig || {};
+
+        let html = '<div class="ai-config-result">';
+
+        // 显示模版类型
+        if (config.templateType) {
+            html += `<div class="config-section">
+                <h4><i class="fas fa-file-alt"></i> 模版类型: ${config.templateType}</h4>
+            </div>`;
+        }
+
+        // 显示静态元素
+        if (config.staticElements && config.staticElements.length > 0) {
+            html += `<div class="config-section">
+                <h4><i class="fas fa-lock"></i> 静态元素 (${config.staticElements.length})</h4>
+                <ul>`;
+            config.staticElements.forEach(el => {
+                html += `<li><code>${el.content || ''}</code> - ${el.reason || ''}</li>`;
+            });
+            html += '</ul></div>';
+        }
+
+        // 显示循环配置
+        if (config.tableLoops && config.tableLoops.length > 0) {
+            html += `<div class="config-section">
+                <h4><i class="fas fa-repeat"></i> 循环表格 (${config.tableLoops.length})</h4>
+                <ul>`;
+            config.tableLoops.forEach(loop => {
+                html += `<li>
+                    <code>${loop.arrayPath}</code> - ${loop.reason}
+                    <br><small>列映射: ${loop.columnMappings?.map(c => c.headerName + '→' + c.variablePath).join(', ')}</small>
+                </li>`;
+            });
+            html += '</ul></div>';
+        }
+
+        // 显示组合变量
+        if (config.combinedVariables && config.combinedVariables.length > 0) {
+            html += `<div class="config-section">
+                <h4><i class="fas fa-images"></i> 组合变量 (${config.combinedVariables.length})</h4>
+                <ul>`;
+            config.combinedVariables.forEach(cv => {
+                html += `<li>
+                    <code>${cv.imagePath}</code> - Step ${cv.stepNumber}
+                    <br><small>${cv.reason}</small>
+                </li>`;
+            });
+            html += '</ul></div>';
+        }
+
+        // 显示变量映射
+        if (config.variableMappings && config.variableMappings.length > 0) {
+            html += `<div class="config-section">
+                <h4><i class="fas fa-code"></i> 变量映射 (${config.variableMappings.length})</h4>
+                <ul>`;
+            config.variableMappings.forEach(vm => {
+                html += `<li>
+                    <code>${vm.path}</code> (${vm.type})
+                    <br><small>${vm.reason}</small>
+                </li>`;
+            });
+            html += '</ul></div>';
+        }
+
+        html += '</div>';
+
+        // 显示结果
+        if (elements.aiGenerateResultSection && elements.aiGenerateResult) {
+            elements.aiGenerateResultSection.style.display = 'block';
+            elements.aiGenerateResult.innerHTML = html;
         }
     }
 

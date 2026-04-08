@@ -47,6 +47,86 @@
                         <small>DOCX, XLSX, PPTX, HTML</small>
                     </div>
                 </div>
+
+                <!-- Operations Section - 按操作顺序排列 -->
+                <div class="sidebar-section" id="operations-section" style="display: none;">
+                    <h3><i class="fas fa-tasks"></i> Operations</h3>
+                    <div class="operations-list">
+                        <!-- Step 1: 解析模版 -->
+                        <div class="operation-step">
+                            <div class="step-header">
+                                <span class="step-number">1</span>
+                                <span class="step-title">解析模版</span>
+                                <span class="step-status" id="step-parse-status"></span>
+                            </div>
+                            <div class="step-desc">上传或选择模版后自动解析</div>
+                        </div>
+
+                        <!-- Step 2: 人工配置 -->
+                        <div class="operation-step">
+                            <div class="step-header">
+                                <span class="step-number">2</span>
+                                <span class="step-title">人工配置</span>
+                                <span class="step-status" id="step-config-status"></span>
+                            </div>
+                            <div class="step-desc">在结构视图标记元素</div>
+                            <div class="step-actions">
+                                <button id="save-btn" class="btn btn-outline btn-sm btn-block">
+                                    <i class="fas fa-save"></i> Save
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Step 3: AI生成模版 -->
+                        <div class="operation-step">
+                            <div class="step-header">
+                                <span class="step-number">3</span>
+                                <span class="step-title">AI生成模版</span>
+                                <span class="step-status" id="step-generate-status"></span>
+                            </div>
+                            <div class="step-desc">根据标记生成模版配置</div>
+                            <div class="step-actions">
+                                <button id="ai-generate-btn" class="btn btn-primary btn-sm btn-block" title="AI生成模版配置">
+                                    <i class="fas fa-magic"></i> 生成模版
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Step 4: AI验证模版 -->
+                        <div class="operation-step">
+                            <div class="step-header">
+                                <span class="step-number">4</span>
+                                <span class="step-title">AI验证模版</span>
+                                <span class="step-status" id="step-verify-status"></span>
+                            </div>
+                            <div class="step-desc">验证模版配置生成示例报告</div>
+                            <div class="step-actions">
+                                <button id="ai-verify-btn" class="btn btn-outline btn-sm btn-block" title="AI验证模版配置">
+                                    <i class="fas fa-check-double"></i> 验证模版
+                                </button>
+                            </div>
+                            <!-- AI验证结果已移至右侧栏显示 -->
+                        </div>
+
+                        <!-- Step 5: 人工微调 -->
+                        <div class="operation-step">
+                            <div class="step-header">
+                                <span class="step-number">5</span>
+                                <span class="step-title">人工微调</span>
+                                <span class="step-status" id="step-finetune-status"></span>
+                            </div>
+                            <div class="step-desc">查看结果并调整配置</div>
+                            <div class="step-actions">
+                                <button id="validate-btn" class="btn btn-outline btn-sm btn-block">
+                                    <i class="fas fa-check-circle"></i> Validate
+                                </button>
+                                <button id="render-btn" class="btn btn-outline btn-sm btn-block">
+                                    <i class="fas fa-play"></i> Render
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </aside>
 
             <!-- Content Area -->
@@ -131,6 +211,12 @@
                                             <input type="checkbox" id="show-paragraphs" checked> Show paragraphs
                                         </label>
                                     </div>
+                                    <div class="structure-legend">
+                                        <span class="legend-item"><span class="legend-color legend-param"></span> 参数</span>
+                                        <span class="legend-item"><span class="legend-color legend-loop"></span> 循环</span>
+                                        <span class="legend-item"><span class="legend-color legend-static"></span> 静态</span>
+                                        <span class="legend-item"><span class="legend-color legend-ignore"></span> 忽略</span>
+                                    </div>
                                     <div class="structure-container">
                                         <div id="structure-tree" class="structure-tree"></div>
                                     </div>
@@ -142,28 +228,36 @@
                     <!-- Resize Handle -->
                     <div class="resize-handle"></div>
 
-                    <!-- Right Panel: Editor Settings -->
+                    <!-- Right Panel: Results & Status -->
                     <div class="panel-right">
                         <div class="panel-header">
                             <span class="panel-title">
-                                <i class="fas fa-cog"></i> Editor
+                                <i class="fas fa-chart-bar"></i> Results
                             </span>
-                            <div class="panel-actions">
-                                <button id="ai-identify-btn" class="btn btn-outline btn-sm">
-                                    <i class="fas fa-magic"></i> AI Analyze
-                                </button>
-                                <button id="validate-btn" class="btn btn-outline btn-sm">
-                                    <i class="fas fa-check-circle"></i> Validate
-                                </button>
-                                <button id="save-btn" class="btn btn-primary btn-sm">
-                                    <i class="fas fa-save"></i> Save
-                                </button>
-                                <button id="render-btn" class="btn btn-primary btn-sm">
-                                    <i class="fas fa-play"></i> Render
-                                </button>
-                            </div>
                         </div>
                         <div class="panel-body scrollable">
+                            <!-- Real-time Status Section -->
+                            <div class="editor-section" id="status-section">
+                                <h4><i class="fas fa-info-circle"></i> Status</h4>
+                                <div id="current-status" class="status-display">
+                                    <div class="status-item">
+                                        <span class="status-label">当前状态：</span>
+                                        <span id="status-text" class="status-value">等待操作</span>
+                                    </div>
+                                </div>
+                                <!-- Execution Progress -->
+                                <div id="execution-progress" style="display: none; margin-top: 12px; padding: 12px; background: #e6f7ff; border: 1px solid #91d5ff; border-radius: 4px;">
+                                    <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
+                                        <i class="fas fa-spinner fa-spin" style="color: #1890ff;"></i>
+                                        <span id="execution-title" style="font-weight: 500; color: #1890ff;">执行中...</span>
+                                    </div>
+                                    <div class="progress-bar" style="margin: 8px 0;">
+                                        <div id="execution-progress-fill" class="progress-fill" style="width: 0%; background: #1890ff;"></div>
+                                    </div>
+                                    <div id="execution-log" style="font-size: 11px; color: #666; max-height: 100px; overflow-y: auto;"></div>
+                                </div>
+                            </div>
+
                             <!-- Selection Info -->
                             <div id="selection-section" class="editor-section" style="display: none;">
                                 <h4><i class="fas fa-mouse-pointer"></i> Selected Element</h4>
@@ -190,51 +284,34 @@
                                 </div>
                             </div>
 
-                            <!-- Document Elements Section -->
-                            <div class="editor-section">
-                                <h4>
-                                    <i class="fas fa-sitemap"></i> Document Elements
-                                    <span id="elements-count" class="badge badge-info">0</span>
+                            <!-- AI Result Section - 可展开收缩的报告区域 -->
+                            <div class="editor-section collapsible-section" id="ai-generate-result-section" style="display: none;">
+                                <h4 class="collapsible-header" onclick="toggleCollapsible(this)">
+                                    <i class="fas fa-chevron-right collapse-icon"></i>
+                                    <i class="fas fa-cogs"></i> AI 结果报告
                                 </h4>
-                                <div id="document-elements-list" class="document-elements-list">
-                                    <span class="empty-hint">Select a template to view elements</span>
+                                <div class="collapsible-content">
+                                    <!-- Progress indicator -->
+                                    <div id="ai-progress" style="display: none;">
+                                        <div class="progress-bar">
+                                            <div id="progress-fill" class="progress-fill" style="width: 0%;"></div>
+                                        </div>
+                                        <div id="progress-text" class="progress-text">准备中...</div>
+                                    </div>
+                                    <!-- Result display -->
+                                    <div id="ai-generate-result" style="background: #f6ffed; border: 1px solid #b7eb8f; border-radius: 4px; padding: 10px; font-size: 12px; max-height: 400px; overflow-y: auto;"></div>
                                 </div>
                             </div>
 
-                            <!-- Variables Section -->
-                            <div class="editor-section">
-                                <h4>
-                                    <i class="fas fa-code"></i> Variables
-                                    <span id="vars-count" class="badge badge-info">0</span>
+                            <!-- Verify Result Section - 验证结果区域 -->
+                            <div class="editor-section collapsible-section" id="verify-result-section" style="display: none;">
+                                <h4 class="collapsible-header" onclick="toggleCollapsible(this)">
+                                    <i class="fas fa-chevron-right collapse-icon"></i>
+                                    <i class="fas fa-check-double"></i> 验证结果
                                 </h4>
-                                <div id="variables-list" class="variables-list">
-                                    <span class="empty-hint">No variables detected</span>
+                                <div class="collapsible-content">
+                                    <div id="verify-result" style="background: #f6ffed; border: 1px solid #b7eb8f; border-radius: 4px; padding: 10px; font-size: 12px; max-height: 500px; overflow-y: auto;"></div>
                                 </div>
-                            </div>
-
-                            <!-- AI Suggestions Section -->
-                            <div class="editor-section">
-                                <h4>
-                                    <i class="fas fa-robot"></i> AI Suggestions
-                                    <span id="suggestions-count" class="badge badge-success" style="display: none;">0</span>
-                                </h4>
-                                <div id="ai-suggestions-list" class="ai-suggestions-list">
-                                    <span class="empty-hint">Click "AI Analyze" to detect potential variables</span>
-                                </div>
-                            </div>
-
-                            <!-- Loops Section -->
-                            <div class="editor-section">
-                                <h4><i class="fas fa-repeat"></i> Loops</h4>
-                                <div id="loops-list" class="loops-list">
-                                    <span class="empty-hint">No loops detected</span>
-                                </div>
-                            </div>
-
-                            <!-- Test Data Section -->
-                            <div class="editor-section">
-                                <h4><i class="fas fa-database"></i> Test Data (JSON)</h4>
-                                <textarea id="test-data" placeholder='{"name": "John", "items": [{"name": "Item 1"}]}'></textarea>
                             </div>
                         </div>
                     </div>
@@ -293,8 +370,31 @@
                 </div>
             </div>
         </div>
+
+        <!-- Preview Modal -->
+        <div id="preview-modal" class="modal">
+            <div class="modal-content modal-large">
+                <div class="modal-header">
+                    <h3><i class="fas fa-eye"></i> 模版预览</h3>
+                    <button class="modal-close">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <div id="preview-content" style="background: #fff; padding: 20px; min-height: 300px; border: 1px solid #eee; overflow: auto;"></div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-outline modal-cancel">关闭</button>
+                </div>
+            </div>
+        </div>
     </div>
 
+    <script>
+        // 展开收缩功能
+        function toggleCollapsible(header) {
+            const section = header.closest('.collapsible-section');
+            section.classList.toggle('expanded');
+        }
+    </script>
     <script src="/js/app.js"></script>
 </body>
 </html>
