@@ -3,6 +3,14 @@ import react from '@vitejs/plugin-react';
 import fs from 'fs';
 import path from 'path';
 
+// 检测是否在 Docker 容器中运行
+const isDocker = fs.existsSync('/.dockerenv') || process.env.DOCKER === 'true';
+
+// 根据环境选择证书路径
+const certsPath = isDocker
+  ? '/app/certs'  // Docker 容器内路径
+  : path.resolve(__dirname, '../../docker/office-addin/certs');
+
 export default defineConfig({
   plugins: [
     react(),
@@ -22,8 +30,8 @@ export default defineConfig({
     port: 3000,
     host: '0.0.0.0',
     https: {
-      key: fs.readFileSync(path.resolve(__dirname, '../../docker/office-addin/certs/server.key')),
-      cert: fs.readFileSync(path.resolve(__dirname, '../../docker/office-addin/certs/server.crt')),
+      key: fs.readFileSync(path.join(certsPath, 'server.key')),
+      cert: fs.readFileSync(path.join(certsPath, 'server.crt')),
     },
     strictPort: true,
   },
