@@ -1,14 +1,55 @@
 # Office Add-in Sideload 指南
 
-## 方法一：通过 Office 应用加载（推荐）
+## 快速启动（推荐）
+
+```bash
+# 一键启动所有服务并加载 Add-in
+cd docker
+chmod +x start-all.sh
+./start-all.sh
+```
+
+此脚本会：
+1. 启动 Docker 服务
+2. 信任 SSL 证书（需要密码）
+3. 下载 Manifest 文件
+4. 自动加载到 Office
+
+---
+
+## 方法一：命令行自动加载
+
+```bash
+# 安装工具
+npm install -g office-addin-debugging
+
+# 下载 manifest
+curl -k https://localhost:3000/manifest-word.xml -o /tmp/manifest-word.xml
+
+# 加载到 Word
+office-addin-debugging start /tmp/manifest-word.xml
+
+# 加载到 Excel
+curl -k https://localhost:3000/manifest-excel.xml -o /tmp/manifest-excel.xml
+office-addin-debugging start /tmp/manifest-excel.xml
+
+# 加载到 PowerPoint
+curl -k https://localhost:3000/manifest-ppt.xml -o /tmp/manifest-ppt.xml
+office-addin-debugging start /tmp/manifest-ppt.xml
+```
+
+---
+
+## 方法二：通过 Office 应用加载
 
 ### Word 2016+ / Microsoft 365
 
 1. 打开 Word
-2. 点击 **插入** 选项卡
-3. 点击 **加载项** → **我的加载项**
-4. 如果看到 **上传我的加载项**，点击它
-5. 选择 `manifest-word.xml` 文件
+2. 点击 **文件** → **选项** → **自定义功能区**
+3. 勾选 **开发工具** → 确定
+4. 点击 **开发工具** 选项卡
+5. 点击 **加载项** → **添加**
+6. 选择 `manifest-word.xml` 文件
 
 ### Excel
 
@@ -68,6 +109,32 @@ npm run sideload:word
 ---
 
 ## 常见问题
+
+### Q: 提示"加载项错误"？
+
+**最常见原因：SSL 证书不被信任**
+
+**解决方案 (MacOS)：**
+```bash
+# 方法1: 命令行信任
+sudo security add-trusted-cert -d -r trustRoot -k /Library/Keychains/System.keychain docker/office-addin/certs/server.crt
+
+# 方法2: 钥匙串访问
+# 1. 打开"钥匙串访问"应用
+# 2. 文件 → 导入项目 → 选择 docker/office-addin/certs/server.crt
+# 3. 双击证书 → 信任 → 设置为"始终信任"
+```
+
+**解决方案 (Windows)：**
+```powershell
+# 以管理员身份运行 PowerShell
+certutil -addstore "Root" docker\office-addin\certs\server.crt
+```
+
+**检查清单：**
+1. 确保服务已启动: `curl -k https://localhost:3000/health`
+2. 确保 SSL 证书已信任（打开浏览器访问 https://localhost:3000 不报警告）
+3. 检查 manifest 文件中的 URL 是 `https://localhost:3000`
 
 ### Q: 找不到"上传我的加载项"选项？
 
