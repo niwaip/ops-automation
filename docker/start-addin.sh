@@ -56,9 +56,25 @@ rm -rf ~/Library/Containers/com.microsoft.Excel/Data/Documents/wef/*.xml 2>/dev/
 rm -rf ~/Library/Containers/com.microsoft.Powerpoint/Data/Documents/wef/*.xml 2>/dev/null
 echo "   ✅ 已清理"
 
-# 6. 加载Add-in
+# 6. 部署manifest到有效目录
 echo ""
-echo "6. 加载Word Add-in..."
+echo "6. 部署Manifest到Word有效目录..."
+WORD_WEF_DIR=~/Library/Containers/com.microsoft.Word/Data/Documents/wef
+EXCEL_WEF_DIR=~/Library/Containers/com.microsoft.Excel/Data/Documents/wef
+PPT_WEF_DIR=~/Library/Containers/com.microsoft.Powerpoint/Data/Documents/wef
+
+mkdir -p "$WORD_WEF_DIR"
+mkdir -p "$EXCEL_WEF_DIR"
+mkdir -p "$PPT_WEF_DIR"
+
+cp /tmp/carbone-manifests/manifest-word.xml "$WORD_WEF_DIR/carbone-template-assistant.xml"
+cp /tmp/carbone-manifests/manifest-excel.xml "$EXCEL_WEF_DIR/carbone-template-assistant.xml"
+cp /tmp/carbone-manifests/manifest-ppt.xml "$PPT_WEF_DIR/carbone-template-assistant.xml"
+echo "   ✅ Manifest已部署到有效目录"
+
+# 7. 加载Add-in
+echo ""
+echo "7. 加载Word Add-in..."
 office-addin-debugging start /tmp/carbone-manifests/manifest-word.xml
 
 echo ""
@@ -66,4 +82,11 @@ echo "=========================================="
 echo "   完成！"
 echo "=========================================="
 echo ""
-echo "Word已打开，右侧应显示'Carbone模板助手'"
+echo "Manifest已部署到:"
+echo "   Word: ~/Library/Containers/com.microsoft.Word/Data/Documents/wef/"
+echo "   Excel: ~/Library/Containers/com.microsoft.Excel/Data/Documents/wef/"
+echo "   PPT: ~/Library/Containers/com.microsoft.Powerpoint/Data/Documents/wef/"
+echo ""
+echo "Word已打开，请在Word中:"
+echo "   1. 点击 '插入' -> '我的加载项'"
+echo "   2. 或查看右侧任务窗格"
