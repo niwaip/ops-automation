@@ -2,6 +2,7 @@ import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import fs from 'fs';
 import path from 'path';
+import { downloadPagePlugin } from './src/download-plugin';
 
 // 检测是否在 Docker 容器中运行
 const isDocker = fs.existsSync('/.dockerenv') || process.env.DOCKER === 'true';
@@ -23,7 +24,9 @@ export default defineConfig({
           res.end(JSON.stringify({ status: 'ok', timestamp: new Date().toISOString() }));
         });
       }
-    }
+    },
+    // 添加下载页面 /download
+    downloadPagePlugin()
   ],
   publicDir: 'public',
   server: {
