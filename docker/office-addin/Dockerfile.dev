@@ -6,8 +6,8 @@ FROM node:18-alpine
 WORKDIR /app
 
 # 安装依赖
-COPY package.json package-lock.json* ./
-RUN npm ci
+COPY package.json ./
+RUN npm install --registry=https://registry.npmmirror.com
 
 # 复制源码
 COPY . .
