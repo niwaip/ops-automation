@@ -33,9 +33,12 @@ services:
       # 挂载源码支持热更新
       - ../services/office-addin/src:/app/src
       - ../services/office-addin/public:/app/public
+      # 挂载SSL证书
+      - ./office-addin/certs:/app/certs:ro
     environment:
       - VITE_API_URL=http://carbone-api:3100
       - NODE_ENV=development
+      - DOCKER=true
     depends_on:
       - carbone-api
     restart: unless-stopped

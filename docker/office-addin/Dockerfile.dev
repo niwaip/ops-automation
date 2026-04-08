@@ -12,12 +12,8 @@ RUN npm install --registry=https://registry.npmmirror.com
 # 复制源码
 COPY . .
 
-# 生成 SSL 证书（开发环境）
-RUN apk add --no-cache openssl
-RUN mkdir -p certs && \
-    openssl req -x509 -newkey rsa:2048 -keyout certs/server.key \
-    -out certs/server.crt -days 365 -nodes \
-    -subj "/C=CN/ST=Shanghai/L=Shanghai/O=Carbone/OU=Addin/CN=localhost"
+# 创建证书目录（证书将通过 volume 挂载）
+RUN mkdir -p certs
 
 # 暴露端口
 EXPOSE 3000
