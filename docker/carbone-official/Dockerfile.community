@@ -1,5 +1,5 @@
 # Carbone Community Edition Docker
-# 使用官方 carbone npm 包，不定制化
+# 使用官方 carbone npm 包，支持 HTTPS
 
 FROM node:18-alpine
 
@@ -13,8 +13,11 @@ RUN npm install carbone express multer jszip --registry=https://registry.npmmirr
 COPY carbone-server.js .
 COPY templates/ ./templates/
 
-# 暴露端口
-EXPOSE 3100
+# 创建证书目录 (证书通过 volume 挂载)
+RUN mkdir -p /app/certs
+
+# 暴露端口 (HTTP 和 HTTPS)
+EXPOSE 3100 3443
 
 # 启动服务
 CMD ["node", "carbone-server.js"]

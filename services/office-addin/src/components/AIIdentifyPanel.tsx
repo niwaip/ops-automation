@@ -1,6 +1,7 @@
 /**
  * AI 识别面板组件
  * 显示 AI 分析结果和建议，支持一键应用或部分应用
+ * 包含详细错误显示和调试日志功能
  */
 
 import React, { useState } from 'react';
@@ -18,6 +19,7 @@ export const AIIdentifyPanel: React.FC<Props> = ({ onApplyComplete }) => {
     isAnalyzing,
     suggestions,
     analysisError,
+    analysisErrorDetails,
     setAnalyzing,
     setSuggestions,
     setAnalysisError,
@@ -26,9 +28,13 @@ export const AIIdentifyPanel: React.FC<Props> = ({ onApplyComplete }) => {
     dismissSuggestion,
     templateConfig,
     apiBaseUrl,
+    addDebugLog,
+    showDebugPanel,
+    setShowDebugPanel,
   } = useAppStore();
 
   const [selectedTemplateType, setSelectedTemplateType] = useState('report');
+  const [showErrorDetails, setShowErrorDetails] = useState(false);
 
   /**
    * 执行 AI 分析
@@ -37,37 +43,87 @@ export const AIIdentifyPanel: React.FC<Props> = ({ onApplyComplete }) => {
     setAnalyzing(true);
     setAnalysisError(null);
 
+    addDebugLog('info', `开始 AI 分析`, `API: ${apiBaseUrl}, 模板类型: ${selectedTemplateType}`);
+
     try {
       // 获取文档内容
       let documentContent = '';
       let documentStructure: any = null;
 
+      addDebugLog('debug', `获取文档内容`, `Office 类型: ${officeType}`);
+
       if (officeType === 'word') {
         documentContent = await OfficeHelper.Word.getDocumentContent();
         documentStructure = await OfficeHelper.Word.getDocumentStructure();
+        addDebugLog('debug', `Word 文档内容获取成功`, `长度: ${documentContent.length}`);
       } else if (officeType === 'excel') {
         const sheetData = await OfficeHelper.Excel.getSheetData();
         documentContent = JSON.stringify(sheetData.values);
         documentStructure = { tables: [], paragraphs: [], images: [] };
+        addDebugLog('debug', `Excel 数据获取成功`, `行数: ${sheetData.values?.length || 0}`);
       } else if (officeType === 'ppt') {
         const slidesContent = await OfficeHelper.PowerPoint.getSlidesContent();
         documentContent = JSON.stringify(slidesContent);
         documentStructure = { slides: slidesContent };
+        addDebugLog('debug', `PPT 内容获取成功`, `幻灯片数: ${slidesContent?.length || 0}`);
       }
 
       // 调用 AI 识别 API
+      addDebugLog('info', `调用 AI 识别 API`, `URL: ${apiBaseUrl}/studio/ai-identify`);
       carboneAPI.setBaseUrl(apiBaseUrl);
+
       const result = await carboneAPI.identifyDocument({
         documentContent,
         documentType: officeType === 'ppt' ? 'pptx' : officeType,
         templateType: selectedTemplateType,
       });
 
+      addDebugLog('info', `AI 分析成功`, `建议数: ${result.suggestions?.length || 0}`);
       setSuggestions(result.suggestions);
     } catch (error: any) {
-      setAnalysisError(error.message || 'AI 分析失败，请检查后端服务是否启动');
+      // 详细错误信息
+      const errorMessage = error.message || 'AI 分析失败';
+      let errorDetails = '';
+
+      // 提取更多错误详情
+      if (error.response) {
+        errorDetails = `状态码: ${error.response.status}\n`;
+        errorDetails += `响应数据: ${JSON.stringify(error.response.data, null, 2)}\n`;
+        errorDetails += `请求URL: ${error.config?.url || apiBaseUrl}/studio/ai-identify`;
+      } else if (error.request) {
+        errorDetails = `请求未收到响应\n`;
+        errorDetails += `可能原因:\n`;
+        errorDetails += `1. 后端服务未启动 (${apiBaseUrl})\n`;
+        errorDetails += `2. HTTPS 证书问题（Office 要求 HTTPS）\n`;
+        errorDetails += `3. 网络连接问题\n`;
+        errorDetails += `4. CORS 配置问题`;
+      } else {
+        errorDetails = `请求配置错误: ${error.message}\n`;
+        errorDetails += `堆栈: ${error.stack || '无'}`;
+      }
+
+      addDebugLog('error', errorMessage, errorDetails);
+      setAnalysisError(errorMessage, errorDetails);
     } finally {
       setAnalyzing(false);
+    }
+  };
+
+  /**
+   * 测试后端连接
+   */
+  const handleTestConnection = async () => {
+    addDebugLog('info', `测试后端连接`, `URL: ${apiBaseUrl}/health`);
+    try {
+      const response = await fetch(`${apiBaseUrl}/health`);
+      if (response.ok) {
+        const data = await response.json();
+        addDebugLog('info', `连接成功`, JSON.stringify(data));
+      } else {
+        addDebugLog('error', `连接失败`, `状态码: ${response.status}`);
+      }
+    } catch (error: any) {
+      addDebugLog('error', `连接失败`, error.message);
     }
   };
 
@@ -90,8 +146,9 @@ export const AIIdentifyPanel: React.FC<Props> = ({ onApplyComplete }) => {
         );
       }
       applySuggestion(suggestion.id);
-    } catch (error) {
-      console.error('应用建议失败:', error);
+      addDebugLog('info', `应用建议成功`, `${suggestion.originalText} → ${suggestion.suggestedName}`);
+    } catch (error: any) {
+      addDebugLog('error', '应用建议失败', error.message);
     }
   };
 
@@ -107,8 +164,9 @@ export const AIIdentifyPanel: React.FC<Props> = ({ onApplyComplete }) => {
       }
 
       onApplyComplete?.();
+      addDebugLog('info', `批量应用完成`, `应用了 ${unapplied.length} 个建议`);
     } catch (error) {
-      console.error('批量应用失败:', error);
+      addDebugLog('error', '批量应用失败', error.message);
     }
   };
 
@@ -149,10 +207,36 @@ export const AIIdentifyPanel: React.FC<Props> = ({ onApplyComplete }) => {
         {isAnalyzing ? '分析中...' : 'AI 智能识别'}
       </button>
 
-      {/* 错误提示 */}
+      {/* 测试连接按钮 */}
+      <button
+        className="test-connection-btn"
+        onClick={handleTestConnection}
+        disabled={isAnalyzing}
+      >
+        🔌 测试连接
+      </button>
+
+      {/* 调试面板开关 */}
+      <button
+        className="debug-toggle-btn"
+        onClick={() => setShowDebugPanel(!showDebugPanel)}
+      >
+        {showDebugPanel ? '隐藏日志' : '显示日志'}
+      </button>
+
+      {/* 错误提示 - 改进的显示 */}
       {analysisError && (
-        <div className="error-message">
-          <span>❌ {analysisError}</span>
+        <div className="error-message-container">
+          <div className="error-message" onClick={() => setShowErrorDetails(!showErrorDetails)}>
+            <span className="error-icon">❌</span>
+            <span className="error-text">{analysisError}</span>
+            <span className="error-toggle">{showErrorDetails ? '▼' : '▶'}</span>
+          </div>
+          {showErrorDetails && analysisErrorDetails && (
+            <div className="error-details">
+              <pre>{analysisErrorDetails}</pre>
+            </div>
+          )}
         </div>
       )}
 

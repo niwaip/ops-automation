@@ -1,6 +1,7 @@
 /**
  * Office Addin - 主应用组件
  * 整合 AI 识别、模板配置、手动选择功能
+ * 包含调试日志面板
  */
 
 import React, { useState, useEffect } from 'react';
@@ -8,14 +9,16 @@ import { useAppStore, OfficeAppType } from './store';
 import { AIIdentifyPanel } from '../components/AIIdentifyPanel';
 import { TemplateConfigPanel } from '../components/TemplateConfigPanel';
 import { ManualSelector } from '../components/ManualSelector';
+import { DebugLogPanel } from '../components/DebugLogPanel';
 import { OfficeHelper } from '../utils/office-api';
 
 type TabId = 'ai' | 'manual' | 'config';
 
 export const App: React.FC = () => {
-  const { officeType, setOfficeType, apiBaseUrl, setApiBaseUrl } = useAppStore();
+  const { officeType, setOfficeType, apiBaseUrl, setApiBaseUrl, addDebugLog, showDebugPanel } = useAppStore();
   const [activeTab, setActiveTab] = useState<TabId>('ai');
-  const [connectionStatus, setConnectionStatus] = useState<'checking' | 'connected' | 'disconnected'>('checking');
+  const [connectionStatus, setConnectionStatus] = useState<'checking' | 'connected' | 'disconnected' | 'error'>('checking');
+  const [connectionError, setConnectionError] = useState<string | null>(null);
 
   /**
    * 初始化检测 Office 类型
@@ -23,24 +26,45 @@ export const App: React.FC = () => {
   useEffect(() => {
     const detectedType = OfficeHelper.getOfficeType();
     setOfficeType(detectedType);
+    addDebugLog('info', `Office 类型检测: ${detectedType}`);
 
     // 检测后端连接
     checkBackendConnection();
   }, []);
 
   /**
-   * 检测后端连接状态
+   * 检测后端连接状态（支持 HTTPS）
    */
   const checkBackendConnection = async () => {
+    setConnectionStatus('checking');
+    setConnectionError(null);
+    addDebugLog('info', `检测后端连接`, `URL: ${apiBaseUrl}/health`);
+
     try {
-      const response = await fetch(`${apiBaseUrl}/health`);
+      // 注意：HTTPS 请求可能需要处理证书问题
+      const response = await fetch(`${apiBaseUrl}/health`, {
+        method: 'GET',
+        mode: 'cors',
+      });
+
       if (response.ok) {
+        const data = await response.json();
         setConnectionStatus('connected');
+        addDebugLog('info', `后端连接成功`, JSON.stringify(data));
       } else {
         setConnectionStatus('disconnected');
+        setConnectionError(`HTTP ${response.status}: ${response.statusText}`);
+        addDebugLog('warn', `后端响应异常`, `状态码: ${response.status}`);
       }
-    } catch {
-      setConnectionStatus('disconnected');
+    } catch (error: any) {
+      setConnectionStatus('error');
+      setConnectionError(error.message);
+      addDebugLog('error', `后端连接失败`, error.message);
+
+      // 检查是否是 HTTPS 问题
+      if (apiBaseUrl.startsWith('https://') && error.message.includes('certificate')) {
+        addDebugLog('warn', `可能是 SSL 证书问题`, `请确保 CA 证书已安装到系统`);
+      }
     }
   };
 
@@ -69,6 +93,7 @@ export const App: React.FC = () => {
           <ManualSelector
             onInsert={(marker) => {
               console.log('已插入标记:', marker);
+              addDebugLog('info', `插入标记成功`, marker);
               setActiveTab('config');
             }}
           />
@@ -94,6 +119,32 @@ export const App: React.FC = () => {
     }
   };
 
+  /**
+   * 连接状态显示
+   */
+  const connectionStatusDisplay = () => {
+    switch (connectionStatus) {
+      case 'checking':
+        return <span className="checking">⏳ 检测中...</span>;
+      case 'connected':
+        return <span className="connected">✅ 已连接</span>;
+      case 'disconnected':
+        return (
+          <span className="disconnected">
+            ❌ 未连接
+            <button onClick={checkBackendConnection}>重试</button>
+          </span>
+        );
+      case 'error':
+        return (
+          <span className="disconnected error">
+            ❌ 连接错误
+            <button onClick={checkBackendConnection}>重试</button>
+          </span>
+        );
+    }
+  };
+
   return (
     <div className="app-container">
       {/* 顶部状态栏 */}
@@ -104,13 +155,11 @@ export const App: React.FC = () => {
         </div>
 
         <div className="connection-status">
-          {connectionStatus === 'checking' && <span className="checking">检测中...</span>}
-          {connectionStatus === 'connected' && <span className="connected">✅ 已连接</span>}
-          {connectionStatus === 'disconnected' && (
-            <span className="disconnected">
-              ❌ 未连接
-              <button onClick={checkBackendConnection}>重试</button>
-            </span>
+          {connectionStatusDisplay()}
+          {connectionError && (
+            <div className="connection-error-tooltip">
+              {connectionError}
+            </div>
           )}
         </div>
 
@@ -119,6 +168,7 @@ export const App: React.FC = () => {
             type="text"
             value={apiBaseUrl}
             onChange={(e) => setApiBaseUrl(e.target.value)}
+            onBlur={checkBackendConnection}
             placeholder="后端API地址"
           />
         </div>
@@ -139,7 +189,11 @@ export const App: React.FC = () => {
       </nav>
 
       {/* 主内容区 */}
-      <main className="content-area">{renderTabContent()}</main>
+      <main className="content-area">
+        {renderTabContent()}
+        {/* 调试日志面板 */}
+        <DebugLogPanel />
+      </main>
 
       {/* 底部快捷操作 */}
       <footer className="quick-actions">

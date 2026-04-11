@@ -1,6 +1,7 @@
 /**
  * Carbone Official API Server
  * 使用官方 carbone 包，提供标准 API 接口
+ * 支持 HTTPS (使用与 office-addin 相同的证书)
  */
 
 const express = require('express');
@@ -8,9 +9,12 @@ const carbone = require('carbone');
 const fs = require('fs');
 const path = require('path');
 const multer = require('multer');
+const https = require('https');
 
 const app = express();
-const PORT = process.env.CARBONE_API_PORT || 3100;
+const HTTP_PORT = process.env.CARBONE_API_PORT || 3100;
+const HTTPS_PORT = process.env.CARBONE_API_HTTPS_PORT || 3443;
+const ENABLE_HTTPS = process.env.ENABLE_HTTPS === 'true';
 
 // CORS 配置 - 允许 Office Add-in 访问
 app.use((req, res, next) => {
@@ -211,8 +215,25 @@ app.post('/convert', upload.single('file'), async (req, res) => {
 });
 
 // 启动服务
-app.listen(PORT, () => {
-  console.log(`Carbone Official API running on port ${PORT}`);
-  console.log(`Health check: http://localhost:${PORT}/health`);
-  console.log(`Render endpoint: POST http://localhost:${PORT}/render`);
-});
+if (ENABLE_HTTPS) {
+  // 读取 SSL 证书 (使用与 office-addin 相同的证书)
+  const certPath = process.env.CERT_PATH || '/app/certs';
+  const sslOptions = {
+    key: fs.readFileSync(path.join(certPath, 'server.key')),
+    cert: fs.readFileSync(path.join(certPath, 'server.crt')),
+  };
+
+  // 启动 HTTPS 服务器
+  https.createServer(sslOptions, app).listen(HTTPS_PORT, () => {
+    console.log(`Carbone Official API running with HTTPS on port ${HTTPS_PORT}`);
+    console.log(`Health check: https://localhost:${HTTPS_PORT}/health`);
+    console.log(`Render endpoint: POST https://localhost:${HTTPS_PORT}/render`);
+  });
+} else {
+  // 启动 HTTP 服务器
+  app.listen(HTTP_PORT, () => {
+    console.log(`Carbone Official API running on port ${HTTP_PORT}`);
+    console.log(`Health check: http://localhost:${HTTP_PORT}/health`);
+    console.log(`Render endpoint: POST http://localhost:${HTTP_PORT}/render`);
+  });
+}
