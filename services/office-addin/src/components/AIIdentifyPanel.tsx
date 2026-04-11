@@ -279,14 +279,50 @@ export const AIIdentifyPanel: React.FC<Props> = ({ onApplyComplete }) => {
   };
 
   /**
-   * 按类型分组建议
+   * 按章节分组建议
+   * 返回格式: { "头部": [...], "第一条": [...], "第二条": [...], "正文": [...] }
    */
-  const groupedSuggestions = suggestions.reduce((acc, suggestion) => {
-    const type = suggestion.type;
-    if (!acc[type]) acc[type] = [];
-    acc[type].push(suggestion);
-    return acc;
-  }, {} as Record<string, AISuggestion[]>);
+  const groupSuggestionsByChapter = (): Record<string, AISuggestion[]> => {
+    const grouped: Record<string, AISuggestion[]> = {};
+
+    for (const suggestion of suggestions) {
+      const chapter = suggestion.details?.chapter || '正文';
+      if (!grouped[chapter]) {
+        grouped[chapter] = [];
+      }
+      grouped[chapter].push(suggestion);
+    }
+
+    // 按章节顺序排序（头部、第一条、第二条...、正文）
+    const sortedKeys = Object.keys(grouped).sort((a, b) => {
+      // 头部放第一位
+      if (a === '头部' || a.startsWith('正文')) return -1;
+      if (b === '头部' || b.startsWith('正文')) return 1;
+      // 按章节编号排序
+      const aNum = a.match(/第(\d+)/)?.[1] || '999';
+      const bNum = b.match(/第(\d+)/)?.[1] || '999';
+      return parseInt(aNum) - parseInt(bNum);
+    });
+
+    const sortedGrouped: Record<string, AISuggestion[]> = {};
+    for (const key of sortedKeys) {
+      sortedGrouped[key] = grouped[key];
+    }
+
+    return sortedGrouped;
+  };
+
+  /**
+   * 获取章节图标
+   */
+  const getChapterIcon = (chapter: string): string => {
+    if (chapter === '头部') return '📋';
+    if (chapter.includes('第一条') || chapter.includes('第一条')) return '📝';
+    if (chapter.includes('第二条')) return '📝';
+    if (chapter.includes('第三条')) return '📝';
+    if (chapter === '正文') return '📄';
+    return '📑';
+  };
 
   return (
     <div className="ai-identify-panel">
@@ -374,15 +410,12 @@ export const AIIdentifyPanel: React.FC<Props> = ({ onApplyComplete }) => {
             </button>
           </div>
 
-          {/* 分组显示建议 */}
-          {Object.entries(groupedSuggestions).map(([type, items]) => (
-            <div key={type} className="suggestion-group">
-              <h4 className="group-title">
-                {type === 'variable' && '变量替换'}
-                {type === 'loop' && '循环标记'}
-                {type === 'format' && '格式化'}
-                {type === 'image' && '图片处理'}
-                {type === 'table' && '表格循环'}
+          {/* 分组显示建议 - 按章节分组 */}
+          {Object.entries(groupSuggestionsByChapter()).map(([chapter, items]) => (
+            <div key={chapter} className="suggestion-group chapter-group">
+              <h4 className="group-title chapter-title">
+                <span className="chapter-icon">{getChapterIcon(chapter)}</span>
+                <span className="chapter-name">{chapter}</span>
                 <span className="count">({items.length})</span>
               </h4>
 
@@ -417,24 +450,26 @@ const SuggestionItem: React.FC<{
   const [expanded, setExpanded] = useState(false);
   const [isPreviewing, setIsPreviewing] = useState(false);
 
-  // 获取位置信息（显示上下文片段而非"第几个空白")
-  const getPositionInfo = (elementPath: string, suggestion: AISuggestion): string => {
-    // elementPath现在直接是上下文内容
-    if (elementPath && !elementPath.startsWith('position:')) {
-      // 显示上下文片段，截取关键部分
-      const contextText = elementPath;
-      // 如果上下文太长，截取关键部分
-      if (contextText.length > 30) {
-        return `...${contextText.substring(0, 30)}...`;
-      }
-      return contextText || suggestion.originalText;
+  // 获取位置信息（使用格式化的显示位置）
+  const getPositionInfo = (suggestion: AISuggestion): string => {
+    // 优先使用displayPosition
+    if (suggestion.details?.displayPosition) {
+      return suggestion.details.displayPosition;
     }
-    // 兼容旧格式（position:N）
-    if (elementPath?.startsWith('position:')) {
-      const pos = elementPath.replace('position:', '');
+    // 使用elementPath作为格式化位置
+    if (suggestion.elementPath && suggestion.elementPath.startsWith('【')) {
+      return suggestion.elementPath;
+    }
+    // 兼容旧格式
+    if (suggestion.elementPath?.startsWith('position:')) {
+      const pos = suggestion.elementPath.replace('position:', '');
       return `文档位置 ${pos}`;
     }
-    return elementPath || '未知位置';
+    // 使用beforeBlank和afterBlank构建
+    if (suggestion.details?.beforeBlank || suggestion.details?.afterBlank) {
+      return `【${suggestion.details.beforeBlank || ''} _____ ${suggestion.details.afterBlank || ''}】`;
+    }
+    return suggestion.originalText || '未知位置';
   };
 
   // 获取上下文片段
@@ -476,18 +511,10 @@ const SuggestionItem: React.FC<{
         {isPreviewing && <span className="previewing-badge">预览中</span>}
       </div>
 
-      {/* 显示章节信息 */}
-      {suggestion.details?.chapter && (
-        <div className="suggestion-chapter">
-          <span className="chapter-label">章节:</span>
-          <span className="chapter-text">{suggestion.details.chapter}</span>
-        </div>
-      )}
-
-      {/* 显示上下文片段 */}
+      {/* 显示原文位置（格式化显示） */}
       <div className="suggestion-context">
         <span className="context-label">原文位置:</span>
-        <span className="context-text">{getPositionInfo(suggestion.elementPath, suggestion)}</span>
+        <span className="context-text position-format">{getPositionInfo(suggestion)}</span>
       </div>
 
       {/* 显示项目意义 */}

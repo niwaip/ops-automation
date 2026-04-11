@@ -795,31 +795,46 @@ ${blankList}
 
   /**
    * 调用AI服务
+   * 使用 ops-ai-orchestrator 的 /ai/models/{id}/test 端点
    */
   private async callAIService(prompt: string): Promise<any> {
-    const aiOrchestratorUrl = process.env.AI_ORCHESTRATOR_URL || 'http://ops-ai-orchestrator:3007';
+    const aiOrchestratorUrl = process.env.AI_ORCHESTRATOR_URL || 'http://localhost:3007';
+    const aiModelId = process.env.AI_MODEL_ID || '00ddd35d-6578-4acb-bc09-d629560f6ab6';  // 默认使用 qwen3.5-plus
+
+    this.logger.log(`Calling AI service at ${aiOrchestratorUrl}/ai/models/${aiModelId}/test`);
 
     try {
+      // 使用正确的 ops-ai-orchestrator 端点
       const response = await axios.post(
-        `${aiOrchestratorUrl}/chat`,
+        `${aiOrchestratorUrl}/ai/models/${aiModelId}/test`,
         {
-          messages: [{ role: 'user', content: prompt }],
-          model: 'deepseek-chat',  // 或其他可用模型
-          temperature: 0.3,  // 低温度以获得更稳定的结果
-          maxTokens: 2000
+          prompt: prompt  // ops-ai-orchestrator 使用 prompt 字段
         },
         { timeout: 60000 }
       );
 
-      const content = response.data?.content || response.data?.choices?.[0]?.message?.content || '';
+      this.logger.log('AI service responded successfully');
+
+      // ops-ai-orchestrator 返回格式: {success: true, response: "..."}
+      const content = response.data?.response || '';
+
       // 提取JSON部分
       const jsonMatch = content.match(/\{[\s\S]*"suggestions"[\s\S]*\}/);
       if (jsonMatch) {
         return JSON.parse(jsonMatch[0]);
       }
+
+      // 尝试另一种格式：直接JSON数组
+      const arrayMatch = content.match(/\[[\s\S]*\]/);
+      if (arrayMatch) {
+        return { suggestions: JSON.parse(arrayMatch[0]) };
+      }
+
+      this.logger.warn('No valid JSON found in AI response');
       return { suggestions: [] };
-    } catch (error) {
-      this.logger.error('AI service call failed:', error);
+    } catch (error: any) {
+      this.logger.error('AI service call failed:', error.message);
+      this.logger.error('AI service URL attempted:', `${aiOrchestratorUrl}/ai/models/${aiModelId}/test`);
       throw error;
     }
   }
@@ -1056,18 +1071,24 @@ ${blankList}
       const finalSignificance = pattern.significance || matchedDescription || '文档中需要填充的字段';
       const finalChapter = pattern.chapter || '正文';
 
+      // 生成格式化的显示位置：【前文空白后文】格式
+      const beforeText = pattern.beforeBlank || pattern.context?.slice(0, 10) || '';
+      const afterText = pattern.context?.slice(-10) || '';
+      const displayPosition = `【${beforeText.trim().slice(-8)} _____ ${afterText.trim().slice(0, 8)}】`;
+
       suggestions.push({
         id: `sugg-${Date.now()}-${i}`,
         type: 'variable',
-        elementPath: pattern.context,  // 直接使用上下文作为位置显示，不再显示"第几个空白"
+        elementPath: displayPosition,  // 使用格式化的显示位置
         suggestedName: suggestedPath,
         originalText: pattern.text,
         confidence,
         applied: false,
         context: pattern.context,
         details: {
-          chapter: finalChapter,  // 章节信息
+          chapter: finalChapter,  // 章节信息（用于分组显示）
           significance: finalSignificance,  // 项目意义说明
+          displayPosition,  // 格式化的位置显示
           formatter: suggestedPath.includes('date') || suggestedPath.includes('Date') ? 'formatDate(YYYY-MM-DD)' :
                      suggestedPath.includes('amount') || suggestedPath.includes('Price') ? 'formatNumber(#,##0.00)' : null
         }

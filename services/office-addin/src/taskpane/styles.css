@@ -1016,3 +1016,41 @@ body {
   gap: 8px;
   font-size: 12px;
 }
+
+/* Chapter Group Styles */
+.chapter-group {
+  margin-bottom: 16px;
+  border-left: 3px solid #3b82f6;
+  padding-left: 12px;
+}
+
+.chapter-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #1e40af;
+  font-size: 14px;
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+
+.chapter-icon {
+  font-size: 16px;
+}
+
+.chapter-name {
+  background: #eff6ff;
+  padding: 4px 8px;
+  border-radius: 4px;
+}
+
+/* Position Format Style */
+.position-format {
+  font-family: 'Microsoft YaHei', sans-serif;
+  background: #f8fafc;
+  padding: 4px 8px;
+  border-radius: 4px;
+  border: 1px solid #e2e8f0;
+  color: #475569;
+  font-size: 13px;
+}

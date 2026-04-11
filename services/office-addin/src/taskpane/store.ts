@@ -9,21 +9,24 @@ import { create } from 'zustand';
 export interface AISuggestion {
   id: string;
   type: 'variable' | 'loop' | 'format' | 'image' | 'table';
-  elementPath: string;
+  elementPath: string;  // 格式化的位置显示，如【甲方名称： _ 乙方】
   suggestedName: string;
   originalText: string;
   confidence: number;
   applied: boolean;
-  context?: string;  // 原文档上下文（前后文本片段）
+  context?: string;  // 原文档上下文
   details?: {
     formatter?: string;
     loopType?: 'explicit' | 'implicit';
     arrayPath?: string;
     tableName?: string;
     slideIndex?: number;
-    context?: string;  // 后端传递的上下文
-    chapter?: string;  // 所在章节信息
+    context?: string;
+    chapter?: string;  // 所在章节信息（用于分组）
     significance?: string;  // 项目意义说明
+    displayPosition?: string;  // 格式化的位置显示
+    beforeBlank?: string;  // 空白前文本
+    afterBlank?: string;  // 空白后文本
   };
 }
 
