@@ -121,6 +121,6 @@ export const useAppStore = create<AppState>((set, get) => ({
     })),
   clearSelectedElements: () => set({ selectedElements: [] }),
 
-  apiBaseUrl: (import.meta.env.VITE_API_URL as string) || 'http://localhost:3100',
+  apiBaseUrl: 'http://localhost:3100',
   setApiBaseUrl: (url) => set({ apiBaseUrl: url }),
 }));
