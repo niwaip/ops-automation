@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Carbone Test</title>
+  <script src="https://appsforoffice.microsoft.com/lib/1/hosted/office.js"></script>
+</head>
+<body>
+  <h1>Carbone Template Assistant</h1>
+  <p>加载成功！</p>
+  <div id="info">等待Office初始化...</div>
+  <script>
+    Office.onReady(function(info) {
+      document.getElementById('info').innerHTML = 'Host: ' + info.host + ', Platform: ' + info.platform;
+    });
+  </script>
+</body>
+</html>
