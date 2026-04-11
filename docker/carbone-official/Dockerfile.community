@@ -1,0 +1,20 @@
+# Carbone Community Edition Docker
+# 使用官方 carbone npm 包，不定制化
+
+FROM node:18-alpine
+
+# 创建工作目录
+WORKDIR /app
+
+# 安装官方 carbone 包 (使用中国镜像源)
+RUN npm install carbone express multer jszip --registry=https://registry.npmmirror.com
+
+# 创建简单的 API 服务
+COPY carbone-server.js .
+COPY templates/ ./templates/
+
+# 暴露端口
+EXPOSE 3100
+
+# 启动服务
+CMD ["node", "carbone-server.js"]

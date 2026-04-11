@@ -1,0 +1,48 @@
+version: '3.8'
+
+services:
+  # Carbone Official API Service
+  carbone-api:
+    build:
+      context: ./carbone-official
+      dockerfile: Dockerfile.community
+    container_name: carbone-api
+    ports:
+      - "3100:3100"
+    volumes:
+      - ./carbone-official/templates:/app/templates
+    environment:
+      - CARBONE_API_PORT=3100
+      - NODE_ENV=production
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3100/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: unless-stopped
+
+  # Office Add-in Development Server
+  office-addin:
+    build:
+      context: ../services/office-addin
+      dockerfile: ../../docker/office-addin/Dockerfile.dev
+    container_name: office-addin
+    ports:
+      - "3000:3000"
+    volumes:
+      # 挂载源码支持热更新
+      - ../services/office-addin/src:/app/src
+      - ../services/office-addin/public:/app/public
+      # 挂载SSL证书
+      - ./office-addin/certs:/app/certs:ro
+    environment:
+      - VITE_API_URL=http://carbone-api:3100
+      - NODE_ENV=development
+      - DOCKER=true
+    depends_on:
+      - carbone-api
+    restart: unless-stopped
+
+networks:
+  default:
+    name: carbone-network

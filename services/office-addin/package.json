@@ -1,0 +1,29 @@
+{
+  "name": "carbone-office-addin",
+  "version": "1.0.0",
+  "description": "Office Add-in for Carbone template generation with AI assistance",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "sideload:word": "office-addin-debugging start word --manifest manifest-word.xml",
+    "sideload:excel": "office-addin-debugging start excel --manifest manifest-excel.xml",
+    "sideload:ppt": "office-addin-debugging start powerpoint --manifest manifest-ppt.xml"
+  },
+  "dependencies": {
+    "@microsoft/office-js": "^1.1.79",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "axios": "^1.6.0",
+    "zustand": "^4.4.0",
+    "@tanstack/react-query": "^5.0.0"
+  },
+  "devDependencies": {
+    "@types/react": "^18.2.0",
+    "@types/react-dom": "^18.2.0",
+    "typescript": "^5.3.0",
+    "vite": "^5.0.0",
+    "@vitejs/plugin-react": "^4.2.0",
+    "office-addin-debugging": "^5.0.0"
+  }
+}
