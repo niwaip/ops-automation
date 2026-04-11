@@ -95,24 +95,34 @@ export const AIIdentifyPanel: React.FC<Props> = ({ onApplyComplete }) => {
       // 使用新的直接识别接口，无需上传模板
       const result = await carboneAPI.identifyDocumentDirect(requestPayload);
 
-      // 记录完整响应详情
+      // 记录完整响应详情（包含AI使用状态）
+      const usedAI = result.contextAnalysis?.usedAI ?? false;
+      const aiServiceUrl = result.contextAnalysis?.aiServiceUrl || '未配置';
+
+      addDebugLog('info', `识别方式: ${usedAI ? '🤖 AI智能识别' : '📋 规则匹配'}`, usedAI ? `AI服务地址: ${aiServiceUrl}` : `AI服务不可用(${aiServiceUrl})，使用规则后备方案`);
+
       addDebugLog('debug', `📥 响应详情`, JSON.stringify({
         success: true,
         suggestionsCount: result.suggestions?.length || 0,
         templateType: result.templateConfig?.templateType,
         documentStats: result.documentStats,
         contextAnalysis: result.contextAnalysis,
+        usedAI,
+        aiServiceUrl,
         allSuggestions: result.suggestions?.map(s => ({
           suggestedName: s.suggestedName,
           originalText: s.originalText,
           confidence: s.confidence,
-          context: s.context,
-          position: s.elementPath
+          chapter: s.details?.chapter,
+          significance: s.details?.significance,
+          context: s.context
         }))
       }, null, 2));
 
-      addDebugLog('info', `AI 分析成功`, `识别到 ${result.suggestions?.length || 0} 个空白填充项，模板类型: ${result.templateConfig?.templateType}`);
-      setSuggestions(result.suggestions);
+      // 使用 rawSuggestions（包含详细信息）如果可用，否则使用 suggestions
+      const displaySuggestions = result.rawSuggestions || result.suggestions;
+      addDebugLog('info', `AI 分析成功`, `识别到 ${displaySuggestions?.length || 0} 个空白填充项，模板类型: ${result.templateConfig?.templateType}`);
+      setSuggestions(displaySuggestions);
     } catch (error: any) {
       // 详细错误信息
       const errorMessage = error.message || 'AI 分析失败';
@@ -187,13 +197,35 @@ export const AIIdentifyPanel: React.FC<Props> = ({ onApplyComplete }) => {
 
   /**
    * 预览单个建议的替换效果
+   * 使用上下文或原始文本进行高亮定位
    */
   const handlePreviewSingle = async (suggestion: AISuggestion) => {
     try {
       // 在 Word 中高亮显示要替换的文本
       if (officeType === 'word') {
-        await OfficeHelper.Word.highlightText(suggestion.originalText);
-        addDebugLog('info', `预览: 高亮 ${suggestion.originalText}`, `将替换为 ${suggestion.suggestedName}`);
+        // 优先使用上下文进行定位（更精确）
+        const contextSnippet = suggestion.context || suggestion.details?.context || suggestion.elementPath;
+        if (contextSnippet && contextSnippet.length > 5 && !contextSnippet.startsWith('position:')) {
+          // 使用上下文高亮
+          const foundCount = await OfficeHelper.Word.highlightByContext(contextSnippet);
+          if (foundCount > 0) {
+            addDebugLog('info', `预览: 高亮上下文`, `找到 ${foundCount} 个匹配，将替换为 ${suggestion.suggestedName}`);
+          } else {
+            // 如果上下文搜索失败，尝试搜索原始文本
+            if (suggestion.originalText && suggestion.originalText.trim()) {
+              const count = await OfficeHelper.Word.highlightText(suggestion.originalText);
+              addDebugLog('info', `预览: 高亮原始文本`, `找到 ${count} 个匹配`);
+            } else {
+              addDebugLog('warn', `预览失败`, '无法定位空白标记，请手动查找');
+            }
+          }
+        } else if (suggestion.originalText && suggestion.originalText.trim()) {
+          // 直接使用原始文本高亮
+          const count = await OfficeHelper.Word.highlightText(suggestion.originalText);
+          addDebugLog('info', `预览: 高亮 ${suggestion.originalText}`, `找到 ${count} 个匹配，将替换为 ${suggestion.suggestedName}`);
+        } else {
+          addDebugLog('warn', `预览失败`, '空白标记无法直接定位，请使用上下文信息手动查找');
+        }
       }
     } catch (error: any) {
       addDebugLog('error', '预览失败', error.message);
@@ -385,11 +417,22 @@ const SuggestionItem: React.FC<{
   const [expanded, setExpanded] = useState(false);
   const [isPreviewing, setIsPreviewing] = useState(false);
 
-  // 获取位置信息（从 elementPath 解析）
-  const getPositionInfo = (elementPath: string): string => {
+  // 获取位置信息（显示上下文片段而非"第几个空白")
+  const getPositionInfo = (elementPath: string, suggestion: AISuggestion): string => {
+    // elementPath现在直接是上下文内容
+    if (elementPath && !elementPath.startsWith('position:')) {
+      // 显示上下文片段，截取关键部分
+      const contextText = elementPath;
+      // 如果上下文太长，截取关键部分
+      if (contextText.length > 30) {
+        return `...${contextText.substring(0, 30)}...`;
+      }
+      return contextText || suggestion.originalText;
+    }
+    // 兼容旧格式（position:N）
     if (elementPath?.startsWith('position:')) {
       const pos = elementPath.replace('position:', '');
-      return `文档位置: 第 ${pos} 个空白`;
+      return `文档位置 ${pos}`;
     }
     return elementPath || '未知位置';
   };
@@ -433,11 +476,27 @@ const SuggestionItem: React.FC<{
         {isPreviewing && <span className="previewing-badge">预览中</span>}
       </div>
 
+      {/* 显示章节信息 */}
+      {suggestion.details?.chapter && (
+        <div className="suggestion-chapter">
+          <span className="chapter-label">章节:</span>
+          <span className="chapter-text">{suggestion.details.chapter}</span>
+        </div>
+      )}
+
       {/* 显示上下文片段 */}
       <div className="suggestion-context">
         <span className="context-label">原文位置:</span>
-        <span className="context-text">{getPositionInfo(suggestion.elementPath)}</span>
+        <span className="context-text">{getPositionInfo(suggestion.elementPath, suggestion)}</span>
       </div>
+
+      {/* 显示项目意义 */}
+      {suggestion.details?.significance && (
+        <div className="suggestion-significance">
+          <span className="significance-label">用途说明:</span>
+          <span className="significance-text">{suggestion.details.significance}</span>
+        </div>
+      )}
 
       {/* 显示上下文内容 */}
       {suggestion.details?.context && (

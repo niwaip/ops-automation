@@ -185,6 +185,7 @@ export interface ContentPattern {
 export interface AIIdentifyResponse {
   templateConfig: TemplateConfig;
   suggestions: VariableMapping[];
+  rawSuggestions?: any[];  // 原始建议数据，用于前端显示更详细的信息
   loops: TableLoop[];
   images: ImageLoop[];
   combinedVariables: CombinedVariable[];  // 组合变量（文本+图片）
@@ -199,6 +200,8 @@ export interface AIIdentifyResponse {
   contextAnalysis?: {
     detectedTemplateType: string;
     userIntent: string;
+    usedAI?: boolean;  // 是否使用了AI分析
+    aiServiceUrl?: string;  // AI服务地址
   };
 }
 
@@ -298,7 +301,11 @@ export class AIIdentifierService {
     this.logger.log(`Found ${blankPatterns.length} blank patterns`);
 
     // 2. 调用AI分析空白部分，生成变量建议
-    const suggestions = await this.analyzeBlankPatternsWithAI(blankPatterns, documentContent, templateType, context, customRules);
+    // 返回建议以及是否使用了AI的标记
+    const { suggestions, usedAI } = await this.analyzeBlankPatternsWithAI(blankPatterns, documentContent, templateType, context, customRules);
+
+    // 记录识别方式（AI还是规则）
+    this.logger.log(`识别方式: ${usedAI ? 'AI智能识别' : '规则匹配（AI服务不可用）'}`);
 
     // 3. 生成模板配置
     const templateConfig: TemplateConfig = {
@@ -307,12 +314,8 @@ export class AIIdentifierService {
       tableLoops: [],
       imageLoops: [],
       combinedVariables: [],
-      variableMappings: suggestions.map(s => ({
-        originalText: s.originalText,
-        suggestedPath: s.suggestedName,
-        confidence: s.confidence,
-        formatters: s.details?.formatter ? [s.details.formatter] : []
-      }))
+      variableMappings: [],  // 不再使用 suggestions 生成 variableMappings
+      analysisNotes: []  // 分析说明
     };
 
     // 4. 生成统计信息
@@ -324,9 +327,19 @@ export class AIIdentifierService {
       potentialLoops: 0
     };
 
+    // 转换 suggestions 为 VariableMapping 格式
+    const variableMappings: VariableMapping[] = suggestions.map((s, idx) => ({
+      path: s.suggestedName,
+      sampleValue: s.originalText,
+      index: idx,
+      type: 'text' as const,
+      reason: s.details?.significance || ''
+    }));
+
     return {
       templateConfig,
-      suggestions,
+      suggestions: variableMappings,  // 使用正确格式的 suggestions
+      rawSuggestions: suggestions,  // 保留原始建议数据用于前端显示
       loops: [],
       images: [],
       combinedVariables: [],
@@ -334,7 +347,9 @@ export class AIIdentifierService {
       documentStats,
       contextAnalysis: {
         detectedTemplateType: templateType,
-        userIntent: context || 'Office文档模板化'
+        userIntent: context || 'Office文档模板化',
+        usedAI,  // 标记是否使用了真正的AI分析
+        aiServiceUrl: this.aiOrchestratorUrl  // 显示AI服务地址
       }
     };
   }
@@ -347,6 +362,7 @@ export class AIIdentifierService {
    * - 中文括号内的空白（如：（ ）、【 】）
    * - 日期格式空白（如： 年 月 日）
    * - 填充提示（如：填写、待填、XXX）
+   * 同时提取章节信息用于精确定位
    */
   private extractBlankPatterns(content: string, templateType: string): Array<{
     text: string;
@@ -354,6 +370,8 @@ export class AIIdentifierService {
     beforeBlank: string;  // 空白前面的文本（用于精确标签匹配）
     position: number;
     type: 'blank' | 'date' | 'bracket' | 'placeholder' | 'colon-space';
+    chapter: string;  // 所在章节信息（如"第一条"、"第二条"）
+    significance: string;  // 项目意义/用途说明
   }> {
     const patterns: Array<{
       text: string;
@@ -361,7 +379,12 @@ export class AIIdentifierService {
       beforeBlank: string;
       position: number;
       type: 'blank' | 'date' | 'bracket' | 'placeholder' | 'colon-space';
+      chapter: string;
+      significance: string;
     }> = [];
+
+    // 首先提取章节结构，用于后续定位
+    const chapterStructure = this.extractChapterStructure(content);
 
     // 1. 匹配冒号后的空白（如：甲方： 、地址： ）
     // 这是最常见的合同空白格式
@@ -398,12 +421,19 @@ export class AIIdentifierService {
 
         const startPos = Math.max(0, match.index - 30);
         const endPos = Math.min(content.length, match.index + blankLength + 30);
+
+        // 获取章节信息
+        const chapterInfo = this.getChapterForPosition(match.index, chapterStructure);
+        const significance = this.getSignificanceForLabel(label, templateType);
+
         patterns.push({
           text: ' ', // 单个空格作为标记
           context: content.substring(startPos, endPos),
           beforeBlank: label,  // 使用复合标签（如"甲方地址"）
           position: match.index + 1, // 冒号后第一个空格的位置
-          type: 'colon-space'
+          type: 'colon-space',
+          chapter: chapterInfo,
+          significance
         });
       }
     }
@@ -415,12 +445,18 @@ export class AIIdentifierService {
       const endPos = Math.min(content.length, match.index + match[0].length + 30);
       const beforeBlankStart = Math.max(0, match.index - 20);
       const beforeBlank = content.substring(beforeBlankStart, match.index);
+
+      const chapterInfo = this.getChapterForPosition(match.index, chapterStructure);
+      const significance = '合同签署日期，用于记录合同正式签订的时间';
+
       patterns.push({
         text: match[0],
         context: content.substring(startPos, endPos),
         beforeBlank: beforeBlank.trim() || '签订日期',
         position: match.index,
-        type: 'date'
+        type: 'date',
+        chapter: chapterInfo,
+        significance
       });
     }
 
@@ -431,12 +467,18 @@ export class AIIdentifierService {
       const endPos = Math.min(content.length, match.index + match[0].length + 30);
       const beforeBlankStart = Math.max(0, match.index - 20);
       const beforeBlank = content.substring(beforeBlankStart, match.index);
+
+      const chapterInfo = this.getChapterForPosition(match.index, chapterStructure);
+      const significance = this.getSignificanceForLabel(beforeBlank.trim(), templateType);
+
       patterns.push({
         text: match[0],
         context: content.substring(startPos, endPos),
         beforeBlank,
         position: match.index,
-        type: 'blank'
+        type: 'blank',
+        chapter: chapterInfo,
+        significance
       });
     }
 
@@ -447,12 +489,18 @@ export class AIIdentifierService {
       const endPos = Math.min(content.length, match.index + match[0].length + 30);
       const beforeBlankStart = Math.max(0, match.index - 20);
       const beforeBlank = content.substring(beforeBlankStart, match.index);
+
+      const chapterInfo = this.getChapterForPosition(match.index, chapterStructure);
+      const significance = this.getSignificanceForLabel(beforeBlank.trim(), templateType);
+
       patterns.push({
         text: match[0],
         context: content.substring(startPos, endPos),
         beforeBlank,
         position: match.index,
-        type: 'bracket'
+        type: 'bracket',
+        chapter: chapterInfo,
+        significance
       });
     }
 
@@ -463,12 +511,18 @@ export class AIIdentifierService {
       const endPos = Math.min(content.length, match.index + match[0].length + 30);
       const beforeBlankStart = Math.max(0, match.index - 20);
       const beforeBlank = content.substring(beforeBlankStart, match.index);
+
+      const chapterInfo = this.getChapterForPosition(match.index, chapterStructure);
+      const significance = this.getSignificanceForLabel(beforeBlank.trim(), templateType);
+
       patterns.push({
         text: match[0],
         context: content.substring(startPos, endPos),
         beforeBlank,
         position: match.index,
-        type: 'placeholder'
+        type: 'placeholder',
+        chapter: chapterInfo,
+        significance
       });
     }
 
@@ -485,9 +539,9 @@ export class AIIdentifierService {
           pattern.position !== patterns[i - 1].position ||
           pattern.context !== patterns[i - 1].context) {
         uniquePatterns.push(pattern);
-        this.logger.debug(`保留空白: 标签="${pattern.beforeBlank}", 位置=${pattern.position}, 类型=${pattern.type}`);
+        this.logger.debug(`保留空白: 标签="${pattern.beforeBlank || '未知'}", 位置=${pattern.position}, 类型=${pattern.type}`);
       } else {
-        this.logger.debug(`跳过完全重复空白: 标签="${pattern.beforeBlank}", 位置=${pattern.position}`);
+        this.logger.debug(`跳过完全重复空白: 标签="${pattern.beforeBlank || '未知'}", 位置=${pattern.position}`);
       }
     }
 
@@ -496,17 +550,161 @@ export class AIIdentifierService {
   }
 
   /**
+   * 提取文档章节结构
+   * 用于精确定位空白所在位置
+   */
+  private extractChapterStructure(content: string): Array<{ title: string; startPos: number; endPos: number }> {
+    const chapters: Array<{ title: string; startPos: number; endPos: number }> = [];
+
+    // 匹配常见的章节标题格式
+    // 第X条、第一条、第二条、第一章、第二章、一、二、1.、2.、1.1等
+    const chapterPatterns = [
+      // 第X条格式
+      /第[一二三四五六七八九十百千]+条[：:\s]*/g,
+      // 第X章格式
+      /第[一二三四五六七八九十百千]+章[：:\s]*/g,
+      // 数字编号格式（如：一、二、三、）
+      /^[一二三四五六七八九十]+[、：:\s]+/g,
+      // 数字点格式（如：1. 2. 3.）
+      /^\d+[.、：:\s]+/g,
+      // 数字子章节格式（如：1.1 1.2）
+      /^\d+\.\d+[.、：:\s]+/g,
+    ];
+
+    // 合并所有匹配结果
+    const allMatches: Array<{ title: string; position: number }> = [];
+
+    for (const pattern of chapterPatterns) {
+      let match;
+      const regex = new RegExp(pattern.source, pattern.flags);
+      while ((match = regex.exec(content)) !== null) {
+        // 获取完整的章节标题行
+        const lineStart = content.lastIndexOf('\n', match.index) + 1;
+        const lineEnd = content.indexOf('\n', match.index);
+        const fullLine = content.substring(lineStart, lineEnd > 0 ? lineEnd : content.length).trim();
+
+        if (fullLine.length > 0) {
+          allMatches.push({
+            title: fullLine.substring(0, Math.min(50, fullLine.length)), // 截取前50字符
+            position: lineStart
+          });
+        }
+      }
+    }
+
+    // 按位置排序并设置结束位置
+    allMatches.sort((a, b) => a.position - b.position);
+
+    for (let i = 0; i < allMatches.length; i++) {
+      const chapter = allMatches[i];
+      const nextChapter = allMatches[i + 1];
+      chapters.push({
+        title: chapter.title,
+        startPos: chapter.position,
+        endPos: nextChapter ? nextChapter.position : content.length
+      });
+    }
+
+    // 如果没有找到章节，添加一个默认的"正文"章节
+    if (chapters.length === 0) {
+      chapters.push({
+        title: '正文',
+        startPos: 0,
+        endPos: content.length
+      });
+    }
+
+    this.logger.log(`提取到 ${chapters.length} 个章节结构`);
+    return chapters;
+  }
+
+  /**
+   * 根据位置获取所在章节
+   */
+  private getChapterForPosition(position: number, chapters: Array<{ title: string; startPos: number; endPos: number }>): string {
+    for (const chapter of chapters) {
+      if (position >= chapter.startPos && position < chapter.endPos) {
+        return chapter.title;
+      }
+    }
+    return '正文';
+  }
+
+  /**
+   * 根据标签获取字段意义说明
+   */
+  private getSignificanceForLabel(label: string, templateType: string): string {
+    const significanceMap: Record<string, Record<string, string>> = {
+      'contract': {
+        '甲方': '合同第一签署方，通常是合同的主要责任方',
+        '乙方': '合同第二签署方，通常是合同的配合责任方',
+        '甲方名称': '甲方公司或个人的完整名称',
+        '乙方名称': '乙方公司或个人的完整名称',
+        '甲方地址': '甲方注册地址或实际办公地址',
+        '乙方地址': '乙方注册地址或实际办公地址',
+        '签订日期': '合同签署日期，记录合同正式签订的时间',
+        '生效日期': '合同开始生效的日期',
+        '截止日期': '合同有效期终止的日期',
+        '合同金额': '合同涉及的金额总数',
+        '合同编号': '合同唯一编号，用于归档和查询',
+        '法定代表人': '公司法定的代表人姓名',
+        '联系电话': '用于业务沟通的电话号码',
+        '地址': '地址信息，用于联系和送达',
+        '签字': '签字区域，用于确认合同内容',
+        '盖章': '盖章区域，用于公司公章确认',
+      },
+      'report': {
+        '标题': '报告的标题名称',
+        '日期': '报告生成日期',
+        '作者': '报告撰写人',
+        '摘要': '报告内容摘要',
+        '结论': '报告结论或建议',
+      },
+      'invoice': {
+        '金额': '发票金额',
+        '日期': '发票开具日期',
+        '编号': '发票编号',
+        '公司': '公司名称',
+        '项目': '项目名称',
+      },
+      'certificate': {
+        '姓名': '证书持有者姓名',
+        '日期': '证书颁发日期',
+        '编号': '证书编号',
+        '有效期': '证书有效期限',
+      },
+    };
+
+    const templateMap = significanceMap[templateType] || significanceMap['contract'];
+
+    // 尝试直接匹配
+    if (templateMap[label]) {
+      return templateMap[label];
+    }
+
+    // 尝试关键词匹配
+    for (const [key, value] of Object.entries(templateMap)) {
+      if (label.includes(key) || key.includes(label)) {
+        return value;
+      }
+    }
+
+    return '文档中需要填充的字段';
+  }
+
+  /**
    * 使用AI分析空白部分，生成变量建议
+   * 返回建议列表以及是否使用了AI的标记
    */
   private async analyzeBlankPatternsWithAI(
-    patterns: Array<{ text: string; context: string; position: number; type: string }>,
+    patterns: Array<{ text: string; context: string; beforeBlank?: string; position: number; type: string; chapter?: string; significance?: string }>,
     fullContent: string,
     templateType: string,
     context?: string,
     customRules?: Array<{ pattern: string; targetPath: string; description?: string }>
-  ): Promise<any[]> {
+  ): Promise<{ suggestions: any[]; usedAI: boolean }> {
     if (patterns.length === 0) {
-      return [];
+      return { suggestions: [], usedAI: false };
     }
 
     // 构建AI提示
@@ -515,11 +713,14 @@ export class AIIdentifierService {
     // 调用AI服务
     try {
       const aiResponse = await this.callAIService(prompt);
-      return this.parseAIResponseToSuggestions(aiResponse, patterns);
+      const suggestions = this.parseAIResponseToSuggestions(aiResponse, patterns);
+      return { suggestions, usedAI: true };  // AI分析成功
     } catch (error) {
       this.logger.error('AI analysis failed:', error);
+      this.logger.warn('使用规则匹配作为后备方案');
       // 如果AI失败，使用规则生成基础建议
-      return this.generateFallbackSuggestions(patterns, templateType);
+      const suggestions = this.generateFallbackSuggestions(patterns, templateType);
+      return { suggestions, usedAI: false };  // 使用了规则后备
     }
   }
 
@@ -672,7 +873,7 @@ ${blankList}
    * AI失败时的后备建议生成
    */
   private generateFallbackSuggestions(
-    patterns: Array<{ text: string; context: string; beforeBlank: string; position: number; type: string }>,
+    patterns: Array<{ text: string; context: string; beforeBlank?: string; position: number; type: string; chapter?: string; significance?: string }>,
     templateType: string
   ): any[] {
     const suggestions: any[] = [];
@@ -791,12 +992,13 @@ ${blankList}
       let suggestedPath = `d.field${i + 1}`;
       let confidence = 0.5;
 
-      // 使用 beforeBlank 进行精确标签匹配
+      // 使用 beforeBlank 进行精确标签匹配（如果可用）
       // 提取冒号/等号前面的文字作为标签
-      const labelMatch = pattern.beforeBlank.match(/([^\s：:=]+)[：:=]?$/);
+      const beforeBlankText = pattern.beforeBlank || pattern.context;
+      const labelMatch = beforeBlankText.match(/([^\s：:=]+)[：:=]?$/);
       if (labelMatch) {
         const label = labelMatch[1].trim();
-        this.logger.log(`Pattern ${i}: beforeBlank="${pattern.beforeBlank}", extracted label="${label}"`);
+        this.logger.log(`Pattern ${i}: beforeBlank="${beforeBlankText}", extracted label="${label}"`);
 
         // 精确匹配标签
         for (const [mappingLabel, mapping] of Object.entries(labelMappings)) {
@@ -839,16 +1041,33 @@ ${blankList}
         usedPaths.add(suggestedPath);
       }
 
+      // 获取匹配到的描述（用于显示项目意义）
+      let matchedDescription = '';
+      if (suggestedPath !== `d.field${i + 1}`) {
+        for (const [mappingLabel, mapping] of Object.entries(labelMappings)) {
+          if (suggestedPath === mapping.path) {
+            matchedDescription = mapping.description;
+            break;
+          }
+        }
+      }
+
+      // 优先使用pattern中的significance，如果没有则使用matchedDescription
+      const finalSignificance = pattern.significance || matchedDescription || '文档中需要填充的字段';
+      const finalChapter = pattern.chapter || '正文';
+
       suggestions.push({
         id: `sugg-${Date.now()}-${i}`,
         type: 'variable',
-        elementPath: `position:${pattern.position}`,
+        elementPath: pattern.context,  // 直接使用上下文作为位置显示，不再显示"第几个空白"
         suggestedName: suggestedPath,
         originalText: pattern.text,
         confidence,
         applied: false,
         context: pattern.context,
         details: {
+          chapter: finalChapter,  // 章节信息
+          significance: finalSignificance,  // 项目意义说明
           formatter: suggestedPath.includes('date') || suggestedPath.includes('Date') ? 'formatDate(YYYY-MM-DD)' :
                      suggestedPath.includes('amount') || suggestedPath.includes('Price') ? 'formatNumber(#,##0.00)' : null
         }

@@ -42,6 +42,7 @@ export interface DirectAIIdentifyRequest {
 
 export interface AIIdentifyResponse {
   suggestions: AISuggestion[];
+  rawSuggestions?: any[];  // 原始建议数据，包含详细信息
   documentStructure?: DocumentStructure;
   templateConfig?: any;
   confidence: number;
@@ -54,6 +55,8 @@ export interface AIIdentifyResponse {
   contextAnalysis?: {
     detectedTemplateType: string;
     userIntent: string;
+    usedAI?: boolean;  // 是否使用了AI分析
+    aiServiceUrl?: string;  // AI服务地址
   };
 }
 

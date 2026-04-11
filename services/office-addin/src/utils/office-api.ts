@@ -153,23 +153,95 @@ export const WordAPI = {
 
   /**
    * 高亮文本（用于预览）
+   * 先搜索文本，选中找到的结果，滚动到视图，并添加高亮标记
    */
-  async highlightText(text: string): Promise<void> {
+  async highlightText(text: string): Promise<number> {
     return new Promise((resolve, reject) => {
       Word.run(async (context) => {
-        const results = context.document.body.search(text);
-        results.load('items');
+        // 处理特殊字符：空格和空白标记
+        // 如果text是单个空格或空白标记，搜索时需要特殊处理
+        let searchText = text;
+        if (text === ' ' || text.trim() === '') {
+          // 空白标记不能直接搜索，需要根据上下文来搜索
+          // 这种情况下，我们跳过高亮，返回0表示未找到
+          console.log('空白标记无法直接高亮');
+          resolve(0);
+          return;
+        }
+
+        // 使用 search 方法查找所有匹配
+        const searchResults = context.document.body.search(searchText, {
+          matchCase: false,
+          matchWholeWord: false
+        });
+        searchResults.load('items');
         await context.sync();
 
-        // 选中找到的文本，使其高亮显示
-        for (const item of results.items) {
-          item.select();
-          // 添加临时高亮背景色
-          item.highlightResults = 'yellow';
+        const foundCount = searchResults.items.length;
+
+        if (foundCount > 0) {
+          // 选中第一个找到的结果，使其可见
+          const firstResult = searchResults.items[0];
+          firstResult.select();
+
+          // 尝试添加高亮颜色（Word 2016+ 支持）
+          // 使用 font 高亮作为替代方案
+          firstResult.font.highlightColor = 'yellow';
+
+          await context.sync();
+
+          // 滚动到选中位置
+          // Word API 不直接支持滚动，但选中后会自动滚动
         }
+
+        resolve(foundCount);
+      }).catch((error) => {
+        reject(error);
+      });
+    });
+  },
+
+  /**
+   * 按上下文高亮文本
+   * 根据上下文片段找到对应的位置并高亮
+   */
+  async highlightByContext(contextSnippet: string): Promise<number> {
+    return new Promise((resolve, reject) => {
+      Word.run(async (context) => {
+        // 从上下文片段中提取关键文本（去除前后省略号）
+        let searchText = contextSnippet
+          .replace(/^[\.\.\.]*/, '')
+          .replace(/[\.\.\.]*$/, '')
+          .trim();
+
+        // 如果上下文太短，尝试搜索原始文本
+        if (searchText.length < 5) {
+          resolve(0);
+          return;
+        }
+
+        // 搜索上下文片段
+        const searchResults = context.document.body.search(searchText, {
+          matchCase: false,
+          matchWholeWord: false
+        });
+        searchResults.load('items');
         await context.sync();
-        resolve();
-      }).catch(reject);
+
+        const foundCount = searchResults.items.length;
+
+        if (foundCount > 0) {
+          // 选中并高亮第一个结果
+          const firstResult = searchResults.items[0];
+          firstResult.select();
+          firstResult.font.highlightColor = 'yellow';
+          await context.sync();
+        }
+
+        resolve(foundCount);
+      }).catch((error) => {
+        reject(error);
+      });
     });
   },
 

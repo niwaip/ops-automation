@@ -3,13 +3,44 @@
  * 显示详细的调试日志，帮助排查问题
  */
 
-import React from 'react';
+import React, { useState } from 'react';
 import { useAppStore, DebugLogEntry } from '../taskpane/store';
 
 export const DebugLogPanel: React.FC = () => {
   const { debugLogs, clearDebugLogs, showDebugPanel, setShowDebugPanel } = useAppStore();
+  const [copySuccess, setCopySuccess] = useState<string | null>(null);
 
   if (!showDebugPanel) return null;
+
+  /**
+   * 复制单条日志到剪贴板
+   */
+  const copyLogToClipboard = async (log: DebugLogEntry) => {
+    const logText = `[${log.level.toUpperCase()}] ${log.timestamp.toLocaleTimeString()} - ${log.message}\n${log.details || ''}`;
+    try {
+      await navigator.clipboard.writeText(logText);
+      setCopySuccess(log.id);
+      setTimeout(() => setCopySuccess(null), 2000);
+    } catch (err) {
+      console.error('Failed to copy:', err);
+    }
+  };
+
+  /**
+   * 复制所有日志到剪贴板
+   */
+  const copyAllLogsToClipboard = async () => {
+    const allLogsText = debugLogs.map(log =>
+      `[${log.level.toUpperCase()}] ${log.timestamp.toLocaleTimeString()} - ${log.message}\n${log.details || ''}`
+    ).join('\n\n');
+    try {
+      await navigator.clipboard.writeText(allLogsText);
+      setCopySuccess('all');
+      setTimeout(() => setCopySuccess(null), 2000);
+    } catch (err) {
+      console.error('Failed to copy all:', err);
+    }
+  };
 
   const getLevelColor = (level: DebugLogEntry['level']) => {
     switch (level) {
@@ -36,6 +67,9 @@ export const DebugLogPanel: React.FC = () => {
       <div className="debug-header">
         <h3>调试日志</h3>
         <div className="debug-actions">
+          <button onClick={copyAllLogsToClipboard} disabled={debugLogs.length === 0}>
+            {copySuccess === 'all' ? '✓ 已复制' : '📋 复制全部'}
+          </button>
           <button onClick={clearDebugLogs}>清空</button>
           <button onClick={() => setShowDebugPanel(false)}>关闭</button>
         </div>
@@ -56,6 +90,13 @@ export const DebugLogPanel: React.FC = () => {
                   [{log.level.toUpperCase()}]
                 </span>
                 <span className="log-message">{log.message}</span>
+                <button
+                  className="copy-log-btn"
+                  onClick={() => copyLogToClipboard(log)}
+                  title="复制此日志"
+                >
+                  {copySuccess === log.id ? '✓' : '📋'}
+                </button>
               </div>
               {log.details && (
                 <div className="log-details">

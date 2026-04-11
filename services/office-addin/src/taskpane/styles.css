@@ -888,6 +888,52 @@ body {
   margin-top: 4px;
 }
 
+/* Suggestion Chapter */
+.suggestion-chapter {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: #3b82f6;
+  margin-top: 4px;
+}
+
+.chapter-label {
+  font-weight: 500;
+  color: #2563eb;
+}
+
+.chapter-text {
+  color: #1e40af;
+  background: #eff6ff;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+/* Suggestion Significance */
+.suggestion-significance {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font-size: 12px;
+  color: #059669;
+  margin-top: 4px;
+  flex-wrap: wrap;
+}
+
+.significance-label {
+  font-weight: 500;
+  color: #047857;
+}
+
+.significance-text {
+  color: #065f46;
+  background: #d1fae5;
+  padding: 2px 6px;
+  border-radius: 4px;
+  flex: 1;
+}
+
 .context-label {
   font-weight: 500;
 }
@@ -946,4 +992,27 @@ body {
 
 .suggestion-actions .preview-btn:disabled {
   background: #94a3b8;
+}
+
+/* Copy Log Button */
+.copy-log-btn {
+  padding: 2px 6px;
+  font-size: 11px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  opacity: 0.7;
+  transition: opacity 0.2s;
+  margin-left: 8px;
+}
+
+.copy-log-btn:hover {
+  opacity: 1;
+}
+
+.log-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
 }

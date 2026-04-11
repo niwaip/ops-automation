@@ -22,6 +22,8 @@ export interface AISuggestion {
     tableName?: string;
     slideIndex?: number;
     context?: string;  // 后端传递的上下文
+    chapter?: string;  // 所在章节信息
+    significance?: string;  // 项目意义说明
   };
 }
 
