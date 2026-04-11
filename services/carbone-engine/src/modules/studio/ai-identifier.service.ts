@@ -343,7 +343,9 @@ export class AIIdentifierService {
    * 提取文档中需要填充的空白部分
    * 识别多种空白模式：
    * - 多个空格/空白线（如：______、          ）
-   * - 中文括号（如：（ ）、【 】）
+   * - 单个空格跟随冒号（如：甲方： 、地址： ）
+   * - 中文括号内的空白（如：（ ）、【 】）
+   * - 日期格式空白（如： 年 月 日）
    * - 填充提示（如：填写、待填、XXX）
    */
   private extractBlankPatterns(content: string, templateType: string): Array<{
@@ -351,23 +353,82 @@ export class AIIdentifierService {
     context: string;  // 前后文本作为上下文
     beforeBlank: string;  // 空白前面的文本（用于精确标签匹配）
     position: number;
-    type: 'blank' | 'bracket' | 'placeholder';
+    type: 'blank' | 'date' | 'bracket' | 'placeholder' | 'colon-space';
   }> {
     const patterns: Array<{
       text: string;
       context: string;
       beforeBlank: string;
       position: number;
-      type: 'blank' | 'bracket' | 'placeholder';
+      type: 'blank' | 'date' | 'bracket' | 'placeholder' | 'colon-space';
     }> = [];
 
-    // 1. 匹配多个连续空格/下划线（如：______、          ）
-    const blankRegex = /[＿_]{2,}|[ 　]{4,}/g;
+    // 1. 匹配冒号后的空白（如：甲方： 、地址： ）
+    // 这是最常见的合同空白格式
+    const colonSpaceRegex = /[：:]\s+/g;
     let match;
+    while ((match = colonSpaceRegex.exec(content)) !== null) {
+      // 获取冒号前面的完整上下文（包含前面的标签如"甲方"或"乙方"）
+      const labelStart = Math.max(0, match.index - 50);
+      const beforeColon = content.substring(labelStart, match.index);
+
+      // 提取冒号前面的最后一个词作为标签
+      const labelMatch = beforeColon.match(/([^\s：:]+)[：:]?$/);
+      if (labelMatch) {
+        let label = labelMatch[1].trim();
+
+        // 检查是否前面有甲方/乙方等前缀（如"甲方地址"、"乙方地址"）
+        // 尝试提取复合标签
+        const compoundMatch = beforeColon.match(/(甲方|乙方|委托方|受托方|买方|卖方|出租方|承租方)[^\s]*([^\s：:]+)?[：:]?$/);
+        if (compoundMatch) {
+          // 如果有甲方/乙方前缀，使用完整复合标签
+          label = compoundMatch[1] + (compoundMatch[2] || '');
+        }
+
+        // 获取空白部分的长度
+        const blankEnd = match.index + match[0].length;
+        // 查找空白结束位置（下一个非空白字符）
+        let blankLength = match[0].length - 1; // 减去冒号本身
+        // 检查后面是否还有更多空白
+        const afterColon = content.substring(blankEnd);
+        const additionalSpaceMatch = afterColon.match(/^[\s　]+/);
+        if (additionalSpaceMatch) {
+          blankLength += additionalSpaceMatch[0].length;
+        }
+
+        const startPos = Math.max(0, match.index - 30);
+        const endPos = Math.min(content.length, match.index + blankLength + 30);
+        patterns.push({
+          text: ' ', // 单个空格作为标记
+          context: content.substring(startPos, endPos),
+          beforeBlank: label,  // 使用复合标签（如"甲方地址"）
+          position: match.index + 1, // 冒号后第一个空格的位置
+          type: 'colon-space'
+        });
+      }
+    }
+
+    // 2. 匹配日期格式空白（如： 年 月 日）
+    const dateBlankRegex = /[\s　]+年[\s　]+月[\s　]+日/g;
+    while ((match = dateBlankRegex.exec(content)) !== null) {
+      const startPos = Math.max(0, match.index - 30);
+      const endPos = Math.min(content.length, match.index + match[0].length + 30);
+      const beforeBlankStart = Math.max(0, match.index - 20);
+      const beforeBlank = content.substring(beforeBlankStart, match.index);
+      patterns.push({
+        text: match[0],
+        context: content.substring(startPos, endPos),
+        beforeBlank: beforeBlank.trim() || '签订日期',
+        position: match.index,
+        type: 'date'
+      });
+    }
+
+    // 3. 匹配多个连续空格/下划线（如：______、          ）
+    const blankRegex = /[＿_]{2,}|[ 　]{4,}/g;
     while ((match = blankRegex.exec(content)) !== null) {
       const startPos = Math.max(0, match.index - 30);
       const endPos = Math.min(content.length, match.index + match[0].length + 30);
-      // 只提取空白前面的文本（最多20个字符），用于精确标签匹配
       const beforeBlankStart = Math.max(0, match.index - 20);
       const beforeBlank = content.substring(beforeBlankStart, match.index);
       patterns.push({
@@ -379,7 +440,7 @@ export class AIIdentifierService {
       });
     }
 
-    // 2. 匹配中文括号内的空白（如：（ ）、【 】）
+    // 4. 匹配中文括号内的空白（如：（ ）、【 】）
     const bracketRegex = /[（【\(][　 ]*[）】\)]/g;
     while ((match = bracketRegex.exec(content)) !== null) {
       const startPos = Math.max(0, match.index - 30);
@@ -395,7 +456,7 @@ export class AIIdentifierService {
       });
     }
 
-    // 3. 匹配占位符（如：XXX、待填写、请填写）
+    // 5. 匹配占位符（如：XXX、待填写、请填写）
     const placeholderRegex = /(XXX+|待填[写名]|请填[写名]|此处填[写名])/g;
     while ((match = placeholderRegex.exec(content)) !== null) {
       const startPos = Math.max(0, match.index - 30);
@@ -411,7 +472,27 @@ export class AIIdentifierService {
       });
     }
 
-    return patterns;
+    // 按位置排序，避免顺序混乱
+    patterns.sort((a, b) => a.position - b.position);
+
+    // 去重逻辑：基于完整上下文而非仅标签
+    // "甲方地址："和"乙方地址："虽然标签都是"地址"，但上下文不同，应该都保留
+    const uniquePatterns = [];
+    for (let i = 0; i < patterns.length; i++) {
+      const pattern = patterns[i];
+      // 检查是否与前一个完全重复（相同位置和相同完整上下文）
+      if (i === 0 ||
+          pattern.position !== patterns[i - 1].position ||
+          pattern.context !== patterns[i - 1].context) {
+        uniquePatterns.push(pattern);
+        this.logger.debug(`保留空白: 标签="${pattern.beforeBlank}", 位置=${pattern.position}, 类型=${pattern.type}`);
+      } else {
+        this.logger.debug(`跳过完全重复空白: 标签="${pattern.beforeBlank}", 位置=${pattern.position}`);
+      }
+    }
+
+    this.logger.log(`提取到 ${uniquePatterns.length} 个唯一空白模式（原始 ${patterns.length} 个）`);
+    return uniquePatterns;
   }
 
   /**
@@ -595,76 +676,115 @@ ${blankList}
     templateType: string
   ): any[] {
     const suggestions: any[] = [];
+    this.logger.log(`Generating suggestions for ${patterns.length} patterns, templateType: ${templateType}`);
 
     // 更精确的关键词映射 - 根据空白前面的标签来匹配
-    const labelMappings: Record<string, { path: string; confidence: number }> = {
-      // 甲方相关
-      '甲方': { path: 'd.partyA.name', confidence: 0.9 },
-      '甲方名称': { path: 'd.partyA.name', confidence: 0.95 },
-      '甲方地址': { path: 'd.partyA.address', confidence: 0.95 },
-      '甲方电话': { path: 'd.partyA.phone', confidence: 0.95 },
-      '甲方联系人': { path: 'd.partyA.contact', confidence: 0.95 },
-      '甲方代表': { path: 'd.partyA.representative', confidence: 0.95 },
-      '甲方签字': { path: 'd.partyA.signature', confidence: 0.95 },
-      '甲方盖章': { path: 'd.partyA.seal', confidence: 0.9 },
-      // 乙方相关
-      '乙方': { path: 'd.partyB.name', confidence: 0.9 },
-      '乙方名称': { path: 'd.partyB.name', confidence: 0.95 },
-      '乙方地址': { path: 'd.partyB.address', confidence: 0.95 },
-      '乙方电话': { path: 'd.partyB.phone', confidence: 0.95 },
-      '乙方联系人': { path: 'd.partyB.contact', confidence: 0.95 },
-      '乙方代表': { path: 'd.partyB.representative', confidence: 0.95 },
-      '乙方签字': { path: 'd.partyB.signature', confidence: 0.95 },
-      '乙方盖章': { path: 'd.partyB.seal', confidence: 0.9 },
-      // 日期时间
-      '日期': { path: 'd.date', confidence: 0.9 },
-      '签订日期': { path: 'd.signDate', confidence: 0.95 },
-      '生效日期': { path: 'd.effectiveDate', confidence: 0.95 },
-      '截止日期': { path: 'd.endDate', confidence: 0.95 },
-      '时间': { path: 'd.time', confidence: 0.85 },
-      '年月日': { path: 'd.date', confidence: 0.85 },
-      // 合同/编号
-      '合同编号': { path: 'd.contractNo', confidence: 0.95 },
-      '合同': { path: 'd.contractName', confidence: 0.85 },
-      '编号': { path: 'd.serialNo', confidence: 0.8 },
-      '文号': { path: 'd.documentNo', confidence: 0.9 },
-      // 公司信息
-      '公司': { path: 'd.companyName', confidence: 0.8 },
-      '公司名称': { path: 'd.companyName', confidence: 0.95 },
-      '公司地址': { path: 'd.companyAddress', confidence: 0.95 },
-      // 地址
-      '地址': { path: 'd.address', confidence: 0.8 },
-      // 金额
-      '金额': { path: 'd.amount', confidence: 0.85 },
-      '总金额': { path: 'd.totalAmount', confidence: 0.95 },
-      '合同金额': { path: 'd.contractAmount', confidence: 0.95 },
-      '单价': { path: 'd.unitPrice', confidence: 0.9 },
-      '总价': { path: 'd.totalPrice', confidence: 0.9 },
-      // 项目/产品
-      '项目': { path: 'd.projectName', confidence: 0.85 },
-      '项目名称': { path: 'd.projectName', confidence: 0.95 },
-      '产品': { path: 'd.productName', confidence: 0.85 },
-      '产品名称': { path: 'd.productName', confidence: 0.95 },
-      // 数量
-      '数量': { path: 'd.quantity', confidence: 0.9 },
-      // 名称（通用）
-      '名称': { path: 'd.name', confidence: 0.75 },
-      // 签字/盖章
-      '签字': { path: 'd.signature', confidence: 0.85 },
-      '盖章': { path: 'd.seal', confidence: 0.85 },
-      '签名': { path: 'd.signature', confidence: 0.85 },
-      // 联系方式
-      '电话': { path: 'd.phone', confidence: 0.85 },
-      '邮箱': { path: 'd.email', confidence: 0.85 },
-      '传真': { path: 'd.fax', confidence: 0.85 },
-      // 其他
-      '备注': { path: 'd.notes', confidence: 0.8 },
-      '说明': { path: 'd.description', confidence: 0.8 },
-      '附件': { path: 'd.attachments', confidence: 0.8 },
+    // 每个标签映射到具体的变量路径，包含详细的语言说明
+    const labelMappings: Record<string, { path: string; confidence: number; description: string }> = {
+      // ===== 甲乙双方相关 =====
+      // 甲方信息（合同的第一个签署方）
+      '甲方': { path: 'd.partyA.name', confidence: 0.9, description: '甲方名称，合同的第一个签署方名称' },
+      '甲方名称': { path: 'd.partyA.name', confidence: 0.95, description: '甲方公司或个人名称' },
+      '甲方地址': { path: 'd.partyA.address', confidence: 0.95, description: '甲方注册地址或办公地址' },
+      '甲方电话': { path: 'd.partyA.phone', confidence: 0.95, description: '甲方联系电话' },
+      '甲方联系人': { path: 'd.partyA.contact', confidence: 0.95, description: '甲方联系人姓名' },
+      '甲方代表': { path: 'd.partyA.representative', confidence: 0.95, description: '甲方法定代表人或授权代表' },
+      '甲方签字': { path: 'd.partyA.signature', confidence: 0.95, description: '甲方签字区域' },
+      '甲方盖章': { path: 'd.partyA.seal', confidence: 0.9, description: '甲方公章印章位置' },
+      '甲方身份证': { path: 'd.partyA.idNumber', confidence: 0.95, description: '甲方身份证号码' },
+      '甲方开户行': { path: 'd.partyA.bank', confidence: 0.95, description: '甲方开户银行名称' },
+      '甲方账号': { path: 'd.partyA.accountNo', confidence: 0.95, description: '甲方银行账号' },
+
+      // 乙方信息（合同的第二个签署方）
+      '乙方': { path: 'd.partyB.name', confidence: 0.9, description: '乙方名称，合同的第二个签署方名称' },
+      '乙方名称': { path: 'd.partyB.name', confidence: 0.95, description: '乙方公司或个人名称' },
+      '乙方地址': { path: 'd.partyB.address', confidence: 0.95, description: '乙方注册地址或办公地址' },
+      '乙方电话': { path: 'd.partyB.phone', confidence: 0.95, description: '乙方联系电话' },
+      '乙方联系人': { path: 'd.partyB.contact', confidence: 0.95, description: '乙方联系人姓名' },
+      '乙方代表': { path: 'd.partyB.representative', confidence: 0.95, description: '乙方法定代表人或授权代表' },
+      '乙方签字': { path: 'd.partyB.signature', confidence: 0.95, description: '乙方签字区域' },
+      '乙方盖章': { path: 'd.partyB.seal', confidence: 0.9, description: '乙方公章印章位置' },
+      '乙方身份证': { path: 'd.partyB.idNumber', confidence: 0.95, description: '乙方身份证号码' },
+      '乙方开户行': { path: 'd.partyB.bank', confidence: 0.95, description: '乙方开户银行名称' },
+      '乙方账号': { path: 'd.partyB.accountNo', confidence: 0.95, description: '乙方银行账号' },
+
+      // ===== 日期时间相关 =====
+      // 合同签署和生效日期
+      '签订日期': { path: 'd.signDate', confidence: 0.95, description: '合同签署日期' },
+      '签署日期': { path: 'd.signDate', confidence: 0.95, description: '合同签署日期' },
+      '签订于': { path: 'd.signDate', confidence: 0.9, description: '合同签订时间点' },
+      '生效日期': { path: 'd.effectiveDate', confidence: 0.95, description: '合同开始生效的日期' },
+      '截止日期': { path: 'd.endDate', confidence: 0.95, description: '合同终止日期' },
+      '有效期': { path: 'd.validPeriod', confidence: 0.9, description: '合同有效期限' },
+      '日期': { path: 'd.date', confidence: 0.85, description: '通用日期字段' },
+      '时间': { path: 'd.time', confidence: 0.85, description: '时间字段' },
+      '年月日': { path: 'd.date', confidence: 0.85, description: '日期格式 年 月 日' },
+
+      // ===== 合同编号相关 =====
+      '合同编号': { path: 'd.contractNo', confidence: 0.95, description: '合同唯一编号' },
+      '合同号': { path: 'd.contractNo', confidence: 0.95, description: '合同编号' },
+      '合同名称': { path: 'd.contractName', confidence: 0.9, description: '合同标题名称' },
+      '编号': { path: 'd.serialNo', confidence: 0.8, description: '通用编号' },
+      '文号': { path: 'd.documentNo', confidence: 0.9, description: '文件编号' },
+
+      // ===== 公司信息 =====
+      '公司': { path: 'd.companyName', confidence: 0.8, description: '公司名称' },
+      '公司名称': { path: 'd.companyName', confidence: 0.95, description: '公司全称' },
+      '公司地址': { path: 'd.companyAddress', confidence: 0.95, description: '公司注册地址' },
+      '法定代表人': { path: 'd.legalRepresentative', confidence: 0.95, description: '公司法定代表人姓名' },
+
+      // ===== 地址相关 =====
+      '地址': { path: 'd.address', confidence: 0.85, description: '地址信息' },
+      '住所': { path: 'd.address', confidence: 0.9, description: '住所地址' },
+      '住所地': { path: 'd.address', confidence: 0.9, description: '住所所在地' },
+
+      // ===== 金额相关 =====
+      '金额': { path: 'd.amount', confidence: 0.85, description: '金额数值' },
+      '总金额': { path: 'd.totalAmount', confidence: 0.95, description: '合同总金额' },
+      '合同金额': { path: 'd.contractAmount', confidence: 0.95, description: '合同涉及的金额' },
+      '付款金额': { path: 'd.paymentAmount', confidence: 0.95, description: '付款金额' },
+      '单价': { path: 'd.unitPrice', confidence: 0.9, description: '单位价格' },
+      '总价': { path: 'd.totalPrice', confidence: 0.9, description: '总价金额' },
+      '定金': { path: 'd.deposit', confidence: 0.9, description: '定金金额' },
+      '保证金': { path: 'd.securityDeposit', confidence: 0.9, description: '保证金金额' },
+
+      // ===== 项目/产品相关 =====
+      '项目': { path: 'd.projectName', confidence: 0.85, description: '项目名称' },
+      '项目名称': { path: 'd.projectName', confidence: 0.95, description: '项目全称' },
+      '产品': { path: 'd.productName', confidence: 0.85, description: '产品名称' },
+      '产品名称': { path: 'd.productName', confidence: 0.95, description: '产品全称' },
+      '商品': { path: 'd.productName', confidence: 0.85, description: '商品名称' },
+
+      // ===== 数量相关 =====
+      '数量': { path: 'd.quantity', confidence: 0.9, description: '数量' },
+      '规格': { path: 'd.specification', confidence: 0.85, description: '产品规格' },
+
+      // ===== 签字/盖章相关 =====
+      '签字': { path: 'd.signature', confidence: 0.85, description: '签字区域' },
+      '盖章': { path: 'd.seal', confidence: 0.85, description: '盖章区域' },
+      '签名': { path: 'd.signature', confidence: 0.85, description: '签名' },
+
+      // ===== 联系方式 =====
+      '电话': { path: 'd.phone', confidence: 0.85, description: '电话号码' },
+      '联系电话': { path: 'd.phone', confidence: 0.95, description: '联系电话' },
+      '手机': { path: 'd.mobile', confidence: 0.9, description: '手机号码' },
+      '邮箱': { path: 'd.email', confidence: 0.85, description: '电子邮箱' },
+      '传真': { path: 'd.fax', confidence: 0.85, description: '传真号码' },
+
+      // ===== 其他常见字段 =====
+      '备注': { path: 'd.notes', confidence: 0.8, description: '备注说明' },
+      '说明': { path: 'd.description', confidence: 0.8, description: '说明内容' },
+      '附件': { path: 'd.attachments', confidence: 0.8, description: '附件列表' },
+      '名称': { path: 'd.name', confidence: 0.75, description: '通用名称字段' },
+      '账号': { path: 'd.accountNo', confidence: 0.9, description: '账号号码' },
+      '开户行': { path: 'd.bank', confidence: 0.9, description: '开户银行' },
+      '身份证': { path: 'd.idNumber', confidence: 0.9, description: '身份证号码' },
+      '税号': { path: 'd.taxNo', confidence: 0.9, description: '纳税人识别号' },
     };
 
-    // 记录已使用的路径
+    // 记录已使用的路径和标签，避免重复
     const usedPaths: Set<string> = new Set();
+    const usedLabels: Set<string> = new Set();
 
     for (let i = 0; i < patterns.length; i++) {
       const pattern = patterns[i];

@@ -70,19 +70,48 @@ export const AIIdentifyPanel: React.FC<Props> = ({ onApplyComplete }) => {
         addDebugLog('debug', `PPT 内容获取成功`, `幻灯片数: ${slidesContent?.length || 0}`);
       }
 
-      // 调用 AI 识别 API（使用新的直接识别接口）
-      addDebugLog('info', `调用 AI 识别 API`, `URL: ${apiBaseUrl}/studio/direct-ai-identify`);
-      carboneAPI.setBaseUrl(apiBaseUrl);
-
-      // 使用新的直接识别接口，无需上传模板
-      const result = await carboneAPI.identifyDocumentDirect({
+      // 构建请求参数
+      const requestPayload = {
         documentContent,
         documentType: officeType === 'ppt' ? 'pptx' : officeType,
         templateType: selectedTemplateType,
         context: `这是一份${selectedTemplateType}类型的${officeType === 'word' ? 'Word文档' : officeType === 'excel' ? 'Excel表格' : 'PPT演示文稿'}，需要识别空白填充部分并生成模板变量`,
-      });
+      };
 
-      addDebugLog('info', `AI 分析成功`, `建议数: ${result.suggestions?.length || 0}`);
+      // 记录请求详情
+      addDebugLog('debug', `📤 请求详情`, JSON.stringify({
+        url: `${apiBaseUrl}/studio/direct-ai-identify`,
+        payload: {
+          contentLength: documentContent.length,
+          documentType: requestPayload.documentType,
+          templateType: requestPayload.templateType,
+          contentPreview: documentContent.substring(0, 300) + (documentContent.length > 300 ? '...' : '')
+        }
+      }, null, 2));
+
+      addDebugLog('info', `调用 AI 识别 API`, `URL: ${apiBaseUrl}/studio/direct-ai-identify`);
+      carboneAPI.setBaseUrl(apiBaseUrl);
+
+      // 使用新的直接识别接口，无需上传模板
+      const result = await carboneAPI.identifyDocumentDirect(requestPayload);
+
+      // 记录完整响应详情
+      addDebugLog('debug', `📥 响应详情`, JSON.stringify({
+        success: true,
+        suggestionsCount: result.suggestions?.length || 0,
+        templateType: result.templateConfig?.templateType,
+        documentStats: result.documentStats,
+        contextAnalysis: result.contextAnalysis,
+        allSuggestions: result.suggestions?.map(s => ({
+          suggestedName: s.suggestedName,
+          originalText: s.originalText,
+          confidence: s.confidence,
+          context: s.context,
+          position: s.elementPath
+        }))
+      }, null, 2));
+
+      addDebugLog('info', `AI 分析成功`, `识别到 ${result.suggestions?.length || 0} 个空白填充项，模板类型: ${result.templateConfig?.templateType}`);
       setSuggestions(result.suggestions);
     } catch (error: any) {
       // 详细错误信息
