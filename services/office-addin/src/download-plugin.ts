@@ -214,10 +214,10 @@ reg add HKCU\\SOFTWARE\\Microsoft\\Office\\16.0\\Wef /v DevelopmentLocation /t R
 
     <div class="warning">
       <h4>⚠️ 重要提示</h4>
-      <p>服务地址使用 HTTPS 和主机IP <strong>192.168.100.143</strong>，请确保：</p>
+      <p>服务地址使用 HTTPS 和主机IP <strong>localhost</strong>，请确保：</p>
       <ul>
         <li>CA证书已正确安装到"受信任的根证书颁发机构"</li>
-        <li>Windows主机可以访问 192.168.100.143（同一网络）</li>
+        <li>Windows主机可以访问 localhost（同一网络）</li>
         <li>防火墙允许 3000 端口访问</li>
       </ul>
     </div>
@@ -226,9 +226,9 @@ reg add HKCU\\SOFTWARE\\Microsoft\\Office\\16.0\\Wef /v DevelopmentLocation /t R
       <h2>🌐 服务地址</h2>
       <table>
         <tr><th>服务</th><th>地址</th></tr>
-        <tr><td>Add-in 页面</td><td><code>https://192.168.100.143:3000/taskpane.html</code></td></tr>
-        <tr><td>Carbone API</td><td><code>http://192.168.100.143:3100</code></td></tr>
-        <tr><td>健康检查</td><td><code>https://192.168.100.143:3000/health</code></td></tr>
+        <tr><td>Add-in 页面</td><td><code>https://localhost:3000/taskpane.html</code></td></tr>
+        <tr><td>Carbone API</td><td><code>http://localhost:3100</code></td></tr>
+        <tr><td>健康检查</td><td><code>https://localhost:3000/health</code></td></tr>
       </table>
     </div>
 

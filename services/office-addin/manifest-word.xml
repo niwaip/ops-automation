@@ -6,8 +6,10 @@
 
   <Id>a1b2c3d4-e5f6-7890-abcd-ef1234567890</Id>
   <Version>1.0.0</Version>
-  <Name>Carbone Template Assistant</Name>
-  <Provider>Carbone</Provider>
+  <ProviderName>Carbone</ProviderName>
+  <DefaultLocale>en-US</DefaultLocale>
+  <DisplayName DefaultValue="Carbone Template Assistant"/>
+  <Description DefaultValue="AI-assisted Carbone template generator for Word"/>
   <IconUrl DefaultValue="https://localhost:3000/assets/icon-32.png"/>
   <HighResolutionIconUrl DefaultValue="https://localhost:3000/assets/icon-64.png"/>
   <SupportUrl DefaultValue="https://carbone.io"/>

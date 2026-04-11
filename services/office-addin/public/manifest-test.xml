@@ -16,7 +16,7 @@
   </Hosts>
 
   <DefaultSettings>
-    <SourceLocation DefaultValue="https://192.168.100.143:3000/test.html"/>
+    <SourceLocation DefaultValue="https://localhost:3000/test.html"/>
   </DefaultSettings>
 
   <Permissions>ReadWriteDocument</Permissions>
