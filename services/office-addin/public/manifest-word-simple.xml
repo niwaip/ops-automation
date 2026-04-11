@@ -3,13 +3,14 @@
            xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
            xsi:type="TaskPaneApp">
 
-  <Id>a1b2c3d4-e5f6-7890-abcd-ef1234567890</Id>
-  <Version>1.0.0</Version>
+  <Id>bb1c2d3e4-f5a6-7890-bcde-f12345678901</Id>
+  <Version>1.0.1</Version>
   <ProviderName>Carbone</ProviderName>
   <DefaultLocale>en-US</DefaultLocale>
   <DisplayName DefaultValue="Carbone Template Assistant"/>
   <Description DefaultValue="AI-assisted template generator"/>
   <SupportUrl DefaultValue="https://carbone.io"/>
+  <IconUrl DefaultValue="https://192.168.100.143:3000/assets/icon-32.png"/>
 
   <Hosts>
     <Host Name="Document"/>
