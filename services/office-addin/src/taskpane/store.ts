@@ -14,12 +14,14 @@ export interface AISuggestion {
   originalText: string;
   confidence: number;
   applied: boolean;
+  context?: string;  // 原文档上下文（前后文本片段）
   details?: {
     formatter?: string;
     loopType?: 'explicit' | 'implicit';
     arrayPath?: string;
     tableName?: string;
     slideIndex?: number;
+    context?: string;  // 后端传递的上下文
   };
 }
 

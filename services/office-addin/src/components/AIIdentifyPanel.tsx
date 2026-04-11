@@ -35,6 +35,8 @@ export const AIIdentifyPanel: React.FC<Props> = ({ onApplyComplete }) => {
 
   const [selectedTemplateType, setSelectedTemplateType] = useState('report');
   const [showErrorDetails, setShowErrorDetails] = useState(false);
+  const [showPreview, setShowPreview] = useState(false);  // 预览模式
+  const [previewContent, setPreviewContent] = useState<string>('');  // 预览内容
 
   /**
    * 执行 AI 分析
@@ -155,9 +157,43 @@ export const AIIdentifyPanel: React.FC<Props> = ({ onApplyComplete }) => {
   };
 
   /**
-   * 一键应用所有建议
+   * 预览单个建议的替换效果
+   */
+  const handlePreviewSingle = async (suggestion: AISuggestion) => {
+    try {
+      // 在 Word 中高亮显示要替换的文本
+      if (officeType === 'word') {
+        await OfficeHelper.Word.highlightText(suggestion.originalText);
+        addDebugLog('info', `预览: 高亮 ${suggestion.originalText}`, `将替换为 ${suggestion.suggestedName}`);
+      }
+    } catch (error: any) {
+      addDebugLog('error', '预览失败', error.message);
+    }
+  };
+
+  /**
+   * 生成预览摘要
+   */
+  const generatePreviewSummary = (): string => {
+    const unapplied = suggestions.filter((s) => !s.applied);
+    const lines = unapplied.map((s, i) => {
+      return `${i + 1}. "${s.originalText}" → ${s.suggestedName}`;
+    });
+    return `即将应用 ${unapplied.length} 个替换:\n\n${lines.join('\n')}`;
+  };
+
+  /**
+   * 一键应用所有建议（带预览确认）
    */
   const handleApplyAll = async () => {
+    if (!showPreview) {
+      // 先显示预览
+      setPreviewContent(generatePreviewSummary());
+      setShowPreview(true);
+      return;
+    }
+
+    // 确认后执行
     try {
       const unapplied = suggestions.filter((s) => !s.applied);
 
@@ -165,11 +201,20 @@ export const AIIdentifyPanel: React.FC<Props> = ({ onApplyComplete }) => {
         await handleApplySingle(suggestion);
       }
 
+      setShowPreview(false);
       onApplyComplete?.();
       addDebugLog('info', `批量应用完成`, `应用了 ${unapplied.length} 个建议`);
     } catch (error) {
       addDebugLog('error', '批量应用失败', error.message);
     }
+  };
+
+  /**
+   * 取消预览
+   */
+  const handleCancelPreview = () => {
+    setShowPreview(false);
+    setPreviewContent('');
   };
 
   /**
@@ -245,10 +290,26 @@ export const AIIdentifyPanel: React.FC<Props> = ({ onApplyComplete }) => {
       {/* 分析结果 */}
       {suggestions.length > 0 && (
         <div className="suggestions-container">
+          {/* 预览确认面板 */}
+          {showPreview && (
+            <div className="preview-confirm-panel">
+              <h4>📋 替换预览</h4>
+              <pre className="preview-content">{previewContent}</pre>
+              <div className="preview-actions">
+                <button className="confirm-btn" onClick={handleApplyAll}>
+                  ✅ 确认应用
+                </button>
+                <button className="cancel-btn" onClick={handleCancelPreview}>
+                  ❌ 取消
+                </button>
+              </div>
+            </div>
+          )}
+
           {/* 一键应用按钮 */}
           <div className="apply-all-section">
             <button className="apply-all-btn" onClick={handleApplyAll}>
-              ✅ 一键应用全部 ({suggestions.filter((s) => !s.applied).length})
+              {showPreview ? '✅ 确认应用全部' : '👁️ 预览后应用全部'} ({suggestions.filter((s) => !s.applied).length})
             </button>
           </div>
 
@@ -271,6 +332,7 @@ export const AIIdentifyPanel: React.FC<Props> = ({ onApplyComplete }) => {
                     suggestion={suggestion}
                     onApply={() => handleApplySingle(suggestion)}
                     onDismiss={() => dismissSuggestion(suggestion.id)}
+                    onPreview={() => handlePreviewSingle(suggestion)}
                   />
                 ))}
               </div>
@@ -289,11 +351,43 @@ const SuggestionItem: React.FC<{
   suggestion: AISuggestion;
   onApply: () => void;
   onDismiss: () => void;
-}> = ({ suggestion, onApply, onDismiss }) => {
+  onPreview?: () => void;
+}> = ({ suggestion, onApply, onDismiss, onPreview }) => {
   const [expanded, setExpanded] = useState(false);
+  const [isPreviewing, setIsPreviewing] = useState(false);
+
+  // 获取位置信息（从 elementPath 解析）
+  const getPositionInfo = (elementPath: string): string => {
+    if (elementPath?.startsWith('position:')) {
+      const pos = elementPath.replace('position:', '');
+      return `文档位置: 第 ${pos} 个空白`;
+    }
+    return elementPath || '未知位置';
+  };
+
+  // 获取上下文片段
+  const getContextSnippet = (suggestion: AISuggestion): string => {
+    // 如果 suggestion 有 context 属性（后端传递），使用它
+    if (suggestion.details?.context) {
+      return suggestion.details.context;
+    }
+    // 否则从 elementPath 推断
+    return suggestion.originalText;
+  };
+
+  // 预览替换效果（在原文中高亮显示）
+  const handlePreview = async () => {
+    if (!onPreview) return;
+    setIsPreviewing(true);
+    try {
+      await onPreview();
+    } finally {
+      setIsPreviewing(false);
+    }
+  };
 
   return (
-    <div className={`suggestion-item ${suggestion.applied ? 'applied' : ''}`}>
+    <div className={`suggestion-item ${suggestion.applied ? 'applied' : ''} ${isPreviewing ? 'previewing' : ''}`}>
       <div className="suggestion-header" onClick={() => setExpanded(!expanded)}>
         <div className="confidence-badge">
           {suggestion.confidence > 0.8 ? '🟢' : suggestion.confidence > 0.5 ? '🟡' : '🔴'}
@@ -307,25 +401,41 @@ const SuggestionItem: React.FC<{
         </div>
 
         {suggestion.applied && <span className="applied-badge">已应用</span>}
+        {isPreviewing && <span className="previewing-badge">预览中</span>}
       </div>
+
+      {/* 显示上下文片段 */}
+      <div className="suggestion-context">
+        <span className="context-label">原文位置:</span>
+        <span className="context-text">{getPositionInfo(suggestion.elementPath)}</span>
+      </div>
+
+      {/* 显示上下文内容 */}
+      {suggestion.details?.context && (
+        <div className="context-snippet">
+          <span className="snippet-label">上下文:</span>
+          <span className="snippet-text">...{suggestion.details.context}...</span>
+        </div>
+      )}
 
       {expanded && (
         <div className="suggestion-details">
-          <p>元素路径: {suggestion.elementPath}</p>
+          <p>变量路径: <code>{suggestion.suggestedName}</code></p>
+          <p>原始文本: <code>{suggestion.originalText}</code></p>
           {suggestion.details?.formatter && (
-            <p>格式化器: {suggestion.details.formatter}</p>
-          )}
-          {suggestion.details?.loopType && (
-            <p>循环类型: {suggestion.details.loopType}</p>
+            <p>建议格式化器: <code>{suggestion.details.formatter}</code></p>
           )}
 
           {!suggestion.applied && (
             <div className="suggestion-actions">
+              <button className="preview-btn" onClick={handlePreview} disabled={isPreviewing}>
+                👁️ 预览
+              </button>
               <button className="apply-btn" onClick={onApply}>
-                应用
+                ✅ 应用
               </button>
               <button className="dismiss-btn" onClick={onDismiss}>
-                忽略
+                ❌ 忽略
               </button>
             </div>
           )}

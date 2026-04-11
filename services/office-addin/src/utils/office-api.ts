@@ -152,6 +152,28 @@ export const WordAPI = {
   },
 
   /**
+   * 高亮文本（用于预览）
+   */
+  async highlightText(text: string): Promise<void> {
+    return new Promise((resolve, reject) => {
+      Word.run(async (context) => {
+        const results = context.document.body.search(text);
+        results.load('items');
+        await context.sync();
+
+        // 选中找到的文本，使其高亮显示
+        for (const item of results.items) {
+          item.select();
+          // 添加临时高亮背景色
+          item.highlightResults = 'yellow';
+        }
+        await context.sync();
+        resolve();
+      }).catch(reject);
+    });
+  },
+
+  /**
    * 获取选中的文本
    */
   async getSelectedText(): Promise<string> {

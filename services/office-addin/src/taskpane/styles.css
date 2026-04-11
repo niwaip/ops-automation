@@ -827,3 +827,123 @@ body {
 .connection-status .error {
   color: #b91c1c;
 }
+
+/* Preview Confirm Panel */
+.preview-confirm-panel {
+  padding: 16px;
+  background: #eff6ff;
+  border: 2px solid #3b82f6;
+  border-radius: 8px;
+  margin-bottom: 16px;
+}
+
+.preview-confirm-panel h4 {
+  color: #1e40af;
+  margin-bottom: 12px;
+}
+
+.preview-content {
+  font-size: 12px;
+  background: white;
+  padding: 12px;
+  border-radius: 6px;
+  white-space: pre-wrap;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.preview-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.preview-actions .confirm-btn {
+  flex: 1;
+  padding: 10px;
+  background: var(--success-color);
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.preview-actions .cancel-btn {
+  flex: 1;
+  padding: 10px;
+  background: var(--card-bg);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+/* Suggestion Context */
+.suggestion-context {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: #64748b;
+  margin-top: 4px;
+}
+
+.context-label {
+  font-weight: 500;
+}
+
+.context-text {
+  color: #475569;
+}
+
+.context-snippet {
+  font-size: 11px;
+  padding: 6px 8px;
+  background: #f1f5f9;
+  border-radius: 4px;
+  margin-top: 6px;
+}
+
+.snippet-label {
+  color: #64748b;
+  font-weight: 500;
+}
+
+.snippet-text {
+  color: #334155;
+  font-style: italic;
+}
+
+/* Previewing State */
+.suggestion-item.previewing {
+  background: #fef3c7;
+  border-color: #f59e0b;
+}
+
+.previewing-badge {
+  font-size: 12px;
+  color: #f59e0b;
+  font-weight: 500;
+}
+
+/* Suggestion Details Code */
+.suggestion-details code {
+  background: #f1f5f9;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-family: 'Consolas', monospace;
+}
+
+/* Preview Button in Actions */
+.suggestion-actions .preview-btn {
+  padding: 6px 12px;
+  background: #8b5cf6;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.suggestion-actions .preview-btn:disabled {
+  background: #94a3b8;
+}
