@@ -810,7 +810,7 @@ ${blankList}
         {
           prompt: prompt  // ops-ai-orchestrator 使用 prompt 字段
         },
-        { timeout: 60000 }
+        { timeout: 360000 }  // 6分钟超时，AI分析可能需要较长时间
       );
 
       this.logger.log('AI service responded successfully');

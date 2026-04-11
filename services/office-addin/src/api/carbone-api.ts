@@ -133,7 +133,7 @@ class CarboneAPI {
     const response = await axios.post(
       `${this.baseUrl}/studio/direct-ai-identify`,
       request,
-      { timeout: 60000 }
+      { timeout: 360000 }  // 6分钟超时，AI分析可能需要较长时间
     );
     return response.data;
   }

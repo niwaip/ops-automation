@@ -4,7 +4,7 @@
  * 包含详细错误显示和调试日志功能
  */
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAppStore, AISuggestion } from '../taskpane/store';
 import { carboneAPI } from '../api/carbone-api';
 import { OfficeHelper } from '../utils/office-api';
@@ -12,6 +12,15 @@ import { OfficeHelper } from '../utils/office-api';
 interface Props {
   onApplyComplete?: () => void;
 }
+
+// 动态加载进度消息
+const loadingMessages = [
+  '🔍 正在分析文档结构...',
+  '📝 正在识别空白填充位置...',
+  '🤖 正在进行AI智能分析...',
+  '📊 正在生成变量建议...',
+  '✨ 正在优化结果...',
+];
 
 export const AIIdentifyPanel: React.FC<Props> = ({ onApplyComplete }) => {
   const {
@@ -37,6 +46,32 @@ export const AIIdentifyPanel: React.FC<Props> = ({ onApplyComplete }) => {
   const [showErrorDetails, setShowErrorDetails] = useState(false);
   const [showPreview, setShowPreview] = useState(false);  // 预览模式
   const [previewContent, setPreviewContent] = useState<string>('');  // 预览内容
+  const [loadingProgress, setLoadingProgress] = useState(0);  // 加载进度
+  const [loadingMessage, setLoadingMessage] = useState('');  // 当前加载消息
+
+  // 动态更新加载消息
+  useEffect(() => {
+    if (isAnalyzing) {
+      const interval = setInterval(() => {
+        setLoadingProgress((prev) => {
+          const next = prev + 1;
+          if (next >= loadingMessages.length) {
+            return loadingMessages.length - 1;  // 保持最后一个消息
+          }
+          setLoadingMessage(loadingMessages[next]);
+          return next;
+        });
+      }, 3000);  // 每3秒更新一次消息
+
+      setLoadingMessage(loadingMessages[0]);
+      setLoadingProgress(0);
+
+      return () => clearInterval(interval);
+    } else {
+      setLoadingProgress(0);
+      setLoadingMessage('');
+    }
+  }, [isAnalyzing]);
 
   /**
    * 执行 AI 分析
@@ -348,8 +383,20 @@ export const AIIdentifyPanel: React.FC<Props> = ({ onApplyComplete }) => {
         onClick={handleAnalyze}
         disabled={isAnalyzing}
       >
-        {isAnalyzing ? '分析中...' : 'AI 智能识别'}
+        {isAnalyzing ? (
+          <span className="analyzing-indicator">
+            <span className="spinner"></span>
+            <span className="loading-text">{loadingMessage}</span>
+          </span>
+        ) : 'AI 智能识别'}
       </button>
+
+      {/* 加载进度条 */}
+      {isAnalyzing && (
+        <div className="loading-progress-bar">
+          <div className="progress-fill" style={{ width: `${(loadingProgress + 1) * 20}%` }}></div>
+        </div>
+      )}
 
       {/* 测试连接按钮 */}
       <button
