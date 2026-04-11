@@ -2,6 +2,7 @@
  * Carbone Official API Server
  * 使用官方 carbone 包，提供标准 API 接口
  * 支持 HTTPS (使用与 office-addin 相同的证书)
+ * 代理 /studio/* 请求到 carbone-engine 服务
  */
 
 const express = require('express');
@@ -10,17 +11,19 @@ const fs = require('fs');
 const path = require('path');
 const multer = require('multer');
 const https = require('https');
+const http = require('http');
 
 const app = express();
 const HTTP_PORT = process.env.CARBONE_API_PORT || 3100;
 const HTTPS_PORT = process.env.CARBONE_API_HTTPS_PORT || 3443;
 const ENABLE_HTTPS = process.env.ENABLE_HTTPS === 'true';
+const CARBONE_ENGINE_URL = process.env.CARBONE_ENGINE_URL || 'http://carbone-engine:3009';
 
 // CORS 配置 - 允许 Office Add-in 访问
 app.use((req, res, next) => {
   res.header('Access-Control-Allow-Origin', '*');
-  res.header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  res.header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS, PUT, DELETE');
+  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With');
   if (req.method === 'OPTIONS') {
     return res.sendStatus(200);
   }
@@ -36,7 +39,56 @@ app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
 // 健康检查
 app.get('/health', (req, res) => {
-  res.json({ status: 'ok', version: carbone.version });
+  res.json({ status: 'ok', version: carbone.version, service: 'carbone-api' });
+});
+
+/**
+ * 代理 /studio/* 请求到 carbone-engine 服务
+ * 这样前端只需要连接一个服务地址
+ */
+app.use('/studio', (req, res) => {
+  const targetUrl = `${CARBONE_ENGINE_URL}/studio${req.path}`;
+
+  console.log(`[Proxy] ${req.method} ${req.path} -> ${targetUrl}`);
+
+  const options = {
+    method: req.method,
+    headers: {
+      'Content-Type': req.headers['content-type'] || 'application/json',
+      'Authorization': req.headers['authorization'] || '',
+    }
+  };
+
+  const proxyReq = http.request(targetUrl, options, (proxyRes) => {
+    // 设置响应头
+    res.setHeader('Content-Type', proxyRes.headers['content-type'] || 'application/json');
+
+    // 收集响应数据
+    let body = '';
+    proxyRes.on('data', (chunk) => {
+      body += chunk;
+    });
+
+    proxyRes.on('end', () => {
+      res.status(proxyRes.statusCode).send(body);
+    });
+  });
+
+  proxyReq.on('error', (error) => {
+    console.error(`[Proxy Error] ${error.message}`);
+    res.status(500).json({
+      error: 'Failed to connect to carbone-engine service',
+      details: error.message,
+      targetUrl: targetUrl
+    });
+  });
+
+  // 发送请求体（如果有）
+  if (req.body && Object.keys(req.body).length > 0) {
+    proxyReq.write(JSON.stringify(req.body));
+  }
+
+  proxyReq.end();
 });
 
 /**

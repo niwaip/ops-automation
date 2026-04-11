@@ -139,7 +139,7 @@ export const useAppStore = create<AppState>((set, get) => ({
     })),
   clearSelectedElements: () => set({ selectedElements: [] }),
 
-  apiBaseUrl: 'https://localhost:3443',  // 改为 HTTPS (与 office-addin 使用相同证书)
+  apiBaseUrl: 'https://192.168.100.143:3443',  // 改为服务器地址
   setApiBaseUrl: (url) => set({ apiBaseUrl: url }),
 
   // 调试日志功能

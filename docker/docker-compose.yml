@@ -19,6 +19,7 @@ services:
       - ENABLE_HTTPS=true
       - CERT_PATH=/app/certs
       - NODE_ENV=production
+      - CARBONE_ENGINE_URL=http://host.docker.internal:3009  # 代理到 carbone-engine
     healthcheck:
       test: ["CMD", "curl", "-f", "-k", "https://localhost:3443/health"]
       interval: 30s
