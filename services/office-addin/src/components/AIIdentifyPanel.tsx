@@ -68,14 +68,16 @@ export const AIIdentifyPanel: React.FC<Props> = ({ onApplyComplete }) => {
         addDebugLog('debug', `PPT 内容获取成功`, `幻灯片数: ${slidesContent?.length || 0}`);
       }
 
-      // 调用 AI 识别 API
-      addDebugLog('info', `调用 AI 识别 API`, `URL: ${apiBaseUrl}/studio/ai-identify`);
+      // 调用 AI 识别 API（使用新的直接识别接口）
+      addDebugLog('info', `调用 AI 识别 API`, `URL: ${apiBaseUrl}/studio/direct-ai-identify`);
       carboneAPI.setBaseUrl(apiBaseUrl);
 
-      const result = await carboneAPI.identifyDocument({
+      // 使用新的直接识别接口，无需上传模板
+      const result = await carboneAPI.identifyDocumentDirect({
         documentContent,
         documentType: officeType === 'ppt' ? 'pptx' : officeType,
         templateType: selectedTemplateType,
+        context: `这是一份${selectedTemplateType}类型的${officeType === 'word' ? 'Word文档' : officeType === 'excel' ? 'Excel表格' : 'PPT演示文稿'}，需要识别空白填充部分并生成模板变量`,
       });
 
       addDebugLog('info', `AI 分析成功`, `建议数: ${result.suggestions?.length || 0}`);

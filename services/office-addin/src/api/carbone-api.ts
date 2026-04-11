@@ -4,7 +4,7 @@
  */
 
 import axios from 'axios';
-import { AISuggestion, TemplateConfig } from './store';
+import { AISuggestion, TemplateConfig } from '../taskpane/store';
 
 export interface DocumentStructure {
   elements: Array<{
@@ -25,20 +25,36 @@ export interface DocumentStructure {
   }>;
 }
 
-export interface AIIdentifyRequest {
-  documentContent: string;
-  documentType: 'docx' | 'xlsx' | 'pptx';
-  templateType?: string;
-  customRules?: Array<{
+/**
+ * 直接AI识别请求 - 用于Office插件直接提交文档内容
+ */
+export interface DirectAIIdentifyRequest {
+  documentContent: string;           // 文档文本内容（从Office获取）
+  documentType: 'docx' | 'xlsx' | 'pptx' | 'text';  // 文档类型
+  templateType?: string;              // 模板类型：report, invoice, contract, certificate 等
+  context?: string;                   // 上下文信息（如文档用途描述）
+  customRules?: Array<{               // 自定义识别规则
     pattern: string;
     targetPath: string;
+    description?: string;
   }>;
 }
 
 export interface AIIdentifyResponse {
   suggestions: AISuggestion[];
-  documentStructure: DocumentStructure;
+  documentStructure?: DocumentStructure;
+  templateConfig?: any;
   confidence: number;
+  documentStats?: {
+    totalElements: number;
+    tables: number;
+    images: number;
+    potentialLoops: number;
+  };
+  contextAnalysis?: {
+    detectedTemplateType: string;
+    userIntent: string;
+  };
 }
 
 export interface GenerateTemplateRequest {
@@ -57,7 +73,7 @@ export interface GenerateTemplateResponse {
 class CarboneAPI {
   private baseUrl: string;
 
-  constructor(baseUrl: string = 'http://localhost:3100') {
+  constructor(baseUrl: string = 'https://localhost:3443') {
     this.baseUrl = baseUrl;
   }
 
@@ -106,11 +122,13 @@ class CarboneAPI {
   }
 
   /**
-   * AI 识别文档结构
+   * 直接AI识别文档内容（新接口）- 用于Office插件
+   * 无需上传模板，直接对从Office获取的文档内容进行AI识别
+   * 识别需要填充的空白部分，生成模板变量建议
    */
-  async identifyDocument(request: AIIdentifyRequest): Promise<AIIdentifyResponse> {
+  async identifyDocumentDirect(request: DirectAIIdentifyRequest): Promise<AIIdentifyResponse> {
     const response = await axios.post(
-      `${this.baseUrl}/studio/ai-identify`,
+      `${this.baseUrl}/studio/direct-ai-identify`,
       request,
       { timeout: 60000 }
     );

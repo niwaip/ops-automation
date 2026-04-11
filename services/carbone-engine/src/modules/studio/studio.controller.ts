@@ -56,6 +56,22 @@ export class AIIdentifyDto {
   markingSummary?: string;  // 标记摘要文本
 }
 
+/**
+ * 直接AI识别DTO - 用于Office插件直接提交文档内容
+ * 无需先上传模板，直接对文档内容进行AI识别
+ */
+export class DirectAIIdentifyDto {
+  documentContent!: string;           // 文档文本内容（从Office获取）
+  documentType!: 'docx' | 'xlsx' | 'pptx' | 'text';  // 文档类型
+  templateType?: string;              // 模板类型：report, invoice, contract, certificate 等
+  context?: string;                   // 上下文信息（如文档用途描述）
+  customRules?: Array<{               // 自定义识别规则
+    pattern: string;
+    targetPath: string;
+    description?: string;
+  }>;
+}
+
 export class SaveMarkingsDto {
   templateId!: string;
   markings!: Array<{
@@ -770,6 +786,37 @@ export class StudioController {
         documentStructure,
         dto.manualMarkings,
         dto.markingSummary
+      );
+      return result;
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      throw new HttpException(
+        `Failed to identify variables: ${message}`,
+        HttpStatus.INTERNAL_SERVER_ERROR
+      );
+    }
+  }
+
+  /**
+   * 直接AI识别文档内容 - 用于Office插件
+   * 无需上传模板，直接对从Office获取的文档内容进行AI识别
+   * 识别需要填充的空白部分，生成模板变量建议
+   */
+  @Post('direct-ai-identify')
+  @ApiOperation({ summary: 'Direct AI identify variables from document content (for Office Add-in)' })
+  @ApiBody({ type: DirectAIIdentifyDto })
+  @ApiResponse({ status: 200, description: 'AI identification result with suggestions' })
+  async directAIIdentify(
+    @Body() dto: DirectAIIdentifyDto
+  ): Promise<AIIdentifyResponse> {
+    try {
+      // 直接对文档内容进行AI分析
+      const result = await this.aiIdentifierService.identifyFromContent(
+        dto.documentContent,
+        dto.documentType,
+        dto.templateType || 'report',
+        dto.context,
+        dto.customRules
       );
       return result;
     } catch (error: unknown) {
