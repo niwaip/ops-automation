@@ -70,3 +70,4 @@ templates/
 # Playwright MCP test files
 .playwright-mcp/
 *.png
+test_contract.docx
