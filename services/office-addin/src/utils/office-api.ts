@@ -209,6 +209,163 @@ export const WordAPI = {
   },
 
   /**
+   * 获取带下划线的文本段落（用于识别需要参数化的位置）
+   * 合同中"下划线+空格"通常是需要填写内容的地方
+   */
+  async getUnderlinedTexts(): Promise<Array<{
+    text: string;           // 带下划线的文本内容
+    underlineType: string;  // 下划线类型 (Single, Double, Dotted等)
+    index: number;          // 段落索引
+    paragraphText: string;  // 所在段落的完整文本
+    position: {             // 在段落中的位置
+      start: number;
+      end: number;
+    };
+  }>> {
+    return new Promise((resolve, reject) => {
+      Word.run(async (context) => {
+        const paragraphs = context.document.body.paragraphs;
+        paragraphs.load('items');
+        await context.sync();
+
+        const result: Array<{
+          text: string;
+          underlineType: string;
+          index: number;
+          paragraphText: string;
+          position: { start: number; end: number };
+        }> = [];
+
+        for (let pIdx = 0; pIdx < paragraphs.items.length; pIdx++) {
+          const paragraph = paragraphs.items[pIdx];
+          const fullText = paragraph.text;
+
+          // 获取段落中所有文本范围，检查字体下划线属性
+          // 使用 split 方法将段落按字符分割检查
+          const ranges = paragraph.split(fullText, [' '], true);
+          ranges.load('items');
+          await context.sync();
+
+          // 对于每个分割的范围，检查是否有下划线
+          for (let rIdx = 0; rIdx < ranges.items.length; rIdx++) {
+            const range = ranges.items[rIdx];
+            range.load('font/underline,text');
+          }
+          await context.sync();
+
+          // 找出带下划线的文本段
+          let currentUnderlineStart = -1;
+          let currentUnderlineText = '';
+          let currentUnderlineType = 'None';
+
+          for (let rIdx = 0; rIdx < ranges.items.length; rIdx++) {
+            const range = ranges.items[rIdx];
+            const underline = range.font.underline;
+            const text = range.text || '';
+
+            // 如果有下划线且不是 'None'
+            if (underline && underline !== 'None' && underline !== 'Mixed') {
+              if (currentUnderlineStart === -1) {
+                currentUnderlineStart = rIdx;
+                currentUnderlineType = underline as string;
+              }
+              currentUnderlineText += text;
+            } else {
+              // 结束当前下划线段
+              if (currentUnderlineStart !== -1 && currentUnderlineText.trim() !== '') {
+                // 计算在原文中的位置
+                const startPos = fullText.indexOf(currentUnderlineText);
+                if (startPos >= 0) {
+                  result.push({
+                    text: currentUnderlineText,
+                    underlineType: currentUnderlineType,
+                    index: pIdx,
+                    paragraphText: fullText,
+                    position: {
+                      start: startPos,
+                      end: startPos + currentUnderlineText.length
+                    }
+                  });
+                }
+              }
+              currentUnderlineStart = -1;
+              currentUnderlineText = '';
+              currentUnderlineType = 'None';
+            }
+          }
+
+          // 处理段落末尾的下划线
+          if (currentUnderlineStart !== -1 && currentUnderlineText.trim() !== '') {
+            const startPos = fullText.indexOf(currentUnderlineText);
+            if (startPos >= 0) {
+              result.push({
+                text: currentUnderlineText,
+                underlineType: currentUnderlineType,
+                index: pIdx,
+                paragraphText: fullText,
+                position: {
+                  start: startPos,
+                  end: startPos + currentUnderlineText.length
+                }
+              });
+            }
+          }
+        }
+
+        resolve(result);
+      }).catch(reject);
+    });
+  },
+
+  /**
+   * 高亮指定段落中的特定位置
+   * 用于精确高亮空白/下划线位置
+   */
+  async highlightAtPosition(paragraphIndex: number, startPos: number, endPos: number): Promise<boolean> {
+    return new Promise((resolve, reject) => {
+      Word.run(async (context) => {
+        const paragraphs = context.document.body.paragraphs;
+        paragraphs.load('items');
+        await context.sync();
+
+        if (paragraphIndex >= paragraphs.items.length) {
+          resolve(false);
+          return;
+        }
+
+        const paragraph = paragraphs.items[paragraphIndex];
+        const text = paragraph.text;
+
+        // 获取要高亮的文本
+        const highlightText = text.substring(startPos, endPos);
+        if (!highlightText || highlightText.trim() === '') {
+          resolve(false);
+          return;
+        }
+
+        // 在段落中搜索并高亮
+        const searchResults = paragraph.search(highlightText, {
+          matchCase: true,
+          matchWholeWord: false
+        });
+        searchResults.load('items');
+        await context.sync();
+
+        if (searchResults.items.length > 0) {
+          // 高亮第一个匹配
+          const firstMatch = searchResults.items[0];
+          firstMatch.select();
+          firstMatch.font.highlightColor = 'yellow';
+          await context.sync();
+          resolve(true);
+        } else {
+          resolve(false);
+        }
+      }).catch(reject);
+    });
+  },
+
+  /**
    * 在指定位置插入标记
    */
   async insertMarker(marker: string, position?: { paragraphIndex: number; textRange: string }): Promise<void> {
@@ -370,8 +527,9 @@ export const WordAPI = {
   },
 
   /**
-   * 按上下文高亮文本
-   * 根据上下文片段找到对应的位置并高亮
+   * 按上下文高亮文本（精确版）
+   * 根据上下文片段找到对应的位置，只高亮空白部分（下划线或空格）
+   * 而不是整个上下文，使高亮区域更精确
    */
   async highlightByContext(contextSnippet: string): Promise<number> {
     return new Promise((resolve, reject) => {
@@ -388,6 +546,26 @@ export const WordAPI = {
           return;
         }
 
+        // 提取空白部分（用于精确高亮）
+        // 匹配：下划线、多个空格、冒号后的空白等
+        const blankPatterns = [
+          /[＿_]{2,}/g,           // 下划线（至少2个）
+          /[ 　]{3,}/g,           // 多个空格（至少3个）
+          /：\s+/g,               // 冒号后的空白
+          /:\s+/g,                // 英文冒号后的空白
+        ];
+
+        // 找出上下文中的空白部分
+        let blankText = '';
+        for (const pattern of blankPatterns) {
+          const matches = searchText.match(pattern);
+          if (matches && matches.length > 0) {
+            // 使用最长的空白匹配
+            blankText = matches.reduce((a, b) => a.length >= b.length ? a : b);
+            break;
+          }
+        }
+
         // 搜索上下文片段
         const searchResults = context.document.body.search(searchText, {
           matchCase: false,
@@ -399,8 +577,59 @@ export const WordAPI = {
         const foundCount = searchResults.items.length;
 
         if (foundCount > 0) {
-          // 选中并高亮第一个结果
+          // 获取第一个匹配的段落
           const firstResult = searchResults.items[0];
+
+          if (blankText && blankText.trim() !== '') {
+            // 在找到的上下文范围内搜索空白部分并高亮
+            const blankSearch = firstResult.search(blankText, {
+              matchCase: false,
+              matchWholeWord: false
+            });
+            blankSearch.load('items');
+            await context.sync();
+
+            if (blankSearch.items.length > 0) {
+              // 只高亮空白部分
+              const blankMatch = blankSearch.items[0];
+              blankMatch.select();
+              blankMatch.font.highlightColor = 'yellow';
+              await context.sync();
+              resolve(1);
+              return;
+            }
+          }
+
+          // 如果没有找到空白部分，高亮整个上下文但缩小范围
+          // 只高亮中间部分（去掉前后各5个字符）
+          const text = firstResult.text;
+          if (text.length > 20) {
+            // 尝试找到空白特征并高亮该区域
+            const midStart = Math.floor(text.length * 0.3);
+            const midEnd = Math.floor(text.length * 0.7);
+            const midText = text.substring(midStart, midEnd);
+
+            // 如果中间部分有空白特征，高亮它
+            const midBlankMatch = midText.match(/[＿_\s　]{2,}/);
+            if (midBlankMatch) {
+              const innerSearch = firstResult.search(midBlankMatch[0], {
+                matchCase: false,
+                matchWholeWord: false
+              });
+              innerSearch.load('items');
+              await context.sync();
+
+              if (innerSearch.items.length > 0) {
+                innerSearch.items[0].select();
+                innerSearch.items[0].font.highlightColor = 'yellow';
+                await context.sync();
+                resolve(1);
+                return;
+              }
+            }
+          }
+
+          // 最后选择：高亮找到的范围，但至少定位到位置
           firstResult.select();
           firstResult.font.highlightColor = 'yellow';
           await context.sync();

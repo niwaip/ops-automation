@@ -439,9 +439,28 @@ export class AIIdentifierService {
     documentType: string,
     templateType: string,
     context?: string,
-    progressCallback?: (progress: ProcessingProgress) => void
+    progressCallback?: (progress: ProcessingProgress) => void,
+    underlineInfo?: Array<{  // 下划线信息（从Word JS API获取）
+      text: string;
+      underlineType: string;
+      paragraphText: string;
+      position: { start: number; end: number };
+    }>,
+    paragraphFormats?: Array<{  // 段落格式信息
+      text: string;
+      index: number;
+      format: {
+        fontSize?: number;
+        isBold?: boolean;
+        alignment?: string;
+        isTitle?: boolean;
+      };
+    }>
   ): Promise<AIIdentifyResponse> {
     this.logger.log(`开始多阶段AI识别, 类型: ${templateType}, 内容长度: ${documentContent.length}`);
+    if (underlineInfo && underlineInfo.length > 0) {
+      this.logger.log(`收到下划线信息: ${underlineInfo.length} 个带下划线位置`);
+    }
 
     // 定义进度报告辅助函数
     const reportProgress = (stage: ProcessingStage, stageName: string, progress: number, message: string, currentSection?: string) => {
@@ -474,8 +493,16 @@ export class AIIdentifierService {
       const preExtractedBlanks = this.extractBlankPatterns(documentContent, templateType);
       this.logger.log(`预处理提取到 ${preExtractedBlanks.length} 个空白位置`);
 
-      reportProgress(ProcessingStage.SECTION_ANALYSIS, '预处理', 10,
-        `预提取完成，发现 ${preExtractedBlanks.length} 个潜在空白位置`);
+      // 如果有下划线信息，合并到预处理空白列表中（下划线+空格 = 需要参数化）
+      if (underlineInfo && underlineInfo.length > 0) {
+        const underlineBlanks = this.mergeUnderlineInfo(preExtractedBlanks, underlineInfo, documentContent, templateType);
+        this.logger.log(`合并下划线信息后，共 ${underlineBlanks.length} 个空白位置`);
+        reportProgress(ProcessingStage.SECTION_ANALYSIS, '预处理', 10,
+          `预提取完成，发现 ${underlineBlanks.length} 个空白位置（含 ${underlineInfo.length} 个下划线位置）`);
+      } else {
+        reportProgress(ProcessingStage.SECTION_ANALYSIS, '预处理', 10,
+          `预提取完成，发现 ${preExtractedBlanks.length} 个潜在空白位置`);
+      }
 
       // ===== 阶段2: 分段参数化 =====
       reportProgress(ProcessingStage.SECTION_ANALYSIS, '分段参数化', 0, '开始对各章节进行语义分析...');
@@ -1088,6 +1115,86 @@ ${fullContent.substring(0, Math.min(1000, fullContent.length))}
   }
 
   /**
+   * 合并下划线信息到预处理空白列表
+   * Word中"下划线+空格"通常是需要填写内容的位置
+   * 这个方法将下划线信息与规则提取的空白合并，提高识别准确度
+   */
+  private mergeUnderlineInfo(
+    existingBlanks: Array<{
+      text: string;
+      context: string;
+      beforeBlank: string;
+      position: number;
+      type: string;
+      chapter: string;
+      significance: string;
+    }>,
+    underlineInfo: Array<{
+      text: string;
+      underlineType: string;
+      paragraphText: string;
+      position: { start: number; end: number };
+    }>,
+    documentContent: string,
+    templateType: string
+  ): Array<{
+    text: string;
+    context: string;
+    beforeBlank: string;
+    position: number;
+    type: string;
+    chapter: string;
+    significance: string;
+  }> {
+    const result = [...existingBlanks];
+    const chapterStructure = this.extractChapterStructure(documentContent);
+
+    for (const underline of underlineInfo) {
+      // 检查下划线文本是否包含空白（空格、下划线等）
+      const hasBlank = underline.text.match(/[＿_\s　]+/);
+
+      // 如果下划线文本主要是空白或者空格，这是需要参数化的位置
+      const isBlankUnderline = underline.text.trim().length < underline.text.length * 0.3;
+
+      // 检查是否已经存在相似的空白位置（避免重复）
+      const isDuplicate = result.some(b =>
+        Math.abs(b.position - underline.position.start) < 10 ||
+        (b.context.includes(underline.text) && underline.text.length > 2)
+      );
+
+      if ((hasBlank || isBlankUnderline) && !isDuplicate) {
+        // 提取下划线前面的文本作为标签
+        const paragraphText = underline.paragraphText;
+        const beforeUnderline = paragraphText.substring(0, underline.position.start);
+        const labelMatch = beforeUnderline.match(/([^\s：:]+)[：:]?\s*$/);
+        const label = labelMatch ? labelMatch[1].trim() : '';
+
+        // 获取所在章节
+        const chapterInfo = this.getChapterForPosition(underline.position.start, chapterStructure);
+
+        // 判断意义
+        const significance = this.getSignificanceForLabel(label, templateType) ||
+          '带下划线的空白位置，用于填写相关内容';
+
+        result.push({
+          text: underline.text,
+          context: underline.paragraphText.substring(
+            Math.max(0, underline.position.start - 15),
+            Math.min(underline.paragraphText.length, underline.position.end + 15)
+          ),
+          beforeBlank: label,
+          position: underline.position.start,
+          type: 'underline',  // 新类型：下划线空白
+          chapter: chapterInfo,
+          significance: significance
+        });
+      }
+    }
+
+    return result;
+  }
+
+  /**
    * 提取文档中需要填充的空白部分
    * 识别多种空白模式：
    * - 多个空格/空白线（如：______、          ）
@@ -1194,8 +1301,8 @@ ${fullContent.substring(0, Math.min(1000, fullContent.length))}
           }
         }
 
-        const startPos = Math.max(0, match.index - 30);
-        const endPos = Math.min(content.length, match.index + 50);
+        const startPos = Math.max(0, match.index - 15);
+        const endPos = Math.min(content.length, match.index + 25);
 
         const chapterInfo = this.getChapterForPosition(match.index, chapterStructure);
         const significance = this.getSignificanceForLabel(label, templateType);
@@ -1215,8 +1322,8 @@ ${fullContent.substring(0, Math.min(1000, fullContent.length))}
     // 2. 匹配日期格式空白（如： 年 月 日）
     const dateBlankRegex = /[\s　]+年[\s　]+月[\s　]+日/g;
     while ((match = dateBlankRegex.exec(content)) !== null) {
-      const startPos = Math.max(0, match.index - 30);
-      const endPos = Math.min(content.length, match.index + match[0].length + 30);
+      const startPos = Math.max(0, match.index - 15);
+      const endPos = Math.min(content.length, match.index + match[0].length + 15);
       const beforeBlankStart = Math.max(0, match.index - 20);
       const beforeBlank = content.substring(beforeBlankStart, match.index);
 
@@ -1239,8 +1346,8 @@ ${fullContent.substring(0, Math.min(1000, fullContent.length))}
     // 匹配：3个以上下划线、4个以上空格（提高门槛减少误识别）
     const blankRegex = /[＿_]{3,}|[ 　]{4,}/g;
     while ((match = blankRegex.exec(content)) !== null) {
-      const startPos = Math.max(0, match.index - 30);
-      const endPos = Math.min(content.length, match.index + match[0].length + 30);
+      const startPos = Math.max(0, match.index - 15);
+      const endPos = Math.min(content.length, match.index + match[0].length + 15);
       const beforeBlankStart = Math.max(0, match.index - 20);
       const beforeBlank = content.substring(beforeBlankStart, match.index);
 
@@ -1336,8 +1443,8 @@ ${fullContent.substring(0, Math.min(1000, fullContent.length))}
     // 4. 匹配括号内的空白或提示（如：（ ）、【 】、[请填写]、(Address)、[XXX]）
     const bracketRegex = /[（【\(\[](?:[　 ]*|[^）】\)\]]*?[填写写名填XXX入inputenter][^）】\)\]]*?)[）】\)\]]/g;
     while ((match = bracketRegex.exec(content)) !== null) {
-      const startPos = Math.max(0, match.index - 30);
-      const endPos = Math.min(content.length, match.index + match[0].length + 30);
+      const startPos = Math.max(0, match.index - 15);
+      const endPos = Math.min(content.length, match.index + match[0].length + 15);
       const beforeBlankStart = Math.max(0, match.index - 20);
       const beforeBlank = content.substring(beforeBlankStart, match.index);
 
@@ -1358,8 +1465,8 @@ ${fullContent.substring(0, Math.min(1000, fullContent.length))}
     // 5. 匹配占位符（如：XXX、待填写、请填写）
     const placeholderRegex = /(XXX+|待填[写名]|请填[写名]|此处填[写名])/g;
     while ((match = placeholderRegex.exec(content)) !== null) {
-      const startPos = Math.max(0, match.index - 30);
-      const endPos = Math.min(content.length, match.index + match[0].length + 30);
+      const startPos = Math.max(0, match.index - 15);
+      const endPos = Math.min(content.length, match.index + match[0].length + 15);
       const beforeBlankStart = Math.max(0, match.index - 20);
       const beforeBlank = content.substring(beforeBlankStart, match.index);
 
@@ -1380,8 +1487,8 @@ ${fullContent.substring(0, Math.min(1000, fullContent.length))}
     // 6. 匹配年份空白（如"     年"、"  年"）
     const yearBlankRegex = /[ 　＿_]+年/g;
     while ((match = yearBlankRegex.exec(content)) !== null) {
-      const startPos = Math.max(0, match.index - 30);
-      const endPos = Math.min(content.length, match.index + match[0].length + 30);
+      const startPos = Math.max(0, match.index - 15);
+      const endPos = Math.min(content.length, match.index + match[0].length + 15);
       const beforeBlankStart = Math.max(0, match.index - 20);
       const beforeBlank = content.substring(beforeBlankStart, match.index);
 
@@ -1402,8 +1509,8 @@ ${fullContent.substring(0, Math.min(1000, fullContent.length))}
     // 7. 匹配附件后空白（如"附件一："、"附件二："等）
     const attachmentBlankRegex = /附件[一二三四五六七八九十\d]+[：:]\s*[ 　＿_]+/g;
     while ((match = attachmentBlankRegex.exec(content)) !== null) {
-      const startPos = Math.max(0, match.index - 30);
-      const endPos = Math.min(content.length, match.index + match[0].length + 30);
+      const startPos = Math.max(0, match.index - 15);
+      const endPos = Math.min(content.length, match.index + match[0].length + 15);
 
       const chapterInfo = this.getChapterForPosition(match.index, chapterStructure);
       const significance = '附件名称或描述填写位置';
@@ -1423,8 +1530,8 @@ ${fullContent.substring(0, Math.min(1000, fullContent.length))}
     // 特别处理签字行的空白
     const signatureBlankRegex = /(甲方|乙方|委托方|受托方|签字|盖章|法定代表人)[：:]\s*(?=\n|$|[ 　]{2,})/g;
     while ((match = signatureBlankRegex.exec(content)) !== null) {
-      const startPos = Math.max(0, match.index - 30);
-      const endPos = Math.min(content.length, match.index + match[0].length + 30);
+      const startPos = Math.max(0, match.index - 15);
+      const endPos = Math.min(content.length, match.index + match[0].length + 15);
       const label = match[1];
 
       const chapterInfo = this.getChapterForPosition(match.index, chapterStructure);

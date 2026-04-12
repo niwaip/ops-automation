@@ -70,6 +70,22 @@ export class DirectAIIdentifyDto {
     targetPath: string;
     description?: string;
   }>;
+  underlineInfo?: Array<{             // 下划线信息（从Word JS API获取）
+    text: string;                     // 带下划线的文本
+    underlineType: string;            // 下划线类型
+    paragraphText: string;            // 所在段落完整文本
+    position: { start: number; end: number };  // 在段落中的位置
+  }>;
+  paragraphFormats?: Array<{          // 段落格式信息
+    text: string;
+    index: number;
+    format: {
+      fontSize?: number;
+      isBold?: boolean;
+      alignment?: string;
+      isTitle?: boolean;
+    };
+  }>;
 }
 
 export class SaveMarkingsDto {
@@ -832,6 +848,7 @@ export class StudioController {
    * 多阶段AI识别文档内容 - 用于Office插件（新接口）
    * 使用三阶段AI处理流程：文档理解 -> 分段参数化 -> 整合确认
    * 通过Server-Sent Events实时报告处理进度
+   * 支持传入下划线信息，提高空白识别准确度
    */
   @Post('direct-ai-identify-multistage')
   @ApiOperation({ summary: 'Multi-stage AI identify variables with real-time progress (for Office Add-in)' })
@@ -841,7 +858,7 @@ export class StudioController {
     @Body() dto: DirectAIIdentifyDto
   ): Promise<AIIdentifyResponse> {
     try {
-      // 调用多阶段AI识别服务
+      // 调用多阶段AI识别服务（传入下划线和格式信息）
       const result = await this.aiIdentifierService.identifyFromContentMultiStage(
         dto.documentContent,
         dto.documentType,
@@ -850,7 +867,9 @@ export class StudioController {
         // 进度回调 - 用于日志记录
         (progress) => {
           console.log(`[MultiStage Progress] ${progress.stageName}: ${progress.progress}% - ${progress.message}`);
-        }
+        },
+        dto.underlineInfo,    // 下划线信息
+        dto.paragraphFormats  // 段落格式信息
       );
       return result;
     } catch (error: unknown) {

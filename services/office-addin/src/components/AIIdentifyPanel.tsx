@@ -100,6 +100,8 @@ export const AIIdentifyPanel: React.FC<Props> = ({ onApplyComplete }) => {
       // 获取文档内容
       let documentContent = '';
       let documentStructure: any = null;
+      let underlineInfo: any = null;
+      let paragraphFormats: any = null;
 
       addDebugLog('debug', `获取文档内容`, `Office 类型: ${officeType}`);
 
@@ -107,6 +109,24 @@ export const AIIdentifyPanel: React.FC<Props> = ({ onApplyComplete }) => {
         documentContent = await OfficeHelper.Word.getDocumentContent();
         documentStructure = await OfficeHelper.Word.getDocumentStructure();
         addDebugLog('debug', `Word 文档内容获取成功`, `长度: ${documentContent.length}`);
+
+        // 获取下划线信息（用于精确识别空白位置）
+        try {
+          underlineInfo = await OfficeHelper.Word.getUnderlinedTexts();
+          addDebugLog('debug', `下划线信息获取成功`, `发现 ${underlineInfo?.length || 0} 个下划线位置`);
+        } catch (underlineError: any) {
+          addDebugLog('warn', `获取下划线信息失败`, underlineError.message);
+          underlineInfo = null;
+        }
+
+        // 获取段落格式信息
+        try {
+          paragraphFormats = await OfficeHelper.Word.getParagraphsWithFormat();
+          addDebugLog('debug', `段落格式信息获取成功`, `段落数: ${paragraphFormats?.length || 0}`);
+        } catch (formatError: any) {
+          addDebugLog('warn', `获取段落格式失败`, formatError.message);
+          paragraphFormats = null;
+        }
       } else if (officeType === 'excel') {
         const sheetData = await OfficeHelper.Excel.getSheetData();
         documentContent = JSON.stringify(sheetData.values);
@@ -119,12 +139,14 @@ export const AIIdentifyPanel: React.FC<Props> = ({ onApplyComplete }) => {
         addDebugLog('debug', `PPT 内容获取成功`, `幻灯片数: ${slidesContent?.length || 0}`);
       }
 
-      // 构建请求参数
+      // 构建请求参数（包含下划线信息用于AI识别）
       const requestPayload = {
         documentContent,
         documentType: officeType === 'ppt' ? 'pptx' : officeType,
         templateType: selectedTemplateType,
         context: `这是一份${selectedTemplateType}类型的${officeType === 'word' ? 'Word文档' : officeType === 'excel' ? 'Excel表格' : 'PPT演示文稿'}，需要识别空白填充部分并生成模板变量`,
+        underlineInfo: underlineInfo,      // 下划线信息（用于提高空白识别准确度）
+        paragraphFormats: paragraphFormats  // 段落格式信息（用于辅助AI判断）
       };
 
       carboneAPI.setBaseUrl(apiBaseUrl);
