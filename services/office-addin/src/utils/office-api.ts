@@ -103,6 +103,112 @@ export const WordAPI = {
   },
 
   /**
+   * 获取段落详细格式信息（用于辅助AI判断）
+   * 包括字体大小、颜色、对齐方式等
+   */
+  async getParagraphsWithFormat(): Promise<Array<{
+    text: string;
+    index: number;
+    format: {
+      fontSize?: number;
+      isBold?: boolean;
+      alignment?: string;
+      isTitle?: boolean;  // AI可用的判断标志
+    };
+  }>> {
+    return new Promise((resolve, reject) => {
+      Word.run(async (context) => {
+        const paragraphs = context.document.body.paragraphs;
+        paragraphs.load('text,style');
+        await context.sync();
+
+        const result = paragraphs.items.map((p, idx) => {
+          // 加载段落格式信息
+          const range = p.getRange(Word.RangeLocation.whole);
+          range.load('font/size,font/bold,alignment');
+
+          return {
+            text: p.text,
+            index: idx,
+            format: {
+              // 格式信息会在下面填充
+            }
+          };
+        });
+
+        await context.sync();
+
+        // 填充格式信息
+        const formattedResult = paragraphs.items.map((p, idx) => {
+          const range = p.getRange(Word.RangeLocation.whole);
+          const fontSize = range.font?.size || 12;
+          const isBold = range.font?.bold || false;
+          const alignment = range.alignment || Word.Alignment.left;
+
+          // 判断是否是标题（字体大于14或加粗且长度小于50）
+          const isTitle = (fontSize > 14 || isBold) && p.text.trim().length < 50;
+
+          return {
+            text: p.text,
+            index: idx,
+            format: {
+              fontSize: fontSize,
+              isBold: isBold,
+              alignment: alignment === Word.Alignment.left ? 'left' :
+                         alignment === Word.Alignment.centered ? 'center' :
+                         alignment === Word.Alignment.right ? 'right' : 'justified',
+              isTitle: isTitle
+            }
+          };
+        });
+
+        await context.sync();
+        resolve(formattedResult);
+      }).catch(reject);
+    });
+  },
+
+  /**
+   * 获取图片Base64数据（用于AI视觉分析）
+   * 可以将图片发送给AI进行视觉识别
+   */
+  async getImagesBase64(): Promise<Array<{
+    index: number;
+    altText: string;
+    base64: string;  // 图片的Base64编码
+    width: number;
+    height: number;
+  }>> {
+    return new Promise((resolve, reject) => {
+      Word.run(async (context) => {
+        const images = context.document.body.inlinePictures;
+        images.load('items');
+        await context.sync();
+
+        const result = [];
+        for (let i = 0; i < images.items.length; i++) {
+          const img = images.items[i];
+          img.load('altText,width,height');
+
+          // 获取图片Base64数据
+          const imageBase64 = img.getBase64ImageSrc();
+          await context.sync();
+
+          result.push({
+            index: i,
+            altText: img.altText || '',
+            base64: imageBase64 || '',
+            width: img.width || 0,
+            height: img.height || 0
+          });
+        }
+
+        resolve(result);
+      }).catch(reject);
+    });
+  },
+
+  /**
    * 在指定位置插入标记
    */
   async insertMarker(marker: string, position?: { paragraphIndex: number; textRange: string }): Promise<void> {
