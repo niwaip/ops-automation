@@ -208,27 +208,30 @@ export const WordAPI = {
   async clearAllHighlights(): Promise<void> {
     return new Promise((resolve, reject) => {
       Word.run(async (context) => {
-        // 搜索所有高亮文本（黄色高亮）
-        // Word API中没有直接清除高亮的方法，需要搜索并重置
-        const searchResults = context.document.body.search('*', {
-          matchCase: false,
-          matchWholeWord: false,
-          ignorePunct: true
-        });
-        searchResults.load('items');
+        // 获取文档中的所有段落
+        const paragraphs = context.document.body.paragraphs;
+        paragraphs.load('items');
         await context.sync();
 
-        // 清除每个找到的文本的高亮颜色
-        for (const item of searchResults.items) {
-          try {
-            item.font.highlightColor = 'none';
-          } catch (e) {
-            // 忽略无法清除的错误
+        // 清除每个段落的高亮
+        for (const paragraph of paragraphs.items) {
+          const range = paragraph.getRange(Word.RangeLocation.whole);
+          range.load('font/highlightColor');
+          await context.sync();
+
+          // 如果有高亮，清除它
+          if (range.font.highlightColor && range.font.highlightColor !== 'none') {
+            range.font.highlightColor = 'none';
           }
         }
+
+        // 同步更改
         await context.sync();
         resolve();
-      }).catch(reject);
+      }).catch((error) => {
+        console.warn('清除高亮失败:', error);
+        resolve();  // 即使失败也继续，不影响后续操作
+      });
     });
   },
 

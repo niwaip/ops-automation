@@ -461,6 +461,16 @@ export class AIIdentifierService {
       reportProgress(ProcessingStage.DOCUMENT_UNDERSTANDING, '文档理解', 100,
         `文档理解完成，识别到 ${documentUnderstanding.sections.length} 个章节，${documentUnderstanding.parties.length} 个当事人`);
 
+      // ===== 预处理：提取所有空白位置 =====
+      // 使用规则预处理，确保所有空白都被识别出来
+      reportProgress(ProcessingStage.SECTION_ANALYSIS, '预处理', 0, '正在预提取文档中的空白位置...');
+
+      const preExtractedBlanks = this.extractBlankPatterns(documentContent, templateType);
+      this.logger.log(`预处理提取到 ${preExtractedBlanks.length} 个空白位置`);
+
+      reportProgress(ProcessingStage.SECTION_ANALYSIS, '预处理', 10,
+        `预提取完成，发现 ${preExtractedBlanks.length} 个潜在空白位置`);
+
       // ===== 阶段2: 分段参数化 =====
       reportProgress(ProcessingStage.SECTION_ANALYSIS, '分段参数化', 0, '开始对各章节进行语义分析...');
 
@@ -477,12 +487,18 @@ export class AIIdentifierService {
         // 提取该章节的完整内容（从原文中提取）
         const sectionContent = this.extractSectionContent(documentContent, section.name);
 
-        // 调用AI进行语义参数化
+        // 调用AI进行语义参数化（传入预处理的空白位置）
+        // 将预处理的空白按章节分组，传递给AI分析
+        const sectionBlanks = preExtractedBlanks.filter(b =>
+          b.chapter === section.name || b.chapter.includes(section.name) || section.name.includes(b.chapter)
+        );
+
         const sectionResult = await this.parameterizeSection(
           section.name,
           sectionContent,
           documentUnderstanding,
-          templateType
+          templateType,
+          sectionBlanks  // 传入预处理的空白位置
         );
 
         allSectionResults.push(sectionResult);
@@ -687,17 +703,26 @@ ${documentContent.length > 3000 ? '\n...(文档较长，已截取前3000字符)'
   /**
    * 阶段2: 章节参数化
    * AI对单个章节进行语义分析，识别该章节中的空白参数
+   * @param preExtractedBlanks 预处理的空白位置（用于确保所有空白都被识别）
    */
   private async parameterizeSection(
     sectionName: string,
     sectionContent: string,
     documentUnderstanding: DocumentUnderstanding,
-    templateType: string
+    templateType: string,
+    preExtractedBlanks: Array<{ text: string; context: string; beforeBlank: string; position: number; type: string; significance: string }> = []
   ): Promise<SectionParameterization> {
-    this.logger.log(`阶段2: 参数化章节 "${sectionName}"`);
+    this.logger.log(`阶段2: 参数化章节 "${sectionName}", 预处理空白 ${preExtractedBlanks.length} 个`);
 
     // 获取该章节相关的当事人信息
     const relevantParties = documentUnderstanding.parties;
+
+    // 构建预处理空白列表（用于提示AI）
+    const preBlanksList = preExtractedBlanks.length > 0
+      ? `\n【已识别的空白位置】（共${preExtractedBlanks.length}个，请确认并为每个生成变量建议）\n${preExtractedBlanks.map((b, i) =>
+        `[${i + 1}] 标签: "${b.beforeBlank}", 类型: ${b.type}, 上下文: "${b.context.substring(0, 50)}...", 意义: "${b.significance.substring(0, 30)}..."`
+      ).join('\n')}`
+      : '';
 
     const prompt = `你是一个专业的文档模板化专家。请分析以下章节内容，识别其中所有需要填充的空白部分，并给出语义化的变量建议。
 
@@ -707,6 +732,7 @@ ${documentContent.length > 3000 ? '\n...(文档较长，已截取前3000字符)'
 
 【当事人信息】
 ${relevantParties.map(p => `${p.role} 需要字段: ${p.fieldsNeeded.join(', ')}`).join('\n')}
+${preBlanksList}
 
 【章节内容】
 ${sectionContent}
@@ -720,7 +746,7 @@ ${sectionContent}
       "variablePath": "d.partyA.name",
       "variableName": "甲方名称",
       "significance": "该参数的具体用途和意义，如'合同第一签署方的公司名称'",
-      "context": "空白所在的完整句子或上下文",
+      "context": "空白所在的完整句子或上下文，格式为【前文 _____ 后文】",
       "confidence": 0.95
     }
   ]
@@ -728,15 +754,16 @@ ${sectionContent}
 
 【识别规则】
 1. 识别所有空白填充位置（包括冒号后空白、下划线空白、括号空白、日期空白等）
-2. 根据上下文语义判断每个空白的具体含义，而非仅根据位置
-3. 变量路径使用标准格式：
-   - 甲方相关: d.partyA.name, d.partyA.address, d.partyA.phone, d.partyA.representative
-   - 乙方相关: d.partyB.name, d.partyB.address, d.partyB.phone, d.partyB.representative
+2. 对于已识别的空白位置，必须为每个生成变量建议，不要遗漏
+3. 根据上下文语义判断每个空白的具体含义，而非仅根据位置
+4. 变量路径使用标准格式：
+   - 甲方相关: d.partyA.name, d.partyA.address, d.partyA.phone, d.partyA.representative, d.partyA.signature
+   - 乙方相关: d.partyB.name, d.partyB.address, d.partyB.phone, d.partyB.representative, d.partyB.signature
    - 日期相关: d.signDate, d.effectiveDate, d.endDate
-   - 金额相关: d.contractAmount, d.penaltyAmount
-   - 项目相关: d.projectName
-4. significance 必须清晰说明该字段的用途和意义
-5. 如果一个句子中有多个空白（如"位于____的____公司"），要分别识别为不同参数
+   - 附件相关: d.attachmentName
+   - 保密期限: d.confidentialityPeriod
+5. significance 必须清晰说明该字段的用途和意义
+6. context 格式必须为【前文 _____ 后文】，用于前端显示位置
 
 只返回JSON格式，不要其他解释。`;
 
@@ -744,26 +771,120 @@ ${sectionContent}
       const aiResponse = await this.callAIService(prompt);
 
       if (aiResponse && aiResponse.suggestions && Array.isArray(aiResponse.suggestions)) {
-        this.logger.log(`章节 "${sectionName}" 参数化成功，识别到 ${aiResponse.suggestions.length} 个参数`);
+        this.logger.log(`章节 "${sectionName}" AI参数化成功，识别到 ${aiResponse.suggestions.length} 个参数`);
+
+        // 合并预处理空白和AI建议
+        // 如果AI返回的建议少于预处理空白，补充缺失的
+        const aiSuggestions = aiResponse.suggestions.map((s: any) => ({
+          originalText: s.originalText || '',
+          variablePath: s.variablePath || 'd.unknown',
+          variableName: s.variableName || '未知字段',
+          significance: s.significance || '文档填充字段',
+          context: s.context || sectionContent.substring(0, 50),
+          confidence: s.confidence || 0.7
+        }));
+
+        // 检查预处理空白是否都被AI覆盖
+        const missingBlanks = preExtractedBlanks.filter(pre => {
+          // 检查AI是否覆盖了这个空白（通过位置或上下文匹配）
+          return !aiSuggestions.some((ai: any) =>
+            ai.context.includes(pre.beforeBlank) ||
+            ai.originalText.includes(pre.text) ||
+            Math.abs(ai.context.length - pre.context.length) < 50
+          );
+        });
+
+        // 补充缺失的预处理空白
+        if (missingBlanks.length > 0) {
+          this.logger.log(`补充 ${missingBlanks.length} 个预处理空白（AI未覆盖）`);
+          for (const blank of missingBlanks) {
+            // 根据空白类型推断变量路径
+            const inferredPath = this.inferVariablePath(blank.beforeBlank, blank.type, templateType);
+            aiSuggestions.push({
+              originalText: blank.text,
+              variablePath: inferredPath,
+              variableName: blank.beforeBlank || '未知字段',
+              significance: blank.significance,
+              context: blank.context,
+              confidence: 0.6  // 补充的空白置信度较低
+            });
+          }
+        }
+
+        return { sectionName, suggestions: aiSuggestions };
+      }
+
+      // AI返回格式异常，使用预处理空白作为后备
+      if (preExtractedBlanks.length > 0) {
+        this.logger.warn(`章节 "${sectionName}" AI返回格式异常，使用预处理空白 ${preExtractedBlanks.length} 个作为后备`);
         return {
           sectionName,
-          suggestions: aiResponse.suggestions.map((s: any) => ({
-            originalText: s.originalText || '',
-            variablePath: s.variablePath || 'd.unknown',
-            variableName: s.variableName || '未知字段',
-            significance: s.significance || '文档填充字段',
-            context: s.context || sectionContent.substring(0, 50),
-            confidence: s.confidence || 0.7
+          suggestions: preExtractedBlanks.map(b => ({
+            originalText: b.text,
+            variablePath: this.inferVariablePath(b.beforeBlank, b.type, templateType),
+            variableName: b.beforeBlank || '未知字段',
+            significance: b.significance,
+            context: b.context,
+            confidence: 0.5
           }))
         };
       }
 
-      this.logger.warn(`章节 "${sectionName}" AI返回格式异常`);
       return { sectionName, suggestions: [] };
     } catch (error: any) {
       this.logger.error(`章节 "${sectionName}" 参数化失败:`, error);
+
+      // 使用预处理空白作为后备
+      if (preExtractedBlanks.length > 0) {
+        this.logger.log(`使用预处理空白 ${preExtractedBlanks.length} 个作为后备`);
+        return {
+          sectionName,
+          suggestions: preExtractedBlanks.map(b => ({
+            originalText: b.text,
+            variablePath: this.inferVariablePath(b.beforeBlank, b.type, templateType),
+            variableName: b.beforeBlank || '未知字段',
+            significance: b.significance,
+            context: b.context,
+            confidence: 0.5
+          }))
+        };
+      }
+
       return { sectionName, suggestions: [] };
     }
+  }
+
+  /**
+   * 根据空白信息推断变量路径
+   */
+  private inferVariablePath(beforeBlank: string, type: string, templateType: string): string {
+    // 使用已有标签映射进行推断
+    const labelMappings: Record<string, string> = {
+      '甲方': 'd.partyA.name',
+      '甲方地址': 'd.partyA.address',
+      '甲方签字': 'd.partyA.signature',
+      '乙方': 'd.partyB.name',
+      '乙方地址': 'd.partyB.address',
+      '乙方签字': 'd.partyB.signature',
+      '地址': 'd.address',
+      '签字': 'd.signature',
+      '盖章': 'd.seal',
+      '年份': 'd.year',
+      '附件': 'd.attachmentName',
+      '保密期限': 'd.confidentialityPeriod',
+      '签订日期': 'd.signDate',
+      '日期': 'd.date',
+    };
+
+    // 直接匹配
+    for (const [label, path] of Object.entries(labelMappings)) {
+      if (beforeBlank.includes(label) || label.includes(beforeBlank)) {
+        return path;
+      }
+    }
+
+    // 默认路径
+    return `d.field${Date.now() % 100}`;
   }
 
   /**
@@ -1000,8 +1121,9 @@ ${fullContent.substring(0, Math.min(1000, fullContent.length))}
     }
 
     // 3. 匹配多个连续空格/下划线（如：______、          ）
-    // 改进：能够识别句子中的多个空白区域
-    const blankRegex = /[＿_]{2,}|[ 　]{4,}/g;
+    // 改进：放宽检测条件，单个下划线和少量空格也能识别
+    // 匹配：1个以上下划线、2个以上空格（原来是4个）
+    const blankRegex = /[＿_]{1,}|[ 　]{2,}/g;
     while ((match = blankRegex.exec(content)) !== null) {
       const startPos = Math.max(0, match.index - 30);
       const endPos = Math.min(content.length, match.index + match[0].length + 30);
@@ -1115,6 +1237,72 @@ ${fullContent.substring(0, Math.min(1000, fullContent.length))}
         beforeBlank,
         position: match.index,
         type: 'placeholder',
+        chapter: chapterInfo,
+        significance
+      });
+    }
+
+    // 6. 匹配年份空白（如"     年"、"  年"）
+    const yearBlankRegex = /[ 　＿_]+年/g;
+    while ((match = yearBlankRegex.exec(content)) !== null) {
+      const startPos = Math.max(0, match.index - 30);
+      const endPos = Math.min(content.length, match.index + match[0].length + 30);
+      const beforeBlankStart = Math.max(0, match.index - 20);
+      const beforeBlank = content.substring(beforeBlankStart, match.index);
+
+      const chapterInfo = this.getChapterForPosition(match.index, chapterStructure);
+      const significance = '年份填写位置，用于填写合同签订或生效年份';
+
+      patterns.push({
+        text: match[0],
+        context: content.substring(startPos, endPos),
+        beforeBlank: beforeBlank.trim() || '年份',
+        position: match.index,
+        type: 'date',
+        chapter: chapterInfo,
+        significance
+      });
+    }
+
+    // 7. 匹配附件后空白（如"附件一："、"附件二："等）
+    const attachmentBlankRegex = /附件[一二三四五六七八九十\d]+[：:]\s*[ 　＿_]+/g;
+    while ((match = attachmentBlankRegex.exec(content)) !== null) {
+      const startPos = Math.max(0, match.index - 30);
+      const endPos = Math.min(content.length, match.index + match[0].length + 30);
+
+      const chapterInfo = this.getChapterForPosition(match.index, chapterStructure);
+      const significance = '附件名称或描述填写位置';
+
+      patterns.push({
+        text: match[0],
+        context: content.substring(startPos, endPos),
+        beforeBlank: match[0].replace(/\s+$/, '').trim(),
+        position: match.index,
+        type: 'blank',
+        chapter: chapterInfo,
+        significance
+      });
+    }
+
+    // 8. 匹配签字/盖章空白（如"甲方："、"乙方："后面没有文字）
+    // 特别处理签字行的空白
+    const signatureBlankRegex = /(甲方|乙方|委托方|受托方|签字|盖章|法定代表人)[：:]\s*(?=\n|$|[ 　]{2,})/g;
+    while ((match = signatureBlankRegex.exec(content)) !== null) {
+      const startPos = Math.max(0, match.index - 30);
+      const endPos = Math.min(content.length, match.index + match[0].length + 30);
+      const label = match[1];
+
+      const chapterInfo = this.getChapterForPosition(match.index, chapterStructure);
+      const significance = label === '签字' || label === '盖章'
+        ? `${label}位置，用于确认合同内容`
+        : `${label}名称或信息填写位置`;
+
+      patterns.push({
+        text: match[0],
+        context: content.substring(startPos, endPos),
+        beforeBlank: label,
+        position: match.index,
+        type: 'colon-space',
         chapter: chapterInfo,
         significance
       });
