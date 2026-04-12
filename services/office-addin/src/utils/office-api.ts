@@ -527,11 +527,11 @@ export const WordAPI = {
   },
 
   /**
-   * 按上下文高亮文本（精确版）
+   * 按上下文高亮文本（精确版 - 只高亮空白部分）
    * 根据上下文片段找到对应的位置，只高亮空白部分（下划线或空格）
-   * 而不是整个上下文，使高亮区域更精确
+   * 核心概念：合同中"下划线+空格"=需要参数化的位置
    */
-  async highlightByContext(contextSnippet: string): Promise<number> {
+  async highlightByContext(contextSnippet: string): Promise<{ found: boolean; blankText: string }> {
     return new Promise((resolve, reject) => {
       Word.run(async (context) => {
         // 从上下文片段中提取关键文本（去除前后省略号）
@@ -540,33 +540,44 @@ export const WordAPI = {
           .replace(/[\.\.\.]*$/, '')
           .trim();
 
-        // 如果上下文太短，尝试搜索原始文本
+        // 如果上下文太短，返回未找到
         if (searchText.length < 5) {
-          resolve(0);
+          resolve({ found: false, blankText: '' });
           return;
         }
 
-        // 提取空白部分（用于精确高亮）
-        // 匹配：下划线、多个空格、冒号后的空白等
+        // ===== 步骤1: 提取空白部分（用于精确高亮）=====
+        // 优先级：下划线 > 多空格 > 冒号后空白
         const blankPatterns = [
-          /[＿_]{2,}/g,           // 下划线（至少2个）
-          /[ 　]{3,}/g,           // 多个空格（至少3个）
-          /：\s+/g,               // 冒号后的空白
-          /:\s+/g,                // 英文冒号后的空白
+          { pattern: /[＿_]{2,}/g, name: 'underline' },     // 下划线（至少2个）- 最高优先级
+          { pattern: /[ 　]{3,}/g, name: 'spaces' },        // 多个空格（至少3个）
+          { pattern: /：\s{2,}/g, name: 'colon-blank' },    // 中文冒号后的空白（至少2空格）
+          { pattern: /:\s{2,}/g, name: 'colon-blank-en' },  // 英文冒号后的空白（至少2空格）
         ];
 
-        // 找出上下文中的空白部分
         let blankText = '';
-        for (const pattern of blankPatterns) {
+        let blankType = '';
+        for (const { pattern, name } of blankPatterns) {
           const matches = searchText.match(pattern);
           if (matches && matches.length > 0) {
             // 使用最长的空白匹配
             blankText = matches.reduce((a, b) => a.length >= b.length ? a : b);
+            blankType = name;
             break;
           }
         }
 
-        // 搜索上下文片段
+        // 如果没有找到空白特征，尝试检测更宽泛的模式
+        if (!blankText) {
+          // 检测任何空白序列（包括空格、制表符等）
+          const anyBlankMatch = searchText.match(/[\s＿_　]{2,}/g);
+          if (anyBlankMatch) {
+            blankText = anyBlankMatch.reduce((a, b) => a.length >= b.length ? a : b);
+            blankType = 'general-blank';
+          }
+        }
+
+        // ===== 步骤2: 搜索上下文定位 =====
         const searchResults = context.document.body.search(searchText, {
           matchCase: false,
           matchWholeWord: false
@@ -574,68 +585,205 @@ export const WordAPI = {
         searchResults.load('items');
         await context.sync();
 
-        const foundCount = searchResults.items.length;
+        if (searchResults.items.length === 0) {
+          resolve({ found: false, blankText: blankText });
+          return;
+        }
 
-        if (foundCount > 0) {
-          // 获取第一个匹配的段落
-          const firstResult = searchResults.items[0];
+        const foundRange = searchResults.items[0];
 
-          if (blankText && blankText.trim() !== '') {
-            // 在找到的上下文范围内搜索空白部分并高亮
-            const blankSearch = firstResult.search(blankText, {
+        // ===== 步骤3: 只高亮空白部分 =====
+        if (blankText && blankText.length >= 2) {
+          // 在找到的上下文范围内精确搜索空白部分
+          const blankSearch = foundRange.search(blankText, {
+            matchCase: false,
+            matchWholeWord: false
+          });
+          blankSearch.load('items');
+          await context.sync();
+
+          if (blankSearch.items.length > 0) {
+            // 只高亮空白部分（这就是需要替换的位置）
+            const blankMatch = blankSearch.items[0];
+            blankMatch.select();
+            blankMatch.font.highlightColor = 'yellow';
+            await context.sync();
+
+            console.log(`精确高亮空白: "${blankText}" (${blankType})`);
+            resolve({ found: true, blankText: blankText });
+            return;
+          }
+        }
+
+        // ===== 步骤4: 后备方案 - 如果空白提取失败，尝试在原文中查找 =====
+        const foundText = foundRange.text;
+
+        // 在找到的文本中搜索空白特征
+        for (const { pattern, name } of blankPatterns) {
+          const matches = foundText.match(pattern);
+          if (matches && matches.length > 0) {
+            const foundBlank = matches[0];
+            const innerSearch = foundRange.search(foundBlank, {
               matchCase: false,
               matchWholeWord: false
             });
-            blankSearch.load('items');
+            innerSearch.load('items');
             await context.sync();
 
-            if (blankSearch.items.length > 0) {
-              // 只高亮空白部分
-              const blankMatch = blankSearch.items[0];
-              blankMatch.select();
-              blankMatch.font.highlightColor = 'yellow';
+            if (innerSearch.items.length > 0) {
+              innerSearch.items[0].select();
+              innerSearch.items[0].font.highlightColor = 'yellow';
               await context.sync();
-              resolve(1);
+
+              console.log(`后备高亮空白: "${foundBlank}" (${name})`);
+              resolve({ found: true, blankText: foundBlank });
               return;
             }
           }
-
-          // 如果没有找到空白部分，高亮整个上下文但缩小范围
-          // 只高亮中间部分（去掉前后各5个字符）
-          const text = firstResult.text;
-          if (text.length > 20) {
-            // 尝试找到空白特征并高亮该区域
-            const midStart = Math.floor(text.length * 0.3);
-            const midEnd = Math.floor(text.length * 0.7);
-            const midText = text.substring(midStart, midEnd);
-
-            // 如果中间部分有空白特征，高亮它
-            const midBlankMatch = midText.match(/[＿_\s　]{2,}/);
-            if (midBlankMatch) {
-              const innerSearch = firstResult.search(midBlankMatch[0], {
-                matchCase: false,
-                matchWholeWord: false
-              });
-              innerSearch.load('items');
-              await context.sync();
-
-              if (innerSearch.items.length > 0) {
-                innerSearch.items[0].select();
-                innerSearch.items[0].font.highlightColor = 'yellow';
-                await context.sync();
-                resolve(1);
-                return;
-              }
-            }
-          }
-
-          // 最后选择：高亮找到的范围，但至少定位到位置
-          firstResult.select();
-          firstResult.font.highlightColor = 'yellow';
-          await context.sync();
         }
 
-        resolve(foundCount);
+        // ===== 最后方案: 如果仍找不到空白，高亮整个上下文但缩小范围 =====
+        // 只高亮中间部分（通常是空白所在位置）
+        const textLen = foundText.length;
+        if (textLen > 10) {
+          // 假设空白在中间位置，高亮中间 50% 区域
+          const midStart = Math.floor(textLen * 0.25);
+          const midEnd = Math.floor(textLen * 0.75);
+          const midText = foundText.substring(midStart, midEnd);
+
+          // 尝试在中间区域找空白
+          const midBlankMatch = midText.match(/[\s＿_　]+/);
+          if (midBlankMatch) {
+            const innerSearch = foundRange.search(midBlankMatch[0], {
+              matchCase: false,
+              matchWholeWord: false
+            });
+            innerSearch.load('items');
+            await context.sync();
+
+            if (innerSearch.items.length > 0) {
+              innerSearch.items[0].select();
+              innerSearch.items[0].font.highlightColor = 'yellow';
+              await context.sync();
+
+              resolve({ found: true, blankText: midBlankMatch[0] });
+              return;
+            }
+          }
+        }
+
+        // 完全找不到空白特征，返回失败
+        resolve({ found: false, blankText: '' });
+      }).catch((error) => {
+        reject(error);
+      });
+    });
+  },
+
+  /**
+   * 替换空白部分为变量标记
+   * 只替换空白部分（下划线+空格），保留上下文中的标签文字
+   * 例如：将 "甲方：______" 中的 "______" 替换为 "{d.partyA}"
+   */
+  async replaceBlankWithContext(
+    contextSnippet: string,
+    replacementText: string
+  ): Promise<{ success: boolean; replacedText: string }> {
+    return new Promise((resolve, reject) => {
+      Word.run(async (context) => {
+        // 从上下文片段中提取关键文本
+        let searchText = contextSnippet
+          .replace(/^[\.\.\.]*/, '')
+          .replace(/[\.\.\.]*$/, '')
+          .trim();
+
+        if (searchText.length < 5) {
+          resolve({ success: false, replacedText: '' });
+          return;
+        }
+
+        // ===== 步骤1: 提取空白部分 =====
+        const blankPatterns = [
+          /[＿_]{2,}/g,     // 下划线（至少2个）
+          /[ 　]{3,}/g,     // 多个空格（至少3个）
+          /：\s{2,}/g,      // 中文冒号后的空白
+          /:\s{2,}/g,       // 英文冒号后的空白
+          /[\s＿_　]{2,}/g, // 任何空白序列
+        ];
+
+        let blankText = '';
+        for (const pattern of blankPatterns) {
+          const matches = searchText.match(pattern);
+          if (matches && matches.length > 0) {
+            blankText = matches.reduce((a, b) => a.length >= b.length ? a : b);
+            break;
+          }
+        }
+
+        // ===== 步骤2: 搜索上下文定位 =====
+        const searchResults = context.document.body.search(searchText, {
+          matchCase: false,
+          matchWholeWord: false
+        });
+        searchResults.load('items');
+        await context.sync();
+
+        if (searchResults.items.length === 0) {
+          resolve({ success: false, replacedText: '' });
+          return;
+        }
+
+        const foundRange = searchResults.items[0];
+
+        // ===== 步骤3: 只替换空白部分 =====
+        if (blankText && blankText.length >= 2) {
+          // 在找到的上下文范围内精确搜索空白部分
+          const blankSearch = foundRange.search(blankText, {
+            matchCase: false,
+            matchWholeWord: false
+          });
+          blankSearch.load('items');
+          await context.sync();
+
+          if (blankSearch.items.length > 0) {
+            // 只替换空白部分，保留上下文中的标签
+            const blankMatch = blankSearch.items[0];
+            blankMatch.insertText(replacementText, Word.InsertLocation.replace);
+            await context.sync();
+
+            console.log(`精确替换空白: "${blankText}" → "${replacementText}"`);
+            resolve({ success: true, replacedText: blankText });
+            return;
+          }
+        }
+
+        // ===== 后备方案: 在原文中查找空白 =====
+        const foundText = foundRange.text;
+
+        for (const pattern of blankPatterns) {
+          const matches = foundText.match(pattern);
+          if (matches && matches.length > 0) {
+            const foundBlank = matches[0];
+            const innerSearch = foundRange.search(foundBlank, {
+              matchCase: false,
+              matchWholeWord: false
+            });
+            innerSearch.load('items');
+            await context.sync();
+
+            if (innerSearch.items.length > 0) {
+              innerSearch.items[0].insertText(replacementText, Word.InsertLocation.replace);
+              await context.sync();
+
+              console.log(`后备替换空白: "${foundBlank}" → "${replacementText}"`);
+              resolve({ success: true, replacedText: foundBlank });
+              return;
+            }
+          }
+        }
+
+        // 完全找不到空白特征
+        resolve({ success: false, replacedText: '' });
       }).catch((error) => {
         reject(error);
       });

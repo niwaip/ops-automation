@@ -249,14 +249,36 @@ export const AIIdentifyPanel: React.FC<Props> = ({ onApplyComplete }) => {
 
   /**
    * 应用单个建议
+   * 只替换空白部分（下划线+空格），保留上下文中的标签文字
+   * 例如：将 "甲方：______" 中的 "______" 替换为 "{d.partyA}"
    */
   const handleApplySingle = async (suggestion: AISuggestion) => {
     try {
       if (officeType === 'word') {
+        // 获取上下文用于精确定位
+        const contextSnippet = suggestion.context || suggestion.details?.context || suggestion.elementPath;
+
+        // 尝试使用新的精确替换方法（只替换空白部分）
+        if (contextSnippet && contextSnippet.length > 5) {
+          const result = await OfficeHelper.Word.replaceBlankWithContext(
+            contextSnippet,
+            suggestion.suggestedName
+          );
+
+          if (result.success) {
+            applySuggestion(suggestion.id);
+            addDebugLog('info', `精确替换成功`, `"${result.replacedText}" → ${suggestion.suggestedName}`);
+            return;
+          }
+        }
+
+        // 后备方案：使用原有替换方法
         await OfficeHelper.Word.replaceText(
           suggestion.originalText,
           suggestion.suggestedName
         );
+        applySuggestion(suggestion.id);
+        addDebugLog('info', `应用建议成功`, `${suggestion.originalText} → ${suggestion.suggestedName}`);
       } else if (officeType === 'excel') {
         // Excel 需要找到对应单元格
         const selectedRange = await OfficeHelper.Excel.getSelectedRange();
@@ -264,9 +286,9 @@ export const AIIdentifyPanel: React.FC<Props> = ({ onApplyComplete }) => {
           selectedRange.address,
           suggestion.suggestedName
         );
+        applySuggestion(suggestion.id);
+        addDebugLog('info', `应用建议成功`, `单元格 ${selectedRange.address} → ${suggestion.suggestedName}`);
       }
-      applySuggestion(suggestion.id);
-      addDebugLog('info', `应用建议成功`, `${suggestion.originalText} → ${suggestion.suggestedName}`);
     } catch (error: any) {
       addDebugLog('error', '应用建议失败', error.message);
     }
@@ -274,7 +296,7 @@ export const AIIdentifyPanel: React.FC<Props> = ({ onApplyComplete }) => {
 
   /**
    * 预览单个建议的替换效果
-   * 使用上下文或原始文本进行高亮定位
+   * 只高亮空白部分（下划线+空格），而不是整个上下文
    */
   const handlePreviewSingle = async (suggestion: AISuggestion) => {
     try {
@@ -286,23 +308,36 @@ export const AIIdentifyPanel: React.FC<Props> = ({ onApplyComplete }) => {
         // 优先使用上下文进行定位（更精确）
         const contextSnippet = suggestion.context || suggestion.details?.context || suggestion.elementPath;
         if (contextSnippet && contextSnippet.length > 5 && !contextSnippet.startsWith('position:')) {
-          // 使用上下文高亮
-          const foundCount = await OfficeHelper.Word.highlightByContext(contextSnippet);
-          if (foundCount > 0) {
-            addDebugLog('info', `预览: 高亮上下文`, `找到 ${foundCount} 个匹配，将替换为 ${suggestion.suggestedName}`);
+          // 使用上下文高亮（只高亮空白部分）
+          const result = await OfficeHelper.Word.highlightByContext(contextSnippet);
+          if (result.found) {
+            addDebugLog('info', `预览: 精确高亮空白`, `"${result.blankText}" → ${suggestion.suggestedName}`);
           } else {
-            // 如果上下文搜索失败，尝试搜索原始文本
+            // 如果上下文搜索失败，尝试搜索原始文本中的空白
             if (suggestion.originalText && suggestion.originalText.trim()) {
-              const count = await OfficeHelper.Word.highlightText(suggestion.originalText);
-              addDebugLog('info', `预览: 高亮原始文本`, `找到 ${count} 个匹配`);
+              // 尝试提取原始文本中的空白部分
+              const blankMatch = suggestion.originalText.match(/[＿_\s　]{2,}/);
+              if (blankMatch) {
+                const count = await OfficeHelper.Word.highlightText(blankMatch[0]);
+                addDebugLog('info', `预览: 高亮原始空白`, `"${blankMatch[0]}" 找到 ${count} 个匹配`);
+              } else {
+                const count = await OfficeHelper.Word.highlightText(suggestion.originalText);
+                addDebugLog('info', `预览: 高亮原始文本`, `找到 ${count} 个匹配`);
+              }
             } else {
               addDebugLog('warn', `预览失败`, '无法定位空白标记，请手动查找');
             }
           }
         } else if (suggestion.originalText && suggestion.originalText.trim()) {
-          // 直接使用原始文本高亮
-          const count = await OfficeHelper.Word.highlightText(suggestion.originalText);
-          addDebugLog('info', `预览: 高亮 ${suggestion.originalText}`, `找到 ${count} 个匹配，将替换为 ${suggestion.suggestedName}`);
+          // 尝试提取空白部分并高亮
+          const blankMatch = suggestion.originalText.match(/[＿_\s　]{2,}/);
+          if (blankMatch) {
+            const count = await OfficeHelper.Word.highlightText(blankMatch[0]);
+            addDebugLog('info', `预览: 高亮空白`, `"${blankMatch[0]}" 找到 ${count} 个匹配`);
+          } else {
+            const count = await OfficeHelper.Word.highlightText(suggestion.originalText);
+            addDebugLog('info', `预览: 高亮 ${suggestion.originalText}`, `找到 ${count} 个匹配`);
+          }
         } else {
           addDebugLog('warn', `预览失败`, '空白标记无法直接定位，请使用上下文信息手动查找');
         }
