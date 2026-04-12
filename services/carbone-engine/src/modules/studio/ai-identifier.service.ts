@@ -759,13 +759,19 @@ ${documentContent.length > 3000 ? '\n...(文档较长，已截取前3000字符)'
     const dataSchemaInfo = documentUnderstanding.dataSchema ? `【建议数据架构】: ${documentUnderstanding.dataSchema}` : '';
 
     // 构建预处理空白列表（用于提示AI）
+    // 核心原则：只传递"下划线+空格"作为候选，提供上下文让AI推断变量名
     const preBlanksList = preExtractedBlanks.length > 0
-      ? `\n【已识别的候选空白位置】（共${preExtractedBlanks.length}个，请为每个生成变量建议）\n${preExtractedBlanks.map((b, i) =>
-        `[${i + 1}] 标签: "${b.beforeBlank}", 类型: ${b.type}, 上下文: "${b.context.substring(0, 50)}...", 意义: "${b.significance.substring(0, 30)}..."`
-      ).join('\n')}`
+      ? `\n【已识别的空白填充位置】（共${preExtractedBlanks.length}个，每个位置都需要填写内容）\n${preExtractedBlanks.map((b, i) =>
+        `[${i + 1}] 空白内容: "${b.text}"\n    前文: "${b.beforeBlank}"\n    上下文片段: "${b.context}"\n    类型: ${b.type}\n    建议意义: "${b.significance}"`
+      ).join('\n')}\n\n请根据上下文为每个空白位置生成合适的变量名，变量名应反映其业务含义。`
       : '';
 
-    const prompt = `你是一个专业的文档模板化专家。请分析以下章节内容，识别其中所有需要填充的部分，并给出详细的语义化变量建议。
+    const prompt = `你是一个专业的文档模板化专家。请分析以下章节内容，为每个空白填充位置生成语义化变量。
+
+【核心原则】
+- 只有”下划线+空格”才是需要填写内容的参数位置
+- 变量名应反映空白所在位置的标签文字（如空白前是”甲方”则变量名应包含partyA）
+- context字段必须包含空白内容本身，方便后续精确定位和替换
 
 文档类型: ${documentUnderstanding.documentType}
 章节名称: ${sectionName}
@@ -776,34 +782,32 @@ ${dataSchemaInfo}
 【当事人信息】
 ${relevantParties.map(p => `${p.role} 需要字段: ${p.fieldsNeeded.join(', ')}`).join('\n')}
 
-【正则预识别候选位置】
-${preBlanksList || '无'}
+【已识别的空白位置】
+${preBlanksList || '无空白位置'}
 
 【章节内容】
 ${sectionContent}
 
 请返回JSON格式的分析结果：
 {
-  "sectionName": "${sectionName}",
-  "suggestions": [
+  “sectionName”: “${sectionName}”,
+  “suggestions”: [
     {
-      "originalText": "空白位置的原文内容",
-      "variablePath": "d.partyA.name",
-      "variableName": "甲方名称",
-      "fieldType": "text/date/number/amount/enum",
-      "significance": "该字段在业务上的核心意义",
-      "usage": "【自动填充规则】: 说明如何从外部数据源（如CRM、OA）中识别并获取此内容；【填写示例】: 示例值；【校验】: 格式要求",
-      "context": "格式必须为【前文 _____ 后文】",
-      "confidence": 0.95
+      “originalText”: “空白内容本身（如______）”,
+      “variablePath”: “d.partyA.name”,
+      “variableName”: “甲方名称”,
+      “fieldType”: “text/date/number/amount/enum”,
+      “significance”: “根据上下文推断的业务意义”,
+      “context”: “前文标签 + 空白内容 + 后文（如：甲方：______（签章））”,
+      “confidence”: 0.95
     }
   ]
 }
 
-【核心要求】
-1. **核对与扩充**：首先检查【正则预识别候选位置】，为它们提供语义化路径和详细说明；然后识别正则遗漏的隐式占位符或示例数据。
-2. **详细用途（usage）**：必须清晰描述该字段的“自动填充规则”。这是为了方便后续系统根据语义自动匹配内容并填写。
-3. **语义定位**：context字段必须精准，能让人一眼看出该变量在章节中的确切位置。
-4. **命名一致性**：变量路径必须符合【建议数据架构】的层级逻辑。
+【重要提示】
+1. originalText必须是空白内容本身（下划线或空格），不包含标签文字
+2. context格式：【标签】空白内容【后文】，用于精确定位
+3. 为每个空白位置生成合适的变量名
 
 只返回JSON格式，不要其他解释。`;
 
@@ -1196,20 +1200,26 @@ ${fullContent.substring(0, Math.min(1000, fullContent.length))}
 
   /**
    * 提取文档中需要填充的空白部分
-   * 识别多种空白模式：
-   * - 多个空格/空白线（如：______、          ）
-   * - 单个空格跟随冒号（如：甲方： 、地址： ）
-   * - 中文括号内的空白（如：（ ）、【 】）
-   * - 日期格式空白（如： 年 月 日）
-   * - 填充提示（如：填写、待填、XXX）
-   * 同时提取章节信息用于精确定位
+   *
+   * 核心原则：只识别"下划线+空格"作为参数候选
+   * 合同中只有下划线+空格的位置才是真正需要填写内容的参数位置
+   *
+   * 识别模式：
+   * 1. 下划线（如：______） - 最典型的空白填充
+   * 2. 多空格（如：多个连续空格） - 某些合同使用空格表示空白
+   * 3. 日期格式（如：____年__月__日） - 作为整体处理
+   *
+   * 不识别：
+   * - 冒号后空白（如：甲方： ）- 不单独识别，除非后面有下划线/空格
+   * - 括号空白（如：（填写））- 不识别
+   * - 占位符（如：XXX）- 不识别
    */
   private extractBlankPatterns(content: string, templateType: string): Array<{
     text: string;
     context: string;  // 前后文本作为上下文
     beforeBlank: string;  // 空白前面的文本（用于精确标签匹配）
     position: number;
-    type: 'blank' | 'date' | 'bracket' | 'placeholder' | 'colon-space';
+    type: 'blank' | 'date' | 'underline';
     chapter: string;  // 所在章节信息（如"第一条"、"第二条"）
     significance: string;  // 项目意义/用途说明
   }> {
@@ -1218,7 +1228,7 @@ ${fullContent.substring(0, Math.min(1000, fullContent.length))}
       context: string;
       beforeBlank: string;
       position: number;
-      type: 'blank' | 'date' | 'bracket' | 'placeholder' | 'colon-space';
+      type: 'blank' | 'date' | 'underline';
       chapter: string;
       significance: string;
     }> = [];
@@ -1227,105 +1237,24 @@ ${fullContent.substring(0, Math.min(1000, fullContent.length))}
     const chapterStructure = this.extractChapterStructure(content);
 
     // 定义排除列表：不应该作为空白填充的位置
-    // 这些是格式性的文本，不是真正需要填充的内容
     const excludePatterns = [
       /^第[一二三四五六七八九十百千]+[条章][：:]?\s*$/,  // 章节标题（如"第一条："）
       /^\d+[.、：:]\s*$/,  // 数字编号（如"1."、"2、"）
       /^[一二三四五六七八九十]+[、：:]\s*$/,  // 中文编号
-      /^(一|二|三|四|五|六|七|八|九|十)[、]\s*$/,  // 中文序号
     ];
 
-    // 定义有效空白标签列表：只有这些标签后的空白才应该被识别
-    const validBlankLabels = [
-      '甲方', '乙方', '委托方', '受托方', '买方', '卖方', '出租方', '承租方',
-      '地址', '名称', '签字', '盖章', '电话', '联系人', '代表', '法定代表人',
-      '日期', '签订日期', '生效日期', '截止日期', '有效期', '期限',
-      '金额', '合同金额', '付款金额', '违约金', '保证金', '定金',
-      '项目', '项目名称', '合同编号', '编号', '文号',
-      '附件', '保密期限', '保密',
-    ];
-
-    // 1. 匹配冒号后的空白（如：甲方： 、地址： ）
-    // 改进：只识别有意义标签后的空白，排除章节编号等
-    const colonSpaceRegex = /[：:]\s+/g;
     let match;
-    while ((match = colonSpaceRegex.exec(content)) !== null) {
-      // 获取冒号前面的完整上下文
-      const labelStart = Math.max(0, match.index - 50);
-      const beforeColon = content.substring(labelStart, match.index);
 
-      // 检查是否是排除的格式（章节标题、编号等）
-      const isExcluded = excludePatterns.some(p => p.test(beforeColon.trim()));
-      if (isExcluded) {
-        continue;  // 跳过章节标题等格式性空白
-      }
+    // ===== 核心：只检测下划线+空格 =====
 
-      // 提取冒号前面的最后一个词作为标签
-      const labelMatch = beforeColon.match(/([^\s：:]+)[：:]?$/);
-      if (labelMatch) {
-        let label = labelMatch[1].trim();
-
-        // 检查是否是有效的空白标签
-        const isValidBlank = validBlankLabels.some(valid =>
-          label.includes(valid) || valid.includes(label)
-        );
-
-        if (!isValidBlank) {
-          // 不是有效标签，跳过
-          continue;
-        }
-
-        // 检查是否前面有甲方/乙方等前缀
-        const compoundMatch = beforeColon.match(/(甲方|乙方|委托方|受托方|买方|卖方|出租方|承租方)[^\s]*([^\s：:]+)?[：:]?$/);
-        if (compoundMatch) {
-          label = compoundMatch[1] + (compoundMatch[2] || '');
-        }
-
-        // 检查空白后面是否有内容（如果空白后立即有内容，可能不需要填充）
-        const blankEnd = match.index + match[0].length;
-        const afterBlank = content.substring(blankEnd, blankEnd + 50);
-        const hasContentImmediately = afterBlank.match(/^\S/);  // 空白后立即有非空白字符
-
-        // 如果空白后立即有内容，且不是换行，可能不是需要填充的位置
-        if (hasContentImmediately && !afterBlank.startsWith('\n')) {
-          // 检查空白长度，如果只是1-2个空格且后面有内容，可能只是格式空格
-          let blankLength = match[0].length - 1;
-          const additionalSpaceMatch = afterBlank.match(/^[\s　]+/);
-          if (additionalSpaceMatch) {
-            blankLength += additionalSpaceMatch[0].length;
-          }
-
-          // 只有空白长度大于3才认为是需要填充的空白
-          if (blankLength < 3) {
-            continue;
-          }
-        }
-
-        const startPos = Math.max(0, match.index - 15);
-        const endPos = Math.min(content.length, match.index + 25);
-
-        const chapterInfo = this.getChapterForPosition(match.index, chapterStructure);
-        const significance = this.getSignificanceForLabel(label, templateType);
-
-        patterns.push({
-          text: ' ',
-          context: content.substring(startPos, endPos),
-          beforeBlank: label,
-          position: match.index + 1,
-          type: 'colon-space',
-          chapter: chapterInfo,
-          significance
-        });
-      }
-    }
-
-    // 2. 匹配日期格式空白（如： 年 月 日）
-    const dateBlankRegex = /[\s　]+年[\s　]+月[\s　]+日/g;
+    // 1. 日期格式作为整体（____年__月__日 或 年 月 日）
+    // 这是最常见的日期填写位置
+    const dateBlankRegex = /[＿_]{2,}年[＿_]{2,}月[＿_]{2,}日|[\s　]{2,}年[\s　]{2,}月[\s　]{2,}日|[＿_\s　]{2,}年[＿_\s　]{2,}月[＿_\s　]{2,}日/g;
     while ((match = dateBlankRegex.exec(content)) !== null) {
-      const startPos = Math.max(0, match.index - 15);
-      const endPos = Math.min(content.length, match.index + match[0].length + 15);
-      const beforeBlankStart = Math.max(0, match.index - 20);
-      const beforeBlank = content.substring(beforeBlankStart, match.index);
+      const startPos = Math.max(0, match.index - 20);
+      const endPos = Math.min(content.length, match.index + match[0].length + 20);
+      const beforeBlankStart = Math.max(0, match.index - 30);
+      const beforeBlank = content.substring(beforeBlankStart, match.index).trim();
 
       const chapterInfo = this.getChapterForPosition(match.index, chapterStructure);
       const significance = '合同签署日期，用于记录合同正式签订的时间';
@@ -1333,7 +1262,7 @@ ${fullContent.substring(0, Math.min(1000, fullContent.length))}
       patterns.push({
         text: match[0],
         context: content.substring(startPos, endPos),
-        beforeBlank: beforeBlank.trim() || '签订日期',
+        beforeBlank: beforeBlank || '签订日期',
         position: match.index,
         type: 'date',
         chapter: chapterInfo,
@@ -1341,230 +1270,96 @@ ${fullContent.substring(0, Math.min(1000, fullContent.length))}
       });
     }
 
-    // 3. 匹配多个连续空格/下划线（如：______、          ）
-    // 改进：提高检测门槛，避免误识别格式性空白
-    // 匹配：3个以上下划线、4个以上空格（提高门槛减少误识别）
-    const blankRegex = /[＿_]{3,}|[ 　]{4,}/g;
-    while ((match = blankRegex.exec(content)) !== null) {
-      const startPos = Math.max(0, match.index - 15);
-      const endPos = Math.min(content.length, match.index + match[0].length + 15);
-      const beforeBlankStart = Math.max(0, match.index - 20);
-      const beforeBlank = content.substring(beforeBlankStart, match.index);
+    // 2. 单独的下划线（至少3个）
+    // 这是最典型的空白填充标记
+    const underlineRegex = /[＿_]{3,}/g;
+    while ((match = underlineRegex.exec(content)) !== null) {
+      const startPos = Math.max(0, match.index - 20);
+      const endPos = Math.min(content.length, match.index + match[0].length + 20);
+      const beforeBlankStart = Math.max(0, match.index - 30);
+      const beforeBlank = content.substring(beforeBlankStart, match.index).trim();
 
       // 检查是否在排除位置（章节标题等）
-      const isExcluded = excludePatterns.some(p => p.test(beforeBlank.trim()));
+      const isExcluded = excludePatterns.some(p => p.test(beforeBlank));
       if (isExcluded) {
         continue;
       }
 
-      // 检查空白前是否有有效标签（如果没有有效标签，可能只是格式空白）
-      const hasValidLabel = validBlankLabels.some(label =>
-        beforeBlank.includes(label)
+      // 检查是否已经被日期格式覆盖
+      const isDatePart = patterns.some(p =>
+        Math.abs(p.position - match.index) < 10 && p.type === 'date'
       );
-
-      // 如果空白后立即有内容，检查是否是真正的空白填充位置
-      const blankEnd = match.index + match[0].length;
-      const afterBlank = content.substring(blankEnd, blankEnd + 30);
-      const hasContentAfter = afterBlank.match(/^\S/);
-
-      // 没有有效标签且空白后有内容，可能是格式空白，跳过
-      if (!hasValidLabel && hasContentAfter && match[0].length < 6) {
+      if (isDatePart) {
         continue;
       }
 
-      // 检查是否有特殊上下文模式（如"位于...的...公司"）
-      // 这表示可能有两个不同的空白字段
-      const extendedContext = content.substring(Math.max(0, match.index - 50), Math.min(content.length, match.index + match[0].length + 50));
+      const chapterInfo = this.getChapterForPosition(match.index, chapterStructure);
+      const significance = this.getSignificanceForLabel(beforeBlank, templateType) ||
+        '带下划线的空白位置，需要填写相关内容';
 
-      // 特殊模式检测：甲方/乙方地址和名称组合
-      // 例如："鉴于位于            的             公司(以下称为"甲方")"
-      // 第一个空白是地址，第二个空白是公司名称
-      const specialPatternMatch = extendedContext.match(/(鉴于|甲方|乙方|位于)[^\s]*(位于|的)?\s*[＿_ ]{2,}\s*(的|公司|名称)/);
-      if (specialPatternMatch) {
-        // 检查空白后面是否有"的"和更多空白（表示地址+名称组合）
-        const afterBlankPattern = content.substring(match.index + match[0].length, match.index + match[0].length + 100);
-        const nextBlankMatch = afterBlankPattern.match(/^\s*(的)\s*[＿_ ]{2,}/);
-        if (nextBlankMatch) {
-          // 这是一个地址+名称的组合，第一个空白是地址
-          const addressEndPos = match.index + match[0].length;
-          const nameStartPos = addressEndPos + nextBlankMatch[0].length - nextBlankMatch[1].length - 2; // 减去"的"和空白
+      patterns.push({
+        text: match[0],
+        context: content.substring(startPos, endPos),
+        beforeBlank,
+        position: match.index,
+        type: 'underline',
+        chapter: chapterInfo,
+        significance
+      });
+    }
 
-          // 获取空白前的标签（如"甲方"、"乙方"）
-          const partyMatch = beforeBlank.match(/(甲方|乙方|委托方|受托方)/);
-          const partyLabel = partyMatch ? partyMatch[1] : '甲方';
+    // 3. 多个空格（至少5个，提高阈值减少误识别）
+    // 某些合同使用空格表示空白填充位置
+    const spaceRegex = /[ 　]{5,}/g;
+    while ((match = spaceRegex.exec(content)) !== null) {
+      const startPos = Math.max(0, match.index - 20);
+      const endPos = Math.min(content.length, match.index + match[0].length + 20);
+      const beforeBlankStart = Math.max(0, match.index - 30);
+      const beforeBlank = content.substring(beforeBlankStart, match.index).trim();
 
-          const chapterInfo = this.getChapterForPosition(match.index, chapterStructure);
-
-          // 第一个空白：地址
-          patterns.push({
-            text: match[0],
-            context: extendedContext,
-            beforeBlank: `${partyLabel}地址`,
-            position: match.index,
-            type: 'blank',
-            chapter: chapterInfo,
-            significance: `${partyLabel}的注册地址或办公地址，用于填写公司所在地点`
-          });
-
-          // 第二个空白：名称（从nextBlankMatch提取）
-          const nameBlankStart = match.index + match[0].length + nextBlankMatch[0].indexOf(nextBlankMatch[1]) + 1;
-          const nameBlankEnd = nameBlankStart + nextBlankMatch[0].length - nextBlankMatch[1].length - 1;
-
-          patterns.push({
-            text: content.substring(nameBlankStart, nameBlankEnd) || ' ',
-            context: content.substring(Math.max(0, nameBlankStart - 30), Math.min(content.length, nameBlankEnd + 30)),
-            beforeBlank: `${partyLabel}名称`,
-            position: nameBlankStart,
-            type: 'blank',
-            chapter: chapterInfo,
-            significance: `${partyLabel}的公司全称，用于填写公司名称`
-          });
-
-          // 跳过已处理的区域
-          blankRegex.lastIndex = nameBlankEnd;
-          continue;
-        }
+      // 检查是否在排除位置
+      const isExcluded = excludePatterns.some(p => p.test(beforeBlank));
+      if (isExcluded) {
+        continue;
       }
 
-      const chapterInfo = this.getChapterForPosition(match.index, chapterStructure);
-      const significance = this.getSignificanceForLabel(beforeBlank.trim(), templateType);
+      // 检查是否已经被其他模式覆盖
+      const isCovered = patterns.some(p =>
+        Math.abs(p.position - match.index) < 10
+      );
+      if (isCovered) {
+        continue;
+      }
 
-      patterns.push({
-        text: match[0],
-        context: content.substring(startPos, endPos),
-        beforeBlank,
-        position: match.index,
-        type: 'blank',
-        chapter: chapterInfo,
-        significance
-      });
+      // 检查是否后面有"的"等连接词（可能是地址+名称的组合）
+      const afterBlank = content.substring(match.index + match[0].length, match.index + match[0].length + 10);
+      if (afterBlank.match(/^(的|公司)/)) {
+        // 这是地址类型的空白，保留
+        const chapterInfo = this.getChapterForPosition(match.index, chapterStructure);
+        const significance = this.getSignificanceForLabel(beforeBlank, templateType) ||
+          '空白填充位置';
+
+        patterns.push({
+          text: match[0],
+          context: content.substring(startPos, endPos),
+          beforeBlank,
+          position: match.index,
+          type: 'blank',
+          chapter: chapterInfo,
+          significance
+        });
+      }
     }
 
-    // 4. 匹配括号内的空白或提示（如：（ ）、【 】、[请填写]、(Address)、[XXX]）
-    const bracketRegex = /[（【\(\[](?:[　 ]*|[^）】\)\]]*?[填写写名填XXX入inputenter][^）】\)\]]*?)[）】\)\]]/g;
-    while ((match = bracketRegex.exec(content)) !== null) {
-      const startPos = Math.max(0, match.index - 15);
-      const endPos = Math.min(content.length, match.index + match[0].length + 15);
-      const beforeBlankStart = Math.max(0, match.index - 20);
-      const beforeBlank = content.substring(beforeBlankStart, match.index);
-
-      const chapterInfo = this.getChapterForPosition(match.index, chapterStructure);
-      const significance = this.getSignificanceForLabel(beforeBlank.trim(), templateType);
-
-      patterns.push({
-        text: match[0],
-        context: content.substring(startPos, endPos),
-        beforeBlank,
-        position: match.index,
-        type: 'bracket',
-        chapter: chapterInfo,
-        significance
-      });
-    }
-
-    // 5. 匹配占位符（如：XXX、待填写、请填写）
-    const placeholderRegex = /(XXX+|待填[写名]|请填[写名]|此处填[写名])/g;
-    while ((match = placeholderRegex.exec(content)) !== null) {
-      const startPos = Math.max(0, match.index - 15);
-      const endPos = Math.min(content.length, match.index + match[0].length + 15);
-      const beforeBlankStart = Math.max(0, match.index - 20);
-      const beforeBlank = content.substring(beforeBlankStart, match.index);
-
-      const chapterInfo = this.getChapterForPosition(match.index, chapterStructure);
-      const significance = this.getSignificanceForLabel(beforeBlank.trim(), templateType);
-
-      patterns.push({
-        text: match[0],
-        context: content.substring(startPos, endPos),
-        beforeBlank,
-        position: match.index,
-        type: 'placeholder',
-        chapter: chapterInfo,
-        significance
-      });
-    }
-
-    // 6. 匹配年份空白（如"     年"、"  年"）
-    const yearBlankRegex = /[ 　＿_]+年/g;
-    while ((match = yearBlankRegex.exec(content)) !== null) {
-      const startPos = Math.max(0, match.index - 15);
-      const endPos = Math.min(content.length, match.index + match[0].length + 15);
-      const beforeBlankStart = Math.max(0, match.index - 20);
-      const beforeBlank = content.substring(beforeBlankStart, match.index);
-
-      const chapterInfo = this.getChapterForPosition(match.index, chapterStructure);
-      const significance = '年份填写位置，用于填写合同签订或生效年份';
-
-      patterns.push({
-        text: match[0],
-        context: content.substring(startPos, endPos),
-        beforeBlank: beforeBlank.trim() || '年份',
-        position: match.index,
-        type: 'date',
-        chapter: chapterInfo,
-        significance
-      });
-    }
-
-    // 7. 匹配附件后空白（如"附件一："、"附件二："等）
-    const attachmentBlankRegex = /附件[一二三四五六七八九十\d]+[：:]\s*[ 　＿_]+/g;
-    while ((match = attachmentBlankRegex.exec(content)) !== null) {
-      const startPos = Math.max(0, match.index - 15);
-      const endPos = Math.min(content.length, match.index + match[0].length + 15);
-
-      const chapterInfo = this.getChapterForPosition(match.index, chapterStructure);
-      const significance = '附件名称或描述填写位置';
-
-      patterns.push({
-        text: match[0],
-        context: content.substring(startPos, endPos),
-        beforeBlank: match[0].replace(/\s+$/, '').trim(),
-        position: match.index,
-        type: 'blank',
-        chapter: chapterInfo,
-        significance
-      });
-    }
-
-    // 8. 匹配签字/盖章空白（如"甲方："、"乙方："后面没有文字）
-    // 特别处理签字行的空白
-    const signatureBlankRegex = /(甲方|乙方|委托方|受托方|签字|盖章|法定代表人)[：:]\s*(?=\n|$|[ 　]{2,})/g;
-    while ((match = signatureBlankRegex.exec(content)) !== null) {
-      const startPos = Math.max(0, match.index - 15);
-      const endPos = Math.min(content.length, match.index + match[0].length + 15);
-      const label = match[1];
-
-      const chapterInfo = this.getChapterForPosition(match.index, chapterStructure);
-      const significance = label === '签字' || label === '盖章'
-        ? `${label}位置，用于确认合同内容`
-        : `${label}名称或信息填写位置`;
-
-      patterns.push({
-        text: match[0],
-        context: content.substring(startPos, endPos),
-        beforeBlank: label,
-        position: match.index,
-        type: 'colon-space',
-        chapter: chapterInfo,
-        significance
-      });
-    }
-
-    // 按位置排序，避免顺序混乱
+    // 按位置排序
     patterns.sort((a, b) => a.position - b.position);
 
-    // 改进的去重逻辑：基于多种条件去重
-    // 1. 相同位置完全去重
-    // 2. 相同标签关键词去重（如两个"地址"如果在不同位置但相同语境只保留一个）
-    // 3. 相同变量路径去重
+    // 简化的去重逻辑：只基于位置去重
     const uniquePatterns: typeof patterns = [];
-    const usedLabels = new Set<string>();
     const usedPositions = new Set<number>();
 
-    for (let i = 0; i < patterns.length; i++) {
-      const pattern = patterns[i];
-
-      // 1. 检查是否位置过于接近（间隔小于10字符认为是重复）
+    for (const pattern of patterns) {
+      // 检查是否位置过于接近（间隔小于10字符认为是重复）
       const isNearDuplicate = usedPositions.has(pattern.position) ||
         Array.from(usedPositions).some(pos => Math.abs(pos - pattern.position) < 10);
 
@@ -1573,20 +1368,12 @@ ${fullContent.substring(0, Math.min(1000, fullContent.length))}
         continue;
       }
 
-      // 2. 检查是否标签重复（同章节内的相同标签）
-      const labelKey = `${pattern.chapter}:${pattern.beforeBlank}`;
-      if (usedLabels.has(labelKey)) {
-        this.logger.debug(`跳过标签重复的空白: ${labelKey}`);
-        continue;
-      }
+      uniquePatterns.push(pattern);
+      usedPositions.add(pattern.position);
+    }
 
-      // 3. 检查上下文是否高度相似
-      const contextOverlap = uniquePatterns.some(prev =>
-        this.calculateContextOverlap(prev.context, pattern.context) > 0.8 &&
-        prev.beforeBlank === pattern.beforeBlank
-      );
-
-      if (contextOverlap) {
+    this.logger.log(`提取空白位置完成，共 ${uniquePatterns.length} 个（只保留下划线+空格）`);
+    return uniquePatterns;
         this.logger.debug(`跳过上下文相似的空白: 标签="${pattern.beforeBlank}"`);
         continue;
       }
