@@ -714,6 +714,17 @@ export class AIIdentifierService {
     try {
       const aiResponse = await this.callAIService(prompt);
       const suggestions = this.parseAIResponseToSuggestions(aiResponse, patterns);
+
+      // 如果AI返回的建议数量太少，使用规则补充或替换
+      if (suggestions.length < Math.min(patterns.length, 5)) {
+        this.logger.warn(`AI返回的建议数量不足(${suggestions.length}/${patterns.length})，使用规则补充`);
+        // 合并AI建议和规则建议
+        const fallbackSuggestions = this.generateFallbackSuggestions(patterns, templateType);
+        // 用AI建议覆盖匹配的建议，其余用规则
+        const mergedSuggestions = this.mergeSuggestions(suggestions, fallbackSuggestions, patterns);
+        return { suggestions: mergedSuggestions, usedAI: suggestions.length > 0 };
+      }
+
       return { suggestions, usedAI: true };  // AI分析成功
     } catch (error) {
       this.logger.error('AI analysis failed:', error);
@@ -722,6 +733,35 @@ export class AIIdentifierService {
       const suggestions = this.generateFallbackSuggestions(patterns, templateType);
       return { suggestions, usedAI: false };  // 使用了规则后备
     }
+  }
+
+  /**
+   * 合并AI建议和规则建议
+   * AI建议优先，规则建议补充缺失的部分
+   */
+  private mergeSuggestions(aiSuggestions: any[], fallbackSuggestions: any[], patterns: any[]): any[] {
+    const result: any[] = [...aiSuggestions];
+
+    // 对于AI没有覆盖的空白模式，使用规则建议
+    const coveredIndices = new Set(aiSuggestions.map(s => {
+      const match = s.id.match(/sugg-\d+-(\d+)/);
+      return match ? parseInt(match[1]) : -1;
+    }));
+
+    for (let i = 0; i < fallbackSuggestions.length; i++) {
+      if (!coveredIndices.has(i)) {
+        result.push(fallbackSuggestions[i]);
+      }
+    }
+
+    // 按原始顺序排序
+    result.sort((a, b) => {
+      const aIdx = parseInt(a.id.match(/sugg-\d+-(\d+)/)?.[1] || '0');
+      const bIdx = parseInt(b.id.match(/sugg-\d+-(\d+)/)?.[1] || '0');
+      return aIdx - bIdx;
+    });
+
+    return result;
   }
 
   /**
