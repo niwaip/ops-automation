@@ -1119,51 +1119,92 @@ ${fullContent.substring(0, Math.min(1000, fullContent.length))}
     // 首先提取章节结构，用于后续定位
     const chapterStructure = this.extractChapterStructure(content);
 
+    // 定义排除列表：不应该作为空白填充的位置
+    // 这些是格式性的文本，不是真正需要填充的内容
+    const excludePatterns = [
+      /^第[一二三四五六七八九十百千]+[条章][：:]?\s*$/,  // 章节标题（如"第一条："）
+      /^\d+[.、：:]\s*$/,  // 数字编号（如"1."、"2、"）
+      /^[一二三四五六七八九十]+[、：:]\s*$/,  // 中文编号
+      /^(一|二|三|四|五|六|七|八|九|十)[、]\s*$/,  // 中文序号
+    ];
+
+    // 定义有效空白标签列表：只有这些标签后的空白才应该被识别
+    const validBlankLabels = [
+      '甲方', '乙方', '委托方', '受托方', '买方', '卖方', '出租方', '承租方',
+      '地址', '名称', '签字', '盖章', '电话', '联系人', '代表', '法定代表人',
+      '日期', '签订日期', '生效日期', '截止日期', '有效期', '期限',
+      '金额', '合同金额', '付款金额', '违约金', '保证金', '定金',
+      '项目', '项目名称', '合同编号', '编号', '文号',
+      '附件', '保密期限', '保密',
+    ];
+
     // 1. 匹配冒号后的空白（如：甲方： 、地址： ）
-    // 这是最常见的合同空白格式
+    // 改进：只识别有意义标签后的空白，排除章节编号等
     const colonSpaceRegex = /[：:]\s+/g;
     let match;
     while ((match = colonSpaceRegex.exec(content)) !== null) {
-      // 获取冒号前面的完整上下文（包含前面的标签如"甲方"或"乙方"）
+      // 获取冒号前面的完整上下文
       const labelStart = Math.max(0, match.index - 50);
       const beforeColon = content.substring(labelStart, match.index);
+
+      // 检查是否是排除的格式（章节标题、编号等）
+      const isExcluded = excludePatterns.some(p => p.test(beforeColon.trim()));
+      if (isExcluded) {
+        continue;  // 跳过章节标题等格式性空白
+      }
 
       // 提取冒号前面的最后一个词作为标签
       const labelMatch = beforeColon.match(/([^\s：:]+)[：:]?$/);
       if (labelMatch) {
         let label = labelMatch[1].trim();
 
-        // 检查是否前面有甲方/乙方等前缀（如"甲方地址"、"乙方地址"）
-        // 尝试提取复合标签
+        // 检查是否是有效的空白标签
+        const isValidBlank = validBlankLabels.some(valid =>
+          label.includes(valid) || valid.includes(label)
+        );
+
+        if (!isValidBlank) {
+          // 不是有效标签，跳过
+          continue;
+        }
+
+        // 检查是否前面有甲方/乙方等前缀
         const compoundMatch = beforeColon.match(/(甲方|乙方|委托方|受托方|买方|卖方|出租方|承租方)[^\s]*([^\s：:]+)?[：:]?$/);
         if (compoundMatch) {
-          // 如果有甲方/乙方前缀，使用完整复合标签
           label = compoundMatch[1] + (compoundMatch[2] || '');
         }
 
-        // 获取空白部分的长度
+        // 检查空白后面是否有内容（如果空白后立即有内容，可能不需要填充）
         const blankEnd = match.index + match[0].length;
-        // 查找空白结束位置（下一个非空白字符）
-        let blankLength = match[0].length - 1; // 减去冒号本身
-        // 检查后面是否还有更多空白
-        const afterColon = content.substring(blankEnd);
-        const additionalSpaceMatch = afterColon.match(/^[\s　]+/);
-        if (additionalSpaceMatch) {
-          blankLength += additionalSpaceMatch[0].length;
+        const afterBlank = content.substring(blankEnd, blankEnd + 50);
+        const hasContentImmediately = afterBlank.match(/^\S/);  // 空白后立即有非空白字符
+
+        // 如果空白后立即有内容，且不是换行，可能不是需要填充的位置
+        if (hasContentImmediately && !afterBlank.startsWith('\n')) {
+          // 检查空白长度，如果只是1-2个空格且后面有内容，可能只是格式空格
+          let blankLength = match[0].length - 1;
+          const additionalSpaceMatch = afterBlank.match(/^[\s　]+/);
+          if (additionalSpaceMatch) {
+            blankLength += additionalSpaceMatch[0].length;
+          }
+
+          // 只有空白长度大于3才认为是需要填充的空白
+          if (blankLength < 3) {
+            continue;
+          }
         }
 
         const startPos = Math.max(0, match.index - 30);
-        const endPos = Math.min(content.length, match.index + blankLength + 30);
+        const endPos = Math.min(content.length, match.index + 50);
 
-        // 获取章节信息
         const chapterInfo = this.getChapterForPosition(match.index, chapterStructure);
         const significance = this.getSignificanceForLabel(label, templateType);
 
         patterns.push({
-          text: ' ', // 单个空格作为标记
+          text: ' ',
           context: content.substring(startPos, endPos),
-          beforeBlank: label,  // 使用复合标签（如"甲方地址"）
-          position: match.index + 1, // 冒号后第一个空格的位置
+          beforeBlank: label,
+          position: match.index + 1,
           type: 'colon-space',
           chapter: chapterInfo,
           significance
@@ -1194,14 +1235,35 @@ ${fullContent.substring(0, Math.min(1000, fullContent.length))}
     }
 
     // 3. 匹配多个连续空格/下划线（如：______、          ）
-    // 改进：放宽检测条件，单个下划线和少量空格也能识别
-    // 匹配：1个以上下划线、2个以上空格（原来是4个）
-    const blankRegex = /[＿_]{1,}|[ 　]{2,}/g;
+    // 改进：提高检测门槛，避免误识别格式性空白
+    // 匹配：3个以上下划线、4个以上空格（提高门槛减少误识别）
+    const blankRegex = /[＿_]{3,}|[ 　]{4,}/g;
     while ((match = blankRegex.exec(content)) !== null) {
       const startPos = Math.max(0, match.index - 30);
       const endPos = Math.min(content.length, match.index + match[0].length + 30);
       const beforeBlankStart = Math.max(0, match.index - 20);
       const beforeBlank = content.substring(beforeBlankStart, match.index);
+
+      // 检查是否在排除位置（章节标题等）
+      const isExcluded = excludePatterns.some(p => p.test(beforeBlank.trim()));
+      if (isExcluded) {
+        continue;
+      }
+
+      // 检查空白前是否有有效标签（如果没有有效标签，可能只是格式空白）
+      const hasValidLabel = validBlankLabels.some(label =>
+        beforeBlank.includes(label)
+      );
+
+      // 如果空白后立即有内容，检查是否是真正的空白填充位置
+      const blankEnd = match.index + match[0].length;
+      const afterBlank = content.substring(blankEnd, blankEnd + 30);
+      const hasContentAfter = afterBlank.match(/^\S/);
+
+      // 没有有效标签且空白后有内容，可能是格式空白，跳过
+      if (!hasValidLabel && hasContentAfter && match[0].length < 6) {
+        continue;
+      }
 
       // 检查是否有特殊上下文模式（如"位于...的...公司"）
       // 这表示可能有两个不同的空白字段
@@ -1384,20 +1446,49 @@ ${fullContent.substring(0, Math.min(1000, fullContent.length))}
     // 按位置排序，避免顺序混乱
     patterns.sort((a, b) => a.position - b.position);
 
-    // 去重逻辑：基于完整上下文而非仅标签
-    // "甲方地址："和"乙方地址："虽然标签都是"地址"，但上下文不同，应该都保留
-    const uniquePatterns = [];
+    // 改进的去重逻辑：基于多种条件去重
+    // 1. 相同位置完全去重
+    // 2. 相同标签关键词去重（如两个"地址"如果在不同位置但相同语境只保留一个）
+    // 3. 相同变量路径去重
+    const uniquePatterns: typeof patterns = [];
+    const usedLabels = new Set<string>();
+    const usedPositions = new Set<number>();
+
     for (let i = 0; i < patterns.length; i++) {
       const pattern = patterns[i];
-      // 检查是否与前一个完全重复（相同位置和相同完整上下文）
-      if (i === 0 ||
-          pattern.position !== patterns[i - 1].position ||
-          pattern.context !== patterns[i - 1].context) {
-        uniquePatterns.push(pattern);
-        this.logger.debug(`保留空白: 标签="${pattern.beforeBlank || '未知'}", 位置=${pattern.position}, 类型=${pattern.type}`);
-      } else {
-        this.logger.debug(`跳过完全重复空白: 标签="${pattern.beforeBlank || '未知'}", 位置=${pattern.position}`);
+
+      // 1. 检查是否位置过于接近（间隔小于10字符认为是重复）
+      const isNearDuplicate = usedPositions.has(pattern.position) ||
+        Array.from(usedPositions).some(pos => Math.abs(pos - pattern.position) < 10);
+
+      if (isNearDuplicate) {
+        this.logger.debug(`跳过位置相近的空白: 标签="${pattern.beforeBlank}", 位置=${pattern.position}`);
+        continue;
       }
+
+      // 2. 检查是否标签重复（同章节内的相同标签）
+      const labelKey = `${pattern.chapter}:${pattern.beforeBlank}`;
+      if (usedLabels.has(labelKey)) {
+        this.logger.debug(`跳过标签重复的空白: ${labelKey}`);
+        continue;
+      }
+
+      // 3. 检查上下文是否高度相似
+      const contextOverlap = uniquePatterns.some(prev =>
+        this.calculateContextOverlap(prev.context, pattern.context) > 0.8 &&
+        prev.beforeBlank === pattern.beforeBlank
+      );
+
+      if (contextOverlap) {
+        this.logger.debug(`跳过上下文相似的空白: 标签="${pattern.beforeBlank}"`);
+        continue;
+      }
+
+      // 添加到唯一列表
+      uniquePatterns.push(pattern);
+      usedLabels.add(labelKey);
+      usedPositions.add(pattern.position);
+      this.logger.debug(`保留空白: 标签="${pattern.beforeBlank}", 位置=${pattern.position}, 类型=${pattern.type}`);
     }
 
     this.logger.log(`提取到 ${uniquePatterns.length} 个唯一空白模式（原始 ${patterns.length} 个）`);
