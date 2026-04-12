@@ -238,6 +238,9 @@ export const AIIdentifyPanel: React.FC<Props> = ({ onApplyComplete }) => {
     try {
       // 在 Word 中高亮显示要替换的文本
       if (officeType === 'word') {
+        // 先清除之前的高亮
+        await OfficeHelper.Word.clearAllHighlights();
+
         // 优先使用上下文进行定位（更精确）
         const contextSnippet = suggestion.context || suggestion.details?.context || suggestion.elementPath;
         if (contextSnippet && contextSnippet.length > 5 && !contextSnippet.startsWith('position:')) {

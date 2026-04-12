@@ -461,12 +461,67 @@ export class AIIdentifierService {
     }
 
     // 3. 匹配多个连续空格/下划线（如：______、          ）
+    // 改进：能够识别句子中的多个空白区域
     const blankRegex = /[＿_]{2,}|[ 　]{4,}/g;
     while ((match = blankRegex.exec(content)) !== null) {
       const startPos = Math.max(0, match.index - 30);
       const endPos = Math.min(content.length, match.index + match[0].length + 30);
       const beforeBlankStart = Math.max(0, match.index - 20);
       const beforeBlank = content.substring(beforeBlankStart, match.index);
+
+      // 检查是否有特殊上下文模式（如"位于...的...公司"）
+      // 这表示可能有两个不同的空白字段
+      const extendedContext = content.substring(Math.max(0, match.index - 50), Math.min(content.length, match.index + match[0].length + 50));
+
+      // 特殊模式检测：甲方/乙方地址和名称组合
+      // 例如："鉴于位于            的             公司(以下称为"甲方")"
+      // 第一个空白是地址，第二个空白是公司名称
+      const specialPatternMatch = extendedContext.match(/(鉴于|甲方|乙方|位于)[^\s]*(位于|的)?\s*[＿_ ]{2,}\s*(的|公司|名称)/);
+      if (specialPatternMatch) {
+        // 检查空白后面是否有"的"和更多空白（表示地址+名称组合）
+        const afterBlankPattern = content.substring(match.index + match[0].length, match.index + match[0].length + 100);
+        const nextBlankMatch = afterBlankPattern.match(/^\s*(的)\s*[＿_ ]{2,}/);
+        if (nextBlankMatch) {
+          // 这是一个地址+名称的组合，第一个空白是地址
+          const addressEndPos = match.index + match[0].length;
+          const nameStartPos = addressEndPos + nextBlankMatch[0].length - nextBlankMatch[1].length - 2; // 减去"的"和空白
+
+          // 获取空白前的标签（如"甲方"、"乙方"）
+          const partyMatch = beforeBlank.match(/(甲方|乙方|委托方|受托方)/);
+          const partyLabel = partyMatch ? partyMatch[1] : '甲方';
+
+          const chapterInfo = this.getChapterForPosition(match.index, chapterStructure);
+
+          // 第一个空白：地址
+          patterns.push({
+            text: match[0],
+            context: extendedContext,
+            beforeBlank: `${partyLabel}地址`,
+            position: match.index,
+            type: 'blank',
+            chapter: chapterInfo,
+            significance: `${partyLabel}的注册地址或办公地址，用于填写公司所在地点`
+          });
+
+          // 第二个空白：名称（从nextBlankMatch提取）
+          const nameBlankStart = match.index + match[0].length + nextBlankMatch[0].indexOf(nextBlankMatch[1]) + 1;
+          const nameBlankEnd = nameBlankStart + nextBlankMatch[0].length - nextBlankMatch[1].length - 1;
+
+          patterns.push({
+            text: content.substring(nameBlankStart, nameBlankEnd) || ' ',
+            context: content.substring(Math.max(0, nameBlankStart - 30), Math.min(content.length, nameBlankEnd + 30)),
+            beforeBlank: `${partyLabel}名称`,
+            position: nameBlankStart,
+            type: 'blank',
+            chapter: chapterInfo,
+            significance: `${partyLabel}的公司全称，用于填写公司名称`
+          });
+
+          // 跳过已处理的区域
+          blankRegex.lastIndex = nameBlankEnd;
+          continue;
+        }
+      }
 
       const chapterInfo = this.getChapterForPosition(match.index, chapterStructure);
       const significance = this.getSignificanceForLabel(beforeBlank.trim(), templateType);
@@ -707,31 +762,55 @@ export class AIIdentifierService {
       return { suggestions: [], usedAI: false };
     }
 
-    // 构建AI提示
-    const prompt = this.buildAIPromptForBlanks(patterns, fullContent, templateType, context, customRules);
-
-    // 调用AI服务
+    // 构建AI提示并调用AI服务
+    // 如果空白数量较多，分段调用AI以减少复杂度
     try {
-      const aiResponse = await this.callAIService(prompt);
-      const suggestions = this.parseAIResponseToSuggestions(aiResponse, patterns);
+      let suggestions: any[] = [];
 
-      // 如果AI返回的建议数量太少，使用规则补充或替换
-      if (suggestions.length < Math.min(patterns.length, 5)) {
-        this.logger.warn(`AI返回的建议数量不足(${suggestions.length}/${patterns.length})，使用规则补充`);
-        // 合并AI建议和规则建议
-        const fallbackSuggestions = this.generateFallbackSuggestions(patterns, templateType);
-        // 用AI建议覆盖匹配的建议，其余用规则
+      // 分段调用策略：每次最多处理15个空白
+      const batchSize = 15;
+      const batches = [];
+
+      for (let i = 0; i < patterns.length; i += batchSize) {
+        batches.push(patterns.slice(i, i + batchSize));
+      }
+
+      this.logger.log(`将${patterns.length}个空白分成${batches.length}批进行AI分析`);
+
+      // 对每批调用AI
+      for (let batchIndex = 0; batchIndex < batches.length; batchIndex++) {
+        const batchPatterns = batches[batchIndex];
+        this.logger.log(`处理第${batchIndex + 1}批，共${batchPatterns.length}个空白`);
+
+        // 构建针对这批空白的提示（包含完整文档上下文）
+        const prompt = this.buildAIPromptForBlanks(batchPatterns, fullContent, templateType, context, customRules, batchIndex * batchSize);
+
+        try {
+          const aiResponse = await this.callAIService(prompt);
+          const batchSuggestions = this.parseAIResponseToSuggestions(aiResponse, batchPatterns, batchIndex * batchSize);
+          suggestions = suggestions.concat(batchSuggestions);
+          this.logger.log(`第${batchIndex + 1}批AI分析完成，返回${batchSuggestions.length}个建议`);
+        } catch (batchError) {
+          this.logger.warn(`第${batchIndex + 1}批AI分析失败，使用规则后备`);
+          const fallbackSuggestions = this.generateFallbackSuggestions(batchPatterns, templateType, batchIndex * batchSize);
+          suggestions = suggestions.concat(fallbackSuggestions);
+        }
+      }
+
+      // 如果总建议数量太少，使用规则补充
+      if (suggestions.length < Math.min(patterns.length, 3)) {
+        this.logger.warn(`AI总建议数量不足(${suggestions.length}/${patterns.length})，使用规则补充`);
+        const fallbackSuggestions = this.generateFallbackSuggestions(patterns, templateType, 0);
         const mergedSuggestions = this.mergeSuggestions(suggestions, fallbackSuggestions, patterns);
         return { suggestions: mergedSuggestions, usedAI: suggestions.length > 0 };
       }
 
-      return { suggestions, usedAI: true };  // AI分析成功
+      return { suggestions, usedAI: true };
     } catch (error) {
       this.logger.error('AI analysis failed:', error);
       this.logger.warn('使用规则匹配作为后备方案');
-      // 如果AI失败，使用规则生成基础建议
-      const suggestions = this.generateFallbackSuggestions(patterns, templateType);
-      return { suggestions, usedAI: false };  // 使用了规则后备
+      const suggestions = this.generateFallbackSuggestions(patterns, templateType, 0);
+      return { suggestions, usedAI: false };
     }
   }
 
@@ -765,72 +844,99 @@ export class AIIdentifierService {
   }
 
   /**
-   * 构建AI分析提示
+   * 构建AI分析提示（改进版）
+   * 添加更详细的语义说明和上下文分析
    */
   private buildAIPromptForBlanks(
-    patterns: Array<{ text: string; context: string; position: number; type: string }>,
+    patterns: Array<{ text: string; context: string; beforeBlank?: string; position: number; type: string }>,
     fullContent: string,
     templateType: string,
     context?: string,
-    customRules?: Array<{ pattern: string; targetPath: string; description?: string }>
+    customRules?: Array<{ pattern: string; targetPath: string; description?: string }>,
+    startIndex: number = 0  // 空白的起始索引（用于分批处理）
   ): string {
     const templateTypeDescriptions: Record<string, string> = {
       'report': '报告文档，包含标题、日期、正文、总结等',
       'invoice': '发票/账单，包含金额、日期、项目、公司信息等',
       'certificate': '证书/证明，包含姓名、日期、证书编号、内容等',
-      'contract': '合同/协议，包含甲方乙方、日期、条款、金额等',
+      'contract': '合同/协议，包含甲方乙方、签署日期、条款内容、违约金额等',
       'letter': '信函/通知，包含收件人、日期、正文、签名等',
       'custom': '自定义模板'
     };
 
     const typeDesc = templateTypeDescriptions[templateType] || templateTypeDescriptions['report'];
 
-    // 提取文档前500字符作为背景
-    const background = fullContent.substring(0, Math.min(500, fullContent.length));
+    // 提取文档前800字符作为背景（增加上下文长度）
+    const background = fullContent.substring(0, Math.min(800, fullContent.length));
 
-    // 构建空白部分列表
+    // 构建空白部分列表（包含更详细的信息）
     const blankList = patterns.map((p, i) =>
-      `[${i + 1}] 类型: ${p.type}, 内容: "${p.text}", 上下文: "${p.context}"`
-    ).join('\n');
+      `[${startIndex + i + 1}] 类型: ${p.type}\n    空白内容: "${p.text}"\n    前文标签: "${p.beforeBlank || '未知'}"\n    上下文片段: "${p.context}"\n    位置: ${p.position}`
+    ).join('\n\n');
 
     // 自定义规则提示
     const customRulesPrompt = customRules && customRules.length > 0
       ? `\n自定义规则:\n${customRules.map(r => `- 如果上下文包含"${r.pattern}", 变量路径使用 "${r.targetPath}"`).join('\n')}`
       : '';
 
-    return `你是一个文档模板化专家。请分析以下文档中的空白填充部分，为每个空白建议合适的Carbone模板变量。
+    // 合同特殊语义说明
+    const contractSemanticGuide = templateType === 'contract' ? `
+【合同特殊语义识别规则】
+1. 地址+名称组合模式：
+   - "位于____的____公司(以下称为甲方)" → 第一个空白是甲方地址(d.partyA.address)，第二个空白是甲方名称(d.partyA.name)
+   - "位于____的____公司(以下称为乙方)" → 第一个空白是乙方地址(d.partyB.address)，第二个空白是乙方名称(d.partyB.name)
+
+2. 项目/合作名称：
+   - "就有关____合作过程中" → 项目名称(d.projectName)
+
+3. 金额填写：
+   - "支付违约金人民币____万元" → 违约金额(d.penaltyAmount)
+
+4. 签署位置：
+   - "甲方：" 后的空白 → 甲方签署名称(d.partyA.signature)
+   - "乙方：" 后的空白 → 乙方签署名称(d.partyB.signature)
+
+请根据上下文语义准确判断每个空白的具体含义，不要仅根据位置推断。
+` : '';
+
+    return `你是一个专业的文档模板化专家。请仔细分析以下文档中的空白填充部分，根据上下文语义为每个空白建议合适的Carbone模板变量。
 
 文档类型: ${typeDesc}
 ${context ? `用户说明: ${context}` : ''}
 ${customRulesPrompt}
+${contractSemanticGuide}
 
-文档背景（前500字）:
+【文档背景内容】
 ${background}
 
-发现的需要填充的空白部分:
+【需要分析的空白部分】（共${patterns.length}个）
 ${blankList}
 
-请为每个空白部分返回JSON格式的建议:
+请为每个空白返回JSON格式的建议：
 {
   "suggestions": [
     {
-      "index": 1,  // 对应上面的编号
-      "variablePath": "d.xxx",  // Carbone变量路径，如 d.companyName, d.date, d.partyA
-      "variableName": "变量名称",  // 中文变量名
-      "confidence": 0.85,  // 置信度 0-1
-      "reason": "理由"  // 为什么建议这个变量
+      "index": ${startIndex + 1},
+      "variablePath": "d.xxx",
+      "variableName": "变量中文名称",
+      "confidence": 0.85,
+      "reason": "基于上下文'...'的语义分析，这是XX字段，用于填写..."
     }
   ]
 }
 
-变量路径规范:
-- 使用 d.xxx 格式（单数）或 d.items[i].xxx 格式（数组）
-- 常见变量: d.date, d.title, d.partyA (甲方), d.partyB (乙方), d.companyName, d.address, d.amount, d.contractNo
-- 合同类: d.partyA.name, d.partyA.address, d.partyB.name, d.partyB.address, d.effectiveDate, d.contractAmount
-- 日期类变量建议添加格式化器: d.date:formatDate(YYYY-MM-DD)
-- 金额类变量建议添加格式化器: d.amount:formatNumber(#,##0.00)
+【变量路径规范】
+- 合同甲方: d.partyA.name, d.partyA.address, d.partyA.phone, d.partyA.representative
+- 合同乙方: d.partyB.name, d.partyB.address, d.partyB.phone, d.partyB.representative
+- 项目信息: d.projectName, d.projectDescription
+- 日期时间: d.signDate, d.effectiveDate, d.endDate (使用:formatDate(YYYY-MM-DD))
+- 金额数值: d.contractAmount, d.penaltyAmount (使用:formatNumber(#,##0.00))
 
-只返回JSON，不要其他解释。`;
+【输出要求】
+1. 只返回JSON格式，不要其他解释
+2. 每个空白必须有对应的建议
+3. reason字段必须说明该空白在文档中的具体用途
+4. 根据上下文语义而非仅位置来推断变量含义`;
   }
 
   /**
@@ -881,8 +987,13 @@ ${blankList}
 
   /**
    * 解析AI响应为建议列表
+   * @param startIndex 空白的起始索引（用于分批处理时的索引偏移）
    */
-  private parseAIResponseToSuggestions(aiResponse: any, patterns: Array<{ text: string; context: string; position: number; type: string }>): any[] {
+  private parseAIResponseToSuggestions(
+    aiResponse: any,
+    patterns: Array<{ text: string; context: string; position: number; type: string; beforeBlank?: string }>,
+    startIndex: number = 0
+  ): any[] {
     const suggestions: any[] = [];
 
     if (!aiResponse.suggestions || !Array.isArray(aiResponse.suggestions)) {
@@ -890,22 +1001,30 @@ ${blankList}
     }
 
     for (const aiSuggestion of aiResponse.suggestions) {
-      const patternIndex = aiSuggestion.index - 1;
-      if (patternIndex < 0 || patternIndex >= patterns.length) continue;
+      // AI返回的index是全局索引（从startIndex开始），需要转换为批次内的索引
+      const globalIndex = aiSuggestion.index - 1;  // 转换为0-based
+      const patternIndex = globalIndex - startIndex;
+
+      if (patternIndex < 0 || patternIndex >= patterns.length) {
+        this.logger.warn(`AI suggestion index ${aiSuggestion.index} out of range for batch (start=${startIndex}, size=${patterns.length})`);
+        continue;
+      }
 
       const pattern = patterns[patternIndex];
       suggestions.push({
-        id: `sugg-${Date.now()}-${patternIndex}`,
+        id: `sugg-${Date.now()}-${globalIndex}`,
         type: 'variable',
-        elementPath: `position:${pattern.position}`,
+        elementPath: `【${pattern.beforeBlank || pattern.context?.slice(0, 10) || ''} _____ ${pattern.context?.slice(-10) || ''}】`,
         suggestedName: aiSuggestion.variablePath,
         originalText: pattern.text,
         confidence: aiSuggestion.confidence || 0.7,
         applied: false,
+        context: pattern.context,
         details: {
           formatter: this.extractFormatter(aiSuggestion.variablePath),
           variableName: aiSuggestion.variableName,
-          reason: aiSuggestion.reason
+          reason: aiSuggestion.reason,
+          significance: aiSuggestion.reason || `文档中的${aiSuggestion.variableName || '填充字段'}`
         }
       });
     }
@@ -926,10 +1045,12 @@ ${blankList}
 
   /**
    * AI失败时的后备建议生成
+   * @param startIndex 空白的起始索引（用于分批处理时的索引偏移）
    */
   private generateFallbackSuggestions(
     patterns: Array<{ text: string; context: string; beforeBlank?: string; position: number; type: string; chapter?: string; significance?: string }>,
-    templateType: string
+    templateType: string,
+    startIndex: number = 0
   ): any[] {
     const suggestions: any[] = [];
     this.logger.log(`Generating suggestions for ${patterns.length} patterns, templateType: ${templateType}`);
@@ -1117,7 +1238,7 @@ ${blankList}
       const displayPosition = `【${beforeText.trim().slice(-8)} _____ ${afterText.trim().slice(0, 8)}】`;
 
       suggestions.push({
-        id: `sugg-${Date.now()}-${i}`,
+        id: `sugg-${Date.now()}-${startIndex + i}`,  // 使用全局索引
         type: 'variable',
         elementPath: displayPosition,  // 使用格式化的显示位置
         suggestedName: suggestedPath,

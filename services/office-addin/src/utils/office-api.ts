@@ -202,6 +202,65 @@ export const WordAPI = {
   },
 
   /**
+   * 清除所有高亮标记
+   * 在预览新内容前先清除之前的高亮
+   */
+  async clearAllHighlights(): Promise<void> {
+    return new Promise((resolve, reject) => {
+      Word.run(async (context) => {
+        // 搜索所有高亮文本（黄色高亮）
+        // Word API中没有直接清除高亮的方法，需要搜索并重置
+        const searchResults = context.document.body.search('*', {
+          matchCase: false,
+          matchWholeWord: false,
+          ignorePunct: true
+        });
+        searchResults.load('items');
+        await context.sync();
+
+        // 清除每个找到的文本的高亮颜色
+        for (const item of searchResults.items) {
+          try {
+            item.font.highlightColor = 'none';
+          } catch (e) {
+            // 忽略无法清除的错误
+          }
+        }
+        await context.sync();
+        resolve();
+      }).catch(reject);
+    });
+  },
+
+  /**
+   * 清除特定文本的高亮
+   */
+  async clearHighlight(text: string): Promise<number> {
+    return new Promise((resolve, reject) => {
+      Word.run(async (context) => {
+        if (!text || text.trim() === '') {
+          resolve(0);
+          return;
+        }
+
+        const searchResults = context.document.body.search(text, {
+          matchCase: false,
+          matchWholeWord: false
+        });
+        searchResults.load('items');
+        await context.sync();
+
+        const count = searchResults.items.length;
+        for (const item of searchResults.items) {
+          item.font.highlightColor = 'none';
+        }
+        await context.sync();
+        resolve(count);
+      }).catch(reject);
+    });
+  },
+
+  /**
    * 按上下文高亮文本
    * 根据上下文片段找到对应的位置并高亮
    */
