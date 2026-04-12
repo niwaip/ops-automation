@@ -785,13 +785,35 @@ ${sectionContent}
         }));
 
         // 检查预处理空白是否都被AI覆盖
+        // 使用更严格的去重逻辑：检查变量路径、标签、上下文重叠
         const missingBlanks = preExtractedBlanks.filter(pre => {
-          // 检查AI是否覆盖了这个空白（通过位置或上下文匹配）
-          return !aiSuggestions.some((ai: any) =>
-            ai.context.includes(pre.beforeBlank) ||
-            ai.originalText.includes(pre.text) ||
-            Math.abs(ai.context.length - pre.context.length) < 50
-          );
+          // 检查AI是否已经识别了这个空白
+          // 更严格的匹配条件：
+          // 1. 变量路径相同
+          // 2. 标签关键词相同（如"甲方"、"地址"）
+          // 3. 上下文高度重叠（至少70%相同）
+          const inferredPath = this.inferVariablePath(pre.beforeBlank, pre.type, templateType);
+
+          return !aiSuggestions.some((ai: any) => {
+            // 1. 变量路径完全相同
+            if (ai.variablePath === inferredPath) {
+              return true;
+            }
+
+            // 2. 标签关键词相同（检查核心关键词如"甲方"、"乙方"、"地址"等）
+            const coreKeywords = ['甲方', '乙方', '地址', '名称', '签字', '盖章', '日期', '年份', '附件', '保密期限'];
+            const preKeyword = coreKeywords.find(kw => pre.beforeBlank.includes(kw));
+            const aiKeyword = coreKeywords.find(kw => ai.variablePath.includes(kw) || ai.variableName?.includes(kw));
+            if (preKeyword && aiKeyword && preKeyword === aiKeyword) {
+              // 同类关键词，检查位置是否接近（通过上下文长度判断）
+              const contextOverlap = this.calculateContextOverlap(pre.context, ai.context || '');
+              if (contextOverlap > 0.5) {
+                return true;
+              }
+            }
+
+            return false;
+          });
         });
 
         // 补充缺失的预处理空白
@@ -852,6 +874,39 @@ ${sectionContent}
 
       return { sectionName, suggestions: [] };
     }
+  }
+
+  /**
+   * 计算两个上下文的重叠程度（0-1）
+   * 用于判断两个空白是否是同一个位置
+   */
+  private calculateContextOverlap(context1: string, context2: string): number {
+    if (!context1 || !context2) return 0;
+
+    // 提取核心文本（去掉空白部分）
+    const text1 = context1.replace(/[\s＿_]+/g, '').trim();
+    const text2 = context2.replace(/[\s＿_]+/g, '').trim();
+
+    if (text1 === text2) return 1;
+
+    // 计算字符重叠率
+    const shorter = text1.length < text2.length ? text1 : text2;
+    const longer = text1.length >= text2.length ? text1 : text2;
+
+    // 检查较短文本是否是较长文本的子串
+    if (longer.includes(shorter)) {
+      return shorter.length / longer.length;
+    }
+
+    // 计算共同字符数
+    let commonChars = 0;
+    for (let i = 0; i < shorter.length; i++) {
+      if (longer.includes(shorter[i])) {
+        commonChars++;
+      }
+    }
+
+    return commonChars / longer.length;
   }
 
   /**
@@ -928,7 +983,7 @@ ${sectionContent}
 文档类型: ${documentUnderstanding.documentType}
 文档用途: ${documentUnderstanding.mainPurpose}
 
-【已识别的所有参数】
+【已识别的所有参数】（共${allSuggestions.length}个，可能存在重复）
 ${JSON.stringify(allSuggestions, null, 2)}
 
 【文档背景内容】
@@ -938,25 +993,43 @@ ${fullContent.substring(0, Math.min(1000, fullContent.length))}
 {
   "confirmedSuggestions": [
     {
-      "originalText": "原文内容",
+      "originalText": "原文内容（空白位置的标记文本）",
       "variablePath": "最终确认的变量路径",
-      "variableName": "变量名称",
-      "significance": "字段意义的详细说明",
-      "context": "原文上下文（用于前端显示位置，格式：【前文 _____ 后文】）",
+      "variableName": "变量名称（简短中文）",
+      "significance": "字段意义（清晰说明用途，如'合同甲方签字确认区域'）",
+      "context": "原文上下文，格式：【前文 _____ 后文】",
       "confidence": 0.95,
       "chapter": "所在章节名称"
     }
   ],
-  "removedDuplicates": ["说明哪些参数被合并或删除"]
+  "removedDuplicates": ["说明哪些参数被合并或删除及其原因"]
 }
 
 【整合要求】
-1. 去除重复或相似的参数（如"甲方名称"和"甲方"应该合并）
-2. 确认变量路径的一致性和规范性
-3. 补充或修正 significance 字段，使其更有意义
-4. 根据原文内容生成准确的 context 字段，格式为【前文 _____ 后文】
-5. 为每个参数添加 chapter 字段，标注所属章节
-6. 最终确认的参数应该准确、完整、无重复
+1. **严格去重**：
+   - 相同变量路径只保留一个
+   - 相同上下文位置只保留一个
+   - 如果有多个相同标签（如两个"甲方"），检查是否在不同位置，不同位置用不同路径（如d.partyA.name1, d.partyA.name2）
+   - 合并相似参数，保留最有意义的一个
+
+2. **变量路径规范**：
+   - 甲方: d.partyA.name, d.partyA.address, d.partyA.signature, d.partyA.seal
+   - 乙方: d.partyB.name, d.partyB.address, d.partyB.signature, d.partyB.seal
+   - 日期: d.signDate, d.effectiveDate
+   - 附件: d.attachmentName
+   - 保密期限: d.confidentialityPeriod
+
+3. **significance必须有意义**：
+   - 不要使用"文档中需要填充的字段"这种通用描述
+   - 每个字段都要有具体的用途说明
+   - 例如："合同甲方签字确认区域，用于确认合同内容有效"
+
+4. **context格式**：
+   - 必须是【前文 _____ 后文】格式
+   - 前文和后文各取8-12个字符
+   - 用于前端精确定位显示
+
+5. **无遗漏**：确保文档中所有需要填充的空白都有对应参数
 
 只返回JSON格式，不要其他解释。`;
 
@@ -1416,6 +1489,7 @@ ${fullContent.substring(0, Math.min(1000, fullContent.length))}
    * 根据标签获取字段意义说明
    */
   private getSignificanceForLabel(label: string, templateType: string): string {
+    // 扩展的意义说明映射表，覆盖更多常见字段
     const significanceMap: Record<string, Record<string, string>> = {
       'contract': {
         '甲方': '合同第一签署方，通常是合同的主要责任方',
@@ -1424,6 +1498,10 @@ ${fullContent.substring(0, Math.min(1000, fullContent.length))}
         '乙方名称': '乙方公司或个人的完整名称',
         '甲方地址': '甲方注册地址或实际办公地址',
         '乙方地址': '乙方注册地址或实际办公地址',
+        '甲方签字': '甲方签字区域，用于确认合同内容',
+        '乙方签字': '乙方签字区域，用于确认合同内容',
+        '甲方盖章': '甲方公章印章位置，用于确认合同效力',
+        '乙方盖章': '乙方公章印章位置，用于确认合同效力',
         '签订日期': '合同签署日期，记录合同正式签订的时间',
         '生效日期': '合同开始生效的日期',
         '截止日期': '合同有效期终止的日期',
@@ -1434,6 +1512,16 @@ ${fullContent.substring(0, Math.min(1000, fullContent.length))}
         '地址': '地址信息，用于联系和送达',
         '签字': '签字区域，用于确认合同内容',
         '盖章': '盖章区域，用于公司公章确认',
+        '年份': '合同签订年份',
+        '年': '合同签订年份',
+        '保密期限': '保密义务的有效期限，如"三年"或"五年"',
+        '附件': '附件名称或描述，用于列明合同附件内容',
+        '附件一': '第一个附件的名称或描述',
+        '附件二': '第二个附件的名称或描述',
+        '项目名称': '合同涉及的项目名称',
+        '项目': '合同涉及的项目名称',
+        '争议': '争议解决方式说明',
+        '仲裁': '仲裁机构名称或地点',
       },
       'report': {
         '标题': '报告的标题名称',
@@ -1464,14 +1552,39 @@ ${fullContent.substring(0, Math.min(1000, fullContent.length))}
       return templateMap[label];
     }
 
-    // 尝试关键词匹配
+    // 尝试关键词匹配（更宽松）
     for (const [key, value] of Object.entries(templateMap)) {
       if (label.includes(key) || key.includes(label)) {
         return value;
       }
     }
 
-    return '文档中需要填充的字段';
+    // 根据标签关键词生成更有意义的默认描述
+    const defaultDescriptions: Record<string, string> = {
+      '甲方': '甲方相关填写内容',
+      '乙方': '乙方相关填写内容',
+      '地址': '地址填写位置',
+      '名称': '名称填写位置',
+      '签字': '签字确认区域',
+      '盖章': '盖章确认区域',
+      '日期': '日期填写位置',
+      '年份': '年份填写位置',
+      '金额': '金额填写位置',
+      '编号': '编号填写位置',
+      '附件': '附件相关填写内容',
+      '保密': '保密条款相关内容',
+      '期限': '期限时间填写位置',
+    };
+
+    // 检查关键词并返回有意义的描述
+    for (const [keyword, desc] of Object.entries(defaultDescriptions)) {
+      if (label.includes(keyword)) {
+        return desc;
+      }
+    }
+
+    // 最终默认值：根据标签生成描述
+    return label.trim() ? `${label.trim()}的填写位置` : '文档中需要填充的字段';
   }
 
   /**
