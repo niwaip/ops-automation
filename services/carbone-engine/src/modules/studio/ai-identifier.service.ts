@@ -68,6 +68,7 @@ export interface SectionParameterization {
     variableName: string;
     fieldType?: string;      // 字段类型 (text, date, number, amount, etc.)
     significance: string;    // 字段意义说明
+    usage?: string;          // 【自动填充说明】: 如何识别并获取此内容
     context: string;         // 原文上下文
     confidence: number;
   }>;
@@ -233,6 +234,8 @@ export interface VariableMapping {
   index: number;
   type: 'text' | 'number' | 'date' | 'image' | 'heading' | 'amount' | 'enum';
   reason: string;
+  usage?: string;
+  fieldType?: string;
 }
 
 /**
@@ -545,7 +548,9 @@ export class AIIdentifierService {
         sampleValue: s.originalText,
         index: idx,
         type: (s.details?.fieldType as any) || 'text',
-        reason: s.significance
+        reason: s.significance,
+        usage: s.details?.usage,
+        fieldType: s.details?.fieldType
       }));
 
       const documentStats = {
@@ -733,7 +738,7 @@ ${documentContent.length > 3000 ? '\n...(文档较长，已截取前3000字符)'
       ).join('\n')}`
       : '';
 
-    const prompt = `你是一个专业的文档模板化专家。请分析以下章节内容，识别其中所有需要填充的部分，并给出语义化的变量建议。
+    const prompt = `你是一个专业的文档模板化专家。请分析以下章节内容，识别其中所有需要填充的部分，并给出详细的语义化变量建议。
 
 文档类型: ${documentUnderstanding.documentType}
 章节名称: ${sectionName}
@@ -743,7 +748,9 @@ ${dataSchemaInfo}
 
 【当事人信息】
 ${relevantParties.map(p => `${p.role} 需要字段: ${p.fieldsNeeded.join(', ')}`).join('\n')}
-${preBlanksList}
+
+【正则预识别候选位置】
+${preBlanksList || '无'}
 
 【章节内容】
 ${sectionContent}
@@ -757,19 +764,19 @@ ${sectionContent}
       "variablePath": "d.partyA.name",
       "variableName": "甲方名称",
       "fieldType": "text/date/number/amount/enum",
-      "significance": "【用途说明】: 该字段的具体用途；【填写示例】: 示例值；【校验规则】: 格式要求",
+      "significance": "该字段在业务上的核心意义",
+      "usage": "【自动填充规则】: 说明如何从外部数据源（如CRM、OA）中识别并获取此内容；【填写示例】: 示例值；【校验】: 格式要求",
       "context": "格式必须为【前文 _____ 后文】",
       "confidence": 0.95
     }
   ]
 }
 
-【识别要求】
-1. **显式空白**：识别所有下划线、括号、冒号后空格、XXX等。
-2. **隐式变量**：识别段落中看起来像是占位符的具体示例数据（如："2024年1月1日"、"某某公司"），如果它们处于应该被替换的位置。
-3. **变量路径一致性**：参考提供的【建议数据架构】，确保变量路径层级合理。
-4. **详细用途（significance）**：必须包含用途说明、填写示例和可能的校验规则。这是为了方便后续自动识别和填充。
-5. **context格式**：必须严格遵循【前文 _____ 后文】格式，以便精准定位。
+【核心要求】
+1. **核对与扩充**：首先检查【正则预识别候选位置】，为它们提供语义化路径和详细说明；然后识别正则遗漏的隐式占位符或示例数据。
+2. **详细用途（usage）**：必须清晰描述该字段的“自动填充规则”。这是为了方便后续系统根据语义自动匹配内容并填写。
+3. **语义定位**：context字段必须精准，能让人一眼看出该变量在章节中的确切位置。
+4. **命名一致性**：变量路径必须符合【建议数据架构】的层级逻辑。
 
 只返回JSON格式，不要其他解释。`;
 
@@ -1041,6 +1048,7 @@ ${fullContent.substring(0, Math.min(1000, fullContent.length))}
           details: {
             chapter: s.chapter || '正文',
             significance: s.significance,
+            usage: s.usage,
             variableName: s.variableName,
             fieldType: s.fieldType || 'text',
             formatter: this.extractFormatter(s.variablePath)
