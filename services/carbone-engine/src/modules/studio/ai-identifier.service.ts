@@ -1,6 +1,11 @@
 /**
  * Carbone Engine - AI Identifier Service
- * AI自动标识服务，基于结构化文档分析生成模版配置
+ * AI自动标识服务，基于多阶段AI分析生成模版配置
+ *
+ * 新的多阶段处理流程：
+ * 1. 文档理解 - AI分析文档整体内容、结构、章节
+ * 2. 分段参数化 - 根据理解结果，对每个章节进行语义识别和参数化
+ * 3. 整合确认 - 对所有结果进行整合和最终确认
  */
 
 import { Injectable, Logger } from '@nestjs/common';
@@ -9,6 +14,61 @@ import * as path from 'path';
 import JSZip from 'jszip';
 import axios from 'axios';
 import { DocumentElement, DocumentStructure, PreserveMarker } from './document-structure.service';
+
+/**
+ * 处理阶段枚举
+ */
+export enum ProcessingStage {
+  DOCUMENT_UNDERSTANDING = 'document_understanding',
+  SECTION_ANALYSIS = 'section_analysis',
+  INTEGRATION = 'integration',
+  COMPLETE = 'complete'
+}
+
+/**
+ * 进度信息
+ */
+export interface ProcessingProgress {
+  stage: ProcessingStage;
+  stageName: string;  // 中文阶段名称
+  progress: number;   // 0-100
+  message: string;    // 详细进度消息
+  currentSection?: string;  // 当前处理的章节
+}
+
+/**
+ * 文档理解结果
+ */
+export interface DocumentUnderstanding {
+  documentType: string;      // 文档类型判断
+  mainPurpose: string;       // 文档主要用途
+  sections: Array<{
+    name: string;            // 章节名称（如"第一条"、"第二条"）
+    content: string;         // 章节内容摘要
+    purpose: string;         // 章节用途说明
+    needsParameterization: boolean;  // 是否需要参数化
+    estimatedParams: string[];  // 预估可能需要的参数
+  }>;
+  parties: Array<{
+    role: string;            // 角色（甲方、乙方）
+    fieldsNeeded: string[];  // 需要的字段（名称、地址等）
+  }>;
+}
+
+/**
+ * 章节参数化结果
+ */
+export interface SectionParameterization {
+  sectionName: string;
+  suggestions: Array<{
+    originalText: string;
+    variablePath: string;
+    variableName: string;
+    significance: string;    // 字段意义说明
+    context: string;         // 原文上下文
+    confidence: number;
+  }>;
+}
 
 /**
  * 参数路径映射规则
@@ -352,6 +412,485 @@ export class AIIdentifierService {
         aiServiceUrl: this.aiOrchestratorUrl  // 显示AI服务地址
       }
     };
+  }
+
+  /**
+   * 多阶段AI识别 - 用于Office插件
+   * 新的处理流程：
+   * 1. 文档理解 - AI分析文档整体内容、结构、章节、当事人等
+   * 2. 分段参数化 - 根据理解结果，对每个需要参数化的章节进行语义识别
+   * 3. 整合确认 - 对所有结果进行整合和最终确认
+   * 4. 返回结果
+   *
+   * @param documentContent 文档文本内容
+   * @param documentType 文档类型
+   * @param templateType 模板类型
+   * @param context 上下文信息
+   * @param progressCallback 进度回调函数，用于实时报告处理进度
+   */
+  async identifyFromContentMultiStage(
+    documentContent: string,
+    documentType: string,
+    templateType: string,
+    context?: string,
+    progressCallback?: (progress: ProcessingProgress) => void
+  ): Promise<AIIdentifyResponse> {
+    this.logger.log(`开始多阶段AI识别, 类型: ${templateType}, 内容长度: ${documentContent.length}`);
+
+    // 定义进度报告辅助函数
+    const reportProgress = (stage: ProcessingStage, stageName: string, progress: number, message: string, currentSection?: string) => {
+      const progressInfo: ProcessingProgress = {
+        stage,
+        stageName,
+        progress,
+        message,
+        currentSection
+      };
+      this.logger.log(`进度报告: [${stageName}] ${progress}% - ${message}`);
+      if (progressCallback) {
+        progressCallback(progressInfo);
+      }
+    };
+
+    try {
+      // ===== 阶段1: 文档理解 =====
+      reportProgress(ProcessingStage.DOCUMENT_UNDERSTANDING, '文档理解', 0, '正在分析文档整体结构和内容...');
+
+      const documentUnderstanding = await this.analyzeDocumentUnderstanding(documentContent, templateType, context);
+
+      reportProgress(ProcessingStage.DOCUMENT_UNDERSTANDING, '文档理解', 100,
+        `文档理解完成，识别到 ${documentUnderstanding.sections.length} 个章节，${documentUnderstanding.parties.length} 个当事人`);
+
+      // ===== 阶段2: 分段参数化 =====
+      reportProgress(ProcessingStage.SECTION_ANALYSIS, '分段参数化', 0, '开始对各章节进行语义分析...');
+
+      const allSectionResults: SectionParameterization[] = [];
+      const sectionsToProcess = documentUnderstanding.sections.filter(s => s.needsParameterization);
+
+      for (let i = 0; i < sectionsToProcess.length; i++) {
+        const section = sectionsToProcess[i];
+        const sectionProgress = Math.round((i / sectionsToProcess.length) * 80);
+
+        reportProgress(ProcessingStage.SECTION_ANALYSIS, '分段参数化', sectionProgress,
+          `正在分析章节: ${section.name}`, section.name);
+
+        // 提取该章节的完整内容（从原文中提取）
+        const sectionContent = this.extractSectionContent(documentContent, section.name);
+
+        // 调用AI进行语义参数化
+        const sectionResult = await this.parameterizeSection(
+          section.name,
+          sectionContent,
+          documentUnderstanding,
+          templateType
+        );
+
+        allSectionResults.push(sectionResult);
+
+        reportProgress(ProcessingStage.SECTION_ANALYSIS, '分段参数化', sectionProgress + Math.round(80 / sectionsToProcess.length),
+          `章节 ${section.name} 分析完成，识别到 ${sectionResult.suggestions.length} 个参数`);
+      }
+
+      reportProgress(ProcessingStage.SECTION_ANALYSIS, '分段参数化', 100,
+        `分段参数化完成，共识别到 ${allSectionResults.reduce((sum, s) => sum + s.suggestions.length, 0)} 个潜在参数`);
+
+      // ===== 阶段3: 整合确认 =====
+      reportProgress(ProcessingStage.INTEGRATION, '整合确认', 0, '正在整合和确认所有识别结果...');
+
+      const finalSuggestions = await this.integrateAndConfirm(
+        allSectionResults,
+        documentUnderstanding,
+        documentContent,
+        templateType
+      );
+
+      reportProgress(ProcessingStage.INTEGRATION, '整合确认', 100,
+        `整合确认完成，最终确认 ${finalSuggestions.length} 个有效参数`);
+
+      // ===== 阶段4: 完成 =====
+      reportProgress(ProcessingStage.COMPLETE, '完成', 100, 'AI识别处理完成');
+
+      // 构建返回结果
+      const templateConfig: TemplateConfig = {
+        templateType: documentUnderstanding.documentType,
+        staticElements: [],
+        tableLoops: [],
+        imageLoops: [],
+        combinedVariables: [],
+        variableMappings: [],
+        analysisNotes: [`文档类型: ${documentUnderstanding.documentType}`, `主要用途: ${documentUnderstanding.mainPurpose}`]
+      };
+
+      const variableMappings: VariableMapping[] = finalSuggestions.map((s, idx) => ({
+        path: s.variablePath,
+        sampleValue: s.originalText,
+        index: idx,
+        type: 'text' as const,
+        reason: s.significance
+      }));
+
+      const documentStats = {
+        totalElements: finalSuggestions.length,
+        tables: 0,
+        images: 0,
+        stepScreenshots: 0,
+        potentialLoops: 0
+      };
+
+      return {
+        templateConfig,
+        suggestions: variableMappings,
+        rawSuggestions: finalSuggestions,
+        loops: [],
+        images: [],
+        combinedVariables: [],
+        analyzedAt: new Date().toISOString(),
+        documentStats,
+        contextAnalysis: {
+          detectedTemplateType: documentUnderstanding.documentType,
+          userIntent: documentUnderstanding.mainPurpose,
+          usedAI: true,
+          aiServiceUrl: this.aiOrchestratorUrl
+        }
+      };
+    } catch (error: any) {
+      this.logger.error('多阶段AI识别失败:', error);
+      reportProgress(ProcessingStage.COMPLETE, '处理失败', 0, `处理失败: ${error.message}`);
+
+      // 失败时回退到简化处理
+      this.logger.warn('回退到简化处理模式');
+      return this.identifyFromContent(documentContent, documentType, templateType, context);
+    }
+  }
+
+  /**
+   * 阶段1: 文档理解
+   * AI分析文档整体内容，识别文档类型、结构、章节、当事人等
+   */
+  private async analyzeDocumentUnderstanding(
+    documentContent: string,
+    templateType: string,
+    context?: string
+  ): Promise<DocumentUnderstanding> {
+    this.logger.log('阶段1: 开始文档理解分析');
+
+    const prompt = `你是一个专业的文档分析专家。请仔细阅读以下文档内容，分析并理解文档的整体结构。
+
+文档类型提示: ${templateType}
+${context ? `用户说明: ${context}` : ''}
+
+【文档内容】
+${documentContent.substring(0, Math.min(3000, documentContent.length))}
+${documentContent.length > 3000 ? '\n...(文档较长，已截取前3000字符)' : ''}
+
+请返回JSON格式的分析结果：
+{
+  "documentType": "合同/协议/报告/证书等",
+  "mainPurpose": "文档的主要用途和目的",
+  "sections": [
+    {
+      "name": "第一条 协议双方",
+      "content": "该章节的主要内容摘要",
+      "purpose": "该章节在文档中的作用",
+      "needsParameterization": true,
+      "estimatedParams": ["甲方名称", "甲方地址"]
+    }
+  ],
+  "parties": [
+    {
+      "role": "甲方",
+      "fieldsNeeded": ["名称", "地址", "代表人", "联系方式"]
+    }
+  ]
+}
+
+【分析要求】
+1. 识别文档的主要类型和用途
+2. 提取所有章节/条款的结构（如"第一条"、"第二条"等）
+3. 判断每个章节是否需要参数化（是否包含空白、待填写内容）
+4. 识别文档涉及的当事人角色（如甲方、乙方、委托方等）
+5. estimatedParams 列出该章节预估可能需要的参数名称
+
+只返回JSON格式，不要其他解释。`;
+
+    try {
+      const aiResponse = await this.callAIService(prompt);
+
+      // 解析AI返回的文档理解结果
+      if (aiResponse && aiResponse.documentType) {
+        this.logger.log(`文档理解成功: 类型=${aiResponse.documentType}, 章节数=${aiResponse.sections?.length || 0}`);
+        return {
+          documentType: aiResponse.documentType || templateType,
+          mainPurpose: aiResponse.mainPurpose || '文档模板化处理',
+          sections: aiResponse.sections || [],
+          parties: aiResponse.parties || []
+        };
+      }
+
+      // 如果AI返回格式不正确，使用基础理解
+      this.logger.warn('AI文档理解返回格式异常，使用基础理解');
+      return this.buildBasicDocumentUnderstanding(documentContent, templateType);
+    } catch (error: any) {
+      this.logger.error('文档理解AI调用失败:', error);
+      return this.buildBasicDocumentUnderstanding(documentContent, templateType);
+    }
+  }
+
+  /**
+   * 构建基础文档理解（当AI失败时的后备方案）
+   */
+  private buildBasicDocumentUnderstanding(content: string, templateType: string): DocumentUnderstanding {
+    // 提取章节结构
+    const chapterStructure = this.extractChapterStructure(content);
+
+    const sections = chapterStructure.map(chapter => ({
+      name: chapter.title,
+      content: content.substring(chapter.startPos, Math.min(chapter.endPos, chapter.startPos + 200)),
+      purpose: '文档章节内容',
+      needsParameterization: this.checkNeedsParameterization(content.substring(chapter.startPos, chapter.endPos)),
+      estimatedParams: []
+    }));
+
+    // 检测当事人角色
+    const partyKeywords = ['甲方', '乙方', '委托方', '受托方', '买方', '卖方', '出租方', '承租方'];
+    const parties = partyKeywords
+      .filter(keyword => content.includes(keyword))
+      .map(role => ({
+        role,
+        fieldsNeeded: ['名称', '地址']
+      }));
+
+    return {
+      documentType: templateType,
+      mainPurpose: '文档模板化处理',
+      sections,
+      parties
+    };
+  }
+
+  /**
+   * 检查章节内容是否需要参数化
+   */
+  private checkNeedsParameterization(content: string): boolean {
+    // 检查是否有空白、冒号后空白、日期格式空白等
+    const patterns = [
+      /[：:]\s+/,           // 冒号后空白
+      /[_＿]{2,}/,         // 下划线空白
+      /[ 　]{4,}/,         // 多个空格
+      /[（【\(][　 ]*[）】\)]/,  // 括号空白
+      /[\s　]+年[\s　]+月[\s　]+日/,  // 日期空白
+    ];
+
+    return patterns.some(pattern => pattern.test(content));
+  }
+
+  /**
+   * 阶段2: 章节参数化
+   * AI对单个章节进行语义分析，识别该章节中的空白参数
+   */
+  private async parameterizeSection(
+    sectionName: string,
+    sectionContent: string,
+    documentUnderstanding: DocumentUnderstanding,
+    templateType: string
+  ): Promise<SectionParameterization> {
+    this.logger.log(`阶段2: 参数化章节 "${sectionName}"`);
+
+    // 获取该章节相关的当事人信息
+    const relevantParties = documentUnderstanding.parties;
+
+    const prompt = `你是一个专业的文档模板化专家。请分析以下章节内容，识别其中所有需要填充的空白部分，并给出语义化的变量建议。
+
+文档类型: ${documentUnderstanding.documentType}
+章节名称: ${sectionName}
+章节用途: 从${documentUnderstanding.mainPurpose}中提取该章节内容
+
+【当事人信息】
+${relevantParties.map(p => `${p.role} 需要字段: ${p.fieldsNeeded.join(', ')}`).join('\n')}
+
+【章节内容】
+${sectionContent}
+
+请返回JSON格式的分析结果：
+{
+  "sectionName": "${sectionName}",
+  "suggestions": [
+    {
+      "originalText": "空白位置的原文内容（如空白前后的文字）",
+      "variablePath": "d.partyA.name",
+      "variableName": "甲方名称",
+      "significance": "该参数的具体用途和意义，如'合同第一签署方的公司名称'",
+      "context": "空白所在的完整句子或上下文",
+      "confidence": 0.95
+    }
+  ]
+}
+
+【识别规则】
+1. 识别所有空白填充位置（包括冒号后空白、下划线空白、括号空白、日期空白等）
+2. 根据上下文语义判断每个空白的具体含义，而非仅根据位置
+3. 变量路径使用标准格式：
+   - 甲方相关: d.partyA.name, d.partyA.address, d.partyA.phone, d.partyA.representative
+   - 乙方相关: d.partyB.name, d.partyB.address, d.partyB.phone, d.partyB.representative
+   - 日期相关: d.signDate, d.effectiveDate, d.endDate
+   - 金额相关: d.contractAmount, d.penaltyAmount
+   - 项目相关: d.projectName
+4. significance 必须清晰说明该字段的用途和意义
+5. 如果一个句子中有多个空白（如"位于____的____公司"），要分别识别为不同参数
+
+只返回JSON格式，不要其他解释。`;
+
+    try {
+      const aiResponse = await this.callAIService(prompt);
+
+      if (aiResponse && aiResponse.suggestions && Array.isArray(aiResponse.suggestions)) {
+        this.logger.log(`章节 "${sectionName}" 参数化成功，识别到 ${aiResponse.suggestions.length} 个参数`);
+        return {
+          sectionName,
+          suggestions: aiResponse.suggestions.map((s: any) => ({
+            originalText: s.originalText || '',
+            variablePath: s.variablePath || 'd.unknown',
+            variableName: s.variableName || '未知字段',
+            significance: s.significance || '文档填充字段',
+            context: s.context || sectionContent.substring(0, 50),
+            confidence: s.confidence || 0.7
+          }))
+        };
+      }
+
+      this.logger.warn(`章节 "${sectionName}" AI返回格式异常`);
+      return { sectionName, suggestions: [] };
+    } catch (error: any) {
+      this.logger.error(`章节 "${sectionName}" 参数化失败:`, error);
+      return { sectionName, suggestions: [] };
+    }
+  }
+
+  /**
+   * 从原文中提取指定章节的内容
+   */
+  private extractSectionContent(fullContent: string, sectionName: string): string {
+    // 尝试匹配章节标题
+    const sectionPattern = new RegExp(`${sectionName.replace(/[：:]/g, '[：:]')}[\\s\\S]*?(?=第[一二三四五六七八九十]+条|第[一二三四五六七八九十]+章|$)`, 'i');
+    const match = fullContent.match(sectionPattern);
+
+    if (match) {
+      return match[0].substring(0, Math.min(500, match[0].length));
+    }
+
+    // 如果无法精确匹配，返回文档背景部分
+    return fullContent.substring(0, Math.min(500, fullContent.length));
+  }
+
+  /**
+   * 阶段3: 整合确认
+   * AI对所有章节的参数化结果进行整合和最终确认
+   */
+  private async integrateAndConfirm(
+    sectionResults: SectionParameterization[],
+    documentUnderstanding: DocumentUnderstanding,
+    fullContent: string,
+    templateType: string
+  ): Promise<any[]> {
+    this.logger.log('阶段3: 开始整合确认');
+
+    // 合并所有章节的建议
+    const allSuggestions = sectionResults.flatMap(sr => sr.suggestions);
+
+    if (allSuggestions.length === 0) {
+      this.logger.warn('没有识别到任何参数');
+      return [];
+    }
+
+    const prompt = `你是一个专业的文档模板化审核专家。请审核以下识别结果，进行整合和确认。
+
+文档类型: ${documentUnderstanding.documentType}
+文档用途: ${documentUnderstanding.mainPurpose}
+
+【已识别的所有参数】
+${JSON.stringify(allSuggestions, null, 2)}
+
+【文档背景内容】
+${fullContent.substring(0, Math.min(1000, fullContent.length))}
+
+请返回JSON格式的最终确认结果：
+{
+  "confirmedSuggestions": [
+    {
+      "originalText": "原文内容",
+      "variablePath": "最终确认的变量路径",
+      "variableName": "变量名称",
+      "significance": "字段意义的详细说明",
+      "context": "原文上下文（用于前端显示位置，格式：【前文 _____ 后文】）",
+      "confidence": 0.95,
+      "chapter": "所在章节名称"
+    }
+  ],
+  "removedDuplicates": ["说明哪些参数被合并或删除"]
+}
+
+【整合要求】
+1. 去除重复或相似的参数（如"甲方名称"和"甲方"应该合并）
+2. 确认变量路径的一致性和规范性
+3. 补充或修正 significance 字段，使其更有意义
+4. 根据原文内容生成准确的 context 字段，格式为【前文 _____ 后文】
+5. 为每个参数添加 chapter 字段，标注所属章节
+6. 最终确认的参数应该准确、完整、无重复
+
+只返回JSON格式，不要其他解释。`;
+
+    try {
+      const aiResponse = await this.callAIService(prompt);
+
+      if (aiResponse && aiResponse.confirmedSuggestions && Array.isArray(aiResponse.confirmedSuggestions)) {
+        this.logger.log(`整合确认完成，最终确认 ${aiResponse.confirmedSuggestions.length} 个参数`);
+        return aiResponse.confirmedSuggestions.map((s: any, idx: number) => ({
+          id: `sugg-${Date.now()}-${idx}`,
+          type: 'variable',
+          elementPath: s.context || `【${s.originalText}】`,
+          suggestedName: s.variablePath,
+          originalText: s.originalText,
+          confidence: s.confidence || 0.8,
+          applied: false,
+          context: s.context,
+          details: {
+            chapter: s.chapter || '正文',
+            significance: s.significance,
+            variableName: s.variableName,
+            formatter: this.extractFormatter(s.variablePath)
+          }
+        }));
+      }
+
+      // AI返回格式异常，使用原始合并结果
+      this.logger.warn('整合确认AI返回格式异常，使用原始合并结果');
+      return this.formatRawSuggestions(allSuggestions);
+    } catch (error: any) {
+      this.logger.error('整合确认失败:', error);
+      return this.formatRawSuggestions(allSuggestions);
+    }
+  }
+
+  /**
+   * 格式化原始建议（当整合AI失败时的后备）
+   */
+  private formatRawSuggestions(rawSuggestions: any[]): any[] {
+    return rawSuggestions.map((s, idx) => ({
+      id: `sugg-${Date.now()}-${idx}`,
+      type: 'variable',
+      elementPath: s.context || `【${s.originalText}】`,
+      suggestedName: s.variablePath,
+      originalText: s.originalText,
+      confidence: s.confidence || 0.7,
+      applied: false,
+      context: s.context,
+      details: {
+        chapter: '正文',
+        significance: s.significance || '文档填充字段',
+        variableName: s.variableName,
+        formatter: null
+      }
+    }));
   }
 
   /**

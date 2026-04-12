@@ -829,6 +829,107 @@ export class StudioController {
   }
 
   /**
+   * 多阶段AI识别文档内容 - 用于Office插件（新接口）
+   * 使用三阶段AI处理流程：文档理解 -> 分段参数化 -> 整合确认
+   * 通过Server-Sent Events实时报告处理进度
+   */
+  @Post('direct-ai-identify-multistage')
+  @ApiOperation({ summary: 'Multi-stage AI identify variables with real-time progress (for Office Add-in)' })
+  @ApiBody({ type: DirectAIIdentifyDto })
+  @ApiResponse({ status: 200, description: 'AI identification result with suggestions' })
+  async directAIIdentifyMultistage(
+    @Body() dto: DirectAIIdentifyDto
+  ): Promise<AIIdentifyResponse> {
+    try {
+      // 调用多阶段AI识别服务
+      const result = await this.aiIdentifierService.identifyFromContentMultiStage(
+        dto.documentContent,
+        dto.documentType,
+        dto.templateType || 'contract',
+        dto.context,
+        // 进度回调 - 用于日志记录
+        (progress) => {
+          console.log(`[MultiStage Progress] ${progress.stageName}: ${progress.progress}% - ${progress.message}`);
+        }
+      );
+      return result;
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      throw new HttpException(
+        `Failed to identify variables: ${message}`,
+        HttpStatus.INTERNAL_SERVER_ERROR
+      );
+    }
+  }
+
+  /**
+   * 多阶段AI识别 - SSE实时进度版本
+   * 使用Server-Sent Events向前端实时推送处理进度
+   */
+  @Get('direct-ai-identify-progress')
+  @ApiOperation({ summary: 'Multi-stage AI identify with SSE progress stream' })
+  @ApiQuery({ name: 'documentContent', required: true, description: 'Document text content' })
+  @ApiQuery({ name: 'documentType', required: true, description: 'Document type (docx/xlsx/pptx/text)' })
+  @ApiQuery({ name: 'templateType', required: false, description: 'Template type (contract/report/etc)' })
+  @ApiQuery({ name: 'context', required: false, description: 'Context information' })
+  @Header('Content-Type', 'text/event-stream')
+  @Header('Cache-Control', 'no-cache')
+  @Header('Connection', 'keep-alive')
+  async directAIIdentifyWithProgress(
+    @Query('documentContent') documentContent: string,
+    @Query('documentType') documentType: string,
+    @Query('templateType') templateType: string,
+    @Query('context') context: string,
+    @Res() res: Response
+  ): Promise<void> {
+    // 发送SSE进度事件
+    const sendProgress = (progress: any) => {
+      res.write(`data: ${JSON.stringify({
+        type: 'progress',
+        stage: progress.stage,
+        stageName: progress.stageName,
+        progress: progress.progress,
+        message: progress.message,
+        currentSection: progress.currentSection
+      })}\n\n`);
+    };
+
+    // 发送最终结果
+    const sendResult = (result: AIIdentifyResponse) => {
+      res.write(`data: ${JSON.stringify({
+        type: 'result',
+        data: result
+      })}\n\n`);
+      res.end();
+    };
+
+    // 发送错误
+    const sendError = (error: string) => {
+      res.write(`data: ${JSON.stringify({
+        type: 'error',
+        message: error
+      })}\n\n`);
+      res.end();
+    };
+
+    try {
+      // 调用多阶段AI识别
+      const result = await this.aiIdentifierService.identifyFromContentMultiStage(
+        documentContent,
+        documentType,
+        templateType || 'contract',
+        context,
+        sendProgress  // 使用SSE发送进度
+      );
+
+      sendResult(result);
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      sendError(message);
+    }
+  }
+
+  /**
    * 保存模板标记配置
    */
   @Post('templates/:id/markings')

@@ -26,19 +26,33 @@ export interface DocumentStructure {
 }
 
 /**
- * 直接AI识别请求 - 用于Office插件直接提交文档内容
- */
-export interface DirectAIIdentifyRequest {
-  documentContent: string;           // 文档文本内容（从Office获取）
-  documentType: 'docx' | 'xlsx' | 'pptx' | 'text';  // 文档类型
-  templateType?: string;              // 模板类型：report, invoice, contract, certificate 等
-  context?: string;                   // 上下文信息（如文档用途描述）
-  customRules?: Array<{               // 自定义识别规则
-    pattern: string;
-    targetPath: string;
-    description?: string;
-  }>;
-}
+   * 直接AI识别请求 - 用于Office插件直接提交文档内容
+   */
+  export interface DirectAIIdentifyRequest {
+    documentContent: string;           // 文档文本内容（从Office获取）
+    documentType: 'docx' | 'xlsx' | 'pptx' | 'text';  // 文档类型
+    templateType?: string;              // 模板类型：report, invoice, contract, certificate 等
+    context?: string;                   // 上下文信息（如文档用途描述）
+    customRules?: Array<{               // 自定义识别规则
+      pattern: string;
+      targetPath: string;
+      description?: string;
+    }>;
+  }
+
+  /**
+   * 多阶段处理进度信息
+   */
+  export interface ProcessingProgressInfo {
+    type: 'progress' | 'result' | 'error';
+    stage?: string;       // 处理阶段
+    stageName?: string;   // 阶段名称（中文）
+    progress?: number;    // 进度百分比
+    message?: string;     // 进度消息
+    currentSection?: string;  // 当前处理章节
+    data?: AIIdentifyResponse;  // 最终结果
+    error?: string;       // 错误信息
+  }
 
 export interface AIIdentifyResponse {
   suggestions: AISuggestion[];
@@ -136,6 +150,70 @@ class CarboneAPI {
       { timeout: 360000 }  // 6分钟超时，AI分析可能需要较长时间
     );
     return response.data;
+  }
+
+  /**
+   * 多阶段AI识别文档内容（新接口）- 使用三阶段处理流程
+   * 阶段1: 文档理解 - AI分析文档整体结构
+   * 阶段2: 分段参数化 - 对每个章节进行语义识别
+   * 阶段3: 整合确认 - 对所有结果进行整合确认
+   */
+  async identifyDocumentMultiStage(request: DirectAIIdentifyRequest): Promise<AIIdentifyResponse> {
+    const response = await axios.post(
+      `${this.baseUrl}/studio/direct-ai-identify-multistage`,
+      request,
+      { timeout: 360000 }  // 6分钟超时
+    );
+    return response.data;
+  }
+
+  /**
+   * 多阶段AI识别 - SSE实时进度版本
+   * 使用Server-Sent Events实时推送处理进度
+   * 返回EventSource对象，前端可通过onmessage接收进度和结果
+   */
+  identifyDocumentWithProgress(
+    request: DirectAIIdentifyRequest,
+    onProgress: (progress: ProcessingProgressInfo) => void,
+    onResult: (result: AIIdentifyResponse) => void,
+    onError: (error: string) => void
+  ): void {
+    // 构建URL参数（GET请求用于SSE）
+    const params = new URLSearchParams({
+      documentContent: request.documentContent,
+      documentType: request.documentType,
+      templateType: request.templateType || 'contract',
+      context: request.context || ''
+    });
+
+    const url = `${this.baseUrl}/studio/direct-ai-identify-progress?${params.toString()}`;
+
+    // 创建EventSource连接
+    const eventSource = new EventSource(url);
+
+    eventSource.onmessage = (event) => {
+      try {
+        const data: ProcessingProgressInfo = JSON.parse(event.data);
+
+        if (data.type === 'progress') {
+          onProgress(data);
+        } else if (data.type === 'result') {
+          onResult(data.data!);
+          eventSource.close();
+        } else if (data.type === 'error') {
+          onError(data.error || 'Unknown error');
+          eventSource.close();
+        }
+      } catch (err) {
+        console.error('Failed to parse SSE data:', err);
+      }
+    };
+
+    eventSource.onerror = (err) => {
+      console.error('SSE connection error:', err);
+      onError('Connection error');
+      eventSource.close();
+    };
   }
 
   /**

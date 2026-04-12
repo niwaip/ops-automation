@@ -13,7 +13,7 @@ interface Props {
   onApplyComplete?: () => void;
 }
 
-// 动态加载进度消息
+// 动态加载进度消息（用于旧的API）
 const loadingMessages = [
   '🔍 正在分析文档结构...',
   '📝 正在识别空白填充位置...',
@@ -21,6 +21,14 @@ const loadingMessages = [
   '📊 正在生成变量建议...',
   '✨ 正在优化结果...',
 ];
+
+// 多阶段进度消息映射
+const stageProgressMessages: Record<string, string[]> = {
+  'document_understanding': ['🔍 分析文档整体结构...', '📖 理解文档内容和用途...', '📋 提取章节信息...'],
+  'section_analysis': ['📝 分段参数化处理...', '🤖 语义识别中...', '✨ 生成变量建议...'],
+  'integration': ['🔄 整合识别结果...', '✅ 确认最终参数...', '📊 生成配置信息...'],
+  'complete': ['✅ 处理完成！']
+};
 
 export const AIIdentifyPanel: React.FC<Props> = ({ onApplyComplete }) => {
   const {
@@ -42,12 +50,15 @@ export const AIIdentifyPanel: React.FC<Props> = ({ onApplyComplete }) => {
     setShowDebugPanel,
   } = useAppStore();
 
-  const [selectedTemplateType, setSelectedTemplateType] = useState('report');
+  const [selectedTemplateType, setSelectedTemplateType] = useState('contract');  // 默认合同类型
   const [showErrorDetails, setShowErrorDetails] = useState(false);
   const [showPreview, setShowPreview] = useState(false);  // 预览模式
   const [previewContent, setPreviewContent] = useState<string>('');  // 预览内容
-  const [loadingProgress, setLoadingProgress] = useState(0);  // 加载进度
+  const [loadingProgress, setLoadingProgress] = useState(0);  // 加载进度（百分比）
   const [loadingMessage, setLoadingMessage] = useState('');  // 当前加载消息
+  const [currentStage, setCurrentStage] = useState<string>('');  // 当前处理阶段
+  const [currentSection, setCurrentSection] = useState<string>('');  // 当前处理章节
+  const [useMultiStage, setUseMultiStage] = useState(true);  // 是否使用多阶段处理
 
   // 动态更新加载消息
   useEffect(() => {
@@ -74,13 +85,16 @@ export const AIIdentifyPanel: React.FC<Props> = ({ onApplyComplete }) => {
   }, [isAnalyzing]);
 
   /**
-   * 执行 AI 分析
+   * 执行 AI 分析（使用多阶段处理流程）
    */
   const handleAnalyze = async () => {
     setAnalyzing(true);
     setAnalysisError(null);
+    setLoadingProgress(0);
+    setCurrentStage('');
+    setCurrentSection('');
 
-    addDebugLog('info', `开始 AI 分析`, `API: ${apiBaseUrl}, 模板类型: ${selectedTemplateType}`);
+    addDebugLog('info', `开始 AI 多阶段分析`, `API: ${apiBaseUrl}, 模板类型: ${selectedTemplateType}, 使用多阶段: ${useMultiStage}`);
 
     try {
       // 获取文档内容
@@ -113,61 +127,66 @@ export const AIIdentifyPanel: React.FC<Props> = ({ onApplyComplete }) => {
         context: `这是一份${selectedTemplateType}类型的${officeType === 'word' ? 'Word文档' : officeType === 'excel' ? 'Excel表格' : 'PPT演示文稿'}，需要识别空白填充部分并生成模板变量`,
       };
 
-      // 记录请求详情
-      addDebugLog('debug', `📤 请求详情`, JSON.stringify({
-        url: `${apiBaseUrl}/studio/direct-ai-identify`,
-        payload: {
-          contentLength: documentContent.length,
-          documentType: requestPayload.documentType,
-          templateType: requestPayload.templateType,
-          contentPreview: documentContent.substring(0, 300) + (documentContent.length > 300 ? '...' : '')
-        }
-      }, null, 2));
-
-      addDebugLog('info', `调用 AI 识别 API`, `URL: ${apiBaseUrl}/studio/direct-ai-identify`);
       carboneAPI.setBaseUrl(apiBaseUrl);
 
-      // 使用新的直接识别接口，无需上传模板
-      const result = await carboneAPI.identifyDocumentDirect(requestPayload);
+      if (useMultiStage) {
+        // 使用新的多阶段处理流程
+        addDebugLog('info', `使用多阶段处理流程`, `阶段: 文档理解 → 分段参数化 → 整合确认`);
 
-      // 记录完整响应详情（包含AI使用状态）
-      const usedAI = result.contextAnalysis?.usedAI ?? false;
-      const aiServiceUrl = result.contextAnalysis?.aiServiceUrl || '未配置';
+        // 更新进度的辅助函数
+        const updateProgress = (stageName: string, progress: number, message: string, section?: string) => {
+          setCurrentStage(stageName);
+          setLoadingProgress(progress);
+          setLoadingMessage(message);
+          if (section) {
+            setCurrentSection(section);
+          }
+          addDebugLog('debug', `进度更新`, `${stageName}: ${progress}% - ${message}${section ? ` (${section})` : ''}`);
+        };
 
-      addDebugLog('info', `识别方式: ${usedAI ? '🤖 AI智能识别' : '📋 规则匹配'}`, usedAI ? `AI服务地址: ${aiServiceUrl}` : `AI服务不可用(${aiServiceUrl})，使用规则后备方案`);
+        // 模拟进度更新（因为HTTP请求不支持实时进度）
+        updateProgress('文档理解', 0, '🔍 分析文档整体结构...');
 
-      addDebugLog('debug', `📥 响应详情`, JSON.stringify({
-        success: true,
-        suggestionsCount: result.suggestions?.length || 0,
-        templateType: result.templateConfig?.templateType,
-        documentStats: result.documentStats,
-        contextAnalysis: result.contextAnalysis,
-        usedAI,
-        aiServiceUrl,
-        allSuggestions: result.suggestions?.map(s => ({
-          suggestedName: s.suggestedName,
-          originalText: s.originalText,
-          confidence: s.confidence,
-          chapter: s.details?.chapter,
-          significance: s.details?.significance,
-          context: s.context
-        }))
-      }, null, 2));
+        // 调用多阶段API
+        const result = await carboneAPI.identifyDocumentMultiStage(requestPayload);
 
-      // 使用 rawSuggestions（包含详细信息）如果可用，否则使用 suggestions
-      const displaySuggestions = result.rawSuggestions || result.suggestions;
-      addDebugLog('info', `AI 分析成功`, `识别到 ${displaySuggestions?.length || 0} 个空白填充项，模板类型: ${result.templateConfig?.templateType}`);
-      setSuggestions(displaySuggestions);
+        // 更新到100%
+        updateProgress('完成', 100, '✅ 处理完成！');
+
+        // 记录结果
+        const usedAI = result.contextAnalysis?.usedAI ?? true;
+        addDebugLog('info', `识别方式: ${usedAI ? '🤖 AI多阶段智能识别' : '📋 规则匹配'}`,
+          `识别到 ${result.suggestions?.length || 0} 个参数，模板类型: ${result.templateConfig?.templateType}`);
+
+        // 使用 rawSuggestions（包含详细信息）如果可用
+        const displaySuggestions = result.rawSuggestions || result.suggestions;
+        addDebugLog('info', `AI 分析成功`, `识别到 ${displaySuggestions?.length || 0} 个参数`);
+        setSuggestions(displaySuggestions);
+      } else {
+        // 使用旧的单一处理流程
+        addDebugLog('info', `调用原有 API`, `URL: ${apiBaseUrl}/studio/direct-ai-identify`);
+
+        const result = await carboneAPI.identifyDocumentDirect(requestPayload);
+
+        const usedAI = result.contextAnalysis?.usedAI ?? false;
+        const aiServiceUrl = result.contextAnalysis?.aiServiceUrl || '未配置';
+
+        addDebugLog('info', `识别方式: ${usedAI ? '🤖 AI智能识别' : '📋 规则匹配'}`,
+          usedAI ? `AI服务地址: ${aiServiceUrl}` : `AI服务不可用(${aiServiceUrl})，使用规则后备方案`);
+
+        const displaySuggestions = result.rawSuggestions || result.suggestions;
+        addDebugLog('info', `AI 分析成功`, `识别到 ${displaySuggestions?.length || 0} 个空白填充项`);
+        setSuggestions(displaySuggestions);
+      }
     } catch (error: any) {
       // 详细错误信息
       const errorMessage = error.message || 'AI 分析失败';
       let errorDetails = '';
 
-      // 提取更多错误详情
       if (error.response) {
         errorDetails = `状态码: ${error.response.status}\n`;
         errorDetails += `响应数据: ${JSON.stringify(error.response.data, null, 2)}\n`;
-        errorDetails += `请求URL: ${error.config?.url || apiBaseUrl}/studio/ai-identify`;
+        errorDetails += `请求URL: ${error.config?.url || apiBaseUrl}`;
       } else if (error.request) {
         errorDetails = `请求未收到响应\n`;
         errorDetails += `可能原因:\n`;
@@ -184,6 +203,7 @@ export const AIIdentifyPanel: React.FC<Props> = ({ onApplyComplete }) => {
       setAnalysisError(errorMessage, errorDetails);
     } finally {
       setAnalyzing(false);
+      setCurrentSection('');
     }
   };
 
@@ -394,10 +414,26 @@ export const AIIdentifyPanel: React.FC<Props> = ({ onApplyComplete }) => {
         ) : 'AI 智能识别'}
       </button>
 
-      {/* 加载进度条 */}
+      {/* 多阶段进度显示 */}
       {isAnalyzing && (
-        <div className="loading-progress-bar">
-          <div className="progress-fill" style={{ width: `${(loadingProgress + 1) * 20}%` }}></div>
+        <div className="multistage-progress-container">
+          {/* 进度条 */}
+          <div className="loading-progress-bar">
+            <div className="progress-fill" style={{ width: `${loadingProgress}%` }}></div>
+          </div>
+
+          {/* 阶段信息 */}
+          {currentStage && (
+            <div className="stage-info">
+              <span className="stage-name">{currentStage}</span>
+              {currentSection && (
+                <span className="current-section"> - {currentSection}</span>
+              )}
+            </div>
+          )}
+
+          {/* 进度百分比 */}
+          <div className="progress-percentage">{loadingProgress}%</div>
         </div>
       )}
 
