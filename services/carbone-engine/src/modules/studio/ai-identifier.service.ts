@@ -42,6 +42,8 @@ export interface ProcessingProgress {
 export interface DocumentUnderstanding {
   documentType: string;      // 文档类型判断
   mainPurpose: string;       // 文档主要用途
+  keyEntities?: string[];    // 关键实体（如：甲方、乙方、项目）
+  dataSchema?: string;       // 建议的数据架构描述
   sections: Array<{
     name: string;            // 章节名称（如"第一条"、"第二条"）
     content: string;         // 章节内容摘要
@@ -64,6 +66,7 @@ export interface SectionParameterization {
     originalText: string;
     variablePath: string;
     variableName: string;
+    fieldType?: string;      // 字段类型 (text, date, number, amount, etc.)
     significance: string;    // 字段意义说明
     context: string;         // 原文上下文
     confidence: number;
@@ -228,7 +231,7 @@ export interface VariableMapping {
   path: string;
   sampleValue: string;
   index: number;
-  type: 'text' | 'number' | 'date' | 'image' | 'heading';
+  type: 'text' | 'number' | 'date' | 'image' | 'heading' | 'amount' | 'enum';
   reason: string;
 }
 
@@ -541,7 +544,7 @@ export class AIIdentifierService {
         path: s.variablePath,
         sampleValue: s.originalText,
         index: idx,
-        type: 'text' as const,
+        type: (s.details?.fieldType as any) || 'text',
         reason: s.significance
       }));
 
@@ -590,7 +593,7 @@ export class AIIdentifierService {
   ): Promise<DocumentUnderstanding> {
     this.logger.log('阶段1: 开始文档理解分析');
 
-    const prompt = `你是一个专业的文档分析专家。请仔细阅读以下文档内容，分析并理解文档的整体结构。
+    const prompt = `你是一个专业的文档分析专家。请仔细阅读以下文档内容，分析并理解文档的整体结构、主题、关键实体和数据需求。
 
 文档类型提示: ${templateType}
 ${context ? `用户说明: ${context}` : ''}
@@ -603,6 +606,8 @@ ${documentContent.length > 3000 ? '\n...(文档较长，已截取前3000字符)'
 {
   "documentType": "合同/协议/报告/证书等",
   "mainPurpose": "文档的主要用途和目的",
+  "keyEntities": ["甲方", "乙方", "项目名称", "日期", "地点"],
+  "dataSchema": "描述该文档建议的数据模型结构，例如：{ partyA: { name, address }, project: { name, duration } }",
   "sections": [
     {
       "name": "第一条 协议双方",
@@ -621,11 +626,11 @@ ${documentContent.length > 3000 ? '\n...(文档较长，已截取前3000字符)'
 }
 
 【分析要求】
-1. 识别文档的主要类型和用途
-2. 提取所有章节/条款的结构（如"第一条"、"第二条"等）
-3. 判断每个章节是否需要参数化（是否包含空白、待填写内容）
-4. 识别文档涉及的当事人角色（如甲方、乙方、委托方等）
-5. estimatedParams 列出该章节预估可能需要的参数名称
+1. 识别文档的主要类型和用途。
+2. 提取所有章节/条款的结构（如"第一条"、"第二条"等）。
+3. 判断每个章节是否需要参数化（是否包含空白、待填写内容）。
+4. 识别文档涉及的当事人角色（如甲方、乙方、委托方等）及其需要的字段。
+5. **核心任务**：分析文档的主题，识别出关键实体（keyEntities）并设计一个合理的建议数据架构（dataSchema），以便后续阶段生成的变量路径具有一致性。
 
 只返回JSON格式，不要其他解释。`;
 
@@ -717,18 +722,24 @@ ${documentContent.length > 3000 ? '\n...(文档较长，已截取前3000字符)'
     // 获取该章节相关的当事人信息
     const relevantParties = documentUnderstanding.parties;
 
+    // 获取关键实体和数据架构信息
+    const keyEntitiesInfo = documentUnderstanding.keyEntities ? `【关键实体】: ${documentUnderstanding.keyEntities.join(', ')}` : '';
+    const dataSchemaInfo = documentUnderstanding.dataSchema ? `【建议数据架构】: ${documentUnderstanding.dataSchema}` : '';
+
     // 构建预处理空白列表（用于提示AI）
     const preBlanksList = preExtractedBlanks.length > 0
-      ? `\n【已识别的空白位置】（共${preExtractedBlanks.length}个，请确认并为每个生成变量建议）\n${preExtractedBlanks.map((b, i) =>
+      ? `\n【已识别的候选空白位置】（共${preExtractedBlanks.length}个，请为每个生成变量建议）\n${preExtractedBlanks.map((b, i) =>
         `[${i + 1}] 标签: "${b.beforeBlank}", 类型: ${b.type}, 上下文: "${b.context.substring(0, 50)}...", 意义: "${b.significance.substring(0, 30)}..."`
       ).join('\n')}`
       : '';
 
-    const prompt = `你是一个专业的文档模板化专家。请分析以下章节内容，识别其中所有需要填充的空白部分，并给出语义化的变量建议。
+    const prompt = `你是一个专业的文档模板化专家。请分析以下章节内容，识别其中所有需要填充的部分，并给出语义化的变量建议。
 
 文档类型: ${documentUnderstanding.documentType}
 章节名称: ${sectionName}
-章节用途: 从${documentUnderstanding.mainPurpose}中提取该章节内容
+章节用途: ${documentUnderstanding.mainPurpose}
+${keyEntitiesInfo}
+${dataSchemaInfo}
 
 【当事人信息】
 ${relevantParties.map(p => `${p.role} 需要字段: ${p.fieldsNeeded.join(', ')}`).join('\n')}
@@ -742,28 +753,23 @@ ${sectionContent}
   "sectionName": "${sectionName}",
   "suggestions": [
     {
-      "originalText": "空白位置的原文内容（如空白前后的文字）",
+      "originalText": "空白位置的原文内容",
       "variablePath": "d.partyA.name",
       "variableName": "甲方名称",
-      "significance": "该参数的具体用途和意义，如'合同第一签署方的公司名称'",
-      "context": "空白所在的完整句子或上下文，格式为【前文 _____ 后文】",
+      "fieldType": "text/date/number/amount/enum",
+      "significance": "【用途说明】: 该字段的具体用途；【填写示例】: 示例值；【校验规则】: 格式要求",
+      "context": "格式必须为【前文 _____ 后文】",
       "confidence": 0.95
     }
   ]
 }
 
-【识别规则】
-1. 识别所有空白填充位置（包括冒号后空白、下划线空白、括号空白、日期空白等）
-2. 对于已识别的空白位置，必须为每个生成变量建议，不要遗漏
-3. 根据上下文语义判断每个空白的具体含义，而非仅根据位置
-4. 变量路径使用标准格式：
-   - 甲方相关: d.partyA.name, d.partyA.address, d.partyA.phone, d.partyA.representative, d.partyA.signature
-   - 乙方相关: d.partyB.name, d.partyB.address, d.partyB.phone, d.partyB.representative, d.partyB.signature
-   - 日期相关: d.signDate, d.effectiveDate, d.endDate
-   - 附件相关: d.attachmentName
-   - 保密期限: d.confidentialityPeriod
-5. significance 必须清晰说明该字段的用途和意义
-6. context 格式必须为【前文 _____ 后文】，用于前端显示位置
+【识别要求】
+1. **显式空白**：识别所有下划线、括号、冒号后空格、XXX等。
+2. **隐式变量**：识别段落中看起来像是占位符的具体示例数据（如："2024年1月1日"、"某某公司"），如果它们处于应该被替换的位置。
+3. **变量路径一致性**：参考提供的【建议数据架构】，确保变量路径层级合理。
+4. **详细用途（significance）**：必须包含用途说明、填写示例和可能的校验规则。这是为了方便后续自动识别和填充。
+5. **context格式**：必须严格遵循【前文 _____ 后文】格式，以便精准定位。
 
 只返回JSON格式，不要其他解释。`;
 
@@ -779,6 +785,7 @@ ${sectionContent}
           originalText: s.originalText || '',
           variablePath: s.variablePath || 'd.unknown',
           variableName: s.variableName || '未知字段',
+          fieldType: s.fieldType || 'text',
           significance: s.significance || '文档填充字段',
           context: s.context || sectionContent.substring(0, 50),
           confidence: s.confidence || 0.7
@@ -951,11 +958,11 @@ ${sectionContent}
     const match = fullContent.match(sectionPattern);
 
     if (match) {
-      return match[0].substring(0, Math.min(500, match[0].length));
+      return match[0].substring(0, Math.min(2000, match[0].length));
     }
 
     // 如果无法精确匹配，返回文档背景部分
-    return fullContent.substring(0, Math.min(500, fullContent.length));
+    return fullContent.substring(0, Math.min(2000, fullContent.length));
   }
 
   /**
@@ -982,8 +989,10 @@ ${sectionContent}
 
 文档类型: ${documentUnderstanding.documentType}
 文档用途: ${documentUnderstanding.mainPurpose}
+【关键实体】: ${documentUnderstanding.keyEntities?.join(', ') || '未指定'}
+【建议数据架构】: ${documentUnderstanding.dataSchema || '未指定'}
 
-【已识别的所有参数】（共${allSuggestions.length}个，可能存在重复）
+【已识别的所有参数】（共${allSuggestions.length}个，可能存在重复或冲突）
 ${JSON.stringify(allSuggestions, null, 2)}
 
 【文档背景内容】
@@ -993,11 +1002,12 @@ ${fullContent.substring(0, Math.min(1000, fullContent.length))}
 {
   "confirmedSuggestions": [
     {
-      "originalText": "原文内容（空白位置的标记文本）",
-      "variablePath": "最终确认的变量路径",
-      "variableName": "变量名称（简短中文）",
-      "significance": "字段意义（清晰说明用途，如'合同甲方签字确认区域'）",
-      "context": "原文上下文，格式：【前文 _____ 后文】",
+      "originalText": "原文内容",
+      "variablePath": "最终确认的变量路径 (使用d.前缀，点号分隔)",
+      "variableName": "变量名称 (简短中文)",
+      "fieldType": "text/date/number/amount/enum",
+      "significance": "【用途说明】: 该参数的详细用途；【填写示例】: 示例值；【校验规则】: 格式或逻辑要求",
+      "context": "原文上下文 (格式：【前文 _____ 后文】)",
       "confidence": 0.95,
       "chapter": "所在章节名称"
     }
@@ -1005,31 +1015,12 @@ ${fullContent.substring(0, Math.min(1000, fullContent.length))}
   "removedDuplicates": ["说明哪些参数被合并或删除及其原因"]
 }
 
-【整合要求】
-1. **严格去重**：
-   - 相同变量路径只保留一个
-   - 相同上下文位置只保留一个
-   - 如果有多个相同标签（如两个"甲方"），检查是否在不同位置，不同位置用不同路径（如d.partyA.name1, d.partyA.name2）
-   - 合并相似参数，保留最有意义的一个
-
-2. **变量路径规范**：
-   - 甲方: d.partyA.name, d.partyA.address, d.partyA.signature, d.partyA.seal
-   - 乙方: d.partyB.name, d.partyB.address, d.partyB.signature, d.partyB.seal
-   - 日期: d.signDate, d.effectiveDate
-   - 附件: d.attachmentName
-   - 保密期限: d.confidentialityPeriod
-
-3. **significance必须有意义**：
-   - 不要使用"文档中需要填充的字段"这种通用描述
-   - 每个字段都要有具体的用途说明
-   - 例如："合同甲方签字确认区域，用于确认合同内容有效"
-
-4. **context格式**：
-   - 必须是【前文 _____ 后文】格式
-   - 前文和后文各取8-12个字符
-   - 用于前端精确定位显示
-
-5. **无遗漏**：确保文档中所有需要填充的空白都有对应参数
+【整合审核要求】
+1. **去重与合并**：识别重复或意义高度相近的参数并合并。对于多次出现的相同标签（如多次出现"日期"），如果意义不同则通过路径区分（如d.signDate, d.effectiveDate）。
+2. **路径规范化**：确保所有变量路径符合CamelCase规范，并基于【建议数据架构】进行组织。
+3. **用途说明（significance）**：这是最核心的输出。必须详细描述该字段在业务上的用途，以便后续自动化系统能够根据此描述自动匹配数据。
+4. **准确性**：校对 originalText 和 context 确保它们在原文中能被精确定位。
+5. **字段类型**：确保 fieldType 准确反映数据性质（如：金额应为amount，日期应为date）。
 
 只返回JSON格式，不要其他解释。`;
 
@@ -1051,6 +1042,7 @@ ${fullContent.substring(0, Math.min(1000, fullContent.length))}
             chapter: s.chapter || '正文',
             significance: s.significance,
             variableName: s.variableName,
+            fieldType: s.fieldType || 'text',
             formatter: this.extractFormatter(s.variablePath)
           }
         }));
@@ -1271,8 +1263,8 @@ ${fullContent.substring(0, Math.min(1000, fullContent.length))}
       });
     }
 
-    // 4. 匹配中文括号内的空白（如：（ ）、【 】）
-    const bracketRegex = /[（【\(][　 ]*[）】\)]/g;
+    // 4. 匹配括号内的空白或提示（如：（ ）、【 】、[请填写]、(Address)、[XXX]）
+    const bracketRegex = /[（【\(\[](?:[　 ]*|[^）】\)\]]*?[填写写名填XXX入inputenter][^）】\)\]]*?)[）】\)\]]/g;
     while ((match = bracketRegex.exec(content)) !== null) {
       const startPos = Math.max(0, match.index - 30);
       const endPos = Math.min(content.length, match.index + match[0].length + 30);
