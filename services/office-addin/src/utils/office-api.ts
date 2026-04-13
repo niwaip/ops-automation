@@ -119,31 +119,23 @@ export const WordAPI = {
     return new Promise((resolve, reject) => {
       Word.run(async (context) => {
         const paragraphs = context.document.body.paragraphs;
-        paragraphs.load('text,style');
+        paragraphs.load('items');
         await context.sync();
 
-        const result = paragraphs.items.map((p, idx) => {
-          // 加载段落格式信息
-          const range = p.getRange(Word.RangeLocation.whole);
+        // 先为所有段落加载必要的属性
+        for (const paragraph of paragraphs.items) {
+          paragraph.load('text');
+          const range = paragraph.getRange(Word.RangeLocation.whole);
           range.load('font/size,font/bold,alignment');
-
-          return {
-            text: p.text,
-            index: idx,
-            format: {
-              // 格式信息会在下面填充
-            }
-          };
-        });
-
+        }
         await context.sync();
 
-        // 填充格式信息
-        const formattedResult = paragraphs.items.map((p, idx) => {
+        // 然后读取格式信息
+        const result = paragraphs.items.map((p, idx) => {
           const range = p.getRange(Word.RangeLocation.whole);
-          const fontSize = range.font?.size || 12;
-          const isBold = range.font?.bold || false;
-          const alignment = range.alignment || Word.Alignment.left;
+          const fontSize = range.font.size || 12;
+          const isBold = range.font.bold || false;
+          const alignment = range.alignment;
 
           // 判断是否是标题（字体大于14或加粗且长度小于50）
           const isTitle = (fontSize > 14 || isBold) && p.text.trim().length < 50;
@@ -162,8 +154,7 @@ export const WordAPI = {
           };
         });
 
-        await context.sync();
-        resolve(formattedResult);
+        resolve(result);
       }).catch(reject);
     });
   },
@@ -211,6 +202,8 @@ export const WordAPI = {
   /**
    * 获取带下划线的文本段落（用于识别需要参数化的位置）
    * 合同中"下划线+空格"通常是需要填写内容的地方
+   *
+   * 使用更简单的方式：遍历段落中每个字符范围，检查下划线属性
    */
   async getUnderlinedTexts(): Promise<Array<{
     text: string;           // 带下划线的文本内容
@@ -238,82 +231,105 @@ export const WordAPI = {
 
         for (let pIdx = 0; pIdx < paragraphs.items.length; pIdx++) {
           const paragraph = paragraphs.items[pIdx];
+
+          // 先加载段落文本
+          paragraph.load('text');
+          await context.sync();
+
           const fullText = paragraph.text;
 
-          // 获取段落中所有文本范围，检查字体下划线属性
-          // 使用 split 方法将段落按字符分割检查
-          const ranges = paragraph.split(fullText, [' '], true);
-          ranges.load('items');
-          await context.sync();
-
-          // 对于每个分割的范围，检查是否有下划线
-          for (let rIdx = 0; rIdx < ranges.items.length; rIdx++) {
-            const range = ranges.items[rIdx];
-            range.load('font/underline,text');
+          if (!fullText || fullText.trim() === '') {
+            continue;  // 跳过空段落
           }
-          await context.sync();
 
-          // 找出带下划线的文本段
-          let currentUnderlineStart = -1;
-          let currentUnderlineText = '';
-          let currentUnderlineType = 'None';
+          try {
+            // 使用 getTextRanges 方法获取段落中的文本范围
+            // 参数：分隔符数组，是否包含分隔符，是否包含空范围
+            const textRanges = paragraph.getTextRanges(['\n'], true, false);
+            textRanges.load('items');
+            await context.sync();
 
-          for (let rIdx = 0; rIdx < ranges.items.length; rIdx++) {
-            const range = ranges.items[rIdx];
-            const underline = range.font.underline;
-            const text = range.text || '';
+            // 为每个范围加载字体下划线属性
+            for (const range of textRanges.items) {
+              range.load('text,font/underline');
+            }
+            await context.sync();
 
-            // 如果有下划线且不是 'None'
-            if (underline && underline !== 'None' && underline !== 'Mixed') {
-              if (currentUnderlineStart === -1) {
-                currentUnderlineStart = rIdx;
-                currentUnderlineType = underline as string;
-              }
-              currentUnderlineText += text;
-            } else {
-              // 结束当前下划线段
-              if (currentUnderlineStart !== -1 && currentUnderlineText.trim() !== '') {
-                // 计算在原文中的位置
-                const startPos = fullText.indexOf(currentUnderlineText);
+            // 检查每个范围的下划线属性
+            for (const range of textRanges.items) {
+              const underline = range.font.underline;
+              const rangeText = range.text || '';
+
+              // 如果有下划线且不是 'None'
+              if (underline && underline !== 'None' && underline !== 'Mixed') {
+                // 计算在段落中的位置
+                const startPos = fullText.indexOf(rangeText);
                 if (startPos >= 0) {
                   result.push({
-                    text: currentUnderlineText,
-                    underlineType: currentUnderlineType,
+                    text: rangeText,
+                    underlineType: underline.toString(),
                     index: pIdx,
                     paragraphText: fullText,
                     position: {
                       start: startPos,
-                      end: startPos + currentUnderlineText.length
+                      end: startPos + rangeText.length
                     }
                   });
                 }
               }
-              currentUnderlineStart = -1;
-              currentUnderlineText = '';
-              currentUnderlineType = 'None';
             }
-          }
+          } catch (rangeError) {
+            // 如果 getTextRanges 失败，尝试使用搜索方式
+            console.warn(`段落 ${pIdx} 获取文本范围失败，尝试备用方法`);
 
-          // 处理段落末尾的下划线
-          if (currentUnderlineStart !== -1 && currentUnderlineText.trim() !== '') {
-            const startPos = fullText.indexOf(currentUnderlineText);
-            if (startPos >= 0) {
-              result.push({
-                text: currentUnderlineText,
-                underlineType: currentUnderlineType,
-                index: pIdx,
-                paragraphText: fullText,
-                position: {
-                  start: startPos,
-                  end: startPos + currentUnderlineText.length
+            // 备用方法：搜索段落中的下划线特征
+            const underlinePatterns = ['______', '____', '___', '__', '＿', '_'];
+            for (const pattern of underlinePatterns) {
+              try {
+                const searchResults = paragraph.search(pattern, {
+                  matchCase: false,
+                  matchWholeWord: false
+                });
+                searchResults.load('items');
+                await context.sync();
+
+                for (const foundRange of searchResults.items) {
+                  foundRange.load('text,font/underline');
                 }
-              });
+                await context.sync();
+
+                for (const foundRange of searchResults.items) {
+                  const underline = foundRange.font.underline;
+                  if (underline && underline !== 'None') {
+                    const foundText = foundRange.text || '';
+                    const startPos = fullText.indexOf(foundText);
+                    if (startPos >= 0) {
+                      result.push({
+                        text: foundText,
+                        underlineType: underline.toString(),
+                        index: pIdx,
+                        paragraphText: fullText,
+                        position: {
+                          start: startPos,
+                          end: startPos + foundText.length
+                        }
+                      });
+                    }
+                  }
+                }
+              } catch (searchError) {
+                console.warn(`段落 ${pIdx} 搜索下划线失败:`, searchError);
+              }
             }
           }
         }
 
+        console.log(`检测到 ${result.length} 个下划线位置`);
         resolve(result);
-      }).catch(reject);
+      }).catch((error) => {
+        console.error('获取下划线信息失败:', error);
+        reject(error);
+      });
     });
   },
 
