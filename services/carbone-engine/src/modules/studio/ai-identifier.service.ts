@@ -1243,7 +1243,7 @@ ${fullContent.substring(0, Math.min(1000, fullContent.length))}
       /^[一二三四五六七八九十]+[、：:]\s*$/,  // 中文编号
     ];
 
-    let match;
+    let match: RegExpExecArray | null;
 
     // ===== 核心：只检测下划线+空格 =====
 
@@ -1274,10 +1274,12 @@ ${fullContent.substring(0, Math.min(1000, fullContent.length))}
     // 这是最典型的空白填充标记
     const underlineRegex = /[＿_]{3,}/g;
     while ((match = underlineRegex.exec(content)) !== null) {
-      const startPos = Math.max(0, match.index - 20);
-      const endPos = Math.min(content.length, match.index + match[0].length + 20);
-      const beforeBlankStart = Math.max(0, match.index - 30);
-      const beforeBlank = content.substring(beforeBlankStart, match.index).trim();
+      // TypeScript类型断言：在while循环内match不为null
+      const m = match;
+      const startPos = Math.max(0, m.index - 20);
+      const endPos = Math.min(content.length, m.index + m[0].length + 20);
+      const beforeBlankStart = Math.max(0, m.index - 30);
+      const beforeBlank = content.substring(beforeBlankStart, m.index).trim();
 
       // 检查是否在排除位置（章节标题等）
       const isExcluded = excludePatterns.some(p => p.test(beforeBlank));
@@ -1287,21 +1289,21 @@ ${fullContent.substring(0, Math.min(1000, fullContent.length))}
 
       // 检查是否已经被日期格式覆盖
       const isDatePart = patterns.some(p =>
-        Math.abs(p.position - match.index) < 10 && p.type === 'date'
+        Math.abs(p.position - m.index) < 10 && p.type === 'date'
       );
       if (isDatePart) {
         continue;
       }
 
-      const chapterInfo = this.getChapterForPosition(match.index, chapterStructure);
+      const chapterInfo = this.getChapterForPosition(m.index, chapterStructure);
       const significance = this.getSignificanceForLabel(beforeBlank, templateType) ||
         '带下划线的空白位置，需要填写相关内容';
 
       patterns.push({
-        text: match[0],
+        text: m[0],
         context: content.substring(startPos, endPos),
         beforeBlank,
-        position: match.index,
+        position: m.index,
         type: 'underline',
         chapter: chapterInfo,
         significance
@@ -1312,10 +1314,12 @@ ${fullContent.substring(0, Math.min(1000, fullContent.length))}
     // 某些合同使用空格表示空白填充位置
     const spaceRegex = /[ 　]{5,}/g;
     while ((match = spaceRegex.exec(content)) !== null) {
-      const startPos = Math.max(0, match.index - 20);
-      const endPos = Math.min(content.length, match.index + match[0].length + 20);
-      const beforeBlankStart = Math.max(0, match.index - 30);
-      const beforeBlank = content.substring(beforeBlankStart, match.index).trim();
+      // TypeScript类型断言：在while循环内match不为null
+      const m = match;
+      const startPos = Math.max(0, m.index - 20);
+      const endPos = Math.min(content.length, m.index + m[0].length + 20);
+      const beforeBlankStart = Math.max(0, m.index - 30);
+      const beforeBlank = content.substring(beforeBlankStart, m.index).trim();
 
       // 检查是否在排除位置
       const isExcluded = excludePatterns.some(p => p.test(beforeBlank));
@@ -1325,25 +1329,25 @@ ${fullContent.substring(0, Math.min(1000, fullContent.length))}
 
       // 检查是否已经被其他模式覆盖
       const isCovered = patterns.some(p =>
-        Math.abs(p.position - match.index) < 10
+        Math.abs(p.position - m.index) < 10
       );
       if (isCovered) {
         continue;
       }
 
       // 检查是否后面有"的"等连接词（可能是地址+名称的组合）
-      const afterBlank = content.substring(match.index + match[0].length, match.index + match[0].length + 10);
+      const afterBlank = content.substring(m.index + m[0].length, m.index + m[0].length + 10);
       if (afterBlank.match(/^(的|公司)/)) {
         // 这是地址类型的空白，保留
-        const chapterInfo = this.getChapterForPosition(match.index, chapterStructure);
+        const chapterInfo = this.getChapterForPosition(m.index, chapterStructure);
         const significance = this.getSignificanceForLabel(beforeBlank, templateType) ||
           '空白填充位置';
 
         patterns.push({
-          text: match[0],
+          text: m[0],
           context: content.substring(startPos, endPos),
           beforeBlank,
-          position: match.index,
+          position: m.index,
           type: 'blank',
           chapter: chapterInfo,
           significance
@@ -1373,19 +1377,6 @@ ${fullContent.substring(0, Math.min(1000, fullContent.length))}
     }
 
     this.logger.log(`提取空白位置完成，共 ${uniquePatterns.length} 个（只保留下划线+空格）`);
-    return uniquePatterns;
-        this.logger.debug(`跳过上下文相似的空白: 标签="${pattern.beforeBlank}"`);
-        continue;
-      }
-
-      // 添加到唯一列表
-      uniquePatterns.push(pattern);
-      usedLabels.add(labelKey);
-      usedPositions.add(pattern.position);
-      this.logger.debug(`保留空白: 标签="${pattern.beforeBlank}", 位置=${pattern.position}, 类型=${pattern.type}`);
-    }
-
-    this.logger.log(`提取到 ${uniquePatterns.length} 个唯一空白模式（原始 ${patterns.length} 个）`);
     return uniquePatterns;
   }
 
