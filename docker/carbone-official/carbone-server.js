@@ -43,11 +43,12 @@ app.get('/health', (req, res) => {
 });
 
 /**
- * 代理 /studio/* 请求到 carbone-engine 服务
- * 这样前端只需要连接一个服务地址
+ * 代理请求到 carbone-engine 服务
+ * - /studio/* API请求代理到 carbone-engine /studio/*
+ * - 静态资源(css, js等)代理到 carbone-engine
  */
-app.use('/studio', (req, res) => {
-  const targetUrl = `${CARBONE_ENGINE_URL}/studio${req.path}`;
+const proxyToEngine = (req, res, targetPath) => {
+  const targetUrl = `${CARBONE_ENGINE_URL}${targetPath}`;
 
   console.log(`[Proxy] ${req.method} ${req.path} -> ${targetUrl}`);
 
@@ -89,7 +90,20 @@ app.use('/studio', (req, res) => {
   }
 
   proxyReq.end();
-});
+};
+
+// 代理静态资源
+app.use('/css', (req, res) => proxyToEngine(req, res, `/css${req.path}`));
+app.use('/js', (req, res) => proxyToEngine(req, res, `/js${req.path}`));
+app.use('/api', (req, res) => proxyToEngine(req, res, `/api${req.path}`));
+
+// 根路径代理到carbone-engine UI
+app.get('/', (req, res) => proxyToEngine(req, res, '/'));
+
+/**
+ * 代理 /studio/* API请求到 carbone-engine 服务
+ */
+app.use('/studio', (req, res) => proxyToEngine(req, res, `/studio${req.path}`));
 
 /**
  * 渲染模板

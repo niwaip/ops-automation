@@ -429,7 +429,6 @@ export const AIIdentifyPanel: React.FC<Props> = ({ onApplyComplete }) => {
           addDebugLog('warn', `预览失败`, '无法定位空白标记');
         }
       }
-      }
     } catch (error: any) {
       addDebugLog('error', '预览失败', error.message);
     }
