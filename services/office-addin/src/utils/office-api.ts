@@ -272,24 +272,25 @@ export const WordAPI = {
             console.log(`[DEBUG] 段落 ${pIdx}: 发现 ${underlineCharMatches.length} 个下划线字符 + ${spaceMatches.length} 个空格区域`);
 
             // ===== 步骤2：下划线字符直接加入结果 =====
+            // 下划线字符（_）本身就是参数标记，不需要检查 font.underline
             for (const underlineMatch of underlineCharMatches) {
-              // 同一段落中，位置必须完全不同才算不重复（使用精确位置比较）
-              if (!result.some(e => e.paragraphIndex === pIdx && e.position.start === underlineMatch.start)) {
-                result.push({
-                  text: underlineMatch.text,
-                  underlineType: 'underline-char',
-                  index: result.length,
-                  paragraphIndex: pIdx,
-                  paragraphText: fullText,
-                  position: { start: underlineMatch.start, end: underlineMatch.end }
-                });
-                console.log(`[DEBUG] ✓ 下划线字符: 段落${pIdx} 位置${underlineMatch.start}-${underlineMatch.end}`);
-              }
+              result.push({
+                text: underlineMatch.text,
+                underlineType: 'underline-char',
+                index: result.length,
+                paragraphIndex: pIdx,
+                paragraphText: fullText,
+                position: { start: underlineMatch.start, end: underlineMatch.end }
+              });
+              console.log(`[DEBUG] ✓ 下划线字符: 段落${pIdx} 位置${underlineMatch.start}-${underlineMatch.end}`);
             }
 
             // ===== 步骤3：空格区域检查 font.underline =====
+            // 简化逻辑：对每个正则匹配的空格区域，检查是否有下划线格式
+            // 正则匹配的位置是准确的，直接使用
             for (const spaceMatch of spaceMatches) {
               try {
+                // 搜索这个空格文本，检查是否有下划线格式
                 const searchResults = paragraph.search(spaceMatch.text, {
                   matchCase: false,
                   matchWholeWord: false
@@ -297,42 +298,34 @@ export const WordAPI = {
                 searchResults.load('items');
                 await context.sync();
 
-                if (searchResults.items.length === 0) continue;
+                if (searchResults.items.length === 0) {
+                  console.log(`[DEBUG] 段落${pIdx} 位置${spaceMatch.start}: 未找到空格文本`);
+                  continue;
+                }
 
                 for (const foundRange of searchResults.items) {
                   foundRange.load('text,font/underline');
                 }
                 await context.sync();
 
-                // 检查每个找到的空格区域是否有下划线格式
-                // 注意：段落中可能有多个相同的空格文本，需要全部检查
-                for (let itemIdx = 0; itemIdx < searchResults.items.length; itemIdx++) {
-                  const foundRange = searchResults.items[itemIdx];
+                // 检查是否有任何一个匹配有下划线格式
+                // 对于纯空格文本，通常所有匹配都会有相同的格式
+                const hasUnderlineFormat = searchResults.items.some(foundRange => {
                   const underline = foundRange.font.underline;
-                  const foundText = foundRange.text || '';
+                  return underline && underline !== 'None' && underline !== 'mixed';
+                });
 
-                  // 空格区域需要有下划线格式才作为参数
-                  if (underline && underline !== 'None' && underline !== 'mixed') {
-                    // 使用正则匹配的位置（准确），不使用 indexOf（对相同文本会返回第一个位置）
-                    // 如果段落中有多个相同的空格区域，根据 itemIdx 选择对应的位置
-                    const sameTextMatches = spaceMatches.filter(m => m.text === foundText);
-                    // 根据搜索结果的索引，选择对应的正则匹配位置
-                    const matchIdx = Math.min(itemIdx, sameTextMatches.length - 1);
-                    const actualStart = sameTextMatches[matchIdx]?.start ?? spaceMatch.start;
-
-                    // 同一段落中，位置必须完全不同才算不重复（使用精确位置比较）
-                    if (!result.some(e => e.paragraphIndex === pIdx && e.position.start === actualStart)) {
-                      result.push({
-                        text: foundText,
-                        underlineType: underline.toString(),
-                        index: result.length,
-                        paragraphIndex: pIdx,
-                        paragraphText: fullText,
-                        position: { start: actualStart, end: actualStart + foundText.length }
-                      });
-                      console.log(`[DEBUG] ✓ 下划线空格: 段落${pIdx} 位置${actualStart}-${actualStart + foundText.length} (${underline})`);
-                    }
-                  }
+                if (hasUnderlineFormat) {
+                  // 直接使用正则匹配的位置加入结果
+                  result.push({
+                    text: spaceMatch.text,
+                    underlineType: 'Single',
+                    index: result.length,
+                    paragraphIndex: pIdx,
+                    paragraphText: fullText,
+                    position: { start: spaceMatch.start, end: spaceMatch.end }
+                  });
+                  console.log(`[DEBUG] ✓ 下划线空格: 段落${pIdx} 位置${spaceMatch.start}-${spaceMatch.end}`);
                 }
               } catch (searchErr) {
                 console.warn('[DEBUG] 空格搜索错误:', searchErr);
