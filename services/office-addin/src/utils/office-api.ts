@@ -512,23 +512,29 @@ export const WordAPI = {
         const fullText = paragraph.text;
 
         try {
-          // 方法1：使用扩展文本搜索定位
-          const extendBefore = 2;
-          const extendAfter = 2;
+          // 方法1：使用扩展文本搜索定位（与高亮方法一致）
+          const extendBefore = 4;  // 向前扩展4字符
+          const extendAfter = 4;   // 向后扩展4字符
           const extendedStart = Math.max(0, startPos - extendBefore);
           const extendedEnd = Math.min(fullText.length, endPos + extendAfter);
           const extendedText = fullText.substring(extendedStart, extendedEnd);
 
-          if (extendedText.length >= 4) {
+          console.log(`[DEBUG] 替换-扩展文本: "${extendedText}" (位置${extendedStart}-${extendedEnd})`);
+
+          if (extendedText.length >= 6) {
             const searchResults = paragraph.search(extendedText, {
-              matchCase: false,
+              matchCase: true,  // 使用精确匹配
               matchWholeWord: false
             });
             searchResults.load('items');
             await context.sync();
 
+            console.log(`[DEBUG] 替换-搜索结果数量: ${searchResults.items.length}`);
+
             if (searchResults.items.length > 0) {
               const foundRange = searchResults.items[0];
+              foundRange.load('text');
+              await context.sync();
 
               // 在扩展文本中搜索空白部分
               const blankText = fullText.substring(startPos, endPos);
@@ -545,6 +551,17 @@ export const WordAPI = {
                 targetRange.insertText(replacement, Word.InsertLocation.replace);
                 await context.sync();
                 console.log(`[DEBUG] ✓ 已替换: "${blankText.substring(0, 10)}..." → "${replacement}"`);
+                resolve(true);
+                return;
+              } else {
+                // 替换整个扩展文本中的空白（如果找不到精确空白）
+                // 尝试直接在扩展文本中查找并替换
+                foundRange.insertText(
+                  extendedText.replace(blankText, replacement),
+                  Word.InsertLocation.replace
+                );
+                await context.sync();
+                console.log(`[DEBUG] ✓ 已替换扩展文本中的空白`);
                 resolve(true);
                 return;
               }
