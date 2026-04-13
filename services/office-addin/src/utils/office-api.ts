@@ -113,36 +113,37 @@ export const WordAPI = {
       fontSize?: number;
       isBold?: boolean;
       alignment?: string;
-      isTitle?: boolean;  // AI可用的判断标志
+      isTitle?: boolean;
     };
   }>> {
-    return new Promise((resolve, reject) => {
+    return new Promise((resolve) => {
       Word.run(async (context) => {
         const paragraphs = context.document.body.paragraphs;
         paragraphs.load('items');
         await context.sync();
 
-        // 先为所有段落加载必要的属性
-        for (const paragraph of paragraphs.items) {
-          paragraph.load('text');
-          const range = paragraph.getRange(Word.RangeLocation.whole);
-          range.load('font/size,font/bold,alignment');
+        // 为所有段落和它们的 range 加载属性
+        const ranges: any[] = [];
+        for (let i = 0; i < paragraphs.items.length; i++) {
+          const p = paragraphs.items[i];
+          p.load('text');
+          const r = p.getRange(Word.RangeLocation.whole);
+          r.load('font/size,font/bold,alignment');
+          ranges.push({ paragraph: p, range: r, index: i });
         }
         await context.sync();
 
-        // 然后读取格式信息
-        const result = paragraphs.items.map((p, idx) => {
-          const range = p.getRange(Word.RangeLocation.whole);
+        // 然后读取格式信息（使用已经加载的对象）
+        const result = ranges.map(({ paragraph, range, index }) => {
           const fontSize = range.font.size || 12;
           const isBold = range.font.bold || false;
           const alignment = range.alignment;
 
-          // 判断是否是标题（字体大于14或加粗且长度小于50）
-          const isTitle = (fontSize > 14 || isBold) && p.text.trim().length < 50;
+          const isTitle = (fontSize > 14 || isBold) && paragraph.text.trim().length < 50;
 
           return {
-            text: p.text,
-            index: idx,
+            text: paragraph.text,
+            index: index,
             format: {
               fontSize: fontSize,
               isBold: isBold,
@@ -155,7 +156,10 @@ export const WordAPI = {
         });
 
         resolve(result);
-      }).catch(reject);
+      }).catch((e) => {
+        console.error('getParagraphsWithFormat error:', e);
+        resolve([]);
+      });
     });
   },
 
@@ -201,142 +205,45 @@ export const WordAPI = {
 
   /**
    * 获取带下划线的文本段落（用于识别需要参数化的位置）
-   * 合同中"下划线+空格"通常是需要填写内容的地方
-   *
-   * 使用更简单的方式：遍历段落中每个字符范围，检查下划线属性
    */
   async getUnderlinedTexts(): Promise<Array<{
-    text: string;           // 带下划线的文本内容
-    underlineType: string;  // 下划线类型 (Single, Double, Dotted等)
-    index: number;          // 段落索引
-    paragraphText: string;  // 所在段落的完整文本
-    position: {             // 在段落中的位置
-      start: number;
-      end: number;
-    };
+    text: string;
+    underlineType: string;
+    index: number;
+    paragraphText: string;
+    position: { start: number; end: number };
   }>> {
-    return new Promise((resolve, reject) => {
+    return new Promise((resolve) => {
       Word.run(async (context) => {
-        const paragraphs = context.document.body.paragraphs;
-        paragraphs.load('items');
-        await context.sync();
+        const patterns = ['______', '____', '___', '__', '＿', '_'];
+        const result: any[] = [];
 
-        const result: Array<{
-          text: string;
-          underlineType: string;
-          index: number;
-          paragraphText: string;
-          position: { start: number; end: number };
-        }> = [];
-
-        for (let pIdx = 0; pIdx < paragraphs.items.length; pIdx++) {
-          const paragraph = paragraphs.items[pIdx];
-
-          // 先加载段落文本
-          paragraph.load('text');
-          await context.sync();
-
-          const fullText = paragraph.text;
-
-          if (!fullText || fullText.trim() === '') {
-            continue;  // 跳过空段落
-          }
-
+        for (const p of patterns) {
           try {
-            // 使用 getTextRanges 方法获取段落中的文本范围
-            // 参数：分隔符数组，是否包含分隔符，是否包含空范围
-            const textRanges = paragraph.getTextRanges(['\n'], true, false);
-            textRanges.load('items');
+            const sr = context.document.body.search(p, { matchCase: false, matchWholeWord: false });
+            sr.load('items');
             await context.sync();
-
-            // 为每个范围加载字体下划线属性
-            for (const range of textRanges.items) {
-              range.load('text,font/underline');
-            }
+            if (sr.items.length === 0) continue;
+            for (const r of sr.items) r.load('text');
             await context.sync();
-
-            // 检查每个范围的下划线属性
-            for (const range of textRanges.items) {
-              const underline = range.font.underline;
-              const rangeText = range.text || '';
-
-              // 如果有下划线且不是 'None'
-              if (underline && underline !== 'None' && underline !== 'Mixed') {
-                // 计算在段落中的位置
-                const startPos = fullText.indexOf(rangeText);
-                if (startPos >= 0) {
-                  result.push({
-                    text: rangeText,
-                    underlineType: underline.toString(),
-                    index: pIdx,
-                    paragraphText: fullText,
-                    position: {
-                      start: startPos,
-                      end: startPos + rangeText.length
-                    }
-                  });
-                }
+            for (const r of sr.items) {
+              const txt = r.text || '';
+              const para = r.paragraph;
+              para.load('text');
+              await context.sync();
+              const pTxt = para.text || '';
+              const sPos = pTxt.indexOf(txt);
+              if (!result.some(e => e.paragraphText === pTxt && Math.abs(e.position.start - sPos) < 5) && sPos >= 0) {
+                result.push({ text: txt, underlineType: 'Single', index: result.length, paragraphText: pTxt, position: { start: sPos, end: sPos + txt.length } });
               }
             }
-          } catch (rangeError) {
-            // 如果 getTextRanges 失败，尝试使用搜索方式
-            console.warn(`段落 ${pIdx} 获取文本范围失败，尝试备用方法`);
-
-            // 备用方法：搜索段落中的下划线特征
-            const underlinePatterns = ['______', '____', '___', '__', '＿', '_'];
-            for (const pattern of underlinePatterns) {
-              try {
-                const searchResults = paragraph.search(pattern, {
-                  matchCase: false,
-                  matchWholeWord: false
-                });
-                searchResults.load('items');
-                await context.sync();
-
-                for (const foundRange of searchResults.items) {
-                  foundRange.load('text,font/underline');
-                }
-                await context.sync();
-
-                for (const foundRange of searchResults.items) {
-                  const underline = foundRange.font.underline;
-                  if (underline && underline !== 'None') {
-                    const foundText = foundRange.text || '';
-                    const startPos = fullText.indexOf(foundText);
-                    if (startPos >= 0) {
-                      result.push({
-                        text: foundText,
-                        underlineType: underline.toString(),
-                        index: pIdx,
-                        paragraphText: fullText,
-                        position: {
-                          start: startPos,
-                          end: startPos + foundText.length
-                        }
-                      });
-                    }
-                  }
-                }
-              } catch (searchError) {
-                console.warn(`段落 ${pIdx} 搜索下划线失败:`, searchError);
-              }
-            }
-          }
+          } catch (e) { console.warn('search error:', e); }
         }
-
-        console.log(`检测到 ${result.length} 个下划线位置`);
-        resolve(result);
-      }).catch((error) => {
-        console.error('获取下划线信息失败:', error);
-        reject(error);
-      });
+        console.log('detected', result.length, 'underline positions');
+        resolve(result.sort((a, b) => a.position.start - b.position.start));
+      }).catch((e) => { console.error('underline error:', e); resolve([]); });
     });
   },
-
-  /**
-   * 高亮指定段落中的特定位置
-   * 用于精确高亮空白/下划线位置
-   */
   async highlightAtPosition(paragraphIndex: number, startPos: number, endPos: number): Promise<boolean> {
     return new Promise((resolve, reject) => {
       Word.run(async (context) => {
