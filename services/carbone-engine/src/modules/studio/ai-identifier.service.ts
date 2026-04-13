@@ -493,12 +493,14 @@ export class AIIdentifierService {
       const preExtractedBlanks = this.extractBlankPatterns(documentContent, templateType);
       this.logger.log(`预处理提取到 ${preExtractedBlanks.length} 个空白位置`);
 
-      // 如果有下划线信息，合并到预处理空白列表中（下划线+空格 = 需要参数化）
+      // 如果有下划线信息，直接使用 underlineInfo 作为参数来源（最精确）
+      // underlineInfo 来自 Word JS API，已通过 font.underline 检查，是最可靠的参数位置
+      let blanksToUse = preExtractedBlanks;
       if (underlineInfo && underlineInfo.length > 0) {
-        const underlineBlanks = this.mergeUnderlineInfo(preExtractedBlanks, underlineInfo, documentContent, templateType);
-        this.logger.log(`合并下划线信息后，共 ${underlineBlanks.length} 个空白位置`);
+        blanksToUse = this.mergeUnderlineInfo([], underlineInfo, documentContent, templateType);
+        this.logger.log(`使用下划线信息作为参数来源，共 ${blanksToUse.length} 个参数位置`);
         reportProgress(ProcessingStage.SECTION_ANALYSIS, '预处理', 10,
-          `预提取完成，发现 ${underlineBlanks.length} 个空白位置（含 ${underlineInfo.length} 个下划线位置）`);
+          `使用 Word 下划线检测结果，发现 ${blanksToUse.length} 个参数位置`);
       } else {
         reportProgress(ProcessingStage.SECTION_ANALYSIS, '预处理', 10,
           `预提取完成，发现 ${preExtractedBlanks.length} 个潜在空白位置`);
@@ -520,9 +522,8 @@ export class AIIdentifierService {
         // 提取该章节的完整内容（从原文中提取）
         const sectionContent = this.extractSectionContent(documentContent, section.name);
 
-        // 调用AI进行语义参数化（传入预处理的空白位置）
-        // 将预处理的空白按章节分组，传递给AI分析
-        const sectionBlanks = preExtractedBlanks.filter(b =>
+        // 使用 blanksToUse（已包含 underlineInfo）
+        const sectionBlanks = blanksToUse.filter(b =>
           b.chapter === section.name || b.chapter.includes(section.name) || section.name.includes(b.chapter)
         );
 
@@ -1137,6 +1138,7 @@ ${fullContent.substring(0, Math.min(1000, fullContent.length))}
       text: string;
       underlineType: string;
       paragraphText: string;
+      paragraphIndex?: number;  // 段落索引（用于精确定位）
       position: { start: number; end: number };
     }>,
     documentContent: string,
@@ -1146,27 +1148,43 @@ ${fullContent.substring(0, Math.min(1000, fullContent.length))}
     context: string;
     beforeBlank: string;
     position: number;
-    type: string;
+    type: 'date' | 'blank' | 'underline';
     chapter: string;
     significance: string;
   }> {
-    const result = [...existingBlanks];
+    // 直接使用 underlineInfo 作为参数来源，不与 existingBlanks 合并
+    // 因为 underlineInfo 来自 Word JS API，是最精确的下划线检测结果
+    const result: Array<{
+      text: string;
+      context: string;
+      beforeBlank: string;
+      position: number;
+      type: 'date' | 'blank' | 'underline';
+      chapter: string;
+      significance: string;
+    }> = [];
+
     const chapterStructure = this.extractChapterStructure(documentContent);
+    this.logger.log(`mergeUnderlineInfo: 收到 ${underlineInfo.length} 个下划线位置`);
 
     for (const underline of underlineInfo) {
-      // 检查下划线文本是否包含空白（空格、下划线等）
-      const hasBlank = underline.text.match(/[＿_\s　]+/);
+      // 检查下划线文本是否包含空白（空格、下划线、制表符等）
+      const hasBlank = underline.text.match(/[＿_\s　\t]+/);
 
-      // 如果下划线文本主要是空白或者空格，这是需要参数化的位置
+      // 如果下划线文本主要是空白，这是需要参数化的位置
+      // 纯空格文本 trim() 后为空字符串，长度为0，所以 0 < length * 0.3 是 true
       const isBlankUnderline = underline.text.trim().length < underline.text.length * 0.3;
 
-      // 检查是否已经存在相似的空白位置（避免重复）
+      // 使用段落文本和精确位置来判断重复（同一段落中位置相近才算重复）
       const isDuplicate = result.some(b =>
-        Math.abs(b.position - underline.position.start) < 10 ||
-        (b.context.includes(underline.text) && underline.text.length > 2)
+        b.context === underline.paragraphText &&
+        Math.abs(b.position - underline.position.start) < 3
       );
 
-      if ((hasBlank || isBlankUnderline) && !isDuplicate) {
+      this.logger.log(`下划线 #${result.length + 1}: "${underline.text.substring(0, 20)}..." (${underline.text.length}字符) - hasBlank:${!!hasBlank}, isBlank:${isBlankUnderline}, duplicate:${isDuplicate}`);
+
+      // 所有 underlineInfo 都应该被加入（因为已经通过 font.underline 检查）
+      if (!isDuplicate) {
         // 提取下划线前面的文本作为标签
         const paragraphText = underline.paragraphText;
         const beforeUnderline = paragraphText.substring(0, underline.position.start);
@@ -1188,13 +1206,14 @@ ${fullContent.substring(0, Math.min(1000, fullContent.length))}
           ),
           beforeBlank: label,
           position: underline.position.start,
-          type: 'underline',  // 新类型：下划线空白
+          type: 'underline' as const,  // 类型：下划线空白（使用 const 断言）
           chapter: chapterInfo,
           significance: significance
         });
       }
     }
 
+    this.logger.log(`mergeUnderlineInfo: 最终返回 ${result.length} 个参数位置`);
     return result;
   }
 

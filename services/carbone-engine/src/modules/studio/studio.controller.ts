@@ -73,6 +73,7 @@ export class DirectAIIdentifyDto {
   underlineInfo?: Array<{             // 下划线信息（从Word JS API获取）
     text: string;                     // 带下划线的文本
     underlineType: string;            // 下划线类型
+    paragraphIndex?: number;          // 段落索引（用于精确定位）
     paragraphText: string;            // 所在段落完整文本
     position: { start: number; end: number };  // 在段落中的位置
   }>;
