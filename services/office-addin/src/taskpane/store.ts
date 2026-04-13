@@ -146,7 +146,7 @@ export const useAppStore = create<AppState>((set, get) => ({
     })),
   clearSelectedElements: () => set({ selectedElements: [] }),
 
-  apiBaseUrl: 'http://localhost:3009',  // 默认使用HTTP连接本地服务
+  apiBaseUrl: 'https://localhost:3443',  // HTTPS代理端口（Office插件必须使用HTTPS）
   setApiBaseUrl: (url) => set({ apiBaseUrl: url }),
 
   // 调试日志功能
