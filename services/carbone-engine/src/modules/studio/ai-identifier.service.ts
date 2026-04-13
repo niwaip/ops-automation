@@ -1255,7 +1255,7 @@ ${parameterList.map(p => `
         }
       }
 
-      // 构建建议列表
+      // 构建建议列表（保留underlineInfo的精确位置信息）
       const suggestions = namingResults.map((result, idx) => {
         const info = underlineInfo[idx];
         const para = info?.paragraphText || '';
@@ -1272,6 +1272,13 @@ ${parameterList.map(p => `
           confidence: result.confidence || 0.8,
           applied: false,
           context: context,
+          // 保留精确位置信息（用于前端替换）
+          underlineInfo: {
+            paragraphIndex: info?.paragraphIndex,
+            position: info?.position,
+            paragraphText: info?.paragraphText,
+            underlineType: info?.underlineType
+          },
           details: {
             chapter: '正文',
             significance: result.significance || '文档填充字段',

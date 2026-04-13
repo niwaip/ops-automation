@@ -15,6 +15,13 @@ export interface AISuggestion {
   confidence: number;
   applied: boolean;
   context?: string;  // 原文档上下文
+  // 精确位置信息（用于替换和高亮）
+  underlineInfo?: {
+    paragraphIndex?: number;
+    position?: { start: number; end: number };
+    paragraphText?: string;
+    underlineType?: string;
+  };
   details?: {
     formatter?: string;
     loopType?: 'explicit' | 'implicit';
