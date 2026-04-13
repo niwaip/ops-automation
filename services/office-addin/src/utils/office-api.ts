@@ -350,7 +350,7 @@ export const WordAPI = {
 
   /**
    * 按段落索引和位置高亮下划线区域
-   * 使用搜索 + 位置验证来精确定位
+   * 使用扩展文本搜索来精确定位（解决相同文本多次出现的问题）
    */
   async highlightUnderlineByPosition(paragraphIndex: number, startPos: number, endPos: number, textHint?: string): Promise<boolean> {
     return new Promise((resolve) => {
@@ -359,7 +359,7 @@ export const WordAPI = {
         paragraphs.load('items');
         await context.sync();
 
-        console.log(`[DEBUG] highlightUnderline: 段落${paragraphIndex}, 位置${startPos}-${endPos}, 提示"${textHint?.substring(0, 10)}..."`);
+        console.log(`[DEBUG] highlightUnderline: 段落${paragraphIndex}, 位置${startPos}-${endPos}`);
 
         if (paragraphIndex >= paragraphs.items.length) {
           console.warn(`[DEBUG] 段落索引 ${paragraphIndex} 超出范围`);
@@ -368,11 +368,25 @@ export const WordAPI = {
         }
 
         const paragraph = paragraphs.items[paragraphIndex];
+        paragraph.load('text');
+        await context.sync();
+
+        const fullText = paragraph.text;
+        console.log(`[DEBUG] 段落全文: "${fullText.substring(0, 60)}..."`);
 
         try {
-          // 方法1：如果有文本提示，直接搜索
-          if (textHint && textHint.length >= 2) {
-            const searchResults = paragraph.search(textHint, {
+          // 方法1：使用扩展文本（包含前后字符）来搜索特定位置
+          // 这样即使相同文本出现多次，扩展文本也不同
+          const extendBefore = 2;  // 向前扩展2字符
+          const extendAfter = 2;   // 向后扩展2字符
+          const extendedStart = Math.max(0, startPos - extendBefore);
+          const extendedEnd = Math.min(fullText.length, endPos + extendAfter);
+          const extendedText = fullText.substring(extendedStart, extendedEnd);
+
+          console.log(`[DEBUG] 扩展文本: "${extendedText}" (位置${extendedStart}-${extendedEnd})`);
+
+          if (extendedText.length >= 4) {
+            const searchResults = paragraph.search(extendedText, {
               matchCase: false,
               matchWholeWord: false
             });
@@ -380,75 +394,59 @@ export const WordAPI = {
             await context.sync();
 
             if (searchResults.items.length > 0) {
-              // 选择第一个匹配并高亮
-              const targetRange = searchResults.items[0];
-              targetRange.select();
-              targetRange.font.highlightColor = 'yellow';
+              // 找到扩展文本后，获取其中的空白部分
+              const foundRange = searchResults.items[0];
+              foundRange.load('text');
               await context.sync();
-              console.log(`[DEBUG] ✓ 已高亮文本: "${textHint.substring(0, 10)}..."`);
-              resolve(true);
-              return;
-            }
-          }
 
-          // 方法2：获取段落文本，计算位置，搜索定位
-          paragraph.load('text');
-          await context.sync();
-          const fullText = paragraph.text;
-
-          // 获取要高亮的文本片段
-          const targetText = fullText.substring(startPos, endPos);
-          if (targetText.length >= 2) {
-            const searchResults = paragraph.search(targetText, {
-              matchCase: false,
-              matchWholeWord: false
-            });
-            searchResults.load('items');
-            await context.sync();
-
-            if (searchResults.items.length > 0) {
-              const targetRange = searchResults.items[0];
-              targetRange.select();
-              targetRange.font.highlightColor = 'yellow';
-              await context.sync();
-              console.log(`[DEBUG] ✓ 已高亮位置文本: "${targetText.substring(0, 10)}..."`);
-              resolve(true);
-              return;
-            }
-          }
-
-          // 方法3：使用段落开头作为锚点，搜索后定位
-          const anchorLength = Math.min(startPos, 20);
-          if (anchorLength >= 3) {
-            const anchorText = fullText.substring(0, anchorLength);
-            const searchResults = paragraph.search(anchorText, {
-              matchCase: true,
-              matchWholeWord: false
-            });
-            searchResults.load('items');
-            await context.sync();
-
-            if (searchResults.items.length > 0) {
-              const anchorRange = searchResults.items[0];
-              // 从锚点获取后续文本范围
-              // Word API 不支持直接偏移，所以尝试搜索位置附近的文本
-              const nearText = fullText.substring(Math.max(0, startPos - 2), Math.min(fullText.length, endPos + 2));
-              const nearSearch = paragraph.search(nearText, {
+              // 搜索扩展文本中的空白部分
+              const blankText = fullText.substring(startPos, endPos);
+              const blankSearch = foundRange.search(blankText, {
                 matchCase: false,
                 matchWholeWord: false
               });
-              nearSearch.load('items');
+              blankSearch.load('items');
               await context.sync();
 
-              if (nearSearch.items.length > 0) {
-                const targetRange = nearSearch.items[0];
+              if (blankSearch.items.length > 0) {
+                // 高亮空白部分
+                const targetRange = blankSearch.items[0];
                 targetRange.select();
                 targetRange.font.highlightColor = 'yellow';
                 await context.sync();
-                console.log(`[DEBUG] ✓ 已高亮附近文本`);
+                console.log(`[DEBUG] ✓ 已高亮空白: "${blankText.substring(0, 10)}..."`);
+                resolve(true);
+                return;
+              } else {
+                // 直接高亮整个扩展文本
+                foundRange.select();
+                foundRange.font.highlightColor = 'yellow';
+                await context.sync();
+                console.log(`[DEBUG] ✓ 已高亮扩展文本（空白未找到）`);
                 resolve(true);
                 return;
               }
+            }
+          }
+
+          // 方法2：尝试搜索原始文本（后备）
+          const blankText = fullText.substring(startPos, endPos);
+          if (blankText.length >= 2) {
+            const searchResults = paragraph.search(blankText, {
+              matchCase: false,
+              matchWholeWord: false
+            });
+            searchResults.load('items');
+            await context.sync();
+
+            if (searchResults.items.length > 0) {
+              const targetRange = searchResults.items[0];
+              targetRange.select();
+              targetRange.font.highlightColor = 'yellow';
+              await context.sync();
+              console.log(`[DEBUG] ✓ 已高亮（后备方案）: "${blankText.substring(0, 10)}..."`);
+              resolve(true);
+              return;
             }
           }
 
@@ -456,7 +454,7 @@ export const WordAPI = {
           const paraRange = paragraph.getRange(Word.RangeLocation.whole);
           paraRange.select();
           await context.sync();
-          console.log(`[DEBUG] 已选中段落 ${paragraphIndex}（后备方案）`);
+          console.log(`[DEBUG] 已选中段落 ${paragraphIndex}（最终后备）`);
           resolve(true);
         } catch (err) {
           console.warn(`[DEBUG] 高亮失败:`, err);
@@ -471,6 +469,7 @@ export const WordAPI = {
 
   /**
    * 按段落索引和位置替换下划线区域为参数标记
+   * 使用扩展文本搜索来精确定位
    */
   async replaceUnderlineByPosition(paragraphIndex: number, startPos: number, endPos: number, replacement: string, textHint?: string): Promise<boolean> {
     return new Promise((resolve) => {
@@ -488,11 +487,21 @@ export const WordAPI = {
         }
 
         const paragraph = paragraphs.items[paragraphIndex];
+        paragraph.load('text');
+        await context.sync();
+
+        const fullText = paragraph.text;
 
         try {
-          // 方法1：如果有文本提示，直接搜索替换
-          if (textHint && textHint.length >= 2) {
-            const searchResults = paragraph.search(textHint, {
+          // 方法1：使用扩展文本搜索定位
+          const extendBefore = 2;
+          const extendAfter = 2;
+          const extendedStart = Math.max(0, startPos - extendBefore);
+          const extendedEnd = Math.min(fullText.length, endPos + extendAfter);
+          const extendedText = fullText.substring(extendedStart, extendedEnd);
+
+          if (extendedText.length >= 4) {
+            const searchResults = paragraph.search(extendedText, {
               matchCase: false,
               matchWholeWord: false
             });
@@ -500,23 +509,33 @@ export const WordAPI = {
             await context.sync();
 
             if (searchResults.items.length > 0) {
-              const targetRange = searchResults.items[0];
-              targetRange.insertText(replacement, Word.InsertLocation.replace);
+              const foundRange = searchResults.items[0];
+
+              // 在扩展文本中搜索空白部分
+              const blankText = fullText.substring(startPos, endPos);
+              const blankSearch = foundRange.search(blankText, {
+                matchCase: false,
+                matchWholeWord: false
+              });
+              blankSearch.load('items');
               await context.sync();
-              console.log(`[DEBUG] ✓ 已替换: "${textHint?.substring(0, 10)}..." → "${replacement}"`);
-              resolve(true);
-              return;
+
+              if (blankSearch.items.length > 0) {
+                // 替换空白部分
+                const targetRange = blankSearch.items[0];
+                targetRange.insertText(replacement, Word.InsertLocation.replace);
+                await context.sync();
+                console.log(`[DEBUG] ✓ 已替换: "${blankText.substring(0, 10)}..." → "${replacement}"`);
+                resolve(true);
+                return;
+              }
             }
           }
 
-          // 方法2：获取段落文本，搜索目标位置文本
-          paragraph.load('text');
-          await context.sync();
-          const fullText = paragraph.text;
-
-          const targetText = fullText.substring(startPos, endPos);
-          if (targetText.length >= 2) {
-            const searchResults = paragraph.search(targetText, {
+          // 方法2：直接搜索空白文本（后备）
+          const blankText = fullText.substring(startPos, endPos);
+          if (blankText.length >= 2) {
+            const searchResults = paragraph.search(blankText, {
               matchCase: false,
               matchWholeWord: false
             });
@@ -527,7 +546,7 @@ export const WordAPI = {
               const targetRange = searchResults.items[0];
               targetRange.insertText(replacement, Word.InsertLocation.replace);
               await context.sync();
-              console.log(`[DEBUG] ✓ 已替换位置文本: "${targetText?.substring(0, 10)}..." → "${replacement}"`);
+              console.log(`[DEBUG] ✓ 已替换（后备）: "${blankText.substring(0, 10)}..." → "${replacement}"`);
               resolve(true);
               return;
             }
