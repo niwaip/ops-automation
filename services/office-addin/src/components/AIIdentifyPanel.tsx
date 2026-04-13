@@ -279,16 +279,27 @@ export const AIIdentifyPanel: React.FC<Props> = ({ onApplyComplete }) => {
         for (let i = 0; i < underlineInfo.length; i++) {
           const info = underlineInfo[i];
           addDebugLog('debug', `[测试下划线] #${i + 1}`,
-            `文本: "${info.text}"\n` +
+            `文本: "${info.text}" (${info.text.length}字符)\n` +
             `类型: ${info.underlineType}\n` +
+            `段落索引: ${info.paragraphIndex}\n` +
             `段落: "${info.paragraphText?.substring(0, 50)}..." \n` +
             `位置: ${info.position?.start}-${info.position?.end}`
           );
 
-          // 尝试高亮这个位置
+          // 使用段落索引高亮（解决纯空格无法搜索的问题）
           try {
-            const count = await OfficeHelper.Word.highlightText(info.text);
-            addDebugLog('debug', `[测试下划线] #${i + 1} 高亮`, `找到 ${count} 个匹配`);
+            if (info.paragraphIndex !== undefined) {
+              const success = await OfficeHelper.Word.highlightByParagraphIndex(
+                info.paragraphIndex,
+                info.position?.start || 0,
+                info.position?.end || 0
+              );
+              addDebugLog('debug', `[测试下划线] #${i + 1} 高亮段落`, success ? '成功选中段落' : '失败');
+            } else {
+              // 后备方案：尝试文本搜索
+              const count = await OfficeHelper.Word.highlightText(info.text);
+              addDebugLog('debug', `[测试下划线] #${i + 1} 文本高亮`, `找到 ${count} 个匹配`);
+            }
           } catch (highlightErr: any) {
             addDebugLog('warn', `[测试下划线] #${i + 1} 高亮失败`, highlightErr.message);
           }

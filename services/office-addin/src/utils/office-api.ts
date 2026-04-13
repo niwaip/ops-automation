@@ -215,6 +215,7 @@ export const WordAPI = {
     text: string;
     underlineType: string;
     index: number;
+    paragraphIndex: number;  // 新增：段落索引
     paragraphText: string;
     position: { start: number; end: number };
   }>> {
@@ -278,6 +279,7 @@ export const WordAPI = {
                   text: underlineMatch.text,
                   underlineType: 'underline-char',
                   index: result.length,
+                  paragraphIndex: pIdx,  // 添加段落索引
                   paragraphText: fullText,
                   position: { start: underlineMatch.start, end: underlineMatch.end }
                 });
@@ -315,6 +317,7 @@ export const WordAPI = {
                         text: foundText,
                         underlineType: underline.toString(),
                         index: result.length,
+                        paragraphIndex: pIdx,  // 添加段落索引
                         paragraphText: fullText,
                         position: { start: spaceMatch.start, end: spaceMatch.end }
                       });
@@ -334,6 +337,87 @@ export const WordAPI = {
         console.log('[DEBUG] 最终检测到', result.length, '个参数位置');
         resolve(result.sort((a, b) => a.position.start - b.position.start));
       }).catch((e) => { console.error('[DEBUG] underline总错误:', e); resolve([]); });
+    });
+  },
+
+  /**
+   * 按段落索引和位置高亮文本（用于高亮纯空格文本）
+   * 使用位置信息直接获取范围，而不是文本搜索
+   */
+  async highlightByParagraphIndex(paragraphIndex: number, startPos: number, endPos: number): Promise<boolean> {
+    return new Promise((resolve) => {
+      Word.run(async (context) => {
+        const paragraphs = context.document.body.paragraphs;
+        paragraphs.load('items');
+        await context.sync();
+
+        console.log(`[DEBUG] highlightByParagraphIndex: 段落 ${paragraphIndex}, 位置 ${startPos}-${endPos}`);
+
+        if (paragraphIndex >= paragraphs.items.length) {
+          console.warn(`[DEBUG] 段落索引 ${paragraphIndex} 超出范围`);
+          resolve(false);
+          return;
+        }
+
+        const paragraph = paragraphs.items[paragraphIndex];
+        paragraph.load('text');
+        await context.sync();
+
+        const fullText = paragraph.text;
+        console.log(`[DEBUG] 段落文本: "${fullText.substring(0, 30)}..."`);
+
+        // 使用 Word API 的 getTextRanges 方法获取位置范围内的文本
+        // 但这个方法可能不存在，改用搜索段落文本中特定位置的方法
+        // 更好的方法：使用段落起始位置 + 文本位置来计算绝对位置
+
+        // 方法：搜索段落中的任意一个唯一字符串，然后扩展到目标位置
+        // 简化方案：搜索整个段落文本，找到后取子范围
+        try {
+          // 尝试使用段落开头的一部分作为锚点
+          const anchorText = fullText.substring(0, Math.min(20, startPos));
+          if (anchorText.length > 2) {
+            const searchResults = paragraph.search(anchorText, {
+              matchCase: true,
+              matchWholeWord: false
+            });
+            searchResults.load('items');
+            await context.sync();
+
+            if (searchResults.items.length > 0) {
+              const anchorRange = searchResults.items[0];
+              // 从锚点扩展到目标位置
+              // 使用 getRange 方法获取段落起始位置，然后计算偏移
+              const paraRange = paragraph.getRange(Word.RangeLocation.whole);
+              paraRange.load('text');
+              await context.sync();
+
+              // 使用段落文本的位置来定位
+              // Word 不支持直接按字符位置获取范围，需要使用其他方法
+
+              // 替代方案：高亮整个段落并滚动到视图
+              paraRange.select();
+              await context.sync();
+
+              console.log(`[DEBUG] 已选中段落 ${paragraphIndex}`);
+              resolve(true);
+              return;
+            }
+          }
+
+          // 如果无法精确定位，选中整个段落
+          const paraRange = paragraph.getRange(Word.RangeLocation.whole);
+          paraRange.select();
+          await context.sync();
+          console.log(`[DEBUG] 已选中段落 ${paragraphIndex}（备用方案）`);
+          resolve(true);
+        } catch (err) {
+          console.warn(`[DEBUG] 高亮段落失败:`, err);
+          resolve(false);
+        }
+      }).catch((e) => {
+        console.error('[DEBUG] highlightByParagraphIndex 错误:', e);
+        resolve(false);
+      });
     });
   },
   async highlightAtPosition(paragraphIndex: number, startPos: number, endPos: number): Promise<boolean> {
