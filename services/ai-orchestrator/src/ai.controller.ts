@@ -71,7 +71,7 @@ export class AIController {
     if (!model) {
       throw new HttpException('Model not found', HttpStatus.NOT_FOUND);
     }
-    return this.modelService.setModelStatus(id, 'active');
+    return this.modelService.setModelStatus(id, 'active') as Promise<AIModelDTO>;
   }
 
   @Patch('models/:id/disable')
@@ -83,7 +83,7 @@ export class AIController {
     if (!model) {
       throw new HttpException('Model not found', HttpStatus.NOT_FOUND);
     }
-    return this.modelService.setModelStatus(id, 'inactive');
+    return this.modelService.setModelStatus(id, 'inactive') as Promise<AIModelDTO>;
   }
 
   @Patch('models/:id')
@@ -95,7 +95,7 @@ export class AIController {
     if (!model) {
       throw new HttpException('Model not found', HttpStatus.NOT_FOUND);
     }
-    return this.modelService.updateModel(id, body);
+    return this.modelService.updateModel(id, body) as Promise<AIModelDTO>;
   }
 
   @Delete('models/:id')
@@ -166,7 +166,7 @@ export class AIController {
   async testConfig(@Body() body: { endpoint: string; apiKey: string; modelName: string }): Promise<{ success: boolean; response?: string; error?: string }> {
     try {
       // Create a temporary client to test the configuration
-      const { OpenAICompatibleClient } = await import('./client/openai-compatible');
+      const { OpenAICompatibleClient } = await import('./client/openai-compatible.js');
       const client = new OpenAICompatibleClient({
         baseURL: body.endpoint,
         apiKey: body.apiKey,

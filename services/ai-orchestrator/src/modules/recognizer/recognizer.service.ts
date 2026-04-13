@@ -34,7 +34,7 @@ export class RecognizerService {
   /**
    * Set the default AI client for parameter recognition
    */
-  setDefaultClient(client: OpenAICompatibleClient): void {
+  setDefaultClient(_client: OpenAICompatibleClient): void {
     // Legacy method - no longer needed as we use ModelService
     this.logger.warn('setDefaultClient is deprecated, using ModelService instead');
   }
@@ -50,7 +50,7 @@ export class RecognizerService {
       return null;
     }
     // Use the first active model's client
-    return this.modelService.getClient(activeModels[0].id);
+    return this.modelService.getClient(activeModels[0]!.id);
   }
 
   /**
