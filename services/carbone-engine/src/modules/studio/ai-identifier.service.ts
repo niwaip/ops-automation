@@ -444,6 +444,7 @@ export class AIIdentifierService {
       text: string;
       underlineType: string;
       paragraphText: string;
+      paragraphIndex?: number;  // 段落索引
       position: { start: number; end: number };
     }>,
     paragraphFormats?: Array<{  // 段落格式信息
@@ -458,6 +459,15 @@ export class AIIdentifierService {
     }>
   ): Promise<AIIdentifyResponse> {
     this.logger.log(`开始多阶段AI识别, 类型: ${templateType}, 内容长度: ${documentContent.length}`);
+
+    // ===== 快速流程：如果 underlineInfo 存在，直接对参数进行语义命名 =====
+    // 这可以跳过复杂的文档理解、分段参数化、整合确认流程
+    if (underlineInfo && underlineInfo.length > 0) {
+      this.logger.log(`检测到 ${underlineInfo.length} 个精确下划线位置，使用快速命名流程`);
+      return await this.quickNameParameters(underlineInfo, documentContent, templateType, progressCallback);
+    }
+
+    // ===== 原有的多阶段流程（当没有 underlineInfo 时使用） =====
     if (underlineInfo && underlineInfo.length > 0) {
       this.logger.log(`收到下划线信息: ${underlineInfo.length} 个带下划线位置`);
     }
@@ -1117,6 +1127,264 @@ ${fullContent.substring(0, Math.min(1000, fullContent.length))}
         formatter: null
       }
     }));
+  }
+
+  /**
+   * 快速命名流程（当 underlineInfo 存在时）
+   * 只需要一次AI调用，直接对参数进行语义命名
+   * 跳过复杂的文档理解、分段参数化、整合确认流程
+   */
+  private async quickNameParameters(
+    underlineInfo: Array<{
+      text: string;
+      underlineType: string;
+      paragraphText: string;
+      paragraphIndex?: number;
+      position: { start: number; end: number };
+    }>,
+    documentContent: string,
+    templateType: string,
+    progressCallback?: (progress: ProcessingProgress) => void
+  ): Promise<AIIdentifyResponse> {
+    this.logger.log(`快速命名流程: 处理 ${underlineInfo.length} 个参数位置`);
+
+    const reportProgress = (stage: ProcessingStage, stageName: string, progress: number, message: string) => {
+      this.logger.log(`进度: [${stageName}] ${progress}% - ${message}`);
+      if (progressCallback) {
+        progressCallback({ stage, stageName, progress, message });
+      }
+    };
+
+    reportProgress(ProcessingStage.SECTION_ANALYSIS, '快速识别', 0, '正在分析参数语义...');
+
+    // 构建参数列表信息
+    const parameterList = underlineInfo.map((info, idx) => {
+      // 提取上下文（前后的文字）
+      const paraText = info.paragraphText;
+      const start = Math.max(0, info.position.start - 10);
+      const end = Math.min(paraText.length, info.position.end + 10);
+      const context = paraText.substring(start, end);
+
+      // 提取前面的标签（如"甲方："、"地址："）
+      const beforeBlank = paraText.substring(0, info.position.start);
+      const labelMatch = beforeBlank.match(/([^\s：:]+)[：:]?\s*$/);
+      const label = labelMatch ? labelMatch[1].trim() : '';
+
+      return {
+        index: idx + 1,
+        text: info.text,
+        context: context,
+        label: label,
+        paragraph: paraText.substring(0, 50) + '...'
+      };
+    });
+
+    // 构建AI提示
+    const prompt = `你是一个专业的合同模板参数命名专家。请根据以下参数位置的上下文信息，为每个参数生成合适的变量名称和说明。
+
+模板类型: ${templateType}
+
+【参数位置列表】
+${parameterList.map(p => `
+#${p.index}
+- 上下文: "${p.context}"
+- 前置标签: "${p.label}"
+- 段落: "${p.paragraph}"
+`).join('\n')}
+
+请返回JSON数组，为每个参数生成：
+[
+  {
+    "index": 1,
+    "variablePath": "{d.partyA.name}",
+    "variableName": "partyA_name",
+    "significance": "甲方公司名称",
+    "fieldType": "text",
+    "confidence": 0.95
+  }
+]
+
+【命名规范】
+1. 变量路径格式: {d.实体.字段} 或 {d.字段}
+2. 常见实体: partyA(甲方), partyB(乙方), project(项目), contract(合同)
+3. 常见字段: name(名称), address(地址), date(日期), amount(金额), person(代表人)
+4. 日期字段: year(年), month(月), day(日)
+5. 变量名称使用snake_case格式
+
+只返回JSON数组，不要其他解释。`;
+
+    try {
+      // 调用AI进行命名
+      reportProgress(ProcessingStage.SECTION_ANALYSIS, '快速识别', 50, '正在调用AI进行语义命名...');
+      const aiResponseObj = await this.callAIService(prompt);
+
+      reportProgress(ProcessingStage.SECTION_ANALYSIS, '快速识别', 90, '正在处理AI响应...');
+
+      // 解析AI响应
+      let namingResults: any[] = [];
+      try {
+        // callAIService 返回的是 { suggestions: [...] } 格式
+        namingResults = aiResponseObj?.suggestions || [];
+        if (namingResults.length === 0) {
+          // 如果没有 suggestions，尝试直接解析响应
+          const rawResponse = aiResponseObj?.response || '';
+          if (rawResponse) {
+            const arrayMatch = rawResponse.match(/\[[\s\S]*\]/);
+            if (arrayMatch) {
+              namingResults = JSON.parse(arrayMatch[0]);
+            }
+          }
+        }
+      } catch (parseErr) {
+        this.logger.warn('AI响应解析失败，使用默认命名');
+        namingResults = [];
+      }
+
+      // 如果AI没有返回足够的结果，使用默认命名
+      if (namingResults.length < underlineInfo.length) {
+        this.logger.log('AI结果不足，补充默认命名');
+        for (let i = namingResults.length; i < underlineInfo.length; i++) {
+          namingResults.push({
+            index: i + 1,
+            variablePath: `{d.field_${i + 1}}`,
+            variableName: `field_${i + 1}`,
+            significance: '待填写内容',
+            fieldType: 'text',
+            confidence: 0.7
+          });
+        }
+      }
+
+      // 构建建议列表
+      const suggestions = namingResults.map((result, idx) => {
+        const info = underlineInfo[idx];
+        const para = info?.paragraphText || '';
+        const posStart = info?.position?.start || 0;
+        const posEnd = info?.position?.end || 0;
+        const context = para.substring(Math.max(0, posStart - 15), Math.min(para.length, posEnd + 15));
+
+        return {
+          id: `sugg-${Date.now()}-${idx}`,
+          type: 'variable',
+          elementPath: `【${context}】`,
+          suggestedName: result.variablePath || `{d.field_${idx + 1}}`,
+          originalText: underlineInfo[idx]?.text || '',
+          confidence: result.confidence || 0.8,
+          applied: false,
+          context: context,
+          details: {
+            chapter: '正文',
+            significance: result.significance || '文档填充字段',
+            variableName: result.variableName,
+            fieldType: result.fieldType || 'text',
+            displayPosition: context,
+            beforeBlank: parameterList[idx]?.label || '',
+            afterBlank: para.substring(posEnd, Math.min(para.length, posEnd + 10))
+          }
+        };
+      });
+
+      reportProgress(ProcessingStage.COMPLETE, '完成', 100, `快速识别完成，共 ${suggestions.length} 个参数`);
+
+      this.logger.log(`快速命名流程完成: ${suggestions.length} 个参数`);
+
+      return {
+        templateConfig: {
+          templateType: templateType,
+          staticElements: [],
+          tableLoops: [],
+          imageLoops: [],
+          combinedVariables: [],
+          variableMappings: [],
+          analysisNotes: [`快速识别模式，基于 ${underlineInfo.length} 个下划线位置`]
+        },
+        suggestions: suggestions.map((s, idx) => ({
+          path: s.suggestedName,
+          sampleValue: s.originalText,
+          index: idx,
+          type: 'text',
+          reason: s.details?.significance,
+          fieldType: s.details?.fieldType
+        })),
+        rawSuggestions: suggestions,
+        loops: [],
+        images: [],
+        combinedVariables: [],
+        analyzedAt: new Date().toISOString(),
+        documentStats: {
+          totalElements: suggestions.length,
+          tables: 0,
+          images: 0,
+          stepScreenshots: 0,
+          potentialLoops: 0
+        },
+        contextAnalysis: {
+          detectedTemplateType: templateType,
+          userIntent: '基于下划线位置的参数识别',
+          usedAI: true,
+          aiServiceUrl: this.aiOrchestratorUrl
+        }
+      };
+
+    } catch (error) {
+      this.logger.error('快速命名流程失败:', error);
+      reportProgress(ProcessingStage.COMPLETE, '完成', 100, '使用默认命名');
+
+      // 后备方案：使用默认命名
+      const suggestions = underlineInfo.map((info, idx) => ({
+        id: `sugg-${Date.now()}-${idx}`,
+        type: 'variable',
+        elementPath: `【${info.paragraphText.substring(0, 30)}...】`,
+        suggestedName: `{d.field_${idx + 1}}`,
+        originalText: info.text,
+        confidence: 0.7,
+        applied: false,
+        context: info.paragraphText.substring(0, 50),
+        details: {
+          chapter: '正文',
+          significance: '待填写内容',
+          variableName: `field_${idx + 1}`,
+          fieldType: 'text'
+        }
+      }));
+
+      return {
+        templateConfig: {
+          templateType: templateType,
+          staticElements: [],
+          tableLoops: [],
+          imageLoops: [],
+          combinedVariables: [],
+          variableMappings: [],
+          analysisNotes: ['后备命名模式']
+        },
+        suggestions: suggestions.map((s, idx) => ({
+          path: s.suggestedName,
+          sampleValue: s.originalText,
+          index: idx,
+          type: 'text',
+          reason: s.details?.significance
+        })),
+        rawSuggestions: suggestions,
+        loops: [],
+        images: [],
+        combinedVariables: [],
+        analyzedAt: new Date().toISOString(),
+        documentStats: {
+          totalElements: suggestions.length,
+          tables: 0,
+          images: 0,
+          stepScreenshots: 0,
+          potentialLoops: 0
+        },
+        contextAnalysis: {
+          detectedTemplateType: templateType,
+          userIntent: '后备命名',
+          usedAI: false,
+          aiServiceUrl: this.aiOrchestratorUrl
+        }
+      };
+    }
   }
 
   /**
