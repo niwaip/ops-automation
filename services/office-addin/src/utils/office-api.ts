@@ -273,8 +273,8 @@ export const WordAPI = {
 
             // ===== 步骤2：下划线字符直接加入结果 =====
             for (const underlineMatch of underlineCharMatches) {
-              // 同一段落中位置相近（<2字符）才算重复
-              if (!result.some(e => e.paragraphIndex === pIdx && Math.abs(e.position.start - underlineMatch.start) < 2)) {
+              // 同一段落中，位置必须完全不同才算不重复（使用精确位置比较）
+              if (!result.some(e => e.paragraphIndex === pIdx && e.position.start === underlineMatch.start)) {
                 result.push({
                   text: underlineMatch.text,
                   underlineType: 'underline-char',
@@ -305,18 +305,23 @@ export const WordAPI = {
                 await context.sync();
 
                 // 检查每个找到的空格区域是否有下划线格式
-                for (const foundRange of searchResults.items) {
+                // 注意：段落中可能有多个相同的空格文本，需要全部检查
+                for (let itemIdx = 0; itemIdx < searchResults.items.length; itemIdx++) {
+                  const foundRange = searchResults.items[itemIdx];
                   const underline = foundRange.font.underline;
                   const foundText = foundRange.text || '';
 
                   // 空格区域需要有下划线格式才作为参数
                   if (underline && underline !== 'None' && underline !== 'mixed') {
-                    // 使用段落文本计算实际位置（更准确）
-                    const actualPos = fullText.indexOf(foundText);
-                    const actualStart = actualPos >= 0 ? actualPos : spaceMatch.start;
+                    // 使用正则匹配的位置（准确），不使用 indexOf（对相同文本会返回第一个位置）
+                    // 如果段落中有多个相同的空格区域，根据 itemIdx 选择对应的位置
+                    const sameTextMatches = spaceMatches.filter(m => m.text === foundText);
+                    // 根据搜索结果的索引，选择对应的正则匹配位置
+                    const matchIdx = Math.min(itemIdx, sameTextMatches.length - 1);
+                    const actualStart = sameTextMatches[matchIdx]?.start ?? spaceMatch.start;
 
-                    // 同一段落中位置相近才算重复
-                    if (!result.some(e => e.paragraphIndex === pIdx && Math.abs(e.position.start - actualStart) < 2)) {
+                    // 同一段落中，位置必须完全不同才算不重复（使用精确位置比较）
+                    if (!result.some(e => e.paragraphIndex === pIdx && e.position.start === actualStart)) {
                       result.push({
                         text: foundText,
                         underlineType: underline.toString(),
