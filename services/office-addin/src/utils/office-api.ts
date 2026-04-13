@@ -215,7 +215,7 @@ export const WordAPI = {
     text: string;
     underlineType: string;
     index: number;
-    paragraphIndex: number;  // 新增：段落索引
+    paragraphIndex: number;  // 段落索引
     paragraphText: string;
     position: { start: number; end: number };
   }>> {
@@ -242,24 +242,23 @@ export const WordAPI = {
 
             // ===== 步骤1：分类查找空白区域 =====
             // A. 下划线字符：直接作为参数
-            const underlineCharMatches: Array<{ text: string; start: number; end: number; type: string }> = [];
+            const underlineCharMatches: Array<{ text: string; start: number; end: number }> = [];
             const underlineCharRegex = /[＿_]{2,}/g;  // 至少2个下划线字符
             let match: RegExpExecArray | null;
             while ((match = underlineCharRegex.exec(fullText)) !== null) {
               underlineCharMatches.push({
                 text: match[0],
                 start: match.index,
-                end: match.index + match[0].length,
-                type: 'underline-char'
+                end: match.index + match[0].length
               });
             }
 
             // B. 空格区域：需要检查 font.underline
             const spaceMatches: Array<{ text: string; start: number; end: number }> = [];
-            const spaceRegex = /[ 　\t]{2,}/g;  // 至少2个空格（排除下划线字符）
+            const spaceRegex = /[ 　\t]{2,}/g;  // 至少2个空格/制表符
             while ((match = spaceRegex.exec(fullText)) !== null) {
               // 避免与下划线字符重叠
-              if (!underlineCharMatches.some(u => u.start === match!.index)) {
+              if (!underlineCharMatches.some(u => Math.abs(u.start - match!.index) < 2)) {
                 spaceMatches.push({
                   text: match[0],
                   start: match.index,
@@ -274,16 +273,17 @@ export const WordAPI = {
 
             // ===== 步骤2：下划线字符直接加入结果 =====
             for (const underlineMatch of underlineCharMatches) {
-              if (!result.some(e => e.paragraphText === fullText && Math.abs(e.position.start - underlineMatch.start) < 3)) {
+              // 同一段落中位置相近（<2字符）才算重复
+              if (!result.some(e => e.paragraphIndex === pIdx && Math.abs(e.position.start - underlineMatch.start) < 2)) {
                 result.push({
                   text: underlineMatch.text,
                   underlineType: 'underline-char',
                   index: result.length,
-                  paragraphIndex: pIdx,  // 添加段落索引
+                  paragraphIndex: pIdx,
                   paragraphText: fullText,
                   position: { start: underlineMatch.start, end: underlineMatch.end }
                 });
-                console.log(`[DEBUG] ✓ 下划线字符参数: "${underlineMatch.text}" 位置 ${underlineMatch.start}`);
+                console.log(`[DEBUG] ✓ 下划线字符: 段落${pIdx} 位置${underlineMatch.start}-${underlineMatch.end}`);
               }
             }
 
@@ -304,24 +304,28 @@ export const WordAPI = {
                 }
                 await context.sync();
 
+                // 检查每个找到的空格区域是否有下划线格式
                 for (const foundRange of searchResults.items) {
                   const underline = foundRange.font.underline;
                   const foundText = foundRange.text || '';
 
-                  console.log(`[DEBUG] 空格区域 "${foundText}" (位置 ${spaceMatch.start}) font.underline: ${underline}`);
-
                   // 空格区域需要有下划线格式才作为参数
                   if (underline && underline !== 'None' && underline !== 'mixed') {
-                    if (!result.some(e => e.paragraphText === fullText && Math.abs(e.position.start - spaceMatch.start) < 3)) {
+                    // 使用段落文本计算实际位置（更准确）
+                    const actualPos = fullText.indexOf(foundText);
+                    const actualStart = actualPos >= 0 ? actualPos : spaceMatch.start;
+
+                    // 同一段落中位置相近才算重复
+                    if (!result.some(e => e.paragraphIndex === pIdx && Math.abs(e.position.start - actualStart) < 2)) {
                       result.push({
                         text: foundText,
                         underlineType: underline.toString(),
                         index: result.length,
-                        paragraphIndex: pIdx,  // 添加段落索引
+                        paragraphIndex: pIdx,
                         paragraphText: fullText,
-                        position: { start: spaceMatch.start, end: spaceMatch.end }
+                        position: { start: actualStart, end: actualStart + foundText.length }
                       });
-                      console.log(`[DEBUG] ✓ 下划线格式空格参数: "${foundText}" (${underline})`);
+                      console.log(`[DEBUG] ✓ 下划线空格: 段落${pIdx} 位置${actualStart}-${actualStart + foundText.length} (${underline})`);
                     }
                   }
                 }
@@ -335,23 +339,29 @@ export const WordAPI = {
         }
 
         console.log('[DEBUG] 最终检测到', result.length, '个参数位置');
-        resolve(result.sort((a, b) => a.position.start - b.position.start));
+        // 按段落索引优先排序，然后按位置排序（文档顺序）
+        resolve(result.sort((a, b) => {
+          if (a.paragraphIndex !== b.paragraphIndex) {
+            return a.paragraphIndex - b.paragraphIndex;
+          }
+          return a.position.start - b.position.start;
+        }));
       }).catch((e) => { console.error('[DEBUG] underline总错误:', e); resolve([]); });
     });
   },
 
   /**
-   * 按段落索引和位置高亮文本（用于高亮纯空格文本）
-   * 使用位置信息直接获取范围，而不是文本搜索
+   * 按段落索引和位置高亮下划线区域
+   * 使用搜索 + 位置验证来精确定位
    */
-  async highlightByParagraphIndex(paragraphIndex: number, startPos: number, endPos: number): Promise<boolean> {
+  async highlightUnderlineByPosition(paragraphIndex: number, startPos: number, endPos: number, textHint?: string): Promise<boolean> {
     return new Promise((resolve) => {
       Word.run(async (context) => {
         const paragraphs = context.document.body.paragraphs;
         paragraphs.load('items');
         await context.sync();
 
-        console.log(`[DEBUG] highlightByParagraphIndex: 段落 ${paragraphIndex}, 位置 ${startPos}-${endPos}`);
+        console.log(`[DEBUG] highlightUnderline: 段落${paragraphIndex}, 位置${startPos}-${endPos}, 提示"${textHint?.substring(0, 10)}..."`);
 
         if (paragraphIndex >= paragraphs.items.length) {
           console.warn(`[DEBUG] 段落索引 ${paragraphIndex} 超出范围`);
@@ -360,22 +370,59 @@ export const WordAPI = {
         }
 
         const paragraph = paragraphs.items[paragraphIndex];
-        paragraph.load('text');
-        await context.sync();
 
-        const fullText = paragraph.text;
-        console.log(`[DEBUG] 段落文本: "${fullText.substring(0, 30)}..."`);
-
-        // 使用 Word API 的 getTextRanges 方法获取位置范围内的文本
-        // 但这个方法可能不存在，改用搜索段落文本中特定位置的方法
-        // 更好的方法：使用段落起始位置 + 文本位置来计算绝对位置
-
-        // 方法：搜索段落中的任意一个唯一字符串，然后扩展到目标位置
-        // 简化方案：搜索整个段落文本，找到后取子范围
         try {
-          // 尝试使用段落开头的一部分作为锚点
-          const anchorText = fullText.substring(0, Math.min(20, startPos));
-          if (anchorText.length > 2) {
+          // 方法1：如果有文本提示，直接搜索
+          if (textHint && textHint.length >= 2) {
+            const searchResults = paragraph.search(textHint, {
+              matchCase: false,
+              matchWholeWord: false
+            });
+            searchResults.load('items');
+            await context.sync();
+
+            if (searchResults.items.length > 0) {
+              // 选择第一个匹配并高亮
+              const targetRange = searchResults.items[0];
+              targetRange.select();
+              targetRange.font.highlightColor = 'yellow';
+              await context.sync();
+              console.log(`[DEBUG] ✓ 已高亮文本: "${textHint.substring(0, 10)}..."`);
+              resolve(true);
+              return;
+            }
+          }
+
+          // 方法2：获取段落文本，计算位置，搜索定位
+          paragraph.load('text');
+          await context.sync();
+          const fullText = paragraph.text;
+
+          // 获取要高亮的文本片段
+          const targetText = fullText.substring(startPos, endPos);
+          if (targetText.length >= 2) {
+            const searchResults = paragraph.search(targetText, {
+              matchCase: false,
+              matchWholeWord: false
+            });
+            searchResults.load('items');
+            await context.sync();
+
+            if (searchResults.items.length > 0) {
+              const targetRange = searchResults.items[0];
+              targetRange.select();
+              targetRange.font.highlightColor = 'yellow';
+              await context.sync();
+              console.log(`[DEBUG] ✓ 已高亮位置文本: "${targetText.substring(0, 10)}..."`);
+              resolve(true);
+              return;
+            }
+          }
+
+          // 方法3：使用段落开头作为锚点，搜索后定位
+          const anchorLength = Math.min(startPos, 20);
+          if (anchorLength >= 3) {
+            const anchorText = fullText.substring(0, anchorLength);
             const searchResults = paragraph.search(anchorText, {
               matchCase: true,
               matchWholeWord: false
@@ -385,37 +432,117 @@ export const WordAPI = {
 
             if (searchResults.items.length > 0) {
               const anchorRange = searchResults.items[0];
-              // 从锚点扩展到目标位置
-              // 使用 getRange 方法获取段落起始位置，然后计算偏移
-              const paraRange = paragraph.getRange(Word.RangeLocation.whole);
-              paraRange.load('text');
+              // 从锚点获取后续文本范围
+              // Word API 不支持直接偏移，所以尝试搜索位置附近的文本
+              const nearText = fullText.substring(Math.max(0, startPos - 2), Math.min(fullText.length, endPos + 2));
+              const nearSearch = paragraph.search(nearText, {
+                matchCase: false,
+                matchWholeWord: false
+              });
+              nearSearch.load('items');
               await context.sync();
 
-              // 使用段落文本的位置来定位
-              // Word 不支持直接按字符位置获取范围，需要使用其他方法
+              if (nearSearch.items.length > 0) {
+                const targetRange = nearSearch.items[0];
+                targetRange.select();
+                targetRange.font.highlightColor = 'yellow';
+                await context.sync();
+                console.log(`[DEBUG] ✓ 已高亮附近文本`);
+                resolve(true);
+                return;
+              }
+            }
+          }
 
-              // 替代方案：高亮整个段落并滚动到视图
-              paraRange.select();
+          // 后备方案：选中整个段落
+          const paraRange = paragraph.getRange(Word.RangeLocation.whole);
+          paraRange.select();
+          await context.sync();
+          console.log(`[DEBUG] 已选中段落 ${paragraphIndex}（后备方案）`);
+          resolve(true);
+        } catch (err) {
+          console.warn(`[DEBUG] 高亮失败:`, err);
+          resolve(false);
+        }
+      }).catch((e) => {
+        console.error('[DEBUG] highlightUnderline 错误:', e);
+        resolve(false);
+      });
+    });
+  },
+
+  /**
+   * 按段落索引和位置替换下划线区域为参数标记
+   */
+  async replaceUnderlineByPosition(paragraphIndex: number, startPos: number, endPos: number, replacement: string, textHint?: string): Promise<boolean> {
+    return new Promise((resolve) => {
+      Word.run(async (context) => {
+        const paragraphs = context.document.body.paragraphs;
+        paragraphs.load('items');
+        await context.sync();
+
+        console.log(`[DEBUG] replaceUnderline: 段落${paragraphIndex}, 位置${startPos}-${endPos}, 替换为 "${replacement}"`);
+
+        if (paragraphIndex >= paragraphs.items.length) {
+          console.warn(`[DEBUG] 段落索引 ${paragraphIndex} 超出范围`);
+          resolve(false);
+          return;
+        }
+
+        const paragraph = paragraphs.items[paragraphIndex];
+
+        try {
+          // 方法1：如果有文本提示，直接搜索替换
+          if (textHint && textHint.length >= 2) {
+            const searchResults = paragraph.search(textHint, {
+              matchCase: false,
+              matchWholeWord: false
+            });
+            searchResults.load('items');
+            await context.sync();
+
+            if (searchResults.items.length > 0) {
+              const targetRange = searchResults.items[0];
+              targetRange.insertText(replacement, Word.InsertLocation.replace);
               await context.sync();
-
-              console.log(`[DEBUG] 已选中段落 ${paragraphIndex}`);
+              console.log(`[DEBUG] ✓ 已替换: "${textHint?.substring(0, 10)}..." → "${replacement}"`);
               resolve(true);
               return;
             }
           }
 
-          // 如果无法精确定位，选中整个段落
-          const paraRange = paragraph.getRange(Word.RangeLocation.whole);
-          paraRange.select();
+          // 方法2：获取段落文本，搜索目标位置文本
+          paragraph.load('text');
           await context.sync();
-          console.log(`[DEBUG] 已选中段落 ${paragraphIndex}（备用方案）`);
-          resolve(true);
+          const fullText = paragraph.text;
+
+          const targetText = fullText.substring(startPos, endPos);
+          if (targetText.length >= 2) {
+            const searchResults = paragraph.search(targetText, {
+              matchCase: false,
+              matchWholeWord: false
+            });
+            searchResults.load('items');
+            await context.sync();
+
+            if (searchResults.items.length > 0) {
+              const targetRange = searchResults.items[0];
+              targetRange.insertText(replacement, Word.InsertLocation.replace);
+              await context.sync();
+              console.log(`[DEBUG] ✓ 已替换位置文本: "${targetText?.substring(0, 10)}..." → "${replacement}"`);
+              resolve(true);
+              return;
+            }
+          }
+
+          console.warn(`[DEBUG] 未找到可替换的文本`);
+          resolve(false);
         } catch (err) {
-          console.warn(`[DEBUG] 高亮段落失败:`, err);
+          console.warn(`[DEBUG] 替换失败:`, err);
           resolve(false);
         }
       }).catch((e) => {
-        console.error('[DEBUG] highlightByParagraphIndex 错误:', e);
+        console.error('[DEBUG] replaceUnderline 错误:', e);
         resolve(false);
       });
     });

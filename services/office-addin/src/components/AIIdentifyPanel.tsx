@@ -286,15 +286,16 @@ export const AIIdentifyPanel: React.FC<Props> = ({ onApplyComplete }) => {
             `位置: ${info.position?.start}-${info.position?.end}`
           );
 
-          // 使用段落索引高亮（解决纯空格无法搜索的问题）
+          // 使用段落索引和位置高亮（新方法）
           try {
             if (info.paragraphIndex !== undefined) {
-              const success = await OfficeHelper.Word.highlightByParagraphIndex(
+              const success = await OfficeHelper.Word.highlightUnderlineByPosition(
                 info.paragraphIndex,
                 info.position?.start || 0,
-                info.position?.end || 0
+                info.position?.end || 0,
+                info.text  // 提供文本提示，帮助搜索
               );
-              addDebugLog('debug', `[测试下划线] #${i + 1} 高亮段落`, success ? '成功选中段落' : '失败');
+              addDebugLog('debug', `[测试下划线] #${i + 1} 高亮`, success ? '✓ 成功高亮下划线区域' : '失败');
             } else {
               // 后备方案：尝试文本搜索
               const count = await OfficeHelper.Word.highlightText(info.text);
