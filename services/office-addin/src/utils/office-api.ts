@@ -207,7 +207,9 @@ export const WordAPI = {
    * 获取带下划线的文本段落（用于识别需要参数化的位置）
    * 核心概念：合同中"下划线+空格"=需要参数化的位置
    *
-   * 新逻辑：先查找空白，查找到空白后，确认是不是 font.underline
+   * 逻辑：
+   * 1. 下划线字符 `_` 或 `____`：直接作为参数（无需检查 font.underline）
+   * 2. 空格区域：需要检查 font.underline 格式才作为参数
    */
   async getUnderlinedTexts(): Promise<Array<{
     text: string;
@@ -220,18 +222,7 @@ export const WordAPI = {
       Word.run(async (context) => {
         const result: any[] = [];
 
-        console.log('[DEBUG] 开始检测：先查找空白，再确认下划线格式...');
-
-        // 空白特征模式：用于匹配可能带下划线的空白区域
-        // 包括：下划线字符、空格序列、全角空格等
-        const blankPatterns = [
-          '______',  // 6个下划线
-          '____',    // 4个下划线
-          '___',     // 3个下划线
-          '__',      // 2个下划线
-          '＿',      // 全角下划线
-          '_',       // 单个下划线
-        ];
+        console.log('[DEBUG] 开始检测下划线参数位置...');
 
         try {
           const paragraphs = context.document.body.paragraphs;
@@ -248,43 +239,56 @@ export const WordAPI = {
             const fullText = paragraph.text;
             if (!fullText || fullText.trim().length < 2) continue;
 
-            // ===== 步骤1：在段落文本中查找所有空白区域 =====
-            // 使用正则匹配：连续空格、下划线字符、全角空格等
-            const blankRegex = /[\s＿_　]{2,}/g;  // 至少2个连续空白字符
+            // ===== 步骤1：分类查找空白区域 =====
+            // A. 下划线字符：直接作为参数
+            const underlineCharMatches: Array<{ text: string; start: number; end: number; type: string }> = [];
+            const underlineCharRegex = /[＿_]{2,}/g;  // 至少2个下划线字符
             let match: RegExpExecArray | null;
-
-            const blankMatches: Array<{ text: string; start: number; end: number }> = [];
-            while ((match = blankRegex.exec(fullText)) !== null) {
-              blankMatches.push({
+            while ((match = underlineCharRegex.exec(fullText)) !== null) {
+              underlineCharMatches.push({
                 text: match[0],
                 start: match.index,
-                end: match.index + match[0].length
+                end: match.index + match[0].length,
+                type: 'underline-char'
               });
             }
 
-            // 同时检查下划线字符模式
-            for (const pattern of blankPatterns) {
-              const charRegex = new RegExp(pattern.replace(/_/g, '[＿_]'), 'g');
-              while ((match = charRegex.exec(fullText)) !== null) {
-                // 避免重复添加
-                if (!blankMatches.some(b => b.start === match!.index)) {
-                  blankMatches.push({
-                    text: match[0],
-                    start: match.index,
-                    end: match.index + match[0].length
-                  });
-                }
+            // B. 空格区域：需要检查 font.underline
+            const spaceMatches: Array<{ text: string; start: number; end: number }> = [];
+            const spaceRegex = /[ 　\t]{2,}/g;  // 至少2个空格（排除下划线字符）
+            while ((match = spaceRegex.exec(fullText)) !== null) {
+              // 避免与下划线字符重叠
+              if (!underlineCharMatches.some(u => u.start === match!.index)) {
+                spaceMatches.push({
+                  text: match[0],
+                  start: match.index,
+                  end: match.index + match[0].length
+                });
               }
             }
 
-            if (blankMatches.length === 0) continue;
-            console.log(`[DEBUG] 段落 ${pIdx}: "${fullText.substring(0, 50)}..." 发现 ${blankMatches.length} 个空白区域`);
+            const totalBlankCount = underlineCharMatches.length + spaceMatches.length;
+            if (totalBlankCount === 0) continue;
+            console.log(`[DEBUG] 段落 ${pIdx}: 发现 ${underlineCharMatches.length} 个下划线字符 + ${spaceMatches.length} 个空格区域`);
 
-            // ===== 步骤2：对每个空白区域，检查 font.underline =====
-            for (const blankMatch of blankMatches) {
+            // ===== 步骤2：下划线字符直接加入结果 =====
+            for (const underlineMatch of underlineCharMatches) {
+              if (!result.some(e => e.paragraphText === fullText && Math.abs(e.position.start - underlineMatch.start) < 3)) {
+                result.push({
+                  text: underlineMatch.text,
+                  underlineType: 'underline-char',
+                  index: result.length,
+                  paragraphText: fullText,
+                  position: { start: underlineMatch.start, end: underlineMatch.end }
+                });
+                console.log(`[DEBUG] ✓ 下划线字符参数: "${underlineMatch.text}" 位置 ${underlineMatch.start}`);
+              }
+            }
+
+            // ===== 步骤3：空格区域检查 font.underline =====
+            for (const spaceMatch of spaceMatches) {
               try {
-                // 在段落中搜索这个空白区域
-                const searchResults = paragraph.search(blankMatch.text, {
+                const searchResults = paragraph.search(spaceMatch.text, {
                   matchCase: false,
                   matchWholeWord: false
                 });
@@ -293,7 +297,6 @@ export const WordAPI = {
 
                 if (searchResults.items.length === 0) continue;
 
-                // 检查每个找到的区域是否有下划线格式
                 for (const foundRange of searchResults.items) {
                   foundRange.load('text,font/underline');
                 }
@@ -303,26 +306,24 @@ export const WordAPI = {
                   const underline = foundRange.font.underline;
                   const foundText = foundRange.text || '';
 
-                  console.log(`[DEBUG] 空白区域 "${foundText}" (位置 ${blankMatch.start}) 下划线属性: ${underline}`);
+                  console.log(`[DEBUG] 空格区域 "${foundText}" (位置 ${spaceMatch.start}) font.underline: ${underline}`);
 
-                  // 判断是否有下划线格式
-                  // Word UnderlineType: 'None' | 'Single' | 'Double' | 'Dotted' | 'Mixed' 等
+                  // 空格区域需要有下划线格式才作为参数
                   if (underline && underline !== 'None' && underline !== 'mixed') {
-                    // 有下划线格式，添加到结果
-                    if (!result.some(e => e.paragraphText === fullText && Math.abs(e.position.start - blankMatch.start) < 3)) {
+                    if (!result.some(e => e.paragraphText === fullText && Math.abs(e.position.start - spaceMatch.start) < 3)) {
                       result.push({
                         text: foundText,
                         underlineType: underline.toString(),
                         index: result.length,
                         paragraphText: fullText,
-                        position: { start: blankMatch.start, end: blankMatch.end }
+                        position: { start: spaceMatch.start, end: spaceMatch.end }
                       });
-                      console.log(`[DEBUG] ✓ 确认下划线格式空白: "${foundText}" (${underline}) 在段落 ${pIdx}`);
+                      console.log(`[DEBUG] ✓ 下划线格式空格参数: "${foundText}" (${underline})`);
                     }
                   }
                 }
               } catch (searchErr) {
-                console.warn('[DEBUG] 空白区域搜索错误:', searchErr);
+                console.warn('[DEBUG] 空格搜索错误:', searchErr);
               }
             }
           }
@@ -330,7 +331,7 @@ export const WordAPI = {
           console.warn('[DEBUG] 格式检测总错误:', formatErr);
         }
 
-        console.log('[DEBUG] 最终检测到', result.length, '个带下划线格式的空白位置');
+        console.log('[DEBUG] 最终检测到', result.length, '个参数位置');
         resolve(result.sort((a, b) => a.position.start - b.position.start));
       }).catch((e) => { console.error('[DEBUG] underline总错误:', e); resolve([]); });
     });
