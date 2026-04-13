@@ -275,13 +275,15 @@ export const AIIdentifyPanel: React.FC<Props> = ({ onApplyComplete }) => {
       addDebugLog('info', `[测试下划线] 检测结果`, `发现 ${underlineInfo?.length || 0} 个下划线位置`);
 
       if (underlineInfo && underlineInfo.length > 0) {
-        // 显示每个下划线的详细信息，并插入模拟参数
-        for (let i = 0; i < underlineInfo.length; i++) {
+        // 从后往前替换（倒序），避免替换影响前面的位置计算
+        // 先替换位置大的，再替换位置小的
+        for (let i = underlineInfo.length - 1; i >= 0; i--) {
           const info = underlineInfo[i];
-          // 生成模拟参数名 {field_1}, {field_2} 等
-          const mockParam = `{field_${i + 1}}`;
+          // 编号按检测顺序（正序）：#1 → field_1, #13 → field_13
+          const fieldNum = i + 1;  // 使用原始索引 + 1
+          const mockParam = `{field_${fieldNum}}`;
 
-          addDebugLog('debug', `[测试下划线] #${i + 1}`,
+          addDebugLog('debug', `[测试下划线] #${fieldNum}`,
             `文本: "${info.text}" (${info.text.length}字符)\n` +
             `类型: ${info.underlineType}\n` +
             `段落索引: ${info.paragraphIndex}\n` +
@@ -289,29 +291,30 @@ export const AIIdentifyPanel: React.FC<Props> = ({ onApplyComplete }) => {
             `模拟参数: ${mockParam}`
           );
 
-          // 使用段落索引和位置替换为模拟参数（同时高亮）
+          // 使用段落索引和位置替换为模拟参数
           try {
             if (info.paragraphIndex !== undefined) {
-              // 替换空白为模拟参数标记
+              // 替换空白为模拟参数标记（传入原始段落文本，避免替换后文本变化）
               const success = await OfficeHelper.Word.replaceUnderlineByPosition(
                 info.paragraphIndex,
                 info.position?.start || 0,
                 info.position?.end || 0,
                 mockParam,
-                info.text  // 提供文本提示
+                info.text,
+                info.paragraphText  // 传入原始段落文本
               );
-              addDebugLog('debug', `[测试下划线] #${i + 1}`, success ? `✓ 已插入 ${mockParam}` : '替换失败');
+              addDebugLog('debug', `[测试下划线] #${fieldNum}`, success ? `✓ 已插入 ${mockParam}` : '替换失败');
             } else {
-              // 后备方案：尝试文本搜索替换
+              // 后备方案
               await OfficeHelper.Word.replaceText(info.text, mockParam);
-              addDebugLog('debug', `[测试下划线] #${i + 1}`, `已替换为 ${mockParam}`);
+              addDebugLog('debug', `[测试下划线] #${fieldNum}`, `已替换为 ${mockParam}`);
             }
           } catch (replaceErr: any) {
-            addDebugLog('warn', `[测试下划线] #${i + 1} 替换失败`, replaceErr.message);
+            addDebugLog('warn', `[测试下划线] #${fieldNum} 替换失败`, replaceErr.message);
           }
         }
 
-        addDebugLog('info', `[测试下划线] 完成`, `已插入 ${underlineInfo.length} 个模拟参数`);
+        addDebugLog('info', `[测试下划线] 完成`, `已插入 ${underlineInfo.length} 个模拟参数（倒序处理，编号正序）`);
       } else {
         addDebugLog('warn', `[测试下划线] 未检测到下划线`, `请检查文档中是否有带下划线格式的空白`);
       }

@@ -488,9 +488,9 @@ export const WordAPI = {
 
   /**
    * 按段落索引和位置替换下划线区域为参数标记
-   * 使用扩展文本搜索来精确定位
+   * 使用原始段落文本（避免替换后文本变化导致位置错乱）
    */
-  async replaceUnderlineByPosition(paragraphIndex: number, startPos: number, endPos: number, replacement: string, textHint?: string): Promise<boolean> {
+  async replaceUnderlineByPosition(paragraphIndex: number, startPos: number, endPos: number, replacement: string, textHint?: string, originalParagraphText?: string): Promise<boolean> {
     return new Promise((resolve) => {
       Word.run(async (context) => {
         const paragraphs = context.document.body.paragraphs;
@@ -506,70 +506,21 @@ export const WordAPI = {
         }
 
         const paragraph = paragraphs.items[paragraphIndex];
-        paragraph.load('text');
-        await context.sync();
-
-        const fullText = paragraph.text;
 
         try {
-          // 方法1：使用扩展文本搜索定位（与高亮方法一致）
-          const extendBefore = 4;  // 向前扩展4字符
-          const extendAfter = 4;   // 向后扩展4字符
-          const extendedStart = Math.max(0, startPos - extendBefore);
-          const extendedEnd = Math.min(fullText.length, endPos + extendAfter);
-          const extendedText = fullText.substring(extendedStart, extendedEnd);
-
-          console.log(`[DEBUG] 替换-扩展文本: "${extendedText}" (位置${extendedStart}-${extendedEnd})`);
-
-          if (extendedText.length >= 6) {
-            const searchResults = paragraph.search(extendedText, {
-              matchCase: true,  // 使用精确匹配
-              matchWholeWord: false
-            });
-            searchResults.load('items');
+          // 使用原始段落文本（检测时的文本）计算扩展文本
+          // 如果提供了 originalParagraphText，使用它；否则获取当前文本
+          let fullText = originalParagraphText;
+          if (!fullText) {
+            paragraph.load('text');
             await context.sync();
-
-            console.log(`[DEBUG] 替换-搜索结果数量: ${searchResults.items.length}`);
-
-            if (searchResults.items.length > 0) {
-              const foundRange = searchResults.items[0];
-              foundRange.load('text');
-              await context.sync();
-
-              // 在扩展文本中搜索空白部分
-              const blankText = fullText.substring(startPos, endPos);
-              const blankSearch = foundRange.search(blankText, {
-                matchCase: false,
-                matchWholeWord: false
-              });
-              blankSearch.load('items');
-              await context.sync();
-
-              if (blankSearch.items.length > 0) {
-                // 替换空白部分
-                const targetRange = blankSearch.items[0];
-                targetRange.insertText(replacement, Word.InsertLocation.replace);
-                await context.sync();
-                console.log(`[DEBUG] ✓ 已替换: "${blankText.substring(0, 10)}..." → "${replacement}"`);
-                resolve(true);
-                return;
-              } else {
-                // 替换整个扩展文本中的空白（如果找不到精确空白）
-                // 尝试直接在扩展文本中查找并替换
-                foundRange.insertText(
-                  extendedText.replace(blankText, replacement),
-                  Word.InsertLocation.replace
-                );
-                await context.sync();
-                console.log(`[DEBUG] ✓ 已替换扩展文本中的空白`);
-                resolve(true);
-                return;
-              }
-            }
+            fullText = paragraph.text;
           }
 
-          // 方法2：直接搜索空白文本（后备）
+          // 方法1：直接搜索空白文本（最简单可靠）
           const blankText = fullText.substring(startPos, endPos);
+          console.log(`[DEBUG] 空白文本: "${blankText}" (${blankText.length}字符)`);
+
           if (blankText.length >= 2) {
             const searchResults = paragraph.search(blankText, {
               matchCase: false,
@@ -578,11 +529,55 @@ export const WordAPI = {
             searchResults.load('items');
             await context.sync();
 
+            console.log(`[DEBUG] 搜索结果数量: ${searchResults.items.length}`);
+
             if (searchResults.items.length > 0) {
+              // 如果有多个匹配，使用扩展文本定位
+              if (searchResults.items.length > 1) {
+                console.log(`[DEBUG] 多个匹配，使用扩展文本定位`);
+
+                // 计算扩展文本（包含前后字符）
+                const extendBefore = 4;
+                const extendAfter = 4;
+                const extendedStart = Math.max(0, startPos - extendBefore);
+                const extendedEnd = Math.min(fullText.length, endPos + extendAfter);
+                const extendedText = fullText.substring(extendedStart, extendedEnd);
+
+                console.log(`[DEBUG] 扩展文本: "${extendedText}"`);
+
+                const extendedSearch = paragraph.search(extendedText, {
+                  matchCase: true,
+                  matchWholeWord: false
+                });
+                extendedSearch.load('items');
+                await context.sync();
+
+                if (extendedSearch.items.length > 0) {
+                  // 在扩展文本中搜索空白部分
+                  const foundRange = extendedSearch.items[0];
+                  const blankInExtended = foundRange.search(blankText, {
+                    matchCase: false,
+                    matchWholeWord: false
+                  });
+                  blankInExtended.load('items');
+                  await context.sync();
+
+                  if (blankInExtended.items.length > 0) {
+                    const targetRange = blankInExtended.items[0];
+                    targetRange.insertText(replacement, Word.InsertLocation.replace);
+                    await context.sync();
+                    console.log(`[DEBUG] ✓ 已替换（扩展定位）: "${blankText.substring(0, 10)}..." → "${replacement}"`);
+                    resolve(true);
+                    return;
+                  }
+                }
+              }
+
+              // 单个匹配或扩展定位失败，直接替换第一个
               const targetRange = searchResults.items[0];
               targetRange.insertText(replacement, Word.InsertLocation.replace);
               await context.sync();
-              console.log(`[DEBUG] ✓ 已替换（后备）: "${blankText.substring(0, 10)}..." → "${replacement}"`);
+              console.log(`[DEBUG] ✓ 已替换（直接）: "${blankText.substring(0, 10)}..." → "${replacement}"`);
               resolve(true);
               return;
             }
