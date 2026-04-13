@@ -803,6 +803,25 @@ body {
   background: #94a3b8;
 }
 
+.test-underline-btn {
+  padding: 8px 16px;
+  background: #8b5cf6;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 12px;
+  margin-top: 8px;
+}
+
+.test-underline-btn:hover {
+  background: #7c3aed;
+}
+
+.test-underline-btn:disabled {
+  background: #94a3b8;
+}
+
 .debug-toggle-btn {
   padding: 8px 16px;
   background: #6366f1;

@@ -248,6 +248,61 @@ export const AIIdentifyPanel: React.FC<Props> = ({ onApplyComplete }) => {
   };
 
   /**
+   * 测试下划线检测（调试专用）
+   * 独立测试 Word 文档中的下划线检测逻辑
+   */
+  const handleTestUnderline = async () => {
+    addDebugLog('info', `[测试下划线] 开始测试下划线检测...`);
+    try {
+      if (officeType !== 'word') {
+        addDebugLog('warn', `[测试下划线] 当前不是 Word 文档`, `Office 类型: ${officeType}`);
+        return;
+      }
+
+      // 1. 获取文档内容
+      const docContent = await OfficeHelper.Word.getDocumentContent();
+      addDebugLog('info', `[测试下划线] 文档内容`, `长度: ${docContent.length} 字符`);
+
+      // 2. 获取段落结构
+      const structure = await OfficeHelper.Word.getDocumentStructure();
+      addDebugLog('info', `[测试下划线] 段落数量`, `${structure.paragraphs?.length || 0} 个段落`);
+
+      // 3. 获取下划线信息（核心测试）
+      addDebugLog('info', `[测试下划线] 调用 getUnderlinedTexts()...`);
+      const underlineInfo = await OfficeHelper.Word.getUnderlinedTexts();
+
+      // 4. 显示详细结果
+      addDebugLog('info', `[测试下划线] 检测结果`, `发现 ${underlineInfo?.length || 0} 个下划线位置`);
+
+      if (underlineInfo && underlineInfo.length > 0) {
+        // 显示每个下划线的详细信息
+        for (let i = 0; i < underlineInfo.length; i++) {
+          const info = underlineInfo[i];
+          addDebugLog('debug', `[测试下划线] #${i + 1}`,
+            `文本: "${info.text}"\n` +
+            `类型: ${info.underlineType}\n` +
+            `段落: "${info.paragraphText?.substring(0, 50)}..." \n` +
+            `位置: ${info.position?.start}-${info.position?.end}`
+          );
+
+          // 尝试高亮这个位置
+          try {
+            const count = await OfficeHelper.Word.highlightText(info.text);
+            addDebugLog('debug', `[测试下划线] #${i + 1} 高亮`, `找到 ${count} 个匹配`);
+          } catch (highlightErr: any) {
+            addDebugLog('warn', `[测试下划线] #${i + 1} 高亮失败`, highlightErr.message);
+          }
+        }
+      } else {
+        addDebugLog('warn', `[测试下划线] 未检测到下划线`, `请检查文档中是否有带下划线格式的空白`);
+      }
+
+    } catch (error: any) {
+      addDebugLog('error', `[测试下划线] 测试失败`, error.message);
+    }
+  };
+
+  /**
    * 应用单个建议
    * 只替换空白部分（下划线+空格），保留上下文中的标签文字
    * 例如：将 "甲方：______" 中的 "______" 替换为 "{d.partyA}"
@@ -502,6 +557,17 @@ export const AIIdentifyPanel: React.FC<Props> = ({ onApplyComplete }) => {
       >
         🔌 测试连接
       </button>
+
+      {/* 测试下划线按钮（调试专用） */}
+      {officeType === 'word' && (
+        <button
+          className="test-underline-btn"
+          onClick={handleTestUnderline}
+          disabled={isAnalyzing}
+        >
+          🔍 测试下划线
+        </button>
+      )}
 
       {/* 调试面板开关 */}
       <button
