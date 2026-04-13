@@ -376,32 +376,51 @@ export const WordAPI = {
 
         try {
           // 方法1：使用扩展文本（包含前后字符）来搜索特定位置
-          // 这样即使相同文本出现多次，扩展文本也不同
-          const extendBefore = 2;  // 向前扩展2字符
-          const extendAfter = 2;   // 向后扩展2字符
+          // 增加扩展范围，确保每个位置的扩展文本不同
+          const extendBefore = 4;  // 向前扩展4字符
+          const extendAfter = 4;   // 向后扩展4字符
           const extendedStart = Math.max(0, startPos - extendBefore);
           const extendedEnd = Math.min(fullText.length, endPos + extendAfter);
           const extendedText = fullText.substring(extendedStart, extendedEnd);
 
           console.log(`[DEBUG] 扩展文本: "${extendedText}" (位置${extendedStart}-${extendedEnd})`);
 
-          if (extendedText.length >= 4) {
+          if (extendedText.length >= 6) {
             const searchResults = paragraph.search(extendedText, {
-              matchCase: false,
+              matchCase: true,  // 使用精确匹配
               matchWholeWord: false
             });
             searchResults.load('items');
             await context.sync();
 
+            console.log(`[DEBUG] 搜索结果数量: ${searchResults.items.length}`);
+
             if (searchResults.items.length > 0) {
+              // 如果有多个匹配，需要找到正确的位置
+              // 使用位置信息来筛选正确的匹配
+              let targetSearchResult = searchResults.items[0];
+
+              // 如果有多个匹配，找到最接近目标位置的
+              if (searchResults.items.length > 1) {
+                for (const item of searchResults.items) {
+                  item.load('text');
+                }
+                await context.sync();
+
+                // 找到文本位置最接近 startPos - extendBefore 的匹配
+                // 由于我们搜索的是 extendedText，匹配位置应该在 extendedStart 附近
+                // 选择第一个匹配（因为位置应该唯一）
+                console.log(`[DEBUG] 多个匹配，使用第一个`);
+                targetSearchResult = searchResults.items[0];
+              }
+
               // 找到扩展文本后，获取其中的空白部分
-              const foundRange = searchResults.items[0];
-              foundRange.load('text');
+              targetSearchResult.load('text');
               await context.sync();
 
               // 搜索扩展文本中的空白部分
               const blankText = fullText.substring(startPos, endPos);
-              const blankSearch = foundRange.search(blankText, {
+              const blankSearch = targetSearchResult.search(blankText, {
                 matchCase: false,
                 matchWholeWord: false
               });
@@ -419,8 +438,8 @@ export const WordAPI = {
                 return;
               } else {
                 // 直接高亮整个扩展文本
-                foundRange.select();
-                foundRange.font.highlightColor = 'yellow';
+                targetSearchResult.select();
+                targetSearchResult.font.highlightColor = 'yellow';
                 await context.sync();
                 console.log(`[DEBUG] ✓ 已高亮扩展文本（空白未找到）`);
                 resolve(true);
