@@ -215,18 +215,21 @@ export const WordAPI = {
   }>> {
     return new Promise((resolve) => {
       Word.run(async (context) => {
-        const patterns = ['______', '____', '___', '__', '＿', '_'];
         const result: any[] = [];
 
-        for (const p of patterns) {
+        // 方法1：搜索下划线字符 `_`
+        console.log('[DEBUG] 开始搜索下划线字符...');
+        const charPatterns = ['______', '____', '___', '__', '＿', '_'];
+        for (const pattern of charPatterns) {
           try {
-            const sr = context.document.body.search(p, { matchCase: false, matchWholeWord: false });
-            sr.load('items');
+            const searchResults = context.document.body.search(pattern, { matchCase: false, matchWholeWord: false });
+            searchResults.load('items');
             await context.sync();
-            if (sr.items.length === 0) continue;
-            for (const r of sr.items) r.load('text');
+            console.log(`[DEBUG] 搜索 "${pattern}" 找到 ${searchResults.items.length} 个结果`);
+            if (searchResults.items.length === 0) continue;
+            for (const r of searchResults.items) r.load('text');
             await context.sync();
-            for (const r of sr.items) {
+            for (const r of searchResults.items) {
               const txt = r.text || '';
               const para = r.paragraph;
               para.load('text');
@@ -234,14 +237,69 @@ export const WordAPI = {
               const pTxt = para.text || '';
               const sPos = pTxt.indexOf(txt);
               if (!result.some(e => e.paragraphText === pTxt && Math.abs(e.position.start - sPos) < 5) && sPos >= 0) {
-                result.push({ text: txt, underlineType: 'Single', index: result.length, paragraphText: pTxt, position: { start: sPos, end: sPos + txt.length } });
+                result.push({ text: txt, underlineType: 'char', index: result.length, paragraphText: pTxt, position: { start: sPos, end: sPos + txt.length } });
               }
             }
-          } catch (e) { console.warn('search error:', e); }
+          } catch (e) { console.warn('[DEBUG] 字符搜索错误:', e); }
         }
-        console.log('detected', result.length, 'underline positions');
+
+        // 方法2：检测带下划线格式的文本（font.underline = Single/Double等）
+        // 合同中常见：空格带下划线格式，而非实际的下划线字符
+        console.log('[DEBUG] 开始检测下划线格式...');
+        try {
+          const paragraphs = context.document.body.paragraphs;
+          paragraphs.load('items');
+          await context.sync();
+          console.log(`[DEBUG] 文档共 ${paragraphs.items.length} 个段落`);
+
+          for (let pIdx = 0; pIdx < paragraphs.items.length; pIdx++) {
+            const paragraph = paragraphs.items[pIdx];
+            paragraph.load('text');
+            await context.sync();
+
+            const fullText = paragraph.text;
+            if (!fullText || fullText.trim().length < 3) continue;
+
+            // 搜索段落中的空格区域（可能是带下划线格式的空白）
+            const spaceMatches = fullText.match(/\s{2,}/g);
+            if (spaceMatches) {
+              console.log(`[DEBUG] 段落 ${pIdx} 发现空格区域:`, spaceMatches);
+              for (const spaceMatch of spaceMatches) {
+                try {
+                  const searchResults = paragraph.search(spaceMatch, { matchCase: false, matchWholeWord: false });
+                  searchResults.load('items');
+                  await context.sync();
+
+                  for (const foundRange of searchResults.items) {
+                    foundRange.load('text,font/underline');
+                  }
+                  await context.sync();
+
+                  for (const foundRange of searchResults.items) {
+                    const underline = foundRange.font.underline;
+                    const foundText = foundRange.text || '';
+                    console.log(`[DEBUG] 空格区域 "${foundText}" 下划线属性: ${underline}`);
+
+                    if (underline && underline !== 'None' && underline !== 'Mixed') {
+                      const startPos = fullText.indexOf(foundText);
+                      if (!result.some(e => e.paragraphText === fullText && Math.abs(e.position.start - startPos) < 5) && startPos >= 0) {
+                        result.push({ text: foundText, underlineType: underline.toString(), index: result.length, paragraphText: fullText, position: { start: startPos, end: startPos + foundText.length } });
+                      }
+                    }
+                  }
+                } catch (searchErr) {
+                  console.warn('[DEBUG] 空格搜索错误:', searchErr);
+                }
+              }
+            }
+          }
+        } catch (formatErr) {
+          console.warn('[DEBUG] 格式检测错误:', formatErr);
+        }
+
+        console.log('[DEBUG] 最终检测到', result.length, '个下划线位置');
         resolve(result.sort((a, b) => a.position.start - b.position.start));
-      }).catch((e) => { console.error('underline error:', e); resolve([]); });
+      }).catch((e) => { console.error('[DEBUG] underline总错误:', e); resolve([]); });
     });
   },
   async highlightAtPosition(paragraphIndex: number, startPos: number, endPos: number): Promise<boolean> {
