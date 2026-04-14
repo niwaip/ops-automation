@@ -1215,3 +1215,131 @@ body {
   color: #92400e;
   padding: 4px 0;
 }
+
+/* 步骤流程指示器 */
+.workflow-steps {
+  display: flex;
+  justify-content: space-between;
+  margin: 16px 0;
+  padding: 12px;
+  background: #f8fafc;
+  border-radius: 8px;
+}
+
+.workflow-steps .step {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 8px 12px;
+  border-radius: 8px;
+  transition: all 0.3s;
+}
+
+.workflow-steps .step.active {
+  background: #dbeafe;
+}
+
+.workflow-steps .step-num {
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: #94a3b8;
+  color: white;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.workflow-steps .step.active .step-num {
+  background: #2563eb;
+}
+
+.workflow-steps .step-text {
+  font-size: 12px;
+  color: #64748b;
+  margin-top: 4px;
+}
+
+.workflow-steps .step.active .step-text {
+  color: #1e40af;
+  font-weight: 500;
+}
+
+/* 流程操作按钮 */
+.workflow-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin: 16px 0;
+}
+
+.workflow-btn {
+  padding: 12px 16px;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+  background: #f8fafc;
+  color: #475569;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.workflow-btn:hover:not(:disabled) {
+  background: #dbeafe;
+  border-color: #2563eb;
+}
+
+.workflow-btn.current {
+  background: #2563eb;
+  color: white;
+  border-color: #2563eb;
+}
+
+.workflow-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.workflow-btn.save-btn {
+  background: #22c55e;
+  color: white;
+  border-color: #22c55e;
+}
+
+.workflow-btn.save-btn:hover:not(:disabled) {
+  background: #16a34a;
+}
+
+/* 快捷操作 */
+.quick-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+  padding-top: 12px;
+  border-top: 1px dashed #e2e8f0;
+}
+
+.quick-actions button {
+  padding: 8px 12px;
+  border-radius: 4px;
+  border: 1px solid #e2e8f0;
+  background: white;
+  font-size: 12px;
+}
+
+/* 模板名称输入 */
+.template-name-input {
+  width: 100%;
+  padding: 8px 12px;
+  border: 1px solid #e2e8f0;
+  border-radius: 4px;
+  font-size: 14px;
+}
+
+.template-name-input:focus {
+  outline: none;
+  border-color: #2563eb;
+}

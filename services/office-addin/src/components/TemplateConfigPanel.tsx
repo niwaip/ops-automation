@@ -54,8 +54,15 @@ export const TemplateConfigPanel: React.FC = () => {
     validate: false,
     preview: false,
     generate: false,
+    skillGenerate: false,
+    skillPreview: false,
+    fullSave: false,
   });
   const [statusMessage, setStatusMessage] = useState<string>('');
+  const [currentStep, setCurrentStep] = useState<number>(1); // 1:验证, 2:生成Skill, 3:预览验证, 4:保存
+  const [generatedSkill, setGeneratedSkill] = useState<any>(null);
+  const [skillPreviewResult, setSkillPreviewResult] = useState<any>(null);
+  const [templateName, setTemplateName] = useState<string>('');
 
   /**
    * 生成预览数据
@@ -103,7 +110,7 @@ export const TemplateConfigPanel: React.FC = () => {
   };
 
   /**
-   * 验证模板
+   * 步骤1：验证模板
    */
   const handleValidate = async () => {
     setLoadingStates(prev => ({ ...prev, validate: true }));
@@ -118,7 +125,13 @@ export const TemplateConfigPanel: React.FC = () => {
       );
       setValidationErrors(result.errors || []);
       setValidationWarnings(result.warnings || []);
-      setStatusMessage(result.valid ? '验证通过' : '验证失败，请检查错误');
+
+      if (result.valid) {
+        setStatusMessage('验证通过，可继续生成AI指南');
+        setCurrentStep(2); // 验证成功后进入步骤2
+      } else {
+        setStatusMessage('验证失败，请检查错误');
+      }
     } catch (error: any) {
       console.error('验证失败:', error);
       setValidationErrors([error.message || '验证请求失败']);
@@ -220,12 +233,182 @@ export const TemplateConfigPanel: React.FC = () => {
     }
   };
 
+  /**
+   * 步骤2：生成AI使用指南Skill
+   */
+  const handleGenerateSkill = async () => {
+    setLoadingStates(prev => ({ ...prev, skillGenerate: true }));
+    setStatusMessage('正在生成AI使用指南...');
+
+    try {
+      carboneAPI.setBaseUrl(apiBaseUrl);
+      const result = await carboneAPI.generateSkill({
+        suggestions: suggestions.filter(s => s.applied),
+        templateConfig,
+        templateType: templateConfig.templateType || 'custom',
+        documentDescription: templateName || `${templateConfig.templateType || '自定义'}模板`,
+      });
+
+      if (result.success && result.skill) {
+        setGeneratedSkill(result.skill);
+        setCurrentStep(3);
+        setStatusMessage(`AI指南生成成功！包含 ${result.skill.parameterization?.variables?.length || 0} 个变量`);
+        localStorage.setItem('lastSkillId', result.skillId || '');
+        console.log('生成的Skill:', result.skill);
+      } else {
+        setStatusMessage(`AI指南生成失败: ${result.error || '未知错误'}`);
+      }
+    } catch (error: any) {
+      console.error('生成AI指南失败:', error);
+      setStatusMessage(`生成AI指南失败: ${error.message || '未知错误'}`);
+    } finally {
+      setLoadingStates(prev => ({ ...prev, skillGenerate: false }));
+    }
+  };
+
+  /**
+   * 步骤3：使用Skill进行参数化预览验证
+   */
+  const handleSkillPreview = async () => {
+    setLoadingStates(prev => ({ ...prev, skillPreview: true }));
+    setStatusMessage('正在使用AI指南进行预览验证...');
+
+    try {
+      let documentContent = '';
+      let format = 'docx';
+
+      if (officeType === 'word') {
+        documentContent = await OfficeHelper.Word.getDocumentContent();
+        format = 'docx';
+      } else if (officeType === 'excel') {
+        const sheetData = await OfficeHelper.Excel.getSheetData();
+        documentContent = JSON.stringify(sheetData.values);
+        format = 'xlsx';
+      }
+
+      carboneAPI.setBaseUrl(apiBaseUrl);
+
+      // 先生成模板
+      const templateResult = await carboneAPI.generateTemplate({
+        documentContent,
+        suggestions: suggestions.filter(s => s.applied),
+        templateConfig,
+        format,
+      });
+
+      if (!templateResult.success) {
+        setStatusMessage(`模板生成失败: ${templateResult.error}`);
+        return;
+      }
+
+      // 使用skill预览
+      const result = await carboneAPI.previewWithSkill({
+        templateId: templateResult.templateId,
+        skill: generatedSkill,
+      });
+
+      if (result.success) {
+        setSkillPreviewResult(result);
+        setCurrentStep(4);
+        setStatusMessage(`预览验证成功！可查看模拟数据效果`);
+        setPreviewData(result.generatedData || {});
+        console.log('预览结果:', result);
+      } else {
+        setStatusMessage(`预览验证失败: ${result.error || '未知错误'}`);
+      }
+    } catch (error: any) {
+      console.error('预览验证失败:', error);
+      setStatusMessage(`预览验证失败: ${error.message || '未知错误'}`);
+    } finally {
+      setLoadingStates(prev => ({ ...prev, skillPreview: false }));
+    }
+  };
+
+  /**
+   * 步骤4：保存完整模板（包含模板文件和Skill）
+   */
+  const handleFullSave = async () => {
+    setLoadingStates(prev => ({ ...prev, fullSave: true }));
+    setStatusMessage('正在保存完整模板...');
+
+    try {
+      let documentContent = '';
+      let format = 'docx';
+
+      if (officeType === 'word') {
+        documentContent = await OfficeHelper.Word.getDocumentContent();
+        format = 'docx';
+      } else if (officeType === 'excel') {
+        const sheetData = await OfficeHelper.Excel.getSheetData();
+        documentContent = JSON.stringify(sheetData.values);
+        format = 'xlsx';
+      }
+
+      carboneAPI.setBaseUrl(apiBaseUrl);
+      const result = await carboneAPI.saveTemplateFull({
+        documentContent,
+        suggestions: suggestions.filter(s => s.applied),
+        templateConfig,
+        skill: generatedSkill,
+        format,
+        templateName: templateName || `template_${Date.now()}`,
+      });
+
+      if (result.success) {
+        setStatusMessage(`完整模板保存成功！模板ID: ${result.templateId}`);
+        localStorage.setItem('lastTemplateId', result.templateId || '');
+        localStorage.setItem('lastTemplateDownloadUrl', result.downloadUrl || '');
+        localStorage.setItem('lastSkillId', result.skillId || '');
+        console.log('保存结果:', result);
+      } else {
+        setStatusMessage(`保存失败: ${result.error || '未知错误'}`);
+      }
+    } catch (error: any) {
+      console.error('保存完整模板失败:', error);
+      setStatusMessage(`保存失败: ${error.message || '未知错误'}`);
+    } finally {
+      setLoadingStates(prev => ({ ...prev, fullSave: false }));
+    }
+  };
+
   useEffect(() => {
     generatePreviewData();
   }, [templateConfig.templateType, suggestions]);
 
   return (
     <div className="template-config-panel">
+      {/* 步骤流程指示器 */}
+      <div className="workflow-steps">
+        <div className={`step ${currentStep >= 1 ? 'active' : ''}`}>
+          <span className="step-num">1</span>
+          <span className="step-text">验证模板</span>
+        </div>
+        <div className={`step ${currentStep >= 2 ? 'active' : ''}`}>
+          <span className="step-num">2</span>
+          <span className="step-text">生成AI指南</span>
+        </div>
+        <div className={`step ${currentStep >= 3 ? 'active' : ''}`}>
+          <span className="step-num">3</span>
+          <span className="step-text">预览验证</span>
+        </div>
+        <div className={`step ${currentStep >= 4 ? 'active' : ''}`}>
+          <span className="step-num">4</span>
+          <span className="step-text">保存模板</span>
+        </div>
+      </div>
+
+      {/* 模板名称输入 */}
+      <div className="config-section">
+        <h3>模板名称</h3>
+        <input
+          type="text"
+          value={templateName}
+          onChange={(e) => setTemplateName(e.target.value)}
+          placeholder="输入模板名称（可选）"
+          className="template-name-input"
+        />
+      </div>
+
       {/* 模板类型选择 */}
       <div className="config-section">
         <h3>模板类型</h3>
@@ -286,28 +469,60 @@ export const TemplateConfigPanel: React.FC = () => {
         </div>
       </div>
 
-      {/* 验证和预览 */}
-      <div className="config-section actions">
+      {/* 流程操作按钮 */}
+      <div className="config-section workflow-actions">
+        {/* 步骤1: 验证模板 */}
         <button
-          className="validate-btn"
+          className={`workflow-btn ${currentStep === 1 ? 'current' : ''}`}
           onClick={handleValidate}
           disabled={loadingStates.validate}
         >
-          {loadingStates.validate ? '验证中...' : '验证格式'}
+          {loadingStates.validate ? '验证中...' : '1. 验证模板'}
         </button>
+
+        {/* 步骤2: 生成AI指南 */}
+        <button
+          className={`workflow-btn ${currentStep === 2 ? 'current' : ''}`}
+          onClick={handleGenerateSkill}
+          disabled={loadingStates.skillGenerate || currentStep < 2}
+        >
+          {loadingStates.skillGenerate ? '生成中...' : '2. 生成AI指南'}
+        </button>
+
+        {/* 步骤3: 预览验证 */}
+        <button
+          className={`workflow-btn ${currentStep === 3 ? 'current' : ''}`}
+          onClick={handleSkillPreview}
+          disabled={loadingStates.skillPreview || currentStep < 3 || !generatedSkill}
+        >
+          {loadingStates.skillPreview ? '预览中...' : '3. 预览验证'}
+        </button>
+
+        {/* 步骤4: 保存完整模板 */}
+        <button
+          className={`workflow-btn save-btn ${currentStep === 4 ? 'current' : ''}`}
+          onClick={handleFullSave}
+          disabled={loadingStates.fullSave || currentStep < 4}
+        >
+          {loadingStates.fullSave ? '保存中...' : '4. 保存模板'}
+        </button>
+      </div>
+
+      {/* 快捷操作（原有功能保留） */}
+      <div className="config-section quick-actions">
         <button
           className="preview-btn"
           onClick={handlePreview}
           disabled={loadingStates.preview}
         >
-          {loadingStates.preview ? '预览中...' : '预览效果'}
+          {loadingStates.preview ? '预览中...' : '快速预览'}
         </button>
         <button
           className="generate-btn"
           onClick={handleGenerateTemplate}
           disabled={loadingStates.generate}
         >
-          {loadingStates.generate ? '生成中...' : '生成模板'}
+          {loadingStates.generate ? '生成中...' : '快速生成'}
         </button>
       </div>
 

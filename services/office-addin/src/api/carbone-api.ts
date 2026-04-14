@@ -306,6 +306,79 @@ class CarboneAPI {
   }
 
   /**
+   * 生成AI使用指南Skill
+   */
+  async generateSkill(request: {
+    templateId?: string;
+    suggestions: AISuggestion[];
+    templateConfig?: TemplateConfig;
+    templateType?: string;
+    documentDescription?: string;
+  }): Promise<{
+    success: boolean;
+    skill?: any;
+    skillId?: string;
+    error?: string;
+  }> {
+    const response = await axios.post(
+      `${this.baseUrl}/studio/generate-skill`,
+      request,
+      getAxiosConfig(this.baseUrl, { timeout: 60000 })
+    );
+    return response.data;
+  }
+
+  /**
+   * 使用AI Skill进行参数化预览
+   */
+  async previewWithSkill(request: {
+    templateId?: string;
+    skillId?: string;
+    skill?: any;
+    simulatedData?: any;
+  }): Promise<{
+    success: boolean;
+    previewUrl?: string;
+    generatedData?: any;
+    skillUsed?: any;
+    error?: string;
+  }> {
+    const response = await axios.post(
+      `${this.baseUrl}/studio/preview-with-skill`,
+      request,
+      getAxiosConfig(this.baseUrl, { timeout: 60000 })
+    );
+    return response.data;
+  }
+
+  /**
+   * 保存完整模板（包含模板文件和AI Skill）
+   */
+  async saveTemplateFull(request: {
+    documentContent: string;
+    suggestions: AISuggestion[];
+    templateConfig?: TemplateConfig;
+    skill?: any;
+    skillId?: string;
+    format?: string;
+    templateName?: string;
+  }): Promise<{
+    success: boolean;
+    templateId?: string;
+    skillId?: string;
+    downloadUrl?: string;
+    skillDownloadUrl?: string;
+    error?: string;
+  }> {
+    const response = await axios.post(
+      `${this.baseUrl}/studio/save-template-full`,
+      request,
+      getAxiosConfig(this.baseUrl, { timeout: 60000 })
+    );
+    return response.data;
+  }
+
+  /**
    * 获取格式化器列表
    */
   async getFormatters(): Promise<Array<{

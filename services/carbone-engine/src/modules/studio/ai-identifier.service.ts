@@ -2211,6 +2211,174 @@ ${blankList}
   }
 
   /**
+   * 生成AI使用指南Skill
+   * 根据已应用的变量映射，生成指导AI进行数据解析和参数化的skill文档
+   */
+  async generateAISkillGuide(
+    suggestions: any[],
+    templateConfig: any,
+    templateType: string,
+    documentDescription?: string
+  ): Promise<any> {
+    this.logger.log('Generating AI Skill Guide...');
+
+    // 构建变量列表
+    const variables = suggestions
+      .filter(s => s.applied)
+      .map(s => ({
+        name: s.suggestedName || s.details?.variableName,
+        originalText: s.originalText,
+        fieldType: s.details?.fieldType || 'text',
+        formatter: s.details?.formatter || null,
+        meaning: s.details?.reason || s.details?.significance || '',
+        example: this.generateExampleValue(s.details?.fieldType || 'text', s.suggestedName),
+        required: true, // 默认必填
+      }));
+
+    // 根据模板类型生成特定的AI指导
+    const typeInstructions = this.getTypeInstructions(templateType);
+
+    // 构建完整的skill结构
+    const skill = {
+      id: `skill-${Date.now()}`,
+      version: '1.0',
+      templateType,
+      description: documentDescription || `这是一个${templateType}模板，用于生成标准化文档。`,
+
+      // 数据解析指导
+      dataParsing: {
+        sourceType: 'json',
+        mappingHints: variables.map(v => ({
+          field: v.name,
+          path: `{d.${v.name.replace(/[:\[].*/g, '')}}`,
+          description: v.meaning,
+          example: v.example,
+        })),
+      },
+
+      // 参数化规则
+      parameterization: {
+        variables,
+        rules: [
+          '根据用户提供的数据源，映射到对应的变量',
+          '日期类型使用 :formatD(Y-M-D) 格式化',
+          '金额类型使用 :formatN(2) 格式化',
+          '表格循环使用 #d.tableName[]...[/d.tableName] 格式',
+        ],
+      },
+
+      // 特殊处理规则
+      specialRules: {
+        dateFormat: 'YYYY-MM-DD',
+        amountFormat: '保留两位小数，使用逗号分隔千位',
+        tableLoops: templateConfig?.tableLoops || [],
+      },
+
+      // 验证规则
+      validation: {
+        requiredFields: variables.filter(v => v.required).map(v => v.name),
+        preConditions: [
+          '确保数据源包含所有必填字段',
+          '检查日期格式是否正确',
+          '验证金额字段为数值类型',
+        ],
+        postConditions: [
+          '生成文档后检查变量是否正确填充',
+          '确认无遗漏的下划线或空白',
+        ],
+      },
+
+      // AI使用提示（完整指导）
+      aiInstructions: this.buildCompleteAIInstructions(templateType, variables, documentDescription),
+
+      createdAt: new Date().toISOString(),
+    };
+
+    this.logger.log(`AI Skill Guide generated with ${variables.length} variables`);
+    return skill;
+  }
+
+  /**
+   * 根据模板类型获取类型说明
+   */
+  private getTypeInstructions(templateType: string): string {
+    const typeMap: Record<string, string> = {
+      contract: '合同模板：需要准确填写合同编号、甲乙方信息、金额、日期等关键信息',
+      invoice: '发票模板：需要准确填写发票号、金额明细、税率等财务信息',
+      report: '报告模板：需要填写报告标题、数据统计、分析结论等内容',
+      certificate: '证书模板：需要填写证书编号、持证人信息、有效期等',
+      letter: '函件模板：需要填写函件标题、收件人、正文内容等',
+      custom: '自定义模板：根据具体需求填写相应字段',
+    };
+    return typeMap[templateType] || typeMap.custom;
+  }
+
+  /**
+   * 生成示例值
+   */
+  private generateExampleValue(fieldType: string, variableName: string): string {
+    switch (fieldType) {
+      case 'date':
+        return '2024-01-15';
+      case 'amount':
+        return '10000.00';
+      case 'number':
+        return '100';
+      case 'phone':
+        return '13800138000';
+      case 'email':
+        return 'example@email.com';
+      case 'address':
+        return '北京市朝阳区xxx街道xxx号';
+      case 'name':
+        return '张三';
+      default:
+        return `示例_${variableName?.replace(/[:\[].*/g, '') || '值'}`;
+    }
+  }
+
+  /**
+   * 构建完整的AI使用指导
+   */
+  private buildCompleteAIInstructions(
+    templateType: string,
+    variables: any[],
+    documentDescription?: string
+  ): string {
+    const typeDesc = this.getTypeInstructions(templateType);
+    const varList = variables
+      .map(v => `- **${v.name}**: ${v.meaning || '填写对应值'}（示例: ${v.example}）`)
+      .join('\n');
+
+    return `
+## 模板概述
+${documentDescription || typeDesc}
+
+## 变量列表
+${varList}
+
+## 使用流程
+1. 接收用户提供的数据源（JSON格式）
+2. 按照变量映射规则提取数据
+3. 使用格式化器处理特殊类型（日期、金额等）
+4. 填充模板生成最终文档
+
+## 数据示例
+\`\`\`json
+{
+${variables.slice(0, 5).map(v => `  "${v.name?.replace(/[:\[].*/g, '')}": "${v.example}"`).join(',\n')}
+}
+\`\`\`
+
+## 注意事项
+- 所有必填字段必须提供有效值
+- 日期格式统一为 YYYY-MM-DD
+- 金额保留两位小数
+- 表格数据需提供数组格式
+`;
+  }
+
+  /**
    * AI失败时的后备建议生成
    * @param startIndex 空白的起始索引（用于分批处理时的索引偏移）
    */
