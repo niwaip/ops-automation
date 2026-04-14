@@ -71,7 +71,7 @@ templates/
 services/carbone-engine/outputs/
 outputs/
 # Generated test files in root
-保密协议_测试.docx
+保密协议*.docx
 # Playwright MCP test files
 .playwright-mcp/
 *.png
