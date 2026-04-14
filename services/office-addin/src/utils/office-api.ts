@@ -110,6 +110,65 @@ export const WordAPI = {
   },
 
   /**
+   * 使用Word.run获取整个文档的内容并转换为base64
+   * 通过body.getOoxml()获取完整的OOXML格式
+   */
+  async getDocumentAsBase64(): Promise<string> {
+    return new Promise((resolve, reject) => {
+      Word.run(async (context) => {
+        // 获取整个文档（不只是body）
+        const document = context.document;
+        const body = document.body;
+
+        // 方法1：尝试获取OOXML格式的完整文档
+        const ooxml = body.getOoxml();
+        ooxml.load('value');
+        await context.sync();
+
+        if (ooxml.value && ooxml.value.length > 0) {
+          console.log('OOXML获取成功，长度:', ooxml.value.length);
+          // OOXML是XML格式，需要转base64
+          const base64 = this.utf8ToBase64(ooxml.value);
+          resolve(base64);
+          return;
+        }
+
+        // 方法2：如果OOXML失败，获取纯文本
+        body.load('text');
+        await context.sync();
+        const text = body.text;
+        console.log('纯文本获取成功，长度:', text?.length);
+        resolve(this.utf8ToBase64(text || ''));
+      }).catch((error) => {
+        console.error('Word.run获取文档失败:', error);
+        reject(error);
+      });
+    });
+  },
+
+  /**
+   * 使用Document.getFileContentAsync（新版API，如果支持）
+   * 直接返回base64编码的文件内容
+   */
+  async getFileContentBase64(): Promise<string> {
+    // 检查是否支持getFileContentAsync（较新的API）
+    if (Office.context.document.getFileContentAsync) {
+      return new Promise((resolve, reject) => {
+        Office.context.document.getFileContentAsync(Office.FileType.Compressed, (result) => {
+          if (result.status === Office.AsyncResultStatus.Succeeded) {
+            console.log('getFileContentAsync成功，长度:', result.value?.length);
+            resolve(result.value);
+          } else {
+            console.warn('getFileContentAsync失败:', result.error?.message);
+            reject(new Error(result.error?.message || 'getFileContentAsync失败'));
+          }
+        });
+      });
+    }
+    throw new Error('getFileContentAsync不支持');
+  },
+
+  /**
    * 使用OOXML方式获取文档内容（备用方案）
    * Word.run API方式获取文档的Open XML格式
    */
@@ -130,18 +189,41 @@ export const WordAPI = {
   },
 
   /**
-   * 获取文档文件Base64（多种方式尝试）
+   * 获取文档文件Base64（多种方式尝试，按优先级）
    */
   async getDocumentFileBase64WithFallback(): Promise<{ base64: string; method: string }> {
-    // 方法1: 尝试getFileAsync
+    // 方法1: 尝试getFileContentAsync（最新API，直接返回base64）
+    try {
+      const base64 = await this.getFileContentBase64();
+      if (base64 && base64.length > 0) {
+        // 验证是否是有效的docx（PK开头）
+        try {
+          const decoded = atob(base64.substring(0, 50));
+          if (decoded.substring(0, 2) === 'PK') {
+            console.log('getFileContentAsync成功获取有效docx文件');
+            return { base64, method: 'getFileContentAsync' };
+          }
+        } catch (e) {
+          console.warn('getFileContentAsync验证失败');
+        }
+      }
+    } catch (e) {
+      console.warn('getFileContentAsync失败或不支持:', e);
+    }
+
+    // 方法2: 尝试getFileAsync（切片方式）
     try {
       const base64 = await this.getDocumentFileBase64();
       // 验证是否有效
       if (base64 && base64.length > 0) {
-        const decoded = atob(base64.substring(0, 50));
-        if (decoded.substring(0, 2) === 'PK') {
-          console.log('getFileAsync成功获取有效docx文件');
-          return { base64, method: 'getFileAsync' };
+        try {
+          const decoded = atob(base64.substring(0, 50));
+          if (decoded.substring(0, 2) === 'PK') {
+            console.log('getFileAsync成功获取有效docx文件');
+            return { base64, method: 'getFileAsync' };
+          }
+        } catch (e) {
+          console.warn('getFileAsync base64验证失败');
         }
       }
       console.warn('getFileAsync返回的数据不是有效docx格式');
@@ -149,19 +231,18 @@ export const WordAPI = {
       console.warn('getFileAsync失败:', e);
     }
 
-    // 方法2: 使用OOXML（返回XML而非docx，但可用于替换操作）
+    // 方法3: 使用Word.run获取文档base64（OOXML方式）
     try {
-      const ooxml = await this.getDocumentOoxml();
-      if (ooxml && ooxml.length > 0) {
-        console.log('使用OOXML方式获取文档');
-        // OOXML是纯文本XML，使用UTF-8编码转base64
-        return { base64: this.utf8ToBase64(ooxml), method: 'ooxml' };
+      const base64 = await this.getDocumentAsBase64();
+      if (base64 && base64.length > 0) {
+        console.log('使用Word.run方式获取文档');
+        return { base64, method: 'wordRun' };
       }
     } catch (e) {
-      console.warn('OOXML方式也失败:', e);
+      console.warn('Word.run方式也失败:', e);
     }
 
-    // 方法3: 纯文本（最后的fallback）
+    // 方法4: 纯文本（最后的fallback）
     const text = await this.getDocumentContent();
     console.warn('使用纯文本作为fallback');
     return { base64: this.utf8ToBase64(text), method: 'text' };
