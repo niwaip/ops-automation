@@ -93,7 +93,7 @@ export const AIIdentifyPanel: React.FC<Props> = ({ onApplyComplete }) => {
     setCurrentStage('');
     setCurrentSection('');
 
-    addDebugLog('info', `开始 AI 多阶段分析`, `API: ${apiBaseUrl}, 模板类型: ${selectedTemplateType}, 使用多阶段: ${useMultiStage}`);
+    addDebugLog('info', `开始 AI 识别`, `模板类型: ${selectedTemplateType}`);
 
     try {
       // 获取文档内容
@@ -165,8 +165,8 @@ export const AIIdentifyPanel: React.FC<Props> = ({ onApplyComplete }) => {
           addDebugLog('debug', `进度更新`, `${stageName}: ${progress}% - ${message}${section ? ` (${section})` : ''}`);
         };
 
-        // 显示处理中提示（不显示具体进度，因为HTTP不支持实时进度）
-        updateProgress('处理中', 10, '⏳ 正在处理文档...');
+        // 显示处理中提示（模糊进度，HTTP不支持实时进度）
+        updateProgress('处理中', 50, '⏳ 正在处理文档...');
 
         // 调用多阶段API
         const result = await carboneAPI.identifyDocumentMultiStage(requestPayload);
@@ -558,7 +558,7 @@ export const AIIdentifyPanel: React.FC<Props> = ({ onApplyComplete }) => {
         {isAnalyzing ? (
           <span className="analyzing-indicator">
             <span className="spinner"></span>
-            <span className="loading-text">{loadingMessage}</span>
+            <span className="loading-text">正在处理...</span>
           </span>
         ) : 'AI 智能识别'}
       </button>
