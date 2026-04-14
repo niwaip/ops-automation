@@ -48,11 +48,18 @@ export class XmlPreprocessor {
   /**
    * 扁平化XML - 合并被拆分的文本节点
    * Word经常将 {d.name} 拆分成 <w:t>{d.</w:t><w:t>name}</w:t>
+   * 或者被 <w:proofErr> 拆分成多个 <w:r> 元素
    * 此方法将这些节点合并，使正则匹配可以正常工作
    */
   flatten(xml: string): string {
     let result = xml;
 
+    // 步骤1: 移除拼写检查标记 <w:proofErr>
+    // 这些标记会打断文本节点，导致变量标记被拆分
+    result = result.replace(/<w:proofErr[^>]*>/g, '');
+
+    // 步骤2: 合并相邻的 <w:r> 元素中的 <w:t> 节点
+    // 当 proofErr 被移除后，相邻的 <w:r> 元素可能需要合并
     // 多次迭代，处理多层嵌套的拆分
     for (let i = 0; i < 10; i++) {
       const previousResult = result;
@@ -71,8 +78,103 @@ export class XmlPreprocessor {
         }
       );
 
+      // 步骤3: 合并被拆分的 Carbone 标记
+      // 处理 {d.xxx} 被拆分成 {</w:t></w:r><w:r><w:t>d.xxx} 的情况
+      // 合并 </w:r><w:r 中间没有内容的相邻 run 元素
+      result = result.replace(
+        /<\/w:r>(\s*)<w:r(\s[^>]*)?>/g,
+        (match, whitespace, attrs) => {
+          // 检查是否是空的相邻 run（没有格式属性）
+          if (attrs && attrs.trim() === '') {
+            return '';
+          }
+          return match;
+        }
+      );
+
       // 如果没有变化，停止迭代
       if (result === previousResult) break;
+    }
+
+    // 步骤4: 修复被拆分的 Carbone 标记
+    // 处理 { 后面紧跟着 XML 结束标签的情况
+    // 例如: {</w:t></w:r><w:r><w:t>d.xxx</w:t></w:r><w:r><w:t>}
+    result = this.repairSplitCarboneMarkers(result);
+
+    return result;
+  }
+
+  /**
+   * 修复被拆分的 Carbone 标记
+   * 处理标记被拆分成多个 XML 元素的情况
+   */
+  private repairSplitCarboneMarkers(xml: string): string {
+    let result = xml;
+
+    // 方法1: 找到所有包含 { 或 d. 或 } 的 <w:t> 节点，分析是否组成拆分的标记
+    // 首先提取所有w:t节点的位置和内容
+    const textNodes: Array<{ start: number; end: number; text: string; full: string }> = [];
+    const textPattern = /<w:t[^>]*>([^<]*)<\/w:t>/g;
+    let textMatch;
+    while ((textMatch = textPattern.exec(result)) !== null) {
+      textNodes.push({
+        start: textMatch.index,
+        end: textMatch.index + textMatch[0].length,
+        text: textMatch[1],
+        full: textMatch[0]
+      });
+    }
+
+    // 找到拆分的标记：{ ... d.xxx ... } 被分成多个节点
+    // 模式：节点i有 '{'，节点j有 'd.xxx...'，节点k有 '}'
+    for (let i = 0; i < textNodes.length; i++) {
+      const nodeI = textNodes[i];
+      // 找到以 { 开头或包含 { 的节点
+      if (nodeI.text.includes('{')) {
+        // 向后查找组成完整标记的节点
+        let markerText = nodeI.text;
+        let endNodeIdx = -1;
+
+        for (let j = i + 1; j < textNodes.length && j < i + 10; j++) {
+          markerText += textNodes[j].text;
+          // 检查是否形成了完整的标记
+          if (markerText.match(/^\{[cdt][.#\/]?\.[^}]+\}$/)) {
+            endNodeIdx = j;
+            break;
+          }
+          // 如果已经超过可能的标记长度，停止
+          if (markerText.length > 100 || markerText.includes('}{')) {
+            break;
+          }
+        }
+
+        // 如果找到了完整的拆分标记
+        if (endNodeIdx !== -1) {
+          // 替换第一个节点的文本为完整标记，清空其他节点
+          const firstNode = textNodes[i];
+          const newTextContent = markerText;
+
+          // 替换第一个节点
+          const newFirstNode = firstNode.full.replace(
+            /<w:t[^>]*>([^<]*)<\/w:t>/,
+            `<w:t>${newTextContent}</w:t>`
+          );
+          result = result.substring(0, firstNode.start) + newFirstNode +
+                   result.substring(firstNode.end);
+
+          // 清空其他节点（替换为空的w:t）
+          for (let j = i + 1; j <= endNodeIdx; j++) {
+            const nodeJ = textNodes[j];
+            // 注意：位置已经因为之前的替换而改变，需要重新查找
+            const emptyNode = nodeJ.full.replace(
+              /<w:t[^>]*>([^<]*)<\/w:t>/,
+              `<w:t></w:t>`
+            );
+            // 在当前result中找到并替换（使用唯一标识）
+            result = result.replace(nodeJ.full, emptyNode);
+          }
+        }
+      }
     }
 
     return result;

@@ -56,6 +56,39 @@ export class AIIdentifyDto {
   markingSummary?: string;  // 标记摘要文本
 }
 
+/**
+ * 直接AI识别DTO - 用于Office插件直接提交文档内容
+ * 无需先上传模板，直接对文档内容进行AI识别
+ */
+export class DirectAIIdentifyDto {
+  documentContent!: string;           // 文档文本内容（从Office获取）
+  documentType!: 'docx' | 'xlsx' | 'pptx' | 'text';  // 文档类型
+  templateType?: string;              // 模板类型：report, invoice, contract, certificate 等
+  context?: string;                   // 上下文信息（如文档用途描述）
+  customRules?: Array<{               // 自定义识别规则
+    pattern: string;
+    targetPath: string;
+    description?: string;
+  }>;
+  underlineInfo?: Array<{             // 下划线信息（从Word JS API获取）
+    text: string;                     // 带下划线的文本
+    underlineType: string;            // 下划线类型
+    paragraphIndex?: number;          // 段落索引（用于精确定位）
+    paragraphText: string;            // 所在段落完整文本
+    position: { start: number; end: number };  // 在段落中的位置
+  }>;
+  paragraphFormats?: Array<{          // 段落格式信息
+    text: string;
+    index: number;
+    format: {
+      fontSize?: number;
+      isBold?: boolean;
+      alignment?: string;
+      isTitle?: boolean;
+    };
+  }>;
+}
+
 export class SaveMarkingsDto {
   templateId!: string;
   markings!: Array<{
@@ -358,6 +391,157 @@ export class StudioController {
   }
 
   /**
+   * 验证模板配置内容（不需要templateId）
+   */
+  @Post('validate-content')
+  @ApiOperation({ summary: 'Validate template configuration content' })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        template: { type: 'string', description: 'Template configuration JSON string' },
+      },
+    },
+  })
+  async validateTemplateContent(
+    @Body() body: { template: string },
+  ): Promise<{
+    valid: boolean;
+    errors: string[];
+    warnings: string[];
+  }> {
+    try {
+      const config = JSON.parse(body.template || '{}');
+      const errors: string[] = [];
+      const warnings: string[] = [];
+
+      // 验证基本结构
+      if (!config.templateType) {
+        warnings.push('未指定模板类型');
+      }
+
+      // 验证变量映射
+      if (config.variableMappings) {
+        for (const [key, value] of Object.entries(config.variableMappings)) {
+          if (!value || typeof value !== 'string') {
+            errors.push(`变量映射 "${key}" 的值无效`);
+          } else if (!value.startsWith('{d.')) {
+            warnings.push(`变量映射 "${key}" 的值 "${value}" 建议使用 {d.xxx} 格式`);
+          }
+        }
+      }
+
+      return {
+        valid: errors.length === 0,
+        errors,
+        warnings,
+      };
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      return {
+        valid: false,
+        errors: [message],
+        warnings: [],
+      };
+    }
+  }
+
+  /**
+   * 预览模板内容（无需保存模板ID）
+   * 接收已替换变量的文档内容，生成预览
+   */
+  @Post('preview-content')
+  @ApiOperation({ summary: 'Preview template content without saving' })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        documentContent: { type: 'string', description: 'Document content with variables applied' },
+        templateConfig: { type: 'object', description: 'Template configuration' },
+        format: { type: 'string', description: 'Document format (docx, xlsx, pptx)' },
+      },
+    },
+  })
+  async previewTemplateContent(
+    @Body() body: {
+      documentContent: string;
+      templateConfig?: any;
+      format?: string;
+    },
+  ): Promise<{
+    success: boolean;
+    previewUrl?: string;
+    sampleData?: any;
+    error?: string;
+  }> {
+    try {
+      // 从配置生成示例数据
+      const config = body.templateConfig || {};
+      let sampleData: any = {};
+
+      if (config.variableMappings) {
+        // 从变量映射生成示例数据
+        for (const [key, path] of Object.entries(config.variableMappings)) {
+          if (typeof path === 'string' && path.startsWith('{d.')) {
+            // 提取路径：{d.xxx} -> xxx
+            const pathMatch = path.match(/\{d\.(\w+)\}/);
+            if (pathMatch) {
+              sampleData[pathMatch[1]] = `示例_${pathMatch[1]}`;
+            }
+          }
+        }
+      }
+
+      // 创建临时模板文件
+      const tempId = uuidv4();
+      const format = body.format || 'docx';
+      const tempPath = path.join(this.templatesDir, `${tempId}.${format}`);
+
+      // 解码文档内容（如果是base64）
+      let templateBuffer: Buffer;
+      if (body.documentContent.startsWith('base64:')) {
+        templateBuffer = Buffer.from(body.documentContent.substring(7), 'base64');
+      } else {
+        templateBuffer = Buffer.from(body.documentContent, 'utf-8');
+      }
+
+      fs.writeFileSync(tempPath, templateBuffer);
+
+      // 保存临时元数据
+      const metaPath = path.join(this.templatesDir, `${tempId}.json`);
+      fs.writeFileSync(metaPath, JSON.stringify({
+        id: tempId,
+        format,
+        fileName: `preview_${tempId}.${format}`,
+        config,
+        isTemp: true,
+        createdAt: new Date().toISOString(),
+      }));
+
+      // 渲染预览
+      const fileName = `preview_${tempId}.${format}`;
+      const result = await this.engine.render(templateBuffer, sampleData, fileName);
+
+      // 保存渲染结果
+      const outputId = uuidv4();
+      const outputPath = path.join(this.outputsDir, `${outputId}.${format}`);
+      fs.writeFileSync(outputPath, Buffer.from(result));
+
+      return {
+        success: true,
+        previewUrl: `/studio/preview-file/${outputId}`,
+        sampleData,
+      };
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      return {
+        success: false,
+        error: message,
+      };
+    }
+  }
+
+  /**
    * 验证模版并生成文档（使用编辑后的模版和保存的示例数据）
    */
   @Post('validate')
@@ -454,6 +638,134 @@ export class StudioController {
         valid: false,
         missing: [],
         sampleData: sampleData
+      };
+    }
+  }
+
+  /**
+   * 从Office文档生成模板
+   * 接收文档内容和建议列表，生成最终的模板文件
+   */
+  @Post('generate')
+  @ApiOperation({ summary: 'Generate template from Office document with suggestions' })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        documentContent: { type: 'string', description: 'Document content (base64 for binary)' },
+        suggestions: { type: 'array', description: 'Applied suggestions' },
+        templateConfig: { type: 'object', description: 'Template configuration' },
+        format: { type: 'string', description: 'Document format (docx, xlsx, pptx)' },
+      },
+    },
+  })
+  async generateTemplate(
+    @Body() body: {
+      documentContent: string;
+      suggestions: any[];
+      templateConfig?: any;
+      format?: string;
+    },
+  ): Promise<{
+    success: boolean;
+    generatedTemplate?: string;
+    templateId?: string;
+    downloadUrl?: string;
+    hasValidFile?: boolean;
+    error?: string;
+  }> {
+    try {
+      // 从建议列表提取变量映射
+      const variableMappings: Record<string, string> = {};
+      for (const suggestion of body.suggestions || []) {
+        if (suggestion.applied && suggestion.originalText && suggestion.suggestedName) {
+          variableMappings[suggestion.originalText] = suggestion.suggestedName;
+        }
+      }
+
+      // 生成模板配置
+      const format = body.format || 'docx';
+      const templateConfig = body.templateConfig || {
+        templateType: 'custom',
+        variableMappings,
+        outputPath: '',
+        formatType: format,
+      };
+
+      // 创建模板ID和文件
+      const templateId = uuidv4();
+      const templateMetaPath = path.join(this.templatesDir, `${templateId}.json`);
+      const templateFilePath = path.join(this.templatesDir, `${templateId}.${format}`);
+
+      // 解码并保存模板文件
+      let templateBuffer: Buffer;
+      let isValidDocx = true;
+
+      console.log('generateTemplate received documentContent length:', body.documentContent.length);
+      console.log('documentContent prefix:', body.documentContent.substring(0, 20));
+
+      if (body.documentContent.startsWith('base64:')) {
+        const base64Data = body.documentContent.substring(7);
+        console.log('base64 data length:', base64Data.length);
+        templateBuffer = Buffer.from(base64Data, 'base64');
+        console.log('decoded buffer length:', templateBuffer.length);
+      } else if (body.documentContent.startsWith('{')) {
+        // JSON格式（Excel数据或OOXML）
+        templateBuffer = Buffer.from(body.documentContent, 'utf-8');
+        isValidDocx = false;
+      } else {
+        // 假设是base64编码的文档
+        try {
+          templateBuffer = Buffer.from(body.documentContent, 'base64');
+        } catch {
+          templateBuffer = Buffer.from(body.documentContent, 'utf-8');
+          isValidDocx = false;
+        }
+      }
+
+      // 验证是否是有效的docx文件（docx是zip格式，前4字节应该是PK）
+      if (format === 'docx' && templateBuffer.length > 4) {
+        const header = templateBuffer.slice(0, 4).toString();
+        console.log('file header:', header);
+        if (!header.startsWith('PK')) {
+          console.warn('Not a valid docx file (not PK header), but will save metadata');
+          isValidDocx = false;
+        }
+      }
+
+      // 只有有效文件才保存物理文件，否则只保存元数据
+      if (isValidDocx && templateBuffer.length > 0) {
+        fs.writeFileSync(templateFilePath, templateBuffer);
+      } else {
+        console.log('Saving metadata only (no valid docx file)');
+        // 保存文本内容作为参考
+        const textPath = path.join(this.templatesDir, `${templateId}_content.txt`);
+        fs.writeFileSync(textPath, templateBuffer.toString('utf-8'));
+      }
+
+      // 保存模板配置
+      fs.writeFileSync(templateMetaPath, JSON.stringify({
+        id: templateId,
+        format,
+        fileName: `template_${templateId}.${format}`,
+        config: templateConfig,
+        suggestions: body.suggestions,
+        hasValidFile: isValidDocx,
+        createdAt: new Date().toISOString(),
+      }));
+
+      return {
+        success: true,
+        templateId,
+        generatedTemplate: JSON.stringify(templateConfig),
+        downloadUrl: isValidDocx ? `/studio/download-template/${templateId}` : undefined,
+        hasValidFile: isValidDocx,
+      };
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      return {
+        success: false,
+        error: message,
       };
     }
   }
@@ -778,6 +1090,141 @@ export class StudioController {
         `Failed to identify variables: ${message}`,
         HttpStatus.INTERNAL_SERVER_ERROR
       );
+    }
+  }
+
+  /**
+   * 直接AI识别文档内容 - 用于Office插件
+   * 无需上传模板，直接对从Office获取的文档内容进行AI识别
+   * 识别需要填充的空白部分，生成模板变量建议
+   */
+  @Post('direct-ai-identify')
+  @ApiOperation({ summary: 'Direct AI identify variables from document content (for Office Add-in)' })
+  @ApiBody({ type: DirectAIIdentifyDto })
+  @ApiResponse({ status: 200, description: 'AI identification result with suggestions' })
+  async directAIIdentify(
+    @Body() dto: DirectAIIdentifyDto
+  ): Promise<AIIdentifyResponse> {
+    try {
+      // 直接对文档内容进行AI分析
+      const result = await this.aiIdentifierService.identifyFromContent(
+        dto.documentContent,
+        dto.documentType,
+        dto.templateType || 'report',
+        dto.context,
+        dto.customRules
+      );
+      return result;
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      throw new HttpException(
+        `Failed to identify variables: ${message}`,
+        HttpStatus.INTERNAL_SERVER_ERROR
+      );
+    }
+  }
+
+  /**
+   * 多阶段AI识别文档内容 - 用于Office插件（新接口）
+   * 使用三阶段AI处理流程：文档理解 -> 分段参数化 -> 整合确认
+   * 通过Server-Sent Events实时报告处理进度
+   * 支持传入下划线信息，提高空白识别准确度
+   */
+  @Post('direct-ai-identify-multistage')
+  @ApiOperation({ summary: 'Multi-stage AI identify variables with real-time progress (for Office Add-in)' })
+  @ApiBody({ type: DirectAIIdentifyDto })
+  @ApiResponse({ status: 200, description: 'AI identification result with suggestions' })
+  async directAIIdentifyMultistage(
+    @Body() dto: DirectAIIdentifyDto
+  ): Promise<AIIdentifyResponse> {
+    try {
+      // 调用多阶段AI识别服务（传入下划线和格式信息）
+      const result = await this.aiIdentifierService.identifyFromContentMultiStage(
+        dto.documentContent,
+        dto.documentType,
+        dto.templateType || 'contract',
+        dto.context,
+        // 进度回调 - 用于日志记录
+        (progress) => {
+          console.log(`[MultiStage Progress] ${progress.stageName}: ${progress.progress}% - ${progress.message}`);
+        },
+        dto.underlineInfo,    // 下划线信息
+        dto.paragraphFormats  // 段落格式信息
+      );
+      return result;
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      throw new HttpException(
+        `Failed to identify variables: ${message}`,
+        HttpStatus.INTERNAL_SERVER_ERROR
+      );
+    }
+  }
+
+  /**
+   * 多阶段AI识别 - SSE实时进度版本
+   * 使用Server-Sent Events向前端实时推送处理进度
+   */
+  @Get('direct-ai-identify-progress')
+  @ApiOperation({ summary: 'Multi-stage AI identify with SSE progress stream' })
+  @ApiQuery({ name: 'documentContent', required: true, description: 'Document text content' })
+  @ApiQuery({ name: 'documentType', required: true, description: 'Document type (docx/xlsx/pptx/text)' })
+  @ApiQuery({ name: 'templateType', required: false, description: 'Template type (contract/report/etc)' })
+  @ApiQuery({ name: 'context', required: false, description: 'Context information' })
+  @Header('Content-Type', 'text/event-stream')
+  @Header('Cache-Control', 'no-cache')
+  @Header('Connection', 'keep-alive')
+  async directAIIdentifyWithProgress(
+    @Query('documentContent') documentContent: string,
+    @Query('documentType') documentType: string,
+    @Query('templateType') templateType: string,
+    @Query('context') context: string,
+    @Res() res: Response
+  ): Promise<void> {
+    // 发送SSE进度事件
+    const sendProgress = (progress: any) => {
+      res.write(`data: ${JSON.stringify({
+        type: 'progress',
+        stage: progress.stage,
+        stageName: progress.stageName,
+        progress: progress.progress,
+        message: progress.message,
+        currentSection: progress.currentSection
+      })}\n\n`);
+    };
+
+    // 发送最终结果
+    const sendResult = (result: AIIdentifyResponse) => {
+      res.write(`data: ${JSON.stringify({
+        type: 'result',
+        data: result
+      })}\n\n`);
+      res.end();
+    };
+
+    // 发送错误
+    const sendError = (error: string) => {
+      res.write(`data: ${JSON.stringify({
+        type: 'error',
+        message: error
+      })}\n\n`);
+      res.end();
+    };
+
+    try {
+      // 调用多阶段AI识别
+      const result = await this.aiIdentifierService.identifyFromContentMultiStage(
+        documentContent,
+        documentType,
+        templateType || 'contract',
+        context,
+        sendProgress  // 使用SSE发送进度
+      );
+
+      sendResult(result);
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      sendError(message);
     }
   }
 
@@ -1400,6 +1847,17 @@ export class StudioController {
       meta.templateConfig = this.aiIdentifierService.normalizeTemplateConfig(meta.templateConfig);
     }
 
+    // 如果 config.variables 是对象而非数组，从 suggestions 中提取变量列表
+    if (!meta.variables || !Array.isArray(meta.variables)) {
+      if (meta.suggestions && Array.isArray(meta.suggestions)) {
+        meta.variables = meta.suggestions
+          .filter((s: any) => s.applied && s.suggestedName)
+          .map((s: any) => s.suggestedName);
+      } else {
+        meta.variables = [];
+      }
+    }
+
     return meta;
   }
 
@@ -1423,5 +1881,449 @@ export class StudioController {
       default:
         return 'application/octet-stream';
     }
+  }
+
+  /**
+   * 生成AI使用指南Skill
+   * 根据模板配置和变量映射，生成指导AI进行数据解析和参数化的skill文档
+   */
+  @Post('generate-skill')
+  @ApiOperation({ summary: 'Generate AI skill guide for template parameterization' })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        templateId: { type: 'string', description: 'Template ID (optional if using suggestions)' },
+        suggestions: { type: 'array', description: 'Applied AI suggestions' },
+        templateConfig: { type: 'object', description: 'Template configuration' },
+        templateType: { type: 'string', description: 'Template type: contract, invoice, report, etc.' },
+        documentDescription: { type: 'string', description: 'Document usage description' },
+      },
+    },
+  })
+  async generateAISkill(
+    @Body() body: {
+      templateId?: string;
+      suggestions?: any[];
+      templateConfig?: any;
+      templateType?: string;
+      documentDescription?: string;
+    },
+  ): Promise<{
+    success: boolean;
+    skill?: any;
+    skillId?: string;
+    error?: string;
+  }> {
+    try {
+      const suggestions = body.suggestions || [];
+      const templateType = body.templateType || 'custom';
+      const templateConfig = body.templateConfig || {};
+
+      // 调用服务层方法生成skill
+      const skill = await this.aiIdentifierService.generateAISkillGuide(
+        suggestions,
+        templateConfig,
+        templateType,
+        body.documentDescription
+      );
+
+      // 保存skill文件
+      const skillId = skill.id;
+      const skillPath = path.join(this.templatesDir, `skill_${skillId}.json`);
+      fs.writeFileSync(skillPath, JSON.stringify(skill, null, 2));
+
+      // 如果有templateId，关联skill到模板
+      if (body.templateId) {
+        const metaPath = path.join(this.templatesDir, `${body.templateId}.json`);
+        if (fs.existsSync(metaPath)) {
+          const meta = JSON.parse(fs.readFileSync(metaPath, 'utf-8'));
+          meta.skillId = skillId;
+          fs.writeFileSync(metaPath, JSON.stringify(meta, null, 2));
+        }
+      }
+
+      return {
+        success: true,
+        skill,
+        skillId,
+      };
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      return {
+        success: false,
+        error: message,
+      };
+    }
+  }
+
+  /**
+   * 使用AI Skill进行参数化预览
+   * 根据skill指导，模拟数据并生成预览文档
+   */
+  @Post('preview-with-skill')
+  @ApiOperation({ summary: 'Preview template using AI skill guide' })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        templateId: { type: 'string', description: 'Template ID' },
+        skillId: { type: 'string', description: 'AI Skill ID' },
+        skill: { type: 'object', description: 'AI Skill object (if no skillId)' },
+        simulatedData: { type: 'object', description: 'Simulated data (optional, will generate if not provided)' },
+      },
+    },
+  })
+  async previewWithSkill(
+    @Body() body: {
+      templateId?: string;
+      skillId?: string;
+      skill?: any;
+      simulatedData?: any;
+    },
+  ): Promise<{
+    success: boolean;
+    previewUrl?: string;
+    downloadUrl?: string;
+    generatedData?: any;
+    skillUsed?: any;
+    error?: string;
+    debugLogs?: string[];
+  }> {
+    const debugLogs: string[] = [];
+    const addLog = (msg: string) => {
+      console.log(msg);
+      debugLogs.push(msg);
+    };
+
+    try {
+      addLog('[步骤1] 开始预览验证流程');
+      addLog(`[步骤1] 请求参数: templateId=${body.templateId}, skillId=${body.skillId}, hasSkill=${!!body.skill}`);
+
+      // 获取skill
+      let skill = body.skill;
+      if (body.skillId && !skill) {
+        const skillPath = path.join(this.templatesDir, `skill_${body.skillId}.json`);
+        if (fs.existsSync(skillPath)) {
+          skill = JSON.parse(fs.readFileSync(skillPath, 'utf-8'));
+          addLog(`[步骤2] 从文件加载skill: ${skillPath}`);
+        }
+      }
+
+      if (!skill) {
+        addLog('[错误] Skill not found');
+        return { success: false, error: 'Skill not found', debugLogs };
+      }
+
+      addLog(`[步骤2] Skill信息: id=${skill.id}, parameters数量=${skill.parameters?.length || 0}`);
+      if (skill.parameters) {
+        addLog(`[步骤2] Skill参数列表: ${JSON.stringify(skill.parameters.map((p: any) => ({name: p.name, example: p.example})))}`);
+      }
+
+      // 生成模拟数据（如果没有提供）
+      let simulatedData = body.simulatedData;
+      if (!simulatedData) {
+        addLog('[步骤3] 开始生成模拟数据...');
+        simulatedData = this.generateSimulatedData(skill);
+        addLog(`[步骤3] 生成的数据结构: ${JSON.stringify(simulatedData, null, 2)}`);
+      } else {
+        addLog(`[步骤3] 使用提供的模拟数据: ${JSON.stringify(simulatedData)}`);
+      }
+
+      // 获取模板
+      let templateBuffer: Buffer | undefined;
+      let templateId = body.templateId || skill.templateId;
+      let format = 'docx';
+
+      addLog(`[步骤4] 查找模板: templateId=${templateId}`);
+
+      if (templateId) {
+        const meta = this.getTemplateMeta(templateId);
+        format = meta.format || 'docx';
+        const templatePath = path.join(this.templatesDir, `${templateId}.${format}`);
+        addLog(`[步骤4] 模板路径: ${templatePath}`);
+        if (fs.existsSync(templatePath)) {
+          templateBuffer = fs.readFileSync(templatePath);
+          addLog(`[步骤4] 模板加载成功, 大小: ${templateBuffer.length} bytes`);
+        } else {
+          addLog(`[错误] 模板文件不存在: ${templatePath}`);
+        }
+      }
+
+      if (!templateBuffer) {
+        addLog('[错误] Template not found');
+        return { success: false, error: 'Template not found', debugLogs };
+      }
+
+      // 渲染预览
+      addLog('[步骤5] 开始渲染预览...');
+      const outputId = uuidv4();
+      const outputBuffer = await this.engine.render(templateBuffer, simulatedData, `preview_${outputId}.${format}`);
+      addLog(`[步骤5] 渲染完成, 输出大小: ${outputBuffer.length} bytes`);
+
+      // 保存输出
+      const outputPath = path.join(this.outputsDir, `${outputId}.${format}`);
+      fs.writeFileSync(outputPath, Buffer.from(outputBuffer));
+      addLog(`[步骤6] 输出保存到: ${outputPath}`);
+
+      // 保存输出元数据
+      const outputMetaPath = path.join(this.outputsDir, `${outputId}.json`);
+      fs.writeFileSync(outputMetaPath, JSON.stringify({
+        id: outputId,
+        templateId,
+        skillId: skill.id,
+        format,
+        fileName: `preview_${outputId}.${format}`,
+        createdAt: new Date().toISOString(),
+        simulatedData,
+        debugLogs,
+      }));
+
+      addLog('[完成] 预览验证成功!');
+
+      return {
+        success: true,
+        previewUrl: `/studio/preview-file/${outputId}`,
+        downloadUrl: `/studio/download/${outputId}`,
+        generatedData: simulatedData,
+        skillUsed: skill,
+        debugLogs,
+      };
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      addLog(`[异常] ${message}`);
+      if (error instanceof Error && error.stack) {
+        addLog(`[异常堆栈] ${error.stack}`);
+      }
+      return {
+        success: false,
+        error: message,
+        debugLogs,
+      };
+    }
+  }
+
+  /**
+   * 保存完整模板（包含模板文件和AI Skill）
+   */
+  @Post('save-template-full')
+  @ApiOperation({ summary: 'Save template with AI skill' })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        documentContent: { type: 'string', description: 'Document content (base64)' },
+        suggestions: { type: 'array', description: 'Applied suggestions' },
+        templateConfig: { type: 'object', description: 'Template configuration' },
+        skill: { type: 'object', description: 'AI Skill guide' },
+        skillId: { type: 'string', description: 'Existing skill ID to associate' },
+        format: { type: 'string', description: 'Document format' },
+        templateName: { type: 'string', description: 'Template name' },
+      },
+    },
+  })
+  async saveTemplateFull(
+    @Body() body: {
+      documentContent: string;
+      suggestions?: any[];
+      templateConfig?: any;
+      skill?: any;
+      skillId?: string;
+      format?: string;
+      templateName?: string;
+    },
+  ): Promise<{
+    success: boolean;
+    templateId?: string;
+    skillId?: string;
+    downloadUrl?: string;
+    skillDownloadUrl?: string;
+    error?: string;
+  }> {
+    try {
+      const templateId = uuidv4();
+      const format = body.format || 'docx';
+      const templateName = body.templateName || `template_${templateId}`;
+
+      // 保存模板文件
+      const templatePath = path.join(this.templatesDir, `${templateId}.${format}`);
+      let templateBuffer: Buffer;
+      if (body.documentContent.startsWith('base64:')) {
+        templateBuffer = Buffer.from(body.documentContent.substring(7), 'base64');
+      } else {
+        try {
+          templateBuffer = Buffer.from(body.documentContent, 'base64');
+        } catch {
+          templateBuffer = Buffer.from(body.documentContent, 'utf-8');
+        }
+      }
+      fs.writeFileSync(templatePath, templateBuffer);
+
+      // 处理skill
+      let skillId = body.skillId;
+      if (body.skill && !skillId) {
+        skillId = uuidv4();
+        const skill = {
+          ...body.skill,
+          id: skillId,
+          templateId,
+          updatedAt: new Date().toISOString(),
+        };
+        const skillPath = path.join(this.templatesDir, `skill_${skillId}.json`);
+        fs.writeFileSync(skillPath, JSON.stringify(skill, null, 2));
+      }
+
+      // 保存模板元数据
+      const templateConfig = body.templateConfig || {};
+      const metaPath = path.join(this.templatesDir, `${templateId}.json`);
+      fs.writeFileSync(metaPath, JSON.stringify({
+        id: templateId,
+        format,
+        fileName: `${templateName}.${format}`,
+        config: templateConfig,
+        suggestions: body.suggestions || [],
+        skillId,
+        createdAt: new Date().toISOString(),
+      }));
+
+      return {
+        success: true,
+        templateId,
+        skillId,
+        downloadUrl: `/studio/download-template/${templateId}`,
+        skillDownloadUrl: skillId ? `/studio/download-skill/${skillId}` : undefined,
+      };
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      return {
+        success: false,
+        error: message,
+      };
+    }
+  }
+
+  /**
+   * 下载AI Skill文件
+   */
+  @Get('download-skill/:id')
+  @ApiOperation({ summary: 'Download AI skill file' })
+  @Header('Content-Type', 'application/json')
+  async downloadSkill(
+    @Param('id') id: string,
+    @Res({ passthrough: true }) res: Response,
+  ): Promise<any> {
+    const skillPath = path.join(this.templatesDir, `skill_${id}.json`);
+    if (!fs.existsSync(skillPath)) {
+      throw new HttpException('Skill not found', HttpStatus.NOT_FOUND);
+    }
+    return JSON.parse(fs.readFileSync(skillPath, 'utf-8'));
+  }
+
+  /**
+   * 获取AI Skill
+   */
+  @Get('skill/:id')
+  @ApiOperation({ summary: 'Get AI skill by ID' })
+  async getSkill(@Param('id') id: string): Promise<any> {
+    const skillPath = path.join(this.templatesDir, `skill_${id}.json`);
+    if (!fs.existsSync(skillPath)) {
+      throw new HttpException('Skill not found', HttpStatus.NOT_FOUND);
+    }
+    return JSON.parse(fs.readFileSync(skillPath, 'utf-8'));
+  }
+
+  // Helper methods for skill generation
+  private generateExampleValue(fieldType: string, name: string): string {
+    switch (fieldType) {
+      case 'date':
+        return '2024-01-15';
+      case 'amount':
+      case 'number':
+        return '10000.00';
+      case 'phone':
+        return '138-0000-0000';
+      case 'email':
+        return 'example@email.com';
+      case 'address':
+        return '北京市朝阳区xxx街道xxx号';
+      case 'name':
+        return '张三';
+      default:
+        if (name.includes('金额') || name.includes('价格')) return '10000.00';
+        if (name.includes('日期') || name.includes('时间')) return '2024-01-15';
+        if (name.includes('电话') || name.includes('手机')) return '138-0000-0000';
+        if (name.includes('地址')) return '北京市朝阳区xxx街道xxx号';
+        if (name.includes('名称') || name.includes('姓名')) return '张三';
+        return `示例${name}`;
+    }
+  }
+
+  private generateAIInstructions(templateType: string, variables: any[], description?: string): string {
+    const varList = variables.map(v => `- **${v.name}**: ${v.aiHint || v.meaning || '填写对应值'}`).join('\n');
+    const exampleData = variables.slice(0, 5).map(v => `  "${v.name}": "${v.example}"`).join(',\n');
+
+    const baseInstructions = `# ${templateType}模板AI使用指南
+
+## 模板概述
+${description || '这是一个模板，用于生成标准化文档。'}
+
+## 变量列表
+${varList}
+
+## 数据处理规则
+1. **日期格式**: 使用 YYYY年MM月DD日 格式
+2. **金额格式**: 保留两位小数，使用千分位分隔
+3. **文本内容**: 直接填充，无需特殊处理
+
+## AI处理流程
+1. 接收用户提供的原始数据
+2. 根据字段映射规则解析数据
+3. 按格式要求处理特殊字段（日期、金额等）
+4. 使用处理后的数据渲染模板
+5. 输出最终文档供用户下载
+
+## 示例数据结构
+{ "d": {
+${exampleData}
+} }
+`;
+
+    return baseInstructions;
+  }
+
+  private generateSimulatedData(skill: any): any {
+    const data: any = {};  // 数据直接在根层级，不需要 d 包装
+    // 使用新的parameters结构
+    const variables = skill.parameters || skill.parameterization?.variables || [];
+    for (const variable of variables) {
+      const exampleValue = variable.example || this.generateExampleValue(variable.dataType || variable.fieldType, variable.name);
+
+      // 解析变量路径，支持多种格式：
+      // 1. {d.partyA.name} -> partyA.name (带花括号)
+      // 2. d.partyA.name -> partyA.name (不带花括号)
+      // 3. partyA.name -> partyA.name (无d前缀)
+      let varPath = variable.name;
+      // 移除花括号 { }
+      varPath = varPath.replace(/^\{/, '').replace(/\}$/, '');
+      // 移除 d. 或 c. 或 t. 前缀
+      varPath = varPath.replace(/^([cdt])\./, '');
+
+      if (varPath && varPath.includes('.')) {
+        // 构建嵌套数据结构
+        const parts = varPath.split('.');
+        let current = data;
+        for (let i = 0; i < parts.length - 1; i++) {
+          if (!current[parts[i]]) {
+            current[parts[i]] = {};
+          }
+          current = current[parts[i]];
+        }
+        current[parts[parts.length - 1]] = exampleValue;
+      } else {
+        // 单层路径，直接赋值
+        data[varPath || variable.name] = exampleValue;
+      }
+    }
+    return data;
   }
 }

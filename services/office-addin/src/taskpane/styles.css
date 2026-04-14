@@ -627,3 +627,719 @@ body {
   font-size: 12px;
   color: #64748b;
 }
+
+/* Debug Log Panel */
+.debug-log-panel {
+  position: fixed;
+  bottom: 60px;
+  left: 12px;
+  right: 12px;
+  max-height: 300px;
+  background: #1e293b;
+  border-radius: 8px;
+  border: 2px solid #3b82f6;
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+}
+
+.debug-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 12px;
+  background: #334155;
+  border-radius: 6px 6px 0 0;
+}
+
+.debug-header h3 {
+  color: #e2e8f0;
+  font-size: 14px;
+  margin: 0;
+}
+
+.debug-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.debug-actions button {
+  padding: 4px 12px;
+  font-size: 12px;
+  background: #475569;
+  color: #e2e8f0;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.debug-actions button:hover {
+  background: #64748b;
+}
+
+.debug-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 8px;
+}
+
+.no-logs {
+  text-align: center;
+  color: #64748b;
+  padding: 20px;
+}
+
+.log-entry {
+  background: #334155;
+  border-radius: 4px;
+  border-left: 3px solid;
+  margin-bottom: 6px;
+  padding: 6px 8px;
+}
+
+.log-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+}
+
+.log-icon {
+  font-size: 14px;
+}
+
+.log-time {
+  color: #94a3b8;
+}
+
+.log-level {
+  font-weight: 600;
+}
+
+.log-message {
+  color: #e2e8f0;
+}
+
+.log-details {
+  margin-top: 4px;
+  padding: 4px 8px;
+  background: #1e293b;
+  border-radius: 4px;
+}
+
+.log-details pre {
+  font-size: 11px;
+  color: #94a3b8;
+  white-space: pre-wrap;
+  margin: 0;
+}
+
+.debug-footer {
+  padding: 6px 12px;
+  background: #334155;
+  border-radius: 0 0 6px 6px;
+  font-size: 11px;
+  color: #94a3b8;
+  display: flex;
+  gap: 12px;
+}
+
+/* Error Message Improved */
+.error-message-container {
+  margin-bottom: 16px;
+}
+
+.error-message {
+  padding: 12px;
+  background: #fee2e2;
+  border-radius: 6px;
+  color: var(--error-color);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+}
+
+.error-icon {
+  font-size: 16px;
+}
+
+.error-text {
+  flex: 1;
+}
+
+.error-toggle {
+  font-size: 12px;
+}
+
+.error-details {
+  margin-top: 8px;
+  padding: 12px;
+  background: #fef2f2;
+  border-radius: 6px;
+  border: 1px solid #fecaca;
+}
+
+.error-details pre {
+  font-size: 12px;
+  color: #7f1d1d;
+  white-space: pre-wrap;
+  margin: 0;
+}
+
+/* Test Connection and Debug Buttons */
+.test-connection-btn {
+  padding: 8px 16px;
+  background: #f59e0b;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 12px;
+  margin-right: 8px;
+}
+
+.test-connection-btn:disabled {
+  background: #94a3b8;
+}
+
+.test-underline-btn {
+  padding: 8px 16px;
+  background: #8b5cf6;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 12px;
+  margin-top: 8px;
+}
+
+.test-underline-btn:hover {
+  background: #7c3aed;
+}
+
+.test-underline-btn:disabled {
+  background: #94a3b8;
+}
+
+.debug-toggle-btn {
+  padding: 8px 16px;
+  background: #6366f1;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 12px;
+}
+
+/* Connection Error Tooltip */
+.connection-error-tooltip {
+  font-size: 11px;
+  color: #ef4444;
+  background: #fee2e2;
+  padding: 4px 8px;
+  border-radius: 4px;
+  margin-top: 4px;
+}
+
+/* Connection Status Error */
+.connection-status .error {
+  color: #b91c1c;
+}
+
+/* Preview Confirm Panel */
+.preview-confirm-panel {
+  padding: 16px;
+  background: #eff6ff;
+  border: 2px solid #3b82f6;
+  border-radius: 8px;
+  margin-bottom: 16px;
+}
+
+.preview-confirm-panel h4 {
+  color: #1e40af;
+  margin-bottom: 12px;
+}
+
+.preview-content {
+  font-size: 12px;
+  background: white;
+  padding: 12px;
+  border-radius: 6px;
+  white-space: pre-wrap;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.preview-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.preview-actions .confirm-btn {
+  flex: 1;
+  padding: 10px;
+  background: var(--success-color);
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.preview-actions .cancel-btn {
+  flex: 1;
+  padding: 10px;
+  background: var(--card-bg);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+/* Suggestion Context */
+.suggestion-context {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: #64748b;
+  margin-top: 4px;
+}
+
+/* Suggestion Chapter */
+.suggestion-chapter {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: #3b82f6;
+  margin-top: 4px;
+}
+
+.chapter-label {
+  font-weight: 500;
+  color: #2563eb;
+}
+
+.chapter-text {
+  color: #1e40af;
+  background: #eff6ff;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+/* Suggestion Significance */
+.suggestion-significance {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font-size: 12px;
+  color: #059669;
+  margin-top: 4px;
+  flex-wrap: wrap;
+}
+
+.significance-label {
+  font-weight: 500;
+  color: #047857;
+}
+
+.significance-text {
+  color: #065f46;
+  background: #d1fae5;
+  padding: 2px 6px;
+  border-radius: 4px;
+  flex: 1;
+}
+
+.context-label {
+  font-weight: 500;
+}
+
+.context-text {
+  color: #475569;
+}
+
+.context-snippet {
+  font-size: 11px;
+  padding: 6px 8px;
+  background: #f1f5f9;
+  border-radius: 4px;
+  margin-top: 6px;
+}
+
+.snippet-label {
+  color: #64748b;
+  font-weight: 500;
+}
+
+.snippet-text {
+  color: #334155;
+  font-style: italic;
+}
+
+/* Previewing State */
+.suggestion-item.previewing {
+  background: #fef3c7;
+  border-color: #f59e0b;
+}
+
+.previewing-badge {
+  font-size: 12px;
+  color: #f59e0b;
+  font-weight: 500;
+}
+
+/* Suggestion Details Code */
+.suggestion-details code {
+  background: #f1f5f9;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-family: 'Consolas', monospace;
+}
+
+/* Preview Button in Actions */
+.suggestion-actions .preview-btn {
+  padding: 6px 12px;
+  background: #8b5cf6;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.suggestion-actions .preview-btn:disabled {
+  background: #94a3b8;
+}
+
+/* Copy Log Button */
+.copy-log-btn {
+  padding: 2px 6px;
+  font-size: 11px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  opacity: 0.7;
+  transition: opacity 0.2s;
+  margin-left: 8px;
+}
+
+.copy-log-btn:hover {
+  opacity: 1;
+}
+
+.log-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+}
+
+/* Chapter Group Styles */
+.chapter-group {
+  margin-bottom: 16px;
+  border-left: 3px solid #3b82f6;
+  padding-left: 12px;
+}
+
+.chapter-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #1e40af;
+  font-size: 14px;
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+
+.chapter-icon {
+  font-size: 16px;
+}
+
+.chapter-name {
+  background: #eff6ff;
+  padding: 4px 8px;
+  border-radius: 4px;
+}
+
+/* Position Format Style */
+.position-format {
+  font-family: 'Microsoft YaHei', sans-serif;
+  background: #f8fafc;
+  padding: 4px 8px;
+  border-radius: 4px;
+  border: 1px solid #e2e8f0;
+  color: #475569;
+  font-size: 13px;
+}
+
+/* Analyzing Indicator Styles */
+.analyzing-indicator {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid #ffffff;
+  border-top-color: transparent;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.loading-text {
+  font-size: 13px;
+  animation: pulse 2s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
+}
+
+/* Loading Progress Bar */
+.loading-progress-bar {
+  width: 100%;
+  height: 6px;
+  background: #e2e8f0;
+  border-radius: 3px;
+  margin-top: 8px;
+  overflow: hidden;
+}
+
+.progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #3b82f6, #8b5cf6, #3b82f6);
+  border-radius: 3px;
+  animation: progress-shimmer 2s ease-in-out infinite;
+}
+
+@keyframes progress-shimmer {
+  0%, 100% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+}
+
+/* 多阶段进度容器 */
+.multistage-progress-container {
+  width: 100%;
+  margin-top: 12px;
+  padding: 12px;
+  background: #f8fafc;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+}
+
+/* 阶段信息显示 */
+.stage-info {
+  display: flex;
+  align-items: center;
+  margin-top: 8px;
+  font-size: 13px;
+  color: #64748b;
+}
+
+.stage-name {
+  font-weight: 600;
+  color: #3b82f6;
+}
+
+.current-section {
+  color: #94a3b8;
+  font-size: 12px;
+}
+
+/* 进度百分比 */
+.progress-percentage {
+  text-align: right;
+  font-size: 12px;
+  color: #3b82f6;
+  font-weight: 600;
+  margin-top: 4px;
+}
+/* 状态消息区域 */
+.status-message-section {
+  margin: 12px 0;
+  padding: 12px;
+  background: #f0f9ff;
+  border-radius: 8px;
+  border: 1px solid #bae6fd;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.status-message-section .status-message {
+  color: #0369a1;
+  font-size: 14px;
+}
+
+.status-message-section .download-btn {
+  background: #0369a1;
+  color: white;
+  padding: 8px 16px;
+  border-radius: 4px;
+  border: none;
+  cursor: pointer;
+  font-size: 13px;
+  transition: background 0.2s;
+}
+
+.status-message-section .download-btn:hover {
+  background: #0c4a6e;
+}
+
+/* 验证警告 */
+.validation-warnings {
+  margin: 12px 0;
+  padding: 12px;
+  background: #fffbeb;
+  border-radius: 8px;
+  border: 1px solid #fcd34d;
+}
+
+.validation-warnings h4 {
+  color: #d97706;
+  margin-bottom: 8px;
+}
+
+.validation-warnings .warning-item {
+  color: #92400e;
+  padding: 4px 0;
+}
+
+/* 步骤流程指示器 */
+.workflow-steps {
+  display: flex;
+  justify-content: space-between;
+  margin: 16px 0;
+  padding: 12px;
+  background: #f8fafc;
+  border-radius: 8px;
+}
+
+.workflow-steps .step {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 8px 12px;
+  border-radius: 8px;
+  transition: all 0.3s;
+}
+
+.workflow-steps .step.active {
+  background: #dbeafe;
+}
+
+.workflow-steps .step-num {
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: #94a3b8;
+  color: white;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.workflow-steps .step.active .step-num {
+  background: #2563eb;
+}
+
+.workflow-steps .step-text {
+  font-size: 12px;
+  color: #64748b;
+  margin-top: 4px;
+}
+
+.workflow-steps .step.active .step-text {
+  color: #1e40af;
+  font-weight: 500;
+}
+
+/* 流程操作按钮 */
+.workflow-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin: 16px 0;
+}
+
+.workflow-btn {
+  padding: 12px 16px;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+  background: #f8fafc;
+  color: #475569;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.workflow-btn:hover:not(:disabled) {
+  background: #dbeafe;
+  border-color: #2563eb;
+}
+
+.workflow-btn.current {
+  background: #2563eb;
+  color: white;
+  border-color: #2563eb;
+}
+
+.workflow-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.workflow-btn.save-btn {
+  background: #22c55e;
+  color: white;
+  border-color: #22c55e;
+}
+
+.workflow-btn.save-btn:hover:not(:disabled) {
+  background: #16a34a;
+}
+
+/* 快捷操作 */
+.quick-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+  padding-top: 12px;
+  border-top: 1px dashed #e2e8f0;
+}
+
+.quick-actions button {
+  padding: 8px 12px;
+  border-radius: 4px;
+  border: 1px solid #e2e8f0;
+  background: white;
+  font-size: 12px;
+}
+
+/* 模板名称输入 */
+.template-name-input {
+  width: 100%;
+  padding: 8px 12px;
+  border: 1px solid #e2e8f0;
+  border-radius: 4px;
+  font-size: 14px;
+}
+
+.template-name-input:focus {
+  outline: none;
+  border-color: #2563eb;
+}

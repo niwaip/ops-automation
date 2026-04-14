@@ -1,9 +1,10 @@
 /**
  * AI 识别面板组件
  * 显示 AI 分析结果和建议，支持一键应用或部分应用
+ * 包含详细错误显示和调试日志功能
  */
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAppStore, AISuggestion } from '../taskpane/store';
 import { carboneAPI } from '../api/carbone-api';
 import { OfficeHelper } from '../utils/office-api';
@@ -12,12 +13,30 @@ interface Props {
   onApplyComplete?: () => void;
 }
 
+// 动态加载进度消息（用于旧的API）
+const loadingMessages = [
+  '🔍 正在分析文档结构...',
+  '📝 正在识别空白填充位置...',
+  '🤖 正在进行AI智能分析...',
+  '📊 正在生成变量建议...',
+  '✨ 正在优化结果...',
+];
+
+// 多阶段进度消息映射
+const stageProgressMessages: Record<string, string[]> = {
+  'document_understanding': ['🔍 分析文档整体结构...', '📖 理解文档内容和用途...', '📋 提取章节信息...'],
+  'section_analysis': ['📝 分段参数化处理...', '🤖 语义识别中...', '✨ 生成变量建议...'],
+  'integration': ['🔄 整合识别结果...', '✅ 确认最终参数...', '📊 生成配置信息...'],
+  'complete': ['✅ 处理完成！']
+};
+
 export const AIIdentifyPanel: React.FC<Props> = ({ onApplyComplete }) => {
   const {
     officeType,
     isAnalyzing,
     suggestions,
     analysisError,
+    analysisErrorDetails,
     setAnalyzing,
     setSuggestions,
     setAnalysisError,
@@ -26,61 +45,331 @@ export const AIIdentifyPanel: React.FC<Props> = ({ onApplyComplete }) => {
     dismissSuggestion,
     templateConfig,
     apiBaseUrl,
+    addDebugLog,
+    showDebugPanel,
+    setShowDebugPanel,
   } = useAppStore();
 
-  const [selectedTemplateType, setSelectedTemplateType] = useState('report');
+  const [selectedTemplateType, setSelectedTemplateType] = useState('contract');  // 默认合同类型
+  const [showErrorDetails, setShowErrorDetails] = useState(false);
+  const [showPreview, setShowPreview] = useState(false);  // 预览模式
+  const [previewContent, setPreviewContent] = useState<string>('');  // 预览内容
+  const [loadingProgress, setLoadingProgress] = useState(0);  // 加载进度（百分比）
+  const [loadingMessage, setLoadingMessage] = useState('');  // 当前加载消息
+  const [currentStage, setCurrentStage] = useState<string>('');  // 当前处理阶段
+  const [currentSection, setCurrentSection] = useState<string>('');  // 当前处理章节
+  const [useMultiStage, setUseMultiStage] = useState(true);  // 是否使用多阶段处理
+
+  // 动态更新加载消息
+  useEffect(() => {
+    if (isAnalyzing) {
+      const interval = setInterval(() => {
+        setLoadingProgress((prev) => {
+          const next = prev + 1;
+          if (next >= loadingMessages.length) {
+            return loadingMessages.length - 1;  // 保持最后一个消息
+          }
+          setLoadingMessage(loadingMessages[next]);
+          return next;
+        });
+      }, 3000);  // 每3秒更新一次消息
+
+      setLoadingMessage(loadingMessages[0]);
+      setLoadingProgress(0);
+
+      return () => clearInterval(interval);
+    } else {
+      setLoadingProgress(0);
+      setLoadingMessage('');
+    }
+  }, [isAnalyzing]);
 
   /**
-   * 执行 AI 分析
+   * 执行 AI 分析（使用多阶段处理流程）
    */
   const handleAnalyze = async () => {
     setAnalyzing(true);
     setAnalysisError(null);
+    setLoadingProgress(0);
+    setCurrentStage('');
+    setCurrentSection('');
+
+    addDebugLog('info', `开始 AI 多阶段分析`, `API: ${apiBaseUrl}, 模板类型: ${selectedTemplateType}, 使用多阶段: ${useMultiStage}`);
 
     try {
       // 获取文档内容
       let documentContent = '';
       let documentStructure: any = null;
+      let underlineInfo: any = null;
+      let paragraphFormats: any = null;
+
+      addDebugLog('debug', `获取文档内容`, `Office 类型: ${officeType}`);
 
       if (officeType === 'word') {
         documentContent = await OfficeHelper.Word.getDocumentContent();
         documentStructure = await OfficeHelper.Word.getDocumentStructure();
+        addDebugLog('debug', `Word 文档内容获取成功`, `长度: ${documentContent.length}`);
+
+        // 获取下划线信息（用于精确识别空白位置）
+        try {
+          underlineInfo = await OfficeHelper.Word.getUnderlinedTexts();
+          addDebugLog('debug', `下划线信息获取成功`, `发现 ${underlineInfo?.length || 0} 个下划线位置`);
+        } catch (underlineError: any) {
+          addDebugLog('warn', `获取下划线信息失败`, underlineError.message);
+          underlineInfo = null;
+        }
+
+        // 获取段落格式信息
+        try {
+          paragraphFormats = await OfficeHelper.Word.getParagraphsWithFormat();
+          addDebugLog('debug', `段落格式信息获取成功`, `段落数: ${paragraphFormats?.length || 0}`);
+        } catch (formatError: any) {
+          addDebugLog('warn', `获取段落格式失败`, formatError.message);
+          paragraphFormats = null;
+        }
       } else if (officeType === 'excel') {
         const sheetData = await OfficeHelper.Excel.getSheetData();
         documentContent = JSON.stringify(sheetData.values);
         documentStructure = { tables: [], paragraphs: [], images: [] };
+        addDebugLog('debug', `Excel 数据获取成功`, `行数: ${sheetData.values?.length || 0}`);
       } else if (officeType === 'ppt') {
         const slidesContent = await OfficeHelper.PowerPoint.getSlidesContent();
         documentContent = JSON.stringify(slidesContent);
         documentStructure = { slides: slidesContent };
+        addDebugLog('debug', `PPT 内容获取成功`, `幻灯片数: ${slidesContent?.length || 0}`);
       }
 
-      // 调用 AI 识别 API
-      carboneAPI.setBaseUrl(apiBaseUrl);
-      const result = await carboneAPI.identifyDocument({
+      // 构建请求参数（包含下划线信息用于AI识别）
+      const requestPayload = {
         documentContent,
         documentType: officeType === 'ppt' ? 'pptx' : officeType,
         templateType: selectedTemplateType,
-      });
+        context: `这是一份${selectedTemplateType}类型的${officeType === 'word' ? 'Word文档' : officeType === 'excel' ? 'Excel表格' : 'PPT演示文稿'}，需要识别空白填充部分并生成模板变量`,
+        underlineInfo: underlineInfo,      // 下划线信息（用于提高空白识别准确度）
+        paragraphFormats: paragraphFormats  // 段落格式信息（用于辅助AI判断）
+      };
 
-      setSuggestions(result.suggestions);
+      carboneAPI.setBaseUrl(apiBaseUrl);
+
+      if (useMultiStage) {
+        // 使用新的多阶段处理流程
+        addDebugLog('info', `使用多阶段处理流程`, `阶段: 文档理解 → 分段参数化 → 整合确认`);
+
+        // 更新进度的辅助函数
+        const updateProgress = (stageName: string, progress: number, message: string, section?: string) => {
+          setCurrentStage(stageName);
+          setLoadingProgress(progress);
+          setLoadingMessage(message);
+          if (section) {
+            setCurrentSection(section);
+          }
+          addDebugLog('debug', `进度更新`, `${stageName}: ${progress}% - ${message}${section ? ` (${section})` : ''}`);
+        };
+
+        // 模拟进度更新（因为HTTP请求不支持实时进度）
+        updateProgress('文档理解', 0, '🔍 分析文档整体结构...');
+
+        // 调用多阶段API
+        const result = await carboneAPI.identifyDocumentMultiStage(requestPayload);
+
+        // 更新到100%
+        updateProgress('完成', 100, '✅ 处理完成！');
+
+        // 记录结果
+        const usedAI = result.contextAnalysis?.usedAI ?? true;
+        addDebugLog('info', `识别方式: ${usedAI ? '🤖 AI多阶段智能识别' : '📋 规则匹配'}`,
+          `识别到 ${result.suggestions?.length || 0} 个参数，模板类型: ${result.templateConfig?.templateType}`);
+
+        // 使用 rawSuggestions（包含详细信息）如果可用
+        const displaySuggestions = result.rawSuggestions || result.suggestions;
+        addDebugLog('info', `AI 分析成功`, `识别到 ${displaySuggestions?.length || 0} 个参数`);
+        setSuggestions(displaySuggestions);
+      } else {
+        // 使用旧的单一处理流程
+        addDebugLog('info', `调用原有 API`, `URL: ${apiBaseUrl}/studio/direct-ai-identify`);
+
+        const result = await carboneAPI.identifyDocumentDirect(requestPayload);
+
+        const usedAI = result.contextAnalysis?.usedAI ?? false;
+        const aiServiceUrl = result.contextAnalysis?.aiServiceUrl || '未配置';
+
+        addDebugLog('info', `识别方式: ${usedAI ? '🤖 AI智能识别' : '📋 规则匹配'}`,
+          usedAI ? `AI服务地址: ${aiServiceUrl}` : `AI服务不可用(${aiServiceUrl})，使用规则后备方案`);
+
+        const displaySuggestions = result.rawSuggestions || result.suggestions;
+        addDebugLog('info', `AI 分析成功`, `识别到 ${displaySuggestions?.length || 0} 个空白填充项`);
+        setSuggestions(displaySuggestions);
+      }
     } catch (error: any) {
-      setAnalysisError(error.message || 'AI 分析失败，请检查后端服务是否启动');
+      // 详细错误信息
+      const errorMessage = error.message || 'AI 分析失败';
+      let errorDetails = '';
+
+      if (error.response) {
+        errorDetails = `状态码: ${error.response.status}\n`;
+        errorDetails += `响应数据: ${JSON.stringify(error.response.data, null, 2)}\n`;
+        errorDetails += `请求URL: ${error.config?.url || apiBaseUrl}`;
+      } else if (error.request) {
+        errorDetails = `请求未收到响应\n`;
+        errorDetails += `可能原因:\n`;
+        errorDetails += `1. 后端服务未启动 (${apiBaseUrl})\n`;
+        errorDetails += `2. HTTPS 证书问题（Office 要求 HTTPS）\n`;
+        errorDetails += `3. 网络连接问题\n`;
+        errorDetails += `4. CORS 配置问题`;
+      } else {
+        errorDetails = `请求配置错误: ${error.message}\n`;
+        errorDetails += `堆栈: ${error.stack || '无'}`;
+      }
+
+      addDebugLog('error', errorMessage, errorDetails);
+      setAnalysisError(errorMessage, errorDetails);
     } finally {
       setAnalyzing(false);
+      setCurrentSection('');
+    }
+  };
+
+  /**
+   * 测试后端连接
+   */
+  const handleTestConnection = async () => {
+    addDebugLog('info', `测试后端连接`, `URL: ${apiBaseUrl}/health`);
+    try {
+      const response = await fetch(`${apiBaseUrl}/health`);
+      if (response.ok) {
+        const data = await response.json();
+        addDebugLog('info', `连接成功`, JSON.stringify(data));
+      } else {
+        addDebugLog('error', `连接失败`, `状态码: ${response.status}`);
+      }
+    } catch (error: any) {
+      addDebugLog('error', `连接失败`, error.message);
+    }
+  };
+
+  /**
+   * 测试下划线检测（调试专用）
+   * 独立测试 Word 文档中的下划线检测逻辑
+   */
+  const handleTestUnderline = async () => {
+    addDebugLog('info', `[测试下划线] 开始测试下划线检测...`);
+    try {
+      if (officeType !== 'word') {
+        addDebugLog('warn', `[测试下划线] 当前不是 Word 文档`, `Office 类型: ${officeType}`);
+        return;
+      }
+
+      // 1. 获取文档内容
+      const docContent = await OfficeHelper.Word.getDocumentContent();
+      addDebugLog('info', `[测试下划线] 文档内容`, `长度: ${docContent.length} 字符`);
+
+      // 2. 获取段落结构
+      const structure = await OfficeHelper.Word.getDocumentStructure();
+      addDebugLog('info', `[测试下划线] 段落数量`, `${structure.paragraphs?.length || 0} 个段落`);
+
+      // 3. 获取下划线信息（核心测试）
+      addDebugLog('info', `[测试下划线] 调用 getUnderlinedTexts()...`);
+      const underlineInfo = await OfficeHelper.Word.getUnderlinedTexts();
+
+      // 4. 显示详细结果
+      addDebugLog('info', `[测试下划线] 检测结果`, `发现 ${underlineInfo?.length || 0} 个下划线位置`);
+
+      if (underlineInfo && underlineInfo.length > 0) {
+        // 从后往前替换（倒序），避免替换影响前面的位置计算
+        // 先替换位置大的，再替换位置小的
+        for (let i = underlineInfo.length - 1; i >= 0; i--) {
+          const info = underlineInfo[i];
+          // 编号按检测顺序（正序）：#1 → field_1, #13 → field_13
+          const fieldNum = i + 1;  // 使用原始索引 + 1
+          const mockParam = `{field_${fieldNum}}`;
+
+          addDebugLog('debug', `[测试下划线] #${fieldNum}`,
+            `文本: "${info.text}" (${info.text.length}字符)\n` +
+            `类型: ${info.underlineType}\n` +
+            `段落索引: ${info.paragraphIndex}\n` +
+            `位置: ${info.position?.start}-${info.position?.end}\n` +
+            `模拟参数: ${mockParam}`
+          );
+
+          // 使用段落索引和位置替换为模拟参数
+          try {
+            if (info.paragraphIndex !== undefined) {
+              // 替换空白为模拟参数标记（传入原始段落文本，避免替换后文本变化）
+              const success = await OfficeHelper.Word.replaceUnderlineByPosition(
+                info.paragraphIndex,
+                info.position?.start || 0,
+                info.position?.end || 0,
+                mockParam,
+                info.text,
+                info.paragraphText  // 传入原始段落文本
+              );
+              addDebugLog('debug', `[测试下划线] #${fieldNum}`, success ? `✓ 已插入 ${mockParam}` : '替换失败');
+            } else {
+              // 后备方案
+              await OfficeHelper.Word.replaceText(info.text, mockParam);
+              addDebugLog('debug', `[测试下划线] #${fieldNum}`, `已替换为 ${mockParam}`);
+            }
+          } catch (replaceErr: any) {
+            addDebugLog('warn', `[测试下划线] #${fieldNum} 替换失败`, replaceErr.message);
+          }
+        }
+
+        addDebugLog('info', `[测试下划线] 完成`, `已插入 ${underlineInfo.length} 个模拟参数（倒序处理，编号正序）`);
+      } else {
+        addDebugLog('warn', `[测试下划线] 未检测到下划线`, `请检查文档中是否有带下划线格式的空白`);
+      }
+
+    } catch (error: any) {
+      addDebugLog('error', `[测试下划线] 测试失败`, error.message);
     }
   };
 
   /**
    * 应用单个建议
+   * 使用underlineInfo精确位置进行替换（参考测试下划线逻辑）
    */
   const handleApplySingle = async (suggestion: AISuggestion) => {
     try {
       if (officeType === 'word') {
+        // 优先使用underlineInfo精确位置替换
+        if (suggestion.underlineInfo?.paragraphIndex !== undefined) {
+          const info = suggestion.underlineInfo;
+          const success = await OfficeHelper.Word.replaceUnderlineByPosition(
+            info.paragraphIndex,
+            info.position?.start || 0,
+            info.position?.end || 0,
+            suggestion.suggestedName,
+            suggestion.originalText,
+            info.paragraphText || ''
+          );
+          if (success) {
+            applySuggestion(suggestion.id);
+            addDebugLog('info', `精确替换成功`, `"${suggestion.originalText}" → ${suggestion.suggestedName}`);
+            return;
+          }
+        }
+
+        // 后备方案：使用上下文替换
+        const contextSnippet = suggestion.context || suggestion.details?.context || suggestion.elementPath;
+        if (contextSnippet && contextSnippet.length > 5) {
+          const result = await OfficeHelper.Word.replaceBlankWithContext(
+            contextSnippet,
+            suggestion.suggestedName
+          );
+          if (result.success) {
+            applySuggestion(suggestion.id);
+            addDebugLog('info', `上下文替换成功`, `"${result.replacedText}" → ${suggestion.suggestedName}`);
+            return;
+          }
+        }
+
+        // 最后后备：简单文本替换
         await OfficeHelper.Word.replaceText(
           suggestion.originalText,
           suggestion.suggestedName
         );
+        applySuggestion(suggestion.id);
+        addDebugLog('info', `文本替换成功`, `${suggestion.originalText} → ${suggestion.suggestedName}`);
       } else if (officeType === 'excel') {
         // Excel 需要找到对应单元格
         const selectedRange = await OfficeHelper.Excel.getSelectedRange();
@@ -88,17 +377,86 @@ export const AIIdentifyPanel: React.FC<Props> = ({ onApplyComplete }) => {
           selectedRange.address,
           suggestion.suggestedName
         );
+        applySuggestion(suggestion.id);
+        addDebugLog('info', `应用建议成功`, `单元格 ${selectedRange.address} → ${suggestion.suggestedName}`);
       }
-      applySuggestion(suggestion.id);
-    } catch (error) {
-      console.error('应用建议失败:', error);
+    } catch (error: any) {
+      addDebugLog('error', '应用建议失败', error.message);
     }
   };
 
   /**
-   * 一键应用所有建议
+   * 预览单个建议的替换效果
+   * 使用underlineInfo精确位置进行高亮（参考测试下划线逻辑）
+   */
+  const handlePreviewSingle = async (suggestion: AISuggestion) => {
+    try {
+      // 在 Word 中高亮显示要替换的文本
+      if (officeType === 'word') {
+        // 先清除之前的高亮
+        await OfficeHelper.Word.clearAllHighlights();
+
+        // 优先使用underlineInfo精确位置高亮
+        if (suggestion.underlineInfo?.paragraphIndex !== undefined) {
+          const info = suggestion.underlineInfo;
+          const success = await OfficeHelper.Word.highlightUnderlineByPosition(
+            info.paragraphIndex,
+            info.position?.start || 0,
+            info.position?.end || 0,
+            suggestion.originalText
+          );
+          if (success) {
+            addDebugLog('info', `预览: 精确高亮`, `段落#${info.paragraphIndex} 位置${info.position?.start}-${info.position?.end}`);
+            return;
+          }
+        }
+
+        // 后备方案：使用上下文高亮
+        const contextSnippet = suggestion.context || suggestion.details?.context || suggestion.elementPath;
+        if (contextSnippet && contextSnippet.length > 5) {
+          const result = await OfficeHelper.Word.highlightByContext(contextSnippet);
+          if (result.found) {
+            addDebugLog('info', `预览: 上下文高亮`, `"${result.blankText}" → ${suggestion.suggestedName}`);
+            return;
+          }
+        }
+
+        // 最后后备：文本高亮
+        if (suggestion.originalText) {
+          const count = await OfficeHelper.Word.highlightText(suggestion.originalText);
+          addDebugLog('info', `预览: 文本高亮`, `"${suggestion.originalText}" 找到 ${count} 个匹配`);
+        } else {
+          addDebugLog('warn', `预览失败`, '无法定位空白标记');
+        }
+      }
+    } catch (error: any) {
+      addDebugLog('error', '预览失败', error.message);
+    }
+  };
+
+  /**
+   * 生成预览摘要
+   */
+  const generatePreviewSummary = (): string => {
+    const unapplied = suggestions.filter((s) => !s.applied);
+    const lines = unapplied.map((s, i) => {
+      return `${i + 1}. "${s.originalText}" → ${s.suggestedName}`;
+    });
+    return `即将应用 ${unapplied.length} 个替换:\n\n${lines.join('\n')}`;
+  };
+
+  /**
+   * 一键应用所有建议（带预览确认）
    */
   const handleApplyAll = async () => {
+    if (!showPreview) {
+      // 先显示预览
+      setPreviewContent(generatePreviewSummary());
+      setShowPreview(true);
+      return;
+    }
+
+    // 确认后执行
     try {
       const unapplied = suggestions.filter((s) => !s.applied);
 
@@ -106,21 +464,67 @@ export const AIIdentifyPanel: React.FC<Props> = ({ onApplyComplete }) => {
         await handleApplySingle(suggestion);
       }
 
+      setShowPreview(false);
       onApplyComplete?.();
+      addDebugLog('info', `批量应用完成`, `应用了 ${unapplied.length} 个建议`);
     } catch (error) {
-      console.error('批量应用失败:', error);
+      addDebugLog('error', '批量应用失败', error.message);
     }
   };
 
   /**
-   * 按类型分组建议
+   * 取消预览
    */
-  const groupedSuggestions = suggestions.reduce((acc, suggestion) => {
-    const type = suggestion.type;
-    if (!acc[type]) acc[type] = [];
-    acc[type].push(suggestion);
-    return acc;
-  }, {} as Record<string, AISuggestion[]>);
+  const handleCancelPreview = () => {
+    setShowPreview(false);
+    setPreviewContent('');
+  };
+
+  /**
+   * 按章节分组建议
+   * 返回格式: { "头部": [...], "第一条": [...], "第二条": [...], "正文": [...] }
+   */
+  const groupSuggestionsByChapter = (): Record<string, AISuggestion[]> => {
+    const grouped: Record<string, AISuggestion[]> = {};
+
+    for (const suggestion of suggestions) {
+      const chapter = suggestion.details?.chapter || '正文';
+      if (!grouped[chapter]) {
+        grouped[chapter] = [];
+      }
+      grouped[chapter].push(suggestion);
+    }
+
+    // 按章节顺序排序（头部、第一条、第二条...、正文）
+    const sortedKeys = Object.keys(grouped).sort((a, b) => {
+      // 头部放第一位
+      if (a === '头部' || a.startsWith('正文')) return -1;
+      if (b === '头部' || b.startsWith('正文')) return 1;
+      // 按章节编号排序
+      const aNum = a.match(/第(\d+)/)?.[1] || '999';
+      const bNum = b.match(/第(\d+)/)?.[1] || '999';
+      return parseInt(aNum) - parseInt(bNum);
+    });
+
+    const sortedGrouped: Record<string, AISuggestion[]> = {};
+    for (const key of sortedKeys) {
+      sortedGrouped[key] = grouped[key];
+    }
+
+    return sortedGrouped;
+  };
+
+  /**
+   * 获取章节图标
+   */
+  const getChapterIcon = (chapter: string): string => {
+    if (chapter === '头部') return '📋';
+    if (chapter.includes('第一条') || chapter.includes('第一条')) return '📝';
+    if (chapter.includes('第二条')) return '📝';
+    if (chapter.includes('第三条')) return '📝';
+    if (chapter === '正文') return '📄';
+    return '📑';
+  };
 
   return (
     <div className="ai-identify-panel">
@@ -146,35 +550,113 @@ export const AIIdentifyPanel: React.FC<Props> = ({ onApplyComplete }) => {
         onClick={handleAnalyze}
         disabled={isAnalyzing}
       >
-        {isAnalyzing ? '分析中...' : 'AI 智能识别'}
+        {isAnalyzing ? (
+          <span className="analyzing-indicator">
+            <span className="spinner"></span>
+            <span className="loading-text">{loadingMessage}</span>
+          </span>
+        ) : 'AI 智能识别'}
       </button>
 
-      {/* 错误提示 */}
+      {/* 多阶段进度显示 */}
+      {isAnalyzing && (
+        <div className="multistage-progress-container">
+          {/* 进度条 */}
+          <div className="loading-progress-bar">
+            <div className="progress-fill" style={{ width: `${loadingProgress}%` }}></div>
+          </div>
+
+          {/* 阶段信息 */}
+          {currentStage && (
+            <div className="stage-info">
+              <span className="stage-name">{currentStage}</span>
+              {currentSection && (
+                <span className="current-section"> - {currentSection}</span>
+              )}
+            </div>
+          )}
+
+          {/* 进度百分比 */}
+          <div className="progress-percentage">{loadingProgress}%</div>
+        </div>
+      )}
+
+      {/* 测试连接按钮 */}
+      <button
+        className="test-connection-btn"
+        onClick={handleTestConnection}
+        disabled={isAnalyzing}
+      >
+        🔌 测试连接
+      </button>
+
+      {/* 测试下划线按钮（调试专用） */}
+      {officeType === 'word' && (
+        <button
+          className="test-underline-btn"
+          onClick={handleTestUnderline}
+          disabled={isAnalyzing}
+        >
+          🔍 测试下划线
+        </button>
+      )}
+
+      {/* 调试面板开关 */}
+      <button
+        className="debug-toggle-btn"
+        onClick={() => setShowDebugPanel(!showDebugPanel)}
+      >
+        {showDebugPanel ? '隐藏日志' : '显示日志'}
+      </button>
+
+      {/* 错误提示 - 改进的显示 */}
       {analysisError && (
-        <div className="error-message">
-          <span>❌ {analysisError}</span>
+        <div className="error-message-container">
+          <div className="error-message" onClick={() => setShowErrorDetails(!showErrorDetails)}>
+            <span className="error-icon">❌</span>
+            <span className="error-text">{analysisError}</span>
+            <span className="error-toggle">{showErrorDetails ? '▼' : '▶'}</span>
+          </div>
+          {showErrorDetails && analysisErrorDetails && (
+            <div className="error-details">
+              <pre>{analysisErrorDetails}</pre>
+            </div>
+          )}
         </div>
       )}
 
       {/* 分析结果 */}
       {suggestions.length > 0 && (
         <div className="suggestions-container">
+          {/* 预览确认面板 */}
+          {showPreview && (
+            <div className="preview-confirm-panel">
+              <h4>📋 替换预览</h4>
+              <pre className="preview-content">{previewContent}</pre>
+              <div className="preview-actions">
+                <button className="confirm-btn" onClick={handleApplyAll}>
+                  ✅ 确认应用
+                </button>
+                <button className="cancel-btn" onClick={handleCancelPreview}>
+                  ❌ 取消
+                </button>
+              </div>
+            </div>
+          )}
+
           {/* 一键应用按钮 */}
           <div className="apply-all-section">
             <button className="apply-all-btn" onClick={handleApplyAll}>
-              ✅ 一键应用全部 ({suggestions.filter((s) => !s.applied).length})
+              {showPreview ? '✅ 确认应用全部' : '👁️ 预览后应用全部'} ({suggestions.filter((s) => !s.applied).length})
             </button>
           </div>
 
-          {/* 分组显示建议 */}
-          {Object.entries(groupedSuggestions).map(([type, items]) => (
-            <div key={type} className="suggestion-group">
-              <h4 className="group-title">
-                {type === 'variable' && '变量替换'}
-                {type === 'loop' && '循环标记'}
-                {type === 'format' && '格式化'}
-                {type === 'image' && '图片处理'}
-                {type === 'table' && '表格循环'}
+          {/* 分组显示建议 - 按章节分组 */}
+          {Object.entries(groupSuggestionsByChapter()).map(([chapter, items]) => (
+            <div key={chapter} className="suggestion-group chapter-group">
+              <h4 className="group-title chapter-title">
+                <span className="chapter-icon">{getChapterIcon(chapter)}</span>
+                <span className="chapter-name">{chapter}</span>
                 <span className="count">({items.length})</span>
               </h4>
 
@@ -185,6 +667,7 @@ export const AIIdentifyPanel: React.FC<Props> = ({ onApplyComplete }) => {
                     suggestion={suggestion}
                     onApply={() => handleApplySingle(suggestion)}
                     onDismiss={() => dismissSuggestion(suggestion.id)}
+                    onPreview={() => handlePreviewSingle(suggestion)}
                   />
                 ))}
               </div>
@@ -203,11 +686,56 @@ const SuggestionItem: React.FC<{
   suggestion: AISuggestion;
   onApply: () => void;
   onDismiss: () => void;
-}> = ({ suggestion, onApply, onDismiss }) => {
+  onPreview?: () => void;
+}> = ({ suggestion, onApply, onDismiss, onPreview }) => {
   const [expanded, setExpanded] = useState(false);
+  const [isPreviewing, setIsPreviewing] = useState(false);
+
+  // 获取位置信息（使用格式化的显示位置）
+  const getPositionInfo = (suggestion: AISuggestion): string => {
+    // 优先使用displayPosition
+    if (suggestion.details?.displayPosition) {
+      return suggestion.details.displayPosition;
+    }
+    // 使用elementPath作为格式化位置
+    if (suggestion.elementPath && suggestion.elementPath.startsWith('【')) {
+      return suggestion.elementPath;
+    }
+    // 兼容旧格式
+    if (suggestion.elementPath?.startsWith('position:')) {
+      const pos = suggestion.elementPath.replace('position:', '');
+      return `文档位置 ${pos}`;
+    }
+    // 使用beforeBlank和afterBlank构建
+    if (suggestion.details?.beforeBlank || suggestion.details?.afterBlank) {
+      return `【${suggestion.details.beforeBlank || ''} _____ ${suggestion.details.afterBlank || ''}】`;
+    }
+    return suggestion.originalText || '未知位置';
+  };
+
+  // 获取上下文片段
+  const getContextSnippet = (suggestion: AISuggestion): string => {
+    // 如果 suggestion 有 context 属性（后端传递），使用它
+    if (suggestion.details?.context) {
+      return suggestion.details.context;
+    }
+    // 否则从 elementPath 推断
+    return suggestion.originalText;
+  };
+
+  // 预览替换效果（在原文中高亮显示）
+  const handlePreview = async () => {
+    if (!onPreview) return;
+    setIsPreviewing(true);
+    try {
+      await onPreview();
+    } finally {
+      setIsPreviewing(false);
+    }
+  };
 
   return (
-    <div className={`suggestion-item ${suggestion.applied ? 'applied' : ''}`}>
+    <div className={`suggestion-item ${suggestion.applied ? 'applied' : ''} ${isPreviewing ? 'previewing' : ''}`}>
       <div className="suggestion-header" onClick={() => setExpanded(!expanded)}>
         <div className="confidence-badge">
           {suggestion.confidence > 0.8 ? '🟢' : suggestion.confidence > 0.5 ? '🟡' : '🔴'}
@@ -221,25 +749,49 @@ const SuggestionItem: React.FC<{
         </div>
 
         {suggestion.applied && <span className="applied-badge">已应用</span>}
+        {isPreviewing && <span className="previewing-badge">预览中</span>}
       </div>
+
+      {/* 显示原文位置（格式化显示） */}
+      <div className="suggestion-context">
+        <span className="context-label">原文位置:</span>
+        <span className="context-text position-format">{getPositionInfo(suggestion)}</span>
+      </div>
+
+      {/* 显示项目意义 */}
+      {suggestion.details?.significance && (
+        <div className="suggestion-significance">
+          <span className="significance-label">用途说明:</span>
+          <span className="significance-text">{suggestion.details.significance}</span>
+        </div>
+      )}
+
+      {/* 显示上下文内容 */}
+      {suggestion.details?.context && (
+        <div className="context-snippet">
+          <span className="snippet-label">上下文:</span>
+          <span className="snippet-text">...{suggestion.details.context}...</span>
+        </div>
+      )}
 
       {expanded && (
         <div className="suggestion-details">
-          <p>元素路径: {suggestion.elementPath}</p>
+          <p>变量路径: <code>{suggestion.suggestedName}</code></p>
+          <p>原始文本: <code>{suggestion.originalText}</code></p>
           {suggestion.details?.formatter && (
-            <p>格式化器: {suggestion.details.formatter}</p>
-          )}
-          {suggestion.details?.loopType && (
-            <p>循环类型: {suggestion.details.loopType}</p>
+            <p>建议格式化器: <code>{suggestion.details.formatter}</code></p>
           )}
 
           {!suggestion.applied && (
             <div className="suggestion-actions">
+              <button className="preview-btn" onClick={handlePreview} disabled={isPreviewing}>
+                👁️ 预览
+              </button>
               <button className="apply-btn" onClick={onApply}>
-                应用
+                ✅ 应用
               </button>
               <button className="dismiss-btn" onClick={onDismiss}>
-                忽略
+                ❌ 忽略
               </button>
             </div>
           )}

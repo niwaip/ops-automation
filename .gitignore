@@ -67,6 +67,13 @@ services/ai-orchestrator/data/
 # Carbone Engine uploaded templates (runtime data)
 services/carbone-engine/templates/
 templates/
+# Carbone Engine outputs (generated documents)
+services/carbone-engine/outputs/
+outputs/
+# Generated test files in root
+保密协议*.docx
+confidential_agreement*.docx
 # Playwright MCP test files
 .playwright-mcp/
 *.png
+test_contract.docx

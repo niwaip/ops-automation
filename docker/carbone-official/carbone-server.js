@@ -1,6 +1,8 @@
 /**
  * Carbone Official API Server
  * 使用官方 carbone 包，提供标准 API 接口
+ * 支持 HTTPS (使用与 office-addin 相同的证书)
+ * 代理 /studio/* 请求到 carbone-engine 服务
  */
 
 const express = require('express');
@@ -8,15 +10,20 @@ const carbone = require('carbone');
 const fs = require('fs');
 const path = require('path');
 const multer = require('multer');
+const https = require('https');
+const http = require('http');
 
 const app = express();
-const PORT = process.env.CARBONE_API_PORT || 3100;
+const HTTP_PORT = process.env.CARBONE_API_PORT || 3100;
+const HTTPS_PORT = process.env.CARBONE_API_HTTPS_PORT || 3443;
+const ENABLE_HTTPS = process.env.ENABLE_HTTPS === 'true';
+const CARBONE_ENGINE_URL = process.env.CARBONE_ENGINE_URL || 'http://carbone-engine:3009';
 
 // CORS 配置 - 允许 Office Add-in 访问
 app.use((req, res, next) => {
   res.header('Access-Control-Allow-Origin', '*');
-  res.header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  res.header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS, PUT, DELETE');
+  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With');
   if (req.method === 'OPTIONS') {
     return res.sendStatus(200);
   }
@@ -26,14 +33,128 @@ app.use((req, res, next) => {
 // 配置文件上传
 const upload = multer({ dest: '/tmp/uploads/' });
 
+// 捕获原始请求体的中间件（用于multipart代理）
+app.use((req, res, next) => {
+  // 对于multipart请求，需要捕获原始body以便代理
+  if (req.headers['content-type'] && req.headers['content-type'].includes('multipart')) {
+    const chunks = [];
+    req.on('data', (chunk) => chunks.push(chunk));
+    req.on('end', () => {
+      req.rawBody = Buffer.concat(chunks);
+      next();
+    });
+    req.on('error', (err) => {
+      console.error('Error capturing raw body:', err);
+      next(err);
+    });
+  } else {
+    next();
+  }
+});
+
 // 中间件
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
 // 健康检查
 app.get('/health', (req, res) => {
-  res.json({ status: 'ok', version: carbone.version });
+  res.json({ status: 'ok', version: carbone.version, service: 'carbone-api' });
 });
+
+/**
+ * 代理请求到 carbone-engine 服务
+ * - /studio/* API请求代理到 carbone-engine /studio/*
+ * - 静态资源(css, js等)代理到 carbone-engine
+ * 支持multipart文件上传代理
+ */
+const proxyToEngine = (req, res, targetPath) => {
+  const targetUrl = `${CARBONE_ENGINE_URL}${targetPath}`;
+
+  console.log(`[Proxy] ${req.method} ${req.path} -> ${targetUrl}`);
+
+  // 检查是否是multipart请求
+  const isMultipart = req.headers['content-type'] && req.headers['content-type'].includes('multipart');
+
+  const options = {
+    method: req.method,
+    headers: {
+      'Content-Type': req.headers['content-type'] || 'application/json',
+      'Authorization': req.headers['authorization'] || '',
+      'Content-Length': req.headers['content-length'] || '0',
+    }
+  };
+
+  const proxyReq = http.request(targetUrl, options, (proxyRes) => {
+    // 设置响应头
+    res.setHeader('Content-Type', proxyRes.headers['content-type'] || 'application/json');
+
+    // 判断是否是二进制响应（文件下载）
+    const contentType = proxyRes.headers['content-type'] || '';
+    const isBinary = contentType.includes('octet-stream') ||
+                     contentType.includes('application/vnd.') ||
+                     contentType.includes('pdf');
+
+    if (isBinary) {
+      // 二进制数据：使用Buffer数组收集
+      const chunks = [];
+      proxyRes.on('data', (chunk) => {
+        chunks.push(chunk);
+      });
+
+      proxyRes.on('end', () => {
+        const buffer = Buffer.concat(chunks);
+        // 传递Content-Disposition头（用于下载文件名）
+        if (proxyRes.headers['content-disposition']) {
+          res.setHeader('Content-Disposition', proxyRes.headers['content-disposition']);
+        }
+        res.status(proxyRes.statusCode).send(buffer);
+      });
+    } else {
+      // 文本/JSON数据：使用字符串收集
+      let body = '';
+      proxyRes.on('data', (chunk) => {
+        body += chunk;
+      });
+
+      proxyRes.on('end', () => {
+        res.status(proxyRes.statusCode).send(body);
+      });
+    }
+  });
+
+  proxyReq.on('error', (error) => {
+    console.error(`[Proxy Error] ${error.message}`);
+    res.status(500).json({
+      error: 'Failed to connect to carbone-engine service',
+      details: error.message,
+      targetUrl: targetUrl
+    });
+  });
+
+  // 发送请求体
+  // multipart请求：直接流式传输原始数据
+  // JSON请求：发送解析后的body
+  if (isMultipart && req.rawBody) {
+    proxyReq.write(req.rawBody);
+  } else if (req.body && Object.keys(req.body).length > 0) {
+    proxyReq.write(JSON.stringify(req.body));
+  }
+
+  proxyReq.end();
+};
+
+// 代理静态资源
+app.use('/css', (req, res) => proxyToEngine(req, res, `/css${req.path}`));
+app.use('/js', (req, res) => proxyToEngine(req, res, `/js${req.path}`));
+app.use('/api', (req, res) => proxyToEngine(req, res, `/api${req.path}`));
+
+// 根路径代理到carbone-engine UI
+app.get('/', (req, res) => proxyToEngine(req, res, '/'));
+
+/**
+ * 代理 /studio/* API请求到 carbone-engine 服务
+ */
+app.use('/studio', (req, res) => proxyToEngine(req, res, `/studio${req.path}`));
 
 /**
  * 渲染模板
@@ -211,8 +332,31 @@ app.post('/convert', upload.single('file'), async (req, res) => {
 });
 
 // 启动服务
-app.listen(PORT, () => {
-  console.log(`Carbone Official API running on port ${PORT}`);
-  console.log(`Health check: http://localhost:${PORT}/health`);
-  console.log(`Render endpoint: POST http://localhost:${PORT}/render`);
-});
+if (ENABLE_HTTPS) {
+  // 读取 SSL 证书 (使用与 office-addin 相同的证书)
+  const certPath = process.env.CERT_PATH || '/app/certs';
+  const sslOptions = {
+    key: fs.readFileSync(path.join(certPath, 'server.key')),
+    cert: fs.readFileSync(path.join(certPath, 'server.crt')),
+  };
+
+  // 启动 HTTPS 服务器
+  https.createServer(sslOptions, app).listen(HTTPS_PORT, () => {
+    console.log(`Carbone Official API running with HTTPS on port ${HTTPS_PORT}`);
+    console.log(`Health check: https://localhost:${HTTPS_PORT}/health`);
+    console.log(`Render endpoint: POST https://localhost:${HTTPS_PORT}/render`);
+  });
+
+  // 同时启动 HTTP 服务器
+  app.listen(HTTP_PORT, () => {
+    console.log(`Carbone Official API also running on HTTP port ${HTTP_PORT}`);
+    console.log(`Health check: http://localhost:${HTTP_PORT}/health`);
+  });
+} else {
+  // 启动 HTTP 服务器
+  app.listen(HTTP_PORT, () => {
+    console.log(`Carbone Official API running on port ${HTTP_PORT}`);
+    console.log(`Health check: http://localhost:${HTTP_PORT}/health`);
+    console.log(`Render endpoint: POST http://localhost:${HTTP_PORT}/render`);
+  });
+}

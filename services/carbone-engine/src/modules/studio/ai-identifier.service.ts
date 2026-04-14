@@ -1,6 +1,11 @@
 /**
  * Carbone Engine - AI Identifier Service
- * AI自动标识服务，基于结构化文档分析生成模版配置
+ * AI自动标识服务，基于多阶段AI分析生成模版配置
+ *
+ * 新的多阶段处理流程：
+ * 1. 文档理解 - AI分析文档整体内容、结构、章节
+ * 2. 分段参数化 - 根据理解结果，对每个章节进行语义识别和参数化
+ * 3. 整合确认 - 对所有结果进行整合和最终确认
  */
 
 import { Injectable, Logger } from '@nestjs/common';
@@ -9,6 +14,65 @@ import * as path from 'path';
 import JSZip from 'jszip';
 import axios from 'axios';
 import { DocumentElement, DocumentStructure, PreserveMarker } from './document-structure.service';
+
+/**
+ * 处理阶段枚举
+ */
+export enum ProcessingStage {
+  DOCUMENT_UNDERSTANDING = 'document_understanding',
+  SECTION_ANALYSIS = 'section_analysis',
+  INTEGRATION = 'integration',
+  COMPLETE = 'complete'
+}
+
+/**
+ * 进度信息
+ */
+export interface ProcessingProgress {
+  stage: ProcessingStage;
+  stageName: string;  // 中文阶段名称
+  progress: number;   // 0-100
+  message: string;    // 详细进度消息
+  currentSection?: string;  // 当前处理的章节
+}
+
+/**
+ * 文档理解结果
+ */
+export interface DocumentUnderstanding {
+  documentType: string;      // 文档类型判断
+  mainPurpose: string;       // 文档主要用途
+  keyEntities?: string[];    // 关键实体（如：甲方、乙方、项目）
+  dataSchema?: string;       // 建议的数据架构描述
+  sections: Array<{
+    name: string;            // 章节名称（如"第一条"、"第二条"）
+    content: string;         // 章节内容摘要
+    purpose: string;         // 章节用途说明
+    needsParameterization: boolean;  // 是否需要参数化
+    estimatedParams: string[];  // 预估可能需要的参数
+  }>;
+  parties: Array<{
+    role: string;            // 角色（甲方、乙方）
+    fieldsNeeded: string[];  // 需要的字段（名称、地址等）
+  }>;
+}
+
+/**
+ * 章节参数化结果
+ */
+export interface SectionParameterization {
+  sectionName: string;
+  suggestions: Array<{
+    originalText: string;
+    variablePath: string;
+    variableName: string;
+    fieldType?: string;      // 字段类型 (text, date, number, amount, etc.)
+    significance: string;    // 字段意义说明
+    usage?: string;          // 【自动填充说明】: 如何识别并获取此内容
+    context: string;         // 原文上下文
+    confidence: number;
+  }>;
+}
 
 /**
  * 参数路径映射规则
@@ -168,8 +232,10 @@ export interface VariableMapping {
   path: string;
   sampleValue: string;
   index: number;
-  type: 'text' | 'number' | 'date' | 'image' | 'heading';
+  type: 'text' | 'number' | 'date' | 'image' | 'heading' | 'amount' | 'enum';
   reason: string;
+  usage?: string;
+  fieldType?: string;
 }
 
 /**
@@ -185,6 +251,7 @@ export interface ContentPattern {
 export interface AIIdentifyResponse {
   templateConfig: TemplateConfig;
   suggestions: VariableMapping[];
+  rawSuggestions?: any[];  // 原始建议数据，用于前端显示更详细的信息
   loops: TableLoop[];
   images: ImageLoop[];
   combinedVariables: CombinedVariable[];  // 组合变量（文本+图片）
@@ -199,6 +266,8 @@ export interface AIIdentifyResponse {
   contextAnalysis?: {
     detectedTemplateType: string;
     userIntent: string;
+    usedAI?: boolean;  // 是否使用了AI分析
+    aiServiceUrl?: string;  // AI服务地址
   };
 }
 
@@ -271,6 +340,2446 @@ export class AIIdentifierService {
         userIntent: userIntent.summary
       }
     };
+  }
+
+  /**
+   * 直接从文档内容进行AI识别 - 用于Office插件
+   * 无需上传模板文件，直接对从Office获取的文本内容进行AI分析
+   * 识别需要填充的空白部分（如合同中的空格），生成模板变量建议
+   *
+   * @param documentContent 文档文本内容
+   * @param documentType 文档类型
+   * @param templateType 模板类型
+   * @param context 上下文信息
+   * @param customRules 自定义识别规则
+   */
+  async identifyFromContent(
+    documentContent: string,
+    documentType: string,
+    templateType: string,
+    context?: string,
+    customRules?: Array<{ pattern: string; targetPath: string; description?: string }>
+  ): Promise<AIIdentifyResponse> {
+    this.logger.log(`Direct AI identify from content, type: ${templateType}, content length: ${documentContent.length}`);
+
+    // 1. 预处理文档内容，提取需要填充的部分
+    const blankPatterns = this.extractBlankPatterns(documentContent, templateType);
+    this.logger.log(`Found ${blankPatterns.length} blank patterns`);
+
+    // 2. 调用AI分析空白部分，生成变量建议
+    // 返回建议以及是否使用了AI的标记
+    const { suggestions, usedAI } = await this.analyzeBlankPatternsWithAI(blankPatterns, documentContent, templateType, context, customRules);
+
+    // 记录识别方式（AI还是规则）
+    this.logger.log(`识别方式: ${usedAI ? 'AI智能识别' : '规则匹配（AI服务不可用）'}`);
+
+    // 3. 生成模板配置
+    const templateConfig: TemplateConfig = {
+      templateType,
+      staticElements: [],
+      tableLoops: [],
+      imageLoops: [],
+      combinedVariables: [],
+      variableMappings: [],  // 不再使用 suggestions 生成 variableMappings
+      analysisNotes: []  // 分析说明
+    };
+
+    // 4. 生成统计信息
+    const documentStats = {
+      totalElements: blankPatterns.length,
+      tables: 0,
+      images: 0,
+      stepScreenshots: 0,
+      potentialLoops: 0
+    };
+
+    // 转换 suggestions 为 VariableMapping 格式
+    const variableMappings: VariableMapping[] = suggestions.map((s, idx) => ({
+      path: s.suggestedName,
+      sampleValue: s.originalText,
+      index: idx,
+      type: 'text' as const,
+      reason: s.details?.significance || ''
+    }));
+
+    return {
+      templateConfig,
+      suggestions: variableMappings,  // 使用正确格式的 suggestions
+      rawSuggestions: suggestions,  // 保留原始建议数据用于前端显示
+      loops: [],
+      images: [],
+      combinedVariables: [],
+      analyzedAt: new Date().toISOString(),
+      documentStats,
+      contextAnalysis: {
+        detectedTemplateType: templateType,
+        userIntent: context || 'Office文档模板化',
+        usedAI,  // 标记是否使用了真正的AI分析
+        aiServiceUrl: this.aiOrchestratorUrl  // 显示AI服务地址
+      }
+    };
+  }
+
+  /**
+   * 多阶段AI识别 - 用于Office插件
+   * 新的处理流程：
+   * 1. 文档理解 - AI分析文档整体内容、结构、章节、当事人等
+   * 2. 分段参数化 - 根据理解结果，对每个需要参数化的章节进行语义识别
+   * 3. 整合确认 - 对所有结果进行整合和最终确认
+   * 4. 返回结果
+   *
+   * @param documentContent 文档文本内容
+   * @param documentType 文档类型
+   * @param templateType 模板类型
+   * @param context 上下文信息
+   * @param progressCallback 进度回调函数，用于实时报告处理进度
+   */
+  async identifyFromContentMultiStage(
+    documentContent: string,
+    documentType: string,
+    templateType: string,
+    context?: string,
+    progressCallback?: (progress: ProcessingProgress) => void,
+    underlineInfo?: Array<{  // 下划线信息（从Word JS API获取）
+      text: string;
+      underlineType: string;
+      paragraphText: string;
+      paragraphIndex?: number;  // 段落索引
+      position: { start: number; end: number };
+    }>,
+    paragraphFormats?: Array<{  // 段落格式信息
+      text: string;
+      index: number;
+      format: {
+        fontSize?: number;
+        isBold?: boolean;
+        alignment?: string;
+        isTitle?: boolean;
+      };
+    }>
+  ): Promise<AIIdentifyResponse> {
+    this.logger.log(`开始多阶段AI识别, 类型: ${templateType}, 内容长度: ${documentContent.length}`);
+
+    // ===== 快速流程：如果 underlineInfo 存在，直接对参数进行语义命名 =====
+    // 这可以跳过复杂的文档理解、分段参数化、整合确认流程
+    if (underlineInfo && underlineInfo.length > 0) {
+      this.logger.log(`检测到 ${underlineInfo.length} 个精确下划线位置，使用快速命名流程`);
+      return await this.quickNameParameters(underlineInfo, documentContent, templateType, progressCallback);
+    }
+
+    // ===== 原有的多阶段流程（当没有 underlineInfo 时使用） =====
+    if (underlineInfo && underlineInfo.length > 0) {
+      this.logger.log(`收到下划线信息: ${underlineInfo.length} 个带下划线位置`);
+    }
+
+    // 定义进度报告辅助函数
+    const reportProgress = (stage: ProcessingStage, stageName: string, progress: number, message: string, currentSection?: string) => {
+      const progressInfo: ProcessingProgress = {
+        stage,
+        stageName,
+        progress,
+        message,
+        currentSection
+      };
+      this.logger.log(`进度报告: [${stageName}] ${progress}% - ${message}`);
+      if (progressCallback) {
+        progressCallback(progressInfo);
+      }
+    };
+
+    try {
+      // ===== 阶段1: 文档理解 =====
+      reportProgress(ProcessingStage.DOCUMENT_UNDERSTANDING, '文档理解', 0, '正在分析文档整体结构和内容...');
+
+      const documentUnderstanding = await this.analyzeDocumentUnderstanding(documentContent, templateType, context);
+
+      reportProgress(ProcessingStage.DOCUMENT_UNDERSTANDING, '文档理解', 100,
+        `文档理解完成，识别到 ${documentUnderstanding.sections.length} 个章节，${documentUnderstanding.parties.length} 个当事人`);
+
+      // ===== 预处理：提取所有空白位置 =====
+      // 使用规则预处理，确保所有空白都被识别出来
+      reportProgress(ProcessingStage.SECTION_ANALYSIS, '预处理', 0, '正在预提取文档中的空白位置...');
+
+      const preExtractedBlanks = this.extractBlankPatterns(documentContent, templateType);
+      this.logger.log(`预处理提取到 ${preExtractedBlanks.length} 个空白位置`);
+
+      // 如果有下划线信息，直接使用 underlineInfo 作为参数来源（最精确）
+      // underlineInfo 来自 Word JS API，已通过 font.underline 检查，是最可靠的参数位置
+      let blanksToUse = preExtractedBlanks;
+      if (underlineInfo && underlineInfo.length > 0) {
+        blanksToUse = this.mergeUnderlineInfo([], underlineInfo, documentContent, templateType);
+        this.logger.log(`使用下划线信息作为参数来源，共 ${blanksToUse.length} 个参数位置`);
+        reportProgress(ProcessingStage.SECTION_ANALYSIS, '预处理', 10,
+          `使用 Word 下划线检测结果，发现 ${blanksToUse.length} 个参数位置`);
+      } else {
+        reportProgress(ProcessingStage.SECTION_ANALYSIS, '预处理', 10,
+          `预提取完成，发现 ${preExtractedBlanks.length} 个潜在空白位置`);
+      }
+
+      // ===== 阶段2: 分段参数化 =====
+      reportProgress(ProcessingStage.SECTION_ANALYSIS, '分段参数化', 0, '开始对各章节进行语义分析...');
+
+      const allSectionResults: SectionParameterization[] = [];
+      const sectionsToProcess = documentUnderstanding.sections.filter(s => s.needsParameterization);
+
+      for (let i = 0; i < sectionsToProcess.length; i++) {
+        const section = sectionsToProcess[i];
+        const sectionProgress = Math.round((i / sectionsToProcess.length) * 80);
+
+        reportProgress(ProcessingStage.SECTION_ANALYSIS, '分段参数化', sectionProgress,
+          `正在分析章节: ${section.name}`, section.name);
+
+        // 提取该章节的完整内容（从原文中提取）
+        const sectionContent = this.extractSectionContent(documentContent, section.name);
+
+        // 使用 blanksToUse（已包含 underlineInfo）
+        const sectionBlanks = blanksToUse.filter(b =>
+          b.chapter === section.name || b.chapter.includes(section.name) || section.name.includes(b.chapter)
+        );
+
+        const sectionResult = await this.parameterizeSection(
+          section.name,
+          sectionContent,
+          documentUnderstanding,
+          templateType,
+          sectionBlanks  // 传入预处理的空白位置
+        );
+
+        allSectionResults.push(sectionResult);
+
+        reportProgress(ProcessingStage.SECTION_ANALYSIS, '分段参数化', sectionProgress + Math.round(80 / sectionsToProcess.length),
+          `章节 ${section.name} 分析完成，识别到 ${sectionResult.suggestions.length} 个参数`);
+      }
+
+      reportProgress(ProcessingStage.SECTION_ANALYSIS, '分段参数化', 100,
+        `分段参数化完成，共识别到 ${allSectionResults.reduce((sum, s) => sum + s.suggestions.length, 0)} 个潜在参数`);
+
+      // ===== 阶段3: 整合确认 =====
+      reportProgress(ProcessingStage.INTEGRATION, '整合确认', 0, '正在整合和确认所有识别结果...');
+
+      const finalSuggestions = await this.integrateAndConfirm(
+        allSectionResults,
+        documentUnderstanding,
+        documentContent,
+        templateType
+      );
+
+      reportProgress(ProcessingStage.INTEGRATION, '整合确认', 100,
+        `整合确认完成，最终确认 ${finalSuggestions.length} 个有效参数`);
+
+      // ===== 阶段4: 完成 =====
+      reportProgress(ProcessingStage.COMPLETE, '完成', 100, 'AI识别处理完成');
+
+      // 构建返回结果
+      const templateConfig: TemplateConfig = {
+        templateType: documentUnderstanding.documentType,
+        staticElements: [],
+        tableLoops: [],
+        imageLoops: [],
+        combinedVariables: [],
+        variableMappings: [],
+        analysisNotes: [`文档类型: ${documentUnderstanding.documentType}`, `主要用途: ${documentUnderstanding.mainPurpose}`]
+      };
+
+      const variableMappings: VariableMapping[] = finalSuggestions.map((s, idx) => ({
+        path: s.variablePath,
+        sampleValue: s.originalText,
+        index: idx,
+        type: (s.details?.fieldType as any) || 'text',
+        reason: s.significance,
+        usage: s.details?.usage,
+        fieldType: s.details?.fieldType
+      }));
+
+      const documentStats = {
+        totalElements: finalSuggestions.length,
+        tables: 0,
+        images: 0,
+        stepScreenshots: 0,
+        potentialLoops: 0
+      };
+
+      return {
+        templateConfig,
+        suggestions: variableMappings,
+        rawSuggestions: finalSuggestions,
+        loops: [],
+        images: [],
+        combinedVariables: [],
+        analyzedAt: new Date().toISOString(),
+        documentStats,
+        contextAnalysis: {
+          detectedTemplateType: documentUnderstanding.documentType,
+          userIntent: documentUnderstanding.mainPurpose,
+          usedAI: true,
+          aiServiceUrl: this.aiOrchestratorUrl
+        }
+      };
+    } catch (error: any) {
+      this.logger.error('多阶段AI识别失败:', error);
+      reportProgress(ProcessingStage.COMPLETE, '处理失败', 0, `处理失败: ${error.message}`);
+
+      // 失败时回退到简化处理
+      this.logger.warn('回退到简化处理模式');
+      return this.identifyFromContent(documentContent, documentType, templateType, context);
+    }
+  }
+
+  /**
+   * 阶段1: 文档理解
+   * AI分析文档整体内容，识别文档类型、结构、章节、当事人等
+   */
+  private async analyzeDocumentUnderstanding(
+    documentContent: string,
+    templateType: string,
+    context?: string
+  ): Promise<DocumentUnderstanding> {
+    this.logger.log('阶段1: 开始文档理解分析');
+
+    const prompt = `你是一个专业的文档分析专家。请仔细阅读以下文档内容，分析并理解文档的整体结构、主题、关键实体和数据需求。
+
+文档类型提示: ${templateType}
+${context ? `用户说明: ${context}` : ''}
+
+【文档内容】
+${documentContent.substring(0, Math.min(3000, documentContent.length))}
+${documentContent.length > 3000 ? '\n...(文档较长，已截取前3000字符)' : ''}
+
+请返回JSON格式的分析结果：
+{
+  "documentType": "合同/协议/报告/证书等",
+  "mainPurpose": "文档的主要用途和目的",
+  "keyEntities": ["甲方", "乙方", "项目名称", "日期", "地点"],
+  "dataSchema": "描述该文档建议的数据模型结构，例如：{ partyA: { name, address }, project: { name, duration } }",
+  "sections": [
+    {
+      "name": "第一条 协议双方",
+      "content": "该章节的主要内容摘要",
+      "purpose": "该章节在文档中的作用",
+      "needsParameterization": true,
+      "estimatedParams": ["甲方名称", "甲方地址"]
+    }
+  ],
+  "parties": [
+    {
+      "role": "甲方",
+      "fieldsNeeded": ["名称", "地址", "代表人", "联系方式"]
+    }
+  ]
+}
+
+【分析要求】
+1. 识别文档的主要类型和用途。
+2. 提取所有章节/条款的结构（如"第一条"、"第二条"等）。
+3. 判断每个章节是否需要参数化（是否包含空白、待填写内容）。
+4. 识别文档涉及的当事人角色（如甲方、乙方、委托方等）及其需要的字段。
+5. **核心任务**：分析文档的主题，识别出关键实体（keyEntities）并设计一个合理的建议数据架构（dataSchema），以便后续阶段生成的变量路径具有一致性。
+
+只返回JSON格式，不要其他解释。`;
+
+    try {
+      const aiResponse = await this.callAIService(prompt);
+
+      // 解析AI返回的文档理解结果
+      if (aiResponse && aiResponse.documentType) {
+        this.logger.log(`文档理解成功: 类型=${aiResponse.documentType}, 章节数=${aiResponse.sections?.length || 0}`);
+        return {
+          documentType: aiResponse.documentType || templateType,
+          mainPurpose: aiResponse.mainPurpose || '文档模板化处理',
+          sections: aiResponse.sections || [],
+          parties: aiResponse.parties || []
+        };
+      }
+
+      // 如果AI返回格式不正确，使用基础理解
+      this.logger.warn('AI文档理解返回格式异常，使用基础理解');
+      return this.buildBasicDocumentUnderstanding(documentContent, templateType);
+    } catch (error: any) {
+      this.logger.error('文档理解AI调用失败:', error);
+      return this.buildBasicDocumentUnderstanding(documentContent, templateType);
+    }
+  }
+
+  /**
+   * 构建基础文档理解（当AI失败时的后备方案）
+   */
+  private buildBasicDocumentUnderstanding(content: string, templateType: string): DocumentUnderstanding {
+    // 提取章节结构
+    const chapterStructure = this.extractChapterStructure(content);
+
+    const sections = chapterStructure.map(chapter => ({
+      name: chapter.title,
+      content: content.substring(chapter.startPos, Math.min(chapter.endPos, chapter.startPos + 200)),
+      purpose: '文档章节内容',
+      needsParameterization: this.checkNeedsParameterization(content.substring(chapter.startPos, chapter.endPos)),
+      estimatedParams: []
+    }));
+
+    // 检测当事人角色
+    const partyKeywords = ['甲方', '乙方', '委托方', '受托方', '买方', '卖方', '出租方', '承租方'];
+    const parties = partyKeywords
+      .filter(keyword => content.includes(keyword))
+      .map(role => ({
+        role,
+        fieldsNeeded: ['名称', '地址']
+      }));
+
+    return {
+      documentType: templateType,
+      mainPurpose: '文档模板化处理',
+      sections,
+      parties
+    };
+  }
+
+  /**
+   * 检查章节内容是否需要参数化
+   */
+  private checkNeedsParameterization(content: string): boolean {
+    // 检查是否有空白、冒号后空白、日期格式空白等
+    const patterns = [
+      /[：:]\s+/,           // 冒号后空白
+      /[_＿]{2,}/,         // 下划线空白
+      /[ 　]{4,}/,         // 多个空格
+      /[（【\(][　 ]*[）】\)]/,  // 括号空白
+      /[\s　]+年[\s　]+月[\s　]+日/,  // 日期空白
+    ];
+
+    return patterns.some(pattern => pattern.test(content));
+  }
+
+  /**
+   * 阶段2: 章节参数化
+   * AI对单个章节进行语义分析，识别该章节中的空白参数
+   * @param preExtractedBlanks 预处理的空白位置（用于确保所有空白都被识别）
+   */
+  private async parameterizeSection(
+    sectionName: string,
+    sectionContent: string,
+    documentUnderstanding: DocumentUnderstanding,
+    templateType: string,
+    preExtractedBlanks: Array<{ text: string; context: string; beforeBlank: string; position: number; type: string; significance: string }> = []
+  ): Promise<SectionParameterization> {
+    this.logger.log(`阶段2: 参数化章节 "${sectionName}", 预处理空白 ${preExtractedBlanks.length} 个`);
+
+    // 获取该章节相关的当事人信息
+    const relevantParties = documentUnderstanding.parties;
+
+    // 获取关键实体和数据架构信息
+    const keyEntitiesInfo = documentUnderstanding.keyEntities ? `【关键实体】: ${documentUnderstanding.keyEntities.join(', ')}` : '';
+    const dataSchemaInfo = documentUnderstanding.dataSchema ? `【建议数据架构】: ${documentUnderstanding.dataSchema}` : '';
+
+    // 构建预处理空白列表（用于提示AI）
+    // 核心原则：只传递"下划线+空格"作为候选，提供上下文让AI推断变量名
+    const preBlanksList = preExtractedBlanks.length > 0
+      ? `\n【已识别的空白填充位置】（共${preExtractedBlanks.length}个，每个位置都需要填写内容）\n${preExtractedBlanks.map((b, i) =>
+        `[${i + 1}] 空白内容: "${b.text}"\n    前文: "${b.beforeBlank}"\n    上下文片段: "${b.context}"\n    类型: ${b.type}\n    建议意义: "${b.significance}"`
+      ).join('\n')}\n\n请根据上下文为每个空白位置生成合适的变量名，变量名应反映其业务含义。`
+      : '';
+
+    const prompt = `你是一个专业的文档模板化专家。请分析以下章节内容，为每个空白填充位置生成语义化变量。
+
+【核心原则】
+- 只有”下划线+空格”才是需要填写内容的参数位置
+- 变量名应反映空白所在位置的标签文字（如空白前是”甲方”则变量名应包含partyA）
+- context字段必须包含空白内容本身，方便后续精确定位和替换
+
+文档类型: ${documentUnderstanding.documentType}
+章节名称: ${sectionName}
+章节用途: ${documentUnderstanding.mainPurpose}
+${keyEntitiesInfo}
+${dataSchemaInfo}
+
+【当事人信息】
+${relevantParties.map(p => `${p.role} 需要字段: ${p.fieldsNeeded.join(', ')}`).join('\n')}
+
+【已识别的空白位置】
+${preBlanksList || '无空白位置'}
+
+【章节内容】
+${sectionContent}
+
+请返回JSON格式的分析结果：
+{
+  “sectionName”: “${sectionName}”,
+  “suggestions”: [
+    {
+      “originalText”: “空白内容本身（如______）”,
+      “variablePath”: “d.partyA.name”,
+      “variableName”: “甲方名称”,
+      “fieldType”: “text/date/number/amount/enum”,
+      “significance”: “根据上下文推断的业务意义”,
+      “context”: “前文标签 + 空白内容 + 后文（如：甲方：______（签章））”,
+      “confidence”: 0.95
+    }
+  ]
+}
+
+【重要提示】
+1. originalText必须是空白内容本身（下划线或空格），不包含标签文字
+2. context格式：【标签】空白内容【后文】，用于精确定位
+3. 为每个空白位置生成合适的变量名
+
+只返回JSON格式，不要其他解释。`;
+
+    try {
+      const aiResponse = await this.callAIService(prompt);
+
+      if (aiResponse && aiResponse.suggestions && Array.isArray(aiResponse.suggestions)) {
+        this.logger.log(`章节 "${sectionName}" AI参数化成功，识别到 ${aiResponse.suggestions.length} 个参数`);
+
+        // 合并预处理空白和AI建议
+        // 如果AI返回的建议少于预处理空白，补充缺失的
+        const aiSuggestions = aiResponse.suggestions.map((s: any) => ({
+          originalText: s.originalText || '',
+          variablePath: s.variablePath || 'd.unknown',
+          variableName: s.variableName || '未知字段',
+          fieldType: s.fieldType || 'text',
+          significance: s.significance || '文档填充字段',
+          context: s.context || sectionContent.substring(0, 50),
+          confidence: s.confidence || 0.7
+        }));
+
+        // 检查预处理空白是否都被AI覆盖
+        // 使用更严格的去重逻辑：检查变量路径、标签、上下文重叠
+        const missingBlanks = preExtractedBlanks.filter(pre => {
+          // 检查AI是否已经识别了这个空白
+          // 更严格的匹配条件：
+          // 1. 变量路径相同
+          // 2. 标签关键词相同（如"甲方"、"地址"）
+          // 3. 上下文高度重叠（至少70%相同）
+          const inferredPath = this.inferVariablePath(pre.beforeBlank, pre.type, templateType);
+
+          return !aiSuggestions.some((ai: any) => {
+            // 1. 变量路径完全相同
+            if (ai.variablePath === inferredPath) {
+              return true;
+            }
+
+            // 2. 标签关键词相同（检查核心关键词如"甲方"、"乙方"、"地址"等）
+            const coreKeywords = ['甲方', '乙方', '地址', '名称', '签字', '盖章', '日期', '年份', '附件', '保密期限'];
+            const preKeyword = coreKeywords.find(kw => pre.beforeBlank.includes(kw));
+            const aiKeyword = coreKeywords.find(kw => ai.variablePath.includes(kw) || ai.variableName?.includes(kw));
+            if (preKeyword && aiKeyword && preKeyword === aiKeyword) {
+              // 同类关键词，检查位置是否接近（通过上下文长度判断）
+              const contextOverlap = this.calculateContextOverlap(pre.context, ai.context || '');
+              if (contextOverlap > 0.5) {
+                return true;
+              }
+            }
+
+            return false;
+          });
+        });
+
+        // 补充缺失的预处理空白
+        if (missingBlanks.length > 0) {
+          this.logger.log(`补充 ${missingBlanks.length} 个预处理空白（AI未覆盖）`);
+          for (const blank of missingBlanks) {
+            // 根据空白类型推断变量路径
+            const inferredPath = this.inferVariablePath(blank.beforeBlank, blank.type, templateType);
+            aiSuggestions.push({
+              originalText: blank.text,
+              variablePath: inferredPath,
+              variableName: blank.beforeBlank || '未知字段',
+              significance: blank.significance,
+              context: blank.context,
+              confidence: 0.6  // 补充的空白置信度较低
+            });
+          }
+        }
+
+        return { sectionName, suggestions: aiSuggestions };
+      }
+
+      // AI返回格式异常，使用预处理空白作为后备
+      if (preExtractedBlanks.length > 0) {
+        this.logger.warn(`章节 "${sectionName}" AI返回格式异常，使用预处理空白 ${preExtractedBlanks.length} 个作为后备`);
+        return {
+          sectionName,
+          suggestions: preExtractedBlanks.map(b => ({
+            originalText: b.text,
+            variablePath: this.inferVariablePath(b.beforeBlank, b.type, templateType),
+            variableName: b.beforeBlank || '未知字段',
+            significance: b.significance,
+            context: b.context,
+            confidence: 0.5
+          }))
+        };
+      }
+
+      return { sectionName, suggestions: [] };
+    } catch (error: any) {
+      this.logger.error(`章节 "${sectionName}" 参数化失败:`, error);
+
+      // 使用预处理空白作为后备
+      if (preExtractedBlanks.length > 0) {
+        this.logger.log(`使用预处理空白 ${preExtractedBlanks.length} 个作为后备`);
+        return {
+          sectionName,
+          suggestions: preExtractedBlanks.map(b => ({
+            originalText: b.text,
+            variablePath: this.inferVariablePath(b.beforeBlank, b.type, templateType),
+            variableName: b.beforeBlank || '未知字段',
+            significance: b.significance,
+            context: b.context,
+            confidence: 0.5
+          }))
+        };
+      }
+
+      return { sectionName, suggestions: [] };
+    }
+  }
+
+  /**
+   * 计算两个上下文的重叠程度（0-1）
+   * 用于判断两个空白是否是同一个位置
+   */
+  private calculateContextOverlap(context1: string, context2: string): number {
+    if (!context1 || !context2) return 0;
+
+    // 提取核心文本（去掉空白部分）
+    const text1 = context1.replace(/[\s＿_]+/g, '').trim();
+    const text2 = context2.replace(/[\s＿_]+/g, '').trim();
+
+    if (text1 === text2) return 1;
+
+    // 计算字符重叠率
+    const shorter = text1.length < text2.length ? text1 : text2;
+    const longer = text1.length >= text2.length ? text1 : text2;
+
+    // 检查较短文本是否是较长文本的子串
+    if (longer.includes(shorter)) {
+      return shorter.length / longer.length;
+    }
+
+    // 计算共同字符数
+    let commonChars = 0;
+    for (let i = 0; i < shorter.length; i++) {
+      if (longer.includes(shorter[i])) {
+        commonChars++;
+      }
+    }
+
+    return commonChars / longer.length;
+  }
+
+  /**
+   * 根据空白信息推断变量路径
+   */
+  private inferVariablePath(beforeBlank: string, type: string, templateType: string): string {
+    // 使用已有标签映射进行推断
+    const labelMappings: Record<string, string> = {
+      '甲方': 'd.partyA.name',
+      '甲方地址': 'd.partyA.address',
+      '甲方签字': 'd.partyA.signature',
+      '乙方': 'd.partyB.name',
+      '乙方地址': 'd.partyB.address',
+      '乙方签字': 'd.partyB.signature',
+      '地址': 'd.address',
+      '签字': 'd.signature',
+      '盖章': 'd.seal',
+      '年份': 'd.year',
+      '附件': 'd.attachmentName',
+      '保密期限': 'd.confidentialityPeriod',
+      '签订日期': 'd.signDate',
+      '日期': 'd.date',
+    };
+
+    // 直接匹配
+    for (const [label, path] of Object.entries(labelMappings)) {
+      if (beforeBlank.includes(label) || label.includes(beforeBlank)) {
+        return path;
+      }
+    }
+
+    // 默认路径
+    return `d.field${Date.now() % 100}`;
+  }
+
+  /**
+   * 从原文中提取指定章节的内容
+   */
+  private extractSectionContent(fullContent: string, sectionName: string): string {
+    // 尝试匹配章节标题
+    const sectionPattern = new RegExp(`${sectionName.replace(/[：:]/g, '[：:]')}[\\s\\S]*?(?=第[一二三四五六七八九十]+条|第[一二三四五六七八九十]+章|$)`, 'i');
+    const match = fullContent.match(sectionPattern);
+
+    if (match) {
+      return match[0].substring(0, Math.min(2000, match[0].length));
+    }
+
+    // 如果无法精确匹配，返回文档背景部分
+    return fullContent.substring(0, Math.min(2000, fullContent.length));
+  }
+
+  /**
+   * 阶段3: 整合确认
+   * AI对所有章节的参数化结果进行整合和最终确认
+   */
+  private async integrateAndConfirm(
+    sectionResults: SectionParameterization[],
+    documentUnderstanding: DocumentUnderstanding,
+    fullContent: string,
+    templateType: string
+  ): Promise<any[]> {
+    this.logger.log('阶段3: 开始整合确认');
+
+    // 合并所有章节的建议
+    const allSuggestions = sectionResults.flatMap(sr => sr.suggestions);
+
+    if (allSuggestions.length === 0) {
+      this.logger.warn('没有识别到任何参数');
+      return [];
+    }
+
+    const prompt = `你是一个专业的文档模板化审核专家。请审核以下识别结果，进行整合和确认。
+
+文档类型: ${documentUnderstanding.documentType}
+文档用途: ${documentUnderstanding.mainPurpose}
+【关键实体】: ${documentUnderstanding.keyEntities?.join(', ') || '未指定'}
+【建议数据架构】: ${documentUnderstanding.dataSchema || '未指定'}
+
+【已识别的所有参数】（共${allSuggestions.length}个，可能存在重复或冲突）
+${JSON.stringify(allSuggestions, null, 2)}
+
+【文档背景内容】
+${fullContent.substring(0, Math.min(1000, fullContent.length))}
+
+请返回JSON格式的最终确认结果：
+{
+  "confirmedSuggestions": [
+    {
+      "originalText": "原文内容",
+      "variablePath": "最终确认的变量路径 (使用d.前缀，点号分隔)",
+      "variableName": "变量名称 (简短中文)",
+      "fieldType": "text/date/number/amount/enum",
+      "significance": "【用途说明】: 该参数的详细用途；【填写示例】: 示例值；【校验规则】: 格式或逻辑要求",
+      "context": "原文上下文 (格式：【前文 _____ 后文】)",
+      "confidence": 0.95,
+      "chapter": "所在章节名称"
+    }
+  ],
+  "removedDuplicates": ["说明哪些参数被合并或删除及其原因"]
+}
+
+【整合审核要求】
+1. **去重与合并**：识别重复或意义高度相近的参数并合并。对于多次出现的相同标签（如多次出现"日期"），如果意义不同则通过路径区分（如d.signDate, d.effectiveDate）。
+2. **路径规范化**：确保所有变量路径符合CamelCase规范，并基于【建议数据架构】进行组织。
+3. **用途说明（significance）**：这是最核心的输出。必须详细描述该字段在业务上的用途，以便后续自动化系统能够根据此描述自动匹配数据。
+4. **准确性**：校对 originalText 和 context 确保它们在原文中能被精确定位。
+5. **字段类型**：确保 fieldType 准确反映数据性质（如：金额应为amount，日期应为date）。
+
+只返回JSON格式，不要其他解释。`;
+
+    try {
+      const aiResponse = await this.callAIService(prompt);
+
+      if (aiResponse && aiResponse.confirmedSuggestions && Array.isArray(aiResponse.confirmedSuggestions)) {
+        this.logger.log(`整合确认完成，最终确认 ${aiResponse.confirmedSuggestions.length} 个参数`);
+        return aiResponse.confirmedSuggestions.map((s: any, idx: number) => ({
+          id: `sugg-${Date.now()}-${idx}`,
+          type: 'variable',
+          elementPath: s.context || `【${s.originalText}】`,
+          suggestedName: s.variablePath,
+          originalText: s.originalText,
+          confidence: s.confidence || 0.8,
+          applied: false,
+          context: s.context,
+          details: {
+            chapter: s.chapter || '正文',
+            significance: s.significance,
+            usage: s.usage,
+            variableName: s.variableName,
+            fieldType: s.fieldType || 'text',
+            formatter: this.extractFormatter(s.variablePath)
+          }
+        }));
+      }
+
+      // AI返回格式异常，使用原始合并结果
+      this.logger.warn('整合确认AI返回格式异常，使用原始合并结果');
+      return this.formatRawSuggestions(allSuggestions);
+    } catch (error: any) {
+      this.logger.error('整合确认失败:', error);
+      return this.formatRawSuggestions(allSuggestions);
+    }
+  }
+
+  /**
+   * 格式化原始建议（当整合AI失败时的后备）
+   */
+  private formatRawSuggestions(rawSuggestions: any[]): any[] {
+    return rawSuggestions.map((s, idx) => ({
+      id: `sugg-${Date.now()}-${idx}`,
+      type: 'variable',
+      elementPath: s.context || `【${s.originalText}】`,
+      suggestedName: s.variablePath,
+      originalText: s.originalText,
+      confidence: s.confidence || 0.7,
+      applied: false,
+      context: s.context,
+      details: {
+        chapter: '正文',
+        significance: s.significance || '文档填充字段',
+        variableName: s.variableName,
+        formatter: null
+      }
+    }));
+  }
+
+  /**
+   * 快速命名流程（当 underlineInfo 存在时）
+   * 只需要一次AI调用，直接对参数进行语义命名
+   * 跳过复杂的文档理解、分段参数化、整合确认流程
+   */
+  private async quickNameParameters(
+    underlineInfo: Array<{
+      text: string;
+      underlineType: string;
+      paragraphText: string;
+      paragraphIndex?: number;
+      position: { start: number; end: number };
+    }>,
+    documentContent: string,
+    templateType: string,
+    progressCallback?: (progress: ProcessingProgress) => void
+  ): Promise<AIIdentifyResponse> {
+    this.logger.log(`快速命名流程: 处理 ${underlineInfo.length} 个参数位置`);
+
+    const reportProgress = (stage: ProcessingStage, stageName: string, progress: number, message: string) => {
+      this.logger.log(`进度: [${stageName}] ${progress}% - ${message}`);
+      if (progressCallback) {
+        progressCallback({ stage, stageName, progress, message });
+      }
+    };
+
+    reportProgress(ProcessingStage.SECTION_ANALYSIS, '快速识别', 0, '正在分析参数语义...');
+
+    // 构建参数列表信息
+    const parameterList = underlineInfo.map((info, idx) => {
+      // 提取上下文（前后的文字）
+      const paraText = info.paragraphText;
+      const start = Math.max(0, info.position.start - 10);
+      const end = Math.min(paraText.length, info.position.end + 10);
+      const context = paraText.substring(start, end);
+
+      // 提取前面的标签（如"甲方："、"地址："）
+      const beforeBlank = paraText.substring(0, info.position.start);
+      const labelMatch = beforeBlank.match(/([^\s：:]+)[：:]?\s*$/);
+      const label = labelMatch ? labelMatch[1].trim() : '';
+
+      return {
+        index: idx + 1,
+        text: info.text,
+        context: context,
+        label: label,
+        paragraph: paraText.substring(0, 50) + '...'
+      };
+    });
+
+    // 构建AI提示
+    const prompt = `你是一个专业的合同模板参数命名专家。请根据以下参数位置的上下文信息，为每个参数生成合适的变量名称和说明。
+
+模板类型: ${templateType}
+
+【参数位置列表】
+${parameterList.map(p => `
+#${p.index}
+- 上下文: "${p.context}"
+- 前置标签: "${p.label}"
+- 段落: "${p.paragraph}"
+`).join('\n')}
+
+请返回JSON数组，为每个参数生成：
+[
+  {
+    "index": 1,
+    "variablePath": "{d.partyA.name}",
+    "variableName": "partyA_name",
+    "significance": "甲方公司名称",
+    "fieldType": "text",
+    "confidence": 0.95
+  }
+]
+
+【命名规范】
+1. 变量路径格式: {d.实体.字段} 或 {d.字段}
+2. 常见实体: partyA(甲方), partyB(乙方), project(项目), contract(合同)
+3. 常见字段: name(名称), address(地址), date(日期), amount(金额), person(代表人)
+4. 日期字段: year(年), month(月), day(日)
+5. 变量名称使用snake_case格式
+
+只返回JSON数组，不要其他解释。`;
+
+    try {
+      // 调用AI进行命名
+      reportProgress(ProcessingStage.SECTION_ANALYSIS, '快速识别', 50, '正在调用AI进行语义命名...');
+      const aiResponseObj = await this.callAIService(prompt);
+
+      reportProgress(ProcessingStage.SECTION_ANALYSIS, '快速识别', 90, '正在处理AI响应...');
+
+      // 解析AI响应
+      let namingResults: any[] = [];
+      try {
+        // callAIService 返回的是 { suggestions: [...] } 格式
+        namingResults = aiResponseObj?.suggestions || [];
+        if (namingResults.length === 0) {
+          // 如果没有 suggestions，尝试直接解析响应
+          const rawResponse = aiResponseObj?.response || '';
+          if (rawResponse) {
+            const arrayMatch = rawResponse.match(/\[[\s\S]*\]/);
+            if (arrayMatch) {
+              namingResults = JSON.parse(arrayMatch[0]);
+            }
+          }
+        }
+      } catch (parseErr) {
+        this.logger.warn('AI响应解析失败，使用默认命名');
+        namingResults = [];
+      }
+
+      // 如果AI没有返回足够的结果，使用默认命名
+      if (namingResults.length < underlineInfo.length) {
+        this.logger.log('AI结果不足，补充默认命名');
+        for (let i = namingResults.length; i < underlineInfo.length; i++) {
+          namingResults.push({
+            index: i + 1,
+            variablePath: `{d.field_${i + 1}}`,
+            variableName: `field_${i + 1}`,
+            significance: '待填写内容',
+            fieldType: 'text',
+            confidence: 0.7
+          });
+        }
+      }
+
+      // 构建建议列表（保留underlineInfo的精确位置信息）
+      const suggestions = namingResults.map((result, idx) => {
+        const info = underlineInfo[idx];
+        const para = info?.paragraphText || '';
+        const posStart = info?.position?.start || 0;
+        const posEnd = info?.position?.end || 0;
+        const context = para.substring(Math.max(0, posStart - 15), Math.min(para.length, posEnd + 15));
+
+        return {
+          id: `sugg-${Date.now()}-${idx}`,
+          type: 'variable',
+          elementPath: `【${context}】`,
+          suggestedName: result.variablePath || `{d.field_${idx + 1}}`,
+          originalText: underlineInfo[idx]?.text || '',
+          confidence: result.confidence || 0.8,
+          applied: false,
+          context: context,
+          // 保留精确位置信息（用于前端替换）
+          underlineInfo: {
+            paragraphIndex: info?.paragraphIndex,
+            position: info?.position,
+            paragraphText: info?.paragraphText,
+            underlineType: info?.underlineType
+          },
+          details: {
+            chapter: '正文',
+            significance: result.significance || '文档填充字段',
+            variableName: result.variableName,
+            fieldType: result.fieldType || 'text',
+            displayPosition: context,
+            beforeBlank: parameterList[idx]?.label || '',
+            afterBlank: para.substring(posEnd, Math.min(para.length, posEnd + 10))
+          }
+        };
+      });
+
+      reportProgress(ProcessingStage.COMPLETE, '完成', 100, `快速识别完成，共 ${suggestions.length} 个参数`);
+
+      this.logger.log(`快速命名流程完成: ${suggestions.length} 个参数`);
+
+      return {
+        templateConfig: {
+          templateType: templateType,
+          staticElements: [],
+          tableLoops: [],
+          imageLoops: [],
+          combinedVariables: [],
+          variableMappings: [],
+          analysisNotes: [`快速识别模式，基于 ${underlineInfo.length} 个下划线位置`]
+        },
+        suggestions: suggestions.map((s, idx) => ({
+          path: s.suggestedName,
+          sampleValue: s.originalText,
+          index: idx,
+          type: 'text',
+          reason: s.details?.significance,
+          fieldType: s.details?.fieldType
+        })),
+        rawSuggestions: suggestions,
+        loops: [],
+        images: [],
+        combinedVariables: [],
+        analyzedAt: new Date().toISOString(),
+        documentStats: {
+          totalElements: suggestions.length,
+          tables: 0,
+          images: 0,
+          stepScreenshots: 0,
+          potentialLoops: 0
+        },
+        contextAnalysis: {
+          detectedTemplateType: templateType,
+          userIntent: '基于下划线位置的参数识别',
+          usedAI: true,
+          aiServiceUrl: this.aiOrchestratorUrl
+        }
+      };
+
+    } catch (error) {
+      this.logger.error('快速命名流程失败:', error);
+      reportProgress(ProcessingStage.COMPLETE, '完成', 100, '使用默认命名');
+
+      // 后备方案：使用默认命名
+      const suggestions = underlineInfo.map((info, idx) => ({
+        id: `sugg-${Date.now()}-${idx}`,
+        type: 'variable',
+        elementPath: `【${info.paragraphText.substring(0, 30)}...】`,
+        suggestedName: `{d.field_${idx + 1}}`,
+        originalText: info.text,
+        confidence: 0.7,
+        applied: false,
+        context: info.paragraphText.substring(0, 50),
+        details: {
+          chapter: '正文',
+          significance: '待填写内容',
+          variableName: `field_${idx + 1}`,
+          fieldType: 'text'
+        }
+      }));
+
+      return {
+        templateConfig: {
+          templateType: templateType,
+          staticElements: [],
+          tableLoops: [],
+          imageLoops: [],
+          combinedVariables: [],
+          variableMappings: [],
+          analysisNotes: ['后备命名模式']
+        },
+        suggestions: suggestions.map((s, idx) => ({
+          path: s.suggestedName,
+          sampleValue: s.originalText,
+          index: idx,
+          type: 'text',
+          reason: s.details?.significance
+        })),
+        rawSuggestions: suggestions,
+        loops: [],
+        images: [],
+        combinedVariables: [],
+        analyzedAt: new Date().toISOString(),
+        documentStats: {
+          totalElements: suggestions.length,
+          tables: 0,
+          images: 0,
+          stepScreenshots: 0,
+          potentialLoops: 0
+        },
+        contextAnalysis: {
+          detectedTemplateType: templateType,
+          userIntent: '后备命名',
+          usedAI: false,
+          aiServiceUrl: this.aiOrchestratorUrl
+        }
+      };
+    }
+  }
+
+  /**
+   * 合并下划线信息到预处理空白列表
+   * Word中"下划线+空格"通常是需要填写内容的位置
+   * 这个方法将下划线信息与规则提取的空白合并，提高识别准确度
+   */
+  private mergeUnderlineInfo(
+    existingBlanks: Array<{
+      text: string;
+      context: string;
+      beforeBlank: string;
+      position: number;
+      type: string;
+      chapter: string;
+      significance: string;
+    }>,
+    underlineInfo: Array<{
+      text: string;
+      underlineType: string;
+      paragraphText: string;
+      paragraphIndex?: number;  // 段落索引（用于精确定位）
+      position: { start: number; end: number };
+    }>,
+    documentContent: string,
+    templateType: string
+  ): Array<{
+    text: string;
+    context: string;
+    beforeBlank: string;
+    position: number;
+    type: 'date' | 'blank' | 'underline';
+    chapter: string;
+    significance: string;
+  }> {
+    // 直接使用 underlineInfo 作为参数来源，不与 existingBlanks 合并
+    // 因为 underlineInfo 来自 Word JS API，是最精确的下划线检测结果
+    const result: Array<{
+      text: string;
+      context: string;
+      beforeBlank: string;
+      position: number;
+      type: 'date' | 'blank' | 'underline';
+      chapter: string;
+      significance: string;
+    }> = [];
+
+    const chapterStructure = this.extractChapterStructure(documentContent);
+    this.logger.log(`mergeUnderlineInfo: 收到 ${underlineInfo.length} 个下划线位置`);
+
+    for (const underline of underlineInfo) {
+      // 检查下划线文本是否包含空白（空格、下划线、制表符等）
+      const hasBlank = underline.text.match(/[＿_\s　\t]+/);
+
+      // 如果下划线文本主要是空白，这是需要参数化的位置
+      // 纯空格文本 trim() 后为空字符串，长度为0，所以 0 < length * 0.3 是 true
+      const isBlankUnderline = underline.text.trim().length < underline.text.length * 0.3;
+
+      // 使用段落文本和精确位置来判断重复（同一段落中位置相近才算重复）
+      const isDuplicate = result.some(b =>
+        b.context === underline.paragraphText &&
+        Math.abs(b.position - underline.position.start) < 3
+      );
+
+      this.logger.log(`下划线 #${result.length + 1}: "${underline.text.substring(0, 20)}..." (${underline.text.length}字符) - hasBlank:${!!hasBlank}, isBlank:${isBlankUnderline}, duplicate:${isDuplicate}`);
+
+      // 所有 underlineInfo 都应该被加入（因为已经通过 font.underline 检查）
+      if (!isDuplicate) {
+        // 提取下划线前面的文本作为标签
+        const paragraphText = underline.paragraphText;
+        const beforeUnderline = paragraphText.substring(0, underline.position.start);
+        const labelMatch = beforeUnderline.match(/([^\s：:]+)[：:]?\s*$/);
+        const label = labelMatch ? labelMatch[1].trim() : '';
+
+        // 获取所在章节
+        const chapterInfo = this.getChapterForPosition(underline.position.start, chapterStructure);
+
+        // 判断意义
+        const significance = this.getSignificanceForLabel(label, templateType) ||
+          '带下划线的空白位置，用于填写相关内容';
+
+        result.push({
+          text: underline.text,
+          context: underline.paragraphText.substring(
+            Math.max(0, underline.position.start - 15),
+            Math.min(underline.paragraphText.length, underline.position.end + 15)
+          ),
+          beforeBlank: label,
+          position: underline.position.start,
+          type: 'underline' as const,  // 类型：下划线空白（使用 const 断言）
+          chapter: chapterInfo,
+          significance: significance
+        });
+      }
+    }
+
+    this.logger.log(`mergeUnderlineInfo: 最终返回 ${result.length} 个参数位置`);
+    return result;
+  }
+
+  /**
+   * 提取文档中需要填充的空白部分
+   *
+   * 核心原则：只识别"下划线+空格"作为参数候选
+   * 合同中只有下划线+空格的位置才是真正需要填写内容的参数位置
+   *
+   * 识别模式：
+   * 1. 下划线（如：______） - 最典型的空白填充
+   * 2. 多空格（如：多个连续空格） - 某些合同使用空格表示空白
+   * 3. 日期格式（如：____年__月__日） - 作为整体处理
+   *
+   * 不识别：
+   * - 冒号后空白（如：甲方： ）- 不单独识别，除非后面有下划线/空格
+   * - 括号空白（如：（填写））- 不识别
+   * - 占位符（如：XXX）- 不识别
+   */
+  private extractBlankPatterns(content: string, templateType: string): Array<{
+    text: string;
+    context: string;  // 前后文本作为上下文
+    beforeBlank: string;  // 空白前面的文本（用于精确标签匹配）
+    position: number;
+    type: 'blank' | 'date' | 'underline';
+    chapter: string;  // 所在章节信息（如"第一条"、"第二条"）
+    significance: string;  // 项目意义/用途说明
+  }> {
+    const patterns: Array<{
+      text: string;
+      context: string;
+      beforeBlank: string;
+      position: number;
+      type: 'blank' | 'date' | 'underline';
+      chapter: string;
+      significance: string;
+    }> = [];
+
+    // 首先提取章节结构，用于后续定位
+    const chapterStructure = this.extractChapterStructure(content);
+
+    // 定义排除列表：不应该作为空白填充的位置
+    const excludePatterns = [
+      /^第[一二三四五六七八九十百千]+[条章][：:]?\s*$/,  // 章节标题（如"第一条："）
+      /^\d+[.、：:]\s*$/,  // 数字编号（如"1."、"2、"）
+      /^[一二三四五六七八九十]+[、：:]\s*$/,  // 中文编号
+    ];
+
+    let match: RegExpExecArray | null;
+
+    // ===== 核心：只检测下划线+空格 =====
+
+    // 1. 日期格式作为整体（____年__月__日 或 年 月 日）
+    // 这是最常见的日期填写位置
+    const dateBlankRegex = /[＿_]{2,}年[＿_]{2,}月[＿_]{2,}日|[\s　]{2,}年[\s　]{2,}月[\s　]{2,}日|[＿_\s　]{2,}年[＿_\s　]{2,}月[＿_\s　]{2,}日/g;
+    while ((match = dateBlankRegex.exec(content)) !== null) {
+      const startPos = Math.max(0, match.index - 20);
+      const endPos = Math.min(content.length, match.index + match[0].length + 20);
+      const beforeBlankStart = Math.max(0, match.index - 30);
+      const beforeBlank = content.substring(beforeBlankStart, match.index).trim();
+
+      const chapterInfo = this.getChapterForPosition(match.index, chapterStructure);
+      const significance = '合同签署日期，用于记录合同正式签订的时间';
+
+      patterns.push({
+        text: match[0],
+        context: content.substring(startPos, endPos),
+        beforeBlank: beforeBlank || '签订日期',
+        position: match.index,
+        type: 'date',
+        chapter: chapterInfo,
+        significance
+      });
+    }
+
+    // 2. 单独的下划线（至少3个）
+    // 这是最典型的空白填充标记
+    const underlineRegex = /[＿_]{3,}/g;
+    while ((match = underlineRegex.exec(content)) !== null) {
+      // TypeScript类型断言：在while循环内match不为null
+      const m = match;
+      const startPos = Math.max(0, m.index - 20);
+      const endPos = Math.min(content.length, m.index + m[0].length + 20);
+      const beforeBlankStart = Math.max(0, m.index - 30);
+      const beforeBlank = content.substring(beforeBlankStart, m.index).trim();
+
+      // 检查是否在排除位置（章节标题等）
+      const isExcluded = excludePatterns.some(p => p.test(beforeBlank));
+      if (isExcluded) {
+        continue;
+      }
+
+      // 检查是否已经被日期格式覆盖
+      const isDatePart = patterns.some(p =>
+        Math.abs(p.position - m.index) < 10 && p.type === 'date'
+      );
+      if (isDatePart) {
+        continue;
+      }
+
+      const chapterInfo = this.getChapterForPosition(m.index, chapterStructure);
+      const significance = this.getSignificanceForLabel(beforeBlank, templateType) ||
+        '带下划线的空白位置，需要填写相关内容';
+
+      patterns.push({
+        text: m[0],
+        context: content.substring(startPos, endPos),
+        beforeBlank,
+        position: m.index,
+        type: 'underline',
+        chapter: chapterInfo,
+        significance
+      });
+    }
+
+    // 3. 多个空格（至少5个，提高阈值减少误识别）
+    // 某些合同使用空格表示空白填充位置
+    const spaceRegex = /[ 　]{5,}/g;
+    while ((match = spaceRegex.exec(content)) !== null) {
+      // TypeScript类型断言：在while循环内match不为null
+      const m = match;
+      const startPos = Math.max(0, m.index - 20);
+      const endPos = Math.min(content.length, m.index + m[0].length + 20);
+      const beforeBlankStart = Math.max(0, m.index - 30);
+      const beforeBlank = content.substring(beforeBlankStart, m.index).trim();
+
+      // 检查是否在排除位置
+      const isExcluded = excludePatterns.some(p => p.test(beforeBlank));
+      if (isExcluded) {
+        continue;
+      }
+
+      // 检查是否已经被其他模式覆盖
+      const isCovered = patterns.some(p =>
+        Math.abs(p.position - m.index) < 10
+      );
+      if (isCovered) {
+        continue;
+      }
+
+      // 检查是否后面有"的"等连接词（可能是地址+名称的组合）
+      const afterBlank = content.substring(m.index + m[0].length, m.index + m[0].length + 10);
+      if (afterBlank.match(/^(的|公司)/)) {
+        // 这是地址类型的空白，保留
+        const chapterInfo = this.getChapterForPosition(m.index, chapterStructure);
+        const significance = this.getSignificanceForLabel(beforeBlank, templateType) ||
+          '空白填充位置';
+
+        patterns.push({
+          text: m[0],
+          context: content.substring(startPos, endPos),
+          beforeBlank,
+          position: m.index,
+          type: 'blank',
+          chapter: chapterInfo,
+          significance
+        });
+      }
+    }
+
+    // 按位置排序
+    patterns.sort((a, b) => a.position - b.position);
+
+    // 简化的去重逻辑：只基于位置去重
+    const uniquePatterns: typeof patterns = [];
+    const usedPositions = new Set<number>();
+
+    for (const pattern of patterns) {
+      // 检查是否位置过于接近（间隔小于10字符认为是重复）
+      const isNearDuplicate = usedPositions.has(pattern.position) ||
+        Array.from(usedPositions).some(pos => Math.abs(pos - pattern.position) < 10);
+
+      if (isNearDuplicate) {
+        this.logger.debug(`跳过位置相近的空白: 标签="${pattern.beforeBlank}", 位置=${pattern.position}`);
+        continue;
+      }
+
+      uniquePatterns.push(pattern);
+      usedPositions.add(pattern.position);
+    }
+
+    this.logger.log(`提取空白位置完成，共 ${uniquePatterns.length} 个（只保留下划线+空格）`);
+    return uniquePatterns;
+  }
+
+  /**
+   * 提取文档章节结构
+   * 用于精确定位空白所在位置
+   */
+  private extractChapterStructure(content: string): Array<{ title: string; startPos: number; endPos: number }> {
+    const chapters: Array<{ title: string; startPos: number; endPos: number }> = [];
+
+    // 匹配常见的章节标题格式
+    // 第X条、第一条、第二条、第一章、第二章、一、二、1.、2.、1.1等
+    const chapterPatterns = [
+      // 第X条格式
+      /第[一二三四五六七八九十百千]+条[：:\s]*/g,
+      // 第X章格式
+      /第[一二三四五六七八九十百千]+章[：:\s]*/g,
+      // 数字编号格式（如：一、二、三、）
+      /^[一二三四五六七八九十]+[、：:\s]+/g,
+      // 数字点格式（如：1. 2. 3.）
+      /^\d+[.、：:\s]+/g,
+      // 数字子章节格式（如：1.1 1.2）
+      /^\d+\.\d+[.、：:\s]+/g,
+    ];
+
+    // 合并所有匹配结果
+    const allMatches: Array<{ title: string; position: number }> = [];
+
+    for (const pattern of chapterPatterns) {
+      let match;
+      const regex = new RegExp(pattern.source, pattern.flags);
+      while ((match = regex.exec(content)) !== null) {
+        // 获取完整的章节标题行
+        const lineStart = content.lastIndexOf('\n', match.index) + 1;
+        const lineEnd = content.indexOf('\n', match.index);
+        const fullLine = content.substring(lineStart, lineEnd > 0 ? lineEnd : content.length).trim();
+
+        if (fullLine.length > 0) {
+          allMatches.push({
+            title: fullLine.substring(0, Math.min(50, fullLine.length)), // 截取前50字符
+            position: lineStart
+          });
+        }
+      }
+    }
+
+    // 按位置排序并设置结束位置
+    allMatches.sort((a, b) => a.position - b.position);
+
+    for (let i = 0; i < allMatches.length; i++) {
+      const chapter = allMatches[i];
+      const nextChapter = allMatches[i + 1];
+      chapters.push({
+        title: chapter.title,
+        startPos: chapter.position,
+        endPos: nextChapter ? nextChapter.position : content.length
+      });
+    }
+
+    // 如果没有找到章节，添加一个默认的"正文"章节
+    if (chapters.length === 0) {
+      chapters.push({
+        title: '正文',
+        startPos: 0,
+        endPos: content.length
+      });
+    }
+
+    this.logger.log(`提取到 ${chapters.length} 个章节结构`);
+    return chapters;
+  }
+
+  /**
+   * 根据位置获取所在章节
+   */
+  private getChapterForPosition(position: number, chapters: Array<{ title: string; startPos: number; endPos: number }>): string {
+    for (const chapter of chapters) {
+      if (position >= chapter.startPos && position < chapter.endPos) {
+        return chapter.title;
+      }
+    }
+    return '正文';
+  }
+
+  /**
+   * 根据标签获取字段意义说明
+   */
+  private getSignificanceForLabel(label: string, templateType: string): string {
+    // 扩展的意义说明映射表，覆盖更多常见字段
+    const significanceMap: Record<string, Record<string, string>> = {
+      'contract': {
+        '甲方': '合同第一签署方，通常是合同的主要责任方',
+        '乙方': '合同第二签署方，通常是合同的配合责任方',
+        '甲方名称': '甲方公司或个人的完整名称',
+        '乙方名称': '乙方公司或个人的完整名称',
+        '甲方地址': '甲方注册地址或实际办公地址',
+        '乙方地址': '乙方注册地址或实际办公地址',
+        '甲方签字': '甲方签字区域，用于确认合同内容',
+        '乙方签字': '乙方签字区域，用于确认合同内容',
+        '甲方盖章': '甲方公章印章位置，用于确认合同效力',
+        '乙方盖章': '乙方公章印章位置，用于确认合同效力',
+        '签订日期': '合同签署日期，记录合同正式签订的时间',
+        '生效日期': '合同开始生效的日期',
+        '截止日期': '合同有效期终止的日期',
+        '合同金额': '合同涉及的金额总数',
+        '合同编号': '合同唯一编号，用于归档和查询',
+        '法定代表人': '公司法定的代表人姓名',
+        '联系电话': '用于业务沟通的电话号码',
+        '地址': '地址信息，用于联系和送达',
+        '签字': '签字区域，用于确认合同内容',
+        '盖章': '盖章区域，用于公司公章确认',
+        '年份': '合同签订年份',
+        '年': '合同签订年份',
+        '保密期限': '保密义务的有效期限，如"三年"或"五年"',
+        '附件': '附件名称或描述，用于列明合同附件内容',
+        '附件一': '第一个附件的名称或描述',
+        '附件二': '第二个附件的名称或描述',
+        '项目名称': '合同涉及的项目名称',
+        '项目': '合同涉及的项目名称',
+        '争议': '争议解决方式说明',
+        '仲裁': '仲裁机构名称或地点',
+      },
+      'report': {
+        '标题': '报告的标题名称',
+        '日期': '报告生成日期',
+        '作者': '报告撰写人',
+        '摘要': '报告内容摘要',
+        '结论': '报告结论或建议',
+      },
+      'invoice': {
+        '金额': '发票金额',
+        '日期': '发票开具日期',
+        '编号': '发票编号',
+        '公司': '公司名称',
+        '项目': '项目名称',
+      },
+      'certificate': {
+        '姓名': '证书持有者姓名',
+        '日期': '证书颁发日期',
+        '编号': '证书编号',
+        '有效期': '证书有效期限',
+      },
+    };
+
+    const templateMap = significanceMap[templateType] || significanceMap['contract'];
+
+    // 尝试直接匹配
+    if (templateMap[label]) {
+      return templateMap[label];
+    }
+
+    // 尝试关键词匹配（更宽松）
+    for (const [key, value] of Object.entries(templateMap)) {
+      if (label.includes(key) || key.includes(label)) {
+        return value;
+      }
+    }
+
+    // 根据标签关键词生成更有意义的默认描述
+    const defaultDescriptions: Record<string, string> = {
+      '甲方': '甲方相关填写内容',
+      '乙方': '乙方相关填写内容',
+      '地址': '地址填写位置',
+      '名称': '名称填写位置',
+      '签字': '签字确认区域',
+      '盖章': '盖章确认区域',
+      '日期': '日期填写位置',
+      '年份': '年份填写位置',
+      '金额': '金额填写位置',
+      '编号': '编号填写位置',
+      '附件': '附件相关填写内容',
+      '保密': '保密条款相关内容',
+      '期限': '期限时间填写位置',
+    };
+
+    // 检查关键词并返回有意义的描述
+    for (const [keyword, desc] of Object.entries(defaultDescriptions)) {
+      if (label.includes(keyword)) {
+        return desc;
+      }
+    }
+
+    // 最终默认值：根据标签生成描述
+    return label.trim() ? `${label.trim()}的填写位置` : '文档中需要填充的字段';
+  }
+
+  /**
+   * 使用AI分析空白部分，生成变量建议
+   * 返回建议列表以及是否使用了AI的标记
+   */
+  private async analyzeBlankPatternsWithAI(
+    patterns: Array<{ text: string; context: string; beforeBlank?: string; position: number; type: string; chapter?: string; significance?: string }>,
+    fullContent: string,
+    templateType: string,
+    context?: string,
+    customRules?: Array<{ pattern: string; targetPath: string; description?: string }>
+  ): Promise<{ suggestions: any[]; usedAI: boolean }> {
+    if (patterns.length === 0) {
+      return { suggestions: [], usedAI: false };
+    }
+
+    // 构建AI提示并调用AI服务
+    // 如果空白数量较多，分段调用AI以减少复杂度
+    try {
+      let suggestions: any[] = [];
+
+      // 分段调用策略：每次最多处理15个空白
+      const batchSize = 15;
+      const batches = [];
+
+      for (let i = 0; i < patterns.length; i += batchSize) {
+        batches.push(patterns.slice(i, i + batchSize));
+      }
+
+      this.logger.log(`将${patterns.length}个空白分成${batches.length}批进行AI分析`);
+
+      // 对每批调用AI
+      for (let batchIndex = 0; batchIndex < batches.length; batchIndex++) {
+        const batchPatterns = batches[batchIndex];
+        this.logger.log(`处理第${batchIndex + 1}批，共${batchPatterns.length}个空白`);
+
+        // 构建针对这批空白的提示（包含完整文档上下文）
+        const prompt = this.buildAIPromptForBlanks(batchPatterns, fullContent, templateType, context, customRules, batchIndex * batchSize);
+
+        try {
+          const aiResponse = await this.callAIService(prompt);
+          const batchSuggestions = this.parseAIResponseToSuggestions(aiResponse, batchPatterns, batchIndex * batchSize);
+          suggestions = suggestions.concat(batchSuggestions);
+          this.logger.log(`第${batchIndex + 1}批AI分析完成，返回${batchSuggestions.length}个建议`);
+        } catch (batchError) {
+          this.logger.warn(`第${batchIndex + 1}批AI分析失败，使用规则后备`);
+          const fallbackSuggestions = this.generateFallbackSuggestions(batchPatterns, templateType, batchIndex * batchSize);
+          suggestions = suggestions.concat(fallbackSuggestions);
+        }
+      }
+
+      // 如果总建议数量太少，使用规则补充
+      if (suggestions.length < Math.min(patterns.length, 3)) {
+        this.logger.warn(`AI总建议数量不足(${suggestions.length}/${patterns.length})，使用规则补充`);
+        const fallbackSuggestions = this.generateFallbackSuggestions(patterns, templateType, 0);
+        const mergedSuggestions = this.mergeSuggestions(suggestions, fallbackSuggestions, patterns);
+        return { suggestions: mergedSuggestions, usedAI: suggestions.length > 0 };
+      }
+
+      return { suggestions, usedAI: true };
+    } catch (error) {
+      this.logger.error('AI analysis failed:', error);
+      this.logger.warn('使用规则匹配作为后备方案');
+      const suggestions = this.generateFallbackSuggestions(patterns, templateType, 0);
+      return { suggestions, usedAI: false };
+    }
+  }
+
+  /**
+   * 合并AI建议和规则建议
+   * AI建议优先，规则建议补充缺失的部分
+   */
+  private mergeSuggestions(aiSuggestions: any[], fallbackSuggestions: any[], patterns: any[]): any[] {
+    const result: any[] = [...aiSuggestions];
+
+    // 对于AI没有覆盖的空白模式，使用规则建议
+    const coveredIndices = new Set(aiSuggestions.map(s => {
+      const match = s.id.match(/sugg-\d+-(\d+)/);
+      return match ? parseInt(match[1]) : -1;
+    }));
+
+    for (let i = 0; i < fallbackSuggestions.length; i++) {
+      if (!coveredIndices.has(i)) {
+        result.push(fallbackSuggestions[i]);
+      }
+    }
+
+    // 按原始顺序排序
+    result.sort((a, b) => {
+      const aIdx = parseInt(a.id.match(/sugg-\d+-(\d+)/)?.[1] || '0');
+      const bIdx = parseInt(b.id.match(/sugg-\d+-(\d+)/)?.[1] || '0');
+      return aIdx - bIdx;
+    });
+
+    return result;
+  }
+
+  /**
+   * 构建AI分析提示（改进版）
+   * 添加更详细的语义说明和上下文分析
+   */
+  private buildAIPromptForBlanks(
+    patterns: Array<{ text: string; context: string; beforeBlank?: string; position: number; type: string }>,
+    fullContent: string,
+    templateType: string,
+    context?: string,
+    customRules?: Array<{ pattern: string; targetPath: string; description?: string }>,
+    startIndex: number = 0  // 空白的起始索引（用于分批处理）
+  ): string {
+    const templateTypeDescriptions: Record<string, string> = {
+      'report': '报告文档，包含标题、日期、正文、总结等',
+      'invoice': '发票/账单，包含金额、日期、项目、公司信息等',
+      'certificate': '证书/证明，包含姓名、日期、证书编号、内容等',
+      'contract': '合同/协议，包含甲方乙方、签署日期、条款内容、违约金额等',
+      'letter': '信函/通知，包含收件人、日期、正文、签名等',
+      'custom': '自定义模板'
+    };
+
+    const typeDesc = templateTypeDescriptions[templateType] || templateTypeDescriptions['report'];
+
+    // 提取文档前800字符作为背景（增加上下文长度）
+    const background = fullContent.substring(0, Math.min(800, fullContent.length));
+
+    // 构建空白部分列表（包含更详细的信息）
+    const blankList = patterns.map((p, i) =>
+      `[${startIndex + i + 1}] 类型: ${p.type}\n    空白内容: "${p.text}"\n    前文标签: "${p.beforeBlank || '未知'}"\n    上下文片段: "${p.context}"\n    位置: ${p.position}`
+    ).join('\n\n');
+
+    // 自定义规则提示
+    const customRulesPrompt = customRules && customRules.length > 0
+      ? `\n自定义规则:\n${customRules.map(r => `- 如果上下文包含"${r.pattern}", 变量路径使用 "${r.targetPath}"`).join('\n')}`
+      : '';
+
+    // 合同特殊语义说明
+    const contractSemanticGuide = templateType === 'contract' ? `
+【合同特殊语义识别规则】
+1. 地址+名称组合模式：
+   - "位于____的____公司(以下称为甲方)" → 第一个空白是甲方地址(d.partyA.address)，第二个空白是甲方名称(d.partyA.name)
+   - "位于____的____公司(以下称为乙方)" → 第一个空白是乙方地址(d.partyB.address)，第二个空白是乙方名称(d.partyB.name)
+
+2. 项目/合作名称：
+   - "就有关____合作过程中" → 项目名称(d.projectName)
+
+3. 金额填写：
+   - "支付违约金人民币____万元" → 违约金额(d.penaltyAmount)
+
+4. 签署位置：
+   - "甲方：" 后的空白 → 甲方签署名称(d.partyA.signature)
+   - "乙方：" 后的空白 → 乙方签署名称(d.partyB.signature)
+
+请根据上下文语义准确判断每个空白的具体含义，不要仅根据位置推断。
+` : '';
+
+    return `你是一个专业的文档模板化专家。请仔细分析以下文档中的空白填充部分，根据上下文语义为每个空白建议合适的Carbone模板变量。
+
+文档类型: ${typeDesc}
+${context ? `用户说明: ${context}` : ''}
+${customRulesPrompt}
+${contractSemanticGuide}
+
+【文档背景内容】
+${background}
+
+【需要分析的空白部分】（共${patterns.length}个）
+${blankList}
+
+请为每个空白返回JSON格式的建议：
+{
+  "suggestions": [
+    {
+      "index": ${startIndex + 1},
+      "variablePath": "d.xxx",
+      "variableName": "变量中文名称",
+      "confidence": 0.85,
+      "reason": "基于上下文'...'的语义分析，这是XX字段，用于填写..."
+    }
+  ]
+}
+
+【变量路径规范】
+- 合同甲方: d.partyA.name, d.partyA.address, d.partyA.phone, d.partyA.representative
+- 合同乙方: d.partyB.name, d.partyB.address, d.partyB.phone, d.partyB.representative
+- 项目信息: d.projectName, d.projectDescription
+- 日期时间: d.signDate, d.effectiveDate, d.endDate (使用:formatDate(YYYY-MM-DD))
+- 金额数值: d.contractAmount, d.penaltyAmount (使用:formatNumber(#,##0.00))
+
+【输出要求】
+1. 只返回JSON格式，不要其他解释
+2. 每个空白必须有对应的建议
+3. reason字段必须说明该空白在文档中的具体用途
+4. 根据上下文语义而非仅位置来推断变量含义`;
+  }
+
+  /**
+   * 调用AI服务（带自动重试机制）
+   * 如果JSON解析失败，自动重试最多3次，每次调整提示词强调JSON格式
+   */
+  private async callAIService(prompt: string, retryCount: number = 0): Promise<any> {
+    const aiOrchestratorUrl = process.env.AI_ORCHESTRATOR_URL || 'http://localhost:3007';
+    const aiModelId = process.env.AI_MODEL_ID || '00ddd35d-6578-4acb-bc09-d629560f6ab6';  // 默认使用 qwen3.5-plus
+    const maxRetries = 3;
+
+    this.logger.log(`Calling AI service at ${aiOrchestratorUrl}/ai/models/${aiModelId}/test (retry: ${retryCount})`);
+
+    try {
+      // 使用正确的 ops-ai-orchestrator 端点
+      // 如果是重试，添加格式强调
+      const actualPrompt = retryCount > 0
+        ? `${prompt}\n\n【重要】请务必返回标准JSON数组格式，不要使用markdown代码块，不要添加任何解释文字。格式示例：[{"index": 1, "variableName": "xxx", "meaning": "xxx", "fieldType": "text"}]`
+        : prompt;
+
+      const response = await axios.post(
+        `${aiOrchestratorUrl}/ai/models/${aiModelId}/test`,
+        {
+          prompt: actualPrompt  // ops-ai-orchestrator 使用 prompt 字段
+        },
+        { timeout: 360000 }  // 6分钟超时，AI分析可能需要较长时间
+      );
+
+      this.logger.log('AI service responded successfully');
+
+      // ops-ai-orchestrator 返回格式: {success: true, response: "..."}
+      let content = response.data?.response || '';
+
+      // 记录原始响应内容（调试用，截取前500字符）
+      this.logger.log(`AI response content (first 500 chars): ${content.substring(0, 500)}`);
+
+      // 清理markdown代码块标记
+      content = content.replace(/```json\s*/gi, '').replace(/```\s*/g, '').trim();
+
+      // 尝试多种JSON格式解析
+      // 1. 带suggestions的对象
+      const suggestionsMatch = content.match(/\{[\s\S]*"suggestions"[\s\S]*\}/);
+      if (suggestionsMatch) {
+        try {
+          const parsed = JSON.parse(suggestionsMatch[0]);
+          this.logger.log('Parsed suggestions object successfully');
+          return parsed;
+        } catch (e) {
+          this.logger.warn('Failed to parse suggestions object');
+        }
+      }
+
+      // 2. JSON数组（主要格式）
+      // 使用更精确的正则，匹配完整的JSON数组
+      const arrayMatch = content.match(/\[\s*\{[\s\S]*?\}\s*\]/);
+      if (arrayMatch) {
+        try {
+          const parsed = JSON.parse(arrayMatch[0]);
+          this.logger.log(`Parsed JSON array with ${parsed.length} items`);
+          return { suggestions: parsed };
+        } catch (e) {
+          this.logger.warn('Failed to parse JSON array');
+        }
+      }
+
+      // 3. 尝试逐个提取JSON对象
+      const objectMatches = content.match(/\{\s*"index"[\s\S]*?\}/g);
+      if (objectMatches && objectMatches.length > 0) {
+        try {
+          const suggestions = objectMatches.map((obj: string) => JSON.parse(obj));
+          this.logger.log(`Extracted ${suggestions.length} JSON objects`);
+          return { suggestions };
+        } catch (e) {
+          this.logger.warn('Failed to parse individual JSON objects');
+        }
+      }
+
+      // JSON解析失败，检查是否需要重试
+      if (retryCount < maxRetries) {
+        this.logger.warn(`No valid JSON found in AI response, retrying (${retryCount + 1}/${maxRetries})...`);
+        this.logger.warn(`Full response: ${content}`);
+
+        // 等待1秒后重试
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        return this.callAIService(prompt, retryCount + 1);
+      }
+
+      this.logger.error('Max retries reached, no valid JSON found');
+      this.logger.error(`Full response: ${content}`);
+      return { suggestions: [] };
+    } catch (error: any) {
+      this.logger.error('AI service call failed:', error.message);
+      this.logger.error('AI service URL attempted:', `${aiOrchestratorUrl}/ai/models/${aiModelId}/test`);
+
+      // 网络错误也重试
+      if (retryCount < maxRetries && (error.code === 'ECONNREFUSED' || error.code === 'ETIMEDOUT')) {
+        this.logger.warn(`Network error, retrying (${retryCount + 1}/${maxRetries})...`);
+        await new Promise(resolve => setTimeout(resolve, 2000));
+        return this.callAIService(prompt, retryCount + 1);
+      }
+
+      throw error;
+    }
+  }
+
+  /**
+   * 解析AI响应为建议列表
+   * @param startIndex 空白的起始索引（用于分批处理时的索引偏移）
+   */
+  private parseAIResponseToSuggestions(
+    aiResponse: any,
+    patterns: Array<{ text: string; context: string; position: number; type: string; beforeBlank?: string }>,
+    startIndex: number = 0
+  ): any[] {
+    const suggestions: any[] = [];
+
+    if (!aiResponse.suggestions || !Array.isArray(aiResponse.suggestions)) {
+      return suggestions;
+    }
+
+    for (const aiSuggestion of aiResponse.suggestions) {
+      // AI返回的index是全局索引（从startIndex开始），需要转换为批次内的索引
+      const globalIndex = aiSuggestion.index - 1;  // 转换为0-based
+      const patternIndex = globalIndex - startIndex;
+
+      if (patternIndex < 0 || patternIndex >= patterns.length) {
+        this.logger.warn(`AI suggestion index ${aiSuggestion.index} out of range for batch (start=${startIndex}, size=${patterns.length})`);
+        continue;
+      }
+
+      const pattern = patterns[patternIndex];
+      suggestions.push({
+        id: `sugg-${Date.now()}-${globalIndex}`,
+        type: 'variable',
+        elementPath: `【${pattern.beforeBlank || pattern.context?.slice(0, 10) || ''} _____ ${pattern.context?.slice(-10) || ''}】`,
+        suggestedName: aiSuggestion.variablePath,
+        originalText: pattern.text,
+        confidence: aiSuggestion.confidence || 0.7,
+        applied: false,
+        context: pattern.context,
+        details: {
+          formatter: this.extractFormatter(aiSuggestion.variablePath),
+          variableName: aiSuggestion.variableName,
+          reason: aiSuggestion.reason,
+          significance: aiSuggestion.reason || `文档中的${aiSuggestion.variableName || '填充字段'}`
+        }
+      });
+    }
+
+    return suggestions;
+  }
+
+  /**
+   * 从变量路径中提取格式化器
+   */
+  private extractFormatter(variablePath: string): string | null {
+    const colonIndex = variablePath.indexOf(':');
+    if (colonIndex > 0) {
+      return variablePath.substring(colonIndex + 1);
+    }
+    return null;
+  }
+
+  /**
+   * 生成AI使用指南Skill
+   * 根据已应用的变量映射，生成指导AI进行数据解析和参数化的skill文档
+   */
+  async generateAISkillGuide(
+    suggestions: any[],
+    templateConfig: any,
+    templateType: string,
+    documentDescription?: string
+  ): Promise<any> {
+    this.logger.log('Generating AI Skill Guide...');
+
+    // 构建变量列表（包含详细用途说明）
+    const parameters = suggestions
+      .filter(s => s.applied)
+      .map(s => {
+        const fieldType = s.details?.fieldType || this.inferFieldType(s.suggestedName, s.originalText);
+        const variableName = s.suggestedName || s.details?.variableName || '';
+        const cleanName = variableName.replace(/[:\[].*/g, '');
+
+        return {
+          name: cleanName,
+          originalText: s.originalText,
+          displayName: s.details?.variableName || cleanName,
+
+          // 参数用途
+          usage: s.details?.reason || s.details?.significance || this.inferParameterUsage(cleanName, fieldType, templateType),
+
+          // 数据类型
+          dataType: fieldType,
+          formatter: s.details?.formatter || this.getDefaultFormatter(fieldType),
+
+          // 提取提示（如何从内容中提取该参数）
+          extractionHint: this.generateExtractionHint(cleanName, fieldType, s.originalText, templateType),
+
+          // 示例值
+          example: this.generateExampleValue(fieldType, cleanName),
+
+          // 验证规则
+          validation: this.getValidationRules(fieldType, cleanName),
+
+          // 是否必填
+          required: true,
+        };
+      });
+
+    // 根据模板类型生成特定的AI指导
+    const templateDescription = this.generateTemplateDescription(templateType, documentDescription, parameters);
+
+    // 构建完整的skill结构
+    const skill = {
+      id: `skill-${Date.now()}`,
+      version: '1.0',
+      templateType,
+
+      // 模板描述（是什么，用途）
+      templateDescription,
+
+      // 参数列表（包含用途和提取指导）
+      parameters,
+
+      // 参数解析指导（如何从内容/文件中解析参数）
+      parsingGuide: {
+        overview: `本模板共有 ${parameters.length} 个参数需要填充。AI需要从用户提供的内容或文件中提取以下参数：`,
+        extractionSteps: [
+          '1. 分析用户提供的原始内容/文件',
+          '2. 根据参数用途识别对应的内容段落',
+          '3. 提取关键信息并映射到对应参数',
+          '4. 应用格式化器处理特殊类型（日期、金额等）',
+          '5. 验证提取结果是否符合参数要求',
+        ],
+        extractionRules: parameters.map(p => ({
+          parameter: p.name,
+          searchKeywords: this.getSearchKeywords(p.name, p.dataType),
+          extractionPattern: this.getExtractionPattern(p.dataType),
+          fallbackStrategy: p.dataType === 'date' ? '使用当前日期' : '标记为需要用户提供',
+        })),
+      },
+
+      // 数据解析指导
+      dataParsing: {
+        sourceType: 'json',
+        mappingHints: parameters.map(p => ({
+          parameter: p.name,
+          path: `{d.${p.name}}`,
+          description: p.usage,
+          example: p.example,
+        })),
+      },
+
+      // 特殊处理规则
+      specialRules: {
+        dateFormat: 'YYYY-MM-DD',
+        amountFormat: '保留两位小数，使用逗号分隔千位',
+        tableLoops: templateConfig?.tableLoops || [],
+      },
+
+      // 验证规则
+      validation: {
+        requiredFields: parameters.filter(p => p.required).map(p => p.name),
+        preConditions: [
+          '确保数据源包含所有必填字段',
+          '检查日期格式是否正确',
+          '验证金额字段为数值类型',
+        ],
+        postConditions: [
+          '生成文档后检查变量是否正确填充',
+          '确认无遗漏的下划线或空白',
+        ],
+      },
+
+      // AI使用提示（完整指导）
+      aiInstructions: this.buildCompleteAIInstructions(templateType, parameters, documentDescription),
+
+      createdAt: new Date().toISOString(),
+    };
+
+    this.logger.log(`AI Skill Guide generated with ${parameters.length} parameters`);
+    return skill;
+  }
+
+  /**
+   * 推断字段类型
+   */
+  private inferFieldType(name: string, originalText: string): string {
+    const lowerName = (name || '').toLowerCase();
+    const lowerText = (originalText || '').toLowerCase();
+
+    if (lowerName.includes('日期') || lowerName.includes('date') || lowerName.includes('时间') || lowerName.includes('time')) return 'date';
+    if (lowerName.includes('金额') || lowerName.includes('amount') || lowerName.includes('价格') || lowerName.includes('price')) return 'amount';
+    if (lowerName.includes('电话') || lowerName.includes('phone') || lowerName.includes('手机')) return 'phone';
+    if (lowerName.includes('邮箱') || lowerName.includes('email')) return 'email';
+    if (lowerName.includes('地址') || lowerName.includes('address')) return 'address';
+    if (lowerName.includes('编号') || lowerName.includes('number') || lowerName.includes('code')) return 'code';
+    if (lowerName.includes('数量') || lowerName.includes('count') || lowerName.includes('qty')) return 'number';
+    if (lowerName.includes('名称') || lowerName.includes('name') || lowerText.includes('甲方') || lowerText.includes('乙方')) return 'name';
+
+    return 'text';
+  }
+
+  /**
+   * 推断参数用途
+   */
+  private inferParameterUsage(name: string, fieldType: string, templateType: string): string {
+    const usageMap: Record<string, string> = {
+      date: '用于填写日期信息，表示相关事项的时间节点',
+      amount: '用于填写金额数值，表示费用、价格或合同金额',
+      phone: '用于填写联系电话，便于后续沟通联系',
+      email: '用于填写电子邮箱地址，用于接收通知或发送文件',
+      address: '用于填写地址信息，表示当事人或事项的具体位置',
+      code: '用于填写编号信息，如合同编号、证书编号等唯一标识',
+      number: '用于填写数值信息，如数量、比例等',
+      name: '用于填写名称信息，如当事人名称、项目名称等',
+    };
+
+    if (usageMap[fieldType]) return usageMap[fieldType];
+
+    // 根据名称推断
+    if (name.includes('甲方')) return '合同甲方当事人名称';
+    if (name.includes('乙方')) return '合同乙方当事人名称';
+    if (name.includes('标题')) return '文档标题，用于标识文档内容';
+    if (name.includes('内容')) return '文档主要内容或正文';
+
+    return `${templateType}模板中的${name}字段`;
+  }
+
+  /**
+   * 生成提取提示
+   */
+  private generateExtractionHint(name: string, fieldType: string, originalText: string, templateType: string): string {
+    const hints: Record<string, string> = {
+      date: `查找内容中的日期表述，如"${originalText}"位置。常见格式：YYYY年MM月DD日、YYYY-MM-DD、YYYY/MM/DD`,
+      amount: `查找内容中的金额表述，如"${originalText}"位置。常见格式：数字+单位（元、万元）、带货币符号的数值`,
+      phone: `查找内容中的电话号码，通常是11位手机号或带区号的固话格式`,
+      email: `查找内容中的邮箱地址，格式为xxx@xxx.xxx`,
+      address: `查找内容中的地址信息，通常包含省市、街道、门牌号等`,
+      code: `查找内容中的编号信息，如"${originalText}"位置的编号`,
+      name: `查找内容中的名称信息，如当事人名称、项目名称等`,
+    };
+
+    if (hints[fieldType]) return hints[fieldType];
+
+    return `在内容中查找"${originalText}"位置对应的文本，提取该位置的值`;
+  }
+
+  /**
+   * 获取默认格式化器
+   */
+  private getDefaultFormatter(fieldType: string): string | null {
+    const formatters: Record<string, string> = {
+      date: ':formatD(YMD)',
+      amount: ':formatN(2)',
+      number: ':formatN(0)',
+    };
+    return formatters[fieldType] || null;
+  }
+
+  /**
+   * 获取验证规则
+   */
+  private getValidationRules(fieldType: string, name: string): any {
+    const rules: Record<string, any> = {
+      date: { pattern: '\\d{4}[-/年]\\d{1,2}[-/月]\\d{1,2}[日]?', message: '日期格式不正确' },
+      amount: { pattern: '\\d+(\\.\\d{1,2})?', message: '金额必须是数字' },
+      phone: { pattern: '1[3-9]\\d{9}', message: '手机号格式不正确' },
+      email: { pattern: '^[\\w.-]+@[\\w.-]+\\.\\w+$', message: '邮箱格式不正确' },
+    };
+    return rules[fieldType] || { pattern: null, message: '请填写有效值' };
+  }
+
+  /**
+   * 获取搜索关键词
+   */
+  private getSearchKeywords(name: string, fieldType: string): string[] {
+    const keywords = [name];
+
+    if (fieldType === 'date') keywords.push('日期', '时间', '年', '月', '日');
+    if (fieldType === 'amount') keywords.push('金额', '价格', '费用', '元', '万');
+    if (fieldType === 'name') keywords.push('名称', '姓名', '公司', '单位');
+    if (fieldType === 'phone') keywords.push('电话', '手机', '联系方式');
+    if (fieldType === 'address') keywords.push('地址', '地点', '住址');
+
+    return keywords;
+  }
+
+  /**
+   * 获取提取模式
+   */
+  private getExtractionPattern(fieldType: string): string {
+    const patterns: Record<string, string> = {
+      date: '识别日期格式：YYYY年MM月DD日、YYYY-MM-DD、YYYY/MM/DD',
+      amount: '识别金额格式：数字+元/万元、￥金额、金额元',
+      phone: '识别电话格式：11位手机号、区号-号码',
+      email: '识别邮箱格式：xxx@domain.xxx',
+      address: '识别地址：省市街道门牌号组合',
+    };
+    return patterns[fieldType] || '查找关键词附近的文本内容';
+  }
+
+  /**
+   * 生成模板描述
+   */
+  private generateTemplateDescription(templateType: string, documentDescription?: string, parameters?: any[]): string {
+    const typeDescriptions: Record<string, string> = {
+      contract: '合同模板用于生成正式合同文档。合同是双方或多方当事人之间设立、变更、终止民事法律关系的协议。本模板用于规范合同格式，确保合同内容的完整性和法律效力。',
+      invoice: '发票模板用于生成正式发票文档。发票是经营活动中的重要凭证，用于记录交易内容和金额。本模板用于规范发票格式，确保财务记录的准确性。',
+      report: '报告模板用于生成业务报告文档。报告用于汇报工作进展、分析数据结果或提出建议。本模板用于规范报告格式，确保信息传达的有效性。',
+      certificate: '证书模板用于生成证书证明文档。证书用于证明某人或某事项的真实性或有效性。本模板用于规范证书格式，确保证书的权威性。',
+      letter: '信函模板用于生成正式信函文档。信函用于正式沟通、通知或请求。本模板用于规范信函格式，确保沟通的正式性和有效性。',
+    };
+
+    const baseDescription = typeDescriptions[templateType] || '这是一个模板，用于生成标准化文档，规范内容格式和信息完整性。';
+    const paramCount = parameters?.length || 0;
+    const paramSummary = `本模板包含 ${paramCount} 个参数需要填充，包括：${parameters?.slice(0, 5).map(p => p.displayName || p.name).join('、') || '待填充字段'}等。`;
+
+    return documentDescription ? `${baseDescription}\n${documentDescription}\n${paramSummary}` : `${baseDescription}\n${paramSummary}`;
+  }
+
+  /**
+   * 根据模板类型获取类型说明
+   */
+  private getTypeInstructions(templateType: string): string {
+    const typeMap: Record<string, string> = {
+      contract: '合同模板：需要准确填写合同编号、甲乙方信息、金额、日期等关键信息',
+      invoice: '发票模板：需要准确填写发票号、金额明细、税率等财务信息',
+      report: '报告模板：需要填写报告标题、数据统计、分析结论等内容',
+      certificate: '证书模板：需要填写证书编号、持证人信息、有效期等',
+      letter: '函件模板：需要填写函件标题、收件人、正文内容等',
+      custom: '自定义模板：根据具体需求填写相应字段',
+    };
+    return typeMap[templateType] || typeMap.custom;
+  }
+
+  /**
+   * 生成示例值
+   */
+  private generateExampleValue(fieldType: string, variableName: string): string {
+    switch (fieldType) {
+      case 'date':
+        return '2024-01-15';
+      case 'amount':
+        return '10000.00';
+      case 'number':
+        return '100';
+      case 'phone':
+        return '13800138000';
+      case 'email':
+        return 'example@email.com';
+      case 'address':
+        return '北京市朝阳区xxx街道xxx号';
+      case 'name':
+        return '张三';
+      default:
+        return `示例_${variableName?.replace(/[:\[].*/g, '') || '值'}`;
+    }
+  }
+
+  /**
+   * 构建完整的AI使用指导
+   */
+  private buildCompleteAIInstructions(
+    templateType: string,
+    parameters: any[],
+    documentDescription?: string
+  ): string {
+    const typeDesc = this.getTypeInstructions(templateType);
+
+    // 参数列表（包含用途和提取提示）
+    const paramList = parameters
+      .map(p => `- **${p.name}**: ${p.usage || '填写对应值'}
+  - 数据类型: ${p.dataType}
+  - 提取提示: ${p.extractionHint}
+  - 示例值: ${p.example}`)
+      .join('\n');
+
+    // 参数解析步骤
+    const parsingSteps = `
+## 参数解析步骤
+1. **分析输入内容**: 理解用户提供的内容或文件结构
+2. **识别关键词**: 根据参数用途和搜索关键词定位相关内容
+3. **提取参数值**: 使用提取模式从内容中提取对应值
+4. **验证格式**: 检查提取值是否符合参数类型要求
+5. **格式化处理**: 应用格式化器处理特殊类型
+
+## 参数提取规则
+${parameters.map(p => `### ${p.name}
+- **用途**: ${p.usage}
+- **搜索关键词**: ${p.searchKeywords?.join(', ') || p.name}
+- **提取模式**: ${p.extractionPattern || '根据上下文提取'}
+- **示例值**: ${p.example}`).join('\n')}
+`;
+
+    return `
+## 模板概述
+${documentDescription || typeDesc}
+
+## 参数列表
+${paramList}
+
+${parsingSteps}
+
+## 数据示例
+\`\`\`json
+{
+${parameters.slice(0, 5).map(p => `  "${p.name?.replace(/[:\[].*/g, '')}": "${p.example}"`).join(',\n')}
+}
+\`\`\`
+
+## 注意事项
+- 所有必填字段必须提供有效值
+- 日期格式统一为 YYYY-MM-DD
+- 金额保留两位小数
+- 表格数据需提供数组格式
+`;
+  }
+
+  /**
+   * AI失败时的后备建议生成
+   * @param startIndex 空白的起始索引（用于分批处理时的索引偏移）
+   */
+  private generateFallbackSuggestions(
+    patterns: Array<{ text: string; context: string; beforeBlank?: string; position: number; type: string; chapter?: string; significance?: string }>,
+    templateType: string,
+    startIndex: number = 0
+  ): any[] {
+    const suggestions: any[] = [];
+    this.logger.log(`Generating suggestions for ${patterns.length} patterns, templateType: ${templateType}`);
+
+    // 更精确的关键词映射 - 根据空白前面的标签来匹配
+    // 每个标签映射到具体的变量路径，包含详细的语言说明
+    const labelMappings: Record<string, { path: string; confidence: number; description: string }> = {
+      // ===== 甲乙双方相关 =====
+      // 甲方信息（合同的第一个签署方）
+      '甲方': { path: 'd.partyA.name', confidence: 0.9, description: '甲方名称，合同的第一个签署方名称' },
+      '甲方名称': { path: 'd.partyA.name', confidence: 0.95, description: '甲方公司或个人名称' },
+      '甲方地址': { path: 'd.partyA.address', confidence: 0.95, description: '甲方注册地址或办公地址' },
+      '甲方电话': { path: 'd.partyA.phone', confidence: 0.95, description: '甲方联系电话' },
+      '甲方联系人': { path: 'd.partyA.contact', confidence: 0.95, description: '甲方联系人姓名' },
+      '甲方代表': { path: 'd.partyA.representative', confidence: 0.95, description: '甲方法定代表人或授权代表' },
+      '甲方签字': { path: 'd.partyA.signature', confidence: 0.95, description: '甲方签字区域' },
+      '甲方盖章': { path: 'd.partyA.seal', confidence: 0.9, description: '甲方公章印章位置' },
+      '甲方身份证': { path: 'd.partyA.idNumber', confidence: 0.95, description: '甲方身份证号码' },
+      '甲方开户行': { path: 'd.partyA.bank', confidence: 0.95, description: '甲方开户银行名称' },
+      '甲方账号': { path: 'd.partyA.accountNo', confidence: 0.95, description: '甲方银行账号' },
+
+      // 乙方信息（合同的第二个签署方）
+      '乙方': { path: 'd.partyB.name', confidence: 0.9, description: '乙方名称，合同的第二个签署方名称' },
+      '乙方名称': { path: 'd.partyB.name', confidence: 0.95, description: '乙方公司或个人名称' },
+      '乙方地址': { path: 'd.partyB.address', confidence: 0.95, description: '乙方注册地址或办公地址' },
+      '乙方电话': { path: 'd.partyB.phone', confidence: 0.95, description: '乙方联系电话' },
+      '乙方联系人': { path: 'd.partyB.contact', confidence: 0.95, description: '乙方联系人姓名' },
+      '乙方代表': { path: 'd.partyB.representative', confidence: 0.95, description: '乙方法定代表人或授权代表' },
+      '乙方签字': { path: 'd.partyB.signature', confidence: 0.95, description: '乙方签字区域' },
+      '乙方盖章': { path: 'd.partyB.seal', confidence: 0.9, description: '乙方公章印章位置' },
+      '乙方身份证': { path: 'd.partyB.idNumber', confidence: 0.95, description: '乙方身份证号码' },
+      '乙方开户行': { path: 'd.partyB.bank', confidence: 0.95, description: '乙方开户银行名称' },
+      '乙方账号': { path: 'd.partyB.accountNo', confidence: 0.95, description: '乙方银行账号' },
+
+      // ===== 日期时间相关 =====
+      // 合同签署和生效日期
+      '签订日期': { path: 'd.signDate', confidence: 0.95, description: '合同签署日期' },
+      '签署日期': { path: 'd.signDate', confidence: 0.95, description: '合同签署日期' },
+      '签订于': { path: 'd.signDate', confidence: 0.9, description: '合同签订时间点' },
+      '生效日期': { path: 'd.effectiveDate', confidence: 0.95, description: '合同开始生效的日期' },
+      '截止日期': { path: 'd.endDate', confidence: 0.95, description: '合同终止日期' },
+      '有效期': { path: 'd.validPeriod', confidence: 0.9, description: '合同有效期限' },
+      '日期': { path: 'd.date', confidence: 0.85, description: '通用日期字段' },
+      '时间': { path: 'd.time', confidence: 0.85, description: '时间字段' },
+      '年月日': { path: 'd.date', confidence: 0.85, description: '日期格式 年 月 日' },
+
+      // ===== 合同编号相关 =====
+      '合同编号': { path: 'd.contractNo', confidence: 0.95, description: '合同唯一编号' },
+      '合同号': { path: 'd.contractNo', confidence: 0.95, description: '合同编号' },
+      '合同名称': { path: 'd.contractName', confidence: 0.9, description: '合同标题名称' },
+      '编号': { path: 'd.serialNo', confidence: 0.8, description: '通用编号' },
+      '文号': { path: 'd.documentNo', confidence: 0.9, description: '文件编号' },
+
+      // ===== 公司信息 =====
+      '公司': { path: 'd.companyName', confidence: 0.8, description: '公司名称' },
+      '公司名称': { path: 'd.companyName', confidence: 0.95, description: '公司全称' },
+      '公司地址': { path: 'd.companyAddress', confidence: 0.95, description: '公司注册地址' },
+      '法定代表人': { path: 'd.legalRepresentative', confidence: 0.95, description: '公司法定代表人姓名' },
+
+      // ===== 地址相关 =====
+      '地址': { path: 'd.address', confidence: 0.85, description: '地址信息' },
+      '住所': { path: 'd.address', confidence: 0.9, description: '住所地址' },
+      '住所地': { path: 'd.address', confidence: 0.9, description: '住所所在地' },
+
+      // ===== 金额相关 =====
+      '金额': { path: 'd.amount', confidence: 0.85, description: '金额数值' },
+      '总金额': { path: 'd.totalAmount', confidence: 0.95, description: '合同总金额' },
+      '合同金额': { path: 'd.contractAmount', confidence: 0.95, description: '合同涉及的金额' },
+      '付款金额': { path: 'd.paymentAmount', confidence: 0.95, description: '付款金额' },
+      '单价': { path: 'd.unitPrice', confidence: 0.9, description: '单位价格' },
+      '总价': { path: 'd.totalPrice', confidence: 0.9, description: '总价金额' },
+      '定金': { path: 'd.deposit', confidence: 0.9, description: '定金金额' },
+      '保证金': { path: 'd.securityDeposit', confidence: 0.9, description: '保证金金额' },
+
+      // ===== 项目/产品相关 =====
+      '项目': { path: 'd.projectName', confidence: 0.85, description: '项目名称' },
+      '项目名称': { path: 'd.projectName', confidence: 0.95, description: '项目全称' },
+      '产品': { path: 'd.productName', confidence: 0.85, description: '产品名称' },
+      '产品名称': { path: 'd.productName', confidence: 0.95, description: '产品全称' },
+      '商品': { path: 'd.productName', confidence: 0.85, description: '商品名称' },
+
+      // ===== 数量相关 =====
+      '数量': { path: 'd.quantity', confidence: 0.9, description: '数量' },
+      '规格': { path: 'd.specification', confidence: 0.85, description: '产品规格' },
+
+      // ===== 签字/盖章相关 =====
+      '签字': { path: 'd.signature', confidence: 0.85, description: '签字区域' },
+      '盖章': { path: 'd.seal', confidence: 0.85, description: '盖章区域' },
+      '签名': { path: 'd.signature', confidence: 0.85, description: '签名' },
+
+      // ===== 联系方式 =====
+      '电话': { path: 'd.phone', confidence: 0.85, description: '电话号码' },
+      '联系电话': { path: 'd.phone', confidence: 0.95, description: '联系电话' },
+      '手机': { path: 'd.mobile', confidence: 0.9, description: '手机号码' },
+      '邮箱': { path: 'd.email', confidence: 0.85, description: '电子邮箱' },
+      '传真': { path: 'd.fax', confidence: 0.85, description: '传真号码' },
+
+      // ===== 其他常见字段 =====
+      '备注': { path: 'd.notes', confidence: 0.8, description: '备注说明' },
+      '说明': { path: 'd.description', confidence: 0.8, description: '说明内容' },
+      '附件': { path: 'd.attachments', confidence: 0.8, description: '附件列表' },
+      '名称': { path: 'd.name', confidence: 0.75, description: '通用名称字段' },
+      '账号': { path: 'd.accountNo', confidence: 0.9, description: '账号号码' },
+      '开户行': { path: 'd.bank', confidence: 0.9, description: '开户银行' },
+      '身份证': { path: 'd.idNumber', confidence: 0.9, description: '身份证号码' },
+      '税号': { path: 'd.taxNo', confidence: 0.9, description: '纳税人识别号' },
+    };
+
+    // 记录已使用的路径和标签，避免重复
+    const usedPaths: Set<string> = new Set();
+    const usedLabels: Set<string> = new Set();
+
+    for (let i = 0; i < patterns.length; i++) {
+      const pattern = patterns[i];
+      let suggestedPath = `d.field${i + 1}`;
+      let confidence = 0.5;
+
+      // 使用 beforeBlank 进行精确标签匹配（如果可用）
+      // 提取冒号/等号前面的文字作为标签
+      const beforeBlankText = pattern.beforeBlank || pattern.context;
+      const labelMatch = beforeBlankText.match(/([^\s：:=]+)[：:=]?$/);
+      if (labelMatch) {
+        const label = labelMatch[1].trim();
+        this.logger.log(`Pattern ${i}: beforeBlank="${beforeBlankText}", extracted label="${label}"`);
+
+        // 精确匹配标签
+        for (const [mappingLabel, mapping] of Object.entries(labelMappings)) {
+          if (label === mappingLabel || label.includes(mappingLabel) || mappingLabel.includes(label)) {
+            if (!usedPaths.has(mapping.path)) {
+              suggestedPath = mapping.path;
+              confidence = mapping.confidence;
+              this.logger.log(`Pattern ${i}: matched label "${label}" -> ${suggestedPath} (confidence: ${confidence})`);
+              break;
+            }
+          }
+        }
+      }
+
+      // 如果标签匹配失败，尝试从完整上下文的关键词匹配
+      if (suggestedPath === `d.field${i + 1}`) {
+        for (const [keyword, mapping] of Object.entries(labelMappings)) {
+          if (pattern.context.includes(keyword) && !usedPaths.has(mapping.path)) {
+            suggestedPath = mapping.path;
+            confidence = mapping.confidence - 0.1;
+            this.logger.log(`Pattern ${i}: matched keyword "${keyword}" -> ${suggestedPath}`);
+            break;
+          }
+        }
+      }
+
+      // 确保路径唯一
+      if (suggestedPath !== `d.field${i + 1}` && !usedPaths.has(suggestedPath)) {
+        usedPaths.add(suggestedPath);
+      } else if (suggestedPath !== `d.field${i + 1}` && usedPaths.has(suggestedPath)) {
+        let counter = 1;
+        const base = suggestedPath.replace(/\d+$/, '');
+        while (usedPaths.has(`${base}${counter}`)) {
+          counter++;
+        }
+        suggestedPath = `${base}${counter}`;
+        confidence = 0.6;
+        usedPaths.add(suggestedPath);
+      } else if (!usedPaths.has(suggestedPath)) {
+        usedPaths.add(suggestedPath);
+      }
+
+      // 获取匹配到的描述（用于显示项目意义）
+      let matchedDescription = '';
+      if (suggestedPath !== `d.field${i + 1}`) {
+        for (const [mappingLabel, mapping] of Object.entries(labelMappings)) {
+          if (suggestedPath === mapping.path) {
+            matchedDescription = mapping.description;
+            break;
+          }
+        }
+      }
+
+      // 优先使用pattern中的significance，如果没有则使用matchedDescription
+      const finalSignificance = pattern.significance || matchedDescription || '文档中需要填充的字段';
+      const finalChapter = pattern.chapter || '正文';
+
+      // 生成格式化的显示位置：【前文空白后文】格式
+      const beforeText = pattern.beforeBlank || pattern.context?.slice(0, 10) || '';
+      const afterText = pattern.context?.slice(-10) || '';
+      const displayPosition = `【${beforeText.trim().slice(-8)} _____ ${afterText.trim().slice(0, 8)}】`;
+
+      suggestions.push({
+        id: `sugg-${Date.now()}-${startIndex + i}`,  // 使用全局索引
+        type: 'variable',
+        elementPath: displayPosition,  // 使用格式化的显示位置
+        suggestedName: suggestedPath,
+        originalText: pattern.text,
+        confidence,
+        applied: false,
+        context: pattern.context,
+        details: {
+          chapter: finalChapter,  // 章节信息（用于分组显示）
+          significance: finalSignificance,  // 项目意义说明
+          displayPosition,  // 格式化的位置显示
+          formatter: suggestedPath.includes('date') || suggestedPath.includes('Date') ? 'formatDate(YYYY-MM-DD)' :
+                     suggestedPath.includes('amount') || suggestedPath.includes('Price') ? 'formatNumber(#,##0.00)' : null
+        }
+      });
+    }
+
+    return suggestions;
   }
 
   /**

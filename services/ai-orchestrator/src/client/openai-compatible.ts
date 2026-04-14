@@ -12,7 +12,7 @@ export class OpenAICompatibleClient {
   private model: string;
   private timeout: number;
 
-  constructor(config: OpenAICompatibleConfig, timeout: number = 120000) {
+  constructor(config: OpenAICompatibleConfig, timeout: number = 300000) {
     this.baseURL = config.baseURL;
     this.apiKey = config.apiKey;
     this.model = config.model;
@@ -46,7 +46,7 @@ export class OpenAICompatibleClient {
       if (error instanceof AxiosError) {
         // Check for timeout specifically
         if (error.code === 'ECONNABORTED' || error.message.includes('timeout')) {
-          throw new Error(`AI 模型响应超时 (${this.timeout}ms)，请稍后重试或使用更简单的命令`);
+          throw new Error(`AI 模型响应超时，请稍后重试或使用更简单的命令 (当前超时设置: ${this.timeout/1000}秒)`);
         }
         throw new Error(`OpenAI API Error: ${error.response?.data?.error?.message || error.message}`);
       }

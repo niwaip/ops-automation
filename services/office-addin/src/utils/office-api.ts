@@ -20,7 +20,7 @@ export function getOfficeType(): OfficeAppType {
  */
 export const WordAPI = {
   /**
-   * 获取文档全部内容
+   * 获取文档全部内容（纯文本）
    */
   async getDocumentContent(): Promise<string> {
     return new Promise((resolve, reject) => {
@@ -31,6 +31,404 @@ export const WordAPI = {
         resolve(body.text);
       }).catch(reject);
     });
+  },
+
+  /**
+   * 使用Word.run API获取文档文件（推荐方式）
+   * 尝试使用Word专用的getFileOrNull方法（如果支持）
+   * 如果不支持，回退到getFileAsync
+   */
+  async getDocumentFileViaWordRun(): Promise<string> {
+    return new Promise((resolve, reject) => {
+      Word.run(async (context) => {
+        // 检查是否支持getFileOrNull（Word 1.3+ API）
+        // 这是一个较新的API，可能在某些版本中不支持
+        const document = context.document;
+
+        // 尝试使用getFileOrNull方法（如果存在）
+        // @ts-ignore - getFileOrNull可能在某些Office版本中不存在
+        if (document.getFileOrNull && typeof document.getFileOrNull === 'function') {
+          try {
+            // @ts-ignore
+            const file = document.getFileOrNull(Word.FileType.docx);
+            file.load('base64');
+            await context.sync();
+
+            if (file.value && file.value.base64) {
+              const base64 = file.value.base64;
+              console.log('Word.run getFileOrNull成功，base64长度:', base64?.length);
+
+              // 验证是否是有效的docx（PK开头）
+              try {
+                const decoded = atob(base64.substring(0, 50));
+                if (decoded.substring(0, 2) === 'PK') {
+                  console.log('Word.run获取到有效的docx文件（PK header验证通过）');
+                  resolve(base64);
+                  return;
+                } else {
+                  console.warn('Word.run获取的数据不是有效docx（无PK header）');
+                }
+              } catch (e) {
+                console.warn('Word.run base64解码验证失败:', e);
+              }
+            }
+          } catch (e) {
+            console.warn('Word.run getFileOrNull调用失败:', e);
+          }
+        }
+
+        // getFileOrNull不支持或失败，尝试使用body.getOoxml()
+        // 注意：getOoxml()返回的是OOXML格式，不是完整的docx文件
+        const body = document.body;
+        body.load('text');
+        await context.sync();
+
+        // 获取文档内容作为文本（最后的fallback）
+        const text = body.text;
+        console.log('Word.run返回文本内容，长度:', text?.length);
+        reject(new Error('Word.run getFileOrNull不支持，需要使用getFileAsync方式'));
+      }).catch((error) => {
+        console.error('Word.run失败:', error);
+        reject(error);
+      });
+    });
+  },
+
+  /**
+   * 获取文档文件内容（Base64编码的docx文件）
+   * 使用更大的sliceSize（4MB）提高可靠性
+   */
+  async getDocumentFileBase64(): Promise<string> {
+    return new Promise((resolve, reject) => {
+      // 使用4MB sliceSize（推荐值）
+      const SLICE_SIZE = 4194304;
+
+      // Office JS API: Document.getFileAsync
+      // 使用Office.FileType.Compressed获取docx文件的base64切片
+      Office.context.document.getFileAsync(Office.FileType.Compressed, { sliceSize: SLICE_SIZE }, (result) => {
+        console.log('getFileAsync result:', result.status, 'sliceSize:', SLICE_SIZE);
+
+        if (result.status === Office.AsyncResultStatus.Succeeded) {
+          const file = result.value;
+          const sliceCount = file.sliceCount;
+          console.log('sliceCount:', sliceCount);
+
+          if (sliceCount === 0) {
+            file.closeAsync();
+            reject(new Error('文件切片数为0'));
+            return;
+          }
+
+          const slices: string[] = [];
+          let failedSlices = 0;
+
+          const getSlice = (sliceIndex: number) => {
+            if (sliceIndex >= sliceCount) {
+              // 所有切片已处理完毕
+              if (failedSlices > 0) {
+                file.closeAsync();
+                reject(new Error(`${failedSlices}个切片获取失败`));
+                return;
+              }
+
+              // 组合所有slice为完整base64
+              file.closeAsync();
+              const fullBase64 = slices.join('');
+              console.log(`获取文件成功，共${sliceCount}个切片，base64长度: ${fullBase64.length}`);
+              console.log(`base64前50字符: ${fullBase64.substring(0, 50)}`);
+
+              // 验证base64解码后是否是有效的zip文件（PK开头）
+              try {
+                const decoded = atob(fullBase64.substring(0, 100));
+                console.log('解码后前10字节:', decoded.substring(0, 10));
+                console.log('是否PK开头:', decoded.substring(0, 2) === 'PK');
+
+                if (decoded.substring(0, 2) !== 'PK') {
+                  console.warn('警告：返回的数据不是有效的docx格式（无PK header）');
+                  // 不reject，仍然返回数据，让上层处理
+                }
+              } catch (e) {
+                console.warn('base64验证失败:', e);
+              }
+
+              resolve(fullBase64);
+              return;
+            }
+
+            file.getSliceAsync(sliceIndex, (sliceResult) => {
+              console.log(`getSliceAsync(${sliceIndex}) result:`, sliceResult.status);
+
+              if (sliceResult.status === Office.AsyncResultStatus.Succeeded) {
+                const sliceData = sliceResult.value.data;
+                console.log(`slice ${sliceIndex} data type:`, typeof sliceData, 'isArrayBuffer:', sliceData instanceof ArrayBuffer, 'length:', sliceData?.length);
+
+                // 处理不同平台返回的数据格式
+                // 某些Office版本返回base64字符串，某些返回ArrayBuffer（raw binary）
+                let base64Slice: string;
+
+                if (typeof sliceData === 'string') {
+                  // 已经是base64字符串，直接使用
+                  base64Slice = sliceData;
+                } else if (sliceData instanceof ArrayBuffer) {
+                  // raw binary数据，需要转换为base64
+                  const bytes = new Uint8Array(sliceData);
+                  let binary = '';
+                  for (let i = 0; i < bytes.length; i++) {
+                    binary += String.fromCharCode(bytes[i]);
+                  }
+                  base64Slice = btoa(binary);
+                  console.log(`slice ${sliceIndex} converted from ArrayBuffer to base64, length:`, base64Slice.length);
+                } else if (sliceData && typeof sliceData === 'object') {
+                  // 可能是其他格式，尝试转换
+                  try {
+                    // 尝试作为Uint8Array处理
+                    const bytes = new Uint8Array(sliceData as any);
+                    let binary = '';
+                    for (let i = 0; i < bytes.length; i++) {
+                      binary += String.fromCharCode(bytes[i]);
+                    }
+                    base64Slice = btoa(binary);
+                  } catch (e) {
+                    console.warn(`slice ${sliceIndex} data format unknown, treating as string`);
+                    base64Slice = String(sliceData);
+                  }
+                } else {
+                  console.error(`slice ${sliceIndex} data is null or undefined`);
+                  failedSlices++;
+                  getSlice(sliceIndex + 1);
+                  return;
+                }
+
+                slices.push(base64Slice);
+                getSlice(sliceIndex + 1);
+              } else {
+                failedSlices++;
+                const errorMsg = sliceResult.error?.message || '未知错误';
+                console.error(`获取切片${sliceIndex}失败:`, errorMsg);
+                // 继续尝试获取下一个切片
+                getSlice(sliceIndex + 1);
+              }
+            });
+          };
+
+          getSlice(0);
+        } else {
+          const errorMsg = result.error?.message || '未知错误';
+          console.error('获取文件失败:', errorMsg);
+          reject(new Error(`获取文件失败: ${errorMsg}`));
+        }
+      });
+    });
+  },
+
+  /**
+   * 使用Word.run获取整个文档的内容并转换为base64
+   * 通过body.getOoxml()获取完整的OOXML格式
+   */
+  async getDocumentAsBase64(): Promise<string> {
+    return new Promise((resolve, reject) => {
+      Word.run(async (context) => {
+        // 获取整个文档（不只是body）
+        const document = context.document;
+        const body = document.body;
+
+        // 方法1：尝试获取OOXML格式的完整文档
+        const ooxml = body.getOoxml();
+        ooxml.load('value');
+        await context.sync();
+
+        if (ooxml.value && ooxml.value.length > 0) {
+          console.log('OOXML获取成功，长度:', ooxml.value.length);
+          // OOXML是XML格式，需要转base64
+          const base64 = this.utf8ToBase64(ooxml.value);
+          resolve(base64);
+          return;
+        }
+
+        // 方法2：如果OOXML失败，获取纯文本
+        body.load('text');
+        await context.sync();
+        const text = body.text;
+        console.log('纯文本获取成功，长度:', text?.length);
+        resolve(this.utf8ToBase64(text || ''));
+      }).catch((error) => {
+        console.error('Word.run获取文档失败:', error);
+        reject(error);
+      });
+    });
+  },
+
+  /**
+   * 使用Document.getFileContentAsync（新版API，如果支持）
+   * 直接返回base64编码的文件内容
+   */
+  async getFileContentBase64(): Promise<string> {
+    // 检查是否支持getFileContentAsync（较新的API）
+    if (Office.context.document.getFileContentAsync) {
+      return new Promise((resolve, reject) => {
+        Office.context.document.getFileContentAsync(Office.FileType.Compressed, (result) => {
+          if (result.status === Office.AsyncResultStatus.Succeeded) {
+            const data = result.value;
+            console.log('getFileContentAsync成功，数据类型:', typeof data, 'isArrayBuffer:', data instanceof ArrayBuffer, '长度:', data?.length);
+
+            // 处理不同数据格式
+            let base64: string;
+            if (typeof data === 'string') {
+              base64 = data;
+            } else if (data instanceof ArrayBuffer) {
+              const bytes = new Uint8Array(data);
+              let binary = '';
+              for (let i = 0; i < bytes.length; i++) {
+                binary += String.fromCharCode(bytes[i]);
+              }
+              base64 = btoa(binary);
+            } else {
+              // 尝试其他格式
+              base64 = String(data);
+            }
+
+            resolve(base64);
+          } else {
+            console.warn('getFileContentAsync失败:', result.error?.message);
+            reject(new Error(result.error?.message || 'getFileContentAsync失败'));
+          }
+        });
+      });
+    }
+    throw new Error('getFileContentAsync不支持');
+  },
+
+  /**
+   * 使用OOXML方式获取文档内容（备用方案）
+   * Word.run API方式获取文档的Open XML格式
+   */
+  async getDocumentOoxml(): Promise<string> {
+    return new Promise((resolve, reject) => {
+      Word.run(async (context) => {
+        const body = context.document.body;
+        const ooxml = body.getOoxml();
+        ooxml.load('value');
+        await context.sync();
+        console.log('OOXML length:', ooxml.value?.length);
+        resolve(ooxml.value);
+      }).catch((error) => {
+        console.error('获取OOXML失败:', error);
+        reject(error);
+      });
+    });
+  },
+
+  /**
+   * 获取文档文件Base64（多种方式尝试，按优先级）
+   * 优先使用Word.run专用的getFileOrNull方法
+   */
+  async getDocumentFileBase64WithFallback(): Promise<{ base64: string; method: string; isValidDocx: boolean }> {
+    // 方法1: Word.run getFileOrNull（Word专用API，最可靠）
+    try {
+      const base64 = await this.getDocumentFileViaWordRun();
+      if (base64 && base64.length > 0) {
+        // 验证是否是有效的docx（PK开头）
+        try {
+          const decoded = atob(base64.substring(0, 50));
+          if (decoded.substring(0, 2) === 'PK') {
+            console.log('Word.run getFileOrNull成功获取有效docx文件');
+            return { base64, method: 'wordRunGetFile', isValidDocx: true };
+          }
+        } catch (e) {
+          console.warn('Word.run验证失败');
+        }
+        // 即使无PK header，也返回数据让上层处理
+        console.warn('Word.run返回数据无PK header，但仍返回');
+        return { base64, method: 'wordRunGetFile', isValidDocx: false };
+      }
+    } catch (e) {
+      console.warn('Word.run getFileOrNull失败或不支持:', e);
+    }
+
+    // 方法2: 尝试getFileContentAsync（较新API，直接返回base64）
+    try {
+      const base64 = await this.getFileContentBase64();
+      if (base64 && base64.length > 0) {
+        // 验证是否是有效的docx（PK开头）
+        try {
+          const decoded = atob(base64.substring(0, 50));
+          if (decoded.substring(0, 2) === 'PK') {
+            console.log('getFileContentAsync成功获取有效docx文件');
+            return { base64, method: 'getFileContentAsync', isValidDocx: true };
+          }
+        } catch (e) {
+          console.warn('getFileContentAsync验证失败');
+        }
+        console.warn('getFileContentAsync返回数据无PK header，但仍返回');
+        return { base64, method: 'getFileContentAsync', isValidDocx: false };
+      }
+    } catch (e) {
+      console.warn('getFileContentAsync失败或不支持:', e);
+    }
+
+    // 方法3: 尝试getFileAsync（切片方式，使用4MB sliceSize）
+    try {
+      const base64 = await this.getDocumentFileBase64();
+      if (base64 && base64.length > 0) {
+        try {
+          const decoded = atob(base64.substring(0, 50));
+          if (decoded.substring(0, 2) === 'PK') {
+            console.log('getFileAsync成功获取有效docx文件');
+            return { base64, method: 'getFileAsync', isValidDocx: true };
+          }
+        } catch (e) {
+          console.warn('getFileAsync base64验证失败');
+        }
+        console.warn('getFileAsync返回数据无PK header，但仍返回');
+        return { base64, method: 'getFileAsync', isValidDocx: false };
+      }
+    } catch (e) {
+      console.warn('getFileAsync失败:', e);
+    }
+
+    // 方法4: 使用Word.run获取OOXML（不是完整的docx，但可以作为备选）
+    try {
+      const base64 = await this.getDocumentAsBase64();
+      if (base64 && base64.length > 0) {
+        console.log('使用Word.run OOXML方式获取文档（非完整docx）');
+        return { base64, method: 'wordRunOoxml', isValidDocx: false };
+      }
+    } catch (e) {
+      console.warn('Word.run OOXML方式也失败:', e);
+    }
+
+    // 方法5: 纯文本（最后的fallback）
+    const text = await this.getDocumentContent();
+    console.warn('使用纯文本作为fallback');
+    return { base64: this.utf8ToBase64(text), method: 'text', isValidDocx: false };
+  },
+
+  /**
+   * 将UTF-8字符串转换为Base64
+   * 解决btoa无法处理中文字符的问题
+   */
+  utf8ToBase64(str: string): string {
+    try {
+      // 使用TextEncoder将字符串编码为UTF-8字节
+      const encoder = new TextEncoder();
+      const bytes = encoder.encode(str);
+      // 将字节转换为base64
+      // 在浏览器中使用btoa处理Uint8Array需要先转换为字符串
+      let binary = '';
+      for (let i = 0; i < bytes.length; i++) {
+        binary += String.fromCharCode(bytes[i]);
+      }
+      return btoa(binary);
+    } catch (e) {
+      console.error('UTF-8转Base64失败:', e);
+      // 如果TextEncoder不支持，尝试encodeURIComponent方法
+      try {
+        return btoa(encodeURIComponent(str).replace(/%([0-9A-F]{2})/g, (_, p1) => String.fromCharCode(parseInt(p1, 16))));
+      } catch (e2) {
+        console.error('备用转换也失败:', e2);
+        return '';
+      }
+    }
   },
 
   /**
@@ -103,6 +501,512 @@ export const WordAPI = {
   },
 
   /**
+   * 获取段落详细格式信息（用于辅助AI判断）
+   * 包括字体大小、颜色、对齐方式等
+   */
+  async getParagraphsWithFormat(): Promise<Array<{
+    text: string;
+    index: number;
+    format: {
+      fontSize?: number;
+      isBold?: boolean;
+      alignment?: string;
+      isTitle?: boolean;
+    };
+  }>> {
+    return new Promise((resolve) => {
+      Word.run(async (context) => {
+        const paragraphs = context.document.body.paragraphs;
+        paragraphs.load('items');
+        await context.sync();
+
+        // 为所有段落和它们的 range 加载属性
+        const ranges: any[] = [];
+        for (let i = 0; i < paragraphs.items.length; i++) {
+          const p = paragraphs.items[i];
+          p.load('text');
+          const r = p.getRange(Word.RangeLocation.whole);
+          r.load('font/size,font/bold,alignment');
+          ranges.push({ paragraph: p, range: r, index: i });
+        }
+        await context.sync();
+
+        // 然后读取格式信息（使用已经加载的对象）
+        const result = ranges.map(({ paragraph, range, index }) => {
+          const fontSize = range.font.size || 12;
+          const isBold = range.font.bold || false;
+          const alignment = range.alignment;
+
+          const isTitle = (fontSize > 14 || isBold) && paragraph.text.trim().length < 50;
+
+          return {
+            text: paragraph.text,
+            index: index,
+            format: {
+              fontSize: fontSize,
+              isBold: isBold,
+              alignment: alignment === Word.Alignment.left ? 'left' :
+                         alignment === Word.Alignment.centered ? 'center' :
+                         alignment === Word.Alignment.right ? 'right' : 'justified',
+              isTitle: isTitle
+            }
+          };
+        });
+
+        resolve(result);
+      }).catch((e) => {
+        console.error('getParagraphsWithFormat error:', e);
+        resolve([]);
+      });
+    });
+  },
+
+  /**
+   * 获取图片Base64数据（用于AI视觉分析）
+   * 可以将图片发送给AI进行视觉识别
+   */
+  async getImagesBase64(): Promise<Array<{
+    index: number;
+    altText: string;
+    base64: string;  // 图片的Base64编码
+    width: number;
+    height: number;
+  }>> {
+    return new Promise((resolve, reject) => {
+      Word.run(async (context) => {
+        const images = context.document.body.inlinePictures;
+        images.load('items');
+        await context.sync();
+
+        const result = [];
+        for (let i = 0; i < images.items.length; i++) {
+          const img = images.items[i];
+          img.load('altText,width,height');
+
+          // 获取图片Base64数据
+          const imageBase64 = img.getBase64ImageSrc();
+          await context.sync();
+
+          result.push({
+            index: i,
+            altText: img.altText || '',
+            base64: imageBase64 || '',
+            width: img.width || 0,
+            height: img.height || 0
+          });
+        }
+
+        resolve(result);
+      }).catch(reject);
+    });
+  },
+
+  /**
+   * 获取带下划线的文本段落（用于识别需要参数化的位置）
+   * 核心概念：合同中"下划线+空格"=需要参数化的位置
+   *
+   * 逻辑：
+   * 1. 下划线字符 `_` 或 `____`：直接作为参数（无需检查 font.underline）
+   * 2. 空格区域：需要检查 font.underline 格式才作为参数
+   */
+  async getUnderlinedTexts(): Promise<Array<{
+    text: string;
+    underlineType: string;
+    index: number;
+    paragraphIndex: number;  // 段落索引
+    paragraphText: string;
+    position: { start: number; end: number };
+  }>> {
+    return new Promise((resolve) => {
+      Word.run(async (context) => {
+        const result: any[] = [];
+
+        console.log('[DEBUG] 开始检测下划线参数位置...');
+
+        try {
+          const paragraphs = context.document.body.paragraphs;
+          paragraphs.load('items');
+          await context.sync();
+          console.log(`[DEBUG] 文档共 ${paragraphs.items.length} 个段落`);
+
+          // 遍历每个段落
+          for (let pIdx = 0; pIdx < paragraphs.items.length; pIdx++) {
+            const paragraph = paragraphs.items[pIdx];
+            paragraph.load('text');
+            await context.sync();
+
+            const fullText = paragraph.text;
+            if (!fullText || fullText.trim().length < 2) continue;
+
+            // ===== 步骤1：分类查找空白区域 =====
+            // A. 下划线字符：直接作为参数
+            const underlineCharMatches: Array<{ text: string; start: number; end: number }> = [];
+            const underlineCharRegex = /[＿_]{2,}/g;  // 至少2个下划线字符
+            let match: RegExpExecArray | null;
+            while ((match = underlineCharRegex.exec(fullText)) !== null) {
+              underlineCharMatches.push({
+                text: match[0],
+                start: match.index,
+                end: match.index + match[0].length
+              });
+            }
+
+            // B. 空格区域：需要检查 font.underline
+            const spaceMatches: Array<{ text: string; start: number; end: number }> = [];
+            const spaceRegex = /[ 　\t]{2,}/g;  // 至少2个空格/制表符
+            while ((match = spaceRegex.exec(fullText)) !== null) {
+              // 避免与下划线字符重叠
+              if (!underlineCharMatches.some(u => Math.abs(u.start - match!.index) < 2)) {
+                spaceMatches.push({
+                  text: match[0],
+                  start: match.index,
+                  end: match.index + match[0].length
+                });
+              }
+            }
+
+            const totalBlankCount = underlineCharMatches.length + spaceMatches.length;
+            if (totalBlankCount === 0) continue;
+            console.log(`[DEBUG] 段落 ${pIdx}: 发现 ${underlineCharMatches.length} 个下划线字符 + ${spaceMatches.length} 个空格区域`);
+
+            // ===== 步骤2：下划线字符直接加入结果 =====
+            // 下划线字符（_）本身就是参数标记，不需要检查 font.underline
+            for (const underlineMatch of underlineCharMatches) {
+              result.push({
+                text: underlineMatch.text,
+                underlineType: 'underline-char',
+                index: result.length,
+                paragraphIndex: pIdx,
+                paragraphText: fullText,
+                position: { start: underlineMatch.start, end: underlineMatch.end }
+              });
+              console.log(`[DEBUG] ✓ 下划线字符: 段落${pIdx} 位置${underlineMatch.start}-${underlineMatch.end}`);
+            }
+
+            // ===== 步骤3：空格区域检查 font.underline =====
+            // 简化逻辑：对每个正则匹配的空格区域，检查是否有下划线格式
+            // 正则匹配的位置是准确的，直接使用
+            for (const spaceMatch of spaceMatches) {
+              try {
+                // 搜索这个空格文本，检查是否有下划线格式
+                const searchResults = paragraph.search(spaceMatch.text, {
+                  matchCase: false,
+                  matchWholeWord: false
+                });
+                searchResults.load('items');
+                await context.sync();
+
+                if (searchResults.items.length === 0) {
+                  console.log(`[DEBUG] 段落${pIdx} 位置${spaceMatch.start}: 未找到空格文本`);
+                  continue;
+                }
+
+                for (const foundRange of searchResults.items) {
+                  foundRange.load('text,font/underline');
+                }
+                await context.sync();
+
+                // 检查是否有任何一个匹配有下划线格式
+                // 对于纯空格文本，通常所有匹配都会有相同的格式
+                const hasUnderlineFormat = searchResults.items.some(foundRange => {
+                  const underline = foundRange.font.underline;
+                  return underline && underline !== 'None' && underline !== 'mixed';
+                });
+
+                if (hasUnderlineFormat) {
+                  // 直接使用正则匹配的位置加入结果
+                  result.push({
+                    text: spaceMatch.text,
+                    underlineType: 'Single',
+                    index: result.length,
+                    paragraphIndex: pIdx,
+                    paragraphText: fullText,
+                    position: { start: spaceMatch.start, end: spaceMatch.end }
+                  });
+                  console.log(`[DEBUG] ✓ 下划线空格: 段落${pIdx} 位置${spaceMatch.start}-${spaceMatch.end}`);
+                }
+              } catch (searchErr) {
+                console.warn('[DEBUG] 空格搜索错误:', searchErr);
+              }
+            }
+          }
+        } catch (formatErr) {
+          console.warn('[DEBUG] 格式检测总错误:', formatErr);
+        }
+
+        console.log('[DEBUG] 最终检测到', result.length, '个参数位置');
+        // 按段落索引优先排序，然后按位置排序（文档顺序）
+        resolve(result.sort((a, b) => {
+          if (a.paragraphIndex !== b.paragraphIndex) {
+            return a.paragraphIndex - b.paragraphIndex;
+          }
+          return a.position.start - b.position.start;
+        }));
+      }).catch((e) => { console.error('[DEBUG] underline总错误:', e); resolve([]); });
+    });
+  },
+
+  /**
+   * 按段落索引和位置高亮下划线区域
+   * 使用扩展文本搜索来精确定位（解决相同文本多次出现的问题）
+   */
+  async highlightUnderlineByPosition(paragraphIndex: number, startPos: number, endPos: number, textHint?: string): Promise<boolean> {
+    return new Promise((resolve) => {
+      Word.run(async (context) => {
+        const paragraphs = context.document.body.paragraphs;
+        paragraphs.load('items');
+        await context.sync();
+
+        console.log(`[DEBUG] highlightUnderline: 段落${paragraphIndex}, 位置${startPos}-${endPos}`);
+
+        if (paragraphIndex >= paragraphs.items.length) {
+          console.warn(`[DEBUG] 段落索引 ${paragraphIndex} 超出范围`);
+          resolve(false);
+          return;
+        }
+
+        const paragraph = paragraphs.items[paragraphIndex];
+        paragraph.load('text');
+        await context.sync();
+
+        const fullText = paragraph.text;
+        console.log(`[DEBUG] 段落全文: "${fullText.substring(0, 60)}..."`);
+
+        try {
+          // 直接搜索空白文本（与替换逻辑一致）
+          const blankText = fullText.substring(startPos, endPos);
+          console.log(`[DEBUG] 空白文本: "${blankText}" (${blankText.length}字符)`);
+
+          if (blankText.length >= 1) {
+            // 使用扩展文本搜索来精确定位（前后4字符）
+            const extendBefore = 4;
+            const extendAfter = 4;
+            const extendedStart = Math.max(0, startPos - extendBefore);
+            const extendedEnd = Math.min(fullText.length, endPos + extendAfter);
+            const extendedText = fullText.substring(extendedStart, extendedEnd);
+
+            console.log(`[DEBUG] 扩展文本: "${extendedText}"`);
+
+            // 先搜索扩展文本定位段落中的具体位置
+            const extSearchResults = paragraph.search(extendedText, {
+              matchCase: true,
+              matchWholeWord: false
+            });
+            extSearchResults.load('items');
+            await context.sync();
+
+            if (extSearchResults.items.length > 0) {
+              // 在扩展文本范围内搜索空白
+              const extRange = extSearchResults.items[0];
+              const blankInExt = extRange.search(blankText, {
+                matchCase: false,
+                matchWholeWord: false
+              });
+              blankInExt.load('items');
+              await context.sync();
+
+              if (blankInExt.items.length > 0) {
+                const targetRange = blankInExt.items[0];
+                targetRange.select();
+                targetRange.font.highlightColor = 'yellow';
+                await context.sync();
+                console.log(`[DEBUG] ✓ 已高亮空白: "${blankText}"`);
+                resolve(true);
+                return;
+              }
+            }
+
+            // 后备：直接在段落中搜索空白（可能高亮多个）
+            const blankSearchResults = paragraph.search(blankText, {
+              matchCase: false,
+              matchWholeWord: false
+            });
+            blankSearchResults.load('items');
+            await context.sync();
+
+            if (blankSearchResults.items.length > 0) {
+              // 高亮第一个匹配
+              const targetRange = blankSearchResults.items[0];
+              targetRange.select();
+              targetRange.font.highlightColor = 'yellow';
+              await context.sync();
+              console.log(`[DEBUG] ✓ 已高亮空白（后备）: "${blankText}"`);
+              resolve(true);
+              return;
+            }
+          }
+
+          // 最终后备：选中整个段落
+          const paraRange = paragraph.getRange(Word.RangeLocation.whole);
+          paraRange.select();
+          await context.sync();
+          console.log(`[DEBUG] 已选中段落 ${paragraphIndex}（最终后备）`);
+          resolve(true);
+        } catch (err) {
+          console.warn(`[DEBUG] 高亮失败:`, err);
+          resolve(false);
+        }
+      }).catch((e) => {
+        console.error('[DEBUG] highlightUnderline 错误:', e);
+        resolve(false);
+      });
+    });
+  },
+
+  /**
+   * 按段落索引和位置替换下划线区域为参数标记
+   * 使用原始段落文本（避免替换后文本变化导致位置错乱）
+   */
+  async replaceUnderlineByPosition(paragraphIndex: number, startPos: number, endPos: number, replacement: string, textHint?: string, originalParagraphText?: string): Promise<boolean> {
+    return new Promise((resolve) => {
+      Word.run(async (context) => {
+        const paragraphs = context.document.body.paragraphs;
+        paragraphs.load('items');
+        await context.sync();
+
+        console.log(`[DEBUG] replaceUnderline: 段落${paragraphIndex}, 位置${startPos}-${endPos}, 替换为 "${replacement}"`);
+
+        if (paragraphIndex >= paragraphs.items.length) {
+          console.warn(`[DEBUG] 段落索引 ${paragraphIndex} 超出范围`);
+          resolve(false);
+          return;
+        }
+
+        const paragraph = paragraphs.items[paragraphIndex];
+
+        try {
+          // 使用原始段落文本（检测时的文本）计算扩展文本
+          // 如果提供了 originalParagraphText，使用它；否则获取当前文本
+          let fullText = originalParagraphText;
+          if (!fullText) {
+            paragraph.load('text');
+            await context.sync();
+            fullText = paragraph.text;
+          }
+
+          // 方法1：直接搜索空白文本（最简单可靠）
+          const blankText = fullText.substring(startPos, endPos);
+          console.log(`[DEBUG] 空白文本: "${blankText}" (${blankText.length}字符)`);
+
+          if (blankText.length >= 2) {
+            const searchResults = paragraph.search(blankText, {
+              matchCase: false,
+              matchWholeWord: false
+            });
+            searchResults.load('items');
+            await context.sync();
+
+            console.log(`[DEBUG] 搜索结果数量: ${searchResults.items.length}`);
+
+            if (searchResults.items.length > 0) {
+              // 如果有多个匹配，使用扩展文本定位
+              if (searchResults.items.length > 1) {
+                console.log(`[DEBUG] 多个匹配，使用扩展文本定位`);
+
+                // 计算扩展文本（包含前后字符）
+                const extendBefore = 4;
+                const extendAfter = 4;
+                const extendedStart = Math.max(0, startPos - extendBefore);
+                const extendedEnd = Math.min(fullText.length, endPos + extendAfter);
+                const extendedText = fullText.substring(extendedStart, extendedEnd);
+
+                console.log(`[DEBUG] 扩展文本: "${extendedText}"`);
+
+                const extendedSearch = paragraph.search(extendedText, {
+                  matchCase: true,
+                  matchWholeWord: false
+                });
+                extendedSearch.load('items');
+                await context.sync();
+
+                if (extendedSearch.items.length > 0) {
+                  // 在扩展文本中搜索空白部分
+                  const foundRange = extendedSearch.items[0];
+                  const blankInExtended = foundRange.search(blankText, {
+                    matchCase: false,
+                    matchWholeWord: false
+                  });
+                  blankInExtended.load('items');
+                  await context.sync();
+
+                  if (blankInExtended.items.length > 0) {
+                    const targetRange = blankInExtended.items[0];
+                    targetRange.insertText(replacement, Word.InsertLocation.replace);
+                    await context.sync();
+                    console.log(`[DEBUG] ✓ 已替换（扩展定位）: "${blankText.substring(0, 10)}..." → "${replacement}"`);
+                    resolve(true);
+                    return;
+                  }
+                }
+              }
+
+              // 单个匹配或扩展定位失败，直接替换第一个
+              const targetRange = searchResults.items[0];
+              targetRange.insertText(replacement, Word.InsertLocation.replace);
+              await context.sync();
+              console.log(`[DEBUG] ✓ 已替换（直接）: "${blankText.substring(0, 10)}..." → "${replacement}"`);
+              resolve(true);
+              return;
+            }
+          }
+
+          console.warn(`[DEBUG] 未找到可替换的文本`);
+          resolve(false);
+        } catch (err) {
+          console.warn(`[DEBUG] 替换失败:`, err);
+          resolve(false);
+        }
+      }).catch((e) => {
+        console.error('[DEBUG] replaceUnderline 错误:', e);
+        resolve(false);
+      });
+    });
+  },
+  async highlightAtPosition(paragraphIndex: number, startPos: number, endPos: number): Promise<boolean> {
+    return new Promise((resolve, reject) => {
+      Word.run(async (context) => {
+        const paragraphs = context.document.body.paragraphs;
+        paragraphs.load('items');
+        await context.sync();
+
+        if (paragraphIndex >= paragraphs.items.length) {
+          resolve(false);
+          return;
+        }
+
+        const paragraph = paragraphs.items[paragraphIndex];
+        const text = paragraph.text;
+
+        // 获取要高亮的文本
+        const highlightText = text.substring(startPos, endPos);
+        if (!highlightText || highlightText.trim() === '') {
+          resolve(false);
+          return;
+        }
+
+        // 在段落中搜索并高亮
+        const searchResults = paragraph.search(highlightText, {
+          matchCase: true,
+          matchWholeWord: false
+        });
+        searchResults.load('items');
+        await context.sync();
+
+        if (searchResults.items.length > 0) {
+          // 高亮第一个匹配
+          const firstMatch = searchResults.items[0];
+          firstMatch.select();
+          firstMatch.font.highlightColor = 'yellow';
+          await context.sync();
+          resolve(true);
+        } else {
+          resolve(false);
+        }
+      }).catch(reject);
+    });
+  },
+
+  /**
    * 在指定位置插入标记
    */
   async insertMarker(marker: string, position?: { paragraphIndex: number; textRange: string }): Promise<void> {
@@ -148,6 +1052,382 @@ export const WordAPI = {
         await context.sync();
         resolve();
       }).catch(reject);
+    });
+  },
+
+  /**
+   * 高亮文本（用于预览）
+   * 先搜索文本，选中找到的结果，滚动到视图，并添加高亮标记
+   */
+  async highlightText(text: string): Promise<number> {
+    return new Promise((resolve, reject) => {
+      Word.run(async (context) => {
+        // 处理特殊字符：空格和空白标记
+        // 如果text是单个空格或空白标记，搜索时需要特殊处理
+        let searchText = text;
+        if (text === ' ' || text.trim() === '') {
+          // 空白标记不能直接搜索，需要根据上下文来搜索
+          // 这种情况下，我们跳过高亮，返回0表示未找到
+          console.log('空白标记无法直接高亮');
+          resolve(0);
+          return;
+        }
+
+        // 使用 search 方法查找所有匹配
+        const searchResults = context.document.body.search(searchText, {
+          matchCase: false,
+          matchWholeWord: false
+        });
+        searchResults.load('items');
+        await context.sync();
+
+        const foundCount = searchResults.items.length;
+
+        if (foundCount > 0) {
+          // 选中第一个找到的结果，使其可见
+          const firstResult = searchResults.items[0];
+          firstResult.select();
+
+          // 尝试添加高亮颜色（Word 2016+ 支持）
+          // 使用 font 高亮作为替代方案
+          firstResult.font.highlightColor = 'yellow';
+
+          await context.sync();
+
+          // 滚动到选中位置
+          // Word API 不直接支持滚动，但选中后会自动滚动
+        }
+
+        resolve(foundCount);
+      }).catch((error) => {
+        reject(error);
+      });
+    });
+  },
+
+  /**
+   * 清除所有高亮标记
+   * 在预览新内容前先清除之前的高亮
+   */
+  async clearAllHighlights(): Promise<void> {
+    return new Promise((resolve, reject) => {
+      Word.run(async (context) => {
+        // 获取文档中的所有段落
+        const paragraphs = context.document.body.paragraphs;
+        paragraphs.load('items');
+        await context.sync();
+
+        // 清除每个段落的高亮
+        for (const paragraph of paragraphs.items) {
+          const range = paragraph.getRange(Word.RangeLocation.whole);
+          range.load('font/highlightColor');
+          await context.sync();
+
+          // 如果有高亮，清除它
+          if (range.font.highlightColor && range.font.highlightColor !== 'none') {
+            range.font.highlightColor = 'none';
+          }
+        }
+
+        // 同步更改
+        await context.sync();
+        resolve();
+      }).catch((error) => {
+        console.warn('清除高亮失败:', error);
+        resolve();  // 即使失败也继续，不影响后续操作
+      });
+    });
+  },
+
+  /**
+   * 清除特定文本的高亮
+   */
+  async clearHighlight(text: string): Promise<number> {
+    return new Promise((resolve, reject) => {
+      Word.run(async (context) => {
+        if (!text || text.trim() === '') {
+          resolve(0);
+          return;
+        }
+
+        const searchResults = context.document.body.search(text, {
+          matchCase: false,
+          matchWholeWord: false
+        });
+        searchResults.load('items');
+        await context.sync();
+
+        const count = searchResults.items.length;
+        for (const item of searchResults.items) {
+          item.font.highlightColor = 'none';
+        }
+        await context.sync();
+        resolve(count);
+      }).catch(reject);
+    });
+  },
+
+  /**
+   * 按上下文高亮文本（精确版 - 只高亮空白部分）
+   * 根据上下文片段找到对应的位置，只高亮空白部分（下划线或空格）
+   * 核心概念：合同中"下划线+空格"=需要参数化的位置
+   */
+  async highlightByContext(contextSnippet: string): Promise<{ found: boolean; blankText: string }> {
+    return new Promise((resolve, reject) => {
+      Word.run(async (context) => {
+        // 从上下文片段中提取关键文本（去除前后省略号）
+        let searchText = contextSnippet
+          .replace(/^[\.\.\.]*/, '')
+          .replace(/[\.\.\.]*$/, '')
+          .trim();
+
+        // 如果上下文太短，返回未找到
+        if (searchText.length < 5) {
+          resolve({ found: false, blankText: '' });
+          return;
+        }
+
+        // ===== 步骤1: 提取空白部分（用于精确高亮）=====
+        // 优先级：下划线 > 多空格 > 冒号后空白
+        const blankPatterns = [
+          { pattern: /[＿_]{2,}/g, name: 'underline' },     // 下划线（至少2个）- 最高优先级
+          { pattern: /[ 　]{3,}/g, name: 'spaces' },        // 多个空格（至少3个）
+          { pattern: /：\s{2,}/g, name: 'colon-blank' },    // 中文冒号后的空白（至少2空格）
+          { pattern: /:\s{2,}/g, name: 'colon-blank-en' },  // 英文冒号后的空白（至少2空格）
+        ];
+
+        let blankText = '';
+        let blankType = '';
+        for (const { pattern, name } of blankPatterns) {
+          const matches = searchText.match(pattern);
+          if (matches && matches.length > 0) {
+            // 使用最长的空白匹配
+            blankText = matches.reduce((a, b) => a.length >= b.length ? a : b);
+            blankType = name;
+            break;
+          }
+        }
+
+        // 如果没有找到空白特征，尝试检测更宽泛的模式
+        if (!blankText) {
+          // 检测任何空白序列（包括空格、制表符等）
+          const anyBlankMatch = searchText.match(/[\s＿_　]{2,}/g);
+          if (anyBlankMatch) {
+            blankText = anyBlankMatch.reduce((a, b) => a.length >= b.length ? a : b);
+            blankType = 'general-blank';
+          }
+        }
+
+        // ===== 步骤2: 搜索上下文定位 =====
+        const searchResults = context.document.body.search(searchText, {
+          matchCase: false,
+          matchWholeWord: false
+        });
+        searchResults.load('items');
+        await context.sync();
+
+        if (searchResults.items.length === 0) {
+          resolve({ found: false, blankText: blankText });
+          return;
+        }
+
+        const foundRange = searchResults.items[0];
+
+        // ===== 步骤3: 只高亮空白部分 =====
+        if (blankText && blankText.length >= 2) {
+          // 在找到的上下文范围内精确搜索空白部分
+          const blankSearch = foundRange.search(blankText, {
+            matchCase: false,
+            matchWholeWord: false
+          });
+          blankSearch.load('items');
+          await context.sync();
+
+          if (blankSearch.items.length > 0) {
+            // 只高亮空白部分（这就是需要替换的位置）
+            const blankMatch = blankSearch.items[0];
+            blankMatch.select();
+            blankMatch.font.highlightColor = 'yellow';
+            await context.sync();
+
+            console.log(`精确高亮空白: "${blankText}" (${blankType})`);
+            resolve({ found: true, blankText: blankText });
+            return;
+          }
+        }
+
+        // ===== 步骤4: 后备方案 - 如果空白提取失败，尝试在原文中查找 =====
+        const foundText = foundRange.text;
+
+        // 在找到的文本中搜索空白特征
+        for (const { pattern, name } of blankPatterns) {
+          const matches = foundText.match(pattern);
+          if (matches && matches.length > 0) {
+            const foundBlank = matches[0];
+            const innerSearch = foundRange.search(foundBlank, {
+              matchCase: false,
+              matchWholeWord: false
+            });
+            innerSearch.load('items');
+            await context.sync();
+
+            if (innerSearch.items.length > 0) {
+              innerSearch.items[0].select();
+              innerSearch.items[0].font.highlightColor = 'yellow';
+              await context.sync();
+
+              console.log(`后备高亮空白: "${foundBlank}" (${name})`);
+              resolve({ found: true, blankText: foundBlank });
+              return;
+            }
+          }
+        }
+
+        // ===== 最后方案: 如果仍找不到空白，高亮整个上下文但缩小范围 =====
+        // 只高亮中间部分（通常是空白所在位置）
+        const textLen = foundText.length;
+        if (textLen > 10) {
+          // 假设空白在中间位置，高亮中间 50% 区域
+          const midStart = Math.floor(textLen * 0.25);
+          const midEnd = Math.floor(textLen * 0.75);
+          const midText = foundText.substring(midStart, midEnd);
+
+          // 尝试在中间区域找空白
+          const midBlankMatch = midText.match(/[\s＿_　]+/);
+          if (midBlankMatch) {
+            const innerSearch = foundRange.search(midBlankMatch[0], {
+              matchCase: false,
+              matchWholeWord: false
+            });
+            innerSearch.load('items');
+            await context.sync();
+
+            if (innerSearch.items.length > 0) {
+              innerSearch.items[0].select();
+              innerSearch.items[0].font.highlightColor = 'yellow';
+              await context.sync();
+
+              resolve({ found: true, blankText: midBlankMatch[0] });
+              return;
+            }
+          }
+        }
+
+        // 完全找不到空白特征，返回失败
+        resolve({ found: false, blankText: '' });
+      }).catch((error) => {
+        reject(error);
+      });
+    });
+  },
+
+  /**
+   * 替换空白部分为变量标记
+   * 只替换空白部分（下划线+空格），保留上下文中的标签文字
+   * 例如：将 "甲方：______" 中的 "______" 替换为 "{d.partyA}"
+   */
+  async replaceBlankWithContext(
+    contextSnippet: string,
+    replacementText: string
+  ): Promise<{ success: boolean; replacedText: string }> {
+    return new Promise((resolve, reject) => {
+      Word.run(async (context) => {
+        // 从上下文片段中提取关键文本
+        let searchText = contextSnippet
+          .replace(/^[\.\.\.]*/, '')
+          .replace(/[\.\.\.]*$/, '')
+          .trim();
+
+        if (searchText.length < 5) {
+          resolve({ success: false, replacedText: '' });
+          return;
+        }
+
+        // ===== 步骤1: 提取空白部分 =====
+        const blankPatterns = [
+          /[＿_]{2,}/g,     // 下划线（至少2个）
+          /[ 　]{3,}/g,     // 多个空格（至少3个）
+          /：\s{2,}/g,      // 中文冒号后的空白
+          /:\s{2,}/g,       // 英文冒号后的空白
+          /[\s＿_　]{2,}/g, // 任何空白序列
+        ];
+
+        let blankText = '';
+        for (const pattern of blankPatterns) {
+          const matches = searchText.match(pattern);
+          if (matches && matches.length > 0) {
+            blankText = matches.reduce((a, b) => a.length >= b.length ? a : b);
+            break;
+          }
+        }
+
+        // ===== 步骤2: 搜索上下文定位 =====
+        const searchResults = context.document.body.search(searchText, {
+          matchCase: false,
+          matchWholeWord: false
+        });
+        searchResults.load('items');
+        await context.sync();
+
+        if (searchResults.items.length === 0) {
+          resolve({ success: false, replacedText: '' });
+          return;
+        }
+
+        const foundRange = searchResults.items[0];
+
+        // ===== 步骤3: 只替换空白部分 =====
+        if (blankText && blankText.length >= 2) {
+          // 在找到的上下文范围内精确搜索空白部分
+          const blankSearch = foundRange.search(blankText, {
+            matchCase: false,
+            matchWholeWord: false
+          });
+          blankSearch.load('items');
+          await context.sync();
+
+          if (blankSearch.items.length > 0) {
+            // 只替换空白部分，保留上下文中的标签
+            const blankMatch = blankSearch.items[0];
+            blankMatch.insertText(replacementText, Word.InsertLocation.replace);
+            await context.sync();
+
+            console.log(`精确替换空白: "${blankText}" → "${replacementText}"`);
+            resolve({ success: true, replacedText: blankText });
+            return;
+          }
+        }
+
+        // ===== 后备方案: 在原文中查找空白 =====
+        const foundText = foundRange.text;
+
+        for (const pattern of blankPatterns) {
+          const matches = foundText.match(pattern);
+          if (matches && matches.length > 0) {
+            const foundBlank = matches[0];
+            const innerSearch = foundRange.search(foundBlank, {
+              matchCase: false,
+              matchWholeWord: false
+            });
+            innerSearch.load('items');
+            await context.sync();
+
+            if (innerSearch.items.length > 0) {
+              innerSearch.items[0].insertText(replacementText, Word.InsertLocation.replace);
+              await context.sync();
+
+              console.log(`后备替换空白: "${foundBlank}" → "${replacementText}"`);
+              resolve({ success: true, replacedText: foundBlank });
+              return;
+            }
+          }
+        }
+
+        // 完全找不到空白特征
+        resolve({ success: false, replacedText: '' });
+      }).catch((error) => {
+        reject(error);
+      });
     });
   },
 
