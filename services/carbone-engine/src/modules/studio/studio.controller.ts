@@ -2009,6 +2009,9 @@ export class StudioController {
         simulatedData = this.generateSimulatedData(skill);
       }
 
+      // DEBUG: 记录生成的数据结构
+      console.log('[DEBUG] previewWithSkill - generated simulatedData:', JSON.stringify(simulatedData, null, 2));
+
       // 获取模板
       let templateBuffer: Buffer | undefined;
       let templateId = body.templateId || skill.templateId;
@@ -2020,6 +2023,7 @@ export class StudioController {
         const templatePath = path.join(this.templatesDir, `${templateId}.${format}`);
         if (fs.existsSync(templatePath)) {
           templateBuffer = fs.readFileSync(templatePath);
+          console.log('[DEBUG] previewWithSkill - template loaded:', templatePath, 'size:', templateBuffer.length);
         }
       }
 
@@ -2029,7 +2033,9 @@ export class StudioController {
 
       // 渲染预览
       const outputId = uuidv4();
+      console.log('[DEBUG] previewWithSkill - rendering with data...');
       const outputBuffer = await this.engine.render(templateBuffer, simulatedData, `preview_${outputId}.${format}`);
+      console.log('[DEBUG] previewWithSkill - render complete, output size:', outputBuffer.length);
 
       // 保存输出
       const outputPath = path.join(this.outputsDir, `${outputId}.${format}`);
@@ -2252,7 +2258,7 @@ ${exampleData}
   }
 
   private generateSimulatedData(skill: any): any {
-    const data: any = { d: {} };  // Carbone 使用 d 作为数据根节点
+    const data: any = {};  // 数据直接在根层级，不需要 d 包装
     // 使用新的parameters结构
     const variables = skill.parameters || skill.parameterization?.variables || [];
     for (const variable of variables) {
@@ -2263,7 +2269,7 @@ ${exampleData}
       if (varPath && varPath !== variable.name) {
         // 构建嵌套数据结构
         const parts = varPath.split('.');
-        let current = data.d;
+        let current = data;
         for (let i = 0; i < parts.length - 1; i++) {
           if (!current[parts[i]]) {
             current[parts[i]] = {};
@@ -2273,7 +2279,7 @@ ${exampleData}
         current[parts[parts.length - 1]] = exampleValue;
       } else {
         // 如果路径格式不标准，直接使用变量名
-        data.d[varPath || variable.name] = exampleValue;
+        data[varPath || variable.name] = exampleValue;
       }
     }
     return data;

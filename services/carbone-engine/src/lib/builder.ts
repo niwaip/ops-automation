@@ -276,12 +276,23 @@ export class Builder {
     const parsed = this.parser.parse(xml);
     const warnings: string[] = [];
 
+    // DEBUG: 记录解析结果和数据
+    console.log('[DEBUG] buildXML - parsed variables:', parsed.variables);
+    console.log('[DEBUG] buildXML - parsed markers count:', parsed.markers.length);
+    console.log('[DEBUG] buildXML - data structure:', JSON.stringify(data, null, 2).substring(0, 500));
+
     // 检查数据完整性
     for (const variable of parsed.variables) {
       const value = this.evaluatePath(variable, data);
       if (value === undefined) {
         warnings.push(`Missing data for variable: ${variable}`);
+      } else {
+        console.log('[DEBUG] buildXML - variable', variable, 'resolved to:', value);
       }
+    }
+
+    if (warnings.length > 0) {
+      console.log('[DEBUG] buildXML - warnings:', warnings);
     }
 
     // 处理循环
