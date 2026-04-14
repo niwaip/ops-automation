@@ -13,16 +13,15 @@ interface Props {
   onApplyComplete?: () => void;
 }
 
-// 动态加载进度消息（用于旧的API）
+// 动态加载进度消息（用于旧API）
 const loadingMessages = [
-  '🔍 正在分析文档结构...',
-  '📝 正在识别空白填充位置...',
-  '🤖 正在进行AI智能分析...',
-  '📊 正在生成变量建议...',
-  '✨ 正在优化结果...',
+  '⏳ 正在处理文档...',
+  '📝 正在分析内容...',
+  '🤖 正在智能识别...',
+  '✨ 正在生成结果...',
 ];
 
-// 多阶段进度消息映射
+// 多阶段进度消息映射（用于SSE实时进度，目前HTTP API不支持）
 const stageProgressMessages: Record<string, string[]> = {
   'document_understanding': ['🔍 分析文档整体结构...', '📖 理解文档内容和用途...', '📋 提取章节信息...'],
   'section_analysis': ['📝 分段参数化处理...', '🤖 语义识别中...', '✨ 生成变量建议...'],
@@ -60,21 +59,19 @@ export const AIIdentifyPanel: React.FC<Props> = ({ onApplyComplete }) => {
   const [currentSection, setCurrentSection] = useState<string>('');  // 当前处理章节
   const [useMultiStage, setUseMultiStage] = useState(true);  // 是否使用多阶段处理
 
-  // 动态更新加载消息
+  // 动态更新加载消息（仅用于旧API的模拟进度）
+  // 注意：当前HTTP API不支持实时进度，这只是视觉反馈
   useEffect(() => {
     if (isAnalyzing) {
+      // 简单的等待提示，不显示具体阶段（避免误导）
+      let dotCount = 0;
       const interval = setInterval(() => {
-        setLoadingProgress((prev) => {
-          const next = prev + 1;
-          if (next >= loadingMessages.length) {
-            return loadingMessages.length - 1;  // 保持最后一个消息
-          }
-          setLoadingMessage(loadingMessages[next]);
-          return next;
-        });
-      }, 3000);  // 每3秒更新一次消息
+        dotCount = (dotCount + 1) % 4;
+        const dots = '.'.repeat(dotCount);
+        setLoadingMessage(`⏳ 正在处理文档${dots}`);
+      }, 500);  // 每0.5秒更新一次（dots动画）
 
-      setLoadingMessage(loadingMessages[0]);
+      setLoadingMessage('⏳ 正在处理文档...');
       setLoadingProgress(0);
 
       return () => clearInterval(interval);
@@ -152,8 +149,8 @@ export const AIIdentifyPanel: React.FC<Props> = ({ onApplyComplete }) => {
       carboneAPI.setBaseUrl(apiBaseUrl);
 
       if (useMultiStage) {
-        // 使用新的多阶段处理流程
-        addDebugLog('info', `使用多阶段处理流程`, `阶段: 文档理解 → 分段参数化 → 整合确认`);
+        // 使用新的多阶段处理流程（API会根据underlineInfo自动选择快速或多阶段）
+        addDebugLog('info', `调用多阶段处理API`, `等待后端返回实际处理流程类型...`);
 
         // 更新进度的辅助函数
         const updateProgress = (stageName: string, progress: number, message: string, section?: string) => {
@@ -166,18 +163,24 @@ export const AIIdentifyPanel: React.FC<Props> = ({ onApplyComplete }) => {
           addDebugLog('debug', `进度更新`, `${stageName}: ${progress}% - ${message}${section ? ` (${section})` : ''}`);
         };
 
-        // 模拟进度更新（因为HTTP请求不支持实时进度）
-        updateProgress('文档理解', 0, '🔍 分析文档整体结构...');
+        // 显示处理中提示（不显示具体进度，因为HTTP不支持实时进度）
+        updateProgress('处理中', 10, '⏳ 正在处理文档...');
 
         // 调用多阶段API
         const result = await carboneAPI.identifyDocumentMultiStage(requestPayload);
 
+        // 根据返回的flowType显示正确的流程类型
+        const flowType = result.contextAnalysis?.flowType || 'unknown';
+        const flowTypeDisplay = flowType === 'quick' ? '快速识别（有下划线位置）' :
+                                flowType === 'multi-stage' ? '多阶段处理（文档理解→分段参数化→整合确认）' :
+                                '未知流程';
+
         // 更新到100%
         updateProgress('完成', 100, '✅ 处理完成！');
 
-        // 记录结果
+        // 记录结果（显示正确的流程类型）
         const usedAI = result.contextAnalysis?.usedAI ?? true;
-        addDebugLog('info', `识别方式: ${usedAI ? '🤖 AI多阶段智能识别' : '📋 规则匹配'}`,
+        addDebugLog('info', `处理完成，实际流程: ${flowTypeDisplay}`,
           `识别到 ${result.suggestions?.length || 0} 个参数，模板类型: ${result.templateConfig?.templateType}`);
 
         // 使用 rawSuggestions（包含详细信息）如果可用
@@ -558,15 +561,15 @@ export const AIIdentifyPanel: React.FC<Props> = ({ onApplyComplete }) => {
         ) : 'AI 智能识别'}
       </button>
 
-      {/* 多阶段进度显示 */}
+      {/* 处理进度显示 */}
       {isAnalyzing && (
         <div className="multistage-progress-container">
-          {/* 进度条 */}
+          {/* 简单进度指示器（HTTP不支持实时进度，仅显示处理状态） */}
           <div className="loading-progress-bar">
-            <div className="progress-fill" style={{ width: `${loadingProgress}%` }}></div>
+            <div className="progress-fill processing" style={{ width: `${loadingProgress}%` }}></div>
           </div>
 
-          {/* 阶段信息 */}
+          {/* 状态信息 */}
           {currentStage && (
             <div className="stage-info">
               <span className="stage-name">{currentStage}</span>
@@ -576,8 +579,12 @@ export const AIIdentifyPanel: React.FC<Props> = ({ onApplyComplete }) => {
             </div>
           )}
 
-          {/* 进度百分比 */}
-          <div className="progress-percentage">{loadingProgress}%</div>
+          {/* 进度百分比（仅在完成后显示100%，处理中不显示具体百分比） */}
+          {loadingProgress === 100 ? (
+            <div className="progress-percentage">100%</div>
+          ) : (
+            <div className="progress-hint">{loadingMessage}</div>
+          )}
         </div>
       )}
 

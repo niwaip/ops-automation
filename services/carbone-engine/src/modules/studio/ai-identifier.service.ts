@@ -268,6 +268,7 @@ export interface AIIdentifyResponse {
     userIntent: string;
     usedAI?: boolean;  // 是否使用了AI分析
     aiServiceUrl?: string;  // AI服务地址
+    flowType?: 'quick' | 'multi-stage';  // 处理流程类型：快速流程（有underlineInfo）或多阶段流程
   };
 }
 
@@ -468,9 +469,6 @@ export class AIIdentifierService {
     }
 
     // ===== 原有的多阶段流程（当没有 underlineInfo 时使用） =====
-    if (underlineInfo && underlineInfo.length > 0) {
-      this.logger.log(`收到下划线信息: ${underlineInfo.length} 个带下划线位置`);
-    }
 
     // 定义进度报告辅助函数
     const reportProgress = (stage: ProcessingStage, stageName: string, progress: number, message: string, currentSection?: string) => {
@@ -612,7 +610,8 @@ export class AIIdentifierService {
           detectedTemplateType: documentUnderstanding.documentType,
           userIntent: documentUnderstanding.mainPurpose,
           usedAI: true,
-          aiServiceUrl: this.aiOrchestratorUrl
+          aiServiceUrl: this.aiOrchestratorUrl,
+          flowType: 'multi-stage'  // 多阶段流程（无精确下划线位置）
         }
       };
     } catch (error: any) {
@@ -1329,7 +1328,8 @@ ${parameterList.map(p => `
           detectedTemplateType: templateType,
           userIntent: '基于下划线位置的参数识别',
           usedAI: true,
-          aiServiceUrl: this.aiOrchestratorUrl
+          aiServiceUrl: this.aiOrchestratorUrl,
+          flowType: 'quick'  // 快速流程（有精确下划线位置）
         }
       };
 

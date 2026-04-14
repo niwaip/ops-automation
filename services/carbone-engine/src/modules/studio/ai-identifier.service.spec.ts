@@ -149,6 +149,9 @@ describe('AIIdentifierService', () => {
 
       // 验证AI只调用了一次（快速流程）
       expect(mockedAxios.post).toHaveBeenCalledTimes(1);
+
+      // 验证flowType为'quick'
+      expect(result.contextAnalysis?.flowType).toBe('quick');
     });
 
     it('should use multi-stage flow when underlineInfo is empty', async () => {
@@ -190,6 +193,9 @@ describe('AIIdentifierService', () => {
 
       // 验证AI调用次数 >= 2（文档理解 + 章节参数化/整合）
       expect(mockedAxios.post.mock.calls.length).toBeGreaterThanOrEqual(2);
+
+      // 验证flowType为'multi-stage'
+      expect(result.contextAnalysis?.flowType).toBe('multi-stage');
     });
 
     it('should use multi-stage flow when underlineInfo is undefined', async () => {
