@@ -42,22 +42,32 @@ export const WordAPI = {
       // Office JS API: Document.getFileAsync
       // 使用Office.FileType.Compressed获取docx文件的base64切片
       Office.context.document.getFileAsync(Office.FileType.Compressed, { sliceSize: 65536 }, (result) => {
+        console.log('getFileAsync result:', result.status);
+
         if (result.status === Office.AsyncResultStatus.Succeeded) {
           const file = result.value;
           const sliceCount = file.sliceCount;
-          const slices: string[] = [];
+          console.log('sliceCount:', sliceCount);
 
           if (sliceCount === 0) {
             file.closeAsync();
-            resolve('');
+            reject(new Error('文件切片数为0'));
             return;
           }
 
+          const slices: string[] = [];
+
           const getSlice = (sliceIndex: number) => {
             file.getSliceAsync(sliceIndex, (sliceResult) => {
+              console.log(`getSliceAsync(${sliceIndex}) result:`, sliceResult.status);
+
               if (sliceResult.status === Office.AsyncResultStatus.Succeeded) {
-                // sliceResult.value.data 是 base64 字符串
-                slices.push(sliceResult.value.data);
+                const sliceData = sliceResult.value.data;
+                console.log(`slice ${sliceIndex} data type:`, typeof sliceData, 'length:', sliceData?.length);
+                console.log(`slice ${sliceIndex} first 20 chars:`, sliceData?.substring?.(0, 20));
+
+                // sliceResult.value.data 应该是 base64 字符串
+                slices.push(sliceData);
 
                 if (sliceIndex < sliceCount - 1) {
                   getSlice(sliceIndex + 1);
@@ -67,21 +77,93 @@ export const WordAPI = {
                   // 组合所有slice为完整base64
                   const fullBase64 = slices.join('');
                   console.log(`获取文件成功，共${sliceCount}个切片，base64长度: ${fullBase64.length}`);
+                  console.log(`base64前20字符: ${fullBase64.substring(0, 20)}`);
+
+                  // 验证base64解码后是否是有效的zip文件（PK开头）
+                  try {
+                    const decoded = atob(fullBase64.substring(0, 100));
+                    console.log('解码后前10字节:', decoded.substring(0, 10));
+                    console.log('是否PK开头:', decoded.substring(0, 2) === 'PK');
+                  } catch (e) {
+                    console.warn('base64验证失败:', e);
+                  }
+
                   resolve(fullBase64);
                 }
               } else {
                 file.closeAsync();
-                reject(new Error(`获取切片${sliceIndex}失败: ${sliceResult.error?.message || '未知错误'}`));
+                const errorMsg = sliceResult.error?.message || '未知错误';
+                console.error(`获取切片${sliceIndex}失败:`, errorMsg);
+                reject(new Error(`获取切片${sliceIndex}失败: ${errorMsg}`));
               }
             });
           };
 
           getSlice(0);
         } else {
-          reject(new Error(`获取文件失败: ${result.error?.message || '未知错误'}`));
+          const errorMsg = result.error?.message || '未知错误';
+          console.error('获取文件失败:', errorMsg);
+          reject(new Error(`获取文件失败: ${errorMsg}`));
         }
       });
     });
+  },
+
+  /**
+   * 使用OOXML方式获取文档内容（备用方案）
+   * Word.run API方式获取文档的Open XML格式
+   */
+  async getDocumentOoxml(): Promise<string> {
+    return new Promise((resolve, reject) => {
+      Word.run(async (context) => {
+        const body = context.document.body;
+        const ooxml = body.getOoxml();
+        ooxml.load('value');
+        await context.sync();
+        console.log('OOXML length:', ooxml.value?.length);
+        resolve(ooxml.value);
+      }).catch((error) => {
+        console.error('获取OOXML失败:', error);
+        reject(error);
+      });
+    });
+  },
+
+  /**
+   * 获取文档文件Base64（多种方式尝试）
+   */
+  async getDocumentFileBase64WithFallback(): Promise<{ base64: string; method: string }> {
+    // 方法1: 尝试getFileAsync
+    try {
+      const base64 = await this.getDocumentFileBase64();
+      // 验证是否有效
+      const decoded = atob(base64.substring(0, 50));
+      if (decoded.substring(0, 2) === 'PK') {
+        console.log('getFileAsync成功获取有效docx文件');
+        return { base64, method: 'getFileAsync' };
+      }
+      console.warn('getFileAsync返回的数据不是有效docx格式');
+    } catch (e) {
+      console.warn('getFileAsync失败:', e);
+    }
+
+    // 方法2: 使用OOXML（返回XML而非docx，但可用于替换操作）
+    try {
+      const ooxml = await this.getDocumentOoxml();
+      if (ooxml && ooxml.length > 0) {
+        console.log('使用OOXML方式获取文档');
+        // OOXML是纯文本XML，不是完整的docx文件
+        // 但可用于后续处理
+        return { base64: btoa(ooxml), method: 'ooxml' };
+      }
+    } catch (e) {
+      console.warn('OOXML方式也失败:', e);
+    }
+
+    // 方法3: 纯文本（最后的fallback）
+    const text = await this.getDocumentContent();
+    console.warn('使用纯文本作为fallback');
+    return { base64: btoa(text), method: 'text' };
   },
 
   /**

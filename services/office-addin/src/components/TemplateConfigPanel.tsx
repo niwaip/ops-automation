@@ -289,15 +289,24 @@ export const TemplateConfigPanel: React.FC = () => {
     try {
       let documentContent = '';
       let format = 'docx';
+      let contentMethod = '';
 
       if (officeType === 'word') {
-        // 使用base64获取实际docx文件
+        // 尝试多种方式获取文档内容
         try {
-          documentContent = 'base64:' + await OfficeHelper.Word.getDocumentFileBase64();
-        } catch (e) {
-          // 如果getFileAsync不支持，使用纯文本（可能会有格式问题）
-          console.warn('getFileAsync不支持，使用纯文本');
-          documentContent = await OfficeHelper.Word.getDocumentContent();
+          const result = await OfficeHelper.Word.getDocumentFileBase64WithFallback();
+          documentContent = 'base64:' + result.base64;
+          contentMethod = result.method;
+          console.log('文档获取方式:', contentMethod);
+
+          if (contentMethod !== 'getFileAsync') {
+            setStatusMessage(`注意：使用${contentMethod}方式获取文档，可能无法生成完整预览`);
+          }
+        } catch (e: any) {
+          console.error('获取文档失败:', e);
+          setStatusMessage(`获取文档失败: ${e.message}`);
+          setLoadingStates(prev => ({ ...prev, skillPreview: false }));
+          return;
         }
         format = 'docx';
       } else if (officeType === 'excel') {
@@ -321,7 +330,15 @@ export const TemplateConfigPanel: React.FC = () => {
         return;
       }
 
-      // 使用skill预览
+      // 检查是否有有效文件
+      if (!templateResult.hasValidFile) {
+        setStatusMessage(`模板配置已保存（模板ID: ${templateResult.templateId}），但由于无法获取完整的docx文件，预览功能暂不可用。请手动上传Word文档到模板管理页面进行完整预览。`);
+        setCurrentStep(4);
+        setSkillPreviewResult({ generatedData: generatedSkill.parameters?.map(p => ({ [p.name]: p.example })) });
+        return;
+      }
+
+      // 使用skill预览（仅当有有效文件时）
       const result = await carboneAPI.previewWithSkill({
         templateId: templateResult.templateId,
         skill: generatedSkill,
@@ -361,12 +378,20 @@ export const TemplateConfigPanel: React.FC = () => {
       let format = 'docx';
 
       if (officeType === 'word') {
-        // 使用base64获取实际docx文件
+        // 尝试多种方式获取文档内容
         try {
-          documentContent = 'base64:' + await OfficeHelper.Word.getDocumentFileBase64();
-        } catch (e) {
-          console.warn('getFileAsync不支持，使用纯文本');
-          documentContent = await OfficeHelper.Word.getDocumentContent();
+          const result = await OfficeHelper.Word.getDocumentFileBase64WithFallback();
+          documentContent = 'base64:' + result.base64;
+          console.log('保存文档获取方式:', result.method);
+
+          if (result.method !== 'getFileAsync') {
+            console.warn('使用fallback方式获取文档，模板可能不完整');
+          }
+        } catch (e: any) {
+          console.error('获取文档失败:', e);
+          setStatusMessage(`获取文档失败: ${e.message}`);
+          setLoadingStates(prev => ({ ...prev, fullSave: false }));
+          return;
         }
         format = 'docx';
       } else if (officeType === 'excel') {

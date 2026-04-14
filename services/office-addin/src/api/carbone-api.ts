@@ -98,6 +98,7 @@ export interface GenerateTemplateResponse {
   previewData?: Record<string, any>;
   validationErrors?: string[];
   error?: string;
+  hasValidFile?: boolean;
 }
 
 class CarboneAPI {

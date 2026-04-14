@@ -671,6 +671,7 @@ export class StudioController {
     generatedTemplate?: string;
     templateId?: string;
     downloadUrl?: string;
+    hasValidFile?: boolean;
     error?: string;
   }> {
     try {
@@ -698,6 +699,7 @@ export class StudioController {
 
       // 解码并保存模板文件
       let templateBuffer: Buffer;
+      let isValidDocx = true;
 
       console.log('generateTemplate received documentContent length:', body.documentContent.length);
       console.log('documentContent prefix:', body.documentContent.substring(0, 20));
@@ -708,31 +710,38 @@ export class StudioController {
         templateBuffer = Buffer.from(base64Data, 'base64');
         console.log('decoded buffer length:', templateBuffer.length);
       } else if (body.documentContent.startsWith('{')) {
-        // JSON格式（Excel数据）
+        // JSON格式（Excel数据或OOXML）
         templateBuffer = Buffer.from(body.documentContent, 'utf-8');
+        isValidDocx = false;
       } else {
         // 假设是base64编码的文档
         try {
           templateBuffer = Buffer.from(body.documentContent, 'base64');
         } catch {
           templateBuffer = Buffer.from(body.documentContent, 'utf-8');
+          isValidDocx = false;
         }
       }
 
       // 验证是否是有效的docx文件（docx是zip格式，前4字节应该是PK）
-      if (format === 'docx') {
+      if (format === 'docx' && templateBuffer.length > 4) {
         const header = templateBuffer.slice(0, 4).toString();
         console.log('file header:', header);
         if (!header.startsWith('PK')) {
-          console.error('Invalid docx file: not a zip archive');
-          return {
-            success: false,
-            error: '无效的docx文件格式。请确保已正确获取Word文档的Base64编码。',
-          };
+          console.warn('Not a valid docx file (not PK header), but will save metadata');
+          isValidDocx = false;
         }
       }
 
-      fs.writeFileSync(templateFilePath, templateBuffer);
+      // 只有有效文件才保存物理文件，否则只保存元数据
+      if (isValidDocx && templateBuffer.length > 0) {
+        fs.writeFileSync(templateFilePath, templateBuffer);
+      } else {
+        console.log('Saving metadata only (no valid docx file)');
+        // 保存文本内容作为参考
+        const textPath = path.join(this.templatesDir, `${templateId}_content.txt`);
+        fs.writeFileSync(textPath, templateBuffer.toString('utf-8'));
+      }
 
       // 保存模板配置
       fs.writeFileSync(templateMetaPath, JSON.stringify({
@@ -741,6 +750,7 @@ export class StudioController {
         fileName: `template_${templateId}.${format}`,
         config: templateConfig,
         suggestions: body.suggestions,
+        hasValidFile: isValidDocx,
         createdAt: new Date().toISOString(),
       }));
 
@@ -748,7 +758,8 @@ export class StudioController {
         success: true,
         templateId,
         generatedTemplate: JSON.stringify(templateConfig),
-        downloadUrl: `/studio/download-template/${templateId}`,
+        downloadUrl: isValidDocx ? `/studio/download-template/${templateId}` : undefined,
+        hasValidFile: isValidDocx,
       };
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : 'Unknown error';
@@ -2219,9 +2230,9 @@ ${varList}
 5. 输出最终文档供用户下载
 
 ## 示例数据结构
-${'{'}"d": ${'{'}
+{ "d": {
 ${exampleData}
-${'}'}${'}'}
+} }
 `;
 
     return baseInstructions;
@@ -2229,8 +2240,10 @@ ${'}'}${'}'}
 
   private generateSimulatedData(skill: any): any {
     const data: any = {};
-    for (const variable of skill.parameterization?.variables || []) {
-      data[variable.name] = variable.example || this.generateExampleValue(variable.fieldType, variable.name);
+    // 使用新的parameters结构
+    const variables = skill.parameters || skill.parameterization?.variables || [];
+    for (const variable of variables) {
+      data[variable.name] = variable.example || this.generateExampleValue(variable.dataType || variable.fieldType, variable.name);
     }
     return data;
   }
