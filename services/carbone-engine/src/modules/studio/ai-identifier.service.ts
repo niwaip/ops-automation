@@ -2072,21 +2072,52 @@ ${blankList}
       this.logger.log('AI service responded successfully');
 
       // ops-ai-orchestrator 返回格式: {success: true, response: "..."}
-      const content = response.data?.response || '';
+      let content = response.data?.response || '';
 
-      // 提取JSON部分
-      const jsonMatch = content.match(/\{[\s\S]*"suggestions"[\s\S]*\}/);
-      if (jsonMatch) {
-        return JSON.parse(jsonMatch[0]);
+      // 记录原始响应内容（调试用，截取前500字符）
+      this.logger.log(`AI response content (first 500 chars): ${content.substring(0, 500)}`);
+
+      // 清理markdown代码块标记
+      content = content.replace(/```json\s*/gi, '').replace(/```\s*/g, '').trim();
+
+      // 尝试多种JSON格式解析
+      // 1. 带suggestions的对象
+      const suggestionsMatch = content.match(/\{[\s\S]*"suggestions"[\s\S]*\}/);
+      if (suggestionsMatch) {
+        try {
+          return JSON.parse(suggestionsMatch[0]);
+        } catch (e) {
+          this.logger.warn('Failed to parse suggestions object');
+        }
       }
 
-      // 尝试另一种格式：直接JSON数组
-      const arrayMatch = content.match(/\[[\s\S]*\]/);
+      // 2. JSON数组（主要格式）
+      // 使用更精确的正则，匹配完整的JSON数组
+      const arrayMatch = content.match(/\[\s*\{[\s\S]*?\}\s*\]/);
       if (arrayMatch) {
-        return { suggestions: JSON.parse(arrayMatch[0]) };
+        try {
+          const parsed = JSON.parse(arrayMatch[0]);
+          this.logger.log(`Parsed JSON array with ${parsed.length} items`);
+          return { suggestions: parsed };
+        } catch (e) {
+          this.logger.warn('Failed to parse JSON array');
+        }
+      }
+
+      // 3. 尝试逐个提取JSON对象
+      const objectMatches = content.match(/\{\s*"index"[\s\S]*?\}/g);
+      if (objectMatches && objectMatches.length > 0) {
+        try {
+          const suggestions = objectMatches.map((obj: string) => JSON.parse(obj));
+          this.logger.log(`Extracted ${suggestions.length} JSON objects`);
+          return { suggestions };
+        } catch (e) {
+          this.logger.warn('Failed to parse individual JSON objects');
+        }
       }
 
       this.logger.warn('No valid JSON found in AI response');
+      this.logger.warn(`Full response: ${content}`);
       return { suggestions: [] };
     } catch (error: any) {
       this.logger.error('AI service call failed:', error.message);
