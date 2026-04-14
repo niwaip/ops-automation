@@ -33,6 +33,25 @@ app.use((req, res, next) => {
 // 配置文件上传
 const upload = multer({ dest: '/tmp/uploads/' });
 
+// 捕获原始请求体的中间件（用于multipart代理）
+app.use((req, res, next) => {
+  // 对于multipart请求，需要捕获原始body以便代理
+  if (req.headers['content-type'] && req.headers['content-type'].includes('multipart')) {
+    const chunks = [];
+    req.on('data', (chunk) => chunks.push(chunk));
+    req.on('end', () => {
+      req.rawBody = Buffer.concat(chunks);
+      next();
+    });
+    req.on('error', (err) => {
+      console.error('Error capturing raw body:', err);
+      next(err);
+    });
+  } else {
+    next();
+  }
+});
+
 // 中间件
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
@@ -46,17 +65,22 @@ app.get('/health', (req, res) => {
  * 代理请求到 carbone-engine 服务
  * - /studio/* API请求代理到 carbone-engine /studio/*
  * - 静态资源(css, js等)代理到 carbone-engine
+ * 支持multipart文件上传代理
  */
 const proxyToEngine = (req, res, targetPath) => {
   const targetUrl = `${CARBONE_ENGINE_URL}${targetPath}`;
 
   console.log(`[Proxy] ${req.method} ${req.path} -> ${targetUrl}`);
 
+  // 检查是否是multipart请求
+  const isMultipart = req.headers['content-type'] && req.headers['content-type'].includes('multipart');
+
   const options = {
     method: req.method,
     headers: {
       'Content-Type': req.headers['content-type'] || 'application/json',
       'Authorization': req.headers['authorization'] || '',
+      'Content-Length': req.headers['content-length'] || '0',
     }
   };
 
@@ -107,8 +131,12 @@ const proxyToEngine = (req, res, targetPath) => {
     });
   });
 
-  // 发送请求体（如果有）
-  if (req.body && Object.keys(req.body).length > 0) {
+  // 发送请求体
+  // multipart请求：直接流式传输原始数据
+  // JSON请求：发送解析后的body
+  if (isMultipart && req.rawBody) {
+    proxyReq.write(req.rawBody);
+  } else if (req.body && Object.keys(req.body).length > 0) {
     proxyReq.write(JSON.stringify(req.body));
   }
 
@@ -317,6 +345,12 @@ if (ENABLE_HTTPS) {
     console.log(`Carbone Official API running with HTTPS on port ${HTTPS_PORT}`);
     console.log(`Health check: https://localhost:${HTTPS_PORT}/health`);
     console.log(`Render endpoint: POST https://localhost:${HTTPS_PORT}/render`);
+  });
+
+  // 同时启动 HTTP 服务器
+  app.listen(HTTP_PORT, () => {
+    console.log(`Carbone Official API also running on HTTP port ${HTTP_PORT}`);
+    console.log(`Health check: http://localhost:${HTTP_PORT}/health`);
   });
 } else {
   // 启动 HTTP 服务器
