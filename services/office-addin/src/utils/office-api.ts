@@ -137,10 +137,12 @@ export const WordAPI = {
     try {
       const base64 = await this.getDocumentFileBase64();
       // 验证是否有效
-      const decoded = atob(base64.substring(0, 50));
-      if (decoded.substring(0, 2) === 'PK') {
-        console.log('getFileAsync成功获取有效docx文件');
-        return { base64, method: 'getFileAsync' };
+      if (base64 && base64.length > 0) {
+        const decoded = atob(base64.substring(0, 50));
+        if (decoded.substring(0, 2) === 'PK') {
+          console.log('getFileAsync成功获取有效docx文件');
+          return { base64, method: 'getFileAsync' };
+        }
       }
       console.warn('getFileAsync返回的数据不是有效docx格式');
     } catch (e) {
@@ -152,9 +154,8 @@ export const WordAPI = {
       const ooxml = await this.getDocumentOoxml();
       if (ooxml && ooxml.length > 0) {
         console.log('使用OOXML方式获取文档');
-        // OOXML是纯文本XML，不是完整的docx文件
-        // 但可用于后续处理
-        return { base64: btoa(ooxml), method: 'ooxml' };
+        // OOXML是纯文本XML，使用UTF-8编码转base64
+        return { base64: this.utf8ToBase64(ooxml), method: 'ooxml' };
       }
     } catch (e) {
       console.warn('OOXML方式也失败:', e);
@@ -163,7 +164,35 @@ export const WordAPI = {
     // 方法3: 纯文本（最后的fallback）
     const text = await this.getDocumentContent();
     console.warn('使用纯文本作为fallback');
-    return { base64: btoa(text), method: 'text' };
+    return { base64: this.utf8ToBase64(text), method: 'text' };
+  },
+
+  /**
+   * 将UTF-8字符串转换为Base64
+   * 解决btoa无法处理中文字符的问题
+   */
+  utf8ToBase64(str: string): string {
+    try {
+      // 使用TextEncoder将字符串编码为UTF-8字节
+      const encoder = new TextEncoder();
+      const bytes = encoder.encode(str);
+      // 将字节转换为base64
+      // 在浏览器中使用btoa处理Uint8Array需要先转换为字符串
+      let binary = '';
+      for (let i = 0; i < bytes.length; i++) {
+        binary += String.fromCharCode(bytes[i]);
+      }
+      return btoa(binary);
+    } catch (e) {
+      console.error('UTF-8转Base64失败:', e);
+      // 如果TextEncoder不支持，尝试encodeURIComponent方法
+      try {
+        return btoa(encodeURIComponent(str).replace(/%([0-9A-F]{2})/g, (_, p1) => String.fromCharCode(parseInt(p1, 16))));
+      } catch (e2) {
+        console.error('备用转换也失败:', e2);
+        return '';
+      }
+    }
   },
 
   /**
