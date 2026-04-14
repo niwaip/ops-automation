@@ -64,15 +64,38 @@ const proxyToEngine = (req, res, targetPath) => {
     // 设置响应头
     res.setHeader('Content-Type', proxyRes.headers['content-type'] || 'application/json');
 
-    // 收集响应数据
-    let body = '';
-    proxyRes.on('data', (chunk) => {
-      body += chunk;
-    });
+    // 判断是否是二进制响应（文件下载）
+    const contentType = proxyRes.headers['content-type'] || '';
+    const isBinary = contentType.includes('octet-stream') ||
+                     contentType.includes('application/vnd.') ||
+                     contentType.includes('pdf');
 
-    proxyRes.on('end', () => {
-      res.status(proxyRes.statusCode).send(body);
-    });
+    if (isBinary) {
+      // 二进制数据：使用Buffer数组收集
+      const chunks = [];
+      proxyRes.on('data', (chunk) => {
+        chunks.push(chunk);
+      });
+
+      proxyRes.on('end', () => {
+        const buffer = Buffer.concat(chunks);
+        // 传递Content-Disposition头（用于下载文件名）
+        if (proxyRes.headers['content-disposition']) {
+          res.setHeader('Content-Disposition', proxyRes.headers['content-disposition']);
+        }
+        res.status(proxyRes.statusCode).send(buffer);
+      });
+    } else {
+      // 文本/JSON数据：使用字符串收集
+      let body = '';
+      proxyRes.on('data', (chunk) => {
+        body += chunk;
+      });
+
+      proxyRes.on('end', () => {
+        res.status(proxyRes.statusCode).send(body);
+      });
+    }
   });
 
   proxyReq.on('error', (error) => {
