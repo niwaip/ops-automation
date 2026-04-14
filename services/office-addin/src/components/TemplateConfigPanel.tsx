@@ -29,6 +29,7 @@ export const TemplateConfigPanel: React.FC = () => {
     setTemplateConfig,
     suggestions,
     apiBaseUrl,
+    addDebugLog,
   } = useAppStore();
 
   const [templateTypes, setTemplateTypes] = useState<TemplateTypeOption[]>([
@@ -150,18 +151,29 @@ export const TemplateConfigPanel: React.FC = () => {
         skill: generatedSkill,
       });
 
+      // 显示调试日志
+      if (result.debugLogs && result.debugLogs.length > 0) {
+        console.log('=== 预览验证调试日志 ===');
+        result.debugLogs.forEach(log => console.log(log));
+        addDebugLog('info', '=== 预览验证调试日志 ===', '');
+        result.debugLogs.forEach(log => addDebugLog('debug', log, ''));
+      }
+
       if (result.success) {
         setSkillPreviewResult(result);
         setCurrentStep(4);
         setStatusMessage(`预览验证成功！模板ID: ${templateResult.templateId}`);
         setPreviewData(result.generatedData || {});
         console.log('预览结果:', result);
+        addDebugLog('info', '预览验证成功', `生成的数据: ${JSON.stringify(result.generatedData, null, 2)}`);
       } else {
         setStatusMessage(`预览验证失败: ${result.error || '未知错误'}`);
+        addDebugLog('error', '预览验证失败', result.error || '未知错误');
       }
     } catch (error: any) {
       console.error('预览验证失败:', error);
       setStatusMessage(`预览验证失败: ${error.message || '未知错误'}`);
+      addDebugLog('error', '预览验证异常', error.message || '未知错误');
     } finally {
       setLoadingStates(prev => ({ ...prev, skillPreview: false }));
     }

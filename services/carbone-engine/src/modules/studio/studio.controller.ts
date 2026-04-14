@@ -1988,25 +1988,46 @@ export class StudioController {
     generatedData?: any;
     skillUsed?: any;
     error?: string;
+    debugLogs?: string[];
   }> {
+    const debugLogs: string[] = [];
+    const addLog = (msg: string) => {
+      console.log(msg);
+      debugLogs.push(msg);
+    };
+
     try {
+      addLog('[步骤1] 开始预览验证流程');
+      addLog(`[步骤1] 请求参数: templateId=${body.templateId}, skillId=${body.skillId}, hasSkill=${!!body.skill}`);
+
       // 获取skill
       let skill = body.skill;
       if (body.skillId && !skill) {
         const skillPath = path.join(this.templatesDir, `skill_${body.skillId}.json`);
         if (fs.existsSync(skillPath)) {
           skill = JSON.parse(fs.readFileSync(skillPath, 'utf-8'));
+          addLog(`[步骤2] 从文件加载skill: ${skillPath}`);
         }
       }
 
       if (!skill) {
-        return { success: false, error: 'Skill not found' };
+        addLog('[错误] Skill not found');
+        return { success: false, error: 'Skill not found', debugLogs };
+      }
+
+      addLog(`[步骤2] Skill信息: id=${skill.id}, parameters数量=${skill.parameters?.length || 0}`);
+      if (skill.parameters) {
+        addLog(`[步骤2] Skill参数列表: ${JSON.stringify(skill.parameters.map((p: any) => ({name: p.name, example: p.example})))}`);
       }
 
       // 生成模拟数据（如果没有提供）
       let simulatedData = body.simulatedData;
       if (!simulatedData) {
+        addLog('[步骤3] 开始生成模拟数据...');
         simulatedData = this.generateSimulatedData(skill);
+        addLog(`[步骤3] 生成的数据结构: ${JSON.stringify(simulatedData, null, 2)}`);
+      } else {
+        addLog(`[步骤3] 使用提供的模拟数据: ${JSON.stringify(simulatedData)}`);
       }
 
       // 获取模板
@@ -2014,26 +2035,36 @@ export class StudioController {
       let templateId = body.templateId || skill.templateId;
       let format = 'docx';
 
+      addLog(`[步骤4] 查找模板: templateId=${templateId}`);
+
       if (templateId) {
         const meta = this.getTemplateMeta(templateId);
         format = meta.format || 'docx';
         const templatePath = path.join(this.templatesDir, `${templateId}.${format}`);
+        addLog(`[步骤4] 模板路径: ${templatePath}`);
         if (fs.existsSync(templatePath)) {
           templateBuffer = fs.readFileSync(templatePath);
+          addLog(`[步骤4] 模板加载成功, 大小: ${templateBuffer.length} bytes`);
+        } else {
+          addLog(`[错误] 模板文件不存在: ${templatePath}`);
         }
       }
 
       if (!templateBuffer) {
-        return { success: false, error: 'Template not found' };
+        addLog('[错误] Template not found');
+        return { success: false, error: 'Template not found', debugLogs };
       }
 
       // 渲染预览
+      addLog('[步骤5] 开始渲染预览...');
       const outputId = uuidv4();
       const outputBuffer = await this.engine.render(templateBuffer, simulatedData, `preview_${outputId}.${format}`);
+      addLog(`[步骤5] 渲染完成, 输出大小: ${outputBuffer.length} bytes`);
 
       // 保存输出
       const outputPath = path.join(this.outputsDir, `${outputId}.${format}`);
       fs.writeFileSync(outputPath, Buffer.from(outputBuffer));
+      addLog(`[步骤6] 输出保存到: ${outputPath}`);
 
       // 保存输出元数据
       const outputMetaPath = path.join(this.outputsDir, `${outputId}.json`);
@@ -2045,7 +2076,10 @@ export class StudioController {
         fileName: `preview_${outputId}.${format}`,
         createdAt: new Date().toISOString(),
         simulatedData,
+        debugLogs,
       }));
+
+      addLog('[完成] 预览验证成功!');
 
       return {
         success: true,
@@ -2053,12 +2087,18 @@ export class StudioController {
         downloadUrl: `/studio/download/${outputId}`,
         generatedData: simulatedData,
         skillUsed: skill,
+        debugLogs,
       };
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : 'Unknown error';
+      addLog(`[异常] ${message}`);
+      if (error instanceof Error && error.stack) {
+        addLog(`[异常堆栈] ${error.stack}`);
+      }
       return {
         success: false,
         error: message,
+        debugLogs,
       };
     }
   }
