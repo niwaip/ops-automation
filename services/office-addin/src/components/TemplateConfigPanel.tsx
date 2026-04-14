@@ -730,6 +730,19 @@ export const TemplateConfigPanel: React.FC = () => {
       {statusMessage && (
         <div className="status-message-section">
           <div className="status-message">{statusMessage}</div>
+          {/* 预览文档下载 */}
+          {skillPreviewResult?.downloadUrl && (
+            <button
+              className="download-btn preview-download"
+              onClick={() => {
+                const baseUrl = apiBaseUrl || 'http://localhost:3009';
+                window.open(`${baseUrl}${skillPreviewResult.downloadUrl}`, '_blank');
+              }}
+            >
+              下载预览文档
+            </button>
+          )}
+          {/* 模板文件下载 */}
           {localStorage.getItem('lastTemplateDownloadUrl') && (
             <button
               className="download-btn"

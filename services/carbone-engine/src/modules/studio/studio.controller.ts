@@ -1984,6 +1984,7 @@ export class StudioController {
   ): Promise<{
     success: boolean;
     previewUrl?: string;
+    downloadUrl?: string;
     generatedData?: any;
     skillUsed?: any;
     error?: string;
@@ -2049,6 +2050,7 @@ export class StudioController {
       return {
         success: true,
         previewUrl: `/studio/preview-file/${outputId}`,
+        downloadUrl: `/studio/download/${outputId}`,
         generatedData: simulatedData,
         skillUsed: skill,
       };
