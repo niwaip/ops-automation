@@ -60,26 +60,28 @@ export const AIIdentifyPanel: React.FC<Props> = ({ onApplyComplete }) => {
   const [useMultiStage, setUseMultiStage] = useState(true);  // 是否使用多阶段处理
 
   // 动态更新加载消息（仅用于旧API的模拟进度）
-  // 注意：当前HTTP API不支持实时进度，这只是视觉反馈
+  // 注意：当前HTTP API不支持实时进度，这只是dots动画
+  // loadingProgress 由 handleAnalyze 中的 updateProgress 控制
   useEffect(() => {
     if (isAnalyzing) {
-      // 简单的等待提示，不显示具体阶段（避免误导）
+      // 只更新dots动画，不修改loadingProgress（由handleAnalyze控制）
       let dotCount = 0;
       const interval = setInterval(() => {
         dotCount = (dotCount + 1) % 4;
         const dots = '.'.repeat(dotCount);
-        setLoadingMessage(`⏳ 正在处理文档${dots}`);
+        // 只有在进度未完成时才显示dots动画
+        if (loadingProgress < 100) {
+          setLoadingMessage(`⏳ 正在处理文档${dots}`);
+        }
       }, 500);  // 每0.5秒更新一次（dots动画）
 
       setLoadingMessage('⏳ 正在处理文档...');
-      setLoadingProgress(0);
 
       return () => clearInterval(interval);
     } else {
-      setLoadingProgress(0);
       setLoadingMessage('');
     }
-  }, [isAnalyzing]);
+  }, [isAnalyzing, loadingProgress]);  // 添加loadingProgress依赖
 
   /**
    * 执行 AI 分析（使用多阶段处理流程）
