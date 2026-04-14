@@ -160,10 +160,46 @@ export const WordAPI = {
 
               if (sliceResult.status === Office.AsyncResultStatus.Succeeded) {
                 const sliceData = sliceResult.value.data;
-                console.log(`slice ${sliceIndex} data type:`, typeof sliceData, 'length:', sliceData?.length);
+                console.log(`slice ${sliceIndex} data type:`, typeof sliceData, 'isArrayBuffer:', sliceData instanceof ArrayBuffer, 'length:', sliceData?.length);
 
-                // sliceResult.value.data 应该是 base64 字符串，直接使用
-                slices.push(sliceData);
+                // 处理不同平台返回的数据格式
+                // 某些Office版本返回base64字符串，某些返回ArrayBuffer（raw binary）
+                let base64Slice: string;
+
+                if (typeof sliceData === 'string') {
+                  // 已经是base64字符串，直接使用
+                  base64Slice = sliceData;
+                } else if (sliceData instanceof ArrayBuffer) {
+                  // raw binary数据，需要转换为base64
+                  const bytes = new Uint8Array(sliceData);
+                  let binary = '';
+                  for (let i = 0; i < bytes.length; i++) {
+                    binary += String.fromCharCode(bytes[i]);
+                  }
+                  base64Slice = btoa(binary);
+                  console.log(`slice ${sliceIndex} converted from ArrayBuffer to base64, length:`, base64Slice.length);
+                } else if (sliceData && typeof sliceData === 'object') {
+                  // 可能是其他格式，尝试转换
+                  try {
+                    // 尝试作为Uint8Array处理
+                    const bytes = new Uint8Array(sliceData as any);
+                    let binary = '';
+                    for (let i = 0; i < bytes.length; i++) {
+                      binary += String.fromCharCode(bytes[i]);
+                    }
+                    base64Slice = btoa(binary);
+                  } catch (e) {
+                    console.warn(`slice ${sliceIndex} data format unknown, treating as string`);
+                    base64Slice = String(sliceData);
+                  }
+                } else {
+                  console.error(`slice ${sliceIndex} data is null or undefined`);
+                  failedSlices++;
+                  getSlice(sliceIndex + 1);
+                  return;
+                }
+
+                slices.push(base64Slice);
                 getSlice(sliceIndex + 1);
               } else {
                 failedSlices++;
@@ -232,8 +268,26 @@ export const WordAPI = {
       return new Promise((resolve, reject) => {
         Office.context.document.getFileContentAsync(Office.FileType.Compressed, (result) => {
           if (result.status === Office.AsyncResultStatus.Succeeded) {
-            console.log('getFileContentAsync成功，长度:', result.value?.length);
-            resolve(result.value);
+            const data = result.value;
+            console.log('getFileContentAsync成功，数据类型:', typeof data, 'isArrayBuffer:', data instanceof ArrayBuffer, '长度:', data?.length);
+
+            // 处理不同数据格式
+            let base64: string;
+            if (typeof data === 'string') {
+              base64 = data;
+            } else if (data instanceof ArrayBuffer) {
+              const bytes = new Uint8Array(data);
+              let binary = '';
+              for (let i = 0; i < bytes.length; i++) {
+                binary += String.fromCharCode(bytes[i]);
+              }
+              base64 = btoa(binary);
+            } else {
+              // 尝试其他格式
+              base64 = String(data);
+            }
+
+            resolve(base64);
           } else {
             console.warn('getFileContentAsync失败:', result.error?.message);
             reject(new Error(result.error?.message || 'getFileContentAsync失败'));
