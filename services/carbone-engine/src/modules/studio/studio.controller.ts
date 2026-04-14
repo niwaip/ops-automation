@@ -447,6 +447,101 @@ export class StudioController {
   }
 
   /**
+   * 预览模板内容（无需保存模板ID）
+   * 接收已替换变量的文档内容，生成预览
+   */
+  @Post('preview-content')
+  @ApiOperation({ summary: 'Preview template content without saving' })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        documentContent: { type: 'string', description: 'Document content with variables applied' },
+        templateConfig: { type: 'object', description: 'Template configuration' },
+        format: { type: 'string', description: 'Document format (docx, xlsx, pptx)' },
+      },
+    },
+  })
+  async previewTemplateContent(
+    @Body() body: {
+      documentContent: string;
+      templateConfig?: any;
+      format?: string;
+    },
+  ): Promise<{
+    success: boolean;
+    previewUrl?: string;
+    sampleData?: any;
+    error?: string;
+  }> {
+    try {
+      // 从配置生成示例数据
+      const config = body.templateConfig || {};
+      let sampleData: any = {};
+
+      if (config.variableMappings) {
+        // 从变量映射生成示例数据
+        for (const [key, path] of Object.entries(config.variableMappings)) {
+          if (typeof path === 'string' && path.startsWith('{d.')) {
+            // 提取路径：{d.xxx} -> xxx
+            const pathMatch = path.match(/\{d\.(\w+)\}/);
+            if (pathMatch) {
+              sampleData[pathMatch[1]] = `示例_${pathMatch[1]}`;
+            }
+          }
+        }
+      }
+
+      // 创建临时模板文件
+      const tempId = uuidv4();
+      const format = body.format || 'docx';
+      const tempPath = path.join(this.templatesDir, `${tempId}.${format}`);
+
+      // 解码文档内容（如果是base64）
+      let templateBuffer: Buffer;
+      if (body.documentContent.startsWith('base64:')) {
+        templateBuffer = Buffer.from(body.documentContent.substring(7), 'base64');
+      } else {
+        templateBuffer = Buffer.from(body.documentContent, 'utf-8');
+      }
+
+      fs.writeFileSync(tempPath, templateBuffer);
+
+      // 保存临时元数据
+      const metaPath = path.join(this.templatesDir, `${tempId}.json`);
+      fs.writeFileSync(metaPath, JSON.stringify({
+        id: tempId,
+        format,
+        fileName: `preview_${tempId}.${format}`,
+        config,
+        isTemp: true,
+        createdAt: new Date().toISOString(),
+      }));
+
+      // 渲染预览
+      const fileName = `preview_${tempId}.${format}`;
+      const result = await this.engine.render(templateBuffer, sampleData, fileName);
+
+      // 保存渲染结果
+      const outputId = uuidv4();
+      const outputPath = path.join(this.outputsDir, `${outputId}.${format}`);
+      fs.writeFileSync(outputPath, Buffer.from(result));
+
+      return {
+        success: true,
+        previewUrl: `/studio/preview-file/${outputId}`,
+        sampleData,
+      };
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      return {
+        success: false,
+        error: message,
+      };
+    }
+  }
+
+  /**
    * 验证模版并生成文档（使用编辑后的模版和保存的示例数据）
    */
   @Post('validate')
@@ -560,6 +655,7 @@ export class StudioController {
         documentContent: { type: 'string', description: 'Document content (base64 for binary)' },
         suggestions: { type: 'array', description: 'Applied suggestions' },
         templateConfig: { type: 'object', description: 'Template configuration' },
+        format: { type: 'string', description: 'Document format (docx, xlsx, pptx)' },
       },
     },
   })
@@ -568,6 +664,7 @@ export class StudioController {
       documentContent: string;
       suggestions: any[];
       templateConfig?: any;
+      format?: string;
     },
   ): Promise<{
     success: boolean;
@@ -586,20 +683,41 @@ export class StudioController {
       }
 
       // 生成模板配置
+      const format = body.format || 'docx';
       const templateConfig = body.templateConfig || {
         templateType: 'custom',
         variableMappings,
         outputPath: '',
-        formatType: 'docx',
+        formatType: format,
       };
 
-      // 创建模板ID
+      // 创建模板ID和文件
       const templateId = uuidv4();
       const templateMetaPath = path.join(this.templatesDir, `${templateId}.json`);
+      const templateFilePath = path.join(this.templatesDir, `${templateId}.${format}`);
+
+      // 解码并保存模板文件
+      let templateBuffer: Buffer;
+      if (body.documentContent.startsWith('base64:')) {
+        templateBuffer = Buffer.from(body.documentContent.substring(7), 'base64');
+      } else if (body.documentContent.startsWith('{')) {
+        // JSON格式（Excel数据）
+        templateBuffer = Buffer.from(body.documentContent, 'utf-8');
+      } else {
+        // 假设是base64编码的文档
+        try {
+          templateBuffer = Buffer.from(body.documentContent, 'base64');
+        } catch {
+          templateBuffer = Buffer.from(body.documentContent, 'utf-8');
+        }
+      }
+      fs.writeFileSync(templateFilePath, templateBuffer);
 
       // 保存模板配置
       fs.writeFileSync(templateMetaPath, JSON.stringify({
         id: templateId,
+        format,
+        fileName: `template_${templateId}.${format}`,
         config: templateConfig,
         suggestions: body.suggestions,
         createdAt: new Date().toISOString(),

@@ -87,13 +87,17 @@ export interface GenerateTemplateRequest {
   documentContent: string;
   suggestions: AISuggestion[];
   templateConfig: TemplateConfig;
+  format?: string;
 }
 
 export interface GenerateTemplateResponse {
   success: boolean;
-  generatedTemplate: string;
+  generatedTemplate?: string;
+  templateId?: string;
+  downloadUrl?: string;
   previewData?: Record<string, any>;
   validationErrors?: string[];
+  error?: string;
 }
 
 class CarboneAPI {
@@ -264,6 +268,28 @@ class CarboneAPI {
       `${this.baseUrl}/studio/preview`,
       { template, data },
       getAxiosConfig(this.baseUrl)
+    );
+    return response.data;
+  }
+
+  /**
+   * 预览模板内容（无需保存模板ID）
+   * 接收已替换变量的文档内容，生成预览
+   */
+  async previewRenderContent(
+    documentContent: string,
+    templateConfig: any,
+    format: string = 'docx'
+  ): Promise<{
+    success: boolean;
+    previewUrl?: string;
+    sampleData?: any;
+    error?: string;
+  }> {
+    const response = await axios.post(
+      `${this.baseUrl}/studio/preview-content`,
+      { documentContent, templateConfig, format },
+      getAxiosConfig(this.baseUrl, { timeout: 60000 })
     );
     return response.data;
   }

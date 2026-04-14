@@ -1165,3 +1165,53 @@ body {
   font-weight: 600;
   margin-top: 4px;
 }
+/* 状态消息区域 */
+.status-message-section {
+  margin: 12px 0;
+  padding: 12px;
+  background: #f0f9ff;
+  border-radius: 8px;
+  border: 1px solid #bae6fd;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.status-message-section .status-message {
+  color: #0369a1;
+  font-size: 14px;
+}
+
+.status-message-section .download-btn {
+  background: #0369a1;
+  color: white;
+  padding: 8px 16px;
+  border-radius: 4px;
+  border: none;
+  cursor: pointer;
+  font-size: 13px;
+  transition: background 0.2s;
+}
+
+.status-message-section .download-btn:hover {
+  background: #0c4a6e;
+}
+
+/* 验证警告 */
+.validation-warnings {
+  margin: 12px 0;
+  padding: 12px;
+  background: #fffbeb;
+  border-radius: 8px;
+  border: 1px solid #fcd34d;
+}
+
+.validation-warnings h4 {
+  color: #d97706;
+  margin-bottom: 8px;
+}
+
+.validation-warnings .warning-item {
+  color: #92400e;
+  padding: 4px 0;
+}

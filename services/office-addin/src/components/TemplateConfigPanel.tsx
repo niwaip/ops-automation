@@ -136,13 +136,34 @@ export const TemplateConfigPanel: React.FC = () => {
     setStatusMessage('正在生成预览...');
 
     try {
+      // 获取当前文档内容
+      let documentContent = '';
+      let format = 'docx';
+
+      if (officeType === 'word') {
+        documentContent = await OfficeHelper.Word.getDocumentContent();
+        format = 'docx';
+      } else if (officeType === 'excel') {
+        const sheetData = await OfficeHelper.Excel.getSheetData();
+        documentContent = JSON.stringify(sheetData.values);
+        format = 'xlsx';
+      }
+
       carboneAPI.setBaseUrl(apiBaseUrl);
-      const result = await carboneAPI.previewRender(
-        JSON.stringify(templateConfig),
-        previewData
+      const result = await carboneAPI.previewRenderContent(
+        documentContent,
+        templateConfig,
+        format
       );
-      console.log('预览结果:', result);
-      setStatusMessage('预览生成成功');
+
+      if (result.success && result.previewUrl) {
+        setStatusMessage('预览生成成功！');
+        setPreviewData(result.sampleData || {});
+        // 可选：打开预览链接
+        console.log('预览链接:', result.previewUrl);
+      } else {
+        setStatusMessage(`预览失败: ${result.error || '未知错误'}`);
+      }
     } catch (error: any) {
       console.error('预览失败:', error);
       setStatusMessage(`预览失败: ${error.message || '未知错误'}`);
@@ -160,12 +181,15 @@ export const TemplateConfigPanel: React.FC = () => {
 
     try {
       let documentContent = '';
+      let format = 'docx';
 
       if (officeType === 'word') {
         documentContent = await OfficeHelper.Word.getDocumentContent();
+        format = 'docx';
       } else if (officeType === 'excel') {
         const sheetData = await OfficeHelper.Excel.getSheetData();
         documentContent = JSON.stringify(sheetData.values);
+        format = 'xlsx';
       }
 
       carboneAPI.setBaseUrl(apiBaseUrl);
@@ -173,14 +197,20 @@ export const TemplateConfigPanel: React.FC = () => {
         documentContent,
         suggestions: suggestions.filter((s) => s.applied),
         templateConfig,
+        format,
       });
 
       if (result.success) {
-        setStatusMessage('模板生成成功！');
-        console.log('生成的模板:', result.generatedTemplate);
+        setStatusMessage(`模板生成成功！模板ID: ${result.templateId || '未知'}`);
+        // 保存模板ID供后续使用
+        if (result.templateId) {
+          localStorage.setItem('lastTemplateId', result.templateId);
+          localStorage.setItem('lastTemplateDownloadUrl', result.downloadUrl || '');
+        }
+        console.log('生成的模板:', result);
       } else {
         setValidationErrors(result.validationErrors || []);
-        setStatusMessage('模板生成失败');
+        setStatusMessage(`模板生成失败: ${result.error || '未知错误'}`);
       }
     } catch (error: any) {
       console.error('生成模板失败:', error);
@@ -258,9 +288,6 @@ export const TemplateConfigPanel: React.FC = () => {
 
       {/* 验证和预览 */}
       <div className="config-section actions">
-        {statusMessage && (
-          <div className="status-message">{statusMessage}</div>
-        )}
         <button
           className="validate-btn"
           onClick={handleValidate}
@@ -283,6 +310,25 @@ export const TemplateConfigPanel: React.FC = () => {
           {loadingStates.generate ? '生成中...' : '生成模板'}
         </button>
       </div>
+
+      {/* 状态消息 */}
+      {statusMessage && (
+        <div className="status-message-section">
+          <div className="status-message">{statusMessage}</div>
+          {localStorage.getItem('lastTemplateDownloadUrl') && (
+            <button
+              className="download-btn"
+              onClick={() => {
+                const url = localStorage.getItem('lastTemplateDownloadUrl') || '';
+                const baseUrl = apiBaseUrl || 'https://localhost:3443';
+                window.open(`${baseUrl}${url}`, '_blank');
+              }}
+            >
+              下载模板
+            </button>
+          )}
+        </div>
+      )}
 
       {/* 验证错误 */}
       {validationErrors.length > 0 && (
