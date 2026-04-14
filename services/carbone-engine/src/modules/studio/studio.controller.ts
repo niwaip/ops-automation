@@ -2009,9 +2009,6 @@ export class StudioController {
         simulatedData = this.generateSimulatedData(skill);
       }
 
-      // DEBUG: 记录生成的数据结构
-      console.log('[DEBUG] previewWithSkill - generated simulatedData:', JSON.stringify(simulatedData, null, 2));
-
       // 获取模板
       let templateBuffer: Buffer | undefined;
       let templateId = body.templateId || skill.templateId;
@@ -2023,7 +2020,6 @@ export class StudioController {
         const templatePath = path.join(this.templatesDir, `${templateId}.${format}`);
         if (fs.existsSync(templatePath)) {
           templateBuffer = fs.readFileSync(templatePath);
-          console.log('[DEBUG] previewWithSkill - template loaded:', templatePath, 'size:', templateBuffer.length);
         }
       }
 
@@ -2033,9 +2029,7 @@ export class StudioController {
 
       // 渲染预览
       const outputId = uuidv4();
-      console.log('[DEBUG] previewWithSkill - rendering with data...');
       const outputBuffer = await this.engine.render(templateBuffer, simulatedData, `preview_${outputId}.${format}`);
-      console.log('[DEBUG] previewWithSkill - render complete, output size:', outputBuffer.length);
 
       // 保存输出
       const outputPath = path.join(this.outputsDir, `${outputId}.${format}`);
@@ -2264,9 +2258,17 @@ ${exampleData}
     for (const variable of variables) {
       const exampleValue = variable.example || this.generateExampleValue(variable.dataType || variable.fieldType, variable.name);
 
-      // 解析变量路径，如 {d.partyA.name} -> partyA.name
-      const varPath = variable.name.replace(/^\{d\./, '').replace(/\}$/, '');
-      if (varPath && varPath !== variable.name) {
+      // 解析变量路径，支持多种格式：
+      // 1. {d.partyA.name} -> partyA.name (带花括号)
+      // 2. d.partyA.name -> partyA.name (不带花括号)
+      // 3. partyA.name -> partyA.name (无d前缀)
+      let varPath = variable.name;
+      // 移除花括号 { }
+      varPath = varPath.replace(/^\{/, '').replace(/\}$/, '');
+      // 移除 d. 或 c. 或 t. 前缀
+      varPath = varPath.replace(/^([cdt])\./, '');
+
+      if (varPath && varPath.includes('.')) {
         // 构建嵌套数据结构
         const parts = varPath.split('.');
         let current = data;
@@ -2278,7 +2280,7 @@ ${exampleData}
         }
         current[parts[parts.length - 1]] = exampleValue;
       } else {
-        // 如果路径格式不标准，直接使用变量名
+        // 单层路径，直接赋值
         data[varPath || variable.name] = exampleValue;
       }
     }
