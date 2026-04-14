@@ -48,7 +48,14 @@ export const TemplateConfigPanel: React.FC = () => {
   ]);
 
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
+  const [validationWarnings, setValidationWarnings] = useState<string[]>([]);
   const [previewData, setPreviewData] = useState<Record<string, any>>({});
+  const [loadingStates, setLoadingStates] = useState({
+    validate: false,
+    preview: false,
+    generate: false,
+  });
+  const [statusMessage, setStatusMessage] = useState<string>('');
 
   /**
    * 生成预览数据
@@ -99,14 +106,25 @@ export const TemplateConfigPanel: React.FC = () => {
    * 验证模板
    */
   const handleValidate = async () => {
+    setLoadingStates(prev => ({ ...prev, validate: true }));
+    setStatusMessage('正在验证模板配置...');
+    setValidationErrors([]);
+    setValidationWarnings([]);
+
     try {
       carboneAPI.setBaseUrl(apiBaseUrl);
       const result = await carboneAPI.validateTemplate(
         JSON.stringify(templateConfig)
       );
-      setValidationErrors(result.errors);
-    } catch (error) {
+      setValidationErrors(result.errors || []);
+      setValidationWarnings(result.warnings || []);
+      setStatusMessage(result.valid ? '验证通过' : '验证失败，请检查错误');
+    } catch (error: any) {
       console.error('验证失败:', error);
+      setValidationErrors([error.message || '验证请求失败']);
+      setStatusMessage('验证请求失败');
+    } finally {
+      setLoadingStates(prev => ({ ...prev, validate: false }));
     }
   };
 
@@ -114,6 +132,9 @@ export const TemplateConfigPanel: React.FC = () => {
    * 预览渲染
    */
   const handlePreview = async () => {
+    setLoadingStates(prev => ({ ...prev, preview: true }));
+    setStatusMessage('正在生成预览...');
+
     try {
       carboneAPI.setBaseUrl(apiBaseUrl);
       const result = await carboneAPI.previewRender(
@@ -121,8 +142,12 @@ export const TemplateConfigPanel: React.FC = () => {
         previewData
       );
       console.log('预览结果:', result);
-    } catch (error) {
+      setStatusMessage('预览生成成功');
+    } catch (error: any) {
       console.error('预览失败:', error);
+      setStatusMessage(`预览失败: ${error.message || '未知错误'}`);
+    } finally {
+      setLoadingStates(prev => ({ ...prev, preview: false }));
     }
   };
 
@@ -130,6 +155,9 @@ export const TemplateConfigPanel: React.FC = () => {
    * 生成最终模板
    */
   const handleGenerateTemplate = async () => {
+    setLoadingStates(prev => ({ ...prev, generate: true }));
+    setStatusMessage('正在生成模板...');
+
     try {
       let documentContent = '';
 
@@ -148,13 +176,17 @@ export const TemplateConfigPanel: React.FC = () => {
       });
 
       if (result.success) {
-        alert('模板生成成功！');
+        setStatusMessage('模板生成成功！');
         console.log('生成的模板:', result.generatedTemplate);
       } else {
         setValidationErrors(result.validationErrors || []);
+        setStatusMessage('模板生成失败');
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('生成模板失败:', error);
+      setStatusMessage(`生成模板失败: ${error.message || '未知错误'}`);
+    } finally {
+      setLoadingStates(prev => ({ ...prev, generate: false }));
     }
   };
 
@@ -226,14 +258,29 @@ export const TemplateConfigPanel: React.FC = () => {
 
       {/* 验证和预览 */}
       <div className="config-section actions">
-        <button className="validate-btn" onClick={handleValidate}>
-          验证格式
+        {statusMessage && (
+          <div className="status-message">{statusMessage}</div>
+        )}
+        <button
+          className="validate-btn"
+          onClick={handleValidate}
+          disabled={loadingStates.validate}
+        >
+          {loadingStates.validate ? '验证中...' : '验证格式'}
         </button>
-        <button className="preview-btn" onClick={handlePreview}>
-          预览效果
+        <button
+          className="preview-btn"
+          onClick={handlePreview}
+          disabled={loadingStates.preview}
+        >
+          {loadingStates.preview ? '预览中...' : '预览效果'}
         </button>
-        <button className="generate-btn" onClick={handleGenerateTemplate}>
-          生成模板
+        <button
+          className="generate-btn"
+          onClick={handleGenerateTemplate}
+          disabled={loadingStates.generate}
+        >
+          {loadingStates.generate ? '生成中...' : '生成模板'}
         </button>
       </div>
 
@@ -244,6 +291,18 @@ export const TemplateConfigPanel: React.FC = () => {
           {validationErrors.map((err, idx) => (
             <div key={idx} className="error-item">
               ❌ {err}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* 验证警告 */}
+      {validationWarnings.length > 0 && (
+        <div className="validation-warnings">
+          <h4>验证警告:</h4>
+          {validationWarnings.map((warn, idx) => (
+            <div key={idx} className="warning-item">
+              ⚠️ {warn}
             </div>
           ))}
         </div>

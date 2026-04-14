@@ -2050,21 +2050,27 @@ ${blankList}
   }
 
   /**
-   * 调用AI服务
-   * 使用 ops-ai-orchestrator 的 /ai/models/{id}/test 端点
+   * 调用AI服务（带自动重试机制）
+   * 如果JSON解析失败，自动重试最多3次，每次调整提示词强调JSON格式
    */
-  private async callAIService(prompt: string): Promise<any> {
+  private async callAIService(prompt: string, retryCount: number = 0): Promise<any> {
     const aiOrchestratorUrl = process.env.AI_ORCHESTRATOR_URL || 'http://localhost:3007';
     const aiModelId = process.env.AI_MODEL_ID || '00ddd35d-6578-4acb-bc09-d629560f6ab6';  // 默认使用 qwen3.5-plus
+    const maxRetries = 3;
 
-    this.logger.log(`Calling AI service at ${aiOrchestratorUrl}/ai/models/${aiModelId}/test`);
+    this.logger.log(`Calling AI service at ${aiOrchestratorUrl}/ai/models/${aiModelId}/test (retry: ${retryCount})`);
 
     try {
       // 使用正确的 ops-ai-orchestrator 端点
+      // 如果是重试，添加格式强调
+      const actualPrompt = retryCount > 0
+        ? `${prompt}\n\n【重要】请务必返回标准JSON数组格式，不要使用markdown代码块，不要添加任何解释文字。格式示例：[{"index": 1, "variableName": "xxx", "meaning": "xxx", "fieldType": "text"}]`
+        : prompt;
+
       const response = await axios.post(
         `${aiOrchestratorUrl}/ai/models/${aiModelId}/test`,
         {
-          prompt: prompt  // ops-ai-orchestrator 使用 prompt 字段
+          prompt: actualPrompt  // ops-ai-orchestrator 使用 prompt 字段
         },
         { timeout: 360000 }  // 6分钟超时，AI分析可能需要较长时间
       );
@@ -2085,7 +2091,9 @@ ${blankList}
       const suggestionsMatch = content.match(/\{[\s\S]*"suggestions"[\s\S]*\}/);
       if (suggestionsMatch) {
         try {
-          return JSON.parse(suggestionsMatch[0]);
+          const parsed = JSON.parse(suggestionsMatch[0]);
+          this.logger.log('Parsed suggestions object successfully');
+          return parsed;
         } catch (e) {
           this.logger.warn('Failed to parse suggestions object');
         }
@@ -2116,12 +2124,30 @@ ${blankList}
         }
       }
 
-      this.logger.warn('No valid JSON found in AI response');
-      this.logger.warn(`Full response: ${content}`);
+      // JSON解析失败，检查是否需要重试
+      if (retryCount < maxRetries) {
+        this.logger.warn(`No valid JSON found in AI response, retrying (${retryCount + 1}/${maxRetries})...`);
+        this.logger.warn(`Full response: ${content}`);
+
+        // 等待1秒后重试
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        return this.callAIService(prompt, retryCount + 1);
+      }
+
+      this.logger.error('Max retries reached, no valid JSON found');
+      this.logger.error(`Full response: ${content}`);
       return { suggestions: [] };
     } catch (error: any) {
       this.logger.error('AI service call failed:', error.message);
       this.logger.error('AI service URL attempted:', `${aiOrchestratorUrl}/ai/models/${aiModelId}/test`);
+
+      // 网络错误也重试
+      if (retryCount < maxRetries && (error.code === 'ECONNREFUSED' || error.code === 'ETIMEDOUT')) {
+        this.logger.warn(`Network error, retrying (${retryCount + 1}/${maxRetries})...`);
+        await new Promise(resolve => setTimeout(resolve, 2000));
+        return this.callAIService(prompt, retryCount + 1);
+      }
+
       throw error;
     }
   }

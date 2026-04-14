@@ -3,8 +3,17 @@
  * 对接 Carbone Engine 的 AI 识别和模板生成 API
  */
 
-import axios from 'axios';
+import axios, { AxiosRequestConfig } from 'axios';
 import { AISuggestion, TemplateConfig } from '../taskpane/store';
+
+// 获取 axios 配置（根据 URL 是否为 HTTPS）
+// 注意：浏览器环境不需要 httpsAgent，浏览器会自动处理 TLS
+function getAxiosConfig(url: string, options: AxiosRequestConfig = {}): AxiosRequestConfig {
+  const config: AxiosRequestConfig = { ...options };
+  // 浏览器环境不需要 httpsAgent，浏览器有自己的证书处理机制
+  // 如果需要忽略自签名证书，需要在浏览器中手动信任证书
+  return config;
+}
 
 export interface DocumentStructure {
   elements: Array<{
@@ -113,7 +122,7 @@ class CarboneAPI {
     const response = await axios.post(
       `${this.baseUrl}/parse`,
       { template: templateContent },
-      { timeout: 30000 }
+      getAxiosConfig(this.baseUrl, { timeout: 30000 })
     );
     return response.data;
   }
@@ -133,7 +142,7 @@ class CarboneAPI {
         data,
         options: options || {}
       },
-      { timeout: 60000 }
+      getAxiosConfig(this.baseUrl, { timeout: 60000 })
     );
     return response.data;
   }
@@ -147,7 +156,7 @@ class CarboneAPI {
     const response = await axios.post(
       `${this.baseUrl}/studio/direct-ai-identify`,
       request,
-      { timeout: 360000 }  // 6分钟超时，AI分析可能需要较长时间
+      getAxiosConfig(this.baseUrl, { timeout: 360000 })  // 6分钟超时，AI分析可能需要较长时间
     );
     return response.data;
   }
@@ -162,7 +171,7 @@ class CarboneAPI {
     const response = await axios.post(
       `${this.baseUrl}/studio/direct-ai-identify-multistage`,
       request,
-      { timeout: 360000 }  // 6分钟超时
+      getAxiosConfig(this.baseUrl, { timeout: 360000 })  // 6分钟超时
     );
     return response.data;
   }
@@ -223,7 +232,7 @@ class CarboneAPI {
     const response = await axios.post(
       `${this.baseUrl}/studio/generate`,
       request,
-      { timeout: 30000 }
+      getAxiosConfig(this.baseUrl, { timeout: 30000 })
     );
     return response.data;
   }
@@ -238,7 +247,8 @@ class CarboneAPI {
   }> {
     const response = await axios.post(
       `${this.baseUrl}/studio/validate-content`,
-      { template: templateContent }
+      { template: templateContent },
+      getAxiosConfig(this.baseUrl)
     );
     return response.data;
   }
@@ -252,7 +262,8 @@ class CarboneAPI {
   ): Promise<{ preview: string; format: string }> {
     const response = await axios.post(
       `${this.baseUrl}/studio/preview`,
-      { template, data }
+      { template, data },
+      getAxiosConfig(this.baseUrl)
     );
     return response.data;
   }
@@ -261,7 +272,10 @@ class CarboneAPI {
    * 获取模板类型列表
    */
   async getTemplateTypes(): Promise<Array<{ id: string; name: string; description: string }>> {
-    const response = await axios.get(`${this.baseUrl}/studio/template-types`);
+    const response = await axios.get(
+      `${this.baseUrl}/studio/template-types`,
+      getAxiosConfig(this.baseUrl)
+    );
     return response.data;
   }
 
@@ -274,7 +288,10 @@ class CarboneAPI {
     description: string;
     example: string;
   }>> {
-    const response = await axios.get(`${this.baseUrl}/studio/formatters`);
+    const response = await axios.get(
+      `${this.baseUrl}/studio/formatters`,
+      getAxiosConfig(this.baseUrl)
+    );
     return response.data;
   }
 }
