@@ -20,7 +20,7 @@ export function getOfficeType(): OfficeAppType {
  */
 export const WordAPI = {
   /**
-   * 获取文档全部内容
+   * 获取文档全部内容（纯文本）
    */
   async getDocumentContent(): Promise<string> {
     return new Promise((resolve, reject) => {
@@ -30,6 +30,51 @@ export const WordAPI = {
         await context.sync();
         resolve(body.text);
       }).catch(reject);
+    });
+  },
+
+  /**
+   * 获取文档文件内容（Base64编码的docx文件）
+   * 用于生成实际的模板文件
+   */
+  async getDocumentFileBase64(): Promise<string> {
+    return new Promise((resolve, reject) => {
+      // Office JS API: Document.getFileAsync
+      const sliceSize = 65536; // 64KB per slice
+      const slices: string[] = [];
+      let currentSlice = 0;
+
+      Office.context.document.getFileAsync(Office.FileType.Compressed, { sliceSize }, (result) => {
+        if (result.status === Office.AsyncResultStatus.Succeeded) {
+          const file = result.value;
+          const totalSlices = file.sllicesCount;
+
+          const getSlice = (sliceIndex: number) => {
+            file.getSliceAsync(sliceIndex, (sliceResult) => {
+              if (sliceResult.status === Office.AsyncResultStatus.Succeeded) {
+                slices.push(sliceResult.value.data);
+
+                if (sliceIndex < totalSlices - 1) {
+                  getSlice(sliceIndex + 1);
+                } else {
+                  // 所有slice获取完成，组合并关闭文件
+                  file.closeAsync();
+                  // 组合所有slice为完整base64
+                  const fullBase64 = slices.join('');
+                  resolve(fullBase64);
+                }
+              } else {
+                file.closeAsync();
+                reject(new Error('获取文件切片失败'));
+              }
+            });
+          };
+
+          getSlice(0);
+        } else {
+          reject(new Error('获取文件失败'));
+        }
+      });
     });
   },
 

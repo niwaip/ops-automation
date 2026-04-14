@@ -237,13 +237,21 @@ export const TemplateConfigPanel: React.FC = () => {
    * 步骤2：生成AI使用指南Skill
    */
   const handleGenerateSkill = async () => {
+    // 检查是否有已应用的变量
+    const appliedSuggestions = suggestions.filter(s => s.applied);
+    if (appliedSuggestions.length === 0) {
+      setStatusMessage('请先在AI识别面板中应用建议，再生成AI指南');
+      setValidationErrors(['当前没有已应用的变量。请返回AI识别面板，点击"应用全部"或逐个应用建议后再继续。']);
+      return;
+    }
+
     setLoadingStates(prev => ({ ...prev, skillGenerate: true }));
-    setStatusMessage('正在生成AI使用指南...');
+    setStatusMessage(`正在生成AI使用指南（${appliedSuggestions.length}个变量）...`);
 
     try {
       carboneAPI.setBaseUrl(apiBaseUrl);
       const result = await carboneAPI.generateSkill({
-        suggestions: suggestions.filter(s => s.applied),
+        suggestions: appliedSuggestions,
         templateConfig,
         templateType: templateConfig.templateType || 'custom',
         documentDescription: templateName || `${templateConfig.templateType || '自定义'}模板`,
@@ -252,7 +260,7 @@ export const TemplateConfigPanel: React.FC = () => {
       if (result.success && result.skill) {
         setGeneratedSkill(result.skill);
         setCurrentStep(3);
-        setStatusMessage(`AI指南生成成功！包含 ${result.skill.parameterization?.variables?.length || 0} 个变量`);
+        setStatusMessage(`AI指南生成成功！包含 ${result.skill.parameters?.length || 0} 个变量`);
         localStorage.setItem('lastSkillId', result.skillId || '');
         console.log('生成的Skill:', result.skill);
       } else {
@@ -270,6 +278,11 @@ export const TemplateConfigPanel: React.FC = () => {
    * 步骤3：使用Skill进行参数化预览验证
    */
   const handleSkillPreview = async () => {
+    if (!generatedSkill) {
+      setStatusMessage('请先生成AI指南');
+      return;
+    }
+
     setLoadingStates(prev => ({ ...prev, skillPreview: true }));
     setStatusMessage('正在使用AI指南进行预览验证...');
 
@@ -278,7 +291,14 @@ export const TemplateConfigPanel: React.FC = () => {
       let format = 'docx';
 
       if (officeType === 'word') {
-        documentContent = await OfficeHelper.Word.getDocumentContent();
+        // 使用base64获取实际docx文件
+        try {
+          documentContent = 'base64:' + await OfficeHelper.Word.getDocumentFileBase64();
+        } catch (e) {
+          // 如果getFileAsync不支持，使用纯文本（可能会有格式问题）
+          console.warn('getFileAsync不支持，使用纯文本');
+          documentContent = await OfficeHelper.Word.getDocumentContent();
+        }
         format = 'docx';
       } else if (officeType === 'excel') {
         const sheetData = await OfficeHelper.Excel.getSheetData();
@@ -328,6 +348,11 @@ export const TemplateConfigPanel: React.FC = () => {
    * 步骤4：保存完整模板（包含模板文件和Skill）
    */
   const handleFullSave = async () => {
+    if (!generatedSkill) {
+      setStatusMessage('请先完成AI指南生成和预览验证');
+      return;
+    }
+
     setLoadingStates(prev => ({ ...prev, fullSave: true }));
     setStatusMessage('正在保存完整模板...');
 
@@ -336,7 +361,13 @@ export const TemplateConfigPanel: React.FC = () => {
       let format = 'docx';
 
       if (officeType === 'word') {
-        documentContent = await OfficeHelper.Word.getDocumentContent();
+        // 使用base64获取实际docx文件
+        try {
+          documentContent = 'base64:' + await OfficeHelper.Word.getDocumentFileBase64();
+        } catch (e) {
+          console.warn('getFileAsync不支持，使用纯文本');
+          documentContent = await OfficeHelper.Word.getDocumentContent();
+        }
         format = 'docx';
       } else if (officeType === 'excel') {
         const sheetData = await OfficeHelper.Excel.getSheetData();
