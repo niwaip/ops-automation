@@ -563,30 +563,10 @@ export const AIIdentifyPanel: React.FC<Props> = ({ onApplyComplete }) => {
         ) : 'AI 智能识别'}
       </button>
 
-      {/* 处理进度显示 */}
-      {isAnalyzing && (
-        <div className="multistage-progress-container">
-          {/* 简单进度指示器（HTTP不支持实时进度，仅显示处理状态） */}
-          <div className="loading-progress-bar">
-            <div className="progress-fill processing" style={{ width: `${loadingProgress}%` }}></div>
-          </div>
-
-          {/* 状态信息 */}
-          {currentStage && (
-            <div className="stage-info">
-              <span className="stage-name">{currentStage}</span>
-              {currentSection && (
-                <span className="current-section"> - {currentSection}</span>
-              )}
-            </div>
-          )}
-
-          {/* 进度百分比（仅在完成后显示100%，处理中不显示具体百分比） */}
-          {loadingProgress === 100 ? (
-            <div className="progress-percentage">100%</div>
-          ) : (
-            <div className="progress-hint">{loadingMessage}</div>
-          )}
+      {/* 处理结果显示（仅在完成后显示） */}
+      {!isAnalyzing && currentStage === '完成' && (
+        <div className="result-info">
+          <span className="result-stage">✅ {loadingMessage}</span>
         </div>
       )}
 
