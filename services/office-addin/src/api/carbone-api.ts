@@ -442,6 +442,36 @@ class CarboneAPI {
   getTemplateDownloadUrl(templateId: string): string {
     return `${this.baseUrl}/studio/download-template/${templateId}`;
   }
+
+  /**
+   * 获取AI Skill详情
+   */
+  async getSkill(skillId: string): Promise<{
+    id: string;
+    templateType?: string;
+    parameters?: Array<{
+      name: string;
+      usage: string;
+      dataType: string;
+      extractionHint: string;
+      example: string;
+    }>;
+    parameterization?: any;
+    createdAt?: string;
+  }> {
+    const response = await axios.get(
+      `${this.baseUrl}/studio/skill/${skillId}`,
+      getAxiosConfig(this.baseUrl)
+    );
+    return response.data;
+  }
+
+  /**
+   * 获取Skill下载URL
+   */
+  getSkillDownloadUrl(skillId: string): string {
+    return `${this.baseUrl}/studio/download-skill/${skillId}`;
+  }
 }
 
 export const carboneAPI = new CarboneAPI();
