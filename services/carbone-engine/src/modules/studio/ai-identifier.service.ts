@@ -2222,49 +2222,82 @@ ${blankList}
   ): Promise<any> {
     this.logger.log('Generating AI Skill Guide...');
 
-    // 构建变量列表
-    const variables = suggestions
+    // 构建变量列表（包含详细用途说明）
+    const parameters = suggestions
       .filter(s => s.applied)
-      .map(s => ({
-        name: s.suggestedName || s.details?.variableName,
-        originalText: s.originalText,
-        fieldType: s.details?.fieldType || 'text',
-        formatter: s.details?.formatter || null,
-        meaning: s.details?.reason || s.details?.significance || '',
-        example: this.generateExampleValue(s.details?.fieldType || 'text', s.suggestedName),
-        required: true, // 默认必填
-      }));
+      .map(s => {
+        const fieldType = s.details?.fieldType || this.inferFieldType(s.suggestedName, s.originalText);
+        const variableName = s.suggestedName || s.details?.variableName || '';
+        const cleanName = variableName.replace(/[:\[].*/g, '');
+
+        return {
+          name: cleanName,
+          originalText: s.originalText,
+          displayName: s.details?.variableName || cleanName,
+
+          // 参数用途
+          usage: s.details?.reason || s.details?.significance || this.inferParameterUsage(cleanName, fieldType, templateType),
+
+          // 数据类型
+          dataType: fieldType,
+          formatter: s.details?.formatter || this.getDefaultFormatter(fieldType),
+
+          // 提取提示（如何从内容中提取该参数）
+          extractionHint: this.generateExtractionHint(cleanName, fieldType, s.originalText, templateType),
+
+          // 示例值
+          example: this.generateExampleValue(fieldType, cleanName),
+
+          // 验证规则
+          validation: this.getValidationRules(fieldType, cleanName),
+
+          // 是否必填
+          required: true,
+        };
+      });
 
     // 根据模板类型生成特定的AI指导
-    const typeInstructions = this.getTypeInstructions(templateType);
+    const templateDescription = this.generateTemplateDescription(templateType, documentDescription, parameters);
 
     // 构建完整的skill结构
     const skill = {
       id: `skill-${Date.now()}`,
       version: '1.0',
       templateType,
-      description: documentDescription || `这是一个${templateType}模板，用于生成标准化文档。`,
+
+      // 模板描述（是什么，用途）
+      templateDescription,
+
+      // 参数列表（包含用途和提取指导）
+      parameters,
+
+      // 参数解析指导（如何从内容/文件中解析参数）
+      parsingGuide: {
+        overview: `本模板共有 ${parameters.length} 个参数需要填充。AI需要从用户提供的内容或文件中提取以下参数：`,
+        extractionSteps: [
+          '1. 分析用户提供的原始内容/文件',
+          '2. 根据参数用途识别对应的内容段落',
+          '3. 提取关键信息并映射到对应参数',
+          '4. 应用格式化器处理特殊类型（日期、金额等）',
+          '5. 验证提取结果是否符合参数要求',
+        ],
+        extractionRules: parameters.map(p => ({
+          parameter: p.name,
+          searchKeywords: this.getSearchKeywords(p.name, p.dataType),
+          extractionPattern: this.getExtractionPattern(p.dataType),
+          fallbackStrategy: p.dataType === 'date' ? '使用当前日期' : '标记为需要用户提供',
+        })),
+      },
 
       // 数据解析指导
       dataParsing: {
         sourceType: 'json',
-        mappingHints: variables.map(v => ({
-          field: v.name,
-          path: `{d.${v.name.replace(/[:\[].*/g, '')}}`,
-          description: v.meaning,
-          example: v.example,
+        mappingHints: parameters.map(p => ({
+          parameter: p.name,
+          path: `{d.${p.name}}`,
+          description: p.usage,
+          example: p.example,
         })),
-      },
-
-      // 参数化规则
-      parameterization: {
-        variables,
-        rules: [
-          '根据用户提供的数据源，映射到对应的变量',
-          '日期类型使用 :formatD(Y-M-D) 格式化',
-          '金额类型使用 :formatN(2) 格式化',
-          '表格循环使用 #d.tableName[]...[/d.tableName] 格式',
-        ],
       },
 
       // 特殊处理规则
@@ -2276,7 +2309,7 @@ ${blankList}
 
       // 验证规则
       validation: {
-        requiredFields: variables.filter(v => v.required).map(v => v.name),
+        requiredFields: parameters.filter(p => p.required).map(p => p.name),
         preConditions: [
           '确保数据源包含所有必填字段',
           '检查日期格式是否正确',
@@ -2289,13 +2322,150 @@ ${blankList}
       },
 
       // AI使用提示（完整指导）
-      aiInstructions: this.buildCompleteAIInstructions(templateType, variables, documentDescription),
+      aiInstructions: this.buildCompleteAIInstructions(templateType, parameters, documentDescription),
 
       createdAt: new Date().toISOString(),
     };
 
-    this.logger.log(`AI Skill Guide generated with ${variables.length} variables`);
+    this.logger.log(`AI Skill Guide generated with ${parameters.length} parameters`);
     return skill;
+  }
+
+  /**
+   * 推断字段类型
+   */
+  private inferFieldType(name: string, originalText: string): string {
+    const lowerName = (name || '').toLowerCase();
+    const lowerText = (originalText || '').toLowerCase();
+
+    if (lowerName.includes('日期') || lowerName.includes('date') || lowerName.includes('时间') || lowerName.includes('time')) return 'date';
+    if (lowerName.includes('金额') || lowerName.includes('amount') || lowerName.includes('价格') || lowerName.includes('price')) return 'amount';
+    if (lowerName.includes('电话') || lowerName.includes('phone') || lowerName.includes('手机')) return 'phone';
+    if (lowerName.includes('邮箱') || lowerName.includes('email')) return 'email';
+    if (lowerName.includes('地址') || lowerName.includes('address')) return 'address';
+    if (lowerName.includes('编号') || lowerName.includes('number') || lowerName.includes('code')) return 'code';
+    if (lowerName.includes('数量') || lowerName.includes('count') || lowerName.includes('qty')) return 'number';
+    if (lowerName.includes('名称') || lowerName.includes('name') || lowerText.includes('甲方') || lowerText.includes('乙方')) return 'name';
+
+    return 'text';
+  }
+
+  /**
+   * 推断参数用途
+   */
+  private inferParameterUsage(name: string, fieldType: string, templateType: string): string {
+    const usageMap: Record<string, string> = {
+      date: '用于填写日期信息，表示相关事项的时间节点',
+      amount: '用于填写金额数值，表示费用、价格或合同金额',
+      phone: '用于填写联系电话，便于后续沟通联系',
+      email: '用于填写电子邮箱地址，用于接收通知或发送文件',
+      address: '用于填写地址信息，表示当事人或事项的具体位置',
+      code: '用于填写编号信息，如合同编号、证书编号等唯一标识',
+      number: '用于填写数值信息，如数量、比例等',
+      name: '用于填写名称信息，如当事人名称、项目名称等',
+    };
+
+    if (usageMap[fieldType]) return usageMap[fieldType];
+
+    // 根据名称推断
+    if (name.includes('甲方')) return '合同甲方当事人名称';
+    if (name.includes('乙方')) return '合同乙方当事人名称';
+    if (name.includes('标题')) return '文档标题，用于标识文档内容';
+    if (name.includes('内容')) return '文档主要内容或正文';
+
+    return `${templateType}模板中的${name}字段`;
+  }
+
+  /**
+   * 生成提取提示
+   */
+  private generateExtractionHint(name: string, fieldType: string, originalText: string, templateType: string): string {
+    const hints: Record<string, string> = {
+      date: `查找内容中的日期表述，如"${originalText}"位置。常见格式：YYYY年MM月DD日、YYYY-MM-DD、YYYY/MM/DD`,
+      amount: `查找内容中的金额表述，如"${originalText}"位置。常见格式：数字+单位（元、万元）、带货币符号的数值`,
+      phone: `查找内容中的电话号码，通常是11位手机号或带区号的固话格式`,
+      email: `查找内容中的邮箱地址，格式为xxx@xxx.xxx`,
+      address: `查找内容中的地址信息，通常包含省市、街道、门牌号等`,
+      code: `查找内容中的编号信息，如"${originalText}"位置的编号`,
+      name: `查找内容中的名称信息，如当事人名称、项目名称等`,
+    };
+
+    if (hints[fieldType]) return hints[fieldType];
+
+    return `在内容中查找"${originalText}"位置对应的文本，提取该位置的值`;
+  }
+
+  /**
+   * 获取默认格式化器
+   */
+  private getDefaultFormatter(fieldType: string): string | null {
+    const formatters: Record<string, string> = {
+      date: ':formatD(YMD)',
+      amount: ':formatN(2)',
+      number: ':formatN(0)',
+    };
+    return formatters[fieldType] || null;
+  }
+
+  /**
+   * 获取验证规则
+   */
+  private getValidationRules(fieldType: string, name: string): any {
+    const rules: Record<string, any> = {
+      date: { pattern: '\\d{4}[-/年]\\d{1,2}[-/月]\\d{1,2}[日]?', message: '日期格式不正确' },
+      amount: { pattern: '\\d+(\\.\\d{1,2})?', message: '金额必须是数字' },
+      phone: { pattern: '1[3-9]\\d{9}', message: '手机号格式不正确' },
+      email: { pattern: '^[\\w.-]+@[\\w.-]+\\.\\w+$', message: '邮箱格式不正确' },
+    };
+    return rules[fieldType] || { pattern: null, message: '请填写有效值' };
+  }
+
+  /**
+   * 获取搜索关键词
+   */
+  private getSearchKeywords(name: string, fieldType: string): string[] {
+    const keywords = [name];
+
+    if (fieldType === 'date') keywords.push('日期', '时间', '年', '月', '日');
+    if (fieldType === 'amount') keywords.push('金额', '价格', '费用', '元', '万');
+    if (fieldType === 'name') keywords.push('名称', '姓名', '公司', '单位');
+    if (fieldType === 'phone') keywords.push('电话', '手机', '联系方式');
+    if (fieldType === 'address') keywords.push('地址', '地点', '住址');
+
+    return keywords;
+  }
+
+  /**
+   * 获取提取模式
+   */
+  private getExtractionPattern(fieldType: string): string {
+    const patterns: Record<string, string> = {
+      date: '识别日期格式：YYYY年MM月DD日、YYYY-MM-DD、YYYY/MM/DD',
+      amount: '识别金额格式：数字+元/万元、￥金额、金额元',
+      phone: '识别电话格式：11位手机号、区号-号码',
+      email: '识别邮箱格式：xxx@domain.xxx',
+      address: '识别地址：省市街道门牌号组合',
+    };
+    return patterns[fieldType] || '查找关键词附近的文本内容';
+  }
+
+  /**
+   * 生成模板描述
+   */
+  private generateTemplateDescription(templateType: string, documentDescription?: string, parameters?: any[]): string {
+    const typeDescriptions: Record<string, string> = {
+      contract: '合同模板用于生成正式合同文档。合同是双方或多方当事人之间设立、变更、终止民事法律关系的协议。本模板用于规范合同格式，确保合同内容的完整性和法律效力。',
+      invoice: '发票模板用于生成正式发票文档。发票是经营活动中的重要凭证，用于记录交易内容和金额。本模板用于规范发票格式，确保财务记录的准确性。',
+      report: '报告模板用于生成业务报告文档。报告用于汇报工作进展、分析数据结果或提出建议。本模板用于规范报告格式，确保信息传达的有效性。',
+      certificate: '证书模板用于生成证书证明文档。证书用于证明某人或某事项的真实性或有效性。本模板用于规范证书格式，确保证书的权威性。',
+      letter: '信函模板用于生成正式信函文档。信函用于正式沟通、通知或请求。本模板用于规范信函格式，确保沟通的正式性和有效性。',
+    };
+
+    const baseDescription = typeDescriptions[templateType] || '这是一个模板，用于生成标准化文档，规范内容格式和信息完整性。';
+    const paramCount = parameters?.length || 0;
+    const paramSummary = `本模板包含 ${paramCount} 个参数需要填充，包括：${parameters?.slice(0, 5).map(p => p.displayName || p.name).join('、') || '待填充字段'}等。`;
+
+    return documentDescription ? `${baseDescription}\n${documentDescription}\n${paramSummary}` : `${baseDescription}\n${paramSummary}`;
   }
 
   /**
@@ -2342,31 +2512,49 @@ ${blankList}
    */
   private buildCompleteAIInstructions(
     templateType: string,
-    variables: any[],
+    parameters: any[],
     documentDescription?: string
   ): string {
     const typeDesc = this.getTypeInstructions(templateType);
-    const varList = variables
-      .map(v => `- **${v.name}**: ${v.meaning || '填写对应值'}（示例: ${v.example}）`)
+
+    // 参数列表（包含用途和提取提示）
+    const paramList = parameters
+      .map(p => `- **${p.name}**: ${p.usage || '填写对应值'}
+  - 数据类型: ${p.dataType}
+  - 提取提示: ${p.extractionHint}
+  - 示例值: ${p.example}`)
       .join('\n');
+
+    // 参数解析步骤
+    const parsingSteps = `
+## 参数解析步骤
+1. **分析输入内容**: 理解用户提供的内容或文件结构
+2. **识别关键词**: 根据参数用途和搜索关键词定位相关内容
+3. **提取参数值**: 使用提取模式从内容中提取对应值
+4. **验证格式**: 检查提取值是否符合参数类型要求
+5. **格式化处理**: 应用格式化器处理特殊类型
+
+## 参数提取规则
+${parameters.map(p => `### ${p.name}
+- **用途**: ${p.usage}
+- **搜索关键词**: ${p.searchKeywords?.join(', ') || p.name}
+- **提取模式**: ${p.extractionPattern || '根据上下文提取'}
+- **示例值**: ${p.example}`).join('\n')}
+`;
 
     return `
 ## 模板概述
 ${documentDescription || typeDesc}
 
-## 变量列表
-${varList}
+## 参数列表
+${paramList}
 
-## 使用流程
-1. 接收用户提供的数据源（JSON格式）
-2. 按照变量映射规则提取数据
-3. 使用格式化器处理特殊类型（日期、金额等）
-4. 填充模板生成最终文档
+${parsingSteps}
 
 ## 数据示例
 \`\`\`json
 {
-${variables.slice(0, 5).map(v => `  "${v.name?.replace(/[:\[].*/g, '')}": "${v.example}"`).join(',\n')}
+${parameters.slice(0, 5).map(p => `  "${p.name?.replace(/[:\[].*/g, '')}": "${p.example}"`).join(',\n')}
 }
 \`\`\`
 
