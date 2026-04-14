@@ -698,8 +698,15 @@ export class StudioController {
 
       // 解码并保存模板文件
       let templateBuffer: Buffer;
+
+      console.log('generateTemplate received documentContent length:', body.documentContent.length);
+      console.log('documentContent prefix:', body.documentContent.substring(0, 20));
+
       if (body.documentContent.startsWith('base64:')) {
-        templateBuffer = Buffer.from(body.documentContent.substring(7), 'base64');
+        const base64Data = body.documentContent.substring(7);
+        console.log('base64 data length:', base64Data.length);
+        templateBuffer = Buffer.from(base64Data, 'base64');
+        console.log('decoded buffer length:', templateBuffer.length);
       } else if (body.documentContent.startsWith('{')) {
         // JSON格式（Excel数据）
         templateBuffer = Buffer.from(body.documentContent, 'utf-8');
@@ -711,6 +718,20 @@ export class StudioController {
           templateBuffer = Buffer.from(body.documentContent, 'utf-8');
         }
       }
+
+      // 验证是否是有效的docx文件（docx是zip格式，前4字节应该是PK）
+      if (format === 'docx') {
+        const header = templateBuffer.slice(0, 4).toString();
+        console.log('file header:', header);
+        if (!header.startsWith('PK')) {
+          console.error('Invalid docx file: not a zip archive');
+          return {
+            success: false,
+            error: '无效的docx文件格式。请确保已正确获取Word文档的Base64编码。',
+          };
+        }
+      }
+
       fs.writeFileSync(templateFilePath, templateBuffer);
 
       // 保存模板配置

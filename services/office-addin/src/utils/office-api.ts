@@ -40,39 +40,45 @@ export const WordAPI = {
   async getDocumentFileBase64(): Promise<string> {
     return new Promise((resolve, reject) => {
       // Office JS API: Document.getFileAsync
-      const sliceSize = 65536; // 64KB per slice
-      const slices: string[] = [];
-      let currentSlice = 0;
-
-      Office.context.document.getFileAsync(Office.FileType.Compressed, { sliceSize }, (result) => {
+      // 使用Office.FileType.Compressed获取docx文件的base64切片
+      Office.context.document.getFileAsync(Office.FileType.Compressed, { sliceSize: 65536 }, (result) => {
         if (result.status === Office.AsyncResultStatus.Succeeded) {
           const file = result.value;
-          const totalSlices = file.sllicesCount;
+          const sliceCount = file.sliceCount;
+          const slices: string[] = [];
+
+          if (sliceCount === 0) {
+            file.closeAsync();
+            resolve('');
+            return;
+          }
 
           const getSlice = (sliceIndex: number) => {
             file.getSliceAsync(sliceIndex, (sliceResult) => {
               if (sliceResult.status === Office.AsyncResultStatus.Succeeded) {
+                // sliceResult.value.data 是 base64 字符串
                 slices.push(sliceResult.value.data);
 
-                if (sliceIndex < totalSlices - 1) {
+                if (sliceIndex < sliceCount - 1) {
                   getSlice(sliceIndex + 1);
                 } else {
                   // 所有slice获取完成，组合并关闭文件
                   file.closeAsync();
                   // 组合所有slice为完整base64
                   const fullBase64 = slices.join('');
+                  console.log(`获取文件成功，共${sliceCount}个切片，base64长度: ${fullBase64.length}`);
                   resolve(fullBase64);
                 }
               } else {
                 file.closeAsync();
-                reject(new Error('获取文件切片失败'));
+                reject(new Error(`获取切片${sliceIndex}失败: ${sliceResult.error?.message || '未知错误'}`));
               }
             });
           };
 
           getSlice(0);
         } else {
-          reject(new Error('获取文件失败'));
+          reject(new Error(`获取文件失败: ${result.error?.message || '未知错误'}`));
         }
       });
     });
