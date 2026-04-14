@@ -1343,3 +1343,144 @@ body {
   outline: none;
   border-color: #2563eb;
 }
+
+/* Edit Input Style */
+.edit-input {
+  padding: 4px 8px;
+  border: 1px solid #3b82f6;
+  border-radius: 4px;
+  font-size: 14px;
+  background: #fff;
+  min-width: 150px;
+  max-width: 200px;
+}
+
+.edit-input:focus {
+  outline: none;
+  border-color: #2563eb;
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+}
+
+/* Edit and Confirm Buttons */
+.edit-btn {
+  background: #f0f9ff;
+  border: 1px solid #3b82f6;
+  color: #3b82f6;
+}
+
+.edit-btn:hover {
+  background: #e0f2fe;
+}
+
+.confirm-btn {
+  background: #22c55e;
+  border: 1px solid #16a34a;
+  color: white;
+}
+
+.confirm-btn:hover {
+  background: #16a34a;
+}
+
+.cancel-btn {
+  background: #f1f5f9;
+  border: 1px solid #94a3b8;
+  color: #64748b;
+}
+
+.cancel-btn:hover {
+  background: #e2e8f0;
+}
+
+/* Result Info Style */
+.result-info {
+  padding: 8px 12px;
+  background: #f0fdf4;
+  border-radius: 6px;
+  border: 1px solid #bbf7d0;
+  margin-top: 8px;
+}
+
+.result-stage {
+  color: #15803d;
+  font-size: 14px;
+}
+
+/* Manual Add Section */
+.manual-add-section {
+  margin-top: 12px;
+  padding: 8px;
+}
+
+.manual-add-btn {
+  background: #f0f9ff;
+  border: 1px solid #3b82f6;
+  color: #3b82f6;
+  padding: 8px 16px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+  width: 100%;
+}
+
+.manual-add-btn:hover {
+  background: #e0f2fe;
+}
+
+.manual-add-form {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.manual-param-input {
+  flex: 1;
+  padding: 8px 12px;
+  border: 1px solid #3b82f6;
+  border-radius: 4px;
+  font-size: 14px;
+}
+
+.manual-param-input:focus {
+  outline: none;
+  border-color: #2563eb;
+}
+
+.confirm-add-btn {
+  background: #22c55e;
+  border: 1px solid #16a34a;
+  color: white;
+  padding: 8px 12px;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.cancel-add-btn {
+  background: #f1f5f9;
+  border: 1px solid #94a3b8;
+  color: #64748b;
+  padding: 8px 12px;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+/* Collapse Toggle Button */
+.collapse-toggle-btn {
+  width: 100%;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  color: #64748b;
+  padding: 10px 16px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+  margin-bottom: 12px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.collapse-toggle-btn:hover {
+  background: #f1f5f9;
+  border-color: #cbd5e1;
+}

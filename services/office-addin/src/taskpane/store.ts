@@ -34,6 +34,7 @@ export interface AISuggestion {
     displayPosition?: string;  // 格式化的位置显示
     beforeBlank?: string;  // 空白前文本
     afterBlank?: string;  // 空白后文本
+    fieldType?: string;  // 字段类型（text/date/number等）
   };
 }
 
@@ -80,6 +81,7 @@ interface AppState {
   applySuggestion: (id: string) => void;
   applyAllSuggestions: () => void;
   dismissSuggestion: (id: string) => void;
+  updateSuggestionName: (id: string, newName: string) => void;  // 更新建议名称
 
   // 模板配置
   templateConfig: TemplateConfig;
@@ -131,6 +133,14 @@ export const useAppStore = create<AppState>((set, get) => ({
   dismissSuggestion: (id) => {
     set((state) => ({
       suggestions: state.suggestions.filter((s) => s.id !== id),
+    }));
+  },
+
+  updateSuggestionName: (id, newName) => {
+    set((state) => ({
+      suggestions: state.suggestions.map((s) =>
+        s.id === id ? { ...s, suggestedName: newName } : s
+      ),
     }));
   },
 

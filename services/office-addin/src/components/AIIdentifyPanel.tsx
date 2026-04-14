@@ -42,6 +42,7 @@ export const AIIdentifyPanel: React.FC<Props> = ({ onApplyComplete }) => {
     applySuggestion,
     applyAllSuggestions,
     dismissSuggestion,
+    updateSuggestionName,
     templateConfig,
     apiBaseUrl,
     addDebugLog,
@@ -58,6 +59,9 @@ export const AIIdentifyPanel: React.FC<Props> = ({ onApplyComplete }) => {
   const [currentStage, setCurrentStage] = useState<string>('');  // 当前处理阶段
   const [currentSection, setCurrentSection] = useState<string>('');  // 当前处理章节
   const [useMultiStage, setUseMultiStage] = useState(true);  // 是否使用多阶段处理
+  const [showManualAdd, setShowManualAdd] = useState(false);  // 显示手动添加参数界面
+  const [manualParamName, setManualParamName] = useState('{d.}');  // 手动添加的参数名
+  const [collapsed, setCollapsed] = useState(false);  // 参数列表是否收起
 
   // 动态更新加载消息（仅用于旧API的模拟进度）
   // 注意：当前HTTP API不支持实时进度，这只是dots动画
@@ -350,6 +354,8 @@ export const AIIdentifyPanel: React.FC<Props> = ({ onApplyComplete }) => {
           if (success) {
             applySuggestion(suggestion.id);
             addDebugLog('info', `精确替换成功`, `"${suggestion.originalText}" → ${suggestion.suggestedName}`);
+            // 应用后从列表中移除（收起效果）
+            dismissSuggestion(suggestion.id);
             return;
           }
         }
@@ -486,6 +492,46 @@ export const AIIdentifyPanel: React.FC<Props> = ({ onApplyComplete }) => {
   };
 
   /**
+   * 手动添加参数
+   */
+  const handleManualAddParam = () => {
+    if (!manualParamName || manualParamName.trim() === '') {
+      addDebugLog('warn', '请输入参数名称');
+      return;
+    }
+
+    // 创建新的建议
+    const newSuggestion: AISuggestion = {
+      id: `manual-${Date.now()}`,
+      type: 'variable',
+      elementPath: '手动添加',
+      suggestedName: manualParamName.trim(),
+      originalText: '手动添加的参数',
+      confidence: 1.0,
+      applied: false,
+      context: '用户手动添加',
+      details: {
+        chapter: '手动添加',
+        significance: '用户自定义参数',
+        fieldType: 'text',
+      }
+    };
+
+    // 添加到建议列表
+    setSuggestions([...suggestions, newSuggestion]);
+    addDebugLog('info', `手动添加参数`, `参数名: ${manualParamName}`);
+    setManualParamName('{d.}');
+    setShowManualAdd(false);
+  };
+
+  /**
+   * 收起/展开参数列表
+   */
+  const toggleCollapse = () => {
+    setCollapsed(!collapsed);
+  };
+
+  /**
    * 按章节分组建议
    * 返回格式: { "头部": [...], "第一条": [...], "第二条": [...], "正文": [...] }
    */
@@ -570,6 +616,37 @@ export const AIIdentifyPanel: React.FC<Props> = ({ onApplyComplete }) => {
         </div>
       )}
 
+      {/* 手动添加参数 */}
+      {!isAnalyzing && (
+        <div className="manual-add-section">
+          {!showManualAdd ? (
+            <button
+              className="manual-add-btn"
+              onClick={() => setShowManualAdd(true)}
+            >
+              ➕ 手动添加参数
+            </button>
+          ) : (
+            <div className="manual-add-form">
+              <input
+                type="text"
+                className="manual-param-input"
+                value={manualParamName}
+                onChange={(e) => setManualParamName(e.target.value)}
+                placeholder="{d.fieldName}"
+                autoFocus
+              />
+              <button className="confirm-add-btn" onClick={handleManualAddParam}>
+                ✅ 添加
+              </button>
+              <button className="cancel-add-btn" onClick={() => setShowManualAdd(false)}>
+                ❌ 取消
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+
       {/* 测试连接按钮 */}
       <button
         className="test-connection-btn"
@@ -617,31 +694,38 @@ export const AIIdentifyPanel: React.FC<Props> = ({ onApplyComplete }) => {
       {/* 分析结果 */}
       {suggestions.length > 0 && (
         <div className="suggestions-container">
-          {/* 预览确认面板 */}
-          {showPreview && (
-            <div className="preview-confirm-panel">
-              <h4>📋 替换预览</h4>
-              <pre className="preview-content">{previewContent}</pre>
-              <div className="preview-actions">
-                <button className="confirm-btn" onClick={handleApplyAll}>
-                  ✅ 确认应用
-                </button>
-                <button className="cancel-btn" onClick={handleCancelPreview}>
-                  ❌ 取消
+          {/* 收起/展开按钮 */}
+          <button className="collapse-toggle-btn" onClick={toggleCollapse}>
+            {collapsed ? '📂 展开参数列表' : '📁 收起参数列表'} ({suggestions.filter((s) => !s.applied).length} 项)
+          </button>
+
+          {!collapsed && (
+            <>
+              {/* 预览确认面板 */}
+              {showPreview && (
+                <div className="preview-confirm-panel">
+                  <h4>📋 替换预览</h4>
+                  <pre className="preview-content">{previewContent}</pre>
+                  <div className="preview-actions">
+                    <button className="confirm-btn" onClick={handleApplyAll}>
+                      ✅ 确认应用
+                    </button>
+                    <button className="cancel-btn" onClick={handleCancelPreview}>
+                      ❌ 取消
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* 一键应用按钮 */}
+              <div className="apply-all-section">
+                <button className="apply-all-btn" onClick={handleApplyAll}>
+                  {showPreview ? '✅ 确认应用全部' : '👁️ 预览后应用全部'} ({suggestions.filter((s) => !s.applied).length})
                 </button>
               </div>
-            </div>
-          )}
 
-          {/* 一键应用按钮 */}
-          <div className="apply-all-section">
-            <button className="apply-all-btn" onClick={handleApplyAll}>
-              {showPreview ? '✅ 确认应用全部' : '👁️ 预览后应用全部'} ({suggestions.filter((s) => !s.applied).length})
-            </button>
-          </div>
-
-          {/* 分组显示建议 - 按章节分组 */}
-          {Object.entries(groupSuggestionsByChapter()).map(([chapter, items]) => (
+              {/* 分组显示建议 - 按章节分组 */}
+              {Object.entries(groupSuggestionsByChapter()).map(([chapter, items]) => (
             <div key={chapter} className="suggestion-group chapter-group">
               <h4 className="group-title chapter-title">
                 <span className="chapter-icon">{getChapterIcon(chapter)}</span>
@@ -657,11 +741,14 @@ export const AIIdentifyPanel: React.FC<Props> = ({ onApplyComplete }) => {
                     onApply={() => handleApplySingle(suggestion)}
                     onDismiss={() => dismissSuggestion(suggestion.id)}
                     onPreview={() => handlePreviewSingle(suggestion)}
+                    onUpdateName={(newName) => updateSuggestionName(suggestion.id, newName)}
                   />
                 ))}
               </div>
             </div>
           ))}
+            </>
+          )}
         </div>
       )}
     </div>
@@ -676,9 +763,12 @@ const SuggestionItem: React.FC<{
   onApply: () => void;
   onDismiss: () => void;
   onPreview?: () => void;
-}> = ({ suggestion, onApply, onDismiss, onPreview }) => {
+  onUpdateName?: (newName: string) => void;
+}> = ({ suggestion, onApply, onDismiss, onPreview, onUpdateName }) => {
   const [expanded, setExpanded] = useState(false);
   const [isPreviewing, setIsPreviewing] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editValue, setEditValue] = useState(suggestion.suggestedName);
 
   // 获取位置信息（使用格式化的显示位置）
   const getPositionInfo = (suggestion: AISuggestion): string => {
@@ -723,6 +813,20 @@ const SuggestionItem: React.FC<{
     }
   };
 
+  // 处理编辑确认
+  const handleEditConfirm = () => {
+    if (editValue !== suggestion.suggestedName && onUpdateName) {
+      onUpdateName(editValue);
+    }
+    setIsEditing(false);
+  };
+
+  // 处理编辑取消
+  const handleEditCancel = () => {
+    setEditValue(suggestion.suggestedName);
+    setIsEditing(false);
+  };
+
   return (
     <div className={`suggestion-item ${suggestion.applied ? 'applied' : ''} ${isPreviewing ? 'previewing' : ''}`}>
       <div className="suggestion-header" onClick={() => setExpanded(!expanded)}>
@@ -734,7 +838,18 @@ const SuggestionItem: React.FC<{
         <div className="suggestion-content">
           <span className="original">{suggestion.originalText}</span>
           <span className="arrow">→</span>
-          <span className="suggested">{suggestion.suggestedName}</span>
+          {isEditing ? (
+            <input
+              type="text"
+              className="edit-input"
+              value={editValue}
+              onChange={(e) => setEditValue(e.target.value)}
+              onClick={(e) => e.stopPropagation()}
+              autoFocus
+            />
+          ) : (
+            <span className="suggested">{suggestion.suggestedName}</span>
+          )}
         </div>
 
         {suggestion.applied && <span className="applied-badge">已应用</span>}
@@ -773,15 +888,31 @@ const SuggestionItem: React.FC<{
 
           {!suggestion.applied && (
             <div className="suggestion-actions">
-              <button className="preview-btn" onClick={handlePreview} disabled={isPreviewing}>
-                👁️ 预览
-              </button>
-              <button className="apply-btn" onClick={onApply}>
-                ✅ 应用
-              </button>
-              <button className="dismiss-btn" onClick={onDismiss}>
-                ❌ 忽略
-              </button>
+              {!isEditing ? (
+                <>
+                  <button className="preview-btn" onClick={handlePreview} disabled={isPreviewing}>
+                    👁️ 预览
+                  </button>
+                  <button className="edit-btn" onClick={() => setIsEditing(true)}>
+                    📝 修改
+                  </button>
+                  <button className="apply-btn" onClick={onApply}>
+                    ✅ 应用
+                  </button>
+                  <button className="dismiss-btn" onClick={onDismiss}>
+                    ❌ 忽略
+                  </button>
+                </>
+              ) : (
+                <>
+                  <button className="confirm-btn" onClick={handleEditConfirm}>
+                    ✅ 确认
+                  </button>
+                  <button className="cancel-btn" onClick={handleEditCancel}>
+                    ❌ 取消
+                  </button>
+                </>
+              )}
             </div>
           )}
         </div>
