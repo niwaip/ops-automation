@@ -48,11 +48,18 @@ export class XmlPreprocessor {
   /**
    * 扁平化XML - 合并被拆分的文本节点
    * Word经常将 {d.name} 拆分成 <w:t>{d.</w:t><w:t>name}</w:t>
+   * 或者被 <w:proofErr> 拆分成多个 <w:r> 元素
    * 此方法将这些节点合并，使正则匹配可以正常工作
    */
   flatten(xml: string): string {
     let result = xml;
 
+    // 步骤1: 移除拼写检查标记 <w:proofErr>
+    // 这些标记会打断文本节点，导致变量标记被拆分
+    result = result.replace(/<w:proofErr[^>]*>/g, '');
+
+    // 步骤2: 合并相邻的 <w:r> 元素中的 <w:t> 节点
+    // 当 proofErr 被移除后，相邻的 <w:r> 元素可能需要合并
     // 多次迭代，处理多层嵌套的拆分
     for (let i = 0; i < 10; i++) {
       const previousResult = result;
@@ -71,9 +78,63 @@ export class XmlPreprocessor {
         }
       );
 
+      // 步骤3: 合并被拆分的 Carbone 标记
+      // 处理 {d.xxx} 被拆分成 {</w:t></w:r><w:r><w:t>d.xxx} 的情况
+      // 合并 </w:r><w:r 中间没有内容的相邻 run 元素
+      result = result.replace(
+        /<\/w:r>(\s*)<w:r(\s[^>]*)?>/g,
+        (match, whitespace, attrs) => {
+          // 检查是否是空的相邻 run（没有格式属性）
+          if (attrs && attrs.trim() === '') {
+            return '';
+          }
+          return match;
+        }
+      );
+
       // 如果没有变化，停止迭代
       if (result === previousResult) break;
     }
+
+    // 步骤4: 修复被拆分的 Carbone 标记
+    // 处理 { 后面紧跟着 XML 结束标签的情况
+    // 例如: {</w:t></w:r><w:r><w:t>d.xxx</w:t></w:r><w:r><w:t>}
+    result = this.repairSplitCarboneMarkers(result);
+
+    return result;
+  }
+
+  /**
+   * 修复被拆分的 Carbone 标记
+   * 处理标记被拆分成多个 XML 元素的情况
+   */
+  private repairSplitCarboneMarkers(xml: string): string {
+    let result = xml;
+
+    // 查找所有可能被拆分的标记片段
+    // 模式1: { 后面是 XML 结束标签
+    // 模式2: } 前面是 XML 开始标签
+
+    // 处理 { 后面被拆分的情况
+    // 匹配: {</w:t>...<w:t>content} 或 {</w:r>...<w:r><w:t>content}
+    const splitMarkerPattern = /\{([^}]*<\/w:t>[^}]*<w:t[^}]*[^}]*\})/g;
+
+    result = result.replace(splitMarkerPattern, (match) => {
+      // 提取所有文本内容，合并成完整的标记
+      const texts = match.match(/<w:t[^>]*>([^<]*)<\/w:t>/g);
+      if (texts) {
+        const mergedText = texts.map(t => {
+          const contentMatch = t.match(/<w:t[^>]*>([^<]*)<\/w:t>/);
+          return contentMatch ? contentMatch[1] : '';
+        }).join('');
+
+        // 如果合并后是有效的 Carbone 标记，替换
+        if (mergedText.match(/^\{[cdt][.#\/]?\.[^}]+\}$/)) {
+          return mergedText;
+        }
+      }
+      return match;
+    });
 
     return result;
   }
