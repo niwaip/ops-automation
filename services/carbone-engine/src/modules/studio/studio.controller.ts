@@ -1847,6 +1847,17 @@ export class StudioController {
       meta.templateConfig = this.aiIdentifierService.normalizeTemplateConfig(meta.templateConfig);
     }
 
+    // 如果 config.variables 是对象而非数组，从 suggestions 中提取变量列表
+    if (!meta.variables || !Array.isArray(meta.variables)) {
+      if (meta.suggestions && Array.isArray(meta.suggestions)) {
+        meta.variables = meta.suggestions
+          .filter((s: any) => s.applied && s.suggestedName)
+          .map((s: any) => s.suggestedName);
+      } else {
+        meta.variables = [];
+      }
+    }
+
     return meta;
   }
 
