@@ -2252,11 +2252,29 @@ ${exampleData}
   }
 
   private generateSimulatedData(skill: any): any {
-    const data: any = {};
+    const data: any = { d: {} };  // Carbone 使用 d 作为数据根节点
     // 使用新的parameters结构
     const variables = skill.parameters || skill.parameterization?.variables || [];
     for (const variable of variables) {
-      data[variable.name] = variable.example || this.generateExampleValue(variable.dataType || variable.fieldType, variable.name);
+      const exampleValue = variable.example || this.generateExampleValue(variable.dataType || variable.fieldType, variable.name);
+
+      // 解析变量路径，如 {d.partyA.name} -> partyA.name
+      const varPath = variable.name.replace(/^\{d\./, '').replace(/\}$/, '');
+      if (varPath && varPath !== variable.name) {
+        // 构建嵌套数据结构
+        const parts = varPath.split('.');
+        let current = data.d;
+        for (let i = 0; i < parts.length - 1; i++) {
+          if (!current[parts[i]]) {
+            current[parts[i]] = {};
+          }
+          current = current[parts[i]];
+        }
+        current[parts[parts.length - 1]] = exampleValue;
+      } else {
+        // 如果路径格式不标准，直接使用变量名
+        data.d[varPath || variable.name] = exampleValue;
+      }
     }
     return data;
   }

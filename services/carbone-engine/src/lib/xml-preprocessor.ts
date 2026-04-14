@@ -111,30 +111,71 @@ export class XmlPreprocessor {
   private repairSplitCarboneMarkers(xml: string): string {
     let result = xml;
 
-    // 查找所有可能被拆分的标记片段
-    // 模式1: { 后面是 XML 结束标签
-    // 模式2: } 前面是 XML 开始标签
+    // 方法1: 找到所有包含 { 或 d. 或 } 的 <w:t> 节点，分析是否组成拆分的标记
+    // 首先提取所有w:t节点的位置和内容
+    const textNodes: Array<{ start: number; end: number; text: string; full: string }> = [];
+    const textPattern = /<w:t[^>]*>([^<]*)<\/w:t>/g;
+    let textMatch;
+    while ((textMatch = textPattern.exec(result)) !== null) {
+      textNodes.push({
+        start: textMatch.index,
+        end: textMatch.index + textMatch[0].length,
+        text: textMatch[1],
+        full: textMatch[0]
+      });
+    }
 
-    // 处理 { 后面被拆分的情况
-    // 匹配: {</w:t>...<w:t>content} 或 {</w:r>...<w:r><w:t>content}
-    const splitMarkerPattern = /\{([^}]*<\/w:t>[^}]*<w:t[^}]*[^}]*\})/g;
+    // 找到拆分的标记：{ ... d.xxx ... } 被分成多个节点
+    // 模式：节点i有 '{'，节点j有 'd.xxx...'，节点k有 '}'
+    for (let i = 0; i < textNodes.length; i++) {
+      const nodeI = textNodes[i];
+      // 找到以 { 开头或包含 { 的节点
+      if (nodeI.text.includes('{')) {
+        // 向后查找组成完整标记的节点
+        let markerText = nodeI.text;
+        let endNodeIdx = -1;
 
-    result = result.replace(splitMarkerPattern, (match) => {
-      // 提取所有文本内容，合并成完整的标记
-      const texts = match.match(/<w:t[^>]*>([^<]*)<\/w:t>/g);
-      if (texts) {
-        const mergedText = texts.map(t => {
-          const contentMatch = t.match(/<w:t[^>]*>([^<]*)<\/w:t>/);
-          return contentMatch ? contentMatch[1] : '';
-        }).join('');
+        for (let j = i + 1; j < textNodes.length && j < i + 10; j++) {
+          markerText += textNodes[j].text;
+          // 检查是否形成了完整的标记
+          if (markerText.match(/^\{[cdt][.#\/]?\.[^}]+\}$/)) {
+            endNodeIdx = j;
+            break;
+          }
+          // 如果已经超过可能的标记长度，停止
+          if (markerText.length > 100 || markerText.includes('}{')) {
+            break;
+          }
+        }
 
-        // 如果合并后是有效的 Carbone 标记，替换
-        if (mergedText.match(/^\{[cdt][.#\/]?\.[^}]+\}$/)) {
-          return mergedText;
+        // 如果找到了完整的拆分标记
+        if (endNodeIdx !== -1) {
+          // 替换第一个节点的文本为完整标记，清空其他节点
+          const firstNode = textNodes[i];
+          const newTextContent = markerText;
+
+          // 替换第一个节点
+          const newFirstNode = firstNode.full.replace(
+            /<w:t[^>]*>([^<]*)<\/w:t>/,
+            `<w:t>${newTextContent}</w:t>`
+          );
+          result = result.substring(0, firstNode.start) + newFirstNode +
+                   result.substring(firstNode.end);
+
+          // 清空其他节点（替换为空的w:t）
+          for (let j = i + 1; j <= endNodeIdx; j++) {
+            const nodeJ = textNodes[j];
+            // 注意：位置已经因为之前的替换而改变，需要重新查找
+            const emptyNode = nodeJ.full.replace(
+              /<w:t[^>]*>([^<]*)<\/w:t>/,
+              `<w:t></w:t>`
+            );
+            // 在当前result中找到并替换（使用唯一标识）
+            result = result.replace(nodeJ.full, emptyNode);
+          }
         }
       }
-      return match;
-    });
+    }
 
     return result;
   }
