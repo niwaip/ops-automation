@@ -391,6 +391,62 @@ export class StudioController {
   }
 
   /**
+   * 验证模板配置内容（不需要templateId）
+   */
+  @Post('validate-content')
+  @ApiOperation({ summary: 'Validate template configuration content' })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        template: { type: 'string', description: 'Template configuration JSON string' },
+      },
+    },
+  })
+  async validateTemplateContent(
+    @Body() body: { template: string },
+  ): Promise<{
+    valid: boolean;
+    errors: string[];
+    warnings: string[];
+  }> {
+    try {
+      const config = JSON.parse(body.template || '{}');
+      const errors: string[] = [];
+      const warnings: string[] = [];
+
+      // 验证基本结构
+      if (!config.templateType) {
+        warnings.push('未指定模板类型');
+      }
+
+      // 验证变量映射
+      if (config.variableMappings) {
+        for (const [key, value] of Object.entries(config.variableMappings)) {
+          if (!value || typeof value !== 'string') {
+            errors.push(`变量映射 "${key}" 的值无效`);
+          } else if (!value.startsWith('{d.')) {
+            warnings.push(`变量映射 "${key}" 的值 "${value}" 建议使用 {d.xxx} 格式`);
+          }
+        }
+      }
+
+      return {
+        valid: errors.length === 0,
+        errors,
+        warnings,
+      };
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      return {
+        valid: false,
+        errors: [message],
+        warnings: [],
+      };
+    }
+  }
+
+  /**
    * 验证模版并生成文档（使用编辑后的模版和保存的示例数据）
    */
   @Post('validate')
@@ -487,6 +543,79 @@ export class StudioController {
         valid: false,
         missing: [],
         sampleData: sampleData
+      };
+    }
+  }
+
+  /**
+   * 从Office文档生成模板
+   * 接收文档内容和建议列表，生成最终的模板文件
+   */
+  @Post('generate')
+  @ApiOperation({ summary: 'Generate template from Office document with suggestions' })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        documentContent: { type: 'string', description: 'Document content (base64 for binary)' },
+        suggestions: { type: 'array', description: 'Applied suggestions' },
+        templateConfig: { type: 'object', description: 'Template configuration' },
+      },
+    },
+  })
+  async generateTemplate(
+    @Body() body: {
+      documentContent: string;
+      suggestions: any[];
+      templateConfig?: any;
+    },
+  ): Promise<{
+    success: boolean;
+    generatedTemplate?: string;
+    templateId?: string;
+    downloadUrl?: string;
+    error?: string;
+  }> {
+    try {
+      // 从建议列表提取变量映射
+      const variableMappings: Record<string, string> = {};
+      for (const suggestion of body.suggestions || []) {
+        if (suggestion.applied && suggestion.originalText && suggestion.suggestedName) {
+          variableMappings[suggestion.originalText] = suggestion.suggestedName;
+        }
+      }
+
+      // 生成模板配置
+      const templateConfig = body.templateConfig || {
+        templateType: 'custom',
+        variableMappings,
+        outputPath: '',
+        formatType: 'docx',
+      };
+
+      // 创建模板ID
+      const templateId = uuidv4();
+      const templateMetaPath = path.join(this.templatesDir, `${templateId}.json`);
+
+      // 保存模板配置
+      fs.writeFileSync(templateMetaPath, JSON.stringify({
+        id: templateId,
+        config: templateConfig,
+        suggestions: body.suggestions,
+        createdAt: new Date().toISOString(),
+      }));
+
+      return {
+        success: true,
+        templateId,
+        generatedTemplate: JSON.stringify(templateConfig),
+        downloadUrl: `/studio/download-template/${templateId}`,
+      };
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      return {
+        success: false,
+        error: message,
       };
     }
   }

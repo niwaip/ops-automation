@@ -237,7 +237,7 @@ class CarboneAPI {
     warnings: string[];
   }> {
     const response = await axios.post(
-      `${this.baseUrl}/studio/validate`,
+      `${this.baseUrl}/studio/validate-content`,
       { template: templateContent }
     );
     return response.data;
