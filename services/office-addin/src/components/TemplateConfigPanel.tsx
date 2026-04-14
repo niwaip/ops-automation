@@ -57,12 +57,155 @@ export const TemplateConfigPanel: React.FC = () => {
     skillGenerate: false,
     skillPreview: false,
     fullSave: false,
+    upload: false,
   });
   const [statusMessage, setStatusMessage] = useState<string>('');
   const [currentStep, setCurrentStep] = useState<number>(1); // 1:验证, 2:生成Skill, 3:预览验证, 4:保存
   const [generatedSkill, setGeneratedSkill] = useState<any>(null);
   const [skillPreviewResult, setSkillPreviewResult] = useState<any>(null);
   const [templateName, setTemplateName] = useState<string>('');
+  const [uploadedFile, setUploadedFile] = useState<File | null>(null);
+  const [uploadedFileBase64, setUploadedFileBase64] = useState<string>('');
+
+  /**
+   * 处理文档文件上传
+   */
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    setLoadingStates(prev => ({ ...prev, upload: true }));
+    setStatusMessage('正在读取上传的文档...');
+
+    try {
+      // 检查文件类型
+      const validExtensions = ['.docx', '.xlsx', '.pptx'];
+      const fileName = file.name.toLowerCase();
+      const isValid = validExtensions.some(ext => fileName.endsWith(ext));
+      if (!isValid) {
+        setStatusMessage('请上传有效的Office文档文件（.docx, .xlsx, .pptx）');
+        setLoadingStates(prev => ({ ...prev, upload: false }));
+        return;
+      }
+
+      // 读取文件为base64
+      const reader = new FileReader();
+      reader.onload = async (e) => {
+        const arrayBuffer = e.target?.result as ArrayBuffer;
+        if (arrayBuffer) {
+          // 将ArrayBuffer转换为base64
+          const bytes = new Uint8Array(arrayBuffer);
+          let binary = '';
+          for (let i = 0; i < bytes.length; i++) {
+            binary += String.fromCharCode(bytes[i]);
+          }
+          const base64 = btoa(binary);
+
+          setUploadedFile(file);
+          setUploadedFileBase64(base64);
+          setStatusMessage(`文档已上传: ${file.name} (${(file.size / 1024).toFixed(1)} KB)`);
+          setLoadingStates(prev => ({ ...prev, upload: false }));
+          console.log('文件上传成功，base64长度:', base64.length);
+        }
+      };
+      reader.readAsArrayBuffer(file);
+    } catch (error: any) {
+      console.error('文件上传失败:', error);
+      setStatusMessage(`文件上传失败: ${error.message}`);
+      setLoadingStates(prev => ({ ...prev, upload: false }));
+    }
+  };
+
+  /**
+   * 使用上传的文件进行预览验证
+   */
+  const handlePreviewWithUploadedFile = async () => {
+    if (!uploadedFileBase64 || !generatedSkill) {
+      setStatusMessage('请先上传文档文件并生成AI指南');
+      return;
+    }
+
+    setLoadingStates(prev => ({ ...prev, skillPreview: true }));
+    setStatusMessage('正在使用上传的文件进行预览验证...');
+
+    try {
+      carboneAPI.setBaseUrl(apiBaseUrl);
+
+      // 先生成模板
+      const templateResult = await carboneAPI.generateTemplate({
+        documentContent: 'base64:' + uploadedFileBase64,
+        suggestions: suggestions.filter(s => s.applied),
+        templateConfig,
+        format: uploadedFile?.name.endsWith('.xlsx') ? 'xlsx' : 'docx',
+      });
+
+      if (!templateResult.success) {
+        setStatusMessage(`模板生成失败: ${templateResult.error}`);
+        return;
+      }
+
+      // 使用skill预览
+      const result = await carboneAPI.previewWithSkill({
+        templateId: templateResult.templateId,
+        skill: generatedSkill,
+      });
+
+      if (result.success) {
+        setSkillPreviewResult(result);
+        setCurrentStep(4);
+        setStatusMessage(`预览验证成功！模板ID: ${templateResult.templateId}`);
+        setPreviewData(result.generatedData || {});
+        console.log('预览结果:', result);
+      } else {
+        setStatusMessage(`预览验证失败: ${result.error || '未知错误'}`);
+      }
+    } catch (error: any) {
+      console.error('预览验证失败:', error);
+      setStatusMessage(`预览验证失败: ${error.message || '未知错误'}`);
+    } finally {
+      setLoadingStates(prev => ({ ...prev, skillPreview: false }));
+    }
+  };
+
+  /**
+   * 使用上传的文件保存完整模板
+   */
+  const handleSaveWithUploadedFile = async () => {
+    if (!uploadedFileBase64 || !generatedSkill) {
+      setStatusMessage('请先上传文档文件并完成AI指南生成');
+      return;
+    }
+
+    setLoadingStates(prev => ({ ...prev, fullSave: true }));
+    setStatusMessage('正在保存完整模板...');
+
+    try {
+      carboneAPI.setBaseUrl(apiBaseUrl);
+      const result = await carboneAPI.saveTemplateFull({
+        documentContent: 'base64:' + uploadedFileBase64,
+        suggestions: suggestions.filter(s => s.applied),
+        templateConfig,
+        skill: generatedSkill,
+        format: uploadedFile?.name.endsWith('.xlsx') ? 'xlsx' : 'docx',
+        templateName: templateName || uploadedFile?.name || `template_${Date.now()}`,
+      });
+
+      if (result.success) {
+        setStatusMessage(`完整模板保存成功！模板ID: ${result.templateId}`);
+        localStorage.setItem('lastTemplateId', result.templateId || '');
+        localStorage.setItem('lastTemplateDownloadUrl', result.downloadUrl || '');
+        localStorage.setItem('lastSkillId', result.skillId || '');
+        console.log('保存结果:', result);
+      } else {
+        setStatusMessage(`保存失败: ${result.error || '未知错误'}`);
+      }
+    } catch (error: any) {
+      console.error('保存完整模板失败:', error);
+      setStatusMessage(`保存失败: ${error.message || '未知错误'}`);
+    } finally {
+      setLoadingStates(prev => ({ ...prev, fullSave: false }));
+    }
+  };
 
   /**
    * 生成预览数据
@@ -292,15 +435,15 @@ export const TemplateConfigPanel: React.FC = () => {
       let contentMethod = '';
 
       if (officeType === 'word') {
-        // 尝试多种方式获取文档内容
+        // 尝试多种方式获取文档内容（优先使用Word.run getFileOrNull）
         try {
           const result = await OfficeHelper.Word.getDocumentFileBase64WithFallback();
           documentContent = 'base64:' + result.base64;
           contentMethod = result.method;
-          console.log('文档获取方式:', contentMethod);
+          console.log('文档获取方式:', contentMethod, '是否有效docx:', result.isValidDocx);
 
-          if (contentMethod !== 'getFileAsync') {
-            setStatusMessage(`注意：使用${contentMethod}方式获取文档，可能无法生成完整预览`);
+          if (!result.isValidDocx) {
+            setStatusMessage(`注意：使用${contentMethod}方式获取的文档可能不完整（无docx格式头），预览可能受限`);
           }
         } catch (e: any) {
           console.error('获取文档失败:', e);
@@ -378,14 +521,15 @@ export const TemplateConfigPanel: React.FC = () => {
       let format = 'docx';
 
       if (officeType === 'word') {
-        // 尝试多种方式获取文档内容
+        // 尝试多种方式获取文档内容（优先使用Word.run getFileOrNull）
         try {
           const result = await OfficeHelper.Word.getDocumentFileBase64WithFallback();
           documentContent = 'base64:' + result.base64;
-          console.log('保存文档获取方式:', result.method);
+          console.log('保存文档获取方式:', result.method, '是否有效docx:', result.isValidDocx);
 
-          if (result.method !== 'getFileAsync') {
-            console.warn('使用fallback方式获取文档，模板可能不完整');
+          if (!result.isValidDocx) {
+            console.warn('获取的文档无有效docx格式头，模板文件可能不完整');
+            setStatusMessage(`警告：获取的文档格式不完整，保存的模板可能无法正常渲染`);
           }
         } catch (e: any) {
           console.error('获取文档失败:', e);

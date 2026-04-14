@@ -34,15 +34,79 @@ export const WordAPI = {
   },
 
   /**
+   * 使用Word.run API获取文档文件（推荐方式）
+   * 尝试使用Word专用的getFileOrNull方法（如果支持）
+   * 如果不支持，回退到getFileAsync
+   */
+  async getDocumentFileViaWordRun(): Promise<string> {
+    return new Promise((resolve, reject) => {
+      Word.run(async (context) => {
+        // 检查是否支持getFileOrNull（Word 1.3+ API）
+        // 这是一个较新的API，可能在某些版本中不支持
+        const document = context.document;
+
+        // 尝试使用getFileOrNull方法（如果存在）
+        // @ts-ignore - getFileOrNull可能在某些Office版本中不存在
+        if (document.getFileOrNull && typeof document.getFileOrNull === 'function') {
+          try {
+            // @ts-ignore
+            const file = document.getFileOrNull(Word.FileType.docx);
+            file.load('base64');
+            await context.sync();
+
+            if (file.value && file.value.base64) {
+              const base64 = file.value.base64;
+              console.log('Word.run getFileOrNull成功，base64长度:', base64?.length);
+
+              // 验证是否是有效的docx（PK开头）
+              try {
+                const decoded = atob(base64.substring(0, 50));
+                if (decoded.substring(0, 2) === 'PK') {
+                  console.log('Word.run获取到有效的docx文件（PK header验证通过）');
+                  resolve(base64);
+                  return;
+                } else {
+                  console.warn('Word.run获取的数据不是有效docx（无PK header）');
+                }
+              } catch (e) {
+                console.warn('Word.run base64解码验证失败:', e);
+              }
+            }
+          } catch (e) {
+            console.warn('Word.run getFileOrNull调用失败:', e);
+          }
+        }
+
+        // getFileOrNull不支持或失败，尝试使用body.getOoxml()
+        // 注意：getOoxml()返回的是OOXML格式，不是完整的docx文件
+        const body = document.body;
+        body.load('text');
+        await context.sync();
+
+        // 获取文档内容作为文本（最后的fallback）
+        const text = body.text;
+        console.log('Word.run返回文本内容，长度:', text?.length);
+        reject(new Error('Word.run getFileOrNull不支持，需要使用getFileAsync方式'));
+      }).catch((error) => {
+        console.error('Word.run失败:', error);
+        reject(error);
+      });
+    });
+  },
+
+  /**
    * 获取文档文件内容（Base64编码的docx文件）
-   * 用于生成实际的模板文件
+   * 使用更大的sliceSize（4MB）提高可靠性
    */
   async getDocumentFileBase64(): Promise<string> {
     return new Promise((resolve, reject) => {
+      // 使用4MB sliceSize（推荐值）
+      const SLICE_SIZE = 4194304;
+
       // Office JS API: Document.getFileAsync
       // 使用Office.FileType.Compressed获取docx文件的base64切片
-      Office.context.document.getFileAsync(Office.FileType.Compressed, { sliceSize: 65536 }, (result) => {
-        console.log('getFileAsync result:', result.status);
+      Office.context.document.getFileAsync(Office.FileType.Compressed, { sliceSize: SLICE_SIZE }, (result) => {
+        console.log('getFileAsync result:', result.status, 'sliceSize:', SLICE_SIZE);
 
         if (result.status === Office.AsyncResultStatus.Succeeded) {
           const file = result.value;
@@ -56,45 +120,57 @@ export const WordAPI = {
           }
 
           const slices: string[] = [];
+          let failedSlices = 0;
 
           const getSlice = (sliceIndex: number) => {
+            if (sliceIndex >= sliceCount) {
+              // 所有切片已处理完毕
+              if (failedSlices > 0) {
+                file.closeAsync();
+                reject(new Error(`${failedSlices}个切片获取失败`));
+                return;
+              }
+
+              // 组合所有slice为完整base64
+              file.closeAsync();
+              const fullBase64 = slices.join('');
+              console.log(`获取文件成功，共${sliceCount}个切片，base64长度: ${fullBase64.length}`);
+              console.log(`base64前50字符: ${fullBase64.substring(0, 50)}`);
+
+              // 验证base64解码后是否是有效的zip文件（PK开头）
+              try {
+                const decoded = atob(fullBase64.substring(0, 100));
+                console.log('解码后前10字节:', decoded.substring(0, 10));
+                console.log('是否PK开头:', decoded.substring(0, 2) === 'PK');
+
+                if (decoded.substring(0, 2) !== 'PK') {
+                  console.warn('警告：返回的数据不是有效的docx格式（无PK header）');
+                  // 不reject，仍然返回数据，让上层处理
+                }
+              } catch (e) {
+                console.warn('base64验证失败:', e);
+              }
+
+              resolve(fullBase64);
+              return;
+            }
+
             file.getSliceAsync(sliceIndex, (sliceResult) => {
               console.log(`getSliceAsync(${sliceIndex}) result:`, sliceResult.status);
 
               if (sliceResult.status === Office.AsyncResultStatus.Succeeded) {
                 const sliceData = sliceResult.value.data;
                 console.log(`slice ${sliceIndex} data type:`, typeof sliceData, 'length:', sliceData?.length);
-                console.log(`slice ${sliceIndex} first 20 chars:`, sliceData?.substring?.(0, 20));
 
-                // sliceResult.value.data 应该是 base64 字符串
+                // sliceResult.value.data 应该是 base64 字符串，直接使用
                 slices.push(sliceData);
-
-                if (sliceIndex < sliceCount - 1) {
-                  getSlice(sliceIndex + 1);
-                } else {
-                  // 所有slice获取完成，组合并关闭文件
-                  file.closeAsync();
-                  // 组合所有slice为完整base64
-                  const fullBase64 = slices.join('');
-                  console.log(`获取文件成功，共${sliceCount}个切片，base64长度: ${fullBase64.length}`);
-                  console.log(`base64前20字符: ${fullBase64.substring(0, 20)}`);
-
-                  // 验证base64解码后是否是有效的zip文件（PK开头）
-                  try {
-                    const decoded = atob(fullBase64.substring(0, 100));
-                    console.log('解码后前10字节:', decoded.substring(0, 10));
-                    console.log('是否PK开头:', decoded.substring(0, 2) === 'PK');
-                  } catch (e) {
-                    console.warn('base64验证失败:', e);
-                  }
-
-                  resolve(fullBase64);
-                }
+                getSlice(sliceIndex + 1);
               } else {
-                file.closeAsync();
+                failedSlices++;
                 const errorMsg = sliceResult.error?.message || '未知错误';
                 console.error(`获取切片${sliceIndex}失败:`, errorMsg);
-                reject(new Error(`获取切片${sliceIndex}失败: ${errorMsg}`));
+                // 继续尝试获取下一个切片
+                getSlice(sliceIndex + 1);
               }
             });
           };
@@ -190,9 +266,32 @@ export const WordAPI = {
 
   /**
    * 获取文档文件Base64（多种方式尝试，按优先级）
+   * 优先使用Word.run专用的getFileOrNull方法
    */
-  async getDocumentFileBase64WithFallback(): Promise<{ base64: string; method: string }> {
-    // 方法1: 尝试getFileContentAsync（最新API，直接返回base64）
+  async getDocumentFileBase64WithFallback(): Promise<{ base64: string; method: string; isValidDocx: boolean }> {
+    // 方法1: Word.run getFileOrNull（Word专用API，最可靠）
+    try {
+      const base64 = await this.getDocumentFileViaWordRun();
+      if (base64 && base64.length > 0) {
+        // 验证是否是有效的docx（PK开头）
+        try {
+          const decoded = atob(base64.substring(0, 50));
+          if (decoded.substring(0, 2) === 'PK') {
+            console.log('Word.run getFileOrNull成功获取有效docx文件');
+            return { base64, method: 'wordRunGetFile', isValidDocx: true };
+          }
+        } catch (e) {
+          console.warn('Word.run验证失败');
+        }
+        // 即使无PK header，也返回数据让上层处理
+        console.warn('Word.run返回数据无PK header，但仍返回');
+        return { base64, method: 'wordRunGetFile', isValidDocx: false };
+      }
+    } catch (e) {
+      console.warn('Word.run getFileOrNull失败或不支持:', e);
+    }
+
+    // 方法2: 尝试getFileContentAsync（较新API，直接返回base64）
     try {
       const base64 = await this.getFileContentBase64();
       if (base64 && base64.length > 0) {
@@ -201,51 +300,53 @@ export const WordAPI = {
           const decoded = atob(base64.substring(0, 50));
           if (decoded.substring(0, 2) === 'PK') {
             console.log('getFileContentAsync成功获取有效docx文件');
-            return { base64, method: 'getFileContentAsync' };
+            return { base64, method: 'getFileContentAsync', isValidDocx: true };
           }
         } catch (e) {
           console.warn('getFileContentAsync验证失败');
         }
+        console.warn('getFileContentAsync返回数据无PK header，但仍返回');
+        return { base64, method: 'getFileContentAsync', isValidDocx: false };
       }
     } catch (e) {
       console.warn('getFileContentAsync失败或不支持:', e);
     }
 
-    // 方法2: 尝试getFileAsync（切片方式）
+    // 方法3: 尝试getFileAsync（切片方式，使用4MB sliceSize）
     try {
       const base64 = await this.getDocumentFileBase64();
-      // 验证是否有效
       if (base64 && base64.length > 0) {
         try {
           const decoded = atob(base64.substring(0, 50));
           if (decoded.substring(0, 2) === 'PK') {
             console.log('getFileAsync成功获取有效docx文件');
-            return { base64, method: 'getFileAsync' };
+            return { base64, method: 'getFileAsync', isValidDocx: true };
           }
         } catch (e) {
           console.warn('getFileAsync base64验证失败');
         }
+        console.warn('getFileAsync返回数据无PK header，但仍返回');
+        return { base64, method: 'getFileAsync', isValidDocx: false };
       }
-      console.warn('getFileAsync返回的数据不是有效docx格式');
     } catch (e) {
       console.warn('getFileAsync失败:', e);
     }
 
-    // 方法3: 使用Word.run获取文档base64（OOXML方式）
+    // 方法4: 使用Word.run获取OOXML（不是完整的docx，但可以作为备选）
     try {
       const base64 = await this.getDocumentAsBase64();
       if (base64 && base64.length > 0) {
-        console.log('使用Word.run方式获取文档');
-        return { base64, method: 'wordRun' };
+        console.log('使用Word.run OOXML方式获取文档（非完整docx）');
+        return { base64, method: 'wordRunOoxml', isValidDocx: false };
       }
     } catch (e) {
-      console.warn('Word.run方式也失败:', e);
+      console.warn('Word.run OOXML方式也失败:', e);
     }
 
-    // 方法4: 纯文本（最后的fallback）
+    // 方法5: 纯文本（最后的fallback）
     const text = await this.getDocumentContent();
     console.warn('使用纯文本作为fallback');
-    return { base64: this.utf8ToBase64(text), method: 'text' };
+    return { base64: this.utf8ToBase64(text), method: 'text', isValidDocx: false };
   },
 
   /**
