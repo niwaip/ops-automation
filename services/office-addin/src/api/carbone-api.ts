@@ -394,6 +394,54 @@ class CarboneAPI {
     );
     return response.data;
   }
+
+  /**
+   * 获取模板列表
+   */
+  async getTemplates(): Promise<{
+    templates: Array<{
+      id: string;
+      fileName?: string;
+      format: string;
+      size?: number;
+      createdAt?: string;
+      uploadedAt?: string;
+      config?: any;
+      suggestions?: any[];
+    }>;
+  }> {
+    const response = await axios.get(
+      `${this.baseUrl}/studio/templates`,
+      getAxiosConfig(this.baseUrl)
+    );
+    return response.data;
+  }
+
+  /**
+   * 获取模板详情
+   */
+  async getTemplate(templateId: string): Promise<{
+    id: string;
+    fileName?: string;
+    format: string;
+    size?: number;
+    config?: any;
+    suggestions?: any[];
+    skillId?: string;
+  }> {
+    const response = await axios.get(
+      `${this.baseUrl}/studio/templates/${templateId}`,
+      getAxiosConfig(this.baseUrl)
+    );
+    return response.data;
+  }
+
+  /**
+   * 下载模板文件
+   */
+  getTemplateDownloadUrl(templateId: string): string {
+    return `${this.baseUrl}/studio/download-template/${templateId}`;
+  }
 }
 
 export const carboneAPI = new CarboneAPI();

@@ -799,6 +799,132 @@ export const TemplateConfigPanel: React.FC = () => {
         <h3>预览数据示例</h3>
         <pre>{JSON.stringify(previewData, null, 2)}</pre>
       </div>
+
+      {/* 模板管理区域 */}
+      <TemplateManager />
+    </div>
+  );
+};
+
+/**
+ * 模板管理子组件 - 显示已保存的模板列表
+ */
+const TemplateManager: React.FC = () => {
+  const { apiBaseUrl, addDebugLog } = useAppStore();
+  const [templates, setTemplates] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [selectedTemplate, setSelectedTemplate] = useState<string | null>(null);
+
+  // 加载模板列表
+  const loadTemplates = async () => {
+    setLoading(true);
+    addDebugLog('info', '加载模板列表...', '');
+    try {
+      carboneAPI.setBaseUrl(apiBaseUrl);
+      const result = await carboneAPI.getTemplates();
+      setTemplates(result.templates || []);
+      addDebugLog('info', `模板列表加载成功`, `共 ${result.templates?.length || 0} 个模板`);
+    } catch (error: any) {
+      addDebugLog('error', '加载模板列表失败', error.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadTemplates();
+  }, [apiBaseUrl]);
+
+  const formatDate = (dateStr: string) => {
+    try {
+      return new Date(dateStr).toLocaleString('zh-CN');
+    } catch {
+      return dateStr;
+    }
+  };
+
+  return (
+    <div className="config-section template-manager">
+      <h3>
+        📁 模板管理
+        <button
+          className="refresh-btn"
+          onClick={loadTemplates}
+          disabled={loading}
+          style={{ marginLeft: '10px', padding: '2px 8px', fontSize: '12px' }}
+        >
+          {loading ? '加载中...' : '刷新'}
+        </button>
+      </h3>
+
+      {templates.length === 0 ? (
+        <div className="no-templates" style={{ padding: '20px', textAlign: 'center', color: '#666' }}>
+          暂无保存的模板
+        </div>
+      ) : (
+        <div className="template-list" style={{ maxHeight: '300px', overflowY: 'auto' }}>
+          {templates.slice(0, 20).map((template) => (
+            <div
+              key={template.id}
+              className={`template-item ${selectedTemplate === template.id ? 'selected' : ''}`}
+              style={{
+                padding: '10px',
+                border: '1px solid #ddd',
+                borderRadius: '4px',
+                marginBottom: '8px',
+                cursor: 'pointer',
+                backgroundColor: selectedTemplate === template.id ? '#e3f2fd' : '#fff'
+              }}
+              onClick={() => setSelectedTemplate(template.id)}
+            >
+              <div style={{ fontWeight: 'bold', marginBottom: '5px' }}>
+                {template.fileName || `模板 ${template.id.slice(0, 8)}...`}
+              </div>
+              <div style={{ fontSize: '12px', color: '#666' }}>
+                <span>格式: {template.format || 'docx'}</span>
+                {template.size && <span style={{ marginLeft: '10px' }}>大小: {(template.size / 1024).toFixed(1)}KB</span>}
+                {template.createdAt && <span style={{ marginLeft: '10px' }}>创建: {formatDate(template.createdAt)}</span>}
+              </div>
+              {selectedTemplate === template.id && (
+                <div style={{ marginTop: '10px' }}>
+                  <a
+                    href={`${apiBaseUrl}/studio/download-template/${template.id}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{
+                      padding: '5px 15px',
+                      backgroundColor: '#2196f3',
+                      color: '#fff',
+                      borderRadius: '4px',
+                      textDecoration: 'none',
+                      fontSize: '12px'
+                    }}
+                  >
+                    📥 下载模板
+                  </a>
+                  <button
+                    onClick={async () => {
+                      try {
+                        const detail = await carboneAPI.getTemplate(template.id);
+                        addDebugLog('info', '模板详情', JSON.stringify(detail, null, 2));
+                      } catch (e: any) {
+                        addDebugLog('error', '获取模板详情失败', e.message);
+                      }
+                    }}
+                    style={{
+                      padding: '5px 15px',
+                      marginLeft: '10px',
+                      fontSize: '12px'
+                    }}
+                  >
+                    查看详情
+                  </button>
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 };
