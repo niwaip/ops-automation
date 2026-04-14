@@ -375,101 +375,70 @@ export const WordAPI = {
         console.log(`[DEBUG] 段落全文: "${fullText.substring(0, 60)}..."`);
 
         try {
-          // 方法1：使用扩展文本（包含前后字符）来搜索特定位置
-          // 增加扩展范围，确保每个位置的扩展文本不同
-          const extendBefore = 4;  // 向前扩展4字符
-          const extendAfter = 4;   // 向后扩展4字符
-          const extendedStart = Math.max(0, startPos - extendBefore);
-          const extendedEnd = Math.min(fullText.length, endPos + extendAfter);
-          const extendedText = fullText.substring(extendedStart, extendedEnd);
+          // 直接搜索空白文本（与替换逻辑一致）
+          const blankText = fullText.substring(startPos, endPos);
+          console.log(`[DEBUG] 空白文本: "${blankText}" (${blankText.length}字符)`);
 
-          console.log(`[DEBUG] 扩展文本: "${extendedText}" (位置${extendedStart}-${extendedEnd})`);
+          if (blankText.length >= 1) {
+            // 使用扩展文本搜索来精确定位（前后4字符）
+            const extendBefore = 4;
+            const extendAfter = 4;
+            const extendedStart = Math.max(0, startPos - extendBefore);
+            const extendedEnd = Math.min(fullText.length, endPos + extendAfter);
+            const extendedText = fullText.substring(extendedStart, extendedEnd);
 
-          if (extendedText.length >= 6) {
-            const searchResults = paragraph.search(extendedText, {
-              matchCase: true,  // 使用精确匹配
+            console.log(`[DEBUG] 扩展文本: "${extendedText}"`);
+
+            // 先搜索扩展文本定位段落中的具体位置
+            const extSearchResults = paragraph.search(extendedText, {
+              matchCase: true,
               matchWholeWord: false
             });
-            searchResults.load('items');
+            extSearchResults.load('items');
             await context.sync();
 
-            console.log(`[DEBUG] 搜索结果数量: ${searchResults.items.length}`);
-
-            if (searchResults.items.length > 0) {
-              // 如果有多个匹配，需要找到正确的位置
-              // 使用位置信息来筛选正确的匹配
-              let targetSearchResult = searchResults.items[0];
-
-              // 如果有多个匹配，找到最接近目标位置的
-              if (searchResults.items.length > 1) {
-                for (const item of searchResults.items) {
-                  item.load('text');
-                }
-                await context.sync();
-
-                // 找到文本位置最接近 startPos - extendBefore 的匹配
-                // 由于我们搜索的是 extendedText，匹配位置应该在 extendedStart 附近
-                // 选择第一个匹配（因为位置应该唯一）
-                console.log(`[DEBUG] 多个匹配，使用第一个`);
-                targetSearchResult = searchResults.items[0];
-              }
-
-              // 找到扩展文本后，获取其中的空白部分
-              targetSearchResult.load('text');
-              await context.sync();
-
-              // 搜索扩展文本中的空白部分
-              const blankText = fullText.substring(startPos, endPos);
-              const blankSearch = targetSearchResult.search(blankText, {
+            if (extSearchResults.items.length > 0) {
+              // 在扩展文本范围内搜索空白
+              const extRange = extSearchResults.items[0];
+              const blankInExt = extRange.search(blankText, {
                 matchCase: false,
                 matchWholeWord: false
               });
-              blankSearch.load('items');
+              blankInExt.load('items');
               await context.sync();
 
-              if (blankSearch.items.length > 0) {
-                // 高亮空白部分
-                const targetRange = blankSearch.items[0];
+              if (blankInExt.items.length > 0) {
+                const targetRange = blankInExt.items[0];
                 targetRange.select();
                 targetRange.font.highlightColor = 'yellow';
                 await context.sync();
-                console.log(`[DEBUG] ✓ 已高亮空白: "${blankText.substring(0, 10)}..."`);
-                resolve(true);
-                return;
-              } else {
-                // 直接高亮整个扩展文本
-                targetSearchResult.select();
-                targetSearchResult.font.highlightColor = 'yellow';
-                await context.sync();
-                console.log(`[DEBUG] ✓ 已高亮扩展文本（空白未找到）`);
+                console.log(`[DEBUG] ✓ 已高亮空白: "${blankText}"`);
                 resolve(true);
                 return;
               }
             }
-          }
 
-          // 方法2：尝试搜索原始文本（后备）
-          const blankText = fullText.substring(startPos, endPos);
-          if (blankText.length >= 2) {
-            const searchResults = paragraph.search(blankText, {
+            // 后备：直接在段落中搜索空白（可能高亮多个）
+            const blankSearchResults = paragraph.search(blankText, {
               matchCase: false,
               matchWholeWord: false
             });
-            searchResults.load('items');
+            blankSearchResults.load('items');
             await context.sync();
 
-            if (searchResults.items.length > 0) {
-              const targetRange = searchResults.items[0];
+            if (blankSearchResults.items.length > 0) {
+              // 高亮第一个匹配
+              const targetRange = blankSearchResults.items[0];
               targetRange.select();
               targetRange.font.highlightColor = 'yellow';
               await context.sync();
-              console.log(`[DEBUG] ✓ 已高亮（后备方案）: "${blankText.substring(0, 10)}..."`);
+              console.log(`[DEBUG] ✓ 已高亮空白（后备）: "${blankText}"`);
               resolve(true);
               return;
             }
           }
 
-          // 后备方案：选中整个段落
+          // 最终后备：选中整个段落
           const paraRange = paragraph.getRange(Word.RangeLocation.whole);
           paraRange.select();
           await context.sync();
