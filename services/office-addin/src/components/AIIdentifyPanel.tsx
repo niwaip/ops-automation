@@ -1423,6 +1423,44 @@ export const AIIdentifyPanel: React.FC<Props> = ({ onApplyComplete }) => {
         </div>
       )}
 
+      {/* 暂存副本按钮组 */}
+      <div className="draft-buttons-group">
+        <button
+          className="save-draft-btn"
+          onClick={handleSaveDraft}
+          disabled={isSavingDraft || !aiSkillGuide}
+        >
+          {isSavingDraft ? '⏳ 暂存中...' : '📦 暂存副本'}
+        </button>
+
+        {draftId && (
+          <button
+            className="clear-draft-btn"
+            onClick={handleClearDraft}
+            title="清除暂存副本"
+          >
+            🗑️ 清除
+          </button>
+        )}
+      </div>
+
+      {/* 副本信息 */}
+      {draftId && draftInfo && (
+        <div className="draft-info">
+          <span className="draft-badge">✅ 已暂存</span>
+          <span className="draft-details">
+            {draftInfo.templateType} · {draftInfo.parameterCount} 参数 · ID: {draftId.substring(0, 8)}...
+          </span>
+        </div>
+      )}
+
+      {/* 副本保存结果反馈 */}
+      {draftSaveResult && (
+        <div className={`draft-result ${draftSaveResult.success ? 'success' : 'error'}`}>
+          {draftSaveResult.message}
+        </div>
+      )}
+
       {/* AI生成参数区域 */}
       {aiSkillGuide && (
         <div className="ai-params-section">
@@ -1502,44 +1540,6 @@ export const AIIdentifyPanel: React.FC<Props> = ({ onApplyComplete }) => {
               <pre className="generated-data-content">{JSON.stringify(previewResult.generatedData, null, 2)}</pre>
             </div>
           )}
-        </div>
-      )}
-
-      {/* 暂存副本按钮组 */}
-      <div className="draft-buttons-group">
-        <button
-          className="save-draft-btn"
-          onClick={handleSaveDraft}
-          disabled={isSavingDraft || !aiSkillGuide}
-        >
-          {isSavingDraft ? '⏳ 暂存中...' : '📦 暂存副本'}
-        </button>
-
-        {draftId && (
-          <button
-            className="clear-draft-btn"
-            onClick={handleClearDraft}
-            title="清除暂存副本"
-          >
-            🗑️ 清除
-          </button>
-        )}
-      </div>
-
-      {/* 副本信息 */}
-      {draftId && draftInfo && (
-        <div className="draft-info">
-          <span className="draft-badge">✅ 已暂存</span>
-          <span className="draft-details">
-            {draftInfo.templateType} · {draftInfo.parameterCount} 参数 · ID: {draftId.substring(0, 8)}...
-          </span>
-        </div>
-      )}
-
-      {/* 副本保存结果反馈 */}
-      {draftSaveResult && (
-        <div className={`draft-result ${draftSaveResult.success ? 'success' : 'error'}`}>
-          {draftSaveResult.message}
         </div>
       )}
 
