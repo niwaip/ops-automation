@@ -1051,27 +1051,6 @@ export const AIIdentifyPanel: React.FC<Props> = ({ onApplyComplete }) => {
         </div>
       )}
 
-      {/* 验证模版按钮 */}
-      <button
-        className="verify-template-btn"
-        onClick={handleVerifyTemplate}
-        disabled={isAnalyzing || isVerifying || suggestions.length === 0}
-      >
-        {isVerifying ? '⏳ 验证中...' : '🔍 验证模版'}
-      </button>
-
-      {/* 验证结果反馈 */}
-      {verifyResult && (
-        <div className={`verify-result ${verifyResult.valid ? 'success' : 'error'}`}>
-          <span className="verify-result-message">{verifyResult.message}</span>
-          {verifyResult.warnings && verifyResult.warnings.length > 0 && (
-            <div className="verify-result-warnings">
-              {verifyResult.warnings.map((w, i) => <div key={i}>{w}</div>)}
-            </div>
-          )}
-        </div>
-      )}
-
       {/* 生成AI指南按钮 */}
       <button
         className="generate-guide-btn"
@@ -1132,6 +1111,27 @@ export const AIIdentifyPanel: React.FC<Props> = ({ onApplyComplete }) => {
       {saveResult && (
         <div className={`save-result ${saveResult.success ? 'success' : 'error'}`}>
           {saveResult.message}
+        </div>
+      )}
+
+      {/* 验证模版按钮 */}
+      <button
+        className="verify-template-btn"
+        onClick={handleVerifyTemplate}
+        disabled={isAnalyzing || isVerifying || suggestions.length === 0}
+      >
+        {isVerifying ? '⏳ 验证中...' : '🔍 验证模版'}
+      </button>
+
+      {/* 验证结果反馈 */}
+      {verifyResult && (
+        <div className={`verify-result ${verifyResult.valid ? 'success' : 'error'}`}>
+          <span className="verify-result-message">{verifyResult.message}</span>
+          {verifyResult.warnings && verifyResult.warnings.length > 0 && (
+            <div className="verify-result-warnings">
+              {verifyResult.warnings.map((w, i) => <div key={i}>{w}</div>)}
+            </div>
+          )}
         </div>
       )}
 
