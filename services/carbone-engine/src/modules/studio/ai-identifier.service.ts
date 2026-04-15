@@ -2351,44 +2351,58 @@ ${blankList}
   async generateParametersFromDescription(description: string, skill: any): Promise<any> {
     this.logger.log(`Generating parameters from description: ${description}`);
 
-    // Skill Guide应该已经包含所有必要信息，直接使用skillGuideMarkdown
+    // 获取dataExampleJson作为输出格式参考
+    const dataExampleJson = skill.dataExampleJson || {};
+    const dataExampleStr = JSON.stringify(dataExampleJson, null, 2);
+
+    // Skill Guide Markdown作为参数定义参考
     const skillGuideMarkdown = skill.skillGuideMarkdown || '';
 
-    // 如果Skill Guide不存在，尝试从其他字段构建简要指南（后备方案）
+    // 如果Skill Guide不存在，尝试从parameters构建简要指南（后备方案）
     let fallbackGuide = '';
     if (!skillGuideMarkdown) {
       const parameters = skill.parameters || [];
       const paramList = parameters.map((p: any) => {
         return `- ${p.name}: ${p.usage || '需要填写'} (示例: ${p.example || '无'})`;
       }).join('\n');
-      const dataExample = skill.dataExampleJson ? JSON.stringify(skill.dataExampleJson, null, 2) : '{}';
-      fallbackGuide = `
-## 参数列表
-${paramList}
-
-## 数据示例
-${dataExample}
-`;
+      fallbackGuide = `## 参数列表\n${paramList}`;
     }
 
-    // 构建简洁的提示词：引用Skill Guide + 用户描述
-    const prompt = `你是一个文档数据生成助手。请根据以下Skill Guide和用户描述，生成具体的参数值。
+    // 构建清晰的提示词，明确输出格式
+    const prompt = `你是一个文档数据生成助手。请根据用户描述，生成用于填充模板的JSON数据。
 
-## Skill Guide（完整的模板参数指南）
+## 重要说明：JSON数据格式
+模板使用Carbone引擎，变量语法是 \`{d.xxx}\`，这是模板语法，不是JSON语法。
+你输出的JSON数据中，键名不应该包含 \`{d.\` 或 \`}\` 这些符号。
+
+正确的JSON格式示例：
+{
+  "partyA": { "name": "公司名称", "address": "地址" },
+  "partyB": { "name": "公司名称", "address": "地址" },
+  "project": { "name": "项目名称" },
+  "contract": { "sign_date_year": "2026", "sign_date_month": "04" }
+}
+
+错误格式（不要这样写）：
+{
+  "{d": { "partyA": { "name}": "公司名称" } }  // 这是错误的！
+}
+
+## 参考数据结构（你的输出必须符合这个结构）
+${dataExampleStr}
+
+## 参数定义参考
 ${skillGuideMarkdown || fallbackGuide}
-
----
 
 ## 用户需求描述
 ${description}
 
 ---
-
-请根据Skill Guide中的参数定义和数据示例格式，生成一个JSON对象。
-要求：
-1. 输出格式要与Skill Guide中的"完整数据示例"结构一致
-2. 日期使用格式 YYYY-MM-DD，今天日期是 ${new Date().toISOString().split('T')[0]}
-3. 只返回JSON对象，不要任何解释文字，不要使用markdown代码块包装`;
+请根据以上信息生成JSON数据。要求：
+1. 输出结构必须与"参考数据结构"完全一致
+2. 键名不要包含 \`{d.\` 或 \`}\`，使用纯字段名如 partyA、name、address
+3. 日期格式 YYYY-MM-DD，今天是 ${new Date().toISOString().split('T')[0]}
+4. 只返回JSON对象，不要解释文字，不要markdown代码块`;
 
     // 直接调用AI服务
     const aiOrchestratorUrl = process.env.AI_ORCHESTRATOR_URL || 'http://localhost:3007';
