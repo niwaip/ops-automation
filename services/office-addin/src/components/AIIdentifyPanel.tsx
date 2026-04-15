@@ -67,6 +67,7 @@ export const AIIdentifyPanel: React.FC<Props> = ({ onApplyComplete }) => {
   const [manualLoopMode, setManualLoopMode] = useState(false);  // 手动添加的循环模式
   const [manualArrayPath, setManualArrayPath] = useState('');  // 循环模式的数组路径
   const [isGeneratingAI, setIsGeneratingAI] = useState(false);  // AI生成变量名状态
+  const [manualSignificance, setManualSignificance] = useState('');  // 用途说明
 
   // 动态更新加载消息（仅用于旧API的模拟进度）
   // 注意：当前HTTP API不支持实时进度，这只是dots动画
@@ -262,7 +263,7 @@ export const AIIdentifyPanel: React.FC<Props> = ({ onApplyComplete }) => {
   };
 
   /**
-   * 验证模版配置（简化版：直接检查参数格式）
+   * 验证模版配置（使用模版配置页的逻辑）
    */
   const handleVerifyTemplate = async () => {
     if (suggestions.length === 0) {
@@ -272,115 +273,39 @@ export const AIIdentifyPanel: React.FC<Props> = ({ onApplyComplete }) => {
 
     addDebugLog('info', `验证模版配置`, `参数数量: ${suggestions.length}`);
 
-    // 本地验证参数格式
-    const errors: string[] = [];
-    const warnings: string[] = [];
-
-    suggestions.forEach((s, index) => {
-      const name = s.suggestedName;
-
-      // 检查是否包含有效的Carbone标记格式
-      if (!name || name.trim() === '') {
-        errors.push(`参数 ${index + 1}: 变量名为空`);
-      } else {
-        // 检查是否包含 {d.xxx} 格式
-        if (!name.includes('{d.') && !name.includes('{#')) {
-          warnings.push(`参数 ${index + 1} (${name}): 可能不是有效的Carbone变量格式`);
-        }
-
-        // 检查是否包含非法字符
-        if (name.includes(' ') || name.includes('\n')) {
-          errors.push(`参数 ${index + 1} (${name}): 包含非法字符（空格或换行）`);
-        }
-      }
-    });
-
-    if (errors.length === 0 && warnings.length === 0) {
-      addDebugLog('info', `✅ 验证成功`, `所有 ${suggestions.length} 个参数格式正确`);
-    } else {
-      if (errors.length > 0) {
-        addDebugLog('error', `❌ 验证失败`, `发现 ${errors.length} 个错误:\n${errors.join('\n')}`);
-      }
-      if (warnings.length > 0) {
-        addDebugLog('warn', `⚠️ 警告`, `发现 ${warnings.length} 个警告:\n${warnings.join('\n')}`);
-      }
-    }
-  };
-
-  /**
-   * 测试下划线检测（调试专用）
-   * 独立测试 Word 文档中的下划线检测逻辑
-   */
-  const handleTestUnderline = async () => {
-    addDebugLog('info', `[测试下划线] 开始测试下划线检测...`);
     try {
-      if (officeType !== 'word') {
-        addDebugLog('warn', `[测试下划线] 当前不是 Word 文档`, `Office 类型: ${officeType}`);
-        return;
-      }
+      carboneAPI.setBaseUrl(apiBaseUrl);
 
-      // 1. 获取文档内容
-      const docContent = await OfficeHelper.Word.getDocumentContent();
-      addDebugLog('info', `[测试下划线] 文档内容`, `长度: ${docContent.length} 字符`);
+      // 构建模版配置（与模版配置页一致）
+      const configToValidate = {
+        templateType: selectedTemplateType,
+        variables: suggestions.reduce((acc, s) => {
+          // 从 suggestedName 提取变量路径（去掉 {} 包装）
+          const varPath = s.suggestedName.replace(/[{}]/g, '').replace(/^d\./, '');
+          acc[varPath] = s.originalText || '';
+          return acc;
+        }, {} as Record<string, string>),
+        loops: suggestions
+          .filter(s => s.details?.fieldType === 'loop')
+          .map(s => ({
+            arrayPath: s.details?.arrayPath || '',
+            startMarker: `{#${s.details?.arrayPath || ''}}`,
+            endMarker: `{/${s.details?.arrayPath || ''}}`
+          }))
+      };
 
-      // 2. 获取段落结构
-      const structure = await OfficeHelper.Word.getDocumentStructure();
-      addDebugLog('info', `[测试下划线] 段落数量`, `${structure.paragraphs?.length || 0} 个段落`);
+      const result = await carboneAPI.validateTemplate(JSON.stringify(configToValidate));
 
-      // 3. 获取下划线信息（核心测试）
-      addDebugLog('info', `[测试下划线] 调用 getUnderlinedTexts()...`);
-      const underlineInfo = await OfficeHelper.Word.getUnderlinedTexts();
-
-      // 4. 显示详细结果
-      addDebugLog('info', `[测试下划线] 检测结果`, `发现 ${underlineInfo?.length || 0} 个下划线位置`);
-
-      if (underlineInfo && underlineInfo.length > 0) {
-        // 从后往前替换（倒序），避免替换影响前面的位置计算
-        // 先替换位置大的，再替换位置小的
-        for (let i = underlineInfo.length - 1; i >= 0; i--) {
-          const info = underlineInfo[i];
-          // 编号按检测顺序（正序）：#1 → field_1, #13 → field_13
-          const fieldNum = i + 1;  // 使用原始索引 + 1
-          const mockParam = `{field_${fieldNum}}`;
-
-          addDebugLog('debug', `[测试下划线] #${fieldNum}`,
-            `文本: "${info.text}" (${info.text.length}字符)\n` +
-            `类型: ${info.underlineType}\n` +
-            `段落索引: ${info.paragraphIndex}\n` +
-            `位置: ${info.position?.start}-${info.position?.end}\n` +
-            `模拟参数: ${mockParam}`
-          );
-
-          // 使用段落索引和位置替换为模拟参数
-          try {
-            if (info.paragraphIndex !== undefined) {
-              // 替换空白为模拟参数标记（传入原始段落文本，避免替换后文本变化）
-              const success = await OfficeHelper.Word.replaceUnderlineByPosition(
-                info.paragraphIndex,
-                info.position?.start || 0,
-                info.position?.end || 0,
-                mockParam,
-                info.text,
-                info.paragraphText  // 传入原始段落文本
-              );
-              addDebugLog('debug', `[测试下划线] #${fieldNum}`, success ? `✓ 已插入 ${mockParam}` : '替换失败');
-            } else {
-              // 后备方案
-              await OfficeHelper.Word.replaceText(info.text, mockParam);
-              addDebugLog('debug', `[测试下划线] #${fieldNum}`, `已替换为 ${mockParam}`);
-            }
-          } catch (replaceErr: any) {
-            addDebugLog('warn', `[测试下划线] #${fieldNum} 替换失败`, replaceErr.message);
-          }
+      if (result.valid) {
+        addDebugLog('info', `✅ 验证成功`, `模版配置有效`);
+        if (result.warnings && result.warnings.length > 0) {
+          addDebugLog('warn', `⚠️ 警告`, result.warnings.join('\n'));
         }
-
-        addDebugLog('info', `[测试下划线] 完成`, `已插入 ${underlineInfo.length} 个模拟参数（倒序处理，编号正序）`);
       } else {
-        addDebugLog('warn', `[测试下划线] 未检测到下划线`, `请检查文档中是否有带下划线格式的空白`);
+        addDebugLog('error', `❌ 验证失败`, result.errors?.join('\n') || '未知错误');
       }
-
     } catch (error: any) {
-      addDebugLog('error', `[测试下划线] 测试失败`, error.message);
+      addDebugLog('error', `验证失败`, error.message);
     }
   };
 
@@ -624,11 +549,11 @@ export const AIIdentifyPanel: React.FC<Props> = ({ onApplyComplete }) => {
 
     const marker = generateManualMarker();
 
-    // 创建新的建议，添加到参数一览
+    // 创建新的建议，格式与AI识别结果一致
     const newSuggestion: AISuggestion = {
       id: `manual-${Date.now()}`,
-      type: 'variable',
-      elementPath: selectedContent ? `【${selectedContent.substring(0, 20)}...】` : '手动添加',
+      type: manualLoopMode ? 'loop' : 'variable',
+      elementPath: selectedContent ? `【${selectedContent.substring(0, 30)}...】` : '手动添加',
       suggestedName: marker,
       originalText: selectedContent || '手动添加的参数',
       confidence: 1.0,
@@ -636,9 +561,14 @@ export const AIIdentifyPanel: React.FC<Props> = ({ onApplyComplete }) => {
       context: selectedContent || '用户手动添加',
       details: {
         chapter: '手动添加',
-        significance: '用户自定义参数',
+        significance: manualSignificance || '用户自定义参数',
+        displayPosition: selectedContent ? `【${selectedContent.substring(0, 30)}...】` : '手动添加',
+        context: selectedContent || '',
         fieldType: manualLoopMode ? 'loop' : 'text',
         formatter: manualFormatter,
+        arrayPath: manualLoopMode ? manualArrayPath : undefined,
+        beforeBlank: selectedContent ? selectedContent.substring(0, 15) : '',
+        afterBlank: selectedContent ? selectedContent.substring(Math.max(0, selectedContent.length - 15)) : '',
       }
     };
 
@@ -653,6 +583,7 @@ export const AIIdentifyPanel: React.FC<Props> = ({ onApplyComplete }) => {
     setManualFormatter('');
     setManualLoopMode(false);
     setManualArrayPath('');
+    setManualSignificance('');
 
     // 展开参数列表显示新添加的项
     setCollapsed(false);
@@ -863,6 +794,16 @@ export const AIIdentifyPanel: React.FC<Props> = ({ onApplyComplete }) => {
                   </select>
                 </div>
 
+                <div className="input-group">
+                  <label>用途说明:</label>
+                  <input
+                    type="text"
+                    value={manualSignificance}
+                    onChange={(e) => setManualSignificance(e.target.value)}
+                    placeholder="如：合同甲方名称、发票金额"
+                  />
+                </div>
+
                 {/* 循环模式 */}
                 <div className="loop-config">
                   <label className="checkbox-label">
@@ -908,6 +849,7 @@ export const AIIdentifyPanel: React.FC<Props> = ({ onApplyComplete }) => {
                   setManualFormatter('');
                   setManualLoopMode(false);
                   setManualArrayPath('');
+                  setManualSignificance('');
                 }}>
                   ❌ 取消
                 </button>
