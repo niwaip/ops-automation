@@ -1706,6 +1706,35 @@ body {
   text-decoration: underline;
 }
 
+/* Generated Data Preview */
+.generated-data-preview {
+  margin-top: 12px;
+  padding: 12px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+}
+
+.generated-data-header {
+  font-size: 14px;
+  font-weight: 500;
+  color: #334155;
+  margin-bottom: 8px;
+}
+
+.generated-data-content {
+  font-size: 12px;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  background: #fff;
+  padding: 8px;
+  border-radius: 4px;
+  border: 1px solid #e2e8f0;
+  color: #475569;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
 /* Generate Guide Button */
 .generate-guide-btn {
   background: #dbeafe;
