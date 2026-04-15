@@ -354,6 +354,27 @@ class CarboneAPI {
   }
 
   /**
+   * AI生成参数数据
+   * 根据用户描述和Skill Guide生成具体的参数值
+   */
+  async generateParameters(request: {
+    description: string;  // 用户描述/元数据内容
+    skill?: any;
+    skillId?: string;
+  }): Promise<{
+    success: boolean;
+    generatedData?: any;
+    error?: string;
+  }> {
+    const response = await axios.post(
+      `${this.baseUrl}/studio/generate-parameters`,
+      request,
+      getAxiosConfig(this.baseUrl, { timeout: 120000 })
+    );
+    return response.data;
+  }
+
+  /**
    * 保存完整模板（包含模板文件和AI Skill）
    * 支持复用已有模版ID（从预览生成的模版）
    */

@@ -1745,6 +1745,140 @@ body {
   overflow-y: auto;
 }
 
+/* AI Generate Params Section */
+.ai-params-section {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 12px;
+  margin: 12px 0;
+}
+
+.ai-params-header {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 8px;
+}
+
+.ai-params-title {
+  font-size: 14px;
+  font-weight: 500;
+  color: #1e40af;
+}
+
+.ai-params-hint {
+  font-size: 12px;
+  color: #64748b;
+}
+
+.ai-description-input {
+  width: 100%;
+  padding: 8px 12px;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  font-size: 14px;
+  resize: vertical;
+  min-height: 60px;
+}
+
+.ai-description-input:focus {
+  outline: none;
+  border-color: #3b82f6;
+}
+
+.ai-params-buttons {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.generate-params-btn {
+  background: #8b5cf6;
+  border: 1px solid #7c3aed;
+  color: white;
+  padding: 8px 16px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.generate-params-btn:hover {
+  background: #7c3aed;
+}
+
+.generate-params-btn:disabled {
+  background: #c4b5fd;
+  color: #5b21b6;
+  cursor: not-allowed;
+}
+
+.preview-ai-btn {
+  background: #10b981;
+  border: 1px solid #059669;
+  color: white;
+  padding: 8px 16px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.preview-ai-btn:hover {
+  background: #059669;
+}
+
+.preview-ai-btn:disabled {
+  background: #6ee7b7;
+  color: #047857;
+  cursor: not-allowed;
+}
+
+.ai-generate-result {
+  padding: 10px 16px;
+  border-radius: 6px;
+  margin: 8px 0;
+  font-size: 14px;
+}
+
+.ai-generate-result.success {
+  background: #dcfce7;
+  border: 1px solid #22c55e;
+  color: #166534;
+}
+
+.ai-generate-result.error {
+  background: #fee2e2;
+  border: 1px solid #ef4444;
+  color: #991b1b;
+}
+
+.ai-params-preview {
+  margin-top: 12px;
+  padding: 12px;
+  background: #eff6ff;
+  border: 1px solid #3b82f6;
+  border-radius: 6px;
+}
+
+.ai-params-preview-header {
+  font-size: 14px;
+  font-weight: 500;
+  color: #1e40af;
+  margin-bottom: 8px;
+}
+
+.ai-params-content {
+  font-size: 12px;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  background: #fff;
+  padding: 8px;
+  border-radius: 4px;
+  color: #475569;
+  max-height: 300px;
+  overflow-y: auto;
+}
+
 /* Generate Guide Button */
 .generate-guide-btn {
   background: #dbeafe;

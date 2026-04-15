@@ -2104,6 +2104,66 @@ export class StudioController {
   }
 
   /**
+   * AI生成参数数据
+   * 根据用户描述和Skill Guide，调用AI生成具体的参数值
+   */
+  @Post('generate-parameters')
+  @ApiOperation({ summary: 'Generate parameters from user description using AI and Skill Guide' })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        description: { type: 'string', description: '用户描述/元数据内容' },
+        skill: { type: 'object', description: 'AI Skill guide' },
+        skillId: { type: 'string', description: 'AI Skill ID (if skill not provided)' },
+      },
+    },
+  })
+  async generateParameters(
+    @Body() body: {
+      description: string;
+      skill?: any;
+      skillId?: string;
+    },
+  ): Promise<{
+    success: boolean;
+    generatedData?: any;
+    error?: string;
+  }> {
+    try {
+      // 获取skill
+      let skill = body.skill;
+      if (body.skillId && !skill) {
+        const skillPath = path.join(this.templatesDir, `skill_${body.skillId}.json`);
+        if (fs.existsSync(skillPath)) {
+          skill = JSON.parse(fs.readFileSync(skillPath, 'utf-8'));
+        }
+      }
+
+      if (!skill) {
+        return { success: false, error: 'Skill not found' };
+      }
+
+      // 调用AI生成参数
+      const generatedData = await this.aiIdentifierService.generateParametersFromDescription(
+        body.description,
+        skill
+      );
+
+      return {
+        success: true,
+        generatedData,
+      };
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      return {
+        success: false,
+        error: message,
+      };
+    }
+  }
+
+  /**
    * 保存完整模板（包含模板文件和AI Skill）
    */
   @Post('save-template-full')

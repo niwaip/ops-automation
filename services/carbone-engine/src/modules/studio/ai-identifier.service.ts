@@ -2341,6 +2341,70 @@ ${blankList}
   }
 
   /**
+   * 根据用户描述和Skill Guide生成具体的参数数据
+   * 用户描述示例："需要和北京市朝阳区的xx公司签订关于yy项目的保密协议，为期3年，签订日是今天"
+   */
+  async generateParametersFromDescription(description: string, skill: any): Promise<any> {
+    this.logger.log(`Generating parameters from description: ${description}`);
+
+    // 构建参数列表描述
+    const parameters = skill.parameters || [];
+    const paramList = parameters.map(p => {
+      return `- ${p.name}: ${p.usage || '需要填写'} (类型: ${p.dataType || 'text'})`;
+    }).join('\n');
+
+    // 构建提示
+    const prompt = `你是一个文档数据生成助手。用户需要生成一份文档，请根据用户的描述和参数定义，生成具体的参数值。
+
+用户描述：
+${description}
+
+需要填充的参数列表：
+${paramList}
+
+请根据用户描述，提取或推断出每个参数的具体值。返回一个JSON对象，格式如下：
+{
+  "partyA": {
+    "name": "从描述中提取的公司名称",
+    "address": "从描述中提取的地址"
+  },
+  "project": {
+    "name": "从描述中提取的项目名称"
+  },
+  ...
+}
+
+注意事项：
+1. 如果描述中没有明确提到某个参数，请根据上下文合理推断或使用合理的示例值
+2. 日期类参数，如果提到"今天"，使用当前日期格式YYYY-MM-DD
+3. 年份、月份、日期分别填写对应数字
+4. 地址信息要完整，包括省市街道
+5. 名称信息要准确
+6. 只返回JSON对象，不要有任何解释文字`;
+
+    // 调用AI服务
+    const aiResponse = await this.callAIService(prompt);
+
+    // 解析返回结果
+    let generatedData = aiResponse;
+
+    // 如果返回是字符串，尝试解析
+    if (typeof aiResponse === 'string') {
+      try {
+        // 移除可能的markdown包装
+        let content = aiResponse.replace(/^```json\s*/i, '').replace(/\s*```$/i, '');
+        generatedData = JSON.parse(content);
+      } catch (e) {
+        this.logger.error(`Failed to parse AI response: ${e}`);
+        throw new Error('Failed to parse AI generated parameters');
+      }
+    }
+
+    this.logger.log(`Generated parameters: ${JSON.stringify(generatedData, null, 2)}`);
+    return generatedData;
+  }
+
+  /**
    * 推断字段类型
    */
   private inferFieldType(name: string, originalText: string): string {

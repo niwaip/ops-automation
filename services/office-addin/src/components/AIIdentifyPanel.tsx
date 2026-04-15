@@ -85,6 +85,12 @@ export const AIIdentifyPanel: React.FC<Props> = ({ onApplyComplete }) => {
   const [previewResult, setPreviewResult] = useState<{ success: boolean; message: string; previewUrl?: string; downloadUrl?: string; generatedData?: any } | null>(null);
   const [isPreviewing, setIsPreviewing] = useState(false);
 
+  // AI生成参数状态
+  const [aiDescription, setAiDescription] = useState('');  // 用户输入的描述
+  const [aiGeneratedData, setAiGeneratedData] = useState<any>(null);  // AI生成的参数数据
+  const [isGeneratingParams, setIsGeneratingParams] = useState(false);  // 正在生成
+  const [aiGenerateResult, setAiGenerateResult] = useState<{ success: boolean; message: string } | null>(null);
+
   // 暂存副本状态（保存到后端的完整副本）
   const [draftId, setDraftId] = useState<string | null>(null);  // 暂存副本ID
   const [draftInfo, setDraftInfo] = useState<{ templateType: string; parameterCount: number; savedAt: string } | null>(null);
@@ -513,6 +519,97 @@ export const AIIdentifyPanel: React.FC<Props> = ({ onApplyComplete }) => {
           generatedData: result.generatedData
         });
         addDebugLog('info', `✅ 预览验证成功`, `下载链接: ${result.downloadUrl}`);
+      } else {
+        setPreviewResult({ success: false, message: `预览失败: ${result.error || '未知错误'}` });
+        addDebugLog('error', `预览失败`, result.error || '未知错误');
+      }
+    } catch (error: any) {
+      setPreviewResult({ success: false, message: `预览失败: ${error.message}` });
+      addDebugLog('error', `预览失败`, error.message);
+    } finally {
+      setIsPreviewing(false);
+    }
+  };
+
+  /**
+   * AI生成参数
+   * 根据用户描述和Skill Guide生成具体的参数值
+   */
+  const handleGenerateParameters = async () => {
+    if (!aiDescription.trim()) {
+      setAiGenerateResult({ success: false, message: '请输入描述内容' });
+      return;
+    }
+
+    if (!aiSkillGuide) {
+      setAiGenerateResult({ success: false, message: '请先生成AI指南' });
+      return;
+    }
+
+    setIsGeneratingParams(true);
+    setAiGenerateResult(null);
+    addDebugLog('info', `AI生成参数`, `描述: ${aiDescription.substring(0, 50)}...`);
+
+    try {
+      carboneAPI.setBaseUrl(apiBaseUrl);
+
+      const result = await carboneAPI.generateParameters({
+        description: aiDescription,
+        skill: aiSkillGuide,
+      });
+
+      if (result.success && result.generatedData) {
+        setAiGeneratedData(result.generatedData);
+        setAiGenerateResult({ success: true, message: '✅ 参数生成成功！' });
+        addDebugLog('info', `✅ 参数生成成功`, JSON.stringify(result.generatedData, null, 2));
+      } else {
+        setAiGenerateResult({ success: false, message: `生成失败: ${result.error || '未知错误'}` });
+        addDebugLog('error', `生成失败`, result.error || '未知错误');
+      }
+    } catch (error: any) {
+      setAiGenerateResult({ success: false, message: `生成失败: ${error.message}` });
+      addDebugLog('error', `生成失败`, error.message);
+    } finally {
+      setIsGeneratingParams(false);
+    }
+  };
+
+  /**
+   * 使用AI生成的参数进行预览验证
+   */
+  const handlePreviewWithAIParams = async () => {
+    if (!aiGeneratedData) {
+      setPreviewResult({ success: false, message: '请先生成参数' });
+      return;
+    }
+
+    if (!draftId) {
+      setPreviewResult({ success: false, message: '请先暂存副本' });
+      return;
+    }
+
+    setIsPreviewing(true);
+    setPreviewResult(null);
+    addDebugLog('info', `使用AI参数预览`, `参数: ${JSON.stringify(aiGeneratedData, null, 2).substring(0, 100)}...`);
+
+    try {
+      carboneAPI.setBaseUrl(apiBaseUrl);
+
+      const result = await carboneAPI.previewWithSkill({
+        templateId: draftId,
+        skill: aiSkillGuide,
+        simulatedData: aiGeneratedData,  // 使用AI生成的参数
+      });
+
+      if (result.success) {
+        setPreviewResult({
+          success: true,
+          message: '✅ 预览验证成功！（使用AI生成的参数）',
+          previewUrl: result.previewUrl,
+          downloadUrl: result.downloadUrl,
+          generatedData: aiGeneratedData
+        });
+        addDebugLog('info', `✅ 预览成功`, `下载链接: ${result.downloadUrl}`);
       } else {
         setPreviewResult({ success: false, message: `预览失败: ${result.error || '未知错误'}` });
         addDebugLog('error', `预览失败`, result.error || '未知错误');
@@ -1238,6 +1335,54 @@ export const AIIdentifyPanel: React.FC<Props> = ({ onApplyComplete }) => {
           {aiSkillGuide.skillGuideMarkdown && (
             <div className="ai-guide-summary">
               <pre>{aiSkillGuide.skillGuideMarkdown.substring(0, 300)}...</pre>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* AI生成参数区域 */}
+      {aiSkillGuide && (
+        <div className="ai-params-section">
+          <div className="ai-params-header">
+            <span className="ai-params-title">🤖 AI生成替换参数</span>
+            <span className="ai-params-hint">输入描述，AI将根据Skill Guide生成参数</span>
+          </div>
+          <textarea
+            className="ai-description-input"
+            placeholder="例如：需要和北京市朝阳区的xx公司签订关于yy项目的保密协议，为期3年，签订日是今天"
+            value={aiDescription}
+            onChange={(e) => setAiDescription(e.target.value)}
+            rows={3}
+          />
+          <div className="ai-params-buttons">
+            <button
+              className="generate-params-btn"
+              onClick={handleGenerateParameters}
+              disabled={isGeneratingParams || !aiDescription.trim()}
+            >
+              {isGeneratingParams ? '⏳ 生成中...' : '🤖 生成参数'}
+            </button>
+            {aiGeneratedData && (
+              <button
+                className="preview-ai-btn"
+                onClick={handlePreviewWithAIParams}
+                disabled={isPreviewing || !draftId}
+              >
+                {isPreviewing ? '⏳ 预览中...' : '👁️ 用AI参数预览'}
+              </button>
+            )}
+          </div>
+          {/* AI生成结果 */}
+          {aiGenerateResult && (
+            <div className={`ai-generate-result ${aiGenerateResult.success ? 'success' : 'error'}`}>
+              {aiGenerateResult.message}
+            </div>
+          )}
+          {/* AI生成的参数显示 */}
+          {aiGeneratedData && (
+            <div className="ai-params-preview">
+              <div className="ai-params-preview-header">📊 AI生成的参数值：</div>
+              <pre className="ai-params-content">{JSON.stringify(aiGeneratedData, null, 2)}</pre>
             </div>
           )}
         </div>
