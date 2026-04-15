@@ -86,6 +86,10 @@ export const AIIdentifyPanel: React.FC<Props> = ({ onApplyComplete }) => {
   const [isLoadingStaged, setIsLoadingStaged] = useState(false);
   const [stagedDataInfo, setStagedDataInfo] = useState<{ templateType: string; parameterCount: number; savedAt: string } | null>(null);
 
+  // 预览模版状态
+  const [previewResult, setPreviewResult] = useState<{ success: boolean; message: string; previewUrl?: string } | null>(null);
+  const [isPreviewing, setIsPreviewing] = useState(false);
+
   // 检查是否有暂存数据
   useEffect(() => {
     const stagedData = localStorage.getItem('ai-template-staged');
@@ -356,6 +360,78 @@ export const AIIdentifyPanel: React.FC<Props> = ({ onApplyComplete }) => {
       }
     } catch (error: any) {
       addDebugLog('error', `连接失败`, error.message);
+    }
+  };
+
+  /**
+   * 预览模版（使用模版配置页的逻辑）
+   */
+  const handlePreviewTemplate = async () => {
+    if (suggestions.length === 0) {
+      setPreviewResult({ success: false, message: '请先进行AI识别或手动添加参数' });
+      return;
+    }
+
+    setIsPreviewing(true);
+    setPreviewResult(null);
+    addDebugLog('info', `预览模版`, `参数数量: ${suggestions.length}`);
+
+    try {
+      // 获取当前文档内容
+      let documentContent = '';
+      let format = 'docx';
+
+      if (officeType === 'word') {
+        documentContent = await OfficeHelper.Word.getDocumentContent();
+        format = 'docx';
+      } else if (officeType === 'excel') {
+        documentContent = await OfficeHelper.Excel.getDocumentContent();
+        format = 'xlsx';
+      } else {
+        documentContent = await OfficeHelper.PowerPoint.getDocumentContent();
+        format = 'pptx';
+      }
+
+      // 构建templateConfig用于预览
+      const configForPreview = {
+        templateType: selectedTemplateType,
+        variables: suggestions.reduce((acc, s) => {
+          const varPath = s.suggestedName.replace(/[{}]/g, '').replace(/^d\./, '');
+          acc[varPath] = s.originalText || '';
+          return acc;
+        }, {} as Record<string, string>),
+        loops: suggestions
+          .filter(s => s.details?.fieldType === 'loop')
+          .map(s => ({
+            arrayPath: s.details?.arrayPath || '',
+            startMarker: `{#${s.details?.arrayPath || ''}}`,
+            endMarker: `{/${s.details?.arrayPath || ''}}`
+          }))
+      };
+
+      carboneAPI.setBaseUrl(apiBaseUrl);
+      const result = await carboneAPI.previewRenderContent(
+        documentContent,
+        configForPreview,
+        format
+      );
+
+      if (result.success) {
+        setPreviewResult({
+          success: true,
+          message: '✅ 预览生成成功！',
+          previewUrl: result.previewUrl
+        });
+        addDebugLog('info', `✅ 预览成功`, `预览链接: ${result.previewUrl}`);
+      } else {
+        setPreviewResult({ success: false, message: `预览失败: ${result.error || '未知错误'}` });
+        addDebugLog('error', `预览失败`, result.error || '未知错误');
+      }
+    } catch (error: any) {
+      setPreviewResult({ success: false, message: `预览失败: ${error.message}` });
+      addDebugLog('error', `预览失败`, error.message);
+    } finally {
+      setIsPreviewing(false);
     }
   };
 
@@ -1077,6 +1153,48 @@ export const AIIdentifyPanel: React.FC<Props> = ({ onApplyComplete }) => {
         </div>
       )}
 
+      {/* 验证模版按钮 */}
+      <button
+        className="verify-template-btn"
+        onClick={handleVerifyTemplate}
+        disabled={isAnalyzing || isVerifying || suggestions.length === 0}
+      >
+        {isVerifying ? '⏳ 验证中...' : '🔍 验证模版'}
+      </button>
+
+      {/* 验证结果反馈 */}
+      {verifyResult && (
+        <div className={`verify-result ${verifyResult.valid ? 'success' : 'error'}`}>
+          <span className="verify-result-message">{verifyResult.message}</span>
+          {verifyResult.warnings && verifyResult.warnings.length > 0 && (
+            <div className="verify-result-warnings">
+              {verifyResult.warnings.map((w, i) => <div key={i}>{w}</div>)}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* 预览模版按钮 */}
+      <button
+        className="preview-template-btn"
+        onClick={handlePreviewTemplate}
+        disabled={isAnalyzing || isPreviewing || suggestions.length === 0}
+      >
+        {isPreviewing ? '⏳ 预览中...' : '👁️ 预览模版'}
+      </button>
+
+      {/* 预览结果反馈 */}
+      {previewResult && (
+        <div className={`preview-result ${previewResult.success ? 'success' : 'error'}`}>
+          {previewResult.message}
+          {previewResult.previewUrl && (
+            <a href={previewResult.previewUrl} target="_blank" rel="noopener noreferrer" className="preview-link">
+              打开预览
+            </a>
+          )}
+        </div>
+      )}
+
       {/* 保存模版和指南按钮组 */}
       <div className="save-buttons-group">
         <button
@@ -1111,27 +1229,6 @@ export const AIIdentifyPanel: React.FC<Props> = ({ onApplyComplete }) => {
       {saveResult && (
         <div className={`save-result ${saveResult.success ? 'success' : 'error'}`}>
           {saveResult.message}
-        </div>
-      )}
-
-      {/* 验证模版按钮 */}
-      <button
-        className="verify-template-btn"
-        onClick={handleVerifyTemplate}
-        disabled={isAnalyzing || isVerifying || suggestions.length === 0}
-      >
-        {isVerifying ? '⏳ 验证中...' : '🔍 验证模版'}
-      </button>
-
-      {/* 验证结果反馈 */}
-      {verifyResult && (
-        <div className={`verify-result ${verifyResult.valid ? 'success' : 'error'}`}>
-          <span className="verify-result-message">{verifyResult.message}</span>
-          {verifyResult.warnings && verifyResult.warnings.length > 0 && (
-            <div className="verify-result-warnings">
-              {verifyResult.warnings.map((w, i) => <div key={i}>{w}</div>)}
-            </div>
-          )}
         </div>
       )}
 

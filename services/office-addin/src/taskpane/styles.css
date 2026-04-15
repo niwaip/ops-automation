@@ -1658,6 +1658,54 @@ body {
   opacity: 0.8;
 }
 
+/* Preview Template Button */
+.preview-template-btn {
+  background: #e0e7ff;
+  border: 1px solid #6366f1;
+  color: #4338ca;
+  padding: 8px 16px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.preview-template-btn:hover {
+  background: #c7d2fe;
+}
+
+.preview-template-btn:disabled {
+  background: #f5f3ff;
+  color: #6366f1;
+  cursor: not-allowed;
+}
+
+/* Preview Result Feedback */
+.preview-result {
+  padding: 10px 16px;
+  border-radius: 6px;
+  margin: 8px 0;
+  font-size: 14px;
+}
+
+.preview-result.success {
+  background: #dbeafe;
+  border: 1px solid #3b82f6;
+  color: #1e40af;
+}
+
+.preview-result.error {
+  background: #fee2e2;
+  border: 1px solid #ef4444;
+  color: #991b1b;
+}
+
+.preview-link {
+  display: inline-block;
+  margin-left: 8px;
+  color: #3b82f6;
+  text-decoration: underline;
+}
+
 /* Generate Guide Button */
 .generate-guide-btn {
   background: #dbeafe;
