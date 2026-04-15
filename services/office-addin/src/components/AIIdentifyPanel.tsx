@@ -69,6 +69,18 @@ export const AIIdentifyPanel: React.FC<Props> = ({ onApplyComplete }) => {
   const [isGeneratingAI, setIsGeneratingAI] = useState(false);  // AI生成变量名状态
   const [manualSignificance, setManualSignificance] = useState('');  // 用途说明
 
+  // 验证模版状态
+  const [verifyResult, setVerifyResult] = useState<{ valid: boolean; message: string; warnings?: string[] } | null>(null);
+  const [isVerifying, setIsVerifying] = useState(false);
+
+  // AI指南状态
+  const [aiSkillGuide, setAiSkillGuide] = useState<any>(null);
+  const [isGeneratingGuide, setIsGeneratingGuide] = useState(false);
+
+  // 保存状态
+  const [saveResult, setSaveResult] = useState<{ success: boolean; message: string } | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
+
   // 动态更新加载消息（仅用于旧API的模拟进度）
   // 注意：当前HTTP API不支持实时进度，这只是dots动画
   // loadingProgress 由 handleAnalyze 中的 updateProgress 控制
@@ -267,10 +279,12 @@ export const AIIdentifyPanel: React.FC<Props> = ({ onApplyComplete }) => {
    */
   const handleVerifyTemplate = async () => {
     if (suggestions.length === 0) {
-      addDebugLog('warn', '请先进行AI识别或手动添加参数');
+      setVerifyResult({ valid: false, message: '请先进行AI识别或手动添加参数' });
       return;
     }
 
+    setIsVerifying(true);
+    setVerifyResult(null);
     addDebugLog('info', `验证模版配置`, `参数数量: ${suggestions.length}`);
 
     try {
@@ -297,15 +311,107 @@ export const AIIdentifyPanel: React.FC<Props> = ({ onApplyComplete }) => {
       const result = await carboneAPI.validateTemplate(JSON.stringify(configToValidate));
 
       if (result.valid) {
+        setVerifyResult({ valid: true, message: '✅ 验证成功！模版配置有效', warnings: result.warnings });
         addDebugLog('info', `✅ 验证成功`, `模版配置有效`);
         if (result.warnings && result.warnings.length > 0) {
           addDebugLog('warn', `⚠️ 警告`, result.warnings.join('\n'));
         }
       } else {
+        setVerifyResult({ valid: false, message: '❌ 验证失败', warnings: result.errors });
         addDebugLog('error', `❌ 验证失败`, result.errors?.join('\n') || '未知错误');
       }
     } catch (error: any) {
+      setVerifyResult({ valid: false, message: `验证失败: ${error.message}` });
       addDebugLog('error', `验证失败`, error.message);
+    } finally {
+      setIsVerifying(false);
+    }
+  };
+
+  /**
+   * 生成AI Skill Guide
+   */
+  const handleGenerateAISkillGuide = async () => {
+    if (suggestions.length === 0) {
+      addDebugLog('warn', '请先进行AI识别或手动添加参数');
+      return;
+    }
+
+    setIsGeneratingGuide(true);
+    addDebugLog('info', `生成AI Skill Guide`, `参数数量: ${suggestions.length}`);
+
+    try {
+      carboneAPI.setBaseUrl(apiBaseUrl);
+
+      const result = await carboneAPI.generateSkill({
+        suggestions: suggestions.map(s => ({ ...s, applied: true })),
+        templateConfig,
+        templateType: selectedTemplateType
+      });
+
+      if (result.success && result.skill) {
+        setAiSkillGuide(result.skill);
+        addDebugLog('info', `✅ AI指南生成成功`, `包含 ${result.skill.parameters?.length || 0} 个参数`);
+      } else {
+        addDebugLog('error', `生成AI指南失败`, result.error || '未知错误');
+      }
+    } catch (error: any) {
+      addDebugLog('error', `生成AI指南失败`, error.message);
+    } finally {
+      setIsGeneratingGuide(false);
+    }
+  };
+
+  /**
+   * 保存模版和AI指南
+   */
+  const handleSaveTemplateAndGuide = async () => {
+    if (!aiSkillGuide) {
+      setSaveResult({ success: false, message: '请先生成AI指南' });
+      return;
+    }
+
+    setIsSaving(true);
+    setSaveResult(null);
+    addDebugLog('info', `保存模版和AI指南`);
+
+    try {
+      // 获取当前文档内容（根据officeType使用对应API）
+      let documentContent = '';
+      if (officeType === 'word') {
+        documentContent = await OfficeHelper.Word.getDocumentContent();
+      } else if (officeType === 'excel') {
+        documentContent = await OfficeHelper.Excel.getDocumentContent();
+      } else {
+        documentContent = await OfficeHelper.PowerPoint.getDocumentContent();
+      }
+
+      carboneAPI.setBaseUrl(apiBaseUrl);
+
+      const result = await carboneAPI.saveTemplateFull({
+        documentContent,
+        suggestions: suggestions,
+        templateConfig,
+        skill: aiSkillGuide,
+        format: officeType === 'excel' ? 'xlsx' : 'docx',
+        templateName: `${selectedTemplateType}-template-${Date.now()}`
+      });
+
+      if (result.success) {
+        setSaveResult({
+          success: true,
+          message: `✅ 保存成功！模板ID: ${result.templateId || 'N/A'}, 指南ID: ${result.skillId || 'N/A'}`
+        });
+        addDebugLog('info', `✅ 保存成功`, `模板ID: ${result.templateId}, 指南ID: ${result.skillId}`);
+      } else {
+        setSaveResult({ success: false, message: `保存失败: ${result.error || '未知错误'}` });
+        addDebugLog('error', `保存失败`, result.error || '未知错误');
+      }
+    } catch (error: any) {
+      setSaveResult({ success: false, message: `保存失败: ${error.message}` });
+      addDebugLog('error', `保存失败`, error.message);
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -863,10 +969,64 @@ export const AIIdentifyPanel: React.FC<Props> = ({ onApplyComplete }) => {
       <button
         className="verify-template-btn"
         onClick={handleVerifyTemplate}
-        disabled={isAnalyzing || suggestions.length === 0}
+        disabled={isAnalyzing || isVerifying || suggestions.length === 0}
       >
-        🔍 验证模版
+        {isVerifying ? '⏳ 验证中...' : '🔍 验证模版'}
       </button>
+
+      {/* 验证结果反馈 */}
+      {verifyResult && (
+        <div className={`verify-result ${verifyResult.valid ? 'success' : 'error'}`}>
+          <span className="verify-result-message">{verifyResult.message}</span>
+          {verifyResult.warnings && verifyResult.warnings.length > 0 && (
+            <div className="verify-result-warnings">
+              {verifyResult.warnings.map((w, i) => <div key={i}>{w}</div>)}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* 生成AI指南按钮 */}
+      <button
+        className="generate-guide-btn"
+        onClick={handleGenerateAISkillGuide}
+        disabled={isAnalyzing || isGeneratingGuide || suggestions.length === 0}
+      >
+        {isGeneratingGuide ? '⏳ 生成中...' : '📋 生成AI指南'}
+      </button>
+
+      {/* AI指南预览 */}
+      {aiSkillGuide && (
+        <div className="ai-guide-preview">
+          <div className="ai-guide-header">
+            <span className="ai-guide-title">✅ AI指南已生成</span>
+            <span className="ai-guide-info">
+              {aiSkillGuide.parameters?.length || 0} 个参数
+            </span>
+          </div>
+          {aiSkillGuide.skillGuideMarkdown && (
+            <div className="ai-guide-summary">
+              <pre>{aiSkillGuide.skillGuideMarkdown.substring(0, 300)}...</pre>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* 保存模版和指南按钮 */}
+      <button
+        className="save-template-btn"
+        onClick={handleSaveTemplateAndGuide}
+        disabled={isSaving || !aiSkillGuide}
+      >
+        {isSaving ? '⏳ 保存中...' : '💾 保存模版和指南'}
+      </button>
+
+      {/* 保存结果反馈 */}
+      {saveResult && (
+        <div className={`save-result ${saveResult.success ? 'success' : 'error'}`}>
+          {saveResult.message}
+        </div>
+      )}
 
       {/* 调试面板开关 */}
       <button
