@@ -262,7 +262,7 @@ export const AIIdentifyPanel: React.FC<Props> = ({ onApplyComplete }) => {
   };
 
   /**
-   * 验证模版配置
+   * 验证模版配置（简化版：直接检查参数格式）
    */
   const handleVerifyTemplate = async () => {
     if (suggestions.length === 0) {
@@ -271,30 +271,39 @@ export const AIIdentifyPanel: React.FC<Props> = ({ onApplyComplete }) => {
     }
 
     addDebugLog('info', `验证模版配置`, `参数数量: ${suggestions.length}`);
-    try {
-      carboneAPI.setBaseUrl(apiBaseUrl);
 
-      // 构建模版配置
-      const config = {
-        templateType: selectedTemplateType,
-        variables: suggestions.map(s => ({
-          path: s.suggestedName,
-          sampleValue: s.originalText
-        }))
-      };
+    // 本地验证参数格式
+    const errors: string[] = [];
+    const warnings: string[] = [];
 
-      const result = await carboneAPI.validateTemplate(JSON.stringify(config));
+    suggestions.forEach((s, index) => {
+      const name = s.suggestedName;
 
-      if (result.valid) {
-        addDebugLog('info', `验证成功`, `模版配置有效`);
-        if (result.warnings.length > 0) {
-          addDebugLog('warn', `警告`, result.warnings.join('\n'));
-        }
+      // 检查是否包含有效的Carbone标记格式
+      if (!name || name.trim() === '') {
+        errors.push(`参数 ${index + 1}: 变量名为空`);
       } else {
-        addDebugLog('error', `验证失败`, result.errors.join('\n'));
+        // 检查是否包含 {d.xxx} 格式
+        if (!name.includes('{d.') && !name.includes('{#')) {
+          warnings.push(`参数 ${index + 1} (${name}): 可能不是有效的Carbone变量格式`);
+        }
+
+        // 检查是否包含非法字符
+        if (name.includes(' ') || name.includes('\n')) {
+          errors.push(`参数 ${index + 1} (${name}): 包含非法字符（空格或换行）`);
+        }
       }
-    } catch (error: any) {
-      addDebugLog('error', `验证失败`, error.message);
+    });
+
+    if (errors.length === 0 && warnings.length === 0) {
+      addDebugLog('info', `✅ 验证成功`, `所有 ${suggestions.length} 个参数格式正确`);
+    } else {
+      if (errors.length > 0) {
+        addDebugLog('error', `❌ 验证失败`, `发现 ${errors.length} 个错误:\n${errors.join('\n')}`);
+      }
+      if (warnings.length > 0) {
+        addDebugLog('warn', `⚠️ 警告`, `发现 ${warnings.length} 个警告:\n${warnings.join('\n')}`);
+      }
     }
   };
 
@@ -916,26 +925,6 @@ export const AIIdentifyPanel: React.FC<Props> = ({ onApplyComplete }) => {
       >
         🔍 验证模版
       </button>
-
-      {/* 测试连接按钮 */}
-      <button
-        className="test-connection-btn"
-        onClick={handleTestConnection}
-        disabled={isAnalyzing}
-      >
-        🔌 测试连接
-      </button>
-
-      {/* 测试下划线按钮（调试专用） */}
-      {officeType === 'word' && (
-        <button
-          className="test-underline-btn"
-          onClick={handleTestUnderline}
-          disabled={isAnalyzing}
-        >
-          🔍 测试下划线
-        </button>
-      )}
 
       {/* 调试面板开关 */}
       <button
