@@ -16,6 +16,7 @@ import ReportTemplateDetailPage from './pages/ReportTemplateDetailPage';
 import ReportTemplateCreatePage from './pages/ReportTemplateCreatePage';
 import ReportListPage from './pages/ReportListPage';
 import ReportDetailPage from './pages/ReportDetailPage';
+import CarboneTemplateListPage from './pages/CarboneTemplateListPage';
 
 const PrivateRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { isAuthenticated } = useAuthStore();
@@ -60,6 +61,7 @@ function App() {
           <Route path="report-templates/:id/edit" element={<ReportTemplateCreatePage />} />
           <Route path="reports" element={<ReportListPage />} />
           <Route path="reports/:id" element={<ReportDetailPage />} />
+          <Route path="carbone-templates" element={<CarboneTemplateListPage />} />
           <Route
             path="admin/users"
             element={

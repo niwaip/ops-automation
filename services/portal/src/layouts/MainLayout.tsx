@@ -17,6 +17,7 @@ import {
   PlusCircleOutlined,
   FilePdfOutlined,
   BarChartOutlined,
+  FileWordOutlined,
 } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
 import { useAuthStore } from '../store/authStore';
@@ -65,6 +66,11 @@ const MainLayout: React.FC = () => {
       key: '/reports',
       icon: <BarChartOutlined />,
       label: t('reports'),
+    },
+    {
+      key: '/carbone-templates',
+      icon: <FileWordOutlined />,
+      label: t('carboneTemplates'),
     },
     {
       key: '/recorder',
@@ -135,6 +141,7 @@ const MainLayout: React.FC = () => {
     if (path.startsWith('/templates')) return '/templates';
     if (path.startsWith('/report-templates')) return '/report-templates';
     if (path.startsWith('/reports')) return '/reports';
+    if (path.startsWith('/carbone-templates')) return '/carbone-templates';
     if (path.startsWith('/admin/users')) return '/admin/users';
     if (path.startsWith('/admin/models')) return '/admin/models';
     return path;

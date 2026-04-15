@@ -9,8 +9,6 @@ import {
   Get,
   Body,
   Param,
-  UploadedFile,
-  UseInterceptors,
   HttpException,
   HttpStatus,
   StreamableFile,
@@ -18,8 +16,7 @@ import {
   Res,
   Query,
 } from '@nestjs/common';
-import { FileInterceptor } from '@nestjs/platform-express';
-import { ApiTags, ApiOperation, ApiConsumes, ApiBody, ApiResponse, ApiQuery } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiBody, ApiResponse, ApiQuery } from '@nestjs/swagger';
 import { Response } from 'express';
 import * as fs from 'fs';
 import * as path from 'path';
@@ -189,77 +186,6 @@ export class StudioController {
     }
     if (!fs.existsSync(this.outputsDir)) {
       fs.mkdirSync(this.outputsDir, { recursive: true });
-    }
-  }
-
-  /**
-   * 上传模板文件
-   */
-  @Post('upload')
-  @ApiOperation({ summary: 'Upload template file (docx/xlsx/pptx/html)' })
-  @ApiConsumes('multipart/form-data')
-  @ApiBody({ schema: { type: 'object', properties: { file: { type: 'string', format: 'binary' } } } })
-  @UseInterceptors(FileInterceptor('file'))
-  async uploadTemplate(
-    @UploadedFile() file: { buffer: Buffer; originalname: string },
-  ): Promise<TemplateResponse> {
-    if (!file) {
-      throw new HttpException('No file uploaded', HttpStatus.BAD_REQUEST);
-    }
-
-    // 修复中文文件名编码问题 (multer默认使用latin1编码)
-    let fileName = file.originalname;
-    try {
-      fileName = Buffer.from(file.originalname, 'latin1').toString('utf8');
-    } catch {
-      // 如果转换失败，使用原始文件名
-    }
-
-    // 验证文件格式
-    const validFormats = ['.docx', '.xlsx', '.pptx', '.html', '.htm'];
-    const ext = path.extname(fileName).toLowerCase();
-    if (!validFormats.includes(ext)) {
-      throw new HttpException(
-        `Invalid file format. Supported: ${validFormats.join(', ')}`,
-        HttpStatus.BAD_REQUEST
-      );
-    }
-
-    try {
-      // 解析模板
-      const info = await this.engine.parseTemplateBuffer(file.buffer, fileName);
-
-      // 保存模板文件
-      const templateId = uuidv4();
-      const templatePath = path.join(this.templatesDir, `${templateId}${ext}`);
-      fs.writeFileSync(templatePath, file.buffer);
-
-      // 保存元数据
-      const metaPath = path.join(this.templatesDir, `${templateId}.json`);
-      fs.writeFileSync(metaPath, JSON.stringify({
-        id: templateId,
-        fileName: fileName,
-        format: info.format,
-        size: info.size,
-        variables: info.variables,
-        loops: info.loops,
-        uploadedAt: new Date().toISOString()
-      }));
-
-      return {
-        id: templateId,
-        fileName: fileName,
-        format: info.format,
-        size: info.size,
-        variables: info.variables,
-        loops: info.loops
-      };
-    } catch (error: unknown) {
-      const message = error instanceof Error ? error.message : 'Unknown error';
-      throw new HttpException(
-        `Failed to parse template: ${message}`,
-        HttpStatus.INTERNAL_SERVER_ERROR
-      );
     }
   }
 
@@ -879,7 +805,50 @@ export class StudioController {
       fs.unlinkSync(metaPath);
     }
 
+    // 同时删除关联的skill文件
+    if (meta.skillId) {
+      const skillPath = path.join(this.templatesDir, `skill_${meta.skillId}.json`);
+      if (fs.existsSync(skillPath)) {
+        fs.unlinkSync(skillPath);
+      }
+    }
+
     return { success: true };
+  }
+
+  /**
+   * 重命名模板
+   */
+  @Post('templates/:id/rename')
+  @ApiOperation({ summary: 'Rename template' })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        newName: { type: 'string', description: 'New template name' },
+      },
+      required: ['newName'],
+    },
+  })
+  async renameTemplate(
+    @Param('id') id: string,
+    @Body() body: { newName: string },
+  ): Promise<{ success: boolean; fileName: string }> {
+    const meta = this.getTemplateMeta(id);
+    const metaPath = path.join(this.templatesDir, `${id}.json`);
+
+    // 更新元数据中的fileName
+    const ext = path.extname(meta.fileName || `${id}.${meta.format}`);
+    const newFileName = body.newName.endsWith(ext) ? body.newName : `${body.newName}.${ext}`;
+
+    // 读取现有元数据并更新
+    const existingMeta = JSON.parse(fs.readFileSync(metaPath, 'utf-8'));
+    existingMeta.fileName = newFileName;
+    existingMeta.updatedAt = new Date().toISOString();
+
+    fs.writeFileSync(metaPath, JSON.stringify(existingMeta, null, 2));
+
+    return { success: true, fileName: newFileName };
   }
 
   /**
