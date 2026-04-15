@@ -583,8 +583,8 @@ export const AIIdentifyPanel: React.FC<Props> = ({ onApplyComplete }) => {
       return;
     }
 
-    if (!draftId) {
-      setPreviewResult({ success: false, message: '请先暂存副本' });
+    if (!aiSkillGuide) {
+      setPreviewResult({ success: false, message: '请先生成AI指南' });
       return;
     }
 
@@ -595,8 +595,70 @@ export const AIIdentifyPanel: React.FC<Props> = ({ onApplyComplete }) => {
     try {
       carboneAPI.setBaseUrl(apiBaseUrl);
 
+      // 如果有暂存副本ID，直接从副本预览
+      if (draftId) {
+        addDebugLog('info', `从副本预览`, `ID: ${draftId}`);
+        const result = await carboneAPI.previewWithSkill({
+          templateId: draftId,
+          skill: aiSkillGuide,
+          simulatedData: aiGeneratedData,  // 使用AI生成的参数
+        });
+
+        if (result.success) {
+          setPreviewResult({
+            success: true,
+            message: '✅ 预览验证成功！（使用AI生成的参数，从副本）',
+            previewUrl: result.previewUrl,
+            downloadUrl: result.downloadUrl,
+            generatedData: aiGeneratedData
+          });
+          addDebugLog('info', `✅ 预览成功`, `下载链接: ${result.downloadUrl}`);
+        } else {
+          setPreviewResult({ success: false, message: `预览失败: ${result.error || '未知错误'}` });
+          addDebugLog('error', `预览失败`, result.error || '未知错误');
+        }
+        return;
+      }
+
+      // 没有副本ID，需要重新获取文档并生成模版
+      addDebugLog('info', `重新生成模版预览`, `参数数量: ${suggestions.length}`);
+
+      let documentContent = '';
+      let format = 'docx';
+
+      if (officeType === 'word') {
+        const result = await OfficeHelper.Word.getDocumentFileBase64WithFallback();
+        documentContent = 'base64:' + result.base64;
+        addDebugLog('info', `文档获取方式: ${result.method}`, `有效docx: ${result.isValidDocx}`);
+        format = 'docx';
+      } else if (officeType === 'excel') {
+        const sheetData = await OfficeHelper.Excel.getSheetData();
+        documentContent = JSON.stringify(sheetData.values);
+        format = 'xlsx';
+      } else {
+        documentContent = await OfficeHelper.PowerPoint.getDocumentContent();
+        format = 'pptx';
+      }
+
+      // 先生成模板
+      const templateResult = await carboneAPI.generateTemplate({
+        documentContent,
+        suggestions: suggestions.map(s => ({ ...s, applied: true })),
+        templateConfig,
+        format,
+      });
+
+      if (!templateResult.success) {
+        setPreviewResult({ success: false, message: `模板生成失败: ${templateResult.error}` });
+        addDebugLog('error', `模板生成失败`, templateResult.error || '未知错误');
+        return;
+      }
+
+      addDebugLog('info', `模版已生成`, `ID: ${templateResult.templateId}`);
+
+      // 使用AI生成的参数预览
       const result = await carboneAPI.previewWithSkill({
-        templateId: draftId,
+        templateId: templateResult.templateId,
         skill: aiSkillGuide,
         simulatedData: aiGeneratedData,  // 使用AI生成的参数
       });
@@ -1387,7 +1449,7 @@ export const AIIdentifyPanel: React.FC<Props> = ({ onApplyComplete }) => {
               <button
                 className="preview-ai-btn"
                 onClick={handlePreviewWithAIParams}
-                disabled={isPreviewing || !draftId}
+                disabled={isPreviewing}
               >
                 {isPreviewing ? '⏳ 预览中...' : '👁️ 用AI参数预览'}
               </button>
