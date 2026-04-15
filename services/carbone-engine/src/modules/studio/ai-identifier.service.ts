@@ -2259,6 +2259,9 @@ ${blankList}
     // 根据模板类型生成特定的AI指导
     const templateDescription = this.generateTemplateDescription(templateType, documentDescription, parameters);
 
+    // 构建数据示例JSON（完整可用的数据结构）
+    const dataExampleJson = this.buildDataExampleJson(parameters);
+
     // 构建完整的skill结构
     const skill = {
       id: `skill-${Date.now()}`,
@@ -2300,6 +2303,9 @@ ${blankList}
         })),
       },
 
+      // 完整的数据示例JSON（可直接用于渲染模板）
+      dataExampleJson,
+
       // 特殊处理规则
       specialRules: {
         dateFormat: 'YYYY-MM-DD',
@@ -2323,6 +2329,9 @@ ${blankList}
 
       // AI使用提示（完整指导）
       aiInstructions: this.buildCompleteAIInstructions(templateType, parameters, documentDescription),
+
+      // 完整的Markdown格式Skill指南（自包含、可独立阅读）
+      skillGuideMarkdown: this.buildSkillGuideMarkdown(templateType, templateDescription, parameters, dataExampleJson),
 
       createdAt: new Date().toISOString(),
     };
@@ -2563,6 +2572,182 @@ ${parameters.slice(0, 5).map(p => `  "${p.name?.replace(/[:\[].*/g, '')}": "${p.
 - 日期格式统一为 YYYY-MM-DD
 - 金额保留两位小数
 - 表格数据需提供数组格式
+`;
+  }
+
+  /**
+   * 构建完整的JSON数据示例
+   * 用于展示如何构建可用的数据结构
+   */
+  private buildDataExampleJson(parameters: any[]): string {
+    // 构建嵌套的数据结构
+    const dataObj: any = {};
+
+    for (const p of parameters) {
+      const cleanName = p.name?.replace(/[:\[].*/g, '') || '';
+      const pathParts = cleanName.split('.');
+
+      // 构建嵌套路径
+      if (pathParts.length > 1) {
+        let current = dataObj;
+        for (let i = 0; i < pathParts.length - 1; i++) {
+          if (!current[pathParts[i]]) {
+            current[pathParts[i]] = {};
+          }
+          current = current[pathParts[i]];
+        }
+        current[pathParts[pathParts.length - 1]] = p.example;
+      } else {
+        dataObj[cleanName] = p.example;
+      }
+    }
+
+    return JSON.stringify(dataObj, null, 2);
+  }
+
+  /**
+   * 构建完整的Markdown格式Skill指南
+   * 自包含文档，任何人都可以阅读并生成替换参数
+   */
+  private buildSkillGuideMarkdown(
+    templateType: string,
+    templateDescription: string,
+    parameters: any[],
+    dataExampleJson: string
+  ): string {
+    const now = new Date().toISOString().split('T')[0];
+
+    // 参数表格
+    const paramTable = parameters.map(p => {
+      const varPath = p.name?.replace(/[:\[].*/g, '');
+      return `| ${varPath} | ${p.usage || '填写对应值'} | ${p.dataType} | ${p.example} | {d.${varPath}} |`;
+    }).join('\n');
+
+    // 循环参数单独列出
+    const loopParams = parameters.filter(p => p.dataType === 'loop' || p.arrayPath);
+    const loopSection = loopParams.length > 0 ? `
+## 循环数据（表格/列表）
+
+以下参数需要在数组中重复填充：
+
+${loopParams.map(p => {
+  const arrayPath = p.arrayPath || p.name?.split('.')[0] || 'items';
+  return `
+### ${arrayPath} 数组
+- **用途**: ${p.usage}
+- **Carbone语法**: \`{#d.${arrayPath}}{d.${arrayPath}.${p.name?.split('.')[1] || 'item'}}{/d.${arrayPath}}\`
+- **数据格式**: 数组，每个元素包含对应字段
+- **示例**:
+\`\`\`json
+{
+  "${arrayPath}": [
+    { "field1": "示例值1", "field2": "示例值2" },
+    { "field1": "示例值3", "field2": "示例值4" }
+  ]
+}
+\`\`\`
+`;
+}).join('\n')}
+` : '';
+
+    return `# ${templateType}模板 Skill Guide
+
+> 本文档是AI Skill的完整指南，用于指导如何生成替换参数数据。
+> 生成时间: ${now}
+
+---
+
+## 1. 模板概述
+
+${templateDescription}
+
+---
+
+## 2. Carbone变量语法说明
+
+本模板使用 **Carbone** 模板引擎，变量语法如下：
+
+| 语法 | 说明 | 示例 |
+|------|------|------|
+| \`{d.xxx}\` | 单值变量替换 | \`{d.name}\` → 张三 |
+| \`{d.xxx:formatD(YMD)}\` | 日期格式化 | \`{d.date:formatD(YMD)}\` → 2024-01-15 |
+| \`{d.xxx:formatN(2)}\` | 数字格式化（保留2位小数） | \`{d.amount:formatN(2)}\` → 10,000.00 |
+| \`{#d.xxx}...{/d.xxx}\` | 循环（数组数据） | 表格行循环 |
+
+---
+
+## 3. 参数列表
+
+本模板需要填充以下参数：
+
+| 参数路径 | 用途说明 | 数据类型 | 示例值 | Carbone语法 |
+|----------|----------|----------|--------|-------------|
+${paramTable}
+
+${loopSection}
+
+---
+
+## 4. 完整数据示例
+
+以下是可直接用于渲染模板的JSON数据结构：
+
+\`\`\`json
+${dataExampleJson}
+\`\`\`
+
+**使用说明**:
+1. 将上面的JSON数据作为 \`data\` 参数传递给Carbone渲染API
+2. 确保所有必填字段都有有效值
+3. 日期格式统一为 \`YYYY-MM-DD\`
+4. 金额字段为数值类型（不含货币符号）
+
+---
+
+## 5. 数据提取步骤
+
+按照以下步骤从原始内容中提取参数值：
+
+1. **识别关键内容**: 根据参数用途定位文档中的对应位置
+   - 例如：\`partyA.name\` → 查找"甲方"附近的名称文字
+
+2. **提取对应值**: 根据数据类型使用正确的提取方式
+   - **日期**: YYYY年MM月DD日、YYYY-MM-DD、YYYY/MM/DD 等格式
+   - **金额**: 数字+单位（元、万元）、带货币符号
+   - **名称**: 甲乙方、公司名、人名等
+   - **编号**: 合同号、发票号等唯一标识
+
+3. **验证格式**: 检查提取值是否符合参数类型要求
+
+4. **构建数据结构**: 按照第4节的数据示例格式组装JSON
+
+---
+
+## 6. API调用示例
+
+\`\`\`bash
+# 使用Carbone API渲染模板
+curl -X POST http://localhost:3000/api/carbone/render \
+  -H "Content-Type: application/json" \
+  -d '{
+    "templateId": "your-template-id",
+    "data": ${JSON.stringify(JSON.parse(dataExampleJson))}
+  }'
+\`\`\`
+
+---
+
+## 7. 注意事项
+
+- 所有必填字段必须提供有效值
+- 日期格式统一为 YYYY-MM-DD
+- 金额保留两位小数，使用逗号分隔千位
+- 表格数据需提供数组格式
+- 如参数无法提取，标记为需要用户提供
+
+---
+
+*本文档由AI自动生成，用于指导如何生成替换参数数据。*
 `;
   }
 
