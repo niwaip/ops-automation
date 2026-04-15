@@ -97,6 +97,9 @@ export const AIIdentifyPanel: React.FC<Props> = ({ onApplyComplete }) => {
   const [isSavingDraft, setIsSavingDraft] = useState(false);
   const [draftSaveResult, setDraftSaveResult] = useState<{ success: boolean; message: string } | null>(null);
 
+  // 模板名称输入
+  const [templateName, setTemplateName] = useState('');  // 用户输入的模板名称
+
   // 检查是否有暂存副本（从localStorage恢复draftId）
   useEffect(() => {
     const stagedData = localStorage.getItem('ai-template-draft');
@@ -794,16 +797,18 @@ export const AIIdentifyPanel: React.FC<Props> = ({ onApplyComplete }) => {
       carboneAPI.setBaseUrl(apiBaseUrl);
 
       // 从副本正式命名保存
+      // 使用用户输入的名称，如果未输入则使用默认名称
+      const finalTemplateName = templateName.trim() || `${selectedTemplateType}-template-${Date.now()}`;
       const saveParams: any = {
         templateId: draftId,  // 复用副本ID
         suggestions: suggestions,
         templateConfig,
         skill: aiSkillGuide,
         format: officeType === 'excel' ? 'xlsx' : officeType === 'ppt' ? 'pptx' : 'docx',  // 添加format参数
-        templateName: `${selectedTemplateType}-template-${Date.now()}`  // 正式命名
+        templateName: finalTemplateName  // 用户命名或默认命名
       };
 
-      addDebugLog('info', `从副本正式保存`, `副本ID: ${draftId}`);
+      addDebugLog('info', `从副本正式保存`, `副本ID: ${draftId}, 名称: ${finalTemplateName}`);
 
       const result = await carboneAPI.saveTemplateFull(saveParams);
 
@@ -1540,6 +1545,21 @@ export const AIIdentifyPanel: React.FC<Props> = ({ onApplyComplete }) => {
               <pre className="generated-data-content">{JSON.stringify(previewResult.generatedData, null, 2)}</pre>
             </div>
           )}
+        </div>
+      )}
+
+      {/* 模板命名输入 */}
+      {draftId && (
+        <div className="template-name-input-container">
+          <label className="template-name-label">模板名称:</label>
+          <input
+            type="text"
+            className="template-name-input"
+            value={templateName}
+            onChange={(e) => setTemplateName(e.target.value)}
+            placeholder={`默认: ${selectedTemplateType}-template-${Date.now()}`}
+            disabled={isSaving}
+          />
         </div>
       )}
 
