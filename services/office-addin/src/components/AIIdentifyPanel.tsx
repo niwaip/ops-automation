@@ -81,6 +81,91 @@ export const AIIdentifyPanel: React.FC<Props> = ({ onApplyComplete }) => {
   const [saveResult, setSaveResult] = useState<{ success: boolean; message: string } | null>(null);
   const [isSaving, setIsSaving] = useState(false);
 
+  // 暂存状态
+  const [hasStagedData, setHasStagedData] = useState(false);
+  const [isLoadingStaged, setIsLoadingStaged] = useState(false);
+  const [stagedDataInfo, setStagedDataInfo] = useState<{ templateType: string; parameterCount: number; savedAt: string } | null>(null);
+
+  // 检查是否有暂存数据
+  useEffect(() => {
+    const stagedData = localStorage.getItem('ai-template-staged');
+    if (stagedData) {
+      try {
+        const data = JSON.parse(stagedData);
+        setHasStagedData(true);
+        setStagedDataInfo({
+          templateType: data.templateType || 'unknown',
+          parameterCount: data.suggestions?.length || 0,
+          savedAt: data.savedAt || ''
+        });
+      } catch {
+        setHasStagedData(false);
+      }
+    }
+  }, []);
+
+  // 载入暂存数据
+  const handleLoadStagedData = () => {
+    setIsLoadingStaged(true);
+    try {
+      const stagedData = localStorage.getItem('ai-template-staged');
+      if (!stagedData) {
+        addDebugLog('warn', '没有暂存数据可载入');
+        return;
+      }
+
+      const data = JSON.parse(stagedData);
+
+      // 恢复suggestions
+      if (data.suggestions && data.suggestions.length > 0) {
+        setSuggestions(data.suggestions);
+        addDebugLog('info', `✅ 载入暂存数据`, `恢复 ${data.suggestions.length} 个参数`);
+      }
+
+      // 恢复templateType
+      if (data.templateType) {
+        setSelectedTemplateType(data.templateType);
+      }
+
+      // 恢复AI指南
+      if (data.aiSkillGuide) {
+        setAiSkillGuide(data.aiSkillGuide);
+        addDebugLog('info', `✅ 载入AI指南`, `${data.aiSkillGuide.parameters?.length || 0} 个参数`);
+      }
+
+      // 恢复验证结果
+      if (data.verifyResult) {
+        setVerifyResult(data.verifyResult);
+      }
+
+      addDebugLog('info', `✅ 暂存数据载入成功`, `保存时间: ${data.savedAt}`);
+    } catch (error: any) {
+      addDebugLog('error', `载入暂存数据失败`, error.message);
+    } finally {
+      setIsLoadingStaged(false);
+    }
+  };
+
+  // 保存到暂存（localStorage）
+  const saveToStaged = () => {
+    const stagedData = {
+      suggestions,
+      templateType: selectedTemplateType,
+      aiSkillGuide,
+      verifyResult,
+      templateConfig,
+      savedAt: new Date().toISOString()
+    };
+    localStorage.setItem('ai-template-staged', JSON.stringify(stagedData));
+    setHasStagedData(true);
+    setStagedDataInfo({
+      templateType: selectedTemplateType,
+      parameterCount: suggestions.length,
+      savedAt: stagedData.savedAt
+    });
+    addDebugLog('info', `✅ 数据已暂存`, `${suggestions.length} 个参数`);
+  };
+
   // 动态更新加载消息（仅用于旧API的模拟进度）
   // 注意：当前HTTP API不支持实时进度，这只是dots动画
   // loadingProgress 由 handleAnalyze 中的 updateProgress 控制
@@ -403,6 +488,8 @@ export const AIIdentifyPanel: React.FC<Props> = ({ onApplyComplete }) => {
           message: `✅ 保存成功！模板ID: ${result.templateId || 'N/A'}, 指南ID: ${result.skillId || 'N/A'}`
         });
         addDebugLog('info', `✅ 保存成功`, `模板ID: ${result.templateId}, 指南ID: ${result.skillId}`);
+        // 同时保存到本地暂存
+        saveToStaged();
       } else {
         setSaveResult({ success: false, message: `保存失败: ${result.error || '未知错误'}` });
         addDebugLog('error', `保存失败`, result.error || '未知错误');
@@ -1012,14 +1099,35 @@ export const AIIdentifyPanel: React.FC<Props> = ({ onApplyComplete }) => {
         </div>
       )}
 
-      {/* 保存模版和指南按钮 */}
-      <button
-        className="save-template-btn"
-        onClick={handleSaveTemplateAndGuide}
-        disabled={isSaving || !aiSkillGuide}
-      >
-        {isSaving ? '⏳ 保存中...' : '💾 保存模版和指南'}
-      </button>
+      {/* 保存模版和指南按钮组 */}
+      <div className="save-buttons-group">
+        <button
+          className="save-template-btn"
+          onClick={handleSaveTemplateAndGuide}
+          disabled={isSaving || !aiSkillGuide}
+        >
+          {isSaving ? '⏳ 保存中...' : '💾 保存模版和指南'}
+        </button>
+
+        <button
+          className="load-staged-btn"
+          onClick={handleLoadStagedData}
+          disabled={isLoadingStaged || !hasStagedData}
+          title={stagedDataInfo ? `暂存于: ${stagedDataInfo.savedAt}` : '无暂存数据'}
+        >
+          {isLoadingStaged ? '⏳ 载入中...' : '📂 载入暂存'}
+        </button>
+      </div>
+
+      {/* 暂存数据信息 */}
+      {hasStagedData && stagedDataInfo && (
+        <div className="staged-data-info">
+          <span className="staged-badge">📦 有暂存</span>
+          <span className="staged-details">
+            {stagedDataInfo.templateType} · {stagedDataInfo.parameterCount} 参数
+          </span>
+        </div>
+      )}
 
       {/* 保存结果反馈 */}
       {saveResult && (
