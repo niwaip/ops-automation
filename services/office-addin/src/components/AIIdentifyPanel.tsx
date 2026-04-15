@@ -523,8 +523,7 @@ export const AIIdentifyPanel: React.FC<Props> = ({ onApplyComplete }) => {
           if (success) {
             applySuggestion(suggestion.id);
             addDebugLog('info', `精确替换成功`, `"${suggestion.originalText}" → ${suggestion.suggestedName}`);
-            // 应用后从列表中移除（收起效果）
-            dismissSuggestion(suggestion.id);
+            // 不移除，只标记为已应用（保留在列表中用于生成AI指南）
             return;
           }
         }
