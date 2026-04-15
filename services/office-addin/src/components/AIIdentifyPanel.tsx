@@ -64,6 +64,9 @@ export const AIIdentifyPanel: React.FC<Props> = ({ onApplyComplete }) => {
   const [manualFormatter, setManualFormatter] = useState('');  // 手动添加的格式化器
   const [selectedContent, setSelectedContent] = useState('');  // 当前选中的文档内容
   const [collapsed, setCollapsed] = useState(false);  // 参数列表是否收起
+  const [manualLoopMode, setManualLoopMode] = useState(false);  // 手动添加的循环模式
+  const [manualArrayPath, setManualArrayPath] = useState('');  // 循环模式的数组路径
+  const [isGeneratingAI, setIsGeneratingAI] = useState(false);  // AI生成变量名状态
 
   // 动态更新加载消息（仅用于旧API的模拟进度）
   // 注意：当前HTTP API不支持实时进度，这只是dots动画
@@ -255,6 +258,43 @@ export const AIIdentifyPanel: React.FC<Props> = ({ onApplyComplete }) => {
       }
     } catch (error: any) {
       addDebugLog('error', `连接失败`, error.message);
+    }
+  };
+
+  /**
+   * 验证模版配置
+   */
+  const handleVerifyTemplate = async () => {
+    if (suggestions.length === 0) {
+      addDebugLog('warn', '请先进行AI识别或手动添加参数');
+      return;
+    }
+
+    addDebugLog('info', `验证模版配置`, `参数数量: ${suggestions.length}`);
+    try {
+      carboneAPI.setBaseUrl(apiBaseUrl);
+
+      // 构建模版配置
+      const config = {
+        templateType: selectedTemplateType,
+        variables: suggestions.map(s => ({
+          path: s.suggestedName,
+          sampleValue: s.originalText
+        }))
+      };
+
+      const result = await carboneAPI.validateTemplate(JSON.stringify(config));
+
+      if (result.valid) {
+        addDebugLog('info', `验证成功`, `模版配置有效`);
+        if (result.warnings.length > 0) {
+          addDebugLog('warn', `警告`, result.warnings.join('\n'));
+        }
+      } else {
+        addDebugLog('error', `验证失败`, result.errors.join('\n'));
+      }
+    } catch (error: any) {
+      addDebugLog('error', `验证失败`, error.message);
     }
   };
 
@@ -478,7 +518,8 @@ export const AIIdentifyPanel: React.FC<Props> = ({ onApplyComplete }) => {
       }
 
       setShowPreview(false);
-      onApplyComplete?.();
+      // 不跳转tab页，只收起参数列表
+      setCollapsed(true);
       addDebugLog('info', `批量应用完成`, `应用了 ${unapplied.length} 个建议`);
     } catch (error) {
       addDebugLog('error', '批量应用失败', error.message);
@@ -517,7 +558,7 @@ export const AIIdentifyPanel: React.FC<Props> = ({ onApplyComplete }) => {
   };
 
   /**
-   * 生成手动标记（参考ManualSelector）
+   * 生成手动标记（参考ManualSelector，支持循环模式）
    */
   const generateManualMarker = (): string => {
     let marker = `{${manualParamName}`;
@@ -525,11 +566,46 @@ export const AIIdentifyPanel: React.FC<Props> = ({ onApplyComplete }) => {
       marker += `:${manualFormatter}`;
     }
     marker += '}';
+
+    // 循环模式包装
+    if (manualLoopMode && manualArrayPath) {
+      marker = `{#${manualArrayPath}}${marker}{/${manualArrayPath}}`;
+    }
     return marker;
   };
 
   /**
-   * 手动添加参数并插入到文档
+   * AI生成变量名（基于选中内容的语义）
+   */
+  const handleAIGenerateVariableName = async () => {
+    if (!selectedContent) {
+      addDebugLog('warn', '请先获取选中内容');
+      return;
+    }
+
+    setIsGeneratingAI(true);
+    try {
+      // 调用AI生成变量名
+      const prompt = `根据以下文本内容，生成合适的变量名称。返回格式: {d.entity.field}
+
+文本: "${selectedContent.substring(0, 100)}"
+
+只返回变量名称，不要其他解释。`;
+
+      const result = await carboneAPI.callAIForVariableName(prompt);
+      if (result && result.variableName) {
+        setManualParamName(result.variableName);
+        addDebugLog('info', `AI生成变量名`, `${result.variableName}`);
+      }
+    } catch (error: any) {
+      addDebugLog('error', `AI生成失败`, error.message);
+    } finally {
+      setIsGeneratingAI(false);
+    }
+  };
+
+  /**
+   * 手动添加参数并添加到参数一览（不是直接插入文档）
    */
   const handleManualAddParam = async () => {
     if (!manualParamName || manualParamName.trim() === '') {
@@ -539,31 +615,38 @@ export const AIIdentifyPanel: React.FC<Props> = ({ onApplyComplete }) => {
 
     const marker = generateManualMarker();
 
-    try {
-      if (officeType === 'word') {
-        // 如果有选中内容，替换它
-        if (selectedContent) {
-          await OfficeHelper.Word.replaceText(selectedContent, marker);
-          addDebugLog('info', `插入标记成功`, `"${selectedContent.substring(0, 30)}..." → ${marker}`);
-        } else {
-          // 否则插入到当前光标位置
-          await OfficeHelper.Word.insertText(marker);
-          addDebugLog('info', `插入标记`, marker);
-        }
-      } else if (officeType === 'excel') {
-        const selectedRange = await OfficeHelper.Excel.getSelectedRange();
-        await OfficeHelper.Excel.insertMarkerInCell(selectedRange.address, marker);
-        addDebugLog('info', `插入标记到单元格`, `${selectedRange.address} → ${marker}`);
+    // 创建新的建议，添加到参数一览
+    const newSuggestion: AISuggestion = {
+      id: `manual-${Date.now()}`,
+      type: 'variable',
+      elementPath: selectedContent ? `【${selectedContent.substring(0, 20)}...】` : '手动添加',
+      suggestedName: marker,
+      originalText: selectedContent || '手动添加的参数',
+      confidence: 1.0,
+      applied: false,
+      context: selectedContent || '用户手动添加',
+      details: {
+        chapter: '手动添加',
+        significance: '用户自定义参数',
+        fieldType: manualLoopMode ? 'loop' : 'text',
+        formatter: manualFormatter,
       }
+    };
 
-      // 重置状态
-      setShowManualAdd(false);
-      setSelectedContent('');
-      setManualParamName('d.');
-      setManualFormatter('');
-    } catch (error: any) {
-      addDebugLog('error', `插入标记失败`, error.message);
-    }
+    // 添加到建议列表
+    setSuggestions([...suggestions, newSuggestion]);
+    addDebugLog('info', `手动添加参数到列表`, `参数名: ${marker}`);
+
+    // 重置状态并关闭表单
+    setShowManualAdd(false);
+    setSelectedContent('');
+    setManualParamName('d.');
+    setManualFormatter('');
+    setManualLoopMode(false);
+    setManualArrayPath('');
+
+    // 展开参数列表显示新添加的项
+    setCollapsed(false);
   };
 
   /**
@@ -740,14 +823,23 @@ export const AIIdentifyPanel: React.FC<Props> = ({ onApplyComplete }) => {
               <div className="variable-config">
                 <div className="input-group">
                   <label>变量名:</label>
-                  <input
-                    type="text"
-                    className="manual-param-input"
-                    value={manualParamName}
-                    onChange={(e) => setManualParamName(e.target.value)}
-                    placeholder="d.fieldName"
-                    autoFocus
-                  />
+                  <div className="input-with-btn">
+                    <input
+                      type="text"
+                      className="manual-param-input"
+                      value={manualParamName}
+                      onChange={(e) => setManualParamName(e.target.value)}
+                      placeholder="d.fieldName"
+                      autoFocus
+                    />
+                    <button
+                      className="ai-generate-btn"
+                      onClick={handleAIGenerateVariableName}
+                      disabled={isGeneratingAI || !selectedContent}
+                    >
+                      {isGeneratingAI ? '⏳' : '🤖'}
+                    </button>
+                  </div>
                 </div>
 
                 <div className="input-group">
@@ -761,6 +853,31 @@ export const AIIdentifyPanel: React.FC<Props> = ({ onApplyComplete }) => {
                     <option value="lower">小写</option>
                   </select>
                 </div>
+
+                {/* 循环模式 */}
+                <div className="loop-config">
+                  <label className="checkbox-label">
+                    <input
+                      type="checkbox"
+                      checked={manualLoopMode}
+                      onChange={(e) => setManualLoopMode(e.target.checked)}
+                    />
+                    启用循环模式
+                  </label>
+
+                  {manualLoopMode && (
+                    <div className="input-group">
+                      <label>数组路径:</label>
+                      <input
+                        type="text"
+                        value={manualArrayPath}
+                        onChange={(e) => setManualArrayPath(e.target.value)}
+                        placeholder="d.items"
+                      />
+                      <small>将包装为 {'{#d.array}...{/d.array}'}</small>
+                    </div>
+                  )}
+                </div>
               </div>
 
               {/* 生成的标记预览 */}
@@ -773,13 +890,15 @@ export const AIIdentifyPanel: React.FC<Props> = ({ onApplyComplete }) => {
               {/* 操作按钮 */}
               <div className="manual-actions">
                 <button className="confirm-add-btn" onClick={handleManualAddParam}>
-                  ✅ 插入标记
+                  ✅ 添加到列表
                 </button>
                 <button className="cancel-add-btn" onClick={() => {
                   setShowManualAdd(false);
                   setSelectedContent('');
                   setManualParamName('d.');
                   setManualFormatter('');
+                  setManualLoopMode(false);
+                  setManualArrayPath('');
                 }}>
                   ❌ 取消
                 </button>
@@ -788,6 +907,15 @@ export const AIIdentifyPanel: React.FC<Props> = ({ onApplyComplete }) => {
           )}
         </div>
       )}
+
+      {/* 验证模版按钮 */}
+      <button
+        className="verify-template-btn"
+        onClick={handleVerifyTemplate}
+        disabled={isAnalyzing || suggestions.length === 0}
+      >
+        🔍 验证模版
+      </button>
 
       {/* 测试连接按钮 */}
       <button

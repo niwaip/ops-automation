@@ -1550,6 +1550,84 @@ body {
   flex: 1;
 }
 
+/* AI Generate Button */
+.ai-generate-btn {
+  background: #8b5cf6;
+  border: 1px solid #7c3aed;
+  color: white;
+  padding: 8px 12px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.ai-generate-btn:hover {
+  background: #7c3aed;
+}
+
+.ai-generate-btn:disabled {
+  background: #c4b5fd;
+  cursor: not-allowed;
+}
+
+.input-with-btn {
+  display: flex;
+  gap: 8px;
+}
+
+.input-with-btn .manual-param-input {
+  flex: 1;
+}
+
+/* Loop Config */
+.loop-config {
+  margin-top: 12px;
+  padding: 12px;
+  background: #f0f9ff;
+  border-radius: 6px;
+  border: 1px solid #bae6fd;
+}
+
+.checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  font-size: 14px;
+  color: #0369a1;
+}
+
+.checkbox-label input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+}
+
+.loop-config small {
+  color: #64748b;
+  font-size: 12px;
+}
+
+/* Verify Template Button */
+.verify-template-btn {
+  background: #fef3c7;
+  border: 1px solid #f59e0b;
+  color: #92400e;
+  padding: 8px 16px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.verify-template-btn:hover {
+  background: #fde68a;
+}
+
+.verify-template-btn:disabled {
+  background: #fef9c3;
+  color: #a16207;
+  cursor: not-allowed;
+}
+
 /* Collapse Toggle Button */
 .collapse-toggle-btn {
   width: 100%;
