@@ -3,398 +3,844 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Carbone Studio - Template Editor</title>
-    <link rel="stylesheet" href="/css/style.css">
+    <title>Carbone Studio - 模板管理</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/12.0.0/marked.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: #f5f7fa;
+            color: #333;
+        }
+
+        .app {
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+        }
+
+        /* Header */
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 16px 24px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-size: 20px;
+            font-weight: 600;
+        }
+
+        .logo i {
+            font-size: 24px;
+        }
+
+        .header-right a {
+            color: white;
+            text-decoration: none;
+            padding: 8px 16px;
+            border-radius: 6px;
+            border: 1px solid rgba(255,255,255,0.3);
+            transition: all 0.2s;
+        }
+
+        .header-right a:hover {
+            background: rgba(255,255,255,0.2);
+        }
+
+        /* Main */
+        .main {
+            flex: 1;
+            padding: 24px;
+        }
+
+        .page-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 24px;
+        }
+
+        .page-title {
+            font-size: 24px;
+            font-weight: 600;
+        }
+
+        .refresh-btn {
+            padding: 10px 20px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.2s;
+        }
+
+        .refresh-btn:hover {
+            background: #5a6fd6;
+        }
+
+        /* Templates Table */
+        .templates-container {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+            overflow: hidden;
+        }
+
+        .templates-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .templates-table th {
+            background: #f8f9fa;
+            padding: 16px;
+            text-align: left;
+            font-weight: 600;
+            color: #666;
+            border-bottom: 1px solid #eee;
+        }
+
+        .templates-table td {
+            padding: 16px;
+            border-bottom: 1px solid #eee;
+        }
+
+        .templates-table tr:last-child td {
+            border-bottom: none;
+        }
+
+        .templates-table tr:hover {
+            background: #f8f9fa;
+        }
+
+        .template-name {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .template-name i {
+            color: #667eea;
+        }
+
+        .format-badge {
+            padding: 4px 12px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+
+        .format-badge.docx { background: #e3f2fd; color: #1976d2; }
+        .format-badge.xlsx { background: #e8f5e9; color: #388e3c; }
+        .format-badge.pptx { background: #fff3e0; color: #f57c00; }
+        .format-badge.html { background: #f3e5f5; color: #7b1fa2; }
+
+        .skill-badge {
+            padding: 4px 12px;
+            border-radius: 4px;
+            font-size: 12px;
+        }
+
+        .skill-badge.yes { background: #e8f5e9; color: #2e7d32; }
+        .skill-badge.no { background: #f5f5f5; color: #9e9e9e; }
+
+        .actions-cell {
+            display: flex;
+            gap: 8px;
+        }
+
+        .action-btn {
+            padding: 8px 12px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 13px;
+            transition: all 0.2s;
+        }
+
+        .action-btn.view { background: #e3f2fd; color: #1976d2; }
+        .action-btn.rename { background: #fff8e1; color: #f57c00; }
+        .action-btn.download { background: #e8f5e9; color: #388e3c; }
+        .action-btn.delete { background: #ffebee; color: #c62828; }
+
+        .action-btn:hover {
+            opacity: 0.8;
+            transform: translateY(-1px);
+        }
+
+        /* Empty State */
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: #666;
+        }
+
+        .empty-state i {
+            font-size: 48px;
+            color: #ccc;
+            margin-bottom: 16px;
+        }
+
+        .empty-state h3 {
+            margin-bottom: 8px;
+        }
+
+        /* Loading */
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #667eea;
+        }
+
+        .loading i {
+            font-size: 24px;
+        }
+
+        /* Modal */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.5);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .modal-overlay.active {
+            display: flex;
+        }
+
+        .modal {
+            background: white;
+            border-radius: 16px;
+            width: 90%;
+            max-width: 800px;
+            max-height: 90vh;
+            overflow: hidden;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+        }
+
+        .modal-header {
+            padding: 20px 24px;
+            border-bottom: 1px solid #eee;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .modal-header h3 {
+            font-size: 18px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .modal-close {
+            width: 32px;
+            height: 32px;
+            border: none;
+            background: #f5f5f5;
+            border-radius: 8px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+        }
+
+        .modal-close:hover {
+            background: #eee;
+        }
+
+        .modal-body {
+            padding: 24px;
+            overflow-y: auto;
+            max-height: calc(90vh - 140px);
+        }
+
+        .modal-footer {
+            padding: 16px 24px;
+            border-top: 1px solid #eee;
+            display: flex;
+            justify-content: flex-end;
+            gap: 12px;
+        }
+
+        /* Tabs */
+        .tabs {
+            display: flex;
+            gap: 0;
+            margin-bottom: 20px;
+            border-bottom: 1px solid #eee;
+        }
+
+        .tab-btn {
+            padding: 12px 24px;
+            border: none;
+            background: transparent;
+            cursor: pointer;
+            font-size: 14px;
+            color: #666;
+            border-bottom: 2px solid transparent;
+            transition: all 0.2s;
+        }
+
+        .tab-btn.active {
+            color: #667eea;
+            border-bottom-color: #667eea;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        /* Detail Sections */
+        .detail-section {
+            margin-bottom: 20px;
+        }
+
+        .detail-section h4 {
+            margin-bottom: 12px;
+            color: #333;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .detail-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 12px;
+        }
+
+        .detail-item {
+            background: #f8f9fa;
+            padding: 12px;
+            border-radius: 8px;
+        }
+
+        .detail-label {
+            font-size: 12px;
+            color: #666;
+            margin-bottom: 4px;
+        }
+
+        .detail-value {
+            font-size: 14px;
+            color: #333;
+        }
+
+        .variables-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .variable-tag {
+            padding: 4px 8px;
+            background: #e3f2fd;
+            color: #1976d2;
+            border-radius: 4px;
+            font-size: 12px;
+        }
+
+        .loop-tag {
+            padding: 4px 8px;
+            background: #f3e5f5;
+            color: #7b1fa2;
+            border-radius: 4px;
+            font-size: 12px;
+        }
+
+        /* Code Block */
+        .code-block {
+            background: #f5f5f5;
+            padding: 16px;
+            border-radius: 8px;
+            overflow-x: auto;
+            font-family: 'Monaco', 'Menlo', monospace;
+            font-size: 13px;
+            white-space: pre-wrap;
+            word-break: break-all;
+        }
+
+        /* Rename Modal */
+        .rename-input {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            font-size: 14px;
+        }
+
+        .rename-input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .btn-primary {
+            padding: 10px 20px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+        }
+
+        .btn-outline {
+            padding: 10px 20px;
+            background: transparent;
+            color: #666;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            cursor: pointer;
+        }
+
+        /* Toast */
+        .toast-container {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 2000;
+        }
+
+        .toast {
+            padding: 12px 20px;
+            border-radius: 8px;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            animation: slideIn 0.3s ease;
+        }
+
+        .toast.success { background: #e8f5e9; color: #2e7d32; }
+        .toast.error { background: #ffebee; color: #c62828; }
+
+        @keyframes slideIn {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+    </style>
 </head>
 <body>
     <div class="app">
         <!-- Header -->
         <header class="header">
-            <div class="header-left">
-                <div class="logo">
-                    <i class="fas fa-file-code"></i>
-                    <span>Carbone Studio</span>
-                </div>
+            <div class="logo">
+                <i class="fas fa-file-code"></i>
+                <span>Carbone Studio</span>
             </div>
             <div class="header-right">
-                <a href="/api" target="_blank" class="btn btn-outline btn-sm">
+                <a href="/api" target="_blank">
                     <i class="fas fa-book"></i> API Docs
                 </a>
             </div>
         </header>
 
-        <!-- Main Content -->
+        <!-- Main -->
         <main class="main">
-            <!-- Sidebar -->
-            <aside class="sidebar">
-                <div class="sidebar-section">
-                    <h3><i class="fas fa-folder"></i> Templates</h3>
-                    <div id="template-list" class="template-list">
-                        <div class="loading"><i class="fas fa-spinner fa-spin"></i> Loading...</div>
-                    </div>
-                </div>
+            <div class="page-header">
+                <h1 class="page-title">模板管理</h1>
+                <button class="refresh-btn" onclick="loadTemplates()">
+                    <i class="fas fa-sync-alt"></i> 刷新
+                </button>
+            </div>
 
-                <div class="sidebar-section">
-                    <h3><i class="fas fa-upload"></i> Upload</h3>
-                    <div class="upload-area" id="upload-area">
-                        <input type="file" id="file-input" accept=".docx,.xlsx,.pptx,.html" hidden>
-                        <i class="fas fa-cloud-upload-alt"></i>
-                        <p>Drag & drop or click</p>
-                        <small>DOCX, XLSX, PPTX, HTML</small>
-                    </div>
-                </div>
-
-                <!-- Operations Section - 按操作顺序排列 -->
-                <div class="sidebar-section" id="operations-section" style="display: none;">
-                    <h3><i class="fas fa-tasks"></i> Operations</h3>
-                    <div class="operations-list">
-                        <!-- Step 1: 解析模版 -->
-                        <div class="operation-step">
-                            <div class="step-header">
-                                <span class="step-number">1</span>
-                                <span class="step-title">解析模版</span>
-                                <span class="step-status" id="step-parse-status"></span>
-                            </div>
-                            <div class="step-desc">上传或选择模版后自动解析</div>
-                        </div>
-
-                        <!-- Step 2: 人工配置 -->
-                        <div class="operation-step">
-                            <div class="step-header">
-                                <span class="step-number">2</span>
-                                <span class="step-title">人工配置</span>
-                                <span class="step-status" id="step-config-status"></span>
-                            </div>
-                            <div class="step-desc">在结构视图标记元素</div>
-                            <div class="step-actions">
-                                <button id="save-btn" class="btn btn-outline btn-sm btn-block">
-                                    <i class="fas fa-save"></i> Save
-                                </button>
-                            </div>
-                        </div>
-
-                        <!-- Step 3: AI生成模版 -->
-                        <div class="operation-step">
-                            <div class="step-header">
-                                <span class="step-number">3</span>
-                                <span class="step-title">AI生成模版</span>
-                                <span class="step-status" id="step-generate-status"></span>
-                            </div>
-                            <div class="step-desc">根据标记生成模版配置</div>
-                            <div class="step-actions">
-                                <button id="ai-generate-btn" class="btn btn-primary btn-sm btn-block" title="AI生成模版配置">
-                                    <i class="fas fa-magic"></i> 生成模版
-                                </button>
-                            </div>
-                        </div>
-
-                        <!-- Step 4: AI验证模版 -->
-                        <div class="operation-step">
-                            <div class="step-header">
-                                <span class="step-number">4</span>
-                                <span class="step-title">AI验证模版</span>
-                                <span class="step-status" id="step-verify-status"></span>
-                            </div>
-                            <div class="step-desc">验证模版配置生成示例报告</div>
-                            <div class="step-actions">
-                                <button id="ai-verify-btn" class="btn btn-outline btn-sm btn-block" title="AI验证模版配置">
-                                    <i class="fas fa-check-double"></i> 验证模版
-                                </button>
-                            </div>
-                            <!-- AI验证结果已移至右侧栏显示 -->
-                        </div>
-
-                        <!-- Step 5: 人工微调 -->
-                        <div class="operation-step">
-                            <div class="step-header">
-                                <span class="step-number">5</span>
-                                <span class="step-title">人工微调</span>
-                                <span class="step-status" id="step-finetune-status"></span>
-                            </div>
-                            <div class="step-desc">查看结果并调整配置</div>
-                            <div class="step-actions">
-                                <button id="validate-btn" class="btn btn-outline btn-sm btn-block">
-                                    <i class="fas fa-check-circle"></i> Validate
-                                </button>
-                                <button id="render-btn" class="btn btn-outline btn-sm btn-block">
-                                    <i class="fas fa-play"></i> Render
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </aside>
-
-            <!-- Content Area -->
-            <div class="content">
-                <!-- No Template State -->
-                <div id="no-template" class="empty-state full-height">
-                    <i class="fas fa-file-upload"></i>
-                    <h2>No Template Selected</h2>
-                    <p>Upload a template file or select one from the sidebar</p>
-                </div>
-
-                <!-- Split Panel Editor -->
-                <div id="template-editor" class="split-panel-container" style="display: none;">
-                    <!-- Left Panel: Document Preview -->
-                    <div class="panel-left">
-                        <div class="panel-header">
-                            <span class="panel-title">
-                                <i class="fas fa-file-alt"></i>
-                                <span id="template-name">template.docx</span>
-                                <span id="template-format" class="badge">DOCX</span>
-                            </span>
-                            <div class="panel-tools">
-                                <!-- Tab buttons -->
-                                <div class="preview-tabs">
-                                    <button id="tab-preview" class="tab-btn active" title="Preview">
-                                        <i class="fas fa-eye"></i> Preview
-                                    </button>
-                                    <button id="tab-source" class="tab-btn" title="View XML Source">
-                                        <i class="fas fa-code"></i> Source
-                                    </button>
-                                </div>
-                                <span class="toolbar-divider"></span>
-                                <button id="zoom-out" class="btn btn-icon" title="Zoom Out">
-                                    <i class="fas fa-search-minus"></i>
-                                </button>
-                                <span id="zoom-level" class="zoom-level">100%</span>
-                                <button id="zoom-in" class="btn btn-icon" title="Zoom In">
-                                    <i class="fas fa-search-plus"></i>
-                                </button>
-                            </div>
-                        </div>
-                        <div class="panel-body">
-                            <!-- Preview Tab Content -->
-                            <div id="preview-tab-content" class="preview-tab-content active">
-                                <div id="preview-container" class="preview-container">
-                                    <iframe id="preview-iframe" sandbox="allow-same-origin allow-scripts" frameborder="0"></iframe>
-                                </div>
-                            </div>
-                            <!-- Source Tab Content -->
-                            <div id="source-tab-content" class="preview-tab-content">
-                                <div class="source-toolbar">
-                                    <div class="source-view-tabs">
-                                        <button id="view-raw" class="view-btn active">Raw XML</button>
-                                        <button id="view-structure" class="view-btn">Structure</button>
-                                    </div>
-                                    <select id="source-file-select">
-                                        <option value="document.xml">word/document.xml</option>
-                                    </select>
-                                    <button id="copy-source-btn" class="btn btn-outline btn-sm" title="Copy to clipboard">
-                                        <i class="fas fa-copy"></i> Copy
-                                    </button>
-                                    <button id="format-source-btn" class="btn btn-outline btn-sm" title="Format XML">
-                                        <i class="fas fa-indent"></i> Format
-                                    </button>
-                                </div>
-                                <!-- Raw XML View -->
-                                <div id="raw-view" class="source-view active">
-                                    <div class="source-container">
-                                        <pre id="source-code"><code class="xml"></code></pre>
-                                    </div>
-                                </div>
-                                <!-- Structure View -->
-                                <div id="structure-view" class="source-view">
-                                    <div class="structure-toolbar">
-                                        <label class="checkbox-label">
-                                            <input type="checkbox" id="show-preserve" checked> Show preserve
-                                        </label>
-                                        <label class="checkbox-label">
-                                            <input type="checkbox" id="show-tables" checked> Highlight tables
-                                        </label>
-                                        <label class="checkbox-label">
-                                            <input type="checkbox" id="show-paragraphs" checked> Show paragraphs
-                                        </label>
-                                    </div>
-                                    <div class="structure-legend">
-                                        <span class="legend-item"><span class="legend-color legend-param"></span> 参数</span>
-                                        <span class="legend-item"><span class="legend-color legend-loop"></span> 循环</span>
-                                        <span class="legend-item"><span class="legend-color legend-static"></span> 静态</span>
-                                        <span class="legend-item"><span class="legend-color legend-ignore"></span> 忽略</span>
-                                    </div>
-                                    <div class="structure-container">
-                                        <div id="structure-tree" class="structure-tree"></div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Resize Handle -->
-                    <div class="resize-handle"></div>
-
-                    <!-- Right Panel: Results & Status -->
-                    <div class="panel-right">
-                        <div class="panel-header">
-                            <span class="panel-title">
-                                <i class="fas fa-chart-bar"></i> Results
-                            </span>
-                        </div>
-                        <div class="panel-body scrollable">
-                            <!-- Real-time Status Section -->
-                            <div class="editor-section" id="status-section">
-                                <h4><i class="fas fa-info-circle"></i> Status</h4>
-                                <div id="current-status" class="status-display">
-                                    <div class="status-item">
-                                        <span class="status-label">当前状态：</span>
-                                        <span id="status-text" class="status-value">等待操作</span>
-                                    </div>
-                                </div>
-                                <!-- Execution Progress -->
-                                <div id="execution-progress" style="display: none; margin-top: 12px; padding: 12px; background: #e6f7ff; border: 1px solid #91d5ff; border-radius: 4px;">
-                                    <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
-                                        <i class="fas fa-spinner fa-spin" style="color: #1890ff;"></i>
-                                        <span id="execution-title" style="font-weight: 500; color: #1890ff;">执行中...</span>
-                                    </div>
-                                    <div class="progress-bar" style="margin: 8px 0;">
-                                        <div id="execution-progress-fill" class="progress-fill" style="width: 0%; background: #1890ff;"></div>
-                                    </div>
-                                    <div id="execution-log" style="font-size: 11px; color: #666; max-height: 100px; overflow-y: auto;"></div>
-                                </div>
-                            </div>
-
-                            <!-- Selection Info -->
-                            <div id="selection-section" class="editor-section" style="display: none;">
-                                <h4><i class="fas fa-mouse-pointer"></i> Selected Element</h4>
-                                <div class="selection-info">
-                                    <div class="selected-text-preview">
-                                        <code id="selected-text-display"></code>
-                                    </div>
-                                    <div class="form-group">
-                                        <label>Variable Path</label>
-                                        <input type="text" id="variable-path-input" placeholder="e.g., d.name">
-                                    </div>
-                                    <div class="form-group">
-                                        <label>Formatters (optional)</label>
-                                        <input type="text" id="formatters-input" placeholder="e.g., upperCase, formatNumber(#,##0.00)">
-                                    </div>
-                                    <div class="form-actions">
-                                        <button id="apply-marking" class="btn btn-primary btn-sm">
-                                            <i class="fas fa-check"></i> Apply
-                                        </button>
-                                        <button id="clear-selection" class="btn btn-outline btn-sm">
-                                            <i class="fas fa-times"></i> Clear
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <!-- AI Result Section - 可展开收缩的报告区域 -->
-                            <div class="editor-section collapsible-section" id="ai-generate-result-section" style="display: none;">
-                                <h4 class="collapsible-header" onclick="toggleCollapsible(this)">
-                                    <i class="fas fa-chevron-right collapse-icon"></i>
-                                    <i class="fas fa-cogs"></i> AI 结果报告
-                                </h4>
-                                <div class="collapsible-content">
-                                    <!-- Progress indicator -->
-                                    <div id="ai-progress" style="display: none;">
-                                        <div class="progress-bar">
-                                            <div id="progress-fill" class="progress-fill" style="width: 0%;"></div>
-                                        </div>
-                                        <div id="progress-text" class="progress-text">准备中...</div>
-                                    </div>
-                                    <!-- Result display -->
-                                    <div id="ai-generate-result" style="background: #f6ffed; border: 1px solid #b7eb8f; border-radius: 4px; padding: 10px; font-size: 12px; max-height: 400px; overflow-y: auto;"></div>
-                                </div>
-                            </div>
-
-                            <!-- Verify Result Section - 验证结果区域 -->
-                            <div class="editor-section collapsible-section" id="verify-result-section" style="display: none;">
-                                <h4 class="collapsible-header" onclick="toggleCollapsible(this)">
-                                    <i class="fas fa-chevron-right collapse-icon"></i>
-                                    <i class="fas fa-check-double"></i> 验证结果
-                                </h4>
-                                <div class="collapsible-content">
-                                    <div id="verify-result" style="background: #f6ffed; border: 1px solid #b7eb8f; border-radius: 4px; padding: 10px; font-size: 12px; max-height: 500px; overflow-y: auto;"></div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+            <div class="templates-container">
+                <table class="templates-table">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>名称</th>
+                            <th>格式</th>
+                            <th>变量</th>
+                            <th>Skill</th>
+                            <th>更新时间</th>
+                            <th>操作</th>
+                        </tr>
+                    </thead>
+                    <tbody id="templates-body">
+                        <tr>
+                            <td colspan="7" class="loading">
+                                <i class="fas fa-spinner fa-spin"></i> 加载中...
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
             </div>
         </main>
+    </div>
 
-        <!-- Toast Notifications -->
-        <div id="toast-container" class="toast-container"></div>
-
-        <!-- Render Modal -->
-        <div id="render-modal" class="modal">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h3><i class="fas fa-play-circle"></i> Render Template</h3>
-                    <button class="modal-close">&times;</button>
+    <!-- Detail Modal -->
+    <div class="modal-overlay" id="detail-modal">
+        <div class="modal">
+            <div class="modal-header">
+                <h3><i class="fas fa-info-circle"></i> 模板详情</h3>
+                <button class="modal-close" onclick="closeModal('detail-modal')">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="tabs">
+                    <button class="tab-btn active" onclick="switchTab('template-info')">模板信息</button>
+                    <button class="tab-btn" onclick="switchTab('skill-info')">Skill Guide</button>
+                    <button class="tab-btn" onclick="switchTab('config-info')">配置</button>
                 </div>
-                <div class="modal-body">
-                    <div class="form-group">
-                        <label>Output Format</label>
-                        <select id="output-format">
-                            <option value="">Same as template</option>
-                            <option value="docx">DOCX (Word)</option>
-                            <option value="xlsx">XLSX (Excel)</option>
-                            <option value="pptx">PPTX (PowerPoint)</option>
-                            <option value="html">HTML</option>
-                        </select>
+                <div id="template-info" class="tab-content active">
+                    <div class="detail-grid">
+                        <div class="detail-item">
+                            <div class="detail-label">ID</div>
+                            <div class="detail-value" id="detail-id"></div>
+                        </div>
+                        <div class="detail-item">
+                            <div class="detail-label">名称</div>
+                            <div class="detail-value" id="detail-name"></div>
+                        </div>
+                        <div class="detail-item">
+                            <div class="detail-label">格式</div>
+                            <div class="detail-value" id="detail-format"></div>
+                        </div>
+                        <div class="detail-item">
+                            <div class="detail-label">创建时间</div>
+                            <div class="detail-value" id="detail-created"></div>
+                        </div>
+                        <div class="detail-item">
+                            <div class="detail-label">更新时间</div>
+                            <div class="detail-value" id="detail-updated"></div>
+                        </div>
+                        <div class="detail-item">
+                            <div class="detail-label">Skill ID</div>
+                            <div class="detail-value" id="detail-skill-id"></div>
+                        </div>
+                    </div>
+                    <div class="detail-section">
+                        <h4><i class="fas fa-code"></i> 变量列表</h4>
+                        <div class="variables-list" id="detail-variables"></div>
+                    </div>
+                    <div class="detail-section">
+                        <h4><i class="fas fa-repeat"></i> 循环配置</h4>
+                        <div class="variables-list" id="detail-loops"></div>
                     </div>
                 </div>
-                <div class="modal-footer">
-                    <button class="btn btn-outline modal-cancel">Cancel</button>
-                    <button id="confirm-render" class="btn btn-primary">
-                        <i class="fas fa-play"></i> Render
-                    </button>
+                <div id="skill-info" class="tab-content">
+                    <div id="skill-content">
+                        <p style="color: #666;">此模板没有关联的 Skill Guide</p>
+                    </div>
+                </div>
+                <div id="config-info" class="tab-content">
+                    <div class="code-block" id="config-content">无配置信息</div>
                 </div>
             </div>
-        </div>
-
-        <!-- Source View Modal -->
-        <div id="source-modal" class="modal">
-            <div class="modal-content modal-large">
-                <div class="modal-header">
-                    <h3><i class="fas fa-code"></i> Template Source</h3>
-                    <button class="modal-close">&times;</button>
-                </div>
-                <div class="modal-body">
-                    <div class="source-header">
-                        <span id="source-filename">document.xml</span>
-                        <button id="copy-source" class="btn btn-outline btn-sm">
-                            <i class="fas fa-copy"></i> Copy
-                        </button>
-                    </div>
-                    <div class="source-code-container">
-                        <pre id="source-code"><code></code></pre>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Preview Modal -->
-        <div id="preview-modal" class="modal">
-            <div class="modal-content modal-large">
-                <div class="modal-header">
-                    <h3><i class="fas fa-eye"></i> 模版预览</h3>
-                    <button class="modal-close">&times;</button>
-                </div>
-                <div class="modal-body">
-                    <div id="preview-content" style="background: #fff; padding: 20px; min-height: 300px; border: 1px solid #eee; overflow: auto;"></div>
-                </div>
-                <div class="modal-footer">
-                    <button class="btn btn-outline modal-cancel">关闭</button>
-                </div>
+            <div class="modal-footer">
+                <button class="btn-outline" onclick="closeModal('detail-modal')">关闭</button>
+                <button class="btn-primary" id="download-template-btn">
+                    <i class="fas fa-download"></i> 下载模板
+                </button>
+                <button class="btn-outline" id="download-skill-btn" style="display: none;">
+                    <i class="fas fa-download"></i> 下载 Skill
+                </button>
             </div>
         </div>
     </div>
 
+    <!-- Rename Modal -->
+    <div class="modal-overlay" id="rename-modal">
+        <div class="modal" style="max-width: 400px;">
+            <div class="modal-header">
+                <h3><i class="fas fa-edit"></i> 重命名模板</h3>
+                <button class="modal-close" onclick="closeModal('rename-modal')">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <input type="text" class="rename-input" id="rename-input" placeholder="请输入新名称">
+            </div>
+            <div class="modal-footer">
+                <button class="btn-outline" onclick="closeModal('rename-modal')">取消</button>
+                <button class="btn-primary" onclick="confirmRename()">确认</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Container -->
+    <div class="toast-container" id="toast-container"></div>
+
     <script>
-        // 展开收缩功能
-        function toggleCollapsible(header) {
-            const section = header.closest('.collapsible-section');
-            section.classList.toggle('expanded');
+        const API_BASE = '/studio';
+        let templates = [];
+        let currentTemplate = null;
+
+        // Load templates
+        async function loadTemplates() {
+            const tbody = document.getElementById('templates-body');
+            tbody.innerHTML = '<tr><td colspan="7" class="loading"><i class="fas fa-spinner fa-spin"></i> 加载中...</td></tr>';
+
+            try {
+                const response = await fetch(`${API_BASE}/templates`);
+                const data = await response.json();
+                templates = data.templates || [];
+                renderTemplates();
+            } catch (error) {
+                tbody.innerHTML = '<tr><td colspan="7" class="empty-state"><i class="fas fa-exclamation-circle"></i><h3>加载失败</h3><p>' + error.message + '</p></td></tr>';
+            }
         }
+
+        // Render templates table
+        function renderTemplates() {
+            const tbody = document.getElementById('templates-body');
+
+            if (templates.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="7" class="empty-state"><i class="fas fa-folder-open"></i><h3>暂无模板</h3><p>通过 Office 插件保存模板</p></td></tr>';
+                return;
+            }
+
+            tbody.innerHTML = templates.map(t => `
+                <tr>
+                    <td><code style="font-size: 12px;">${t.id.substring(0, 8)}...</code></td>
+                    <td>
+                        <div class="template-name">
+                            <i class="fas fa-file-word"></i>
+                            ${t.fileName || t.id}
+                        </div>
+                    </td>
+                    <td><span class="format-badge ${t.format || 'docx'}">${(t.format || 'docx').toUpperCase()}</span></td>
+                    <td>${t.variables?.length || 0} 个</td>
+                    <td><span class="skill-badge ${t.skillId ? 'yes' : 'no'}">${t.skillId ? '已关联' : '无'}</span></td>
+                    <td>${t.updatedAt ? new Date(t.updatedAt).toLocaleString() : '-'}</td>
+                    <td class="actions-cell">
+                        <button class="action-btn view" onclick="viewTemplate('${t.id}')">
+                            <i class="fas fa-eye"></i> 查看
+                        </button>
+                        <button class="action-btn rename" onclick="openRename('${t.id}', '${t.fileName || t.id}')">
+                            <i class="fas fa-edit"></i> 重命名
+                        </button>
+                        <button class="action-btn download" onclick="downloadTemplate('${t.id}')">
+                            <i class="fas fa-download"></i> 下载
+                        </button>
+                        <button class="action-btn delete" onclick="deleteTemplate('${t.id}')">
+                            <i class="fas fa-trash"></i> 删除
+                        </button>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        // View template detail
+        async function viewTemplate(id) {
+            currentTemplate = templates.find(t => t.id === id);
+
+            // Update basic info
+            document.getElementById('detail-id').textContent = currentTemplate.id;
+            document.getElementById('detail-name').textContent = currentTemplate.fileName || currentTemplate.id;
+            document.getElementById('detail-format').innerHTML = `<span class="format-badge ${currentTemplate.format || 'docx'}">${(currentTemplate.format || 'docx').toUpperCase()}</span>`;
+            document.getElementById('detail-created').textContent = currentTemplate.createdAt ? new Date(currentTemplate.createdAt).toLocaleString() : '-';
+            document.getElementById('detail-updated').textContent = currentTemplate.updatedAt ? new Date(currentTemplate.updatedAt).toLocaleString() : '-';
+            document.getElementById('detail-skill-id').textContent = currentTemplate.skillId || '无';
+
+            // Variables
+            const varsEl = document.getElementById('detail-variables');
+            if (currentTemplate.variables?.length > 0) {
+                varsEl.innerHTML = currentTemplate.variables.map(v => `<span class="variable-tag">${v}</span>`).join('');
+            } else {
+                varsEl.innerHTML = '<span style="color: #666;">无变量</span>';
+            }
+
+            // Loops
+            const loopsEl = document.getElementById('detail-loops');
+            if (currentTemplate.loops?.length > 0) {
+                loopsEl.innerHTML = currentTemplate.loops.map(l => `<span class="loop-tag">${l.arrayPath}</span>`).join('');
+            } else {
+                loopsEl.innerHTML = '<span style="color: #666;">无循环配置</span>';
+            }
+
+            // Config
+            const configEl = document.getElementById('config-content');
+            if (currentTemplate.config) {
+                configEl.textContent = JSON.stringify(currentTemplate.config, null, 2);
+            } else {
+                configEl.textContent = '无配置信息';
+            }
+
+            // Skill
+            const skillEl = document.getElementById('skill-content');
+            const downloadSkillBtn = document.getElementById('download-skill-btn');
+
+            if (currentTemplate.skillId) {
+                try {
+                    const response = await fetch(`${API_BASE}/skill/${currentTemplate.skillId}`);
+                    const skill = await response.json();
+
+                    skillEl.innerHTML = `
+                        <div class="detail-grid">
+                            <div class="detail-item">
+                                <div class="detail-label">Skill ID</div>
+                                <div class="detail-value">${skill.id}</div>
+                            </div>
+                            <div class="detail-item">
+                                <div class="detail-label">参数数量</div>
+                                <div class="detail-value">${skill.parameters?.length || 0}</div>
+                            </div>
+                        </div>
+                        ${skill.skillGuideMarkdown ? `
+                            <div class="detail-section">
+                                <h4><i class="fas fa-file-alt"></i> Skill Guide Markdown</h4>
+                                <div class="code-block">${skill.skillGuideMarkdown}</div>
+                            </div>
+                        ` : ''}
+                        ${skill.dataExampleJson ? `
+                            <div class="detail-section">
+                                <h4><i class="fas fa-code"></i> 数据示例</h4>
+                                <div class="code-block">${JSON.stringify(skill.dataExampleJson, null, 2)}</div>
+                            </div>
+                        ` : ''}
+                    `;
+                    downloadSkillBtn.style.display = 'inline-flex';
+                    downloadSkillBtn.onclick = () => downloadSkill(currentTemplate.skillId);
+                } catch (error) {
+                    skillEl.innerHTML = '<p style="color: #c62828;">获取 Skill 详情失败: ' + error.message + '</p>';
+                    downloadSkillBtn.style.display = 'none';
+                }
+            } else {
+                skillEl.innerHTML = '<p style="color: #666;">此模板没有关联的 Skill Guide</p>';
+                downloadSkillBtn.style.display = 'none';
+            }
+
+            // Download button
+            document.getElementById('download-template-btn').onclick = () => downloadTemplate(id);
+
+            openModal('detail-modal');
+        }
+
+        // Open rename modal
+        function openRename(id, currentName) {
+            currentTemplate = templates.find(t => t.id === id);
+            const input = document.getElementById('rename-input');
+            // Remove extension
+            const nameWithoutExt = currentName.replace(/\.[^.]+$/, '');
+            input.value = nameWithoutExt;
+            openModal('rename-modal');
+            input.focus();
+        }
+
+        // Confirm rename
+        async function confirmRename() {
+            const newName = document.getElementById('rename-input').value.trim();
+            if (!newName) {
+                showToast('请输入新名称', 'error');
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_BASE}/templates/${currentTemplate.id}/rename`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ newName })
+                });
+                const result = await response.json();
+
+                if (result.success) {
+                    showToast('重命名成功', 'success');
+                    closeModal('rename-modal');
+                    loadTemplates();
+                } else {
+                    showToast('重命名失败: ' + result.error, 'error');
+                }
+            } catch (error) {
+                showToast('重命名失败: ' + error.message, 'error');
+            }
+        }
+
+        // Delete template
+        async function deleteTemplate(id) {
+            if (!confirm('确定要删除此模板及其关联的 Skill 吗？此操作不可恢复。')) {
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_BASE}/templates/${id}/delete`, {
+                    method: 'POST'
+                });
+                const result = await response.json();
+
+                if (result.success) {
+                    showToast('删除成功', 'success');
+                    loadTemplates();
+                } else {
+                    showToast('删除失败: ' + result.error, 'error');
+                }
+            } catch (error) {
+                showToast('删除失败: ' + error.message, 'error');
+            }
+        }
+
+        // Download template
+        function downloadTemplate(id) {
+            window.open(`${API_BASE}/download-template/${id}`, '_blank');
+        }
+
+        // Download skill
+        function downloadSkill(skillId) {
+            window.open(`${API_BASE}/download-skill/${skillId}`, '_blank');
+        }
+
+        // Modal helpers
+        function openModal(id) {
+            document.getElementById(id).classList.add('active');
+        }
+
+        function closeModal(id) {
+            document.getElementById(id).classList.remove('active');
+        }
+
+        // Tab switching
+        function switchTab(tabId) {
+            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+            event.target.classList.add('active');
+            document.getElementById(tabId).classList.add('active');
+        }
+
+        // Toast
+        function showToast(message, type = 'success') {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+            toast.innerHTML = `<i class="fas fa-${type === 'success' ? 'check-circle' : 'exclamation-circle'}"></i> ${message}`;
+            container.appendChild(toast);
+            setTimeout(() => toast.remove(), 3000);
+        }
+
+        // Initial load
+        loadTemplates();
     </script>
-    <script src="/js/app.js"></script>
 </body>
 </html>
