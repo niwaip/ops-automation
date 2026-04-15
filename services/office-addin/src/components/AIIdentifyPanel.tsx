@@ -81,94 +81,138 @@ export const AIIdentifyPanel: React.FC<Props> = ({ onApplyComplete }) => {
   const [saveResult, setSaveResult] = useState<{ success: boolean; message: string } | null>(null);
   const [isSaving, setIsSaving] = useState(false);
 
-  // 暂存状态
-  const [hasStagedData, setHasStagedData] = useState(false);
-  const [isLoadingStaged, setIsLoadingStaged] = useState(false);
-  const [stagedDataInfo, setStagedDataInfo] = useState<{ templateType: string; parameterCount: number; savedAt: string } | null>(null);
-
   // 预览模版状态
   const [previewResult, setPreviewResult] = useState<{ success: boolean; message: string; previewUrl?: string } | null>(null);
   const [isPreviewing, setIsPreviewing] = useState(false);
-  const [previewTemplateId, setPreviewTemplateId] = useState<string | null>(null);  // 预览生成的模版ID
 
-  // 检查是否有暂存数据
+  // 暂存副本状态（保存到后端的完整副本）
+  const [draftId, setDraftId] = useState<string | null>(null);  // 暂存副本ID
+  const [draftInfo, setDraftInfo] = useState<{ templateType: string; parameterCount: number; savedAt: string } | null>(null);
+  const [isSavingDraft, setIsSavingDraft] = useState(false);
+  const [draftSaveResult, setDraftSaveResult] = useState<{ success: boolean; message: string } | null>(null);
+
+  // 检查是否有暂存副本（从localStorage恢复draftId）
   useEffect(() => {
-    const stagedData = localStorage.getItem('ai-template-staged');
+    const stagedData = localStorage.getItem('ai-template-draft');
     if (stagedData) {
       try {
         const data = JSON.parse(stagedData);
-        setHasStagedData(true);
-        setStagedDataInfo({
-          templateType: data.templateType || 'unknown',
-          parameterCount: data.suggestions?.length || 0,
-          savedAt: data.savedAt || ''
-        });
+        if (data.draftId) {
+          setDraftId(data.draftId);
+          setDraftInfo({
+            templateType: data.templateType || 'unknown',
+            parameterCount: data.suggestions?.length || 0,
+            savedAt: data.savedAt || ''
+          });
+          // 同时恢复suggestions和aiSkillGuide
+          if (data.suggestions && data.suggestions.length > 0) {
+            setSuggestions(data.suggestions);
+          }
+          if (data.aiSkillGuide) {
+            setAiSkillGuide(data.aiSkillGuide);
+          }
+          if (data.templateType) {
+            setSelectedTemplateType(data.templateType);
+          }
+        }
       } catch {
-        setHasStagedData(false);
+        // 忽略解析错误
       }
     }
   }, []);
 
-  // 载入暂存数据
-  const handleLoadStagedData = () => {
-    setIsLoadingStaged(true);
+  // 暂存副本（保存完整docx到后端）
+  const handleSaveDraft = async () => {
+    if (!aiSkillGuide) {
+      setDraftSaveResult({ success: false, message: '请先生成AI指南' });
+      return;
+    }
+
+    setIsSavingDraft(true);
+    setDraftSaveResult(null);
+    addDebugLog('info', `暂存副本`, `参数数量: ${suggestions.length}`);
+
     try {
-      const stagedData = localStorage.getItem('ai-template-staged');
-      if (!stagedData) {
-        addDebugLog('warn', '没有暂存数据可载入');
-        return;
+      let documentContent = '';
+      let format = 'docx';
+
+      if (officeType === 'word') {
+        const result = await OfficeHelper.Word.getDocumentFileBase64WithFallback();
+        documentContent = 'base64:' + result.base64;
+        addDebugLog('info', `文档获取方式: ${result.method}`, `有效docx: ${result.isValidDocx}`);
+
+        if (!result.isValidDocx) {
+          addDebugLog('warn', `文档格式不完整`, '副本可能无法正常渲染');
+        }
+        format = 'docx';
+      } else if (officeType === 'excel') {
+        const sheetData = await OfficeHelper.Excel.getSheetData();
+        documentContent = JSON.stringify(sheetData.values);
+        format = 'xlsx';
+      } else {
+        documentContent = await OfficeHelper.PowerPoint.getDocumentContent();
+        format = 'pptx';
       }
 
-      const data = JSON.parse(stagedData);
+      carboneAPI.setBaseUrl(apiBaseUrl);
 
-      // 恢复suggestions
-      if (data.suggestions && data.suggestions.length > 0) {
-        setSuggestions(data.suggestions);
-        addDebugLog('info', `✅ 载入暂存数据`, `恢复 ${data.suggestions.length} 个参数`);
+      const result = await carboneAPI.saveTemplateFull({
+        documentContent,
+        suggestions: suggestions,
+        templateConfig,
+        skill: aiSkillGuide,
+        format,
+        templateName: `draft-${Date.now()}`  // 暂存副本用临时名称
+      });
+
+      if (result.success) {
+        setDraftId(result.templateId || null);
+        setDraftInfo({
+          templateType: selectedTemplateType,
+          parameterCount: suggestions.length,
+          savedAt: new Date().toISOString()
+        });
+        setDraftSaveResult({ success: true, message: `✅ 副本已暂存！ID: ${result.templateId}` });
+        addDebugLog('info', `✅ 副本暂存成功`, `ID: ${result.templateId}`);
+
+        // 保存到localStorage方便下次载入
+        localStorage.setItem('ai-template-draft', JSON.stringify({
+          draftId: result.templateId,
+          templateType: selectedTemplateType,
+          suggestions,
+          aiSkillGuide,
+          savedAt: new Date().toISOString()
+        }));
+      } else {
+        setDraftSaveResult({ success: false, message: `暂存失败: ${result.error || '未知错误'}` });
+        addDebugLog('error', `暂存失败`, result.error || '未知错误');
       }
-
-      // 恢复templateType
-      if (data.templateType) {
-        setSelectedTemplateType(data.templateType);
-      }
-
-      // 恢复AI指南
-      if (data.aiSkillGuide) {
-        setAiSkillGuide(data.aiSkillGuide);
-        addDebugLog('info', `✅ 载入AI指南`, `${data.aiSkillGuide.parameters?.length || 0} 个参数`);
-      }
-
-      // 恢复验证结果
-      if (data.verifyResult) {
-        setVerifyResult(data.verifyResult);
-      }
-
-      addDebugLog('info', `✅ 暂存数据载入成功`, `保存时间: ${data.savedAt}`);
     } catch (error: any) {
-      addDebugLog('error', `载入暂存数据失败`, error.message);
+      setDraftSaveResult({ success: false, message: `暂存失败: ${error.message}` });
+      addDebugLog('error', `暂存失败`, error.message);
     } finally {
-      setIsLoadingStaged(false);
+      setIsSavingDraft(false);
     }
   };
 
-  // 保存到暂存（localStorage）
-  const saveToStaged = () => {
-    const stagedData = {
-      suggestions,
-      templateType: selectedTemplateType,
-      aiSkillGuide,
-      verifyResult,
-      templateConfig,
-      savedAt: new Date().toISOString()
-    };
-    localStorage.setItem('ai-template-staged', JSON.stringify(stagedData));
-    setHasStagedData(true);
-    setStagedDataInfo({
-      templateType: selectedTemplateType,
-      parameterCount: suggestions.length,
-      savedAt: stagedData.savedAt
-    });
-    addDebugLog('info', `✅ 数据已暂存`, `${suggestions.length} 个参数`);
+  // 载入暂存副本
+  const handleLoadDraft = async () => {
+    if (!draftId) {
+      addDebugLog('warn', '没有暂存副本可载入');
+      return;
+    }
+
+    addDebugLog('info', `载入暂存副本`, `ID: ${draftId}`);
+    // localStorage的数据已在useEffect中恢复，这里只需要提示
+    addDebugLog('info', `✅ 副本已载入`, `${draftInfo?.parameterCount || 0} 个参数`);
+  };
+
+  // 清除暂存副本
+  const handleClearDraft = () => {
+    setDraftId(null);
+    setDraftInfo(null);
+    localStorage.removeItem('ai-template-draft');
+    addDebugLog('info', `清除暂存副本`);
   };
 
   // 动态更新加载消息（仅用于旧API的模拟进度）
@@ -380,27 +424,45 @@ export const AIIdentifyPanel: React.FC<Props> = ({ onApplyComplete }) => {
 
     setIsPreviewing(true);
     setPreviewResult(null);
-    addDebugLog('info', `预览模版`, `参数数量: ${suggestions.length}`);
 
     try {
+      carboneAPI.setBaseUrl(apiBaseUrl);
+
+      // 如果有暂存副本ID，直接从副本预览（不需要重新获取文档）
+      if (draftId) {
+        addDebugLog('info', `从副本预览`, `ID: ${draftId}`);
+        const result = await carboneAPI.previewWithSkill({
+          templateId: draftId,
+          skill: aiSkillGuide,
+        });
+
+        if (result.success) {
+          setPreviewResult({
+            success: true,
+            message: '✅ 预览生成成功！（从副本）',
+            previewUrl: result.previewUrl
+          });
+          addDebugLog('info', `✅ 预览成功`, `预览链接: ${result.previewUrl}`);
+        } else {
+          setPreviewResult({ success: false, message: `预览失败: ${result.error || '未知错误'}` });
+          addDebugLog('error', `预览失败`, result.error || '未知错误');
+        }
+        return;
+      }
+
+      // 没有副本ID，需要重新获取文档并生成模版
+      addDebugLog('info', `重新生成模版预览`, `参数数量: ${suggestions.length}`);
+
       let documentContent = '';
       let format = 'docx';
 
       if (officeType === 'word') {
-        // 使用Word.run getFileOrNull获取完整docx文件（base64格式）
-        try {
-          const result = await OfficeHelper.Word.getDocumentFileBase64WithFallback();
-          documentContent = 'base64:' + result.base64;
-          addDebugLog('info', `文档获取方式: ${result.method}`, `有效docx: ${result.isValidDocx}`);
+        const result = await OfficeHelper.Word.getDocumentFileBase64WithFallback();
+        documentContent = 'base64:' + result.base64;
+        addDebugLog('info', `文档获取方式: ${result.method}`, `有效docx: ${result.isValidDocx}`);
 
-          if (!result.isValidDocx) {
-            addDebugLog('warn', `文档格式不完整`, '预览可能受限');
-          }
-        } catch (e: any) {
-          setPreviewResult({ success: false, message: `获取文档失败: ${e.message}` });
-          addDebugLog('error', `获取文档失败`, e.message);
-          setIsPreviewing(false);
-          return;
+        if (!result.isValidDocx) {
+          addDebugLog('warn', `文档格式不完整`, '预览可能受限');
         }
         format = 'docx';
       } else if (officeType === 'excel') {
@@ -411,8 +473,6 @@ export const AIIdentifyPanel: React.FC<Props> = ({ onApplyComplete }) => {
         documentContent = await OfficeHelper.PowerPoint.getDocumentContent();
         format = 'pptx';
       }
-
-      carboneAPI.setBaseUrl(apiBaseUrl);
 
       // 先生成模板
       const templateResult = await carboneAPI.generateTemplate({
@@ -428,15 +488,12 @@ export const AIIdentifyPanel: React.FC<Props> = ({ onApplyComplete }) => {
         return;
       }
 
-      // 检查是否有有效文件
       if (!templateResult.hasValidFile) {
         setPreviewResult({ success: false, message: '无法获取完整的docx文件，预览功能暂不可用' });
         addDebugLog('warn', `预览受限`, '无法获取完整的docx文件');
         return;
       }
 
-      // 保存预览生成的模版ID（用于后续保存复用）
-      setPreviewTemplateId(templateResult.templateId || null);
       addDebugLog('info', `模版已生成`, `ID: ${templateResult.templateId}`);
 
       // 使用skill预览
@@ -561,78 +618,50 @@ export const AIIdentifyPanel: React.FC<Props> = ({ onApplyComplete }) => {
       return;
     }
 
+    if (!draftId) {
+      setSaveResult({ success: false, message: '请先暂存副本' });
+      return;
+    }
+
     setIsSaving(true);
     setSaveResult(null);
-    addDebugLog('info', `保存模版和AI指南`);
+    addDebugLog('info', `最终保存模版`, `从副本ID: ${draftId}`);
 
     try {
-      // 获取当前文档内容（使用base64格式，与模版配置tab一致）
-      let documentContent = '';
-      let format = 'docx';
-
-      if (officeType === 'word') {
-        // 使用Word.run getFileOrNull获取完整docx文件（base64格式）
-        try {
-          const result = await OfficeHelper.Word.getDocumentFileBase64WithFallback();
-          documentContent = 'base64:' + result.base64;
-          addDebugLog('info', `文档获取方式: ${result.method}`, `有效docx: ${result.isValidDocx}`);
-
-          if (!result.isValidDocx) {
-            addDebugLog('warn', `文档格式不完整`, '保存的模版可能无法正常渲染');
-          }
-        } catch (e: any) {
-          setSaveResult({ success: false, message: `获取文档失败: ${e.message}` });
-          addDebugLog('error', `获取文档失败`, e.message);
-          setIsSaving(false);
-          return;
-        }
-        format = 'docx';
-      } else if (officeType === 'excel') {
-        const sheetData = await OfficeHelper.Excel.getSheetData();
-        documentContent = JSON.stringify(sheetData.values);
-        format = 'xlsx';
-      } else {
-        documentContent = await OfficeHelper.PowerPoint.getDocumentContent();
-        format = 'pptx';
-      }
-
       carboneAPI.setBaseUrl(apiBaseUrl);
 
-      // 如果已有预览生成的模版ID，复用它（不需要重新获取文档）
+      // 从副本正式命名保存
       const saveParams: any = {
+        templateId: draftId,  // 复用副本ID
         suggestions: suggestions,
         templateConfig,
         skill: aiSkillGuide,
-        format,
-        templateName: `${selectedTemplateType}-template-${Date.now()}`
+        templateName: `${selectedTemplateType}-template-${Date.now()}`  // 正式命名
       };
 
-      if (previewTemplateId) {
-        // 复用预览生成的模版ID
-        saveParams.templateId = previewTemplateId;
-        addDebugLog('info', `复用预览模版ID`, previewTemplateId);
-      } else {
-        // 没有预览模版ID，需要传入文档内容
-        saveParams.documentContent = documentContent;
-        addDebugLog('info', `新建模版`, '需要传入文档内容');
-      }
+      addDebugLog('info', `从副本正式保存`, `副本ID: ${draftId}`);
 
       const result = await carboneAPI.saveTemplateFull(saveParams);
 
       if (result.success) {
         setSaveResult({
           success: true,
-          message: `✅ 保存成功！模板ID: ${result.templateId || 'N/A'}, 指南ID: ${result.skillId || 'N/A'}`
+          message: `✅ 最终保存成功！模板ID: ${result.templateId || 'N/A'}, 指南ID: ${result.skillId || 'N/A'}`
         });
-        addDebugLog('info', `✅ 保存成功`, `模板ID: ${result.templateId}, 指南ID: ${result.skillId}`);
-        // 同时保存到本地暂存
-        saveToStaged();
+        addDebugLog('info', `✅ 最终保存成功`, `模板ID: ${result.templateId}, 指南ID: ${result.skillId}`);
+        // 保存成功后清除暂存副本
+        handleClearDraft();
       } else {
         setSaveResult({ success: false, message: `保存失败: ${result.error || '未知错误'}` });
         addDebugLog('error', `保存失败`, result.error || '未知错误');
       }
     } catch (error: any) {
       setSaveResult({ success: false, message: `保存失败: ${error.message}` });
+      addDebugLog('error', `保存失败`, error.message);
+    } finally {
+      setIsSaving(false);
+    }
+  };
       addDebugLog('error', `保存失败`, error.message);
     } finally {
       setIsSaving(false);
@@ -1256,35 +1285,53 @@ export const AIIdentifyPanel: React.FC<Props> = ({ onApplyComplete }) => {
         </div>
       )}
 
-      {/* 保存模版和指南按钮组 */}
-      <div className="save-buttons-group">
+      {/* 暂存副本按钮组 */}
+      <div className="draft-buttons-group">
         <button
-          className="save-template-btn"
-          onClick={handleSaveTemplateAndGuide}
-          disabled={isSaving || !aiSkillGuide}
+          className="save-draft-btn"
+          onClick={handleSaveDraft}
+          disabled={isSavingDraft || !aiSkillGuide}
         >
-          {isSaving ? '⏳ 保存中...' : '💾 保存模版和指南'}
+          {isSavingDraft ? '⏳ 暂存中...' : '📦 暂存副本'}
         </button>
 
-        <button
-          className="load-staged-btn"
-          onClick={handleLoadStagedData}
-          disabled={isLoadingStaged || !hasStagedData}
-          title={stagedDataInfo ? `暂存于: ${stagedDataInfo.savedAt}` : '无暂存数据'}
-        >
-          {isLoadingStaged ? '⏳ 载入中...' : '📂 载入暂存'}
-        </button>
+        {draftId && (
+          <button
+            className="clear-draft-btn"
+            onClick={handleClearDraft}
+            title="清除暂存副本"
+          >
+            🗑️ 清除
+          </button>
+        )}
       </div>
 
-      {/* 暂存数据信息 */}
-      {hasStagedData && stagedDataInfo && (
-        <div className="staged-data-info">
-          <span className="staged-badge">📦 有暂存</span>
-          <span className="staged-details">
-            {stagedDataInfo.templateType} · {stagedDataInfo.parameterCount} 参数
+      {/* 副本信息 */}
+      {draftId && draftInfo && (
+        <div className="draft-info">
+          <span className="draft-badge">✅ 已暂存</span>
+          <span className="draft-details">
+            {draftInfo.templateType} · {draftInfo.parameterCount} 参数 · ID: {draftId.substring(0, 8)}...
           </span>
         </div>
       )}
+
+      {/* 副本保存结果反馈 */}
+      {draftSaveResult && (
+        <div className={`draft-result ${draftSaveResult.success ? 'success' : 'error'}`}>
+          {draftSaveResult.message}
+        </div>
+      )}
+
+      {/* 最终保存按钮（从副本正式命名保存） */}
+      <button
+        className="final-save-btn"
+        onClick={handleSaveTemplateAndGuide}
+        disabled={isSaving || !draftId}
+        title={!draftId ? '请先暂存副本' : '从副本正式保存'}
+      >
+        {isSaving ? '⏳ 保存中...' : '💾 最终保存模版'}
+      </button>
 
       {/* 保存结果反馈 */}
       {saveResult && (

@@ -1793,6 +1793,116 @@ body {
   cursor: not-allowed;
 }
 
+/* Draft Buttons Group */
+.draft-buttons-group {
+  display: flex;
+  gap: 8px;
+  margin: 8px 0;
+}
+
+/* Save Draft Button */
+.save-draft-btn {
+  background: #fef3c7;
+  border: 1px solid #f59e0b;
+  color: #92400e;
+  padding: 8px 16px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.save-draft-btn:hover {
+  background: #fde68a;
+}
+
+.save-draft-btn:disabled {
+  background: #fef9c3;
+  color: #a16207;
+  cursor: not-allowed;
+}
+
+/* Clear Draft Button */
+.clear-draft-btn {
+  background: #fee2e2;
+  border: 1px solid #ef4444;
+  color: #991b1b;
+  padding: 8px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.clear-draft-btn:hover {
+  background: #fecaca;
+}
+
+/* Draft Info */
+.draft-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: #dcfce7;
+  border: 1px solid #22c55e;
+  border-radius: 6px;
+  margin: 4px 0;
+  font-size: 12px;
+}
+
+.draft-badge {
+  background: #22c55e;
+  color: white;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-weight: 500;
+}
+
+.draft-details {
+  color: #166534;
+}
+
+/* Draft Save Result */
+.draft-result {
+  padding: 10px 16px;
+  border-radius: 6px;
+  margin: 8px 0;
+  font-size: 14px;
+}
+
+.draft-result.success {
+  background: #dcfce7;
+  border: 1px solid #22c55e;
+  color: #166534;
+}
+
+.draft-result.error {
+  background: #fee2e2;
+  border: 1px solid #ef4444;
+  color: #991b1b;
+}
+
+/* Final Save Button */
+.final-save-btn {
+  background: #3b82f6;
+  border: 1px solid #2563eb;
+  color: white;
+  padding: 10px 20px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.final-save-btn:hover {
+  background: #2563eb;
+}
+
+.final-save-btn:disabled {
+  background: #93c5fd;
+  color: #1e40af;
+  cursor: not-allowed;
+}
+
 /* Save Buttons Group */
 .save-buttons-group {
   display: flex;
