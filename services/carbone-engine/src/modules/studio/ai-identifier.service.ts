@@ -2349,7 +2349,7 @@ ${blankList}
 
     // 构建参数列表描述
     const parameters = skill.parameters || [];
-    const paramList = parameters.map(p => {
+    const paramList = parameters.map((p: any) => {
       return `- ${p.name}: ${p.usage || '需要填写'} (类型: ${p.dataType || 'text'})`;
     }).join('\n');
 
