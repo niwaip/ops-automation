@@ -1706,6 +1706,16 @@ body {
   text-decoration: underline;
 }
 
+.preview-links {
+  display: flex;
+  gap: 12px;
+  margin-top: 8px;
+}
+
+.download-link {
+  color: #059669;
+}
+
 /* Generated Data Preview */
 .generated-data-preview {
   margin-top: 12px;

@@ -2496,6 +2496,13 @@ ${blankList}
    * 生成示例值
    */
   private generateExampleValue(fieldType: string, variableName: string): string {
+    // 清理变量名：移除花括号和d.前缀
+    let cleanName = variableName || '';
+    cleanName = cleanName.replace(/^\{/, '').replace(/\}$/, '');
+    cleanName = cleanName.replace(/^d\./, '');
+    // 取最后一段作为名称（如partyA.name -> name）
+    const lastPart = cleanName.split('.').pop() || cleanName;
+
     switch (fieldType) {
       case 'date':
         return '2024-01-15';
@@ -2511,8 +2518,20 @@ ${blankList}
         return '北京市朝阳区xxx街道xxx号';
       case 'name':
         return '张三';
+      case 'code':
+        return 'ABC123456';
+      case 'text':
       default:
-        return `示例_${variableName?.replace(/[:\[].*/g, '') || '值'}`;
+        // 根据变量名称生成更合适的示例
+        if (lastPart.includes('名称') || lastPart.includes('name')) return '示例公司';
+        if (lastPart.includes('地址') || lastPart.includes('address')) return '北京市朝阳区xxx街道xxx号';
+        if (lastPart.includes('日期') || lastPart.includes('date') || lastPart.includes('year')) return '2024';
+        if (lastPart.includes('月')) return '01';
+        if (lastPart.includes('日') || lastPart.includes('day')) return '15';
+        if (lastPart.includes('金额') || lastPart.includes('amount')) return '10000.00';
+        if (lastPart.includes('签字') || lastPart.includes('sign')) return '签字人';
+        if (lastPart.includes('保密') || lastPart.includes('confidential')) return '5';
+        return `示例${lastPart}`;
     }
   }
 

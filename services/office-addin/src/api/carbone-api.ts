@@ -340,6 +340,7 @@ class CarboneAPI {
   }): Promise<{
     success: boolean;
     previewUrl?: string;
+    downloadUrl?: string;
     generatedData?: any;
     skillUsed?: any;
     error?: string;

@@ -82,7 +82,7 @@ export const AIIdentifyPanel: React.FC<Props> = ({ onApplyComplete }) => {
   const [isSaving, setIsSaving] = useState(false);
 
   // 预览模版状态
-  const [previewResult, setPreviewResult] = useState<{ success: boolean; message: string; previewUrl?: string; generatedData?: any } | null>(null);
+  const [previewResult, setPreviewResult] = useState<{ success: boolean; message: string; previewUrl?: string; downloadUrl?: string; generatedData?: any } | null>(null);
   const [isPreviewing, setIsPreviewing] = useState(false);
 
   // 暂存副本状态（保存到后端的完整副本）
@@ -441,9 +441,10 @@ export const AIIdentifyPanel: React.FC<Props> = ({ onApplyComplete }) => {
             success: true,
             message: '✅ 预览验证成功！（从副本）',
             previewUrl: result.previewUrl,
+            downloadUrl: result.downloadUrl,
             generatedData: result.generatedData
           });
-          addDebugLog('info', `✅ 预览验证成功`, `生成的数据: ${JSON.stringify(result.generatedData, null, 2)}`);
+          addDebugLog('info', `✅ 预览验证成功`, `下载链接: ${result.downloadUrl}`);
         } else {
           setPreviewResult({ success: false, message: `预览失败: ${result.error || '未知错误'}` });
           addDebugLog('error', `预览失败`, result.error || '未知错误');
@@ -508,9 +509,10 @@ export const AIIdentifyPanel: React.FC<Props> = ({ onApplyComplete }) => {
           success: true,
           message: '✅ 预览验证成功！',
           previewUrl: result.previewUrl,
+          downloadUrl: result.downloadUrl,
           generatedData: result.generatedData
         });
-        addDebugLog('info', `✅ 预览验证成功`, `生成的数据: ${JSON.stringify(result.generatedData, null, 2)}`);
+        addDebugLog('info', `✅ 预览验证成功`, `下载链接: ${result.downloadUrl}`);
       } else {
         setPreviewResult({ success: false, message: `预览失败: ${result.error || '未知错误'}` });
         addDebugLog('error', `预览失败`, result.error || '未知错误');
@@ -638,6 +640,7 @@ export const AIIdentifyPanel: React.FC<Props> = ({ onApplyComplete }) => {
         suggestions: suggestions,
         templateConfig,
         skill: aiSkillGuide,
+        format: officeType === 'excel' ? 'xlsx' : officeType === 'ppt' ? 'pptx' : 'docx',  // 添加format参数
         templateName: `${selectedTemplateType}-template-${Date.now()}`  // 正式命名
       };
 
@@ -1274,14 +1277,21 @@ export const AIIdentifyPanel: React.FC<Props> = ({ onApplyComplete }) => {
       {previewResult && (
         <div className={`preview-result ${previewResult.success ? 'success' : 'error'}`}>
           {previewResult.message}
-          {previewResult.previewUrl && (
-            <a href={previewResult.previewUrl} target="_blank" rel="noopener noreferrer" className="preview-link">
-              打开预览
-            </a>
-          )}
+          <div className="preview-links">
+            {previewResult.previewUrl && (
+              <a href={`${apiBaseUrl}${previewResult.previewUrl}`} target="_blank" rel="noopener noreferrer" className="preview-link">
+                👁️ 打开预览
+              </a>
+            )}
+            {previewResult.downloadUrl && (
+              <a href={`${apiBaseUrl}${previewResult.downloadUrl}`} target="_blank" rel="noopener noreferrer" className="preview-link download-link">
+                📥 下载Word
+              </a>
+            )}
+          </div>
           {previewResult.generatedData && (
             <div className="generated-data-preview">
-              <div className="generated-data-header">📊 AI生成的替换数据：</div>
+              <div className="generated-data-header">📊 模拟替换数据：</div>
               <pre className="generated-data-content">{JSON.stringify(previewResult.generatedData, null, 2)}</pre>
             </div>
           )}
