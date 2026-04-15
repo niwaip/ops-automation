@@ -12,58 +12,96 @@
             box-sizing: border-box;
         }
 
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-            background: #f5f7fa;
-            color: #333;
+        :root {
+            --primary: #6366f1;
+            --primary-dark: #4f46e5;
+            --primary-light: #818cf8;
+            --secondary: #ec4899;
+            --accent: #14b8a6;
+            --bg-main: #f8fafc;
+            --bg-card: #ffffff;
+            --text-primary: #1e293b;
+            --text-secondary: #64748b;
+            --text-muted: #94a3b8;
+            --border: #e2e8f0;
+            --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+            --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
+            --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1);
+            --radius: 12px;
+            --radius-sm: 8px;
         }
 
-        .app {
-            display: flex;
-            flex-direction: column;
-            min-height: 100vh;
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--bg-main);
+            color: var(--text-primary);
+            line-height: 1.5;
         }
 
         /* Header */
         .header {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            padding: 16px 24px;
+            background: var(--bg-card);
+            border-bottom: 1px solid var(--border);
+            padding: 16px 32px;
             display: flex;
             align-items: center;
             justify-content: space-between;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            position: sticky;
+            top: 0;
+            z-index: 100;
         }
 
         .logo {
             display: flex;
             align-items: center;
             gap: 12px;
-            font-size: 20px;
-            font-weight: 600;
         }
 
-        .logo i {
-            font-size: 24px;
-        }
-
-        .header-right a {
+        .logo-icon {
+            width: 40px;
+            height: 40px;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            border-radius: var(--radius-sm);
+            display: flex;
+            align-items: center;
+            justify-content: center;
             color: white;
-            text-decoration: none;
+            font-size: 18px;
+        }
+
+        .logo-text {
+            font-size: 20px;
+            font-weight: 700;
+            color: var(--text-primary);
+        }
+
+        .header-links {
+            display: flex;
+            gap: 12px;
+        }
+
+        .header-link {
+            display: flex;
+            align-items: center;
+            gap: 6px;
             padding: 8px 16px;
-            border-radius: 6px;
-            border: 1px solid rgba(255,255,255,0.3);
+            border-radius: var(--radius-sm);
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-weight: 500;
             transition: all 0.2s;
         }
 
-        .header-right a:hover {
-            background: rgba(255,255,255,0.2);
+        .header-link:hover {
+            background: var(--bg-main);
+            color: var(--primary);
         }
 
-        /* Main */
+        /* Main Content */
         .main {
-            flex: 1;
-            padding: 24px;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 32px;
         }
 
         .page-header {
@@ -73,161 +111,292 @@
             margin-bottom: 24px;
         }
 
+        .page-title-section {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
         .page-title {
-            font-size: 24px;
-            font-weight: 600;
+            font-size: 28px;
+            font-weight: 700;
+            color: var(--text-primary);
+        }
+
+        .page-subtitle {
+            color: var(--text-secondary);
+            font-size: 14px;
+            margin-top: 4px;
         }
 
         .refresh-btn {
-            padding: 10px 20px;
-            background: #667eea;
-            color: white;
-            border: none;
-            border-radius: 8px;
-            cursor: pointer;
             display: flex;
             align-items: center;
             gap: 8px;
+            padding: 12px 24px;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            color: var(--text-secondary);
+            font-weight: 500;
+            cursor: pointer;
             transition: all 0.2s;
         }
 
         .refresh-btn:hover {
-            background: #5a6fd6;
+            border-color: var(--primary);
+            color: var(--primary);
+            box-shadow: var(--shadow);
         }
 
-        /* Templates Table */
-        .templates-container {
-            background: white;
-            border-radius: 12px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        /* Templates Grid */
+        .templates-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
+            gap: 24px;
+        }
+
+        /* Template Card */
+        .template-card {
+            background: var(--bg-card);
+            border-radius: var(--radius);
+            border: 1px solid var(--border);
             overflow: hidden;
+            transition: all 0.3s;
+            cursor: pointer;
         }
 
-        .templates-table {
-            width: 100%;
-            border-collapse: collapse;
+        .template-card:hover {
+            box-shadow: var(--shadow-lg);
+            transform: translateY(-2px);
         }
 
-        .templates-table th {
-            background: #f8f9fa;
-            padding: 16px;
-            text-align: left;
+        .card-header {
+            padding: 20px 24px;
+            background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .card-icon {
+            width: 48px;
+            height: 48px;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%);
+            border-radius: var(--radius-sm);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 20px;
+        }
+
+        .card-format {
+            padding: 6px 12px;
+            background: rgba(99, 102, 241, 0.1);
+            color: var(--primary);
+            border-radius: 20px;
+            font-size: 12px;
             font-weight: 600;
-            color: #666;
-            border-bottom: 1px solid #eee;
         }
 
-        .templates-table td {
-            padding: 16px;
-            border-bottom: 1px solid #eee;
+        .card-body {
+            padding: 20px 24px;
         }
 
-        .templates-table tr:last-child td {
-            border-bottom: none;
-        }
-
-        .templates-table tr:hover {
-            background: #f8f9fa;
-        }
-
-        .template-name {
+        .card-name {
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 12px;
             display: flex;
             align-items: center;
             gap: 8px;
         }
 
-        .template-name i {
-            color: #667eea;
-        }
-
-        .format-badge {
-            padding: 4px 12px;
-            border-radius: 4px;
+        .card-id {
             font-size: 12px;
-            font-weight: 500;
-        }
-
-        .format-badge.docx { background: #e3f2fd; color: #1976d2; }
-        .format-badge.xlsx { background: #e8f5e9; color: #388e3c; }
-        .format-badge.pptx { background: #fff3e0; color: #f57c00; }
-        .format-badge.html { background: #f3e5f5; color: #7b1fa2; }
-
-        .skill-badge {
-            padding: 4px 12px;
+            color: var(--text-muted);
+            font-family: monospace;
+            padding: 4px 8px;
+            background: var(--bg-main);
             border-radius: 4px;
-            font-size: 12px;
         }
 
-        .skill-badge.yes { background: #e8f5e9; color: #2e7d32; }
-        .skill-badge.no { background: #f5f5f5; color: #9e9e9e; }
-
-        .actions-cell {
+        .card-stats {
             display: flex;
-            gap: 8px;
+            gap: 16px;
+            margin-top: 16px;
         }
 
-        .action-btn {
-            padding: 8px 12px;
-            border: none;
-            border-radius: 6px;
-            cursor: pointer;
+        .stat-item {
             display: flex;
             align-items: center;
             gap: 6px;
-            font-size: 13px;
-            transition: all 0.2s;
         }
 
-        .action-btn.view { background: #e3f2fd; color: #1976d2; }
-        .action-btn.rename { background: #fff8e1; color: #f57c00; }
-        .action-btn.download { background: #e8f5e9; color: #388e3c; }
-        .action-btn.delete { background: #ffebee; color: #c62828; }
+        .stat-icon {
+            color: var(--text-muted);
+            font-size: 14px;
+        }
 
-        .action-btn:hover {
-            opacity: 0.8;
-            transform: translateY(-1px);
+        .stat-value {
+            font-size: 14px;
+            color: var(--text-secondary);
+            font-weight: 500;
+        }
+
+        .stat-label {
+            font-size: 12px;
+            color: var(--text-muted);
+        }
+
+        .skill-badge {
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: 600;
+        }
+
+        .skill-badge.active {
+            background: linear-gradient(135deg, var(--accent) 0%, #0d9488 100%);
+            color: white;
+        }
+
+        .skill-badge.inactive {
+            background: var(--bg-main);
+            color: var(--text-muted);
+        }
+
+        .card-footer {
+            padding: 16px 24px;
+            border-top: 1px solid var(--border);
+            display: flex;
+            gap: 12px;
+        }
+
+        .card-btn {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            padding: 10px 16px;
+            border-radius: var(--radius-sm);
+            font-size: 13px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+            border: none;
+        }
+
+        .card-btn.view {
+            background: #eff6ff;
+            color: #3b82f6;
+        }
+
+        .card-btn.view:hover {
+            background: #dbeafe;
+        }
+
+        .card-btn.edit {
+            background: #fef3c7;
+            color: #d97706;
+        }
+
+        .card-btn.edit:hover {
+            background: #fde68a;
+        }
+
+        .card-btn.download {
+            background: #d1fae5;
+            color: #059669;
+        }
+
+        .card-btn.download:hover {
+            background: #a7f3d0;
+        }
+
+        .card-btn.delete {
+            background: #fee2e2;
+            color: #dc2626;
+        }
+
+        .card-btn.delete:hover {
+            background: #fecaca;
         }
 
         /* Empty State */
         .empty-state {
             text-align: center;
-            padding: 60px 20px;
-            color: #666;
+            padding: 80px 40px;
+            background: var(--bg-card);
+            border-radius: var(--radius);
+            border: 1px solid var(--border);
         }
 
-        .empty-state i {
-            font-size: 48px;
-            color: #ccc;
-            margin-bottom: 16px;
+        .empty-icon {
+            width: 80px;
+            height: 80px;
+            background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 24px;
+            color: var(--primary);
+            font-size: 32px;
         }
 
-        .empty-state h3 {
+        .empty-title {
+            font-size: 20px;
+            font-weight: 600;
+            color: var(--text-primary);
             margin-bottom: 8px;
         }
 
-        /* Loading */
-        .loading {
-            text-align: center;
-            padding: 40px;
-            color: #667eea;
+        .empty-desc {
+            color: var(--text-secondary);
         }
 
-        .loading i {
-            font-size: 24px;
+        /* Loading */
+        .loading-state {
+            text-align: center;
+            padding: 60px;
+            background: var(--bg-card);
+            border-radius: var(--radius);
+            border: 1px solid var(--border);
+        }
+
+        .loading-spinner {
+            width: 48px;
+            height: 48px;
+            border: 3px solid var(--border);
+            border-top-color: var(--primary);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 16px;
+        }
+
+        .loading-text {
+            color: var(--text-secondary);
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
         }
 
         /* Modal */
         .modal-overlay {
             display: none;
             position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: rgba(0,0,0,0.5);
+            inset: 0;
+            background: rgba(15, 23, 42, 0.6);
+            backdrop-filter: blur(4px);
             z-index: 1000;
             justify-content: center;
             align-items: center;
+            padding: 24px;
         }
 
         .modal-overlay.active {
@@ -235,56 +404,82 @@
         }
 
         .modal {
-            background: white;
-            border-radius: 16px;
-            width: 90%;
+            background: var(--bg-card);
+            border-radius: var(--radius);
+            width: 100%;
             max-width: 800px;
             max-height: 90vh;
             overflow: hidden;
-            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+            animation: modalIn 0.3s ease;
+        }
+
+        @keyframes modalIn {
+            from {
+                opacity: 0;
+                transform: scale(0.95) translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: scale(1) translateY(0);
+            }
         }
 
         .modal-header {
-            padding: 20px 24px;
-            border-bottom: 1px solid #eee;
+            padding: 24px;
+            border-bottom: 1px solid var(--border);
             display: flex;
             align-items: center;
             justify-content: space-between;
         }
 
-        .modal-header h3 {
+        .modal-title {
             font-size: 18px;
+            font-weight: 600;
             display: flex;
             align-items: center;
-            gap: 8px;
+            gap: 12px;
+        }
+
+        .modal-title-icon {
+            width: 36px;
+            height: 36px;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%);
+            border-radius: var(--radius-sm);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
         }
 
         .modal-close {
-            width: 32px;
-            height: 32px;
+            width: 36px;
+            height: 36px;
+            background: var(--bg-main);
             border: none;
-            background: #f5f5f5;
-            border-radius: 8px;
+            border-radius: var(--radius-sm);
             cursor: pointer;
             display: flex;
             align-items: center;
             justify-content: center;
+            color: var(--text-muted);
             transition: all 0.2s;
         }
 
         .modal-close:hover {
-            background: #eee;
+            background: #fee2e2;
+            color: #dc2626;
         }
 
         .modal-body {
             padding: 24px;
             overflow-y: auto;
-            max-height: calc(90vh - 140px);
+            max-height: calc(90vh - 160px);
         }
 
         .modal-footer {
-            padding: 16px 24px;
-            border-top: 1px solid #eee;
+            padding: 20px 24px;
+            border-top: 1px solid var(--border);
             display: flex;
             justify-content: flex-end;
             gap: 12px;
@@ -294,8 +489,8 @@
         .tabs {
             display: flex;
             gap: 0;
-            margin-bottom: 20px;
-            border-bottom: 1px solid #eee;
+            border-bottom: 1px solid var(--border);
+            margin-bottom: 24px;
         }
 
         .tab-btn {
@@ -304,14 +499,19 @@
             background: transparent;
             cursor: pointer;
             font-size: 14px;
-            color: #666;
+            font-weight: 500;
+            color: var(--text-muted);
             border-bottom: 2px solid transparent;
             transition: all 0.2s;
         }
 
+        .tab-btn:hover {
+            color: var(--text-secondary);
+        }
+
         .tab-btn.active {
-            color: #667eea;
-            border-bottom-color: #667eea;
+            color: var(--primary);
+            border-bottom-color: var(--primary);
         }
 
         .tab-content {
@@ -322,14 +522,16 @@
             display: block;
         }
 
-        /* Detail Sections */
+        /* Detail Info */
         .detail-section {
-            margin-bottom: 20px;
+            margin-bottom: 24px;
         }
 
-        .detail-section h4 {
-            margin-bottom: 12px;
-            color: #333;
+        .detail-section-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 16px;
             display: flex;
             align-items: center;
             gap: 8px;
@@ -338,24 +540,25 @@
         .detail-grid {
             display: grid;
             grid-template-columns: repeat(2, 1fr);
-            gap: 12px;
+            gap: 16px;
         }
 
         .detail-item {
-            background: #f8f9fa;
-            padding: 12px;
-            border-radius: 8px;
+            background: var(--bg-main);
+            padding: 16px;
+            border-radius: var(--radius-sm);
         }
 
         .detail-label {
             font-size: 12px;
-            color: #666;
+            color: var(--text-muted);
             margin-bottom: 4px;
         }
 
         .detail-value {
             font-size: 14px;
-            color: #333;
+            color: var(--text-primary);
+            font-weight: 500;
         }
 
         .variables-list {
@@ -365,168 +568,213 @@
         }
 
         .variable-tag {
-            padding: 4px 8px;
-            background: #e3f2fd;
-            color: #1976d2;
-            border-radius: 4px;
+            padding: 6px 12px;
+            background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
+            color: #1d4ed8;
+            border-radius: 6px;
             font-size: 12px;
-        }
-
-        .loop-tag {
-            padding: 4px 8px;
-            background: #f3e5f5;
-            color: #7b1fa2;
-            border-radius: 4px;
-            font-size: 12px;
+            font-weight: 500;
         }
 
         /* Code Block */
         .code-block {
-            background: #f5f5f5;
-            padding: 16px;
-            border-radius: 8px;
+            background: #1e293b;
+            color: #e2e8f0;
+            padding: 20px;
+            border-radius: var(--radius-sm);
             overflow-x: auto;
-            font-family: 'Monaco', 'Menlo', monospace;
+            font-family: 'JetBrains Mono', 'Monaco', monospace;
             font-size: 13px;
-            white-space: pre-wrap;
-            word-break: break-all;
+            line-height: 1.6;
         }
 
-        /* Rename Modal */
+        /* Rename Input */
         .rename-input {
             width: 100%;
-            padding: 12px;
-            border: 1px solid #ddd;
-            border-radius: 8px;
+            padding: 14px 16px;
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
             font-size: 14px;
+            transition: all 0.2s;
         }
 
         .rename-input:focus {
             outline: none;
-            border-color: #667eea;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
         }
 
+        /* Buttons */
         .btn-primary {
-            padding: 10px 20px;
-            background: #667eea;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 12px 24px;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
             color: white;
             border: none;
-            border-radius: 8px;
+            border-radius: var(--radius-sm);
+            font-weight: 500;
             cursor: pointer;
+            transition: all 0.2s;
         }
 
-        .btn-outline {
-            padding: 10px 20px;
-            background: transparent;
-            color: #666;
-            border: 1px solid #ddd;
-            border-radius: 8px;
+        .btn-primary:hover {
+            box-shadow: var(--shadow);
+            transform: translateY(-1px);
+        }
+
+        .btn-secondary {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 12px 24px;
+            background: var(--bg-main);
+            color: var(--text-secondary);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            font-weight: 500;
             cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn-secondary:hover {
+            background: var(--bg-card);
+            border-color: var(--primary);
+            color: var(--primary);
         }
 
         /* Toast */
         .toast-container {
             position: fixed;
-            top: 20px;
-            right: 20px;
+            top: 24px;
+            right: 24px;
             z-index: 2000;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
         }
 
         .toast {
-            padding: 12px 20px;
-            border-radius: 8px;
-            margin-bottom: 8px;
+            padding: 16px 24px;
+            border-radius: var(--radius-sm);
             display: flex;
             align-items: center;
-            gap: 8px;
-            animation: slideIn 0.3s ease;
+            gap: 12px;
+            box-shadow: var(--shadow-lg);
+            animation: toastIn 0.3s ease;
         }
 
-        .toast.success { background: #e8f5e9; color: #2e7d32; }
-        .toast.error { background: #ffebee; color: #c62828; }
+        .toast.success {
+            background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%);
+            color: #065f46;
+        }
 
-        @keyframes slideIn {
-            from { transform: translateX(100%); opacity: 0; }
-            to { transform: translateX(0); opacity: 1; }
+        .toast.error {
+            background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);
+            color: #991b1b;
+        }
+
+        @keyframes toastIn {
+            from {
+                opacity: 0;
+                transform: translateX(100%);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .main {
+                padding: 16px;
+            }
+
+            .templates-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .detail-grid {
+                grid-template-columns: 1fr;
+            }
         }
     </style>
 </head>
 <body>
-    <div class="app">
-        <!-- Header -->
-        <header class="header">
-            <div class="logo">
+    <!-- Header -->
+    <header class="header">
+        <div class="logo">
+            <div class="logo-icon">
                 <i class="fas fa-file-code"></i>
-                <span>Carbone Studio</span>
             </div>
-            <div class="header-right">
-                <a href="/api" target="_blank">
-                    <i class="fas fa-book"></i> API Docs
-                </a>
-            </div>
-        </header>
+            <span class="logo-text">Carbone Studio</span>
+        </div>
+        <div class="header-links">
+            <a href="/api" target="_blank" class="header-link">
+                <i class="fas fa-book"></i> API Docs
+            </a>
+        </div>
+    </header>
 
-        <!-- Main -->
-        <main class="main">
-            <div class="page-header">
+    <!-- Main -->
+    <main class="main">
+        <div class="page-header">
+            <div class="page-title-section">
                 <h1 class="page-title">模板管理</h1>
-                <button class="refresh-btn" onclick="loadTemplates()">
-                    <i class="fas fa-sync-alt"></i> 刷新
-                </button>
+                <p class="page-subtitle">管理您的文档模板和 Skill Guide</p>
             </div>
+            <button class="refresh-btn" onclick="loadTemplates()">
+                <i class="fas fa-sync-alt"></i> 刷新列表
+            </button>
+        </div>
 
-            <div class="templates-container">
-                <table class="templates-table">
-                    <thead>
-                        <tr>
-                            <th>ID</th>
-                            <th>名称</th>
-                            <th>格式</th>
-                            <th>变量</th>
-                            <th>Skill</th>
-                            <th>更新时间</th>
-                            <th>操作</th>
-                        </tr>
-                    </thead>
-                    <tbody id="templates-body">
-                        <tr>
-                            <td colspan="7" class="loading">
-                                <i class="fas fa-spinner fa-spin"></i> 加载中...
-                            </td>
-                        </tr>
-                    </tbody>
-                </table>
+        <div id="templates-container" class="templates-grid">
+            <!-- Loading state -->
+            <div class="loading-state">
+                <div class="loading-spinner"></div>
+                <p class="loading-text">加载模板中...</p>
             </div>
-        </main>
-    </div>
+        </div>
+    </main>
 
     <!-- Detail Modal -->
     <div class="modal-overlay" id="detail-modal">
         <div class="modal">
             <div class="modal-header">
-                <h3><i class="fas fa-info-circle"></i> 模板详情</h3>
+                <div class="modal-title">
+                    <div class="modal-title-icon"><i class="fas fa-info-circle"></i></div>
+                    模板详情
+                </div>
                 <button class="modal-close" onclick="closeModal('detail-modal')">
                     <i class="fas fa-times"></i>
                 </button>
             </div>
             <div class="modal-body">
                 <div class="tabs">
-                    <button class="tab-btn active" onclick="switchTab('template-info')">模板信息</button>
-                    <button class="tab-btn" onclick="switchTab('skill-info')">Skill Guide</button>
-                    <button class="tab-btn" onclick="switchTab('config-info')">配置</button>
+                    <button class="tab-btn active" onclick="switchTab('template-info')">
+                        <i class="fas fa-file-alt"></i> 模板信息
+                    </button>
+                    <button class="tab-btn" onclick="switchTab('skill-info')">
+                        <i class="fas fa-magic"></i> Skill Guide
+                    </button>
+                    <button class="tab-btn" onclick="switchTab('config-info')">
+                        <i class="fas fa-cog"></i> 配置
+                    </button>
                 </div>
                 <div id="template-info" class="tab-content active">
                     <div class="detail-grid">
                         <div class="detail-item">
-                            <div class="detail-label">ID</div>
+                            <div class="detail-label">模板 ID</div>
                             <div class="detail-value" id="detail-id"></div>
                         </div>
                         <div class="detail-item">
-                            <div class="detail-label">名称</div>
+                            <div class="detail-label">文件名称</div>
                             <div class="detail-value" id="detail-name"></div>
                         </div>
                         <div class="detail-item">
-                            <div class="detail-label">格式</div>
+                            <div class="detail-label">文件格式</div>
                             <div class="detail-value" id="detail-format"></div>
                         </div>
                         <div class="detail-item">
@@ -538,22 +786,28 @@
                             <div class="detail-value" id="detail-updated"></div>
                         </div>
                         <div class="detail-item">
-                            <div class="detail-label">Skill ID</div>
-                            <div class="detail-value" id="detail-skill-id"></div>
+                            <div class="detail-label">Skill 状态</div>
+                            <div class="detail-value" id="detail-skill-status"></div>
                         </div>
                     </div>
                     <div class="detail-section">
-                        <h4><i class="fas fa-code"></i> 变量列表</h4>
+                        <div class="detail-section-title">
+                            <i class="fas fa-code"></i> 变量列表
+                        </div>
                         <div class="variables-list" id="detail-variables"></div>
                     </div>
                     <div class="detail-section">
-                        <h4><i class="fas fa-repeat"></i> 循环配置</h4>
+                        <div class="detail-section-title">
+                            <i class="fas fa-repeat"></i> 循环配置
+                        </div>
                         <div class="variables-list" id="detail-loops"></div>
                     </div>
                 </div>
                 <div id="skill-info" class="tab-content">
                     <div id="skill-content">
-                        <p style="color: #666;">此模板没有关联的 Skill Guide</p>
+                        <p style="color: var(--text-muted); text-align: center; padding: 40px;">
+                            此模板没有关联的 Skill Guide
+                        </p>
                     </div>
                 </div>
                 <div id="config-info" class="tab-content">
@@ -561,12 +815,11 @@
                 </div>
             </div>
             <div class="modal-footer">
-                <button class="btn-outline" onclick="closeModal('detail-modal')">关闭</button>
+                <button class="btn-secondary" onclick="closeModal('detail-modal')">
+                    <i class="fas fa-times"></i> 关闭
+                </button>
                 <button class="btn-primary" id="download-template-btn">
                     <i class="fas fa-download"></i> 下载模板
-                </button>
-                <button class="btn-outline" id="download-skill-btn" style="display: none;">
-                    <i class="fas fa-download"></i> 下载 Skill
                 </button>
             </div>
         </div>
@@ -574,19 +827,28 @@
 
     <!-- Rename Modal -->
     <div class="modal-overlay" id="rename-modal">
-        <div class="modal" style="max-width: 400px;">
+        <div class="modal" style="max-width: 440px;">
             <div class="modal-header">
-                <h3><i class="fas fa-edit"></i> 重命名模板</h3>
+                <div class="modal-title">
+                    <div class="modal-title-icon" style="background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);">
+                        <i class="fas fa-edit"></i>
+                    </div>
+                    重命名模板
+                </div>
                 <button class="modal-close" onclick="closeModal('rename-modal')">
                     <i class="fas fa-times"></i>
                 </button>
             </div>
             <div class="modal-body">
-                <input type="text" class="rename-input" id="rename-input" placeholder="请输入新名称">
+                <input type="text" class="rename-input" id="rename-input" placeholder="请输入新的模板名称">
             </div>
             <div class="modal-footer">
-                <button class="btn-outline" onclick="closeModal('rename-modal')">取消</button>
-                <button class="btn-primary" onclick="confirmRename()">确认</button>
+                <button class="btn-secondary" onclick="closeModal('rename-modal')">
+                    取消
+                </button>
+                <button class="btn-primary" onclick="confirmRename()">
+                    <i class="fas fa-check"></i> 确认
+                </button>
             </div>
         </div>
     </div>
@@ -601,8 +863,13 @@
 
         // Load templates
         async function loadTemplates() {
-            const tbody = document.getElementById('templates-body');
-            tbody.innerHTML = '<tr><td colspan="7" class="loading"><i class="fas fa-spinner fa-spin"></i> 加载中...</td></tr>';
+            const container = document.getElementById('templates-container');
+            container.innerHTML = `
+                <div class="loading-state">
+                    <div class="loading-spinner"></div>
+                    <p class="loading-text">加载模板中...</p>
+                </div>
+            `;
 
             try {
                 const response = await fetch(`${API_BASE}/templates`);
@@ -610,95 +877,125 @@
                 templates = data.templates || [];
                 renderTemplates();
             } catch (error) {
-                tbody.innerHTML = '<tr><td colspan="7" class="empty-state"><i class="fas fa-exclamation-circle"></i><h3>加载失败</h3><p>' + error.message + '</p></td></tr>';
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-icon"><i class="fas fa-exclamation-triangle"></i></div>
+                        <h3 class="empty-title">加载失败</h3>
+                        <p class="empty-desc">${error.message}</p>
+                    </div>
+                `;
             }
         }
 
-        // Render templates table
+        // Render templates as cards
         function renderTemplates() {
-            const tbody = document.getElementById('templates-body');
+            const container = document.getElementById('templates-container');
 
             if (templates.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="7" class="empty-state"><i class="fas fa-folder-open"></i><h3>暂无模板</h3><p>通过 Office 插件保存模板</p></td></tr>';
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-icon"><i class="fas fa-folder-open"></i></div>
+                        <h3 class="empty-title">暂无模板</h3>
+                        <p class="empty-desc">通过 Office 插件保存您的第一个模板</p>
+                    </div>
+                `;
                 return;
             }
 
-            tbody.innerHTML = templates.map(t => `
-                <tr>
-                    <td><code style="font-size: 12px;">${t.id.substring(0, 8)}...</code></td>
-                    <td>
-                        <div class="template-name">
-                            <i class="fas fa-file-word"></i>
-                            ${t.fileName || t.id}
+            container.innerHTML = templates.map(t => {
+                const format = t.format || 'docx';
+                const varCount = t.variables?.length || 0;
+                const suggestionCount = t.suggestions?.length || 0;
+                const updatedAt = t.updatedAt ? new Date(t.updatedAt).toLocaleDateString() : '-';
+                const hasSkill = t.skillId ? true : false;
+
+                return `
+                    <div class="template-card" onclick="viewTemplate('${t.id}')">
+                        <div class="card-header">
+                            <div class="card-icon">
+                                <i class="fas fa-file-word"></i>
+                            </div>
+                            <span class="card-format">${format.toUpperCase()}</span>
                         </div>
-                    </td>
-                    <td><span class="format-badge ${t.format || 'docx'}">${(t.format || 'docx').toUpperCase()}</span></td>
-                    <td>${t.variables?.length || 0} 个</td>
-                    <td><span class="skill-badge ${t.skillId ? 'yes' : 'no'}">${t.skillId ? '已关联' : '无'}</span></td>
-                    <td>${t.updatedAt ? new Date(t.updatedAt).toLocaleString() : '-'}</td>
-                    <td class="actions-cell">
-                        <button class="action-btn view" onclick="viewTemplate('${t.id}')">
-                            <i class="fas fa-eye"></i> 查看
-                        </button>
-                        <button class="action-btn rename" onclick="openRename('${t.id}', '${t.fileName || t.id}')">
-                            <i class="fas fa-edit"></i> 重命名
-                        </button>
-                        <button class="action-btn download" onclick="downloadTemplate('${t.id}')">
-                            <i class="fas fa-download"></i> 下载
-                        </button>
-                        <button class="action-btn delete" onclick="deleteTemplate('${t.id}')">
-                            <i class="fas fa-trash"></i> 删除
-                        </button>
-                    </td>
-                </tr>
-            `).join('');
+                        <div class="card-body">
+                            <div class="card-name">
+                                <span>${t.fileName || '未命名模板'}</span>
+                                <span class="card-id">${t.id.substring(0, 8)}</span>
+                            </div>
+                            <div class="card-stats">
+                                <div class="stat-item">
+                                    <i class="fas fa-code stat-icon"></i>
+                                    <span class="stat-value">${varCount}</span>
+                                    <span class="stat-label">变量</span>
+                                </div>
+                                <div class="stat-item">
+                                    <i class="fas fa-lightbulb stat-icon"></i>
+                                    <span class="stat-value">${suggestionCount}</span>
+                                    <span class="stat-label">建议</span>
+                                </div>
+                                <div class="stat-item">
+                                    <span class="skill-badge ${hasSkill ? 'active' : 'inactive'}">
+                                        ${hasSkill ? 'Skill' : '无Skill'}
+                                    </span>
+                                </div>
+                                <div class="stat-item">
+                                    <i class="fas fa-clock stat-icon"></i>
+                                    <span class="stat-value">${updatedAt}</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="card-footer">
+                            <button class="card-btn view" onclick="event.stopPropagation(); viewTemplate('${t.id}')">
+                                <i class="fas fa-eye"></i> 查看
+                            </button>
+                            <button class="card-btn edit" onclick="event.stopPropagation(); openRename('${t.id}', '${t.fileName || t.id}')">
+                                <i class="fas fa-edit"></i> 重命名
+                            </button>
+                            <button class="card-btn download" onclick="event.stopPropagation(); downloadTemplate('${t.id}')">
+                                <i class="fas fa-download"></i> 下载
+                            </button>
+                            <button class="card-btn delete" onclick="event.stopPropagation(); deleteTemplate('${t.id}')">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
         }
 
         // View template detail
         async function viewTemplate(id) {
             currentTemplate = templates.find(t => t.id === id);
 
-            // Update basic info
             document.getElementById('detail-id').textContent = currentTemplate.id;
-            document.getElementById('detail-name').textContent = currentTemplate.fileName || currentTemplate.id;
-            document.getElementById('detail-format').innerHTML = `<span class="format-badge ${currentTemplate.format || 'docx'}">${(currentTemplate.format || 'docx').toUpperCase()}</span>`;
+            document.getElementById('detail-name').textContent = currentTemplate.fileName || '未命名模板';
+            document.getElementById('detail-format').innerHTML = `<span class="card-format">${(currentTemplate.format || 'docx').toUpperCase()}</span>`;
             document.getElementById('detail-created').textContent = currentTemplate.createdAt ? new Date(currentTemplate.createdAt).toLocaleString() : '-';
             document.getElementById('detail-updated').textContent = currentTemplate.updatedAt ? new Date(currentTemplate.updatedAt).toLocaleString() : '-';
-            document.getElementById('detail-skill-id').textContent = currentTemplate.skillId || '无';
+            document.getElementById('detail-skill-status').innerHTML = currentTemplate.skillId
+                ? '<span class="skill-badge active">已关联</span>'
+                : '<span class="skill-badge inactive">未关联</span>';
 
-            // Variables
             const varsEl = document.getElementById('detail-variables');
-            if (currentTemplate.variables?.length > 0) {
-                varsEl.innerHTML = currentTemplate.variables.map(v => `<span class="variable-tag">${v}</span>`).join('');
-            } else {
-                varsEl.innerHTML = '<span style="color: #666;">无变量</span>';
-            }
+            varsEl.innerHTML = currentTemplate.variables?.length > 0
+                ? currentTemplate.variables.map(v => `<span class="variable-tag">${v}</span>`).join('')
+                : '<span style="color: var(--text-muted);">无变量定义</span>';
 
-            // Loops
             const loopsEl = document.getElementById('detail-loops');
-            if (currentTemplate.loops?.length > 0) {
-                loopsEl.innerHTML = currentTemplate.loops.map(l => `<span class="loop-tag">${l.arrayPath}</span>`).join('');
-            } else {
-                loopsEl.innerHTML = '<span style="color: #666;">无循环配置</span>';
-            }
+            loopsEl.innerHTML = currentTemplate.loops?.length > 0
+                ? currentTemplate.loops.map(l => `<span class="variable-tag" style="background: linear-gradient(135deg, #fce7f3 0%, #fbcfe8 100%); color: #9f1239;">${l.arrayPath}</span>`).join('')
+                : '<span style="color: var(--text-muted);">无循环配置</span>';
 
-            // Config
             const configEl = document.getElementById('config-content');
-            if (currentTemplate.config) {
-                configEl.textContent = JSON.stringify(currentTemplate.config, null, 2);
-            } else {
-                configEl.textContent = '无配置信息';
-            }
+            configEl.textContent = currentTemplate.config
+                ? JSON.stringify(currentTemplate.config, null, 2)
+                : '无配置信息';
 
-            // Skill
             const skillEl = document.getElementById('skill-content');
-            const downloadSkillBtn = document.getElementById('download-skill-btn');
-
             if (currentTemplate.skillId) {
                 try {
                     const response = await fetch(`${API_BASE}/skill/${currentTemplate.skillId}`);
                     const skill = await response.json();
-
                     skillEl.innerHTML = `
                         <div class="detail-grid">
                             <div class="detail-item">
@@ -712,43 +1009,42 @@
                         </div>
                         ${skill.skillGuideMarkdown ? `
                             <div class="detail-section">
-                                <h4><i class="fas fa-file-alt"></i> Skill Guide Markdown</h4>
-                                <div class="code-block">${skill.skillGuideMarkdown}</div>
+                                <div class="detail-section-title"><i class="fas fa-file-alt"></i> Skill Guide</div>
+                                <div class="code-block">${escapeHtml(skill.skillGuideMarkdown)}</div>
                             </div>
                         ` : ''}
                         ${skill.dataExampleJson ? `
                             <div class="detail-section">
-                                <h4><i class="fas fa-code"></i> 数据示例</h4>
+                                <div class="detail-section-title"><i class="fas fa-code"></i> 数据示例</div>
                                 <div class="code-block">${JSON.stringify(skill.dataExampleJson, null, 2)}</div>
                             </div>
                         ` : ''}
                     `;
-                    downloadSkillBtn.style.display = 'inline-flex';
-                    downloadSkillBtn.onclick = () => downloadSkill(currentTemplate.skillId);
                 } catch (error) {
-                    skillEl.innerHTML = '<p style="color: #c62828;">获取 Skill 详情失败: ' + error.message + '</p>';
-                    downloadSkillBtn.style.display = 'none';
+                    skillEl.innerHTML = `<p style="color: #dc2626; text-align: center; padding: 40px;">获取 Skill 失败: ${error.message}</p>`;
                 }
             } else {
-                skillEl.innerHTML = '<p style="color: #666;">此模板没有关联的 Skill Guide</p>';
-                downloadSkillBtn.style.display = 'none';
+                skillEl.innerHTML = `<p style="color: var(--text-muted); text-align: center; padding: 40px;">此模板没有关联的 Skill Guide</p>`;
             }
 
-            // Download button
             document.getElementById('download-template-btn').onclick = () => downloadTemplate(id);
-
             openModal('detail-modal');
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
         }
 
         // Open rename modal
         function openRename(id, currentName) {
             currentTemplate = templates.find(t => t.id === id);
             const input = document.getElementById('rename-input');
-            // Remove extension
             const nameWithoutExt = currentName.replace(/\.[^.]+$/, '');
             input.value = nameWithoutExt;
             openModal('rename-modal');
-            input.focus();
+            setTimeout(() => input.focus(), 100);
         }
 
         // Confirm rename
@@ -772,7 +1068,7 @@
                     closeModal('rename-modal');
                     loadTemplates();
                 } else {
-                    showToast('重命名失败: ' + result.error, 'error');
+                    showToast('重命名失败: ' + (result.error || '未知错误'), 'error');
                 }
             } catch (error) {
                 showToast('重命名失败: ' + error.message, 'error');
@@ -781,21 +1077,17 @@
 
         // Delete template
         async function deleteTemplate(id) {
-            if (!confirm('确定要删除此模板及其关联的 Skill 吗？此操作不可恢复。')) {
-                return;
-            }
+            if (!confirm('确定要删除此模板吗？此操作不可恢复。')) return;
 
             try {
-                const response = await fetch(`${API_BASE}/templates/${id}/delete`, {
-                    method: 'POST'
-                });
+                const response = await fetch(`${API_BASE}/templates/${id}/delete`, { method: 'POST' });
                 const result = await response.json();
 
                 if (result.success) {
                     showToast('删除成功', 'success');
                     loadTemplates();
                 } else {
-                    showToast('删除失败: ' + result.error, 'error');
+                    showToast('删除失败: ' + (result.error || '未知错误'), 'error');
                 }
             } catch (error) {
                 showToast('删除失败: ' + error.message, 'error');
@@ -805,11 +1097,6 @@
         // Download template
         function downloadTemplate(id) {
             window.open(`${API_BASE}/download-template/${id}`, '_blank');
-        }
-
-        // Download skill
-        function downloadSkill(skillId) {
-            window.open(`${API_BASE}/download-skill/${skillId}`, '_blank');
         }
 
         // Modal helpers
@@ -836,8 +1123,21 @@
             toast.className = `toast ${type}`;
             toast.innerHTML = `<i class="fas fa-${type === 'success' ? 'check-circle' : 'exclamation-circle'}"></i> ${message}`;
             container.appendChild(toast);
-            setTimeout(() => toast.remove(), 3000);
+            setTimeout(() => {
+                toast.style.opacity = '0';
+                toast.style.transform = 'translateX(100%)';
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
         }
+
+        // Close modal on overlay click
+        document.querySelectorAll('.modal-overlay').forEach(overlay => {
+            overlay.addEventListener('click', (e) => {
+                if (e.target === overlay) {
+                    overlay.classList.remove('active');
+                }
+            });
+        });
 
         // Initial load
         loadTemplates();
