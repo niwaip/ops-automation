@@ -2343,73 +2343,54 @@ ${blankList}
   /**
    * 根据用户描述和Skill Guide生成具体的参数数据
    * 用户描述示例："需要和北京市朝阳区的xx公司签订关于yy项目的保密协议，为期3年，签订日是今天"
+   *
+   * 设计理念：Skill Guide本身是完整的、自包含的，包含所有AI需要的信息。
+   * 本方法只需要简单引用Skill Guide的内容，不需要额外处理。
+   * 这样模板和Skill Guide可以方便迁移。
    */
   async generateParametersFromDescription(description: string, skill: any): Promise<any> {
     this.logger.log(`Generating parameters from description: ${description}`);
 
-    // 构建参数列表描述（包含更多信息）
-    const parameters = skill.parameters || [];
-    const paramList = parameters.map((p: any) => {
-      const example = p.example ? ` 示例: ${p.example}` : '';
-      return `- ${p.name}: ${p.usage || '需要填写'} (类型: ${p.dataType || 'text'})${example}`;
-    }).join('\n');
+    // Skill Guide应该已经包含所有必要信息，直接使用skillGuideMarkdown
+    const skillGuideMarkdown = skill.skillGuideMarkdown || '';
 
-    // 提取提取规则（帮助AI理解如何提取数据）
-    const extractionRules = skill.parsingGuide?.extractionRules || [];
-    const extractionRulesText = extractionRules.map((r: any) => {
-      return `  - ${r.parameter}: 搜索关键词 "${r.searchKeywords?.join(', ') || '根据用途'}"，提取模式 "${r.extractionPattern || '直接提取'}"`;
-    }).join('\n');
-
-    // 特殊格式规则
-    const specialRules = skill.specialRules || {};
-    const specialRulesText = `
-- 日期格式: ${specialRules.dateFormat || 'YYYY-MM-DD'}
-- 金额格式: ${specialRules.amountFormat || '保留两位小数'}
-`;
-
-    // 数据示例JSON（帮助AI理解输出格式）
-    const dataExampleJson = skill.dataExampleJson || {};
-    const dataExampleStr = JSON.stringify(dataExampleJson, null, 2);
-
-    // 构建增强的提示词
-    const prompt = `你是一个文档数据生成助手。用户需要生成一份文档，请根据用户的描述和Skill Guide，生成具体的参数值。
-
-## Skill Guide（模板参数指南）
-${skill.skillGuideMarkdown ? skill.skillGuideMarkdown.substring(0, 1500) : ''}
-
-## 参数提取规则
-${extractionRulesText}
-
-## 特殊格式规则
-${specialRulesText}
-
-## 数据输出格式示例
-${dataExampleStr}
-
-## 用户描述
-${description}
-
-## 需要填充的参数列表
+    // 如果Skill Guide不存在，尝试从其他字段构建简要指南（后备方案）
+    let fallbackGuide = '';
+    if (!skillGuideMarkdown) {
+      const parameters = skill.parameters || [];
+      const paramList = parameters.map((p: any) => {
+        return `- ${p.name}: ${p.usage || '需要填写'} (示例: ${p.example || '无'})`;
+      }).join('\n');
+      const dataExample = skill.dataExampleJson ? JSON.stringify(skill.dataExampleJson, null, 2) : '{}';
+      fallbackGuide = `
+## 参数列表
 ${paramList}
 
-请根据用户描述和Skill Guide，提取或推断出每个参数的具体值。注意事项：
-1. 参考Skill Guide中的参数用途说明和提取规则
-2. 如果描述中没有明确提到某个参数，根据上下文合理推断或使用示例值
-3. 日期类参数，如果提到"今天"，使用当前日期 ${specialRules.dateFormat || 'YYYY-MM-DD'}
-4. 年份、月份、日期分别填写对应数字（如2024、4、15）
-5. 地址信息要完整，包括省市街道
-6. 名称信息要准确
-7. 只返回JSON对象，不要有任何解释文字，不要使用markdown代码块包装
+## 数据示例
+${dataExample}
+`;
+    }
 
-返回格式示例（嵌套JSON对象）：
-{
-  "partyA": { "name": "...", "address": "..." },
-  "partyB": { "name": "...", "address": "..." },
-  "project": { "name": "..." },
-  "contract": { "sign_date_year": "2024", "sign_date_month": "4", ... }
-}`;
+    // 构建简洁的提示词：引用Skill Guide + 用户描述
+    const prompt = `你是一个文档数据生成助手。请根据以下Skill Guide和用户描述，生成具体的参数值。
 
-    // 直接调用AI服务（不使用callAIService，因为其解析逻辑不适用于此场景）
+## Skill Guide（完整的模板参数指南）
+${skillGuideMarkdown || fallbackGuide}
+
+---
+
+## 用户需求描述
+${description}
+
+---
+
+请根据Skill Guide中的参数定义和数据示例格式，生成一个JSON对象。
+要求：
+1. 输出格式要与Skill Guide中的"完整数据示例"结构一致
+2. 日期使用格式 YYYY-MM-DD，今天日期是 ${new Date().toISOString().split('T')[0]}
+3. 只返回JSON对象，不要任何解释文字，不要使用markdown代码块包装`;
+
+    // 直接调用AI服务
     const aiOrchestratorUrl = process.env.AI_ORCHESTRATOR_URL || 'http://localhost:3007';
     const aiModelId = process.env.AI_MODEL_ID || '00ddd35d-6578-4acb-bc09-d629560f6ab6';
 
@@ -2431,7 +2412,7 @@ ${paramList}
       // 清理markdown代码块标记
       content = content.replace(/```json\s*/gi, '').replace(/```\s*/g, '').trim();
 
-      // 直接解析JSON对象（不期望suggestions数组格式）
+      // 直接解析JSON对象
       try {
         const generatedData = JSON.parse(content);
         this.logger.log(`Generated parameters successfully: ${JSON.stringify(generatedData, null, 2).substring(0, 200)}...`);
@@ -2440,8 +2421,8 @@ ${paramList}
         this.logger.error(`Failed to parse AI response as JSON: ${parseError}`);
         this.logger.error(`Raw content: ${content}`);
 
-        // 尝试提取JSON对象
-        const objectMatch = content.match(/\{[\s\S]*"partyA"[\s\S]*\}/) || content.match(/\{[\s\S]*\}/);
+        // 尝试提取JSON对象（后备方案）
+        const objectMatch = content.match(/\{[\s\S]*\}/);
         if (objectMatch) {
           try {
             const extractedData = JSON.parse(objectMatch[0]);
