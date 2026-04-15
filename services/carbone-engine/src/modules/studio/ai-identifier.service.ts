@@ -268,6 +268,7 @@ export interface AIIdentifyResponse {
     userIntent: string;
     usedAI?: boolean;  // 是否使用了AI分析
     aiServiceUrl?: string;  // AI服务地址
+    flowType?: 'quick' | 'multi-stage';  // 处理流程类型：快速流程（有underlineInfo）或多阶段流程
   };
 }
 
@@ -468,9 +469,6 @@ export class AIIdentifierService {
     }
 
     // ===== 原有的多阶段流程（当没有 underlineInfo 时使用） =====
-    if (underlineInfo && underlineInfo.length > 0) {
-      this.logger.log(`收到下划线信息: ${underlineInfo.length} 个带下划线位置`);
-    }
 
     // 定义进度报告辅助函数
     const reportProgress = (stage: ProcessingStage, stageName: string, progress: number, message: string, currentSection?: string) => {
@@ -612,7 +610,8 @@ export class AIIdentifierService {
           detectedTemplateType: documentUnderstanding.documentType,
           userIntent: documentUnderstanding.mainPurpose,
           usedAI: true,
-          aiServiceUrl: this.aiOrchestratorUrl
+          aiServiceUrl: this.aiOrchestratorUrl,
+          flowType: 'multi-stage'  // 多阶段流程（无精确下划线位置）
         }
       };
     } catch (error: any) {
@@ -1329,7 +1328,8 @@ ${parameterList.map(p => `
           detectedTemplateType: templateType,
           userIntent: '基于下划线位置的参数识别',
           usedAI: true,
-          aiServiceUrl: this.aiOrchestratorUrl
+          aiServiceUrl: this.aiOrchestratorUrl,
+          flowType: 'quick'  // 快速流程（有精确下划线位置）
         }
       };
 
@@ -2259,6 +2259,9 @@ ${blankList}
     // 根据模板类型生成特定的AI指导
     const templateDescription = this.generateTemplateDescription(templateType, documentDescription, parameters);
 
+    // 构建数据示例JSON（完整可用的数据结构）
+    const dataExampleJson = this.buildDataExampleJson(parameters);
+
     // 构建完整的skill结构
     const skill = {
       id: `skill-${Date.now()}`,
@@ -2300,6 +2303,9 @@ ${blankList}
         })),
       },
 
+      // 完整的数据示例JSON（可直接用于渲染模板）
+      dataExampleJson,
+
       // 特殊处理规则
       specialRules: {
         dateFormat: 'YYYY-MM-DD',
@@ -2324,11 +2330,130 @@ ${blankList}
       // AI使用提示（完整指导）
       aiInstructions: this.buildCompleteAIInstructions(templateType, parameters, documentDescription),
 
+      // 完整的Markdown格式Skill指南（自包含、可独立阅读）
+      skillGuideMarkdown: this.buildSkillGuideMarkdown(templateType, templateDescription, parameters, dataExampleJson),
+
       createdAt: new Date().toISOString(),
     };
 
     this.logger.log(`AI Skill Guide generated with ${parameters.length} parameters`);
     return skill;
+  }
+
+  /**
+   * 根据用户描述和Skill Guide生成具体的参数数据
+   * 用户描述示例："需要和北京市朝阳区的xx公司签订关于yy项目的保密协议，为期3年，签订日是今天"
+   *
+   * 设计理念：Skill Guide本身是完整的、自包含的，包含所有AI需要的信息。
+   * 本方法只需要简单引用Skill Guide的内容，不需要额外处理。
+   * 这样模板和Skill Guide可以方便迁移。
+   */
+  async generateParametersFromDescription(description: string, skill: any): Promise<any> {
+    this.logger.log(`Generating parameters from description: ${description}`);
+
+    // 获取dataExampleJson作为输出格式参考
+    const dataExampleJson = skill.dataExampleJson || {};
+    const dataExampleStr = JSON.stringify(dataExampleJson, null, 2);
+
+    // Skill Guide Markdown作为参数定义参考
+    const skillGuideMarkdown = skill.skillGuideMarkdown || '';
+
+    // 如果Skill Guide不存在，尝试从parameters构建简要指南（后备方案）
+    let fallbackGuide = '';
+    if (!skillGuideMarkdown) {
+      const parameters = skill.parameters || [];
+      const paramList = parameters.map((p: any) => {
+        return `- ${p.name}: ${p.usage || '需要填写'} (示例: ${p.example || '无'})`;
+      }).join('\n');
+      fallbackGuide = `## 参数列表\n${paramList}`;
+    }
+
+    // 构建清晰的提示词，明确输出格式
+    const prompt = `你是一个文档数据生成助手。请根据用户描述，生成用于填充模板的JSON数据。
+
+## 重要说明：JSON数据格式
+模板使用Carbone引擎，变量语法是 \`{d.xxx}\`，这是模板语法，不是JSON语法。
+你输出的JSON数据中，键名不应该包含 \`{d.\` 或 \`}\` 这些符号。
+
+正确的JSON格式示例：
+{
+  "partyA": { "name": "公司名称", "address": "地址" },
+  "partyB": { "name": "公司名称", "address": "地址" },
+  "project": { "name": "项目名称" },
+  "contract": { "sign_date_year": "2026", "sign_date_month": "04" }
+}
+
+错误格式（不要这样写）：
+{
+  "{d": { "partyA": { "name}": "公司名称" } }  // 这是错误的！
+}
+
+## 参考数据结构（你的输出必须符合这个结构）
+${dataExampleStr}
+
+## 参数定义参考
+${skillGuideMarkdown || fallbackGuide}
+
+## 用户需求描述
+${description}
+
+---
+请根据以上信息生成JSON数据。要求：
+1. 输出结构必须与"参考数据结构"完全一致
+2. 键名不要包含 \`{d.\` 或 \`}\`，使用纯字段名如 partyA、name、address
+3. 日期格式 YYYY-MM-DD，今天是 ${new Date().toISOString().split('T')[0]}
+4. 只返回JSON对象，不要解释文字，不要markdown代码块`;
+
+    // 直接调用AI服务
+    const aiOrchestratorUrl = process.env.AI_ORCHESTRATOR_URL || 'http://localhost:3007';
+    const aiModelId = process.env.AI_MODEL_ID || '00ddd35d-6578-4acb-bc09-d629560f6ab6';
+
+    this.logger.log(`Calling AI service for parameter generation at ${aiOrchestratorUrl}/ai/models/${aiModelId}/test`);
+
+    try {
+      const response = await axios.post(
+        `${aiOrchestratorUrl}/ai/models/${aiModelId}/test`,
+        { prompt },
+        { timeout: 360000 }  // 6分钟超时
+      );
+
+      this.logger.log('AI service responded successfully for parameter generation');
+
+      // 解析返回结果
+      let content = response.data?.response || '';
+      this.logger.log(`AI response content (first 500 chars): ${content.substring(0, 500)}`);
+
+      // 清理markdown代码块标记
+      content = content.replace(/```json\s*/gi, '').replace(/```\s*/g, '').trim();
+
+      // 直接解析JSON对象
+      try {
+        const generatedData = JSON.parse(content);
+        this.logger.log(`Generated parameters successfully: ${JSON.stringify(generatedData, null, 2).substring(0, 200)}...`);
+        return generatedData;
+      } catch (parseError) {
+        this.logger.error(`Failed to parse AI response as JSON: ${parseError}`);
+        this.logger.error(`Raw content: ${content}`);
+
+        // 尝试提取JSON对象（后备方案）
+        const objectMatch = content.match(/\{[\s\S]*\}/);
+        if (objectMatch) {
+          try {
+            const extractedData = JSON.parse(objectMatch[0]);
+            this.logger.log(`Extracted JSON object successfully`);
+            return extractedData;
+          } catch (e) {
+            this.logger.error(`Failed to parse extracted JSON: ${e}`);
+          }
+        }
+
+        throw new Error('Failed to parse AI generated parameters');
+      }
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      this.logger.error(`AI service call failed for parameter generation: ${message}`);
+      throw new Error(`Failed to generate parameters: ${message}`);
+    }
   }
 
   /**
@@ -2487,6 +2612,13 @@ ${blankList}
    * 生成示例值
    */
   private generateExampleValue(fieldType: string, variableName: string): string {
+    // 清理变量名：移除花括号和d.前缀
+    let cleanName = variableName || '';
+    cleanName = cleanName.replace(/^\{/, '').replace(/\}$/, '');
+    cleanName = cleanName.replace(/^d\./, '');
+    // 取最后一段作为名称（如partyA.name -> name）
+    const lastPart = cleanName.split('.').pop() || cleanName;
+
     switch (fieldType) {
       case 'date':
         return '2024-01-15';
@@ -2502,8 +2634,20 @@ ${blankList}
         return '北京市朝阳区xxx街道xxx号';
       case 'name':
         return '张三';
+      case 'code':
+        return 'ABC123456';
+      case 'text':
       default:
-        return `示例_${variableName?.replace(/[:\[].*/g, '') || '值'}`;
+        // 根据变量名称生成更合适的示例
+        if (lastPart.includes('名称') || lastPart.includes('name')) return '示例公司';
+        if (lastPart.includes('地址') || lastPart.includes('address')) return '北京市朝阳区xxx街道xxx号';
+        if (lastPart.includes('日期') || lastPart.includes('date') || lastPart.includes('year')) return '2024';
+        if (lastPart.includes('月')) return '01';
+        if (lastPart.includes('日') || lastPart.includes('day')) return '15';
+        if (lastPart.includes('金额') || lastPart.includes('amount')) return '10000.00';
+        if (lastPart.includes('签字') || lastPart.includes('sign')) return '签字人';
+        if (lastPart.includes('保密') || lastPart.includes('confidential')) return '5';
+        return `示例${lastPart}`;
     }
   }
 
@@ -2563,6 +2707,182 @@ ${parameters.slice(0, 5).map(p => `  "${p.name?.replace(/[:\[].*/g, '')}": "${p.
 - 日期格式统一为 YYYY-MM-DD
 - 金额保留两位小数
 - 表格数据需提供数组格式
+`;
+  }
+
+  /**
+   * 构建完整的JSON数据示例
+   * 用于展示如何构建可用的数据结构
+   */
+  private buildDataExampleJson(parameters: any[]): string {
+    // 构建嵌套的数据结构
+    const dataObj: any = {};
+
+    for (const p of parameters) {
+      const cleanName = p.name?.replace(/[:\[].*/g, '') || '';
+      const pathParts = cleanName.split('.');
+
+      // 构建嵌套路径
+      if (pathParts.length > 1) {
+        let current = dataObj;
+        for (let i = 0; i < pathParts.length - 1; i++) {
+          if (!current[pathParts[i]]) {
+            current[pathParts[i]] = {};
+          }
+          current = current[pathParts[i]];
+        }
+        current[pathParts[pathParts.length - 1]] = p.example;
+      } else {
+        dataObj[cleanName] = p.example;
+      }
+    }
+
+    return JSON.stringify(dataObj, null, 2);
+  }
+
+  /**
+   * 构建完整的Markdown格式Skill指南
+   * 自包含文档，任何人都可以阅读并生成替换参数
+   */
+  private buildSkillGuideMarkdown(
+    templateType: string,
+    templateDescription: string,
+    parameters: any[],
+    dataExampleJson: string
+  ): string {
+    const now = new Date().toISOString().split('T')[0];
+
+    // 参数表格
+    const paramTable = parameters.map(p => {
+      const varPath = p.name?.replace(/[:\[].*/g, '');
+      return `| ${varPath} | ${p.usage || '填写对应值'} | ${p.dataType} | ${p.example} | {d.${varPath}} |`;
+    }).join('\n');
+
+    // 循环参数单独列出
+    const loopParams = parameters.filter(p => p.dataType === 'loop' || p.arrayPath);
+    const loopSection = loopParams.length > 0 ? `
+## 循环数据（表格/列表）
+
+以下参数需要在数组中重复填充：
+
+${loopParams.map(p => {
+  const arrayPath = p.arrayPath || p.name?.split('.')[0] || 'items';
+  return `
+### ${arrayPath} 数组
+- **用途**: ${p.usage}
+- **Carbone语法**: \`{#d.${arrayPath}}{d.${arrayPath}.${p.name?.split('.')[1] || 'item'}}{/d.${arrayPath}}\`
+- **数据格式**: 数组，每个元素包含对应字段
+- **示例**:
+\`\`\`json
+{
+  "${arrayPath}": [
+    { "field1": "示例值1", "field2": "示例值2" },
+    { "field1": "示例值3", "field2": "示例值4" }
+  ]
+}
+\`\`\`
+`;
+}).join('\n')}
+` : '';
+
+    return `# ${templateType}模板 Skill Guide
+
+> 本文档是AI Skill的完整指南，用于指导如何生成替换参数数据。
+> 生成时间: ${now}
+
+---
+
+## 1. 模板概述
+
+${templateDescription}
+
+---
+
+## 2. Carbone变量语法说明
+
+本模板使用 **Carbone** 模板引擎，变量语法如下：
+
+| 语法 | 说明 | 示例 |
+|------|------|------|
+| \`{d.xxx}\` | 单值变量替换 | \`{d.name}\` → 张三 |
+| \`{d.xxx:formatD(YMD)}\` | 日期格式化 | \`{d.date:formatD(YMD)}\` → 2024-01-15 |
+| \`{d.xxx:formatN(2)}\` | 数字格式化（保留2位小数） | \`{d.amount:formatN(2)}\` → 10,000.00 |
+| \`{#d.xxx}...{/d.xxx}\` | 循环（数组数据） | 表格行循环 |
+
+---
+
+## 3. 参数列表
+
+本模板需要填充以下参数：
+
+| 参数路径 | 用途说明 | 数据类型 | 示例值 | Carbone语法 |
+|----------|----------|----------|--------|-------------|
+${paramTable}
+
+${loopSection}
+
+---
+
+## 4. 完整数据示例
+
+以下是可直接用于渲染模板的JSON数据结构：
+
+\`\`\`json
+${dataExampleJson}
+\`\`\`
+
+**使用说明**:
+1. 将上面的JSON数据作为 \`data\` 参数传递给Carbone渲染API
+2. 确保所有必填字段都有有效值
+3. 日期格式统一为 \`YYYY-MM-DD\`
+4. 金额字段为数值类型（不含货币符号）
+
+---
+
+## 5. 数据提取步骤
+
+按照以下步骤从原始内容中提取参数值：
+
+1. **识别关键内容**: 根据参数用途定位文档中的对应位置
+   - 例如：\`partyA.name\` → 查找"甲方"附近的名称文字
+
+2. **提取对应值**: 根据数据类型使用正确的提取方式
+   - **日期**: YYYY年MM月DD日、YYYY-MM-DD、YYYY/MM/DD 等格式
+   - **金额**: 数字+单位（元、万元）、带货币符号
+   - **名称**: 甲乙方、公司名、人名等
+   - **编号**: 合同号、发票号等唯一标识
+
+3. **验证格式**: 检查提取值是否符合参数类型要求
+
+4. **构建数据结构**: 按照第4节的数据示例格式组装JSON
+
+---
+
+## 6. API调用示例
+
+\`\`\`bash
+# 使用Carbone API渲染模板
+curl -X POST http://localhost:3000/api/carbone/render \
+  -H "Content-Type: application/json" \
+  -d '{
+    "templateId": "your-template-id",
+    "data": ${JSON.stringify(JSON.parse(dataExampleJson))}
+  }'
+\`\`\`
+
+---
+
+## 7. 注意事项
+
+- 所有必填字段必须提供有效值
+- 日期格式统一为 YYYY-MM-DD
+- 金额保留两位小数，使用逗号分隔千位
+- 表格数据需提供数组格式
+- 如参数无法提取，标记为需要用户提供
+
+---
+
+*本文档由AI自动生成，用于指导如何生成替换参数数据。*
 `;
   }
 

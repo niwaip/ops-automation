@@ -9,8 +9,6 @@ import {
   Get,
   Body,
   Param,
-  UploadedFile,
-  UseInterceptors,
   HttpException,
   HttpStatus,
   StreamableFile,
@@ -18,8 +16,7 @@ import {
   Res,
   Query,
 } from '@nestjs/common';
-import { FileInterceptor } from '@nestjs/platform-express';
-import { ApiTags, ApiOperation, ApiConsumes, ApiBody, ApiResponse, ApiQuery } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiBody, ApiResponse, ApiQuery } from '@nestjs/swagger';
 import { Response } from 'express';
 import * as fs from 'fs';
 import * as path from 'path';
@@ -189,77 +186,6 @@ export class StudioController {
     }
     if (!fs.existsSync(this.outputsDir)) {
       fs.mkdirSync(this.outputsDir, { recursive: true });
-    }
-  }
-
-  /**
-   * 上传模板文件
-   */
-  @Post('upload')
-  @ApiOperation({ summary: 'Upload template file (docx/xlsx/pptx/html)' })
-  @ApiConsumes('multipart/form-data')
-  @ApiBody({ schema: { type: 'object', properties: { file: { type: 'string', format: 'binary' } } } })
-  @UseInterceptors(FileInterceptor('file'))
-  async uploadTemplate(
-    @UploadedFile() file: { buffer: Buffer; originalname: string },
-  ): Promise<TemplateResponse> {
-    if (!file) {
-      throw new HttpException('No file uploaded', HttpStatus.BAD_REQUEST);
-    }
-
-    // 修复中文文件名编码问题 (multer默认使用latin1编码)
-    let fileName = file.originalname;
-    try {
-      fileName = Buffer.from(file.originalname, 'latin1').toString('utf8');
-    } catch {
-      // 如果转换失败，使用原始文件名
-    }
-
-    // 验证文件格式
-    const validFormats = ['.docx', '.xlsx', '.pptx', '.html', '.htm'];
-    const ext = path.extname(fileName).toLowerCase();
-    if (!validFormats.includes(ext)) {
-      throw new HttpException(
-        `Invalid file format. Supported: ${validFormats.join(', ')}`,
-        HttpStatus.BAD_REQUEST
-      );
-    }
-
-    try {
-      // 解析模板
-      const info = await this.engine.parseTemplateBuffer(file.buffer, fileName);
-
-      // 保存模板文件
-      const templateId = uuidv4();
-      const templatePath = path.join(this.templatesDir, `${templateId}${ext}`);
-      fs.writeFileSync(templatePath, file.buffer);
-
-      // 保存元数据
-      const metaPath = path.join(this.templatesDir, `${templateId}.json`);
-      fs.writeFileSync(metaPath, JSON.stringify({
-        id: templateId,
-        fileName: fileName,
-        format: info.format,
-        size: info.size,
-        variables: info.variables,
-        loops: info.loops,
-        uploadedAt: new Date().toISOString()
-      }));
-
-      return {
-        id: templateId,
-        fileName: fileName,
-        format: info.format,
-        size: info.size,
-        variables: info.variables,
-        loops: info.loops
-      };
-    } catch (error: unknown) {
-      const message = error instanceof Error ? error.message : 'Unknown error';
-      throw new HttpException(
-        `Failed to parse template: ${message}`,
-        HttpStatus.INTERNAL_SERVER_ERROR
-      );
     }
   }
 
@@ -879,7 +805,50 @@ export class StudioController {
       fs.unlinkSync(metaPath);
     }
 
+    // 同时删除关联的skill文件
+    if (meta.skillId) {
+      const skillPath = path.join(this.templatesDir, `skill_${meta.skillId}.json`);
+      if (fs.existsSync(skillPath)) {
+        fs.unlinkSync(skillPath);
+      }
+    }
+
     return { success: true };
+  }
+
+  /**
+   * 重命名模板
+   */
+  @Post('templates/:id/rename')
+  @ApiOperation({ summary: 'Rename template' })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        newName: { type: 'string', description: 'New template name' },
+      },
+      required: ['newName'],
+    },
+  })
+  async renameTemplate(
+    @Param('id') id: string,
+    @Body() body: { newName: string },
+  ): Promise<{ success: boolean; fileName: string }> {
+    const meta = this.getTemplateMeta(id);
+    const metaPath = path.join(this.templatesDir, `${id}.json`);
+
+    // 更新元数据中的fileName
+    const ext = path.extname(meta.fileName || `${id}.${meta.format}`);
+    const newFileName = body.newName.endsWith(ext) ? body.newName : `${body.newName}.${ext}`;
+
+    // 读取现有元数据并更新
+    const existingMeta = JSON.parse(fs.readFileSync(metaPath, 'utf-8'));
+    existingMeta.fileName = newFileName;
+    existingMeta.updatedAt = new Date().toISOString();
+
+    fs.writeFileSync(metaPath, JSON.stringify(existingMeta, null, 2));
+
+    return { success: true, fileName: newFileName };
   }
 
   /**
@@ -2104,6 +2073,66 @@ export class StudioController {
   }
 
   /**
+   * AI生成参数数据
+   * 根据用户描述和Skill Guide，调用AI生成具体的参数值
+   */
+  @Post('generate-parameters')
+  @ApiOperation({ summary: 'Generate parameters from user description using AI and Skill Guide' })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        description: { type: 'string', description: '用户描述/元数据内容' },
+        skill: { type: 'object', description: 'AI Skill guide' },
+        skillId: { type: 'string', description: 'AI Skill ID (if skill not provided)' },
+      },
+    },
+  })
+  async generateParameters(
+    @Body() body: {
+      description: string;
+      skill?: any;
+      skillId?: string;
+    },
+  ): Promise<{
+    success: boolean;
+    generatedData?: any;
+    error?: string;
+  }> {
+    try {
+      // 获取skill
+      let skill = body.skill;
+      if (body.skillId && !skill) {
+        const skillPath = path.join(this.templatesDir, `skill_${body.skillId}.json`);
+        if (fs.existsSync(skillPath)) {
+          skill = JSON.parse(fs.readFileSync(skillPath, 'utf-8'));
+        }
+      }
+
+      if (!skill) {
+        return { success: false, error: 'Skill not found' };
+      }
+
+      // 调用AI生成参数
+      const generatedData = await this.aiIdentifierService.generateParametersFromDescription(
+        body.description,
+        skill
+      );
+
+      return {
+        success: true,
+        generatedData,
+      };
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      return {
+        success: false,
+        error: message,
+      };
+    }
+  }
+
+  /**
    * 保存完整模板（包含模板文件和AI Skill）
    */
   @Post('save-template-full')
@@ -2112,6 +2141,7 @@ export class StudioController {
     schema: {
       type: 'object',
       properties: {
+        templateId: { type: 'string', description: 'Existing template ID (optional, reuse from preview)' },
         documentContent: { type: 'string', description: 'Document content (base64)' },
         suggestions: { type: 'array', description: 'Applied suggestions' },
         templateConfig: { type: 'object', description: 'Template configuration' },
@@ -2124,7 +2154,8 @@ export class StudioController {
   })
   async saveTemplateFull(
     @Body() body: {
-      documentContent: string;
+      templateId?: string;  // 支持复用已有的模版ID
+      documentContent?: string;  // 如果使用已有模版ID，可以不传
       suggestions?: any[];
       templateConfig?: any;
       skill?: any;
@@ -2141,23 +2172,45 @@ export class StudioController {
     error?: string;
   }> {
     try {
-      const templateId = uuidv4();
+      // 支持复用已有的模版ID（从预览生成的模版）
+      let templateId = body.templateId;
       const format = body.format || 'docx';
+      let isNewTemplate = false;
+
+      // 如果传入了模版ID，检查是否存在
+      if (templateId) {
+        const existingMetaPath = path.join(this.templatesDir, `${templateId}.json`);
+        if (fs.existsSync(existingMetaPath)) {
+          // 模版已存在，复用
+          console.log(`复用已有模版: ${templateId}`);
+        } else {
+          // 模版不存在，需要生成新的
+          templateId = uuidv4();
+          isNewTemplate = true;
+        }
+      } else {
+        // 没有传入模版ID，生成新的
+        templateId = uuidv4();
+        isNewTemplate = true;
+      }
+
       const templateName = body.templateName || `template_${templateId}`;
 
-      // 保存模板文件
-      const templatePath = path.join(this.templatesDir, `${templateId}.${format}`);
-      let templateBuffer: Buffer;
-      if (body.documentContent.startsWith('base64:')) {
-        templateBuffer = Buffer.from(body.documentContent.substring(7), 'base64');
-      } else {
-        try {
-          templateBuffer = Buffer.from(body.documentContent, 'base64');
-        } catch {
-          templateBuffer = Buffer.from(body.documentContent, 'utf-8');
+      // 如果是新模版，保存模板文件
+      if (isNewTemplate && body.documentContent) {
+        const templatePath = path.join(this.templatesDir, `${templateId}.${format}`);
+        let templateBuffer: Buffer;
+        if (body.documentContent.startsWith('base64:')) {
+          templateBuffer = Buffer.from(body.documentContent.substring(7), 'base64');
+        } else {
+          try {
+            templateBuffer = Buffer.from(body.documentContent, 'base64');
+          } catch {
+            templateBuffer = Buffer.from(body.documentContent, 'utf-8');
+          }
         }
+        fs.writeFileSync(templatePath, templateBuffer);
       }
-      fs.writeFileSync(templatePath, templateBuffer);
 
       // 处理skill
       let skillId = body.skillId;
@@ -2173,17 +2226,26 @@ export class StudioController {
         fs.writeFileSync(skillPath, JSON.stringify(skill, null, 2));
       }
 
-      // 保存模板元数据
+      // 保存或更新模板元数据
       const templateConfig = body.templateConfig || {};
       const metaPath = path.join(this.templatesDir, `${templateId}.json`);
+
+      // 如果是复用已有模版，读取现有元数据并更新
+      let existingMeta: any = {};
+      if (!isNewTemplate && fs.existsSync(metaPath)) {
+        existingMeta = JSON.parse(fs.readFileSync(metaPath, 'utf-8'));
+      }
+
       fs.writeFileSync(metaPath, JSON.stringify({
+        ...existingMeta,
         id: templateId,
         format,
         fileName: `${templateName}.${format}`,
         config: templateConfig,
         suggestions: body.suggestions || [],
         skillId,
-        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        createdAt: existingMeta.createdAt || new Date().toISOString(),
       }));
 
       return {

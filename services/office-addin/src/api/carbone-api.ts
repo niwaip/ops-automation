@@ -340,6 +340,7 @@ class CarboneAPI {
   }): Promise<{
     success: boolean;
     previewUrl?: string;
+    downloadUrl?: string;
     generatedData?: any;
     skillUsed?: any;
     error?: string;
@@ -353,10 +354,33 @@ class CarboneAPI {
   }
 
   /**
+   * AI生成参数数据
+   * 根据用户描述和Skill Guide生成具体的参数值
+   */
+  async generateParameters(request: {
+    description: string;  // 用户描述/元数据内容
+    skill?: any;
+    skillId?: string;
+  }): Promise<{
+    success: boolean;
+    generatedData?: any;
+    error?: string;
+  }> {
+    const response = await axios.post(
+      `${this.baseUrl}/studio/generate-parameters`,
+      request,
+      getAxiosConfig(this.baseUrl, { timeout: 360000 })  // 6分钟超时，AI生成可能需要较长时间
+    );
+    return response.data;
+  }
+
+  /**
    * 保存完整模板（包含模板文件和AI Skill）
+   * 支持复用已有模版ID（从预览生成的模版）
    */
   async saveTemplateFull(request: {
-    documentContent: string;
+    templateId?: string;  // 复用已有模版ID
+    documentContent?: string;  // 如果使用已有模版ID，可以不传
     suggestions: AISuggestion[];
     templateConfig?: TemplateConfig;
     skill?: any;

@@ -9,7 +9,7 @@ services:
     container_name: carbone-engine
     working_dir: /app
     command: >
-      sh -c "apt-get update && apt-get install -y --no-install-recommends libreoffice-writer libreoffice-calc libreoffice-impress curl fonts-wqy-zenhei fonts-wqy-microhei fonts-noto-cjk fonts-arphic-uming fonts-arphic-ukai && apt-get clean && rm -rf /var/lib/apt/lists/* && npm config set registry https://registry.npmmirror.com && npm install --include=dev && npm run build && npm run start"
+      sh -c "apt-get update && apt-get install -y --no-install-recommends libreoffice-writer libreoffice-calc libreoffice-impress curl && apt-get clean && rm -rf /var/lib/apt/lists/* && npm config set registry https://registry.npmmirror.com && npm install --include=dev && npm run build && npm run start"
     environment:
       - NODE_ENV=production
       - PORT=3009

@@ -1,22 +1,17 @@
 /**
  * Office Addin - 主应用组件
- * 整合 AI 识别、模板配置、手动选择功能
+ * 整合 AI 识别流程为线性流程
  * 包含调试日志面板
  */
 
 import React, { useState, useEffect } from 'react';
 import { useAppStore, OfficeAppType } from './store';
 import { AIIdentifyPanel } from '../components/AIIdentifyPanel';
-import { TemplateConfigPanel } from '../components/TemplateConfigPanel';
-import { ManualSelector } from '../components/ManualSelector';
 import { DebugLogPanel } from '../components/DebugLogPanel';
 import { OfficeHelper } from '../utils/office-api';
 
-type TabId = 'ai' | 'manual' | 'config';
-
 export const App: React.FC = () => {
   const { officeType, setOfficeType, apiBaseUrl, setApiBaseUrl, addDebugLog, showDebugPanel } = useAppStore();
-  const [activeTab, setActiveTab] = useState<TabId>('ai');
   const [connectionStatus, setConnectionStatus] = useState<'checking' | 'connected' | 'disconnected' | 'error'>('checking');
   const [connectionError, setConnectionError] = useState<string | null>(null);
 
@@ -65,43 +60,6 @@ export const App: React.FC = () => {
       if (apiBaseUrl.startsWith('https://') && error.message.includes('certificate')) {
         addDebugLog('warn', `可能是 SSL 证书问题`, `请确保 CA 证书已安装到系统`);
       }
-    }
-  };
-
-  /**
-   * Tab 配置
-   */
-  const tabs: Array<{ id: TabId; label: string; icon: string }> = [
-    { id: 'ai', label: 'AI识别', icon: '🤖' },
-    { id: 'manual', label: '手动选择', icon: '🎯' },
-    { id: 'config', label: '模板配置', icon: '⚙️' },
-  ];
-
-  /**
-   * 渲染当前 Tab 内容
-   */
-  const renderTabContent = () => {
-    switch (activeTab) {
-      case 'ai':
-        return (
-          <AIIdentifyPanel
-            onApplyComplete={() => setActiveTab('config')}
-          />
-        );
-      case 'manual':
-        return (
-          <ManualSelector
-            onInsert={(marker) => {
-              console.log('已插入标记:', marker);
-              addDebugLog('info', `插入标记成功`, marker);
-              setActiveTab('config');
-            }}
-          />
-        );
-      case 'config':
-        return <TemplateConfigPanel />;
-      default:
-        return null;
     }
   };
 
@@ -174,23 +132,9 @@ export const App: React.FC = () => {
         </div>
       </header>
 
-      {/* Tab 导航 */}
-      <nav className="tab-nav">
-        {tabs.map((tab) => (
-          <button
-            key={tab.id}
-            className={`tab-btn ${activeTab === tab.id ? 'active' : ''}`}
-            onClick={() => setActiveTab(tab.id)}
-          >
-            <span className="icon">{tab.icon}</span>
-            <span className="label">{tab.label}</span>
-          </button>
-        ))}
-      </nav>
-
-      {/* 主内容区 */}
+      {/* 主内容区 - 直接显示AI识别面板（线性流程） */}
       <main className="content-area">
-        {renderTabContent()}
+        <AIIdentifyPanel />
         {/* 调试日志面板 */}
         <DebugLogPanel />
       </main>

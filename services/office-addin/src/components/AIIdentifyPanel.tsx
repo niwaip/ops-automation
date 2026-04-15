@@ -13,16 +13,15 @@ interface Props {
   onApplyComplete?: () => void;
 }
 
-// 动态加载进度消息（用于旧的API）
+// 动态加载进度消息（用于旧API）
 const loadingMessages = [
-  '🔍 正在分析文档结构...',
-  '📝 正在识别空白填充位置...',
-  '🤖 正在进行AI智能分析...',
-  '📊 正在生成变量建议...',
-  '✨ 正在优化结果...',
+  '⏳ 正在处理文档...',
+  '📝 正在分析内容...',
+  '🤖 正在智能识别...',
+  '✨ 正在生成结果...',
 ];
 
-// 多阶段进度消息映射
+// 多阶段进度消息映射（用于SSE实时进度，目前HTTP API不支持）
 const stageProgressMessages: Record<string, string[]> = {
   'document_understanding': ['🔍 分析文档整体结构...', '📖 理解文档内容和用途...', '📋 提取章节信息...'],
   'section_analysis': ['📝 分段参数化处理...', '🤖 语义识别中...', '✨ 生成变量建议...'],
@@ -43,6 +42,7 @@ export const AIIdentifyPanel: React.FC<Props> = ({ onApplyComplete }) => {
     applySuggestion,
     applyAllSuggestions,
     dismissSuggestion,
+    updateSuggestionName,
     templateConfig,
     apiBaseUrl,
     addDebugLog,
@@ -59,30 +59,194 @@ export const AIIdentifyPanel: React.FC<Props> = ({ onApplyComplete }) => {
   const [currentStage, setCurrentStage] = useState<string>('');  // 当前处理阶段
   const [currentSection, setCurrentSection] = useState<string>('');  // 当前处理章节
   const [useMultiStage, setUseMultiStage] = useState(true);  // 是否使用多阶段处理
+  const [showManualAdd, setShowManualAdd] = useState(false);  // 显示手动添加参数界面
+  const [manualParamName, setManualParamName] = useState('d.');  // 手动添加的参数名
+  const [manualFormatter, setManualFormatter] = useState('');  // 手动添加的格式化器
+  const [selectedContent, setSelectedContent] = useState('');  // 当前选中的文档内容
+  const [collapsed, setCollapsed] = useState(false);  // 参数列表是否收起
+  const [manualLoopMode, setManualLoopMode] = useState(false);  // 手动添加的循环模式
+  const [manualArrayPath, setManualArrayPath] = useState('');  // 循环模式的数组路径
+  const [isGeneratingAI, setIsGeneratingAI] = useState(false);  // AI生成变量名状态
+  const [manualSignificance, setManualSignificance] = useState('');  // 用途说明
 
-  // 动态更新加载消息
+  // 验证模版状态
+  const [verifyResult, setVerifyResult] = useState<{ valid: boolean; message: string; warnings?: string[] } | null>(null);
+  const [isVerifying, setIsVerifying] = useState(false);
+
+  // AI指南状态
+  const [aiSkillGuide, setAiSkillGuide] = useState<any>(null);
+  const [isGeneratingGuide, setIsGeneratingGuide] = useState(false);
+
+  // 保存状态
+  const [saveResult, setSaveResult] = useState<{ success: boolean; message: string } | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
+
+  // 预览模版状态
+  const [previewResult, setPreviewResult] = useState<{ success: boolean; message: string; previewUrl?: string; downloadUrl?: string; generatedData?: any } | null>(null);
+  const [isPreviewing, setIsPreviewing] = useState(false);
+
+  // AI生成参数状态
+  const [aiDescription, setAiDescription] = useState('');  // 用户输入的描述
+  const [aiGeneratedData, setAiGeneratedData] = useState<any>(null);  // AI生成的参数数据
+  const [isGeneratingParams, setIsGeneratingParams] = useState(false);  // 正在生成
+  const [aiGenerateResult, setAiGenerateResult] = useState<{ success: boolean; message: string } | null>(null);
+
+  // 暂存副本状态（保存到后端的完整副本）
+  const [draftId, setDraftId] = useState<string | null>(null);  // 暂存副本ID
+  const [draftInfo, setDraftInfo] = useState<{ templateType: string; parameterCount: number; savedAt: string } | null>(null);
+  const [isSavingDraft, setIsSavingDraft] = useState(false);
+  const [draftSaveResult, setDraftSaveResult] = useState<{ success: boolean; message: string } | null>(null);
+
+  // 模板名称输入
+  const [templateName, setTemplateName] = useState('');  // 用户输入的模板名称
+
+  // 检查是否有暂存副本（从localStorage恢复draftId）
+  useEffect(() => {
+    const stagedData = localStorage.getItem('ai-template-draft');
+    if (stagedData) {
+      try {
+        const data = JSON.parse(stagedData);
+        if (data.draftId) {
+          setDraftId(data.draftId);
+          setDraftInfo({
+            templateType: data.templateType || 'unknown',
+            parameterCount: data.suggestions?.length || 0,
+            savedAt: data.savedAt || ''
+          });
+          // 同时恢复suggestions和aiSkillGuide
+          if (data.suggestions && data.suggestions.length > 0) {
+            setSuggestions(data.suggestions);
+          }
+          if (data.aiSkillGuide) {
+            setAiSkillGuide(data.aiSkillGuide);
+          }
+          if (data.templateType) {
+            setSelectedTemplateType(data.templateType);
+          }
+        }
+      } catch {
+        // 忽略解析错误
+      }
+    }
+  }, []);
+
+  // 暂存副本（保存完整docx到后端）
+  const handleSaveDraft = async () => {
+    if (!aiSkillGuide) {
+      setDraftSaveResult({ success: false, message: '请先生成AI指南' });
+      return;
+    }
+
+    setIsSavingDraft(true);
+    setDraftSaveResult(null);
+    addDebugLog('info', `暂存副本`, `参数数量: ${suggestions.length}`);
+
+    try {
+      let documentContent = '';
+      let format = 'docx';
+
+      if (officeType === 'word') {
+        const result = await OfficeHelper.Word.getDocumentFileBase64WithFallback();
+        documentContent = 'base64:' + result.base64;
+        addDebugLog('info', `文档获取方式: ${result.method}`, `有效docx: ${result.isValidDocx}`);
+
+        if (!result.isValidDocx) {
+          addDebugLog('warn', `文档格式不完整`, '副本可能无法正常渲染');
+        }
+        format = 'docx';
+      } else if (officeType === 'excel') {
+        const sheetData = await OfficeHelper.Excel.getSheetData();
+        documentContent = JSON.stringify(sheetData.values);
+        format = 'xlsx';
+      } else {
+        documentContent = await OfficeHelper.PowerPoint.getDocumentContent();
+        format = 'pptx';
+      }
+
+      carboneAPI.setBaseUrl(apiBaseUrl);
+
+      const result = await carboneAPI.saveTemplateFull({
+        documentContent,
+        suggestions: suggestions,
+        templateConfig,
+        skill: aiSkillGuide,
+        format,
+        templateName: `draft-${Date.now()}`  // 暂存副本用临时名称
+      });
+
+      if (result.success) {
+        setDraftId(result.templateId || null);
+        setDraftInfo({
+          templateType: selectedTemplateType,
+          parameterCount: suggestions.length,
+          savedAt: new Date().toISOString()
+        });
+        setDraftSaveResult({ success: true, message: `✅ 副本已暂存！ID: ${result.templateId}` });
+        addDebugLog('info', `✅ 副本暂存成功`, `ID: ${result.templateId}`);
+
+        // 保存到localStorage方便下次载入
+        localStorage.setItem('ai-template-draft', JSON.stringify({
+          draftId: result.templateId,
+          templateType: selectedTemplateType,
+          suggestions,
+          aiSkillGuide,
+          savedAt: new Date().toISOString()
+        }));
+      } else {
+        setDraftSaveResult({ success: false, message: `暂存失败: ${result.error || '未知错误'}` });
+        addDebugLog('error', `暂存失败`, result.error || '未知错误');
+      }
+    } catch (error: any) {
+      setDraftSaveResult({ success: false, message: `暂存失败: ${error.message}` });
+      addDebugLog('error', `暂存失败`, error.message);
+    } finally {
+      setIsSavingDraft(false);
+    }
+  };
+
+  // 载入暂存副本
+  const handleLoadDraft = async () => {
+    if (!draftId) {
+      addDebugLog('warn', '没有暂存副本可载入');
+      return;
+    }
+
+    addDebugLog('info', `载入暂存副本`, `ID: ${draftId}`);
+    // localStorage的数据已在useEffect中恢复，这里只需要提示
+    addDebugLog('info', `✅ 副本已载入`, `${draftInfo?.parameterCount || 0} 个参数`);
+  };
+
+  // 清除暂存副本
+  const handleClearDraft = () => {
+    setDraftId(null);
+    setDraftInfo(null);
+    localStorage.removeItem('ai-template-draft');
+    addDebugLog('info', `清除暂存副本`);
+  };
+
+  // 动态更新加载消息（仅用于旧API的模拟进度）
+  // 注意：当前HTTP API不支持实时进度，这只是dots动画
+  // loadingProgress 由 handleAnalyze 中的 updateProgress 控制
   useEffect(() => {
     if (isAnalyzing) {
+      // 只更新dots动画，不修改loadingProgress（由handleAnalyze控制）
+      let dotCount = 0;
       const interval = setInterval(() => {
-        setLoadingProgress((prev) => {
-          const next = prev + 1;
-          if (next >= loadingMessages.length) {
-            return loadingMessages.length - 1;  // 保持最后一个消息
-          }
-          setLoadingMessage(loadingMessages[next]);
-          return next;
-        });
-      }, 3000);  // 每3秒更新一次消息
+        dotCount = (dotCount + 1) % 4;
+        const dots = '.'.repeat(dotCount);
+        // 只有在进度未完成时才显示dots动画
+        if (loadingProgress < 100) {
+          setLoadingMessage(`⏳ 正在处理文档${dots}`);
+        }
+      }, 500);  // 每0.5秒更新一次（dots动画）
 
-      setLoadingMessage(loadingMessages[0]);
-      setLoadingProgress(0);
+      setLoadingMessage('⏳ 正在处理文档...');
 
       return () => clearInterval(interval);
     } else {
-      setLoadingProgress(0);
       setLoadingMessage('');
     }
-  }, [isAnalyzing]);
+  }, [isAnalyzing, loadingProgress]);  // 添加loadingProgress依赖
 
   /**
    * 执行 AI 分析（使用多阶段处理流程）
@@ -94,7 +258,7 @@ export const AIIdentifyPanel: React.FC<Props> = ({ onApplyComplete }) => {
     setCurrentStage('');
     setCurrentSection('');
 
-    addDebugLog('info', `开始 AI 多阶段分析`, `API: ${apiBaseUrl}, 模板类型: ${selectedTemplateType}, 使用多阶段: ${useMultiStage}`);
+    addDebugLog('info', `开始 AI 识别`, `模板类型: ${selectedTemplateType}`);
 
     try {
       // 获取文档内容
@@ -152,8 +316,8 @@ export const AIIdentifyPanel: React.FC<Props> = ({ onApplyComplete }) => {
       carboneAPI.setBaseUrl(apiBaseUrl);
 
       if (useMultiStage) {
-        // 使用新的多阶段处理流程
-        addDebugLog('info', `使用多阶段处理流程`, `阶段: 文档理解 → 分段参数化 → 整合确认`);
+        // 使用新的多阶段处理流程（API会根据underlineInfo自动选择快速或多阶段）
+        addDebugLog('info', `调用多阶段处理API`, `等待后端返回实际处理流程类型...`);
 
         // 更新进度的辅助函数
         const updateProgress = (stageName: string, progress: number, message: string, section?: string) => {
@@ -166,18 +330,24 @@ export const AIIdentifyPanel: React.FC<Props> = ({ onApplyComplete }) => {
           addDebugLog('debug', `进度更新`, `${stageName}: ${progress}% - ${message}${section ? ` (${section})` : ''}`);
         };
 
-        // 模拟进度更新（因为HTTP请求不支持实时进度）
-        updateProgress('文档理解', 0, '🔍 分析文档整体结构...');
+        // 显示处理中提示（模糊进度，HTTP不支持实时进度）
+        updateProgress('处理中', 50, '⏳ 正在处理文档...');
 
         // 调用多阶段API
         const result = await carboneAPI.identifyDocumentMultiStage(requestPayload);
 
+        // 根据返回的flowType显示正确的流程类型
+        const flowType = result.contextAnalysis?.flowType || 'unknown';
+        const flowTypeDisplay = flowType === 'quick' ? '快速识别（有下划线位置）' :
+                                flowType === 'multi-stage' ? '多阶段处理（文档理解→分段参数化→整合确认）' :
+                                '未知流程';
+
         // 更新到100%
         updateProgress('完成', 100, '✅ 处理完成！');
 
-        // 记录结果
+        // 记录结果（显示正确的流程类型）
         const usedAI = result.contextAnalysis?.usedAI ?? true;
-        addDebugLog('info', `识别方式: ${usedAI ? '🤖 AI多阶段智能识别' : '📋 规则匹配'}`,
+        addDebugLog('info', `处理完成，实际流程: ${flowTypeDisplay}`,
           `识别到 ${result.suggestions?.length || 0} 个参数，模板类型: ${result.templateConfig?.templateType}`);
 
         // 使用 rawSuggestions（包含详细信息）如果可用
@@ -248,79 +418,417 @@ export const AIIdentifyPanel: React.FC<Props> = ({ onApplyComplete }) => {
   };
 
   /**
-   * 测试下划线检测（调试专用）
-   * 独立测试 Word 文档中的下划线检测逻辑
+   * 预览模版（使用模版配置页的预览验证逻辑）
    */
-  const handleTestUnderline = async () => {
-    addDebugLog('info', `[测试下划线] 开始测试下划线检测...`);
+  const handlePreviewTemplate = async () => {
+    if (suggestions.length === 0) {
+      setPreviewResult({ success: false, message: '请先进行AI识别或手动添加参数' });
+      return;
+    }
+
+    if (!aiSkillGuide) {
+      setPreviewResult({ success: false, message: '请先生成AI指南' });
+      return;
+    }
+
+    setIsPreviewing(true);
+    setPreviewResult(null);
+
     try {
-      if (officeType !== 'word') {
-        addDebugLog('warn', `[测试下划线] 当前不是 Word 文档`, `Office 类型: ${officeType}`);
+      carboneAPI.setBaseUrl(apiBaseUrl);
+
+      // 如果有暂存副本ID，直接从副本预览（不需要重新获取文档）
+      if (draftId) {
+        addDebugLog('info', `从副本预览`, `ID: ${draftId}`);
+        const result = await carboneAPI.previewWithSkill({
+          templateId: draftId,
+          skill: aiSkillGuide,
+        });
+
+        if (result.success) {
+          setPreviewResult({
+            success: true,
+            message: '✅ 预览验证成功！（从副本）',
+            previewUrl: result.previewUrl,
+            downloadUrl: result.downloadUrl,
+            generatedData: result.generatedData
+          });
+          addDebugLog('info', `✅ 预览验证成功`, `下载链接: ${result.downloadUrl}`);
+        } else {
+          setPreviewResult({ success: false, message: `预览失败: ${result.error || '未知错误'}` });
+          addDebugLog('error', `预览失败`, result.error || '未知错误');
+        }
         return;
       }
 
-      // 1. 获取文档内容
-      const docContent = await OfficeHelper.Word.getDocumentContent();
-      addDebugLog('info', `[测试下划线] 文档内容`, `长度: ${docContent.length} 字符`);
+      // 没有副本ID，需要重新获取文档并生成模版
+      addDebugLog('info', `重新生成模版预览`, `参数数量: ${suggestions.length}`);
 
-      // 2. 获取段落结构
-      const structure = await OfficeHelper.Word.getDocumentStructure();
-      addDebugLog('info', `[测试下划线] 段落数量`, `${structure.paragraphs?.length || 0} 个段落`);
+      let documentContent = '';
+      let format = 'docx';
 
-      // 3. 获取下划线信息（核心测试）
-      addDebugLog('info', `[测试下划线] 调用 getUnderlinedTexts()...`);
-      const underlineInfo = await OfficeHelper.Word.getUnderlinedTexts();
+      if (officeType === 'word') {
+        const result = await OfficeHelper.Word.getDocumentFileBase64WithFallback();
+        documentContent = 'base64:' + result.base64;
+        addDebugLog('info', `文档获取方式: ${result.method}`, `有效docx: ${result.isValidDocx}`);
 
-      // 4. 显示详细结果
-      addDebugLog('info', `[测试下划线] 检测结果`, `发现 ${underlineInfo?.length || 0} 个下划线位置`);
-
-      if (underlineInfo && underlineInfo.length > 0) {
-        // 从后往前替换（倒序），避免替换影响前面的位置计算
-        // 先替换位置大的，再替换位置小的
-        for (let i = underlineInfo.length - 1; i >= 0; i--) {
-          const info = underlineInfo[i];
-          // 编号按检测顺序（正序）：#1 → field_1, #13 → field_13
-          const fieldNum = i + 1;  // 使用原始索引 + 1
-          const mockParam = `{field_${fieldNum}}`;
-
-          addDebugLog('debug', `[测试下划线] #${fieldNum}`,
-            `文本: "${info.text}" (${info.text.length}字符)\n` +
-            `类型: ${info.underlineType}\n` +
-            `段落索引: ${info.paragraphIndex}\n` +
-            `位置: ${info.position?.start}-${info.position?.end}\n` +
-            `模拟参数: ${mockParam}`
-          );
-
-          // 使用段落索引和位置替换为模拟参数
-          try {
-            if (info.paragraphIndex !== undefined) {
-              // 替换空白为模拟参数标记（传入原始段落文本，避免替换后文本变化）
-              const success = await OfficeHelper.Word.replaceUnderlineByPosition(
-                info.paragraphIndex,
-                info.position?.start || 0,
-                info.position?.end || 0,
-                mockParam,
-                info.text,
-                info.paragraphText  // 传入原始段落文本
-              );
-              addDebugLog('debug', `[测试下划线] #${fieldNum}`, success ? `✓ 已插入 ${mockParam}` : '替换失败');
-            } else {
-              // 后备方案
-              await OfficeHelper.Word.replaceText(info.text, mockParam);
-              addDebugLog('debug', `[测试下划线] #${fieldNum}`, `已替换为 ${mockParam}`);
-            }
-          } catch (replaceErr: any) {
-            addDebugLog('warn', `[测试下划线] #${fieldNum} 替换失败`, replaceErr.message);
-          }
+        if (!result.isValidDocx) {
+          addDebugLog('warn', `文档格式不完整`, '预览可能受限');
         }
-
-        addDebugLog('info', `[测试下划线] 完成`, `已插入 ${underlineInfo.length} 个模拟参数（倒序处理，编号正序）`);
+        format = 'docx';
+      } else if (officeType === 'excel') {
+        const sheetData = await OfficeHelper.Excel.getSheetData();
+        documentContent = JSON.stringify(sheetData.values);
+        format = 'xlsx';
       } else {
-        addDebugLog('warn', `[测试下划线] 未检测到下划线`, `请检查文档中是否有带下划线格式的空白`);
+        documentContent = await OfficeHelper.PowerPoint.getDocumentContent();
+        format = 'pptx';
       }
 
+      // 先生成模板
+      const templateResult = await carboneAPI.generateTemplate({
+        documentContent,
+        suggestions: suggestions.map(s => ({ ...s, applied: true })),
+        templateConfig,
+        format,
+      });
+
+      if (!templateResult.success) {
+        setPreviewResult({ success: false, message: `模板生成失败: ${templateResult.error}` });
+        addDebugLog('error', `模板生成失败`, templateResult.error || '未知错误');
+        return;
+      }
+
+      if (!templateResult.hasValidFile) {
+        setPreviewResult({ success: false, message: '无法获取完整的docx文件，预览功能暂不可用' });
+        addDebugLog('warn', `预览受限`, '无法获取完整的docx文件');
+        return;
+      }
+
+      addDebugLog('info', `模版已生成`, `ID: ${templateResult.templateId}`);
+
+      // 使用skill预览
+      const result = await carboneAPI.previewWithSkill({
+        templateId: templateResult.templateId,
+        skill: aiSkillGuide,
+      });
+
+      if (result.success) {
+        setPreviewResult({
+          success: true,
+          message: '✅ 预览验证成功！',
+          previewUrl: result.previewUrl,
+          downloadUrl: result.downloadUrl,
+          generatedData: result.generatedData
+        });
+        addDebugLog('info', `✅ 预览验证成功`, `下载链接: ${result.downloadUrl}`);
+      } else {
+        setPreviewResult({ success: false, message: `预览失败: ${result.error || '未知错误'}` });
+        addDebugLog('error', `预览失败`, result.error || '未知错误');
+      }
     } catch (error: any) {
-      addDebugLog('error', `[测试下划线] 测试失败`, error.message);
+      setPreviewResult({ success: false, message: `预览失败: ${error.message}` });
+      addDebugLog('error', `预览失败`, error.message);
+    } finally {
+      setIsPreviewing(false);
+    }
+  };
+
+  /**
+   * AI生成参数
+   * 根据用户描述和Skill Guide生成具体的参数值
+   */
+  const handleGenerateParameters = async () => {
+    if (!aiDescription.trim()) {
+      setAiGenerateResult({ success: false, message: '请输入描述内容' });
+      return;
+    }
+
+    if (!aiSkillGuide) {
+      setAiGenerateResult({ success: false, message: '请先生成AI指南' });
+      return;
+    }
+
+    setIsGeneratingParams(true);
+    setAiGenerateResult(null);
+    addDebugLog('info', `AI生成参数`, `描述: ${aiDescription.substring(0, 50)}...`);
+
+    try {
+      carboneAPI.setBaseUrl(apiBaseUrl);
+
+      const result = await carboneAPI.generateParameters({
+        description: aiDescription,
+        skill: aiSkillGuide,
+      });
+
+      if (result.success && result.generatedData) {
+        setAiGeneratedData(result.generatedData);
+        setAiGenerateResult({ success: true, message: '✅ 参数生成成功！' });
+        addDebugLog('info', `✅ 参数生成成功`, JSON.stringify(result.generatedData, null, 2));
+      } else {
+        setAiGenerateResult({ success: false, message: `生成失败: ${result.error || '未知错误'}` });
+        addDebugLog('error', `生成失败`, result.error || '未知错误');
+      }
+    } catch (error: any) {
+      setAiGenerateResult({ success: false, message: `生成失败: ${error.message}` });
+      addDebugLog('error', `生成失败`, error.message);
+    } finally {
+      setIsGeneratingParams(false);
+    }
+  };
+
+  /**
+   * 使用AI生成的参数进行预览验证
+   */
+  const handlePreviewWithAIParams = async () => {
+    if (!aiGeneratedData) {
+      setPreviewResult({ success: false, message: '请先生成参数' });
+      return;
+    }
+
+    if (!aiSkillGuide) {
+      setPreviewResult({ success: false, message: '请先生成AI指南' });
+      return;
+    }
+
+    setIsPreviewing(true);
+    setPreviewResult(null);
+    addDebugLog('info', `使用AI参数预览`, `参数: ${JSON.stringify(aiGeneratedData, null, 2).substring(0, 100)}...`);
+
+    try {
+      carboneAPI.setBaseUrl(apiBaseUrl);
+
+      // 如果有暂存副本ID，直接从副本预览
+      if (draftId) {
+        addDebugLog('info', `从副本预览`, `ID: ${draftId}`);
+        const result = await carboneAPI.previewWithSkill({
+          templateId: draftId,
+          skill: aiSkillGuide,
+          simulatedData: aiGeneratedData,  // 使用AI生成的参数
+        });
+
+        if (result.success) {
+          setPreviewResult({
+            success: true,
+            message: '✅ 预览验证成功！（使用AI生成的参数，从副本）',
+            previewUrl: result.previewUrl,
+            downloadUrl: result.downloadUrl,
+            generatedData: aiGeneratedData
+          });
+          addDebugLog('info', `✅ 预览成功`, `下载链接: ${result.downloadUrl}`);
+        } else {
+          setPreviewResult({ success: false, message: `预览失败: ${result.error || '未知错误'}` });
+          addDebugLog('error', `预览失败`, result.error || '未知错误');
+        }
+        return;
+      }
+
+      // 没有副本ID，需要重新获取文档并生成模版
+      addDebugLog('info', `重新生成模版预览`, `参数数量: ${suggestions.length}`);
+
+      let documentContent = '';
+      let format = 'docx';
+
+      if (officeType === 'word') {
+        const result = await OfficeHelper.Word.getDocumentFileBase64WithFallback();
+        documentContent = 'base64:' + result.base64;
+        addDebugLog('info', `文档获取方式: ${result.method}`, `有效docx: ${result.isValidDocx}`);
+        format = 'docx';
+      } else if (officeType === 'excel') {
+        const sheetData = await OfficeHelper.Excel.getSheetData();
+        documentContent = JSON.stringify(sheetData.values);
+        format = 'xlsx';
+      } else {
+        documentContent = await OfficeHelper.PowerPoint.getDocumentContent();
+        format = 'pptx';
+      }
+
+      // 先生成模板
+      const templateResult = await carboneAPI.generateTemplate({
+        documentContent,
+        suggestions: suggestions.map(s => ({ ...s, applied: true })),
+        templateConfig,
+        format,
+      });
+
+      if (!templateResult.success) {
+        setPreviewResult({ success: false, message: `模板生成失败: ${templateResult.error}` });
+        addDebugLog('error', `模板生成失败`, templateResult.error || '未知错误');
+        return;
+      }
+
+      addDebugLog('info', `模版已生成`, `ID: ${templateResult.templateId}`);
+
+      // 使用AI生成的参数预览
+      const result = await carboneAPI.previewWithSkill({
+        templateId: templateResult.templateId,
+        skill: aiSkillGuide,
+        simulatedData: aiGeneratedData,  // 使用AI生成的参数
+      });
+
+      if (result.success) {
+        setPreviewResult({
+          success: true,
+          message: '✅ 预览验证成功！（使用AI生成的参数）',
+          previewUrl: result.previewUrl,
+          downloadUrl: result.downloadUrl,
+          generatedData: aiGeneratedData
+        });
+        addDebugLog('info', `✅ 预览成功`, `下载链接: ${result.downloadUrl}`);
+      } else {
+        setPreviewResult({ success: false, message: `预览失败: ${result.error || '未知错误'}` });
+        addDebugLog('error', `预览失败`, result.error || '未知错误');
+      }
+    } catch (error: any) {
+      setPreviewResult({ success: false, message: `预览失败: ${error.message}` });
+      addDebugLog('error', `预览失败`, error.message);
+    } finally {
+      setIsPreviewing(false);
+    }
+  };
+
+  /**
+   * 验证模版配置（使用模版配置页的逻辑）
+   */
+  const handleVerifyTemplate = async () => {
+    if (suggestions.length === 0) {
+      setVerifyResult({ valid: false, message: '请先进行AI识别或手动添加参数' });
+      return;
+    }
+
+    setIsVerifying(true);
+    setVerifyResult(null);
+    addDebugLog('info', `验证模版配置`, `参数数量: ${suggestions.length}`);
+
+    try {
+      carboneAPI.setBaseUrl(apiBaseUrl);
+
+      // 构建模版配置（与模版配置页一致）
+      const configToValidate = {
+        templateType: selectedTemplateType,
+        variables: suggestions.reduce((acc, s) => {
+          // 从 suggestedName 提取变量路径（去掉 {} 包装）
+          const varPath = s.suggestedName.replace(/[{}]/g, '').replace(/^d\./, '');
+          acc[varPath] = s.originalText || '';
+          return acc;
+        }, {} as Record<string, string>),
+        loops: suggestions
+          .filter(s => s.details?.fieldType === 'loop')
+          .map(s => ({
+            arrayPath: s.details?.arrayPath || '',
+            startMarker: `{#${s.details?.arrayPath || ''}}`,
+            endMarker: `{/${s.details?.arrayPath || ''}}`
+          }))
+      };
+
+      const result = await carboneAPI.validateTemplate(JSON.stringify(configToValidate));
+
+      if (result.valid) {
+        setVerifyResult({ valid: true, message: '✅ 验证成功！模版配置有效', warnings: result.warnings });
+        addDebugLog('info', `✅ 验证成功`, `模版配置有效`);
+        if (result.warnings && result.warnings.length > 0) {
+          addDebugLog('warn', `⚠️ 警告`, result.warnings.join('\n'));
+        }
+      } else {
+        setVerifyResult({ valid: false, message: '❌ 验证失败', warnings: result.errors });
+        addDebugLog('error', `❌ 验证失败`, result.errors?.join('\n') || '未知错误');
+      }
+    } catch (error: any) {
+      setVerifyResult({ valid: false, message: `验证失败: ${error.message}` });
+      addDebugLog('error', `验证失败`, error.message);
+    } finally {
+      setIsVerifying(false);
+    }
+  };
+
+  /**
+   * 生成AI Skill Guide
+   */
+  const handleGenerateAISkillGuide = async () => {
+    if (suggestions.length === 0) {
+      addDebugLog('warn', '请先进行AI识别或手动添加参数');
+      return;
+    }
+
+    setIsGeneratingGuide(true);
+    addDebugLog('info', `生成AI Skill Guide`, `参数数量: ${suggestions.length}`);
+
+    try {
+      carboneAPI.setBaseUrl(apiBaseUrl);
+
+      const result = await carboneAPI.generateSkill({
+        suggestions: suggestions.map(s => ({ ...s, applied: true })),
+        templateConfig,
+        templateType: selectedTemplateType
+      });
+
+      if (result.success && result.skill) {
+        setAiSkillGuide(result.skill);
+        addDebugLog('info', `✅ AI指南生成成功`, `包含 ${result.skill.parameters?.length || 0} 个参数`);
+      } else {
+        addDebugLog('error', `生成AI指南失败`, result.error || '未知错误');
+      }
+    } catch (error: any) {
+      addDebugLog('error', `生成AI指南失败`, error.message);
+    } finally {
+      setIsGeneratingGuide(false);
+    }
+  };
+
+  /**
+   * 保存模版和AI指南
+   */
+  const handleSaveTemplateAndGuide = async () => {
+    if (!aiSkillGuide) {
+      setSaveResult({ success: false, message: '请先生成AI指南' });
+      return;
+    }
+
+    if (!draftId) {
+      setSaveResult({ success: false, message: '请先暂存副本' });
+      return;
+    }
+
+    setIsSaving(true);
+    setSaveResult(null);
+    addDebugLog('info', `最终保存模版`, `从副本ID: ${draftId}`);
+
+    try {
+      carboneAPI.setBaseUrl(apiBaseUrl);
+
+      // 从副本正式命名保存
+      // 使用用户输入的名称，如果未输入则使用默认名称
+      const finalTemplateName = templateName.trim() || `${selectedTemplateType}-template-${Date.now()}`;
+      const saveParams: any = {
+        templateId: draftId,  // 复用副本ID
+        suggestions: suggestions,
+        templateConfig,
+        skill: aiSkillGuide,
+        format: officeType === 'excel' ? 'xlsx' : officeType === 'ppt' ? 'pptx' : 'docx',  // 添加format参数
+        templateName: finalTemplateName  // 用户命名或默认命名
+      };
+
+      addDebugLog('info', `从副本正式保存`, `副本ID: ${draftId}, 名称: ${finalTemplateName}`);
+
+      const result = await carboneAPI.saveTemplateFull(saveParams);
+
+      if (result.success) {
+        setSaveResult({
+          success: true,
+          message: `✅ 最终保存成功！模板ID: ${result.templateId || 'N/A'}, 指南ID: ${result.skillId || 'N/A'}`
+        });
+        addDebugLog('info', `✅ 最终保存成功`, `模板ID: ${result.templateId}, 指南ID: ${result.skillId}`);
+        // 保存成功后清除暂存副本
+        handleClearDraft();
+      } else {
+        setSaveResult({ success: false, message: `保存失败: ${result.error || '未知错误'}` });
+        addDebugLog('error', `保存失败`, result.error || '未知错误');
+      }
+    } catch (error: any) {
+      setSaveResult({ success: false, message: `保存失败: ${error.message}` });
+      addDebugLog('error', `保存失败`, error.message);
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -345,6 +853,7 @@ export const AIIdentifyPanel: React.FC<Props> = ({ onApplyComplete }) => {
           if (success) {
             applySuggestion(suggestion.id);
             addDebugLog('info', `精确替换成功`, `"${suggestion.originalText}" → ${suggestion.suggestedName}`);
+            // 不移除，只标记为已应用（保留在列表中用于生成AI指南）
             return;
           }
         }
@@ -465,7 +974,8 @@ export const AIIdentifyPanel: React.FC<Props> = ({ onApplyComplete }) => {
       }
 
       setShowPreview(false);
-      onApplyComplete?.();
+      // 不跳转tab页，只收起参数列表
+      setCollapsed(true);
       addDebugLog('info', `批量应用完成`, `应用了 ${unapplied.length} 个建议`);
     } catch (error) {
       addDebugLog('error', '批量应用失败', error.message);
@@ -478,6 +988,134 @@ export const AIIdentifyPanel: React.FC<Props> = ({ onApplyComplete }) => {
   const handleCancelPreview = () => {
     setShowPreview(false);
     setPreviewContent('');
+  };
+
+  /**
+   * 手动添加参数
+   */
+  /**
+   * 获取当前选中的文档内容（参考ManualSelector）
+   */
+  const handleGetSelection = async () => {
+    try {
+      if (officeType === 'word') {
+        const selectedText = await OfficeHelper.Word.getSelectedText();
+        setSelectedContent(selectedText);
+        addDebugLog('info', `获取选中内容`, `内容: ${selectedText.substring(0, 50)}...`);
+      } else if (officeType === 'excel') {
+        const selectedRange = await OfficeHelper.Excel.getSelectedRange();
+        const cellValue = selectedRange.values[0][0] as string;
+        setSelectedContent(cellValue);
+        addDebugLog('info', `获取选中单元格`, `地址: ${selectedRange.address}, 值: ${cellValue}`);
+      }
+    } catch (error: any) {
+      addDebugLog('error', `获取选中内容失败`, error.message);
+    }
+  };
+
+  /**
+   * 生成手动标记（参考ManualSelector，支持循环模式）
+   */
+  const generateManualMarker = (): string => {
+    let marker = `{${manualParamName}`;
+    if (manualFormatter) {
+      marker += `:${manualFormatter}`;
+    }
+    marker += '}';
+
+    // 循环模式包装
+    if (manualLoopMode && manualArrayPath) {
+      marker = `{#${manualArrayPath}}${marker}{/${manualArrayPath}}`;
+    }
+    return marker;
+  };
+
+  /**
+   * AI生成变量名（基于选中内容的语义）
+   */
+  const handleAIGenerateVariableName = async () => {
+    if (!selectedContent) {
+      addDebugLog('warn', '请先获取选中内容');
+      return;
+    }
+
+    setIsGeneratingAI(true);
+    try {
+      // 调用AI生成变量名
+      const prompt = `根据以下文本内容，生成合适的变量名称。返回格式: {d.entity.field}
+
+文本: "${selectedContent.substring(0, 100)}"
+
+只返回变量名称，不要其他解释。`;
+
+      const result = await carboneAPI.callAIForVariableName(prompt);
+      if (result && result.variableName) {
+        setManualParamName(result.variableName);
+        addDebugLog('info', `AI生成变量名`, `${result.variableName}`);
+      }
+    } catch (error: any) {
+      addDebugLog('error', `AI生成失败`, error.message);
+    } finally {
+      setIsGeneratingAI(false);
+    }
+  };
+
+  /**
+   * 手动添加参数并添加到参数一览（不是直接插入文档）
+   */
+  const handleManualAddParam = async () => {
+    if (!manualParamName || manualParamName.trim() === '') {
+      addDebugLog('warn', '请输入参数名称');
+      return;
+    }
+
+    const marker = generateManualMarker();
+
+    // 创建新的建议，格式与AI识别结果一致
+    const newSuggestion: AISuggestion = {
+      id: `manual-${Date.now()}`,
+      type: manualLoopMode ? 'loop' : 'variable',
+      elementPath: selectedContent ? `【${selectedContent.substring(0, 30)}...】` : '手动添加',
+      suggestedName: marker,
+      originalText: selectedContent || '手动添加的参数',
+      confidence: 1.0,
+      applied: false,
+      context: selectedContent || '用户手动添加',
+      details: {
+        chapter: '手动添加',
+        significance: manualSignificance || '用户自定义参数',
+        displayPosition: selectedContent ? `【${selectedContent.substring(0, 30)}...】` : '手动添加',
+        context: selectedContent || '',
+        fieldType: manualLoopMode ? 'loop' : 'text',
+        formatter: manualFormatter,
+        arrayPath: manualLoopMode ? manualArrayPath : undefined,
+        beforeBlank: selectedContent ? selectedContent.substring(0, 15) : '',
+        afterBlank: selectedContent ? selectedContent.substring(Math.max(0, selectedContent.length - 15)) : '',
+      }
+    };
+
+    // 添加到建议列表
+    setSuggestions([...suggestions, newSuggestion]);
+    addDebugLog('info', `手动添加参数到列表`, `参数名: ${marker}`);
+
+    // 重置状态并关闭表单
+    setShowManualAdd(false);
+    setSelectedContent('');
+    setManualParamName('d.');
+    setManualFormatter('');
+    setManualLoopMode(false);
+    setManualArrayPath('');
+    setManualSignificance('');
+
+    // 展开参数列表显示新添加的项
+    setCollapsed(false);
+  };
+
+  /**
+   * 收起/展开参数列表
+   */
+  const toggleCollapse = () => {
+    setCollapsed(!collapsed);
   };
 
   /**
@@ -553,52 +1191,393 @@ export const AIIdentifyPanel: React.FC<Props> = ({ onApplyComplete }) => {
         {isAnalyzing ? (
           <span className="analyzing-indicator">
             <span className="spinner"></span>
-            <span className="loading-text">{loadingMessage}</span>
+            <span className="loading-text">正在处理...</span>
           </span>
         ) : 'AI 智能识别'}
       </button>
 
-      {/* 多阶段进度显示 */}
-      {isAnalyzing && (
-        <div className="multistage-progress-container">
-          {/* 进度条 */}
-          <div className="loading-progress-bar">
-            <div className="progress-fill" style={{ width: `${loadingProgress}%` }}></div>
-          </div>
+      {/* 分析结果 */}
+      {suggestions.length > 0 && (
+        <div className="suggestions-container">
+          {/* 收起/展开按钮 */}
+          <button className="collapse-toggle-btn" onClick={toggleCollapse}>
+            {collapsed ? '📂 展开参数列表' : '📁 收起参数列表'} ({suggestions.filter((s) => !s.applied).length} 项)
+          </button>
 
-          {/* 阶段信息 */}
-          {currentStage && (
-            <div className="stage-info">
-              <span className="stage-name">{currentStage}</span>
-              {currentSection && (
-                <span className="current-section"> - {currentSection}</span>
+          {!collapsed && (
+            <>
+              {/* 预览确认面板 */}
+              {showPreview && (
+                <div className="preview-confirm-panel">
+                  <h4>📋 替换预览</h4>
+                  <pre className="preview-content">{previewContent}</pre>
+                  <div className="preview-actions">
+                    <button className="confirm-btn" onClick={handleApplyAll}>
+                      ✅ 确认应用
+                    </button>
+                    <button className="cancel-btn" onClick={handleCancelPreview}>
+                      ❌ 取消
+                    </button>
+                  </div>
+                </div>
               )}
-            </div>
-          )}
 
-          {/* 进度百分比 */}
-          <div className="progress-percentage">{loadingProgress}%</div>
+              {/* 一键应用按钮 */}
+              <div className="apply-all-section">
+                <button className="apply-all-btn" onClick={handleApplyAll}>
+                  {showPreview ? '✅ 确认应用全部' : '👁️ 预览后应用全部'} ({suggestions.filter((s) => !s.applied).length})
+                </button>
+              </div>
+
+              {/* 分组显示建议 - 按章节分组 */}
+              {Object.entries(groupSuggestionsByChapter()).map(([chapter, items]) => (
+                <div key={chapter} className="suggestion-group chapter-group">
+                  <h4 className="group-title chapter-title">
+                    <span className="chapter-icon">{getChapterIcon(chapter)}</span>
+                    <span className="chapter-name">{chapter}</span>
+                    <span className="count">({items.length})</span>
+                  </h4>
+
+                  <div className="suggestion-list">
+                    {items.map((suggestion) => (
+                      <SuggestionItem
+                        key={suggestion.id}
+                        suggestion={suggestion}
+                        onApply={() => handleApplySingle(suggestion)}
+                        onDismiss={() => dismissSuggestion(suggestion.id)}
+                        onPreview={() => handlePreviewSingle(suggestion)}
+                        onUpdateName={(newName) => updateSuggestionName(suggestion.id, newName)}
+                      />
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </>
+          )}
         </div>
       )}
 
-      {/* 测试连接按钮 */}
+      {/* 手动添加参数（参考ManualSelector） */}
+      {!isAnalyzing && (
+        <div className="manual-add-section">
+          {!showManualAdd ? (
+            <button
+              className="manual-add-btn"
+              onClick={() => setShowManualAdd(true)}
+            >
+              ➕ 手动添加参数
+            </button>
+          ) : (
+            <div className="manual-add-form expanded">
+              {/* 获取选中内容 */}
+              <div className="selection-section">
+                <button className="get-selection-btn" onClick={handleGetSelection}>
+                  📍 获取当前选中内容
+                </button>
+                {selectedContent && (
+                  <div className="selected-preview">
+                    <span className="selected-text">已选: "{selectedContent.substring(0, 30)}..."</span>
+                  </div>
+                )}
+              </div>
+
+              {/* 变量配置 */}
+              <div className="variable-config">
+                <div className="input-group">
+                  <label>变量名:</label>
+                  <div className="input-with-btn">
+                    <input
+                      type="text"
+                      className="manual-param-input"
+                      value={manualParamName}
+                      onChange={(e) => setManualParamName(e.target.value)}
+                      placeholder="d.fieldName"
+                      autoFocus
+                    />
+                    <button
+                      className="ai-generate-btn"
+                      onClick={handleAIGenerateVariableName}
+                      disabled={isGeneratingAI || !selectedContent}
+                    >
+                      {isGeneratingAI ? '⏳' : '🤖'}
+                    </button>
+                  </div>
+                </div>
+
+                <div className="input-group">
+                  <label>格式化器:</label>
+                  <select value={manualFormatter} onChange={(e) => setManualFormatter(e.target.value)}>
+                    <option value="">无格式化</option>
+                    <option value="formatDate(YYYY-MM-DD)">日期 YYYY-MM-DD</option>
+                    <option value="formatDate(YYYY/MM/DD)">日期 YYYY/MM/DD</option>
+                    <option value="formatNumber(#,##0.00)">数字 #,##0.00</option>
+                    <option value="upper">大写</option>
+                    <option value="lower">小写</option>
+                  </select>
+                </div>
+
+                <div className="input-group">
+                  <label>用途说明:</label>
+                  <input
+                    type="text"
+                    value={manualSignificance}
+                    onChange={(e) => setManualSignificance(e.target.value)}
+                    placeholder="如：合同甲方名称、发票金额"
+                  />
+                </div>
+
+                {/* 循环模式 */}
+                <div className="loop-config">
+                  <label className="checkbox-label">
+                    <input
+                      type="checkbox"
+                      checked={manualLoopMode}
+                      onChange={(e) => setManualLoopMode(e.target.checked)}
+                    />
+                    启用循环模式
+                  </label>
+
+                  {manualLoopMode && (
+                    <div className="input-group">
+                      <label>数组路径:</label>
+                      <input
+                        type="text"
+                        value={manualArrayPath}
+                        onChange={(e) => setManualArrayPath(e.target.value)}
+                        placeholder="d.items"
+                      />
+                      <small>将包装为 {'{#d.array}...{/d.array}'}</small>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* 生成的标记预览 */}
+              {manualParamName && (
+                <div className="marker-preview">
+                  <code>{generateManualMarker()}</code>
+                </div>
+              )}
+
+              {/* 操作按钮 */}
+              <div className="manual-actions">
+                <button className="confirm-add-btn" onClick={handleManualAddParam}>
+                  ✅ 添加到列表
+                </button>
+                <button className="cancel-add-btn" onClick={() => {
+                  setShowManualAdd(false);
+                  setSelectedContent('');
+                  setManualParamName('d.');
+                  setManualFormatter('');
+                  setManualLoopMode(false);
+                  setManualArrayPath('');
+                  setManualSignificance('');
+                }}>
+                  ❌ 取消
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* 生成AI指南按钮 */}
       <button
-        className="test-connection-btn"
-        onClick={handleTestConnection}
-        disabled={isAnalyzing}
+        className="generate-guide-btn"
+        onClick={handleGenerateAISkillGuide}
+        disabled={isAnalyzing || isGeneratingGuide || suggestions.length === 0}
       >
-        🔌 测试连接
+        {isGeneratingGuide ? '⏳ 生成中...' : '📋 生成AI指南'}
       </button>
 
-      {/* 测试下划线按钮（调试专用） */}
-      {officeType === 'word' && (
+      {/* AI指南预览 */}
+      {aiSkillGuide && (
+        <div className="ai-guide-preview">
+          <div className="ai-guide-header">
+            <span className="ai-guide-title">✅ AI指南已生成</span>
+            <span className="ai-guide-info">
+              {aiSkillGuide.parameters?.length || 0} 个参数
+            </span>
+          </div>
+          {aiSkillGuide.skillGuideMarkdown && (
+            <div className="ai-guide-summary">
+              <pre>{aiSkillGuide.skillGuideMarkdown.substring(0, 300)}...</pre>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* 验证模版按钮 */}
+      <button
+        className="verify-template-btn"
+        onClick={handleVerifyTemplate}
+        disabled={isAnalyzing || isVerifying || suggestions.length === 0}
+      >
+        {isVerifying ? '⏳ 验证中...' : '🔍 验证模版'}
+      </button>
+
+      {/* 验证结果反馈 */}
+      {verifyResult && (
+        <div className={`verify-result ${verifyResult.valid ? 'success' : 'error'}`}>
+          <span className="verify-result-message">{verifyResult.message}</span>
+          {verifyResult.warnings && verifyResult.warnings.length > 0 && (
+            <div className="verify-result-warnings">
+              {verifyResult.warnings.map((w, i) => <div key={i}>{w}</div>)}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* 暂存副本按钮组 */}
+      <div className="draft-buttons-group">
         <button
-          className="test-underline-btn"
-          onClick={handleTestUnderline}
-          disabled={isAnalyzing}
+          className="save-draft-btn"
+          onClick={handleSaveDraft}
+          disabled={isSavingDraft || !aiSkillGuide}
         >
-          🔍 测试下划线
+          {isSavingDraft ? '⏳ 暂存中...' : '📦 暂存副本'}
         </button>
+
+        {draftId && (
+          <button
+            className="clear-draft-btn"
+            onClick={handleClearDraft}
+            title="清除暂存副本"
+          >
+            🗑️ 清除
+          </button>
+        )}
+      </div>
+
+      {/* 副本信息 */}
+      {draftId && draftInfo && (
+        <div className="draft-info">
+          <span className="draft-badge">✅ 已暂存</span>
+          <span className="draft-details">
+            {draftInfo.templateType} · {draftInfo.parameterCount} 参数 · ID: {draftId.substring(0, 8)}...
+          </span>
+        </div>
+      )}
+
+      {/* 副本保存结果反馈 */}
+      {draftSaveResult && (
+        <div className={`draft-result ${draftSaveResult.success ? 'success' : 'error'}`}>
+          {draftSaveResult.message}
+        </div>
+      )}
+
+      {/* AI生成参数区域 */}
+      {aiSkillGuide && (
+        <div className="ai-params-section">
+          <div className="ai-params-header">
+            <span className="ai-params-title">🤖 AI生成替换参数</span>
+            <span className="ai-params-hint">输入描述，AI将根据Skill Guide生成参数</span>
+          </div>
+          <textarea
+            className="ai-description-input"
+            placeholder="例如：需要和北京市朝阳区的xx公司签订关于yy项目的保密协议，为期3年，签订日是今天"
+            value={aiDescription}
+            onChange={(e) => setAiDescription(e.target.value)}
+            rows={3}
+          />
+          <div className="ai-params-buttons">
+            <button
+              className="generate-params-btn"
+              onClick={handleGenerateParameters}
+              disabled={isGeneratingParams || !aiDescription.trim()}
+            >
+              {isGeneratingParams ? '⏳ 生成中...' : '🤖 生成参数'}
+            </button>
+            {aiGeneratedData && (
+              <button
+                className="preview-ai-btn"
+                onClick={handlePreviewWithAIParams}
+                disabled={isPreviewing}
+              >
+                {isPreviewing ? '⏳ 预览中...' : '👁️ 用AI参数预览'}
+              </button>
+            )}
+          </div>
+          {/* AI生成结果 */}
+          {aiGenerateResult && (
+            <div className={`ai-generate-result ${aiGenerateResult.success ? 'success' : 'error'}`}>
+              {aiGenerateResult.message}
+            </div>
+          )}
+          {/* AI生成的参数显示 */}
+          {aiGeneratedData && (
+            <div className="ai-params-preview">
+              <div className="ai-params-preview-header">📊 AI生成的参数值：</div>
+              <pre className="ai-params-content">{JSON.stringify(aiGeneratedData, null, 2)}</pre>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* 预览验证按钮 */}
+      <button
+        className="preview-template-btn"
+        onClick={handlePreviewTemplate}
+        disabled={isAnalyzing || isPreviewing || suggestions.length === 0 || !aiSkillGuide}
+      >
+        {isPreviewing ? '⏳ 验证中...' : '✅ 预览验证'}
+      </button>
+
+      {/* 预览验证结果反馈 */}
+      {previewResult && (
+        <div className={`preview-result ${previewResult.success ? 'success' : 'error'}`}>
+          {previewResult.message}
+          <div className="preview-links">
+            {previewResult.previewUrl && (
+              <a href={`${apiBaseUrl}${previewResult.previewUrl}`} target="_blank" rel="noopener noreferrer" className="preview-link">
+                👁️ 打开预览
+              </a>
+            )}
+            {previewResult.downloadUrl && (
+              <a href={`${apiBaseUrl}${previewResult.downloadUrl}`} target="_blank" rel="noopener noreferrer" className="preview-link download-link">
+                📥 下载Word
+              </a>
+            )}
+          </div>
+          {previewResult.generatedData && (
+            <div className="generated-data-preview">
+              <div className="generated-data-header">📊 模拟替换数据：</div>
+              <pre className="generated-data-content">{JSON.stringify(previewResult.generatedData, null, 2)}</pre>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* 模板命名输入 */}
+      {draftId && (
+        <div className="template-name-input-container">
+          <label className="template-name-label">模板名称:</label>
+          <input
+            type="text"
+            className="template-name-input"
+            value={templateName}
+            onChange={(e) => setTemplateName(e.target.value)}
+            placeholder={`默认: ${selectedTemplateType}-template-${Date.now()}`}
+            disabled={isSaving}
+          />
+        </div>
+      )}
+
+      {/* 最终保存按钮（从副本正式命名保存） */}
+      <button
+        className="final-save-btn"
+        onClick={handleSaveTemplateAndGuide}
+        disabled={isSaving || !draftId}
+        title={!draftId ? '请先暂存副本' : '从副本正式保存'}
+      >
+        {isSaving ? '⏳ 保存中...' : '💾 最终保存模版'}
+      </button>
+
+      {/* 保存结果反馈 */}
+      {saveResult && (
+        <div className={`save-result ${saveResult.success ? 'success' : 'error'}`}>
+          {saveResult.message}
+        </div>
       )}
 
       {/* 调试面板开关 */}
@@ -624,57 +1603,6 @@ export const AIIdentifyPanel: React.FC<Props> = ({ onApplyComplete }) => {
           )}
         </div>
       )}
-
-      {/* 分析结果 */}
-      {suggestions.length > 0 && (
-        <div className="suggestions-container">
-          {/* 预览确认面板 */}
-          {showPreview && (
-            <div className="preview-confirm-panel">
-              <h4>📋 替换预览</h4>
-              <pre className="preview-content">{previewContent}</pre>
-              <div className="preview-actions">
-                <button className="confirm-btn" onClick={handleApplyAll}>
-                  ✅ 确认应用
-                </button>
-                <button className="cancel-btn" onClick={handleCancelPreview}>
-                  ❌ 取消
-                </button>
-              </div>
-            </div>
-          )}
-
-          {/* 一键应用按钮 */}
-          <div className="apply-all-section">
-            <button className="apply-all-btn" onClick={handleApplyAll}>
-              {showPreview ? '✅ 确认应用全部' : '👁️ 预览后应用全部'} ({suggestions.filter((s) => !s.applied).length})
-            </button>
-          </div>
-
-          {/* 分组显示建议 - 按章节分组 */}
-          {Object.entries(groupSuggestionsByChapter()).map(([chapter, items]) => (
-            <div key={chapter} className="suggestion-group chapter-group">
-              <h4 className="group-title chapter-title">
-                <span className="chapter-icon">{getChapterIcon(chapter)}</span>
-                <span className="chapter-name">{chapter}</span>
-                <span className="count">({items.length})</span>
-              </h4>
-
-              <div className="suggestion-list">
-                {items.map((suggestion) => (
-                  <SuggestionItem
-                    key={suggestion.id}
-                    suggestion={suggestion}
-                    onApply={() => handleApplySingle(suggestion)}
-                    onDismiss={() => dismissSuggestion(suggestion.id)}
-                    onPreview={() => handlePreviewSingle(suggestion)}
-                  />
-                ))}
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
     </div>
   );
 };
@@ -687,9 +1615,12 @@ const SuggestionItem: React.FC<{
   onApply: () => void;
   onDismiss: () => void;
   onPreview?: () => void;
-}> = ({ suggestion, onApply, onDismiss, onPreview }) => {
+  onUpdateName?: (newName: string) => void;
+}> = ({ suggestion, onApply, onDismiss, onPreview, onUpdateName }) => {
   const [expanded, setExpanded] = useState(false);
   const [isPreviewing, setIsPreviewing] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editValue, setEditValue] = useState(suggestion.suggestedName);
 
   // 获取位置信息（使用格式化的显示位置）
   const getPositionInfo = (suggestion: AISuggestion): string => {
@@ -734,6 +1665,20 @@ const SuggestionItem: React.FC<{
     }
   };
 
+  // 处理编辑确认
+  const handleEditConfirm = () => {
+    if (editValue !== suggestion.suggestedName && onUpdateName) {
+      onUpdateName(editValue);
+    }
+    setIsEditing(false);
+  };
+
+  // 处理编辑取消
+  const handleEditCancel = () => {
+    setEditValue(suggestion.suggestedName);
+    setIsEditing(false);
+  };
+
   return (
     <div className={`suggestion-item ${suggestion.applied ? 'applied' : ''} ${isPreviewing ? 'previewing' : ''}`}>
       <div className="suggestion-header" onClick={() => setExpanded(!expanded)}>
@@ -745,7 +1690,18 @@ const SuggestionItem: React.FC<{
         <div className="suggestion-content">
           <span className="original">{suggestion.originalText}</span>
           <span className="arrow">→</span>
-          <span className="suggested">{suggestion.suggestedName}</span>
+          {isEditing ? (
+            <input
+              type="text"
+              className="edit-input"
+              value={editValue}
+              onChange={(e) => setEditValue(e.target.value)}
+              onClick={(e) => e.stopPropagation()}
+              autoFocus
+            />
+          ) : (
+            <span className="suggested">{suggestion.suggestedName}</span>
+          )}
         </div>
 
         {suggestion.applied && <span className="applied-badge">已应用</span>}
@@ -784,15 +1740,31 @@ const SuggestionItem: React.FC<{
 
           {!suggestion.applied && (
             <div className="suggestion-actions">
-              <button className="preview-btn" onClick={handlePreview} disabled={isPreviewing}>
-                👁️ 预览
-              </button>
-              <button className="apply-btn" onClick={onApply}>
-                ✅ 应用
-              </button>
-              <button className="dismiss-btn" onClick={onDismiss}>
-                ❌ 忽略
-              </button>
+              {!isEditing ? (
+                <>
+                  <button className="preview-btn" onClick={handlePreview} disabled={isPreviewing}>
+                    👁️ 预览
+                  </button>
+                  <button className="edit-btn" onClick={() => setIsEditing(true)}>
+                    📝 修改
+                  </button>
+                  <button className="apply-btn" onClick={onApply}>
+                    ✅ 应用
+                  </button>
+                  <button className="dismiss-btn" onClick={onDismiss}>
+                    ❌ 忽略
+                  </button>
+                </>
+              ) : (
+                <>
+                  <button className="confirm-btn" onClick={handleEditConfirm}>
+                    ✅ 确认
+                  </button>
+                  <button className="cancel-btn" onClick={handleEditCancel}>
+                    ❌ 取消
+                  </button>
+                </>
+              )}
             </div>
           )}
         </div>
