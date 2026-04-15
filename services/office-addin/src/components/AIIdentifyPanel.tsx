@@ -662,11 +662,6 @@ export const AIIdentifyPanel: React.FC<Props> = ({ onApplyComplete }) => {
       setIsSaving(false);
     }
   };
-      addDebugLog('error', `保存失败`, error.message);
-    } finally {
-      setIsSaving(false);
-    }
-  };
 
   /**
    * 应用单个建议
