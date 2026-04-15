@@ -89,6 +89,7 @@ export const AIIdentifyPanel: React.FC<Props> = ({ onApplyComplete }) => {
   // 预览模版状态
   const [previewResult, setPreviewResult] = useState<{ success: boolean; message: string; previewUrl?: string } | null>(null);
   const [isPreviewing, setIsPreviewing] = useState(false);
+  const [previewTemplateId, setPreviewTemplateId] = useState<string | null>(null);  // 预览生成的模版ID
 
   // 检查是否有暂存数据
   useEffect(() => {
@@ -434,6 +435,10 @@ export const AIIdentifyPanel: React.FC<Props> = ({ onApplyComplete }) => {
         return;
       }
 
+      // 保存预览生成的模版ID（用于后续保存复用）
+      setPreviewTemplateId(templateResult.templateId || null);
+      addDebugLog('info', `模版已生成`, `ID: ${templateResult.templateId}`);
+
       // 使用skill预览
       const result = await carboneAPI.previewWithSkill({
         templateId: templateResult.templateId,
@@ -561,26 +566,58 @@ export const AIIdentifyPanel: React.FC<Props> = ({ onApplyComplete }) => {
     addDebugLog('info', `保存模版和AI指南`);
 
     try {
-      // 获取当前文档内容（根据officeType使用对应API）
+      // 获取当前文档内容（使用base64格式，与模版配置tab一致）
       let documentContent = '';
+      let format = 'docx';
+
       if (officeType === 'word') {
-        documentContent = await OfficeHelper.Word.getDocumentContent();
+        // 使用Word.run getFileOrNull获取完整docx文件（base64格式）
+        try {
+          const result = await OfficeHelper.Word.getDocumentFileBase64WithFallback();
+          documentContent = 'base64:' + result.base64;
+          addDebugLog('info', `文档获取方式: ${result.method}`, `有效docx: ${result.isValidDocx}`);
+
+          if (!result.isValidDocx) {
+            addDebugLog('warn', `文档格式不完整`, '保存的模版可能无法正常渲染');
+          }
+        } catch (e: any) {
+          setSaveResult({ success: false, message: `获取文档失败: ${e.message}` });
+          addDebugLog('error', `获取文档失败`, e.message);
+          setIsSaving(false);
+          return;
+        }
+        format = 'docx';
       } else if (officeType === 'excel') {
-        documentContent = await OfficeHelper.Excel.getDocumentContent();
+        const sheetData = await OfficeHelper.Excel.getSheetData();
+        documentContent = JSON.stringify(sheetData.values);
+        format = 'xlsx';
       } else {
         documentContent = await OfficeHelper.PowerPoint.getDocumentContent();
+        format = 'pptx';
       }
 
       carboneAPI.setBaseUrl(apiBaseUrl);
 
-      const result = await carboneAPI.saveTemplateFull({
-        documentContent,
+      // 如果已有预览生成的模版ID，复用它（不需要重新获取文档）
+      const saveParams: any = {
         suggestions: suggestions,
         templateConfig,
         skill: aiSkillGuide,
-        format: officeType === 'excel' ? 'xlsx' : 'docx',
+        format,
         templateName: `${selectedTemplateType}-template-${Date.now()}`
-      });
+      };
+
+      if (previewTemplateId) {
+        // 复用预览生成的模版ID
+        saveParams.templateId = previewTemplateId;
+        addDebugLog('info', `复用预览模版ID`, previewTemplateId);
+      } else {
+        // 没有预览模版ID，需要传入文档内容
+        saveParams.documentContent = documentContent;
+        addDebugLog('info', `新建模版`, '需要传入文档内容');
+      }
+
+      const result = await carboneAPI.saveTemplateFull(saveParams);
 
       if (result.success) {
         setSaveResult({

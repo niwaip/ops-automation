@@ -354,9 +354,11 @@ class CarboneAPI {
 
   /**
    * 保存完整模板（包含模板文件和AI Skill）
+   * 支持复用已有模版ID（从预览生成的模版）
    */
   async saveTemplateFull(request: {
-    documentContent: string;
+    templateId?: string;  // 复用已有模版ID
+    documentContent?: string;  // 如果使用已有模版ID，可以不传
     suggestions: AISuggestion[];
     templateConfig?: TemplateConfig;
     skill?: any;

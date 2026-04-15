@@ -2112,6 +2112,7 @@ export class StudioController {
     schema: {
       type: 'object',
       properties: {
+        templateId: { type: 'string', description: 'Existing template ID (optional, reuse from preview)' },
         documentContent: { type: 'string', description: 'Document content (base64)' },
         suggestions: { type: 'array', description: 'Applied suggestions' },
         templateConfig: { type: 'object', description: 'Template configuration' },
@@ -2124,7 +2125,8 @@ export class StudioController {
   })
   async saveTemplateFull(
     @Body() body: {
-      documentContent: string;
+      templateId?: string;  // 支持复用已有的模版ID
+      documentContent?: string;  // 如果使用已有模版ID，可以不传
       suggestions?: any[];
       templateConfig?: any;
       skill?: any;
@@ -2141,23 +2143,45 @@ export class StudioController {
     error?: string;
   }> {
     try {
-      const templateId = uuidv4();
+      // 支持复用已有的模版ID（从预览生成的模版）
+      let templateId = body.templateId;
       const format = body.format || 'docx';
+      let isNewTemplate = false;
+
+      // 如果传入了模版ID，检查是否存在
+      if (templateId) {
+        const existingMetaPath = path.join(this.templatesDir, `${templateId}.json`);
+        if (fs.existsSync(existingMetaPath)) {
+          // 模版已存在，复用
+          console.log(`复用已有模版: ${templateId}`);
+        } else {
+          // 模版不存在，需要生成新的
+          templateId = uuidv4();
+          isNewTemplate = true;
+        }
+      } else {
+        // 没有传入模版ID，生成新的
+        templateId = uuidv4();
+        isNewTemplate = true;
+      }
+
       const templateName = body.templateName || `template_${templateId}`;
 
-      // 保存模板文件
-      const templatePath = path.join(this.templatesDir, `${templateId}.${format}`);
-      let templateBuffer: Buffer;
-      if (body.documentContent.startsWith('base64:')) {
-        templateBuffer = Buffer.from(body.documentContent.substring(7), 'base64');
-      } else {
-        try {
-          templateBuffer = Buffer.from(body.documentContent, 'base64');
-        } catch {
-          templateBuffer = Buffer.from(body.documentContent, 'utf-8');
+      // 如果是新模版，保存模板文件
+      if (isNewTemplate && body.documentContent) {
+        const templatePath = path.join(this.templatesDir, `${templateId}.${format}`);
+        let templateBuffer: Buffer;
+        if (body.documentContent.startsWith('base64:')) {
+          templateBuffer = Buffer.from(body.documentContent.substring(7), 'base64');
+        } else {
+          try {
+            templateBuffer = Buffer.from(body.documentContent, 'base64');
+          } catch {
+            templateBuffer = Buffer.from(body.documentContent, 'utf-8');
+          }
         }
+        fs.writeFileSync(templatePath, templateBuffer);
       }
-      fs.writeFileSync(templatePath, templateBuffer);
 
       // 处理skill
       let skillId = body.skillId;
@@ -2173,17 +2197,26 @@ export class StudioController {
         fs.writeFileSync(skillPath, JSON.stringify(skill, null, 2));
       }
 
-      // 保存模板元数据
+      // 保存或更新模板元数据
       const templateConfig = body.templateConfig || {};
       const metaPath = path.join(this.templatesDir, `${templateId}.json`);
+
+      // 如果是复用已有模版，读取现有元数据并更新
+      let existingMeta: any = {};
+      if (!isNewTemplate && fs.existsSync(metaPath)) {
+        existingMeta = JSON.parse(fs.readFileSync(metaPath, 'utf-8'));
+      }
+
       fs.writeFileSync(metaPath, JSON.stringify({
+        ...existingMeta,
         id: templateId,
         format,
         fileName: `${templateName}.${format}`,
         config: templateConfig,
         suggestions: body.suggestions || [],
         skillId,
-        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        createdAt: existingMeta.createdAt || new Date().toISOString(),
       }));
 
       return {
