@@ -2380,28 +2380,58 @@ ${paramList}
 3. 年份、月份、日期分别填写对应数字
 4. 地址信息要完整，包括省市街道
 5. 名称信息要准确
-6. 只返回JSON对象，不要有任何解释文字`;
+6. 只返回JSON对象，不要有任何解释文字，不要使用markdown代码块包装`;
 
-    // 调用AI服务
-    const aiResponse = await this.callAIService(prompt);
+    // 直接调用AI服务（不使用callAIService，因为其解析逻辑不适用于此场景）
+    const aiOrchestratorUrl = process.env.AI_ORCHESTRATOR_URL || 'http://localhost:3007';
+    const aiModelId = process.env.AI_MODEL_ID || '00ddd35d-6578-4acb-bc09-d629560f6ab6';
 
-    // 解析返回结果
-    let generatedData = aiResponse;
+    this.logger.log(`Calling AI service for parameter generation at ${aiOrchestratorUrl}/ai/models/${aiModelId}/test`);
 
-    // 如果返回是字符串，尝试解析
-    if (typeof aiResponse === 'string') {
+    try {
+      const response = await axios.post(
+        `${aiOrchestratorUrl}/ai/models/${aiModelId}/test`,
+        { prompt },
+        { timeout: 360000 }  // 6分钟超时
+      );
+
+      this.logger.log('AI service responded successfully for parameter generation');
+
+      // 解析返回结果
+      let content = response.data?.response || '';
+      this.logger.log(`AI response content (first 500 chars): ${content.substring(0, 500)}`);
+
+      // 清理markdown代码块标记
+      content = content.replace(/```json\s*/gi, '').replace(/```\s*/g, '').trim();
+
+      // 直接解析JSON对象（不期望suggestions数组格式）
       try {
-        // 移除可能的markdown包装
-        let content = aiResponse.replace(/^```json\s*/i, '').replace(/\s*```$/i, '');
-        generatedData = JSON.parse(content);
-      } catch (e) {
-        this.logger.error(`Failed to parse AI response: ${e}`);
+        const generatedData = JSON.parse(content);
+        this.logger.log(`Generated parameters successfully: ${JSON.stringify(generatedData, null, 2).substring(0, 200)}...`);
+        return generatedData;
+      } catch (parseError) {
+        this.logger.error(`Failed to parse AI response as JSON: ${parseError}`);
+        this.logger.error(`Raw content: ${content}`);
+
+        // 尝试提取JSON对象
+        const objectMatch = content.match(/\{[\s\S]*"partyA"[\s\S]*\}/) || content.match(/\{[\s\S]*\}/);
+        if (objectMatch) {
+          try {
+            const extractedData = JSON.parse(objectMatch[0]);
+            this.logger.log(`Extracted JSON object successfully`);
+            return extractedData;
+          } catch (e) {
+            this.logger.error(`Failed to parse extracted JSON: ${e}`);
+          }
+        }
+
         throw new Error('Failed to parse AI generated parameters');
       }
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      this.logger.error(`AI service call failed for parameter generation: ${message}`);
+      throw new Error(`Failed to generate parameters: ${message}`);
     }
-
-    this.logger.log(`Generated parameters: ${JSON.stringify(generatedData, null, 2)}`);
-    return generatedData;
   }
 
   /**
