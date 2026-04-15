@@ -60,7 +60,9 @@ export const AIIdentifyPanel: React.FC<Props> = ({ onApplyComplete }) => {
   const [currentSection, setCurrentSection] = useState<string>('');  // 当前处理章节
   const [useMultiStage, setUseMultiStage] = useState(true);  // 是否使用多阶段处理
   const [showManualAdd, setShowManualAdd] = useState(false);  // 显示手动添加参数界面
-  const [manualParamName, setManualParamName] = useState('{d.}');  // 手动添加的参数名
+  const [manualParamName, setManualParamName] = useState('d.');  // 手动添加的参数名
+  const [manualFormatter, setManualFormatter] = useState('');  // 手动添加的格式化器
+  const [selectedContent, setSelectedContent] = useState('');  // 当前选中的文档内容
   const [collapsed, setCollapsed] = useState(false);  // 参数列表是否收起
 
   // 动态更新加载消息（仅用于旧API的模拟进度）
@@ -494,34 +496,74 @@ export const AIIdentifyPanel: React.FC<Props> = ({ onApplyComplete }) => {
   /**
    * 手动添加参数
    */
-  const handleManualAddParam = () => {
+  /**
+   * 获取当前选中的文档内容（参考ManualSelector）
+   */
+  const handleGetSelection = async () => {
+    try {
+      if (officeType === 'word') {
+        const selectedText = await OfficeHelper.Word.getSelectedText();
+        setSelectedContent(selectedText);
+        addDebugLog('info', `获取选中内容`, `内容: ${selectedText.substring(0, 50)}...`);
+      } else if (officeType === 'excel') {
+        const selectedRange = await OfficeHelper.Excel.getSelectedRange();
+        const cellValue = selectedRange.values[0][0] as string;
+        setSelectedContent(cellValue);
+        addDebugLog('info', `获取选中单元格`, `地址: ${selectedRange.address}, 值: ${cellValue}`);
+      }
+    } catch (error: any) {
+      addDebugLog('error', `获取选中内容失败`, error.message);
+    }
+  };
+
+  /**
+   * 生成手动标记（参考ManualSelector）
+   */
+  const generateManualMarker = (): string => {
+    let marker = `{${manualParamName}`;
+    if (manualFormatter) {
+      marker += `:${manualFormatter}`;
+    }
+    marker += '}';
+    return marker;
+  };
+
+  /**
+   * 手动添加参数并插入到文档
+   */
+  const handleManualAddParam = async () => {
     if (!manualParamName || manualParamName.trim() === '') {
       addDebugLog('warn', '请输入参数名称');
       return;
     }
 
-    // 创建新的建议
-    const newSuggestion: AISuggestion = {
-      id: `manual-${Date.now()}`,
-      type: 'variable',
-      elementPath: '手动添加',
-      suggestedName: manualParamName.trim(),
-      originalText: '手动添加的参数',
-      confidence: 1.0,
-      applied: false,
-      context: '用户手动添加',
-      details: {
-        chapter: '手动添加',
-        significance: '用户自定义参数',
-        fieldType: 'text',
-      }
-    };
+    const marker = generateManualMarker();
 
-    // 添加到建议列表
-    setSuggestions([...suggestions, newSuggestion]);
-    addDebugLog('info', `手动添加参数`, `参数名: ${manualParamName}`);
-    setManualParamName('{d.}');
-    setShowManualAdd(false);
+    try {
+      if (officeType === 'word') {
+        // 如果有选中内容，替换它
+        if (selectedContent) {
+          await OfficeHelper.Word.replaceText(selectedContent, marker);
+          addDebugLog('info', `插入标记成功`, `"${selectedContent.substring(0, 30)}..." → ${marker}`);
+        } else {
+          // 否则插入到当前光标位置
+          await OfficeHelper.Word.insertText(marker);
+          addDebugLog('info', `插入标记`, marker);
+        }
+      } else if (officeType === 'excel') {
+        const selectedRange = await OfficeHelper.Excel.getSelectedRange();
+        await OfficeHelper.Excel.insertMarkerInCell(selectedRange.address, marker);
+        addDebugLog('info', `插入标记到单元格`, `${selectedRange.address} → ${marker}`);
+      }
+
+      // 重置状态
+      setShowManualAdd(false);
+      setSelectedContent('');
+      setManualParamName('d.');
+      setManualFormatter('');
+    } catch (error: any) {
+      addDebugLog('error', `插入标记失败`, error.message);
+    }
   };
 
   /**
@@ -609,14 +651,68 @@ export const AIIdentifyPanel: React.FC<Props> = ({ onApplyComplete }) => {
         ) : 'AI 智能识别'}
       </button>
 
-      {/* 处理结果显示（仅在完成后显示） */}
-      {!isAnalyzing && currentStage === '完成' && (
-        <div className="result-info">
-          <span className="result-stage">✅ {loadingMessage}</span>
+      {/* 分析结果 */}
+      {suggestions.length > 0 && (
+        <div className="suggestions-container">
+          {/* 收起/展开按钮 */}
+          <button className="collapse-toggle-btn" onClick={toggleCollapse}>
+            {collapsed ? '📂 展开参数列表' : '📁 收起参数列表'} ({suggestions.filter((s) => !s.applied).length} 项)
+          </button>
+
+          {!collapsed && (
+            <>
+              {/* 预览确认面板 */}
+              {showPreview && (
+                <div className="preview-confirm-panel">
+                  <h4>📋 替换预览</h4>
+                  <pre className="preview-content">{previewContent}</pre>
+                  <div className="preview-actions">
+                    <button className="confirm-btn" onClick={handleApplyAll}>
+                      ✅ 确认应用
+                    </button>
+                    <button className="cancel-btn" onClick={handleCancelPreview}>
+                      ❌ 取消
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* 一键应用按钮 */}
+              <div className="apply-all-section">
+                <button className="apply-all-btn" onClick={handleApplyAll}>
+                  {showPreview ? '✅ 确认应用全部' : '👁️ 预览后应用全部'} ({suggestions.filter((s) => !s.applied).length})
+                </button>
+              </div>
+
+              {/* 分组显示建议 - 按章节分组 */}
+              {Object.entries(groupSuggestionsByChapter()).map(([chapter, items]) => (
+                <div key={chapter} className="suggestion-group chapter-group">
+                  <h4 className="group-title chapter-title">
+                    <span className="chapter-icon">{getChapterIcon(chapter)}</span>
+                    <span className="chapter-name">{chapter}</span>
+                    <span className="count">({items.length})</span>
+                  </h4>
+
+                  <div className="suggestion-list">
+                    {items.map((suggestion) => (
+                      <SuggestionItem
+                        key={suggestion.id}
+                        suggestion={suggestion}
+                        onApply={() => handleApplySingle(suggestion)}
+                        onDismiss={() => dismissSuggestion(suggestion.id)}
+                        onPreview={() => handlePreviewSingle(suggestion)}
+                        onUpdateName={(newName) => updateSuggestionName(suggestion.id, newName)}
+                      />
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </>
+          )}
         </div>
       )}
 
-      {/* 手动添加参数 */}
+      {/* 手动添加参数（参考ManualSelector） */}
       {!isAnalyzing && (
         <div className="manual-add-section">
           {!showManualAdd ? (
@@ -627,21 +723,67 @@ export const AIIdentifyPanel: React.FC<Props> = ({ onApplyComplete }) => {
               ➕ 手动添加参数
             </button>
           ) : (
-            <div className="manual-add-form">
-              <input
-                type="text"
-                className="manual-param-input"
-                value={manualParamName}
-                onChange={(e) => setManualParamName(e.target.value)}
-                placeholder="{d.fieldName}"
-                autoFocus
-              />
-              <button className="confirm-add-btn" onClick={handleManualAddParam}>
-                ✅ 添加
-              </button>
-              <button className="cancel-add-btn" onClick={() => setShowManualAdd(false)}>
-                ❌ 取消
-              </button>
+            <div className="manual-add-form expanded">
+              {/* 获取选中内容 */}
+              <div className="selection-section">
+                <button className="get-selection-btn" onClick={handleGetSelection}>
+                  📍 获取当前选中内容
+                </button>
+                {selectedContent && (
+                  <div className="selected-preview">
+                    <span className="selected-text">已选: "{selectedContent.substring(0, 30)}..."</span>
+                  </div>
+                )}
+              </div>
+
+              {/* 变量配置 */}
+              <div className="variable-config">
+                <div className="input-group">
+                  <label>变量名:</label>
+                  <input
+                    type="text"
+                    className="manual-param-input"
+                    value={manualParamName}
+                    onChange={(e) => setManualParamName(e.target.value)}
+                    placeholder="d.fieldName"
+                    autoFocus
+                  />
+                </div>
+
+                <div className="input-group">
+                  <label>格式化器:</label>
+                  <select value={manualFormatter} onChange={(e) => setManualFormatter(e.target.value)}>
+                    <option value="">无格式化</option>
+                    <option value="formatDate(YYYY-MM-DD)">日期 YYYY-MM-DD</option>
+                    <option value="formatDate(YYYY/MM/DD)">日期 YYYY/MM/DD</option>
+                    <option value="formatNumber(#,##0.00)">数字 #,##0.00</option>
+                    <option value="upper">大写</option>
+                    <option value="lower">小写</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* 生成的标记预览 */}
+              {manualParamName && (
+                <div className="marker-preview">
+                  <code>{generateManualMarker()}</code>
+                </div>
+              )}
+
+              {/* 操作按钮 */}
+              <div className="manual-actions">
+                <button className="confirm-add-btn" onClick={handleManualAddParam}>
+                  ✅ 插入标记
+                </button>
+                <button className="cancel-add-btn" onClick={() => {
+                  setShowManualAdd(false);
+                  setSelectedContent('');
+                  setManualParamName('d.');
+                  setManualFormatter('');
+                }}>
+                  ❌ 取消
+                </button>
+              </div>
             </div>
           )}
         </div>
@@ -687,67 +829,6 @@ export const AIIdentifyPanel: React.FC<Props> = ({ onApplyComplete }) => {
             <div className="error-details">
               <pre>{analysisErrorDetails}</pre>
             </div>
-          )}
-        </div>
-      )}
-
-      {/* 分析结果 */}
-      {suggestions.length > 0 && (
-        <div className="suggestions-container">
-          {/* 收起/展开按钮 */}
-          <button className="collapse-toggle-btn" onClick={toggleCollapse}>
-            {collapsed ? '📂 展开参数列表' : '📁 收起参数列表'} ({suggestions.filter((s) => !s.applied).length} 项)
-          </button>
-
-          {!collapsed && (
-            <>
-              {/* 预览确认面板 */}
-              {showPreview && (
-                <div className="preview-confirm-panel">
-                  <h4>📋 替换预览</h4>
-                  <pre className="preview-content">{previewContent}</pre>
-                  <div className="preview-actions">
-                    <button className="confirm-btn" onClick={handleApplyAll}>
-                      ✅ 确认应用
-                    </button>
-                    <button className="cancel-btn" onClick={handleCancelPreview}>
-                      ❌ 取消
-                    </button>
-                  </div>
-                </div>
-              )}
-
-              {/* 一键应用按钮 */}
-              <div className="apply-all-section">
-                <button className="apply-all-btn" onClick={handleApplyAll}>
-                  {showPreview ? '✅ 确认应用全部' : '👁️ 预览后应用全部'} ({suggestions.filter((s) => !s.applied).length})
-                </button>
-              </div>
-
-              {/* 分组显示建议 - 按章节分组 */}
-              {Object.entries(groupSuggestionsByChapter()).map(([chapter, items]) => (
-            <div key={chapter} className="suggestion-group chapter-group">
-              <h4 className="group-title chapter-title">
-                <span className="chapter-icon">{getChapterIcon(chapter)}</span>
-                <span className="chapter-name">{chapter}</span>
-                <span className="count">({items.length})</span>
-              </h4>
-
-              <div className="suggestion-list">
-                {items.map((suggestion) => (
-                  <SuggestionItem
-                    key={suggestion.id}
-                    suggestion={suggestion}
-                    onApply={() => handleApplySingle(suggestion)}
-                    onDismiss={() => dismissSuggestion(suggestion.id)}
-                    onPreview={() => handlePreviewSingle(suggestion)}
-                    onUpdateName={(newName) => updateSuggestionName(suggestion.id, newName)}
-                  />
-                ))}
-              </div>
-            </div>
-          ))}
-            </>
           )}
         </div>
       )}

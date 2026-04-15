@@ -1433,6 +1433,90 @@ body {
   align-items: center;
 }
 
+/* Manual Add Form Expanded */
+.manual-add-form.expanded {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 12px;
+  margin-top: 8px;
+}
+
+.selection-section {
+  margin-bottom: 12px;
+}
+
+.get-selection-btn {
+  background: #fef3c7;
+  border: 1px solid #f59e0b;
+  color: #92400e;
+  padding: 8px 16px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 13px;
+  width: 100%;
+}
+
+.selected-preview {
+  margin-top: 8px;
+  padding: 8px;
+  background: #fff;
+  border: 1px solid #d97706;
+  border-radius: 4px;
+}
+
+.selected-text {
+  color: #78350f;
+  font-size: 13px;
+}
+
+.variable-config {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.variable-config .input-group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.variable-config .input-group label {
+  font-size: 13px;
+  color: #475569;
+  font-weight: 500;
+}
+
+.variable-config .input-group input,
+.variable-config .input-group select {
+  padding: 8px 12px;
+  border: 1px solid #d1d5db;
+  border-radius: 4px;
+  font-size: 14px;
+}
+
+.variable-config .input-group input:focus,
+.variable-config .input-group select:focus {
+  outline: none;
+  border-color: #3b82f6;
+}
+
+.marker-preview {
+  background: #1e293b;
+  color: #22d3ee;
+  padding: 8px 12px;
+  border-radius: 4px;
+  font-family: monospace;
+  margin-top: 12px;
+}
+
+.manual-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+}
+
 .manual-param-input {
   flex: 1;
   padding: 8px 12px;
@@ -1453,6 +1537,7 @@ body {
   padding: 8px 12px;
   border-radius: 4px;
   cursor: pointer;
+  flex: 1;
 }
 
 .cancel-add-btn {
@@ -1462,6 +1547,7 @@ body {
   padding: 8px 12px;
   border-radius: 4px;
   cursor: pointer;
+  flex: 1;
 }
 
 /* Collapse Toggle Button */
