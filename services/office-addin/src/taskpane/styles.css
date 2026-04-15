@@ -1581,10 +1581,12 @@ body {
   background: #fef3c7;
   border: 1px solid #f59e0b;
   color: #92400e;
-  padding: 8px 16px;
+  padding: 10px 16px;
   border-radius: 6px;
   cursor: pointer;
   font-size: 14px;
+  width: 100%;
+  text-align: center;
 }
 
 .verify-template-btn:hover {
@@ -1632,10 +1634,12 @@ body {
   background: #e0e7ff;
   border: 1px solid #6366f1;
   color: #4338ca;
-  padding: 8px 16px;
+  padding: 10px 16px;
   border-radius: 6px;
   cursor: pointer;
   font-size: 14px;
+  width: 100%;
+  text-align: center;
 }
 
 .preview-template-btn:hover {
@@ -1766,10 +1770,12 @@ body {
   background: #8b5cf6;
   border: 1px solid #7c3aed;
   color: white;
-  padding: 8px 16px;
+  padding: 10px 16px;
   border-radius: 6px;
   cursor: pointer;
   font-size: 14px;
+  flex: 1;
+  text-align: center;
 }
 
 .generate-params-btn:hover {
@@ -1786,10 +1792,12 @@ body {
   background: #10b981;
   border: 1px solid #059669;
   color: white;
-  padding: 8px 16px;
+  padding: 10px 16px;
   border-radius: 6px;
   cursor: pointer;
   font-size: 14px;
+  flex: 1;
+  text-align: center;
 }
 
 .preview-ai-btn:hover {
@@ -1853,10 +1861,12 @@ body {
   background: #dbeafe;
   border: 1px solid #3b82f6;
   color: #1e40af;
-  padding: 8px 16px;
+  padding: 10px 16px;
   border-radius: 6px;
   cursor: pointer;
   font-size: 14px;
+  width: 100%;
+  text-align: center;
 }
 
 .generate-guide-btn:hover {
@@ -1947,10 +1957,12 @@ body {
   background: #fef3c7;
   border: 1px solid #f59e0b;
   color: #92400e;
-  padding: 8px 16px;
+  padding: 10px 16px;
   border-radius: 6px;
   cursor: pointer;
   font-size: 14px;
+  flex: 1;
+  text-align: center;
 }
 
 .save-draft-btn:hover {
@@ -1968,7 +1980,7 @@ body {
   background: #fee2e2;
   border: 1px solid #ef4444;
   color: #991b1b;
-  padding: 8px 12px;
+  padding: 10px 12px;
   border-radius: 6px;
   cursor: pointer;
   font-size: 14px;
@@ -2028,11 +2040,13 @@ body {
   background: #3b82f6;
   border: 1px solid #2563eb;
   color: white;
-  padding: 10px 20px;
+  padding: 10px 16px;
   border-radius: 6px;
   cursor: pointer;
   font-size: 14px;
   font-weight: 500;
+  width: 100%;
+  text-align: center;
 }
 
 .final-save-btn:hover {
