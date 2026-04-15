@@ -1340,6 +1340,27 @@ export const AIIdentifyPanel: React.FC<Props> = ({ onApplyComplete }) => {
         </div>
       )}
 
+      {/* 验证模版按钮 */}
+      <button
+        className="verify-template-btn"
+        onClick={handleVerifyTemplate}
+        disabled={isAnalyzing || isVerifying || suggestions.length === 0}
+      >
+        {isVerifying ? '⏳ 验证中...' : '🔍 验证模版'}
+      </button>
+
+      {/* 验证结果反馈 */}
+      {verifyResult && (
+        <div className={`verify-result ${verifyResult.valid ? 'success' : 'error'}`}>
+          <span className="verify-result-message">{verifyResult.message}</span>
+          {verifyResult.warnings && verifyResult.warnings.length > 0 && (
+            <div className="verify-result-warnings">
+              {verifyResult.warnings.map((w, i) => <div key={i}>{w}</div>)}
+            </div>
+          )}
+        </div>
+      )}
+
       {/* AI生成参数区域 */}
       {aiSkillGuide && (
         <div className="ai-params-section">
@@ -1383,27 +1404,6 @@ export const AIIdentifyPanel: React.FC<Props> = ({ onApplyComplete }) => {
             <div className="ai-params-preview">
               <div className="ai-params-preview-header">📊 AI生成的参数值：</div>
               <pre className="ai-params-content">{JSON.stringify(aiGeneratedData, null, 2)}</pre>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* 验证模版按钮 */}
-      <button
-        className="verify-template-btn"
-        onClick={handleVerifyTemplate}
-        disabled={isAnalyzing || isVerifying || suggestions.length === 0}
-      >
-        {isVerifying ? '⏳ 验证中...' : '🔍 验证模版'}
-      </button>
-
-      {/* 验证结果反馈 */}
-      {verifyResult && (
-        <div className={`verify-result ${verifyResult.valid ? 'success' : 'error'}`}>
-          <span className="verify-result-message">{verifyResult.message}</span>
-          {verifyResult.warnings && verifyResult.warnings.length > 0 && (
-            <div className="verify-result-warnings">
-              {verifyResult.warnings.map((w, i) => <div key={i}>{w}</div>)}
             </div>
           )}
         </div>

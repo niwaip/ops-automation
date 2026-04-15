@@ -369,7 +369,7 @@ class CarboneAPI {
     const response = await axios.post(
       `${this.baseUrl}/studio/generate-parameters`,
       request,
-      getAxiosConfig(this.baseUrl, { timeout: 120000 })
+      getAxiosConfig(this.baseUrl, { timeout: 360000 })  // 6分钟超时，AI生成可能需要较长时间
     );
     return response.data;
   }
