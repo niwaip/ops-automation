@@ -2347,40 +2347,67 @@ ${blankList}
   async generateParametersFromDescription(description: string, skill: any): Promise<any> {
     this.logger.log(`Generating parameters from description: ${description}`);
 
-    // 构建参数列表描述
+    // 构建参数列表描述（包含更多信息）
     const parameters = skill.parameters || [];
     const paramList = parameters.map((p: any) => {
-      return `- ${p.name}: ${p.usage || '需要填写'} (类型: ${p.dataType || 'text'})`;
+      const example = p.example ? ` 示例: ${p.example}` : '';
+      return `- ${p.name}: ${p.usage || '需要填写'} (类型: ${p.dataType || 'text'})${example}`;
     }).join('\n');
 
-    // 构建提示
-    const prompt = `你是一个文档数据生成助手。用户需要生成一份文档，请根据用户的描述和参数定义，生成具体的参数值。
+    // 提取提取规则（帮助AI理解如何提取数据）
+    const extractionRules = skill.parsingGuide?.extractionRules || [];
+    const extractionRulesText = extractionRules.map((r: any) => {
+      return `  - ${r.parameter}: 搜索关键词 "${r.searchKeywords?.join(', ') || '根据用途'}"，提取模式 "${r.extractionPattern || '直接提取'}"`;
+    }).join('\n');
 
-用户描述：
+    // 特殊格式规则
+    const specialRules = skill.specialRules || {};
+    const specialRulesText = `
+- 日期格式: ${specialRules.dateFormat || 'YYYY-MM-DD'}
+- 金额格式: ${specialRules.amountFormat || '保留两位小数'}
+`;
+
+    // 数据示例JSON（帮助AI理解输出格式）
+    const dataExampleJson = skill.dataExampleJson || {};
+    const dataExampleStr = JSON.stringify(dataExampleJson, null, 2);
+
+    // 构建增强的提示词
+    const prompt = `你是一个文档数据生成助手。用户需要生成一份文档，请根据用户的描述和Skill Guide，生成具体的参数值。
+
+## Skill Guide（模板参数指南）
+${skill.skillGuideMarkdown ? skill.skillGuideMarkdown.substring(0, 1500) : ''}
+
+## 参数提取规则
+${extractionRulesText}
+
+## 特殊格式规则
+${specialRulesText}
+
+## 数据输出格式示例
+${dataExampleStr}
+
+## 用户描述
 ${description}
 
-需要填充的参数列表：
+## 需要填充的参数列表
 ${paramList}
 
-请根据用户描述，提取或推断出每个参数的具体值。返回一个JSON对象，格式如下：
-{
-  "partyA": {
-    "name": "从描述中提取的公司名称",
-    "address": "从描述中提取的地址"
-  },
-  "project": {
-    "name": "从描述中提取的项目名称"
-  },
-  ...
-}
+请根据用户描述和Skill Guide，提取或推断出每个参数的具体值。注意事项：
+1. 参考Skill Guide中的参数用途说明和提取规则
+2. 如果描述中没有明确提到某个参数，根据上下文合理推断或使用示例值
+3. 日期类参数，如果提到"今天"，使用当前日期 ${specialRules.dateFormat || 'YYYY-MM-DD'}
+4. 年份、月份、日期分别填写对应数字（如2024、4、15）
+5. 地址信息要完整，包括省市街道
+6. 名称信息要准确
+7. 只返回JSON对象，不要有任何解释文字，不要使用markdown代码块包装
 
-注意事项：
-1. 如果描述中没有明确提到某个参数，请根据上下文合理推断或使用合理的示例值
-2. 日期类参数，如果提到"今天"，使用当前日期格式YYYY-MM-DD
-3. 年份、月份、日期分别填写对应数字
-4. 地址信息要完整，包括省市街道
-5. 名称信息要准确
-6. 只返回JSON对象，不要有任何解释文字，不要使用markdown代码块包装`;
+返回格式示例（嵌套JSON对象）：
+{
+  "partyA": { "name": "...", "address": "..." },
+  "partyB": { "name": "...", "address": "..." },
+  "project": { "name": "..." },
+  "contract": { "sign_date_year": "2024", "sign_date_month": "4", ... }
+}`;
 
     // 直接调用AI服务（不使用callAIService，因为其解析逻辑不适用于此场景）
     const aiOrchestratorUrl = process.env.AI_ORCHESTRATOR_URL || 'http://localhost:3007';
