@@ -364,11 +364,16 @@ export const AIIdentifyPanel: React.FC<Props> = ({ onApplyComplete }) => {
   };
 
   /**
-   * 预览模版（使用模版配置页的逻辑）
+   * 预览模版（使用模版配置页的预览验证逻辑）
    */
   const handlePreviewTemplate = async () => {
     if (suggestions.length === 0) {
       setPreviewResult({ success: false, message: '请先进行AI识别或手动添加参数' });
+      return;
+    }
+
+    if (!aiSkillGuide) {
+      setPreviewResult({ success: false, message: '请先生成AI指南' });
       return;
     }
 
@@ -377,44 +382,63 @@ export const AIIdentifyPanel: React.FC<Props> = ({ onApplyComplete }) => {
     addDebugLog('info', `预览模版`, `参数数量: ${suggestions.length}`);
 
     try {
-      // 获取当前文档内容
       let documentContent = '';
       let format = 'docx';
 
       if (officeType === 'word') {
-        documentContent = await OfficeHelper.Word.getDocumentContent();
+        // 使用Word.run getFileOrNull获取完整docx文件（base64格式）
+        try {
+          const result = await OfficeHelper.Word.getDocumentFileBase64WithFallback();
+          documentContent = 'base64:' + result.base64;
+          addDebugLog('info', `文档获取方式: ${result.method}`, `有效docx: ${result.isValidDocx}`);
+
+          if (!result.isValidDocx) {
+            addDebugLog('warn', `文档格式不完整`, '预览可能受限');
+          }
+        } catch (e: any) {
+          setPreviewResult({ success: false, message: `获取文档失败: ${e.message}` });
+          addDebugLog('error', `获取文档失败`, e.message);
+          setIsPreviewing(false);
+          return;
+        }
         format = 'docx';
       } else if (officeType === 'excel') {
-        documentContent = await OfficeHelper.Excel.getDocumentContent();
+        const sheetData = await OfficeHelper.Excel.getSheetData();
+        documentContent = JSON.stringify(sheetData.values);
         format = 'xlsx';
       } else {
         documentContent = await OfficeHelper.PowerPoint.getDocumentContent();
         format = 'pptx';
       }
 
-      // 构建templateConfig用于预览
-      const configForPreview = {
-        templateType: selectedTemplateType,
-        variables: suggestions.reduce((acc, s) => {
-          const varPath = s.suggestedName.replace(/[{}]/g, '').replace(/^d\./, '');
-          acc[varPath] = s.originalText || '';
-          return acc;
-        }, {} as Record<string, string>),
-        loops: suggestions
-          .filter(s => s.details?.fieldType === 'loop')
-          .map(s => ({
-            arrayPath: s.details?.arrayPath || '',
-            startMarker: `{#${s.details?.arrayPath || ''}}`,
-            endMarker: `{/${s.details?.arrayPath || ''}}`
-          }))
-      };
-
       carboneAPI.setBaseUrl(apiBaseUrl);
-      const result = await carboneAPI.previewRenderContent(
+
+      // 先生成模板
+      const templateResult = await carboneAPI.generateTemplate({
         documentContent,
-        configForPreview,
-        format
-      );
+        suggestions: suggestions.map(s => ({ ...s, applied: true })),
+        templateConfig,
+        format,
+      });
+
+      if (!templateResult.success) {
+        setPreviewResult({ success: false, message: `模板生成失败: ${templateResult.error}` });
+        addDebugLog('error', `模板生成失败`, templateResult.error || '未知错误');
+        return;
+      }
+
+      // 检查是否有有效文件
+      if (!templateResult.hasValidFile) {
+        setPreviewResult({ success: false, message: '无法获取完整的docx文件，预览功能暂不可用' });
+        addDebugLog('warn', `预览受限`, '无法获取完整的docx文件');
+        return;
+      }
+
+      // 使用skill预览
+      const result = await carboneAPI.previewWithSkill({
+        templateId: templateResult.templateId,
+        skill: aiSkillGuide,
+      });
 
       if (result.success) {
         setPreviewResult({
@@ -1178,7 +1202,7 @@ export const AIIdentifyPanel: React.FC<Props> = ({ onApplyComplete }) => {
       <button
         className="preview-template-btn"
         onClick={handlePreviewTemplate}
-        disabled={isAnalyzing || isPreviewing || suggestions.length === 0}
+        disabled={isAnalyzing || isPreviewing || suggestions.length === 0 || !aiSkillGuide}
       >
         {isPreviewing ? '⏳ 预览中...' : '👁️ 预览模版'}
       </button>
