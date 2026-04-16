@@ -131,6 +131,7 @@ export interface TemplateResponse {
   savedAt?: string;
   templateConfig?: any;  // AI-generated template configuration
   configSavedAt?: string;
+  skillId?: string;  // 关联的Skill ID
   markedTemplateId?: string;  // 编辑后的模版ID
   verifyResult?: {  // AI验证结果
     report?: string;
