@@ -747,7 +747,8 @@ export class StudioController {
 
     const files = fs.readdirSync(this.templatesDir);
     for (const file of files) {
-      if (file.endsWith('.json')) {
+      // 过滤掉skill文件，只列出模板元数据文件
+      if (file.endsWith('.json') && !file.startsWith('skill_')) {
         const meta = JSON.parse(fs.readFileSync(path.join(this.templatesDir, file), 'utf-8'));
         templates.push(meta);
       }
