@@ -4,7 +4,7 @@
  */
 
 import React, { useEffect, useRef } from 'react';
-import { Card, Spin, Select, Space } from 'antd';
+import { Card, Spin, Select, Space, Button } from 'antd';
 import { CloseOutlined, PlusOutlined } from '@ant-design/icons';
 import { useChatStore } from './chatStore';
 import ChatMessage from './ChatMessage';

@@ -5,7 +5,8 @@
 
 import { StreamEvent, StreamEventType, ChatRequest, AIModel, UploadedFile } from './types';
 
-const AI_ORCHESTRATOR_URL = process.env.AI_ORCHESTRATOR_URL || 'http://localhost:3012';
+// 使用Vite代理路径 /api/ai -> ops-ai-orchestrator:3007
+const AI_API_BASE = '/api/ai';
 
 /**
  * 流式聊天
@@ -17,7 +18,7 @@ export async function streamChat(
   onComplete?: () => void,
 ): Promise<void> {
   try {
-    const response = await fetch(`${AI_ORCHESTRATOR_URL}/ai/chat/stream`, {
+    const response = await fetch(`${AI_API_BASE}/chat/stream`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -85,7 +86,7 @@ export async function streamChat(
  */
 export async function getAvailableModels(): Promise<AIModel[]> {
   try {
-    const response = await fetch(`${AI_ORCHESTRATOR_URL}/ai/models`);
+    const response = await fetch(`${AI_API_BASE}/models`);
     if (!response.ok) {
       throw new Error(`HTTP error: ${response.status}`);
     }
@@ -105,7 +106,7 @@ export async function uploadFile(file: File): Promise<UploadedFile> {
     const formData = new FormData();
     formData.append('file', file);
 
-    const response = await fetch(`${AI_ORCHESTRATOR_URL}/ai/chat/upload`, {
+    const response = await fetch(`${AI_API_BASE}/chat/upload`, {
       method: 'POST',
       body: formData,
     });
@@ -133,7 +134,7 @@ export async function uploadFile(file: File): Promise<UploadedFile> {
  */
 export async function getChatHistory(sessionId: string): Promise<ChatMessage[]> {
   try {
-    const response = await fetch(`${AI_ORCHESTRATOR_URL}/ai/chat/history/${sessionId}`);
+    const response = await fetch(`${AI_API_BASE}/chat/history/${sessionId}`);
     if (!response.ok) {
       throw new Error(`HTTP error: ${response.status}`);
     }

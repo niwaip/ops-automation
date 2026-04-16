@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@ant-design/icons": "^5.2.6",
+    "@types/uuid": "^10.0.0",
     "antd": "^5.12.0",
     "axios": "^1.6.2",
     "i18next": "^23.7.6",
@@ -22,6 +23,7 @@
     "react-query": "^3.39.3",
     "react-router-dom": "^6.21.0",
     "socket.io-client": "^4.7.2",
+    "uuid": "^13.0.0",
     "zustand": "^4.4.7"
   },
   "devDependencies": {
