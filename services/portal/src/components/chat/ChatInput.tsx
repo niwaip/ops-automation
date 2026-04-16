@@ -1,0 +1,124 @@
+/**
+ * ChatInput
+ * 聊天输入框组件
+ */
+
+import React, { useState, useRef } from 'react';
+import { Input, Button, Upload, Space, Tag } from 'antd';
+import { SendOutlined, PaperClipOutlined, DeleteOutlined } from '@ant-design/icons';
+import { RcFile } from 'antd/es/upload';
+import { UploadedFile } from './types';
+import { uploadFile } from './chatApi';
+import { useChatStore } from './chatStore';
+import './ChatInput.css';
+
+interface ChatInputProps {
+  onSend: (message: string) => void;
+  disabled?: boolean;
+  uploadedFiles: UploadedFile[];
+}
+
+const ChatInput: React.FC<ChatInputProps> = ({
+  onSend,
+  disabled,
+  uploadedFiles,
+}) => {
+  const [message, setMessage] = useState('');
+  const [uploading, setUploading] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const { addUploadedFile, removeUploadedFile } = useChatStore();
+
+  // 发送消息
+  const handleSend = () => {
+    if (message.trim() || uploadedFiles.length > 0) {
+      onSend(message);
+      setMessage('');
+    }
+  };
+
+  // 处理文件上传
+  const handleFileUpload = async (file: RcFile) => {
+    setUploading(true);
+    try {
+      const uploaded = await uploadFile(file as unknown as File);
+      addUploadedFile(uploaded);
+    } catch (error) {
+      console.error('Upload failed:', error);
+    } finally {
+      setUploading(false);
+    }
+    return false; // 阻止默认上传行为
+  };
+
+  // 键盘事件
+  const handleKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSend();
+    }
+  };
+
+  return (
+    <div className="chat-input-container">
+      {/* 已上传文件显示 */}
+      {uploadedFiles.length > 0 && (
+        <div className="chat-uploaded-files">
+          <Space>
+            {uploadedFiles.map((file) => (
+              <Tag
+                key={file.fileId}
+                closable
+                onClose={() => removeUploadedFile(file.fileId)}
+                icon={<PaperClipOutlined />}
+              >
+                {file.fileName}
+              </Tag>
+            ))}
+          </Space>
+        </div>
+      )}
+
+      {/* 输入框 */}
+      <div className="chat-input-row">
+        <Input.TextArea
+          ref={inputRef as any}
+          value={message}
+          onChange={(e) => setMessage(e.target.value)}
+          onKeyPress={handleKeyPress}
+          placeholder="输入消息，按 Enter 发送..."
+          autoSize={{ minRows: 1, maxRows: 3 }}
+          disabled={disabled || uploading}
+          className="chat-input-textarea"
+        />
+
+        {/* 文件上传按钮 */}
+        <Upload
+          beforeUpload={handleFileUpload}
+          showUploadList={false}
+          accept=".txt,.pdf,.doc,.docx,.xls,.xlsx"
+          disabled={disabled || uploading}
+        >
+          <Button
+            type="text"
+            icon={<PaperClipOutlined />}
+            loading={uploading}
+            disabled={disabled}
+            title="上传文件"
+          />
+        </Upload>
+
+        {/* 发送按钮 */}
+        <Button
+          type="primary"
+          icon={<SendOutlined />}
+          onClick={handleSend}
+          disabled={disabled || (!message.trim() && uploadedFiles.length === 0)}
+          loading={disabled}
+        />
+      </div>
+    </div>
+  );
+};
+
+export default ChatInput;

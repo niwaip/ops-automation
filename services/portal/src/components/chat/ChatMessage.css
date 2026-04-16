@@ -1,0 +1,80 @@
+/**
+ * ChatMessage Styles
+ */
+
+.chat-message {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+}
+
+.chat-message.user {
+  justify-content: flex-end;
+}
+
+.chat-message.assistant {
+  justify-content: flex-start;
+}
+
+.chat-message-avatar {
+  flex-shrink: 0;
+}
+
+.chat-message-avatar.user {
+  background-color: #1890ff;
+}
+
+.chat-message-avatar.assistant {
+  background-color: #52c41a;
+}
+
+.chat-message-content {
+  max-width: 80%;
+  padding: 8px 12px;
+  border-radius: 8px;
+  word-break: break-word;
+}
+
+.chat-message-content.user {
+  background-color: #e6f7ff;
+  margin-right: 0;
+}
+
+.chat-message-content.assistant {
+  background-color: #f6ffed;
+  margin-left: 0;
+}
+
+.chat-message-files {
+  margin-top: 8px;
+  display: flex;
+  gap: 8px;
+}
+
+.chat-message-file {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  background-color: rgba(0, 0, 0, 0.04);
+  border-radius: 4px;
+}
+
+.chat-message-download {
+  margin-top: 8px;
+}
+
+.chat-message-time {
+  font-size: 12px;
+  color: rgba(0, 0, 0, 0.45);
+  margin-top: 4px;
+}
+
+.streaming-indicator {
+  animation: pulse 1s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}

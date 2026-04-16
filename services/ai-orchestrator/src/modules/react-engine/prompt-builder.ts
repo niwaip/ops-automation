@@ -1,0 +1,174 @@
+/**
+ * Prompt Builder
+ * 构建ReAct循环所需的提示词
+ */
+
+import { ChatMessage, SkillMatchResult, ToolDefinition, ReActConfig } from './interfaces';
+
+/**
+ * ReAct提示词模板
+ */
+const REACT_SYSTEM_PROMPT = `你是一个智能助手，使用ReAct(Reasoning + Acting)框架来处理复杂任务。
+
+你的工作流程是：
+1. Thought: 分析用户输入，思考下一步行动
+2. Action: 选择合适的工具并执行
+3. Observation: 观察执行结果
+4. 重复以上步骤直到任务完成
+
+可用的工具：
+{tools}
+
+回答格式：
+Thought: 你的思考过程
+Action: 工具名称
+Action Input: {"参数名": "参数值"}
+Observation: 观察到的结果
+... (重复直到完成)
+Final Answer: 最终回复
+
+重要规则：
+- 每次只能选择一个工具
+- 参数必须是有效的JSON格式
+- 如果工具返回requiresUserInput，则等待用户回复
+- 不要在Thought中直接回答问题，必须通过工具执行
+`;
+
+const REACT_USER_PROMPT_TEMPLATE = `用户输入: {userInput}
+
+请按照ReAct框架处理这个请求。`;
+
+/**
+ * 构建系统提示词
+ */
+export function buildSystemPrompt(
+  tools: ToolDefinition[],
+  skill?: SkillMatchResult,
+): string {
+  const toolsDescription = tools
+    .map((t) => `${t.name}: ${t.description}\n参数: ${JSON.stringify(t.parameters, null, 2)}`)
+    .join('\n\n');
+
+  let systemPrompt = REACT_SYSTEM_PROMPT.replace('{tools}', toolsDescription);
+
+  // 如果有匹配的Skill，添加额外提示
+  if (skill) {
+    systemPrompt += `\n\n当前匹配的技能: ${skill.skillName}
+需要的参数: ${JSON.stringify(skill.paramsSchema.properties, null, 2)}
+已收集参数: ${JSON.stringify(skill.collectedParams, null, 2)}
+缺失参数: ${skill.missingParams.join(', ') || '无'}
+`;
+  }
+
+  return systemPrompt;
+}
+
+/**
+ * 构建用户提示词
+ */
+export function buildUserPrompt(
+  userInput: string,
+  history: ChatMessage[],
+  uploadedFiles?: string[],
+): string {
+  let prompt = REACT_USER_PROMPT_TEMPLATE.replace('{userInput}', userInput);
+
+  // 添加历史上下文
+  if (history.length > 0) {
+    const recentHistory = history.slice(-5); // 最近5条消息
+    const historyText = recentHistory
+      .map((m) => `${m.role}: ${m.content}`)
+      .join('\n');
+    prompt += `\n\n对话历史:\n${historyText}`;
+  }
+
+  // 添加文件信息
+  if (uploadedFiles && uploadedFiles.length > 0) {
+    prompt += `\n\n上传的文件: ${uploadedFiles.join(', ')}`;
+  }
+
+  return prompt;
+}
+
+/**
+ * 构建参数确认提示词
+ */
+export function buildParamsConfirmPrompt(
+  skillName: string,
+  params: Record<string, unknown>,
+): string {
+  const paramsList = Object.entries(params)
+    .map(([key, value]) => `- ${key}: ${value}`)
+    .join('\n');
+
+  return `技能 "${skillName}" 的参数已收集完成，请确认：
+
+${paramsList}
+
+确认后我将生成文档。请回复"确认"或指出需要修改的参数。`;
+}
+
+/**
+ * 解析AI响应中的Action
+ */
+export function parseActionResponse(response: string): {
+  thought: string;
+  action: string;
+  actionInput: Record<string, unknown>;
+} | null {
+  // 提取Thought
+  const thoughtMatch = response.match(/Thought:\s*([^\n]+)/);
+  const thought = thoughtMatch ? thoughtMatch[1].trim() : '';
+
+  // 提取Action
+  const actionMatch = response.match(/Action:\s*([^\n]+)/);
+  const action = actionMatch ? actionMatch[1].trim() : '';
+
+  // 提取Action Input
+  const actionInputMatch = response.match(/Action Input:\s*([\s\S]+?)(?=Observation|Final Answer|$)/);
+  let actionInput: Record<string, unknown> = {};
+
+  if (actionInputMatch) {
+    try {
+      // 尝试解析JSON
+      const inputStr = actionInputMatch[1].trim();
+      // 处理可能的多行JSON
+      const jsonMatch = inputStr.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        actionInput = JSON.parse(jsonMatch[0]);
+      }
+    } catch {
+      // JSON解析失败，返回空对象
+    }
+  }
+
+  if (action) {
+    return { thought, action, actionInput };
+  }
+
+  // 检查是否有Final Answer
+  const finalMatch = response.match(/Final Answer:\s*([\s\S]+)/);
+  if (finalMatch) {
+    return {
+      thought: '任务已完成',
+      action: 'finish',
+      actionInput: { answer: finalMatch[1].trim() },
+    };
+  }
+
+  return null;
+}
+
+/**
+ * 构建Observation提示词
+ */
+export function buildObservationPrompt(
+  observation: string,
+  iteration: number,
+  maxIterations: number,
+): string {
+  return `Observation: ${observation}
+
+当前迭代次数: ${iteration}/${maxIterations}
+请继续思考下一步行动，或如果任务已完成，输出 Final Answer。`;
+}

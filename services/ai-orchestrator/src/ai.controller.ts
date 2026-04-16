@@ -5,6 +5,7 @@ import { ModelService } from './modules/model/model.service';
 import { AgentService } from './modules/agent/agent.service';
 import { RecognizerService } from './modules/recognizer/recognizer.service';
 import { DeciderService } from './modules/decider/decider.service';
+import { ReActEngineService } from './modules/react-engine/react-engine.service';
 import {
   CreateModelDTO,
   AIModelDTO,
@@ -15,6 +16,7 @@ import {
   DecideFailureDTO,
   DecideFailureResponseDTO,
 } from './interfaces';
+import { ChatRequestDTO, StreamEvent, ExecutionContext } from './modules/react-engine/interfaces';
 
 @ApiTags('AI')
 @Controller('ai')
@@ -24,6 +26,7 @@ export class AIController {
     private readonly agentService: AgentService,
     private readonly recognizerService: RecognizerService,
     private readonly deciderService: DeciderService,
+    private readonly reactEngineService: ReActEngineService,
   ) {}
 
   // Model endpoints
@@ -224,5 +227,64 @@ export class AIController {
   @ApiResponse({ status: 200, description: 'Returns failure decision' })
   async decideFailure(@Body() body: DecideFailureDTO): Promise<DecideFailureResponseDTO> {
     return this.deciderService.decideFailure(body);
+  }
+
+  // Chat stream endpoint - ReAct engine
+  @Post('chat/stream')
+  @ApiOperation({ summary: 'AI chat with ReAct engine (SSE stream)' })
+  async chatStream(
+    @Body() body: ChatRequestDTO,
+    @Res() res: Response,
+  ): Promise<void> {
+    // Set SSE headers
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Connection', 'keep-alive');
+    res.setHeader('X-Accel-Buffering', 'no');
+
+    // Build execution context
+    const context: ExecutionContext = {
+      sessionId: body.sessionId || 'default',
+      userId: body.userId || 'anonymous',
+      history: [],
+      uploadedFiles: body.files || [],
+    };
+
+    try {
+      // Execute ReAct loop and stream events
+      for await (const event of this.reactEngineService.execute(body, context)) {
+        res.write(`data: ${JSON.stringify(event)}\n\n`);
+      }
+      res.write(`data: ${JSON.stringify({ type: 'done', content: 'Stream completed' })}\n\n`);
+      res.end();
+    } catch (error: unknown) {
+      const errorMsg = error instanceof Error ? error.message : 'Unknown error';
+      res.write(`data: ${JSON.stringify({ type: 'error', content: errorMsg })}\n\n`);
+      res.end();
+    }
+  }
+
+  // Simple chat endpoint (non-streaming)
+  @Post('chat')
+  @ApiOperation({ summary: 'Simple AI chat (non-streaming)' })
+  async chat(@Body() body: ChatRequestDTO): Promise<{ response: string; events: StreamEvent[] }> {
+    const context: ExecutionContext = {
+      sessionId: body.sessionId || 'default',
+      userId: body.userId || 'anonymous',
+      history: [],
+      uploadedFiles: body.files || [],
+    };
+
+    const events: StreamEvent[] = [];
+    let finalResponse = '';
+
+    for await (const event of this.reactEngineService.execute(body, context)) {
+      events.push(event);
+      if (event.type === 'result' || event.type === 'error') {
+        finalResponse = event.content;
+      }
+    }
+
+    return { response: finalResponse, events };
   }
 }

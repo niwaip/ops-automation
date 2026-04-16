@@ -1,0 +1,24 @@
+/**
+ * ChatInput Styles
+ */
+
+.chat-input-container {
+  padding: 12px;
+  border-top: 1px solid rgba(0, 0, 0, 0.06);
+  background-color: #fff;
+}
+
+.chat-uploaded-files {
+  margin-bottom: 8px;
+}
+
+.chat-input-row {
+  display: flex;
+  gap: 8px;
+  align-items: flex-end;
+}
+
+.chat-input-textarea {
+  flex: 1;
+  border-radius: 8px;
+}

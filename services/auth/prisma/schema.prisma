@@ -41,6 +41,7 @@ model User {
   // Relations
   userRoles     UserRole[]
   assignedRoles UserRole[]    @relation("AssignedBy")
+  chatSessions  ChatSession[]
 
   @@index([username])
   @@index([role])
@@ -83,4 +84,59 @@ model UserRole {
   @@index([userId])
   @@index([roleId])
   @@map("user_roles")
+}
+
+// Skill Configuration Table
+model SkillConfig {
+  id              String   @id @default(uuid()) @db.Uuid
+  name            String   @unique @db.VarChar(255)
+  description     String?  @db.VarChar(500)
+  category        String   @default("template") @db.VarChar(50) // template | query | action
+  triggerKeywords Json     @default("[]") @map("trigger_keywords")
+  paramsSchema    Json     @default("{}") @map("params_schema")
+  templateId      String?  @map("template_id") @db.VarChar(255)
+  executionFlow   Json     @default("[]") @map("execution_flow")
+  tools           Json     @default("[]")
+  isActive        Boolean  @default(true) @map("is_active")
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt       DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  @@index([name])
+  @@index([category])
+  @@index([isActive])
+  @@map("skill_configs")
+}
+
+// Chat Session Table
+model ChatSession {
+  id        String       @id @default(uuid()) @db.Uuid
+  userId    String       @map("user_id") @db.Uuid
+  title     String?      @db.VarChar(255)
+  modelId   String?      @map("model_id") @db.VarChar(255)
+  status    String       @default("active") @db.VarChar(50) // active | archived
+  createdAt DateTime     @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt DateTime     @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  messages  ChatMessage[]
+  user      User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([status])
+  @@map("chat_sessions")
+}
+
+// Chat Message Table
+model ChatMessage {
+  id        String     @id @default(uuid()) @db.Uuid
+  sessionId String     @map("session_id") @db.Uuid
+  role      String     @db.VarChar(20) // user | assistant | system
+  content   String     @db.Text
+  metadata  Json?      @map("metadata")
+  createdAt DateTime   @default(now()) @map("created_at") @db.Timestamptz
+
+  session   ChatSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@index([sessionId])
+  @@index([role])
+  @@map("chat_messages")
 }

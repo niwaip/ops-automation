@@ -1,0 +1,197 @@
+/**
+ * ReAct Engine Interfaces
+ * ReAct (Reasoning + Acting) 架构核心类型定义
+ */
+
+/**
+ * 流式事件类型
+ */
+export enum StreamEventType {
+  THOUGHT = 'thought',
+  ACTION = 'action',
+  OBSERVATION = 'observation',
+  RESULT = 'result',
+  ERROR = 'error',
+  PARAMS_CONFIRM = 'params_confirm',
+  FILE_UPLOAD = 'file_upload',
+}
+
+/**
+ * 流式事件
+ */
+export interface StreamEvent {
+  type: StreamEventType;
+  content: string;
+  data?: Record<string, unknown>;
+  iteration?: number;
+}
+
+/**
+ * ReAct状态
+ */
+export interface ReActState {
+  thought: string;
+  action: string;
+  actionInput: Record<string, unknown>;
+  observation: string;
+  iteration: number;
+  maxIterations: number;
+  isFinished: boolean;
+  finalAnswer?: string;
+}
+
+/**
+ * ReAct执行配置
+ */
+export interface ReActConfig {
+  maxIterations: number;  // 默认5
+  modelId: string;
+  timeoutMs?: number;     // 每步超时时间
+  tools: string[];        // 可用工具列表
+}
+
+/**
+ * 工具定义
+ */
+export interface ToolDefinition {
+  name: string;
+  description: string;
+  parameters: {
+    type: 'object';
+    properties: Record<string, {
+      type: 'string' | 'number' | 'boolean' | 'array' | 'object';
+      description: string;
+      required?: boolean;
+    }>;
+    required: string[];
+  };
+  execute: (params: Record<string, unknown>, context: ExecutionContext) => Promise<ToolResult>;
+}
+
+/**
+ * 工具执行结果
+ */
+export interface ToolResult {
+  success: boolean;
+  output: string;
+  data?: Record<string, unknown>;
+  requiresUserInput?: boolean;
+  userInputPrompt?: string;
+}
+
+/**
+ * 执行上下文
+ */
+export interface ExecutionContext {
+  sessionId: string;
+  userId: string;
+  history: ChatMessage[];
+  currentThought?: string;
+  skill?: SkillMatchResult;
+  uploadedFiles?: UploadedFile[];
+}
+
+/**
+ * 聊天消息
+ */
+export interface ChatMessage {
+  role: 'user' | 'assistant' | 'system';
+  content: string;
+  timestamp: Date;
+  metadata?: Record<string, unknown>;
+}
+
+/**
+ * Skill匹配结果
+ */
+export interface SkillMatchResult {
+  skillId: string;
+  skillName: string;
+  matchedKeywords: string[];
+  confidence: number;
+  collectedParams: Record<string, unknown>;
+  missingParams: string[];
+  paramsSchema: ParamsSchema;
+}
+
+/**
+ * 参数Schema
+ */
+export interface ParamsSchema {
+  properties: Record<string, ParamProperty>;
+  required: string[];
+}
+
+/**
+ * 参数属性定义
+ */
+export interface ParamProperty {
+  type: 'string' | 'number' | 'date' | 'array' | 'boolean';
+  description: string;
+  required: boolean;
+  default?: unknown;
+  extractionPrompt?: string;
+}
+
+/**
+ * 上传文件信息
+ */
+export interface UploadedFile {
+  fileId: string;
+  fileName: string;
+  mimeType: string;
+  size: number;
+  parsedContent?: string;
+}
+
+/**
+ * Chat请求DTO
+ */
+export interface ChatRequestDTO {
+  message: string;
+  sessionId?: string;
+  userId?: string;
+  modelId?: string;
+  files?: UploadedFile[];
+  config?: Partial<ReActConfig>;
+}
+
+/**
+ * Chat响应DTO
+ */
+export interface ChatResponseDTO {
+  sessionId: string;
+  response: string;
+  events: StreamEvent[];
+  metadata?: Record<string, unknown>;
+}
+
+/**
+ * Skill配置DTO
+ */
+export interface SkillConfigDTO {
+  id: string;
+  name: string;
+  description?: string;
+  category: 'template' | 'query' | 'action';
+  triggerKeywords: string[];
+  paramsSchema: ParamsSchema;
+  templateId?: string;
+  executionFlow: string[];
+  tools: string[];
+  isActive: boolean;
+}
+
+/**
+ * 创建Skill请求DTO
+ */
+export interface CreateSkillDTO {
+  name: string;
+  description?: string;
+  category?: 'template' | 'query' | 'action';
+  triggerKeywords: string[];
+  paramsSchema: ParamsSchema;
+  templateId?: string;
+  executionFlow?: string[];
+  tools?: string[];
+}

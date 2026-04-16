@@ -1,0 +1,123 @@
+/**
+ * Chat Types
+ * 前端聊天相关类型定义
+ */
+
+/**
+ * 流式事件类型
+ */
+export enum StreamEventType {
+  THOUGHT = 'thought',
+  ACTION = 'action',
+  OBSERVATION = 'observation',
+  RESULT = 'result',
+  ERROR = 'error',
+  PARAMS_CONFIRM = 'params_confirm',
+  FILE_UPLOAD = 'file_upload',
+}
+
+/**
+ * 流式事件
+ */
+export interface StreamEvent {
+  type: StreamEventType;
+  content: string;
+  data?: Record<string, unknown>;
+  iteration?: number;
+}
+
+/**
+ * 聊天消息
+ */
+export interface ChatMessage {
+  id: string;
+  sessionId: string;
+  role: 'user' | 'assistant' | 'system';
+  content: string;
+  timestamp: Date;
+  metadata?: {
+    skillUsed?: string;
+    params?: Record<string, unknown>;
+    fileUrl?: string;
+    downloadUrl?: string;
+  };
+  isStreaming?: boolean;
+}
+
+/**
+ * 聊天会话
+ */
+export interface ChatSession {
+  id: string;
+  title?: string;
+  modelId?: string;
+  status: 'active' | 'archived';
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+/**
+ * Skill匹配结果
+ */
+export interface SkillMatchResult {
+  skillId: string;
+  skillName: string;
+  matchedKeywords: string[];
+  confidence: number;
+  collectedParams: Record<string, unknown>;
+  missingParams: string[];
+  paramsSchema: ParamsSchema;
+}
+
+/**
+ * 参数Schema
+ */
+export interface ParamsSchema {
+  properties: Record<string, ParamProperty>;
+  required: string[];
+}
+
+/**
+ * 参数属性
+ */
+export interface ParamProperty {
+  type: 'string' | 'number' | 'date' | 'array' | 'boolean';
+  description: string;
+  required: boolean;
+  default?: unknown;
+}
+
+/**
+ * 上传文件信息
+ */
+export interface UploadedFile {
+  fileId: string;
+  fileName: string;
+  mimeType: string;
+  size: number;
+  file?: File;
+}
+
+/**
+ * Chat请求DTO
+ */
+export interface ChatRequest {
+  message: string;
+  sessionId?: string;
+  modelId?: string;
+  files?: UploadedFile[];
+}
+
+/**
+ * AI模型信息
+ */
+export interface AIModel {
+  id: string;
+  name: string;
+  provider: string;
+  config?: {
+    display_name?: string;
+    description?: string;
+  };
+  status: 'active' | 'inactive';
+}

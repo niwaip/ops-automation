@@ -1,0 +1,40 @@
+/**
+ * ChatWindow Styles
+ */
+
+.chat-window-container {
+  position: fixed;
+  bottom: 80px;
+  right: 20px;
+  z-index: 999;
+}
+
+.chat-window {
+  width: 400px;
+  height: 500px;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+  border-radius: 8px;
+}
+
+.chat-window-header {
+  width: 100%;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.chat-messages {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.chat-loading {
+  display: flex;
+  justify-content: center;
+  padding: 20px;
+}
