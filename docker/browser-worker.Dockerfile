@@ -141,12 +141,12 @@ RUN mkdir -p /var/log/supervisor /tmp/.X11-unix /tmp/codegen /scripts && chmod 1
 # 8080 - noVNC web interface
 # 5900 - VNC server
 # 9222 - Chrome DevTools Protocol
-# 3000 - Codegen API
-EXPOSE 8080 5900 9222 3000
+# 3011 - Codegen API
+EXPOSE 8080 5900 9222 3011
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
-    CMD curl -f http://localhost:8080 && curl -f http://localhost:3000/health || exit 1
+    CMD curl -f http://localhost:8080 && curl -f http://localhost:3011/health || exit 1
 
 # Set working directory
 WORKDIR /home/chrome
