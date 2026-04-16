@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Codegen API Server - HTTP server to control Playwright codegen
-Runs on port 3000 inside browser-chrome container
+Runs on port 3011 inside browser-chrome container
 """
 
 from __future__ import annotations
@@ -1698,11 +1698,11 @@ class CodegenHandler(BaseHTTPRequestHandler):
         else:
             return {'status': 'error', 'error': f'Unknown action type: {action_type}'}
 
-def run_server(port=3000):
+def run_server(port=3011):
     server = HTTPServer(('0.0.0.0', port), CodegenHandler)
     print(f"[INFO] Codegen API Server running on port {port}")
     server.serve_forever()
 
 if __name__ == '__main__':
-    port = int(os.environ.get('CODEGEN_API_PORT', 3000))
+    port = int(os.environ.get('CODEGEN_API_PORT', 3011))
     run_server(port)

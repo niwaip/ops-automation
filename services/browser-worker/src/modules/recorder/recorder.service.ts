@@ -20,7 +20,7 @@ export class RecorderService implements OnModuleDestroy {
 
   // Codegen API endpoint in browser-chrome container
   private readonly codegenHost = process.env.CHROME_REMOTE_DEBUGGING_HOST || 'ops-browser-chrome';
-  private readonly codegenPort = parseInt(process.env.CODEGEN_API_PORT || '3000', 10);
+  private readonly codegenPort = parseInt(process.env.CODEGEN_API_PORT || '3011', 10);
 
   constructor(private eventEmitter: EventEmitter2) {}
 

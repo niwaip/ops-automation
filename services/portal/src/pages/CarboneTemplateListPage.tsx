@@ -22,9 +22,12 @@ const CarboneTemplateListPage: React.FC = () => {
     setLoading(true);
     try {
       const response = await carboneAPI.getTemplates();
-      setTemplates(response);
+      // Ensure response is an array - handle both array and {templates: []} formats
+      const templatesData = Array.isArray(response) ? response : (response?.templates || []);
+      setTemplates(templatesData);
     } catch (error: any) {
       message.error('加载模板列表失败: ' + (error.message || '未知错误'));
+      setTemplates([]); // Ensure templates is always an array on error
     } finally {
       setLoading(false);
     }

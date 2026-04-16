@@ -39,7 +39,7 @@ export class CdpExecutor implements OnModuleDestroy {
 
   // Codegen API endpoint in browser-chrome container
   private readonly codegenHost = process.env.CDP_HOST || 'ops-browser-chrome';
-  private readonly codegenPort = parseInt(process.env.CODEGEN_API_PORT || '3000', 10);
+  private readonly codegenPort = parseInt(process.env.CODEGEN_API_PORT || '3011', 10);
 
   async onModuleDestroy() {
     // No persistent browser connection to close

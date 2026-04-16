@@ -119,7 +119,7 @@ services:
       - PORT=3004
       - CHROME_REMOTE_DEBUGGING_HOST=browser-chrome
       - CHROME_REMOTE_DEBUGGING_PORT=9222
-      - CODEGEN_API_PORT=3000
+      - CODEGEN_API_PORT=3011
     ports:
       - "3004:3004"
     volumes:
@@ -270,10 +270,11 @@ services:
       - "6080:8080"  # noVNC
       - "9222:9222"  # CDP
       - "5901:5900"  # VNC
-      - "3000:3000"  # Codegen API
+      - "3011:3011"  # Codegen API
     environment:
       - SCREEN_WIDTH=1920
       - SCREEN_HEIGHT=1080
+      - CODEGEN_API_PORT=3011
     command: ["/start-recorder.sh"]
 
 volumes:
