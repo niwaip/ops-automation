@@ -25,6 +25,7 @@ import { CarboneEngine } from '../../lib/engine';
 import { PreviewService } from './preview.service';
 import { AIIdentifierService, AIIdentifyResponse } from './ai-identifier.service';
 import { DocumentStructureService, DocumentStructure } from './document-structure.service';
+import { TemplateResponse, RenderResponse } from './studio.types';
 
 // DTOs with proper initialization
 export class UploadTemplateDto {
@@ -115,39 +116,6 @@ export class AIVerifyDto {
   prompt?: string;
   testData?: string;
   templateConfig?: any;
-}
-
-export interface TemplateResponse {
-  id: string;
-  fileName: string;
-  format: 'docx' | 'xlsx' | 'pptx' | 'html';
-  size: number;
-  variables: string[];
-  loops: Array<{ arrayPath: string }>;
-  markings?: Array<{ path: string; text: string; formatters?: string[] }>;
-  ignoredElements?: number[];  // 被忽略的元素索引列表
-  elementGroups?: Record<string, number[]>;  // 元素分组
-  ignoredGroups?: string[];  // 被忽略的分组ID列表
-  savedAt?: string;
-  templateConfig?: any;  // AI-generated template configuration
-  configSavedAt?: string;
-  markedTemplateId?: string;  // 编辑后的模版ID
-  verifyResult?: {  // AI验证结果
-    report?: string;
-    downloadUrl?: string;
-    previewUrl?: string;
-    markedTemplateId?: string;
-    markedTemplateUrl?: string;
-    sampleData?: any;
-    success?: boolean;
-    verifiedAt?: string;
-  };
-}
-
-export interface RenderResponse {
-  downloadUrl: string;
-  fileName: string;
-  format: string;
 }
 
 export interface ValidateResponse {
@@ -779,7 +747,8 @@ export class StudioController {
 
     const files = fs.readdirSync(this.templatesDir);
     for (const file of files) {
-      if (file.endsWith('.json')) {
+      // 过滤掉skill文件，只列出模板元数据文件
+      if (file.endsWith('.json') && !file.startsWith('skill_')) {
         const meta = JSON.parse(fs.readFileSync(path.join(this.templatesDir, file), 'utf-8'));
         templates.push(meta);
       }
