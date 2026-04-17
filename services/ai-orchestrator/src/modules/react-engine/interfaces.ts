@@ -141,6 +141,7 @@ export interface UploadedFile {
   fileName: string;
   mimeType: string;
   size: number;
+  content?: string;  // base64编码的文件内容
   parsedContent?: string;
 }
 

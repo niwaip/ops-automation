@@ -1,6 +1,7 @@
-import { Controller, Get, Post, Body, Param, Patch, Delete, HttpException, HttpStatus, Res } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
+import { Controller, Get, Post, Body, Param, Patch, Delete, HttpException, HttpStatus, Res, UseInterceptors, UploadedFile } from '@nestjs/common';
+import { ApiTags, ApiOperation, ApiResponse, ApiConsumes } from '@nestjs/swagger';
 import { Response } from 'express';
+import { FileInterceptor } from '@nestjs/platform-express';
 import { ModelService } from './modules/model/model.service';
 import { AgentService } from './modules/agent/agent.service';
 import { RecognizerService } from './modules/recognizer/recognizer.service';
@@ -259,14 +260,37 @@ export class AIController {
         // 发送thought事件
         res.write(`data: ${JSON.stringify({ type: 'thought', content: '正在思考...' })}\n\n`);
 
+        // 构建消息内容，包含文件内容
+        let messageContent = body.message;
+
+        // 如果有文件，解码base64内容并添加到消息中
+        if (body.files && body.files.length > 0) {
+          const fileContents: string[] = [];
+          for (const file of body.files) {
+            if (file.content) {
+              // 解码base64内容
+              try {
+                const decodedContent = Buffer.from(file.content, 'base64').toString('utf-8');
+                fileContents.push(`【文件: ${file.fileName}】\n${decodedContent}`);
+              } catch (e) {
+                // 如果解码失败，可能是二进制文件，提示文件信息
+                fileContents.push(`【文件: ${file.fileName} (类型: ${file.mimeType}, 大小: ${file.size}字节)】\n(二进制文件，无法直接显示内容)`);
+              }
+            } else {
+              fileContents.push(`【文件: ${file.fileName} (类型: ${file.mimeType}, 大小: ${file.size}字节)】\n(文件内容未上传)`);
+            }
+          }
+          messageContent = `${messageContent}\n\n以下是用户上传的文件内容：\n${fileContents.join('\n\n')}`;
+        }
+
         // 流式调用模型
         let fullContent = '';
         const messages = [
-          { role: 'system', content: '你是一个智能助手，请用中文友好地回答用户的问题。' },
-          { role: 'user', content: body.message },
+          { role: 'system', content: '你是一个智能助手，请用中文友好地回答用户的问题。如果用户上传了文件，请分析文件内容并给出相关回答。' },
+          { role: 'user', content: messageContent },
         ];
 
-        await this.modelService.callModelStream(modelId, body.message, (chunk: string) => {
+        await this.modelService.callModelStream(modelId, messageContent, (chunk: string) => {
           fullContent += chunk;
           // 实时发送内容块
           res.write(`data: ${JSON.stringify({ type: 'observation', content: fullContent })}\n\n`);
@@ -320,5 +344,31 @@ export class AIController {
     }
 
     return { response: finalResponse, events };
+  }
+
+  // File upload endpoint for chat
+  @Post('chat/upload')
+  @ApiOperation({ summary: 'Upload file for chat' })
+  @ApiConsumes('multipart/form-data')
+  @ApiResponse({ status: 200, description: 'File uploaded successfully' })
+  @UseInterceptors(FileInterceptor('file'))
+  async uploadChatFile(@UploadedFile() file: Express.Multer.File): Promise<{ fileId: string; fileName: string; mimeType: string; size: number }> {
+    if (!file) {
+      throw new HttpException('No file uploaded', HttpStatus.BAD_REQUEST);
+    }
+
+    // Generate a unique file ID
+    const fileId = `file-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+
+    // In production, you would save the file to storage (S3, local disk, etc.)
+    // For now, we just return metadata - the actual file content can be accessed
+    // via the buffer in memory for this request
+
+    return {
+      fileId,
+      fileName: file.originalname,
+      mimeType: file.mimetype,
+      size: file.size,
+    };
   }
 }
