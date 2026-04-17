@@ -7,8 +7,10 @@ import axios from 'axios';
 import { BaseTool } from './base.tool';
 import { ToolResult, ExecutionContext } from '../interfaces';
 
-// Carbone引擎服务地址
+// Carbone引擎服务地址（内部调用）
 const CARBONE_SERVICE_URL = process.env.CARBONE_SERVICE_URL || 'http://carbone-engine:3009';
+// 外部可访问的下载地址（返回给用户）
+const CARBONE_EXTERNAL_URL = process.env.CARBONE_EXTERNAL_URL || 'http://localhost:3009';
 
 export class DocumentRenderTool extends BaseTool {
   constructor() {
@@ -76,20 +78,20 @@ export class DocumentRenderTool extends BaseTool {
 
       // Carbone API返回格式: {downloadUrl, fileName, format}
       if (renderResult && renderResult.downloadUrl) {
-        // 构建完整下载链接
-        const fullDownloadUrl = `${CARBONE_SERVICE_URL}${renderResult.downloadUrl}`;
+        // 外部可访问的下载链接
+        const externalDownloadUrl = `${CARBONE_EXTERNAL_URL}${renderResult.downloadUrl}`;
 
         return {
           success: true,
           output: `文档生成成功！任务已完成。
 
 文件名: ${renderResult.fileName}
-下载链接: ${fullDownloadUrl}
+下载链接: ${externalDownloadUrl}
 
 【任务完成】请输出 Final Answer，告知用户文档已生成并提供下载链接。不要再调用任何工具。`,
           data: {
             fileName: renderResult.fileName,
-            downloadUrl: fullDownloadUrl,
+            downloadUrl: externalDownloadUrl,
             format: renderResult.format || format,
             taskComplete: true,
           },
@@ -98,7 +100,7 @@ export class DocumentRenderTool extends BaseTool {
 
       // 兼容旧格式 {documentId}
       if (renderResult && renderResult.documentId) {
-        const downloadUrl = `${CARBONE_SERVICE_URL}/studio/download/${renderResult.documentId}`;
+        const downloadUrl = `${CARBONE_EXTERNAL_URL}/studio/download/${renderResult.documentId}`;
 
         return {
           success: true,

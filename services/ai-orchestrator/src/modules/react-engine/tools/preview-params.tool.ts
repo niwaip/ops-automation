@@ -8,8 +8,10 @@ import axios from 'axios';
 import { BaseTool } from './base.tool';
 import { ToolResult, ExecutionContext } from '../interfaces';
 
-// Carbone引擎服务地址
+// Carbone引擎服务地址（内部调用）
 const CARBONE_SERVICE_URL = process.env.CARBONE_SERVICE_URL || 'http://carbone-engine:3009';
+// 外部可访问的下载地址（返回给用户）
+const CARBONE_EXTERNAL_URL = process.env.CARBONE_EXTERNAL_URL || 'http://localhost:3009';
 
 export class PreviewParamsTool extends BaseTool {
   constructor() {
@@ -82,9 +84,9 @@ export class PreviewParamsTool extends BaseTool {
         const previewUrl = previewResult.previewUrl;
         const downloadUrl = previewResult.downloadUrl;
 
-        // 构建完整URL
-        const fullPreviewUrl = previewUrl ? `${CARBONE_SERVICE_URL}${previewUrl}` : null;
-        const fullDownloadUrl = downloadUrl ? `${CARBONE_SERVICE_URL}${downloadUrl}` : null;
+        // 外部可访问的URL
+        const externalPreviewUrl = previewUrl ? `${CARBONE_EXTERNAL_URL}${previewUrl}` : null;
+        const externalDownloadUrl = downloadUrl ? `${CARBONE_EXTERNAL_URL}${downloadUrl}` : null;
 
         return {
           success: true,
@@ -92,14 +94,14 @@ export class PreviewParamsTool extends BaseTool {
 生成的参数数据:
 ${JSON.stringify(previewResult.generatedData || data, null, 2)}
 
-预览链接: ${fullPreviewUrl || '未生成'}
-下载链接: ${fullDownloadUrl || '未生成'}
+预览链接: ${externalPreviewUrl || '未生成'}
+下载链接: ${externalDownloadUrl || '未生成'}
 
 【参数验证】参数已正确填充到模板中，可以生成最终文档。
 下一步请调用 document_render 工具生成正式文档。`,
           data: {
-            previewUrl: fullPreviewUrl,
-            downloadUrl: fullDownloadUrl,
+            previewUrl: externalPreviewUrl,
+            downloadUrl: externalDownloadUrl,
             generatedData: previewResult.generatedData || data,
             skillUsed: previewResult.skillUsed,
           },
