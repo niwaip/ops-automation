@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Table, Card, Button, Input, Space, Tag, Typography, Modal, message, Form, Select, Descriptions, Tabs, Tooltip, Collapse, Steps, Divider } from 'antd';
+import { Table, Card, Button, Input, Space, Tag, Typography, Modal, message, Form, Select, Descriptions, Tabs, Tooltip, Collapse, Steps, Divider, Badge, Empty } from 'antd';
 import {
   SearchOutlined,
   ReloadOutlined,
@@ -11,10 +11,12 @@ import {
   ThunderboltOutlined,
   ApiOutlined,
   RocketOutlined,
+  FileTextOutlined,
 } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
 import { useQuery, useMutation, useQueryClient } from 'react-query';
 import { skillApi, roleApi, SkillConfigDTO, SkillPermissionDTO, RoleDTO, CreateSkillDTO } from '../../api/skill';
+import { carboneApi, CarboneTemplateDTO } from '../../api/carbone';
 import type { ColumnsType } from 'antd/es/table';
 
 const { Title, Text } = Typography;
@@ -45,6 +47,7 @@ const SkillAdminPage: React.FC = () => {
   // Queries
   const skillsQuery = useQuery(['skills'], skillApi.list);
   const rolesQuery = useQuery(['roles'], roleApi.list);
+  const templatesQuery = useQuery(['carbone-templates'], carboneApi.list);
   const permissionsQuery = useQuery(
     ['skill-permissions', selectedSkill?.id],
     () => skillApi.getPermissions(selectedSkill!.id),
@@ -435,20 +438,29 @@ const SkillAdminPage: React.FC = () => {
     (r) => !grantedRoleIds.includes(r.id)
   );
 
+  // Available templates for selection
+  const templateOptions = templatesQuery.data?.templates?.map((t: CarboneTemplateDTO) => ({
+    value: t.id,
+    label: `${t.name} (${t.id.slice(0, 8)}...)`,
+  }));
+
   return (
     <div>
       <Title level={4}>{t('admin:skillManagement')}</Title>
 
       <Card style={{ marginTop: 8, marginBottom: 16 }}>
         <Space direction="vertical" size="small">
-          <Text strong>关于技能匹配：</Text>
-          <Text>• <Text type="success">AI语义匹配</Text>是主要方式，根据用户输入自动识别意图并匹配最佳技能</Text>
-          <Text>• <Text type="warning">触发关键字</Text>是回退方案，当AI服务不可用时使用关键词匹配</Text>
+          <Text strong>Skills管理说明：</Text>
+          <Text>• Skills定义了系统能执行的操作，包括文档生成、数据分析、自动化流程等</Text>
+          <Text>• 每个Skill可配置<strong>模板</strong>、<strong>触发关键字</strong>、<strong>权限</strong>等属性</Text>
           <Divider style={{ margin: '8px 0' }} />
-          <Text strong>关于执行流程：</Text>
-          <Text>• <Tag color="gold">skill_match</Tag> → AI语义匹配技能</Text>
-          <Text>• <Tag color="green">generate_parameters</Tag> → AI从用户描述自动提取参数</Text>
-          <Text>• <Tag color="blue">document_render</Tag> → Carbone引擎渲染Word/PDF文档</Text>
+          <Text strong>匹配机制：</Text>
+          <Text>• <Badge status="success">AI语义匹配</Badge> - 主要方式，自动识别用户意图</Text>
+          <Text>• <Badge status="warning">触发关键字</Badge> - 回退方案。AI服务不可用时使用</Text>
+          <Divider style={{ margin: '8px 0' }} />
+          <Text strong>模板配置：</Text>
+          <Text>• 配置<strong>Carbone模板ID</strong>后，可调用AI生成参数并渲染文档</Text>
+          <Text>• 可在下方表格中查看已有的Carbone模板，或前往<Text type="link">模板管理</Text>页面创建新模板</Text>
         </Space>
       </Card>
 
@@ -463,6 +475,12 @@ const SkillAdminPage: React.FC = () => {
               style={{ width: 200 }}
               allowClear
             />
+            <Button
+              icon={<FileTextOutlined />}
+              onClick={() => window.location.href = '/carbone-templates'}
+            >
+              模板管理
+            </Button>
           </Space>
           <Space>
             <Button
@@ -621,7 +639,7 @@ const SkillAdminPage: React.FC = () => {
           <Form.Item
             name="category"
             label={t('admin:skillCategory')}
-            extra="选择技能类型，系统会根据分类进行不同的处理"
+            extra="选择技能类型"
           >
             <Select>
               <Option value="template">
@@ -660,16 +678,22 @@ const SkillAdminPage: React.FC = () => {
           <Form.Item
             name="carboneTemplateId"
             label={t('admin:carboneTemplateId')}
-            extra="Carbone文档引擎的模板ID，用于渲染Word/PDF"
+            extra="选择已有的Carbone模板.用于文档渲染"
           >
-            <Input placeholder="UUID格式" />
+            <Select
+              placeholder="选择模板"
+              allowClear
+              showSearch
+              loading={templatesQuery.isLoading}
+              options={templateOptions}
+            />
           </Form.Item>
           <Form.Item
             name="carboneSkillId"
             label={t('admin:carboneSkillId')}
-            extra="Carbone引擎的技能配置ID，用于AI参数生成"
+            extra="Carbone引擎的技能配置ID.用于AI参数生成"
           >
-            <Input placeholder="UUID格式" />
+            <Input placeholder="UUID格式（可选）" />
           </Form.Item>
         </Form>
       </Modal>

@@ -3,7 +3,33 @@
  * 用于管理Carbone模板和Skills
  */
 
+import { apiClient } from './client';
 import axios from 'axios';
+
+// Carbone Template DTO for Skills page
+export interface CarboneTemplateDTO {
+  id: string;
+  name: string;
+  fileName: string;
+  format: 'docx' | 'xlsx' | 'pptx' | 'html';
+  skillId?: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+// Carbone API for Skills page (uses portal proxy)
+export const carboneApi = {
+  list: async (): Promise<{ templates: CarboneTemplateDTO[] }> => {
+    // Use portal proxy: /api/carbone -> carbone-engine:3009
+    return apiClient.get<{ templates: CarboneTemplateDTO[] }>('/carbone/templates');
+  },
+
+  getById: async (id: string): Promise<CarboneTemplateDTO> => {
+    return apiClient.get<CarboneTemplateDTO>(`/carbone/templates/${id}`);
+  },
+};
+
+// ========== Legacy API for CarboneTemplateListPage ==========
 
 // Carbone Engine API 基础URL（独立服务）
 const CARBONE_API_URL = import.meta.env.VITE_CARBONE_API_URL || 'https://localhost:3443';
@@ -50,7 +76,7 @@ class CarboneAPI {
    */
   async getTemplates(): Promise<CarboneTemplate[]> {
     const response = await carboneClient.get('/studio/templates');
-    return response.data;
+    return response.data.templates || response.data;
   }
 
   /**
