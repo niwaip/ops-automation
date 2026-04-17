@@ -24,12 +24,23 @@ const { Option } = Select;
 const { TabPane } = Tabs;
 const { Panel } = Collapse;
 
-// Category labels with descriptions
-const CATEGORY_INFO: Record<string, { label: string; color: string; desc: string }> = {
+// Category labels with descriptions (default options, user can add custom)
+const DEFAULT_CATEGORIES: Record<string, { label: string; color: string; desc: string }> = {
   template: { label: '文档模板', color: 'blue', desc: '基于模板生成文档（Word/PDF等）' },
   analysis: { label: '数据分析', color: 'green', desc: '数据统计、报表分析' },
   automation: { label: '自动化', color: 'purple', desc: '自动化流程执行' },
-  other: { label: '其他', color: 'default', desc: '其他类型技能' },
+};
+
+// Available execution flow steps
+const EXECUTION_FLOW_STEPS: Record<string, { label: string; description: string }> = {
+  skill_match: { label: 'AI语义匹配', description: '根据用户输入自动识别意图并匹配最佳技能' },
+  collect_params: { label: '收集参数', description: '通过对话收集用户需要的参数' },
+  generate_parameters: { label: 'AI生成参数', description: 'AI从用户描述自动提取参数' },
+  confirm: { label: '用户确认', description: '展示参数并等待用户确认' },
+  document_render: { label: '文档渲染', description: '使用Carbone引擎渲染Word/PDF文档' },
+  render: { label: '渲染输出', description: '渲染最终输出内容' },
+  send_email: { label: '发送邮件', description: '发送邮件通知' },
+  save_database: { label: '保存数据', description: '保存数据到数据库' },
 };
 
 const SkillAdminPage: React.FC = () => {
@@ -125,7 +136,7 @@ const SkillAdminPage: React.FC = () => {
     form.setFieldsValue({
       category: 'template',
       triggerKeywords: [],
-      executionFlow: [],
+      executionFlow: ['skill_match', 'generate_parameters', 'document_render'],
       tools: [],
     });
     setEditModalVisible(true);
@@ -138,6 +149,7 @@ const SkillAdminPage: React.FC = () => {
       description: skill.description,
       category: skill.category,
       triggerKeywords: skill.triggerKeywords,
+      executionFlow: skill.executionFlow || [],
       templateId: skill.templateId,
       carboneTemplateId: skill.carboneTemplateId,
       carboneSkillId: skill.carboneSkillId,
@@ -157,6 +169,7 @@ const SkillAdminPage: React.FC = () => {
         description: values.description,
         category: values.category || 'template',
         triggerKeywords: values.triggerKeywords || [],
+        executionFlow: values.executionFlow || [],
         paramsSchema: {
           properties: {},
           required: [],
@@ -274,7 +287,7 @@ const SkillAdminPage: React.FC = () => {
       key: 'category',
       width: 120,
       render: (category: string) => {
-        const info = CATEGORY_INFO[category] || CATEGORY_INFO.other;
+        const info = DEFAULT_CATEGORIES[category] || { label: category, color: 'default', desc: '自定义分类' };
         return (
           <Tooltip title={info.desc}>
             <Tag color={info.color}>{info.label}</Tag>
@@ -529,11 +542,11 @@ const SkillAdminPage: React.FC = () => {
               <Descriptions bordered size="small" column={2}>
                 <Descriptions.Item label="技能ID">{selectedSkill.id}</Descriptions.Item>
                 <Descriptions.Item label="分类">
-                  <Tag color={CATEGORY_INFO[selectedSkill.category]?.color || 'default'}>
-                    {CATEGORY_INFO[selectedSkill.category]?.label || selectedSkill.category}
+                  <Tag color={DEFAULT_CATEGORIES[selectedSkill.category]?.color || 'default'}>
+                    {DEFAULT_CATEGORIES[selectedSkill.category]?.label || selectedSkill.category}
                   </Tag>
                   <Text type="secondary" style={{ marginLeft: 8 }}>
-                    {CATEGORY_INFO[selectedSkill.category]?.desc}
+                    {DEFAULT_CATEGORIES[selectedSkill.category]?.desc || '自定义分类'}
                   </Text>
                 </Descriptions.Item>
                 <Descriptions.Item label="描述" span={2}>{selectedSkill.description}</Descriptions.Item>
@@ -639,32 +652,37 @@ const SkillAdminPage: React.FC = () => {
           <Form.Item
             name="category"
             label={t('admin:skillCategory')}
-            extra="选择技能类型"
+            extra="选择或输入自定义分类名称"
           >
-            <Select>
-              <Option value="template">
-                <Space>
-                  <Tag color="blue">文档模板</Tag>
-                  <Text type="secondary">基于模板生成文档</Text>
-                </Space>
-              </Option>
-              <Option value="analysis">
-                <Space>
-                  <Tag color="green">数据分析</Tag>
-                  <Text type="secondary">数据统计、报表分析</Text>
-                </Space>
-              </Option>
-              <Option value="automation">
-                <Space>
-                  <Tag color="purple">自动化</Tag>
-                  <Text type="secondary">自动化流程执行</Text>
-                </Space>
-              </Option>
-              <Option value="other">
-                <Space>
-                  <Tag>其他</Tag>
-                </Space>
-              </Option>
+            <Select mode="tags" placeholder="选择或输入分类">
+              {Object.entries(DEFAULT_CATEGORIES).map(([key, value]) => (
+                <Option key={key} value={key}>
+                  <Space>
+                    <Tag color={value.color}>{value.label}</Tag>
+                    <Text type="secondary">{value.desc}</Text>
+                  </Space>
+                </Option>
+              ))}
+            </Select>
+          </Form.Item>
+          <Form.Item
+            name="executionFlow"
+            label="执行流程"
+            extra="选择执行步骤顺序（从上到下执行）"
+          >
+            <Select
+              mode="multiple"
+              placeholder="选择执行步骤"
+              optionLabelProp="label"
+            >
+              {Object.entries(EXECUTION_FLOW_STEPS).map(([key, value]) => (
+                <Option key={key} value={key} label={value.label}>
+                  <Space direction="vertical" size="small">
+                    <Text strong>{value.label}</Text>
+                    <Text type="secondary" style={{ fontSize: 12 }}>{value.description}</Text>
+                  </Space>
+                </Option>
+              ))}
             </Select>
           </Form.Item>
           <Form.Item
