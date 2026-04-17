@@ -4,13 +4,13 @@
  */
 
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
-import { PrismaService } from '../prisma/prisma.service';
+import { PrismaService } from '../../prisma/prisma.service';
 import {
   SkillConfigDTO,
   CreateSkillDTO,
   SkillMatchResult,
   ParamsSchema,
-} from '../../ai-orchestrator/modules/react-engine/interfaces';
+} from './interfaces';
 
 /**
  * 默认Skill配置
@@ -170,7 +170,7 @@ export class SkillService implements OnModuleInit {
         description: dto.description,
         category: dto.category || 'template',
         triggerKeywords: dto.triggerKeywords,
-        paramsSchema: dto.paramsSchema,
+        paramsSchema: dto.paramsSchema as any,  // Cast to JSON for Prisma
         templateId: dto.templateId,
         executionFlow: dto.executionFlow || [],
         tools: dto.tools || [],
@@ -215,7 +215,7 @@ export class SkillService implements OnModuleInit {
         description: dto.description,
         category: dto.category,
         triggerKeywords: dto.triggerKeywords,
-        paramsSchema: dto.paramsSchema,
+        paramsSchema: dto.paramsSchema as any,  // Cast to JSON for Prisma
         templateId: dto.templateId,
         executionFlow: dto.executionFlow,
         tools: dto.tools,

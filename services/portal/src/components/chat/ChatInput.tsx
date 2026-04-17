@@ -92,7 +92,7 @@ const ChatInput: React.FC<ChatInputProps> = ({
           onChange={(e) => setMessage(e.target.value)}
           onKeyPress={handleKeyPress}
           placeholder="输入消息，按 Enter 发送..."
-          autoSize={{ minRows: 1, maxRows: 3 }}
+          autoSize={{ minRows: 2, maxRows: 5 }}
           disabled={disabled || uploading}
           className="chat-input-textarea"
         />

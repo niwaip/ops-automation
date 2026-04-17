@@ -23,7 +23,21 @@
 
 .chat-input-textarea {
   flex: 1;
-  border-radius: 8px;
+  border-radius: 12px;
+  border: 2px solid rgba(0, 0, 0, 0.1);
+  font-size: 14px;
+  padding: 8px 12px;
+  resize: none;
+  transition: border-color 0.2s;
+}
+
+.chat-input-textarea:focus {
+  border-color: #1890ff;
+  box-shadow: 0 0 0 2px rgba(24, 144, 255, 0.1);
+}
+
+.chat-input-textarea::placeholder {
+  color: rgba(0, 0, 0, 0.35);
 }
 
 .chat-mode-btn {

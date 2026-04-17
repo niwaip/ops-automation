@@ -63,7 +63,7 @@ const ChatMessageComponent: React.FC<ChatMessageProps> = ({
   isStreaming,
   streamingContent,
 }) => {
-  const [thoughtsExpanded, setThoughtsExpanded] = useState(false);
+  const [thoughtsExpanded, setThoughtsExpanded] = useState(true); // 默认展开思考内容
   const isUser = message.role === 'user';
   const rawContent = isStreaming && streamingContent ? streamingContent : message.content;
 

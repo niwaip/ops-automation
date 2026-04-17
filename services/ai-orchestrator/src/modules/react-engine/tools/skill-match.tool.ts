@@ -3,8 +3,13 @@
  * 根据用户输入匹配合适的Skill
  */
 
+import axios from 'axios';
 import { BaseTool } from './base.tool';
 import { ToolResult, ExecutionContext, SkillMatchResult } from '../interfaces';
+
+// Auth服务地址（SkillService所在）
+// Docker环境使用服务名，本地使用localhost
+const AUTH_SERVICE_URL = process.env.AUTH_SERVICE_URL || process.env.DOCKER_ENV ? 'http://ops-auth:3001' : 'http://localhost:3001';
 
 export class SkillMatchTool extends BaseTool {
   constructor() {
@@ -36,18 +41,6 @@ export class SkillMatchTool extends BaseTool {
   ): Promise<ToolResult> {
     const userInput = params.userInput as string;
 
-    // 这里需要调用SkillService进行匹配
-    // 暂时返回模拟结果，后续集成SkillService
-    const result: SkillMatchResult = {
-      skillId: 'pending',
-      skillName: 'pending',
-      matchedKeywords: [],
-      confidence: 0,
-      collectedParams: {},
-      missingParams: [],
-      paramsSchema: { properties: {}, required: [] },
-    };
-
     // 检查是否已有匹配的skill
     if (context.skill) {
       return {
@@ -57,10 +50,41 @@ export class SkillMatchTool extends BaseTool {
       };
     }
 
-    return {
-      success: false,
-      output: '未匹配到合适的技能，请提供更多信息或直接提问。',
-      data: { needsSkillMatch: true, userInput },
-    };
+    try {
+      // 调用Auth服务的Skill匹配API
+      const response = await axios.post(`${AUTH_SERVICE_URL}/skills/match`, {
+        userInput,
+      });
+
+      const matchResult = response.data.match as SkillMatchResult | null;
+
+      if (matchResult && matchResult.confidence > 0) {
+        // 更新context中的skill信息
+        context.skill = matchResult;
+
+        return {
+          success: true,
+          output: `成功匹配技能: ${matchResult.skillName} (置信度: ${matchResult.confidence.toFixed(2)}, 关键词: ${matchResult.matchedKeywords.join(', ')})`,
+          data: {
+            skill: matchResult,
+            needsSkillMatch: false,
+          },
+        };
+      }
+
+      return {
+        success: false,
+        output: '未匹配到合适的技能，请提供更多信息或直接提问。',
+        data: { needsSkillMatch: true, userInput },
+      };
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : 'Unknown error';
+      // 如果API调用失败，返回错误信息
+      return {
+        success: false,
+        output: `技能匹配服务调用失败: ${errorMsg}`,
+        data: { error: 'service_error', needsSkillMatch: true, userInput },
+      };
+    }
   }
 }
