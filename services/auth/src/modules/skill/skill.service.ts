@@ -21,9 +21,11 @@ const getAiOrchestratorUrl = () => {
     return process.env.AI_ORCHESTRATOR_URL;
   }
   if (process.env.DOCKER_ENV === 'true' || process.env.NODE_ENV === 'production') {
-    return 'http://ops-ai-orchestrator:3007';  // Docker 中 ai-orchestrator 端口是 3007
+    return 'http://ops-ai-orchestrator:3007';  // Docker 内部通信使用服务名
   }
-  return 'http://localhost:3007';
+  // 本地开发：使用外部访问地址（如果设置）或 localhost
+  const externalHost = process.env.EXTERNAL_HOST || 'localhost';
+  return `http://${externalHost}:3007`;
 };
 
 /**
@@ -326,7 +328,17 @@ export class SkillService implements OnModuleInit {
    * 获取用户可访问的Skills（基于角色权限）
    */
   async listSkillsForUser(userId: string): Promise<SkillConfigDTO[]> {
-    // 1. 获取用户的所有角色
+    // 1. 获取用户信息（包含直接角色属性）
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+    });
+
+    // 2. 直接检查用户角色属性（兼容旧的 role 字段）
+    if (user && user.role === 'admin') {
+      return this.listSkills();
+    }
+
+    // 3. 获取用户的所有角色关联
     const userRoles = await this.prisma.userRole.findMany({
       where: { userId },
       include: { role: true },
@@ -334,8 +346,9 @@ export class SkillService implements OnModuleInit {
 
     const roleIds = userRoles.map(ur => ur.roleId);
 
-    // 2. 检查用户是否是 admin（admin 默认可访问所有 Skills）
-    const isAdmin = userRoles.some(ur => ur.role.name === 'admin' || ur.role.permissions?.['all_skills'] === true);
+    // 4. 检查用户是否是 admin（通过角色关联）
+    const isAdmin = userRoles.some(ur => ur.role.name === 'admin' ||
+      (ur.role.permissions as Record<string, boolean>)?.['all_skills'] === true);
 
     if (isAdmin) {
       // Admin 可访问所有 Skills
@@ -378,7 +391,8 @@ export class SkillService implements OnModuleInit {
     });
 
     // 2. Admin 默认有权限
-    const isAdmin = userRoles.some(ur => ur.role.name === 'admin' || ur.role.permissions?.['all_skills'] === true);
+    const isAdmin = userRoles.some(ur => ur.role.name === 'admin' ||
+      (ur.role.permissions as Record<string, boolean>)?.['all_skills'] === true);
     if (isAdmin) {
       return true;
     }
@@ -514,7 +528,7 @@ ${skillsXml}
     // 4. 调用 AI Orchestrator 进行语义匹配
     try {
       const aiOrchestratorUrl = getAiOrchestratorUrl();
-      const response = await axios.post(`${aiOrchestratorUrl}/model/call`, {
+      const response = await axios.post<{ result: string }>(`${aiOrchestratorUrl}/model/call`, {
         modelId: 'default',
         prompt,
       });

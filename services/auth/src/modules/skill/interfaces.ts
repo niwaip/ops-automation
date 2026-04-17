@@ -102,7 +102,7 @@ export interface SkillPermissionDTO {
   roleId: string;
   roleName: string;
   grantedAt: Date;
-  grantedBy?: string;
+  grantedBy: string | null;  // 数据库返回 null，使用 null 类型
 }
 
 /**

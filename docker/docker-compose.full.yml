@@ -2,6 +2,10 @@ version: '3.8'
 
 # Full development environment with all services
 # Usage: docker compose up -d
+# Set EXTERNAL_HOST to your machine's IP for external access (e.g., EXTERNAL_HOST=192.168.100.143)
+
+x-common-env: &common-env
+  EXTERNAL_HOST: ${EXTERNAL_HOST:-localhost}
 
 services:
   # ============================================
@@ -48,11 +52,13 @@ services:
     command: sh -c "npm config set registry https://registry.npmmirror.com && npm install --legacy-peer-deps && npx prisma generate && npm run dev"
     environment:
       - NODE_ENV=development
+      - DOCKER_ENV=true
       - DATABASE_URL=postgresql://ops:ops_secret@postgres:5432/ops
       - REDIS_HOST=redis
       - REDIS_PORT=6379
       - JWT_SECRET=jwt_secret_key_change_in_production
       - PORT=3001
+      - EXTERNAL_HOST=${EXTERNAL_HOST:-localhost}
     ports:
       - "3001:3001"
     volumes:
@@ -183,6 +189,7 @@ services:
       - DOCKER_ENV=true
       - AUTH_SERVICE_URL=http://ops-auth:3001
       - CARBONE_SERVICE_URL=http://carbone-engine:3009
+      - CARBONE_EXTERNAL_URL=http://${EXTERNAL_HOST:-localhost}:3009
       - DATABASE_URL=postgresql://ops:ops_secret@postgres:5432/ops
       - REDIS_HOST=redis
       - REDIS_PORT=6379

@@ -20,6 +20,7 @@ import {
 import { JwtAuthGuard } from '../../guards/jwt-auth.guard';
 import { RolesGuard } from '../../guards/roles.guard';
 import { Roles } from '../../decorators/roles.decorator';
+import { Public } from '../../decorators';
 import { SkillService } from './skill.service';
 import {
   CreateSkillDTO,
@@ -39,7 +40,7 @@ export class SkillController {
    */
   @Get()
   async listSkills(@Request() req: any): Promise<{ skills: SkillConfigDTO[] }> {
-    const userId = req.user.sub;
+    const userId = req.user.id;
     // 只返回用户有权限访问的 Skills
     const skills = await this.skillService.listSkillsForUser(userId);
     return { skills };
@@ -53,7 +54,7 @@ export class SkillController {
     @Param('id') id: string,
     @Request() req: any,
   ): Promise<SkillConfigDTO> {
-    const userId = req.user.sub;
+    const userId = req.user.id;
 
     // 检查用户是否有权限访问此 Skill
     const hasPermission = await this.skillService.checkUserSkillPermission(userId, id);
@@ -108,13 +109,22 @@ export class SkillController {
 
   /**
    * AI 语义匹配 Skill（带权限过滤）
+   * 支持两种方式传递 userId：
+   * 1. 通过 JWT 认证（req.user.id）
+   * 2. 通过 body.userId（用于内部服务调用）
+   * 注意：内部服务调用时使用 body.userId，跳过 JWT 认证
    */
+  @Public()
   @Post('match')
   async matchSkill(
-    @Body() body: { userInput: string },
+    @Body() body: { userInput: string; userId?: string },
     @Request() req: any,
   ): Promise<{ match: SkillMatchResult | null }> {
-    const userId = req.user.sub;
+    // 优先使用 body.userId（内部服务调用），否则使用 JWT 认证的 userId
+    const userId = body.userId || req.user?.id;
+    if (!userId) {
+      return { match: null };
+    }
     // 使用 AI 语义匹配（自动过滤用户无权限的 Skills）
     const match = await this.skillService.matchSkillWithAI(body.userInput, userId);
     return { match };
@@ -130,7 +140,7 @@ export class SkillController {
     @Body() body: GrantSkillDTO,
     @Request() req: any,
   ): Promise<{ permission: SkillPermissionDTO }> {
-    const grantedBy = req.user.sub;
+    const grantedBy = req.user.id;
     const permission = await this.skillService.grantSkillToRole(skillId, body.roleId, grantedBy);
     return { permission };
   }
