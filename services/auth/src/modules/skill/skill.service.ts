@@ -21,9 +21,9 @@ const getAiOrchestratorUrl = () => {
     return process.env.AI_ORCHESTRATOR_URL;
   }
   if (process.env.DOCKER_ENV === 'true' || process.env.NODE_ENV === 'production') {
-    return 'http://ops-ai-orchestrator:3002';
+    return 'http://ops-ai-orchestrator:3007';  // Docker 中 ai-orchestrator 端口是 3007
   }
-  return 'http://localhost:3002';
+  return 'http://localhost:3007';
 };
 
 /**
