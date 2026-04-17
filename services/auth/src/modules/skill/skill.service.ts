@@ -658,6 +658,17 @@ ${skillsXml}
   }
 
   /**
+   * 获取所有角色列表（用于权限分配）
+   */
+  async listRoles(): Promise<{ id: string; name: string }[]> {
+    const roles = await this.prisma.role.findMany({
+      select: { id: true, name: true },
+      orderBy: { name: 'asc' },
+    });
+    return roles;
+  }
+
+  /**
    * 转换为DTO
    */
   private toDTO(skill: any): SkillConfigDTO {

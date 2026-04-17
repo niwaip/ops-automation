@@ -169,4 +169,14 @@ export class SkillController {
     const permissions = await this.skillService.getSkillPermissions(skillId);
     return { permissions };
   }
+
+  /**
+   * 获取所有角色列表（仅管理员，用于权限分配）
+   */
+  @Get('roles')
+  @Roles('admin')
+  async listRoles(): Promise<{ roles: { id: string; name: string }[] }> {
+    const roles = await this.skillService.listRoles();
+    return { roles };
+  }
 }

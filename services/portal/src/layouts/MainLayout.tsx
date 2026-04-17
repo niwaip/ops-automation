@@ -18,6 +18,7 @@ import {
   FilePdfOutlined,
   BarChartOutlined,
   FileWordOutlined,
+  ThunderboltOutlined,
 } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
 import { useAuthStore } from '../store/authStore';
@@ -95,6 +96,11 @@ const MainLayout: React.FC = () => {
                 icon: <SettingOutlined />,
                 label: t('models'),
               },
+              {
+                key: '/admin/skills',
+                icon: <ThunderboltOutlined />,
+                label: t('skills'),
+              },
             ],
           },
         ]
@@ -145,6 +151,7 @@ const MainLayout: React.FC = () => {
     if (path.startsWith('/carbone-templates')) return '/carbone-templates';
     if (path.startsWith('/admin/users')) return '/admin/users';
     if (path.startsWith('/admin/models')) return '/admin/models';
+    if (path.startsWith('/admin/skills')) return '/admin/skills';
     return path;
   };
 
