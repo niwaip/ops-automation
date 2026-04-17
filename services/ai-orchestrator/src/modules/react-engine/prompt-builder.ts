@@ -32,6 +32,16 @@ Final Answer: 最终回复
 - 参数必须是有效的JSON格式
 - 如果工具返回requiresUserInput，则等待用户回复
 - 不要在Thought中直接回答问题，必须通过工具执行
+- 不要重复调用同一个工具，除非用户提供了新信息
+
+工具使用流程：
+- 首次请求时，先调用 skill_match 匹配用户意图对应的技能
+- 如果 skill_match 返回的技能包含 carboneSkillId，则下一步必须调用 generate_parameters 工具
+- generate_parameters 使用 skillId (carboneSkillId) 和 userInput 从用户输入中提取参数
+- generate_parameters 成功后，下一步必须调用 document_render 工具生成文档
+- document_render 可以使用 generate_parameters 返回的 templateId 和 params
+- 如果技能没有 carboneSkillId，则使用 param_collect 手动收集参数
+- 任务完成后输出 Final Answer 包含文档下载链接
 `;
 
 const REACT_USER_PROMPT_TEMPLATE = `用户输入: {userInput}
@@ -54,10 +64,22 @@ export function buildSystemPrompt(
   // 如果有匹配的Skill，添加额外提示
   if (skill) {
     systemPrompt += `\n\n当前匹配的技能: ${skill.skillName}
+Carbone Skill ID: ${skill.carboneSkillId || '无'}
+Carbone Template ID: ${skill.carboneTemplateId || '无'}
 需要的参数: ${JSON.stringify(skill.paramsSchema.properties, null, 2)}
 已收集参数: ${JSON.stringify(skill.collectedParams, null, 2)}
 缺失参数: ${skill.missingParams.join(', ') || '无'}
 `;
+
+    // 如果有carboneSkillId，明确提示下一步使用generate_parameters
+    if (skill.carboneSkillId) {
+      systemPrompt += `\n重要提示：此技能已配置Carbone AI参数生成，下一步必须调用 generate_parameters 工具，参数为:
+{
+  "skillId": "${skill.carboneSkillId}",
+  "userInput": "用户的完整输入文本"
+}
+不要调用 param_collect，直接使用 generate_parameters 从用户输入中提取参数。`;
+    }
   }
 
   return systemPrompt;

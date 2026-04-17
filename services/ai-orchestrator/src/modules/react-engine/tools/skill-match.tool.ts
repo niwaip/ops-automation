@@ -72,12 +72,24 @@ export class SkillMatchTool extends BaseTool {
         // 更新context中的skill信息
         context.skill = matchResult;
 
+        // 构建输出信息
+        let outputMsg = `成功匹配技能: ${matchResult.skillName} (置信度: ${matchResult.confidence.toFixed(2)}, 关键词: ${matchResult.matchedKeywords.join(', ')})`;
+
+        // 如果有Carbone配置，提示下一步
+        if (matchResult.carboneSkillId) {
+          outputMsg += `\n此技能已配置Carbone AI参数生成，下一步请调用 generate_parameters 工具。
+Carbone Skill ID: ${matchResult.carboneSkillId}
+Carbone Template ID: ${matchResult.carboneTemplateId || '无'}
+调用参数: {"skillId": "${matchResult.carboneSkillId}", "userInput": "${userInput}"}`;
+        }
+
         return {
           success: true,
-          output: `成功匹配技能: ${matchResult.skillName} (置信度: ${matchResult.confidence.toFixed(2)}, 关键词: ${matchResult.matchedKeywords.join(', ')})`,
+          output: outputMsg,
           data: {
             skill: matchResult,
             needsSkillMatch: false,
+            useCarbone: !!matchResult.carboneSkillId,
           },
         };
       }

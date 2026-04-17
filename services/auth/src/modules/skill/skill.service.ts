@@ -66,8 +66,22 @@ const DEFAULT_SKILLS: CreateSkillDTO[] = [
       required: ['甲方名称', '乙方名称', '签订日期'],
     },
     templateId: 'nda-template',
-    executionFlow: ['collect_params', 'confirm', 'render'],
-    tools: ['param_collect', 'user_ask', 'document_generate'],
+    carboneTemplateId: '48cd5507-fb0c-43f4-b3e2-d1bb19cb75ab',
+    carboneSkillId: '8865ae32-23b0-4548-b136-44ee99b53e22',
+    apiEndpoints: {
+      generateParameters: {
+        url: '/studio/generate-parameters',
+        method: 'POST',
+        description: '使用AI从用户输入生成模板参数',
+      },
+      render: {
+        url: '/studio/render',
+        method: 'POST',
+        description: '渲染模板生成文档',
+      },
+    },
+    executionFlow: ['skill_match', 'generate_parameters', 'confirm', 'document_render'],
+    tools: ['skill_match', 'generate_parameters', 'user_ask', 'document_render'],
   },
   {
     name: '劳动合同生成',
@@ -172,6 +186,9 @@ export class SkillService implements OnModuleInit {
         triggerKeywords: dto.triggerKeywords,
         paramsSchema: dto.paramsSchema as any,  // Cast to JSON for Prisma
         templateId: dto.templateId,
+        carboneTemplateId: dto.carboneTemplateId,
+        carboneSkillId: dto.carboneSkillId,
+        apiEndpoints: dto.apiEndpoints as any,
         executionFlow: dto.executionFlow || [],
         tools: dto.tools || [],
         isActive: true,
@@ -217,6 +234,9 @@ export class SkillService implements OnModuleInit {
         triggerKeywords: dto.triggerKeywords,
         paramsSchema: dto.paramsSchema as any,  // Cast to JSON for Prisma
         templateId: dto.templateId,
+        carboneTemplateId: dto.carboneTemplateId,
+        carboneSkillId: dto.carboneSkillId,
+        apiEndpoints: dto.apiEndpoints as any,
         executionFlow: dto.executionFlow,
         tools: dto.tools,
       },
@@ -279,6 +299,9 @@ export class SkillService implements OnModuleInit {
         missingParams: bestMatch.paramsSchema.required,
         paramsSchema: bestMatch.paramsSchema,
         templateId: bestMatch.templateId,
+        carboneTemplateId: bestMatch.carboneTemplateId,
+        carboneSkillId: bestMatch.carboneSkillId,
+        apiEndpoints: bestMatch.apiEndpoints,
       };
     }
 
@@ -305,6 +328,9 @@ export class SkillService implements OnModuleInit {
       triggerKeywords: skill.triggerKeywords,
       paramsSchema: skill.paramsSchema,
       templateId: skill.templateId,
+      carboneTemplateId: skill.carboneTemplateId,
+      carboneSkillId: skill.carboneSkillId,
+      apiEndpoints: skill.apiEndpoints,
       executionFlow: skill.executionFlow,
       tools: skill.tools,
       isActive: skill.isActive,

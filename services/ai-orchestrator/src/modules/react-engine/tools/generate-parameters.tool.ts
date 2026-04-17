@@ -45,7 +45,11 @@ export class GenerateParametersTool extends BaseTool {
   ): Promise<ToolResult> {
     const skillId = params.skillId as string;
     const userInput = params.userInput as string;
-    const templateId = params.templateId as string | undefined;
+    // 获取templateId：优先使用传入的，其次从context.skill获取
+    let templateId = params.templateId as string | undefined;
+    if (!templateId && context.skill?.carboneTemplateId) {
+      templateId = context.skill.carboneTemplateId;
+    }
 
     try {
       // 调用Carbone引擎的generate-parameters API
@@ -57,8 +61,53 @@ export class GenerateParametersTool extends BaseTool {
 
       const generatedData = response.data;
 
-      if (generatedData && generatedData.data) {
+      // Carbone API返回格式: {success: true, generatedData: {...}}
+      if (generatedData && generatedData.success && generatedData.generatedData) {
         // 更新context中的参数
+        context.collectedParams = generatedData.generatedData;
+
+        const extractedParams = generatedData.generatedData;
+        // 再次尝试获取templateId：API返回 > 传入参数 > context.skill
+        let extractedTemplateId = generatedData.templateId;
+        if (!extractedTemplateId) {
+          extractedTemplateId = templateId;
+        }
+        if (!extractedTemplateId && context.skill?.carboneTemplateId) {
+          extractedTemplateId = context.skill.carboneTemplateId;
+        }
+        const paramCount = Object.keys(extractedParams).length;
+
+        return {
+          success: true,
+          output: `参数生成成功！已从用户输入中提取 ${paramCount} 个参数：
+${JSON.stringify(extractedParams, null, 2)}
+
+模板ID: ${extractedTemplateId || '未指定'}
+
+【下一步操作】请立即调用 document_render 工具生成文档，参数如下：
+{
+  "templateId": "${extractedTemplateId}",
+  "data": ${JSON.stringify(extractedParams)}
+}
+
+或者等待用户确认后再调用 document_render。`,
+          data: {
+            params: extractedParams,
+            skillId,
+            templateId: extractedTemplateId,
+            readyForRender: true,
+          },
+          // 强制下一步调用 document_render
+          nextAction: 'document_render',
+          nextActionParams: {
+            templateId: extractedTemplateId,
+            data: extractedParams,
+          },
+        };
+      }
+
+      // 兼容旧格式
+      if (generatedData && generatedData.data) {
         context.collectedParams = generatedData.data;
 
         return {
@@ -75,7 +124,7 @@ export class GenerateParametersTool extends BaseTool {
       return {
         success: false,
         output: '参数生成失败，未能提取有效参数',
-        data: { error: 'no_data_generated' },
+        data: { error: 'no_data_generated', response: generatedData },
       };
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : 'Unknown error';

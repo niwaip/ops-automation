@@ -77,6 +77,8 @@ export interface ToolResult {
   data?: Record<string, unknown>;
   requiresUserInput?: boolean;
   userInputPrompt?: string;
+  nextAction?: string;           // 建议下一步调用的工具
+  nextActionParams?: Record<string, unknown>;  // 下一步工具的参数
 }
 
 /**
@@ -89,6 +91,9 @@ export interface ExecutionContext {
   currentThought?: string;
   skill?: SkillMatchResult;
   uploadedFiles?: UploadedFile[];
+  collectedParams?: Record<string, unknown>;  // 已收集的参数
+  nextAction?: string;            // 工具返回的下一步动作提示
+  nextActionParams?: Record<string, unknown>;  // 下一步动作的参数
 }
 
 /**
@@ -102,6 +107,15 @@ export interface ChatMessage {
 }
 
 /**
+ * API端点配置
+ */
+export interface ApiEndpoint {
+  url: string;
+  method: 'GET' | 'POST' | 'PUT' | 'DELETE';
+  description: string;
+}
+
+/**
  * Skill匹配结果
  */
 export interface SkillMatchResult {
@@ -112,6 +126,14 @@ export interface SkillMatchResult {
   collectedParams: Record<string, unknown>;
   missingParams: string[];
   paramsSchema: ParamsSchema;
+  templateId?: string;
+  carboneTemplateId?: string;  // Carbone引擎的模板ID
+  carboneSkillId?: string;      // Carbone引擎的Skill ID
+  apiEndpoints?: {
+    generateParameters?: ApiEndpoint;  // 参数生成API
+    render?: ApiEndpoint;              // 文档渲染API
+    getSkill?: ApiEndpoint;            // 获取Skill信息API
+  };
 }
 
 /**

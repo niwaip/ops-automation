@@ -30,7 +30,7 @@ import {
 const DEFAULT_CONFIG: ReActConfig = {
   maxIterations: 5,
   modelId: 'default',
-  tools: ['skill_match', 'param_collect', 'document_generate', 'user_ask', 'file_parse'],
+  tools: ['skill_match', 'generate_parameters', 'document_render', 'param_collect', 'user_ask', 'file_parse'],
 };
 
 @Injectable()
@@ -78,10 +78,44 @@ export class ReActEngineService {
 
       this.logger.debug(`ReAct iteration ${state.iteration}/${state.maxIterations}`);
 
-      // 1. 构建提示词并调用AI获取Thought和Action
+      // 1. 检查是否有工具返回的nextAction提示，如果有则跳过AI决策直接执行
+      if (context.nextAction) {
+        state.action = context.nextAction;
+        state.actionInput = context.nextActionParams || {};
+        state.thought = `根据工具返回的提示，执行下一步: ${context.nextAction}`;
+        context.nextAction = undefined;  // 清除提示
+        context.nextActionParams = undefined;
+
+        // 发送thought事件
+        yield {
+          type: StreamEventType.THOUGHT,
+          content: state.thought,
+          iteration: state.iteration,
+        };
+
+        // 发送action事件
+        yield {
+          type: StreamEventType.ACTION,
+          content: state.action,
+          data: { actionInput: state.actionInput },
+          iteration: state.iteration,
+        };
+
+        // 直接执行Action，跳过AI决策
+        yield* this.executeAction(state, context);
+
+        // 检查是否完成
+        if (state.action === 'finish' || state.isFinished) {
+          yield this.createResultEvent(state);
+          break;
+        }
+        continue;  // 继续下一轮
+      }
+
+      // 2. 构建提示词并调用AI获取Thought和Action
       yield* this.generateThoughtAndAction(state, context, messages, tools, config);
 
-      // 2. 执行Action
+      // 3. 执行Action
       if (state.action && state.action !== 'finish') {
         yield* this.executeAction(state, context);
       }
@@ -141,7 +175,7 @@ export class ReActEngineService {
     );
 
     // 调用AI模型（流式）
-    const client = this.modelService.getClient(config.modelId);
+    const client = this.modelService.getClientByModelId(config.modelId);
     if (!client) {
       yield {
         type: StreamEventType.ERROR,
@@ -233,6 +267,12 @@ export class ReActEngineService {
     // 更新context中的skill信息
     if (event.data?.result?.data?.skill) {
       context.skill = event.data.result.data.skill as SkillMatchResult;
+    }
+
+    // 检查是否有nextAction提示
+    if (event.data?.result?.nextAction) {
+      context.nextAction = event.data.result.nextAction as string;
+      context.nextActionParams = event.data.result.nextActionParams as Record<string, unknown>;
     }
 
     // 检查是否参数确认场景

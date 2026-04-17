@@ -14,7 +14,7 @@ export class DocumentRenderTool extends BaseTool {
   constructor() {
     super(
       'document_render',
-      '渲染模板生成最终文档。调用Carbone引擎的render API，使用参数数据生成文档文件。',
+      '渲染模板生成最终文档。调用Carbone引擎的render API生成文档文件。可以接收templateId和data参数，或直接使用上下文中的collectedParams和carboneTemplateId。',
       {
         type: 'object',
         properties: {
@@ -43,9 +43,26 @@ export class DocumentRenderTool extends BaseTool {
     params: Record<string, unknown>,
     context: ExecutionContext,
   ): Promise<ToolResult> {
-    const templateId = params.templateId as string;
-    const data = params.data as Record<string, unknown>;
+    // 优先从params获取，如果没有则从context获取
+    let templateId = params.templateId as string | undefined;
+    let data = params.data as Record<string, unknown> | undefined;
     const format = (params.format as string) || 'docx';
+
+    // 如果params中没有提供，从context中获取
+    if (!data && context.collectedParams) {
+      data = context.collectedParams;
+    }
+    if (!templateId && context.skill?.carboneTemplateId) {
+      templateId = context.skill.carboneTemplateId;
+    }
+
+    if (!templateId || !data) {
+      return {
+        success: false,
+        output: '缺少必要参数：需要提供templateId和data，或者先执行参数收集步骤',
+        data: { error: 'missing_params' },
+      };
+    }
 
     try {
       // 调用Carbone引擎的render API
@@ -57,8 +74,24 @@ export class DocumentRenderTool extends BaseTool {
 
       const renderResult = response.data;
 
+      // Carbone API返回格式: {downloadUrl, fileName, format}
+      if (renderResult && renderResult.downloadUrl) {
+        // 构建完整下载链接
+        const fullDownloadUrl = `${CARBONE_SERVICE_URL}${renderResult.downloadUrl}`;
+
+        return {
+          success: true,
+          output: `文档生成成功！\n文件名: ${renderResult.fileName}\n下载链接: ${fullDownloadUrl}`,
+          data: {
+            fileName: renderResult.fileName,
+            downloadUrl: fullDownloadUrl,
+            format: renderResult.format || format,
+          },
+        };
+      }
+
+      // 兼容旧格式 {documentId}
       if (renderResult && renderResult.documentId) {
-        // 构建下载链接
         const downloadUrl = `${CARBONE_SERVICE_URL}/studio/download/${renderResult.documentId}`;
 
         return {
@@ -75,7 +108,7 @@ export class DocumentRenderTool extends BaseTool {
       return {
         success: false,
         output: '文档渲染失败',
-        data: { error: 'render_failed' },
+        data: { error: 'render_failed', response: renderResult },
       };
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : 'Unknown error';

@@ -88,18 +88,21 @@ model UserRole {
 
 // Skill Configuration Table
 model SkillConfig {
-  id              String   @id @default(uuid()) @db.Uuid
-  name            String   @unique @db.VarChar(255)
-  description     String?  @db.VarChar(500)
-  category        String   @default("template") @db.VarChar(50) // template | query | action
-  triggerKeywords Json     @default("[]") @map("trigger_keywords")
-  paramsSchema    Json     @default("{}") @map("params_schema")
-  templateId      String?  @map("template_id") @db.VarChar(255)
-  executionFlow   Json     @default("[]") @map("execution_flow")
-  tools           Json     @default("[]")
-  isActive        Boolean  @default(true) @map("is_active")
-  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz
-  updatedAt       DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+  id                String   @id @default(uuid()) @db.Uuid
+  name              String   @unique @db.VarChar(255)
+  description       String?  @db.VarChar(500)
+  category          String   @default("template") @db.VarChar(50) // template | query | action
+  triggerKeywords   Json     @default("[]") @map("trigger_keywords")
+  paramsSchema      Json     @default("{}") @map("params_schema")
+  templateId        String?  @map("template_id") @db.VarChar(255)
+  carboneTemplateId String?  @map("carbone_template_id") @db.VarChar(255)
+  carboneSkillId    String?  @map("carbone_skill_id") @db.VarChar(255)
+  apiEndpoints      Json?    @map("api_endpoints")
+  executionFlow     Json     @default("[]") @map("execution_flow")
+  tools             Json     @default("[]")
+  isActive          Boolean  @default(true) @map("is_active")
+  createdAt         DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt         DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
 
   @@index([name])
   @@index([category])
