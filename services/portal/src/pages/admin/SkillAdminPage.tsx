@@ -12,11 +12,13 @@ import {
   ApiOutlined,
   RocketOutlined,
   FileTextOutlined,
+  OrderedListOutlined,
 } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
 import { useQuery, useMutation, useQueryClient } from 'react-query';
 import { skillApi, roleApi, SkillConfigDTO, SkillPermissionDTO, RoleDTO, CreateSkillDTO } from '../../api/skill';
 import { carboneApi, CarboneTemplateDTO } from '../../api/carbone';
+import { executionFlowApi, ExecutionFlowTemplateDTO } from '../../api/execution-flow';
 import type { ColumnsType } from 'antd/es/table';
 
 const { Title, Text } = Typography;
@@ -59,6 +61,7 @@ const SkillAdminPage: React.FC = () => {
   const skillsQuery = useQuery(['skills'], skillApi.list);
   const rolesQuery = useQuery(['roles'], roleApi.list);
   const templatesQuery = useQuery(['carbone-templates'], carboneApi.list);
+  const executionFlowTemplatesQuery = useQuery(['execution-flow-templates'], () => executionFlowApi.list({ isActive: true }));
   const permissionsQuery = useQuery(
     ['skill-permissions', selectedSkill?.id],
     () => skillApi.getPermissions(selectedSkill!.id),
@@ -494,6 +497,12 @@ const SkillAdminPage: React.FC = () => {
             >
               模板管理
             </Button>
+            <Button
+              icon={<OrderedListOutlined />}
+              onClick={() => window.location.href = '/admin/execution-flows'}
+            >
+              流程模板
+            </Button>
           </Space>
           <Space>
             <Button
@@ -666,9 +675,40 @@ const SkillAdminPage: React.FC = () => {
             </Select>
           </Form.Item>
           <Form.Item
+            name="executionFlowTemplateId"
+            label="流程模板"
+            extra="选择预设流程模板，自动填充执行步骤"
+          >
+            <Select
+              placeholder="选择流程模板"
+              allowClear
+              showSearch
+              loading={executionFlowTemplatesQuery.isLoading}
+              onChange={(value) => {
+                if (value) {
+                  const template = executionFlowTemplatesQuery.data?.templates?.find(t => t.id === value);
+                  if (template && template.executionFlowKeys) {
+                    form.setFieldsValue({ executionFlow: template.executionFlowKeys });
+                    message.success(`已应用模板 "${template.name}" 的执行步骤`);
+                  }
+                }
+              }}
+            >
+              {executionFlowTemplatesQuery.data?.templates?.map((template) => (
+                <Option key={template.id} value={template.id}>
+                  <Space>
+                    <OrderedListOutlined />
+                    <Text>{template.name}</Text>
+                    <Badge count={template.steps?.length || 0} showZero style={{ marginLeft: 8 }} />
+                  </Space>
+                </Option>
+              ))}
+            </Select>
+          </Form.Item>
+          <Form.Item
             name="executionFlow"
             label="执行流程"
-            extra="选择执行步骤顺序（从上到下执行）"
+            extra="选择执行步骤顺序（从上到下执行），或先选择流程模板自动填充"
           >
             <Select
               mode="multiple"

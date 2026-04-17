@@ -9,7 +9,7 @@ import {
   InfoCircleOutlined, ThunderboltOutlined, ApiOutlined, RocketOutlined,
   FileTextOutlined, CodeOutlined, ToolOutlined, CheckCircleOutlined, WarningOutlined,
   CopyOutlined, ExportOutlined, ImportOutlined, DownloadOutlined, UploadOutlined,
-  PlayCircleOutlined, EyeOutlined, SettingOutlined, BranchOutlined, OrderedListOutlined,
+  PlayCircleOutlined, EyeOutlined, SettingOutlined, ArrowUpOutlined, ArrowDownOutlined, OrderedListOutlined,
 } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
 import { useQuery, useMutation, useQueryClient } from 'react-query';
@@ -494,12 +494,12 @@ const ExecutionFlowTemplatePage: React.FC = () => {
                         unCheckedChildren="必选"
                       />
                       <Button
-                        icon={<BranchOutlined />}
+                        icon={<ArrowUpOutlined />}
                         onClick={() => handleMoveStep(index, 'up')}
                         disabled={index === 0}
                       />
                       <Button
-                        icon={<BranchOutlined />}
+                        icon={<ArrowDownOutlined />}
                         onClick={() => handleMoveStep(index, 'down')}
                         disabled={index === currentSteps.length - 1}
                       />
