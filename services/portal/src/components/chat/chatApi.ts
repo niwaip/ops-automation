@@ -9,23 +9,6 @@ import { StreamEvent, StreamEventType, ChatRequest, AIModel, UploadedFile } from
 const AI_API_BASE = '/api/ai';
 
 /**
- * 读取文件内容为base64
- */
-async function readFileAsBase64(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => {
-      const result = reader.result as string;
-      // 去掉data:xxx;base64,前缀
-      const base64 = result.split(',')[1];
-      resolve(base64);
-    };
-    reader.onerror = reject;
-    reader.readAsDataURL(file);
-  });
-}
-
-/**
  * 流式聊天
  */
 export async function streamChat(
@@ -35,29 +18,13 @@ export async function streamChat(
   onComplete?: () => void,
 ): Promise<void> {
   try {
-    // 处理文件：如果有原始File对象，读取内容转为base64
-    const filesWithContent = await Promise.all(
-      (request.files || []).map(async (f) => {
-        if (f.file && !f.content) {
-          // 读取文件内容
-          const content = await readFileAsBase64(f.file);
-          return {
-            fileId: f.fileId,
-            fileName: f.fileName,
-            mimeType: f.mimeType,
-            size: f.size,
-            content,
-          };
-        }
-        return {
-          fileId: f.fileId,
-          fileName: f.fileName,
-          mimeType: f.mimeType,
-          size: f.size,
-          content: f.content,
-        };
-      })
-    );
+    // 文件信息只发送元数据（fileId等），内容已在上传时保存到后端
+    const filesMetadata = (request.files || []).map((f) => ({
+      fileId: f.fileId,
+      fileName: f.fileName,
+      mimeType: f.mimeType,
+      size: f.size,
+    }));
 
     const response = await fetch(`${AI_API_BASE}/chat/stream`, {
       method: 'POST',
@@ -68,7 +35,7 @@ export async function streamChat(
         message: request.message,
         sessionId: request.sessionId,
         modelId: request.modelId,
-        files: filesWithContent,
+        files: filesMetadata,
         config: request.config, // 包含mode等配置
       }),
     });

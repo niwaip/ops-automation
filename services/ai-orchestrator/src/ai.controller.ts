@@ -19,6 +19,9 @@ import {
 } from './interfaces';
 import { ChatRequestDTO, StreamEvent, ExecutionContext } from './modules/react-engine/interfaces';
 
+// 内存文件存储（生产环境应使用持久化存储）
+const fileStore = new Map<string, { fileName: string; mimeType: string; size: number; content: string }>();
+
 @ApiTags('AI')
 @Controller('ai')
 export class AIController {
@@ -263,24 +266,28 @@ export class AIController {
         // 构建消息内容，包含文件内容
         let messageContent = body.message;
 
-        // 如果有文件，解码base64内容并添加到消息中
+        // 如果有文件，从存储中获取内容
         if (body.files && body.files.length > 0) {
           const fileContents: string[] = [];
           for (const file of body.files) {
-            if (file.content) {
-              // 解码base64内容
+            // 从存储获取文件内容
+            const storedFile = fileStore.get(file.fileId);
+            if (storedFile && storedFile.content) {
               try {
-                const decodedContent = Buffer.from(file.content, 'base64').toString('utf-8');
-                fileContents.push(`【文件: ${file.fileName}】\n${decodedContent}`);
+                // 解码base64内容
+                const decodedContent = Buffer.from(storedFile.content, 'base64').toString('utf-8');
+                fileContents.push(`【文件: ${storedFile.fileName}】\n${decodedContent}`);
               } catch (e) {
-                // 如果解码失败，可能是二进制文件，提示文件信息
-                fileContents.push(`【文件: ${file.fileName} (类型: ${file.mimeType}, 大小: ${file.size}字节)】\n(二进制文件，无法直接显示内容)`);
+                // 如果解码失败，可能是二进制文件
+                fileContents.push(`【文件: ${storedFile.fileName} (类型: ${storedFile.mimeType}, 大小: ${storedFile.size}字节)】\n(二进制文件，无法直接显示内容)`);
               }
             } else {
-              fileContents.push(`【文件: ${file.fileName} (类型: ${file.mimeType}, 大小: ${file.size}字节)】\n(文件内容未上传)`);
+              fileContents.push(`【文件: ${file.fileName} (类型: ${file.mimeType}, 大小: ${file.size}字节)】\n(文件内容未找到，可能已过期)`);
             }
           }
-          messageContent = `${messageContent}\n\n以下是用户上传的文件内容：\n${fileContents.join('\n\n')}`;
+          if (fileContents.length > 0) {
+            messageContent = `${messageContent}\n\n以下是用户上传的文件内容：\n${fileContents.join('\n\n')}`;
+          }
         }
 
         // 流式调用模型
@@ -360,9 +367,20 @@ export class AIController {
     // Generate a unique file ID
     const fileId = `file-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 
-    // In production, you would save the file to storage (S3, local disk, etc.)
-    // For now, we just return metadata - the actual file content can be accessed
-    // via the buffer in memory for this request
+    // 保存文件内容到内存存储（base64编码）
+    const content = file.buffer.toString('base64');
+    fileStore.set(fileId, {
+      fileName: file.originalname,
+      mimeType: file.mimetype,
+      size: file.size,
+      content,
+    });
+
+    // 清理旧文件（保留最近100个）
+    if (fileStore.size > 100) {
+      const keys = Array.from(fileStore.keys());
+      keys.slice(0, keys.length - 100).forEach(key => fileStore.delete(key));
+    }
 
     return {
       fileId,
