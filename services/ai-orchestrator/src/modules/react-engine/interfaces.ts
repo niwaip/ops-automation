@@ -134,6 +134,7 @@ export interface SkillMatchResult {
     render?: ApiEndpoint;              // 文档渲染API
     getSkill?: ApiEndpoint;            // 获取Skill信息API
   };
+  matchReason?: string;  // AI语义匹配原因
 }
 
 /**

@@ -89,4 +89,34 @@ export interface SkillMatchResult {
     render?: ApiEndpoint;
     getSkill?: ApiEndpoint;
   };
+  // 新增：AI 匹配原因
+  matchReason?: string;
+}
+
+/**
+ * Skill 权限 DTO
+ */
+export interface SkillPermissionDTO {
+  skillId: string;
+  skillName: string;
+  roleId: string;
+  roleName: string;
+  grantedAt: Date;
+  grantedBy?: string;
+}
+
+/**
+ * 授权 Skill 给角色 DTO
+ */
+export interface GrantSkillDTO {
+  roleId: string;
+}
+
+/**
+ * AI 匹配响应
+ */
+export interface AIMatchResponse {
+  matchedSkill: string;
+  confidence: number;
+  reason: string;
 }

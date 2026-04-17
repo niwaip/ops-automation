@@ -43,6 +43,28 @@ export class AIController {
     return { models };
   }
 
+  // Model call endpoint - for AI semantic matching
+  @Post('model/call')
+  @ApiOperation({ summary: 'Call AI model with a prompt (for skill matching)' })
+  @ApiResponse({ status: 200, description: 'Returns model response' })
+  @ApiResponse({ status: 404, description: 'Model not found or not initialized' })
+  async callModel(@Body() body: { modelId: string; prompt: string }): Promise<{ result: string }> {
+    const modelId = body.modelId || 'default';
+    const client = this.modelService.getClientByModelId(modelId);
+
+    if (!client) {
+      throw new HttpException(`Model ${modelId} not found or not initialized`, HttpStatus.NOT_FOUND);
+    }
+
+    try {
+      const result = await this.modelService.callModel(modelId, body.prompt);
+      return { result };
+    } catch (error: unknown) {
+      const errorMsg = error instanceof Error ? error.message : 'Unknown error';
+      throw new HttpException(`Model call failed: ${errorMsg}`, HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+  }
+
   @Get('models/presets')
   @ApiOperation({ summary: 'List all available preset model configurations' })
   @ApiResponse({ status: 200, description: 'Returns list of preset models with configuration status' })

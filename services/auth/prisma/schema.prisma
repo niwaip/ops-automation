@@ -63,6 +63,7 @@ model Role {
 
   // Relations
   userRoles   UserRole[]
+  skillPermissions SkillPermission[] // Skills granted to this role
 
   @@index([name])
   @@index([permissions])
@@ -104,10 +105,29 @@ model SkillConfig {
   createdAt         DateTime @default(now()) @map("created_at") @db.Timestamptz
   updatedAt         DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
 
+  // Relations
+  permissions       SkillPermission[] // Roles granted access to this skill
+
   @@index([name])
   @@index([category])
   @@index([isActive])
   @@map("skill_configs")
+}
+
+// Skill Permission Table - Controls which roles can use which skills
+model SkillPermission {
+  skillId    String   @map("skill_id") @db.Uuid
+  roleId     String   @map("role_id") @db.Uuid
+  grantedAt  DateTime @default(now()) @map("granted_at") @db.Timestamptz
+  grantedBy  String?  @map("granted_by") @db.Uuid
+
+  skill      SkillConfig @relation(fields: [skillId], references: [id], onDelete: Cascade)
+  role       Role        @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  @@id([skillId, roleId])
+  @@index([skillId])
+  @@index([roleId])
+  @@map("skill_permissions")
 }
 
 // Chat Session Table
