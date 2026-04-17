@@ -47,11 +47,6 @@
   padding: 40px;
 }
 
-/* 模式切换按钮 */
-.chat-mode-switch {
-  margin-right: 12px;
-}
-
 /* 流式输出指示器 */
 .chat-streaming-indicator {
   display: inline-block;

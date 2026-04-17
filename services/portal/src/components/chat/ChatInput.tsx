@@ -1,11 +1,11 @@
 /**
  * ChatInput
- * 聊天输入框组件
+ * 聊天输入框组件 - 包含模式切换
  */
 
 import React, { useState, useRef } from 'react';
-import { Input, Button, Upload, Space, Tag } from 'antd';
-import { SendOutlined, PaperClipOutlined, DeleteOutlined } from '@ant-design/icons';
+import { Input, Button, Upload, Space, Tag, Tooltip } from 'antd';
+import { SendOutlined, PaperClipOutlined, MessageOutlined, RobotOutlined } from '@ant-design/icons';
 import { RcFile } from 'antd/es/upload';
 import { UploadedFile } from './types';
 import { uploadFile } from './chatApi';
@@ -27,7 +27,7 @@ const ChatInput: React.FC<ChatInputProps> = ({
   const [uploading, setUploading] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const { addUploadedFile, removeUploadedFile } = useChatStore();
+  const { addUploadedFile, removeUploadedFile, chatMode, setChatMode } = useChatStore();
 
   // 发送消息
   const handleSend = () => {
@@ -57,6 +57,11 @@ const ChatInput: React.FC<ChatInputProps> = ({
       e.preventDefault();
       handleSend();
     }
+  };
+
+  // 切换模式
+  const toggleMode = () => {
+    setChatMode(chatMode === 'chat' ? 'task' : 'chat');
   };
 
   return (
@@ -107,6 +112,17 @@ const ChatInput: React.FC<ChatInputProps> = ({
           />
         </Upload>
 
+        {/* 模式切换按钮 */}
+        <Tooltip title={chatMode === 'chat' ? '切换到任务模式' : '切换到聊天模式'}>
+          <Button
+            type="text"
+            icon={chatMode === 'chat' ? <MessageOutlined /> : <RobotOutlined />}
+            onClick={toggleMode}
+            disabled={disabled}
+            className={`chat-mode-btn ${chatMode === 'task' ? 'active' : ''}`}
+          />
+        </Tooltip>
+
         {/* 发送按钮 */}
         <Button
           type="primary"
@@ -115,6 +131,11 @@ const ChatInput: React.FC<ChatInputProps> = ({
           disabled={disabled || (!message.trim() && uploadedFiles.length === 0)}
           loading={disabled}
         />
+      </div>
+
+      {/* 模式指示器 */}
+      <div className="chat-mode-indicator">
+        {chatMode === 'chat' ? '💬 聊天模式' : '🤖 任务模式'}
       </div>
     </div>
   );

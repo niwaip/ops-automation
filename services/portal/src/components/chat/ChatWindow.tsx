@@ -4,8 +4,8 @@
  */
 
 import React, { useEffect, useRef, useState } from 'react';
-import { Card, Spin, Select, Space, Button, Switch, Tooltip } from 'antd';
-import { CloseOutlined, PlusOutlined, RobotOutlined, MessageOutlined } from '@ant-design/icons';
+import { Card, Spin, Select, Space, Button } from 'antd';
+import { CloseOutlined, PlusOutlined } from '@ant-design/icons';
 import { useChatStore } from './chatStore';
 import ChatMessage from './ChatMessage';
 import ChatInput from './ChatInput';
@@ -38,7 +38,6 @@ const ChatWindow: React.FC = () => {
     setPendingParamsConfirm,
     confirmParams,
     clearUploadedFiles,
-    setChatMode,
   } = useChatStore();
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -169,11 +168,6 @@ const ChatWindow: React.FC = () => {
     setPendingParamsConfirm(null, null);
   };
 
-  // 模式切换处理
-  const handleModeChange = (checked: boolean) => {
-    setChatMode(checked ? 'task' : 'chat');
-  };
-
   return (
     <div className="chat-window-container">
       <Card
@@ -181,19 +175,6 @@ const ChatWindow: React.FC = () => {
         title={
           <Space className="chat-window-header">
             <span style={{ fontWeight: 600 }}>AI助手</span>
-
-            {/* 模式切换 */}
-            <Tooltip title={chatMode === 'chat' ? '普通聊天模式' : '任务模式(ReAct引擎)'}>
-              <Space size={4} className="chat-mode-switch">
-                <MessageOutlined style={{ color: chatMode === 'chat' ? '#1890ff' : '#999' }} />
-                <Switch
-                  size="small"
-                  checked={chatMode === 'task'}
-                  onChange={handleModeChange}
-                />
-                <RobotOutlined style={{ color: chatMode === 'task' ? '#52c41a' : '#999' }} />
-              </Space>
-            </Tooltip>
 
             {/* 模型选择 */}
             <Select
