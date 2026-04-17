@@ -11,6 +11,8 @@
   "admin": "システム管理",
   "users": "ユーザー管理",
   "models": "モデル管理",
+  "skills": "スキル管理",
+  "executionFlows": "フローテンプレート",
   "logout": "ログアウト",
   "profile": "プロフィール",
   "settings": "設定",

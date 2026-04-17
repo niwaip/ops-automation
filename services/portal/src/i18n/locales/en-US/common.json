@@ -12,6 +12,7 @@
   "users": "User Management",
   "models": "Model Management",
   "skills": "Skill Management",
+  "executionFlows": "Flow Templates",
   "logout": "Logout",
   "profile": "Profile",
   "settings": "Settings",

@@ -83,6 +83,11 @@ export default defineConfig({
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/api\/carbone/, '/studio'),
       },
+      '/api/execution-flow-templates': {
+        target: getProxyTarget('ops-auth', 3001),
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api/, ''),
+      },
     },
   },
   build: {

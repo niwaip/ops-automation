@@ -19,6 +19,7 @@ import {
   BarChartOutlined,
   FileWordOutlined,
   ThunderboltOutlined,
+  OrderedListOutlined,
 } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
 import { useAuthStore } from '../store/authStore';
@@ -101,6 +102,11 @@ const MainLayout: React.FC = () => {
                 icon: <ThunderboltOutlined />,
                 label: t('skills'),
               },
+              {
+                key: '/admin/execution-flows',
+                icon: <OrderedListOutlined />,
+                label: t('executionFlows'),
+              },
             ],
           },
         ]
@@ -152,6 +158,7 @@ const MainLayout: React.FC = () => {
     if (path.startsWith('/admin/users')) return '/admin/users';
     if (path.startsWith('/admin/models')) return '/admin/models';
     if (path.startsWith('/admin/skills')) return '/admin/skills';
+    if (path.startsWith('/admin/execution-flows')) return '/admin/execution-flows';
     return path;
   };
 
