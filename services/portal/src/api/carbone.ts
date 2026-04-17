@@ -20,7 +20,7 @@ export interface CarboneTemplateDTO {
 // Carbone API for Skills page (uses portal proxy)
 export const carboneApi = {
   list: async (): Promise<{ templates: CarboneTemplateDTO[] }> => {
-    // Use portal proxy: /api/carbone -> carbone-engine:3009
+    // Use portal proxy: /api/carbone -> carbone-engine:3009/studio
     return apiClient.get<{ templates: CarboneTemplateDTO[] }>('/carbone/templates');
   },
 

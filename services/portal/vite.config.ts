@@ -81,7 +81,7 @@ export default defineConfig({
       '/api/carbone': {
         target: getProxyTarget('carbone-engine', 3009),
         changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/api/, ''),
+        rewrite: (path) => path.replace(/^\/api\/carbone/, '/studio'),
       },
     },
   },

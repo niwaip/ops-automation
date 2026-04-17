@@ -36,6 +36,17 @@ export class SkillController {
   constructor(private readonly skillService: SkillService) {}
 
   /**
+   * 获取所有角色列表（仅管理员，用于权限分配）
+   * 注意：静态路由必须放在动态路由（:id）之前
+   */
+  @Get('roles')
+  @Roles('admin')
+  async listRoles(): Promise<{ roles: { id: string; name: string }[] }> {
+    const roles = await this.skillService.listRoles();
+    return { roles };
+  }
+
+  /**
    * 获取用户可访问的 Skills
    */
   @Get()
@@ -168,15 +179,5 @@ export class SkillController {
   ): Promise<{ permissions: SkillPermissionDTO[] }> {
     const permissions = await this.skillService.getSkillPermissions(skillId);
     return { permissions };
-  }
-
-  /**
-   * 获取所有角色列表（仅管理员，用于权限分配）
-   */
-  @Get('roles')
-  @Roles('admin')
-  async listRoles(): Promise<{ roles: { id: string; name: string }[] }> {
-    const roles = await this.skillService.listRoles();
-    return { roles };
   }
 }
