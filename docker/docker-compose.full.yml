@@ -180,6 +180,8 @@ services:
     command: sh -c "npm config set registry https://registry.npmmirror.com && npm install --legacy-peer-deps && npm run dev"
     environment:
       - NODE_ENV=development
+      - DOCKER_ENV=true
+      - AUTH_SERVICE_URL=http://ops-auth:3001
       - DATABASE_URL=postgresql://ops:ops_secret@postgres:5432/ops
       - REDIS_HOST=redis
       - REDIS_PORT=6379

@@ -9,7 +9,17 @@ import { ToolResult, ExecutionContext, SkillMatchResult } from '../interfaces';
 
 // Auth服务地址（SkillService所在）
 // Docker环境使用服务名，本地使用localhost
-const AUTH_SERVICE_URL = process.env.AUTH_SERVICE_URL || process.env.DOCKER_ENV ? 'http://ops-auth:3001' : 'http://localhost:3001';
+const getAuthServiceUrl = () => {
+  if (process.env.AUTH_SERVICE_URL) {
+    return process.env.AUTH_SERVICE_URL;
+  }
+  // Docker环境下使用服务名
+  if (process.env.DOCKER_ENV === 'true' || process.env.NODE_ENV === 'production') {
+    return 'http://ops-auth:3001';
+  }
+  return 'http://localhost:3001';
+};
+const AUTH_SERVICE_URL = getAuthServiceUrl();
 
 export class SkillMatchTool extends BaseTool {
   constructor() {
