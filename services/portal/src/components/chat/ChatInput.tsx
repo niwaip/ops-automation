@@ -96,7 +96,6 @@ const ChatInput: React.FC<ChatInputProps> = ({
         <Upload
           beforeUpload={handleFileUpload}
           showUploadList={false}
-          accept=".txt,.pdf,.doc,.docx,.xls,.xlsx"
           disabled={disabled || uploading}
         >
           <Button

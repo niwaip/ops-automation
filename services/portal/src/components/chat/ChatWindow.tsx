@@ -62,7 +62,12 @@ const ChatWindow: React.FC = () => {
 
   // 发送消息
   const handleSendMessage = async (content: string) => {
-    if (!content.trim() && uploadedFiles.length === 0) return;
+    // 获取当前的uploadedFiles（从store实时获取）
+    const currentUploadedFiles = useChatStore.getState().uploadedFiles;
+    if (!content.trim() && currentUploadedFiles.length === 0) return;
+
+    // 保存文件副本用于发送
+    const filesToSend = [...currentUploadedFiles];
 
     // 添加用户消息
     const userMessage = {
@@ -72,7 +77,7 @@ const ChatWindow: React.FC = () => {
       content,
       timestamp: new Date(),
       metadata: {
-        files: uploadedFiles.map((f) => f.fileName),
+        files: filesToSend.map((f) => f.fileName),
       },
     };
     addMessage(userMessage);
@@ -97,13 +102,13 @@ const ChatWindow: React.FC = () => {
     // 流式内容累积
     let accumulatedContent = '';
 
-    // 发送流式请求
+    // 发送流式请求（使用保存的文件副本）
     streamChat(
       {
         message: content,
         sessionId: currentSession?.id,
         modelId: selectedModel,
-        files: uploadedFiles,
+        files: filesToSend,
         config: {
           mode: chatMode, // chat模式或task模式
         },
@@ -222,7 +227,7 @@ const ChatWindow: React.FC = () => {
           />
         }
         styles={{
-          body: { padding: 0, height: 'calc(100% - 56px)', overflow: 'hidden' },
+          body: { padding: 0, display: 'flex', flexDirection: 'column', height: 'calc(100% - 56px)', overflow: 'hidden' },
         }}
       >
         {/* 消息列表 */}
