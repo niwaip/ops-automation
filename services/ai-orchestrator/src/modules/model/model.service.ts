@@ -2,7 +2,7 @@ import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import * as fs from 'fs';
 import * as path from 'path';
 import { v4 as uuidv4 } from 'uuid';
-import { AIModelDTO, CreateModelDTO, APIKeyReference } from '../../interfaces';
+import { AIModelDTO, CreateModelDTO, APIKeyReference, ChatMessage, ContentBlock } from '../../interfaces';
 import { OpenAICompatibleClient } from '../../client/openai-compatible';
 import { PRESET_MODELS, PresetModelConfig } from '../../config/preset-models';
 
@@ -469,6 +469,18 @@ export class ModelService implements OnModuleInit {
     }
 
     const messages = [{ role: 'user' as const, content: prompt }];
+    return client.chatCompletionStream(messages, onChunk);
+  }
+
+  /**
+   * Call model with streaming support - supports multimodal messages
+   */
+  async callModelStreamWithMessages(id: string, messages: ChatMessage[], onChunk: (chunk: string) => void): Promise<string> {
+    const client = this.clients.get(id);
+    if (!client) {
+      throw new Error(`No client initialized for model ${id}`);
+    }
+
     return client.chatCompletionStream(messages, onChunk);
   }
 }

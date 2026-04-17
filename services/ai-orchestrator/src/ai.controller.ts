@@ -18,6 +18,7 @@ import {
   DecideFailureResponseDTO,
 } from './interfaces';
 import { ChatRequestDTO, StreamEvent, ExecutionContext } from './modules/react-engine/interfaces';
+import { ContentBlock, ChatMessage as MultimodalChatMessage } from './interfaces';
 
 // 内存文件存储（生产环境应使用持久化存储）
 const fileStore = new Map<string, { fileName: string; mimeType: string; size: number; content: string }>();
@@ -263,41 +264,70 @@ export class AIController {
         // 发送thought事件
         res.write(`data: ${JSON.stringify({ type: 'thought', content: '正在思考...' })}\n\n`);
 
-        // 构建消息内容，包含文件内容
-        let messageContent = body.message;
+        // 构建多模态消息内容
+        let messageContent: string | ContentBlock[];
+        const systemMessage = '你是一个智能助手，请用中文友好地回答用户的问题。如果用户上传了文件，请分析文件内容并给出相关回答。';
 
-        // 如果有文件，从存储中获取内容
+        // 如果有文件，构建多模态内容
         if (body.files && body.files.length > 0) {
-          const fileContents: string[] = [];
+          const contentBlocks: ContentBlock[] = [];
+
+          // 先添加文本内容
+          contentBlocks.push({ type: 'text', text: body.message });
+
+          // 处理每个文件
           for (const file of body.files) {
-            // 从存储获取文件内容
             const storedFile = fileStore.get(file.fileId);
             if (storedFile && storedFile.content) {
-              try {
-                // 解码base64内容
-                const decodedContent = Buffer.from(storedFile.content, 'base64').toString('utf-8');
-                fileContents.push(`【文件: ${storedFile.fileName}】\n${decodedContent}`);
-              } catch (e) {
-                // 如果解码失败，可能是二进制文件
-                fileContents.push(`【文件: ${storedFile.fileName} (类型: ${storedFile.mimeType}, 大小: ${storedFile.size}字节)】\n(二进制文件，无法直接显示内容)`);
+              // 检查是否是图片类型
+              const isImage = storedFile.mimeType.startsWith('image/');
+
+              if (isImage) {
+                // 图片使用image_url格式（data URI）
+                contentBlocks.push({
+                  type: 'image_url',
+                  image_url: {
+                    url: `data:${storedFile.mimeType};base64,${storedFile.content}`,
+                    detail: 'auto',
+                  },
+                });
+              } else {
+                // 文本文件解码后添加到消息
+                try {
+                  const decodedContent = Buffer.from(storedFile.content, 'base64').toString('utf-8');
+                  contentBlocks.push({
+                    type: 'text',
+                    text: `\n【文件: ${storedFile.fileName}】\n${decodedContent}`,
+                  });
+                } catch (e) {
+                  contentBlocks.push({
+                    type: 'text',
+                    text: `\n【文件: ${storedFile.fileName} (${storedFile.mimeType}, ${storedFile.size}字节)】\n(二进制文件，无法直接显示内容)`,
+                  });
+                }
               }
             } else {
-              fileContents.push(`【文件: ${file.fileName} (类型: ${file.mimeType}, 大小: ${file.size}字节)】\n(文件内容未找到，可能已过期)`);
+              contentBlocks.push({
+                type: 'text',
+                text: `\n【文件: ${file.fileName}】\n(文件内容未找到，可能已过期)`,
+              });
             }
           }
-          if (fileContents.length > 0) {
-            messageContent = `${messageContent}\n\n以下是用户上传的文件内容：\n${fileContents.join('\n\n')}`;
-          }
+
+          messageContent = contentBlocks;
+        } else {
+          messageContent = body.message;
         }
 
-        // 流式调用模型
-        let fullContent = '';
-        const messages = [
-          { role: 'system', content: '你是一个智能助手，请用中文友好地回答用户的问题。如果用户上传了文件，请分析文件内容并给出相关回答。' },
+        // 构建消息数组（支持多模态格式）
+        const messages: MultimodalChatMessage[] = [
+          { role: 'system', content: systemMessage },
           { role: 'user', content: messageContent },
         ];
 
-        await this.modelService.callModelStream(modelId, messageContent, (chunk: string) => {
+        // 流式调用模型 - 使用支持多模态的新方法
+        let fullContent = '';
+        await this.modelService.callModelStreamWithMessages(modelId, messages, (chunk: string) => {
           fullContent += chunk;
           // 实时发送内容块
           res.write(`data: ${JSON.stringify({ type: 'observation', content: fullContent })}\n\n`);
