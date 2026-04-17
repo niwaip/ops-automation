@@ -33,6 +33,7 @@ export async function streamChat(
           mimeType: f.mimeType,
           size: f.size,
         })),
+        config: request.config, // 包含mode等配置
       }),
     });
 

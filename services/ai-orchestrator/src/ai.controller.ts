@@ -229,9 +229,9 @@ export class AIController {
     return this.deciderService.decideFailure(body);
   }
 
-  // Chat stream endpoint - ReAct engine
+  // Chat stream endpoint - ReAct engine or simple chat
   @Post('chat/stream')
-  @ApiOperation({ summary: 'AI chat with ReAct engine (SSE stream)' })
+  @ApiOperation({ summary: 'AI chat with ReAct engine or simple mode (SSE stream)' })
   async chatStream(
     @Body() body: ChatRequestDTO,
     @Res() res: Response,
@@ -242,21 +242,55 @@ export class AIController {
     res.setHeader('Connection', 'keep-alive');
     res.setHeader('X-Accel-Buffering', 'no');
 
-    // Build execution context
-    const context: ExecutionContext = {
-      sessionId: body.sessionId || 'default',
-      userId: body.userId || 'anonymous',
-      history: [],
-      uploadedFiles: body.files || [],
-    };
+    const mode = body.config?.mode || 'task';  // 默认task模式
 
     try {
-      // Execute ReAct loop and stream events
-      for await (const event of this.reactEngineService.execute(body, context)) {
-        res.write(`data: ${JSON.stringify(event)}\n\n`);
+      // 普通聊天模式：直接调用模型
+      if (mode === 'chat') {
+        const modelId = body.modelId || 'default';
+        const client = this.modelService.getClient(modelId);
+
+        if (!client) {
+          res.write(`data: ${JSON.stringify({ type: 'error', content: `模型 ${modelId} 未初始化` })}\n\n`);
+          res.end();
+          return;
+        }
+
+        // 发送thought事件
+        res.write(`data: ${JSON.stringify({ type: 'thought', content: '正在思考...' })}\n\n`);
+
+        // 流式调用模型
+        let fullContent = '';
+        const messages = [
+          { role: 'system', content: '你是一个智能助手，请用中文友好地回答用户的问题。' },
+          { role: 'user', content: body.message },
+        ];
+
+        await this.modelService.callModelStream(modelId, body.message, (chunk: string) => {
+          fullContent += chunk;
+          // 实时发送内容块
+          res.write(`data: ${JSON.stringify({ type: 'observation', content: fullContent })}\n\n`);
+        });
+
+        // 发送最终结果
+        res.write(`data: ${JSON.stringify({ type: 'result', content: fullContent || '处理完成' })}\n\n`);
+        res.write(`data: ${JSON.stringify({ type: 'done', content: 'Stream completed' })}\n\n`);
+        res.end();
+      } else {
+        // Task模式：使用ReAct引擎
+        const context: ExecutionContext = {
+          sessionId: body.sessionId || 'default',
+          userId: body.userId || 'anonymous',
+          history: [],
+          uploadedFiles: body.files || [],
+        };
+
+        for await (const event of this.reactEngineService.execute(body, context)) {
+          res.write(`data: ${JSON.stringify(event)}\n\n`);
+        }
+        res.write(`data: ${JSON.stringify({ type: 'done', content: 'Stream completed' })}\n\n`);
+        res.end();
       }
-      res.write(`data: ${JSON.stringify({ type: 'done', content: 'Stream completed' })}\n\n`);
-      res.end();
     } catch (error: unknown) {
       const errorMsg = error instanceof Error ? error.message : 'Unknown error';
       res.write(`data: ${JSON.stringify({ type: 'error', content: errorMsg })}\n\n`);

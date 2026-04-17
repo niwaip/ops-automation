@@ -106,6 +106,10 @@ export interface ChatRequest {
   sessionId?: string;
   modelId?: string;
   files?: UploadedFile[];
+  config?: {
+    mode?: 'chat' | 'task';  // 聊天模式：chat(普通) 或 task(ReAct引擎)
+    maxIterations?: number;
+  };
 }
 
 /**

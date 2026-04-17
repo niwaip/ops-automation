@@ -19,6 +19,9 @@ interface ChatState {
   streamingContent: string;
   streamingEvents: StreamEvent[];
 
+  // 聊天模式：chat(普通聊天) | task(任务模式-ReAct)
+  chatMode: 'chat' | 'task';
+
   // 文件上传
   uploadedFiles: UploadedFile[];
 
@@ -51,6 +54,8 @@ interface ChatActions {
   // UI控制
   toggleChat: () => void;
   setOpen: (isOpen: boolean) => void;
+  setChatMode: (mode: 'chat' | 'task') => void;
+  toggleChatMode: () => void;
 
   // 文件上传
   addUploadedFile: (file: UploadedFile) => void;
@@ -75,6 +80,7 @@ export const useChatStore = create<ChatState & ChatActions>((set, get) => ({
   isLoading: false,
   streamingContent: '',
   streamingEvents: [],
+  chatMode: 'chat',  // 默认普通聊天模式
   uploadedFiles: [],
   selectedModel: null,
   availableModels: [],
@@ -157,6 +163,15 @@ export const useChatStore = create<ChatState & ChatActions>((set, get) => ({
     if (isOpen && !get().currentSession) {
       get().createSession();
     }
+  },
+
+  setChatMode: (mode) => {
+    set({ chatMode: mode });
+  },
+
+  toggleChatMode: () => {
+    const currentMode = get().chatMode;
+    set({ chatMode: currentMode === 'chat' ? 'task' : 'chat' });
   },
 
   // 文件上传

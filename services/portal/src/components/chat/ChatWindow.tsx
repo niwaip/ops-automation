@@ -3,9 +3,9 @@
  * 聊天窗口主体组件
  */
 
-import React, { useEffect, useRef } from 'react';
-import { Card, Spin, Select, Space, Button } from 'antd';
-import { CloseOutlined, PlusOutlined } from '@ant-design/icons';
+import React, { useEffect, useRef, useState } from 'react';
+import { Card, Spin, Select, Space, Button, Switch, Tooltip } from 'antd';
+import { CloseOutlined, PlusOutlined, RobotOutlined, MessageOutlined } from '@ant-design/icons';
 import { useChatStore } from './chatStore';
 import ChatMessage from './ChatMessage';
 import ChatInput from './ChatInput';
@@ -20,7 +20,7 @@ const ChatWindow: React.FC = () => {
     messages,
     isLoading,
     streamingContent,
-    streamingEvents,
+    chatMode,
     selectedModel,
     availableModels,
     uploadedFiles,
@@ -30,7 +30,6 @@ const ChatWindow: React.FC = () => {
     addMessage,
     updateLastMessage,
     setStreaming,
-    appendStreamingContent,
     addStreamEvent,
     clearStreaming,
     createSession,
@@ -39,9 +38,12 @@ const ChatWindow: React.FC = () => {
     setPendingParamsConfirm,
     confirmParams,
     clearUploadedFiles,
+    setChatMode,
   } = useChatStore();
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  // 本地流式内容状态，用于实时显示
+  const [localStreamingContent, setLocalStreamingContent] = useState('');
 
   // 加载可用模型
   useEffect(() => {
@@ -56,7 +58,7 @@ const ChatWindow: React.FC = () => {
   // 自动滚动到底部
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages, streamingContent]);
+  }, [messages, localStreamingContent]);
 
   // 发送消息
   const handleSendMessage = async (content: string) => {
@@ -76,8 +78,9 @@ const ChatWindow: React.FC = () => {
     addMessage(userMessage);
 
     // 添加占位assistant消息
+    const assistantMessageId = uuidv4();
     const assistantMessage = {
-      id: uuidv4(),
+      id: assistantMessageId,
       sessionId: currentSession?.id || '',
       role: 'assistant' as const,
       content: '',
@@ -89,6 +92,10 @@ const ChatWindow: React.FC = () => {
     clearStreaming();
     clearUploadedFiles();
     setStreaming(true);
+    setLocalStreamingContent('');
+
+    // 流式内容累积
+    let accumulatedContent = '';
 
     // 发送流式请求
     streamChat(
@@ -97,13 +104,24 @@ const ChatWindow: React.FC = () => {
         sessionId: currentSession?.id,
         modelId: selectedModel,
         files: uploadedFiles,
+        config: {
+          mode: chatMode, // chat模式或task模式
+        },
       },
       (event) => {
         addStreamEvent(event);
 
-        // 处理不同类型事件
-        if (event.type === 'result' || event.type === 'observation') {
-          updateLastMessage(event.content);
+        // 处理不同类型事件 - 实时更新显示
+        if (event.type === 'thought') {
+          accumulatedContent += `【思考】${event.content}\n`;
+        } else if (event.type === 'action') {
+          accumulatedContent += `【行动】${event.action || event.content}\n`;
+        } else if (event.type === 'observation') {
+          accumulatedContent += `【观察】${event.content}\n`;
+        } else if (event.type === 'result') {
+          accumulatedContent = event.content; // 最终结果替换所有内容
+        } else if (event.type === 'error') {
+          accumulatedContent += `❌ 错误: ${event.content}\n`;
         } else if (event.type === 'params_confirm') {
           // 参数确认场景
           setPendingParamsConfirm(
@@ -111,18 +129,24 @@ const ChatWindow: React.FC = () => {
             event.data?.skill?.skillName as string,
           );
         }
+
+        // 实时更新本地状态和消息
+        setLocalStreamingContent(accumulatedContent);
+        updateLastMessage(accumulatedContent);
       },
       (error) => {
-        updateLastMessage(`错误: ${error.message}`);
+        const errorMsg = `错误: ${error.message}`;
+        setLocalStreamingContent(errorMsg);
+        updateLastMessage(errorMsg);
         setStreaming(false);
       },
       () => {
         setStreaming(false);
-        // 更新消息为非流式状态
-        const lastMsg = messages[messages.length - 1];
-        if (lastMsg?.isStreaming) {
-          updateLastMessage(streamingContent || '处理完成');
+        // 最终更新消息
+        if (accumulatedContent) {
+          updateLastMessage(accumulatedContent);
         }
+        setLocalStreamingContent('');
       }
     );
   };
@@ -130,7 +154,6 @@ const ChatWindow: React.FC = () => {
   // 确认参数
   const handleConfirmParams = () => {
     confirmParams();
-    // 发送确认消息继续流程
     if (pendingParamsConfirm) {
       handleSendMessage('确认');
     }
@@ -139,7 +162,11 @@ const ChatWindow: React.FC = () => {
   // 取消参数确认
   const handleCancelConfirm = () => {
     setPendingParamsConfirm(null, null);
-    handleSendMessage('取消');
+  };
+
+  // 模式切换处理
+  const handleModeChange = (checked: boolean) => {
+    setChatMode(checked ? 'task' : 'chat');
   };
 
   return (
@@ -148,19 +175,35 @@ const ChatWindow: React.FC = () => {
         className="chat-window"
         title={
           <Space className="chat-window-header">
-            <span>AI助手</span>
+            <span style={{ fontWeight: 600 }}>AI助手</span>
+
+            {/* 模式切换 */}
+            <Tooltip title={chatMode === 'chat' ? '普通聊天模式' : '任务模式(ReAct引擎)'}>
+              <Space size={4} className="chat-mode-switch">
+                <MessageOutlined style={{ color: chatMode === 'chat' ? '#1890ff' : '#999' }} />
+                <Switch
+                  size="small"
+                  checked={chatMode === 'task'}
+                  onChange={handleModeChange}
+                />
+                <RobotOutlined style={{ color: chatMode === 'task' ? '#52c41a' : '#999' }} />
+              </Space>
+            </Tooltip>
+
+            {/* 模型选择 */}
             <Select
               value={selectedModel}
               onChange={setSelectedModel}
-              style={{ width: 150 }}
+              style={{ width: 140 }}
               options={availableModels.map((m) => ({
                 value: m.id,
                 label: m.config?.display_name || m.name,
-              }))
-              }
+              }))}
               placeholder="选择模型"
               size="small"
             />
+
+            {/* 新对话 */}
             <Button
               type="text"
               icon={<PlusOutlined />}
@@ -179,7 +222,7 @@ const ChatWindow: React.FC = () => {
           />
         }
         styles={{
-          body: { padding: 0, height: 'calc(100% - 50px)', overflow: 'hidden' },
+          body: { padding: 0, height: 'calc(100% - 56px)', overflow: 'hidden' },
         }}
       >
         {/* 消息列表 */}
@@ -189,7 +232,7 @@ const ChatWindow: React.FC = () => {
               key={msg.id}
               message={msg}
               isStreaming={msg.isStreaming && isLoading}
-              streamingContent={msg.isStreaming ? streamingContent : ''}
+              streamingContent={msg.isStreaming ? localStreamingContent : ''}
             />
           ))}
           {isLoading && messages.length === 0 && (
