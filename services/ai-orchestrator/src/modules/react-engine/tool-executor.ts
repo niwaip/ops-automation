@@ -17,6 +17,8 @@ import {
   DocumentGenTool,
   UserAskTool,
   FileParseTool,
+  GenerateParametersTool,
+  DocumentRenderTool,
 } from './tools';
 
 @Injectable()
@@ -40,6 +42,8 @@ export class ToolExecutor {
       new DocumentGenTool(),
       new UserAskTool(),
       new FileParseTool(),
+      new GenerateParametersTool(),
+      new DocumentRenderTool(),
     ];
 
     for (const tool of this.defaultTools) {

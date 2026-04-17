@@ -65,7 +65,11 @@ export class ReActEngineService {
       isFinished: false,
     };
 
+    // 初始化消息列表，添加用户消息
     const messages: ChatMessage[] = [...context.history];
+    if (request.message) {
+      messages.push({ role: 'user', content: request.message });
+    }
     const tools = this.toolExecutor.getTools(config.tools);
 
     // 开始循环
@@ -118,7 +122,18 @@ export class ReActEngineService {
   ): AsyncGenerator<StreamEvent> {
     // 构建提示词
     const systemPrompt = buildSystemPrompt(tools, context.skill);
-    const userInput = messages[messages.length - 1]?.content || '';
+    // 提取用户输入，处理多模态内容
+    const lastMessage = messages[messages.length - 1];
+    let userInput = '';
+    if (lastMessage?.content) {
+      if (typeof lastMessage.content === 'string') {
+        userInput = lastMessage.content;
+      } else if (Array.isArray(lastMessage.content)) {
+        // 从多模态内容中提取文本部分
+        const textBlocks = lastMessage.content.filter((b: any) => b.type === 'text');
+        userInput = textBlocks.map((b: any) => b.text).join('\n');
+      }
+    }
     const userPrompt = buildUserPrompt(
       userInput,
       messages.slice(0, -1),

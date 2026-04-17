@@ -4,6 +4,15 @@
  */
 
 /**
+ * API端点配置
+ */
+export interface ApiEndpoint {
+  url: string;
+  method: 'GET' | 'POST' | 'PUT' | 'DELETE';
+  description: string;
+}
+
+/**
  * 参数Schema定义
  */
 export interface ParamsSchema {
@@ -27,8 +36,15 @@ export interface CreateSkillDTO {
   triggerKeywords: string[];
   paramsSchema: ParamsSchema;
   templateId?: string;
+  carboneTemplateId?: string;  // Carbone引擎的模板ID
+  carboneSkillId?: string;      // Carbone引擎的Skill ID
   executionFlow?: string[];
   tools?: string[];
+  apiEndpoints?: {
+    generateParameters?: ApiEndpoint;  // 参数生成API
+    render?: ApiEndpoint;              // 文档渲染API
+    getSkill?: ApiEndpoint;            // 获取Skill信息API
+  };
 }
 
 /**
@@ -42,8 +58,15 @@ export interface SkillConfigDTO {
   triggerKeywords: string[];
   paramsSchema: ParamsSchema;
   templateId?: string;
+  carboneTemplateId?: string;
+  carboneSkillId?: string;
   executionFlow: string[];
   tools: string[];
+  apiEndpoints?: {
+    generateParameters?: ApiEndpoint;
+    render?: ApiEndpoint;
+    getSkill?: ApiEndpoint;
+  };
   isActive: boolean;
 }
 
@@ -59,4 +82,11 @@ export interface SkillMatchResult {
   missingParams: string[];
   paramsSchema: ParamsSchema;
   templateId?: string;
+  carboneTemplateId?: string;
+  carboneSkillId?: string;
+  apiEndpoints?: {
+    generateParameters?: ApiEndpoint;
+    render?: ApiEndpoint;
+    getSkill?: ApiEndpoint;
+  };
 }
