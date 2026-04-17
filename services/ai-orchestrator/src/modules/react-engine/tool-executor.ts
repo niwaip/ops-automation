@@ -19,6 +19,7 @@ import {
   FileParseTool,
   GenerateParametersTool,
   DocumentRenderTool,
+  PreviewParamsTool,
 } from './tools';
 
 @Injectable()
@@ -44,6 +45,7 @@ export class ToolExecutor {
       new FileParseTool(),
       new GenerateParametersTool(),
       new DocumentRenderTool(),
+      new PreviewParamsTool(),
     ];
 
     for (const tool of this.defaultTools) {

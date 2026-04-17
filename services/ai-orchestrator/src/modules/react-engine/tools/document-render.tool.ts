@@ -81,11 +81,17 @@ export class DocumentRenderTool extends BaseTool {
 
         return {
           success: true,
-          output: `文档生成成功！\n文件名: ${renderResult.fileName}\n下载链接: ${fullDownloadUrl}`,
+          output: `文档生成成功！任务已完成。
+
+文件名: ${renderResult.fileName}
+下载链接: ${fullDownloadUrl}
+
+【任务完成】请输出 Final Answer，告知用户文档已生成并提供下载链接。不要再调用任何工具。`,
           data: {
             fileName: renderResult.fileName,
             downloadUrl: fullDownloadUrl,
             format: renderResult.format || format,
+            taskComplete: true,
           },
         };
       }
@@ -96,11 +102,16 @@ export class DocumentRenderTool extends BaseTool {
 
         return {
           success: true,
-          output: `文档生成成功！下载链接: ${downloadUrl}`,
+          output: `文档生成成功！任务已完成。
+
+下载链接: ${downloadUrl}
+
+【任务完成】请输出 Final Answer，告知用户文档已生成并提供下载链接。不要再调用任何工具。`,
           data: {
             documentId: renderResult.documentId,
             downloadUrl,
             format,
+            taskComplete: true,
           },
         };
       }

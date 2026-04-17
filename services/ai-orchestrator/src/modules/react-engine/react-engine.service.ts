@@ -28,9 +28,9 @@ import {
  * 默认配置
  */
 const DEFAULT_CONFIG: ReActConfig = {
-  maxIterations: 5,
+  maxIterations: 10,  // 增加到10次，支持更复杂的多步骤流程
   modelId: 'default',
-  tools: ['skill_match', 'generate_parameters', 'document_render', 'param_collect', 'user_ask', 'file_parse'],
+  tools: ['skill_match', 'generate_parameters', 'preview_params', 'document_render', 'param_collect', 'user_ask', 'file_parse'],
 };
 
 @Injectable()
@@ -267,6 +267,12 @@ export class ReActEngineService {
     // 更新context中的skill信息
     if (event.data?.result?.data?.skill) {
       context.skill = event.data.result.data.skill as SkillMatchResult;
+    }
+
+    // 检查是否任务完成（如document_render返回taskComplete）
+    if (event.data?.result?.data?.taskComplete) {
+      state.isFinished = true;
+      state.finalAnswer = event.content;
     }
 
     // 检查是否有nextAction提示

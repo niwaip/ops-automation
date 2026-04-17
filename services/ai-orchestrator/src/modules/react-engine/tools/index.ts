@@ -11,3 +11,4 @@ export { UserAskTool } from './user-ask.tool';
 export { FileParseTool } from './file-parse.tool';
 export { GenerateParametersTool } from './generate-parameters.tool';
 export { DocumentRenderTool } from './document-render.tool';
+export { PreviewParamsTool } from './preview-params.tool';

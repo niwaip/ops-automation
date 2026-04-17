@@ -14,7 +14,7 @@ export class GenerateParametersTool extends BaseTool {
   constructor() {
     super(
       'generate_parameters',
-      '使用AI技能从用户输入中生成模板参数数据。调用Carbone引擎的generate-parameters API。',
+      '使用AI技能从用户描述中生成模板参数数据。调用Carbone引擎的generate-parameters API，参数为skillId和description。',
       {
         type: 'object',
         properties: {
@@ -23,18 +23,18 @@ export class GenerateParametersTool extends BaseTool {
             description: 'Carbone引擎中的Skill ID',
             required: true,
           },
-          userInput: {
+          description: {
             type: 'string',
-            description: '用户的原始输入文本',
+            description: '用户的描述内容，包含需要填充的参数信息',
             required: true,
           },
-          templateId: {
+          userInput: {
             type: 'string',
-            description: '模板ID（可选）',
+            description: '用户原始输入（兼容参数，等同于description）',
             required: false,
           },
         },
-        required: ['skillId', 'userInput'],
+        required: ['skillId'],
       },
     );
   }
@@ -44,60 +44,55 @@ export class GenerateParametersTool extends BaseTool {
     context: ExecutionContext,
   ): Promise<ToolResult> {
     const skillId = params.skillId as string;
-    const userInput = params.userInput as string;
+    // 优先使用description，兼容userInput参数
+    const description = (params.description || params.userInput) as string;
     // 获取templateId：优先使用传入的，其次从context.skill获取
     let templateId = params.templateId as string | undefined;
     if (!templateId && context.skill?.carboneTemplateId) {
       templateId = context.skill.carboneTemplateId;
     }
 
+    if (!description) {
+      return {
+        success: false,
+        output: '缺少必要参数：需要提供description（用户描述）',
+        data: { error: 'missing_description' },
+      };
+    }
+
     try {
-      // 调用Carbone引擎的generate-parameters API
+      // 调用Carbone引擎的generate-parameters API（使用description参数）
       const response = await axios.post(`${CARBONE_SERVICE_URL}/studio/generate-parameters`, {
         skillId,
-        userInput,
-        templateId,
+        description,  // Carbone API使用description参数名
       });
 
-      const generatedData = response.data;
+      const result = response.data;
 
       // Carbone API返回格式: {success: true, generatedData: {...}}
-      if (generatedData && generatedData.success && generatedData.generatedData) {
+      if (result && result.success && result.generatedData) {
         // 更新context中的参数
-        context.collectedParams = generatedData.generatedData;
+        context.collectedParams = result.generatedData;
 
-        const extractedParams = generatedData.generatedData;
-        // 再次尝试获取templateId：API返回 > 传入参数 > context.skill
-        let extractedTemplateId = generatedData.templateId;
-        if (!extractedTemplateId) {
-          extractedTemplateId = templateId;
-        }
-        if (!extractedTemplateId && context.skill?.carboneTemplateId) {
-          extractedTemplateId = context.skill.carboneTemplateId;
-        }
+        const extractedParams = result.generatedData;
+        // 使用context.skill中的templateId
+        const extractedTemplateId = templateId || context.skill?.carboneTemplateId;
         const paramCount = Object.keys(extractedParams).length;
 
         return {
           success: true,
-          output: `参数生成成功！已从用户输入中提取 ${paramCount} 个参数：
+          output: `参数生成成功！已从用户描述中提取 ${paramCount} 个参数：
 ${JSON.stringify(extractedParams, null, 2)}
 
 模板ID: ${extractedTemplateId || '未指定'}
 
-【下一步操作】请立即调用 document_render 工具生成文档，参数如下：
-{
-  "templateId": "${extractedTemplateId}",
-  "data": ${JSON.stringify(extractedParams)}
-}
-
-或者等待用户确认后再调用 document_render。`,
+【参数验证成功】下一步调用 document_render 工具生成文档。`,
           data: {
             params: extractedParams,
             skillId,
             templateId: extractedTemplateId,
-            readyForRender: true,
           },
-          // 强制下一步调用 document_render
+          // 直接跳转到document_render生成文档
           nextAction: 'document_render',
           nextActionParams: {
             templateId: extractedTemplateId,

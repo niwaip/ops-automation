@@ -80,7 +80,7 @@ export class SkillMatchTool extends BaseTool {
           outputMsg += `\n此技能已配置Carbone AI参数生成，下一步请调用 generate_parameters 工具。
 Carbone Skill ID: ${matchResult.carboneSkillId}
 Carbone Template ID: ${matchResult.carboneTemplateId || '无'}
-调用参数: {"skillId": "${matchResult.carboneSkillId}", "userInput": "${userInput}"}`;
+调用参数: {"skillId": "${matchResult.carboneSkillId}", "description": "${userInput}"}`;
         }
 
         return {
