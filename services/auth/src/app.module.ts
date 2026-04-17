@@ -4,6 +4,7 @@ import { JwtModule } from '@nestjs/jwt';
 import { PassportModule } from '@nestjs/passport';
 import { AuthModule } from './modules/auth/auth.module';
 import { UserModule } from './modules/user/user.module';
+import { SkillModule } from './modules/skill/skill.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { RbacGuard } from './guards/rbac.guard';
@@ -29,6 +30,9 @@ import { RbacGuard } from './guards/rbac.guard';
 
     // User module
     UserModule,
+
+    // Skill module
+    SkillModule,
   ],
   providers: [
     // Global JWT guard - applied to all routes by default

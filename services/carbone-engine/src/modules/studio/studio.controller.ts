@@ -118,6 +118,12 @@ export class AIVerifyDto {
   templateConfig?: any;
 }
 
+export class RenderWithSkillDto {
+  skillId!: string;
+  params!: Record<string, any>;
+  outputFormat?: 'docx' | 'xlsx' | 'pptx' | 'pdf' | 'html';
+}
+
 export interface ValidateResponse {
   valid: boolean;
   missing: string[];
@@ -240,6 +246,77 @@ export class StudioController {
       const message = error instanceof Error ? error.message : 'Unknown error';
       throw new HttpException(
         `Failed to render template: ${message}`,
+        HttpStatus.INTERNAL_SERVER_ERROR
+      );
+    }
+  }
+
+  /**
+   * 基于Skill渲染文档
+   * 根据skillId找到关联模板，使用参数渲染
+   */
+  @Post('render-with-skill')
+  @ApiOperation({ summary: 'Render document based on skill and params' })
+  @ApiBody({ type: RenderWithSkillDto })
+  async renderWithSkill(@Body() dto: RenderWithSkillDto): Promise<RenderResponse> {
+    // 从Skill元数据获取模板ID
+    const skillMetaPath = path.join(this.templatesDir, `skills`, `${dto.skillId}.json`);
+    let templateId: string;
+
+    if (fs.existsSync(skillMetaPath)) {
+      const skillMeta = JSON.parse(fs.readFileSync(skillMetaPath, 'utf-8'));
+      templateId = skillMeta.templateId || dto.skillId;
+    } else {
+      // 直接使用skillId作为templateId
+      templateId = dto.skillId;
+    }
+
+    const meta = this.getTemplateMeta(templateId);
+    const templatePath = path.join(this.templatesDir, `${templateId}.${meta.format}`);
+
+    if (!fs.existsSync(templatePath)) {
+      throw new HttpException('Template file not found', HttpStatus.NOT_FOUND);
+    }
+
+    try {
+      // 包装参数数据为标准格式 { d: params }
+      const data = { d: dto.params };
+
+      // 渲染模板
+      const templateBuffer = fs.readFileSync(templatePath);
+      const config = meta.templateConfig || {};
+      const markedBuffer = await this.documentStructureService.applyConfigToDocx(templateBuffer, config);
+      const outputBuffer = await this.engine.render(markedBuffer, data, meta.fileName);
+
+      // 保存输出文件
+      const outputId = uuidv4();
+      const outputFormat = dto.outputFormat || meta.format;
+      const outputFileName = this.generateOutputFileName(meta.fileName, outputFormat);
+      const outputPath = path.join(this.outputsDir, `${outputId}.${outputFormat}`);
+      fs.writeFileSync(outputPath, outputBuffer);
+
+      // 保存输出元数据
+      const outputMetaPath = path.join(this.outputsDir, `${outputId}.json`);
+      fs.writeFileSync(outputMetaPath, JSON.stringify({
+        id: outputId,
+        templateId,
+        skillId: dto.skillId,
+        fileName: outputFileName,
+        format: outputFormat,
+        size: outputBuffer.length,
+        params: dto.params,
+        renderedAt: new Date().toISOString()
+      }));
+
+      return {
+        downloadUrl: `/studio/download/${outputId}`,
+        fileName: outputFileName,
+        format: outputFormat
+      };
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      throw new HttpException(
+        `Failed to render with skill: ${message}`,
         HttpStatus.INTERNAL_SERVER_ERROR
       );
     }

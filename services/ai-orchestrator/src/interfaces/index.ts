@@ -1,8 +1,20 @@
 // DTOs and Interfaces for AI Orchestrator Service
 
+/**
+ * 多模态内容块 - 支持文本和图片
+ */
+export interface ContentBlock {
+  type: 'text' | 'image_url';
+  text?: string;
+  image_url?: {
+    url: string;  // 可以是URL或base64 data URI
+    detail?: 'low' | 'high' | 'auto';
+  };
+}
+
 export interface ChatMessage {
   role: 'system' | 'user' | 'assistant';
-  content: string;
+  content: string | ContentBlock[];  // 支持纯文本或多模态内容
 }
 
 export interface OpenAICompatibleConfig {

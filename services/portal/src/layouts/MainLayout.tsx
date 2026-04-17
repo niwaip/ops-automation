@@ -21,6 +21,7 @@ import {
 } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
 import { useAuthStore } from '../store/authStore';
+import { ChatWidget } from '../components/chat';
 
 const { Header, Sider, Content } = Layout;
 
@@ -368,6 +369,9 @@ const MainLayout: React.FC = () => {
           <Outlet />
         </Content>
       </Layout>
+
+      {/* AI Chat Widget */}
+      <ChatWidget />
     </Layout>
   );
 };

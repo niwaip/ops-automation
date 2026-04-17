@@ -2,7 +2,7 @@ import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import * as fs from 'fs';
 import * as path from 'path';
 import { v4 as uuidv4 } from 'uuid';
-import { AIModelDTO, CreateModelDTO, APIKeyReference } from '../../interfaces';
+import { AIModelDTO, CreateModelDTO, APIKeyReference, ChatMessage, ContentBlock } from '../../interfaces';
 import { OpenAICompatibleClient } from '../../client/openai-compatible';
 import { PRESET_MODELS, PresetModelConfig } from '../../config/preset-models';
 
@@ -255,6 +255,50 @@ export class ModelService implements OnModuleInit {
   }
 
   /**
+   * Get model by name
+   */
+  async getModelByName(name: string): Promise<AIModelDTO | null> {
+    for (const [, model] of this.models) {
+      if (model.name === name) {
+        return model;
+      }
+    }
+    return null;
+  }
+
+  /**
+   * Resolve modelId (either name or UUID) to actual UUID
+   */
+  async resolveModelId(modelId: string): Promise<string | null> {
+    // If it looks like a UUID, try to get directly
+    if (modelId.match(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i)) {
+      if (this.models.has(modelId)) {
+        return modelId;
+      }
+    }
+    // Try to find by name
+    const model = await this.getModelByName(modelId);
+    return model?.id || null;
+  }
+
+  /**
+   * Get client by modelId (supports both UUID and name)
+   */
+  getClientByModelId(modelId: string): OpenAICompatibleClient | null {
+    // First try direct UUID lookup
+    const client = this.clients.get(modelId);
+    if (client) return client;
+
+    // Then try name lookup
+    for (const [id, model] of this.models) {
+      if (model.name === modelId) {
+        return this.clients.get(id) || null;
+      }
+    }
+    return null;
+  }
+
+  /**
    * Register a new AI model
    */
   async createModel(dto: CreateModelDTO): Promise<AIModelDTO> {
@@ -469,6 +513,18 @@ export class ModelService implements OnModuleInit {
     }
 
     const messages = [{ role: 'user' as const, content: prompt }];
+    return client.chatCompletionStream(messages, onChunk);
+  }
+
+  /**
+   * Call model with streaming support - supports multimodal messages
+   */
+  async callModelStreamWithMessages(id: string, messages: ChatMessage[], onChunk: (chunk: string) => void): Promise<string> {
+    const client = this.clients.get(id);
+    if (!client) {
+      throw new Error(`No client initialized for model ${id}`);
+    }
+
     return client.chatCompletionStream(messages, onChunk);
   }
 }

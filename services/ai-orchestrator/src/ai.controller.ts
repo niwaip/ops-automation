@@ -1,10 +1,12 @@
-import { Controller, Get, Post, Body, Param, Patch, Delete, HttpException, HttpStatus, Res } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
+import { Controller, Get, Post, Body, Param, Patch, Delete, HttpException, HttpStatus, Res, UseInterceptors, UploadedFile } from '@nestjs/common';
+import { ApiTags, ApiOperation, ApiResponse, ApiConsumes } from '@nestjs/swagger';
 import { Response } from 'express';
+import { FileInterceptor } from '@nestjs/platform-express';
 import { ModelService } from './modules/model/model.service';
 import { AgentService } from './modules/agent/agent.service';
 import { RecognizerService } from './modules/recognizer/recognizer.service';
 import { DeciderService } from './modules/decider/decider.service';
+import { ReActEngineService } from './modules/react-engine/react-engine.service';
 import {
   CreateModelDTO,
   AIModelDTO,
@@ -15,6 +17,11 @@ import {
   DecideFailureDTO,
   DecideFailureResponseDTO,
 } from './interfaces';
+import { ChatRequestDTO, StreamEvent, ExecutionContext } from './modules/react-engine/interfaces';
+import { ContentBlock, ChatMessage as MultimodalChatMessage } from './interfaces';
+
+// 内存文件存储（生产环境应使用持久化存储）
+const fileStore = new Map<string, { fileName: string; mimeType: string; size: number; content: string }>();
 
 @ApiTags('AI')
 @Controller('ai')
@@ -24,6 +31,7 @@ export class AIController {
     private readonly agentService: AgentService,
     private readonly recognizerService: RecognizerService,
     private readonly deciderService: DeciderService,
+    private readonly reactEngineService: ReActEngineService,
   ) {}
 
   // Model endpoints
@@ -224,5 +232,191 @@ export class AIController {
   @ApiResponse({ status: 200, description: 'Returns failure decision' })
   async decideFailure(@Body() body: DecideFailureDTO): Promise<DecideFailureResponseDTO> {
     return this.deciderService.decideFailure(body);
+  }
+
+  // Chat stream endpoint - ReAct engine or simple chat
+  @Post('chat/stream')
+  @ApiOperation({ summary: 'AI chat with ReAct engine or simple mode (SSE stream)' })
+  async chatStream(
+    @Body() body: ChatRequestDTO,
+    @Res() res: Response,
+  ): Promise<void> {
+    // Set SSE headers
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Connection', 'keep-alive');
+    res.setHeader('X-Accel-Buffering', 'no');
+
+    const mode = body.config?.mode || 'task';  // 默认task模式
+
+    try {
+      // 普通聊天模式：直接调用模型
+      if (mode === 'chat') {
+        const modelId = body.modelId || 'default';
+        const client = this.modelService.getClient(modelId);
+
+        if (!client) {
+          res.write(`data: ${JSON.stringify({ type: 'error', content: `模型 ${modelId} 未初始化` })}\n\n`);
+          res.end();
+          return;
+        }
+
+        // 发送thought事件
+        res.write(`data: ${JSON.stringify({ type: 'thought', content: '正在思考...' })}\n\n`);
+
+        // 构建多模态消息内容
+        let messageContent: string | ContentBlock[];
+        const systemMessage = '你是一个智能助手，请用中文友好地回答用户的问题。如果用户上传了文件，请分析文件内容并给出相关回答。';
+
+        // 如果有文件，构建多模态内容
+        if (body.files && body.files.length > 0) {
+          const contentBlocks: ContentBlock[] = [];
+
+          // 先添加文本内容
+          contentBlocks.push({ type: 'text', text: body.message });
+
+          // 处理每个文件
+          for (const file of body.files) {
+            const storedFile = fileStore.get(file.fileId);
+            if (storedFile && storedFile.content) {
+              // 检查是否是图片类型
+              const isImage = storedFile.mimeType.startsWith('image/');
+
+              if (isImage) {
+                // 图片使用image_url格式（data URI）
+                contentBlocks.push({
+                  type: 'image_url',
+                  image_url: {
+                    url: `data:${storedFile.mimeType};base64,${storedFile.content}`,
+                    detail: 'auto',
+                  },
+                });
+              } else {
+                // 文本文件解码后添加到消息
+                try {
+                  const decodedContent = Buffer.from(storedFile.content, 'base64').toString('utf-8');
+                  contentBlocks.push({
+                    type: 'text',
+                    text: `\n【文件: ${storedFile.fileName}】\n${decodedContent}`,
+                  });
+                } catch (e) {
+                  contentBlocks.push({
+                    type: 'text',
+                    text: `\n【文件: ${storedFile.fileName} (${storedFile.mimeType}, ${storedFile.size}字节)】\n(二进制文件，无法直接显示内容)`,
+                  });
+                }
+              }
+            } else {
+              contentBlocks.push({
+                type: 'text',
+                text: `\n【文件: ${file.fileName}】\n(文件内容未找到，可能已过期)`,
+              });
+            }
+          }
+
+          messageContent = contentBlocks;
+        } else {
+          messageContent = body.message;
+        }
+
+        // 构建消息数组（支持多模态格式）
+        const messages: MultimodalChatMessage[] = [
+          { role: 'system', content: systemMessage },
+          { role: 'user', content: messageContent },
+        ];
+
+        // 流式调用模型 - 使用支持多模态的新方法
+        let fullContent = '';
+        await this.modelService.callModelStreamWithMessages(modelId, messages, (chunk: string) => {
+          fullContent += chunk;
+          // 实时发送内容块
+          res.write(`data: ${JSON.stringify({ type: 'observation', content: fullContent })}\n\n`);
+        });
+
+        // 发送最终结果
+        res.write(`data: ${JSON.stringify({ type: 'result', content: fullContent || '处理完成' })}\n\n`);
+        res.write(`data: ${JSON.stringify({ type: 'done', content: 'Stream completed' })}\n\n`);
+        res.end();
+      } else {
+        // Task模式：使用ReAct引擎
+        const context: ExecutionContext = {
+          sessionId: body.sessionId || 'default',
+          userId: body.userId || 'anonymous',
+          history: [],
+          uploadedFiles: body.files || [],
+        };
+
+        for await (const event of this.reactEngineService.execute(body, context)) {
+          res.write(`data: ${JSON.stringify(event)}\n\n`);
+        }
+        res.write(`data: ${JSON.stringify({ type: 'done', content: 'Stream completed' })}\n\n`);
+        res.end();
+      }
+    } catch (error: unknown) {
+      const errorMsg = error instanceof Error ? error.message : 'Unknown error';
+      res.write(`data: ${JSON.stringify({ type: 'error', content: errorMsg })}\n\n`);
+      res.end();
+    }
+  }
+
+  // Simple chat endpoint (non-streaming)
+  @Post('chat')
+  @ApiOperation({ summary: 'Simple AI chat (non-streaming)' })
+  async chat(@Body() body: ChatRequestDTO): Promise<{ response: string; events: StreamEvent[] }> {
+    const context: ExecutionContext = {
+      sessionId: body.sessionId || 'default',
+      userId: body.userId || 'anonymous',
+      history: [],
+      uploadedFiles: body.files || [],
+    };
+
+    const events: StreamEvent[] = [];
+    let finalResponse = '';
+
+    for await (const event of this.reactEngineService.execute(body, context)) {
+      events.push(event);
+      if (event.type === 'result' || event.type === 'error') {
+        finalResponse = event.content;
+      }
+    }
+
+    return { response: finalResponse, events };
+  }
+
+  // File upload endpoint for chat
+  @Post('chat/upload')
+  @ApiOperation({ summary: 'Upload file for chat' })
+  @ApiConsumes('multipart/form-data')
+  @ApiResponse({ status: 200, description: 'File uploaded successfully' })
+  @UseInterceptors(FileInterceptor('file'))
+  async uploadChatFile(@UploadedFile() file: Express.Multer.File): Promise<{ fileId: string; fileName: string; mimeType: string; size: number }> {
+    if (!file) {
+      throw new HttpException('No file uploaded', HttpStatus.BAD_REQUEST);
+    }
+
+    // Generate a unique file ID
+    const fileId = `file-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+
+    // 保存文件内容到内存存储（base64编码）
+    const content = file.buffer.toString('base64');
+    fileStore.set(fileId, {
+      fileName: file.originalname,
+      mimeType: file.mimetype,
+      size: file.size,
+      content,
+    });
+
+    // 清理旧文件（保留最近100个）
+    if (fileStore.size > 100) {
+      const keys = Array.from(fileStore.keys());
+      keys.slice(0, keys.length - 100).forEach(key => fileStore.delete(key));
+    }
+
+    return {
+      fileId,
+      fileName: file.originalname,
+      mimeType: file.mimetype,
+      size: file.size,
+    };
   }
 }
