@@ -60,12 +60,13 @@ export class ExecutionFlowTemplateService {
         options?.limit || 50,
         options?.offset || 0
       ),
-      this.prisma.$queryRawUnsafe<{ count: number }[]>(
+      this.prisma.$queryRawUnsafe<{ count: bigint }[]>(
         `SELECT COUNT(*) as count FROM execution_flow_templates WHERE ${this.buildWhereClause(where)}`
       ),
     ]);
 
-    return { templates, total: total[0]?.count || 0 };
+    // Convert BigInt to Number for JSON serialization
+    return { templates, total: Number(total[0]?.count || 0) };
   }
 
   private buildWhereClause(where: any): string {
@@ -390,7 +391,7 @@ export class ExecutionFlowTemplateService {
    * 获取模板分类列表
    */
   async getCategories(): Promise<{ key: string; label: string; color: string; count: number }[]> {
-    const counts = await this.prisma.$queryRawUnsafe<{ category: string; count: number }[]>(
+    const counts = await this.prisma.$queryRawUnsafe<{ category: string; count: bigint }[]>(
       `SELECT category, COUNT(*) as count
        FROM execution_flow_templates
        WHERE is_active = true
@@ -401,7 +402,7 @@ export class ExecutionFlowTemplateService {
       key,
       label: value.label,
       color: value.color,
-      count: counts.find(c => c.category === key)?.count || 0,
+      count: Number(counts.find(c => c.category === key)?.count || 0),
     }));
   }
 
