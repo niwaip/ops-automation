@@ -38,6 +38,7 @@ export interface CreateSkillDTO {
   templateId?: string;
   carboneTemplateId?: string;  // Carbone引擎的模板ID
   carboneSkillId?: string;      // Carbone引擎的Skill ID
+  executionFlowTemplateId?: string;  // 关联的流程模板ID（用于AI验证）
   executionFlow?: string[];
   tools?: string[];
   apiEndpoints?: {
@@ -60,6 +61,7 @@ export interface SkillConfigDTO {
   templateId?: string;
   carboneTemplateId?: string;
   carboneSkillId?: string;
+  executionFlowTemplateId?: string;  // 关联的流程模板ID
   executionFlow: string[];
   tools: string[];
   apiEndpoints?: {
@@ -119,4 +121,42 @@ export interface AIMatchResponse {
   matchedSkill: string;
   confidence: number;
   reason: string;
+}
+
+/**
+ * Skill验证结果
+ */
+export interface SkillValidationResult {
+  isValid: boolean;
+  score: number;
+  suggestions: string[];
+  warnings: string[];
+  validatedAt: string;
+  validatedBy: string;
+  details?: {
+    configAnalysis: {
+      hasTriggerKeywords: boolean;
+      hasParamsSchema: boolean;
+      hasTemplate: boolean;
+      hasFlowTemplate: boolean;
+      triggerKeywordQuality: string;
+      paramsSchemaCompleteness: string;
+    };
+    flowAnalysis?: {
+      templateId: string;
+      templateName: string;
+      stepCount: number;
+      executableSteps: number;
+      validationScore: number;
+      executionSimulations: Array<{
+        stepId: string;
+        stepName: string;
+        type: string;
+        simulated: boolean;
+        success: boolean;
+        output?: string;
+        error?: string;
+      }>;
+    };
+  };
 }

@@ -8,6 +8,7 @@ import { PassportModule } from '@nestjs/passport';
 import { PrismaModule } from '../../prisma/prisma.module';
 import { SkillService } from './skill.service';
 import { SkillController } from './skill.controller';
+import { ExecutionFlowModule } from '../execution-flow/execution-flow.module';
 
 @Module({
   imports: [
@@ -17,6 +18,7 @@ import { SkillController } from './skill.controller';
       secret: process.env.JWT_SECRET || 'jwt_secret_key_change_in_production',
       signOptions: { expiresIn: '15m' },
     }),
+    ExecutionFlowModule,
   ],
   controllers: [SkillController],
   providers: [SkillService],

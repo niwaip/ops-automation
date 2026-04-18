@@ -12,8 +12,10 @@ import {
   ParamsSchema,
   SkillPermissionDTO,
   AIMatchResponse,
+  SkillValidationResult,
 } from './interfaces';
 import axios from 'axios';
+import { ExecutionFlowTemplateService } from '../execution-flow/execution-flow.service';
 
 // AI Orchestrator 服务地址
 const getAiOrchestratorUrl = () => {
@@ -164,7 +166,10 @@ const DEFAULT_SKILLS: CreateSkillDTO[] = [
 export class SkillService implements OnModuleInit {
   private readonly logger = new Logger(SkillService.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly executionFlowService: ExecutionFlowTemplateService,
+  ) {}
 
   /**
    * 模块初始化时加载默认Skills
@@ -204,6 +209,7 @@ export class SkillService implements OnModuleInit {
         templateId: dto.templateId,
         carboneTemplateId: dto.carboneTemplateId,
         carboneSkillId: dto.carboneSkillId,
+        executionFlowTemplateId: dto.executionFlowTemplateId,
         apiEndpoints: dto.apiEndpoints as any,
         executionFlow: dto.executionFlow || [],
         tools: dto.tools || [],
@@ -252,6 +258,7 @@ export class SkillService implements OnModuleInit {
         templateId: dto.templateId,
         carboneTemplateId: dto.carboneTemplateId,
         carboneSkillId: dto.carboneSkillId,
+        executionFlowTemplateId: dto.executionFlowTemplateId,
         apiEndpoints: dto.apiEndpoints as any,
         executionFlow: dto.executionFlow,
         tools: dto.tools,
@@ -682,10 +689,432 @@ ${skillsXml}
       templateId: skill.templateId,
       carboneTemplateId: skill.carboneTemplateId,
       carboneSkillId: skill.carboneSkillId,
+      executionFlowTemplateId: skill.executionFlowTemplateId,
       apiEndpoints: skill.apiEndpoints,
       executionFlow: skill.executionFlow,
       tools: skill.tools,
       isActive: skill.isActive,
+    };
+  }
+
+  /**
+   * 验证Skill - AI完整验证（包含流程模板模拟执行）
+   */
+  async validateSkill(skillId: string): Promise<SkillValidationResult> {
+    const skill = await this.getSkill(skillId);
+    if (!skill) {
+      throw new NotFoundException('Skill not found');
+    }
+
+    const result: SkillValidationResult = {
+      isValid: true,
+      score: 100,
+      suggestions: [],
+      warnings: [],
+      validatedAt: new Date().toISOString(),
+      validatedBy: 'ai-validator',
+      details: {
+        configAnalysis: {
+          hasTriggerKeywords: false,
+          hasParamsSchema: false,
+          hasTemplate: false,
+          hasFlowTemplate: false,
+          triggerKeywordQuality: '',
+          paramsSchemaCompleteness: '',
+        },
+      },
+    };
+
+    // 1. 基础配置检查
+    result.details.configAnalysis.hasTriggerKeywords = skill.triggerKeywords.length > 0;
+    result.details.configAnalysis.hasParamsSchema = Object.keys(skill.paramsSchema.properties).length > 0;
+    result.details.configAnalysis.hasTemplate = !!skill.carboneTemplateId;
+    result.details.configAnalysis.hasFlowTemplate = !!skill.executionFlowTemplateId;
+
+    // 检查触发关键词质量
+    if (skill.triggerKeywords.length < 3) {
+      result.warnings.push('触发关键词数量较少，建议添加更多关键词以提高匹配准确度');
+      result.score -= 10;
+      result.details.configAnalysis.triggerKeywordQuality = 'poor';
+    } else if (skill.triggerKeywords.length >= 5) {
+      result.details.configAnalysis.triggerKeywordQuality = 'good';
+    } else {
+      result.details.configAnalysis.triggerKeywordQuality = 'acceptable';
+    }
+
+    // 检查参数Schema完整性
+    const requiredParams = skill.paramsSchema.required || [];
+    if (requiredParams.length === 0) {
+      result.warnings.push('没有必填参数，可能导致执行流程无法正确收集参数');
+      result.score -= 5;
+      result.details.configAnalysis.paramsSchemaCompleteness = 'incomplete';
+    } else {
+      const hasAllDescriptions = requiredParams.every(
+        param => skill.paramsSchema.properties[param]?.description
+      );
+      if (!hasAllDescriptions) {
+        result.warnings.push('部分必填参数缺少描述，建议添加描述以提高AI参数提取准确度');
+        result.score -= 5;
+        result.details.configAnalysis.paramsSchemaCompleteness = 'partial';
+      } else {
+        result.details.configAnalysis.paramsSchemaCompleteness = 'complete';
+      }
+    }
+
+    // 2. 如果关联了流程模板，进行AI模拟执行验证
+    if (skill.executionFlowTemplateId) {
+      try {
+        const flowTemplate = await this.executionFlowService.getTemplate(skill.executionFlowTemplateId);
+        if (flowTemplate) {
+          const flowAnalysis = await this.simulateExecutionFlow(skill, flowTemplate);
+          result.details.flowAnalysis = flowAnalysis;
+
+          // 合并流程验证结果
+          result.score = Math.min(result.score, flowAnalysis.validationScore);
+          if (flowAnalysis.validationScore < 60) {
+            result.isValid = false;
+          }
+
+          // 添加流程验证的建议
+          const failedSteps = flowAnalysis.executionSimulations.filter(s => !s.success);
+          if (failedSteps.length > 0) {
+            result.warnings.push(...failedSteps.map(s => `步骤"${s.stepName}"模拟执行失败: ${s.error}`));
+          }
+        }
+      } catch (error) {
+        const errorMsg = error instanceof Error ? error.message : 'Unknown error';
+        result.warnings.push(`流程模板验证失败: ${errorMsg}`);
+        result.score -= 20;
+      }
+    }
+
+    // 确保分数在有效范围
+    result.score = Math.max(0, Math.min(100, result.score));
+    if (result.score < 60) {
+      result.isValid = false;
+    }
+
+    // 更新Skill的验证状态（保存到数据库）
+    await this.prisma.skillConfig.update({
+      where: { id: skillId },
+      data: {
+        // 可以在这里添加一个validation字段来保存验证结果
+        // 但目前schema中没有这个字段，所以暂时不保存
+      },
+    });
+
+    this.logger.log(`Validated skill ${skillId}: score=${result.score}, valid=${result.isValid}`);
+    return result;
+  }
+
+  /**
+   * 模拟执行流程模板 - AI作为agent执行每个步骤
+   */
+  private async simulateExecutionFlow(
+    skill: SkillConfigDTO,
+    flowTemplate: any,
+  ): Promise<{
+    templateId: string;
+    templateName: string;
+    stepCount: number;
+    executableSteps: number;
+    validationScore: number;
+    executionSimulations: Array<{
+      stepId: string;
+      stepName: string;
+      type: string;
+      simulated: boolean;
+      success: boolean;
+      output?: string;
+      error?: string;
+    }>;
+  }> {
+    const steps = flowTemplate.steps as any[];
+    const simulationResults = [];
+
+    for (let i = 0; i < steps.length; i++) {
+      const step = steps[i];
+      const simulation = {
+        stepId: step.id || `step-${i}`,
+        stepName: step.name,
+        type: step.type,
+        simulated: false,
+        success: false,
+        output: undefined as string | undefined,
+        error: undefined as string | undefined,
+      };
+
+      try {
+        // 根据步骤类型进行模拟执行
+        switch (step.type) {
+          case 'text':
+            // 文本步骤：AI分析内容是否合理
+            const textResult = await this.simulateTextStep(step, skill);
+            simulation.simulated = true;
+            simulation.success = textResult.success;
+            simulation.output = textResult.output;
+            if (!textResult.success) {
+              simulation.error = textResult.error;
+            }
+            break;
+
+          case 'script':
+            // 脚本步骤：AI模拟脚本执行逻辑
+            const scriptResult = await this.simulateScriptStep(step, skill);
+            simulation.simulated = true;
+            simulation.success = scriptResult.success;
+            simulation.output = scriptResult.output;
+            if (!scriptResult.success) {
+              simulation.error = scriptResult.error;
+            }
+            break;
+
+          case 'tool':
+            // 工具步骤：AI模拟工具调用
+            const toolResult = await this.simulateToolStep(step, skill);
+            simulation.simulated = true;
+            simulation.success = toolResult.success;
+            simulation.output = toolResult.output;
+            if (!toolResult.success) {
+              simulation.error = toolResult.error;
+            }
+            break;
+
+          case 'api':
+            // API步骤：AI模拟API请求
+            const apiResult = await this.simulateApiStep(step, skill);
+            simulation.simulated = true;
+            simulation.success = apiResult.success;
+            simulation.output = apiResult.output;
+            if (!apiResult.success) {
+              simulation.error = apiResult.error;
+            }
+            break;
+
+          default:
+            simulation.error = `未知步骤类型: ${step.type}`;
+        }
+      } catch (error) {
+        simulation.error = error instanceof Error ? error.message : 'Unknown error';
+      }
+
+      simulationResults.push(simulation);
+    }
+
+    // 计算验证分数
+    const executableSteps = simulationResults.filter(s => s.simulated).length;
+    const successfulSteps = simulationResults.filter(s => s.success).length;
+    const validationScore = executableSteps > 0
+      ? Math.round((successfulSteps / executableSteps) * 100)
+      : 0;
+
+    return {
+      templateId: flowTemplate.id,
+      templateName: flowTemplate.name,
+      stepCount: steps.length,
+      executableSteps,
+      validationScore,
+      executionSimulations: simulationResults,
+    };
+  }
+
+  /**
+   * 模拟文本步骤执行
+   */
+  private async simulateTextStep(step: any, skill: SkillConfigDTO): Promise<{ success: boolean; output?: string; error?: string }> {
+    if (!step.content) {
+      return { success: false, error: '文本步骤缺少content内容' };
+    }
+
+    // 使用AI分析文本内容的合理性
+    const prompt = `你是一个流程验证助手。请分析以下流程步骤的内容是否合理：
+
+Skill名称: ${skill.name}
+Skill描述: ${skill.description}
+步骤名称: ${step.name}
+步骤类型: 文本指导
+步骤内容: ${step.content}
+
+请判断：
+1. 内容是否与Skill的目标相关
+2. 内容是否清晰易懂
+3. 是否有必要的指导信息
+
+请返回JSON格式结果：
+{
+  "success": true或false,
+  "analysis": "分析结果简述",
+  "output": "模拟输出（如果success为true）"
+}`;
+
+    try {
+      const aiOrchestratorUrl = getAiOrchestratorUrl();
+      const response = await axios.post<{ result: string }>(`${aiOrchestratorUrl}/model/call`, {
+        modelId: 'default',
+        prompt,
+      });
+
+      const jsonMatch = response.data.result.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        const parsed = JSON.parse(jsonMatch[0]);
+        return {
+          success: parsed.success,
+          output: parsed.output || parsed.analysis,
+          error: parsed.success ? undefined : parsed.analysis,
+        };
+      }
+    } catch (error) {
+      this.logger.warn(`Text step simulation failed: ${error}`);
+    }
+
+    // AI调用失败时，使用基础检查
+    return {
+      success: step.content.length > 10,
+      output: '文本内容已验证',
+      error: step.content.length > 10 ? undefined : '文本内容过短',
+    };
+  }
+
+  /**
+   * 模拟脚本步骤执行
+   */
+  private async simulateScriptStep(step: any, skill: SkillConfigDTO): Promise<{ success: boolean; output?: string; error?: string }> {
+    if (!step.script?.code) {
+      return { success: false, error: '脚本步骤缺少code内容' };
+    }
+
+    // 使用AI分析脚本的安全性
+    const prompt = `你是一个流程验证助手。请分析以下脚本步骤的安全性：
+
+Skill名称: ${skill.name}
+步骤名称: ${step.name}
+脚本语言: ${step.script.language}
+脚本代码: ${step.script.code}
+
+请判断脚本是否：
+1. 包含危险操作（如：rm -rf, sudo, chmod 777, curl | bash等）
+2. 语法是否基本正确
+3. 是否符合Skill的预期功能
+
+请返回JSON格式结果：
+{
+  "success": true或false,
+  "analysis": "分析结果简述",
+  "output": "模拟输出（如果success为true）",
+  "error": "错误信息（如果success为false）"
+}`;
+
+    try {
+      const aiOrchestratorUrl = getAiOrchestratorUrl();
+      const response = await axios.post<{ result: string }>(`${aiOrchestratorUrl}/model/call`, {
+        modelId: 'default',
+        prompt,
+      });
+
+      const jsonMatch = response.data.result.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        const parsed = JSON.parse(jsonMatch[0]);
+        return {
+          success: parsed.success,
+          output: parsed.output || parsed.analysis,
+          error: parsed.success ? undefined : parsed.error || parsed.analysis,
+        };
+      }
+    } catch (error) {
+      this.logger.warn(`Script step simulation failed: ${error}`);
+    }
+
+    // 基础安全检查
+    const dangerousPatterns = ['rm -rf', 'sudo', 'chmod 777', 'curl | bash', '> /dev/'];
+    const hasDangerous = dangerousPatterns.some(p => step.script.code.includes(p));
+    return {
+      success: !hasDangerous,
+      output: hasDangerous ? undefined : '脚本已通过安全检查',
+      error: hasDangerous ? '脚本包含潜在危险操作' : undefined,
+    };
+  }
+
+  /**
+   * 模拟工具步骤执行
+   */
+  private async simulateToolStep(step: any, skill: SkillConfigDTO): Promise<{ success: boolean; output?: string; error?: string }> {
+    if (!step.tool?.name) {
+      return { success: false, error: '工具步骤缺少tool.name' };
+    }
+
+    // 检查工具是否在Skill的tools列表中
+    const toolAvailable = skill.tools.includes(step.tool.name);
+    if (!toolAvailable) {
+      return {
+        success: false,
+        error: `工具"${step.tool.name}"不在Skill可用工具列表中`,
+      };
+    }
+
+    return {
+      success: true,
+      output: `工具"${step.tool.name}"模拟执行成功`,
+    };
+  }
+
+  /**
+   * 模拟API步骤执行
+   */
+  private async simulateApiStep(step: any, skill: SkillConfigDTO): Promise<{ success: boolean; output?: string; error?: string }> {
+    if (!step.api?.endpoint) {
+      return { success: false, error: 'API步骤缺少endpoint' };
+    }
+
+    // 使用AI分析API配置的合理性
+    const prompt = `你是一个流程验证助手。请分析以下API步骤的配置：
+
+Skill名称: ${skill.name}
+步骤名称: ${step.name}
+API端点: ${step.api.endpoint}
+API方法: ${step.api.method}
+请求头: ${JSON.stringify(step.api.headers || {})}
+请求体: ${JSON.stringify(step.api.body || {})}
+
+请判断API配置是否：
+1. endpoint格式是否合理（可以是相对路径或完整URL）
+2. method是否正确（GET/POST/PUT/DELETE）
+3. 是否有必要的认证信息（headers中的Authorization等）
+
+请返回JSON格式结果：
+{
+  "success": true或false,
+  "analysis": "分析结果简述",
+  "output": "模拟输出（如果success为true）",
+  "error": "错误信息（如果success为false）"
+}`;
+
+    try {
+      const aiOrchestratorUrl = getAiOrchestratorUrl();
+      const response = await axios.post<{ result: string }>(`${aiOrchestratorUrl}/model/call`, {
+        modelId: 'default',
+        prompt,
+      });
+
+      const jsonMatch = response.data.result.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        const parsed = JSON.parse(jsonMatch[0]);
+        return {
+          success: parsed.success,
+          output: parsed.output || parsed.analysis,
+          error: parsed.success ? undefined : parsed.error || parsed.analysis,
+        };
+      }
+    } catch (error) {
+      this.logger.warn(`API step simulation failed: ${error}`);
+    }
+
+    // 基础检查
+    const validMethods = ['GET', 'POST', 'PUT', 'DELETE'];
+    const methodValid = validMethods.includes(step.api.method);
+    return {
+      success: methodValid && step.api.endpoint.length > 0,
+      output: 'API配置已验证',
+      error: methodValid ? undefined : 'API方法无效',
     };
   }
 }

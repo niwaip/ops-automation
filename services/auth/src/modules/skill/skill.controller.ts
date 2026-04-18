@@ -28,6 +28,7 @@ import {
   SkillMatchResult,
   SkillPermissionDTO,
   GrantSkillDTO,
+  SkillValidationResult,
 } from './interfaces';
 
 @Controller('skills')
@@ -55,6 +56,19 @@ export class SkillController {
     // 只返回用户有权限访问的 Skills
     const skills = await this.skillService.listSkillsForUser(userId);
     return { skills };
+  }
+
+  /**
+   * 验证 Skill（仅管理员）- AI完整验证包含流程模板模拟执行
+   * 注意：静态路由必须放在动态路由（:id）之前
+   */
+  @Post(':id/validate')
+  @Roles('admin')
+  async validateSkill(
+    @Param('id') id: string,
+  ): Promise<{ validation: SkillValidationResult }> {
+    const validation = await this.skillService.validateSkill(id);
+    return { validation };
   }
 
   /**

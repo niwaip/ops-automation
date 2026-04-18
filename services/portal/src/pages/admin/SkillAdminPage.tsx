@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Table, Card, Button, Input, Space, Tag, Typography, Modal, message, Form, Select, Descriptions, Tabs, Tooltip, Collapse, Steps, Divider, Badge, Empty } from 'antd';
 import {
   SearchOutlined,
@@ -13,12 +13,14 @@ import {
   RocketOutlined,
   FileTextOutlined,
   OrderedListOutlined,
+  CheckCircleOutlined,
+  ExclamationCircleOutlined,
 } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
 import { useQuery, useMutation, useQueryClient } from 'react-query';
-import { skillApi, roleApi, SkillConfigDTO, SkillPermissionDTO, RoleDTO, CreateSkillDTO } from '../../api/skill';
+import { skillApi, roleApi, SkillConfigDTO, SkillPermissionDTO, RoleDTO, CreateSkillDTO, SkillValidationResult } from '../../api/skill';
 import { carboneApi, CarboneTemplateDTO } from '../../api/carbone';
-import { executionFlowApi, ExecutionFlowTemplateDTO } from '../../api/execution-flow';
+import { executionFlowApi, ExecutionFlowTemplateDTO, EXECUTION_FLOW_CATEGORIES } from '../../api/execution-flow';
 import type { ColumnsType } from 'antd/es/table';
 
 const { Title, Text } = Typography;
@@ -26,11 +28,13 @@ const { Option } = Select;
 const { TabPane } = Tabs;
 const { Panel } = Collapse;
 
-// Category labels with descriptions (default options, user can add custom)
+// Default categories (will be merged with flow template categories)
 const DEFAULT_CATEGORIES: Record<string, { label: string; color: string; desc: string }> = {
   template: { label: '文档模板', color: 'blue', desc: '基于模板生成文档（Word/PDF等）' },
   analysis: { label: '数据分析', color: 'green', desc: '数据统计、报表分析' },
   automation: { label: '自动化', color: 'purple', desc: '自动化流程执行' },
+  query: { label: '查询', color: 'cyan', desc: '数据查询、信息检索' },
+  notification: { label: '通知', color: 'orange', desc: '消息通知、邮件发送' },
 };
 
 // Available execution flow steps
@@ -53,8 +57,10 @@ const SkillAdminPage: React.FC = () => {
   const [editModalVisible, setEditModalVisible] = useState(false);
   const [detailModalVisible, setDetailModalVisible] = useState(false);
   const [permissionModalVisible, setPermissionModalVisible] = useState(false);
+  const [validationModalVisible, setValidationModalVisible] = useState(false);
   const [editingSkill, setEditingSkill] = useState<SkillConfigDTO | null>(null);
   const [selectedSkill, setSelectedSkill] = useState<SkillConfigDTO | null>(null);
+  const [validationResult, setValidationResult] = useState<SkillValidationResult | null>(null);
   const [form] = Form.useForm();
 
   // Queries
@@ -62,6 +68,25 @@ const SkillAdminPage: React.FC = () => {
   const rolesQuery = useQuery(['roles'], roleApi.list);
   const templatesQuery = useQuery(['carbone-templates'], carboneApi.list);
   const executionFlowTemplatesQuery = useQuery(['execution-flow-templates'], () => executionFlowApi.list({ isActive: true }));
+  const flowCategoriesQuery = useQuery(['execution-flow-categories'], executionFlowApi.getCategories);
+
+  // Merge flow template categories with default categories (flow template categories as source)
+  const mergedCategories = useMemo(() => {
+    const categories = { ...DEFAULT_CATEGORIES };
+    // Add flow template categories as primary options
+    if (flowCategoriesQuery.data?.categories) {
+      flowCategoriesQuery.data.categories.forEach(cat => {
+        // Use flow template category as Skills category option
+        categories[cat.key] = {
+          label: cat.label,
+          color: cat.color,
+          desc: EXECUTION_FLOW_CATEGORIES[cat.key]?.desc || cat.label,
+        };
+      });
+    }
+    return categories;
+  }, [flowCategoriesQuery.data]);
+
   const permissionsQuery = useQuery(
     ['skill-permissions', selectedSkill?.id],
     () => skillApi.getPermissions(selectedSkill!.id),
@@ -128,6 +153,20 @@ const SkillAdminPage: React.FC = () => {
       },
       onError: () => {
         message.error(t('common:error'));
+      },
+    }
+  );
+
+  const validateMutation = useMutation(
+    (skillId: string) => skillApi.validate(skillId),
+    {
+      onSuccess: (data) => {
+        setValidationResult(data.validation);
+        setValidationModalVisible(true);
+        message.success('验证完成');
+      },
+      onError: () => {
+        message.error('验证失败');
       },
     }
   );
@@ -214,6 +253,12 @@ const SkillAdminPage: React.FC = () => {
     }
   };
 
+  const handleValidate = (skill: SkillConfigDTO) => {
+    setSelectedSkill(skill);
+    setValidationResult(null);
+    validateMutation.mutate(skill.id);
+  };
+
   // Filter skills by search text
   const filteredSkills = skillsQuery.data?.skills?.filter(
     (skill) =>
@@ -290,7 +335,7 @@ const SkillAdminPage: React.FC = () => {
       key: 'category',
       width: 120,
       render: (category: string) => {
-        const info = DEFAULT_CATEGORIES[category] || { label: category, color: 'default', desc: '自定义分类' };
+        const info = mergedCategories[category] || { label: category, color: 'default', desc: '自定义分类' };
         return (
           <Tooltip title={info.desc}>
             <Tag color={info.color}>{info.label}</Tag>
@@ -377,7 +422,7 @@ const SkillAdminPage: React.FC = () => {
     {
       title: t('common:actions'),
       key: 'actions',
-      width: 180,
+      width: 220,
       fixed: 'right',
       render: (_, record) => (
         <Space size="small">
@@ -388,6 +433,15 @@ const SkillAdminPage: React.FC = () => {
             onClick={() => handleViewDetail(record)}
           >
             详情
+          </Button>
+          <Button
+            type="link"
+            size="small"
+            icon={<CheckCircleOutlined />}
+            onClick={() => handleValidate(record)}
+            loading={validateMutation.isLoading && selectedSkill?.id === record.id}
+          >
+            验证
           </Button>
           <Button
             type="link"
@@ -551,11 +605,11 @@ const SkillAdminPage: React.FC = () => {
               <Descriptions bordered size="small" column={2}>
                 <Descriptions.Item label="技能ID">{selectedSkill.id}</Descriptions.Item>
                 <Descriptions.Item label="分类">
-                  <Tag color={DEFAULT_CATEGORIES[selectedSkill.category]?.color || 'default'}>
-                    {DEFAULT_CATEGORIES[selectedSkill.category]?.label || selectedSkill.category}
+                  <Tag color={mergedCategories[selectedSkill.category]?.color || 'default'}>
+                    {mergedCategories[selectedSkill.category]?.label || selectedSkill.category}
                   </Tag>
                   <Text type="secondary" style={{ marginLeft: 8 }}>
-                    {DEFAULT_CATEGORIES[selectedSkill.category]?.desc || '自定义分类'}
+                    {mergedCategories[selectedSkill.category]?.desc || '自定义分类'}
                   </Text>
                 </Descriptions.Item>
                 <Descriptions.Item label="描述" span={2}>{selectedSkill.description}</Descriptions.Item>
@@ -664,7 +718,7 @@ const SkillAdminPage: React.FC = () => {
             extra="选择或输入自定义分类名称"
           >
             <Select mode="tags" placeholder="选择或输入分类">
-              {Object.entries(DEFAULT_CATEGORIES).map(([key, value]) => (
+              {Object.entries(mergedCategories).map(([key, value]) => (
                 <Option key={key} value={key}>
                   <Space>
                     <Tag color={value.color}>{value.label}</Tag>
@@ -804,6 +858,153 @@ const SkillAdminPage: React.FC = () => {
             </Space>
           </TabPane>
         </Tabs>
+      </Modal>
+
+      {/* Validation Modal */}
+      <Modal
+        title={`验证结果 - ${selectedSkill?.name}`}
+        open={validationModalVisible}
+        onCancel={() => {
+          setValidationModalVisible(false);
+          setValidationResult(null);
+          setSelectedSkill(null);
+        }}
+        footer={<Button onClick={() => setValidationModalVisible(false)}>关闭</Button>}
+        width={700}
+      >
+        {validationResult && (
+          <Space direction="vertical" size="large" style={{ width: '100%' }}>
+            {/* Overall Result */}
+            <Card>
+              <Space style={{ width: '100%', justifyContent: 'space-between' }}>
+                <Space>
+                  {validationResult.isValid ? (
+                    <CheckCircleOutlined style={{ fontSize: 32, color: '#52c41a' }} />
+                  ) : (
+                    <ExclamationCircleOutlined style={{ fontSize: 32, color: '#ff4d4f' }} />
+                  )}
+                  <Text strong style={{ fontSize: 18 }}>
+                    {validationResult.isValid ? '验证通过' : '验证失败'}
+                  </Text>
+                </Space>
+                <Tag color={validationResult.isValid ? 'success' : 'error'}>
+                  得分: {validationResult.score}/100
+                </Tag>
+              </Space>
+            </Card>
+
+            {/* Config Analysis */}
+            {validationResult.details?.configAnalysis && (
+              <Card title="配置分析" size="small">
+                <Descriptions size="small" column={2}>
+                  <Descriptions.Item label="触发关键词">
+                    <Tag color={validationResult.details.configAnalysis.hasTriggerKeywords ? 'success' : 'error'}>
+                      {validationResult.details.configAnalysis.hasTriggerKeywords ? '已配置' : '缺失'}
+                    </Tag>
+                    <Text type="secondary" style={{ marginLeft: 8 }}>
+                      质量: {validationResult.details.configAnalysis.triggerKeywordQuality}
+                    </Text>
+                  </Descriptions.Item>
+                  <Descriptions.Item label="参数Schema">
+                    <Tag color={validationResult.details.configAnalysis.hasParamsSchema ? 'success' : 'error'}>
+                      {validationResult.details.configAnalysis.hasParamsSchema ? '已配置' : '缺失'}
+                    </Tag>
+                    <Text type="secondary" style={{ marginLeft: 8 }}>
+                      完整度: {validationResult.details.configAnalysis.paramsSchemaCompleteness}
+                    </Text>
+                  </Descriptions.Item>
+                  <Descriptions.Item label="文档模板">
+                    <Tag color={validationResult.details.configAnalysis.hasTemplate ? 'success' : 'warning'}>
+                      {validationResult.details.configAnalysis.hasTemplate ? '已配置' : '未配置'}
+                    </Tag>
+                  </Descriptions.Item>
+                  <Descriptions.Item label="流程模板">
+                    <Tag color={validationResult.details.configAnalysis.hasFlowTemplate ? 'success' : 'warning'}>
+                      {validationResult.details.configAnalysis.hasFlowTemplate ? '已关联' : '未关联'}
+                    </Tag>
+                  </Descriptions.Item>
+                </Descriptions>
+              </Card>
+            )}
+
+            {/* Flow Analysis */}
+            {validationResult.details?.flowAnalysis && (
+              <Card title={`流程模板验证 (${validationResult.details.flowAnalysis.templateName})`} size="small">
+                <Space direction="vertical" size="small" style={{ width: '100%' }}>
+                  <Descriptions size="small" column={3}>
+                    <Descriptions.Item label="步骤数">
+                      {validationResult.details.flowAnalysis.stepCount}
+                    </Descriptions.Item>
+                    <Descriptions.Item label="可执行步骤">
+                      {validationResult.details.flowAnalysis.executableSteps}
+                    </Descriptions.Item>
+                    <Descriptions.Item label="验证得分">
+                      <Tag color={validationResult.details.flowAnalysis.validationScore >= 80 ? 'success' :
+                        validationResult.details.flowAnalysis.validationScore >= 60 ? 'warning' : 'error'}>
+                        {validationResult.details.flowAnalysis.validationScore}%
+                      </Tag>
+                    </Descriptions.Item>
+                  </Descriptions>
+
+                  <Divider style={{ margin: '8px 0' }} />
+                  <Text strong>执行模拟结果:</Text>
+                  {validationResult.details.flowAnalysis.executionSimulations.map((sim) => (
+                    <Card key={sim.stepId} size="small" style={{ marginBottom: 8 }}>
+                      <Space style={{ width: '100%', justifyContent: 'space-between' }}>
+                        <Space>
+                          {sim.success ? (
+                            <CheckCircleOutlined style={{ color: '#52c41a' }} />
+                          ) : (
+                            <ExclamationCircleOutlined style={{ color: '#ff4d4f' }} />
+                          )}
+                          <Text strong>{sim.stepName}</Text>
+                          <Tag>{sim.type}</Tag>
+                        </Space>
+                        <Tag color={sim.success ? 'success' : 'error'}>
+                          {sim.success ? '成功' : '失败'}
+                        </Tag>
+                      </Space>
+                      {sim.output && (
+                        <Text type="secondary" style={{ marginTop: 8, display: 'block' }}>
+                          {sim.output}
+                        </Text>
+                      )}
+                      {sim.error && (
+                        <Text type="danger" style={{ marginTop: 8, display: 'block' }}>
+                          错误: {sim.error}
+                        </Text>
+                      )}
+                    </Card>
+                  ))}
+                </Space>
+              </Card>
+            )}
+
+            {/* Warnings and Suggestions */}
+            {validationResult.warnings.length > 0 && (
+              <Card title="警告" size="small">
+                <Space direction="vertical" size="small">
+                  {validationResult.warnings.map((w, idx) => (
+                    <Text key={idx} type="warning">
+                      ⚠️ {w}
+                    </Text>
+                  ))}
+                </Space>
+              </Card>
+            )}
+            {validationResult.suggestions.length > 0 && (
+              <Card title="建议" size="small">
+                <Space direction="vertical" size="small">
+                  {validationResult.suggestions.map((s, idx) => (
+                    <Text key={idx} type="secondary">
+                      💡 {s}
+                    </Text>
+                  ))}
+                </Space>
+              </Card>
+            )}
+          </Space>
+        )}
       </Modal>
     </div>
   );

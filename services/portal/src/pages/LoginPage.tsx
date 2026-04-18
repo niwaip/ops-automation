@@ -1,11 +1,13 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Form, Input, Button, message, Dropdown, Menu } from 'antd';
+import { Form, Input, Button, message, Dropdown, Menu, Checkbox } from 'antd';
 import { UserOutlined, LockOutlined, GlobalOutlined } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
 import { useMutation } from 'react-query';
 import { authApi } from '../api/auth';
 import { useAuthStore } from '../store/authStore';
+
+const REMEMBERED_CREDENTIALS_KEY = 'remembered_credentials';
 
 interface LoginFormValues {
   username: string;
@@ -13,11 +15,33 @@ interface LoginFormValues {
   remember?: boolean;
 }
 
+interface SavedCredentials {
+  username: string;
+  password: string;
+}
+
 const LoginPage: React.FC = () => {
   const { t } = useTranslation(['auth', 'common']);
   const navigate = useNavigate();
   const { login, language, setLanguage } = useAuthStore();
   const [form] = Form.useForm();
+
+  // Load saved credentials on page load
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(REMEMBERED_CREDENTIALS_KEY);
+      if (saved) {
+        const credentials: SavedCredentials = JSON.parse(saved);
+        form.setFieldsValue({
+          username: credentials.username,
+          password: credentials.password,
+          remember: true,
+        });
+      }
+    } catch {
+      // Ignore parsing errors
+    }
+  }, [form]);
 
   const loginMutation = useMutation(authApi.login, {
     onSuccess: (data) => {
@@ -35,6 +59,18 @@ const LoginPage: React.FC = () => {
     loginMutation.mutate({
       username: values.username,
       password: values.password,
+    }, {
+      onSuccess: () => {
+        // Save or clear credentials based on remember checkbox
+        if (values.remember) {
+          localStorage.setItem(REMEMBERED_CREDENTIALS_KEY, JSON.stringify({
+            username: values.username,
+            password: values.password,
+          }));
+        } else {
+          localStorage.removeItem(REMEMBERED_CREDENTIALS_KEY);
+        }
+      },
     });
   };
 
@@ -180,6 +216,12 @@ const LoginPage: React.FC = () => {
                 fontSize: 15,
               }}
             />
+          </Form.Item>
+
+          <Form.Item name="remember" valuePropName="checked" style={{ marginBottom: 16 }}>
+            <Checkbox style={{ color: 'var(--text-secondary)' }}>
+              {t('rememberMe')}
+            </Checkbox>
           </Form.Item>
 
           <Form.Item style={{ marginBottom: 0 }}>

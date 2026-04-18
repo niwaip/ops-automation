@@ -28,6 +28,7 @@ export interface SkillConfigDTO {
   templateId?: string;
   carboneTemplateId?: string;
   carboneSkillId?: string;
+  executionFlowTemplateId?: string;  // 关联的流程模板ID
   executionFlow: string[];
   tools: string[];
   apiEndpoints?: {
@@ -56,6 +57,7 @@ export interface CreateSkillDTO {
   templateId?: string;
   carboneTemplateId?: string;
   carboneSkillId?: string;
+  executionFlowTemplateId?: string;  // 关联的流程模板ID
   executionFlow?: string[];
   tools?: string[];
   apiEndpoints?: {
@@ -83,6 +85,42 @@ export interface RoleDTO {
   name: string;
 }
 
+// Skill validation result
+export interface SkillValidationResult {
+  isValid: boolean;
+  score: number;
+  suggestions: string[];
+  warnings: string[];
+  validatedAt: string;
+  validatedBy: string;
+  details?: {
+    configAnalysis: {
+      hasTriggerKeywords: boolean;
+      hasParamsSchema: boolean;
+      hasTemplate: boolean;
+      hasFlowTemplate: boolean;
+      triggerKeywordQuality: string;
+      paramsSchemaCompleteness: string;
+    };
+    flowAnalysis?: {
+      templateId: string;
+      templateName: string;
+      stepCount: number;
+      executableSteps: number;
+      validationScore: number;
+      executionSimulations: Array<{
+        stepId: string;
+        stepName: string;
+        type: string;
+        simulated: boolean;
+        success: boolean;
+        output?: string;
+        error?: string;
+      }>;
+    };
+  };
+}
+
 // Skill API
 export const skillApi = {
   list: async (): Promise<SkillListResponse> => {
@@ -103,6 +141,11 @@ export const skillApi = {
 
   delete: async (id: string): Promise<{ success: boolean }> => {
     return apiClient.delete<{ success: boolean }>(`/skills/${id}`);
+  },
+
+  // Validate skill with AI simulation
+  validate: async (id: string): Promise<{ validation: SkillValidationResult }> => {
+    return apiClient.post<{ validation: SkillValidationResult }>(`/skills/${id}/validate`);
   },
 
   // Permission management
