@@ -135,14 +135,24 @@ export class ExecutionFlowTemplateController {
 
   /**
    * 验证流程模板 - AI验证功能
+   * 支持真实执行测试（enableExecutionTest=true）
    */
   @Post(':id/validate')
   @Roles('admin')
   async validateTemplate(
     @Param('id') id: string,
-    @Query('aiServiceUrl') aiServiceUrl?: string
+    @Query('aiServiceUrl') aiServiceUrl?: string,
+    @Query('enableExecutionTest') enableExecutionTest?: string,
+    @Body() body?: { testParams?: Record<string, unknown> },
   ) {
-    const validationResult = await this.templateService.validateTemplate(id, aiServiceUrl);
+    const enableExec = enableExecutionTest === 'true';
+    const testParams = body?.testParams;
+    const validationResult = await this.templateService.validateTemplate(
+      id,
+      aiServiceUrl,
+      testParams,
+      enableExec,
+    );
     return { validationResult };
   }
 

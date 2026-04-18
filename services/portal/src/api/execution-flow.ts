@@ -57,6 +57,15 @@ export interface ValidationResult {
       hasDependencies: boolean;
       suggestion?: string;
     }>;
+    aiCritique?: string;
+    autoAdjustment?: any;
+    executionTest?: {
+      success: boolean;
+      result?: string;
+      error?: string;
+      log: string[];
+      iterations: number;
+    };
   };
 }
 
@@ -193,11 +202,25 @@ export const executionFlowApi = {
 
   /**
    * 验证流程模板 - AI验证功能
+   * 支持真实执行测试
    */
-  validate: async (id: string, aiServiceUrl?: string): Promise<ValidateResponse> => {
-    const params = aiServiceUrl ? `?aiServiceUrl=${encodeURIComponent(aiServiceUrl)}` : '';
+  validate: async (
+    id: string,
+    options?: {
+      aiServiceUrl?: string;
+      enableExecutionTest?: boolean;
+      testParams?: Record<string, any>;
+    },
+  ): Promise<ValidateResponse> => {
+    const params = new URLSearchParams();
+    if (options?.aiServiceUrl) params.append('aiServiceUrl', encodeURIComponent(options.aiServiceUrl));
+    if (options?.enableExecutionTest) params.append('enableExecutionTest', 'true');
+
+    const body = options?.testParams ? { testParams: options.testParams } : undefined;
+
     return apiClient.post<ValidateResponse>(
-      `/execution-flow-templates/${id}/validate${params}`
+      `/execution-flow-templates/${id}/validate?${params.toString()}`,
+      body,
     );
   },
 

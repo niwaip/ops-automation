@@ -373,8 +373,14 @@ export class ExecutionFlowTemplateService implements OnModuleInit {
   /**
    * 验证流程模板 - AI驱动的深度验证与优化
    * 检查流程逻辑一致性、参数链条、影子工具适配度，并提供自动调整建议
+   * 支持真实执行测试：通过ReAct引擎的flow_execute工具实际执行流程
    */
-  async validateTemplate(id: string, aiServiceUrl?: string): Promise<ValidationResult> {
+  async validateTemplate(
+    id: string,
+    aiServiceUrl?: string,
+    testParams?: Record<string, unknown>,
+    enableExecutionTest?: boolean,
+  ): Promise<ValidationResult> {
     const template = await this.getTemplate(id);
     if (!template) {
       throw new Error('Template not found');
@@ -503,6 +509,90 @@ ${template.paramsSchema ? `参数定义: ${JSON.stringify(template.paramsSchema,
     } catch (aiError) {
       this.logger.error('AI Audit failed, falling back to static validation only:', aiError.message);
       validationResult.warnings?.push(`AI 深度审计不可用 (错误: ${aiError.message})，仅执行静态检查。`);
+    }
+
+    // 2.5 真实执行测试（可选）- 通过ReAct引擎执行流程
+    if (enableExecutionTest) {
+      try {
+        const orchestratorUrl = aiServiceUrl || process.env.AI_ORCHESTRATOR_URL || 'http://ops-ai-orchestrator:3007';
+
+        this.logger.log(`Starting execution test for template ${id} with params: ${JSON.stringify(testParams || {})}`);
+
+        // 使用 ReAct 引擎的 task 模式执行流程
+        const execResponse = await axios.post(`${orchestratorUrl}/ai/chat/stream`, {
+          message: `执行流程模板 ${template.name}，模板ID: ${id}`,
+          sessionId: `exec-test-${id}-${randomUUID()}`,
+          modelId: 'qwen3.5-plus',
+          config: {
+            mode: 'task',
+            maxIterations: Math.max(steps.length + 5, 10),  // 给足够迭代次数完成流程
+          },
+        }, { responseType: 'stream', timeout: 60000 });
+
+        // 收集执行过程
+        const executionLog: string[] = [];
+        let executionResult = '';
+        let executionError = '';
+        let iterations = 0;
+
+        for await (const chunk of execResponse.data as AsyncIterable<any>) {
+          const lines = chunk.toString().split('\n');
+          for (const line of lines) {
+            if (line.startsWith('data: ')) {
+              try {
+                const data = JSON.parse(line.slice(6));
+                if (data.type === 'thought') {
+                  executionLog.push(`[Thought] ${data.content}`);
+                  iterations = data.iteration || iterations;
+                } else if (data.type === 'action') {
+                  executionLog.push(`[Action] ${data.content} ${JSON.stringify(data.data?.actionInput || {})}`);
+                } else if (data.type === 'observation') {
+                  executionLog.push(`[Observation] ${data.content?.slice(0, 500)}...`);
+                } else if (data.type === 'result') {
+                  executionResult = data.content;
+                  executionLog.push(`[Result] ${executionResult}`);
+                } else if (data.type === 'error') {
+                  executionError = data.content;
+                  executionLog.push(`[Error] ${executionError}`);
+                } else if (data.type === 'done') {
+                  executionLog.push('[Done] Stream completed');
+                }
+              } catch (e) {
+                // Ignore partial JSON
+              }
+            }
+          }
+        }
+
+        // 分析执行结果
+        if (executionError) {
+          validationResult.warnings?.push(`执行测试失败: ${executionError}`);
+          if (validationResult.details) {
+            validationResult.details.executionTest = {
+              success: false,
+              error: executionError,
+              log: executionLog,
+              iterations,
+            };
+          }
+        } else if (executionResult) {
+          validationResult.suggestions.push(`执行测试成功: 流程完成，共 ${iterations} 次迭代`);
+          if (validationResult.details) {
+            validationResult.details.executionTest = {
+              success: true,
+              result: executionResult,
+              log: executionLog,
+              iterations,
+            };
+          }
+        } else {
+          validationResult.warnings?.push('执行测试未返回有效结果');
+        }
+
+      } catch (execError) {
+        this.logger.error('Execution test failed:', execError.message);
+        validationResult.warnings?.push(`执行测试异常: ${execError.message}`);
+      }
     }
 
     // 3. 持久化验证结果

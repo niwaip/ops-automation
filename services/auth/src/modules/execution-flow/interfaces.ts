@@ -61,6 +61,13 @@ export interface ValidationResult {
     stepAnalysis: StepAnalysis[];
     aiCritique?: string;        // AI 深度审计详情
     autoAdjustment?: any;      // AI 建议的自动优化流程
+    executionTest?: {          // 真实执行测试结果
+      success: boolean;
+      result?: string;
+      error?: string;
+      log: string[];           // 执行日志
+      iterations: number;      // 执行迭代次数
+    };
   };
 }
 
