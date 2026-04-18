@@ -139,11 +139,11 @@ export function parseActionResponse(response: string): {
 } | null {
   // 提取Thought
   const thoughtMatch = response.match(/Thought:\s*([^\n]+)/);
-  const thought = thoughtMatch ? thoughtMatch[1].trim() : '';
+  const thought = thoughtMatch?.[1]?.trim() ?? '';
 
   // 提取Action
   const actionMatch = response.match(/Action:\s*([^\n]+)/);
-  const action = actionMatch ? actionMatch[1].trim() : '';
+  const action = actionMatch?.[1]?.trim() ?? '';
 
   // 提取Action Input
   const actionInputMatch = response.match(/Action Input:\s*([\s\S]+?)(?=Observation|Final Answer|$)/);
@@ -152,7 +152,7 @@ export function parseActionResponse(response: string): {
   if (actionInputMatch) {
     try {
       // 尝试解析JSON
-      const inputStr = actionInputMatch[1].trim();
+      const inputStr = actionInputMatch[1]?.trim() ?? '';
       // 处理可能的多行JSON
       const jsonMatch = inputStr.match(/\{[\s\S]*\}/);
       if (jsonMatch) {
@@ -173,7 +173,7 @@ export function parseActionResponse(response: string): {
     return {
       thought: '任务已完成',
       action: 'finish',
-      actionInput: { answer: finalMatch[1].trim() },
+      actionInput: { answer: finalMatch[1]?.trim() ?? '' },
     };
   }
 

@@ -86,6 +86,7 @@ export interface SkillMatchResult {
   templateId?: string;
   carboneTemplateId?: string;
   carboneSkillId?: string;
+  executionFlowTemplateId?: string;  // 新增：执行流程模板ID
   apiEndpoints?: {
     generateParameters?: ApiEndpoint;
     render?: ApiEndpoint;

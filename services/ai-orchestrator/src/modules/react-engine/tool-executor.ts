@@ -20,6 +20,8 @@ import {
   GenerateParametersTool,
   DocumentRenderTool,
   PreviewParamsTool,
+  ApiCallTool,
+  FlowExecuteTool,
 } from './tools';
 
 @Injectable()
@@ -46,6 +48,8 @@ export class ToolExecutor {
       new GenerateParametersTool(),
       new DocumentRenderTool(),
       new PreviewParamsTool(),
+      new ApiCallTool(),
+      new FlowExecuteTool(),
     ];
 
     for (const tool of this.defaultTools) {

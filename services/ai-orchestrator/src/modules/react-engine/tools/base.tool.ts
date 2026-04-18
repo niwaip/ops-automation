@@ -3,12 +3,14 @@
  * 所有工具的基类，定义统一接口
  */
 
+import { Logger } from '@nestjs/common';
 import { ToolDefinition, ToolResult, ExecutionContext } from '../interfaces';
 
 export abstract class BaseTool implements ToolDefinition {
   name: string;
   description: string;
   parameters: ToolDefinition['parameters'];
+  protected logger: Logger;
 
   constructor(
     name: string,
@@ -18,6 +20,7 @@ export abstract class BaseTool implements ToolDefinition {
     this.name = name;
     this.description = description;
     this.parameters = parameters;
+    this.logger = new Logger(name);
   }
 
   /**
@@ -55,6 +58,7 @@ export abstract class BaseTool implements ToolDefinition {
       name: this.name,
       description: this.description,
       parameters: this.parameters,
+      validateParams: this.validateParams.bind(this),
       execute: this.execute.bind(this),
     };
   }

@@ -93,23 +93,44 @@ export class SkillMatchTool extends BaseTool {
           outputMsg += `\n匹配关键词: ${matchResult.matchedKeywords.join(', ')}`;
         }
 
-        // 如果有Carbone配置，提示下一步
-        if (matchResult.carboneSkillId) {
-          outputMsg += `\n此技能已配置Carbone AI参数生成，下一步请调用 generate_parameters 工具。
-Carbone Skill ID: ${matchResult.carboneSkillId}
-Carbone Template ID: ${matchResult.carboneTemplateId || '无'}
-调用参数: {"skillId": "${matchResult.carboneSkillId}", "description": "${userInput}"}`;
-        }
-
-        return {
+        // 构建结果和下一步信息
+        const result: ToolResult = {
           success: true,
           output: outputMsg,
           data: {
             skill: matchResult,
             needsSkillMatch: false,
-            useCarbone: !!matchResult.carboneSkillId,
           },
         };
+
+        // 如果有流程模板，需要执行流程模板步骤
+        if (matchResult.executionFlowTemplateId) {
+          outputMsg += `\n此技能已关联执行流程模板，将按模板步骤执行。`;
+          // 设置下一步为执行流程模板
+          result.nextAction = 'flow_execute';
+          result.nextActionParams = {
+            templateId: matchResult.executionFlowTemplateId,
+            stepIndex: 0,
+            params: matchResult.collectedParams || {},
+          };
+          result.data!.hasFlowTemplate = true;
+          result.data!.flowTemplateId = matchResult.executionFlowTemplateId;
+        }
+        // 如果有Carbone配置，提示下一步
+        else if (matchResult.carboneSkillId) {
+          outputMsg += `\n此技能已配置Carbone AI参数生成，下一步请调用 generate_parameters 工具。
+Carbone Skill ID: ${matchResult.carboneSkillId}
+Carbone Template ID: ${matchResult.carboneTemplateId || '无'}
+调用参数: {"skillId": "${matchResult.carboneSkillId}", "description": "${userInput}"}`;
+          result.nextAction = 'generate_parameters';
+          result.nextActionParams = {
+            skillId: matchResult.carboneSkillId,
+            description: userInput,
+          };
+          result.data!.useCarbone = true;
+        }
+
+        return result;
       }
 
       // 用户可能没有权限访问任何技能，或者没有匹配到

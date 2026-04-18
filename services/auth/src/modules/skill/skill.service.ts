@@ -578,6 +578,7 @@ ${skillsXml}
             templateId: matchedSkill.templateId,
             carboneTemplateId: matchedSkill.carboneTemplateId,
             carboneSkillId: matchedSkill.carboneSkillId,
+            executionFlowTemplateId: matchedSkill.executionFlowTemplateId,  // 新增
             apiEndpoints: matchedSkill.apiEndpoints,
           };
         }
