@@ -535,7 +535,7 @@ ${skillsXml}
     // 4. 调用 AI Orchestrator 进行语义匹配
     try {
       const aiOrchestratorUrl = getAiOrchestratorUrl();
-      const response = await axios.post<{ result: string }>(`${aiOrchestratorUrl}/model/call`, {
+      const response = await axios.post<{ result: string }>(`${aiOrchestratorUrl}/ai/model/call`, {
         modelId: 'default',
         prompt,
       });
@@ -726,20 +726,20 @@ ${skillsXml}
     };
 
     // 1. 基础配置检查
-    result.details.configAnalysis.hasTriggerKeywords = skill.triggerKeywords.length > 0;
-    result.details.configAnalysis.hasParamsSchema = Object.keys(skill.paramsSchema.properties).length > 0;
-    result.details.configAnalysis.hasTemplate = !!skill.carboneTemplateId;
-    result.details.configAnalysis.hasFlowTemplate = !!skill.executionFlowTemplateId;
+    result.details!.configAnalysis.hasTriggerKeywords = skill.triggerKeywords.length > 0;
+    result.details!.configAnalysis.hasParamsSchema = Object.keys(skill.paramsSchema.properties).length > 0;
+    result.details!.configAnalysis.hasTemplate = !!skill.carboneTemplateId;
+    result.details!.configAnalysis.hasFlowTemplate = !!skill.executionFlowTemplateId;
 
     // 检查触发关键词质量
     if (skill.triggerKeywords.length < 3) {
       result.warnings.push('触发关键词数量较少，建议添加更多关键词以提高匹配准确度');
       result.score -= 10;
-      result.details.configAnalysis.triggerKeywordQuality = 'poor';
+      result.details!.configAnalysis.triggerKeywordQuality = 'poor';
     } else if (skill.triggerKeywords.length >= 5) {
-      result.details.configAnalysis.triggerKeywordQuality = 'good';
+      result.details!.configAnalysis.triggerKeywordQuality = 'good';
     } else {
-      result.details.configAnalysis.triggerKeywordQuality = 'acceptable';
+      result.details!.configAnalysis.triggerKeywordQuality = 'acceptable';
     }
 
     // 检查参数Schema完整性
@@ -747,7 +747,7 @@ ${skillsXml}
     if (requiredParams.length === 0) {
       result.warnings.push('没有必填参数，可能导致执行流程无法正确收集参数');
       result.score -= 5;
-      result.details.configAnalysis.paramsSchemaCompleteness = 'incomplete';
+      result.details!.configAnalysis.paramsSchemaCompleteness = 'incomplete';
     } else {
       const hasAllDescriptions = requiredParams.every(
         param => skill.paramsSchema.properties[param]?.description
@@ -755,9 +755,9 @@ ${skillsXml}
       if (!hasAllDescriptions) {
         result.warnings.push('部分必填参数缺少描述，建议添加描述以提高AI参数提取准确度');
         result.score -= 5;
-        result.details.configAnalysis.paramsSchemaCompleteness = 'partial';
+        result.details!.configAnalysis.paramsSchemaCompleteness = 'partial';
       } else {
-        result.details.configAnalysis.paramsSchemaCompleteness = 'complete';
+        result.details!.configAnalysis.paramsSchemaCompleteness = 'complete';
       }
     }
 
@@ -767,7 +767,7 @@ ${skillsXml}
         const flowTemplate = await this.executionFlowService.getTemplate(skill.executionFlowTemplateId);
         if (flowTemplate) {
           const flowAnalysis = await this.simulateExecutionFlow(skill, flowTemplate);
-          result.details.flowAnalysis = flowAnalysis;
+          result.details!.flowAnalysis = flowAnalysis;
 
           // 合并流程验证结果
           result.score = Math.min(result.score, flowAnalysis.validationScore);
@@ -949,7 +949,7 @@ Skill描述: ${skill.description}
 
     try {
       const aiOrchestratorUrl = getAiOrchestratorUrl();
-      const response = await axios.post<{ result: string }>(`${aiOrchestratorUrl}/model/call`, {
+      const response = await axios.post<{ result: string }>(`${aiOrchestratorUrl}/ai/model/call`, {
         modelId: 'default',
         prompt,
       });
@@ -1006,7 +1006,7 @@ Skill名称: ${skill.name}
 
     try {
       const aiOrchestratorUrl = getAiOrchestratorUrl();
-      const response = await axios.post<{ result: string }>(`${aiOrchestratorUrl}/model/call`, {
+      const response = await axios.post<{ result: string }>(`${aiOrchestratorUrl}/ai/model/call`, {
         modelId: 'default',
         prompt,
       });
@@ -1090,7 +1090,7 @@ API方法: ${step.api.method}
 
     try {
       const aiOrchestratorUrl = getAiOrchestratorUrl();
-      const response = await axios.post<{ result: string }>(`${aiOrchestratorUrl}/model/call`, {
+      const response = await axios.post<{ result: string }>(`${aiOrchestratorUrl}/ai/model/call`, {
         modelId: 'default',
         prompt,
       });

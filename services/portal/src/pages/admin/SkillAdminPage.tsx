@@ -195,6 +195,7 @@ const SkillAdminPage: React.FC = () => {
       templateId: skill.templateId,
       carboneTemplateId: skill.carboneTemplateId,
       carboneSkillId: skill.carboneSkillId,
+      executionFlowTemplateId: skill.executionFlowTemplateId,
     });
     setEditModalVisible(true);
   };
@@ -219,6 +220,7 @@ const SkillAdminPage: React.FC = () => {
         templateId: values.templateId,
         carboneTemplateId: values.carboneTemplateId,
         carboneSkillId: values.carboneSkillId,
+        executionFlowTemplateId: values.executionFlowTemplateId,
       };
 
       if (editingSkill) {
