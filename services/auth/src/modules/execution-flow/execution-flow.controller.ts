@@ -146,6 +146,35 @@ export class ExecutionFlowTemplateController {
   }
 
   /**
+   * 应用 AI 优化建议
+   */
+  @Post(':id/apply-adjustment')
+  @Roles('admin')
+  async applyAdjustment(@Param('id') id: string): Promise<ExecutionFlowTemplateDTO> {
+    const template = await this.templateService.getTemplate(id);
+    if (!template || !template.validation) {
+      throw new HttpException('No AI adjustment found for this template', HttpStatus.BAD_REQUEST);
+    }
+
+    const validation = template.validation as any;
+    const improvedFlow = validation.details?.autoAdjustment;
+
+    if (!improvedFlow) {
+      throw new HttpException('No improved flow suggested by AI', HttpStatus.NOT_FOUND);
+    }
+
+    const updated = await this.templateService.updateTemplate(id, {
+      steps: improvedFlow,
+    });
+    
+    if (!updated) {
+      throw new HttpException('Failed to update template', HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+
+    return updated;
+  }
+
+  /**
    * 复制模板（创建副本）
    */
   @Post(':id/clone')

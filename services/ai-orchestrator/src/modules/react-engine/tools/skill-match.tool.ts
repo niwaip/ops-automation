@@ -42,6 +42,7 @@ export class SkillMatchTool extends BaseTool {
         },
         required: ['userInput'],
       },
+      { category: 'discovery' },
     );
   }
 
@@ -80,8 +81,14 @@ export class SkillMatchTool extends BaseTool {
       const matchResult = response.data.match as SkillMatchResult | null;
 
       if (matchResult && matchResult.confidence > 0) {
+        // 定义预编译执行流 (Fast-track)
+        if (matchResult.carboneSkillId) {
+          matchResult.executionFlow = ['generate_parameters', 'document_render'];
+        }
+
         // 更新context中的skill信息
         context.skill = matchResult;
+        context.currentFlowStep = 0; // 重置流程步骤
 
         // 构建输出信息（支持AI匹配原因）
         let outputMsg = `成功匹配技能: ${matchResult.skillName} (置信度: ${matchResult.confidence.toFixed(2)})`;

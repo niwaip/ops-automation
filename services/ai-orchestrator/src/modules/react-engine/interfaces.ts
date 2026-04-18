@@ -13,6 +13,7 @@ export enum StreamEventType {
   RESULT = 'result',
   ERROR = 'error',
   PARAMS_CONFIRM = 'params_confirm',
+  ACTION_CONFIRM = 'action_confirm',
   FILE_UPLOAD = 'file_upload',
 }
 
@@ -57,6 +58,9 @@ export interface ReActConfig {
 export interface ToolDefinition {
   name: string;
   description: string;
+  category?: 'discovery' | 'parameter' | 'execution' | 'utility' | 'flow';
+  requiresConfirmation?: boolean;
+  requiredRoles?: string[]; // 新增：执行此工具所需的角色
   parameters: {
     type: 'object';
     properties: Record<string, {
@@ -89,6 +93,7 @@ export interface ToolResult {
 export interface ExecutionContext {
   sessionId: string;
   userId: string;
+  userRoles?: string[];           // 新增：当前用户的角色
   history: ChatMessage[];
   currentThought?: string;
   skill?: SkillMatchResult;
@@ -96,6 +101,7 @@ export interface ExecutionContext {
   collectedParams?: Record<string, unknown>;  // 已收集的参数
   nextAction?: string;            // 工具返回的下一步动作提示
   nextActionParams?: Record<string, unknown>;  // 下一步动作的参数
+  currentFlowStep?: number;       // 当前执行流的步骤索引
 }
 
 /**
@@ -118,6 +124,18 @@ export interface ApiEndpoint {
 }
 
 /**
+ * 流程模板定义
+ */
+export interface FlowTemplate {
+  id: string;
+  name: string;
+  description: string;
+  category: string;
+  steps: any[];
+  executionFlowKeys: string[];
+}
+
+/**
  * Skill匹配结果
  */
 export interface SkillMatchResult {
@@ -132,6 +150,7 @@ export interface SkillMatchResult {
   carboneTemplateId?: string;  // Carbone引擎的模板ID
   carboneSkillId?: string;      // Carbone引擎的Skill ID
   executionFlowTemplateId?: string;  // 执行流程模板ID
+  executionFlow?: string[];     // 预定义的执行流
   apiEndpoints?: {
     generateParameters?: ApiEndpoint;  // 参数生成API
     render?: ApiEndpoint;              // 文档渲染API
@@ -178,9 +197,11 @@ export interface ChatRequestDTO {
   message: string;
   sessionId?: string;
   userId?: string;
+  userRoles?: string[];          // 新增：请求中传入的用户角色
   modelId?: string;
   files?: UploadedFile[];
   config?: Partial<ReActConfig>;
+  isConfirmed?: boolean;         // 是否已确认执行敏感操作
 }
 
 /**

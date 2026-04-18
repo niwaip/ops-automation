@@ -11,12 +11,14 @@ export class OpenAICompatibleClient {
   private apiKey: string;
   private model: string;
   private timeout: number;
+  private useJsonMode: boolean;
 
   constructor(config: OpenAICompatibleConfig, timeout: number = 300000) {
     this.baseURL = config.baseURL;
     this.apiKey = config.apiKey;
     this.model = config.model;
     this.timeout = timeout;
+    this.useJsonMode = config.useJsonMode || false;
 
     this.client = axios.create({
       baseURL: this.baseURL,
@@ -35,11 +37,17 @@ export class OpenAICompatibleClient {
    */
   async chatCompletion(messages: ChatMessage[]): Promise<string> {
     try {
-      // Use /chat/completions since baseURL already includes /v1
-      const response = await this.client.post('/chat/completions', {
+      const data: any = {
         model: this.model,
         messages,
-      });
+      };
+
+      if (this.useJsonMode) {
+        data.response_format = { type: 'json_object' };
+      }
+
+      // Use /chat/completions since baseURL already includes /v1
+      const response = await this.client.post('/chat/completions', data);
 
       return response.data.choices[0]?.message?.content || '';
     } catch (error: unknown) {
@@ -65,12 +73,18 @@ export class OpenAICompatibleClient {
     onChunk: (chunk: string) => void,
   ): Promise<string> {
     try {
-      // Use /chat/completions since baseURL already includes /v1
-      const response = await this.client.post('/chat/completions', {
+      const data: any = {
         model: this.model,
         messages,
         stream: true,
-      }, {
+      };
+
+      if (this.useJsonMode) {
+        data.response_format = { type: 'json_object' };
+      }
+
+      // Use /chat/completions since baseURL already includes /v1
+      const response = await this.client.post('/chat/completions', data, {
         responseType: 'stream',
       });
 
@@ -153,6 +167,9 @@ export class OpenAICompatibleClient {
     if (config.model) {
       this.model = config.model;
     }
+    if (config.useJsonMode !== undefined) {
+      this.useJsonMode = config.useJsonMode;
+    }
   }
 
   /**
@@ -163,6 +180,7 @@ export class OpenAICompatibleClient {
       baseURL: this.baseURL,
       apiKey: this.apiKey,
       model: this.model,
+      useJsonMode: this.useJsonMode,
     };
   }
 }
@@ -178,12 +196,14 @@ export class AzureOpenAIClient extends OpenAICompatibleClient {
     model: string;
     deploymentName: string;
     apiVersion: string;
+    useJsonMode?: boolean;
   }) {
     // Azure OpenAI uses api-key header instead of Bearer token
     const azureConfig = {
       baseURL: `${config.baseURL}/deployments/${config.deploymentName}`,
       apiKey: config.apiKey,
       model: config.model,
+      useJsonMode: config.useJsonMode,
     };
 
     super(azureConfig);

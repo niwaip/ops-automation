@@ -6,6 +6,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ModelService } from '../model/model.service';
 import { ToolExecutor } from './tool-executor';
+import { SessionService } from '../redis/session.service';
 import {
   StreamEvent,
   StreamEventType,
@@ -41,6 +42,7 @@ export class ReActEngineService {
   constructor(
     private readonly modelService: ModelService,
     private readonly toolExecutor: ToolExecutor,
+    private readonly sessionService: SessionService,
   ) {}
 
   /**
@@ -56,22 +58,65 @@ export class ReActEngineService {
       modelId: request.modelId || DEFAULT_CONFIG.modelId,
     };
 
-    const state: ReActState = {
-      thought: '',
-      action: '',
-      actionInput: {},
-      observation: '',
-      iteration: 0,
-      maxIterations: config.maxIterations,
-      isFinished: false,
-    };
+    let state: ReActState;
+    let messages: ChatMessage[];
 
-    // 初始化消息列表，添加用户消息
-    const messages: ChatMessage[] = [...context.history];
-    if (request.message) {
-      messages.push({ role: 'user' as const, content: request.message, timestamp: new Date() });
+    // 注入角色信息
+    if (request.userRoles) {
+      context.userRoles = request.userRoles;
     }
-    const tools = this.toolExecutor.getTools(config.tools);
+
+    // 尝试从Session中恢复
+    const savedSession = await this.sessionService.getSession(context.sessionId);
+    if (savedSession) {
+      this.logger.log(`Resuming session ${context.sessionId} at iteration ${savedSession.state.iteration}`);
+      state = savedSession.state;
+      messages = savedSession.history;
+      // 恢复context中的数据
+      if (savedSession.context) {
+        Object.assign(context, savedSession.context);
+      }
+      
+      // 如果 Session 中没存角色（旧数据），优先使用当前请求带的角色
+      if (request.userRoles) {
+        context.userRoles = request.userRoles;
+      }
+      
+      // 如果新请求带了消息，作为新用户输入加入历史
+      if (request.message) {
+        messages.push({
+          role: 'user',
+          content: request.message,
+          timestamp: new Date(),
+        });
+      }
+    } else {
+      state = {
+        thought: '',
+        action: '',
+        actionInput: {},
+        observation: '',
+        iteration: 0,
+        maxIterations: config.maxIterations,
+        isFinished: false,
+      };
+
+      // 初始化消息列表，添加用户消息
+      messages = [...context.history];
+      if (request.message) {
+        messages.push({
+          role: 'user',
+          content: request.message,
+          timestamp: new Date(),
+        });
+      }
+    }
+    
+    // 加载动态流程工具
+    await this.toolExecutor.loadDynamicFlowTools();
+    
+    // 获取工具列表时应用权限过滤
+    const tools = this.toolExecutor.getTools(config.tools, context.userRoles);
 
     // 开始循环
     while (!state.isFinished && state.iteration < state.maxIterations) {
@@ -105,6 +150,24 @@ export class ReActEngineService {
         // 直接执行Action，跳过AI决策
         yield* this.executeAction(state, context);
 
+        // 将这一步加入历史
+        messages.push({
+          role: 'assistant',
+          content: JSON.stringify({
+            thought: state.thought,
+            action: state.action,
+            actionInput: state.actionInput
+          }),
+          timestamp: new Date(),
+          metadata: { isReAct: true, iteration: state.iteration },
+        });
+        messages.push({
+          role: 'user',
+          content: `Observation: ${state.observation}`,
+          timestamp: new Date(),
+          metadata: { isReAct: true, iteration: state.iteration },
+        });
+
         // 检查是否完成
         if (state.action === 'finish' || state.isFinished) {
           yield this.createResultEvent(state);
@@ -113,12 +176,145 @@ export class ReActEngineService {
         continue;  // 继续下一轮
       }
 
+      // 1.5 检查预编译执行流 (Fast-track)
+      if (context.skill?.executionFlow && context.currentFlowStep !== undefined && context.currentFlowStep < context.skill.executionFlow.length) {
+        const flowTool = context.skill.executionFlow[context.currentFlowStep];
+        this.logger.debug(`Fast-track: executing flow step ${context.currentFlowStep + 1}/${context.skill.executionFlow.length} - ${flowTool}`);
+
+        state.action = flowTool;
+        state.thought = `[自动执行] 进入预编译流程步骤 ${context.currentFlowStep + 1}: ${flowTool}`;
+
+        // 自动构建参数
+        if (flowTool === 'generate_parameters') {
+          const originalUserMessage = messages.find(m => m.role === 'user' && !m.metadata?.isReAct);
+          state.actionInput = { 
+            skillId: context.skill.carboneSkillId, 
+            description: typeof originalUserMessage?.content === 'string' ? originalUserMessage.content : '' 
+          };
+        } else if (flowTool === 'document_render') {
+          state.actionInput = {
+            templateId: context.skill.carboneTemplateId,
+            data: context.collectedParams || {}
+          };
+        } else {
+          state.actionInput = context.collectedParams || {};
+        }
+
+        context.currentFlowStep++;
+
+        // 发送thought事件
+        yield {
+          type: StreamEventType.THOUGHT,
+          content: state.thought,
+          iteration: state.iteration,
+        };
+
+        // 发送action事件
+        yield {
+          type: StreamEventType.ACTION,
+          content: state.action,
+          data: { actionInput: state.actionInput },
+          iteration: state.iteration,
+        };
+
+        // 执行Action
+        yield* this.executeAction(state, context);
+
+        // 将这一步加入历史
+        messages.push({
+          role: 'assistant',
+          content: JSON.stringify({
+            thought: state.thought,
+            action: state.action,
+            actionInput: state.actionInput
+          }),
+          timestamp: new Date(),
+          metadata: { isReAct: true, iteration: state.iteration },
+        });
+        messages.push({
+          role: 'user',
+          content: `Observation: ${state.observation}`,
+          timestamp: new Date(),
+          metadata: { isReAct: true, iteration: state.iteration },
+        });
+
+        // 检查是否完成
+        if (state.action === 'finish' || state.isFinished) {
+          yield this.createResultEvent(state);
+          break;
+        }
+        continue; // 跳过 AI 决策，进入下一轮流处理或普通循环
+      }
+
       // 2. 构建提示词并调用AI获取Thought和Action
-      yield* this.generateThoughtAndAction(state, context, messages, tools, config);
+      const aiResponse = await this.generateThoughtAndAction(state, context, messages, tools, config);
+      for await (const event of aiResponse) {
+        yield event;
+      }
 
       // 3. 执行Action
       if (state.action && state.action !== 'finish') {
+        // 检查动作是否需要确认
+        const tool = this.toolExecutor.getTool(state.action);
+        if (tool?.requiresConfirmation && !request.isConfirmed) {
+          yield {
+            type: StreamEventType.ACTION_CONFIRM,
+            content: `操作 "${state.action}" 需要您的确认才能执行。`,
+            data: {
+              action: state.action,
+              actionInput: state.actionInput,
+            },
+            iteration: state.iteration,
+          };
+
+          // 暂停循环，等待确认
+          // 持久化当前状态以便恢复
+          await this.sessionService.saveSession(context.sessionId, {
+            state,
+            history: messages,
+            context: {
+              skill: context.skill,
+              uploadedFiles: context.uploadedFiles,
+              collectedParams: context.collectedParams,
+              userRoles: context.userRoles, // 存入 Session
+            }
+          });
+          break;
+        }
+
+        // 将AI响应加入历史
+        messages.push({
+          role: 'assistant',
+          content: JSON.stringify({
+            thought: state.thought,
+            action: state.action,
+            actionInput: state.actionInput
+          }),
+          timestamp: new Date(),
+          metadata: { isReAct: true, iteration: state.iteration },
+        });
+
         yield* this.executeAction(state, context);
+
+        // 将观察结果加入历史
+        messages.push({
+          role: 'user',
+          content: `Observation: ${state.observation}`,
+          timestamp: new Date(),
+          metadata: { isReAct: true, iteration: state.iteration },
+        });
+
+        // 每一轮迭代后持久化状态
+        await this.sessionService.saveSession(context.sessionId, {
+          state,
+          history: messages,
+          context: {
+            skill: context.skill,
+            uploadedFiles: context.uploadedFiles,
+            collectedParams: context.collectedParams,
+            userRoles: context.userRoles,
+          }
+        });
       }
 
       // 3. 检查是否完成
@@ -152,27 +348,29 @@ export class ReActEngineService {
     state: ReActState,
     context: ExecutionContext,
     messages: ChatMessage[],
-    tools: ReturnType<typeof this.toolExecutor.getTools>,
+    tools: ToolDefinition[],
     config: ReActConfig,
   ): AsyncGenerator<StreamEvent> {
     // 构建提示词
     const systemPrompt = buildSystemPrompt(tools, context.skill);
-    // 提取用户输入，处理多模态内容
-    const lastMessage = messages[messages.length - 1];
+    
+    // 提取最初的用户输入
+    const originalUserMessage = messages.find(m => m.role === 'user' && !m.metadata?.isReAct);
     let userInput = '';
-    if (lastMessage?.content) {
-      if (typeof lastMessage.content === 'string') {
-        userInput = lastMessage.content;
-      } else if (Array.isArray(lastMessage.content as unknown)) {
+    if (originalUserMessage?.content) {
+      if (typeof originalUserMessage.content === 'string') {
+        userInput = originalUserMessage.content;
+      } else if (Array.isArray(originalUserMessage.content as unknown)) {
         // 从多模态内容中提取文本部分
-        const contentArray = lastMessage.content as unknown as Array<{ type: string; text?: string }>;
+        const contentArray = originalUserMessage.content as unknown as Array<{ type: string; text?: string }>;
         const textBlocks = contentArray.filter((b) => b.type === 'text');
         userInput = textBlocks.map((b) => b.text || '').join('\n');
       }
     }
+
     const userPrompt = buildUserPrompt(
       userInput,
-      messages.slice(0, -1),
+      messages,
       context.uploadedFiles?.map((f) => f.fileName),
     );
 
@@ -186,10 +384,15 @@ export class ReActEngineService {
       return;
     }
 
-    // 流式调用
-    const aiMessages: ChatMessage[] = [
-      { role: 'system' as const, content: systemPrompt, timestamp: new Date() },
-      { role: 'user' as const, content: userPrompt, timestamp: new Date() },
+    // 尝试开启 JSON Mode
+    const modelConfig = client.getConfig();
+    if (modelConfig.useJsonMode === undefined) {
+      client.updateConfig({ useJsonMode: true });
+    }
+
+    const aiMessages = [
+      { role: 'system', content: systemPrompt },
+      { role: 'user', content: userPrompt },
     ];
 
     // 发送thought开始事件
@@ -201,7 +404,7 @@ export class ReActEngineService {
 
     try {
       // 使用流式API
-      const response = await client.chatCompletion(aiMessages);
+      const response = await client.chatCompletion(aiMessages as any);
 
       // 解析响应
       const parsed = parseActionResponse(response);

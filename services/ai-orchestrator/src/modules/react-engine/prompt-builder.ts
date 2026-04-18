@@ -11,41 +11,33 @@ import { ChatMessage, SkillMatchResult, ToolDefinition, ReActConfig } from './in
 const REACT_SYSTEM_PROMPT = `你是一个智能助手，使用ReAct(Reasoning + Acting)框架来处理复杂任务。
 
 你的工作流程是：
-1. Thought: 分析用户输入，思考下一步行动
+1. Thought: 分析用户输入和之前的 Observation，思考下一步行动
 2. Action: 选择合适的工具并执行
-3. Observation: 观察执行结果
+3. Observation: 观察执行结果。如果结果包含错误(error)，请在下一轮 Thought 中分析原因并尝试修正参数重新执行。
 4. 重复以上步骤直到任务完成
 
 可用的工具：
 {tools}
 
-回答格式：
-Thought: 你的思考过程
-Action: 工具名称
-Action Input: {"参数名": "参数值"}
-Observation: 观察到的结果
-... (重复直到完成)
-Final Answer: 最终回复
+请以JSON格式回答，包含以下字段：
+{
+  "thought": "你的思考过程。如果上一步失败了，请在这里分析失败原因并提出修正方案。",
+  "action": "工具名称",
+  "actionInput": {"参数名": "参数值"},
+  "finalAnswer": "最终回复（如果任务已完成）"
+}
 
 重要规则：
 - 每次只能选择一个工具
-- 参数必须是有效的JSON格式
-- 如果工具返回requiresUserInput，则等待用户回复
-- 不要在Thought中直接回答问题，必须通过工具执行
-- 不要重复调用同一个工具，除非用户提供了新信息
-
-工具使用流程：
-- 首次请求时，先调用 skill_match 匹配用户意图对应的技能
-- 如果 skill_match 返回的技能包含 carboneSkillId，则下一步必须调用 generate_parameters 工具
-- generate_parameters 使用 skillId 和 description（用户描述内容）生成参数
-- generate_parameters 成功后，直接调用 document_render 工具生成文档
-- document_render 成功后输出 Final Answer 包含文档下载链接
-- 如果技能没有 carboneSkillId，则使用 param_collect 手动收集参数
+- 如果任务完成，请设置 action 为 "finish" 并提供 finalAnswer
+- 如果工具返回 requiresUserInput，则等待用户回复
+- 如果工具返回 error，不要放弃，尝试根据错误信息调整参数后再次调用
+- 不要重复调用同一个工具且参数完全相同，除非 Observation 发生了变化
 `;
 
 const REACT_USER_PROMPT_TEMPLATE = `用户输入: {userInput}
 
-请按照ReAct框架处理这个请求。`;
+请按照ReAct框架处理这个请求，并以JSON格式输出。`;
 
 /**
  * 构建系统提示词
@@ -54,8 +46,37 @@ export function buildSystemPrompt(
   tools: ToolDefinition[],
   skill?: SkillMatchResult,
 ): string {
-  const toolsDescription = tools
-    .map((t) => `${t.name}: ${t.description}\n参数: ${JSON.stringify(t.parameters, null, 2)}`)
+  // 动态工具过滤：
+  // 1. 如果没有匹配到技能，主要显示 discovery 分类的工具
+  // 2. 如果已经匹配到技能，显示与该阶段相关的工具，并优先展示 flow 工具
+  let filteredTools = tools;
+
+  if (!skill) {
+    // 尚未匹配技能，优先显示发现类工具
+    filteredTools = tools.filter(t => !t.category || t.category === 'discovery' || t.category === 'utility');
+  } else {
+    // 已匹配技能，根据技能特性过滤
+    // 检查是否有对应的 flow 工具 (Shadow Tool / Macro Tool)
+    const hasFlowTool = tools.some(t => t.category === 'flow' && (t.name.includes(skill.skillId.replace(/-/g, '_')) || t.name.includes(skill.skillName)));
+    
+    if (hasFlowTool) {
+      // 如果有对应的预编译流程工具，优先展示它
+      filteredTools = tools.filter(t => 
+        t.category === 'flow' || 
+        t.category === 'utility' ||
+        (t.category === 'execution' && t.name === 'user_ask')
+      );
+    } else if (skill.carboneSkillId) {
+      // Carbone 流程：排除手动采参，保留 AI 采参和执行
+      filteredTools = tools.filter(t => t.name !== 'param_collect');
+    } else {
+      // 普通流程：保留手动采参，排除 AI 采参
+      filteredTools = tools.filter(t => t.name !== 'generate_parameters');
+    }
+  }
+
+  const toolsDescription = filteredTools
+    .map((t) => `${t.name}: ${t.description}\n参数: ${JSON.stringify(t.parameters, null, 2)}${t.requiresConfirmation ? '\n注意：此操作执行前需要人工确认。' : ''}`)
     .join('\n\n');
 
   let systemPrompt = REACT_SYSTEM_PROMPT.replace('{tools}', toolsDescription);
@@ -94,13 +115,27 @@ export function buildUserPrompt(
 ): string {
   let prompt = REACT_USER_PROMPT_TEMPLATE.replace('{userInput}', userInput);
 
-  // 添加历史上下文
-  if (history.length > 0) {
-    const recentHistory = history.slice(-5); // 最近5条消息
+  // 添加历史上下文 (排除当前的ReAct循环历史，只保留之前的对话)
+  const previousHistory = history.filter(m => !m.metadata?.isReAct);
+  if (previousHistory.length > 0) {
+    const recentHistory = previousHistory.slice(-5); // 最近5条消息
     const historyText = recentHistory
       .map((m) => `${m.role}: ${m.content}`)
       .join('\n');
     prompt += `\n\n对话历史:\n${historyText}`;
+  }
+
+  // 添加当前的ReAct循环历史
+  const reActHistory = history.filter(m => m.metadata?.isReAct);
+  if (reActHistory.length > 0) {
+    prompt += `\n\n当前任务进展:\n`;
+    reActHistory.forEach(m => {
+      if (m.role === 'assistant') {
+        prompt += `${m.content}\n`;
+      } else if (m.role === 'user' && m.content.startsWith('Observation:')) {
+        prompt += `${m.content}\n`;
+      }
+    });
   }
 
   // 添加文件信息
@@ -137,8 +172,32 @@ export function parseActionResponse(response: string): {
   action: string;
   actionInput: Record<string, unknown>;
 } | null {
+  // 尝试直接解析JSON
+  try {
+    const cleaned = response.trim().replace(/```json|```/g, '').trim();
+    const parsed = JSON.parse(cleaned);
+
+    if (parsed.action) {
+      return {
+        thought: parsed.thought || '',
+        action: parsed.action,
+        actionInput: parsed.actionInput || {},
+      };
+    }
+
+    if (parsed.finalAnswer) {
+      return {
+        thought: parsed.thought || '任务已完成',
+        action: 'finish',
+        actionInput: { answer: parsed.finalAnswer },
+      };
+    }
+  } catch (e) {
+    // JSON解析失败，尝试传统的正则提取（兼容模式）
+  }
+
   // 提取Thought
-  const thoughtMatch = response.match(/Thought:\s*([^\n]+)/);
+  const thoughtMatch = response.match(/Thought:\s*([\s\S]+?)(?=Action:|$)/);
   const thought = thoughtMatch?.[1]?.trim() ?? '';
 
   // 提取Action
@@ -159,7 +218,14 @@ export function parseActionResponse(response: string): {
         actionInput = JSON.parse(jsonMatch[0]);
       }
     } catch {
-      // JSON解析失败，返回空对象
+      // JSON解析失败，尝试清洗JSON字符串
+      const cleaned = actionInputMatch[1]?.trim() ?? '';
+      const cleanedJson = cleaned.replace(/```json|```/g, '').trim();
+      try {
+        actionInput = JSON.parse(cleanedJson);
+      } catch {
+        // 仍然失败
+      }
     }
   }
 
@@ -171,7 +237,7 @@ export function parseActionResponse(response: string): {
   const finalMatch = response.match(/Final Answer:\s*([\s\S]+)/);
   if (finalMatch) {
     return {
-      thought: '任务已完成',
+      thought: thought || '任务已完成',
       action: 'finish',
       actionInput: { answer: finalMatch[1]?.trim() ?? '' },
     };
@@ -188,8 +254,5 @@ export function buildObservationPrompt(
   iteration: number,
   maxIterations: number,
 ): string {
-  return `Observation: ${observation}
-
-当前迭代次数: ${iteration}/${maxIterations}
-请继续思考下一步行动，或如果任务已完成，输出 Final Answer。`;
+  return `Observation: ${observation}`;
 }

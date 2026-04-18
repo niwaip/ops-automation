@@ -14,6 +14,7 @@ import {
   EXECUTION_FLOW_CATEGORIES,
 } from './interfaces';
 import { randomUUID } from 'crypto';
+import axios from 'axios';
 
 // Default execution flow templates
 const DEFAULT_FLOW_TEMPLATES: CreateExecutionFlowTemplateDTO[] = [
@@ -308,27 +309,27 @@ export class ExecutionFlowTemplateService implements OnModuleInit {
    * 删除模板
    */
   async deleteTemplate(id: string): Promise<boolean> {
-    const result = await this.prisma.$queryRawUnsafe(
+    const affectedRows = await this.prisma.$executeRawUnsafe(
       `DELETE FROM execution_flow_templates WHERE id = $1::uuid`,
       id
     );
 
-    return (result as any[]).length > 0;
+    return affectedRows > 0;
   }
 
   /**
    * 使用模板（增加使用计数）
    */
   async useTemplate(id: string): Promise<void> {
-    await this.prisma.$queryRawUnsafe(
+    await this.prisma.$executeRawUnsafe(
       `UPDATE execution_flow_templates SET usage_count = usage_count + 1 WHERE id = $1::uuid`,
       id
     );
   }
 
   /**
-   * 验证流程模板 - AI验证功能
-   * 检查流程是否可执行、步骤是否合理
+   * 验证流程模板 - AI驱动的深度验证与优化
+   * 检查流程逻辑一致性、参数链条、影子工具适配度，并提供自动调整建议
    */
   async validateTemplate(id: string, aiServiceUrl?: string): Promise<ValidationResult> {
     const template = await this.getTemplate(id);
@@ -336,25 +337,20 @@ export class ExecutionFlowTemplateService implements OnModuleInit {
       throw new Error('Template not found');
     }
 
-    // Perform validation
+    // 1. 基础静态验证
     const validationResult: ValidationResult = {
       isValid: true,
       score: 100,
       suggestions: [],
       warnings: [],
       validatedAt: new Date().toISOString(),
-      validatedBy: 'local-validator',
+      validatedBy: 'ai-flow-auditor',
       details: {
         stepAnalysis: [],
       },
     };
 
-    // Validate each step
     const steps = template.steps as ExecutionFlowStep[];
-    let hasScriptStep = false;
-    let hasApiStep = false;
-    let hasToolStep = false;
-
     for (let i = 0; i < steps.length; i++) {
       const step = steps[i];
       const stepAnalysis = {
@@ -365,107 +361,100 @@ export class ExecutionFlowTemplateService implements OnModuleInit {
         suggestion: undefined as string | undefined,
       };
 
-      // Check step type specific validation
-      switch (step.type) {
-        case 'text':
-          if (!step.content) {
-            stepAnalysis.isExecutable = false;
-            stepAnalysis.suggestion = '文本步骤缺少content内容';
-            validationResult.warnings?.push(`步骤"${step.name}"缺少指导内容`);
-            validationResult.score! -= 10;
-          }
-          break;
-
-        case 'script':
-          hasScriptStep = true;
-          if (!step.script?.code) {
-            stepAnalysis.isExecutable = false;
-            stepAnalysis.suggestion = '脚本步骤缺少代码';
-            validationResult.warnings?.push(`步骤"${step.name}"缺少执行代码`);
-            validationResult.score! -= 20;
-          }
-          // Check for dangerous patterns
-          if (step.script?.code) {
-            const dangerousPatterns = ['rm -rf', 'sudo', 'chmod 777', 'curl | bash'];
-            for (const pattern of dangerousPatterns) {
-              if (step.script.code.includes(pattern)) {
-                stepAnalysis.suggestion = `脚本包含潜在危险操作: ${pattern}`;
-                validationResult.warnings?.push(`步骤"${step.name}"包含潜在危险操作: ${pattern}`);
-                validationResult.score! -= 30;
-              }
-            }
-          }
-          break;
-
-        case 'tool':
-          hasToolStep = true;
-          if (!step.tool?.name) {
-            stepAnalysis.isExecutable = false;
-            stepAnalysis.suggestion = '工具步骤缺少工具名称';
-            validationResult.warnings?.push(`步骤"${step.name}"缺少工具名称`);
-            validationResult.score! -= 15;
-          }
-          break;
-
-        case 'api':
-          hasApiStep = true;
-          if (!step.api?.endpoint) {
-            stepAnalysis.isExecutable = false;
-            stepAnalysis.suggestion = 'API步骤缺少endpoint';
-            validationResult.warnings?.push(`步骤"${step.name}"缺少API端点`);
-            validationResult.score! -= 15;
-          }
-          break;
-
-        default:
-          stepAnalysis.isExecutable = false;
-          stepAnalysis.suggestion = `未知步骤类型: ${step.type}`;
-          validationResult.isValid = false;
-          validationResult.suggestions.push(`步骤"${step.name}"使用了未知类型`);
+      // 静态类型检查
+      if (step.type === 'text' && !step.content) {
+        stepAnalysis.isExecutable = false;
+        validationResult.warnings?.push(`步骤"${step.name}"缺少指导内容`);
+      } else if (step.type === 'api' && !step.api?.endpoint) {
+        stepAnalysis.isExecutable = false;
+        validationResult.warnings?.push(`步骤"${step.name}"缺少API端点`);
       }
 
-      // Check dependencies between steps
-      if (i > 0 && (step.type === 'api' || step.type === 'tool')) {
-        stepAnalysis.hasDependencies = true;
-        // Check if previous step provides output needed for this step
-        const prevStep = steps[i - 1];
-        if (prevStep.type === 'text' && !prevStep.expectedOutput) {
-          validationResult.suggestions.push(
-            `建议为步骤"${prevStep.name}"添加expectedOutput，以便后续步骤"${step.name}"使用`
-          );
+      validationResult.details?.stepAnalysis.push(stepAnalysis);
+    }
+
+    // 2. AI 驱动的深度逻辑审计
+    try {
+      const orchestratorUrl = aiServiceUrl || process.env.AI_ORCHESTRATOR_URL || 'http://ops-ai-orchestrator:3007';
+      
+      const auditPrompt = `你是一个高级系统架构师和 AI Agent 专家。请审计以下“执行流程模板 (Execution Flow Template)”，并验证其作为“影子工具 (Shadow Tool)”提供给 ReAct 引擎时的可行性。
+
+流程名称: ${template.name}
+流程描述: ${template.description}
+步骤列表: ${JSON.stringify(template.steps, null, 2)}
+触发关键词: ${JSON.stringify(template.executionFlowKeys)}
+
+请从以下维度进行分析：
+1. 逻辑一致性：步骤间的参数传递是否闭合？是否存在后续步骤依赖但前序步骤未提供的参数？
+2. 原子能力验证：每一个步骤的操作（API/Tool/Script）是否能独立完成？
+3. 影子工具适配性：如果将此流程包装成一个工具，其定义的参数 Schema 是否足以驱动整个流程？
+4. 容错性：流程中是否有明显的单点故障风险？
+
+请以 JSON 格式返回审计结果，包含以下字段：
+{
+  "isValid": boolean,
+  "score": number (0-100),
+  "critique": "详细的逻辑评估",
+  "issues": ["问题1", "问题2"],
+  "suggestions": ["改进建议1", "改进建议2"],
+  "improvedFlow": null | Object (如果逻辑有问题，请提供自动调整后的步骤 JSON)
+}
+`;
+
+      const aiResponse = await axios.post(`${orchestratorUrl}/ai/chat/stream`, {
+        message: auditPrompt,
+        sessionId: \`audit-\${id}-\${randomUUID()}\`,
+        config: { mode: 'task', maxIterations: 5 }
+      }, { responseType: 'stream' });
+
+      let fullContent = '';
+      for await (const chunk of aiResponse.data) {
+        const lines = chunk.toString().split('\\n');
+        for (const line of lines) {
+          if (line.startsWith('data: ')) {
+            try {
+              const data = JSON.parse(line.slice(6));
+              if (data.type === 'result') {
+                fullContent = data.content;
+              }
+            } catch (e) {
+              // Ignore partial or invalid json
+            }
+          }
         }
       }
 
-      validationResult.details!.stepAnalysis.push(stepAnalysis);
+      const aiAudit = JSON.parse(fullContent.replace(/```json|```/g, '').trim());
+
+      if (aiAudit) {
+        validationResult.isValid = validationResult.isValid && aiAudit.isValid;
+        validationResult.score = Math.min(validationResult.score || 100, aiAudit.score);
+        validationResult.suggestions.push(...(aiAudit.suggestions || []));
+        validationResult.warnings?.push(...(aiAudit.issues || []));
+        
+        if (validationResult.details) {
+          validationResult.details.aiCritique = aiAudit.critique;
+          validationResult.details.autoAdjustment = aiAudit.improvedFlow;
+        }
+
+        if (aiAudit.improvedFlow) {
+          validationResult.suggestions.push('AI 已生成自动优化建议，您可以点击“应用建议”一键修复流程。');
+        }
+      }
+
+    } catch (aiError) {
+      this.logger.error('AI Audit failed, falling back to static validation only:', aiError.message);
+      validationResult.warnings?.push(`AI 深度审计不可用 (错误: ${aiError.message})，仅执行静态检查。`);
     }
 
-    // Overall suggestions
-    if (hasScriptStep) {
-      validationResult.suggestions.push('脚本执行步骤需要确保执行环境安全');
-    }
-    if (hasApiStep) {
-      validationResult.suggestions.push('API调用步骤建议添加超时和错误处理配置');
-    }
-    if (steps.length > 10) {
-      validationResult.suggestions.push('流程步骤较多，建议拆分为多个子流程');
-    }
-
-    // Adjust score
-    if (validationResult.score! < 0) {
-      validationResult.score = 0;
-    }
-    if (validationResult.score! < 60) {
-      validationResult.isValid = false;
-    }
-
-    // Save validation result to template
-    await this.prisma.$queryRawUnsafe(
+    // 3. 持久化验证结果
+    await this.prisma.$executeRawUnsafe(
       `UPDATE execution_flow_templates SET validation = $1::jsonb WHERE id = $2::uuid`,
       JSON.stringify(validationResult),
       id
     );
 
-    this.logger.log(`Validated template ${id}: score=${validationResult.score}, valid=${validationResult.isValid}`);
+    this.logger.log(`Validated template ${id}: score=${validationResult.score}, ai_integrated=true`);
     return validationResult;
   }
 

@@ -38,6 +38,11 @@ export class DocumentRenderTool extends BaseTool {
         },
         required: ['templateId', 'data'],
       },
+      { 
+        category: 'execution', 
+        requiresConfirmation: true,
+        requiredRoles: ['admin'] // 仅管理员可执行最终渲染
+      },
     );
   }
 

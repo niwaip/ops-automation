@@ -21,6 +21,7 @@ export interface OpenAICompatibleConfig {
   baseURL: string;
   apiKey: string;
   model: string;
+  useJsonMode?: boolean;
 }
 
 export interface AIModelDTO {
