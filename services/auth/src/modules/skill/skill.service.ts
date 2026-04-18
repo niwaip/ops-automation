@@ -170,6 +170,26 @@ const DEFAULT_SKILLS: CreateSkillDTO[] = [
     executionFlow: ['collect_params', 'confirm', 'render'],
     tools: ['param_collect', 'user_ask', 'document_generate'],
   },
+  {
+    name: '天气查询',
+    description: '查询指定城市的天气信息',
+    category: 'query',
+    triggerKeywords: ['天气', '查询天气', '天气预报', '天气情况', 'weather'],
+    paramsSchema: {
+      properties: {
+        city: {
+          type: 'string',
+          description: '要查询天气的城市名称',
+          required: true,
+          extractionPrompt: '从用户输入中提取城市名称',
+        },
+      },
+      required: ['city'],
+    },
+    executionFlow: ['skill_match', 'api_call', 'format_result'],
+    tools: ['skill_match', 'api_call', 'flow_execute'],
+    // executionFlowTemplateId will be set dynamically after template is created
+  },
 ];
 
 @Injectable()
@@ -193,14 +213,34 @@ export class SkillService implements OnModuleInit {
    * 加载默认Skills（如果不存在）
    */
   private async loadDefaultSkills() {
+    // 先获取流程模板ID用于关联
+    const weatherTemplate = await this.prisma.$queryRawUnsafe<{ id: string }[]>(
+      `SELECT id FROM execution_flow_templates WHERE name = $1`,
+      '天气查询流程'
+    );
+    const weatherTemplateId = weatherTemplate[0]?.id;
+
     for (const skill of DEFAULT_SKILLS) {
       const existing = await this.prisma.skillConfig.findUnique({
         where: { name: skill.name },
       });
 
       if (!existing) {
+        // 如果是天气查询技能，关联流程模板ID
+        if (skill.name === '天气查询' && weatherTemplateId) {
+          skill.executionFlowTemplateId = weatherTemplateId;
+        }
         await this.createSkill(skill);
         this.logger.log(`Created default skill: ${skill.name}`);
+      } else {
+        // 如果天气查询技能存在但没有关联流程模板，更新关联
+        if (skill.name === '天气查询' && weatherTemplateId && !existing.executionFlowTemplateId) {
+          await this.prisma.skillConfig.update({
+            where: { id: existing.id },
+            data: { executionFlowTemplateId: weatherTemplateId },
+          });
+          this.logger.log(`Updated weather skill with flow template: ${weatherTemplateId}`);
+        }
       }
     }
   }

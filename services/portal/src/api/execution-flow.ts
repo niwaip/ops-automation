@@ -107,6 +107,7 @@ export const EXECUTION_FLOW_CATEGORIES: Record<string, { label: string; color: s
   analysis: { label: '数据分析', color: 'green', desc: '数据统计、报表分析' },
   automation: { label: '自动化流程', color: 'purple', desc: '自动化任务执行' },
   integration: { label: '系统集成', color: 'cyan', desc: '与外部系统对接' },
+  query: { label: '查询服务', color: 'orange', desc: '数据查询、信息检索' },
   custom: { label: '自定义', color: 'default', desc: '用户自定义流程' },
 };
 

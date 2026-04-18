@@ -3,7 +3,7 @@
  * 执行流程模板服务 - 支持创建、查询、验证流程模板
  */
 
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import {
   CreateExecutionFlowTemplateDTO,
@@ -15,11 +15,109 @@ import {
 } from './interfaces';
 import { randomUUID } from 'crypto';
 
+// Default execution flow templates
+const DEFAULT_FLOW_TEMPLATES: CreateExecutionFlowTemplateDTO[] = [
+  {
+    name: '天气查询流程',
+    description: '查询指定城市的天气信息，调用天气API获取实时数据',
+    category: 'query',
+    steps: [
+      {
+        type: 'text',
+        name: '确认查询意图',
+        content: '用户想查询天气信息，需要识别城市参数',
+        expectedOutput: '确认城市参数',
+      },
+      {
+        type: 'api',
+        name: '调用天气API',
+        api: {
+          endpoint: 'https://wttr.in/{city}?format=j1',
+          method: 'GET',
+        },
+        expectedOutput: '天气JSON数据',
+      },
+      {
+        type: 'text',
+        name: '格式化天气结果',
+        content: '将天气API返回的JSON数据转换为用户友好的文本格式输出',
+        expectedOutput: '天气描述文本',
+      },
+    ],
+    executionFlowKeys: ['天气', '查询天气', '天气预报', 'weather'],
+    isPublic: true,
+  },
+  {
+    name: '文档生成流程',
+    description: '使用AI生成参数并渲染Word/PDF文档',
+    category: 'document',
+    steps: [
+      {
+        type: 'text',
+        name: 'AI语义匹配',
+        content: '根据用户输入匹配对应的技能和模板',
+        expectedOutput: '匹配的技能ID',
+      },
+      {
+        type: 'api',
+        name: 'AI生成参数',
+        api: {
+          endpoint: '/api/carbone/generate-parameters',
+          method: 'POST',
+        },
+        expectedOutput: '模板参数JSON',
+      },
+      {
+        type: 'text',
+        name: '用户确认',
+        content: '展示参数给用户确认',
+        expectedOutput: '用户确认结果',
+      },
+      {
+        type: 'api',
+        name: '渲染文档',
+        api: {
+          endpoint: '/api/carbone/render',
+          method: 'POST',
+        },
+        expectedOutput: '文档URL',
+      },
+    ],
+    executionFlowKeys: ['文档', '生成文档', '合同', '报告'],
+    isPublic: true,
+  },
+];
+
 @Injectable()
-export class ExecutionFlowTemplateService {
+export class ExecutionFlowTemplateService implements OnModuleInit {
   private readonly logger = new Logger(ExecutionFlowTemplateService.name);
 
   constructor(private readonly prisma: PrismaService) {}
+
+  /**
+   * 模块初始化时加载默认流程模板
+   */
+  async onModuleInit() {
+    this.logger.log('Initializing Execution Flow Template Service...');
+    await this.loadDefaultTemplates();
+  }
+
+  /**
+   * 加载默认流程模板（如果不存在）
+   */
+  private async loadDefaultTemplates() {
+    for (const template of DEFAULT_FLOW_TEMPLATES) {
+      const existing = await this.prisma.$queryRawUnsafe<{ id: string }[]>(
+        `SELECT id FROM execution_flow_templates WHERE name = $1`,
+        template.name
+      );
+
+      if (existing.length === 0) {
+        await this.createTemplate(template);
+        this.logger.log(`Created default flow template: ${template.name}`);
+      }
+    }
+  }
 
   /**
    * 获取所有流程模板（支持分页和过滤）
