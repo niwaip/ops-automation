@@ -13,17 +13,23 @@ export const EXECUTION_FLOW_CATEGORIES = {
 /**
  * 流程步骤类型
  */
-export type ExecutionFlowStepType = 'text' | 'api' | 'tool' | 'script';
+export type ExecutionFlowStepType = 'text' | 'api' | 'tool' | 'script' | 'llm' | 'validator';
 
 /**
  * 流程步骤定义
  */
 export interface ExecutionFlowStep {
   id?: string;
-  type: ExecutionFlowStepType;
+  type: ExecutionFlowStepType | string;  // 支持扩展类型
   name: string;
   content?: string;
   expectedOutput?: string;
+  condition?: string;  // 执行条件，如 "step_xxx.status == 'success'"
+  inputMapping?: Record<string, string>;  // 输入变量映射，如 {"city": "{{flow_input.city}}"}
+  retryPolicy?: {
+    maxRetries?: number;
+    backoff?: number;
+  };
   api?: {
     endpoint: string;
     method: 'GET' | 'POST' | 'PUT' | 'DELETE';

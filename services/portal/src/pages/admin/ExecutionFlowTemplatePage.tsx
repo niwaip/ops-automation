@@ -629,12 +629,33 @@ const ExecutionFlowTemplatePage: React.FC = () => {
                         <Input
                           value={step.api?.endpoint}
                           onChange={(e) => handleUpdateStep(index, 'api', { ...step.api, endpoint: e.target.value })}
-                          placeholder="API端点URL"
+                          placeholder="API端点URL（支持{{变量}}）"
                           style={{ width: 300 }}
                         />
                       </Space>
                     </Space>
                   )}
+
+                  {/* 条件字段 - 支持条件执行 */}
+                  <Input
+                    value={step.condition}
+                    onChange={(e) => handleUpdateStep(index, 'condition', e.target.value)}
+                    placeholder="执行条件（可选，如: step_xxx.status == 'success'）"
+                    style={{ width: '100%' }}
+                  />
+
+                  {/* 输入映射 - 支持变量传递 */}
+                  <Input
+                    value={step.inputMapping ? JSON.stringify(step.inputMapping) : ''}
+                    onChange={(e) => {
+                      try {
+                        const mapping = e.target.value ? JSON.parse(e.target.value) : undefined;
+                        handleUpdateStep(index, 'inputMapping', mapping);
+                      } catch {}
+                    }}
+                    placeholder="输入映射JSON（可选，例如 city 映射到 flow_input.city）"
+                    style={{ width: '100%' }}
+                  />
 
                   <Input
                     value={step.expectedOutput}
@@ -823,7 +844,7 @@ const ExecutionFlowTemplatePage: React.FC = () => {
                   {selectedTemplate.validation.suggestions?.length > 0 && (
                     <Alert
                       type="info"
-                      message="建议"
+                      message="优化建议"
                       description={
                         <ul>
                           {selectedTemplate.validation.suggestions.map((s, i) => (
@@ -832,6 +853,27 @@ const ExecutionFlowTemplatePage: React.FC = () => {
                         </ul>
                       }
                     />
+                  )}
+                  {selectedTemplate.validation.details?.aiCritique && (
+                    <Alert
+                      type="info"
+                      message="AI 审计详情"
+                      description={selectedTemplate.validation.details.aiCritique}
+                    />
+                  )}
+                  {selectedTemplate.validation.details?.autoAdjustment && (
+                    <Button
+                      type="primary"
+                      icon={<CheckCircleOutlined />}
+                      onClick={() => {
+                        setDetailModalVisible(false);
+                        setSelectedTemplate(selectedTemplate);
+                        setValidationResult(selectedTemplate.validation);
+                        setValidateModalVisible(true);
+                      }}
+                    >
+                      查看并应用AI优化建议
+                    </Button>
                   )}
                   <Text type="secondary">
                     验证时间: {new Date(selectedTemplate.validation.validatedAt).toLocaleString()}

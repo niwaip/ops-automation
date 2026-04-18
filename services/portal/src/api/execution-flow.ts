@@ -6,15 +6,22 @@
 import apiClient from './client';
 
 // Step types supported by execution flow
-export type StepType = 'text' | 'script' | 'tool' | 'api';
+export type StepType = 'text' | 'script' | 'tool' | 'api' | 'llm' | 'validator';
 
 // Single step in the execution flow
 export interface ExecutionFlowStep {
   id?: string;
-  type: StepType;
+  type: StepType | string;  // 支持扩展类型
   name: string;
   description?: string;
   content?: string;
+  expectedOutput?: string;
+  condition?: string;  // 执行条件，如 "step_xxx.status == 'success'"
+  inputMapping?: Record<string, string>;  // 输入变量映射
+  retryPolicy?: {
+    maxRetries?: number;
+    backoff?: number;
+  };
   script?: {
     language: 'bash' | 'python' | 'javascript';
     code: string;
@@ -31,15 +38,6 @@ export interface ExecutionFlowStep {
     body?: Record<string, any>;
     timeout?: number;
   };
-  condition?: {
-    if?: string;
-    else?: string;
-  };
-  retry?: {
-    maxAttempts: number;
-    delayMs: number;
-  };
-  expectedOutput?: string;
   optional?: boolean;
 }
 
@@ -118,11 +116,13 @@ export const EXECUTION_FLOW_CATEGORIES: Record<string, { label: string; color: s
 };
 
 // Step type labels
-export const STEP_TYPE_LABELS: Record<StepType, { label: string; color: string; icon: string }> = {
+export const STEP_TYPE_LABELS: Record<string, { label: string; color: string; icon: string }> = {
   text: { label: '纯文本指导', color: 'default', icon: 'FileTextOutlined' },
   script: { label: '脚本执行', color: 'orange', icon: 'CodeOutlined' },
   tool: { label: '系统工具', color: 'blue', icon: 'ToolOutlined' },
   api: { label: 'API调用', color: 'green', icon: 'ApiOutlined' },
+  llm: { label: 'LLM处理', color: 'purple', icon: 'FileTextOutlined' },
+  validator: { label: '参数验证', color: 'cyan', icon: 'CheckCircleOutlined' },
 };
 
 export interface ExecutionFlowTemplateListResponse {
