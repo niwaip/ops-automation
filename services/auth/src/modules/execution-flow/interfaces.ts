@@ -76,6 +76,9 @@ export interface ExecutionFlowTemplateDTO {
   id: string;
   name: string;
   description?: string;
+  goal?: string;             // 流程目标 - 指导AI验证和宏工具生成
+  expectedResult?: string;   // 预期结果 - 指导AI验证
+  paramsSchema?: Record<string, any>;  // 参数定义 - 可选，指导AI验证参数完整性
   category: string;
   steps: ExecutionFlowStep[];
   executionFlowKeys: string[];
@@ -94,6 +97,9 @@ export interface ExecutionFlowTemplateDTO {
 export interface CreateExecutionFlowTemplateDTO {
   name: string;
   description?: string;
+  goal?: string;             // 流程目标
+  expectedResult?: string;   // 预期结果
+  paramsSchema?: Record<string, any>;  // 参数定义
   category?: string;
   steps: ExecutionFlowStep[];
   executionFlowKeys?: string[];
@@ -107,6 +113,9 @@ export interface CreateExecutionFlowTemplateDTO {
 export interface UpdateExecutionFlowTemplateDTO {
   name?: string;
   description?: string;
+  goal?: string;
+  expectedResult?: string;
+  paramsSchema?: Record<string, any>;
   category?: string;
   steps?: ExecutionFlowStep[];
   executionFlowKeys?: string[];

@@ -66,6 +66,9 @@ export interface ValidationResult {
 export interface CreateExecutionFlowTemplateDTO {
   name: string;
   description?: string;
+  goal?: string;             // 流程目标
+  expectedResult?: string;   // 预期结果
+  paramsSchema?: Record<string, any>;  // 参数定义
   category?: string;
   steps: ExecutionFlowStep[];
   executionFlowKeys?: string[];
@@ -89,6 +92,9 @@ export interface ExecutionFlowTemplateDTO {
   id: string;
   name: string;
   description: string | null;
+  goal: string | null;             // 流程目标 - 指导AI验证和宏工具生成
+  expectedResult: string | null;   // 预期结果 - 指导AI验证
+  paramsSchema: Record<string, any> | null;  // 参数定义 - 可选
   category: string;
   steps: ExecutionFlowStep[];
   executionFlowKeys: string[];

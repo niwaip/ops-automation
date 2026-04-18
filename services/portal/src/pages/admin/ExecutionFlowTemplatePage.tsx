@@ -194,6 +194,9 @@ const ExecutionFlowTemplatePage: React.FC = () => {
     form.setFieldsValue({
       name: template.name,
       description: template.description,
+      goal: template.goal,
+      expectedResult: template.expectedResult,
+      paramsSchema: template.paramsSchema ? JSON.stringify(template.paramsSchema, null, 2) : '',
       category: template.category,
       isPublic: template.isPublic,
     });
@@ -258,9 +261,23 @@ const ExecutionFlowTemplatePage: React.FC = () => {
 
   const handleSave = () => {
     form.validateFields().then((values) => {
+      // 解析参数Schema JSON
+      let paramsSchema = undefined;
+      if (values.paramsSchema && values.paramsSchema.trim()) {
+        try {
+          paramsSchema = JSON.parse(values.paramsSchema);
+        } catch (e) {
+          message.error('参数Schema格式错误，请检查JSON格式');
+          return;
+        }
+      }
+
       const data: CreateExecutionFlowTemplateDTO = {
         name: values.name,
         description: values.description,
+        goal: values.goal,
+        expectedResult: values.expectedResult,
+        paramsSchema,
         category: values.category || 'document',
         steps: currentSteps,
         executionFlowKeys: currentSteps.map(s => s.name),
@@ -858,6 +875,27 @@ const ExecutionFlowTemplatePage: React.FC = () => {
             label="描述"
           >
             <TextArea rows={2} />
+          </Form.Item>
+          <Form.Item
+            name="goal"
+            label="流程目标"
+            extra="明确的目标描述，指导AI进行验证和宏工具生成"
+          >
+            <TextArea rows={2} placeholder="例如：查询指定城市的天气信息并返回格式化结果" />
+          </Form.Item>
+          <Form.Item
+            name="expectedResult"
+            label="预期结果"
+            extra="期望的输出格式和内容，指导AI验证流程是否达成目标"
+          >
+            <TextArea rows={2} placeholder="例如：返回包含温度、天气状况、风速的中文天气报告" />
+          </Form.Item>
+          <Form.Item
+            name="paramsSchema"
+            label="参数定义 (JSON)"
+            extra="可选。定义流程需要的输入参数，例如 city: 城市名称"
+          >
+            <TextArea rows={3} placeholder='{"city": {"type": "string", "description": "城市名称"}}' />
           </Form.Item>
           <Form.Item
             name="category"

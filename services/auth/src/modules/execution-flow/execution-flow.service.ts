@@ -151,7 +151,7 @@ export class ExecutionFlowTemplateService implements OnModuleInit {
 
     const [templates, total] = await Promise.all([
       this.prisma.$queryRawUnsafe<ExecutionFlowTemplateDTO[]>(
-        `SELECT id, name, description, category, steps, execution_flow_keys, validation, usage_count, is_public, created_by, is_active, created_at, updated_at
+        `SELECT id, name, description, goal, expected_result, params_schema, category, steps, execution_flow_keys, validation, usage_count, is_public, created_by, is_active, created_at, updated_at
          FROM execution_flow_templates
          WHERE ${this.buildWhereClause(where)}
          ORDER BY usage_count DESC, created_at DESC
@@ -197,7 +197,7 @@ export class ExecutionFlowTemplateService implements OnModuleInit {
    */
   async getTemplate(id: string): Promise<ExecutionFlowTemplateDTO | null> {
     const template = await this.prisma.$queryRawUnsafe<ExecutionFlowTemplateDTO[]>(
-      `SELECT id, name, description, category, steps, execution_flow_keys, validation, usage_count, is_public, created_by, is_active, created_at, updated_at
+      `SELECT id, name, description, goal, expected_result, params_schema, category, steps, execution_flow_keys, validation, usage_count, is_public, created_by, is_active, created_at, updated_at
        FROM execution_flow_templates
        WHERE id = $1::uuid`,
       id
@@ -217,11 +217,14 @@ export class ExecutionFlowTemplateService implements OnModuleInit {
     }));
 
     const result = await this.prisma.$queryRawUnsafe<ExecutionFlowTemplateDTO[]>(
-      `INSERT INTO execution_flow_templates (name, description, category, steps, execution_flow_keys, is_public, created_by)
-       VALUES ($1, $2, $3, $4::jsonb, $5::jsonb, $6, $7::uuid)
-       RETURNING id, name, description, category, steps, execution_flow_keys, validation, usage_count, is_public, created_by, is_active, created_at, updated_at`,
+      `INSERT INTO execution_flow_templates (name, description, goal, expected_result, params_schema, category, steps, execution_flow_keys, is_public, created_by)
+       VALUES ($1, $2, $3, $4, $5::jsonb, $6, $7::jsonb, $8::jsonb, $9, $10::uuid)
+       RETURNING id, name, description, goal, expected_result, params_schema, category, steps, execution_flow_keys, validation, usage_count, is_public, created_by, is_active, created_at, updated_at`,
       data.name,
       data.description || null,
+      data.goal || null,
+      data.expectedResult || null,
+      JSON.stringify(data.paramsSchema || {}),
       data.category || 'document',
       JSON.stringify(steps),
       JSON.stringify(data.executionFlowKeys || []),
@@ -256,6 +259,21 @@ export class ExecutionFlowTemplateService implements OnModuleInit {
     if (data.description !== undefined) {
       updates.push(`description = $${paramIndex}`);
       values.push(data.description);
+      paramIndex++;
+    }
+    if (data.goal !== undefined) {
+      updates.push(`goal = $${paramIndex}`);
+      values.push(data.goal);
+      paramIndex++;
+    }
+    if (data.expectedResult !== undefined) {
+      updates.push(`expected_result = $${paramIndex}`);
+      values.push(data.expectedResult);
+      paramIndex++;
+    }
+    if (data.paramsSchema !== undefined) {
+      updates.push(`params_schema = $${paramIndex}::jsonb`);
+      values.push(JSON.stringify(data.paramsSchema));
       paramIndex++;
     }
     if (data.category !== undefined) {
@@ -297,7 +315,7 @@ export class ExecutionFlowTemplateService implements OnModuleInit {
 
     const result = await this.prisma.$queryRawUnsafe<ExecutionFlowTemplateDTO[]>(
       `UPDATE execution_flow_templates SET ${updates.join(', ')} WHERE id = $${paramIndex}::uuid
-       RETURNING id, name, description, category, steps, execution_flow_keys, validation, usage_count, is_public, created_by, is_active, created_at, updated_at`,
+       RETURNING id, name, description, goal, expected_result, params_schema, category, steps, execution_flow_keys, validation, usage_count, is_public, created_by, is_active, created_at, updated_at`,
       ...values
     );
 
@@ -377,27 +395,32 @@ export class ExecutionFlowTemplateService implements OnModuleInit {
     try {
       const orchestratorUrl = aiServiceUrl || process.env.AI_ORCHESTRATOR_URL || 'http://ops-ai-orchestrator:3007';
       
-      const auditPrompt = `你是一个高级系统架构师和 AI Agent 专家。请审计以下“执行流程模板 (Execution Flow Template)”，并验证其作为“影子工具 (Shadow Tool)”提供给 ReAct 引擎时的可行性。
+      const auditPrompt = `你是一个高级系统架构师和 AI Agent 专家。请审计以下”执行流程模板 (Execution Flow Template)”，并验证其作为”影子工具 (Shadow Tool)”提供给 ReAct 引擎时的可行性。
 
 流程名称: ${template.name}
-流程描述: ${template.description}
+流程描述: ${template.description || '无'}
+${template.goal ? `流程目标: ${template.goal}` : '流程目标: 未定义'}
+${template.expectedResult ? `预期结果: ${template.expectedResult}` : '预期结果: 未定义'}
+${template.paramsSchema ? `参数定义: ${JSON.stringify(template.paramsSchema, null, 2)}` : '参数定义: 未定义'}
 步骤列表: ${JSON.stringify(template.steps, null, 2)}
 触发关键词: ${JSON.stringify(template.executionFlowKeys)}
 
 请从以下维度进行分析：
-1. 逻辑一致性：步骤间的参数传递是否闭合？是否存在后续步骤依赖但前序步骤未提供的参数？
-2. 原子能力验证：每一个步骤的操作（API/Tool/Script）是否能独立完成？
-3. 影子工具适配性：如果将此流程包装成一个工具，其定义的参数 Schema 是否足以驱动整个流程？
-4. 容错性：流程中是否有明显的单点故障风险？
+1. 目标一致性：流程步骤是否能达成定义的目标？预期结果是否可实现？
+2. 参数完整性：如果定义了参数Schema，流程是否正确使用了这些参数？
+3. 逻辑一致性：步骤间的参数传递是否闭合？是否存在后续步骤依赖但前序步骤未提供的参数？
+4. 原子能力验证：每一个步骤的操作（API/Tool/Script）是否能独立完成？
+5. 影子工具适配性：如果将此流程包装成一个工具，其定义的参数 Schema 是否足以驱动整个流程？
+6. 容错性：流程中是否有明显的单点故障风险？
 
 请以 JSON 格式返回审计结果，包含以下字段：
 {
-  "isValid": boolean,
-  "score": number (0-100),
-  "critique": "详细的逻辑评估",
-  "issues": ["问题1", "问题2"],
-  "suggestions": ["改进建议1", "改进建议2"],
-  "improvedFlow": null | Object (如果逻辑有问题，请提供自动调整后的步骤 JSON)
+  “isValid”: boolean,
+  “score”: number (0-100),
+  “critique”: “详细的逻辑评估”,
+  “issues”: [“问题1”, “问题2”],
+  “suggestions”: [“改进建议1”, “改进建议2”],
+  “improvedFlow”: null | Object (如果逻辑有问题，请提供自动调整后的步骤 JSON)
 }
 `;
 
@@ -473,7 +496,7 @@ export class ExecutionFlowTemplateService implements OnModuleInit {
    */
   async getPopularTemplates(limit?: number): Promise<ExecutionFlowTemplateDTO[]> {
     const templates = await this.prisma.$queryRawUnsafe<ExecutionFlowTemplateDTO[]>(
-      `SELECT id, name, description, category, steps, execution_flow_keys, validation, usage_count, is_public, created_by, is_active, created_at, updated_at
+      `SELECT id, name, description, goal, expected_result, params_schema, category, steps, execution_flow_keys, validation, usage_count, is_public, created_by, is_active, created_at, updated_at
        FROM execution_flow_templates
        WHERE is_public = true AND is_active = true
        ORDER BY usage_count DESC
