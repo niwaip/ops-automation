@@ -343,16 +343,18 @@ const ExecutionFlowTemplatePage: React.FC = () => {
   };
 
   // Render step type badge
-  const renderStepTypeBadge = (type: StepType) => {
-    const info = STEP_TYPE_LABELS[type];
-    const icons: Record<StepType, React.ReactNode> = {
+  const renderStepTypeBadge = (type: StepType | string) => {
+    const info = STEP_TYPE_LABELS[type as StepType] || { label: type, color: 'default' };
+    const icons: Record<string, React.ReactNode> = {
       text: <FileTextOutlined />,
       script: <CodeOutlined />,
       tool: <ToolOutlined />,
       api: <ApiOutlined />,
+      llm: <FileTextOutlined />,
+      validator: <CheckCircleOutlined />,
     };
     return (
-      <Tag color={info.color} icon={icons[type]}>
+      <Tag color={info.color} icon={icons[type] || <ToolOutlined />}>
         {info.label}
       </Tag>
     );
