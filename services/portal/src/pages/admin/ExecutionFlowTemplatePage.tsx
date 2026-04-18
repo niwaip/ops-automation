@@ -1,15 +1,15 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   Table, Card, Button, Input, Space, Tag, Typography, Modal, message, Form, Select,
-  Descriptions, Tabs, Tooltip, Collapse, Steps, Divider, Badge, Empty, Progress,
-  InputNumber, Switch, Alert, Popconfirm, Upload, Dropdown, Menu, Timeline
+  Descriptions, Tooltip, Collapse, Steps, Divider, Badge, Empty, Progress,
+  Switch, Alert, Dropdown, Timeline
 } from 'antd';
 import {
   SearchOutlined, ReloadOutlined, EditOutlined, DeleteOutlined, PlusOutlined,
-  InfoCircleOutlined, ThunderboltOutlined, ApiOutlined, RocketOutlined,
+  InfoCircleOutlined, ThunderboltOutlined, ApiOutlined,
   FileTextOutlined, CodeOutlined, ToolOutlined, CheckCircleOutlined, WarningOutlined,
-  CopyOutlined, ExportOutlined, ImportOutlined, DownloadOutlined, UploadOutlined,
-  PlayCircleOutlined, EyeOutlined, SettingOutlined, ArrowUpOutlined, ArrowDownOutlined, OrderedListOutlined,
+  CopyOutlined, ExportOutlined, ImportOutlined, PlayCircleOutlined, EyeOutlined, SettingOutlined,
+  ArrowUpOutlined, ArrowDownOutlined, OrderedListOutlined,
 } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
 import { useQuery, useMutation, useQueryClient } from 'react-query';
@@ -24,11 +24,9 @@ import {
   StepType,
 } from '../../api/execution-flow';
 import type { ColumnsType } from 'antd/es/table';
-import type { UploadFile } from 'antd/es/upload/interface';
 
-const { Title, Text, Paragraph } = Typography;
+const { Title, Text } = Typography;
 const { Option } = Select;
-const { TabPane } = Tabs;
 const { Panel } = Collapse;
 const { TextArea } = Input;
 
@@ -85,10 +83,11 @@ const ExecutionFlowTemplatePage: React.FC = () => {
   const [selectedTemplate, setSelectedTemplate] = useState<ExecutionFlowTemplateDTO | null>(null);
   const [validationResult, setValidationResult] = useState<ValidationResult | null>(null);
   const [form] = Form.useForm();
-  const [stepsForm] = Form.useForm();
   const [currentSteps, setCurrentSteps] = useState<ExecutionFlowStep[]>([]);
   const [importModalVisible, setImportModalVisible] = useState(false);
   const [importJson, setImportJson] = useState('');
+  const [enableExecutionTest, setEnableExecutionTest] = useState(false);
+  const [testParamsJson, setTestParamsJson] = useState('');
 
   // Queries
   const templatesQuery = useQuery(
@@ -99,8 +98,6 @@ const ExecutionFlowTemplatePage: React.FC = () => {
       isActive: true,
     })
   );
-
-  const categoriesQuery = useQuery(['execution-flow-categories'], executionFlowApi.getCategories);
 
   // Mutations
   const createMutation = useMutation(executionFlowApi.create, {
@@ -142,13 +139,31 @@ const ExecutionFlowTemplatePage: React.FC = () => {
     },
   });
 
-  const validateMutation = useMutation(executionFlowApi.validate, {
-    onSuccess: (result) => {
-      setValidationResult(result.validationResult);
-      message.success('验证完成');
+  const validateMutation = useMutation(
+    (params: { id: string; enableExecutionTest?: boolean; testParams?: Record<string, any> }) =>
+      executionFlowApi.validate(params.id, {
+        enableExecutionTest: params.enableExecutionTest,
+        testParams: params.testParams,
+      }),
+    {
+      onSuccess: (result) => {
+        setValidationResult(result.validationResult);
+        message.success('验证完成');
+      },
+      onError: () => {
+        message.error('验证失败');
+      },
+    }
+  );
+
+  const applyAdjustmentMutation = useMutation(executionFlowApi.applyAdjustment, {
+    onSuccess: () => {
+      message.success('已应用AI优化建议');
+      queryClient.invalidateQueries(['execution-flow-templates']);
+      setValidateModalVisible(false);
     },
     onError: () => {
-      message.error('验证失败');
+      message.error('应用建议失败');
     },
   });
 
@@ -194,6 +209,9 @@ const ExecutionFlowTemplatePage: React.FC = () => {
     form.setFieldsValue({
       name: template.name,
       description: template.description,
+      goal: template.goal,
+      expectedResult: template.expectedResult,
+      paramsSchema: template.paramsSchema ? JSON.stringify(template.paramsSchema, null, 2) : '',
       category: template.category,
       isPublic: template.isPublic,
     });
@@ -210,7 +228,63 @@ const ExecutionFlowTemplatePage: React.FC = () => {
     setSelectedTemplate(template);
     setValidationResult(template.validation);
     setValidateModalVisible(true);
-    validateMutation.mutate(template.id);
+    // Parse test params if available
+    try {
+      const paramsSchema = template.paramsSchema as Record<string, any>;
+      if (paramsSchema && paramsSchema.properties) {
+        // Generate sample params from schema
+        const sampleParams: Record<string, any> = {};
+        Object.entries(paramsSchema.properties).forEach(([key, prop]: [string, any]) => {
+          if (prop.type === 'string') sampleParams[key] = prop.default || '示例值';
+          else if (prop.type === 'number') sampleParams[key] = prop.default || 0;
+          else if (prop.type === 'boolean') sampleParams[key] = prop.default || false;
+        });
+        setTestParamsJson(JSON.stringify(sampleParams, null, 2));
+      } else {
+        setTestParamsJson('');
+      }
+    } catch {
+      setTestParamsJson('');
+    }
+    validateMutation.mutate({
+      id: template.id,
+      enableExecutionTest: false, // Default to false, user can enable in modal
+    });
+  };
+
+  const handleRunValidation = () => {
+    if (!selectedTemplate) return;
+    let testParams: Record<string, any> | undefined = undefined;
+    if (enableExecutionTest && testParamsJson) {
+      try {
+        testParams = JSON.parse(testParamsJson);
+      } catch {
+        message.error('测试参数JSON格式错误');
+        return;
+      }
+    }
+    validateMutation.mutate({
+      id: selectedTemplate.id,
+      enableExecutionTest,
+      testParams,
+    });
+  };
+
+  const handleValidateFromEdit = () => {
+    if (editingTemplate) {
+      setEditModalVisible(false);
+      handleValidate(editingTemplate);
+    }
+  };
+
+  const handleApplyAdjustment = () => {
+    if (selectedTemplate && validationResult?.details?.autoAdjustment) {
+      Modal.confirm({
+        title: '应用AI优化建议',
+        content: '将用AI生成的优化方案替换当前的步骤配置，是否继续？',
+        onOk: () => applyAdjustmentMutation.mutate(selectedTemplate.id),
+      });
+    }
   };
 
   const handleAddStep = (stepTemplate?: string) => {
@@ -251,9 +325,23 @@ const ExecutionFlowTemplatePage: React.FC = () => {
 
   const handleSave = () => {
     form.validateFields().then((values) => {
+      // 解析参数Schema JSON
+      let paramsSchema = undefined;
+      if (values.paramsSchema && values.paramsSchema.trim()) {
+        try {
+          paramsSchema = JSON.parse(values.paramsSchema);
+        } catch (e) {
+          message.error('参数Schema格式错误，请检查JSON格式');
+          return;
+        }
+      }
+
       const data: CreateExecutionFlowTemplateDTO = {
         name: values.name,
         description: values.description,
+        goal: values.goal,
+        expectedResult: values.expectedResult,
+        paramsSchema,
         category: values.category || 'document',
         steps: currentSteps,
         executionFlowKeys: currentSteps.map(s => s.name),
@@ -298,16 +386,18 @@ const ExecutionFlowTemplatePage: React.FC = () => {
   };
 
   // Render step type badge
-  const renderStepTypeBadge = (type: StepType) => {
-    const info = STEP_TYPE_LABELS[type];
-    const icons: Record<StepType, React.ReactNode> = {
+  const renderStepTypeBadge = (type: StepType | string) => {
+    const info = STEP_TYPE_LABELS[type as StepType] || { label: type, color: 'default' };
+    const icons: Record<string, React.ReactNode> = {
       text: <FileTextOutlined />,
       script: <CodeOutlined />,
       tool: <ToolOutlined />,
       api: <ApiOutlined />,
+      llm: <FileTextOutlined />,
+      validator: <CheckCircleOutlined />,
     };
     return (
-      <Tag color={info.color} icon={icons[type]}>
+      <Tag color={info.color} icon={icons[type] || <ToolOutlined />}>
         {info.label}
       </Tag>
     );
@@ -334,7 +424,11 @@ const ExecutionFlowTemplatePage: React.FC = () => {
       dataIndex: 'name',
       key: 'name',
       width: 180,
-      render: (name: string) => <strong>{name}</strong>,
+      render: (name: string, record: ExecutionFlowTemplateDTO) => (
+        <a onClick={() => handleViewDetail(record)} style={{ cursor: 'pointer' }}>
+          <strong>{name}</strong>
+        </a>
+      ),
     },
     {
       title: '分类',
@@ -401,10 +495,10 @@ const ExecutionFlowTemplatePage: React.FC = () => {
           <Button
             type="link"
             size="small"
-            icon={<EyeOutlined />}
-            onClick={() => handleViewDetail(record)}
+            icon={<EditOutlined />}
+            onClick={() => handleEdit(record)}
           >
-            详情
+            编辑
           </Button>
           <Button
             type="link"
@@ -417,7 +511,7 @@ const ExecutionFlowTemplatePage: React.FC = () => {
           <Dropdown
             menu={{
               items: [
-                { key: 'edit', icon: <EditOutlined />, label: '编辑', onClick: () => handleEdit(record) },
+                { key: 'detail', icon: <EyeOutlined />, label: '详情', onClick: () => handleViewDetail(record) },
                 { key: 'clone', icon: <CopyOutlined />, label: '复制', onClick: () => handleClone(record) },
                 { key: 'export', icon: <ExportOutlined />, label: '导出', onClick: () => handleExport(record) },
                 { key: 'delete', icon: <DeleteOutlined />, label: '删除', danger: true, onClick: () => handleDelete(record.id) },
@@ -578,12 +672,33 @@ const ExecutionFlowTemplatePage: React.FC = () => {
                         <Input
                           value={step.api?.endpoint}
                           onChange={(e) => handleUpdateStep(index, 'api', { ...step.api, endpoint: e.target.value })}
-                          placeholder="API端点URL"
+                          placeholder="API端点URL（支持{{变量}}）"
                           style={{ width: 300 }}
                         />
                       </Space>
                     </Space>
                   )}
+
+                  {/* 条件字段 - 支持条件执行 */}
+                  <Input
+                    value={step.condition}
+                    onChange={(e) => handleUpdateStep(index, 'condition', e.target.value)}
+                    placeholder="执行条件（可选，如: step_xxx.status == 'success'）"
+                    style={{ width: '100%' }}
+                  />
+
+                  {/* 输入映射 - 支持变量传递 */}
+                  <Input
+                    value={step.inputMapping ? JSON.stringify(step.inputMapping) : ''}
+                    onChange={(e) => {
+                      try {
+                        const mapping = e.target.value ? JSON.parse(e.target.value) : undefined;
+                        handleUpdateStep(index, 'inputMapping', mapping);
+                      } catch {}
+                    }}
+                    placeholder="输入映射JSON（可选，例如 city 映射到 flow_input.city）"
+                    style={{ width: '100%' }}
+                  />
 
                   <Input
                     value={step.expectedOutput}
@@ -756,7 +871,7 @@ const ExecutionFlowTemplatePage: React.FC = () => {
                     status={selectedTemplate.validation.isValid ? 'success' : 'exception'}
                     format={(percent) => `${percent}分`}
                   />
-                  {selectedTemplate.validation.warnings?.length > 0 && (
+                  {selectedTemplate.validation.warnings && selectedTemplate.validation.warnings.length > 0 && (
                     <Alert
                       type="warning"
                       message="警告"
@@ -772,7 +887,7 @@ const ExecutionFlowTemplatePage: React.FC = () => {
                   {selectedTemplate.validation.suggestions?.length > 0 && (
                     <Alert
                       type="info"
-                      message="建议"
+                      message="优化建议"
                       description={
                         <ul>
                           {selectedTemplate.validation.suggestions.map((s, i) => (
@@ -781,6 +896,27 @@ const ExecutionFlowTemplatePage: React.FC = () => {
                         </ul>
                       }
                     />
+                  )}
+                  {selectedTemplate.validation.details?.aiCritique && (
+                    <Alert
+                      type="info"
+                      message="AI 审计详情"
+                      description={selectedTemplate.validation.details.aiCritique}
+                    />
+                  )}
+                  {selectedTemplate.validation.details?.autoAdjustment && (
+                    <Button
+                      type="primary"
+                      icon={<CheckCircleOutlined />}
+                      onClick={() => {
+                        setDetailModalVisible(false);
+                        setSelectedTemplate(selectedTemplate);
+                        setValidationResult(selectedTemplate.validation);
+                        setValidateModalVisible(true);
+                      }}
+                    >
+                      查看并应用AI优化建议
+                    </Button>
                   )}
                   <Text type="secondary">
                     验证时间: {new Date(selectedTemplate.validation.validatedAt).toLocaleString()}
@@ -804,6 +940,36 @@ const ExecutionFlowTemplatePage: React.FC = () => {
           setEditingTemplate(null);
           setCurrentSteps([]);
         }}
+        footer={[
+          editingTemplate && (
+            <Button
+              key="validate"
+              icon={<PlayCircleOutlined />}
+              onClick={handleValidateFromEdit}
+              style={{ marginRight: 8 }}
+            >
+              验证
+            </Button>
+          ),
+          <Button
+            key="cancel"
+            onClick={() => {
+              setEditModalVisible(false);
+              setEditingTemplate(null);
+              setCurrentSteps([]);
+            }}
+          >
+            取消
+          </Button>,
+          <Button
+            key="save"
+            type="primary"
+            loading={createMutation.isLoading || updateMutation.isLoading}
+            onClick={handleSave}
+          >
+            保存
+          </Button>,
+        ]}
         confirmLoading={createMutation.isLoading || updateMutation.isLoading}
         width={800}
         style={{ top: 20 }}
@@ -821,6 +987,27 @@ const ExecutionFlowTemplatePage: React.FC = () => {
             label="描述"
           >
             <TextArea rows={2} />
+          </Form.Item>
+          <Form.Item
+            name="goal"
+            label="流程目标"
+            extra="明确的目标描述，指导AI进行验证和宏工具生成"
+          >
+            <TextArea rows={2} placeholder="例如：查询指定城市的天气信息并返回格式化结果" />
+          </Form.Item>
+          <Form.Item
+            name="expectedResult"
+            label="预期结果"
+            extra="期望的输出格式和内容，指导AI验证流程是否达成目标"
+          >
+            <TextArea rows={2} placeholder="例如：返回包含温度、天气状况、风速的中文天气报告" />
+          </Form.Item>
+          <Form.Item
+            name="paramsSchema"
+            label="参数定义 (JSON)"
+            extra="可选。定义流程需要的输入参数，例如 city: 城市名称"
+          >
+            <TextArea rows={3} placeholder='{"city": {"type": "string", "description": "城市名称"}}' />
           </Form.Item>
           <Form.Item
             name="category"
@@ -858,18 +1045,68 @@ const ExecutionFlowTemplatePage: React.FC = () => {
           setValidateModalVisible(false);
           setSelectedTemplate(null);
           setValidationResult(null);
+          setEnableExecutionTest(false);
+          setTestParamsJson('');
         }}
         footer={[
+          <Button
+            key="revalidate"
+            type="default"
+            icon={<PlayCircleOutlined />}
+            loading={validateMutation.isLoading}
+            onClick={handleRunValidation}
+            style={{ marginRight: 8 }}
+          >
+            重新验证
+          </Button>,
+          validationResult?.details?.autoAdjustment && (
+            <Button
+              key="apply"
+              type="primary"
+              icon={<CheckCircleOutlined />}
+              loading={applyAdjustmentMutation.isLoading}
+              onClick={handleApplyAdjustment}
+              style={{ marginRight: 8 }}
+            >
+              应用建议
+            </Button>
+          ),
           <Button key="close" onClick={() => setValidateModalVisible(false)}>
             关闭
           </Button>,
         ]}
-        width={600}
+        width={700}
       >
+        {/* Execution Test Options */}
+        <Card size="small" style={{ marginBottom: 16 }}>
+          <Space direction="vertical" style={{ width: '100%' }}>
+            <Space>
+              <Switch
+                checked={enableExecutionTest}
+                onChange={setEnableExecutionTest}
+                checkedChildren="执行测试"
+                unCheckedChildren="仅静态分析"
+              />
+              <Tooltip title="启用后将通过ReAct引擎实际执行流程，测试每个步骤是否可正常运行">
+                <InfoCircleOutlined />
+              </Tooltip>
+            </Space>
+            {enableExecutionTest && (
+              <TextArea
+                value={testParamsJson}
+                onChange={(e) => setTestParamsJson(e.target.value)}
+                placeholder="测试参数JSON（用于填充流程中的变量）"
+                rows={4}
+              />
+            )}
+          </Space>
+        </Card>
+
         {validateMutation.isLoading ? (
           <Space direction="vertical" style={{ width: '100%', textAlign: 'center' }}>
-            <Progress type="circle" percent={50} status="active" />
-            <Text>正在验证流程...</Text>
+            <Progress type="circle" percent={100} status="active" showInfo={false} />
+            <Text>{enableExecutionTest ? '正在执行流程测试...' : '正在进行AI深度审计...'}</Text>
+            <Text type="secondary">（这可能需要几秒到几十秒）</Text>
           </Space>
         ) : validationResult ? (
           <Space direction="vertical" style={{ width: '100%' }}>
@@ -884,7 +1121,7 @@ const ExecutionFlowTemplatePage: React.FC = () => {
               status={validationResult.isValid ? 'success' : 'exception'}
               format={(percent) => `${percent}分`}
             />
-            {validationResult.warnings?.length > 0 && (
+            {validationResult.warnings && validationResult.warnings.length > 0 && (
               <Alert
                 type="warning"
                 message="警告"
@@ -909,6 +1146,33 @@ const ExecutionFlowTemplatePage: React.FC = () => {
                   </ul>
                 }
               />
+            )}
+            {/* Execution Test Results */}
+            {validationResult.details?.executionTest && (
+              <Collapse ghost>
+                <Panel header={`执行测试结果 (${validationResult.details.executionTest.success ? '成功' : '失败'}, ${validationResult.details.executionTest.iterations}次迭代)`} key="execution">
+                  {validationResult.details.executionTest.success ? (
+                    <Alert type="success" message="执行成功" description={validationResult.details.executionTest.result?.slice(0, 500)} />
+                  ) : (
+                    <Alert type="error" message="执行失败" description={validationResult.details.executionTest.error} />
+                  )}
+                  {validationResult.details.executionTest.log?.length > 0 && (
+                    <Timeline style={{ marginTop: 16 }}>
+                      {validationResult.details.executionTest.log.slice(0, 20).map((log, i) => (
+                        <Timeline.Item key={i} color={
+                          log.startsWith('[Thought]') ? 'blue' :
+                          log.startsWith('[Action]') ? 'green' :
+                          log.startsWith('[Observation]') ? 'gray' :
+                          log.startsWith('[Error]') ? 'red' :
+                          'blue'
+                        }>
+                          <Text style={{ fontSize: 12 }}>{log}</Text>
+                        </Timeline.Item>
+                      ))}
+                    </Timeline>
+                  )}
+                </Panel>
+              </Collapse>
             )}
             {validationResult.details?.stepAnalysis && (
               <Collapse ghost>

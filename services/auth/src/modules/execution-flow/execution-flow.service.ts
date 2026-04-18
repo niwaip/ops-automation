@@ -150,8 +150,8 @@ export class ExecutionFlowTemplateService implements OnModuleInit {
     }
 
     const [templates, total] = await Promise.all([
-      this.prisma.$queryRawUnsafe<ExecutionFlowTemplateDTO[]>(
-        `SELECT id, name, description, category, steps, execution_flow_keys, validation, usage_count, is_public, created_by, is_active, created_at, updated_at
+      this.prisma.$queryRawUnsafe<any[]>(
+        `SELECT id, name, description, goal, expected_result as "expectedResult", params_schema as "paramsSchema", category, steps, execution_flow_keys as "executionFlowKeys", validation, usage_count as "usageCount", is_public as "isPublic", created_by as "createdBy", is_active as "isActive", created_at as "createdAt", updated_at as "updatedAt"
          FROM execution_flow_templates
          WHERE ${this.buildWhereClause(where)}
          ORDER BY usage_count DESC, created_at DESC
@@ -165,7 +165,7 @@ export class ExecutionFlowTemplateService implements OnModuleInit {
     ]);
 
     // Convert BigInt to Number for JSON serialization
-    return { templates, total: Number(total[0]?.count || 0) };
+    return { templates: templates.map(t => this.mapTemplateToDTO(t)).filter((t): t is ExecutionFlowTemplateDTO => t !== null), total: Number(total[0]?.count || 0) };
   }
 
   private buildWhereClause(where: any): string {
@@ -196,14 +196,14 @@ export class ExecutionFlowTemplateService implements OnModuleInit {
    * 获取单个模板详情
    */
   async getTemplate(id: string): Promise<ExecutionFlowTemplateDTO | null> {
-    const template = await this.prisma.$queryRawUnsafe<ExecutionFlowTemplateDTO[]>(
-      `SELECT id, name, description, category, steps, execution_flow_keys, validation, usage_count, is_public, created_by, is_active, created_at, updated_at
+    const template = await this.prisma.$queryRawUnsafe<any[]>(
+      `SELECT id, name, description, goal, expected_result as "expectedResult", params_schema as "paramsSchema", category, steps, execution_flow_keys as "executionFlowKeys", validation, usage_count as "usageCount", is_public as "isPublic", created_by as "createdBy", is_active as "isActive", created_at as "createdAt", updated_at as "updatedAt"
        FROM execution_flow_templates
        WHERE id = $1::uuid`,
       id
     );
 
-    return template[0] || null;
+    return this.mapTemplateToDTO(template[0]) || null;
   }
 
   /**
@@ -216,12 +216,15 @@ export class ExecutionFlowTemplateService implements OnModuleInit {
       id: step.id || randomUUID(),
     }));
 
-    const result = await this.prisma.$queryRawUnsafe<ExecutionFlowTemplateDTO[]>(
-      `INSERT INTO execution_flow_templates (name, description, category, steps, execution_flow_keys, is_public, created_by)
-       VALUES ($1, $2, $3, $4::jsonb, $5::jsonb, $6, $7::uuid)
-       RETURNING id, name, description, category, steps, execution_flow_keys, validation, usage_count, is_public, created_by, is_active, created_at, updated_at`,
+    const result = await this.prisma.$queryRawUnsafe<any[]>(
+      `INSERT INTO execution_flow_templates (name, description, goal, expected_result, params_schema, category, steps, execution_flow_keys, is_public, created_by)
+       VALUES ($1, $2, $3, $4, $5::jsonb, $6, $7::jsonb, $8::jsonb, $9, $10::uuid)
+       RETURNING id, name, description, goal, expected_result as "expectedResult", params_schema as "paramsSchema", category, steps, execution_flow_keys as "executionFlowKeys", validation, usage_count as "usageCount", is_public as "isPublic", created_by as "createdBy", is_active as "isActive", created_at as "createdAt", updated_at as "updatedAt"`,
       data.name,
       data.description || null,
+      data.goal || null,
+      data.expectedResult || null,
+      JSON.stringify(data.paramsSchema || {}),
       data.category || 'document',
       JSON.stringify(steps),
       JSON.stringify(data.executionFlowKeys || []),
@@ -230,7 +233,32 @@ export class ExecutionFlowTemplateService implements OnModuleInit {
     );
 
     this.logger.log(`Created execution flow template: ${data.name}`);
-    return result[0];
+    return this.mapTemplateToDTO(result[0])!;
+  }
+
+  /**
+   * 映射数据库结果到DTO
+   */
+  private mapTemplateToDTO(raw: any): ExecutionFlowTemplateDTO | null {
+    if (!raw) return null;
+    return {
+      id: raw.id,
+      name: raw.name,
+      description: raw.description,
+      goal: raw.goal,
+      expectedResult: raw.expectedResult || raw.expected_result,
+      paramsSchema: raw.paramsSchema || raw.params_schema,
+      category: raw.category,
+      steps: raw.steps,
+      executionFlowKeys: raw.executionFlowKeys || raw.execution_flow_keys,
+      validation: raw.validation,
+      usageCount: raw.usageCount || raw.usage_count || 0,
+      isPublic: raw.isPublic || raw.is_public,
+      createdBy: raw.createdBy || raw.created_by,
+      isActive: raw.isActive || raw.is_active,
+      createdAt: raw.createdAt || raw.created_at,
+      updatedAt: raw.updatedAt || raw.updated_at,
+    };
   }
 
   /**
@@ -256,6 +284,21 @@ export class ExecutionFlowTemplateService implements OnModuleInit {
     if (data.description !== undefined) {
       updates.push(`description = $${paramIndex}`);
       values.push(data.description);
+      paramIndex++;
+    }
+    if (data.goal !== undefined) {
+      updates.push(`goal = $${paramIndex}`);
+      values.push(data.goal);
+      paramIndex++;
+    }
+    if (data.expectedResult !== undefined) {
+      updates.push(`expected_result = $${paramIndex}`);
+      values.push(data.expectedResult);
+      paramIndex++;
+    }
+    if (data.paramsSchema !== undefined) {
+      updates.push(`params_schema = $${paramIndex}::jsonb`);
+      values.push(JSON.stringify(data.paramsSchema));
       paramIndex++;
     }
     if (data.category !== undefined) {
@@ -295,14 +338,14 @@ export class ExecutionFlowTemplateService implements OnModuleInit {
     updates.push(`updated_at = now()`);
     values.push(id);
 
-    const result = await this.prisma.$queryRawUnsafe<ExecutionFlowTemplateDTO[]>(
+    const result = await this.prisma.$queryRawUnsafe<any[]>(
       `UPDATE execution_flow_templates SET ${updates.join(', ')} WHERE id = $${paramIndex}::uuid
-       RETURNING id, name, description, category, steps, execution_flow_keys, validation, usage_count, is_public, created_by, is_active, created_at, updated_at`,
+       RETURNING id, name, description, goal, expected_result as "expectedResult", params_schema as "paramsSchema", category, steps, execution_flow_keys as "executionFlowKeys", validation, usage_count as "usageCount", is_public as "isPublic", created_by as "createdBy", is_active as "isActive", created_at as "createdAt", updated_at as "updatedAt"`,
       ...values
     );
 
     this.logger.log(`Updated execution flow template: ${id}`);
-    return result[0] || null;
+    return this.mapTemplateToDTO(result[0]) || null;
   }
 
   /**
@@ -330,8 +373,14 @@ export class ExecutionFlowTemplateService implements OnModuleInit {
   /**
    * 验证流程模板 - AI驱动的深度验证与优化
    * 检查流程逻辑一致性、参数链条、影子工具适配度，并提供自动调整建议
+   * 支持真实执行测试：通过ReAct引擎的flow_execute工具实际执行流程
    */
-  async validateTemplate(id: string, aiServiceUrl?: string): Promise<ValidationResult> {
+  async validateTemplate(
+    id: string,
+    aiServiceUrl?: string,
+    testParams?: Record<string, unknown>,
+    enableExecutionTest?: boolean,
+  ): Promise<ValidationResult> {
     const template = await this.getTemplate(id);
     if (!template) {
       throw new Error('Template not found');
@@ -377,51 +426,66 @@ export class ExecutionFlowTemplateService implements OnModuleInit {
     try {
       const orchestratorUrl = aiServiceUrl || process.env.AI_ORCHESTRATOR_URL || 'http://ops-ai-orchestrator:3007';
       
-      const auditPrompt = `你是一个高级系统架构师和 AI Agent 专家。请审计以下“执行流程模板 (Execution Flow Template)”，并验证其作为“影子工具 (Shadow Tool)”提供给 ReAct 引擎时的可行性。
+      const auditPrompt = `你是一个高级系统架构师和 AI Agent 专家。请审计以下”执行流程模板 (Execution Flow Template)”，并验证其作为”影子工具 (Shadow Tool)”提供给 ReAct 引擎时的可行性。
 
 流程名称: ${template.name}
-流程描述: ${template.description}
+流程描述: ${template.description || '无'}
+${template.goal ? `流程目标: ${template.goal}` : '流程目标: 未定义'}
+${template.expectedResult ? `预期结果: ${template.expectedResult}` : '预期结果: 未定义'}
+${template.paramsSchema ? `参数定义: ${JSON.stringify(template.paramsSchema, null, 2)}` : '参数定义: 未定义'}
 步骤列表: ${JSON.stringify(template.steps, null, 2)}
 触发关键词: ${JSON.stringify(template.executionFlowKeys)}
 
 请从以下维度进行分析：
-1. 逻辑一致性：步骤间的参数传递是否闭合？是否存在后续步骤依赖但前序步骤未提供的参数？
-2. 原子能力验证：每一个步骤的操作（API/Tool/Script）是否能独立完成？
-3. 影子工具适配性：如果将此流程包装成一个工具，其定义的参数 Schema 是否足以驱动整个流程？
-4. 容错性：流程中是否有明显的单点故障风险？
+1. 目标一致性：流程步骤是否能达成定义的目标？预期结果是否可实现？
+2. 参数完整性：如果定义了参数Schema，流程是否正确使用了这些参数？
+3. 逻辑一致性：步骤间的参数传递是否闭合？是否存在后续步骤依赖但前序步骤未提供的参数？
+4. 原子能力验证：每一个步骤的操作（API/Tool/Script）是否能独立完成？
+5. 影子工具适配性：如果将此流程包装成一个工具，其定义的参数 Schema 是否足以驱动整个流程？
+6. 容错性：流程中是否有明显的单点故障风险？
 
 请以 JSON 格式返回审计结果，包含以下字段：
 {
-  "isValid": boolean,
-  "score": number (0-100),
-  "critique": "详细的逻辑评估",
-  "issues": ["问题1", "问题2"],
-  "suggestions": ["改进建议1", "改进建议2"],
-  "improvedFlow": null | Object (如果逻辑有问题，请提供自动调整后的步骤 JSON)
+  “isValid”: boolean,
+  “score”: number (0-100),
+  “critique”: “详细的逻辑评估”,
+  “issues”: [“问题1”, “问题2”],
+  “suggestions”: [“改进建议1”, “改进建议2”],
+  “improvedFlow”: null | Object (如果逻辑有问题，请提供自动调整后的步骤 JSON)
 }
 `;
 
       const aiResponse = await axios.post(`${orchestratorUrl}/ai/chat/stream`, {
         message: auditPrompt,
-        sessionId: \`audit-\${id}-\${randomUUID()}\`,
-        config: { mode: 'task', maxIterations: 5 }
+        sessionId: `audit-${id}-${randomUUID()}`,
+        modelId: 'qwen3.5-plus',  // 使用配置好的模型名称
+        config: { mode: 'chat', maxIterations: 5 }  // 使用chat模式，更稳定的AI响应
       }, { responseType: 'stream' });
 
       let fullContent = '';
-      for await (const chunk of aiResponse.data) {
-        const lines = chunk.toString().split('\\n');
+      let aiErrorReceived = '';
+      for await (const chunk of aiResponse.data as AsyncIterable<any>) {
+        const lines = chunk.toString().split('\n');
         for (const line of lines) {
           if (line.startsWith('data: ')) {
             try {
               const data = JSON.parse(line.slice(6));
               if (data.type === 'result') {
                 fullContent = data.content;
+              } else if (data.type === 'error') {
+                aiErrorReceived = data.content || '未知错误';
               }
             } catch (e) {
               // Ignore partial or invalid json
             }
           }
         }
+      }
+
+      // 检查是否收到有效响应
+      if (!fullContent || fullContent.trim() === '') {
+        const errorMsg = aiErrorReceived || '未收到有效响应';
+        throw new Error(errorMsg);
       }
 
       const aiAudit = JSON.parse(fullContent.replace(/```json|```/g, '').trim());
@@ -447,6 +511,90 @@ export class ExecutionFlowTemplateService implements OnModuleInit {
       validationResult.warnings?.push(`AI 深度审计不可用 (错误: ${aiError.message})，仅执行静态检查。`);
     }
 
+    // 2.5 真实执行测试（可选）- 通过ReAct引擎执行流程
+    if (enableExecutionTest) {
+      try {
+        const orchestratorUrl = aiServiceUrl || process.env.AI_ORCHESTRATOR_URL || 'http://ops-ai-orchestrator:3007';
+
+        this.logger.log(`Starting execution test for template ${id} with params: ${JSON.stringify(testParams || {})}`);
+
+        // 使用 ReAct 引擎的 task 模式执行流程
+        const execResponse = await axios.post(`${orchestratorUrl}/ai/chat/stream`, {
+          message: `执行流程模板 ${template.name}，模板ID: ${id}`,
+          sessionId: `exec-test-${id}-${randomUUID()}`,
+          modelId: 'qwen3.5-plus',
+          config: {
+            mode: 'task',
+            maxIterations: Math.max(steps.length + 5, 10),  // 给足够迭代次数完成流程
+          },
+        }, { responseType: 'stream', timeout: 60000 });
+
+        // 收集执行过程
+        const executionLog: string[] = [];
+        let executionResult = '';
+        let executionError = '';
+        let iterations = 0;
+
+        for await (const chunk of execResponse.data as AsyncIterable<any>) {
+          const lines = chunk.toString().split('\n');
+          for (const line of lines) {
+            if (line.startsWith('data: ')) {
+              try {
+                const data = JSON.parse(line.slice(6));
+                if (data.type === 'thought') {
+                  executionLog.push(`[Thought] ${data.content}`);
+                  iterations = data.iteration || iterations;
+                } else if (data.type === 'action') {
+                  executionLog.push(`[Action] ${data.content} ${JSON.stringify(data.data?.actionInput || {})}`);
+                } else if (data.type === 'observation') {
+                  executionLog.push(`[Observation] ${data.content?.slice(0, 500)}...`);
+                } else if (data.type === 'result') {
+                  executionResult = data.content;
+                  executionLog.push(`[Result] ${executionResult}`);
+                } else if (data.type === 'error') {
+                  executionError = data.content;
+                  executionLog.push(`[Error] ${executionError}`);
+                } else if (data.type === 'done') {
+                  executionLog.push('[Done] Stream completed');
+                }
+              } catch (e) {
+                // Ignore partial JSON
+              }
+            }
+          }
+        }
+
+        // 分析执行结果
+        if (executionError) {
+          validationResult.warnings?.push(`执行测试失败: ${executionError}`);
+          if (validationResult.details) {
+            validationResult.details.executionTest = {
+              success: false,
+              error: executionError,
+              log: executionLog,
+              iterations,
+            };
+          }
+        } else if (executionResult) {
+          validationResult.suggestions.push(`执行测试成功: 流程完成，共 ${iterations} 次迭代`);
+          if (validationResult.details) {
+            validationResult.details.executionTest = {
+              success: true,
+              result: executionResult,
+              log: executionLog,
+              iterations,
+            };
+          }
+        } else {
+          validationResult.warnings?.push('执行测试未返回有效结果');
+        }
+
+      } catch (execError) {
+        this.logger.error('Execution test failed:', execError.message);
+        validationResult.warnings?.push(`执行测试异常: ${execError.message}`);
+      }
+    }
+
     // 3. 持久化验证结果
     await this.prisma.$executeRawUnsafe(
       `UPDATE execution_flow_templates SET validation = $1::jsonb WHERE id = $2::uuid`,
@@ -462,8 +610,8 @@ export class ExecutionFlowTemplateService implements OnModuleInit {
    * 获取热门模板（按使用次数排序）
    */
   async getPopularTemplates(limit?: number): Promise<ExecutionFlowTemplateDTO[]> {
-    const templates = await this.prisma.$queryRawUnsafe<ExecutionFlowTemplateDTO[]>(
-      `SELECT id, name, description, category, steps, execution_flow_keys, validation, usage_count, is_public, created_by, is_active, created_at, updated_at
+    const templates = await this.prisma.$queryRawUnsafe<any[]>(
+      `SELECT id, name, description, goal, expected_result as "expectedResult", params_schema as "paramsSchema", category, steps, execution_flow_keys as "executionFlowKeys", validation, usage_count as "usageCount", is_public as "isPublic", created_by as "createdBy", is_active as "isActive", created_at as "createdAt", updated_at as "updatedAt"
        FROM execution_flow_templates
        WHERE is_public = true AND is_active = true
        ORDER BY usage_count DESC
@@ -471,7 +619,7 @@ export class ExecutionFlowTemplateService implements OnModuleInit {
       limit || 10
     );
 
-    return templates;
+    return templates.map(t => this.mapTemplateToDTO(t)).filter(Boolean) as ExecutionFlowTemplateDTO[];
   }
 
   /**

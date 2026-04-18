@@ -13,17 +13,23 @@ export const EXECUTION_FLOW_CATEGORIES = {
 /**
  * 流程步骤类型
  */
-export type ExecutionFlowStepType = 'text' | 'api' | 'tool' | 'script';
+export type ExecutionFlowStepType = 'text' | 'api' | 'tool' | 'script' | 'llm' | 'validator';
 
 /**
  * 流程步骤定义
  */
 export interface ExecutionFlowStep {
   id?: string;
-  type: ExecutionFlowStepType;
+  type: ExecutionFlowStepType | string;  // 支持扩展类型
   name: string;
   content?: string;
   expectedOutput?: string;
+  condition?: string;  // 执行条件，如 "step_xxx.status == 'success'"
+  inputMapping?: Record<string, string>;  // 输入变量映射，如 {"city": "{{flow_input.city}}"}
+  retryPolicy?: {
+    maxRetries?: number;
+    backoff?: number;
+  };
   api?: {
     endpoint: string;
     method: 'GET' | 'POST' | 'PUT' | 'DELETE';
@@ -55,6 +61,13 @@ export interface ValidationResult {
     stepAnalysis: StepAnalysis[];
     aiCritique?: string;        // AI 深度审计详情
     autoAdjustment?: any;      // AI 建议的自动优化流程
+    executionTest?: {          // 真实执行测试结果
+      success: boolean;
+      result?: string;
+      error?: string;
+      log: string[];           // 执行日志
+      iterations: number;      // 执行迭代次数
+    };
   };
 }
 
@@ -76,6 +89,9 @@ export interface ExecutionFlowTemplateDTO {
   id: string;
   name: string;
   description?: string;
+  goal?: string;             // 流程目标 - 指导AI验证和宏工具生成
+  expectedResult?: string;   // 预期结果 - 指导AI验证
+  paramsSchema?: Record<string, any>;  // 参数定义 - 可选，指导AI验证参数完整性
   category: string;
   steps: ExecutionFlowStep[];
   executionFlowKeys: string[];
@@ -94,6 +110,9 @@ export interface ExecutionFlowTemplateDTO {
 export interface CreateExecutionFlowTemplateDTO {
   name: string;
   description?: string;
+  goal?: string;             // 流程目标
+  expectedResult?: string;   // 预期结果
+  paramsSchema?: Record<string, any>;  // 参数定义
   category?: string;
   steps: ExecutionFlowStep[];
   executionFlowKeys?: string[];
@@ -107,6 +126,9 @@ export interface CreateExecutionFlowTemplateDTO {
 export interface UpdateExecutionFlowTemplateDTO {
   name?: string;
   description?: string;
+  goal?: string;
+  expectedResult?: string;
+  paramsSchema?: Record<string, any>;
   category?: string;
   steps?: ExecutionFlowStep[];
   executionFlowKeys?: string[];

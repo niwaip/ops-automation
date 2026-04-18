@@ -6,15 +6,22 @@
 import apiClient from './client';
 
 // Step types supported by execution flow
-export type StepType = 'text' | 'script' | 'tool' | 'api';
+export type StepType = 'text' | 'script' | 'tool' | 'api' | 'llm' | 'validator';
 
 // Single step in the execution flow
 export interface ExecutionFlowStep {
   id?: string;
-  type: StepType;
+  type: StepType | string;  // 支持扩展类型
   name: string;
   description?: string;
   content?: string;
+  expectedOutput?: string;
+  condition?: string;  // 执行条件，如 "step_xxx.status == 'success'"
+  inputMapping?: Record<string, string>;  // 输入变量映射
+  retryPolicy?: {
+    maxRetries?: number;
+    backoff?: number;
+  };
   script?: {
     language: 'bash' | 'python' | 'javascript';
     code: string;
@@ -31,15 +38,6 @@ export interface ExecutionFlowStep {
     body?: Record<string, any>;
     timeout?: number;
   };
-  condition?: {
-    if?: string;
-    else?: string;
-  };
-  retry?: {
-    maxAttempts: number;
-    delayMs: number;
-  };
-  expectedOutput?: string;
   optional?: boolean;
 }
 
@@ -59,6 +57,15 @@ export interface ValidationResult {
       hasDependencies: boolean;
       suggestion?: string;
     }>;
+    aiCritique?: string;
+    autoAdjustment?: any;
+    executionTest?: {
+      success: boolean;
+      result?: string;
+      error?: string;
+      log: string[];
+      iterations: number;
+    };
   };
 }
 
@@ -66,6 +73,9 @@ export interface ValidationResult {
 export interface CreateExecutionFlowTemplateDTO {
   name: string;
   description?: string;
+  goal?: string;             // 流程目标
+  expectedResult?: string;   // 预期结果
+  paramsSchema?: Record<string, any>;  // 参数定义
   category?: string;
   steps: ExecutionFlowStep[];
   executionFlowKeys?: string[];
@@ -89,6 +99,9 @@ export interface ExecutionFlowTemplateDTO {
   id: string;
   name: string;
   description: string | null;
+  goal: string | null;             // 流程目标 - 指导AI验证和宏工具生成
+  expectedResult: string | null;   // 预期结果 - 指导AI验证
+  paramsSchema: Record<string, any> | null;  // 参数定义 - 可选
   category: string;
   steps: ExecutionFlowStep[];
   executionFlowKeys: string[];
@@ -112,11 +125,13 @@ export const EXECUTION_FLOW_CATEGORIES: Record<string, { label: string; color: s
 };
 
 // Step type labels
-export const STEP_TYPE_LABELS: Record<StepType, { label: string; color: string; icon: string }> = {
+export const STEP_TYPE_LABELS: Record<string, { label: string; color: string; icon: string }> = {
   text: { label: '纯文本指导', color: 'default', icon: 'FileTextOutlined' },
   script: { label: '脚本执行', color: 'orange', icon: 'CodeOutlined' },
   tool: { label: '系统工具', color: 'blue', icon: 'ToolOutlined' },
   api: { label: 'API调用', color: 'green', icon: 'ApiOutlined' },
+  llm: { label: 'LLM处理', color: 'purple', icon: 'FileTextOutlined' },
+  validator: { label: '参数验证', color: 'cyan', icon: 'CheckCircleOutlined' },
 };
 
 export interface ExecutionFlowTemplateListResponse {
@@ -187,11 +202,34 @@ export const executionFlowApi = {
 
   /**
    * 验证流程模板 - AI验证功能
+   * 支持真实执行测试
    */
-  validate: async (id: string, aiServiceUrl?: string): Promise<ValidateResponse> => {
-    const params = aiServiceUrl ? `?aiServiceUrl=${encodeURIComponent(aiServiceUrl)}` : '';
+  validate: async (
+    id: string,
+    options?: {
+      aiServiceUrl?: string;
+      enableExecutionTest?: boolean;
+      testParams?: Record<string, any>;
+    },
+  ): Promise<ValidateResponse> => {
+    const params = new URLSearchParams();
+    if (options?.aiServiceUrl) params.append('aiServiceUrl', encodeURIComponent(options.aiServiceUrl));
+    if (options?.enableExecutionTest) params.append('enableExecutionTest', 'true');
+
+    const body = options?.testParams ? { testParams: options.testParams } : undefined;
+
     return apiClient.post<ValidateResponse>(
-      `/execution-flow-templates/${id}/validate${params}`
+      `/execution-flow-templates/${id}/validate?${params.toString()}`,
+      body,
+    );
+  },
+
+  /**
+   * 应用AI优化建议
+   */
+  applyAdjustment: async (id: string): Promise<ExecutionFlowTemplateDTO> => {
+    return apiClient.post<ExecutionFlowTemplateDTO>(
+      `/execution-flow-templates/${id}/apply-adjustment`
     );
   },
 

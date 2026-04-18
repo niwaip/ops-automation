@@ -53,9 +53,10 @@ export class ExecutionFlowTemplateController {
   }
 
   /**
-   * 获取所有流程模板列表
+   * 获取所有流程模板列表（公开API，用于内部服务调用）
    */
   @Get()
+  @Public()
   async listTemplates(
     @Query('category') category?: string,
     @Query('isPublic') isPublic?: string,
@@ -134,14 +135,24 @@ export class ExecutionFlowTemplateController {
 
   /**
    * 验证流程模板 - AI验证功能
+   * 支持真实执行测试（enableExecutionTest=true）
    */
   @Post(':id/validate')
   @Roles('admin')
   async validateTemplate(
     @Param('id') id: string,
-    @Query('aiServiceUrl') aiServiceUrl?: string
+    @Query('aiServiceUrl') aiServiceUrl?: string,
+    @Query('enableExecutionTest') enableExecutionTest?: string,
+    @Body() body?: { testParams?: Record<string, unknown> },
   ) {
-    const validationResult = await this.templateService.validateTemplate(id, aiServiceUrl);
+    const enableExec = enableExecutionTest === 'true';
+    const testParams = body?.testParams;
+    const validationResult = await this.templateService.validateTemplate(
+      id,
+      aiServiceUrl,
+      testParams,
+      enableExec,
+    );
     return { validationResult };
   }
 
@@ -157,16 +168,32 @@ export class ExecutionFlowTemplateController {
     }
 
     const validation = template.validation as any;
-    const improvedFlow = validation.details?.autoAdjustment;
+    const autoAdjustment = validation.details?.autoAdjustment;
 
-    if (!improvedFlow) {
+    if (!autoAdjustment) {
       throw new HttpException('No improved flow suggested by AI', HttpStatus.NOT_FOUND);
     }
 
+    // AI返回的autoAdjustment结构：{ 参数定义, 步骤列表, 流程目标, 预期结果, 触发关键词... }
+    const improvedSteps = autoAdjustment['步骤列表'] || autoAdjustment.steps || autoAdjustment;
+    const improvedParamsSchema = autoAdjustment['参数定义'] || autoAdjustment.inputSchema;
+    const improvedGoal = autoAdjustment['流程目标'] || autoAdjustment.goal;
+    const improvedExpectedResult = autoAdjustment['预期结果'] || autoAdjustment.expectedResult;
+    const improvedExecutionFlowKeys = autoAdjustment['触发关键词'] || autoAdjustment.executionFlowKeys;
+
+    // 验证步骤是数组
+    if (!Array.isArray(improvedSteps)) {
+      throw new HttpException('Invalid steps format in AI adjustment', HttpStatus.BAD_REQUEST);
+    }
+
     const updated = await this.templateService.updateTemplate(id, {
-      steps: improvedFlow,
+      steps: improvedSteps,
+      paramsSchema: improvedParamsSchema,
+      goal: improvedGoal,
+      expectedResult: improvedExpectedResult,
+      executionFlowKeys: improvedExecutionFlowKeys,
     });
-    
+
     if (!updated) {
       throw new HttpException('Failed to update template', HttpStatus.INTERNAL_SERVER_ERROR);
     }

@@ -437,10 +437,20 @@ export class ModelService implements OnModuleInit {
   }
 
   /**
-   * Get client for a model
+   * Get client for a model (supports both UUID and model name)
    */
   getClient(id: string): OpenAICompatibleClient | null {
-    return this.clients.get(id) || null;
+    // First try direct UUID lookup
+    const client = this.clients.get(id);
+    if (client) return client;
+
+    // Then try name lookup
+    for (const [modelId, model] of this.models) {
+      if (model.name === id) {
+        return this.clients.get(modelId) || null;
+      }
+    }
+    return null;
   }
 
   /**
@@ -488,10 +498,10 @@ export class ModelService implements OnModuleInit {
   }
 
   /**
-   * Call a model with a prompt
+   * Call a model with a prompt (supports both UUID and model name)
    */
   async callModel(id: string, prompt: string): Promise<string> {
-    const client = this.clients.get(id);
+    const client = this.getClient(id);
     if (!client) {
       throw new Error(`No client initialized for model ${id}`);
     }
@@ -501,13 +511,13 @@ export class ModelService implements OnModuleInit {
   }
 
   /**
-   * Call a model with streaming support
-   * @param id Model ID
+   * Call a model with streaming support (supports both UUID and model name)
+   * @param id Model ID or name
    * @param prompt Prompt to send
    * @param onChunk Callback for each chunk
    */
   async callModelStream(id: string, prompt: string, onChunk: (chunk: string) => void): Promise<string> {
-    const client = this.clients.get(id);
+    const client = this.getClient(id);
     if (!client) {
       throw new Error(`No client initialized for model ${id}`);
     }
@@ -517,10 +527,10 @@ export class ModelService implements OnModuleInit {
   }
 
   /**
-   * Call model with streaming support - supports multimodal messages
+   * Call model with streaming support - supports multimodal messages (supports both UUID and model name)
    */
   async callModelStreamWithMessages(id: string, messages: ChatMessage[], onChunk: (chunk: string) => void): Promise<string> {
-    const client = this.clients.get(id);
+    const client = this.getClient(id);
     if (!client) {
       throw new Error(`No client initialized for model ${id}`);
     }
