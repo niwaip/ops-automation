@@ -7,6 +7,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { Card, Spin, Select, Space, Button } from 'antd';
 import { CloseOutlined, PlusOutlined } from '@ant-design/icons';
 import { useChatStore } from './chatStore';
+import { useAuthStore } from '../../store/authStore';
 import ChatMessage from './ChatMessage';
 import ChatInput from './ChatInput';
 import SkillConfirm from './SkillConfirm';
@@ -39,6 +40,9 @@ const ChatWindow: React.FC = () => {
     confirmParams,
     clearUploadedFiles,
   } = useChatStore();
+
+  // 获取当前登录用户的ID
+  const { user } = useAuthStore();
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   // 本地流式内容状态，用于实时显示
@@ -106,6 +110,7 @@ const ChatWindow: React.FC = () => {
       {
         message: content,
         sessionId: currentSession?.id,
+        userId: user?.id || undefined,  // 传递当前登录用户ID，null转为undefined
         modelId: selectedModel,
         files: filesToSend,
         config: {

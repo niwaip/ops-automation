@@ -17,6 +17,16 @@ import {
 import axios from 'axios';
 import { ExecutionFlowTemplateService } from '../execution-flow/execution-flow.service';
 
+// UUID验证正则表达式
+const UUID_REGEX = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
+
+/**
+ * 验证字符串是否为有效的UUID格式
+ */
+function isValidUUID(str: string): boolean {
+  return UUID_REGEX.test(str);
+}
+
 // AI Orchestrator 服务地址
 const getAiOrchestratorUrl = () => {
   if (process.env.AI_ORCHESTRATOR_URL) {
@@ -335,6 +345,12 @@ export class SkillService implements OnModuleInit {
    * 获取用户可访问的Skills（基于角色权限）
    */
   async listSkillsForUser(userId: string): Promise<SkillConfigDTO[]> {
+    // 0. 验证userId是否为有效的UUID格式（anonymous等非UUID用户返回空列表）
+    if (!isValidUUID(userId)) {
+      this.logger.warn(`Invalid userId format: ${userId}, returning empty skills list`);
+      return [];
+    }
+
     // 1. 获取用户信息（包含直接角色属性）
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
@@ -391,6 +407,11 @@ export class SkillService implements OnModuleInit {
    * 检查用户是否有权限使用某 Skill
    */
   async checkUserSkillPermission(userId: string, skillId: string): Promise<boolean> {
+    // 验证userId是否为有效的UUID格式
+    if (!isValidUUID(userId)) {
+      return false;
+    }
+
     // 1. 获取用户的所有角色
     const userRoles = await this.prisma.userRole.findMany({
       where: { userId },
