@@ -404,7 +404,8 @@ export class ExecutionFlowTemplateService implements OnModuleInit {
       const aiResponse = await axios.post(`${orchestratorUrl}/ai/chat/stream`, {
         message: auditPrompt,
         sessionId: `audit-${id}-${randomUUID()}`,
-        config: { mode: 'task', maxIterations: 5 }
+        modelId: 'qwen3.5-plus',  // 使用配置好的模型名称
+        config: { mode: 'chat', maxIterations: 5 }  // 使用chat模式，更稳定的AI响应
       }, { responseType: 'stream' });
 
       let fullContent = '';
