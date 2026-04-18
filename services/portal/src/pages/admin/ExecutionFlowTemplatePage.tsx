@@ -152,6 +152,17 @@ const ExecutionFlowTemplatePage: React.FC = () => {
     },
   });
 
+  const applyAdjustmentMutation = useMutation(executionFlowApi.applyAdjustment, {
+    onSuccess: () => {
+      message.success('已应用AI优化建议');
+      queryClient.invalidateQueries(['execution-flow-templates']);
+      setValidateModalVisible(false);
+    },
+    onError: () => {
+      message.error('应用建议失败');
+    },
+  });
+
   const cloneMutation = useMutation(
     ({ id, name }: { id: string; name: string }) => executionFlowApi.clone(id, name),
     {
@@ -220,6 +231,16 @@ const ExecutionFlowTemplatePage: React.FC = () => {
     if (editingTemplate) {
       setEditModalVisible(false);
       handleValidate(editingTemplate);
+    }
+  };
+
+  const handleApplyAdjustment = () => {
+    if (selectedTemplate && validationResult?.details?.autoAdjustment) {
+      Modal.confirm({
+        title: '应用AI优化建议',
+        content: '将用AI生成的优化方案替换当前的步骤配置，是否继续？',
+        onOk: () => applyAdjustmentMutation.mutate(selectedTemplate.id),
+      });
     }
   };
 
@@ -935,6 +956,18 @@ const ExecutionFlowTemplatePage: React.FC = () => {
           setValidationResult(null);
         }}
         footer={[
+          validationResult?.details?.autoAdjustment && (
+            <Button
+              key="apply"
+              type="primary"
+              icon={<CheckCircleOutlined />}
+              loading={applyAdjustmentMutation.isLoading}
+              onClick={handleApplyAdjustment}
+              style={{ marginRight: 8 }}
+            >
+              应用建议
+            </Button>
+          ),
           <Button key="close" onClick={() => setValidateModalVisible(false)}>
             关闭
           </Button>,
@@ -943,8 +976,9 @@ const ExecutionFlowTemplatePage: React.FC = () => {
       >
         {validateMutation.isLoading ? (
           <Space direction="vertical" style={{ width: '100%', textAlign: 'center' }}>
-            <Progress type="circle" percent={50} status="active" />
-            <Text>正在验证流程...</Text>
+            <Progress type="circle" percent={100} status="active" showInfo={false} />
+            <Text>正在进行AI深度审计，请稍候...</Text>
+            <Text type="secondary">（这可能需要几秒到几十秒）</Text>
           </Space>
         ) : validationResult ? (
           <Space direction="vertical" style={{ width: '100%' }}>

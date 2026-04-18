@@ -150,8 +150,8 @@ export class ExecutionFlowTemplateService implements OnModuleInit {
     }
 
     const [templates, total] = await Promise.all([
-      this.prisma.$queryRawUnsafe<ExecutionFlowTemplateDTO[]>(
-        `SELECT id, name, description, goal, expected_result, params_schema, category, steps, execution_flow_keys, validation, usage_count, is_public, created_by, is_active, created_at, updated_at
+      this.prisma.$queryRawUnsafe<any[]>(
+        `SELECT id, name, description, goal, expected_result as "expectedResult", params_schema as "paramsSchema", category, steps, execution_flow_keys as "executionFlowKeys", validation, usage_count as "usageCount", is_public as "isPublic", created_by as "createdBy", is_active as "isActive", created_at as "createdAt", updated_at as "updatedAt"
          FROM execution_flow_templates
          WHERE ${this.buildWhereClause(where)}
          ORDER BY usage_count DESC, created_at DESC
@@ -165,7 +165,7 @@ export class ExecutionFlowTemplateService implements OnModuleInit {
     ]);
 
     // Convert BigInt to Number for JSON serialization
-    return { templates, total: Number(total[0]?.count || 0) };
+    return { templates: templates.map(t => this.mapTemplateToDTO(t)).filter((t): t is ExecutionFlowTemplateDTO => t !== null), total: Number(total[0]?.count || 0) };
   }
 
   private buildWhereClause(where: any): string {
@@ -196,14 +196,14 @@ export class ExecutionFlowTemplateService implements OnModuleInit {
    * 获取单个模板详情
    */
   async getTemplate(id: string): Promise<ExecutionFlowTemplateDTO | null> {
-    const template = await this.prisma.$queryRawUnsafe<ExecutionFlowTemplateDTO[]>(
-      `SELECT id, name, description, goal, expected_result, params_schema, category, steps, execution_flow_keys, validation, usage_count, is_public, created_by, is_active, created_at, updated_at
+    const template = await this.prisma.$queryRawUnsafe<any[]>(
+      `SELECT id, name, description, goal, expected_result as "expectedResult", params_schema as "paramsSchema", category, steps, execution_flow_keys as "executionFlowKeys", validation, usage_count as "usageCount", is_public as "isPublic", created_by as "createdBy", is_active as "isActive", created_at as "createdAt", updated_at as "updatedAt"
        FROM execution_flow_templates
        WHERE id = $1::uuid`,
       id
     );
 
-    return template[0] || null;
+    return this.mapTemplateToDTO(template[0]) || null;
   }
 
   /**
@@ -216,10 +216,10 @@ export class ExecutionFlowTemplateService implements OnModuleInit {
       id: step.id || randomUUID(),
     }));
 
-    const result = await this.prisma.$queryRawUnsafe<ExecutionFlowTemplateDTO[]>(
+    const result = await this.prisma.$queryRawUnsafe<any[]>(
       `INSERT INTO execution_flow_templates (name, description, goal, expected_result, params_schema, category, steps, execution_flow_keys, is_public, created_by)
        VALUES ($1, $2, $3, $4, $5::jsonb, $6, $7::jsonb, $8::jsonb, $9, $10::uuid)
-       RETURNING id, name, description, goal, expected_result, params_schema, category, steps, execution_flow_keys, validation, usage_count, is_public, created_by, is_active, created_at, updated_at`,
+       RETURNING id, name, description, goal, expected_result as "expectedResult", params_schema as "paramsSchema", category, steps, execution_flow_keys as "executionFlowKeys", validation, usage_count as "usageCount", is_public as "isPublic", created_by as "createdBy", is_active as "isActive", created_at as "createdAt", updated_at as "updatedAt"`,
       data.name,
       data.description || null,
       data.goal || null,
@@ -233,7 +233,32 @@ export class ExecutionFlowTemplateService implements OnModuleInit {
     );
 
     this.logger.log(`Created execution flow template: ${data.name}`);
-    return result[0];
+    return this.mapTemplateToDTO(result[0])!;
+  }
+
+  /**
+   * 映射数据库结果到DTO
+   */
+  private mapTemplateToDTO(raw: any): ExecutionFlowTemplateDTO | null {
+    if (!raw) return null;
+    return {
+      id: raw.id,
+      name: raw.name,
+      description: raw.description,
+      goal: raw.goal,
+      expectedResult: raw.expectedResult || raw.expected_result,
+      paramsSchema: raw.paramsSchema || raw.params_schema,
+      category: raw.category,
+      steps: raw.steps,
+      executionFlowKeys: raw.executionFlowKeys || raw.execution_flow_keys,
+      validation: raw.validation,
+      usageCount: raw.usageCount || raw.usage_count || 0,
+      isPublic: raw.isPublic || raw.is_public,
+      createdBy: raw.createdBy || raw.created_by,
+      isActive: raw.isActive || raw.is_active,
+      createdAt: raw.createdAt || raw.created_at,
+      updatedAt: raw.updatedAt || raw.updated_at,
+    };
   }
 
   /**
@@ -313,14 +338,14 @@ export class ExecutionFlowTemplateService implements OnModuleInit {
     updates.push(`updated_at = now()`);
     values.push(id);
 
-    const result = await this.prisma.$queryRawUnsafe<ExecutionFlowTemplateDTO[]>(
+    const result = await this.prisma.$queryRawUnsafe<any[]>(
       `UPDATE execution_flow_templates SET ${updates.join(', ')} WHERE id = $${paramIndex}::uuid
-       RETURNING id, name, description, goal, expected_result, params_schema, category, steps, execution_flow_keys, validation, usage_count, is_public, created_by, is_active, created_at, updated_at`,
+       RETURNING id, name, description, goal, expected_result as "expectedResult", params_schema as "paramsSchema", category, steps, execution_flow_keys as "executionFlowKeys", validation, usage_count as "usageCount", is_public as "isPublic", created_by as "createdBy", is_active as "isActive", created_at as "createdAt", updated_at as "updatedAt"`,
       ...values
     );
 
     this.logger.log(`Updated execution flow template: ${id}`);
-    return result[0] || null;
+    return this.mapTemplateToDTO(result[0]) || null;
   }
 
   /**
@@ -495,8 +520,8 @@ ${template.paramsSchema ? `参数定义: ${JSON.stringify(template.paramsSchema,
    * 获取热门模板（按使用次数排序）
    */
   async getPopularTemplates(limit?: number): Promise<ExecutionFlowTemplateDTO[]> {
-    const templates = await this.prisma.$queryRawUnsafe<ExecutionFlowTemplateDTO[]>(
-      `SELECT id, name, description, goal, expected_result, params_schema, category, steps, execution_flow_keys, validation, usage_count, is_public, created_by, is_active, created_at, updated_at
+    const templates = await this.prisma.$queryRawUnsafe<any[]>(
+      `SELECT id, name, description, goal, expected_result as "expectedResult", params_schema as "paramsSchema", category, steps, execution_flow_keys as "executionFlowKeys", validation, usage_count as "usageCount", is_public as "isPublic", created_by as "createdBy", is_active as "isActive", created_at as "createdAt", updated_at as "updatedAt"
        FROM execution_flow_templates
        WHERE is_public = true AND is_active = true
        ORDER BY usage_count DESC
@@ -504,7 +529,7 @@ ${template.paramsSchema ? `参数定义: ${JSON.stringify(template.paramsSchema,
       limit || 10
     );
 
-    return templates;
+    return templates.map(t => this.mapTemplateToDTO(t)).filter(Boolean) as ExecutionFlowTemplateDTO[];
   }
 
   /**

@@ -202,6 +202,15 @@ export const executionFlowApi = {
   },
 
   /**
+   * 应用AI优化建议
+   */
+  applyAdjustment: async (id: string): Promise<ExecutionFlowTemplateDTO> => {
+    return apiClient.post<ExecutionFlowTemplateDTO>(
+      `/execution-flow-templates/${id}/apply-adjustment`
+    );
+  },
+
+  /**
    * 复制模板（创建副本）
    */
   clone: async (id: string, newName: string): Promise<ExecutionFlowTemplateDTO> => {
