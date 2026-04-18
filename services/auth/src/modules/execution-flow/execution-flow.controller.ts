@@ -53,9 +53,10 @@ export class ExecutionFlowTemplateController {
   }
 
   /**
-   * 获取所有流程模板列表
+   * 获取所有流程模板列表（公开API，用于内部服务调用）
    */
   @Get()
+  @Public()
   async listTemplates(
     @Query('category') category?: string,
     @Query('isPublic') isPublic?: string,
