@@ -379,7 +379,11 @@ const ExecutionFlowTemplatePage: React.FC = () => {
       dataIndex: 'name',
       key: 'name',
       width: 180,
-      render: (name: string) => <strong>{name}</strong>,
+      render: (name: string, record: ExecutionFlowTemplateDTO) => (
+        <a onClick={() => handleViewDetail(record)} style={{ cursor: 'pointer' }}>
+          <strong>{name}</strong>
+        </a>
+      ),
     },
     {
       title: '分类',
@@ -446,10 +450,10 @@ const ExecutionFlowTemplatePage: React.FC = () => {
           <Button
             type="link"
             size="small"
-            icon={<EyeOutlined />}
-            onClick={() => handleViewDetail(record)}
+            icon={<EditOutlined />}
+            onClick={() => handleEdit(record)}
           >
-            详情
+            编辑
           </Button>
           <Button
             type="link"
@@ -462,7 +466,7 @@ const ExecutionFlowTemplatePage: React.FC = () => {
           <Dropdown
             menu={{
               items: [
-                { key: 'edit', icon: <EditOutlined />, label: '编辑', onClick: () => handleEdit(record) },
+                { key: 'detail', icon: <EyeOutlined />, label: '详情', onClick: () => handleViewDetail(record) },
                 { key: 'clone', icon: <CopyOutlined />, label: '复制', onClick: () => handleClone(record) },
                 { key: 'export', icon: <ExportOutlined />, label: '导出', onClick: () => handleExport(record) },
                 { key: 'delete', icon: <DeleteOutlined />, label: '删除', danger: true, onClick: () => handleDelete(record.id) },
