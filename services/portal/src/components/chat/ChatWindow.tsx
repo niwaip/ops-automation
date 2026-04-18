@@ -15,6 +15,13 @@ import { streamChat, getAvailableModels } from './chatApi';
 import { v4 as uuidv4 } from 'uuid';
 import './ChatWindow.css';
 
+// Skill触发关键词列表（检测到这些关键词时自动切换到task模式）
+const SKILL_TRIGGER_KEYWORDS = [
+  '天气', '查询天气', '天气预报', '天气情况',
+  '合同', '生成合同', '保密合同', '劳动合同', 'NDA',
+  '文档', '生成文档', '报告', '生成报告',
+];
+
 const ChatWindow: React.FC = () => {
   const {
     currentSession,
@@ -40,6 +47,7 @@ const ChatWindow: React.FC = () => {
     setPendingParamsConfirm,
     confirmParams,
     clearUploadedFiles,
+    setChatMode,  // 新增：用于自动切换模式
   } = useChatStore();
 
   // 获取当前登录用户的ID
@@ -72,6 +80,17 @@ const ChatWindow: React.FC = () => {
 
     // 保存文件副本用于发送
     const filesToSend = [...currentUploadedFiles];
+
+    // 检测Skill触发关键词，自动切换到task模式
+    const shouldUseTaskMode = SKILL_TRIGGER_KEYWORDS.some(keyword =>
+      content.toLowerCase().includes(keyword.toLowerCase())
+    );
+    const effectiveMode = shouldUseTaskMode ? 'task' : chatMode;
+
+    // 如果检测到关键词且当前是chat模式，自动切换到task模式
+    if (shouldUseTaskMode && chatMode === 'chat') {
+      setChatMode('task');
+    }
 
     // 添加用户消息
     const userMessage = {
@@ -115,7 +134,7 @@ const ChatWindow: React.FC = () => {
         modelId: selectedModel,
         files: filesToSend,
         config: {
-          mode: chatMode, // chat模式或task模式
+          mode: effectiveMode, // chat模式或task模式（自动检测关键词切换）
         },
       },
       (event) => {
