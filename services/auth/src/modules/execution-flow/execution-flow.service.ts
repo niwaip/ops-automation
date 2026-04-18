@@ -403,13 +403,13 @@ export class ExecutionFlowTemplateService implements OnModuleInit {
 
       const aiResponse = await axios.post(`${orchestratorUrl}/ai/chat/stream`, {
         message: auditPrompt,
-        sessionId: \`audit-\${id}-\${randomUUID()}\`,
+        sessionId: `audit-${id}-${randomUUID()}`,
         config: { mode: 'task', maxIterations: 5 }
       }, { responseType: 'stream' });
 
       let fullContent = '';
-      for await (const chunk of aiResponse.data) {
-        const lines = chunk.toString().split('\\n');
+      for await (const chunk of aiResponse.data as AsyncIterable<any>) {
+        const lines = chunk.toString().split('\n');
         for (const line of lines) {
           if (line.startsWith('data: ')) {
             try {
