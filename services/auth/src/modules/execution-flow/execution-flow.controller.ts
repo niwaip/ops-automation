@@ -139,7 +139,8 @@ export class ExecutionFlowTemplateController {
     @Param('id') id: string,
     @Query('aiServiceUrl') aiServiceUrl?: string
   ) {
-    return this.templateService.validateTemplate(id, aiServiceUrl);
+    const validationResult = await this.templateService.validateTemplate(id, aiServiceUrl);
+    return { validationResult };
   }
 
   /**
