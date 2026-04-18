@@ -375,6 +375,7 @@ export class SkillService implements OnModuleInit {
         carboneTemplateId: bestMatch.carboneTemplateId,
         carboneSkillId: bestMatch.carboneSkillId,
         apiEndpoints: bestMatch.apiEndpoints,
+        executionFlowTemplateId: bestMatch.executionFlowTemplateId,
       };
     }
 
@@ -720,6 +721,7 @@ ${skillsXml}
         carboneTemplateId: bestMatch.carboneTemplateId,
         carboneSkillId: bestMatch.carboneSkillId,
         apiEndpoints: bestMatch.apiEndpoints,
+        executionFlowTemplateId: bestMatch.executionFlowTemplateId,
       };
     }
 

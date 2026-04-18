@@ -20,6 +20,7 @@ import {
 import { JwtAuthGuard } from '../../guards/jwt-auth.guard';
 import { RolesGuard } from '../../guards/roles.guard';
 import { Roles } from '../../decorators/roles.decorator';
+import { Public } from '../../decorators/permissions.decorator';
 import { ExecutionFlowTemplateService } from './execution-flow.service';
 import {
   CreateExecutionFlowTemplateDTO,
@@ -74,9 +75,10 @@ export class ExecutionFlowTemplateController {
   }
 
   /**
-   * 获取单个模板详情
+   * 获取单个模板详情（公开API，用于内部服务调用）
    */
   @Get(':id')
+  @Public()
   async getTemplate(@Param('id') id: string): Promise<ExecutionFlowTemplateDTO> {
     const template = await this.templateService.getTemplate(id);
     if (!template) {
