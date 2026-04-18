@@ -9,80 +9,98 @@ import { StreamEvent, StreamEventType, ChatRequest, AIModel, UploadedFile } from
 const AI_API_BASE = '/api/ai';
 
 /**
- * 流式聊天
+ * 流式聊天（支持中止）
+ * 返回中止函数，调用即可停止请求
  */
-export async function streamChat(
+export function streamChat(
   request: ChatRequest,
   onEvent: (event: StreamEvent) => void,
   onError?: (error: Error) => void,
   onComplete?: () => void,
-): Promise<void> {
-  try {
-    // 文件信息只发送元数据（fileId等），内容已在上传时保存到后端
-    const filesMetadata = (request.files || []).map((f) => ({
-      fileId: f.fileId,
-      fileName: f.fileName,
-      mimeType: f.mimeType,
-      size: f.size,
-    }));
+): () => void {
+  const abortController = new AbortController();
 
-    const response = await fetch(`${AI_API_BASE}/chat/stream`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        message: request.message,
-        sessionId: request.sessionId,
-        modelId: request.modelId,
-        files: filesMetadata,
-        config: request.config, // 包含mode等配置
-      }),
-    });
+  // 异步执行流式请求
+  (async () => {
+    try {
+      // 文件信息只发送元数据（fileId等），内容已在上传时保存到后端
+      const filesMetadata = (request.files || []).map((f) => ({
+        fileId: f.fileId,
+        fileName: f.fileName,
+        mimeType: f.mimeType,
+        size: f.size,
+      }));
 
-    if (!response.ok) {
-      throw new Error(`HTTP error: ${response.status}`);
-    }
+      const response = await fetch(`${AI_API_BASE}/chat/stream`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          message: request.message,
+          sessionId: request.sessionId,
+          userId: request.userId,
+          modelId: request.modelId,
+          files: filesMetadata,
+          config: request.config, // 包含mode等配置
+        }),
+        signal: abortController.signal, // 支持中止
+      });
 
-    // 处理SSE流
-    const reader = response.body?.getReader();
-    const decoder = new TextDecoder();
-
-    if (!reader) {
-      throw new Error('Response body is null');
-    }
-
-    let buffer = '';
-
-    while (true) {
-      const { done, value } = await reader.read();
-
-      if (done) {
-        break;
+      if (!response.ok) {
+        throw new Error(`HTTP error: ${response.status}`);
       }
 
-      buffer += decoder.decode(value, { stream: true });
+      // 处理SSE流
+      const reader = response.body?.getReader();
+      const decoder = new TextDecoder();
 
-      // 解析SSE事件
-      const lines = buffer.split('\n\n');
-      buffer = lines.pop() || ''; // 保留不完整的部分
+      if (!reader) {
+        throw new Error('Response body is null');
+      }
 
-      for (const line of lines) {
-        if (line.startsWith('data: ')) {
-          try {
-            const data = JSON.parse(line.slice(6));
-            onEvent(data as StreamEvent);
-          } catch (e) {
-            console.warn('Failed to parse SSE data:', line);
+      let buffer = '';
+
+      while (true) {
+        const { done, value } = await reader.read();
+
+        if (done) {
+          break;
+        }
+
+        buffer += decoder.decode(value, { stream: true });
+
+        // 解析SSE事件
+        const lines = buffer.split('\n\n');
+        buffer = lines.pop() || ''; // 保留不完整的部分
+
+        for (const line of lines) {
+          if (line.startsWith('data: ')) {
+            try {
+              const data = JSON.parse(line.slice(6));
+              onEvent(data as StreamEvent);
+            } catch (e) {
+              console.warn('Failed to parse SSE data:', line);
+            }
           }
         }
       }
-    }
 
-    onComplete?.();
-  } catch (error) {
-    onError?.(error instanceof Error ? error : new Error('Unknown error'));
-  }
+      onComplete?.();
+    } catch (error) {
+      // 如果是中止错误，不触发 onError
+      if (error instanceof Error && error.name === 'AbortError') {
+        console.log('Request aborted by user');
+        return;
+      }
+      onError?.(error instanceof Error ? error : new Error('Unknown error'));
+    }
+  })();
+
+  // 返回中止函数
+  return () => {
+    abortController.abort();
+  };
 }
 
 /**

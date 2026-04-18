@@ -7,12 +7,20 @@ import React, { useEffect, useRef, useState } from 'react';
 import { Card, Spin, Select, Space, Button } from 'antd';
 import { CloseOutlined, PlusOutlined } from '@ant-design/icons';
 import { useChatStore } from './chatStore';
+import { useAuthStore } from '../../store/authStore';
 import ChatMessage from './ChatMessage';
 import ChatInput from './ChatInput';
 import SkillConfirm from './SkillConfirm';
 import { streamChat, getAvailableModels } from './chatApi';
 import { v4 as uuidv4 } from 'uuid';
 import './ChatWindow.css';
+
+// Skill触发关键词列表（检测到这些关键词时自动切换到task模式）
+const SKILL_TRIGGER_KEYWORDS = [
+  '天气', '查询天气', '天气预报', '天气情况',
+  '合同', '生成合同', '保密合同', '劳动合同', 'NDA',
+  '文档', '生成文档', '报告', '生成报告',
+];
 
 const ChatWindow: React.FC = () => {
   const {
@@ -30,6 +38,7 @@ const ChatWindow: React.FC = () => {
     addMessage,
     updateLastMessage,
     setStreaming,
+    setAbortStreaming,
     addStreamEvent,
     clearStreaming,
     createSession,
@@ -38,7 +47,11 @@ const ChatWindow: React.FC = () => {
     setPendingParamsConfirm,
     confirmParams,
     clearUploadedFiles,
+    setChatMode,  // 新增：用于自动切换模式
   } = useChatStore();
+
+  // 获取当前登录用户的ID
+  const { user } = useAuthStore();
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   // 本地流式内容状态，用于实时显示
@@ -67,6 +80,17 @@ const ChatWindow: React.FC = () => {
 
     // 保存文件副本用于发送
     const filesToSend = [...currentUploadedFiles];
+
+    // 检测Skill触发关键词，自动切换到task模式
+    const shouldUseTaskMode = SKILL_TRIGGER_KEYWORDS.some(keyword =>
+      content.toLowerCase().includes(keyword.toLowerCase())
+    );
+    const effectiveMode = shouldUseTaskMode ? 'task' : chatMode;
+
+    // 如果检测到关键词且当前是chat模式，自动切换到task模式
+    if (shouldUseTaskMode && chatMode === 'chat') {
+      setChatMode('task');
+    }
 
     // 添加用户消息
     const userMessage = {
@@ -101,15 +125,16 @@ const ChatWindow: React.FC = () => {
     // 流式内容累积
     let accumulatedContent = '';
 
-    // 发送流式请求（使用保存的文件副本）
-    streamChat(
+    // 发送流式请求（使用保存的文件副本），返回中止函数
+    const abortStreaming = streamChat(
       {
         message: content,
         sessionId: currentSession?.id,
+        userId: user?.id || undefined,  // 传递当前登录用户ID，null转为undefined
         modelId: selectedModel,
         files: filesToSend,
         config: {
-          mode: chatMode, // chat模式或task模式
+          mode: effectiveMode, // chat模式或task模式（自动检测关键词切换）
         },
       },
       (event) => {
@@ -143,9 +168,11 @@ const ChatWindow: React.FC = () => {
         setLocalStreamingContent(errorMsg);
         updateLastMessage(errorMsg);
         setStreaming(false);
+        setAbortStreaming(null);
       },
       () => {
         setStreaming(false);
+        setAbortStreaming(null);
         // 最终更新消息
         if (accumulatedContent) {
           updateLastMessage(accumulatedContent);
@@ -153,6 +180,9 @@ const ChatWindow: React.FC = () => {
         setLocalStreamingContent('');
       }
     );
+
+    // 存储中止函数
+    setAbortStreaming(abortStreaming);
   };
 
   // 确认参数

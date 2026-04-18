@@ -42,7 +42,7 @@ export class UserAskTool extends BaseTool {
 
   async execute(
     params: Record<string, unknown>,
-    context: ExecutionContext,
+    _context: ExecutionContext,
   ): Promise<ToolResult> {
     const question = params.question as string;
     const questionType = (params.questionType as string) || 'input';

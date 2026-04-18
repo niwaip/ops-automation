@@ -63,6 +63,7 @@ model Role {
 
   // Relations
   userRoles   UserRole[]
+  skillPermissions SkillPermission[] // Skills granted to this role
 
   @@index([name])
   @@index([permissions])
@@ -86,6 +87,49 @@ model UserRole {
   @@map("user_roles")
 }
 
+// Execution Flow Template - Reusable workflow templates for Skills
+// Similar to Claude Code skills, provides step-by-step guidance for AI execution
+model ExecutionFlowTemplate {
+  id              String    @id @default(uuid()) @db.Uuid
+  name            String    @unique @db.VarChar(255)
+  description     String?   @db.VarChar(500)
+  category        String    @default("document") @db.VarChar(50) // document | analysis | automation | custom
+
+  // Flow definition - array of steps with detailed configuration
+  // Each step can be: text (instruction), script, tool, or api
+  // Example: [{type: "text", content: "分析用户需求..."}, {type: "api", endpoint: "...", method: "POST"}]
+  steps           Json      @default("[]")
+
+  // Default execution flow keys (for quick selection in Skills)
+  // Example: ["skill_match", "generate_parameters", "confirm", "document_render"]
+  executionFlowKeys Json   @default("[]") @map("execution_flow_keys")
+
+  // AI validation result (populated after validation)
+  // {isValid: boolean, suggestions: string[], validatedAt: datetime}
+  validation      Json?     @map("validation")
+
+  // Usage count for popularity tracking
+  usageCount      Int       @default(0) @map("usage_count")
+
+  // Template metadata
+  isPublic        Boolean   @default(true) @map("is_public")
+  createdBy       String?   @map("created_by") @db.Uuid
+
+  isActive        Boolean   @default(true) @map("is_active")
+  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt       DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  // Relations
+  skills          SkillConfig[] // Skills using this template
+
+  @@index([name])
+  @@index([category])
+  @@index([isPublic])
+  @@index([isActive])
+  @@index([usageCount])
+  @@map("execution_flow_templates")
+}
+
 // Skill Configuration Table
 model SkillConfig {
   id                String   @id @default(uuid()) @db.Uuid
@@ -99,15 +143,36 @@ model SkillConfig {
   carboneSkillId    String?  @map("carbone_skill_id") @db.VarChar(255)
   apiEndpoints      Json?    @map("api_endpoints")
   executionFlow     Json     @default("[]") @map("execution_flow")
+  executionFlowTemplateId String? @map("execution_flow_template_id") @db.Uuid // Reference to flow template
   tools             Json     @default("[]")
   isActive          Boolean  @default(true) @map("is_active")
   createdAt         DateTime @default(now()) @map("created_at") @db.Timestamptz
   updatedAt         DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
 
+  // Relations
+  permissions       SkillPermission[] // Roles granted access to this skill
+  executionFlowTemplate ExecutionFlowTemplate? @relation(fields: [executionFlowTemplateId], references: [id], onDelete: SetNull)
+
   @@index([name])
   @@index([category])
   @@index([isActive])
   @@map("skill_configs")
+}
+
+// Skill Permission Table - Controls which roles can use which skills
+model SkillPermission {
+  skillId    String   @map("skill_id") @db.Uuid
+  roleId     String   @map("role_id") @db.Uuid
+  grantedAt  DateTime @default(now()) @map("granted_at") @db.Timestamptz
+  grantedBy  String?  @map("granted_by") @db.Uuid
+
+  skill      SkillConfig @relation(fields: [skillId], references: [id], onDelete: Cascade)
+  role       Role        @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  @@id([skillId, roleId])
+  @@index([skillId])
+  @@index([roleId])
+  @@map("skill_permissions")
 }
 
 // Chat Session Table

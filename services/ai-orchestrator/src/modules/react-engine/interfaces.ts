@@ -48,6 +48,7 @@ export interface ReActConfig {
   modelId: string;
   timeoutMs?: number;     // 每步超时时间
   tools: string[];        // 可用工具列表
+  mode?: 'chat' | 'task'; // 执行模式：聊天或任务
 }
 
 /**
@@ -65,6 +66,7 @@ export interface ToolDefinition {
     }>;
     required: string[];
   };
+  validateParams: (params: Record<string, unknown>) => { valid: boolean; missing: string[] };
   execute: (params: Record<string, unknown>, context: ExecutionContext) => Promise<ToolResult>;
 }
 
@@ -129,11 +131,13 @@ export interface SkillMatchResult {
   templateId?: string;
   carboneTemplateId?: string;  // Carbone引擎的模板ID
   carboneSkillId?: string;      // Carbone引擎的Skill ID
+  executionFlowTemplateId?: string;  // 执行流程模板ID
   apiEndpoints?: {
     generateParameters?: ApiEndpoint;  // 参数生成API
     render?: ApiEndpoint;              // 文档渲染API
     getSkill?: ApiEndpoint;            // 获取Skill信息API
   };
+  matchReason?: string;  // AI语义匹配原因
 }
 
 /**

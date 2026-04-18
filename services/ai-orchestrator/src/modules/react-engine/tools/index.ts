@@ -12,3 +12,5 @@ export { FileParseTool } from './file-parse.tool';
 export { GenerateParametersTool } from './generate-parameters.tool';
 export { DocumentRenderTool } from './document-render.tool';
 export { PreviewParamsTool } from './preview-params.tool';
+export { ApiCallTool } from './api-call.tool';
+export { FlowExecuteTool } from './flow-execute.tool';

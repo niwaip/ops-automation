@@ -101,25 +101,10 @@ ${JSON.stringify(extractedParams, null, 2)}
         };
       }
 
-      // 兼容旧格式
-      if (generatedData && generatedData.data) {
-        context.collectedParams = generatedData.data;
-
-        return {
-          success: true,
-          output: `参数生成成功，提取了 ${Object.keys(generatedData.data).length} 个参数`,
-          data: {
-            params: generatedData.data,
-            skillId,
-            templateId: generatedData.templateId,
-          },
-        };
-      }
-
       return {
         success: false,
         output: '参数生成失败，未能提取有效参数',
-        data: { error: 'no_data_generated', response: generatedData },
+        data: { error: 'no_data_generated', response: result },
       };
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : 'Unknown error';

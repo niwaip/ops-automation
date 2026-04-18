@@ -38,6 +38,7 @@ export interface CreateSkillDTO {
   templateId?: string;
   carboneTemplateId?: string;  // Carbone引擎的模板ID
   carboneSkillId?: string;      // Carbone引擎的Skill ID
+  executionFlowTemplateId?: string;  // 关联的流程模板ID（用于AI验证）
   executionFlow?: string[];
   tools?: string[];
   apiEndpoints?: {
@@ -60,6 +61,7 @@ export interface SkillConfigDTO {
   templateId?: string;
   carboneTemplateId?: string;
   carboneSkillId?: string;
+  executionFlowTemplateId?: string;  // 关联的流程模板ID
   executionFlow: string[];
   tools: string[];
   apiEndpoints?: {
@@ -84,9 +86,78 @@ export interface SkillMatchResult {
   templateId?: string;
   carboneTemplateId?: string;
   carboneSkillId?: string;
+  executionFlowTemplateId?: string;  // 新增：执行流程模板ID
   apiEndpoints?: {
     generateParameters?: ApiEndpoint;
     render?: ApiEndpoint;
     getSkill?: ApiEndpoint;
+  };
+  // 新增：AI 匹配原因
+  matchReason?: string;
+}
+
+/**
+ * Skill 权限 DTO
+ */
+export interface SkillPermissionDTO {
+  skillId: string;
+  skillName: string;
+  roleId: string;
+  roleName: string;
+  grantedAt: Date;
+  grantedBy: string | null;  // 数据库返回 null，使用 null 类型
+}
+
+/**
+ * 授权 Skill 给角色 DTO
+ */
+export interface GrantSkillDTO {
+  roleId: string;
+}
+
+/**
+ * AI 匹配响应
+ */
+export interface AIMatchResponse {
+  matchedSkill: string;
+  confidence: number;
+  reason: string;
+}
+
+/**
+ * Skill验证结果
+ */
+export interface SkillValidationResult {
+  isValid: boolean;
+  score: number;
+  suggestions: string[];
+  warnings: string[];
+  validatedAt: string;
+  validatedBy: string;
+  details?: {
+    configAnalysis: {
+      hasTriggerKeywords: boolean;
+      hasParamsSchema: boolean;
+      hasTemplate: boolean;
+      hasFlowTemplate: boolean;
+      triggerKeywordQuality: string;
+      paramsSchemaCompleteness: string;
+    };
+    flowAnalysis?: {
+      templateId: string;
+      templateName: string;
+      stepCount: number;
+      executableSteps: number;
+      validationScore: number;
+      executionSimulations: Array<{
+        stepId: string;
+        stepName: string;
+        type: string;
+        simulated: boolean;
+        success: boolean;
+        output?: string;
+        error?: string;
+      }>;
+    };
   };
 }

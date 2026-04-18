@@ -28,6 +28,16 @@ export default defineConfig({
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/api/, ''),
       },
+      '/api/skills': {
+        target: getProxyTarget('ops-auth', 3001),
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api/, ''),
+      },
+      '/api/users': {
+        target: getProxyTarget('ops-auth', 3001),
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api/, ''),
+      },
       '/api/templates': {
         target: getProxyTarget('ops-template', 3005),
         changeOrigin: true,
@@ -65,6 +75,16 @@ export default defineConfig({
       },
       '/api/reports': {
         target: getProxyTarget('ops-report', 3008),
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api/, ''),
+      },
+      '/api/carbone': {
+        target: getProxyTarget('carbone-engine', 3009),
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api\/carbone/, '/studio'),
+      },
+      '/api/execution-flow-templates': {
+        target: getProxyTarget('ops-auth', 3001),
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/api/, ''),
       },

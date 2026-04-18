@@ -1,11 +1,11 @@
 /**
  * ChatInput
- * 聊天输入框组件 - 包含模式切换
+ * 聊天输入框组件 - 包含模式切换和停止按钮
  */
 
 import React, { useState, useRef } from 'react';
 import { Input, Button, Upload, Space, Tag, Tooltip } from 'antd';
-import { SendOutlined, PaperClipOutlined, MessageOutlined, RobotOutlined } from '@ant-design/icons';
+import { SendOutlined, PaperClipOutlined, MessageOutlined, RobotOutlined, StopOutlined } from '@ant-design/icons';
 import { RcFile } from 'antd/es/upload';
 import { UploadedFile } from './types';
 import { uploadFile } from './chatApi';
@@ -27,7 +27,7 @@ const ChatInput: React.FC<ChatInputProps> = ({
   const [uploading, setUploading] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const { addUploadedFile, removeUploadedFile, chatMode, setChatMode } = useChatStore();
+  const { addUploadedFile, removeUploadedFile, chatMode, setChatMode, isLoading, abortCurrentStreaming } = useChatStore();
 
   // 发送消息
   const handleSend = () => {
@@ -35,6 +35,11 @@ const ChatInput: React.FC<ChatInputProps> = ({
       onSend(message);
       setMessage('');
     }
+  };
+
+  // 停止执行
+  const handleStop = () => {
+    abortCurrentStreaming();
   };
 
   // 处理文件上传
@@ -123,14 +128,23 @@ const ChatInput: React.FC<ChatInputProps> = ({
           />
         </Tooltip>
 
-        {/* 发送按钮 */}
-        <Button
-          type="primary"
-          icon={<SendOutlined />}
-          onClick={handleSend}
-          disabled={disabled || (!message.trim() && uploadedFiles.length === 0)}
-          loading={disabled}
-        />
+        {/* 发送/停止按钮 */}
+        {isLoading ? (
+          <Button
+            type="primary"
+            danger
+            icon={<StopOutlined />}
+            onClick={handleStop}
+            title="停止执行"
+          />
+        ) : (
+          <Button
+            type="primary"
+            icon={<SendOutlined />}
+            onClick={handleSend}
+            disabled={disabled || (!message.trim() && uploadedFiles.length === 0)}
+          />
+        )}
       </div>
 
       {/* 模式指示器 */}

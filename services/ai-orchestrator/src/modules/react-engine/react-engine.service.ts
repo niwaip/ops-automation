@@ -15,6 +15,7 @@ import {
   ChatMessage,
   ChatRequestDTO,
   SkillMatchResult,
+  ToolResult,
 } from './interfaces';
 import {
   buildSystemPrompt,
@@ -30,7 +31,7 @@ import {
 const DEFAULT_CONFIG: ReActConfig = {
   maxIterations: 10,  // 增加到10次，支持更复杂的多步骤流程
   modelId: 'default',
-  tools: ['skill_match', 'generate_parameters', 'preview_params', 'document_render', 'param_collect', 'user_ask', 'file_parse'],
+  tools: ['skill_match', 'generate_parameters', 'preview_params', 'document_render', 'param_collect', 'user_ask', 'file_parse', 'api_call', 'flow_execute'],
 };
 
 @Injectable()
@@ -68,7 +69,7 @@ export class ReActEngineService {
     // 初始化消息列表，添加用户消息
     const messages: ChatMessage[] = [...context.history];
     if (request.message) {
-      messages.push({ role: 'user', content: request.message });
+      messages.push({ role: 'user' as const, content: request.message, timestamp: new Date() });
     }
     const tools = this.toolExecutor.getTools(config.tools);
 
@@ -162,10 +163,11 @@ export class ReActEngineService {
     if (lastMessage?.content) {
       if (typeof lastMessage.content === 'string') {
         userInput = lastMessage.content;
-      } else if (Array.isArray(lastMessage.content)) {
+      } else if (Array.isArray(lastMessage.content as unknown)) {
         // 从多模态内容中提取文本部分
-        const textBlocks = lastMessage.content.filter((b: any) => b.type === 'text');
-        userInput = textBlocks.map((b: any) => b.text).join('\n');
+        const contentArray = lastMessage.content as unknown as Array<{ type: string; text?: string }>;
+        const textBlocks = contentArray.filter((b) => b.type === 'text');
+        userInput = textBlocks.map((b) => b.text || '').join('\n');
       }
     }
     const userPrompt = buildUserPrompt(
@@ -185,10 +187,9 @@ export class ReActEngineService {
     }
 
     // 流式调用
-    const fullResponse = '';
-    const aiMessages = [
-      { role: 'system', content: systemPrompt },
-      { role: 'user', content: userPrompt },
+    const aiMessages: ChatMessage[] = [
+      { role: 'system' as const, content: systemPrompt, timestamp: new Date() },
+      { role: 'user' as const, content: userPrompt, timestamp: new Date() },
     ];
 
     // 发送thought开始事件
@@ -264,31 +265,35 @@ export class ReActEngineService {
 
     state.observation = event.content;
 
+    // Extract result data with proper typing
+    const resultData = event.data?.result as ToolResult | undefined;
+    const innerData = resultData?.data as Record<string, unknown> | undefined;
+
     // 更新context中的skill信息
-    if (event.data?.result?.data?.skill) {
-      context.skill = event.data.result.data.skill as SkillMatchResult;
+    if (innerData?.skill) {
+      context.skill = innerData.skill as SkillMatchResult;
     }
 
     // 检查是否任务完成（如document_render返回taskComplete）
-    if (event.data?.result?.data?.taskComplete) {
+    if (innerData?.taskComplete) {
       state.isFinished = true;
       state.finalAnswer = event.content;
     }
 
     // 检查是否有nextAction提示
-    if (event.data?.result?.nextAction) {
-      context.nextAction = event.data.result.nextAction as string;
-      context.nextActionParams = event.data.result.nextActionParams as Record<string, unknown>;
+    if (resultData?.nextAction) {
+      context.nextAction = resultData.nextAction as string;
+      context.nextActionParams = resultData.nextActionParams as Record<string, unknown>;
     }
 
     // 检查是否参数确认场景
-    if (event.data?.result?.data?.allParamsReady) {
+    if (innerData?.allParamsReady) {
       // 参数完整，发送确认事件
       yield {
         type: StreamEventType.PARAMS_CONFIRM,
         content: '参数已收集完成，等待确认',
         data: {
-          params: event.data.result.data.params,
+          params: innerData.params,
           skill: context.skill,
         },
         iteration: state.iteration,

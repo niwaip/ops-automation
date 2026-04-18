@@ -4,7 +4,7 @@
  */
 
 import { BaseTool } from './base.tool';
-import { ToolResult, ExecutionContext, SkillMatchResult, ParamProperty } from '../interfaces';
+import { ToolResult, ExecutionContext, ParamProperty } from '../interfaces';
 
 export class ParamCollectTool extends BaseTool {
   constructor() {
@@ -39,7 +39,8 @@ export class ParamCollectTool extends BaseTool {
     params: Record<string, unknown>,
     context: ExecutionContext,
   ): Promise<ToolResult> {
-    const skillId = params.skillId as string;
+    // skillId is kept for API compatibility but not used directly
+    const _skillId = params.skillId as string;
     const userInput = params.userInput as string;
     const existingParams = (params.existingParams as Record<string, unknown>) || {};
 
@@ -66,12 +67,6 @@ export class ParamCollectTool extends BaseTool {
         (key) => collectedParams[key] === undefined || collectedParams[key] === null,
       );
 
-      const result: Partial<SkillMatchResult> = {
-        skillId,
-        collectedParams,
-        missingParams,
-      };
-
       if (missingParams.length === 0) {
         return {
           success: true,
@@ -81,7 +76,7 @@ export class ParamCollectTool extends BaseTool {
       } else {
         const prompts = missingParams.map((key) => {
           const prop = schema.properties[key];
-          return `请提供${prop.description || key}`;
+          return `请提供${prop?.description || key}`;
         });
 
         return {
