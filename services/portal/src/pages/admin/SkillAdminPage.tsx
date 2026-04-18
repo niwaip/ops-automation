@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { Table, Card, Button, Input, Space, Tag, Typography, Modal, message, Form, Select, Descriptions, Tabs, Tooltip, Collapse, Steps, Divider, Badge, Empty } from 'antd';
+import { Table, Card, Button, Input, Space, Tag, Typography, Modal, message, Form, Select, Descriptions, Tabs, Tooltip, Collapse, Steps, Divider, Badge } from 'antd';
 import {
   SearchOutlined,
   ReloadOutlined,
@@ -18,12 +18,12 @@ import {
 } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
 import { useQuery, useMutation, useQueryClient } from 'react-query';
-import { skillApi, roleApi, SkillConfigDTO, SkillPermissionDTO, RoleDTO, CreateSkillDTO, SkillValidationResult } from '../../api/skill';
+import { skillApi, roleApi, SkillConfigDTO, SkillPermissionDTO, CreateSkillDTO, SkillValidationResult } from '../../api/skill';
 import { carboneApi, CarboneTemplateDTO } from '../../api/carbone';
-import { executionFlowApi, ExecutionFlowTemplateDTO, EXECUTION_FLOW_CATEGORIES } from '../../api/execution-flow';
+import { executionFlowApi, EXECUTION_FLOW_CATEGORIES } from '../../api/execution-flow';
 import type { ColumnsType } from 'antd/es/table';
 
-const { Title, Text } = Typography;
+const { Title, Text, Link } = Typography;
 const { Option } = Select;
 const { TabPane } = Tabs;
 const { Panel } = Collapse;
@@ -61,6 +61,8 @@ const SkillAdminPage: React.FC = () => {
   const [editingSkill, setEditingSkill] = useState<SkillConfigDTO | null>(null);
   const [selectedSkill, setSelectedSkill] = useState<SkillConfigDTO | null>(null);
   const [validationResult, setValidationResult] = useState<SkillValidationResult | null>(null);
+  const [validatingSkillId, setValidatingSkillId] = useState<string | null>(null);
+  const [selectedTemplateCategory, setSelectedTemplateCategory] = useState<string | null>(null);
   const [form] = Form.useForm();
 
   // Queries
@@ -162,10 +164,11 @@ const SkillAdminPage: React.FC = () => {
     {
       onSuccess: (data) => {
         setValidationResult(data.validation);
-        setValidationModalVisible(true);
+        setValidatingSkillId(null);
         message.success('验证完成');
       },
       onError: () => {
+        setValidatingSkillId(null);
         message.error('验证失败');
       },
     }
@@ -174,11 +177,12 @@ const SkillAdminPage: React.FC = () => {
   // Handlers
   const handleCreate = () => {
     setEditingSkill(null);
+    setSelectedTemplateCategory(null);
     form.resetFields();
     form.setFieldsValue({
       category: 'template',
       triggerKeywords: [],
-      executionFlow: ['skill_match', 'generate_parameters', 'document_render'],
+      executionFlow: [],
       tools: [],
     });
     setEditModalVisible(true);
@@ -186,6 +190,17 @@ const SkillAdminPage: React.FC = () => {
 
   const handleEdit = (skill: SkillConfigDTO) => {
     setEditingSkill(skill);
+    // Find template category if template is linked
+    if (skill.executionFlowTemplateId) {
+      const template = executionFlowTemplatesQuery.data?.templates?.find(t => t.id === skill.executionFlowTemplateId);
+      if (template) {
+        setSelectedTemplateCategory(template.category);
+      } else {
+        setSelectedTemplateCategory(null);
+      }
+    } else {
+      setSelectedTemplateCategory(null);
+    }
     form.setFieldsValue({
       name: skill.name,
       description: skill.description,
@@ -258,6 +273,8 @@ const SkillAdminPage: React.FC = () => {
   const handleValidate = (skill: SkillConfigDTO) => {
     setSelectedSkill(skill);
     setValidationResult(null);
+    setValidatingSkillId(skill.id);
+    setValidationModalVisible(true); // Open modal immediately to show loading state
     validateMutation.mutate(skill.id);
   };
 
@@ -441,7 +458,7 @@ const SkillAdminPage: React.FC = () => {
             size="small"
             icon={<CheckCircleOutlined />}
             onClick={() => handleValidate(record)}
-            loading={validateMutation.isLoading && selectedSkill?.id === record.id}
+            loading={validatingSkillId === record.id}
           >
             验证
           </Button>
@@ -532,7 +549,7 @@ const SkillAdminPage: React.FC = () => {
           <Divider style={{ margin: '8px 0' }} />
           <Text strong>模板配置：</Text>
           <Text>• 配置<strong>Carbone模板ID</strong>后，可调用AI生成参数并渲染文档</Text>
-          <Text>• 可在下方表格中查看已有的Carbone模板，或前往<Text type="link">模板管理</Text>页面创建新模板</Text>
+          <Text>• 可在下方表格中查看已有的Carbone模板，或前往<Link href="/carbone-templates">模板管理</Link>页面创建新模板</Text>
         </Space>
       </Card>
 
@@ -715,25 +732,9 @@ const SkillAdminPage: React.FC = () => {
             <Input.TextArea rows={3} />
           </Form.Item>
           <Form.Item
-            name="category"
-            label={t('admin:skillCategory')}
-            extra="选择或输入自定义分类名称"
-          >
-            <Select mode="tags" placeholder="选择或输入分类">
-              {Object.entries(mergedCategories).map(([key, value]) => (
-                <Option key={key} value={key}>
-                  <Space>
-                    <Tag color={value.color}>{value.label}</Tag>
-                    <Text type="secondary">{value.desc}</Text>
-                  </Space>
-                </Option>
-              ))}
-            </Select>
-          </Form.Item>
-          <Form.Item
             name="executionFlowTemplateId"
             label="流程模板"
-            extra="选择预设流程模板，自动填充执行步骤"
+            extra="选择预设流程模板后，分类和执行步骤自动从模板继承，无需手动设置"
           >
             <Select
               placeholder="选择流程模板"
@@ -743,10 +744,16 @@ const SkillAdminPage: React.FC = () => {
               onChange={(value) => {
                 if (value) {
                   const template = executionFlowTemplatesQuery.data?.templates?.find(t => t.id === value);
-                  if (template && template.executionFlowKeys) {
-                    form.setFieldsValue({ executionFlow: template.executionFlowKeys });
-                    message.success(`已应用模板 "${template.name}" 的执行步骤`);
+                  if (template) {
+                    setSelectedTemplateCategory(template.category);
+                    form.setFieldsValue({
+                      category: template.category,
+                      executionFlow: template.executionFlowKeys || [],
+                    });
+                    message.success(`已应用模板 "${template.name}"，分类: ${EXECUTION_FLOW_CATEGORIES[template.category]?.label || template.category}`);
                   }
+                } else {
+                  setSelectedTemplateCategory(null);
                 }
               }}
             >
@@ -755,31 +762,72 @@ const SkillAdminPage: React.FC = () => {
                   <Space>
                     <OrderedListOutlined />
                     <Text>{template.name}</Text>
+                    <Tag color={EXECUTION_FLOW_CATEGORIES[template.category]?.color || 'default'} style={{ marginLeft: 8 }}>
+                      {EXECUTION_FLOW_CATEGORIES[template.category]?.label || template.category}
+                    </Tag>
                     <Badge count={template.steps?.length || 0} showZero style={{ marginLeft: 8 }} />
                   </Space>
                 </Option>
               ))}
             </Select>
           </Form.Item>
-          <Form.Item
-            name="executionFlow"
-            label="执行流程"
-            extra="选择执行步骤顺序（从上到下执行），或先选择流程模板自动填充"
-          >
-            <Select
-              mode="multiple"
-              placeholder="选择执行步骤"
-              optionLabelProp="label"
-            >
-              {Object.entries(EXECUTION_FLOW_STEPS).map(([key, value]) => (
-                <Option key={key} value={key} label={value.label}>
-                  <Space direction="vertical" size="small">
-                    <Text strong>{value.label}</Text>
-                    <Text type="secondary" style={{ fontSize: 12 }}>{value.description}</Text>
-                  </Space>
-                </Option>
-              ))}
-            </Select>
+          {/* 执行流程步骤 - 仅在未选择流程模板时显示 */}
+          <Form.Item shouldUpdate noStyle>
+            {({ getFieldValue }) => {
+              const templateId = getFieldValue('executionFlowTemplateId');
+              if (templateId) {
+                return null; // Hide when template is selected
+              }
+              return (
+                <Form.Item
+                  name="executionFlow"
+                  label="执行流程"
+                  extra="选择执行步骤顺序（从上到下执行），或先选择流程模板自动填充"
+                >
+                  <Select
+                    mode="multiple"
+                    placeholder="选择执行步骤"
+                    optionLabelProp="label"
+                  >
+                    {Object.entries(EXECUTION_FLOW_STEPS).map(([key, value]) => (
+                      <Option key={key} value={key} label={value.label}>
+                        <Space direction="vertical" size="small">
+                          <Text strong>{value.label}</Text>
+                          <Text type="secondary" style={{ fontSize: 12 }}>{value.description}</Text>
+                        </Space>
+                      </Option>
+                    ))}
+                  </Select>
+                </Form.Item>
+              );
+            }}
+          </Form.Item>
+          {/* 分类 - 仅在未选择流程模板时显示，模板会自动设置分类 */}
+          <Form.Item shouldUpdate noStyle>
+            {({ getFieldValue }) => {
+              const templateId = getFieldValue('executionFlowTemplateId');
+              if (templateId) {
+                return null; // Hide when template is selected - category auto-set
+              }
+              return (
+                <Form.Item
+                  name="category"
+                  label={t('admin:skillCategory')}
+                  extra="选择或输入自定义分类名称"
+                >
+                  <Select mode="tags" placeholder="选择或输入分类">
+                    {Object.entries(mergedCategories).map(([key, value]) => (
+                      <Option key={key} value={key}>
+                        <Space>
+                          <Tag color={value.color}>{value.label}</Tag>
+                          <Text type="secondary">{value.desc}</Text>
+                        </Space>
+                      </Option>
+                    ))}
+                  </Select>
+                </Form.Item>
+              );
+            }}
           </Form.Item>
           <Form.Item
             name="triggerKeywords"
@@ -789,25 +837,41 @@ const SkillAdminPage: React.FC = () => {
             <Select mode="tags" placeholder="输入关键词">
             </Select>
           </Form.Item>
-          <Form.Item
-            name="carboneTemplateId"
-            label={t('admin:carboneTemplateId')}
-            extra="选择已有的Carbone模板.用于文档渲染"
-          >
-            <Select
-              placeholder="选择模板"
-              allowClear
-              showSearch
-              loading={templatesQuery.isLoading}
-              options={templateOptions}
-            />
-          </Form.Item>
-          <Form.Item
-            name="carboneSkillId"
-            label={t('admin:carboneSkillId')}
-            extra="Carbone引擎的技能配置ID.用于AI参数生成"
-          >
-            <Input placeholder="UUID格式（可选）" />
+          {/* 文档模板配置 - 仅在分类为文档处理或已选择流程模板的类别为document时显示 */}
+          <Form.Item shouldUpdate noStyle>
+            {({ getFieldValue }) => {
+              const category = getFieldValue('category');
+              // Show Carbone fields only for document category
+              const isDocumentCategory = selectedTemplateCategory === 'document' || category === 'document';
+              if (!isDocumentCategory) {
+                return null;
+              }
+              return (
+                <>
+                  <Divider style={{ margin: '12px 0' }}>文档生成配置</Divider>
+                  <Form.Item
+                    name="carboneTemplateId"
+                    label={t('admin:carboneTemplateId')}
+                    extra="选择已有的Carbone模板.用于文档渲染"
+                  >
+                    <Select
+                      placeholder="选择模板"
+                      allowClear
+                      showSearch
+                      loading={templatesQuery.isLoading}
+                      options={templateOptions}
+                    />
+                  </Form.Item>
+                  <Form.Item
+                    name="carboneSkillId"
+                    label={t('admin:carboneSkillId')}
+                    extra="Carbone引擎的技能配置ID.用于AI参数生成"
+                  >
+                    <Input placeholder="UUID格式（可选）" />
+                  </Form.Item>
+                </>
+              );
+            }}
           </Form.Item>
         </Form>
       </Modal>
@@ -870,10 +934,22 @@ const SkillAdminPage: React.FC = () => {
           setValidationModalVisible(false);
           setValidationResult(null);
           setSelectedSkill(null);
+          setValidatingSkillId(null);
         }}
         footer={<Button onClick={() => setValidationModalVisible(false)}>关闭</Button>}
         width={700}
       >
+        {/* Loading state */}
+        {validatingSkillId && !validationResult && (
+          <div style={{ textAlign: 'center', padding: 40 }}>
+            <Space direction="vertical" size="large">
+              <RocketOutlined spin style={{ fontSize: 48, color: '#1890ff' }} />
+              <Text strong style={{ fontSize: 16 }}>正在验证...</Text>
+              <Text type="secondary">AI正在分析Skill配置和执行流程模板</Text>
+            </Space>
+          </div>
+        )}
+        {/* Results */}
         {validationResult && (
           <Space direction="vertical" size="large" style={{ width: '100%' }}>
             {/* Overall Result */}
