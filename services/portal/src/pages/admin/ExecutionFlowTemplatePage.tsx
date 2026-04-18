@@ -213,6 +213,13 @@ const ExecutionFlowTemplatePage: React.FC = () => {
     validateMutation.mutate(template.id);
   };
 
+  const handleValidateFromEdit = () => {
+    if (editingTemplate) {
+      setEditModalVisible(false);
+      handleValidate(editingTemplate);
+    }
+  };
+
   const handleAddStep = (stepTemplate?: string) => {
     if (stepTemplate && DEFAULT_STEP_TEMPLATES[stepTemplate]) {
       const newStep = { ...DEFAULT_STEP_TEMPLATES[stepTemplate], id: Date.now().toString() };
@@ -804,6 +811,36 @@ const ExecutionFlowTemplatePage: React.FC = () => {
           setEditingTemplate(null);
           setCurrentSteps([]);
         }}
+        footer={[
+          editingTemplate && (
+            <Button
+              key="validate"
+              icon={<PlayCircleOutlined />}
+              onClick={handleValidateFromEdit}
+              style={{ marginRight: 8 }}
+            >
+              验证
+            </Button>
+          ),
+          <Button
+            key="cancel"
+            onClick={() => {
+              setEditModalVisible(false);
+              setEditingTemplate(null);
+              setCurrentSteps([]);
+            }}
+          >
+            取消
+          </Button>,
+          <Button
+            key="save"
+            type="primary"
+            loading={createMutation.isLoading || updateMutation.isLoading}
+            onClick={handleSave}
+          >
+            保存
+          </Button>,
+        ]}
         confirmLoading={createMutation.isLoading || updateMutation.isLoading}
         width={800}
         style={{ top: 20 }}

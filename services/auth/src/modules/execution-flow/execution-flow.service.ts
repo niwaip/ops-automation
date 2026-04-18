@@ -408,6 +408,7 @@ export class ExecutionFlowTemplateService implements OnModuleInit {
       }, { responseType: 'stream' });
 
       let fullContent = '';
+      let aiErrorReceived = '';
       for await (const chunk of aiResponse.data as AsyncIterable<any>) {
         const lines = chunk.toString().split('\n');
         for (const line of lines) {
@@ -416,12 +417,20 @@ export class ExecutionFlowTemplateService implements OnModuleInit {
               const data = JSON.parse(line.slice(6));
               if (data.type === 'result') {
                 fullContent = data.content;
+              } else if (data.type === 'error') {
+                aiErrorReceived = data.content || '未知错误';
               }
             } catch (e) {
               // Ignore partial or invalid json
             }
           }
         }
+      }
+
+      // 检查是否收到有效响应
+      if (!fullContent || fullContent.trim() === '') {
+        const errorMsg = aiErrorReceived || '未收到有效响应';
+        throw new Error(errorMsg);
       }
 
       const aiAudit = JSON.parse(fullContent.replace(/```json|```/g, '').trim());
