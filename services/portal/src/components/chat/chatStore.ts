@@ -32,6 +32,9 @@ interface ChatState {
   // Skill相关
   pendingParamsConfirm: Record<string, unknown> | null;
   pendingSkillName: string | null;
+
+  // 中止函数（用于停止正在执行的任务）
+  abortStreaming: (() => void) | null;
 }
 
 interface ChatActions {
@@ -47,6 +50,8 @@ interface ChatActions {
 
   // 流式处理
   setStreaming: (isStreaming: boolean) => void;
+  setAbortStreaming: (abort: (() => void) | null) => void;
+  abortCurrentStreaming: () => void;
   appendStreamingContent: (content: string) => void;
   addStreamEvent: (event: StreamEvent) => void;
   clearStreaming: () => void;
@@ -86,6 +91,7 @@ export const useChatStore = create<ChatState & ChatActions>((set, get) => ({
   availableModels: [],
   pendingParamsConfirm: null,
   pendingSkillName: null,
+  abortStreaming: null,
 
   // 会话管理
   createSession: () => {
@@ -136,6 +142,18 @@ export const useChatStore = create<ChatState & ChatActions>((set, get) => ({
   // 流式处理
   setStreaming: (isStreaming) => {
     set({ isLoading: isStreaming });
+  },
+
+  setAbortStreaming: (abort) => {
+    set({ abortStreaming: abort });
+  },
+
+  abortCurrentStreaming: () => {
+    const abort = get().abortStreaming;
+    if (abort) {
+      abort();
+      set({ isLoading: false, abortStreaming: null, streamingContent: '', streamingEvents: [] });
+    }
   },
 
   appendStreamingContent: (content) => {

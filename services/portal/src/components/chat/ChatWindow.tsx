@@ -31,6 +31,7 @@ const ChatWindow: React.FC = () => {
     addMessage,
     updateLastMessage,
     setStreaming,
+    setAbortStreaming,
     addStreamEvent,
     clearStreaming,
     createSession,
@@ -105,8 +106,8 @@ const ChatWindow: React.FC = () => {
     // 流式内容累积
     let accumulatedContent = '';
 
-    // 发送流式请求（使用保存的文件副本）
-    streamChat(
+    // 发送流式请求（使用保存的文件副本），返回中止函数
+    const abortStreaming = streamChat(
       {
         message: content,
         sessionId: currentSession?.id,
@@ -148,9 +149,11 @@ const ChatWindow: React.FC = () => {
         setLocalStreamingContent(errorMsg);
         updateLastMessage(errorMsg);
         setStreaming(false);
+        setAbortStreaming(null);
       },
       () => {
         setStreaming(false);
+        setAbortStreaming(null);
         // 最终更新消息
         if (accumulatedContent) {
           updateLastMessage(accumulatedContent);
@@ -158,6 +161,9 @@ const ChatWindow: React.FC = () => {
         setLocalStreamingContent('');
       }
     );
+
+    // 存储中止函数
+    setAbortStreaming(abortStreaming);
   };
 
   // 确认参数
