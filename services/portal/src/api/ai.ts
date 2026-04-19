@@ -1,7 +1,7 @@
 import { apiClient } from './client';
 
 // AI Model types for admin page
-export type ModelProvider = 'openai' | 'anthropic' | 'azure' | 'local' | 'alibaba-coding' | 'alibaba-bailian' | 'deepseek';
+export type ModelProvider = 'openai' | 'anthropic' | 'azure' | 'local' | 'alibaba-coding' | 'alibaba-bailian' | 'deepseek' | 'minimax';
 
 export interface AIModel {
   id: string;

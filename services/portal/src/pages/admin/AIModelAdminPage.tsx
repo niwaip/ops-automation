@@ -28,6 +28,7 @@ const PROVIDER_NAMES: Record<string, string> = {
   'anthropic': 'Anthropic',
   'azure': 'Azure OpenAI',
   'deepseek': 'DeepSeek',
+  'minimax': 'MiniMax',
   'local': '本地模型',
 };
 
@@ -37,6 +38,7 @@ const PRESET_ENDPOINTS: Record<string, string> = {
   'alibaba-bailian': 'https://dashscope.aliyuncs.com/compatible-mode/v1',
   'openai': 'https://api.openai.com/v1',
   'deepseek': 'https://api.deepseek.com/v1',
+  'minimax': 'https://api.minimax.chat/v1',
 };
 
 // Available models for each provider (for switching)
@@ -54,6 +56,7 @@ const PROVIDER_MODELS: Record<string, string[]> = {
   'alibaba-bailian': ['qwen-plus', 'qwen-turbo'],
   'openai': ['gpt-4o', 'gpt-4-turbo', 'gpt-3.5-turbo'],
   'deepseek': ['deepseek-coder', 'deepseek-chat'],
+  'minimax': ['MiniMax-Text-01', 'abab6.5s-chat', 'abab6.5-chat'],
   'anthropic': ['claude-3-opus', 'claude-3-sonnet'],
   'azure': [],
   'local': [],
@@ -404,7 +407,7 @@ const AIModelAdminPage: React.FC = () => {
     },
   ];
 
-  const providerOptions: ModelProvider[] = ['alibaba-coding', 'alibaba-bailian', 'openai', 'anthropic', 'azure', 'deepseek', 'local'];
+  const providerOptions: ModelProvider[] = ['alibaba-coding', 'alibaba-bailian', 'openai', 'anthropic', 'azure', 'deepseek', 'minimax', 'local'];
 
   return (
     <div>
