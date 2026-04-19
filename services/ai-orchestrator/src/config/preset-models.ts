@@ -240,6 +240,51 @@ export const DEEPSEEK_MODELS: PresetModelConfig[] = [
 ];
 
 /**
+ * MiniMax Models (MiniMax AI)
+ * OpenAI-compatible API endpoint
+ * https://www.minimaxi.com/document
+ */
+export const MINIMAX_MODELS: PresetModelConfig[] = [
+  {
+    name: 'MiniMax-Text-01',
+    provider: 'minimax',
+    api_endpoint: 'https://api.minimax.chat/v1',
+    model_id: 'MiniMax-Text-01',
+    description: 'MiniMax - Text-01 (高性能文本模型)',
+    env_key: 'MINIMAX_API_KEY',
+    config: {
+      max_tokens: 8192,
+      temperature: 0.7,
+      context_window: 1000000,
+    },
+  },
+  {
+    name: 'abab6.5s-chat',
+    provider: 'minimax',
+    api_endpoint: 'https://api.minimax.chat/v1',
+    model_id: 'abab6.5s-chat',
+    description: 'MiniMax - ABAB 6.5S (对话模型)',
+    env_key: 'MINIMAX_API_KEY',
+    config: {
+      max_tokens: 4096,
+      temperature: 0.7,
+    },
+  },
+  {
+    name: 'abab6.5-chat',
+    provider: 'minimax',
+    api_endpoint: 'https://api.minimax.chat/v1',
+    model_id: 'abab6.5-chat',
+    description: 'MiniMax - ABAB 6.5 (高性能对话模型)',
+    env_key: 'MINIMAX_API_KEY',
+    config: {
+      max_tokens: 4096,
+      temperature: 0.7,
+    },
+  },
+];
+
+/**
  * All preset models
  */
 export const PRESET_MODELS: PresetModelConfig[] = [
@@ -247,6 +292,7 @@ export const PRESET_MODELS: PresetModelConfig[] = [
   ...ALIBABA_BAILIAN_MODELS,
   ...OPENAI_MODELS,
   ...DEEPSEEK_MODELS,
+  ...MINIMAX_MODELS,
 ];
 
 /**
