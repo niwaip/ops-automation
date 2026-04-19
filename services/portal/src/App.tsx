@@ -19,6 +19,9 @@ import ReportTemplateCreatePage from './pages/ReportTemplateCreatePage';
 import ReportListPage from './pages/ReportListPage';
 import ReportDetailPage from './pages/ReportDetailPage';
 import CarboneTemplateListPage from './pages/CarboneTemplateListPage';
+import ExecutionListPage from './pages/ExecutionListPage';
+import ExecutionDetailPage from './pages/ExecutionDetailPage';
+import TakeoverWorkbenchPage from './pages/TakeoverWorkbenchPage';
 
 const PrivateRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { isAuthenticated } = useAuthStore();
@@ -64,6 +67,9 @@ function App() {
           <Route path="reports" element={<ReportListPage />} />
           <Route path="reports/:id" element={<ReportDetailPage />} />
           <Route path="carbone-templates" element={<CarboneTemplateListPage />} />
+          <Route path="executions" element={<ExecutionListPage />} />
+          <Route path="executions/:id" element={<ExecutionDetailPage />} />
+          <Route path="executions/:id/takeover" element={<TakeoverWorkbenchPage />} />
           <Route
             path="admin/users"
             element={
