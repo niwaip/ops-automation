@@ -36,7 +36,7 @@ async function bootstrap() {
   // API prefix
   app.setGlobalPrefix('api');
 
-  const port = process.env.CONTROL_PLANE_PORT || 3000;
+  const port = process.env.PORT || process.env.CONTROL_PLANE_PORT || 3000;
   await app.listen(port);
 
   console.log(`[control-plane] API Gateway running on port ${port}`);

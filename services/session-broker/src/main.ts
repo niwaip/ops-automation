@@ -34,7 +34,7 @@ async function bootstrap() {
   const document = SwaggerModule.createDocument(app, config);
   SwaggerModule.setup('api/docs', app, document);
 
-  const port = process.env.SESSION_BROKER_PORT || 3002;
+  const port = process.env.PORT || process.env.SESSION_BROKER_PORT || 3002;
   await app.listen(port);
 
   console.log(`[Session Broker Service] Running on port ${port}`);
