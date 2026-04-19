@@ -80,32 +80,21 @@ export class ExecutionService {
     // Update status to running
     await this.updateStatus(executionId, 'running');
 
-    // Allocate runtime session
+    // Allocate runtime session via new RuntimeSession API
     try {
-      const runtimeResponse = await axios.post(`${this.sessionBrokerUrl}/sessions`, {
-        user_id: execution.createdBy,
-        template_id: execution.skillId,
-        params: execution.inputJson as Record<string, unknown>,
+      const runtimeResponse = await axios.post(`${this.sessionBrokerUrl}/runtime-sessions`, {
+        userId: execution.createdBy,
+        executionId: execution.id,
+        runtimeType: execution.runtimeType,
       });
 
-      const runtimeSession = runtimeResponse.data.session;
+      const runtimeSession = runtimeResponse.data;
 
-      // Create runtime_sessions record
-      await this.prisma.runtimeSession.create({
-        data: {
-          executionId: execution.id,
-          runtimeType: execution.runtimeType,
-          workerId: runtimeSession.worker_ref,
-          state: 'ready',
-          controlMode: 'AGENT_RUNNING',
-          connectionInfoJson: runtimeSession.endpoints as Prisma.InputJsonValue,
-        },
-      });
-
-      // Create event
+      // Create event (RuntimeSession record is created by runtime-session service)
       await this.prisma.executionEvent.create({
         data: {
           executionId: execution.id,
+          runtimeSessionId: runtimeSession.id,
           eventType: 'runtime.allocated',
           eventSource: 'control-plane',
           payloadJson: { runtimeSessionId: runtimeSession.id } as Prisma.InputJsonValue,
@@ -185,17 +174,9 @@ export class ExecutionService {
 
     if (runtimeSession) {
       try {
-        await axios.post(`${this.sessionBrokerUrl}/sessions/${runtimeSession.id}/takeover`, {
+        // Call new RuntimeSession API (state update is handled by runtime-session service)
+        await axios.post(`${this.sessionBrokerUrl}/runtime-sessions/${runtimeSession.id}/freeze`, {
           reason: dto.reason,
-        });
-
-        await this.prisma.runtimeSession.update({
-          where: { id: runtimeSession.id },
-          data: {
-            state: 'frozen',
-            controlMode: 'HUMAN_CONTROL',
-            freezeReason: dto.reason,
-          },
         });
       } catch (error) {
         this.logger.error(`Failed to freeze runtime session for execution ${id}`);
@@ -241,17 +222,9 @@ export class ExecutionService {
 
     if (runtimeSession) {
       try {
-        await axios.post(`${this.sessionBrokerUrl}/sessions/${runtimeSession.id}/continue`, {
-          step_id: dto.stepId,
-        });
-
-        await this.prisma.runtimeSession.update({
-          where: { id: runtimeSession.id },
-          data: {
-            state: 'busy',
-            controlMode: 'AGENT_RUNNING',
-            freezeReason: null,
-          },
+        // Call new RuntimeSession API (state update is handled by runtime-session service)
+        await axios.post(`${this.sessionBrokerUrl}/runtime-sessions/${runtimeSession.id}/resume`, {
+          stepId: dto.stepId,
         });
       } catch (error) {
         this.logger.error(`Failed to resume runtime session for execution ${id}`);
@@ -297,14 +270,8 @@ export class ExecutionService {
 
     if (runtimeSession) {
       try {
-        await axios.delete(`${this.sessionBrokerUrl}/sessions/${runtimeSession.id}`);
-        await this.prisma.runtimeSession.update({
-          where: { id: runtimeSession.id },
-          data: {
-            state: 'closed',
-            closedAt: new Date(),
-          },
-        });
+        // Call new RuntimeSession API (state update is handled by runtime-session service)
+        await axios.post(`${this.sessionBrokerUrl}/runtime-sessions/${runtimeSession.id}/close`, {});
       } catch (error) {
         this.logger.error(`Failed to close runtime session for execution ${id}`);
       }

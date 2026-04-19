@@ -1,5 +1,6 @@
 import { Injectable, Logger, OnModuleDestroy } from '@nestjs/common';
 import * as http from 'http';
+import { ExecuteStepDto, ExecuteStepResultDto } from '../../dto/worker.dto';
 
 export interface MCPCommand {
   tool: string;
@@ -124,6 +125,109 @@ export class BrowserService implements OnModuleDestroy {
       this.session.status = 'error';
       this.logger.error(`Command execution failed: ${errorMsg}`);
       return { success: false, results, message: errorMsg };
+    }
+  }
+
+  async executeStep(dto: ExecuteStepDto): Promise<ExecuteStepResultDto> {
+    if (!this.session) {
+      return {
+        success: false,
+        shouldTakeover: false,
+        errorMessage: 'Browser not initialized',
+      };
+    }
+
+    this.logger.log(`Executing step: ${dto.action} for execution ${dto.executionId}, step ${dto.stepId}`);
+
+    try {
+      let result: any;
+      let snapshotId: string | undefined;
+
+      switch (dto.action) {
+        case 'goto':
+          result = await this.navigate(dto.target || '');
+          break;
+        case 'click':
+          result = await this.click(dto.target);
+          break;
+        case 'fill':
+          if (dto.args?.value) {
+            result = await this.fill(dto.target || '', dto.args.value as string);
+          } else {
+            throw new Error('fill action requires args.value');
+          }
+          break;
+        case 'screenshot':
+          result = await this.screenshot();
+          snapshotId = `snap-${Date.now()}`;
+          break;
+        case 'snapshot':
+          result = await this.snapshot();
+          snapshotId = result.snapshot?.id || `snap-${Date.now()}`;
+          break;
+        case 'evaluate':
+          if (dto.args?.script) {
+            result = await this.evaluate(dto.args.script as string);
+          } else {
+            throw new Error('evaluate action requires args.script');
+          }
+          break;
+        case 'wait':
+          if (dto.target) {
+            result = await this.wait(dto.target, dto.args?.duration as number);
+          } else {
+            result = await this.wait(undefined, dto.args?.duration as number);
+          }
+          break;
+        case 'scroll':
+          result = await this.scroll(
+            (dto.args?.direction as string) || 'down',
+            (dto.args?.amount as number) || 300
+          );
+          break;
+        case 'press_key':
+          result = await this.pressKey(dto.target || '');
+          break;
+        case 'hover':
+          result = await this.hover(dto.target || '');
+          break;
+        default:
+          throw new Error(`Unknown action: ${dto.action}`);
+      }
+
+      // Handle assertion if provided
+      if (dto.assertion && result.status === 'error') {
+        return {
+          success: false,
+          snapshotId,
+          output: result,
+          errorCode: 'ASSERTION_FAILED',
+          errorMessage: result.message || 'Assertion failed',
+          shouldTakeover: false,
+        };
+      }
+
+      // Check if takeover is required based on result
+      const shouldTakeover = result.template_info?.requires_takeover || false;
+      const takeoverReason = result.template_info?.takeover_reason;
+
+      return {
+        success: result.status === 'success' || result.status === 'completed',
+        snapshotId,
+        output: result,
+        shouldTakeover,
+        takeoverReason,
+      };
+    } catch (error: unknown) {
+      const errorMsg = error instanceof Error ? error.message : 'Unknown error';
+      this.logger.error(`Step execution failed: ${errorMsg}`);
+
+      return {
+        success: false,
+        errorCode: 'STEP_EXECUTION_ERROR',
+        errorMessage: errorMsg,
+        shouldTakeover: false,
+      };
     }
   }
 
