@@ -14,3 +14,4 @@ export { DocumentRenderTool } from './document-render.tool';
 export { PreviewParamsTool } from './preview-params.tool';
 export { ApiCallTool } from './api-call.tool';
 export { FlowExecuteTool } from './flow-execute.tool';
+export { BrowserStepTool } from './browser-step.tool';

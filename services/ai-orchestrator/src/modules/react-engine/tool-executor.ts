@@ -24,6 +24,7 @@ import {
   PreviewParamsTool,
   ApiCallTool,
   FlowExecuteTool,
+  BrowserStepTool,
 } from './tools';
 import { BaseTool } from './tools/base.tool';
 
@@ -65,6 +66,7 @@ export class ToolExecutor {
       new PreviewParamsTool(),
       new ApiCallTool(),
       new FlowExecuteTool(),
+      new BrowserStepTool(),
     ];
 
     for (const tool of this.defaultTools) {
