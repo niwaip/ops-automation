@@ -1,0 +1,109 @@
+太好了，你已经把三项关键决策定死了：
+
+1.  **员工 Profile 默认写回**
+2.  **Profile 存储用 PVC/NFS 挂载**
+3.  **写锁（同一 Profile 同时仅允许一个 RW 会话）**
+
+基于这三条，我把**全体架构图**和**代码结构图**升级到“可评审 + 可落地”的版本（并明确与 `johnymoo/chrome-novnc-docker` 的边界与端口契约对齐）。 [\[bing.com\]](https://bing.com/search?q=rrweb+session+replay+open+source+GitHub)
+
+***
+
+## 1) 全体架构图（默认写回 + PVC/NFS + 写锁）
+
+
+### 你关心的“权限/控制”在图里怎么落地（重点解读）
+
+*   **Browser Worker（运行时平面）**：基于 `johnymoo/chrome-novnc-docker` 派生，负责跑会话（Xvfb + headed Chrome）并提供 **noVNC(8080)** 给接管、**CDP(9222)** 给回放引擎。 [\[bing.com\]](https://bing.com/search?q=rrweb+session+replay+open+source+GitHub)
+*   **Replay Engine（执行平面）外置**：通过 **CDP 9222** 驱动同一个 Chrome 会话做模板回放；这样控制面才能“冻结/恢复引擎输入”，避免人和 AI 同时注入输入。CDP 的 Input 域本身就支持派发鼠标/键盘事件，所以必须受控。 [\[CodeInterpreter \| InteractiveChart\]](https://jp-prod.asyncgw.teams.microsoft.com/v1/objects/0-ejp-d1-208067457e3aab55d043e59940074c88/views/original/arch_profile_pvc_writeback_lock.png), [\[docs.browserless.io\]](https://docs.browserless.io/baas/features/session-replay)
+*   **Profile Store（PVC/NFS）**：员工的真实浏览器态落在 `/profiles/{user_id}/chrome`，Worker 以 **RW 挂载**，因此“默认写回”是天然成立的（会话结束即持久化到卷）。 [\[bing.com\]](https://bing.com/search?q=rrweb+session+replay+open+source+GitHub)
+*   **Profile Lock Service（写锁）**：控制面在创建 RW 会话时先拿锁（`user_id -> session_id`），保证同一员工 profile 不会被多会话同时写导致状态冲突（cookie、localStorage 互相覆盖）。
+*   **Audit Store（证据链）**：把“决策（谁批准接管/谁获得写锁）+ 执行（引擎步骤/失败原因）+ 证据（trace/截图）”统一落库。Playwright Trace Viewer 是典型的可视化证据链载体。 [\[gitee.com\]](https://gitee.com/amplitude/browserless), [\[docker.aityp.com\]](https://docker.aityp.com/image/docker.io/dorowu/ubuntu-desktop-lxde-vnc:latest)
+
+***
+
+## 2) 代码结构图（含 Profile Registry/Lock + PVC/NFS 约定）
+
+### 这张图的核心边界（你以后不会走弯路）
+
+*   **control-plane**：管“人/权限/策略/写锁/会话分配/审计”，不跑浏览器、不跑模板步骤。
+*   **replay-engine**：管“DSL 解析 + 确定性回放 + 幂等 + 异常分级”，只通过 CDP 控制浏览器，不直接读写 PVC/NFS。 [\[bing.com\]](https://bing.com/search?q=rrweb+session+replay+open+source+GitHub), [\[CodeInterpreter \| InteractiveChart\]](https://jp-prod.asyncgw.teams.microsoft.com/v1/objects/0-ejp-d1-208067457e3aab55d043e59940074c88/views/original/arch_profile_pvc_writeback_lock.png)
+*   **browser-worker**：只负责“会话运行时 + 挂载 profile 卷 + noVNC/CDP 通道”，不包含回放逻辑（避免权限边界混乱）。 [\[bing.com\]](https://bing.com/search?q=rrweb+session+replay+open+source+GitHub)
+
+***
+
+# 3) 基于你的三项决策，我建议你在控制面明确 3 条“硬规则”（可直接写进方案）
+
+## 3.1 默认写回（RW）但必须写锁
+
+*   规则：`profile(user_id)` 同时只允许 **1 个 RW session**
+*   其他并发请求：
+    *   要么拒绝（提示“已有会话占用”）
+    *   要么降级为只读会话（RO）用于观察/审计（不写回）  
+        这能避免员工 cookie/登录态被并发写乱。
+
+## 3.2 PVC/NFS 路径约定（必须规范化）
+
+建议统一约定（控制面只发 user\_id，不发实际路径）：
+
+*   NFS 根：`/profiles/`
+*   用户目录：`/profiles/{user_id}/`
+*   Chrome user-data-dir：`/profiles/{user_id}/chrome/`
+
+Worker 启动时把 Chrome 指向：`--user-data-dir=/profiles/{user_id}/chrome`（与你基于 `chrome-novnc-docker` 的思路一致：Chrome 的 profile 都在 user-data-dir 里）。 [\[bing.com\]](https://bing.com/search?q=rrweb+session+replay+open+source+GitHub)
+
+## 3.3 noVNC/CDP 端口永不裸露（必须经网关/令牌）
+
+`chrome-novnc-docker` README 中明确有 noVNC 与 CDP 的端口用途与用法，因此生产上应当把 8080/9222 放在网关后面，用短期 token/lease 控制访问，而不是直接暴露公网。 [\[bing.com\]](https://bing.com/search?q=rrweb+session+replay+open+source+GitHub)
+
+***
+
+# 4) 关键接口（按你的方案现在就能定下来）
+
+你现在的架构图已经足够把 API 契约定死（我给你“最小但完整”的接口集合）：
+
+### Profile（控制面管理）
+
+*   `GET /profiles/me`：列出员工可选 profile（通常就是自己）
+*   `POST /profiles/me/bootstrap`：首次初始化 profile（创建目录/初始策略标签）
+*   `GET /profiles/{user_id}/lock`：查询锁状态
+
+### Session（创建与控制）
+
+*   `POST /sessions`：创建会话（参数：template\_id，use\_profile=true 默认）
+    *   控制面动作：AuthZ → Acquire write lock → Allocate Worker → Return endpoints
+*   `POST /sessions/{id}/attach-novnc`：签发 noVNC token（view-only / control）
+*   `POST /sessions/{id}/attach-cdp`：签发 CDP token（给 replay-engine）
+*   `POST /sessions/{id}/takeover`：进入 HUMAN\_CONTROL（冻结 engine 输入）
+*   `POST /sessions/{id}/resume`：恢复引擎执行
+*   `POST /sessions/{id}/close`：结束会话（释放写锁、落审计）
+
+> 这里“冻结引擎输入”的必要性来自 CDP Input 域可直接注入鼠标/键盘事件：如果不锁，人和 AI 会打架。 [\[CodeInterpreter \| InteractiveChart\]](https://jp-prod.asyncgw.teams.microsoft.com/v1/objects/0-ejp-d1-208067457e3aab55d043e59940074c88/views/original/arch_profile_pvc_writeback_lock.png), [\[docs.browserless.io\]](https://docs.browserless.io/baas/features/session-replay)
+
+***
+
+# 5) 你选择 Playwright 的话：审计与故障定位会非常“企业友好”
+
+强烈建议回放引擎使用 Playwright 驱动 CDP，这样你能自动产出 trace.zip，并用 Trace Viewer 把“每一步点了什么、等了什么、失败在哪里”解释得清清楚楚。 [\[gitee.com\]](https://gitee.com/amplitude/browserless), [\[docker.aityp.com\]](https://docker.aityp.com/image/docker.io/dorowu/ubuntu-desktop-lxde-vnc:latest)
+
+***
+
+# 6) 下一步我建议你补充的两个细节（用来把设计直接变成部署）
+
+你已经决定了 PVC/NFS + 写锁 + 默认写回，现在只差两点就能进入“可部署实现”：
+
+1.  **profile 的 RW 会话超时策略（TTL）**
+    *   例如：无操作 30min 自动回收 + 释放锁
+2.  **同一员工需要“只读观察会话”吗？**
+    *   如果需要：`VNC_VIEW_ONLY`/输入门控策略要在网关层实现（noVNC 通道只读，CDP 仍可读日志但不派发 Input）。 [\[dev.to\]](https://dev.to/yang_ella_f2a3e16ccb54550/shou-gou-liao-wang-luo-fan-pa-zhe-tao-webtop-fang-an-rang-yun-duan-openclaw-xiang-zhen-ren-yang-shang-wang-1npb), [\[CodeInterpreter \| InteractiveChart\]](https://jp-prod.asyncgw.teams.microsoft.com/v1/objects/0-ejp-d1-208067457e3aab55d043e59940074c88/views/original/arch_profile_pvc_writeback_lock.png)
+
+***
+
+如果你愿意，我下一步可以把这套设计再推进一层：
+
+*   输出一份 **“权限矩阵（role × permission × state）”**（AGENT\_RUNNING / HUMAN\_CONTROL / PAUSED）
+*   再给一份 **K8s 部署草图**（PVC 模板、NFS provisioner、Worker 以 subPath 挂载 `/profiles/{user_id}`、写锁用 Redis/DB 实现）
+
+你希望**写锁**用哪种实现更符合你们现有栈：
+
+*   A) Redis（SETNX + TTL）
+*   B) 数据库行锁（事务更强一致）
