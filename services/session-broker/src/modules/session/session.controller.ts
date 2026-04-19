@@ -13,11 +13,15 @@ import {
 
 @ApiTags('sessions')
 @Controller('sessions')
+/**
+ * @deprecated Use RuntimeSession API (/runtime-sessions) instead.
+ * This controller is maintained for backward compatibility only.
+ */
 export class SessionController {
   constructor(private readonly sessionService: SessionService) {}
 
   @Post()
-  @ApiOperation({ summary: 'Create a new browser session' })
+  @ApiOperation({ summary: 'Create a new browser session (DEPRECATED)', description: 'Use /runtime-sessions instead. This endpoint will be removed in future versions.' })
   @ApiResponse({ status: HttpStatus.CREATED, description: 'Session created successfully', type: CreateSessionResponseDto })
   @ApiResponse({ status: HttpStatus.CONFLICT, description: 'User already has an active session (lock conflict)' })
   @ApiResponse({ status: HttpStatus.BAD_REQUEST, description: 'No available workers' })
@@ -26,7 +30,7 @@ export class SessionController {
   }
 
   @Post(':id/start')
-  @ApiOperation({ summary: 'Start session execution' })
+  @ApiOperation({ summary: 'Start session execution (DEPRECATED)', description: 'Use Execution API instead. This endpoint will be removed in future versions.' })
   @ApiParam({ name: 'id', description: 'Session ID', type: 'string' })
   @ApiResponse({ status: HttpStatus.OK, description: 'Session started', type: SessionDto })
   @ApiResponse({ status: HttpStatus.NOT_FOUND, description: 'Session not found' })
@@ -39,7 +43,7 @@ export class SessionController {
   }
 
   @Post(':id/takeover')
-  @ApiOperation({ summary: 'Takeover session (human control)' })
+  @ApiOperation({ summary: 'Takeover session (human control) (DEPRECATED)', description: 'Use /runtime-sessions/{id}/freeze instead. This endpoint will be removed in future versions.' })
   @ApiParam({ name: 'id', description: 'Session ID', type: 'string' })
   @ApiResponse({ status: HttpStatus.OK, description: 'Session takeover successful', type: SessionDto })
   @ApiResponse({ status: HttpStatus.NOT_FOUND, description: 'Session not found' })
@@ -52,7 +56,7 @@ export class SessionController {
   }
 
   @Post(':id/continue')
-  @ApiOperation({ summary: 'Continue session (agent control)' })
+  @ApiOperation({ summary: 'Continue session (agent control) (DEPRECATED)', description: 'Use /runtime-sessions/{id}/resume instead. This endpoint will be removed in future versions.' })
   @ApiParam({ name: 'id', description: 'Session ID', type: 'string' })
   @ApiResponse({ status: HttpStatus.OK, description: 'Session continue successful', type: SessionDto })
   @ApiResponse({ status: HttpStatus.NOT_FOUND, description: 'Session not found' })
@@ -66,7 +70,7 @@ export class SessionController {
 
   @Delete(':id')
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Delete/close session' })
+  @ApiOperation({ summary: 'Delete/close session (DEPRECATED)', description: 'Use /runtime-sessions/{id}/close instead. This endpoint will be removed in future versions.' })
   @ApiParam({ name: 'id', description: 'Session ID', type: 'string' })
   @ApiResponse({ status: HttpStatus.OK, description: 'Session deleted', type: DeleteSessionResponseDto })
   @ApiResponse({ status: HttpStatus.NOT_FOUND, description: 'Session not found' })
@@ -75,7 +79,7 @@ export class SessionController {
   }
 
   @Get(':id')
-  @ApiOperation({ summary: 'Get session details' })
+  @ApiOperation({ summary: 'Get session details (DEPRECATED)', description: 'Use /runtime-sessions/{id} instead. This endpoint will be removed in future versions.' })
   @ApiParam({ name: 'id', description: 'Session ID', type: 'string' })
   @ApiResponse({ status: HttpStatus.OK, description: 'Session details', type: SessionDto })
   @ApiResponse({ status: HttpStatus.NOT_FOUND, description: 'Session not found' })
@@ -84,7 +88,7 @@ export class SessionController {
   }
 
   @Get(':id/steps')
-  @ApiOperation({ summary: 'Get session step results' })
+  @ApiOperation({ summary: 'Get session step results (DEPRECATED)', description: 'Use /executions/{id}/steps instead. This endpoint will be removed in future versions.' })
   @ApiParam({ name: 'id', description: 'Session ID', type: 'string' })
   @ApiResponse({ status: HttpStatus.OK, description: 'Step results' })
   @ApiResponse({ status: HttpStatus.NOT_FOUND, description: 'Session not found' })
@@ -93,7 +97,7 @@ export class SessionController {
   }
 
   @Get()
-  @ApiOperation({ summary: 'List sessions' })
+  @ApiOperation({ summary: 'List sessions (DEPRECATED)', description: 'Use /runtime-sessions instead. This endpoint will be removed in future versions.' })
   @ApiQuery({ name: 'page', required: false, type: Number })
   @ApiQuery({ name: 'pageSize', required: false, type: Number })
   @ApiQuery({ name: 'status', required: false, type: String })

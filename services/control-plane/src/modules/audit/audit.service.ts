@@ -1,20 +1,24 @@
 import { Injectable, Inject, Optional } from '@nestjs/common';
-import { v4 as uuidv4 } from 'uuid';
+import { PrismaService } from '../prisma/prisma.service';
+import { Prisma } from '@prisma/client';
 
 export interface AuditLog {
   id: string;
-  user_id?: string;
+  userId?: string;
   action: string;
   resource: string;
-  ip_address: string;
-  timestamp: Date;
-  details: Record<string, unknown>;
+  ipAddress?: string;
+  statusCode?: number;
+  durationMs?: number;
+  requestBody?: Record<string, unknown>;
+  responseBody?: Record<string, unknown>;
+  createdAt: Date;
 }
 
 // Interface for audit log storage (can be replaced with database implementation)
 export interface AuditLogStorage {
-  save(log: AuditLog): Promise<void>;
-  query(filters?: { user_id?: string; action?: string; resource?: string }): Promise<AuditLog[]>;
+  save(log: Omit<AuditLog, 'id' | 'createdAt'>): Promise<AuditLog>;
+  query(filters?: { userId?: string; action?: string; resource?: string }): Promise<AuditLog[]>;
 }
 
 // In-memory storage implementation (for development/testing)
@@ -22,15 +26,21 @@ export interface AuditLogStorage {
 export class InMemoryAuditStorage implements AuditLogStorage {
   private logs: AuditLog[] = [];
 
-  async save(log: AuditLog): Promise<void> {
-    this.logs.push(log);
+  async save(log: Omit<AuditLog, 'id' | 'createdAt'>): Promise<AuditLog> {
+    const auditLog: AuditLog = {
+      id: `mem-${Date.now()}`,
+      ...log,
+      createdAt: new Date(),
+    };
+    this.logs.push(auditLog);
+    return auditLog;
   }
 
-  async query(filters?: { user_id?: string; action?: string; resource?: string }): Promise<AuditLog[]> {
+  async query(filters?: { userId?: string; action?: string; resource?: string }): Promise<AuditLog[]> {
     let result = this.logs;
 
-    if (filters?.user_id) {
-      result = result.filter((log) => log.user_id === filters.user_id);
+    if (filters?.userId) {
+      result = result.filter((log) => log.userId === filters.userId);
     }
     if (filters?.action) {
       result = result.filter((log) => log.action === filters.action);
@@ -42,14 +52,78 @@ export class InMemoryAuditStorage implements AuditLogStorage {
     return result;
   }
 
-  // Method to clear logs (for testing)
   clear(): void {
     this.logs = [];
   }
 
-  // Method to get all logs (for testing)
   getAll(): AuditLog[] {
     return this.logs;
+  }
+}
+
+// Prisma-based audit storage (production implementation)
+@Injectable()
+export class PrismaAuditStorage implements AuditLogStorage {
+  constructor(private readonly prisma: PrismaService) {}
+
+  async save(log: Omit<AuditLog, 'id' | 'createdAt'>): Promise<AuditLog> {
+    const result = await this.prisma.auditLog.create({
+      data: {
+        userId: log.userId,
+        action: log.action,
+        resource: log.resource,
+        ipAddress: log.ipAddress,
+        statusCode: log.statusCode,
+        durationMs: log.durationMs,
+        requestBody: log.requestBody as Prisma.InputJsonValue,
+        responseBody: log.responseBody as Prisma.InputJsonValue,
+      },
+    });
+
+    return {
+      id: result.id,
+      userId: result.userId || undefined,
+      action: result.action,
+      resource: result.resource,
+      ipAddress: result.ipAddress || undefined,
+      statusCode: result.statusCode || undefined,
+      durationMs: result.durationMs || undefined,
+      requestBody: result.requestBody as Record<string, unknown> || undefined,
+      responseBody: result.responseBody as Record<string, unknown> || undefined,
+      createdAt: result.createdAt,
+    };
+  }
+
+  async query(filters?: { userId?: string; action?: string; resource?: string }): Promise<AuditLog[]> {
+    const where: Prisma.AuditLogWhereInput = {};
+    if (filters?.userId) {
+      where.userId = filters.userId;
+    }
+    if (filters?.action) {
+      where.action = filters.action;
+    }
+    if (filters?.resource) {
+      where.resource = filters.resource;
+    }
+
+    const results = await this.prisma.auditLog.findMany({
+      where,
+      orderBy: { createdAt: 'desc' },
+      take: 1000,
+    });
+
+    return results.map((r) => ({
+      id: r.id,
+      userId: r.userId || undefined,
+      action: r.action,
+      resource: r.resource,
+      ipAddress: r.ipAddress || undefined,
+      statusCode: r.statusCode || undefined,
+      durationMs: r.durationMs || undefined,
+      requestBody: r.requestBody as Record<string, unknown> || undefined,
+      responseBody: r.responseBody as Record<string, unknown> || undefined,
+      createdAt: r.createdAt,
+    }));
   }
 }
 
@@ -57,8 +131,12 @@ export class InMemoryAuditStorage implements AuditLogStorage {
 export class AuditService {
   private storage: AuditLogStorage;
 
-  constructor(@Optional() @Inject('AUDIT_STORAGE') storage?: AuditLogStorage) {
-    this.storage = storage || new InMemoryAuditStorage();
+  constructor(
+    private readonly prisma: PrismaService,
+    @Optional() @Inject('AUDIT_STORAGE') storage?: AuditLogStorage,
+  ) {
+    // Default to PrismaAuditStorage if PrismaService is available, otherwise fall back to InMemory
+    this.storage = storage || new PrismaAuditStorage(prisma);
   }
 
   async log(
@@ -68,22 +146,17 @@ export class AuditService {
     ipAddress: string,
     details: Record<string, unknown>,
   ): Promise<AuditLog> {
-    const log: AuditLog = {
-      id: uuidv4(),
-      user_id: userId,
+    return this.storage.save({
+      userId,
       action,
       resource,
-      ip_address: ipAddress,
-      timestamp: new Date(),
-      details,
-    };
-
-    await this.storage.save(log);
-    return log;
+      ipAddress,
+      ...details,
+    } as Omit<AuditLog, 'id' | 'createdAt'>);
   }
 
   async queryLogs(filters?: {
-    user_id?: string;
+    userId?: string;
     action?: string;
     resource?: string;
   }): Promise<AuditLog[]> {
@@ -101,7 +174,11 @@ export class AuditService {
     requestBody?: Record<string, unknown>,
     responseBody?: Record<string, unknown>,
   ): Promise<AuditLog> {
-    return this.log(userId, `${method}:${path}`, path, ipAddress, {
+    return this.storage.save({
+      userId,
+      action: `${method}:${path}`,
+      resource: path,
+      ipAddress,
       statusCode,
       durationMs,
       requestBody: requestBody ? this.sanitizeBody(requestBody) : undefined,
@@ -117,8 +194,12 @@ export class AuditService {
     success: boolean,
     details?: Record<string, unknown>,
   ): Promise<AuditLog> {
-    return this.log(userId, `auth:${event}`, 'auth', ipAddress, {
-      success,
+    return this.storage.save({
+      userId,
+      action: `auth:${event}`,
+      resource: 'auth',
+      ipAddress,
+      statusCode: success ? 200 : 401,
       ...details,
     });
   }
