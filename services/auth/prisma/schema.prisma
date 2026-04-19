@@ -205,3 +205,140 @@ model ChatMessage {
   @@index([role])
   @@map("chat_messages")
 }
+
+// ============================================
+// Enterprise Skill Platform Core Models
+// ============================================
+
+// Execution - Skill execution instance (business truth source)
+model Execution {
+  id                  String            @id @default(uuid()) @db.Uuid
+  orgId               String?           @map("org_id") @db.Uuid
+  createdBy           String            @map("created_by") @db.Uuid
+  skillId             String            @map("skill_id") @db.Uuid
+  skillVersion        String?           @map("skill_version") @db.VarChar(50)
+  status              String            @db.VarChar(50) // queued, running, pending_approval, human_control, succeeded, failed, cancelled
+  runtimeType         String            @default("browser") @map("runtime_type") @db.VarChar(50)
+  riskLevel           String            @default("L0") @map("risk_level") @db.VarChar(10)
+  inputJson           Json?             @map("input_json")
+  normalizedInputJson Json?             @map("normalized_input_json")
+  resultJson          Json?             @map("result_json")
+  failureReason       String?           @map("failure_reason") @db.Text
+  failureCode         String?           @map("failure_code") @db.VarChar(50)
+  currentStepId       String?           @map("current_step_id") @db.Uuid
+  requiresApproval    Boolean           @default(false) @map("requires_approval")
+  approvalStatus      String?           @map("approval_status") @db.VarChar(50)
+  takeoverRequired    Boolean           @default(false) @map("takeover_required")
+  takeoverReason      String?           @map("takeover_reason") @db.Text
+  startedAt           DateTime?         @map("started_at") @db.Timestamptz
+  endedAt             DateTime?         @map("ended_at") @db.Timestamptz
+  createdAt           DateTime          @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt           DateTime          @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  // Relations
+  steps               ExecutionStep[]
+  runtimeSessions     RuntimeSession[]
+  events              ExecutionEvent[]
+
+  @@index([createdBy, createdAt(sort: Desc)])
+  @@index([skillId, createdAt(sort: Desc)])
+  @@index([status, createdAt(sort: Desc)])
+  @@map("executions")
+}
+
+// RuntimeSession - Runtime resource session (resource truth source)
+model RuntimeSession {
+  id                  String      @id @default(uuid()) @db.Uuid
+  executionId         String?     @map("execution_id") @db.Uuid
+  runtimeType         String      @default("browser") @map("runtime_type") @db.VarChar(50)
+  workerId            String?     @map("worker_id") @db.VarChar(255)
+  profileId           String?     @map("profile_id") @db.VarChar(255)
+  state               String      @db.VarChar(50) // allocating, ready, busy, frozen, closed, error
+  controlMode         String      @default("AGENT_RUNNING") @map("control_mode") @db.VarChar(50)
+  leaseExpiresAt      DateTime?   @map("lease_expires_at") @db.Timestamptz
+  connectionInfoJson  Json?       @map("connection_info_json")
+  capabilitiesJson    Json?       @default("[]") @map("capabilities_json")
+  healthStatus        String?     @map("health_status") @db.VarChar(50)
+  freezeReason        String?     @map("freeze_reason") @db.Text
+  lastActivityAt      DateTime?   @map("last_activity_at") @db.Timestamptz
+  createdAt           DateTime    @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt           DateTime    @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+  closedAt            DateTime?   @map("closed_at") @db.Timestamptz
+
+  // Relations
+  execution           Execution?  @relation(fields: [executionId], references: [id])
+
+  @@index([executionId])
+  @@index([state, updatedAt(sort: Desc)])
+  @@index([workerId, state])
+  @@index([profileId, state])
+  @@map("runtime_sessions")
+}
+
+// ExecutionStep - Minimum observable action in Execution
+model ExecutionStep {
+  id                  String      @id @default(uuid()) @db.Uuid
+  executionId         String      @map("execution_id") @db.Uuid
+  stepIndex           Int         @map("step_index")
+  name                String?     @db.VarChar(255)
+  type                String      @db.VarChar(50) // browser_action, assertion, input_collection, system
+  status              String      @db.VarChar(50) // pending, running, succeeded, failed, skipped
+  action              String?     @db.VarChar(100)
+  targetJson          Json?       @map("target_json")
+  inputJson           Json?       @map("input_json")
+  outputJson          Json?       @map("output_json")
+  assertionJson       Json?       @map("assertion_json")
+  errorMessage        String?     @map("error_message") @db.Text
+  errorCode           String?     @map("error_code") @db.VarChar(50)
+  retryCount          Int         @default(0) @map("retry_count")
+  snapshotId          String?     @map("snapshot_id") @db.VarChar(255)
+  takeoverTriggered   Boolean     @default(false) @map("takeover_triggered")
+  startedAt           DateTime?   @map("started_at") @db.Timestamptz
+  endedAt             DateTime?   @map("ended_at") @db.Timestamptz
+  createdAt           DateTime    @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt           DateTime    @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  // Relations
+  execution           Execution   @relation(fields: [executionId], references: [id], onDelete: Cascade)
+
+  @@unique([executionId, stepIndex])
+  @@index([executionId, status])
+  @@map("execution_steps")
+}
+
+// ExecutionEvent - Key state transition events
+model ExecutionEvent {
+  id                  String    @id @default(uuid()) @db.Uuid
+  executionId         String    @map("execution_id") @db.Uuid
+  runtimeSessionId    String?   @map("runtime_session_id") @db.Uuid
+  stepId              String?   @map("step_id") @db.Uuid
+  eventType           String    @map("event_type") @db.VarChar(100)
+  eventSource         String?   @map("event_source") @db.VarChar(50)
+  payloadJson         Json?     @map("payload_json")
+  createdAt           DateTime  @default(now()) @map("created_at") @db.Timestamptz
+
+  // Relations
+  execution           Execution @relation(fields: [executionId], references: [id], onDelete: Cascade)
+
+  @@index([executionId, createdAt(sort: Desc)])
+  @@map("execution_events")
+}
+
+// AuditLog - Persistent audit records
+model AuditLog {
+  id                  String    @id @default(uuid()) @db.Uuid
+  userId              String?   @map("user_id") @db.Uuid
+  action              String    @db.VarChar(255)
+  resource            String    @db.VarChar(255)
+  ipAddress           String?   @map("ip_address") @db.VarChar(50)
+  statusCode          Int?      @map("status_code")
+  durationMs          Int?      @map("duration_ms")
+  requestBody         Json?     @map("request_body")
+  responseBody        Json?     @map("response_body")
+  createdAt           DateTime  @default(now()) @map("created_at") @db.Timestamptz
+
+  @@index([userId, createdAt(sort: Desc)])
+  @@index([action, createdAt(sort: Desc)])
+  @@index([resource, createdAt(sort: Desc)])
+  @@map("audit_logs")
+}
