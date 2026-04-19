@@ -56,7 +56,7 @@ const PROVIDER_MODELS: Record<string, string[]> = {
   'alibaba-bailian': ['qwen-plus', 'qwen-turbo'],
   'openai': ['gpt-4o', 'gpt-4-turbo', 'gpt-3.5-turbo'],
   'deepseek': ['deepseek-coder', 'deepseek-chat'],
-  'minimax': ['MiniMax-Text-01', 'abab6.5s-chat', 'abab6.5-chat'],
+  'minimax': ['MiniMax-Text-01', 'abab6.5s-chat', 'abab6.5-chat', 'MiniMax-M2.7'],
   'anthropic': ['claude-3-opus', 'claude-3-sonnet'],
   'azure': [],
   'local': [],

@@ -17,7 +17,7 @@ export interface PresetModelConfig {
  * Alibaba Cloud DashScope Coding (阿里云 DashScope Coding)
  * OpenAI-compatible API endpoint for coding models
  * https://help.aliyun.com/zh/model-studio/openclaw-coding-plan
- * Default model: qwen3.5-plus
+ * Default model: MiniMax-M2.7
  */
 export const ALIBABA_CODING_MODELS: PresetModelConfig[] = [
   {
@@ -25,13 +25,12 @@ export const ALIBABA_CODING_MODELS: PresetModelConfig[] = [
     provider: 'alibaba-coding',
     api_endpoint: 'https://coding.dashscope.aliyuncs.com/v1',
     model_id: 'qwen3.5-plus',
-    description: '阿里云 Coding - Qwen3.5 Plus (默认模型，支持文本和图像)',
+    description: '阿里云 Coding - Qwen3.5 Plus (支持文本和图像)',
     env_key: 'ALIBABA_CODING_API_KEY',
     config: {
       max_tokens: 65536,
       temperature: 0.7,
       context_window: 1000000,
-      default: true,
       input: ['text', 'image'],
     },
   },
@@ -280,6 +279,20 @@ export const MINIMAX_MODELS: PresetModelConfig[] = [
     config: {
       max_tokens: 4096,
       temperature: 0.7,
+    },
+  },
+  {
+    name: 'MiniMax-M2.7',
+    provider: 'minimax',
+    api_endpoint: 'https://api.minimax.chat/v1',
+    model_id: 'MiniMax-M2.7',
+    description: 'MiniMax - M2.7 (默认模型)',
+    env_key: 'MINIMAX_API_KEY',
+    config: {
+      max_tokens: 32768,
+      temperature: 0.7,
+      context_window: 196608,
+      default: true,
     },
   },
 ];
