@@ -93,6 +93,7 @@ export interface ToolResult {
 export interface ExecutionContext {
   sessionId: string;
   userId: string;
+  executionId?: string;           // Execution ID for step tracking
   userRoles?: string[];           // 新增：当前用户的角色
   history: ChatMessage[];
   currentThought?: string;
@@ -102,6 +103,7 @@ export interface ExecutionContext {
   nextAction?: string;            // 工具返回的下一步动作提示
   nextActionParams?: Record<string, unknown>;  // 下一步动作的参数
   currentFlowStep?: number;       // 当前执行流的步骤索引
+  currentStepId?: string;         // 当前执行的步骤ID
 }
 
 /**
@@ -198,6 +200,7 @@ export interface ChatRequestDTO {
   message: string;
   sessionId?: string;
   userId?: string;
+  executionId?: string;          // Execution ID for step tracking
   userRoles?: string[];          // 新增：请求中传入的用户角色
   modelId?: string;
   files?: UploadedFile[];
