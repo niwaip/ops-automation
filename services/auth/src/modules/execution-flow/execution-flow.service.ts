@@ -21,28 +21,30 @@ const DEFAULT_FLOW_TEMPLATES: CreateExecutionFlowTemplateDTO[] = [
   {
     name: '天气查询流程',
     description: '查询指定城市的天气信息，调用天气API获取实时数据',
+    goal: '根据用户提供的城市名称，获取并展示该城市的实时天气报告',
+    expectedResult: '包含温度、天气状况、风速的格式化文本报告',
+    paramsSchema: {
+      properties: {
+        city: { 
+          type: 'string', 
+          description: '城市名称，如：北京',
+          required: true,
+          extractionPrompt: '从用户请求中识别城市参数。如果用户未提供，请根据上下文推断或礼貌询问。'
+        }
+      },
+      required: ['city']
+    },
     category: 'query',
     steps: [
       {
-        type: 'text',
-        name: '确认查询意图',
-        content: '用户想查询天气信息，需要识别城市参数',
-        expectedOutput: '确认城市参数',
-      },
-      {
         type: 'api',
-        name: '调用天气API',
+        name: '获取天气数据',
         api: {
-          endpoint: 'https://wttr.in/{city}?format=j1',
+          endpoint: 'https://uapis.cn/api/v1/misc/weather?city={city}&lang=zh',
           method: 'GET',
+          timeout: 5000, // 优化建议：为 API 调用添加超时配置
         },
-        expectedOutput: '天气JSON数据',
-      },
-      {
-        type: 'text',
-        name: '格式化天气结果',
-        content: '将天气API返回的JSON数据转换为用户友好的文本格式输出',
-        expectedOutput: '天气描述文本',
+        expectedOutput: '天气 JSON 数据',
       },
     ],
     executionFlowKeys: ['天气', '查询天气', '天气预报', 'weather'],
@@ -104,19 +106,32 @@ export class ExecutionFlowTemplateService implements OnModuleInit {
   }
 
   /**
-   * 加载默认流程模板（如果不存在）
+   * 加载并同步默认流程模板
    */
   private async loadDefaultTemplates() {
     for (const template of DEFAULT_FLOW_TEMPLATES) {
       const existing = await this.prisma.$queryRawUnsafe<{ id: string }[]>(
-        `SELECT id FROM execution_flow_templates WHERE name = $1`,
+        `SELECT id FROM execution_flow_templates WHERE name = $1 ORDER BY created_at ASC`,
         template.name
       );
 
       if (existing.length === 0) {
         await this.createTemplate(template);
         this.logger.log(`Created default flow template: ${template.name}`);
+        continue;
       }
+
+      await this.updateTemplate(existing[0].id, {
+        description: template.description,
+        goal: template.goal,
+        expectedResult: template.expectedResult,
+        paramsSchema: template.paramsSchema,
+        category: template.category,
+        steps: template.steps,
+        executionFlowKeys: template.executionFlowKeys,
+        isPublic: template.isPublic,
+      });
+      this.logger.log(`Synced default flow template: ${template.name}`);
     }
   }
 
@@ -275,6 +290,15 @@ export class ExecutionFlowTemplateService implements OnModuleInit {
     const updates: string[] = [];
     const values: any[] = [];
     let paramIndex = 1;
+    const shouldResetValidation =
+      data.name !== undefined ||
+      data.description !== undefined ||
+      data.goal !== undefined ||
+      data.expectedResult !== undefined ||
+      data.paramsSchema !== undefined ||
+      data.category !== undefined ||
+      data.steps !== undefined ||
+      data.executionFlowKeys !== undefined;
 
     if (data.name !== undefined) {
       updates.push(`name = $${paramIndex}`);
@@ -331,6 +355,10 @@ export class ExecutionFlowTemplateService implements OnModuleInit {
       paramIndex++;
     }
 
+    if (shouldResetValidation) {
+      updates.push(`validation = NULL`);
+    }
+
     if (updates.length === 0) {
       return existing;
     }
@@ -380,6 +408,7 @@ export class ExecutionFlowTemplateService implements OnModuleInit {
     aiServiceUrl?: string,
     testParams?: Record<string, unknown>,
     enableExecutionTest?: boolean,
+    testUserInput?: string,
   ): Promise<ValidationResult> {
     const template = await this.getTemplate(id);
     if (!template) {
@@ -426,7 +455,7 @@ export class ExecutionFlowTemplateService implements OnModuleInit {
     try {
       const orchestratorUrl = aiServiceUrl || process.env.AI_ORCHESTRATOR_URL || 'http://ops-ai-orchestrator:3007';
       
-      const auditPrompt = `你是一个高级系统架构师和 AI Agent 专家。请审计以下”执行流程模板 (Execution Flow Template)”，并验证其作为”影子工具 (Shadow Tool)”提供给 ReAct 引擎时的可行性。
+      const auditPrompt = `你是一个高级系统架构师和 AI Agent 专家。请审计以下“执行流程模板 (Execution Flow Template)”，并验证它作为一个“宏工具”时，是否只封装了一个清晰、原子、可确定执行的能力。
 
 流程名称: ${template.name}
 流程描述: ${template.description || '无'}
@@ -440,18 +469,37 @@ ${template.paramsSchema ? `参数定义: ${JSON.stringify(template.paramsSchema,
 1. 目标一致性：流程步骤是否能达成定义的目标？预期结果是否可实现？
 2. 参数完整性：如果定义了参数Schema，流程是否正确使用了这些参数？
 3. 逻辑一致性：步骤间的参数传递是否闭合？是否存在后续步骤依赖但前序步骤未提供的参数？
-4. 原子能力验证：每一个步骤的操作（API/Tool/Script）是否能独立完成？
-5. 影子工具适配性：如果将此流程包装成一个工具，其定义的参数 Schema 是否足以驱动整个流程？
-6. 容错性：流程中是否有明显的单点故障风险？
+4. 原子能力验证：流程是否只聚焦一个原子能力，而不是试图解决整条业务链路？
+5. 影子工具适配性：如果将此流程包装成一个工具，其参数 Schema 是否足以驱动整个流程，并尽量减少额外上下文和 token 消耗？
+6. 确定性与容错性：步骤是否尽可能确定、可复现，是否存在明显单点故障风险？
 
-请以 JSON 格式返回审计结果，包含以下字段：
+输出要求：
+1. 只返回一个 JSON 对象，不要输出 Markdown、代码块、解释文字。
+2. 如果流程整体可用但存在优化空间，isValid 仍可为 true。
+3. improvedFlow 只在“存在高置信度、可自动修复的结构性问题”时提供。
+4. improvedFlow 必须遵循以下结构：
 {
-  “isValid”: boolean,
-  “score”: number (0-100),
-  “critique”: “详细的逻辑评估”,
-  “issues”: [“问题1”, “问题2”],
-  “suggestions”: [“改进建议1”, “改进建议2”],
-  “improvedFlow”: null | Object (如果逻辑有问题，请提供自动调整后的步骤 JSON)
+  "steps": [ 优化后的步骤列表 ],
+  "paramsSchema": { 优化后的参数定义 },
+  "goal": "优化后的流程目标",
+  "expectedResult": "优化后的预期结果",
+  "executionFlowKeys": [ 优化后的触发关键词 ]
+}
+5. 优化原则：
+   - 移除不必要的 inputMapping，简化上下文引用。
+   - 为网络请求步骤（如 API）添加 timeout 配置（建议 5000ms-10000ms）。
+   - 优化错误触发条件，建议基于“成功路径未完成”的逻辑，或确保引擎支持 'skipped' 状态判断。
+   - 如果涉及 LLM 解析 JSON，在 prompt 中明确指示 LLM 处理可能的解析错误，增加鲁棒性。
+   - 考虑增加缓存机制（如在步骤描述中建议），避免重复调用 API。
+
+返回格式：
+{
+  "isValid": boolean,
+  "score": number,
+  "critique": "详细的逻辑评估",
+  "issues": ["问题1", "问题2"],
+  "suggestions": ["改进建议1", "改进建议2"],
+  "improvedFlow": { "steps": [], "paramsSchema": {}, "goal": "", "expectedResult": "", "executionFlowKeys": [] } | null
 }
 `;
 
@@ -460,7 +508,7 @@ ${template.paramsSchema ? `参数定义: ${JSON.stringify(template.paramsSchema,
         sessionId: `audit-${id}-${randomUUID()}`,
         modelId: 'qwen3.5-plus',  // 使用配置好的模型名称
         config: { mode: 'chat', maxIterations: 5 }  // 使用chat模式，更稳定的AI响应
-      }, { responseType: 'stream' });
+      }, { responseType: 'stream', timeout: 120000 });
 
       let fullContent = '';
       let aiErrorReceived = '';
@@ -488,7 +536,7 @@ ${template.paramsSchema ? `参数定义: ${JSON.stringify(template.paramsSchema,
         throw new Error(errorMsg);
       }
 
-      const aiAudit = JSON.parse(fullContent.replace(/```json|```/g, '').trim());
+      const aiAudit = this.parseJsonFromAiContent(fullContent);
 
       if (aiAudit) {
         validationResult.isValid = validationResult.isValid && aiAudit.isValid;
@@ -511,29 +559,50 @@ ${template.paramsSchema ? `参数定义: ${JSON.stringify(template.paramsSchema,
       validationResult.warnings?.push(`AI 深度审计不可用 (错误: ${aiError.message})，仅执行静态检查。`);
     }
 
-    // 2.5 真实执行测试（可选）- 通过ReAct引擎执行流程
+    // 2.5 真实执行测试（可选）- 通过 ReAct 引擎以“Skill 整体能力”进行验证
     if (enableExecutionTest) {
       try {
         const orchestratorUrl = aiServiceUrl || process.env.AI_ORCHESTRATOR_URL || 'http://ops-ai-orchestrator:3007';
 
-        this.logger.log(`Starting execution test for template ${id} with params: ${JSON.stringify(testParams || {})}`);
+        this.logger.log(`Starting skill-based execution test for template ${id}`);
 
-        // 使用 ReAct 引擎的 task 模式执行流程
+        // 使用 ReAct 引擎验证 Skill 整体能力
+        const normalizedTestParams = testParams || {};
+        const normalizedUserInput = (testUserInput || '').trim();
+        const executionPrompt = [
+          '你现在是“AI Skill 完整性验证器”。',
+          '请把当前的流程模板当成一个【单一的原子 Skill】进行整体验证。',
+          '不要因为某个中间步骤的 API 暂时不可访问就判定失败，只要逻辑流转正确、参数定义清晰即可。',
+          `技能名称: ${template.name}`,
+          template.goal ? `技能目标: ${template.goal}` : '技能目标: 未定义',
+          template.expectedResult ? `预期结果: ${template.expectedResult}` : '预期结果: 未定义',
+          `模板ID: ${id}`,
+          `模拟用户输入: ${normalizedUserInput || '未提供，请根据技能目标构造合理输入'}`,
+          `结构化参数: ${JSON.stringify(normalizedTestParams, null, 2)}`,
+          '验证规则:',
+          '1. 使用 flow_execute 执行流程。',
+          '2. 验证参数提取是否准确（基于 paramsSchema）。',
+          '3. 验证步骤间的逻辑关联是否闭环。',
+          '4. 最终生成一个“标准 Skill 定义”，供外部 AI 调用。',
+        ].join('\n');
+
         const execResponse = await axios.post(`${orchestratorUrl}/ai/chat/stream`, {
-          message: `执行流程模板 ${template.name}，模板ID: ${id}`,
-          sessionId: `exec-test-${id}-${randomUUID()}`,
+          message: executionPrompt,
+          sessionId: `skill-test-${id}-${randomUUID()}`,
           modelId: 'qwen3.5-plus',
           config: {
             mode: 'task',
-            maxIterations: Math.max(steps.length + 5, 10),  // 给足够迭代次数完成流程
+            maxIterations: Math.max(Math.min(steps.length + 5, 10), 6),
+            tools: ['flow_execute'],
           },
-        }, { responseType: 'stream', timeout: 60000 });
+        }, { responseType: 'stream', timeout: 180000 });
 
         // 收集执行过程
         const executionLog: string[] = [];
         let executionResult = '';
         let executionError = '';
         let iterations = 0;
+        let generatedSkill: any = null;
 
         for await (const chunk of execResponse.data as AsyncIterable<any>) {
           const lines = chunk.toString().split('\n');
@@ -551,6 +620,17 @@ ${template.paramsSchema ? `参数定义: ${JSON.stringify(template.paramsSchema,
                 } else if (data.type === 'result') {
                   executionResult = data.content;
                   executionLog.push(`[Result] ${executionResult}`);
+                  
+                  // 尝试从结果中提取生成的 Skill
+                  const jsonMatch = executionResult.match(/\{[\s\S]*\}/);
+                  if (jsonMatch) {
+                    try {
+                      const parsed = JSON.parse(jsonMatch[0]);
+                      if (parsed.name || parsed.paramsSchema) {
+                        generatedSkill = parsed;
+                      }
+                    } catch (e) {}
+                  }
                 } else if (data.type === 'error') {
                   executionError = data.content;
                   executionLog.push(`[Error] ${executionError}`);
@@ -566,7 +646,7 @@ ${template.paramsSchema ? `参数定义: ${JSON.stringify(template.paramsSchema,
 
         // 分析执行结果
         if (executionError) {
-          validationResult.warnings?.push(`执行测试失败: ${executionError}`);
+          validationResult.warnings?.push(`Skill 整体验证存在异常: ${executionError}`);
           if (validationResult.details) {
             validationResult.details.executionTest = {
               success: false,
@@ -576,7 +656,14 @@ ${template.paramsSchema ? `参数定义: ${JSON.stringify(template.paramsSchema,
             };
           }
         } else if (executionResult) {
-          validationResult.suggestions.push(`执行测试成功: 流程完成，共 ${iterations} 次迭代`);
+          validationResult.suggestions.push(`Skill 整体验证通过: 流程逻辑闭环，共 ${iterations} 次迭代`);
+          if (generatedSkill) {
+            validationResult.suggestions.push('已成功生成标准 Skill 定义，您可以点击“发布技能”将其同步到技能库。');
+            if (validationResult.details) {
+              (validationResult.details as any).generatedSkill = generatedSkill;
+            }
+          }
+          
           if (validationResult.details) {
             validationResult.details.executionTest = {
               success: true,
@@ -586,7 +673,7 @@ ${template.paramsSchema ? `参数定义: ${JSON.stringify(template.paramsSchema,
             };
           }
         } else {
-          validationResult.warnings?.push('执行测试未返回有效结果');
+          validationResult.warnings?.push('执行测试未返回有效结论');
         }
 
       } catch (execError) {
@@ -705,6 +792,59 @@ ${template.paramsSchema ? `参数定义: ${JSON.stringify(template.paramsSchema,
       });
     } catch (error) {
       throw new Error(`Failed to import template: ${error.message}`);
+    }
+  }
+
+  /**
+   * 应用 AI 优化建议
+   */
+  async applyAdjustment(id: string): Promise<ExecutionFlowTemplateDTO | null> {
+    const template = await this.getTemplate(id);
+    if (!template || !template.validation) {
+      throw new Error('No AI adjustment found for this template');
+    }
+
+    const validation = template.validation as any;
+    const autoAdjustment = validation.details?.autoAdjustment;
+
+    if (!autoAdjustment) {
+      throw new Error('No improved flow suggested by AI');
+    }
+
+    // AI返回的autoAdjustment结构：{ steps, paramsSchema, goal, expectedResult, executionFlowKeys }
+    // 兼容中文 Key (由于 Prompt 中可能使用了中文)
+    const improvedSteps = autoAdjustment.steps || autoAdjustment['步骤列表'] || autoAdjustment;
+    const improvedParamsSchema = autoAdjustment.paramsSchema || autoAdjustment['参数定义'];
+    const improvedGoal = autoAdjustment.goal || autoAdjustment['流程目标'];
+    const improvedExpectedResult = autoAdjustment.expectedResult || autoAdjustment['预期结果'];
+    const improvedExecutionFlowKeys = autoAdjustment.executionFlowKeys || autoAdjustment['触发关键词'];
+
+    // 验证步骤是数组
+    if (!Array.isArray(improvedSteps)) {
+      throw new Error('Invalid steps format in AI adjustment');
+    }
+
+    return this.updateTemplate(id, {
+      steps: improvedSteps,
+      paramsSchema: improvedParamsSchema || undefined,
+      goal: improvedGoal || undefined,
+      expectedResult: improvedExpectedResult || undefined,
+      executionFlowKeys: improvedExecutionFlowKeys || undefined,
+    });
+  }
+
+  private parseJsonFromAiContent(content: string): Record<string, any> {
+    const sanitized = content.replace(/```json|```/g, '').trim();
+
+    try {
+      return JSON.parse(sanitized);
+    } catch {
+      const start = sanitized.indexOf('{');
+      const end = sanitized.lastIndexOf('}');
+      if (start >= 0 && end > start) {
+        return JSON.parse(sanitized.slice(start, end + 1));
+      }
+      throw new Error('AI 返回内容不是有效 JSON');
     }
   }
 }

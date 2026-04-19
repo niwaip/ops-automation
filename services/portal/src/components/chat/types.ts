@@ -38,6 +38,7 @@ export interface ChatMessage {
   metadata?: {
     skillUsed?: string;
     params?: Record<string, unknown>;
+    files?: string[];
     fileUrl?: string;
     downloadUrl?: string;
   };
@@ -105,6 +106,8 @@ export interface UploadedFile {
 export interface ChatRequest {
   message: string;
   sessionId?: string;
+  userId?: string;
+  userRoles?: string[];
   modelId?: string;
   files?: UploadedFile[];
   config?: {

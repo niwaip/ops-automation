@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import {
   Table, Card, Button, Input, Space, Tag, Typography, Modal, message, Form, Select,
   Descriptions, Tooltip, Collapse, Steps, Divider, Badge, Empty, Progress,
@@ -70,6 +70,110 @@ const DEFAULT_STEP_TEMPLATES: Record<string, ExecutionFlowStep> = {
   },
 };
 
+type ValidationStage = 'idle' | 'auditing' | 'executing';
+
+const buildDefaultTestUserInput = (
+  template: ExecutionFlowTemplateDTO,
+  sampleParams: Record<string, any>
+): string => {
+  const pairs = Object.entries(sampleParams)
+    .map(([key, value]) => `${key}=${String(value)}`)
+    .join('，');
+
+  if (pairs) {
+    return `请帮我执行“${template.name}”这个能力，已知参数：${pairs}。`;
+  }
+
+  if (template.goal) {
+    return `请按流程完成这个原子能力：${template.goal}`;
+  }
+
+  return `请帮我执行“${template.name}”这个原子能力。`;
+};
+
+type ValidationErrorDetail = {
+  title: string;
+  description: string;
+};
+
+const extractValidationErrorDetail = (error: any): ValidationErrorDetail => {
+  const responseMessage = error?.response?.data?.message;
+  const responseCode = error?.response?.data?.code;
+  const rawMessage = Array.isArray(responseMessage)
+    ? responseMessage.join('；')
+    : typeof responseMessage === 'string' && responseMessage.trim()
+      ? responseMessage
+      : typeof error?.message === 'string' && error.message.trim()
+        ? error.message
+        : '验证失败，请检查服务状态后重试';
+  const normalizedMessage = rawMessage.toLowerCase();
+
+  if (responseCode === 'VALIDATION_TIMEOUT') {
+    return { title: '接口超时', description: rawMessage };
+  }
+
+  if (responseCode === 'AI_JSON_PARSE_ERROR') {
+    return { title: 'AI 返回格式错误', description: rawMessage };
+  }
+
+  if (responseCode === 'FLOW_EXECUTION_ERROR') {
+    return { title: '执行引擎异常', description: rawMessage };
+  }
+
+  if (responseCode === 'NETWORK_ERROR') {
+    return { title: '网络请求异常', description: rawMessage };
+  }
+
+  if (responseCode === 'TEMPLATE_NOT_FOUND') {
+    return { title: '模板不存在', description: rawMessage };
+  }
+
+  if (
+    error?.code === 'ECONNABORTED' ||
+    normalizedMessage.includes('timeout') ||
+    normalizedMessage.includes('超时')
+  ) {
+    return { title: '接口超时', description: rawMessage };
+  }
+
+  if (
+    normalizedMessage.includes('json') ||
+    normalizedMessage.includes('parse') ||
+    normalizedMessage.includes('格式') ||
+    normalizedMessage.includes('invalid') ||
+    normalizedMessage.includes('不是有效 json')
+  ) {
+    return { title: 'AI 返回格式错误', description: rawMessage };
+  }
+
+  if (
+    normalizedMessage.includes('flow_execute') ||
+    normalizedMessage.includes('react') ||
+    normalizedMessage.includes('stream') ||
+    normalizedMessage.includes('执行测试') ||
+    normalizedMessage.includes('执行引擎')
+  ) {
+    return { title: '执行引擎异常', description: rawMessage };
+  }
+
+  if (
+    normalizedMessage.includes('network error') ||
+    normalizedMessage.includes('network') ||
+    normalizedMessage.includes('fetch')
+  ) {
+    return { title: '网络请求异常', description: rawMessage };
+  }
+
+  return { title: '验证失败', description: rawMessage };
+};
+
+const extractErrorMessage = (error: any): string => {
+  const detail = extractValidationErrorDetail(error);
+  return detail.title === '验证失败'
+    ? detail.description
+    : `${detail.title}：${detail.description}`;
+};
+
 const ExecutionFlowTemplatePage: React.FC = () => {
   const { t } = useTranslation(['common', 'admin']);
   const queryClient = useQueryClient();
@@ -88,6 +192,12 @@ const ExecutionFlowTemplatePage: React.FC = () => {
   const [importJson, setImportJson] = useState('');
   const [enableExecutionTest, setEnableExecutionTest] = useState(false);
   const [testParamsJson, setTestParamsJson] = useState('');
+  const [testUserInput, setTestUserInput] = useState('');
+  const [validationStage, setValidationStage] = useState<ValidationStage>('idle');
+  const [validationError, setValidationError] = useState<string | null>(null);
+  const [validationErrorTitle, setValidationErrorTitle] = useState<string | null>(null);
+  const [executionLogs, setExecutionLogs] = useState<string[]>([]);
+  const validationStageTimersRef = useRef<number[]>([]);
 
   // Queries
   const templatesQuery = useQuery(
@@ -98,6 +208,72 @@ const ExecutionFlowTemplatePage: React.FC = () => {
       isActive: true,
     })
   );
+
+  function clearValidationStageTimers() {
+    validationStageTimersRef.current.forEach((timerId) => window.clearTimeout(timerId));
+    validationStageTimersRef.current = [];
+  }
+
+  function beginValidationProgress(withExecutionTest: boolean) {
+    clearValidationStageTimers();
+    setExecutionLogs([]);
+    setValidationStage('auditing');
+    
+    // 模拟审计日志
+    const auditLogs = [
+      '正在连接 AI 审计引擎...',
+      '正在解析流程拓扑结构...',
+      '正在检查参数引用完整性...',
+      '正在评估原子能力边界...',
+      '正在生成优化建议...'
+    ];
+    
+    auditLogs.forEach((msg, i) => {
+      const timerId = window.setTimeout(() => {
+        setExecutionLogs(prev => [...prev, `[Audit] ${msg}`]);
+      }, i * 400);
+      validationStageTimersRef.current.push(timerId);
+    });
+
+    if (withExecutionTest) {
+      const timerId = window.setTimeout(() => {
+        setValidationStage('executing');
+        setExecutionLogs(prev => [...prev, '[System] 静态审计完成，开始真实验证测试...']);
+        
+        // 模拟执行日志
+        const execLogs = [
+          '正在初始化 ReAct 引擎...',
+          '正在加载 flow_execute 工具...',
+          '正在构造模拟用户请求...',
+          '正在观察步骤 1 执行结果...',
+          '正在匹配后续步骤...',
+          '正在验证最终输出格式...'
+        ];
+        
+        execLogs.forEach((msg, i) => {
+          const tId = window.setTimeout(() => {
+            setExecutionLogs(prev => [...prev, `[Execution] ${msg}`]);
+          }, 2000 + i * 800);
+          validationStageTimersRef.current.push(tId);
+        });
+      }, 2000);
+      validationStageTimersRef.current.push(timerId);
+    }
+  }
+
+  function resetValidationModalState() {
+    clearValidationStageTimers();
+    setValidateModalVisible(false);
+    setSelectedTemplate(null);
+    setValidationResult(null);
+    setValidationError(null);
+    setValidationErrorTitle(null);
+    setEnableExecutionTest(false);
+    setTestParamsJson('');
+    setTestUserInput('');
+    setValidationStage('idle');
+    setExecutionLogs([]);
+  }
 
   // Mutations
   const createMutation = useMutation(executionFlowApi.create, {
@@ -140,27 +316,52 @@ const ExecutionFlowTemplatePage: React.FC = () => {
   });
 
   const validateMutation = useMutation(
-    (params: { id: string; enableExecutionTest?: boolean; testParams?: Record<string, any> }) =>
+    (params: {
+      id: string;
+      enableExecutionTest?: boolean;
+      testParams?: Record<string, any>;
+      testUserInput?: string;
+    }) =>
       executionFlowApi.validate(params.id, {
         enableExecutionTest: params.enableExecutionTest,
         testParams: params.testParams,
+        testUserInput: params.testUserInput,
       }),
     {
       onSuccess: (result) => {
         setValidationResult(result.validationResult);
+        setValidationError(null);
+        setValidationErrorTitle(null);
+        setSelectedTemplate((prev) => prev ? { ...prev, validation: result.validationResult } : prev);
+        queryClient.invalidateQueries(['execution-flow-templates']);
+        clearValidationStageTimers();
+        setValidationStage('idle');
         message.success('验证完成');
       },
-      onError: () => {
-        message.error('验证失败');
+      onError: (error: any) => {
+        const errorDetail = extractValidationErrorDetail(error);
+        const errorMessage = extractErrorMessage(error);
+        clearValidationStageTimers();
+        setValidationStage('idle');
+        setValidationResult(null);
+        setValidationErrorTitle(errorDetail.title);
+        setValidationError(errorDetail.description);
+        setExecutionLogs((prev) => [...prev, `[Error] ${errorMessage}`]);
+        setValidateModalVisible(true);
+        message.error(errorMessage);
       },
     }
   );
 
   const applyAdjustmentMutation = useMutation(executionFlowApi.applyAdjustment, {
-    onSuccess: () => {
-      message.success('已应用AI优化建议');
+    onSuccess: (updatedTemplate) => {
       queryClient.invalidateQueries(['execution-flow-templates']);
+      setSelectedTemplate(updatedTemplate);
+      setValidationResult(updatedTemplate.validation || null);
       setValidateModalVisible(false);
+      setDetailModalVisible(false);
+      handleEdit(updatedTemplate);
+      message.success('已应用AI优化建议，并打开模板编辑器供你确认结果');
     },
     onError: () => {
       message.error('应用建议失败');
@@ -227,13 +428,18 @@ const ExecutionFlowTemplatePage: React.FC = () => {
   const handleValidate = (template: ExecutionFlowTemplateDTO) => {
     setSelectedTemplate(template);
     setValidationResult(template.validation);
+    setValidationError(null);
+    setValidationErrorTitle(null);
     setValidateModalVisible(true);
+    setEnableExecutionTest(false);
+    clearValidationStageTimers();
+    setValidationStage('idle');
     // Parse test params if available
     try {
       const paramsSchema = template.paramsSchema as Record<string, any>;
+      const sampleParams: Record<string, any> = {};
       if (paramsSchema && paramsSchema.properties) {
         // Generate sample params from schema
-        const sampleParams: Record<string, any> = {};
         Object.entries(paramsSchema.properties).forEach(([key, prop]: [string, any]) => {
           if (prop.type === 'string') sampleParams[key] = prop.default || '示例值';
           else if (prop.type === 'number') sampleParams[key] = prop.default || 0;
@@ -243,13 +449,11 @@ const ExecutionFlowTemplatePage: React.FC = () => {
       } else {
         setTestParamsJson('');
       }
+      setTestUserInput(buildDefaultTestUserInput(template, sampleParams));
     } catch {
       setTestParamsJson('');
+      setTestUserInput(buildDefaultTestUserInput(template, {}));
     }
-    validateMutation.mutate({
-      id: template.id,
-      enableExecutionTest: false, // Default to false, user can enable in modal
-    });
   };
 
   const handleRunValidation = () => {
@@ -263,10 +467,20 @@ const ExecutionFlowTemplatePage: React.FC = () => {
         return;
       }
     }
+    if (enableExecutionTest && !testUserInput.trim()) {
+      message.error('请输入模拟用户输入，用于真实 AI 执行测试');
+      return;
+    }
+    setValidationResult(null);
+    setValidationError(null);
+    setValidationErrorTitle(null);
+    setValidateModalVisible(true);
+    beginValidationProgress(enableExecutionTest);
     validateMutation.mutate({
       id: selectedTemplate.id,
       enableExecutionTest,
       testParams,
+      testUserInput: enableExecutionTest ? testUserInput.trim() : undefined,
     });
   };
 
@@ -672,7 +886,7 @@ const ExecutionFlowTemplatePage: React.FC = () => {
                         <Input
                           value={step.api?.endpoint}
                           onChange={(e) => handleUpdateStep(index, 'api', { ...step.api, endpoint: e.target.value })}
-                          placeholder="API端点URL（支持{{变量}}）"
+                          placeholder="API端点URL（支持 {city}、{{city}}、{{flow_input.city}}）"
                           style={{ width: 300 }}
                         />
                       </Space>
@@ -1041,13 +1255,8 @@ const ExecutionFlowTemplatePage: React.FC = () => {
       <Modal
         title={`验证模板 - ${selectedTemplate?.name}`}
         open={validateModalVisible}
-        onCancel={() => {
-          setValidateModalVisible(false);
-          setSelectedTemplate(null);
-          setValidationResult(null);
-          setEnableExecutionTest(false);
-          setTestParamsJson('');
-        }}
+        onCancel={resetValidationModalState}
+        maskClosable={false}
         footer={[
           <Button
             key="revalidate"
@@ -1057,7 +1266,7 @@ const ExecutionFlowTemplatePage: React.FC = () => {
             onClick={handleRunValidation}
             style={{ marginRight: 8 }}
           >
-            重新验证
+            {validationResult ? '重新验证' : '开始验证'}
           </Button>,
           validationResult?.details?.autoAdjustment && (
             <Button
@@ -1071,7 +1280,7 @@ const ExecutionFlowTemplatePage: React.FC = () => {
               应用建议
             </Button>
           ),
-          <Button key="close" onClick={() => setValidateModalVisible(false)}>
+          <Button key="close" onClick={resetValidationModalState}>
             关闭
           </Button>,
         ]}
@@ -1092,20 +1301,91 @@ const ExecutionFlowTemplatePage: React.FC = () => {
               </Tooltip>
             </Space>
             {enableExecutionTest && (
-              <TextArea
-                value={testParamsJson}
-                onChange={(e) => setTestParamsJson(e.target.value)}
-                placeholder="测试参数JSON（用于填充流程中的变量）"
-                rows={4}
-              />
+              <>
+                <Alert
+                  type="info"
+                  showIcon
+                  message="执行测试说明"
+                  description="执行测试会真实调用 AI，以“模拟用户输入 + 结构化参数”的方式验证该流程是否能稳定完成一个原子能力，而不是自动扩展成完整业务流程。"
+                />
+                <TextArea
+                  value={testUserInput}
+                  onChange={(e) => setTestUserInput(e.target.value)}
+                  placeholder="模拟用户输入，例如：请帮我查询北京今天的天气"
+                  rows={3}
+                />
+                <TextArea
+                  value={testParamsJson}
+                  onChange={(e) => setTestParamsJson(e.target.value)}
+                  placeholder="测试参数JSON（用于填充流程中的变量）"
+                  rows={4}
+                />
+              </>
             )}
           </Space>
         </Card>
 
         {validateMutation.isLoading ? (
           <Space direction="vertical" style={{ width: '100%', textAlign: 'center' }}>
-            <Progress type="circle" percent={100} status="active" showInfo={false} />
-            <Text>{enableExecutionTest ? '正在执行流程测试...' : '正在进行AI深度审计...'}</Text>
+            <Steps
+              size="small"
+              direction="vertical"
+              current={enableExecutionTest && validationStage === 'executing' ? 1 : 0}
+              items={
+                enableExecutionTest
+                  ? [
+                      {
+                        title: 'AI 审计流程结构',
+                        description: '检查原子能力边界、参数闭合与确定性',
+                      },
+                      {
+                        title: 'AI 模拟用户执行',
+                        description: '基于模拟用户输入调用 flow_execute 做真实验证',
+                      },
+                    ]
+                  : [
+                      {
+                        title: 'AI 审计流程结构',
+                        description: '检查原子能力边界、参数闭合与自动优化建议',
+                      },
+                    ]
+              }
+            />
+            <div style={{
+              margin: '20px 0',
+              padding: '12px',
+              backgroundColor: '#f5f5f5',
+              borderRadius: '4px',
+              textAlign: 'left',
+              maxHeight: '200px',
+              overflowY: 'auto',
+              border: '1px solid #e8e8e8'
+            }}>
+              <div style={{ fontWeight: 'bold', marginBottom: '8px', borderBottom: '1px solid #ddd', paddingBottom: '4px' }}>
+                实时验证日志
+              </div>
+              {executionLogs.map((log, index) => (
+                <div key={index} style={{
+                  fontSize: '12px',
+                  fontFamily: 'monospace',
+                  marginBottom: '4px',
+                  color: log.startsWith('[Error]') ? '#ff4d4f' :
+                         log.startsWith('[Audit]') ? '#1890ff' :
+                         log.startsWith('[Execution]') ? '#52c41a' :
+                         '#555'
+                }}>
+                  {log}
+                </div>
+              ))}
+              <div style={{ textAlign: 'center', marginTop: '8px' }}>
+                <Progress percent={100} status="active" showInfo={false} size="small" />
+              </div>
+            </div>
+            <Text strong>
+              {enableExecutionTest && validationStage === 'executing'
+                ? '正在模拟用户输入并执行原子能力测试...'
+                : '正在进行AI深度审计...'}
+            </Text>
             <Text type="secondary">（这可能需要几秒到几十秒）</Text>
           </Space>
         ) : validationResult ? (
@@ -1205,8 +1485,44 @@ const ExecutionFlowTemplatePage: React.FC = () => {
               </Collapse>
             )}
           </Space>
+        ) : validationError ? (
+          <Space direction="vertical" style={{ width: '100%' }}>
+            <Alert
+              type="error"
+              showIcon
+              message={validationErrorTitle || '验证失败'}
+              description={validationError}
+            />
+            {executionLogs.length > 0 && (
+              <Collapse ghost defaultActiveKey={['error-log']}>
+                <Panel header="失败日志" key="error-log">
+                  <Timeline>
+                    {executionLogs.map((log, index) => (
+                      <Timeline.Item
+                        key={index}
+                        color={log.startsWith('[Error]') ? 'red' : 'blue'}
+                      >
+                        <Text style={{ fontSize: 12 }}>{log}</Text>
+                      </Timeline.Item>
+                    ))}
+                  </Timeline>
+                </Panel>
+              </Collapse>
+            )}
+            <Alert
+              type="info"
+              showIcon
+              message="你可以直接修改参数后重新验证"
+              description="当前弹窗会保持打开，方便查看失败原因并继续重试。"
+            />
+          </Space>
         ) : (
-          <Empty description="等待验证" />
+          <Alert
+            type="info"
+            showIcon
+            message="验证尚未开始"
+            description="打开验证面板后不会自动执行。请先确认是否启用执行测试，再点击“开始验证”。"
+          />
         )}
       </Modal>
 

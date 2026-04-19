@@ -4,6 +4,7 @@
  */
 
 import { Injectable, Logger, OnModuleInit, ForbiddenException, NotFoundException } from '@nestjs/common';
+import { randomUUID } from 'crypto';
 import { PrismaService } from '../../prisma/prisma.service';
 import {
   SkillConfigDTO,
@@ -40,6 +41,14 @@ const getAiOrchestratorUrl = () => {
   return `http://${externalHost}:3007`;
 };
 
+type SkillValidationStreamEvent = {
+  type: 'stage' | 'log' | 'result' | 'error';
+  content: string;
+  data?: Record<string, unknown>;
+};
+
+type SkillValidationEmitter = (event: SkillValidationStreamEvent) => void;
+
 /**
  * 默认Skill配置
  */
@@ -47,7 +56,6 @@ const DEFAULT_SKILLS: CreateSkillDTO[] = [
   {
     name: '保密合同生成',
     description: '生成保密协议/NDA文档',
-    category: 'template',
     triggerKeywords: ['保密', 'NDA', '保密协议', '保密合同', '机密', '保密条款'],
     paramsSchema: {
       properties: {
@@ -108,13 +116,17 @@ const DEFAULT_SKILLS: CreateSkillDTO[] = [
         description: '渲染模板生成文档',
       },
     },
-    executionFlow: ['skill_match', 'generate_parameters', 'confirm', 'document_render'],
+    executionFlow: [
+      { type: 'tool', name: 'AI语义匹配', tool: { name: 'skill_match' } },
+      { type: 'tool', name: 'AI生成参数', tool: { name: 'generate_parameters' } },
+      { type: 'tool', name: '用户确认', tool: { name: 'confirm' } },
+      { type: 'tool', name: '文档渲染', tool: { name: 'document_render' } },
+    ],
     tools: ['skill_match', 'generate_parameters', 'user_ask', 'document_render'],
   },
   {
     name: '劳动合同生成',
     description: '生成劳动合同文档',
-    category: 'template',
     triggerKeywords: ['劳动合同', '雇佣合同', '入职合同', '员工合同', '劳动合同书'],
     paramsSchema: {
       properties: {
@@ -167,13 +179,16 @@ const DEFAULT_SKILLS: CreateSkillDTO[] = [
       required: ['用人单位名称', '劳动者姓名', '劳动者身份证号', '合同期限', '工作岗位', '月薪', '签订日期'],
     },
     templateId: 'labor-contract-template',
-    executionFlow: ['collect_params', 'confirm', 'render'],
+    executionFlow: [
+      { type: 'tool', name: '收集参数', tool: { name: 'param_collect' } },
+      { type: 'tool', name: '用户确认', tool: { name: 'confirm' } },
+      { type: 'tool', name: '渲染输出', tool: { name: 'render' } },
+    ],
     tools: ['param_collect', 'user_ask', 'document_generate'],
   },
   {
     name: '天气查询',
     description: '查询指定城市的天气信息',
-    category: 'query',
     triggerKeywords: ['天气', '查询天气', '天气预报', '天气情况', 'weather'],
     paramsSchema: {
       properties: {
@@ -186,7 +201,11 @@ const DEFAULT_SKILLS: CreateSkillDTO[] = [
       },
       required: ['city'],
     },
-    executionFlow: ['skill_match', 'api_call', 'format_result'],
+    executionFlow: [
+      { type: 'tool', name: 'AI语义匹配', tool: { name: 'skill_match' } },
+      { type: 'tool', name: 'API调用', tool: { name: 'api_call' } },
+      { type: 'tool', name: '结果格式化', tool: { name: 'format_result' } },
+    ],
     tools: ['skill_match', 'api_call', 'flow_execute'],
     // executionFlowTemplateId will be set dynamically after template is created
   },
@@ -214,10 +233,10 @@ export class SkillService implements OnModuleInit {
    */
   private async loadDefaultSkills() {
     // 先获取流程模板ID用于关联
-    const weatherTemplate = await this.prisma.$queryRawUnsafe<{ id: string }[]>(
+    const weatherTemplate = await this.prisma.$queryRawUnsafe(
       `SELECT id FROM execution_flow_templates WHERE name = $1`,
       '天气查询流程'
-    );
+    ) as any[];
     const weatherTemplateId = weatherTemplate[0]?.id;
 
     for (const skill of DEFAULT_SKILLS) {
@@ -228,18 +247,29 @@ export class SkillService implements OnModuleInit {
       if (!existing) {
         // 如果是天气查询技能，关联流程模板ID
         if (skill.name === '天气查询' && weatherTemplateId) {
-          skill.executionFlowTemplateId = weatherTemplateId;
+          skill.executionFlowTemplateIds = [weatherTemplateId];
         }
         await this.createSkill(skill);
         this.logger.log(`Created default skill: ${skill.name}`);
       } else {
-        // 如果天气查询技能存在但没有关联流程模板，更新关联
-        if (skill.name === '天气查询' && weatherTemplateId && !existing.executionFlowTemplateId) {
+        // 同步默认技能的核心配置，防止被误修改或丢失
+        const shouldSyncParams = !existing.paramsSchema ||
+          Object.keys((existing.paramsSchema as any).properties || {}).length === 0;
+
+        const existingFlowTemplateIds = (existing.executionFlowTemplateIds as string[]) || [];
+
+        if (shouldSyncParams || (skill.name === '天气查询' && weatherTemplateId && !existingFlowTemplateIds.includes(weatherTemplateId))) {
           await this.prisma.skillConfig.update({
             where: { id: existing.id },
-            data: { executionFlowTemplateId: weatherTemplateId },
+            data: {
+              paramsSchema: skill.paramsSchema as any,
+              executionFlowTemplateIds: skill.name === '天气查询' && weatherTemplateId
+                ? Array.from(new Set([...existingFlowTemplateIds, weatherTemplateId]))
+                : existingFlowTemplateIds,
+              triggerKeywords: (existing.triggerKeywords as any[] || []).length === 0 ? skill.triggerKeywords : (existing.triggerKeywords as any[]),
+            },
           });
-          this.logger.log(`Updated weather skill with flow template: ${weatherTemplateId}`);
+          this.logger.log(`Synced default skill configuration: ${skill.name}`);
         }
       }
     }
@@ -253,15 +283,14 @@ export class SkillService implements OnModuleInit {
       data: {
         name: dto.name,
         description: dto.description,
-        category: dto.category || 'template',
         triggerKeywords: dto.triggerKeywords,
         paramsSchema: dto.paramsSchema as any,  // Cast to JSON for Prisma
         templateId: dto.templateId,
         carboneTemplateId: dto.carboneTemplateId,
         carboneSkillId: dto.carboneSkillId,
-        executionFlowTemplateId: dto.executionFlowTemplateId,
+        executionFlowTemplateIds: dto.executionFlowTemplateIds || [],
         apiEndpoints: dto.apiEndpoints as any,
-        executionFlow: dto.executionFlow || [],
+        executionFlow: (dto.executionFlow || []) as any,
         tools: dto.tools || [],
         isActive: true,
       },
@@ -302,15 +331,14 @@ export class SkillService implements OnModuleInit {
       data: {
         name: dto.name,
         description: dto.description,
-        category: dto.category,
         triggerKeywords: dto.triggerKeywords,
         paramsSchema: dto.paramsSchema as any,  // Cast to JSON for Prisma
         templateId: dto.templateId,
         carboneTemplateId: dto.carboneTemplateId,
         carboneSkillId: dto.carboneSkillId,
-        executionFlowTemplateId: dto.executionFlowTemplateId,
+        executionFlowTemplateIds: dto.executionFlowTemplateIds,
         apiEndpoints: dto.apiEndpoints as any,
-        executionFlow: dto.executionFlow,
+        executionFlow: (dto.executionFlow || []) as any,
         tools: dto.tools,
       },
     });
@@ -362,20 +390,21 @@ export class SkillService implements OnModuleInit {
     if (bestMatch) {
       // 计算置信度
       const confidence = Math.min(bestScore / bestMatch.triggerKeywords.length, 1);
+      const { collectedParams, missingParams } = this.extractParamsFromUserInput(bestMatch, userInput);
 
       return {
         skillId: bestMatch.id,
         skillName: bestMatch.name,
         matchedKeywords,
         confidence,
-        collectedParams: {},
-        missingParams: bestMatch.paramsSchema.required,
+        collectedParams,
+        missingParams,
         paramsSchema: bestMatch.paramsSchema,
         templateId: bestMatch.templateId,
         carboneTemplateId: bestMatch.carboneTemplateId,
         carboneSkillId: bestMatch.carboneSkillId,
         apiEndpoints: bestMatch.apiEndpoints,
-        executionFlowTemplateId: bestMatch.executionFlowTemplateId,
+        executionFlowTemplateIds: bestMatch.executionFlowTemplateIds,
       };
     }
 
@@ -408,10 +437,10 @@ export class SkillService implements OnModuleInit {
       include: { role: true },
     });
 
-    const roleIds = userRoles.map(ur => ur.roleId);
+    const roleIds = userRoles.map((ur: any) => ur.roleId);
 
     // 4. 检查用户是否是 admin（通过角色关联）
-    const isAdmin = userRoles.some(ur => ur.role.name === 'admin' ||
+    const isAdmin = userRoles.some((ur: any) => ur.role.name === 'admin' ||
       (ur.role.permissions as Record<string, boolean>)?.['all_skills'] === true);
 
     if (isAdmin) {
@@ -434,7 +463,7 @@ export class SkillService implements OnModuleInit {
     const uniqueSkillIds = new Set<string>();
     const skills: SkillConfigDTO[] = [];
 
-    for (const perm of skillPermissions) {
+    for (const perm of skillPermissions as any[]) {
       if (!uniqueSkillIds.has(perm.skillId) && perm.skill.isActive) {
         uniqueSkillIds.add(perm.skillId);
         skills.push(this.toDTO(perm.skill));
@@ -460,7 +489,7 @@ export class SkillService implements OnModuleInit {
     });
 
     // 2. Admin 默认有权限
-    const isAdmin = userRoles.some(ur => ur.role.name === 'admin' ||
+    const isAdmin = userRoles.some((ur: any) => ur.role.name === 'admin' ||
       (ur.role.permissions as Record<string, boolean>)?.['all_skills'] === true);
     if (isAdmin) {
       return true;
@@ -475,7 +504,7 @@ export class SkillService implements OnModuleInit {
     }
 
     // 4. 检查用户角色是否有权限
-    const roleIds = userRoles.map(ur => ur.roleId);
+    const roleIds = userRoles.map((ur: any) => ur.roleId);
     const permission = await this.prisma.skillPermission.findFirst({
       where: {
         skillId,
@@ -497,6 +526,7 @@ export class SkillService implements OnModuleInit {
     if (!skill) {
       throw new NotFoundException('Skill not found');
     }
+
     if (!role) {
       throw new NotFoundException('Role not found');
     }
@@ -549,7 +579,7 @@ export class SkillService implements OnModuleInit {
       include: { skill: true, role: true },
     });
 
-    return permissions.map(perm => ({
+    return permissions.map((perm: any) => ({
       skillId: perm.skillId,
       skillName: perm.skill.name,
       roleId: perm.roleId,
@@ -607,19 +637,20 @@ ${skillsXml}
       if (aiResponse) {
         const matchedSkill = availableSkills.find(s => s.name === aiResponse.matchedSkill);
         if (matchedSkill) {
+          const { collectedParams, missingParams } = this.extractParamsFromUserInput(matchedSkill, userInput);
           return {
             skillId: matchedSkill.id,
             skillName: matchedSkill.name,
             matchedKeywords: [], // AI 匹配不依赖关键词
             confidence: aiResponse.confidence,
             matchReason: aiResponse.reason,
-            collectedParams: {},
-            missingParams: matchedSkill.paramsSchema.required,
+            collectedParams,
+            missingParams,
             paramsSchema: matchedSkill.paramsSchema,
             templateId: matchedSkill.templateId,
             carboneTemplateId: matchedSkill.carboneTemplateId,
             carboneSkillId: matchedSkill.carboneSkillId,
-            executionFlowTemplateId: matchedSkill.executionFlowTemplateId,  // 新增
+            executionFlowTemplateIds: matchedSkill.executionFlowTemplateIds,  // 新增
             apiEndpoints: matchedSkill.apiEndpoints,
           };
         }
@@ -641,7 +672,6 @@ ${skillsXml}
     const lines = skills.map(s => `  <skill>
     <name>${s.name}</name>
     <description>${s.description || ''}</description>
-    <category>${s.category}</category>
   </skill>`).join('\n');
     return `<available_skills>\n${lines}\n</available_skills>`;
   }
@@ -708,20 +738,21 @@ ${skillsXml}
 
     if (bestMatch) {
       const confidence = Math.min(bestScore / bestMatch.triggerKeywords.length, 1);
+      const { collectedParams, missingParams } = this.extractParamsFromUserInput(bestMatch, userInput);
 
       return {
         skillId: bestMatch.id,
         skillName: bestMatch.name,
         matchedKeywords,
         confidence,
-        collectedParams: {},
-        missingParams: bestMatch.paramsSchema.required,
+        collectedParams,
+        missingParams,
         paramsSchema: bestMatch.paramsSchema,
         templateId: bestMatch.templateId,
         carboneTemplateId: bestMatch.carboneTemplateId,
         carboneSkillId: bestMatch.carboneSkillId,
         apiEndpoints: bestMatch.apiEndpoints,
-        executionFlowTemplateId: bestMatch.executionFlowTemplateId,
+        executionFlowTemplateIds: bestMatch.executionFlowTemplateIds,
       };
     }
 
@@ -739,6 +770,59 @@ ${skillsXml}
     return roles;
   }
 
+  private extractParamsFromUserInput(
+    skill: SkillConfigDTO,
+    userInput: string,
+  ): { collectedParams: Record<string, unknown>; missingParams: string[] } {
+    const collectedParams: Record<string, unknown> = {};
+    const requiredParams = skill.paramsSchema?.required || [];
+
+    // 针对“天气查询”提供稳定的城市提取，确保任务模式能直接执行 flow_execute
+    if (
+      (skill.name.includes('天气') || skill.triggerKeywords.some((keyword) => keyword.includes('天气'))) &&
+      skill.paramsSchema?.properties?.city
+    ) {
+      const city = this.extractCityFromWeatherQuery(userInput);
+      if (city) {
+        collectedParams.city = city;
+      }
+    }
+
+    const missingParams = requiredParams.filter((param) => {
+      const value = collectedParams[param];
+      return value === undefined || value === null || value === '';
+    });
+
+    return { collectedParams, missingParams };
+  }
+
+  private extractCityFromWeatherQuery(userInput: string): string | null {
+    const normalizedInput = userInput.replace(/\s+/g, '');
+    const patterns = [
+      /(?:告诉我|请告诉我|帮我查|帮我查询|查询|查下|查一下|看看|想知道)?([\u4e00-\u9fa5]{2,10}?)(?:今天|现在|当前)?(?:的)?天气/,
+      /天气(?:情况|预报)?(?:查询)?([\u4e00-\u9fa5]{2,10})/,
+    ];
+
+    for (const pattern of patterns) {
+      const match = normalizedInput.match(pattern);
+      const rawCity = match?.[1]?.trim();
+      if (!rawCity) {
+        continue;
+      }
+
+      const cleanedCity = rawCity
+        .replace(/^(告诉我|请告诉我|帮我查|帮我查询|查询|查下|查一下|看看|想知道)/, '')
+        .replace(/(今天|现在|当前)$/g, '')
+        .trim();
+
+      if (cleanedCity) {
+        return cleanedCity;
+      }
+    }
+
+    return null;
+  }
+
   /**
    * 转换为DTO
    */
@@ -747,16 +831,15 @@ ${skillsXml}
       id: skill.id,
       name: skill.name,
       description: skill.description,
-      category: skill.category,
-      triggerKeywords: skill.triggerKeywords,
-      paramsSchema: skill.paramsSchema,
+      triggerKeywords: skill.triggerKeywords as string[],
+      paramsSchema: skill.paramsSchema as any,
       templateId: skill.templateId,
       carboneTemplateId: skill.carboneTemplateId,
       carboneSkillId: skill.carboneSkillId,
-      executionFlowTemplateId: skill.executionFlowTemplateId,
-      apiEndpoints: skill.apiEndpoints,
-      executionFlow: skill.executionFlow,
-      tools: skill.tools,
+      executionFlowTemplateIds: (skill.executionFlowTemplateIds as string[]) || [],
+      apiEndpoints: skill.apiEndpoints as any,
+      executionFlow: (skill.executionFlow as any[]) || [],
+      tools: skill.tools as string[],
       isActive: skill.isActive,
     };
   }
@@ -764,11 +847,20 @@ ${skillsXml}
   /**
    * 验证Skill - AI完整验证（包含流程模板模拟执行）
    */
-  async validateSkill(skillId: string): Promise<SkillValidationResult> {
+  async validateSkill(
+    skillId: string,
+    emit?: SkillValidationEmitter,
+  ): Promise<SkillValidationResult> {
     const skill = await this.getSkill(skillId);
     if (!skill) {
       throw new NotFoundException('Skill not found');
     }
+
+    emit?.({
+      type: 'stage',
+      content: '开始验证 Skill 配置',
+      data: { stage: 'config', skillId, skillName: skill.name },
+    });
 
     const result: SkillValidationResult = {
       isValid: true,
@@ -793,7 +885,7 @@ ${skillsXml}
     result.details!.configAnalysis.hasTriggerKeywords = skill.triggerKeywords.length > 0;
     result.details!.configAnalysis.hasParamsSchema = Object.keys(skill.paramsSchema.properties).length > 0;
     result.details!.configAnalysis.hasTemplate = !!skill.carboneTemplateId;
-    result.details!.configAnalysis.hasFlowTemplate = !!skill.executionFlowTemplateId;
+    result.details!.configAnalysis.hasFlowTemplate = skill.executionFlowTemplateIds.length > 0;
 
     // 检查触发关键词质量
     if (skill.triggerKeywords.length < 3) {
@@ -825,31 +917,40 @@ ${skillsXml}
       }
     }
 
-    // 2. 如果关联了流程模板，进行AI模拟执行验证
-    if (skill.executionFlowTemplateId) {
-      try {
-        const flowTemplate = await this.executionFlowService.getTemplate(skill.executionFlowTemplateId);
-        if (flowTemplate) {
-          const flowAnalysis = await this.simulateExecutionFlow(skill, flowTemplate);
-          result.details!.flowAnalysis = flowAnalysis;
+    emit?.({
+      type: 'stage',
+      content: '基础配置检查完成，开始真实模拟执行',
+      data: {
+        stage: 'execution',
+        configAnalysis: result.details!.configAnalysis as unknown as Record<string, unknown>,
+      },
+    });
 
-          // 合并流程验证结果
-          result.score = Math.min(result.score, flowAnalysis.validationScore);
-          if (flowAnalysis.validationScore < 60) {
-            result.isValid = false;
-          }
+    // 2. 使用 ReAct AI 以“Skill 整体能力”进行模拟验证，而不是逐步骤逐个校验
+    try {
+      const simulation = await this.simulateSkillWithReactAI(skill, emit);
+      result.details!.skillSimulation = simulation;
+      result.score = Math.min(result.score, simulation.validationScore);
 
-          // 添加流程验证的建议
-          const failedSteps = flowAnalysis.executionSimulations.filter(s => !s.success);
-          if (failedSteps.length > 0) {
-            result.warnings.push(...failedSteps.map(s => `步骤"${s.stepName}"模拟执行失败: ${s.error}`));
-          }
-        }
-      } catch (error) {
-        const errorMsg = error instanceof Error ? error.message : 'Unknown error';
-        result.warnings.push(`流程模板验证失败: ${errorMsg}`);
-        result.score -= 20;
+      if (!simulation.success) {
+        result.isValid = false;
       }
+
+      if (simulation.issues.length > 0) {
+        result.warnings.push(...simulation.issues);
+      }
+
+      if (simulation.suggestions.length > 0) {
+        result.suggestions.push(...simulation.suggestions);
+      }
+
+      if (simulation.generatedSkill) {
+        result.suggestions.push('已生成标准 Skill 预览，可直接作为外部 AI 的可调用定义参考');
+      }
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : 'Unknown error';
+      result.warnings.push(`Skill 整体验证失败: ${errorMsg}`);
+      result.score -= 20;
     }
 
     // 确保分数在有效范围
@@ -868,118 +969,371 @@ ${skillsXml}
     });
 
     this.logger.log(`Validated skill ${skillId}: score=${result.score}, valid=${result.isValid}`);
+    emit?.({
+      type: 'result',
+      content: 'Skill 验证完成',
+      data: { validation: result as unknown as Record<string, unknown> },
+    });
     return result;
   }
 
   /**
-   * 模拟执行流程模板 - AI作为agent执行每个步骤
+   * 使用 ReAct AI 对 Skill 作为一个完整能力进行模拟验证
    */
-  private async simulateExecutionFlow(
+  private async simulateSkillWithReactAI(
     skill: SkillConfigDTO,
-    flowTemplate: any,
+    emit?: SkillValidationEmitter,
   ): Promise<{
-    templateId: string;
-    templateName: string;
-    stepCount: number;
-    executableSteps: number;
+    success: boolean;
     validationScore: number;
-    executionSimulations: Array<{
-      stepId: string;
-      stepName: string;
-      type: string;
-      simulated: boolean;
-      success: boolean;
-      output?: string;
-      error?: string;
-    }>;
+    simulatedRequest: string;
+    summary: string;
+    issues: string[];
+    suggestions: string[];
+    log?: string[];
+    iterations?: number;
+    generatedSkill?: Partial<SkillConfigDTO>;
   }> {
-    const steps = flowTemplate.steps as any[];
-    const simulationResults = [];
+    const simulatedRequest = this.buildSampleRequest(skill);
+    try {
+      const executionTrace = await this.executeSkillValidationFlow(skill, simulatedRequest, emit);
+      emit?.({
+        type: 'stage',
+        content: '真实模拟执行完成，开始 AI 审计',
+        data: { stage: 'audit' },
+      });
+      const auditResult = await this.auditSkillWithAI(skill, simulatedRequest, executionTrace, emit);
 
-    for (let i = 0; i < steps.length; i++) {
-      const step = steps[i];
-      const simulation = {
-        stepId: step.id || `step-${i}`,
-        stepName: step.name,
-        type: step.type,
-        simulated: false,
-        success: false,
-        output: undefined as string | undefined,
-        error: undefined as string | undefined,
-      };
+      const issues = Array.isArray(auditResult?.issues) ? auditResult.issues.map(String) : [];
+      const suggestions = Array.isArray(auditResult?.suggestions) ? auditResult.suggestions.map(String) : [];
 
-      try {
-        // 根据步骤类型进行模拟执行
-        switch (step.type) {
-          case 'text':
-            // 文本步骤：AI分析内容是否合理
-            const textResult = await this.simulateTextStep(step, skill);
-            simulation.simulated = true;
-            simulation.success = textResult.success;
-            simulation.output = textResult.output;
-            if (!textResult.success) {
-              simulation.error = textResult.error;
-            }
-            break;
-
-          case 'script':
-            // 脚本步骤：AI模拟脚本执行逻辑
-            const scriptResult = await this.simulateScriptStep(step, skill);
-            simulation.simulated = true;
-            simulation.success = scriptResult.success;
-            simulation.output = scriptResult.output;
-            if (!scriptResult.success) {
-              simulation.error = scriptResult.error;
-            }
-            break;
-
-          case 'tool':
-            // 工具步骤：AI模拟工具调用
-            const toolResult = await this.simulateToolStep(step, skill);
-            simulation.simulated = true;
-            simulation.success = toolResult.success;
-            simulation.output = toolResult.output;
-            if (!toolResult.success) {
-              simulation.error = toolResult.error;
-            }
-            break;
-
-          case 'api':
-            // API步骤：AI模拟API请求
-            const apiResult = await this.simulateApiStep(step, skill);
-            simulation.simulated = true;
-            simulation.success = apiResult.success;
-            simulation.output = apiResult.output;
-            if (!apiResult.success) {
-              simulation.error = apiResult.error;
-            }
-            break;
-
-          default:
-            simulation.error = `未知步骤类型: ${step.type}`;
-        }
-      } catch (error) {
-        simulation.error = error instanceof Error ? error.message : 'Unknown error';
+      if (!executionTrace.usedReactFlowExecute) {
+        issues.unshift('真实模拟执行阶段未实际调用 flow_execute');
       }
 
-      simulationResults.push(simulation);
+      return {
+        success: Boolean(auditResult?.success) && executionTrace.usedReactFlowExecute,
+        validationScore: Number(auditResult?.validationScore || 0),
+        simulatedRequest,
+        summary: String(auditResult?.summary || 'AI 未返回摘要'),
+        issues,
+        suggestions,
+        log: executionTrace.log,
+        iterations: executionTrace.iterations,
+        generatedSkill: auditResult?.generatedSkill,
+      };
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : 'Unknown error';
+      this.logger.error(`AI Skill validation failed: ${errorMsg}`);
+      return {
+        success: false,
+        validationScore: 0,
+        simulatedRequest,
+        summary: `AI 验证调用失败: ${errorMsg}`,
+        issues: ['AI 服务连接失败或响应超时'],
+        suggestions: ['请检查 ai-orchestrator 服务状态'],
+        log: [`[Error] ${errorMsg}`],
+      };
+    }
+  }
+
+  private async executeSkillValidationFlow(
+    skill: SkillConfigDTO,
+    simulatedRequest: string,
+    emit?: SkillValidationEmitter,
+  ): Promise<{
+    usedReactFlowExecute: boolean;
+    result: string;
+    log: string[];
+    iterations: number;
+  }> {
+    const aiOrchestratorUrl = getAiOrchestratorUrl();
+    const sampleParams = this.buildSampleParams(skill);
+    const templateId = skill.executionFlowTemplateIds?.[0];
+
+    if (!templateId) {
+      emit?.({
+        type: 'log',
+        content: '[System] Skill 未关联流程模板，未执行 flow_execute',
+        data: { phase: 'execution' },
+      });
+      return {
+        usedReactFlowExecute: false,
+        result: 'Skill 未关联流程模板，跳过真实执行阶段',
+        log: ['[System] Skill 未关联流程模板，未执行 flow_execute'],
+        iterations: 0,
+      };
     }
 
-    // 计算验证分数
-    const executableSteps = simulationResults.filter(s => s.simulated).length;
-    const successfulSteps = simulationResults.filter(s => s.success).length;
-    const validationScore = executableSteps > 0
-      ? Math.round((successfulSteps / executableSteps) * 100)
-      : 0;
+    const executionPrompt = [
+      '你是一个 Skill 执行验证代理，当前运行在 ReAct JSON 引擎中。',
+      '本阶段只负责真实模拟执行，不做总结报告。',
+      `技能名称：${skill.name}`,
+      `模拟用户请求：${simulatedRequest}`,
+      `测试参数：${JSON.stringify(sampleParams, null, 2)}`,
+      '执行规则：',
+      `1. 第一轮必须调用 flow_execute，actionInput 使用 {"templateId":"${templateId}","params":${JSON.stringify(sampleParams)}}。`,
+      '2. 拿到执行结果后，下一轮直接 finish。',
+      '3. finalAnswer 只保留执行结论和最终输出，不要生成额外 JSON。',
+    ].join('\n\n');
+
+    const response = await axios.post(`${aiOrchestratorUrl}/ai/chat/stream`, {
+      message: executionPrompt,
+      userId: 'skill-validator',
+      sessionId: `skill-exec-${skill.id}-${randomUUID()}`,
+      modelId: 'qwen3.5-plus',
+      config: {
+        mode: 'task',
+        maxIterations: 8,
+        tools: ['flow_execute'],
+      },
+    }, { responseType: 'stream', timeout: 120000 });
+
+    const executionLog: string[] = [];
+    let result = '';
+    let iterations = 0;
+    let usedReactFlowExecute = false;
+    let executionError = '';
+
+    for await (const chunk of response.data as AsyncIterable<any>) {
+      const lines = chunk.toString().split('\n');
+      for (const line of lines) {
+        if (!line.startsWith('data: ')) {
+          continue;
+        }
+
+        try {
+          const event = JSON.parse(line.slice(6));
+          let logLine: string | null = null;
+
+          if (event.type === 'thought') {
+            logLine = `[Thought] ${event.content}`;
+            iterations = event.iteration || iterations;
+          } else if (event.type === 'action') {
+            if (event.content === 'flow_execute') {
+              usedReactFlowExecute = true;
+            }
+            logLine = `[Action] ${event.content} ${JSON.stringify(event.data?.actionInput || {})}`;
+          } else if (event.type === 'observation') {
+            logLine = `[Observation] ${event.content?.slice(0, 500)}...`;
+          } else if (event.type === 'result') {
+            result = event.content;
+            logLine = `[Result] ${result}`;
+          } else if (event.type === 'error') {
+            executionError = event.content || '未知错误';
+            logLine = `[Error] ${executionError}`;
+          }
+
+          if (logLine) {
+            executionLog.push(logLine);
+            emit?.({
+              type: 'log',
+              content: logLine,
+              data: {
+                phase: 'execution',
+                iteration: event.iteration,
+                eventType: event.type,
+              },
+            });
+          }
+        } catch {
+          // Ignore partial or invalid json
+        }
+      }
+    }
+
+    if (executionError && !result) {
+      throw new Error(executionError);
+    }
 
     return {
-      templateId: flowTemplate.id,
-      templateName: flowTemplate.name,
-      stepCount: steps.length,
-      executableSteps,
-      validationScore,
-      executionSimulations: simulationResults,
+      usedReactFlowExecute,
+      result,
+      log: executionLog,
+      iterations,
     };
+  }
+
+  private async auditSkillWithAI(
+    skill: SkillConfigDTO,
+    simulatedRequest: string,
+    executionTrace: {
+      usedReactFlowExecute: boolean;
+      result: string;
+      log: string[];
+      iterations: number;
+    },
+    emit?: SkillValidationEmitter,
+  ): Promise<Record<string, any>> {
+    const aiOrchestratorUrl = getAiOrchestratorUrl();
+    emit?.({
+      type: 'log',
+      content: '[Audit] 正在根据执行轨迹生成最终审计结论',
+      data: { phase: 'audit' },
+    });
+    const auditPrompt = [
+      '你是一个 Skill 审计代理，请根据 Skill 配置和真实执行轨迹给出最终审计结论。',
+      '注意：这里的判断对象是一个单一的原子 Skill，而不是逐步骤挑错。',
+      `技能名称：${skill.name}`,
+      `技能描述：${skill.description || ''}`,
+      `触发关键词：${JSON.stringify(skill.triggerKeywords)}`,
+      `参数定义：${JSON.stringify(skill.paramsSchema, null, 2)}`,
+      `关联流程模板：${JSON.stringify(skill.executionFlowTemplateIds || [])}`,
+      `模拟用户请求：${simulatedRequest}`,
+      `是否调用 flow_execute：${executionTrace.usedReactFlowExecute}`,
+      `执行迭代次数：${executionTrace.iterations}`,
+      `执行日志：${JSON.stringify(executionTrace.log, null, 2)}`,
+      `执行结果：${executionTrace.result}`,
+      '请严格输出 JSON，不要输出其他文字：',
+      JSON.stringify({
+        success: true,
+        validationScore: 90,
+        summary: '一句话总结该 Skill 是否可用',
+        issues: ['问题1'],
+        suggestions: ['建议1'],
+        generatedSkill: {
+          name: skill.name,
+          description: skill.description,
+          triggerKeywords: skill.triggerKeywords,
+          paramsSchema: skill.paramsSchema,
+          executionFlowTemplateIds: skill.executionFlowTemplateIds,
+          executionFlow: skill.executionFlow,
+        },
+      }, null, 2),
+    ].join('\n\n');
+
+    const aiResponse = await axios.post(`${aiOrchestratorUrl}/ai/chat/stream`, {
+      message: auditPrompt,
+      sessionId: `skill-audit-${skill.id}-${randomUUID()}`,
+      modelId: 'qwen3.5-plus',
+      config: { mode: 'chat', maxIterations: 5 },
+    }, { responseType: 'stream', timeout: 120000 });
+
+    let fullContent = '';
+    let aiErrorReceived = '';
+    for await (const chunk of aiResponse.data as AsyncIterable<any>) {
+      const lines = chunk.toString().split('\n');
+      for (const line of lines) {
+        if (!line.startsWith('data: ')) {
+          continue;
+        }
+        try {
+          const data = JSON.parse(line.slice(6));
+          if (data.type === 'result') {
+            fullContent = data.content;
+          } else if (data.type === 'observation') {
+            emit?.({
+              type: 'log',
+              content: `[Audit] ${String(data.content || '').slice(0, 200)}...`,
+              data: { phase: 'audit', eventType: 'observation' },
+            });
+          } else if (data.type === 'error') {
+            aiErrorReceived = data.content || '未知错误';
+          }
+        } catch {
+          // Ignore partial or invalid json
+        }
+      }
+    }
+
+    if (!fullContent || !fullContent.trim()) {
+      throw new Error(aiErrorReceived || '未收到有效 AI 审计响应');
+    }
+
+    const parsed = this.extractJsonObject(fullContent);
+    if (!parsed) {
+      throw new Error(`AI 返回内容不是有效 JSON: ${fullContent.slice(0, 300)}`);
+    }
+
+    return parsed;
+  }
+
+  async applyGeneratedSkillAdjustment(
+    id: string,
+    generatedSkill?: Partial<SkillConfigDTO>,
+  ): Promise<SkillConfigDTO | null> {
+    const current = await this.getSkill(id);
+    if (!current) {
+      throw new NotFoundException('Skill not found');
+    }
+
+    if (!generatedSkill) {
+      throw new Error('No generated skill suggestion provided');
+    }
+
+    return this.updateSkill(id, {
+      name: generatedSkill.name || current.name,
+      description: generatedSkill.description || current.description,
+      triggerKeywords: generatedSkill.triggerKeywords || current.triggerKeywords,
+      paramsSchema: generatedSkill.paramsSchema || current.paramsSchema,
+      templateId: generatedSkill.templateId || current.templateId,
+      carboneTemplateId: generatedSkill.carboneTemplateId || current.carboneTemplateId,
+      carboneSkillId: generatedSkill.carboneSkillId || current.carboneSkillId,
+      executionFlowTemplateIds: generatedSkill.executionFlowTemplateIds || current.executionFlowTemplateIds,
+      executionFlow: generatedSkill.executionFlow || current.executionFlow,
+      tools: generatedSkill.tools || current.tools,
+      apiEndpoints: generatedSkill.apiEndpoints || current.apiEndpoints,
+    });
+  }
+
+  private buildSampleRequest(skill: SkillConfigDTO): string {
+    const requiredParams = skill.paramsSchema?.required || [];
+
+    if (requiredParams.length === 0) {
+      return `请帮我执行“${skill.name}”`;
+    }
+
+    const sampleArgs = requiredParams
+      .map((param) => `${param}为示例值`)
+      .join('，');
+
+    return `请帮我执行“${skill.name}”，${sampleArgs}`;
+  }
+
+  private buildSampleParams(skill: SkillConfigDTO): Record<string, unknown> {
+    const sampleParams: Record<string, unknown> = {};
+    const requiredParams = skill.paramsSchema?.required || [];
+
+    for (const param of requiredParams) {
+      const definition = skill.paramsSchema?.properties?.[param];
+      if (!definition) {
+        continue;
+      }
+
+      if (param.toLowerCase() === 'city' || param.includes('城市')) {
+        sampleParams[param] = '北京';
+        continue;
+      }
+
+      switch (definition.type) {
+        case 'number':
+          sampleParams[param] = 100;
+          break;
+        case 'boolean':
+          sampleParams[param] = true;
+          break;
+        case 'date':
+          sampleParams[param] = '2025-04-18';
+          break;
+        default:
+          sampleParams[param] = `${param}示例值`;
+      }
+    }
+
+    return sampleParams;
+  }
+
+  private extractJsonObject(content: string): Record<string, any> | null {
+    const match = content.match(/\{[\s\S]*\}/);
+    if (!match) {
+      return null;
+    }
+
+    try {
+      return JSON.parse(match[0]);
+    } catch {
+      return null;
+    }
   }
 
   /**

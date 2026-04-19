@@ -16,7 +16,9 @@ import {
   UseGuards,
   Request,
   ForbiddenException,
+  Res,
 } from '@nestjs/common';
+import { Response } from 'express';
 import { JwtAuthGuard } from '../../guards/jwt-auth.guard';
 import { RolesGuard } from '../../guards/roles.guard';
 import { Roles } from '../../decorators/roles.decorator';
@@ -69,6 +71,47 @@ export class SkillController {
   ): Promise<{ validation: SkillValidationResult }> {
     const validation = await this.skillService.validateSkill(id);
     return { validation };
+  }
+
+  @Post(':id/validate/stream')
+  @Roles('admin')
+  async validateSkillStream(
+    @Param('id') id: string,
+    @Res() res: Response,
+  ): Promise<void> {
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Connection', 'keep-alive');
+    res.setHeader('X-Accel-Buffering', 'no');
+
+    try {
+      await this.skillService.validateSkill(id, (event) => {
+        res.write(`data: ${JSON.stringify(event)}\n\n`);
+      });
+      res.end();
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : 'Unknown error';
+      res.write(`data: ${JSON.stringify({ type: 'error', content: errorMsg })}\n\n`);
+      res.end();
+    }
+  }
+
+  @Post(':id/apply-adjustment')
+  @Roles('admin')
+  async applyAdjustment(
+    @Param('id') id: string,
+    @Body() body?: { generatedSkill?: Partial<CreateSkillDTO> },
+  ): Promise<SkillConfigDTO> {
+    const updated = await this.skillService.applyGeneratedSkillAdjustment(
+      id,
+      body?.generatedSkill as Partial<SkillConfigDTO> | undefined,
+    );
+
+    if (!updated) {
+      throw new HttpException('Failed to apply AI adjustment', HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+
+    return updated;
   }
 
   /**

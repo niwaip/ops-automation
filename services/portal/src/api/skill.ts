@@ -1,4 +1,6 @@
 import { apiClient } from './client';
+import { ExecutionFlowStep } from './execution-flow';
+import { useAuthStore } from '../store/authStore';
 
 // Types based on auth service DTOs
 export interface ApiEndpoint {
@@ -22,14 +24,13 @@ export interface SkillConfigDTO {
   id: string;
   name: string;
   description: string;
-  category: string;
   triggerKeywords: string[];
   paramsSchema: ParamsSchema;
   templateId?: string;
   carboneTemplateId?: string;
   carboneSkillId?: string;
-  executionFlowTemplateId?: string;  // 关联的流程模板ID
-  executionFlow: string[];
+  executionFlowTemplateIds: string[];  // 关联的多个流程模板ID
+  executionFlow: ExecutionFlowStep[];
   tools: string[];
   apiEndpoints?: {
     generateParameters?: ApiEndpoint;
@@ -51,14 +52,13 @@ export interface SkillPermissionDTO {
 export interface CreateSkillDTO {
   name: string;
   description: string;
-  category?: string;
   triggerKeywords: string[];
   paramsSchema: ParamsSchema;
   templateId?: string;
   carboneTemplateId?: string;
   carboneSkillId?: string;
-  executionFlowTemplateId?: string;  // 关联的流程模板ID
-  executionFlow?: string[];
+  executionFlowTemplateIds?: string[];  // 关联的多个流程模板ID
+  executionFlow?: ExecutionFlowStep[];
   tools?: string[];
   apiEndpoints?: {
     generateParameters?: ApiEndpoint;
@@ -102,22 +102,28 @@ export interface SkillValidationResult {
       triggerKeywordQuality: string;
       paramsSchemaCompleteness: string;
     };
-    flowAnalysis?: {
-      templateId: string;
-      templateName: string;
-      stepCount: number;
-      executableSteps: number;
+    skillSimulation?: {
+      success: boolean;
       validationScore: number;
-      executionSimulations: Array<{
-        stepId: string;
-        stepName: string;
-        type: string;
-        simulated: boolean;
-        success: boolean;
-        output?: string;
-        error?: string;
-      }>;
+      simulatedRequest: string;
+      summary: string;
+      issues: string[];
+      suggestions: string[];
+      log?: string[];
+      iterations?: number;
+      generatedSkill?: Partial<SkillConfigDTO>;
     };
+  };
+}
+
+export interface SkillValidationStreamEvent {
+  type: 'stage' | 'log' | 'result' | 'error';
+  content: string;
+  data?: {
+    validation?: SkillValidationResult;
+    stage?: string;
+    phase?: string;
+    [key: string]: any;
   };
 }
 
@@ -145,7 +151,89 @@ export const skillApi = {
 
   // Validate skill with AI simulation
   validate: async (id: string): Promise<{ validation: SkillValidationResult }> => {
-    return apiClient.post<{ validation: SkillValidationResult }>(`/skills/${id}/validate`);
+    return apiClient.post<{ validation: SkillValidationResult }>(
+      `/skills/${id}/validate`,
+      undefined,
+      { timeout: 180000 },
+    );
+  },
+
+  streamValidate: (
+    id: string,
+    onEvent: (event: SkillValidationStreamEvent) => void,
+    onError?: (error: Error) => void,
+    onComplete?: () => void,
+  ): (() => void) => {
+    const abortController = new AbortController();
+    const token = useAuthStore.getState().accessToken;
+
+    (async () => {
+      try {
+        const response = await fetch(`/api/skills/${id}/validate/stream`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          },
+          signal: abortController.signal,
+        });
+
+        if (!response.ok) {
+          throw new Error(`HTTP error: ${response.status}`);
+        }
+
+        const reader = response.body?.getReader();
+        const decoder = new TextDecoder();
+
+        if (!reader) {
+          throw new Error('Response body is null');
+        }
+
+        let buffer = '';
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) {
+            break;
+          }
+
+          buffer += decoder.decode(value, { stream: true });
+          const chunks = buffer.split('\n\n');
+          buffer = chunks.pop() || '';
+
+          for (const chunk of chunks) {
+            if (!chunk.startsWith('data: ')) {
+              continue;
+            }
+            try {
+              const data = JSON.parse(chunk.slice(6));
+              onEvent(data as SkillValidationStreamEvent);
+            } catch (error) {
+              console.warn('Failed to parse SSE data:', chunk, error);
+            }
+          }
+        }
+
+        onComplete?.();
+      } catch (error) {
+        if (error instanceof Error && error.name === 'AbortError') {
+          return;
+        }
+        onError?.(error instanceof Error ? error : new Error('Unknown error'));
+      }
+    })();
+
+    return () => abortController.abort();
+  },
+
+  applyAdjustment: async (
+    id: string,
+    generatedSkill?: Partial<CreateSkillDTO>,
+  ): Promise<SkillConfigDTO> => {
+    return apiClient.post<SkillConfigDTO>(
+      `/skills/${id}/apply-adjustment`,
+      { generatedSkill },
+    );
   },
 
   // Permission management

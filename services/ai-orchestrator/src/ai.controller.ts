@@ -269,7 +269,7 @@ export class AIController {
     res.setHeader('Connection', 'keep-alive');
     res.setHeader('X-Accel-Buffering', 'no');
 
-    const mode = body.config?.mode || 'task';  // 默认task模式
+    const mode = body.config?.mode || 'chat';
 
     try {
       // 普通聊天模式：直接调用模型
@@ -364,6 +364,7 @@ export class AIController {
         const context: ExecutionContext = {
           sessionId: body.sessionId || 'default',
           userId: body.userId || 'anonymous',
+          userRoles: body.userRoles,
           history: [],
           uploadedFiles: body.files || [],
         };
@@ -388,6 +389,7 @@ export class AIController {
     const context: ExecutionContext = {
       sessionId: body.sessionId || 'default',
       userId: body.userId || 'anonymous',
+      userRoles: body.userRoles,
       history: [],
       uploadedFiles: body.files || [],
     };

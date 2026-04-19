@@ -28,10 +28,95 @@ import {
   ExecutionFlowTemplateDTO,
 } from './interfaces';
 
+type ValidationErrorCode =
+  | 'VALIDATION_TIMEOUT'
+  | 'AI_JSON_PARSE_ERROR'
+  | 'FLOW_EXECUTION_ERROR'
+  | 'NETWORK_ERROR'
+  | 'TEMPLATE_NOT_FOUND'
+  | 'VALIDATION_UNKNOWN_ERROR';
+
 @Controller('execution-flow-templates')
 @UseGuards(JwtAuthGuard, RolesGuard)
 export class ExecutionFlowTemplateController {
   constructor(private readonly templateService: ExecutionFlowTemplateService) {}
+
+  private classifyValidationError(error: any): {
+    code: ValidationErrorCode;
+    message: string;
+    status: HttpStatus;
+  } {
+    const rawMessage = typeof error?.message === 'string' && error.message.trim()
+      ? error.message
+      : '验证失败，请检查服务状态后重试';
+    const normalizedMessage = rawMessage.toLowerCase();
+
+    if (normalizedMessage.includes('template not found')) {
+      return {
+        code: 'TEMPLATE_NOT_FOUND',
+        message: '模板不存在',
+        status: HttpStatus.NOT_FOUND,
+      };
+    }
+
+    if (
+      error?.code === 'ECONNABORTED' ||
+      normalizedMessage.includes('timeout') ||
+      normalizedMessage.includes('超时')
+    ) {
+      return {
+        code: 'VALIDATION_TIMEOUT',
+        message: rawMessage,
+        status: HttpStatus.GATEWAY_TIMEOUT,
+      };
+    }
+
+    if (
+      normalizedMessage.includes('json') ||
+      normalizedMessage.includes('parse') ||
+      normalizedMessage.includes('invalid') ||
+      normalizedMessage.includes('不是有效 json')
+    ) {
+      return {
+        code: 'AI_JSON_PARSE_ERROR',
+        message: rawMessage,
+        status: HttpStatus.BAD_GATEWAY,
+      };
+    }
+
+    if (
+      normalizedMessage.includes('flow_execute') ||
+      normalizedMessage.includes('react') ||
+      normalizedMessage.includes('执行测试') ||
+      normalizedMessage.includes('执行引擎') ||
+      normalizedMessage.includes('stream')
+    ) {
+      return {
+        code: 'FLOW_EXECUTION_ERROR',
+        message: rawMessage,
+        status: HttpStatus.BAD_GATEWAY,
+      };
+    }
+
+    if (
+      normalizedMessage.includes('network') ||
+      normalizedMessage.includes('fetch') ||
+      normalizedMessage.includes('socket') ||
+      normalizedMessage.includes('econnrefused')
+    ) {
+      return {
+        code: 'NETWORK_ERROR',
+        message: rawMessage,
+        status: HttpStatus.BAD_GATEWAY,
+      };
+    }
+
+    return {
+      code: 'VALIDATION_UNKNOWN_ERROR',
+      message: rawMessage,
+      status: HttpStatus.INTERNAL_SERVER_ERROR,
+    };
+  }
 
   /**
    * 获取所有流程模板（支持分页和过滤）
@@ -143,17 +228,30 @@ export class ExecutionFlowTemplateController {
     @Param('id') id: string,
     @Query('aiServiceUrl') aiServiceUrl?: string,
     @Query('enableExecutionTest') enableExecutionTest?: string,
-    @Body() body?: { testParams?: Record<string, unknown> },
+    @Body() body?: { testParams?: Record<string, unknown>; testUserInput?: string },
   ) {
-    const enableExec = enableExecutionTest === 'true';
-    const testParams = body?.testParams;
-    const validationResult = await this.templateService.validateTemplate(
-      id,
-      aiServiceUrl,
-      testParams,
-      enableExec,
-    );
-    return { validationResult };
+    try {
+      const enableExec = enableExecutionTest === 'true';
+      const testParams = body?.testParams;
+      const testUserInput = body?.testUserInput;
+      const validationResult = await this.templateService.validateTemplate(
+        id,
+        aiServiceUrl,
+        testParams,
+        enableExec,
+        testUserInput,
+      );
+      return { validationResult };
+    } catch (error) {
+      const classified = this.classifyValidationError(error);
+      throw new HttpException(
+        {
+          code: classified.code,
+          message: classified.message,
+        },
+        classified.status
+      );
+    }
   }
 
   /**
@@ -162,40 +260,10 @@ export class ExecutionFlowTemplateController {
   @Post(':id/apply-adjustment')
   @Roles('admin')
   async applyAdjustment(@Param('id') id: string): Promise<ExecutionFlowTemplateDTO> {
-    const template = await this.templateService.getTemplate(id);
-    if (!template || !template.validation) {
-      throw new HttpException('No AI adjustment found for this template', HttpStatus.BAD_REQUEST);
-    }
-
-    const validation = template.validation as any;
-    const autoAdjustment = validation.details?.autoAdjustment;
-
-    if (!autoAdjustment) {
-      throw new HttpException('No improved flow suggested by AI', HttpStatus.NOT_FOUND);
-    }
-
-    // AI返回的autoAdjustment结构：{ 参数定义, 步骤列表, 流程目标, 预期结果, 触发关键词... }
-    const improvedSteps = autoAdjustment['步骤列表'] || autoAdjustment.steps || autoAdjustment;
-    const improvedParamsSchema = autoAdjustment['参数定义'] || autoAdjustment.inputSchema;
-    const improvedGoal = autoAdjustment['流程目标'] || autoAdjustment.goal;
-    const improvedExpectedResult = autoAdjustment['预期结果'] || autoAdjustment.expectedResult;
-    const improvedExecutionFlowKeys = autoAdjustment['触发关键词'] || autoAdjustment.executionFlowKeys;
-
-    // 验证步骤是数组
-    if (!Array.isArray(improvedSteps)) {
-      throw new HttpException('Invalid steps format in AI adjustment', HttpStatus.BAD_REQUEST);
-    }
-
-    const updated = await this.templateService.updateTemplate(id, {
-      steps: improvedSteps,
-      paramsSchema: improvedParamsSchema,
-      goal: improvedGoal,
-      expectedResult: improvedExpectedResult,
-      executionFlowKeys: improvedExecutionFlowKeys,
-    });
+    const updated = await this.templateService.applyAdjustment(id);
 
     if (!updated) {
-      throw new HttpException('Failed to update template', HttpStatus.INTERNAL_SERVER_ERROR);
+      throw new HttpException('Failed to apply AI adjustment', HttpStatus.INTERNAL_SERVER_ERROR);
     }
 
     return updated;

@@ -210,17 +210,24 @@ export const executionFlowApi = {
       aiServiceUrl?: string;
       enableExecutionTest?: boolean;
       testParams?: Record<string, any>;
+      testUserInput?: string;
     },
   ): Promise<ValidateResponse> => {
     const params = new URLSearchParams();
     if (options?.aiServiceUrl) params.append('aiServiceUrl', encodeURIComponent(options.aiServiceUrl));
     if (options?.enableExecutionTest) params.append('enableExecutionTest', 'true');
 
-    const body = options?.testParams ? { testParams: options.testParams } : undefined;
+    const body = options?.testParams || options?.testUserInput
+      ? {
+          testParams: options?.testParams,
+          testUserInput: options?.testUserInput,
+        }
+      : undefined;
 
     return apiClient.post<ValidateResponse>(
       `/execution-flow-templates/${id}/validate?${params.toString()}`,
       body,
+      { timeout: 180000 },
     );
   },
 

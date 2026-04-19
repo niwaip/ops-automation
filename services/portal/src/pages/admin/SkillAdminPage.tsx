@@ -1,5 +1,5 @@
-import React, { useState, useMemo } from 'react';
-import { Table, Card, Button, Input, Space, Tag, Typography, Modal, message, Form, Select, Descriptions, Tabs, Tooltip, Collapse, Steps, Divider, Badge } from 'antd';
+import React, { useEffect, useRef, useState } from 'react';
+import { Table, Card, Button, Input, Space, Tag, Typography, Modal, message, Form, Select, Descriptions, Tabs, Tooltip, Collapse, Steps, Divider, Badge, Alert, Popconfirm } from 'antd';
 import {
   SearchOutlined,
   ReloadOutlined,
@@ -15,39 +15,101 @@ import {
   OrderedListOutlined,
   CheckCircleOutlined,
   ExclamationCircleOutlined,
+  DragOutlined,
+  CloseOutlined,
+  CodeOutlined,
+  MessageOutlined,
+  SettingOutlined,
 } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
 import { useQuery, useMutation, useQueryClient } from 'react-query';
-import { skillApi, roleApi, SkillConfigDTO, SkillPermissionDTO, CreateSkillDTO, SkillValidationResult } from '../../api/skill';
+import {
+  skillApi,
+  roleApi,
+  SkillConfigDTO,
+  SkillPermissionDTO,
+  CreateSkillDTO,
+  SkillValidationResult,
+  SkillValidationStreamEvent,
+} from '../../api/skill';
 import { carboneApi, CarboneTemplateDTO } from '../../api/carbone';
-import { executionFlowApi, EXECUTION_FLOW_CATEGORIES } from '../../api/execution-flow';
+import { executionFlowApi } from '../../api/execution-flow';
 import type { ColumnsType } from 'antd/es/table';
 
-const { Title, Text, Link } = Typography;
+const { Title, Text } = Typography;
 const { Option } = Select;
 const { TabPane } = Tabs;
 const { Panel } = Collapse;
 
-// Default categories (will be merged with flow template categories)
-const DEFAULT_CATEGORIES: Record<string, { label: string; color: string; desc: string }> = {
-  template: { label: '文档模板', color: 'blue', desc: '基于模板生成文档（Word/PDF等）' },
-  analysis: { label: '数据分析', color: 'green', desc: '数据统计、报表分析' },
-  automation: { label: '自动化', color: 'purple', desc: '自动化流程执行' },
-  query: { label: '查询', color: 'cyan', desc: '数据查询、信息检索' },
-  notification: { label: '通知', color: 'orange', desc: '消息通知、邮件发送' },
+type SkillParamFormItem = {
+  name: string;
+  type: 'string' | 'number' | 'date' | 'boolean';
+  description: string;
+  required?: boolean;
+  defaultValue?: string;
+  extractionPrompt?: string;
 };
 
-// Available execution flow steps
-const EXECUTION_FLOW_STEPS: Record<string, { label: string; description: string }> = {
-  skill_match: { label: 'AI语义匹配', description: '根据用户输入自动识别意图并匹配最佳技能' },
-  collect_params: { label: '收集参数', description: '通过对话收集用户需要的参数' },
-  generate_parameters: { label: 'AI生成参数', description: 'AI从用户描述自动提取参数' },
-  confirm: { label: '用户确认', description: '展示参数并等待用户确认' },
-  document_render: { label: '文档渲染', description: '使用Carbone引擎渲染Word/PDF文档' },
-  render: { label: '渲染输出', description: '渲染最终输出内容' },
-  send_email: { label: '发送邮件', description: '发送邮件通知' },
-  save_database: { label: '保存数据', description: '保存数据到数据库' },
+const schemaToFormParams = (paramsSchema?: SkillConfigDTO['paramsSchema']): SkillParamFormItem[] => {
+  if (!paramsSchema?.properties) {
+    return [];
+  }
+
+  return Object.entries(paramsSchema.properties).map(([name, config]) => ({
+    name,
+    type: config.type,
+    description: config.description,
+    required: paramsSchema.required.includes(name),
+    defaultValue: config.default !== undefined ? String(config.default) : undefined,
+    extractionPrompt: config.extractionPrompt,
+  }));
 };
+
+const formParamsToSchema = (items: SkillParamFormItem[] = []) => {
+  const properties: Record<string, {
+    type: 'string' | 'number' | 'date' | 'boolean';
+    description: string;
+    required?: boolean;
+    default?: string | number | boolean;
+    extractionPrompt?: string;
+  }> = {};
+  const required: string[] = [];
+
+  items.forEach((item) => {
+    if (!item?.name) {
+      return;
+    }
+
+    properties[item.name] = {
+      type: item.type,
+      description: item.description,
+      required: !!item.required,
+      extractionPrompt: item.extractionPrompt || undefined,
+    };
+
+    if (item.defaultValue !== undefined && item.defaultValue !== '') {
+      properties[item.name].default = item.type === 'number'
+        ? Number(item.defaultValue)
+        : item.type === 'boolean'
+          ? item.defaultValue === 'true'
+          : item.defaultValue;
+    }
+
+    if (item.required) {
+      required.push(item.name);
+    }
+  });
+
+  return { properties, required };
+};
+
+// Step types for execution flow
+const STEP_TYPES = [
+  { label: '提示词 (Prompt)', value: 'text', icon: <MessageOutlined />, color: 'blue' },
+  { label: 'API 调用', value: 'api', icon: <ApiOutlined />, color: 'green' },
+  { label: '工具调用', value: 'tool', icon: <SettingOutlined />, color: 'purple' },
+  { label: '脚本执行', value: 'script', icon: <CodeOutlined />, color: 'orange' },
+];
 
 const SkillAdminPage: React.FC = () => {
   const { t } = useTranslation(['common', 'admin']);
@@ -62,32 +124,16 @@ const SkillAdminPage: React.FC = () => {
   const [selectedSkill, setSelectedSkill] = useState<SkillConfigDTO | null>(null);
   const [validationResult, setValidationResult] = useState<SkillValidationResult | null>(null);
   const [validatingSkillId, setValidatingSkillId] = useState<string | null>(null);
-  const [selectedTemplateCategory, setSelectedTemplateCategory] = useState<string | null>(null);
+  const [validationLogs, setValidationLogs] = useState<string[]>([]);
+  const [validationStage, setValidationStage] = useState('等待开始');
   const [form] = Form.useForm();
+  const validationAbortRef = useRef<(() => void) | null>(null);
 
   // Queries
   const skillsQuery = useQuery(['skills'], skillApi.list);
   const rolesQuery = useQuery(['roles'], roleApi.list);
   const templatesQuery = useQuery(['carbone-templates'], carboneApi.list);
   const executionFlowTemplatesQuery = useQuery(['execution-flow-templates'], () => executionFlowApi.list({ isActive: true }));
-  const flowCategoriesQuery = useQuery(['execution-flow-categories'], executionFlowApi.getCategories);
-
-  // Merge flow template categories with default categories (flow template categories as source)
-  const mergedCategories = useMemo(() => {
-    const categories = { ...DEFAULT_CATEGORIES };
-    // Add flow template categories as primary options
-    if (flowCategoriesQuery.data?.categories) {
-      flowCategoriesQuery.data.categories.forEach(cat => {
-        // Use flow template category as Skills category option
-        categories[cat.key] = {
-          label: cat.label,
-          color: cat.color,
-          desc: EXECUTION_FLOW_CATEGORIES[cat.key]?.desc || cat.label,
-        };
-      });
-    }
-    return categories;
-  }, [flowCategoriesQuery.data]);
 
   const permissionsQuery = useQuery(
     ['skill-permissions', selectedSkill?.id],
@@ -159,58 +205,77 @@ const SkillAdminPage: React.FC = () => {
     }
   );
 
-  const validateMutation = useMutation(
-    (skillId: string) => skillApi.validate(skillId),
+  const applyAdjustmentMutation = useMutation(
+    ({ id, generatedSkill }: { id: string; generatedSkill?: Partial<CreateSkillDTO> }) =>
+      skillApi.applyAdjustment(id, generatedSkill),
     {
-      onSuccess: (data) => {
-        setValidationResult(data.validation);
-        setValidatingSkillId(null);
-        message.success('验证完成');
+      onSuccess: (updatedSkill) => {
+        queryClient.invalidateQueries(['skills']);
+        setSelectedSkill(updatedSkill);
+        setValidationModalVisible(false);
+        setDetailModalVisible(false);
+        handleEdit(updatedSkill);
+        message.success('已应用 AI 建议，并打开技能编辑器供你确认结果');
       },
-      onError: () => {
-        setValidatingSkillId(null);
-        message.error('验证失败');
+      onError: (error: any) => {
+        const errorMessage = error?.response?.data?.message || error?.message || '应用建议失败';
+        message.error(typeof errorMessage === 'string' ? errorMessage : '应用建议失败');
       },
     }
   );
 
+  const appendValidationLog = (log: string) => {
+    setValidationLogs((prev) => [...prev, log]);
+  };
+
+  const stopValidationStream = () => {
+    validationAbortRef.current?.();
+    validationAbortRef.current = null;
+  };
+
+  const resetValidationState = (options?: { keepSelectedSkill?: boolean }) => {
+    stopValidationStream();
+    setValidationResult(null);
+    setValidationLogs([]);
+    setValidationStage('等待开始');
+    setValidatingSkillId(null);
+    if (!options?.keepSelectedSkill) {
+      setSelectedSkill(null);
+    }
+  };
+
+  useEffect(() => {
+    return () => {
+      stopValidationStream();
+    };
+  }, []);
+
   // Handlers
   const handleCreate = () => {
     setEditingSkill(null);
-    setSelectedTemplateCategory(null);
     form.resetFields();
     form.setFieldsValue({
-      category: 'template',
       triggerKeywords: [],
       executionFlow: [],
       tools: [],
+      parameterDefinitions: [],
+      executionFlowTemplateIds: [],
     });
     setEditModalVisible(true);
   };
 
   const handleEdit = (skill: SkillConfigDTO) => {
     setEditingSkill(skill);
-    // Find template category if template is linked
-    if (skill.executionFlowTemplateId) {
-      const template = executionFlowTemplatesQuery.data?.templates?.find(t => t.id === skill.executionFlowTemplateId);
-      if (template) {
-        setSelectedTemplateCategory(template.category);
-      } else {
-        setSelectedTemplateCategory(null);
-      }
-    } else {
-      setSelectedTemplateCategory(null);
-    }
     form.setFieldsValue({
       name: skill.name,
       description: skill.description,
-      category: skill.category,
       triggerKeywords: skill.triggerKeywords,
       executionFlow: skill.executionFlow || [],
       templateId: skill.templateId,
       carboneTemplateId: skill.carboneTemplateId,
       carboneSkillId: skill.carboneSkillId,
-      executionFlowTemplateId: skill.executionFlowTemplateId,
+      executionFlowTemplateIds: skill.executionFlowTemplateIds || [],
+      parameterDefinitions: schemaToFormParams(skill.paramsSchema),
     });
     setEditModalVisible(true);
   };
@@ -222,20 +287,18 @@ const SkillAdminPage: React.FC = () => {
 
   const handleSave = () => {
     form.validateFields().then((values) => {
+      const paramsSchema = formParamsToSchema(values.parameterDefinitions || []);
+
       const data: CreateSkillDTO = {
         name: values.name,
         description: values.description,
-        category: values.category || 'template',
         triggerKeywords: values.triggerKeywords || [],
         executionFlow: values.executionFlow || [],
-        paramsSchema: {
-          properties: {},
-          required: [],
-        },
+        paramsSchema,
         templateId: values.templateId,
         carboneTemplateId: values.carboneTemplateId,
         carboneSkillId: values.carboneSkillId,
-        executionFlowTemplateId: values.executionFlowTemplateId,
+        executionFlowTemplateIds: values.executionFlowTemplateIds || [],
       };
 
       if (editingSkill) {
@@ -270,46 +333,113 @@ const SkillAdminPage: React.FC = () => {
     }
   };
 
+  const handleValidationEvent = (event: SkillValidationStreamEvent) => {
+    if (event.type === 'stage') {
+      setValidationStage(event.content || '处理中');
+      appendValidationLog(`[阶段] ${event.content}`);
+      return;
+    }
+
+    if (event.type === 'log') {
+      appendValidationLog(event.content);
+      return;
+    }
+
+    if (event.type === 'result') {
+      const validation = event.data?.validation as SkillValidationResult | undefined;
+      if (validation) {
+        setValidationResult(validation);
+      }
+      setValidationStage('验证完成');
+      setValidatingSkillId(null);
+      validationAbortRef.current = null;
+      return;
+    }
+
+    if (event.type === 'error') {
+      appendValidationLog(`[错误] ${event.content}`);
+      setValidationStage('验证失败');
+      setValidatingSkillId(null);
+      validationAbortRef.current = null;
+      message.error(event.content || '验证失败');
+    }
+  };
+
   const handleValidate = (skill: SkillConfigDTO) => {
+    stopValidationStream();
     setSelectedSkill(skill);
     setValidationResult(null);
+    setValidationLogs([]);
+    setValidationStage('正在启动验证');
     setValidatingSkillId(skill.id);
-    setValidationModalVisible(true); // Open modal immediately to show loading state
-    validateMutation.mutate(skill.id);
+    setValidationModalVisible(true);
+    validationAbortRef.current = skillApi.streamValidate(
+      skill.id,
+      handleValidationEvent,
+      (error) => {
+        appendValidationLog(`[错误] ${error.message}`);
+        setValidationStage('验证失败');
+        setValidatingSkillId(null);
+        validationAbortRef.current = null;
+        message.error(error.message || '验证失败');
+      },
+      () => {
+        setValidatingSkillId((current) => (current === skill.id ? null : current));
+        validationAbortRef.current = null;
+      },
+    );
+  };
+
+  const handleCloseValidationModal = () => {
+    resetValidationState();
+    setValidationModalVisible(false);
+  };
+
+  const handleApplySuggestion = () => {
+    if (!selectedSkill || !validationResult?.details?.skillSimulation?.generatedSkill) {
+      return;
+    }
+
+    applyAdjustmentMutation.mutate({
+      id: selectedSkill.id,
+      generatedSkill: validationResult.details.skillSimulation.generatedSkill as Partial<CreateSkillDTO>,
+    });
   };
 
   // Filter skills by search text
   const filteredSkills = skillsQuery.data?.skills?.filter(
     (skill) =>
       skill.name.toLowerCase().includes(searchText.toLowerCase()) ||
-      skill.description.toLowerCase().includes(searchText.toLowerCase()) ||
-      skill.category.toLowerCase().includes(searchText.toLowerCase())
+      skill.description.toLowerCase().includes(searchText.toLowerCase())
   );
 
   // Render execution flow steps
-  const renderExecutionFlow = (flow: string[]) => {
+  const renderExecutionFlow = (flow: any[]) => {
     if (!flow || flow.length === 0) return <Text type="secondary">未配置</Text>;
-
-    const stepLabels: Record<string, string> = {
-      skill_match: 'AI语义匹配',
-      collect_params: '收集参数',
-      generate_parameters: 'AI生成参数',
-      confirm: '用户确认',
-      document_render: '文档渲染',
-      render: '渲染文档',
-    };
 
     return (
       <Steps
         size="small"
+        direction="vertical"
         current={-1}
-        items={flow.map((step, idx) => ({
-          title: stepLabels[step] || step,
-          status: 'wait',
-          icon: idx === 0 ? <ThunderboltOutlined /> :
-                step.includes('generate') || step.includes('ai') ? <RocketOutlined /> :
-                step.includes('render') ? <ApiOutlined /> : undefined,
-        }))}
+        items={flow.map((step) => {
+          const typeInfo = STEP_TYPES.find(t => t.value === step.type) || { label: step.type, icon: <SettingOutlined />, color: 'default' };
+          return {
+            title: (
+              <Space>
+                <Tag color={typeInfo.color}>{typeInfo.label}</Tag>
+                <Text strong>{step.name}</Text>
+              </Space>
+            ),
+            description: (
+              <div style={{ fontSize: 12, color: '#666' }}>
+                {step.content || step.api?.endpoint || step.tool?.name || step.script?.language || '无详情'}
+              </div>
+            ),
+            status: 'wait',
+            icon: typeInfo.icon,
+          };
+        })}
       />
     );
   };
@@ -349,65 +479,36 @@ const SkillAdminPage: React.FC = () => {
       render: (name: string) => <strong>{name}</strong>,
     },
     {
-      title: t('admin:skillCategory'),
-      dataIndex: 'category',
-      key: 'category',
-      width: 120,
-      render: (category: string) => {
-        const info = mergedCategories[category] || { label: category, color: 'default', desc: '自定义分类' };
-        return (
-          <Tooltip title={info.desc}>
-            <Tag color={info.color}>{info.label}</Tag>
-          </Tooltip>
-        );
-      },
-    },
-    {
       title: t('admin:skillDescription'),
       dataIndex: 'description',
       key: 'description',
       ellipsis: true,
     },
     {
-      title: '模板配置',
-      key: 'templateConfig',
-      width: 180,
-      render: (_, record) => (
-        <Space direction="vertical" size="small">
-          {record.carboneTemplateId && (
-            <Tooltip title="Carbone模板ID">
-              <Tag color="processing">模板: {record.carboneTemplateId.slice(0, 8)}...</Tag>
-            </Tooltip>
-          )}
-          {record.carboneSkillId && (
-            <Tooltip title="Carbone技能ID">
-              <Tag color="cyan">Skill: {record.carboneSkillId.slice(0, 8)}...</Tag>
-            </Tooltip>
-          )}
-          {!record.carboneTemplateId && !record.carboneSkillId && (
-            <Text type="secondary">无模板</Text>
-          )}
-        </Space>
-      ),
-    },
-    {
       title: '执行流程',
       key: 'executionFlow',
       width: 200,
       render: (_, record) => {
-        if (!record.executionFlow || record.executionFlow.length === 0) {
+        const hasTemplates = record.executionFlowTemplateIds && record.executionFlowTemplateIds.length > 0;
+        const hasInline = record.executionFlow && record.executionFlow.length > 0;
+        
+        if (hasTemplates && hasInline) {
+          return <Tag color="orange" icon={<OrderedListOutlined />}>模板 + 手动追加</Tag>;
+        }
+        if (hasTemplates) {
+          return <Tag color="processing" icon={<OrderedListOutlined />}>关联模板流程</Tag>;
+        }
+        if (!hasInline) {
           return <Text type="secondary">默认流程</Text>;
         }
         return (
-          <Tooltip title={`步骤: ${record.executionFlow.join(' → ')}`}>
-            <Space>
-              {record.executionFlow.map((step, idx) => (
-                <Tag key={idx} color={idx === 0 ? 'gold' : 'default'}>
-                  {step}
-                </Tag>
-              ))}
-            </Space>
-          </Tooltip>
+          <Space wrap>
+            {record.executionFlow.map((step, idx) => (
+              <Badge key={idx} count={idx + 1} size="small" style={{ backgroundColor: '#1890ff' }}>
+                <Tag style={{ margin: 0 }}>{step.name}</Tag>
+              </Badge>
+            ))}
+          </Space>
         );
       },
     },
@@ -541,15 +642,11 @@ const SkillAdminPage: React.FC = () => {
         <Space direction="vertical" size="small">
           <Text strong>Skills管理说明：</Text>
           <Text>• Skills定义了系统能执行的操作，包括文档生成、数据分析、自动化流程等</Text>
-          <Text>• 每个Skill可配置<strong>模板</strong>、<strong>触发关键字</strong>、<strong>权限</strong>等属性</Text>
+          <Text>• 每个Skill可配置<strong>执行步骤</strong>、<strong>触发关键字</strong>、<strong>权限</strong>等属性</Text>
           <Divider style={{ margin: '8px 0' }} />
           <Text strong>匹配机制：</Text>
           <Text>• <Badge status="success">AI语义匹配</Badge> - 主要方式，自动识别用户意图</Text>
           <Text>• <Badge status="warning">触发关键字</Badge> - 回退方案。AI服务不可用时使用</Text>
-          <Divider style={{ margin: '8px 0' }} />
-          <Text strong>模板配置：</Text>
-          <Text>• 配置<strong>Carbone模板ID</strong>后，可调用AI生成参数并渲染文档</Text>
-          <Text>• 可在下方表格中查看已有的Carbone模板，或前往<Link href="/carbone-templates">模板管理</Link>页面创建新模板</Text>
         </Space>
       </Card>
 
@@ -616,88 +713,99 @@ const SkillAdminPage: React.FC = () => {
           setSelectedSkill(null);
         }}
         footer={null}
-        width={800}
+        width={850}
       >
         {selectedSkill && (
-          <Collapse defaultActiveKey={['basic', 'flow', 'api']}>
+          <Collapse defaultActiveKey={['basic', 'flow', 'params']}>
             <Panel header="基本信息" key="basic">
               <Descriptions bordered size="small" column={2}>
                 <Descriptions.Item label="技能ID">{selectedSkill.id}</Descriptions.Item>
-                <Descriptions.Item label="分类">
-                  <Tag color={mergedCategories[selectedSkill.category]?.color || 'default'}>
-                    {mergedCategories[selectedSkill.category]?.label || selectedSkill.category}
-                  </Tag>
-                  <Text type="secondary" style={{ marginLeft: 8 }}>
-                    {mergedCategories[selectedSkill.category]?.desc || '自定义分类'}
-                  </Text>
-                </Descriptions.Item>
                 <Descriptions.Item label="描述" span={2}>{selectedSkill.description}</Descriptions.Item>
                 <Descriptions.Item label="触发关键字" span={2}>
                   <Space wrap>
                     {selectedSkill.triggerKeywords?.map((kw) => (
                       <Tag key={kw} color="orange">{kw}</Tag>
                     ))}
-                    <Text type="secondary" style={{ marginLeft: 8 }}>
-                      (AI匹配失败时的回退方案)
-                    </Text>
                   </Space>
-                </Descriptions.Item>
-              </Descriptions>
-            </Panel>
-
-            <Panel header="模板配置" key="template">
-              <Descriptions bordered size="small" column={2}>
-                <Descriptions.Item label="Carbone模板ID">
-                  {selectedSkill.carboneTemplateId || <Text type="secondary">未配置</Text>}
-                </Descriptions.Item>
-                <Descriptions.Item label="Carbone技能ID">
-                  {selectedSkill.carboneSkillId || <Text type="secondary">未配置</Text>}
-                </Descriptions.Item>
-                <Descriptions.Item label="内部模板ID">
-                  {selectedSkill.templateId || <Text type="secondary">未配置</Text>}
                 </Descriptions.Item>
               </Descriptions>
             </Panel>
 
             <Panel header="执行流程" key="flow">
-              <div style={{ padding: 16 }}>
-                {renderExecutionFlow(selectedSkill.executionFlow)}
-              </div>
-            </Panel>
-
-            <Panel header="API端点" key="api">
-              <div style={{ padding: 16 }}>
-                {renderApiEndpoints(selectedSkill.apiEndpoints)}
-              </div>
-            </Panel>
-
-            <Panel header="参数Schema" key="params">
-              <div style={{ padding: 16 }}>
-                {selectedSkill.paramsSchema?.required?.length > 0 ? (
-                  <Space direction="vertical" size="small">
-                    <Text strong>必填参数：</Text>
-                    {selectedSkill.paramsSchema.required.map((param) => (
-                      <Tag key={param} color="red">{param}</Tag>
-                    ))}
-                    <Divider style={{ margin: '8px 0' }} />
-                    <Text strong>所有参数：</Text>
-                    {Object.entries(selectedSkill.paramsSchema.properties || {}).map(([key, value]) => (
-                      <Descriptions key={key} size="small" bordered column={1}>
-                        <Descriptions.Item label={key}>
-                          <Space>
-                            <Tag color={value.required ? 'red' : 'default'}>
-                              {value.required ? '必填' : '可选'}
-                            </Tag>
-                            <Text>{value.description}</Text>
-                            {value.default && <Text type="secondary">默认: {String(value.default)}</Text>}
-                          </Space>
-                        </Descriptions.Item>
-                      </Descriptions>
-                    ))}
+              <div style={{ padding: '8px 16px' }}>
+                {selectedSkill.executionFlowTemplateIds && selectedSkill.executionFlowTemplateIds.length > 0 ? (
+                  <Space direction="vertical" style={{ width: '100%' }}>
+                    <Alert
+                      message="此技能关联了流程模板，将按顺序执行模板步骤，随后执行手动追加的步骤"
+                      type="info"
+                      showIcon
+                    />
+                    <div style={{ marginTop: 8 }}>
+                      <Text strong>关联模板 ID：</Text>
+                      {selectedSkill.executionFlowTemplateIds.map(id => (
+                        <Tag key={id} color="blue">{id}</Tag>
+                      ))}
+                    </div>
+                    <div style={{ marginTop: 16 }}>
+                      {renderExecutionFlow(selectedSkill.executionFlow)}
+                    </div>
                   </Space>
                 ) : (
-                  <Text type="secondary">未配置参数Schema</Text>
+                  renderExecutionFlow(selectedSkill.executionFlow)
                 )}
+              </div>
+            </Panel>
+
+            <Panel header="参数与配置" key="params">
+              <div style={{ padding: 16 }}>
+                <Tabs size="small">
+                  <TabPane tab="参数 Schema" key="schema">
+                    {Object.keys(selectedSkill.paramsSchema?.properties || {}).length > 0 ? (
+                      <Space direction="vertical" style={{ width: '100%' }}>
+                        <div style={{ marginBottom: 8 }}>
+                          <Text strong>必填参数：</Text>
+                          {selectedSkill.paramsSchema.required.map((param) => (
+                            <Tag key={param} color="red" style={{ marginLeft: 8 }}>{param}</Tag>
+                          ))}
+                        </div>
+                        {Object.entries(selectedSkill.paramsSchema.properties).map(([key, value]) => (
+                          <Card key={key} size="small" style={{ marginBottom: 8 }} title={
+                            <Space>
+                              <Text strong>{key}</Text>
+                              <Tag color={value.required ? 'red' : 'default'}>{value.required ? '必填' : '可选'}</Tag>
+                              <Tag color="processing">{value.type}</Tag>
+                            </Space>
+                          }>
+                            <Text>{value.description}</Text>
+                            {value.extractionPrompt && (
+                              <div style={{ marginTop: 4 }}>
+                                <Text type="secondary" style={{ fontSize: 12 }}>提取提示: {value.extractionPrompt}</Text>
+                              </div>
+                            )}
+                          </Card>
+                        ))}
+                      </Space>
+                    ) : (
+                      <Text type="secondary">未配置参数Schema</Text>
+                    )}
+                  </TabPane>
+                  <TabPane tab="文档生成配置" key="carbone">
+                    <Descriptions bordered size="small" column={1}>
+                      <Descriptions.Item label="Carbone模板ID">
+                        {selectedSkill.carboneTemplateId || <Text type="secondary">未配置</Text>}
+                      </Descriptions.Item>
+                      <Descriptions.Item label="Carbone技能ID">
+                        {selectedSkill.carboneSkillId || <Text type="secondary">未配置</Text>}
+                      </Descriptions.Item>
+                      <Descriptions.Item label="内部模板ID">
+                        {selectedSkill.templateId || <Text type="secondary">未配置</Text>}
+                      </Descriptions.Item>
+                    </Descriptions>
+                  </TabPane>
+                  <TabPane tab="API 端点" key="api">
+                    {renderApiEndpoints(selectedSkill.apiEndpoints)}
+                  </TabPane>
+                </Tabs>
               </div>
             </Panel>
           </Collapse>
@@ -714,165 +822,261 @@ const SkillAdminPage: React.FC = () => {
           setEditingSkill(null);
         }}
         confirmLoading={createMutation.isLoading || updateMutation.isLoading}
-        width={600}
+        width={950}
+        footer={[
+          <Button key="cancel" onClick={() => setEditModalVisible(false)}>
+            取消
+          </Button>,
+          editingSkill && (
+            <Button
+              key="validate"
+              icon={<CheckCircleOutlined />}
+              onClick={() => handleValidate(editingSkill)}
+              loading={validatingSkillId === editingSkill.id}
+            >
+              验证并优化
+            </Button>
+          ),
+          <Button key="submit" type="primary" onClick={handleSave} loading={createMutation.isLoading || updateMutation.isLoading}>
+            确定
+          </Button>
+        ]}
       >
         <Form form={form} layout="vertical">
-          <Form.Item
-            name="name"
-            label={t('admin:skillName')}
-            rules={[{ required: true, message: '请输入技能名称' }]}
-          >
-            <Input />
-          </Form.Item>
-          <Form.Item
-            name="description"
-            label={t('admin:skillDescription')}
-            rules={[{ required: true, message: '请输入描述' }]}
-          >
-            <Input.TextArea rows={3} />
-          </Form.Item>
-          <Form.Item
-            name="executionFlowTemplateId"
-            label="流程模板"
-            extra="选择预设流程模板后，分类和执行步骤自动从模板继承，无需手动设置"
-          >
-            <Select
-              placeholder="选择流程模板"
-              allowClear
-              showSearch
-              loading={executionFlowTemplatesQuery.isLoading}
-              onChange={(value) => {
-                if (value) {
-                  const template = executionFlowTemplatesQuery.data?.templates?.find(t => t.id === value);
-                  if (template) {
-                    setSelectedTemplateCategory(template.category);
-                    form.setFieldsValue({
-                      category: template.category,
-                      executionFlow: template.executionFlowKeys || [],
-                    });
-                    message.success(`已应用模板 "${template.name}"，分类: ${EXECUTION_FLOW_CATEGORIES[template.category]?.label || template.category}`);
-                  }
-                } else {
-                  setSelectedTemplateCategory(null);
-                }
-              }}
-            >
-              {executionFlowTemplatesQuery.data?.templates?.map((template) => (
-                <Option key={template.id} value={template.id}>
-                  <Space>
-                    <OrderedListOutlined />
-                    <Text>{template.name}</Text>
-                    <Tag color={EXECUTION_FLOW_CATEGORIES[template.category]?.color || 'default'} style={{ marginLeft: 8 }}>
-                      {EXECUTION_FLOW_CATEGORIES[template.category]?.label || template.category}
-                    </Tag>
-                    <Badge count={template.steps?.length || 0} showZero style={{ marginLeft: 8 }} />
-                  </Space>
-                </Option>
-              ))}
-            </Select>
-          </Form.Item>
-          {/* 执行流程步骤 - 仅在未选择流程模板时显示 */}
-          <Form.Item shouldUpdate noStyle>
-            {({ getFieldValue }) => {
-              const templateId = getFieldValue('executionFlowTemplateId');
-              if (templateId) {
-                return null; // Hide when template is selected
-              }
-              return (
+          <Collapse defaultActiveKey={['basic', 'flow', 'params']} ghost>
+            <Panel header={<Text strong style={{ fontSize: 16 }}><InfoCircleOutlined /> 基本信息</Text>} key="basic">
+              <div style={{ padding: '0 16px' }}>
                 <Form.Item
-                  name="executionFlow"
-                  label="执行流程"
-                  extra="选择执行步骤顺序（从上到下执行），或先选择流程模板自动填充"
+                  name="name"
+                  label={t('admin:skillName')}
+                  rules={[{ required: true, message: '请输入技能名称' }]}
+                >
+                  <Input placeholder="技能显示名称，例如：保密合同生成" />
+                </Form.Item>
+                <Form.Item
+                  name="description"
+                  label={t('admin:skillDescription')}
+                  rules={[{ required: true, message: '请输入描述' }]}
+                >
+                  <Input.TextArea rows={2} placeholder="详细描述技能的功能和用途" />
+                </Form.Item>
+                <Form.Item
+                  name="triggerKeywords"
+                  label={t('admin:triggerKeywords')}
+                  extra="AI语义匹配失败时的回退方案，输入关键词后按回车添加"
+                >
+                  <Select mode="tags" placeholder="输入关键词" />
+                </Form.Item>
+              </div>
+            </Panel>
+
+            <Panel header={<Text strong style={{ fontSize: 16 }}><ThunderboltOutlined /> 执行流程编排</Text>} key="flow">
+              <div style={{ padding: '0 16px' }}>
+                <Form.Item
+                  name="executionFlowTemplateIds"
+                  label="关联流程模板 (可多选)"
+                  extra="按顺序关联一个或多个流程模板。模板步骤将优先执行，随后执行下方手动编排的步骤。"
                 >
                   <Select
                     mode="multiple"
-                    placeholder="选择执行步骤"
-                    optionLabelProp="label"
+                    placeholder="选择流程模板"
+                    allowClear
+                    showSearch
+                    loading={executionFlowTemplatesQuery.isLoading}
                   >
-                    {Object.entries(EXECUTION_FLOW_STEPS).map(([key, value]) => (
-                      <Option key={key} value={key} label={value.label}>
-                        <Space direction="vertical" size="small">
-                          <Text strong>{value.label}</Text>
-                          <Text type="secondary" style={{ fontSize: 12 }}>{value.description}</Text>
-                        </Space>
-                      </Option>
-                    ))}
-                  </Select>
-                </Form.Item>
-              );
-            }}
-          </Form.Item>
-          {/* 分类 - 仅在未选择流程模板时显示，模板会自动设置分类 */}
-          <Form.Item shouldUpdate noStyle>
-            {({ getFieldValue }) => {
-              const templateId = getFieldValue('executionFlowTemplateId');
-              if (templateId) {
-                return null; // Hide when template is selected - category auto-set
-              }
-              return (
-                <Form.Item
-                  name="category"
-                  label={t('admin:skillCategory')}
-                  extra="选择或输入自定义分类名称"
-                >
-                  <Select mode="tags" placeholder="选择或输入分类">
-                    {Object.entries(mergedCategories).map(([key, value]) => (
-                      <Option key={key} value={key}>
+                    {executionFlowTemplatesQuery.data?.templates?.map((template) => (
+                      <Option key={template.id} value={template.id}>
                         <Space>
-                          <Tag color={value.color}>{value.label}</Tag>
-                          <Text type="secondary">{value.desc}</Text>
+                          <OrderedListOutlined />
+                          <Text>{template.name}</Text>
+                          <Badge count={template.steps?.length || 0} showZero style={{ marginLeft: 8 }} />
                         </Space>
                       </Option>
                     ))}
                   </Select>
                 </Form.Item>
-              );
-            }}
-          </Form.Item>
-          <Form.Item
-            name="triggerKeywords"
-            label={t('admin:triggerKeywords')}
-            extra="AI语义匹配失败时的回退方案，输入关键词后按回车添加"
-          >
-            <Select mode="tags" placeholder="输入关键词">
-            </Select>
-          </Form.Item>
-          {/* 文档模板配置 - 仅在分类为文档处理或已选择流程模板的类别为document时显示 */}
-          <Form.Item shouldUpdate noStyle>
-            {({ getFieldValue }) => {
-              const category = getFieldValue('category');
-              // Show Carbone fields only for document category
-              const isDocumentCategory = selectedTemplateCategory === 'document' || category === 'document';
-              if (!isDocumentCategory) {
-                return null;
-              }
-              return (
-                <>
-                  <Divider style={{ margin: '12px 0' }}>文档生成配置</Divider>
-                  <Form.Item
-                    name="carboneTemplateId"
-                    label={t('admin:carboneTemplateId')}
-                    extra="选择已有的Carbone模板.用于文档渲染"
-                  >
-                    <Select
-                      placeholder="选择模板"
-                      allowClear
-                      showSearch
-                      loading={templatesQuery.isLoading}
-                      options={templateOptions}
-                    />
-                  </Form.Item>
-                  <Form.Item
-                    name="carboneSkillId"
-                    label={t('admin:carboneSkillId')}
-                    extra="Carbone引擎的技能配置ID.用于AI参数生成"
-                  >
-                    <Input placeholder="UUID格式（可选）" />
-                  </Form.Item>
-                </>
-              );
-            }}
-          </Form.Item>
+
+                <Form.List name="executionFlow">
+                  {(fields, { add, remove, move }) => (
+                    <div style={{ marginTop: 16 }}>
+                      <Divider orientation="left">手动追加/编排步骤</Divider>
+                      {fields.map(({ key, name, ...restField }, index) => (
+                        <Card
+                          key={key}
+                          size="small"
+                          style={{ marginBottom: 12, borderLeft: '4px solid #1890ff' }}
+                          title={
+                            <Space>
+                              <DragOutlined style={{ cursor: 'grab', color: '#999' }} />
+                              <Text strong>步骤 {index + 1}</Text>
+                            </Space>
+                          }
+                          extra={
+                            <Space>
+                              {index > 0 && <Button type="link" size="small" onClick={() => move(index, index - 1)}>上移</Button>}
+                              {index < fields.length - 1 && <Button type="link" size="small" onClick={() => move(index, index + 1)}>下移</Button>}
+                              <Popconfirm title="确定删除此步骤吗？" onConfirm={() => remove(name)}>
+                                <Button type="link" danger size="small" icon={<CloseOutlined />} />
+                              </Popconfirm>
+                            </Space>
+                          }
+                        >
+                          <div style={{ display: 'flex', gap: 16, marginBottom: 8 }}>
+                            <Form.Item
+                              {...restField}
+                              name={[name, 'type']}
+                              label="类型"
+                              rules={[{ required: true }]}
+                              style={{ width: 200, marginBottom: 0 }}
+                            >
+                              <Select placeholder="选择类型">
+                                {STEP_TYPES.map(t => (
+                                  <Option key={t.value} value={t.value}>
+                                    <Space>{t.icon}{t.label}</Space>
+                                  </Option>
+                                ))}
+                              </Select>
+                            </Form.Item>
+                            <Form.Item
+                              {...restField}
+                              name={[name, 'name']}
+                              label="名称"
+                              rules={[{ required: true }]}
+                              style={{ flex: 1, marginBottom: 0 }}
+                            >
+                              <Input placeholder="步骤名称" />
+                            </Form.Item>
+                          </div>
+
+                          <Form.Item shouldUpdate noStyle>
+                            {() => {
+                              const type = form.getFieldValue(['executionFlow', name, 'type']);
+                              if (type === 'text') {
+                                return (
+                                  <Form.Item {...restField} name={[name, 'content']} label="提示词内容">
+                                    <Input.TextArea rows={3} placeholder="输入 AI 提示词或指导文本" />
+                                  </Form.Item>
+                                );
+                              }
+                              if (type === 'api') {
+                                return (
+                                  <div style={{ backgroundColor: '#f5f5f5', padding: 12, borderRadius: 4 }}>
+                                    <Form.Item {...restField} name={[name, 'api', 'endpoint']} label="API 地址">
+                                      <Input placeholder="https://api.example.com/v1/..." />
+                                    </Form.Item>
+                                    <div style={{ display: 'flex', gap: 16 }}>
+                                      <Form.Item {...restField} name={[name, 'api', 'method']} label="方法" style={{ width: 120 }}>
+                                        <Select defaultValue="GET">
+                                          <Option value="GET">GET</Option>
+                                          <Option value="POST">POST</Option>
+                                          <Option value="PUT">PUT</Option>
+                                          <Option value="DELETE">DELETE</Option>
+                                        </Select>
+                                      </Form.Item>
+                                      <Form.Item {...restField} name={[name, 'api', 'timeout']} label="超时(ms)" style={{ flex: 1 }}>
+                                        <Input type="number" placeholder="30000" />
+                                      </Form.Item>
+                                    </div>
+                                  </div>
+                                );
+                              }
+                              if (type === 'tool') {
+                                return (
+                                  <Form.Item {...restField} name={[name, 'tool', 'name']} label="工具名称">
+                                    <Input placeholder="例如：skill_match, document_render..." />
+                                  </Form.Item>
+                                );
+                              }
+                              if (type === 'script') {
+                                return (
+                                  <div style={{ backgroundColor: '#f5f5f5', padding: 12, borderRadius: 4 }}>
+                                    <Form.Item {...restField} name={[name, 'script', 'language']} label="脚本语言">
+                                      <Select defaultValue="javascript">
+                                        <Option value="javascript">JavaScript</Option>
+                                        <Option value="python">Python</Option>
+                                        <Option value="bash">Bash</Option>
+                                      </Select>
+                                    </Form.Item>
+                                    <Form.Item {...restField} name={[name, 'script', 'code']} label="代码内容">
+                                      <Input.TextArea rows={5} style={{ fontFamily: 'monospace' }} placeholder="输入脚本代码" />
+                                    </Form.Item>
+                                  </div>
+                                );
+                              }
+                              return null;
+                            }}
+                          </Form.Item>
+                        </Card>
+                      ))}
+                      <Button type="dashed" onClick={() => add({ type: 'text', name: '新步骤' })} block icon={<PlusOutlined />}>
+                        添加追加步骤
+                      </Button>
+                    </div>
+                  )}
+                </Form.List>
+              </div>
+            </Panel>
+
+            <Panel header={<Text strong style={{ fontSize: 16 }}><ApiOutlined /> 参数与配置</Text>} key="params">
+              <div style={{ padding: '0 16px' }}>
+                <Tabs size="small">
+                  <TabPane tab="参数 Schema" key="schema_edit">
+                    <Form.Item
+                      name="paramsSchema"
+                      label="JSON 定义"
+                      extra="定义技能执行所需的参数及其提取提示。支持 JSON 格式。"
+                    >
+                      <Input.TextArea
+                        rows={10}
+                        style={{ fontFamily: 'monospace' }}
+                        placeholder='{
+  "properties": {
+    "city": {
+      "type": "string",
+      "description": "城市名称",
+      "required": true,
+      "extractionPrompt": "从用户输入中提取城市"
+    }
+  },
+  "required": ["city"]
+}'
+                      />
+                    </Form.Item>
+                  </TabPane>
+                  <TabPane tab="文档模板配置" key="carbone_edit">
+                    <div style={{ marginTop: 8 }}>
+                      <Form.Item
+                        name="carboneTemplateId"
+                        label={t('admin:carboneTemplateId')}
+                        extra="选择已有的Carbone模板.用于文档渲染"
+                      >
+                        <Select
+                          placeholder="选择模板"
+                          allowClear
+                          showSearch
+                          loading={templatesQuery.isLoading}
+                          options={templateOptions}
+                        />
+                      </Form.Item>
+                      <Form.Item
+                        name="carboneSkillId"
+                        label={t('admin:carboneSkillId')}
+                        extra="Carbone引擎的技能配置ID.用于AI参数生成"
+                      >
+                        <Input placeholder="UUID格式（可选）" />
+                      </Form.Item>
+                      <Form.Item
+                        name="templateId"
+                        label="内部模板ID"
+                      >
+                        <Input placeholder="自定义内部模板标识" />
+                      </Form.Item>
+                    </div>
+                  </TabPane>
+                </Tabs>
+              </div>
+            </Panel>
+          </Collapse>
         </Form>
       </Modal>
 
@@ -930,24 +1134,44 @@ const SkillAdminPage: React.FC = () => {
       <Modal
         title={`验证结果 - ${selectedSkill?.name}`}
         open={validationModalVisible}
-        onCancel={() => {
-          setValidationModalVisible(false);
-          setValidationResult(null);
-          setSelectedSkill(null);
-          setValidatingSkillId(null);
-        }}
-        footer={<Button onClick={() => setValidationModalVisible(false)}>关闭</Button>}
+        onCancel={handleCloseValidationModal}
+        footer={[
+          validationResult?.details?.skillSimulation?.generatedSkill && (
+            <Button
+              key="apply-suggestion"
+              type="primary"
+              onClick={handleApplySuggestion}
+              loading={applyAdjustmentMutation.isLoading}
+            >
+              应用建议
+            </Button>
+          ),
+          <Button key="close" onClick={handleCloseValidationModal}>
+            关闭
+          </Button>,
+        ]}
         width={700}
       >
-        {/* Loading state */}
         {validatingSkillId && !validationResult && (
           <div style={{ textAlign: 'center', padding: 40 }}>
             <Space direction="vertical" size="large">
               <RocketOutlined spin style={{ fontSize: 48, color: '#1890ff' }} />
               <Text strong style={{ fontSize: 16 }}>正在验证...</Text>
-              <Text type="secondary">AI正在分析Skill配置和执行流程模板</Text>
+              <Text type="secondary">当前阶段：{validationStage}</Text>
+              <Text type="secondary">AI正在分析 Skill 配置并执行真实模拟，可能需要 1-3 分钟</Text>
             </Space>
           </div>
+        )}
+        {validationLogs.length > 0 && (
+          <Card
+            size="small"
+            title={validatingSkillId ? `实时日志 - ${validationStage}` : '执行日志'}
+            style={{ marginBottom: validationResult ? 16 : 0 }}
+          >
+            <pre style={{ margin: 0, whiteSpace: 'pre-wrap', wordBreak: 'break-word', maxHeight: 240, overflow: 'auto' }}>
+              {validationLogs.join('\n')}
+            </pre>
+          </Card>
         )}
         {/* Results */}
         {validationResult && (
@@ -1005,55 +1229,56 @@ const SkillAdminPage: React.FC = () => {
               </Card>
             )}
 
-            {/* Flow Analysis */}
-            {validationResult.details?.flowAnalysis && (
-              <Card title={`流程模板验证 (${validationResult.details.flowAnalysis.templateName})`} size="small">
+            {/* Skill Simulation */}
+            {validationResult.details?.skillSimulation && (
+              <Card title="整体技能模拟验证" size="small">
                 <Space direction="vertical" size="small" style={{ width: '100%' }}>
-                  <Descriptions size="small" column={3}>
-                    <Descriptions.Item label="步骤数">
-                      {validationResult.details.flowAnalysis.stepCount}
-                    </Descriptions.Item>
-                    <Descriptions.Item label="可执行步骤">
-                      {validationResult.details.flowAnalysis.executableSteps}
+                  <Descriptions size="small" column={2}>
+                    <Descriptions.Item label="模拟请求">
+                      {validationResult.details.skillSimulation.simulatedRequest}
                     </Descriptions.Item>
                     <Descriptions.Item label="验证得分">
-                      <Tag color={validationResult.details.flowAnalysis.validationScore >= 80 ? 'success' :
-                        validationResult.details.flowAnalysis.validationScore >= 60 ? 'warning' : 'error'}>
-                        {validationResult.details.flowAnalysis.validationScore}%
+                      <Tag color={validationResult.details.skillSimulation.validationScore >= 80 ? 'success' :
+                        validationResult.details.skillSimulation.validationScore >= 60 ? 'warning' : 'error'}>
+                        {validationResult.details.skillSimulation.validationScore}%
                       </Tag>
+                    </Descriptions.Item>
+                    <Descriptions.Item label="模拟结果">
+                      <Tag color={validationResult.details.skillSimulation.success ? 'success' : 'error'}>
+                        {validationResult.details.skillSimulation.success ? '通过' : '失败'}
+                      </Tag>
+                    </Descriptions.Item>
+                    <Descriptions.Item label="ReAct迭代">
+                      {validationResult.details.skillSimulation.iterations ?? 0}
+                    </Descriptions.Item>
+                    <Descriptions.Item label="总结" span={2}>
+                      {validationResult.details.skillSimulation.summary}
                     </Descriptions.Item>
                   </Descriptions>
 
-                  <Divider style={{ margin: '8px 0' }} />
-                  <Text strong>执行模拟结果:</Text>
-                  {validationResult.details.flowAnalysis.executionSimulations.map((sim) => (
-                    <Card key={sim.stepId} size="small" style={{ marginBottom: 8 }}>
-                      <Space style={{ width: '100%', justifyContent: 'space-between' }}>
-                        <Space>
-                          {sim.success ? (
-                            <CheckCircleOutlined style={{ color: '#52c41a' }} />
-                          ) : (
-                            <ExclamationCircleOutlined style={{ color: '#ff4d4f' }} />
-                          )}
-                          <Text strong>{sim.stepName}</Text>
-                          <Tag>{sim.type}</Tag>
-                        </Space>
-                        <Tag color={sim.success ? 'success' : 'error'}>
-                          {sim.success ? '成功' : '失败'}
-                        </Tag>
-                      </Space>
-                      {sim.output && (
-                        <Text type="secondary" style={{ marginTop: 8, display: 'block' }}>
-                          {sim.output}
-                        </Text>
-                      )}
-                      {sim.error && (
-                        <Text type="danger" style={{ marginTop: 8, display: 'block' }}>
-                          错误: {sim.error}
-                        </Text>
-                      )}
-                    </Card>
-                  ))}
+                  {validationResult.details.skillSimulation.log && validationResult.details.skillSimulation.log.length > 0 && (
+                    <>
+                      <Divider style={{ margin: '8px 0' }} />
+                      <Text strong>ReAct 执行日志</Text>
+                      <Card size="small">
+                        <pre style={{ margin: 0, whiteSpace: 'pre-wrap', wordBreak: 'break-word', maxHeight: 240, overflow: 'auto' }}>
+                          {validationResult.details.skillSimulation.log.join('\n')}
+                        </pre>
+                      </Card>
+                    </>
+                  )}
+
+                  {validationResult.details.skillSimulation.generatedSkill && (
+                    <>
+                      <Divider style={{ margin: '8px 0' }} />
+                      <Text strong>标准 Skill 预览</Text>
+                      <Card size="small">
+                        <pre style={{ margin: 0, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+                          {JSON.stringify(validationResult.details.skillSimulation.generatedSkill, null, 2)}
+                        </pre>
+                      </Card>
+                    </>
+                  )}
                 </Space>
               </Card>
             )}

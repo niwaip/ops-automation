@@ -17,6 +17,7 @@ import {
   ChatRequestDTO,
   SkillMatchResult,
   ToolResult,
+  ToolDefinition,
 } from './interfaces';
 import {
   buildSystemPrompt,
@@ -45,6 +46,18 @@ export class ReActEngineService {
     private readonly sessionService: SessionService,
   ) {}
 
+  private createInitialState(maxIterations: number): ReActState {
+    return {
+      thought: '',
+      action: '',
+      actionInput: {},
+      observation: '',
+      iteration: 0,
+      maxIterations,
+      isFinished: false,
+    };
+  }
+
   /**
    * 执行ReAct循环（流式输出）
    */
@@ -69,8 +82,17 @@ export class ReActEngineService {
     // 尝试从Session中恢复
     const savedSession = await this.sessionService.getSession(context.sessionId);
     if (savedSession) {
-      this.logger.log(`Resuming session ${context.sessionId} at iteration ${savedSession.state.iteration}`);
-      state = savedSession.state;
+      const shouldStartNewRun = savedSession.state.isFinished
+        || savedSession.state.iteration >= savedSession.state.maxIterations;
+
+      if (shouldStartNewRun) {
+        this.logger.log(`Resetting finished session ${context.sessionId} for a new task run`);
+        await this.sessionService.deleteSession(context.sessionId);
+      } else {
+        this.logger.log(`Resuming session ${context.sessionId} at iteration ${savedSession.state.iteration}`);
+      }
+
+      state = shouldStartNewRun ? this.createInitialState(config.maxIterations) : savedSession.state;
       messages = savedSession.history;
       // 恢复context中的数据
       if (savedSession.context) {
@@ -91,15 +113,7 @@ export class ReActEngineService {
         });
       }
     } else {
-      state = {
-        thought: '',
-        action: '',
-        actionInput: {},
-        observation: '',
-        iteration: 0,
-        maxIterations: config.maxIterations,
-        isFinished: false,
-      };
+      state = this.createInitialState(config.maxIterations);
 
       // 初始化消息列表，添加用户消息
       messages = [...context.history];
@@ -171,6 +185,7 @@ export class ReActEngineService {
         // 检查是否完成
         if (state.action === 'finish' || state.isFinished) {
           yield this.createResultEvent(state);
+          await this.sessionService.deleteSession(context.sessionId);
           break;
         }
         continue;  // 继续下一轮
@@ -179,6 +194,10 @@ export class ReActEngineService {
       // 1.5 检查预编译执行流 (Fast-track)
       if (context.skill?.executionFlow && context.currentFlowStep !== undefined && context.currentFlowStep < context.skill.executionFlow.length) {
         const flowTool = context.skill.executionFlow[context.currentFlowStep];
+        if (!flowTool) {
+          context.currentFlowStep++;
+          continue;
+        }
         this.logger.debug(`Fast-track: executing flow step ${context.currentFlowStep + 1}/${context.skill.executionFlow.length} - ${flowTool}`);
 
         state.action = flowTool;
@@ -241,6 +260,7 @@ export class ReActEngineService {
         // 检查是否完成
         if (state.action === 'finish' || state.isFinished) {
           yield this.createResultEvent(state);
+          await this.sessionService.deleteSession(context.sessionId);
           break;
         }
         continue; // 跳过 AI 决策，进入下一轮流处理或普通循环
@@ -320,6 +340,7 @@ export class ReActEngineService {
       // 3. 检查是否完成
       if (state.action === 'finish' || state.isFinished) {
         yield this.createResultEvent(state);
+        await this.sessionService.deleteSession(context.sessionId);
         break;
       }
 
@@ -333,6 +354,7 @@ export class ReActEngineService {
 
     // 超过最大迭代次数
     if (state.iteration >= state.maxIterations && !state.isFinished) {
+      await this.sessionService.deleteSession(context.sessionId);
       yield {
         type: StreamEventType.ERROR,
         content: `达到最大迭代次数 ${state.maxIterations}，任务未完成`,
@@ -480,7 +502,9 @@ export class ReActEngineService {
     // 检查是否任务完成（如document_render返回taskComplete）
     if (innerData?.taskComplete) {
       state.isFinished = true;
-      state.finalAnswer = event.content;
+      state.finalAnswer = typeof innerData.finalAnswer === 'string' && innerData.finalAnswer.trim()
+        ? innerData.finalAnswer
+        : event.content;
     }
 
     // 检查是否有nextAction提示
@@ -523,7 +547,7 @@ export class ReActEngineService {
   private createResultEvent(state: ReActState): StreamEvent {
     return {
       type: StreamEventType.RESULT,
-      content: state.finalAnswer || '任务完成',
+      content: state.finalAnswer || state.observation || '任务完成',
       iteration: state.iteration,
     };
   }

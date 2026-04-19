@@ -93,6 +93,9 @@ model ExecutionFlowTemplate {
   id              String    @id @default(uuid()) @db.Uuid
   name            String    @unique @db.VarChar(255)
   description     String?   @db.VarChar(500)
+  goal            String?   @db.VarChar(1000)
+  expectedResult  String?   @map("expected_result") @db.VarChar(1000)
+  paramsSchema    Json      @default("{}") @map("params_schema")
   category        String    @default("document") @db.VarChar(50) // document | analysis | automation | custom
 
   // Flow definition - array of steps with detailed configuration
@@ -119,9 +122,6 @@ model ExecutionFlowTemplate {
   createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz
   updatedAt       DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
 
-  // Relations
-  skills          SkillConfig[] // Skills using this template
-
   @@index([name])
   @@index([category])
   @@index([isPublic])
@@ -135,7 +135,6 @@ model SkillConfig {
   id                String   @id @default(uuid()) @db.Uuid
   name              String   @unique @db.VarChar(255)
   description       String?  @db.VarChar(500)
-  category          String   @default("template") @db.VarChar(50) // template | query | action
   triggerKeywords   Json     @default("[]") @map("trigger_keywords")
   paramsSchema      Json     @default("{}") @map("params_schema")
   templateId        String?  @map("template_id") @db.VarChar(255)
@@ -143,7 +142,7 @@ model SkillConfig {
   carboneSkillId    String?  @map("carbone_skill_id") @db.VarChar(255)
   apiEndpoints      Json?    @map("api_endpoints")
   executionFlow     Json     @default("[]") @map("execution_flow")
-  executionFlowTemplateId String? @map("execution_flow_template_id") @db.Uuid // Reference to flow template
+  executionFlowTemplateIds Json @default("[]") @map("execution_flow_template_ids") // 支持关联多个流程模板ID
   tools             Json     @default("[]")
   isActive          Boolean  @default(true) @map("is_active")
   createdAt         DateTime @default(now()) @map("created_at") @db.Timestamptz
@@ -151,10 +150,8 @@ model SkillConfig {
 
   // Relations
   permissions       SkillPermission[] // Roles granted access to this skill
-  executionFlowTemplate ExecutionFlowTemplate? @relation(fields: [executionFlowTemplateId], references: [id], onDelete: SetNull)
 
   @@index([name])
-  @@index([category])
   @@index([isActive])
   @@map("skill_configs")
 }

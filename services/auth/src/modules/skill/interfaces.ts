@@ -3,6 +3,8 @@
  * Skill模块接口定义
  */
 
+import { ExecutionFlowStep } from '../execution-flow/interfaces';
+
 /**
  * API端点配置
  */
@@ -32,14 +34,13 @@ export interface ParamsSchema {
 export interface CreateSkillDTO {
   name: string;
   description: string;
-  category?: string;
   triggerKeywords: string[];
   paramsSchema: ParamsSchema;
   templateId?: string;
   carboneTemplateId?: string;  // Carbone引擎的模板ID
   carboneSkillId?: string;      // Carbone引擎的Skill ID
-  executionFlowTemplateId?: string;  // 关联的流程模板ID（用于AI验证）
-  executionFlow?: string[];
+  executionFlowTemplateIds?: string[];  // 关联的多个流程模板ID
+  executionFlow?: ExecutionFlowStep[]; // 手动编排/追加的步骤
   tools?: string[];
   apiEndpoints?: {
     generateParameters?: ApiEndpoint;  // 参数生成API
@@ -55,14 +56,13 @@ export interface SkillConfigDTO {
   id: string;
   name: string;
   description: string;
-  category: string;
   triggerKeywords: string[];
   paramsSchema: ParamsSchema;
   templateId?: string;
   carboneTemplateId?: string;
   carboneSkillId?: string;
-  executionFlowTemplateId?: string;  // 关联的流程模板ID
-  executionFlow: string[];
+  executionFlowTemplateIds: string[];  // 关联的多个流程模板ID
+  executionFlow: ExecutionFlowStep[];
   tools: string[];
   apiEndpoints?: {
     generateParameters?: ApiEndpoint;
@@ -86,7 +86,7 @@ export interface SkillMatchResult {
   templateId?: string;
   carboneTemplateId?: string;
   carboneSkillId?: string;
-  executionFlowTemplateId?: string;  // 新增：执行流程模板ID
+  executionFlowTemplateIds?: string[];  // 关联的多个流程模板ID
   apiEndpoints?: {
     generateParameters?: ApiEndpoint;
     render?: ApiEndpoint;
@@ -143,21 +143,16 @@ export interface SkillValidationResult {
       triggerKeywordQuality: string;
       paramsSchemaCompleteness: string;
     };
-    flowAnalysis?: {
-      templateId: string;
-      templateName: string;
-      stepCount: number;
-      executableSteps: number;
+    skillSimulation?: {
+      success: boolean;
       validationScore: number;
-      executionSimulations: Array<{
-        stepId: string;
-        stepName: string;
-        type: string;
-        simulated: boolean;
-        success: boolean;
-        output?: string;
-        error?: string;
-      }>;
+      simulatedRequest: string;
+      summary: string;
+      issues: string[];
+      suggestions: string[];
+      log?: string[];           // 执行日志
+      iterations?: number;      // 执行迭代次数
+      generatedSkill?: Partial<SkillConfigDTO>;
     };
   };
 }

@@ -73,7 +73,7 @@ export class SkillMatchTool extends BaseTool {
 
     try {
       // 调用Auth服务的Skill匹配API（带userId，进行权限过滤和AI语义匹配）
-      const response = await axios.post(`${AUTH_SERVICE_URL}/skills/match`, {
+      const response = await axios.post<{ match: SkillMatchResult | null }>(`${AUTH_SERVICE_URL}/skills/match`, {
         userInput,
         userId,  // 新增：传递用户ID进行权限过滤
       });
@@ -81,6 +81,9 @@ export class SkillMatchTool extends BaseTool {
       const matchResult = response.data.match as SkillMatchResult | null;
 
       if (matchResult && matchResult.confidence > 0) {
+        const flowTemplateId = matchResult.executionFlowTemplateId
+          || matchResult.executionFlowTemplateIds?.[0];
+
         // 定义预编译执行流 (Fast-track)
         if (matchResult.carboneSkillId) {
           matchResult.executionFlow = ['generate_parameters', 'document_render'];
@@ -111,17 +114,17 @@ export class SkillMatchTool extends BaseTool {
         };
 
         // 如果有流程模板，需要执行流程模板步骤
-        if (matchResult.executionFlowTemplateId) {
+        if (flowTemplateId) {
           outputMsg += `\n此技能已关联执行流程模板，将按模板步骤执行。`;
           // 设置下一步为执行流程模板
           result.nextAction = 'flow_execute';
           result.nextActionParams = {
-            templateId: matchResult.executionFlowTemplateId,
+            templateId: flowTemplateId,
             stepIndex: 0,
             params: matchResult.collectedParams || {},
           };
           result.data!.hasFlowTemplate = true;
-          result.data!.flowTemplateId = matchResult.executionFlowTemplateId;
+          result.data!.flowTemplateId = flowTemplateId;
         }
         // 如果有Carbone配置，提示下一步
         else if (matchResult.carboneSkillId) {
@@ -146,10 +149,13 @@ Carbone Template ID: ${matchResult.carboneTemplateId || '无'}
         output: '未匹配到合适的技能，可能原因：1) 您没有权限使用相关技能；2) 请提供更多信息描述您的需求。',
         data: { needsSkillMatch: true, userInput },
       };
-    } catch (error) {
+    } catch (error: unknown) {
       const errorMsg = error instanceof Error ? error.message : 'Unknown error';
       // 如果API调用失败（可能是403权限错误）
-      if (axios.isAxiosError(error) && error.response?.status === 403) {
+      const statusCode = typeof error === 'object' && error && 'response' in error
+        ? (error as { response?: { status?: number } }).response?.status
+        : undefined;
+      if (statusCode === 403) {
         return {
           success: false,
           output: '您没有权限使用技能匹配功能，请联系管理员。',
