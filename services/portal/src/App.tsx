@@ -13,6 +13,8 @@ import UserAdminPage from './pages/admin/UserAdminPage';
 import AIModelAdminPage from './pages/admin/AIModelAdminPage';
 import SkillAdminPage from './pages/admin/SkillAdminPage';
 import ExecutionFlowTemplatePage from './pages/admin/ExecutionFlowTemplatePage';
+import TemporalWorkflowPage from './pages/admin/TemporalWorkflowPage';
+import ActivityPage from './pages/admin/ActivityPage';
 import ReportTemplateListPage from './pages/ReportTemplateListPage';
 import ReportTemplateDetailPage from './pages/ReportTemplateDetailPage';
 import ReportTemplateCreatePage from './pages/ReportTemplateCreatePage';
@@ -99,6 +101,22 @@ function App() {
             element={
               <AdminRoute>
                 <ExecutionFlowTemplatePage />
+              </AdminRoute>
+            }
+          />
+          <Route
+            path="admin/temporal-workflows"
+            element={
+              <AdminRoute>
+                <TemporalWorkflowPage />
+              </AdminRoute>
+            }
+          />
+          <Route
+            path="admin/activities"
+            element={
+              <AdminRoute>
+                <ActivityPage />
               </AdminRoute>
             }
           />

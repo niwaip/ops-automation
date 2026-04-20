@@ -107,6 +107,16 @@ const MainLayout: React.FC = () => {
                 icon: <OrderedListOutlined />,
                 label: t('executionFlows'),
               },
+              {
+                key: '/admin/temporal-workflows',
+                icon: <ThunderboltOutlined />,
+                label: 'Temporal工作流',
+              },
+              {
+                key: '/admin/activities',
+                icon: <ThunderboltOutlined />,
+                label: 'Activity管理',
+              },
             ],
           },
         ]
@@ -159,6 +169,8 @@ const MainLayout: React.FC = () => {
     if (path.startsWith('/admin/models')) return '/admin/models';
     if (path.startsWith('/admin/skills')) return '/admin/skills';
     if (path.startsWith('/admin/execution-flows')) return '/admin/execution-flows';
+    if (path.startsWith('/admin/temporal-workflows')) return '/admin/temporal-workflows';
+    if (path.startsWith('/admin/activities')) return '/admin/activities';
     return path;
   };
 
