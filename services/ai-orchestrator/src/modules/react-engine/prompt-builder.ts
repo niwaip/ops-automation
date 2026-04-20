@@ -173,9 +173,14 @@ export function parseActionResponse(response: string): {
   action: string;
   actionInput: Record<string, unknown>;
 } | null {
+  // 过滤掉思考标签内容，否则会干扰正则匹配
+  const cleanedResponse = response
+    .replace(/<think>[\s\S]*?<\/think>/gi, '')
+    .trim();
+
   // 尝试直接解析JSON
   try {
-    const cleaned = response.trim().replace(/```json|```/g, '').trim();
+    const cleaned = cleanedResponse.trim().replace(/```json|```/g, '').trim();
     const parsed = JSON.parse(cleaned);
 
     if (parsed.action) {
@@ -198,15 +203,15 @@ export function parseActionResponse(response: string): {
   }
 
   // 提取Thought
-  const thoughtMatch = response.match(/Thought:\s*([\s\S]+?)(?=Action:|$)/);
+  const thoughtMatch = cleanedResponse.match(/Thought:\s*([\s\S]+?)(?=Action:|$)/);
   const thought = thoughtMatch?.[1]?.trim() ?? '';
 
   // 提取Action
-  const actionMatch = response.match(/Action:\s*([^\n]+)/);
+  const actionMatch = cleanedResponse.match(/Action:\s*([^\n]+)/);
   const action = actionMatch?.[1]?.trim() ?? '';
 
   // 提取Action Input
-  const actionInputMatch = response.match(/Action Input:\s*([\s\S]+?)(?=Observation|Final Answer|$)/);
+  const actionInputMatch = cleanedResponse.match(/Action Input:\s*([\s\S]+?)(?=Observation|Final Answer|$)/);
   let actionInput: Record<string, unknown> = {};
 
   if (actionInputMatch) {
@@ -235,7 +240,7 @@ export function parseActionResponse(response: string): {
   }
 
   // 检查是否有Final Answer
-  const finalMatch = response.match(/Final Answer:\s*([\s\S]+)/);
+  const finalMatch = cleanedResponse.match(/Final Answer:\s*([\s\S]+)/);
   if (finalMatch) {
     return {
       thought: thought || '任务已完成',
