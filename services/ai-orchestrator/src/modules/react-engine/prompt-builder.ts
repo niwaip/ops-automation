@@ -173,10 +173,22 @@ export function parseActionResponse(response: string): {
   action: string;
   actionInput: Record<string, unknown>;
 } | null {
+  // 调试日志
+  console.log('[DEBUG parseActionResponse] Raw response length:', response?.length);
+  console.log('[DEBUG parseActionResponse] Raw response preview:', response?.substring(0, 500));
+
   // 过滤掉思考标签内容，否则会干扰正则匹配
-  const cleanedResponse = response
+  // 支持多种思考标签格式: <think>、<｜User｜>、<｜Model｜>等
+  let cleanedResponse = response
+    // 匹配 <think>...</think> 格式（MiniMax等模型常用）
     .replace(/<think>[\s\S]*?<\/think>/gi, '')
+    // 匹配 <｜...｜> 格式
+    .replace(/<｜[\s\S]*?｜>/g, '')
+    // 匹配其他可能的思考标签格式（不区分大小写）
+    .replace(/<think[\s\S]*?<\/think>/gi, '')
     .trim();
+
+  console.log('[DEBUG parseActionResponse] Cleaned response preview:', cleanedResponse?.substring(0, 500));
 
   // 尝试直接解析JSON
   try {
@@ -209,6 +221,9 @@ export function parseActionResponse(response: string): {
   // 提取Action
   const actionMatch = cleanedResponse.match(/Action:\s*([^\n]+)/);
   const action = actionMatch?.[1]?.trim() ?? '';
+
+  console.log('[DEBUG parseActionResponse] Extracted thought:', thought?.substring(0, 200));
+  console.log('[DEBUG parseActionResponse] Extracted action:', action?.substring(0, 200));
 
   // 提取Action Input
   const actionInputMatch = cleanedResponse.match(/Action Input:\s*([\s\S]+?)(?=Observation|Final Answer|$)/);
