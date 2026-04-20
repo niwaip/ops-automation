@@ -202,6 +202,11 @@ export class AIController {
   @ApiOperation({ summary: 'Test a model configuration before creating' })
   @ApiResponse({ status: 200, description: 'Test result' })
   async testConfig(@Body() body: { endpoint: string; apiKey: string; modelName: string }): Promise<{ success: boolean; response?: string; error?: string }> {
+    // Validate required fields
+    if (!body.endpoint || !body.apiKey || !body.modelName) {
+      return { success: false, error: '请填写完整的配置信息：Endpoint、API Key 和模型名称' };
+    }
+
     try {
       // Create a temporary client to test the configuration
       const { OpenAICompatibleClient } = await import('./client/openai-compatible.js');
