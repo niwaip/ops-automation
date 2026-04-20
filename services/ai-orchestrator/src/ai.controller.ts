@@ -43,13 +43,33 @@ export class AIController {
     return { models };
   }
 
+  @Get('models/admin')
+  @ApiOperation({ summary: 'List all models for admin (including inactive)' })
+  @ApiResponse({ status: 200, description: 'Returns all models for admin' })
+  async listModelsForAdmin(): Promise<{ models: AIModelDTO[] }> {
+    const models = await this.modelService.listModelsForAdmin();
+    return { models };
+  }
+
   // Model call endpoint - for AI semantic matching
   @Post('model/call')
   @ApiOperation({ summary: 'Call AI model with a prompt (for skill matching)' })
   @ApiResponse({ status: 200, description: 'Returns model response' })
   @ApiResponse({ status: 404, description: 'Model not found or not initialized' })
   async callModel(@Body() body: { modelId: string; prompt: string }): Promise<{ result: string }> {
-    const modelId = body.modelId || 'default';
+    let modelId = body.modelId || 'default';
+
+    // Resolve 'default' to the actual default active model
+    if (modelId === 'default') {
+      const models = await this.modelService.listModels();
+      const defaultModel = models.find(m => m.status === 'active');
+      if (defaultModel) {
+        modelId = defaultModel.id;
+      } else {
+        throw new HttpException('No active model available', HttpStatus.NOT_FOUND);
+      }
+    }
+
     const client = this.modelService.getClientByModelId(modelId);
 
     if (!client) {
@@ -140,6 +160,24 @@ export class AIController {
     return { success };
   }
 
+  @Post('models/:id/test-config')
+  @ApiOperation({ summary: 'Test model configuration using stored API key' })
+  @ApiResponse({ status: 200, description: 'Test result' })
+  @ApiResponse({ status: 404, description: 'Model not found' })
+  async testModelConfig(@Param('id') id: string): Promise<{ success: boolean; response?: string; error?: string }> {
+    const model = await this.modelService.getModel(id);
+    if (!model) {
+      throw new HttpException('Model not found', HttpStatus.NOT_FOUND);
+    }
+    try {
+      const response = await this.modelService.callModel(id, 'Hello, this is a test.');
+      return { success: true, response };
+    } catch (error: unknown) {
+      const errorMsg = error instanceof Error ? error.message : 'Unknown error';
+      return { success: false, error: errorMsg };
+    }
+  }
+
   @Post('models/:id/test')
   @ApiOperation({ summary: 'Test an AI model with a prompt' })
   @ApiResponse({ status: 200, description: 'Test result' })
@@ -194,6 +232,11 @@ export class AIController {
   @ApiOperation({ summary: 'Test a model configuration before creating' })
   @ApiResponse({ status: 200, description: 'Test result' })
   async testConfig(@Body() body: { endpoint: string; apiKey: string; modelName: string }): Promise<{ success: boolean; response?: string; error?: string }> {
+    // Validate required fields
+    if (!body.endpoint || !body.apiKey || !body.modelName) {
+      return { success: false, error: '请填写完整的配置信息：Endpoint、API Key 和模型名称' };
+    }
+
     try {
       // Create a temporary client to test the configuration
       const { OpenAICompatibleClient } = await import('./client/openai-compatible.js');

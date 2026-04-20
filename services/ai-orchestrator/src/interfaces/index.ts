@@ -31,6 +31,7 @@ export interface AIModelDTO {
   api_endpoint: string;
   config: Record<string, unknown>;
   status: 'active' | 'inactive';
+  hasApiKey?: boolean; // Indicates if API key is configured (without exposing the actual key)
   created_at: Date;
   updated_at: Date;
 }

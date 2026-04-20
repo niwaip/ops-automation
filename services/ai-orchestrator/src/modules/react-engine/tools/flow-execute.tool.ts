@@ -18,6 +18,36 @@ const getAuthServiceUrl = () => {
   return 'http://localhost:3001';
 };
 
+// Carbone服务地址
+const getCarboneServiceUrl = () => {
+  if (process.env.CARBONE_SERVICE_URL) {
+    return process.env.CARBONE_SERVICE_URL;
+  }
+  if (process.env.DOCKER_ENV === 'true' || process.env.NODE_ENV === 'production') {
+    return 'http://carbone-engine:3009';
+  }
+  return 'http://localhost:3009';
+};
+
+// 解析API端点URL，添加必要的base URL
+const resolveApiUrl = (endpoint: string): string => {
+  // 如果是完整URL，直接返回
+  if (endpoint.startsWith('http://') || endpoint.startsWith('https://')) {
+    return endpoint;
+  }
+  // 如果是相对路径，需要添加base URL
+  if (endpoint.startsWith('/')) {
+    // 检测是否是carbone API
+    if (endpoint.startsWith('/api/carbone/') || endpoint.startsWith('/studio/')) {
+      return getCarboneServiceUrl() + endpoint;
+    }
+    // 其他相对路径默认使用auth服务
+    return getAuthServiceUrl() + endpoint;
+  }
+  // 已经是完整路径
+  return endpoint;
+};
+
 const getValueByPath = (
   source: Record<string, unknown>,
   path: string,
@@ -326,7 +356,7 @@ export class FlowExecuteTool extends BaseTool {
             currentStep.api.endpoint,
             execParams,
           );
-          let endpoint = resolvedEndpoint;
+          let endpoint = resolveApiUrl(resolvedEndpoint);
 
           // 兼容历史天气模板：wttr.in 稳定性较差，统一切换到可用的天气查询接口
           if (endpoint.includes('wttr.in/') && endpoint.includes('format=j1')) {

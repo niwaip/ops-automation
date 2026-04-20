@@ -28,6 +28,7 @@ const PROVIDER_NAMES: Record<string, string> = {
   'anthropic': 'Anthropic',
   'azure': 'Azure OpenAI',
   'deepseek': 'DeepSeek',
+  'minimax': 'MiniMax',
   'local': '本地模型',
 };
 
@@ -37,6 +38,7 @@ const PRESET_ENDPOINTS: Record<string, string> = {
   'alibaba-bailian': 'https://dashscope.aliyuncs.com/compatible-mode/v1',
   'openai': 'https://api.openai.com/v1',
   'deepseek': 'https://api.deepseek.com/v1',
+  'minimax': 'https://api.minimax.chat/v1',
 };
 
 // Available models for each provider (for switching)
@@ -54,6 +56,7 @@ const PROVIDER_MODELS: Record<string, string[]> = {
   'alibaba-bailian': ['qwen-plus', 'qwen-turbo'],
   'openai': ['gpt-4o', 'gpt-4-turbo', 'gpt-3.5-turbo'],
   'deepseek': ['deepseek-coder', 'deepseek-chat'],
+  'minimax': ['MiniMax-Text-01', 'abab6.5s-chat', 'abab6.5-chat', 'MiniMax-M2.7'],
   'anthropic': ['claude-3-opus', 'claude-3-sonnet'],
   'azure': [],
   'local': [],
@@ -75,7 +78,7 @@ const AIModelAdminPage: React.FC = () => {
   const [selectedPresetModel, setSelectedPresetModel] = useState<string>('');
   const [newModelName, setNewModelName] = useState<string>('');
 
-  const modelsQuery = useQuery(['ai-models'], () => aiModelApi.list());
+  const modelsQuery = useQuery(['ai-models'], () => aiModelApi.listForAdmin());
   const presetsQuery = useQuery(['ai-model-presets'], () => aiModelApi.listPresets());
 
   // Get available models for selected provider
@@ -190,6 +193,22 @@ const AIModelAdminPage: React.FC = () => {
     }
   );
 
+  const testConfigWithStoredKeyMutation = useMutation(
+    (id: string) => aiModelApi.testConfigWithStoredKey(id),
+    {
+      onSuccess: (result: { success: boolean; response?: string; error?: string }) => {
+        if (result.success) {
+          message.success(`配置测试成功: ${result.response}`);
+        } else {
+          message.error(`配置测试失败: ${result.error}`);
+        }
+      },
+      onError: () => {
+        message.error(t('common:error'));
+      },
+    }
+  );
+
   const handleEnable = (id: string) => {
     enableMutation.mutate(id);
   };
@@ -200,7 +219,11 @@ const AIModelAdminPage: React.FC = () => {
 
   const handleEdit = (model: AIModel) => {
     setEditingModel(model);
-    editForm.setFieldsValue(model);
+    setSelectedProvider(model.provider);
+    editForm.setFieldsValue({
+      ...model,
+      apiKey: '', // Don't pre-fill API key for security
+    });
     setEditModalVisible(true);
   };
 
@@ -300,8 +323,9 @@ const AIModelAdminPage: React.FC = () => {
       title: t('admin:modelName'),
       dataIndex: 'name',
       key: 'name',
+      align: 'center',
       render: (name: string, record) => (
-        <Space>
+        <Space size="small">
           <Text strong>{name}</Text>
           {PROVIDER_MODELS[record.provider] && PROVIDER_MODELS[record.provider].length > 0 && (
             <Button
@@ -320,6 +344,7 @@ const AIModelAdminPage: React.FC = () => {
       title: t('admin:modelProvider'),
       dataIndex: 'provider',
       key: 'provider',
+      align: 'center',
       render: (provider: ModelProvider) => (
         <Tag color={provider.startsWith('alibaba') ? 'orange' : 'blue'}>
           {PROVIDER_NAMES[provider] || provider}
@@ -330,12 +355,14 @@ const AIModelAdminPage: React.FC = () => {
       title: t('admin:modelEndpoint'),
       dataIndex: 'api_endpoint',
       key: 'api_endpoint',
+      align: 'center',
       ellipsis: true,
     },
     {
       title: t('admin:userStatus'),
       dataIndex: 'status',
       key: 'status',
+      align: 'center',
       render: (status: string) => (
         <Tag color={status === 'active' ? 'success' : 'error'}>
           {status === 'active' ? t('admin:modelEnabled') : t('admin:modelDisabled')}
@@ -343,17 +370,12 @@ const AIModelAdminPage: React.FC = () => {
       ),
     },
     {
-      title: t('common:createdAt'),
-      dataIndex: 'created_at',
-      key: 'created_at',
-      render: (date: string) => new Date(date).toLocaleString(),
-    },
-    {
       title: t('common:actions'),
       key: 'actions',
-      width: 250,
+      width: 320,
+      align: 'center',
       render: (_, record) => (
-        <Space>
+        <Space size="small">
           <Button
             type="link"
             size="small"
@@ -404,7 +426,7 @@ const AIModelAdminPage: React.FC = () => {
     },
   ];
 
-  const providerOptions: ModelProvider[] = ['alibaba-coding', 'alibaba-bailian', 'openai', 'anthropic', 'azure', 'deepseek', 'local'];
+  const providerOptions: ModelProvider[] = ['alibaba-coding', 'alibaba-bailian', 'openai', 'anthropic', 'azure', 'deepseek', 'minimax', 'local'];
 
   return (
     <div>
@@ -552,30 +574,106 @@ const AIModelAdminPage: React.FC = () => {
         title={t('admin:editModel')}
         open={editModalVisible}
         onOk={handleSaveEdit}
-        onCancel={() => setEditModalVisible(false)}
+        onCancel={() => {
+          setEditModalVisible(false);
+          setSelectedProvider('');
+        }}
         confirmLoading={updateMutation.isLoading}
+        width={600}
       >
+        <Alert
+          type="info"
+          showIcon
+          message="编辑模型信息，供应商信息不可修改"
+          style={{ marginBottom: 16 }}
+        />
         <Form form={editForm} layout="vertical">
+          <Form.Item
+            name="provider"
+            label={t('admin:modelProvider')}
+          >
+            <Select disabled>
+              {providerOptions.map((p) => (
+                <Option key={p} value={p}>{PROVIDER_NAMES[p] || p}</Option>
+              ))}
+            </Select>
+          </Form.Item>
+
+          {selectedProvider && availablePresetModels.length > 0 && (
+            <Form.Item label="预设模型">
+              <Select
+                value={selectedPresetModel}
+                onChange={handlePresetModelChange}
+                placeholder="选择预设模型或自定义模型名称"
+                allowClear
+              >
+                {availablePresetModels.map((m) => (
+                  <Option key={m.name} value={m.name}>
+                    <Space>
+                      {m.name}
+                      {m.default && <Tag color="blue">默认</Tag>}
+                    </Space>
+                  </Option>
+                ))}
+              </Select>
+              <Text type="secondary" style={{ fontSize: 12 }}>
+                选择预设模型可自动填充名称
+              </Text>
+            </Form.Item>
+          )}
+
           <Form.Item
             name="name"
             label={t('admin:modelName')}
             rules={[{ required: true }]}
           >
-            <Input />
+            <Input placeholder="输入模型名称或从预设模型中选择" />
           </Form.Item>
           <Form.Item
             name="api_endpoint"
             label={t('admin:modelEndpoint')}
             rules={[{ required: true }]}
           >
-            <Input />
+            <Input
+              readOnly={PRESET_ENDPOINTS[selectedProvider]}
+              disabled={PRESET_ENDPOINTS[selectedProvider]}
+              prefix={PRESET_ENDPOINTS[selectedProvider] ? <LockOutlined /> : null}
+              suffix={PRESET_ENDPOINTS[selectedProvider] ? (
+                <Tooltip title="预设供应商 Endpoint 已固定">
+                  <span style={{ color: '#999' }}>固定</span>
+                </Tooltip>
+              ) : null}
+            />
           </Form.Item>
           <Form.Item
             name="apiKey"
             label={t('admin:modelApiKey')}
           >
-            <Input.Password />
+            <Input.Password placeholder="输入 API Key（不修改则留空）" />
           </Form.Item>
+          <Divider />
+          <Button
+            type="default"
+            icon={<ExperimentOutlined />}
+            onClick={() => {
+              const values = editForm.getFieldsValue();
+              if (editingModel?.hasApiKey && !values.apiKey) {
+                // Test using stored API key
+                testConfigWithStoredKeyMutation.mutate(editingModel.id);
+              } else if (values.api_endpoint && values.apiKey && values.name) {
+                testConfigMutation.mutate({
+                  endpoint: values.api_endpoint,
+                  apiKey: values.apiKey,
+                  modelName: values.name,
+                });
+              } else {
+                message.warning('请先填写模型名称、API Key 和 Endpoint');
+              }
+            }}
+            loading={testConfigMutation.isLoading || testConfigWithStoredKeyMutation.isLoading}
+          >
+            测试配置
+          </Button>
         </Form>
       </Modal>
 

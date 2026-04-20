@@ -1,6 +1,7 @@
 import { Controller, Post, Body } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { BrowserService, MCPCommand } from './browser.service';
+import { ExecuteStepDto, ExecuteStepResultDto } from '../../dto/worker.dto';
 
 @ApiTags('browser')
 @Controller('browser')
@@ -29,5 +30,13 @@ export class BrowserController {
   async resetBrowser(): Promise<{ success: boolean }> {
     await this.browserService.resetBrowser();
     return { success: true };
+  }
+
+  @Post('execute-step')
+  @ApiOperation({ summary: 'Execute a standardized step' })
+  @ApiResponse({ status: 200, type: ExecuteStepResultDto, description: 'Step execution result' })
+  @ApiResponse({ status: 400, description: 'Browser not initialized' })
+  async executeStep(@Body() dto: ExecuteStepDto): Promise<ExecuteStepResultDto> {
+    return this.browserService.executeStep(dto);
   }
 }

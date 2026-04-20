@@ -52,6 +52,30 @@ describe('ModelService', () => {
       const result = await service.listModels();
       expect(result.length).toBe(1);
     });
+
+    it('should only return active models', async () => {
+      // Create an active model
+      await service.createModel({
+        name: 'gpt-4-active',
+        provider: 'openai',
+        api_endpoint: 'https://api.openai.com',
+        config: {},
+      });
+
+      // Create and then disable another model
+      const disabledModel = await service.createModel({
+        name: 'gpt-4-disabled',
+        provider: 'openai',
+        api_endpoint: 'https://api.openai.com',
+        config: {},
+      });
+      await service.setModelStatus(disabledModel.id, 'inactive');
+
+      const result = await service.listModels();
+      expect(result.length).toBe(1);
+      expect(result[0].name).toBe('gpt-4-active');
+      expect(result.every(m => m.status === 'active')).toBe(true);
+    });
   });
 
   describe('getModel', () => {

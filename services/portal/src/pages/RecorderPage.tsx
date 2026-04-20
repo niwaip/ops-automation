@@ -204,7 +204,7 @@ const RecorderPage: React.FC = () => {
   }, [handleStart]);
 
   // noVNC URL
-  const NOVNC_URL = import.meta.env.VITE_NOVNC_URL || 'http://localhost:6080/vnc.html';
+  const NOVNC_URL = import.meta.env.VITE_NOVNC_URL || `http://${import.meta.env.VITE_HOST_IP || 'localhost'}:6080/vnc.html`;
 
   return (
     <div

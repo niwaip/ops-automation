@@ -7,6 +7,8 @@ import { Injectable, Logger } from '@nestjs/common';
 import { ModelService } from '../model/model.service';
 import { ToolExecutor } from './tool-executor';
 import { SessionService } from '../redis/session.service';
+import { ExecutionStepService } from '../execution-step/execution-step.service';
+import { PrismaService } from '../prisma/prisma.service';
 import {
   StreamEvent,
   StreamEventType,
@@ -44,6 +46,8 @@ export class ReActEngineService {
     private readonly modelService: ModelService,
     private readonly toolExecutor: ToolExecutor,
     private readonly sessionService: SessionService,
+    private readonly executionStepService: ExecutionStepService,
+    private readonly prisma: PrismaService,
   ) {}
 
   private createInitialState(maxIterations: number): ReActState {
@@ -79,6 +83,12 @@ export class ReActEngineService {
       context.userRoles = request.userRoles;
     }
 
+    // 绑定 executionId 到 context
+    if (request.executionId) {
+      context.executionId = request.executionId;
+      this.logger.log(`Bound executionId ${request.executionId} to context`);
+    }
+
     // 尝试从Session中恢复
     const savedSession = await this.sessionService.getSession(context.sessionId);
     if (savedSession) {
@@ -88,15 +98,17 @@ export class ReActEngineService {
       if (shouldStartNewRun) {
         this.logger.log(`Resetting finished session ${context.sessionId} for a new task run`);
         await this.sessionService.deleteSession(context.sessionId);
+        // 不要从旧session恢复context，让skill_match重新匹配
+        state = this.createInitialState(config.maxIterations);
+        messages = savedSession.history;
       } else {
         this.logger.log(`Resuming session ${context.sessionId} at iteration ${savedSession.state.iteration}`);
-      }
-
-      state = shouldStartNewRun ? this.createInitialState(config.maxIterations) : savedSession.state;
-      messages = savedSession.history;
-      // 恢复context中的数据
-      if (savedSession.context) {
-        Object.assign(context, savedSession.context);
+        state = savedSession.state;
+        messages = savedSession.history;
+        // 恢复context中的数据
+        if (savedSession.context) {
+          Object.assign(context, savedSession.context);
+        }
       }
       
       // 如果 Session 中没存角色（旧数据），优先使用当前请求带的角色
@@ -406,11 +418,9 @@ export class ReActEngineService {
       return;
     }
 
-    // 尝试开启 JSON Mode
+    // 禁用 JSON Mode - MiniMax 模型不支持 json_object 格式
     const modelConfig = client.getConfig();
-    if (modelConfig.useJsonMode === undefined) {
-      client.updateConfig({ useJsonMode: true });
-    }
+    client.updateConfig({ useJsonMode: false });
 
     const aiMessages = [
       { role: 'system', content: systemPrompt },
@@ -587,5 +597,104 @@ export class ReActEngineService {
       },
       context,
     );
+  }
+
+  /**
+   * Create initial execution steps for an Execution
+   */
+  async createExecutionSteps(
+    executionId: string,
+    skill: SkillMatchResult,
+  ): Promise<void> {
+    if (!skill.executionFlow || skill.executionFlow.length === 0) {
+      // Create a default step for simple execution
+      await this.executionStepService.createStep({
+        executionId,
+        stepIndex: 0,
+        name: 'Execute Skill',
+        type: 'system',
+      });
+      return;
+    }
+
+    // Create steps from execution flow
+    const steps = skill.executionFlow.map((flowTool, index) => ({
+      executionId,
+      stepIndex: index,
+      name: flowTool,
+      type: 'system' as const,
+      action: flowTool,
+    }));
+
+    await this.executionStepService.createSteps(steps);
+    this.logger.log(`Created ${steps.length} execution steps for execution ${executionId}`);
+  }
+
+  /**
+   * Update current step status
+   */
+  async updateCurrentStep(
+    context: ExecutionContext,
+    status: string,
+    additionalData?: {
+      outputJson?: Record<string, unknown>;
+      errorMessage?: string;
+      errorCode?: string;
+      snapshotId?: string;
+    },
+  ): Promise<void> {
+    if (!context.executionId || !context.currentStepId) {
+      return;
+    }
+
+    try {
+      await this.executionStepService.updateStepStatus(
+        context.currentStepId,
+        status,
+        additionalData,
+      );
+    } catch (error) {
+      this.logger.error(`Failed to update step ${context.currentStepId}: ${error}`);
+    }
+  }
+
+  /**
+   * Finalize execution - update Execution status
+   */
+  async finalizeExecution(
+    context: ExecutionContext,
+    status: 'succeeded' | 'failed' | 'cancelled' | 'human_control',
+    result?: Record<string, unknown>,
+    failureReason?: string,
+  ): Promise<void> {
+    if (!context.executionId) {
+      return;
+    }
+
+    try {
+      await this.prisma.execution.update({
+        where: { id: context.executionId },
+        data: {
+          status,
+          endedAt: new Date(),
+          ...(result && { resultJson: result as Prisma.InputJsonValue }),
+          ...(failureReason && { failureReason }),
+        },
+      });
+
+      // Create execution event
+      await this.prisma.executionEvent.create({
+        data: {
+          executionId: context.executionId,
+          eventType: `execution.${status}`,
+          eventSource: 'ai-orchestrator',
+          payloadJson: { failureReason } as Prisma.InputJsonValue,
+        },
+      });
+
+      this.logger.log(`Execution ${context.executionId} finalized with status ${status}`);
+    } catch (error) {
+      this.logger.error(`Failed to finalize execution ${context.executionId}: ${error}`);
+    }
   }
 }

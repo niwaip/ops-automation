@@ -19,25 +19,26 @@ const REACT_SYSTEM_PROMPT = `你是一个智能助手，使用ReAct(Reasoning + 
 可用的工具：
 {tools}
 
-请以JSON格式回答，包含以下字段：
-{
-  "thought": "你的思考过程。如果上一步失败了，请在这里分析失败原因并提出修正方案。",
-  "action": "工具名称",
-  "actionInput": {"参数名": "参数值"},
-  "finalAnswer": "最终回复（如果任务已完成）"
-}
+回答格式：
+Thought: 你的思考过程
+Action: 工具名称
+Action Input: {"参数名": "参数值"}
+Observation: 观察到的结果
+... (重复直到完成)
+Final Answer: 最终回复
 
 重要规则：
 - 每次只能选择一个工具
-- 如果任务完成，请设置 action 为 "finish" 并提供 finalAnswer
-- 如果工具返回 requiresUserInput，则等待用户回复
-- 如果工具返回 error，不要放弃，尝试根据错误信息调整参数后再次调用
-- 不要重复调用同一个工具且参数完全相同，除非 Observation 发生了变化
+- 参数必须是有效的JSON格式
+- 如果工具返回requiresUserInput，则等待用户回复
+- 不要在Thought中直接回答问题，必须通过工具执行
+- 不要重复调用同一个工具，除非用户提供了新信息
+- 如果任务完成，输出 Final Answer 包含最终回复
 `;
 
 const REACT_USER_PROMPT_TEMPLATE = `用户输入: {userInput}
 
-请按照ReAct框架处理这个请求，并以JSON格式输出。`;
+请按照ReAct框架处理这个请求。`;
 
 /**
  * 构建系统提示词
@@ -172,9 +173,26 @@ export function parseActionResponse(response: string): {
   action: string;
   actionInput: Record<string, unknown>;
 } | null {
+  // 调试日志
+  console.log('[DEBUG parseActionResponse] Raw response length:', response?.length);
+  console.log('[DEBUG parseActionResponse] Raw response preview:', response?.substring(0, 500));
+
+  // 过滤掉思考标签内容，否则会干扰正则匹配
+  // 支持多种思考标签格式: <think>、<｜User｜>、<｜Model｜>等
+  let cleanedResponse = response
+    // 匹配 <think>...</think> 格式（MiniMax等模型常用）
+    .replace(/<think>[\s\S]*?<\/think>/gi, '')
+    // 匹配 <｜...｜> 格式
+    .replace(/<｜[\s\S]*?｜>/g, '')
+    // 匹配其他可能的思考标签格式（不区分大小写）
+    .replace(/<think[\s\S]*?<\/think>/gi, '')
+    .trim();
+
+  console.log('[DEBUG parseActionResponse] Cleaned response preview:', cleanedResponse?.substring(0, 500));
+
   // 尝试直接解析JSON
   try {
-    const cleaned = response.trim().replace(/```json|```/g, '').trim();
+    const cleaned = cleanedResponse.trim().replace(/```json|```/g, '').trim();
     const parsed = JSON.parse(cleaned);
 
     if (parsed.action) {
@@ -197,15 +215,18 @@ export function parseActionResponse(response: string): {
   }
 
   // 提取Thought
-  const thoughtMatch = response.match(/Thought:\s*([\s\S]+?)(?=Action:|$)/);
+  const thoughtMatch = cleanedResponse.match(/Thought:\s*([\s\S]+?)(?=Action:|$)/);
   const thought = thoughtMatch?.[1]?.trim() ?? '';
 
   // 提取Action
-  const actionMatch = response.match(/Action:\s*([^\n]+)/);
+  const actionMatch = cleanedResponse.match(/Action:\s*([^\n]+)/);
   const action = actionMatch?.[1]?.trim() ?? '';
 
+  console.log('[DEBUG parseActionResponse] Extracted thought:', thought?.substring(0, 200));
+  console.log('[DEBUG parseActionResponse] Extracted action:', action?.substring(0, 200));
+
   // 提取Action Input
-  const actionInputMatch = response.match(/Action Input:\s*([\s\S]+?)(?=Observation|Final Answer|$)/);
+  const actionInputMatch = cleanedResponse.match(/Action Input:\s*([\s\S]+?)(?=Observation|Final Answer|$)/);
   let actionInput: Record<string, unknown> = {};
 
   if (actionInputMatch) {
@@ -234,7 +255,7 @@ export function parseActionResponse(response: string): {
   }
 
   // 检查是否有Final Answer
-  const finalMatch = response.match(/Final Answer:\s*([\s\S]+)/);
+  const finalMatch = cleanedResponse.match(/Final Answer:\s*([\s\S]+)/);
   if (finalMatch) {
     return {
       thought: thought || '任务已完成',

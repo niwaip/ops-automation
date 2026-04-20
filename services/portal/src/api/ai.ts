@@ -1,7 +1,7 @@
 import { apiClient } from './client';
 
 // AI Model types for admin page
-export type ModelProvider = 'openai' | 'anthropic' | 'azure' | 'local' | 'alibaba-coding' | 'alibaba-bailian' | 'deepseek';
+export type ModelProvider = 'openai' | 'anthropic' | 'azure' | 'local' | 'alibaba-coding' | 'alibaba-bailian' | 'deepseek' | 'minimax';
 
 export interface AIModel {
   id: string;
@@ -10,6 +10,7 @@ export interface AIModel {
   api_endpoint: string;
   config: Record<string, unknown>;
   status: 'active' | 'inactive';
+  hasApiKey?: boolean;
   created_at: Date;
   updated_at: Date;
 }
@@ -52,6 +53,10 @@ export const aiModelApi = {
     return apiClient.get<AIModelListResponse>('/ai/models');
   },
 
+  listForAdmin: async (): Promise<AIModelListResponse> => {
+    return apiClient.get<AIModelListResponse>('/ai/models/admin');
+  },
+
   listPresets: async (): Promise<PresetModelsResponse> => {
     return apiClient.get<PresetModelsResponse>('/ai/models/presets');
   },
@@ -82,6 +87,10 @@ export const aiModelApi = {
 
   test: async (id: string, prompt: string): Promise<{ success: boolean; response?: string; error?: string }> => {
     return apiClient.post(`/ai/models/${id}/test`, { prompt });
+  },
+
+  testConfigWithStoredKey: async (id: string): Promise<{ success: boolean; response?: string; error?: string }> => {
+    return apiClient.post(`/ai/models/${id}/test-config`);
   },
 
   testConfig: async (endpoint: string, apiKey: string, modelName: string): Promise<{ success: boolean; response?: string; error?: string }> => {
