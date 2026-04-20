@@ -57,7 +57,19 @@ export class AIController {
   @ApiResponse({ status: 200, description: 'Returns model response' })
   @ApiResponse({ status: 404, description: 'Model not found or not initialized' })
   async callModel(@Body() body: { modelId: string; prompt: string }): Promise<{ result: string }> {
-    const modelId = body.modelId || 'default';
+    let modelId = body.modelId || 'default';
+
+    // Resolve 'default' to the actual default active model
+    if (modelId === 'default') {
+      const models = await this.modelService.listModels();
+      const defaultModel = models.find(m => m.status === 'active');
+      if (defaultModel) {
+        modelId = defaultModel.id;
+      } else {
+        throw new HttpException('No active model available', HttpStatus.NOT_FOUND);
+      }
+    }
+
     const client = this.modelService.getClientByModelId(modelId);
 
     if (!client) {
