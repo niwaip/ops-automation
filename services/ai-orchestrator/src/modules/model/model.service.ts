@@ -244,30 +244,35 @@ export class ModelService implements OnModuleInit {
    * List all registered models (only active ones for chat selector)
    */
   async listModels(): Promise<AIModelDTO[]> {
-    return Array.from(this.models.values()).filter(m => m.status === 'active');
+    return Array.from(this.models.values())
+      .filter(m => m.status === 'active')
+      .map(m => ({ ...m, hasApiKey: !!this.apiKeys.get(m.id) }));
   }
 
   /**
    * List all registered models for admin (including inactive)
    */
   async listModelsForAdmin(): Promise<AIModelDTO[]> {
-    return Array.from(this.models.values());
+    return Array.from(this.models.values())
+      .map(m => ({ ...m, hasApiKey: !!this.apiKeys.get(m.id) }));
   }
 
   /**
    * Get a specific model by ID
    */
   async getModel(id: string): Promise<AIModelDTO | null> {
-    return this.models.get(id) || null;
+    const model = this.models.get(id);
+    if (!model) return null;
+    return { ...model, hasApiKey: !!this.apiKeys.get(id) };
   }
 
   /**
    * Get model by name
    */
   async getModelByName(name: string): Promise<AIModelDTO | null> {
-    for (const [, model] of this.models) {
+    for (const [id, model] of this.models) {
       if (model.name === name) {
-        return model;
+        return { ...model, hasApiKey: !!this.apiKeys.get(id) };
       }
     }
     return null;

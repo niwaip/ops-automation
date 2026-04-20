@@ -193,6 +193,22 @@ const AIModelAdminPage: React.FC = () => {
     }
   );
 
+  const testConfigWithStoredKeyMutation = useMutation(
+    (id: string) => aiModelApi.testConfigWithStoredKey(id),
+    {
+      onSuccess: (result: { success: boolean; response?: string; error?: string }) => {
+        if (result.success) {
+          message.success(`配置测试成功: ${result.response}`);
+        } else {
+          message.error(`配置测试失败: ${result.error}`);
+        }
+      },
+      onError: () => {
+        message.error(t('common:error'));
+      },
+    }
+  );
+
   const handleEnable = (id: string) => {
     enableMutation.mutate(id);
   };
@@ -307,8 +323,9 @@ const AIModelAdminPage: React.FC = () => {
       title: t('admin:modelName'),
       dataIndex: 'name',
       key: 'name',
+      align: 'center',
       render: (name: string, record) => (
-        <Space>
+        <Space size="small">
           <Text strong>{name}</Text>
           {PROVIDER_MODELS[record.provider] && PROVIDER_MODELS[record.provider].length > 0 && (
             <Button
@@ -327,6 +344,7 @@ const AIModelAdminPage: React.FC = () => {
       title: t('admin:modelProvider'),
       dataIndex: 'provider',
       key: 'provider',
+      align: 'center',
       render: (provider: ModelProvider) => (
         <Tag color={provider.startsWith('alibaba') ? 'orange' : 'blue'}>
           {PROVIDER_NAMES[provider] || provider}
@@ -337,12 +355,14 @@ const AIModelAdminPage: React.FC = () => {
       title: t('admin:modelEndpoint'),
       dataIndex: 'api_endpoint',
       key: 'api_endpoint',
+      align: 'center',
       ellipsis: true,
     },
     {
       title: t('admin:userStatus'),
       dataIndex: 'status',
       key: 'status',
+      align: 'center',
       render: (status: string) => (
         <Tag color={status === 'active' ? 'success' : 'error'}>
           {status === 'active' ? t('admin:modelEnabled') : t('admin:modelDisabled')}
@@ -352,9 +372,10 @@ const AIModelAdminPage: React.FC = () => {
     {
       title: t('common:actions'),
       key: 'actions',
-      width: 250,
+      width: 320,
+      align: 'center',
       render: (_, record) => (
-        <Space>
+        <Space size="small">
           <Button
             type="link"
             size="small"
@@ -636,7 +657,10 @@ const AIModelAdminPage: React.FC = () => {
             icon={<ExperimentOutlined />}
             onClick={() => {
               const values = editForm.getFieldsValue();
-              if (values.api_endpoint && values.apiKey && values.name) {
+              if (editingModel?.hasApiKey && !values.apiKey) {
+                // Test using stored API key
+                testConfigWithStoredKeyMutation.mutate(editingModel.id);
+              } else if (values.api_endpoint && values.apiKey && values.name) {
                 testConfigMutation.mutate({
                   endpoint: values.api_endpoint,
                   apiKey: values.apiKey,
@@ -646,7 +670,7 @@ const AIModelAdminPage: React.FC = () => {
                 message.warning('请先填写模型名称、API Key 和 Endpoint');
               }
             }}
-            loading={testConfigMutation.isLoading}
+            loading={testConfigMutation.isLoading || testConfigWithStoredKeyMutation.isLoading}
           >
             测试配置
           </Button>

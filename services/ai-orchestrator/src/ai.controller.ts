@@ -148,6 +148,24 @@ export class AIController {
     return { success };
   }
 
+  @Post('models/:id/test-config')
+  @ApiOperation({ summary: 'Test model configuration using stored API key' })
+  @ApiResponse({ status: 200, description: 'Test result' })
+  @ApiResponse({ status: 404, description: 'Model not found' })
+  async testModelConfig(@Param('id') id: string): Promise<{ success: boolean; response?: string; error?: string }> {
+    const model = await this.modelService.getModel(id);
+    if (!model) {
+      throw new HttpException('Model not found', HttpStatus.NOT_FOUND);
+    }
+    try {
+      const response = await this.modelService.callModel(id, 'Hello, this is a test.');
+      return { success: true, response };
+    } catch (error: unknown) {
+      const errorMsg = error instanceof Error ? error.message : 'Unknown error';
+      return { success: false, error: errorMsg };
+    }
+  }
+
   @Post('models/:id/test')
   @ApiOperation({ summary: 'Test an AI model with a prompt' })
   @ApiResponse({ status: 200, description: 'Test result' })

@@ -10,6 +10,7 @@ export interface AIModel {
   api_endpoint: string;
   config: Record<string, unknown>;
   status: 'active' | 'inactive';
+  hasApiKey?: boolean;
   created_at: Date;
   updated_at: Date;
 }
@@ -86,6 +87,10 @@ export const aiModelApi = {
 
   test: async (id: string, prompt: string): Promise<{ success: boolean; response?: string; error?: string }> => {
     return apiClient.post(`/ai/models/${id}/test`, { prompt });
+  },
+
+  testConfigWithStoredKey: async (id: string): Promise<{ success: boolean; response?: string; error?: string }> => {
+    return apiClient.post(`/ai/models/${id}/test-config`);
   },
 
   testConfig: async (endpoint: string, apiKey: string, modelName: string): Promise<{ success: boolean; response?: string; error?: string }> => {
