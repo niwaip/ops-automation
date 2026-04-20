@@ -519,7 +519,23 @@ export class ModelService implements OnModuleInit {
     }
 
     const messages = [{ role: 'user' as const, content: prompt }];
-    return client.chatCompletion(messages);
+    let result = await client.chatCompletion(messages);
+
+    // Strip thinking tags from MiniMax model response
+    result = this.stripThinkingTags(result);
+
+    return result;
+  }
+
+  /**
+   * Strip <think> and </thinking> tags from model response
+   * MiniMax models include thinking tags which can interfere with JSON parsing
+   */
+  private stripThinkingTags(content: string): string {
+    // Remove <think>...</think> blocks
+    return content
+      .replace(/<think>[\s\S]*?<\/think>/gi, '')
+      .trim();
   }
 
   /**
