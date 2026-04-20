@@ -98,15 +98,17 @@ export class ReActEngineService {
       if (shouldStartNewRun) {
         this.logger.log(`Resetting finished session ${context.sessionId} for a new task run`);
         await this.sessionService.deleteSession(context.sessionId);
+        // 不要从旧session恢复context，让skill_match重新匹配
+        state = this.createInitialState(config.maxIterations);
+        messages = savedSession.history;
       } else {
         this.logger.log(`Resuming session ${context.sessionId} at iteration ${savedSession.state.iteration}`);
-      }
-
-      state = shouldStartNewRun ? this.createInitialState(config.maxIterations) : savedSession.state;
-      messages = savedSession.history;
-      // 恢复context中的数据
-      if (savedSession.context) {
-        Object.assign(context, savedSession.context);
+        state = savedSession.state;
+        messages = savedSession.history;
+        // 恢复context中的数据
+        if (savedSession.context) {
+          Object.assign(context, savedSession.context);
+        }
       }
       
       // 如果 Session 中没存角色（旧数据），优先使用当前请求带的角色
