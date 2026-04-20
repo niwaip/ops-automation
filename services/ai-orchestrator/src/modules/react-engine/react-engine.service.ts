@@ -416,11 +416,9 @@ export class ReActEngineService {
       return;
     }
 
-    // 尝试开启 JSON Mode
+    // 禁用 JSON Mode - MiniMax 模型不支持 json_object 格式
     const modelConfig = client.getConfig();
-    if (modelConfig.useJsonMode === undefined) {
-      client.updateConfig({ useJsonMode: true });
-    }
+    client.updateConfig({ useJsonMode: false });
 
     const aiMessages = [
       { role: 'system', content: systemPrompt },

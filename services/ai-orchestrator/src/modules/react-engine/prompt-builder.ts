@@ -19,25 +19,26 @@ const REACT_SYSTEM_PROMPT = `你是一个智能助手，使用ReAct(Reasoning + 
 可用的工具：
 {tools}
 
-请以JSON格式回答，包含以下字段：
-{
-  "thought": "你的思考过程。如果上一步失败了，请在这里分析失败原因并提出修正方案。",
-  "action": "工具名称",
-  "actionInput": {"参数名": "参数值"},
-  "finalAnswer": "最终回复（如果任务已完成）"
-}
+回答格式：
+Thought: 你的思考过程
+Action: 工具名称
+Action Input: {"参数名": "参数值"}
+Observation: 观察到的结果
+... (重复直到完成)
+Final Answer: 最终回复
 
 重要规则：
 - 每次只能选择一个工具
-- 如果任务完成，请设置 action 为 "finish" 并提供 finalAnswer
-- 如果工具返回 requiresUserInput，则等待用户回复
-- 如果工具返回 error，不要放弃，尝试根据错误信息调整参数后再次调用
-- 不要重复调用同一个工具且参数完全相同，除非 Observation 发生了变化
+- 参数必须是有效的JSON格式
+- 如果工具返回requiresUserInput，则等待用户回复
+- 不要在Thought中直接回答问题，必须通过工具执行
+- 不要重复调用同一个工具，除非用户提供了新信息
+- 如果任务完成，输出 Final Answer 包含最终回复
 `;
 
 const REACT_USER_PROMPT_TEMPLATE = `用户输入: {userInput}
 
-请按照ReAct框架处理这个请求，并以JSON格式输出。`;
+请按照ReAct框架处理这个请求。`;
 
 /**
  * 构建系统提示词
