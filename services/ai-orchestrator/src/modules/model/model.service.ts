@@ -241,10 +241,10 @@ export class ModelService implements OnModuleInit {
   }
 
   /**
-   * List all registered models
+   * List all registered models (only active ones)
    */
   async listModels(): Promise<AIModelDTO[]> {
-    return Array.from(this.models.values());
+    return Array.from(this.models.values()).filter(m => m.status === 'active');
   }
 
   /**
