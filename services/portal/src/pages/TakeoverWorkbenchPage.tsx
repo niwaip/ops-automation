@@ -121,7 +121,7 @@ const TakeoverWorkbenchPage: React.FC = () => {
   }
 
   // Get noVNC URL from execution result or connection info
-  const novncUrl = execution.result?.novncUrl as string || 'http://localhost:6080/vnc.html';
+  const novncUrl = execution.result?.novncUrl as string || `http://${import.meta.env.VITE_HOST_IP || 'localhost'}:6080/vnc.html`;
 
   return (
     <div style={{ padding: 24 }}>

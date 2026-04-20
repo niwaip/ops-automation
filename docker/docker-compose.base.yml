@@ -229,7 +229,10 @@ services:
       NODE_ENV: development
       DOCKER_ENV: true
       VITE_API_BASE_URL: /api
-      VITE_RECORDER_WS_URL: ws://localhost:${BROWSER_WORKER_PORT:-3004}
+      VITE_HOST_IP: ${HOST_IP:-192.168.100.143}
+      VITE_RECORDER_WS_URL: ws://${HOST_IP:-192.168.100.143}:${BROWSER_WORKER_PORT:-3004}
+      VITE_CARBONE_API_URL: https://${HOST_IP:-192.168.100.143}:3443
+      VITE_NOVNC_URL: http://${HOST_IP:-192.168.100.143}:6080/vnc.html
     ports:
       - "${PORTAL_PORT:-5173}:${PORTAL_PORT:-5173}"
     volumes:

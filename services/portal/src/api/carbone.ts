@@ -32,7 +32,7 @@ export const carboneApi = {
 // ========== Legacy API for CarboneTemplateListPage ==========
 
 // Carbone Engine API 基础URL（独立服务）
-const CARBONE_API_URL = import.meta.env.VITE_CARBONE_API_URL || 'https://localhost:3443';
+const CARBONE_API_URL = import.meta.env.VITE_CARBONE_API_URL || `https://${import.meta.env.VITE_HOST_IP || 'localhost'}:3443`;
 
 // 创建独立的axios实例（不使用portal的认证）
 const carboneClient = axios.create({

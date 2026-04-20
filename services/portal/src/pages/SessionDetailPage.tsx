@@ -22,6 +22,16 @@ import { sessionApi, StepResult } from '../api/session';
 
 const { Title, Text } = Typography;
 
+// Transform localhost URLs to use VITE_HOST_IP for LAN access
+const transformLocalhostUrl = (url: string | undefined): string => {
+  if (!url) return url || '';
+  const hostIp = import.meta.env.VITE_HOST_IP;
+  if (hostIp && url.includes('localhost')) {
+    return url.replace(/http:\/\/localhost:/, `http://${hostIp}:`);
+  }
+  return url;
+};
+
 // Schedule Display Component
 const ScheduleDisplay: React.FC<{ schedule: Record<string, unknown> }> = ({ schedule }) => (
   <Card size="small" style={{ background: '#f6ffed', borderRadius: 8, marginTop: 8 }}>
@@ -384,7 +394,7 @@ const SessionDetailPage: React.FC = () => {
           extra={
             <Button
               type="link"
-              onClick={() => window.open(session.endpoints!.novnc, '_blank')}
+              onClick={() => window.open(transformLocalhostUrl(session.endpoints!.novnc), '_blank')}
             >
               新窗口打开
             </Button>
@@ -392,7 +402,7 @@ const SessionDetailPage: React.FC = () => {
         >
           <div style={{ width: '100%', height: 600, border: '1px solid #d9d9d9', borderRadius: 4, background: '#1e1e1e' }}>
             <iframe
-              src={`${session.endpoints.novnc}?autoconnect=true&resize=scale`}
+              src={`${transformLocalhostUrl(session.endpoints.novnc)}?autoconnect=true&resize=scale`}
               style={{ width: '100%', height: '100%', border: 'none' }}
               title="noVNC"
             />
@@ -580,7 +590,7 @@ const SessionDetailPage: React.FC = () => {
               <Button
                 type="link"
                 size="small"
-                onClick={() => window.open(session.endpoints!.novnc, '_blank')}
+                onClick={() => window.open(transformLocalhostUrl(session.endpoints!.novnc), '_blank')}
               >
                 Open noVNC
               </Button>

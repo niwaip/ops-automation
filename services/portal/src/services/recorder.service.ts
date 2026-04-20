@@ -47,7 +47,7 @@ export interface ValidationResult {
   warnings: string[];
 }
 
-const WS_URL = import.meta.env.VITE_RECORDER_WS_URL || 'ws://localhost:3004';
+const WS_URL = import.meta.env.VITE_RECORDER_WS_URL || `ws://${import.meta.env.VITE_HOST_IP || 'localhost'}:3004`;
 const WS_PATH = '/recorder';
 
 class RecorderService {
