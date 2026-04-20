@@ -78,7 +78,7 @@ const AIModelAdminPage: React.FC = () => {
   const [selectedPresetModel, setSelectedPresetModel] = useState<string>('');
   const [newModelName, setNewModelName] = useState<string>('');
 
-  const modelsQuery = useQuery(['ai-models'], () => aiModelApi.list());
+  const modelsQuery = useQuery(['ai-models'], () => aiModelApi.listForAdmin());
   const presetsQuery = useQuery(['ai-model-presets'], () => aiModelApi.listPresets());
 
   // Get available models for selected provider
@@ -348,12 +348,6 @@ const AIModelAdminPage: React.FC = () => {
           {status === 'active' ? t('admin:modelEnabled') : t('admin:modelDisabled')}
         </Tag>
       ),
-    },
-    {
-      title: t('common:createdAt'),
-      dataIndex: 'created_at',
-      key: 'created_at',
-      render: (date: string) => new Date(date).toLocaleString(),
     },
     {
       title: t('common:actions'),

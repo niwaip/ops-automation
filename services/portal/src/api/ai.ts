@@ -52,6 +52,10 @@ export const aiModelApi = {
     return apiClient.get<AIModelListResponse>('/ai/models');
   },
 
+  listForAdmin: async (): Promise<AIModelListResponse> => {
+    return apiClient.get<AIModelListResponse>('/ai/models/admin');
+  },
+
   listPresets: async (): Promise<PresetModelsResponse> => {
     return apiClient.get<PresetModelsResponse>('/ai/models/presets');
   },

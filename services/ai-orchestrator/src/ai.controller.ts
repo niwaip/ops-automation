@@ -43,6 +43,14 @@ export class AIController {
     return { models };
   }
 
+  @Get('models/admin')
+  @ApiOperation({ summary: 'List all models for admin (including inactive)' })
+  @ApiResponse({ status: 200, description: 'Returns all models for admin' })
+  async listModelsForAdmin(): Promise<{ models: AIModelDTO[] }> {
+    const models = await this.modelService.listModelsForAdmin();
+    return { models };
+  }
+
   // Model call endpoint - for AI semantic matching
   @Post('model/call')
   @ApiOperation({ summary: 'Call AI model with a prompt (for skill matching)' })

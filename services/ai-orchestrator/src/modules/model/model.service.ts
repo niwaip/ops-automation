@@ -240,11 +240,18 @@ export class ModelService implements OnModuleInit {
     }));
   }
 
-  /**
-   * List all registered models (only active ones)
+/**
+   * List all registered models (only active ones for chat selector)
    */
   async listModels(): Promise<AIModelDTO[]> {
     return Array.from(this.models.values()).filter(m => m.status === 'active');
+  }
+
+  /**
+   * List all registered models for admin (including inactive)
+   */
+  async listModelsForAdmin(): Promise<AIModelDTO[]> {
+    return Array.from(this.models.values());
   }
 
   /**
