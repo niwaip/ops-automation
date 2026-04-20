@@ -203,7 +203,11 @@ const AIModelAdminPage: React.FC = () => {
 
   const handleEdit = (model: AIModel) => {
     setEditingModel(model);
-    editForm.setFieldsValue(model);
+    setSelectedProvider(model.provider);
+    editForm.setFieldsValue({
+      ...model,
+      apiKey: '', // Don't pre-fill API key for security
+    });
     setEditModalVisible(true);
   };
 
@@ -555,30 +559,103 @@ const AIModelAdminPage: React.FC = () => {
         title={t('admin:editModel')}
         open={editModalVisible}
         onOk={handleSaveEdit}
-        onCancel={() => setEditModalVisible(false)}
+        onCancel={() => {
+          setEditModalVisible(false);
+          setSelectedProvider('');
+        }}
         confirmLoading={updateMutation.isLoading}
+        width={600}
       >
+        <Alert
+          type="info"
+          showIcon
+          message="编辑模型信息，供应商信息不可修改"
+          style={{ marginBottom: 16 }}
+        />
         <Form form={editForm} layout="vertical">
+          <Form.Item
+            name="provider"
+            label={t('admin:modelProvider')}
+          >
+            <Select disabled>
+              {providerOptions.map((p) => (
+                <Option key={p} value={p}>{PROVIDER_NAMES[p] || p}</Option>
+              ))}
+            </Select>
+          </Form.Item>
+
+          {selectedProvider && availablePresetModels.length > 0 && (
+            <Form.Item label="预设模型">
+              <Select
+                value={selectedPresetModel}
+                onChange={handlePresetModelChange}
+                placeholder="选择预设模型或自定义模型名称"
+                allowClear
+              >
+                {availablePresetModels.map((m) => (
+                  <Option key={m.name} value={m.name}>
+                    <Space>
+                      {m.name}
+                      {m.default && <Tag color="blue">默认</Tag>}
+                    </Space>
+                  </Option>
+                ))}
+              </Select>
+              <Text type="secondary" style={{ fontSize: 12 }}>
+                选择预设模型可自动填充名称
+              </Text>
+            </Form.Item>
+          )}
+
           <Form.Item
             name="name"
             label={t('admin:modelName')}
             rules={[{ required: true }]}
           >
-            <Input />
+            <Input placeholder="输入模型名称或从预设模型中选择" />
           </Form.Item>
           <Form.Item
             name="api_endpoint"
             label={t('admin:modelEndpoint')}
             rules={[{ required: true }]}
           >
-            <Input />
+            <Input
+              readOnly={PRESET_ENDPOINTS[selectedProvider]}
+              disabled={PRESET_ENDPOINTS[selectedProvider]}
+              prefix={PRESET_ENDPOINTS[selectedProvider] ? <LockOutlined /> : null}
+              suffix={PRESET_ENDPOINTS[selectedProvider] ? (
+                <Tooltip title="预设供应商 Endpoint 已固定">
+                  <span style={{ color: '#999' }}>固定</span>
+                </Tooltip>
+              ) : null}
+            />
           </Form.Item>
           <Form.Item
             name="apiKey"
             label={t('admin:modelApiKey')}
           >
-            <Input.Password />
+            <Input.Password placeholder="输入 API Key（不修改则留空）" />
           </Form.Item>
+          <Divider />
+          <Button
+            type="default"
+            icon={<ExperimentOutlined />}
+            onClick={() => {
+              const values = editForm.getFieldsValue();
+              if (values.api_endpoint && values.apiKey && values.name) {
+                testConfigMutation.mutate({
+                  endpoint: values.api_endpoint,
+                  apiKey: values.apiKey,
+                  modelName: values.name,
+                });
+              } else {
+                message.warning('请先填写模型名称、API Key 和 Endpoint');
+              }
+            }}
+            loading={testConfigMutation.isLoading}
+          >
+            测试配置
+          </Button>
         </Form>
       </Modal>
 
