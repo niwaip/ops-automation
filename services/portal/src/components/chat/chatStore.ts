@@ -152,7 +152,14 @@ export const useChatStore = create<ChatState & ChatActions>((set, get) => ({
     const abort = get().abortStreaming;
     if (abort) {
       abort();
-      set({ isLoading: false, abortStreaming: null, streamingContent: '', streamingEvents: [] });
+      set({
+        isLoading: false,
+        abortStreaming: null,
+        streamingContent: '',
+        streamingEvents: [],
+        pendingParamsConfirm: null,
+        pendingSkillName: null,
+      });
     }
   },
 

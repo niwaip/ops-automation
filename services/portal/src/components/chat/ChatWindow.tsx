@@ -151,10 +151,12 @@ const ChatWindow: React.FC = () => {
         updateLastMessage(errorMsg);
         setStreaming(false);
         setAbortStreaming(null);
+        setPendingParamsConfirm(null, null);
       },
       () => {
         setStreaming(false);
         setAbortStreaming(null);
+        setPendingParamsConfirm(null, null);
         // 最终更新消息
         if (accumulatedContent) {
           updateLastMessage(accumulatedContent);
