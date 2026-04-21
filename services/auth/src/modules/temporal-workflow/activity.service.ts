@@ -188,7 +188,7 @@ export class ActivityService {
           modelId: 'MiniMax-M2.7',  // Use MiniMax model
           prompt,
         },
-        { timeout: 60000 }
+        { timeout: 120000 }
       );
 
       const code = response.data?.result;
