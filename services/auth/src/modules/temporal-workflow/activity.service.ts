@@ -2,6 +2,12 @@ import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { Activity, Prisma } from '@prisma/client';
 import axios from 'axios';
+import { promisify } from 'util';
+import { promises as fs } from 'fs';
+import * as path from 'path';
+import { spawn } from 'child_process';
+
+const exec = promisify(require('child_process').exec);
 
 export interface ActivityFormData {
   name: string;
@@ -254,7 +260,7 @@ export class ActivityService {
   }
 
   /**
-   * Execute generated code for real validation
+   * Execute Python code directly in subprocess
    * 先拉取最新代码，然后执行
    */
   async executeCode(code: string, fn: string, taskQueue: string, input?: Record<string, any>): Promise<{
@@ -272,25 +278,15 @@ export class ActivityService {
       // 1. 先拉取最新代码 (参数中已传入)
       logs.push(`[${new Date().toISOString()}] 拉取最新代码完成`);
 
-      // 2. 将代码发送到 AI Orchestrator 执行
-      const aiOrchestratorUrl = getAiOrchestratorUrl();
-      const response = await axios.post<{ result: any; logs?: string[]; error?: string }>(
-        `${aiOrchestratorUrl}/ai/execute-activity`,
-        {
-          code,
-          fn,
-          taskQueue,
-          input: input || {},
-        },
-        { timeout: 120000 } // 2分钟超时
-      );
-
+      // 2. 直接执行 Python 代码
+      logs.push(`[${new Date().toISOString()}] 直接执行 Python 代码`);
+      const result = await this.executePythonCode(code, fn, input || {}, logs);
       logs.push(`[${new Date().toISOString()}] 代码执行完成`);
 
       return {
         success: true,
-        result: response.data.result,
-        logs: [...logs, ...(response.data.logs || [])],
+        result,
+        logs,
       };
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : 'Unknown error';
@@ -315,40 +311,139 @@ export class ActivityService {
     onLog: (log: string) => void,
   ): Promise<{ success: boolean; result?: any; error?: string }> {
     const logger = new Logger('ActivityService.executeCodeStreaming');
+    const logs: string[] = [];
 
     try {
       onLog(`[${new Date().toISOString()}] 开始执行代码...`);
+      onLog(`[${new Date().toISOString()}] 直接执行 Python 代码（不依赖 AI Orchestrator）`);
 
-      const aiOrchestratorUrl = getAiOrchestratorUrl();
-      onLog(`[${new Date().toISOString()}] 调用 AI Orchestrator 执行`);
-
-      const response = await axios.post<{ result: any; logs?: string[]; error?: string }>(
-        `${aiOrchestratorUrl}/ai/execute-activity`,
-        {
-          code,
-          fn,
-          taskQueue,
-          input: input || {},
-        },
-        { timeout: 180000 }
-      );
-
-      if (response.data.logs) {
-        response.data.logs.forEach(log => onLog(log));
-      }
-
-      if (response.data.error) {
-        onLog(`[${new Date().toISOString()}] 执行失败: ${response.data.error}`);
-        return { success: false, error: response.data.error };
-      }
+      const result = await this.executePythonCode(code, fn, input || {}, (log) => {
+        onLog(`[${new Date().toISOString()}] ${log}`);
+        logs.push(log);
+      });
 
       onLog(`[${new Date().toISOString()}] 执行成功`);
-      return { success: true, result: response.data.result };
+      return { success: true, result };
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : 'Unknown error';
       logger.error(`Streaming execution failed: ${errorMsg}`);
       onLog(`[${new Date().toISOString()}] 执行失败: ${errorMsg}`);
       return { success: false, error: errorMsg };
+    }
+  }
+
+  /**
+   * Execute Python code in subprocess
+   */
+  private async executePythonCode(
+    code: string,
+    fn: string,
+    input: Record<string, any>,
+    onLog: (log: string) => void,
+  ): Promise<any> {
+    const tempDir = '/tmp/activity_execution';
+    await fs.mkdir(tempDir, { recursive: true });
+
+    const activityFilePath = path.join(tempDir, `activity_${Date.now()}.py`);
+    const inputFilePath = path.join(tempDir, `input_${Date.now()}.json`);
+    const runnerPath = path.join(tempDir, `runner_${Date.now()}.py`);
+
+    try {
+      // Write activity code
+      await fs.writeFile(activityFilePath, code);
+      onLog(`已写入活动代码到: ${activityFilePath}`);
+
+      // Write input JSON
+      await fs.writeFile(inputFilePath, JSON.stringify(input, null, 2));
+      onLog(`已写入输入数据`);
+
+      // Create simple runner script
+      const runnerScript = `
+import json
+import sys
+import os
+import traceback
+
+# Add temp dir to path for imports
+sys.path.insert(0, '${tempDir}')
+
+# Read input
+with open('${inputFilePath}', 'r') as f:
+    input_data = json.load(f)
+
+# Read and execute activity code
+try:
+    with open('${activityFilePath}', 'r') as f:
+        activity_code = f.read()
+
+    # Compile and execute the activity code
+    namespace = {}
+    exec(compile(activity_code, '${activityFilePath}', 'exec'), namespace)
+
+    # Find the activity function
+    activity_fn = namespace.get('${fn}')
+    if activity_fn is None:
+        # Try to find it by name
+        for name, obj in namespace.items():
+            if callable(obj) and name == '${fn}':
+                activity_fn = obj
+                break
+
+    if activity_fn is None:
+        print(json.dumps({"error": "Function '${fn}' not found in activity code", "result": None}))
+        sys.exit(1)
+
+    # Execute the activity
+    result = activity_fn(input_data)
+
+    # Handle async results
+    import asyncio
+    if asyncio.iscoroutine(result):
+        result = asyncio.get_event_loop().run_until_complete(result)
+
+    print(json.dumps({"result": result, "error": None}))
+
+except Exception as e:
+    error_msg = traceback.format_exc()
+    print(json.dumps({"error": str(e), "result": None, "traceback": error_msg}))
+    sys.exit(1)
+`;
+
+      await fs.writeFile(runnerPath, runnerScript);
+      onLog(`已写入 runner 脚本`);
+
+      // Execute Python script
+      onLog(`执行 Python 代码...`);
+      const { stdout, stderr } = await exec(`python3 "${runnerPath}"`, { timeout: 120000 });
+
+      if (stderr && stderr.trim()) {
+        onLog(`stderr: ${stderr.trim()}`);
+      }
+
+      // Parse result
+      let result: any;
+      try {
+        result = JSON.parse(stdout.trim());
+      } catch (e) {
+        onLog(`解析结果失败: ${stdout}`);
+        throw new Error(`Failed to parse execution result: ${stdout}`);
+      }
+
+      if (result.error) {
+        throw new Error(result.error);
+      }
+
+      return result.result;
+
+    } finally {
+      // Clean up temp files
+      try {
+        await fs.unlink(activityFilePath);
+        await fs.unlink(inputFilePath);
+        await fs.unlink(runnerPath);
+      } catch (e) {
+        // Ignore cleanup errors
+      }
     }
   }
 }
