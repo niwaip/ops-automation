@@ -239,6 +239,16 @@ class MockResponse:
             raise urllib.error.HTTPError(None, self.status, None, None, None)
 
 class MockRequests:
+    def __getattr__(self, name):
+        # Forward attribute access to submodules (e.g., requests.exceptions)
+        if name.startswith('_'):
+            raise AttributeError(name)
+        import sys
+        submodule_name = f'requests.{{{{name}}}}'
+        if submodule_name in sys.modules:
+            return sys.modules[submodule_name]
+        raise AttributeError("'MockRequests' object has no attribute '{{name}}'")
+
     def get(self, url, headers=None, timeout=None, **kwargs):
         try:
             req = urllib.request.Request(url, headers=headers or {{}})
