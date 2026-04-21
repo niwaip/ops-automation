@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import {
   Table, Card, Button, Input, Space, Tag, Typography, Modal, message, Form, Select,
   Divider, Alert, Collapse, Badge, Popconfirm, Statistic, Row, Col, Switch, InputNumber
@@ -177,6 +177,7 @@ const ActivityPage: React.FC = () => {
   const [isRealValidating, setIsRealValidating] = useState(false);
   const [realValidateLogs, setRealValidateLogs] = useState<string[]>([]);
   const [realValidateError, setRealValidateError] = useState<string | null>(null);
+  const cachedCodeRef = useRef<string | null>(null);
   const [activityForm, setActivityForm] = useState<ActivityFormData>({
     name: '',
     fn: '',
@@ -414,6 +415,8 @@ const ActivityPage: React.FC = () => {
 
   const handleSave = () => {
     const handler = activityForm.steps.length > 0 ? activityForm.steps[0].type : 'api';
+    // Use cached code if available, otherwise use state
+    const codeToSave = cachedCodeRef.current || generatedCode;
     const data: CreateActivityDto = {
       name: activityForm.name,
       fn: activityForm.fn,
@@ -426,7 +429,7 @@ const ActivityPage: React.FC = () => {
         steps: activityForm.steps,
         heartbeatTimeout: activityForm.heartbeatTimeout,
         idempotencyKey: activityForm.idempotencyKey,
-        generatedCode: generatedCode || undefined, // Save generated code
+        generatedCode: codeToSave || undefined,
       },
     };
 
@@ -719,12 +722,19 @@ const ActivityPage: React.FC = () => {
         onCancel={() => { setCodePreviewVisible(false); setIsGeneratingCode(false); }}
         footer={[
           <Button key="copy" icon={<CopyOutlined />} onClick={copyCode}>复制代码</Button>,
+          <Button key="cache" icon={<SaveOutlined />} onClick={() => {
+            if (generatedCode) {
+              // Store in a ref so handleSave can include it
+              setCachedCodeRef(generatedCode);
+              message.success('代码已缓存，保存时将一并存储');
+            }
+          }}>缓存代码</Button>,
           <Button key="close" onClick={() => { setCodePreviewVisible(false); setIsGeneratingCode(false); }}>关闭</Button>
         ]}
         width={800}
       >
         <Paragraph type="secondary" style={{ marginBottom: 16 }}>
-          以下代码由 AI 根据您的配置自动生成，可用于参考或复制到 Temporal Worker 中使用。
+          以下代码由 AI 根据您的配置自动生成，可用于参考或复制到 Temporal Worker 中使用。点击"缓存代码"可保存到配置中。
         </Paragraph>
         <Card bodyStyle={{ padding: 0 }} style={{ background: '#1e1e1e', borderRadius: 8 }}>
           {isGeneratingCode || generateCodeMutation.isPending ? (
