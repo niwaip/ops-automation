@@ -311,6 +311,21 @@ export class ActivityService {
     onLog: (log: string) => void,
   ): Promise<{ success: boolean; result?: any; error?: string }> {
     const logger = new Logger('ActivityService.executeCodeStreaming');
+
+    // Try to use sandbox agent via Temporal workflow
+    const sandboxUrl = this.getSandboxAgentUrl();
+    if (sandboxUrl) {
+      try {
+        onLog(`[${new Date().toISOString()}] 使用 Temporal Sandbox Agent 执行代码...`);
+        return await this.executeCodeViaSandboxAgent(sandboxUrl, code, fn, input, onLog);
+      } catch (error) {
+        const errorMsg = error instanceof Error ? error.message : 'Unknown error';
+        logger.warn(`Sandbox agent failed, falling back to subprocess: ${errorMsg}`);
+        onLog(`[${new Date().toISOString()}] Sandbox agent 不可用，回退到直接执行...`);
+      }
+    }
+
+    // Fallback to direct subprocess execution
     const logs: string[] = [];
 
     try {
@@ -329,6 +344,79 @@ export class ActivityService {
       logger.error(`Streaming execution failed: ${errorMsg}`);
       onLog(`[${new Date().toISOString()}] 执行失败: ${errorMsg}`);
       return { success: false, error: errorMsg };
+    }
+  }
+
+  /**
+   * Get sandbox agent URL from environment
+   */
+  private getSandboxAgentUrl(): string | null {
+    // Check for sandbox agent URL in environment
+    if (process.env.SANDBOX_AGENT_URL) {
+      return process.env.SANDBOX_AGENT_URL;
+    }
+    // In Docker, use the container name
+    if (process.env.DOCKER_ENV === 'true' || process.env.NODE_ENV === 'production') {
+      return 'http://ops-temporal-sandbox-agent:8090';
+    }
+    // Local development - try localhost
+    const externalHost = process.env.EXTERNAL_HOST || 'localhost';
+    return `http://${externalHost}:8090`;
+  }
+
+  /**
+   * Execute code via sandbox agent HTTP API
+   */
+  private async executeCodeViaSandboxAgent(
+    sandboxUrl: string,
+    code: string,
+    fn: string,
+    input: Record<string, any> | undefined,
+    onLog: (log: string) => void,
+  ): Promise<{ success: boolean; result?: any; error?: string }> {
+    const activityId = `activity-${Date.now()}-${Math.random().toString(36).substring(7)}`;
+
+    onLog(`[${new Date().toISOString()}] 连接到 Sandbox Agent: ${sandboxUrl}`);
+    onLog(`[${new Date().toISOString()}] Activity ID: ${activityId}`);
+
+    try {
+      const response = await axios.post(`${sandboxUrl}/execute`, {
+        code,
+        fn_name: fn,
+        activity_id: activityId,
+        input_data: input || {},
+      }, {
+        timeout: 300000, // 5 minute timeout
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      const data = response.data;
+
+      if (data.error) {
+        onLog(`[${new Date().toISOString()}] 执行错误: ${data.error}`);
+        return { success: false, error: data.error };
+      }
+
+      if (data.result && data.result.error) {
+        const errorMsg = data.result.success === false
+          ? data.result.error
+          : `执行失败: ${JSON.stringify(data.result)}`;
+        onLog(`[${new Date().toISOString()}] ${errorMsg}`);
+        return { success: false, error: errorMsg };
+      }
+
+      // Extract the actual result from the sandbox response
+      // The sandbox returns { success: true, result: { result: {...}, success: true } }
+      const result = data.result?.result || data.result;
+
+      onLog(`[${new Date().toISOString()}] 执行成功`);
+      return { success: true, result };
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : 'Unknown error';
+      onLog(`[${new Date().toISOString()}] Sandbox Agent 请求失败: ${errorMsg}`);
+      throw error; // Re-throw to trigger fallback
     }
   }
 

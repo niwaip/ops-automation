@@ -11,10 +11,11 @@ This workflow implements the "先拉取最新的代码，然后再执行任务" 
 import asyncio
 import json
 import logging
+from dataclasses import dataclass, asdict
 from datetime import timedelta
 from typing import Optional, Dict, Any, List
 
-from temporalio import workflow
+from temporalio import workflow, activity
 from temporalio.common import RetryPolicy
 from temporalio.exceptions import ApplicationError
 
@@ -36,14 +37,13 @@ class AgentSessionState:
         self.logs: List[str] = []
 
 
+@dataclass
 class ExecutionSignalInput:
     """Input for the execute_code signal."""
-
-    def __init__(self, code: str, fn_name: str, activity_id: str, input_data: Dict[str, Any]):
-        self.code = code
-        self.fn_name = fn_name
-        self.activity_id = activity_id
-        self.input_data = input_data
+    code: str
+    fn_name: str
+    activity_id: str
+    input_data: Dict[str, Any]
 
 
 @workflow.defn
@@ -142,6 +142,7 @@ class AgentSessionWorkflow:
         }
 
 
+@activity.defn
 async def execute_code_activity(
     code: str,
     fn_name: str,
@@ -154,8 +155,6 @@ async def execute_code_activity(
     This is where the actual code execution happens. The code is fetched
     from the auth service before being passed here.
     """
-    from temporalio import activity
-
     activity.logger.info(f"Starting code execution for: {activity_id}")
     activity.logger.info(f"Function: {fn_name}")
     activity.logger.info(f"Input: {input_data}")

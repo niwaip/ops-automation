@@ -9,3 +9,6 @@ orjson>=3.9.0
 
 # Logging
 python-json-logger>=2.0.0
+
+# SSL certificates
+certifi>=2023.0.0

@@ -216,7 +216,7 @@ mock_retry_policy = type('MockRetryPolicy', (), {{
     'maximum_interval_ms': 10000
 }})()
 
-mock_temporalio.common.RetryPolicy = lambda **kw: type('RetryPolicy', (), {{**{k: v for k, v in kw.items()}}})()
+mock_temporalio.common.RetryPolicy = lambda **kw: type('RetryPolicy', (), {{**{{k: v for k, v in kw.items()}}}})()
 
 # Inject into sys.modules
 sys.modules['temporalio'] = mock_temporalio
