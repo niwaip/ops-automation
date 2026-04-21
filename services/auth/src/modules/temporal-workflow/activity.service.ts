@@ -184,18 +184,18 @@ export class ActivityService {
 
     // Build prompt using array join to avoid template literal nesting issues
     const promptParts: string[] = [
-      '你是一个 Temporal Workflow 开发专家。请根据以下 Activity 配置生成符合 Temporal Python SDK 最佳实践的 Python Activity 代码。',
+      '你是一个 Python 开发专家。请根据以下 Activity 配置生成符合沙箱环境要求的 Python Activity 代码。',
       '',
-      '请严格遵循以下指导原则：',
-      '1. 使用 temporalio.activity 模块。',
-      '2. 为 Activity 函数使用 @activity.defn 装饰器。',
-      '3. 函数签名应包含类型注解。',
-      '4. 提供详细的中文 docstring 解释 Activity 的目的、参数和返回值。',
-      '5. 如果 Activity 可能长时间运行，请使用 activity.heartbeat() 进行心跳报告。',
-      '6. 使用 activity.logger 进行日志记录，而不是 print()。',
-      '7. 实施健壮的错误处理，使用 temporalio.exceptions.ApplicationError 处理业务逻辑错误。',
-      '8. 确保生成的代码是独立的，可以直接用于 Temporal Worker。',
-      '9. 返回结果应为字典类型。',
+      '【重要】此代码将在沙箱环境执行，沙箱环境限制：',
+      '1. 使用 requests 库（已通过 urllib mock）进行 HTTP 请求，不要使用 aiohttp/httpx',
+      '2. 不要使用 @activity.defn 装饰器，定义为普通 async 函数即可',
+      '3. 使用 print() 进行日志输出，不要使用 activity.logger',
+      '4. 不要导入 temporalio 相关模块',
+      '5. 函数签名：async def fn_name() -> Dict[str, Any]:',
+      '6. 返回值为字典类型，包含执行结果和错误信息',
+      '7. 不要使用 temporalio.exceptions.ApplicationError，使用普通 Exception 即可',
+      '',
+      '请严格遵循以下要求，只返回 Python 代码，不要有其他解释。',
       '',
       'Activity 配置：',
       `- 名称：${config.name}`,
@@ -226,9 +226,6 @@ export class ActivityService {
       }
       promptParts.push(stepDesc);
     });
-
-    promptParts.push('');
-    promptParts.push('请只返回 Python 代码，不要有其他解释。确保代码中包含必要的辅助函数（例如执行 API 请求、脚本等），或者明确指出这些是外部依赖。');
 
     const prompt = promptParts.join('\n');
 
