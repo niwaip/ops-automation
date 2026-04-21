@@ -349,8 +349,18 @@ export class ActivityService {
     const runnerPath = path.join(tempDir, `runner_${Date.now()}.py`);
 
     try {
+      // Strip markdown code block markers if present
+      let cleanCode = code;
+      if (code.includes('```')) {
+        // Remove markdown code block markers (e.g., ```python ... ```)
+        cleanCode = code.replace(/^```[a-zA-Z]*\n?/, '').replace(/```\s*$/, '').trim();
+        if (cleanCode !== code) {
+          onLog(`已清理代码中的 markdown 标记`);
+        }
+      }
+
       // Write activity code
-      await fs.writeFile(activityFilePath, code);
+      await fs.writeFile(activityFilePath, cleanCode);
       onLog(`已写入活动代码到: ${activityFilePath}`);
 
       // Write input JSON
@@ -363,9 +373,104 @@ import json
 import sys
 import os
 import traceback
+import types
 
 # Add temp dir to path for imports
 sys.path.insert(0, '${tempDir}')
+
+# Mock temporalio module for standalone execution
+class MockActivityLogger:
+    def info(self, msg): print(f"[INFO] {msg}", flush=True)
+    def warning(self, msg): print(f"[WARN] {msg}", flush=True)
+    def error(self, msg): print(f"[ERROR] {msg}", flush=True)
+
+class MockActivityInfo:
+    def __init__(self):
+        self.activity_type = 'MockActivity'
+        self.workflow_type = 'MockWorkflow'
+        self.workflow_namespace = 'default'
+        self.task_queue = 'mock-task-queue'
+        self.is_cancelled = False
+        self.is_replaying = False
+        self.run_id = 'mock-run-id-12345'
+        self.workflow_run_id = 'mock-workflow-run-id-12345'
+        self.workflow_id = 'mock-workflow-id-12345'
+        self.activity_id = 'mock-activity-id-12345'
+        self.attempt = 1
+
+class MockActivity:
+    def defn(self, name=None, **kwargs):
+        # Accept name and ignore other kwargs like task_queue
+        def decorator(func):
+            func._activity_name = name or func.__name__
+            return func
+        return decorator
+
+    @property
+    def logger(self):
+        return MockActivityLogger()
+
+    def heartbeat(self, *args, **kwargs):
+        print(f"[HEARTBEAT] {args if args else 'tick'}", flush=True)
+        return None
+
+    def info(self):
+        return MockActivityInfo()
+
+class MockApplicationError(Exception):
+    def __init__(self, message, non_retryable=False, *args, **kwargs):
+        super().__init__(message, *args, **kwargs)
+        self.message = message
+        self.non_retryable = non_retryable
+
+# Create mock temporalio module as a proper ModuleType with submodules
+mock_temporalio = types.ModuleType('temporalio')
+mock_temporalio.activity = types.ModuleType('temporalio.activity')
+mock_temporalio.exceptions = types.ModuleType('temporalio.exceptions')
+mock_temporalio.common = types.ModuleType('temporalio.common')
+
+# Set up activity with all required attributes
+# Make defn work as @activity.defn() decorator - returns a decorator function
+def make_defn_decorator():
+    def defn_decorator(name=None, **kwargs):
+        def decorator(func):
+            func._activity_name = name or func.__name__
+            return func
+        return decorator
+    return defn_decorator
+
+mock_temporalio.activity.defn = make_defn_decorator()
+mock_temporalio.activity.logger = MockActivityLogger()
+mock_temporalio.activity.heartbeat = lambda *args, **kwargs: print(f"[HEARTBEAT] {args if args else 'tick'}", flush=True)
+mock_temporalio.activity.info = lambda: MockActivityInfo()
+
+mock_temporalio.exceptions.ApplicationError = MockApplicationError
+
+# RetryPolicy mock - accept various parameter names
+class MockRetryPolicy:
+    def __init__(self, maximum_attempts=None, max_retries=0, initial_interval_ms=1000, backoff_coefficient=2.0, maximum_interval_ms=10000, **kwargs):
+        self.maximum_attempts = maximum_attempts or max_retries
+        self.max_retries = self.maximum_attempts
+        self.initial_interval_ms = initial_interval_ms
+        self.backoff_coefficient = backoff_coefficient
+        self.maximum_interval_ms = maximum_interval_ms
+
+mock_temporalio.common.RetryPolicy = MockRetryPolicy
+
+# Inject mocks into sys.modules
+sys.modules['temporalio'] = mock_temporalio
+sys.modules['temporalio.activity'] = mock_temporalio.activity
+sys.modules['temporalio.exceptions'] = mock_temporalio.exceptions
+sys.modules['temporalio.common'] = mock_temporalio.common
+
+# Also make 'activity' available as a standalone import
+sys.modules['activity'] = mock_temporalio.activity
+
+# Create namespace for exec
+namespace = {
+    'temporalio': mock_temporalio,
+    'activity': mock_temporalio.activity,
+}
 
 # Read input
 with open('${inputFilePath}', 'r') as f:
@@ -376,8 +481,7 @@ try:
     with open('${activityFilePath}', 'r') as f:
         activity_code = f.read()
 
-    # Compile and execute the activity code
-    namespace = {}
+    # Compile and execute the activity code with our namespace
     exec(compile(activity_code, '${activityFilePath}', 'exec'), namespace)
 
     # Find the activity function
@@ -394,7 +498,23 @@ try:
         sys.exit(1)
 
     # Execute the activity
-    result = activity_fn(input_data)
+    # Try different calling conventions
+    result = None
+    try:
+        result = activity_fn(input_data)
+    except TypeError as e:
+        if "takes 0 positional arguments" in str(e) or "takes 1 positional argument" in str(e):
+            # Try with no arguments (standalone function not expecting input_data)
+            try:
+                result = activity_fn()
+            except TypeError:
+                # Try with just self=None (for class methods)
+                try:
+                    result = activity_fn(None)
+                except:
+                    raise e
+        else:
+            raise e
 
     # Handle async results
     import asyncio
@@ -426,7 +546,29 @@ except Exception as e:
           if (code === 0) {
             resolve(stdoutData);
           } else {
-            reject(new Error(`Python exited with code ${code}. stderr: ${stderrData}`));
+            // Python stdout has the JSON result/error, stderr has logger output
+            // Parse stdout for actual error, use stderr only if stdout is empty
+            let actualError = '';
+            try {
+              // Try to parse stdout as JSON to get actual error
+              const parsed = JSON.parse(stdoutData.trim());
+              if (parsed.error) {
+                actualError = parsed.error;
+                if (parsed.traceback) {
+                  actualError += '\n' + parsed.traceback;
+                }
+              }
+            } catch (e) {
+              // stdout wasn't JSON, use it directly if it looks like an error
+              if (stdoutData.trim()) {
+                actualError = stdoutData.trim();
+              }
+            }
+            // If no error found in stdout, use stderr
+            if (!actualError && stderrData.trim()) {
+              actualError = 'stderr: ' + stderrData.trim();
+            }
+            reject(new Error(`Python exited with code ${code}. Error: ${actualError || 'Unknown error'}`));
           }
         });
         proc.on('error', (err) => reject(err));
