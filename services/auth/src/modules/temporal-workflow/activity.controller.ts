@@ -1,0 +1,46 @@
+import { Controller, Get, Post, Put, Delete, Body, Param } from '@nestjs/common';
+import { ApiTags, ApiOperation } from '@nestjs/swagger';
+import { ActivityService, ActivityFormData, ActivityValidationResult } from './activity.service';
+import { Activity } from '@prisma/client';
+
+@ApiTags('Activities')
+@Controller('activities')
+export class ActivityController {
+  constructor(private readonly activityService: ActivityService) {}
+
+  @Get()
+  @ApiOperation({ summary: 'List all activities' })
+  async findAll(): Promise<Activity[]> {
+    return this.activityService.findAll();
+  }
+
+  @Get(':id')
+  @ApiOperation({ summary: 'Get activity by ID' })
+  async findOne(@Param('id') id: string): Promise<Activity | null> {
+    return this.activityService.findOne(id);
+  }
+
+  @Post()
+  @ApiOperation({ summary: 'Create a new activity' })
+  async create(@Body() data: ActivityFormData): Promise<Activity> {
+    return this.activityService.create(data);
+  }
+
+  @Put(':id')
+  @ApiOperation({ summary: 'Update an activity' })
+  async update(@Param('id') id: string, @Body() data: Partial<ActivityFormData>): Promise<Activity> {
+    return this.activityService.update(id, data);
+  }
+
+  @Delete(':id')
+  @ApiOperation({ summary: 'Delete an activity' })
+  async delete(@Param('id') id: string): Promise<{ success: boolean }> {
+    return this.activityService.delete(id);
+  }
+
+  @Post('validate')
+  @ApiOperation({ summary: 'Validate activity configuration' })
+  async validate(@Body() config: ActivityFormData): Promise<ActivityValidationResult> {
+    return this.activityService.validate(config);
+  }
+}
