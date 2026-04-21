@@ -229,6 +229,7 @@ const ActivityPage: React.FC = () => {
 
   const generateCodeMutation = useMutation(activityApi.generateCode, {
     onSuccess: (result) => {
+      setIsGeneratingCode(false);
       if (result.success && result.code) {
         setGeneratedCode(result.code);
         setCodePreviewVisible(true);
@@ -236,7 +237,10 @@ const ActivityPage: React.FC = () => {
         message.error(result.error || '代码生成失败');
       }
     },
-    onError: (err: any) => message.error(err?.message || '代码生成失败'),
+    onError: (err: any) => {
+      setIsGeneratingCode(false);
+      message.error(err?.message || '代码生成失败');
+    },
   });
 
   const handleGenerateCode = () => {

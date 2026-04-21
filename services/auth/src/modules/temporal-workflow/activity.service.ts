@@ -217,7 +217,7 @@ ${steps.map((step: any, idx: number) => `
       const response = await axios.post<{ result: string }>(
         `${aiOrchestratorUrl}/ai/model/call`,
         {
-          modelId: 'minimax',  // Use minimax model as requested
+          modelId: 'MiniMax-M2.7',  // Use MiniMax model
           prompt,
         },
         { timeout: 60000 }
