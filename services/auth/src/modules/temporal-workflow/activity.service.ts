@@ -375,6 +375,11 @@ import os
 import traceback
 import types
 
+# Set SSL certificates location for HTTPS requests
+import certifi
+os.environ['SSL_CERT_FILE'] = certifi.where()
+os.environ['REQUESTS_CA_BUNDLE'] = certifi.where()
+
 # Add temp dir to path for imports
 sys.path.insert(0, '${tempDir}')
 
