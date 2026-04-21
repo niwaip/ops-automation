@@ -237,10 +237,10 @@ export class ActivityService {
       // 1. 先拉取最新代码 (参数中已传入)
       logs.push(`[${new Date().toISOString()}] 拉取最新代码完成`);
 
-      // 2. 使用 Sandbox Worker 执行代码
-      const sandboxWorkerUrl = getSandboxWorkerUrl();
+      // 2. 将代码发送到 AI Orchestrator 执行
+      const aiOrchestratorUrl = getAiOrchestratorUrl();
       const response = await axios.post<{ result: any; logs?: string[]; error?: string }>(
-        `${sandboxWorkerUrl}/sandbox/execute-code`,
+        `${aiOrchestratorUrl}/ai/execute-activity`,
         {
           code,
           fn,
@@ -271,7 +271,6 @@ export class ActivityService {
 
   /**
    * Execute code with streaming callback for real-time logs
-   * 使用 Sandbox Worker 进行安全的代码执行
    */
   async executeCodeStreaming(
     code: string,
@@ -285,11 +284,11 @@ export class ActivityService {
     try {
       onLog(`[${new Date().toISOString()}] 开始执行代码...`);
 
-      const sandboxWorkerUrl = getSandboxWorkerUrl();
-      onLog(`[${new Date().toISOString()}] 调用 Sandbox Worker 执行`);
+      const aiOrchestratorUrl = getAiOrchestratorUrl();
+      onLog(`[${new Date().toISOString()}] 调用 AI Orchestrator 执行`);
 
       const response = await axios.post<{ result: any; logs?: string[]; error?: string }>(
-        `${sandboxWorkerUrl}/sandbox/execute-code`,
+        `${aiOrchestratorUrl}/ai/execute-activity`,
         {
           code,
           fn,
