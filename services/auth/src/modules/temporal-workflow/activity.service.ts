@@ -412,13 +412,25 @@ except Exception as e:
       await fs.writeFile(runnerPath, runnerScript);
       onLog(`已写入 runner 脚本`);
 
-      // Execute Python script
+      // Execute Python script using spawn
       onLog(`执行 Python 代码...`);
-      const { stdout, stderr } = await exec(`python3 "${runnerPath}"`, { timeout: 120000 });
+      const stdout = await new Promise<string>((resolve, reject) => {
+        const proc = spawn('python3', [runnerPath], { timeout: 120000 });
+        let stdoutData = '';
+        let stderrData = '';
 
-      if (stderr && stderr.trim()) {
-        onLog(`stderr: ${stderr.trim()}`);
-      }
+        proc.stdout.on('data', (data) => { stdoutData += data.toString(); });
+        proc.stderr.on('data', (data) => { stderrData += data.toString(); onLog(`[Python stderr] ${data.toString().trim()}`); });
+
+        proc.on('close', (code) => {
+          if (code === 0) {
+            resolve(stdoutData);
+          } else {
+            reject(new Error(`Python exited with code ${code}. stderr: ${stderrData}`));
+          }
+        });
+        proc.on('error', (err) => reject(err));
+      });
 
       // Parse result
       let result: any;
