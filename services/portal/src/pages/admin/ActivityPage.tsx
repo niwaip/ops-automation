@@ -258,9 +258,26 @@ const ActivityPage: React.FC = () => {
     setRealValidateResult(null);
 
     try {
-      // Use existing cached code or generate new one
-      // 先拉取最新的代码（从缓存的编辑器内容），然后执行
+      // 先拉取最新的代码（从服务器获取最新的 activity 配置）
       let code = cachedCode || generatedCode;
+      setRealValidateLogs(prev => [...prev, '正在获取最新代码...']);
+
+      // 如果有正在编辑的 activity，从服务器获取最新的 generatedCode
+      if (editingActivity) {
+        try {
+          const latestActivity = await activityApi.getById(editingActivity.id);
+          if (latestActivity.config?.generatedCode) {
+            code = latestActivity.config.generatedCode;
+            setCachedCode(code);
+            setGeneratedCode(code);
+            setRealValidateLogs(prev => [...prev, '已从服务器获取最新代码']);
+          }
+        } catch (e) {
+          setRealValidateLogs(prev => [...prev, '获取最新代码失败，使用本地代码']);
+        }
+      }
+
+      // 如果还是没有代码，则生成新代码
       if (!code) {
         setRealValidateLogs(prev => [...prev, '正在生成代码...']);
         const handler = activityForm.steps.length > 0 ? activityForm.steps[0].type : 'api';
@@ -730,6 +747,8 @@ const ActivityPage: React.FC = () => {
               // Store in state so handleSave can include it
               setCachedCode(generatedCode);
               message.success('代码已缓存，保存时将一并存储');
+            } else {
+              message.warning('请先生成代码');
             }
           }}>缓存代码</Button>,
           <Button key="close" onClick={() => { setCodePreviewVisible(false); setIsGeneratingCode(false); }}>关闭</Button>
