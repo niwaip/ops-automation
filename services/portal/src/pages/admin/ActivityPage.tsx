@@ -9,14 +9,14 @@ import {
   CheckCircleOutlined, ThunderboltOutlined, SettingOutlined,
   ExperimentOutlined, HeartOutlined, ClockCircleOutlined, RetweetOutlined,
   LineChartOutlined, WarningOutlined, OrderedListOutlined, CopyOutlined,
-  SaveOutlined
+  SaveOutlined, RobotOutlined, EyeOutlined
 } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
 import { useQuery, useMutation, useQueryClient } from 'react-query';
 import { activityApi, ActivityDTO, CreateActivityDto, ActivityValidationResult } from '../../api/activity';
 import type { ColumnsType } from 'antd/es/table';
 
-const { Text, Title } = Typography;
+const { Text, Title, Paragraph } = Typography;
 const { Option } = Select;
 const { Panel } = Collapse;
 const { TextArea } = Input;
@@ -42,10 +42,11 @@ interface ActivityFormData {
   fn: string;
   taskQueue: string;
   startToCloseTimeout: string;
-  heartbeatTimeout: string;
+  heartbeatTimeout?: string;
   scheduleToStartTimeout: string;
   scheduleToCloseTimeout: string;
   retryPolicy?: { maxRetries: number; backoffMs?: number };
+  idempotencyKey?: string;
   steps: ActivityStep[];
 }
 
@@ -57,8 +58,13 @@ const generatePythonCode = (form: ActivityFormData): string => {
   lines.push('');
   lines.push('@activity.defn');
   lines.push(`def ${form.fn}(input_data: Dict[str, Any]) -> Dict[str, Any]:`);
-  lines.push(`    """Auto-generated activity: ${form.name}""".replace('"', '\\"')`);
+  lines.push(`    """Activity: ${form.name}""".replace('"', '\\"')`);
   lines.push('    activity.logger.info("Activity started")');
+
+  if (form.heartbeatTimeout) {
+    lines.push(`    # Heartbeat timeout: ${form.heartbeatTimeout}`);
+  }
+
   lines.push('    activity.heartbeat("initializing")');
 
   if (form.steps.length > 0) {
@@ -75,6 +81,9 @@ const generatePythonCode = (form: ActivityFormData): string => {
         lines.push(`    result_${idx + 1} = yield execute_api_request(`);
         lines.push(`        endpoint="${step.config.endpoint || 'https://api.example.com'}",`);
         lines.push(`        method="${step.config.method || 'GET'}"`);
+        if (form.idempotencyKey) {
+          lines.push(`        idempotency_key="${form.idempotencyKey}"`);
+        }
         lines.push('    )');
       } else if (step.type === 'script') {
         lines.push(`    result_${idx + 1} = yield execute_script(`);
@@ -115,7 +124,7 @@ const ActivityPage: React.FC = () => {
   const [detailModalVisible, setDetailModalVisible] = useState(false);
   const [validateModalVisible, setValidateModalVisible] = useState(false);
   const [simulationModalVisible, setSimulationModalVisible] = useState(false);
-  const [showCodePreview, setShowCodePreview] = useState(false);
+  const [codePreviewVisible, setCodePreviewVisible] = useState(false);
   const [editingActivity, setEditingActivity] = useState<ActivityDTO | null>(null);
   const [selectedActivity, setSelectedActivity] = useState<ActivityDTO | null>(null);
   const [validationResult, setValidationResult] = useState<ActivityValidationResult | null>(null);
@@ -125,10 +134,11 @@ const ActivityPage: React.FC = () => {
     fn: '',
     taskQueue: 'SKILL_TASK_QUEUE',
     startToCloseTimeout: '60s',
-    heartbeatTimeout: '10s',
+    heartbeatTimeout: undefined,
     scheduleToStartTimeout: '30s',
     scheduleToCloseTimeout: '120s',
-    retryPolicy: { maxRetries: 3, backoffMs: 1000 },
+    retryPolicy: undefined,
+    idempotencyKey: undefined,
     steps: [],
   });
 
@@ -142,7 +152,7 @@ const ActivityPage: React.FC = () => {
       form.resetFields();
       resetForm();
     },
-    onError: () => message.error(t('common:error')),
+    onError: (err: any) => message.error(err?.message || t('common:error')),
   });
 
   const updateMutation = useMutation(
@@ -153,7 +163,7 @@ const ActivityPage: React.FC = () => {
         queryClient.invalidateQueries(['activities']);
         setEditModalVisible(false);
       },
-      onError: () => message.error(t('common:error')),
+      onError: (err: any) => message.error(err?.message || t('common:error')),
     }
   );
 
@@ -162,7 +172,7 @@ const ActivityPage: React.FC = () => {
       message.success(t('common:success'));
       queryClient.invalidateQueries(['activities']);
     },
-    onError: () => message.error(t('common:error')),
+    onError: (err: any) => message.error(err?.message || t('common:error')),
   });
 
   const validateMutation = useMutation(activityApi.validate, {
@@ -170,15 +180,15 @@ const ActivityPage: React.FC = () => {
       setValidationResult(result);
       message.success('验证完成');
     },
-    onError: () => message.error('验证失败'),
+    onError: (err: any) => message.error(err?.message || '验证失败'),
   });
 
   const resetForm = () => {
     setActivityForm({
       name: '', fn: '', taskQueue: 'SKILL_TASK_QUEUE',
-      startToCloseTimeout: '60s', heartbeatTimeout: '10s',
+      startToCloseTimeout: '60s', heartbeatTimeout: undefined,
       scheduleToStartTimeout: '30s', scheduleToCloseTimeout: '120s',
-      retryPolicy: { maxRetries: 3, backoffMs: 1000 },
+      retryPolicy: undefined, idempotencyKey: undefined,
       steps: [],
     });
   };
@@ -191,16 +201,17 @@ const ActivityPage: React.FC = () => {
 
   const handleEdit = (activity: ActivityDTO) => {
     setEditingActivity(activity);
-    const steps: ActivityStep[] = [];
+    const steps: ActivityStep[] = activity.config?.steps || [];
     setActivityForm({
       name: activity.name,
       fn: activity.fn,
       taskQueue: activity.config?.taskQueue || 'SKILL_TASK_QUEUE',
       startToCloseTimeout: '60s',
-      heartbeatTimeout: '10s',
+      heartbeatTimeout: activity.config?.heartbeatTimeout,
       scheduleToStartTimeout: '30s',
       scheduleToCloseTimeout: '120s',
-      retryPolicy: activity.retryPolicy || undefined,
+      retryPolicy: activity.retryPolicy,
+      idempotencyKey: activity.config?.idempotencyKey,
       steps,
     });
     setEditModalVisible(true);
@@ -221,7 +232,12 @@ const ActivityPage: React.FC = () => {
       timeout: activityForm.startToCloseTimeout,
       handler: handler as any,
       retryPolicy: activityForm.retryPolicy,
-      config: { taskQueue: activityForm.taskQueue, steps: activityForm.steps },
+      config: {
+        taskQueue: activityForm.taskQueue,
+        steps: activityForm.steps,
+        heartbeatTimeout: activityForm.heartbeatTimeout,
+        idempotencyKey: activityForm.idempotencyKey,
+      },
     } as any);
   };
 
@@ -233,7 +249,12 @@ const ActivityPage: React.FC = () => {
       timeout: activityForm.startToCloseTimeout,
       handler: handler as any,
       retryPolicy: activityForm.retryPolicy,
-      config: { taskQueue: activityForm.taskQueue, steps: activityForm.steps },
+      config: {
+        taskQueue: activityForm.taskQueue,
+        steps: activityForm.steps,
+        heartbeatTimeout: activityForm.heartbeatTimeout,
+        idempotencyKey: activityForm.idempotencyKey,
+      },
     };
 
     if (editingActivity) {
@@ -300,13 +321,15 @@ const ActivityPage: React.FC = () => {
   const generatedCode = generatePythonCode(activityForm);
 
   const columns: ColumnsType<ActivityDTO> = [
-    { title: '名称', dataIndex: 'name', key: 'name', width: 200, render: (name, r) => <a onClick={() => handleViewDetail(r)}><Text strong>{name}</Text></a> },
-    { title: '函数名', dataIndex: 'fn', key: 'fn', width: 180, render: fn => <Tag color="cyan">{fn}</Tag> },
-    { title: '处理器', key: 'handler', width: 100, render: (_, r) => <Tag color={HANDLER_CONFIG[r.handler]?.color}>{HANDLER_CONFIG[r.handler]?.label}</Tag> },
-    { title: '超时', dataIndex: 'timeout', key: 'timeout', width: 80 },
-    { title: '重试', key: 'retryPolicy', width: 80, render: (_, r) => r.retryPolicy ? <Tag color="orange">有</Tag> : <Tag>无</Tag> },
-    { title: '状态', key: 'status', width: 80, render: (_, r) => <Tag color={r.isActive ? 'green' : 'default'}>{r.isActive ? '启用' : '禁用'}</Tag> },
-    { title: t('common:actions'), key: 'actions', width: 120, render: (_, r) => (
+    { title: '名称', dataIndex: 'name', key: 'name', width: 180, render: (name, r) => <a onClick={() => handleViewDetail(r)}><Text strong>{name}</Text></a> },
+    { title: '函数名', dataIndex: 'fn', key: 'fn', width: 150, render: fn => <Tag color="cyan">{fn}</Tag> },
+    { title: '处理器', key: 'handler', width: 80, render: (_, r) => <Tag color={HANDLER_CONFIG[r.handler]?.color}>{HANDLER_CONFIG[r.handler]?.label}</Tag> },
+    { title: '步骤', key: 'steps', width: 60, render: (_, r) => <Tag>{r.config?.steps?.length || 0}</Tag> },
+    { title: '超时', dataIndex: 'timeout', key: 'timeout', width: 70 },
+    { title: '心跳', key: 'heartbeat', width: 60, render: (_, r) => r.config?.heartbeatTimeout ? <Tag color="blue">{r.config.heartbeatTimeout}</Tag> : <Tag>-</Tag> },
+    { title: '重试', key: 'retryPolicy', width: 60, render: (_, r) => r.retryPolicy ? <Tag color="orange">有</Tag> : <Tag>无</Tag> },
+    { title: '状态', key: 'status', width: 70, render: (_, r) => <Tag color={r.isActive ? 'green' : 'default'}>{r.isActive ? '启用' : '禁用'}</Tag> },
+    { title: t('common:actions'), key: 'actions', width: 100, render: (_, r) => (
       <Space size="small">
         <Button type="link" size="small" icon={<EditOutlined />} onClick={() => handleEdit(r)} />
         <Popconfirm title="确认删除" onConfirm={() => handleDelete(r.id)} okText="删除" okButtonProps={{ danger: true }}>
@@ -356,7 +379,7 @@ const ActivityPage: React.FC = () => {
         open={editModalVisible}
         onCancel={() => setEditModalVisible(false)}
         footer={null}
-        width={900}
+        width={1000}
         destroyOnClose
       >
         <Form layout="vertical">
@@ -393,15 +416,18 @@ const ActivityPage: React.FC = () => {
             </Row>
           </Card>
 
-          {/* Timeout Settings */}
+          {/* Optional Settings */}
           <Card size="small" style={{ marginBottom: 16 }}>
+            <Title level={5} style={{ marginBottom: 12 }}><SettingOutlined /> 可选配置（指导 AI 生成代码）</Title>
             <Row gutter={16}>
               <Col span={8}>
                 <Form.Item label="心跳超时">
-                  <Select value={activityForm.heartbeatTimeout} onChange={v => updateActivityForm('heartbeatTimeout', v)}>
+                  <Select value={activityForm.heartbeatTimeout || 'none'} onChange={v => updateActivityForm('heartbeatTimeout', v === 'none' ? undefined : v)} allowClear>
+                    <Option value="none">不启用</Option>
                     <Option value="5s">5s</Option>
                     <Option value="10s">10s</Option>
                     <Option value="30s">30s</Option>
+                    <Option value="60s">60s</Option>
                   </Select>
                 </Form.Item>
               </Col>
@@ -424,30 +450,23 @@ const ActivityPage: React.FC = () => {
                 </Form.Item>
               </Col>
             </Row>
-          </Card>
-
-          {/* Retry Policy */}
-          <Card size="small" style={{ marginBottom: 16 }}>
-            <Row gutter={16} align="middle">
-              <Col span={8}>
-                <Form.Item label="启用重试">
-                  <Switch checked={!!activityForm.retryPolicy} onChange={checked => updateActivityForm('retryPolicy', checked ? { maxRetries: 3, backoffMs: 1000 } : undefined)} />
+            <Row gutter={16}>
+              <Col span={12}>
+                <Form.Item label="幂等键策略（指导 AI 生成）">
+                  <Input value={activityForm.idempotencyKey || ''} onChange={e => updateActivityForm('idempotencyKey', e.target.value || undefined)} placeholder="{{workflowId}}-{{activityName}}-{{inputHash}}" />
                 </Form.Item>
               </Col>
-              {activityForm.retryPolicy && (
-                <>
-                  <Col span={8}>
-                    <Form.Item label="最大重试次数">
-                      <InputNumber value={activityForm.retryPolicy.maxRetries} onChange={v => updateActivityForm('retryPolicy', { ...activityForm.retryPolicy!, maxRetries: v || 0 })} min={1} max={10} style={{ width: '100%' }} />
-                    </Form.Item>
-                  </Col>
-                  <Col span={8}>
-                    <Form.Item label="退避间隔 (ms)">
-                      <InputNumber value={activityForm.retryPolicy.backoffMs || 1000} onChange={v => updateActivityForm('retryPolicy', { ...activityForm.retryPolicy!, backoffMs: v || 1000 })} min={100} style={{ width: '100%' }} />
-                    </Form.Item>
-                  </Col>
-                </>
-              )}
+              <Col span={12}>
+                <Form.Item label="重试策略">
+                  <Switch checked={!!activityForm.retryPolicy} onChange={checked => updateActivityForm('retryPolicy', checked ? { maxRetries: 3, backoffMs: 1000 } : undefined)} />
+                  {activityForm.retryPolicy && (
+                    <Space style={{ marginLeft: 16 }}>
+                      <InputNumber value={activityForm.retryPolicy.maxRetries} onChange={v => updateActivityForm('retryPolicy', { ...activityForm.retryPolicy!, maxRetries: v || 0 })} min={1} max={10} size="small" />
+                      <Text type="secondary">次</Text>
+                    </Space>
+                  )}
+                </Form.Item>
+              </Col>
             </Row>
           </Card>
 
@@ -497,12 +516,34 @@ const ActivityPage: React.FC = () => {
 
           {/* Actions */}
           <Space style={{ width: '100%', justifyContent: 'flex-end' }}>
+            <Button icon={<EyeOutlined />} onClick={() => setCodePreviewVisible(true)}>AI 预览</Button>
             <Button icon={<PlayCircleOutlined />} onClick={handleValidate}>验证</Button>
             <Button icon={<ExperimentOutlined />} onClick={() => setSimulationModalVisible(true)}>模拟</Button>
             <Button onClick={() => setEditModalVisible(false)}>取消</Button>
             <Button type="primary" icon={<SaveOutlined />} loading={createMutation.isLoading || updateMutation.isLoading} onClick={handleSave}>保存</Button>
           </Space>
         </Form>
+      </Modal>
+
+      {/* Code Preview Modal */}
+      <Modal
+        title={<Space><RobotOutlined /> AI 生成的 Python 代码</Space>}
+        open={codePreviewVisible}
+        onCancel={() => setCodePreviewVisible(false)}
+        footer={[
+          <Button key="copy" icon={<CopyOutlined />} onClick={copyCode}>复制代码</Button>,
+          <Button key="close" onClick={() => setCodePreviewVisible(false)}>关闭</Button>
+        ]}
+        width={800}
+      >
+        <Paragraph type="secondary" style={{ marginBottom: 16 }}>
+          以下代码由 AI 根据您的配置自动生成，可用于参考或复制到 Temporal Worker 中使用。
+        </Paragraph>
+        <Card bodyStyle={{ padding: 0 }} style={{ background: '#1e1e1e', borderRadius: 8 }}>
+          <pre style={{ color: '#d4d4d4', padding: 16, margin: 0, fontFamily: 'Monaco, Menlo, "Ubuntu Mono", monospace', fontSize: 12, lineHeight: 1.5, overflow: 'auto', maxHeight: 500 }}>
+            {generatedCode}
+          </pre>
+        </Card>
       </Modal>
 
       {/* Simulation Modal */}
@@ -533,13 +574,25 @@ const ActivityPage: React.FC = () => {
       {/* Detail Modal */}
       <Modal title="详情" open={detailModalVisible} onCancel={() => setDetailModalVisible(false)} footer={null} width={700}>
         {selectedActivity && (
-          <Collapse defaultActiveKey={['basic', 'monitoring']}>
+          <Collapse defaultActiveKey={['basic', 'monitoring', 'steps']}>
             <Panel header={<Text><ThunderboltOutlined /> 基本信息</Text>} key="basic">
               <Row gutter={16}>
                 <Col span={12}><Text><strong>名称:</strong> {selectedActivity.name}</Text></Col>
                 <Col span={12}><Text><strong>函数名:</strong> <Tag color="cyan">{selectedActivity.fn}</Tag></Text></Col>
                 <Col span={12}><Text><strong>超时:</strong> {selectedActivity.timeout}</Text></Col>
+                <Col span={12}><Text><strong>心跳:</strong> {selectedActivity.config?.heartbeatTimeout || '未配置'}</Text></Col>
+                <Col span={12}><Text><strong>幂等键:</strong> {selectedActivity.config?.idempotencyKey || '未配置'}</Text></Col>
               </Row>
+            </Panel>
+            <Panel header={<Text><OrderedListOutlined /> 步骤详情 ({selectedActivity.config?.steps?.length || 0})</Text>} key="steps">
+              {selectedActivity.config?.steps?.map((step: any, idx: number) => (
+                <Card key={idx} size="small" style={{ marginBottom: 8 }}>
+                  <Text strong>步骤 {idx + 1}: {step.name}</Text>
+                  <br />
+                  <Text type="secondary">类型: {step.type} | 超时: {step.timeout}</Text>
+                  {step.type === 'api' && <div><Text type="secondary">端点: {step.config?.endpoint}</Text></div>}
+                </Card>
+              ))}
             </Panel>
             <Panel header={<Text><LineChartOutlined /> 监控</Text>} key="monitoring">
               <Row gutter={16}>
@@ -559,6 +612,7 @@ const ActivityPage: React.FC = () => {
             <Alert type={validationResult.isValid ? 'success' : 'error'} message={validationResult.isValid ? '验证通过' : '验证失败'} showIcon />
             <Text>评分: {validationResult.score}/100</Text>
             {validationResult.errors?.length > 0 && <Alert type="error" message="错误" description={<ul>{validationResult.errors.map((e, i) => <li key={i}>{e}</li>)}</ul>} />}
+            {validationResult.warnings?.length > 0 && <Alert type="warning" message="警告" description={<ul>{validationResult.warnings.map((w, i) => <li key={i}>{w}</li>)}</ul>} />}
           </Space>
         ) : <Alert type="info" message="点击验证按钮开始验证" />}
       </Modal>
