@@ -128,6 +128,7 @@ async def execute_in_sandbox(
         activity_file = os.path.join(temp_dir, "activity.py")
         input_file = os.path.join(temp_dir, "input.json")
         runner_file = os.path.join(temp_dir, "runner.py")
+        result_file = os.path.join(temp_dir, "result.json")
 
         # Write files
         with open(activity_file, 'w') as f:
@@ -352,7 +353,8 @@ try:
                 break
 
     if activity_fn is None:
-        print(json.dumps({{"error": "Function '{fn_name}' not found", "result": None}}))
+        with open('{result_file}', 'w') as f:
+            json.dump({{"error": "Function '{fn_name}' not found", "result": None}}, f)
         sys.exit(1)
 
     # Execute with different calling conventions
@@ -375,11 +377,13 @@ try:
     if asyncio.iscoroutine(result):
         result = asyncio.get_event_loop().run_until_complete(result)
 
-    print(json.dumps({{"result": result, "error": None}}))
+    with open('{result_file}', 'w') as f:
+        json.dump({{"result": result, "error": None}}, f)
 
 except Exception as e:
     error_msg = traceback.format_exc()
-    print(json.dumps({{"error": str(e), "result": None, "traceback": error_msg}}))
+    with open('{result_file}', 'w') as f:
+        json.dump({{"error": str(e), "result": None, "traceback": error_msg}}, f)
     sys.exit(1)
 '''
 
@@ -398,15 +402,22 @@ except Exception as e:
         stdout_str = stdout.decode('utf-8') if stdout else ''
         stderr_str = stderr.decode('utf-8') if stderr else ''
 
-        # Print stderr (logs)
+        # Print stderr (logs from activity code)
         if stderr_str:
             for line in stderr_str.strip().split('\n'):
                 if line:
                     print(f"[Python] {line}", flush=True)
 
-        # Parse result
+        # Print stdout (activity print statements)
+        if stdout_str.strip():
+            for line in stdout_str.strip().split('\n'):
+                if line:
+                    print(f"[Activity] {line}", flush=True)
+
+        # Read result from file (not stdout) to avoid pollution from print statements
         try:
-            result = json.loads(stdout_str.strip())
+            with open(result_file, 'r') as f:
+                result = json.load(f)
             if result.get('error'):
                 error_msg = result['error']
                 if result.get('traceback'):
