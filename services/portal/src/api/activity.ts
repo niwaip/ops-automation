@@ -50,6 +50,12 @@ export interface ExecuteCodeDto {
   input?: Record<string, any>;
 }
 
+export interface StreamEvent {
+  type: 'log' | 'error' | 'done';
+  message?: string;
+  result?: any;
+}
+
 export const activityApi = {
   list: async (): Promise<ActivityDTO[]> => {
     return apiClient.get<ActivityDTO[]>('/activities');
@@ -81,5 +87,42 @@ export const activityApi = {
 
   executeCode: async (data: ExecuteCodeDto): Promise<ExecuteCodeResult> => {
     return apiClient.post<ExecuteCodeResult>('/activities/execute-code', data);
+  },
+
+  // SSE streaming execution
+  executeCodeStream: (data: ExecuteCodeDto, onEvent: (event: StreamEvent) => void): Promise<void> => {
+    return new Promise((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
+      xhr.open('POST', '/api/activities/execute-code/stream');
+      xhr.setRequestHeader('Content-Type', 'application/json');
+      if (apiClient.get.defaults.headers.common['Authorization']) {
+        xhr.setRequestHeader('Authorization', apiClient.get.defaults.headers.common['Authorization']);
+      }
+
+      xhr.onprogress = () => {
+        const lines = xhr.responseText.split('\n');
+        for (const line of lines) {
+          if (line.startsWith('data: ')) {
+            try {
+              const event = JSON.parse(line.substring(6));
+              onEvent(event);
+            } catch (e) {
+              // Ignore parse errors
+            }
+          }
+        }
+      };
+
+      xhr.onload = () => {
+        if (xhr.status >= 200 && xhr.status < 300) {
+          resolve();
+        } else {
+          reject(new Error(`HTTP ${xhr.status}: ${xhr.statusText}`));
+        }
+      };
+
+      xhr.onerror = () => reject(new Error('Network error'));
+      xhr.send(JSON.stringify(data));
+    });
   },
 };

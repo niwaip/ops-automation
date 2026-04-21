@@ -55,4 +55,42 @@ export class ActivityController {
   async executeCode(@Body() data: { code: string; fn: string; taskQueue: string; input?: Record<string, any> }) {
     return this.activityService.executeCode(data.code, data.fn, data.taskQueue, data.input);
   }
+
+  @Post('execute-code/stream')
+  @ApiOperation({ summary: 'Execute generated code with SSE streaming' })
+  async executeCodeStream(@Body() data: { code: string; fn: string; taskQueue: string; input?: Record<string, any> }, @Res() res: any) {
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Connection', 'keep-alive');
+    res.setHeader('X-Accel-Buffering', 'no');
+
+    try {
+      // First generate code
+      const handler = 'api';
+      const genResult = await this.activityService.generateCode({
+        name: data.fn,
+        fn: data.fn,
+        handler: handler as any,
+        config: { taskQueue: data.taskQueue },
+      } as any);
+
+      if (!genResult.success || !genResult.code) {
+        res.write(`data: ${JSON.stringify({ type: 'error', message: genResult.error || '代码生成失败' })}\n\n`);
+        res.end();
+        return;
+      }
+      res.write(`data: ${JSON.stringify({ type: 'log', message: '代码生成完成' })}\n\n`);
+
+      // Then execute with streaming
+      const execResult = await this.activityService.executeCodeStreaming(data.code, data.fn, data.taskQueue, data.input, (log: string) => {
+        res.write(`data: ${JSON.stringify({ type: 'log', message: log })}\n\n`);
+      });
+
+      res.write(`data: ${JSON.stringify({ type: 'done', result: execResult })}\n\n`);
+      res.end();
+    } catch (error: any) {
+      res.write(`data: ${JSON.stringify({ type: 'error', message: error.message })}\n\n`);
+      res.end();
+    }
+  }
 }

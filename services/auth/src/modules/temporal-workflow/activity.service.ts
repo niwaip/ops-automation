@@ -256,4 +256,52 @@ export class ActivityService {
       };
     }
   }
+
+  /**
+   * Execute code with streaming callback for real-time logs
+   */
+  async executeCodeStreaming(
+    code: string,
+    fn: string,
+    taskQueue: string,
+    input: Record<string, any> | undefined,
+    onLog: (log: string) => void,
+  ): Promise<{ success: boolean; result?: any; error?: string }> {
+    const logger = new Logger('ActivityService.executeCodeStreaming');
+
+    try {
+      onLog(`[${new Date().toISOString()}] 开始执行代码...`);
+
+      const aiOrchestratorUrl = getAiOrchestratorUrl();
+      onLog(`[${new Date().toISOString()}] 调用 AI Orchestrator 执行`);
+
+      const response = await axios.post<{ result: any; logs?: string[]; error?: string }>(
+        `${aiOrchestratorUrl}/ai/execute-activity`,
+        {
+          code,
+          fn,
+          taskQueue,
+          input: input || {},
+        },
+        { timeout: 180000 }
+      );
+
+      if (response.data.logs) {
+        response.data.logs.forEach(log => onLog(log));
+      }
+
+      if (response.data.error) {
+        onLog(`[${new Date().toISOString()}] 执行失败: ${response.data.error}`);
+        return { success: false, error: response.data.error };
+      }
+
+      onLog(`[${new Date().toISOString()}] 执行成功`);
+      return { success: true, result: response.data.result };
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : 'Unknown error';
+      logger.error(`Streaming execution failed: ${errorMsg}`);
+      onLog(`[${new Date().toISOString()}] 执行失败: ${errorMsg}`);
+      return { success: false, error: errorMsg };
+    }
+  }
 }

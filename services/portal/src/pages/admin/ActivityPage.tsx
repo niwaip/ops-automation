@@ -175,6 +175,8 @@ const ActivityPage: React.FC = () => {
   const [realValidateModalVisible, setRealValidateModalVisible] = useState(false);
   const [realValidateResult, setRealValidateResult] = useState<any>(null);
   const [isRealValidating, setIsRealValidating] = useState(false);
+  const [realValidateLogs, setRealValidateLogs] = useState<string[]>([]);
+  const [realValidateError, setRealValidateError] = useState<string | null>(null);
   const [activityForm, setActivityForm] = useState<ActivityFormData>({
     name: '',
     fn: '',
@@ -246,11 +248,69 @@ const ActivityPage: React.FC = () => {
     },
   });
 
-  // 真实验证：先拉取最新代码，然后执行
-  const realValidateMutation = useMutation(async () => {
-    // 1. 重新生成代码确保最新
+  // 真实验证：使用 SSE 流式执行
+  const handleRealValidate = async () => {
+    setIsRealValidating(true);
+    setRealValidateLogs([]);
+    setRealValidateError(null);
+    setRealValidateResult(null);
+
+    try {
+      // Use existing generated code or generate new one
+      let code = generatedCode;
+      if (!code) {
+        setRealValidateLogs(prev => [...prev, '正在生成代码...']);
+        const handler = activityForm.steps.length > 0 ? activityForm.steps[0].type : 'api';
+        const genResult = await activityApi.generateCode({
+          name: activityForm.name,
+          fn: activityForm.fn,
+          timeout: activityForm.startToCloseTimeout,
+          handler: handler as any,
+          retryPolicy: activityForm.retryPolicy,
+          config: {
+            description: activityForm.description,
+            taskQueue: activityForm.taskQueue,
+            steps: activityForm.steps,
+            heartbeatTimeout: activityForm.heartbeatTimeout,
+            idempotencyKey: activityForm.idempotencyKey,
+          },
+        });
+        if (!genResult.success || !genResult.code) {
+          throw new Error(genResult.error || '代码生成失败');
+        }
+        code = genResult.code;
+        setGeneratedCode(code);
+        setRealValidateLogs(prev => [...prev, '代码生成完成']);
+      }
+
+      // Execute with SSE streaming
+      setRealValidateLogs(prev => [...prev, '开始执行代码...']);
+      await activityApi.executeCodeStream(
+        { code, fn: activityForm.fn, taskQueue: activityForm.taskQueue, input: {} },
+        (event) => {
+          if (event.type === 'log' && event.message) {
+            setRealValidateLogs(prev => [...prev, event.message!]);
+          } else if (event.type === 'done') {
+            setRealValidateResult(event.result);
+            setIsRealValidating(false);
+          } else if (event.type === 'error') {
+            setRealValidateError(event.message || '执行失败');
+            setIsRealValidating(false);
+          }
+        }
+      );
+    } catch (err: any) {
+      setRealValidateError(err?.message || '真实验证失败');
+      setIsRealValidating(false);
+    }
+  };
+
+  // 重新生成代码（带错误信息）
+  const handleRegenerateWithError = (errorMsg: string) => {
+    setRealValidateError(errorMsg);
+    setIsGeneratingCode(true);
     const handler = activityForm.steps.length > 0 ? activityForm.steps[0].type : 'api';
-    const genResult = await activityApi.generateCode({
+    generateCodeMutation.mutate({
       name: activityForm.name,
       fn: activityForm.fn,
       timeout: activityForm.startToCloseTimeout,
@@ -264,28 +324,7 @@ const ActivityPage: React.FC = () => {
         idempotencyKey: activityForm.idempotencyKey,
       },
     });
-    if (!genResult.success || !genResult.code) {
-      throw new Error(genResult.error || '代码生成失败');
-    }
-    setGeneratedCode(genResult.code);
-
-    // 2. 调用后端执行真实验证
-    return activityApi.executeCode({
-      code: genResult.code,
-      fn: activityForm.fn,
-      taskQueue: activityForm.taskQueue,
-      input: activityForm.config?.testInput || {},
-    });
-  }, {
-    onSuccess: (result) => {
-      setIsRealValidating(false);
-      setRealValidateResult(result);
-    },
-    onError: (err: any) => {
-      setIsRealValidating(false);
-      message.error(err?.message || '真实验证失败');
-    },
-  });
+  };
 
   const handleGenerateCode = () => {
     const handler = activityForm.steps.length > 0 ? activityForm.steps[0].type : 'api';
@@ -339,6 +378,12 @@ const ActivityPage: React.FC = () => {
       idempotencyKey: activity.config?.idempotencyKey,
       steps,
     });
+    // Load saved generated code if exists
+    if (activity.config?.generatedCode) {
+      setGeneratedCode(activity.config.generatedCode);
+    } else {
+      setGeneratedCode('');
+    }
     setEditModalVisible(true);
   };
 
@@ -380,6 +425,7 @@ const ActivityPage: React.FC = () => {
         steps: activityForm.steps,
         heartbeatTimeout: activityForm.heartbeatTimeout,
         idempotencyKey: activityForm.idempotencyKey,
+        generatedCode: generatedCode || undefined, // Save generated code
       },
     };
 
@@ -774,52 +820,88 @@ const ActivityPage: React.FC = () => {
         ) : <Alert type="info" message="点击验证按钮开始验证" />}
       </Modal>
 
-      {/* Real Validation Modal - 执行真实代码 */}
+      {/* Real Validation Modal - SSE 流式执行真实代码 */}
       <Modal
         title={<Space><ThunderboltOutlined /> 真实验证（执行代码）</Space>}
         open={realValidateModalVisible}
-        onCancel={() => { setRealValidateModalVisible(false); setIsRealValidating(false); }}
+        onCancel={() => { setRealValidateModalVisible(false); setIsRealValidating(false); setRealValidateLogs([]); setRealValidateError(null); }}
         footer={[<Button onClick={() => setRealValidateModalVisible(false)}>关闭</Button>]}
-        width={700}
+        width={800}
       >
-        {isRealValidating ? (
-          <div style={{ padding: 40, textAlign: 'center' }}>
-            <LoadingOutlined style={{ fontSize: 24 }} /><br /><br />
-            <Text>正在执行真实验证...</Text><br />
-            <Text type="secondary" style={{ fontSize: 12 }}>1. 拉取最新代码 → 2. 发送到 Temporal Worker 执行</Text>
+        <Space direction="vertical" style={{ width: '100%' }}>
+          {realValidateError && (
+            <Alert
+              type="error"
+              message="执行失败"
+              description={
+                <div>
+                  <pre style={{ margin: '8px 0', fontSize: 12, whiteSpace: 'pre-wrap' }}>{realValidateError}</pre>
+                  <Button
+                    type="primary"
+                    icon={<RobotOutlined />}
+                    onClick={() => handleRegenerateWithError(realValidateError)}
+                    loading={isGeneratingCode}
+                    style={{ marginTop: 8 }}
+                  >
+                    重新生成代码
+                  </Button>
+                </div>
+              }
+              showIcon
+            />
+          )}
+
+          {realValidateResult && !realValidateError && (
+            <Alert
+              type={realValidateResult.success ? 'success' : 'error'}
+              message={realValidateResult.success ? '执行成功' : '执行失败'}
+              showIcon
+            />
+          )}
+
+          <div>
+            <Text strong>执行日志：</Text>
+            <div style={{ background: '#1e1e1e', color: '#d4d4d4', padding: 12, borderRadius: 4, maxHeight: 300, overflow: 'auto', marginTop: 8 }}>
+              <pre style={{ margin: 0, fontSize: 11 }}>
+                {realValidateLogs.map((log, i) => (
+                  <div key={i}>{log}</div>
+                ))}
+                {isRealValidating && <span style={{ color: '#1890ff' }}>▋</span>}
+              </pre>
+            </div>
           </div>
-        ) : realValidateResult ? (
-          <Space direction="vertical" style={{ width: '100%' }}>
-            <Alert type={realValidateResult.success ? 'success' : 'error'} message={realValidateResult.success ? '执行成功' : '执行失败'} showIcon />
+
+          {realValidateResult && !realValidateError && realValidateResult.result && (
             <Card size="small" style={{ background: '#f5f5f5' }}>
               <Text strong>执行结果：</Text>
               <pre style={{ margin: '8px 0', fontSize: 12, whiteSpace: 'pre-wrap', wordBreak: 'break-all' }}>
                 {typeof realValidateResult.result === 'string' ? realValidateResult.result : JSON.stringify(realValidateResult.result, null, 2)}
               </pre>
             </Card>
-            {realValidateResult.logs?.length > 0 && (
-              <div>
-                <Text strong>执行日志：</Text>
-                <div style={{ background: '#1e1e1e', color: '#d4d4d4', padding: 12, borderRadius: 4, maxHeight: 200, overflow: 'auto' }}>
-                  <pre style={{ margin: 0, fontSize: 11 }}>{realValidateResult.logs.join('\n')}</pre>
-                </div>
-              </div>
-            )}
-          </Space>
-        ) : (
-          <Space direction="vertical" style={{ width: '100%' }}>
+          )}
+
+          {!isRealValidating && !realValidateResult && !realValidateError && (
             <Alert type="info" message="真实验证将执行以下步骤：" description={
               <ul style={{ margin: '8px 0' }}>
-                <li>1. 拉取最新 AI 生成的代码</li>
-                <li>2. 将代码发送到 Temporal Worker 执行</li>
-                <li>3. 返回实际执行结果和日志</li>
+                <li>1. 使用已保存的代码（如有）</li>
+                <li>2. 或重新生成最新 AI 代码</li>
+                <li>3. 将代码发送到 Temporal Worker 执行</li>
+                <li>4. 实时返回执行日志</li>
               </ul>
             } />
-            <Button type="primary" icon={<ThunderboltOutlined />} onClick={() => { setIsRealValidating(true); realValidateMutation.mutate(); }} loading={realValidateMutation.isPending}>
-              开始真实验证
+          )}
+
+          {!isRealValidating && (
+            <Button
+              type="primary"
+              icon={<ThunderboltOutlined />}
+              onClick={handleRealValidate}
+              loading={isGeneratingCode}
+            >
+              {generatedCode ? '使用已有代码执行' : '生成代码并执行'}
             </Button>
-          </Space>
-        )}
+          )}
+        </Space>
       </Modal>
     </div>
   );
