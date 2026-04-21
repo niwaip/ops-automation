@@ -177,7 +177,7 @@ const ActivityPage: React.FC = () => {
   const [isRealValidating, setIsRealValidating] = useState(false);
   const [realValidateLogs, setRealValidateLogs] = useState<string[]>([]);
   const [realValidateError, setRealValidateError] = useState<string | null>(null);
-  const cachedCodeRef = useRef<string | null>(null);
+  const [cachedCode, setCachedCode] = useState<string | null>(null);
   const [activityForm, setActivityForm] = useState<ActivityFormData>({
     name: '',
     fn: '',
@@ -260,7 +260,7 @@ const ActivityPage: React.FC = () => {
     try {
       // Use existing cached code or generate new one
       // 先拉取最新的代码（从缓存的编辑器内容），然后执行
-      let code = cachedCodeRef.current || generatedCode;
+      let code = cachedCode || generatedCode;
       if (!code) {
         setRealValidateLogs(prev => [...prev, '正在生成代码...']);
         const handler = activityForm.steps.length > 0 ? activityForm.steps[0].type : 'api';
@@ -384,8 +384,10 @@ const ActivityPage: React.FC = () => {
     // Load saved generated code if exists
     if (activity.config?.generatedCode) {
       setGeneratedCode(activity.config.generatedCode);
+      setCachedCode(activity.config.generatedCode); // Also set cached code
     } else {
       setGeneratedCode('');
+      setCachedCode(null);
     }
     setEditModalVisible(true);
   };
@@ -417,7 +419,7 @@ const ActivityPage: React.FC = () => {
   const handleSave = () => {
     const handler = activityForm.steps.length > 0 ? activityForm.steps[0].type : 'api';
     // Use cached code if available, otherwise use state
-    const codeToSave = cachedCodeRef.current || generatedCode;
+    const codeToSave = cachedCode || generatedCode;
     const data: CreateActivityDto = {
       name: activityForm.name,
       fn: activityForm.fn,
@@ -708,7 +710,7 @@ const ActivityPage: React.FC = () => {
             <Button icon={<RobotOutlined />} onClick={handleGenerateCode} loading={generateCodeMutation.isPending || isGeneratingCode}>AI 生成代码</Button>
             <Button icon={<EyeOutlined />} onClick={() => setCodePreviewVisible(true)} disabled={!generatedCode && !generateCodeMutation.isSuccess}>查看代码</Button>
             <Button icon={<PlayCircleOutlined />} onClick={handleValidate}>验证配置</Button>
-            <Button icon={<ThunderboltOutlined />} onClick={() => setRealValidateModalVisible(true)} disabled={!generatedCode}>真实验证</Button>
+            <Button icon={<ThunderboltOutlined />} onClick={() => setRealValidateModalVisible(true)} disabled={!cachedCode && !generatedCode && !generateCodeMutation.isSuccess}>真实验证</Button>
             <Button icon={<ExperimentOutlined />} onClick={() => setSimulationModalVisible(true)}>模拟</Button>
             <Button onClick={() => setEditModalVisible(false)}>取消</Button>
             <Button type="primary" icon={<SaveOutlined />} loading={createMutation.isLoading || updateMutation.isLoading} onClick={handleSave}>保存</Button>
@@ -725,8 +727,8 @@ const ActivityPage: React.FC = () => {
           <Button key="copy" icon={<CopyOutlined />} onClick={copyCode}>复制代码</Button>,
           <Button key="cache" icon={<SaveOutlined />} onClick={() => {
             if (generatedCode) {
-              // Store in a ref so handleSave can include it
-              setCachedCodeRef(generatedCode);
+              // Store in state so handleSave can include it
+              setCachedCode(generatedCode);
               message.success('代码已缓存，保存时将一并存储');
             }
           }}>缓存代码</Button>,
