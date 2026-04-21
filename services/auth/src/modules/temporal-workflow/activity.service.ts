@@ -280,7 +280,7 @@ export class ActivityService {
 
       // 2. 直接执行 Python 代码
       logs.push(`[${new Date().toISOString()}] 直接执行 Python 代码`);
-      const result = await this.executePythonCode(code, fn, input || {}, logs);
+      const result = await this.executePythonCode(code, fn, input || {}, (log: string) => logs.push(log));
       logs.push(`[${new Date().toISOString()}] 代码执行完成`);
 
       return {
