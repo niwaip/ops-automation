@@ -218,17 +218,87 @@ mock_retry_policy = type('MockRetryPolicy', (), {{
 
 mock_temporalio.common.RetryPolicy = lambda **kw: type('RetryPolicy', (), {{**{{k: v for k, v in kw.items()}}}})()
 
+# Mock requests module using urllib
+import urllib.request
+import urllib.error
+
+class MockResponse:
+    def __init__(self, status, data, headers=None):
+        self.status = status
+        self.status_code = status  # Alias for requests compatibility
+        self.data = data
+        self.headers = headers or {{}}
+        self.text = data.decode('utf-8') if isinstance(data, bytes) else data
+        self.content = data
+
+    def json(self):
+        return json.loads(self.text)
+
+    def raise_for_status(self):
+        if self.status >= 400:
+            raise urllib.error.HTTPError(None, self.status, None, None, None)
+
+class MockRequests:
+    def get(self, url, headers=None, timeout=None, **kwargs):
+        try:
+            req = urllib.request.Request(url, headers=headers or {{}})
+            with urllib.request.urlopen(req, timeout=timeout or 30) as response:
+                data = response.read()
+                return MockResponse(response.status, data, dict(response.headers))
+        except urllib.error.HTTPError as e:
+            return MockResponse(e.code, e.read() if e.fp else b'', dict(e.headers) if hasattr(e, 'headers') else {{}})
+        except Exception as e:
+            return MockResponse(500, str(e).encode(), {{}})
+
+    def post(self, url, data=None, json=None, headers=None, timeout=None, **kwargs):
+        try:
+            encoded_data = None
+            if json is not None:
+                encoded_data = json.dumps(json).encode('utf-8')
+                headers = headers or {{}}
+                headers['Content-Type'] = 'application/json'
+            elif data is not None:
+                encoded_data = data.encode('utf-8') if isinstance(data, str) else data
+
+            req = urllib.request.Request(url, data=encoded_data, headers=headers or {{}})
+            with urllib.request.urlopen(req, timeout=timeout or 30) as response:
+                data = response.read()
+                return MockResponse(response.status, data, dict(response.headers))
+        except urllib.error.HTTPError as e:
+            return MockResponse(e.code, e.read() if e.fp else b'', dict(e.headers) if hasattr(e, 'headers') else {{}})
+        except Exception as e:
+            return MockResponse(500, str(e).encode(), {{}})
+
+    def put(self, url, data=None, json=None, headers=None, timeout=None, **kwargs):
+        return self.post(url, data, json, headers, timeout, **kwargs)
+
+    def delete(self, url, headers=None, timeout=None, **kwargs):
+        try:
+            req = urllib.request.Request(url, method='DELETE', headers=headers or {{}})
+            with urllib.request.urlopen(req, timeout=timeout or 30) as response:
+                data = response.read()
+                return MockResponse(response.status, data, dict(response.headers))
+        except urllib.error.HTTPError as e:
+            return MockResponse(e.code, e.read() if e.fp else b'', dict(e.headers) if hasattr(e, 'headers') else {{}})
+        except Exception as e:
+            return MockResponse(500, str(e).encode(), {{}})
+
+# Create mock requests module
+mock_requests = MockRequests()
+
 # Inject into sys.modules
 sys.modules['temporalio'] = mock_temporalio
 sys.modules['temporalio.activity'] = mock_temporalio.activity
 sys.modules['temporalio.exceptions'] = mock_temporalio.exceptions
 sys.modules['temporalio.common'] = mock_temporalio.common
 sys.modules['activity'] = mock_temporalio.activity
+sys.modules['requests'] = mock_requests
 
 # Namespace for exec
 namespace = {{
     'temporalio': mock_temporalio,
     'activity': mock_temporalio.activity,
+    'requests': mock_requests,
 }}
 
 # Read input
