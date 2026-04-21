@@ -16,6 +16,8 @@ import {
   RecognizeParamsResponseDTO,
   DecideFailureDTO,
   DecideFailureResponseDTO,
+  ExecuteActivityDTO,
+  ExecuteActivityResponseDTO,
 } from './interfaces';
 import { ChatRequestDTO, StreamEvent, ExecutionContext } from './modules/react-engine/interfaces';
 import { ContentBlock, ChatMessage as MultimodalChatMessage } from './interfaces';
@@ -451,6 +453,13 @@ export class AIController {
   }
 
   // File upload endpoint for chat
+  @Post('execute-activity')
+  @ApiOperation({ summary: 'Execute generated Temporal Activity code' })
+  @ApiResponse({ status: 200, description: 'Returns activity execution result' })
+  async executeActivity(@Body() body: ExecuteActivityDTO): Promise<ExecuteActivityResponseDTO> {
+    return this.agentService.executeActivity(body.code, body.fn, body.taskQueue, body.input);
+  }
+
   @Post('chat/upload')
   @ApiOperation({ summary: 'Upload file for chat' })
   @ApiConsumes('multipart/form-data')

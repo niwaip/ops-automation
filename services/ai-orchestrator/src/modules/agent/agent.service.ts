@@ -1,7 +1,12 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { v4 as uuidv4 } from 'uuid';
-import { AIAgentDTO, CreateAgentDTO, ChatMessage } from '../../interfaces';
+import { AIAgentDTO, CreateAgentDTO, ChatMessage, ExecuteActivityResponseDTO } from '../../interfaces';
 import { OpenAICompatibleClient } from '../../client/openai-compatible';
+import { promises as fs } from 'fs';
+import * as path from 'path';
+import { promisify } from 'util';
+
+const exec = promisify(require('child_process').exec);
 
 /**
  * Agent Service
@@ -205,5 +210,172 @@ export class AgentService {
 
     this.agents.set(id, updatedAgent);
     return updatedAgent;
+  }
+
+  async executeActivity(
+    code: string,
+    fn: string,
+    taskQueue: string,
+    input?: Record<string, any>,
+  ): Promise<ExecuteActivityResponseDTO> {
+    this.logger.log(`Executing activity function: ${fn} on task queue: ${taskQueue}`);
+    const logs: string[] = [];
+
+    // Create a temporary directory for the Python activity code and input
+    const tempDir = '/tmp/temporal_activity_runner';
+    await fs.mkdir(tempDir, { recursive: true });
+    const tempActivityFilePath = path.join(tempDir, `activity_${Date.now()}.py`);
+    const tempInputFilePath = path.join(tempDir, `input_${Date.now()}.json`);
+    const tempRunnerScriptPath = path.join(tempDir, `temporal_activity_runner.py`);
+
+    try {
+      // Write the activity code to a temporary file
+      await fs.writeFile(tempActivityFilePath, code);
+      logs.push(`[${new Date().toISOString()}] Activity code written to ${tempActivityFilePath}`);
+
+      // Write the input to a temporary JSON file
+      await fs.writeFile(tempInputFilePath, JSON.stringify(input || {}));
+      logs.push(`[${new Date().toISOString()}] Activity input written to ${tempInputFilePath}`);
+
+      // Write the runner script to a temporary file
+      const runnerScriptContent = `
+import asyncio
+import json
+import os
+import sys
+import argparse
+from datetime import timedelta
+from temporalio import activity, worker, client
+
+# Dynamic import of the activity module
+async def run_activity(activity_file_path: str, fn_name: str, task_queue: str, input_data: dict):
+    # Add the directory of the activity file to sys.path
+    activity_dir = os.path.dirname(activity_file_path)
+    if activity_dir not in sys.path:
+        sys.path.insert(0, activity_dir)
+
+    module_name = os.path.basename(activity_file_path).replace('.py', '')
+    
+    # Dynamically import the activity module
+    activity_module = __import__(module_name)
+
+    # Get the activity function from the module
+    activity_fn = getattr(activity_module, fn_name)
+
+    # For testing, we'll simulate a worker and client call
+    # In a real scenario, this would involve a running Temporal worker and a workflow calling the activity.
+    # For direct execution and testing, we'll call the activity function directly.
+    # Note: This direct call bypasses the Temporal worker's retry and heartbeat mechanisms.
+    # A more robust test would involve spinning up a mini-worker.
+
+    # Simulate activity context for heartbeat if the activity uses it
+    class MockActivityContext:
+        def __init__(self):
+            self.heartbeat_details = []
+            self.logger = activity.logger
+
+        def heartbeat(self, *details):
+            self.heartbeat_details.append(details)
+            self.logger.info(f"Mock Heartbeat: {details}")
+
+    # Temporarily set the activity context
+    original_current_activity = activity._activity_context
+    activity._activity_context = MockActivityContext()
+
+    try:
+        result = activity_fn(input_data)
+        if asyncio.iscoroutine(result):
+            result = await result
+        print(json.dumps({"result": result, "logs": []}))
+    except Exception as e:
+        activity.logger.error(f"Activity execution error: {e}")
+        print(json.dumps({"error": str(e), "logs": []}), file=sys.stderr)
+        sys.exit(1)
+    finally:
+        # Restore original activity context
+        activity._activity_context = original_current_activity
+        # Clean up dynamic import cache to avoid issues in subsequent runs
+        sys.modules.pop(module_name, None)
+        if module_name in globals():
+            del globals()[module_name]
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="Execute a Temporal Activity function.")
+    parser.add_argument("--activity-file", required=True, help="Path to the Python activity file.")
+    parser.add_argument("--fn", required=True, help="Name of the activity function to execute.")
+    parser.add_argument("--task-queue", required=True, help="Temporal Task Queue (for context, not used in direct execution).")
+    parser.add_argument("--input-file", required=True, help="Path to a JSON file containing the activity input.")
+    
+    args = parser.parse_args()
+
+    with open(args.input_file, 'r') as f:
+        activity_input = json.load(f)
+
+    asyncio.run(run_activity(args.activity_file, args.fn, args.task_queue, activity_input))
+`;
+      await fs.writeFile(tempRunnerScriptPath, runnerScriptContent);
+      logs.push(`[${new Date().toISOString()}] Runner script written to ${tempRunnerScriptPath}`);
+
+      // Command to execute the Python script that runs the Temporal Activity
+      const command = `python ${tempRunnerScriptPath} \
+        --activity-file ${tempActivityFilePath} \
+        --fn ${fn} \
+        --task-queue ${taskQueue} \
+        --input-file ${tempInputFilePath}`;
+
+      this.logger.log(`Running command: ${command}`);
+      logs.push(`[${new Date().toISOString()}] Running command: ${command}`);
+
+      const { stdout, stderr } = await exec(command, { timeout: 120000 }); // 120 seconds timeout
+
+      if (stdout) {
+        logs.push(`[${new Date().toISOString()}] Stdout: ${stdout}`);
+      }
+      if (stderr) {
+        logs.push(`[${new Date().toISOString()}] Stderr: ${stderr}`);
+      }
+
+      // Parse the result from stdout (assuming the Python script prints JSON result)
+      let result: any;
+      let errorResult: string | undefined;
+      
+      // Check for error in stderr first
+      if (stderr) {
+          try {
+              const errJson = JSON.parse(stderr);
+              if (errJson.error) {
+                  errorResult = errJson.error;
+              }
+          } catch (e) {
+              // If stderr is not JSON, treat it as a raw error message
+              errorResult = stderr;
+          }
+      }
+
+      if (errorResult) {
+          return { success: false, error: errorResult, logs };
+      }
+
+      try {
+        result = JSON.parse(stdout);
+      } catch (parseError: any) {
+        this.logger.error(`Failed to parse stdout as JSON: ${parseError.message}. Raw stdout: ${stdout}`);
+        logs.push(`[${new Date().toISOString()}] Error parsing result: ${parseError.message}. Raw stdout: ${stdout}`);
+        return { success: false, error: 'Invalid JSON response from activity execution', logs };
+      }
+
+      return { success: true, result: result.result, logs };
+    } catch (error: any) {
+      const errorMsg = error instanceof Error ? error.message : String(error);
+      this.logger.error(`Failed to execute activity: ${errorMsg}. Stderr: ${error.stderr}`);
+      logs.push(`[${new Date().toISOString()}] Execution failed: ${errorMsg}. Stderr: ${error.stderr}`);
+      return { success: false, error: errorMsg, logs };
+    } finally {
+      // Clean up temporary files
+      await fs.rm(tempActivityFilePath, { force: true });
+      await fs.rm(tempInputFilePath, { force: true });
+      await fs.rm(tempRunnerScriptPath, { force: true });
+      this.logger.log('Cleaned up temporary files');
+    }
   }
 }

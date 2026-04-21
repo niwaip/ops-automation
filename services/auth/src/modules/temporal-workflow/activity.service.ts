@@ -176,39 +176,7 @@ export class ActivityService {
     const retryPolicy = config.retryPolicy;
     const idempotencyKey = config.config?.idempotencyKey;
 
-    const prompt = `你是一个 Temporal Workflow 开发专家。请根据以下 Activity 配置生成 Python 代码。
-
-Activity 配置：
-- 名称：${config.name}
-- 函数名：${config.fn}
-- 描述：${description || '无'}
-- Task Queue：${config.config?.taskQueue || 'SKILL_TASK_QUEUE'}
-- 超时：${config.timeout || '30s'}
-${heartbeatTimeout ? `- 心跳超时：${heartbeatTimeout}` : '- 心跳超时：不启用'}
-${retryPolicy ? `- 重试策略：最多 ${retryPolicy.maxRetries} 次` : '- 重试策略：不启用'}
-${idempotencyKey ? `- 幂等键：${idempotencyKey}` : '- 幂等键：不启用'}
-
-步骤配置（${steps.length} 个步骤）：
-${steps.map((step: any, idx: number) => `
-步骤 ${idx + 1}: ${step.name}
-  - 类型：${step.type}
-  - 超时：${step.timeout || '30s'}
-  ${step.type === 'api' ? `- 端点：${step.config?.endpoint || '未指定'}` : ''}
-  ${step.type === 'script' ? `- 脚本：${step.config?.script?.substring(0, 100)}...` : ''}
-  ${step.type === 'carbone' ? `- 模板ID：${step.config?.templateId || '未指定'}` : ''}
-  ${step.type === 'browser' ? `- 操作：${step.config?.action || 'click'}, 选择器：${step.config?.selector || '未指定'}` : ''}
-`).join('')}
-
-请生成完整的 Python Temporal Activity 代码，包括：
-1. 正确的 @activity.defn 装饰器
-2. 函数签名和类型注解
-3. 详细的中文 docstring 说明
-4. 心跳处理（如果配置了）
-5. 错误处理和重试逻辑
-6. 每个步骤的执行逻辑
-7. 适当的日志记录
-
-请只返回代码，不要有其他解释。代码应该可以直接用于 Temporal Worker。`;
+    const prompt = `你是一个 Temporal Workflow 开发专家。请根据以下 Activity 配置生成符合 Temporal Python SDK 最佳实践的 Python Activity 代码。代码应该结构清晰、包含适当的导入、错误处理、日志记录和心跳机制（如果适用）。\n\n请严格遵循以下指导原则：\n1.  使用 \`temporalio.activity\` 模块。\n2.  为 Activity 函数使用 \`@activity.defn\` 装饰器。\n3.  函数签名应包含类型注解。\n4.  提供详细的中文 docstring 解释 Activity 的目的、参数和返回值。\n5.  如果 Activity 可能长时间运行，请使用 \`activity.heartbeat()\` 进行心跳报告。\n6.  使用 \`activity.logger\` 进行日志记录，而不是 \`print()\`。\n7.  实施健壮的错误处理，使用 \`temporalio.exceptions.ApplicationError\` 处理业务逻辑错误。\n8.  确保生成的代码是独立的，可以直接用于 Temporal Worker。\n9.  返回结果应为字典类型。\n\nActivity 配置：\n- 名称：${config.name}\n- 函数名：${config.fn}\n- 描述：${description || \'无\'}\n- Task Queue：${config.config?.taskQueue || \'SKILL_TASK_QUEUE\'}\n- 超时：${config.timeout || \'30s\'}\n${heartbeatTimeout ? `- 心跳超时：${heartbeatTimeout}` : \'- 心跳超时：不启用\'}\n${retryPolicy ? `- 重试策略：最多 ${retryPolicy.maxRetries} 次` : \'- 重试策略：不启用\'}\n${idempotencyKey ? `- 幂等键：${idempotencyKey}` : \'- 幂等键：不启用\'}\n\n步骤配置（${steps.length} 个步骤）：\n${steps.map((step: any, idx: number) => `\n步骤 ${idx + 1}: ${step.name}\n  - 类型：${step.type}\n  - 超时：${step.timeout || \'30s\'}\n  ${step.type === \'api\' ? `- 端点：${step.config?.endpoint || \'未指定\'}, 方法：${step.config?.method || \'GET\'}` : \'\'}\n  ${step.type === \'script\' ? `- 脚本：${step.config?.script?.substring(0, 100)}...` : \'\'}\n  ${step.type === \'carbone\' ? `- 模板ID：${step.config?.templateId || \'未指定\'}` : \'\'}\n  ${step.type === \'browser\' ? `- 操作：${step.config?.action || \'click\'}, 选择器：${step.config?.selector || \'未指定\'}` : \'\'}\n`).join(\'\')}\n\n请只返回 Python 代码，不要有其他解释。确保代码中包含必要的辅助函数（例如执行 API 请求、脚本等），或者明确指出这些是外部依赖。`;
 
     try {
       const aiOrchestratorUrl = getAiOrchestratorUrl();

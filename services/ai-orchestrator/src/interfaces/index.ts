@@ -93,3 +93,17 @@ export interface APIKeyReference {
   reference_id: string;
   secret_type: 'vault' | 'env' | 'k8s_secret';
 }
+
+export interface ExecuteActivityDTO {
+  code: string;
+  fn: string;
+  taskQueue: string;
+  input?: Record<string, any>;
+}
+
+export interface ExecuteActivityResponseDTO {
+  success: boolean;
+  result?: any;
+  logs?: string[];
+  error?: string;
+}
