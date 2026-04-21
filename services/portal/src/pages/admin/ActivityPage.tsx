@@ -544,7 +544,10 @@ const ActivityPage: React.FC = () => {
             <Row gutter={16}>
               <Col span={12}>
                 <Form.Item label="幂等键策略（指导 AI 生成）">
-                  <Input value={activityForm.idempotencyKey || ''} onChange={e => updateActivityForm('idempotencyKey', e.target.value || undefined)} placeholder="{{workflowId}}-{{activityName}}-{{inputHash}}" />
+                  <Switch checked={!!activityForm.idempotencyKey} onChange={checked => updateActivityForm('idempotencyKey', checked ? "{{workflowId}}-{{activityName}}-{{inputHash}}" : undefined)} />
+                  {activityForm.idempotencyKey && (
+                    <Input value={activityForm.idempotencyKey} onChange={e => updateActivityForm('idempotencyKey', e.target.value || undefined)} placeholder="{{workflowId}}-{{activityName}}-{{inputHash}}" style={{ marginLeft: 16, width: 200 }} />
+                  )}
                 </Form.Item>
               </Col>
               <Col span={12}>
@@ -706,12 +709,21 @@ const ActivityPage: React.FC = () => {
 
       {/* Validation Modal */}
       <Modal title="验证结果" open={validateModalVisible} onCancel={() => setValidateModalVisible(false)} footer={[<Button onClick={() => setValidateModalVisible(false)}>关闭</Button>]}>
-        {validationResult ? (
+        {validateMutation.isPending ? (
+          <div style={{ padding: 40, textAlign: 'center' }}>
+            <LoadingOutlined style={{ fontSize: 24 }} /><br /><br />
+            正在验证配置，请稍候...
+          </div>
+        ) : validationResult ? (
           <Space direction="vertical" style={{ width: '100%' }}>
             <Alert type={validationResult.isValid ? 'success' : 'error'} message={validationResult.isValid ? '验证通过' : '验证失败'} showIcon />
             <Text>评分: {validationResult.score}/100</Text>
+            <Text type="secondary" style={{ fontSize: 12 }}>
+              说明：验证仅检查配置结构有效性，不执行生成的 Python 代码。生成的代码可直接复制到 Temporal Worker 使用。
+            </Text>
             {validationResult.errors?.length > 0 && <Alert type="error" message="错误" description={<ul>{validationResult.errors.map((e, i) => <li key={i}>{e}</li>)}</ul>} />}
             {validationResult.warnings?.length > 0 && <Alert type="warning" message="警告" description={<ul>{validationResult.warnings.map((w, i) => <li key={i}>{w}</li>)}</ul>} />}
+            {validationResult.suggestions?.length > 0 && <Alert type="info" message="建议" description={<ul>{validationResult.suggestions.map((s, i) => <li key={i}>{s}</li>)}</ul>} />}
           </Space>
         ) : <Alert type="info" message="点击验证按钮开始验证" />}
       </Modal>
