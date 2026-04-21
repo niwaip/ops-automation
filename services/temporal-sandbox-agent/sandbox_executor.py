@@ -283,6 +283,25 @@ class MockRequests:
         except Exception as e:
             return MockResponse(500, str(e).encode(), {{}})
 
+# Mock requests.exceptions module
+class MockRequestsException(Exception):
+    pass
+
+class MockHTTPError(MockRequestsException):
+    pass
+
+class MockConnectionError(MockRequestsException):
+    pass
+
+class MockTimeout(MockRequestsException):
+    pass
+
+mock_requests_exceptions = types.ModuleType('requests.exceptions')
+mock_requests_exceptions.RequestException = MockRequestsException
+mock_requests_exceptions.HTTPError = MockHTTPError
+mock_requests_exceptions.ConnectionError = MockConnectionError
+mock_requests_exceptions.Timeout = MockTimeout
+
 # Create mock requests module
 mock_requests = MockRequests()
 
@@ -293,6 +312,7 @@ sys.modules['temporalio.exceptions'] = mock_temporalio.exceptions
 sys.modules['temporalio.common'] = mock_temporalio.common
 sys.modules['activity'] = mock_temporalio.activity
 sys.modules['requests'] = mock_requests
+sys.modules['requests.exceptions'] = mock_requests_exceptions
 
 # Namespace for exec
 namespace = {{
