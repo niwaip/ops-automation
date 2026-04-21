@@ -36,6 +36,20 @@ export interface GenerateCodeResult {
   error?: string;
 }
 
+export interface ExecuteCodeResult {
+  success: boolean;
+  result?: any;
+  logs?: string[];
+  error?: string;
+}
+
+export interface ExecuteCodeDto {
+  code: string;
+  fn: string;
+  taskQueue: string;
+  input?: Record<string, any>;
+}
+
 export const activityApi = {
   list: async (): Promise<ActivityDTO[]> => {
     return apiClient.get<ActivityDTO[]>('/activities');
@@ -63,5 +77,9 @@ export const activityApi = {
 
   generateCode: async (config: CreateActivityDto): Promise<GenerateCodeResult> => {
     return apiClient.post<GenerateCodeResult>('/activities/generate-code', config);
+  },
+
+  executeCode: async (data: ExecuteCodeDto): Promise<ExecuteCodeResult> => {
+    return apiClient.post<ExecuteCodeResult>('/activities/execute-code', data);
   },
 };

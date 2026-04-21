@@ -172,6 +172,9 @@ const ActivityPage: React.FC = () => {
   const [simulationResult, setSimulationResult] = useState<any>(null);
   const [generatedCode, setGeneratedCode] = useState<string>('');
   const [isGeneratingCode, setIsGeneratingCode] = useState(false);
+  const [realValidateModalVisible, setRealValidateModalVisible] = useState(false);
+  const [realValidateResult, setRealValidateResult] = useState<any>(null);
+  const [isRealValidating, setIsRealValidating] = useState(false);
   const [activityForm, setActivityForm] = useState<ActivityFormData>({
     name: '',
     fn: '',
@@ -240,6 +243,47 @@ const ActivityPage: React.FC = () => {
     onError: (err: any) => {
       setIsGeneratingCode(false);
       message.error(err?.message || '代码生成失败');
+    },
+  });
+
+  // 真实验证：先拉取最新代码，然后执行
+  const realValidateMutation = useMutation(async () => {
+    // 1. 重新生成代码确保最新
+    const handler = activityForm.steps.length > 0 ? activityForm.steps[0].type : 'api';
+    const genResult = await activityApi.generateCode({
+      name: activityForm.name,
+      fn: activityForm.fn,
+      timeout: activityForm.startToCloseTimeout,
+      handler: handler as any,
+      retryPolicy: activityForm.retryPolicy,
+      config: {
+        description: activityForm.description,
+        taskQueue: activityForm.taskQueue,
+        steps: activityForm.steps,
+        heartbeatTimeout: activityForm.heartbeatTimeout,
+        idempotencyKey: activityForm.idempotencyKey,
+      },
+    });
+    if (!genResult.success || !genResult.code) {
+      throw new Error(genResult.error || '代码生成失败');
+    }
+    setGeneratedCode(genResult.code);
+
+    // 2. 调用后端执行真实验证
+    return activityApi.executeCode({
+      code: genResult.code,
+      fn: activityForm.fn,
+      taskQueue: activityForm.taskQueue,
+      input: activityForm.config?.testInput || {},
+    });
+  }, {
+    onSuccess: (result) => {
+      setIsRealValidating(false);
+      setRealValidateResult(result);
+    },
+    onError: (err: any) => {
+      setIsRealValidating(false);
+      message.error(err?.message || '真实验证失败');
     },
   });
 
@@ -610,8 +654,10 @@ const ActivityPage: React.FC = () => {
 
           {/* Actions */}
           <Space style={{ width: '100%', justifyContent: 'flex-end' }}>
-            <Button icon={<EyeOutlined />} onClick={handleGenerateCode} loading={generateCodeMutation.isPending || isGeneratingCode}>AI 生成代码</Button>
-            <Button icon={<PlayCircleOutlined />} onClick={handleValidate}>验证</Button>
+            <Button icon={<RobotOutlined />} onClick={handleGenerateCode} loading={generateCodeMutation.isPending || isGeneratingCode}>AI 生成代码</Button>
+            <Button icon={<EyeOutlined />} onClick={() => setCodePreviewVisible(true)} disabled={!generatedCode && !generateCodeMutation.isSuccess}>查看代码</Button>
+            <Button icon={<PlayCircleOutlined />} onClick={handleValidate}>验证配置</Button>
+            <Button icon={<ThunderboltOutlined />} onClick={() => setRealValidateModalVisible(true)} disabled={!generatedCode}>真实验证</Button>
             <Button icon={<ExperimentOutlined />} onClick={() => setSimulationModalVisible(true)}>模拟</Button>
             <Button onClick={() => setEditModalVisible(false)}>取消</Button>
             <Button type="primary" icon={<SaveOutlined />} loading={createMutation.isLoading || updateMutation.isLoading} onClick={handleSave}>保存</Button>
@@ -726,6 +772,54 @@ const ActivityPage: React.FC = () => {
             {validationResult.suggestions?.length > 0 && <Alert type="info" message="建议" description={<ul>{validationResult.suggestions.map((s, i) => <li key={i}>{s}</li>)}</ul>} />}
           </Space>
         ) : <Alert type="info" message="点击验证按钮开始验证" />}
+      </Modal>
+
+      {/* Real Validation Modal - 执行真实代码 */}
+      <Modal
+        title={<Space><ThunderboltOutlined /> 真实验证（执行代码）</Space>}
+        open={realValidateModalVisible}
+        onCancel={() => { setRealValidateModalVisible(false); setIsRealValidating(false); }}
+        footer={[<Button onClick={() => setRealValidateModalVisible(false)}>关闭</Button>]}
+        width={700}
+      >
+        {isRealValidating ? (
+          <div style={{ padding: 40, textAlign: 'center' }}>
+            <LoadingOutlined style={{ fontSize: 24 }} /><br /><br />
+            <Text>正在执行真实验证...</Text><br />
+            <Text type="secondary" style={{ fontSize: 12 }}>1. 拉取最新代码 → 2. 发送到 Temporal Worker 执行</Text>
+          </div>
+        ) : realValidateResult ? (
+          <Space direction="vertical" style={{ width: '100%' }}>
+            <Alert type={realValidateResult.success ? 'success' : 'error'} message={realValidateResult.success ? '执行成功' : '执行失败'} showIcon />
+            <Card size="small" style={{ background: '#f5f5f5' }}>
+              <Text strong>执行结果：</Text>
+              <pre style={{ margin: '8px 0', fontSize: 12, whiteSpace: 'pre-wrap', wordBreak: 'break-all' }}>
+                {typeof realValidateResult.result === 'string' ? realValidateResult.result : JSON.stringify(realValidateResult.result, null, 2)}
+              </pre>
+            </Card>
+            {realValidateResult.logs?.length > 0 && (
+              <div>
+                <Text strong>执行日志：</Text>
+                <div style={{ background: '#1e1e1e', color: '#d4d4d4', padding: 12, borderRadius: 4, maxHeight: 200, overflow: 'auto' }}>
+                  <pre style={{ margin: 0, fontSize: 11 }}>{realValidateResult.logs.join('\n')}</pre>
+                </div>
+              </div>
+            )}
+          </Space>
+        ) : (
+          <Space direction="vertical" style={{ width: '100%' }}>
+            <Alert type="info" message="真实验证将执行以下步骤：" description={
+              <ul style={{ margin: '8px 0' }}>
+                <li>1. 拉取最新 AI 生成的代码</li>
+                <li>2. 将代码发送到 Temporal Worker 执行</li>
+                <li>3. 返回实际执行结果和日志</li>
+              </ul>
+            } />
+            <Button type="primary" icon={<ThunderboltOutlined />} onClick={() => { setIsRealValidating(true); realValidateMutation.mutate(); }} loading={realValidateMutation.isPending}>
+              开始真实验证
+            </Button>
+          </Space>
+        )}
       </Modal>
     </div>
   );

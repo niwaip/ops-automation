@@ -236,4 +236,56 @@ ${steps.map((step: any, idx: number) => `
       return { success: false, error: errorMsg };
     }
   }
+
+  /**
+   * Execute generated code for real validation
+   * 先拉取最新代码，然后执行
+   */
+  async executeCode(code: string, fn: string, taskQueue: string, input?: Record<string, any>): Promise<{
+    success: boolean;
+    result?: any;
+    logs?: string[];
+    error?: string;
+  }> {
+    const logger = new Logger('ActivityService.executeCode');
+    const logs: string[] = [];
+
+    try {
+      logger.log(`Executing code for function: ${fn}`);
+
+      // 1. 先拉取最新代码 (参数中已传入)
+      logs.push(`[${new Date().toISOString()}] 拉取最新代码完成`);
+
+      // 2. 将代码发送到 Temporal Worker 执行
+      // 使用 AI Orchestrator 的代码执行能力
+      const aiOrchestratorUrl = getAiOrchestratorUrl();
+      const response = await axios.post<{ result: any; logs?: string[]; error?: string }>(
+        `${aiOrchestratorUrl}/ai/execute-activity`,
+        {
+          code,
+          fn,
+          taskQueue,
+          input: input || {},
+        },
+        { timeout: 120000 } // 2分钟超时
+      );
+
+      logs.push(`[${new Date().toISOString()}] 代码执行完成`);
+
+      return {
+        success: true,
+        result: response.data.result,
+        logs: [...logs, ...(response.data.logs || [])],
+      };
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : 'Unknown error';
+      logger.error(`Code execution failed: ${errorMsg}`);
+      logs.push(`[${new Date().toISOString()}] 执行失败: ${errorMsg}`);
+      return {
+        success: false,
+        error: errorMsg,
+        logs,
+      };
+    }
+  }
 }

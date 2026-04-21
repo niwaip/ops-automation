@@ -49,4 +49,10 @@ export class ActivityController {
   async generateCode(@Body() config: ActivityFormData): Promise<GenerateCodeResult> {
     return this.activityService.generateCode(config);
   }
+
+  @Post('execute-code')
+  @ApiOperation({ summary: 'Execute generated code for real validation' })
+  async executeCode(@Body() data: { code: string; fn: string; taskQueue: string; input?: Record<string, any> }) {
+    return this.activityService.executeCode(data.code, data.fn, data.taskQueue, data.input);
+  }
 }
