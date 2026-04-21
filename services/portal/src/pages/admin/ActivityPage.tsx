@@ -9,7 +9,7 @@ import {
   CheckCircleOutlined, ThunderboltOutlined, SettingOutlined,
   ExperimentOutlined, HeartOutlined, ClockCircleOutlined, RetweetOutlined,
   LineChartOutlined, WarningOutlined, OrderedListOutlined, CopyOutlined,
-  SaveOutlined, RobotOutlined, EyeOutlined
+  SaveOutlined, RobotOutlined, EyeOutlined, LoadingOutlined
 } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
 import { useQuery, useMutation, useQueryClient } from 'react-query';
@@ -170,6 +170,8 @@ const ActivityPage: React.FC = () => {
   const [selectedActivity, setSelectedActivity] = useState<ActivityDTO | null>(null);
   const [validationResult, setValidationResult] = useState<ActivityValidationResult | null>(null);
   const [simulationResult, setSimulationResult] = useState<any>(null);
+  const [generatedCode, setGeneratedCode] = useState<string>('');
+  const [isGeneratingCode, setIsGeneratingCode] = useState(false);
   const [activityForm, setActivityForm] = useState<ActivityFormData>({
     name: '',
     fn: '',
@@ -225,6 +227,37 @@ const ActivityPage: React.FC = () => {
     onError: (err: any) => message.error(err?.message || '验证失败'),
   });
 
+  const generateCodeMutation = useMutation(activityApi.generateCode, {
+    onSuccess: (result) => {
+      if (result.success && result.code) {
+        setGeneratedCode(result.code);
+        setCodePreviewVisible(true);
+      } else {
+        message.error(result.error || '代码生成失败');
+      }
+    },
+    onError: (err: any) => message.error(err?.message || '代码生成失败'),
+  });
+
+  const handleGenerateCode = () => {
+    const handler = activityForm.steps.length > 0 ? activityForm.steps[0].type : 'api';
+    setIsGeneratingCode(true);
+    generateCodeMutation.mutate({
+      name: activityForm.name,
+      fn: activityForm.fn,
+      timeout: activityForm.startToCloseTimeout,
+      handler: handler as any,
+      retryPolicy: activityForm.retryPolicy,
+      config: {
+        description: activityForm.description,
+        taskQueue: activityForm.taskQueue,
+        steps: activityForm.steps,
+        heartbeatTimeout: activityForm.heartbeatTimeout,
+        idempotencyKey: activityForm.idempotencyKey,
+      },
+    });
+  };
+
   const resetForm = () => {
     setActivityForm({
       name: '', fn: '', description: '', taskQueue: 'SKILL_TASK_QUEUE',
@@ -233,6 +266,7 @@ const ActivityPage: React.FC = () => {
       retryPolicy: undefined, idempotencyKey: undefined,
       steps: [],
     });
+    setGeneratedCode('');
   };
 
   const handleCreate = () => {
@@ -358,11 +392,9 @@ const ActivityPage: React.FC = () => {
   };
 
   const copyCode = () => {
-    navigator.clipboard.writeText(generatePythonCode(activityForm));
+    navigator.clipboard.writeText(generatedCode);
     message.success('代码已复制');
   };
-
-  const generatedCode = generatePythonCode(activityForm);
 
   const columns: ColumnsType<ActivityDTO> = [
     { title: '名称', dataIndex: 'name', key: 'name', width: 180, render: (name, r) => <a onClick={() => handleViewDetail(r)}><Text strong>{name}</Text></a> },
@@ -571,7 +603,7 @@ const ActivityPage: React.FC = () => {
 
           {/* Actions */}
           <Space style={{ width: '100%', justifyContent: 'flex-end' }}>
-            <Button icon={<EyeOutlined />} onClick={() => setCodePreviewVisible(true)}>AI 预览</Button>
+            <Button icon={<EyeOutlined />} onClick={handleGenerateCode} loading={generateCodeMutation.isPending || isGeneratingCode}>AI 生成代码</Button>
             <Button icon={<PlayCircleOutlined />} onClick={handleValidate}>验证</Button>
             <Button icon={<ExperimentOutlined />} onClick={() => setSimulationModalVisible(true)}>模拟</Button>
             <Button onClick={() => setEditModalVisible(false)}>取消</Button>
@@ -584,10 +616,10 @@ const ActivityPage: React.FC = () => {
       <Modal
         title={<Space><RobotOutlined /> AI 生成的 Python 代码</Space>}
         open={codePreviewVisible}
-        onCancel={() => setCodePreviewVisible(false)}
+        onCancel={() => { setCodePreviewVisible(false); setIsGeneratingCode(false); }}
         footer={[
           <Button key="copy" icon={<CopyOutlined />} onClick={copyCode}>复制代码</Button>,
-          <Button key="close" onClick={() => setCodePreviewVisible(false)}>关闭</Button>
+          <Button key="close" onClick={() => { setCodePreviewVisible(false); setIsGeneratingCode(false); }}>关闭</Button>
         ]}
         width={800}
       >
@@ -595,9 +627,16 @@ const ActivityPage: React.FC = () => {
           以下代码由 AI 根据您的配置自动生成，可用于参考或复制到 Temporal Worker 中使用。
         </Paragraph>
         <Card bodyStyle={{ padding: 0 }} style={{ background: '#1e1e1e', borderRadius: 8 }}>
-          <pre style={{ color: '#d4d4d4', padding: 16, margin: 0, fontFamily: 'Monaco, Menlo, "Ubuntu Mono", monospace', fontSize: 12, lineHeight: 1.5, overflow: 'auto', maxHeight: 500 }}>
-            {generatedCode}
-          </pre>
+          {isGeneratingCode || generateCodeMutation.isPending ? (
+            <div style={{ padding: 40, textAlign: 'center', color: '#d4d4d4' }}>
+              <LoadingOutlined style={{ fontSize: 24 }} /><br /><br />
+              正在生成代码，请稍候...
+            </div>
+          ) : (
+            <pre style={{ color: '#d4d4d4', padding: 16, margin: 0, fontFamily: 'Monaco, Menlo, "Ubuntu Mono", monospace', fontSize: 12, lineHeight: 1.5, overflow: 'auto', maxHeight: 500 }}>
+              {generatedCode || generatePythonCode(activityForm)}
+            </pre>
+          )}
         </Card>
       </Modal>
 

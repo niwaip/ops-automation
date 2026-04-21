@@ -30,6 +30,12 @@ export interface ActivityValidationResult {
   suggestions: string[];
 }
 
+export interface GenerateCodeResult {
+  success: boolean;
+  code?: string;
+  error?: string;
+}
+
 export const activityApi = {
   list: async (): Promise<ActivityDTO[]> => {
     return apiClient.get<ActivityDTO[]>('/activities');
@@ -53,5 +59,9 @@ export const activityApi = {
 
   validate: async (config: CreateActivityDto): Promise<ActivityValidationResult> => {
     return apiClient.post<ActivityValidationResult>('/activities/validate', config);
+  },
+
+  generateCode: async (config: CreateActivityDto): Promise<GenerateCodeResult> => {
+    return apiClient.post<GenerateCodeResult>('/activities/generate-code', config);
   },
 };

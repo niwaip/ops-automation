@@ -1,6 +1,6 @@
 import { Controller, Get, Post, Put, Delete, Body, Param } from '@nestjs/common';
 import { ApiTags, ApiOperation } from '@nestjs/swagger';
-import { ActivityService, ActivityFormData, ActivityValidationResult } from './activity.service';
+import { ActivityService, ActivityFormData, ActivityValidationResult, GenerateCodeResult } from './activity.service';
 import { Activity } from '@prisma/client';
 
 @ApiTags('Activities')
@@ -42,5 +42,11 @@ export class ActivityController {
   @ApiOperation({ summary: 'Validate activity configuration' })
   async validate(@Body() config: ActivityFormData): Promise<ActivityValidationResult> {
     return this.activityService.validate(config);
+  }
+
+  @Post('generate-code')
+  @ApiOperation({ summary: 'Generate Python code using AI' })
+  async generateCode(@Body() config: ActivityFormData): Promise<GenerateCodeResult> {
+    return this.activityService.generateCode(config);
   }
 }
