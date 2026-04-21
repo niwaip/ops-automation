@@ -258,8 +258,9 @@ const ActivityPage: React.FC = () => {
     setRealValidateResult(null);
 
     try {
-      // Use existing generated code or generate new one
-      let code = generatedCode;
+      // Use existing cached code or generate new one
+      // 先拉取最新的代码（从缓存的编辑器内容），然后执行
+      let code = cachedCodeRef.current || generatedCode;
       if (!code) {
         setRealValidateLogs(prev => [...prev, '正在生成代码...']);
         const handler = activityForm.steps.length > 0 ? activityForm.steps[0].type : 'api';

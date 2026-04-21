@@ -38,6 +38,18 @@ const getAiOrchestratorUrl = () => {
   return `http://${externalHost}:3007`;
 };
 
+// Sandbox Worker URL helper
+const getSandboxWorkerUrl = () => {
+  if (process.env.SANDBOX_WORKER_URL) {
+    return process.env.SANDBOX_WORKER_URL;
+  }
+  if (process.env.DOCKER_ENV === 'true' || process.env.NODE_ENV === 'production') {
+    return 'http://ops-temporal-worker:3008';
+  }
+  const externalHost = process.env.EXTERNAL_HOST || 'localhost';
+  return `http://${externalHost}:3008`;
+};
+
 @Injectable()
 export class ActivityService {
   constructor(private prisma: PrismaService) {}
@@ -208,6 +220,7 @@ export class ActivityService {
   /**
    * Execute generated code for real validation
    * 先拉取最新代码，然后执行
+   * 使用 Sandbox Worker 进行安全的代码执行
    */
   async executeCode(code: string, fn: string, taskQueue: string, input?: Record<string, any>): Promise<{
     success: boolean;
@@ -224,11 +237,10 @@ export class ActivityService {
       // 1. 先拉取最新代码 (参数中已传入)
       logs.push(`[${new Date().toISOString()}] 拉取最新代码完成`);
 
-      // 2. 将代码发送到 Temporal Worker 执行
-      // 使用 AI Orchestrator 的代码执行能力
-      const aiOrchestratorUrl = getAiOrchestratorUrl();
+      // 2. 使用 Sandbox Worker 执行代码
+      const sandboxWorkerUrl = getSandboxWorkerUrl();
       const response = await axios.post<{ result: any; logs?: string[]; error?: string }>(
-        `${aiOrchestratorUrl}/ai/execute-activity`,
+        `${sandboxWorkerUrl}/sandbox/execute-code`,
         {
           code,
           fn,
@@ -259,6 +271,7 @@ export class ActivityService {
 
   /**
    * Execute code with streaming callback for real-time logs
+   * 使用 Sandbox Worker 进行安全的代码执行
    */
   async executeCodeStreaming(
     code: string,
@@ -272,11 +285,11 @@ export class ActivityService {
     try {
       onLog(`[${new Date().toISOString()}] 开始执行代码...`);
 
-      const aiOrchestratorUrl = getAiOrchestratorUrl();
-      onLog(`[${new Date().toISOString()}] 调用 AI Orchestrator 执行`);
+      const sandboxWorkerUrl = getSandboxWorkerUrl();
+      onLog(`[${new Date().toISOString()}] 调用 Sandbox Worker 执行`);
 
       const response = await axios.post<{ result: any; logs?: string[]; error?: string }>(
-        `${aiOrchestratorUrl}/ai/execute-activity`,
+        `${sandboxWorkerUrl}/sandbox/execute-code`,
         {
           code,
           fn,
