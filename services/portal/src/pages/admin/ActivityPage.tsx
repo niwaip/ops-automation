@@ -237,6 +237,7 @@ const ActivityPage: React.FC = () => {
       setIsGeneratingCode(false);
       if (result.success && result.code) {
         setGeneratedCode(result.code);
+        setRealValidateError(null); // Clear error after successful regeneration
         setCodePreviewVisible(true);
       } else {
         message.error(result.error || '代码生成失败');
@@ -307,7 +308,7 @@ const ActivityPage: React.FC = () => {
 
   // 重新生成代码（带错误信息）
   const handleRegenerateWithError = (errorMsg: string) => {
-    setRealValidateError(errorMsg);
+    setRealValidateError(errorMsg); // Keep error visible
     setIsGeneratingCode(true);
     const handler = activityForm.steps.length > 0 ? activityForm.steps[0].type : 'api';
     generateCodeMutation.mutate({

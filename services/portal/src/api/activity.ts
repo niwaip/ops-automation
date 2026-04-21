@@ -95,8 +95,11 @@ export const activityApi = {
       const xhr = new XMLHttpRequest();
       xhr.open('POST', '/api/activities/execute-code/stream');
       xhr.setRequestHeader('Content-Type', 'application/json');
-      if (apiClient.get.defaults.headers.common['Authorization']) {
-        xhr.setRequestHeader('Authorization', apiClient.get.defaults.headers.common['Authorization']);
+      // Get token from authStore directly
+      const { useAuthStore } = require('../store/authStore');
+      const token = useAuthStore.getState().accessToken;
+      if (token) {
+        xhr.setRequestHeader('Authorization', `Bearer ${token}`);
       }
 
       xhr.onprogress = () => {
