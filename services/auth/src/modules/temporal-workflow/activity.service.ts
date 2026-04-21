@@ -220,7 +220,6 @@ export class ActivityService {
   /**
    * Execute generated code for real validation
    * 先拉取最新代码，然后执行
-   * 使用 Sandbox Worker 进行安全的代码执行
    */
   async executeCode(code: string, fn: string, taskQueue: string, input?: Record<string, any>): Promise<{
     success: boolean;
