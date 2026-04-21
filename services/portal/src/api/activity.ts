@@ -1,4 +1,5 @@
 import apiClient from './client';
+import { useAuthStore } from '../store/authStore';
 
 export interface ActivityDTO {
   id: string;
@@ -96,7 +97,6 @@ export const activityApi = {
       xhr.open('POST', '/api/activities/execute-code/stream');
       xhr.setRequestHeader('Content-Type', 'application/json');
       // Get token from authStore directly
-      const { useAuthStore } = require('../store/authStore');
       const token = useAuthStore.getState().accessToken;
       if (token) {
         xhr.setRequestHeader('Authorization', `Bearer ${token}`);
