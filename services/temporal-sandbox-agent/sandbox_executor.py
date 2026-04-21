@@ -244,10 +244,10 @@ class MockRequests:
         if name.startswith('_'):
             raise AttributeError(name)
         import sys
-        submodule_name = f'requests.{{{{name}}}}'
+        submodule_name = 'requests.' + name
         if submodule_name in sys.modules:
             return sys.modules[submodule_name]
-        raise AttributeError("'MockRequests' object has no attribute '{{name}}'")
+        raise AttributeError("'MockRequests' object has no attribute '" + name + "'")
 
     def get(self, url, headers=None, timeout=None, **kwargs):
         try:
