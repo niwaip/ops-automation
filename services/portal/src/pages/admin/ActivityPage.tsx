@@ -178,6 +178,8 @@ const ActivityPage: React.FC = () => {
   const [realValidateLogs, setRealValidateLogs] = useState<string[]>([]);
   const [realValidateError, setRealValidateError] = useState<string | null>(null);
   const [cachedCode, setCachedCode] = useState<string | null>(null);
+  const [isCachingCode, setIsCachingCode] = useState(false);
+  const [isValidated, setIsValidated] = useState(false);
   const [activityForm, setActivityForm] = useState<ActivityFormData>({
     name: '',
     fn: '',
@@ -329,6 +331,7 @@ const ActivityPage: React.FC = () => {
   const handleRegenerateWithError = (errorMsg: string) => {
     setRealValidateError(errorMsg); // Keep error visible
     setIsGeneratingCode(true);
+    setIsValidated(false); // Reset validation on regeneration
     const handler = activityForm.steps.length > 0 ? activityForm.steps[0].type : 'api';
     generateCodeMutation.mutate({
       name: activityForm.name,
@@ -349,6 +352,7 @@ const ActivityPage: React.FC = () => {
   const handleGenerateCode = () => {
     const handler = activityForm.steps.length > 0 ? activityForm.steps[0].type : 'api';
     setIsGeneratingCode(true);
+    setIsValidated(false); // Reset validation when generating new code
     generateCodeMutation.mutate({
       name: activityForm.name,
       fn: activityForm.fn,
@@ -379,6 +383,7 @@ const ActivityPage: React.FC = () => {
   const handleCreate = () => {
     setEditingActivity(null);
     resetForm();
+    setIsValidated(false);
     setEditModalVisible(true);
   };
 
@@ -402,9 +407,11 @@ const ActivityPage: React.FC = () => {
     if (activity.config?.generatedCode) {
       setGeneratedCode(activity.config.generatedCode);
       setCachedCode(activity.config.generatedCode); // Also set cached code
+      setIsValidated(true); // Already validated since it was saved
     } else {
       setGeneratedCode('');
       setCachedCode(null);
+      setIsValidated(false);
     }
     setEditModalVisible(true);
   };
@@ -457,6 +464,67 @@ const ActivityPage: React.FC = () => {
       updateMutation.mutate({ id: editingActivity.id, data });
     } else {
       createMutation.mutate(data);
+    }
+  };
+
+  // 缓存代码并立即验证
+  const handleCacheAndValidate = async () => {
+    if (!generatedCode) {
+      message.warning('请先生成代码');
+      return;
+    }
+
+    if (!editingActivity) {
+      message.warning('请先保存 Activity 基本信息');
+      return;
+    }
+
+    // 1. 先保存代码到数据库
+    setIsCachingCode(true);
+    try {
+      await activityApi.update(editingActivity.id, { generatedCode });
+      setCachedCode(generatedCode);
+      message.success('代码已缓存并保存到数据库');
+    } catch (err: any) {
+      message.error(err?.message || '保存代码失败');
+      setIsCachingCode(false);
+      return;
+    }
+
+    // 2. 立即触发真实验证
+    setRealValidateModalVisible(true);
+    setRealValidateLogs([]);
+    setRealValidateError(null);
+    setRealValidateResult(null);
+
+    try {
+      setRealValidateLogs(prev => [...prev, '代码已保存，开始验证...']);
+
+      await activityApi.executeCodeStream(
+        { code: generatedCode, fn: activityForm.fn, taskQueue: activityForm.taskQueue, input: {} },
+        (event) => {
+          if (event.type === 'log' && event.message) {
+            setRealValidateLogs(prev => [...prev, event.message!]);
+          } else if (event.type === 'done') {
+            setRealValidateResult(event.result);
+            setIsCachingCode(false);
+            setIsRealValidating(false);
+            // 验证成功，标记为已验证
+            if (event.result?.success !== false && !event.result?.error) {
+              setIsValidated(true);
+              setRealValidateLogs(prev => [...prev, '✓ 验证通过，可以点击保存按钮正式保存']);
+            }
+          } else if (event.type === 'error') {
+            setRealValidateError(event.message || '执行失败');
+            setIsCachingCode(false);
+            setIsRealValidating(false);
+          }
+        }
+      );
+    } catch (err: any) {
+      setRealValidateError(err?.message || '验证失败');
+      setIsCachingCode(false);
+      setIsRealValidating(false);
     }
   };
 
@@ -730,7 +798,7 @@ const ActivityPage: React.FC = () => {
             <Button icon={<ThunderboltOutlined />} onClick={() => setRealValidateModalVisible(true)} disabled={!cachedCode && !generatedCode && !generateCodeMutation.isSuccess}>真实验证</Button>
             <Button icon={<ExperimentOutlined />} onClick={() => setSimulationModalVisible(true)}>模拟</Button>
             <Button onClick={() => setEditModalVisible(false)}>取消</Button>
-            <Button type="primary" icon={<SaveOutlined />} loading={createMutation.isLoading || updateMutation.isLoading} onClick={handleSave}>保存</Button>
+            <Button type="primary" icon={<SaveOutlined />} loading={createMutation.isLoading || updateMutation.isLoading} onClick={handleSave} disabled={!isValidated && !!generatedCode}>保存{!isValidated && !!generatedCode ? '（请先验证）' : ''}</Button>
           </Space>
         </Form>
       </Modal>
@@ -742,15 +810,9 @@ const ActivityPage: React.FC = () => {
         onCancel={() => { setCodePreviewVisible(false); setIsGeneratingCode(false); }}
         footer={[
           <Button key="copy" icon={<CopyOutlined />} onClick={copyCode}>复制代码</Button>,
-          <Button key="cache" icon={<SaveOutlined />} onClick={() => {
-            if (generatedCode) {
-              // Store in state so handleSave can include it
-              setCachedCode(generatedCode);
-              message.success('代码已缓存，保存时将一并存储');
-            } else {
-              message.warning('请先生成代码');
-            }
-          }}>缓存代码</Button>,
+          <Button key="cache" type="primary" icon={<ThunderboltOutlined />} onClick={handleCacheAndValidate} loading={isCachingCode || isRealValidating}>
+            {isValidated ? '已验证' : '缓存并验证'}
+          </Button>,
           <Button key="close" onClick={() => { setCodePreviewVisible(false); setIsGeneratingCode(false); }}>关闭</Button>
         ]}
         width={800}
