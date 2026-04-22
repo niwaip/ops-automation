@@ -114,7 +114,11 @@ const MainLayout: React.FC = () => {
               },
               {
                 key: '/admin/activities',
+<<<<<<< HEAD
                 icon: <SettingOutlined />,
+=======
+                icon: <ThunderboltOutlined />,
+>>>>>>> 326e2d06510e0b3ff127d572df7deb4ecb7b1191
                 label: 'Activity管理',
               },
             ],

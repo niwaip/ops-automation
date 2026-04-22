@@ -343,6 +343,7 @@ model AuditLog {
   @@map("audit_logs")
 }
 
+<<<<<<< HEAD
 // Activity - Atomic action units for Temporal workflows
 model Activity {
   id            String    @id @default(uuid()) @db.Uuid
@@ -356,6 +357,21 @@ model Activity {
   isActive      Boolean   @default(true) @map("is_active")
   createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz
   updatedAt     DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+=======
+// Temporal Activity - Reusable activity definitions for Temporal workflows
+// Activities are non-deterministic side effects that can be retried
+model Activity {
+  id          String    @id @default(uuid()) @db.Uuid
+  name        String    @unique @db.VarChar(255)
+  fn          String    @db.VarChar(255) // Function name reference
+  timeout     String    @default("30s") @db.VarChar(50)
+  retryPolicy Json?     @map("retry_policy")
+  handler     String    @db.VarChar(50) // api | carbone | browser | script
+  config      Json      @default("{}")
+  isActive    Boolean   @default(true) @map("is_active")
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt   DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+>>>>>>> 326e2d06510e0b3ff127d572df7deb4ecb7b1191
 
   @@index([name])
   @@index([handler])
@@ -363,12 +379,21 @@ model Activity {
   @@map("activities")
 }
 
+<<<<<<< HEAD
 // TemporalWorkflow - Workflow definitions for Temporal orchestration
 model TemporalWorkflow {
   id          String    @id @default(uuid()) @db.Uuid
   name        String    @unique @db.VarChar(255)
   description String?   @db.VarChar(500)
   taskQueue   String    @default("SKILL_TASK_QUEUE") @map("task_queue")
+=======
+// Temporal Workflow - Workflow definitions with DSL
+model TemporalWorkflow {
+  id          String    @id @default(uuid()) @db.Uuid
+  name        String    @db.VarChar(255)
+  description String?   @db.VarChar(500)
+  taskQueue   String    @db.VarChar(255)
+>>>>>>> 326e2d06510e0b3ff127d572df7deb4ecb7b1191
   workflowDsl Json      @map("workflow_dsl")
   activityDsl Json      @map("activity_dsl")
   isActive    Boolean   @default(true) @map("is_active")
@@ -380,4 +405,8 @@ model TemporalWorkflow {
   @@index([taskQueue])
   @@index([isActive])
   @@map("temporal_workflows")
+<<<<<<< HEAD
 }
+=======
+}
+>>>>>>> 326e2d06510e0b3ff127d572df7deb4ecb7b1191
