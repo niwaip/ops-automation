@@ -454,8 +454,10 @@ export class ActivityService {
       onLog(`[${new Date().toISOString()}] Result结构: ${JSON.stringify({result_success: data.result?.success, inner_success: result?.success, has_error: !!result?.error})}`);
 
       // Check if the activity itself returned an error (even if HTTP was successful)
-      if (result && result.success === false) {
-        const errorMsg = result.error || result.message || JSON.stringify(result);
+      // The result may have: { success: false, error: "..." } OR { status: "failed", errors: [...] }
+      // Note: result.success could be undefined (not explicitly false), so we check both success===false and status==='failed'
+      if (result && (result.success === false || result.status === 'failed')) {
+        const errorMsg = result.error || (result.errors ? result.errors.join('; ') : JSON.stringify(result));
         onLog(`[${new Date().toISOString()}] 执行失败: ${errorMsg}`);
         return { success: false, error: errorMsg, result };
       }

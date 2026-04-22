@@ -373,12 +373,14 @@ const ActivityPage: React.FC = () => {
           } else if (event.type === 'done') {
             setRealValidateResult(event.result);
             setIsRealValidating(false);
-            const resultSuccess = event.result?.success !== false && !event.result?.error && !event.result?.status_code;
+            // event.result 结构: {success: true, result: {success: false, error: "..."}}
+            const innerResult = event.result?.result;
+            const resultSuccess = innerResult?.success !== false && !innerResult?.error && !innerResult?.status_code;
             if (resultSuccess) {
               setIsValidated(true);
               setRealValidateLogs(prev => [...prev, '✓ 验证通过，可以点击保存按钮正式保存']);
-            } else if (event.result?.error || event.result?.status_code >= 400) {
-              const errorMsg = event.result.error || event.result.message || JSON.stringify(event.result);
+            } else if (innerResult?.error || innerResult?.status_code >= 400) {
+              const errorMsg = innerResult.error || innerResult.message || JSON.stringify(innerResult);
               setRealValidateError(errorMsg);
             }
           } else if (event.type === 'error') {
@@ -580,14 +582,15 @@ const ActivityPage: React.FC = () => {
             setIsCachingCode(false);
             setIsRealValidating(false);
             // 验证成功，标记为已验证
-            // 检查 event.result 结构：可能是 {success: true, result: {...}} 或 {success: false, error: "..."}
-            const resultSuccess = event.result?.success !== false && !event.result?.error && !event.result?.status_code;
+            // event.result 结构: {success: true, result: {success: false, error: "..."}}
+            const innerResult = event.result?.result;
+            const resultSuccess = innerResult?.success !== false && !innerResult?.error && !innerResult?.status_code;
             if (resultSuccess) {
               setIsValidated(true);
               setRealValidateLogs(prev => [...prev, '✓ 验证通过，可以点击保存按钮正式保存']);
-            } else if (event.result?.error || event.result?.status_code >= 400) {
+            } else if (innerResult?.error || innerResult?.status_code >= 400) {
               // 执行返回了错误结果
-              const errorMsg = event.result.error || event.result.message || JSON.stringify(event.result);
+              const errorMsg = innerResult.error || innerResult.message || JSON.stringify(innerResult);
               setRealValidateError(errorMsg);
             }
           } else if (event.type === 'error') {
