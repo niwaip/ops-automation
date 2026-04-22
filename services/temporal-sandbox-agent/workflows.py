@@ -161,6 +161,7 @@ async def execute_code_activity(
 
     # Import sandbox execution here to avoid import at module load time
     from sandbox_executor import execute_in_sandbox
+    import traceback
 
     try:
         result = await execute_in_sandbox(code, fn_name, input_data)
@@ -168,5 +169,13 @@ async def execute_code_activity(
         return result
 
     except Exception as e:
-        activity.logger.error(f"Execution failed: {e}")
-        raise ApplicationError(f"Code execution failed: {e}", non_retryable=True)
+        error_traceback = traceback.format_exc()
+        activity.logger.error(f"Execution failed: {e}\n{error_traceback}")
+        # Return error in result instead of raising exception to preserve error details
+        return {
+            "error": str(e),
+            "error_type": type(e).__name__,
+            "traceback": error_traceback,
+            "result": None,
+            "success": False
+        }

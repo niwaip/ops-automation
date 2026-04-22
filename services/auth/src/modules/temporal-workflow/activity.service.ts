@@ -389,19 +389,22 @@ export class ActivityService {
         },
       });
 
-      const data = response.data;
+      const data = response.data as any;
 
       if (data.error) {
         onLog(`[${new Date().toISOString()}] 执行错误: ${data.error}`);
         return { success: false, error: data.error };
       }
 
-      if (data.result && data.result.error) {
-        const errorMsg = data.result.success === false
-          ? data.result.error
-          : `执行失败: ${JSON.stringify(data.result)}`;
-        onLog(`[${new Date().toISOString()}] ${errorMsg}`);
-        return { success: false, error: errorMsg };
+      if (data.result) {
+        // Check if the activity returned an error result (not a successful execution)
+        if (data.result.success === false || data.result.error) {
+          const errorMsg = data.result.traceback
+            ? `执行失败: ${data.result.error}\n\n详细信息:\n${data.result.traceback}`
+            : data.result.error || JSON.stringify(data.result);
+          onLog(`[${new Date().toISOString()}] ${errorMsg}`);
+          return { success: false, error: errorMsg };
+        }
       }
 
       // Extract the actual result from the sandbox response
