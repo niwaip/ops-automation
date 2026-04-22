@@ -16,6 +16,7 @@ export interface ActivityFormData {
   retryPolicy?: { maxRetries: number; backoffMs?: number };
   handler: 'api' | 'carbone' | 'browser' | 'script';
   config: Record<string, any>;
+  generatedCode?: string;
 }
 
 export interface ActivityValidationResult {
@@ -71,6 +72,7 @@ export class ActivityService {
         retryPolicy: (data.retryPolicy || null) as any,
         handler: data.handler,
         config: data.config as any,
+        generatedCode: data.generatedCode || null,
         isActive: true,
       },
     });
@@ -86,6 +88,7 @@ export class ActivityService {
         ...(data.retryPolicy !== undefined && { retryPolicy: data.retryPolicy as any }),
         ...(data.handler && { handler: data.handler }),
         ...(data.config && { config: data.config as any }),
+        ...(data.generatedCode !== undefined && { generatedCode: data.generatedCode }),
       },
     });
   }

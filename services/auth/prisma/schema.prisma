@@ -345,16 +345,17 @@ model AuditLog {
 
 // Activity - Atomic action units for Temporal workflows
 model Activity {
-  id          String    @id @default(uuid()) @db.Uuid
-  name        String    @unique @db.VarChar(255)
-  fn          String    @db.VarChar(255)
-  timeout     String    @default("30s") @db.VarChar(50)
-  retryPolicy Json?     @map("retry_policy")
-  handler     String    @db.VarChar(50)
-  config      Json      @default("{}")
-  isActive    Boolean   @default(true) @map("is_active")
-  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz
-  updatedAt   DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+  id            String    @id @default(uuid()) @db.Uuid
+  name          String    @unique @db.VarChar(255)
+  fn            String    @db.VarChar(255)
+  timeout       String    @default("30s") @db.VarChar(50)
+  retryPolicy   Json?     @map("retry_policy")
+  handler       String    @db.VarChar(50)
+  config        Json      @default("{}")
+  generatedCode String?   @map("generated_code") @db.Text
+  isActive      Boolean   @default(true) @map("is_active")
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt     DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
 
   @@index([name])
   @@index([handler])

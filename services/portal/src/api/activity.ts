@@ -21,6 +21,7 @@ export interface CreateActivityDto {
   retryPolicy?: { maxRetries: number; backoffMs?: number };
   handler: 'api' | 'carbone' | 'browser' | 'script';
   config: Record<string, any>;
+  generatedCode?: string;
 }
 
 export interface ActivityValidationResult {
