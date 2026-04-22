@@ -9,6 +9,7 @@ export interface ActivityDTO {
   retryPolicy: { maxRetries: number; backoffMs?: number } | null;
   handler: 'api' | 'carbone' | 'browser' | 'script';
   config: Record<string, any>;
+  generatedCode?: string; // Top-level field returned by API
   isActive: boolean;
   createdAt: string;
   updatedAt: string;

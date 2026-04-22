@@ -462,9 +462,10 @@ const ActivityPage: React.FC = () => {
       steps,
     });
     // Load saved generated code if exists
-    if (activity.config?.generatedCode) {
-      setGeneratedCode(activity.config.generatedCode);
-      setCachedCode(activity.config.generatedCode); // Also set cached code
+    // API returns generatedCode at top level, not inside config
+    if (activity.generatedCode) {
+      setGeneratedCode(activity.generatedCode);
+      setCachedCode(activity.generatedCode); // Also set cached code
       setIsValidated(true); // Already validated since it was saved
     } else {
       setGeneratedCode('');
