@@ -119,9 +119,14 @@ async def execute_in_sandbox(
     clean_code = code
     if '```' in code:
         import re
-        clean_code = re.sub(r'^```[a-zA-Z]*\n?', '', code)
-        clean_code = re.sub(r'```\s*$', '', clean_code)
-        clean_code = clean_code.strip()
+        # Try to find content between triple backticks
+        match = re.search(r'```(?:python)?\n?(.*?)```', code, re.DOTALL)
+        if match:
+            clean_code = match.group(1).strip()
+        else:
+            # Fallback: remove all backtick markers
+            clean_code = re.sub(r'```[a-zA-Z]*\n?', '', code)
+            clean_code = clean_code.replace('```', '').strip()
 
     # Create temporary files for execution
     with tempfile.TemporaryDirectory() as temp_dir:

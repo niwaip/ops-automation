@@ -194,7 +194,7 @@ export class ActivityService {
       '2. 不要使用 @activity.defn 装饰器，定义为普通 async 函数即可',
       '3. 使用 print() 进行日志输出，不要使用 activity.logger',
       '4. 不要导入 temporalio 相关模块',
-      '5. 函数签名：async def fn_name() -> Dict[str, Any]:',
+      `5. 函数签名：async def ${config.fn}() -> Dict[str, Any]:`,
       '6. 返回值为字典类型，包含执行结果和错误信息',
       '7. 不要使用 temporalio.exceptions.ApplicationError，使用普通 Exception 即可',
       '',
@@ -279,8 +279,19 @@ export class ActivityService {
         { timeout: 120000 }
       );
 
-      const code = response.data?.result;
+      let code = response.data?.result;
       if (code) {
+        // More robust markdown stripping
+        if (code.includes('```')) {
+          const match = code.match(/```(?:python)?\n?([\s\S]*?)```/);
+          if (match) {
+            code = match[1].trim();
+          } else {
+            // Fallback for weird markdown
+            code = code.replace(/```[a-zA-Z]*\n?/g, '').replace(/```/g, '').trim();
+          }
+        }
+
         logger.log('Successfully generated code');
         return { success: true, code };
       } else {
@@ -491,11 +502,15 @@ export class ActivityService {
       // Strip markdown code block markers if present
       let cleanCode = code;
       if (code.includes('```')) {
-        // Remove markdown code block markers (e.g., ```python ... ```)
-        cleanCode = code.replace(/^```[a-zA-Z]*\n?/, '').replace(/```\s*$/, '').trim();
-        if (cleanCode !== code) {
-          onLog(`已清理代码中的 markdown 标记`);
+        // More robust markdown stripping
+        const match = code.match(/```(?:python)?\n?([\s\S]*?)```/);
+        if (match) {
+          cleanCode = match[1].trim();
+        } else {
+          // Fallback for weird markdown
+          cleanCode = code.replace(/```[a-zA-Z]*\n?/g, '').replace(/```/g, '').trim();
         }
+        onLog(`已清理代码中的 markdown 标记`);
       }
 
       // Write activity code
