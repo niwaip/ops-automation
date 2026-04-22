@@ -123,6 +123,7 @@ class AgentSessionWorkflow:
         self._pending_signal = signal
         self._has_pending_execution = True
         self._execution_complete.clear()
+        self._result = None  # Reset result for new execution
 
         workflow.logger.info(f"Received execute_code signal for: {signal.activity_id}")
 

@@ -352,14 +352,24 @@ try:
     # Find activity function
     activity_fn = namespace.get('{fn_name}')
     if activity_fn is None:
+        # Fallback 1: Search all items for the exact name
         for name, obj in namespace.items():
             if callable(obj) and name == '{fn_name}':
                 activity_fn = obj
                 break
 
     if activity_fn is None:
+        # Fallback 2: If only one user-defined function exists, use it
+        callables = [obj for name, obj in namespace.items() 
+                     if callable(obj) and not name.startswith('__') 
+                     and name not in ['temporalio', 'activity', 'requests', 'asyncio', 'types', 'json', 'sys', 'os', 'traceback']]
+        if len(callables) == 1:
+            activity_fn = callables[0]
+            print(f"[Sandbox] Function '{fn_name}' not found, using the only available function instead.")
+
+    if activity_fn is None:
         with open('{result_file}', 'w') as f:
-            json.dump({{"error": "Function '{fn_name}' not found", "result": None}}, f)
+            json.dump({{"error": "Function '{fn_name}' not found in activity code", "result": None}}, f)
         sys.exit(1)
 
     # Execute with different calling conventions
