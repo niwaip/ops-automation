@@ -373,14 +373,13 @@ const ActivityPage: React.FC = () => {
           } else if (event.type === 'done') {
             setRealValidateResult(event.result);
             setIsRealValidating(false);
-            // event.result 结构: {success: true, result: {success: false, error: "..."}}
-            const innerResult = event.result?.result;
-            const resultSuccess = innerResult?.success !== false && !innerResult?.error && !innerResult?.status_code;
+            // event.result 结构: {success: false, error: "..."} 或 {success: true, result: {...}}
+            const resultSuccess = event.result?.success !== false && !event.result?.error && !event.result?.status_code;
             if (resultSuccess) {
               setIsValidated(true);
               setRealValidateLogs(prev => [...prev, '✓ 验证通过，可以点击保存按钮正式保存']);
-            } else if (innerResult?.error || innerResult?.status_code >= 400) {
-              const errorMsg = innerResult.error || innerResult.message || JSON.stringify(innerResult);
+            } else if (event.result?.error || event.result?.status_code >= 400) {
+              const errorMsg = event.result.error || event.result.message || JSON.stringify(event.result);
               setRealValidateError(errorMsg);
             }
           } else if (event.type === 'error') {
@@ -581,16 +580,14 @@ const ActivityPage: React.FC = () => {
             setRealValidateResult(event.result);
             setIsCachingCode(false);
             setIsRealValidating(false);
-            // 验证成功，标记为已验证
-            // event.result 结构: {success: true, result: {success: false, error: "..."}}
-            const innerResult = event.result?.result;
-            const resultSuccess = innerResult?.success !== false && !innerResult?.error && !innerResult?.status_code;
+            // event.result 结构: {success: false, error: "..."} 或 {success: true, result: {...}}
+            const resultSuccess = event.result?.success !== false && !event.result?.error && !event.result?.status_code;
             if (resultSuccess) {
               setIsValidated(true);
               setRealValidateLogs(prev => [...prev, '✓ 验证通过，可以点击保存按钮正式保存']);
-            } else if (innerResult?.error || innerResult?.status_code >= 400) {
+            } else if (event.result?.error || event.result?.status_code >= 400) {
               // 执行返回了错误结果
-              const errorMsg = innerResult.error || innerResult.message || JSON.stringify(innerResult);
+              const errorMsg = event.result.error || event.result.message || JSON.stringify(event.result);
               setRealValidateError(errorMsg);
             }
           } else if (event.type === 'error') {
