@@ -187,16 +187,17 @@ export class ActivityService {
 
     // Build prompt using array join to avoid template literal nesting issues
     const promptParts: string[] = [
-      '你是一个 Python 开发专家。请根据以下 Activity 配置生成符合沙箱环境要求的 Python Activity 代码。',
+      '你是一个 Temporal Python 开发专家。请根据以下 Activity 配置生成符合标准 Temporal Python SDK 规范的代码。',
       '',
-      '【重要】此代码将在沙箱环境执行，沙箱环境限制：',
-      '1. 使用 requests 库（已通过 urllib mock）进行 HTTP 请求，不要使用 aiohttp/httpx',
-      '2. 不要使用 @activity.defn 装饰器，定义为普通 async 函数即可',
-      '3. 使用 print() 进行日志输出，不要使用 activity.logger',
-      '4. 不要导入 temporalio 相关模块',
-      `5. 函数签名：async def ${config.fn}() -> Dict[str, Any]:`,
-      '6. 返回值为字典类型，包含执行结果和错误信息',
-      '7. 不要使用 temporalio.exceptions.ApplicationError，使用普通 Exception 即可',
+      '【重要要求】：',
+      '1. 必须使用标准的 Temporal 模式，包含 `from temporalio import activity`。',
+      `2. 函数必须使用 \`@activity.defn(name="${config.fn}")\` 装饰器。`,
+      '3. 必须使用 `activity.logger.info/error` 进行日志记录，而不是 print()。',
+      '4. HTTP 请求请使用 `requests` 库（沙箱已提供同步环境 Mock）。',
+      `5. 函数签名：async def ${config.fn}(input_data: Dict[str, Any]) -> Dict[str, Any]:`,
+      '6. 业务错误应通过 `raise ApplicationError("message", non_retryable=False)` 抛出，导入自 `temporalio.exceptions`。',
+      '7. 确保代码中包含必要的类型注解 (from typing import Dict, Any)。',
+      '8. 代码应结构清晰，包含异常处理逻辑。',
       '',
     ];
 

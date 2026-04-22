@@ -251,8 +251,8 @@ const ActivityPage: React.FC = () => {
       if (editingActivity) {
         try {
           const latestActivity = await activityApi.getById(editingActivity.id);
-          if (latestActivity.config?.generatedCode) {
-            code = latestActivity.config.generatedCode;
+          if (latestActivity.generatedCode) {
+            code = latestActivity.generatedCode;
             setCachedCode(code);
             setGeneratedCode(code);
             setRealValidateLogs(prev => [...prev, '已从服务器获取最新代码']);
@@ -564,8 +564,8 @@ const ActivityPage: React.FC = () => {
       setRealValidateLogs(prev => [...prev, '正在获取最新代码...']);
       try {
         const latestActivity = await activityApi.getById(editingActivity.id);
-        if (latestActivity.config?.generatedCode) {
-          latestCode = latestActivity.config.generatedCode;
+        if (latestActivity.generatedCode) {
+          latestCode = latestActivity.generatedCode;
           setRealValidateLogs(prev => [...prev, '已从数据库获取最新代码']);
         }
       } catch (e) {
