@@ -481,6 +481,7 @@ const ActivityPage: React.FC = () => {
 
     // 1. 先保存代码到数据库
     setIsCachingCode(true);
+    let latestCode = generatedCode;
     try {
       await activityApi.update(editingActivity.id, { generatedCode });
       setCachedCode(generatedCode);
@@ -491,7 +492,7 @@ const ActivityPage: React.FC = () => {
       return;
     }
 
-    // 2. 立即触发真实验证
+    // 2. 立即触发真实验证 - 先拉取最新代码再执行
     setRealValidateModalVisible(true);
     setRealValidateLogs([]);
     setRealValidateError(null);
@@ -500,8 +501,20 @@ const ActivityPage: React.FC = () => {
     try {
       setRealValidateLogs(prev => [...prev, '代码已保存，开始验证...']);
 
+      // 先拉取最新代码
+      setRealValidateLogs(prev => [...prev, '正在获取最新代码...']);
+      try {
+        const latestActivity = await activityApi.getById(editingActivity.id);
+        if (latestActivity.config?.generatedCode) {
+          latestCode = latestActivity.config.generatedCode;
+          setRealValidateLogs(prev => [...prev, '已从数据库获取最新代码']);
+        }
+      } catch (e) {
+        setRealValidateLogs(prev => [...prev, '获取最新代码失败，使用本地代码']);
+      }
+
       await activityApi.executeCodeStream(
-        { code: generatedCode, fn: activityForm.fn, taskQueue: activityForm.taskQueue, input: {} },
+        { code: latestCode, fn: activityForm.fn, taskQueue: activityForm.taskQueue, input: {} },
         (event) => {
           if (event.type === 'log' && event.message) {
             setRealValidateLogs(prev => [...prev, event.message!]);
@@ -510,9 +523,15 @@ const ActivityPage: React.FC = () => {
             setIsCachingCode(false);
             setIsRealValidating(false);
             // 验证成功，标记为已验证
-            if (event.result?.success !== false && !event.result?.error) {
+            // 检查 event.result 结构：可能是 {success: true, result: {...}} 或 {success: false, error: "..."}
+            const resultSuccess = event.result?.success !== false && !event.result?.error && !event.result?.status_code;
+            if (resultSuccess) {
               setIsValidated(true);
               setRealValidateLogs(prev => [...prev, '✓ 验证通过，可以点击保存按钮正式保存']);
+            } else if (event.result?.error || event.result?.status_code >= 400) {
+              // 执行返回了错误结果
+              const errorMsg = event.result.error || event.result.message || JSON.stringify(event.result);
+              setRealValidateError(errorMsg);
             }
           } else if (event.type === 'error') {
             setRealValidateError(event.message || '执行失败');

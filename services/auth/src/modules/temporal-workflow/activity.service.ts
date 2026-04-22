@@ -394,9 +394,11 @@ export class ActivityService {
 
       const data = response.data as any;
 
-      if (data.error) {
-        onLog(`[${new Date().toISOString()}] 执行错误: ${data.error}`);
-        return { success: false, error: data.error };
+      // Check if the sandbox agent itself returned an error
+      if (data.success === false || data.error || data.status_code >= 400) {
+        const errorMsg = data.error || data.message || JSON.stringify(data);
+        onLog(`[${new Date().toISOString()}] 执行错误: ${errorMsg}`);
+        return { success: false, error: errorMsg };
       }
 
       if (data.result) {
