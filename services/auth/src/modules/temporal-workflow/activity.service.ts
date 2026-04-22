@@ -450,6 +450,9 @@ export class ActivityService {
       // The sandbox returns { success: true, result: { result: {...}, success: true } }
       const result = data.result?.result || data.result;
 
+      // Log the result structure for debugging
+      onLog(`[${new Date().toISOString()}] Result结构: ${JSON.stringify({result_success: data.result?.success, inner_success: result?.success, has_error: !!result?.error})}`);
+
       // Check if the activity itself returned an error (even if HTTP was successful)
       if (result && result.success === false) {
         const errorMsg = result.error || result.message || JSON.stringify(result);
