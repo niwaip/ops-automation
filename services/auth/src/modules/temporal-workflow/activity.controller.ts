@@ -46,8 +46,8 @@ export class ActivityController {
 
   @Post('generate-code')
   @ApiOperation({ summary: 'Generate Python code using AI' })
-  async generateCode(@Body() config: ActivityFormData): Promise<GenerateCodeResult> {
-    return this.activityService.generateCode(config);
+  async generateCode(@Body() data: { config: ActivityFormData; errorContext?: string }): Promise<GenerateCodeResult> {
+    return this.activityService.generateCode(data.config, data.errorContext);
   }
 
   @Post('execute-code')

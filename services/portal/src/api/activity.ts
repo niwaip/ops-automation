@@ -83,8 +83,8 @@ export const activityApi = {
     return apiClient.post<ActivityValidationResult>('/activities/validate', config);
   },
 
-  generateCode: async (config: CreateActivityDto): Promise<GenerateCodeResult> => {
-    return apiClient.post<GenerateCodeResult>('/activities/generate-code', config);
+  generateCode: async (config: CreateActivityDto, errorContext?: string): Promise<GenerateCodeResult> => {
+    return apiClient.post<GenerateCodeResult>('/activities/generate-code', { config, errorContext });
   },
 
   executeCode: async (data: ExecuteCodeDto): Promise<ExecuteCodeResult> => {

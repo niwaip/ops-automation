@@ -235,23 +235,6 @@ const ActivityPage: React.FC = () => {
     onError: (err: any) => message.error(err?.message || '验证失败'),
   });
 
-  const generateCodeMutation = useMutation(activityApi.generateCode, {
-    onSuccess: (result) => {
-      setIsGeneratingCode(false);
-      if (result.success && result.code) {
-        setGeneratedCode(result.code);
-        setRealValidateError(null); // Clear error after successful regeneration
-        setCodePreviewVisible(true);
-      } else {
-        message.error(result.error || '代码生成失败');
-      }
-    },
-    onError: (err: any) => {
-      setIsGeneratingCode(false);
-      message.error(err?.message || '代码生成失败');
-    },
-  });
-
   // 真实验证：使用 SSE 流式执行
   const handleRealValidate = async () => {
     setIsRealValidating(true);
@@ -327,46 +310,120 @@ const ActivityPage: React.FC = () => {
     }
   };
 
-  // 重新生成代码（带错误信息）
-  const handleRegenerateWithError = (errorMsg: string) => {
+  // 重新生成代码（带错误信息）- 生成后保存并重新验证
+  const handleRegenerateWithError = async (errorMsg: string) => {
     setRealValidateError(errorMsg); // Keep error visible
     setIsGeneratingCode(true);
     setIsValidated(false); // Reset validation on regeneration
+
     const handler = activityForm.steps.length > 0 ? activityForm.steps[0].type : 'api';
-    generateCodeMutation.mutate({
-      name: activityForm.name,
-      fn: activityForm.fn,
-      timeout: activityForm.startToCloseTimeout,
-      handler: handler as any,
-      retryPolicy: activityForm.retryPolicy,
-      config: {
-        description: activityForm.description,
-        taskQueue: activityForm.taskQueue,
-        steps: activityForm.steps,
-        heartbeatTimeout: activityForm.heartbeatTimeout,
-        idempotencyKey: activityForm.idempotencyKey,
-      },
-    });
+
+    try {
+      // 调用生成API，传入错误上下文
+      const result = await activityApi.generateCode({
+        name: activityForm.name,
+        fn: activityForm.fn,
+        timeout: activityForm.startToCloseTimeout,
+        handler: handler as any,
+        retryPolicy: activityForm.retryPolicy,
+        config: {
+          description: activityForm.description,
+          taskQueue: activityForm.taskQueue,
+          steps: activityForm.steps,
+          heartbeatTimeout: activityForm.heartbeatTimeout,
+          idempotencyKey: activityForm.idempotencyKey,
+        },
+      }, errorMsg); // 传入错误信息指导AI重新生成
+
+      if (!result.success || !result.code) {
+        message.error(result.error || '重新生成代码失败');
+        setIsGeneratingCode(false);
+        return;
+      }
+
+      setGeneratedCode(result.code);
+      message.success('代码重新生成成功');
+
+      // 如果有正在编辑的Activity，保存新代码到数据库
+      if (editingActivity) {
+        try {
+          await activityApi.update(editingActivity.id, { generatedCode: result.code });
+          setCachedCode(result.code);
+          message.success('新代码已保存到数据库');
+        } catch (e: any) {
+          message.error('保存代码失败: ' + (e?.message || '未知错误'));
+        }
+      }
+
+      setIsGeneratingCode(false);
+
+      // 立即重新验证
+      setRealValidateModalVisible(true);
+      setRealValidateLogs([]);
+      setRealValidateError(null);
+      setRealValidateResult(null);
+
+      setRealValidateLogs(prev => [...prev, '代码已重新生成，开始验证...']);
+
+      await activityApi.executeCodeStream(
+        { code: result.code, fn: activityForm.fn, taskQueue: activityForm.taskQueue, input: {} },
+        (event) => {
+          if (event.type === 'log' && event.message) {
+            setRealValidateLogs(prev => [...prev, event.message!]);
+          } else if (event.type === 'done') {
+            setRealValidateResult(event.result);
+            setIsRealValidating(false);
+            const resultSuccess = event.result?.success !== false && !event.result?.error && !event.result?.status_code;
+            if (resultSuccess) {
+              setIsValidated(true);
+              setRealValidateLogs(prev => [...prev, '✓ 验证通过，可以点击保存按钮正式保存']);
+            } else if (event.result?.error || event.result?.status_code >= 400) {
+              const errorMsg = event.result.error || event.result.message || JSON.stringify(event.result);
+              setRealValidateError(errorMsg);
+            }
+          } else if (event.type === 'error') {
+            setRealValidateError(event.message || '执行失败');
+            setIsRealValidating(false);
+          }
+        }
+      );
+    } catch (err: any) {
+      message.error(err?.message || '重新生成失败');
+      setIsGeneratingCode(false);
+    }
   };
 
-  const handleGenerateCode = () => {
+  const handleGenerateCode = async () => {
     const handler = activityForm.steps.length > 0 ? activityForm.steps[0].type : 'api';
     setIsGeneratingCode(true);
     setIsValidated(false); // Reset validation when generating new code
-    generateCodeMutation.mutate({
-      name: activityForm.name,
-      fn: activityForm.fn,
-      timeout: activityForm.startToCloseTimeout,
-      handler: handler as any,
-      retryPolicy: activityForm.retryPolicy,
-      config: {
-        description: activityForm.description,
-        taskQueue: activityForm.taskQueue,
-        steps: activityForm.steps,
-        heartbeatTimeout: activityForm.heartbeatTimeout,
-        idempotencyKey: activityForm.idempotencyKey,
-      },
-    });
+    try {
+      const result = await activityApi.generateCode({
+        name: activityForm.name,
+        fn: activityForm.fn,
+        timeout: activityForm.startToCloseTimeout,
+        handler: handler as any,
+        retryPolicy: activityForm.retryPolicy,
+        config: {
+          description: activityForm.description,
+          taskQueue: activityForm.taskQueue,
+          steps: activityForm.steps,
+          heartbeatTimeout: activityForm.heartbeatTimeout,
+          idempotencyKey: activityForm.idempotencyKey,
+        },
+      }); // 无错误上下文，初次生成
+      if (result.success && result.code) {
+        setGeneratedCode(result.code);
+        setRealValidateError(null);
+        setCodePreviewVisible(true);
+      } else {
+        message.error(result.error || '代码生成失败');
+      }
+    } catch (err: any) {
+      message.error(err?.message || '代码生成失败');
+    } finally {
+      setIsGeneratingCode(false);
+    }
   };
 
   const resetForm = () => {
@@ -811,10 +868,10 @@ const ActivityPage: React.FC = () => {
 
           {/* Actions */}
           <Space style={{ width: '100%', justifyContent: 'flex-end' }}>
-            <Button icon={<RobotOutlined />} onClick={handleGenerateCode} loading={generateCodeMutation.isPending || isGeneratingCode}>AI 生成代码</Button>
-            <Button icon={<EyeOutlined />} onClick={() => setCodePreviewVisible(true)} disabled={!generatedCode && !generateCodeMutation.isSuccess}>查看代码</Button>
+            <Button icon={<RobotOutlined />} onClick={handleGenerateCode} loading={isGeneratingCode}>AI 生成代码</Button>
+            <Button icon={<EyeOutlined />} onClick={() => setCodePreviewVisible(true)} disabled={!generatedCode}>查看代码</Button>
             <Button icon={<PlayCircleOutlined />} onClick={handleValidate}>验证配置</Button>
-            <Button icon={<ThunderboltOutlined />} onClick={() => setRealValidateModalVisible(true)} disabled={!cachedCode && !generatedCode && !generateCodeMutation.isSuccess}>真实验证</Button>
+            <Button icon={<ThunderboltOutlined />} onClick={() => setRealValidateModalVisible(true)} disabled={!cachedCode && !generatedCode}>真实验证</Button>
             <Button icon={<ExperimentOutlined />} onClick={() => setSimulationModalVisible(true)}>模拟</Button>
             <Button onClick={() => setEditModalVisible(false)}>取消</Button>
             <Button type="primary" icon={<SaveOutlined />} loading={createMutation.isLoading || updateMutation.isLoading} onClick={handleSave} disabled={!isValidated && !!generatedCode}>保存{!isValidated && !!generatedCode ? '（请先验证）' : ''}</Button>
@@ -840,7 +897,7 @@ const ActivityPage: React.FC = () => {
           以下代码由 AI 根据您的配置自动生成，可用于参考或复制到 Temporal Worker 中使用。点击"缓存代码"可保存到配置中。
         </Paragraph>
         <Card bodyStyle={{ padding: 0 }} style={{ background: '#1e1e1e', borderRadius: 8 }}>
-          {isGeneratingCode || generateCodeMutation.isPending ? (
+          {isGeneratingCode ? (
             <div style={{ padding: 40, textAlign: 'center', color: '#d4d4d4' }}>
               <LoadingOutlined style={{ fontSize: 24 }} /><br /><br />
               正在生成代码，请稍候...

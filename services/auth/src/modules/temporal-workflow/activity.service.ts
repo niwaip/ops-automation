@@ -175,7 +175,7 @@ export class ActivityService {
   /**
    * Generate Python code using AI
    */
-  async generateCode(config: ActivityFormData): Promise<GenerateCodeResult> {
+  async generateCode(config: ActivityFormData, errorContext?: string): Promise<GenerateCodeResult> {
     const logger = new Logger('ActivityService');
 
     // Build a detailed prompt for code generation
@@ -198,6 +198,21 @@ export class ActivityService {
       '6. 返回值为字典类型，包含执行结果和错误信息',
       '7. 不要使用 temporalio.exceptions.ApplicationError，使用普通 Exception 即可',
       '',
+    ];
+
+    // If there's error context, add it to help AI fix the issue
+    if (errorContext) {
+      promptParts.push(
+        '',
+        '【上次代码执行失败，请修复以下问题】：',
+        errorContext,
+        '',
+        '请根据错误信息修复代码，确保生成的代码能正确执行。',
+        ''
+      );
+    }
+
+    promptParts.push(
       '请严格遵循以下要求，只返回 Python 代码，不要有其他解释。',
       '',
       'Activity 配置：',
@@ -206,12 +221,31 @@ export class ActivityService {
       `- 描述：${description || '无'}`,
       `- Task Queue：${config.config?.taskQueue || 'SKILL_TASK_QUEUE'}`,
       `- 超时：${config.timeout || '30s'}`,
-      heartbeatTimeout ? `- 心跳超时：${heartbeatTimeout}` : '- 心跳超时：不启用',
-      retryPolicy ? `- 重试策略：最多 ${retryPolicy.maxRetries} 次` : '- 重试策略：不启用',
-      idempotencyKey ? `- 幂等键：${idempotencyKey}` : '- 幂等键：不启用',
-      '',
-      `步骤配置（${steps.length} 个步骤）：`,
-    ];
+    );
+
+    if (heartbeatTimeout) {
+      promptParts.push(`- 心跳超时：${heartbeatTimeout}`);
+    } else {
+      promptParts.push('- 心跳超时：不启用');
+    }
+
+    if (retryPolicy) {
+      promptParts.push(`- 重试策略：最多 ${retryPolicy.maxRetries} 次`);
+    } else {
+      promptParts.push('- 重试策略：不启用');
+    }
+
+    if (idempotencyKey) {
+      promptParts.push(`- 幂等键：${idempotencyKey}`);
+    } else {
+      promptParts.push('- 幂等键：不启用');
+    }
+
+    promptParts.push('');
+
+    if (steps.length > 0) {
+      promptParts.push(`步骤配置（${steps.length} 个步骤）：`);
+    }
 
     // Add step descriptions
     steps.forEach((step: any, idx: number) => {
