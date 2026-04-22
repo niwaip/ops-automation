@@ -306,6 +306,7 @@ services:
       - "7236:7236"   # Worker gRPC
     environment:
       - DB=postgresql
+      - POSTGRES_SEEDS=postgres
       - DB_PORT=5432
       - POSTGRES_USER=ops
       - POSTGRES_PASSWORD=ops_secret
@@ -313,6 +314,7 @@ services:
       - DYNAMIC_CONFIG_FILE_PATH=/etc/temporal/dynamic_config.yaml
     volumes:
       - temporal_data:/var/lib/postgresql/data
+      - ./dynamic_config.yaml:/etc/temporal/dynamic_config.yaml:ro
     depends_on:
       postgres:
         condition: service_healthy

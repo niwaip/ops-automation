@@ -187,19 +187,34 @@ export class ActivityService {
 
     // Build prompt using array join to avoid template literal nesting issues
     const promptParts: string[] = [
-      '你是一个 Temporal Python 开发专家。请根据以下 Activity 配置生成符合标准 Temporal Python SDK 规范的代码。',
+      '你是一个 Temporal Python 开发专家。请根据以下配置生成一个标准的、可直接生产运行的 Temporal Activity。',
       '',
-      '【重要要求】：',
-      '1. 必须使用标准的 Temporal 模式，包含 `from temporalio import activity`。',
-      `2. 函数必须使用 \`@activity.defn(name="${config.fn}")\` 装饰器。`,
-      '3. 必须使用 `activity.logger.info/error` 进行日志记录，而不是 print()。',
-      '4. HTTP 请求请使用 `requests` 库（沙箱已提供同步环境 Mock）。',
-      `5. 函数签名：async def ${config.fn}(input_data: Dict[str, Any]) -> Dict[str, Any]:`,
-      '6. 业务错误应通过 `raise ApplicationError("message", non_retryable=False)` 抛出，导入自 `temporalio.exceptions`。',
-      '7. 确保代码中包含必要的类型注解 (from typing import Dict, Any)。',
-      '8. 代码应结构清晰，包含异常处理逻辑。',
-      '',
+      '【遵守 Temporal Python SDK 黄金准则】：',
+      '1. 【结构】：必须包含 `from temporalio import activity` 和 `from temporalio.exceptions import ApplicationError`。',
+      `2. 【声明】：使用 \`@activity.defn(name="${config.fn}")\` 装饰函数。`,
+      `3. 【签名】：必须为 \`async def ${config.fn}(input_data: Dict[str, Any]) -> Dict[str, Any]:\`。`,
+      '4. 【日志】：严禁使用 print()。必须使用 `activity.logger.info` 记录步骤，使用 `activity.logger.error` 记录异常。',
     ];
+
+    // 5. 动态心跳指令
+    if (heartbeatTimeout) {
+      promptParts.push(`5. 【强制心跳】：当前 Activity 已开启心跳超时检测(${heartbeatTimeout})。你必须在每个 API 请求后或逻辑步骤间调用 \`activity.heartbeat()\` 报告进度。`);
+    } else {
+      promptParts.push('5. 【心跳】：虽然未强制开启心跳，但建议在长耗时步骤间调用 `activity.heartbeat()`。');
+    }
+
+    // 6. 动态异常与重试指令
+    if (retryPolicy) {
+      promptParts.push(`6. 【重试感知】：当前已配置重试策略（最多 ${retryPolicy.maxRetries} 次）。请在抛出 ApplicationError 时，根据错误性质决定是否重试。例如：网络超时应重试，业务参数错误应设置 non_retryable=True。`);
+    } else {
+      promptParts.push('6. 【异常】：使用 `raise ApplicationError("描述", non_retryable=False)` 抛出业务异常。');
+    }
+
+    promptParts.push(
+      '7. 【幂等】：尽可能确保代码是幂等的。如果返回包含多个字段的结果字典，请确保结果结构清晰。',
+      '8. 【环境】：沙箱已 Mock `requests`，请放心使用同步的 `requests.get/post`，无需使用 aiohttp。',
+      '',
+    );
 
     // If there's error context, add it to help AI fix the issue
     if (errorContext) {
