@@ -61,4 +61,20 @@ export class TemporalWorkflowController {
   ): Promise<TemporalValidationResult> {
     return this.temporalWorkflowService.validate(data.workflowDsl, data.activityDsl);
   }
+
+  @Post('generate-code')
+  @ApiOperation({ summary: 'Generate workflow Python code from DSL' })
+  async generateCode(
+    @Body() data: { workflowDsl: WorkflowDsl; activityDsl: ActivityDsl },
+  ): Promise<{ success: boolean; code?: string; error?: string }> {
+    return this.temporalWorkflowService.generateWorkflowCode(data.workflowDsl, data.activityDsl);
+  }
+
+  @Post('validate-code')
+  @ApiOperation({ summary: 'Validate generated code in sandbox' })
+  async validateCode(
+    @Body() data: { code: string; fn: string; input?: Record<string, any> },
+  ): Promise<{ success: boolean; logs: string[]; result?: any; error?: string; score: number }> {
+    return this.temporalWorkflowService.validateInSandbox(data.code, data.fn, data.input);
+  }
 }

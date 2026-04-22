@@ -1,21 +1,44 @@
 import apiClient from './client';
 
+export interface WorkflowSignalHandler {
+  name: string;
+  description?: string;
+}
+
+export interface WorkflowQueryHandler {
+  name: string;
+  description?: string;
+}
+
+export interface WorkflowStep {
+  id: string;
+  name: string;
+  type: 'activity' | 'signal' | 'query' | 'childWorkflow' | 'parallel';
+  activityName?: string;
+  input?: Record<string, any>;
+  retryPolicy?: { maxRetries: number; backoffMs: number };
+  // For parallel execution
+  parallelSteps?: string[];
+}
+
 export interface WorkflowDsl {
   name: string;
   taskQueue: string;
-  steps: Array<{
-    id: string;
-    name: string;
-    type: 'activity' | 'signal' | 'query';
-    activityName?: string;
-    input?: Record<string, any>;
-    retryPolicy?: { maxRetries: number; backoffMs: number };
-  }>;
+  steps: WorkflowStep[];
   conditionals?: Array<{
     step: string;
     condition: string;
     skip?: boolean;
   }>;
+  signalHandlers?: WorkflowSignalHandler[];
+  queryHandlers?: WorkflowQueryHandler[];
+  errorHandling?: {
+    type: 'saga' | 'simple';
+    compensations?: Array<{
+      step: string;
+      activityName: string;
+    }>;
+  };
 }
 
 export interface ActivityDsl {
@@ -66,6 +89,20 @@ export interface TemporalValidationResult {
   warnings: string[];
 }
 
+export interface WorkflowCodeResult {
+  success: boolean;
+  code?: string;
+  error?: string;
+}
+
+export interface SandBoxValidationResult {
+  success: boolean;
+  logs: string[];
+  result?: any;
+  error?: string;
+  score: number;
+}
+
 export const temporalWorkflowApi = {
   list: async (): Promise<TemporalWorkflowDTO[]> => {
     return apiClient.get<TemporalWorkflowDTO[]>('/temporal-workflow');
@@ -93,6 +130,14 @@ export const temporalWorkflowApi = {
 
   validate: async (workflowDsl: WorkflowDsl, activityDsl: ActivityDsl): Promise<TemporalValidationResult> => {
     return apiClient.post<TemporalValidationResult>('/temporal-workflow/validate', { workflowDsl, activityDsl });
+  },
+
+  generateWorkflowCode: async (workflowDsl: WorkflowDsl, activityDsl: ActivityDsl): Promise<WorkflowCodeResult> => {
+    return apiClient.post<WorkflowCodeResult>('/temporal-workflow/generate-code', { workflowDsl, activityDsl });
+  },
+
+  validateInSandbox: async (code: string, fn: string, input?: Record<string, any>): Promise<SandBoxValidationResult> => {
+    return apiClient.post<SandBoxValidationResult>('/temporal-workflow/validate-code', { code, fn, input });
   },
 };
 

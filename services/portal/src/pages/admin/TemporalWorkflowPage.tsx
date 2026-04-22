@@ -6,13 +6,14 @@ import {
 import {
   SearchOutlined, PlusOutlined, EditOutlined, DeleteOutlined, PlayCircleOutlined,
   ReloadOutlined, CloudUploadOutlined, CodeOutlined, ApiOutlined, ThunderboltOutlined,
-  RocketOutlined, CheckCircleOutlined
+  RocketOutlined, CheckCircleOutlined, RobotOutlined, EyeOutlined, ExperimentOutlined
 } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
 import { useQuery, useMutation, useQueryClient } from 'react-query';
 import {
   temporalWorkflowApi, TemporalWorkflowDTO, CreateTemporalWorkflowDTO,
-  WorkflowDsl, ActivityDsl, TemporalValidationResult, DEFAULT_WORKFLOW_DSL, DEFAULT_ACTIVITY_DSL
+  WorkflowDsl, ActivityDsl, TemporalValidationResult, DEFAULT_WORKFLOW_DSL, DEFAULT_ACTIVITY_DSL,
+  WorkflowCodeResult, SandBoxValidationResult
 } from '../../api/temporal-workflow';
 import { activityApi, ActivityDTO } from '../../api/activity';
 import type { ColumnsType } from 'antd/es/table';
@@ -38,6 +39,10 @@ const TemporalWorkflowPage: React.FC = () => {
   const [activityDsl, setActivityDsl] = useState<ActivityDsl>(DEFAULT_ACTIVITY_DSL);
   const [selectActivityModalVisible, setSelectActivityModalVisible] = useState(false);
   const [selectingStepIndex, setSelectingStepIndex] = useState<number | null>(null);
+  const [generatedCode, setGeneratedCode] = useState<string | null>(null);
+  const [codeModalVisible, setCodeModalVisible] = useState(false);
+  const [sandboxResult, setSandboxResult] = useState<SandBoxValidationResult | null>(null);
+  const [sandboxModalVisible, setSandboxModalVisible] = useState(false);
 
   const workflowsQuery = useQuery(['temporal-workflows', searchText], () => temporalWorkflowApi.list());
   const activitiesQuery = useQuery('activities', () => activityApi.list());
@@ -68,6 +73,34 @@ const TemporalWorkflowPage: React.FC = () => {
     { onSuccess: (result) => { setValidationResult(result); message.success('验证完成'); }, onError: () => message.error('验证失败') }
   );
 
+  const generateCodeMutation = useMutation(
+    ({ workflowDsl: wfd, activityDsl: ad }: { workflowDsl: WorkflowDsl; activityDsl: ActivityDsl }) =>
+      temporalWorkflowApi.generateWorkflowCode(wfd, ad),
+    { onSuccess: (result: WorkflowCodeResult) => {
+      if (result.success && result.code) {
+        setGeneratedCode(result.code);
+        setCodeModalVisible(true);
+        message.success('代码生成成功');
+      } else {
+        message.error(result.error || '代码生成失败');
+      }
+    }, onError: (error: any) => message.error('代码生成失败: ' + (error.message || 'Unknown error')) }
+  );
+
+  const sandboxMutation = useMutation(
+    ({ code, fn }: { code: string; fn: string }) =>
+      temporalWorkflowApi.validateInSandbox(code, fn),
+    { onSuccess: (result: SandBoxValidationResult) => {
+      setSandboxResult(result);
+      setSandboxModalVisible(true);
+      if (result.success) {
+        message.success('沙箱验证通过');
+      } else {
+        message.warning('沙箱验证有问题，请查看日志');
+      }
+    }, onError: (error: any) => message.error('沙箱验证失败: ' + (error.message || 'Unknown error')) }
+  );
+
   const handleCreate = () => {
     setEditingWorkflow(null);
     form.resetFields();
@@ -86,7 +119,23 @@ const TemporalWorkflowPage: React.FC = () => {
 
   const handleViewDetail = (workflow: TemporalWorkflowDTO) => { setSelectedWorkflow(workflow); setDetailModalVisible(true); };
 
-  const handleValidate = () => { setValidationResult(null); setValidateModalVisible(true); validateMutation.mutate({ workflowDsl, activityDsl }); };
+  const handleValidate = () => {
+    const formValues = form.getFieldsValue();
+    const workflowName = formValues.name || workflowDsl.name;
+    setValidationResult(null);
+    setValidateModalVisible(true);
+    validateMutation.mutate({ workflowDsl: { ...workflowDsl, name: workflowName }, activityDsl });
+  };
+
+  const handleGenerateCode = () => {
+    const formValues = form.getFieldsValue();
+    const workflowName = formValues.name || workflowDsl.name;
+    if (!workflowName) { message.warning('请先填写工作流名称'); return; }
+    if (workflowDsl.steps.length === 0) { message.warning('请先添加至少一个步骤'); return; }
+    generateCodeMutation.mutate({ workflowDsl: { ...workflowDsl, name: workflowName }, activityDsl });
+  };
+
+  const handleSandboxValidate = () => { if (!generatedCode) { message.warning('请先生成代码'); return; } sandboxMutation.mutate({ code: generatedCode, fn: workflowDsl.name.replace(/\s+/g, '') + 'Workflow' }); };
 
   const handleDeploy = (id: string) => Modal.confirm({ title: '确认部署', content: '确定要部署此工作流到 Temporal Worker 吗？', onOk: () => deployMutation.mutate(id) });
 
@@ -185,7 +234,12 @@ const TemporalWorkflowPage: React.FC = () => {
       </Modal>
 
       <Modal title={editingWorkflow ? '编辑工作流' : '创建工作流'} open={editModalVisible} onOk={handleSave} onCancel={() => setEditModalVisible(false)}
-        footer={[<Button key="validate" icon={<PlayCircleOutlined />} onClick={handleValidate}>验证</Button>, <Button key="cancel" onClick={() => setEditModalVisible(false)}>取消</Button>, <Button key="save" type="primary" loading={createMutation.isLoading || updateMutation.isLoading} onClick={handleSave}>保存</Button>]}
+        footer={[
+          <Button key="validate" icon={<PlayCircleOutlined />} onClick={handleValidate}>验证DSL</Button>,
+          <Button key="generate" icon={<RobotOutlined />} onClick={handleGenerateCode} loading={generateCodeMutation.isLoading}>AI生成代码</Button>,
+          <Button key="cancel" onClick={() => setEditModalVisible(false)}>取消</Button>,
+          <Button key="save" type="primary" loading={createMutation.isLoading || updateMutation.isLoading} onClick={handleSave}>保存</Button>
+        ]}
         width={950} style={{ top: 20 }}>
         <Form form={form} layout="vertical">
           <Row gutter={16}><Col span={12}><Form.Item name="name" label="工作流名称" rules={[{ required: true, message: '请输入工作流名称' }]}><Input placeholder="例如：合同生成流程" /></Form.Item></Col><Col span={12}><Form.Item name="taskQueue" label="Task Queue" rules={[{ required: true, message: '请输入Task Queue' }]} extra="Temporal Worker 监听的队列名称"><Input placeholder="例如：SKILL_TASK_QUEUE" /></Form.Item></Col></Row>
@@ -251,6 +305,34 @@ const TemporalWorkflowPage: React.FC = () => {
             {validationResult.warnings.length > 0 && <Alert type="warning" message="警告" description={<ul>{validationResult.warnings.map((w, i) => <li key={i}>{w}</li>)}</ul>} />}
           </Space>
         ) : <Alert type="info" message="点击验证按钮开始验证" />}
+      </Modal>
+
+      <Modal title="AI 生成的 Workflow 代码" open={codeModalVisible} onCancel={() => setCodeModalVisible(false)}
+        footer={[
+          <Button key="sandbox" icon={<ExperimentOutlined />} onClick={handleSandboxValidate} loading={sandboxMutation.isLoading}>沙箱验证</Button>,
+          <Button key="copy" icon={<CodeOutlined />} onClick={() => { navigator.clipboard.writeText(generatedCode || ''); message.success('已复制到剪贴板'); }}>复制代码</Button>,
+          <Button key="close" onClick={() => setCodeModalVisible(false)}>关闭</Button>
+        ]} width={900}>
+        {generatedCode && (
+          <pre style={{ background: '#1e1e1e', color: '#d4d4d4', padding: 16, borderRadius: 8, maxHeight: 500, overflow: 'auto', fontSize: 12, fontFamily: 'Monaco, Menlo, monospace' }}>
+            {generatedCode}
+          </pre>
+        )}
+      </Modal>
+
+      <Modal title="沙箱验证结果" open={sandboxModalVisible} onCancel={() => setSandboxModalVisible(false)} footer={[<Button onClick={() => setSandboxModalVisible(false)}>关闭</Button>]} width={800}>
+        {sandboxResult && (
+          <Space direction="vertical" style={{ width: '100%' }}>
+            <Alert type={sandboxResult.success ? 'success' : 'error'} message={sandboxResult.success ? '验证通过' : '验证失败'} showIcon />
+            <Card><Text><strong>评分:</strong> {sandboxResult.score}/100</Text></Card>
+            {sandboxResult.error && <Alert type="error" message="错误" description={sandboxResult.error} showIcon />}
+            <Card title="执行日志" size="small">
+              <div style={{ maxHeight: 300, overflow: 'auto', fontFamily: 'monospace', fontSize: 11 }}>
+                {sandboxResult.logs.map((log, i) => <div key={i} style={{ marginBottom: 4 }}>{log}</div>)}
+              </div>
+            </Card>
+          </Space>
+        )}
       </Modal>
     </div>
   );
