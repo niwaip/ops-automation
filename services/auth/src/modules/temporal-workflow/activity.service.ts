@@ -211,10 +211,12 @@ export class ActivityService {
     }
 
     promptParts.push(
-      '7. 【幂等】：尽可能确保代码是幂等的。如果返回包含多个字段的结果字典，请确保结果结构清晰。',
-      '8. 【环境】：沙箱已 Mock `requests`，请放心使用同步的 `requests.get/post`，无需使用 aiohttp。',
+      '7. 【状态检查】：在每次 `requests` 调用后，必须立即调用 `response.raise_for_status()`，以确保 HTTP 错误（如 404, 500）能被 `except` 块捕获。',
+      '8. 【幂等】：尽可能确保代码是幂等的。如果返回包含多个字段的结果字典，请确保结果结构清晰。',
+      '9. 【环境】：沙箱已 Mock `requests`，请放心使用同步的 `requests.get/post`，无需使用 aiohttp。',
       '',
     );
+
 
     // If there's error context, add it to help AI fix the issue
     if (errorContext) {
