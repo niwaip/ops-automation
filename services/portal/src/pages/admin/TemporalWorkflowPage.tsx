@@ -297,6 +297,7 @@ const TemporalWorkflowPage: React.FC = () => {
           <Button key="validate" icon={<PlayCircleOutlined />} onClick={handleValidate}>验证DSL</Button>,
           <Button key="generate" icon={<RobotOutlined />} onClick={handleGenerateCode} loading={generateCodeMutation.isLoading}>AI生成代码</Button>,
           <Button key="sandbox" icon={<ExperimentOutlined />} onClick={handleSandboxValidate} loading={isSandboxStreaming} disabled={!generatedCode}>沙箱验证</Button>,
+          <Button key="viewCode" icon={<CodeOutlined />} onClick={() => setCodeModalVisible(true)} disabled={!generatedCode}>查看代码</Button>,
           <Button key="cancel" onClick={() => setEditModalVisible(false)}>取消</Button>,
           <Button key="save" type="primary" loading={createMutation.isLoading || updateMutation.isLoading} onClick={handleSave}>保存</Button>
         ]}
