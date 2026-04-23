@@ -557,6 +557,13 @@ const TemporalWorkflowPage: React.FC = () => {
               <Card><Text><strong>评分:</strong> {sandboxResult.score}/100</Text></Card>
               {sandboxResult.error && <Alert type="error" message="错误" description={sandboxResult.error} showIcon />}
               {sandboxResult.result?.error && <Alert type="error" message="执行错误" description={String(sandboxResult.result.error).substring(0, 500)} showIcon />}
+              {sandboxResult.result?.result && (
+                <Card title="执行结果" size="small">
+                  <pre style={{ maxHeight: 300, overflow: 'auto', fontSize: 11, margin: 0 }}>
+                    {JSON.stringify(sandboxResult.result.result, null, 2)}
+                  </pre>
+                </Card>
+              )}
             </>
           )}
           <Card title="执行日志" size="small">
