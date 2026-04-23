@@ -39,6 +39,7 @@ const TemporalWorkflowPage: React.FC = () => {
   const [activityDsl, setActivityDsl] = useState<ActivityDsl>(DEFAULT_ACTIVITY_DSL);
   const [selectActivityModalVisible, setSelectActivityModalVisible] = useState(false);
   const [selectingStepIndex, setSelectingStepIndex] = useState<number | null>(null);
+  const [selectedStepIndexForConfig, setSelectedStepIndexForConfig] = useState<number | null>(null);
   const [generatedCode, setGeneratedCode] = useState<string | null>(null);
   const [codeModalVisible, setCodeModalVisible] = useState(false);
   const [sandboxResult, setSandboxResult] = useState<SandBoxValidationResult | null>(null);
@@ -196,6 +197,30 @@ const TemporalWorkflowPage: React.FC = () => {
 
   const handleOpenActivitySelector = (stepIndex: number) => { setSelectingStepIndex(stepIndex); setSelectActivityModalVisible(true); };
 
+  // Add activity from pool to workflow steps and activityDsl
+  const handleAddActivityFromPool = (activity: ActivityDTO) => {
+    const stepId = `step_${Date.now()}`;
+    const newStep = { id: stepId, name: activity.name, type: 'activity' as const, activityName: activity.name };
+    // Add step to workflowDsl
+    setWorkflowDsl({ ...workflowDsl, steps: [...workflowDsl.steps, newStep] });
+    // Add activity to activityDsl if not exists
+    const exists = activityDsl.activities.some(a => a.name === activity.name);
+    if (!exists) {
+      setActivityDsl({
+        ...activityDsl,
+        activities: [...activityDsl.activities, {
+          name: activity.name,
+          fn: activity.fn,
+          timeout: activity.timeout,
+          handler: activity.handler,
+          config: activity.config || {},
+        }],
+      });
+    }
+    // Select the newly added step for config
+    setSelectedStepIndexForConfig(workflowDsl.steps.length);
+  };
+
   const handleSelectActivity = (activity: ActivityDTO) => {
     if (selectingStepIndex !== null) {
       handleUpdateStep(selectingStepIndex, 'activityName', activity.name);
@@ -275,60 +300,202 @@ const TemporalWorkflowPage: React.FC = () => {
           <Button key="cancel" onClick={() => setEditModalVisible(false)}>取消</Button>,
           <Button key="save" type="primary" loading={createMutation.isLoading || updateMutation.isLoading} onClick={handleSave}>保存</Button>
         ]}
-        width={950} style={{ top: 20 }}>
+        width={1200} style={{ top: 20 }}>
         <Form form={form} layout="vertical">
           <Row gutter={16}><Col span={12}><Form.Item name="name" label="工作流名称" rules={[{ required: true, message: '请输入工作流名称' }]}><Input placeholder="例如：合同生成流程" /></Form.Item></Col><Col span={12}><Form.Item name="taskQueue" label="Task Queue" rules={[{ required: true, message: '请输入Task Queue' }]} extra="Temporal Worker 监听的队列名称"><Input placeholder="例如：SKILL_TASK_QUEUE" /></Form.Item></Col></Row>
           <Form.Item name="description" label="描述"><Input.TextArea rows={2} placeholder="工作流描述" /></Form.Item>
         </Form>
 
-        <Divider><Space><CodeOutlined /><Text strong>Workflow DSL</Text><Tag color="blue">确定性编排</Tag></Space></Divider>
-        <Card size="small" style={{ background: 'linear-gradient(135deg, #f6ffed 0%, #fff 100%)', marginBottom: 16, border: '1px solid #b7eb8f' }}>
-          <Text type="secondary">Workflow DSL 定义了编排逻辑，是确定性的。Temporal 会 replay 这个逻辑来恢复状态。</Text>
-        </Card>
-        <Space style={{ marginBottom: 12 }}><Button icon={<PlusOutlined />} onClick={handleAddStep}>添加步骤</Button></Space>
-        {workflowDsl.steps.length === 0 ? <Alert message="暂无步骤，请添加" type="info" showIcon /> : (
-          <Timeline>{workflowDsl.steps.map((step, index) => (
-            <Timeline.Item key={step.id} color="blue">
-              <Card size="small" style={{ marginBottom: 8 }}>
-                <Space direction="vertical" style={{ width: '100%' }}>
-                  <Space style={{ width: '100%', justifyContent: 'space-between' }}>
-                    <Input value={step.name} onChange={e => handleUpdateStep(index, 'name', e.target.value)} placeholder="步骤名称" style={{ width: 200 }} />
-                    <Space>
-                      <Select value={step.type} onChange={v => handleUpdateStep(index, 'type', v)} style={{ width: 120 }}><Option value="activity">Activity</Option><Option value="signal">Signal</Option><Option value="query">Query</Option></Select>
-                      <Button icon={<DeleteOutlined />} danger onClick={() => handleRemoveStep(index)} size="small" />
-                    </Space>
-                  </Space>
-                  {step.type === 'activity' && (
-                    <Space><Button onClick={() => handleOpenActivitySelector(index)}>选择 Activity</Button>{step.activityName && <Tag color="green">{step.activityName}</Tag>}</Space>
-                  )}
-                </Space>
-              </Card>
-            </Timeline.Item>
-          ))}</Timeline>
-        )}
+        <Divider><Text strong>工作流配置</Text></Divider>
 
-        <Divider><Space><ApiOutlined /><Text strong>Activity DSL</Text><Tag color="green">非确定性副作用</Tag></Space></Divider>
-        <Card size="small" style={{ background: 'linear-gradient(135deg, #e6f7ff 0%, #fff 100%)', marginBottom: 16, border: '1px solid #91d5ff' }}>
-          <Text type="secondary">Activity DSL 定义了副作用操作，是非确定性的。每个 Activity 可以调用 API、执行脚本或渲染文档。</Text>
-        </Card>
-        <Space style={{ marginBottom: 12 }}><Button icon={<PlusOutlined />} onClick={handleAddActivity}>添加 Activity</Button></Space>
-        {activityDsl.activities.length === 0 ? <Alert message="暂无 Activity，请添加" type="info" showIcon /> : (
-          <Space direction="vertical" style={{ width: '100%' }}>{activityDsl.activities.map((activity, index) => (
-            <Card key={index} size="small">
-              <Space direction="vertical" style={{ width: '100%' }}>
-                <Space style={{ width: '100%', justifyContent: 'space-between' }}>
-                  <Input value={activity.name} onChange={e => handleUpdateActivity(index, 'name', e.target.value)} placeholder="Activity 名称" style={{ width: 200 }} />
-                  <Space>
-                    <Select value={activity.handler} onChange={v => handleUpdateActivity(index, 'handler', v)} style={{ width: 120 }}><Option value="api">API调用</Option><Option value="carbone">Carbone渲染</Option><Option value="browser">浏览器操作</Option><Option value="script">脚本执行</Option></Select>
-                    <Button icon={<DeleteOutlined />} danger onClick={() => handleRemoveActivity(index)} size="small" />
-                  </Space>
-                </Space>
-                <Input value={activity.fn} onChange={e => handleUpdateActivity(index, 'fn', e.target.value)} placeholder="函数名" style={{ width: 150 }} />
-                <TextArea value={JSON.stringify(activity.config, null, 2)} onChange={e => { try { handleUpdateActivity(index, 'config', JSON.parse(e.target.value)); } catch {} }} rows={2} style={{ fontFamily: 'monospace' }} placeholder="配置参数 (JSON)" />
-              </Space>
-            </Card>
-          ))}</Space>
-        )}
+        <Row gutter={16}>
+          {/* Left Column - Activity Pool */}
+          <Col span={6} style={{ borderRight: '1px solid #f0f0f0', paddingRight: 16 }}>
+            <Text strong style={{ display: 'block', marginBottom: 8 }}>Activity 资源池</Text>
+            <Input placeholder="搜索 Activity..." prefix={<SearchOutlined />} style={{ marginBottom: 8 }} allowClear />
+            <div style={{ maxHeight: 400, overflow: 'auto' }}>
+              {(activitiesQuery.data || []).filter(a => a.isActive).map(activity => {
+                const isAdded = workflowDsl.steps.some(s => s.activityName === activity.name);
+                return (
+                  <Card
+                    key={activity.id}
+                    size="small"
+                    style={{
+                      marginBottom: 8,
+                      cursor: 'pointer',
+                      background: isAdded ? '#f6ffed' : '#fff',
+                      border: isAdded ? '1px solid #b7eb8f' : '1px solid #d9d9d9',
+                    }}
+                    onClick={() => !isAdded && handleAddActivityFromPool(activity)}
+                  >
+                    <Space>
+                      <Tag color={activity.handler === 'api' ? 'green' : activity.handler === 'script' ? 'orange' : 'blue'}>{activity.handler.toUpperCase()}</Tag>
+                      <Text strong={!isAdded} type={isAdded ? 'secondary' : undefined}>{activity.name}</Text>
+                      {isAdded && <Tag color="green">已添加</Tag>}
+                    </Space>
+                    <br />
+                    <Text type="secondary" style={{ fontSize: 11 }}>{activity.fn}</Text>
+                  </Card>
+                );
+              })}
+              {(!activitiesQuery.data || activitiesQuery.data.filter(a => a.isActive).length === 0) && (
+                <Alert message="暂无已验证的 Activity" type="warning" showIcon />
+              )}
+            </div>
+          </Col>
+
+          {/* Middle Column - Step Canvas */}
+          <Col span={10} style={{ borderRight: '1px solid #f0f0f0', paddingRight: 16 }}>
+            <Space style={{ marginBottom: 8, width: '100%', justifyContent: 'space-between' }}>
+              <Text strong>流程步骤</Text>
+              <Button icon={<PlusOutlined />} size="small" onClick={handleAddStep}>添加步骤</Button>
+            </Space>
+            {workflowDsl.steps.length === 0 ? (
+              <Alert message="从左侧勾选 Activity 或点击添加步骤" type="info" showIcon />
+            ) : (
+              <Timeline>{workflowDsl.steps.map((step, index) => (
+                <Timeline.Item
+                  key={step.id}
+                  color={selectedStepIndexForConfig === index ? 'green' : 'blue'}
+                  dot={selectedStepIndexForConfig === index ? <CheckCircleOutlined /> : undefined}
+                >
+                  <Card
+                    size="small"
+                    style={{
+                      marginBottom: 8,
+                      cursor: 'pointer',
+                      background: selectedStepIndexForConfig === index ? '#f6ffed' : '#fff',
+                      border: selectedStepIndexForConfig === index ? '2px solid #52c41a' : '1px solid #d9d9d9',
+                    }}
+                    onClick={() => setSelectedStepIndexForConfig(index)}
+                  >
+                    <Space direction="vertical" style={{ width: '100%' }}>
+                      <Space style={{ width: '100%', justifyContent: 'space-between' }}>
+                        <Input
+                          value={step.name}
+                          onChange={e => handleUpdateStep(index, 'name', e.target.value)}
+                          placeholder="步骤名称"
+                          style={{ width: 120 }}
+                          size="small"
+                          onClick={e => e.stopPropagation()}
+                        />
+                        <Space size="small">
+                          <Button
+                            icon={<DeleteOutlined />}
+                            danger
+                            size="small"
+                            onClick={(e) => { e.stopPropagation(); handleRemoveStep(index); }}
+                          />
+                          {index > 0 && (
+                            <Button icon={<SearchOutlined />} size="small" onClick={(e) => { e.stopPropagation(); const newSteps = [...workflowDsl.steps]; [newSteps[index - 1], newSteps[index]] = [newSteps[index], newSteps[index - 1]]; setWorkflowDsl({ ...workflowDsl, steps: newSteps }); if (selectedStepIndexForConfig === index) setSelectedStepIndexForConfig(index - 1); else if (selectedStepIndexForConfig === index - 1) setSelectedStepIndexForConfig(index); }} />
+                          )}
+                          {index < workflowDsl.steps.length - 1 && (
+                            <Button icon={<SearchOutlined />} rotate={90} size="small" onClick={(e) => { e.stopPropagation(); const newSteps = [...workflowDsl.steps]; [newSteps[index], newSteps[index + 1]] = [newSteps[index + 1], newSteps[index]]; setWorkflowDsl({ ...workflowDsl, steps: newSteps }); if (selectedStepIndexForConfig === index) setSelectedStepIndexForConfig(index + 1); else if (selectedStepIndexForConfig === index + 1) setSelectedStepIndexForConfig(index); }} />
+                          )}
+                        </Space>
+                      </Space>
+                      {step.type === 'activity' && (
+                        <Space>
+                          <Tag color="green">{step.activityName || '未选择'}</Tag>
+                          <Button size="small" onClick={(e) => { e.stopPropagation(); handleOpenActivitySelector(index); }}>更换</Button>
+                        </Space>
+                      )}
+                    </Space>
+                  </Card>
+                </Timeline.Item>
+              ))}</Timeline>
+            )}
+          </Col>
+
+          {/* Right Column - Step Config Panel */}
+          <Col span={8}>
+            <Text strong style={{ display: 'block', marginBottom: 8 }}>步骤配置</Text>
+            {selectedStepIndexForConfig !== null && workflowDsl.steps[selectedStepIndexForConfig] ? (
+              <Card size="small" style={{ background: '#fafafa' }}>
+                <Form layout="vertical" size="small">
+                  <Form.Item label="步骤类型">
+                    <Select
+                      value={workflowDsl.steps[selectedStepIndexForConfig].type}
+                      onChange={v => handleUpdateStep(selectedStepIndexForConfig, 'type', v)}
+                      style={{ width: '100%' }}
+                    >
+                      <Option value="activity">Activity</Option>
+                      <Option value="signal">Signal</Option>
+                      <Option value="query">Query</Option>
+                    </Select>
+                  </Form.Item>
+
+                  {workflowDsl.steps[selectedStepIndexForConfig].type === 'activity' && (
+                    <>
+                      <Form.Item label="Activity 名称">
+                        <Select
+                          value={workflowDsl.steps[selectedStepIndexForConfig].activityName}
+                          onChange={v => {
+                            handleUpdateStep(selectedStepIndexForConfig, 'activityName', v);
+                            // Auto-add to activityDsl if not exists
+                            const activity = activitiesQuery.data?.find(a => a.name === v);
+                            if (activity) {
+                              const exists = activityDsl.activities.some(a => a.name === v);
+                              if (!exists) {
+                                setActivityDsl({
+                                  ...activityDsl,
+                                  activities: [...activityDsl.activities, {
+                                    name: activity.name,
+                                    fn: activity.fn,
+                                    timeout: activity.timeout,
+                                    handler: activity.handler,
+                                    config: activity.config || {},
+                                  }],
+                                });
+                              }
+                            }
+                          }}
+                          style={{ width: '100%' }}
+                          placeholder="选择 Activity"
+                        >
+                          {(activitiesQuery.data || []).filter(a => a.isActive).map(a => (
+                            <Option key={a.id} value={a.name}>{a.name}</Option>
+                          ))}
+                        </Select>
+                      </Form.Item>
+
+                      <Form.Item label="重试策略">
+                        <Input
+                          type="number"
+                          value={workflowDsl.steps[selectedStepIndexForConfig].retryPolicy?.maxRetries || 3}
+                          onChange={e => handleUpdateStep(selectedStepIndexForConfig, 'retryPolicy', { maxRetries: parseInt(e.target.value) || 3 })}
+                          placeholder="最大重试次数"
+                        />
+                      </Form.Item>
+
+                      <Form.Item label="超时时间">
+                        <Input
+                          value={workflowDsl.steps[selectedStepIndexForConfig].input?.timeout || '60s'}
+                          onChange={e => handleUpdateStep(selectedStepIndexForConfig, 'input', { ...workflowDsl.steps[selectedStepIndexForConfig].input, timeout: e.target.value })}
+                          placeholder="例如: 30s, 60s"
+                        />
+                      </Form.Item>
+                    </>
+                  )}
+                </Form>
+              </Card>
+            ) : (
+              <Alert message="点击中间步骤选择配置" type="info" showIcon />
+            )}
+
+            {/* Activity DSL Summary */}
+            <Divider style={{ margin: '16px 0' }}><Text type="secondary" style={{ fontSize: 12 }}>Activity DSL 摘要</Text></Divider>
+            {activityDsl.activities.length === 0 ? (
+              <Alert message="从左侧添加 Activity" type="info" showIcon />
+            ) : (
+              <div style={{ maxHeight: 200, overflow: 'auto' }}>
+                {activityDsl.activities.map((activity, index) => (
+                  <Tag key={index} color="blue" style={{ margin: 2 }}>{activity.name}</Tag>
+                ))}
+              </div>
+            )}
+          </Col>
+        </Row>
       </Modal>
 
       <Modal title="验证工作流 DSL" open={validateModalVisible} onCancel={() => setValidateModalVisible(false)} footer={[<Button onClick={() => setValidateModalVisible(false)}>关闭</Button>]} width={700}>
