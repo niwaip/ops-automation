@@ -1,38 +1,26 @@
-<<<<<<< HEAD
-import apiClient from './client';
-import { useAuthStore } from '../store/authStore';
-
-=======
 /**
  * Activity API Client
  * Activity管理API客户端
  */
 
 import apiClient from './client';
+import { useAuthStore } from '../store/authStore';
 
 // Activity configuration
->>>>>>> 326e2d06510e0b3ff127d572df7deb4ecb7b1191
 export interface ActivityDTO {
   id: string;
   name: string;
   fn: string;
   timeout: string;
-<<<<<<< HEAD
   retryPolicy: { maxRetries: number; backoffMs?: number } | null;
   handler: 'api' | 'carbone' | 'browser' | 'script';
   config: Record<string, any>;
   generatedCode?: string; // Top-level field returned by API
-=======
-  retryPolicy?: { maxRetries: number };
-  handler: 'api' | 'carbone' | 'browser' | 'script';
-  config: Record<string, any>;
->>>>>>> 326e2d06510e0b3ff127d572df7deb4ecb7b1191
   isActive: boolean;
   createdAt: string;
   updatedAt: string;
 }
 
-<<<<<<< HEAD
 export interface CreateActivityDto {
   name: string;
   fn: string;
@@ -41,17 +29,6 @@ export interface CreateActivityDto {
   handler: 'api' | 'carbone' | 'browser' | 'script';
   config: Record<string, any>;
   generatedCode?: string;
-}
-
-=======
-// Create DTO
-export interface CreateActivityDto {
-  name: string;
-  fn: string;
-  timeout: string;
-  retryPolicy?: { maxRetries: number };
-  handler: 'api' | 'carbone' | 'browser' | 'script';
-  config: Record<string, any>;
 }
 
 // Update DTO
@@ -66,7 +43,6 @@ export interface UpdateActivityDto {
 }
 
 // Validation result
->>>>>>> 326e2d06510e0b3ff127d572df7deb4ecb7b1191
 export interface ActivityValidationResult {
   isValid: boolean;
   score: number;
@@ -75,7 +51,6 @@ export interface ActivityValidationResult {
   suggestions: string[];
 }
 
-<<<<<<< HEAD
 export interface GenerateCodeResult {
   success: boolean;
   code?: string;
@@ -103,12 +78,6 @@ export interface StreamEvent {
 }
 
 export const activityApi = {
-  list: async (): Promise<ActivityDTO[]> => {
-    return apiClient.get<ActivityDTO[]>('/activities');
-  },
-
-=======
-export const activityApi = {
   /**
    * 获取所有 Activity 列表
    */
@@ -120,43 +89,34 @@ export const activityApi = {
   /**
    * 获取单个 Activity 详情
    */
->>>>>>> 326e2d06510e0b3ff127d572df7deb4ecb7b1191
   getById: async (id: string): Promise<ActivityDTO> => {
     return apiClient.get<ActivityDTO>(`/activities/${id}`);
   },
 
-<<<<<<< HEAD
-=======
   /**
    * 创建新 Activity
    */
->>>>>>> 326e2d06510e0b3ff127d572df7deb4ecb7b1191
   create: async (data: CreateActivityDto): Promise<ActivityDTO> => {
     return apiClient.post<ActivityDTO>('/activities', data);
   },
 
-<<<<<<< HEAD
-  update: async (id: string, data: Partial<CreateActivityDto>): Promise<ActivityDTO> => {
-    return apiClient.put<ActivityDTO>(`/activities/${id}`, data);
-  },
-
-=======
   /**
    * 更新 Activity
    */
-  update: async (id: string, data: UpdateActivityDto): Promise<ActivityDTO> => {
+  update: async (id: string, data: Partial<CreateActivityDto>): Promise<ActivityDTO> => {
     return apiClient.put<ActivityDTO>(`/activities/${id}`, data);
   },
 
   /**
    * 删除 Activity
    */
->>>>>>> 326e2d06510e0b3ff127d572df7deb4ecb7b1191
   delete: async (id: string): Promise<{ success: boolean }> => {
     return apiClient.delete(`/activities/${id}`);
   },
 
-<<<<<<< HEAD
+  /**
+   * 验证 Activity 配置
+   */
   validate: async (config: CreateActivityDto): Promise<ActivityValidationResult> => {
     return apiClient.post<ActivityValidationResult>('/activities/validate', config);
   },
@@ -207,12 +167,4 @@ export const activityApi = {
       xhr.send(JSON.stringify(data));
     });
   },
-=======
-  /**
-   * 验证 Activity 配置
-   */
-  validate: async (config: CreateActivityDto): Promise<ActivityValidationResult> => {
-    return apiClient.post<ActivityValidationResult>('/activities/validate', config);
-  },
->>>>>>> 326e2d06510e0b3ff127d572df7deb4ecb7b1191
 };
