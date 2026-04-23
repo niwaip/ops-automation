@@ -240,6 +240,17 @@ const TemporalWorkflowPage: React.FC = () => {
   const handleRemoveActivity = (index: number) => setActivityDsl({ ...activityDsl, activities: activityDsl.activities.filter((_, i) => i !== index) });
   const handleUpdateActivity = (index: number, field: string, value: any) => { const updated = [...activityDsl.activities]; updated[index] = { ...updated[index], [field]: value }; setActivityDsl({ ...activityDsl, activities: updated }); };
 
+  const handleRegenerateCode = () => {
+    setSandboxModalVisible(false);
+    setGeneratedCode(null);
+    handleGenerateCode();
+  };
+
+  const sandboxModalFooter = sandboxResult && !sandboxResult.success ? [
+    <Button key="close" onClick={() => { setSandboxModalVisible(false); setIsSandboxStreaming(false); }}>关闭</Button>,
+    <Button key="regenerate" type="primary" onClick={handleRegenerateCode}>重新生成代码</Button>,
+  ] : [<Button key="close" onClick={() => { setSandboxModalVisible(false); setIsSandboxStreaming(false); }}>关闭</Button>];
+
   const columns: ColumnsType<TemporalWorkflowDTO> = [
     { title: '工作流名称', dataIndex: 'name', key: 'name', width: 200, render: (name, r) => <a onClick={() => handleViewDetail(r)}><Text strong>{name}</Text></a> },
     { title: 'Task Queue', dataIndex: 'taskQueue', key: 'taskQueue', width: 150, render: q => <Tag color="blue">{q}</Tag> },
@@ -525,7 +536,7 @@ const TemporalWorkflowPage: React.FC = () => {
         )}
       </Modal>
 
-      <Modal title="沙箱验证结果" open={sandboxModalVisible} onCancel={() => { setSandboxModalVisible(false); setIsSandboxStreaming(false); }} footer={[<Button onClick={() => { setSandboxModalVisible(false); setIsSandboxStreaming(false); }}>关闭</Button>]} width={800}>
+      <Modal title="沙箱验证结果" open={sandboxModalVisible} onCancel={() => { setSandboxModalVisible(false); setIsSandboxStreaming(false); }} footer={sandboxModalFooter} width={800}>
         <Space direction="vertical" style={{ width: '100%' }}>
           {isSandboxStreaming && <Alert type="info" message="验证进行中..." showIcon />}
           {sandboxResult && (

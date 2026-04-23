@@ -417,11 +417,25 @@ try:
         result = activity_fn(input_data)
     except TypeError as e:
         if "takes 0 positional arguments" in str(e) or "takes 1 positional argument" in str(e):
+            # Try calling with no args
             try:
                 result = activity_fn()
             except TypeError:
                 try:
-                    result = activity_fn(None)
+                    if '{fn_name}'.endswith('Workflow'):
+                        instance = activity_fn()
+                        if hasattr(instance, 'run'):
+                            run_method = instance.run
+                            if asyncio.iscoroutine(run_method):
+                                result = await run_method(input_data)
+                            elif asyncio.iscoroutine(run_method(input_data)):
+                                result = await run_method(input_data)
+                            else:
+                                result = run_method(input_data)
+                        else:
+                            raise e
+                    else:
+                        raise e
                 except:
                     raise e
         else:
