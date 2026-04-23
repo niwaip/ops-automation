@@ -143,18 +143,21 @@ const TemporalWorkflowPage: React.FC = () => {
           if (event.type === 'log' && event.content) {
             setSandboxLogs(prev => [...prev, event.content!]);
           } else if (event.type === 'done') {
+            // Determine success by checking both the wrapper and the inner result
+            const isSuccess = event.success === true || (event.result && event.result.success === true);
+            
             setSandboxResult({
-              success: event.success ?? false,
-              logs: sandboxLogs,
+              success: isSuccess,
+              logs: [], // We use the sandboxLogs state separately in the UI
               result: event.result,
-              error: event.error,
-              score: event.score ?? 0,
+              error: event.error || (event.result && event.result.error),
+              score: event.score ?? (isSuccess ? 100 : 0),
             });
             setIsSandboxStreaming(false);
           } else if (event.type === 'error') {
             setSandboxResult({
               success: false,
-              logs: sandboxLogs,
+              logs: [],
               error: event.content || 'Unknown error',
               score: 0,
             });
