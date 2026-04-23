@@ -271,13 +271,17 @@ export class TemporalWorkflowService {
         timeout: 120000,
       });
 
-      onLog(`[${new Date().toISOString()}] 响应状态: ${response.data?.success !== false ? '成功' : '失败'}`);
+      const resultSuccess = response.data?.result?.success !== false;
+      onLog(`[${new Date().toISOString()}] 响应状态: ${resultSuccess ? '成功' : '失败'}`);
+      if (response.data?.result?.error) {
+        onLog(`[${new Date().toISOString()}] 执行错误: ${response.data.result.error}`);
+      }
 
       return {
-        success: response.data?.success !== false,
-        result: response.data,
-        error: response.data?.error,
-        score: response.data?.success ? 100 : 50,
+        success: resultSuccess,
+        result: response.data?.result,
+        error: response.data?.result?.error,
+        score: resultSuccess ? 100 : 50,
       };
     } catch (error: any) {
       this.logger.error(`Sandbox validation failed: ${error.message}`);
