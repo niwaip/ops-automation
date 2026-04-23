@@ -523,16 +523,30 @@ except Exception as e:
 
         # Read result from file
         try:
-            with open(result_file, 'r') as f:
-                result = json.load(f)
-            
-            # Combine result with logs
+            if os.path.exists(result_file):
+                with open(result_file, 'r') as f:
+                    result = json.load(f)
+                
+                return {
+                    "result": result.get('result'),
+                    "error": result.get('error'),
+                    "traceback": result.get('traceback'),
+                    "logs": execution_logs,
+                    "success": result.get('success', result.get('error') is None)
+                }
+            else:
+                return {
+                    "result": None,
+                    "error": "Sandbox process crashed or failed to write result file",
+                    "traceback": f"Stdout: {stdout_str}\nStderr: {stderr_str}",
+                    "logs": execution_logs,
+                    "success": False
+                }
+        except Exception as e:
             return {
-                "result": result.get('result'),
-                "error": result.get('error'),
-                "traceback": result.get('traceback'),
+                "result": None,
+                "error": f"Failed to read result: {str(e)}",
+                "traceback": f"Original Stdout: {stdout_str}",
                 "logs": execution_logs,
-                "success": result.get('error') is None
+                "success": False
             }
-        except json.JSONDecodeError:
-            raise Exception(f"Failed to parse result: {stdout_str}\nLogs: {execution_logs}")
