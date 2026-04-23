@@ -283,7 +283,7 @@ export class TemporalWorkflowService {
     fn: string,
     input: Record<string, any> | undefined,
     onLog: (log: string) => void,
-  ): Promise<{ success: boolean; result?: any; error?: string; score: number }> {
+  ): Promise<{ success: boolean; result?: any; logs?: string[]; error?: string; score: number }> {
     const sandboxUrl = process.env.TEMPORAL_SANDBOX_AGENT_URL || 'http://ops-temporal-sandbox-agent:8090';
     const activityId = `workflow-validate-${Date.now()}`;
 
