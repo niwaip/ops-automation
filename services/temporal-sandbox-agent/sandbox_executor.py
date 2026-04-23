@@ -456,27 +456,29 @@ except Exception as e:
         stdout_str = stdout.decode('utf-8') if stdout else ''
         stderr_str = stderr.decode('utf-8') if stderr else ''
 
-        # Print stderr (logs from activity code)
+        # Capture logs
+        execution_logs = []
         if stderr_str:
             for line in stderr_str.strip().split('\n'):
                 if line:
-                    print(f"[Python] {line}", flush=True)
-
-        # Print stdout (activity print statements)
+                    execution_logs.append(f"[Python stderr] {line}")
         if stdout_str.strip():
             for line in stdout_str.strip().split('\n'):
                 if line:
-                    print(f"[Activity] {line}", flush=True)
+                    execution_logs.append(f"[Activity stdout] {line}")
 
-        # Read result from file (not stdout) to avoid pollution from print statements
+        # Read result from file
         try:
             with open(result_file, 'r') as f:
                 result = json.load(f)
-            if result.get('error'):
-                error_msg = result['error']
-                if result.get('traceback'):
-                    error_msg += '\n' + result['traceback']
-                raise Exception(error_msg)
-            return result.get('result')
+            
+            # Combine result with logs
+            return {
+                "result": result.get('result'),
+                "error": result.get('error'),
+                "traceback": result.get('traceback'),
+                "logs": execution_logs,
+                "success": result.get('error') is None
+            }
         except json.JSONDecodeError:
-            raise Exception(f"Failed to parse result: {stdout_str}")
+            raise Exception(f"Failed to parse result: {stdout_str}\nLogs: {execution_logs}")
