@@ -6,7 +6,7 @@ import {
 import {
   SearchOutlined, PlusOutlined, EditOutlined, DeleteOutlined, PlayCircleOutlined,
   ReloadOutlined, CloudUploadOutlined, CodeOutlined, ApiOutlined, ThunderboltOutlined,
-  RocketOutlined, CheckCircleOutlined, RobotOutlined, EyeOutlined, ExperimentOutlined
+  RocketOutlined, CheckCircleOutlined, RobotOutlined, ExperimentOutlined
 } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
 import { useQuery, useMutation, useQueryClient } from 'react-query';
@@ -43,6 +43,8 @@ const TemporalWorkflowPage: React.FC = () => {
   const [codeModalVisible, setCodeModalVisible] = useState(false);
   const [sandboxResult, setSandboxResult] = useState<SandBoxValidationResult | null>(null);
   const [sandboxModalVisible, setSandboxModalVisible] = useState(false);
+  const [sandboxLogs, setSandboxLogs] = useState<string[]>([]);
+  const [isSandboxStreaming, setIsSandboxStreaming] = useState(false);
 
   const workflowsQuery = useQuery(['temporal-workflows', searchText], () => temporalWorkflowApi.list());
   const activitiesQuery = useQuery('activities', () => activityApi.list());
@@ -87,20 +89,6 @@ const TemporalWorkflowPage: React.FC = () => {
     }, onError: (error: any) => message.error('代码生成失败: ' + (error.message || 'Unknown error')) }
   );
 
-  const sandboxMutation = useMutation(
-    ({ code, fn }: { code: string; fn: string }) =>
-      temporalWorkflowApi.validateInSandbox(code, fn),
-    { onSuccess: (result: SandBoxValidationResult) => {
-      setSandboxResult(result);
-      setSandboxModalVisible(true);
-      if (result.success) {
-        message.success('沙箱验证通过');
-      } else {
-        message.warning('沙箱验证有问题，请查看日志');
-      }
-    }, onError: (error: any) => message.error('沙箱验证失败: ' + (error.message || 'Unknown error')) }
-  );
-
   const handleCreate = () => {
     setEditingWorkflow(null);
     form.resetFields();
@@ -135,7 +123,53 @@ const TemporalWorkflowPage: React.FC = () => {
     generateCodeMutation.mutate({ workflowDsl: { ...workflowDsl, name: workflowName }, activityDsl });
   };
 
-  const handleSandboxValidate = () => { if (!generatedCode) { message.warning('请先生成代码'); return; } sandboxMutation.mutate({ code: generatedCode, fn: workflowDsl.name.replace(/\s+/g, '') + 'Workflow' }); };
+  const handleSandboxValidate = async () => {
+    if (!generatedCode) { message.warning('请先生成代码'); return; }
+    const fn = workflowDsl.name.replace(/\s+/g, '') + 'Workflow';
+    setSandboxLogs([]);
+    setSandboxResult(null);
+    setSandboxModalVisible(true);
+    setIsSandboxStreaming(true);
+
+    try {
+      await temporalWorkflowApi.validateInSandboxStream(
+        generatedCode,
+        fn,
+        { test: 'workflow-validation' },
+        (event) => {
+          if (event.type === 'log' && event.content) {
+            setSandboxLogs(prev => [...prev, event.content!]);
+          } else if (event.type === 'done') {
+            setSandboxResult({
+              success: event.success ?? false,
+              logs: sandboxLogs,
+              result: event.result,
+              error: event.error,
+              score: event.score ?? 0,
+            });
+            setIsSandboxStreaming(false);
+          } else if (event.type === 'error') {
+            setSandboxResult({
+              success: false,
+              logs: sandboxLogs,
+              error: event.content || 'Unknown error',
+              score: 0,
+            });
+            setIsSandboxStreaming(false);
+          }
+        }
+      );
+    } catch (error: any) {
+      setSandboxLogs(prev => [...prev, `错误: ${error.message}`]);
+      setSandboxResult({
+        success: false,
+        logs: sandboxLogs,
+        error: error.message,
+        score: 0,
+      });
+      setIsSandboxStreaming(false);
+    }
+  };
 
   const handleDeploy = (id: string) => Modal.confirm({ title: '确认部署', content: '确定要部署此工作流到 Temporal Worker 吗？', onOk: () => deployMutation.mutate(id) });
 
@@ -237,6 +271,7 @@ const TemporalWorkflowPage: React.FC = () => {
         footer={[
           <Button key="validate" icon={<PlayCircleOutlined />} onClick={handleValidate}>验证DSL</Button>,
           <Button key="generate" icon={<RobotOutlined />} onClick={handleGenerateCode} loading={generateCodeMutation.isLoading}>AI生成代码</Button>,
+          <Button key="sandbox" icon={<ExperimentOutlined />} onClick={handleSandboxValidate} loading={isSandboxStreaming} disabled={!generatedCode}>沙箱验证</Button>,
           <Button key="cancel" onClick={() => setEditModalVisible(false)}>取消</Button>,
           <Button key="save" type="primary" loading={createMutation.isLoading || updateMutation.isLoading} onClick={handleSave}>保存</Button>
         ]}
@@ -309,7 +344,6 @@ const TemporalWorkflowPage: React.FC = () => {
 
       <Modal title="AI 生成的 Workflow 代码" open={codeModalVisible} onCancel={() => setCodeModalVisible(false)}
         footer={[
-          <Button key="sandbox" icon={<ExperimentOutlined />} onClick={handleSandboxValidate} loading={sandboxMutation.isLoading}>沙箱验证</Button>,
           <Button key="copy" icon={<CodeOutlined />} onClick={() => { navigator.clipboard.writeText(generatedCode || ''); message.success('已复制到剪贴板'); }}>复制代码</Button>,
           <Button key="close" onClick={() => setCodeModalVisible(false)}>关闭</Button>
         ]} width={900}>
@@ -320,19 +354,24 @@ const TemporalWorkflowPage: React.FC = () => {
         )}
       </Modal>
 
-      <Modal title="沙箱验证结果" open={sandboxModalVisible} onCancel={() => setSandboxModalVisible(false)} footer={[<Button onClick={() => setSandboxModalVisible(false)}>关闭</Button>]} width={800}>
-        {sandboxResult && (
-          <Space direction="vertical" style={{ width: '100%' }}>
-            <Alert type={sandboxResult.success ? 'success' : 'error'} message={sandboxResult.success ? '验证通过' : '验证失败'} showIcon />
-            <Card><Text><strong>评分:</strong> {sandboxResult.score}/100</Text></Card>
-            {sandboxResult.error && <Alert type="error" message="错误" description={sandboxResult.error} showIcon />}
-            <Card title="执行日志" size="small">
-              <div style={{ maxHeight: 300, overflow: 'auto', fontFamily: 'monospace', fontSize: 11 }}>
-                {sandboxResult.logs.map((log, i) => <div key={i} style={{ marginBottom: 4 }}>{log}</div>)}
-              </div>
-            </Card>
-          </Space>
-        )}
+      <Modal title="沙箱验证结果" open={sandboxModalVisible} onCancel={() => { setSandboxModalVisible(false); setIsSandboxStreaming(false); }} footer={[<Button onClick={() => { setSandboxModalVisible(false); setIsSandboxStreaming(false); }}>关闭</Button>]} width={800}>
+        <Space direction="vertical" style={{ width: '100%' }}>
+          {isSandboxStreaming && <Alert type="info" message="验证进行中..." showIcon />}
+          {sandboxResult && (
+            <>
+              <Alert type={sandboxResult.success ? 'success' : 'error'} message={sandboxResult.success ? '验证通过' : '验证失败'} showIcon />
+              <Card><Text><strong>评分:</strong> {sandboxResult.score}/100</Text></Card>
+              {sandboxResult.error && <Alert type="error" message="错误" description={sandboxResult.error} showIcon />}
+            </>
+          )}
+          <Card title="执行日志" size="small">
+            <div style={{ maxHeight: 300, overflow: 'auto', fontFamily: 'monospace', fontSize: 11 }}>
+              {sandboxLogs.map((log, i) => <div key={i} style={{ marginBottom: 4 }}>{log}</div>)}
+              {sandboxLogs.length === 0 && !isSandboxStreaming && <Text type="secondary">暂无日志</Text>}
+              {isSandboxStreaming && <Text type="secondary">等待更多日志...</Text>}
+            </div>
+          </Card>
+        </Space>
       </Modal>
     </div>
   );

@@ -139,6 +139,42 @@ export const temporalWorkflowApi = {
   validateInSandbox: async (code: string, fn: string, input?: Record<string, any>): Promise<SandBoxValidationResult> => {
     return apiClient.post<SandBoxValidationResult>('/temporal-workflow/validate-code', { code, fn, input });
   },
+
+  // SSE streaming sandbox validation for real-time logs
+  validateInSandboxStream: (code: string, fn: string, input: Record<string, any>, onEvent: (event: { type: string; content?: string; result?: any; error?: string; success?: boolean; score?: number }) => void): Promise<void> => {
+    return new Promise((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
+      xhr.open('POST', '/api/temporal-workflow/validate-code/stream');
+      xhr.setRequestHeader('Content-Type', 'application/json');
+
+      xhr.onprogress = () => {
+        const lines = xhr.responseText.split('\n');
+        for (const line of lines) {
+          if (line.startsWith('data: ')) {
+            try {
+              const event = JSON.parse(line.substring(6));
+              onEvent(event);
+            } catch (e) {
+              // Ignore parse errors
+            }
+          }
+        }
+      };
+
+      xhr.onload = () => {
+        if (xhr.status >= 200 && xhr.status < 300) {
+          // Send final event
+          onEvent({ type: 'done' });
+          resolve();
+        } else {
+          reject(new Error(`HTTP ${xhr.status}: ${xhr.statusText}`));
+        }
+      };
+
+      xhr.onerror = () => reject(new Error('Network error'));
+      xhr.send(JSON.stringify({ code, fn, input }));
+    });
+  },
 };
 
 export const DEFAULT_WORKFLOW_DSL: WorkflowDsl = {

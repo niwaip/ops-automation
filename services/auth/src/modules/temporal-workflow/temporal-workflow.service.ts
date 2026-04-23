@@ -244,6 +244,48 @@ export class TemporalWorkflowService {
     }
   }
 
+  async validateInSandboxStreaming(
+    code: string,
+    fn: string,
+    input: Record<string, any> | undefined,
+    onLog: (log: string) => void,
+  ): Promise<{ success: boolean; result?: any; error?: string; score: number }> {
+    const sandboxUrl = process.env.TEMPORAL_SANDBOX_AGENT_URL || 'http://ops-temporal-sandbox-agent:8090';
+    const activityId = `workflow-validate-${Date.now()}`;
+
+    onLog(`[${new Date().toISOString()}] 连接到 Sandbox Agent: ${sandboxUrl}`);
+    onLog(`[${new Date().toISOString()}] Activity ID: ${activityId}`);
+
+    try {
+      onLog(`[${new Date().toISOString()}] 执行工作流代码验证...`);
+      const response = await axios.post<any>(`${sandboxUrl}/execute`, {
+        code,
+        fn_name: fn,
+        activity_id: activityId,
+        input_data: input || { test: 'workflow-validation' },
+      }, {
+        timeout: 120000,
+      });
+
+      onLog(`[${new Date().toISOString()}] 响应状态: ${response.data?.success !== false ? '成功' : '失败'}`);
+
+      return {
+        success: response.data?.success !== false,
+        result: response.data,
+        error: response.data?.error,
+        score: response.data?.success ? 100 : 50,
+      };
+    } catch (error: any) {
+      this.logger.error(`Sandbox validation failed: ${error.message}`);
+      onLog(`[${new Date().toISOString()}] 错误: ${error.message}`);
+      return {
+        success: false,
+        error: error.message,
+        score: 0,
+      };
+    }
+  }
+
   private buildWorkflowCodePrompt(workflowDsl: WorkflowDsl, activityDsl: ActivityDsl): string {
     const lines: string[] = [];
 

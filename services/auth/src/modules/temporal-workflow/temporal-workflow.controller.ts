@@ -1,5 +1,6 @@
-import { Controller, Get, Post, Put, Delete, Body, Param } from '@nestjs/common';
+import { Controller, Get, Post, Put, Delete, Body, Param, Res } from '@nestjs/common';
 import { ApiTags, ApiOperation } from '@nestjs/swagger';
+import { Response } from 'express';
 import {
   TemporalWorkflowService,
   CreateTemporalWorkflowDTO,
@@ -76,5 +77,38 @@ export class TemporalWorkflowController {
     @Body() data: { code: string; fn: string; input?: Record<string, any> },
   ): Promise<{ success: boolean; logs: string[]; result?: any; error?: string; score: number }> {
     return this.temporalWorkflowService.validateInSandbox(data.code, data.fn, data.input);
+  }
+
+  @Post('validate-code/stream')
+  @ApiOperation({ summary: 'Validate generated code in sandbox with streaming logs' })
+  async validateCodeStream(
+    @Body() data: { code: string; fn: string; input?: Record<string, any> },
+    @Res() res: Response,
+  ): Promise<void> {
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Connection', 'keep-alive');
+    res.setHeader('X-Accel-Buffering', 'no');
+
+    try {
+      const result = await this.temporalWorkflowService.validateInSandboxStreaming(
+        data.code,
+        data.fn,
+        data.input,
+        (log: string) => {
+          res.write(`data: ${JSON.stringify({ type: 'log', content: log })}\n\n`);
+        },
+      );
+
+      if (result.success) {
+        res.write(`data: ${JSON.stringify({ type: 'done', success: true, score: result.score, result: result.result })}\n\n`);
+      } else {
+        res.write(`data: ${JSON.stringify({ type: 'done', success: false, error: result.error, score: result.score })}\n\n`);
+      }
+    } catch (error: any) {
+      res.write(`data: ${JSON.stringify({ type: 'error', content: error.message })}\n\n`);
+    }
+
+    res.end();
   }
 }
