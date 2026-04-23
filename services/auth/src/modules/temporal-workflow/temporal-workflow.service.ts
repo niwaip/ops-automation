@@ -190,7 +190,31 @@ export class TemporalWorkflowService {
   }
 
   async generateWorkflowCode(workflowDsl: WorkflowDsl, activityDsl: ActivityDsl): Promise<{ success: boolean; code?: string; error?: string }> {
-    const prompt = this.buildWorkflowCodePrompt(workflowDsl, activityDsl);
+    // Enrich activityDsl with generatedCode from database
+    const activityNamesInWorkflow = workflowDsl.steps
+      .filter(step => step.type === 'activity' && step.activityName)
+      .map(step => step.activityName as string);
+
+    const dbActivities = await this.prisma.activity.findMany({
+      where: { name: { in: activityNamesInWorkflow } },
+    });
+
+    const activityGeneratedCodeMap = new Map<string, string>();
+    dbActivities.forEach(activity => {
+      if (activity.generatedCode) {
+        activityGeneratedCodeMap.set(activity.name, activity.generatedCode);
+      }
+    });
+
+    // Merge generatedCode into activityDsl
+    const enrichedActivityDsl: ActivityDsl = {
+      activities: activityDsl.activities.map(activity => ({
+        ...activity,
+        generatedCode: activityGeneratedCodeMap.get(activity.name) || activity.generatedCode,
+      })),
+    };
+
+    const prompt = this.buildWorkflowCodePrompt(workflowDsl, enrichedActivityDsl);
 
     try {
       const aiOrchestratorUrl = process.env.AI_ORCHESTRATOR_URL || 'http://ops-ai-orchestrator:3007';
