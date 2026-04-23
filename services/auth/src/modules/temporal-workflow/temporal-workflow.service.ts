@@ -229,12 +229,17 @@ export class TemporalWorkflowService {
 
       logs.push(`Sandbox response: ${JSON.stringify(response.data)}`);
 
+      const resultSuccess = response.data?.result?.success === true && !response.data?.result?.error;
+      if (response.data?.result?.error) {
+        logs.push(`执行错误: ${response.data.result.error}`);
+      }
+
       return {
-        success: response.data?.success !== false,
+        success: resultSuccess,
         logs,
-        result: response.data,
-        error: response.data?.error,
-        score: response.data?.success ? 100 : 50,
+        result: response.data?.result,
+        error: response.data?.result?.error,
+        score: resultSuccess ? 100 : 50,
       };
     } catch (error: any) {
       this.logger.error(`Sandbox validation failed: ${error.message}`);
@@ -271,7 +276,7 @@ export class TemporalWorkflowService {
         timeout: 120000,
       });
 
-      const resultSuccess = response.data?.result?.success !== false;
+      const resultSuccess = response.data?.result?.success === true && !response.data?.result?.error;
       onLog(`[${new Date().toISOString()}] 响应状态: ${resultSuccess ? '成功' : '失败'}`);
       if (response.data?.result?.error) {
         onLog(`[${new Date().toISOString()}] 执行错误: ${response.data.result.error}`);
