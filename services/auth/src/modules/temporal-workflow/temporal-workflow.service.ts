@@ -328,8 +328,10 @@ export class TemporalWorkflowService {
       return {
         success: resultSuccess,
         result: finalResult,
+        logs: data.result?.logs || [],
         error: data.result?.error,
-        score: resultSuccess ? 100 : 50,
+        traceback: data.result?.traceback,
+        score: resultSuccess ? 100 : 0,
       };
     } catch (error: any) {
       this.logger.error(`Sandbox validation failed: ${error.message}`);
