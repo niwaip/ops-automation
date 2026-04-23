@@ -51,6 +51,7 @@ export interface ActivityDsl {
     retryPolicy?: { maxRetries: number };
     handler: 'api' | 'carbone' | 'browser' | 'script';
     config: Record<string, any>;
+    generatedCode?: string; // 新增：已生成的 Activity 代码
   }>;
 }
 
@@ -320,41 +321,43 @@ export class TemporalWorkflowService {
   private buildWorkflowCodePrompt(workflowDsl: WorkflowDsl, activityDsl: ActivityDsl): string {
     const lines: string[] = [];
 
-    lines.push('请根据以下 Workflow DSL 生成标准的 Temporal Python 工作流代码。');
+    lines.push('你是一个 Temporal Python 开发专家。请根据以下 Workflow DSL 和 Activity 定义生成一个符合生产标准的 Temporal 工作流。');
     lines.push('');
     lines.push('【Workflow DSL】');
     lines.push(JSON.stringify(workflowDsl, null, 2));
     lines.push('');
-    lines.push('【Activity DSL】');
-    lines.push(JSON.stringify(activityDsl, null, 2));
+
+    lines.push('【Activity 实现指导】');
+    activityDsl.activities.forEach(activity => {
+      if (activity.generatedCode) {
+        lines.push(`- Activity "${activity.name}" (函数名: ${activity.fn}): 已有验证过的代码，请【原样包含】在你的 Python 输出中，不要修改其逻辑。`);
+        lines.push('--- 已有代码开始 ---');
+        lines.push(activity.generatedCode);
+        lines.push('--- 已有代码结束 ---');
+      } else {
+        lines.push(`- Activity "${activity.name}" (函数名: ${activity.fn}): 尚未实现，请根据 DSL 生成一个标准的 @activity.defn 实现。`);
+      }
+    });
+
     lines.push('');
-    lines.push('【Temporal Python SDK 黄金准则】');
-    lines.push('1. 【结构】必须包含 `from temporalio import workflow` 和 `from datetime import timedelta`。');
-    lines.push('2. 【入口】使用 `@workflow.defn` 装饰类，`@workflow.run` 装饰异步入口方法。');
-    lines.push('3. 【签名】`async def run(self, params: dict) -> dict:`');
-    lines.push('4. 【日志】使用 `workflow.logger.info()` 记录步骤，禁止使用 print()。');
-    lines.push('5. 【Activity 执行】使用 `await workflow.execute_activity(activity_fn, input, start_to_close_timeout=timedelta(...))`。');
-    lines.push('6. 【并行执行】使用 `asyncio.gather()` 实现并行 Activity。');
-    lines.push('7. 【Signal】使用 `@workflow.signal` 装饰异步方法修改工作流状态。');
-    lines.push('8. 【Query】使用 `@workflow.query` 装饰方法读取工作流状态（不得修改状态）。');
-    lines.push('9. 【错误处理】使用 `try/except`，通过 `raise ApplicationError()` 抛出业务异常。');
-    lines.push('10. 【取消处理】捕获 `asyncio.CancelledError` 进行清理。');
+    lines.push('【必须遵守的准则】：');
+    lines.push('1. 【组合输出】：你的输出必须包含所有 Activity 的实现代码（已有的或新生成的）以及 Workflow 类的定义。');
+    lines.push('2. 【类名强制】：Workflow 类名必须完全等于 `' + (workflowDsl.name.replace(/\s+/g, '') || 'Custom') + 'Workflow' + '`。');
+    lines.push('3. 【结构】：Workflow 使用 `@workflow.defn`，入口为 `async def run(self, params: dict)`。');
+    lines.push('4. 【确定性】：严禁使用原生 `datetime.now()`, `random`, `uuid`。使用 `workflow.now()`, `workflow.random()`, `workflow.uuid4()`。');
+    lines.push('5. 【调用】：使用 `await workflow.execute_activity(activity_fn, input, start_to_close_timeout=timedelta(...))`，确保超时时间与 DSL 一致。');
+    lines.push('6. 【日志】：必须使用 `workflow.logger.info()`。');
+
+    if (workflowDsl.errorHandling?.type === 'saga') {
+      lines.push('7. 【Saga 模式】：必须维护 compensations 列表，在失败时逆序执行补偿任务。');
+    }
+
     lines.push('');
-    lines.push('【代码要求】');
-    lines.push('- 必须生成完整的两部分代码：');
-    lines.push('  1. Workflow类：使用 `@workflow.defn` 装饰器定义工作流类，类名为 `{workflowName}Workflow`（PascalCase）');
-    lines.push('  2. Activity函数：使用 `@activity.defn` 装饰器定义每个activity实现');
-    lines.push('- Workflow中使用 `await workflow.execute_activity(activity_fn, input, ...)` 调用activities');
-    lines.push('- Activity函数必须 import 后使用：`from activity import {activityName}`');
-    lines.push('- 包含适当的超时配置');
-    lines.push('- 支持条件执行（conditionals）');
-    lines.push('- Activity 使用 `activity.defn` 装饰器，不是 `workflow.activity_defn`');
-    lines.push('');
-    lines.push('【输出格式】');
-    lines.push('生成包含完整 workflow 和 activity 定义的 Python 代码，直接可用');
+    lines.push('【输出】：只返回完整的 Python 代码，包含所有 import 语句。不要包含 Markdown 代码块标记。');
 
     return lines.join('\n');
   }
+
 
   private extractCodeFromMarkdown(content: string): string | null {
     // Try to extract code from markdown code blocks
