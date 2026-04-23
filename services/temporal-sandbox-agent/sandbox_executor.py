@@ -169,6 +169,20 @@ class MockResponse:
         if self.status >= 400: raise urllib.error.HTTPError(None, self.status, None, None, None)
 
 class MockRequests:
+    def __init__(self):
+        # Create exceptions submodule
+        self.exceptions = types.ModuleType('requests.exceptions')
+        class RequestException(Exception): pass
+        class Timeout(RequestException): pass
+        class HTTPError(RequestException): pass
+        class ConnectionError(RequestException): pass
+        self.exceptions.RequestException = RequestException
+        self.exceptions.Timeout = Timeout
+        self.exceptions.HTTPError = HTTPError
+        self.exceptions.ConnectionError = ConnectionError
+        # Inject into sys.modules to allow 'from requests.exceptions import ...'
+        sys.modules['requests.exceptions'] = self.exceptions
+
     def get(self, url, headers=None, timeout=None, **kwargs):
         try:
             req = urllib.request.Request(url, headers=headers or {})
