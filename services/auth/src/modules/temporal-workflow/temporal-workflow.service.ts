@@ -328,6 +328,8 @@ export class TemporalWorkflowService {
     lines.push('- 为每个 step 生成 activity 执行逻辑');
     lines.push('- 支持条件执行（conditionals）');
     lines.push('- 包含适当的超时配置');
+    lines.push('- Activity 使用 `activity.defn` 装饰器，不是 `workflow.activity_defn`');
+    lines.push('- Activity 函数必须通过 import 导入（如 `from activity import xxx`）');
 
     return lines.join('\n');
   }
