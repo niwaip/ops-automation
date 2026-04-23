@@ -276,16 +276,34 @@ export class TemporalWorkflowService {
         timeout: 120000,
       });
 
-      const resultSuccess = response.data?.result?.success === true && !response.data?.result?.error;
+      const data = response.data as any;
+
+      // Push logs from sandbox execution to the frontend
+      if (data.result?.logs && Array.isArray(data.result.logs)) {
+        data.result.logs.forEach((log: string) => {
+          onLog(log);
+        });
+      }
+
+      const resultSuccess = data.result?.success === true && !data.result?.error;
       onLog(`[${new Date().toISOString()}] 响应状态: ${resultSuccess ? '成功' : '失败'}`);
-      if (response.data?.result?.error) {
-        onLog(`[${new Date().toISOString()}] 执行错误: ${response.data.result.error}`);
+
+      if (data.result?.error) {
+        onLog(`[${new Date().toISOString()}] 执行错误: ${data.result.error}`);
+        if (data.result.traceback) {
+          onLog(`[${new Date().toISOString()}] 详细堆栈:\n${data.result.traceback}`);
+        }
+      }
+
+      const finalResult = data.result?.result || data.result;
+      if (resultSuccess) {
+        onLog(`[${new Date().toISOString()}] 执行成功，返回结果: ${JSON.stringify(finalResult, null, 2)}`);
       }
 
       return {
         success: resultSuccess,
-        result: response.data?.result,
-        error: response.data?.result?.error,
+        result: finalResult,
+        error: data.result?.error,
         score: resultSuccess ? 100 : 50,
       };
     } catch (error: any) {
@@ -323,13 +341,17 @@ export class TemporalWorkflowService {
     lines.push('10. 【取消处理】捕获 `asyncio.CancelledError` 进行清理。');
     lines.push('');
     lines.push('【代码要求】');
-    lines.push('- 生成完整的、可直接运行的工作流类');
-    lines.push('- 函数名使用 PascalCase（如 `ContractGenerationWorkflow`）');
-    lines.push('- 为每个 step 生成 activity 执行逻辑');
-    lines.push('- 支持条件执行（conditionals）');
+    lines.push('- 必须生成完整的两部分代码：');
+    lines.push('  1. Workflow类：使用 `@workflow.defn` 装饰器定义工作流类，类名为 `{workflowName}Workflow`（PascalCase）');
+    lines.push('  2. Activity函数：使用 `@activity.defn` 装饰器定义每个activity实现');
+    lines.push('- Workflow中使用 `await workflow.execute_activity(activity_fn, input, ...)` 调用activities');
+    lines.push('- Activity函数必须 import 后使用：`from activity import {activityName}`');
     lines.push('- 包含适当的超时配置');
+    lines.push('- 支持条件执行（conditionals）');
     lines.push('- Activity 使用 `activity.defn` 装饰器，不是 `workflow.activity_defn`');
-    lines.push('- Activity 函数必须通过 import 导入（如 `from activity import xxx`）');
+    lines.push('');
+    lines.push('【输出格式】');
+    lines.push('生成包含完整 workflow 和 activity 定义的 Python 代码，直接可用');
 
     return lines.join('\n');
   }
