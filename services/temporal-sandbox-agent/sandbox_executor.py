@@ -223,7 +223,12 @@ class MockWorkflow:
         return lambda cls: cls
 
     def run(self, *args, **kwargs):
-        return lambda func: func
+        def decorator(func):
+            async def wrapper(self, params, *a, **kw):
+                return await func(self, params, *a, **kw)
+            wrapper._original = func
+            return wrapper
+        return decorator
 
     def signal(self, *args, **kwargs):
         return lambda func: func
