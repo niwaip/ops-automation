@@ -95,6 +95,7 @@ const TemporalWorkflowPage: React.FC = () => {
     form.resetFields();
     setWorkflowDsl(DEFAULT_WORKFLOW_DSL);
     setActivityDsl(DEFAULT_ACTIVITY_DSL);
+    setGeneratedCode(null);
     setEditModalVisible(true);
   };
 
