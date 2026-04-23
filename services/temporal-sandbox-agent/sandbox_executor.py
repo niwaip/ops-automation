@@ -380,78 +380,83 @@ namespace = {{
 with open('{input_file}', 'r') as f:
     input_data = json.load(f)
 
-# Read and execute activity code
+# Read and execute code
 try:
     with open('{activity_file}', 'r') as f:
         activity_code = f.read()
 
-    # Execute in namespace
-    exec(compile(activity_code, '{activity_file}', 'exec'), namespace)
-
-    # Find activity function
-    activity_fn = namespace.get('{fn_name}')
-    if activity_fn is None:
-        # Fallback 1: Search all items for the exact name
-        for name, obj in namespace.items():
-            if callable(obj) and name == '{fn_name}':
-                activity_fn = obj
-                break
-
-    if activity_fn is None:
-        # Fallback 2: If only one user-defined function exists, use it
-        callables = [obj for name, obj in namespace.items() 
-                     if callable(obj) and not name.startswith('__') 
-                     and name not in ['temporalio', 'activity', 'requests', 'asyncio', 'types', 'json', 'sys', 'os', 'traceback']]
-        if len(callables) == 1:
-            activity_fn = callables[0]
-            print(f"[Sandbox] Function '{fn_name}' not found, using the only available function instead.")
-
-    if activity_fn is None:
+    # Compilation
+    try:
+        compiled_code = compile(activity_code, '{activity_file}', 'exec')
+        exec(compiled_code, namespace)
+    except Exception as e:
         with open('{result_file}', 'w') as f:
-            json.dump({{"error": "Function '{fn_name}' not found in activity code", "result": None}}, f)
+            json.dump({{"error": f"Compilation Error: {{str(e)}}", "traceback": traceback.format_exc(), "success": False}}, f)
         sys.exit(1)
 
-    # Execute with different calling conventions
+    # Find the target (Function or Workflow Class)
+    target = namespace.get('{fn_name}')
+    
+    # Fallback 1: Case-insensitive search
+    if target is None:
+        for name, obj in namespace.items():
+            if name.lower() == '{fn_name}'.lower() and (callable(obj) or isinstance(obj, type)):
+                target = obj
+                break
+
+    # Fallback 2: Only one user-defined item
+    if target is None:
+        valid_items = [obj for name, obj in namespace.items() 
+                      if (callable(obj) or isinstance(obj, type)) and not name.startswith('__') 
+                      and name not in ['temporalio', 'activity', 'workflow', 'requests', 'asyncio', 'types', 'json', 'sys', 'os', 'traceback']]
+        if len(valid_items) == 1:
+            target = valid_items[0]
+            print(f"[Sandbox] Auto-selected target: {{getattr(target, '__name__', 'unknown')}}")
+
+    if target is None:
+        with open('{result_file}', 'w') as f:
+            json.dump({{"error": f"Target '{fn_name}' not found in code.", "success": False}}, f)
+        sys.exit(1)
+
+    # Execution
     result = None
     try:
-        result = activity_fn(input_data)
-    except TypeError as e:
-        if "takes 0 positional arguments" in str(e) or "takes 1 positional argument" in str(e):
-            # Try calling with no args
+        if isinstance(target, type):
+            print(f"[Sandbox] Instantiating Workflow: {{target.__name__}}")
+            instance = target()
+            result = instance.run(input_data) if hasattr(instance, 'run') else None
+            if result is None and not hasattr(instance, 'run'):
+                raise AttributeError(f"Class {{target.__name__}} has no 'run' method")
+        else:
+            print(f"[Sandbox] Calling Function: {{target.__name__}}")
             try:
-                result = activity_fn()
+                result = target(input_data)
             except TypeError:
                 try:
-                    if '{fn_name}'.endswith('Workflow'):
-                        instance = activity_fn()
-                        if hasattr(instance, 'run'):
-                            run_method = instance.run
-                            if asyncio.iscoroutine(run_method):
-                                result = await run_method(input_data)
-                            elif asyncio.iscoroutine(run_method(input_data)):
-                                result = await run_method(input_data)
-                            else:
-                                result = run_method(input_data)
-                        else:
-                            raise e
-                    else:
-                        raise e
-                except:
-                    raise e
-        else:
-            raise e
+                    result = target()
+                except TypeError:
+                    result = target(None)
 
-    # Handle async
-    if asyncio.iscoroutine(result):
-        result = asyncio.get_event_loop().run_until_complete(result)
+        # Handle Async
+        if asyncio.iscoroutine(result):
+            result = asyncio.get_event_loop().run_until_complete(result)
 
-    with open('{result_file}', 'w') as f:
-        json.dump({{"result": result, "error": None}}, f)
+        with open('{result_file}', 'w') as f:
+            json.dump({{"result": result, "error": None, "success": True}}, f)
+
+    except Exception as e:
+        error_msg = traceback.format_exc()
+        with open('{result_file}', 'w') as f:
+            json.dump({{"error": str(e), "traceback": error_msg, "success": False}}, f)
+        sys.exit(1)
 
 except Exception as e:
-    error_msg = traceback.format_exc()
-    with open('{result_file}', 'w') as f:
-        json.dump({{"error": str(e), "result": None, "traceback": error_msg}}, f)
+    # Final safety net
+    try:
+        with open('{result_file}', 'w') as f:
+            json.dump({{"error": f"Internal Sandbox Error: {{str(e)}}", "traceback": traceback.format_exc(), "success": False}}, f)
+    except:
+        pass
     sys.exit(1)
 '''
 
