@@ -103,6 +103,7 @@ const TemporalWorkflowPage: React.FC = () => {
     form.setFieldsValue({ name: workflow.name, description: workflow.description, taskQueue: workflow.taskQueue });
     setWorkflowDsl(workflow.workflowDsl || DEFAULT_WORKFLOW_DSL);
     setActivityDsl(workflow.activityDsl || DEFAULT_ACTIVITY_DSL);
+    setGeneratedCode(workflow.generatedCode || null);
     setEditModalVisible(true);
   };
 
@@ -183,6 +184,7 @@ const TemporalWorkflowPage: React.FC = () => {
         taskQueue: values.taskQueue,
         workflowDsl: { ...workflowDsl, name: workflowName },
         activityDsl,
+        generatedCode: generatedCode || undefined,
       };
       if (editingWorkflow) updateMutation.mutate({ id: editingWorkflow.id, data });
       else createMutation.mutate(data);

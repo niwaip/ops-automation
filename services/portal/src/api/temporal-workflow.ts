@@ -60,6 +60,7 @@ export interface TemporalWorkflowDTO {
   taskQueue: string;
   workflowDsl: WorkflowDsl;
   activityDsl: ActivityDsl;
+  generatedCode?: string | null;
   isActive: boolean;
   deployedAt: string | null;
   createdAt: string;
@@ -72,6 +73,7 @@ export interface CreateTemporalWorkflowDTO {
   taskQueue?: string;
   workflowDsl: WorkflowDsl;
   activityDsl: ActivityDsl;
+  generatedCode?: string;
 }
 
 export interface UpdateTemporalWorkflowDTO {
@@ -81,6 +83,7 @@ export interface UpdateTemporalWorkflowDTO {
   workflowDsl?: WorkflowDsl;
   activityDsl?: ActivityDsl;
   isActive?: boolean;
+  generatedCode?: string;
 }
 
 export interface TemporalValidationResult {

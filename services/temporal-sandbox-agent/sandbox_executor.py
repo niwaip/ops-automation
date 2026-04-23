@@ -215,6 +215,43 @@ mock_temporalio.activity.heartbeat = mock_activity.heartbeat
 mock_temporalio.activity.info = mock_activity.info
 mock_temporalio.exceptions.ApplicationError = MockApplicationError
 
+# Mock workflow module
+mock_temporalio.workflow = types.ModuleType('temporalio.workflow')
+
+class MockWorkflow:
+    def defn(self, *args, **kwargs):
+        return lambda cls: cls
+
+    def run(self, *args, **kwargs):
+        return lambda func: func
+
+    def signal(self, *args, **kwargs):
+        return lambda func: func
+
+    def query(self, *args, **kwargs):
+        return lambda func: func
+
+    @property
+    def logger(self):
+        return MockActivityLogger()
+
+    async def execute_activity(self, activity, *args, **kwargs):
+        act_name = getattr(activity, '_activity_name', str(activity))
+        print(f"[Sandbox] Executing activity: {{act_name}}", flush=True)
+        return {{"status": "success", "mocked": True}}
+
+    async def wait_condition(self, *args, **kwargs):
+        return True
+
+mock_workflow = MockWorkflow()
+mock_temporalio.workflow.defn = mock_workflow.defn
+mock_temporalio.workflow.run = mock_workflow.run
+mock_temporalio.workflow.signal = mock_workflow.signal
+mock_temporalio.workflow.query = mock_workflow.query
+mock_temporalio.workflow.logger = mock_workflow.logger
+mock_temporalio.workflow.execute_activity = mock_workflow.execute_activity
+mock_temporalio.workflow.wait_condition = mock_workflow.wait_condition
+
 mock_retry_policy = type('MockRetryPolicy', (), {{
     'maximum_attempts': 3,
     'initial_interval_ms': 1000,
@@ -324,9 +361,11 @@ mock_requests = MockRequests()
 # Inject into sys.modules
 sys.modules['temporalio'] = mock_temporalio
 sys.modules['temporalio.activity'] = mock_temporalio.activity
+sys.modules['temporalio.workflow'] = mock_temporalio.workflow
 sys.modules['temporalio.exceptions'] = mock_temporalio.exceptions
 sys.modules['temporalio.common'] = mock_temporalio.common
 sys.modules['activity'] = mock_temporalio.activity
+sys.modules['workflow'] = mock_temporalio.workflow
 sys.modules['requests'] = mock_requests
 sys.modules['requests.exceptions'] = mock_requests_exceptions
 

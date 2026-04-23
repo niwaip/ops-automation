@@ -366,16 +366,17 @@ model Activity {
 
 // Temporal Workflow - Workflow definitions with DSL
 model TemporalWorkflow {
-  id          String    @id @default(uuid()) @db.Uuid
-  name        String    @db.VarChar(255)
-  description String?   @db.VarChar(500)
-  taskQueue   String    @db.VarChar(255)
-  workflowDsl Json      @map("workflow_dsl")
-  activityDsl Json      @map("activity_dsl")
-  isActive    Boolean   @default(true) @map("is_active")
-  deployedAt  DateTime? @map("deployed_at") @db.Timestamptz
-  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz
-  updatedAt   DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+  id            String    @id @default(uuid()) @db.Uuid
+  name          String    @db.VarChar(255)
+  description   String?   @db.VarChar(500)
+  taskQueue     String    @db.VarChar(255)
+  workflowDsl   Json      @map("workflow_dsl")
+  activityDsl   Json      @map("activity_dsl")
+  generatedCode String?   @map("generated_code") @db.Text
+  isActive      Boolean   @default(true) @map("is_active")
+  deployedAt    DateTime? @map("deployed_at") @db.Timestamptz
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt     DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
 
   @@index([name])
   @@index([taskQueue])

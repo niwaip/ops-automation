@@ -60,6 +60,7 @@ export interface CreateTemporalWorkflowDTO {
   taskQueue?: string;
   workflowDsl: WorkflowDsl;
   activityDsl: ActivityDsl;
+  generatedCode?: string;
 }
 
 export interface UpdateTemporalWorkflowDTO {
@@ -69,6 +70,7 @@ export interface UpdateTemporalWorkflowDTO {
   workflowDsl?: WorkflowDsl;
   activityDsl?: ActivityDsl;
   isActive?: boolean;
+  generatedCode?: string;
 }
 
 export interface TemporalValidationResult {
@@ -102,6 +104,7 @@ export class TemporalWorkflowService {
         taskQueue: data.taskQueue || 'SKILL_TASK_QUEUE',
         workflowDsl: data.workflowDsl as any,
         activityDsl: data.activityDsl as any,
+        generatedCode: data.generatedCode || null,
         isActive: true,
       },
     });
@@ -117,6 +120,7 @@ export class TemporalWorkflowService {
         ...(data.workflowDsl && { workflowDsl: data.workflowDsl as any }),
         ...(data.activityDsl && { activityDsl: data.activityDsl as any }),
         ...(data.isActive !== undefined && { isActive: data.isActive }),
+        ...(data.generatedCode !== undefined && { generatedCode: data.generatedCode }),
       },
     });
   }
