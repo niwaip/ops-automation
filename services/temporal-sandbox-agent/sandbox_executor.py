@@ -223,10 +223,8 @@ class MockWorkflow:
     def defn(self, *args, **kwargs):
         return lambda cls: cls
 
-    @staticmethod
-    def run(*args, **kwargs):
+    def run(self, *args, **kwargs):
         def decorator(func):
-            @functools.wraps(func)
             async def wrapper(params, *a, **kw):
                 return await func(params, *a, **kw)
             wrapper._original = func
@@ -433,8 +431,18 @@ try:
         if isinstance(target, type):
             print(f"[Sandbox] Instantiating Workflow: {{target.__name__}}")
             instance = target()
-            result = instance.run(input_data) if hasattr(instance, 'run') else None
-            if result is None and not hasattr(instance, 'run'):
+            if hasattr(instance, 'run'):
+                run_method = instance.run
+                if hasattr(run_method, '_original'):
+                    # Decorated method - call original with self
+                    result = run_method._original(instance, input_data)
+                else:
+                    result = run_method(input_data)
+                # Handle async
+                if asyncio.iscoroutine(result):
+                    result = asyncio.get_event_loop().run_until_complete(result)
+            else:
+                result = None
                 raise AttributeError(f"Class {{target.__name__}} has no 'run' method")
         else:
             print(f"[Sandbox] Calling Function: {{target.__name__}}")
@@ -445,10 +453,6 @@ try:
                     result = target()
                 except TypeError:
                     result = target(None)
-
-        # Handle Async
-        if asyncio.iscoroutine(result):
-            result = asyncio.get_event_loop().run_until_complete(result)
 
         with open('{result_file}', 'w') as f:
             json.dump({{"result": result, "error": None, "success": True}}, f)
