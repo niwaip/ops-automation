@@ -6,6 +6,7 @@ It uses subprocess execution with proper mocking of temporalio modules.
 """
 
 import asyncio
+import functools
 import json
 import os
 import sys
@@ -222,11 +223,14 @@ class MockWorkflow:
     def defn(self, *args, **kwargs):
         return lambda cls: cls
 
-    def run(self, *args, **kwargs):
+    @staticmethod
+    def run(*args, **kwargs):
         def decorator(func):
-            async def wrapper(self, params, *a, **kw):
-                return await func(self, params, *a, **kw)
+            @functools.wraps(func)
+            async def wrapper(params, *a, **kw):
+                return await func(params, *a, **kw)
             wrapper._original = func
+            wrapper._decorated = True
             return wrapper
         return decorator
 
