@@ -189,18 +189,12 @@ export class TemporalWorkflowService {
 
     try {
       const aiOrchestratorUrl = process.env.AI_ORCHESTRATOR_URL || 'http://ops-ai-orchestrator:3007';
-      const response = await axios.post<any>(`${aiOrchestratorUrl}/ai/model/call`, {
-        model: 'MiniMax-M2.7',
-        messages: [
-          { role: 'system', content: '你是一个 Temporal Python 开发专家，负责根据 Workflow DSL 生成生产级别的 Python 工作流代码。' },
-          { role: 'user', content: prompt },
-        ],
-        stream: false,
-      }, {
-        timeout: 60000,
-      });
+      const response = await axios.post<{ result: string }>(`${aiOrchestratorUrl}/ai/model/call`, {
+        modelId: 'MiniMax-M2.7',
+        prompt,
+      }, { timeout: 60000 });
 
-      const content = response.data?.choices?.[0]?.message?.content || '';
+      const content = response.data?.result || '';
       const code = this.extractCodeFromMarkdown(content);
 
       if (!code) {
