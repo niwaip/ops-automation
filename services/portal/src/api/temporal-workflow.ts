@@ -1,4 +1,5 @@
 import apiClient from './client';
+import { useAuthStore } from '../store/authStore';
 
 export interface WorkflowSignalHandler {
   name: string;
@@ -146,6 +147,11 @@ export const temporalWorkflowApi = {
       const xhr = new XMLHttpRequest();
       xhr.open('POST', '/api/temporal-workflow/validate-code/stream');
       xhr.setRequestHeader('Content-Type', 'application/json');
+      // Add auth token from store
+      const token = useAuthStore.getState().accessToken;
+      if (token) {
+        xhr.setRequestHeader('Authorization', `Bearer ${token}`);
+      }
 
       xhr.onprogress = () => {
         const lines = xhr.responseText.split('\n');
