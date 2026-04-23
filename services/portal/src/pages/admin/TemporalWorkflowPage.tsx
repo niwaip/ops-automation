@@ -530,6 +530,7 @@ const TemporalWorkflowPage: React.FC = () => {
               <Alert type={sandboxResult.success ? 'success' : 'error'} message={sandboxResult.success ? '验证通过' : '验证失败'} showIcon />
               <Card><Text><strong>评分:</strong> {sandboxResult.score}/100</Text></Card>
               {sandboxResult.error && <Alert type="error" message="错误" description={sandboxResult.error} showIcon />}
+              {sandboxResult.result?.error && <Alert type="error" message="执行错误" description={String(sandboxResult.result.error).substring(0, 500)} showIcon />}
             </>
           )}
           <Card title="执行日志" size="small">
