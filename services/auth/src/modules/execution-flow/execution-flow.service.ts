@@ -225,16 +225,18 @@ export class ExecutionFlowTemplateService implements OnModuleInit {
    * 创建新模板
    */
   async createTemplate(data: CreateExecutionFlowTemplateDTO): Promise<ExecutionFlowTemplateDTO> {
-    // Generate IDs for steps
+    // Generate IDs for steps and template
+    const templateId = randomUUID();
     const steps = data.steps.map((step) => ({
       ...step,
       id: step.id || randomUUID(),
     }));
 
     const result = await this.prisma.$queryRawUnsafe<any[]>(
-      `INSERT INTO execution_flow_templates (name, description, goal, expected_result, params_schema, category, steps, execution_flow_keys, is_public, created_by)
-       VALUES ($1, $2, $3, $4, $5::jsonb, $6, $7::jsonb, $8::jsonb, $9, $10::uuid)
+      `INSERT INTO execution_flow_templates (id, name, description, goal, expected_result, params_schema, category, steps, execution_flow_keys, is_public, created_by)
+       VALUES ($1::uuid, $2, $3, $4, $5, $6::jsonb, $7, $8::jsonb, $9::jsonb, $10, $11::uuid)
        RETURNING id, name, description, goal, expected_result as "expectedResult", params_schema as "paramsSchema", category, steps, execution_flow_keys as "executionFlowKeys", validation, usage_count as "usageCount", is_public as "isPublic", created_by as "createdBy", is_active as "isActive", created_at as "createdAt", updated_at as "updatedAt"`,
+      templateId,
       data.name,
       data.description || null,
       data.goal || null,
@@ -243,8 +245,8 @@ export class ExecutionFlowTemplateService implements OnModuleInit {
       data.category || 'document',
       JSON.stringify(steps),
       JSON.stringify(data.executionFlowKeys || []),
-      data.isPublic ?? true,
-      data.createdBy || null
+      data.isPublic !== undefined ? data.isPublic : true,
+      data.createdBy ?? '00000000-0000-0000-0000-000000000000'
     );
 
     this.logger.log(`Created execution flow template: ${data.name}`);
