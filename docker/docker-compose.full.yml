@@ -293,6 +293,73 @@ services:
       retries: 3
       start_period: 60s
 
+  # ============================================
+  # Temporal Server & UI
+  # ============================================
+  temporal:
+    image: docker.1ms.run/library/temporalio/auto-setup:1.22.0
+    container_name: ops-temporal
+    ports:
+      - "7233:7233"   # Frontend gRPC
+      - "7234:7234"   # History gRPC
+      - "7235:7235"   # Matching gRPC
+      - "7236:7236"   # Worker gRPC
+    environment:
+      - DB=postgresql
+      - POSTGRES_SEEDS=postgres
+      - DB_PORT=5432
+      - POSTGRES_USER=ops
+      - POSTGRES_PASSWORD=ops_secret
+      - POSTGRES_DB=temporal
+      - DYNAMIC_CONFIG_FILE_PATH=/etc/temporal/dynamic_config.yaml
+    volumes:
+      - temporal_data:/var/lib/postgresql/data
+      - ./dynamic_config.yaml:/etc/temporal/dynamic_config.yaml:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - default
+
+  temporal-ui:
+    image: docker.1ms.run/library/temporalio/ui:2.20.0
+    container_name: ops-temporal-ui
+    ports:
+      - "8088:8080"
+    environment:
+      - TEMPORAL_ADDRESS=temporal:7233
+      - TEMPORAL_CORS_ORIGINS=http://localhost:8088,http://localhost:5173
+    depends_on:
+      - temporal
+    networks:
+      - default
+
+  # ============================================
+  # Temporal Sandbox Agent (Python)
+  # Long-lived agent that executes code in sandbox
+  # ============================================
+  temporal-sandbox-agent:
+    build:
+      context: .
+      dockerfile: temporal-sandbox-agent.Dockerfile
+    container_name: ops-temporal-sandbox-agent
+    working_dir: /app
+    environment:
+      - TEMPORAL_ADDRESS=temporal:7233
+      - TEMPORAL_NAMESPACE=default
+      - AUTH_SERVICE_URL=http://ops-auth:3001
+      - SANDBOX_TASK_QUEUE=sandbox-agent-task-queue
+      - SANDBOX_HTTP_PORT=8090
+    ports:
+      - "8090:8090"
+    volumes:
+      - ../services/temporal-sandbox-agent:/app
+      - /var/run/docker.sock:/var/run/docker.sock  # For Docker sandbox backend
+    depends_on:
+      - temporal
+    networks:
+      - default
+
 volumes:
   postgres_data:
     driver: local
@@ -309,3 +376,9 @@ volumes:
   portal_node_modules:
   report_node_modules:
   report_files:
+  temporal_data:
+
+networks:
+  default:
+    name: ops-network
+    external: true

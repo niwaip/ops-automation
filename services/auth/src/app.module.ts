@@ -6,6 +6,7 @@ import { AuthModule } from './modules/auth/auth.module';
 import { UserModule } from './modules/user/user.module';
 import { SkillModule } from './modules/skill/skill.module';
 import { ExecutionFlowModule } from './modules/execution-flow/execution-flow.module';
+import { TemporalWorkflowModule } from './modules/temporal-workflow/temporal-workflow.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { RbacGuard } from './guards/rbac.guard';
@@ -37,6 +38,9 @@ import { RbacGuard } from './guards/rbac.guard';
 
     // Execution Flow Template module
     ExecutionFlowModule,
+
+    // Temporal Workflow module
+    TemporalWorkflowModule,
   ],
   providers: [
     // Global JWT guard - applied to all routes by default

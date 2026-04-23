@@ -342,3 +342,44 @@ model AuditLog {
   @@index([resource, createdAt(sort: Desc)])
   @@map("audit_logs")
 }
+
+// Temporal Activity - Reusable activity definitions for Temporal workflows
+// Activities are non-deterministic side effects that can be retried
+model Activity {
+  id          String    @id @default(uuid()) @db.Uuid
+  name        String    @unique @db.VarChar(255)
+  fn          String    @db.VarChar(255) // Function name reference
+  timeout     String    @default("30s") @db.VarChar(50)
+  retryPolicy Json?     @map("retry_policy")
+  handler     String    @db.VarChar(50) // api | carbone | browser | script
+  config      Json      @default("{}")
+  generatedCode String? @map("generated_code") @db.Text
+  isActive    Boolean   @default(true) @map("is_active")
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt   DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  @@index([name])
+  @@index([handler])
+  @@index([isActive])
+  @@map("activities")
+}
+
+// Temporal Workflow - Workflow definitions with DSL
+model TemporalWorkflow {
+  id            String    @id @default(uuid()) @db.Uuid
+  name          String    @db.VarChar(255)
+  description   String?   @db.VarChar(500)
+  taskQueue     String    @db.VarChar(255)
+  workflowDsl   Json      @map("workflow_dsl")
+  activityDsl   Json      @map("activity_dsl")
+  generatedCode String?   @map("generated_code") @db.Text
+  isActive      Boolean   @default(true) @map("is_active")
+  deployedAt    DateTime? @map("deployed_at") @db.Timestamptz
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt     DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  @@index([name])
+  @@index([taskQueue])
+  @@index([isActive])
+  @@map("temporal_workflows")
+}
