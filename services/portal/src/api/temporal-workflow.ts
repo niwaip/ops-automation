@@ -136,8 +136,8 @@ export const temporalWorkflowApi = {
     return apiClient.post<TemporalValidationResult>('/temporal-workflow/validate', { workflowDsl, activityDsl });
   },
 
-  generateWorkflowCode: async (workflowDsl: WorkflowDsl, activityDsl: ActivityDsl): Promise<WorkflowCodeResult> => {
-    return apiClient.post<WorkflowCodeResult>('/temporal-workflow/generate-code', { workflowDsl, activityDsl });
+  generateWorkflowCode: async (workflowDsl: WorkflowDsl, activityDsl: ActivityDsl, errorContext?: string): Promise<WorkflowCodeResult> => {
+    return apiClient.post<WorkflowCodeResult>('/temporal-workflow/generate-code', { workflowDsl, activityDsl, errorContext });
   },
 
   validateInSandbox: async (code: string, fn: string, input?: Record<string, any>): Promise<SandBoxValidationResult> => {

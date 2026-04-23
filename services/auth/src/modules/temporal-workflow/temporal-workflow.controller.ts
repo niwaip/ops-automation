@@ -66,9 +66,9 @@ export class TemporalWorkflowController {
   @Post('generate-code')
   @ApiOperation({ summary: 'Generate workflow Python code from DSL' })
   async generateCode(
-    @Body() data: { workflowDsl: WorkflowDsl; activityDsl: ActivityDsl },
+    @Body() data: { workflowDsl: WorkflowDsl; activityDsl: ActivityDsl; errorContext?: string },
   ): Promise<{ success: boolean; code?: string; error?: string }> {
-    return this.temporalWorkflowService.generateWorkflowCode(data.workflowDsl, data.activityDsl);
+    return this.temporalWorkflowService.generateWorkflowCode(data.workflowDsl, data.activityDsl, data.errorContext);
   }
 
   @Post('validate-code')

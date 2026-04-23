@@ -221,31 +221,53 @@ mock_temporalio.workflow = types.ModuleType('temporalio.workflow')
 
 class MockWorkflow:
     def defn(self, *args, **kwargs):
-        return lambda cls: cls
+        # Support both @workflow.defn and @workflow.defn(name="...")
+        if len(args) == 1 and (callable(args[0]) or isinstance(args[0], type)):
+            return args[0]
+        return lambda x: x
 
     def run(self, *args, **kwargs):
-        def decorator(func):
-            async def wrapper(params, *a, **kw):
-                return await func(params, *a, **kw)
-            wrapper._original = func
-            wrapper._decorated = True
-            return wrapper
-        return decorator
+        # Support @workflow.run
+        if len(args) == 1 and callable(args[0]):
+            return args[0]
+        return lambda x: x
 
     def signal(self, *args, **kwargs):
-        return lambda func: func
+        if len(args) == 1 and callable(args[0]):
+            return args[0]
+        return lambda x: x
 
     def query(self, *args, **kwargs):
-        return lambda func: func
+        if len(args) == 1 and callable(args[0]):
+            return args[0]
+        return lambda x: x
 
     @property
     def logger(self):
         return MockActivityLogger()
 
     async def execute_activity(self, activity, *args, **kwargs):
-        act_name = getattr(activity, '_activity_name', str(activity))
-        print(f"[Sandbox] Executing activity: {{act_name}}", flush=True)
-        return {{"status": "success", "mocked": True}}
+        # Resolve activity name
+        act_name = getattr(activity, '_activity_name', 
+                          getattr(activity, '__name__', str(activity)))
+        
+        # Extract input data
+        input_data = args[0] if args else kwargs.get('args', [{}])[0]
+        
+        if callable(activity):
+            print(f"[Sandbox] Executing local activity: {act_name}", flush=True)
+            try:
+                # Handle both async and sync activity implementations
+                res = activity(input_data)
+                if asyncio.iscoroutine(res):
+                    return await res
+                return res
+            except Exception as e:
+                print(f"[Sandbox] Activity {act_name} failed: {str(e)}", flush=True)
+                raise e
+        else:
+            print(f"[Sandbox] Activity {act_name} is mock-only, returning default success", flush=True)
+            return {"status": "success", "mocked": True}
 
     async def wait_condition(self, *args, **kwargs):
         return True

@@ -77,8 +77,8 @@ const TemporalWorkflowPage: React.FC = () => {
   );
 
   const generateCodeMutation = useMutation(
-    ({ workflowDsl: wfd, activityDsl: ad }: { workflowDsl: WorkflowDsl; activityDsl: ActivityDsl }) =>
-      temporalWorkflowApi.generateWorkflowCode(wfd, ad),
+    ({ workflowDsl: wfd, activityDsl: ad, errorContext }: { workflowDsl: WorkflowDsl; activityDsl: ActivityDsl; errorContext?: string }) =>
+      temporalWorkflowApi.generateWorkflowCode(wfd, ad, errorContext),
     { onSuccess: (result: WorkflowCodeResult) => {
       if (result.success && result.code) {
         setGeneratedCode(result.code);
@@ -118,12 +118,12 @@ const TemporalWorkflowPage: React.FC = () => {
     validateMutation.mutate({ workflowDsl: { ...workflowDsl, name: workflowName }, activityDsl });
   };
 
-  const handleGenerateCode = () => {
+  const handleGenerateCode = (errorContext?: string) => {
     const formValues = form.getFieldsValue();
     const workflowName = formValues.name || workflowDsl.name;
     if (!workflowName) { message.warning('请先填写工作流名称'); return; }
     if (workflowDsl.steps.length === 0) { message.warning('请先添加至少一个步骤'); return; }
-    generateCodeMutation.mutate({ workflowDsl: { ...workflowDsl, name: workflowName }, activityDsl });
+    generateCodeMutation.mutate({ workflowDsl: { ...workflowDsl, name: workflowName }, activityDsl, errorContext });
   };
 
   const handleSandboxValidate = async () => {
@@ -243,7 +243,19 @@ const TemporalWorkflowPage: React.FC = () => {
   const handleRegenerateCode = () => {
     setSandboxModalVisible(false);
     setGeneratedCode(null);
-    handleGenerateCode();
+    // Build error context from sandbox result
+    let errorContext: string | undefined;
+    if (sandboxResult) {
+      const errors: string[] = [];
+      if (sandboxResult.error) errors.push(`验证错误: ${sandboxResult.error}`);
+      if (sandboxResult.result?.error) errors.push(`执行错误: ${sandboxResult.result.error}`);
+      if (sandboxResult.result?.traceback) errors.push(`堆栈: ${sandboxResult.result.traceback}`);
+      if (sandboxLogs.length > 0) errors.push(`日志:\n${sandboxLogs.join('\n')}`);
+      if (errors.length > 0) {
+        errorContext = `上次代码验证失败，请修复以下问题:\n\n${errors.join('\n\n')}`;
+      }
+    }
+    handleGenerateCode(errorContext);
   };
 
   const sandboxModalFooter = sandboxResult && !sandboxResult.success ? [
@@ -309,7 +321,7 @@ const TemporalWorkflowPage: React.FC = () => {
       <Modal title={editingWorkflow ? '编辑工作流' : '创建工作流'} open={editModalVisible} onOk={handleSave} onCancel={() => setEditModalVisible(false)}
         footer={[
           <Button key="validate" icon={<PlayCircleOutlined />} onClick={handleValidate}>验证DSL</Button>,
-          <Button key="generate" icon={<RobotOutlined />} onClick={handleGenerateCode} loading={generateCodeMutation.isLoading}>AI生成代码</Button>,
+          <Button key="generate" icon={<RobotOutlined />} onClick={() => handleGenerateCode()} loading={generateCodeMutation.isLoading}>AI生成代码</Button>,
           <Button key="sandbox" icon={<ExperimentOutlined />} onClick={handleSandboxValidate} loading={isSandboxStreaming} disabled={!generatedCode}>沙箱验证</Button>,
           <Button key="viewCode" icon={<CodeOutlined />} onClick={() => setCodeModalVisible(true)} disabled={!generatedCode}>查看代码</Button>,
           <Button key="cancel" onClick={() => setEditModalVisible(false)}>取消</Button>,

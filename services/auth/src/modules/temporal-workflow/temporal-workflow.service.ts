@@ -189,7 +189,7 @@ export class TemporalWorkflowService {
     };
   }
 
-  async generateWorkflowCode(workflowDsl: WorkflowDsl, activityDsl: ActivityDsl): Promise<{ success: boolean; code?: string; error?: string }> {
+  async generateWorkflowCode(workflowDsl: WorkflowDsl, activityDsl: ActivityDsl, errorContext?: string): Promise<{ success: boolean; code?: string; error?: string }> {
     // Enrich activityDsl with generatedCode from database
     const activityNamesInWorkflow = workflowDsl.steps
       .filter(step => step.type === 'activity' && step.activityName)
@@ -214,7 +214,7 @@ export class TemporalWorkflowService {
       })),
     };
 
-    const prompt = this.buildWorkflowCodePrompt(workflowDsl, enrichedActivityDsl);
+    const prompt = this.buildWorkflowCodePrompt(workflowDsl, enrichedActivityDsl, errorContext);
 
     try {
       const aiOrchestratorUrl = process.env.AI_ORCHESTRATOR_URL || 'http://ops-ai-orchestrator:3007';
@@ -342,10 +342,17 @@ export class TemporalWorkflowService {
     }
   }
 
-  private buildWorkflowCodePrompt(workflowDsl: WorkflowDsl, activityDsl: ActivityDsl): string {
+  private buildWorkflowCodePrompt(workflowDsl: WorkflowDsl, activityDsl: ActivityDsl, errorContext?: string): string {
     const lines: string[] = [];
 
     lines.push('你是一个 Temporal Python 开发专家。请根据以下 Workflow DSL 和 Activity 定义生成一个符合生产标准的 Temporal 工作流。');
+
+    if (errorContext) {
+      lines.push('');
+      lines.push('【上次生成的问题（请修复）】：');
+      lines.push(errorContext);
+    }
+
     lines.push('');
     lines.push('【Workflow DSL】');
     lines.push(JSON.stringify(workflowDsl, null, 2));
