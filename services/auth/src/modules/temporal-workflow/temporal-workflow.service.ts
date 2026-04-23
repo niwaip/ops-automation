@@ -192,7 +192,7 @@ export class TemporalWorkflowService {
       const response = await axios.post<{ result: string }>(`${aiOrchestratorUrl}/ai/model/call`, {
         modelId: 'MiniMax-M2.7',
         prompt,
-      }, { timeout: 60000 });
+      }, { timeout: 180000 });
 
       const content = response.data?.result || '';
       const code = this.extractCodeFromMarkdown(content);
