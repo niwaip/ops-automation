@@ -190,7 +190,7 @@ export class ActivityService {
       '你是一个 Temporal Python 开发专家。请根据以下配置生成一个标准的、可直接生产运行的 Temporal Activity。',
       '',
       '【遵守 Temporal Python SDK 黄金准则】：',
-      '1. 【结构】：必须包含 `from temporalio import activity` 和 `from temporalio.exceptions import ApplicationError`。',
+      '1. 【结构】：必须包含完整的 import 语句：`from temporalio import activity`, `from temporalio.exceptions import ApplicationError`, 以及 `from typing import Dict, Any`。',
       `2. 【声明】：使用 \`@activity.defn(name="${config.fn}")\` 装饰函数。`,
       `3. 【签名】：必须为 \`async def ${config.fn}(input_data: Dict[str, Any]) -> Dict[str, Any]:\`。`,
       '4. 【日志】：严禁使用 print()。必须使用 `activity.logger.info` 记录步骤，使用 `activity.logger.error` 记录异常。',
@@ -457,6 +457,13 @@ export class ActivityService {
 
       const data = response.data as any;
 
+      // Push logs from sandbox execution to the frontend
+      if (data.result?.logs && Array.isArray(data.result.logs)) {
+        data.result.logs.forEach((log: string) => {
+          onLog(log);
+        });
+      }
+
       // Check if the sandbox agent itself returned an error
       if (data.success === false || data.error || data.status_code >= 400) {
         const errorMsg = data.error || data.message || JSON.stringify(data);
@@ -476,22 +483,9 @@ export class ActivityService {
       }
 
       // Extract the actual result from the sandbox response
-      // The sandbox returns { success: true, result: { result: {...}, success: true } }
       const result = data.result?.result || data.result;
 
-      // Log the result structure for debugging
-      onLog(`[${new Date().toISOString()}] Result结构: ${JSON.stringify({result_success: data.result?.success, inner_success: result?.success, has_error: !!result?.error})}`);
-
-      // Check if the activity itself returned an error (even if HTTP was successful)
-      // The result may have: { success: false, error: "..." } OR { status: "failed", errors: [...] }
-      // Note: result.success could be undefined (not explicitly false), so we check both success===false and status==='failed'
-      if (result && (result.success === false || result.status === 'failed')) {
-        const errorMsg = result.error || (result.errors ? result.errors.join('; ') : JSON.stringify(result));
-        onLog(`[${new Date().toISOString()}] 执行失败: ${errorMsg}`);
-        return { success: false, error: errorMsg, result };
-      }
-
-      onLog(`[${new Date().toISOString()}] 执行成功`);
+      onLog(`[${new Date().toISOString()}] 代码执行成功，返回结果: ${JSON.stringify(result, null, 2)}`);
       return { success: true, result };
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : 'Unknown error';
