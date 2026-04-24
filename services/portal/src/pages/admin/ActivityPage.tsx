@@ -37,6 +37,10 @@ interface ActivityStep {
   timeout: string;
   retryPolicy?: { maxRetries: number };
   config: Record<string, any>;
+  // 输入参数（AI 根据这些生成代码）
+  inputParams?: Record<string, string>;
+  // 格式化指导（自然语言描述期望的输出格式）
+  formatPrompt?: string;
 }
 
 interface ActivityFormData {
@@ -351,7 +355,11 @@ const ActivityPage: React.FC = () => {
           config: {
             description: activityForm.description,
             taskQueue: activityForm.taskQueue,
-            steps: activityForm.steps,
+            steps: activityForm.steps.map(s => ({
+              ...s,
+              formatPrompt: s.formatPrompt,
+              inputParams: s.inputParams,
+            })),
             heartbeatTimeout: activityForm.heartbeatTimeout,
             idempotencyKey: activityForm.idempotencyKey,
           },
@@ -409,7 +417,11 @@ const ActivityPage: React.FC = () => {
         config: {
           description: activityForm.description,
           taskQueue: activityForm.taskQueue,
-          steps: activityForm.steps,
+          steps: activityForm.steps.map(s => ({
+            ...s,
+            formatPrompt: s.formatPrompt,
+            inputParams: s.inputParams,
+          })),
           heartbeatTimeout: activityForm.heartbeatTimeout,
           idempotencyKey: activityForm.idempotencyKey,
         },
@@ -484,7 +496,11 @@ const ActivityPage: React.FC = () => {
         config: {
           description: activityForm.description,
           taskQueue: activityForm.taskQueue,
-          steps: activityForm.steps,
+          steps: activityForm.steps.map(s => ({
+            ...s,
+            formatPrompt: s.formatPrompt,
+            inputParams: s.inputParams,
+          })),
           heartbeatTimeout: activityForm.heartbeatTimeout,
           idempotencyKey: activityForm.idempotencyKey,
         },
@@ -588,7 +604,11 @@ const ActivityPage: React.FC = () => {
       config: {
         description: activityForm.description,
         taskQueue: activityForm.taskQueue,
-        steps: activityForm.steps,
+        steps: activityForm.steps.map(s => ({
+          ...s,
+          formatPrompt: s.formatPrompt,
+          inputParams: s.inputParams,
+        })),
         heartbeatTimeout: activityForm.heartbeatTimeout,
         idempotencyKey: activityForm.idempotencyKey,
         generatedCode: codeToSave || undefined,
@@ -709,6 +729,8 @@ const ActivityPage: React.FC = () => {
       type: 'api',
       timeout: '30s',
       config: { endpoint: '', method: 'GET' },
+      inputParams: {},
+      formatPrompt: '',
     };
     setActivityForm((prev) => ({ ...prev, steps: [...prev.steps, newStep] }));
   };
@@ -924,7 +946,22 @@ const ActivityPage: React.FC = () => {
                   </Row>
                   {step.type === 'api' && (
                     <div style={{ marginTop: 8, padding: 8, background: '#f6ffed', borderRadius: 4 }}>
-                      <Input value={step.config.endpoint || ''} onChange={e => updateStep(step.id, 'config', { ...step.config, endpoint: e.target.value })} placeholder="https://uapis.cn/api/v1/misc/weather?city=北京" prefix={<ApiOutlined />} />
+                      <Input value={step.config.endpoint || ''} onChange={e => updateStep(step.id, 'config', { ...step.config, endpoint: e.target.value })} placeholder="https://wttr.in/Shanghai?format=j1" prefix={<ApiOutlined />} style={{ marginBottom: 8 }} />
+                      <Text type="secondary" style={{ fontSize: 12 }}>输入参数（传递给 API 的参数）：</Text>
+                      <Input
+                        value={step.inputParams?.city || ''}
+                        onChange={e => updateStep(step.id, 'inputParams', { ...step.inputParams, city: e.target.value })}
+                        placeholder="city=北京"
+                        style={{ marginBottom: 8 }}
+                      />
+                      <Text type="secondary" style={{ fontSize: 12 }}>输出格式（AI 根据此生成格式化代码）：</Text>
+                      <TextArea
+                        value={step.formatPrompt || ''}
+                        onChange={e => updateStep(step.id, 'formatPrompt', e.target.value)}
+                        placeholder="例如：上海天气：晴天，温度 25°C"
+                        rows={2}
+                        style={{ fontFamily: 'monospace' }}
+                      />
                     </div>
                   )}
                   {step.type === 'script' && (
