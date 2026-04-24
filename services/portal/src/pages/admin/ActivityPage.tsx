@@ -932,20 +932,31 @@ const ActivityPage: React.FC = () => {
               <Text type="secondary">添加步骤来定义 Activity 的执行流程</Text>
             ) : (
               activityForm.steps.map((step, idx) => (
-                <Card key={step.id} size="small" style={{ marginBottom: 12, border: '1px solid #d9d9d9' }}>
+                <Card
+                  key={step.id}
+                  size="small"
+                  style={{
+                    marginBottom: 12,
+                    border: '1px solid #e8e8e8',
+                    borderRadius: 8,
+                    boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
+                    overflow: 'hidden',
+                  }}
+                  bodyStyle={{ padding: 16 }}
+                >
                   {/* 第一行：步骤名、操作类型、超时 */}
-                  <Row gutter={8} align="middle" style={{ marginBottom: 8 }}>
-                    <Col><Badge count={idx + 1} style={{ backgroundColor: '#1890ff' }} /></Col>
+                  <Row gutter={12} align="middle" style={{ marginBottom: 12 }}>
+                    <Col><Badge count={idx + 1} style={{ backgroundColor: '#1890ff', boxShadow: '0 0 0 2px #fff' }} /></Col>
                     <Col flex={1}>
-                      <Space size="small" wrap>
+                      <Space size="middle" wrap>
                         <Input
                           value={step.name}
                           onChange={e => updateStep(step.id, 'name', e.target.value)}
                           placeholder="步骤名称"
-                          style={{ width: 120 }}
-                          size="small"
+                          style={{ width: 200, borderRadius: 6 }}
+                          size="middle"
                         />
-                        <Select value={step.type} onChange={v => updateStep(step.id, 'type', v)} style={{ width: 90 }} size="small">
+                        <Select value={step.type} onChange={v => updateStep(step.id, 'type', v)} style={{ width: 100, borderRadius: 6 }} size="middle">
                           <Option value="api">API</Option>
                           <Option value="script">脚本</Option>
                           <Option value="carbone">Carbone</Option>
@@ -955,42 +966,55 @@ const ActivityPage: React.FC = () => {
                           value={step.timeout}
                           onChange={e => updateStep(step.id, 'timeout', e.target.value)}
                           placeholder="超时"
-                          style={{ width: 60 }}
-                          size="small"
+                          style={{ width: 70, borderRadius: 6 }}
+                          size="middle"
                         />
                       </Space>
                     </Col>
                     <Col>
-                      <Button type="text" danger icon={<DeleteOutlined />} onClick={() => removeStep(step.id)} size="small" />
+                      <Button type="text" danger icon={<DeleteOutlined />} onClick={() => removeStep(step.id)} />
                     </Col>
                   </Row>
 
                   {/* API 类型配置 */}
                   {step.type === 'api' && (
-                    <div style={{ padding: 8, background: '#f6ffed', borderRadius: 4 }}>
-                      {/* 输入参数区域 */}
-                      <Text type="secondary" style={{ fontSize: 12 }}>输入参数（键值对，点击插入到 URL）：</Text>
-                      <div style={{ marginBottom: 8 }}>
-                        {Object.entries(step.inputParams || {}).map(([key, value], paramIdx) => (
-                          <Card
-                            key={paramIdx}
-                            size="small"
-                            style={{ marginBottom: 4, background: '#e6f7ff', cursor: 'pointer' }}
-                            onClick={() => {
-                              // 点击参数插入到 URL
-                              const currentUrl = step.config.endpoint || '';
-                              const separator = currentUrl.includes('?') ? '&' : '?';
-                              const newUrl = currentUrl + (currentUrl.includes('?') ? `${key}=${value}` : `${separator}${key}=${value}`);
-                              updateStep(step.id, 'config', { ...step.config, endpoint: newUrl });
-                            }}
-                          >
-                            <Space size="small">
-                              <Tag color="blue">{key}</Tag>
-                              <Text>{value}</Text>
-                              <Button
-                                type="text"
-                                danger
-                                size="small"
+                    <div style={{ padding: 12, background: 'linear-gradient(135deg, #f6ffed 0%, #e6ffe6 100%)', borderRadius: 8, border: '1px solid #b7eb8f' }}>
+                      {/* 输入参数区域 - 小标签形式 */}
+                      <div style={{ marginBottom: 12 }}>
+                        <Text type="secondary" style={{ fontSize: 12, marginBottom: 8, display: 'block' }}>
+                          <ApiOutlined style={{ marginRight: 4 }} />输入参数（点击标签插入 URL）：
+                        </Text>
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                          {Object.entries(step.inputParams || {}).map(([key, value], paramIdx) => (
+                            <Tag
+                              key={paramIdx}
+                              style={{
+                                padding: '4px 10px',
+                                fontSize: 13,
+                                background: '#fff',
+                                border: '1px solid #52c41a',
+                                borderRadius: 4,
+                                cursor: 'pointer',
+                                transition: 'all 0.2s',
+                              }}
+                              onClick={() => {
+                                const currentUrl = step.config.endpoint || '';
+                                const separator = currentUrl.includes('?') ? '&' : '?';
+                                const newUrl = currentUrl + (currentUrl.includes('?') ? `${key}=${value}` : `${separator}${key}=${value}`);
+                                updateStep(step.id, 'config', { ...step.config, endpoint: newUrl });
+                              }}
+                              onMouseEnter={(e) => {
+                                e.currentTarget.style.background = '#52c41a';
+                                e.currentTarget.style.color = '#fff';
+                              }}
+                              onMouseLeave={(e) => {
+                                e.currentTarget.style.background = '#fff';
+                                e.currentTarget.style.color = 'inherit';
+                              }}
+                            >
+                              {`{${key}}`}
+                              <span
+                                style={{ marginLeft: 6, cursor: 'pointer' }}
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   const newParams = { ...step.inputParams };
@@ -999,43 +1023,40 @@ const ActivityPage: React.FC = () => {
                                 }}
                               >
                                 ×
-                              </Button>
-                            </Space>
-                          </Card>
-                        ))}
-                        <Input
-                          placeholder="参数名"
-                          style={{ width: 100, marginRight: 4 }}
-                          size="small"
-                          id={`param-key-${step.id}`}
-                          onPressEnter={(e) => {
-                            const key = (e.target as HTMLInputElement).value;
-                            const valueInput = document.getElementById(`param-value-${step.id}`) as HTMLInputElement;
-                            if (key && valueInput?.value) {
-                              updateStep(step.id, 'inputParams', { ...step.inputParams, [key]: valueInput.value });
-                              (e.target as HTMLInputElement).value = '';
-                              valueInput.value = '';
-                            }
-                          }}
-                        />
-                        <Input
-                          placeholder="参数值"
-                          style={{ width: 100, marginRight: 4 }}
-                          size="small"
-                          id={`param-value-${step.id}`}
-                          onPressEnter={(e) => {
-                            const value = (e.target as HTMLInputElement).value;
-                            const keyInput = document.getElementById(`param-key-${step.id}`) as HTMLInputElement;
-                            if (value && keyInput?.value) {
-                              updateStep(step.id, 'inputParams', { ...step.inputParams, [keyInput.value]: value });
-                              keyInput.value = '';
-                              (e.target as HTMLInputElement).value = '';
-                            }
-                          }}
-                        />
-                        <Button
-                          size="small"
-                          onClick={() => {
+                              </span>
+                            </Tag>
+                          ))}
+                          <Input
+                            placeholder="参数名"
+                            style={{ width: 90, borderRadius: 4 }}
+                            size="small"
+                            id={`param-key-${step.id}`}
+                            onPressEnter={(e) => {
+                              const key = (e.target as HTMLInputElement).value;
+                              const valueInput = document.getElementById(`param-value-${step.id}`) as HTMLInputElement;
+                              if (key && valueInput?.value) {
+                                updateStep(step.id, 'inputParams', { ...step.inputParams, [key]: valueInput.value });
+                                (e.target as HTMLInputElement).value = '';
+                                valueInput.value = '';
+                              }
+                            }}
+                          />
+                          <Input
+                            placeholder="参数值"
+                            style={{ width: 90, borderRadius: 4 }}
+                            size="small"
+                            id={`param-value-${step.id}`}
+                            onPressEnter={(e) => {
+                              const value = (e.target as HTMLInputElement).value;
+                              const keyInput = document.getElementById(`param-key-${step.id}`) as HTMLInputElement;
+                              if (value && keyInput?.value) {
+                                updateStep(step.id, 'inputParams', { ...step.inputParams, [keyInput.value]: value });
+                                keyInput.value = '';
+                                (e.target as HTMLInputElement).value = '';
+                              }
+                            }}
+                          />
+                          <Button size="small" type="primary" onClick={() => {
                             const keyInput = document.getElementById(`param-key-${step.id}`) as HTMLInputElement;
                             const valueInput = document.getElementById(`param-value-${step.id}`) as HTMLInputElement;
                             if (keyInput?.value && valueInput?.value) {
@@ -1043,10 +1064,10 @@ const ActivityPage: React.FC = () => {
                               keyInput.value = '';
                               valueInput.value = '';
                             }
-                          }}
-                        >
-                          添加
-                        </Button>
+                          }}>
+                            +
+                          </Button>
+                        </div>
                       </div>
 
                       {/* URL 区域 */}
@@ -1055,40 +1076,44 @@ const ActivityPage: React.FC = () => {
                         onChange={e => updateStep(step.id, 'config', { ...step.config, endpoint: e.target.value })}
                         placeholder="https://wttr.in/Shanghai?format=j1"
                         prefix={<ApiOutlined />}
-                        style={{ marginBottom: 8 }}
+                        style={{ marginBottom: 12, borderRadius: 6 }}
                       />
 
                       {/* 输出格式 */}
-                      <Text type="secondary" style={{ fontSize: 12 }}>输出格式（AI 根据此生成格式化代码）：</Text>
+                      <Text type="secondary" style={{ fontSize: 12, marginBottom: 6, display: 'block' }}>
+                        输出格式（AI 根据此生成格式化代码）：
+                      </Text>
                       <TextArea
                         value={step.formatPrompt || ''}
                         onChange={e => updateStep(step.id, 'formatPrompt', e.target.value)}
                         placeholder="例如：上海天气：晴天，温度 25°C"
                         rows={2}
-                        style={{ fontFamily: 'monospace', marginBottom: 8 }}
+                        style={{ fontFamily: 'monospace', marginBottom: 12, borderRadius: 6 }}
                       />
 
                       {/* 情报补足 */}
-                      <Text type="secondary" style={{ fontSize: 12 }}>情报补足（额外要求，帮助 AI 更精确生成代码）：</Text>
+                      <Text type="secondary" style={{ fontSize: 12, marginBottom: 6, display: 'block' }}>
+                        情报补足（额外要求，帮助 AI 更精确生成代码）：
+                      </Text>
                       <TextArea
                         value={step.extraPrompt || ''}
                         onChange={e => updateStep(step.id, 'extraPrompt', e.target.value)}
                         placeholder="例如：API 返回的是 JSON 格式，需要从中提取 current_condition 数组的第一个元素的 temp_C 字段"
                         rows={2}
-                        style={{ fontFamily: 'monospace' }}
+                        style={{ fontFamily: 'monospace', borderRadius: 6 }}
                       />
                     </div>
                   )}
 
                   {/* 脚本类型配置 */}
                   {step.type === 'script' && (
-                    <div style={{ marginTop: 8, padding: 8, background: '#fff7e6', borderRadius: 4 }}>
+                    <div style={{ padding: 12, background: 'linear-gradient(135deg, #fff7e6 0%, #fffbe6 100%)', borderRadius: 8, border: '1px solid #ffd591' }}>
                       <TextArea
                         value={step.config.script || ''}
                         onChange={e => updateStep(step.id, 'config', { ...step.config, script: e.target.value })}
                         placeholder="// 代码..."
                         rows={3}
-                        style={{ fontFamily: 'monospace' }}
+                        style={{ fontFamily: 'monospace', borderRadius: 6 }}
                       />
                     </div>
                   )}
