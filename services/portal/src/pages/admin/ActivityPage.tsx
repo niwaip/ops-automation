@@ -982,7 +982,7 @@ const ActivityPage: React.FC = () => {
                       {/* 输入参数区域 - 小标签形式 */}
                       <div style={{ marginBottom: 12 }}>
                         <Text type="secondary" style={{ fontSize: 12, marginBottom: 8, display: 'block' }}>
-                          <ApiOutlined style={{ marginRight: 4 }} />输入参数（点击标签插入 URL）：
+                          <ApiOutlined style={{ marginRight: 4 }} />输入参数（点击标签插入 URL，绿色=有默认值，灰色=可选）：
                         </Text>
                         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
                           {Object.entries(step.inputParams || {}).map(([key, value], paramIdx) => (
@@ -991,28 +991,43 @@ const ActivityPage: React.FC = () => {
                               style={{
                                 padding: '4px 10px',
                                 fontSize: 13,
-                                background: '#fff',
-                                border: '1px solid #52c41a',
+                                background: value ? '#fff' : '#f5f5f5',
+                                border: `1px solid ${value ? '#52c41a' : '#d9d9d9'}`,
                                 borderRadius: 4,
                                 cursor: 'pointer',
                                 transition: 'all 0.2s',
+                                color: value ? '#52c41a' : '#8c8c8c',
                               }}
                               onClick={() => {
-                                const currentUrl = step.config.endpoint || '';
-                                const separator = currentUrl.includes('?') ? '&' : '?';
-                                const newUrl = currentUrl + (currentUrl.includes('?') ? `${key}=${value}` : `${separator}${key}=${value}`);
-                                updateStep(step.id, 'config', { ...step.config, endpoint: newUrl });
+                                const urlInput = document.getElementById(`url-input-${step.id}`) as HTMLInputElement;
+                                if (urlInput) {
+                                  const start = urlInput.selectionStart || urlInput.value.length;
+                                  const end = urlInput.selectionEnd || urlInput.value.length;
+                                  const currentUrl = step.config.endpoint || '';
+                                  const before = currentUrl.substring(0, start);
+                                  const after = currentUrl.substring(end);
+                                  const insertText = `{${key}}`;
+                                  const newUrl = before + insertText + after;
+                                  updateStep(step.id, 'config', { ...step.config, endpoint: newUrl });
+                                  // Set cursor position after inserted text
+                                  setTimeout(() => {
+                                    urlInput.focus();
+                                    urlInput.setSelectionRange(start + insertText.length, start + insertText.length);
+                                  }, 0);
+                                }
                               }}
                               onMouseEnter={(e) => {
-                                e.currentTarget.style.background = '#52c41a';
+                                e.currentTarget.style.background = value ? '#52c41a' : '#1890ff';
                                 e.currentTarget.style.color = '#fff';
+                                e.currentTarget.style.borderColor = value ? '#52c41a' : '#1890ff';
                               }}
                               onMouseLeave={(e) => {
-                                e.currentTarget.style.background = '#fff';
-                                e.currentTarget.style.color = 'inherit';
+                                e.currentTarget.style.background = value ? '#fff' : '#f5f5f5';
+                                e.currentTarget.style.color = value ? '#52c41a' : '#8c8c8c';
+                                e.currentTarget.style.borderColor = value ? '#52c41a' : '#d9d9d9';
                               }}
                             >
-                              {`{${key}}`}
+                              {`{${key}`}{value ? `=${value}` : ''}
                               <span
                                 style={{ marginLeft: 6, cursor: 'pointer' }}
                                 onClick={(e) => {
@@ -1034,22 +1049,22 @@ const ActivityPage: React.FC = () => {
                             onPressEnter={(e) => {
                               const key = (e.target as HTMLInputElement).value;
                               const valueInput = document.getElementById(`param-value-${step.id}`) as HTMLInputElement;
-                              if (key && valueInput?.value) {
-                                updateStep(step.id, 'inputParams', { ...step.inputParams, [key]: valueInput.value });
+                              if (key) {
+                                updateStep(step.id, 'inputParams', { ...step.inputParams, [key]: valueInput?.value || '' });
                                 (e.target as HTMLInputElement).value = '';
-                                valueInput.value = '';
+                                if (valueInput) valueInput.value = '';
                               }
                             }}
                           />
                           <Input
-                            placeholder="参数值"
+                            placeholder="可选值"
                             style={{ width: 90, borderRadius: 4 }}
                             size="small"
                             id={`param-value-${step.id}`}
                             onPressEnter={(e) => {
                               const value = (e.target as HTMLInputElement).value;
                               const keyInput = document.getElementById(`param-key-${step.id}`) as HTMLInputElement;
-                              if (value && keyInput?.value) {
+                              if (keyInput?.value) {
                                 updateStep(step.id, 'inputParams', { ...step.inputParams, [keyInput.value]: value });
                                 keyInput.value = '';
                                 (e.target as HTMLInputElement).value = '';
@@ -1059,10 +1074,10 @@ const ActivityPage: React.FC = () => {
                           <Button size="small" type="primary" onClick={() => {
                             const keyInput = document.getElementById(`param-key-${step.id}`) as HTMLInputElement;
                             const valueInput = document.getElementById(`param-value-${step.id}`) as HTMLInputElement;
-                            if (keyInput?.value && valueInput?.value) {
-                              updateStep(step.id, 'inputParams', { ...step.inputParams, [keyInput.value]: valueInput.value });
+                            if (keyInput?.value) {
+                              updateStep(step.id, 'inputParams', { ...step.inputParams, [keyInput.value]: valueInput?.value || '' });
                               keyInput.value = '';
-                              valueInput.value = '';
+                              if (valueInput) valueInput.value = '';
                             }
                           }}>
                             +
@@ -1072,6 +1087,7 @@ const ActivityPage: React.FC = () => {
 
                       {/* URL 区域 */}
                       <Input
+                        id={`url-input-${step.id}`}
                         value={step.config.endpoint || ''}
                         onChange={e => updateStep(step.id, 'config', { ...step.config, endpoint: e.target.value })}
                         placeholder="https://wttr.in/Shanghai?format=j1"
