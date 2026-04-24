@@ -185,6 +185,11 @@ class MockRequests:
         self.exceptions.Timeout = Timeout
         self.exceptions.HTTPError = HTTPError
         self.exceptions.ConnectionError = ConnectionError
+        # Make exceptions directly accessible on the instance (e.g., requests.RequestException)
+        self.RequestException = RequestException
+        self.Timeout = Timeout
+        self.HTTPError = HTTPError
+        self.ConnectionError = ConnectionError
         # Inject into sys.modules to allow 'from requests.exceptions import ...'
         sys.modules['requests.exceptions'] = self.exceptions
 
