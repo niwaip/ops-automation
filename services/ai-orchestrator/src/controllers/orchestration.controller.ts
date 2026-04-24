@@ -1,0 +1,108 @@
+import {
+  Body,
+  Controller,
+  Get,
+  HttpException,
+  HttpStatus,
+  Param,
+  Post,
+  Req,
+} from '@nestjs/common';
+import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
+import { Request } from 'express';
+import { AgentService } from '../modules/agent/agent.service';
+import { RecognizerService } from '../modules/recognizer/recognizer.service';
+import { DeciderService } from '../modules/decider/decider.service';
+import { ModelService } from '../modules/model/model.service';
+import { ToolExecutor } from '../modules/react-engine/tool-executor';
+import {
+  AIAgentDTO,
+  CreateAgentDTO,
+  DecideFailureDTO,
+  DecideFailureResponseDTO,
+  ExecuteActivityDTO,
+  ExecuteActivityResponseDTO,
+  RecognizeParamsDTO,
+  RecognizeParamsResponseDTO,
+} from '../interfaces';
+import { getOrCreateTraceId } from '../common/trace.util';
+
+@ApiTags('AI-Orchestration')
+@Controller('ai')
+export class OrchestrationController {
+  constructor(
+    private readonly modelService: ModelService,
+    private readonly agentService: AgentService,
+    private readonly recognizerService: RecognizerService,
+    private readonly deciderService: DeciderService,
+    private readonly toolExecutor: ToolExecutor,
+  ) {}
+
+  @Post('agents')
+  @ApiOperation({ summary: 'Create a new AI agent instance' })
+  @ApiResponse({ status: 201, description: 'Agent created successfully' })
+  @ApiResponse({ status: 400, description: 'Model is inactive' })
+  async createAgent(@Body() body: CreateAgentDTO): Promise<AIAgentDTO> {
+    const model = await this.modelService.getModel(body.model_id);
+    if (!model) {
+      throw new HttpException('Model not found', HttpStatus.NOT_FOUND);
+    }
+    if (model.status !== 'active') {
+      throw new HttpException('Model is inactive', HttpStatus.BAD_REQUEST);
+    }
+    return this.agentService.createAgent(body);
+  }
+
+  @Get('agents/:id')
+  @ApiOperation({ summary: 'Get AI agent status' })
+  @ApiResponse({ status: 200, description: 'Returns agent status' })
+  @ApiResponse({ status: 404, description: 'Agent not found' })
+  async getAgent(@Param('id') id: string): Promise<AIAgentDTO> {
+    const agent = await this.agentService.getAgent(id);
+    if (!agent) {
+      throw new HttpException('Agent not found', HttpStatus.NOT_FOUND);
+    }
+    return agent;
+  }
+
+  @Post('recognize-params')
+  @ApiOperation({ summary: 'Recognize parameters from user input' })
+  @ApiResponse({ status: 200, description: 'Returns recognized parameters' })
+  @ApiResponse({ status: 404, description: 'Template not found' })
+  async recognizeParams(@Body() body: RecognizeParamsDTO): Promise<RecognizeParamsResponseDTO> {
+    return this.recognizerService.recognizeParams(body);
+  }
+
+  @Post('decide-failure')
+  @ApiOperation({ summary: 'Decide failure handling strategy' })
+  @ApiResponse({ status: 200, description: 'Returns failure decision' })
+  async decideFailure(@Body() body: DecideFailureDTO): Promise<DecideFailureResponseDTO> {
+    return this.deciderService.decideFailure(body);
+  }
+
+  @Post('execute-activity')
+  @ApiOperation({ summary: 'Execute generated Temporal Activity code' })
+  @ApiResponse({ status: 200, description: 'Returns activity execution result' })
+  async executeActivity(@Body() body: ExecuteActivityDTO): Promise<ExecuteActivityResponseDTO> {
+    return this.agentService.executeActivity(body.code, body.fn, body.taskQueue, body.input);
+  }
+
+  @Post('tools/refresh')
+  @ApiOperation({ summary: 'Force refresh dynamic flow tools' })
+  @ApiResponse({ status: 200, description: 'Dynamic flow tools refreshed' })
+  async refreshTools(@Req() req: Request & { traceId?: string }): Promise<{
+    refreshed: boolean;
+    refreshedAt: number;
+    dynamicFlowToolCount: number;
+    ttlMs: number;
+  }> {
+    const traceId = getOrCreateTraceId(req.traceId);
+    const result = await this.toolExecutor.refreshDynamicFlowTools(traceId);
+    return {
+      refreshed: result.refreshed,
+      refreshedAt: result.loadedAt,
+      dynamicFlowToolCount: result.dynamicFlowToolCount,
+      ttlMs: result.ttlMs,
+    };
+  }
+}

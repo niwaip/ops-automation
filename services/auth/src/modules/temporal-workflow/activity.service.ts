@@ -291,7 +291,7 @@ export class ActivityService {
       const response = await axios.post<{ result: string }>(
         `${aiOrchestratorUrl}/ai/model/call`,
         {
-          modelId: 'MiniMax-M2.7',  // Use MiniMax model
+          modelId: 'default',  // 使用系统默认模型
           prompt,
         },
         { timeout: 120000 }

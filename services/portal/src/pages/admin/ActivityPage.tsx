@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useReducer, useState } from 'react';
 import {
   Table, Card, Button, Input, Space, Tag, Typography, Modal, message, Form, Select,
   Divider, Alert, Collapse, Badge, Popconfirm, Statistic, Row, Col, Switch, InputNumber
@@ -14,12 +14,14 @@ import {
 import { useTranslation } from 'react-i18next';
 import { useQuery, useMutation, useQueryClient } from 'react-query';
 import { activityApi, ActivityDTO, CreateActivityDto, ActivityValidationResult } from '../../api/activity';
+import { normalizeExecutionResult } from '../../api/execution-normalizer';
 import type { ColumnsType } from 'antd/es/table';
 
 const { Text, Title, Paragraph } = Typography;
 const { Option } = Select;
 const { Panel } = Collapse;
 const { TextArea } = Input;
+const MAX_LOG_LINES = 1000;
 
 const HANDLER_CONFIG: Record<string, { label: string; color: string; icon: React.ReactNode }> = {
   api: { label: 'API', color: 'green', icon: <ApiOutlined /> },
@@ -50,6 +52,80 @@ interface ActivityFormData {
   idempotencyKey?: string;
   steps: ActivityStep[];
 }
+
+interface RealValidateState {
+  visible: boolean;
+  isRunning: boolean;
+  logs: string[];
+  error: string | null;
+  result: any | null;
+}
+
+type RealValidateAction =
+  | { type: 'OPEN' }
+  | { type: 'START' }
+  | { type: 'APPEND_LOG'; payload: string }
+  | { type: 'SET_ERROR'; payload: string }
+  | { type: 'SET_RESULT'; payload: any }
+  | { type: 'STOP' }
+  | { type: 'CLOSE' };
+
+const initialRealValidateState: RealValidateState = {
+  visible: false,
+  isRunning: false,
+  logs: [],
+  error: null,
+  result: null,
+};
+
+const realValidateReducer = (
+  state: RealValidateState,
+  action: RealValidateAction
+): RealValidateState => {
+  switch (action.type) {
+    case 'OPEN':
+      return {
+        ...state,
+        visible: true,
+      };
+    case 'START':
+      return {
+        visible: true,
+        isRunning: true,
+        logs: [],
+        error: null,
+        result: null,
+      };
+    case 'APPEND_LOG':
+      return {
+        ...state,
+        logs: [...state.logs.slice(-(MAX_LOG_LINES - 1)), action.payload],
+      };
+    case 'SET_ERROR':
+      return {
+        ...state,
+        error: action.payload,
+        isRunning: false,
+      };
+    case 'SET_RESULT':
+      return {
+        ...state,
+        result: action.payload,
+        isRunning: false,
+      };
+    case 'STOP':
+      return {
+        ...state,
+        isRunning: false,
+      };
+    case 'CLOSE':
+      return {
+        ...initialRealValidateState,
+      };
+    default:
+      return state;
+  }
+};
 
 const generatePythonCode = (form: ActivityFormData): string => {
   const lines: string[] = [];
@@ -122,7 +198,7 @@ const generatePythonCode = (form: ActivityFormData): string => {
       } else if (step.type === 'script') {
         lines.push(`    result_${idx + 1} = yield execute_script(`);
         lines.push('        """');
-        lines.push((step.config.script || '# your code here').split('\n').map(l => `        ${l}`).join('\n'));
+        lines.push((step.config.script || '# your code here').split('\n').map((l: string) => `        ${l}`).join('\n'));
         lines.push('        """');
         lines.push('    )');
       } else if (step.type === 'carbone') {
@@ -172,11 +248,10 @@ const ActivityPage: React.FC = () => {
   const [simulationResult, setSimulationResult] = useState<any>(null);
   const [generatedCode, setGeneratedCode] = useState<string>('');
   const [isGeneratingCode, setIsGeneratingCode] = useState(false);
-  const [realValidateModalVisible, setRealValidateModalVisible] = useState(false);
-  const [realValidateResult, setRealValidateResult] = useState<any>(null);
-  const [isRealValidating, setIsRealValidating] = useState(false);
-  const [realValidateLogs, setRealValidateLogs] = useState<string[]>([]);
-  const [realValidateError, setRealValidateError] = useState<string | null>(null);
+  const [realValidateState, dispatchRealValidate] = useReducer(
+    realValidateReducer,
+    initialRealValidateState
+  );
   const [cachedCode, setCachedCode] = useState<string | null>(null);
   const [isCachingCode, setIsCachingCode] = useState(false);
   const [isValidated, setIsValidated] = useState(false);
@@ -194,7 +269,11 @@ const ActivityPage: React.FC = () => {
     steps: [],
   });
 
-  const activitiesQuery = useQuery(['activities', searchText], () => activityApi.list());
+  const activitiesQuery = useQuery(['activities'], () => activityApi.list());
+
+  const appendRealValidateLog = (content: string) => {
+    dispatchRealValidate({ type: 'APPEND_LOG', payload: content });
+  };
 
   const createMutation = useMutation(activityApi.create, {
     onSuccess: () => {
@@ -204,7 +283,7 @@ const ActivityPage: React.FC = () => {
       form.resetFields();
       resetForm();
     },
-    onError: (err: any) => message.error(err?.message || t('common:error')),
+    onError: (err: any) => { message.error(err?.message || t('common:error')); },
   });
 
   const updateMutation = useMutation(
@@ -215,7 +294,7 @@ const ActivityPage: React.FC = () => {
         queryClient.invalidateQueries(['activities']);
         setEditModalVisible(false);
       },
-      onError: (err: any) => message.error(err?.message || t('common:error')),
+      onError: (err: any) => { message.error(err?.message || t('common:error')); },
     }
   );
 
@@ -224,7 +303,7 @@ const ActivityPage: React.FC = () => {
       message.success(t('common:success'));
       queryClient.invalidateQueries(['activities']);
     },
-    onError: (err: any) => message.error(err?.message || t('common:error')),
+    onError: (err: any) => { message.error(err?.message || t('common:error')); },
   });
 
   const validateMutation = useMutation(activityApi.validate, {
@@ -232,20 +311,17 @@ const ActivityPage: React.FC = () => {
       setValidationResult(result);
       message.success('验证完成');
     },
-    onError: (err: any) => message.error(err?.message || '验证失败'),
+    onError: (err: any) => { message.error(err?.message || '验证失败'); },
   });
 
   // 真实验证：使用 SSE 流式执行
   const handleRealValidate = async () => {
-    setIsRealValidating(true);
-    setRealValidateLogs([]);
-    setRealValidateError(null);
-    setRealValidateResult(null);
+    dispatchRealValidate({ type: 'START' });
 
     try {
       // 先拉取最新的代码（从服务器获取最新的 activity 配置）
       let code = cachedCode || generatedCode;
-      setRealValidateLogs(prev => [...prev, '正在获取最新代码...']);
+      appendRealValidateLog('正在获取最新代码...');
 
       // 如果有正在编辑的 activity，从服务器获取最新的 generatedCode
       if (editingActivity) {
@@ -255,16 +331,16 @@ const ActivityPage: React.FC = () => {
             code = latestActivity.generatedCode;
             setCachedCode(code);
             setGeneratedCode(code);
-            setRealValidateLogs(prev => [...prev, '已从服务器获取最新代码']);
+            appendRealValidateLog('已从服务器获取最新代码');
           }
         } catch (e) {
-          setRealValidateLogs(prev => [...prev, '获取最新代码失败，使用本地代码']);
+          appendRealValidateLog('获取最新代码失败，使用本地代码');
         }
       }
 
       // 如果还是没有代码，则生成新代码
       if (!code) {
-        setRealValidateLogs(prev => [...prev, '正在生成代码...']);
+        appendRealValidateLog('正在生成代码...');
         const handler = activityForm.steps.length > 0 ? activityForm.steps[0].type : 'api';
         const genResult = await activityApi.generateCode({
           name: activityForm.name,
@@ -285,34 +361,38 @@ const ActivityPage: React.FC = () => {
         }
         code = genResult.code;
         setGeneratedCode(code);
-        setRealValidateLogs(prev => [...prev, '代码生成完成']);
+        appendRealValidateLog('代码生成完成');
       }
 
       // Execute with SSE streaming
-      setRealValidateLogs(prev => [...prev, '开始执行代码...']);
+      appendRealValidateLog('开始执行代码...');
       await activityApi.executeCodeStream(
         { code, fn: activityForm.fn, taskQueue: activityForm.taskQueue, input: {} },
         (event) => {
           if (event.type === 'log' && event.message) {
-            setRealValidateLogs(prev => [...prev, event.message!]);
+            appendRealValidateLog(event.message!);
           } else if (event.type === 'done') {
-            setRealValidateResult(event.result);
-            setIsRealValidating(false);
+            dispatchRealValidate({ type: 'SET_RESULT', payload: event.result });
+            const normalized = normalizeExecutionResult(event.result, {
+              defaultSuccessScore: 100,
+              defaultFailureScore: 0,
+            });
+            if (!normalized.success && normalized.error) {
+              dispatchRealValidate({ type: 'SET_ERROR', payload: normalized.error });
+            }
           } else if (event.type === 'error') {
-            setRealValidateError(event.message || '执行失败');
-            setIsRealValidating(false);
+            dispatchRealValidate({ type: 'SET_ERROR', payload: event.message || '执行失败' });
           }
         }
       );
     } catch (err: any) {
-      setRealValidateError(err?.message || '真实验证失败');
-      setIsRealValidating(false);
+      dispatchRealValidate({ type: 'SET_ERROR', payload: err?.message || '真实验证失败' });
     }
   };
 
   // 重新生成代码（带错误信息）- 生成后保存并重新验证
   const handleRegenerateWithError = async (errorMsg: string) => {
-    setRealValidateError(errorMsg); // Keep error visible
+    dispatchRealValidate({ type: 'SET_ERROR', payload: errorMsg }); // Keep error visible
     setIsGeneratingCode(true);
     setIsValidated(false); // Reset validation on regeneration
 
@@ -358,33 +438,29 @@ const ActivityPage: React.FC = () => {
       setIsGeneratingCode(false);
 
       // 立即重新验证
-      setRealValidateModalVisible(true);
-      setRealValidateLogs([]);
-      setRealValidateError(null);
-      setRealValidateResult(null);
+      dispatchRealValidate({ type: 'START' });
 
-      setRealValidateLogs(prev => [...prev, '代码已重新生成，开始验证...']);
+      appendRealValidateLog('代码已重新生成，开始验证...');
 
       await activityApi.executeCodeStream(
         { code: result.code, fn: activityForm.fn, taskQueue: activityForm.taskQueue, input: {} },
         (event) => {
           if (event.type === 'log' && event.message) {
-            setRealValidateLogs(prev => [...prev, event.message!]);
+            appendRealValidateLog(event.message!);
           } else if (event.type === 'done') {
-            setRealValidateResult(event.result);
-            setIsRealValidating(false);
-            // event.result 结构: {success: false, error: "..."} 或 {success: true, result: {...}}
-            const resultSuccess = event.result?.success !== false && !event.result?.error && !event.result?.status_code;
-            if (resultSuccess) {
+            dispatchRealValidate({ type: 'SET_RESULT', payload: event.result });
+            const normalized = normalizeExecutionResult(event.result, {
+              defaultSuccessScore: 100,
+              defaultFailureScore: 0,
+            });
+            if (normalized.success) {
               setIsValidated(true);
-              setRealValidateLogs(prev => [...prev, '✓ 验证通过，可以点击保存按钮正式保存']);
-            } else if (event.result?.error || event.result?.status_code >= 400) {
-              const errorMsg = event.result.error || event.result.message || JSON.stringify(event.result);
-              setRealValidateError(errorMsg);
+              appendRealValidateLog('✓ 验证通过，可以点击保存按钮正式保存');
+            } else if (normalized.error) {
+              dispatchRealValidate({ type: 'SET_ERROR', payload: normalized.error });
             }
           } else if (event.type === 'error') {
-            setRealValidateError(event.message || '执行失败');
-            setIsRealValidating(false);
+            dispatchRealValidate({ type: 'SET_ERROR', payload: event.message || '执行失败' });
           }
         }
       );
@@ -415,7 +491,7 @@ const ActivityPage: React.FC = () => {
       }); // 无错误上下文，初次生成
       if (result.success && result.code) {
         setGeneratedCode(result.code);
-        setRealValidateError(null);
+        dispatchRealValidate({ type: 'STOP' });
         setCodePreviewVisible(true);
       } else {
         message.error(result.error || '代码生成失败');
@@ -457,7 +533,7 @@ const ActivityPage: React.FC = () => {
       heartbeatTimeout: activity.config?.heartbeatTimeout,
       scheduleToStartTimeout: '30s',
       scheduleToCloseTimeout: '120s',
-      retryPolicy: activity.retryPolicy,
+      retryPolicy: activity.retryPolicy || undefined,
       idempotencyKey: activity.config?.idempotencyKey,
       steps,
     });
@@ -552,56 +628,50 @@ const ActivityPage: React.FC = () => {
     }
 
     // 2. 立即触发真实验证 - 先拉取最新代码再执行
-    setRealValidateModalVisible(true);
-    setRealValidateLogs([]);
-    setRealValidateError(null);
-    setRealValidateResult(null);
+    dispatchRealValidate({ type: 'START' });
 
     try {
-      setRealValidateLogs(prev => [...prev, '代码已保存，开始验证...']);
+      appendRealValidateLog('代码已保存，开始验证...');
 
       // 先拉取最新代码
-      setRealValidateLogs(prev => [...prev, '正在获取最新代码...']);
+      appendRealValidateLog('正在获取最新代码...');
       try {
         const latestActivity = await activityApi.getById(editingActivity.id);
         if (latestActivity.generatedCode) {
           latestCode = latestActivity.generatedCode;
-          setRealValidateLogs(prev => [...prev, '已从数据库获取最新代码']);
+          appendRealValidateLog('已从数据库获取最新代码');
         }
       } catch (e) {
-        setRealValidateLogs(prev => [...prev, '获取最新代码失败，使用本地代码']);
+        appendRealValidateLog('获取最新代码失败，使用本地代码');
       }
 
       await activityApi.executeCodeStream(
         { code: latestCode, fn: activityForm.fn, taskQueue: activityForm.taskQueue, input: {} },
         (event) => {
           if (event.type === 'log' && event.message) {
-            setRealValidateLogs(prev => [...prev, event.message!]);
+            appendRealValidateLog(event.message!);
           } else if (event.type === 'done') {
-            setRealValidateResult(event.result);
+            dispatchRealValidate({ type: 'SET_RESULT', payload: event.result });
             setIsCachingCode(false);
-            setIsRealValidating(false);
-            // event.result 结构: {success: false, error: "..."} 或 {success: true, result: {...}}
-            const resultSuccess = event.result?.success !== false && !event.result?.error && !event.result?.status_code;
-            if (resultSuccess) {
+            const normalized = normalizeExecutionResult(event.result, {
+              defaultSuccessScore: 100,
+              defaultFailureScore: 0,
+            });
+            if (normalized.success) {
               setIsValidated(true);
-              setRealValidateLogs(prev => [...prev, '✓ 验证通过，可以点击保存按钮正式保存']);
-            } else if (event.result?.error || event.result?.status_code >= 400) {
-              // 执行返回了错误结果
-              const errorMsg = event.result.error || event.result.message || JSON.stringify(event.result);
-              setRealValidateError(errorMsg);
+              appendRealValidateLog('✓ 验证通过，可以点击保存按钮正式保存');
+            } else if (normalized.error) {
+              dispatchRealValidate({ type: 'SET_ERROR', payload: normalized.error });
             }
           } else if (event.type === 'error') {
-            setRealValidateError(event.message || '执行失败');
+            dispatchRealValidate({ type: 'SET_ERROR', payload: event.message || '执行失败' });
             setIsCachingCode(false);
-            setIsRealValidating(false);
           }
         }
       );
     } catch (err: any) {
-      setRealValidateError(err?.message || '验证失败');
+      dispatchRealValidate({ type: 'SET_ERROR', payload: err?.message || '验证失败' });
       setIsCachingCode(false);
-      setIsRealValidating(false);
     }
   };
 
@@ -872,7 +942,7 @@ const ActivityPage: React.FC = () => {
             <Button icon={<RobotOutlined />} onClick={handleGenerateCode} loading={isGeneratingCode}>AI 生成代码</Button>
             <Button icon={<EyeOutlined />} onClick={() => setCodePreviewVisible(true)} disabled={!generatedCode}>查看代码</Button>
             <Button icon={<PlayCircleOutlined />} onClick={handleValidate}>验证配置</Button>
-            <Button icon={<ThunderboltOutlined />} onClick={() => setRealValidateModalVisible(true)} disabled={!cachedCode && !generatedCode}>真实验证</Button>
+            <Button icon={<ThunderboltOutlined />} onClick={() => dispatchRealValidate({ type: 'OPEN' })} disabled={!cachedCode && !generatedCode}>真实验证</Button>
             <Button icon={<ExperimentOutlined />} onClick={() => setSimulationModalVisible(true)}>模拟</Button>
             <Button onClick={() => setEditModalVisible(false)}>取消</Button>
             <Button type="primary" icon={<SaveOutlined />} loading={createMutation.isLoading || updateMutation.isLoading} onClick={handleSave} disabled={!isValidated && !!generatedCode}>保存{!isValidated && !!generatedCode ? '（请先验证）' : ''}</Button>
@@ -887,7 +957,7 @@ const ActivityPage: React.FC = () => {
         onCancel={() => { setCodePreviewVisible(false); setIsGeneratingCode(false); }}
         footer={[
           <Button key="copy" icon={<CopyOutlined />} onClick={copyCode}>复制代码</Button>,
-          <Button key="cache" type="primary" icon={<ThunderboltOutlined />} onClick={handleCacheAndValidate} loading={isCachingCode || isRealValidating}>
+          <Button key="cache" type="primary" icon={<ThunderboltOutlined />} onClick={handleCacheAndValidate} loading={isCachingCode || realValidateState.isRunning}>
             {isValidated ? '已验证' : '缓存并验证'}
           </Button>,
           <Button key="close" onClick={() => { setCodePreviewVisible(false); setIsGeneratingCode(false); }}>关闭</Button>
@@ -897,7 +967,7 @@ const ActivityPage: React.FC = () => {
         <Paragraph type="secondary" style={{ marginBottom: 16 }}>
           以下代码由 AI 根据您的配置自动生成，可用于参考或复制到 Temporal Worker 中使用。点击"缓存代码"可保存到配置中。
         </Paragraph>
-        <Card bodyStyle={{ padding: 0 }} style={{ background: '#1e1e1e', borderRadius: 8 }}>
+        <Card styles={{ body: { padding: 0 } }} style={{ background: '#1e1e1e', borderRadius: 8 }}>
           {isGeneratingCode ? (
             <div style={{ padding: 40, textAlign: 'center', color: '#d4d4d4' }}>
               <LoadingOutlined style={{ fontSize: 24 }} /><br /><br />
@@ -973,7 +1043,7 @@ const ActivityPage: React.FC = () => {
 
       {/* Validation Modal */}
       <Modal title="验证结果" open={validateModalVisible} onCancel={() => setValidateModalVisible(false)} footer={[<Button onClick={() => setValidateModalVisible(false)}>关闭</Button>]}>
-        {validateMutation.isPending ? (
+        {validateMutation.isLoading ? (
           <div style={{ padding: 40, textAlign: 'center' }}>
             <LoadingOutlined style={{ fontSize: 24 }} /><br /><br />
             正在验证配置，请稍候...
@@ -995,23 +1065,23 @@ const ActivityPage: React.FC = () => {
       {/* Real Validation Modal - SSE 流式执行真实代码 */}
       <Modal
         title={<Space><ThunderboltOutlined /> 真实验证（执行代码）</Space>}
-        open={realValidateModalVisible}
-        onCancel={() => { setRealValidateModalVisible(false); setIsRealValidating(false); setRealValidateLogs([]); setRealValidateError(null); }}
-        footer={[<Button onClick={() => setRealValidateModalVisible(false)}>关闭</Button>]}
+        open={realValidateState.visible}
+        onCancel={() => dispatchRealValidate({ type: 'CLOSE' })}
+        footer={[<Button onClick={() => dispatchRealValidate({ type: 'CLOSE' })}>关闭</Button>]}
         width={800}
       >
         <Space direction="vertical" style={{ width: '100%' }}>
-          {realValidateError && (
+          {realValidateState.error && (
             <Alert
               type="error"
               message="执行失败"
               description={
                 <div>
-                  <pre style={{ margin: '8px 0', fontSize: 12, whiteSpace: 'pre-wrap' }}>{realValidateError}</pre>
+                  <pre style={{ margin: '8px 0', fontSize: 12, whiteSpace: 'pre-wrap' }}>{realValidateState.error}</pre>
                   <Button
                     type="primary"
                     icon={<RobotOutlined />}
-                    onClick={() => handleRegenerateWithError(realValidateError)}
+                    onClick={() => handleRegenerateWithError(realValidateState.error!)}
                     loading={isGeneratingCode}
                     style={{ marginTop: 8 }}
                   >
@@ -1023,10 +1093,10 @@ const ActivityPage: React.FC = () => {
             />
           )}
 
-          {realValidateResult && !realValidateError && (
+          {realValidateState.result && !realValidateState.error && (
             <Alert
-              type={realValidateResult.success ? 'success' : 'error'}
-              message={realValidateResult.success ? '执行成功' : '执行失败'}
+              type={realValidateState.result.success ? 'success' : 'error'}
+              message={realValidateState.result.success ? '执行成功' : '执行失败'}
               showIcon
             />
           )}
@@ -1035,24 +1105,24 @@ const ActivityPage: React.FC = () => {
             <Text strong>执行日志：</Text>
             <div style={{ background: '#1e1e1e', color: '#d4d4d4', padding: 12, borderRadius: 4, maxHeight: 300, overflow: 'auto', marginTop: 8 }}>
               <pre style={{ margin: 0, fontSize: 11 }}>
-                {realValidateLogs.map((log, i) => (
+                {realValidateState.logs.map((log: string, i: number) => (
                   <div key={i}>{log}</div>
                 ))}
-                {isRealValidating && <span style={{ color: '#1890ff' }}>▋</span>}
+                {realValidateState.isRunning && <span style={{ color: '#1890ff' }}>▋</span>}
               </pre>
             </div>
           </div>
 
-          {realValidateResult && !realValidateError && realValidateResult.result && (
+          {realValidateState.result && !realValidateState.error && realValidateState.result.result && (
             <Card size="small" style={{ background: '#f5f5f5' }}>
               <Text strong>执行结果：</Text>
               <pre style={{ margin: '8px 0', fontSize: 12, whiteSpace: 'pre-wrap', wordBreak: 'break-all' }}>
-                {typeof realValidateResult.result === 'string' ? realValidateResult.result : JSON.stringify(realValidateResult.result, null, 2)}
+                {typeof realValidateState.result.result === 'string' ? realValidateState.result.result : JSON.stringify(realValidateState.result.result, null, 2)}
               </pre>
             </Card>
           )}
 
-          {!isRealValidating && !realValidateResult && !realValidateError && (
+          {!realValidateState.isRunning && !realValidateState.result && !realValidateState.error && (
             <Alert type="info" message="真实验证将执行以下步骤：" description={
               <ul style={{ margin: '8px 0' }}>
                 <li>1. 使用已保存的代码（如有）</li>
@@ -1063,7 +1133,7 @@ const ActivityPage: React.FC = () => {
             } />
           )}
 
-          {!isRealValidating && (
+          {!realValidateState.isRunning && (
             <Button
               type="primary"
               icon={<ThunderboltOutlined />}

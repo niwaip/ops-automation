@@ -5,6 +5,7 @@
 
 import apiClient from './client';
 import { useAuthStore } from '../store/authStore';
+import { postSseStream } from './streaming';
 
 // Activity configuration
 export interface ActivityDTO {
@@ -131,40 +132,13 @@ export const activityApi = {
 
   // SSE streaming execution
   executeCodeStream: (data: ExecuteCodeDto, onEvent: (event: StreamEvent) => void): Promise<void> => {
-    return new Promise((resolve, reject) => {
-      const xhr = new XMLHttpRequest();
-      xhr.open('POST', '/api/activities/execute-code/stream');
-      xhr.setRequestHeader('Content-Type', 'application/json');
-      // Get token from authStore directly
-      const token = useAuthStore.getState().accessToken;
-      if (token) {
-        xhr.setRequestHeader('Authorization', `Bearer ${token}`);
-      }
-
-      xhr.onprogress = () => {
-        const lines = xhr.responseText.split('\n');
-        for (const line of lines) {
-          if (line.startsWith('data: ')) {
-            try {
-              const event = JSON.parse(line.substring(6));
-              onEvent(event);
-            } catch (e) {
-              // Ignore parse errors
-            }
-          }
-        }
-      };
-
-      xhr.onload = () => {
-        if (xhr.status >= 200 && xhr.status < 300) {
-          resolve();
-        } else {
-          reject(new Error(`HTTP ${xhr.status}: ${xhr.statusText}`));
-        }
-      };
-
-      xhr.onerror = () => reject(new Error('Network error'));
-      xhr.send(JSON.stringify(data));
+    const token = useAuthStore.getState().accessToken;
+    return postSseStream({
+      url: '/api/activities/execute-code/stream',
+      payload: data as unknown as Record<string, unknown>,
+      token,
+      requireDoneEvent: true,
+      onEvent: onEvent as (event: { type: string; [key: string]: unknown }) => void,
     });
   },
 };

@@ -160,13 +160,18 @@ mock_temporalio.common.RetryPolicy = lambda **kw: type('RetryPolicy', (), {k: v 
 import urllib.request
 import urllib.error
 class MockResponse:
-    def __init__(self, status, data, headers=None):
+    def __init__(self, status, data, headers=None, url=None, reason=None):
         self.status = status; self.status_code = status
         self.text = data.decode('utf-8') if isinstance(data, bytes) else data
         self.headers = headers or {}
+        self.url = url or ''
+        self.reason = reason or ''
     def json(self): return json.loads(self.text)
     def raise_for_status(self):
-        if self.status >= 400: raise urllib.error.HTTPError(None, self.status, None, None, None)
+        if self.status >= 400:
+            body_preview = (self.text or '').strip().replace('\n', ' ')[:300]
+            reason = self.reason or f"HTTP {self.status} for {self.url}. body={body_preview}"
+            raise urllib.error.HTTPError(self.url, self.status, reason, self.headers, None)
 
 class MockRequests:
     def __init__(self):
@@ -187,16 +192,25 @@ class MockRequests:
         try:
             req = urllib.request.Request(url, headers=headers or {})
             with urllib.request.urlopen(req, timeout=timeout or 30) as r:
-                return MockResponse(r.status, r.read(), dict(r.headers))
-        except urllib.error.HTTPError as e: return MockResponse(e.code, e.read() if e.fp else b'', {})
-        except Exception as e: return MockResponse(500, str(e).encode(), {})
+                return MockResponse(r.status, r.read(), dict(r.headers), url=url)
+        except urllib.error.HTTPError as e:
+            body = e.read() if e.fp else b''
+            response_headers = dict(e.headers) if e.headers else {}
+            return MockResponse(e.code, body, response_headers, url=url, reason=str(e))
+        except Exception as e:
+            return MockResponse(500, f"{type(e).__name__}: {str(e)}".encode(), {}, url=url, reason=str(e))
     def post(self, url, data=None, json_data=None, headers=None, **kwargs):
         try:
             body = json.dumps(json_data).encode('utf-8') if json_data else (data.encode('utf-8') if isinstance(data, str) else data)
             req = urllib.request.Request(url, data=body, headers=headers or {})
             with urllib.request.urlopen(req, timeout=30) as r:
-                return MockResponse(r.status, r.read(), dict(r.headers))
-        except Exception as e: return MockResponse(500, str(e).encode(), {})
+                return MockResponse(r.status, r.read(), dict(r.headers), url=url)
+        except urllib.error.HTTPError as e:
+            body = e.read() if e.fp else b''
+            response_headers = dict(e.headers) if e.headers else {}
+            return MockResponse(e.code, body, response_headers, url=url, reason=str(e))
+        except Exception as e:
+            return MockResponse(500, f"{type(e).__name__}: {str(e)}".encode(), {}, url=url, reason=str(e))
 
 mock_requests = MockRequests()
 sys.modules['temporalio'] = mock_temporalio

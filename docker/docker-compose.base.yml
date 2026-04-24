@@ -7,6 +7,8 @@ x-common-env: &common-env
   DATABASE_URL: postgresql://${POSTGRES_USER:-ops}:${POSTGRES_PASSWORD:-ops_secret}@postgres:5432/${POSTGRES_DB:-ops}
   REDIS_HOST: redis
   REDIS_PORT: 6379
+  REDIS_PASSWORD: ${REDIS_PASSWORD:-redis_secret}
+  EXTERNAL_HOST: ${HOST_IP:-localhost}
 
 x-common-node-service: &common-node-service
   image: ${DOCKER_REGISTRY:-}node:20-bullseye
@@ -107,6 +109,8 @@ services:
       <<: *common-env
       PORT: ${CONTROL_PLANE_PORT:-3003}
       JWT_SECRET: jwt_secret_key_change_in_production
+      AI_ORCHESTRATOR_URL: http://${AI_ORCHESTRATOR_HOST:-ai-orchestrator}:${AI_ORCHESTRATOR_PORT:-3007}
+      SESSION_BROKER_URL: http://${SESSION_BROKER_HOST:-session-broker}:${SESSION_BROKER_PORT:-3002}
     ports:
       - "${CONTROL_PLANE_PORT:-3003}:${CONTROL_PLANE_PORT:-3003}"
     volumes:
@@ -178,6 +182,11 @@ services:
     environment:
       <<: *common-env
       PORT: ${AI_ORCHESTRATOR_PORT:-3007}
+      AUTH_SERVICE_URL: http://${AUTH_SERVICE_HOST:-auth}:${AUTH_PORT:-3001}
+      BROWSER_WORKER_URL: http://${BROWSER_WORKER_HOST:-browser-worker}:${BROWSER_WORKER_PORT:-3004}
+      CONTROL_PLANE_URL: http://${CONTROL_PLANE_HOST:-control-plane}:${CONTROL_PLANE_PORT:-3003}
+      CARBONE_SERVICE_URL: http://${CARBONE_ENGINE_HOST:-carbone-engine}:${CARBONE_ENGINE_PORT:-3009}
+      CARBONE_EXTERNAL_URL: http://${HOST_IP:-localhost}:${CARBONE_ENGINE_PORT:-3009}
       ALIBABA_CODING_API_KEY: ${ALIBABA_CODING_API_KEY:-}
       ALIBABA_BAILIAN_API_KEY: ${ALIBABA_BAILIAN_API_KEY:-}
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
@@ -200,8 +209,8 @@ services:
     environment:
       <<: *common-env
       PORT: ${REPORT_PORT:-3008}
-      AI_ORCHESTRATOR_URL: http://ai-orchestrator:${AI_ORCHESTRATOR_PORT:-3007}
-      SESSION_BROKER_URL: http://session-broker:${SESSION_BROKER_PORT:-3002}
+      AI_ORCHESTRATOR_URL: http://${AI_ORCHESTRATOR_HOST:-ai-orchestrator}:${AI_ORCHESTRATOR_PORT:-3007}
+      SESSION_BROKER_URL: http://${SESSION_BROKER_HOST:-session-broker}:${SESSION_BROKER_PORT:-3002}
       FILES_DIR: /app/files
     ports:
       - "${REPORT_PORT:-3008}:${REPORT_PORT:-3008}"
@@ -229,10 +238,10 @@ services:
       NODE_ENV: development
       DOCKER_ENV: true
       VITE_API_BASE_URL: /api
-      VITE_HOST_IP: ${HOST_IP:-192.168.100.143}
-      VITE_RECORDER_WS_URL: ws://${HOST_IP:-192.168.100.143}:${BROWSER_WORKER_PORT:-3004}
-      VITE_CARBONE_API_URL: http://${HOST_IP:-192.168.100.143}:3009
-      VITE_NOVNC_URL: http://${HOST_IP:-192.168.100.143}:6080/vnc.html
+      VITE_HOST_IP: ${HOST_IP:-localhost}
+      VITE_RECORDER_WS_URL: ws://${HOST_IP:-localhost}:${BROWSER_WORKER_PORT:-3004}
+      VITE_CARBONE_API_URL: http://${HOST_IP:-localhost}:${CARBONE_ENGINE_PORT:-3009}
+      VITE_NOVNC_URL: http://${HOST_IP:-localhost}:${NOVNC_PORT:-6080}/vnc.html
     ports:
       - "${PORTAL_PORT:-5173}:${PORTAL_PORT:-5173}"
     volumes:

@@ -13,6 +13,7 @@ import {
   StreamEventType,
   FlowTemplate,
 } from './interfaces';
+import { TRACE_ID_HEADER } from '../../common/trace.util';
 import {
   SkillMatchTool,
   ParamCollectTool,
@@ -44,7 +45,10 @@ export class ToolExecutor {
   private readonly logger = new Logger(ToolExecutor.name);
   private tools: Map<string, ToolDefinition> = new Map();
   private defaultTools: ToolDefinition[] = [];
+  private dynamicFlowToolNames: Set<string> = new Set();
   private isFlowsLoaded = false;
+  private lastDynamicFlowLoadAt = 0;
+  private readonly dynamicFlowTtlMs = Number(process.env.DYNAMIC_FLOW_TOOLS_TTL_MS || 60_000);
 
   constructor() {
     // 注册默认工具
@@ -79,18 +83,42 @@ export class ToolExecutor {
   /**
    * 动态加载流程模板并包装为工具 (Flow as a Tool)
    */
-  async loadDynamicFlowTools(): Promise<void> {
-    if (this.isFlowsLoaded) return;
+  async loadDynamicFlowTools(force = false, traceId?: string): Promise<{
+    refreshed: boolean;
+    loadedAt: number;
+    dynamicFlowToolCount: number;
+    ttlMs: number;
+  }> {
+    const now = Date.now();
+    if (!force && this.isFlowsLoaded && now - this.lastDynamicFlowLoadAt < this.dynamicFlowTtlMs) {
+      return {
+        refreshed: false,
+        loadedAt: this.lastDynamicFlowLoadAt,
+        dynamicFlowToolCount: this.dynamicFlowToolNames.size,
+        ttlMs: this.dynamicFlowTtlMs,
+      };
+    }
 
     try {
-      this.logger.log('Loading dynamic flow templates as tools...');
+      const tracePrefix = traceId ? `[${traceId}] ` : '';
+      this.logger.log(`${tracePrefix}Loading dynamic flow templates as tools...`);
       const authUrl = getAuthServiceUrl();
-      const response = await axios.get(`${authUrl}/execution-flow-templates`);
+      const response = await axios.get<{ templates: FlowTemplate[] }>(`${authUrl}/execution-flow-templates`, {
+        headers: traceId ? { [TRACE_ID_HEADER]: traceId } : undefined,
+      });
       const templates = response.data.templates as FlowTemplate[];
+
+      this.removeDynamicFlowTools();
 
       if (!templates || templates.length === 0) {
         this.isFlowsLoaded = true;
-        return;
+        this.lastDynamicFlowLoadAt = Date.now();
+        return {
+          refreshed: true,
+          loadedAt: this.lastDynamicFlowLoadAt,
+          dynamicFlowToolCount: 0,
+          ttlMs: this.dynamicFlowTtlMs,
+        };
       }
 
       for (const template of templates) {
@@ -121,19 +149,53 @@ export class ToolExecutor {
         };
 
         this.tools.set(flowTool.name, flowTool);
+        this.dynamicFlowToolNames.add(flowTool.name);
         // 同时支持通过 executionFlowKeys 匹配
         if (template.executionFlowKeys && template.executionFlowKeys.length > 0) {
-          template.executionFlowKeys.forEach(key => {
-            this.tools.set(`flow_key_${key}`, flowTool);
+          template.executionFlowKeys.forEach((key) => {
+            const keyName = `flow_key_${key}`;
+            this.tools.set(keyName, flowTool);
+            this.dynamicFlowToolNames.add(keyName);
           });
         }
       }
 
       this.isFlowsLoaded = true;
-      this.logger.log(`Registered ${templates.length} dynamic flow tools`);
+      this.lastDynamicFlowLoadAt = Date.now();
+      this.logger.log(`${tracePrefix}Registered ${templates.length} dynamic flow templates, ${this.dynamicFlowToolNames.size} aliases`);
+      return {
+        refreshed: true,
+        loadedAt: this.lastDynamicFlowLoadAt,
+        dynamicFlowToolCount: this.dynamicFlowToolNames.size,
+        ttlMs: this.dynamicFlowTtlMs,
+      };
     } catch (error) {
-      this.logger.error('Failed to load dynamic flow tools:', error.message);
+      const errorMsg = error instanceof Error ? error.message : 'Unknown error';
+      const tracePrefix = traceId ? `[${traceId}] ` : '';
+      this.logger.error(`${tracePrefix}Failed to load dynamic flow tools: ${errorMsg}`);
+      return {
+        refreshed: false,
+        loadedAt: this.lastDynamicFlowLoadAt,
+        dynamicFlowToolCount: this.dynamicFlowToolNames.size,
+        ttlMs: this.dynamicFlowTtlMs,
+      };
     }
+  }
+
+  async refreshDynamicFlowTools(traceId?: string): Promise<{
+    refreshed: boolean;
+    loadedAt: number;
+    dynamicFlowToolCount: number;
+    ttlMs: number;
+  }> {
+    return this.loadDynamicFlowTools(true, traceId);
+  }
+
+  private removeDynamicFlowTools(): void {
+    for (const toolName of this.dynamicFlowToolNames) {
+      this.tools.delete(toolName);
+    }
+    this.dynamicFlowToolNames.clear();
   }
 
   /**
@@ -191,10 +253,11 @@ export class ToolExecutor {
     params: Record<string, unknown>,
     context: ExecutionContext,
   ): Promise<ToolResult> {
+    const tracePrefix = context.traceId ? `[${context.traceId}] ` : '';
     const tool = this.tools.get(toolName);
 
     if (!tool) {
-      this.logger.warn(`Tool not found: ${toolName}`);
+      this.logger.warn(`${tracePrefix}Tool not found: ${toolName}`);
       return {
         success: false,
         output: `工具 "${toolName}" 不存在`,
@@ -204,7 +267,7 @@ export class ToolExecutor {
 
     // 权限二次校验（防御性编程）
     if (tool instanceof BaseTool && !tool.isAuthorized(context.userRoles)) {
-      this.logger.warn(`Unauthorized tool access: user=${context.userId}, tool=${toolName}`);
+      this.logger.warn(`${tracePrefix}Unauthorized tool access: user=${context.userId}, tool=${toolName}`);
       return {
         success: false,
         output: `抱歉，您没有权限执行 "${tool.description.split(':')[0]}" 相关的操作。`,
@@ -212,10 +275,18 @@ export class ToolExecutor {
       };
     }
 
+    // 对部分核心工具做参数兜底，避免模型遗漏必填字段导致流程中断。
+    if (toolName === 'skill_match' && !params.userInput && context.originalUserInput) {
+      params = {
+        ...params,
+        userInput: context.originalUserInput,
+      };
+    }
+
     // 验证参数
     const validation = tool.validateParams(params);
     if (!validation.valid) {
-      this.logger.debug(`Tool ${toolName} missing params: ${validation.missing.join(', ')}`);
+      this.logger.debug(`${tracePrefix}Tool ${toolName} missing params: ${validation.missing.join(', ')}`);
       return {
         success: false,
         output: `参数不完整，缺少: ${validation.missing.join(', ')}`,
@@ -226,14 +297,14 @@ export class ToolExecutor {
     }
 
     try {
-      this.logger.debug(`Executing tool: ${toolName} with params: ${JSON.stringify(params)}`);
+      this.logger.debug(`${tracePrefix}Executing tool: ${toolName} with params: ${JSON.stringify(params)}`);
       const result = await tool.execute(params, context);
-      this.logger.debug(`Tool ${toolName} result: success=${result.success}`);
+      this.logger.debug(`${tracePrefix}Tool ${toolName} result: success=${result.success}`);
 
       return result;
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : 'Unknown error';
-      this.logger.error(`Tool ${toolName} execution failed: ${errorMsg}`);
+      this.logger.error(`${tracePrefix}Tool ${toolName} execution failed: ${errorMsg}`);
 
       return {
         success: false,

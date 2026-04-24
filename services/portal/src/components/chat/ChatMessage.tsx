@@ -3,9 +3,9 @@
  * 单条消息渲染组件 - 支持Markdown渲染和思考折叠
  */
 
-import React, { useState } from 'react';
-import { Avatar, Card, Collapse, Typography } from 'antd';
-import { UserOutlined, RobotOutlined, FileTextOutlined, DownOutlined, RightOutlined } from '@ant-design/icons';
+import React, { useMemo, useState } from 'react';
+import { Avatar, Button, Space, Switch, Tag, message as antdMessage } from 'antd';
+import { UserOutlined, RobotOutlined, FileTextOutlined, DownOutlined, RightOutlined, CopyOutlined, RedoOutlined } from '@ant-design/icons';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { ChatMessage } from './types';
@@ -15,6 +15,7 @@ interface ChatMessageProps {
   message: ChatMessage;
   isStreaming?: boolean;
   streamingContent?: string;
+  onRetry?: (messageId: string) => void;
 }
 
 // 解析消息内容，分离思考和最终回答
@@ -62,13 +63,29 @@ const ChatMessageComponent: React.FC<ChatMessageProps> = ({
   message,
   isStreaming,
   streamingContent,
+  onRetry,
 }) => {
   const [thoughtsExpanded, setThoughtsExpanded] = useState(true); // 默认展开思考内容
+  const [taskCompleted, setTaskCompleted] = useState(true);
   const isUser = message.role === 'user';
   const rawContent = isStreaming && streamingContent ? streamingContent : message.content;
+  const isWaitingInput = message.metadata?.taskStatus === 'waiting_input';
 
   // 解析内容
   const { thoughts, answer } = parseMessageContent(rawContent);
+  const answerWithoutTaskCheckbox = useMemo(
+    () => answer.replace(/\n?- \[x\]\s*任务完成（可改为未完成）\s*$/m, '').trim(),
+    [answer],
+  );
+
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(answerWithoutTaskCheckbox || rawContent);
+      antdMessage.success('已复制');
+    } catch {
+      antdMessage.error('复制失败');
+    }
+  };
 
   // 渲染文件附件
   const renderFiles = () => {
@@ -129,7 +146,7 @@ const ChatMessageComponent: React.FC<ChatMessageProps> = ({
   // 渲染Markdown内容
   const renderContent = () => {
     if (isUser) {
-      return <Typography.Text>{answer}</Typography.Text>;
+      return <div className="chat-message-plain">{answerWithoutTaskCheckbox}</div>;
     }
 
     return (
@@ -138,9 +155,9 @@ const ChatMessageComponent: React.FC<ChatMessageProps> = ({
           remarkPlugins={[remarkGfm]}
           components={{
             // 自定义代码块样式
-            code: ({ node, inline, className, children, ...props }) => {
+            code: ({ className, children, ...props }) => {
               const match = /language-(\w+)/.exec(className || '');
-              return !inline && match ? (
+              return match ? (
                 <pre className={`code-block language-${match[1]}`}>
                   <code {...props}>{children}</code>
                 </pre>
@@ -156,7 +173,7 @@ const ChatMessageComponent: React.FC<ChatMessageProps> = ({
             ),
           }}
         >
-          {answer}
+          {answerWithoutTaskCheckbox}
         </ReactMarkdown>
         {isStreaming && <span className="streaming-indicator">...</span>}
       </div>
@@ -165,22 +182,66 @@ const ChatMessageComponent: React.FC<ChatMessageProps> = ({
 
   return (
     <div className={`chat-message ${isUser ? 'user' : 'assistant'}`}>
-      <Avatar
-        icon={isUser ? <UserOutlined /> : <RobotOutlined />}
-        className={`chat-message-avatar ${isUser ? 'user' : 'assistant'}`}
-      />
-      <Card
-        className={`chat-message-content ${isUser ? 'user' : 'assistant'}`}
-        bordered={false}
-      >
-        {renderThoughts()}
-        {renderContent()}
-        {renderFiles()}
-        {renderDownloadLink()}
-        <div className="chat-message-time">
-          {message.timestamp.toLocaleTimeString()}
+      {!isUser && (
+        <Avatar
+          icon={<RobotOutlined />}
+          className="chat-message-avatar assistant"
+        />
+      )}
+
+      <div className={`chat-message-stack ${isUser ? 'user' : 'assistant'}`}>
+        <div className={`chat-message-content ${isUser ? 'user' : 'assistant'}`}>
+          {renderThoughts()}
+          {isWaitingInput && (
+            <Tag color="gold" className="chat-waiting-tag">
+              等待你输入
+            </Tag>
+          )}
+          {renderContent()}
+          {renderFiles()}
+          {renderDownloadLink()}
         </div>
-      </Card>
+
+        <div className={`chat-message-meta ${isUser ? 'user' : 'assistant'}`}>
+          {!isUser && (
+            <div className="chat-message-actions">
+              <Space size={8}>
+                <Button size="small" type="text" icon={<CopyOutlined />} onClick={handleCopy}>
+                  复制
+                </Button>
+                {onRetry && (
+                  <Button size="small" type="text" icon={<RedoOutlined />} onClick={() => onRetry(message.id)}>
+                    重试
+                  </Button>
+                )}
+                {(answer.includes('任务完成') || message.metadata?.taskStatus === 'completed') && (
+                  <div className="chat-task-switch">
+                    <span>任务完成</span>
+                    <Switch
+                      size="small"
+                      checked={taskCompleted}
+                      onChange={setTaskCompleted}
+                      checkedChildren="是"
+                      unCheckedChildren="否"
+                    />
+                  </div>
+                )}
+              </Space>
+            </div>
+          )}
+
+          <div className="chat-message-time">
+            {message.timestamp.toLocaleTimeString()}
+          </div>
+        </div>
+      </div>
+
+      {isUser && (
+        <Avatar
+          icon={<UserOutlined />}
+          className="chat-message-avatar user"
+        />
+      )}
     </div>
   );
 };

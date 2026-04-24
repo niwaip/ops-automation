@@ -188,7 +188,51 @@ export function parseActionResponse(response: string): {
     .replace(/<think[\s\S]*?<\/think>/gi, '')
     .trim();
 
+  // 兼容模型输出带 Markdown 粗体标签的场景，例如:
+  // **Thought**: ...
+  // **Action**: ...
+  // **Action Input**: {...}
+  // **Final Answer**: ...
+  cleanedResponse = cleanedResponse.replace(
+    /^\s*\*\*(Thought|Action|Action Input|Observation|Final Answer)\*\*\s*:/gim,
+    '$1:'
+  );
+  cleanedResponse = cleanedResponse
+    .replace(/<\/?think>/gi, '')
+    .trim();
+
   console.log('[DEBUG parseActionResponse] Cleaned response preview:', cleanedResponse?.substring(0, 500));
+
+  // 兼容 MiniMax 风格的 tool_call 标签:
+  // <minimax:tool_call>
+  // api_call
+  // {"url":"..."}
+  // </minimax:tool_call>
+  const minimaxToolCallMatch = cleanedResponse.match(
+    /<minimax:tool_call>\s*([a-zA-Z0-9_:-]+)\s*([\s\S]*?)<\/minimax:tool_call>/i
+  );
+  if (minimaxToolCallMatch) {
+    const action = minimaxToolCallMatch[1]?.trim() ?? '';
+    const payloadText = minimaxToolCallMatch[2]?.trim() ?? '';
+    const thought = cleanedResponse
+      .slice(0, minimaxToolCallMatch.index ?? 0)
+      .replace(/\{\s*"type"\s*:\s*"object"[\s\S]*$/m, '')
+      .trim();
+
+    let actionInput: Record<string, unknown> = {};
+    const jsonMatch = payloadText.match(/\{[\s\S]*\}/);
+    if (jsonMatch) {
+      try {
+        actionInput = JSON.parse(jsonMatch[0]);
+      } catch {
+        actionInput = {};
+      }
+    }
+
+    if (action) {
+      return { thought, action, actionInput };
+    }
+  }
 
   // 尝试直接解析JSON
   try {

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Card, Select, Input, Button, Space, Spin, message, Tag, Alert, Divider, Row, Col, Typography, Table } from 'antd';
+import { Card, Select, Input, Button, Space, Spin, message, Tag, Alert, Row, Col, Typography, Table } from 'antd';
 import {
   RobotOutlined,
   PlayCircleOutlined,
@@ -14,6 +14,19 @@ import { templateApi, Template } from '../api/template';
 import { aiApi, RecognizeParamsResponse } from '../api/ai';
 import { sessionApi, workerApi } from '../api/session';
 import { useAuthStore } from '../store/authStore';
+
+const normalizeParamsSchema = (template?: Template) => {
+  const properties = (template?.params_schema?.properties ?? {}) as Record<string, {
+    type: string;
+    description?: string;
+    default?: string | number | boolean;
+  }>;
+
+  return {
+    properties,
+    required: template?.params_schema?.required ?? [],
+  };
+};
 
 const { TextArea } = Input;
 const { Option } = Select;
@@ -75,7 +88,7 @@ const SessionStartPage: React.FC = () => {
       template_id: selectedTemplateId!,
       user_input: userInput,
       // 传入模版的 params_schema，让 AI 能够正确识别参数
-      params_schema: selectedTemplate?.params_schema,
+      params_schema: normalizeParamsSchema(selectedTemplate),
     }),
     {
       onSuccess: (data) => {
@@ -203,7 +216,7 @@ const SessionStartPage: React.FC = () => {
         >
           {/* Main Content Card */}
           <Card
-            bordered={false}
+            variant="borderless"
             style={{
               borderRadius: 16,
               height: '100%',
@@ -480,17 +493,19 @@ const SessionStartPage: React.FC = () => {
           }}
         >
           <Card
-            bordered={false}
+            variant="borderless"
             style={{
               borderRadius: 16,
               height: '100%',
               display: 'flex',
               flexDirection: 'column',
             }}
-            bodyStyle={{
-              flex: 1,
-              padding: 0,
-              minHeight: 0,
+            styles={{
+              body: {
+                flex: 1,
+                padding: 0,
+                minHeight: 0,
+              },
             }}
             title={
               <Space>

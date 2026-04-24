@@ -1,4 +1,4 @@
-import { Injectable, Logger, NotFoundException, ConflictException, BadRequestException } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException, BadRequestException } from '@nestjs/common';
 import { v4 as uuidv4 } from 'uuid';
 import { RedisService } from '../lock/redis.service';
 import { LockService } from '../lock/lock.service';
@@ -418,19 +418,24 @@ export class SessionService {
     const sessions: Session[] = [];
     for (const key of filteredKeys) {
       const sessionId = key.replace('session:', '');
-      const session = await this.getSessionFromRedis(sessionId);
-      if (session) {
-        // Apply filters
-        if (status && session.state !== status) {
-          continue;
-        }
-        if (search) {
-          const searchStr = `${session.id} ${session.template_id || ''} ${session.user_id}`.toLowerCase();
-          if (!searchStr.includes(search)) {
+      try {
+        const session = await this.getSessionFromRedis(sessionId);
+        if (session) {
+          // Apply filters
+          if (status && session.state !== status) {
             continue;
           }
+          if (search) {
+            const searchStr = `${session.id} ${session.template_id || ''} ${session.user_id}`.toLowerCase();
+            if (!searchStr.includes(search)) {
+              continue;
+            }
+          }
+          sessions.push(session);
         }
-        sessions.push(session);
+      } catch (error) {
+        const errorMsg = error instanceof Error ? error.message : 'Unknown error';
+        this.logger.warn(`Skipping invalid session ${sessionId}: ${errorMsg}`);
       }
     }
 
@@ -468,8 +473,16 @@ export class SessionService {
       vnc: data.vnc_url,
     } : undefined;
 
-    // Parse params if exists
-    const params = data.params ? JSON.parse(data.params) : undefined;
+    // Parse params if exists, but tolerate malformed historical data.
+    let params: Record<string, unknown> | undefined;
+    if (data.params) {
+      try {
+        params = JSON.parse(data.params) as Record<string, unknown>;
+      } catch (error) {
+        const errorMsg = error instanceof Error ? error.message : 'Unknown error';
+        this.logger.warn(`Failed to parse params for session ${sessionId}: ${errorMsg}`);
+      }
+    }
 
     return {
       id: sessionId,

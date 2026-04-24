@@ -1,5 +1,6 @@
 import apiClient from './client';
 import { useAuthStore } from '../store/authStore';
+import { postSseStream } from './streaming';
 
 export interface WorkflowSignalHandler {
   name: string;
@@ -146,42 +147,13 @@ export const temporalWorkflowApi = {
 
   // SSE streaming sandbox validation for real-time logs
   validateInSandboxStream: (code: string, fn: string, input: Record<string, any>, onEvent: (event: { type: string; content?: string; result?: any; error?: string; success?: boolean; score?: number }) => void): Promise<void> => {
-    return new Promise((resolve, reject) => {
-      const xhr = new XMLHttpRequest();
-      xhr.open('POST', '/api/temporal-workflow/validate-code/stream');
-      xhr.setRequestHeader('Content-Type', 'application/json');
-      // Add auth token from store
-      const token = useAuthStore.getState().accessToken;
-      if (token) {
-        xhr.setRequestHeader('Authorization', `Bearer ${token}`);
-      }
-
-      xhr.onprogress = () => {
-        const lines = xhr.responseText.split('\n');
-        for (const line of lines) {
-          if (line.startsWith('data: ')) {
-            try {
-              const event = JSON.parse(line.substring(6));
-              onEvent(event);
-            } catch (e) {
-              // Ignore parse errors
-            }
-          }
-        }
-      };
-
-      xhr.onload = () => {
-        if (xhr.status >= 200 && xhr.status < 300) {
-          // Send final event
-          onEvent({ type: 'done' });
-          resolve();
-        } else {
-          reject(new Error(`HTTP ${xhr.status}: ${xhr.statusText}`));
-        }
-      };
-
-      xhr.onerror = () => reject(new Error('Network error'));
-      xhr.send(JSON.stringify({ code, fn, input }));
+    const token = useAuthStore.getState().accessToken;
+    return postSseStream({
+      url: '/api/temporal-workflow/validate-code/stream',
+      payload: { code, fn, input },
+      token,
+      requireDoneEvent: true,
+      onEvent: onEvent as (event: { type: string; [key: string]: unknown }) => void,
     });
   },
 };

@@ -1,6 +1,7 @@
 import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Form, Input, Button, message, Dropdown, Menu, Checkbox } from 'antd';
+import { Form, Input, Button, message, Dropdown, Checkbox } from 'antd';
+import type { MenuProps } from 'antd';
 import { UserOutlined, LockOutlined, GlobalOutlined } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
 import { useMutation } from 'react-query';
@@ -74,17 +75,15 @@ const LoginPage: React.FC = () => {
     });
   };
 
-  const languageMenu = (
-    <Menu
-      items={[
-        { key: 'zh-CN', label: '简体中文' },
-        { key: 'en-US', label: 'English' },
-        { key: 'ja-JP', label: '日本語' },
-      ]}
-      onClick={({ key }: { key: string }) => setLanguage(key as 'zh-CN' | 'en-US' | 'ja-JP')}
-      selectedKeys={[language]}
-    />
-  );
+  const languageMenu: MenuProps = {
+    items: [
+      { key: 'zh-CN', label: '简体中文' },
+      { key: 'en-US', label: 'English' },
+      { key: 'ja-JP', label: '日本語' },
+    ],
+    onClick: ({ key }) => setLanguage(key as 'zh-CN' | 'en-US' | 'ja-JP'),
+    selectedKeys: [language],
+  };
 
   return (
     <div
@@ -255,7 +254,7 @@ const LoginPage: React.FC = () => {
             borderTop: '1px solid var(--bg-secondary)',
           }}
         >
-          <Dropdown overlay={languageMenu} placement="bottomLeft" trigger={['click']}>
+          <Dropdown menu={languageMenu} placement="bottomLeft" trigger={['click']}>
             <Button
               type="text"
               icon={<GlobalOutlined />}

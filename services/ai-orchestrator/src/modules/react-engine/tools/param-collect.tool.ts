@@ -63,9 +63,23 @@ export class ParamCollectTool extends BaseTool {
       }
 
       // 更新缺失参数列表
-      const missingParams = schema.required.filter(
+      let missingParams = schema.required.filter(
         (key) => collectedParams[key] === undefined || collectedParams[key] === null,
       );
+
+      // 兜底：用户补充轮次中，若仅缺一个字符串参数，且输入像“上海”这种直接答案，则自动填充
+      if (missingParams.length === 1) {
+        const fallbackKey = missingParams[0];
+        if (fallbackKey) {
+          const fallbackProp = schema.properties[fallbackKey];
+          if (fallbackProp?.type === 'string' && this.isLikelySingleFieldAnswer(userInput)) {
+            collectedParams[fallbackKey] = userInput.trim();
+            missingParams = schema.required.filter(
+              (key) => collectedParams[key] === undefined || collectedParams[key] === null,
+            );
+          }
+        }
+      }
 
       if (missingParams.length === 0) {
         return {
@@ -199,6 +213,20 @@ export class ParamCollectTool extends BaseTool {
     }
 
     return null;
+  }
+
+  private isLikelySingleFieldAnswer(text: string): boolean {
+    const normalized = text.trim();
+    if (!normalized) return false;
+    if (normalized.length > 12) return false;
+
+    // 排除明显“整句提问/指令”，避免把“今天的天气怎么样”误当成 city
+    const excludedKeywords = ['查询', '帮我', '请', '?', '？', '怎么', '如何'];
+    if (excludedKeywords.some((keyword) => normalized.includes(keyword))) {
+      return false;
+    }
+
+    return true;
   }
 
   /**

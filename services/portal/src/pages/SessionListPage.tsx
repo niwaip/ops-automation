@@ -6,7 +6,6 @@ import {
   PlusOutlined,
   ReloadOutlined,
   EyeOutlined,
-  StopOutlined,
   DeleteOutlined,
   FilePdfOutlined,
 } from '@ant-design/icons';
@@ -184,7 +183,7 @@ const SessionListPage: React.FC = () => {
     <div>
       <div className="page-title">{t('session:sessionList')}</div>
 
-      <Card bordered={false}>
+      <Card variant="borderless">
         <Space style={{ marginBottom: 20, width: '100%', justifyContent: 'space-between' }}>
           <Space size={12}>
             <Input

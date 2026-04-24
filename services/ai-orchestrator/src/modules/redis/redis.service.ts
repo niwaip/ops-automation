@@ -4,17 +4,19 @@ import Redis from 'ioredis';
 @Injectable()
 export class RedisService implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(RedisService.name);
-  private client: Redis;
+  private client!: Redis;
 
   onModuleInit() {
     const host = process.env.REDIS_HOST || 'localhost';
     const port = parseInt(process.env.REDIS_PORT || '6379', 10);
+    const password = process.env.REDIS_PASSWORD || undefined;
 
     this.logger.log(`Connecting to Redis at ${host}:${port}`);
     
     this.client = new Redis({
       host,
       port,
+      password,
       retryStrategy: (times) => {
         const delay = Math.min(times * 50, 2000);
         return delay;

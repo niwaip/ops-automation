@@ -1,4 +1,5 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Card, Col, Row, Statistic, Table, Tag, Space, Button } from 'antd';
 import {
   DesktopOutlined,
@@ -6,6 +7,7 @@ import {
   CheckCircleOutlined,
   ReloadOutlined,
   ThunderboltOutlined,
+  PlusOutlined,
 } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
 import { useQuery } from 'react-query';
@@ -14,6 +16,7 @@ import { templateApi } from '../api/template';
 
 const DashboardPage: React.FC = () => {
   const { t } = useTranslation(['common', 'session', 'template']);
+  const navigate = useNavigate();
 
   // Fetch recent sessions
   const sessionsQuery = useQuery(
@@ -87,11 +90,22 @@ const DashboardPage: React.FC = () => {
 
   return (
     <div>
-      <div className="page-title">{t('dashboard')}</div>
+      <Space style={{ width: '100%', justifyContent: 'space-between', marginBottom: 16 }}>
+        <div className="page-title" style={{ marginBottom: 0 }}>
+          {t('dashboard')}
+        </div>
+        <Button
+          type="primary"
+          icon={<PlusOutlined />}
+          onClick={() => navigate('/sessions/new')}
+        >
+          {t('newSession')}
+        </Button>
+      </Space>
 
       <Row gutter={[24, 24]} style={{ marginTop: 0 }}>
         <Col xs={24} sm={12} md={6}>
-          <Card className="stat-card card-gradient-1 animate-fade-in-up" bordered={false}>
+          <Card className="stat-card card-gradient-1 animate-fade-in-up" variant="borderless">
             <Statistic
               title={t('sessions')}
               value={statusCounts.total}
@@ -100,7 +114,7 @@ const DashboardPage: React.FC = () => {
           </Card>
         </Col>
         <Col xs={24} sm={12} md={6}>
-          <Card className="stat-card card-gradient-2 animate-fade-in-up" bordered={false}>
+          <Card className="stat-card card-gradient-2 animate-fade-in-up" variant="borderless">
             <Statistic
               title={t('session:statusRunning')}
               value={statusCounts.running}
@@ -109,7 +123,7 @@ const DashboardPage: React.FC = () => {
           </Card>
         </Col>
         <Col xs={24} sm={12} md={6}>
-          <Card className="stat-card card-gradient-3 animate-fade-in-up" bordered={false}>
+          <Card className="stat-card card-gradient-3 animate-fade-in-up" variant="borderless">
             <Statistic
               title={t('session:statusCompleted')}
               value={statusCounts.completed}
@@ -118,7 +132,7 @@ const DashboardPage: React.FC = () => {
           </Card>
         </Col>
         <Col xs={24} sm={12} md={6}>
-          <Card className="stat-card card-gradient-4 animate-fade-in-up" bordered={false}>
+          <Card className="stat-card card-gradient-4 animate-fade-in-up" variant="borderless">
             <Statistic
               title={t('templates')}
               value={templatesStatsQuery.data?.total || 0}
@@ -145,7 +159,7 @@ const DashboardPage: React.FC = () => {
           </Space>
         }
         style={{ marginTop: 24 }}
-        bordered={false}
+        variant="borderless"
       >
         <Table
           columns={sessionColumns}
