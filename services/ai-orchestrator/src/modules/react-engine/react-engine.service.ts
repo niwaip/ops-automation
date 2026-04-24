@@ -50,6 +50,10 @@ export class ReActEngineService {
     private readonly prisma: PrismaService,
   ) {}
 
+  private tracePrefix(context: ExecutionContext): string {
+    return context.traceId ? `[${context.traceId}] ` : '';
+  }
+
   private createInitialState(maxIterations: number): ReActState {
     return {
       thought: '',
@@ -59,6 +63,7 @@ export class ReActEngineService {
       iteration: 0,
       maxIterations,
       isFinished: false,
+      isWaitingForUserInput: false,
     };
   }
 
@@ -82,29 +87,43 @@ export class ReActEngineService {
     if (request.userRoles) {
       context.userRoles = request.userRoles;
     }
+    if (request.message?.trim()) {
+      context.originalUserInput = request.message.trim();
+    }
 
     // 绑定 executionId 到 context
     if (request.executionId) {
       context.executionId = request.executionId;
-      this.logger.log(`Bound executionId ${request.executionId} to context`);
+      this.logger.log(`${this.tracePrefix(context)}Bound executionId ${request.executionId} to context`);
     }
 
     // 尝试从Session中恢复
     const savedSession = await this.sessionService.getSession(context.sessionId);
     if (savedSession) {
+      // 已进入等待用户输入状态时，若本次没有新输入，则直接返回等待事件，避免重复执行工具
+      if (savedSession.state.isWaitingForUserInput && !request.message?.trim()) {
+        this.logger.debug(`${this.tracePrefix(context)}Session ${context.sessionId} is waiting for user input`);
+        yield this.createWaitingEvent(savedSession.state);
+        return;
+      }
+
       const shouldStartNewRun = savedSession.state.isFinished
         || savedSession.state.iteration >= savedSession.state.maxIterations;
 
       if (shouldStartNewRun) {
-        this.logger.log(`Resetting finished session ${context.sessionId} for a new task run`);
+        this.logger.log(`${this.tracePrefix(context)}Resetting finished session ${context.sessionId} for a new task run`);
         await this.sessionService.deleteSession(context.sessionId);
         // 不要从旧session恢复context，让skill_match重新匹配
         state = this.createInitialState(config.maxIterations);
         messages = savedSession.history;
       } else {
-        this.logger.log(`Resuming session ${context.sessionId} at iteration ${savedSession.state.iteration}`);
+        this.logger.log(`${this.tracePrefix(context)}Resuming session ${context.sessionId} at iteration ${savedSession.state.iteration}`);
         state = savedSession.state;
         messages = savedSession.history;
+        // 收到新输入后解除等待状态，继续后续步骤
+        if (request.message?.trim()) {
+          state.isWaitingForUserInput = false;
+        }
         // 恢复context中的数据
         if (savedSession.context) {
           Object.assign(context, savedSession.context);
@@ -139,7 +158,7 @@ export class ReActEngineService {
     }
     
     // 加载动态流程工具
-    await this.toolExecutor.loadDynamicFlowTools();
+    await this.toolExecutor.loadDynamicFlowTools(false, context.traceId);
     
     // 获取工具列表时应用权限过滤
     const tools = this.toolExecutor.getTools(config.tools, context.userRoles);
@@ -147,8 +166,12 @@ export class ReActEngineService {
     // 开始循环
     while (!state.isFinished && state.iteration < state.maxIterations) {
       state.iteration++;
+      state.thought = '';
+      state.action = '';
+      state.actionInput = {};
+      state.isWaitingForUserInput = false;
 
-      this.logger.debug(`ReAct iteration ${state.iteration}/${state.maxIterations}`);
+      this.logger.debug(`${this.tracePrefix(context)}ReAct iteration ${state.iteration}/${state.maxIterations}`);
 
       // 1. 检查是否有工具返回的nextAction提示，如果有则跳过AI决策直接执行
       if (context.nextAction) {
@@ -200,6 +223,20 @@ export class ReActEngineService {
           await this.sessionService.deleteSession(context.sessionId);
           break;
         }
+        if (state.isWaitingForUserInput) {
+          await this.sessionService.saveSession(context.sessionId, {
+            state,
+            history: messages,
+            context: {
+              skill: context.skill,
+              uploadedFiles: context.uploadedFiles,
+              collectedParams: context.collectedParams,
+              userRoles: context.userRoles,
+            },
+          });
+          yield this.createWaitingEvent(state);
+          break;
+        }
         continue;  // 继续下一轮
       }
 
@@ -210,7 +247,7 @@ export class ReActEngineService {
           context.currentFlowStep++;
           continue;
         }
-        this.logger.debug(`Fast-track: executing flow step ${context.currentFlowStep + 1}/${context.skill.executionFlow.length} - ${flowTool}`);
+        this.logger.debug(`${this.tracePrefix(context)}Fast-track: executing flow step ${context.currentFlowStep + 1}/${context.skill.executionFlow.length} - ${flowTool}`);
 
         state.action = flowTool;
         state.thought = `[自动执行] 进入预编译流程步骤 ${context.currentFlowStep + 1}: ${flowTool}`;
@@ -275,6 +312,20 @@ export class ReActEngineService {
           await this.sessionService.deleteSession(context.sessionId);
           break;
         }
+        if (state.isWaitingForUserInput) {
+          await this.sessionService.saveSession(context.sessionId, {
+            state,
+            history: messages,
+            context: {
+              skill: context.skill,
+              uploadedFiles: context.uploadedFiles,
+              collectedParams: context.collectedParams,
+              userRoles: context.userRoles,
+            },
+          });
+          yield this.createWaitingEvent(state);
+          break;
+        }
         continue; // 跳过 AI 决策，进入下一轮流处理或普通循环
       }
 
@@ -282,6 +333,22 @@ export class ReActEngineService {
       const aiResponse = await this.generateThoughtAndAction(state, context, messages, tools, config);
       for await (const event of aiResponse) {
         yield event;
+      }
+
+      // AI 决策失败时，保留上下文并暂停，等待用户补充或重试
+      if (state.isWaitingForUserInput && !state.action && !state.isFinished) {
+        await this.sessionService.saveSession(context.sessionId, {
+          state,
+          history: messages,
+          context: {
+            skill: context.skill,
+            uploadedFiles: context.uploadedFiles,
+            collectedParams: context.collectedParams,
+            userRoles: context.userRoles,
+          },
+        });
+        yield this.createWaitingEvent(state);
+        break;
       }
 
       // 3. 执行Action
@@ -356,9 +423,18 @@ export class ReActEngineService {
         break;
       }
 
-      // 4. 如果需要用户输入，暂停循环
-      const lastObservation = state.observation;
-      if (lastObservation.includes('requiresUserInput') || lastObservation.includes('请提供')) {
+      // 4. 如果需要用户输入，暂停循环（显式标记，不依赖文案关键词）
+      if (state.isWaitingForUserInput) {
+        await this.sessionService.saveSession(context.sessionId, {
+          state,
+          history: messages,
+          context: {
+            skill: context.skill,
+            uploadedFiles: context.uploadedFiles,
+            collectedParams: context.collectedParams,
+            userRoles: context.userRoles,
+          },
+        });
         yield this.createWaitingEvent(state);
         break;
       }
@@ -366,10 +442,23 @@ export class ReActEngineService {
 
     // 超过最大迭代次数
     if (state.iteration >= state.maxIterations && !state.isFinished) {
-      await this.sessionService.deleteSession(context.sessionId);
+      await this.sessionService.saveSession(context.sessionId, {
+        state,
+        history: messages,
+        context: {
+          skill: context.skill,
+          uploadedFiles: context.uploadedFiles,
+          collectedParams: context.collectedParams,
+          userRoles: context.userRoles,
+        },
+      });
       yield {
         type: StreamEventType.ERROR,
         content: `达到最大迭代次数 ${state.maxIterations}，任务未完成`,
+        data: {
+          taskStatus: 'failed',
+          canResume: true,
+        },
         iteration: state.iteration,
       };
     }
@@ -409,7 +498,7 @@ export class ReActEngineService {
     );
 
     // 调用AI模型（流式）
-    const client = this.modelService.getClientByModelId(config.modelId);
+    const client = this.modelService.getClient(config.modelId);
     if (!client) {
       yield {
         type: StreamEventType.ERROR,
@@ -446,6 +535,11 @@ export class ReActEngineService {
         state.action = parsed.action;
         state.actionInput = parsed.actionInput;
 
+        if (parsed.action === 'finish' && typeof parsed.actionInput.answer === 'string') {
+          state.isFinished = true;
+          state.finalAnswer = parsed.actionInput.answer;
+        }
+
         // 发送thought事件
         yield {
           type: StreamEventType.THOUGHT,
@@ -472,6 +566,8 @@ export class ReActEngineService {
       }
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : 'Unknown error';
+      state.observation = `AI调用失败: ${errorMsg}`;
+      state.isWaitingForUserInput = true;
       yield {
         type: StreamEventType.ERROR,
         content: `AI调用失败: ${errorMsg}`,
@@ -499,10 +595,16 @@ export class ReActEngineService {
     );
 
     state.observation = event.content;
+    state.isWaitingForUserInput = Boolean(event.data?.requiresUserInput) || toolName === 'user_ask';
 
     // Extract result data with proper typing
     const resultData = event.data?.result as ToolResult | undefined;
     const innerData = resultData?.data as Record<string, unknown> | undefined;
+
+    // 优先输出结构化的用户提示文案，避免仅显示“参数不完整”这类内部描述
+    if (state.isWaitingForUserInput && resultData?.userInputPrompt) {
+      state.observation = resultData.userInputPrompt;
+    }
 
     // 更新context中的skill信息
     if (innerData?.skill) {
@@ -510,7 +612,7 @@ export class ReActEngineService {
     }
 
     // 检查是否任务完成（如document_render返回taskComplete）
-    if (innerData?.taskComplete) {
+    if (innerData?.taskComplete && !state.isWaitingForUserInput) {
       state.isFinished = true;
       state.finalAnswer = typeof innerData.finalAnswer === 'string' && innerData.finalAnswer.trim()
         ? innerData.finalAnswer
@@ -518,7 +620,11 @@ export class ReActEngineService {
     }
 
     // 检查是否有nextAction提示
-    if (resultData?.nextAction) {
+    if (state.isWaitingForUserInput) {
+      // 等待用户输入时强制停止后续自动链路，避免继续执行下一工具
+      context.nextAction = undefined;
+      context.nextActionParams = undefined;
+    } else if (resultData?.nextAction) {
       context.nextAction = resultData.nextAction as string;
       context.nextActionParams = resultData.nextActionParams as Record<string, unknown>;
     }
@@ -555,11 +661,23 @@ export class ReActEngineService {
    * 创建结果事件
    */
   private createResultEvent(state: ReActState): StreamEvent {
+    const baseContent = state.finalAnswer || state.observation || '任务完成';
+    const content = this.appendTaskCompletedCheckbox(baseContent);
     return {
       type: StreamEventType.RESULT,
-      content: state.finalAnswer || state.observation || '任务完成',
+      content,
+      data: {
+        taskStatus: 'completed',
+      },
       iteration: state.iteration,
     };
+  }
+
+  private appendTaskCompletedCheckbox(content: string): string {
+    if (content.includes('- [x] 任务完成')) {
+      return content;
+    }
+    return `${content}\n\n- [x] 任务完成（可改为未完成）`;
   }
 
   /**
@@ -567,9 +685,13 @@ export class ReActEngineService {
    */
   private createWaitingEvent(state: ReActState): StreamEvent {
     return {
-      type: StreamEventType.RESULT,
+      type: StreamEventType.WAITING_INPUT,
       content: state.observation,
-      data: { requiresUserInput: true },
+      data: {
+        requiresUserInput: true,
+        taskStatus: 'waiting_input',
+        action: state.action,
+      },
       iteration: state.iteration,
     };
   }
@@ -654,7 +776,7 @@ export class ReActEngineService {
         additionalData,
       );
     } catch (error) {
-      this.logger.error(`Failed to update step ${context.currentStepId}: ${error}`);
+      this.logger.error(`${this.tracePrefix(context)}Failed to update step ${context.currentStepId}: ${error}`);
     }
   }
 
@@ -672,29 +794,29 @@ export class ReActEngineService {
     }
 
     try {
-      await this.prisma.execution.update({
+      await (this.prisma as any).execution.update({
         where: { id: context.executionId },
         data: {
           status,
           endedAt: new Date(),
-          ...(result && { resultJson: result as Prisma.InputJsonValue }),
+          ...(result && { resultJson: result as any }),
           ...(failureReason && { failureReason }),
         },
       });
 
       // Create execution event
-      await this.prisma.executionEvent.create({
+      await (this.prisma as any).executionEvent.create({
         data: {
           executionId: context.executionId,
           eventType: `execution.${status}`,
           eventSource: 'ai-orchestrator',
-          payloadJson: { failureReason } as Prisma.InputJsonValue,
+          payloadJson: { failureReason } as any,
         },
       });
 
-      this.logger.log(`Execution ${context.executionId} finalized with status ${status}`);
+      this.logger.log(`${this.tracePrefix(context)}Execution ${context.executionId} finalized with status ${status}`);
     } catch (error) {
-      this.logger.error(`Failed to finalize execution ${context.executionId}: ${error}`);
+      this.logger.error(`${this.tracePrefix(context)}Failed to finalize execution ${context.executionId}: ${error}`);
     }
   }
 }

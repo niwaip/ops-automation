@@ -1081,7 +1081,7 @@ ${skillsXml}
       message: executionPrompt,
       userId: 'skill-validator',
       sessionId: `skill-exec-${skill.id}-${randomUUID()}`,
-      modelId: 'qwen3.5-plus',
+      modelId: 'default',
       config: {
         mode: 'task',
         maxIterations: 8,
@@ -1205,7 +1205,7 @@ ${skillsXml}
     const aiResponse = await axios.post(`${aiOrchestratorUrl}/ai/chat/stream`, {
       message: auditPrompt,
       sessionId: `skill-audit-${skill.id}-${randomUUID()}`,
-      modelId: 'qwen3.5-plus',
+      modelId: 'default',
       config: { mode: 'chat', maxIterations: 5 },
     }, { responseType: 'stream', timeout: 120000 });
 

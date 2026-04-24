@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect } from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
-import { Layout, Menu, Dropdown, Button, Avatar, Space, Tooltip } from 'antd';
+import { Layout, Menu, Dropdown, Button, Avatar, Space } from 'antd';
+import type { MenuProps } from 'antd';
 import {
   DashboardOutlined,
   DesktopOutlined,
@@ -12,8 +13,6 @@ import {
   MenuUnfoldOutlined,
   GlobalOutlined,
   LogoutOutlined,
-  SunOutlined,
-  MoonOutlined,
   PlusCircleOutlined,
   FilePdfOutlined,
   BarChartOutlined,
@@ -32,12 +31,11 @@ const MainLayout: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { user, logout, language, setLanguage, sidebarCollapsed, toggleSidebar } = useAuthStore();
-  const [theme, setTheme] = useState<'light' | 'dark'>('light');
 
-  // Apply theme to document
+  // Force the portal to stay in light mode for a brighter UI.
   useEffect(() => {
-    document.documentElement.setAttribute('data-theme', theme);
-  }, [theme]);
+    document.documentElement.setAttribute('data-theme', 'light');
+  }, []);
 
   const menuItems = [
     {
@@ -123,39 +121,40 @@ const MainLayout: React.FC = () => {
       : []),
   ];
 
-  const languageMenu = (
-    <Menu
-      items={[
-        { key: 'zh-CN', label: '简体中文' },
-        { key: 'en-US', label: 'English' },
-        { key: 'ja-JP', label: '日本語' },
-      ]}
-      onClick={({ key }) => setLanguage(key as 'zh-CN' | 'en-US' | 'ja-JP')}
-      selectedKeys={[language]}
-    />
-  );
+  const languageMenu: MenuProps = {
+    items: [
+      { key: 'zh-CN', label: '简体中文' },
+      { key: 'en-US', label: 'English' },
+      { key: 'ja-JP', label: '日本語' },
+    ],
+    onClick: ({ key }) => setLanguage(key as 'zh-CN' | 'en-US' | 'ja-JP'),
+    selectedKeys: [language],
+  };
 
-  const userMenu = (
-    <Menu
-      items={[
-        {
-          key: 'profile',
-          icon: <UserOutlined />,
-          label: t('profile'),
-          onClick: () => navigate('/profile'),
-        },
-        {
-          key: 'logout',
-          icon: <LogoutOutlined />,
-          label: t('logout'),
-          onClick: () => {
-            logout();
-            navigate('/login');
-          },
-        },
-      ]}
-    />
-  );
+  const userMenu: MenuProps = {
+    items: [
+      {
+        key: 'profile',
+        icon: <UserOutlined />,
+        label: t('profile'),
+      },
+      {
+        key: 'logout',
+        icon: <LogoutOutlined />,
+        label: t('logout'),
+      },
+    ],
+    onClick: ({ key }) => {
+      if (key === 'profile') {
+        navigate('/profile');
+        return;
+      }
+      if (key === 'logout') {
+        logout();
+        navigate('/login');
+      }
+    },
+  };
 
   const getSelectedKey = () => {
     const path = location.pathname;
@@ -299,7 +298,7 @@ const MainLayout: React.FC = () => {
         <Header
           style={{
             padding: '0 24px',
-            background: theme === 'dark' ? 'rgba(30, 41, 59, 0.95)' : 'rgba(255, 255, 255, 0.95)',
+            background: 'rgba(255, 255, 255, 0.95)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
@@ -308,7 +307,7 @@ const MainLayout: React.FC = () => {
             zIndex: 99,
             boxShadow: '0 1px 3px rgba(0,0,0,0.08)',
             backdropFilter: 'blur(12px)',
-            borderBottom: `1px solid ${theme === 'dark' ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)'}`,
+            borderBottom: '1px solid rgba(0,0,0,0.05)',
           }}
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
@@ -330,7 +329,15 @@ const MainLayout: React.FC = () => {
           </div>
 
           <Space size={12}>
-            <Dropdown overlay={languageMenu} placement="bottomRight" trigger={['click']}>
+            <Button
+              type="primary"
+              icon={<PlusCircleOutlined />}
+              onClick={() => navigate('/sessions/new')}
+            >
+              {t('newSession')}
+            </Button>
+
+            <Dropdown menu={languageMenu} placement="bottomRight" trigger={['click']}>
               <Button
                 type="text"
                 icon={<GlobalOutlined />}
@@ -345,21 +352,7 @@ const MainLayout: React.FC = () => {
               </Button>
             </Dropdown>
 
-            <Tooltip title={theme === 'dark' ? '浅色模式' : '深色模式'}>
-              <Button
-                type="text"
-                icon={theme === 'dark' ? <SunOutlined /> : <MoonOutlined />}
-                onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-                style={{
-                  color: 'var(--text-secondary)',
-                  borderRadius: 10,
-                  width: 36,
-                  height: 36,
-                }}
-              />
-            </Tooltip>
-
-            <Dropdown overlay={userMenu} placement="bottomRight" trigger={['click']}>
+            <Dropdown menu={userMenu} placement="bottomRight" trigger={['click']}>
               <Space
                 style={{
                   cursor: 'pointer',

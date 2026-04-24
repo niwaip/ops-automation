@@ -1590,15 +1590,19 @@ const AIControls: React.FC<AIControlsProps> = ({
               </Button>
 
               {/* Wait duration input */}
-              <InputNumber
-                size="small"
-                min={1}
-                max={120}
-                value={waitDuration}
-                onChange={(val) => setWaitDuration(val || 3)}
-                style={{ width: 60 }}
-                addonAfter="s"
-              />
+              <Space.Compact size="small">
+                <InputNumber
+                  size="small"
+                  min={1}
+                  max={120}
+                  value={waitDuration}
+                  onChange={(val) => setWaitDuration(val || 3)}
+                  style={{ width: 60 }}
+                />
+                <Button size="small" disabled>
+                  s
+                </Button>
+              </Space.Compact>
             </Space>
           </div>
         </div>

@@ -6,6 +6,7 @@
 import axios from 'axios';
 import { BaseTool } from './base.tool';
 import { ToolResult, ExecutionContext } from '../interfaces';
+import { TRACE_ID_HEADER } from '../../../common/trace.util';
 
 // Browser Worker service URL
 const getBrowserWorkerUrl = () => {
@@ -112,6 +113,7 @@ export class BrowserStepTool extends BaseTool {
 
     const browserWorkerUrl = getBrowserWorkerUrl();
     const controlPlaneUrl = getControlPlaneUrl();
+    const traceHeaders = context.traceId ? { [TRACE_ID_HEADER]: context.traceId } : undefined;
 
     const stepDto: ExecuteStepDto = {
       executionId,
@@ -134,6 +136,7 @@ export class BrowserStepTool extends BaseTool {
           timeout: 60000, // 60秒超时
           headers: {
             'Content-Type': 'application/json',
+            ...(traceHeaders || {}),
           },
         },
       );
@@ -165,6 +168,7 @@ export class BrowserStepTool extends BaseTool {
               timeout: 10000,
               headers: {
                 'Content-Type': 'application/json',
+                ...(traceHeaders || {}),
               },
             },
           );
@@ -211,8 +215,9 @@ export class BrowserStepTool extends BaseTool {
       this.logger.error(`Browser step execution failed: ${errorMsg}`);
 
       let errorDetail = errorMsg;
-      if (axios.isAxiosError(error) && error.response) {
-        errorDetail = `HTTP ${error.response.status}: ${JSON.stringify(error.response.data)}`;
+      const axiosLikeError = error as { response?: { status?: number; data?: unknown } } | undefined;
+      if (axiosLikeError?.response) {
+        errorDetail = `HTTP ${axiosLikeError.response.status}: ${JSON.stringify(axiosLikeError.response.data)}`;
       }
 
       return {

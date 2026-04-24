@@ -4,8 +4,8 @@
  */
 
 import React, { useEffect, useRef, useState } from 'react';
-import { Card, Spin, Select, Space, Button } from 'antd';
-import { CloseOutlined, PlusOutlined } from '@ant-design/icons';
+import { Spin, Button, Empty, Typography } from 'antd';
+import { CloseOutlined } from '@ant-design/icons';
 import { useChatStore } from './chatStore';
 import { useAuthStore } from '../../store/authStore';
 import ChatMessage from './ChatMessage';
@@ -16,11 +16,14 @@ import { v4 as uuidv4 } from 'uuid';
 import './ChatWindow.css';
 
 const ChatWindow: React.FC = () => {
+  const { Text } = Typography;
   const {
     currentSession,
     messages,
     isLoading,
     chatMode,
+    enableThinking,
+    enableWebSearch,
     selectedModel,
     availableModels,
     uploadedFiles,
@@ -28,7 +31,8 @@ const ChatWindow: React.FC = () => {
     pendingSkillName,
     setOpen,
     addMessage,
-    updateLastMessage,
+    updateMessageById,
+    updateMessageMetadataById,
     setStreaming,
     setAbortStreaming,
     addStreamEvent,
@@ -94,6 +98,9 @@ const ChatWindow: React.FC = () => {
       content: '',
       timestamp: new Date(),
       isStreaming: true,
+      metadata: {
+        taskStatus: undefined,
+      },
     };
     addMessage(assistantMessage);
 
@@ -116,6 +123,8 @@ const ChatWindow: React.FC = () => {
         files: filesToSend,
         config: {
           mode: chatMode,
+          thinking: enableThinking,
+          webSearch: enableWebSearch,
         },
       },
       (event) => {
@@ -128,10 +137,16 @@ const ChatWindow: React.FC = () => {
           accumulatedContent += `【行动】${event.content}\n`;
         } else if (event.type === 'observation') {
           accumulatedContent += `【观察】${event.content}\n`;
-        } else if (event.type === 'result') {
+        } else if (event.type === 'result' || event.type === 'waiting_input') {
           accumulatedContent = event.content; // 最终结果替换所有内容
+          updateMessageMetadataById(assistantMessageId, {
+            taskStatus: event.type === 'waiting_input' ? 'waiting_input' : 'completed',
+          });
         } else if (event.type === 'error') {
           accumulatedContent += `❌ 错误: ${event.content}\n`;
+          updateMessageMetadataById(assistantMessageId, {
+            taskStatus: 'failed',
+          });
         } else if (event.type === 'params_confirm') {
           const skill = event.data?.skill as { skillName?: string } | undefined;
           // 参数确认场景
@@ -143,12 +158,12 @@ const ChatWindow: React.FC = () => {
 
         // 实时更新本地状态和消息
         setLocalStreamingContent(accumulatedContent);
-        updateLastMessage(accumulatedContent);
+        updateMessageById(assistantMessageId, accumulatedContent, true);
       },
       (error) => {
         const errorMsg = `错误: ${error.message}`;
         setLocalStreamingContent(errorMsg);
-        updateLastMessage(errorMsg);
+        updateMessageById(assistantMessageId, errorMsg, false);
         setStreaming(false);
         setAbortStreaming(null);
         setPendingParamsConfirm(null, null);
@@ -159,7 +174,7 @@ const ChatWindow: React.FC = () => {
         setPendingParamsConfirm(null, null);
         // 最终更新消息
         if (accumulatedContent) {
-          updateLastMessage(accumulatedContent);
+          updateMessageById(assistantMessageId, accumulatedContent, false);
         }
         setLocalStreamingContent('');
       }
@@ -167,6 +182,17 @@ const ChatWindow: React.FC = () => {
 
     // 存储中止函数
     setAbortStreaming(abortStreaming);
+  };
+
+  const handleRetryMessage = (messageId: string) => {
+    const targetIndex = messages.findIndex((m) => m.id === messageId);
+    if (targetIndex <= 0) return;
+    const previousUserMessage = [...messages.slice(0, targetIndex)]
+      .reverse()
+      .find((m) => m.role === 'user');
+    if (previousUserMessage?.content) {
+      handleSendMessage(previousUserMessage.content);
+    }
   };
 
   // 确认参数
@@ -184,55 +210,40 @@ const ChatWindow: React.FC = () => {
 
   return (
     <div className="chat-window-container">
-      <Card
-        className="chat-window"
-        title={
-          <Space className="chat-window-header">
-            <span style={{ fontWeight: 600 }}>AI助手</span>
-
-            {/* 模型选择 */}
-            <Select
-              value={selectedModel}
-              onChange={setSelectedModel}
-              style={{ width: 140 }}
-              options={availableModels.map((m) => ({
-                value: m.id,
-                label: m.config?.display_name || m.name,
-              }))}
-              placeholder="选择模型"
-              size="small"
-            />
-
-            {/* 新对话 */}
-            <Button
-              type="text"
-              icon={<PlusOutlined />}
-              onClick={createSession}
-              size="small"
-              title="新对话"
-            />
-          </Space>
-        }
-        extra={
+      <div className="chat-window">
+        <div className="chat-window-actions">
           <Button
             type="text"
             icon={<CloseOutlined />}
             onClick={() => setOpen(false)}
             size="small"
+            className="chat-window-close-btn"
           />
-        }
-        styles={{
-          body: { padding: 0, display: 'flex', flexDirection: 'column', height: 'calc(100% - 56px)', overflow: 'hidden' },
-        }}
-      >
+        </div>
+
         {/* 消息列表 */}
         <div className="chat-messages">
+          {!isLoading && messages.length === 0 && (
+            <div className="chat-empty-state">
+              <Empty
+                description={
+                  <div className="chat-empty-description">
+                    <div className="chat-empty-title">开始一个新对话</div>
+                    <Text type="secondary">
+                      输入你的问题、任务或上传文件，AI 会在这里返回结果。
+                    </Text>
+                  </div>
+                }
+              />
+            </div>
+          )}
           {messages.map((msg) => (
             <ChatMessage
               key={msg.id}
               message={msg}
               isStreaming={msg.isStreaming && isLoading}
               streamingContent={msg.isStreaming ? localStreamingContent : ''}
+              onRetry={msg.role === 'assistant' ? handleRetryMessage : undefined}
             />
           ))}
           {isLoading && messages.length === 0 && (
@@ -258,8 +269,12 @@ const ChatWindow: React.FC = () => {
           onSend={handleSendMessage}
           disabled={isLoading || !!pendingParamsConfirm}
           uploadedFiles={uploadedFiles}
+          onNewSession={createSession}
+          selectedModel={selectedModel}
+          availableModels={availableModels}
+          onModelChange={setSelectedModel}
         />
-      </Card>
+      </div>
     </div>
   );
 };

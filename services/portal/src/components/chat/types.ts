@@ -11,6 +11,7 @@ export enum StreamEventType {
   ACTION = 'action',
   OBSERVATION = 'observation',
   RESULT = 'result',
+  WAITING_INPUT = 'waiting_input',
   ERROR = 'error',
   PARAMS_CONFIRM = 'params_confirm',
   FILE_UPLOAD = 'file_upload',
@@ -41,6 +42,7 @@ export interface ChatMessage {
     files?: string[];
     fileUrl?: string;
     downloadUrl?: string;
+    taskStatus?: 'waiting_input' | 'completed' | 'failed';
   };
   isStreaming?: boolean;
 }
@@ -113,6 +115,8 @@ export interface ChatRequest {
   config?: {
     mode?: 'chat' | 'task';  // 聊天模式：chat(普通) 或 task(ReAct引擎)
     maxIterations?: number;
+    thinking?: boolean;
+    webSearch?: boolean;
   };
 }
 

@@ -29,7 +29,7 @@ const SkillConfirm: React.FC<SkillConfirmProps> = ({
   }));
 
   return (
-    <Card className="skill-confirm-panel" bordered={false}>
+    <Card className="skill-confirm-panel" variant="borderless">
       <Typography.Title level={5}>
         确认参数 - {skillName}
       </Typography.Title>

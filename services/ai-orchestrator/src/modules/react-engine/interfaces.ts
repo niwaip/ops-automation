@@ -11,6 +11,7 @@ export enum StreamEventType {
   ACTION = 'action',
   OBSERVATION = 'observation',
   RESULT = 'result',
+  WAITING_INPUT = 'waiting_input',
   ERROR = 'error',
   PARAMS_CONFIRM = 'params_confirm',
   ACTION_CONFIRM = 'action_confirm',
@@ -38,6 +39,7 @@ export interface ReActState {
   iteration: number;
   maxIterations: number;
   isFinished: boolean;
+  isWaitingForUserInput?: boolean;
   finalAnswer?: string;
 }
 
@@ -93,8 +95,10 @@ export interface ToolResult {
 export interface ExecutionContext {
   sessionId: string;
   userId: string;
+  traceId?: string;             // Request trace id for observability
   executionId?: string;           // Execution ID for step tracking
   userRoles?: string[];           // 新增：当前用户的角色
+  originalUserInput?: string;     // 初始用户输入，供工具缺省参数兜底
   history: ChatMessage[];
   currentThought?: string;
   skill?: SkillMatchResult;
@@ -198,6 +202,7 @@ export interface UploadedFile {
  */
 export interface ChatRequestDTO {
   message: string;
+  traceId?: string;
   sessionId?: string;
   userId?: string;
   executionId?: string;          // Execution ID for step tracking

@@ -2055,7 +2055,7 @@ ${blankList}
    */
   private async callAIService(prompt: string, retryCount: number = 0): Promise<any> {
     const aiOrchestratorUrl = process.env.AI_ORCHESTRATOR_URL || 'http://localhost:3007';
-    const aiModelId = process.env.AI_MODEL_ID || '00ddd35d-6578-4acb-bc09-d629560f6ab6';  // 默认使用 qwen3.5-plus
+    const aiModelId = process.env.AI_MODEL_ID || 'default';  // 默认使用系统默认模型
     const maxRetries = 3;
 
     this.logger.log(`Calling AI service at ${aiOrchestratorUrl}/ai/models/${aiModelId}/test (retry: ${retryCount})`);

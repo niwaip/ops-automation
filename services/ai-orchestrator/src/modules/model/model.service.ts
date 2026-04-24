@@ -279,9 +279,36 @@ export class ModelService implements OnModuleInit {
   }
 
   /**
-   * Resolve modelId (either name or UUID) to actual UUID
+   * Get the default model (the one marked as default in config, or the first active one with a client)
+   */
+  getDefaultModel(): AIModelDTO | null {
+    // 1. Try to find the one explicitly marked as default
+    for (const model of this.models.values()) {
+      if (model.status === 'active' && model.config?.default === true && this.clients.has(model.id)) {
+        return model;
+      }
+    }
+
+    // 2. Try to find the first active model that has a client
+    for (const model of this.models.values()) {
+      if (model.status === 'active' && this.clients.has(model.id)) {
+        return model;
+      }
+    }
+
+    return null;
+  }
+
+  /**
+   * Resolve modelId (either name, UUID, or 'default') to actual UUID
    */
   async resolveModelId(modelId: string): Promise<string | null> {
+    // Handle 'default'
+    if (modelId === 'default') {
+      const defaultModel = this.getDefaultModel();
+      return defaultModel?.id || null;
+    }
+
     // If it looks like a UUID, try to get directly
     if (modelId.match(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i)) {
       if (this.models.has(modelId)) {
@@ -291,23 +318,6 @@ export class ModelService implements OnModuleInit {
     // Try to find by name
     const model = await this.getModelByName(modelId);
     return model?.id || null;
-  }
-
-  /**
-   * Get client by modelId (supports both UUID and name)
-   */
-  getClientByModelId(modelId: string): OpenAICompatibleClient | null {
-    // First try direct UUID lookup
-    const client = this.clients.get(modelId);
-    if (client) return client;
-
-    // Then try name lookup
-    for (const [id, model] of this.models) {
-      if (model.name === modelId) {
-        return this.clients.get(id) || null;
-      }
-    }
-    return null;
   }
 
   /**
@@ -449,9 +459,18 @@ export class ModelService implements OnModuleInit {
   }
 
   /**
-   * Get client for a model (supports both UUID and model name)
+   * Get client for a model (supports UUID, model name, or 'default')
    */
   getClient(id: string): OpenAICompatibleClient | null {
+    // Handle 'default'
+    if (id === 'default') {
+      const defaultModel = this.getDefaultModel();
+      if (defaultModel) {
+        return this.clients.get(defaultModel.id) || null;
+      }
+      return null;
+    }
+
     // First try direct UUID lookup
     const client = this.clients.get(id);
     if (client) return client;

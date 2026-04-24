@@ -269,11 +269,13 @@ const RecorderPage: React.FC = () => {
               border: '1px solid rgba(255, 255, 255, 0.8)',
               overflow: 'hidden',
             }}
-            bodyStyle={{
-              padding: 20,
-              height: '100%',
-              display: 'flex',
-              flexDirection: 'column',
+            styles={{
+              body: {
+                padding: 20,
+                height: '100%',
+                display: 'flex',
+                flexDirection: 'column',
+              },
             }}
           >
             <AIControls
@@ -315,10 +317,12 @@ const RecorderPage: React.FC = () => {
               display: 'flex',
               flexDirection: 'column',
             }}
-            bodyStyle={{
-              flex: 1,
-              padding: 0,
-              minHeight: 0,
+            styles={{
+              body: {
+                flex: 1,
+                padding: 0,
+                minHeight: 0,
+              },
             }}
             extra={
               <Button

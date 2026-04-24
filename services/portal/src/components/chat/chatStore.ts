@@ -21,6 +21,8 @@ interface ChatState {
 
   // 聊天模式：chat(普通聊天) | task(任务模式-ReAct)
   chatMode: 'chat' | 'task';
+  enableThinking: boolean;
+  enableWebSearch: boolean;
 
   // 文件上传
   uploadedFiles: UploadedFile[];
@@ -46,6 +48,8 @@ interface ChatActions {
   // 消息管理
   addMessage: (message: ChatMessage) => void;
   updateLastMessage: (content: string) => void;
+  updateMessageById: (messageId: string, content: string, isStreaming?: boolean) => void;
+  updateMessageMetadataById: (messageId: string, metadata: NonNullable<ChatMessage['metadata']>) => void;
   clearMessages: () => void;
 
   // 流式处理
@@ -61,6 +65,8 @@ interface ChatActions {
   setOpen: (isOpen: boolean) => void;
   setChatMode: (mode: 'chat' | 'task') => void;
   toggleChatMode: () => void;
+  setEnableThinking: (enabled: boolean) => void;
+  setEnableWebSearch: (enabled: boolean) => void;
 
   // 文件上传
   addUploadedFile: (file: UploadedFile) => void;
@@ -86,6 +92,8 @@ export const useChatStore = create<ChatState & ChatActions>((set, get) => ({
   streamingContent: '',
   streamingEvents: [],
   chatMode: 'chat',  // 默认普通聊天模式
+  enableThinking: true,
+  enableWebSearch: false,
   uploadedFiles: [],
   selectedModel: null,
   availableModels: [],
@@ -98,7 +106,7 @@ export const useChatStore = create<ChatState & ChatActions>((set, get) => ({
     const newSession: ChatSession = {
       id: uuidv4(),
       title: '新对话',
-      modelId: get().selectedModel,
+      modelId: get().selectedModel || undefined,
       status: 'active',
       createdAt: new Date(),
       updatedAt: new Date(),
@@ -133,6 +141,28 @@ export const useChatStore = create<ChatState & ChatActions>((set, get) => ({
         });
       }
     }
+  },
+
+  updateMessageById: (messageId, content, isStreaming) => {
+    const messages = get().messages;
+    set({
+      messages: messages.map((msg) =>
+        msg.id === messageId
+          ? { ...msg, content, ...(isStreaming !== undefined ? { isStreaming } : {}) }
+          : msg
+      ),
+    });
+  },
+
+  updateMessageMetadataById: (messageId, metadata) => {
+    const messages = get().messages;
+    set({
+      messages: messages.map((msg) =>
+        msg.id === messageId
+          ? { ...msg, metadata: { ...(msg.metadata || {}), ...metadata } }
+          : msg
+      ),
+    });
   },
 
   clearMessages: () => {
@@ -197,6 +227,14 @@ export const useChatStore = create<ChatState & ChatActions>((set, get) => ({
   toggleChatMode: () => {
     const currentMode = get().chatMode;
     set({ chatMode: currentMode === 'chat' ? 'task' : 'chat' });
+  },
+
+  setEnableThinking: (enabled) => {
+    set({ enableThinking: enabled });
+  },
+
+  setEnableWebSearch: (enabled) => {
+    set({ enableWebSearch: enabled });
   },
 
   // 文件上传

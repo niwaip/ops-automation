@@ -4,10 +4,10 @@
  */
 
 import React, { useState, useRef } from 'react';
-import { Input, Button, Upload, Space, Tag, Tooltip } from 'antd';
-import { SendOutlined, PaperClipOutlined, MessageOutlined, RobotOutlined, StopOutlined } from '@ant-design/icons';
+import { Input, Button, Upload, Space, Tag, Switch, Select } from 'antd';
+import { SendOutlined, PaperClipOutlined, StopOutlined, PlusOutlined, MessageOutlined, RobotOutlined } from '@ant-design/icons';
 import { RcFile } from 'antd/es/upload';
-import { UploadedFile } from './types';
+import { UploadedFile, AIModel } from './types';
 import { uploadFile } from './chatApi';
 import { useChatStore } from './chatStore';
 import './ChatInput.css';
@@ -16,18 +16,37 @@ interface ChatInputProps {
   onSend: (message: string) => void;
   disabled?: boolean;
   uploadedFiles: UploadedFile[];
+  onNewSession?: () => void;
+  selectedModel: string | null;
+  availableModels: AIModel[];
+  onModelChange: (modelId: string) => void;
 }
 
 const ChatInput: React.FC<ChatInputProps> = ({
   onSend,
   disabled,
   uploadedFiles,
+  onNewSession,
+  selectedModel,
+  availableModels,
+  onModelChange,
 }) => {
   const [message, setMessage] = useState('');
   const [uploading, setUploading] = useState(false);
-  const inputRef = useRef<HTMLInputElement>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
 
-  const { addUploadedFile, removeUploadedFile, chatMode, setChatMode, isLoading, abortCurrentStreaming } = useChatStore();
+  const {
+    addUploadedFile,
+    removeUploadedFile,
+    chatMode,
+    toggleChatMode,
+    isLoading,
+    abortCurrentStreaming,
+    enableThinking,
+    enableWebSearch,
+    setEnableThinking,
+    setEnableWebSearch,
+  } = useChatStore();
 
   // 发送消息
   const handleSend = () => {
@@ -57,16 +76,11 @@ const ChatInput: React.FC<ChatInputProps> = ({
   };
 
   // 键盘事件
-  const handleKeyPress = (e: React.KeyboardEvent) => {
+  const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       handleSend();
     }
-  };
-
-  // 切换模式
-  const toggleMode = () => {
-    setChatMode(chatMode === 'chat' ? 'task' : 'chat');
   };
 
   return (
@@ -81,6 +95,7 @@ const ChatInput: React.FC<ChatInputProps> = ({
                 closable
                 onClose={() => removeUploadedFile(file.fileId)}
                 icon={<PaperClipOutlined />}
+                className="chat-uploaded-file-tag"
               >
                 {file.fileName}
               </Tag>
@@ -89,68 +104,106 @@ const ChatInput: React.FC<ChatInputProps> = ({
         </div>
       )}
 
-      {/* 输入框 */}
-      <div className="chat-input-row">
-        <Input.TextArea
-          ref={inputRef as any}
-          value={message}
-          onChange={(e) => setMessage(e.target.value)}
-          onKeyPress={handleKeyPress}
-          placeholder="输入消息，按 Enter 发送..."
-          autoSize={{ minRows: 2, maxRows: 5 }}
-          disabled={disabled || uploading}
-          className="chat-input-textarea"
-        />
+      <div className="chat-input-shell">
+        <div className="chat-input-editor">
+          <Input.TextArea
+            ref={inputRef as any}
+            value={message}
+            onChange={(e) => setMessage(e.target.value)}
+            onKeyDown={handleKeyDown}
+            placeholder="输入消息，按 Enter 发送..."
+            autoSize={{ minRows: 4, maxRows: 8 }}
+            disabled={disabled || uploading}
+            className="chat-input-textarea"
+          />
+        </div>
 
-        {/* 文件上传按钮 */}
-        <Upload
-          beforeUpload={handleFileUpload}
-          showUploadList={false}
-          disabled={disabled || uploading}
-        >
+        <div className="chat-input-toolbar">
           <Button
-            type="text"
-            icon={<PaperClipOutlined />}
-            loading={uploading}
-            disabled={disabled}
-            title="上传文件"
-          />
-        </Upload>
+            size="small"
+            type={chatMode === 'task' ? 'primary' : 'default'}
+            icon={chatMode === 'task' ? <RobotOutlined /> : <MessageOutlined />}
+            onClick={toggleChatMode}
+            className="chat-input-mode-toggle-btn"
+          >
+            {chatMode === 'chat' ? '聊天' : '任务'}
+          </Button>
 
-        {/* 模式切换按钮 */}
-        <Tooltip title={chatMode === 'chat' ? '切换到任务模式' : '切换到聊天模式'}>
-          <Button
-            type="text"
-            icon={chatMode === 'chat' ? <MessageOutlined /> : <RobotOutlined />}
-            onClick={toggleMode}
-            disabled={disabled}
-            className={`chat-mode-btn ${chatMode === 'task' ? 'active' : ''}`}
+          <Switch
+            size="small"
+            checked={enableWebSearch}
+            onChange={setEnableWebSearch}
+            checkedChildren="联网"
+            unCheckedChildren="本地"
           />
-        </Tooltip>
+          <Switch
+            size="small"
+            checked={enableThinking}
+            onChange={setEnableThinking}
+            checkedChildren="思考"
+            unCheckedChildren="直答"
+          />
+          {chatMode === 'task' && <Tag color="processing">ReAct</Tag>}
 
-        {/* 发送/停止按钮 */}
-        {isLoading ? (
+          <div className="chat-input-toolbar-spacer" />
+
           <Button
-            type="primary"
-            danger
-            icon={<StopOutlined />}
-            onClick={handleStop}
-            title="停止执行"
+            type="default"
+            icon={<PlusOutlined />}
+            onClick={onNewSession}
+            size="small"
+            title="新对话"
+            className="chat-input-new-btn"
+          >
+            新建
+          </Button>
+
+          <Select
+            value={selectedModel || undefined}
+            onChange={onModelChange}
+            style={{ width: 150 }}
+            options={availableModels.map((m) => ({
+              value: m.id,
+              label: m.config?.display_name || m.name,
+            }))}
+            placeholder="模型"
+            size="small"
+            className="chat-input-model-select"
           />
-        ) : (
-          <Button
-            type="primary"
-            icon={<SendOutlined />}
-            onClick={handleSend}
-            disabled={disabled || (!message.trim() && uploadedFiles.length === 0)}
-          />
-        )}
+
+          <Upload
+            beforeUpload={handleFileUpload}
+            showUploadList={false}
+            disabled={disabled || uploading}
+          >
+            <Button
+              type="text"
+              icon={<PaperClipOutlined />}
+              loading={uploading}
+              disabled={disabled}
+              title="上传文件"
+            />
+          </Upload>
+
+          {isLoading ? (
+            <Button
+              type="primary"
+              danger
+              icon={<StopOutlined />}
+              onClick={handleStop}
+              title="停止执行"
+            />
+          ) : (
+            <Button
+              type="primary"
+              icon={<SendOutlined />}
+              onClick={handleSend}
+              disabled={disabled || (!message.trim() && uploadedFiles.length === 0)}
+            />
+          )}
+        </div>
       </div>
 
-      {/* 模式指示器 */}
-      <div className="chat-mode-indicator">
-        {chatMode === 'chat' ? '💬 聊天模式' : '🤖 任务模式'}
-      </div>
     </div>
   );
 };

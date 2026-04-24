@@ -6,6 +6,7 @@
 import axios from 'axios';
 import { BaseTool } from './base.tool';
 import { ToolResult, ExecutionContext, SkillMatchResult } from '../interfaces';
+import { TRACE_ID_HEADER } from '../../../common/trace.util';
 
 // Auth服务地址（SkillService所在）
 // Docker环境使用服务名，本地使用localhost
@@ -76,6 +77,8 @@ export class SkillMatchTool extends BaseTool {
       const response = await axios.post<{ match: SkillMatchResult | null }>(`${AUTH_SERVICE_URL}/skills/match`, {
         userInput,
         userId,  // 新增：传递用户ID进行权限过滤
+      }, {
+        headers: context.traceId ? { [TRACE_ID_HEADER]: context.traceId } : undefined,
       });
 
       const matchResult = response.data.match as SkillMatchResult | null;

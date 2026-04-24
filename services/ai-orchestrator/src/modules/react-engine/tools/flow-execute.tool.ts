@@ -6,6 +6,7 @@
 import axios from 'axios';
 import { BaseTool } from './base.tool';
 import { ToolResult, ExecutionContext } from '../interfaces';
+import { TRACE_ID_HEADER } from '../../../common/trace.util';
 
 // Auth服务地址
 const getAuthServiceUrl = () => {
@@ -267,6 +268,7 @@ export class FlowExecuteTool extends BaseTool {
     }
 
     this.logger.debug(`Executing flow: ${templateId || skillId}, starting from step ${stepIndex}`);
+    const traceHeaders = context.traceId ? { [TRACE_ID_HEADER]: context.traceId } : undefined;
 
     try {
       // 1. 获取流程步骤定义
@@ -277,7 +279,7 @@ export class FlowExecuteTool extends BaseTool {
         const url = `${authUrl}/execution-flow-templates/${templateId}`;
         this.logger.debug(`Fetching template from: ${url}`);
         try {
-          const response = await axios.get(url);
+          const response = await axios.get(url, { headers: traceHeaders });
           template = response.data as FlowTemplate;
         } catch (fetchError: any) {
           this.logger.error(`Failed to fetch template ${templateId}: ${fetchError.message}`);
@@ -288,7 +290,7 @@ export class FlowExecuteTool extends BaseTool {
           };
         }
       } else {
-        const response = await axios.get(`${authUrl}/skills/${skillId}`);
+        const response = await axios.get(`${authUrl}/skills/${skillId}`, { headers: traceHeaders });
         const skill = response.data as { name: string; executionFlow: FlowStep[] };
         template = {
           name: skill.name,
@@ -376,7 +378,10 @@ export class FlowExecuteTool extends BaseTool {
             const apiResponse = await axios({
               method: currentStep.api.method || 'GET',
               url: endpoint,
-              headers: currentStep.api.headers || {},
+              headers: {
+                ...(currentStep.api.headers || {}),
+                ...(traceHeaders || {}),
+              },
               data: currentStep.api.method === 'GET' ? undefined : { ...currentStep.api.body, ...execParams },
               params: currentStep.api.method === 'GET' ? buildGetParams(execParams, usedKeys) : undefined,
               timeout: currentStep.api.timeout || 30000,

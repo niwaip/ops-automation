@@ -219,7 +219,7 @@ export class TemporalWorkflowService {
     try {
       const aiOrchestratorUrl = process.env.AI_ORCHESTRATOR_URL || 'http://ops-ai-orchestrator:3007';
       const response = await axios.post<{ result: string }>(`${aiOrchestratorUrl}/ai/model/call`, {
-        modelId: 'MiniMax-M2.7',
+        modelId: 'default',
         prompt,
       }, { timeout: 180000 });
 

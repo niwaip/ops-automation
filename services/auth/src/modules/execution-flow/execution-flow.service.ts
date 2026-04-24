@@ -508,7 +508,7 @@ ${template.paramsSchema ? `参数定义: ${JSON.stringify(template.paramsSchema,
       const aiResponse = await axios.post(`${orchestratorUrl}/ai/chat/stream`, {
         message: auditPrompt,
         sessionId: `audit-${id}-${randomUUID()}`,
-        modelId: 'qwen3.5-plus',  // 使用配置好的模型名称
+        modelId: 'default',  // 使用系统默认模型
         config: { mode: 'chat', maxIterations: 5 }  // 使用chat模式，更稳定的AI响应
       }, { responseType: 'stream', timeout: 120000 });
 
@@ -591,7 +591,7 @@ ${template.paramsSchema ? `参数定义: ${JSON.stringify(template.paramsSchema,
         const execResponse = await axios.post(`${orchestratorUrl}/ai/chat/stream`, {
           message: executionPrompt,
           sessionId: `skill-test-${id}-${randomUUID()}`,
-          modelId: 'qwen3.5-plus',
+          modelId: 'default',
           config: {
             mode: 'task',
             maxIterations: Math.max(Math.min(steps.length + 5, 10), 6),

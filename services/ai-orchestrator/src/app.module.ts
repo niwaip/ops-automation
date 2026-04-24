@@ -8,7 +8,9 @@ import { ReActEngineModule } from './modules/react-engine/react-engine.module';
 import { RedisModule } from './modules/redis/redis.module';
 import { PrismaModule } from './modules/prisma/prisma.module';
 import { ExecutionStepModule } from './modules/execution-step/execution-step.module';
-import { AIController } from './ai.controller';
+import { ModelController } from './controllers/model.controller';
+import { ChatController } from './controllers/chat.controller';
+import { OrchestrationController } from './controllers/orchestration.controller';
 
 @Module({
   imports: [
@@ -22,6 +24,6 @@ import { AIController } from './ai.controller';
     ReActEngineModule,
     RedisModule,
   ],
-  controllers: [AIController],
+  controllers: [ModelController, ChatController, OrchestrationController],
 })
 export class AppModule {}
