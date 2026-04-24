@@ -1,4 +1,4 @@
-import React, { useReducer, useState } from 'react';
+import React, { useReducer, useState, useEffect } from 'react';
 import {
   Table, Card, Button, Input, Space, Tag, Typography, Modal, message, Form, Select,
   Divider, Alert, Collapse, Badge, Popconfirm, Statistic, Row, Col, Switch, InputNumber
@@ -65,14 +65,16 @@ interface RealValidateState {
   logs: string[];
   error: string | null;
   result: any | null;
+  inputParams: Record<string, string>; // 用户输入的参数值
 }
 
 type RealValidateAction =
-  | { type: 'OPEN' }
+  | { type: 'OPEN'; payload?: Record<string, string> }
   | { type: 'START' }
   | { type: 'APPEND_LOG'; payload: string }
   | { type: 'SET_ERROR'; payload: string }
   | { type: 'SET_RESULT'; payload: any }
+  | { type: 'SET_INPUT_PARAMS'; payload: Record<string, string> }
   | { type: 'STOP' }
   | { type: 'CLOSE' };
 
@@ -82,6 +84,7 @@ const initialRealValidateState: RealValidateState = {
   logs: [],
   error: null,
   result: null,
+  inputParams: {},
 };
 
 const realValidateReducer = (
@@ -93,6 +96,7 @@ const realValidateReducer = (
       return {
         ...state,
         visible: true,
+        inputParams: action.payload || {},
       };
     case 'START':
       return {
@@ -118,6 +122,11 @@ const realValidateReducer = (
         ...state,
         result: action.payload,
         isRunning: false,
+      };
+    case 'SET_INPUT_PARAMS':
+      return {
+        ...state,
+        inputParams: action.payload,
       };
     case 'STOP':
       return {
@@ -258,6 +267,7 @@ const ActivityPage: React.FC = () => {
     realValidateReducer,
     initialRealValidateState
   );
+  const [validateInputParams, setValidateInputParams] = useState<Record<string, string>>({}); // 真实验证时用户输入的参数
   const [cachedCode, setCachedCode] = useState<string | null>(null);
   const [isCachingCode, setIsCachingCode] = useState(false);
   const [isValidated, setIsValidated] = useState(false);
@@ -280,6 +290,13 @@ const ActivityPage: React.FC = () => {
   const appendRealValidateLog = (content: string) => {
     dispatchRealValidate({ type: 'APPEND_LOG', payload: content });
   };
+
+  // 当真实验证弹窗打开时，同步输入参数到本地状态
+  useEffect(() => {
+    if (realValidateState.visible && Object.keys(realValidateState.inputParams).length > 0) {
+      setValidateInputParams({ ...realValidateState.inputParams });
+    }
+  }, [realValidateState.visible]);
 
   const createMutation = useMutation(activityApi.create, {
     onSuccess: () => {
@@ -377,8 +394,16 @@ const ActivityPage: React.FC = () => {
 
       // Execute with SSE streaming
       appendRealValidateLog('开始执行代码...');
+      // 构建输入参数：只用用户填写的值（非空）
+      const inputParams: Record<string, string> = {};
+      Object.entries(validateInputParams).forEach(([key, value]) => {
+        if (value && value.trim()) {
+          inputParams[key] = value;
+        }
+      });
+      appendRealValidateLog(`执行参数: ${JSON.stringify(inputParams)}`);
       await activityApi.executeCodeStream(
-        { code, fn: activityForm.fn, taskQueue: activityForm.taskQueue, input: {} },
+        { code, fn: activityForm.fn, taskQueue: activityForm.taskQueue, input: inputParams },
         (event) => {
           if (event.type === 'log' && event.message) {
             appendRealValidateLog(event.message!);
@@ -458,8 +483,16 @@ const ActivityPage: React.FC = () => {
 
       appendRealValidateLog('代码已重新生成，开始验证...');
 
+      // 构建输入参数
+      const inputParams2: Record<string, string> = {};
+      Object.entries(validateInputParams).forEach(([key, value]) => {
+        if (value && value.trim()) {
+          inputParams2[key] = value;
+        }
+      });
+
       await activityApi.executeCodeStream(
-        { code: result.code, fn: activityForm.fn, taskQueue: activityForm.taskQueue, input: {} },
+        { code: result.code, fn: activityForm.fn, taskQueue: activityForm.taskQueue, input: inputParams2 },
         (event) => {
           if (event.type === 'log' && event.message) {
             appendRealValidateLog(event.message!);
@@ -671,8 +704,16 @@ const ActivityPage: React.FC = () => {
         appendRealValidateLog('获取最新代码失败，使用本地代码');
       }
 
+      // 构建输入参数
+      const inputParams3: Record<string, string> = {};
+      Object.entries(validateInputParams).forEach(([key, value]) => {
+        if (value && value.trim()) {
+          inputParams3[key] = value;
+        }
+      });
+
       await activityApi.executeCodeStream(
-        { code: latestCode, fn: activityForm.fn, taskQueue: activityForm.taskQueue, input: {} },
+        { code: latestCode, fn: activityForm.fn, taskQueue: activityForm.taskQueue, input: inputParams3 },
         (event) => {
           if (event.type === 'log' && event.message) {
             appendRealValidateLog(event.message!);
@@ -1143,7 +1184,20 @@ const ActivityPage: React.FC = () => {
             <Button icon={<RobotOutlined />} onClick={handleGenerateCode} loading={isGeneratingCode}>AI 生成代码</Button>
             <Button icon={<EyeOutlined />} onClick={() => setCodePreviewVisible(true)} disabled={!generatedCode}>查看代码</Button>
             <Button icon={<PlayCircleOutlined />} onClick={handleValidate}>验证配置</Button>
-            <Button icon={<ThunderboltOutlined />} onClick={() => dispatchRealValidate({ type: 'OPEN' })} disabled={!cachedCode && !generatedCode}>真实验证</Button>
+            <Button icon={<ThunderboltOutlined />} onClick={() => {
+              // 收集所有步骤的输入参数，合并默认值
+              const allInputParams: Record<string, string> = {};
+              activityForm.steps.forEach(step => {
+                if (step.inputParams) {
+                  Object.entries(step.inputParams).forEach(([key, value]) => {
+                    if (!allInputParams[key]) {
+                      allInputParams[key] = value || '';
+                    }
+                  });
+                }
+              });
+              dispatchRealValidate({ type: 'OPEN', payload: allInputParams });
+            }} disabled={!cachedCode && !generatedCode}>真实验证</Button>
             <Button icon={<ExperimentOutlined />} onClick={() => setSimulationModalVisible(true)}>模拟</Button>
             <Button onClick={() => setEditModalVisible(false)}>取消</Button>
             <Button type="primary" icon={<SaveOutlined />} loading={createMutation.isLoading || updateMutation.isLoading} onClick={handleSave} disabled={!isValidated && !!generatedCode}>保存{!isValidated && !!generatedCode ? '（请先验证）' : ''}</Button>
@@ -1300,6 +1354,27 @@ const ActivityPage: React.FC = () => {
               message={realValidateState.result.success ? '执行成功' : '执行失败'}
               showIcon
             />
+          )}
+
+          {/* 输入参数区域 - 仅在未运行时显示 */}
+          {!realValidateState.isRunning && Object.keys(validateInputParams).length > 0 && (
+            <Card size="small" style={{ marginBottom: 12 }}>
+              <Text strong>输入参数（请填写参数值）：</Text>
+              <div style={{ marginTop: 8, display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                {Object.entries(validateInputParams).map(([key, value]) => (
+                  <div key={key} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                    <Tag color="blue">{key}</Tag>
+                    <Input
+                      placeholder={`请输入 ${key}`}
+                      value={value}
+                      onChange={(e) => setValidateInputParams(prev => ({ ...prev, [key]: e.target.value }))}
+                      style={{ width: 160 }}
+                      size="small"
+                    />
+                  </div>
+                ))}
+              </div>
+            </Card>
           )}
 
           <div>
