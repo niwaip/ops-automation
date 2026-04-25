@@ -153,8 +153,11 @@ mock_temporalio.workflow.query = mock_workflow.query
 mock_temporalio.workflow.logger = mock_workflow.logger
 mock_temporalio.workflow.execute_activity = mock_workflow.execute_activity
 mock_temporalio.workflow.wait_condition = mock_workflow.wait_condition
-
-mock_temporalio.common.RetryPolicy = lambda **kw: type('RetryPolicy', (), {k: v for k, v in kw.items()})()
+# Define RetryPolicy lambda once
+_retry_policy_class = lambda **kw: type('RetryPolicy', (), {k: v for k, v in kw.items()})()
+# Expose RetryPolicy on both workflow and common modules (user code may import from either)
+mock_temporalio.workflow.RetryPolicy = _retry_policy_class
+mock_temporalio.common.RetryPolicy = _retry_policy_class
 
 # Mock requests module
 import urllib.request
@@ -185,6 +188,11 @@ class MockRequests:
         self.exceptions.Timeout = Timeout
         self.exceptions.HTTPError = HTTPError
         self.exceptions.ConnectionError = ConnectionError
+        # Make exceptions directly accessible on the instance (e.g., requests.RequestException)
+        self.RequestException = RequestException
+        self.Timeout = Timeout
+        self.HTTPError = HTTPError
+        self.ConnectionError = ConnectionError
         # Inject into sys.modules to allow 'from requests.exceptions import ...'
         sys.modules['requests.exceptions'] = self.exceptions
 

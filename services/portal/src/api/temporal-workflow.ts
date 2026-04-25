@@ -18,7 +18,16 @@ export interface WorkflowStep {
   type: 'activity' | 'signal' | 'query' | 'childWorkflow' | 'parallel';
   activityName?: string;
   input?: Record<string, any>;
-  retryPolicy?: { maxRetries: number; backoffMs: number };
+  // Activity execution timeout (e.g., "30s", "1m")
+  startToCloseTimeout?: string;
+  // Retry policy for the activity
+  retryPolicy?: {
+    maxRetries: number;
+    initialIntervalMs?: number;  // First retry interval in ms
+    backoffCoefficient?: number;  // Exponential backoff multiplier (default 2.0)
+    maxIntervalMs?: number;      // Cap between retries
+    nonRetryableErrorTypes?: string[]; // Errors that won't be retried
+  };
   // For parallel execution
   parallelSteps?: string[];
 }
@@ -27,6 +36,25 @@ export interface WorkflowDsl {
   name: string;
   taskQueue: string;
   steps: WorkflowStep[];
+  // Entry parameters - first step's input params are the workflow's input interface
+  inputParams?: Record<string, { description?: string; required?: boolean; defaultValue?: string }>;
+  // Output parameters - defaults to last step's output, can be customized
+  outputParams?: Record<string, { description?: string; sourceStep?: string }>;
+  // Extra guidance for AI code generation
+  extraPrompt?: string;
+  // Workflow-level execution timeout
+  workflowExecutionTimeout?: string;
+  // Single workflow run timeout
+  workflowRunTimeout?: string;
+  // Timeout for workflow task processing
+  workflowTaskTimeout?: string;
+  // Default retry policy for all activities
+  defaultActivityRetryPolicy?: {
+    maxRetries: number;
+    initialIntervalMs?: number;
+    backoffCoefficient?: number;
+    maxIntervalMs?: number;
+  };
   conditionals?: Array<{
     step: string;
     condition: string;

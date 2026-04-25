@@ -1,7 +1,7 @@
-import React, { useMemo, useReducer, useState } from 'react';
+import React, { useEffect, useMemo, useReducer, useState } from 'react';
 import {
   Table, Card, Button, Input, Space, Tag, Typography, Modal, message, Form, Select,
-  Divider, Alert, Collapse, Badge, Popconfirm, Row, Col, Statistic, Timeline
+  Divider, Alert, Collapse, Badge, Popconfirm, Row, Col, Statistic, Timeline, Switch
 } from 'antd';
 import {
   SearchOutlined, PlusOutlined, EditOutlined, DeleteOutlined, PlayCircleOutlined,
@@ -29,12 +29,15 @@ interface SandboxState {
   isStreaming: boolean;
   logs: string[];
   result: SandBoxValidationResult | null;
+  inputParams: Record<string, string>; // 用户输入的参数值
 }
 
 type SandboxAction =
   | { type: 'START' }
+  | { type: 'OPEN'; payload?: Record<string, string> }
   | { type: 'APPEND_LOG'; payload: string }
   | { type: 'SET_RESULT'; payload: SandBoxValidationResult }
+  | { type: 'SET_INPUT_PARAMS'; payload: Record<string, string> }
   | { type: 'CLOSE' };
 
 const initialSandboxState: SandboxState = {
@@ -42,6 +45,7 @@ const initialSandboxState: SandboxState = {
   isStreaming: false,
   logs: [],
   result: null,
+  inputParams: {},
 };
 
 const sandboxReducer = (state: SandboxState, action: SandboxAction): SandboxState => {
@@ -52,6 +56,12 @@ const sandboxReducer = (state: SandboxState, action: SandboxAction): SandboxStat
         isStreaming: true,
         logs: [],
         result: null,
+      };
+    case 'OPEN':
+      return {
+        ...state,
+        visible: true,
+        inputParams: action.payload || {},
       };
     case 'APPEND_LOG':
       return {
@@ -64,11 +74,14 @@ const sandboxReducer = (state: SandboxState, action: SandboxAction): SandboxStat
         isStreaming: false,
         result: action.payload,
       };
-    case 'CLOSE':
+    case 'SET_INPUT_PARAMS':
       return {
         ...state,
-        visible: false,
-        isStreaming: false,
+        inputParams: action.payload,
+      };
+    case 'CLOSE':
+      return {
+        ...initialSandboxState,
       };
     default:
       return state;
@@ -95,6 +108,47 @@ const TemporalWorkflowPage: React.FC = () => {
   const [generatedCode, setGeneratedCode] = useState<string | null>(null);
   const [codeModalVisible, setCodeModalVisible] = useState(false);
   const [sandboxState, dispatchSandbox] = useReducer(sandboxReducer, initialSandboxState);
+  const [sandboxInputParams, setSandboxInputParams] = useState<Record<string, string>>({}); // 沙箱验证时的输入参数
+
+  // 当沙箱弹窗打开时，同步输入参数到本地状态
+  useEffect(() => {
+    if (sandboxState.visible && Object.keys(sandboxState.inputParams).length > 0) {
+      setSandboxInputParams({ ...sandboxState.inputParams });
+    }
+  }, [sandboxState.visible]);
+
+  // 从Activity的config中提取inputParams (存储在config.steps[].inputParams中)
+  const getActivityInputParams = (activity: ActivityDTO): Record<string, string> => {
+    try {
+      const config = activity.config as Record<string, any>;
+      if (config?.steps && Array.isArray(config.steps) && config.steps.length > 0) {
+        const firstStep = config.steps[0];
+        if (firstStep?.inputParams && typeof firstStep.inputParams === 'object') {
+          return firstStep.inputParams as Record<string, string>;
+        }
+      }
+    } catch (e) {
+      // ignore
+    }
+    return {};
+  };
+
+  // 当选择步骤时，自动从Activity加载输入参数（如果步骤还没有参数）
+  useEffect(() => {
+    if (selectedStepIndexForConfig !== null && workflowDsl.steps[selectedStepIndexForConfig]) {
+      const step = workflowDsl.steps[selectedStepIndexForConfig];
+      if (step.activityName && (!step.input || Object.keys(step.input).filter(k => k !== 'timeout').length === 0)) {
+        const activity = activitiesQuery.data?.find(a => a.name === step.activityName);
+        const inputParams = getActivityInputParams(activity);
+        if (Object.keys(inputParams).length > 0) {
+          handleUpdateStep(selectedStepIndexForConfig, 'input', {
+            ...inputParams,
+            timeout: step.input?.timeout || '60s',
+          });
+        }
+      }
+    }
+  }, [selectedStepIndexForConfig]);
 
   const workflowsQuery = useQuery(['temporal-workflows'], () => temporalWorkflowApi.list());
   const activitiesQuery = useQuery('activities', () => activityApi.list());
@@ -192,16 +246,45 @@ const TemporalWorkflowPage: React.FC = () => {
     generateCodeMutation.mutate({ workflowDsl: { ...workflowDsl, name: workflowName }, activityDsl, errorContext });
   };
 
+  // 收集工作流步骤的输入参数
+  const collectWorkflowInputParams = (): Record<string, string> => {
+    const params: Record<string, string> = {};
+    workflowDsl.steps.forEach((step, idx) => {
+      if (step.input) {
+        Object.entries(step.input).forEach(([key, value]) => {
+          if (!params[key]) {
+            params[key] = typeof value === 'string' ? value : JSON.stringify(value);
+          }
+        });
+      }
+    });
+    return params;
+  };
+
+  const handleOpenSandbox = () => {
+    if (!generatedCode) { message.warning('请先生成代码'); return; }
+    const inputParams = collectWorkflowInputParams();
+    dispatchSandbox({ type: 'OPEN', payload: inputParams });
+  };
+
   const handleSandboxValidate = async () => {
     if (!generatedCode) { message.warning('请先生成代码'); return; }
     const fn = workflowDsl.name.replace(/\s+/g, '') + 'Workflow';
     dispatchSandbox({ type: 'START' });
 
+    // 构建输入参数
+    const inputParams: Record<string, string> = {};
+    Object.entries(sandboxInputParams).forEach(([key, value]) => {
+      if (value && value.trim()) {
+        inputParams[key] = value;
+      }
+    });
+
     try {
       await temporalWorkflowApi.validateInSandboxStream(
         generatedCode,
         fn,
-        { test: 'workflow-validation' },
+        inputParams,
         (event) => {
           if (event.type === 'log' && event.content) {
             appendSandboxLog(event.content);
@@ -391,7 +474,7 @@ const TemporalWorkflowPage: React.FC = () => {
         footer={[
           <Button key="validate" icon={<PlayCircleOutlined />} onClick={handleValidate}>验证DSL</Button>,
           <Button key="generate" icon={<RobotOutlined />} onClick={() => handleGenerateCode()} loading={generateCodeMutation.isLoading}>AI生成代码</Button>,
-          <Button key="sandbox" icon={<ExperimentOutlined />} onClick={handleSandboxValidate} loading={sandboxState.isStreaming} disabled={!generatedCode}>沙箱验证</Button>,
+          <Button key="sandbox" icon={<ExperimentOutlined />} onClick={handleOpenSandbox} loading={sandboxState.isStreaming} disabled={!generatedCode}>沙箱验证</Button>,
           <Button key="viewCode" icon={<CodeOutlined />} onClick={() => setCodeModalVisible(true)} disabled={!generatedCode}>查看代码</Button>,
           <Button key="cancel" onClick={() => setEditModalVisible(false)}>取消</Button>,
           <Button key="save" type="primary" loading={createMutation.isLoading || updateMutation.isLoading} onClick={handleSave}>保存</Button>
@@ -400,6 +483,70 @@ const TemporalWorkflowPage: React.FC = () => {
         <Form form={form} layout="vertical">
           <Row gutter={16}><Col span={12}><Form.Item name="name" label="工作流名称" rules={[{ required: true, message: '请输入工作流名称' }]}><Input placeholder="例如：合同生成流程" /></Form.Item></Col><Col span={12}><Form.Item name="taskQueue" label="Task Queue" rules={[{ required: true, message: '请输入Task Queue' }]} extra="Temporal Worker 监听的队列名称"><Input placeholder="例如：SKILL_TASK_QUEUE" /></Form.Item></Col></Row>
           <Form.Item name="description" label="描述"><Input.TextArea rows={2} placeholder="工作流描述" /></Form.Item>
+          {/* 输入参数区域 - 第一个步骤的参数是整个workflow的入口参数 */}
+          <Divider plain><Text type="secondary">输入参数（Workflow 入口参数）</Text></Divider>
+          <Alert message="第一个步骤的参数自动成为整个工作流的入口参数，可设置默认值和描述" type="info" showIcon style={{ marginBottom: 12 }} />
+          <div style={{ border: '1px solid #d9d9d9', padding: 12, borderRadius: 8, marginBottom: 12 }}>
+            {Object.entries(workflowDsl.inputParams || {}).map(([key, param]) => (
+              <Row key={key} gutter={8} style={{ marginBottom: 8, alignItems: 'center' }}>
+                <Col span={4}>
+                  <Input
+                    value={key}
+                    disabled
+                    size="small"
+                    suffix={<Button size="small" danger type="text" onClick={() => {
+                      const newParams = { ...workflowDsl.inputParams };
+                      delete newParams[key];
+                      setWorkflowDsl({ ...workflowDsl, inputParams: newParams });
+                    }}>×</Button>}
+                  />
+                </Col>
+                <Col span={4}>
+                  <Select
+                    value={param.required ? 'required' : 'optional'}
+                    onChange={v => setWorkflowDsl({ ...workflowDsl, inputParams: { ...workflowDsl.inputParams, [key]: { ...param, required: v === 'required' } } })}
+                    size="small"
+                    style={{ width: '100%' }}
+                  >
+                    <Option value="required">必填</Option>
+                    <Option value="optional">可选</Option>
+                  </Select>
+                </Col>
+                <Col span={4}>
+                  <Input
+                    value={param.defaultValue || ''}
+                    onChange={e => setWorkflowDsl({ ...workflowDsl, inputParams: { ...workflowDsl.inputParams, [key]: { ...param, defaultValue: e.target.value } } })}
+                    placeholder="默认值"
+                    size="small"
+                  />
+                </Col>
+                <Col span={8}>
+                  <Input
+                    value={param.description || ''}
+                    onChange={e => setWorkflowDsl({ ...workflowDsl, inputParams: { ...workflowDsl.inputParams, [key]: { ...param, description: e.target.value } } })}
+                    placeholder="参数描述"
+                    size="small"
+                  />
+                </Col>
+              </Row>
+            ))}
+            <Button
+              size="small"
+              type="dashed"
+              onClick={() => {
+                const key = prompt('请输入参数名:');
+                if (key && key.trim()) {
+                  setWorkflowDsl({
+                    ...workflowDsl,
+                    inputParams: { ...workflowDsl.inputParams, [key.trim()]: { description: '', required: false, defaultValue: '' } }
+                  });
+                }
+              }}
+              style={{ width: '100%' }}
+            >
+              + 添加输入参数
+            </Button>
+          </div>
         </Form>
 
         <Divider><Text strong>工作流配置</Text></Divider>
@@ -544,6 +691,14 @@ const TemporalWorkflowPage: React.FC = () => {
                                   }],
                                 });
                               }
+                              // Auto-populate step input params from Activity's config.steps[].inputParams
+                              const inputParams = getActivityInputParams(activity);
+                              if (Object.keys(inputParams).length > 0) {
+                                handleUpdateStep(selectedStepIndexForConfig, 'input', {
+                                  ...inputParams,
+                                  timeout: workflowDsl.steps[selectedStepIndexForConfig].input?.timeout || '60s',
+                                });
+                              }
                             }
                           }}
                           style={{ width: '100%' }}
@@ -555,21 +710,70 @@ const TemporalWorkflowPage: React.FC = () => {
                         </Select>
                       </Form.Item>
 
-                      <Form.Item label="重试策略">
+                      <Form.Item label="执行超时">
+                        <Input
+                          value={workflowDsl.steps[selectedStepIndexForConfig].startToCloseTimeout || '60s'}
+                          onChange={e => handleUpdateStep(selectedStepIndexForConfig, 'startToCloseTimeout', e.target.value || '60s')}
+                          placeholder="例如: 30s, 1m"
+                        />
+                      </Form.Item>
+
+                      <Form.Item label="重试次数">
                         <Input
                           type="number"
                           value={workflowDsl.steps[selectedStepIndexForConfig].retryPolicy?.maxRetries || 3}
-                          onChange={e => handleUpdateStep(selectedStepIndexForConfig, 'retryPolicy', { maxRetries: parseInt(e.target.value) || 3 })}
+                          onChange={e => handleUpdateStep(selectedStepIndexForConfig, 'retryPolicy', {
+                            ...workflowDsl.steps[selectedStepIndexForConfig].retryPolicy,
+                            maxRetries: parseInt(e.target.value) || 3
+                          })}
                           placeholder="最大重试次数"
                         />
                       </Form.Item>
 
-                      <Form.Item label="超时时间">
+                      <Form.Item label="重试间隔 (ms)" extra="首次重试等待时间">
                         <Input
-                          value={workflowDsl.steps[selectedStepIndexForConfig].input?.timeout || '60s'}
-                          onChange={e => handleUpdateStep(selectedStepIndexForConfig, 'input', { ...workflowDsl.steps[selectedStepIndexForConfig].input, timeout: e.target.value })}
-                          placeholder="例如: 30s, 60s"
+                          type="number"
+                          value={workflowDsl.steps[selectedStepIndexForConfig].retryPolicy?.initialIntervalMs || 1000}
+                          onChange={e => handleUpdateStep(selectedStepIndexForConfig, 'retryPolicy', {
+                            ...workflowDsl.steps[selectedStepIndexForConfig].retryPolicy,
+                            initialIntervalMs: parseInt(e.target.value) || 1000
+                          })}
+                          placeholder="首次重试间隔 (ms)"
                         />
+                      </Form.Item>
+
+                      <Form.Item label="输入参数">
+                        <div style={{ border: '1px dashed #d9d9d9', padding: 8, borderRadius: 4 }}>
+                          {Object.entries(workflowDsl.steps[selectedStepIndexForConfig].input || {}).filter(([k]) => k !== 'timeout').map(([key, value]) => (
+                            <div key={key} style={{ display: 'flex', gap: 4, marginBottom: 4, alignItems: 'center' }}>
+                              <Tag color="blue">{key}</Tag>
+                              <Input
+                                size="small"
+                                value={typeof value === 'string' ? value : JSON.stringify(value)}
+                                onChange={e => handleUpdateStep(selectedStepIndexForConfig, 'input', { ...workflowDsl.steps[selectedStepIndexForConfig].input, [key]: e.target.value })}
+                                style={{ flex: 1 }}
+                              />
+                              <Button size="small" danger onClick={() => {
+                                const newInput = { ...workflowDsl.steps[selectedStepIndexForConfig].input };
+                                delete newInput[key];
+                                handleUpdateStep(selectedStepIndexForConfig, 'input', newInput);
+                              }}>×</Button>
+                            </div>
+                          ))}
+                          <Button
+                            size="small"
+                            type="dashed"
+                            onClick={() => {
+                              const key = prompt('请输入参数名:');
+                              if (key && key.trim()) {
+                                handleUpdateStep(selectedStepIndexForConfig, 'input', { ...workflowDsl.steps[selectedStepIndexForConfig].input, [key.trim()]: '' });
+                              }
+                            }}
+                            style={{ width: '100%' }}
+                          >
+                            + 添加参数
+                          </Button>
+                        </div>
                       </Form.Item>
                     </>
                   )}
@@ -592,6 +796,83 @@ const TemporalWorkflowPage: React.FC = () => {
             )}
           </Col>
         </Row>
+
+        {/* 输出参数区域 - 默认是最后一个步骤的输出 */}
+        <Divider plain><Text type="secondary">输出参数（Workflow 返回值）</Text></Divider>
+        <Alert message="默认使用最后一个步骤的输出，可自定义来源步骤" type="info" showIcon style={{ marginBottom: 12 }} />
+        <div style={{ border: '1px solid #d9d9d9', padding: 12, borderRadius: 8, marginBottom: 12 }}>
+          {Object.entries(workflowDsl.outputParams || {}).map(([key, param]) => (
+            <Row key={key} gutter={8} style={{ marginBottom: 8, alignItems: 'center' }}>
+              <Col span={4}>
+                <Input value={key} disabled size="small" suffix={<Button size="small" danger type="text" onClick={() => { const newParams = { ...workflowDsl.outputParams }; delete newParams[key]; setWorkflowDsl({ ...workflowDsl, outputParams: newParams }); }}>×</Button>} />
+              </Col>
+              <Col span={6}>
+                <Select value={param.sourceStep || '_last'} onChange={v => setWorkflowDsl({ ...workflowDsl, outputParams: { ...workflowDsl.outputParams, [key]: { ...param, sourceStep: v === '_last' ? undefined : v } } })} size="small" style={{ width: '100%' }}>
+                  <Option value="_last">最后一个步骤</Option>
+                  {workflowDsl.steps.map((step, idx) => (<Option key={step.id} value={step.id}>{step.name || `步骤 ${idx + 1}`}</Option>))}
+                </Select>
+              </Col>
+              <Col span={8}>
+                <Input value={param.description || ''} onChange={e => setWorkflowDsl({ ...workflowDsl, outputParams: { ...workflowDsl.outputParams, [key]: { ...param, description: e.target.value } } })} placeholder="参数描述" size="small" />
+              </Col>
+            </Row>
+          ))}
+          <Button size="small" type="dashed" onClick={() => { const key = prompt('请输入输出参数名:'); if (key && key.trim()) { setWorkflowDsl({ ...workflowDsl, outputParams: { ...workflowDsl.outputParams, [key.trim()]: { description: '', sourceStep: undefined } } }); } }} style={{ width: '100%' }}>+ 添加输出参数</Button>
+        </div>
+
+        {/* 执行配置 - 使用开关控制 */}
+        <Divider plain><Text type="secondary">执行配置</Text></Divider>
+        <Alert message="启用开关后可以自定义超时和重试配置，关闭则使用系统默认值" type="info" showIcon style={{ marginBottom: 12 }} />
+        <Row gutter={16}>
+          <Col span={8}>
+            <Form.Item label="执行超时" extra="整个workflow执行期限">
+              <Space>
+                <Switch checked={!!workflowDsl.workflowExecutionTimeout} onChange={checked => setWorkflowDsl({ ...workflowDsl, workflowExecutionTimeout: checked ? '10m' : undefined })} />
+                <Input disabled={!workflowDsl.workflowExecutionTimeout} placeholder="例如: 10m, 1h" value={workflowDsl.workflowExecutionTimeout || ''} onChange={e => setWorkflowDsl({ ...workflowDsl, workflowExecutionTimeout: e.target.value || undefined })} style={{ width: 120 }} />
+              </Space>
+            </Form.Item>
+          </Col>
+          <Col span={8}>
+            <Form.Item label="运行超时" extra="单次运行期限">
+              <Space>
+                <Switch checked={!!workflowDsl.workflowRunTimeout} onChange={checked => setWorkflowDsl({ ...workflowDsl, workflowRunTimeout: checked ? '5m' : undefined })} />
+                <Input disabled={!workflowDsl.workflowRunTimeout} placeholder="例如: 5m, 30s" value={workflowDsl.workflowRunTimeout || ''} onChange={e => setWorkflowDsl({ ...workflowDsl, workflowRunTimeout: e.target.value || undefined })} style={{ width: 120 }} />
+              </Space>
+            </Form.Item>
+          </Col>
+          <Col span={8}>
+            <Form.Item label="任务超时" extra="工作流任务处理期限">
+              <Space>
+                <Switch checked={!!workflowDsl.workflowTaskTimeout} onChange={checked => setWorkflowDsl({ ...workflowDsl, workflowTaskTimeout: checked ? '10s' : undefined })} />
+                <Input disabled={!workflowDsl.workflowTaskTimeout} placeholder="例如: 10s, 30s" value={workflowDsl.workflowTaskTimeout || ''} onChange={e => setWorkflowDsl({ ...workflowDsl, workflowTaskTimeout: e.target.value || undefined })} style={{ width: 120 }} />
+              </Space>
+            </Form.Item>
+          </Col>
+        </Row>
+        <Row gutter={16}>
+          <Col span={8}>
+            <Form.Item label="默认Activity重试次数">
+              <Space>
+                <Switch checked={workflowDsl.defaultActivityRetryPolicy?.maxRetries !== undefined && workflowDsl.defaultActivityRetryPolicy?.maxRetries !== null} onChange={checked => setWorkflowDsl({ ...workflowDsl, defaultActivityRetryPolicy: { ...workflowDsl.defaultActivityRetryPolicy, maxRetries: checked ? 3 : undefined } })} />
+                <Input disabled={workflowDsl.defaultActivityRetryPolicy?.maxRetries === undefined || workflowDsl.defaultActivityRetryPolicy?.maxRetries === null} type="number" placeholder="3" value={workflowDsl.defaultActivityRetryPolicy?.maxRetries ?? 3} onChange={e => setWorkflowDsl({ ...workflowDsl, defaultActivityRetryPolicy: { ...workflowDsl.defaultActivityRetryPolicy, maxRetries: parseInt(e.target.value) || 3 } })} style={{ width: 80 }} />
+              </Space>
+            </Form.Item>
+          </Col>
+          <Col span={8}>
+            <Form.Item label="重试间隔衰减系数" extra="指数退避系数 (默认 2.0)">
+              <Space>
+                <Switch checked={workflowDsl.defaultActivityRetryPolicy?.backoffCoefficient !== undefined} onChange={checked => setWorkflowDsl({ ...workflowDsl, defaultActivityRetryPolicy: { ...workflowDsl.defaultActivityRetryPolicy, backoffCoefficient: checked ? 2.0 : undefined } })} />
+                <Input disabled={workflowDsl.defaultActivityRetryPolicy?.backoffCoefficient === undefined} type="number" placeholder="2.0" step="0.1" value={workflowDsl.defaultActivityRetryPolicy?.backoffCoefficient ?? 2.0} onChange={e => setWorkflowDsl({ ...workflowDsl, defaultActivityRetryPolicy: { ...workflowDsl.defaultActivityRetryPolicy, backoffCoefficient: parseFloat(e.target.value) || 2.0 } })} style={{ width: 80 }} />
+              </Space>
+            </Form.Item>
+          </Col>
+        </Row>
+
+        {/* 补足情报 - AI代码生成指导 */}
+        <Divider plain><Text type="secondary">补足情报（指导 AI 代码生成）</Text></Divider>
+        <Form.Item label="额外提示词" extra="为 AI 代码生成器提供额外的上下文信息，帮助生成更准确的代码">
+          <Input.TextArea rows={3} placeholder="例如：&#10;- 该工作流需要处理中文内容，请使用 utf-8 编码&#10;- 返回结果需要包含完整的错误处理逻辑&#10;- 第三方 API 调用需要添加重试机制" value={workflowDsl.extraPrompt || ''} onChange={e => setWorkflowDsl({ ...workflowDsl, extraPrompt: e.target.value || undefined })} />
+        </Form.Item>
       </Modal>
 
       <Modal title="验证工作流 DSL" open={validateModalVisible} onCancel={() => setValidateModalVisible(false)} footer={[<Button onClick={() => setValidateModalVisible(false)}>关闭</Button>]} width={700}>
@@ -620,6 +901,36 @@ const TemporalWorkflowPage: React.FC = () => {
       <Modal title="沙箱验证结果" open={sandboxState.visible} onCancel={() => dispatchSandbox({ type: 'CLOSE' })} footer={sandboxModalFooter} width={800}>
         <Space direction="vertical" style={{ width: '100%' }}>
           {sandboxState.isStreaming && <Alert type="info" message="验证进行中..." showIcon />}
+
+          {/* 输入参数区域 - 仅在未运行时显示 */}
+          {!sandboxState.isStreaming && Object.keys(sandboxInputParams).length > 0 && (
+            <Card size="small" style={{ marginBottom: 12 }}>
+              <Text strong>输入参数（请填写参数值）：</Text>
+              <div style={{ marginTop: 8, display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                {Object.entries(sandboxInputParams).map(([key, value]) => (
+                  <div key={key} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                    <Tag color="blue">{key}</Tag>
+                    <Input
+                      placeholder={`请输入 ${key}`}
+                      value={value}
+                      onChange={(e) => setSandboxInputParams(prev => ({ ...prev, [key]: e.target.value }))}
+                      style={{ width: 160 }}
+                      size="small"
+                    />
+                  </div>
+                ))}
+              </div>
+              <Button
+                type="primary"
+                icon={<ExperimentOutlined />}
+                onClick={handleSandboxValidate}
+                style={{ marginTop: 12 }}
+              >
+                开始验证
+              </Button>
+            </Card>
+          )}
+
           {sandboxState.result && (
             <>
               <Alert type={sandboxState.result.success ? 'success' : 'error'} message={sandboxState.result.success ? '验证通过' : '验证失败'} showIcon />
