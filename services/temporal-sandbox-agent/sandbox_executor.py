@@ -153,6 +153,8 @@ mock_temporalio.workflow.query = mock_workflow.query
 mock_temporalio.workflow.logger = mock_workflow.logger
 mock_temporalio.workflow.execute_activity = mock_workflow.execute_activity
 mock_temporalio.workflow.wait_condition = mock_workflow.wait_condition
+# Expose RetryPolicy on workflow module (user code may import from workflow.RetryPolicy)
+mock_temporalio.workflow.RetryPolicy = mock_temporalio.common.RetryPolicy
 
 mock_temporalio.common.RetryPolicy = lambda **kw: type('RetryPolicy', (), {k: v for k, v in kw.items()})()
 
