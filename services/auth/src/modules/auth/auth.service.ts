@@ -106,9 +106,21 @@ export class AuthService {
     return { user: this.mapUserToDto(user) };
   }
 
-  async refresh(userId: string): Promise<{ accessToken: string }> {
+  async refresh(refreshToken: string): Promise<{ accessToken: string; refreshToken: string }> {
+    let payload: { sub?: string; type?: string };
+
+    try {
+      payload = await this.jwtService.verifyAsync(refreshToken);
+    } catch {
+      throw new UnauthorizedException('Invalid or expired refresh token');
+    }
+
+    if (payload.type !== 'refresh' || !payload.sub) {
+      throw new UnauthorizedException('Invalid refresh token');
+    }
+
     const user = await this.prisma.user.findUnique({
-      where: { id: userId },
+      where: { id: payload.sub },
     });
 
     if (!user || !user.isActive) {
@@ -116,8 +128,12 @@ export class AuthService {
     }
 
     const accessToken = this.generateAccessToken(user);
+    const nextRefreshToken = this.generateRefreshToken(user);
 
-    return { accessToken };
+    return {
+      accessToken,
+      refreshToken: nextRefreshToken,
+    };
   }
 
   async me(userId: string): Promise<MeResponse> {

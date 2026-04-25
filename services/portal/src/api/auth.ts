@@ -25,6 +25,11 @@ export interface LoginResponse {
   user: UserDto;
 }
 
+export interface RefreshResponse {
+  accessToken: string;
+  refreshToken: string;
+}
+
 export interface MeResponse {
   user: UserDto;
   roles: RoleDto[];
@@ -68,8 +73,8 @@ export const authApi = {
     return apiClient.post<LoginResponse>('/auth/register', data);
   },
 
-  refresh: async (refreshToken: string): Promise<LoginResponse> => {
-    return apiClient.post<LoginResponse>('/auth/refresh', { refreshToken });
+  refresh: async (refreshToken: string): Promise<RefreshResponse> => {
+    return apiClient.post<RefreshResponse>('/auth/refresh', { refreshToken });
   },
 
   logout: async (): Promise<void> => {
