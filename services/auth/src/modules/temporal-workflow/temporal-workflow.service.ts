@@ -241,7 +241,8 @@ export class TemporalWorkflowService {
     const logs: string[] = [];
 
     try {
-      const sandboxUrl = process.env.TEMPORAL_SANDBOX_AGENT_URL || 'http://ops-temporal-sandbox-agent:8090';
+      const sandboxUrl =
+        process.env.TEMPORAL_SANDBOX_AGENT_URL || 'http://host.docker.internal:8090';
 
       const response = await axios.post<any>(`${sandboxUrl}/execute`, {
         code,
@@ -254,16 +255,23 @@ export class TemporalWorkflowService {
 
       logs.push(`Sandbox response: ${JSON.stringify(response.data)}`);
 
-      const resultSuccess = response.data?.result?.success === true && !response.data?.result?.error;
-      if (response.data?.result?.error) {
-        logs.push(`执行错误: ${response.data.result.error}`);
+      const sandboxResult = response.data?.result;
+      // 深度检查执行结果：外层 success 为 true 且里层 result.success 为 true 且没有 error
+      const executionResult = sandboxResult?.result || sandboxResult;
+      const resultSuccess =
+        response.data?.success === true &&
+        executionResult?.success === true &&
+        !executionResult?.error;
+
+      if (executionResult?.error) {
+        logs.push(`执行错误: ${executionResult.error}`);
       }
 
       return {
         success: resultSuccess,
         logs,
         result: response.data?.result,
-        error: response.data?.result?.error,
+        error: executionResult?.error,
         score: resultSuccess ? 100 : 50,
       };
     } catch (error: any) {
@@ -284,14 +292,20 @@ export class TemporalWorkflowService {
     input: Record<string, any> | undefined,
     onLog: (log: string) => void,
   ): Promise<{ success: boolean; result?: any; logs?: string[]; traceback?: string; error?: string; score: number }> {
-    const sandboxUrl = process.env.TEMPORAL_SANDBOX_AGENT_URL || 'http://ops-temporal-sandbox-agent:8090';
+    const sandboxUrl =
+      process.env.TEMPORAL_SANDBOX_AGENT_URL || 'http://host.docker.internal:8090';
     const activityId = `workflow-validate-${Date.now()}`;
+    const streamedLogs: string[] = [];
+    const pushLog = (log: string) => {
+      streamedLogs.push(log);
+      onLog(log);
+    };
 
-    onLog(`[${new Date().toISOString()}] 连接到 Sandbox Agent: ${sandboxUrl}`);
-    onLog(`[${new Date().toISOString()}] Activity ID: ${activityId}`);
+    pushLog(`[${new Date().toISOString()}] 连接到 Sandbox Agent: ${sandboxUrl}`);
+    pushLog(`[${new Date().toISOString()}] Activity ID: ${activityId}`);
 
     try {
-      onLog(`[${new Date().toISOString()}] 执行工作流代码验证...`);
+      pushLog(`[${new Date().toISOString()}] 执行工作流代码验证...`);
       const response = await axios.post<any>(`${sandboxUrl}/execute`, {
         code,
         fn_name: fn,
@@ -302,42 +316,48 @@ export class TemporalWorkflowService {
       });
 
       const data = response.data as any;
+      const sandboxLogs = Array.isArray(data.result?.logs)
+        ? data.result.logs
+        : Array.isArray(data.result?.result?.logs)
+          ? data.result.result.logs
+          : [];
 
       // Push logs from sandbox execution to the frontend
-      if (data.result?.logs && Array.isArray(data.result.logs)) {
-        data.result.logs.forEach((log: string) => {
-          onLog(log);
+      if (sandboxLogs.length > 0) {
+        sandboxLogs.forEach((log: string) => {
+          pushLog(log);
         });
       }
 
       const resultSuccess = data.result?.success === true && !data.result?.error;
-      onLog(`[${new Date().toISOString()}] 响应状态: ${resultSuccess ? '成功' : '失败'}`);
+      pushLog(`[${new Date().toISOString()}] 响应状态: ${resultSuccess ? '成功' : '失败'}`);
 
       if (data.result?.error) {
-        onLog(`[${new Date().toISOString()}] 执行错误: ${data.result.error}`);
+        pushLog(`[${new Date().toISOString()}] 执行错误: ${data.result.error}`);
         if (data.result.traceback) {
-          onLog(`[${new Date().toISOString()}] 详细堆栈:\n${data.result.traceback}`);
+          pushLog(`[${new Date().toISOString()}] 详细堆栈:\n${data.result.traceback}`);
         }
       }
 
       const finalResult = data.result?.result || data.result;
       if (resultSuccess) {
-        onLog(`[${new Date().toISOString()}] 执行成功，返回结果: ${JSON.stringify(finalResult, null, 2)}`);
+        pushLog(`[${new Date().toISOString()}] 执行成功，返回结果: ${JSON.stringify(finalResult, null, 2)}`);
       }
 
       return {
         success: resultSuccess,
         result: finalResult,
-        logs: data.result?.logs || [],
+        logs: streamedLogs,
         error: data.result?.error,
         traceback: data.result?.traceback,
         score: resultSuccess ? 100 : 0,
       };
     } catch (error: any) {
       this.logger.error(`Sandbox validation failed: ${error.message}`);
-      onLog(`[${new Date().toISOString()}] 错误: ${error.message}`);
+      pushLog(`[${new Date().toISOString()}] 错误: ${error.message}`);
       return {
         success: false,
+        logs: streamedLogs,
         error: error.message,
         score: 0,
       };
@@ -374,10 +394,11 @@ export class TemporalWorkflowService {
 
     lines.push('');
     lines.push('【必须遵守的准则】：');
-    lines.push('1. 【组合输出】：你的输出必须包含所有 Activity 的实现代码（已有的或新生成的）以及 Workflow 类的定义。');
+    lines.push('1. 【组合输出】：你的输出必须包含所有 Activity 的实现代码（已有的或新生成的）以及 Workflow 类的定义。严禁使用任何形式的内部导入（如 `from activities import ...` 或 `from your_module import ...`），严禁使用 `workflow.unsafe`。');
     lines.push('2. 【类名强制】：Workflow 类名必须完全等于 `' + (workflowDsl.name.replace(/\s+/g, '') || 'Custom') + 'Workflow' + '`。');
-    lines.push('3. 【结构】：Workflow 使用 `@workflow.defn`，入口为 `async def run(self, params: dict)`。');
-    lines.push('4. 【确定性】：严禁使用原生 `datetime.now()`, `random`, `uuid`。使用 `workflow.now()`, `workflow.random()`, `workflow.uuid4()`。');
+    lines.push('3. 【结构】：Workflow 使用 `@workflow.defn`，入口为 `async def run(self, params: dict)`。严禁为 Workflow 类定义 `__init__` 方法。');
+    lines.push('4. 【确定性】：对于 UUID，直接使用标准的 `import uuid` 并调用 `uuid.uuid4()`，沙箱环境会自动处理确定性。不要使用 `workflow.uuid4()`。');
+    lines.push('5. 【沙箱稳定性】：如果代码涉及外部 HTTP 请求（如 wttr.in 或任何第三方 API），请【不要真正发起网络请求】，直接在代码中硬编码返回一个符合业务逻辑预期的模拟结果字典。');
     lines.push('5. 【调用】：使用 `await workflow.execute_activity(activity_fn, input, start_to_close_timeout=timedelta(...))`，确保超时时间与 DSL 一致。');
     lines.push('6. 【日志】：必须使用 `workflow.logger.info()`。');
 

@@ -420,7 +420,7 @@ export class ActivityService {
     }
     // In Docker, use the container name
     if (process.env.DOCKER_ENV === 'true' || process.env.NODE_ENV === 'production') {
-      return 'http://ops-temporal-sandbox-agent:8090';
+      return 'http://temporal-sandbox-agent:8090';
     }
     // Local development - try localhost
     const externalHost = process.env.EXTERNAL_HOST || 'localhost';

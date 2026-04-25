@@ -160,27 +160,38 @@ mock_temporalio.common.RetryPolicy = lambda **kw: type('RetryPolicy', (), {k: v 
 import urllib.request
 import urllib.error
 class MockResponse:
-    def __init__(self, status, data, headers=None, url=None, reason=None):
+    def __init__(self, status, data, headers=None, url=None, reason=None, exceptions_source=None):
         self.status = status; self.status_code = status
         self.text = data.decode('utf-8') if isinstance(data, bytes) else data
         self.headers = headers or {}
         self.url = url or ''
         self.reason = reason or ''
+        self.exceptions_source = exceptions_source
     def json(self): return json.loads(self.text)
     def raise_for_status(self):
         if self.status >= 400:
             body_preview = (self.text or '').strip().replace('\n', ' ')[:300]
             reason = self.reason or f"HTTP {self.status} for {self.url}. body={body_preview}"
+            if self.exceptions_source:
+                raise self.exceptions_source.HTTPError(reason)
             raise urllib.error.HTTPError(self.url, self.status, reason, self.headers, None)
 
 class MockRequests:
     def __init__(self):
-        # Create exceptions submodule
-        self.exceptions = types.ModuleType('requests.exceptions')
+        # Define Exception classes
         class RequestException(Exception): pass
         class Timeout(RequestException): pass
         class HTTPError(RequestException): pass
-        class ConnectionError(RequestException): pass
+        class ConnectionError(Exception): pass
+        
+        # Attach to the module instance
+        self.RequestException = RequestException
+        self.Timeout = Timeout
+        self.HTTPError = HTTPError
+        self.ConnectionError = ConnectionError
+
+        # Create exceptions submodule
+        self.exceptions = types.ModuleType('requests.exceptions')
         self.exceptions.RequestException = RequestException
         self.exceptions.Timeout = Timeout
         self.exceptions.HTTPError = HTTPError
@@ -192,25 +203,26 @@ class MockRequests:
         try:
             req = urllib.request.Request(url, headers=headers or {})
             with urllib.request.urlopen(req, timeout=timeout or 30) as r:
-                return MockResponse(r.status, r.read(), dict(r.headers), url=url)
+                return MockResponse(r.status, r.read(), dict(r.headers), url=url, exceptions_source=self)
         except urllib.error.HTTPError as e:
             body = e.read() if e.fp else b''
             response_headers = dict(e.headers) if e.headers else {}
-            return MockResponse(e.code, body, response_headers, url=url, reason=str(e))
+            return MockResponse(e.code, body, response_headers, url=url, reason=str(e), exceptions_source=self)
         except Exception as e:
-            return MockResponse(500, f"{type(e).__name__}: {str(e)}".encode(), {}, url=url, reason=str(e))
-    def post(self, url, data=None, json_data=None, headers=None, **kwargs):
+            raise self.RequestException(str(e))
+
+    def post(self, url, data=None, json_data=None, headers=None, timeout=None, **kwargs):
         try:
             body = json.dumps(json_data).encode('utf-8') if json_data else (data.encode('utf-8') if isinstance(data, str) else data)
-            req = urllib.request.Request(url, data=body, headers=headers or {})
-            with urllib.request.urlopen(req, timeout=30) as r:
-                return MockResponse(r.status, r.read(), dict(r.headers), url=url)
+            req = urllib.request.Request(url, data=body, headers=headers or {}, method='POST')
+            with urllib.request.urlopen(req, timeout=timeout or 30) as r:
+                return MockResponse(r.status, r.read(), dict(r.headers), url=url, exceptions_source=self)
         except urllib.error.HTTPError as e:
             body = e.read() if e.fp else b''
             response_headers = dict(e.headers) if e.headers else {}
-            return MockResponse(e.code, body, response_headers, url=url, reason=str(e))
+            return MockResponse(e.code, body, response_headers, url=url, reason=str(e), exceptions_source=self)
         except Exception as e:
-            return MockResponse(500, f"{type(e).__name__}: {str(e)}".encode(), {}, url=url, reason=str(e))
+            raise self.RequestException(str(e))
 
 mock_requests = MockRequests()
 sys.modules['temporalio'] = mock_temporalio

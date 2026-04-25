@@ -15,6 +15,7 @@ import SkillAdminPage from './pages/admin/SkillAdminPage';
 import ExecutionFlowTemplatePage from './pages/admin/ExecutionFlowTemplatePage';
 import TemporalWorkflowPage from './pages/admin/TemporalWorkflowPage';
 import ActivityPage from './pages/admin/ActivityPage';
+import CapabilityReleasePage from './pages/admin/CapabilityReleasePage';
 import ReportTemplateListPage from './pages/ReportTemplateListPage';
 import ReportTemplateDetailPage from './pages/ReportTemplateDetailPage';
 import ReportTemplateCreatePage from './pages/ReportTemplateCreatePage';
@@ -24,6 +25,7 @@ import CarboneTemplateListPage from './pages/CarboneTemplateListPage';
 import ExecutionListPage from './pages/ExecutionListPage';
 import ExecutionDetailPage from './pages/ExecutionDetailPage';
 import TakeoverWorkbenchPage from './pages/TakeoverWorkbenchPage';
+import ReleaseCenterPage from './pages/ReleaseCenterPage';
 
 const PrivateRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { isAuthenticated } = useAuthStore();
@@ -77,6 +79,7 @@ function App() {
           <Route path="executions" element={<ExecutionListPage />} />
           <Route path="executions/:id" element={<ExecutionDetailPage />} />
           <Route path="executions/:id/takeover" element={<TakeoverWorkbenchPage />} />
+          <Route path="release-center" element={<ReleaseCenterPage />} />
           <Route
             path="admin/users"
             element={
@@ -90,6 +93,14 @@ function App() {
             element={
               <AdminRoute>
                 <AIModelAdminPage />
+              </AdminRoute>
+            }
+          />
+          <Route
+            path="admin/capability-releases"
+            element={
+              <AdminRoute>
+                <CapabilityReleasePage />
               </AdminRoute>
             }
           />
