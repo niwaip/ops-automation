@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useReducer, useState } from 'react';
 import {
   Table, Card, Button, Input, Space, Tag, Typography, Modal, message, Form, Select,
-  Divider, Alert, Collapse, Badge, Popconfirm, Row, Col, Statistic, Timeline
+  Divider, Alert, Collapse, Badge, Popconfirm, Row, Col, Statistic, Timeline, Switch
 } from 'antd';
 import {
   SearchOutlined, PlusOutlined, EditOutlined, DeleteOutlined, PlayCircleOutlined,
@@ -483,72 +483,6 @@ const TemporalWorkflowPage: React.FC = () => {
         <Form form={form} layout="vertical">
           <Row gutter={16}><Col span={12}><Form.Item name="name" label="工作流名称" rules={[{ required: true, message: '请输入工作流名称' }]}><Input placeholder="例如：合同生成流程" /></Form.Item></Col><Col span={12}><Form.Item name="taskQueue" label="Task Queue" rules={[{ required: true, message: '请输入Task Queue' }]} extra="Temporal Worker 监听的队列名称"><Input placeholder="例如：SKILL_TASK_QUEUE" /></Form.Item></Col></Row>
           <Form.Item name="description" label="描述"><Input.TextArea rows={2} placeholder="工作流描述" /></Form.Item>
-          <Divider plain><Text type="secondary">高级配置（可选）</Text></Divider>
-          <Row gutter={16}>
-            <Col span={8}>
-              <Form.Item label="执行超时" extra="整个workflow执行期限">
-                <Input
-                  placeholder="例如: 10m, 1h, 1d"
-                  value={workflowDsl.workflowExecutionTimeout || ''}
-                  onChange={e => setWorkflowDsl({ ...workflowDsl, workflowExecutionTimeout: e.target.value || undefined })}
-                />
-              </Form.Item>
-            </Col>
-            <Col span={8}>
-              <Form.Item label="运行超时" extra="单次运行期限">
-                <Input
-                  placeholder="例如: 5m, 30s"
-                  value={workflowDsl.workflowRunTimeout || ''}
-                  onChange={e => setWorkflowDsl({ ...workflowDsl, workflowRunTimeout: e.target.value || undefined })}
-                />
-              </Form.Item>
-            </Col>
-            <Col span={8}>
-              <Form.Item label="任务超时" extra="工作流任务处理期限">
-                <Input
-                  placeholder="例如: 10s, 30s"
-                  value={workflowDsl.workflowTaskTimeout || ''}
-                  onChange={e => setWorkflowDsl({ ...workflowDsl, workflowTaskTimeout: e.target.value || undefined })}
-                />
-              </Form.Item>
-            </Col>
-          </Row>
-          <Row gutter={16}>
-            <Col span={12}>
-              <Form.Item label="默认Activity重试次数" extra="所有Activity的默认重试次数">
-                <Input
-                  type="number"
-                  placeholder="3"
-                  value={workflowDsl.defaultActivityRetryPolicy?.maxRetries || 3}
-                  onChange={e => setWorkflowDsl({
-                    ...workflowDsl,
-                    defaultActivityRetryPolicy: {
-                      ...workflowDsl.defaultActivityRetryPolicy,
-                      maxRetries: parseInt(e.target.value) || 3,
-                    }
-                  })}
-                />
-              </Form.Item>
-            </Col>
-            <Col span={12}>
-              <Form.Item label="重试间隔衰减系数" extra="指数退避系数 (默认 2.0)">
-                <Input
-                  type="number"
-                  placeholder="2.0"
-                  step="0.1"
-                  value={workflowDsl.defaultActivityRetryPolicy?.backoffCoefficient || 2.0}
-                  onChange={e => setWorkflowDsl({
-                    ...workflowDsl,
-                    defaultActivityRetryPolicy: {
-                      ...workflowDsl.defaultActivityRetryPolicy,
-                      backoffCoefficient: parseFloat(e.target.value) || 2.0,
-                    }
-                  })}
-                />
-              </Form.Item>
-            </Col>
-          </Row>
-
           {/* 输入参数区域 - 第一个步骤的参数是整个workflow的入口参数 */}
           <Divider plain><Text type="secondary">输入参数（Workflow 入口参数）</Text></Divider>
           <Alert message="第一个步骤的参数自动成为整个工作流的入口参数，可设置默认值和描述" type="info" showIcon style={{ marginBottom: 12 }} />
@@ -672,17 +606,6 @@ const TemporalWorkflowPage: React.FC = () => {
               + 添加输出参数
             </Button>
           </div>
-
-          {/* 补足情报 - AI代码生成指导 */}
-          <Divider plain><Text type="secondary">补足情报（指导 AI 代码生成）</Text></Divider>
-          <Form.Item label="额外提示词" extra="为 AI 代码生成器提供额外的上下文信息，帮助生成更准确的代码">
-            <Input.TextArea
-              rows={3}
-              placeholder="例如：&#10;- 该工作流需要处理中文内容，请使用 utf-8 编码&#10;- 返回结果需要包含完整的错误处理逻辑&#10;- 第三方 API 调用需要添加重试机制"
-              value={workflowDsl.extraPrompt || ''}
-              onChange={e => setWorkflowDsl({ ...workflowDsl, extraPrompt: e.target.value || undefined })}
-            />
-          </Form.Item>
         </Form>
 
         <Divider><Text strong>工作流配置</Text></Divider>
@@ -932,6 +855,60 @@ const TemporalWorkflowPage: React.FC = () => {
             )}
           </Col>
         </Row>
+
+        {/* 执行配置 - 使用开关控制 */}
+        <Divider plain><Text type="secondary">执行配置</Text></Divider>
+        <Alert message="启用开关后可以自定义超时和重试配置，关闭则使用系统默认值" type="info" showIcon style={{ marginBottom: 12 }} />
+        <Row gutter={16}>
+          <Col span={8}>
+            <Form.Item label="执行超时" extra="整个workflow执行期限">
+              <Space>
+                <Switch checked={!!workflowDsl.workflowExecutionTimeout} onChange={checked => setWorkflowDsl({ ...workflowDsl, workflowExecutionTimeout: checked ? '10m' : undefined })} />
+                <Input disabled={!workflowDsl.workflowExecutionTimeout} placeholder="例如: 10m, 1h" value={workflowDsl.workflowExecutionTimeout || ''} onChange={e => setWorkflowDsl({ ...workflowDsl, workflowExecutionTimeout: e.target.value || undefined })} style={{ width: 120 }} />
+              </Space>
+            </Form.Item>
+          </Col>
+          <Col span={8}>
+            <Form.Item label="运行超时" extra="单次运行期限">
+              <Space>
+                <Switch checked={!!workflowDsl.workflowRunTimeout} onChange={checked => setWorkflowDsl({ ...workflowDsl, workflowRunTimeout: checked ? '5m' : undefined })} />
+                <Input disabled={!workflowDsl.workflowRunTimeout} placeholder="例如: 5m, 30s" value={workflowDsl.workflowRunTimeout || ''} onChange={e => setWorkflowDsl({ ...workflowDsl, workflowRunTimeout: e.target.value || undefined })} style={{ width: 120 }} />
+              </Space>
+            </Form.Item>
+          </Col>
+          <Col span={8}>
+            <Form.Item label="任务超时" extra="工作流任务处理期限">
+              <Space>
+                <Switch checked={!!workflowDsl.workflowTaskTimeout} onChange={checked => setWorkflowDsl({ ...workflowDsl, workflowTaskTimeout: checked ? '10s' : undefined })} />
+                <Input disabled={!workflowDsl.workflowTaskTimeout} placeholder="例如: 10s, 30s" value={workflowDsl.workflowTaskTimeout || ''} onChange={e => setWorkflowDsl({ ...workflowDsl, workflowTaskTimeout: e.target.value || undefined })} style={{ width: 120 }} />
+              </Space>
+            </Form.Item>
+          </Col>
+        </Row>
+        <Row gutter={16}>
+          <Col span={8}>
+            <Form.Item label="默认Activity重试次数">
+              <Space>
+                <Switch checked={workflowDsl.defaultActivityRetryPolicy?.maxRetries !== undefined && workflowDsl.defaultActivityRetryPolicy?.maxRetries !== null} onChange={checked => setWorkflowDsl({ ...workflowDsl, defaultActivityRetryPolicy: { ...workflowDsl.defaultActivityRetryPolicy, maxRetries: checked ? 3 : undefined } })} />
+                <Input disabled={workflowDsl.defaultActivityRetryPolicy?.maxRetries === undefined || workflowDsl.defaultActivityRetryPolicy?.maxRetries === null} type="number" placeholder="3" value={workflowDsl.defaultActivityRetryPolicy?.maxRetries ?? 3} onChange={e => setWorkflowDsl({ ...workflowDsl, defaultActivityRetryPolicy: { ...workflowDsl.defaultActivityRetryPolicy, maxRetries: parseInt(e.target.value) || 3 } })} style={{ width: 80 }} />
+              </Space>
+            </Form.Item>
+          </Col>
+          <Col span={8}>
+            <Form.Item label="重试间隔衰减系数" extra="指数退避系数 (默认 2.0)">
+              <Space>
+                <Switch checked={workflowDsl.defaultActivityRetryPolicy?.backoffCoefficient !== undefined} onChange={checked => setWorkflowDsl({ ...workflowDsl, defaultActivityRetryPolicy: { ...workflowDsl.defaultActivityRetryPolicy, backoffCoefficient: checked ? 2.0 : undefined } })} />
+                <Input disabled={workflowDsl.defaultActivityRetryPolicy?.backoffCoefficient === undefined} type="number" placeholder="2.0" step="0.1" value={workflowDsl.defaultActivityRetryPolicy?.backoffCoefficient ?? 2.0} onChange={e => setWorkflowDsl({ ...workflowDsl, defaultActivityRetryPolicy: { ...workflowDsl.defaultActivityRetryPolicy, backoffCoefficient: parseFloat(e.target.value) || 2.0 } })} style={{ width: 80 }} />
+              </Space>
+            </Form.Item>
+          </Col>
+        </Row>
+
+        {/* 补足情报 - AI代码生成指导 */}
+        <Divider plain><Text type="secondary">补足情报（指导 AI 代码生成）</Text></Divider>
+        <Form.Item label="额外提示词" extra="为 AI 代码生成器提供额外的上下文信息，帮助生成更准确的代码">
+          <Input.TextArea rows={3} placeholder="例如：&#10;- 该工作流需要处理中文内容，请使用 utf-8 编码&#10;- 返回结果需要包含完整的错误处理逻辑&#10;- 第三方 API 调用需要添加重试机制" value={workflowDsl.extraPrompt || ''} onChange={e => setWorkflowDsl({ ...workflowDsl, extraPrompt: e.target.value || undefined })} />
+        </Form.Item>
       </Modal>
 
       <Modal title="验证工作流 DSL" open={validateModalVisible} onCancel={() => setValidateModalVisible(false)} footer={[<Button onClick={() => setValidateModalVisible(false)}>关闭</Button>]} width={700}>
