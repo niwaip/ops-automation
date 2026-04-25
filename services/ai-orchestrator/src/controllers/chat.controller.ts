@@ -20,6 +20,15 @@ import { ChatRequestDTO, ExecutionContext, StreamEvent, StreamEventType } from '
 import { SessionService } from '../modules/redis/session.service';
 
 const fileStore = new Map<string, { fileName: string; mimeType: string; size: number; content: string }>();
+const getAuthServiceUrl = () => {
+  if (process.env.AUTH_SERVICE_URL) {
+    return process.env.AUTH_SERVICE_URL;
+  }
+  if (process.env.DOCKER_ENV === 'true' || process.env.NODE_ENV === 'production') {
+    return 'http://ops-auth:3001';
+  }
+  return 'http://localhost:3001';
+};
 
 @ApiTags('AI-Chat')
 @Controller('ai')
@@ -48,6 +57,48 @@ export class ChatController {
       })
       .filter(Boolean)
       .join('\n');
+  }
+
+  private async resolveAuthenticatedUser(
+    authorization?: string,
+  ): Promise<{ userId?: string; userRoles?: string[] }> {
+    if (!authorization) {
+      return {};
+    }
+
+    try {
+      const response = await fetch(`${getAuthServiceUrl()}/auth/me`, {
+        headers: {
+          Authorization: authorization,
+        },
+      });
+
+      if (!response.ok) {
+        return {};
+      }
+
+      const payload = await response.json() as {
+        user?: { id?: string; role?: string };
+        roles?: Array<{ name?: string }>;
+      };
+
+      const roleSet = new Set<string>();
+      if (payload.user?.role) {
+        roleSet.add(payload.user.role);
+      }
+      for (const role of payload.roles || []) {
+        if (role?.name) {
+          roleSet.add(role.name);
+        }
+      }
+
+      return {
+        userId: payload.user?.id,
+        userRoles: Array.from(roleSet),
+      };
+    } catch {
+      return {};
+    }
   }
 
   @Post('chat/stream')
@@ -185,10 +236,12 @@ export class ChatController {
         return;
       }
 
+      const resolvedUser = await this.resolveAuthenticatedUser(req.headers.authorization);
       const context: ExecutionContext = {
         sessionId: body.sessionId || 'default',
-        userId: body.userId || 'anonymous',
-        userRoles: body.userRoles,
+        userId: resolvedUser.userId || body.userId || 'anonymous',
+        userRoles: resolvedUser.userRoles?.length ? resolvedUser.userRoles : body.userRoles,
+        authToken: req.headers.authorization,
         traceId,
         history: [],
         uploadedFiles: body.files || [],
@@ -267,10 +320,12 @@ export class ChatController {
       };
     }
 
+    const resolvedUser = await this.resolveAuthenticatedUser(req.headers.authorization);
     const context: ExecutionContext = {
       sessionId: body.sessionId || 'default',
-      userId: body.userId || 'anonymous',
-      userRoles: body.userRoles,
+      userId: resolvedUser.userId || body.userId || 'anonymous',
+      userRoles: resolvedUser.userRoles?.length ? resolvedUser.userRoles : body.userRoles,
+      authToken: req.headers.authorization,
       traceId,
       history: [],
       uploadedFiles: body.files || [],

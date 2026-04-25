@@ -69,6 +69,16 @@ const MainLayout: React.FC = () => {
       label: t('reports'),
     },
     {
+      key: '/release-center',
+      icon: <ThunderboltOutlined />,
+      label: 'Release Center',
+    },
+    {
+      key: '/published-skills',
+      icon: <ThunderboltOutlined />,
+      label: 'Published Skills',
+    },
+    {
       key: '/carbone-templates',
       icon: <FileWordOutlined />,
       label: t('carboneTemplates'),
@@ -94,6 +104,16 @@ const MainLayout: React.FC = () => {
                 key: '/admin/models',
                 icon: <SettingOutlined />,
                 label: t('models'),
+              },
+              {
+                key: '/admin/capability-releases',
+                icon: <ThunderboltOutlined />,
+                label: 'Capability Release',
+              },
+              {
+                key: '/admin/capability-studio',
+                icon: <ThunderboltOutlined />,
+                label: 'Capability Studio',
               },
               {
                 key: '/admin/skills',
@@ -163,9 +183,14 @@ const MainLayout: React.FC = () => {
     if (path.startsWith('/templates')) return '/templates';
     if (path.startsWith('/report-templates')) return '/report-templates';
     if (path.startsWith('/reports')) return '/reports';
+    if (path.startsWith('/release-center')) return '/release-center';
+    if (path.startsWith('/published-skills')) return '/published-skills';
     if (path.startsWith('/carbone-templates')) return '/carbone-templates';
     if (path.startsWith('/admin/users')) return '/admin/users';
     if (path.startsWith('/admin/models')) return '/admin/models';
+    if (path.startsWith('/admin/capability-releases')) return '/admin/capability-releases';
+    if (path.startsWith('/admin/capability-studio')) return '/admin/capability-studio';
+    if (path.startsWith('/admin/capability-builds')) return '/admin/capability-studio';
     if (path.startsWith('/admin/skills')) return '/admin/skills';
     if (path.startsWith('/admin/execution-flows')) return '/admin/execution-flows';
     if (path.startsWith('/admin/temporal-workflows')) return '/admin/temporal-workflows';

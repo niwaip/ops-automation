@@ -10,7 +10,11 @@ export class UserAskTool extends BaseTool {
   constructor() {
     super(
       'user_ask',
-      '向用户提问以获取缺失信息或确认操作。用于参数收集不完整或需要用户确认的场景。',
+      '向用户提问以获取缺失信息或确认操作。' +
+      '当参数收集不完整时，优先使用 param_collect；' +
+      '当需要用户做二选一或多选一决策时，使用 select 类型；' +
+      '当需要用户对即将执行的关键操作或已收集的参数做最终确认时，使用 confirm 类型；' +
+      '如果是向用户报告错误，请直接在 Thought 中分析并作为 Final Answer 回复，或者使用 input 类型询问用户后续操作。',
       {
         type: 'object',
         properties: {
@@ -62,11 +66,10 @@ export class UserAskTool extends BaseTool {
     let output = question;
 
     if (questionType === 'confirm' && Object.keys(paramsToConfirm).length > 0) {
-      output = `请确认以下参数:\n`;
+      output = `${question}\n\n请确认以下参数:\n`;
       for (const [key, value] of Object.entries(paramsToConfirm)) {
         output += `- ${key}: ${value}\n`;
       }
-      output += `\n是否确认生成文档？`;
     } else if (questionType === 'select' && options.length > 0) {
       output = `${question}\n选项:\n`;
       options.forEach((opt, idx) => {

@@ -1,13 +1,13 @@
 import React, { useReducer, useState, useEffect } from 'react';
 import {
   Table, Card, Button, Input, Space, Tag, Typography, Modal, message, Form, Select,
-  Divider, Alert, Collapse, Badge, Popconfirm, Statistic, Row, Col, Switch, InputNumber
+  Alert, Collapse, Badge, Popconfirm, Statistic, Row, Col, Switch, InputNumber
 } from 'antd';
 import {
   SearchOutlined, PlusOutlined, EditOutlined, DeleteOutlined, PlayCircleOutlined,
   ReloadOutlined, ApiOutlined, CodeOutlined, FileTextOutlined, ChromeOutlined,
   CheckCircleOutlined, ThunderboltOutlined, SettingOutlined,
-  ExperimentOutlined, HeartOutlined, ClockCircleOutlined, RetweetOutlined,
+  ExperimentOutlined, HeartOutlined, ClockCircleOutlined,
   LineChartOutlined, WarningOutlined, OrderedListOutlined, CopyOutlined,
   SaveOutlined, RobotOutlined, EyeOutlined, LoadingOutlined
 } from '@ant-design/icons';
@@ -100,6 +100,7 @@ const realValidateReducer = (
       };
     case 'START':
       return {
+        ...state,
         visible: true,
         isRunning: true,
         logs: [],

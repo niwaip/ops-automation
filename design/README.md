@@ -31,9 +31,14 @@
 10. `Enterprise-Skill-Platform_Execution-API-Spec_v2.0.md`
 11. `Enterprise-Skill-Platform_MVP-Migration-Runbook_v2.0.md`
 12. `Enterprise-Skill-Platform_Portal-UX-and-Page-Flow-Spec_v2.0.md`
-13. `Enterprise-Skill-Platform_Runtime-Takeover-Protocol-Spec_v2.0.md`
-14. `Enterprise-Skill-Platform_Policy-and-Approval-Decision-Matrix_v2.0.md`
-15. `Enterprise-Skill-Platform_Artifact-and-Audit-View-Spec_v2.0.md`
+- [Enterprise-Skill-Platform_Workflow-to-Skill-Release-Process-Spec_v2.0.md](file:///Users/chain/Documents/MyProject/ops-automation/design/Enterprise-Skill-Platform_Workflow-to-Skill-Release-Process-Spec_v2.0.md)
+- [Enterprise-Skill-Platform_Capability-Release-API-Spec_v2.0.md](file:///Users/chain/Documents/MyProject/ops-automation/design/Enterprise-Skill-Platform_Capability-Release-API-Spec_v2.0.md)
+- [Enterprise-Skill-Platform_Capability-Studio-and-Release-Center-Portal-Spec_v2.0.md](file:///Users/chain/Documents/MyProject/ops-automation/design/Enterprise-Skill-Platform_Capability-Studio-and-Release-Center-Portal-Spec_v2.0.md)
+- [Enterprise-Skill-Platform_Capability-Release-Data-Model_v2.0.md](file:///Users/chain/Documents/MyProject/ops-automation/design/Enterprise-Skill-Platform_Capability-Release-Data-Model_v2.0.md)
+- [Enterprise-Skill-Platform_Capability-Release-Implementation-Plan_v2.0.md](file:///Users/chain/Documents/MyProject/ops-automation/design/Enterprise-Skill-Platform_Capability-Release-Implementation-Plan_v2.0.md)
+18. `Enterprise-Skill-Platform_Runtime-Takeover-Protocol-Spec_v2.0.md`
+19. `Enterprise-Skill-Platform_Policy-and-Approval-Decision-Matrix_v2.0.md`
+20. `Enterprise-Skill-Platform_Artifact-and-Audit-View-Spec_v2.0.md`
 
 ## 新文档定位
 
@@ -61,6 +66,16 @@
   - 第一阶段迁移实施手册，补充分阶段迁移顺序、服务改造建议、兼容策略、风险与回退方案
 - `Enterprise-Skill-Platform_Portal-UX-and-Page-Flow-Spec_v2.0.md` (NEW)
   - 第一阶段 Portal 工作台的页面结构、用户主流程、状态展示规则、页面交互约束和前端验收标准
+- `Enterprise-Skill-Platform_Workflow-to-Skill-Release-Process-Spec_v2.0.md` (NEW)
+  - 从 workflow/template 配置到 AI 生成、sandbox 验证、注册 Skill、部署上线的完整推荐流程规范
+- `Enterprise-Skill-Platform_Capability-Release-API-Spec_v2.0.md` (NEW)
+  - `CapabilityRelease` 主对象的 API、DTO、状态流转、错误码和服务分工规范
+- `Enterprise-Skill-Platform_Capability-Studio-and-Release-Center-Portal-Spec_v2.0.md` (NEW)
+  - 统一发布向导与发布中心的 Portal 页面结构、交互规则和实施建议
+- `Enterprise-Skill-Platform_Capability-Release-Data-Model_v2.0.md` (NEW)
+  - `CapabilityRelease` 闭环相关表结构、字段、索引、状态与现有对象映射设计
+- `Enterprise-Skill-Platform_Capability-Release-Implementation-Plan_v2.0.md` (NEW)
+  - `CapabilityRelease` 的分阶段实施计划、任务拆解、里程碑和验收建议
 - `Enterprise-Skill-Platform_Runtime-Takeover-Protocol-Spec_v2.0.md` (NEW)
   - 第一阶段人工接管链路的运行时协议规范，补充 freeze、takeover、resume 的状态切换、握手流程和安全约束
 - `Enterprise-Skill-Platform_Policy-and-Approval-Decision-Matrix_v2.0.md` (NEW)

@@ -98,8 +98,11 @@ export interface ExecutionContext {
   traceId?: string;             // Request trace id for observability
   executionId?: string;           // Execution ID for step tracking
   userRoles?: string[];           // 新增：当前用户的角色
+  authToken?: string;             // 新增：当前用户的认证令牌 (Bearer token)
   originalUserInput?: string;     // 初始用户输入，供工具缺省参数兜底
   history: ChatMessage[];
+  availableSkills?: AvailableSkillDefinition[];
+  allowedToolNames?: string[];
   currentThought?: string;
   skill?: SkillMatchResult;
   uploadedFiles?: UploadedFile[];
@@ -127,6 +130,42 @@ export interface ApiEndpoint {
   url: string;
   method: 'GET' | 'POST' | 'PUT' | 'DELETE';
   description: string;
+}
+
+export interface SkillRuntimeMetadata {
+  goal?: string;
+  expectedResult?: string;
+  outputParams?: Record<string, unknown>;
+  sourceType?: string;
+  taskQueue?: string;
+  workflowSteps?: Array<{
+    id?: string;
+    name?: string;
+    type?: string;
+    activityName?: string;
+  }>;
+}
+
+export interface AvailableSkillDefinition {
+  skillId: string;
+  skillName: string;
+  description?: string;
+  triggerKeywords: string[];
+  paramsSchema: ParamsSchema;
+  templateId?: string;
+  carboneTemplateId?: string;
+  carboneSkillId?: string;
+  executionFlowTemplateIds?: string[];
+  executionFlow?: string[];
+  apiEndpoints?: {
+    generateParameters?: ApiEndpoint;
+    render?: ApiEndpoint;
+    getSkill?: ApiEndpoint;
+    runtimeMetadata?: SkillRuntimeMetadata;
+  };
+  goal?: string;
+  expectedResult?: string;
+  outputParams?: Record<string, unknown>;
 }
 
 /**
@@ -162,8 +201,12 @@ export interface SkillMatchResult {
     generateParameters?: ApiEndpoint;  // 参数生成API
     render?: ApiEndpoint;              // 文档渲染API
     getSkill?: ApiEndpoint;            // 获取Skill信息API
+    runtimeMetadata?: SkillRuntimeMetadata;
   };
   matchReason?: string;  // AI语义匹配原因
+  goal?: string;
+  expectedResult?: string;
+  outputParams?: Record<string, unknown>;
 }
 
 /**

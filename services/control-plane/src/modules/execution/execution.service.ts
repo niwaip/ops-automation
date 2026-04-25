@@ -41,7 +41,7 @@ export class ExecutionService {
         skillVersion: dto.skillVersion,
         status: 'queued',
         runtimeType: dto.runtimeType || 'browser',
-        inputJson: dto.input as Prisma.InputJsonValue,
+        inputJson: this.asJsonValue(dto.input),
         riskLevel: 'L0',
         requiresApproval: false,
         takeoverRequired: false,
@@ -54,7 +54,7 @@ export class ExecutionService {
         executionId: execution.id,
         eventType: 'execution.created',
         eventSource: 'control-plane',
-        payloadJson: { userId, skillId: dto.skillId } as Prisma.InputJsonValue,
+        payloadJson: this.asJsonValue({ userId, skillId: dto.skillId }),
       },
     });
 
@@ -97,7 +97,7 @@ export class ExecutionService {
           runtimeSessionId: runtimeSession.id,
           eventType: 'runtime.allocated',
           eventSource: 'control-plane',
-          payloadJson: { runtimeSessionId: runtimeSession.id } as Prisma.InputJsonValue,
+          payloadJson: this.asJsonValue({ runtimeSessionId: runtimeSession.id }),
         },
       });
 
@@ -190,7 +190,7 @@ export class ExecutionService {
         runtimeSessionId: runtimeSession?.id,
         eventType: 'execution.human_control.entered',
         eventSource: 'control-plane',
-        payloadJson: { userId, reason: dto.reason } as Prisma.InputJsonValue,
+        payloadJson: this.asJsonValue({ userId, reason: dto.reason }),
       },
     });
 
@@ -239,7 +239,7 @@ export class ExecutionService {
         stepId: dto.stepId,
         eventType: 'execution.resumed',
         eventSource: 'control-plane',
-        payloadJson: { userId, stepId: dto.stepId, comment: dto.comment } as Prisma.InputJsonValue,
+        payloadJson: this.asJsonValue({ userId, stepId: dto.stepId, comment: dto.comment }),
       },
     });
 
@@ -284,7 +284,7 @@ export class ExecutionService {
         runtimeSessionId: runtimeSession?.id,
         eventType: 'execution.cancelled',
         eventSource: 'control-plane',
-        payloadJson: { userId } as Prisma.InputJsonValue,
+        payloadJson: this.asJsonValue({ userId }),
       },
     });
 
@@ -407,5 +407,9 @@ export class ExecutionService {
       createdAt: step.createdAt as Date,
       updatedAt: step.updatedAt as Date,
     };
+  }
+
+  private asJsonValue(value: unknown): Prisma.JsonValue {
+    return value as Prisma.JsonValue;
   }
 }

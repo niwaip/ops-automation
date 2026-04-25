@@ -10,6 +10,7 @@ import { SessionService } from '../redis/session.service';
 import { ExecutionStepService } from '../execution-step/execution-step.service';
 import { PrismaService } from '../prisma/prisma.service';
 import {
+  AvailableSkillDefinition,
   StreamEvent,
   StreamEventType,
   ReActState,
@@ -36,6 +37,7 @@ const DEFAULT_CONFIG: ReActConfig = {
   maxIterations: 10,  // 增加到10次，支持更复杂的多步骤流程
   modelId: 'default',
   tools: ['skill_match', 'generate_parameters', 'preview_params', 'document_render', 'param_collect', 'user_ask', 'file_parse', 'api_call', 'flow_execute'],
+  mode: 'task',
 };
 
 @Injectable()
@@ -52,6 +54,66 @@ export class ReActEngineService {
 
   private tracePrefix(context: ExecutionContext): string {
     return context.traceId ? `[${context.traceId}] ` : '';
+  }
+
+  private async loadAvailableSkills(context: ExecutionContext): Promise<AvailableSkillDefinition[]> {
+    if (!context.userId) {
+      return [];
+    }
+
+    try {
+      const authUrl = process.env.AUTH_SERVICE_URL
+        || (process.env.DOCKER_ENV === 'true' || process.env.NODE_ENV === 'production'
+          ? 'http://ops-auth:3001'
+          : 'http://localhost:3001');
+      const response = await fetch(`${authUrl}/skills`, {
+        headers: {
+          ...(context.authToken ? { Authorization: context.authToken } : {}),
+          ...(context.traceId ? { 'x-trace-id': context.traceId } : {}),
+        },
+      });
+
+      if (!response.ok) {
+        this.logger.warn(`${this.tracePrefix(context)}Failed to load available skills: ${response.status}`);
+        return [];
+      }
+
+      const payload = await response.json() as { skills?: Array<Record<string, unknown>> };
+      const rawSkills = Array.isArray(payload.skills) ? payload.skills : [];
+
+      return rawSkills.map((item) => {
+        const apiEndpoints = (typeof item.apiEndpoints === 'object' && item.apiEndpoints)
+          ? item.apiEndpoints as AvailableSkillDefinition['apiEndpoints']
+          : undefined;
+
+        return {
+          skillId: String(item.id || ''),
+          skillName: String(item.name || ''),
+          description: typeof item.description === 'string' ? item.description : undefined,
+          triggerKeywords: Array.isArray(item.triggerKeywords) ? item.triggerKeywords.map(String) : [],
+          paramsSchema: (item.paramsSchema as AvailableSkillDefinition['paramsSchema']) || { properties: {}, required: [] },
+          templateId: typeof item.templateId === 'string' ? item.templateId : undefined,
+          carboneTemplateId: typeof item.carboneTemplateId === 'string' ? item.carboneTemplateId : undefined,
+          carboneSkillId: typeof item.carboneSkillId === 'string' ? item.carboneSkillId : undefined,
+          executionFlowTemplateIds: Array.isArray(item.executionFlowTemplateIds) ? item.executionFlowTemplateIds.map(String) : [],
+          executionFlow: Array.isArray(item.executionFlow)
+            ? item.executionFlow
+                .map((step) => (step && typeof step === 'object'
+                  ? String((step as Record<string, unknown>).name || (step as Record<string, unknown>).type || '')
+                  : ''))
+                .filter(Boolean)
+            : [],
+          apiEndpoints,
+          goal: apiEndpoints?.runtimeMetadata?.goal,
+          expectedResult: apiEndpoints?.runtimeMetadata?.expectedResult,
+          outputParams: apiEndpoints?.runtimeMetadata?.outputParams,
+        };
+      }).filter((item) => item.skillId && item.skillName);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'unknown';
+      this.logger.warn(`${this.tracePrefix(context)}Failed to load available skills: ${message}`);
+      return [];
+    }
   }
 
   private createInitialState(maxIterations: number): ReActState {
@@ -159,9 +221,15 @@ export class ReActEngineService {
     
     // 加载动态流程工具
     await this.toolExecutor.loadDynamicFlowTools(false, context.traceId);
-    
-    // 获取工具列表时应用权限过滤
-    const tools = this.toolExecutor.getTools(config.tools, context.userRoles);
+
+    context.availableSkills = await this.loadAvailableSkills(context);
+
+    // 获取工具列表时应用权限过滤 (任务模式强制收紧)
+    const configuredTools = config.mode === 'task'
+      ? config.tools.filter((toolName) => !['skill_match', 'api_call'].includes(toolName))
+      : config.tools;
+    const tools = this.toolExecutor.getTools(configuredTools, context.userRoles);
+    context.allowedToolNames = tools.map((tool) => tool.name);
 
     // 开始循环
     while (!state.isFinished && state.iteration < state.maxIterations) {
@@ -229,6 +297,7 @@ export class ReActEngineService {
             history: messages,
             context: {
               skill: context.skill,
+              availableSkills: context.availableSkills,
               uploadedFiles: context.uploadedFiles,
               collectedParams: context.collectedParams,
               userRoles: context.userRoles,
@@ -241,7 +310,12 @@ export class ReActEngineService {
       }
 
       // 1.5 检查预编译执行流 (Fast-track)
-      if (context.skill?.executionFlow && context.currentFlowStep !== undefined && context.currentFlowStep < context.skill.executionFlow.length) {
+      if (
+        config.mode !== 'task'
+        && context.skill?.executionFlow
+        && context.currentFlowStep !== undefined
+        && context.currentFlowStep < context.skill.executionFlow.length
+      ) {
         const flowTool = context.skill.executionFlow[context.currentFlowStep];
         if (!flowTool) {
           context.currentFlowStep++;
@@ -318,6 +392,7 @@ export class ReActEngineService {
             history: messages,
             context: {
               skill: context.skill,
+              availableSkills: context.availableSkills,
               uploadedFiles: context.uploadedFiles,
               collectedParams: context.collectedParams,
               userRoles: context.userRoles,
@@ -342,6 +417,7 @@ export class ReActEngineService {
           history: messages,
           context: {
             skill: context.skill,
+            availableSkills: context.availableSkills,
             uploadedFiles: context.uploadedFiles,
             collectedParams: context.collectedParams,
             userRoles: context.userRoles,
@@ -373,6 +449,7 @@ export class ReActEngineService {
             history: messages,
             context: {
               skill: context.skill,
+              availableSkills: context.availableSkills,
               uploadedFiles: context.uploadedFiles,
               collectedParams: context.collectedParams,
               userRoles: context.userRoles, // 存入 Session
@@ -409,6 +486,7 @@ export class ReActEngineService {
           history: messages,
           context: {
             skill: context.skill,
+            availableSkills: context.availableSkills,
             uploadedFiles: context.uploadedFiles,
             collectedParams: context.collectedParams,
             userRoles: context.userRoles,
@@ -430,6 +508,7 @@ export class ReActEngineService {
           history: messages,
           context: {
             skill: context.skill,
+            availableSkills: context.availableSkills,
             uploadedFiles: context.uploadedFiles,
             collectedParams: context.collectedParams,
             userRoles: context.userRoles,
@@ -447,6 +526,7 @@ export class ReActEngineService {
         history: messages,
         context: {
           skill: context.skill,
+          availableSkills: context.availableSkills,
           uploadedFiles: context.uploadedFiles,
           collectedParams: context.collectedParams,
           userRoles: context.userRoles,
@@ -475,7 +555,12 @@ export class ReActEngineService {
     config: ReActConfig,
   ): AsyncGenerator<StreamEvent> {
     // 构建提示词
-    const systemPrompt = buildSystemPrompt(tools, context.skill);
+    const systemPrompt = buildSystemPrompt(
+      tools,
+      context.skill,
+      context.availableSkills || [],
+      config.mode || 'task',
+    );
     
     // 提取最初的用户输入
     const originalUserMessage = messages.find(m => m.role === 'user' && !m.metadata?.isReAct);
@@ -507,8 +592,7 @@ export class ReActEngineService {
       return;
     }
 
-    // 禁用 JSON Mode - MiniMax 模型不支持 json_object 格式
-    const modelConfig = client.getConfig();
+    // 禁用 JSON Mode，统一使用文本协议输出
     client.updateConfig({ useJsonMode: false });
 
     const aiMessages = [
@@ -555,12 +639,29 @@ export class ReActEngineService {
           iteration: state.iteration,
         };
       } else {
-        // 无法解析，直接作为回复
-        state.isFinished = true;
-        state.finalAnswer = response;
+        const protocolError =
+          '协议错误：模型输出未遵循标准 ReAct 协议。请严格按 "Thought:", "Action:", "Action Input:" 或 "Final Answer:" 输出，不要使用任何私有 tool_call 格式。';
+        state.thought = '检测到协议违规，要求模型按统一协议重试';
+        state.action = '';
+        state.actionInput = {};
+        state.observation = protocolError;
+
+        messages.push({
+          role: 'assistant',
+          content: response,
+          timestamp: new Date(),
+          metadata: { isReAct: true, iteration: state.iteration, protocolViolation: true },
+        });
+        messages.push({
+          role: 'user',
+          content: `Observation: ${protocolError}`,
+          timestamp: new Date(),
+          metadata: { isReAct: true, iteration: state.iteration, protocolViolation: true },
+        });
+
         yield {
-          type: StreamEventType.THOUGHT,
-          content: '直接回复用户',
+          type: StreamEventType.ERROR,
+          content: protocolError,
           iteration: state.iteration,
         };
       }
@@ -629,8 +730,8 @@ export class ReActEngineService {
       context.nextActionParams = resultData.nextActionParams as Record<string, unknown>;
     }
 
-    // 检查是否参数确认场景
-    if (innerData?.allParamsReady) {
+    // 检查是否参数确认场景 (仅在工具执行成功时触发)
+    if (resultData?.success && innerData?.allParamsReady) {
       // 参数完整，发送确认事件
       yield {
         type: StreamEventType.PARAMS_CONFIRM,

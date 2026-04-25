@@ -115,79 +115,41 @@ const asRecord = (value: unknown): Record<string, unknown> | undefined => {
   return value as Record<string, unknown>;
 };
 
-const findWeatherPayload = (value: unknown, depth = 0): Record<string, unknown> | undefined => {
-  if (depth > 4) {
-    return undefined;
+const formatRuntimeSummary = (skillName: string, runtimeData: Record<string, unknown>): string => {
+  const lines = [`Temporal Workflow 执行成功: ${skillName}`];
+  const result = asRecord(runtimeData.result);
+  const logs = Array.isArray(runtimeData.logs)
+    ? runtimeData.logs.filter((item): item is string => typeof item === 'string')
+    : [];
+  const workflowSteps = Array.isArray(runtimeData.workflowSteps)
+    ? runtimeData.workflowSteps.filter((item): item is Record<string, unknown> => Boolean(item) && typeof item === 'object')
+    : [];
+
+  if (result && Object.keys(result).length > 0) {
+    lines.push('');
+    lines.push('返回结果:');
+    lines.push(JSON.stringify(result, null, 2));
   }
 
-  const record = asRecord(value);
-  if (!record) {
-    return undefined;
+  if (workflowSteps.length > 0) {
+    lines.push('');
+    lines.push('Workflow 步骤:');
+    lines.push(...workflowSteps.map((step) => {
+      const stepId = typeof step.id === 'string' ? step.id : 'unknown_step';
+      const stepName = typeof step.name === 'string' ? step.name : stepId;
+      const stepType = typeof step.type === 'string' ? step.type : 'unknown';
+      const activityName = typeof step.activityName === 'string' ? ` -> ${step.activityName}` : '';
+      return `- ${stepId}: ${stepName} (${stepType}${activityName})`;
+    }));
   }
 
-  const weatherKeys = ['province', 'city', 'weather', 'temperature', 'wind_direction', 'wind_power', 'humidity', 'report_time'];
-  if (weatherKeys.some((key) => record[key] !== undefined && record[key] !== null)) {
-    return record;
+  if (logs.length > 0) {
+    lines.push('');
+    lines.push('执行过程:');
+    lines.push(...logs.slice(-5).map((log) => `- ${log}`));
   }
 
-  for (const nestedValue of Object.values(record)) {
-    const nestedPayload = findWeatherPayload(nestedValue, depth + 1);
-    if (nestedPayload) {
-      return nestedPayload;
-    }
-  }
-
-  return undefined;
-};
-
-const formatWeatherFinalAnswer = (
-  collectedParams: Record<string, unknown> | undefined,
-  execParams: Record<string, unknown>,
-): string | undefined => {
-  const apiResult = collectedParams
-    ? Object.entries(collectedParams)
-        .sort(([a], [b]) => a.localeCompare(b))
-        .find(([key]) => /^step_\d+_result$/.test(key))?.[1]
-    : undefined;
-
-  const payload = findWeatherPayload(apiResult);
-  if (!payload) {
-    return undefined;
-  }
-
-  const city = String(payload.city ?? execParams.city ?? '').trim();
-  const province = String(payload.province ?? '').trim();
-  const location = [province, city].filter(Boolean).join('');
-
-  const weather = String(payload.weather ?? '').trim();
-  const temperature = String(payload.temperature ?? '').trim();
-  const humidity = String(payload.humidity ?? '').trim();
-  const windDirection = String(payload.wind_direction ?? '').trim();
-  const windPower = String(payload.wind_power ?? '').trim();
-  const reportTime = String(payload.report_time ?? '').trim();
-
-  const lines = [
-    `${location || city || '该城市'}天气查询结果：`,
-    weather ? `天气：${weather}` : '',
-    temperature ? `温度：${temperature}${temperature.includes('C') || temperature.includes('℃') ? '' : '℃'}` : '',
-    humidity ? `湿度：${humidity}${humidity.includes('%') ? '' : '%'}` : '',
-    windDirection || windPower ? `风况：${[windDirection, windPower].filter(Boolean).join(' ')}` : '',
-    reportTime ? `更新时间：${reportTime}` : '',
-  ].filter(Boolean);
-
-  return lines.length > 1 ? lines.join('\n') : undefined;
-};
-
-const buildFinalAnswer = (
-  templateName: string,
-  collectedParams: Record<string, unknown> | undefined,
-  execParams: Record<string, unknown>,
-  fallbackOutput: string,
-): string => {
-  if (templateName.includes('天气')) {
-    return formatWeatherFinalAnswer(collectedParams, execParams) || fallbackOutput;
-  }
-  return fallbackOutput;
+  return lines.join('\n');
 };
 
 export class FlowExecuteTool extends BaseTool {
@@ -268,12 +230,70 @@ export class FlowExecuteTool extends BaseTool {
     }
 
     this.logger.debug(`Executing flow: ${templateId || skillId}, starting from step ${stepIndex}`);
-    const traceHeaders = context.traceId ? { [TRACE_ID_HEADER]: context.traceId } : undefined;
+    const traceHeaders = {
+      ...(context.traceId ? { [TRACE_ID_HEADER]: context.traceId } : {}),
+      ...(context.authToken ? { Authorization: context.authToken } : {}),
+    };
 
     try {
       // 1. 获取流程步骤定义
       const authUrl = getAuthServiceUrl();
       let template: FlowTemplate;
+      const loadSkillExecution = async (resolvedSkillId: string): Promise<{ template?: FlowTemplate; result?: ToolResult }> => {
+        const response = await axios.get(`${authUrl}/skills/${resolvedSkillId}`, { headers: traceHeaders });
+        const skill = response.data as {
+          name: string;
+          executionFlow: FlowStep[];
+          apiEndpoints?: {
+            runtimeMetadata?: {
+              sourceType?: string;
+              workflowSteps?: Array<Record<string, unknown>>;
+            };
+          };
+        };
+
+        if (
+          (!skill.executionFlow || skill.executionFlow.length === 0)
+          && skill.apiEndpoints?.runtimeMetadata?.sourceType === 'temporal_workflow'
+        ) {
+          const runtimeResponse = await axios.post(
+            `${authUrl}/capability-releases/runtime/skills/${resolvedSkillId}/execute`,
+            { input: execParams },
+            { headers: traceHeaders },
+          );
+          const runtimeData = runtimeResponse.data as Record<string, unknown>;
+          const runtimeSummaryData = {
+            ...runtimeData,
+            workflowSteps: skill.apiEndpoints?.runtimeMetadata?.workflowSteps ?? [],
+          };
+          return {
+            result: {
+              success: Boolean(runtimeData.success),
+              output: Boolean(runtimeData.success)
+                ? formatRuntimeSummary(skill.name, runtimeSummaryData)
+                : `Temporal Workflow 执行失败: ${String(runtimeData.error || '未知错误')}`,
+              data: {
+                runtime: 'temporal_workflow',
+                taskComplete: Boolean(runtimeData.success),
+                finalAnswer: Boolean(runtimeData.success)
+                  ? formatRuntimeSummary(skill.name, runtimeSummaryData)
+                  : undefined,
+                result: runtimeData.result ?? null,
+                logs: runtimeData.logs ?? [],
+                workflowSteps: skill.apiEndpoints?.runtimeMetadata?.workflowSteps ?? [],
+                error: runtimeData.error ?? null,
+              },
+            },
+          };
+        }
+
+        return {
+          template: {
+            name: skill.name,
+            steps: skill.executionFlow || [],
+          },
+        };
+      };
 
       if (templateId) {
         const url = `${authUrl}/execution-flow-templates/${templateId}`;
@@ -282,20 +302,38 @@ export class FlowExecuteTool extends BaseTool {
           const response = await axios.get(url, { headers: traceHeaders });
           template = response.data as FlowTemplate;
         } catch (fetchError: any) {
-          this.logger.error(`Failed to fetch template ${templateId}: ${fetchError.message}`);
-          return {
-            success: false,
-            output: `无法加载流程模板 (ID: ${templateId})，请确认模板是否存在。错误: ${fetchError.message}`,
-            data: { error: 'template_fetch_failed', templateId, status: fetchError.response?.status },
-          };
+          if (fetchError.response?.status === 404 && context.skill?.skillId) {
+            this.logger.warn(
+              `Template ${templateId} not found, falling back to matched skill ${context.skill.skillId}`,
+            );
+            const fallback = await loadSkillExecution(context.skill.skillId);
+            if (fallback.result) {
+              return fallback.result;
+            }
+            template = fallback.template as FlowTemplate;
+          } else {
+            this.logger.error(`Failed to fetch template ${templateId}: ${fetchError.message}`);
+            return {
+              success: false,
+              output: `无法加载流程模板 (ID: ${templateId})，请确认模板是否存在。错误: ${fetchError.message}`,
+              data: { error: 'template_fetch_failed', templateId, status: fetchError.response?.status },
+            };
+          }
         }
       } else {
-        const response = await axios.get(`${authUrl}/skills/${skillId}`, { headers: traceHeaders });
-        const skill = response.data as { name: string; executionFlow: FlowStep[] };
-        template = {
-          name: skill.name,
-          steps: skill.executionFlow || [],
-        };
+        const resolvedSkillId = skillId || context.skill?.skillId;
+        if (!resolvedSkillId) {
+          return {
+            success: false,
+            output: '无法确定要执行的技能',
+            data: { error: 'missing_skill_id' },
+          };
+        }
+        const loaded = await loadSkillExecution(resolvedSkillId);
+        if (loaded.result) {
+          return loaded.result;
+        }
+        template = loaded.template as FlowTemplate;
       }
 
       if (!template || !template.steps || template.steps.length === 0) {
@@ -309,12 +347,7 @@ export class FlowExecuteTool extends BaseTool {
       const steps = template.steps;
 
       if (stepIndex >= steps.length) {
-        const finalAnswer = buildFinalAnswer(
-          template.name,
-          context.collectedParams,
-          execParams,
-          '流程模板所有步骤已执行完成',
-        );
+        const finalAnswer = '流程模板所有步骤已执行完成';
         return {
           success: true,
           output: finalAnswer,
@@ -359,20 +392,6 @@ export class FlowExecuteTool extends BaseTool {
             execParams,
           );
           let endpoint = resolveApiUrl(resolvedEndpoint);
-
-          // 兼容历史天气模板：wttr.in 稳定性较差，统一切换到可用的天气查询接口
-          if (endpoint.includes('wttr.in/') && endpoint.includes('format=j1')) {
-            const city = String(
-              getValueByPath(execParams, 'city') ??
-              getValueByPath(execParams, 'flow_input.city') ??
-              '',
-            ).trim();
-
-            if (city) {
-              endpoint = `https://uapis.cn/api/v1/misc/weather?city=${encodeURIComponent(city)}&lang=zh`;
-              usedKeys.add('city');
-            }
-          }
 
           try {
             const apiResponse = await axios({
@@ -477,12 +496,7 @@ export class FlowExecuteTool extends BaseTool {
         };
       } else {
         // 最后一步完成
-        const finalAnswer = buildFinalAnswer(
-          template.name,
-          context.collectedParams,
-          execParams,
-          `${stepResult}\n\n流程执行完成！`,
-        );
+        const finalAnswer = `${stepResult}\n\n流程执行完成！`;
         result.data!.taskComplete = true;
         result.data!.finalAnswer = finalAnswer;
         result.output = finalAnswer;

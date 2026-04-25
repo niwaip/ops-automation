@@ -34,7 +34,7 @@ const SkillConfirm: React.FC<SkillConfirmProps> = ({
         确认参数 - {skillName}
       </Typography.Title>
       <Typography.Text type="secondary">
-        以下参数已识别完成，请确认后生成文档
+        以下参数已识别完成，请确认后执行
       </Typography.Text>
 
       <Descriptions
@@ -50,7 +50,7 @@ const SkillConfirm: React.FC<SkillConfirmProps> = ({
           icon={<CheckOutlined />}
           onClick={onConfirm}
         >
-          确认生成
+          确认执行
         </Button>
         <Button
           icon={<CloseOutlined />}

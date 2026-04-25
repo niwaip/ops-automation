@@ -62,10 +62,13 @@ export class GenerateParametersTool extends BaseTool {
 
     try {
       // 调用Carbone引擎的generate-parameters API（使用description参数）
-      const response = await axios.post(`${CARBONE_SERVICE_URL}/studio/generate-parameters`, {
-        skillId,
-        description,  // Carbone API使用description参数名
-      });
+      const response = await axios.post<{ success: boolean; generatedData: Record<string, unknown> }>(
+        `${CARBONE_SERVICE_URL}/studio/generate-parameters`,
+        {
+          skillId,
+          description, // Carbone API使用description参数名
+        },
+      );
 
       const result = response.data;
 
@@ -86,7 +89,7 @@ ${JSON.stringify(extractedParams, null, 2)}
 
 模板ID: ${extractedTemplateId || '未指定'}
 
-【参数验证成功】下一步调用 document_render 工具生成文档。`,
+【参数验证成功】下一步调用 document_render 工具继续执行。`,
           data: {
             params: extractedParams,
             skillId,

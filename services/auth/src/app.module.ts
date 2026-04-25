@@ -7,6 +7,7 @@ import { UserModule } from './modules/user/user.module';
 import { SkillModule } from './modules/skill/skill.module';
 import { ExecutionFlowModule } from './modules/execution-flow/execution-flow.module';
 import { TemporalWorkflowModule } from './modules/temporal-workflow/temporal-workflow.module';
+import { CapabilityReleaseModule } from './modules/capability-release/capability-release.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { RbacGuard } from './guards/rbac.guard';
@@ -41,6 +42,9 @@ import { RbacGuard } from './guards/rbac.guard';
 
     // Temporal Workflow module
     TemporalWorkflowModule,
+
+    // Capability Release module
+    CapabilityReleaseModule,
   ],
   providers: [
     // Global JWT guard - applied to all routes by default

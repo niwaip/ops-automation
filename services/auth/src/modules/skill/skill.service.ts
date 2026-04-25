@@ -10,7 +10,6 @@ import {
   SkillConfigDTO,
   CreateSkillDTO,
   SkillMatchResult,
-  ParamsSchema,
   SkillPermissionDTO,
   AIMatchResponse,
   SkillValidationResult,
@@ -186,29 +185,6 @@ const DEFAULT_SKILLS: CreateSkillDTO[] = [
     ],
     tools: ['param_collect', 'user_ask', 'document_generate'],
   },
-  {
-    name: '天气查询',
-    description: '查询指定城市的天气信息',
-    triggerKeywords: ['天气', '查询天气', '天气预报', '天气情况', 'weather'],
-    paramsSchema: {
-      properties: {
-        city: {
-          type: 'string',
-          description: '要查询天气的城市名称',
-          required: true,
-          extractionPrompt: '从用户输入中提取城市名称',
-        },
-      },
-      required: ['city'],
-    },
-    executionFlow: [
-      { type: 'tool', name: 'AI语义匹配', tool: { name: 'skill_match' } },
-      { type: 'tool', name: 'API调用', tool: { name: 'api_call' } },
-      { type: 'tool', name: '结果格式化', tool: { name: 'format_result' } },
-    ],
-    tools: ['skill_match', 'api_call', 'flow_execute'],
-    // executionFlowTemplateId will be set dynamically after template is created
-  },
 ];
 
 @Injectable()
@@ -232,12 +208,17 @@ export class SkillService implements OnModuleInit {
    * 加载默认Skills（如果不存在）
    */
   private async loadDefaultSkills() {
-    // 先获取流程模板ID用于关联
-    const weatherTemplate = await this.prisma.$queryRawUnsafe(
-      `SELECT id FROM execution_flow_templates WHERE name = $1`,
-      '天气查询流程'
-    ) as any[];
-    const weatherTemplateId = weatherTemplate[0]?.id;
+    // 停用旧版“天气查询”技能，避免继续走旧的 skill_match/api_call 执行链路
+    const legacyWeatherSkill = await this.prisma.skillConfig.findUnique({
+      where: { name: '天气查询' },
+    });
+    if (legacyWeatherSkill?.isActive) {
+      await this.prisma.skillConfig.update({
+        where: { id: legacyWeatherSkill.id },
+        data: { isActive: false },
+      });
+      this.logger.log('Disabled legacy default skill: 天气查询');
+    }
 
     for (const skill of DEFAULT_SKILLS) {
       const existing = await this.prisma.skillConfig.findUnique({
@@ -245,10 +226,6 @@ export class SkillService implements OnModuleInit {
       });
 
       if (!existing) {
-        // 如果是天气查询技能，关联流程模板ID
-        if (skill.name === '天气查询' && weatherTemplateId) {
-          skill.executionFlowTemplateIds = [weatherTemplateId];
-        }
         await this.createSkill(skill);
         this.logger.log(`Created default skill: ${skill.name}`);
       } else {
@@ -258,15 +235,13 @@ export class SkillService implements OnModuleInit {
 
         const existingFlowTemplateIds = (existing.executionFlowTemplateIds as string[]) || [];
 
-        if (shouldSyncParams || (skill.name === '天气查询' && weatherTemplateId && !existingFlowTemplateIds.includes(weatherTemplateId))) {
+        if (shouldSyncParams) {
           await this.prisma.skillConfig.update({
             where: { id: existing.id },
             data: {
               paramsSchema: skill.paramsSchema as any,
-              executionFlowTemplateIds: skill.name === '天气查询' && weatherTemplateId
-                ? Array.from(new Set([...existingFlowTemplateIds, weatherTemplateId]))
-                : existingFlowTemplateIds,
               triggerKeywords: (existing.triggerKeywords as any[] || []).length === 0 ? skill.triggerKeywords : (existing.triggerKeywords as any[]),
+              executionFlowTemplateIds: existingFlowTemplateIds,
             },
           });
           this.logger.log(`Synced default skill configuration: ${skill.name}`);
@@ -315,6 +290,9 @@ export class SkillService implements OnModuleInit {
    * 获取Skill详情
    */
   async getSkill(id: string): Promise<SkillConfigDTO | null> {
+    if (!isValidUUID(id)) {
+      return null;
+    }
     const skill = await this.prisma.skillConfig.findUnique({
       where: { id },
     });
@@ -326,30 +304,44 @@ export class SkillService implements OnModuleInit {
    * 更新Skill
    */
   async updateSkill(id: string, dto: Partial<CreateSkillDTO>): Promise<SkillConfigDTO | null> {
-    const skill = await this.prisma.skillConfig.update({
-      where: { id },
-      data: {
-        name: dto.name,
-        description: dto.description,
-        triggerKeywords: dto.triggerKeywords,
-        paramsSchema: dto.paramsSchema as any,  // Cast to JSON for Prisma
-        templateId: dto.templateId,
-        carboneTemplateId: dto.carboneTemplateId,
-        carboneSkillId: dto.carboneSkillId,
-        executionFlowTemplateIds: dto.executionFlowTemplateIds,
-        apiEndpoints: dto.apiEndpoints as any,
-        executionFlow: (dto.executionFlow || []) as any,
-        tools: dto.tools,
-      },
-    });
+    if (!isValidUUID(id)) {
+      return null;
+    }
+    try {
+      const skill = await this.prisma.skillConfig.update({
+        where: { id },
+        data: {
+          name: dto.name,
+          description: dto.description,
+          triggerKeywords: dto.triggerKeywords,
+          paramsSchema: dto.paramsSchema as any, // Cast to JSON for Prisma
+          templateId: dto.templateId,
+          carboneTemplateId: dto.carboneTemplateId,
+          carboneSkillId: dto.carboneSkillId,
+          executionFlowTemplateIds: dto.executionFlowTemplateIds,
+          apiEndpoints: dto.apiEndpoints as any,
+          executionFlow: (dto.executionFlow || []) as any,
+          tools: dto.tools,
+        },
+      });
 
-    return this.toDTO(skill);
+      return this.toDTO(skill);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : '';
+      if (message.includes('Record to update not found')) {
+        return null;
+      }
+      throw error;
+    }
   }
 
   /**
    * 删除Skill
    */
   async deleteSkill(id: string): Promise<boolean> {
+    if (!isValidUUID(id)) {
+      return false;
+    }
     const result = await this.prisma.skillConfig.delete({
       where: { id },
     });
@@ -405,6 +397,9 @@ export class SkillService implements OnModuleInit {
         carboneSkillId: bestMatch.carboneSkillId,
         apiEndpoints: bestMatch.apiEndpoints,
         executionFlowTemplateIds: bestMatch.executionFlowTemplateIds,
+        goal: (bestMatch.apiEndpoints as any)?.runtimeMetadata?.goal,
+        expectedResult: (bestMatch.apiEndpoints as any)?.runtimeMetadata?.expectedResult,
+        outputParams: (bestMatch.apiEndpoints as any)?.runtimeMetadata?.outputParams,
       };
     }
 
@@ -477,25 +472,34 @@ export class SkillService implements OnModuleInit {
    * 检查用户是否有权限使用某 Skill
    */
   async checkUserSkillPermission(userId: string, skillId: string): Promise<boolean> {
-    // 验证userId是否为有效的UUID格式
-    if (!isValidUUID(userId)) {
+    // 验证userId和skillId是否为有效的UUID格式
+    if (!isValidUUID(userId) || !isValidUUID(skillId)) {
       return false;
     }
 
-    // 1. 获取用户的所有角色
+    // 1. 获取用户信息（兼容旧的直接 role 字段）
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+    });
+
+    if (user?.role === 'admin') {
+      return true;
+    }
+
+    // 2. 获取用户的所有角色
     const userRoles = await this.prisma.userRole.findMany({
       where: { userId },
       include: { role: true },
     });
 
-    // 2. Admin 默认有权限
+    // 3. Admin 默认有权限
     const isAdmin = userRoles.some((ur: any) => ur.role.name === 'admin' ||
       (ur.role.permissions as Record<string, boolean>)?.['all_skills'] === true);
     if (isAdmin) {
       return true;
     }
 
-    // 3. 检查 Skill 是否存在且活跃
+    // 4. 检查 Skill 是否存在且活跃
     const skill = await this.prisma.skillConfig.findUnique({
       where: { id: skillId },
     });
@@ -503,7 +507,7 @@ export class SkillService implements OnModuleInit {
       return false;
     }
 
-    // 4. 检查用户角色是否有权限
+    // 5. 检查用户角色是否有权限
     const roleIds = userRoles.map((ur: any) => ur.roleId);
     const permission = await this.prisma.skillPermission.findFirst({
       where: {
@@ -519,6 +523,14 @@ export class SkillService implements OnModuleInit {
    * 授权 Skill 给角色
    */
   async grantSkillToRole(skillId: string, roleId: string, grantedBy: string): Promise<SkillPermissionDTO> {
+    // 验证 UUID 格式
+    if (!isValidUUID(skillId)) {
+      throw new ForbiddenException('Invalid skillId format');
+    }
+    if (!isValidUUID(roleId)) {
+      throw new ForbiddenException('Invalid roleId format');
+    }
+
     // 检查 Skill 和 Role 是否存在
     const skill = await this.prisma.skillConfig.findUnique({ where: { id: skillId } });
     const role = await this.prisma.role.findUnique({ where: { id: roleId } });
@@ -652,6 +664,9 @@ ${skillsXml}
             carboneSkillId: matchedSkill.carboneSkillId,
             executionFlowTemplateIds: matchedSkill.executionFlowTemplateIds,  // 新增
             apiEndpoints: matchedSkill.apiEndpoints,
+            goal: (matchedSkill.apiEndpoints as any)?.runtimeMetadata?.goal,
+            expectedResult: (matchedSkill.apiEndpoints as any)?.runtimeMetadata?.expectedResult,
+            outputParams: (matchedSkill.apiEndpoints as any)?.runtimeMetadata?.outputParams,
           };
         }
       }
@@ -753,6 +768,9 @@ ${skillsXml}
         carboneSkillId: bestMatch.carboneSkillId,
         apiEndpoints: bestMatch.apiEndpoints,
         executionFlowTemplateIds: bestMatch.executionFlowTemplateIds,
+        goal: (bestMatch.apiEndpoints as any)?.runtimeMetadata?.goal,
+        expectedResult: (bestMatch.apiEndpoints as any)?.runtimeMetadata?.expectedResult,
+        outputParams: (bestMatch.apiEndpoints as any)?.runtimeMetadata?.outputParams,
       };
     }
 
@@ -772,21 +790,10 @@ ${skillsXml}
 
   private extractParamsFromUserInput(
     skill: SkillConfigDTO,
-    userInput: string,
+    _userInput: string,
   ): { collectedParams: Record<string, unknown>; missingParams: string[] } {
     const collectedParams: Record<string, unknown> = {};
     const requiredParams = skill.paramsSchema?.required || [];
-
-    // 针对“天气查询”提供稳定的城市提取，确保任务模式能直接执行 flow_execute
-    if (
-      (skill.name.includes('天气') || skill.triggerKeywords.some((keyword) => keyword.includes('天气'))) &&
-      skill.paramsSchema?.properties?.city
-    ) {
-      const city = this.extractCityFromWeatherQuery(userInput);
-      if (city) {
-        collectedParams.city = city;
-      }
-    }
 
     const missingParams = requiredParams.filter((param) => {
       const value = collectedParams[param];
@@ -794,33 +801,6 @@ ${skillsXml}
     });
 
     return { collectedParams, missingParams };
-  }
-
-  private extractCityFromWeatherQuery(userInput: string): string | null {
-    const normalizedInput = userInput.replace(/\s+/g, '');
-    const patterns = [
-      /(?:告诉我|请告诉我|帮我查|帮我查询|查询|查下|查一下|看看|想知道)?([\u4e00-\u9fa5]{2,10}?)(?:今天|现在|当前)?(?:的)?天气/,
-      /天气(?:情况|预报)?(?:查询)?([\u4e00-\u9fa5]{2,10})/,
-    ];
-
-    for (const pattern of patterns) {
-      const match = normalizedInput.match(pattern);
-      const rawCity = match?.[1]?.trim();
-      if (!rawCity) {
-        continue;
-      }
-
-      const cleanedCity = rawCity
-        .replace(/^(告诉我|请告诉我|帮我查|帮我查询|查询|查下|查一下|看看|想知道)/, '')
-        .replace(/(今天|现在|当前)$/g, '')
-        .trim();
-
-      if (cleanedCity) {
-        return cleanedCity;
-      }
-    }
-
-    return null;
   }
 
   /**
