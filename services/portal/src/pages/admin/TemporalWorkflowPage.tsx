@@ -117,6 +117,22 @@ const TemporalWorkflowPage: React.FC = () => {
     }
   }, [sandboxState.visible]);
 
+  // 当选择步骤时，自动从Activity加载输入参数（如果步骤还没有参数）
+  useEffect(() => {
+    if (selectedStepIndexForConfig !== null && workflowDsl.steps[selectedStepIndexForConfig]) {
+      const step = workflowDsl.steps[selectedStepIndexForConfig];
+      if (step.activityName && (!step.input || Object.keys(step.input).filter(k => k !== 'timeout').length === 0)) {
+        const activity = activitiesQuery.data?.find(a => a.name === step.activityName);
+        if (activity?.inputParams && Object.keys(activity.inputParams).length > 0) {
+          handleUpdateStep(selectedStepIndexForConfig, 'input', {
+            ...activity.inputParams,
+            timeout: step.input?.timeout || '60s',
+          });
+        }
+      }
+    }
+  }, [selectedStepIndexForConfig]);
+
   const workflowsQuery = useQuery(['temporal-workflows'], () => temporalWorkflowApi.list());
   const activitiesQuery = useQuery('activities', () => activityApi.list());
   const filteredWorkflows = useMemo(() => {
@@ -450,6 +466,71 @@ const TemporalWorkflowPage: React.FC = () => {
         <Form form={form} layout="vertical">
           <Row gutter={16}><Col span={12}><Form.Item name="name" label="工作流名称" rules={[{ required: true, message: '请输入工作流名称' }]}><Input placeholder="例如：合同生成流程" /></Form.Item></Col><Col span={12}><Form.Item name="taskQueue" label="Task Queue" rules={[{ required: true, message: '请输入Task Queue' }]} extra="Temporal Worker 监听的队列名称"><Input placeholder="例如：SKILL_TASK_QUEUE" /></Form.Item></Col></Row>
           <Form.Item name="description" label="描述"><Input.TextArea rows={2} placeholder="工作流描述" /></Form.Item>
+          <Divider plain><Text type="secondary">高级配置（可选）</Text></Divider>
+          <Row gutter={16}>
+            <Col span={8}>
+              <Form.Item label="执行超时" extra="整个workflow执行期限">
+                <Input
+                  placeholder="例如: 10m, 1h, 1d"
+                  value={workflowDsl.workflowExecutionTimeout || ''}
+                  onChange={e => setWorkflowDsl({ ...workflowDsl, workflowExecutionTimeout: e.target.value || undefined })}
+                />
+              </Form.Item>
+            </Col>
+            <Col span={8}>
+              <Form.Item label="运行超时" extra="单次运行期限">
+                <Input
+                  placeholder="例如: 5m, 30s"
+                  value={workflowDsl.workflowRunTimeout || ''}
+                  onChange={e => setWorkflowDsl({ ...workflowDsl, workflowRunTimeout: e.target.value || undefined })}
+                />
+              </Form.Item>
+            </Col>
+            <Col span={8}>
+              <Form.Item label="任务超时" extra="工作流任务处理期限">
+                <Input
+                  placeholder="例如: 10s, 30s"
+                  value={workflowDsl.workflowTaskTimeout || ''}
+                  onChange={e => setWorkflowDsl({ ...workflowDsl, workflowTaskTimeout: e.target.value || undefined })}
+                />
+              </Form.Item>
+            </Col>
+          </Row>
+          <Row gutter={16}>
+            <Col span={12}>
+              <Form.Item label="默认Activity重试次数" extra="所有Activity的默认重试次数">
+                <Input
+                  type="number"
+                  placeholder="3"
+                  value={workflowDsl.defaultActivityRetryPolicy?.maxRetries || 3}
+                  onChange={e => setWorkflowDsl({
+                    ...workflowDsl,
+                    defaultActivityRetryPolicy: {
+                      ...workflowDsl.defaultActivityRetryPolicy,
+                      maxRetries: parseInt(e.target.value) || 3,
+                    }
+                  })}
+                />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item label="重试间隔衰减系数" extra="指数退避系数 (默认 2.0)">
+                <Input
+                  type="number"
+                  placeholder="2.0"
+                  step="0.1"
+                  value={workflowDsl.defaultActivityRetryPolicy?.backoffCoefficient || 2.0}
+                  onChange={e => setWorkflowDsl({
+                    ...workflowDsl,
+                    defaultActivityRetryPolicy: {
+                      ...workflowDsl.defaultActivityRetryPolicy,
+                      backoffCoefficient: parseFloat(e.target.value) || 2.0,
+                    }
+                  })}
+                />
+              </Form.Item>
+            </Col>
+          </Row>
         </Form>
 
         <Divider><Text strong>工作流配置</Text></Divider>
@@ -612,20 +693,35 @@ const TemporalWorkflowPage: React.FC = () => {
                         </Select>
                       </Form.Item>
 
-                      <Form.Item label="重试策略">
+                      <Form.Item label="执行超时">
+                        <Input
+                          value={workflowDsl.steps[selectedStepIndexForConfig].startToCloseTimeout || '60s'}
+                          onChange={e => handleUpdateStep(selectedStepIndexForConfig, 'startToCloseTimeout', e.target.value || '60s')}
+                          placeholder="例如: 30s, 1m"
+                        />
+                      </Form.Item>
+
+                      <Form.Item label="重试次数">
                         <Input
                           type="number"
                           value={workflowDsl.steps[selectedStepIndexForConfig].retryPolicy?.maxRetries || 3}
-                          onChange={e => handleUpdateStep(selectedStepIndexForConfig, 'retryPolicy', { maxRetries: parseInt(e.target.value) || 3 })}
+                          onChange={e => handleUpdateStep(selectedStepIndexForConfig, 'retryPolicy', {
+                            ...workflowDsl.steps[selectedStepIndexForConfig].retryPolicy,
+                            maxRetries: parseInt(e.target.value) || 3
+                          })}
                           placeholder="最大重试次数"
                         />
                       </Form.Item>
 
-                      <Form.Item label="超时时间">
+                      <Form.Item label="重试间隔 (ms)" extra="首次重试等待时间">
                         <Input
-                          value={workflowDsl.steps[selectedStepIndexForConfig].input?.timeout || '60s'}
-                          onChange={e => handleUpdateStep(selectedStepIndexForConfig, 'input', { ...workflowDsl.steps[selectedStepIndexForConfig].input, timeout: e.target.value })}
-                          placeholder="例如: 30s, 60s"
+                          type="number"
+                          value={workflowDsl.steps[selectedStepIndexForConfig].retryPolicy?.initialIntervalMs || 1000}
+                          onChange={e => handleUpdateStep(selectedStepIndexForConfig, 'retryPolicy', {
+                            ...workflowDsl.steps[selectedStepIndexForConfig].retryPolicy,
+                            initialIntervalMs: parseInt(e.target.value) || 1000
+                          })}
+                          placeholder="首次重试间隔 (ms)"
                         />
                       </Form.Item>
 
