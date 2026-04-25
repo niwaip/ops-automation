@@ -117,15 +117,32 @@ const TemporalWorkflowPage: React.FC = () => {
     }
   }, [sandboxState.visible]);
 
+  // 从Activity的config中提取inputParams (存储在config.steps[].inputParams中)
+  const getActivityInputParams = (activity: ActivityDTO): Record<string, string> => {
+    try {
+      const config = activity.config as Record<string, any>;
+      if (config?.steps && Array.isArray(config.steps) && config.steps.length > 0) {
+        const firstStep = config.steps[0];
+        if (firstStep?.inputParams && typeof firstStep.inputParams === 'object') {
+          return firstStep.inputParams as Record<string, string>;
+        }
+      }
+    } catch (e) {
+      // ignore
+    }
+    return {};
+  };
+
   // 当选择步骤时，自动从Activity加载输入参数（如果步骤还没有参数）
   useEffect(() => {
     if (selectedStepIndexForConfig !== null && workflowDsl.steps[selectedStepIndexForConfig]) {
       const step = workflowDsl.steps[selectedStepIndexForConfig];
       if (step.activityName && (!step.input || Object.keys(step.input).filter(k => k !== 'timeout').length === 0)) {
         const activity = activitiesQuery.data?.find(a => a.name === step.activityName);
-        if (activity?.inputParams && Object.keys(activity.inputParams).length > 0) {
+        const inputParams = getActivityInputParams(activity);
+        if (Object.keys(inputParams).length > 0) {
           handleUpdateStep(selectedStepIndexForConfig, 'input', {
-            ...activity.inputParams,
+            ...inputParams,
             timeout: step.input?.timeout || '60s',
           });
         }
@@ -675,10 +692,11 @@ const TemporalWorkflowPage: React.FC = () => {
                                   }],
                                 });
                               }
-                              // Auto-populate step input params from Activity's inputParams
-                              if (activity.inputParams && Object.keys(activity.inputParams).length > 0) {
+                              // Auto-populate step input params from Activity's config.steps[].inputParams
+                              const inputParams = getActivityInputParams(activity);
+                              if (Object.keys(inputParams).length > 0) {
                                 handleUpdateStep(selectedStepIndexForConfig, 'input', {
-                                  ...activity.inputParams,
+                                  ...inputParams,
                                   timeout: workflowDsl.steps[selectedStepIndexForConfig].input?.timeout || '60s',
                                 });
                               }
