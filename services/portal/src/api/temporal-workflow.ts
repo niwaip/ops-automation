@@ -22,7 +22,7 @@ export interface WorkflowStep {
   startToCloseTimeout?: string;
   // Retry policy for the activity
   retryPolicy?: {
-    maxRetries: number;
+    maxRetries?: number;
     initialIntervalMs?: number;  // First retry interval in ms
     backoffCoefficient?: number;  // Exponential backoff multiplier (default 2.0)
     maxIntervalMs?: number;      // Cap between retries
@@ -50,7 +50,7 @@ export interface WorkflowDsl {
   workflowTaskTimeout?: string;
   // Default retry policy for all activities
   defaultActivityRetryPolicy?: {
-    maxRetries: number;
+    maxRetries?: number;
     initialIntervalMs?: number;
     backoffCoefficient?: number;
     maxIntervalMs?: number;

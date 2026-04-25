@@ -44,7 +44,7 @@ services:
       retries: 5
       start_period: 30s
     networks:
-      - ${NETWORK_NAME:-ops-network}
+      - ops-network
 
   redis:
     image: ${DOCKER_REGISTRY:-}redis:7-alpine
@@ -62,7 +62,7 @@ services:
       retries: 5
       start_period: 10s
     networks:
-      - ${NETWORK_NAME:-ops-network}
+      - ops-network
 
   # ============================================
   # Backend Service Templates (override as needed)
@@ -72,8 +72,11 @@ services:
     container_name: ops-auth
     environment:
       <<: *common-env
+      DOCKER_ENV: true
       PORT: ${AUTH_PORT:-3001}
       JWT_SECRET: jwt_secret_key_change_in_production
+      SANDBOX_AGENT_URL: http://temporal-sandbox-agent:8090
+      TEMPORAL_SANDBOX_AGENT_URL: http://temporal-sandbox-agent:8090
     ports:
       - "${AUTH_PORT:-3001}:${AUTH_PORT:-3001}"
     volumes:
@@ -277,7 +280,7 @@ services:
       retries: 3
       start_period: 60s
     networks:
-      - ${NETWORK_NAME:-ops-network}
+      - ops-network
 
 volumes:
   postgres_data:
@@ -298,4 +301,5 @@ volumes:
 
 networks:
   ops-network:
-    driver: bridge
+    external: true
+    name: ${NETWORK_NAME:-ops-network}

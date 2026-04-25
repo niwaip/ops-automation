@@ -245,6 +245,41 @@ export class ToolExecutor {
       }) as ToolDefinition[];
   }
 
+  private bindSkillContext(
+    params: Record<string, unknown>,
+    context: ExecutionContext,
+  ): void {
+    const requestedSkillId = typeof params.skillId === 'string' ? params.skillId : undefined;
+    if (!requestedSkillId || context.skill?.skillId === requestedSkillId) {
+      return;
+    }
+
+    const availableSkill = context.availableSkills?.find((item) => item.skillId === requestedSkillId);
+    if (!availableSkill) {
+      return;
+    }
+
+    context.skill = {
+      skillId: availableSkill.skillId,
+      skillName: availableSkill.skillName,
+      matchedKeywords: availableSkill.triggerKeywords,
+      confidence: 1,
+      collectedParams: context.collectedParams || {},
+      missingParams: availableSkill.paramsSchema.required || [],
+      paramsSchema: availableSkill.paramsSchema,
+      templateId: availableSkill.templateId,
+      carboneTemplateId: availableSkill.carboneTemplateId,
+      carboneSkillId: availableSkill.carboneSkillId,
+      executionFlowTemplateIds: availableSkill.executionFlowTemplateIds,
+      executionFlow: availableSkill.executionFlow,
+      apiEndpoints: availableSkill.apiEndpoints,
+      goal: availableSkill.goal,
+      expectedResult: availableSkill.expectedResult,
+      outputParams: availableSkill.outputParams,
+      matchReason: 'selected_from_available_skills',
+    };
+  }
+
   /**
    * 执行工具（含权限二次校验）
    */
@@ -254,6 +289,16 @@ export class ToolExecutor {
     context: ExecutionContext,
   ): Promise<ToolResult> {
     const tracePrefix = context.traceId ? `[${context.traceId}] ` : '';
+    this.logger.debug(`${tracePrefix}Allowed tools for current run: ${JSON.stringify(context.allowedToolNames || [])}`);
+    if (context.allowedToolNames && !context.allowedToolNames.includes(toolName)) {
+      this.logger.warn(`${tracePrefix}Tool NOT ALLOWED in current run: ${toolName}. This is a protocol violation.`);
+      return {
+        success: false,
+        output: `工具 "${toolName}" 不在当前任务允许列表中 (白名单约束)。请检查是否应使用技能(skillId)执行。`,
+        data: { error: 'tool_not_allowed', allowedTools: context.allowedToolNames },
+      };
+    }
+
     const tool = this.tools.get(toolName);
 
     if (!tool) {
@@ -280,6 +325,44 @@ export class ToolExecutor {
       params = {
         ...params,
         userInput: context.originalUserInput,
+      };
+    }
+
+    if (['param_collect', 'generate_parameters', 'document_render', 'flow_execute'].includes(toolName)) {
+      this.bindSkillContext(params, context);
+    }
+
+    if (toolName === 'param_collect') {
+      params = {
+        ...params,
+        skillId: params.skillId || context.skill?.skillId,
+        userInput: params.userInput || context.originalUserInput,
+        existingParams: params.existingParams || context.collectedParams || {},
+      };
+    }
+
+    if (toolName === 'flow_execute') {
+      const incomingSkillId = typeof params.skillId === 'string' ? params.skillId : undefined;
+      const matchedSkillId = context.skill?.skillId;
+      const hasAvailableSkills = Boolean(context.availableSkills && context.availableSkills.length > 0);
+      const isTaskConstrainedRun =
+        hasAvailableSkills &&
+        Array.isArray(context.allowedToolNames) &&
+        !context.allowedToolNames.includes('api_call') &&
+        !context.allowedToolNames.includes('skill_match');
+
+      if (isTaskConstrainedRun && !incomingSkillId && !matchedSkillId) {
+        return {
+          success: false,
+          output: '任务模式下必须先基于 skillId 选择技能，再执行 flow_execute',
+          data: { error: 'skill_id_required_in_task_mode' },
+        };
+      }
+
+      params = {
+        ...params,
+        skillId: incomingSkillId || matchedSkillId,
+        params: params.params || context.collectedParams || {},
       };
     }
 

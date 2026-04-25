@@ -162,6 +162,7 @@ mock_temporalio.common.RetryPolicy = _retry_policy_class
 # Mock requests module
 import urllib.request
 import urllib.error
+import urllib.parse
 class MockResponse:
     def __init__(self, status, data, headers=None, url=None, reason=None, exceptions_source=None):
         self.status = status; self.status_code = status
@@ -209,26 +210,42 @@ class MockRequests:
 
     def get(self, url, headers=None, timeout=None, **kwargs):
         try:
-            req = urllib.request.Request(url, headers=headers or {})
+            parsed = urllib.parse.urlsplit(url)
+            normalized_url = urllib.parse.urlunsplit((
+                parsed.scheme,
+                parsed.netloc.encode('idna').decode('ascii'),
+                urllib.parse.quote(parsed.path, safe='/%'),
+                urllib.parse.quote(parsed.query, safe='=&%/:,+-._~'),
+                parsed.fragment,
+            ))
+            req = urllib.request.Request(normalized_url, headers=headers or {})
             with urllib.request.urlopen(req, timeout=timeout or 30) as r:
-                return MockResponse(r.status, r.read(), dict(r.headers), url=url, exceptions_source=self)
+                return MockResponse(r.status, r.read(), dict(r.headers), url=normalized_url, exceptions_source=self)
         except urllib.error.HTTPError as e:
             body = e.read() if e.fp else b''
             response_headers = dict(e.headers) if e.headers else {}
-            return MockResponse(e.code, body, response_headers, url=url, reason=str(e), exceptions_source=self)
+            return MockResponse(e.code, body, response_headers, url=normalized_url, reason=str(e), exceptions_source=self)
         except Exception as e:
             raise self.RequestException(str(e))
 
     def post(self, url, data=None, json_data=None, headers=None, timeout=None, **kwargs):
         try:
             body = json.dumps(json_data).encode('utf-8') if json_data else (data.encode('utf-8') if isinstance(data, str) else data)
-            req = urllib.request.Request(url, data=body, headers=headers or {}, method='POST')
+            parsed = urllib.parse.urlsplit(url)
+            normalized_url = urllib.parse.urlunsplit((
+                parsed.scheme,
+                parsed.netloc.encode('idna').decode('ascii'),
+                urllib.parse.quote(parsed.path, safe='/%'),
+                urllib.parse.quote(parsed.query, safe='=&%/:,+-._~'),
+                parsed.fragment,
+            ))
+            req = urllib.request.Request(normalized_url, data=body, headers=headers or {}, method='POST')
             with urllib.request.urlopen(req, timeout=timeout or 30) as r:
-                return MockResponse(r.status, r.read(), dict(r.headers), url=url, exceptions_source=self)
+                return MockResponse(r.status, r.read(), dict(r.headers), url=normalized_url, exceptions_source=self)
         except urllib.error.HTTPError as e:
             body = e.read() if e.fp else b''
             response_headers = dict(e.headers) if e.headers else {}
-            return MockResponse(e.code, body, response_headers, url=url, reason=str(e), exceptions_source=self)
+            return MockResponse(e.code, body, response_headers, url=normalized_url, reason=str(e), exceptions_source=self)
         except Exception as e:
             raise self.RequestException(str(e))
 

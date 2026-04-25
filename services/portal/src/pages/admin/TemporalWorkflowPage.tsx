@@ -52,6 +52,7 @@ const sandboxReducer = (state: SandboxState, action: SandboxAction): SandboxStat
   switch (action.type) {
     case 'START':
       return {
+        ...state,
         visible: true,
         isStreaming: true,
         logs: [],
@@ -139,7 +140,7 @@ const TemporalWorkflowPage: React.FC = () => {
       const step = workflowDsl.steps[selectedStepIndexForConfig];
       if (step.activityName && (!step.input || Object.keys(step.input).filter(k => k !== 'timeout').length === 0)) {
         const activity = activitiesQuery.data?.find(a => a.name === step.activityName);
-        const inputParams = getActivityInputParams(activity);
+        const inputParams = activity ? getActivityInputParams(activity) : {};
         if (Object.keys(inputParams).length > 0) {
           handleUpdateStep(selectedStepIndexForConfig, 'input', {
             ...inputParams,
@@ -186,8 +187,8 @@ const TemporalWorkflowPage: React.FC = () => {
   });
 
   const deployMutation = useMutation(temporalWorkflowApi.deploy, {
-    onSuccess: () => { message.success('部署成功'); queryClient.invalidateQueries(['temporal-workflows']); },
-    onError: () => { message.error('部署失败'); },
+    onSuccess: () => { message.success('已登记部署状态'); queryClient.invalidateQueries(['temporal-workflows']); },
+    onError: () => { message.error('登记部署状态失败'); },
   });
 
   const validateMutation = useMutation(
@@ -249,7 +250,7 @@ const TemporalWorkflowPage: React.FC = () => {
   // 收集工作流步骤的输入参数
   const collectWorkflowInputParams = (): Record<string, string> => {
     const params: Record<string, string> = {};
-    workflowDsl.steps.forEach((step, idx) => {
+    workflowDsl.steps.forEach((step) => {
       if (step.input) {
         Object.entries(step.input).forEach(([key, value]) => {
           if (!params[key]) {
@@ -330,7 +331,7 @@ const TemporalWorkflowPage: React.FC = () => {
     }
   };
 
-  const handleDeploy = (id: string) => Modal.confirm({ title: '确认部署', content: '确定要部署此工作流到 Temporal Worker 吗？', onOk: () => deployMutation.mutate(id) });
+  const handleDeploy = (id: string) => Modal.confirm({ title: '确认登记部署状态', content: '当前动作只会记录 deployedAt，用于标记该工作流已登记部署，不会真正把代码下发到 Temporal Worker。是否继续？', onOk: () => deployMutation.mutate(id) });
 
   const handleSave = () => {
     form.validateFields().then((values) => {
@@ -421,15 +422,15 @@ const TemporalWorkflowPage: React.FC = () => {
     { title: '描述', dataIndex: 'description', key: 'description', ellipsis: true },
     { title: '步骤数', key: 'stepCount', width: 80, render: (_, r) => <Badge count={r.workflowDsl?.steps?.length || 0} showZero color="blue" /> },
     { title: 'Activity数', key: 'activityCount', width: 100, render: (_, r) => <Badge count={r.activityDsl?.activities?.length || 0} showZero color="green" /> },
-    { title: '状态', key: 'status', width: 120, render: (_, r) => (<Space direction="vertical" size={0}><Tag color={r.isActive ? 'green' : 'default'}>{r.isActive ? '已启用' : '已禁用'}</Tag>{r.deployedAt && <Tag color="cyan" style={{ fontSize: 10 }}>已部署</Tag>}</Space>) },
-    { title: t('common:actions'), key: 'actions', width: 220, render: (_, r) => (<Space size="small"><Button type="link" size="small" icon={<EditOutlined />} onClick={() => handleEdit(r)}>编辑</Button><Button type="link" size="small" icon={<CloudUploadOutlined />} onClick={() => handleDeploy(r.id)}>部署</Button><Popconfirm title="确认删除" onConfirm={() => handleDelete(r.id)} okText="删除" cancelText="取消" okButtonProps={{ danger: true }}><Button type="link" size="small" icon={<DeleteOutlined />} danger /></Popconfirm></Space>) },
+    { title: '状态', key: 'status', width: 120, render: (_, r) => (<Space direction="vertical" size={0}><Tag color={r.isActive ? 'green' : 'default'}>{r.isActive ? '已启用' : '已禁用'}</Tag>{r.deployedAt && <Tag color="cyan" style={{ fontSize: 10 }}>已登记</Tag>}</Space>) },
+    { title: t('common:actions'), key: 'actions', width: 240, render: (_, r) => (<Space size="small"><Button type="link" size="small" icon={<EditOutlined />} onClick={() => handleEdit(r)}>编辑</Button><Button type="link" size="small" icon={<CloudUploadOutlined />} onClick={() => handleDeploy(r.id)}>登记部署</Button><Popconfirm title="确认删除" onConfirm={() => handleDelete(r.id)} okText="删除" cancelText="取消" okButtonProps={{ danger: true }}><Button type="link" size="small" icon={<DeleteOutlined />} danger /></Popconfirm></Space>) },
   ];
 
   return (
     <div>
       <Row gutter={16} style={{ marginBottom: 24 }}>
         <Col span={6}><Card><Statistic title="工作流总数" value={workflowsQuery.data?.length || 0} prefix={<ThunderboltOutlined />} /></Card></Col>
-        <Col span={6}><Card><Statistic title="已部署" value={workflowsQuery.data?.filter(w => w.deployedAt).length || 0} prefix={<RocketOutlined />} valueStyle={{ color: '#1890ff' }} /></Card></Col>
+        <Col span={6}><Card><Statistic title="已登记" value={workflowsQuery.data?.filter(w => w.deployedAt).length || 0} prefix={<RocketOutlined />} valueStyle={{ color: '#1890ff' }} /></Card></Col>
         <Col span={6}><Card><Statistic title="步骤总数" value={workflowsQuery.data?.reduce((sum, w) => sum + (w.workflowDsl?.steps?.length || 0), 0) || 0} prefix={<ApiOutlined />} valueStyle={{ color: '#52c41a' }} /></Card></Col>
         <Col span={6}><Card><Statistic title="已启用" value={workflowsQuery.data?.filter(w => w.isActive).length || 0} prefix={<CheckCircleOutlined />} valueStyle={{ color: '#fa8c16' }} /></Card></Col>
       </Row>
@@ -442,7 +443,7 @@ const TemporalWorkflowPage: React.FC = () => {
       </Card>
 
       <Card>
-        <Alert message="Temporal 工作流说明" description={<Space direction="vertical" size="small"><Text><strong>Workflow DSL</strong>：定义确定性编排逻辑。Temporal 会 replay 这个逻辑来恢复状态。</Text><Text><strong>Activity DSL</strong>：定义非确定性副作用操作（API调用、文档渲染、浏览器操作、脚本执行）。</Text></Space>} type="info" showIcon style={{ marginBottom: 16 }} />
+        <Alert message="Temporal 工作流说明" description={<Space direction="vertical" size="small"><Text><strong>Workflow DSL</strong>：定义确定性编排逻辑。Temporal 会 replay 这个逻辑来恢复状态。</Text><Text><strong>Activity DSL</strong>：定义非确定性副作用操作（API调用、文档渲染、浏览器操作、脚本执行）。</Text><Text><strong>登记部署</strong>：当前只记录 `deployedAt` 状态，不会真正把代码下发到 Worker。真实发布链路请走 Capability Release。</Text></Space>} type="info" showIcon style={{ marginBottom: 16 }} />
         <Table columns={columns} dataSource={filteredWorkflows} rowKey="id" loading={workflowsQuery.isLoading} pagination={{ showSizeChanger: true, showTotal: total => `共 ${total} 条` }} />
       </Card>
 

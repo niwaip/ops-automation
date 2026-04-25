@@ -3,7 +3,7 @@
  * 构建ReAct循环所需的提示词
  */
 
-import { ChatMessage, SkillMatchResult, ToolDefinition, ReActConfig } from './interfaces';
+import { AvailableSkillDefinition, ChatMessage, SkillMatchResult, ToolDefinition } from './interfaces';
 
 /**
  * ReAct提示词模板
@@ -19,6 +19,9 @@ const REACT_SYSTEM_PROMPT = `你是一个智能助手，使用ReAct(Reasoning + 
 可用的工具：
 {tools}
 
+当前用户可访问的技能：
+{skills}
+
 回答格式：
 Thought: 你的思考过程
 Action: 工具名称
@@ -30,7 +33,17 @@ Final Answer: 最终回复
 重要规则：
 - 每次只能选择一个工具
 - 参数必须是有效的JSON格式
+- 只允许使用以下标准协议：\`Thought:\`、\`Action:\`、\`Action Input:\`、\`Final Answer:\`
+- \`Action Input:\` 后必须紧跟单个 JSON 对象，不能附带解释文字、代码块、标签或命令行参数格式
+- 禁止输出任何 XML、标签式工具调用、\`[TOOL_CALL]\` 包装、\`tool => ... args => ...\`、Markdown 代码块 JSON 或其他私有协议
+- 优先从“当前用户可访问的技能”中选择最匹配的 skillId，再围绕该 skillId 进行参数补足和执行
+- 在任务模式下，禁止跳过技能直接调用通用外部 API；不要调用 \`api_call\`，也不要重新调用 \`skill_match\`
+- 当技能有必填参数但信息不足时，先调用 param_collect，不要直接猜测参数
+- 当技能配置了 \`carboneSkillId\` 时，使用 generate_parameters，并传入平台 skillId
+- 当技能需要实际执行时，使用 flow_execute，并传入平台 skillId
+- 当 Observation 已经足够回答用户且任务完成时，必须输出 \`Final Answer:\`，不要输出普通正文
 - 如果工具返回requiresUserInput，则等待用户回复
+- 如果执行出错（如 403 或 500），应在 Thought 中分析原因。不要使用 user_ask 的 confirm 类型，应直接通过 Final Answer 告知用户错误原因及建议，并询问用户是否需要重试或做其他操作。
 - 不要在Thought中直接回答问题，必须通过工具执行
 - 不要重复调用同一个工具，除非用户提供了新信息
 - 如果任务完成，输出 Final Answer 包含最终回复
@@ -46,45 +59,53 @@ const REACT_USER_PROMPT_TEMPLATE = `用户输入: {userInput}
 export function buildSystemPrompt(
   tools: ToolDefinition[],
   skill?: SkillMatchResult,
+  availableSkills: AvailableSkillDefinition[] = [],
+  mode: 'chat' | 'task' = 'chat',
 ): string {
-  // 动态工具过滤：
-  // 1. 如果没有匹配到技能，主要显示 discovery 分类的工具
-  // 2. 如果已经匹配到技能，显示与该阶段相关的工具，并优先展示 flow 工具
   let filteredTools = tools;
 
-  if (!skill) {
-    // 尚未匹配技能，优先显示发现类工具
-    filteredTools = tools.filter(t => !t.category || t.category === 'discovery' || t.category === 'utility');
+  if (mode === 'task') {
+    // 任务模式下，强制排除通用发现和调用工具，确保模型只能看到并使用技能相关工具
+    filteredTools = tools.filter((t) => !['skill_match', 'api_call'].includes(t.name));
+  } else if (!skill) {
+    filteredTools = tools.filter((t) => !t.category || t.category === 'discovery' || t.category === 'utility');
+  } else if (skill.carboneSkillId) {
+    filteredTools = tools.filter((t) => t.name !== 'param_collect');
   } else {
-    // 已匹配技能，根据技能特性过滤
-    // 检查是否有对应的 flow 工具 (Shadow Tool / Macro Tool)
-    const hasFlowTool = tools.some(t => t.category === 'flow' && (t.name.includes(skill.skillId.replace(/-/g, '_')) || t.name.includes(skill.skillName)));
-    
-    if (hasFlowTool) {
-      // 如果有对应的预编译流程工具，优先展示它
-      filteredTools = tools.filter(t => 
-        t.category === 'flow' || 
-        t.category === 'utility' ||
-        (t.category === 'execution' && t.name === 'user_ask')
-      );
-    } else if (skill.carboneSkillId) {
-      // Carbone 流程：排除手动采参，保留 AI 采参和执行
-      filteredTools = tools.filter(t => t.name !== 'param_collect');
-    } else {
-      // 普通流程：保留手动采参，排除 AI 采参
-      filteredTools = tools.filter(t => t.name !== 'generate_parameters');
-    }
+    filteredTools = tools.filter((t) => t.name !== 'generate_parameters');
   }
 
   const toolsDescription = filteredTools
     .map((t) => `${t.name}: ${t.description}\n参数: ${JSON.stringify(t.parameters, null, 2)}${t.requiresConfirmation ? '\n注意：此操作执行前需要人工确认。' : ''}`)
     .join('\n\n');
 
-  let systemPrompt = REACT_SYSTEM_PROMPT.replace('{tools}', toolsDescription);
+  const skillsDescription = availableSkills.length > 0
+    ? availableSkills.map((item) => {
+        const executionTool = item.carboneSkillId ? 'generate_parameters -> document_render' : 'flow_execute';
+        const runtimeHints: string[] = [];
+        if (item.goal) runtimeHints.push(`goal=${item.goal}`);
+        if (item.expectedResult) runtimeHints.push(`expectedResult=${item.expectedResult}`);
+        return [
+          `- skillId: ${item.skillId}`,
+          `  name: ${item.skillName}`,
+          `  description: ${item.description || '无'}`,
+          `  triggerKeywords: ${item.triggerKeywords.join(', ') || '无'}`,
+          `  executionTool: ${executionTool}`,
+          `  paramsSchema: ${JSON.stringify(item.paramsSchema, null, 2)}`,
+          runtimeHints.length > 0 ? `  runtimeHints: ${runtimeHints.join('; ')}` : '',
+        ].filter(Boolean).join('\n');
+      }).join('\n\n')
+    : mode === 'task' 
+      ? '- 当前没有可用技能。请直接告知用户暂时无法处理此请求。'
+      : '- 当前没有可用技能，必要时再使用 skill_match 或直接回复用户。';
 
-  // 如果有匹配的Skill，添加额外提示
+  let systemPrompt = REACT_SYSTEM_PROMPT
+    .replace('{tools}', toolsDescription)
+    .replace('{skills}', skillsDescription);
+
   if (skill) {
     systemPrompt += `\n\n当前匹配的技能: ${skill.skillName}
+Skill ID: ${skill.skillId}
 Carbone Skill ID: ${skill.carboneSkillId || '无'}
 Carbone Template ID: ${skill.carboneTemplateId || '无'}
 需要的参数: ${JSON.stringify(skill.paramsSchema.properties, null, 2)}
@@ -92,11 +113,20 @@ Carbone Template ID: ${skill.carboneTemplateId || '无'}
 缺失参数: ${skill.missingParams.join(', ') || '无'}
 `;
 
-    // 如果有carboneSkillId，明确提示下一步使用generate_parameters
+    if (skill.goal) {
+      systemPrompt += `技能目标: ${skill.goal}\n`;
+    }
+    if (skill.expectedResult) {
+      systemPrompt += `预期结果: ${skill.expectedResult}\n`;
+    }
+    if (skill.outputParams && Object.keys(skill.outputParams).length > 0) {
+      systemPrompt += `输出契约: ${JSON.stringify(skill.outputParams, null, 2)}\n`;
+    }
+
     if (skill.carboneSkillId) {
-      systemPrompt += `\n重要提示：此技能已配置Carbone AI参数生成，下一步必须调用 generate_parameters 工具，参数为:
+      systemPrompt += `\n重要提示：此技能已配置Carbone AI参数生成，下一步优先调用 generate_parameters 工具，参数为:
 {
-  "skillId": "${skill.carboneSkillId}",
+  "skillId": "${skill.skillId}",
   "description": "用户的完整描述内容"
 }
 不要调用 param_collect，直接使用 generate_parameters 从用户描述中提取参数。`;
@@ -162,7 +192,7 @@ export function buildParamsConfirmPrompt(
 
 ${paramsList}
 
-确认后我将生成文档。请回复"确认"或指出需要修改的参数。`;
+确认后我将开始执行。请回复"确认"或指出需要修改的参数。`;
 }
 
 /**
@@ -177,22 +207,12 @@ export function parseActionResponse(response: string): {
   console.log('[DEBUG parseActionResponse] Raw response length:', response?.length);
   console.log('[DEBUG parseActionResponse] Raw response preview:', response?.substring(0, 500));
 
-  // 过滤掉思考标签内容，否则会干扰正则匹配
-  // 支持多种思考标签格式: <think>、<｜User｜>、<｜Model｜>等
   let cleanedResponse = response
-    // 匹配 <think>...</think> 格式（MiniMax等模型常用）
     .replace(/<think>[\s\S]*?<\/think>/gi, '')
-    // 匹配 <｜...｜> 格式
     .replace(/<｜[\s\S]*?｜>/g, '')
-    // 匹配其他可能的思考标签格式（不区分大小写）
     .replace(/<think[\s\S]*?<\/think>/gi, '')
     .trim();
 
-  // 兼容模型输出带 Markdown 粗体标签的场景，例如:
-  // **Thought**: ...
-  // **Action**: ...
-  // **Action Input**: {...}
-  // **Final Answer**: ...
   cleanedResponse = cleanedResponse.replace(
     /^\s*\*\*(Thought|Action|Action Input|Observation|Final Answer)\*\*\s*:/gim,
     '$1:'
@@ -202,61 +222,6 @@ export function parseActionResponse(response: string): {
     .trim();
 
   console.log('[DEBUG parseActionResponse] Cleaned response preview:', cleanedResponse?.substring(0, 500));
-
-  // 兼容 MiniMax 风格的 tool_call 标签:
-  // <minimax:tool_call>
-  // api_call
-  // {"url":"..."}
-  // </minimax:tool_call>
-  const minimaxToolCallMatch = cleanedResponse.match(
-    /<minimax:tool_call>\s*([a-zA-Z0-9_:-]+)\s*([\s\S]*?)<\/minimax:tool_call>/i
-  );
-  if (minimaxToolCallMatch) {
-    const action = minimaxToolCallMatch[1]?.trim() ?? '';
-    const payloadText = minimaxToolCallMatch[2]?.trim() ?? '';
-    const thought = cleanedResponse
-      .slice(0, minimaxToolCallMatch.index ?? 0)
-      .replace(/\{\s*"type"\s*:\s*"object"[\s\S]*$/m, '')
-      .trim();
-
-    let actionInput: Record<string, unknown> = {};
-    const jsonMatch = payloadText.match(/\{[\s\S]*\}/);
-    if (jsonMatch) {
-      try {
-        actionInput = JSON.parse(jsonMatch[0]);
-      } catch {
-        actionInput = {};
-      }
-    }
-
-    if (action) {
-      return { thought, action, actionInput };
-    }
-  }
-
-  // 尝试直接解析JSON
-  try {
-    const cleaned = cleanedResponse.trim().replace(/```json|```/g, '').trim();
-    const parsed = JSON.parse(cleaned);
-
-    if (parsed.action) {
-      return {
-        thought: parsed.thought || '',
-        action: parsed.action,
-        actionInput: parsed.actionInput || {},
-      };
-    }
-
-    if (parsed.finalAnswer) {
-      return {
-        thought: parsed.thought || '任务已完成',
-        action: 'finish',
-        actionInput: { answer: parsed.finalAnswer },
-      };
-    }
-  } catch (e) {
-    // JSON解析失败，尝试传统的正则提取（兼容模式）
-  }
 
   // 提取Thought
   const thoughtMatch = cleanedResponse.match(/Thought:\s*([\s\S]+?)(?=Action:|$)/);
@@ -274,23 +239,19 @@ export function parseActionResponse(response: string): {
   let actionInput: Record<string, unknown> = {};
 
   if (actionInputMatch) {
+    const rawInput = actionInputMatch[1]?.trim() ?? '';
+    if (!rawInput.startsWith('{') || !rawInput.endsWith('}')) {
+      return null;
+    }
+
     try {
-      // 尝试解析JSON
-      const inputStr = actionInputMatch[1]?.trim() ?? '';
-      // 处理可能的多行JSON
-      const jsonMatch = inputStr.match(/\{[\s\S]*\}/);
-      if (jsonMatch) {
-        actionInput = JSON.parse(jsonMatch[0]);
+      const parsedInput = JSON.parse(rawInput);
+      if (!parsedInput || typeof parsedInput !== 'object' || Array.isArray(parsedInput)) {
+        return null;
       }
+      actionInput = parsedInput as Record<string, unknown>;
     } catch {
-      // JSON解析失败，尝试清洗JSON字符串
-      const cleaned = actionInputMatch[1]?.trim() ?? '';
-      const cleanedJson = cleaned.replace(/```json|```/g, '').trim();
-      try {
-        actionInput = JSON.parse(cleanedJson);
-      } catch {
-        // 仍然失败
-      }
+      return null;
     }
   }
 

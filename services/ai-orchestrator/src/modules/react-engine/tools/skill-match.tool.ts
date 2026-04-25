@@ -78,80 +78,82 @@ export class SkillMatchTool extends BaseTool {
         userInput,
         userId,  // 新增：传递用户ID进行权限过滤
       }, {
-        headers: context.traceId ? { [TRACE_ID_HEADER]: context.traceId } : undefined,
+        headers: {
+          ...(context.traceId ? { [TRACE_ID_HEADER]: context.traceId } : {}),
+          ...(context.authToken ? { Authorization: context.authToken } : {}),
+        },
       });
 
       const matchResult = response.data.match as SkillMatchResult | null;
 
-      if (matchResult && matchResult.confidence > 0) {
-        const flowTemplateId = matchResult.executionFlowTemplateId
-          || matchResult.executionFlowTemplateIds?.[0];
-
-        // 定义预编译执行流 (Fast-track)
-        if (matchResult.carboneSkillId) {
-          matchResult.executionFlow = ['generate_parameters', 'document_render'];
-        }
-
-        // 更新context中的skill信息
-        context.skill = matchResult;
-        context.currentFlowStep = 0; // 重置流程步骤
-
-        // 构建输出信息（支持AI匹配原因）
-        let outputMsg = `成功匹配技能: ${matchResult.skillName} (置信度: ${matchResult.confidence.toFixed(2)})`;
-
-        // AI语义匹配时显示匹配原因
-        if (matchResult.matchReason) {
-          outputMsg += `\n匹配原因: ${matchResult.matchReason}`;
-        } else if (matchResult.matchedKeywords && matchResult.matchedKeywords.length > 0) {
-          outputMsg += `\n匹配关键词: ${matchResult.matchedKeywords.join(', ')}`;
-        }
-
-        // 构建结果和下一步信息
-        const result: ToolResult = {
-          success: true,
-          output: outputMsg,
-          data: {
-            skill: matchResult,
-            needsSkillMatch: false,
-          },
+      if (!matchResult || matchResult.confidence <= 0) {
+        return {
+          success: false,
+          output: `未能匹配到合适的技能。请尝试更清晰地描述您的需求。`,
+          data: { error: 'no_match_found', userInput },
         };
+      }
 
-        // 如果有流程模板，需要执行流程模板步骤
-        if (flowTemplateId) {
-          outputMsg += `\n此技能已关联执行流程模板，将按模板步骤执行。`;
-          // 设置下一步为执行流程模板
-          result.nextAction = 'flow_execute';
-          result.nextActionParams = {
-            templateId: flowTemplateId,
-            stepIndex: 0,
-            params: matchResult.collectedParams || {},
-          };
-          result.data!.hasFlowTemplate = true;
-          result.data!.flowTemplateId = flowTemplateId;
-        }
-        // 如果有Carbone配置，提示下一步
-        else if (matchResult.carboneSkillId) {
-          outputMsg += `\n此技能已配置Carbone AI参数生成，下一步请调用 generate_parameters 工具。
+      const flowTemplateId = matchResult.executionFlowTemplateId
+        || matchResult.executionFlowTemplateIds?.[0];
+
+      // 定义预编译执行流 (Fast-track)
+      if (matchResult.carboneSkillId) {
+        matchResult.executionFlow = ['generate_parameters', 'document_render'];
+      }
+
+      // 更新context中的skill信息
+      context.skill = matchResult;
+      context.currentFlowStep = 0; // 重置流程步骤
+
+      // 构建输出信息（支持AI匹配原因）
+      let outputMsg = `成功匹配技能: ${matchResult.skillName} (置信度: ${matchResult.confidence.toFixed(2)})`;
+
+      // AI语义匹配时显示匹配原因
+      if (matchResult.matchReason) {
+        outputMsg += `\n匹配原因: ${matchResult.matchReason}`;
+      } else if (matchResult.matchedKeywords && matchResult.matchedKeywords.length > 0) {
+        outputMsg += `\n匹配关键词: ${matchResult.matchedKeywords.join(', ')}`;
+      }
+
+      // 构建结果和下一步信息
+      const result: ToolResult = {
+        success: true,
+        output: outputMsg,
+        data: {
+          skill: matchResult,
+          needsSkillMatch: false,
+        },
+      };
+
+      // 如果有流程模板，需要执行流程模板步骤
+      if (flowTemplateId) {
+        outputMsg += `\n此技能已关联执行流程模板，将按模板步骤执行。`;
+        // 设置下一步为执行流程模板
+        result.nextAction = 'flow_execute';
+        result.nextActionParams = {
+          templateId: flowTemplateId,
+          stepIndex: 0,
+          params: matchResult.collectedParams || {},
+        };
+        result.data!.hasFlowTemplate = true;
+        result.data!.flowTemplateId = flowTemplateId;
+      }
+      // 如果有Carbone配置，提示下一步
+      else if (matchResult.carboneSkillId) {
+        outputMsg += `\n此技能已配置Carbone AI参数生成，下一步请调用 generate_parameters 工具。
 Carbone Skill ID: ${matchResult.carboneSkillId}
 Carbone Template ID: ${matchResult.carboneTemplateId || '无'}
 调用参数: {"skillId": "${matchResult.carboneSkillId}", "description": "${userInput}"}`;
-          result.nextAction = 'generate_parameters';
-          result.nextActionParams = {
-            skillId: matchResult.carboneSkillId,
-            description: userInput,
-          };
-          result.data!.useCarbone = true;
-        }
-
-        return result;
+        result.nextAction = 'generate_parameters';
+        result.nextActionParams = {
+          skillId: matchResult.carboneSkillId,
+          description: userInput,
+        };
+        result.data!.useCarbone = true;
       }
 
-      // 用户可能没有权限访问任何技能，或者没有匹配到
-      return {
-        success: false,
-        output: '未匹配到合适的技能，可能原因：1) 您没有权限使用相关技能；2) 请提供更多信息描述您的需求。',
-        data: { needsSkillMatch: true, userInput },
-      };
+      return result;
     } catch (error: unknown) {
       const errorMsg = error instanceof Error ? error.message : 'Unknown error';
       // 如果API调用失败（可能是403权限错误）

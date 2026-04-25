@@ -75,8 +75,8 @@ export class PrismaAuditStorage implements AuditLogStorage {
         ipAddress: log.ipAddress,
         statusCode: log.statusCode,
         durationMs: log.durationMs,
-        requestBody: log.requestBody as Prisma.InputJsonValue,
-        responseBody: log.responseBody as Prisma.InputJsonValue,
+        requestBody: this.asJsonValue(log.requestBody),
+        responseBody: this.asJsonValue(log.responseBody),
       },
     });
 
@@ -124,6 +124,10 @@ export class PrismaAuditStorage implements AuditLogStorage {
       responseBody: r.responseBody as Record<string, unknown> || undefined,
       createdAt: r.createdAt,
     }));
+  }
+
+  private asJsonValue(value: unknown): Prisma.JsonValue {
+    return value as Prisma.JsonValue;
   }
 }
 

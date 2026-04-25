@@ -19,7 +19,7 @@ export interface WorkflowStep {
   type: 'activity' | 'signal' | 'query' | 'childWorkflow' | 'parallel';
   activityName?: string;
   input?: Record<string, any>;
-  retryPolicy?: { maxRetries: number; backoffMs: number };
+  retryPolicy?: { maxRetries?: number; backoffMs?: number };
   parallelSteps?: string[];
 }
 
@@ -27,6 +27,18 @@ export interface WorkflowDsl {
   name: string;
   taskQueue: string;
   steps: WorkflowStep[];
+  inputParams?: Record<string, { description?: string; required?: boolean; defaultValue?: string }>;
+  outputParams?: Record<string, { description?: string; sourceStep?: string }>;
+  extraPrompt?: string;
+  workflowExecutionTimeout?: string;
+  workflowRunTimeout?: string;
+  workflowTaskTimeout?: string;
+  defaultActivityRetryPolicy?: {
+    maxRetries?: number;
+    initialIntervalMs?: number;
+    backoffCoefficient?: number;
+    maxIntervalMs?: number;
+  };
   conditionals?: Array<{
     step: string;
     condition: string;

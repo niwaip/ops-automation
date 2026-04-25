@@ -4,6 +4,7 @@ import { Activity, Prisma } from '@prisma/client';
 import axios from 'axios';
 import { promisify } from 'util';
 import { promises as fs } from 'fs';
+import { existsSync } from 'fs';
 import * as path from 'path';
 import { spawn } from 'child_process';
 
@@ -370,6 +371,65 @@ export class ActivityService {
   }
 
   /**
+   * Execute code via Temporal Sandbox Agent only.
+   * 不允许回退到本地 subprocess，确保运行时统一进入 Temporal 链路。
+   */
+  async executeCodeInTemporalSandbox(
+    code: string,
+    fn: string,
+    taskQueue: string,
+    input?: Record<string, any>,
+  ): Promise<{
+    success: boolean;
+    result?: any;
+    logs?: string[];
+    error?: string;
+  }> {
+    const logger = new Logger('ActivityService.executeCodeInTemporalSandbox');
+    const logs: string[] = [];
+    const onLog = (log: string) => logs.push(log);
+    const sandboxUrl = this.getSandboxAgentUrl();
+
+    void taskQueue;
+
+    if (!sandboxUrl) {
+      const errorMsg = '未配置 Temporal Sandbox Agent 地址';
+      logger.error(errorMsg);
+      logs.push(`[${new Date().toISOString()}] ${errorMsg}`);
+      return {
+        success: false,
+        error: errorMsg,
+        logs,
+      };
+    }
+
+    try {
+      logs.push(`[${new Date().toISOString()}] 使用 Temporal Sandbox Agent 执行代码`);
+      const result = await this.executeCodeViaSandboxAgent(sandboxUrl, code, fn, input, onLog);
+      logs.push(
+        `[${new Date().toISOString()}] ${
+          result.success ? 'Temporal Sandbox Agent 执行完成' : 'Temporal Sandbox Agent 执行失败'
+        }`,
+      );
+      return {
+        success: result.success,
+        result: result.result,
+        error: result.error,
+        logs,
+      };
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : 'Unknown error';
+      logger.error(`Sandbox execution failed: ${errorMsg}`);
+      logs.push(`[${new Date().toISOString()}] Sandbox Agent 请求失败: ${errorMsg}`);
+      return {
+        success: false,
+        error: errorMsg,
+        logs,
+      };
+    }
+  }
+
+  /**
    * Execute code with streaming callback for real-time logs
    */
   async executeCodeStreaming(
@@ -424,8 +484,15 @@ export class ActivityService {
     if (process.env.SANDBOX_AGENT_URL) {
       return process.env.SANDBOX_AGENT_URL;
     }
+    if (process.env.TEMPORAL_SANDBOX_AGENT_URL) {
+      return process.env.TEMPORAL_SANDBOX_AGENT_URL;
+    }
     // In Docker, use the container name
-    if (process.env.DOCKER_ENV === 'true' || process.env.NODE_ENV === 'production') {
+    if (
+      process.env.DOCKER_ENV === 'true' ||
+      process.env.NODE_ENV === 'production' ||
+      existsSync('/.dockerenv')
+    ) {
       return 'http://temporal-sandbox-agent:8090';
     }
     // Local development - try localhost
@@ -444,9 +511,11 @@ export class ActivityService {
     onLog: (log: string) => void,
   ): Promise<{ success: boolean; result?: any; error?: string }> {
     const activityId = `activity-${Date.now()}-${Math.random().toString(36).substring(7)}`;
+    const timeoutMs = Number(process.env.SANDBOX_AGENT_TIMEOUT_MS || 20000);
 
     onLog(`[${new Date().toISOString()}] 连接到 Sandbox Agent: ${sandboxUrl}`);
     onLog(`[${new Date().toISOString()}] Activity ID: ${activityId}`);
+    onLog(`[${new Date().toISOString()}] 等待 Sandbox Agent 返回结果...`);
 
     try {
       const response = await axios.post(`${sandboxUrl}/execute`, {
@@ -455,7 +524,7 @@ export class ActivityService {
         activity_id: activityId,
         input_data: input || {},
       }, {
-        timeout: 300000, // 5 minute timeout
+        timeout: timeoutMs,
         headers: {
           'Content-Type': 'application/json',
         },
@@ -477,24 +546,51 @@ export class ActivityService {
         return { success: false, error: errorMsg };
       }
 
-      if (data.result) {
-        // Check if the activity returned an error result (not a successful execution)
-        if (data.result.success === false || data.result.error) {
-          const errorMsg = data.result.traceback
-            ? `执行失败: ${data.result.error}\n\n详细信息:\n${data.result.traceback}`
-            : data.result.error || JSON.stringify(data.result);
-          onLog(`[${new Date().toISOString()}] ${errorMsg}`);
-          return { success: false, error: errorMsg };
-        }
+      const executionEnvelope = data.result && typeof data.result === 'object'
+        ? data.result
+        : undefined;
+      const executionResult =
+        executionEnvelope?.result && typeof executionEnvelope.result === 'object'
+          ? executionEnvelope.result
+          : executionEnvelope;
+
+      if (executionEnvelope?.success === false || executionEnvelope?.error) {
+        const errorMsg = executionEnvelope.traceback
+          ? `执行失败: ${executionEnvelope.error}\n\n详细信息:\n${executionEnvelope.traceback}`
+          : executionEnvelope.error || JSON.stringify(executionEnvelope);
+        onLog(`[${new Date().toISOString()}] ${errorMsg}`);
+        return { success: false, error: errorMsg };
+      }
+
+      if (
+        executionResult
+        && typeof executionResult === 'object'
+        && (
+          ('success' in executionResult && executionResult.success === false)
+          || ('error' in executionResult && Boolean(executionResult.error))
+        )
+      ) {
+        const errorMsg = executionResult.traceback
+          ? `执行失败: ${executionResult.error}\n\n详细信息:\n${executionResult.traceback}`
+          : String(executionResult.error || JSON.stringify(executionResult));
+        onLog(`[${new Date().toISOString()}] ${errorMsg}`);
+        return { success: false, error: errorMsg };
       }
 
       // Extract the actual result from the sandbox response
-      const result = data.result?.result || data.result;
+      const result = executionResult?.result ?? executionResult;
 
       onLog(`[${new Date().toISOString()}] 代码执行成功，返回结果: ${JSON.stringify(result, null, 2)}`);
       return { success: true, result };
     } catch (error) {
-      const errorMsg = error instanceof Error ? error.message : 'Unknown error';
+      const errorCode =
+        error && typeof error === 'object' && 'code' in error ? String((error as any).code) : '';
+      const errorMsg =
+        errorCode === 'ECONNABORTED'
+          ? `Sandbox Agent 响应超时（${timeoutMs}ms）`
+          : error instanceof Error
+            ? error.message
+            : 'Unknown error';
       onLog(`[${new Date().toISOString()}] Sandbox Agent 请求失败: ${errorMsg}`);
       throw error; // Re-throw to trigger fallback
     }
@@ -547,10 +643,15 @@ import os
 import traceback
 import types
 
-# Set SSL certificates location for HTTPS requests
-import certifi
-os.environ['SSL_CERT_FILE'] = certifi.where()
-os.environ['REQUESTS_CA_BUNDLE'] = certifi.where()
+os.environ.setdefault('TEMPORAL_SANDBOX', 'true')
+
+# Set SSL certificates location for HTTPS requests when certifi is available
+try:
+    import certifi
+    os.environ['SSL_CERT_FILE'] = certifi.where()
+    os.environ['REQUESTS_CA_BUNDLE'] = certifi.where()
+except ImportError:
+    pass
 
 # Add temp dir to path for imports
 sys.path.insert(0, '${tempDir}')
@@ -600,11 +701,38 @@ class MockApplicationError(Exception):
         self.message = message
         self.non_retryable = non_retryable
 
+class MockResponse:
+    def __init__(self, payload=None, status_code=200):
+        self._payload = payload or {}
+        self.status_code = status_code
+
+    def raise_for_status(self):
+        if self.status_code >= 400:
+            raise MockRequestException(f"HTTP {self.status_code}")
+
+    def json(self):
+        return self._payload
+
+class MockRequestException(Exception):
+    pass
+
+def mock_requests_get(url, timeout=30, **kwargs):
+    return MockResponse({
+        "current_condition": [{
+            "temp_C": "22",
+            "weatherDesc": [{"value": "Partly Cloudy"}],
+            "windspeedKmph": "18",
+            "humidity": "65"
+        }]
+    })
+
 # Create mock temporalio module as a proper ModuleType with submodules
 mock_temporalio = types.ModuleType('temporalio')
 mock_temporalio.activity = types.ModuleType('temporalio.activity')
+mock_temporalio.workflow = types.ModuleType('temporalio.workflow')
 mock_temporalio.exceptions = types.ModuleType('temporalio.exceptions')
 mock_temporalio.common = types.ModuleType('temporalio.common')
+mock_requests = types.ModuleType('requests')
 
 # Set up activity with all required attributes
 # Make defn work as @activity.defn() decorator - returns a decorator function
@@ -621,7 +749,32 @@ mock_temporalio.activity.logger = MockActivityLogger()
 mock_temporalio.activity.heartbeat = lambda *args, **kwargs: print(f"[HEARTBEAT] {args if args else 'tick'}", flush=True)
 mock_temporalio.activity.info = lambda: MockActivityInfo()
 
+def workflow_defn(name=None, **kwargs):
+    def decorator(cls):
+        cls._workflow_name = name or cls.__name__
+        return cls
+    return decorator
+
+def workflow_run(func):
+    func._workflow_run = True
+    return func
+
+async def workflow_execute_activity(fn, input_data=None, *args, **kwargs):
+    result = fn(input_data or {})
+    import asyncio
+    if asyncio.iscoroutine(result):
+        return await result
+    return result
+
+mock_temporalio.workflow.defn = workflow_defn
+mock_temporalio.workflow.run = workflow_run
+mock_temporalio.workflow.logger = MockActivityLogger()
+mock_temporalio.workflow.execute_activity = workflow_execute_activity
+
 mock_temporalio.exceptions.ApplicationError = MockApplicationError
+mock_requests.get = mock_requests_get
+mock_requests.post = mock_requests_get
+mock_requests.RequestException = MockRequestException
 
 # RetryPolicy mock - accept various parameter names
 class MockRetryPolicy:
@@ -637,8 +790,10 @@ mock_temporalio.common.RetryPolicy = MockRetryPolicy
 # Inject mocks into sys.modules
 sys.modules['temporalio'] = mock_temporalio
 sys.modules['temporalio.activity'] = mock_temporalio.activity
+sys.modules['temporalio.workflow'] = mock_temporalio.workflow
 sys.modules['temporalio.exceptions'] = mock_temporalio.exceptions
 sys.modules['temporalio.common'] = mock_temporalio.common
+sys.modules['requests'] = mock_requests
 
 # Also make 'activity' available as a standalone import
 sys.modules['activity'] = mock_temporalio.activity
@@ -647,6 +802,7 @@ sys.modules['activity'] = mock_temporalio.activity
 namespace = {
     'temporalio': mock_temporalio,
     'activity': mock_temporalio.activity,
+    'workflow': mock_temporalio.workflow,
 }
 
 # Read input
@@ -661,12 +817,12 @@ try:
     # Compile and execute the activity code with our namespace
     exec(compile(activity_code, '${activityFilePath}', 'exec'), namespace)
 
-    # Find the activity function
+    # Find the executable symbol
     activity_fn = namespace.get('${fn}')
     if activity_fn is None:
         # Try to find it by name
         for name, obj in namespace.items():
-            if callable(obj) and name == '${fn}':
+            if name == '${fn}':
                 activity_fn = obj
                 break
 
@@ -678,7 +834,14 @@ try:
     # Try different calling conventions
     result = None
     try:
-        result = activity_fn(input_data)
+        import inspect
+        if inspect.isclass(activity_fn):
+            workflow_instance = activity_fn()
+            if not hasattr(workflow_instance, 'run'):
+                raise AttributeError("Workflow class does not define run()")
+            result = workflow_instance.run(input_data)
+        else:
+            result = activity_fn(input_data)
     except TypeError as e:
         if "takes 0 positional arguments" in str(e) or "takes 1 positional argument" in str(e):
             # Try with no arguments (standalone function not expecting input_data)
@@ -727,8 +890,9 @@ except Exception as e:
             // Parse stdout for actual error, use stderr only if stdout is empty
             let actualError = '';
             try {
-              // Try to parse stdout as JSON to get actual error
-              const parsed = JSON.parse(stdoutData.trim());
+              // Try to parse the last JSON line from stdout to get actual error
+              const outputLines = stdoutData.trim().split('\n').filter(Boolean);
+              const parsed = JSON.parse(outputLines[outputLines.length - 1] || '{}');
               if (parsed.error) {
                 actualError = parsed.error;
                 if (parsed.traceback) {
@@ -754,7 +918,8 @@ except Exception as e:
       // Parse result
       let result: any;
       try {
-        result = JSON.parse(stdout.trim());
+        const outputLines = stdout.trim().split('\n').filter(Boolean);
+        result = JSON.parse(outputLines[outputLines.length - 1] || '{}');
       } catch (e) {
         onLog(`解析结果失败: ${stdout}`);
         throw new Error(`Failed to parse execution result: ${stdout}`);

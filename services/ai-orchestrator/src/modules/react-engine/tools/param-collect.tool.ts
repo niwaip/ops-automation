@@ -84,21 +84,23 @@ export class ParamCollectTool extends BaseTool {
       if (missingParams.length === 0) {
         return {
           success: true,
-          output: `参数收集完成，共收集 ${Object.keys(collectedParams).length} 个参数`,
+          output: `参数收集完成，共收集 ${Object.keys(collectedParams).length} 个参数。`,
           data: { params: collectedParams, allParamsReady: true },
         };
       } else {
         const prompts = missingParams.map((key) => {
           const prop = schema.properties[key];
-          return `请提供${prop?.description || key}`;
+          return `- ${prop?.description || key}`;
         });
+
+        const output = `为了执行技能 "${context.skill.skillName}"，我还需要以下信息：\n${prompts.join('\n')}\n\n请补充这些参数。`;
 
         return {
           success: false,
-          output: `参数不完整，缺少: ${missingParams.join(', ')}`,
+          output,
           data: { params: collectedParams, missingParams, prompts },
           requiresUserInput: true,
-          userInputPrompt: prompts.join('\n'),
+          userInputPrompt: output,
         };
       }
     }

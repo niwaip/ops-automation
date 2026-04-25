@@ -16,6 +16,8 @@ import ExecutionFlowTemplatePage from './pages/admin/ExecutionFlowTemplatePage';
 import TemporalWorkflowPage from './pages/admin/TemporalWorkflowPage';
 import ActivityPage from './pages/admin/ActivityPage';
 import CapabilityReleasePage from './pages/admin/CapabilityReleasePage';
+import CapabilityStudioPage from './pages/admin/CapabilityStudioPage';
+import CapabilityBuildDetailPage from './pages/admin/CapabilityBuildDetailPage';
 import ReportTemplateListPage from './pages/ReportTemplateListPage';
 import ReportTemplateDetailPage from './pages/ReportTemplateDetailPage';
 import ReportTemplateCreatePage from './pages/ReportTemplateCreatePage';
@@ -26,6 +28,7 @@ import ExecutionListPage from './pages/ExecutionListPage';
 import ExecutionDetailPage from './pages/ExecutionDetailPage';
 import TakeoverWorkbenchPage from './pages/TakeoverWorkbenchPage';
 import ReleaseCenterPage from './pages/ReleaseCenterPage';
+import PublishedSkillDetailPage from './pages/PublishedSkillDetailPage';
 
 const PrivateRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { isAuthenticated } = useAuthStore();
@@ -80,6 +83,8 @@ function App() {
           <Route path="executions/:id" element={<ExecutionDetailPage />} />
           <Route path="executions/:id/takeover" element={<TakeoverWorkbenchPage />} />
           <Route path="release-center" element={<ReleaseCenterPage />} />
+          <Route path="published-skills" element={<PublishedSkillDetailPage />} />
+          <Route path="published-skills/:skillId" element={<PublishedSkillDetailPage />} />
           <Route
             path="admin/users"
             element={
@@ -101,6 +106,22 @@ function App() {
             element={
               <AdminRoute>
                 <CapabilityReleasePage />
+              </AdminRoute>
+            }
+          />
+          <Route
+            path="admin/capability-studio"
+            element={
+              <AdminRoute>
+                <CapabilityStudioPage />
+              </AdminRoute>
+            }
+          />
+          <Route
+            path="admin/capability-builds/:buildId"
+            element={
+              <AdminRoute>
+                <CapabilityBuildDetailPage />
               </AdminRoute>
             }
           />

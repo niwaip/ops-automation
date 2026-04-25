@@ -14,6 +14,20 @@ export interface ApiEndpoint {
   description: string;
 }
 
+export interface SkillRuntimeMetadata {
+  goal?: string;
+  expectedResult?: string;
+  outputParams?: Record<string, unknown>;
+  sourceType?: 'execution_flow_template' | 'temporal_workflow' | string;
+  taskQueue?: string;
+  workflowSteps?: Array<{
+    id?: string;
+    name?: string;
+    type?: string;
+    activityName?: string;
+  }>;
+}
+
 /**
  * 参数Schema定义
  */
@@ -46,6 +60,7 @@ export interface CreateSkillDTO {
     generateParameters?: ApiEndpoint;  // 参数生成API
     render?: ApiEndpoint;              // 文档渲染API
     getSkill?: ApiEndpoint;            // 获取Skill信息API
+    runtimeMetadata?: SkillRuntimeMetadata;
   };
 }
 
@@ -68,6 +83,7 @@ export interface SkillConfigDTO {
     generateParameters?: ApiEndpoint;
     render?: ApiEndpoint;
     getSkill?: ApiEndpoint;
+    runtimeMetadata?: SkillRuntimeMetadata;
   };
   isActive: boolean;
 }
@@ -91,7 +107,11 @@ export interface SkillMatchResult {
     generateParameters?: ApiEndpoint;
     render?: ApiEndpoint;
     getSkill?: ApiEndpoint;
+    runtimeMetadata?: SkillRuntimeMetadata;
   };
+  goal?: string;
+  expectedResult?: string;
+  outputParams?: Record<string, unknown>;
   // 新增：AI 匹配原因
   matchReason?: string;
 }

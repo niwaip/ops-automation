@@ -3,7 +3,8 @@
  * 聊天API调用封装
  */
 
-import { StreamEvent, StreamEventType, ChatRequest, AIModel, UploadedFile } from './types';
+import { StreamEvent, ChatRequest, AIModel, UploadedFile } from './types';
+import { useAuthStore } from '../../store/authStore';
 
 // 使用Vite代理路径 /api/ai -> ops-ai-orchestrator:3007
 const AI_API_BASE = '/api/ai';
@@ -19,6 +20,7 @@ export function streamChat(
   onComplete?: () => void,
 ): () => void {
   const abortController = new AbortController();
+  const token = useAuthStore.getState().accessToken;
 
   // 异步执行流式请求
   (async () => {
@@ -31,15 +33,22 @@ export function streamChat(
         size: f.size,
       }));
 
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+      };
+
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+
       const response = await fetch(`${AI_API_BASE}/chat/stream`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers,
         body: JSON.stringify({
           message: request.message,
           sessionId: request.sessionId,
           userId: request.userId,
+          userRoles: request.userRoles,
           modelId: request.modelId,
           files: filesMetadata,
           config: request.config, // 包含mode等配置
@@ -108,7 +117,15 @@ export function streamChat(
  */
 export async function getAvailableModels(): Promise<AIModel[]> {
   try {
-    const response = await fetch(`${AI_API_BASE}/models`);
+    const token = useAuthStore.getState().accessToken;
+    const headers: Record<string, string> = {};
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+
+    const response = await fetch(`${AI_API_BASE}/models`, {
+      headers,
+    });
     if (!response.ok) {
       throw new Error(`HTTP error: ${response.status}`);
     }
@@ -125,11 +142,18 @@ export async function getAvailableModels(): Promise<AIModel[]> {
  */
 export async function uploadFile(file: File): Promise<UploadedFile> {
   try {
+    const token = useAuthStore.getState().accessToken;
     const formData = new FormData();
     formData.append('file', file);
 
+    const headers: Record<string, string> = {};
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+
     const response = await fetch(`${AI_API_BASE}/chat/upload`, {
       method: 'POST',
+      headers,
       body: formData,
     });
 
@@ -156,7 +180,15 @@ export async function uploadFile(file: File): Promise<UploadedFile> {
  */
 export async function getChatHistory(sessionId: string): Promise<ChatMessage[]> {
   try {
-    const response = await fetch(`${AI_API_BASE}/chat/history/${sessionId}`);
+    const token = useAuthStore.getState().accessToken;
+    const headers: Record<string, string> = {};
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+
+    const response = await fetch(`${AI_API_BASE}/chat/history/${sessionId}`, {
+      headers,
+    });
     if (!response.ok) {
       throw new Error(`HTTP error: ${response.status}`);
     }
