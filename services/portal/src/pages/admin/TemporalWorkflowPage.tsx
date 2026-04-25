@@ -547,65 +547,6 @@ const TemporalWorkflowPage: React.FC = () => {
               + 添加输入参数
             </Button>
           </div>
-
-          {/* 输出参数区域 - 默认是最后一个步骤的输出 */}
-          <Divider plain><Text type="secondary">输出参数（Workflow 返回值）</Text></Divider>
-          <Alert message="默认使用最后一个步骤的输出，可自定义来源步骤" type="info" showIcon style={{ marginBottom: 12 }} />
-          <div style={{ border: '1px solid #d9d9d9', padding: 12, borderRadius: 8, marginBottom: 12 }}>
-            {Object.entries(workflowDsl.outputParams || {}).map(([key, param]) => (
-              <Row key={key} gutter={8} style={{ marginBottom: 8, alignItems: 'center' }}>
-                <Col span={4}>
-                  <Input
-                    value={key}
-                    disabled
-                    size="small"
-                    suffix={<Button size="small" danger type="text" onClick={() => {
-                      const newParams = { ...workflowDsl.outputParams };
-                      delete newParams[key];
-                      setWorkflowDsl({ ...workflowDsl, outputParams: newParams });
-                    }}>×</Button>}
-                  />
-                </Col>
-                <Col span={6}>
-                  <Select
-                    value={param.sourceStep || '_last'}
-                    onChange={v => setWorkflowDsl({ ...workflowDsl, outputParams: { ...workflowDsl.outputParams, [key]: { ...param, sourceStep: v === '_last' ? undefined : v } } })}
-                    size="small"
-                    style={{ width: '100%' }}
-                  >
-                    <Option value="_last">最后一个步骤</Option>
-                    {workflowDsl.steps.map((step, idx) => (
-                      <Option key={step.id} value={step.id}>{step.name || `步骤 ${idx + 1}`}</Option>
-                    ))}
-                  </Select>
-                </Col>
-                <Col span={8}>
-                  <Input
-                    value={param.description || ''}
-                    onChange={e => setWorkflowDsl({ ...workflowDsl, outputParams: { ...workflowDsl.outputParams, [key]: { ...param, description: e.target.value } } })}
-                    placeholder="参数描述"
-                    size="small"
-                  />
-                </Col>
-              </Row>
-            ))}
-            <Button
-              size="small"
-              type="dashed"
-              onClick={() => {
-                const key = prompt('请输入输出参数名:');
-                if (key && key.trim()) {
-                  setWorkflowDsl({
-                    ...workflowDsl,
-                    outputParams: { ...workflowDsl.outputParams, [key.trim()]: { description: '', sourceStep: undefined } }
-                  });
-                }
-              }}
-              style={{ width: '100%' }}
-            >
-              + 添加输出参数
-            </Button>
-          </div>
         </Form>
 
         <Divider><Text strong>工作流配置</Text></Divider>
@@ -855,6 +796,29 @@ const TemporalWorkflowPage: React.FC = () => {
             )}
           </Col>
         </Row>
+
+        {/* 输出参数区域 - 默认是最后一个步骤的输出 */}
+        <Divider plain><Text type="secondary">输出参数（Workflow 返回值）</Text></Divider>
+        <Alert message="默认使用最后一个步骤的输出，可自定义来源步骤" type="info" showIcon style={{ marginBottom: 12 }} />
+        <div style={{ border: '1px solid #d9d9d9', padding: 12, borderRadius: 8, marginBottom: 12 }}>
+          {Object.entries(workflowDsl.outputParams || {}).map(([key, param]) => (
+            <Row key={key} gutter={8} style={{ marginBottom: 8, alignItems: 'center' }}>
+              <Col span={4}>
+                <Input value={key} disabled size="small" suffix={<Button size="small" danger type="text" onClick={() => { const newParams = { ...workflowDsl.outputParams }; delete newParams[key]; setWorkflowDsl({ ...workflowDsl, outputParams: newParams }); }}>×</Button>} />
+              </Col>
+              <Col span={6}>
+                <Select value={param.sourceStep || '_last'} onChange={v => setWorkflowDsl({ ...workflowDsl, outputParams: { ...workflowDsl.outputParams, [key]: { ...param, sourceStep: v === '_last' ? undefined : v } } })} size="small" style={{ width: '100%' }}>
+                  <Option value="_last">最后一个步骤</Option>
+                  {workflowDsl.steps.map((step, idx) => (<Option key={step.id} value={step.id}>{step.name || `步骤 ${idx + 1}`}</Option>))}
+                </Select>
+              </Col>
+              <Col span={8}>
+                <Input value={param.description || ''} onChange={e => setWorkflowDsl({ ...workflowDsl, outputParams: { ...workflowDsl.outputParams, [key]: { ...param, description: e.target.value } } })} placeholder="参数描述" size="small" />
+              </Col>
+            </Row>
+          ))}
+          <Button size="small" type="dashed" onClick={() => { const key = prompt('请输入输出参数名:'); if (key && key.trim()) { setWorkflowDsl({ ...workflowDsl, outputParams: { ...workflowDsl.outputParams, [key.trim()]: { description: '', sourceStep: undefined } } }); } }} style={{ width: '100%' }}>+ 添加输出参数</Button>
+        </div>
 
         {/* 执行配置 - 使用开关控制 */}
         <Divider plain><Text type="secondary">执行配置</Text></Divider>
