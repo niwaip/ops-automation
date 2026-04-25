@@ -1,4 +1,4 @@
-import React, { useMemo, useReducer, useState } from 'react';
+import React, { useEffect, useMemo, useReducer, useState } from 'react';
 import {
   Table, Card, Button, Input, Space, Tag, Typography, Modal, message, Form, Select,
   Divider, Alert, Collapse, Badge, Popconfirm, Row, Col, Statistic, Timeline
@@ -29,12 +29,15 @@ interface SandboxState {
   isStreaming: boolean;
   logs: string[];
   result: SandBoxValidationResult | null;
+  inputParams: Record<string, string>; // 用户输入的参数值
 }
 
 type SandboxAction =
   | { type: 'START' }
+  | { type: 'OPEN'; payload?: Record<string, string> }
   | { type: 'APPEND_LOG'; payload: string }
   | { type: 'SET_RESULT'; payload: SandBoxValidationResult }
+  | { type: 'SET_INPUT_PARAMS'; payload: Record<string, string> }
   | { type: 'CLOSE' };
 
 const initialSandboxState: SandboxState = {
@@ -42,6 +45,7 @@ const initialSandboxState: SandboxState = {
   isStreaming: false,
   logs: [],
   result: null,
+  inputParams: {},
 };
 
 const sandboxReducer = (state: SandboxState, action: SandboxAction): SandboxState => {
@@ -52,6 +56,12 @@ const sandboxReducer = (state: SandboxState, action: SandboxAction): SandboxStat
         isStreaming: true,
         logs: [],
         result: null,
+      };
+    case 'OPEN':
+      return {
+        ...state,
+        visible: true,
+        inputParams: action.payload || {},
       };
     case 'APPEND_LOG':
       return {
@@ -64,11 +74,14 @@ const sandboxReducer = (state: SandboxState, action: SandboxAction): SandboxStat
         isStreaming: false,
         result: action.payload,
       };
-    case 'CLOSE':
+    case 'SET_INPUT_PARAMS':
       return {
         ...state,
-        visible: false,
-        isStreaming: false,
+        inputParams: action.payload,
+      };
+    case 'CLOSE':
+      return {
+        ...initialSandboxState,
       };
     default:
       return state;
@@ -95,6 +108,14 @@ const TemporalWorkflowPage: React.FC = () => {
   const [generatedCode, setGeneratedCode] = useState<string | null>(null);
   const [codeModalVisible, setCodeModalVisible] = useState(false);
   const [sandboxState, dispatchSandbox] = useReducer(sandboxReducer, initialSandboxState);
+  const [sandboxInputParams, setSandboxInputParams] = useState<Record<string, string>>({}); // 沙箱验证时的输入参数
+
+  // 当沙箱弹窗打开时，同步输入参数到本地状态
+  useEffect(() => {
+    if (sandboxState.visible && Object.keys(sandboxState.inputParams).length > 0) {
+      setSandboxInputParams({ ...sandboxState.inputParams });
+    }
+  }, [sandboxState.visible]);
 
   const workflowsQuery = useQuery(['temporal-workflows'], () => temporalWorkflowApi.list());
   const activitiesQuery = useQuery('activities', () => activityApi.list());
@@ -192,16 +213,45 @@ const TemporalWorkflowPage: React.FC = () => {
     generateCodeMutation.mutate({ workflowDsl: { ...workflowDsl, name: workflowName }, activityDsl, errorContext });
   };
 
+  // 收集工作流步骤的输入参数
+  const collectWorkflowInputParams = (): Record<string, string> => {
+    const params: Record<string, string> = {};
+    workflowDsl.steps.forEach((step, idx) => {
+      if (step.input) {
+        Object.entries(step.input).forEach(([key, value]) => {
+          if (!params[key]) {
+            params[key] = typeof value === 'string' ? value : JSON.stringify(value);
+          }
+        });
+      }
+    });
+    return params;
+  };
+
+  const handleOpenSandbox = () => {
+    if (!generatedCode) { message.warning('请先生成代码'); return; }
+    const inputParams = collectWorkflowInputParams();
+    dispatchSandbox({ type: 'OPEN', payload: inputParams });
+  };
+
   const handleSandboxValidate = async () => {
     if (!generatedCode) { message.warning('请先生成代码'); return; }
     const fn = workflowDsl.name.replace(/\s+/g, '') + 'Workflow';
     dispatchSandbox({ type: 'START' });
 
+    // 构建输入参数
+    const inputParams: Record<string, string> = {};
+    Object.entries(sandboxInputParams).forEach(([key, value]) => {
+      if (value && value.trim()) {
+        inputParams[key] = value;
+      }
+    });
+
     try {
       await temporalWorkflowApi.validateInSandboxStream(
         generatedCode,
         fn,
-        { test: 'workflow-validation' },
+        inputParams,
         (event) => {
           if (event.type === 'log' && event.content) {
             appendSandboxLog(event.content);
@@ -391,7 +441,7 @@ const TemporalWorkflowPage: React.FC = () => {
         footer={[
           <Button key="validate" icon={<PlayCircleOutlined />} onClick={handleValidate}>验证DSL</Button>,
           <Button key="generate" icon={<RobotOutlined />} onClick={() => handleGenerateCode()} loading={generateCodeMutation.isLoading}>AI生成代码</Button>,
-          <Button key="sandbox" icon={<ExperimentOutlined />} onClick={handleSandboxValidate} loading={sandboxState.isStreaming} disabled={!generatedCode}>沙箱验证</Button>,
+          <Button key="sandbox" icon={<ExperimentOutlined />} onClick={handleOpenSandbox} loading={sandboxState.isStreaming} disabled={!generatedCode}>沙箱验证</Button>,
           <Button key="viewCode" icon={<CodeOutlined />} onClick={() => setCodeModalVisible(true)} disabled={!generatedCode}>查看代码</Button>,
           <Button key="cancel" onClick={() => setEditModalVisible(false)}>取消</Button>,
           <Button key="save" type="primary" loading={createMutation.isLoading || updateMutation.isLoading} onClick={handleSave}>保存</Button>
@@ -571,6 +621,40 @@ const TemporalWorkflowPage: React.FC = () => {
                           placeholder="例如: 30s, 60s"
                         />
                       </Form.Item>
+
+                      <Form.Item label="输入参数">
+                        <div style={{ border: '1px dashed #d9d9d9', padding: 8, borderRadius: 4 }}>
+                          {Object.entries(workflowDsl.steps[selectedStepIndexForConfig].input || {}).filter(([k]) => k !== 'timeout').map(([key, value]) => (
+                            <div key={key} style={{ display: 'flex', gap: 4, marginBottom: 4, alignItems: 'center' }}>
+                              <Tag color="blue">{key}</Tag>
+                              <Input
+                                size="small"
+                                value={typeof value === 'string' ? value : JSON.stringify(value)}
+                                onChange={e => handleUpdateStep(selectedStepIndexForConfig, 'input', { ...workflowDsl.steps[selectedStepIndexForConfig].input, [key]: e.target.value })}
+                                style={{ flex: 1 }}
+                              />
+                              <Button size="small" danger onClick={() => {
+                                const newInput = { ...workflowDsl.steps[selectedStepIndexForConfig].input };
+                                delete newInput[key];
+                                handleUpdateStep(selectedStepIndexForConfig, 'input', newInput);
+                              }}>×</Button>
+                            </div>
+                          ))}
+                          <Button
+                            size="small"
+                            type="dashed"
+                            onClick={() => {
+                              const key = prompt('请输入参数名:');
+                              if (key && key.trim()) {
+                                handleUpdateStep(selectedStepIndexForConfig, 'input', { ...workflowDsl.steps[selectedStepIndexForConfig].input, [key.trim()]: '' });
+                              }
+                            }}
+                            style={{ width: '100%' }}
+                          >
+                            + 添加参数
+                          </Button>
+                        </div>
+                      </Form.Item>
                     </>
                   )}
                 </Form>
@@ -620,6 +704,36 @@ const TemporalWorkflowPage: React.FC = () => {
       <Modal title="沙箱验证结果" open={sandboxState.visible} onCancel={() => dispatchSandbox({ type: 'CLOSE' })} footer={sandboxModalFooter} width={800}>
         <Space direction="vertical" style={{ width: '100%' }}>
           {sandboxState.isStreaming && <Alert type="info" message="验证进行中..." showIcon />}
+
+          {/* 输入参数区域 - 仅在未运行时显示 */}
+          {!sandboxState.isStreaming && Object.keys(sandboxInputParams).length > 0 && (
+            <Card size="small" style={{ marginBottom: 12 }}>
+              <Text strong>输入参数（请填写参数值）：</Text>
+              <div style={{ marginTop: 8, display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                {Object.entries(sandboxInputParams).map(([key, value]) => (
+                  <div key={key} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                    <Tag color="blue">{key}</Tag>
+                    <Input
+                      placeholder={`请输入 ${key}`}
+                      value={value}
+                      onChange={(e) => setSandboxInputParams(prev => ({ ...prev, [key]: e.target.value }))}
+                      style={{ width: 160 }}
+                      size="small"
+                    />
+                  </div>
+                ))}
+              </div>
+              <Button
+                type="primary"
+                icon={<ExperimentOutlined />}
+                onClick={handleSandboxValidate}
+                style={{ marginTop: 12 }}
+              >
+                开始验证
+              </Button>
+            </Card>
+          )}
+
           {sandboxState.result && (
             <>
               <Alert type={sandboxState.result.success ? 'success' : 'error'} message={sandboxState.result.success ? '验证通过' : '验证失败'} showIcon />
