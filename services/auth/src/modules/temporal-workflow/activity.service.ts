@@ -279,6 +279,12 @@ export class ActivityService {
       } else if (step.type === 'browser') {
         stepDesc += `\n  - 操作：${step.config?.action || 'click'}, 选择器：${step.config?.selector || '未指定'}`;
       }
+      if (step.formatPrompt) {
+        stepDesc += `\n  - 输出格式：${step.formatPrompt}`;
+      }
+      if (step.extraPrompt) {
+        stepDesc += `\n  - 情报补足：${step.extraPrompt}`;
+      }
       promptParts.push(stepDesc);
     });
 

@@ -406,6 +406,12 @@ export class TemporalWorkflowService {
       lines.push('7. 【Saga 模式】：必须维护 compensations 列表，在失败时逆序执行补偿任务。');
     }
 
+    if (workflowDsl.extraPrompt) {
+      lines.push('');
+      lines.push('【补足情报（额外指导）】：');
+      lines.push(workflowDsl.extraPrompt);
+    }
+
     lines.push('');
     lines.push('【输出】：只返回完整的 Python 代码，包含所有 import 语句。不要包含 Markdown 代码块标记。');
 

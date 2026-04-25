@@ -1,4 +1,4 @@
-import React, { useReducer, useState } from 'react';
+import React, { useReducer, useState, useEffect } from 'react';
 import {
   Table, Card, Button, Input, Space, Tag, Typography, Modal, message, Form, Select,
   Divider, Alert, Collapse, Badge, Popconfirm, Statistic, Row, Col, Switch, InputNumber
@@ -37,6 +37,12 @@ interface ActivityStep {
   timeout: string;
   retryPolicy?: { maxRetries: number };
   config: Record<string, any>;
+  // 输入参数（AI 根据这些生成代码）
+  inputParams?: Record<string, string>;
+  // 格式化指导（自然语言描述期望的输出格式）
+  formatPrompt?: string;
+  // 情报补足（额外要求，帮助 AI 更精确生成代码）
+  extraPrompt?: string;
 }
 
 interface ActivityFormData {
@@ -59,14 +65,16 @@ interface RealValidateState {
   logs: string[];
   error: string | null;
   result: any | null;
+  inputParams: Record<string, string>; // 用户输入的参数值
 }
 
 type RealValidateAction =
-  | { type: 'OPEN' }
+  | { type: 'OPEN'; payload?: Record<string, string> }
   | { type: 'START' }
   | { type: 'APPEND_LOG'; payload: string }
   | { type: 'SET_ERROR'; payload: string }
   | { type: 'SET_RESULT'; payload: any }
+  | { type: 'SET_INPUT_PARAMS'; payload: Record<string, string> }
   | { type: 'STOP' }
   | { type: 'CLOSE' };
 
@@ -76,6 +84,7 @@ const initialRealValidateState: RealValidateState = {
   logs: [],
   error: null,
   result: null,
+  inputParams: {},
 };
 
 const realValidateReducer = (
@@ -87,6 +96,7 @@ const realValidateReducer = (
       return {
         ...state,
         visible: true,
+        inputParams: action.payload || {},
       };
     case 'START':
       return {
@@ -112,6 +122,11 @@ const realValidateReducer = (
         ...state,
         result: action.payload,
         isRunning: false,
+      };
+    case 'SET_INPUT_PARAMS':
+      return {
+        ...state,
+        inputParams: action.payload,
       };
     case 'STOP':
       return {
@@ -252,6 +267,7 @@ const ActivityPage: React.FC = () => {
     realValidateReducer,
     initialRealValidateState
   );
+  const [validateInputParams, setValidateInputParams] = useState<Record<string, string>>({}); // 真实验证时用户输入的参数
   const [cachedCode, setCachedCode] = useState<string | null>(null);
   const [isCachingCode, setIsCachingCode] = useState(false);
   const [isValidated, setIsValidated] = useState(false);
@@ -274,6 +290,13 @@ const ActivityPage: React.FC = () => {
   const appendRealValidateLog = (content: string) => {
     dispatchRealValidate({ type: 'APPEND_LOG', payload: content });
   };
+
+  // 当真实验证弹窗打开时，同步输入参数到本地状态
+  useEffect(() => {
+    if (realValidateState.visible && Object.keys(realValidateState.inputParams).length > 0) {
+      setValidateInputParams({ ...realValidateState.inputParams });
+    }
+  }, [realValidateState.visible]);
 
   const createMutation = useMutation(activityApi.create, {
     onSuccess: () => {
@@ -351,7 +374,12 @@ const ActivityPage: React.FC = () => {
           config: {
             description: activityForm.description,
             taskQueue: activityForm.taskQueue,
-            steps: activityForm.steps,
+            steps: activityForm.steps.map(s => ({
+              ...s,
+              formatPrompt: s.formatPrompt,
+              inputParams: s.inputParams,
+              extraPrompt: s.extraPrompt,
+            })),
             heartbeatTimeout: activityForm.heartbeatTimeout,
             idempotencyKey: activityForm.idempotencyKey,
           },
@@ -366,8 +394,16 @@ const ActivityPage: React.FC = () => {
 
       // Execute with SSE streaming
       appendRealValidateLog('开始执行代码...');
+      // 构建输入参数：只用用户填写的值（非空）
+      const inputParams: Record<string, string> = {};
+      Object.entries(validateInputParams).forEach(([key, value]) => {
+        if (value && value.trim()) {
+          inputParams[key] = value;
+        }
+      });
+      appendRealValidateLog(`执行参数: ${JSON.stringify(inputParams)}`);
       await activityApi.executeCodeStream(
-        { code, fn: activityForm.fn, taskQueue: activityForm.taskQueue, input: {} },
+        { code, fn: activityForm.fn, taskQueue: activityForm.taskQueue, input: inputParams },
         (event) => {
           if (event.type === 'log' && event.message) {
             appendRealValidateLog(event.message!);
@@ -409,7 +445,12 @@ const ActivityPage: React.FC = () => {
         config: {
           description: activityForm.description,
           taskQueue: activityForm.taskQueue,
-          steps: activityForm.steps,
+          steps: activityForm.steps.map(s => ({
+            ...s,
+            formatPrompt: s.formatPrompt,
+            inputParams: s.inputParams,
+            extraPrompt: s.extraPrompt,
+          })),
           heartbeatTimeout: activityForm.heartbeatTimeout,
           idempotencyKey: activityForm.idempotencyKey,
         },
@@ -442,8 +483,16 @@ const ActivityPage: React.FC = () => {
 
       appendRealValidateLog('代码已重新生成，开始验证...');
 
+      // 构建输入参数
+      const inputParams2: Record<string, string> = {};
+      Object.entries(validateInputParams).forEach(([key, value]) => {
+        if (value && value.trim()) {
+          inputParams2[key] = value;
+        }
+      });
+
       await activityApi.executeCodeStream(
-        { code: result.code, fn: activityForm.fn, taskQueue: activityForm.taskQueue, input: {} },
+        { code: result.code, fn: activityForm.fn, taskQueue: activityForm.taskQueue, input: inputParams2 },
         (event) => {
           if (event.type === 'log' && event.message) {
             appendRealValidateLog(event.message!);
@@ -484,7 +533,12 @@ const ActivityPage: React.FC = () => {
         config: {
           description: activityForm.description,
           taskQueue: activityForm.taskQueue,
-          steps: activityForm.steps,
+          steps: activityForm.steps.map(s => ({
+            ...s,
+            formatPrompt: s.formatPrompt,
+            inputParams: s.inputParams,
+            extraPrompt: s.extraPrompt,
+          })),
           heartbeatTimeout: activityForm.heartbeatTimeout,
           idempotencyKey: activityForm.idempotencyKey,
         },
@@ -588,7 +642,12 @@ const ActivityPage: React.FC = () => {
       config: {
         description: activityForm.description,
         taskQueue: activityForm.taskQueue,
-        steps: activityForm.steps,
+        steps: activityForm.steps.map(s => ({
+          ...s,
+          formatPrompt: s.formatPrompt,
+          inputParams: s.inputParams,
+          extraPrompt: s.extraPrompt,
+        })),
         heartbeatTimeout: activityForm.heartbeatTimeout,
         idempotencyKey: activityForm.idempotencyKey,
         generatedCode: codeToSave || undefined,
@@ -645,8 +704,16 @@ const ActivityPage: React.FC = () => {
         appendRealValidateLog('获取最新代码失败，使用本地代码');
       }
 
+      // 构建输入参数
+      const inputParams3: Record<string, string> = {};
+      Object.entries(validateInputParams).forEach(([key, value]) => {
+        if (value && value.trim()) {
+          inputParams3[key] = value;
+        }
+      });
+
       await activityApi.executeCodeStream(
-        { code: latestCode, fn: activityForm.fn, taskQueue: activityForm.taskQueue, input: {} },
+        { code: latestCode, fn: activityForm.fn, taskQueue: activityForm.taskQueue, input: inputParams3 },
         (event) => {
           if (event.type === 'log' && event.message) {
             appendRealValidateLog(event.message!);
@@ -709,6 +776,9 @@ const ActivityPage: React.FC = () => {
       type: 'api',
       timeout: '30s',
       config: { endpoint: '', method: 'GET' },
+      inputParams: {},
+      formatPrompt: '',
+      extraPrompt: '',
     };
     setActivityForm((prev) => ({ ...prev, steps: [...prev.steps, newStep] }));
   };
@@ -903,33 +973,205 @@ const ActivityPage: React.FC = () => {
               <Text type="secondary">添加步骤来定义 Activity 的执行流程</Text>
             ) : (
               activityForm.steps.map((step, idx) => (
-                <Card key={step.id} size="small" style={{ marginBottom: 8, border: '1px solid #d9d9d9' }}>
-                  <Row gutter={12} align="middle">
-                    <Col><Badge count={idx + 1} style={{ backgroundColor: '#1890ff' }} /></Col>
+                <Card
+                  key={step.id}
+                  size="small"
+                  style={{
+                    marginBottom: 12,
+                    border: '1px solid #e8e8e8',
+                    borderRadius: 8,
+                    boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
+                    overflow: 'hidden',
+                  }}
+                  bodyStyle={{ padding: 16 }}
+                >
+                  {/* 第一行：步骤名、操作类型、超时 */}
+                  <Row gutter={12} align="middle" style={{ marginBottom: 12 }}>
+                    <Col><Badge count={idx + 1} style={{ backgroundColor: '#1890ff', boxShadow: '0 0 0 2px #fff' }} /></Col>
                     <Col flex={1}>
-                      <Input value={step.name} onChange={e => updateStep(step.id, 'name', e.target.value)} placeholder="步骤名称" style={{ marginBottom: 8 }} />
-                      <Space>
-                        <Select value={step.type} onChange={v => updateStep(step.id, 'type', v)} style={{ width: 100 }}>
+                      <Space size="middle" wrap>
+                        <Input
+                          value={step.name}
+                          onChange={e => updateStep(step.id, 'name', e.target.value)}
+                          placeholder="步骤名称"
+                          style={{ width: 200, borderRadius: 6 }}
+                          size="middle"
+                        />
+                        <Select value={step.type} onChange={v => updateStep(step.id, 'type', v)} style={{ width: 100, borderRadius: 6 }} size="middle">
                           <Option value="api">API</Option>
                           <Option value="script">脚本</Option>
                           <Option value="carbone">Carbone</Option>
                           <Option value="browser">浏览器</Option>
                         </Select>
-                        <Input value={step.timeout} onChange={e => updateStep(step.id, 'timeout', e.target.value)} placeholder="超时" style={{ width: 70 }} />
+                        <Input
+                          value={step.timeout}
+                          onChange={e => updateStep(step.id, 'timeout', e.target.value)}
+                          placeholder="超时"
+                          style={{ width: 70, borderRadius: 6 }}
+                          size="middle"
+                        />
                       </Space>
                     </Col>
                     <Col>
                       <Button type="text" danger icon={<DeleteOutlined />} onClick={() => removeStep(step.id)} />
                     </Col>
                   </Row>
+
+                  {/* API 类型配置 */}
                   {step.type === 'api' && (
-                    <div style={{ marginTop: 8, padding: 8, background: '#f6ffed', borderRadius: 4 }}>
-                      <Input value={step.config.endpoint || ''} onChange={e => updateStep(step.id, 'config', { ...step.config, endpoint: e.target.value })} placeholder="https://uapis.cn/api/v1/misc/weather?city=北京" prefix={<ApiOutlined />} />
+                    <div style={{ padding: 12, background: 'linear-gradient(135deg, #f6ffed 0%, #e6ffe6 100%)', borderRadius: 8, border: '1px solid #b7eb8f' }}>
+                      {/* 输入参数区域 - 小标签形式 */}
+                      <div style={{ marginBottom: 12 }}>
+                        <Text type="secondary" style={{ fontSize: 12, marginBottom: 8, display: 'block' }}>
+                          <ApiOutlined style={{ marginRight: 4 }} />输入参数（点击标签插入 URL，绿色=有默认值，灰色=可选）：
+                        </Text>
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                          {Object.entries(step.inputParams || {}).map(([key, value], paramIdx) => (
+                            <Tag
+                              key={paramIdx}
+                              style={{
+                                padding: '4px 10px',
+                                fontSize: 13,
+                                background: value ? '#fff' : '#f5f5f5',
+                                border: `1px solid ${value ? '#52c41a' : '#d9d9d9'}`,
+                                borderRadius: 4,
+                                cursor: 'pointer',
+                                transition: 'all 0.2s',
+                                color: value ? '#52c41a' : '#8c8c8c',
+                              }}
+                              onClick={() => {
+                                const urlInput = document.getElementById(`url-input-${step.id}`) as HTMLInputElement;
+                                if (urlInput) {
+                                  const start = urlInput.selectionStart || urlInput.value.length;
+                                  const end = urlInput.selectionEnd || urlInput.value.length;
+                                  const currentUrl = step.config.endpoint || '';
+                                  const before = currentUrl.substring(0, start);
+                                  const after = currentUrl.substring(end);
+                                  const insertText = `{${key}}`;
+                                  const newUrl = before + insertText + after;
+                                  updateStep(step.id, 'config', { ...step.config, endpoint: newUrl });
+                                  // Set cursor position after inserted text
+                                  setTimeout(() => {
+                                    urlInput.focus();
+                                    urlInput.setSelectionRange(start + insertText.length, start + insertText.length);
+                                  }, 0);
+                                }
+                              }}
+                              onMouseEnter={(e) => {
+                                e.currentTarget.style.background = value ? '#52c41a' : '#1890ff';
+                                e.currentTarget.style.color = '#fff';
+                                e.currentTarget.style.borderColor = value ? '#52c41a' : '#1890ff';
+                              }}
+                              onMouseLeave={(e) => {
+                                e.currentTarget.style.background = value ? '#fff' : '#f5f5f5';
+                                e.currentTarget.style.color = value ? '#52c41a' : '#8c8c8c';
+                                e.currentTarget.style.borderColor = value ? '#52c41a' : '#d9d9d9';
+                              }}
+                            >
+                              {`{${key}`}{value ? `=${value}` : ''}
+                              <span
+                                style={{ marginLeft: 6, cursor: 'pointer' }}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  const newParams = { ...step.inputParams };
+                                  delete newParams[key];
+                                  updateStep(step.id, 'inputParams', newParams);
+                                }}
+                              >
+                                ×
+                              </span>
+                            </Tag>
+                          ))}
+                          <Input
+                            placeholder="参数名"
+                            style={{ width: 90, borderRadius: 4 }}
+                            size="small"
+                            id={`param-key-${step.id}`}
+                            onPressEnter={(e) => {
+                              const key = (e.target as HTMLInputElement).value;
+                              const valueInput = document.getElementById(`param-value-${step.id}`) as HTMLInputElement;
+                              if (key) {
+                                updateStep(step.id, 'inputParams', { ...step.inputParams, [key]: valueInput?.value || '' });
+                                (e.target as HTMLInputElement).value = '';
+                                if (valueInput) valueInput.value = '';
+                              }
+                            }}
+                          />
+                          <Input
+                            placeholder="可选值"
+                            style={{ width: 90, borderRadius: 4 }}
+                            size="small"
+                            id={`param-value-${step.id}`}
+                            onPressEnter={(e) => {
+                              const value = (e.target as HTMLInputElement).value;
+                              const keyInput = document.getElementById(`param-key-${step.id}`) as HTMLInputElement;
+                              if (keyInput?.value) {
+                                updateStep(step.id, 'inputParams', { ...step.inputParams, [keyInput.value]: value });
+                                keyInput.value = '';
+                                (e.target as HTMLInputElement).value = '';
+                              }
+                            }}
+                          />
+                          <Button size="small" type="primary" onClick={() => {
+                            const keyInput = document.getElementById(`param-key-${step.id}`) as HTMLInputElement;
+                            const valueInput = document.getElementById(`param-value-${step.id}`) as HTMLInputElement;
+                            if (keyInput?.value) {
+                              updateStep(step.id, 'inputParams', { ...step.inputParams, [keyInput.value]: valueInput?.value || '' });
+                              keyInput.value = '';
+                              if (valueInput) valueInput.value = '';
+                            }
+                          }}>
+                            +
+                          </Button>
+                        </div>
+                      </div>
+
+                      {/* URL 区域 */}
+                      <Input
+                        id={`url-input-${step.id}`}
+                        value={step.config.endpoint || ''}
+                        onChange={e => updateStep(step.id, 'config', { ...step.config, endpoint: e.target.value })}
+                        placeholder="https://wttr.in/Shanghai?format=j1"
+                        prefix={<ApiOutlined />}
+                        style={{ marginBottom: 12, borderRadius: 6 }}
+                      />
+
+                      {/* 输出格式 */}
+                      <Text type="secondary" style={{ fontSize: 12, marginBottom: 6, display: 'block' }}>
+                        输出格式（AI 根据此生成格式化代码）：
+                      </Text>
+                      <TextArea
+                        value={step.formatPrompt || ''}
+                        onChange={e => updateStep(step.id, 'formatPrompt', e.target.value)}
+                        placeholder="例如：上海天气：晴天，温度 25°C"
+                        rows={2}
+                        style={{ fontFamily: 'monospace', marginBottom: 12, borderRadius: 6 }}
+                      />
+
+                      {/* 情报补足 */}
+                      <Text type="secondary" style={{ fontSize: 12, marginBottom: 6, display: 'block' }}>
+                        情报补足（额外要求，帮助 AI 更精确生成代码）：
+                      </Text>
+                      <TextArea
+                        value={step.extraPrompt || ''}
+                        onChange={e => updateStep(step.id, 'extraPrompt', e.target.value)}
+                        placeholder="例如：API 返回的是 JSON 格式，需要从中提取 current_condition 数组的第一个元素的 temp_C 字段"
+                        rows={2}
+                        style={{ fontFamily: 'monospace', borderRadius: 6 }}
+                      />
                     </div>
                   )}
+
+                  {/* 脚本类型配置 */}
                   {step.type === 'script' && (
-                    <div style={{ marginTop: 8, padding: 8, background: '#fff7e6', borderRadius: 4 }}>
-                      <TextArea value={step.config.script || ''} onChange={e => updateStep(step.id, 'config', { ...step.config, script: e.target.value })} placeholder="// 代码..." rows={2} style={{ fontFamily: 'monospace' }} />
+                    <div style={{ padding: 12, background: 'linear-gradient(135deg, #fff7e6 0%, #fffbe6 100%)', borderRadius: 8, border: '1px solid #ffd591' }}>
+                      <TextArea
+                        value={step.config.script || ''}
+                        onChange={e => updateStep(step.id, 'config', { ...step.config, script: e.target.value })}
+                        placeholder="// 代码..."
+                        rows={3}
+                        style={{ fontFamily: 'monospace', borderRadius: 6 }}
+                      />
                     </div>
                   )}
                 </Card>
@@ -942,7 +1184,20 @@ const ActivityPage: React.FC = () => {
             <Button icon={<RobotOutlined />} onClick={handleGenerateCode} loading={isGeneratingCode}>AI 生成代码</Button>
             <Button icon={<EyeOutlined />} onClick={() => setCodePreviewVisible(true)} disabled={!generatedCode}>查看代码</Button>
             <Button icon={<PlayCircleOutlined />} onClick={handleValidate}>验证配置</Button>
-            <Button icon={<ThunderboltOutlined />} onClick={() => dispatchRealValidate({ type: 'OPEN' })} disabled={!cachedCode && !generatedCode}>真实验证</Button>
+            <Button icon={<ThunderboltOutlined />} onClick={() => {
+              // 收集所有步骤的输入参数，合并默认值
+              const allInputParams: Record<string, string> = {};
+              activityForm.steps.forEach(step => {
+                if (step.inputParams) {
+                  Object.entries(step.inputParams).forEach(([key, value]) => {
+                    if (!allInputParams[key]) {
+                      allInputParams[key] = value || '';
+                    }
+                  });
+                }
+              });
+              dispatchRealValidate({ type: 'OPEN', payload: allInputParams });
+            }} disabled={!cachedCode && !generatedCode}>真实验证</Button>
             <Button icon={<ExperimentOutlined />} onClick={() => setSimulationModalVisible(true)}>模拟</Button>
             <Button onClick={() => setEditModalVisible(false)}>取消</Button>
             <Button type="primary" icon={<SaveOutlined />} loading={createMutation.isLoading || updateMutation.isLoading} onClick={handleSave} disabled={!isValidated && !!generatedCode}>保存{!isValidated && !!generatedCode ? '（请先验证）' : ''}</Button>
@@ -1099,6 +1354,27 @@ const ActivityPage: React.FC = () => {
               message={realValidateState.result.success ? '执行成功' : '执行失败'}
               showIcon
             />
+          )}
+
+          {/* 输入参数区域 - 仅在未运行时显示 */}
+          {!realValidateState.isRunning && Object.keys(validateInputParams).length > 0 && (
+            <Card size="small" style={{ marginBottom: 12 }}>
+              <Text strong>输入参数（请填写参数值）：</Text>
+              <div style={{ marginTop: 8, display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                {Object.entries(validateInputParams).map(([key, value]) => (
+                  <div key={key} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                    <Tag color="blue">{key}</Tag>
+                    <Input
+                      placeholder={`请输入 ${key}`}
+                      value={value}
+                      onChange={(e) => setValidateInputParams(prev => ({ ...prev, [key]: e.target.value }))}
+                      style={{ width: 160 }}
+                      size="small"
+                    />
+                  </div>
+                ))}
+              </div>
+            </Card>
           )}
 
           <div>
