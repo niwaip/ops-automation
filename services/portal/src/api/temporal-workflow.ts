@@ -36,6 +36,12 @@ export interface WorkflowDsl {
   name: string;
   taskQueue: string;
   steps: WorkflowStep[];
+  // Entry parameters - first step's input params are the workflow's input interface
+  inputParams?: Record<string, { description?: string; required?: boolean; defaultValue?: string }>;
+  // Output parameters - defaults to last step's output, can be customized
+  outputParams?: Record<string, { description?: string; sourceStep?: string }>;
+  // Extra guidance for AI code generation
+  extraPrompt?: string;
   // Workflow-level execution timeout
   workflowExecutionTimeout?: string;
   // Single workflow run timeout

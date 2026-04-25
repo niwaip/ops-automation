@@ -548,6 +548,141 @@ const TemporalWorkflowPage: React.FC = () => {
               </Form.Item>
             </Col>
           </Row>
+
+          {/* 输入参数区域 - 第一个步骤的参数是整个workflow的入口参数 */}
+          <Divider plain><Text type="secondary">输入参数（Workflow 入口参数）</Text></Divider>
+          <Alert message="第一个步骤的参数自动成为整个工作流的入口参数，可设置默认值和描述" type="info" showIcon style={{ marginBottom: 12 }} />
+          <div style={{ border: '1px solid #d9d9d9', padding: 12, borderRadius: 8, marginBottom: 12 }}>
+            {Object.entries(workflowDsl.inputParams || {}).map(([key, param]) => (
+              <Row key={key} gutter={8} style={{ marginBottom: 8, alignItems: 'center' }}>
+                <Col span={4}>
+                  <Input
+                    value={key}
+                    disabled
+                    size="small"
+                    suffix={<Button size="small" danger type="text" onClick={() => {
+                      const newParams = { ...workflowDsl.inputParams };
+                      delete newParams[key];
+                      setWorkflowDsl({ ...workflowDsl, inputParams: newParams });
+                    }}>×</Button>}
+                  />
+                </Col>
+                <Col span={4}>
+                  <Select
+                    value={param.required ? 'required' : 'optional'}
+                    onChange={v => setWorkflowDsl({ ...workflowDsl, inputParams: { ...workflowDsl.inputParams, [key]: { ...param, required: v === 'required' } } })}
+                    size="small"
+                    style={{ width: '100%' }}
+                  >
+                    <Option value="required">必填</Option>
+                    <Option value="optional">可选</Option>
+                  </Select>
+                </Col>
+                <Col span={4}>
+                  <Input
+                    value={param.defaultValue || ''}
+                    onChange={e => setWorkflowDsl({ ...workflowDsl, inputParams: { ...workflowDsl.inputParams, [key]: { ...param, defaultValue: e.target.value } } })}
+                    placeholder="默认值"
+                    size="small"
+                  />
+                </Col>
+                <Col span={8}>
+                  <Input
+                    value={param.description || ''}
+                    onChange={e => setWorkflowDsl({ ...workflowDsl, inputParams: { ...workflowDsl.inputParams, [key]: { ...param, description: e.target.value } } })}
+                    placeholder="参数描述"
+                    size="small"
+                  />
+                </Col>
+              </Row>
+            ))}
+            <Button
+              size="small"
+              type="dashed"
+              onClick={() => {
+                const key = prompt('请输入参数名:');
+                if (key && key.trim()) {
+                  setWorkflowDsl({
+                    ...workflowDsl,
+                    inputParams: { ...workflowDsl.inputParams, [key.trim()]: { description: '', required: false, defaultValue: '' } }
+                  });
+                }
+              }}
+              style={{ width: '100%' }}
+            >
+              + 添加输入参数
+            </Button>
+          </div>
+
+          {/* 输出参数区域 - 默认是最后一个步骤的输出 */}
+          <Divider plain><Text type="secondary">输出参数（Workflow 返回值）</Text></Divider>
+          <Alert message="默认使用最后一个步骤的输出，可自定义来源步骤" type="info" showIcon style={{ marginBottom: 12 }} />
+          <div style={{ border: '1px solid #d9d9d9', padding: 12, borderRadius: 8, marginBottom: 12 }}>
+            {Object.entries(workflowDsl.outputParams || {}).map(([key, param]) => (
+              <Row key={key} gutter={8} style={{ marginBottom: 8, alignItems: 'center' }}>
+                <Col span={4}>
+                  <Input
+                    value={key}
+                    disabled
+                    size="small"
+                    suffix={<Button size="small" danger type="text" onClick={() => {
+                      const newParams = { ...workflowDsl.outputParams };
+                      delete newParams[key];
+                      setWorkflowDsl({ ...workflowDsl, outputParams: newParams });
+                    }}>×</Button>}
+                  />
+                </Col>
+                <Col span={6}>
+                  <Select
+                    value={param.sourceStep || '_last'}
+                    onChange={v => setWorkflowDsl({ ...workflowDsl, outputParams: { ...workflowDsl.outputParams, [key]: { ...param, sourceStep: v === '_last' ? undefined : v } } })}
+                    size="small"
+                    style={{ width: '100%' }}
+                  >
+                    <Option value="_last">最后一个步骤</Option>
+                    {workflowDsl.steps.map((step, idx) => (
+                      <Option key={step.id} value={step.id}>{step.name || `步骤 ${idx + 1}`}</Option>
+                    ))}
+                  </Select>
+                </Col>
+                <Col span={8}>
+                  <Input
+                    value={param.description || ''}
+                    onChange={e => setWorkflowDsl({ ...workflowDsl, outputParams: { ...workflowDsl.outputParams, [key]: { ...param, description: e.target.value } } })}
+                    placeholder="参数描述"
+                    size="small"
+                  />
+                </Col>
+              </Row>
+            ))}
+            <Button
+              size="small"
+              type="dashed"
+              onClick={() => {
+                const key = prompt('请输入输出参数名:');
+                if (key && key.trim()) {
+                  setWorkflowDsl({
+                    ...workflowDsl,
+                    outputParams: { ...workflowDsl.outputParams, [key.trim()]: { description: '', sourceStep: undefined } }
+                  });
+                }
+              }}
+              style={{ width: '100%' }}
+            >
+              + 添加输出参数
+            </Button>
+          </div>
+
+          {/* 补足情报 - AI代码生成指导 */}
+          <Divider plain><Text type="secondary">补足情报（指导 AI 代码生成）</Text></Divider>
+          <Form.Item label="额外提示词" extra="为 AI 代码生成器提供额外的上下文信息，帮助生成更准确的代码">
+            <Input.TextArea
+              rows={3}
+              placeholder="例如：&#10;- 该工作流需要处理中文内容，请使用 utf-8 编码&#10;- 返回结果需要包含完整的错误处理逻辑&#10;- 第三方 API 调用需要添加重试机制"
+              value={workflowDsl.extraPrompt || ''}
+              onChange={e => setWorkflowDsl({ ...workflowDsl, extraPrompt: e.target.value || undefined })}
+            />
+          </Form.Item>
         </Form>
 
         <Divider><Text strong>工作流配置</Text></Divider>
