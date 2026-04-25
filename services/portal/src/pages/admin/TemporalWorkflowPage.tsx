@@ -594,6 +594,13 @@ const TemporalWorkflowPage: React.FC = () => {
                                   }],
                                 });
                               }
+                              // Auto-populate step input params from Activity's inputParams
+                              if (activity.inputParams && Object.keys(activity.inputParams).length > 0) {
+                                handleUpdateStep(selectedStepIndexForConfig, 'input', {
+                                  ...activity.inputParams,
+                                  timeout: workflowDsl.steps[selectedStepIndexForConfig].input?.timeout || '60s',
+                                });
+                              }
                             }
                           }}
                           style={{ width: '100%' }}
