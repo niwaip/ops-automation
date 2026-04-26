@@ -425,6 +425,18 @@ export const capabilityReleaseApi = {
     );
   },
 
+  suggestWizardAssist: async (
+    id: string,
+    data?: { environment?: 'dev' | 'test' | 'staging' | 'prod' },
+  ): Promise<{
+    explanation: string;
+    deployConfig: Record<string, unknown>;
+    testInput: Record<string, unknown>;
+    testUserInput?: string | null;
+  }> => {
+    return apiClient.post(`/capability-releases/${id}/wizard-assist`, data);
+  },
+
   getDeployments: async (id: string): Promise<{ deployments: DeploymentRecord[] }> => {
     return apiClient.get<{ deployments: DeploymentRecord[] }>(`/capability-releases/${id}/deployments`);
   },
@@ -445,5 +457,18 @@ export const capabilityReleaseApi = {
 
   archive: async (id: string): Promise<{ success: true; archivedId: string }> => {
     return apiClient.delete<{ success: true; archivedId: string }>(`/capability-releases/${id}`);
+  },
+
+  analyzeFailure: async (
+    id: string,
+    data: { recordId: string; recordType: 'build' | 'validation' | 'deployment' },
+  ): Promise<{
+    analysis: string;
+    explanation: string;
+    isParameterIssue: boolean;
+    suggestedParams?: Record<string, unknown> | null;
+    suggestedAction?: string | null;
+  }> => {
+    return apiClient.post(`/capability-releases/${id}/analyze-failure`, data);
   },
 };

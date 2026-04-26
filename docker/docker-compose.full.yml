@@ -99,7 +99,7 @@ services:
     image: ${DOCKER_REGISTRY:-}node:20-bullseye
     container_name: ops-control-plane
     working_dir: /app
-    command: sh -c "npm config set registry https://registry.npmmirror.com && npm install --legacy-peer-deps && npm run dev"
+    command: sh -c "npm config set registry https://registry.npmmirror.com && npm install --legacy-peer-deps && npx prisma generate && npm run dev"
     environment:
       - NODE_ENV=development
       - DATABASE_URL=postgresql://${POSTGRES_USER:-ops}:${POSTGRES_PASSWORD:-ops_secret}@postgres:5432/${POSTGRES_DB:-ops}
@@ -265,6 +265,7 @@ services:
       - NODE_ENV=development
       - DOCKER_ENV=true
       - VITE_API_BASE_URL=/api
+      - VITE_CONTROL_PLANE_API_URL=http://${HOST_IP:-localhost}:${CONTROL_PLANE_PORT:-3003}/api
       - VITE_HOST_IP=${HOST_IP:-localhost}
       - VITE_RECORDER_WS_URL=ws://${HOST_IP:-localhost}:${BROWSER_WORKER_PORT:-3004}
       - VITE_CARBONE_API_URL=http://${HOST_IP:-localhost}:${CARBONE_ENGINE_PORT:-3009}

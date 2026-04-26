@@ -1,7 +1,13 @@
 import { Controller, Post, Body } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { BrowserService, MCPCommand } from './browser.service';
-import { ExecuteStepDto, ExecuteStepResultDto } from '../../dto/worker.dto';
+import {
+  BrowserControlStateDto,
+  ExecuteStepDto,
+  ExecuteStepResultDto,
+  FreezeBrowserSessionDto,
+  ResumeBrowserSessionDto,
+} from '../../dto/worker.dto';
 
 @ApiTags('browser')
 @Controller('browser')
@@ -38,5 +44,19 @@ export class BrowserController {
   @ApiResponse({ status: 400, description: 'Browser not initialized' })
   async executeStep(@Body() dto: ExecuteStepDto): Promise<ExecuteStepResultDto> {
     return this.browserService.executeStep(dto);
+  }
+
+  @Post('freeze')
+  @ApiOperation({ summary: 'Freeze browser execution for human takeover' })
+  @ApiResponse({ status: 200, type: BrowserControlStateDto, description: 'Browser session frozen' })
+  async freeze(@Body() dto: FreezeBrowserSessionDto): Promise<BrowserControlStateDto> {
+    return this.browserService.freeze(dto);
+  }
+
+  @Post('resume')
+  @ApiOperation({ summary: 'Resume browser execution after human takeover' })
+  @ApiResponse({ status: 200, type: BrowserControlStateDto, description: 'Browser session resumed' })
+  async resume(@Body() dto: ResumeBrowserSessionDto): Promise<BrowserControlStateDto> {
+    return this.browserService.resume(dto);
   }
 }

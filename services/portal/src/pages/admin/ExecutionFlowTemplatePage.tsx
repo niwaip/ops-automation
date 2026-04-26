@@ -1207,14 +1207,14 @@ const ExecutionFlowTemplatePage: React.FC = () => {
             label="流程目标"
             extra="明确的目标描述，指导AI进行验证和宏工具生成"
           >
-            <TextArea rows={2} placeholder="例如：查询指定城市的天气信息并返回格式化结果" />
+            <TextArea rows={2} placeholder="例如：调用外部服务查询指定对象的信息并返回格式化结果" />
           </Form.Item>
           <Form.Item
             name="expectedResult"
             label="预期结果"
             extra="期望的输出格式和内容，指导AI验证流程是否达成目标"
           >
-            <TextArea rows={2} placeholder="例如：返回包含温度、天气状况、风速的中文天气报告" />
+            <TextArea rows={2} placeholder="例如：返回包含摘要、关键字段与状态说明的结构化报告" />
           </Form.Item>
           <Form.Item
             name="paramsSchema"
@@ -1311,7 +1311,7 @@ const ExecutionFlowTemplatePage: React.FC = () => {
                 <TextArea
                   value={testUserInput}
                   onChange={(e) => setTestUserInput(e.target.value)}
-                  placeholder="模拟用户输入，例如：请帮我查询北京今天的天气"
+                  placeholder="模拟用户输入，例如：请帮我查询这个订单的最新状态"
                   rows={3}
                 />
                 <TextArea

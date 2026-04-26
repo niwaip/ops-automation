@@ -222,7 +222,7 @@ export class ParamCollectTool extends BaseTool {
     if (!normalized) return false;
     if (normalized.length > 12) return false;
 
-    // 排除明显“整句提问/指令”，避免把“今天的天气怎么样”误当成 city
+    // 排除明显“整句提问/指令”，避免把完整请求句误当成单字段答案
     const excludedKeywords = ['查询', '帮我', '请', '?', '？', '怎么', '如何'];
     if (excludedKeywords.some((keyword) => normalized.includes(keyword))) {
       return false;

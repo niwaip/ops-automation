@@ -1,6 +1,12 @@
 import { Injectable, Logger, OnModuleDestroy } from '@nestjs/common';
 import * as http from 'http';
-import { ExecuteStepDto, ExecuteStepResultDto } from '../../dto/worker.dto';
+import {
+  BrowserControlStateDto,
+  ExecuteStepDto,
+  ExecuteStepResultDto,
+  FreezeBrowserSessionDto,
+  ResumeBrowserSessionDto,
+} from '../../dto/worker.dto';
 
 export interface MCPCommand {
   tool: string;
@@ -12,6 +18,9 @@ export interface BrowserSession {
   id: string;
   status: 'idle' | 'ready' | 'executing' | 'error';
   createdAt: Date;
+  runtimeSessionId?: string;
+  controlMode?: 'AGENT_RUNNING' | 'HUMAN_CONTROL';
+  frozenReason?: string;
 }
 
 @Injectable()
@@ -44,6 +53,7 @@ export class BrowserService implements OnModuleDestroy {
         id: `ai-${Date.now()}`,
         status: 'ready',
         createdAt: new Date(),
+        controlMode: 'AGENT_RUNNING',
       };
 
       this.logger.log('Browser initialized successfully');
@@ -136,6 +146,18 @@ export class BrowserService implements OnModuleDestroy {
         errorMessage: 'Browser not initialized',
       };
     }
+
+    if (this.session.controlMode === 'HUMAN_CONTROL') {
+      return {
+        success: false,
+        errorCode: 'RUNTIME_FROZEN',
+        errorMessage: this.session.frozenReason || 'Browser session is under human control',
+        shouldTakeover: true,
+        takeoverReason: this.session.frozenReason || 'Browser session is under human control',
+      };
+    }
+
+    this.session.runtimeSessionId = dto.runtimeSessionId;
 
     this.logger.log(`Executing step: ${dto.action} for execution ${dto.executionId}, step ${dto.stepId}`);
 
@@ -300,6 +322,51 @@ export class BrowserService implements OnModuleDestroy {
         resolve();
       });
     });
+  }
+
+  async freeze(dto: FreezeBrowserSessionDto): Promise<BrowserControlStateDto> {
+    if (!this.session) {
+      await this.initBrowser();
+    }
+
+    if (!this.session) {
+      throw new Error('Browser session unavailable');
+    }
+
+    this.session.runtimeSessionId = dto.runtimeSessionId;
+    this.session.controlMode = 'HUMAN_CONTROL';
+    this.session.frozenReason = dto.reason || 'Human takeover requested';
+
+    this.logger.log(`Browser session frozen for runtime ${dto.runtimeSessionId}`);
+
+    return this.getControlState(dto.runtimeSessionId);
+  }
+
+  async resume(dto: ResumeBrowserSessionDto): Promise<BrowserControlStateDto> {
+    if (!this.session) {
+      await this.initBrowser();
+    }
+
+    if (!this.session) {
+      throw new Error('Browser session unavailable');
+    }
+
+    this.session.runtimeSessionId = dto.runtimeSessionId;
+    this.session.controlMode = 'AGENT_RUNNING';
+    this.session.frozenReason = undefined;
+
+    this.logger.log(`Browser session resumed for runtime ${dto.runtimeSessionId}`);
+
+    return this.getControlState(dto.runtimeSessionId);
+  }
+
+  getControlState(runtimeSessionId?: string): BrowserControlStateDto {
+    return {
+      runtimeSessionId: runtimeSessionId || this.session?.runtimeSessionId || 'unknown',
+      controlMode: this.session?.controlMode || 'AGENT_RUNNING',
+      frozen: this.session?.controlMode === 'HUMAN_CONTROL',
+      reason: this.session?.frozenReason,
+    };
   }
 
   private async navigate(url: string): Promise<{ status: string; url: string; template_info?: any }> {

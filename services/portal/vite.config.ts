@@ -68,6 +68,10 @@ export default defineConfig({
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/api/, ''),
       },
+      '/api/executions': {
+        target: getProxyTarget('ops-control-plane', 3003),
+        changeOrigin: true,
+      },
       '/api/report-templates': {
         target: getProxyTarget('ops-report', 3008),
         changeOrigin: true,

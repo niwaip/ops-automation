@@ -410,12 +410,12 @@ export class TemporalWorkflowService {
     lines.push('2. 【类名强制】：Workflow 类名必须完全等于 `' + (workflowDsl.name.replace(/\s+/g, '') || 'Custom') + 'Workflow' + '`。');
     lines.push('3. 【结构】：Workflow 使用 `@workflow.defn`，入口为 `async def run(self, params: dict)`。严禁为 Workflow 类定义 `__init__` 方法。');
     lines.push('4. 【确定性】：对于 UUID，直接使用标准的 `import uuid` 并调用 `uuid.uuid4()`，沙箱环境会自动处理确定性。不要使用 `workflow.uuid4()`。');
-    lines.push('5. 【沙箱稳定性】：如果代码涉及外部 HTTP 请求（如 wttr.in 或任何第三方 API），请【不要真正发起网络请求】，直接在代码中硬编码返回一个符合业务逻辑预期的模拟结果字典。');
-    lines.push('5. 【调用】：使用 `await workflow.execute_activity(activity_fn, input, start_to_close_timeout=timedelta(...))`，确保超时时间与 DSL 一致。');
-    lines.push('6. 【日志】：必须使用 `workflow.logger.info()`。');
+    lines.push('5. 【沙箱稳定性】：如果代码涉及外部 HTTP 请求，请保持实现通用，不要在代码中写死任何业务实例、接口域名或返回值；需要兼容沙箱时，请依赖运行环境提供的 mock 请求能力。');
+    lines.push('6. 【调用】：使用 `await workflow.execute_activity(activity_fn, input, start_to_close_timeout=timedelta(...))`，确保超时时间与 DSL 一致。');
+    lines.push('7. 【日志】：必须使用 `workflow.logger.info()`。');
 
     if (workflowDsl.errorHandling?.type === 'saga') {
-      lines.push('7. 【Saga 模式】：必须维护 compensations 列表，在失败时逆序执行补偿任务。');
+      lines.push('8. 【Saga 模式】：必须维护 compensations 列表，在失败时逆序执行补偿任务。');
     }
 
     if (workflowDsl.extraPrompt) {

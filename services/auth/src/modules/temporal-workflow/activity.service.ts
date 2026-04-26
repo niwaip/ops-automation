@@ -718,12 +718,15 @@ class MockRequestException(Exception):
 
 def mock_requests_get(url, timeout=30, **kwargs):
     return MockResponse({
-        "current_condition": [{
-            "temp_C": "22",
-            "weatherDesc": [{"value": "Partly Cloudy"}],
-            "windspeedKmph": "18",
-            "humidity": "65"
-        }]
+        "ok": True,
+        "mocked": True,
+        "request": {
+            "url": url,
+            "timeout": timeout,
+        },
+        "data": {
+            "message": "sandbox mock response"
+        }
     })
 
 # Create mock temporalio module as a proper ModuleType with submodules

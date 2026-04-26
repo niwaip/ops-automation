@@ -184,3 +184,39 @@ export class ExecuteStepResultDto {
   @IsString()
   takeoverReason?: string;
 }
+
+export class FreezeBrowserSessionDto {
+  @ApiProperty({ description: 'Runtime session ID associated with the browser session' })
+  @IsString()
+  runtimeSessionId!: string;
+
+  @ApiProperty({ description: 'Reason for freezing execution', required: false })
+  @IsOptional()
+  @IsString()
+  reason?: string;
+}
+
+export class ResumeBrowserSessionDto {
+  @ApiProperty({ description: 'Runtime session ID associated with the browser session' })
+  @IsString()
+  runtimeSessionId!: string;
+
+  @ApiProperty({ description: 'Optional step ID to continue from', required: false })
+  @IsOptional()
+  @IsString()
+  stepId?: string;
+}
+
+export class BrowserControlStateDto {
+  @ApiProperty({ description: 'Runtime session ID associated with the browser session' })
+  runtimeSessionId!: string;
+
+  @ApiProperty({ enum: ['AGENT_RUNNING', 'HUMAN_CONTROL'] })
+  controlMode!: string;
+
+  @ApiProperty({ description: 'Whether the browser session is currently frozen' })
+  frozen!: boolean;
+
+  @ApiProperty({ description: 'Reason for current frozen state', required: false })
+  reason?: string;
+}

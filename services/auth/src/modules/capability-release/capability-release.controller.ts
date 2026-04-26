@@ -1,18 +1,21 @@
 import { Body, Controller, Delete, Get, Param, Post, Put, Query, Request, Res } from '@nestjs/common';
 import type { Response } from 'express';
-import { Roles } from '../../decorators/roles.decorator';
+import { Roles, Public } from '../../decorators';
 import { CapabilityReleaseService } from './capability-release.service';
 import {
   ApproveCapabilityReleaseDTO,
   CreateCapabilityBuildDTO,
   CreateCapabilityReleaseDTO,
   DeployCapabilityReleaseDTO,
+  ExecuteCapabilityRuntimeDTO,
   GenerateSkillDraftDTO,
   PublishSkillDraftDTO,
   RollbackCapabilityReleaseDTO,
   UpdateCapabilitySourceDTO,
   UpdateSkillDraftDTO,
   ValidateCapabilityDTO,
+  AnalyzeFailureDTO,
+  SuggestReleaseWizardAssistDTO,
 } from './interfaces';
 
 @Controller('capability-releases')
@@ -30,6 +33,21 @@ export class CapabilityReleaseController {
   async listReleaseCenter() {
     const releases = await this.capabilityReleaseService.listReleaseCenter();
     return { releases };
+  }
+
+  @Post('runtime/execute')
+  @Public()
+  async executeCapabilityRuntime(
+    @Body() body: ExecuteCapabilityRuntimeDTO,
+    @Request() req: any,
+  ) {
+    return this.capabilityReleaseService.executeCapabilityRuntime(body, req.user?.id);
+  }
+
+  @Get('runtime/skills/:skillId/context')
+  @Public()
+  async getPublishedSkillRuntimeContext(@Param('skillId') skillId: string) {
+    return this.capabilityReleaseService.getPublishedSkillRuntimeContext(skillId);
   }
 
   @Get('release-center/:id')
@@ -267,6 +285,16 @@ export class CapabilityReleaseController {
     return this.capabilityReleaseService.deploy(id, body, req.user?.id);
   }
 
+  @Post(':id/wizard-assist')
+  @Roles('admin')
+  async suggestWizardAssist(
+    @Param('id') id: string,
+    @Body() body: SuggestReleaseWizardAssistDTO,
+    @Request() req: any,
+  ) {
+    return this.capabilityReleaseService.suggestWizardAssist(id, body, req.user?.id);
+  }
+
   @Get(':id/deployments')
   @Roles('admin')
   async getDeployments(@Param('id') id: string) {
@@ -289,5 +317,15 @@ export class CapabilityReleaseController {
     @Request() req: any,
   ) {
     return this.capabilityReleaseService.rollback(id, body, req.user?.id);
+  }
+
+  @Post(':id/analyze-failure')
+  @Roles('admin')
+  async analyzeFailure(
+    @Param('id') id: string,
+    @Body() body: AnalyzeFailureDTO,
+    @Request() req: any,
+  ) {
+    return this.capabilityReleaseService.analyzeFailure(id, body, req.user?.id);
   }
 }

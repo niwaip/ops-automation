@@ -25,6 +25,7 @@ import ReportListPage from './pages/ReportListPage';
 import ReportDetailPage from './pages/ReportDetailPage';
 import CarboneTemplateListPage from './pages/CarboneTemplateListPage';
 import ExecutionListPage from './pages/ExecutionListPage';
+import ExecutionCreatePage from './pages/ExecutionCreatePage';
 import ExecutionDetailPage from './pages/ExecutionDetailPage';
 import TakeoverWorkbenchPage from './pages/TakeoverWorkbenchPage';
 import ReleaseCenterPage from './pages/ReleaseCenterPage';
@@ -41,7 +42,7 @@ const AdminRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     return <Navigate to="/login" replace />;
   }
   if (user?.role !== 'admin') {
-    return <Navigate to="/dashboard" replace />;
+    return <Navigate to="/executions" replace />;
   }
   return <>{children}</>;
 };
@@ -64,7 +65,7 @@ function App() {
             </PrivateRoute>
           }
         >
-          <Route index element={<Navigate to="/dashboard" replace />} />
+          <Route index element={<Navigate to="/executions" replace />} />
           <Route path="dashboard" element={<DashboardPage />} />
           <Route path="sessions" element={<SessionListPage />} />
           <Route path="sessions/new" element={<SessionStartPage />} />
@@ -80,6 +81,7 @@ function App() {
           <Route path="reports/:id" element={<ReportDetailPage />} />
           <Route path="carbone-templates" element={<CarboneTemplateListPage />} />
           <Route path="executions" element={<ExecutionListPage />} />
+          <Route path="executions/new" element={<ExecutionCreatePage />} />
           <Route path="executions/:id" element={<ExecutionDetailPage />} />
           <Route path="executions/:id/takeover" element={<TakeoverWorkbenchPage />} />
           <Route path="release-center" element={<ReleaseCenterPage />} />
@@ -158,7 +160,7 @@ function App() {
             }
           />
         </Route>
-        <Route path="*" element={<Navigate to="/dashboard" replace />} />
+        <Route path="*" element={<Navigate to="/executions" replace />} />
       </Routes>
     </BrowserRouter>
   );

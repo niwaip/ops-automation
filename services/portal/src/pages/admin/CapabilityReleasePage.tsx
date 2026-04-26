@@ -12,6 +12,7 @@ import {
   Row,
   Select,
   Space,
+  Steps,
   Table,
   Tag,
   Tabs,
@@ -379,6 +380,41 @@ const CapabilityReleasePage: React.FC<CapabilityReleasePageProps> = ({ mode = 'm
     'rolling_restart',
   );
   const [deployOverridesDraft, setDeployOverridesDraft] = useState('{}');
+  const [createWizardStep, setCreateWizardStep] = useState(0);
+  const [wizardReleaseId, setWizardReleaseId] = useState<string | null>(null);
+  const [wizardValidationInputDraft, setWizardValidationInputDraft] = useState('{}');
+  const [wizardValidationUserInput, setWizardValidationUserInput] = useState('');
+  const [wizardValidationFn, setWizardValidationFn] = useState('');
+  const [wizardAssistExplanation, setWizardAssistExplanation] = useState('');
+  const [wizardValidationExecuted, setWizardValidationExecuted] = useState(false);
+
+  // AI 失败分析相关状态
+  const [analysisResult, setAnalysisResult] = useState<{
+    analysis: string;
+    explanation: string;
+    isParameterIssue: boolean;
+    suggestedParams?: Record<string, unknown> | null;
+    suggestedAction?: string | null;
+  } | null>(null);
+  const [analysisVisible, setAnalysisVisible] = useState(false);
+
+  const analyzeFailureMutation = useMutation(
+    (data: { id: string; recordId: string; recordType: 'build' | 'validation' | 'deployment' }) =>
+      capabilityReleaseApi.analyzeFailure(data.id, {
+        recordId: data.recordId,
+        recordType: data.recordType,
+      }),
+    {
+      onSuccess: (result) => {
+        setAnalysisResult(result);
+        setAnalysisVisible(true);
+      },
+      onError: (error: any) => {
+        message.error(error?.message || 'AI 分析失败');
+      },
+    },
+  );
+
   const [isEditingSkillDraft, setIsEditingSkillDraft] = useState(false);
   const [skillDraftName, setSkillDraftName] = useState('');
   const [skillDraftDescription, setSkillDraftDescription] = useState('');
@@ -409,6 +445,11 @@ const CapabilityReleasePage: React.FC<CapabilityReleasePageProps> = ({ mode = 'm
     ['capability-release-detail', selectedReleaseId],
     () => capabilityReleaseApi.getById(selectedReleaseId as string),
     { enabled: Boolean(selectedReleaseId) },
+  );
+  const wizardDetailQuery = useQuery(
+    ['capability-release-wizard-detail', wizardReleaseId],
+    () => capabilityReleaseApi.getById(wizardReleaseId as string),
+    { enabled: Boolean(wizardReleaseId && createVisible) },
   );
 
   const createSourceOptions = useMemo<CapabilitySourceOption[]>(() => {
@@ -478,16 +519,17 @@ const CapabilityReleasePage: React.FC<CapabilityReleasePageProps> = ({ mode = 'm
     await queryClient.invalidateQueries(['capability-releases']);
     if (releaseId) {
       await queryClient.invalidateQueries(['capability-release-detail', releaseId]);
+      await queryClient.invalidateQueries(['capability-release-wizard-detail', releaseId]);
     }
   };
 
   const createMutation = useMutation(capabilityReleaseApi.create, {
     onSuccess: async (result) => {
       message.success('Capability Release 已创建');
-      setCreateVisible(false);
-      createForm.resetFields();
-      setSelectedReleaseId(result.release.release.id);
-      await refreshQueries(result.release.release.id);
+      const createdId = result.release.release.id;
+      setWizardReleaseId(createdId);
+      setCreateWizardStep(1);
+      await refreshQueries(createdId);
     },
     onError: (error: any) => {
       message.error(error?.message || '创建失败');
@@ -525,6 +567,9 @@ const CapabilityReleasePage: React.FC<CapabilityReleasePageProps> = ({ mode = 'm
     {
       onSuccess: async (result, variables) => {
         message.success(`Skill 发布成功: ${result.publishedSkillId}`);
+        if (wizardReleaseId === variables.id) {
+          setCreateWizardStep(3);
+        }
         await refreshQueries(variables.id);
       },
       onError: (error: any) => {
@@ -565,6 +610,9 @@ const CapabilityReleasePage: React.FC<CapabilityReleasePageProps> = ({ mode = 'm
         message.success(`部署完成: ${result.deployment.status}`);
         setDeployVisible(false);
         setDeployOverridesDraft('{}');
+        if (wizardReleaseId === variables.id) {
+          setCreateWizardStep(2);
+        }
         await refreshQueries(variables.id);
       },
       onError: (error: any) => {
@@ -595,6 +643,52 @@ const CapabilityReleasePage: React.FC<CapabilityReleasePageProps> = ({ mode = 'm
       },
       onError: (error: any) => {
         message.error(error?.message || 'Skill 校验失败');
+      },
+    },
+  );
+
+  const realValidateMutation = useMutation(
+    ({
+      id,
+      input,
+      testUserInput,
+      fn,
+    }: {
+      id: string;
+      input?: Record<string, unknown>;
+      testUserInput?: string;
+      fn?: string;
+    }) => capabilityReleaseApi.validateSandbox(id, { input, testUserInput, fn }),
+    {
+      onSuccess: async (result, variables) => {
+        message.success(result.validation.success ? '真实校验通过' : '真实校验未通过');
+        setWizardValidationExecuted(true);
+        await refreshQueries(variables.id);
+      },
+      onError: (error: any) => {
+        message.error(error?.message || '真实校验失败');
+      },
+    },
+  );
+  const wizardAssistMutation = useMutation(
+    ({ id, environment }: { id: string; environment: DeploymentEnvironment }) =>
+      capabilityReleaseApi.suggestWizardAssist(id, { environment }),
+    {
+      onSuccess: (result) => {
+        setWizardAssistExplanation(result.explanation);
+        if (Object.keys(result.deployConfig || {}).length > 0) {
+          setDeployOverridesDraft(JSON.stringify(result.deployConfig, null, 2));
+        }
+        if (Object.keys(result.testInput || {}).length > 0) {
+          setWizardValidationInputDraft(JSON.stringify(result.testInput, null, 2));
+        }
+        if (result.testUserInput) {
+          setWizardValidationUserInput(result.testUserInput);
+        }
+        message.success('AI 已生成部署与测试建议');
+      },
+      onError: (error: any) => {
+        message.error(error?.message || 'AI 辅助建议生成失败');
       },
     },
   );
@@ -830,6 +924,13 @@ const CapabilityReleasePage: React.FC<CapabilityReleasePageProps> = ({ mode = 'm
   ];
 
   const selectedDetail: CapabilityReleaseDetail | undefined = detailQuery.data?.release;
+  const wizardDetail: CapabilityReleaseDetail | undefined = wizardDetailQuery.data?.release;
+  const wizardRelease =
+    wizardDetail?.release ||
+    (releasesQuery.data?.releases || []).find((item) => item.id === wizardReleaseId);
+  const wizardLatestValidation =
+    wizardDetail?.validations?.find((item) => item.validationType === 'sandbox') ||
+    wizardDetail?.validations?.[0];
   const latestBuild = selectedDetail?.builds?.[0];
   const latestValidation = selectedDetail?.validations?.[0];
   const latestDeployment = selectedDetail?.deployments?.[0];
@@ -1061,6 +1162,46 @@ const CapabilityReleasePage: React.FC<CapabilityReleasePageProps> = ({ mode = 'm
     () => parseJsonDraft<Record<string, unknown>>(deployOverridesDraft || '{}', '部署覆盖参数 JSON'),
     [deployOverridesDraft],
   );
+  const wizardValidationInputState = useMemo(
+    () =>
+      parseJsonDraft<Record<string, unknown>>(
+        wizardValidationInputDraft || '{}',
+        '真实校验输入 JSON',
+      ),
+    [wizardValidationInputDraft],
+  );
+  const wizardActiveDeployProfile =
+    wizardDetail?.currentSourceSnapshot?.sourcePayload?.deploymentProfiles &&
+    typeof wizardDetail.currentSourceSnapshot.sourcePayload.deploymentProfiles === 'object'
+      ? ((wizardDetail.currentSourceSnapshot.sourcePayload.deploymentProfiles as Record<string, unknown>)[
+          deployEnvironment
+        ] as Record<string, unknown> | undefined) || {}
+      : {};
+
+  const resetCreateWizard = () => {
+    setCreateVisible(false);
+    setCreateWizardStep(0);
+    setWizardReleaseId(null);
+    setWizardValidationInputDraft('{}');
+    setWizardValidationUserInput('');
+    setWizardValidationFn('');
+    setWizardAssistExplanation('');
+    setWizardValidationExecuted(false);
+    createForm.resetFields();
+  };
+
+  const openCreateWizard = () => {
+    setSelectedReleaseId(null);
+    setSearchParams({});
+    setCreateWizardStep(0);
+    setWizardReleaseId(null);
+    setWizardValidationInputDraft('{}');
+    setWizardValidationUserInput('');
+    setWizardValidationFn('');
+    setWizardAssistExplanation('');
+    setWizardValidationExecuted(false);
+    setCreateVisible(true);
+  };
 
   const handleCreate = async () => {
     try {
@@ -1133,11 +1274,48 @@ const CapabilityReleasePage: React.FC<CapabilityReleasePageProps> = ({ mode = 'm
 
       const publishResult = await capabilityReleaseApi.publishSkill(release.id);
       message.success(`Skill 发布成功: ${publishResult.publishedSkillId}`);
+      if (wizardReleaseId === release.id) {
+        setCreateWizardStep(3);
+      }
       await refreshQueries(release.id);
     } catch (error) {
       const messageText = error instanceof Error ? error.message : '发布 Skill 失败';
       message.error(messageText);
     }
+  };
+
+  const handleWizardDeploy = () => {
+    if (!wizardReleaseId) {
+      return;
+    }
+    if (!deployOverridesState.valid) {
+      message.error(deployOverridesState.error);
+      return;
+    }
+
+    deployMutation.mutate({
+      id: wizardReleaseId,
+      environment: deployEnvironment,
+      strategy: deployStrategy,
+      configOverrides: deployOverridesState.value,
+    });
+  };
+
+  const handleWizardValidate = () => {
+    if (!wizardReleaseId) {
+      return;
+    }
+    if (!wizardValidationInputState.valid) {
+      message.error(wizardValidationInputState.error);
+      return;
+    }
+
+    realValidateMutation.mutate({
+      id: wizardReleaseId,
+      input: wizardValidationInputState.value,
+      testUserInput: wizardValidationUserInput.trim() || undefined,
+      fn: wizardValidationFn.trim() || undefined,
+    });
   };
 
   const handleArchiveRelease = (releaseId: string) => {
@@ -1770,6 +1948,24 @@ const CapabilityReleasePage: React.FC<CapabilityReleasePageProps> = ({ mode = 'm
           <Card
             size="small"
             title="最近一次构建"
+            extra={
+              latestBuild?.status === 'failed' && (
+                <Button
+                  size="small"
+                  icon={<SafetyCertificateOutlined />}
+                  loading={analyzeFailureMutation.isLoading}
+                  onClick={() =>
+                    analyzeFailureMutation.mutate({
+                      id: selectedDetail.release.id,
+                      recordId: latestBuild.id,
+                      recordType: 'build',
+                    })
+                  }
+                >
+                  AI 分析
+                </Button>
+              )
+            }
           >
             {latestBuild ? (
               <Space direction="vertical" style={{ width: '100%' }}>
@@ -1795,6 +1991,24 @@ const CapabilityReleasePage: React.FC<CapabilityReleasePageProps> = ({ mode = 'm
           <Card
             size="small"
             title="最近一次验证"
+            extra={
+              latestValidation && !latestValidation.success && (
+                <Button
+                  size="small"
+                  icon={<SafetyCertificateOutlined />}
+                  loading={analyzeFailureMutation.isLoading}
+                  onClick={() =>
+                    analyzeFailureMutation.mutate({
+                      id: selectedDetail.release.id,
+                      recordId: latestValidation.id,
+                      recordType: 'validation',
+                    })
+                  }
+                >
+                  AI 分析
+                </Button>
+              )
+            }
           >
             {latestValidation ? (
               <Space direction="vertical" style={{ width: '100%' }}>
@@ -1817,6 +2031,30 @@ const CapabilityReleasePage: React.FC<CapabilityReleasePageProps> = ({ mode = 'm
 
   const operationsContent = selectedDetail ? (
     <Row gutter={16} align="top">
+      {['draft_ready', 'approved', 'published'].includes(selectedDetail.release.status) && (
+        <Col span={24}>
+          <Alert
+            type="success"
+            message="推荐操作：代码部署"
+            description={
+              <Space direction="vertical" size="small">
+                <Text>当前 Release 已准备就绪，建议将其部署到测试环境进行最后的冒烟验证。</Text>
+                <Button
+                  size="small"
+                  type="primary"
+                  ghost
+                  icon={<RocketOutlined />}
+                  onClick={() => openDeployModal(selectedDetail.release.id)}
+                >
+                  前往部署配置
+                </Button>
+              </Space>
+            }
+            showIcon
+            style={{ marginBottom: 16 }}
+          />
+        </Col>
+      )}
       <Col span={24}>
         <Card
           size="small"
@@ -1869,7 +2107,28 @@ const CapabilityReleasePage: React.FC<CapabilityReleasePageProps> = ({ mode = 'm
         </Card>
       </Col>
       <Col span={12}>
-        <Card size="small" title="最近一次部署">
+        <Card
+          size="small"
+          title="最近一次部署"
+          extra={
+            latestDeployment?.status === 'failed' && (
+              <Button
+                size="small"
+                icon={<SafetyCertificateOutlined />}
+                loading={analyzeFailureMutation.isLoading}
+                onClick={() =>
+                  analyzeFailureMutation.mutate({
+                    id: selectedDetail.release.id,
+                    recordId: latestDeployment.id,
+                    recordType: 'deployment',
+                  })
+                }
+              >
+                AI 分析
+              </Button>
+            )
+          }
+        >
           {latestDeployment ? (
             <Space direction="vertical" style={{ width: '100%' }}>
               <Text>环境：{latestDeployment.environment}</Text>
@@ -2128,7 +2387,7 @@ const CapabilityReleasePage: React.FC<CapabilityReleasePageProps> = ({ mode = 'm
             <Button icon={<ReloadOutlined />} onClick={() => refreshQueries(selectedReleaseId || undefined)}>
               刷新
             </Button>
-            <Button type="primary" icon={<AppstoreAddOutlined />} onClick={() => setCreateVisible(true)}>
+            <Button type="primary" icon={<AppstoreAddOutlined />} onClick={openCreateWizard}>
               新建 Release
             </Button>
           </Space>
@@ -2146,80 +2405,376 @@ const CapabilityReleasePage: React.FC<CapabilityReleasePageProps> = ({ mode = 'm
       </Card>
 
       <Modal
-        title="新建 Capability Release"
+        title="创建 Release 向导"
         open={createVisible}
-        onCancel={() => setCreateVisible(false)}
-        onOk={handleCreate}
-        confirmLoading={createMutation.isLoading}
-        width={760}
+        onCancel={resetCreateWizard}
+        footer={null}
+        width={900}
       >
-        <Form form={createForm} layout="vertical">
-          <Form.Item
-            name="sourceType"
-            label="能力类型"
-            rules={[{ required: true, message: '请选择能力类型' }]}
-          >
-            <Select options={SOURCE_TYPE_OPTIONS as unknown as { label: string; value: string }[]} />
-          </Form.Item>
-          {createSourceType ? (
-            <Form.Item
-              name="sourceId"
-              label={createSourceType === 'temporal_workflow' ? '选择 Temporal Workflow' : '选择 Execution Flow Template'}
-            >
-              <Select
-                allowClear
-                showSearch
-                loading={isCreateSourceLoading}
-                placeholder={
-                  createSourceType === 'temporal_workflow'
-                    ? '选择一个已有 Temporal Workflow'
-                    : '选择一个已有 Execution Flow Template'
-                }
-                optionFilterProp="label"
-                options={createSourceOptions}
-                optionRender={(option) => {
-                  const data = option.data as CapabilitySourceOption;
-                  return (
-                    <Space direction="vertical" size={0}>
-                      <Text>{data.label}</Text>
-                      {data.description ? (
-                        <Text type="secondary" style={{ fontSize: 12 }}>
-                          {data.description}
-                        </Text>
-                      ) : null}
-                    </Space>
-                  );
-                }}
+        <Space direction="vertical" size="large" style={{ width: '100%' }}>
+          <Alert
+            type="info"
+            showIcon
+            message="4 步先导式创建"
+            description="按照“基础信息 -> 部署 -> 发布 Skills -> 真实校验”的顺序推进。每一步都会保留当前 Release 上下文，减少在页面内来回跳转。"
+          />
+
+          <Steps
+            current={createWizardStep}
+            items={[
+              {
+                title: '创建基础信息',
+                description: wizardReleaseId ? `已创建 ${wizardReleaseId.slice(0, 8)}` : '填写源信息',
+              },
+              {
+                title: '部署',
+                description:
+                  wizardRelease?.sourceType === 'execution_flow_template'
+                    ? '模板型能力可跳过代码部署'
+                    : '配置环境与策略',
+              },
+              {
+                title: '发布 Skills',
+                description: wizardRelease?.publishedSkillId ? '已发布' : '生成并发布 Skill',
+              },
+              {
+                title: '真实校验',
+                description: wizardDetail?.validations?.length ? '执行后可查看结果' : '输入真实参数执行',
+              },
+            ]}
+          />
+
+          {createWizardStep === 0 ? (
+            <Space direction="vertical" size="middle" style={{ width: '100%' }}>
+              <Form form={createForm} layout="vertical">
+                <Alert
+                  type="info"
+                  showIcon
+                  style={{ marginBottom: 16 }}
+                  message="源定义 JSON 的作用"
+                  description="当你已经在其他页面选好了现成的 Workflow / Template 时，这里通常不用填。它主要用于直接覆盖或补充当前 Release 的源快照，例如临时调整 workflowDsl、activityDsl、deploymentProfiles、paramsSchema 等。"
+                />
+                <Form.Item
+                  name="sourceType"
+                  label="能力类型"
+                  rules={[{ required: true, message: '请选择能力类型' }]}
+                >
+                  <Select options={SOURCE_TYPE_OPTIONS as unknown as { label: string; value: string }[]} />
+                </Form.Item>
+                {createSourceType ? (
+                  <Form.Item
+                    name="sourceId"
+                    label={
+                      createSourceType === 'temporal_workflow'
+                        ? '选择 Temporal Workflow'
+                        : '选择 Execution Flow Template'
+                    }
+                  >
+                    <Select
+                      allowClear
+                      showSearch
+                      loading={isCreateSourceLoading}
+                      placeholder={
+                        createSourceType === 'temporal_workflow'
+                          ? '选择一个已有 Temporal Workflow'
+                          : '选择一个已有 Execution Flow Template'
+                      }
+                      optionFilterProp="label"
+                      options={createSourceOptions}
+                      optionRender={(option) => {
+                        const data = option.data as CapabilitySourceOption;
+                        return (
+                          <Space direction="vertical" size={0}>
+                            <Text>{data.label}</Text>
+                            {data.description ? (
+                              <Text type="secondary" style={{ fontSize: 12 }}>
+                                {data.description}
+                              </Text>
+                            ) : null}
+                          </Space>
+                        );
+                      }}
+                    />
+                  </Form.Item>
+                ) : null}
+                {createSourceType && !isCreateSourceLoading && createSourceOptions.length === 0 ? (
+                  <Alert
+                    style={{ marginBottom: 16 }}
+                    type="warning"
+                    showIcon
+                    message={
+                      createSourceType === 'temporal_workflow'
+                        ? '当前没有可选的 Temporal Workflow'
+                        : '当前没有可选的 Execution Flow Template'
+                    }
+                    description={
+                      createSourceType === 'temporal_workflow'
+                        ? '请先在 Temporal Workflow 页面创建工作流，再回来新建 Capability Release。'
+                        : '请先在 Execution Flow Template 页面创建模板，再回来新建 Capability Release。'
+                    }
+                  />
+                ) : null}
+                <Form.Item name="sourceName" label="显示名称">
+                  <Input placeholder="可选。若不填，系统会尽量从 sourcePayload / sourceId 中推断" />
+                </Form.Item>
+                <Form.Item name="sourcePayload" label="源定义 JSON">
+                  <TextArea
+                    rows={6}
+                    placeholder='可选。直接贴 JSON，例如 {"name":"示例工作流","workflowDsl":{...},"activityDsl":{...}}'
+                  />
+                </Form.Item>
+              </Form>
+
+              <Space style={{ justifyContent: 'flex-end', width: '100%' }}>
+                <Button onClick={resetCreateWizard}>取消</Button>
+                <Button type="primary" loading={createMutation.isLoading} onClick={handleCreate}>
+                  创建并进入部署
+                </Button>
+              </Space>
+            </Space>
+          ) : null}
+
+          {createWizardStep === 1 ? (
+            <Space direction="vertical" size="middle" style={{ width: '100%' }}>
+              <Descriptions bordered size="small" column={2}>
+                <Descriptions.Item label="Release ID">{wizardRelease?.id || wizardReleaseId}</Descriptions.Item>
+                <Descriptions.Item label="能力类型">{wizardRelease?.sourceType || '-'}</Descriptions.Item>
+                <Descriptions.Item label="能力名称">{wizardRelease?.sourceName || '未命名'}</Descriptions.Item>
+                <Descriptions.Item label="当前状态">{wizardRelease?.status || '-'}</Descriptions.Item>
+              </Descriptions>
+
+              {wizardRelease?.sourceType === 'execution_flow_template' ? (
+                <Alert
+                  type="success"
+                  showIcon
+                  message="模板型能力无需独立代码部署"
+                  description="当前步骤可直接跳过，进入 Skills 发布。"
+                />
+              ) : (
+                <>
+                  <Alert
+                    type="info"
+                    showIcon
+                    message="这一步是在配置“本次部署”"
+                    description="环境、策略、覆盖参数只影响本次部署记录。默认 Profile 来自当前能力快照中的 deploymentProfiles；如果为空，说明当前 Release 还没有配置环境参数，可以使用 AI 辅助先生成一版。"
+                  />
+                  <Space wrap style={{ width: '100%' }}>
+                    <Select
+                      style={{ width: 180 }}
+                      value={deployEnvironment}
+                      onChange={(value) => setDeployEnvironment(value as DeploymentEnvironment)}
+                      options={[
+                        { label: 'dev', value: 'dev' },
+                        { label: 'test', value: 'test' },
+                        { label: 'staging', value: 'staging' },
+                        { label: 'prod', value: 'prod' },
+                      ]}
+                    />
+                    <Select
+                      style={{ width: 220 }}
+                      value={deployStrategy}
+                      onChange={(value) =>
+                        setDeployStrategy(value as 'hot_reload' | 'rolling_restart' | 'full_restart')
+                      }
+                      options={[
+                        { label: 'hot_reload', value: 'hot_reload' },
+                        { label: 'rolling_restart', value: 'rolling_restart' },
+                        { label: 'full_restart', value: 'full_restart' },
+                      ]}
+                    />
+                    <Button
+                      loading={wizardAssistMutation.isLoading}
+                      disabled={!wizardReleaseId}
+                      onClick={() =>
+                        wizardReleaseId
+                          ? wizardAssistMutation.mutate({
+                              id: wizardReleaseId,
+                              environment: deployEnvironment,
+                            })
+                          : undefined
+                      }
+                    >
+                      AI 辅助设置
+                    </Button>
+                  </Space>
+
+                  <Card
+                    size="small"
+                    title={`环境 Profile 预览: ${deployEnvironment}`}
+                    extra={<Text type="secondary">说明：读取当前 Release 快照里该环境的默认部署参数</Text>}
+                  >
+                    <pre style={{ ...studioPaneStyle, maxHeight: 120 }}>
+                      {JSON.stringify(wizardActiveDeployProfile, null, 2)}
+                    </pre>
+                  </Card>
+
+                  {wizardAssistExplanation ? (
+                    <Alert type="success" showIcon message="AI 建议已生成" description={wizardAssistExplanation} />
+                  ) : null}
+
+                  <Alert
+                    type="info"
+                    showIcon
+                    message="部署覆盖参数"
+                    description="这里填写的是“本次部署额外覆盖”的 JSON。系统会将它与上面的环境默认参数合并，最终形成本次 deploy 实际使用的配置。"
+                  />
+                  <TextArea
+                    rows={5}
+                    value={deployOverridesDraft}
+                    onChange={(event) => setDeployOverridesDraft(event.target.value)}
+                    placeholder='部署覆盖参数 JSON，例如 {"taskQueue":"SKILL_STAGING_QUEUE","workerReload":true}'
+                    spellCheck={false}
+                    style={{ fontFamily: 'monospace' }}
+                  />
+                  {!deployOverridesState.valid ? (
+                    <Alert type="error" showIcon message={deployOverridesState.error} />
+                  ) : null}
+                </>
+              )}
+
+              <Space style={{ justifyContent: 'space-between', width: '100%' }}>
+                <Button onClick={resetCreateWizard}>稍后继续</Button>
+                {wizardRelease?.sourceType === 'execution_flow_template' ? (
+                  <Button type="primary" onClick={() => setCreateWizardStep(2)}>
+                    跳过部署，继续发布 Skills
+                  </Button>
+                ) : (
+                  <Button type="primary" loading={deployMutation.isLoading} onClick={handleWizardDeploy}>
+                    部署到 {deployEnvironment}
+                  </Button>
+                )}
+              </Space>
+            </Space>
+          ) : null}
+
+          {createWizardStep === 2 ? (
+            <Space direction="vertical" size="middle" style={{ width: '100%' }}>
+              <Alert
+                type="info"
+                showIcon
+                message="发布 Skills"
+                description="这里会自动串联“生成草案 -> 审批 -> 发布”，完成后进入真实校验。"
               />
-            </Form.Item>
+              <Descriptions bordered size="small" column={2}>
+                <Descriptions.Item label="Release">{wizardRelease?.sourceName || '未命名'}</Descriptions.Item>
+                <Descriptions.Item label="部署状态">{wizardRelease?.deploymentStatus || '未部署'}</Descriptions.Item>
+                <Descriptions.Item label="审批状态">{wizardRelease?.approvalStatus || '未审批'}</Descriptions.Item>
+                <Descriptions.Item label="已发布 Skill">
+                  {wizardRelease?.publishedSkillId || '尚未发布'}
+                </Descriptions.Item>
+              </Descriptions>
+              <Alert
+                type="success"
+                showIcon
+                message="发布策略说明"
+                description="每个 Release 发布都会新建一个新的托管 Skill，不会覆盖旧的 Skill；旧的 Skill 可被其他地方继续引用。"
+              />
+              <Space style={{ justifyContent: 'space-between', width: '100%' }}>
+                <Button onClick={resetCreateWizard}>稍后继续</Button>
+                <Button
+                  type="primary"
+                  loading={publishMutation.isLoading || generateDraftMutation.isLoading || approveMutation.isLoading}
+                  disabled={!wizardRelease}
+                  onClick={() => (wizardRelease ? void handlePublishSkill(wizardRelease) : undefined)}
+                >
+                  自动发布 Skills
+                </Button>
+              </Space>
+            </Space>
           ) : null}
-          {createSourceType && !isCreateSourceLoading && createSourceOptions.length === 0 ? (
-            <Alert
-              style={{ marginBottom: 16 }}
-              type="warning"
-              showIcon
-              message={
-                createSourceType === 'temporal_workflow'
-                  ? '当前没有可选的 Temporal Workflow'
-                  : '当前没有可选的 Execution Flow Template'
-              }
-              description={
-                createSourceType === 'temporal_workflow'
-                  ? '请先在 Temporal Workflow 页面创建工作流，再回来新建 Capability Release。'
-                  : '请先在 Execution Flow Template 页面创建模板，再回来新建 Capability Release。'
-              }
-            />
+
+          {createWizardStep === 3 ? (
+            <Space direction="vertical" size="middle" style={{ width: '100%' }}>
+              <Alert
+                type="warning"
+                showIcon
+                message="真实校验"
+                description="请填入真实业务参数或自然语言测试语句，系统会执行 Sandbox 校验并把结果写回当前 Release。若你不确定怎么填，可先点击 AI 辅助设置自动生成一版。"
+              />
+              <Space wrap>
+                <Button
+                  loading={wizardAssistMutation.isLoading}
+                  disabled={!wizardReleaseId}
+                  onClick={() =>
+                    wizardReleaseId
+                      ? wizardAssistMutation.mutate({
+                          id: wizardReleaseId,
+                          environment: deployEnvironment,
+                        })
+                      : undefined
+                  }
+                >
+                  AI 辅助设置
+                </Button>
+                {wizardAssistExplanation ? <Text type="secondary">{wizardAssistExplanation}</Text> : null}
+              </Space>
+              <TextArea
+                rows={7}
+                value={wizardValidationInputDraft}
+                onChange={(event) => setWizardValidationInputDraft(event.target.value)}
+                placeholder='真实校验输入 JSON，例如 {"city":"北京"}'
+                spellCheck={false}
+                style={{ fontFamily: 'monospace' }}
+              />
+              {!wizardValidationInputState.valid ? (
+                <Alert type="error" showIcon message={wizardValidationInputState.error} />
+              ) : null}
+              <Input
+                value={wizardValidationUserInput}
+                onChange={(event) => setWizardValidationUserInput(event.target.value)}
+                placeholder="可选：测试用户自然语言，例如 请帮我查询订单状态"
+              />
+              {wizardRelease?.sourceType === 'temporal_workflow' ? (
+                <Input
+                  value={wizardValidationFn}
+                  onChange={(event) => setWizardValidationFn(event.target.value)}
+                  placeholder="可选：Workflow 函数名"
+                />
+              ) : null}
+              {wizardValidationExecuted && wizardLatestValidation ? (
+                <Card size="small" title="最近一次真实校验结果">
+                  <Space direction="vertical" style={{ width: '100%' }}>
+                    <Text>结果：{wizardLatestValidation.success ? '通过' : '失败'}</Text>
+                    <Text>类型：{wizardLatestValidation.validationType}</Text>
+                    <Text>分数：{wizardLatestValidation.score}</Text>
+                    {wizardLatestValidation.errorSummary ? (
+                      <Alert
+                        type="error"
+                        showIcon
+                        message="失败原因"
+                        description={wizardLatestValidation.errorSummary}
+                      />
+                    ) : null}
+                    <pre style={{ ...studioPaneStyle, maxHeight: 220 }}>
+                      {wizardLatestValidation.logs.join('\n') || '暂无日志'}
+                    </pre>
+                    {!wizardLatestValidation.success ? (
+                      <Button
+                        size="small"
+                        loading={analyzeFailureMutation.isLoading}
+                        onClick={() =>
+                          analyzeFailureMutation.mutate({
+                            id: wizardReleaseId as string,
+                            recordId: wizardLatestValidation.id,
+                            recordType: 'validation',
+                          })
+                        }
+                      >
+                        AI 分析失败原因
+                      </Button>
+                    ) : null}
+                  </Space>
+                </Card>
+              ) : null}
+              <Space style={{ justifyContent: 'space-between', width: '100%' }}>
+                <Button onClick={resetCreateWizard}>完成并关闭</Button>
+                <Button type="primary" loading={realValidateMutation.isLoading} onClick={handleWizardValidate}>
+                  开始真实校验
+                </Button>
+              </Space>
+            </Space>
           ) : null}
-          <Form.Item name="sourceName" label="显示名称">
-            <Input placeholder="可选。若不填，系统会尽量从 sourcePayload / sourceId 中推断" />
-          </Form.Item>
-          <Form.Item name="sourcePayload" label="源定义 JSON">
-            <TextArea
-              rows={10}
-              placeholder='可选。直接贴 JSON，例如 {"name":"天气查询工作流","workflowDsl":{...},"activityDsl":{...}}'
-            />
-          </Form.Item>
-        </Form>
+        </Space>
       </Modal>
 
       <Modal
@@ -2259,14 +2814,24 @@ const CapabilityReleasePage: React.FC<CapabilityReleasePageProps> = ({ mode = 'm
             />
           </Space>
 
-          <Card size="small" title={`环境 Profile 预览: ${deployEnvironment}`}>
-            <pre style={{ ...studioPaneStyle, maxHeight: 200 }}>
+          <Card
+            size="small"
+            title={`环境 Profile 预览: ${deployEnvironment}`}
+            extra={<Text type="secondary">说明：读取当前 Release 快照里该环境的默认部署参数</Text>}
+          >
+            <pre style={{ ...studioPaneStyle, maxHeight: 120 }}>
               {JSON.stringify(activeDeployProfile, null, 2)}
             </pre>
           </Card>
 
+          <Alert
+            type="info"
+            showIcon
+            message="部署覆盖参数"
+            description="这里填写的是“本次部署额外覆盖”的 JSON。系统会将它与上面的环境默认参数合并，最终形成本次 deploy 实际使用的配置。"
+          />
           <TextArea
-            rows={8}
+            rows={5}
             value={deployOverridesDraft}
             onChange={(event) => setDeployOverridesDraft(event.target.value)}
             placeholder='部署覆盖参数 JSON，例如 {"taskQueue":"SKILL_STAGING_QUEUE","workerReload":true}'
@@ -2283,10 +2848,91 @@ const CapabilityReleasePage: React.FC<CapabilityReleasePageProps> = ({ mode = 'm
         </Space>
       </Modal>
 
+      <Modal
+        title={
+          <Space>
+            <SafetyCertificateOutlined style={{ color: '#1890ff' }} />
+            <span>AI 失败原因分析</span>
+          </Space>
+        }
+        open={analysisVisible}
+        onCancel={() => setAnalysisVisible(false)}
+        footer={[
+          <Button key="close" onClick={() => setAnalysisVisible(false)}>
+            关闭
+          </Button>,
+          analysisResult?.isParameterIssue && (
+            <Button
+              key="apply"
+              type="primary"
+              onClick={() => {
+                if (analysisResult.suggestedParams) {
+                  setDeployOverridesDraft(JSON.stringify(analysisResult.suggestedParams, null, 2));
+                  setAnalysisVisible(false);
+                  setDeployVisible(true);
+                  message.success('已自动填入建议参数');
+                }
+              }}
+            >
+              应用建议参数并重试
+            </Button>
+          ),
+        ]}
+        width={700}
+      >
+        {analysisResult ? (
+          <Space direction="vertical" style={{ width: '100%', marginBottom: 16 }}>
+            <Alert
+              type={analysisResult.isParameterIssue ? 'warning' : 'error'}
+              message={analysisResult.explanation}
+              description={analysisResult.suggestedAction}
+              showIcon
+            />
+            <div style={{ marginTop: 16 }}>
+              <Title level={5}>详细分析</Title>
+              <div
+                style={{
+                  background: '#f5f5f5',
+                  padding: '12px 16px',
+                  borderRadius: 4,
+                  fontSize: 14,
+                  lineHeight: 1.6,
+                }}
+              >
+                {analysisResult.analysis}
+              </div>
+            </div>
+            {analysisResult.suggestedParams && (
+              <div style={{ marginTop: 16 }}>
+                <Title level={5}>建议参数 (JSON)</Title>
+                <pre
+                  style={{
+                    background: '#f5f5f5',
+                    padding: 12,
+                    borderRadius: 4,
+                    maxHeight: 200,
+                    overflow: 'auto',
+                    margin: 0,
+                  }}
+                >
+                  {JSON.stringify(analysisResult.suggestedParams, null, 2)}
+                </pre>
+              </div>
+            )}
+          </Space>
+        ) : (
+          <div style={{ padding: '24px 0', textAlign: 'center' }}>
+            <ReloadOutlined spin style={{ fontSize: 24, marginBottom: 16 }} />
+            <br />
+            <Text type="secondary">AI 正在深度分析失败日志，请稍候...</Text>
+          </div>
+        )}
+      </Modal>
+
       <Drawer
         title="Release 详情"
         width={1280}
-        open={Boolean(selectedReleaseId)}
+        open={Boolean(selectedReleaseId) && !createVisible}
         onClose={() => {
           setSelectedReleaseId(null);
           setSearchParams({});

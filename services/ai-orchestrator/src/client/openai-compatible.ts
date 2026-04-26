@@ -1,12 +1,38 @@
-import axios, { AxiosInstance, AxiosError } from 'axios';
+import axios from 'axios';
 import { ChatMessage, OpenAICompatibleConfig } from '../interfaces';
+
+type AxiosLikeError = {
+  code?: string;
+  message?: string;
+  response?: {
+    data?: {
+      error?: {
+        message?: string;
+      };
+    };
+  };
+};
+
+type ChatCompletionResponse = {
+  choices?: Array<{
+    message?: {
+      content?: string;
+    };
+  }>;
+};
+
+type ModelListResponse = {
+  data?: Array<{
+    id: string;
+  }>;
+};
 
 /**
  * OpenAI Compatible Client
  * Supports OpenAI, Azure OpenAI, and local/self-hosted models that implement OpenAI-compatible API
  */
 export class OpenAICompatibleClient {
-  protected client: AxiosInstance;
+  protected client: ReturnType<typeof axios.create>;
   private baseURL: string;
   private apiKey: string;
   private model: string;
@@ -47,16 +73,17 @@ export class OpenAICompatibleClient {
       }
 
       // Use /chat/completions since baseURL already includes /v1
-      const response = await this.client.post('/chat/completions', data);
+      const response = await this.client.post<ChatCompletionResponse>('/chat/completions', data);
 
-      return response.data.choices[0]?.message?.content || '';
+      return response.data?.choices?.[0]?.message?.content || '';
     } catch (error: unknown) {
-      if (error instanceof AxiosError) {
+      const axiosError = error as AxiosLikeError;
+      if (axiosError.message) {
         // Check for timeout specifically
-        if (error.code === 'ECONNABORTED' || error.message.includes('timeout')) {
-          throw new Error(`AI 模型响应超时，请稍后重试或使用更简单的命令 (当前超时设置: ${this.timeout/1000}秒)`);
+        if (axiosError.code === 'ECONNABORTED' || axiosError.message.includes('timeout')) {
+          throw new Error(`AI 模型响应超时，请稍后重试或使用更简单的命令 (当前超时设置: ${this.timeout / 1000}秒)`);
         }
-        throw new Error(`OpenAI API Error: ${error.response?.data?.error?.message || error.message}`);
+        throw new Error(`OpenAI API Error: ${axiosError.response?.data?.error?.message || axiosError.message}`);
       }
       throw error;
     }
@@ -84,7 +111,7 @@ export class OpenAICompatibleClient {
       }
 
       // Use /chat/completions since baseURL already includes /v1
-      const response = await this.client.post('/chat/completions', data, {
+      const response = await this.client.post<NodeJS.ReadableStream>('/chat/completions', data, {
         responseType: 'stream',
       });
 
@@ -114,8 +141,9 @@ export class OpenAICompatibleClient {
         stream.on('error', reject);
       });
     } catch (error: unknown) {
-      if (error instanceof AxiosError) {
-        throw new Error(`OpenAI API Stream Error: ${error.response?.data?.error?.message || error.message}`);
+      const axiosError = error as AxiosLikeError;
+      if (axiosError.message) {
+        throw new Error(`OpenAI API Stream Error: ${axiosError.response?.data?.error?.message || axiosError.message}`);
       }
       throw error;
     }
@@ -128,11 +156,12 @@ export class OpenAICompatibleClient {
   async listModels(): Promise<string[]> {
     try {
       // Use /models since baseURL already includes /v1
-      const response = await this.client.get('/models');
+      const response = await this.client.get<ModelListResponse>('/models');
       return response.data.data?.map((model: { id: string }) => model.id) || [];
     } catch (error: unknown) {
-      if (error instanceof AxiosError) {
-        throw new Error(`OpenAI API Error: ${error.response?.data?.error?.message || error.message}`);
+      const axiosError = error as AxiosLikeError;
+      if (axiosError.message) {
+        throw new Error(`OpenAI API Error: ${axiosError.response?.data?.error?.message || axiosError.message}`);
       }
       throw error;
     }
@@ -162,7 +191,7 @@ export class OpenAICompatibleClient {
     }
     if (config.apiKey) {
       this.apiKey = config.apiKey;
-      this.client.defaults.headers.Authorization = `Bearer ${this.apiKey}`;
+      this.client.defaults.headers.common.Authorization = `Bearer ${this.apiKey}`;
     }
     if (config.model) {
       this.model = config.model;

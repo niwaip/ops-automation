@@ -7,8 +7,8 @@ import {
   ResumeRuntimeSessionDto,
   ListRuntimeSessionsDto,
 } from './runtime-session.dto';
-import { RedisService } from '../lock/redis.service';
 import { AllocationService } from '../allocation/allocation.service';
+import { FreezeService } from '../freeze/freeze.service';
 
 // RuntimeSession state type
 type RuntimeSessionState = 'allocating' | 'ready' | 'busy' | 'frozen' | 'closed' | 'error';
@@ -29,8 +29,8 @@ export class RuntimeSessionService {
 
   constructor(
     private readonly prisma: PrismaService,
-    private readonly redisService: RedisService,
     private readonly allocationService: AllocationService,
+    private readonly freezeService: FreezeService,
   ) {}
 
   async create(dto: CreateRuntimeSessionDto): Promise<RuntimeSessionDto> {
@@ -48,7 +48,7 @@ export class RuntimeSessionService {
       connectionInfo = workerInfo.endpoints as unknown as Record<string, unknown>;
     }
 
-    // Create RuntimeSession in PostgreSQL
+    // PostgreSQL stores the formal runtime state. Redis only mirrors control data.
     const runtimeSession = await this.prisma.runtimeSession.create({
       data: {
         executionId: dto.executionId,
@@ -57,10 +57,16 @@ export class RuntimeSessionService {
         profileId: dto.profileId || dto.userId,
         state: 'ready',
         controlMode: 'AGENT_RUNNING',
-        connectionInfoJson: connectionInfo as any,
+        connectionInfoJson: this.asJsonValue(connectionInfo),
         lastActivityAt: new Date(),
       },
     });
+
+    await this.freezeService.syncRuntimeControlState(
+      runtimeSession.id,
+      runtimeSession.state,
+      runtimeSession.controlMode as 'AGENT_RUNNING' | 'HUMAN_CONTROL',
+    );
 
     this.logger.log(`RuntimeSession created: ${runtimeSession.id}, worker=${workerId}`);
 
@@ -104,6 +110,8 @@ export class RuntimeSessionService {
       },
     });
 
+    await this.freezeService.freezeSession(id, dto.reason);
+
     this.logger.log(`RuntimeSession ${id} frozen: ${dto.reason}`);
 
     return this.toDto(updated);
@@ -132,6 +140,8 @@ export class RuntimeSessionService {
         lastActivityAt: new Date(),
       },
     });
+
+    await this.freezeService.unfreezeSession(id, dto.stepId);
 
     this.logger.log(`RuntimeSession ${id} resumed`);
 
@@ -162,10 +172,14 @@ export class RuntimeSessionService {
       where: { id },
       data: {
         state: 'closed',
+        controlMode: 'AGENT_RUNNING',
+        freezeReason: null,
         closedAt: new Date(),
         lastActivityAt: new Date(),
       },
     });
+
+    await this.freezeService.clearControlState(id);
 
     this.logger.log(`RuntimeSession ${id} closed, worker released`);
 
@@ -213,9 +227,16 @@ export class RuntimeSessionService {
       state: session.state as string,
       controlMode: session.controlMode as string,
       connectionInfo: session.connectionInfoJson as Record<string, unknown> | undefined,
+      healthStatus: session.healthStatus as string | undefined,
       freezeReason: session.freezeReason as string | undefined,
+      lastActivityAt: session.lastActivityAt as Date | undefined,
       createdAt: session.createdAt as Date,
       updatedAt: session.updatedAt as Date,
+      closedAt: session.closedAt as Date | undefined,
     };
+  }
+
+  private asJsonValue(value: Record<string, unknown> | undefined) {
+    return value as never;
   }
 }

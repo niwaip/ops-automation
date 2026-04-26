@@ -14,6 +14,7 @@ import { AgentService } from '../modules/agent/agent.service';
 import { RecognizerService } from '../modules/recognizer/recognizer.service';
 import { DeciderService } from '../modules/decider/decider.service';
 import { ModelService } from '../modules/model/model.service';
+import { PlannerService } from '../modules/planner/planner.service';
 import { ToolExecutor } from '../modules/react-engine/tool-executor';
 import {
   AIAgentDTO,
@@ -22,6 +23,8 @@ import {
   DecideFailureResponseDTO,
   ExecuteActivityDTO,
   ExecuteActivityResponseDTO,
+  GeneratePlanDTO,
+  PlanDraftDTO,
   RecognizeParamsDTO,
   RecognizeParamsResponseDTO,
 } from '../interfaces';
@@ -35,6 +38,7 @@ export class OrchestrationController {
     private readonly agentService: AgentService,
     private readonly recognizerService: RecognizerService,
     private readonly deciderService: DeciderService,
+    private readonly plannerService: PlannerService,
     private readonly toolExecutor: ToolExecutor,
   ) {}
 
@@ -85,6 +89,22 @@ export class OrchestrationController {
   @ApiResponse({ status: 200, description: 'Returns activity execution result' })
   async executeActivity(@Body() body: ExecuteActivityDTO): Promise<ExecuteActivityResponseDTO> {
     return this.agentService.executeActivity(body.code, body.fn, body.taskQueue, body.input);
+  }
+
+  @Post('plans/generate')
+  @ApiOperation({ summary: 'Generate a structured plan draft for v3 planner facade' })
+  @ApiResponse({ status: 200, description: 'Returns a structured plan draft' })
+  async generatePlan(
+    @Body() body: GeneratePlanDTO,
+    @Req() req: Request & { traceId?: string },
+  ): Promise<PlanDraftDTO> {
+    const traceId = getOrCreateTraceId(req.traceId);
+    return this.plannerService.generatePlan({
+      request: body,
+      userId: body.user_id,
+      authToken: req.headers.authorization,
+      traceId,
+    });
   }
 
   @Post('tools/refresh')

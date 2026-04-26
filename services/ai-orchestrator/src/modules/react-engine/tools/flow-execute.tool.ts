@@ -269,13 +269,13 @@ export class FlowExecuteTool extends BaseTool {
           return {
             result: {
               success: Boolean(runtimeData.success),
-              output: Boolean(runtimeData.success)
+              output: runtimeData.success
                 ? formatRuntimeSummary(skill.name, runtimeSummaryData)
                 : `Temporal Workflow 执行失败: ${String(runtimeData.error || '未知错误')}`,
               data: {
                 runtime: 'temporal_workflow',
                 taskComplete: Boolean(runtimeData.success),
-                finalAnswer: Boolean(runtimeData.success)
+                finalAnswer: runtimeData.success
                   ? formatRuntimeSummary(skill.name, runtimeSummaryData)
                   : undefined,
                 result: runtimeData.result ?? null,
@@ -365,7 +365,7 @@ export class FlowExecuteTool extends BaseTool {
         };
       }
       let stepResult: string;
-      let nextStepIndex = stepIndex + 1;
+      const nextStepIndex = stepIndex + 1;
 
       this.logger.debug(`Executing step ${stepIndex}: ${currentStep.name} (${currentStep.type})`);
 
@@ -391,7 +391,7 @@ export class FlowExecuteTool extends BaseTool {
             currentStep.api.endpoint,
             execParams,
           );
-          let endpoint = resolveApiUrl(resolvedEndpoint);
+          const endpoint = resolveApiUrl(resolvedEndpoint);
 
           try {
             const apiResponse = await axios({

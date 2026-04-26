@@ -5,8 +5,29 @@
 
 import { apiClient } from './client';
 
+const CONTROL_PLANE_API_BASE_URL = import.meta.env.VITE_CONTROL_PLANE_API_URL || '';
+
+const getExecutionApiUrl = (path: string) => {
+  if (CONTROL_PLANE_API_BASE_URL) {
+    return `${CONTROL_PLANE_API_BASE_URL}${path}`;
+  }
+
+  return path;
+};
+
 // Execution status type
-export type ExecutionStatus = 'queued' | 'running' | 'pending_approval' | 'human_control' | 'succeeded' | 'failed' | 'cancelled';
+export type ExecutionStatus =
+  | 'draft'
+  | 'queued'
+  | 'running'
+  | 'waiting_input'
+  | 'pending_approval'
+  | 'human_control'
+  | 'paused'
+  | 'succeeded'
+  | 'failed'
+  | 'cancelled'
+  | 'rolled_back';
 
 // Execution DTO from control-plane
 export interface ExecutionDto {
@@ -77,6 +98,18 @@ export interface ResumeExecutionRequest {
   comment?: string;
 }
 
+export interface ApprovalDecisionRequest {
+  comment?: string;
+  decidedBy?: string;
+}
+
+// Submit input request
+export interface SubmitInputRequest {
+  stepId: string;
+  input: Record<string, unknown>;
+  submittedBy?: string;
+}
+
 // List executions request
 export interface ListExecutionsRequest {
   page?: number;
@@ -89,37 +122,57 @@ export interface ListExecutionsRequest {
 export const executionApi = {
   // Create a new execution
   create: (data: CreateExecutionRequest) => {
-    return apiClient.post<ExecutionDto>('/executions', data);
+    return apiClient.post<ExecutionDto>(getExecutionApiUrl('/executions'), data);
   },
 
   // Get execution by ID
   getById: (id: string) => {
-    return apiClient.get<ExecutionDto>(`/executions/${id}`);
+    return apiClient.get<ExecutionDto>(getExecutionApiUrl(`/executions/${id}`));
   },
 
   // Get execution steps
   getSteps: (id: string) => {
-    return apiClient.get<ExecutionStepDto[]>(`/executions/${id}/steps`);
+    return apiClient.get<ExecutionStepDto[]>(getExecutionApiUrl(`/executions/${id}/steps`));
   },
 
   // List executions
   list: (params?: ListExecutionsRequest) => {
-    return apiClient.get<{ data: ExecutionDto[]; total: number; page: number; pageSize: number }>('/executions', { params });
+    return apiClient.get<{ data: ExecutionDto[]; total: number; page: number; pageSize: number }>(getExecutionApiUrl('/executions'), {
+      params,
+    });
   },
 
   // Request human takeover
   takeover: (id: string, data: TakeoverExecutionRequest) => {
-    return apiClient.post<ExecutionDto>(`/executions/${id}/takeover`, data);
+    return apiClient.post<ExecutionDto>(getExecutionApiUrl(`/executions/${id}/takeover`), data);
   },
 
   // Resume execution from human_control
   resume: (id: string, data?: ResumeExecutionRequest) => {
-    return apiClient.post<ExecutionDto>(`/executions/${id}/resume`, data || {});
+    return apiClient.post<ExecutionDto>(getExecutionApiUrl(`/executions/${id}/resume`), data || {});
+  },
+
+  // v3-preferred route for releasing takeover control
+  releaseHumanControl: (id: string, data?: ResumeExecutionRequest) => {
+    return apiClient.post<ExecutionDto>(getExecutionApiUrl(`/executions/${id}/release-human-control`), data || {});
+  },
+
+  approve: (id: string, data?: ApprovalDecisionRequest) => {
+    return apiClient.post<ExecutionDto>(getExecutionApiUrl(`/executions/${id}/approve`), data || {});
+  },
+
+  reject: (id: string, data?: ApprovalDecisionRequest) => {
+    return apiClient.post<ExecutionDto>(getExecutionApiUrl(`/executions/${id}/reject`), data || {});
+  },
+
+  // Submit missing input and resume from waiting_input
+  submitInput: (id: string, data: SubmitInputRequest) => {
+    return apiClient.post<ExecutionDto>(getExecutionApiUrl(`/executions/${id}/submit-input`), data);
   },
 
   // Cancel execution
   cancel: (id: string) => {
-    return apiClient.post<ExecutionDto>(`/executions/${id}/cancel`, {});
+    return apiClient.post<ExecutionDto>(getExecutionApiUrl(`/executions/${id}/cancel`), {});
   },
 };
 

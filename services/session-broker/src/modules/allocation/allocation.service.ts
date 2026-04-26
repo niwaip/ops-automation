@@ -8,7 +8,7 @@ const WORKER_BUSY_PREFIX = 'worker:pool:busy:';
 const WORKER_HEARTBEAT_PREFIX = 'worker:heartbeat:';
 
 // Default worker pool size for development
-const DEFAULT_WORKER_POOL_SIZE = 3;
+const DEFAULT_WORKER_POOL_SIZE = 10;
 
 @Injectable()
 export class AllocationService implements OnModuleInit {

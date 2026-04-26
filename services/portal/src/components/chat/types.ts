@@ -42,7 +42,19 @@ export interface ChatMessage {
     files?: string[];
     fileUrl?: string;
     downloadUrl?: string;
-    taskStatus?: 'waiting_input' | 'completed' | 'failed';
+    missingInputs?: Array<{
+      name?: string;
+      description?: string;
+      missing?: boolean;
+    }>;
+    taskStatus?: 'waiting_input' | 'pending_approval' | 'running' | 'completed' | 'failed';
+    executionId?: string;
+    executionStatus?: string;
+    finalResult?: string;
+    finalResultData?: unknown;
+    finalSummary?: string;
+    errorMessage?: string;
+    hasBusinessResult?: boolean;
   };
   isStreaming?: boolean;
 }
@@ -109,6 +121,7 @@ export interface ChatRequest {
   message: string;
   sessionId?: string;
   userId?: string;
+  executionId?: string;
   userRoles?: string[];
   modelId?: string;
   files?: UploadedFile[];

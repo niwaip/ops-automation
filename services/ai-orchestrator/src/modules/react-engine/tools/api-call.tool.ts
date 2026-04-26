@@ -7,6 +7,14 @@ import axios from 'axios';
 import { BaseTool } from './base.tool';
 import { ToolResult, ExecutionContext } from '../interfaces';
 
+type AxiosLikeError = {
+  code?: string;
+  response?: {
+    status: number;
+    statusText: string;
+  };
+};
+
 export class ApiCallTool extends BaseTool {
   constructor() {
     super(
@@ -89,26 +97,27 @@ export class ApiCallTool extends BaseTool {
       };
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : 'Unknown error';
+      const axiosError = error as AxiosLikeError;
 
       // 处理特定错误
-      if (axios.isAxiosError(error)) {
-        if (error.response) {
+      if (axiosError.response) {
           return {
             success: false,
-            output: `API调用失败: ${error.response.status} - ${error.response.statusText}`,
+            output: `API调用失败: ${axiosError.response.status} - ${axiosError.response.statusText}`,
             data: {
               error: 'api_error',
-              statusCode: error.response.status,
+              statusCode: axiosError.response.status,
               url,
             },
           };
-        } else if (error.code === 'ECONNABORTED') {
+      }
+
+      if (axiosError.code === 'ECONNABORTED') {
           return {
             success: false,
             output: `API调用超时: ${url}`,
             data: { error: 'timeout', url },
           };
-        }
       }
 
       return {

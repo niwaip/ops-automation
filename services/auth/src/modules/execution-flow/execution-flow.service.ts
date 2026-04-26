@@ -19,35 +19,40 @@ import axios from 'axios';
 // Default execution flow templates
 const DEFAULT_FLOW_TEMPLATES: CreateExecutionFlowTemplateDTO[] = [
   {
-    name: '天气查询流程',
-    description: '查询指定城市的天气信息，调用天气API获取实时数据',
-    goal: '根据用户提供的城市名称，获取并展示该城市的实时天气报告',
-    expectedResult: '包含温度、天气状况、风速的格式化文本报告',
+    name: '通用外部查询流程',
+    description: '根据用户输入调用外部 API，并返回结构化查询结果',
+    goal: '接收查询关键词和目标接口地址，调用外部服务后整理返回结果',
+    expectedResult: '包含原始响应与格式化摘要的查询结果',
     paramsSchema: {
       properties: {
-        city: { 
-          type: 'string', 
-          description: '城市名称，如：北京',
+        query: {
+          type: 'string',
+          description: '查询关键词或关键参数',
           required: true,
-          extractionPrompt: '从用户请求中识别城市参数。如果用户未提供，请根据上下文推断或礼貌询问。'
-        }
+          extractionPrompt: '从用户请求中识别本次查询所需的核心关键词；如果用户未提供，请礼貌询问。',
+        },
+        endpoint: {
+          type: 'string',
+          description: '外部服务接口地址，支持使用 {query} 占位符',
+          required: true,
+        },
       },
-      required: ['city']
+      required: ['query', 'endpoint'],
     },
     category: 'query',
     steps: [
       {
         type: 'api',
-        name: '获取天气数据',
+        name: '调用外部查询接口',
         api: {
-          endpoint: 'https://uapis.cn/api/v1/misc/weather?city={city}&lang=zh',
+          endpoint: '{endpoint}',
           method: 'GET',
-          timeout: 5000, // 优化建议：为 API 调用添加超时配置
+          timeout: 5000,
         },
-        expectedOutput: '天气 JSON 数据',
+        expectedOutput: '外部服务响应数据',
       },
     ],
-    executionFlowKeys: ['天气', '查询天气', '天气预报', 'weather'],
+    executionFlowKeys: ['查询', '外部接口', 'API', '检索'],
     isPublic: true,
   },
   {

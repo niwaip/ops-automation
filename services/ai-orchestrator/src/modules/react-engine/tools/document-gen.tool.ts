@@ -7,6 +7,12 @@ import { BaseTool } from './base.tool';
 import { ToolResult, ExecutionContext } from '../interfaces';
 import axios from 'axios';
 
+type DocumentGenerateResponse = {
+  downloadUrl?: string;
+  fileName?: string;
+  format?: string;
+};
+
 export class DocumentGenTool extends BaseTool {
   private carboneApiUrl: string;
 
@@ -62,7 +68,7 @@ export class DocumentGenTool extends BaseTool {
       }
 
       // 调用Carbone渲染API
-      const response = await axios.post(
+      const response = await axios.post<DocumentGenerateResponse>(
         `${this.carboneApiUrl}/studio/render`,
         {
           templateId,
@@ -72,7 +78,7 @@ export class DocumentGenTool extends BaseTool {
         { timeout: 30000 },
       );
 
-      if (response.data && response.data.downloadUrl) {
+      if (response.data?.downloadUrl) {
         return {
           success: true,
           output: `文档已生成，下载链接: ${response.data.downloadUrl}`,

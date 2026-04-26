@@ -15,6 +15,7 @@ const exec = promisify(require('child_process').exec);
  */
 @Injectable()
 export class AgentService {
+  private readonly logger = new Logger(AgentService.name);
   private agents: Map<string, AIAgentDTO> = new Map();
   private agentClients: Map<string, OpenAICompatibleClient> = new Map();
   private agentContexts: Map<string, ChatMessage[]> = new Map();

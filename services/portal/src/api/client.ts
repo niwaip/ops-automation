@@ -16,6 +16,8 @@ export interface ApiError {
 type RequestConfig = {
   headers?: Record<string, string>;
   url?: string;
+  params?: object;
+  timeout?: number;
   _retry?: boolean;
 };
 
@@ -47,7 +49,7 @@ class ApiClient {
     this.setupInterceptors();
   }
 
-  private async refreshAccessToken(): Promise<string | null> {
+  async refreshAccessToken(): Promise<string | null> {
     const { refreshToken, logout, setTokens } = useAuthStore.getState();
 
     if (!refreshToken) {
@@ -149,4 +151,5 @@ class ApiClient {
 }
 
 export const apiClient = new ApiClient();
+export const refreshAccessToken = () => apiClient.refreshAccessToken();
 export default apiClient;

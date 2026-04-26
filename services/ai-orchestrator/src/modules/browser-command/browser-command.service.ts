@@ -362,7 +362,7 @@ export class BrowserCommandService {
     for (const pattern of clickResultPatterns) {
       const match = input.match(pattern);
       if (match && match[1]) {
-        let indexStr = match[1].replace('第', '').replace('个', '').replace('条', '').toLowerCase();
+        const indexStr = match[1].replace('第', '').replace('个', '').replace('条', '').toLowerCase();
         const index = indexMap[indexStr] || parseInt(indexStr, 10);
         if (index > 0) {
           return {
@@ -618,7 +618,7 @@ IMPORTANT for SEARCH operations ("搜索xxx"):
 Examples:
 - "打开微博" -> {"commands":[{"tool":"navigate","params":{"url":"https://weibo.com"},"description":"打开微博"}],"explanation":"导航到微博"}
 - "打开百度" -> {"commands":[{"tool":"navigate","params":{"url":"https://www.baidu.com"},"description":"打开百度"}],"explanation":"导航到百度首页"}
-- "在百度搜索天气" -> {"commands":[{"tool":"navigate","params":{"url":"https://www.baidu.com/s?wd=天气"},"description":"搜索天气"}],"explanation":"在百度搜索天气"}
+- "在百度搜索产品公告" -> {"commands":[{"tool":"navigate","params":{"url":"https://www.baidu.com/s?wd=产品公告"},"description":"搜索产品公告"}],"explanation":"在百度搜索产品公告"}
 - "搜索 MCP 协议" -> {"commands":[{"tool":"search","params":{"query":"MCP 协议"},"description":"搜索MCP协议"}],"explanation":"在当前页面搜索MCP协议"}
 - "点击登录按钮" -> {"commands":[{"tool":"click","params":{"text":"登录"},"description":"点击登录"}],"explanation":"点击登录按钮"}
 - "点击第一个搜索结果" -> {"commands":[{"tool":"click_result","params":{"index":1},"description":"点击第一个结果"}],"explanation":"点击第一个搜索结果"}

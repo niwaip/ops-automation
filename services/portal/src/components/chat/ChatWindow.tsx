@@ -4,7 +4,7 @@
  */
 
 import React, { useEffect, useRef, useState } from 'react';
-import { Spin, Button, Empty, Typography } from 'antd';
+import { Spin, Button, Empty, Typography, message as antdMessage } from 'antd';
 import { CloseOutlined } from '@ant-design/icons';
 import { useChatStore } from './chatStore';
 import { useAuthStore } from '../../store/authStore';
@@ -12,6 +12,8 @@ import ChatMessage from './ChatMessage';
 import ChatInput from './ChatInput';
 import SkillConfirm from './SkillConfirm';
 import { streamChat, getAvailableModels } from './chatApi';
+import { executionApi } from '../../api/execution';
+import { ChatRequest } from './types';
 import { v4 as uuidv4 } from 'uuid';
 import './ChatWindow.css';
 
@@ -51,6 +53,38 @@ const ChatWindow: React.FC = () => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   // 本地流式内容状态，用于实时显示
   const [localStreamingContent, setLocalStreamingContent] = useState('');
+
+  const resolveTaskStatus = (
+    eventType: 'result' | 'waiting_input' | 'error',
+    status?: string,
+    hasBusinessResult?: boolean,
+  ): 'waiting_input' | 'pending_approval' | 'running' | 'completed' | 'failed' => {
+    if (eventType === 'error') {
+      return 'failed';
+    }
+
+    if (eventType === 'waiting_input' || status === 'waiting_input') {
+      return 'waiting_input';
+    }
+
+    if (status === 'pending_approval') {
+      return 'pending_approval';
+    }
+
+    if (status && ['queued', 'running', 'pending_approval'].includes(status)) {
+      return 'running';
+    }
+
+    if (eventType === 'result' && hasBusinessResult) {
+      return 'completed';
+    }
+
+    if (status && ['succeeded', 'failed', 'cancelled'].includes(status)) {
+      return status === 'failed' ? 'failed' : 'completed';
+    }
+
+    return 'running';
+  };
 
   // 加载可用模型
   useEffect(() => {
@@ -100,63 +134,115 @@ const ChatWindow: React.FC = () => {
       isStreaming: true,
       metadata: {
         taskStatus: undefined,
+        finalResult: '',
+        finalResultData: undefined,
+        finalSummary: '',
+        errorMessage: '',
       },
     };
     addMessage(assistantMessage);
 
+    // 只有等待补充输入的场景，才延续上一次执行单
+    const lastAssistantMessage = [...messages].reverse().find(m => m.role === 'assistant');
+    const executionId =
+      lastAssistantMessage?.metadata?.taskStatus === 'waiting_input'
+        ? lastAssistantMessage.metadata.executionId
+        : undefined;
+
+    startAssistantStream(assistantMessageId, {
+      message: content,
+      sessionId: currentSession?.id,
+      userId: user?.id || undefined,
+      executionId,
+      userRoles: user?.role ? [user.role] : undefined,
+      modelId: selectedModel || undefined,
+      files: filesToSend,
+      config: {
+        mode: chatMode,
+        thinking: enableThinking,
+        webSearch: enableWebSearch,
+      },
+    });
+  };
+
+  const startAssistantStream = (assistantMessageId: string, request: ChatRequest) => {
     clearStreaming();
     clearUploadedFiles();
     setStreaming(true);
     setLocalStreamingContent('');
 
-    // 流式内容累积
     let accumulatedContent = '';
 
-    // 发送流式请求（使用保存的文件副本），返回中止函数
     const abortStreaming = streamChat(
-      {
-        message: content,
-        sessionId: currentSession?.id,
-        userId: user?.id || undefined,
-        userRoles: user?.role ? [user.role] : undefined,
-        modelId: selectedModel || undefined,
-        files: filesToSend,
-        config: {
-          mode: chatMode,
-          thinking: enableThinking,
-          webSearch: enableWebSearch,
-        },
-      },
+      request,
       (event) => {
         addStreamEvent(event);
 
-        // 处理不同类型事件 - 实时更新显示
         if (event.type === 'thought') {
           accumulatedContent += `【思考】${event.content}\n`;
+          updateMessageMetadataById(assistantMessageId, {
+            taskStatus: 'running',
+            executionId: event.data?.executionId as string | undefined,
+            executionStatus: event.data?.status as string | undefined,
+            errorMessage: '',
+          });
         } else if (event.type === 'action') {
           accumulatedContent += `【行动】${event.content}\n`;
+          updateMessageMetadataById(assistantMessageId, {
+            taskStatus: 'running',
+            executionId: event.data?.executionId as string | undefined,
+            executionStatus: event.data?.status as string | undefined,
+            errorMessage: '',
+          });
         } else if (event.type === 'observation') {
           accumulatedContent += `【观察】${event.content}\n`;
-        } else if (event.type === 'result' || event.type === 'waiting_input') {
-          accumulatedContent = event.content; // 最终结果替换所有内容
           updateMessageMetadataById(assistantMessageId, {
-            taskStatus: event.type === 'waiting_input' ? 'waiting_input' : 'completed',
+            taskStatus: 'running',
+            executionId: event.data?.executionId as string | undefined,
+            executionStatus: event.data?.status as string | undefined,
+            errorMessage: '',
+          });
+        } else if (event.type === 'result' || event.type === 'waiting_input') {
+          const hasBusinessResult = Boolean(event.data?.hasBusinessResult);
+          const executionStatus = event.data?.status as string | undefined;
+          const missingInputs = Array.isArray(event.data?.missingInputs)
+            ? event.data?.missingInputs as Array<{ name?: string; description?: string; missing?: boolean }>
+            : undefined;
+
+          if (!hasBusinessResult && event.content) {
+            accumulatedContent += `${event.content}\n`;
+          }
+
+          updateMessageMetadataById(assistantMessageId, {
+            taskStatus: resolveTaskStatus(event.type, executionStatus, hasBusinessResult),
+            executionId: event.data?.executionId as string,
+            executionStatus,
+            finalResult: event.type === 'result' && hasBusinessResult ? event.content : '',
+            finalResultData: event.type === 'result' && hasBusinessResult ? event.data?.result : undefined,
+            finalSummary: event.type === 'waiting_input' || !hasBusinessResult ? event.content : '',
+            hasBusinessResult,
+            missingInputs,
+            errorMessage: '',
           });
         } else if (event.type === 'error') {
-          accumulatedContent += `❌ 错误: ${event.content}\n`;
+          if (event.content) {
+            accumulatedContent += `${event.content}\n`;
+          }
           updateMessageMetadataById(assistantMessageId, {
             taskStatus: 'failed',
+            executionId: event.data?.executionId as string | undefined,
+            executionStatus: event.data?.status as string | undefined,
+            finalResultData: undefined,
+            errorMessage: event.content,
           });
         } else if (event.type === 'params_confirm') {
           const skill = event.data?.skill as { skillName?: string } | undefined;
-          // 参数确认场景
           setPendingParamsConfirm(
             event.data?.params as Record<string, unknown>,
             skill?.skillName || null,
           );
         }
 
-        // 实时更新本地状态和消息
         setLocalStreamingContent(accumulatedContent);
         updateMessageById(assistantMessageId, accumulatedContent, true);
       },
@@ -172,7 +258,6 @@ const ChatWindow: React.FC = () => {
         setStreaming(false);
         setAbortStreaming(null);
         setPendingParamsConfirm(null, null);
-        // 最终更新消息
         if (accumulatedContent) {
           updateMessageById(assistantMessageId, accumulatedContent, false);
         }
@@ -180,8 +265,69 @@ const ChatWindow: React.FC = () => {
       }
     );
 
-    // 存储中止函数
     setAbortStreaming(abortStreaming);
+  };
+
+  const handleApproveExecution = async (messageId: string, executionId: string) => {
+    const execution = await executionApi.approve(executionId);
+
+    updateMessageMetadataById(messageId, {
+      taskStatus: 'running',
+      executionId,
+      executionStatus: execution.status,
+      finalSummary: '审批已通过，任务继续执行中。',
+      errorMessage: '',
+    });
+
+    antdMessage.success('已批准任务，正在继续执行');
+
+    const assistantMessageId = uuidv4();
+    addMessage({
+      id: assistantMessageId,
+      sessionId: currentSession?.id || '',
+      role: 'assistant',
+      content: '',
+      timestamp: new Date(),
+      isStreaming: true,
+      metadata: {
+        taskStatus: 'running',
+        executionId,
+        executionStatus: execution.status,
+        finalResult: '',
+        finalResultData: undefined,
+        finalSummary: '审批已通过，正在观察执行进度...',
+        errorMessage: '',
+      },
+    });
+
+    startAssistantStream(assistantMessageId, {
+      message: '继续执行',
+      sessionId: currentSession?.id,
+      userId: user?.id || undefined,
+      executionId,
+      userRoles: user?.role ? [user.role] : undefined,
+      modelId: selectedModel || undefined,
+      files: [],
+      config: {
+        mode: chatMode,
+        thinking: enableThinking,
+        webSearch: enableWebSearch,
+      },
+    });
+  };
+
+  const handleRejectExecution = async (messageId: string, executionId: string) => {
+    const execution = await executionApi.reject(executionId);
+
+    updateMessageMetadataById(messageId, {
+      taskStatus: 'failed',
+      executionId,
+      executionStatus: execution.status,
+      finalSummary: '',
+      errorMessage: '审批已驳回，任务已取消。',
+    });
+
+    antdMessage.success('已驳回任务');
   };
 
   const handleRetryMessage = (messageId: string) => {
@@ -244,6 +390,8 @@ const ChatWindow: React.FC = () => {
               isStreaming={msg.isStreaming && isLoading}
               streamingContent={msg.isStreaming ? localStreamingContent : ''}
               onRetry={msg.role === 'assistant' ? handleRetryMessage : undefined}
+              onApproveExecution={msg.role === 'assistant' ? handleApproveExecution : undefined}
+              onRejectExecution={msg.role === 'assistant' ? handleRejectExecution : undefined}
             />
           ))}
           {isLoading && messages.length === 0 && (

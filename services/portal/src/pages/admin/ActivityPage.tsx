@@ -868,19 +868,19 @@ const ActivityPage: React.FC = () => {
             <Row gutter={16}>
               <Col span={12}>
                 <Form.Item label="名称" required>
-                  <Input value={activityForm.name} onChange={e => updateActivityForm('name', e.target.value)} placeholder="天气查询" />
+                  <Input value={activityForm.name} onChange={e => updateActivityForm('name', e.target.value)} placeholder="示例数据查询" />
                 </Form.Item>
               </Col>
               <Col span={12}>
                 <Form.Item label="函数名" required>
-                  <Input value={activityForm.fn} onChange={e => updateActivityForm('fn', e.target.value)} placeholder="weatherQuery" />
+                  <Input value={activityForm.fn} onChange={e => updateActivityForm('fn', e.target.value)} placeholder="queryExternalData" />
                 </Form.Item>
               </Col>
             </Row>
             <Row gutter={16}>
               <Col span={24}>
                 <Form.Item label="AI 指导说明（描述这个 Activity 的功能，让 AI 生成更准确的代码）">
-                  <TextArea value={activityForm.description} onChange={e => updateActivityForm('description', e.target.value)} placeholder="例如：这是一个天气查询 Activity，查询上海和北京两地的天气并返回结果..." rows={2} />
+                  <TextArea value={activityForm.description} onChange={e => updateActivityForm('description', e.target.value)} placeholder="例如：这是一个通用查询 Activity，接收输入参数后调用外部接口并返回结果..." rows={2} />
                 </Form.Item>
               </Col>
             </Row>
@@ -1132,7 +1132,7 @@ const ActivityPage: React.FC = () => {
                         id={`url-input-${step.id}`}
                         value={step.config.endpoint || ''}
                         onChange={e => updateStep(step.id, 'config', { ...step.config, endpoint: e.target.value })}
-                        placeholder="https://wttr.in/Shanghai?format=j1"
+                        placeholder="https://api.example.com/resource?query={keyword}"
                         prefix={<ApiOutlined />}
                         style={{ marginBottom: 12, borderRadius: 6 }}
                       />
@@ -1144,7 +1144,7 @@ const ActivityPage: React.FC = () => {
                       <TextArea
                         value={step.formatPrompt || ''}
                         onChange={e => updateStep(step.id, 'formatPrompt', e.target.value)}
-                        placeholder="例如：上海天气：晴天，温度 25°C"
+                        placeholder="例如：返回摘要、状态码和结构化字段"
                         rows={2}
                         style={{ fontFamily: 'monospace', marginBottom: 12, borderRadius: 6 }}
                       />

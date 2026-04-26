@@ -7,6 +7,13 @@ import axios from 'axios';
 import { BaseTool } from './base.tool';
 import { ToolResult, ExecutionContext } from '../interfaces';
 
+type DocumentRenderResponse = {
+  downloadUrl?: string;
+  fileName?: string;
+  format?: string;
+  documentId?: string;
+};
+
 // Carbone引擎服务地址（内部调用）
 const CARBONE_SERVICE_URL = process.env.CARBONE_SERVICE_URL || 'http://carbone-engine:3009';
 // 外部可访问的下载地址（返回给用户）
@@ -73,7 +80,7 @@ export class DocumentRenderTool extends BaseTool {
 
     try {
       // 调用Carbone引擎的render API
-      const response = await axios.post(`${CARBONE_SERVICE_URL}/studio/render`, {
+      const response = await axios.post<DocumentRenderResponse>(`${CARBONE_SERVICE_URL}/studio/render`, {
         templateId,
         data,
         format,

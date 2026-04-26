@@ -93,6 +93,61 @@ export interface RollbackCapabilityReleaseDTO {
   reason?: string;
 }
 
+export interface AnalyzeFailureDTO {
+  recordId: string;
+  recordType: 'build' | 'validation' | 'deployment';
+}
+
+export interface AnalyzeFailureResultDTO {
+  analysis: string;
+  explanation: string;
+  isParameterIssue: boolean;
+  suggestedParams?: Record<string, unknown> | null;
+  suggestedAction?: string | null;
+}
+
+export interface SuggestReleaseWizardAssistDTO {
+  environment?: CapabilityDeploymentEnvironment;
+}
+
+export interface SuggestReleaseWizardAssistResultDTO {
+  explanation: string;
+  deployConfig: Record<string, unknown>;
+  testInput: Record<string, unknown>;
+  testUserInput?: string | null;
+}
+
+export interface RefineSkillDraftResultDTO {
+  name: string;
+  description: string;
+  triggerKeywords: string[];
+}
+
+export interface ExecuteCapabilityRuntimeDTO {
+  capabilityId?: string;
+  capabilityVersion?: string;
+  publishedSkillId?: string;
+  runtimeType?: string;
+  executionId?: string;
+  stepId?: string;
+  input?: Record<string, unknown>;
+}
+
+export interface ExecuteCapabilityRuntimeResultDTO {
+  releaseId: string;
+  capabilityId: string;
+  capabilityVersion?: string | null;
+  publishedSkillId: string;
+  runtime: string;
+  fn?: string;
+  taskQueue?: string;
+  success: boolean;
+  output?: Record<string, unknown> | null;
+  result?: Record<string, unknown> | null;
+  logs: string[];
+  error?: string | null;
+}
+
 export interface CapabilityReleaseDTO {
   id: string;
   sourceType: CapabilitySourceType;

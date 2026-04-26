@@ -63,10 +63,14 @@ import os
 import traceback
 import asyncio
 import types
+import ssl
 
 # Set SSL certificates
 os.environ['SSL_CERT_FILE'] = 'CERT_FILE_PATH'
 os.environ['REQUESTS_CA_BUNDLE'] = 'CERT_FILE_PATH'
+
+# Create unverified SSL context for sandbox use
+_ssl_context = ssl._create_unverified_context()
 
 # Create mock temporalio module hierarchy
 class MockActivityLogger:
@@ -219,7 +223,7 @@ class MockRequests:
                 parsed.fragment,
             ))
             req = urllib.request.Request(normalized_url, headers=headers or {})
-            with urllib.request.urlopen(req, timeout=timeout or 30) as r:
+            with urllib.request.urlopen(req, timeout=timeout or 30, context=_ssl_context) as r:
                 return MockResponse(r.status, r.read(), dict(r.headers), url=normalized_url, exceptions_source=self)
         except urllib.error.HTTPError as e:
             body = e.read() if e.fp else b''
@@ -240,7 +244,7 @@ class MockRequests:
                 parsed.fragment,
             ))
             req = urllib.request.Request(normalized_url, data=body, headers=headers or {}, method='POST')
-            with urllib.request.urlopen(req, timeout=timeout or 30) as r:
+            with urllib.request.urlopen(req, timeout=timeout or 30, context=_ssl_context) as r:
                 return MockResponse(r.status, r.read(), dict(r.headers), url=normalized_url, exceptions_source=self)
         except urllib.error.HTTPError as e:
             body = e.read() if e.fp else b''

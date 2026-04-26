@@ -5,7 +5,7 @@
 
 import React, { useMemo, useState } from 'react';
 import { Avatar, Button, Space, Switch, Tag, message as antdMessage } from 'antd';
-import { UserOutlined, RobotOutlined, FileTextOutlined, DownOutlined, RightOutlined, CopyOutlined, RedoOutlined } from '@ant-design/icons';
+import { UserOutlined, RobotOutlined, FileTextOutlined, DownOutlined, RightOutlined, CopyOutlined, RedoOutlined, CheckOutlined, CloseOutlined, LoadingOutlined } from '@ant-design/icons';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { ChatMessage } from './types';
@@ -16,6 +16,8 @@ interface ChatMessageProps {
   isStreaming?: boolean;
   streamingContent?: string;
   onRetry?: (messageId: string) => void;
+  onApproveExecution?: (messageId: string, executionId: string) => Promise<void> | void;
+  onRejectExecution?: (messageId: string, executionId: string) => Promise<void> | void;
 }
 
 // 解析消息内容，分离思考和最终回答
@@ -59,17 +61,85 @@ const parseMessageContent = (content: string): { thoughts: string[]; answer: str
   return { thoughts, answer };
 };
 
+const formatExecutionStatus = (status?: string): string | null => {
+  if (!status) return null;
+
+  const statusMap: Record<string, string> = {
+    succeeded: '已完成',
+    failed: '失败',
+    cancelled: '已取消',
+    waiting_input: '等待输入',
+    running: '执行中',
+    queued: '排队中',
+    pending_approval: '待审批',
+  };
+
+  return statusMap[status] || status;
+};
+
+const toStructuredResultText = (value: unknown): string | null => {
+  if (value === null || value === undefined) return null;
+
+  if (typeof value === 'string') {
+    return value.trim() || null;
+  }
+
+  try {
+    return JSON.stringify(value, null, 2);
+  } catch {
+    return String(value);
+  }
+};
+
+const getErrorPreview = (value?: string): string => {
+  if (!value) {
+    return '任务执行失败，请展开查看具体错误信息。';
+  }
+
+  const preview = value
+    .split('\n')
+    .map((line) => line.trim())
+    .find(Boolean);
+
+  return preview || '任务执行失败，请展开查看具体错误信息。';
+};
+
 const ChatMessageComponent: React.FC<ChatMessageProps> = ({
   message,
   isStreaming,
   streamingContent,
   onRetry,
+  onApproveExecution,
+  onRejectExecution,
 }) => {
   const [thoughtsExpanded, setThoughtsExpanded] = useState(true); // 默认展开思考内容
   const [taskCompleted, setTaskCompleted] = useState(true);
+  const [approvalAction, setApprovalAction] = useState<'approve' | 'reject' | null>(null);
   const isUser = message.role === 'user';
   const rawContent = isStreaming && streamingContent ? streamingContent : message.content;
   const isWaitingInput = message.metadata?.taskStatus === 'waiting_input';
+  const isPendingApproval = message.metadata?.taskStatus === 'pending_approval';
+  const finalResult = message.metadata?.finalResult?.trim();
+  const finalResultData = message.metadata?.finalResultData;
+  const finalSummary = message.metadata?.finalSummary?.trim();
+  const errorMessage = message.metadata?.errorMessage?.trim();
+  const errorPreview = getErrorPreview(errorMessage);
+  const hasBusinessResult = message.metadata?.hasBusinessResult;
+  const executionId = message.metadata?.executionId;
+  const executionStatus = formatExecutionStatus(message.metadata?.executionStatus);
+  const isRunning = message.metadata?.taskStatus === 'running';
+  const showRunningState = isRunning || (Boolean(isStreaming) && !isWaitingInput && !isPendingApproval && !errorMessage);
+  const missingInputs = (message.metadata?.missingInputs || []).filter((item) => item?.missing !== false);
+  const structuredResultText = useMemo(
+    () => toStructuredResultText(finalResultData),
+    [finalResultData],
+  );
+  const shouldShowStructuredResult = Boolean(
+    structuredResultText &&
+    finalResultData &&
+    typeof finalResultData !== 'string' &&
+    structuredResultText !== finalResult,
+  );
 
   // 解析内容
   const { thoughts, answer } = parseMessageContent(rawContent);
@@ -84,6 +154,28 @@ const ChatMessageComponent: React.FC<ChatMessageProps> = ({
       antdMessage.success('已复制');
     } catch {
       antdMessage.error('复制失败');
+    }
+  };
+
+  const handleApproveExecution = async () => {
+    if (!executionId || !onApproveExecution) return;
+
+    try {
+      setApprovalAction('approve');
+      await onApproveExecution(message.id, executionId);
+    } finally {
+      setApprovalAction(null);
+    }
+  };
+
+  const handleRejectExecution = async () => {
+    if (!executionId || !onRejectExecution) return;
+
+    try {
+      setApprovalAction('reject');
+      await onRejectExecution(message.id, executionId);
+    } finally {
+      setApprovalAction(null);
     }
   };
 
@@ -149,6 +241,10 @@ const ChatMessageComponent: React.FC<ChatMessageProps> = ({
       return <div className="chat-message-plain">{answerWithoutTaskCheckbox}</div>;
     }
 
+    if (!answerWithoutTaskCheckbox) {
+      return null;
+    }
+
     return (
       <div className="chat-message-markdown">
         <ReactMarkdown
@@ -180,6 +276,103 @@ const ChatMessageComponent: React.FC<ChatMessageProps> = ({
     );
   };
 
+  const renderOutcomeCard = () => {
+    if (isUser) return null;
+
+    if (errorMessage) {
+      return (
+        <div className="chat-outcome-card error">
+          <div className="chat-outcome-title">任务失败</div>
+          <div className="chat-outcome-meta">
+            {executionStatus && <span>状态：{executionStatus}</span>}
+            {executionId && <span>执行单 ID：{executionId}</span>}
+          </div>
+          <div className="chat-outcome-body">{errorPreview}</div>
+          <details className="chat-outcome-details">
+            <summary>查看详细错误</summary>
+            <pre className="chat-structured-result chat-error-details">{errorMessage}</pre>
+          </details>
+        </div>
+      );
+    }
+
+    if (finalResult) {
+      return (
+        <div className="chat-outcome-card success">
+          <div className="chat-outcome-title">{hasBusinessResult ? '任务结果' : '任务完成'}</div>
+          <div className="chat-outcome-meta">
+            {executionStatus && <span>状态：{executionStatus}</span>}
+            {executionId && <span>执行单 ID：{executionId}</span>}
+          </div>
+          <div className="chat-outcome-body">
+            <ReactMarkdown remarkPlugins={[remarkGfm]}>
+              {finalResult}
+            </ReactMarkdown>
+          </div>
+          {shouldShowStructuredResult && (
+            <details className="chat-outcome-details">
+              <summary>查看结构化结果</summary>
+              <pre className="chat-structured-result">{structuredResultText}</pre>
+            </details>
+          )}
+        </div>
+      );
+    }
+
+    if (finalSummary) {
+      return (
+        <div className={`chat-outcome-card ${isWaitingInput || isPendingApproval ? 'waiting' : 'neutral'}`}>
+          <div className={`chat-outcome-title ${showRunningState ? 'running' : ''}`}>
+            {showRunningState && <LoadingOutlined className="chat-running-icon" />}
+            {isWaitingInput ? '等待输入' : isPendingApproval ? '等待审批' : showRunningState ? '执行中' : '任务状态'}
+          </div>
+          <div className="chat-outcome-meta">
+            {executionStatus && <span>状态：{executionStatus}</span>}
+            {executionId && <span>执行单 ID：{executionId}</span>}
+          </div>
+          <div className="chat-outcome-body">{finalSummary}</div>
+          {isWaitingInput && missingInputs.length > 0 && (
+            <div className="chat-outcome-body">
+              <div>请补充以下参数：</div>
+              <ul>
+                {missingInputs.map((item, index) => (
+                  <li key={`${item.name || 'missing'}-${index}`}>
+                    {item.name || '未命名参数'}
+                    {item.description ? `：${item.description}` : ''}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+          {isPendingApproval && executionId && (
+            <div className="chat-outcome-actions">
+              <Button
+                type="primary"
+                size="small"
+                icon={<CheckOutlined />}
+                loading={approvalAction === 'approve'}
+                onClick={handleApproveExecution}
+              >
+                批准
+              </Button>
+              <Button
+                danger
+                size="small"
+                icon={<CloseOutlined />}
+                loading={approvalAction === 'reject'}
+                onClick={handleRejectExecution}
+              >
+                驳回
+              </Button>
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    return null;
+  };
+
   return (
     <div className={`chat-message ${isUser ? 'user' : 'assistant'}`}>
       {!isUser && (
@@ -197,6 +390,18 @@ const ChatMessageComponent: React.FC<ChatMessageProps> = ({
               等待你输入
             </Tag>
           )}
+          {showRunningState && (
+            <Tag color="processing" className="chat-running-tag">
+              <LoadingOutlined className="chat-running-icon" />
+              执行中
+            </Tag>
+          )}
+          {isPendingApproval && (
+            <Tag color="orange" className="chat-waiting-tag">
+              等待你审批
+            </Tag>
+          )}
+          {renderOutcomeCard()}
           {renderContent()}
           {renderFiles()}
           {renderDownloadLink()}
