@@ -8,6 +8,7 @@ import { BaseTool } from './base.tool';
 import { ToolResult, ExecutionContext, AvailableSkillDefinition } from '../interfaces';
 
 const CARBONE_SERVICE_URL = process.env.CARBONE_SERVICE_URL || 'http://carbone-engine:3009';
+const REPORT_SERVICE_URL = process.env.REPORT_SERVICE_URL || 'http://ops-report:3008';
 
 interface GenerateParamsResponse {
   success?: boolean;
@@ -16,8 +17,16 @@ interface GenerateParamsResponse {
 
 interface TemplateCandidate {
   skill: AvailableSkillDefinition;
+  templateName?: string;
   score: number;
   reasons: string[];
+}
+
+interface ReportTemplateRegistryItem {
+  id: string;
+  name: string;
+  format?: string;
+  ai_config?: Record<string, unknown>;
 }
 
 export class DocumentIntakeTool extends BaseTool {
@@ -55,8 +64,12 @@ export class DocumentIntakeTool extends BaseTool {
     context: ExecutionContext,
   ): Promise<ToolResult> {
     const userInput = (params.userInput as string) || context.originalUserInput || '';
-    const requestedTemplateId = params.templateId as string | undefined;
-    const requestedSkillId = params.skillId as string | undefined;
+    const requestedTemplateId =
+      (params.templateId as string)
+      || context.documentContext?.selectedTemplateId;
+    const requestedSkillId =
+      (params.skillId as string)
+      || context.documentContext?.selectedSkillId;
 
     if (!userInput.trim()) {
       return {
@@ -69,8 +82,10 @@ export class DocumentIntakeTool extends BaseTool {
     }
 
     const availableSkills = context.availableSkills || [];
+    const templateRegistry = await this.fetchTemplateRegistry();
     const candidates = this.rankDocumentSkills(
       availableSkills,
+      templateRegistry,
       userInput,
       requestedTemplateId,
       requestedSkillId,
@@ -79,6 +94,20 @@ export class DocumentIntakeTool extends BaseTool {
     const selectedSkill = candidates[0]?.skill || null;
 
     if (!selectedSkill) {
+      const matchedTemplate = templateRegistry.find((item) => item.id === requestedTemplateId);
+      if (requestedTemplateId && matchedTemplate) {
+        return {
+          success: false,
+          output: `模板「${matchedTemplate.name}」已选择，但当前未找到绑定该模板的可执行技能。`,
+          data: {
+            error: 'template_without_bound_skill',
+            templateId: matchedTemplate.id,
+            templateName: matchedTemplate.name,
+          },
+          requiresUserInput: true,
+          userInputPrompt: '请改选其他模板，或先在技能配置中绑定该模板后再试。',
+        };
+      }
       return {
         success: false,
         output: '当前未找到可用于文档生成的技能（需要配置 carboneSkillId/carboneTemplateId）。',
@@ -90,8 +119,20 @@ export class DocumentIntakeTool extends BaseTool {
     if (shouldClarify) {
       const topCandidates = candidates.slice(0, 3).map((item, index) => {
         const templateId = item.skill.carboneTemplateId || '-';
-        return `${index + 1}. ${item.skill.skillName}（templateId: ${templateId}, score: ${item.score.toFixed(2)}）`;
+        const templateNameSuffix = item.templateName ? ` / ${item.templateName}` : '';
+        return `${index + 1}. ${item.skill.skillName}${templateNameSuffix}（templateId: ${templateId}, score: ${item.score.toFixed(2)}）`;
       });
+      context.documentContext = {
+        ...(context.documentContext || {}),
+        pendingTemplateClarification: true,
+        candidateRanking: candidates.slice(0, 3).map((item) => ({
+          skillId: item.skill.skillId,
+          skillName: item.skill.skillName,
+          templateId: item.skill.carboneTemplateId,
+          templateName: item.templateName,
+          score: item.score,
+        })),
+      };
       return {
         success: false,
         output: '检测到多个文档模板候选，需先确认模板后再生成参数。',
@@ -101,6 +142,7 @@ export class DocumentIntakeTool extends BaseTool {
             skillId: item.skill.skillId,
             skillName: item.skill.skillName,
             templateId: item.skill.carboneTemplateId,
+            templateName: item.templateName,
             score: item.score,
             reasons: item.reasons,
           })),
@@ -134,6 +176,21 @@ export class DocumentIntakeTool extends BaseTool {
 
       const generatedParams = response.data?.generatedData || {};
       context.collectedParams = generatedParams;
+      context.documentContext = {
+        ...(context.documentContext || {}),
+        pendingTemplateClarification: false,
+        selectedTemplateId: selectedSkill.carboneTemplateId,
+        selectedTemplateName: candidates[0]?.templateName || selectedSkill.skillName,
+        selectedSkillId: selectedSkill.skillId,
+        selectionSource: requestedTemplateId || requestedSkillId ? 'explicit' : context.skill?.skillId ? 'context' : 'ranking',
+        candidateRanking: candidates.slice(0, 3).map((item) => ({
+          skillId: item.skill.skillId,
+          skillName: item.skill.skillName,
+          templateId: item.skill.carboneTemplateId,
+          templateName: item.templateName,
+          score: item.score,
+        })),
+      };
 
       // 将匹配技能绑定到上下文，后续 document_render 可直接消费 templateId
       context.skill = {
@@ -163,11 +220,13 @@ export class DocumentIntakeTool extends BaseTool {
           selectedSkillName: selectedSkill.skillName,
           carboneSkillId: selectedSkill.carboneSkillId,
           templateId: selectedSkill.carboneTemplateId,
+          templateName: candidates[0]?.templateName || selectedSkill.skillName,
           paramsDraft: generatedParams,
           candidateRanking: candidates.slice(0, 3).map((item) => ({
             skillId: item.skill.skillId,
             skillName: item.skill.skillName,
             templateId: item.skill.carboneTemplateId,
+            templateName: item.templateName,
             score: item.score,
           })),
         },
@@ -194,6 +253,7 @@ export class DocumentIntakeTool extends BaseTool {
 
   private rankDocumentSkills(
     availableSkills: AvailableSkillDefinition[],
+    templateRegistry: ReportTemplateRegistryItem[],
     userInput: string,
     requestedTemplateId?: string,
     requestedSkillId?: string,
@@ -212,7 +272,12 @@ export class DocumentIntakeTool extends BaseTool {
     if (requestedTemplateId) {
       const matchedByTemplate = documentSkills.find((item) => item.carboneTemplateId === requestedTemplateId);
       if (matchedByTemplate) {
-        return [{ skill: matchedByTemplate, score: 10, reasons: ['templateId 显式指定'] }];
+        return [{
+          skill: matchedByTemplate,
+          templateName: templateRegistry.find((item) => item.id === requestedTemplateId)?.name,
+          score: 10,
+          reasons: ['templateId 显式指定'],
+        }];
       }
     }
     if (requestedSkillId) {
@@ -231,10 +296,16 @@ export class DocumentIntakeTool extends BaseTool {
     const ranked = documentSkills.map<TemplateCandidate>((skill) => {
       let score = 0;
       const reasons: string[] = [];
+      const templateName = templateRegistry.find((item) => item.id === skill.carboneTemplateId)?.name;
       const nameHit = this.normalizeText(skill.skillName || '');
       if (nameHit && normalizedInput.includes(nameHit)) {
         score += 5;
         reasons.push('命中技能名称');
+      }
+      const normalizedTemplateName = this.normalizeText(templateName || '');
+      if (normalizedTemplateName && normalizedInput.includes(normalizedTemplateName)) {
+        score += 4;
+        reasons.push('命中文档模板名');
       }
 
       const keywordHits = (skill.triggerKeywords || []).filter((keyword) => {
@@ -257,7 +328,7 @@ export class DocumentIntakeTool extends BaseTool {
         reasons.push('默认候选');
       }
 
-      return { skill, score, reasons };
+      return { skill, templateName, score, reasons };
     });
 
     ranked.sort((a, b) => b.score - a.score);
@@ -287,5 +358,17 @@ export class DocumentIntakeTool extends BaseTool {
 
   private normalizeText(value: string): string {
     return (value || '').toLowerCase().replace(/\s+/g, '');
+  }
+
+  private async fetchTemplateRegistry(): Promise<ReportTemplateRegistryItem[]> {
+    try {
+      const response = await axios.get<{ templates: ReportTemplateRegistryItem[] }>(
+        `${REPORT_SERVICE_URL}/report-templates`,
+        { timeout: 2500 },
+      );
+      return Array.isArray(response.data?.templates) ? response.data.templates : [];
+    } catch {
+      return [];
+    }
   }
 }

@@ -41,6 +41,7 @@ Final Answer: 最终回复
 - 当技能有必填参数但信息不足时，先调用 param_collect，不要直接猜测参数
 - 对文档生成类请求，优先调用 document_intake（模板选择 + 参数初稿），再调用 document_render
 - 若 document_intake 返回 requiresUserInput=true，先向用户澄清模板（回复 templateId/skillId）再继续
+- document_intake 支持传 templateId（report_templates.id）进行显式模板锁定
 - 当技能配置了 \`carboneSkillId\` 时，使用 generate_parameters，并传入平台 skillId
 - 当技能需要实际执行时，使用 flow_execute，并传入平台 skillId
 - 当 Observation 已经足够回答用户且任务完成时，必须输出 \`Final Answer:\`，不要输出普通正文

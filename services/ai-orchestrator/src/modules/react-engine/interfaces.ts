@@ -111,6 +111,20 @@ export interface ExecutionContext {
   nextActionParams?: Record<string, unknown>;  // 下一步动作的参数
   currentFlowStep?: number;       // 当前执行流的步骤索引
   currentStepId?: string;         // 当前执行的步骤ID
+  documentContext?: {
+    pendingTemplateClarification?: boolean;
+    selectedTemplateId?: string;
+    selectedTemplateName?: string;
+    selectedSkillId?: string;
+    selectionSource?: 'explicit' | 'context' | 'ranking';
+    candidateRanking?: Array<{
+      skillId: string;
+      skillName: string;
+      templateId?: string;
+      templateName?: string;
+      score: number;
+    }>;
+  };
 }
 
 /**
