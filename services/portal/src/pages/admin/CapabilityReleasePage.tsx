@@ -16,6 +16,7 @@ import {
   Table,
   Tag,
   Tabs,
+  Tooltip,
   Typography,
   message,
 } from 'antd';
@@ -24,8 +25,10 @@ import {
   AppstoreAddOutlined,
   CheckCircleOutlined,
   DeleteOutlined,
+  EditOutlined,
   EyeOutlined,
   LeftOutlined,
+  QuestionCircleOutlined,
   RocketOutlined,
   ReloadOutlined,
   SafetyCertificateOutlined,
@@ -35,6 +38,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
   CapabilityRelease,
   CapabilityReleaseDetail,
+  ReleaseAuditEvent,
   capabilityReleaseApi,
 } from '../../api/capability-release';
 import { executionFlowApi } from '../../api/execution-flow';
@@ -74,13 +78,18 @@ interface ApiEndpointDraft {
   extraJson: string;
 }
 
-type DeploymentEnvironment = 'dev' | 'test' | 'staging' | 'prod';
+type DeploymentEnvironment = 'staging' | 'prod';
+
+const DEPLOY_ENV_OPTIONS: { label: string; value: DeploymentEnvironment }[] = [
+  { label: 'staging（预发布）', value: 'staging' },
+  { label: 'prod（生产）', value: 'prod' },
+];
 
 const MISSING_VALUE = '__capability_snapshot_missing__';
 
 const SOURCE_TYPE_OPTIONS = [
-  { label: '模板型能力', value: 'execution_flow_template' },
-  { label: 'Temporal 编排型能力', value: 'temporal_workflow' },
+  { label: '模版型', value: 'execution_flow_template' },
+  { label: '编排型', value: 'temporal_workflow' },
 ] as const;
 
 interface CapabilitySourceOption {
@@ -109,6 +118,16 @@ const statusColor = (status: string) => {
     default:
       return 'default';
   }
+};
+
+const getSourceTypeLabel = (value: string) =>
+  value === 'temporal_workflow' ? '编排型' : '模版型';
+
+const getValidationTypeLabel = (value: string) => {
+  if (value === 'sandbox') return '真实验证';
+  if (value === 'post_deploy_smoke') return '部署后冒烟';
+  if (value === 'static') return '静态校验';
+  return value;
 };
 
 const getNextStepHint = (release: CapabilityRelease): { label: string; color: string } => {
@@ -382,11 +401,18 @@ const CapabilityReleasePage: React.FC<CapabilityReleasePageProps> = ({ mode = 'm
   const [deployOverridesDraft, setDeployOverridesDraft] = useState('{}');
   const [createWizardStep, setCreateWizardStep] = useState(0);
   const [wizardReleaseId, setWizardReleaseId] = useState<string | null>(null);
-  const [wizardValidationInputDraft, setWizardValidationInputDraft] = useState('{}');
+  const [wizardValidationCasesDraft, setWizardValidationCasesDraft] = useState('');
   const [wizardValidationUserInput, setWizardValidationUserInput] = useState('');
-  const [wizardValidationFn, setWizardValidationFn] = useState('');
   const [wizardAssistExplanation, setWizardAssistExplanation] = useState('');
   const [wizardValidationExecuted, setWizardValidationExecuted] = useState(false);
+  const [drawerMode, setDrawerMode] = useState<'view' | 'edit' | null>(null);
+
+  const [selectedAuditEvent, setSelectedAuditEvent] = useState<ReleaseAuditEvent | null>(null);
+  const [isAuditModalVisible, setIsAuditModalVisible] = useState(false);
+
+  const [jsonViewVisible, setJsonViewVisible] = useState(false);
+  const [jsonViewTitle, setJsonViewTitle] = useState('');
+  const [jsonViewData, setJsonViewData] = useState<any>(null);
 
   // AI 失败分析相关状态
   const [analysisResult, setAnalysisResult] = useState<{
@@ -652,13 +678,15 @@ const CapabilityReleasePage: React.FC<CapabilityReleasePageProps> = ({ mode = 'm
       id,
       input,
       testUserInput,
+      testCases,
       fn,
     }: {
       id: string;
       input?: Record<string, unknown>;
       testUserInput?: string;
+      testCases?: string[];
       fn?: string;
-    }) => capabilityReleaseApi.validateSandbox(id, { input, testUserInput, fn }),
+    }) => capabilityReleaseApi.validateSandbox(id, { input, testUserInput, testCases, fn }),
     {
       onSuccess: async (result, variables) => {
         message.success(result.validation.success ? '真实校验通过' : '真实校验未通过');
@@ -679,10 +707,10 @@ const CapabilityReleasePage: React.FC<CapabilityReleasePageProps> = ({ mode = 'm
         if (Object.keys(result.deployConfig || {}).length > 0) {
           setDeployOverridesDraft(JSON.stringify(result.deployConfig, null, 2));
         }
-        if (Object.keys(result.testInput || {}).length > 0) {
-          setWizardValidationInputDraft(JSON.stringify(result.testInput, null, 2));
-        }
         if (result.testUserInput) {
+          setWizardValidationCasesDraft((prev) =>
+            [prev, result.testUserInput].filter((item) => item && item.trim()).join('\n'),
+          );
           setWizardValidationUserInput(result.testUserInput);
         }
         message.success('AI 已生成部署与测试建议');
@@ -773,152 +801,132 @@ const CapabilityReleasePage: React.FC<CapabilityReleasePageProps> = ({ mode = 'm
       );
     });
   }, [releasesQuery.data?.releases, searchText]);
+  const enteredReleaseCenterCount = useMemo(
+    () => (releasesQuery.data?.releases || []).filter((release) => canEnterReleaseCenter(release)).length,
+    [releasesQuery.data?.releases],
+  );
+  const publishedSkillCount = useMemo(
+    () => (releasesQuery.data?.releases || []).filter((release) => Boolean(release.publishedSkillId)).length,
+    [releasesQuery.data?.releases],
+  );
+  const deployedVersionCount = useMemo(
+    () =>
+      (releasesQuery.data?.releases || []).filter(
+        (release) =>
+          release.deploymentStatus === 'succeeded'
+          || release.deploymentStatus === 'deployed'
+          || release.status === 'deployed',
+      ).length,
+    [releasesQuery.data?.releases],
+  );
 
   const columns: ColumnsType<CapabilityRelease> = [
     {
-      title: 'Release ID',
-      dataIndex: 'id',
-      key: 'id',
-      render: (id: string) => <Text code>{id.slice(0, 8)}</Text>,
-      width: 110,
-    },
-    {
-      title: '能力名称',
+      title: <div style={{ textAlign: 'center' }}>能力名称</div>,
       dataIndex: 'sourceName',
       key: 'sourceName',
-      render: (value: string | null | undefined, record) => value || record.sourceId || '未命名',
-    },
-    {
-      title: '类型',
-      dataIndex: 'sourceType',
-      key: 'sourceType',
-      width: 150,
-      render: (value: string) => (
-        <Tag color={value === 'temporal_workflow' ? 'purple' : 'blue'}>
-          {value === 'temporal_workflow' ? 'Temporal' : 'Template'}
-        </Tag>
-      ),
-    },
-    {
-      title: '状态',
-      dataIndex: 'status',
-      key: 'status',
-      width: 150,
-      render: (value: string) => <Tag color={statusColor(value)}>{value}</Tag>,
-    },
-    {
-      title: 'Skill',
-      dataIndex: 'publishedSkillId',
-      key: 'publishedSkillId',
-      width: 120,
-      render: (value: string | null | undefined) =>
-        value ? <Text code>{value.slice(0, 8)}</Text> : <Text type="secondary">未发布</Text>,
-    },
-    {
-      title: '更新时间',
-      dataIndex: 'updatedAt',
-      key: 'updatedAt',
-      width: 180,
-      render: (value: string) => new Date(value).toLocaleString(),
-    },
-    {
-      title: '下一步',
-      key: 'nextStep',
-      width: 140,
-      render: (_, record) => {
-        const nextStepHint = getNextStepHint(record);
-        return <Tag color={nextStepHint.color}>{nextStepHint.label}</Tag>;
+      width: 170,
+      align: 'center',
+      render: (value: string | null | undefined, record) => {
+        const displayName = value || record.sourceId || '未命名';
+        return (
+          <Button
+            type="link"
+            size="small"
+            style={{ padding: 0, maxWidth: 140 }}
+            onClick={() => {
+              setSelectedReleaseId(record.id);
+              setDrawerMode('view');
+              setSearchParams({ releaseId: record.id, mode: 'view' });
+            }}
+          >
+            <Text style={{ maxWidth: 140 }} ellipsis={{ tooltip: displayName }}>
+              {displayName}
+            </Text>
+          </Button>
+        );
       },
     },
     {
-      title: '操作',
+      title: <div style={{ textAlign: 'center' }}>类型</div>,
+      dataIndex: 'sourceType',
+      key: 'sourceType',
+      width: 120,
+      align: 'center',
+      render: (value: string) => (
+        <Tag color={value === 'temporal_workflow' ? 'purple' : 'blue'}>{getSourceTypeLabel(value)}</Tag>
+      ),
+    },
+    {
+      title: <div style={{ textAlign: 'center' }}>状态</div>,
+      dataIndex: 'status',
+      key: 'status',
+      width: 120,
+      align: 'center',
+      render: (value: string) => <Tag color={statusColor(value)}>{value}</Tag>,
+    },
+    {
+      title: <div style={{ textAlign: 'center' }}>审批状态</div>,
+      dataIndex: 'approvalStatus',
+      key: 'approvalStatus',
+      width: 120,
+      align: 'center',
+      render: (value: string) => <Tag color={value === 'approved' ? 'green' : 'gold'}>{value}</Tag>,
+    },
+    {
+      title: <div style={{ textAlign: 'center' }}>部署状态</div>,
+      key: 'deploymentStatus',
+      width: 180,
+      align: 'center',
+      render: (_, record) => {
+        const status = record.deploymentStatus || '未部署';
+        const env = record.lastDeploymentEnvironment;
+        return (
+          <Space direction="vertical" size={0} style={{ width: '100%', textAlign: 'center' }}>
+            {env && (
+              <div style={{ fontSize: 11, color: '#8c8c8c', marginBottom: 2 }}>
+                环境: <Text strong>{env}</Text>
+              </div>
+            )}
+            <Tag color={statusColor(status)} style={{ marginRight: 0 }}>
+              {status}
+            </Tag>
+          </Space>
+        );
+      },
+    },
+    {
+      title: <div style={{ textAlign: 'center' }}>操作</div>,
       key: 'actions',
-      width: 520,
+      width: 150,
+      align: 'center',
       render: (_, record) => (
-        <Space size="small" wrap>
-          <Button
-            type="link"
-            size="small"
-            icon={<RocketOutlined />}
-            disabled={!canEnterReleaseCenter(record)}
-            onClick={() => navigate(`/release-center?releaseId=${record.id}`)}
-          >
-            进入发布
-          </Button>
-          {record.publishedSkillId ? (
+        <div style={{ display: 'flex', justifyContent: 'center' }}>
+          <Space size="small" wrap>
             <Button
               type="link"
               size="small"
-              icon={<EyeOutlined />}
-              onClick={() =>
-                navigate(`/published-skills/${record.publishedSkillId}?releaseId=${record.id}`)
-              }
+              icon={<EditOutlined />}
+              onClick={() => {
+                setSelectedReleaseId(record.id);
+                setDrawerMode('edit');
+                setSearchParams({ releaseId: record.id, mode: 'edit' });
+              }}
             >
-              已发布 Skill
+              编辑
             </Button>
-          ) : null}
-          <Button
-            type="link"
-            size="small"
-            icon={<CheckCircleOutlined />}
-            loading={validateStaticMutation.isLoading}
-            disabled={!record.currentBuildId && !record.latestSuccessfulBuildId}
-            onClick={() => validateStaticMutation.mutate({ id: record.id })}
-          >
-            静态校验
-          </Button>
-          <Button
-            type="link"
-            size="small"
-            icon={<RocketOutlined />}
-            loading={publishMutation.isLoading || generateDraftMutation.isLoading || approveMutation.isLoading}
-            disabled={!record.latestSuccessfulValidationId}
-            onClick={() => void handlePublishSkill(record)}
-          >
-            发布 Skill
-          </Button>
-          <Button
-            type="link"
-            size="small"
-            icon={<RocketOutlined />}
-            loading={deployMutation.isLoading}
-            disabled={record.sourceType !== 'temporal_workflow' && !record.publishedSkillId}
-            onClick={() => openDeployModal(record.id)}
-          >
-            代码部署
-          </Button>
-          {record.publishedSkillId ? (
             <Button
+              danger
               type="link"
               size="small"
-              icon={<SafetyCertificateOutlined />}
-              loading={validateSkillMutation.isLoading}
-              onClick={() => validateSkillMutation.mutate({ skillId: record.publishedSkillId as string })}
+              icon={<DeleteOutlined />}
+              loading={archiveReleaseMutation.isLoading}
+              onClick={() => handleArchiveRelease(record.id)}
             >
-              Skill 校验
+              删除
             </Button>
-          ) : null}
-          <Button
-            type="link"
-            size="small"
-            icon={<ReloadOutlined />}
-            loading={rollbackMutation.isLoading}
-            disabled={!record.publishedSkillId && record.deploymentStatus !== 'succeeded' && record.status !== 'deployed'}
-            onClick={() => rollbackMutation.mutate({ id: record.id })}
-          >
-            回滚
-          </Button>
-          <Button
-            danger
-            type="link"
-            size="small"
-            icon={<DeleteOutlined />}
-            loading={archiveReleaseMutation.isLoading}
-            onClick={() => handleArchiveRelease(record.id)}
-          >
-            删除 Release
-          </Button>
-        </Space>
+          </Space>
+        </div>
       ),
     },
   ];
@@ -931,6 +939,24 @@ const CapabilityReleasePage: React.FC<CapabilityReleasePageProps> = ({ mode = 'm
   const wizardLatestValidation =
     wizardDetail?.validations?.find((item) => item.validationType === 'sandbox') ||
     wizardDetail?.validations?.[0];
+  const wizardValidationCaseResults = useMemo(() => {
+    const raw = wizardLatestValidation?.resultSnapshot?.caseResults;
+    if (!Array.isArray(raw)) {
+      return [];
+    }
+    return raw
+      .filter((item): item is Record<string, unknown> => Boolean(item) && typeof item === 'object')
+      .map((item) => ({
+        caseIndex: typeof item.caseIndex === 'number' ? item.caseIndex : 0,
+        testUserInput: typeof item.testUserInput === 'string' ? item.testUserInput : '',
+        success: Boolean(item.success),
+        score: typeof item.score === 'number' ? item.score : 0,
+        error: typeof item.error === 'string' ? item.error : '',
+        logs: Array.isArray(item.logs)
+          ? item.logs.filter((log): log is string => typeof log === 'string')
+          : [],
+      }));
+  }, [wizardLatestValidation]);
   const latestBuild = selectedDetail?.builds?.[0];
   const latestValidation = selectedDetail?.validations?.[0];
   const latestDeployment = selectedDetail?.deployments?.[0];
@@ -963,13 +989,21 @@ const CapabilityReleasePage: React.FC<CapabilityReleasePageProps> = ({ mode = 'm
   );
   useEffect(() => {
     const releaseIdFromQuery = searchParams.get('releaseId');
+    const modeFromQuery = searchParams.get('mode') as 'view' | 'edit' | null;
+
     if (releaseIdFromQuery && releaseIdFromQuery !== selectedReleaseId) {
       setSelectedReleaseId(releaseIdFromQuery);
+      if (modeFromQuery) {
+        setDrawerMode(modeFromQuery);
+      } else if (!drawerMode) {
+        setDrawerMode('edit');
+      }
     }
     if (!releaseIdFromQuery && selectedReleaseId) {
       setSelectedReleaseId(null);
+      setDrawerMode(null);
     }
-  }, [searchParams, selectedReleaseId]);
+  }, [searchParams, selectedReleaseId, drawerMode]);
 
   useEffect(() => {
     if (!selectedDetail) {
@@ -1162,13 +1196,13 @@ const CapabilityReleasePage: React.FC<CapabilityReleasePageProps> = ({ mode = 'm
     () => parseJsonDraft<Record<string, unknown>>(deployOverridesDraft || '{}', '部署覆盖参数 JSON'),
     [deployOverridesDraft],
   );
-  const wizardValidationInputState = useMemo(
+  const wizardValidationCases = useMemo(
     () =>
-      parseJsonDraft<Record<string, unknown>>(
-        wizardValidationInputDraft || '{}',
-        '真实校验输入 JSON',
-      ),
-    [wizardValidationInputDraft],
+      wizardValidationCasesDraft
+        .split('\n')
+        .map((item) => item.trim())
+        .filter(Boolean),
+    [wizardValidationCasesDraft],
   );
   const wizardActiveDeployProfile =
     wizardDetail?.currentSourceSnapshot?.sourcePayload?.deploymentProfiles &&
@@ -1177,14 +1211,31 @@ const CapabilityReleasePage: React.FC<CapabilityReleasePageProps> = ({ mode = 'm
           deployEnvironment
         ] as Record<string, unknown> | undefined) || {}
       : {};
+  const hasSuccessfulStagingDeployment = useMemo(
+    () =>
+      Boolean(
+        selectedDetail?.deployments?.some(
+          (deployment) => deployment.environment === 'staging' && deployment.status === 'succeeded',
+        ),
+      ),
+    [selectedDetail?.deployments],
+  );
+  const wizardHasSuccessfulStagingDeployment = useMemo(
+    () =>
+      Boolean(
+        wizardDetail?.deployments?.some(
+          (deployment) => deployment.environment === 'staging' && deployment.status === 'succeeded',
+        ),
+      ),
+    [wizardDetail?.deployments],
+  );
 
   const resetCreateWizard = () => {
     setCreateVisible(false);
     setCreateWizardStep(0);
     setWizardReleaseId(null);
-    setWizardValidationInputDraft('{}');
+    setWizardValidationCasesDraft('');
     setWizardValidationUserInput('');
-    setWizardValidationFn('');
     setWizardAssistExplanation('');
     setWizardValidationExecuted(false);
     createForm.resetFields();
@@ -1195,9 +1246,8 @@ const CapabilityReleasePage: React.FC<CapabilityReleasePageProps> = ({ mode = 'm
     setSearchParams({});
     setCreateWizardStep(0);
     setWizardReleaseId(null);
-    setWizardValidationInputDraft('{}');
+    setWizardValidationCasesDraft('');
     setWizardValidationUserInput('');
-    setWizardValidationFn('');
     setWizardAssistExplanation('');
     setWizardValidationExecuted(false);
     setCreateVisible(true);
@@ -1238,6 +1288,10 @@ const CapabilityReleasePage: React.FC<CapabilityReleasePageProps> = ({ mode = 'm
 
   const handleDeploy = async () => {
     if (!deployTargetReleaseId) {
+      return;
+    }
+    if (deployEnvironment === 'prod' && !hasSuccessfulStagingDeployment) {
+      message.warning('请先完成一次 staging 成功部署，再发布到 prod');
       return;
     }
     if (!deployOverridesState.valid) {
@@ -1288,6 +1342,10 @@ const CapabilityReleasePage: React.FC<CapabilityReleasePageProps> = ({ mode = 'm
     if (!wizardReleaseId) {
       return;
     }
+    if (deployEnvironment === 'prod' && !wizardHasSuccessfulStagingDeployment) {
+      message.warning('请先完成一次 staging 成功部署，再发布到 prod');
+      return;
+    }
     if (!deployOverridesState.valid) {
       message.error(deployOverridesState.error);
       return;
@@ -1301,20 +1359,22 @@ const CapabilityReleasePage: React.FC<CapabilityReleasePageProps> = ({ mode = 'm
     });
   };
 
-  const handleWizardValidate = () => {
+  const handleWizardValidate = async () => {
     if (!wizardReleaseId) {
       return;
     }
-    if (!wizardValidationInputState.valid) {
-      message.error(wizardValidationInputState.error);
+    const mergedCases = [
+      ...wizardValidationCases,
+      ...(wizardValidationUserInput.trim() ? [wizardValidationUserInput.trim()] : []),
+    ].filter(Boolean);
+    const dedupedCases = Array.from(new Set(mergedCases));
+    if (dedupedCases.length === 0) {
+      message.error('请至少填写一条自然语言测试用例（每行一条）');
       return;
     }
-
-    realValidateMutation.mutate({
+    await realValidateMutation.mutateAsync({
       id: wizardReleaseId,
-      input: wizardValidationInputState.value,
-      testUserInput: wizardValidationUserInput.trim() || undefined,
-      fn: wizardValidationFn.trim() || undefined,
+      testCases: dedupedCases,
     });
   };
 
@@ -1486,545 +1546,279 @@ const CapabilityReleasePage: React.FC<CapabilityReleasePageProps> = ({ mode = 'm
   };
 
   const studioContent = selectedDetail ? (
-    <Row gutter={16} align="top">
-      <Col span={11}>
-        <Space direction="vertical" size="middle" style={{ width: '100%' }}>
-          {(hasSnapshotDrift || hasNoBuild || hasNoValidation) && (
-            <Alert
-              type="warning"
-              showIcon
-              message="Studio 下一步建议"
-              description={
-                <Text>
-                  {hasSnapshotDrift
-                    ? '当前快照与最近一次构建不一致，建议重新构建。'
-                    : hasNoBuild
-                      ? '当前 Release 还没有构建记录，建议先构建。'
-                      : hasNoValidation
-                        ? '当前 Release 还没有验证记录，建议完成验证。'
-                        : '建议重新执行构建与校验。'}
-                </Text>
-              }
-            />
-          )}
-
-          <Card size="small" title="源定义 / DSL 快照">
-            <Space direction="vertical" size="middle" style={{ width: '100%' }}>
-              <Space style={{ justifyContent: 'space-between', width: '100%' }} wrap>
-                <Space direction="vertical" size={2}>
-                  <Text strong>{selectedDetail.release.sourceName || '未命名能力'}</Text>
-                  <Text type="secondary">
-                    当前快照: v{selectedDetail.currentSourceSnapshot?.snapshotVersion || '-'}
-                  </Text>
-                </Space>
-                <Space>
-                  {isEditingSource ? (
-                    <>
-                      <Button
-                        size="small"
-                        onClick={() => {
-                          setIsEditingSource(false);
-                          setSourceNameDraft(selectedDetail.release.sourceName || '');
-                          setSourcePayloadDraft(
-                            JSON.stringify(
-                              selectedDetail.currentSourceSnapshot?.sourcePayload || {},
-                              null,
-                              2,
-                            ),
-                          );
-                        }}
-                      >
-                        取消
-                      </Button>
-                      <Button
-                        type="primary"
-                        size="small"
-                          disabled={!sourcePayloadDraftState.valid}
-                        loading={updateSourceMutation.isLoading}
-                        onClick={() => void handleSaveSource()}
-                      >
-                        保存快照
-                      </Button>
-                    </>
-                  ) : (
-                    <Button size="small" type="link" onClick={() => setIsEditingSource(true)}>
-                      编辑源定义
-                    </Button>
-                  )}
-                </Space>
-              </Space>
-
-              {isEditingSource ? (
-                <Space direction="vertical" size="small" style={{ width: '100%' }}>
-                  <Input
-                    placeholder="能力名称"
-                    value={sourceNameDraft}
-                    onChange={(event) => setSourceNameDraft(event.target.value)}
-                  />
-                  <TextArea
-                    rows={16}
-                    value={sourcePayloadDraft}
-                    onChange={(event) => setSourcePayloadDraft(event.target.value)}
-                    placeholder="请输入 sourcePayload JSON"
-                    spellCheck={false}
-                    style={{ fontFamily: 'monospace' }}
-                  />
-                  {!sourcePayloadDraftState.valid && (
-                    <Alert type="error" showIcon message={sourcePayloadDraftState.error} />
-                  )}
-                  <Text type="secondary">
-                    保存后会创建新的 source snapshot，并将 Release 状态重置为 `draft`。
-                  </Text>
-                </Space>
-              ) : (
-                <pre style={studioPaneStyle}>
-                  {JSON.stringify(selectedDetail.currentSourceSnapshot?.sourcePayload || {}, null, 2)}
-                </pre>
-              )}
-            </Space>
-          </Card>
-
-          {Object.keys(deploymentProfiles).length > 0 && (
-            <Card size="small" title="多环境部署配置">
-              <Space direction="vertical" size="small" style={{ width: '100%' }}>
-                {(['dev', 'test', 'staging', 'prod'] as DeploymentEnvironment[])
-                  .filter((env) => deploymentProfiles[env])
-                  .map((env) => (
-                    <Card key={env} size="small" type="inner" title={env}>
-                      <pre style={{ ...studioPaneStyle, maxHeight: 160 }}>
-                        {JSON.stringify(deploymentProfiles[env], null, 2)}
-                      </pre>
-                    </Card>
-                  ))}
-              </Space>
-            </Card>
-          )}
-
-          <Card size="small" title="当前 Skill 草案">
-            {selectedDetail.currentSkillDraft ? (
-              <Space direction="vertical" size="middle" style={{ width: '100%' }}>
-                <Space style={{ justifyContent: 'space-between', width: '100%' }} wrap>
-                  <Space direction="vertical" size={2}>
-                    <Text strong>{selectedDetail.currentSkillDraft.name}</Text>
-                    <Text type="secondary">状态: {selectedDetail.currentSkillDraft.status}</Text>
-                  </Space>
-                  <Space>
-                    {isEditingSkillDraft ? (
-                      <>
-                        <Button size="small" onClick={resetSkillDraftEditor}>
-                          取消
-                        </Button>
-                        <Button
-                          type="primary"
-                          size="small"
-                          disabled={skillDraftParamFieldErrors.length > 0 || skillDraftApiEndpointErrors.length > 0}
-                          loading={updateSkillDraftMutation.isLoading}
-                          onClick={() => void handleSaveSkillDraft()}
-                        >
-                          保存草案
-                        </Button>
-                      </>
-                    ) : (
-                      <Button size="small" type="link" onClick={() => setIsEditingSkillDraft(true)}>
-                        编辑草案
-                      </Button>
-                    )}
-                  </Space>
-                </Space>
-
-                {isEditingSkillDraft ? (
-                  <Space direction="vertical" size="small" style={{ width: '100%' }}>
-                    <Input
-                      placeholder="Skill 名称"
-                      value={skillDraftName}
-                      onChange={(event) => setSkillDraftName(event.target.value)}
-                    />
-                    <TextArea
-                      rows={3}
-                      placeholder="Skill 描述"
-                      value={skillDraftDescription}
-                      onChange={(event) => setSkillDraftDescription(event.target.value)}
-                    />
-                    <Select
-                      mode="tags"
-                      tokenSeparators={[',']}
-                      placeholder="触发词，可直接回车或逗号创建标签"
-                      value={skillDraftTriggerKeywords}
-                      onChange={(value) => setSkillDraftTriggerKeywords(value)}
-                      options={skillDraftTriggerKeywords.map((item) => ({ label: item, value: item }))}
-                    />
-                    <Select
-                      mode="tags"
-                      tokenSeparators={[',']}
-                      placeholder="Tools，可直接回车或逗号创建标签"
-                      value={skillDraftTools}
-                      onChange={(value) => setSkillDraftTools(value)}
-                      options={skillDraftTools.map((item) => ({ label: item, value: item }))}
-                    />
-                    <Select
-                      mode="tags"
-                      tokenSeparators={[',']}
-                      placeholder="Execution Flow Template IDs，可直接回车或逗号创建标签"
-                      value={skillDraftTemplateIds}
-                      onChange={(value) => setSkillDraftTemplateIds(value)}
-                      options={skillDraftTemplateIds.map((item) => ({ label: item, value: item }))}
-                    />
-                    <ParamSchemaEditor
-                      fields={skillDraftParamFields}
-                      errors={skillDraftParamFieldErrors}
-                      schemaPreview={skillDraftParamsSchemaValue}
-                      onAddField={addSkillDraftParamField}
-                      onRemoveField={removeSkillDraftParamField}
-                      onMoveField={moveSkillDraftParamField}
-                      onChangeField={updateSkillDraftParamField}
-                    />
-                    <Card
-                      size="small"
-                      title="API Endpoints"
-                      extra={
-                        <Button size="small" onClick={addSkillDraftApiEndpoint}>
-                          添加 Endpoint
-                        </Button>
-                      }
-                    >
-                      <Space direction="vertical" size="middle" style={{ width: '100%' }}>
-                        {skillDraftApiEndpointFields.length > 0 ? (
-                          skillDraftApiEndpointFields.map((endpoint, index) => (
-                            <Card
-                              key={endpoint.id}
-                              size="small"
-                              type="inner"
-                              title={`Endpoint ${index + 1}`}
-                              extra={
-                                <Button
-                                  size="small"
-                                  type="text"
-                                  danger
-                                  onClick={() => removeSkillDraftApiEndpoint(endpoint.id)}
-                                >
-                                  删除
-                                </Button>
-                              }
-                            >
-                              <Space direction="vertical" size="small" style={{ width: '100%' }}>
-                                <Input
-                                  placeholder="标识名，例如 generateParameters"
-                                  value={endpoint.key}
-                                  onChange={(event) =>
-                                    updateSkillDraftApiEndpoint(endpoint.id, {
-                                      key: event.target.value,
-                                    })
-                                  }
-                                />
-                                <Select
-                                  value={endpoint.method}
-                                  onChange={(value) =>
-                                    updateSkillDraftApiEndpoint(endpoint.id, {
-                                      method: value,
-                                    })
-                                  }
-                                  options={[
-                                    { label: 'GET', value: 'GET' },
-                                    { label: 'POST', value: 'POST' },
-                                    { label: 'PUT', value: 'PUT' },
-                                    { label: 'DELETE', value: 'DELETE' },
-                                  ]}
-                                />
-                                <Input
-                                  placeholder="URL，例如 /studio/render"
-                                  value={endpoint.url}
-                                  onChange={(event) =>
-                                    updateSkillDraftApiEndpoint(endpoint.id, {
-                                      url: event.target.value,
-                                    })
-                                  }
-                                />
-                                <TextArea
-                                  rows={2}
-                                  placeholder="接口描述，可选"
-                                  value={endpoint.description}
-                                  onChange={(event) =>
-                                    updateSkillDraftApiEndpoint(endpoint.id, {
-                                      description: event.target.value,
-                                    })
-                                  }
-                                />
-                                <TextArea
-                                  rows={3}
-                                  placeholder={'额外 JSON 字段，可选，例如 {"timeout":5000}'}
-                                  value={endpoint.extraJson}
-                                  onChange={(event) =>
-                                    updateSkillDraftApiEndpoint(endpoint.id, {
-                                      extraJson: event.target.value,
-                                    })
-                                  }
-                                  spellCheck={false}
-                                  style={{ fontFamily: 'monospace' }}
-                                />
-                              </Space>
-                            </Card>
-                          ))
-                        ) : (
-                          <Text type="secondary">暂无 API Endpoint，点击“添加 Endpoint”开始配置。</Text>
-                        )}
-                        {skillDraftApiEndpointErrors.length > 0 && (
-                          <Alert
-                            type="error"
-                            showIcon
-                            message={skillDraftApiEndpointErrors[0]}
-                            description={skillDraftApiEndpointErrors.slice(1).join('；') || undefined}
-                          />
-                        )}
-                        <pre style={{ ...studioPaneStyle, maxHeight: 220 }}>
-                          {JSON.stringify(skillDraftApiEndpointsValue, null, 2)}
-                        </pre>
-                      </Space>
-                    </Card>
-                    <Text type="secondary">
-                      保存后会将草案状态推进到 `reviewed`，并把 Release 审批状态置为待审批。
-                    </Text>
-                  </Space>
-                ) : (
-                  <pre style={studioPaneStyle}>
-                    {JSON.stringify(selectedDetail.currentSkillDraft.draftPayload, null, 2)}
-                  </pre>
-                )}
-              </Space>
-            ) : (
-              <Text type="secondary">暂无 Skill 草案</Text>
-            )}
-          </Card>
-
-          <Card
-            size="small"
-            title="Snapshot Diff"
-            extra={
-              sourceSnapshots.length > 1 ? (
-                <Space size="small">
-                  <Button
-                    size="small"
-                    onClick={() => {
-                      setShowOnlyDiff((current) => !current);
-                    }}
-                  >
-                    {showOnlyDiff ? '显示全部' : '只看差异'}
-                  </Button>
-                  <Button
-                    size="small"
-                    onClick={() => {
-                      setDiffLeftSnapshotId(rightSnapshot?.id || null);
-                      setDiffRightSnapshotId(leftSnapshot?.id || null);
-                    }}
-                  >
-                    交换版本
-                  </Button>
-                </Space>
-              ) : null
+    <Row gutter={[16, 16]} align="top">
+      <Col span={24}>
+        {(hasSnapshotDrift || hasNoBuild || hasNoValidation) && (
+          <Alert
+            type="warning"
+            showIcon
+            message="Studio 下一步建议"
+            description={
+              <Text>
+                {hasSnapshotDrift
+                  ? '当前快照与最近一次构建不一致，建议重新构建。'
+                  : hasNoBuild
+                    ? '当前 Release 还没有构建记录，建议先构建。'
+                    : hasNoValidation
+                      ? '当前 Release 还没有验证记录，建议完成验证。'
+                      : '建议重新执行构建与校验。'}
+              </Text>
             }
-          >
-            {sourceSnapshots.length > 1 && leftSnapshot && rightSnapshot ? (
-              <Space direction="vertical" size="middle" style={{ width: '100%' }}>
-                <Space wrap>
-                  <Select
-                    style={{ width: 220 }}
-                    value={diffLeftSnapshotId || undefined}
-                    onChange={(value) => setDiffLeftSnapshotId(value)}
-                    options={sourceSnapshots.map((snapshot) => ({
-                      label: `v${snapshot.snapshotVersion} / ${new Date(snapshot.createdAt).toLocaleString()}`,
-                      value: snapshot.id,
-                    }))}
-                  />
-                  <Text type="secondary">对比</Text>
-                  <Select
-                    style={{ width: 220 }}
-                    value={diffRightSnapshotId || undefined}
-                    onChange={(value) => setDiffRightSnapshotId(value)}
-                    options={sourceSnapshots.map((snapshot) => ({
-                      label: `v${snapshot.snapshotVersion} / ${new Date(snapshot.createdAt).toLocaleString()}`,
-                      value: snapshot.id,
-                    }))}
-                  />
-                </Space>
-
-                <Space wrap>
-                  <Tag color="blue">总字段 {snapshotDiffRows.length}</Tag>
-                  <Tag color="gold">变更 {snapshotDiffSummary.changed}</Tag>
-                  <Tag color="green">新增 {snapshotDiffSummary.added}</Tag>
-                  <Tag color="red">删除 {snapshotDiffSummary.removed}</Tag>
-                  {!showOnlyDiff && <Tag>相同 {snapshotDiffSummary.same}</Tag>}
-                </Space>
-
-                <div
-                  style={{
-                    border: '1px solid #f0f0f0',
-                    borderRadius: 8,
-                    overflow: 'hidden',
-                  }}
-                >
-                  <div
-                    style={{
-                      display: 'grid',
-                      gridTemplateColumns: '220px 1fr 1fr',
-                      gap: 0,
-                      background: '#fafafa',
-                      padding: '8px 12px',
-                      fontWeight: 600,
-                    }}
-                  >
-                    <div>字段路径</div>
-                    <div>左侧版本 v{leftSnapshot.snapshotVersion}</div>
-                    <div>右侧版本 v{rightSnapshot.snapshotVersion}</div>
-                  </div>
-
-                  <div style={{ maxHeight: 360, overflow: 'auto' }}>
-                    {visibleSnapshotDiffRows.length > 0 ? (
-                      visibleSnapshotDiffRows.map((row) => {
-                        const backgroundColor =
-                          row.status === 'changed'
-                            ? '#fffbe6'
-                            : row.status === 'added'
-                              ? '#f6ffed'
-                              : row.status === 'removed'
-                                ? '#fff2f0'
-                                : '#ffffff';
-
-                        return (
-                          <div
-                            key={row.path}
-                            style={{
-                              display: 'grid',
-                              gridTemplateColumns: '220px 1fr 1fr',
-                              gap: 0,
-                              borderTop: '1px solid #f0f0f0',
-                              background: backgroundColor,
-                            }}
-                          >
-                            <div style={{ padding: 12 }}>
-                              <Space direction="vertical" size={4}>
-                                <Text code>{row.path}</Text>
-                                <Tag
-                                  color={
-                                    row.status === 'changed'
-                                      ? 'gold'
-                                      : row.status === 'added'
-                                        ? 'green'
-                                        : row.status === 'removed'
-                                          ? 'red'
-                                          : 'default'
-                                  }
-                                >
-                                  {row.status}
-                                </Tag>
-                              </Space>
-                            </div>
-                            <pre style={{ ...studioPaneStyle, padding: 12, margin: 0, maxHeight: 'none' }}>
-                              {row.leftValue}
-                            </pre>
-                            <pre style={{ ...studioPaneStyle, padding: 12, margin: 0, maxHeight: 'none' }}>
-                              {row.rightValue}
-                            </pre>
-                          </div>
-                        );
-                      })
-                    ) : (
-                      <div style={{ padding: 16 }}>
-                        <Text type="secondary">
-                          {showOnlyDiff ? '当前所选版本之间没有差异。' : '当前没有可展示的快照内容。'}
-                        </Text>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </Space>
-            ) : (
-              <Text type="secondary">至少需要两个快照版本才能进行对比</Text>
-            )}
-          </Card>
-        </Space>
+            style={{ marginBottom: 16 }}
+          />
+        )}
       </Col>
 
-      <Col span={13}>
-        <Space direction="vertical" size="middle" style={{ width: '100%' }}>
-          <Card
-            size="small"
-            title="最近一次构建"
-            extra={
-              latestBuild?.status === 'failed' && (
+      <Col span={12}>
+        <Card
+          size="small"
+          title="源定义 / DSL 快照"
+          extra={
+            <Space>
+              <Button
+                size="small"
+                type="link"
+                icon={<EyeOutlined />}
+                onClick={() => {
+                  setJsonViewTitle('源定义 JSON');
+                  setJsonViewData(selectedDetail.currentSourceSnapshot?.sourcePayload || {});
+                  setJsonViewVisible(true);
+                }}
+              >
+                详情
+              </Button>
+              <Button size="small" type="link" onClick={() => setIsEditingSource(true)}>
+                编辑
+              </Button>
+            </Space>
+          }
+        >
+          {isEditingSource ? (
+            <Space direction="vertical" size="small" style={{ width: '100%' }}>
+              <Input
+                placeholder="能力名称"
+                value={sourceNameDraft}
+                onChange={(event) => setSourceNameDraft(event.target.value)}
+              />
+              <TextArea
+                rows={10}
+                value={sourcePayloadDraft}
+                onChange={(event) => setSourcePayloadDraft(event.target.value)}
+                placeholder="请输入 sourcePayload JSON"
+                spellCheck={false}
+                style={{ fontFamily: 'monospace', fontSize: 12 }}
+              />
+              {!sourcePayloadDraftState.valid && (
+                <Alert type="error" showIcon message={sourcePayloadDraftState.error} />
+              )}
+              <Space style={{ width: '100%', justifyContent: 'flex-end' }}>
+                <Button size="small" onClick={() => setIsEditingSource(false)}>取消</Button>
                 <Button
+                  type="primary"
                   size="small"
-                  icon={<SafetyCertificateOutlined />}
-                  loading={analyzeFailureMutation.isLoading}
-                  onClick={() =>
-                    analyzeFailureMutation.mutate({
-                      id: selectedDetail.release.id,
-                      recordId: latestBuild.id,
-                      recordType: 'build',
-                    })
-                  }
+                  disabled={!sourcePayloadDraftState.valid}
+                  loading={updateSourceMutation.isLoading}
+                  onClick={() => void handleSaveSource()}
                 >
-                  AI 分析
+                  保存快照
                 </Button>
-              )
-            }
-          >
-            {latestBuild ? (
-              <Space direction="vertical" style={{ width: '100%' }}>
-                <Text>类型：{latestBuild.buildType}</Text>
-                <Text>状态：{latestBuild.status}</Text>
-                <Text>摘要：{latestBuild.diffSummary || '无'}</Text>
-                {latestBuild.logs?.length ? (
-                  <pre style={{ ...studioPaneStyle, maxHeight: 180 }}>{latestBuild.logs.join('\n')}</pre>
-                ) : null}
-                {latestBuild.generatedCode ? (
-                  <pre style={studioPaneStyle}>{latestBuild.generatedCode}</pre>
-                ) : (
-                  <pre style={studioPaneStyle}>
-                    {JSON.stringify(latestBuild.generatedConfig || {}, null, 2)}
-                  </pre>
-                )}
               </Space>
-            ) : (
-              <Text type="secondary">暂无构建记录</Text>
-            )}
-          </Card>
+            </Space>
+          ) : (
+            <div style={{ padding: '8px 0' }}>
+              <Descriptions column={1} size="small">
+                <Descriptions.Item label="名称">{selectedDetail.release.sourceName || '未命名能力'}</Descriptions.Item>
+                <Descriptions.Item label="版本">v{selectedDetail.currentSourceSnapshot?.snapshotVersion || '-'}</Descriptions.Item>
+                <Descriptions.Item label="类型">{getSourceTypeLabel(selectedDetail.release.sourceType)}</Descriptions.Item>
+              </Descriptions>
+              <Text type="secondary" style={{ fontSize: 12 }}>
+                包含核心逻辑定义、输入输出 Schema 及部署配置。
+              </Text>
+            </div>
+          )}
+        </Card>
+      </Col>
 
-          <Card
-            size="small"
-            title="最近一次验证"
-            extra={
-              latestValidation && !latestValidation.success && (
+      <Col span={12}>
+        <Card
+          size="small"
+          title="Skill 设计草案"
+          extra={
+            selectedDetail.currentSkillDraft && (
+              <Space>
                 <Button
                   size="small"
-                  icon={<SafetyCertificateOutlined />}
-                  loading={analyzeFailureMutation.isLoading}
-                  onClick={() =>
-                    analyzeFailureMutation.mutate({
-                      id: selectedDetail.release.id,
-                      recordId: latestValidation.id,
-                      recordType: 'validation',
-                    })
-                  }
+                  type="link"
+                  icon={<EyeOutlined />}
+                  onClick={() => {
+                    setJsonViewTitle('Skill 草案详情');
+                    setJsonViewData(selectedDetail.currentSkillDraft?.draftPayload || {});
+                    setJsonViewVisible(true);
+                  }}
                 >
-                  AI 分析
+                  详情
                 </Button>
-              )
-            }
-          >
-            {latestValidation ? (
-              <Space direction="vertical" style={{ width: '100%' }}>
-                <Text>类型：{latestValidation.validationType}</Text>
-                <Text>结果：{latestValidation.success ? '通过' : '失败'}</Text>
-                <Text>分数：{latestValidation.score}</Text>
-                {latestValidation.errorSummary && <Text type="danger">{latestValidation.errorSummary}</Text>}
-                <pre style={{ ...studioPaneStyle, maxHeight: 220 }}>
-                  {latestValidation.logs.join('\n') || '暂无日志'}
-                </pre>
+                <Button size="small" type="link" onClick={() => setIsEditingSkillDraft(true)}>
+                  编辑
+                </Button>
               </Space>
+            )
+          }
+        >
+          {selectedDetail.currentSkillDraft ? (
+            isEditingSkillDraft ? (
+              <div style={{ maxHeight: 500, overflowY: 'auto', paddingRight: 4 }}>
+                <Space direction="vertical" size="small" style={{ width: '100%' }}>
+                  <Input
+                    placeholder="Skill 名称"
+                    value={skillDraftName}
+                    onChange={(event) => setSkillDraftName(event.target.value)}
+                  />
+                  <TextArea
+                    rows={2}
+                    placeholder="Skill 描述"
+                    value={skillDraftDescription}
+                    onChange={(event) => setSkillDraftDescription(event.target.value)}
+                  />
+                  <Select
+                    mode="tags"
+                    placeholder="触发词"
+                    value={skillDraftTriggerKeywords}
+                    onChange={(value) => setSkillDraftTriggerKeywords(value)}
+                    style={{ width: '100%' }}
+                  />
+                  <ParamSchemaEditor
+                    fields={skillDraftParamFields}
+                    errors={skillDraftParamFieldErrors}
+                    schemaPreview={skillDraftParamsSchemaValue}
+                    onAddField={addSkillDraftParamField}
+                    onRemoveField={removeSkillDraftParamField}
+                    onMoveField={moveSkillDraftParamField}
+                    onChangeField={updateSkillDraftParamField}
+                  />
+                  <Space style={{ width: '100%', justifyContent: 'flex-end', marginTop: 8 }}>
+                    <Button size="small" onClick={resetSkillDraftEditor}>取消</Button>
+                    <Button
+                      type="primary"
+                      size="small"
+                      disabled={skillDraftParamFieldErrors.length > 0}
+                      loading={updateSkillDraftMutation.isLoading}
+                      onClick={() => void handleSaveSkillDraft()}
+                    >
+                      保存草案
+                    </Button>
+                  </Space>
+                </Space>
+              </div>
             ) : (
-              <Text type="secondary">暂无验证记录</Text>
-            )}
-          </Card>
-        </Space>
+              <div style={{ padding: '8px 0' }}>
+                <Descriptions column={1} size="small">
+                  <Descriptions.Item label="名称">{selectedDetail.currentSkillDraft.name}</Descriptions.Item>
+                  <Descriptions.Item label="状态">
+                    <Tag color="blue">{selectedDetail.currentSkillDraft.status}</Tag>
+                  </Descriptions.Item>
+                  <Descriptions.Item label="触发词">
+                    {selectedDetail.currentSkillDraft.triggerKeywords?.slice(0, 3).join(', ') || '无'}
+                    {(selectedDetail.currentSkillDraft.triggerKeywords?.length || 0) > 3 && ' ...'}
+                  </Descriptions.Item>
+                </Descriptions>
+                <Text type="secondary" style={{ fontSize: 12 }}>
+                  面向 AI 的能力描述，定义了如何触发及提取参数。
+                </Text>
+              </div>
+            )
+          ) : (
+            <div style={{ padding: '24px 0', textAlign: 'center' }}>
+              <Text type="secondary">暂无 Skill 草案</Text>
+            </div>
+          )}
+        </Card>
+      </Col>
+
+      <Col span={24}>
+        <Card
+          size="small"
+          title="Snapshot 对比 (版本演进)"
+          extra={
+            sourceSnapshots.length > 1 ? (
+              <Space>
+                <Button
+                  size="small"
+                  onClick={() => setShowOnlyDiff((current) => !current)}
+                >
+                  {showOnlyDiff ? '显示全部' : '只看差异'}
+                </Button>
+              </Space>
+            ) : null
+          }
+        >
+          {sourceSnapshots.length > 1 && leftSnapshot && rightSnapshot ? (
+            <Space direction="vertical" size="middle" style={{ width: '100%' }}>
+              <Space wrap>
+                <Select
+                  style={{ width: 200 }}
+                  size="small"
+                  value={diffLeftSnapshotId || undefined}
+                  onChange={(value) => setDiffLeftSnapshotId(value)}
+                  options={sourceSnapshots.map((snapshot) => ({
+                    label: `v${snapshot.snapshotVersion} (${new Date(snapshot.createdAt).toLocaleDateString()})`,
+                    value: snapshot.id,
+                  }))}
+                />
+                <Text type="secondary">对比</Text>
+                <Select
+                  style={{ width: 200 }}
+                  size="small"
+                  value={diffRightSnapshotId || undefined}
+                  onChange={(value) => setDiffRightSnapshotId(value)}
+                  options={sourceSnapshots.map((snapshot) => ({
+                    label: `v${snapshot.snapshotVersion} (${new Date(snapshot.createdAt).toLocaleDateString()})`,
+                    value: snapshot.id,
+                  }))}
+                />
+                <Tag color="gold">变更 {snapshotDiffSummary.changed}</Tag>
+                <Tag color="green">新增 {snapshotDiffSummary.added}</Tag>
+                <Tag color="red">删除 {snapshotDiffSummary.removed}</Tag>
+              </Space>
+
+              <div style={{ maxHeight: 300, overflowY: 'auto', border: '1px solid #f0f0f0', borderRadius: 4 }}>
+                {visibleSnapshotDiffRows.length > 0 ? (
+                  visibleSnapshotDiffRows.map((row) => (
+                    <div
+                      key={row.path}
+                      onClick={() => {
+                        setJsonViewTitle(`字段对比: ${row.path}`);
+                        setJsonViewData({ left: row.leftValue, right: row.rightValue });
+                        setJsonViewVisible(true);
+                      }}
+                      style={{
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        padding: '8px 12px',
+                        borderBottom: '1px solid #f0f0f0',
+                        cursor: 'pointer',
+                        background: row.status === 'changed' ? '#fffbe6' : row.status === 'added' ? '#f6ffed' : row.status === 'removed' ? '#fff2f0' : 'transparent'
+                      }}
+                    >
+                      <Text code>{row.path}</Text>
+                      <Tag color={row.status === 'changed' ? 'gold' : row.status === 'added' ? 'green' : row.status === 'removed' ? 'red' : 'default'}>
+                        {row.status}
+                      </Tag>
+                    </div>
+                  ))
+                ) : (
+                  <div style={{ padding: 16, textAlign: 'center' }}>
+                    <Text type="secondary">无差异内容</Text>
+                  </div>
+                )}
+              </div>
+            </Space>
+          ) : (
+            <div style={{ padding: '24px 0', textAlign: 'center' }}>
+              <Text type="secondary">需要至少两个快照版本进行对比</Text>
+            </div>
+          )}
+        </Card>
       </Col>
     </Row>
   ) : null;
@@ -2055,57 +1849,6 @@ const CapabilityReleasePage: React.FC<CapabilityReleasePageProps> = ({ mode = 'm
           />
         </Col>
       )}
-      <Col span={24}>
-        <Card
-          size="small"
-          title="快捷操作"
-          style={{ marginBottom: 16 }}
-          extra={<Text type="secondary">代码部署目标：ops-temporal</Text>}
-        >
-          <Space wrap>
-            <Button
-              type="primary"
-              icon={<RocketOutlined />}
-              disabled={
-                selectedDetail.release.sourceType !== 'temporal_workflow'
-                  && !selectedDetail.release.publishedSkillId
-              }
-              loading={deployMutation.isLoading}
-              onClick={() => openDeployModal(selectedDetail.release.id)}
-            >
-              代码部署到 ops-temporal
-            </Button>
-            <Button
-              icon={<RocketOutlined />}
-              disabled={!selectedDetail.release.latestSuccessfulValidationId}
-              loading={publishMutation.isLoading || generateDraftMutation.isLoading || approveMutation.isLoading}
-              onClick={() => void handlePublishSkill(selectedDetail.release)}
-            >
-              发布 Skill
-            </Button>
-            <Button
-              icon={<SafetyCertificateOutlined />}
-              disabled={!selectedDetail.release.publishedSkillId}
-              loading={validateSkillMutation.isLoading}
-              onClick={() =>
-                selectedDetail.release.publishedSkillId
-                  ? validateSkillMutation.mutate({ skillId: selectedDetail.release.publishedSkillId })
-                  : undefined
-              }
-            >
-              Skill 校验
-            </Button>
-            <Button
-              danger
-              icon={<DeleteOutlined />}
-              loading={archiveReleaseMutation.isLoading}
-              onClick={() => handleArchiveRelease(selectedDetail.release.id)}
-            >
-              删除 Release
-            </Button>
-          </Space>
-        </Card>
-      </Col>
       <Col span={12}>
         <Card
           size="small"
@@ -2131,25 +1874,53 @@ const CapabilityReleasePage: React.FC<CapabilityReleasePageProps> = ({ mode = 'm
         >
           {latestDeployment ? (
             <Space direction="vertical" style={{ width: '100%' }}>
-              <Text>环境：{latestDeployment.environment}</Text>
-              <Text>运行时：{latestDeployment.runtimeType}</Text>
-              <Text>状态：{latestDeployment.status}</Text>
-              <Text>策略：{latestDeployment.reloadStrategy || '无'}</Text>
-              {latestSmokeValidation && (
-                <Text>
-                  Smoke Test：{latestSmokeValidation.success ? '通过' : '失败'} / 分数 {latestSmokeValidation.score}
-                </Text>
-              )}
-              {latestDeployment.artifactUri && <Text>制品：{latestDeployment.artifactUri}</Text>}
-              {latestDeployment.rollbackTargetReleaseId && (
-                <Text>回滚目标：{latestDeployment.rollbackTargetReleaseId}</Text>
-              )}
-              <pre style={studioPaneStyle}>{latestDeployment.logs.join('\n') || '暂无日志'}</pre>
-              {latestSmokeValidation && (
-                <pre style={{ ...studioPaneStyle, maxHeight: 180 }}>
-                  {latestSmokeValidation.logs.join('\n') || '暂无 smoke test 日志'}
-                </pre>
-              )}
+              <Space wrap>
+                <Tag color="blue">环境: {latestDeployment.environment}</Tag>
+                <Tag color={statusColor(latestDeployment.status)}>{latestDeployment.status}</Tag>
+                <Tag color="purple">{latestDeployment.runtimeType}</Tag>
+                <Tag>策略: {latestDeployment.reloadStrategy || '无'}</Tag>
+              </Space>
+              <Descriptions size="small" column={1} bordered>
+                <Descriptions.Item label="制品">{latestDeployment.artifactUri || '无'}</Descriptions.Item>
+                <Descriptions.Item label="回滚目标">{latestDeployment.rollbackTargetReleaseId || '无'}</Descriptions.Item>
+                <Descriptions.Item label="发起时间">
+                  {latestDeployment.startedAt ? new Date(latestDeployment.startedAt).toLocaleString() : '无'}
+                </Descriptions.Item>
+                <Descriptions.Item label="完成时间">
+                  {latestDeployment.finishedAt ? new Date(latestDeployment.finishedAt).toLocaleString() : '无'}
+                </Descriptions.Item>
+                {latestSmokeValidation && (
+                  <Descriptions.Item label="Smoke Test">
+                    {latestSmokeValidation.success ? '通过' : '失败'} / 分数 {latestSmokeValidation.score}
+                  </Descriptions.Item>
+                )}
+              </Descriptions>
+              <Space wrap>
+                <Button
+                  size="small"
+                  icon={<EyeOutlined />}
+                  onClick={() => {
+                    setJsonViewTitle('部署日志');
+                    setJsonViewData(latestDeployment.logs);
+                    setJsonViewVisible(true);
+                  }}
+                >
+                  查看部署日志
+                </Button>
+                {latestSmokeValidation && (
+                  <Button
+                    size="small"
+                    icon={<EyeOutlined />}
+                    onClick={() => {
+                      setJsonViewTitle('Smoke Test 日志');
+                      setJsonViewData(latestSmokeValidation.logs);
+                      setJsonViewVisible(true);
+                    }}
+                  >
+                    查看 Smoke 日志
+                  </Button>
+                )}
+              </Space>
             </Space>
           ) : (
             <Text type="secondary">暂无部署记录</Text>
@@ -2158,32 +1929,66 @@ const CapabilityReleasePage: React.FC<CapabilityReleasePageProps> = ({ mode = 'm
       </Col>
 
       <Col span={12}>
-        <Card size="small" title="审计轨迹">
-          {latestAuditEvents.length > 0 ? (
-            <Space direction="vertical" style={{ width: '100%' }}>
-              {latestAuditEvents.map((event) => (
-                <Card
-                  key={event.id}
-                  size="small"
-                  style={{ background: event.success ? '#f6ffed' : '#fff2f0' }}
-                >
-                  <Space direction="vertical" size={4} style={{ width: '100%' }}>
-                    <Space style={{ justifyContent: 'space-between', width: '100%' }}>
-                      <Text strong>{event.summary}</Text>
-                      <Tag color={event.success ? 'green' : 'red'}>{event.eventType}</Tag>
-                    </Space>
-                    <Text type="secondary">{new Date(event.createdAt).toLocaleString()}</Text>
-                    {event.details && (
-                      <pre style={{ margin: 0, whiteSpace: 'pre-wrap' }}>
-                        {JSON.stringify(event.details, null, 2)}
-                      </pre>
-                    )}
-                  </Space>
-                </Card>
-              ))}
+        <Card
+          size="small"
+          title={
+            <Space>
+              <span>审计轨迹</span>
+              <Text type="secondary" style={{ fontSize: 12, fontWeight: 'normal' }}>
+                (点击卡片查看详细 JSON)
+              </Text>
             </Space>
+          }
+        >
+          {latestAuditEvents.length > 0 ? (
+            <div style={{ maxHeight: 600, overflowY: 'auto', paddingRight: 4 }}>
+              <Space direction="vertical" style={{ width: '100%' }}>
+                {latestAuditEvents.map((event) => (
+                  <Card
+                    key={event.id}
+                    size="small"
+                    hoverable
+                    onClick={() => {
+                      setSelectedAuditEvent(event);
+                      setIsAuditModalVisible(true);
+                    }}
+                    style={{
+                      borderLeft: `4px solid ${event.success ? '#52c41a' : '#ff4d4f'}`,
+                      marginBottom: 8,
+                    }}
+                    styles={{ body: { padding: '8px 12px' } }}
+                  >
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                      <div style={{ flex: 1 }}>
+                        <div
+                          style={{
+                            fontWeight: 'bold',
+                            marginBottom: 4,
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            display: '-webkit-box',
+                            WebkitLineClamp: 2,
+                            WebkitBoxOrient: 'vertical',
+                          }}
+                        >
+                          {event.summary}
+                        </div>
+                        <div style={{ fontSize: 12, color: '#8c8c8c' }}>
+                          {new Date(event.createdAt).toLocaleString()} · {event.actorName || 'System'}
+                        </div>
+                      </div>
+                      <Tag color={event.success ? 'success' : 'error'} style={{ marginRight: 0 }}>
+                        {event.eventType}
+                      </Tag>
+                    </div>
+                  </Card>
+                ))}
+              </Space>
+            </div>
           ) : (
-            <Text type="secondary">暂无审计事件</Text>
+            <div style={{ padding: '24px 0', textAlign: 'center' }}>
+              <Text type="secondary">暂无审计事件</Text>
+            </div>
           )}
         </Card>
       </Col>
@@ -2221,15 +2026,6 @@ const CapabilityReleasePage: React.FC<CapabilityReleasePageProps> = ({ mode = 'm
               }
             >
               查看 Published Skill
-            </Button>
-            <Button
-              icon={<RocketOutlined />}
-              disabled={!selectedReleaseId}
-              onClick={() =>
-                selectedReleaseId ? navigate(`/release-center?releaseId=${selectedReleaseId}`) : undefined
-              }
-            >
-              打开 Release Center
             </Button>
           </Space>
         </Space>
@@ -2278,7 +2074,7 @@ const CapabilityReleasePage: React.FC<CapabilityReleasePageProps> = ({ mode = 'm
                   {selectedDetail.release.sourceName || '未命名'}
                 </Descriptions.Item>
                 <Descriptions.Item label="能力类型">
-                  {selectedDetail.release.sourceType}
+                  {getSourceTypeLabel(selectedDetail.release.sourceType)}
                 </Descriptions.Item>
                 <Descriptions.Item label="审批状态">
                   {selectedDetail.release.approvalStatus}
@@ -2305,7 +2101,11 @@ const CapabilityReleasePage: React.FC<CapabilityReleasePageProps> = ({ mode = 'm
           onOk={handleDeploy}
           okText="开始代码部署"
           confirmLoading={deployMutation.isLoading}
-          okButtonProps={{ disabled: !deployOverridesState.valid }}
+          okButtonProps={{
+            disabled:
+              !deployOverridesState.valid
+              || (deployEnvironment === 'prod' && !hasSuccessfulStagingDeployment),
+          }}
           width={760}
         >
           <Space direction="vertical" size="middle" style={{ width: '100%' }}>
@@ -2314,12 +2114,7 @@ const CapabilityReleasePage: React.FC<CapabilityReleasePageProps> = ({ mode = 'm
                 style={{ width: 180 }}
                 value={deployEnvironment}
                 onChange={(value) => setDeployEnvironment(value as DeploymentEnvironment)}
-                options={[
-                  { label: 'dev', value: 'dev' },
-                  { label: 'test', value: 'test' },
-                  { label: 'staging', value: 'staging' },
-                  { label: 'prod', value: 'prod' },
-                ]}
+                options={DEPLOY_ENV_OPTIONS}
               />
               <Select
                 style={{ width: 220 }}
@@ -2352,6 +2147,14 @@ const CapabilityReleasePage: React.FC<CapabilityReleasePageProps> = ({ mode = 'm
             {!deployOverridesState.valid && (
               <Alert type="error" showIcon message={deployOverridesState.error} />
             )}
+            {deployEnvironment === 'prod' && !hasSuccessfulStagingDeployment ? (
+              <Alert
+                type="error"
+                showIcon
+                message="prod 发布门禁"
+                description="当前 Release 尚无 staging 成功部署记录，不能直接发布到 prod。"
+              />
+            ) : null}
             <Text type="secondary">
               最终部署参数 = 当前环境 profile + 本次覆盖参数。profile 推荐放在
               `sourcePayload.deploymentProfiles` 下维护。
@@ -2373,6 +2176,42 @@ const CapabilityReleasePage: React.FC<CapabilityReleasePageProps> = ({ mode = 'm
         message="Capability Release 操作台"
         description="当前页面保留 Release 创建、静态校验、发布 Skill、代码部署、Skill 校验、删除与回滚。Temporal Workflow 的代码部署会将当前 workflow 代码同步到 ops-temporal 对应的部署记录。"
       />
+
+      <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>
+        <Col xs={24} md={8}>
+          <Card>
+            <Space>
+              <RocketOutlined style={{ color: '#1677ff' }} />
+              <Text>已进入发布中心</Text>
+            </Space>
+            <Title level={3} style={{ margin: '12px 0 0' }}>
+              {enteredReleaseCenterCount}
+            </Title>
+          </Card>
+        </Col>
+        <Col xs={24} md={8}>
+          <Card>
+            <Space>
+              <SafetyCertificateOutlined style={{ color: '#52c41a' }} />
+              <Text>已发布 Skill</Text>
+            </Space>
+            <Title level={3} style={{ margin: '12px 0 0' }}>
+              {publishedSkillCount}
+            </Title>
+          </Card>
+        </Col>
+        <Col xs={24} md={8}>
+          <Card>
+            <Space>
+              <RocketOutlined style={{ color: '#722ed1' }} />
+              <Text>已部署版本</Text>
+            </Space>
+            <Title level={3} style={{ margin: '12px 0 0' }}>
+              {deployedVersionCount}
+            </Title>
+          </Card>
+        </Col>
+      </Row>
 
       <Card style={{ marginBottom: 16 }}>
         <Space style={{ width: '100%', justifyContent: 'space-between' }}>
@@ -2405,18 +2244,18 @@ const CapabilityReleasePage: React.FC<CapabilityReleasePageProps> = ({ mode = 'm
       </Card>
 
       <Modal
-        title="创建 Release 向导"
+        title="创建流程发布向导"
         open={createVisible}
         onCancel={resetCreateWizard}
         footer={null}
-        width={900}
+        width={960}
       >
         <Space direction="vertical" size="large" style={{ width: '100%' }}>
           <Alert
             type="info"
             showIcon
-            message="4 步先导式创建"
-            description="按照“基础信息 -> 部署 -> 发布 Skills -> 真实校验”的顺序推进。每一步都会保留当前 Release 上下文，减少在页面内来回跳转。"
+            message="4 步快速发布"
+            description="按“基础信息 -> 部署 -> 发布 Skills -> 真实校验”顺序推进，每一步都会保留当前 Release 上下文。"
           />
 
           <Steps
@@ -2446,84 +2285,87 @@ const CapabilityReleasePage: React.FC<CapabilityReleasePageProps> = ({ mode = 'm
 
           {createWizardStep === 0 ? (
             <Space direction="vertical" size="middle" style={{ width: '100%' }}>
-              <Form form={createForm} layout="vertical">
-                <Alert
-                  type="info"
-                  showIcon
-                  style={{ marginBottom: 16 }}
-                  message="源定义 JSON 的作用"
-                  description="当你已经在其他页面选好了现成的 Workflow / Template 时，这里通常不用填。它主要用于直接覆盖或补充当前 Release 的源快照，例如临时调整 workflowDsl、activityDsl、deploymentProfiles、paramsSchema 等。"
-                />
-                <Form.Item
-                  name="sourceType"
-                  label="能力类型"
-                  rules={[{ required: true, message: '请选择能力类型' }]}
-                >
-                  <Select options={SOURCE_TYPE_OPTIONS as unknown as { label: string; value: string }[]} />
-                </Form.Item>
-                {createSourceType ? (
+              <Card
+                size="small"
+                title="基础信息"
+                style={{ borderRadius: 12 }}
+                styles={{ body: { paddingBottom: 8 } }}
+              >
+                <Form form={createForm} layout="vertical">
                   <Form.Item
-                    name="sourceId"
-                    label={
-                      createSourceType === 'temporal_workflow'
-                        ? '选择 Temporal Workflow'
-                        : '选择 Execution Flow Template'
-                    }
+                    name="sourceType"
+                    label="能力类型"
+                    rules={[{ required: true, message: '请选择能力类型' }]}
                   >
-                    <Select
-                      allowClear
-                      showSearch
-                      loading={isCreateSourceLoading}
-                      placeholder={
-                        createSourceType === 'temporal_workflow'
-                          ? '选择一个已有 Temporal Workflow'
-                          : '选择一个已有 Execution Flow Template'
-                      }
-                      optionFilterProp="label"
-                      options={createSourceOptions}
-                      optionRender={(option) => {
-                        const data = option.data as CapabilitySourceOption;
-                        return (
-                          <Space direction="vertical" size={0}>
-                            <Text>{data.label}</Text>
-                            {data.description ? (
-                              <Text type="secondary" style={{ fontSize: 12 }}>
-                                {data.description}
-                              </Text>
-                            ) : null}
-                          </Space>
-                        );
-                      }}
-                    />
+                    <Select options={SOURCE_TYPE_OPTIONS as unknown as { label: string; value: string }[]} />
                   </Form.Item>
-                ) : null}
-                {createSourceType && !isCreateSourceLoading && createSourceOptions.length === 0 ? (
-                  <Alert
-                    style={{ marginBottom: 16 }}
-                    type="warning"
-                    showIcon
-                    message={
-                      createSourceType === 'temporal_workflow'
-                        ? '当前没有可选的 Temporal Workflow'
-                        : '当前没有可选的 Execution Flow Template'
-                    }
-                    description={
-                      createSourceType === 'temporal_workflow'
-                        ? '请先在 Temporal Workflow 页面创建工作流，再回来新建 Capability Release。'
-                        : '请先在 Execution Flow Template 页面创建模板，再回来新建 Capability Release。'
-                    }
-                  />
-                ) : null}
-                <Form.Item name="sourceName" label="显示名称">
-                  <Input placeholder="可选。若不填，系统会尽量从 sourcePayload / sourceId 中推断" />
-                </Form.Item>
-                <Form.Item name="sourcePayload" label="源定义 JSON">
-                  <TextArea
-                    rows={6}
-                    placeholder='可选。直接贴 JSON，例如 {"name":"示例工作流","workflowDsl":{...},"activityDsl":{...}}'
-                  />
-                </Form.Item>
-              </Form>
+                  {createSourceType ? (
+                    <Form.Item
+                      name="sourceId"
+                      label={createSourceType === 'temporal_workflow' ? '选择编排工作流' : '选择模版'}
+                    >
+                      <Select
+                        allowClear
+                        showSearch
+                        loading={isCreateSourceLoading}
+                        placeholder={createSourceType === 'temporal_workflow' ? '选择一个已有工作流' : '选择一个已有模版'}
+                        optionFilterProp="label"
+                        options={createSourceOptions}
+                        optionRender={(option) => {
+                          const data = option.data as CapabilitySourceOption;
+                          return (
+                            <Space direction="vertical" size={0}>
+                              <Text>{data.label}</Text>
+                              {data.description ? (
+                                <Text type="secondary" style={{ fontSize: 12 }}>
+                                  {data.description}
+                                </Text>
+                              ) : null}
+                            </Space>
+                          );
+                        }}
+                      />
+                    </Form.Item>
+                  ) : null}
+                  {createSourceType && !isCreateSourceLoading && createSourceOptions.length === 0 ? (
+                    <Alert
+                      style={{ marginBottom: 16 }}
+                      type="warning"
+                      showIcon
+                      message={
+                        createSourceType === 'temporal_workflow'
+                          ? '当前没有可选的编排工作流'
+                          : '当前没有可选的模版'
+                      }
+                      description={
+                        createSourceType === 'temporal_workflow'
+                          ? '请先在工作流页面创建后再回来。'
+                          : '请先在模板页面创建后再回来。'
+                      }
+                    />
+                  ) : null}
+                  <Form.Item name="sourceName" label="显示名称">
+                    <Input placeholder="可选。若不填，系统会自动从已选源推断" />
+                  </Form.Item>
+                  {createSourceType !== 'temporal_workflow' ? (
+                    <>
+                      <Alert
+                        type="info"
+                        showIcon
+                        style={{ marginBottom: 16 }}
+                        message="源定义 JSON（可选）"
+                        description="用于直接覆盖或补充当前 Release 的源快照，例如 deploymentProfiles、paramsSchema。"
+                      />
+                      <Form.Item name="sourcePayload" label="源定义 JSON">
+                        <TextArea
+                          rows={6}
+                          placeholder='可选。直接贴 JSON，例如 {"name":"示例模版","deploymentProfiles":{"test":{}}}'
+                        />
+                      </Form.Item>
+                    </>
+                  ) : null}
+                </Form>
+              </Card>
 
               <Space style={{ justifyContent: 'flex-end', width: '100%' }}>
                 <Button onClick={resetCreateWizard}>取消</Button>
@@ -2536,67 +2378,73 @@ const CapabilityReleasePage: React.FC<CapabilityReleasePageProps> = ({ mode = 'm
 
           {createWizardStep === 1 ? (
             <Space direction="vertical" size="middle" style={{ width: '100%' }}>
-              <Descriptions bordered size="small" column={2}>
-                <Descriptions.Item label="Release ID">{wizardRelease?.id || wizardReleaseId}</Descriptions.Item>
-                <Descriptions.Item label="能力类型">{wizardRelease?.sourceType || '-'}</Descriptions.Item>
-                <Descriptions.Item label="能力名称">{wizardRelease?.sourceName || '未命名'}</Descriptions.Item>
-                <Descriptions.Item label="当前状态">{wizardRelease?.status || '-'}</Descriptions.Item>
-              </Descriptions>
+              <Card size="small" title="部署配置" style={{ borderRadius: 12 }}>
+                <Descriptions bordered size="small" column={2}>
+                  <Descriptions.Item label="Release ID">{wizardRelease?.id || wizardReleaseId}</Descriptions.Item>
+                  <Descriptions.Item label="能力类型">
+                    {wizardRelease?.sourceType ? getSourceTypeLabel(wizardRelease.sourceType) : '-'}
+                  </Descriptions.Item>
+                  <Descriptions.Item label="能力名称">{wizardRelease?.sourceName || '未命名'}</Descriptions.Item>
+                  <Descriptions.Item label="当前状态">{wizardRelease?.status || '-'}</Descriptions.Item>
+                </Descriptions>
 
-              {wizardRelease?.sourceType === 'execution_flow_template' ? (
-                <Alert
-                  type="success"
-                  showIcon
-                  message="模板型能力无需独立代码部署"
-                  description="当前步骤可直接跳过，进入 Skills 发布。"
-                />
-              ) : (
-                <>
+                {wizardRelease?.sourceType === 'execution_flow_template' ? (
                   <Alert
-                    type="info"
+                    type="success"
                     showIcon
-                    message="这一步是在配置“本次部署”"
-                    description="环境、策略、覆盖参数只影响本次部署记录。默认 Profile 来自当前能力快照中的 deploymentProfiles；如果为空，说明当前 Release 还没有配置环境参数，可以使用 AI 辅助先生成一版。"
+                    message="模版型能力无需独立代码部署"
+                    description="当前步骤可直接跳过，进入 Skills 发布。"
+                    style={{ marginTop: 12 }}
                   />
-                  <Space wrap style={{ width: '100%' }}>
-                    <Select
-                      style={{ width: 180 }}
-                      value={deployEnvironment}
-                      onChange={(value) => setDeployEnvironment(value as DeploymentEnvironment)}
-                      options={[
-                        { label: 'dev', value: 'dev' },
-                        { label: 'test', value: 'test' },
-                        { label: 'staging', value: 'staging' },
-                        { label: 'prod', value: 'prod' },
-                      ]}
+                ) : (
+                  <>
+                    <Alert
+                      type="info"
+                      showIcon
+                      message="这一步是在配置“本次部署”"
+                      description="建议先部署到 staging 完成最终验证，再发布到 prod。环境、策略、覆盖参数只影响本次部署记录。"
+                      style={{ marginTop: 12 }}
                     />
-                    <Select
-                      style={{ width: 220 }}
-                      value={deployStrategy}
-                      onChange={(value) =>
-                        setDeployStrategy(value as 'hot_reload' | 'rolling_restart' | 'full_restart')
-                      }
-                      options={[
-                        { label: 'hot_reload', value: 'hot_reload' },
-                        { label: 'rolling_restart', value: 'rolling_restart' },
-                        { label: 'full_restart', value: 'full_restart' },
-                      ]}
+                    <Alert
+                      type="warning"
+                      showIcon
+                      message="生产发布建议"
+                      description="prod 建议使用 rolling_restart 并先小流量观察，确认无异常后再全量；保留回滚路径。"
                     />
-                    <Button
-                      loading={wizardAssistMutation.isLoading}
-                      disabled={!wizardReleaseId}
-                      onClick={() =>
-                        wizardReleaseId
-                          ? wizardAssistMutation.mutate({
-                              id: wizardReleaseId,
-                              environment: deployEnvironment,
-                            })
-                          : undefined
-                      }
-                    >
-                      AI 辅助设置
-                    </Button>
-                  </Space>
+                    <Space wrap style={{ width: '100%' }}>
+                      <Select
+                        style={{ width: 180 }}
+                        value={deployEnvironment}
+                        onChange={(value) => setDeployEnvironment(value as DeploymentEnvironment)}
+                        options={DEPLOY_ENV_OPTIONS}
+                      />
+                      <Select
+                        style={{ width: 220 }}
+                        value={deployStrategy}
+                        onChange={(value) =>
+                          setDeployStrategy(value as 'hot_reload' | 'rolling_restart' | 'full_restart')
+                        }
+                        options={[
+                          { label: 'hot_reload', value: 'hot_reload' },
+                          { label: 'rolling_restart', value: 'rolling_restart' },
+                          { label: 'full_restart', value: 'full_restart' },
+                        ]}
+                      />
+                      <Button
+                        loading={wizardAssistMutation.isLoading}
+                        disabled={!wizardReleaseId}
+                        onClick={() =>
+                          wizardReleaseId
+                            ? wizardAssistMutation.mutate({
+                                id: wizardReleaseId,
+                                environment: deployEnvironment,
+                              })
+                            : undefined
+                        }
+                      >
+                        AI 辅助设置
+                      </Button>
+                    </Space>
 
                   <Card
                     size="small"
@@ -2629,8 +2477,17 @@ const CapabilityReleasePage: React.FC<CapabilityReleasePageProps> = ({ mode = 'm
                   {!deployOverridesState.valid ? (
                     <Alert type="error" showIcon message={deployOverridesState.error} />
                   ) : null}
-                </>
-              )}
+                  {deployEnvironment === 'prod' && !wizardHasSuccessfulStagingDeployment ? (
+                    <Alert
+                      type="error"
+                      showIcon
+                      message="prod 发布门禁"
+                      description="请先完成 staging 成功部署，再发布到 prod。"
+                    />
+                  ) : null}
+                  </>
+                )}
+              </Card>
 
               <Space style={{ justifyContent: 'space-between', width: '100%' }}>
                 <Button onClick={resetCreateWizard}>稍后继续</Button>
@@ -2639,7 +2496,12 @@ const CapabilityReleasePage: React.FC<CapabilityReleasePageProps> = ({ mode = 'm
                     跳过部署，继续发布 Skills
                   </Button>
                 ) : (
-                  <Button type="primary" loading={deployMutation.isLoading} onClick={handleWizardDeploy}>
+                  <Button
+                    type="primary"
+                    loading={deployMutation.isLoading}
+                    disabled={deployEnvironment === 'prod' && !wizardHasSuccessfulStagingDeployment}
+                    onClick={handleWizardDeploy}
+                  >
                     部署到 {deployEnvironment}
                   </Button>
                 )}
@@ -2649,26 +2511,30 @@ const CapabilityReleasePage: React.FC<CapabilityReleasePageProps> = ({ mode = 'm
 
           {createWizardStep === 2 ? (
             <Space direction="vertical" size="middle" style={{ width: '100%' }}>
-              <Alert
-                type="info"
-                showIcon
-                message="发布 Skills"
-                description="这里会自动串联“生成草案 -> 审批 -> 发布”，完成后进入真实校验。"
-              />
-              <Descriptions bordered size="small" column={2}>
-                <Descriptions.Item label="Release">{wizardRelease?.sourceName || '未命名'}</Descriptions.Item>
-                <Descriptions.Item label="部署状态">{wizardRelease?.deploymentStatus || '未部署'}</Descriptions.Item>
-                <Descriptions.Item label="审批状态">{wizardRelease?.approvalStatus || '未审批'}</Descriptions.Item>
-                <Descriptions.Item label="已发布 Skill">
-                  {wizardRelease?.publishedSkillId || '尚未发布'}
-                </Descriptions.Item>
-              </Descriptions>
-              <Alert
-                type="success"
-                showIcon
-                message="发布策略说明"
-                description="每个 Release 发布都会新建一个新的托管 Skill，不会覆盖旧的 Skill；旧的 Skill 可被其他地方继续引用。"
-              />
+              <Card size="small" title="Skills 发布" style={{ borderRadius: 12 }}>
+                <Alert
+                  type="info"
+                  showIcon
+                  message="发布 Skills"
+                  description="这里会自动串联“生成草案 -> 审批 -> 发布”，完成后进入真实校验。"
+                  style={{ marginBottom: 12 }}
+                />
+                <Descriptions bordered size="small" column={2}>
+                  <Descriptions.Item label="Release">{wizardRelease?.sourceName || '未命名'}</Descriptions.Item>
+                  <Descriptions.Item label="部署状态">{wizardRelease?.deploymentStatus || '未部署'}</Descriptions.Item>
+                  <Descriptions.Item label="审批状态">{wizardRelease?.approvalStatus || '未审批'}</Descriptions.Item>
+                  <Descriptions.Item label="已发布 Skill">
+                    {wizardRelease?.publishedSkillId || '尚未发布'}
+                  </Descriptions.Item>
+                </Descriptions>
+                <Alert
+                  type="success"
+                  showIcon
+                  message="发布策略说明"
+                  description="每个 Release 发布都会新建一个新的托管 Skill，不会覆盖旧的 Skill；旧的 Skill 可被其他地方继续引用。"
+                  style={{ marginTop: 12 }}
+                />
+              </Card>
               <Space style={{ justifyContent: 'space-between', width: '100%' }}>
                 <Button onClick={resetCreateWizard}>稍后继续</Button>
                 <Button
@@ -2685,57 +2551,59 @@ const CapabilityReleasePage: React.FC<CapabilityReleasePageProps> = ({ mode = 'm
 
           {createWizardStep === 3 ? (
             <Space direction="vertical" size="middle" style={{ width: '100%' }}>
-              <Alert
-                type="warning"
-                showIcon
-                message="真实校验"
-                description="请填入真实业务参数或自然语言测试语句，系统会执行 Sandbox 校验并把结果写回当前 Release。若你不确定怎么填，可先点击 AI 辅助设置自动生成一版。"
-              />
-              <Space wrap>
-                <Button
-                  loading={wizardAssistMutation.isLoading}
-                  disabled={!wizardReleaseId}
-                  onClick={() =>
-                    wizardReleaseId
-                      ? wizardAssistMutation.mutate({
-                          id: wizardReleaseId,
-                          environment: deployEnvironment,
-                        })
-                      : undefined
-                  }
-                >
-                  AI 辅助设置
-                </Button>
-                {wizardAssistExplanation ? <Text type="secondary">{wizardAssistExplanation}</Text> : null}
-              </Space>
-              <TextArea
-                rows={7}
-                value={wizardValidationInputDraft}
-                onChange={(event) => setWizardValidationInputDraft(event.target.value)}
-                placeholder='真实校验输入 JSON，例如 {"city":"北京"}'
-                spellCheck={false}
-                style={{ fontFamily: 'monospace' }}
-              />
-              {!wizardValidationInputState.valid ? (
-                <Alert type="error" showIcon message={wizardValidationInputState.error} />
-              ) : null}
-              <Input
-                value={wizardValidationUserInput}
-                onChange={(event) => setWizardValidationUserInput(event.target.value)}
-                placeholder="可选：测试用户自然语言，例如 请帮我查询订单状态"
-              />
-              {wizardRelease?.sourceType === 'temporal_workflow' ? (
-                <Input
-                  value={wizardValidationFn}
-                  onChange={(event) => setWizardValidationFn(event.target.value)}
-                  placeholder="可选：Workflow 函数名"
+              <Card size="small" title="真实校验" style={{ borderRadius: 12 }}>
+                <Alert
+                  type="warning"
+                  showIcon
+                  message="真实校验"
+                  description="请填入真实业务参数或自然语言测试语句，系统会执行真实校验并把结果写回当前 Release。"
+                  style={{ marginBottom: 12 }}
                 />
-              ) : null}
+                <Space wrap>
+                  <Button
+                    loading={wizardAssistMutation.isLoading}
+                    disabled={!wizardReleaseId}
+                    onClick={() =>
+                      wizardReleaseId
+                        ? wizardAssistMutation.mutate({
+                            id: wizardReleaseId,
+                            environment: deployEnvironment,
+                          })
+                        : undefined
+                    }
+                  >
+                    AI 辅助设置
+                  </Button>
+                  {wizardAssistExplanation ? <Text type="secondary">{wizardAssistExplanation}</Text> : null}
+                </Space>
+                <TextArea
+                  rows={4}
+                  value={wizardValidationCasesDraft}
+                  onChange={(event) => setWizardValidationCasesDraft(event.target.value)}
+                  placeholder={'自然语言测试用例（每行一条）\n例如：\n查询北京天气\n查询上海天气，格式json'}
+                  style={{ marginTop: 12 }}
+                />
+                <Text type="secondary">
+                  已识别 {wizardValidationCases.length} 条用例；点击“开始真实校验”后会按顺序逐条执行。
+                </Text>
+                <Input
+                  value={wizardValidationUserInput}
+                  onChange={(event) => setWizardValidationUserInput(event.target.value)}
+                  placeholder="可选：单条快速测试（会自动追加到上面多用例）"
+                  style={{ marginTop: 12 }}
+                  onPressEnter={(event) => {
+                    const value = (event.target as HTMLInputElement).value.trim();
+                    if (!value) return;
+                    setWizardValidationCasesDraft((prev) => [prev, value].filter(Boolean).join('\n'));
+                    setWizardValidationUserInput('');
+                  }}
+                />
+              </Card>
               {wizardValidationExecuted && wizardLatestValidation ? (
                 <Card size="small" title="最近一次真实校验结果">
                   <Space direction="vertical" style={{ width: '100%' }}>
                     <Text>结果：{wizardLatestValidation.success ? '通过' : '失败'}</Text>
-                    <Text>类型：{wizardLatestValidation.validationType}</Text>
+                    <Text>类型：{getValidationTypeLabel(wizardLatestValidation.validationType)}</Text>
                     <Text>分数：{wizardLatestValidation.score}</Text>
                     {wizardLatestValidation.errorSummary ? (
                       <Alert
@@ -2745,9 +2613,32 @@ const CapabilityReleasePage: React.FC<CapabilityReleasePageProps> = ({ mode = 'm
                         description={wizardLatestValidation.errorSummary}
                       />
                     ) : null}
-                    <pre style={{ ...studioPaneStyle, maxHeight: 220 }}>
-                      {wizardLatestValidation.logs.join('\n') || '暂无日志'}
-                    </pre>
+                    {wizardValidationCaseResults.length > 0 ? (
+                      <Space direction="vertical" size="small" style={{ width: '100%' }}>
+                        {wizardValidationCaseResults.map((item) => (
+                          <Card
+                            key={`${wizardLatestValidation.id}-${item.caseIndex}-${item.testUserInput}`}
+                            size="small"
+                            title={`Case ${item.caseIndex || '-'}：${item.testUserInput || '未命名用例'}`}
+                          >
+                            <Space direction="vertical" style={{ width: '100%' }}>
+                              <Text>结果：{item.success ? '通过' : '失败'}</Text>
+                              <Text>分数：{item.score}</Text>
+                              {item.error ? (
+                                <Alert type="error" showIcon message="失败原因" description={item.error} />
+                              ) : null}
+                              <pre style={{ ...studioPaneStyle, maxHeight: 180 }}>
+                                {item.logs.join('\n') || '暂无日志'}
+                              </pre>
+                            </Space>
+                          </Card>
+                        ))}
+                      </Space>
+                    ) : (
+                      <pre style={{ ...studioPaneStyle, maxHeight: 220 }}>
+                        {wizardLatestValidation.logs.join('\n') || '暂无日志'}
+                      </pre>
+                    )}
                     {!wizardLatestValidation.success ? (
                       <Button
                         size="small"
@@ -2784,7 +2675,11 @@ const CapabilityReleasePage: React.FC<CapabilityReleasePageProps> = ({ mode = 'm
         onOk={handleDeploy}
         okText="开始代码部署"
         confirmLoading={deployMutation.isLoading}
-        okButtonProps={{ disabled: !deployOverridesState.valid }}
+        okButtonProps={{
+          disabled:
+            !deployOverridesState.valid
+            || (deployEnvironment === 'prod' && !hasSuccessfulStagingDeployment),
+        }}
         width={760}
       >
         <Space direction="vertical" size="middle" style={{ width: '100%' }}>
@@ -2830,6 +2725,14 @@ const CapabilityReleasePage: React.FC<CapabilityReleasePageProps> = ({ mode = 'm
             message="部署覆盖参数"
             description="这里填写的是“本次部署额外覆盖”的 JSON。系统会将它与上面的环境默认参数合并，最终形成本次 deploy 实际使用的配置。"
           />
+          {deployEnvironment === 'prod' ? (
+            <Alert
+              type="warning"
+              showIcon
+              message="当前为生产环境发布"
+              description="建议先在 staging 完成最终验证；生产优先 rolling_restart，并准备好回滚目标。"
+            />
+          ) : null}
           <TextArea
             rows={5}
             value={deployOverridesDraft}
@@ -2841,6 +2744,14 @@ const CapabilityReleasePage: React.FC<CapabilityReleasePageProps> = ({ mode = 'm
           {!deployOverridesState.valid && (
             <Alert type="error" showIcon message={deployOverridesState.error} />
           )}
+          {deployEnvironment === 'prod' && !hasSuccessfulStagingDeployment ? (
+            <Alert
+              type="error"
+              showIcon
+              message="prod 发布门禁"
+              description="当前 Release 尚无 staging 成功部署记录，不能直接发布到 prod。"
+            />
+          ) : null}
           <Text type="secondary">
             最终部署参数 = 当前环境 profile + 本次覆盖参数。profile 推荐放在
             `sourcePayload.deploymentProfiles` 下维护。
@@ -2929,65 +2840,267 @@ const CapabilityReleasePage: React.FC<CapabilityReleasePageProps> = ({ mode = 'm
         )}
       </Modal>
 
+      <Modal
+        title={
+          <Space>
+            <EyeOutlined style={{ color: '#1890ff' }} />
+            <span>审计事件详情</span>
+          </Space>
+        }
+        open={isAuditModalVisible}
+        onCancel={() => setIsAuditModalVisible(false)}
+        footer={[
+          <Button key="close" onClick={() => setIsAuditModalVisible(false)}>
+            关闭
+          </Button>,
+        ]}
+        width={700}
+      >
+        {selectedAuditEvent ? (
+          <Space direction="vertical" style={{ width: '100%' }}>
+            <Descriptions column={2} bordered size="small">
+              <Descriptions.Item label="事件摘要" span={2}>
+                {selectedAuditEvent.summary}
+              </Descriptions.Item>
+              <Descriptions.Item label="事件类型">
+                <Tag color={selectedAuditEvent.success ? 'success' : 'error'}>
+                  {selectedAuditEvent.eventType}
+                </Tag>
+              </Descriptions.Item>
+              <Descriptions.Item label="执行结果">
+                {selectedAuditEvent.success ? '成功' : '失败'}
+              </Descriptions.Item>
+              <Descriptions.Item label="操作人">
+                {selectedAuditEvent.actorName || 'System'}
+              </Descriptions.Item>
+              <Descriptions.Item label="执行时间">
+                {new Date(selectedAuditEvent.createdAt).toLocaleString()}
+              </Descriptions.Item>
+            </Descriptions>
+            {selectedAuditEvent.details && (
+              <div style={{ marginTop: 16 }}>
+                <div style={{ fontWeight: 'bold', marginBottom: 8 }}>详细信息 (JSON):</div>
+                <pre
+                  style={{
+                    background: '#f5f5f5',
+                    padding: 12,
+                    borderRadius: 4,
+                    maxHeight: 400,
+                    overflow: 'auto',
+                    margin: 0,
+                    fontSize: 12,
+                  }}
+                >
+                  {JSON.stringify(selectedAuditEvent.details, null, 2)}
+                </pre>
+              </div>
+            )}
+          </Space>
+        ) : null}
+      </Modal>
+
+      <Modal
+        title={
+          <Space>
+            <EyeOutlined style={{ color: '#1890ff' }} />
+            <span>{jsonViewTitle}</span>
+          </Space>
+        }
+        open={jsonViewVisible}
+        onCancel={() => setJsonViewVisible(false)}
+        footer={[
+          <Button key="close" onClick={() => setJsonViewVisible(false)}>
+            关闭
+          </Button>,
+        ]}
+        width={800}
+      >
+        <pre
+          style={{
+            background: '#f5f5f5',
+            padding: 16,
+            borderRadius: 4,
+            maxHeight: 600,
+            overflow: 'auto',
+            margin: 0,
+            fontSize: 13,
+            fontFamily: 'monospace',
+            whiteSpace: 'pre-wrap',
+          }}
+        >
+          {JSON.stringify(jsonViewData, null, 2)}
+        </pre>
+      </Modal>
+
       <Drawer
-        title="Release 详情"
-        width={1280}
+        title={
+          <Space>
+            <RocketOutlined />
+            <span>{drawerMode === 'view' ? 'Release 详情' : 'Release 操作与编辑'}</span>
+            <Text type="secondary" style={{ fontWeight: 'normal', fontSize: 14 }}>
+              {selectedDetail?.release.sourceName || selectedDetail?.release.id}
+            </Text>
+          </Space>
+        }
+        width={1200}
         open={Boolean(selectedReleaseId) && !createVisible}
         onClose={() => {
           setSelectedReleaseId(null);
+          setDrawerMode(null);
           setSearchParams({});
         }}
+        styles={{ body: { padding: '12px 24px' } }}
       >
         {selectedDetail ? (
-          <Space direction="vertical" size="large" style={{ width: '100%' }}>
-            <Card size="small">
-              <Descriptions column={2} bordered size="small">
-                <Descriptions.Item label="Release ID">{selectedDetail.release.id}</Descriptions.Item>
-                <Descriptions.Item label="状态">
-                  <Tag color={statusColor(selectedDetail.release.status)}>{selectedDetail.release.status}</Tag>
-                </Descriptions.Item>
-                <Descriptions.Item label="能力名称">
-                  {selectedDetail.release.sourceName || '未命名'}
-                </Descriptions.Item>
-                <Descriptions.Item label="能力类型">
-                  {selectedDetail.release.sourceType}
-                </Descriptions.Item>
-                <Descriptions.Item label="当前 Build">{selectedDetail.release.currentBuildId || '无'}</Descriptions.Item>
-                <Descriptions.Item label="最近成功验证">
-                  {selectedDetail.release.latestSuccessfulValidationId || '无'}
-                </Descriptions.Item>
-                <Descriptions.Item label="当前草案">
-                  {selectedDetail.release.currentSkillDraftId || '无'}
-                </Descriptions.Item>
-                <Descriptions.Item label="审批状态">
-                  {selectedDetail.release.approvalStatus}
-                </Descriptions.Item>
-                <Descriptions.Item label="已发布 Skill">
-                  {selectedDetail.release.publishedSkillId || '无'}
-                </Descriptions.Item>
-                <Descriptions.Item label="部署状态">
-                  {selectedDetail.release.deploymentStatus}
-                </Descriptions.Item>
-              </Descriptions>
-            </Card>
-
-            <Tabs
+          <Space direction="vertical" size="middle" style={{ width: '100%' }}>
+            <Descriptions
+              column={4}
+              size="small"
+              bordered
               items={[
-                {
-                  key: 'studio',
-                  label: 'Capability Studio',
-                  children: studioContent,
-                },
-                {
-                  key: 'ops',
-                  label: '发布与运维',
-                  children: operationsContent,
-                },
+                { label: '状态', children: <Tag color={statusColor(selectedDetail.release.status)}>{selectedDetail.release.status}</Tag> },
+                { label: '类型', children: getSourceTypeLabel(selectedDetail.release.sourceType) },
+                { label: '审批', children: selectedDetail.release.approvalStatus },
+                { label: '部署', children: selectedDetail.release.deploymentStatus || '未部署' },
               ]}
             />
+
+            {drawerMode === 'view' ? (
+              <Tabs
+                size="small"
+                items={[
+                  { key: 'studio', label: '设计详情 (Studio)', children: studioContent },
+                  { key: 'ops', label: '运维详情', children: operationsContent },
+                ]}
+              />
+            ) : (
+              <Space direction="vertical" size="middle" style={{ width: '100%' }}>
+                <Row gutter={[12, 12]}>
+                  <Col span={6} style={{ display: 'flex' }}>
+                    <Card
+                      size="small"
+                      hoverable
+                      style={{ textAlign: 'center', width: '100%' }}
+                      styles={{ body: { minHeight: 130, display: 'flex', flexDirection: 'column', justifyContent: 'center' } }}
+                    >
+                      <SafetyCertificateOutlined style={{ fontSize: 24, color: '#1890ff', marginBottom: 8 }} />
+                      <div style={{ fontWeight: 'bold', marginBottom: 4 }}>1. 检查</div>
+                      <Button
+                        type="primary"
+                        size="small"
+                        ghost
+                        loading={validateStaticMutation.isLoading}
+                        onClick={() => validateStaticMutation.mutate({ id: selectedDetail.release.id })}
+                      >
+                        静态校验
+                      </Button>
+                    </Card>
+                  </Col>
+                  <Col span={6} style={{ display: 'flex' }}>
+                    <Card
+                      size="small"
+                      hoverable
+                      style={{ textAlign: 'center', width: '100%' }}
+                      styles={{ body: { minHeight: 130, display: 'flex', flexDirection: 'column', justifyContent: 'center' } }}
+                    >
+                      <RocketOutlined style={{ fontSize: 24, color: '#52c41a', marginBottom: 8 }} />
+                      <div style={{ fontWeight: 'bold', marginBottom: 4 }}>2. 重新部署</div>
+                      <Button
+                        type="primary"
+                        size="small"
+                        ghost
+                        loading={deployMutation.isLoading}
+                        onClick={() => openDeployModal(selectedDetail.release.id)}
+                      >
+                        代码部署
+                      </Button>
+                    </Card>
+                  </Col>
+                  <Col span={6} style={{ display: 'flex' }}>
+                    <Card
+                      size="small"
+                      hoverable
+                      style={{ textAlign: 'center', width: '100%' }}
+                      styles={{ body: { minHeight: 130, display: 'flex', flexDirection: 'column', justifyContent: 'center' } }}
+                    >
+                      <AppstoreAddOutlined style={{ fontSize: 24, color: '#722ed1', marginBottom: 8 }} />
+                      <Tooltip title="将当前 Release 的设计（触发词、参数 Schema、API 端点）发布到 Skill Center。发布后，AI 即可通过这些配置识别并调用此能力。">
+                        <div style={{ fontWeight: 'bold', marginBottom: 4, cursor: 'help' }}>
+                          3. 发布 Skill <QuestionCircleOutlined style={{ fontSize: 12 }} />
+                        </div>
+                      </Tooltip>
+                      <Space direction="vertical" size={4} style={{ width: '100%' }}>
+                        <Button
+                          type="primary"
+                          size="small"
+                          ghost
+                          loading={publishMutation.isLoading || generateDraftMutation.isLoading || approveMutation.isLoading}
+                          onClick={() => void handlePublishSkill(selectedDetail.release)}
+                        >
+                          发布 Skill
+                        </Button>
+                        <Button
+                          size="small"
+                          type="link"
+                          disabled={!selectedDetail.release.publishedSkillId}
+                          loading={validateSkillMutation.isLoading}
+                          onClick={() =>
+                            selectedDetail.release.publishedSkillId
+                              ? validateSkillMutation.mutate({ skillId: selectedDetail.release.publishedSkillId })
+                              : undefined
+                          }
+                          style={{ fontSize: 11 }}
+                        >
+                          质量评估 (AI 模拟)
+                        </Button>
+                      </Space>
+                    </Card>
+                  </Col>
+                  <Col span={6} style={{ display: 'flex' }}>
+                    <Card
+                      size="small"
+                      hoverable
+                      style={{ textAlign: 'center', width: '100%' }}
+                      styles={{ body: { minHeight: 130, display: 'flex', flexDirection: 'column', justifyContent: 'center' } }}
+                    >
+                      <CheckCircleOutlined style={{ fontSize: 24, color: '#faad14', marginBottom: 8 }} />
+                      <Tooltip title="在隔离的 Sandbox 或连接真实插件环境执行测试用例，验证代码逻辑与环境集成是否正常。建议在发布到生产环境前完成此步骤。">
+                        <div style={{ fontWeight: 'bold', marginBottom: 4, cursor: 'help' }}>
+                          4. 验证 <QuestionCircleOutlined style={{ fontSize: 12 }} />
+                        </div>
+                      </Tooltip>
+                      <Button
+                        type="primary"
+                        size="small"
+                        ghost
+                        onClick={() => {
+                          setWizardReleaseId(selectedDetail.release.id);
+                          setCreateWizardStep(3);
+                          setCreateVisible(true);
+                        }}
+                      >
+                        真实校验
+                      </Button>
+                    </Card>
+                  </Col>
+                </Row>
+
+                <Tabs
+                  size="small"
+                  defaultActiveKey="ops"
+                  items={[
+                    { key: 'ops', label: '运维详情', children: operationsContent },
+                    { key: 'studio', label: '设计详情 (Studio)', children: studioContent },
+                  ]}
+                />
+              </Space>
+            )}
           </Space>
         ) : (
-          <Text type="secondary">正在加载...</Text>
+          <div style={{ textAlign: 'center', padding: '40px 0' }}>
+            <ReloadOutlined spin style={{ fontSize: 24, color: '#1890ff' }} />
+            <div style={{ marginTop: 12, color: '#999' }}>正在加载详情...</div>
+          </div>
         )}
       </Drawer>
     </div>

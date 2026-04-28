@@ -60,8 +60,9 @@ export class CapabilityReleaseService implements OnModuleInit {
 
   async listReleases(): Promise<CapabilityReleaseDTO[]> {
     const rows = await this.prisma.$queryRawUnsafe<any[]>(
-      `SELECT *
-       FROM capability_releases
+      `SELECT r.*, 
+              (SELECT environment FROM deployment_records WHERE release_id = r.id ORDER BY created_at DESC LIMIT 1) as last_deployment_environment
+       FROM capability_releases r
        WHERE archived_at IS NULL
        ORDER BY updated_at DESC`
     );
@@ -70,8 +71,9 @@ export class CapabilityReleaseService implements OnModuleInit {
 
   async listReleaseCenter(): Promise<CapabilityReleaseDTO[]> {
     const rows = await this.prisma.$queryRawUnsafe<any[]>(
-      `SELECT *
-       FROM capability_releases
+      `SELECT r.*,
+              (SELECT environment FROM deployment_records WHERE release_id = r.id ORDER BY created_at DESC LIMIT 1) as last_deployment_environment
+       FROM capability_releases r
        WHERE archived_at IS NULL
          AND (
            published_skill_id IS NOT NULL
@@ -339,10 +341,7 @@ export class CapabilityReleaseService implements OnModuleInit {
     const snapshot = await this.getCurrentSnapshotOrThrow(release);
     const build = await this.resolveTemporalExecutableBuildOrThrow(release, snapshot, undefined, userId);
 
-    const workflowName = String(
-      snapshot.sourcePayload.name || release.sourceName || 'GeneratedWorkflow',
-    );
-    const fn = `${workflowName.replace(/\s+/g, '')}Workflow`;
+    const fn = this.resolveWorkflowFnOrThrow(snapshot.sourcePayload);
     const taskQueue = typeof snapshot.sourcePayload.taskQueue === 'string'
       ? snapshot.sourcePayload.taskQueue
       : 'SKILL_TASK_QUEUE';
@@ -840,6 +839,7 @@ export class CapabilityReleaseService implements OnModuleInit {
     id: string,
     dto: ValidateCapabilityDTO,
     userId?: string,
+    authToken?: string,
   ): Promise<{ release: CapabilityReleaseDTO; validation: CapabilityValidationDTO }> {
     const release = await this.getReleaseOrThrow(id);
     const snapshot = await this.getCurrentSnapshotOrThrow(release);
@@ -862,29 +862,81 @@ export class CapabilityReleaseService implements OnModuleInit {
       let logs: string[] = [];
       let resultSnapshot: Record<string, unknown> | null = null;
       let errorSummary: string | null = null;
+      const testCasesFromRequest = Array.isArray(dto.testCases)
+        ? dto.testCases.map((item) => (typeof item === 'string' ? item.trim() : '')).filter(Boolean)
+        : [];
+      const naturalLanguageCases = testCasesFromRequest.length > 0
+        ? testCasesFromRequest
+        : (dto.testUserInput?.trim() ? [dto.testUserInput.trim()] : []);
 
       if (release.sourceType === 'temporal_workflow') {
-        if (!build.generatedCode) {
-          throw new Error('当前构建没有可执行代码，请先完成代码生成');
+        if (naturalLanguageCases.length > 0 && (!dto.input || Object.keys(dto.input).length === 0)) {
+          if (!release.publishedSkillId) {
+            throw new Error('请先发布 Skill，再使用自然语言进行真实验证');
+          }
+          const caseResults: Array<{
+            caseIndex: number;
+            testUserInput: string;
+            success: boolean;
+            score: number;
+            error?: string;
+            logs: string[];
+            result?: Record<string, unknown> | null;
+          }> = [];
+
+          for (let i = 0; i < naturalLanguageCases.length; i += 1) {
+            const currentCase = naturalLanguageCases[i] as string;
+            const runtimeResult = await this.executePublishedSkillByPromptForValidation(
+              release.publishedSkillId,
+              currentCase,
+              authToken,
+            );
+            caseResults.push({
+              caseIndex: i + 1,
+              testUserInput: currentCase,
+              success: runtimeResult.success,
+              score: runtimeResult.success ? 100 : 50,
+              ...(runtimeResult.error ? { error: runtimeResult.error } : {}),
+              logs: runtimeResult.logs,
+              result: runtimeResult.result ?? null,
+            });
+          }
+
+          const passedCases = caseResults.filter((item) => item.success).length;
+          success = passedCases === caseResults.length;
+          score = caseResults.length > 0 ? Math.round((passedCases / caseResults.length) * 100) : 0;
+          logs = caseResults.flatMap((item) => [
+            `[Case ${item.caseIndex}] ${item.testUserInput}`,
+            ...item.logs.map((line) => `[Case ${item.caseIndex}] ${line}`),
+          ]);
+          resultSnapshot = {
+            mode: 'nl_task_runtime_batch',
+            totalCases: caseResults.length,
+            passedCases,
+            caseResults,
+          };
+          const firstError = caseResults.find((item) => !item.success)?.error;
+          errorSummary = firstError || null;
+        } else {
+          if (!build.generatedCode) {
+            throw new Error('当前构建没有可执行代码，请先完成代码生成');
+          }
+          const fn = dto.fn || this.resolveWorkflowFnOrThrow(snapshot.sourcePayload);
+          const result = await this.temporalWorkflowService.validateWorkflowReal(
+            build.generatedCode,
+            fn,
+            dto.input,
+          );
+          success = result.success;
+          score = result.score;
+          logs = result.logs;
+          resultSnapshot = {
+            result: result.result ?? null,
+            error: result.error ?? null,
+            fn,
+          };
+          errorSummary = result.error || null;
         }
-        const workflowName = String(
-          snapshot.sourcePayload.name || release.sourceName || 'GeneratedWorkflow',
-        );
-        const fn = dto.fn || `${workflowName.replace(/\s+/g, '')}Workflow`;
-        const result = await this.temporalWorkflowService.validateInSandbox(
-          build.generatedCode,
-          fn,
-          dto.input,
-        );
-        success = result.success;
-        score = result.score;
-        logs = result.logs;
-        resultSnapshot = {
-          result: result.result ?? null,
-          error: result.error ?? null,
-          fn,
-        };
-        errorSummary = result.error || null;
       } else if (release.sourceId) {
         const validation = await this.executionFlowTemplateService.validateTemplate(
           release.sourceId,
@@ -947,6 +999,7 @@ export class CapabilityReleaseService implements OnModuleInit {
     id: string,
     dto: ValidateCapabilityDTO,
     userId: string | undefined,
+    _authToken: string | undefined,
     onEvent: (event: string, payload: Record<string, unknown>) => void,
   ): Promise<void> {
     const release = await this.getReleaseOrThrow(id);
@@ -976,19 +1029,17 @@ export class CapabilityReleaseService implements OnModuleInit {
         if (!build.generatedCode) {
           throw new Error('当前构建没有可执行代码，请先完成代码生成');
         }
-        const workflowName = String(
-          snapshot.sourcePayload.name || release.sourceName || 'GeneratedWorkflow',
-        );
-        const fn = dto.fn || `${workflowName.replace(/\s+/g, '')}Workflow`;
+        const fn = dto.fn || this.resolveWorkflowFnOrThrow(snapshot.sourcePayload);
         onEvent('status', {
           phase: 'executing',
           runtime: 'temporal_workflow',
           fn,
         });
-        const result = await this.temporalWorkflowService.validateInSandboxStreaming(
+        const result = await this.temporalWorkflowService.validateWorkflowRealStreaming(
           build.generatedCode,
           fn,
           dto.input as Record<string, any> | undefined,
+          undefined,
           (log) => {
             streamedLogs.push(log);
             onEvent('log', { message: log });
@@ -1253,13 +1304,14 @@ export class CapabilityReleaseService implements OnModuleInit {
     if (!draftId) {
       throw new NotFoundException('没有可发布的 Skill 草案');
     }
+    const previousPublishedSkillId = release.publishedSkillId;
     const draft = await this.getSkillDraftOrThrow(draftId);
 
     const payload = { ...(draft.draftPayload as Record<string, unknown>) };
     const baseName =
       (typeof payload.name === 'string' && payload.name.trim()) || release.sourceName || `Skill-${release.id.slice(0, 8)}`;
     let finalName = String(baseName);
-    // 确保每个 Release 发布都会新建新 Skill：如果同名已存在，则基于当前 Release 派生唯一名称
+    // 确保每个 Release 发布都会新建新 Skill：如果同名已存在，则派生唯一名称（含递增后缀）
     const nameExists = async (name: string) => {
       const rows = await this.prisma.$queryRawUnsafe<any[]>(
         `SELECT id FROM skill_configs WHERE name = $1 LIMIT 1`,
@@ -1268,12 +1320,44 @@ export class CapabilityReleaseService implements OnModuleInit {
       return Boolean(rows[0]?.id);
     };
     if (await nameExists(finalName)) {
-      const candidate = `${baseName}-${release.id.slice(0, 8)}`;
-      finalName = (await nameExists(candidate)) ? `${baseName}-${release.releaseVersion}-${release.id.slice(0, 8)}` : candidate;
+      const baseCandidate = `${baseName}-${release.id.slice(0, 8)}`;
+      finalName = baseCandidate;
+      let suffix = 1;
+      while (await nameExists(finalName)) {
+        finalName = `${baseCandidate}-${suffix}`;
+        suffix += 1;
+        if (suffix > 1000) {
+          finalName = `${baseCandidate}-${Date.now()}`;
+          break;
+        }
+      }
     }
     payload.name = finalName;
     const created = await this.skillService.createSkill(payload as any);
     const publishedSkillId = created.id;
+
+    // Re-publish safety: deactivate the previously bound skill for this release
+    // so skill matching does not continue to route to stale versions.
+    if (
+      previousPublishedSkillId
+      && previousPublishedSkillId !== publishedSkillId
+    ) {
+      await this.prisma.skillConfig.updateMany({
+        where: { id: previousPublishedSkillId },
+        data: { isActive: false },
+      });
+      await this.insertAuditEvent(
+        id,
+        'published_skill_deactivated',
+        userId,
+        true,
+        `重新发布后停用旧 Skill: ${previousPublishedSkillId}`,
+        {
+          previousPublishedSkillId,
+          newPublishedSkillId: publishedSkillId,
+        },
+      );
+    }
 
     await this.prisma.$executeRawUnsafe(
       `UPDATE skill_drafts
@@ -2583,11 +2667,8 @@ ${logs.join('\n')}
         if (!build.generatedCode) {
           throw new Error('当前构建没有可执行代码，无法执行部署后 smoke test');
         }
-        const workflowName = String(
-          snapshot.sourcePayload.name || release.sourceName || 'GeneratedWorkflow',
-        );
-        const fn = `${workflowName.replace(/\s+/g, '')}Workflow`;
-        const result = await this.temporalWorkflowService.validateInSandbox(
+        const fn = this.resolveWorkflowFnOrThrow(snapshot.sourcePayload);
+        const result = await this.temporalWorkflowService.validateWorkflowReal(
           build.generatedCode,
           fn,
           smokeInput,
@@ -2990,6 +3071,115 @@ ${logs.join('\n')}
       ...inferredSchema,
       properties: mergedProperties,
       required: Array.from(new Set([...rawRequired, ...inferredRequired])),
+    };
+  }
+
+  private resolveWorkflowFnOrThrow(payload: Record<string, unknown>): string {
+    const workflowDsl =
+      payload.workflowDsl && typeof payload.workflowDsl === 'object'
+        ? (payload.workflowDsl as Record<string, unknown>)
+        : {};
+    const workflowClassName =
+      typeof workflowDsl.workflowClassName === 'string'
+        ? workflowDsl.workflowClassName.trim()
+        : '';
+    if (!workflowClassName) {
+      throw new BadRequestException(
+        '当前工作流缺少 workflowDsl.workflowClassName，请在工作流页面设置函数名称并重新同步后再验证/部署',
+      );
+    }
+    return workflowClassName;
+  }
+
+  private getControlPlaneApiUrl(): string {
+    const configured = process.env.CONTROL_PLANE_URL;
+    if (configured && configured.trim()) {
+      return configured.endsWith('/api') ? configured : `${configured}/api`;
+    }
+    if (process.env.DOCKER_ENV === 'true' || process.env.NODE_ENV === 'production') {
+      return 'http://ops-control-plane:3003/api';
+    }
+    return 'http://localhost:3003/api';
+  }
+
+  private async executePublishedSkillByPromptForValidation(
+    skillId: string,
+    prompt: string,
+    authToken?: string,
+  ): Promise<{ success: boolean; logs: string[]; result?: Record<string, unknown> | null; error?: string }> {
+    const runtimeContext = await this.getPublishedSkillRuntimeContext(skillId);
+    const controlPlaneUrl = this.getControlPlaneApiUrl();
+    const logs: string[] = [
+      `[NL-Validation] 使用自然语言调用已发布 Skill: ${skillId}`,
+      `[NL-Validation] runtimeType=${runtimeContext.runtimeType}, runtimeSource=${runtimeContext.runtimeSource}`,
+    ];
+
+    const createRes = await axios.post<{ id: string }>(
+      `${controlPlaneUrl}/executions`,
+      {
+        skillId,
+        runtimeType: runtimeContext.runtimeType,
+        input: {
+          prompt,
+        },
+      },
+      {
+        headers: authToken ? { Authorization: authToken } : undefined,
+      },
+    );
+    const executionId = createRes.data.id;
+    logs.push(`[NL-Validation] 已创建执行单: ${executionId}`);
+
+    const maxAttempts = 60;
+    for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
+      const detailRes = await axios.get<Record<string, unknown>>(
+        `${controlPlaneUrl}/executions/${executionId}`,
+        {
+          headers: authToken ? { Authorization: authToken } : undefined,
+        },
+      );
+      const status = String(detailRes.data?.status || '');
+      logs.push(`[NL-Validation] 执行状态: ${status}`);
+
+      if (status === 'succeeded') {
+        return {
+          success: true,
+          logs,
+          result:
+            detailRes.data?.result && typeof detailRes.data.result === 'object'
+              ? (detailRes.data.result as Record<string, unknown>)
+              : null,
+        };
+      }
+
+      if (status === 'failed' || status === 'cancelled' || status === 'rolled_back') {
+        const failureReason = String(detailRes.data?.failureReason || '执行失败');
+        return {
+          success: false,
+          logs,
+          error: failureReason,
+          result:
+            detailRes.data?.result && typeof detailRes.data.result === 'object'
+              ? (detailRes.data.result as Record<string, unknown>)
+              : null,
+        };
+      }
+
+      if (status === 'waiting_input' || status === 'pending_approval') {
+        return {
+          success: false,
+          logs,
+          error: `自然语言验证未完成：执行进入 ${status}，请补充信息或审批后重试`,
+        };
+      }
+
+      await new Promise((resolve) => setTimeout(resolve, 1500));
+    }
+
+    return {
+      success: false,
+      logs,
+      error: '自然语言验证超时：执行长时间未进入终态',
     };
   }
 
@@ -3479,6 +3669,7 @@ ${logs.join('\n')}
       currentSkillDraftId: raw.current_skill_draft_id,
       publishedSkillId: raw.published_skill_id,
       lastDeploymentId: raw.last_deployment_id,
+      lastDeploymentEnvironment: raw.last_deployment_environment,
       rollbackOfReleaseId: raw.rollback_of_release_id,
       createdBy: raw.created_by,
       createdAt: this.toIsoString(raw.created_at),

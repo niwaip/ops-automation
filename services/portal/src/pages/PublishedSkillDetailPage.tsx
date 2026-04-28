@@ -164,9 +164,9 @@ const PublishedSkillDetailPage: React.FC = () => {
           <Button
             type="link"
             size="small"
-            onClick={() => navigate(`/release-center?releaseId=${record.release.id}`)}
+            onClick={() => navigate(`/admin/capability-releases?releaseId=${record.release.id}&mode=view`)}
           >
-            发布中心
+            发布详情
           </Button>
         </Space>
       ),
@@ -253,8 +253,8 @@ const PublishedSkillDetailPage: React.FC = () => {
                     </Descriptions.Item>
                   </Descriptions>
                   <Space wrap style={{ marginTop: 12 }}>
-                    <Button onClick={() => navigate(`/release-center?releaseId=${selectedRelease.id}`)}>
-                      打开 Release Center
+                    <Button onClick={() => navigate(`/admin/capability-releases?releaseId=${selectedRelease.id}&mode=view`)}>
+                      打开发布详情
                     </Button>
                     <Button onClick={() => navigate(`/admin/capability-releases?releaseId=${selectedRelease.id}`)}>
                       打开 Capability Release

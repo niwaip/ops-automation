@@ -52,13 +52,27 @@ export class ActivityController {
 
   @Post('execute-code')
   @ApiOperation({ summary: 'Execute generated code for real validation' })
-  async executeCode(@Body() data: { code: string; fn: string; taskQueue: string; input?: Record<string, any> }) {
+  async executeCode(@Body() data: {
+    code: string;
+    fn: string;
+    taskQueue: string;
+    timeout?: string;
+    retryPolicy?: { maxRetries: number; backoffMs?: number };
+    input?: Record<string, any>;
+  }) {
     return this.activityService.executeCode(data.code, data.fn, data.taskQueue, data.input);
   }
 
   @Post('execute-code/stream')
   @ApiOperation({ summary: 'Execute generated code with SSE streaming' })
-  async executeCodeStream(@Body() data: { code?: string; fn: string; taskQueue: string; input?: Record<string, any> }, @Res() res: any) {
+  async executeCodeStream(@Body() data: {
+    code?: string;
+    fn: string;
+    taskQueue: string;
+    timeout?: string;
+    retryPolicy?: { maxRetries: number; backoffMs?: number };
+    input?: Record<string, any>;
+  }, @Res() res: any) {
     res.setHeader('Content-Type', 'text/event-stream');
     res.setHeader('Cache-Control', 'no-cache');
     res.setHeader('Connection', 'keep-alive');
@@ -89,9 +103,19 @@ export class ActivityController {
 
       // Execute with streaming
       res.write(`data: ${JSON.stringify({ type: 'log', message: '开始执行代码...' })}\n\n`);
-      const execResult = await this.activityService.executeCodeStreaming(code, data.fn, data.taskQueue, data.input, (log: string) => {
-        res.write(`data: ${JSON.stringify({ type: 'log', message: log })}\n\n`);
-      });
+      const execResult = await this.activityService.executeCodeStreaming(
+        code,
+        data.fn,
+        data.taskQueue,
+        data.input,
+        (log: string) => {
+          res.write(`data: ${JSON.stringify({ type: 'log', message: log })}\n\n`);
+        },
+        {
+          timeout: data.timeout,
+          retryPolicy: data.retryPolicy,
+        },
+      );
 
       res.write(`data: ${JSON.stringify({ type: 'done', result: execResult })}\n\n`);
       res.end();

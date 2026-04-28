@@ -174,7 +174,12 @@ export class CapabilityReleaseController {
     @Body() body: ValidateCapabilityDTO,
     @Request() req: any,
   ) {
-    return this.capabilityReleaseService.validateSandbox(id, body, req.user?.id);
+    return this.capabilityReleaseService.validateSandbox(
+      id,
+      body,
+      req.user?.id,
+      req.headers?.authorization,
+    );
   }
 
   @Get(':id/validate/sandbox/stream')
@@ -209,6 +214,7 @@ export class CapabilityReleaseController {
           input: parsedInput,
         },
         req.user?.id,
+        req.headers?.authorization,
         sendEvent,
       );
     } catch (error) {

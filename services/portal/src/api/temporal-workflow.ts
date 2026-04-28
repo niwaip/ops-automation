@@ -20,6 +20,10 @@ export interface WorkflowStep {
   input?: Record<string, any>;
   // Activity execution timeout (e.g., "30s", "1m")
   startToCloseTimeout?: string;
+  // Total timeout from schedule to completion, including retries
+  scheduleToCloseTimeout?: string;
+  // Maximum interval between activity heartbeats
+  heartbeatTimeout?: string;
   // Retry policy for the activity
   retryPolicy?: {
     maxRetries?: number;
@@ -34,6 +38,10 @@ export interface WorkflowStep {
 
 export interface WorkflowDsl {
   name: string;
+  // Python class name used for workflow entrypoint lookup during validation/execution
+  workflowClassName?: string;
+  // Display name used in @workflow.defn(name="...")
+  workflowDefnName?: string;
   taskQueue: string;
   steps: WorkflowStep[];
   // Entry parameters - first step's input params are the workflow's input interface
@@ -128,7 +136,7 @@ export interface WorkflowCodeResult {
   error?: string;
 }
 
-export interface SandBoxValidationResult {
+export interface WorkflowRealValidationResult {
   success: boolean;
   logs: string[];
   result?: any;
@@ -169,16 +177,16 @@ export const temporalWorkflowApi = {
     return apiClient.post<WorkflowCodeResult>('/temporal-workflow/generate-code', { workflowDsl, activityDsl, errorContext });
   },
 
-  validateInSandbox: async (code: string, fn: string, input?: Record<string, any>): Promise<SandBoxValidationResult> => {
-    return apiClient.post<SandBoxValidationResult>('/temporal-workflow/validate-code', { code, fn, input });
+  validateWorkflowReal: async (code: string, fn: string, input?: Record<string, any>, taskQueue?: string): Promise<WorkflowRealValidationResult> => {
+    return apiClient.post<WorkflowRealValidationResult>('/temporal-workflow/validate-code', { code, fn, input, taskQueue });
   },
 
-  // SSE streaming sandbox validation for real-time logs
-  validateInSandboxStream: (code: string, fn: string, input: Record<string, any>, onEvent: (event: { type: string; content?: string; result?: any; error?: string; success?: boolean; score?: number }) => void): Promise<void> => {
+  // SSE streaming real validation with the workflow test worker
+  validateWorkflowRealStream: (code: string, fn: string, input: Record<string, any>, taskQueue: string | undefined, onEvent: (event: { type: string; content?: string; result?: any; error?: string; success?: boolean; score?: number }) => void): Promise<void> => {
     const token = useAuthStore.getState().accessToken;
     return postSseStream({
       url: '/api/temporal-workflow/validate-code/stream',
-      payload: { code, fn, input },
+      payload: { code, fn, input, taskQueue },
       token,
       requireDoneEvent: true,
       onEvent: onEvent as (event: { type: string; [key: string]: unknown }) => void,
@@ -188,6 +196,8 @@ export const temporalWorkflowApi = {
 
 export const DEFAULT_WORKFLOW_DSL: WorkflowDsl = {
   name: '',
+  workflowClassName: '',
+  workflowDefnName: '',
   taskQueue: 'SKILL_TASK_QUEUE',
   steps: [],
   conditionals: [],

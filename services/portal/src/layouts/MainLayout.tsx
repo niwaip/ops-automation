@@ -44,6 +44,25 @@ const MainLayout: React.FC = () => {
       icon: <DashboardOutlined />,
       label: t('dashboard'),
     },
+    ...(user?.role === 'admin'
+      ? [
+          {
+            key: '/admin/activities',
+            icon: <ThunderboltOutlined />,
+            label: '工作单元',
+          },
+          {
+            key: '/admin/temporal-workflows',
+            icon: <ThunderboltOutlined />,
+            label: '工作流',
+          },
+          {
+            key: '/admin/capability-releases',
+            icon: <ThunderboltOutlined />,
+            label: '流程发布',
+          },
+        ]
+      : []),
     {
       key: '/executions',
       icon: <PlayCircleOutlined />,
@@ -68,11 +87,6 @@ const MainLayout: React.FC = () => {
       key: '/reports',
       icon: <BarChartOutlined />,
       label: t('reports'),
-    },
-    {
-      key: '/release-center',
-      icon: <ThunderboltOutlined />,
-      label: 'Release Center',
     },
     {
       key: '/published-skills',
@@ -107,11 +121,6 @@ const MainLayout: React.FC = () => {
                 label: t('models'),
               },
               {
-                key: '/admin/capability-releases',
-                icon: <ThunderboltOutlined />,
-                label: 'Capability Release',
-              },
-              {
                 key: '/admin/capability-studio',
                 icon: <ThunderboltOutlined />,
                 label: 'Capability Studio',
@@ -125,16 +134,6 @@ const MainLayout: React.FC = () => {
                 key: '/admin/execution-flows',
                 icon: <OrderedListOutlined />,
                 label: t('executionFlows'),
-              },
-              {
-                key: '/admin/temporal-workflows',
-                icon: <ThunderboltOutlined />,
-                label: 'Temporal工作流',
-              },
-              {
-                key: '/admin/activities',
-                icon: <ThunderboltOutlined />,
-                label: 'Activity管理',
               },
             ],
           },
@@ -185,7 +184,6 @@ const MainLayout: React.FC = () => {
     if (path.startsWith('/templates')) return '/templates';
     if (path.startsWith('/report-templates')) return '/report-templates';
     if (path.startsWith('/reports')) return '/reports';
-    if (path.startsWith('/release-center')) return '/release-center';
     if (path.startsWith('/published-skills')) return '/published-skills';
     if (path.startsWith('/carbone-templates')) return '/carbone-templates';
     if (path.startsWith('/admin/users')) return '/admin/users';
@@ -202,6 +200,9 @@ const MainLayout: React.FC = () => {
 
   const getOpenKey = () => {
     const path = location.pathname;
+    if (path.startsWith('/admin/activities')) return undefined;
+    if (path.startsWith('/admin/temporal-workflows')) return undefined;
+    if (path.startsWith('/admin/capability-releases')) return undefined;
     if (path.startsWith('/admin')) return '/admin';
     return undefined;
   };

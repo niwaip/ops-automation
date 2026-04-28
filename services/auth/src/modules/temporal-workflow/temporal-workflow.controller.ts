@@ -72,17 +72,17 @@ export class TemporalWorkflowController {
   }
 
   @Post('validate-code')
-  @ApiOperation({ summary: 'Validate generated code in sandbox' })
-  async validateCode(
-    @Body() data: { code: string; fn: string; input?: Record<string, any> },
+  @ApiOperation({ summary: 'Validate generated workflow code with test worker' })
+  async validateWorkflowReal(
+    @Body() data: { code: string; fn: string; input?: Record<string, any>; taskQueue?: string },
   ): Promise<{ success: boolean; logs: string[]; result?: any; error?: string; score: number }> {
-    return this.temporalWorkflowService.validateInSandbox(data.code, data.fn, data.input);
+    return this.temporalWorkflowService.validateWorkflowReal(data.code, data.fn, data.input, data.taskQueue);
   }
 
   @Post('validate-code/stream')
-  @ApiOperation({ summary: 'Validate generated code in sandbox with streaming logs' })
-  async validateCodeStream(
-    @Body() data: { code: string; fn: string; input?: Record<string, any> },
+  @ApiOperation({ summary: 'Validate generated workflow code with test worker and streaming logs' })
+  async validateWorkflowRealStream(
+    @Body() data: { code: string; fn: string; input?: Record<string, any>; taskQueue?: string },
     @Res() res: Response,
   ): Promise<void> {
     res.setHeader('Content-Type', 'text/event-stream');
@@ -91,10 +91,11 @@ export class TemporalWorkflowController {
     res.setHeader('X-Accel-Buffering', 'no');
 
     try {
-      const result = await this.temporalWorkflowService.validateInSandboxStreaming(
+      const result = await this.temporalWorkflowService.validateWorkflowRealStreaming(
         data.code,
         data.fn,
         data.input,
+        data.taskQueue,
         (log: string) => {
           res.write(`data: ${JSON.stringify({ type: 'log', content: log })}\n\n`);
         },

@@ -55,6 +55,7 @@ export interface ValidateCapabilityDTO {
   buildId?: string;
   input?: Record<string, unknown>;
   testUserInput?: string;
+  testCases?: string[];
   fn?: string;
 }
 
@@ -166,6 +167,7 @@ export interface CapabilityReleaseDTO {
   currentSkillDraftId?: string | null;
   publishedSkillId?: string | null;
   lastDeploymentId?: string | null;
+  lastDeploymentEnvironment?: string | null;
   rollbackOfReleaseId?: string | null;
   createdBy?: string | null;
   createdAt: string;

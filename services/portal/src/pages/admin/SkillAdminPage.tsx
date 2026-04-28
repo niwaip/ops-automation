@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Table, Card, Button, Input, Space, Tag, Typography, Modal, message, Form, Select, Descriptions, Tabs, Tooltip, Collapse, Steps, Divider, Badge, Alert, Popconfirm } from 'antd';
+import { Table, Card, Button, Input, Space, Tag, Typography, Modal, message, Form, Select, Descriptions, Tabs, Tooltip, Collapse, Steps, Divider, Badge, Alert, Popconfirm, Progress } from 'antd';
 import {
   SearchOutlined,
   ReloadOutlined,
@@ -111,6 +111,67 @@ const STEP_TYPES = [
   { label: '脚本执行', value: 'script', icon: <CodeOutlined />, color: 'orange' },
 ];
 
+const VALIDATION_PHASES = ['启动', '配置检查', '真实执行', 'AI 审计'];
+
+const getValidationProgressMeta = (stage: string, isRunning: boolean, pulse: number) => {
+  const normalized = stage.trim();
+  const pulseOffset = pulse % 6;
+
+  if (!normalized || normalized === '等待开始' || normalized === '正在启动验证') {
+    return {
+      current: 0,
+      percent: isRunning ? Math.min(18, 12 + pulseOffset) : 0,
+      status: isRunning ? 'active' as const : 'normal' as const,
+    };
+  }
+
+  if (normalized.includes('配置')) {
+    return {
+      current: 1,
+      percent: Math.min(38, 28 + pulseOffset),
+      status: 'active' as const,
+    };
+  }
+
+  if (normalized.includes('真实模拟执行') || normalized.includes('执行')) {
+    return {
+      current: 2,
+      percent: Math.min(72, 56 + pulseOffset * 2),
+      status: 'active' as const,
+    };
+  }
+
+  if (normalized.includes('审计')) {
+    return {
+      current: 3,
+      percent: Math.min(92, 82 + pulseOffset),
+      status: 'active' as const,
+    };
+  }
+
+  if (normalized.includes('完成')) {
+    return {
+      current: 3,
+      percent: 100,
+      status: 'success' as const,
+    };
+  }
+
+  if (normalized.includes('失败')) {
+    return {
+      current: 3,
+      percent: 100,
+      status: 'exception' as const,
+    };
+  }
+
+  return {
+    current: 0,
+    percent: isRunning ? Math.min(24, 14 + pulseOffset) : 0,
+    status: isRunning ? 'active' as const : 'normal' as const,
+  };
+};
+
 const SkillAdminPage: React.FC = () => {
   const { t } = useTranslation(['common', 'admin']);
   const queryClient = useQueryClient();
@@ -126,6 +187,7 @@ const SkillAdminPage: React.FC = () => {
   const [validatingSkillId, setValidatingSkillId] = useState<string | null>(null);
   const [validationLogs, setValidationLogs] = useState<string[]>([]);
   const [validationStage, setValidationStage] = useState('等待开始');
+  const [validationPulse, setValidationPulse] = useState(0);
   const [form] = Form.useForm();
   const validationAbortRef = useRef<(() => void) | null>(null);
 
@@ -170,9 +232,20 @@ const SkillAdminPage: React.FC = () => {
   );
 
   const deleteMutation = useMutation(skillApi.delete, {
-    onSuccess: () => {
-      message.success(t('common:success'));
+    onSuccess: (_, deletedSkillId) => {
+      message.success('Skill 已删除');
       queryClient.invalidateQueries(['skills']);
+      if (selectedSkill?.id === deletedSkillId) {
+        setSelectedSkill(null);
+        setDetailModalVisible(false);
+        setPermissionModalVisible(false);
+        setValidationModalVisible(false);
+      }
+      if (editingSkill?.id === deletedSkillId) {
+        setEditingSkill(null);
+        setEditModalVisible(false);
+        form.resetFields();
+      }
     },
     onError: () => {
       message.error(t('common:error'));
@@ -250,6 +323,19 @@ const SkillAdminPage: React.FC = () => {
     };
   }, []);
 
+  useEffect(() => {
+    if (!validatingSkillId) {
+      setValidationPulse(0);
+      return;
+    }
+
+    const timer = window.setInterval(() => {
+      setValidationPulse((prev) => prev + 1);
+    }, 450);
+
+    return () => window.clearInterval(timer);
+  }, [validatingSkillId]);
+
   // Handlers
   const handleCreate = () => {
     setEditingSkill(null);
@@ -309,9 +395,13 @@ const SkillAdminPage: React.FC = () => {
     });
   };
 
-  const handleDelete = (id: string) => {
+  const handleDelete = (id: string, name?: string) => {
     Modal.confirm({
-      title: t('common:confirmDelete'),
+      title: `确认删除 Skill${name ? `「${name}」` : ''}？`,
+      content: '删除后无法恢复，相关角色授权也会一并失效。',
+      okText: '删除',
+      okButtonProps: { danger: true },
+      cancelText: '取消',
       onOk: () => deleteMutation.mutate(id),
     });
   };
@@ -412,6 +502,12 @@ const SkillAdminPage: React.FC = () => {
       skill.name.toLowerCase().includes(searchText.toLowerCase()) ||
       skill.description.toLowerCase().includes(searchText.toLowerCase())
   );
+  const validationProgressMeta = getValidationProgressMeta(
+    validationResult ? '验证完成' : validationStage,
+    Boolean(validatingSkillId),
+    validationPulse,
+  );
+  const validationAnimatedDots = '.'.repeat((validationPulse % 3) + 1);
 
   // Render execution flow steps
   const renderExecutionFlow = (flow: any[]) => {
@@ -482,6 +578,7 @@ const SkillAdminPage: React.FC = () => {
       title: t('admin:skillDescription'),
       dataIndex: 'description',
       key: 'description',
+      width: 240,
       ellipsis: true,
     },
     {
@@ -584,7 +681,7 @@ const SkillAdminPage: React.FC = () => {
             size="small"
             danger
             icon={<DeleteOutlined />}
-            onClick={() => handleDelete(record.id)}
+            onClick={() => handleDelete(record.id, record.name)}
           >
             {t('common:delete')}
           </Button>
@@ -712,7 +809,27 @@ const SkillAdminPage: React.FC = () => {
           setDetailModalVisible(false);
           setSelectedSkill(null);
         }}
-        footer={null}
+        footer={
+          selectedSkill
+            ? [
+                <Button
+                  key="delete"
+                  danger
+                  icon={<DeleteOutlined />}
+                  loading={deleteMutation.isLoading}
+                  onClick={() => handleDelete(selectedSkill.id, selectedSkill.name)}
+                >
+                  删除 Skill
+                </Button>,
+                <Button key="close" onClick={() => {
+                  setDetailModalVisible(false);
+                  setSelectedSkill(null);
+                }}>
+                  关闭
+                </Button>,
+              ]
+            : null
+        }
         width={850}
       >
         {selectedSkill && (
@@ -827,6 +944,17 @@ const SkillAdminPage: React.FC = () => {
           <Button key="cancel" onClick={() => setEditModalVisible(false)}>
             取消
           </Button>,
+          editingSkill && (
+            <Button
+              key="delete"
+              danger
+              icon={<DeleteOutlined />}
+              loading={deleteMutation.isLoading}
+              onClick={() => handleDelete(editingSkill.id, editingSkill.name)}
+            >
+              删除 Skill
+            </Button>
+          ),
           editingSkill && (
             <Button
               key="validate"
@@ -1153,11 +1281,34 @@ const SkillAdminPage: React.FC = () => {
         width={700}
       >
         {validatingSkillId && !validationResult && (
-          <div style={{ textAlign: 'center', padding: 40 }}>
+          <div style={{ textAlign: 'center', padding: 32 }}>
             <Space direction="vertical" size="large">
               <RocketOutlined spin style={{ fontSize: 48, color: '#1890ff' }} />
-              <Text strong style={{ fontSize: 16 }}>正在验证...</Text>
+              <Text strong style={{ fontSize: 16 }}>正在验证{validationAnimatedDots}</Text>
               <Text type="secondary">当前阶段：{validationStage}</Text>
+              <div style={{ width: 520, maxWidth: '100%' }}>
+                <Steps
+                  size="small"
+                  current={validationProgressMeta.current}
+                  items={VALIDATION_PHASES.map((title, index) => ({
+                    title,
+                    status:
+                      index < validationProgressMeta.current
+                        ? 'finish'
+                        : index === validationProgressMeta.current
+                          ? 'process'
+                          : 'wait',
+                  }))}
+                />
+                <Progress
+                  percent={validationProgressMeta.percent}
+                  status={validationProgressMeta.status}
+                  showInfo={false}
+                  strokeColor="#1890ff"
+                  style={{ marginTop: 16, marginBottom: 8 }}
+                />
+                <Text type="secondary">正在执行真实代码验证与 AI 审计，日志会持续刷新</Text>
+              </div>
               <Text type="secondary">AI正在分析 Skill 配置并执行真实模拟，可能需要 1-3 分钟</Text>
             </Space>
           </div>

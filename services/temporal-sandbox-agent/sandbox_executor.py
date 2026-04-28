@@ -20,6 +20,7 @@ async def execute_in_sandbox(
     code: str,
     fn_name: str,
     input_data: Dict[str, Any],
+    attempt: int = 1,
 ) -> Dict[str, Any]:
     """
     Execute Python code in an isolated sandbox environment.
@@ -74,9 +75,16 @@ _ssl_context = ssl._create_unverified_context()
 
 # Create mock temporalio module hierarchy
 class MockActivityLogger:
-    def info(self, msg): print(f"[INFO] {msg}", flush=True)
-    def warning(self, msg): print(f"[WARN] {msg}", flush=True)
-    def error(self, msg): print(f"[ERROR] {msg}", flush=True)
+    def _format(self, msg, args, kwargs):
+        parts = [str(msg)]
+        if args:
+            parts.append(' '.join(str(arg) for arg in args))
+        if kwargs:
+            parts.append(str(kwargs))
+        return ' '.join(part for part in parts if part)
+    def info(self, msg, *args, **kwargs): print(f"[INFO] {self._format(msg, args, kwargs)}", flush=True)
+    def warning(self, msg, *args, **kwargs): print(f"[WARN] {self._format(msg, args, kwargs)}", flush=True)
+    def error(self, msg, *args, **kwargs): print(f"[ERROR] {self._format(msg, args, kwargs)}", flush=True)
 
 class MockActivityInfo:
     def __init__(self):
@@ -90,7 +98,7 @@ class MockActivityInfo:
         self.workflow_run_id = 'sandbox-workflow-run-id'
         self.workflow_id = 'sandbox-workflow-id'
         self.activity_id = 'sandbox-activity-id'
-        self.attempt = 1
+        self.attempt = ATTEMPT_NUMBER
 
 class MockActivity:
     def defn(self, name=None, **kwargs):
@@ -116,6 +124,8 @@ mock_temporalio.activity = types.ModuleType('temporalio.activity')
 mock_temporalio.exceptions = types.ModuleType('temporalio.exceptions')
 mock_temporalio.common = types.ModuleType('temporalio.common')
 mock_temporalio.workflow = types.ModuleType('temporalio.workflow')
+mock_temporalio.client = types.ModuleType('temporalio.client')
+mock_temporalio.worker = types.ModuleType('temporalio.worker')
 
 mock_activity = MockActivity()
 mock_temporalio.activity.defn = mock_activity.defn
@@ -162,6 +172,35 @@ _retry_policy_class = lambda **kw: type('RetryPolicy', (), {k: v for k, v in kw.
 # Expose RetryPolicy on both workflow and common modules (user code may import from either)
 mock_temporalio.workflow.RetryPolicy = _retry_policy_class
 mock_temporalio.common.RetryPolicy = _retry_policy_class
+
+class MockWorkflowHandle:
+    async def result(self):
+        return {"success": True, "mocked": True}
+    async def query(self, *args, **kwargs):
+        return None
+    async def signal(self, *args, **kwargs):
+        return None
+
+class MockClient:
+    @classmethod
+    async def connect(cls, *args, **kwargs):
+        return cls()
+    async def execute_workflow(self, *args, **kwargs):
+        return {"success": True, "mocked": True}
+    async def start_workflow(self, *args, **kwargs):
+        return MockWorkflowHandle()
+    def get_workflow_handle(self, *args, **kwargs):
+        return MockWorkflowHandle()
+
+class MockWorkerClass:
+    def __init__(self, *args, **kwargs):
+        self.args = args
+        self.kwargs = kwargs
+    async def run(self):
+        return None
+
+mock_temporalio.client.Client = MockClient
+mock_temporalio.worker.Worker = MockWorkerClass
 
 # Mock requests module
 import urllib.request
@@ -259,6 +298,8 @@ sys.modules['temporalio.activity'] = mock_temporalio.activity
 sys.modules['temporalio.workflow'] = mock_temporalio.workflow
 sys.modules['temporalio.exceptions'] = mock_temporalio.exceptions
 sys.modules['temporalio.common'] = mock_temporalio.common
+sys.modules['temporalio.client'] = mock_temporalio.client
+sys.modules['temporalio.worker'] = mock_temporalio.worker
 sys.modules['activity'] = mock_temporalio.activity
 sys.modules['workflow'] = mock_temporalio.workflow
 sys.modules['requests'] = mock_requests
@@ -313,7 +354,13 @@ try:
 
 except Exception as e:
     with open('RESULT_FILE', 'w') as f:
-        json.dump({"error": str(e), "traceback": traceback.format_exc(), "success": False}, f)
+        json.dump({
+            "error": str(e),
+            "traceback": traceback.format_exc(),
+            "success": False,
+            "error_type": type(e).__name__,
+            "non_retryable": getattr(e, "non_retryable", False),
+        }, f)
     sys.exit(1)
 '''
 
@@ -322,7 +369,8 @@ except Exception as e:
                                       .replace('INPUT_FILE', input_file) \
                                       .replace('ACTIVITY_FILE', activity_file) \
                                       .replace('RESULT_FILE', result_file) \
-                                      .replace('FN_NAME', fn_name)
+                                      .replace('FN_NAME', fn_name) \
+                                      .replace('ATTEMPT_NUMBER', str(attempt))
 
         with open(runner_file, 'w') as f:
             f.write(runner_script)
@@ -357,7 +405,9 @@ except Exception as e:
                     "error": result.get('error'),
                     "traceback": result.get('traceback'),
                     "logs": execution_logs,
-                    "success": result.get('success', result.get('error') is None)
+                    "success": result.get('success', result.get('error') is None),
+                    "error_type": result.get('error_type'),
+                    "non_retryable": result.get('non_retryable', False),
                 }
             else:
                 return {

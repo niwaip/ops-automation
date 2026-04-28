@@ -18,6 +18,7 @@ export interface ActivityFormData {
   handler: 'api' | 'carbone' | 'browser' | 'script';
   config: Record<string, any>;
   generatedCode?: string;
+  isActive?: boolean;
 }
 
 export interface ActivityValidationResult {
@@ -33,6 +34,31 @@ export interface GenerateCodeResult {
   code?: string;
   error?: string;
 }
+
+interface ActivityExecutionOptions {
+  timeout?: string;
+  retryPolicy?: { maxRetries: number; backoffMs?: number };
+}
+
+const normalizeInputParams = (
+  inputParams: Array<{ key?: string; value?: string; required?: boolean }> | Record<string, string> | undefined,
+): Array<{ key: string; value: string; required: boolean }> => {
+  if (!inputParams) {
+    return [];
+  }
+  if (Array.isArray(inputParams)) {
+    return inputParams.map((item) => ({
+      key: item.key || '',
+      value: item.value || '',
+      required: Boolean(item.required),
+    }));
+  }
+  return Object.entries(inputParams).map(([key, value]) => ({
+    key,
+    value: value || '',
+    required: !value,
+  }));
+};
 
 // AI Orchestrator URL helper
 const getAiOrchestratorUrl = () => {
@@ -74,7 +100,7 @@ export class ActivityService {
         handler: data.handler,
         config: data.config as any,
         generatedCode: data.generatedCode || null,
-        isActive: true,
+        isActive: data.isActive ?? true,
       },
     });
   }
@@ -90,6 +116,7 @@ export class ActivityService {
         ...(data.handler && { handler: data.handler }),
         ...(data.config && { config: data.config as any }),
         ...(data.generatedCode !== undefined && { generatedCode: data.generatedCode }),
+        ...(data.isActive !== undefined && { isActive: data.isActive }),
       },
     });
   }
@@ -146,6 +173,12 @@ export class ActivityService {
         if (step.type === 'script' && !step.config?.script) {
           errors.push(`Step ${i + 1} (Script) requires script in config`);
         }
+        const inputParams = normalizeInputParams(step.inputParams);
+        inputParams.forEach((param, paramIndex) => {
+          if (!param.key.trim()) {
+            errors.push(`Step ${i + 1} input param ${paramIndex + 1} is missing a key`);
+          }
+        });
       }
       suggestions.push('Steps are defined - AI code will be generated based on step configurations');
     } else {
@@ -282,6 +315,13 @@ export class ActivityService {
       }
       if (step.formatPrompt) {
         stepDesc += `\n  - 输出格式：${step.formatPrompt}`;
+      }
+      const inputParams = normalizeInputParams(step.inputParams);
+      if (inputParams.length > 0) {
+        stepDesc += '\n  - 输入参数：';
+        inputParams.forEach((param) => {
+          stepDesc += `\n    - ${param.key || '未命名参数'} | 默认值：${param.value || '无'} | ${param.required ? '必填' : '可选'}`;
+        });
       }
       if (step.extraPrompt) {
         stepDesc += `\n  - 情报补足：${step.extraPrompt}`;
@@ -438,8 +478,29 @@ export class ActivityService {
     taskQueue: string,
     input: Record<string, any> | undefined,
     onLog: (log: string) => void,
+    options: ActivityExecutionOptions = {},
   ): Promise<{ success: boolean; result?: any; error?: string }> {
     const logger = new Logger('ActivityService.executeCodeStreaming');
+
+    const validationAgentUrl = this.getActivityValidationAgentUrl();
+    if (validationAgentUrl) {
+      try {
+        onLog(`[${new Date().toISOString()}] 使用 Activity 测试 Worker 执行代码...`);
+        return await this.executeCodeViaValidationWorker(
+          validationAgentUrl,
+          code,
+          fn,
+          taskQueue,
+          input,
+          options,
+          onLog,
+        );
+      } catch (error) {
+        const errorMsg = error instanceof Error ? error.message : 'Unknown error';
+        logger.warn(`Activity validation worker failed, falling back to sandbox: ${errorMsg}`);
+        onLog(`[${new Date().toISOString()}] Activity 测试 Worker 不可用，回退到 Sandbox 执行...`);
+      }
+    }
 
     // Try to use sandbox agent via Temporal workflow
     const sandboxUrl = this.getSandboxAgentUrl();
@@ -498,6 +559,86 @@ export class ActivityService {
     // Local development - try localhost
     const externalHost = process.env.EXTERNAL_HOST || 'localhost';
     return `http://${externalHost}:8090`;
+  }
+
+  private getActivityValidationAgentUrl(): string | null {
+    if (process.env.ACTIVITY_VALIDATION_AGENT_URL) {
+      return process.env.ACTIVITY_VALIDATION_AGENT_URL;
+    }
+    return this.getSandboxAgentUrl();
+  }
+
+  private async executeCodeViaValidationWorker(
+    agentUrl: string,
+    code: string,
+    fn: string,
+    taskQueue: string,
+    input: Record<string, any> | undefined,
+    options: ActivityExecutionOptions,
+    onLog: (log: string) => void,
+  ): Promise<{ success: boolean; result?: any; error?: string }> {
+    const activityId = `activity-validation-${Date.now()}-${Math.random().toString(36).substring(7)}`;
+    const timeoutMs = Number(process.env.ACTIVITY_VALIDATION_TIMEOUT_MS || 300000);
+
+    onLog(`[${new Date().toISOString()}] 连接到 Activity 测试 Worker: ${agentUrl}`);
+    onLog(`[${new Date().toISOString()}] 验证任务 ID: ${activityId}`);
+    if (options.retryPolicy) {
+      onLog(
+        `[${new Date().toISOString()}] 启用重试测试: maxRetries=${options.retryPolicy.maxRetries}, backoffMs=${options.retryPolicy.backoffMs || 1000}`,
+      );
+    }
+
+    const response = await axios.post(`${agentUrl}/validate-activity`, {
+      code,
+      fn_name: fn,
+      activity_id: activityId,
+      task_queue: taskQueue,
+      input_data: input || {},
+      timeout: options.timeout,
+      retry_policy: options.retryPolicy || null,
+    }, {
+      timeout: timeoutMs,
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+
+    const data = response.data as any;
+    const validationResult =
+      data.result && typeof data.result === 'object'
+        ? data.result
+        : data;
+
+    if (Array.isArray(validationResult.logs)) {
+      validationResult.logs.forEach((log: string) => onLog(log));
+    }
+
+    if (data.success === false || data.error) {
+      const errorMsg = data.error || data.message || JSON.stringify(data);
+      onLog(`[${new Date().toISOString()}] Activity 测试 Worker 请求失败: ${errorMsg}`);
+      return { success: false, error: errorMsg };
+    }
+
+    if (validationResult.success === false || validationResult.error) {
+      const errorMsg = validationResult.error || 'Activity 测试 Worker 执行失败';
+      if (validationResult.attempts && validationResult.max_attempts) {
+        onLog(
+          `[${new Date().toISOString()}] 重试结束，实际执行 ${validationResult.attempts}/${validationResult.max_attempts} 次`,
+        );
+      }
+      return { success: false, error: errorMsg };
+    }
+
+    if (validationResult.attempts && validationResult.max_attempts) {
+      onLog(
+        `[${new Date().toISOString()}] Activity 测试 Worker 执行完成，实际执行 ${validationResult.attempts}/${validationResult.max_attempts} 次`,
+      );
+    }
+
+    return {
+      success: true,
+      result: validationResult.result,
+    };
   }
 
   /**
@@ -658,9 +799,16 @@ sys.path.insert(0, '${tempDir}')
 
 # Mock temporalio module for standalone execution
 class MockActivityLogger:
-    def info(self, msg): print(f"[INFO] {msg}", flush=True)
-    def warning(self, msg): print(f"[WARN] {msg}", flush=True)
-    def error(self, msg): print(f"[ERROR] {msg}", flush=True)
+    def _format(self, msg, args, kwargs):
+        parts = [str(msg)]
+        if args:
+            parts.append(' '.join(str(arg) for arg in args))
+        if kwargs:
+            parts.append(str(kwargs))
+        return ' '.join(part for part in parts if part)
+    def info(self, msg, *args, **kwargs): print(f"[INFO] {self._format(msg, args, kwargs)}", flush=True)
+    def warning(self, msg, *args, **kwargs): print(f"[WARN] {self._format(msg, args, kwargs)}", flush=True)
+    def error(self, msg, *args, **kwargs): print(f"[ERROR] {self._format(msg, args, kwargs)}", flush=True)
 
 class MockActivityInfo:
     def __init__(self):

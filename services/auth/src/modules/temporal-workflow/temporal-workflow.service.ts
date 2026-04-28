@@ -19,12 +19,17 @@ export interface WorkflowStep {
   type: 'activity' | 'signal' | 'query' | 'childWorkflow' | 'parallel';
   activityName?: string;
   input?: Record<string, any>;
+  startToCloseTimeout?: string;
+  scheduleToCloseTimeout?: string;
+  heartbeatTimeout?: string;
   retryPolicy?: { maxRetries?: number; backoffMs?: number };
   parallelSteps?: string[];
 }
 
 export interface WorkflowDsl {
   name: string;
+  workflowClassName?: string;
+  workflowDefnName?: string;
   taskQueue: string;
   steps: WorkflowStep[];
   inputParams?: Record<string, { description?: string; required?: boolean; defaultValue?: string }>;
@@ -249,27 +254,26 @@ export class TemporalWorkflowService {
     }
   }
 
-  async validateInSandbox(code: string, fn: string, input?: Record<string, any>): Promise<{ success: boolean; logs: string[]; result?: any; error?: string; score: number }> {
+  async validateWorkflowReal(code: string, fn: string, input?: Record<string, any>, taskQueue?: string): Promise<{ success: boolean; logs: string[]; result?: any; error?: string; score: number }> {
     const logs: string[] = [];
 
     try {
-      const sandboxUrl =
-        process.env.TEMPORAL_SANDBOX_AGENT_URL || 'http://host.docker.internal:8090';
+      const validationAgentUrl = this.getWorkflowValidationAgentUrl();
+      const workflowId = `workflow-validate-${Date.now()}`;
 
-      const response = await axios.post<any>(`${sandboxUrl}/execute`, {
+      const response = await axios.post<any>(`${validationAgentUrl}/validate-workflow`, {
         code,
         fn_name: fn,
-        activity_id: `workflow-validate-${Date.now()}`,
+        workflow_id: workflowId,
         input_data: input || { test: 'workflow-validation' },
+        task_queue: taskQueue,
       }, {
-        timeout: 120000,
+        timeout: Number(process.env.WORKFLOW_VALIDATION_TIMEOUT_MS || 300000),
       });
 
-      logs.push(`Sandbox response: ${JSON.stringify(response.data)}`);
+      logs.push(`Workflow validation response: ${JSON.stringify(response.data)}`);
 
-      const sandboxResult = response.data?.result;
-      // 深度检查执行结果：外层 success 为 true 且里层 result.success 为 true 且没有 error
-      const executionResult = sandboxResult?.result || sandboxResult;
+      const executionResult = response.data?.result;
       const resultSuccess =
         response.data?.success === true &&
         executionResult?.success === true &&
@@ -282,12 +286,12 @@ export class TemporalWorkflowService {
       return {
         success: resultSuccess,
         logs,
-        result: response.data?.result,
+        result: executionResult,
         error: executionResult?.error,
         score: resultSuccess ? 100 : 50,
       };
     } catch (error: any) {
-      this.logger.error(`Sandbox validation failed: ${error.message}`);
+      this.logger.error(`Workflow real validation failed: ${error.message}`);
       logs.push(`Error: ${error.message}`);
       return {
         success: false,
@@ -298,45 +302,41 @@ export class TemporalWorkflowService {
     }
   }
 
-  async validateInSandboxStreaming(
+  async validateWorkflowRealStreaming(
     code: string,
     fn: string,
     input: Record<string, any> | undefined,
+    taskQueue: string | undefined,
     onLog: (log: string) => void,
   ): Promise<{ success: boolean; result?: any; logs?: string[]; traceback?: string; error?: string; score: number }> {
-    const sandboxUrl =
-      process.env.TEMPORAL_SANDBOX_AGENT_URL || 'http://host.docker.internal:8090';
-    const activityId = `workflow-validate-${Date.now()}`;
+    const validationAgentUrl = this.getWorkflowValidationAgentUrl();
+    const workflowId = `workflow-validate-${Date.now()}`;
     const streamedLogs: string[] = [];
     const pushLog = (log: string) => {
       streamedLogs.push(log);
       onLog(log);
     };
 
-    pushLog(`[${new Date().toISOString()}] 连接到 Sandbox Agent: ${sandboxUrl}`);
-    pushLog(`[${new Date().toISOString()}] Activity ID: ${activityId}`);
+    pushLog(`[${new Date().toISOString()}] 连接到 Workflow 测试 Worker: ${validationAgentUrl}`);
+    pushLog(`[${new Date().toISOString()}] Workflow ID: ${workflowId}`);
 
     try {
-      pushLog(`[${new Date().toISOString()}] 执行工作流代码验证...`);
-      const response = await axios.post<any>(`${sandboxUrl}/execute`, {
+      pushLog(`[${new Date().toISOString()}] 开始真实验证工作流代码...`);
+      const response = await axios.post<any>(`${validationAgentUrl}/validate-workflow`, {
         code,
         fn_name: fn,
-        activity_id: activityId,
+        workflow_id: workflowId,
         input_data: input || { test: 'workflow-validation' },
+        task_queue: taskQueue,
       }, {
-        timeout: 120000,
+        timeout: Number(process.env.WORKFLOW_VALIDATION_TIMEOUT_MS || 300000),
       });
 
       const data = response.data as any;
-      const sandboxLogs = Array.isArray(data.result?.logs)
-        ? data.result.logs
-        : Array.isArray(data.result?.result?.logs)
-          ? data.result.result.logs
-          : [];
+      const workerLogs = Array.isArray(data.result?.logs) ? data.result.logs : [];
 
-      // Push logs from sandbox execution to the frontend
-      if (sandboxLogs.length > 0) {
-        sandboxLogs.forEach((log: string) => {
+      if (workerLogs.length > 0) {
+        workerLogs.forEach((log: string) => {
           pushLog(log);
         });
       }
@@ -358,14 +358,14 @@ export class TemporalWorkflowService {
 
       return {
         success: resultSuccess,
-        result: finalResult,
+        result: data.result,
         logs: streamedLogs,
         error: data.result?.error,
         traceback: data.result?.traceback,
         score: resultSuccess ? 100 : 0,
       };
     } catch (error: any) {
-      this.logger.error(`Sandbox validation failed: ${error.message}`);
+      this.logger.error(`Workflow real validation failed: ${error.message}`);
       pushLog(`[${new Date().toISOString()}] 错误: ${error.message}`);
       return {
         success: false,
@@ -376,8 +376,28 @@ export class TemporalWorkflowService {
     }
   }
 
+  private getWorkflowValidationAgentUrl(): string {
+    if (process.env.WORKFLOW_VALIDATION_AGENT_URL) {
+      return process.env.WORKFLOW_VALIDATION_AGENT_URL;
+    }
+    if (process.env.ACTIVITY_VALIDATION_AGENT_URL) {
+      return process.env.ACTIVITY_VALIDATION_AGENT_URL;
+    }
+    if (process.env.TEMPORAL_SANDBOX_AGENT_URL) {
+      return process.env.TEMPORAL_SANDBOX_AGENT_URL;
+    }
+    return 'http://host.docker.internal:8090';
+  }
+
   private buildWorkflowCodePrompt(workflowDsl: WorkflowDsl, activityDsl: ActivityDsl, errorContext?: string): string {
     const lines: string[] = [];
+    const workflowClassName = workflowDsl.workflowClassName?.trim()
+      || `${(workflowDsl.name || 'Custom').replace(/\s+/g, '') || 'Custom'}Workflow`;
+    const workflowDisplayName = workflowDsl.workflowDefnName?.trim()
+      || workflowDsl.name
+      || workflowClassName;
+    const workflowInputParams = workflowDsl.inputParams || {};
+    const inputParamEntries = Object.entries(workflowInputParams);
 
     lines.push('你是一个 Temporal Python 开发专家。请根据以下 Workflow DSL 和 Activity 定义生成一个符合生产标准的 Temporal 工作流。');
 
@@ -391,6 +411,14 @@ export class TemporalWorkflowService {
     lines.push('【Workflow DSL】');
     lines.push(JSON.stringify(workflowDsl, null, 2));
     lines.push('');
+
+    if (inputParamEntries.length > 0) {
+      lines.push('【Workflow 入口参数定义（必须使用）】');
+      inputParamEntries.forEach(([key, config]) => {
+        lines.push(`- 参数名: ${key}; required=${config?.required ? 'true' : 'false'}; default=${config?.defaultValue ?? '<none>'}; description=${config?.description ?? '<none>'}`);
+      });
+      lines.push('');
+    }
 
     lines.push('【Activity 实现指导】');
     activityDsl.activities.forEach(activity => {
@@ -407,15 +435,23 @@ export class TemporalWorkflowService {
     lines.push('');
     lines.push('【必须遵守的准则】：');
     lines.push('1. 【组合输出】：你的输出必须包含所有 Activity 的实现代码（已有的或新生成的）以及 Workflow 类的定义。严禁使用任何形式的内部导入（如 `from activities import ...` 或 `from your_module import ...`），严禁使用 `workflow.unsafe`。');
-    lines.push('2. 【类名强制】：Workflow 类名必须完全等于 `' + (workflowDsl.name.replace(/\s+/g, '') || 'Custom') + 'Workflow' + '`。');
-    lines.push('3. 【结构】：Workflow 使用 `@workflow.defn`，入口为 `async def run(self, params: dict)`。严禁为 Workflow 类定义 `__init__` 方法。');
-    lines.push('4. 【确定性】：对于 UUID，直接使用标准的 `import uuid` 并调用 `uuid.uuid4()`，沙箱环境会自动处理确定性。不要使用 `workflow.uuid4()`。');
-    lines.push('5. 【沙箱稳定性】：如果代码涉及外部 HTTP 请求，请保持实现通用，不要在代码中写死任何业务实例、接口域名或返回值；需要兼容沙箱时，请依赖运行环境提供的 mock 请求能力。');
-    lines.push('6. 【调用】：使用 `await workflow.execute_activity(activity_fn, input, start_to_close_timeout=timedelta(...))`，确保超时时间与 DSL 一致。');
-    lines.push('7. 【日志】：必须使用 `workflow.logger.info()`。');
+    lines.push(`2. 【类名强制】：Workflow 类名必须完全等于 \`${workflowClassName}\`。`);
+    lines.push(`3. 【显示名强制】：必须使用 \`@workflow.defn(name="${workflowDisplayName}")\`。`);
+    lines.push('4. 【结构】：入口必须为 `async def run(self, params: dict)`，严禁为 Workflow 类定义 `__init__` 方法。');
+    lines.push('5. 【参数使用强制】：如果 Workflow DSL 提供了 `inputParams`，必须在 `run()` 中从 `params` 逐项读取这些参数并用于业务流程/Activity 入参；不得忽略这些参数定义。');
+    lines.push('6. 【参数校验强制】：对 `required=true` 的参数必须显式校验缺失并抛出 `ApplicationError(..., non_retryable=True)`；若配置了 `defaultValue`，读取参数时必须应用默认值。');
+    lines.push('7. 【执行配置落地强制】：如果 Workflow DSL 提供了 `workflowExecutionTimeout`、`workflowRunTimeout`、`workflowTaskTimeout`，必须在生成代码中定义同名或语义等价的 `timedelta` 常量（例如 `WORKFLOW_EXECUTION_TIMEOUT`），并在 Workflow 日志中输出这些配置值，禁止忽略这些配置。');
+    lines.push('8. 【确定性强制】：Workflow 代码中禁止直接做非确定性副作用（HTTP/DB/文件 I/O、系统时间、随机数、线程、进程、全局可变状态）；这些操作必须在 Activity 中完成。');
+    lines.push('9. 【历史回放安全】：代码必须稳定可回放，避免根据运行时环境分支改变命令顺序；需要等待条件请用 `workflow.wait_condition`，不要 busy loop。');
+    lines.push('10. 【沙箱稳定性】：如果代码涉及外部 HTTP 请求，请保持实现通用，不要在代码中写死任何业务实例、接口域名或返回值；需要兼容沙箱时，请依赖运行环境提供的 mock 请求能力。');
+    lines.push('11. 【调用】：使用 `await workflow.execute_activity(activity_fn, input, start_to_close_timeout=timedelta(...))`。如果步骤 DSL 中还提供了 `scheduleToCloseTimeout` 或 `heartbeatTimeout`，也必须分别映射为 `schedule_to_close_timeout=timedelta(...)`、`heartbeat_timeout=timedelta(...)`。所有超时都必须与步骤 DSL 一致，未配置的项不要硬编码。');
+    lines.push('12. 【重试策略】：优先使用 DSL 指定的 retryPolicy；未指定时再使用合理默认值，禁止无限重试。');
+    lines.push('13. 【日志】：必须使用 `workflow.logger.info()` 输出关键执行阶段与参数摘要。');
+    lines.push('14. 【版本演进提示】：在关键逻辑处添加简短注释，提示后续变更需考虑历史运行中的工作流回放兼容性。');
+    lines.push('15. 【禁止客户端代码】：不要在生成的 Workflow 文件中引入 `temporalio.client.Client`、`temporalio.worker.Worker`，也不要在代码里主动连接 Temporal 或启动 Worker。只生成 Workflow 与 Activity 定义本身。');
 
     if (workflowDsl.errorHandling?.type === 'saga') {
-      lines.push('8. 【Saga 模式】：必须维护 compensations 列表，在失败时逆序执行补偿任务。');
+      lines.push('16. 【Saga 模式】：必须维护 compensations 列表，在失败时逆序执行补偿任务。');
     }
 
     if (workflowDsl.extraPrompt) {

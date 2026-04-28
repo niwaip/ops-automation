@@ -26,7 +26,12 @@ import { CapabilityRelease, CapabilityReleaseDetail, capabilityReleaseApi } from
 
 const { Title, Text } = Typography;
 
-type DeploymentEnvironment = 'dev' | 'test' | 'staging' | 'prod';
+type DeploymentEnvironment = 'staging' | 'prod';
+
+const DEPLOY_ENV_OPTIONS: { label: string; value: DeploymentEnvironment }[] = [
+  { label: 'staging（预发布）', value: 'staging' },
+  { label: 'prod（生产）', value: 'prod' },
+];
 
 const statusColor = (status: string) => {
   switch (status) {
@@ -145,6 +150,15 @@ const ReleaseCenterPage: React.FC = () => {
         item.id === latestDeployment?.smokeValidationId,
     ) ||
     selectedDetail?.validations?.find((item) => item.validationType === 'post_deploy_smoke');
+  const hasSuccessfulStagingDeployment = useMemo(
+    () =>
+      Boolean(
+        selectedDetail?.deployments?.some(
+          (deployment) => deployment.environment === 'staging' && deployment.status === 'succeeded',
+        ),
+      ),
+    [selectedDetail?.deployments],
+  );
   const deployedCount = useMemo(
     () => releases.filter((release) => release.deploymentStatus === 'succeeded' || release.status === 'deployed').length,
     [releases],
@@ -268,6 +282,10 @@ const ReleaseCenterPage: React.FC = () => {
 
   const handleDeploy = async () => {
     if (!deployTargetReleaseId) {
+      return;
+    }
+    if (deployEnvironment === 'prod' && !hasSuccessfulStagingDeployment) {
+      message.warning('请先完成一次 staging 成功部署，再发布到 prod');
       return;
     }
     if (!deployOverridesState.valid) {
@@ -704,7 +722,11 @@ const ReleaseCenterPage: React.FC = () => {
         onOk={handleDeploy}
         okText="开始部署"
         confirmLoading={deployMutation.isLoading}
-        okButtonProps={{ disabled: !deployOverridesState.valid }}
+        okButtonProps={{
+          disabled:
+            !deployOverridesState.valid
+            || (deployEnvironment === 'prod' && !hasSuccessfulStagingDeployment),
+        }}
         width={760}
       >
         <Space direction="vertical" size="middle" style={{ width: '100%' }}>
@@ -713,12 +735,7 @@ const ReleaseCenterPage: React.FC = () => {
               style={{ width: 180 }}
               value={deployEnvironment}
               onChange={(value) => setDeployEnvironment(value as DeploymentEnvironment)}
-              options={[
-                { label: 'dev', value: 'dev' },
-                { label: 'test', value: 'test' },
-                { label: 'staging', value: 'staging' },
-                { label: 'prod', value: 'prod' },
-              ]}
+              options={DEPLOY_ENV_OPTIONS}
             />
             <Select
               style={{ width: 220 }}
@@ -739,6 +756,28 @@ const ReleaseCenterPage: React.FC = () => {
               {JSON.stringify(activeDeployProfile, null, 2)}
             </pre>
           </Card>
+          <Alert
+            type="info"
+            showIcon
+            message="推荐发布顺序"
+            description="建议先发布到 staging 做最终验证，再晋升到 prod。"
+          />
+          {deployEnvironment === 'prod' ? (
+            <Alert
+              type="warning"
+              showIcon
+              message="当前为生产环境发布"
+              description="生产建议 rolling_restart + 灰度放量，并保留回滚路径。"
+            />
+          ) : null}
+          {deployEnvironment === 'prod' && !hasSuccessfulStagingDeployment ? (
+            <Alert
+              type="error"
+              showIcon
+              message="prod 发布门禁"
+              description="当前 Release 尚无 staging 成功部署记录，不能直接发布到 prod。"
+            />
+          ) : null}
 
           <Input.TextArea
             rows={8}

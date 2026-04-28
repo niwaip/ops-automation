@@ -186,7 +186,8 @@ export class ExecutionService {
       capabilityVersion: dto.capabilityVersion || resolvedSkillVersion,
     };
 
-    const planDraft = await this.generatePlanDraft(userId, resolvedDto, options?.authToken);
+    const generatedPlanDraft = await this.generatePlanDraft(userId, resolvedDto, options?.authToken);
+    const planDraft = this.reconcilePlanDraftWithInput(generatedPlanDraft, resolvedDto.input);
     const normalizedInput = this.buildNormalizedInput(resolvedDto, planDraft);
     const execution = await this.prisma.execution.create({
       data: {
@@ -998,17 +999,95 @@ export class ExecutionService {
     });
   }
 
+  private reconcilePlanDraftWithInput(
+    planDraft: PlannerPlanDraft | undefined,
+    input: Record<string, unknown> | undefined,
+  ): PlannerPlanDraft | undefined {
+    if (!planDraft || !input) {
+      return planDraft;
+    }
+
+    const requiredInputs = planDraft.required_inputs.map((item) => {
+      if (!item.required || !item.missing) {
+        return item;
+      }
+
+      if (!Object.prototype.hasOwnProperty.call(input, item.name)) {
+        return item;
+      }
+
+      const value = input[item.name];
+      if (value === undefined || value === null || value === '') {
+        return item;
+      }
+
+      return {
+        ...item,
+        value,
+        missing: false,
+        source: 'user_input' as const,
+      };
+    });
+
+    const missingRequiredInputs = requiredInputs.filter((item) => item.required && item.missing);
+    const riskItems = missingRequiredInputs.length > 0
+      ? Array.from(new Set([...planDraft.risk_summary.items, 'missing_required_inputs']))
+      : planDraft.risk_summary.items.filter((item) => item !== 'missing_required_inputs');
+    const steps = missingRequiredInputs.length > 0
+      ? planDraft.steps.map((step) => {
+          if (step.kind !== 'human_input') {
+            return step;
+          }
+          return {
+            ...step,
+            description: `补齐必填参数: ${missingRequiredInputs.map((item) => item.name).join(', ')}`,
+          };
+        })
+      : planDraft.steps.filter((step) => step.kind !== 'human_input');
+
+    return {
+      ...planDraft,
+      summary: missingRequiredInputs.length > 0
+        ? `已识别技能 ${planDraft.skill_match?.skill_name || '目标技能'}，但仍缺少 ${missingRequiredInputs.length} 个关键输入。`
+        : planDraft.skill_match
+          ? `已识别技能 ${planDraft.skill_match.skill_name}，可以按计划进入执行。`
+          : planDraft.summary,
+      steps,
+      required_inputs: requiredInputs,
+      risk_summary: {
+        ...planDraft.risk_summary,
+        level: missingRequiredInputs.length > 0 ? planDraft.risk_summary.level : 'low',
+        items: riskItems.length > 0 ? riskItems : ['no_material_risk_detected'],
+      },
+    };
+  }
+
   private buildNormalizedInput(
     dto: CreateExecutionDto,
     planDraft?: PlannerPlanDraft,
   ): Record<string, unknown> {
     const input = dto.input || {};
+    const plannerExtractedInput = (planDraft?.required_inputs || []).reduce<Record<string, unknown>>(
+      (acc, item) => {
+        if (!item || item.missing || item.value === undefined || item.value === null) {
+          return acc;
+        }
+        acc[item.name] = item.value;
+        return acc;
+      },
+      {},
+    );
+    // Runtime execution should use planner-extracted params (e.g. city) while preserving explicit user input.
+    const mergedInput = {
+      ...plannerExtractedInput,
+      ...input,
+    };
     const normalizedInput: Record<string, unknown> = {
       objective: planDraft?.objective || this.buildPlannerUserInput(dto),
       plannerMode: planDraft?.planner_mode,
       plannerSummary: planDraft?.summary,
       requiredInputs: planDraft?.required_inputs,
-      input,
+      input: mergedInput,
     };
 
     if (planDraft?.skill_match) {
@@ -1029,7 +1108,7 @@ export class ExecutionService {
       normalizedInput.riskSummary = planDraft.risk_summary;
     }
 
-    const bootstrapUrl = this.extractBootstrapUrl(input, planDraft);
+    const bootstrapUrl = this.extractBootstrapUrl(mergedInput, planDraft);
     if (bootstrapUrl) {
       normalizedInput.url = bootstrapUrl;
     }

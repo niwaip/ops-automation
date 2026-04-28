@@ -28,7 +28,6 @@ import ExecutionListPage from './pages/ExecutionListPage';
 import ExecutionCreatePage from './pages/ExecutionCreatePage';
 import ExecutionDetailPage from './pages/ExecutionDetailPage';
 import TakeoverWorkbenchPage from './pages/TakeoverWorkbenchPage';
-import ReleaseCenterPage from './pages/ReleaseCenterPage';
 import PublishedSkillDetailPage from './pages/PublishedSkillDetailPage';
 
 const PrivateRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -84,7 +83,7 @@ function App() {
           <Route path="executions/new" element={<ExecutionCreatePage />} />
           <Route path="executions/:id" element={<ExecutionDetailPage />} />
           <Route path="executions/:id/takeover" element={<TakeoverWorkbenchPage />} />
-          <Route path="release-center" element={<ReleaseCenterPage />} />
+          <Route path="release-center" element={<Navigate to="/admin/capability-releases" replace />} />
           <Route path="published-skills" element={<PublishedSkillDetailPage />} />
           <Route path="published-skills/:skillId" element={<PublishedSkillDetailPage />} />
           <Route

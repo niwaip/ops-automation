@@ -20,6 +20,8 @@ export interface CapabilityRelease {
   latestSuccessfulValidationId?: string | null;
   currentSkillDraftId?: string | null;
   publishedSkillId?: string | null;
+  lastDeploymentId?: string | null;
+  lastDeploymentEnvironment?: string | null;
   createdBy?: string | null;
   createdAt: string;
   updatedAt: string;
@@ -279,7 +281,13 @@ export const capabilityReleaseApi = {
 
   validateSandbox: async (
     id: string,
-    data?: { buildId?: string; input?: Record<string, unknown>; testUserInput?: string; fn?: string },
+    data?: {
+      buildId?: string;
+      input?: Record<string, unknown>;
+      testUserInput?: string;
+      testCases?: string[];
+      fn?: string;
+    },
   ): Promise<{ release: CapabilityRelease; validation: CapabilityValidation }> => {
     return apiClient.post<{ release: CapabilityRelease; validation: CapabilityValidation }>(
       `/capability-releases/${id}/validate/sandbox`,
