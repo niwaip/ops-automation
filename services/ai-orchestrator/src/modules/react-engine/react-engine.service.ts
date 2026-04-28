@@ -33,7 +33,7 @@ import {
 const DEFAULT_CONFIG: ReActConfig = {
   maxIterations: 10,  // 增加到10次，支持更复杂的多步骤流程
   modelId: 'default',
-  tools: ['skill_match', 'generate_parameters', 'preview_params', 'document_render', 'param_collect', 'user_ask', 'file_parse', 'api_call', 'flow_execute'],
+  tools: ['skill_match', 'document_intake', 'generate_parameters', 'preview_params', 'document_render', 'document_param_recover', 'param_collect', 'user_ask', 'file_parse', 'api_call', 'flow_execute'],
   mode: 'task',
 };
 
@@ -295,6 +295,7 @@ export class ReActEngineService {
               availableSkills: context.availableSkills,
               uploadedFiles: context.uploadedFiles,
               collectedParams: context.collectedParams,
+              documentContext: context.documentContext,
               userRoles: context.userRoles,
             },
           });
@@ -390,6 +391,7 @@ export class ReActEngineService {
               availableSkills: context.availableSkills,
               uploadedFiles: context.uploadedFiles,
               collectedParams: context.collectedParams,
+              documentContext: context.documentContext,
               userRoles: context.userRoles,
             },
           });
@@ -415,6 +417,7 @@ export class ReActEngineService {
             availableSkills: context.availableSkills,
             uploadedFiles: context.uploadedFiles,
             collectedParams: context.collectedParams,
+            documentContext: context.documentContext,
             userRoles: context.userRoles,
           },
         });
@@ -447,6 +450,7 @@ export class ReActEngineService {
               availableSkills: context.availableSkills,
               uploadedFiles: context.uploadedFiles,
               collectedParams: context.collectedParams,
+              documentContext: context.documentContext,
               userRoles: context.userRoles, // 存入 Session
             }
           });
@@ -484,6 +488,7 @@ export class ReActEngineService {
             availableSkills: context.availableSkills,
             uploadedFiles: context.uploadedFiles,
             collectedParams: context.collectedParams,
+            documentContext: context.documentContext,
             userRoles: context.userRoles,
           }
         });
@@ -506,6 +511,7 @@ export class ReActEngineService {
             availableSkills: context.availableSkills,
             uploadedFiles: context.uploadedFiles,
             collectedParams: context.collectedParams,
+            documentContext: context.documentContext,
             userRoles: context.userRoles,
           },
         });
@@ -524,6 +530,7 @@ export class ReActEngineService {
           availableSkills: context.availableSkills,
           uploadedFiles: context.uploadedFiles,
           collectedParams: context.collectedParams,
+          documentContext: context.documentContext,
           userRoles: context.userRoles,
         },
       });
@@ -702,6 +709,19 @@ export class ReActEngineService {
       state.observation = resultData.userInputPrompt;
     }
 
+    if (
+      this.shouldTriggerDocumentParamRecover(toolName, resultData)
+      && !state.isWaitingForUserInput
+    ) {
+      context.nextAction = 'document_param_recover';
+      context.nextActionParams = {
+        errorMessage: state.observation || 'document_render failed',
+        currentParams: context.collectedParams || {},
+        userInput: context.originalUserInput || '',
+      };
+      state.observation = `${state.observation}\n\n已进入参数恢复流程（仅修复参数，不切换模板）。`;
+    }
+
     // 更新context中的skill信息
     if (innerData?.skill) {
       context.skill = innerData.skill as SkillMatchResult;
@@ -751,6 +771,34 @@ export class ReActEngineService {
       );
       // 这里可以继续循环
     }
+  }
+
+  private shouldTriggerDocumentParamRecover(
+    toolName: string,
+    result?: ToolResult,
+  ): boolean {
+    if (toolName !== 'document_render') {
+      return false;
+    }
+    if (!result || result.success || result.requiresUserInput) {
+      return false;
+    }
+
+    const error = typeof result.data?.error === 'string' ? result.data.error : '';
+    if (error === 'template_mismatch') {
+      return false;
+    }
+    if (['missing_params', 'render_failed', 'param_validation_failed'].includes(error)) {
+      return true;
+    }
+
+    const output = (result.output || '').toLowerCase();
+    return (
+      output.includes('参数')
+      || output.includes('missing')
+      || output.includes('invalid')
+      || output.includes('validation')
+    );
   }
 
   /**

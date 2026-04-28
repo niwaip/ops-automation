@@ -57,24 +57,44 @@ export class DocumentRenderTool extends BaseTool {
     params: Record<string, unknown>,
     context: ExecutionContext,
   ): Promise<ToolResult> {
-    // 优先从params获取，如果没有则从context获取
-    let templateId = params.templateId as string | undefined;
+    const lockedTemplateId = context.documentContext?.selectedTemplateId;
+    const requestedTemplateId = params.templateId as string | undefined;
+    const templateId = lockedTemplateId || requestedTemplateId || context.skill?.carboneTemplateId;
     let data = params.data as Record<string, unknown> | undefined;
     const format = (params.format as string) || 'docx';
 
-    // 如果params中没有提供，从context中获取
     if (!data && context.collectedParams) {
       data = context.collectedParams;
     }
-    if (!templateId && context.skill?.carboneTemplateId) {
-      templateId = context.skill.carboneTemplateId;
+
+    if (
+      lockedTemplateId
+      && requestedTemplateId
+      && lockedTemplateId !== requestedTemplateId
+    ) {
+      return {
+        success: false,
+        output: `模板已锁定为 ${lockedTemplateId}，当前请求模板 ${requestedTemplateId} 与已选模板不一致。`,
+        data: {
+          error: 'template_mismatch',
+          lockedTemplateId,
+          requestedTemplateId,
+        },
+        requiresUserInput: true,
+        userInputPrompt:
+          `当前会话已锁定模板（templateId=${lockedTemplateId}）。请确认是否继续使用该模板，或先通过 document_intake 重新选择模板。`,
+      };
     }
 
     if (!templateId || !data) {
       return {
         success: false,
         output: '缺少必要参数：需要提供templateId和data，或者先执行参数收集步骤',
-        data: { error: 'missing_params' },
+        data: {
+          error: 'missing_params',
+          missingTemplateId: !templateId,
+          missingData: !data,
+        },
       };
     }
 

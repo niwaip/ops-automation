@@ -23,6 +23,7 @@ import {
   GenerateParametersTool,
   DocumentRenderTool,
   DocumentIntakeTool,
+  DocumentParamRecoverTool,
   PreviewParamsTool,
   ApiCallTool,
   FlowExecuteTool,
@@ -69,6 +70,7 @@ export class ToolExecutor {
       new GenerateParametersTool(),
       new DocumentRenderTool(),
       new DocumentIntakeTool(),
+      new DocumentParamRecoverTool(),
       new PreviewParamsTool(),
       new ApiCallTool(),
       new FlowExecuteTool(),
@@ -330,7 +332,7 @@ export class ToolExecutor {
       };
     }
 
-    if (['param_collect', 'document_intake', 'generate_parameters', 'document_render', 'flow_execute'].includes(toolName)) {
+    if (['param_collect', 'document_intake', 'generate_parameters', 'document_render', 'document_param_recover', 'flow_execute'].includes(toolName)) {
       this.bindSkillContext(params, context);
     }
 
