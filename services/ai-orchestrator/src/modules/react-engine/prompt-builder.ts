@@ -40,6 +40,7 @@ Final Answer: 最终回复
 - 在任务模式下，禁止跳过技能直接调用通用外部 API；不要调用 \`api_call\`，也不要重新调用 \`skill_match\`
 - 当技能有必填参数但信息不足时，先调用 param_collect，不要直接猜测参数
 - 对文档生成类请求，优先调用 document_intake（模板选择 + 参数初稿），再调用 document_render
+- 若 document_intake 返回 requiresUserInput=true，先向用户澄清模板（回复 templateId/skillId）再继续
 - 当技能配置了 \`carboneSkillId\` 时，使用 generate_parameters，并传入平台 skillId
 - 当技能需要实际执行时，使用 flow_execute，并传入平台 skillId
 - 当 Observation 已经足够回答用户且任务完成时，必须输出 \`Final Answer:\`，不要输出普通正文
@@ -130,7 +131,7 @@ Carbone Template ID: ${skill.carboneTemplateId || '无'}
   "skillId": "${skill.skillId}",
   "userInput": "用户的完整描述内容"
 }
-再根据返回结果调用 document_render。不要在文档场景优先调用 param_collect。`;
+若 document_intake 要求澄清模板，请先等待用户确认 templateId/skillId，再继续调用 document_render。`;
     }
   }
 
