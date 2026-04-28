@@ -8,6 +8,14 @@ import axios from 'axios';
 import { BaseTool } from './base.tool';
 import { ToolResult, ExecutionContext } from '../interfaces';
 
+type PreviewParamsResponse = {
+  success?: boolean;
+  previewUrl?: string;
+  downloadUrl?: string;
+  generatedData?: Record<string, unknown>;
+  skillUsed?: string;
+};
+
 // Carbone引擎服务地址（内部调用）
 const CARBONE_SERVICE_URL = process.env.CARBONE_SERVICE_URL || 'http://carbone-engine:3009';
 // 外部可访问的下载地址（返回给用户）
@@ -72,7 +80,7 @@ export class PreviewParamsTool extends BaseTool {
 
     try {
       // 调用Carbone引擎的preview-with-skill API
-      const response = await axios.post(`${CARBONE_SERVICE_URL}/studio/preview-with-skill`, {
+      const response = await axios.post<PreviewParamsResponse>(`${CARBONE_SERVICE_URL}/studio/preview-with-skill`, {
         templateId,
         skillId,
         simulatedData: data,

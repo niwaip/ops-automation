@@ -106,7 +106,7 @@ export class ToolExecutor {
       const response = await axios.get<{ templates: FlowTemplate[] }>(`${authUrl}/execution-flow-templates`, {
         headers: traceId ? { [TRACE_ID_HEADER]: traceId } : undefined,
       });
-      const templates = response.data.templates as FlowTemplate[];
+      const templates = response.data.templates;
 
       this.removeDynamicFlowTools();
 

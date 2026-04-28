@@ -261,7 +261,7 @@ ${params}
       case 'string':
         return typeof value === 'string';
       case 'number':
-        return typeof value === 'number' && !isNaN(value as number);
+        return typeof value === 'number' && !isNaN(value);
       case 'boolean':
         return typeof value === 'boolean';
       case 'array':

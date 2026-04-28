@@ -5,9 +5,56 @@
 
 import { StreamEvent, ChatRequest, AIModel, UploadedFile } from './types';
 import { useAuthStore } from '../../store/authStore';
+import { refreshAccessToken } from '../../api/client';
 
 // 使用Vite代理路径 /api/ai -> ops-ai-orchestrator:3007
 const AI_API_BASE = '/api/ai';
+
+const buildAuthHeaders = (): Record<string, string> => {
+  const token = useAuthStore.getState().accessToken;
+  const headers: Record<string, string> = {};
+
+  if (token) {
+    headers.Authorization = `Bearer ${token}`;
+  }
+
+  return headers;
+};
+
+const fetchWithAuthRetry = async (
+  input: RequestInfo | URL,
+  init?: RequestInit,
+): Promise<Response> => {
+  const executeRequest = async (overrideToken?: string | null) => {
+    const headers = new Headers(init?.headers || {});
+
+    if (overrideToken) {
+      headers.set('Authorization', `Bearer ${overrideToken}`);
+    } else {
+      const authHeaders = buildAuthHeaders();
+      Object.entries(authHeaders).forEach(([key, value]) => headers.set(key, value));
+    }
+
+    return fetch(input, {
+      ...init,
+      headers,
+    });
+  };
+
+  let response = await executeRequest();
+
+  if (response.status !== 401) {
+    return response;
+  }
+
+  const nextAccessToken = await refreshAccessToken();
+  if (!nextAccessToken) {
+    return response;
+  }
+
+  response = await executeRequest(nextAccessToken);
+  return response;
+};
 
 /**
  * 流式聊天（支持中止）
@@ -20,7 +67,6 @@ export function streamChat(
   onComplete?: () => void,
 ): () => void {
   const abortController = new AbortController();
-  const token = useAuthStore.getState().accessToken;
 
   // 异步执行流式请求
   (async () => {
@@ -33,21 +79,16 @@ export function streamChat(
         size: f.size,
       }));
 
-      const headers: Record<string, string> = {
-        'Content-Type': 'application/json',
-      };
-
-      if (token) {
-        headers['Authorization'] = `Bearer ${token}`;
-      }
-
-      const response = await fetch(`${AI_API_BASE}/chat/stream`, {
+      const response = await fetchWithAuthRetry(`${AI_API_BASE}/chat/stream`, {
         method: 'POST',
-        headers,
+        headers: {
+          'Content-Type': 'application/json',
+        },
         body: JSON.stringify({
           message: request.message,
           sessionId: request.sessionId,
           userId: request.userId,
+          executionId: request.executionId,
           userRoles: request.userRoles,
           modelId: request.modelId,
           files: filesMetadata,
@@ -117,15 +158,7 @@ export function streamChat(
  */
 export async function getAvailableModels(): Promise<AIModel[]> {
   try {
-    const token = useAuthStore.getState().accessToken;
-    const headers: Record<string, string> = {};
-    if (token) {
-      headers['Authorization'] = `Bearer ${token}`;
-    }
-
-    const response = await fetch(`${AI_API_BASE}/models`, {
-      headers,
-    });
+    const response = await fetchWithAuthRetry(`${AI_API_BASE}/models`);
     if (!response.ok) {
       throw new Error(`HTTP error: ${response.status}`);
     }
@@ -142,18 +175,11 @@ export async function getAvailableModels(): Promise<AIModel[]> {
  */
 export async function uploadFile(file: File): Promise<UploadedFile> {
   try {
-    const token = useAuthStore.getState().accessToken;
     const formData = new FormData();
     formData.append('file', file);
 
-    const headers: Record<string, string> = {};
-    if (token) {
-      headers['Authorization'] = `Bearer ${token}`;
-    }
-
-    const response = await fetch(`${AI_API_BASE}/chat/upload`, {
+    const response = await fetchWithAuthRetry(`${AI_API_BASE}/chat/upload`, {
       method: 'POST',
-      headers,
       body: formData,
     });
 
@@ -180,15 +206,7 @@ export async function uploadFile(file: File): Promise<UploadedFile> {
  */
 export async function getChatHistory(sessionId: string): Promise<ChatMessage[]> {
   try {
-    const token = useAuthStore.getState().accessToken;
-    const headers: Record<string, string> = {};
-    if (token) {
-      headers['Authorization'] = `Bearer ${token}`;
-    }
-
-    const response = await fetch(`${AI_API_BASE}/chat/history/${sessionId}`, {
-      headers,
-    });
+    const response = await fetchWithAuthRetry(`${AI_API_BASE}/chat/history/${sessionId}`);
     if (!response.ok) {
       throw new Error(`HTTP error: ${response.status}`);
     }

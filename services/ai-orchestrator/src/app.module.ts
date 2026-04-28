@@ -8,6 +8,7 @@ import { ReActEngineModule } from './modules/react-engine/react-engine.module';
 import { RedisModule } from './modules/redis/redis.module';
 import { PrismaModule } from './modules/prisma/prisma.module';
 import { ExecutionStepModule } from './modules/execution-step/execution-step.module';
+import { PlannerModule } from './modules/planner/planner.module';
 import { ModelController } from './controllers/model.controller';
 import { ChatController } from './controllers/chat.controller';
 import { OrchestrationController } from './controllers/orchestration.controller';
@@ -23,6 +24,7 @@ import { OrchestrationController } from './controllers/orchestration.controller'
     BrowserCommandModule,
     ReActEngineModule,
     RedisModule,
+    PlannerModule,
   ],
   controllers: [ModelController, ChatController, OrchestrationController],
 })

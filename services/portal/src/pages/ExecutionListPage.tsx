@@ -6,43 +6,50 @@
 
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Card, Table, Tag, Button, Space, Typography, Select, DatePicker, Input, Dropdown } from 'antd';
+import { Card, Table, Tag, Button, Space, Typography, Select, Input } from 'antd';
 import {
-  PlusOutlined,
   SearchOutlined,
-  FilterOutlined,
   EyeOutlined,
+  PlusOutlined,
+  ReloadOutlined,
 } from '@ant-design/icons';
-import { useTranslation } from 'react-i18next';
 import { useQuery } from 'react-query';
 import { executionApi, ExecutionDto, ExecutionStatus } from '../api/execution';
+import { useTranslation } from 'react-i18next';
 
 const { Title, Text } = Typography;
-const { RangePicker } = DatePicker;
 
 const statusColors: Record<ExecutionStatus, string> = {
+  draft: 'default',
   queued: 'default',
   running: 'processing',
+  waiting_input: 'warning',
   pending_approval: 'warning',
   human_control: 'error',
+  paused: 'default',
   succeeded: 'success',
   failed: 'error',
   cancelled: 'default',
+  rolled_back: 'default',
 };
 
 const statusLabels: Record<ExecutionStatus, string> = {
+  draft: 'Draft',
   queued: 'Queued',
   running: 'Running',
+  waiting_input: 'Waiting Input',
   pending_approval: 'Pending Approval',
   human_control: 'Human Control',
+  paused: 'Paused',
   succeeded: 'Succeeded',
   failed: 'Failed',
   cancelled: 'Cancelled',
+  rolled_back: 'Rolled Back',
 };
 
 const ExecutionListPage: React.FC = () => {
+  const { t } = useTranslation('common');
   const navigate = useNavigate();
-  const { t } = useTranslation();
 
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
@@ -50,7 +57,7 @@ const ExecutionListPage: React.FC = () => {
   const [searchText, setSearchText] = useState('');
 
   // Fetch executions
-  const { data, isLoading, error } = useQuery(
+  const { data, isLoading, isFetching, refetch } = useQuery(
     ['executions', page, pageSize, statusFilter],
     () => executionApi.list({ page, pageSize, status: statusFilter }),
     { keepPreviousData: true }
@@ -132,10 +139,20 @@ const ExecutionListPage: React.FC = () => {
   return (
     <div style={{ padding: 24 }}>
       {/* Header */}
-      <div style={{ marginBottom: 24 }}>
-        <Title level={2}>Executions</Title>
-        <Text type="secondary">View and manage skill execution history</Text>
-      </div>
+      <Space style={{ width: '100%', justifyContent: 'space-between', marginBottom: 24 }} wrap>
+        <div>
+          <Title level={2}>Executions</Title>
+          <Text type="secondary">View and manage skill execution history</Text>
+        </div>
+        <Space>
+          <Button icon={<ReloadOutlined />} onClick={() => refetch()} loading={isFetching}>
+            刷新
+          </Button>
+          <Button type="primary" icon={<PlusOutlined />} onClick={() => navigate('/executions/new')}>
+            {t('newExecution')}
+          </Button>
+        </Space>
+      </Space>
 
       {/* Filters */}
       <Card style={{ marginBottom: 16 }}>
@@ -155,13 +172,17 @@ const ExecutionListPage: React.FC = () => {
             value={statusFilter}
             onChange={setStatusFilter}
           >
+            <Select.Option value="draft">Draft</Select.Option>
             <Select.Option value="queued">Queued</Select.Option>
             <Select.Option value="running">Running</Select.Option>
+            <Select.Option value="waiting_input">Waiting Input</Select.Option>
             <Select.Option value="pending_approval">Pending Approval</Select.Option>
             <Select.Option value="human_control">Human Control</Select.Option>
+            <Select.Option value="paused">Paused</Select.Option>
             <Select.Option value="succeeded">Succeeded</Select.Option>
             <Select.Option value="failed">Failed</Select.Option>
             <Select.Option value="cancelled">Cancelled</Select.Option>
+            <Select.Option value="rolled_back">Rolled Back</Select.Option>
           </Select>
         </Space>
       </Card>

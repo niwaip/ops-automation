@@ -1,19 +1,19 @@
 import React, { useEffect, useMemo, useReducer, useState } from 'react';
 import {
   Table, Card, Button, Input, Space, Tag, Typography, Modal, message, Form, Select,
-  Divider, Alert, Collapse, Badge, Popconfirm, Row, Col, Statistic, Timeline, Switch
+  Divider, Alert, Collapse, Badge, Popconfirm, Row, Col, Statistic, Timeline, Switch, Tooltip, InputNumber, Segmented
 } from 'antd';
 import {
   SearchOutlined, PlusOutlined, EditOutlined, DeleteOutlined, PlayCircleOutlined,
-  ReloadOutlined, CloudUploadOutlined, CodeOutlined, ApiOutlined, ThunderboltOutlined,
-  RocketOutlined, CheckCircleOutlined, RobotOutlined, ExperimentOutlined
+  ReloadOutlined, CodeOutlined, ApiOutlined, ThunderboltOutlined,
+  RocketOutlined, CheckCircleOutlined, RobotOutlined, ExperimentOutlined, InfoCircleOutlined
 } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
 import { useQuery, useMutation, useQueryClient } from 'react-query';
 import {
   temporalWorkflowApi, TemporalWorkflowDTO, CreateTemporalWorkflowDTO,
   WorkflowDsl, ActivityDsl, TemporalValidationResult, DEFAULT_WORKFLOW_DSL, DEFAULT_ACTIVITY_DSL,
-  WorkflowCodeResult, SandBoxValidationResult
+  WorkflowCodeResult, WorkflowRealValidationResult
 } from '../../api/temporal-workflow';
 import { activityApi, ActivityDTO } from '../../api/activity';
 import { normalizeExecutionResult } from '../../api/execution-normalizer';
@@ -23,24 +23,82 @@ const { Text } = Typography;
 const { Option } = Select;
 const { Panel } = Collapse;
 const MAX_LOG_LINES = 1000;
+type DurationUnit = 's' | 'm' | 'h';
+type StepDurationField = 'startToCloseTimeout' | 'scheduleToCloseTimeout' | 'heartbeatTimeout';
+type WorkflowDurationField = 'workflowExecutionTimeout' | 'workflowRunTimeout' | 'workflowTaskTimeout';
+const DEFAULT_DURATION_UNIT: DurationUnit = 's';
+const DURATION_UNIT_OPTIONS = [
+  { label: 'S', value: 's' },
+  { label: 'M', value: 'm' },
+  { label: 'H', value: 'h' },
+];
 
-interface SandboxState {
+const SECTION_CARD_STYLE: React.CSSProperties = {
+  borderRadius: 14,
+  border: '1px solid #eaf1ff',
+  boxShadow: '0 6px 18px rgba(15, 23, 42, 0.04)',
+};
+
+const SECTION_CARD_BODY_STYLE: React.CSSProperties = {
+  padding: 14,
+};
+
+const SOFT_PANEL_STYLE: React.CSSProperties = {
+  border: '1px solid #d9e6ff',
+  padding: 12,
+  borderRadius: 10,
+  background: '#fbfdff',
+};
+
+const DURATION_INPUT_WIDTH = 64;
+const DURATION_SEGMENTED_WIDTH = 78;
+
+const parseDurationValue = (duration?: string): { value?: number; unit: DurationUnit } => {
+  if (!duration) {
+    return { value: undefined, unit: DEFAULT_DURATION_UNIT };
+  }
+  const trimmed = duration.trim();
+  const explicitMatch = trimmed.match(/^(\d+)\s*([smh])$/i);
+  if (explicitMatch) {
+    return {
+      value: Number(explicitMatch[1]),
+      unit: explicitMatch[2].toLowerCase() as DurationUnit,
+    };
+  }
+  const numberOnly = trimmed.match(/^(\d+)$/);
+  if (numberOnly) {
+    return {
+      value: Number(numberOnly[1]),
+      unit: DEFAULT_DURATION_UNIT,
+    };
+  }
+  return { value: undefined, unit: DEFAULT_DURATION_UNIT };
+};
+
+const formatDurationValue = (value?: number | null, unit: DurationUnit = DEFAULT_DURATION_UNIT): string | undefined => {
+  if (value === null || value === undefined || Number.isNaN(value)) {
+    return undefined;
+  }
+  return `${Math.max(0, Number(value))}${unit}`;
+};
+
+interface RealValidationState {
   visible: boolean;
   isStreaming: boolean;
   logs: string[];
-  result: SandBoxValidationResult | null;
+  result: WorkflowRealValidationResult | null;
   inputParams: Record<string, string>; // 用户输入的参数值
 }
 
-type SandboxAction =
+type RealValidationAction =
   | { type: 'START' }
   | { type: 'OPEN'; payload?: Record<string, string> }
   | { type: 'APPEND_LOG'; payload: string }
-  | { type: 'SET_RESULT'; payload: SandBoxValidationResult }
+  | { type: 'SET_RESULT'; payload: WorkflowRealValidationResult }
   | { type: 'SET_INPUT_PARAMS'; payload: Record<string, string> }
   | { type: 'CLOSE' };
 
-const initialSandboxState: SandboxState = {
+const initialRealValidationState: RealValidationState = {
   visible: false,
   isStreaming: false,
   logs: [],
@@ -48,7 +106,7 @@ const initialSandboxState: SandboxState = {
   inputParams: {},
 };
 
-const sandboxReducer = (state: SandboxState, action: SandboxAction): SandboxState => {
+const realValidationReducer = (state: RealValidationState, action: RealValidationAction): RealValidationState => {
   switch (action.type) {
     case 'START':
       return {
@@ -82,7 +140,7 @@ const sandboxReducer = (state: SandboxState, action: SandboxAction): SandboxStat
       };
     case 'CLOSE':
       return {
-        ...initialSandboxState,
+        ...initialRealValidationState,
       };
     default:
       return state;
@@ -108,30 +166,119 @@ const TemporalWorkflowPage: React.FC = () => {
   const [selectedStepIndexForConfig, setSelectedStepIndexForConfig] = useState<number | null>(null);
   const [generatedCode, setGeneratedCode] = useState<string | null>(null);
   const [codeModalVisible, setCodeModalVisible] = useState(false);
-  const [sandboxState, dispatchSandbox] = useReducer(sandboxReducer, initialSandboxState);
-  const [sandboxInputParams, setSandboxInputParams] = useState<Record<string, string>>({}); // 沙箱验证时的输入参数
+  const [realValidationState, dispatchRealValidation] = useReducer(realValidationReducer, initialRealValidationState);
+  const [realValidationInputParams, setRealValidationInputParams] = useState<Record<string, string>>({}); // 真实验证时的输入参数
 
-  // 当沙箱弹窗打开时，同步输入参数到本地状态
+  // 当真实验证弹窗打开时，同步输入参数到本地状态
   useEffect(() => {
-    if (sandboxState.visible && Object.keys(sandboxState.inputParams).length > 0) {
-      setSandboxInputParams({ ...sandboxState.inputParams });
+    if (realValidationState.visible && Object.keys(realValidationState.inputParams).length > 0) {
+      setRealValidationInputParams({ ...realValidationState.inputParams });
     }
-  }, [sandboxState.visible]);
+  }, [realValidationState.visible]);
+
+  const normalizeActivityInputParams = (
+    inputParams: unknown
+  ): Array<{ key: string; value: string; required: boolean }> => {
+    if (!inputParams) {
+      return [];
+    }
+    if (Array.isArray(inputParams)) {
+      return inputParams.map((item: any) => ({
+        key: item?.key || '',
+        value: item?.value || '',
+        required: Boolean(item?.required),
+      }));
+    }
+    if (typeof inputParams === 'object') {
+      return Object.entries(inputParams as Record<string, any>).map(([key, value]) => ({
+        key,
+        value: value || '',
+        required: !value,
+      }));
+    }
+    return [];
+  };
 
   // 从Activity的config中提取inputParams (存储在config.steps[].inputParams中)
   const getActivityInputParams = (activity: ActivityDTO): Record<string, string> => {
+    const params: Record<string, string> = {};
     try {
       const config = activity.config as Record<string, any>;
       if (config?.steps && Array.isArray(config.steps) && config.steps.length > 0) {
-        const firstStep = config.steps[0];
-        if (firstStep?.inputParams && typeof firstStep.inputParams === 'object') {
-          return firstStep.inputParams as Record<string, string>;
-        }
+        normalizeActivityInputParams(config.steps[0]?.inputParams).forEach((param) => {
+          if (param.key.trim()) {
+            params[param.key] = param.value || '';
+          }
+        });
       }
     } catch (e) {
       // ignore
     }
-    return {};
+    return params;
+  };
+
+  const getActivityInputParamDefinitions = (activity?: ActivityDTO): Record<string, { description?: string; required?: boolean; defaultValue?: string }> => {
+    const definitions: Record<string, { description?: string; required?: boolean; defaultValue?: string }> = {};
+    if (!activity) {
+      return definitions;
+    }
+    try {
+      const config = activity.config as Record<string, any>;
+      if (config?.steps && Array.isArray(config.steps) && config.steps.length > 0) {
+        normalizeActivityInputParams(config.steps[0]?.inputParams).forEach((param) => {
+          if (param.key.trim()) {
+            definitions[param.key] = {
+              description: '',
+              required: param.required,
+              defaultValue: param.value || '',
+            };
+          }
+        });
+      }
+    } catch (e) {
+      // ignore
+    }
+    return definitions;
+  };
+
+  const syncWorkflowInputParamsFromFirstStep = () => {
+    setWorkflowDsl((prev) => {
+      const firstStep = prev.steps[0];
+      if (!firstStep) {
+        return prev.inputParams ? { ...prev, inputParams: {} } : prev;
+      }
+
+      const activity = activitiesQuery.data?.find((item) => item.name === firstStep.activityName);
+      const activityDefinitions = getActivityInputParamDefinitions(activity);
+      const currentDefinitions = prev.inputParams || {};
+      const stepInputEntries = Object.entries(firstStep.input || {}).filter(([key]) => key !== 'timeout');
+      const nextInputParams: Record<string, { description?: string; required?: boolean; defaultValue?: string }> = {};
+
+      Object.entries(activityDefinitions).forEach(([key, definition]) => {
+        nextInputParams[key] = {
+          description: currentDefinitions[key]?.description || definition.description || '',
+          required: currentDefinitions[key]?.required ?? definition.required ?? false,
+          defaultValue: currentDefinitions[key]?.defaultValue ?? definition.defaultValue ?? '',
+        };
+      });
+
+      stepInputEntries.forEach(([key, value]) => {
+        nextInputParams[key] = {
+          description: currentDefinitions[key]?.description || nextInputParams[key]?.description || '',
+          required: currentDefinitions[key]?.required ?? nextInputParams[key]?.required ?? false,
+          defaultValue: typeof value === 'string' ? value : JSON.stringify(value),
+        };
+      });
+
+      if (JSON.stringify(currentDefinitions) === JSON.stringify(nextInputParams)) {
+        return prev;
+      }
+
+      return {
+        ...prev,
+        inputParams: nextInputParams,
+      };
+    });
   };
 
   // 当选择步骤时，自动从Activity加载输入参数（如果步骤还没有参数）
@@ -144,12 +291,23 @@ const TemporalWorkflowPage: React.FC = () => {
         if (Object.keys(inputParams).length > 0) {
           handleUpdateStep(selectedStepIndexForConfig, 'input', {
             ...inputParams,
-            timeout: step.input?.timeout || '60s',
           });
         }
       }
     }
   }, [selectedStepIndexForConfig]);
+
+  useEffect(() => {
+    if (workflowDsl.steps.length === 0) {
+      if (selectedStepIndexForConfig !== null) {
+        setSelectedStepIndexForConfig(null);
+      }
+      return;
+    }
+    if (selectedStepIndexForConfig === null || selectedStepIndexForConfig >= workflowDsl.steps.length) {
+      setSelectedStepIndexForConfig(0);
+    }
+  }, [workflowDsl.steps.length, selectedStepIndexForConfig]);
 
   const workflowsQuery = useQuery(['temporal-workflows'], () => temporalWorkflowApi.list());
   const activitiesQuery = useQuery('activities', () => activityApi.list());
@@ -169,7 +327,13 @@ const TemporalWorkflowPage: React.FC = () => {
     });
   }, [searchText, workflowsQuery.data]);
 
-  const appendSandboxLog = (content: string) => dispatchSandbox({ type: 'APPEND_LOG', payload: content });
+  useEffect(() => {
+    if (workflowDsl.steps.length > 0) {
+      syncWorkflowInputParamsFromFirstStep();
+    }
+  }, [workflowDsl.steps, activitiesQuery.data]);
+
+  const appendRealValidationLog = (content: string) => dispatchRealValidation({ type: 'APPEND_LOG', payload: content });
 
   const createMutation = useMutation(temporalWorkflowApi.create, {
     onSuccess: () => { message.success(t('common:success')); queryClient.invalidateQueries(['temporal-workflows']); setEditModalVisible(false); form.resetFields(); },
@@ -184,11 +348,6 @@ const TemporalWorkflowPage: React.FC = () => {
   const deleteMutation = useMutation(temporalWorkflowApi.delete, {
     onSuccess: () => { message.success(t('common:success')); queryClient.invalidateQueries(['temporal-workflows']); },
     onError: () => { message.error(t('common:error')); },
-  });
-
-  const deployMutation = useMutation(temporalWorkflowApi.deploy, {
-    onSuccess: () => { message.success('已登记部署状态'); queryClient.invalidateQueries(['temporal-workflows']); },
-    onError: () => { message.error('登记部署状态失败'); },
   });
 
   const validateMutation = useMutation(
@@ -217,15 +376,20 @@ const TemporalWorkflowPage: React.FC = () => {
     setWorkflowDsl(DEFAULT_WORKFLOW_DSL);
     setActivityDsl(DEFAULT_ACTIVITY_DSL);
     setGeneratedCode(null);
+    setSelectedStepIndexForConfig(null);
     setEditModalVisible(true);
   };
 
   const handleEdit = (workflow: TemporalWorkflowDTO) => {
     setEditingWorkflow(workflow);
     form.setFieldsValue({ name: workflow.name, description: workflow.description, taskQueue: workflow.taskQueue });
-    setWorkflowDsl(workflow.workflowDsl || DEFAULT_WORKFLOW_DSL);
+    setWorkflowDsl({
+      ...DEFAULT_WORKFLOW_DSL,
+      ...(workflow.workflowDsl || {}),
+    });
     setActivityDsl(workflow.activityDsl || DEFAULT_ACTIVITY_DSL);
     setGeneratedCode(workflow.generatedCode || null);
+    setSelectedStepIndexForConfig(workflow.workflowDsl?.steps?.length ? 0 : null);
     setEditModalVisible(true);
   };
 
@@ -262,39 +426,40 @@ const TemporalWorkflowPage: React.FC = () => {
     return params;
   };
 
-  const handleOpenSandbox = () => {
+  const handleOpenRealValidation = () => {
     if (!generatedCode) { message.warning('请先生成代码'); return; }
     const inputParams = collectWorkflowInputParams();
-    dispatchSandbox({ type: 'OPEN', payload: inputParams });
+    dispatchRealValidation({ type: 'OPEN', payload: inputParams });
   };
 
-  const handleSandboxValidate = async () => {
+  const handleRealValidation = async () => {
     if (!generatedCode) { message.warning('请先生成代码'); return; }
-    const fn = workflowDsl.name.replace(/\s+/g, '') + 'Workflow';
-    dispatchSandbox({ type: 'START' });
+    const fn = workflowDsl.workflowClassName?.trim() || (workflowDsl.name.replace(/\s+/g, '') + 'Workflow');
+    dispatchRealValidation({ type: 'START' });
 
     // 构建输入参数
     const inputParams: Record<string, string> = {};
-    Object.entries(sandboxInputParams).forEach(([key, value]) => {
+    Object.entries(realValidationInputParams).forEach(([key, value]) => {
       if (value && value.trim()) {
         inputParams[key] = value;
       }
     });
 
     try {
-      await temporalWorkflowApi.validateInSandboxStream(
+      await temporalWorkflowApi.validateWorkflowRealStream(
         generatedCode,
         fn,
         inputParams,
+        workflowDsl.taskQueue,
         (event) => {
           if (event.type === 'log' && event.content) {
-            appendSandboxLog(event.content);
+            appendRealValidationLog(event.content);
           } else if (event.type === 'done') {
             const normalized = normalizeExecutionResult(event, {
               defaultSuccessScore: 100,
               defaultFailureScore: 0,
             });
-            dispatchSandbox({
+            dispatchRealValidation({
               type: 'SET_RESULT',
               payload: {
               success: normalized.success,
@@ -305,7 +470,7 @@ const TemporalWorkflowPage: React.FC = () => {
               },
             });
           } else if (event.type === 'error') {
-            dispatchSandbox({
+            dispatchRealValidation({
               type: 'SET_RESULT',
               payload: {
                 success: false,
@@ -318,8 +483,8 @@ const TemporalWorkflowPage: React.FC = () => {
         }
       );
     } catch (error: any) {
-      appendSandboxLog(`错误: ${error.message}`);
-      dispatchSandbox({
+      appendRealValidationLog(`错误: ${error.message}`);
+      dispatchRealValidation({
         type: 'SET_RESULT',
         payload: {
           success: false,
@@ -330,8 +495,6 @@ const TemporalWorkflowPage: React.FC = () => {
       });
     }
   };
-
-  const handleDeploy = (id: string) => Modal.confirm({ title: '确认登记部署状态', content: '当前动作只会记录 deployedAt，用于标记该工作流已登记部署，不会真正把代码下发到 Temporal Worker。是否继续？', onOk: () => deployMutation.mutate(id) });
 
   const handleSave = () => {
     form.validateFields().then((values) => {
@@ -351,16 +514,34 @@ const TemporalWorkflowPage: React.FC = () => {
 
   const handleDelete = (id: string) => Modal.confirm({ title: t('common:confirmDelete'), content: '删除后无法恢复，是否继续？', onOk: () => deleteMutation.mutate(id) });
 
-  const handleAddStep = () => setWorkflowDsl({ ...workflowDsl, steps: [...workflowDsl.steps, { id: `step_${Date.now()}`, name: `步骤 ${workflowDsl.steps.length + 1}`, type: 'activity' }] });
+  const handleAddStep = () => {
+    const nextIndex = workflowDsl.steps.length;
+    setWorkflowDsl({ ...workflowDsl, steps: [...workflowDsl.steps, { id: `step_${Date.now()}`, name: `步骤 ${workflowDsl.steps.length + 1}`, type: 'activity' }] });
+    if (nextIndex === 0) {
+      setSelectedStepIndexForConfig(0);
+    }
+  };
   const handleRemoveStep = (index: number) => setWorkflowDsl({ ...workflowDsl, steps: workflowDsl.steps.filter((_, i) => i !== index) });
   const handleUpdateStep = (index: number, field: string, value: any) => { const updated = [...workflowDsl.steps]; updated[index] = { ...updated[index], [field]: value }; setWorkflowDsl({ ...workflowDsl, steps: updated }); };
 
   const handleOpenActivitySelector = (stepIndex: number) => { setSelectingStepIndex(stepIndex); setSelectActivityModalVisible(true); };
 
+  const buildStepTimeoutsFromActivity = (activity?: ActivityDTO) => ({
+    startToCloseTimeout: activity?.timeout || '60s',
+    scheduleToCloseTimeout: activity?.config?.scheduleToCloseTimeout || undefined,
+    heartbeatTimeout: activity?.config?.heartbeatTimeout || undefined,
+  });
+
   // Add activity from pool to workflow steps and activityDsl
   const handleAddActivityFromPool = (activity: ActivityDTO) => {
     const stepId = `step_${Date.now()}`;
-    const newStep = { id: stepId, name: activity.name, type: 'activity' as const, activityName: activity.name };
+    const newStep = {
+      id: stepId,
+      name: activity.name,
+      type: 'activity' as const,
+      activityName: activity.name,
+      ...buildStepTimeoutsFromActivity(activity),
+    };
     // Add step to workflowDsl
     setWorkflowDsl({ ...workflowDsl, steps: [...workflowDsl.steps, newStep] });
     // Add activity to activityDsl if not exists
@@ -383,7 +564,17 @@ const TemporalWorkflowPage: React.FC = () => {
 
   const handleSelectActivity = (activity: ActivityDTO) => {
     if (selectingStepIndex !== null) {
-      handleUpdateStep(selectingStepIndex, 'activityName', activity.name);
+      const currentStep = workflowDsl.steps[selectingStepIndex];
+      const nextStep = {
+        ...currentStep,
+        activityName: activity.name,
+        startToCloseTimeout: currentStep?.startToCloseTimeout || activity.timeout || '60s',
+        scheduleToCloseTimeout: currentStep?.scheduleToCloseTimeout || activity.config?.scheduleToCloseTimeout || undefined,
+        heartbeatTimeout: currentStep?.heartbeatTimeout || activity.config?.heartbeatTimeout || undefined,
+      };
+      const updatedSteps = [...workflowDsl.steps];
+      updatedSteps[selectingStepIndex] = nextStep;
+      setWorkflowDsl({ ...workflowDsl, steps: updatedSteps });
       const exists = activityDsl.activities.some(a => a.name === activity.name);
       if (!exists) {
         setActivityDsl({ ...activityDsl, activities: [...activityDsl.activities, { name: activity.name, fn: activity.fn, timeout: activity.timeout, handler: activity.handler, config: activity.config }] });
@@ -394,178 +585,481 @@ const TemporalWorkflowPage: React.FC = () => {
   };
 
   const handleRegenerateCode = () => {
-    dispatchSandbox({ type: 'CLOSE' });
+    dispatchRealValidation({ type: 'CLOSE' });
     setGeneratedCode(null);
-    // Build error context from sandbox result
+    // Build error context from the last real validation result
     let errorContext: string | undefined;
-    if (sandboxState.result) {
+    if (realValidationState.result) {
       const errors: string[] = [];
-      if (sandboxState.result.error) errors.push(`验证错误: ${sandboxState.result.error}`);
-      if (sandboxState.result.result?.error) errors.push(`执行错误: ${sandboxState.result.result.error}`);
-      if (sandboxState.result.result?.traceback) errors.push(`堆栈: ${sandboxState.result.result.traceback}`);
-      if (sandboxState.logs.length > 0) errors.push(`日志:\n${sandboxState.logs.join('\n')}`);
+      if (realValidationState.result.error) errors.push(`验证错误: ${realValidationState.result.error}`);
+      if (realValidationState.result.result?.error) errors.push(`执行错误: ${realValidationState.result.result.error}`);
+      if (realValidationState.result.result?.traceback) errors.push(`堆栈: ${realValidationState.result.result.traceback}`);
+      if (realValidationState.logs.length > 0) errors.push(`日志:\n${realValidationState.logs.join('\n')}`);
       if (errors.length > 0) {
-        errorContext = `上次代码验证失败，请修复以下问题:\n\n${errors.join('\n\n')}`;
+        errorContext = `上次真实验证失败，请修复以下问题:\n\n${errors.join('\n\n')}`;
       }
     }
     handleGenerateCode(errorContext);
   };
 
-  const sandboxModalFooter = sandboxState.result && !sandboxState.result.success ? [
-    <Button key="close" onClick={() => dispatchSandbox({ type: 'CLOSE' })}>关闭</Button>,
+  const realValidationModalFooter = realValidationState.result && !realValidationState.result.success ? [
+    <Button key="close" onClick={() => dispatchRealValidation({ type: 'CLOSE' })}>关闭</Button>,
     <Button key="regenerate" type="primary" onClick={handleRegenerateCode}>重新生成代码</Button>,
-  ] : [<Button key="close" onClick={() => dispatchSandbox({ type: 'CLOSE' })}>关闭</Button>];
+  ] : [<Button key="close" onClick={() => dispatchRealValidation({ type: 'CLOSE' })}>关闭</Button>];
 
+  const renderTipLabel = (label: string, tip: string) => (
+    <Space size={4}>
+      <span>{label}</span>
+      <Tooltip title={tip}>
+        <InfoCircleOutlined style={{ color: '#8c8c8c' }} />
+      </Tooltip>
+    </Space>
+  );
+
+  const updateStepDurationField = (
+    index: number,
+    field: StepDurationField,
+    value: number | null | undefined,
+    unit: DurationUnit,
+  ) => {
+    handleUpdateStep(index, field, formatDurationValue(value, unit));
+  };
+
+  const renderStepDurationField = (
+    field: StepDurationField,
+    label: string,
+    tip: string,
+  ) => {
+    if (selectedStepIndexForConfig === null || !workflowDsl.steps[selectedStepIndexForConfig]) {
+      return null;
+    }
+    const step = workflowDsl.steps[selectedStepIndexForConfig];
+    const parsed = parseDurationValue(step[field]);
+    return (
+      <Form.Item label={renderTipLabel(label, tip)} style={{ marginBottom: 10 }}>
+        <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+          <InputNumber
+            size="small"
+            min={0}
+            value={parsed.value}
+            onChange={(value) => updateStepDurationField(selectedStepIndexForConfig, field, value, parsed.unit)}
+            placeholder="时长"
+            style={{ width: DURATION_INPUT_WIDTH }}
+          />
+          <Segmented
+            size="small"
+            options={DURATION_UNIT_OPTIONS}
+            value={parsed.unit}
+            onChange={(value) => updateStepDurationField(selectedStepIndexForConfig, field, parsed.value, value as DurationUnit)}
+            style={{ width: DURATION_SEGMENTED_WIDTH, padding: 0 }}
+          />
+        </div>
+      </Form.Item>
+    );
+  };
+
+  const updateWorkflowDurationField = (
+    field: WorkflowDurationField,
+    value: number | null | undefined,
+    unit: DurationUnit,
+  ) => {
+    setWorkflowDsl({
+      ...workflowDsl,
+      [field]: formatDurationValue(value, unit),
+    });
+  };
+
+  const renderWorkflowDurationField = (
+    field: WorkflowDurationField,
+    label: string,
+    tip: string,
+    enabled: boolean,
+    defaultValue: string,
+  ) => {
+    const parsed = parseDurationValue(workflowDsl[field]);
+    return (
+      <Form.Item label={renderTipLabel(label, tip)} style={{ marginBottom: 0 }}>
+        <Space size={6} align="center">
+          <Switch
+            checked={enabled}
+            onChange={(checked) => setWorkflowDsl({
+              ...workflowDsl,
+              [field]: checked ? defaultValue : undefined,
+            })}
+          />
+          <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+            <InputNumber
+              size="small"
+              min={0}
+              disabled={!enabled}
+              value={parsed.value}
+              placeholder="时长"
+              onChange={(value) => updateWorkflowDurationField(field, value, parsed.unit)}
+              style={{ width: DURATION_INPUT_WIDTH }}
+            />
+            <Segmented
+              size="small"
+              options={DURATION_UNIT_OPTIONS}
+              value={parsed.unit}
+              disabled={!enabled}
+              onChange={(value) => updateWorkflowDurationField(field, parsed.value, value as DurationUnit)}
+              style={{ width: DURATION_SEGMENTED_WIDTH, padding: 0 }}
+            />
+          </div>
+        </Space>
+      </Form.Item>
+    );
+  };
+
+  const centerTitle = (text: string) => <div style={{ textAlign: 'center', width: '100%' }}>{text}</div>;
+  const shorten = (text?: string, max = 24) => {
+    if (!text) {
+      return '-';
+    }
+    return text.length > max ? `${text.slice(0, max)}...` : text;
+  };
   const columns: ColumnsType<TemporalWorkflowDTO> = [
-    { title: '工作流名称', dataIndex: 'name', key: 'name', width: 200, render: (name, r) => <a onClick={() => handleViewDetail(r)}><Text strong>{name}</Text></a> },
-    { title: 'Task Queue', dataIndex: 'taskQueue', key: 'taskQueue', width: 150, render: q => <Tag color="blue">{q}</Tag> },
-    { title: '描述', dataIndex: 'description', key: 'description', ellipsis: true },
-    { title: '步骤数', key: 'stepCount', width: 80, render: (_, r) => <Badge count={r.workflowDsl?.steps?.length || 0} showZero color="blue" /> },
-    { title: 'Activity数', key: 'activityCount', width: 100, render: (_, r) => <Badge count={r.activityDsl?.activities?.length || 0} showZero color="green" /> },
-    { title: '状态', key: 'status', width: 120, render: (_, r) => (<Space direction="vertical" size={0}><Tag color={r.isActive ? 'green' : 'default'}>{r.isActive ? '已启用' : '已禁用'}</Tag>{r.deployedAt && <Tag color="cyan" style={{ fontSize: 10 }}>已登记</Tag>}</Space>) },
-    { title: t('common:actions'), key: 'actions', width: 240, render: (_, r) => (<Space size="small"><Button type="link" size="small" icon={<EditOutlined />} onClick={() => handleEdit(r)}>编辑</Button><Button type="link" size="small" icon={<CloudUploadOutlined />} onClick={() => handleDeploy(r.id)}>登记部署</Button><Popconfirm title="确认删除" onConfirm={() => handleDelete(r.id)} okText="删除" cancelText="取消" okButtonProps={{ danger: true }}><Button type="link" size="small" icon={<DeleteOutlined />} danger /></Popconfirm></Space>) },
+    {
+      title: centerTitle('工作流名称'),
+      dataIndex: 'name',
+      key: 'name',
+      width: 140,
+      align: 'center',
+      render: (name, r) => (
+        <Tooltip title={name}>
+          <Space direction="vertical" size={0}>
+            <a onClick={() => handleViewDetail(r)}>
+              <Text strong>{shorten(name, 12)}</Text>
+            </a>
+            <Text type="secondary" style={{ fontSize: 11 }}>
+              {r.workflowDsl?.workflowClassName || `${(r.workflowDsl?.name || r.name || 'Custom').replace(/\s+/g, '')}Workflow`}
+            </Text>
+          </Space>
+        </Tooltip>
+      )
+    },
+    { title: centerTitle('描述'), dataIndex: 'description', key: 'description', width: 360, align: 'center', render: (desc: string) => <Tooltip title={desc || '-'}>{shorten(desc, 40)}</Tooltip> },
+    { title: centerTitle('步骤数'), key: 'stepCount', width: 60, align: 'center', render: (_, r) => <Badge count={r.workflowDsl?.steps?.length || 0} showZero color="blue" /> },
+    { title: centerTitle('工作单元数'), key: 'activityCount', width: 72, align: 'center', render: (_, r) => <Badge count={r.activityDsl?.activities?.length || 0} showZero color="green" /> },
+    { title: centerTitle('状态'), key: 'status', width: 72, align: 'center', render: (_, r) => <Tag color={r.isActive ? 'green' : 'default'}>{r.isActive ? '启用' : '禁用'}</Tag> },
+    {
+      title: centerTitle(t('common:actions')),
+      key: 'actions',
+      width: 170,
+      align: 'center',
+      render: (_, r) => (
+        <Space size={6}>
+          <Button type="default" size="small" icon={<EditOutlined />} onClick={() => handleEdit(r)}>
+            编辑
+          </Button>
+          <Popconfirm title="确认删除" onConfirm={() => handleDelete(r.id)} okText="删除" cancelText="取消" okButtonProps={{ danger: true }}>
+            <Button type="default" size="small" icon={<DeleteOutlined />} danger>
+              删除
+            </Button>
+          </Popconfirm>
+        </Space>
+      )
+    },
   ];
+  const currentWorkflowDisplayName = (workflowDsl.workflowDefnName || form.getFieldValue('name') || workflowDsl.name || '未命名工作流') as string;
+  const currentWorkflowClassName = (workflowDsl.workflowClassName || `${((form.getFieldValue('name') || workflowDsl.name || 'Custom') as string).replace(/\s+/g, '')}Workflow`) as string;
 
   return (
-    <div>
+    <div style={{ padding: '8px 4px 12px' }}>
       <Row gutter={16} style={{ marginBottom: 24 }}>
         <Col span={6}><Card><Statistic title="工作流总数" value={workflowsQuery.data?.length || 0} prefix={<ThunderboltOutlined />} /></Card></Col>
-        <Col span={6}><Card><Statistic title="已登记" value={workflowsQuery.data?.filter(w => w.deployedAt).length || 0} prefix={<RocketOutlined />} valueStyle={{ color: '#1890ff' }} /></Card></Col>
+        <Col span={6}><Card><Statistic title="Task Queue 数" value={new Set((workflowsQuery.data || []).map(w => w.taskQueue).filter(Boolean)).size} prefix={<RocketOutlined />} valueStyle={{ color: '#1890ff' }} /></Card></Col>
         <Col span={6}><Card><Statistic title="步骤总数" value={workflowsQuery.data?.reduce((sum, w) => sum + (w.workflowDsl?.steps?.length || 0), 0) || 0} prefix={<ApiOutlined />} valueStyle={{ color: '#52c41a' }} /></Card></Col>
         <Col span={6}><Card><Statistic title="已启用" value={workflowsQuery.data?.filter(w => w.isActive).length || 0} prefix={<CheckCircleOutlined />} valueStyle={{ color: '#fa8c16' }} /></Card></Col>
       </Row>
 
-      <Card style={{ marginBottom: 16 }}>
+      <Card style={{ ...SECTION_CARD_STYLE, marginBottom: 16 }} styles={{ body: { padding: 16 } }}>
         <Space style={{ width: '100%', justifyContent: 'space-between' }}>
           <Input placeholder="搜索工作流..." prefix={<SearchOutlined />} value={searchText} onChange={e => setSearchText(e.target.value)} style={{ width: 200 }} allowClear />
           <Space><Button icon={<PlusOutlined />} type="primary" onClick={handleCreate}>创建工作流</Button><Button icon={<ReloadOutlined />} onClick={() => workflowsQuery.refetch()}>{t('common:refresh')}</Button></Space>
         </Space>
       </Card>
 
-      <Card>
-        <Alert message="Temporal 工作流说明" description={<Space direction="vertical" size="small"><Text><strong>Workflow DSL</strong>：定义确定性编排逻辑。Temporal 会 replay 这个逻辑来恢复状态。</Text><Text><strong>Activity DSL</strong>：定义非确定性副作用操作（API调用、文档渲染、浏览器操作、脚本执行）。</Text><Text><strong>登记部署</strong>：当前只记录 `deployedAt` 状态，不会真正把代码下发到 Worker。真实发布链路请走 Capability Release。</Text></Space>} type="info" showIcon style={{ marginBottom: 16 }} />
-        <Table columns={columns} dataSource={filteredWorkflows} rowKey="id" loading={workflowsQuery.isLoading} pagination={{ showSizeChanger: true, showTotal: total => `共 ${total} 条` }} />
+      <Card style={SECTION_CARD_STYLE} styles={{ body: { padding: 16 } }}>
+        <Alert message="工作流说明" description={<Space direction="vertical" size="small"><Text><strong>Workflow DSL</strong>：定义确定性编排逻辑。Temporal 会 replay 这个逻辑来恢复状态。</Text><Text><strong>工作单元 DSL</strong>：定义非确定性副作用操作（API调用、文档渲染、浏览器操作、脚本执行）。</Text></Space>} type="info" showIcon style={{ marginBottom: 14, borderRadius: 10 }} />
+        <Table
+          columns={columns}
+          dataSource={filteredWorkflows}
+          rowKey="id"
+          loading={workflowsQuery.isLoading}
+          size="middle"
+          pagination={{ showSizeChanger: true, showTotal: total => `共 ${total} 条` }}
+        />
       </Card>
 
-      <Modal title="选择 Activity" open={selectActivityModalVisible} onCancel={() => { setSelectActivityModalVisible(false); setSelectingStepIndex(null); }} footer={null} width={600}>
-        <Alert message="选择一个 Activity 关联到工作流步骤" type="info" showIcon style={{ marginBottom: 16 }} />
+      <Modal title="选择工作单元" open={selectActivityModalVisible} onCancel={() => { setSelectActivityModalVisible(false); setSelectingStepIndex(null); }} footer={null} width={600}>
+        <Alert message="选择一个工作单元关联到工作流步骤" type="info" showIcon style={{ marginBottom: 16 }} />
         <div style={{ maxHeight: 400, overflow: 'auto' }}>
           {(activitiesQuery.data || []).map(activity => (
             <Card key={activity.id} size="small" style={{ marginBottom: 8, cursor: 'pointer' }} onClick={() => handleSelectActivity(activity)}>
               <Space><Tag color={activity.handler === 'api' ? 'green' : activity.handler === 'script' ? 'orange' : 'blue'}>{activity.handler.toUpperCase()}</Tag><Text strong>{activity.name}</Text><Text type="secondary">({activity.fn})</Text></Space>
             </Card>
           ))}
-          {(!activitiesQuery.data || activitiesQuery.data.length === 0) && <Alert message="暂无 Activity，请先创建" type="warning" showIcon />}
+          {(!activitiesQuery.data || activitiesQuery.data.length === 0) && <Alert message="暂无工作单元，请先创建" type="warning" showIcon />}
         </div>
       </Modal>
 
-      <Modal title="工作流详情" open={detailModalVisible} onCancel={() => setDetailModalVisible(false)} footer={null} width={900}>
+      <Modal
+        title={<Space size={8}><ThunderboltOutlined style={{ color: '#1677ff' }} /><span>工作流详情</span></Space>}
+        open={detailModalVisible}
+        onCancel={() => setDetailModalVisible(false)}
+        footer={null}
+        width={920}
+      >
         {selectedWorkflow && (
-          <Collapse defaultActiveKey={['basic', 'workflow', 'activities']}>
-            <Panel header={<Text><ThunderboltOutlined /> 基本信息</Text>} key="basic">
-              <Row gutter={16}><Col span={12}><Text><strong>名称:</strong> {selectedWorkflow.name}</Text></Col><Col span={12}><Text><strong>Task Queue:</strong> <Tag color="blue">{selectedWorkflow.taskQueue}</Tag></Text></Col><Col span={12}><Text><strong>描述:</strong> {selectedWorkflow.description || '无'}</Text></Col><Col span={12}><Text><strong>状态:</strong> <Tag color={selectedWorkflow.isActive ? 'green' : 'default'}>{selectedWorkflow.isActive ? '已启用' : '已禁用'}</Tag></Text></Col></Row>
-            </Panel>
-            <Panel header={<Text><CodeOutlined /> Workflow DSL</Text>} key="workflow"><pre style={{ background: '#f6ffed', padding: 16, borderRadius: 8, maxHeight: 350, overflow: 'auto', fontSize: 12 }}>{JSON.stringify(selectedWorkflow.workflowDsl, null, 2)}</pre></Panel>
-            <Panel header={<Text><ApiOutlined /> Activity DSL</Text>} key="activities"><pre style={{ background: '#e6f7ff', padding: 16, borderRadius: 8, maxHeight: 350, overflow: 'auto', fontSize: 12 }}>{JSON.stringify(selectedWorkflow.activityDsl, null, 2)}</pre></Panel>
-          </Collapse>
+          <Space direction="vertical" size={12} style={{ width: '100%' }}>
+            <Card size="small" style={SECTION_CARD_STYLE} styles={{ body: { padding: 14 } }}>
+              <Row gutter={[12, 10]}>
+                <Col span={12}><Text><strong>显示名称:</strong> {selectedWorkflow.workflowDsl?.workflowDefnName || selectedWorkflow.workflowDsl?.name || selectedWorkflow.name}</Text></Col>
+                <Col span={12}><Text><strong>类名:</strong> <Tag color="geekblue">{selectedWorkflow.workflowDsl?.workflowClassName || `${(selectedWorkflow.workflowDsl?.name || selectedWorkflow.name || 'Custom').replace(/\s+/g, '')}Workflow`}</Tag></Text></Col>
+                <Col span={12}><Text><strong>Task Queue:</strong> <Tag color="blue">{selectedWorkflow.taskQueue}</Tag></Text></Col>
+                <Col span={12}><Text><strong>状态:</strong> <Tag color={selectedWorkflow.isActive ? 'green' : 'default'}>{selectedWorkflow.isActive ? '已启用' : '已禁用'}</Tag></Text></Col>
+                <Col span={24}><Text><strong>描述:</strong> {selectedWorkflow.description || '无'}</Text></Col>
+              </Row>
+            </Card>
+            <Collapse defaultActiveKey={['workflow', 'activities']} ghost>
+              <Panel header={<Text><CodeOutlined /> Workflow DSL</Text>} key="workflow">
+                <pre style={{ background: '#f6ffed', padding: 16, borderRadius: 10, maxHeight: 320, overflow: 'auto', fontSize: 12 }}>{JSON.stringify(selectedWorkflow.workflowDsl, null, 2)}</pre>
+              </Panel>
+              <Panel header={<Text><ApiOutlined /> 工作单元 DSL</Text>} key="activities">
+                <pre style={{ background: '#e6f7ff', padding: 16, borderRadius: 10, maxHeight: 320, overflow: 'auto', fontSize: 12 }}>{JSON.stringify(selectedWorkflow.activityDsl, null, 2)}</pre>
+              </Panel>
+            </Collapse>
+          </Space>
         )}
       </Modal>
 
-      <Modal title={editingWorkflow ? '编辑工作流' : '创建工作流'} open={editModalVisible} onOk={handleSave} onCancel={() => setEditModalVisible(false)}
-        footer={[
-          <Button key="validate" icon={<PlayCircleOutlined />} onClick={handleValidate}>验证DSL</Button>,
-          <Button key="generate" icon={<RobotOutlined />} onClick={() => handleGenerateCode()} loading={generateCodeMutation.isLoading}>AI生成代码</Button>,
-          <Button key="sandbox" icon={<ExperimentOutlined />} onClick={handleOpenSandbox} loading={sandboxState.isStreaming} disabled={!generatedCode}>沙箱验证</Button>,
-          <Button key="viewCode" icon={<CodeOutlined />} onClick={() => setCodeModalVisible(true)} disabled={!generatedCode}>查看代码</Button>,
-          <Button key="cancel" onClick={() => setEditModalVisible(false)}>取消</Button>,
-          <Button key="save" type="primary" loading={createMutation.isLoading || updateMutation.isLoading} onClick={handleSave}>保存</Button>
-        ]}
+      <Modal title={<div style={{ textAlign: 'center', width: '100%' }}><Space direction="vertical" size={2}><Space size={8}><ThunderboltOutlined style={{ color: '#1677ff' }} /><Text strong style={{ fontSize: 18 }}>{editingWorkflow ? '编辑工作流' : '创建工作流'}</Text></Space><Text type="secondary" style={{ fontSize: 12 }}>配置工作流基础信息、执行参数、步骤编排与 AI 代码生成</Text></Space></div>} open={editModalVisible} onOk={handleSave} onCancel={() => setEditModalVisible(false)}
+        footer={
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, justifyContent: 'flex-end', alignItems: 'center' }}>
+            <Button size="small" key="validate" icon={<PlayCircleOutlined />} onClick={handleValidate}>验证DSL</Button>
+            <Button size="small" key="generate" icon={<RobotOutlined />} onClick={() => handleGenerateCode()} loading={generateCodeMutation.isLoading}>AI生成代码</Button>
+            <Button size="small" key="realValidation" icon={<ExperimentOutlined />} onClick={handleOpenRealValidation} loading={realValidationState.isStreaming} disabled={!generatedCode}>真实验证</Button>
+            <Button size="small" key="viewCode" icon={<CodeOutlined />} onClick={() => setCodeModalVisible(true)} disabled={!generatedCode}>查看代码</Button>
+            <Button size="small" key="cancel" onClick={() => setEditModalVisible(false)}>取消</Button>
+            <Button size="small" key="save" type="primary" loading={createMutation.isLoading || updateMutation.isLoading} onClick={handleSave}>保存</Button>
+          </div>
+        }
         width={1200} style={{ top: 20 }}>
         <Form form={form} layout="vertical">
-          <Row gutter={16}><Col span={12}><Form.Item name="name" label="工作流名称" rules={[{ required: true, message: '请输入工作流名称' }]}><Input placeholder="例如：合同生成流程" /></Form.Item></Col><Col span={12}><Form.Item name="taskQueue" label="Task Queue" rules={[{ required: true, message: '请输入Task Queue' }]} extra="Temporal Worker 监听的队列名称"><Input placeholder="例如：SKILL_TASK_QUEUE" /></Form.Item></Col></Row>
-          <Form.Item name="description" label="描述"><Input.TextArea rows={2} placeholder="工作流描述" /></Form.Item>
-          {/* 输入参数区域 - 第一个步骤的参数是整个workflow的入口参数 */}
-          <Divider plain><Text type="secondary">输入参数（Workflow 入口参数）</Text></Divider>
-          <Alert message="第一个步骤的参数自动成为整个工作流的入口参数，可设置默认值和描述" type="info" showIcon style={{ marginBottom: 12 }} />
-          <div style={{ border: '1px solid #d9d9d9', padding: 12, borderRadius: 8, marginBottom: 12 }}>
-            {Object.entries(workflowDsl.inputParams || {}).map(([key, param]) => (
-              <Row key={key} gutter={8} style={{ marginBottom: 8, alignItems: 'center' }}>
-                <Col span={4}>
-                  <Input
-                    value={key}
-                    disabled
-                    size="small"
-                    suffix={<Button size="small" danger type="text" onClick={() => {
-                      const newParams = { ...workflowDsl.inputParams };
-                      delete newParams[key];
-                      setWorkflowDsl({ ...workflowDsl, inputParams: newParams });
-                    }}>×</Button>}
-                  />
-                </Col>
-                <Col span={4}>
+          <Card title="基础信息" size="small" style={{ ...SECTION_CARD_STYLE, marginBottom: 16 }} styles={{ body: SECTION_CARD_BODY_STYLE }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 12, marginBottom: 12 }}>
+              <div style={{ minWidth: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
+                <Text style={{ whiteSpace: 'nowrap', minWidth: 72 }}>工作流名称</Text>
+                <Form.Item name="name" rules={[{ required: true, message: '请输入工作流名称' }]} style={{ marginBottom: 0, flex: 1 }}>
+                  <Input size="small" placeholder="例如：天气查询流程" />
+                </Form.Item>
+              </div>
+              <div style={{ minWidth: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
+                <Text style={{ whiteSpace: 'nowrap', minWidth: 72 }}>函数名</Text>
+                <Input
+                  size="small"
+                  value={workflowDsl.workflowClassName || ''}
+                  placeholder="例如：WeatherQueryWorkflow"
+                  onChange={(e) => {
+                    const nextName = e.target.value;
+                    setWorkflowDsl({
+                      ...workflowDsl,
+                      workflowClassName: nextName,
+                      workflowDefnName: workflowDsl.workflowDefnName || nextName,
+                    });
+                  }}
+                />
+              </div>
+              <div style={{ minWidth: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
+                <Text style={{ whiteSpace: 'nowrap', minWidth: 72 }}>队列名</Text>
+                <Form.Item
+                  name="taskQueue"
+                  rules={[{ required: true, message: '请输入Task Queue' }]}
+                  style={{ marginBottom: 0, flex: 1 }}
+                  tooltip="Temporal Worker 监听的队列名称，用于路由当前工作流任务。"
+                >
+                  <Input size="small" placeholder="例如：SKILL_TASK_QUEUE" />
+                </Form.Item>
+              </div>
+            </div>
+            <Form.Item name="description" label="描述" style={{ marginBottom: 0 }}>
+              <Input.TextArea rows={2} placeholder="工作流描述" />
+            </Form.Item>
+          </Card>
+
+          <Card title="执行配置" size="small" style={{ ...SECTION_CARD_STYLE, marginBottom: 16 }} styles={{ body: SECTION_CARD_BODY_STYLE }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, minmax(0, 1fr))', gap: 8, alignItems: 'flex-start' }}>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                {renderWorkflowDurationField(
+                  'workflowExecutionTimeout',
+                  '执行超时',
+                  'Execution Timeout 是整个工作流从开始到彻底结束的总上限，包含重试和 Continue-As-New。默认单位为秒，可切换为分或小时。',
+                  !!workflowDsl.workflowExecutionTimeout,
+                  '10m',
+                )}
+              </div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                {renderWorkflowDurationField(
+                  'workflowRunTimeout',
+                  '运行超时',
+                  'Run Timeout 只限制当前这一轮运行实例，不覆盖整个 Workflow Execution。默认单位为秒，可切换为分或小时。',
+                  !!workflowDsl.workflowRunTimeout,
+                  '5m',
+                )}
+              </div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                {renderWorkflowDurationField(
+                  'workflowTaskTimeout',
+                  '任务超时',
+                  'Task Timeout 是 Worker 每次处理一小段工作流决策代码的时间上限，主要用于探测 Worker 卡住或异常。默认单位为秒，可切换为分或小时。',
+                  !!workflowDsl.workflowTaskTimeout,
+                  '10s',
+                )}
+              </div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <Form.Item label={renderTipLabel('默认工作单元重试次数', '未单独覆盖时，工作流内工作单元的默认最大重试次数。')} style={{ marginBottom: 0 }}>
+                  <Space size={8}>
+                    <Switch checked={workflowDsl.defaultActivityRetryPolicy?.maxRetries !== undefined && workflowDsl.defaultActivityRetryPolicy?.maxRetries !== null} onChange={checked => setWorkflowDsl({ ...workflowDsl, defaultActivityRetryPolicy: { ...workflowDsl.defaultActivityRetryPolicy, maxRetries: checked ? 3 : undefined } })} />
+                    <InputNumber
+                      size="small"
+                      min={0}
+                      disabled={workflowDsl.defaultActivityRetryPolicy?.maxRetries === undefined || workflowDsl.defaultActivityRetryPolicy?.maxRetries === null}
+                      value={workflowDsl.defaultActivityRetryPolicy?.maxRetries ?? 3}
+                      onChange={value => setWorkflowDsl({ ...workflowDsl, defaultActivityRetryPolicy: { ...workflowDsl.defaultActivityRetryPolicy, maxRetries: value ?? 3 } })}
+                      style={{ width: 88 }}
+                    />
+                  </Space>
+                </Form.Item>
+              </div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <Form.Item label={renderTipLabel('退避系数', '指数退避系数，默认 2.0。')} style={{ marginBottom: 0 }}>
+                  <Space size={8}>
+                    <Switch checked={workflowDsl.defaultActivityRetryPolicy?.backoffCoefficient !== undefined} onChange={checked => setWorkflowDsl({ ...workflowDsl, defaultActivityRetryPolicy: { ...workflowDsl.defaultActivityRetryPolicy, backoffCoefficient: checked ? 2.0 : undefined } })} />
+                    <InputNumber
+                      size="small"
+                      min={0}
+                      step={0.1}
+                      disabled={workflowDsl.defaultActivityRetryPolicy?.backoffCoefficient === undefined}
+                      value={workflowDsl.defaultActivityRetryPolicy?.backoffCoefficient ?? 2.0}
+                      onChange={value => setWorkflowDsl({ ...workflowDsl, defaultActivityRetryPolicy: { ...workflowDsl.defaultActivityRetryPolicy, backoffCoefficient: value ?? 2.0 } })}
+                      style={{ width: 88 }}
+                    />
+                  </Space>
+                </Form.Item>
+              </div>
+            </div>
+          </Card>
+
+          <Card
+            title={(
+              <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 8, width: '100%' }}>
+                <Space size={6} style={{ minWidth: 0 }}>
+                  <span>输入参数</span>
+                  <Text type="secondary">（Workflow 入口参数）</Text>
+                  <Tooltip title="第一个步骤的参数会自动成为整个工作流的入口参数，可补充默认值与说明。">
+                    <InfoCircleOutlined style={{ color: '#8c8c8c' }} />
+                  </Tooltip>
+                </Space>
+                <Button
+                  size="small"
+                  type="dashed"
+                  onClick={() => {
+                    const key = prompt('请输入参数名:');
+                    if (key && key.trim()) {
+                      setWorkflowDsl({
+                        ...workflowDsl,
+                        inputParams: { ...workflowDsl.inputParams, [key.trim()]: { description: '', required: false, defaultValue: '' } }
+                      });
+                    }
+                  }}
+                  style={{ minWidth: 112, marginLeft: 'auto', flexShrink: 0, whiteSpace: 'nowrap' }}
+                >
+                  + 添加输入参数
+                </Button>
+              </div>
+            )}
+            size="small"
+            style={{ ...SECTION_CARD_STYLE, marginBottom: 16 }}
+            styles={{ body: SECTION_CARD_BODY_STYLE }}
+          >
+            <div style={SOFT_PANEL_STYLE}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(360px, 1fr))', gap: 8 }}>
+              {Object.entries(workflowDsl.inputParams || {}).map(([key, param]) => (
+                <div
+                  key={key}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 6,
+                    padding: '8px 10px',
+                    border: '1px solid #d9d9d9',
+                    borderRadius: 10,
+                    background: '#fff',
+                  }}
+                >
+                  <Tag color="blue" style={{ marginInlineEnd: 0, whiteSpace: 'nowrap' }}>{key}</Tag>
                   <Select
                     value={param.required ? 'required' : 'optional'}
                     onChange={v => setWorkflowDsl({ ...workflowDsl, inputParams: { ...workflowDsl.inputParams, [key]: { ...param, required: v === 'required' } } })}
                     size="small"
-                    style={{ width: '100%' }}
+                    style={{ width: 88, flexShrink: 0 }}
                   >
                     <Option value="required">必填</Option>
                     <Option value="optional">可选</Option>
                   </Select>
-                </Col>
-                <Col span={4}>
                   <Input
                     value={param.defaultValue || ''}
                     onChange={e => setWorkflowDsl({ ...workflowDsl, inputParams: { ...workflowDsl.inputParams, [key]: { ...param, defaultValue: e.target.value } } })}
                     placeholder="默认值"
                     size="small"
+                    style={{ width: 110, flexShrink: 0 }}
                   />
-                </Col>
-                <Col span={8}>
                   <Input
                     value={param.description || ''}
                     onChange={e => setWorkflowDsl({ ...workflowDsl, inputParams: { ...workflowDsl.inputParams, [key]: { ...param, description: e.target.value } } })}
                     placeholder="参数描述"
                     size="small"
+                    style={{ flex: 1, minWidth: 0 }}
                   />
-                </Col>
-              </Row>
-            ))}
-            <Button
-              size="small"
-              type="dashed"
-              onClick={() => {
-                const key = prompt('请输入参数名:');
-                if (key && key.trim()) {
-                  setWorkflowDsl({
-                    ...workflowDsl,
-                    inputParams: { ...workflowDsl.inputParams, [key.trim()]: { description: '', required: false, defaultValue: '' } }
-                  });
-                }
-              }}
-              style={{ width: '100%' }}
-            >
-              + 添加输入参数
-            </Button>
+                  <Button
+                    size="small"
+                    danger
+                    type="text"
+                    onClick={() => {
+                      const newParams = { ...workflowDsl.inputParams };
+                      delete (newParams as any)[key];
+                      setWorkflowDsl({ ...workflowDsl, inputParams: newParams });
+                    }}
+                    style={{ paddingInline: 4, flexShrink: 0 }}
+                  >
+                    ×
+                  </Button>
+                </div>
+              ))}
+            </div>
           </div>
+          </Card>
         </Form>
 
-        <Divider><Text strong>工作流配置</Text></Divider>
+        <Divider style={{ margin: '20px 0 16px' }}><Text strong>工作流配置</Text></Divider>
 
-        <Row gutter={16}>
-          {/* Left Column - Activity Pool */}
-          <Col span={6} style={{ borderRight: '1px solid #f0f0f0', paddingRight: 16 }}>
-            <Text strong style={{ display: 'block', marginBottom: 8 }}>Activity 资源池</Text>
-            <Input placeholder="搜索 Activity..." prefix={<SearchOutlined />} style={{ marginBottom: 8 }} allowClear />
-            <div style={{ maxHeight: 400, overflow: 'auto' }}>
+        <Row gutter={12}>
+          {/* Left Column - Work Unit Pool */}
+          <Col span={6}>
+            <Card size="small" style={{ ...SECTION_CARD_STYLE, height: '100%' }} styles={{ body: { padding: 12 } }}>
+            <Text strong style={{ display: 'block', marginBottom: 8 }}>工作单元资源池</Text>
+            <Input placeholder="搜索工作单元..." prefix={<SearchOutlined />} style={{ marginBottom: 8 }} allowClear />
+            <div style={{ maxHeight: 400, overflow: 'auto', paddingRight: 2 }}>
               {(activitiesQuery.data || []).filter(a => a.isActive).map(activity => {
                 const isAdded = workflowDsl.steps.some(s => s.activityName === activity.name);
                 return (
                   <Card
                     key={activity.id}
+                    hoverable
                     size="small"
                     style={{
-                      marginBottom: 8,
+                      marginBottom: 6,
                       cursor: 'pointer',
                       background: isAdded ? '#f6ffed' : '#fff',
                       border: isAdded ? '1px solid #b7eb8f' : '1px solid #d9d9d9',
@@ -583,19 +1077,21 @@ const TemporalWorkflowPage: React.FC = () => {
                 );
               })}
               {(!activitiesQuery.data || activitiesQuery.data.filter(a => a.isActive).length === 0) && (
-                <Alert message="暂无已验证的 Activity" type="warning" showIcon />
+                <Alert message="暂无已验证的工作单元" type="warning" showIcon />
               )}
             </div>
+            </Card>
           </Col>
 
           {/* Middle Column - Step Canvas */}
-          <Col span={10} style={{ borderRight: '1px solid #f0f0f0', paddingRight: 16 }}>
+          <Col span={10}>
+            <Card size="small" style={{ ...SECTION_CARD_STYLE, height: '100%' }} styles={{ body: { padding: 12 } }}>
             <Space style={{ marginBottom: 8, width: '100%', justifyContent: 'space-between' }}>
               <Text strong>流程步骤</Text>
-              <Button icon={<PlusOutlined />} size="small" onClick={handleAddStep}>添加步骤</Button>
+              <Button icon={<PlusOutlined />} size="small" style={{ minWidth: 92 }} onClick={handleAddStep}>添加步骤</Button>
             </Space>
             {workflowDsl.steps.length === 0 ? (
-              <Alert message="从左侧勾选 Activity 或点击添加步骤" type="info" showIcon />
+              <Alert message="从左侧勾选工作单元或点击添加步骤" type="info" showIcon />
             ) : (
               <Timeline>{workflowDsl.steps.map((step, index) => (
                 <Timeline.Item
@@ -604,14 +1100,20 @@ const TemporalWorkflowPage: React.FC = () => {
                   dot={selectedStepIndexForConfig === index ? <CheckCircleOutlined /> : undefined}
                 >
                   <Card
+                    hoverable
                     size="small"
                     style={{
-                      marginBottom: 8,
+                      marginBottom: 6,
                       cursor: 'pointer',
                       background: selectedStepIndexForConfig === index ? '#f6ffed' : '#fff',
                       border: selectedStepIndexForConfig === index ? '2px solid #52c41a' : '1px solid #d9d9d9',
                     }}
-                    onClick={() => setSelectedStepIndexForConfig(index)}
+                    onClick={() => {
+                      setSelectedStepIndexForConfig(index);
+                      if (index === 0) {
+                        syncWorkflowInputParamsFromFirstStep();
+                      }
+                    }}
                   >
                     <Space direction="vertical" style={{ width: '100%' }}>
                       <Space style={{ width: '100%', justifyContent: 'space-between' }}>
@@ -649,131 +1151,38 @@ const TemporalWorkflowPage: React.FC = () => {
                 </Timeline.Item>
               ))}</Timeline>
             )}
+            </Card>
           </Col>
 
           {/* Right Column - Step Config Panel */}
           <Col span={8}>
+            <Card size="small" style={{ ...SECTION_CARD_STYLE, height: '100%' }} styles={{ body: { padding: 12 } }}>
             <Text strong style={{ display: 'block', marginBottom: 8 }}>步骤配置</Text>
             {selectedStepIndexForConfig !== null && workflowDsl.steps[selectedStepIndexForConfig] ? (
-              <Card size="small" style={{ background: '#fafafa' }}>
+              <Card size="small" style={{ ...SECTION_CARD_STYLE, background: '#fafcff' }} styles={{ body: { padding: 14 } }}>
                 <Form layout="vertical" size="small">
-                  <Form.Item label="步骤类型">
-                    <Select
-                      value={workflowDsl.steps[selectedStepIndexForConfig].type}
-                      onChange={v => handleUpdateStep(selectedStepIndexForConfig, 'type', v)}
-                      style={{ width: '100%' }}
-                    >
-                      <Option value="activity">Activity</Option>
-                      <Option value="signal">Signal</Option>
-                      <Option value="query">Query</Option>
-                    </Select>
-                  </Form.Item>
-
                   {workflowDsl.steps[selectedStepIndexForConfig].type === 'activity' && (
                     <>
-                      <Form.Item label="Activity 名称">
-                        <Select
-                          value={workflowDsl.steps[selectedStepIndexForConfig].activityName}
-                          onChange={v => {
-                            handleUpdateStep(selectedStepIndexForConfig, 'activityName', v);
-                            // Auto-add to activityDsl if not exists
-                            const activity = activitiesQuery.data?.find(a => a.name === v);
-                            if (activity) {
-                              const exists = activityDsl.activities.some(a => a.name === v);
-                              if (!exists) {
-                                setActivityDsl({
-                                  ...activityDsl,
-                                  activities: [...activityDsl.activities, {
-                                    name: activity.name,
-                                    fn: activity.fn,
-                                    timeout: activity.timeout,
-                                    handler: activity.handler,
-                                    config: activity.config || {},
-                                  }],
-                                });
-                              }
-                              // Auto-populate step input params from Activity's config.steps[].inputParams
-                              const inputParams = getActivityInputParams(activity);
-                              if (Object.keys(inputParams).length > 0) {
-                                handleUpdateStep(selectedStepIndexForConfig, 'input', {
-                                  ...inputParams,
-                                  timeout: workflowDsl.steps[selectedStepIndexForConfig].input?.timeout || '60s',
-                                });
-                              }
-                            }
-                          }}
-                          style={{ width: '100%' }}
-                          placeholder="选择 Activity"
-                        >
-                          {(activitiesQuery.data || []).filter(a => a.isActive).map(a => (
-                            <Option key={a.id} value={a.name}>{a.name}</Option>
-                          ))}
-                        </Select>
-                      </Form.Item>
+                      {renderStepDurationField('startToCloseTimeout', '单次执行超时', '限制当前步骤里这次工作单元执行时长。默认单位为秒，可切换为分或小时。')}
+                      {renderStepDurationField('scheduleToCloseTimeout', '整体完成超时', '限制该步骤从调度到最终完成的总时长，包含排队、执行和重试。默认单位为秒，可切换为分或小时。')}
+                      {renderStepDurationField('heartbeatTimeout', '心跳超时', '长耗时工作单元可通过心跳汇报存活；超时表示长时间未汇报。默认单位为秒，可切换为分或小时。')}
 
-                      <Form.Item label="执行超时">
-                        <Input
-                          value={workflowDsl.steps[selectedStepIndexForConfig].startToCloseTimeout || '60s'}
-                          onChange={e => handleUpdateStep(selectedStepIndexForConfig, 'startToCloseTimeout', e.target.value || '60s')}
-                          placeholder="例如: 30s, 1m"
-                        />
-                      </Form.Item>
-
-                      <Form.Item label="重试次数">
-                        <Input
-                          type="number"
-                          value={workflowDsl.steps[selectedStepIndexForConfig].retryPolicy?.maxRetries || 3}
-                          onChange={e => handleUpdateStep(selectedStepIndexForConfig, 'retryPolicy', {
-                            ...workflowDsl.steps[selectedStepIndexForConfig].retryPolicy,
-                            maxRetries: parseInt(e.target.value) || 3
-                          })}
-                          placeholder="最大重试次数"
-                        />
-                      </Form.Item>
-
-                      <Form.Item label="重试间隔 (ms)" extra="首次重试等待时间">
-                        <Input
-                          type="number"
-                          value={workflowDsl.steps[selectedStepIndexForConfig].retryPolicy?.initialIntervalMs || 1000}
-                          onChange={e => handleUpdateStep(selectedStepIndexForConfig, 'retryPolicy', {
-                            ...workflowDsl.steps[selectedStepIndexForConfig].retryPolicy,
-                            initialIntervalMs: parseInt(e.target.value) || 1000
-                          })}
-                          placeholder="首次重试间隔 (ms)"
-                        />
-                      </Form.Item>
-
-                      <Form.Item label="输入参数">
-                        <div style={{ border: '1px dashed #d9d9d9', padding: 8, borderRadius: 4 }}>
+                      <Form.Item label="输入参数（只读）" style={{ marginBottom: 0 }}>
+                        <div style={{ border: '1px dashed #d9d9d9', padding: 8, borderRadius: 8, background: '#fff' }}>
                           {Object.entries(workflowDsl.steps[selectedStepIndexForConfig].input || {}).filter(([k]) => k !== 'timeout').map(([key, value]) => (
-                            <div key={key} style={{ display: 'flex', gap: 4, marginBottom: 4, alignItems: 'center' }}>
+                            <div key={key} style={{ display: 'flex', gap: 6, marginBottom: 4, alignItems: 'center' }}>
                               <Tag color="blue">{key}</Tag>
                               <Input
                                 size="small"
                                 value={typeof value === 'string' ? value : JSON.stringify(value)}
-                                onChange={e => handleUpdateStep(selectedStepIndexForConfig, 'input', { ...workflowDsl.steps[selectedStepIndexForConfig].input, [key]: e.target.value })}
+                                disabled
                                 style={{ flex: 1 }}
                               />
-                              <Button size="small" danger onClick={() => {
-                                const newInput = { ...workflowDsl.steps[selectedStepIndexForConfig].input };
-                                delete newInput[key];
-                                handleUpdateStep(selectedStepIndexForConfig, 'input', newInput);
-                              }}>×</Button>
                             </div>
                           ))}
-                          <Button
-                            size="small"
-                            type="dashed"
-                            onClick={() => {
-                              const key = prompt('请输入参数名:');
-                              if (key && key.trim()) {
-                                handleUpdateStep(selectedStepIndexForConfig, 'input', { ...workflowDsl.steps[selectedStepIndexForConfig].input, [key.trim()]: '' });
-                              }
-                            }}
-                            style={{ width: '100%' }}
-                          >
-                            + 添加参数
-                          </Button>
+                          {Object.keys(workflowDsl.steps[selectedStepIndexForConfig].input || {}).filter((key) => key !== 'timeout').length === 0 && (
+                            <Text type="secondary">当前步骤没有可展示的只读参数</Text>
+                          )}
                         </div>
                       </Form.Item>
                     </>
@@ -784,10 +1193,10 @@ const TemporalWorkflowPage: React.FC = () => {
               <Alert message="点击中间步骤选择配置" type="info" showIcon />
             )}
 
-            {/* Activity DSL Summary */}
-            <Divider style={{ margin: '16px 0' }}><Text type="secondary" style={{ fontSize: 12 }}>Activity DSL 摘要</Text></Divider>
+            {/* Work Unit DSL Summary */}
+            <Divider style={{ margin: '16px 0' }}><Text type="secondary" style={{ fontSize: 12 }}>工作单元 DSL 摘要</Text></Divider>
             {activityDsl.activities.length === 0 ? (
-              <Alert message="从左侧添加 Activity" type="info" showIcon />
+              <Alert message="从左侧添加工作单元" type="info" showIcon />
             ) : (
               <div style={{ maxHeight: 200, overflow: 'auto' }}>
                 {activityDsl.activities.map((activity, index) => (
@@ -795,13 +1204,17 @@ const TemporalWorkflowPage: React.FC = () => {
                 ))}
               </div>
             )}
+            </Card>
           </Col>
         </Row>
 
-        {/* 输出参数区域 - 默认是最后一个步骤的输出 */}
-        <Divider plain><Text type="secondary">输出参数（Workflow 返回值）</Text></Divider>
-        <Alert message="默认使用最后一个步骤的输出，可自定义来源步骤" type="info" showIcon style={{ marginBottom: 12 }} />
-        <div style={{ border: '1px solid #d9d9d9', padding: 12, borderRadius: 8, marginBottom: 12 }}>
+        <Card
+          title={<Space size={6}><span>输出参数</span><Text type="secondary">（Workflow 返回值）</Text><Tooltip title="默认使用最后一个步骤的输出，也可以指定来源步骤。"><InfoCircleOutlined style={{ color: '#8c8c8c' }} /></Tooltip></Space>}
+          size="small"
+          style={{ ...SECTION_CARD_STYLE, marginTop: 16, marginBottom: 16 }}
+          styles={{ body: SECTION_CARD_BODY_STYLE }}
+        >
+        <div style={SOFT_PANEL_STYLE}>
           {Object.entries(workflowDsl.outputParams || {}).map(([key, param]) => (
             <Row key={key} gutter={8} style={{ marginBottom: 8, alignItems: 'center' }}>
               <Col span={4}>
@@ -820,60 +1233,13 @@ const TemporalWorkflowPage: React.FC = () => {
           ))}
           <Button size="small" type="dashed" onClick={() => { const key = prompt('请输入输出参数名:'); if (key && key.trim()) { setWorkflowDsl({ ...workflowDsl, outputParams: { ...workflowDsl.outputParams, [key.trim()]: { description: '', sourceStep: undefined } } }); } }} style={{ width: '100%' }}>+ 添加输出参数</Button>
         </div>
+        </Card>
 
-        {/* 执行配置 - 使用开关控制 */}
-        <Divider plain><Text type="secondary">执行配置</Text></Divider>
-        <Alert message="启用开关后可以自定义超时和重试配置，关闭则使用系统默认值" type="info" showIcon style={{ marginBottom: 12 }} />
-        <Row gutter={16}>
-          <Col span={8}>
-            <Form.Item label="执行超时" extra="整个workflow执行期限">
-              <Space>
-                <Switch checked={!!workflowDsl.workflowExecutionTimeout} onChange={checked => setWorkflowDsl({ ...workflowDsl, workflowExecutionTimeout: checked ? '10m' : undefined })} />
-                <Input disabled={!workflowDsl.workflowExecutionTimeout} placeholder="例如: 10m, 1h" value={workflowDsl.workflowExecutionTimeout || ''} onChange={e => setWorkflowDsl({ ...workflowDsl, workflowExecutionTimeout: e.target.value || undefined })} style={{ width: 120 }} />
-              </Space>
-            </Form.Item>
-          </Col>
-          <Col span={8}>
-            <Form.Item label="运行超时" extra="单次运行期限">
-              <Space>
-                <Switch checked={!!workflowDsl.workflowRunTimeout} onChange={checked => setWorkflowDsl({ ...workflowDsl, workflowRunTimeout: checked ? '5m' : undefined })} />
-                <Input disabled={!workflowDsl.workflowRunTimeout} placeholder="例如: 5m, 30s" value={workflowDsl.workflowRunTimeout || ''} onChange={e => setWorkflowDsl({ ...workflowDsl, workflowRunTimeout: e.target.value || undefined })} style={{ width: 120 }} />
-              </Space>
-            </Form.Item>
-          </Col>
-          <Col span={8}>
-            <Form.Item label="任务超时" extra="工作流任务处理期限">
-              <Space>
-                <Switch checked={!!workflowDsl.workflowTaskTimeout} onChange={checked => setWorkflowDsl({ ...workflowDsl, workflowTaskTimeout: checked ? '10s' : undefined })} />
-                <Input disabled={!workflowDsl.workflowTaskTimeout} placeholder="例如: 10s, 30s" value={workflowDsl.workflowTaskTimeout || ''} onChange={e => setWorkflowDsl({ ...workflowDsl, workflowTaskTimeout: e.target.value || undefined })} style={{ width: 120 }} />
-              </Space>
-            </Form.Item>
-          </Col>
-        </Row>
-        <Row gutter={16}>
-          <Col span={8}>
-            <Form.Item label="默认Activity重试次数">
-              <Space>
-                <Switch checked={workflowDsl.defaultActivityRetryPolicy?.maxRetries !== undefined && workflowDsl.defaultActivityRetryPolicy?.maxRetries !== null} onChange={checked => setWorkflowDsl({ ...workflowDsl, defaultActivityRetryPolicy: { ...workflowDsl.defaultActivityRetryPolicy, maxRetries: checked ? 3 : undefined } })} />
-                <Input disabled={workflowDsl.defaultActivityRetryPolicy?.maxRetries === undefined || workflowDsl.defaultActivityRetryPolicy?.maxRetries === null} type="number" placeholder="3" value={workflowDsl.defaultActivityRetryPolicy?.maxRetries ?? 3} onChange={e => setWorkflowDsl({ ...workflowDsl, defaultActivityRetryPolicy: { ...workflowDsl.defaultActivityRetryPolicy, maxRetries: parseInt(e.target.value) || 3 } })} style={{ width: 80 }} />
-              </Space>
-            </Form.Item>
-          </Col>
-          <Col span={8}>
-            <Form.Item label="重试间隔衰减系数" extra="指数退避系数 (默认 2.0)">
-              <Space>
-                <Switch checked={workflowDsl.defaultActivityRetryPolicy?.backoffCoefficient !== undefined} onChange={checked => setWorkflowDsl({ ...workflowDsl, defaultActivityRetryPolicy: { ...workflowDsl.defaultActivityRetryPolicy, backoffCoefficient: checked ? 2.0 : undefined } })} />
-                <Input disabled={workflowDsl.defaultActivityRetryPolicy?.backoffCoefficient === undefined} type="number" placeholder="2.0" step="0.1" value={workflowDsl.defaultActivityRetryPolicy?.backoffCoefficient ?? 2.0} onChange={e => setWorkflowDsl({ ...workflowDsl, defaultActivityRetryPolicy: { ...workflowDsl.defaultActivityRetryPolicy, backoffCoefficient: parseFloat(e.target.value) || 2.0 } })} style={{ width: 80 }} />
-              </Space>
-            </Form.Item>
-          </Col>
-        </Row>
-
-        {/* 补足情报 - AI代码生成指导 */}
-        <Divider plain><Text type="secondary">补足情报（指导 AI 代码生成）</Text></Divider>
-        <Form.Item label="额外提示词" extra="为 AI 代码生成器提供额外的上下文信息，帮助生成更准确的代码">
-          <Input.TextArea rows={3} placeholder="例如：&#10;- 该工作流需要处理中文内容，请使用 utf-8 编码&#10;- 返回结果需要包含完整的错误处理逻辑&#10;- 第三方 API 调用需要添加重试机制" value={workflowDsl.extraPrompt || ''} onChange={e => setWorkflowDsl({ ...workflowDsl, extraPrompt: e.target.value || undefined })} />
-        </Form.Item>
+        <Card title="补足情报（指导 AI 代码生成）" size="small" style={SECTION_CARD_STYLE} styles={{ body: SECTION_CARD_BODY_STYLE }}>
+          <Form.Item label={renderTipLabel('额外提示词', '补充上下文给 AI，帮助生成更准确的工作流代码。')} style={{ marginBottom: 0 }}>
+            <Input.TextArea rows={3} placeholder="例如：&#10;- 该工作流需要处理中文内容，请使用 utf-8 编码&#10;- 返回结果需要包含完整的错误处理逻辑&#10;- 第三方 API 调用需要添加重试机制" value={workflowDsl.extraPrompt || ''} onChange={e => setWorkflowDsl({ ...workflowDsl, extraPrompt: e.target.value || undefined })} />
+          </Form.Item>
+        </Card>
       </Modal>
 
       <Modal title="验证工作流 DSL" open={validateModalVisible} onCancel={() => setValidateModalVisible(false)} footer={[<Button onClick={() => setValidateModalVisible(false)}>关闭</Button>]} width={700}>
@@ -887,7 +1253,7 @@ const TemporalWorkflowPage: React.FC = () => {
         ) : <Alert type="info" message="点击验证按钮开始验证" />}
       </Modal>
 
-      <Modal title="AI 生成的 Workflow 代码" open={codeModalVisible} onCancel={() => setCodeModalVisible(false)}
+      <Modal title={<Space direction="vertical" size={0}><Text strong>AI 生成的 Workflow 代码</Text><Text type="secondary" style={{ fontSize: 12 }}>显示名称：{currentWorkflowDisplayName} ｜ 类名：{currentWorkflowClassName}</Text></Space>} open={codeModalVisible} onCancel={() => setCodeModalVisible(false)}
         footer={[
           <Button key="copy" icon={<CodeOutlined />} onClick={() => { navigator.clipboard.writeText(generatedCode || ''); message.success('已复制到剪贴板'); }}>复制代码</Button>,
           <Button key="close" onClick={() => setCodeModalVisible(false)}>关闭</Button>
@@ -899,49 +1265,55 @@ const TemporalWorkflowPage: React.FC = () => {
         )}
       </Modal>
 
-      <Modal title="沙箱验证结果" open={sandboxState.visible} onCancel={() => dispatchSandbox({ type: 'CLOSE' })} footer={sandboxModalFooter} width={800}>
+      <Modal title="真实验证结果" open={realValidationState.visible} onCancel={() => dispatchRealValidation({ type: 'CLOSE' })} footer={realValidationModalFooter} width={800}>
         <Space direction="vertical" style={{ width: '100%' }}>
-          {sandboxState.isStreaming && <Alert type="info" message="验证进行中..." showIcon />}
+          {realValidationState.isStreaming && <Alert type="info" message="真实验证进行中..." showIcon />}
 
           {/* 输入参数区域 - 仅在未运行时显示 */}
-          {!sandboxState.isStreaming && Object.keys(sandboxInputParams).length > 0 && (
+          {!realValidationState.isStreaming && (
             <Card size="small" style={{ marginBottom: 12 }}>
-              <Text strong>输入参数（请填写参数值）：</Text>
-              <div style={{ marginTop: 8, display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-                {Object.entries(sandboxInputParams).map(([key, value]) => (
-                  <div key={key} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                    <Tag color="blue">{key}</Tag>
-                    <Input
-                      placeholder={`请输入 ${key}`}
-                      value={value}
-                      onChange={(e) => setSandboxInputParams(prev => ({ ...prev, [key]: e.target.value }))}
-                      style={{ width: 160 }}
-                      size="small"
-                    />
+              {Object.keys(realValidationInputParams).length > 0 ? (
+                <>
+                  <Text strong>输入参数（请填写参数值）：</Text>
+                  <div style={{ marginTop: 8, display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                    {Object.entries(realValidationInputParams).map(([key, value]) => (
+                      <div key={key} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                        <Tag color="blue">{key}</Tag>
+                        <Input
+                          placeholder={`请输入 ${key}`}
+                          value={value}
+                          onChange={(e) => setRealValidationInputParams(prev => ({ ...prev, [key]: e.target.value }))}
+                          style={{ width: 160 }}
+                          size="small"
+                        />
+                      </div>
+                    ))}
                   </div>
-                ))}
-              </div>
+                </>
+              ) : (
+                <Text type="secondary">当前工作流没有可填写的输入参数，可直接开始真实验证。</Text>
+              )}
               <Button
                 type="primary"
                 icon={<ExperimentOutlined />}
-                onClick={handleSandboxValidate}
+                onClick={handleRealValidation}
                 style={{ marginTop: 12 }}
               >
-                开始验证
+                开始真实验证
               </Button>
             </Card>
           )}
 
-          {sandboxState.result && (
+          {realValidationState.result && (
             <>
-              <Alert type={sandboxState.result.success ? 'success' : 'error'} message={sandboxState.result.success ? '验证通过' : '验证失败'} showIcon />
-              <Card><Text><strong>评分:</strong> {sandboxState.result.score}/100</Text></Card>
-              {sandboxState.result.error && <Alert type="error" message="错误" description={sandboxState.result.error} showIcon />}
-              {sandboxState.result.result?.error && <Alert type="error" message="执行错误" description={String(sandboxState.result.result.error).substring(0, 500)} showIcon />}
-              {sandboxState.result.result?.result && (
+              <Alert type={realValidationState.result.success ? 'success' : 'error'} message={realValidationState.result.success ? '真实验证通过' : '真实验证失败'} showIcon />
+              <Card><Text><strong>评分:</strong> {realValidationState.result.score}/100</Text></Card>
+              {realValidationState.result.error && <Alert type="error" message="错误" description={realValidationState.result.error} showIcon />}
+              {realValidationState.result.result?.error && <Alert type="error" message="执行错误" description={String(realValidationState.result.result.error).substring(0, 500)} showIcon />}
+              {realValidationState.result.result?.result && (
                 <Card title="执行结果" size="small">
                   <pre style={{ maxHeight: 300, overflow: 'auto', fontSize: 11, margin: 0 }}>
-                    {JSON.stringify(sandboxState.result.result.result, null, 2)}
+                    {JSON.stringify(realValidationState.result.result.result, null, 2)}
                   </pre>
                 </Card>
               )}
@@ -949,9 +1321,9 @@ const TemporalWorkflowPage: React.FC = () => {
           )}
           <Card title="执行日志" size="small">
             <div style={{ maxHeight: 300, overflow: 'auto', fontFamily: 'monospace', fontSize: 11 }}>
-              {sandboxState.logs.map((log, i) => <div key={i} style={{ marginBottom: 4 }}>{log}</div>)}
-              {sandboxState.logs.length === 0 && !sandboxState.isStreaming && <Text type="secondary">暂无日志</Text>}
-              {sandboxState.isStreaming && <Text type="secondary">等待更多日志...</Text>}
+              {realValidationState.logs.map((log, i) => <div key={i} style={{ marginBottom: 4 }}>{log}</div>)}
+              {realValidationState.logs.length === 0 && !realValidationState.isStreaming && <Text type="secondary">暂无日志</Text>}
+              {realValidationState.isStreaming && <Text type="secondary">等待更多日志...</Text>}
             </div>
           </Card>
         </Space>

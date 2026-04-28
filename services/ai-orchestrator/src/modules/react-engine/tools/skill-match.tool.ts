@@ -84,7 +84,7 @@ export class SkillMatchTool extends BaseTool {
         },
       });
 
-      const matchResult = response.data.match as SkillMatchResult | null;
+      const matchResult = response.data.match;
 
       if (!matchResult || matchResult.confidence <= 0) {
         return {

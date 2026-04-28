@@ -6,32 +6,44 @@
 
 import React from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Card, Descriptions, Tag, Button, Space, Typography, Spin, Alert, Table, Steps, Empty } from 'antd';
+import { Card, Descriptions, Tag, Button, Space, Typography, Spin, Alert, Table, Steps, Empty, Form, Input, InputNumber, Switch, message } from 'antd';
 import {
   ArrowLeftOutlined,
   PlayCircleOutlined,
   PauseCircleOutlined,
-  StopOutlined,
   CheckCircleOutlined,
   CloseCircleOutlined,
   ClockCircleOutlined,
   UserOutlined,
   WarningOutlined,
 } from '@ant-design/icons';
-import { useTranslation } from 'react-i18next';
-import { useQuery } from 'react-query';
+import { useMutation, useQuery, useQueryClient } from 'react-query';
 import { executionApi, ExecutionDto, ExecutionStepDto, ExecutionStatus } from '../api/execution';
 
-const { Title, Text, Paragraph } = Typography;
+const { Title, Text } = Typography;
+
+interface RequiredInputField {
+  name: string;
+  type: string;
+  description?: string;
+  required: boolean;
+  value?: unknown;
+  missing: boolean;
+  source: 'user_input' | 'default' | 'unresolved';
+}
 
 const statusColors: Record<ExecutionStatus, string> = {
+  draft: 'default',
   queued: 'default',
   running: 'processing',
+  waiting_input: 'warning',
   pending_approval: 'warning',
   human_control: 'error',
+  paused: 'default',
   succeeded: 'success',
   failed: 'error',
   cancelled: 'default',
+  rolled_back: 'default',
 };
 
 const stepStatusIcons: Record<string, React.ReactNode> = {
@@ -45,7 +57,8 @@ const stepStatusIcons: Record<string, React.ReactNode> = {
 const ExecutionDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { t } = useTranslation();
+  const queryClient = useQueryClient();
+  const [form] = Form.useForm();
 
   // Fetch execution details
   const { data: execution, isLoading: isLoadingExecution, error: errorExecution } = useQuery<ExecutionDto, Error>(
@@ -55,10 +68,55 @@ const ExecutionDetailPage: React.FC = () => {
   );
 
   // Fetch execution steps
-  const { data: steps, isLoading: isLoadingSteps } = useQuery<ExecutionStepDto[], Error>(
+  const { data: steps } = useQuery<ExecutionStepDto[], Error>(
     ['execution-steps', id],
     () => executionApi.getSteps(id!),
     { enabled: !!id }
+  );
+
+  const submitInputMutation = useMutation(
+    (values: Record<string, unknown>) => executionApi.submitInput(id!, {
+      stepId: waitingInputStep!.id,
+      input: values,
+    }),
+    {
+      onSuccess: () => {
+        message.success('Input submitted and execution resumed');
+        void queryClient.invalidateQueries(['execution', id]);
+        void queryClient.invalidateQueries(['execution-steps', id]);
+      },
+      onError: (error: Error) => {
+        message.error(`Failed to submit input: ${error.message}`);
+      },
+    }
+  );
+
+  const approveMutation = useMutation(
+    () => executionApi.approve(id!),
+    {
+      onSuccess: () => {
+        message.success('Execution approved');
+        void queryClient.invalidateQueries(['execution', id]);
+        void queryClient.invalidateQueries(['execution-steps', id]);
+      },
+      onError: (error: Error) => {
+        message.error(`Failed to approve execution: ${error.message}`);
+      },
+    }
+  );
+
+  const rejectMutation = useMutation(
+    () => executionApi.reject(id!),
+    {
+      onSuccess: () => {
+        message.success('Execution rejected');
+        void queryClient.invalidateQueries(['execution', id]);
+        void queryClient.invalidateQueries(['execution-steps', id]);
+      },
+      onError: (error: Error) => {
+        message.error(`Failed to reject execution: ${error.message}`);
+      },
+    }
   );
 
   if (isLoadingExecution) {
@@ -90,6 +148,56 @@ const ExecutionDetailPage: React.FC = () => {
   const getCurrentStepIndex = () => {
     if (!steps || !execution.currentStepId) return -1;
     return steps.findIndex(s => s.id === execution.currentStepId);
+  };
+
+  const waitingInputStep = execution.status === 'waiting_input'
+    ? steps?.find((step) =>
+      step.id === execution.currentStepId ||
+      (step.type === 'input_collection' && step.status === 'running')
+    )
+    : undefined;
+
+  const requiredInputs = Array.isArray(waitingInputStep?.input?.requiredInputs)
+    ? waitingInputStep.input.requiredInputs as RequiredInputField[]
+    : [];
+
+  const handleSubmitInput = (values: Record<string, unknown>) => {
+    submitInputMutation.mutate(values);
+  };
+
+  const renderInputField = (field: RequiredInputField) => {
+    const normalizedType = field.type.toLowerCase();
+
+    if (normalizedType === 'number' || normalizedType === 'integer') {
+      return <InputNumber style={{ width: '100%' }} />;
+    }
+
+    if (normalizedType === 'boolean') {
+      return <Switch />;
+    }
+
+    if (normalizedType === 'object' || normalizedType === 'json') {
+      return <Input.TextArea rows={4} placeholder="Enter JSON string" />;
+    }
+
+    return <Input placeholder={field.description || `Enter ${field.name}`} />;
+  };
+
+  const normalizeSubmittedValues = (values: Record<string, unknown>) => {
+    return requiredInputs.reduce<Record<string, unknown>>((acc, field) => {
+      const rawValue = values[field.name];
+      if (rawValue === undefined) {
+        return acc;
+      }
+
+      if ((field.type.toLowerCase() === 'object' || field.type.toLowerCase() === 'json') && typeof rawValue === 'string') {
+        acc[field.name] = JSON.parse(rawValue);
+        return acc;
+      }
+
+      acc[field.name] = rawValue;
+      return acc;
+    }, {});
   };
 
   const stepColumns = [
@@ -190,15 +298,93 @@ const ExecutionDetailPage: React.FC = () => {
         />
       )}
 
+      {execution.status === 'pending_approval' && (
+        <Card title="Approval Required" style={{ marginBottom: 16 }}>
+          <Alert
+            type="warning"
+            showIcon
+            style={{ marginBottom: 16 }}
+            message="Execution is waiting for approval"
+            description={
+              execution.approvalStatus
+                ? `Current approval status: ${execution.approvalStatus}`
+                : 'Review the execution details and decide whether it can continue.'
+            }
+          />
+          <Space>
+            <Button type="primary" loading={approveMutation.isLoading} onClick={() => approveMutation.mutate()}>
+              Approve And Continue
+            </Button>
+            <Button danger loading={rejectMutation.isLoading} onClick={() => rejectMutation.mutate()}>
+              Reject Execution
+            </Button>
+          </Space>
+        </Card>
+      )}
+
+      {execution.status === 'waiting_input' && waitingInputStep && (
+        <Card title="Missing Input Required" style={{ marginBottom: 16 }}>
+          <Alert
+            type="warning"
+            showIcon
+            style={{ marginBottom: 16 }}
+            message="Execution is waiting for additional input"
+            description="Fill in the missing parameters below to resume execution."
+          />
+          <Form
+            form={form}
+            layout="vertical"
+            initialValues={requiredInputs.reduce<Record<string, unknown>>((acc, field) => {
+              acc[field.name] = field.value;
+              return acc;
+            }, {})}
+            onFinish={(values) => {
+              try {
+                handleSubmitInput(normalizeSubmittedValues(values));
+              } catch (error) {
+                message.error(error instanceof Error ? error.message : 'Invalid JSON input');
+              }
+            }}
+          >
+            {requiredInputs.map((field) => (
+              <Form.Item
+                key={field.name}
+                name={field.name}
+                label={`${field.name} (${field.type})`}
+                extra={field.description || `Source: ${field.source}`}
+                rules={[
+                  {
+                    required: field.required,
+                    message: `Please provide ${field.name}`,
+                  },
+                ]}
+                valuePropName={field.type.toLowerCase() === 'boolean' ? 'checked' : 'value'}
+              >
+                {renderInputField(field)}
+              </Form.Item>
+            ))}
+            <Space>
+              <Button type="primary" htmlType="submit" loading={submitInputMutation.isLoading}>
+                Submit And Resume
+              </Button>
+              <Button onClick={() => form.resetFields()}>
+                Reset
+              </Button>
+            </Space>
+          </Form>
+        </Card>
+      )}
+
       {/* Execution Info */}
       <Card style={{ marginBottom: 16 }}>
-        <Descriptions columns={2}>
+        <Descriptions column={2}>
           <Descriptions.Item label="Status">
             <Tag color={statusColors[execution.status]}>{execution.status.toUpperCase()}</Tag>
           </Descriptions.Item>
           <Descriptions.Item label="Skill ID">{execution.skillId}</Descriptions.Item>
           <Descriptions.Item label="Runtime Type">{execution.runtimeType}</Descriptions.Item>
           <Descriptions.Item label="Risk Level">{execution.riskLevel}</Descriptions.Item>
+          <Descriptions.Item label="Approval Status">{execution.approvalStatus || '-'}</Descriptions.Item>
           <Descriptions.Item label="Created By">{execution.createdBy}</Descriptions.Item>
           <Descriptions.Item label="Created At">
             {new Date(execution.createdAt).toLocaleString()}

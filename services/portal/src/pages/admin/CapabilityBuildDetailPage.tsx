@@ -234,11 +234,11 @@ const CapabilityBuildDetailPage: React.FC = () => {
             disabled={!resolvedReleaseId}
             onClick={() =>
               resolvedReleaseId
-                ? navigate(`/release-center?releaseId=${resolvedReleaseId}`)
+                ? navigate(`/admin/capability-releases?releaseId=${resolvedReleaseId}&mode=view`)
                 : undefined
             }
           >
-            打开 Release Center
+            打开发布详情
           </Button>
           <Button
             disabled={!detail?.release.publishedSkillId}

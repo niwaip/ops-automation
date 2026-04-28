@@ -26,10 +26,11 @@ export interface CreateActivityDto {
   name: string;
   fn: string;
   timeout?: string;
-  retryPolicy?: { maxRetries: number; backoffMs?: number };
+  retryPolicy?: { maxRetries: number; backoffMs?: number } | null;
   handler: 'api' | 'carbone' | 'browser' | 'script';
   config: Record<string, any>;
   generatedCode?: string;
+  isActive?: boolean;
 }
 
 // Update DTO
@@ -37,10 +38,11 @@ export interface UpdateActivityDto {
   name?: string;
   fn?: string;
   timeout?: string;
-  retryPolicy?: { maxRetries: number };
+  retryPolicy?: { maxRetries: number; backoffMs?: number } | null;
   handler?: 'api' | 'carbone' | 'browser' | 'script';
   config?: Record<string, any>;
   isActive?: boolean;
+  generatedCode?: string;
 }
 
 // Validation result
@@ -69,6 +71,8 @@ export interface ExecuteCodeDto {
   code: string;
   fn: string;
   taskQueue: string;
+  timeout?: string;
+  retryPolicy?: { maxRetries: number; backoffMs?: number };
   input?: Record<string, any>;
 }
 
@@ -104,7 +108,7 @@ export const activityApi = {
   /**
    * 更新 Activity
    */
-  update: async (id: string, data: Partial<CreateActivityDto>): Promise<ActivityDTO> => {
+  update: async (id: string, data: UpdateActivityDto): Promise<ActivityDTO> => {
     return apiClient.put<ActivityDTO>(`/activities/${id}`, data);
   },
 

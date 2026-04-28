@@ -7,8 +7,6 @@ import { Injectable, Logger } from '@nestjs/common';
 import { ModelService } from '../model/model.service';
 import { ToolExecutor } from './tool-executor';
 import { SessionService } from '../redis/session.service';
-import { ExecutionStepService } from '../execution-step/execution-step.service';
-import { PrismaService } from '../prisma/prisma.service';
 import {
   AvailableSkillDefinition,
   StreamEvent,
@@ -27,7 +25,6 @@ import {
   buildUserPrompt,
   parseActionResponse,
   buildObservationPrompt,
-  buildParamsConfirmPrompt,
 } from './prompt-builder';
 
 /**
@@ -48,8 +45,6 @@ export class ReActEngineService {
     private readonly modelService: ModelService,
     private readonly toolExecutor: ToolExecutor,
     private readonly sessionService: SessionService,
-    private readonly executionStepService: ExecutionStepService,
-    private readonly prisma: PrismaService,
   ) {}
 
   private tracePrefix(context: ExecutionContext): string {
@@ -700,7 +695,7 @@ export class ReActEngineService {
 
     // Extract result data with proper typing
     const resultData = event.data?.result as ToolResult | undefined;
-    const innerData = resultData?.data as Record<string, unknown> | undefined;
+    const innerData = resultData?.data;
 
     // 优先输出结构化的用户提示文案，避免仅显示“参数不完整”这类内部描述
     if (state.isWaitingForUserInput && resultData?.userInputPrompt) {
@@ -726,7 +721,7 @@ export class ReActEngineService {
       context.nextAction = undefined;
       context.nextActionParams = undefined;
     } else if (resultData?.nextAction) {
-      context.nextAction = resultData.nextAction as string;
+      context.nextAction = resultData.nextAction;
       context.nextActionParams = resultData.nextActionParams as Record<string, unknown>;
     }
 
@@ -827,30 +822,11 @@ export class ReActEngineService {
    */
   async createExecutionSteps(
     executionId: string,
-    skill: SkillMatchResult,
+    _skill: SkillMatchResult,
   ): Promise<void> {
-    if (!skill.executionFlow || skill.executionFlow.length === 0) {
-      // Create a default step for simple execution
-      await this.executionStepService.createStep({
-        executionId,
-        stepIndex: 0,
-        name: 'Execute Skill',
-        type: 'system',
-      });
-      return;
-    }
-
-    // Create steps from execution flow
-    const steps = skill.executionFlow.map((flowTool, index) => ({
-      executionId,
-      stepIndex: index,
-      name: flowTool,
-      type: 'system' as const,
-      action: flowTool,
-    }));
-
-    await this.executionStepService.createSteps(steps);
-    this.logger.log(`Created ${steps.length} execution steps for execution ${executionId}`);
+    this.logger.warn(
+      `Execution step creation has been delegated to control-plane in v3; skipping local step creation for execution ${executionId}`,
+    );
   }
 
   /**
@@ -859,7 +835,7 @@ export class ReActEngineService {
   async updateCurrentStep(
     context: ExecutionContext,
     status: string,
-    additionalData?: {
+    _additionalData?: {
       outputJson?: Record<string, unknown>;
       errorMessage?: string;
       errorCode?: string;
@@ -870,15 +846,10 @@ export class ReActEngineService {
       return;
     }
 
-    try {
-      await this.executionStepService.updateStepStatus(
-        context.currentStepId,
-        status,
-        additionalData,
-      );
-    } catch (error) {
-      this.logger.error(`${this.tracePrefix(context)}Failed to update step ${context.currentStepId}: ${error}`);
-    }
+    this.logger.warn(
+      `${this.tracePrefix(context)}Step status writes are delegated to control-plane in v3; `
+      + `skipping local update for ${context.currentStepId} -> ${status}`,
+    );
   }
 
   /**
@@ -888,36 +859,15 @@ export class ReActEngineService {
     context: ExecutionContext,
     status: 'succeeded' | 'failed' | 'cancelled' | 'human_control',
     result?: Record<string, unknown>,
-    failureReason?: string,
+    _failureReason?: string,
   ): Promise<void> {
     if (!context.executionId) {
       return;
     }
 
-    try {
-      await (this.prisma as any).execution.update({
-        where: { id: context.executionId },
-        data: {
-          status,
-          endedAt: new Date(),
-          ...(result && { resultJson: result as any }),
-          ...(failureReason && { failureReason }),
-        },
-      });
-
-      // Create execution event
-      await (this.prisma as any).executionEvent.create({
-        data: {
-          executionId: context.executionId,
-          eventType: `execution.${status}`,
-          eventSource: 'ai-orchestrator',
-          payloadJson: { failureReason } as any,
-        },
-      });
-
-      this.logger.log(`${this.tracePrefix(context)}Execution ${context.executionId} finalized with status ${status}`);
-    } catch (error) {
-      this.logger.error(`${this.tracePrefix(context)}Failed to finalize execution ${context.executionId}: ${error}`);
-    }
+    this.logger.warn(
+      `${this.tracePrefix(context)}Execution finalization is delegated to control-plane in v3; `
+      + `skipping local finalize for ${context.executionId} -> ${status}`,
+    );
   }
 }

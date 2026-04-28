@@ -6,6 +6,7 @@ import {
   OnModuleInit,
 } from '@nestjs/common';
 import { randomUUID } from 'crypto';
+import axios from 'axios';
 import { PrismaService } from '../../prisma/prisma.service';
 import { TemporalWorkflowService } from '../temporal-workflow/temporal-workflow.service';
 import { ActivityService } from '../temporal-workflow/activity.service';
@@ -25,6 +26,8 @@ import {
   CreateCapabilityReleaseDTO,
   DeployCapabilityReleaseDTO,
   DeploymentRecordDTO,
+  ExecuteCapabilityRuntimeDTO,
+  ExecuteCapabilityRuntimeResultDTO,
   GenerateSkillDraftDTO,
   PublishSkillDraftDTO,
   ReleaseAuditEventDTO,
@@ -33,6 +36,10 @@ import {
   UpdateCapabilitySourceDTO,
   UpdateSkillDraftDTO,
   ValidateCapabilityDTO,
+  AnalyzeFailureDTO,
+  AnalyzeFailureResultDTO,
+  SuggestReleaseWizardAssistDTO,
+  SuggestReleaseWizardAssistResultDTO,
 } from './interfaces';
 
 @Injectable()
@@ -53,8 +60,9 @@ export class CapabilityReleaseService implements OnModuleInit {
 
   async listReleases(): Promise<CapabilityReleaseDTO[]> {
     const rows = await this.prisma.$queryRawUnsafe<any[]>(
-      `SELECT *
-       FROM capability_releases
+      `SELECT r.*, 
+              (SELECT environment FROM deployment_records WHERE release_id = r.id ORDER BY created_at DESC LIMIT 1) as last_deployment_environment
+       FROM capability_releases r
        WHERE archived_at IS NULL
        ORDER BY updated_at DESC`
     );
@@ -63,8 +71,9 @@ export class CapabilityReleaseService implements OnModuleInit {
 
   async listReleaseCenter(): Promise<CapabilityReleaseDTO[]> {
     const rows = await this.prisma.$queryRawUnsafe<any[]>(
-      `SELECT *
-       FROM capability_releases
+      `SELECT r.*,
+              (SELECT environment FROM deployment_records WHERE release_id = r.id ORDER BY created_at DESC LIMIT 1) as last_deployment_environment
+       FROM capability_releases r
        WHERE archived_at IS NULL
          AND (
            published_skill_id IS NOT NULL
@@ -157,7 +166,7 @@ export class CapabilityReleaseService implements OnModuleInit {
   }
 
   async archiveRelease(id: string, userId?: string): Promise<{ success: true; archivedId: string }> {
-    await this.getReleaseOrThrow(id);
+    const release = await this.getReleaseOrThrow(id);
 
     await this.prisma.$executeRawUnsafe(
       `UPDATE capability_releases
@@ -168,15 +177,148 @@ export class CapabilityReleaseService implements OnModuleInit {
       id,
     );
 
+    if (release.publishedSkillId) {
+      await this.prisma.$executeRawUnsafe(
+        `UPDATE skill_configs
+         SET is_active = false,
+             updated_at = now()
+         WHERE id = $1::uuid`,
+        release.publishedSkillId,
+      );
+      await this.insertAuditEvent(
+        id,
+        'published_skill_deactivated',
+        userId,
+        true,
+        `归档 Release 时停用已发布 Skill: ${release.publishedSkillId}`,
+        { publishedSkillId: release.publishedSkillId },
+      );
+    }
+
     await this.insertAuditEvent(id, 'release_archived', userId, true, '归档 Capability Release');
     return { success: true, archivedId: id };
+  }
+
+  async executeCapabilityRuntime(
+    dto: ExecuteCapabilityRuntimeDTO,
+    userId?: string,
+  ): Promise<ExecuteCapabilityRuntimeResultDTO> {
+    const capabilityId = dto.capabilityId || dto.publishedSkillId;
+    if (!capabilityId) {
+      throw new BadRequestException('capabilityId 或 publishedSkillId 不能为空');
+    }
+
+    return this.executePublishedSkill(
+      capabilityId,
+      dto.input,
+      userId,
+      {
+        executionId: dto.executionId,
+        stepId: dto.stepId,
+        capabilityVersion: dto.capabilityVersion,
+        runtimeType: dto.runtimeType,
+      },
+    );
+  }
+
+  async getPublishedSkillRuntimeContext(skillId: string): Promise<{
+    publishedSkillId: string;
+    releaseId: string;
+    sourceType: string;
+    runtimeType: string;
+    runtimeSource: 'deployment' | 'sandbox_fallback' | 'flow_runtime_fallback';
+    environment?: string | null;
+    deploymentId?: string | null;
+  }> {
+    const releaseRows = await this.prisma.$queryRawUnsafe<any[]>(
+      `SELECT *
+       FROM capability_releases
+       WHERE published_skill_id = $1::uuid
+         AND archived_at IS NULL
+       ORDER BY updated_at DESC
+       LIMIT 1`,
+      skillId,
+    );
+
+    if (!releaseRows[0]) {
+      throw new NotFoundException('未找到与该 Skill 绑定的 Capability Release');
+    }
+
+    const release = this.mapRelease(releaseRows[0]);
+
+    const latestSuccessfulDeploymentRows = await this.prisma.$queryRawUnsafe<any[]>(
+      `SELECT *
+       FROM deployment_records
+       WHERE release_id = $1::uuid
+         AND success = true
+       ORDER BY created_at DESC
+       LIMIT 1`,
+      release.id,
+    );
+
+    const lastDeployment =
+      release.lastDeploymentId
+        ? await this.prisma.$queryRawUnsafe<any[]>(
+            `SELECT *
+             FROM deployment_records
+             WHERE id = $1::uuid
+             LIMIT 1`,
+            release.lastDeploymentId,
+          )
+        : [];
+
+    const deploymentRow =
+      (Array.isArray(lastDeployment) && lastDeployment[0]?.success ? lastDeployment[0] : null)
+      || latestSuccessfulDeploymentRows[0]
+      || null;
+
+    if (deploymentRow) {
+      const deployment = this.mapDeployment(deploymentRow);
+      return {
+        publishedSkillId: skillId,
+        releaseId: release.id,
+        sourceType: release.sourceType,
+        runtimeType: deployment.runtimeType,
+        runtimeSource: 'deployment',
+        environment: deployment.environment,
+        deploymentId: deployment.id,
+      };
+    }
+
+    if (release.sourceType === 'temporal_workflow') {
+      return {
+        publishedSkillId: skillId,
+        releaseId: release.id,
+        sourceType: release.sourceType,
+        runtimeType: 'sandbox',
+        runtimeSource: 'sandbox_fallback',
+        environment: null,
+        deploymentId: null,
+      };
+    }
+
+    return {
+      publishedSkillId: skillId,
+      releaseId: release.id,
+      sourceType: release.sourceType,
+      runtimeType: 'flow_runtime',
+      runtimeSource: 'flow_runtime_fallback',
+      environment: null,
+      deploymentId: null,
+    };
   }
 
   async executePublishedSkill(
     skillId: string,
     input: Record<string, unknown> | undefined,
     userId?: string,
-  ): Promise<Record<string, unknown>> {
+    options?: {
+      executionId?: string;
+      stepId?: string;
+      capabilityVersion?: string;
+      runtimeType?: string;
+    },
+  ): Promise<ExecuteCapabilityRuntimeResultDTO> {
     const releaseRows = await this.prisma.$queryRawUnsafe<any[]>(
       `SELECT *
        FROM capability_releases
@@ -199,10 +341,7 @@ export class CapabilityReleaseService implements OnModuleInit {
     const snapshot = await this.getCurrentSnapshotOrThrow(release);
     const build = await this.resolveTemporalExecutableBuildOrThrow(release, snapshot, undefined, userId);
 
-    const workflowName = String(
-      snapshot.sourcePayload.name || release.sourceName || 'GeneratedWorkflow',
-    );
-    const fn = `${workflowName.replace(/\s+/g, '')}Workflow`;
+    const fn = this.resolveWorkflowFnOrThrow(snapshot.sourcePayload);
     const taskQueue = typeof snapshot.sourcePayload.taskQueue === 'string'
       ? snapshot.sourcePayload.taskQueue
       : 'SKILL_TASK_QUEUE';
@@ -225,7 +364,12 @@ export class CapabilityReleaseService implements OnModuleInit {
         : `运行时调用 Skill 失败: ${skillId}`,
       {
         publishedSkillId: skillId,
+        capabilityId: skillId,
+        capabilityVersion: options?.capabilityVersion || null,
         runtime: 'temporal_workflow',
+        requestedRuntimeType: options?.runtimeType || null,
+        executionId: options?.executionId || null,
+        stepId: options?.stepId || null,
         fn,
         taskQueue,
       },
@@ -233,11 +377,14 @@ export class CapabilityReleaseService implements OnModuleInit {
 
     return {
       releaseId: release.id,
+      capabilityId: skillId,
+      capabilityVersion: options?.capabilityVersion || null,
       publishedSkillId: skillId,
       runtime: 'temporal_workflow',
       fn,
       taskQueue,
       success: result.success,
+      output: (result.result as Record<string, unknown> | undefined) ?? null,
       result: result.result ?? null,
       logs: result.logs || [],
       error: result.error || null,
@@ -692,6 +839,7 @@ export class CapabilityReleaseService implements OnModuleInit {
     id: string,
     dto: ValidateCapabilityDTO,
     userId?: string,
+    authToken?: string,
   ): Promise<{ release: CapabilityReleaseDTO; validation: CapabilityValidationDTO }> {
     const release = await this.getReleaseOrThrow(id);
     const snapshot = await this.getCurrentSnapshotOrThrow(release);
@@ -714,29 +862,81 @@ export class CapabilityReleaseService implements OnModuleInit {
       let logs: string[] = [];
       let resultSnapshot: Record<string, unknown> | null = null;
       let errorSummary: string | null = null;
+      const testCasesFromRequest = Array.isArray(dto.testCases)
+        ? dto.testCases.map((item) => (typeof item === 'string' ? item.trim() : '')).filter(Boolean)
+        : [];
+      const naturalLanguageCases = testCasesFromRequest.length > 0
+        ? testCasesFromRequest
+        : (dto.testUserInput?.trim() ? [dto.testUserInput.trim()] : []);
 
       if (release.sourceType === 'temporal_workflow') {
-        if (!build.generatedCode) {
-          throw new Error('当前构建没有可执行代码，请先完成代码生成');
+        if (naturalLanguageCases.length > 0 && (!dto.input || Object.keys(dto.input).length === 0)) {
+          if (!release.publishedSkillId) {
+            throw new Error('请先发布 Skill，再使用自然语言进行真实验证');
+          }
+          const caseResults: Array<{
+            caseIndex: number;
+            testUserInput: string;
+            success: boolean;
+            score: number;
+            error?: string;
+            logs: string[];
+            result?: Record<string, unknown> | null;
+          }> = [];
+
+          for (let i = 0; i < naturalLanguageCases.length; i += 1) {
+            const currentCase = naturalLanguageCases[i] as string;
+            const runtimeResult = await this.executePublishedSkillByPromptForValidation(
+              release.publishedSkillId,
+              currentCase,
+              authToken,
+            );
+            caseResults.push({
+              caseIndex: i + 1,
+              testUserInput: currentCase,
+              success: runtimeResult.success,
+              score: runtimeResult.success ? 100 : 50,
+              ...(runtimeResult.error ? { error: runtimeResult.error } : {}),
+              logs: runtimeResult.logs,
+              result: runtimeResult.result ?? null,
+            });
+          }
+
+          const passedCases = caseResults.filter((item) => item.success).length;
+          success = passedCases === caseResults.length;
+          score = caseResults.length > 0 ? Math.round((passedCases / caseResults.length) * 100) : 0;
+          logs = caseResults.flatMap((item) => [
+            `[Case ${item.caseIndex}] ${item.testUserInput}`,
+            ...item.logs.map((line) => `[Case ${item.caseIndex}] ${line}`),
+          ]);
+          resultSnapshot = {
+            mode: 'nl_task_runtime_batch',
+            totalCases: caseResults.length,
+            passedCases,
+            caseResults,
+          };
+          const firstError = caseResults.find((item) => !item.success)?.error;
+          errorSummary = firstError || null;
+        } else {
+          if (!build.generatedCode) {
+            throw new Error('当前构建没有可执行代码，请先完成代码生成');
+          }
+          const fn = dto.fn || this.resolveWorkflowFnOrThrow(snapshot.sourcePayload);
+          const result = await this.temporalWorkflowService.validateWorkflowReal(
+            build.generatedCode,
+            fn,
+            dto.input,
+          );
+          success = result.success;
+          score = result.score;
+          logs = result.logs;
+          resultSnapshot = {
+            result: result.result ?? null,
+            error: result.error ?? null,
+            fn,
+          };
+          errorSummary = result.error || null;
         }
-        const workflowName = String(
-          snapshot.sourcePayload.name || release.sourceName || 'GeneratedWorkflow',
-        );
-        const fn = dto.fn || `${workflowName.replace(/\s+/g, '')}Workflow`;
-        const result = await this.temporalWorkflowService.validateInSandbox(
-          build.generatedCode,
-          fn,
-          dto.input,
-        );
-        success = result.success;
-        score = result.score;
-        logs = result.logs;
-        resultSnapshot = {
-          result: result.result ?? null,
-          error: result.error ?? null,
-          fn,
-        };
-        errorSummary = result.error || null;
       } else if (release.sourceId) {
         const validation = await this.executionFlowTemplateService.validateTemplate(
           release.sourceId,
@@ -799,6 +999,7 @@ export class CapabilityReleaseService implements OnModuleInit {
     id: string,
     dto: ValidateCapabilityDTO,
     userId: string | undefined,
+    _authToken: string | undefined,
     onEvent: (event: string, payload: Record<string, unknown>) => void,
   ): Promise<void> {
     const release = await this.getReleaseOrThrow(id);
@@ -828,19 +1029,17 @@ export class CapabilityReleaseService implements OnModuleInit {
         if (!build.generatedCode) {
           throw new Error('当前构建没有可执行代码，请先完成代码生成');
         }
-        const workflowName = String(
-          snapshot.sourcePayload.name || release.sourceName || 'GeneratedWorkflow',
-        );
-        const fn = dto.fn || `${workflowName.replace(/\s+/g, '')}Workflow`;
+        const fn = dto.fn || this.resolveWorkflowFnOrThrow(snapshot.sourcePayload);
         onEvent('status', {
           phase: 'executing',
           runtime: 'temporal_workflow',
           fn,
         });
-        const result = await this.temporalWorkflowService.validateInSandboxStreaming(
+        const result = await this.temporalWorkflowService.validateWorkflowRealStreaming(
           build.generatedCode,
           fn,
           dto.input as Record<string, any> | undefined,
+          undefined,
           (log) => {
             streamedLogs.push(log);
             onEvent('log', { message: log });
@@ -1105,38 +1304,59 @@ export class CapabilityReleaseService implements OnModuleInit {
     if (!draftId) {
       throw new NotFoundException('没有可发布的 Skill 草案');
     }
+    const previousPublishedSkillId = release.publishedSkillId;
     const draft = await this.getSkillDraftOrThrow(draftId);
 
-    const payload = draft.draftPayload;
-    const existing = await this.prisma.$queryRawUnsafe<any[]>(
-      `SELECT id FROM skill_configs WHERE name = $1 LIMIT 1`,
-      payload.name,
-    );
-
-    let publishedSkillId: string;
-    if (release.publishedSkillId) {
-      const updated = await this.skillService.updateSkill(release.publishedSkillId, payload as any);
-      if (updated) {
-        publishedSkillId = updated.id;
-      } else if (existing[0]?.id && existing[0].id !== release.publishedSkillId) {
-        const fallbackUpdated = await this.skillService.updateSkill(existing[0].id, payload as any);
-        if (!fallbackUpdated) {
-          throw new Error('更新同名 Skill 失败');
+    const payload = { ...(draft.draftPayload as Record<string, unknown>) };
+    const baseName =
+      (typeof payload.name === 'string' && payload.name.trim()) || release.sourceName || `Skill-${release.id.slice(0, 8)}`;
+    let finalName = String(baseName);
+    // 确保每个 Release 发布都会新建新 Skill：如果同名已存在，则派生唯一名称（含递增后缀）
+    const nameExists = async (name: string) => {
+      const rows = await this.prisma.$queryRawUnsafe<any[]>(
+        `SELECT id FROM skill_configs WHERE name = $1 LIMIT 1`,
+        name,
+      );
+      return Boolean(rows[0]?.id);
+    };
+    if (await nameExists(finalName)) {
+      const baseCandidate = `${baseName}-${release.id.slice(0, 8)}`;
+      finalName = baseCandidate;
+      let suffix = 1;
+      while (await nameExists(finalName)) {
+        finalName = `${baseCandidate}-${suffix}`;
+        suffix += 1;
+        if (suffix > 1000) {
+          finalName = `${baseCandidate}-${Date.now()}`;
+          break;
         }
-        publishedSkillId = fallbackUpdated.id;
-      } else {
-        const created = await this.skillService.createSkill(payload as any);
-        publishedSkillId = created.id;
       }
-    } else if (existing[0]?.id) {
-      const updated = await this.skillService.updateSkill(existing[0].id, payload as any);
-      if (!updated) {
-        throw new Error('更新同名 Skill 失败');
-      }
-      publishedSkillId = updated.id;
-    } else {
-      const created = await this.skillService.createSkill(payload as any);
-      publishedSkillId = created.id;
+    }
+    payload.name = finalName;
+    const created = await this.skillService.createSkill(payload as any);
+    const publishedSkillId = created.id;
+
+    // Re-publish safety: deactivate the previously bound skill for this release
+    // so skill matching does not continue to route to stale versions.
+    if (
+      previousPublishedSkillId
+      && previousPublishedSkillId !== publishedSkillId
+    ) {
+      await this.prisma.skillConfig.updateMany({
+        where: { id: previousPublishedSkillId },
+        data: { isActive: false },
+      });
+      await this.insertAuditEvent(
+        id,
+        'published_skill_deactivated',
+        userId,
+        true,
+        `重新发布后停用旧 Skill: ${previousPublishedSkillId}`,
+        {
+          previousPublishedSkillId,
+          newPublishedSkillId: publishedSkillId,
+        },
+      );
     }
 
     await this.prisma.$executeRawUnsafe(
@@ -1600,6 +1820,180 @@ export class CapabilityReleaseService implements OnModuleInit {
       );
       await this.insertAuditEvent(id, 'rollback_failed', userId, false, `回滚失败: ${message}`);
       throw new BadRequestException(message);
+    }
+  }
+
+  async analyzeFailure(
+    id: string,
+    dto: AnalyzeFailureDTO,
+    userId?: string,
+  ): Promise<AnalyzeFailureResultDTO> {
+    const release = await this.getReleaseOrThrow(id);
+    let logs: string[] = [];
+    let errorSummary = '';
+    let recordContext = '';
+
+    if (dto.recordType === 'build') {
+      const build = await this.getBuildOrThrow(dto.recordId);
+      logs = build.logs || [];
+      errorSummary = build.errorSummary || '';
+      recordContext = `Build Type: ${build.buildType}, Model: ${build.modelId}`;
+    } else if (dto.recordType === 'validation') {
+      const validation = await this.getValidationOrThrow(dto.recordId);
+      logs = validation.logs || [];
+      errorSummary = validation.errorSummary || '';
+      recordContext = `Validation Type: ${validation.validationType}`;
+    } else if (dto.recordType === 'deployment') {
+      const deployment = await this.getDeploymentOrThrow(dto.recordId);
+      logs = deployment.logs || [];
+      errorSummary = logs.find((l) => l.includes('[Error]')) || '';
+      recordContext = `Env: ${deployment.environment}, Runtime: ${deployment.runtimeType}`;
+    }
+
+    const prompt = `你是一个高级系统调试专家。正在分析一个自动化能力发布过程中的失败。
+上下文：
+能力名称: ${release.sourceName}
+源类型: ${release.sourceType}
+记录类型: ${dto.recordType} (${recordContext})
+失败摘要: ${errorSummary}
+执行日志:
+${logs.join('\n')}
+
+任务：
+1. 识别失败的根本原因。
+2. 判断失败是否是由于测试输入（testInput/input）中缺失或错误的参数导致的。如果是网络超时或SSL错误，请结合日志判断是否是因为输入了非法参数（如 [None]）触发的请求。
+3. 如果是参数问题，请生成一个 JSON 对象，代表建议的正确测试参数。
+4. 提供一个简明扼要的解释给用户。
+5. 给出建议的下一步操作（suggestedAction）。
+
+输出格式 (JSON)：
+{
+  "analysis": "原因分析文本",
+  "explanation": "给用户的简短解释",
+  "isParameterIssue": true/false,
+  "suggestedParams": { "key": "value" } 或 null,
+  "suggestedAction": "建议的操作，如：更新测试参数并重新校验"
+}`;
+
+    try {
+      const orchestratorUrl = process.env.AI_ORCHESTRATOR_URL || 'http://ops-ai-orchestrator:3007';
+      const response = await axios.post<{ result: string }>(
+        `${orchestratorUrl}/ai/model/call`,
+        {
+          modelId: 'default',
+          prompt,
+        },
+        { timeout: 60000 },
+      );
+
+      const content = response.data?.result || '';
+      // 提取 JSON
+      const jsonMatch = content.match(/\{[\s\S]*\}/);
+      if (!jsonMatch) {
+        return {
+          analysis: content,
+          explanation: 'AI 未能返回结构化分析结果，请参考分析内容',
+          isParameterIssue: false,
+        };
+      }
+
+      const result = JSON.parse(jsonMatch[0]);
+      await this.insertAuditEvent(
+        id,
+        'failure_analyzed',
+        userId,
+        true,
+        `AI 失败分析完成: ${result.explanation}`,
+        { recordId: dto.recordId, recordType: dto.recordType },
+      );
+
+      return {
+        analysis: result.analysis,
+        explanation: result.explanation,
+        isParameterIssue: !!result.isParameterIssue,
+        suggestedParams: result.suggestedParams,
+        suggestedAction: result.suggestedAction,
+      };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : '未知错误';
+      this.logger.error(`AI failure analysis failed: ${message}`);
+      return {
+        analysis: `AI 分析调用失败: ${message}`,
+        explanation: '暂时无法提供 AI 自动分析，请手动检查日志',
+        isParameterIssue: false,
+      };
+    }
+  }
+
+  async suggestWizardAssist(
+    id: string,
+    dto: SuggestReleaseWizardAssistDTO,
+    userId?: string,
+  ): Promise<SuggestReleaseWizardAssistResultDTO> {
+    const release = await this.getReleaseOrThrow(id);
+    const snapshot = await this.getCurrentSnapshotOrThrow(release);
+    const environment = dto.environment || 'test';
+    const paramsSchema = this.resolveEffectiveTemporalParamsSchema(snapshot.sourcePayload);
+    const fallbackTestInput = this.buildSuggestedInputFromSchema(paramsSchema);
+    const deployConfig = this.resolveDeploymentProfile(snapshot.sourcePayload, environment);
+
+    const prompt = `你是企业技能发布向导的 AI 助手。请基于以下能力定义，给出“部署配置建议”和“真实校验测试参数建议”。\n\n能力名称: ${
+      release.sourceName || release.id
+    }\n能力类型: ${release.sourceType}\n目标环境: ${environment}\n参数 Schema: ${JSON.stringify(
+      paramsSchema,
+      null,
+      2,
+    )}\n源定义快照: ${JSON.stringify(snapshot.sourcePayload, null, 2)}\n\n要求：\n1. 返回一个适合演示和校验的 testInput JSON。\n2. 如果有比较合理的 testUserInput，自然语言给一句。\n3. deployConfig 只返回用户本次需要重点关注或覆盖的字段；没有必要覆盖则返回空对象。\n4. explanation 用中文，告诉用户这些参数为什么这样推荐。\n5. 只返回 JSON，不要 Markdown。\n\n返回格式：\n{\n  "explanation": "中文说明",\n  "deployConfig": {},\n  "testInput": {},\n  "testUserInput": "..." \n}`;
+
+    try {
+      const orchestratorUrl = process.env.AI_ORCHESTRATOR_URL || 'http://ops-ai-orchestrator:3007';
+      const response = await axios.post<{ result: string }>(
+        `${orchestratorUrl}/ai/model/call`,
+        { modelId: 'default', prompt },
+        { timeout: 60000 },
+      );
+      const content = response.data?.result || '';
+      const jsonMatch = content.match(/\{[\s\S]*\}/);
+      const parsed = jsonMatch ? JSON.parse(jsonMatch[0]) : null;
+
+      const result: SuggestReleaseWizardAssistResultDTO = {
+        explanation:
+          typeof parsed?.explanation === 'string' && parsed.explanation.trim()
+            ? parsed.explanation.trim()
+            : '已根据当前能力定义自动生成推荐的部署与测试参数。',
+        deployConfig:
+          parsed?.deployConfig && typeof parsed.deployConfig === 'object'
+            ? parsed.deployConfig
+            : deployConfig,
+        testInput:
+          parsed?.testInput && typeof parsed.testInput === 'object'
+            ? parsed.testInput
+            : fallbackTestInput,
+        testUserInput:
+          typeof parsed?.testUserInput === 'string' && parsed.testUserInput.trim()
+            ? parsed.testUserInput.trim()
+            : null,
+      };
+
+      await this.insertAuditEvent(
+        id,
+        'wizard_assist_suggested',
+        userId,
+        true,
+        `已生成向导建议 (${environment})`,
+        { environment },
+      );
+
+      return result;
+    } catch (error) {
+      const message = error instanceof Error ? error.message : '未知错误';
+      this.logger.warn(`Wizard assist fallback due to AI error: ${message}`);
+      return {
+        explanation: 'AI 暂时不可用，已根据参数 Schema 自动生成建议参数。',
+        deployConfig,
+        testInput: fallbackTestInput,
+        testUserInput: Object.keys(fallbackTestInput).length > 0 ? `请使用这些参数验证 ${release.sourceName || '当前能力'}` : null,
+      };
     }
   }
 
@@ -2267,19 +2661,17 @@ export class CapabilityReleaseService implements OnModuleInit {
       let logs: string[] = [];
       let resultSnapshot: Record<string, unknown> | null = null;
       let errorSummary: string | null = null;
+      const smokeInput = this.buildSmokeTestInput(release, snapshot, environment);
 
       if (release.sourceType === 'temporal_workflow') {
         if (!build.generatedCode) {
           throw new Error('当前构建没有可执行代码，无法执行部署后 smoke test');
         }
-        const workflowName = String(
-          snapshot.sourcePayload.name || release.sourceName || 'GeneratedWorkflow',
-        );
-        const fn = `${workflowName.replace(/\s+/g, '')}Workflow`;
-        const result = await this.temporalWorkflowService.validateInSandbox(
+        const fn = this.resolveWorkflowFnOrThrow(snapshot.sourcePayload);
+        const result = await this.temporalWorkflowService.validateWorkflowReal(
           build.generatedCode,
           fn,
-          { smokeTest: true, environment },
+          smokeInput,
         );
         success = result.success;
         score = result.score;
@@ -2290,13 +2682,14 @@ export class CapabilityReleaseService implements OnModuleInit {
           fn,
           environment,
           deploymentId,
+          input: smokeInput,
         };
         errorSummary = result.error || null;
       } else if (release.sourceId) {
         const validation = await this.executionFlowTemplateService.validateTemplate(
           release.sourceId,
           undefined,
-          { smokeTest: true, environment },
+          smokeInput,
           true,
           `smoke test for ${environment}`,
         );
@@ -2307,6 +2700,7 @@ export class CapabilityReleaseService implements OnModuleInit {
           ...((validation as unknown as Record<string, unknown>) || {}),
           environment,
           deploymentId,
+          input: smokeInput,
         };
         errorSummary = validation.warnings?.[0] || null;
       } else {
@@ -2517,7 +2911,7 @@ export class CapabilityReleaseService implements OnModuleInit {
         activityDsl,
         goal: this.extractTemporalGoal(workflowDsl, rows[0].description),
         expectedResult: this.extractTemporalExpectedResult(workflowDsl),
-        paramsSchema: this.buildTemporalParamsSchema(workflowDsl),
+        paramsSchema: this.buildTemporalParamsSchema(workflowDsl, activityDsl),
         executionFlowKeys: this.buildTemporalExecutionFlowKeys(rows[0].name, workflowDsl, activityDsl),
         outputParams: this.parseJson(workflowDsl.outputParams) || {},
         workflowSteps: this.buildTemporalWorkflowSteps(workflowDsl),
@@ -2621,7 +3015,178 @@ export class CapabilityReleaseService implements OnModuleInit {
     return properties;
   }
 
-  private buildTemporalParamsSchema(workflowDsl: Record<string, unknown>): Record<string, unknown> {
+  private resolveEffectiveTemporalParamsSchema(
+    payload: Record<string, unknown>,
+  ): Record<string, unknown> {
+    const workflowDsl = this.parseJson(payload.workflowDsl) as Record<string, unknown> || {};
+    const activityDsl = this.parseJson(payload.activityDsl) as Record<string, unknown> || {};
+    const rawSchema = this.parseJson(payload.paramsSchema) as Record<string, unknown> | null;
+    const inferredSchema = this.buildTemporalParamsSchema(workflowDsl, activityDsl);
+
+    if (!rawSchema || typeof rawSchema !== 'object') {
+      return inferredSchema;
+    }
+
+    const rawProperties =
+      rawSchema.properties && typeof rawSchema.properties === 'object'
+        ? (rawSchema.properties as Record<string, unknown>)
+        : {};
+    const inferredProperties =
+      inferredSchema.properties && typeof inferredSchema.properties === 'object'
+        ? (inferredSchema.properties as Record<string, unknown>)
+        : {};
+    const rawRequired = Array.isArray(rawSchema.required)
+      ? rawSchema.required.filter((item): item is string => typeof item === 'string')
+      : [];
+    const inferredRequired = Array.isArray(inferredSchema.required)
+      ? inferredSchema.required.filter((item): item is string => typeof item === 'string')
+      : [];
+
+    const mergedProperties = Object.entries(inferredProperties).reduce<Record<string, unknown>>(
+      (acc, [key, inferredValue]) => {
+        const rawValue = rawProperties[key];
+        acc[key] =
+          rawValue && typeof rawValue === 'object'
+            ? {
+                ...(inferredValue as Record<string, unknown>),
+                ...(rawValue as Record<string, unknown>),
+                ...(
+                  (rawValue as Record<string, unknown>).default === undefined &&
+                  (inferredValue as Record<string, unknown>).default !== undefined
+                    ? { default: (inferredValue as Record<string, unknown>).default }
+                    : {}
+                ),
+                ...(Array.from(new Set([...rawRequired, ...inferredRequired])).includes(key)
+                  ? { required: true }
+                  : {}),
+              }
+            : inferredValue;
+        return acc;
+      },
+      { ...rawProperties },
+    );
+
+    return {
+      ...rawSchema,
+      ...inferredSchema,
+      properties: mergedProperties,
+      required: Array.from(new Set([...rawRequired, ...inferredRequired])),
+    };
+  }
+
+  private resolveWorkflowFnOrThrow(payload: Record<string, unknown>): string {
+    const workflowDsl =
+      payload.workflowDsl && typeof payload.workflowDsl === 'object'
+        ? (payload.workflowDsl as Record<string, unknown>)
+        : {};
+    const workflowClassName =
+      typeof workflowDsl.workflowClassName === 'string'
+        ? workflowDsl.workflowClassName.trim()
+        : '';
+    if (!workflowClassName) {
+      throw new BadRequestException(
+        '当前工作流缺少 workflowDsl.workflowClassName，请在工作流页面设置函数名称并重新同步后再验证/部署',
+      );
+    }
+    return workflowClassName;
+  }
+
+  private getControlPlaneApiUrl(): string {
+    const configured = process.env.CONTROL_PLANE_URL;
+    if (configured && configured.trim()) {
+      return configured.endsWith('/api') ? configured : `${configured}/api`;
+    }
+    if (process.env.DOCKER_ENV === 'true' || process.env.NODE_ENV === 'production') {
+      return 'http://ops-control-plane:3003/api';
+    }
+    return 'http://localhost:3003/api';
+  }
+
+  private async executePublishedSkillByPromptForValidation(
+    skillId: string,
+    prompt: string,
+    authToken?: string,
+  ): Promise<{ success: boolean; logs: string[]; result?: Record<string, unknown> | null; error?: string }> {
+    const runtimeContext = await this.getPublishedSkillRuntimeContext(skillId);
+    const controlPlaneUrl = this.getControlPlaneApiUrl();
+    const logs: string[] = [
+      `[NL-Validation] 使用自然语言调用已发布 Skill: ${skillId}`,
+      `[NL-Validation] runtimeType=${runtimeContext.runtimeType}, runtimeSource=${runtimeContext.runtimeSource}`,
+    ];
+
+    const createRes = await axios.post<{ id: string }>(
+      `${controlPlaneUrl}/executions`,
+      {
+        skillId,
+        runtimeType: runtimeContext.runtimeType,
+        input: {
+          prompt,
+        },
+      },
+      {
+        headers: authToken ? { Authorization: authToken } : undefined,
+      },
+    );
+    const executionId = createRes.data.id;
+    logs.push(`[NL-Validation] 已创建执行单: ${executionId}`);
+
+    const maxAttempts = 60;
+    for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
+      const detailRes = await axios.get<Record<string, unknown>>(
+        `${controlPlaneUrl}/executions/${executionId}`,
+        {
+          headers: authToken ? { Authorization: authToken } : undefined,
+        },
+      );
+      const status = String(detailRes.data?.status || '');
+      logs.push(`[NL-Validation] 执行状态: ${status}`);
+
+      if (status === 'succeeded') {
+        return {
+          success: true,
+          logs,
+          result:
+            detailRes.data?.result && typeof detailRes.data.result === 'object'
+              ? (detailRes.data.result as Record<string, unknown>)
+              : null,
+        };
+      }
+
+      if (status === 'failed' || status === 'cancelled' || status === 'rolled_back') {
+        const failureReason = String(detailRes.data?.failureReason || '执行失败');
+        return {
+          success: false,
+          logs,
+          error: failureReason,
+          result:
+            detailRes.data?.result && typeof detailRes.data.result === 'object'
+              ? (detailRes.data.result as Record<string, unknown>)
+              : null,
+        };
+      }
+
+      if (status === 'waiting_input' || status === 'pending_approval') {
+        return {
+          success: false,
+          logs,
+          error: `自然语言验证未完成：执行进入 ${status}，请补充信息或审批后重试`,
+        };
+      }
+
+      await new Promise((resolve) => setTimeout(resolve, 1500));
+    }
+
+    return {
+      success: false,
+      logs,
+      error: '自然语言验证超时：执行长时间未进入终态',
+    };
+  }
+
+  private buildTemporalParamsSchema(
+    workflowDsl: Record<string, unknown>,
+    activityDsl?: Record<string, unknown>,
+  ): Record<string, unknown> {
     const inputParams = this.parseJson<Record<string, unknown>>(workflowDsl.inputParams) || {};
     const properties: Record<string, unknown> = {};
     const required: string[] = [];
@@ -2640,7 +3205,7 @@ export class CapabilityReleaseService implements OnModuleInit {
         type: inferredType,
         description,
         required: Boolean(definition.required),
-        ...(defaultValue !== undefined ? { default: defaultValue } : {}),
+        ...(!definition.required && defaultValue !== undefined ? { default: defaultValue } : {}),
         extractionPrompt: description,
       };
 
@@ -2650,6 +3215,7 @@ export class CapabilityReleaseService implements OnModuleInit {
     });
 
     if (Object.keys(properties).length === 0) {
+      const inferredFromActivities = this.inferTemporalParamsFromActivityDsl(activityDsl);
       const steps = Array.isArray(workflowDsl.steps) ? workflowDsl.steps : [];
       steps.forEach((step) => {
         if (!step || typeof step !== 'object') {
@@ -2674,14 +3240,169 @@ export class CapabilityReleaseService implements OnModuleInit {
           properties[key] = {
             type: this.inferTemporalParamType(value, description),
             description,
-            ...(value !== undefined ? { default: value } : {}),
+            ...(inferredFromActivities[key]?.default !== undefined
+              ? { default: inferredFromActivities[key].default }
+              : key === 'timeout' && value !== undefined
+                ? { default: value }
+                : {}),
+            ...(inferredFromActivities[key]?.required ? { required: true } : {}),
             extractionPrompt: description,
           };
+
+          if (inferredFromActivities[key]?.required) {
+            required.push(key);
+          }
         });
       });
     }
 
     return { properties, required };
+  }
+
+  private inferTemporalParamsFromActivityDsl(
+    activityDsl?: Record<string, unknown>,
+  ): Record<string, { required: boolean; default?: unknown }> {
+    const result: Record<string, { required: boolean; default?: unknown }> = {};
+    const activities = Array.isArray(activityDsl?.activities) ? activityDsl.activities : [];
+
+    activities.forEach((activity) => {
+      if (!activity || typeof activity !== 'object') {
+        return;
+      }
+      const record = activity as Record<string, unknown>;
+      const config = this.parseJson<Record<string, unknown>>(record.config) || {};
+      const configSteps = Array.isArray(config.steps) ? config.steps : [];
+
+      configSteps.forEach((step) => {
+        if (!step || typeof step !== 'object') {
+          return;
+        }
+        const stepRecord = step as Record<string, unknown>;
+        const inputParams = this.parseJson<Record<string, unknown>>(stepRecord.inputParams) || {};
+        Object.entries(inputParams).forEach(([key, value]) => {
+          if (result[key]?.required) {
+            return;
+          }
+          result[key] = {
+            required: result[key]?.required || false,
+            default: value,
+          };
+        });
+      });
+
+      const generatedCode =
+        typeof config.generatedCode === 'string'
+          ? config.generatedCode
+          : typeof record.generatedCode === 'string'
+            ? record.generatedCode
+            : '';
+
+      if (!generatedCode.trim()) {
+        return;
+      }
+
+      const getPattern =
+        /input_data\.get\(\s*["']([A-Za-z0-9_]+)["'](?:\s*,\s*([^)]+))?\s*\)/g;
+      let match: RegExpExecArray | null;
+      while ((match = getPattern.exec(generatedCode))) {
+        const [, key, defaultLiteral] = match;
+        if (!key) {
+          continue;
+        }
+
+        if (defaultLiteral === undefined) {
+          result[key] = { required: true };
+          continue;
+        }
+
+        if (result[key]?.required) {
+          continue;
+        }
+
+        const normalizedDefault = defaultLiteral.trim();
+        result[key] = {
+          required: false,
+          default: this.parsePythonLiteral(normalizedDefault),
+        };
+      }
+    });
+
+    return result;
+  }
+
+  private parsePythonLiteral(value: string): unknown {
+    const normalized = value.trim();
+    if (
+      (normalized.startsWith('"') && normalized.endsWith('"')) ||
+      (normalized.startsWith('\'') && normalized.endsWith('\''))
+    ) {
+      return normalized.slice(1, -1);
+    }
+    if (normalized === 'True') {
+      return true;
+    }
+    if (normalized === 'False') {
+      return false;
+    }
+    if (normalized === 'None') {
+      return null;
+    }
+    if (/^-?\d+(\.\d+)?$/.test(normalized)) {
+      return Number(normalized);
+    }
+    return normalized;
+  }
+
+  private buildSuggestedInputFromSchema(paramsSchema: Record<string, unknown>): Record<string, unknown> {
+    const properties =
+      paramsSchema && typeof paramsSchema === 'object'
+        ? ((paramsSchema as Record<string, unknown>).properties as Record<string, unknown> | undefined)
+        : undefined;
+    if (!properties) {
+      return {};
+    }
+
+    return Object.entries(properties).reduce<Record<string, unknown>>((acc, [key, rawValue]) => {
+      const definition = rawValue && typeof rawValue === 'object'
+        ? (rawValue as Record<string, unknown>)
+        : {};
+      if (definition.default !== undefined) {
+        acc[key] = definition.default;
+        return acc;
+      }
+
+      const type = typeof definition.type === 'string' ? definition.type : 'string';
+      if (type === 'number') {
+        acc[key] = 1;
+      } else if (type === 'boolean') {
+        acc[key] = true;
+      } else if (type === 'array') {
+        acc[key] = [];
+      } else if (type === 'object') {
+        acc[key] = {};
+      } else {
+        acc[key] = `test_${key}`;
+      }
+
+      return acc;
+    }, {});
+  }
+
+  private buildSmokeTestInput(
+    release: CapabilityReleaseDTO,
+    snapshot: CapabilitySourceSnapshotDTO,
+    environment: string,
+  ): Record<string, unknown> {
+    const schema =
+      release.sourceType === 'temporal_workflow'
+        ? this.resolveEffectiveTemporalParamsSchema(snapshot.sourcePayload)
+        : (this.parseJson(snapshot.sourcePayload.paramsSchema) as Record<string, unknown> | null) || {};
+
+    return {
+      ...this.buildSuggestedInputFromSchema(schema),
+      smokeTest: true,
+      environment,
+    };
   }
 
   private inferTemporalParamType(
@@ -2846,9 +3567,12 @@ export class CapabilityReleaseService implements OnModuleInit {
     const payload = snapshot.sourcePayload;
     const baseName = this.extractSourceName(payload) || `Release-${release.releaseVersion}`;
     const rawParamsSchema = this.parseJson(payload.paramsSchema) as Record<string, unknown> | null;
-    const paramsSchema = rawParamsSchema && typeof rawParamsSchema === 'object'
-      ? rawParamsSchema
-      : this.buildTemporalParamsSchema(this.parseJson(payload.workflowDsl) as Record<string, unknown> || {});
+    const paramsSchema =
+      release.sourceType === 'temporal_workflow'
+        ? this.resolveEffectiveTemporalParamsSchema(payload)
+        : rawParamsSchema && typeof rawParamsSchema === 'object'
+          ? rawParamsSchema
+          : {};
     const workflowDsl = this.parseJson(payload.workflowDsl) as Record<string, unknown> || {};
     const outputParams = this.parseJson(payload.outputParams) as Record<string, unknown> | null;
     const resolvedOutputParams = outputParams && Object.keys(outputParams).length > 0
@@ -2945,6 +3669,7 @@ export class CapabilityReleaseService implements OnModuleInit {
       currentSkillDraftId: raw.current_skill_draft_id,
       publishedSkillId: raw.published_skill_id,
       lastDeploymentId: raw.last_deployment_id,
+      lastDeploymentEnvironment: raw.last_deployment_environment,
       rollbackOfReleaseId: raw.rollback_of_release_id,
       createdBy: raw.created_by,
       createdAt: this.toIsoString(raw.created_at),

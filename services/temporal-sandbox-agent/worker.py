@@ -21,19 +21,28 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 # Import workflow and activities
-from workflows import AgentSessionWorkflow, execute_code_activity, ExecutionSignalInput
+from workflows import (
+    AgentSessionWorkflow,
+    ActivityValidationWorkflow,
+    WorkflowValidationWorkflow,
+    execute_code_activity,
+    ExecutionSignalInput,
+)
 
 
 class TemporalSandboxServer:
     """HTTP server for triggering sandbox executions."""
 
-    def __init__(self, client: Client):
+    def __init__(self, client: Client, validation_task_queue: str):
         self.client = client
+        self.validation_task_queue = validation_task_queue
         self._app = web.Application()
         self._setup_routes()
 
     def _setup_routes(self):
         self._app.router.add_post('/execute', self.handle_execute)
+        self._app.router.add_post('/validate-activity', self.handle_validate_activity)
+        self._app.router.add_post('/validate-workflow', self.handle_validate_workflow)
         self._app.router.add_get('/health', self.handle_health)
 
     async def handle_health(self, request: web.Request) -> web.Response:
@@ -138,10 +147,106 @@ class TemporalSandboxServer:
             logger.error(f"Execution failed: {e}\n{traceback.format_exc()}")
             return web.json_response({"error": str(e)}, status=500)
 
+    async def handle_validate_activity(self, request: web.Request) -> web.Response:
+        """Execute Activity validation via dedicated Temporal validation workflow."""
+        try:
+            data = await request.json()
+        except json.JSONDecodeError:
+            return web.json_response({"error": "Invalid JSON"}, status=400)
 
-async def run_http_server(client: Client, port: int = 8090):
+        code = data.get('code')
+        fn_name = data.get('fn_name')
+        activity_id = data.get('activity_id') or str(uuid.uuid4())
+
+        if not code or not fn_name:
+            return web.json_response({"error": "code and fn_name are required"}, status=400)
+
+        workflow_id = f"activity-validation-{activity_id}"
+        validation_request = {
+            "code": code,
+            "fn_name": fn_name,
+            "activity_id": activity_id,
+            "input_data": data.get('input_data', {}),
+            "retry_policy": data.get('retry_policy') or {},
+            "timeout": data.get('timeout'),
+            "task_queue": data.get('task_queue'),
+        }
+
+        try:
+            logger.info(
+                "Starting validation workflow %s on task queue %s",
+                workflow_id,
+                self.validation_task_queue,
+            )
+            handle = await self.client.start_workflow(
+                ActivityValidationWorkflow.run,
+                validation_request,
+                id=workflow_id,
+                task_queue=self.validation_task_queue,
+            )
+            result = await handle.result()
+            return web.json_response({
+                "success": True,
+                "result": result,
+                "workflow_id": workflow_id,
+                "activity_id": activity_id,
+            })
+        except Exception as e:
+            import traceback
+            logger.error(f"Activity validation failed: {e}\n{traceback.format_exc()}")
+            return web.json_response({"error": str(e)}, status=500)
+
+    async def handle_validate_workflow(self, request: web.Request) -> web.Response:
+        """Execute Workflow validation via dedicated Temporal validation workflow."""
+        try:
+            data = await request.json()
+        except json.JSONDecodeError:
+            return web.json_response({"error": "Invalid JSON"}, status=400)
+
+        code = data.get('code')
+        fn_name = data.get('fn_name')
+        workflow_id = data.get('workflow_id') or f"workflow-validation-{uuid.uuid4()}"
+
+        if not code or not fn_name:
+            return web.json_response({"error": "code and fn_name are required"}, status=400)
+
+        validation_workflow_id = f"workflow-validation-{workflow_id}"
+        validation_request = {
+            "code": code,
+            "fn_name": fn_name,
+            "workflow_id": workflow_id,
+            "input_data": data.get('input_data', {}),
+            "timeout": data.get('timeout'),
+            "task_queue": data.get('task_queue'),
+        }
+
+        try:
+            logger.info(
+                "Starting workflow validation %s on task queue %s",
+                validation_workflow_id,
+                self.validation_task_queue,
+            )
+            handle = await self.client.start_workflow(
+                WorkflowValidationWorkflow.run,
+                validation_request,
+                id=validation_workflow_id,
+                task_queue=self.validation_task_queue,
+            )
+            result = await handle.result()
+            return web.json_response({
+                "success": True,
+                "result": result,
+                "workflow_id": validation_workflow_id,
+            })
+        except Exception as e:
+            import traceback
+            logger.error(f"Workflow validation failed: {e}\n{traceback.format_exc()}")
+            return web.json_response({"error": str(e)}, status=500)
+
+
+async def run_http_server(client: Client, validation_task_queue: str, port: int = 8090):
     """Run the HTTP server."""
-    server = TemporalSandboxServer(client)
+    server = TemporalSandboxServer(client, validation_task_queue)
     runner = web.AppRunner(server._app)
     await runner.setup()
     site = web.TCPSite(runner, '0.0.0.0', port)
@@ -157,12 +262,17 @@ async def main():
     temporal_address = os.getenv("TEMPORAL_ADDRESS", "localhost:7233")
     temporal_namespace = os.getenv("TEMPORAL_NAMESPACE", "default")
     task_queue = os.getenv("SANDBOX_TASK_QUEUE", "sandbox-agent-task-queue")
+    validation_task_queue = os.getenv(
+        "ACTIVITY_VALIDATION_TASK_QUEUE",
+        "activity-validation-task-queue",
+    )
     http_port = int(os.getenv("SANDBOX_HTTP_PORT", "8090"))
 
     logger.info(f"Starting Temporal Sandbox Agent")
     logger.info(f"Temporal Address: {temporal_address}")
     logger.info(f"Namespace: {temporal_namespace}")
     logger.info(f"Task Queue: {task_queue}")
+    logger.info(f"Validation Task Queue: {validation_task_queue}")
 
     # Connect to Temporal
     logger.info("Connecting to Temporal...")
@@ -181,13 +291,23 @@ async def main():
         activities=[execute_code_activity],
     )
 
+    validation_worker = Worker(
+        client,
+        task_queue=validation_task_queue,
+        workflows=[ActivityValidationWorkflow, WorkflowValidationWorkflow],
+        activities=[execute_code_activity],
+    )
+
     logger.info("Worker created, starting to process tasks...")
 
     # Start HTTP server and worker concurrently
-    http_runner = await run_http_server(client, http_port)
+    http_runner = await run_http_server(client, validation_task_queue, http_port)
 
-    # Run worker (this blocks)
-    await worker.run()
+    # Run workers (this blocks)
+    await asyncio.gather(
+        worker.run(),
+        validation_worker.run(),
+    )
 
 
 if __name__ == "__main__":

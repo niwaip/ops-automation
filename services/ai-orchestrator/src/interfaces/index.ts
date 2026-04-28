@@ -107,3 +107,54 @@ export interface ExecuteActivityResponseDTO {
   logs?: string[];
   error?: string;
 }
+
+export interface GeneratePlanDTO {
+  user_input: string;
+  user_id?: string;
+  session_id?: string;
+  context?: Record<string, unknown>;
+}
+
+export interface PlanSkillMatchDTO {
+  skill_id: string;
+  skill_name: string;
+  confidence: number;
+  match_reason?: string;
+}
+
+export interface PlanStepDTO {
+  id: string;
+  title: string;
+  description: string;
+  kind: 'skill' | 'tool' | 'human_input' | 'execution';
+  tool_name?: string;
+  status: 'planned';
+}
+
+export interface RequiredInputDTO {
+  name: string;
+  type: string;
+  description?: string;
+  required: boolean;
+  value?: unknown;
+  missing: boolean;
+  source: 'user_input' | 'default' | 'unresolved';
+}
+
+export interface RiskSummaryDTO {
+  level: 'low' | 'medium' | 'high';
+  requires_human_review: boolean;
+  items: string[];
+}
+
+export interface PlanDraftDTO {
+  plan_id: string;
+  planner_mode: 'skill' | 'fallback';
+  objective: string;
+  summary: string;
+  skill_match?: PlanSkillMatchDTO;
+  steps: PlanStepDTO[];
+  required_inputs: RequiredInputDTO[];
+  risk_summary: RiskSummaryDTO;
+  metadata?: Record<string, unknown>;
+}

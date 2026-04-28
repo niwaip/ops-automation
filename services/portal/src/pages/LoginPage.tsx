@@ -48,7 +48,7 @@ const LoginPage: React.FC = () => {
     onSuccess: (data) => {
       login(data.accessToken, data.refreshToken, data.user);
       message.success(t('auth:loginSuccess'));
-      navigate('/dashboard');
+      navigate('/executions');
     },
     onError: (error: unknown) => {
       const errorMessage = error instanceof Error ? error.message : t('auth:loginFailed');

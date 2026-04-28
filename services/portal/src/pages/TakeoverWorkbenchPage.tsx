@@ -6,7 +6,7 @@
 
 import React, { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Card, Button, Space, Typography, message, Spin, Alert, Descriptions, Divider, Modal } from 'antd';
+import { Card, Button, Space, Typography, message, Spin, Alert, Descriptions, Modal } from 'antd';
 import {
   ArrowLeftOutlined,
   PlayCircleOutlined,
@@ -14,7 +14,6 @@ import {
   ReloadOutlined,
   WarningOutlined,
 } from '@ant-design/icons';
-import { useTranslation } from 'react-i18next';
 import { useQuery, useMutation, useQueryClient } from 'react-query';
 import { executionApi, ExecutionDto } from '../api/execution';
 
@@ -24,7 +23,6 @@ const TakeoverWorkbenchPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const { t } = useTranslation();
 
   const [showResumeConfirm, setShowResumeConfirm] = useState(false);
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
@@ -38,7 +36,7 @@ const TakeoverWorkbenchPage: React.FC = () => {
 
   // Resume mutation
   const resumeMutation = useMutation(
-    (stepId?: string) => executionApi.resume(id!, { stepId }),
+    (stepId?: string) => executionApi.releaseHumanControl(id!, { stepId }),
     {
       onSuccess: () => {
         message.success('Execution resumed successfully');
@@ -68,7 +66,7 @@ const TakeoverWorkbenchPage: React.FC = () => {
 
   const handleResume = () => {
     setShowResumeConfirm(false);
-    resumeMutation.mutate();
+    resumeMutation.mutate(undefined);
   };
 
   const handleCancel = () => {
@@ -120,8 +118,11 @@ const TakeoverWorkbenchPage: React.FC = () => {
     );
   }
 
-  // Get noVNC URL from execution result or connection info
-  const novncUrl = execution.result?.novncUrl as string || `http://${import.meta.env.VITE_HOST_IP || 'localhost'}:6080/vnc.html`;
+  // v3 Phase 1 still falls back to a shared noVNC entry until RuntimeSession details
+  // are surfaced through a dedicated execution/runtime query.
+  const novncUrl =
+    (execution.result?.novncUrl as string | undefined) ||
+    `http://${import.meta.env.VITE_HOST_IP || 'localhost'}:6080/vnc.html`;
 
   return (
     <div style={{ padding: 24 }}>

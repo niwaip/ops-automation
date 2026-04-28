@@ -8,6 +8,11 @@ const getProxyTarget = (service: string, port: number) => {
   return `http://${host}:${port}`;
 };
 
+const getCarboneProxyTarget = () => {
+  const host = process.env.DOCKER_ENV ? 'host.docker.internal' : 'localhost';
+  return `http://${host}:3009`;
+};
+
 export default defineConfig({
   plugins: [react()],
   resolve: {
@@ -68,6 +73,10 @@ export default defineConfig({
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/api/, ''),
       },
+      '/api/executions': {
+        target: getProxyTarget('ops-control-plane', 3003),
+        changeOrigin: true,
+      },
       '/api/report-templates': {
         target: getProxyTarget('ops-report', 3008),
         changeOrigin: true,
@@ -79,7 +88,7 @@ export default defineConfig({
         rewrite: (path) => path.replace(/^\/api/, ''),
       },
       '/api/carbone': {
-        target: getProxyTarget('carbone-engine', 3009),
+        target: getCarboneProxyTarget(),
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/api\/carbone/, '/studio'),
       },

@@ -208,18 +208,6 @@ export class SkillService implements OnModuleInit {
    * 加载默认Skills（如果不存在）
    */
   private async loadDefaultSkills() {
-    // 停用旧版“天气查询”技能，避免继续走旧的 skill_match/api_call 执行链路
-    const legacyWeatherSkill = await this.prisma.skillConfig.findUnique({
-      where: { name: '天气查询' },
-    });
-    if (legacyWeatherSkill?.isActive) {
-      await this.prisma.skillConfig.update({
-        where: { id: legacyWeatherSkill.id },
-        data: { isActive: false },
-      });
-      this.logger.log('Disabled legacy default skill: 天气查询');
-    }
-
     for (const skill of DEFAULT_SKILLS) {
       const existing = await this.prisma.skillConfig.findUnique({
         where: { name: skill.name },
@@ -1277,11 +1265,6 @@ ${skillsXml}
     for (const param of requiredParams) {
       const definition = skill.paramsSchema?.properties?.[param];
       if (!definition) {
-        continue;
-      }
-
-      if (param.toLowerCase() === 'city' || param.includes('城市')) {
-        sampleParams[param] = '北京';
         continue;
       }
 

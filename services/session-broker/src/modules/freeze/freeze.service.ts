@@ -1,31 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
+import * as http from 'http';
 import { RedisService } from '../lock/redis.service';
-
-// Lua script for freeze check and set
-const FREEZE_SET_SCRIPT = `
-local frozen = redis.call('HGET', KEYS[1], 'frozen')
-if frozen == '0' then
-    redis.call('HSET', KEYS[1], 'frozen', '1')
-    redis.call('HSET', KEYS[1], 'control_mode', 'HUMAN_CONTROL')
-    redis.call('HSET', KEYS[1], 'state', 'HUMAN_CONTROL')
-    return 1
-else
-    return 0
-end
-`;
-
-// Lua script for unfreeze check and set
-const UNFREEZE_SET_SCRIPT = `
-local frozen = redis.call('HGET', KEYS[1], 'frozen')
-if frozen == '1' then
-    redis.call('HSET', KEYS[1], 'frozen', '0')
-    redis.call('HSET', KEYS[1], 'control_mode', 'AGENT_RUNNING')
-    redis.call('HSET', KEYS[1], 'state', 'RUNNING')
-    return 1
-else
-    return 0
-end
-`;
 
 export interface FreezeResult {
   success: boolean;
@@ -37,95 +12,75 @@ export interface FreezeResult {
 @Injectable()
 export class FreezeService {
   private readonly logger = new Logger(FreezeService.name);
+  private readonly browserWorkerUrl = process.env.BROWSER_WORKER_URL || 'http://ops-browser-worker:3004';
 
   constructor(private readonly redisService: RedisService) {}
 
-  /**
-   * Freeze session - disable CDP input, keep noVNC input
-   * Transitions state: RUNNING -> HUMAN_CONTROL
-   * Sets frozen flag: 0 -> 1
-   * Sets control_mode: AGENT_RUNNING -> HUMAN_CONTROL
-   */
-  async freezeSession(sessionId: string): Promise<FreezeResult> {
-    const sessionKey = `session:${sessionId}`;
+  async syncRuntimeControlState(
+    sessionId: string,
+    state: string,
+    controlMode: 'AGENT_RUNNING' | 'HUMAN_CONTROL',
+    reason?: string | null,
+  ): Promise<void> {
+    const runtimeKey = this.getRuntimeControlKey(sessionId);
+    const fields: Record<string, string> = {
+      state,
+      control_mode: controlMode,
+      frozen: controlMode === 'HUMAN_CONTROL' ? '1' : '0',
+      updated_at: new Date().toISOString(),
+    };
 
-    // Get current state before freeze
-    const currentState = await this.redisService.hget(sessionKey, 'state') || 'UNKNOWN';
-    const currentFrozen = await this.redisService.hget(sessionKey, 'frozen') || '0';
-
-    // Execute freeze script atomically
-    const result = await this.redisService.eval(FREEZE_SET_SCRIPT, [sessionKey], []);
-
-    if (result === 1) {
-      this.logger.log(`Session frozen: session=${sessionId}`);
-
-      // TODO: Send signal to worker to freeze CDP input
-      // This would typically call the browser-worker service to:
-      // - Disable CDP input interception
-      // - Keep noVNC input active
-      await this.sendFreezeSignal(sessionId);
-
-      return {
-        success: true,
-        previousState: currentState,
-        newState: 'HUMAN_CONTROL',
-        frozen: true,
-      };
+    if (reason) {
+      fields.reason = reason;
     }
 
-    this.logger.warn(`Session not frozen (already frozen or not exists): session=${sessionId}`);
+    await this.redisService.hmset(runtimeKey, fields);
+  }
+
+  /**
+   * Redis only keeps high-frequency runtime control state.
+   * PostgreSQL remains the formal RuntimeSession truth source.
+   */
+  async freezeSession(sessionId: string, reason?: string): Promise<FreezeResult> {
+    const runtimeKey = this.getRuntimeControlKey(sessionId);
+    const currentState = (await this.redisService.hget(runtimeKey, 'state')) || 'busy';
+
+    await this.syncRuntimeControlState(sessionId, 'frozen', 'HUMAN_CONTROL', reason);
+    this.logger.log(`Runtime control frozen: session=${sessionId}`);
+
+    // TODO: Send signal to worker to freeze CDP input
+    await this.sendFreezeSignal(sessionId);
+
     return {
-      success: false,
+      success: true,
       previousState: currentState,
-      newState: currentState,
-      frozen: currentFrozen === '1',
+      newState: 'frozen',
+      frozen: true,
     };
   }
 
   /**
-   * Unfreeze session - enable CDP input
-   * Transitions state: HUMAN_CONTROL -> RUNNING
-   * Sets frozen flag: 1 -> 0
-   * Sets control_mode: HUMAN_CONTROL -> AGENT_RUNNING
+   * Redis keeps the control pointer and current step hint used during resume.
    */
   async unfreezeSession(sessionId: string, stepId?: string): Promise<FreezeResult> {
-    const sessionKey = `session:${sessionId}`;
+    const runtimeKey = this.getRuntimeControlKey(sessionId);
+    const currentState = (await this.redisService.hget(runtimeKey, 'state')) || 'frozen';
 
-    // Get current state before unfreeze
-    const currentState = await this.redisService.hget(sessionKey, 'state') || 'UNKNOWN';
-    const currentFrozen = await this.redisService.hget(sessionKey, 'frozen') || '0';
-
-    // Execute unfreeze script atomically
-    const result = await this.redisService.eval(UNFREEZE_SET_SCRIPT, [sessionKey], []);
-
-    if (result === 1) {
-      this.logger.log(`Session unfrozen: session=${sessionId}`);
-
-      // Update current step if provided
-      if (stepId) {
-        await this.redisService.hset(sessionKey, 'current_step', stepId);
-      }
-
-      // Update last activity
-      await this.redisService.hset(sessionKey, 'last_activity', String(Date.now()));
-
-      // TODO: Send signal to worker to unfreeze CDP input
-      await this.sendUnfreezeSignal(sessionId);
-
-      return {
-        success: true,
-        previousState: currentState,
-        newState: 'RUNNING',
-        frozen: false,
-      };
+    await this.syncRuntimeControlState(sessionId, 'busy', 'AGENT_RUNNING');
+    if (stepId) {
+      await this.redisService.hset(runtimeKey, 'current_step', stepId);
     }
 
-    this.logger.warn(`Session not unfrozen (not frozen or not exists): session=${sessionId}`);
+    this.logger.log(`Runtime control unfrozen: session=${sessionId}`);
+
+    // TODO: Send signal to worker to unfreeze CDP input
+    await this.sendUnfreezeSignal(sessionId);
+
     return {
-      success: false,
+      success: true,
       previousState: currentState,
-      newState: currentState,
-      frozen: currentFrozen === '1',
+      newState: 'busy',
+      frozen: false,
     };
   }
 
@@ -133,8 +88,8 @@ export class FreezeService {
    * Check if session is frozen
    */
   async isFrozen(sessionId: string): Promise<boolean> {
-    const sessionKey = `session:${sessionId}`;
-    const frozen = await this.redisService.hget(sessionKey, 'frozen');
+    const runtimeKey = this.getRuntimeControlKey(sessionId);
+    const frozen = await this.redisService.hget(runtimeKey, 'frozen');
     return frozen === '1';
   }
 
@@ -146,10 +101,10 @@ export class FreezeService {
     state: string;
     control_mode: string;
   }> {
-    const sessionKey = `session:${sessionId}`;
-    const state = await this.redisService.hget(sessionKey, 'state') || 'UNKNOWN';
-    const frozen = await this.redisService.hget(sessionKey, 'frozen') || '0';
-    const controlMode = await this.redisService.hget(sessionKey, 'control_mode') || 'AGENT_RUNNING';
+    const runtimeKey = this.getRuntimeControlKey(sessionId);
+    const state = (await this.redisService.hget(runtimeKey, 'state')) || 'unknown';
+    const frozen = (await this.redisService.hget(runtimeKey, 'frozen')) || '0';
+    const controlMode = (await this.redisService.hget(runtimeKey, 'control_mode')) || 'AGENT_RUNNING';
 
     return {
       frozen: frozen === '1',
@@ -158,13 +113,19 @@ export class FreezeService {
     };
   }
 
+  async clearControlState(sessionId: string): Promise<void> {
+    await this.redisService.del(this.getRuntimeControlKey(sessionId));
+  }
+
   /**
    * Send freeze signal to worker (placeholder for actual implementation)
    * In production, this would call browser-worker API to disable CDP input
    */
   private async sendFreezeSignal(sessionId: string): Promise<void> {
-    // TODO: Implement actual worker API call
-    // Example: await this.workerClient.freezeCDPInput(sessionId);
+    await this.postToBrowserWorker('/browser/freeze', {
+      runtimeSessionId: sessionId,
+      reason: 'Human takeover requested',
+    });
     this.logger.debug(`Freeze signal sent to worker for session ${sessionId}`);
   }
 
@@ -173,8 +134,41 @@ export class FreezeService {
    * In production, this would call browser-worker API to enable CDP input
    */
   private async sendUnfreezeSignal(sessionId: string): Promise<void> {
-    // TODO: Implement actual worker API call
-    // Example: await this.workerClient.unfreezeCDPInput(sessionId);
+    await this.postToBrowserWorker('/browser/resume', {
+      runtimeSessionId: sessionId,
+    });
     this.logger.debug(`Unfreeze signal sent to worker for session ${sessionId}`);
+  }
+
+  private getRuntimeControlKey(sessionId: string): string {
+    return `runtime:${sessionId}:control`;
+  }
+
+  private async postToBrowserWorker(path: string, payload: Record<string, unknown>): Promise<void> {
+    const url = new URL(path, this.browserWorkerUrl);
+
+    await new Promise<void>((resolve) => {
+      const request = http.request(
+        url,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        },
+        (response) => {
+          response.on('data', () => undefined);
+          response.on('end', () => resolve());
+        },
+      );
+
+      request.on('error', (error) => {
+        this.logger.warn(`Failed to notify browser-worker ${path}: ${error.message}`);
+        resolve();
+      });
+
+      request.write(JSON.stringify(payload));
+      request.end();
+    });
   }
 }

@@ -5,6 +5,7 @@ import {
   Body,
   Param,
   Query,
+  Res,
   HttpCode,
   HttpStatus,
   Logger,
@@ -18,7 +19,10 @@ import {
   ExecutionStepDto,
   TakeoverExecutionDto,
   ResumeExecutionDto,
+  ReleaseHumanControlDto,
   ListExecutionsDto,
+  SubmitInputDto,
+  ApprovalDecisionDto,
 } from './execution.dto';
 import { AuthenticatedRequest } from '../auth/auth.middleware';
 
@@ -36,7 +40,9 @@ export class ExecutionController {
   async create(@Body() dto: CreateExecutionDto, @Req() req: AuthenticatedRequest): Promise<ExecutionDto> {
     const userId = req.user?.id || 'anonymous';
     this.logger.log(`Creating execution for user ${userId}, skill ${dto.skillId}`);
-    return this.executionService.create(userId, dto);
+    return this.executionService.create(userId, dto, {
+      authToken: req.headers.authorization,
+    });
   }
 
   @Get()
@@ -80,7 +86,7 @@ export class ExecutionController {
 
   @Post(':id/resume')
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Resume execution from human_control' })
+  @ApiOperation({ summary: 'Resume execution from human_control (legacy route)' })
   @ApiResponse({ status: 200, description: 'Execution resumed', type: ExecutionDto })
   @ApiResponse({ status: 400, description: 'Execution is not in human_control' })
   @ApiResponse({ status: 404, description: 'Execution not found' })
@@ -92,6 +98,74 @@ export class ExecutionController {
     const userId = req.user?.id || 'anonymous';
     this.logger.log(`Resume requested for execution ${id} by user ${userId}`);
     return this.executionService.resume(id, userId, dto);
+  }
+
+  @Get(':id/events/stream')
+  @ApiOperation({ summary: 'Stream execution events (SSE)' })
+  async streamEvents(
+    @Param('id') id: string,
+    @Res() res: any,
+  ): Promise<void> {
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Connection', 'keep-alive');
+    res.setHeader('X-Accel-Buffering', 'no');
+
+    const subscription = this.executionService.subscribeToEvents(id, (event) => {
+      res.write(`data: ${JSON.stringify(event)}\n\n`);
+    });
+
+    res.on('close', () => {
+      subscription.unsubscribe();
+    });
+  }
+
+  @Post(':id/release-human-control')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Release human control and resume execution' })
+  @ApiResponse({ status: 200, description: 'Execution resumed', type: ExecutionDto })
+  @ApiResponse({ status: 400, description: 'Execution is not in human_control' })
+  @ApiResponse({ status: 404, description: 'Execution not found' })
+  async releaseHumanControl(
+    @Param('id') id: string,
+    @Body() dto: ReleaseHumanControlDto,
+    @Req() req: AuthenticatedRequest,
+  ): Promise<ExecutionDto> {
+    const userId = req.user?.id || 'anonymous';
+    this.logger.log(`Release human control requested for execution ${id} by user ${userId}`);
+    return this.executionService.releaseHumanControl(id, userId, dto);
+  }
+
+  @Post(':id/approve')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Approve execution from pending_approval' })
+  @ApiResponse({ status: 200, description: 'Execution approved and re-queued', type: ExecutionDto })
+  @ApiResponse({ status: 400, description: 'Execution is not in pending_approval' })
+  @ApiResponse({ status: 404, description: 'Execution not found' })
+  async approve(
+    @Param('id') id: string,
+    @Body() dto: ApprovalDecisionDto,
+    @Req() req: AuthenticatedRequest,
+  ): Promise<ExecutionDto> {
+    const userId = req.user?.id || 'anonymous';
+    this.logger.log(`Approval requested for execution ${id} by user ${userId}`);
+    return this.executionService.approve(id, userId, dto);
+  }
+
+  @Post(':id/reject')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Reject execution from pending_approval' })
+  @ApiResponse({ status: 200, description: 'Execution rejected and cancelled', type: ExecutionDto })
+  @ApiResponse({ status: 400, description: 'Execution is not in pending_approval' })
+  @ApiResponse({ status: 404, description: 'Execution not found' })
+  async reject(
+    @Param('id') id: string,
+    @Body() dto: ApprovalDecisionDto,
+    @Req() req: AuthenticatedRequest,
+  ): Promise<ExecutionDto> {
+    const userId = req.user?.id || 'anonymous';
+    this.logger.log(`Rejection requested for execution ${id} by user ${userId}`);
+    return this.executionService.reject(id, userId, dto);
   }
 
   @Post(':id/cancel')
@@ -107,5 +181,21 @@ export class ExecutionController {
     const userId = req.user?.id || 'anonymous';
     this.logger.log(`Cancel requested for execution ${id} by user ${userId}`);
     return this.executionService.cancel(id, userId);
+  }
+
+  @Post(':id/submit-input')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Submit missing input and resume execution from waiting_input' })
+  @ApiResponse({ status: 200, description: 'Input submitted and execution resumed', type: ExecutionDto })
+  @ApiResponse({ status: 400, description: 'Execution is not in waiting_input status or invalid step ID' })
+  @ApiResponse({ status: 404, description: 'Execution not found' })
+  async submitInput(
+    @Param('id') id: string,
+    @Body() dto: SubmitInputDto,
+    @Req() req: AuthenticatedRequest,
+  ): Promise<ExecutionDto> {
+    const userId = req.user?.id || 'anonymous';
+    this.logger.log(`Input submission requested for execution ${id} by user ${userId}`);
+    return this.executionService.submitInputAndResume(id, userId, dto);
   }
 }

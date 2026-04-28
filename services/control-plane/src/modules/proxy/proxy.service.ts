@@ -1,5 +1,5 @@
 import { Injectable, HttpException, HttpStatus } from '@nestjs/common';
-import axios, { AxiosInstance, AxiosRequestConfig } from 'axios';
+import axios from 'axios';
 
 export interface ServiceConfig {
   name: string;
@@ -42,7 +42,7 @@ export class ProxyService {
     },
   };
 
-  private axiosInstances: Record<string, AxiosInstance> = {};
+  private axiosInstances: Record<string, ReturnType<typeof axios.create>> = {};
 
   constructor() {
     // Create axios instances for each service
@@ -70,7 +70,12 @@ export class ProxyService {
       throw new HttpException(`Unknown service: ${serviceName}`, HttpStatus.BAD_GATEWAY);
     }
 
-    const config: AxiosRequestConfig = {
+    const config: {
+      method: string;
+      url: string;
+      headers: Record<string, string>;
+      data?: unknown;
+    } = {
       method: method.toLowerCase(),
       url: path,
       headers: {
@@ -89,26 +94,32 @@ export class ProxyService {
         status: response.status,
       };
     } catch (error) {
-      if (axios.isAxiosError(error)) {
-        if (error.response) {
-          // Forward error from downstream service
-          throw new HttpException(
-            error.response.data || error.message,
-            error.response.status,
-          );
-        } else if (error.code === 'ECONNABORTED') {
-          throw new HttpException(
-            `Timeout connecting to ${serviceName}`,
-            HttpStatus.GATEWAY_TIMEOUT,
-          );
-        } else {
-          throw new HttpException(
-            `Failed to connect to ${serviceName}: ${error.message}`,
-            HttpStatus.SERVICE_UNAVAILABLE,
-          );
-        }
+      const axiosLikeError = error as {
+        message?: string;
+        code?: string;
+        response?: {
+          data?: unknown;
+          status?: number;
+        };
+      };
+
+      if (axiosLikeError.response?.status) {
+        // Forward error from downstream service
+        throw new HttpException(
+          axiosLikeError.response.data || axiosLikeError.message || 'Downstream request failed',
+          axiosLikeError.response.status,
+        );
+      } else if (axiosLikeError.code === 'ECONNABORTED') {
+        throw new HttpException(
+          `Timeout connecting to ${serviceName}`,
+          HttpStatus.GATEWAY_TIMEOUT,
+        );
       }
-      throw new HttpException('Unknown error occurred', HttpStatus.INTERNAL_SERVER_ERROR);
+
+      throw new HttpException(
+        `Failed to connect to ${serviceName}: ${axiosLikeError.message || 'Unknown error'}`,
+        HttpStatus.SERVICE_UNAVAILABLE,
+      );
     }
   }
 

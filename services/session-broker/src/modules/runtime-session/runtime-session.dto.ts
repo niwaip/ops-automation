@@ -57,13 +57,22 @@ export class RuntimeSessionDto {
   connectionInfo?: Record<string, unknown>;
 
   @ApiProperty({ required: false })
+  healthStatus?: string;
+
+  @ApiProperty({ required: false })
   freezeReason?: string;
+
+  @ApiProperty({ required: false })
+  lastActivityAt?: Date;
 
   @ApiProperty()
   createdAt!: Date;
 
   @ApiProperty()
   updatedAt!: Date;
+
+  @ApiProperty({ required: false })
+  closedAt?: Date;
 }
 
 export class FreezeRuntimeSessionDto {

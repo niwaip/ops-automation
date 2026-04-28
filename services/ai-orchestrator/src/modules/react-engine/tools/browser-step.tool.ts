@@ -22,12 +22,13 @@ const getBrowserWorkerUrl = () => {
 // Control Plane service URL
 const getControlPlaneUrl = () => {
   if (process.env.CONTROL_PLANE_URL) {
-    return process.env.CONTROL_PLANE_URL;
+    const url = process.env.CONTROL_PLANE_URL;
+    return url.endsWith('/api') ? url : `${url}/api`;
   }
   if (process.env.DOCKER_ENV === 'true' || process.env.NODE_ENV === 'production') {
-    return 'http://ops-control-plane:3003';
+    return 'http://ops-control-plane:3003/api';
   }
-  return 'http://localhost:3003';
+  return 'http://localhost:3003/api';
 };
 
 interface ExecuteStepDto {
