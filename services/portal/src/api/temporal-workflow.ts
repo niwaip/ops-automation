@@ -144,6 +144,21 @@ export interface WorkflowRealValidationResult {
   score: number;
 }
 
+export interface TemplateWorkflowDraft {
+  name: string;
+  description: string;
+  taskQueue: string;
+  workflowDsl: WorkflowDsl;
+  activityDsl: ActivityDsl;
+  sourceTemplate: {
+    templateId: string;
+    skillId?: string;
+    fileName?: string;
+    format?: string;
+    variableCount: number;
+  };
+}
+
 export const temporalWorkflowApi = {
   list: async (): Promise<TemporalWorkflowDTO[]> => {
     return apiClient.get<TemporalWorkflowDTO[]>('/temporal-workflow');
@@ -191,6 +206,10 @@ export const temporalWorkflowApi = {
       requireDoneEvent: true,
       onEvent: onEvent as (event: { type: string; [key: string]: unknown }) => void,
     });
+  },
+
+  generateTemplateDraft: async (templateId: string): Promise<TemplateWorkflowDraft> => {
+    return apiClient.post<TemplateWorkflowDraft>('/temporal-workflow/generate-template-draft', { templateId });
   },
 };
 

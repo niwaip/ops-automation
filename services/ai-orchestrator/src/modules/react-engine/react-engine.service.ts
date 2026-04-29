@@ -733,6 +733,7 @@ export class ReActEngineService {
       state.finalAnswer = typeof innerData.finalAnswer === 'string' && innerData.finalAnswer.trim()
         ? innerData.finalAnswer
         : event.content;
+      state.finalResultData = innerData as Record<string, unknown>;
     }
 
     // 检查是否有nextAction提示
@@ -812,6 +813,9 @@ export class ReActEngineService {
       content,
       data: {
         taskStatus: 'completed',
+        hasBusinessResult: !!state.finalResultData,
+        result: state.finalResultData,
+        downloadUrl: state.finalResultData?.downloadUrl,
       },
       iteration: state.iteration,
     };

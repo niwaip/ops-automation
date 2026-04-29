@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { Layout, Menu, Dropdown, Button, Avatar, Space } from 'antd';
 import type { MenuProps } from 'antd';
@@ -13,13 +13,13 @@ import {
   MenuUnfoldOutlined,
   GlobalOutlined,
   LogoutOutlined,
-  PlusCircleOutlined,
   FilePdfOutlined,
   BarChartOutlined,
   FileWordOutlined,
   ThunderboltOutlined,
   OrderedListOutlined,
   PlayCircleOutlined,
+  BgColorsOutlined,
 } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
 import { useAuthStore } from '../store/authStore';
@@ -31,18 +31,18 @@ const MainLayout: React.FC = () => {
   const { t } = useTranslation('common');
   const navigate = useNavigate();
   const location = useLocation();
-  const { user, logout, language, setLanguage, sidebarCollapsed, toggleSidebar } = useAuthStore();
-
-  // Force the portal to stay in light mode for a brighter UI.
-  useEffect(() => {
-    document.documentElement.setAttribute('data-theme', 'light');
-  }, []);
+  const { user, logout, language, setLanguage, theme, toggleTheme, sidebarCollapsed, toggleSidebar } = useAuthStore();
 
   const menuItems = [
     {
       key: '/dashboard',
       icon: <DashboardOutlined />,
       label: t('dashboard'),
+    },
+    {
+      key: '/executions',
+      icon: <PlayCircleOutlined />,
+      label: t('executions'),
     },
     ...(user?.role === 'admin'
       ? [
@@ -63,11 +63,6 @@ const MainLayout: React.FC = () => {
           },
         ]
       : []),
-    {
-      key: '/executions',
-      icon: <PlayCircleOutlined />,
-      label: t('executions'),
-    },
     {
       key: '/sessions',
       icon: <DesktopOutlined />,
@@ -210,6 +205,7 @@ const MainLayout: React.FC = () => {
   return (
     <Layout style={{ minHeight: '100vh' }}>
       <Sider
+        className="portal-sider"
         collapsible
         collapsed={sidebarCollapsed}
         onCollapse={toggleSidebar}
@@ -227,6 +223,7 @@ const MainLayout: React.FC = () => {
       >
         {/* Logo Area */}
         <div
+          className="portal-sider-logo"
           style={{
             height: 72,
             display: 'flex',
@@ -238,6 +235,7 @@ const MainLayout: React.FC = () => {
           }}
         >
           <div
+            className="portal-sider-logo-inner"
             style={{
               display: 'flex',
               alignItems: 'center',
@@ -245,11 +243,12 @@ const MainLayout: React.FC = () => {
             }}
           >
             <div
+              className="portal-sider-logo-mark"
               style={{
                 width: 36,
                 height: 36,
                 borderRadius: 10,
-                background: 'rgba(255,255,255,0.2)',
+                background: 'linear-gradient(135deg, rgba(255,255,255,0.24) 0%, rgba(255,255,255,0.12) 100%)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
@@ -262,21 +261,31 @@ const MainLayout: React.FC = () => {
               O
             </div>
             {!sidebarCollapsed && (
-              <span
+              <div
+                className="portal-sider-logo-text"
                 style={{
-                  color: '#fff',
-                  fontSize: 18,
-                  fontWeight: 600,
-                  letterSpacing: '0.5px',
+                  display: 'flex',
+                  alignItems: 'center',
                 }}
               >
-                {t('appName')}
-              </span>
+                <span
+                  style={{
+                    color: '#fff',
+                    fontSize: 18,
+                    fontWeight: 600,
+                    letterSpacing: '0.5px',
+                    lineHeight: 1.2,
+                  }}
+                >
+                  {t('appName')}
+                </span>
+              </div>
             )}
           </div>
         </div>
 
         <Menu
+          className="portal-menu"
           theme="dark"
           mode="inline"
           selectedKeys={[getSelectedKey()]}
@@ -291,6 +300,7 @@ const MainLayout: React.FC = () => {
 
         {/* Bottom collapse button */}
         <div
+          className="portal-sider-footer"
           style={{
             position: 'absolute',
             bottom: 16,
@@ -307,12 +317,14 @@ const MainLayout: React.FC = () => {
             style={{
               color: 'rgba(255,255,255,0.7)',
               fontSize: 16,
-              width: 40,
+              width: sidebarCollapsed ? 40 : 116,
               height: 40,
-              borderRadius: 10,
+              borderRadius: 12,
               background: 'rgba(255,255,255,0.1)',
             }}
-          />
+          >
+            {!sidebarCollapsed ? '收起导航' : null}
+          </Button>
         </div>
       </Sider>
 
@@ -326,7 +338,7 @@ const MainLayout: React.FC = () => {
         <Header
           style={{
             padding: '0 24px',
-            background: 'rgba(255, 255, 255, 0.95)',
+            background: 'var(--bg-header)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
@@ -335,7 +347,7 @@ const MainLayout: React.FC = () => {
             zIndex: 99,
             boxShadow: '0 1px 3px rgba(0,0,0,0.08)',
             backdropFilter: 'blur(12px)',
-            borderBottom: '1px solid rgba(0,0,0,0.05)',
+            borderBottom: '1px solid var(--bg-secondary)',
           }}
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
@@ -358,11 +370,17 @@ const MainLayout: React.FC = () => {
 
           <Space size={12}>
             <Button
-              type="primary"
-              icon={<PlusCircleOutlined />}
-              onClick={() => navigate('/executions/new')}
+              type="text"
+              icon={<BgColorsOutlined />}
+              onClick={toggleTheme}
+              style={{
+                color: 'var(--text-secondary)',
+                borderRadius: 10,
+                height: 36,
+                padding: '0 12px',
+              }}
             >
-              {t('newExecution')}
+              {theme === 'light' ? '深色' : '浅色'}
             </Button>
 
             <Dropdown menu={languageMenu} placement="bottomRight" trigger={['click']}>

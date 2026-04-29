@@ -34,6 +34,7 @@ export interface ExecutionDto {
   id: string;
   orgId?: string;
   createdBy: string;
+  createdByName?: string;
   skillId: string;
   skillVersion?: string;
   status: ExecutionStatus;
@@ -173,6 +174,11 @@ export const executionApi = {
   // Cancel execution
   cancel: (id: string) => {
     return apiClient.post<ExecutionDto>(getExecutionApiUrl(`/executions/${id}/cancel`), {});
+  },
+
+  // Delete execution
+  delete: (id: string) => {
+    return apiClient.delete<{ success: boolean }>(getExecutionApiUrl(`/executions/${id}`));
   },
 };
 

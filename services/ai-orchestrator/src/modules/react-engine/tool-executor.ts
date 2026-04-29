@@ -419,6 +419,7 @@ export class ToolExecutor {
         tool: toolName,
         params,
         result,
+        downloadUrl: (result.data as Record<string, unknown> | undefined)?.downloadUrl,
         requiresUserInput: result.requiresUserInput,
       },
       iteration,

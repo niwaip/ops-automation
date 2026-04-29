@@ -38,6 +38,12 @@ export interface SkillConfigDTO {
     getSkill?: ApiEndpoint;
   };
   isActive: boolean;
+  isPublished: boolean;
+  publishedReleaseId?: string | null;
+  publishedReleaseVersion?: number | null;
+  publishedReleaseStatus?: string | null;
+  publishedDeploymentStatus?: string | null;
+  publishedSourceType?: string | null;
 }
 
 export interface SkillPermissionDTO {

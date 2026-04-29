@@ -363,6 +363,8 @@ services:
       - SANDBOX_TASK_QUEUE=sandbox-agent-task-queue
       - ACTIVITY_VALIDATION_TASK_QUEUE=activity-validation-task-queue
       - SANDBOX_HTTP_PORT=8090
+      - CARBONE_SERVICE_URL=http://carbone-engine:3009
+      - CARBONE_EXTERNAL_URL=http://${HOST_IP:-localhost}:3009
     ports:
       - "8090:8090"
     volumes:

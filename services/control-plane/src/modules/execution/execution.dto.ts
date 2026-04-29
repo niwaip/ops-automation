@@ -54,6 +54,9 @@ export class ExecutionDto {
   @ApiProperty()
   createdBy: string;
 
+  @ApiProperty({ required: false })
+  createdByName?: string;
+
   @ApiProperty()
   skillId: string;
 

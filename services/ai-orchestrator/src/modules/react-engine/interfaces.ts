@@ -41,6 +41,7 @@ export interface ReActState {
   isFinished: boolean;
   isWaitingForUserInput?: boolean;
   finalAnswer?: string;
+  finalResultData?: Record<string, unknown>;
 }
 
 /**

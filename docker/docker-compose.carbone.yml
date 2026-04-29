@@ -61,3 +61,8 @@ volumes:
     driver: local
   carbone_outputs:
     driver: local
+
+networks:
+  default:
+    name: ${NETWORK_NAME:-ops-network}
+    external: true

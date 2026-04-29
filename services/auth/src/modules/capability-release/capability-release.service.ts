@@ -42,6 +42,56 @@ import {
   SuggestReleaseWizardAssistResultDTO,
 } from './interfaces';
 
+const asRecord = (value: unknown): Record<string, unknown> | undefined => {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    return undefined;
+  }
+  return value as Record<string, unknown>;
+};
+
+const extractDownloadUrl = (value: unknown): string | undefined => {
+  const queue: unknown[] = [value];
+  const visited = new Set<unknown>();
+  let inspected = 0;
+
+  while (queue.length > 0 && inspected < 50) {
+    const current = queue.shift();
+    inspected += 1;
+
+    if (!current || typeof current !== 'object' || visited.has(current)) {
+      continue;
+    }
+    visited.add(current);
+
+    if (Array.isArray(current)) {
+      current.forEach((item) => queue.push(item));
+      continue;
+    }
+
+    const record = current as Record<string, unknown>;
+    const directUrl = [record.downloadUrl, record.download_url, record.url]
+      .find((item): item is string => typeof item === 'string' && item.trim().length > 0);
+    if (directUrl) {
+      return directUrl;
+    }
+
+    const documentId = [record.documentId, record.document_id]
+      .find((item): item is string => typeof item === 'string' && item.trim().length > 0);
+    if (documentId) {
+      const externalBase = (process.env.CARBONE_EXTERNAL_URL || `http://${process.env.HOST_IP || process.env.EXTERNAL_HOST || 'localhost'}:3009`).replace(/\/$/, '');
+      return `${externalBase}/studio/download/${documentId}`;
+    }
+
+    Object.values(record).forEach((item) => {
+      if (item && typeof item === 'object') {
+        queue.push(item);
+      }
+    });
+  }
+
+  return undefined;
+};
+
 @Injectable()
 export class CapabilityReleaseService implements OnModuleInit {
   private readonly logger = new Logger(CapabilityReleaseService.name);
@@ -353,6 +403,8 @@ export class CapabilityReleaseService implements OnModuleInit {
       taskQueue,
       input as Record<string, any> | undefined,
     );
+    const normalizedResult = asRecord(result.result) || null;
+    const downloadUrl = extractDownloadUrl(result.result);
 
     await this.insertAuditEvent(
       release.id,
@@ -384,8 +436,19 @@ export class CapabilityReleaseService implements OnModuleInit {
       fn,
       taskQueue,
       success: result.success,
-      output: (result.result as Record<string, unknown> | undefined) ?? null,
-      result: result.result ?? null,
+      downloadUrl: downloadUrl || null,
+      output: normalizedResult
+        ? {
+            ...normalizedResult,
+            ...(downloadUrl ? { downloadUrl } : {}),
+          }
+        : null,
+      result: normalizedResult
+        ? {
+            ...normalizedResult,
+            ...(downloadUrl ? { downloadUrl } : {}),
+          }
+        : null,
       logs: result.logs || [],
       error: result.error || null,
     };
@@ -1308,6 +1371,9 @@ export class CapabilityReleaseService implements OnModuleInit {
     const draft = await this.getSkillDraftOrThrow(draftId);
 
     const payload = { ...(draft.draftPayload as Record<string, unknown>) };
+    if (typeof payload.description === 'string' && payload.description.length > 500) {
+      payload.description = payload.description.slice(0, 497) + '...';
+    }
     const baseName =
       (typeof payload.name === 'string' && payload.name.trim()) || release.sourceName || `Skill-${release.id.slice(0, 8)}`;
     let finalName = String(baseName);
@@ -3594,10 +3660,12 @@ ${logs.join('\n')}
       ? this.buildTemporalSkillDescription(payload, baseName, paramsSchema || { properties: {}, required: [] })
       : String(payload.description || payload.goal || `${baseName} 自动生成技能`);
 
+    const finalDescription = description.length > 500 ? description.slice(0, 497) + '...' : description;
+
     if (release.sourceType === 'execution_flow_template') {
       return {
         name: baseName.replace(/流程$/, ''),
-        description,
+        description: finalDescription,
         triggerKeywords: executionFlowKeys.length > 0 ? executionFlowKeys : [baseName],
         paramsSchema: paramsSchema || { properties: {}, required: [] },
         executionFlowTemplateIds: release.sourceId ? [release.sourceId] : [],
@@ -3609,7 +3677,7 @@ ${logs.join('\n')}
 
     return {
       name: baseName.replace(/工作流$/, ''),
-      description,
+      description: finalDescription,
       triggerKeywords: executionFlowKeys.length > 0 ? executionFlowKeys : [baseName],
       paramsSchema: paramsSchema || { properties: {}, required: [] },
       executionFlowTemplateIds: [],

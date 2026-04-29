@@ -13,7 +13,7 @@ import ChatInput from './ChatInput';
 import SkillConfirm from './SkillConfirm';
 import { streamChat, getAvailableModels } from './chatApi';
 import { executionApi } from '../../api/execution';
-import { ChatRequest } from './types';
+import { ChatRequest, StreamEventType } from './types';
 import { v4 as uuidv4 } from 'uuid';
 import './ChatWindow.css';
 
@@ -43,6 +43,8 @@ const ChatWindow: React.FC = () => {
     setSelectedModel,
     setAvailableModels,
     setPendingParamsConfirm,
+    draftExecutionId,
+    setDraftExecutionId,
     confirmParams,
     clearUploadedFiles,
   } = useChatStore();
@@ -55,27 +57,26 @@ const ChatWindow: React.FC = () => {
   const [localStreamingContent, setLocalStreamingContent] = useState('');
 
   const resolveTaskStatus = (
-    eventType: 'result' | 'waiting_input' | 'error',
+    eventType: StreamEventType,
     status?: string,
-    hasBusinessResult?: boolean,
   ): 'waiting_input' | 'pending_approval' | 'running' | 'completed' | 'failed' => {
-    if (eventType === 'error') {
+    if (eventType === StreamEventType.ERROR) {
       return 'failed';
     }
 
-    if (eventType === 'waiting_input' || status === 'waiting_input') {
+    if (eventType === StreamEventType.WAITING_INPUT || status === 'waiting_input') {
       return 'waiting_input';
     }
 
-    if (status === 'pending_approval') {
+    if (eventType === StreamEventType.PENDING_APPROVAL || status === 'pending_approval') {
       return 'pending_approval';
     }
 
-    if (status && ['queued', 'running', 'pending_approval'].includes(status)) {
+    if (status && ['queued', 'running'].includes(status)) {
       return 'running';
     }
 
-    if (eventType === 'result' && hasBusinessResult) {
+    if (eventType === StreamEventType.RESULT) {
       return 'completed';
     }
 
@@ -144,10 +145,12 @@ const ChatWindow: React.FC = () => {
 
     // 只有等待补充输入的场景，才延续上一次执行单
     const lastAssistantMessage = [...messages].reverse().find(m => m.role === 'assistant');
-    const executionId =
-      lastAssistantMessage?.metadata?.taskStatus === 'waiting_input'
-        ? lastAssistantMessage.metadata.executionId
-        : undefined;
+    const executionId = draftExecutionId
+      || (
+        lastAssistantMessage?.metadata?.taskStatus === 'waiting_input'
+          ? lastAssistantMessage.metadata.executionId
+          : undefined
+      );
 
     startAssistantStream(assistantMessageId, {
       message: content,
@@ -163,6 +166,10 @@ const ChatWindow: React.FC = () => {
         webSearch: enableWebSearch,
       },
     });
+
+    if (draftExecutionId) {
+      setDraftExecutionId(null);
+    }
   };
 
   const startAssistantStream = (assistantMessageId: string, request: ChatRequest) => {
@@ -178,7 +185,7 @@ const ChatWindow: React.FC = () => {
       (event) => {
         addStreamEvent(event);
 
-        if (event.type === 'thought') {
+        if (event.type === StreamEventType.THOUGHT) {
           accumulatedContent += `【思考】${event.content}\n`;
           updateMessageMetadataById(assistantMessageId, {
             taskStatus: 'running',
@@ -186,7 +193,7 @@ const ChatWindow: React.FC = () => {
             executionStatus: event.data?.status as string | undefined,
             errorMessage: '',
           });
-        } else if (event.type === 'action') {
+        } else if (event.type === StreamEventType.ACTION) {
           accumulatedContent += `【行动】${event.content}\n`;
           updateMessageMetadataById(assistantMessageId, {
             taskStatus: 'running',
@@ -194,32 +201,36 @@ const ChatWindow: React.FC = () => {
             executionStatus: event.data?.status as string | undefined,
             errorMessage: '',
           });
-        } else if (event.type === 'observation') {
+        } else if (event.type === StreamEventType.OBSERVATION && !Boolean(event.data?.hasBusinessResult) && !event.data?.downloadUrl) {
           accumulatedContent += `【观察】${event.content}\n`;
           updateMessageMetadataById(assistantMessageId, {
-            taskStatus: 'running',
-            executionId: event.data?.executionId as string | undefined,
-            executionStatus: event.data?.status as string | undefined,
+            finalSummary: accumulatedContent,
             errorMessage: '',
           });
-        } else if (event.type === 'result' || event.type === 'waiting_input') {
+        } else if (
+          event.type === StreamEventType.RESULT ||
+          event.type === StreamEventType.WAITING_INPUT ||
+          event.type === StreamEventType.PENDING_APPROVAL ||
+          (event.type === StreamEventType.OBSERVATION && (Boolean(event.data?.hasBusinessResult) || event.data?.downloadUrl))
+        ) {
           const hasBusinessResult = Boolean(event.data?.hasBusinessResult);
           const executionStatus = event.data?.status as string | undefined;
-          const missingInputs = Array.isArray(event.data?.missingInputs)
-            ? event.data?.missingInputs as Array<{ name?: string; description?: string; missing?: boolean }>
-            : undefined;
+          const missingInputs = event.data?.missingInputs as any[];
 
-          if (!hasBusinessResult && event.content) {
-            accumulatedContent += `${event.content}\n`;
+          if (event.type === StreamEventType.RESULT) {
+            accumulatedContent = ''; // 结果事件清空累积内容
           }
 
+          // 提取结果数据
+          const downloadUrl = event.data?.downloadUrl as string | undefined;
           updateMessageMetadataById(assistantMessageId, {
-            taskStatus: resolveTaskStatus(event.type, executionStatus, hasBusinessResult),
+            taskStatus: resolveTaskStatus(event.type as any, executionStatus),
             executionId: event.data?.executionId as string,
             executionStatus,
-            finalResult: event.type === 'result' && hasBusinessResult ? event.content : '',
-            finalResultData: event.type === 'result' && hasBusinessResult ? event.data?.result : undefined,
-            finalSummary: event.type === 'waiting_input' || !hasBusinessResult ? event.content : '',
+            finalResult: event.type === StreamEventType.RESULT && hasBusinessResult ? event.content : '',
+            finalResultData: event.type === StreamEventType.RESULT ? (event.data?.result || event.data) : undefined,
+            finalSummary: event.type === StreamEventType.WAITING_INPUT || !hasBusinessResult ? event.content : '',
+            downloadUrl: downloadUrl || undefined,
             hasBusinessResult,
             missingInputs,
             errorMessage: '',

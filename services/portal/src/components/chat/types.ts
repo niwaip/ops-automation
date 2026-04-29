@@ -15,6 +15,7 @@ export enum StreamEventType {
   ERROR = 'error',
   PARAMS_CONFIRM = 'params_confirm',
   FILE_UPLOAD = 'file_upload',
+  PENDING_APPROVAL = 'pending_approval',
 }
 
 /**

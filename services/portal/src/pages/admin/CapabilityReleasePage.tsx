@@ -2169,46 +2169,44 @@ const CapabilityReleasePage: React.FC<CapabilityReleasePageProps> = ({ mode = 'm
     <div>
       <Title level={4}>Capability Release</Title>
 
-      <Alert
-        type="info"
-        showIcon
-        style={{ marginBottom: 16 }}
-        message="Capability Release 操作台"
-        description="当前页面保留 Release 创建、静态校验、发布 Skill、代码部署、Skill 校验、删除与回滚。Temporal Workflow 的代码部署会将当前 workflow 代码同步到 ops-temporal 对应的部署记录。"
-      />
-
-      <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>
+      <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
         <Col xs={24} md={8}>
-          <Card>
-            <Space>
-              <RocketOutlined style={{ color: '#1677ff' }} />
-              <Text>已进入发布中心</Text>
+          <Card style={{ textAlign: 'center' }}>
+            <Space direction="vertical" size={4} style={{ width: '100%' }}>
+              <Space style={{ justifyContent: 'center' }}>
+                <RocketOutlined style={{ color: '#1677ff' }} />
+                <Text>已进入发布中心</Text>
+              </Space>
+              <Title level={3} style={{ margin: 0 }}>
+                {enteredReleaseCenterCount}
+              </Title>
             </Space>
-            <Title level={3} style={{ margin: '12px 0 0' }}>
-              {enteredReleaseCenterCount}
-            </Title>
           </Card>
         </Col>
         <Col xs={24} md={8}>
-          <Card>
-            <Space>
-              <SafetyCertificateOutlined style={{ color: '#52c41a' }} />
-              <Text>已发布 Skill</Text>
+          <Card style={{ textAlign: 'center' }}>
+            <Space direction="vertical" size={4} style={{ width: '100%' }}>
+              <Space style={{ justifyContent: 'center' }}>
+                <SafetyCertificateOutlined style={{ color: '#52c41a' }} />
+                <Text>已发布 Skill</Text>
+              </Space>
+              <Title level={3} style={{ margin: 0 }}>
+                {publishedSkillCount}
+              </Title>
             </Space>
-            <Title level={3} style={{ margin: '12px 0 0' }}>
-              {publishedSkillCount}
-            </Title>
           </Card>
         </Col>
         <Col xs={24} md={8}>
-          <Card>
-            <Space>
-              <RocketOutlined style={{ color: '#722ed1' }} />
-              <Text>已部署版本</Text>
+          <Card style={{ textAlign: 'center' }}>
+            <Space direction="vertical" size={4} style={{ width: '100%' }}>
+              <Space style={{ justifyContent: 'center' }}>
+                <RocketOutlined style={{ color: '#722ed1' }} />
+                <Text>已部署版本</Text>
+              </Space>
+              <Title level={3} style={{ margin: 0 }}>
+                {deployedVersionCount}
+              </Title>
             </Space>
-            <Title level={3} style={{ margin: '12px 0 0' }}>
-              {deployedVersionCount}
-            </Title>
           </Card>
         </Col>
       </Row>

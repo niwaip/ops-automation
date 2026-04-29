@@ -79,13 +79,19 @@ export class DocumentGenTool extends BaseTool {
       );
 
       if (response.data?.downloadUrl) {
+        const downloadUrl = response.data.downloadUrl;
+        const fileName = response.data.fileName || 'document.docx';
+        const finalAnswer = `文档已生成！您可以点击下方链接下载：\n\n[${fileName}](${downloadUrl})`;
+
         return {
           success: true,
-          output: `文档已生成，下载链接: ${response.data.downloadUrl}`,
+          output: `文档已生成，下载链接: ${downloadUrl}`,
           data: {
-            downloadUrl: response.data.downloadUrl,
-            fileName: response.data.fileName,
+            downloadUrl,
+            fileName,
             format: response.data.format,
+            taskComplete: true,
+            finalAnswer,
           },
         };
       }

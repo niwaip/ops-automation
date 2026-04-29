@@ -5,7 +5,7 @@ import {
   Steps, Progress
 } from 'antd';
 import {
-  SearchOutlined, PlusOutlined, EditOutlined, DeleteOutlined, PlayCircleOutlined,
+  SearchOutlined, PlusOutlined, DeleteOutlined, PlayCircleOutlined,
   ReloadOutlined, ApiOutlined, CodeOutlined, FileTextOutlined, ChromeOutlined,
   ThunderboltOutlined, LineChartOutlined, OrderedListOutlined, CopyOutlined,
   SaveOutlined, RobotOutlined, EyeOutlined, LoadingOutlined
@@ -13,6 +13,7 @@ import {
 import { useTranslation } from 'react-i18next';
 import { useQuery, useMutation, useQueryClient } from 'react-query';
 import { activityApi, ActivityDTO, CreateActivityDto, UpdateActivityDto, ActivityValidationResult } from '../../api/activity';
+import { ListSectionHeader, OverviewStatGrid, PageTitleBlock } from '../../components/page/PageScaffold';
 import { normalizeExecutionResult } from '../../api/execution-normalizer';
 import type { ColumnsType } from 'antd/es/table';
 
@@ -53,24 +54,10 @@ const HANDLER_CONFIG: Record<string, { label: string; color: string; icon: React
   script: { label: '脚本', color: 'orange', icon: <CodeOutlined /> },
 };
 
-const PAGE_HEADER_STYLE: React.CSSProperties = {
-  marginBottom: 16,
-  borderRadius: 18,
-  background: 'linear-gradient(135deg, #f7faff 0%, #eef4ff 55%, #f7f0ff 100%)',
-  border: '1px solid #dbe7ff',
-  boxShadow: '0 10px 30px rgba(64, 124, 255, 0.10)',
-};
-
 const SECTION_CARD_STYLE: React.CSSProperties = {
   borderRadius: 16,
-  border: '1px solid #edf2ff',
-  boxShadow: '0 8px 24px rgba(15, 23, 42, 0.05)',
-};
-
-const STAT_CARD_STYLE: React.CSSProperties = {
-  borderRadius: 14,
-  border: '1px solid #edf2ff',
-  boxShadow: '0 6px 18px rgba(15, 23, 42, 0.04)',
+  border: '1px solid var(--bg-secondary)',
+  boxShadow: 'var(--shadow-md)',
 };
 
 interface ActivityInputParam {
@@ -638,28 +625,33 @@ const ActivityPage: React.FC = () => {
     setEditModalVisible(true);
   };
 
-  const handleEdit = (activity: ActivityDTO) => {
-    setEditingActivity(activity);
-    const steps: ActivityStep[] = (activity.config?.steps || []).map((step: ActivityStep) => ({
+  const handleEdit = async (activity: ActivityDTO) => {
+    let latestActivity = activity;
+    try {
+      latestActivity = await activityApi.getById(activity.id);
+    } catch {
+      // Fall back to the list snapshot if the detail request fails.
+    }
+
+    setEditingActivity(latestActivity);
+    const steps: ActivityStep[] = (latestActivity.config?.steps || []).map((step: ActivityStep) => ({
       ...step,
       inputParams: normalizeInputParams(step.inputParams),
     }));
     setActivityForm({
-      name: activity.name,
-      fn: activity.fn,
-      description: activity.config?.description || '',
-      isActive: activity.isActive,
-      startToCloseTimeout: activity.timeout || DEFAULT_ACTIVITY_TIMEOUT,
+      name: latestActivity.name,
+      fn: latestActivity.fn,
+      description: latestActivity.config?.description || '',
+      isActive: latestActivity.isActive,
+      startToCloseTimeout: latestActivity.timeout || DEFAULT_ACTIVITY_TIMEOUT,
       steps,
     });
     setValidationStrategy(
-      activity.retryPolicy ? { retryPolicy: activity.retryPolicy } : DEFAULT_VALIDATION_STRATEGY
+      latestActivity.retryPolicy ? { retryPolicy: latestActivity.retryPolicy } : DEFAULT_VALIDATION_STRATEGY
     );
-    // Load saved generated code if exists
-    // API returns generatedCode at top level, not inside config
-    if (activity.generatedCode) {
-      setGeneratedCode(activity.generatedCode);
-      setCachedCode(activity.generatedCode); // Also set cached code
+    if (latestActivity.generatedCode) {
+      setGeneratedCode(latestActivity.generatedCode);
+      setCachedCode(latestActivity.generatedCode);
     } else {
       setGeneratedCode('');
       setCachedCode(null);
@@ -856,19 +848,104 @@ const ActivityPage: React.FC = () => {
   };
 
   const columns: ColumnsType<ActivityDTO> = [
-    { title: '名称', dataIndex: 'name', key: 'name', width: 180, align: 'center', render: (name, r) => <a onClick={() => handleViewDetail(r)}><Text strong>{name}</Text></a> },
-    { title: '函数名', dataIndex: 'fn', key: 'fn', width: 150, align: 'center', render: fn => <Tag color="cyan">{fn}</Tag> },
-    { title: '处理器', key: 'handler', width: 100, align: 'center', render: (_, r) => <Tag color={HANDLER_CONFIG[r.handler]?.color}>{HANDLER_CONFIG[r.handler]?.label}</Tag> },
-    { title: '步骤', key: 'steps', width: 80, align: 'center', render: (_, r) => <Tag>{r.config?.steps?.length || 0}</Tag> },
-    { title: '状态', key: 'status', width: 90, align: 'center', render: (_, r) => <Tag color={r.isActive ? 'green' : 'default'}>{r.isActive ? '启用' : '禁用'}</Tag> },
-    { title: t('common:actions'), key: 'actions', width: 160, align: 'center', render: (_, r) => (
-      <Space size="middle">
-        <Button size="small" type="link" icon={<EditOutlined />} onClick={() => handleEdit(r)}>编辑</Button>
-        <Popconfirm title="确认删除" onConfirm={() => handleDelete(r.id)} okText="删除" okButtonProps={{ danger: true }}>
-          <Button size="small" type="link" icon={<DeleteOutlined />} danger>删除</Button>
-        </Popconfirm>
-      </Space>
-    )},
+    {
+      title: '名称',
+      dataIndex: 'name',
+      key: 'name',
+      width: 220,
+      align: 'center',
+      render: (name, record) => (
+        <Button
+          type="link"
+          style={{ paddingInline: 0, fontWeight: 700, height: 'auto' }}
+          onClick={() => handleViewDetail(record)}
+        >
+          {name}
+        </Button>
+      ),
+    },
+    {
+      title: '函数名',
+      dataIndex: 'fn',
+      key: 'fn',
+      width: 180,
+      align: 'center',
+      render: (fn) => (
+        <Text
+          code
+          style={{
+            display: 'inline-block',
+            padding: '3px 10px',
+            borderRadius: 999,
+            background: 'var(--bg-secondary)',
+            fontSize: 12,
+          }}
+        >
+          {fn}
+        </Text>
+      ),
+    },
+    {
+      title: '处理器',
+      key: 'handler',
+      width: 110,
+      align: 'center',
+      render: (_, record) => (
+        <Tag color={HANDLER_CONFIG[record.handler]?.color} style={{ marginInlineEnd: 0, paddingInline: 10, borderRadius: 999, fontWeight: 600 }}>
+          {HANDLER_CONFIG[record.handler]?.label}
+        </Tag>
+      ),
+    },
+    {
+      title: '步骤',
+      key: 'steps',
+      width: 90,
+      align: 'center',
+      render: (_, record) => (
+        <Text strong>{record.config?.steps?.length || 0}</Text>
+      ),
+    },
+    {
+      title: '状态',
+      key: 'status',
+      width: 110,
+      align: 'center',
+      render: (_, record) => (
+        <Tag
+          color={record.isActive ? 'success' : 'default'}
+          style={{ marginInlineEnd: 0, paddingInline: 10, borderRadius: 999, fontWeight: 600 }}
+        >
+          {record.isActive ? '启用' : '禁用'}
+        </Tag>
+      ),
+    },
+    {
+      title: t('common:actions'),
+      key: 'actions',
+      width: 150,
+      align: 'center',
+      render: (_, record) => (
+        <Space>
+          <Button
+            type="link"
+            style={{ paddingInline: 0, fontWeight: 600 }}
+            onClick={() => handleEdit(record)}
+          >
+            编辑
+          </Button>
+          <Popconfirm
+            title="确认删除"
+            onConfirm={() => handleDelete(record.id)}
+            okText="删除"
+            okButtonProps={{ danger: true }}
+          >
+            <Button type="link" danger style={{ paddingInline: 0, fontWeight: 600 }}>
+              删除
+            </Button>
+          </Popconfirm>
+        </Space>
+      ),
+    },
   ];
 
   const filteredActivities = (activitiesQuery.data || []).filter(a =>
@@ -881,47 +958,108 @@ const ActivityPage: React.FC = () => {
     script: activitiesQuery.data?.filter(a => a.handler === 'script').length || 0,
     active: activitiesQuery.data?.filter(a => a.isActive).length || 0,
   };
+  const activityOverviewStats = [
+    {
+      key: 'total',
+      label: '总数',
+      value: stats.total,
+      color: 'var(--text-primary)',
+      icon: <ThunderboltOutlined style={{ color: 'var(--text-secondary)' }} />,
+    },
+    {
+      key: 'api',
+      label: 'API',
+      value: stats.api,
+      color: 'var(--success-color)',
+      icon: <ApiOutlined style={{ color: 'var(--success-color)' }} />,
+    },
+    {
+      key: 'script',
+      label: '脚本',
+      value: stats.script,
+      color: 'var(--warning-color)',
+      icon: <CodeOutlined style={{ color: 'var(--warning-color)' }} />,
+    },
+    {
+      key: 'active',
+      label: '已启用',
+      value: stats.active,
+      color: 'var(--info-color)',
+      icon: <LineChartOutlined style={{ color: 'var(--info-color)' }} />,
+    },
+  ];
 
   return (
     <div>
-      <Card style={PAGE_HEADER_STYLE} styles={{ body: { padding: '18px 24px' } }}>
-        <Row align="middle" justify="space-between" gutter={[16, 16]}>
-          <Col>
-            <Space direction="vertical" size={4}>
-              <Space size={10}>
-                <ThunderboltOutlined style={{ color: '#1677ff', fontSize: 20 }} />
-                <Title level={3} style={{ margin: 0 }}>Activity 设计台</Title>
-              </Space>
-              <Text type="secondary">
-                管理 Activity 定义、步骤编排、输入参数和 AI 代码生成。
-              </Text>
+      <PageTitleBlock
+        title="Activities"
+        subtitle="查看、筛选并维护工作单元配置"
+      />
+
+      <OverviewStatGrid items={activityOverviewStats} />
+
+      <Card style={{ ...SECTION_CARD_STYLE, marginBottom: 16 }} styles={{ body: { padding: 20 } }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: 16,
+              flexWrap: 'wrap',
+            }}
+          >
+            <Space direction="vertical" size={2}>
+              <Text strong style={{ fontSize: 16 }}>工作单元总览</Text>
+              <Text type="secondary">支持检索、创建和刷新工作单元列表</Text>
             </Space>
-          </Col>
-          <Col>
-            <Button icon={<PlusOutlined />} type="primary" size="large" onClick={handleCreate}>
-              新建 Activity
-            </Button>
-          </Col>
-        </Row>
-      </Card>
+            <Space wrap>
+              <Button size="large" icon={<ReloadOutlined />} onClick={() => { void activitiesQuery.refetch(); }}>
+                刷新
+              </Button>
+              <Button size="large" icon={<PlusOutlined />} type="primary" onClick={handleCreate}>
+                新建 Activity
+              </Button>
+            </Space>
+          </div>
 
-      <Row gutter={16} style={{ marginBottom: 24 }}>
-        <Col span={6}><Card style={STAT_CARD_STYLE}><Statistic title="总数" value={stats.total} prefix={<ThunderboltOutlined />} /></Card></Col>
-        <Col span={6}><Card style={STAT_CARD_STYLE}><Statistic title="API" value={stats.api} valueStyle={{ color: '#52c41a' }} /></Card></Col>
-        <Col span={6}><Card style={STAT_CARD_STYLE}><Statistic title="脚本" value={stats.script} valueStyle={{ color: '#fa8c16' }} /></Card></Col>
-        <Col span={6}><Card style={STAT_CARD_STYLE}><Statistic title="已启用" value={stats.active} valueStyle={{ color: '#1677ff' }} /></Card></Col>
-      </Row>
-
-      <Card style={{ ...SECTION_CARD_STYLE, marginBottom: 16 }}>
-        <Space style={{ width: '100%', justifyContent: 'space-between' }}>
-          <Input placeholder="搜索..." prefix={<SearchOutlined />} value={searchText} onChange={e => setSearchText(e.target.value)} style={{ width: 200 }} allowClear />
-          <Space>
-            <Button icon={<ReloadOutlined />} onClick={() => activitiesQuery.refetch()} />
-          </Space>
-        </Space>
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'stretch',
+              justifyContent: 'space-between',
+              gap: 16,
+              flexWrap: 'wrap',
+            }}
+          >
+            <Input
+              size="large"
+              placeholder="搜索 Activity 名称或函数名..."
+              prefix={<SearchOutlined />}
+              variant="borderless"
+              value={searchText}
+              onChange={e => setSearchText(e.target.value)}
+              style={{
+                width: 360,
+                height: 44,
+                background: 'var(--bg-secondary)',
+                borderRadius: 12,
+              }}
+              allowClear
+            />
+            <Text type="secondary" style={{ display: 'flex', alignItems: 'center' }}>
+              当前展示 {filteredActivities.length} 条
+            </Text>
+          </div>
+        </div>
       </Card>
 
       <Card style={SECTION_CARD_STYLE}>
+        <ListSectionHeader
+          title="工作单元记录列表"
+          subtitle="支持查看详情、编辑配置和删除工作单元"
+          extra={<Text type="secondary">共 {filteredActivities.length} 条</Text>}
+        />
         <Table columns={columns} dataSource={filteredActivities} rowKey="id" loading={activitiesQuery.isLoading} pagination={{ showSizeChanger: true, showTotal: total => `共 ${total} 条` }} />
       </Card>
 
@@ -931,7 +1069,7 @@ const ActivityPage: React.FC = () => {
           <div style={{ textAlign: 'center', width: '100%' }}>
             <Space direction="vertical" size={2}>
               <Space size={8}>
-                <ThunderboltOutlined style={{ color: '#1677ff' }} />
+                <ThunderboltOutlined style={{ color: 'var(--primary-color)' }} />
                 <Text strong style={{ fontSize: 18 }}>
                   {editingActivity ? '编辑 Activity' : '创建 Activity'}
                 </Text>
@@ -1006,7 +1144,7 @@ const ActivityPage: React.FC = () => {
                     key={`step-${step.id}`}
                     header={
                       <Space size="middle">
-                        <Badge count={idx + 1} style={{ backgroundColor: '#1677ff', boxShadow: '0 0 0 2px #fff' }} />
+                        <Badge count={idx + 1} style={{ backgroundColor: 'var(--primary-color)', boxShadow: '0 0 0 2px var(--bg-card)' }} />
                         <Text strong>{step.name || `步骤 ${idx + 1}`}</Text>
                         <Tag color={HANDLER_CONFIG[step.type]?.color}>{HANDLER_CONFIG[step.type]?.label}</Tag>
                       </Space>
@@ -1015,11 +1153,11 @@ const ActivityPage: React.FC = () => {
                     <Card
                       size="small"
                       style={{
-                        border: '1px solid #e8f1ff',
+                        border: '1px solid var(--bg-secondary)',
                         borderRadius: 12,
-                        boxShadow: '0 8px 20px rgba(22, 119, 255, 0.06)',
+                        boxShadow: 'var(--shadow-sm)',
                         overflow: 'hidden',
-                        background: '#fcfdff',
+                        background: 'var(--bg-card)',
                       }}
                       styles={{ body: { padding: 16 } }}
                     >
@@ -1056,7 +1194,7 @@ const ActivityPage: React.FC = () => {
 
                   {/* API 类型配置 */}
                   {step.type === 'api' && (
-                    <div style={{ padding: 12, background: 'linear-gradient(135deg, #f6ffed 0%, #e6ffe6 100%)', borderRadius: 8, border: '1px solid #b7eb8f' }}>
+                    <div style={{ padding: 12, background: 'color-mix(in srgb, var(--success-color) 10%, var(--bg-card))', borderRadius: 8, border: '1px solid rgba(16, 185, 129, 0.35)' }}>
                       {/* 输入参数区域 - 小标签形式 */}
                       <div style={{ marginBottom: 12 }}>
                         <Text type="secondary" style={{ fontSize: 12, marginBottom: 8, display: 'block' }}>
@@ -1071,12 +1209,12 @@ const ActivityPage: React.FC = () => {
                               style={{
                                 padding: '4px 10px',
                                 fontSize: 13,
-                                background: param.value ? '#f6ffed' : '#f5f5f5',
-                                border: `1px solid ${param.required ? '#52c41a' : '#d9d9d9'}`,
+                                background: param.value ? 'rgba(16, 185, 129, 0.12)' : 'var(--bg-secondary)',
+                                border: `1px solid ${param.required ? 'rgba(16, 185, 129, 0.45)' : 'var(--bg-secondary)'}`,
                                 borderRadius: 4,
                                 cursor: 'pointer',
                                 transition: 'all 0.2s',
-                                color: param.required ? '#389e0d' : '#8c8c8c',
+                                color: param.required ? 'var(--success-color)' : 'var(--text-secondary)',
                               }}
                               onClick={() => {
                                 const urlInput = document.getElementById(`url-input-${step.id}`) as HTMLInputElement;
@@ -1097,14 +1235,14 @@ const ActivityPage: React.FC = () => {
                                 }
                               }}
                               onMouseEnter={(e) => {
-                                e.currentTarget.style.background = param.required ? '#52c41a' : '#1890ff';
+                                e.currentTarget.style.background = param.required ? 'var(--success-color)' : 'var(--primary-color)';
                                 e.currentTarget.style.color = '#fff';
-                                e.currentTarget.style.borderColor = param.required ? '#52c41a' : '#1890ff';
+                                e.currentTarget.style.borderColor = param.required ? 'var(--success-color)' : 'var(--primary-color)';
                               }}
                               onMouseLeave={(e) => {
-                                e.currentTarget.style.background = param.value ? '#f6ffed' : '#f5f5f5';
-                                e.currentTarget.style.color = param.required ? '#389e0d' : '#8c8c8c';
-                                e.currentTarget.style.borderColor = param.required ? '#52c41a' : '#d9d9d9';
+                                e.currentTarget.style.background = param.value ? 'rgba(16, 185, 129, 0.12)' : 'var(--bg-secondary)';
+                                e.currentTarget.style.color = param.required ? 'var(--success-color)' : 'var(--text-secondary)';
+                                e.currentTarget.style.borderColor = param.required ? 'rgba(16, 185, 129, 0.45)' : 'var(--bg-secondary)';
                               }}
                             >
                               {`{${param.key}}`}
@@ -1122,7 +1260,7 @@ const ActivityPage: React.FC = () => {
                             <Row gutter={[12, 12]}>
                               {normalizeInputParams(step.inputParams).map((param, paramIdx) => (
                                 <Col span={12} key={`${step.id}-${paramIdx}`}>
-                                  <Card size="small" style={{ borderRadius: 10, background: '#fafcff', border: '1px solid #e6f4ff' }}>
+                                  <Card size="small" style={{ borderRadius: 10, background: 'var(--bg-card)', border: '1px solid var(--bg-secondary)' }}>
                                     <Row gutter={[8, 8]} align="middle">
                                       <Col span={9}>
                                         <Input
@@ -1213,7 +1351,7 @@ const ActivityPage: React.FC = () => {
 
                   {/* 脚本类型配置 */}
                   {step.type === 'script' && (
-                    <div style={{ padding: 12, background: 'linear-gradient(135deg, #fff7e6 0%, #fffbe6 100%)', borderRadius: 8, border: '1px solid #ffd591' }}>
+                    <div style={{ padding: 12, background: 'color-mix(in srgb, var(--warning-color) 10%, var(--bg-card))', borderRadius: 8, border: '1px solid rgba(245, 158, 11, 0.35)' }}>
                       <TextArea
                         value={step.config.script || ''}
                         onChange={e => updateStep(step.id, 'config', { ...step.config, script: e.target.value })}
@@ -1267,7 +1405,7 @@ const ActivityPage: React.FC = () => {
         <Paragraph type="secondary" style={{ marginBottom: 16 }}>
           以下代码由 AI 根据您的配置自动生成，可用于参考或复制到 Temporal Worker 中使用。点击"缓存代码"可保存到配置中。
         </Paragraph>
-        <Card styles={{ body: { padding: 0 } }} style={{ background: '#1e1e1e', borderRadius: 8 }}>
+        <Card styles={{ body: { padding: 0 } }} style={{ background: '#0b1120', borderRadius: 8, border: '1px solid var(--bg-secondary)' }}>
           {isGeneratingCode ? (
             <div style={{ padding: 40, textAlign: 'center', color: '#d4d4d4' }}>
               <LoadingOutlined style={{ fontSize: 24 }} /><br /><br />
@@ -1308,7 +1446,7 @@ const ActivityPage: React.FC = () => {
             </Panel>
             <Panel header={<Text><OrderedListOutlined /> 步骤详情 ({selectedActivity.config?.steps?.length || 0})</Text>} key="steps">
               {selectedActivity.config?.steps?.map((step: any, idx: number) => (
-                <Card key={idx} size="small" style={{ marginBottom: 8, borderRadius: 10, border: '1px solid #e6f4ff', background: '#fcfdff' }}>
+                <Card key={idx} size="small" style={{ marginBottom: 8, borderRadius: 10, border: '1px solid var(--bg-secondary)', background: 'var(--bg-card)' }}>
                   <Text strong>步骤 {idx + 1}: {step.name}</Text>
                   <br />
                   <Text type="secondary">类型: {step.type} | 超时: {step.timeout}</Text>
@@ -1319,7 +1457,7 @@ const ActivityPage: React.FC = () => {
             <Panel header={<Text><LineChartOutlined /> 监控</Text>} key="monitoring">
               <Row gutter={16}>
                 <Col span={8}><Card size="small"><Statistic title="平均耗时" value="1.2s" /></Card></Col>
-                <Col span={8}><Card size="small"><Statistic title="失败率" value="0.5%" valueStyle={{ color: '#52c41a' }} /></Card></Col>
+                <Col span={8}><Card size="small"><Statistic title="失败率" value="0.5%" valueStyle={{ color: 'var(--success-color)' }} /></Card></Col>
                 <Col span={8}><Card size="small"><Statistic title="Backlog" value="12" /></Card></Col>
               </Row>
             </Panel>
@@ -1473,12 +1611,12 @@ const ActivityPage: React.FC = () => {
 
           <div>
             <Text strong>执行日志：</Text>
-            <div style={{ background: '#1e1e1e', color: '#d4d4d4', padding: 12, borderRadius: 4, maxHeight: 300, overflow: 'auto', marginTop: 8 }}>
+            <div style={{ background: '#0b1120', color: '#d4d4d4', padding: 12, borderRadius: 4, maxHeight: 300, overflow: 'auto', marginTop: 8, border: '1px solid var(--bg-secondary)' }}>
               <pre style={{ margin: 0, fontSize: 11 }}>
                 {realValidateState.logs.map((log: string, i: number) => (
                   <div key={i}>{log}</div>
                 ))}
-                {realValidateState.isRunning && <span style={{ color: '#1890ff' }}>▋</span>}
+                {realValidateState.isRunning && <span style={{ color: 'var(--primary-color)' }}>▋</span>}
               </pre>
             </div>
           </div>
@@ -1492,7 +1630,7 @@ const ActivityPage: React.FC = () => {
                   key: 'execute-result',
                   label: <Text strong>执行结果</Text>,
                   children: (
-                    <Card size="small" style={{ background: '#f5f7fb', border: '1px solid #e6f4ff' }}>
+                    <Card size="small" style={{ background: 'var(--bg-card)', border: '1px solid var(--bg-secondary)' }}>
                       <pre style={{ margin: 0, fontSize: 12, whiteSpace: 'pre-wrap', wordBreak: 'break-all' }}>
                         {typeof realValidateState.result.result === 'string' ? realValidateState.result.result : JSON.stringify(realValidateState.result.result, null, 2)}
                       </pre>

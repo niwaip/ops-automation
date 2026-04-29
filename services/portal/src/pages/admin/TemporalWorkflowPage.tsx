@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useReducer, useState } from 'react';
 import {
   Table, Card, Button, Input, Space, Tag, Typography, Modal, message, Form, Select,
-  Divider, Alert, Collapse, Badge, Popconfirm, Row, Col, Statistic, Timeline, Switch, Tooltip, InputNumber, Segmented
+  Divider, Alert, Collapse, Badge, Popconfirm, Row, Col, Timeline, Switch, Tooltip, InputNumber, Segmented
 } from 'antd';
 import {
   SearchOutlined, PlusOutlined, EditOutlined, DeleteOutlined, PlayCircleOutlined,
@@ -13,10 +13,12 @@ import { useQuery, useMutation, useQueryClient } from 'react-query';
 import {
   temporalWorkflowApi, TemporalWorkflowDTO, CreateTemporalWorkflowDTO,
   WorkflowDsl, ActivityDsl, TemporalValidationResult, DEFAULT_WORKFLOW_DSL, DEFAULT_ACTIVITY_DSL,
-  WorkflowCodeResult, WorkflowRealValidationResult
+  WorkflowCodeResult, WorkflowRealValidationResult, TemplateWorkflowDraft
 } from '../../api/temporal-workflow';
+import { carboneAPI, CarboneTemplate } from '../../api/carbone';
 import { activityApi, ActivityDTO } from '../../api/activity';
 import { normalizeExecutionResult } from '../../api/execution-normalizer';
+import { ListSectionHeader, OverviewStatGrid, PageTitleBlock } from '../../components/page/PageScaffold';
 import type { ColumnsType } from 'antd/es/table';
 
 const { Text } = Typography;
@@ -35,8 +37,8 @@ const DURATION_UNIT_OPTIONS = [
 
 const SECTION_CARD_STYLE: React.CSSProperties = {
   borderRadius: 14,
-  border: '1px solid #eaf1ff',
-  boxShadow: '0 6px 18px rgba(15, 23, 42, 0.04)',
+  border: '1px solid var(--bg-secondary)',
+  boxShadow: 'var(--shadow-md)',
 };
 
 const SECTION_CARD_BODY_STYLE: React.CSSProperties = {
@@ -44,10 +46,10 @@ const SECTION_CARD_BODY_STYLE: React.CSSProperties = {
 };
 
 const SOFT_PANEL_STYLE: React.CSSProperties = {
-  border: '1px solid #d9e6ff',
+  border: '1px solid var(--bg-secondary)',
   padding: 12,
   borderRadius: 10,
-  background: '#fbfdff',
+  background: 'var(--bg-card)',
 };
 
 const DURATION_INPUT_WIDTH = 64;
@@ -168,6 +170,11 @@ const TemporalWorkflowPage: React.FC = () => {
   const [codeModalVisible, setCodeModalVisible] = useState(false);
   const [realValidationState, dispatchRealValidation] = useReducer(realValidationReducer, initialRealValidationState);
   const [realValidationInputParams, setRealValidationInputParams] = useState<Record<string, string>>({}); // 真实验证时的输入参数
+  const [templateModalVisible, setTemplateModalVisible] = useState(false);
+  const [templates, setTemplates] = useState<CarboneTemplate[]>([]);
+  const [templatesLoading, setTemplatesLoading] = useState(false);
+  const [templateSearch, setTemplateSearch] = useState('');
+  const [generatingTemplateId, setGeneratingTemplateId] = useState<string | null>(null);
 
   // 当真实验证弹窗打开时，同步输入参数到本地状态
   useEffect(() => {
@@ -269,6 +276,12 @@ const TemporalWorkflowPage: React.FC = () => {
           defaultValue: typeof value === 'string' ? value : JSON.stringify(value),
         };
       });
+
+      // Template-based drafts may already carry a complete inputParams definition even if
+      // the shared activity from the pool has no persisted parameter metadata yet.
+      if (Object.keys(nextInputParams).length === 0 && Object.keys(currentDefinitions).length > 0) {
+        return prev;
+      }
 
       if (JSON.stringify(currentDefinitions) === JSON.stringify(nextInputParams)) {
         return prev;
@@ -380,6 +393,43 @@ const TemporalWorkflowPage: React.FC = () => {
     setEditModalVisible(true);
   };
 
+  const openTemplateModal = async () => {
+    setTemplateModalVisible(true);
+    setTemplatesLoading(true);
+    try {
+      const data = await carboneAPI.getTemplates();
+      setTemplates(Array.isArray(data) ? data : []);
+    } catch (error: any) {
+      message.error('加载模板失败: ' + (error.message || '未知错误'));
+      setTemplates([]);
+    } finally {
+      setTemplatesLoading(false);
+    }
+  };
+
+  const handleSelectTemplate = async (template: CarboneTemplate) => {
+    try {
+      setGeneratingTemplateId(template.id);
+      const draft: TemplateWorkflowDraft = await temporalWorkflowApi.generateTemplateDraft(template.id);
+      form.setFieldsValue({
+        name: draft.name,
+        description: draft.description,
+        taskQueue: draft.taskQueue || 'SKILL_TASK_QUEUE',
+      });
+      setWorkflowDsl(draft.workflowDsl);
+      setActivityDsl(draft.activityDsl);
+      setGeneratedCode(null);
+      setSelectedStepIndexForConfig(draft.workflowDsl?.steps?.length ? 0 : null);
+      setTemplateModalVisible(false);
+      setEditModalVisible(true);
+      message.success('已生成模板工作流草稿');
+    } catch (error: any) {
+      message.error('生成模板工作流失败: ' + (error.message || '未知错误'));
+    } finally {
+      setGeneratingTemplateId(null);
+    }
+  };
+
   const handleEdit = (workflow: TemporalWorkflowDTO) => {
     setEditingWorkflow(workflow);
     form.setFieldsValue({ name: workflow.name, description: workflow.description, taskQueue: workflow.taskQueue });
@@ -414,6 +464,9 @@ const TemporalWorkflowPage: React.FC = () => {
   // 收集工作流步骤的输入参数
   const collectWorkflowInputParams = (): Record<string, string> => {
     const params: Record<string, string> = {};
+    Object.entries(workflowDsl.inputParams || {}).forEach(([key, config]) => {
+      params[key] = config?.defaultValue || '';
+    });
     workflowDsl.steps.forEach((step) => {
       if (step.input) {
         Object.entries(step.input).forEach(([key, value]) => {
@@ -763,25 +816,111 @@ const TemporalWorkflowPage: React.FC = () => {
   ];
   const currentWorkflowDisplayName = (workflowDsl.workflowDefnName || form.getFieldValue('name') || workflowDsl.name || '未命名工作流') as string;
   const currentWorkflowClassName = (workflowDsl.workflowClassName || `${((form.getFieldValue('name') || workflowDsl.name || 'Custom') as string).replace(/\s+/g, '')}Workflow`) as string;
+  const workflowOverviewStats = [
+    {
+      label: '工作流总数',
+      value: workflowsQuery.data?.length || 0,
+      icon: <ThunderboltOutlined style={{ color: 'var(--text-secondary)' }} />,
+      color: 'var(--text-primary)',
+    },
+    {
+      label: 'Task Queue 数',
+      value: new Set((workflowsQuery.data || []).map(w => w.taskQueue).filter(Boolean)).size,
+      icon: <RocketOutlined style={{ color: 'var(--info-color)' }} />,
+      color: 'var(--info-color)',
+    },
+    {
+      label: '步骤总数',
+      value: workflowsQuery.data?.reduce((sum, w) => sum + (w.workflowDsl?.steps?.length || 0), 0) || 0,
+      icon: <ApiOutlined style={{ color: 'var(--success-color)' }} />,
+      color: 'var(--success-color)',
+    },
+    {
+      label: '已启用',
+      value: workflowsQuery.data?.filter(w => w.isActive).length || 0,
+      icon: <CheckCircleOutlined style={{ color: 'var(--warning-color)' }} />,
+      color: 'var(--warning-color)',
+    },
+  ];
 
   return (
     <div style={{ padding: '8px 4px 12px' }}>
-      <Row gutter={16} style={{ marginBottom: 24 }}>
-        <Col span={6}><Card><Statistic title="工作流总数" value={workflowsQuery.data?.length || 0} prefix={<ThunderboltOutlined />} /></Card></Col>
-        <Col span={6}><Card><Statistic title="Task Queue 数" value={new Set((workflowsQuery.data || []).map(w => w.taskQueue).filter(Boolean)).size} prefix={<RocketOutlined />} valueStyle={{ color: '#1890ff' }} /></Card></Col>
-        <Col span={6}><Card><Statistic title="步骤总数" value={workflowsQuery.data?.reduce((sum, w) => sum + (w.workflowDsl?.steps?.length || 0), 0) || 0} prefix={<ApiOutlined />} valueStyle={{ color: '#52c41a' }} /></Card></Col>
-        <Col span={6}><Card><Statistic title="已启用" value={workflowsQuery.data?.filter(w => w.isActive).length || 0} prefix={<CheckCircleOutlined />} valueStyle={{ color: '#fa8c16' }} /></Card></Col>
-      </Row>
+      <PageTitleBlock
+        title="Temporal Workflows"
+        subtitle="查看、筛选并维护工作流编排配置"
+      />
 
-      <Card style={{ ...SECTION_CARD_STYLE, marginBottom: 16 }} styles={{ body: { padding: 16 } }}>
-        <Space style={{ width: '100%', justifyContent: 'space-between' }}>
-          <Input placeholder="搜索工作流..." prefix={<SearchOutlined />} value={searchText} onChange={e => setSearchText(e.target.value)} style={{ width: 200 }} allowClear />
-          <Space><Button icon={<PlusOutlined />} type="primary" onClick={handleCreate}>创建工作流</Button><Button icon={<ReloadOutlined />} onClick={() => workflowsQuery.refetch()}>{t('common:refresh')}</Button></Space>
-        </Space>
+      <OverviewStatGrid
+        items={workflowOverviewStats.map((item) => ({
+          key: item.label,
+          label: item.label,
+          value: item.value,
+          color: item.color,
+          icon: item.icon,
+        }))}
+      />
+
+      <Card style={{ ...SECTION_CARD_STYLE, marginBottom: 16 }} styles={{ body: { padding: 20 } }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: 16,
+              flexWrap: 'wrap',
+            }}
+          >
+            <Space direction="vertical" size={2}>
+              <Text strong style={{ fontSize: 16 }}>工作流总览</Text>
+              <Text type="secondary">支持搜索、创建、刷新和模板生成</Text>
+            </Space>
+            <Space wrap>
+              <Button size="large" icon={<ReloadOutlined />} onClick={() => workflowsQuery.refetch()}>
+                {t('common:refresh')}
+              </Button>
+              <Button size="large" icon={<RobotOutlined />} onClick={openTemplateModal}>
+                模版工作流
+              </Button>
+              <Button size="large" icon={<PlusOutlined />} type="primary" onClick={handleCreate}>
+                创建工作流
+              </Button>
+            </Space>
+          </div>
+
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'stretch',
+              justifyContent: 'space-between',
+              gap: 16,
+              flexWrap: 'wrap',
+            }}
+          >
+            <Input
+              size="large"
+              placeholder="搜索工作流名称、描述或任务队列"
+              prefix={<SearchOutlined />}
+              value={searchText}
+              onChange={e => setSearchText(e.target.value)}
+              style={{ width: 360, height: 44, background: 'var(--bg-secondary)', borderRadius: 12 }}
+              variant="borderless"
+              allowClear
+            />
+            <Text type="secondary" style={{ display: 'flex', alignItems: 'center' }}>
+              当前展示 {filteredWorkflows.length} 条
+            </Text>
+          </div>
+        </div>
       </Card>
 
       <Card style={SECTION_CARD_STYLE} styles={{ body: { padding: 16 } }}>
         <Alert message="工作流说明" description={<Space direction="vertical" size="small"><Text><strong>Workflow DSL</strong>：定义确定性编排逻辑。Temporal 会 replay 这个逻辑来恢复状态。</Text><Text><strong>工作单元 DSL</strong>：定义非确定性副作用操作（API调用、文档渲染、浏览器操作、脚本执行）。</Text></Space>} type="info" showIcon style={{ marginBottom: 14, borderRadius: 10 }} />
+        <ListSectionHeader
+          title="工作流记录列表"
+          subtitle="可查看详情、编辑配置或删除工作流"
+          extra={<Text type="secondary">共 {filteredWorkflows.length} 条</Text>}
+        />
         <Table
           columns={columns}
           dataSource={filteredWorkflows}
@@ -805,7 +944,60 @@ const TemporalWorkflowPage: React.FC = () => {
       </Modal>
 
       <Modal
-        title={<Space size={8}><ThunderboltOutlined style={{ color: '#1677ff' }} /><span>工作流详情</span></Space>}
+        title="选择文档模板生成工作流"
+        open={templateModalVisible}
+        onCancel={() => setTemplateModalVisible(false)}
+        footer={null}
+        width={900}
+      >
+        <Space style={{ marginBottom: 12, width: '100%', justifyContent: 'space-between' }}>
+          <Input
+            placeholder="搜索模板..."
+            prefix={<SearchOutlined />}
+            value={templateSearch}
+            onChange={(e) => setTemplateSearch(e.target.value)}
+            style={{ width: 240 }}
+            allowClear
+          />
+          <Button icon={<ReloadOutlined />} onClick={openTemplateModal} loading={templatesLoading} disabled={Boolean(generatingTemplateId)}>刷新</Button>
+        </Space>
+        <div style={{ maxHeight: 520, overflow: 'auto', paddingRight: 4 }}>
+          {(templates || []).filter(t => {
+            const kw = templateSearch.trim().toLowerCase();
+            if (!kw) return true;
+            const name = (t.fileName || '').toLowerCase();
+            const id = (t.id || '').toLowerCase();
+            return name.includes(kw) || id.includes(kw);
+          }).map((t) => (
+            <Card key={t.id} size="small" style={{ marginBottom: 10 }}>
+              <Space style={{ width: '100%', justifyContent: 'space-between' }}>
+                <Space>
+                  <Tag color={t.format === 'docx' ? 'blue' : t.format === 'xlsx' ? 'green' : 'purple'}>{t.format?.toUpperCase() || 'DOC'}</Tag>
+                  <Text strong>{t.fileName || t.id}</Text>
+                  <Text type="secondary">ID: {t.id}</Text>
+                  {t.skillId ? <Tag color="geekblue">Skill: {t.skillId}</Tag> : <Tag>无Skill</Tag>}
+                </Space>
+                <Space>
+                  <Button
+                    type="primary"
+                    onClick={() => handleSelectTemplate(t)}
+                    loading={generatingTemplateId === t.id}
+                    disabled={Boolean(generatingTemplateId)}
+                  >
+                    {generatingTemplateId === t.id ? '生成中...' : '用此模板生成'}
+                  </Button>
+                </Space>
+              </Space>
+            </Card>
+          ))}
+          {(!templates || templates.length === 0) && (
+            <Alert message="暂无模板，或加载失败" type="warning" showIcon />
+          )}
+        </div>
+      </Modal>
+
+      <Modal
+        title={<Space size={8}><ThunderboltOutlined style={{ color: 'var(--primary-color)' }} /><span>工作流详情</span></Space>}
         open={detailModalVisible}
         onCancel={() => setDetailModalVisible(false)}
         footer={null}
@@ -824,17 +1016,17 @@ const TemporalWorkflowPage: React.FC = () => {
             </Card>
             <Collapse defaultActiveKey={['workflow', 'activities']} ghost>
               <Panel header={<Text><CodeOutlined /> Workflow DSL</Text>} key="workflow">
-                <pre style={{ background: '#f6ffed', padding: 16, borderRadius: 10, maxHeight: 320, overflow: 'auto', fontSize: 12 }}>{JSON.stringify(selectedWorkflow.workflowDsl, null, 2)}</pre>
+                <pre style={{ background: 'var(--bg-secondary)', color: 'var(--text-primary)', padding: 16, borderRadius: 10, maxHeight: 320, overflow: 'auto', fontSize: 12 }}>{JSON.stringify(selectedWorkflow.workflowDsl, null, 2)}</pre>
               </Panel>
               <Panel header={<Text><ApiOutlined /> 工作单元 DSL</Text>} key="activities">
-                <pre style={{ background: '#e6f7ff', padding: 16, borderRadius: 10, maxHeight: 320, overflow: 'auto', fontSize: 12 }}>{JSON.stringify(selectedWorkflow.activityDsl, null, 2)}</pre>
+                <pre style={{ background: 'var(--bg-secondary)', color: 'var(--text-primary)', padding: 16, borderRadius: 10, maxHeight: 320, overflow: 'auto', fontSize: 12 }}>{JSON.stringify(selectedWorkflow.activityDsl, null, 2)}</pre>
               </Panel>
             </Collapse>
           </Space>
         )}
       </Modal>
 
-      <Modal title={<div style={{ textAlign: 'center', width: '100%' }}><Space direction="vertical" size={2}><Space size={8}><ThunderboltOutlined style={{ color: '#1677ff' }} /><Text strong style={{ fontSize: 18 }}>{editingWorkflow ? '编辑工作流' : '创建工作流'}</Text></Space><Text type="secondary" style={{ fontSize: 12 }}>配置工作流基础信息、执行参数、步骤编排与 AI 代码生成</Text></Space></div>} open={editModalVisible} onOk={handleSave} onCancel={() => setEditModalVisible(false)}
+      <Modal title={<div style={{ textAlign: 'center', width: '100%' }}><Space direction="vertical" size={2}><Space size={8}><ThunderboltOutlined style={{ color: 'var(--primary-color)' }} /><Text strong style={{ fontSize: 18 }}>{editingWorkflow ? '编辑工作流' : '创建工作流'}</Text></Space><Text type="secondary" style={{ fontSize: 12 }}>配置工作流基础信息、执行参数、步骤编排与 AI 代码生成</Text></Space></div>} open={editModalVisible} onOk={handleSave} onCancel={() => setEditModalVisible(false)}
         footer={
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, justifyContent: 'flex-end', alignItems: 'center' }}>
             <Button size="small" key="validate" icon={<PlayCircleOutlined />} onClick={handleValidate}>验证DSL</Button>
@@ -958,7 +1150,7 @@ const TemporalWorkflowPage: React.FC = () => {
                   <span>输入参数</span>
                   <Text type="secondary">（Workflow 入口参数）</Text>
                   <Tooltip title="第一个步骤的参数会自动成为整个工作流的入口参数，可补充默认值与说明。">
-                    <InfoCircleOutlined style={{ color: '#8c8c8c' }} />
+                    <InfoCircleOutlined style={{ color: 'var(--text-light)' }} />
                   </Tooltip>
                 </Space>
                 <Button
@@ -993,9 +1185,9 @@ const TemporalWorkflowPage: React.FC = () => {
                     alignItems: 'center',
                     gap: 6,
                     padding: '8px 10px',
-                    border: '1px solid #d9d9d9',
+                    border: '1px solid var(--bg-secondary)',
                     borderRadius: 10,
-                    background: '#fff',
+                    background: 'var(--bg-card)',
                   }}
                 >
                   <Tag color="blue" style={{ marginInlineEnd: 0, whiteSpace: 'nowrap' }}>{key}</Tag>
@@ -1061,8 +1253,8 @@ const TemporalWorkflowPage: React.FC = () => {
                     style={{
                       marginBottom: 6,
                       cursor: 'pointer',
-                      background: isAdded ? '#f6ffed' : '#fff',
-                      border: isAdded ? '1px solid #b7eb8f' : '1px solid #d9d9d9',
+                      background: isAdded ? 'rgba(16, 185, 129, 0.12)' : 'var(--bg-card)',
+                      border: isAdded ? '1px solid rgba(16, 185, 129, 0.4)' : '1px solid var(--bg-secondary)',
                     }}
                     onClick={() => !isAdded && handleAddActivityFromPool(activity)}
                   >
@@ -1105,8 +1297,8 @@ const TemporalWorkflowPage: React.FC = () => {
                     style={{
                       marginBottom: 6,
                       cursor: 'pointer',
-                      background: selectedStepIndexForConfig === index ? '#f6ffed' : '#fff',
-                      border: selectedStepIndexForConfig === index ? '2px solid #52c41a' : '1px solid #d9d9d9',
+                      background: selectedStepIndexForConfig === index ? 'rgba(16, 185, 129, 0.12)' : 'var(--bg-card)',
+                      border: selectedStepIndexForConfig === index ? '2px solid rgba(16, 185, 129, 0.6)' : '1px solid var(--bg-secondary)',
                     }}
                     onClick={() => {
                       setSelectedStepIndexForConfig(index);
@@ -1159,7 +1351,7 @@ const TemporalWorkflowPage: React.FC = () => {
             <Card size="small" style={{ ...SECTION_CARD_STYLE, height: '100%' }} styles={{ body: { padding: 12 } }}>
             <Text strong style={{ display: 'block', marginBottom: 8 }}>步骤配置</Text>
             {selectedStepIndexForConfig !== null && workflowDsl.steps[selectedStepIndexForConfig] ? (
-              <Card size="small" style={{ ...SECTION_CARD_STYLE, background: '#fafcff' }} styles={{ body: { padding: 14 } }}>
+              <Card size="small" style={{ ...SECTION_CARD_STYLE, background: 'var(--bg-card)' }} styles={{ body: { padding: 14 } }}>
                 <Form layout="vertical" size="small">
                   {workflowDsl.steps[selectedStepIndexForConfig].type === 'activity' && (
                     <>
@@ -1168,7 +1360,7 @@ const TemporalWorkflowPage: React.FC = () => {
                       {renderStepDurationField('heartbeatTimeout', '心跳超时', '长耗时工作单元可通过心跳汇报存活；超时表示长时间未汇报。默认单位为秒，可切换为分或小时。')}
 
                       <Form.Item label="输入参数（只读）" style={{ marginBottom: 0 }}>
-                        <div style={{ border: '1px dashed #d9d9d9', padding: 8, borderRadius: 8, background: '#fff' }}>
+                        <div style={{ border: '1px dashed var(--bg-secondary)', padding: 8, borderRadius: 8, background: 'var(--bg-card)' }}>
                           {Object.entries(workflowDsl.steps[selectedStepIndexForConfig].input || {}).filter(([k]) => k !== 'timeout').map(([key, value]) => (
                             <div key={key} style={{ display: 'flex', gap: 6, marginBottom: 4, alignItems: 'center' }}>
                               <Tag color="blue">{key}</Tag>
@@ -1209,7 +1401,7 @@ const TemporalWorkflowPage: React.FC = () => {
         </Row>
 
         <Card
-          title={<Space size={6}><span>输出参数</span><Text type="secondary">（Workflow 返回值）</Text><Tooltip title="默认使用最后一个步骤的输出，也可以指定来源步骤。"><InfoCircleOutlined style={{ color: '#8c8c8c' }} /></Tooltip></Space>}
+          title={<Space size={6}><span>输出参数</span><Text type="secondary">（Workflow 返回值）</Text><Tooltip title="默认使用最后一个步骤的输出，也可以指定来源步骤。"><InfoCircleOutlined style={{ color: 'var(--text-light)' }} /></Tooltip></Space>}
           size="small"
           style={{ ...SECTION_CARD_STYLE, marginTop: 16, marginBottom: 16 }}
           styles={{ body: SECTION_CARD_BODY_STYLE }}

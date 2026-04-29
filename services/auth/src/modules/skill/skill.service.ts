@@ -3,7 +3,7 @@
  * Skill配置管理服务 - 支持权限管控和AI语义匹配
  */
 
-import { Injectable, Logger, OnModuleInit, ForbiddenException, NotFoundException } from '@nestjs/common';
+import { Injectable, Logger, OnModuleInit, ForbiddenException, NotFoundException, BadRequestException } from '@nestjs/common';
 import { randomUUID } from 'crypto';
 import { PrismaService } from '../../prisma/prisma.service';
 import {
@@ -47,6 +47,15 @@ type SkillValidationStreamEvent = {
 };
 
 type SkillValidationEmitter = (event: SkillValidationStreamEvent) => void;
+
+type PublishedSkillReleaseMeta = {
+  skillId: string;
+  releaseId: string;
+  releaseVersion: number;
+  status: string;
+  deploymentStatus: string;
+  sourceType: string;
+};
 
 /**
  * 默认Skill配置
@@ -270,8 +279,7 @@ export class SkillService implements OnModuleInit {
       where: { isActive: true },
       orderBy: { createdAt: 'desc' },
     });
-
-    return skills.map(this.toDTO);
+    return this.enrichSkillsWithPublication(skills, { hideHistoricalPublishedVersions: true });
   }
 
   /**
@@ -284,8 +292,11 @@ export class SkillService implements OnModuleInit {
     const skill = await this.prisma.skillConfig.findUnique({
       where: { id },
     });
-
-    return skill ? this.toDTO(skill) : null;
+    if (!skill) {
+      return null;
+    }
+    const [enriched] = await this.enrichSkillsWithPublication([skill]);
+    return enriched || null;
   }
 
   /**
@@ -444,16 +455,17 @@ export class SkillService implements OnModuleInit {
 
     // 5. 去重并返回活跃的 Skills
     const uniqueSkillIds = new Set<string>();
-    const skills: SkillConfigDTO[] = [];
+    const skills = [];
 
     for (const perm of skillPermissions as any[]) {
       if (!uniqueSkillIds.has(perm.skillId) && perm.skill.isActive) {
         uniqueSkillIds.add(perm.skillId);
-        skills.push(this.toDTO(perm.skill));
+        skills.push(perm.skill);
       }
     }
 
-    return skills;
+    const enrichedSkills = await this.enrichSkillsWithPublication(skills);
+    return enrichedSkills.filter((skill) => skill.isPublished);
   }
 
   /**
@@ -495,6 +507,11 @@ export class SkillService implements OnModuleInit {
       return false;
     }
 
+    const publication = await this.getPublishedReleaseMap([skillId]);
+    if (!publication.has(skillId)) {
+      return false;
+    }
+
     // 5. 检查用户角色是否有权限
     const roleIds = userRoles.map((ur: any) => ur.roleId);
     const permission = await this.prisma.skillPermission.findFirst({
@@ -529,6 +546,15 @@ export class SkillService implements OnModuleInit {
 
     if (!role) {
       throw new NotFoundException('Role not found');
+    }
+
+    if (!skill.isActive) {
+      throw new BadRequestException('当前 Skill 已停用，不能分配权限');
+    }
+
+    const publication = await this.getPublishedReleaseMap([skillId]);
+    if (!publication.has(skillId)) {
+      throw new BadRequestException('只有已公开发布的 Skill 才能分配给普通用户使用');
     }
 
     // 创建权限（如果已存在则更新）
@@ -794,7 +820,88 @@ ${skillsXml}
   /**
    * 转换为DTO
    */
-  private toDTO(skill: any): SkillConfigDTO {
+  private async enrichSkillsWithPublication(
+    skills: any[],
+    options?: { hideHistoricalPublishedVersions?: boolean },
+  ): Promise<SkillConfigDTO[]> {
+    if (!skills.length) {
+      return [];
+    }
+    const skillIds = skills.map((skill) => skill.id);
+    const publicationMap = await this.getPublishedReleaseMap(skillIds);
+    const publishedBindingSet = await this.getPublishedSkillBindingSet(skillIds);
+    return skills
+      .filter((skill) => {
+        if (!options?.hideHistoricalPublishedVersions) {
+          return true;
+        }
+        const isCurrentPublished = publicationMap.has(skill.id);
+        const hasPublishedHistory = publishedBindingSet.has(skill.id);
+        return isCurrentPublished || !hasPublishedHistory;
+      })
+      .map((skill) => this.toDTO(skill, publicationMap.get(skill.id)));
+  }
+
+  private async getPublishedReleaseMap(skillIds: string[]): Promise<Map<string, PublishedSkillReleaseMeta>> {
+    const rows = await this.getCurrentPublishedReleaseRows();
+
+    return new Map(
+      rows
+        .filter((row) => skillIds.includes(row.published_skill_id))
+        .map((row) => [
+        row.published_skill_id,
+        {
+          skillId: row.published_skill_id,
+          releaseId: row.id,
+          releaseVersion: Number(row.release_version || 0),
+          status: row.status,
+          deploymentStatus: row.deployment_status,
+          sourceType: row.source_type,
+        } satisfies PublishedSkillReleaseMeta,
+      ]),
+    );
+  }
+
+  private async getPublishedSkillBindingSet(skillIds: string[]): Promise<Set<string>> {
+    const uniqueSkillIds = Array.from(new Set(skillIds.filter((id) => isValidUUID(id))));
+    if (uniqueSkillIds.length === 0) {
+      return new Set();
+    }
+
+    const rows = await this.prisma.$queryRawUnsafe<Array<{ published_skill_id: string }>>(
+      `SELECT DISTINCT published_skill_id
+       FROM capability_releases
+       WHERE archived_at IS NULL
+         AND published_skill_id = ANY($1::uuid[])`,
+      uniqueSkillIds,
+    );
+
+    return new Set(rows.map((row) => row.published_skill_id));
+  }
+
+  private async getCurrentPublishedReleaseRows(): Promise<any[]> {
+    return this.prisma.$queryRawUnsafe<any[]>(
+      `SELECT DISTINCT ON (source_type, COALESCE(source_id::text, source_name, published_skill_id::text))
+          published_skill_id,
+          id,
+          release_version,
+          status,
+          deployment_status,
+          source_type,
+          source_id,
+          source_name,
+          updated_at
+       FROM capability_releases
+       WHERE archived_at IS NULL
+         AND published_skill_id IS NOT NULL
+       ORDER BY source_type,
+                COALESCE(source_id::text, source_name, published_skill_id::text),
+                release_version DESC,
+                updated_at DESC`
+    );
+  }
+
+  private toDTO(skill: any, publication?: PublishedSkillReleaseMeta): SkillConfigDTO {
     return {
       id: skill.id,
       name: skill.name,
@@ -809,6 +916,12 @@ ${skillsXml}
       executionFlow: (skill.executionFlow as any[]) || [],
       tools: skill.tools as string[],
       isActive: skill.isActive,
+      isPublished: Boolean(publication),
+      publishedReleaseId: publication?.releaseId || null,
+      publishedReleaseVersion: publication?.releaseVersion ?? null,
+      publishedReleaseStatus: publication?.status || null,
+      publishedDeploymentStatus: publication?.deploymentStatus || null,
+      publishedSourceType: publication?.sourceType || null,
     };
   }
 

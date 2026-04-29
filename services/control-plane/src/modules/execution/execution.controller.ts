@@ -6,6 +6,7 @@ import {
   Param,
   Query,
   Res,
+  Delete,
   HttpCode,
   HttpStatus,
   Logger,
@@ -197,5 +198,19 @@ export class ExecutionController {
     const userId = req.user?.id || 'anonymous';
     this.logger.log(`Input submission requested for execution ${id} by user ${userId}`);
     return this.executionService.submitInputAndResume(id, userId, dto);
+  }
+
+  @Delete(':id')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Delete execution' })
+  @ApiResponse({ status: 200, description: 'Execution deleted successfully' })
+  @ApiResponse({ status: 404, description: 'Execution not found' })
+  async delete(
+    @Param('id') id: string,
+    @Req() req: AuthenticatedRequest,
+  ): Promise<{ success: boolean }> {
+    const userId = req.user?.id || 'anonymous';
+    this.logger.log(`Delete requested for execution ${id} by user ${userId}`);
+    return this.executionService.delete(id, userId);
   }
 }

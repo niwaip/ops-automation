@@ -115,6 +115,42 @@ const asRecord = (value: unknown): Record<string, unknown> | undefined => {
   return value as Record<string, unknown>;
 };
 
+const extractDownloadUrl = (value: unknown): string | undefined => {
+  const queue: unknown[] = [value];
+  const visited = new Set<unknown>();
+  let inspected = 0;
+
+  while (queue.length > 0 && inspected < 50) {
+    const current = queue.shift();
+    inspected += 1;
+
+    if (!current || typeof current !== 'object' || visited.has(current)) {
+      continue;
+    }
+    visited.add(current);
+
+    if (Array.isArray(current)) {
+      current.forEach((item) => queue.push(item));
+      continue;
+    }
+
+    const record = current as Record<string, unknown>;
+    const directUrl = [record.downloadUrl, record.download_url, record.url]
+      .find((item): item is string => typeof item === 'string' && item.trim().length > 0);
+    if (directUrl) {
+      return directUrl;
+    }
+
+    Object.values(record).forEach((item) => {
+      if (item && typeof item === 'object') {
+        queue.push(item);
+      }
+    });
+  }
+
+  return undefined;
+};
+
 const formatRuntimeSummary = (skillName: string, runtimeData: Record<string, unknown>): string => {
   const lines = [`Temporal Workflow 执行成功: ${skillName}`];
   const result = asRecord(runtimeData.result);
@@ -124,11 +160,17 @@ const formatRuntimeSummary = (skillName: string, runtimeData: Record<string, unk
   const workflowSteps = Array.isArray(runtimeData.workflowSteps)
     ? runtimeData.workflowSteps.filter((item): item is Record<string, unknown> => Boolean(item) && typeof item === 'object')
     : [];
+  const downloadUrl = extractDownloadUrl(runtimeData);
 
   if (result && Object.keys(result).length > 0) {
     lines.push('');
     lines.push('返回结果:');
     lines.push(JSON.stringify(result, null, 2));
+  }
+
+  if (downloadUrl) {
+    lines.push('');
+    lines.push(`下载链接: ${downloadUrl}`);
   }
 
   if (workflowSteps.length > 0) {
@@ -262,8 +304,10 @@ export class FlowExecuteTool extends BaseTool {
             { headers: traceHeaders },
           );
           const runtimeData = runtimeResponse.data as Record<string, unknown>;
+          const downloadUrl = extractDownloadUrl(runtimeData);
           const runtimeSummaryData = {
             ...runtimeData,
+            ...(downloadUrl ? { downloadUrl } : {}),
             workflowSteps: skill.apiEndpoints?.runtimeMetadata?.workflowSteps ?? [],
           };
           return {
@@ -278,6 +322,7 @@ export class FlowExecuteTool extends BaseTool {
                 finalAnswer: runtimeData.success
                   ? formatRuntimeSummary(skill.name, runtimeSummaryData)
                   : undefined,
+                ...(downloadUrl ? { downloadUrl } : {}),
                 result: runtimeData.result ?? null,
                 logs: runtimeData.logs ?? [],
                 workflowSteps: skill.apiEndpoints?.runtimeMetadata?.workflowSteps ?? [],

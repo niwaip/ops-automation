@@ -25,7 +25,8 @@ interface MCPCommand {
 
 const RecorderPage: React.FC = () => {
   const { t } = useTranslation(['common', 'recorder']);
-  const { user } = useAuthStore();
+  const { user, theme } = useAuthStore();
+  const isDarkTheme = theme === 'dark';
 
   const [recorderState, setRecorderState] = useState<RecorderState>({
     status: 'idle',
@@ -211,7 +212,9 @@ const RecorderPage: React.FC = () => {
       style={{
         padding: '24px 48px',
         minHeight: '100vh',
-        background: 'linear-gradient(135deg, #f5f7fa 0%, #e4e8ec 100%)',
+        background: isDarkTheme
+          ? 'var(--bg-primary)'
+          : 'linear-gradient(135deg, var(--bg-secondary) 0%, var(--bg-primary) 100%)',
       }}
     >
       {/* Header with status */}
@@ -265,9 +268,10 @@ const RecorderPage: React.FC = () => {
             style={{
               height: '100%',
               borderRadius: 16,
-              boxShadow: '0 4px 20px rgba(0, 0, 0, 0.08)',
-              border: '1px solid rgba(255, 255, 255, 0.8)',
+              boxShadow: isDarkTheme ? '0 8px 24px rgba(0, 0, 0, 0.24)' : '0 4px 20px rgba(0, 0, 0, 0.08)',
+              border: '1px solid var(--bg-secondary)',
               overflow: 'hidden',
+              background: 'var(--bg-card)',
             }}
             styles={{
               body: {
@@ -312,8 +316,9 @@ const RecorderPage: React.FC = () => {
             style={{
               height: '100%',
               borderRadius: 16,
-              boxShadow: '0 4px 20px rgba(0, 0, 0, 0.08)',
-              border: '1px solid rgba(255, 255, 255, 0.8)',
+              boxShadow: isDarkTheme ? '0 8px 24px rgba(0, 0, 0, 0.24)' : '0 4px 20px rgba(0, 0, 0, 0.08)',
+              border: '1px solid var(--bg-secondary)',
+              background: 'var(--bg-card)',
               display: 'flex',
               flexDirection: 'column',
             }}
@@ -342,7 +347,7 @@ const RecorderPage: React.FC = () => {
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                background: '#1a1a2e',
+                background: isDarkTheme ? '#000000' : '#1a1a2e',
                 overflow: 'hidden',
               }}
             >
@@ -357,12 +362,12 @@ const RecorderPage: React.FC = () => {
                   title="Browser Preview"
                 />
               ) : (
-                <div style={{ textAlign: 'center', color: '#6b7280' }}>
-                  <DesktopOutlined style={{ fontSize: 48, marginBottom: 16, color: '#4b5563' }} />
-                  <p style={{ color: '#9ca3af', marginBottom: 8 }}>
+                <div style={{ textAlign: 'center', color: 'var(--text-secondary)' }}>
+                  <DesktopOutlined style={{ fontSize: 48, marginBottom: 16, color: 'var(--text-secondary)' }} />
+                  <p style={{ color: 'var(--text-primary)', marginBottom: 8 }}>
                     {t('recorder:ai.startToPreview') || '初始化浏览器后开始控制'}
                   </p>
-                  <p style={{ color: '#6b7280', fontSize: 12 }}>
+                  <p style={{ color: 'var(--text-secondary)', fontSize: 12 }}>
                     {t('recorder:novncHint') || 'noVNC will show browser after initialization'}
                   </p>
                 </div>
@@ -379,7 +384,7 @@ const RecorderPage: React.FC = () => {
             <Card
               style={{
                 borderRadius: 16,
-                boxShadow: '0 4px 20px rgba(0, 0, 0, 0.08)',
+                boxShadow: isDarkTheme ? '0 8px 24px rgba(0, 0, 0, 0.24)' : '0 4px 20px rgba(0, 0, 0, 0.08)',
               }}
             >
               <Spin tip={t('recorder:compiling')}>
