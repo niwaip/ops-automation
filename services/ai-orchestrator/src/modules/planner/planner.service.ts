@@ -73,6 +73,7 @@ export class PlannerService {
             {
               type: schema.type,
               description: schema.description,
+              extractionPrompt: (schema as any).extractionPrompt,
               default: schema.default as string | number | boolean | undefined,
             },
           ]),
@@ -419,7 +420,11 @@ export class PlannerService {
         description: schema.description,
         required,
         value,
-        missing: required && value === undefined,
+        missing: required && (
+          value === undefined ||
+          value === null ||
+          (typeof value === 'string' && value.trim() === '')
+        ),
         source: hasValue ? 'user_input' : canUseDefault && value !== undefined ? 'default' : 'unresolved',
       };
     });

@@ -131,12 +131,13 @@ export class RecognizerService {
    */
   private buildSystemPromptFromSchema(
     templateName: string,
-    properties: Record<string, { type: string; description?: string; default?: string | number | boolean }>,
+    properties: Record<string, { type: string; description?: string; default?: string | number | boolean; extractionPrompt?: string }>,
   ): string {
     const params = Object.entries(properties)
       .map(([name, schema]) => {
         const defaultStr = schema.default !== undefined ? ` (默认值: ${schema.default})` : '';
-        return `- ${name}: ${schema.type}${schema.description ? ` - ${schema.description}` : ''}${defaultStr}`;
+        const hintStr = schema.extractionPrompt ? `；提取提示：${schema.extractionPrompt}` : '';
+        return `- ${name}: ${schema.type}${schema.description ? ` - ${schema.description}` : ''}${defaultStr}${hintStr}`;
       })
       .join('\n');
 
