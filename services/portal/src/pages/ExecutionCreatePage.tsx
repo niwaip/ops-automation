@@ -26,6 +26,7 @@ import { ParamsSchema, skillApi, SkillConfigDTO } from '../api/skill';
 import { aiApi } from '../api/ai';
 import type { UploadProps } from 'antd';
 import { Modal, Upload } from 'antd';
+import { useAuthStore } from '../store/authStore';
 
 const { Title, Text } = Typography;
 
@@ -138,10 +139,16 @@ const ExecutionCreatePage: React.FC = () => {
   const [aiGenerating, setAiGenerating] = useState(false);
   const [uploadedText, setUploadedText] = useState<string>('');
   const [uploadedFileName, setUploadedFileName] = useState<string>('');
+  const { user } = useAuthStore();
 
   const publishedSkillsQuery = useQuery(
     ['published-skills-for-execution-create'],
     capabilityReleaseApi.listReleaseCenter,
+  );
+  const authorizedSkillsQuery = useQuery(['authorized-skills-for-execution-create'], skillApi.list);
+  const authorizedSkillIds = useMemo(
+    () => new Set((authorizedSkillsQuery.data?.skills || []).map((skill) => skill.id)),
+    [authorizedSkillsQuery.data?.skills],
   );
 
   const skillOptions = useMemo(() => {
@@ -150,6 +157,9 @@ const ExecutionCreatePage: React.FC = () => {
 
     releases.forEach((release) => {
       if (!release.publishedSkillId) {
+        return;
+      }
+      if (user?.role !== 'admin' && !authorizedSkillIds.has(release.publishedSkillId)) {
         return;
       }
 
@@ -181,7 +191,7 @@ const ExecutionCreatePage: React.FC = () => {
     return Array.from(skillMap.values())
       .map(({ releaseVersion: _releaseVersion, ...item }) => item)
       .sort((left, right) => left.skillName.localeCompare(right.skillName));
-  }, [publishedSkillsQuery.data?.releases]);
+  }, [authorizedSkillIds, publishedSkillsQuery.data?.releases, user?.role]);
 
   const selectedSkillOption = useMemo(
     () => skillOptions.find((skill) => skill.skillId === selectedSkillId),
@@ -407,7 +417,7 @@ const ExecutionCreatePage: React.FC = () => {
 
       <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 2fr) minmax(320px, 1fr)', gap: 16 }}>
         <Card title="执行配置">
-          {publishedSkillsQuery.isLoading ? (
+          {publishedSkillsQuery.isLoading || authorizedSkillsQuery.isLoading ? (
             <div style={{ display: 'flex', justifyContent: 'center', padding: '48px 0' }}>
               <Spin tip="正在加载已发布技能..." />
             </div>

@@ -1,4 +1,13 @@
-import { IsArray, ArrayNotEmpty, IsString } from 'class-validator';
+import { Type } from 'class-transformer';
+import {
+  IsArray,
+  ArrayNotEmpty,
+  IsString,
+  IsOptional,
+  IsInt,
+  Min,
+  IsIn,
+} from 'class-validator';
 
 export class UpdateUserRolesDto {
   @IsArray()
@@ -8,6 +17,14 @@ export class UpdateUserRolesDto {
 }
 
 export class UserQueryDto {
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
   page?: number = 1;
+
+  @IsOptional()
+  @IsString()
+  @IsIn(['employee', 'admin', 'agent'])
   role?: string;
 }

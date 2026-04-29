@@ -1,6 +1,21 @@
-import { Controller, Post, Get, Body, Request } from '@nestjs/common';
+import {
+  Controller,
+  Post,
+  Get,
+  Body,
+  Request,
+  Query,
+  Param,
+} from '@nestjs/common';
 import { AuthService } from './auth.service';
-import { LoginDto, RegisterDto, RefreshTokenDto } from '../../dto';
+import {
+  LoginDto,
+  RegisterDto,
+  RefreshTokenDto,
+  SsoCallbackDto,
+  SsoStartQueryDto,
+  SwitchOrgDto,
+} from '../../dto';
 import { Public } from '../../decorators';
 
 @Controller('auth')
@@ -28,5 +43,37 @@ export class AuthController {
   @Get('me')
   async me(@Request() req: { user: { id: string } }) {
     return this.authService.me(req.user.id);
+  }
+
+  @Post('switch-org')
+  async switchOrg(
+    @Body() dto: SwitchOrgDto,
+    @Request() req: { user: { id: string } },
+  ) {
+    return this.authService.switchActiveOrganization(req.user.id, dto.orgId);
+  }
+
+  @Public()
+  @Get('sso/providers')
+  async listSsoProviders(@Query('orgId') orgId?: string) {
+    return this.authService.listSsoProviders(orgId);
+  }
+
+  @Public()
+  @Get('sso/:provider/start')
+  async ssoStart(
+    @Param('provider') provider: string,
+    @Query() query: SsoStartQueryDto,
+  ) {
+    return this.authService.buildSsoStartUrl(provider, query);
+  }
+
+  @Public()
+  @Post('sso/:provider/callback')
+  async ssoCallback(
+    @Param('provider') provider: string,
+    @Body() callback: SsoCallbackDto,
+  ) {
+    return this.authService.handleSsoCallback(provider, callback);
   }
 }

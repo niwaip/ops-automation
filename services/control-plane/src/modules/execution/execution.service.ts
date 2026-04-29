@@ -1,4 +1,4 @@
-import { Injectable, Logger, NotFoundException, BadRequestException } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException, BadRequestException, ForbiddenException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { Prisma } from '@prisma/client';
 import { Subject, filter } from 'rxjs';
@@ -70,6 +70,11 @@ interface CapabilityRuntimeExecuteResult {
   result?: Record<string, unknown> | null;
   logs: string[];
   error?: string | null;
+}
+
+interface RequestUserContext {
+  id: string;
+  role?: string;
 }
 
 interface PlannerRequiredInput {
@@ -176,6 +181,10 @@ export class ExecutionService {
 
     if (!resolvedSkillId) {
       throw new BadRequestException('skillId or capabilityId is required');
+    }
+
+    if (options?.authToken) {
+      await this.assertSkillAccessibleByUser(resolvedSkillId, options.authToken);
     }
 
     const resolvedDto: CreateExecutionDto = {
@@ -328,7 +337,7 @@ export class ExecutionService {
     }
   }
 
-  async getById(id: string): Promise<ExecutionDto> {
+  async getById(id: string, requester?: RequestUserContext): Promise<ExecutionDto> {
     const execution = await this.prisma.execution.findUnique({
       where: { id },
     });
@@ -336,6 +345,8 @@ export class ExecutionService {
     if (!execution) {
       throw new NotFoundException(`Execution ${id} not found`);
     }
+
+    this.ensureExecutionPermission(execution.createdBy, requester);
 
     const user = await this.prisma.user.findUnique({
       where: { id: execution.createdBy },
@@ -345,7 +356,7 @@ export class ExecutionService {
     return this.toDto(execution, user?.username);
   }
 
-  async getSteps(id: string): Promise<ExecutionStepDto[]> {
+  async getSteps(id: string, requester?: RequestUserContext): Promise<ExecutionStepDto[]> {
     const execution = await this.prisma.execution.findUnique({
       where: { id },
     });
@@ -353,6 +364,8 @@ export class ExecutionService {
     if (!execution) {
       throw new NotFoundException(`Execution ${id} not found`);
     }
+
+    this.ensureExecutionPermission(execution.createdBy, requester);
 
     const steps = await this.prisma.executionStep.findMany({
       where: { executionId: id },
@@ -362,7 +375,7 @@ export class ExecutionService {
     return steps.map((s) => this.toStepDto(s));
   }
 
-  async takeover(id: string, userId: string, dto: TakeoverExecutionDto): Promise<ExecutionDto> {
+  async takeover(id: string, userId: string, dto: TakeoverExecutionDto, requester?: RequestUserContext): Promise<ExecutionDto> {
     const execution = await this.prisma.execution.findUnique({
       where: { id },
     });
@@ -370,6 +383,8 @@ export class ExecutionService {
     if (!execution) {
       throw new NotFoundException(`Execution ${id} not found`);
     }
+
+    this.ensureExecutionPermission(execution.createdBy, requester || { id: userId });
 
     if (!validTransitions[execution.status as ExecutionStatus].includes('human_control')) {
       throw new BadRequestException(`Cannot takeover from status ${execution.status}`);
@@ -409,10 +424,10 @@ export class ExecutionService {
 
     this.logger.log(`Execution ${id} entered human_control`);
 
-    return this.getById(id);
+    return this.getById(id, requester || { id: userId });
   }
 
-  async resume(id: string, userId: string, dto: ResumeExecutionDto): Promise<ExecutionDto> {
+  async resume(id: string, userId: string, dto: ResumeExecutionDto, requester?: RequestUserContext): Promise<ExecutionDto> {
     const execution = await this.prisma.execution.findUnique({
       where: { id },
     });
@@ -420,6 +435,8 @@ export class ExecutionService {
     if (!execution) {
       throw new NotFoundException(`Execution ${id} not found`);
     }
+
+    this.ensureExecutionPermission(execution.createdBy, requester || { id: userId });
 
     if (execution.status !== 'human_control') {
       throw new BadRequestException(`Execution ${id} is not in human_control status`);
@@ -453,14 +470,14 @@ export class ExecutionService {
 
     this.logger.log(`Execution ${id} resumed`);
 
-    return this.getById(id);
+    return this.getById(id, requester || { id: userId });
   }
 
-  async releaseHumanControl(id: string, userId: string, dto: ReleaseHumanControlDto): Promise<ExecutionDto> {
-    return this.resume(id, userId, dto);
+  async releaseHumanControl(id: string, userId: string, dto: ReleaseHumanControlDto, requester?: RequestUserContext): Promise<ExecutionDto> {
+    return this.resume(id, userId, dto, requester);
   }
 
-  async approve(id: string, userId: string, dto: ApprovalDecisionDto): Promise<ExecutionDto> {
+  async approve(id: string, userId: string, dto: ApprovalDecisionDto, requester?: RequestUserContext): Promise<ExecutionDto> {
     const execution = await this.prisma.execution.findUnique({
       where: { id },
     });
@@ -468,6 +485,8 @@ export class ExecutionService {
     if (!execution) {
       throw new NotFoundException(`Execution ${id} not found`);
     }
+
+    this.ensureExecutionPermission(execution.createdBy, requester || { id: userId });
 
     if (execution.status !== 'pending_approval') {
       throw new BadRequestException(`Execution ${id} is not in pending_approval status`);
@@ -492,10 +511,10 @@ export class ExecutionService {
     });
 
     this.logger.log(`Execution ${id} approved`);
-    return this.getById(id);
+    return this.getById(id, requester || { id: userId });
   }
 
-  async reject(id: string, userId: string, dto: ApprovalDecisionDto): Promise<ExecutionDto> {
+  async reject(id: string, userId: string, dto: ApprovalDecisionDto, requester?: RequestUserContext): Promise<ExecutionDto> {
     const execution = await this.prisma.execution.findUnique({
       where: { id },
     });
@@ -503,6 +522,8 @@ export class ExecutionService {
     if (!execution) {
       throw new NotFoundException(`Execution ${id} not found`);
     }
+
+    this.ensureExecutionPermission(execution.createdBy, requester || { id: userId });
 
     if (execution.status !== 'pending_approval') {
       throw new BadRequestException(`Execution ${id} is not in pending_approval status`);
@@ -524,10 +545,10 @@ export class ExecutionService {
     });
 
     this.logger.log(`Execution ${id} rejected`);
-    return this.getById(id);
+    return this.getById(id, requester || { id: userId });
   }
 
-  async submitInputAndResume(id: string, userId: string, dto: SubmitInputDto): Promise<ExecutionDto> {
+  async submitInputAndResume(id: string, userId: string, dto: SubmitInputDto, requester?: RequestUserContext): Promise<ExecutionDto> {
     const execution = await this.prisma.execution.findUnique({
       where: { id },
     });
@@ -535,6 +556,8 @@ export class ExecutionService {
     if (!execution) {
       throw new NotFoundException(`Execution ${id} not found`);
     }
+
+    this.ensureExecutionPermission(execution.createdBy, requester || { id: userId });
 
     if (execution.status !== 'waiting_input') {
       throw new BadRequestException(`Execution ${id} is not in waiting_input status`);
@@ -631,13 +654,13 @@ export class ExecutionService {
 
     if (!isFullySubmitted) {
       this.logger.log(`Partial input submitted for execution ${id}; remaining: ${remainingMissingInputs.length}`);
-      return this.getById(id);
+      return this.getById(id, requester || { id: userId });
     }
 
     if (!runtimeSession) {
       await this.startExecution(id);
       this.logger.log(`Input submitted for execution ${id}; runtime session will be allocated on start`);
-      return this.getById(id);
+      return this.getById(id, requester || { id: userId });
     }
 
     await this.updateStatus(id, 'running');
@@ -658,9 +681,9 @@ export class ExecutionService {
 
     await this.advanceExecutionFlow(id, runtimeSession.id);
     this.logger.log(`Input submitted and execution ${id} resumed from step ${dto.stepId}`);
-    return this.getById(id);
+    return this.getById(id, requester || { id: userId });
   }
-  async cancel(id: string, userId: string): Promise<ExecutionDto> {
+  async cancel(id: string, userId: string, requester?: RequestUserContext): Promise<ExecutionDto> {
     const execution = await this.prisma.execution.findUnique({
       where: { id },
     });
@@ -668,6 +691,8 @@ export class ExecutionService {
     if (!execution) {
       throw new NotFoundException(`Execution ${id} not found`);
     }
+
+    this.ensureExecutionPermission(execution.createdBy, requester || { id: userId });
 
     if (!validTransitions[execution.status as ExecutionStatus].includes('cancelled')) {
       throw new BadRequestException(`Cannot cancel from status ${execution.status}`);
@@ -694,10 +719,13 @@ export class ExecutionService {
 
     this.logger.log(`Execution ${id} cancelled`);
 
-    return this.getById(id);
+    return this.getById(id, requester || { id: userId });
   }
 
-  async list(dto: ListExecutionsDto): Promise<{ data: ExecutionDto[]; total: number; page: number; pageSize: number }> {
+  async list(
+    dto: ListExecutionsDto,
+    requester?: RequestUserContext,
+  ): Promise<{ data: ExecutionDto[]; total: number; page: number; pageSize: number }> {
     const page = dto.page || 1;
     const pageSize = dto.pageSize || 10;
     const skip = (page - 1) * pageSize;
@@ -708,6 +736,9 @@ export class ExecutionService {
     }
     if (dto.skillId) {
       where.skillId = dto.skillId;
+    }
+    if (requester?.id && requester.role !== 'admin') {
+      where.createdBy = requester.id;
     }
 
     const [executions, total] = await Promise.all([
@@ -967,6 +998,48 @@ export class ExecutionService {
 
   private asJsonValue(value: unknown): Prisma.JsonValue {
     return value as Prisma.JsonValue;
+  }
+
+  private async assertSkillAccessibleByUser(
+    skillId: string,
+    authToken: string,
+  ): Promise<void> {
+    try {
+      await axios.get(`${this.authServiceUrl}/skills/${skillId}`, {
+        headers: {
+          Authorization: authToken,
+        },
+        timeout: 10000,
+      });
+    } catch (error) {
+      const status =
+        typeof error === 'object' &&
+        error !== null &&
+        'response' in error
+          ? (error as { response?: { status?: number } }).response?.status
+          : undefined;
+      if (status === 403 || status === 404) {
+        throw new ForbiddenException('You do not have permission to execute this skill');
+      }
+      const message = error instanceof Error ? error.message : 'unknown error';
+      this.logger.warn(`Failed to verify skill permission for ${skillId}: ${message}`);
+      throw new BadRequestException('Unable to verify skill permission');
+    }
+  }
+
+  private ensureExecutionPermission(
+    executionOwnerId: string,
+    requester?: RequestUserContext,
+  ): void {
+    if (!requester?.id) {
+      return;
+    }
+    if (requester.role === 'admin') {
+      return;
+    }
+    if (requester.id !== executionOwnerId) {
+      throw new NotFoundException('Execution not found');
+    }
   }
 
   private async generatePlanDraft(
@@ -1681,7 +1754,7 @@ export class ExecutionService {
     return (execution.inputJson as Record<string, unknown> | undefined) || {};
   }
 
-  async delete(id: string, userId: string): Promise<{ success: boolean }> {
+  async delete(id: string, userId: string, requester?: RequestUserContext): Promise<{ success: boolean }> {
     const execution = await this.prisma.execution.findUnique({
       where: { id },
     });
@@ -1690,8 +1763,7 @@ export class ExecutionService {
       throw new NotFoundException(`Execution with ID "${id}" not found`);
     }
 
-    // Optional: Add permission check or status check here
-    // For now, let's allow deleting any execution if it exists
+    this.ensureExecutionPermission(execution.createdBy, requester || { id: userId });
 
     await this.prisma.executionStep.deleteMany({
       where: { executionId: id },

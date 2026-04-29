@@ -7,6 +7,7 @@ interface JwtPayload {
   sub: string;
   username: string;
   role: string;
+  activeOrgId?: string | null;
   iat: number;
   exp: number;
 }
@@ -29,6 +30,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
         username: true,
         email: true,
         role: true,
+        activeOrgId: true,
         isActive: true,
       },
     });
@@ -46,6 +48,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       username: user.username,
       email: user.email,
       role: user.role,
+      activeOrgId: payload.activeOrgId ?? user.activeOrgId ?? null,
       isActive: user.isActive,
     };
   }

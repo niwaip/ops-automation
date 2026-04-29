@@ -20,11 +20,20 @@ export interface LoginResponse {
   accessToken: string;
   refreshToken: string;
   user: UserDto;
+  activeOrgId?: string | null;
 }
 
 export interface MeResponse {
   user: UserDto;
   roles: RoleDto[];
+  activeOrgId?: string | null;
+  organizations?: Array<{
+    id: string;
+    name: string;
+    code: string;
+    membershipId: string;
+    status: string;
+  }>;
 }
 
 export interface UserListResponse {

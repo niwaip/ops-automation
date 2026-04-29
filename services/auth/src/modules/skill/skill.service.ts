@@ -210,7 +210,56 @@ export class SkillService implements OnModuleInit {
    */
   async onModuleInit() {
     this.logger.log('Initializing Skill Service...');
+    await this.ensureSystemRoles();
     await this.loadDefaultSkills();
+  }
+
+  /**
+   * 确保基础系统角色存在，避免权限分配时出现“角色映射缺失”
+   */
+  private async ensureSystemRoles(): Promise<void> {
+    const systemRoles: Array<{
+      name: string;
+      description: string;
+      permissions: Record<string, boolean>;
+    }> = [
+      {
+        name: 'employee',
+        description: '普通员工角色',
+        permissions: {},
+      },
+      {
+        name: 'agent',
+        description: '自动化代理角色',
+        permissions: {
+          replay_start: true,
+          replay_stop: true,
+          agent_create: true,
+        },
+      },
+      {
+        name: 'admin',
+        description: '系统管理员角色',
+        permissions: {
+          all_skills: true,
+        },
+      },
+    ];
+
+    for (const role of systemRoles) {
+      await this.prisma.role.upsert({
+        where: { name: role.name },
+        update: {
+          isSystem: true,
+        },
+        create: {
+          name: role.name,
+          description: role.description,
+          permissions: role.permissions as any,
+          isSystem: true,
+        },
+      });
+    }
   }
 
   /**
@@ -432,6 +481,7 @@ export class SkillService implements OnModuleInit {
     });
 
     const roleIds = userRoles.map((ur: any) => ur.roleId);
+    const roleNames = new Set(userRoles.map((ur: any) => ur.role?.name).filter(Boolean));
 
     // 4. 检查用户是否是 admin（通过角色关联）
     const isAdmin = userRoles.some((ur: any) => ur.role.name === 'admin' ||
@@ -442,12 +492,29 @@ export class SkillService implements OnModuleInit {
       return this.listSkills();
     }
 
-    // 3. 如果用户没有角色，返回空列表
+    // 兼容历史数据：user_roles 为空时，回退到 users.role 字段
+    if (user?.role && !roleNames.has(user.role)) {
+      const fallbackRole = await this.prisma.role.findUnique({
+        where: { name: user.role },
+        select: { id: true, name: true, permissions: true },
+      });
+
+      if (fallbackRole) {
+        roleIds.push(fallbackRole.id);
+        roleNames.add(fallbackRole.name);
+      }
+    }
+
+    if (roleNames.has('admin')) {
+      return this.listSkills();
+    }
+
+    // 5. 如果用户仍然没有可识别角色，返回空列表
     if (roleIds.length === 0) {
       return [];
     }
 
-    // 4. 获取用户角色有权限的 Skills
+    // 6. 获取用户角色有权限的 Skills
     const skillPermissions = await this.prisma.skillPermission.findMany({
       where: { roleId: { in: roleIds } },
       include: { skill: true },
@@ -514,6 +581,19 @@ export class SkillService implements OnModuleInit {
 
     // 5. 检查用户角色是否有权限
     const roleIds = userRoles.map((ur: any) => ur.roleId);
+    const roleNames = new Set(userRoles.map((ur: any) => ur.role?.name).filter(Boolean));
+
+    // 兼容历史数据：user_roles 为空时，回退到 users.role 字段
+    if (user?.role && !roleNames.has(user.role)) {
+      const fallbackRole = await this.prisma.role.findUnique({
+        where: { name: user.role },
+        select: { id: true, name: true, permissions: true },
+      });
+      if (fallbackRole) {
+        roleIds.push(fallbackRole.id);
+      }
+    }
+
     const permission = await this.prisma.skillPermission.findFirst({
       where: {
         skillId,
@@ -795,6 +875,7 @@ ${skillsXml}
    * 获取所有角色列表（用于权限分配）
    */
   async listRoles(): Promise<{ id: string; name: string }[]> {
+    await this.ensureSystemRoles();
     const roles = await this.prisma.role.findMany({
       select: { id: true, name: true },
       orderBy: { name: 'asc' },

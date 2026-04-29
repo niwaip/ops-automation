@@ -7,7 +7,12 @@ import {
 import { JwtService } from '@nestjs/jwt';
 import { PrismaService } from '../../prisma/prisma.service';
 import * as bcrypt from 'bcryptjs';
-import { LoginDto, RegisterDto } from '../../dto';
+import {
+  LoginDto,
+  RegisterDto,
+  SsoCallbackDto,
+  SsoStartQueryDto,
+} from '../../dto';
 import { UserDto, RoleDto, LoginResponse, MeResponse } from '../../dto/response.dto';
 
 @Injectable()
@@ -55,6 +60,7 @@ export class AuthService {
       accessToken,
       refreshToken,
       user: this.mapUserToDto(user),
+      activeOrgId: user.activeOrgId,
     };
   }
 
@@ -94,20 +100,54 @@ export class AuthService {
       );
     }
 
-    const user = await this.prisma.user.create({
-      data: {
-        username: registerDto.username,
-        passwordHash,
-        email: registerDto.email,
-        role: registerDto.role,
-      },
+    const user = await this.prisma.$transaction(async (tx) => {
+      const createdUser = await tx.user.create({
+        data: {
+          username: registerDto.username,
+          passwordHash,
+          email: registerDto.email,
+          role: registerDto.role,
+        },
+      });
+
+      // Keep legacy users.role and user_roles in sync for permission checks.
+      let mappedRole = await tx.role.findUnique({
+        where: { name: registerDto.role },
+      });
+
+      if (!mappedRole) {
+        mappedRole = await tx.role.create({
+          data: {
+            name: registerDto.role,
+            description: registerDto.role === 'admin' ? '系统管理员角色' : registerDto.role === 'agent' ? '自动化代理角色' : '普通员工角色',
+            permissions: (registerDto.role === 'admin' ? { all_skills: true } : {}) as Record<string, boolean>,
+            isSystem: true,
+          },
+        });
+      }
+
+      await tx.userRole.upsert({
+        where: {
+          userId_roleId: {
+            userId: createdUser.id,
+            roleId: mappedRole.id,
+          },
+        },
+        update: {},
+        create: {
+          userId: createdUser.id,
+          roleId: mappedRole.id,
+        },
+      });
+
+      return createdUser;
     });
 
     return { user: this.mapUserToDto(user) };
   }
 
   async refresh(refreshToken: string): Promise<{ accessToken: string; refreshToken: string }> {
-    let payload: { sub?: string; type?: string };
+    let payload: { sub?: string; type?: string; activeOrgId?: string | null };
 
     try {
       payload = await this.jwtService.verifyAsync(refreshToken);
@@ -145,6 +185,26 @@ export class AuthService {
             role: true,
           },
         },
+        orgMemberships: {
+          where: {
+            status: { in: ['active', 'invited'] },
+            organization: {
+              isActive: true,
+            },
+          },
+          include: {
+            organization: {
+              select: {
+                id: true,
+                name: true,
+                code: true,
+              },
+            },
+          },
+          orderBy: {
+            createdAt: 'desc',
+          },
+        },
       },
     });
 
@@ -163,14 +223,154 @@ export class AuthService {
     return {
       user: this.mapUserToDto(user),
       roles,
+      activeOrgId: user.activeOrgId,
+      organizations: user.orgMemberships.map((membership) => ({
+        id: membership.organization.id,
+        name: membership.organization.name,
+        code: membership.organization.code,
+        membershipId: membership.id,
+        status: membership.status,
+      })),
     };
   }
 
-  private generateAccessToken(user: { id: string; username: string; role: string }): string {
+  async switchActiveOrganization(
+    userId: string,
+    orgId: string,
+  ): Promise<{ activeOrgId: string }> {
+    const membership = await this.prisma.orgMembership.findFirst({
+      where: {
+        userId,
+        orgId,
+        status: 'active',
+        organization: {
+          isActive: true,
+        },
+      },
+      select: { id: true },
+    });
+
+    if (!membership) {
+      throw new UnauthorizedException(
+        'Organization not found in user memberships',
+      );
+    }
+
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { activeOrgId: orgId },
+    });
+
+    return { activeOrgId: orgId };
+  }
+
+  async listSsoProviders(orgId?: string) {
+    if (!orgId) {
+      return {
+        providers: [
+          {
+            key: 'microsoft',
+            providerType: 'microsoft_oidc',
+            enabled: false,
+            note: 'Pass orgId to get tenant specific SSO configuration',
+          },
+        ],
+      };
+    }
+
+    const providers = await this.prisma.identityProviderConfig.findMany({
+      where: {
+        orgId,
+        isEnabled: true,
+      },
+      select: {
+        id: true,
+        name: true,
+        providerType: true,
+        orgId: true,
+      },
+      orderBy: {
+        createdAt: 'desc',
+      },
+    });
+
+    return { providers };
+  }
+
+  async buildSsoStartUrl(provider: string, query: SsoStartQueryDto) {
+    const providerConfig = await this.prisma.identityProviderConfig.findFirst({
+      where: {
+        orgId: query.orgId,
+        isEnabled: true,
+        providerType:
+          provider === 'microsoft' ? 'microsoft_oidc' : 'oidc',
+      },
+      orderBy: {
+        createdAt: 'desc',
+      },
+    });
+
+    if (!providerConfig) {
+      throw new BadRequestException('SSO provider config not found');
+    }
+
+    const callbackUri =
+      query.redirectUri || process.env.SSO_DEFAULT_CALLBACK_URL || '';
+    if (!callbackUri) {
+      throw new BadRequestException('SSO callback URL is not configured');
+    }
+
+    const tenantId = providerConfig.tenantId || 'common';
+    const authBase =
+      providerConfig.authUrl ||
+      `https://login.microsoftonline.com/${tenantId}/oauth2/v2.0/authorize`;
+    const scopes = Array.isArray(providerConfig.scopes)
+      ? (providerConfig.scopes as string[])
+      : ['openid', 'profile', 'email'];
+    const state = `${query.orgId}:${Date.now()}`;
+
+    const authUrl = new URL(authBase);
+    authUrl.searchParams.set('client_id', providerConfig.clientId);
+    authUrl.searchParams.set('response_type', 'code');
+    authUrl.searchParams.set('redirect_uri', callbackUri);
+    authUrl.searchParams.set('scope', scopes.join(' '));
+    authUrl.searchParams.set('state', state);
+    authUrl.searchParams.set('response_mode', 'query');
+
+    return {
+      provider,
+      orgId: query.orgId,
+      authUrl: authUrl.toString(),
+      callbackMode: 'planned',
+    };
+  }
+
+  async handleSsoCallback(provider: string, callback: SsoCallbackDto) {
+    return {
+      provider,
+      orgId: callback.orgId,
+      status: 'pending_implementation',
+      message:
+        'SSO callback exchange and user provisioning are reserved for enterprise IdP integration.',
+      received: {
+        hasCode: Boolean(callback.code),
+        hasIdToken: Boolean(callback.idToken),
+        hasState: Boolean(callback.state),
+      },
+    };
+  }
+
+  private generateAccessToken(user: {
+    id: string;
+    username: string;
+    role: string;
+    activeOrgId?: string | null;
+  }): string {
     const payload = {
       sub: user.id,
       username: user.username,
       role: user.role,
+      activeOrgId: user.activeOrgId ?? null,
     };
 
     return this.jwtService.sign(payload, {
@@ -178,11 +378,17 @@ export class AuthService {
     });
   }
 
-  private generateRefreshToken(user: { id: string; username: string; role: string }): string {
+  private generateRefreshToken(user: {
+    id: string;
+    username: string;
+    role: string;
+    activeOrgId?: string | null;
+  }): string {
     const payload = {
       sub: user.id,
       username: user.username,
       role: user.role,
+      activeOrgId: user.activeOrgId ?? null,
       type: 'refresh',
     };
 
@@ -196,6 +402,7 @@ export class AuthService {
     username: string;
     email: string | null;
     role: string;
+    activeOrgId?: string | null;
     isActive: boolean;
     createdAt: Date;
     updatedAt: Date;

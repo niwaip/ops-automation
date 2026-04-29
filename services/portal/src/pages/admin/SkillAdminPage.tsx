@@ -33,6 +33,7 @@ import {
   SkillValidationResult,
   SkillValidationStreamEvent,
 } from '../../api/skill';
+import { userApi } from '../../api/auth';
 import { carboneApi, CarboneTemplateDTO } from '../../api/carbone';
 import { executionFlowApi } from '../../api/execution-flow';
 import type { ColumnsType } from 'antd/es/table';
@@ -190,12 +191,18 @@ const SkillAdminPage: React.FC = () => {
   const [validationLogs, setValidationLogs] = useState<string[]>([]);
   const [validationStage, setValidationStage] = useState('等待开始');
   const [validationPulse, setValidationPulse] = useState(0);
+  const [permissionUserSearch, setPermissionUserSearch] = useState('');
   const [form] = Form.useForm();
   const validationAbortRef = useRef<(() => void) | null>(null);
 
   // Queries
   const skillsQuery = useQuery(['skills'], skillApi.list);
   const rolesQuery = useQuery(['roles'], roleApi.list);
+  const permissionUsersQuery = useQuery(
+    ['permission-users', permissionModalVisible],
+    () => userApi.list({ page: 1 }),
+    { enabled: permissionModalVisible },
+  );
   const templatesQuery = useQuery(['carbone-templates'], carboneApi.list);
   const executionFlowTemplatesQuery = useQuery(['execution-flow-templates'], () => executionFlowApi.list({ isActive: true }));
 
@@ -746,9 +753,21 @@ const SkillAdminPage: React.FC = () => {
 
   // Available roles not yet granted
   const grantedRoleIds = permissionsQuery.data?.permissions?.map((p) => p.roleId) || [];
+  const roleNameToRoleIdMap = new Map(
+    (rolesQuery.data?.roles || []).map((role) => [role.name.trim().toLowerCase(), role.id]),
+  );
   const availableRoles = rolesQuery.data?.roles?.filter(
     (r) => !grantedRoleIds.includes(r.id)
   );
+  const filteredPermissionUsers = (permissionUsersQuery.data?.users || []).filter((user) => {
+    const keyword = permissionUserSearch.trim().toLowerCase();
+    if (!keyword) return true;
+    return (
+      user.username.toLowerCase().includes(keyword)
+      || (user.email || '').toLowerCase().includes(keyword)
+      || user.role.toLowerCase().includes(keyword)
+    );
+  });
 
   // Available templates for selection
   const templateOptions = templatesQuery.data?.templates?.map((t: CarboneTemplateDTO) => ({
@@ -1265,7 +1284,8 @@ const SkillAdminPage: React.FC = () => {
           setSelectedSkill(null);
         }}
         footer={null}
-        width={700}
+        width={980}
+        styles={{ body: { maxHeight: '70vh', overflowY: 'auto' } }}
       >
         <Tabs defaultActiveKey="granted">
           <TabPane tab={t('admin:grantedRoles')} key="granted">
@@ -1301,6 +1321,93 @@ const SkillAdminPage: React.FC = () => {
                   {t('admin:noAvailableRoles')}
                 </div>
               )}
+            </Space>
+          </TabPane>
+          <TabPane tab="用户视图" key="users">
+            <Space direction="vertical" style={{ width: '100%' }}>
+              <Alert
+                type="info"
+                showIcon
+                message="说明"
+                description="当前技能权限按角色生效。点击某个用户的“授权该用户角色”，会给该用户所属角色授权。"
+              />
+              <Input
+                placeholder="搜索用户（用户名/邮箱/角色）"
+                prefix={<SearchOutlined />}
+                value={permissionUserSearch}
+                onChange={(e) => setPermissionUserSearch(e.target.value)}
+                allowClear
+              />
+              <Table
+                rowKey="id"
+                loading={permissionUsersQuery.isLoading || rolesQuery.isLoading}
+                dataSource={filteredPermissionUsers}
+                pagination={{ pageSize: 8 }}
+                locale={{ emptyText: '暂无可展示用户' }}
+                scroll={{ x: 920 }}
+                columns={[
+                  {
+                    title: '用户名',
+                    dataIndex: 'username',
+                    key: 'username',
+                  },
+                  {
+                    title: '邮箱',
+                    dataIndex: 'email',
+                    key: 'email',
+                    render: (email: string) => email || '-',
+                  },
+                  {
+                    title: '角色',
+                    dataIndex: 'role',
+                    key: 'role',
+                    render: (role: string) => <Tag>{role}</Tag>,
+                  },
+                  {
+                    title: '状态',
+                    dataIndex: 'isActive',
+                    key: 'isActive',
+                    render: (isActive: boolean) => (
+                      <Tag color={isActive ? 'success' : 'error'}>
+                        {isActive ? '启用' : '停用'}
+                      </Tag>
+                    ),
+                  },
+                  {
+                    title: '技能可用',
+                    key: 'permission',
+                    render: (_: unknown, record: { role: string }) => {
+                      const normalizedRole = (record.role || '').trim().toLowerCase();
+                      const roleId = roleNameToRoleIdMap.get(normalizedRole);
+                      const granted = !!roleId && grantedRoleIds.includes(roleId);
+                      return <Tag color={granted ? 'success' : 'default'}>{granted ? '已可用' : '未授权'}</Tag>;
+                    },
+                  },
+                  {
+                    title: '操作',
+                    key: 'actions',
+                    render: (_: unknown, record: { role: string; isActive: boolean }) => {
+                      const normalizedRole = (record.role || '').trim().toLowerCase();
+                      const roleId = roleNameToRoleIdMap.get(normalizedRole);
+                      const granted = !!roleId && grantedRoleIds.includes(roleId);
+                      const cannotMapRole = !roleId;
+                      return (
+                        <Tooltip title={cannotMapRole ? `未找到角色映射：${record.role}` : undefined}>
+                          <Button
+                            type="primary"
+                            size="small"
+                            disabled={!record.isActive || granted || cannotMapRole}
+                            loading={grantMutation.isLoading}
+                            onClick={() => roleId && handleGrantRole(roleId)}
+                          >
+                            授权该用户角色
+                          </Button>
+                        </Tooltip>
+                      );
+                    },
+                  },
+                ]}
+              />
             </Space>
           </TabPane>
         </Tabs>
