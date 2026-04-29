@@ -200,7 +200,12 @@ export class ChatController {
   ): Promise<{
     name?: string;
     paramsSchema?: {
-      properties?: Record<string, { type: string; description?: string; default?: string | number | boolean }>;
+      properties?: Record<string, {
+        type: string;
+        description?: string;
+        extractionPrompt?: string;
+        default?: string | number | boolean;
+      }>;
       required?: string[];
     };
   } | null> {
@@ -208,7 +213,12 @@ export class ChatController {
       const response = await axios.get<{
         name?: string;
         paramsSchema?: {
-          properties?: Record<string, { type: string; description?: string; default?: string | number | boolean }>;
+          properties?: Record<string, {
+            type: string;
+            description?: string;
+            extractionPrompt?: string;
+            default?: string | number | boolean;
+          }>;
           required?: string[];
         };
       }>(`${getAuthServiceUrl()}/skills/${skillId}`, {
@@ -226,14 +236,29 @@ export class ChatController {
   private buildSchemaForMissingInputs(
     missingInputs: Array<{ name: string }>,
     skillSchema?: {
-      properties?: Record<string, { type: string; description?: string; default?: string | number | boolean }>;
+      properties?: Record<string, {
+        type: string;
+        description?: string;
+        extractionPrompt?: string;
+        default?: string | number | boolean;
+      }>;
       required?: string[];
     },
   ): {
-    properties: Record<string, { type: string; description?: string; default?: string | number | boolean }>;
+    properties: Record<string, {
+      type: string;
+      description?: string;
+      extractionPrompt?: string;
+      default?: string | number | boolean;
+    }>;
     required: string[];
   } {
-    const properties = missingInputs.reduce<Record<string, { type: string; description?: string; default?: string | number | boolean }>>((acc, item) => {
+    const properties = missingInputs.reduce<Record<string, {
+      type: string;
+      description?: string;
+      extractionPrompt?: string;
+      default?: string | number | boolean;
+    }>>((acc, item) => {
       const schema = skillSchema?.properties?.[item.name];
       acc[item.name] = schema || {
         type: 'string',
@@ -253,6 +278,7 @@ export class ChatController {
     missingInputs: Array<{ name: string }>,
     skillId?: string,
     authToken?: string,
+    originalObjective?: string,
   ): Promise<Record<string, unknown>> {
     if (missingInputs.length === 0) {
       throw new Error('当前执行单没有可补充的缺失参数。');
@@ -272,19 +298,38 @@ export class ChatController {
     if (skillId) {
       const skill = await this.loadSkillSchema(skillId, authToken);
       const paramsSchema = this.buildSchemaForMissingInputs(missingInputs, skill?.paramsSchema);
+
+      // Prefer planner-style re-understanding over rigid JSON-only fallback:
+      // combine the original objective and the user's follow-up clarification,
+      // then ask the recognizer to extract only the still-missing fields.
+      const plannerStylePrompt = [
+        originalObjective?.trim(),
+        '以下是用户针对缺失参数的补充说明：',
+        message.trim(),
+      ]
+        .filter(Boolean)
+        .join('\n\n');
+
       const recognized = await this.recognizerService.recognizeParams({
         template_id: skillId,
-        user_input: message,
+        user_input: plannerStylePrompt,
         params_schema: paramsSchema,
         context: {
           mode: 'waiting_input_resume',
+          original_objective: originalObjective,
           missing_inputs: missingInputs.map((item) => item.name),
           skill_name: skill?.name,
         },
       });
 
-      if (recognized && recognized.params && Object.keys(recognized.params).length > 0) {
-        return recognized.params;
+      const recognizedEntries = Object.entries(recognized?.params || {}).filter(([, value]) => (
+        value !== undefined &&
+        value !== null &&
+        !(typeof value === 'string' && value.trim() === '')
+      ));
+
+      if (recognizedEntries.length > 0) {
+        return Object.fromEntries(recognizedEntries);
       }
     }
 
@@ -558,6 +603,7 @@ export class ChatController {
           skillId?: string;
           status: string;
           normalizedInput?: {
+            objective?: string;
             requiredInputs?: Array<{
               name: string;
               missing?: boolean;
@@ -592,6 +638,9 @@ export class ChatController {
                 missingInputs,
                 execution.skillId,
                 authToken,
+                typeof execution.normalizedInput?.objective === 'string'
+                  ? execution.normalizedInput.objective
+                  : undefined,
               );
 
               await axios.post(
