@@ -1,24 +1,22 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   Alert,
   Button,
   Card,
-  Col,
-  Descriptions,
   Empty,
   Input,
-  Row,
   Space,
   Table,
   Tag,
   Typography,
 } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
-import { ReloadOutlined, RocketOutlined } from '@ant-design/icons';
+import { ReloadOutlined } from '@ant-design/icons';
 import { useQuery } from 'react-query';
-import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { capabilityReleaseApi, CapabilityRelease } from '../api/capability-release';
-import { skillApi, SkillConfigDTO } from '../api/skill';
+import { skillApi } from '../api/skill';
+import { useAuthStore } from '../store/authStore';
 
 const { Title, Text } = Typography;
 
@@ -40,13 +38,21 @@ const statusColor = (status?: string) => {
 
 const PublishedSkillDetailPage: React.FC = () => {
   const navigate = useNavigate();
-  const { skillId: skillIdFromPath } = useParams<{ skillId: string }>();
-  const [searchParams, setSearchParams] = useSearchParams();
   const [searchText, setSearchText] = useState('');
-  const [selectedSkillId, setSelectedSkillId] = useState<string | null>(skillIdFromPath || null);
+  const { user } = useAuthStore();
 
   const releasesQuery = useQuery(['published-skills'], capabilityReleaseApi.listReleaseCenter);
+  const skillsQuery = useQuery(['authorized-skills'], skillApi.list);
   const releases = releasesQuery.data?.releases || [];
+  const authorizedSkills = skillsQuery.data?.skills || [];
+  const authorizedSkillIds = useMemo(
+    () => new Set(authorizedSkills.map((skill) => skill.id)),
+    [authorizedSkills],
+  );
+  const authorizedSkillMap = useMemo(
+    () => new Map(authorizedSkills.map((skill) => [skill.id, skill])),
+    [authorizedSkills],
+  );
 
   const publishedSkillItems = useMemo(() => {
     const map = new Map<
@@ -54,12 +60,16 @@ const PublishedSkillDetailPage: React.FC = () => {
       {
         skillId: string;
         skillName: string;
+        skillDescription: string;
         release: CapabilityRelease;
       }
     >();
 
     releases.forEach((release) => {
       if (!release.publishedSkillId) {
+        return;
+      }
+      if (user?.role !== 'admin' && !authorizedSkillIds.has(release.publishedSkillId)) {
         return;
       }
 
@@ -79,41 +89,18 @@ const PublishedSkillDetailPage: React.FC = () => {
         );
 
       if (shouldReplace) {
+        const skillMeta = authorizedSkillMap.get(release.publishedSkillId);
         map.set(sourceKey, {
           skillId: release.publishedSkillId,
-          skillName: release.sourceName || release.sourceId || release.publishedSkillId,
+          skillName: skillMeta?.name || release.sourceName || release.sourceId || release.publishedSkillId,
+          skillDescription: skillMeta?.description || '',
           release,
         });
       }
     });
 
     return Array.from(map.values());
-  }, [releases]);
-
-  const selectedRelease =
-    publishedSkillItems.find((item) => item.skillId === selectedSkillId)?.release ||
-    (searchParams.get('releaseId')
-      ? releases.find((item) => item.id === searchParams.get('releaseId'))
-      : undefined);
-
-  const skillDetailQuery = useQuery(
-    ['published-skill-detail', selectedSkillId],
-    () => skillApi.getById(selectedSkillId as string),
-    { enabled: Boolean(selectedSkillId) },
-  );
-
-  useEffect(() => {
-    if (skillIdFromPath && skillIdFromPath !== selectedSkillId) {
-      setSelectedSkillId(skillIdFromPath);
-      return;
-    }
-
-    if (!skillIdFromPath && !selectedSkillId && publishedSkillItems.length > 0) {
-      const nextSkillId = publishedSkillItems[0].skillId;
-      setSelectedSkillId(nextSkillId);
-      navigate(`/published-skills/${nextSkillId}`, { replace: true });
-    }
-  }, [skillIdFromPath, selectedSkillId, publishedSkillItems, navigate]);
+  }, [authorizedSkillIds, authorizedSkillMap, releases, user?.role]);
 
   const filteredItems = useMemo(() => {
     const keyword = searchText.trim().toLowerCase();
@@ -142,6 +129,11 @@ const PublishedSkillDetailPage: React.FC = () => {
           <Text type="secondary" code>
             {record.skillId.slice(0, 8)}
           </Text>
+          {record.skillDescription ? (
+            <Text type="secondary">
+              {record.skillDescription}
+            </Text>
+          ) : null}
         </Space>
       ),
     },
@@ -168,11 +160,7 @@ const PublishedSkillDetailPage: React.FC = () => {
           <Button
             type="link"
             size="small"
-            onClick={() => {
-              setSelectedSkillId(record.skillId);
-              setSearchParams(record.release.id ? { releaseId: record.release.id } : {});
-              navigate(`/published-skills/${record.skillId}`);
-            }}
+            onClick={() => navigate(`/published-skills/${record.skillId}`)}
           >
             查看
           </Button>
@@ -187,8 +175,6 @@ const PublishedSkillDetailPage: React.FC = () => {
       ),
     },
   ];
-
-  const selectedSkill = skillDetailQuery.data as SkillConfigDTO | undefined;
 
   return (
     <div>
@@ -216,156 +202,30 @@ const PublishedSkillDetailPage: React.FC = () => {
         showIcon
         style={{ marginBottom: 16 }}
         message="公开 Skill 管理"
-        description="只有公开后的 Skill 才是执行对象，并且可以分配给普通用户使用。系统定义请到“系统 Skills”页维护。"
+        description="一览仅展示已公开可执行的 Skill，并包含 Skill 说明。系统定义请到“系统 Skills”页维护。"
       />
+      <Card>
+        <Space direction="vertical" size="middle" style={{ width: '100%' }}>
+          <Input
+            allowClear
+            placeholder="搜索 Skill / 说明 / 状态 / 类型"
+            value={searchText}
+            onChange={(event) => setSearchText(event.target.value)}
+          />
 
-      <Row gutter={16} align="top">
-        <Col span={9}>
-          <Card>
-            <Space direction="vertical" size="middle" style={{ width: '100%' }}>
-              <Input
-                allowClear
-                placeholder="搜索 Skill / 状态 / 类型"
-                value={searchText}
-                onChange={(event) => setSearchText(event.target.value)}
-              />
-
-              {filteredItems.length > 0 ? (
-                <Table
-                  rowKey="skillId"
-                  columns={columns}
-                  dataSource={filteredItems}
-                  loading={releasesQuery.isLoading}
-                  pagination={{ pageSize: 8, showSizeChanger: false }}
-                />
-              ) : (
-                <Empty description="暂无已发布 Skill" />
-              )}
-            </Space>
-          </Card>
-        </Col>
-
-        <Col span={15}>
-          {selectedSkillId ? (
-            <Space direction="vertical" size="large" style={{ width: '100%' }}>
-              {selectedRelease ? (
-                <Card size="small" title="关联 Release">
-                  <Descriptions bordered size="small" column={2}>
-                    <Descriptions.Item label="能力名称">
-                      {selectedRelease.sourceName || '未命名能力'}
-                    </Descriptions.Item>
-                    <Descriptions.Item label="能力类型">
-                      {selectedRelease.sourceType}
-                    </Descriptions.Item>
-                    <Descriptions.Item label="发布状态">
-                      <Tag color={statusColor(selectedRelease.status)}>{selectedRelease.status}</Tag>
-                    </Descriptions.Item>
-                    <Descriptions.Item label="部署状态">
-                      <Tag color={statusColor(selectedRelease.deploymentStatus)}>
-                        {selectedRelease.deploymentStatus}
-                      </Tag>
-                    </Descriptions.Item>
-                    <Descriptions.Item label="Release ID">
-                      <Text code>{selectedRelease.id}</Text>
-                    </Descriptions.Item>
-                    <Descriptions.Item label="更新时间">
-                      {new Date(selectedRelease.updatedAt).toLocaleString()}
-                    </Descriptions.Item>
-                  </Descriptions>
-                  <Space wrap style={{ marginTop: 12 }}>
-                    <Button onClick={() => navigate(`/admin/capability-releases?releaseId=${selectedRelease.id}&mode=view`)}>
-                      打开发布详情
-                    </Button>
-                    <Button onClick={() => navigate(`/admin/capability-releases?releaseId=${selectedRelease.id}`)}>
-                      打开 Capability Release
-                    </Button>
-                    {selectedRelease.currentBuildId ? (
-                      <Button
-                        onClick={() =>
-                          navigate(
-                            `/admin/capability-builds/${selectedRelease.currentBuildId}?releaseId=${selectedRelease.id}`,
-                          )
-                        }
-                      >
-                        打开 Build Detail
-                      </Button>
-                    ) : null}
-                    <Button
-                      type="primary"
-                      icon={<RocketOutlined />}
-                      onClick={() => navigate(`/admin/capability-studio?releaseId=${selectedRelease.id}`)}
-                    >
-                      发起下一轮 Release
-                    </Button>
-                  </Space>
-                </Card>
-              ) : null}
-
-              <Card size="small" title="Skill 详情" loading={skillDetailQuery.isLoading}>
-                {selectedSkill ? (
-                  <Space direction="vertical" size="large" style={{ width: '100%' }}>
-                    <Descriptions bordered size="small" column={2}>
-                      <Descriptions.Item label="Skill ID">{selectedSkill.id}</Descriptions.Item>
-                      <Descriptions.Item label="状态">
-                        <Tag color={selectedSkill.isActive ? 'green' : 'red'}>
-                          {selectedSkill.isActive ? 'active' : 'inactive'}
-                        </Tag>
-                      </Descriptions.Item>
-                      <Descriptions.Item label="名称">{selectedSkill.name}</Descriptions.Item>
-                      <Descriptions.Item label="描述">{selectedSkill.description}</Descriptions.Item>
-                      <Descriptions.Item label="关联 Flow Template" span={2}>
-                        <Space wrap>
-                          {(selectedSkill.executionFlowTemplateIds || []).length > 0 ? (
-                            selectedSkill.executionFlowTemplateIds.map((item) => <Tag key={item}>{item}</Tag>)
-                          ) : (
-                            <Text type="secondary">无</Text>
-                          )}
-                        </Space>
-                      </Descriptions.Item>
-                      <Descriptions.Item label="Tools" span={2}>
-                        <Space wrap>
-                          {(selectedSkill.tools || []).length > 0 ? (
-                            selectedSkill.tools.map((item) => <Tag key={item} color="purple">{item}</Tag>)
-                          ) : (
-                            <Text type="secondary">无</Text>
-                          )}
-                        </Space>
-                      </Descriptions.Item>
-                      <Descriptions.Item label="触发词" span={2}>
-                        <Space wrap>
-                          {(selectedSkill.triggerKeywords || []).length > 0 ? (
-                            selectedSkill.triggerKeywords.map((item) => <Tag key={item} color="orange">{item}</Tag>)
-                          ) : (
-                            <Text type="secondary">无</Text>
-                          )}
-                        </Space>
-                      </Descriptions.Item>
-                    </Descriptions>
-
-                    <Card size="small" type="inner" title="参数 Schema">
-                      <pre style={{ margin: 0, maxHeight: 260, overflow: 'auto', whiteSpace: 'pre-wrap' }}>
-                        {JSON.stringify(selectedSkill.paramsSchema || {}, null, 2)}
-                      </pre>
-                    </Card>
-
-                    <Card size="small" type="inner" title="API Endpoints">
-                      <pre style={{ margin: 0, maxHeight: 260, overflow: 'auto', whiteSpace: 'pre-wrap' }}>
-                        {JSON.stringify(selectedSkill.apiEndpoints || {}, null, 2)}
-                      </pre>
-                    </Card>
-                  </Space>
-                ) : (
-                  <Empty description="未找到该 Skill，或当前账号无访问权限" />
-                )}
-              </Card>
-            </Space>
+          {filteredItems.length > 0 ? (
+            <Table
+              rowKey="skillId"
+              columns={columns}
+              dataSource={filteredItems}
+              loading={releasesQuery.isLoading || skillsQuery.isLoading}
+              pagination={{ pageSize: 10, showSizeChanger: false }}
+            />
           ) : (
-            <Card>
-              <Empty description="请选择一个已发布 Skill 查看详情" />
-            </Card>
+            <Empty description="暂无已发布 Skill" />
           )}
-        </Col>
-      </Row>
+        </Space>
+      </Card>
     </div>
   );
 };

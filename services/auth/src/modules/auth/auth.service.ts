@@ -100,13 +100,47 @@ export class AuthService {
       );
     }
 
-    const user = await this.prisma.user.create({
-      data: {
-        username: registerDto.username,
-        passwordHash,
-        email: registerDto.email,
-        role: registerDto.role,
-      },
+    const user = await this.prisma.$transaction(async (tx) => {
+      const createdUser = await tx.user.create({
+        data: {
+          username: registerDto.username,
+          passwordHash,
+          email: registerDto.email,
+          role: registerDto.role,
+        },
+      });
+
+      // Keep legacy users.role and user_roles in sync for permission checks.
+      let mappedRole = await tx.role.findUnique({
+        where: { name: registerDto.role },
+      });
+
+      if (!mappedRole) {
+        mappedRole = await tx.role.create({
+          data: {
+            name: registerDto.role,
+            description: registerDto.role === 'admin' ? '系统管理员角色' : registerDto.role === 'agent' ? '自动化代理角色' : '普通员工角色',
+            permissions: (registerDto.role === 'admin' ? { all_skills: true } : {}) as Record<string, boolean>,
+            isSystem: true,
+          },
+        });
+      }
+
+      await tx.userRole.upsert({
+        where: {
+          userId_roleId: {
+            userId: createdUser.id,
+            roleId: mappedRole.id,
+          },
+        },
+        update: {},
+        create: {
+          userId: createdUser.id,
+          roleId: mappedRole.id,
+        },
+      });
+
+      return createdUser;
     });
 
     return { user: this.mapUserToDto(user) };

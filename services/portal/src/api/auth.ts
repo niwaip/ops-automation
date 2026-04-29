@@ -23,6 +23,7 @@ export interface LoginResponse {
   accessToken: string;
   refreshToken: string;
   user: UserDto;
+  activeOrgId?: string | null;
 }
 
 export interface RefreshResponse {
@@ -33,6 +34,14 @@ export interface RefreshResponse {
 export interface MeResponse {
   user: UserDto;
   roles: RoleDto[];
+  activeOrgId?: string | null;
+  organizations?: Array<{
+    id: string;
+    name: string;
+    code: string;
+    membershipId: string;
+    status: string;
+  }>;
 }
 
 export interface UserListResponse {
@@ -97,18 +106,14 @@ export const userApi = {
   },
 
   updateRoles: async (id: string, roles: string[]): Promise<UserDto> => {
-    return apiClient.patch<UserDto>(`/users/${id}/roles`, { roles });
+    return apiClient.put<UserDto>(`/users/${id}/roles`, { roles });
   },
 
   activate: async (id: string): Promise<UserDto> => {
-    return apiClient.patch<UserDto>(`/users/${id}/activate`);
+    return apiClient.put<UserDto>(`/users/${id}/activate`);
   },
 
   deactivate: async (id: string): Promise<UserDto> => {
-    return apiClient.patch<UserDto>(`/users/${id}/deactivate`);
-  },
-
-  delete: async (id: string): Promise<void> => {
-    return apiClient.delete(`/users/${id}`);
+    return apiClient.put<UserDto>(`/users/${id}/deactivate`);
   },
 };

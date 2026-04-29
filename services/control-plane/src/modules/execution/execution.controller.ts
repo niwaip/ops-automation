@@ -49,24 +49,27 @@ export class ExecutionController {
   @Get()
   @ApiOperation({ summary: 'List executions' })
   @ApiResponse({ status: 200, description: 'List of executions' })
-  async list(@Query() dto: ListExecutionsDto): Promise<{ data: ExecutionDto[]; total: number; page: number; pageSize: number }> {
-    return this.executionService.list(dto);
+  async list(
+    @Query() dto: ListExecutionsDto,
+    @Req() req: AuthenticatedRequest,
+  ): Promise<{ data: ExecutionDto[]; total: number; page: number; pageSize: number }> {
+    return this.executionService.list(dto, req.user);
   }
 
   @Get(':id')
   @ApiOperation({ summary: 'Get execution by ID' })
   @ApiResponse({ status: 200, description: 'Execution details', type: ExecutionDto })
   @ApiResponse({ status: 404, description: 'Execution not found' })
-  async getById(@Param('id') id: string): Promise<ExecutionDto> {
-    return this.executionService.getById(id);
+  async getById(@Param('id') id: string, @Req() req: AuthenticatedRequest): Promise<ExecutionDto> {
+    return this.executionService.getById(id, req.user);
   }
 
   @Get(':id/steps')
   @ApiOperation({ summary: 'Get execution steps' })
   @ApiResponse({ status: 200, description: 'List of execution steps' })
   @ApiResponse({ status: 404, description: 'Execution not found' })
-  async getSteps(@Param('id') id: string): Promise<ExecutionStepDto[]> {
-    return this.executionService.getSteps(id);
+  async getSteps(@Param('id') id: string, @Req() req: AuthenticatedRequest): Promise<ExecutionStepDto[]> {
+    return this.executionService.getSteps(id, req.user);
   }
 
   @Post(':id/takeover')
@@ -82,7 +85,7 @@ export class ExecutionController {
   ): Promise<ExecutionDto> {
     const userId = req.user?.id || 'anonymous';
     this.logger.log(`Takeover requested for execution ${id} by user ${userId}`);
-    return this.executionService.takeover(id, userId, dto);
+    return this.executionService.takeover(id, userId, dto, req.user);
   }
 
   @Post(':id/resume')
@@ -98,7 +101,7 @@ export class ExecutionController {
   ): Promise<ExecutionDto> {
     const userId = req.user?.id || 'anonymous';
     this.logger.log(`Resume requested for execution ${id} by user ${userId}`);
-    return this.executionService.resume(id, userId, dto);
+    return this.executionService.resume(id, userId, dto, req.user);
   }
 
   @Get(':id/events/stream')
@@ -134,7 +137,7 @@ export class ExecutionController {
   ): Promise<ExecutionDto> {
     const userId = req.user?.id || 'anonymous';
     this.logger.log(`Release human control requested for execution ${id} by user ${userId}`);
-    return this.executionService.releaseHumanControl(id, userId, dto);
+    return this.executionService.releaseHumanControl(id, userId, dto, req.user);
   }
 
   @Post(':id/approve')
@@ -150,7 +153,7 @@ export class ExecutionController {
   ): Promise<ExecutionDto> {
     const userId = req.user?.id || 'anonymous';
     this.logger.log(`Approval requested for execution ${id} by user ${userId}`);
-    return this.executionService.approve(id, userId, dto);
+    return this.executionService.approve(id, userId, dto, req.user);
   }
 
   @Post(':id/reject')
@@ -166,7 +169,7 @@ export class ExecutionController {
   ): Promise<ExecutionDto> {
     const userId = req.user?.id || 'anonymous';
     this.logger.log(`Rejection requested for execution ${id} by user ${userId}`);
-    return this.executionService.reject(id, userId, dto);
+    return this.executionService.reject(id, userId, dto, req.user);
   }
 
   @Post(':id/cancel')
@@ -181,7 +184,7 @@ export class ExecutionController {
   ): Promise<ExecutionDto> {
     const userId = req.user?.id || 'anonymous';
     this.logger.log(`Cancel requested for execution ${id} by user ${userId}`);
-    return this.executionService.cancel(id, userId);
+    return this.executionService.cancel(id, userId, req.user);
   }
 
   @Post(':id/submit-input')
@@ -197,7 +200,7 @@ export class ExecutionController {
   ): Promise<ExecutionDto> {
     const userId = req.user?.id || 'anonymous';
     this.logger.log(`Input submission requested for execution ${id} by user ${userId}`);
-    return this.executionService.submitInputAndResume(id, userId, dto);
+    return this.executionService.submitInputAndResume(id, userId, dto, req.user);
   }
 
   @Delete(':id')
@@ -211,6 +214,6 @@ export class ExecutionController {
   ): Promise<{ success: boolean }> {
     const userId = req.user?.id || 'anonymous';
     this.logger.log(`Delete requested for execution ${id} by user ${userId}`);
-    return this.executionService.delete(id, userId);
+    return this.executionService.delete(id, userId, req.user);
   }
 }
