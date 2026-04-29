@@ -36,12 +36,18 @@ export class JwtAuthGuard implements CanActivate {
     }
 
     try {
-      const payload = await this.jwtService.verifyAsync(token);
+      const payload = await this.jwtService.verifyAsync<{
+        sub: string;
+        username: string;
+        role: string;
+        activeOrgId?: string | null;
+      }>(token);
       // Map JWT payload to user object with id field
       request.user = {
         id: payload.sub,
         username: payload.username,
         role: payload.role,
+        activeOrgId: payload.activeOrgId ?? null,
       };
       return true;
     } catch {

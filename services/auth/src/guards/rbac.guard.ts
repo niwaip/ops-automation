@@ -55,7 +55,15 @@ export class RbacGuard implements CanActivate {
       return true;
     }
 
-    const request = context.switchToHttp().getRequest();
+    const request = context.switchToHttp().getRequest<{
+      user?: {
+        id: string;
+        role: string;
+        activeOrgId?: string | null;
+      };
+      headers: Record<string, string | string[] | undefined>;
+      orgContext?: { orgId: string; membershipId: string };
+    }>();
     const user = request.user;
 
     if (!user) {
@@ -92,6 +100,51 @@ export class RbacGuard implements CanActivate {
       for (const perm of Object.keys(rolePermissions)) {
         if (rolePermissions[perm]) {
           userPermissions.add(perm);
+        }
+      }
+    }
+
+    const orgHeader = request.headers['x-org-id'];
+    const requestedOrgId =
+      typeof orgHeader === 'string' ? orgHeader : user.activeOrgId;
+
+    if (requestedOrgId) {
+      const membership = await this.prisma.orgMembership.findFirst({
+        where: {
+          userId: user.id,
+          orgId: requestedOrgId,
+          status: 'active',
+          organization: {
+            isActive: true,
+          },
+        },
+        include: {
+          roleBindings: {
+            include: {
+              role: true,
+            },
+          },
+        },
+      });
+
+      if (!membership) {
+        throw new ForbiddenException('Invalid organization context');
+      }
+
+      request.orgContext = {
+        orgId: requestedOrgId,
+        membershipId: membership.id,
+      };
+
+      for (const binding of membership.roleBindings) {
+        const rolePermissions = binding.role.permissions as Record<
+          string,
+          boolean
+        >;
+        for (const perm of Object.keys(rolePermissions)) {
+          if (rolePermissions[perm]) {
+            userPermissions.add(perm);
+          }
         }
       }
     }
