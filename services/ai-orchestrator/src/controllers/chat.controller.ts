@@ -279,6 +279,7 @@ export class ChatController {
     skillId?: string,
     authToken?: string,
     originalObjective?: string,
+    userId?: string,
   ): Promise<Record<string, unknown>> {
     if (missingInputs.length === 0) {
       throw new Error('当前执行单没有可补充的缺失参数。');
@@ -295,6 +296,14 @@ export class ChatController {
       }
     }
 
+    const plannerStylePrompt = [
+      originalObjective?.trim(),
+      '以下是用户针对缺失参数的补充说明：',
+      message.trim(),
+    ]
+      .filter(Boolean)
+      .join('\n\n');
+
     if (skillId) {
       const skill = await this.loadSkillSchema(skillId, authToken);
       const paramsSchema = this.buildSchemaForMissingInputs(missingInputs, skill?.paramsSchema);
@@ -302,14 +311,6 @@ export class ChatController {
       // Prefer planner-style re-understanding over rigid JSON-only fallback:
       // combine the original objective and the user's follow-up clarification,
       // then ask the recognizer to extract only the still-missing fields.
-      const plannerStylePrompt = [
-        originalObjective?.trim(),
-        '以下是用户针对缺失参数的补充说明：',
-        message.trim(),
-      ]
-        .filter(Boolean)
-        .join('\n\n');
-
       const recognized = await this.recognizerService.recognizeParams({
         template_id: skillId,
         user_input: plannerStylePrompt,
@@ -331,6 +332,45 @@ export class ChatController {
       if (recognizedEntries.length > 0) {
         return Object.fromEntries(recognizedEntries);
       }
+
+      // If recognizer cannot confidently map free-form follow-up text,
+      // re-run AI planner with the full context and collect resolved fields.
+      try {
+        const planDraft = await this.plannerService.generatePlan({
+          request: {
+            user_input: plannerStylePrompt,
+            user_id: userId,
+            context: {
+              mode: 'waiting_input_resume',
+              target_skill_id: skillId,
+              missing_inputs: missingInputs.map((item) => item.name),
+              original_objective: originalObjective,
+              skill_name: skill?.name,
+            },
+          },
+          userId,
+          authToken,
+        });
+
+        const allowedKeys = new Set(missingInputs.map((item) => item.name));
+        const plannedResolvedEntries = (planDraft.required_inputs || [])
+          .filter((item) => allowedKeys.has(item.name))
+          .filter((item) => !item.missing)
+          .map((item) => [item.name, item.value] as const)
+          .filter(([, value]) => (
+            value !== undefined &&
+            value !== null &&
+            !(typeof value === 'string' && value.trim() === '')
+          ));
+
+        if (plannedResolvedEntries.length > 0) {
+          return Object.fromEntries(plannedResolvedEntries);
+        }
+      } catch (error) {
+        this.logger.warn(
+          `Planner-based waiting_input extraction failed: ${error instanceof Error ? error.message : 'unknown'}`,
+        );
+      }
     }
 
     if (missingInputs.length === 1) {
@@ -340,7 +380,7 @@ export class ChatController {
     }
 
     throw new Error(
-      `当前还缺少多个参数：${missingInputs.map((item) => item.name).join('、')}。请使用 JSON 形式补充，例如 {"${firstMissingInput!.name}":"示例值"}`,
+      `当前还缺少多个参数：${missingInputs.map((item) => item.name).join('、')}。请继续用自然语言逐项补充（例如：甲方签字用公司名称、乙方签字用公司名称、附件填写无）。`,
     );
   }
 
@@ -641,6 +681,7 @@ export class ChatController {
                 typeof execution.normalizedInput?.objective === 'string'
                   ? execution.normalizedInput.objective
                   : undefined,
+                context.userId,
               );
 
               await axios.post(
