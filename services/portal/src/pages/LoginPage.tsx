@@ -24,8 +24,9 @@ interface SavedCredentials {
 const LoginPage: React.FC = () => {
   const { t } = useTranslation(['auth', 'common']);
   const navigate = useNavigate();
-  const { login, language, setLanguage } = useAuthStore();
+  const { login, language, setLanguage, theme } = useAuthStore();
   const [form] = Form.useForm();
+  const isDarkTheme = theme === 'dark';
 
   // Load saved credentials on page load
   useEffect(() => {
@@ -92,7 +93,9 @@ const LoginPage: React.FC = () => {
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        background: 'linear-gradient(135deg, #1e1b4b 0%, #312e81 25%, #4338ca 50%, #6366f1 75%, #818cf8 100%)',
+        background: isDarkTheme
+          ? 'linear-gradient(135deg, #020617 0%, #0f172a 30%, #1e1b4b 65%, #312e81 100%)'
+          : 'linear-gradient(135deg, #1e1b4b 0%, #312e81 25%, #4338ca 50%, #6366f1 75%, #818cf8 100%)',
         position: 'relative',
         overflow: 'hidden',
       }}
@@ -127,12 +130,15 @@ const LoginPage: React.FC = () => {
         style={{
           width: 420,
           padding: 48,
-          background: 'rgba(255, 255, 255, 0.95)',
+          background: isDarkTheme ? 'rgba(15, 23, 42, 0.84)' : 'rgba(255, 255, 255, 0.95)',
           borderRadius: 24,
-          boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25), 0 0 0 1px rgba(255, 255, 255, 0.1)',
+          boxShadow: isDarkTheme
+            ? '0 25px 60px -18px rgba(2, 6, 23, 0.7), 0 0 0 1px rgba(148, 163, 184, 0.14)'
+            : '0 25px 50px -12px rgba(0, 0, 0, 0.25), 0 0 0 1px rgba(255, 255, 255, 0.1)',
           backdropFilter: 'blur(20px)',
           position: 'relative',
           zIndex: 1,
+          border: isDarkTheme ? '1px solid rgba(148, 163, 184, 0.14)' : 'none',
         }}
       >
         {/* Logo */}

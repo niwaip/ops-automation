@@ -104,6 +104,15 @@ const getErrorPreview = (value?: string): string => {
   return preview || '任务执行失败，请展开查看具体错误信息。';
 };
 
+const fixLocalhostLink = (url?: string): string | undefined => {
+  if (!url) return undefined;
+  // 如果链接包含 localhost，且当前页面不在 localhost，则尝试替换为当前主机的 IP/域名
+  if (url.includes('localhost') && window.location.hostname !== 'localhost') {
+    return url.replace('localhost', window.location.hostname);
+  }
+  return url;
+};
+
 const ChatMessageComponent: React.FC<ChatMessageProps> = ({
   message,
   isStreaming,
@@ -144,7 +153,10 @@ const ChatMessageComponent: React.FC<ChatMessageProps> = ({
   // 解析内容
   const { thoughts, answer } = parseMessageContent(rawContent);
   const answerWithoutTaskCheckbox = useMemo(
-    () => answer.replace(/\n?- \[x\]\s*任务完成（可改为未完成）\s*$/m, '').trim(),
+    () => {
+      const cleaned = answer.replace(/\n?- \[x\]\s*任务完成（可改为未完成）\s*$/m, '').trim();
+      return fixLocalhostLink(cleaned) || '';
+    },
     [answer],
   );
 
@@ -197,11 +209,12 @@ const ChatMessageComponent: React.FC<ChatMessageProps> = ({
 
   // 渲染下载链接
   const renderDownloadLink = () => {
-    if (!message.metadata?.downloadUrl) return null;
+    const downloadUrl = fixLocalhostLink(message.metadata?.downloadUrl);
+    if (!downloadUrl) return null;
 
     return (
       <div className="chat-message-download">
-        <a href={message.metadata.downloadUrl} target="_blank" rel="noopener noreferrer">
+        <a href={downloadUrl} target="_blank" rel="noopener noreferrer">
           点击下载文档
         </a>
       </div>
@@ -297,6 +310,7 @@ const ChatMessageComponent: React.FC<ChatMessageProps> = ({
     }
 
     if (finalResult) {
+      const fixedFinalResult = fixLocalhostLink(finalResult);
       return (
         <div className="chat-outcome-card success">
           <div className="chat-outcome-title">{hasBusinessResult ? '任务结果' : '任务完成'}</div>
@@ -306,7 +320,7 @@ const ChatMessageComponent: React.FC<ChatMessageProps> = ({
           </div>
           <div className="chat-outcome-body">
             <ReactMarkdown remarkPlugins={[remarkGfm]}>
-              {finalResult}
+              {fixedFinalResult || ''}
             </ReactMarkdown>
           </div>
           {shouldShowStructuredResult && (

@@ -114,7 +114,8 @@ const AIControls: React.FC<AIControlsProps> = ({
 }) => {
   const { t } = useTranslation(['common', 'recorder']);
   const navigate = useNavigate();
-  const { user } = useAuthStore();
+  const { user, theme } = useAuthStore();
+  const isDarkTheme = theme === 'dark';
 
   // Predefined commands configuration
   // 搜索: 用户指定搜索框和关键词
@@ -1152,9 +1153,11 @@ const AIControls: React.FC<AIControlsProps> = ({
           alignItems: 'center',
           justifyContent: 'space-between',
           padding: '12px 16px',
-          background: 'linear-gradient(135deg, #f0f4ff 0%, #e8f0fe 100%)',
+          background: isDarkTheme
+            ? 'var(--bg-secondary)'
+            : 'linear-gradient(135deg, #f0f4ff 0%, #e8f0fe 100%)',
           borderRadius: 12,
-          border: '1px solid rgba(99, 102, 241, 0.1)',
+          border: isDarkTheme ? '1px solid #334155' : '1px solid rgba(99, 102, 241, 0.1)',
         }}
       >
         <Space>
@@ -1197,10 +1200,10 @@ const AIControls: React.FC<AIControlsProps> = ({
               minHeight: 200,
               maxHeight: 400,
               overflowY: 'auto',
-              background: '#fafafa',
+              background: isDarkTheme ? 'var(--bg-primary)' : '#fafafa',
               borderRadius: 12,
               padding: 12,
-              border: '1px solid #e5e7eb',
+              border: isDarkTheme ? '1px solid #334155' : '1px solid #e5e7eb',
             }}
           >
           {history.length === 0 ? (
@@ -1223,9 +1226,14 @@ const AIControls: React.FC<AIControlsProps> = ({
                     maxWidth: '85%',
                     padding: '8px 12px',
                     borderRadius: 12,
-                    background: entry.type === 'user' ? '#6366f1' : entry.type === 'system' ? '#e6f7ff' : '#fff',
+                    background: entry.type === 'user' 
+                      ? '#6366f1' 
+                      : entry.type === 'system' 
+                        ? (isDarkTheme ? '#1e3a8a' : '#e6f7ff') 
+                        : (isDarkTheme ? 'var(--bg-card)' : '#fff'),
                     color: entry.type === 'user' ? '#fff' : 'inherit',
-                    boxShadow: '0 1px 2px rgba(0,0,0,0.1)',
+                    boxShadow: isDarkTheme ? '0 1px 3px rgba(0,0,0,0.3)' : '0 1px 2px rgba(0,0,0,0.1)',
+                    border: isDarkTheme && entry.type !== 'user' ? '1px solid #334155' : 'none',
                   }}
                 >
                   <Text
@@ -1258,12 +1266,13 @@ const AIControls: React.FC<AIControlsProps> = ({
                                   <div
                                     key={i}
                                     style={{
-                                      background: '#f5f5f5',
+                                      background: isDarkTheme ? '#1e293b' : '#f5f5f5',
                                       padding: '4px 8px',
                                       borderRadius: 4,
                                       marginBottom: 4,
                                       fontFamily: 'monospace',
                                       fontSize: 12,
+                                      border: isDarkTheme ? '1px solid #334155' : 'none',
                                     }}
                                   >
                                     <Space>
@@ -1338,7 +1347,7 @@ const AIControls: React.FC<AIControlsProps> = ({
                                 {entry.result.text && (
                                   <div
                                     style={{
-                                      background: '#f5f5f5',
+                                      background: isDarkTheme ? '#1e293b' : '#f5f5f5',
                                       padding: 8,
                                       borderRadius: 4,
                                       fontSize: 11,
@@ -1346,6 +1355,7 @@ const AIControls: React.FC<AIControlsProps> = ({
                                       wordBreak: 'break-all',
                                       maxHeight: 200,
                                       overflow: 'auto',
+                                      border: isDarkTheme ? '1px solid #334155' : 'none',
                                     }}
                                   >
                                     {entry.result.text}
@@ -1355,7 +1365,7 @@ const AIControls: React.FC<AIControlsProps> = ({
                                 {entry.result.html && (
                                   <div
                                     style={{
-                                      background: '#f5f5f5',
+                                      background: isDarkTheme ? '#1e293b' : '#f5f5f5',
                                       padding: 8,
                                       borderRadius: 4,
                                       fontSize: 11,
@@ -1364,6 +1374,7 @@ const AIControls: React.FC<AIControlsProps> = ({
                                       wordBreak: 'break-all',
                                       maxHeight: 200,
                                       overflow: 'auto',
+                                      border: isDarkTheme ? '1px solid #334155' : 'none',
                                     }}
                                   >
                                     {entry.result.html}
@@ -1373,13 +1384,15 @@ const AIControls: React.FC<AIControlsProps> = ({
                                 {entry.result.snapshot && (
                                   <pre
                                     style={{
-                                      background: '#f5f5f5',
+                                      background: isDarkTheme ? '#1e293b' : '#f5f5f5',
                                       padding: 8,
                                       borderRadius: 4,
                                       fontSize: 10,
                                       maxHeight: 200,
                                       overflow: 'auto',
                                       margin: 0,
+                                      border: isDarkTheme ? '1px solid #334155' : 'none',
+                                      color: 'inherit',
                                     }}
                                   >
                                     {typeof entry.result.snapshot === 'string'
@@ -1389,10 +1402,24 @@ const AIControls: React.FC<AIControlsProps> = ({
                                 )}
                                 {/* Template info - for all commands */}
                                 {entry.result.template_info && (
-                                  <div style={{ marginTop: 8, padding: 8, background: '#e6f7ff', borderRadius: 4, border: '1px solid #91d5ff' }}>
+                                  <div style={{ 
+                                    marginTop: 8, 
+                                    padding: 8, 
+                                    background: isDarkTheme ? '#1e3a8a' : '#e6f7ff', 
+                                    borderRadius: 4, 
+                                    border: isDarkTheme ? '1px solid #1e40af' : '1px solid #91d5ff' 
+                                  }}>
                                     <Text strong style={{ fontSize: 11 }}>确定性命令：</Text>
-                                    <div style={{ marginTop: 4, fontSize: 10, fontFamily: 'monospace', background: '#fff', padding: 4, borderRadius: 2 }}>
-                                      <pre style={{ margin: 0, whiteSpace: 'pre-wrap' }}>{JSON.stringify(entry.result.template_info, null, 2)}</pre>
+                                    <div style={{ 
+                                      marginTop: 4, 
+                                      fontSize: 10, 
+                                      fontFamily: 'monospace', 
+                                      background: isDarkTheme ? 'var(--bg-card)' : '#fff', 
+                                      padding: 4, 
+                                      borderRadius: 2,
+                                      border: isDarkTheme ? '1px solid #334155' : 'none',
+                                    }}>
+                                      <pre style={{ margin: 0, whiteSpace: 'pre-wrap', color: 'inherit' }}>{JSON.stringify(entry.result.template_info, null, 2)}</pre>
                                     </div>
                                     <Space style={{ marginTop: 8 }}>
                                       <Button
@@ -1413,13 +1440,15 @@ const AIControls: React.FC<AIControlsProps> = ({
                                 {!entry.result.screenshot && !entry.result.text && !entry.result.html && !entry.result.snapshot && (
                                   <pre
                                     style={{
-                                      background: '#f5f5f5',
+                                      background: isDarkTheme ? '#1e293b' : '#f5f5f5',
                                       padding: 8,
                                       borderRadius: 4,
                                       fontSize: 10,
                                       maxHeight: 200,
                                       overflow: 'auto',
                                       margin: 0,
+                                      border: isDarkTheme ? '1px solid #334155' : 'none',
+                                      color: 'inherit',
                                     }}
                                   >
                                     {JSON.stringify(entry.result, null, 2)}
@@ -1433,7 +1462,7 @@ const AIControls: React.FC<AIControlsProps> = ({
                     </div>
                   )}
                 </div>
-                <div style={{ fontSize: 10, color: '#999', marginTop: 2 }}>
+                <div style={{ fontSize: 10, color: isDarkTheme ? '#64748b' : '#999', marginTop: 2 }}>
                   {entry.timestamp.toLocaleTimeString()}
                 </div>
               </div>
@@ -1456,9 +1485,13 @@ const AIControls: React.FC<AIControlsProps> = ({
                   padding: '4px 16px',
                   height: 32,
                   lineHeight: '24px',
-                  border: selectedCommand === c.value ? '2px solid #6366f1' : '1px solid #d9d9d9',
-                  background: selectedCommand === c.value ? '#eef2ff' : '#fff',
-                  color: selectedCommand === c.value ? '#6366f1' : '#666',
+                  border: selectedCommand === c.value ? '2px solid #6366f1' : (isDarkTheme ? '1px solid #334155' : '1px solid #d9d9d9'),
+                  background: selectedCommand === c.value 
+                    ? (isDarkTheme ? '#312e81' : '#eef2ff') 
+                    : (isDarkTheme ? 'var(--bg-primary)' : '#fff'),
+                  color: selectedCommand === c.value 
+                    ? (isDarkTheme ? '#e0e7ff' : '#6366f1') 
+                    : (isDarkTheme ? '#94a3b8' : '#666'),
                   fontWeight: selectedCommand === c.value ? 500 : 400,
                   transition: 'all 0.2s ease',
                   cursor: 'pointer',
@@ -1621,7 +1654,7 @@ const AIControls: React.FC<AIControlsProps> = ({
 
         {/* Template section */}
         <Divider style={{ margin: '12px 0' }} />
-        <div style={{ background: '#f6f8fa', borderRadius: 8, padding: 12 }}>
+        <div style={{ background: isDarkTheme ? 'var(--bg-secondary)' : '#f6f8fa', borderRadius: 8, padding: 12, border: isDarkTheme ? '1px solid #334155' : 'none' }}>
           <Space style={{ width: '100%', justifyContent: 'space-between' }}>
             <Space>
               <Text strong style={{ fontSize: 13 }}>
@@ -1693,7 +1726,12 @@ const AIControls: React.FC<AIControlsProps> = ({
           {templateSteps.length > 0 && (
             <List
               size="small"
-              style={{ marginTop: 12, background: '#fff', borderRadius: 4 }}
+              style={{ 
+                marginTop: 12, 
+                background: isDarkTheme ? 'var(--bg-primary)' : '#fff', 
+                borderRadius: 4,
+                border: isDarkTheme ? '1px solid #334155' : '1px solid #e8e8e8'
+              }}
               dataSource={templateSteps}
               renderItem={(step, index) => (
                 <List.Item
@@ -1719,7 +1757,7 @@ const AIControls: React.FC<AIControlsProps> = ({
           )}
 
           {templateSteps.length === 0 && (
-            <div style={{ marginTop: 12, textAlign: 'center', color: '#999', fontSize: 12 }}>
+            <div style={{ marginTop: 12, textAlign: 'center', color: isDarkTheme ? '#64748b' : '#999', fontSize: 12 }}>
               执行命令后，点击"添加到模版"按钮将确定性命令添加到模版中
             </div>
           )}
@@ -1938,13 +1976,15 @@ const AIControls: React.FC<AIControlsProps> = ({
               </Text>
               <pre
                 style={{
-                  background: '#f5f5f5',
+                  background: isDarkTheme ? '#1e293b' : '#f5f5f5',
                   padding: 12,
                   borderRadius: 8,
                   maxHeight: 200,
                   overflow: 'auto',
                   fontSize: 11,
                   marginTop: 8,
+                  border: isDarkTheme ? '1px solid #334155' : 'none',
+                  color: 'inherit',
                 }}
               >
                 {recordedScript}

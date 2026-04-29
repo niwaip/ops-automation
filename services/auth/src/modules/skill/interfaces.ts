@@ -86,6 +86,12 @@ export interface SkillConfigDTO {
     runtimeMetadata?: SkillRuntimeMetadata;
   };
   isActive: boolean;
+  isPublished: boolean;
+  publishedReleaseId?: string | null;
+  publishedReleaseVersion?: number | null;
+  publishedReleaseStatus?: string | null;
+  publishedDeploymentStatus?: string | null;
+  publishedSourceType?: string | null;
 }
 
 /**

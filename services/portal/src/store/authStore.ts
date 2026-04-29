@@ -4,6 +4,7 @@ import i18n from '../i18n';
 import type { UserDto } from '../api/auth';
 
 type Language = 'zh-CN' | 'en-US' | 'ja-JP';
+type ThemeMode = 'light' | 'dark';
 
 interface AuthState {
   accessToken: string | null;
@@ -11,6 +12,7 @@ interface AuthState {
   user: UserDto | null;
   isAuthenticated: boolean;
   language: Language;
+  theme: ThemeMode;
   sidebarCollapsed: boolean;
 }
 
@@ -20,6 +22,8 @@ interface AuthActions {
   login: (accessToken: string, refreshToken: string, user: UserDto) => void;
   logout: () => void;
   setLanguage: (language: Language) => void;
+  setTheme: (theme: ThemeMode) => void;
+  toggleTheme: () => void;
   toggleSidebar: () => void;
   setSidebarCollapsed: (collapsed: boolean) => void;
 }
@@ -27,25 +31,21 @@ interface AuthActions {
 export const useAuthStore = create<AuthState & AuthActions>()(
   persist(
     (set) => ({
-      // Initial state - TEST MODE: Pre-authenticated with mock admin user
-      accessToken: 'test-token',
-      refreshToken: 'test-refresh-token',
-      user: {
-        id: '00000000-0000-0000-0000-000000000001',
-        username: 'admin',
-        email: 'admin@example.com',
-        role: 'admin',
-        isActive: true,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      },
-      isAuthenticated: true,
+      accessToken: null,
+      refreshToken: null,
+      user: null,
+      isAuthenticated: false,
       language: 'zh-CN',
+      theme: 'light',
       sidebarCollapsed: false,
 
       // Actions
       setTokens: (accessToken, refreshToken) =>
-        set({ accessToken, refreshToken }),
+        set({
+          accessToken,
+          refreshToken,
+          isAuthenticated: Boolean(accessToken && refreshToken),
+        }),
 
       setUser: (user) =>
         set({ user, isAuthenticated: true }),
@@ -67,9 +67,15 @@ export const useAuthStore = create<AuthState & AuthActions>()(
         }),
 
       setLanguage: (language) => {
-        i18n.changeLanguage(language);
+        void i18n.changeLanguage(language);
         set({ language });
       },
+
+      setTheme: (theme) =>
+        set({ theme }),
+
+      toggleTheme: () =>
+        set((state) => ({ theme: state.theme === 'light' ? 'dark' : 'light' })),
 
       toggleSidebar: () =>
         set((state) => ({ sidebarCollapsed: !state.sidebarCollapsed })),
@@ -85,6 +91,7 @@ export const useAuthStore = create<AuthState & AuthActions>()(
         user: state.user,
         isAuthenticated: state.isAuthenticated,
         language: state.language,
+        theme: state.theme,
         sidebarCollapsed: state.sidebarCollapsed,
       }),
     }

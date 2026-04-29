@@ -71,6 +71,14 @@ export class TemporalWorkflowController {
     return this.temporalWorkflowService.generateWorkflowCode(data.workflowDsl, data.activityDsl, data.errorContext);
   }
 
+  @Post('generate-template-draft')
+  @ApiOperation({ summary: 'Generate template-based workflow draft from Carbone template' })
+  async generateTemplateDraft(
+    @Body() data: { templateId: string },
+  ): Promise<import('./temporal-workflow.service').TemplateWorkflowDraft> {
+    return this.temporalWorkflowService.generateTemplateWorkflowDraft(data.templateId);
+  }
+
   @Post('validate-code')
   @ApiOperation({ summary: 'Validate generated workflow code with test worker' })
   async validateWorkflowReal(

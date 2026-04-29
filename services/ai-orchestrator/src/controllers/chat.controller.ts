@@ -16,6 +16,7 @@ import { Request, Response } from 'express';
 import { Readable } from 'stream';
 import axios from 'axios';
 import { ModelService } from '../modules/model/model.service';
+import { RecognizerService } from '../modules/recognizer/recognizer.service';
 import { ReActEngineService } from '../modules/react-engine/react-engine.service';
 import { PlannerService } from '../modules/planner/planner.service';
 import { getOrCreateTraceId } from '../common/trace.util';
@@ -46,6 +47,42 @@ const getControlPlaneUrl = () => {
   return 'http://localhost:3003/api';
 };
 
+const extractDownloadUrl = (value: unknown): string | undefined => {
+  const queue: unknown[] = [value];
+  const visited = new Set<unknown>();
+  let inspected = 0;
+
+  while (queue.length > 0 && inspected < 50) {
+    const current = queue.shift();
+    inspected += 1;
+
+    if (!current || typeof current !== 'object' || visited.has(current)) {
+      continue;
+    }
+    visited.add(current);
+
+    if (Array.isArray(current)) {
+      current.forEach((item) => queue.push(item));
+      continue;
+    }
+
+    const record = current as Record<string, unknown>;
+    const directUrl = [record.downloadUrl, record.download_url, record.url]
+      .find((item): item is string => typeof item === 'string' && item.trim().length > 0);
+    if (directUrl) {
+      return directUrl;
+    }
+
+    Object.values(record).forEach((item) => {
+      if (item && typeof item === 'object') {
+        queue.push(item);
+      }
+    });
+  }
+
+  return undefined;
+};
+
 @ApiTags('AI-Chat')
 @Controller('ai')
 export class ChatController {
@@ -53,6 +90,7 @@ export class ChatController {
 
   constructor(
     private readonly modelService: ModelService,
+    private readonly recognizerService: RecognizerService,
     private readonly reactEngineService: ReActEngineService,
     private readonly sessionService: SessionService,
     private readonly plannerService: PlannerService,
@@ -84,24 +122,138 @@ export class ChatController {
     }
 
     const trimmed = message.trim();
-    if (!trimmed.startsWith('{') || !trimmed.endsWith('}')) {
-      return null;
+    const tryParseObject = (value: string): Record<string, unknown> | null => {
+      try {
+        const parsed = JSON.parse(value);
+        return parsed && typeof parsed === 'object' && !Array.isArray(parsed)
+          ? (parsed as Record<string, unknown>)
+          : null;
+      } catch {
+        return null;
+      }
+    };
+
+    const directParsed = tryParseObject(trimmed);
+    if (directParsed) {
+      return directParsed;
     }
 
+    const fencedBlockMatch = trimmed.match(/```(?:json)?\s*([\s\S]*?)\s*```/i);
+    if (fencedBlockMatch?.[1]) {
+      const fencedParsed = tryParseObject(fencedBlockMatch[1].trim());
+      if (fencedParsed) {
+        return fencedParsed;
+      }
+    }
+
+    for (let start = 0; start < trimmed.length; start += 1) {
+      if (trimmed[start] !== '{') {
+        continue;
+      }
+
+      let depth = 0;
+      let inString = false;
+      let isEscaped = false;
+
+      for (let end = start; end < trimmed.length; end += 1) {
+        const char = trimmed[end];
+
+        if (inString) {
+          if (isEscaped) {
+            isEscaped = false;
+          } else if (char === '\\') {
+            isEscaped = true;
+          } else if (char === '"') {
+            inString = false;
+          }
+          continue;
+        }
+
+        if (char === '"') {
+          inString = true;
+          continue;
+        }
+
+        if (char === '{') {
+          depth += 1;
+        } else if (char === '}') {
+          depth -= 1;
+
+          if (depth === 0) {
+            const candidate = trimmed.slice(start, end + 1);
+            const parsed = tryParseObject(candidate);
+            if (parsed) {
+              return parsed;
+            }
+            break;
+          }
+        }
+      }
+    }
+
+    return null;
+  }
+
+  private async loadSkillSchema(
+    skillId: string,
+    authToken?: string,
+  ): Promise<{
+    name?: string;
+    paramsSchema?: {
+      properties?: Record<string, { type: string; description?: string; default?: string | number | boolean }>;
+      required?: string[];
+    };
+  } | null> {
     try {
-      const parsed = JSON.parse(trimmed);
-      return parsed && typeof parsed === 'object' && !Array.isArray(parsed)
-        ? (parsed as Record<string, unknown>)
-        : null;
-    } catch {
+      const response = await axios.get<{
+        name?: string;
+        paramsSchema?: {
+          properties?: Record<string, { type: string; description?: string; default?: string | number | boolean }>;
+          required?: string[];
+        };
+      }>(`${getAuthServiceUrl()}/skills/${skillId}`, {
+        headers: authToken ? { Authorization: authToken } : {},
+      });
+      return response.data;
+    } catch (error) {
+      this.logger.warn(
+        `Failed to load skill schema for ${skillId}: ${error instanceof Error ? error.message : 'unknown'}`,
+      );
       return null;
     }
   }
 
-  private buildWaitingInputPayload(
+  private buildSchemaForMissingInputs(
+    missingInputs: Array<{ name: string }>,
+    skillSchema?: {
+      properties?: Record<string, { type: string; description?: string; default?: string | number | boolean }>;
+      required?: string[];
+    },
+  ): {
+    properties: Record<string, { type: string; description?: string; default?: string | number | boolean }>;
+    required: string[];
+  } {
+    const properties = missingInputs.reduce<Record<string, { type: string; description?: string; default?: string | number | boolean }>>((acc, item) => {
+      const schema = skillSchema?.properties?.[item.name];
+      acc[item.name] = schema || {
+        type: 'string',
+        description: item.name,
+      };
+      return acc;
+    }, {});
+
+    return {
+      properties,
+      required: missingInputs.map((item) => item.name),
+    };
+  }
+
+  private async buildWaitingInputPayload(
     message: string,
     missingInputs: Array<{ name: string }>,
-  ): Record<string, unknown> {
+    skillId?: string,
+    authToken?: string,
+  ): Promise<Record<string, unknown>> {
     if (missingInputs.length === 0) {
       throw new Error('当前执行单没有可补充的缺失参数。');
     }
@@ -114,6 +266,25 @@ export class ChatController {
       const filteredEntries = Object.entries(parsedObject).filter(([key]) => allowedKeys.has(key));
       if (filteredEntries.length > 0) {
         return Object.fromEntries(filteredEntries);
+      }
+    }
+
+    if (skillId) {
+      const skill = await this.loadSkillSchema(skillId, authToken);
+      const paramsSchema = this.buildSchemaForMissingInputs(missingInputs, skill?.paramsSchema);
+      const recognized = await this.recognizerService.recognizeParams({
+        template_id: skillId,
+        user_input: message,
+        params_schema: paramsSchema,
+        context: {
+          mode: 'waiting_input_resume',
+          missing_inputs: missingInputs.map((item) => item.name),
+          skill_name: skill?.name,
+        },
+      });
+
+      if (recognized && recognized.params && Object.keys(recognized.params).length > 0) {
+        return recognized.params;
       }
     }
 
@@ -336,13 +507,21 @@ export class ChatController {
       }
 
       const resolvedUser = await this.resolveAuthenticatedUser(req.headers.authorization);
-      const context: ExecutionContext = {
+      
+      const chatSession = await this.sessionService.getChatSession(body.sessionId || 'default');
+       const history = (chatSession?.history || []).map(m => ({
+         role: m.role as 'user' | 'assistant' | 'system',
+         content: m.content,
+         timestamp: m.timestamp ? new Date(m.timestamp) : new Date(),
+       }));
+
+       const context: ExecutionContext = {
         sessionId: body.sessionId || 'default',
         userId: resolvedUser.userId || body.userId || 'anonymous',
         userRoles: resolvedUser.userRoles?.length ? resolvedUser.userRoles : body.userRoles,
         authToken: req.headers.authorization,
         traceId,
-        history: [],
+        history,
         uploadedFiles: body.files || [],
       };
 
@@ -376,6 +555,7 @@ export class ChatController {
       try {
         // 查询执行单状态
         const response = await axios.get<{
+          skillId?: string;
           status: string;
           normalizedInput?: {
             requiredInputs?: Array<{
@@ -407,7 +587,12 @@ export class ChatController {
               const missingInputs = Array.isArray(execution.normalizedInput?.requiredInputs)
                 ? execution.normalizedInput.requiredInputs.filter((item) => item?.missing)
                 : [];
-              const inputPayload = this.buildWaitingInputPayload(body.message, missingInputs);
+              const inputPayload = await this.buildWaitingInputPayload(
+                body.message,
+                missingInputs,
+                execution.skillId,
+                authToken,
+              );
 
               await axios.post(
                 `${getControlPlaneUrl()}/executions/${executionId}/submit-input`,
@@ -434,12 +619,13 @@ export class ChatController {
                 type: StreamEventType.ERROR,
                 content: `提交信息失败: ${err.response?.data?.message || err.message}`,
               };
+              return;
             }
           }
         }
 
         // 如果执行单还在运行中，返回状态并开始观察
-        if (['queued', 'running', 'pending_approval'].includes(execution.status)) {
+        if (['queued', 'running', 'pending_approval', 'waiting_input'].includes(execution.status)) {
           yield {
             type: StreamEventType.THOUGHT,
             content: `任务正在执行中 (状态: ${execution.status})，正在为您实时观察进度...`,
@@ -450,8 +636,29 @@ export class ChatController {
           }
           return;
         }
-      } catch (error) {
-        this.logger.warn(`Failed to fetch execution ${executionId}: ${error instanceof Error ? error.message : 'unknown'}`);
+      } catch (error: any) {
+        const isAuthError = error.response?.status === 401 || error.response?.status === 403;
+        const isNotFoundError = error.response?.status === 404;
+
+        if (isAuthError) {
+          this.logger.error(`Authentication failed for execution ${executionId}: ${error.message}`);
+          yield {
+            type: StreamEventType.ERROR,
+            content: '您的登录会话已过期或无效，请重新登录后再试。',
+          };
+          return;
+        }
+
+        if (!isNotFoundError) {
+          this.logger.error(`Failed to fetch execution ${executionId}: ${error.message}`);
+          yield {
+            type: StreamEventType.ERROR,
+            content: `无法恢复执行进度: ${error.response?.data?.message || error.message}`,
+          };
+          return;
+        }
+
+        this.logger.warn(`Execution ${executionId} not found, falling back to new plan.`);
       }
     }
 
@@ -468,6 +675,7 @@ export class ChatController {
         context: {
           sessionId: body.sessionId,
           uploadedFiles: body.files,
+          history: context.history,
         },
       },
       userId: context.userId,
@@ -765,6 +973,7 @@ export class ChatController {
 
       if (status === 'succeeded') {
         if (rawResult !== null && rawResult !== undefined) {
+          const downloadUrl = extractDownloadUrl(rawResult);
           return {
             type: StreamEventType.RESULT,
             content: this.formatExecutionResult(rawResult, executionId),
@@ -772,6 +981,7 @@ export class ChatController {
               executionId,
               status,
               result: rawResult,
+              downloadUrl,
               hasBusinessResult: true,
             },
           };
@@ -843,7 +1053,7 @@ export class ChatController {
 
     if (result && typeof result === 'object') {
       const record = result as Record<string, unknown>;
-      const preferredFields = ['formatted_output', 'summary', 'message', 'text', 'content'];
+      const preferredFields = ['finalAnswer', 'formatted_output', 'summary', 'message', 'text', 'content', 'output'];
 
       for (const field of preferredFields) {
         const value = record[field];
@@ -907,6 +1117,7 @@ export class ChatController {
         };
       case 'step.succeeded':
         let observationContent = '步骤执行成功。';
+        const downloadUrl = extractDownloadUrl(payload.result);
         if (payload.result) {
           const resultStr = typeof payload.result === 'string' ? payload.result : JSON.stringify(payload.result, null, 2);
           observationContent = `步骤执行成功，返回结果:\n${resultStr}`;
@@ -914,7 +1125,7 @@ export class ChatController {
         return {
           type: StreamEventType.OBSERVATION,
           content: observationContent,
-          data: { stepId: payload.stepId, result: payload.result },
+          data: { stepId: payload.stepId, result: payload.result, downloadUrl },
         };
       case 'step.failed':
         return {

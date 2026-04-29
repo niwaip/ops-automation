@@ -188,12 +188,15 @@ export class ExecutionService {
 
     const generatedPlanDraft = await this.generatePlanDraft(userId, resolvedDto, options?.authToken);
     const planDraft = this.reconcilePlanDraftWithInput(generatedPlanDraft, resolvedDto.input);
+    const plannedCapabilityId = planDraft?.skill_match?.skill_id;
+    const effectiveSkillId = plannedCapabilityId || resolvedSkillId;
+    const effectiveSkillVersion = resolvedSkillVersion;
     const normalizedInput = this.buildNormalizedInput(resolvedDto, planDraft);
     const execution = await this.prisma.execution.create({
       data: {
         createdBy: userId,
-        skillId: resolvedSkillId,
-        skillVersion: resolvedSkillVersion,
+        skillId: effectiveSkillId,
+        skillVersion: effectiveSkillVersion,
         status: planDraft?.risk_summary.requires_human_review ? 'pending_approval' : 'queued',
         runtimeType: resolvedDto.runtimeType || 'browser',
         inputJson: this.asJsonValue(resolvedDto.input),
@@ -208,9 +211,9 @@ export class ExecutionService {
     // Create execution event
     await this.createEvent(execution.id, 'execution.created', {
       userId,
-      skillId: resolvedSkillId,
-      capabilityId: resolvedDto.capabilityId || resolvedSkillId,
-      capabilityVersion: resolvedDto.capabilityVersion || null,
+      skillId: effectiveSkillId,
+      capabilityId: plannedCapabilityId || resolvedDto.capabilityId || resolvedSkillId,
+      capabilityVersion: effectiveSkillVersion || resolvedDto.capabilityVersion || null,
     });
 
     if (planDraft) {
@@ -263,7 +266,7 @@ export class ExecutionService {
       });
     }
 
-    return this.toDto(execution);
+    return this.getById(execution.id);
   }
 
   private async startExecution(executionId: string): Promise<void> {
@@ -334,7 +337,12 @@ export class ExecutionService {
       throw new NotFoundException(`Execution ${id} not found`);
     }
 
-    return this.toDto(execution);
+    const user = await this.prisma.user.findUnique({
+      where: { id: execution.createdBy },
+      select: { username: true },
+    });
+
+    return this.toDto(execution, user?.username);
   }
 
   async getSteps(id: string): Promise<ExecutionStepDto[]> {
@@ -573,11 +581,7 @@ export class ExecutionService {
     });
 
     const remainingMissingInputs = updatedRequiredInputs.filter((item) => item.required && item.missing);
-    if (remainingMissingInputs.length > 0) {
-      throw new BadRequestException(
-        `Missing required input fields: ${remainingMissingInputs.map((item) => item.name).join(', ')}`,
-      );
-    }
+    const isFullySubmitted = remainingMissingInputs.length === 0;
 
     const normalizedInputData =
       normalized.input && typeof normalized.input === 'object'
@@ -597,18 +601,19 @@ export class ExecutionService {
       this.prisma.executionStep.update({
         where: { id: dto.stepId },
         data: {
-          status: 'succeeded',
+          status: isFullySubmitted ? 'succeeded' : 'waiting_input',
           inputJson: this.asJsonValue({
             requiredInputs: updatedRequiredInputs.filter((item) => item.missing),
           }),
           outputJson: this.asJsonValue(dto.input),
-          endedAt: new Date(),
+          endedAt: isFullySubmitted ? new Date() : null,
         },
       }),
       this.prisma.execution.update({
         where: { id },
         data: {
           normalizedInputJson: this.asJsonValue(updatedNormalized),
+          status: isFullySubmitted ? 'queued' : 'waiting_input',
         },
       }),
     ]);
@@ -618,13 +623,18 @@ export class ExecutionService {
       orderBy: { createdAt: 'desc' },
     });
 
-    await this.createEvent(id, 'execution.input_submitted', {
+    await this.createEvent(id, isFullySubmitted ? 'execution.input_submitted' : 'execution.partial_input_submitted', {
       stepId: dto.stepId,
       input: dto.input,
+      remainingMissing: remainingMissingInputs.map(i => i.name),
     });
 
+    if (!isFullySubmitted) {
+      this.logger.log(`Partial input submitted for execution ${id}; remaining: ${remainingMissingInputs.length}`);
+      return this.getById(id);
+    }
+
     if (!runtimeSession) {
-      await this.updateStatus(id, 'queued');
       await this.startExecution(id);
       this.logger.log(`Input submitted for execution ${id}; runtime session will be allocated on start`);
       return this.getById(id);
@@ -710,8 +720,17 @@ export class ExecutionService {
       this.prisma.execution.count({ where }),
     ]);
 
+    const createdByIds = Array.from(new Set(executions.map((execution) => execution.createdBy)));
+    const users = createdByIds.length > 0
+      ? await this.prisma.user.findMany({
+          where: { id: { in: createdByIds } },
+          select: { id: true, username: true },
+        })
+      : [];
+    const usernameMap = new Map(users.map((user) => [user.id, user.username]));
+
     return {
-      data: executions.map((e) => this.toDto(e)),
+      data: executions.map((execution) => this.toDto(execution, usernameMap.get(execution.createdBy))),
       total,
       page,
       pageSize,
@@ -891,11 +910,12 @@ export class ExecutionService {
     await this.updateStatus(executionId, 'failed');
   }
 
-  private toDto(execution: Record<string, unknown>): ExecutionDto {
+  private toDto(execution: Record<string, unknown>, createdByName?: string): ExecutionDto {
     return {
       id: execution.id as string,
       orgId: execution.orgId as string | undefined,
       createdBy: execution.createdBy as string,
+      createdByName,
       skillId: execution.skillId as string,
       capabilityId: execution.skillId as string,
       skillVersion: execution.skillVersion as string | undefined,
@@ -1632,15 +1652,15 @@ export class ExecutionService {
     const capabilityMatch = normalizedInput?.capabilityMatch as Record<string, unknown> | undefined;
     const skillMatch = normalizedInput?.skillMatch as Record<string, unknown> | undefined;
 
-    const fromExecution = execution.skillId;
-    if (typeof fromExecution === 'string' && fromExecution.trim()) {
-      return fromExecution;
-    }
     if (typeof capabilityMatch?.capabilityId === 'string' && capabilityMatch.capabilityId.trim()) {
       return capabilityMatch.capabilityId;
     }
     if (typeof skillMatch?.skill_id === 'string' && skillMatch.skill_id.trim()) {
       return skillMatch.skill_id;
+    }
+    const fromExecution = execution.skillId;
+    if (typeof fromExecution === 'string' && fromExecution.trim()) {
+      return fromExecution;
     }
 
     return undefined;
@@ -1659,5 +1679,33 @@ export class ExecutionService {
     }
 
     return (execution.inputJson as Record<string, unknown> | undefined) || {};
+  }
+
+  async delete(id: string, userId: string): Promise<{ success: boolean }> {
+    const execution = await this.prisma.execution.findUnique({
+      where: { id },
+    });
+
+    if (!execution) {
+      throw new NotFoundException(`Execution with ID "${id}" not found`);
+    }
+
+    // Optional: Add permission check or status check here
+    // For now, let's allow deleting any execution if it exists
+
+    await this.prisma.executionStep.deleteMany({
+      where: { executionId: id },
+    });
+
+    await this.prisma.executionEvent.deleteMany({
+      where: { executionId: id },
+    });
+
+    await this.prisma.execution.delete({
+      where: { id },
+    });
+
+    this.logger.log(`Execution ${id} deleted by user ${userId}`);
+    return { success: true };
   }
 }

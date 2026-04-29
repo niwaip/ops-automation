@@ -39,6 +39,10 @@ Final Answer: 最终回复
 - 优先从“当前用户可访问的技能”中选择最匹配的 skillId，再围绕该 skillId 进行参数补足和执行
 - 在任务模式下，禁止跳过技能直接调用通用外部 API；不要调用 \`api_call\`，也不要重新调用 \`skill_match\`
 - 当技能有必填参数但信息不足时，先调用 param_collect，不要直接猜测参数
+- 对文档生成类请求，优先调用 document_intake（模板选择 + 参数初稿），再调用 document_render
+- 若 document_intake 返回 requiresUserInput=true，先向用户澄清模板（回复 templateId/skillId）再继续
+- document_intake 支持传 templateId（report_templates.id）进行显式模板锁定
+- document_render 若失败且属于参数问题，只允许调用 document_param_recover 修复参数；不要切换模板
 - 当技能配置了 \`carboneSkillId\` 时，使用 generate_parameters，并传入平台 skillId
 - 当技能需要实际执行时，使用 flow_execute，并传入平台 skillId
 - 当 Observation 已经足够回答用户且任务完成时，必须输出 \`Final Answer:\`，不要输出普通正文
@@ -81,7 +85,7 @@ export function buildSystemPrompt(
 
   const skillsDescription = availableSkills.length > 0
     ? availableSkills.map((item) => {
-        const executionTool = item.carboneSkillId ? 'generate_parameters -> document_render' : 'flow_execute';
+        const executionTool = item.carboneSkillId ? 'document_intake -> document_render' : 'flow_execute';
         const runtimeHints: string[] = [];
         if (item.goal) runtimeHints.push(`goal=${item.goal}`);
         if (item.expectedResult) runtimeHints.push(`expectedResult=${item.expectedResult}`);
@@ -124,12 +128,12 @@ Carbone Template ID: ${skill.carboneTemplateId || '无'}
     }
 
     if (skill.carboneSkillId) {
-      systemPrompt += `\n重要提示：此技能已配置Carbone AI参数生成，下一步优先调用 generate_parameters 工具，参数为:
+      systemPrompt += `\n重要提示：此技能已配置Carbone文档能力，下一步优先调用 document_intake 工具，参数为:
 {
   "skillId": "${skill.skillId}",
-  "description": "用户的完整描述内容"
+  "userInput": "用户的完整描述内容"
 }
-不要调用 param_collect，直接使用 generate_parameters 从用户描述中提取参数。`;
+若 document_intake 要求澄清模板，请先等待用户确认 templateId/skillId，再继续调用 document_render。`;
     }
   }
 

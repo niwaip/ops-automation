@@ -60,6 +60,100 @@ const normalizeInputParams = (
   }));
 };
 
+const asRecord = (value: unknown): Record<string, any> | undefined => {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    return undefined;
+  }
+  return value as Record<string, any>;
+};
+
+const getCarboneExternalUrl = () => {
+  if (process.env.CARBONE_EXTERNAL_URL) {
+    return process.env.CARBONE_EXTERNAL_URL.replace(/\/$/, '');
+  }
+  return `http://${process.env.HOST_IP || process.env.EXTERNAL_HOST || 'localhost'}:3009`;
+};
+
+const toExternalDownloadUrl = (value?: unknown): string | undefined => {
+  if (typeof value !== 'string' || !value.trim()) {
+    return undefined;
+  }
+  const trimmed = value.trim();
+  if (/^https?:\/\//i.test(trimmed)) {
+    return trimmed;
+  }
+  if (trimmed.startsWith('/')) {
+    return `${getCarboneExternalUrl()}${trimmed}`;
+  }
+  return `${getCarboneExternalUrl()}/${trimmed.replace(/^\/+/, '')}`;
+};
+
+const extractNestedDownloadInfo = (
+  value: unknown,
+): { downloadUrl?: string; documentId?: string } => {
+  const queue: unknown[] = [value];
+  const visited = new Set<unknown>();
+  let inspected = 0;
+
+  while (queue.length > 0 && inspected < 50) {
+    const current = queue.shift();
+    inspected += 1;
+
+    if (!current || typeof current !== 'object' || visited.has(current)) {
+      continue;
+    }
+    visited.add(current);
+
+    if (Array.isArray(current)) {
+      current.forEach((item) => queue.push(item));
+      continue;
+    }
+
+    const record = current as Record<string, unknown>;
+    const downloadUrl =
+      toExternalDownloadUrl(record.downloadUrl)
+      || toExternalDownloadUrl(record.download_url)
+      || toExternalDownloadUrl(record.url);
+    const documentId = typeof record.documentId === 'string'
+      ? record.documentId
+      : typeof record.document_id === 'string'
+        ? record.document_id
+        : undefined;
+
+    if (downloadUrl || documentId) {
+      return { downloadUrl, documentId };
+    }
+
+    Object.values(record).forEach((item) => {
+      if (item && typeof item === 'object') {
+        queue.push(item);
+      }
+    });
+  }
+
+  return {};
+};
+
+const normalizeDocumentExecutionResult = (value: unknown): unknown => {
+  const record = asRecord(value);
+  if (!record) {
+    return value;
+  }
+
+  const nestedInfo = extractNestedDownloadInfo(record);
+  const downloadUrl = nestedInfo.downloadUrl
+    || (nestedInfo.documentId ? toExternalDownloadUrl(`/studio/download/${nestedInfo.documentId}`) : undefined);
+
+  if (!downloadUrl || record.downloadUrl === downloadUrl) {
+    return value;
+  }
+
+  return {
+    ...record,
+    downloadUrl,
+  };
+};
+
 // AI Orchestrator URL helper
 const getAiOrchestratorUrl = () => {
   if (process.env.AI_ORCHESTRATOR_URL) {
@@ -248,6 +342,11 @@ export class ActivityService {
       '7. 【状态检查】：在每次 `requests` 调用后，必须立即调用 `response.raise_for_status()`，以确保 HTTP 错误（如 404, 500）能被 `except` 块捕获。',
       '8. 【幂等】：尽可能确保代码是幂等的。如果返回包含多个字段的结果字典，请确保结果结构清晰。',
       '9. 【环境】：沙箱已 Mock `requests`，请放心使用同步的 `requests.get/post`，无需使用 aiohttp。',
+      '10. 【Carbone 渲染】：如果步骤涉及 Carbone 渲染（type=carbone），必须调用 Carbone API。',
+      '    - 内部 API 地址：`http://carbone-engine:3009/studio/render` (Docker 环境) 或 `http://localhost:3009/studio/render` (本地)。优先尝试 `carbone-engine`。',
+      '    - 拼接规则：必须使用环境变量 `CARBONE_EXTERNAL_URL` 作为前缀。',
+      `    - 注意：如果 ` + '`CARBONE_EXTERNAL_URL`' + ` 未设置，默认使用 http://${process.env.HOST_IP || 'localhost'}:3009。`,
+      '    - 最终返回结果必须包含 `downloadUrl` 字段。',
       '',
     );
 
@@ -719,7 +818,7 @@ export class ActivityService {
       }
 
       // Extract the actual result from the sandbox response
-      const result = executionResult?.result ?? executionResult;
+      const result = normalizeDocumentExecutionResult(executionResult?.result ?? executionResult);
 
       onLog(`[${new Date().toISOString()}] 代码执行成功，返回结果: ${JSON.stringify(result, null, 2)}`);
       return { success: true, result };
@@ -783,6 +882,7 @@ import sys
 import os
 import traceback
 import types
+import inspect
 
 os.environ.setdefault('TEMPORAL_SANDBOX', 'true')
 
@@ -844,10 +944,12 @@ class MockActivity:
         return MockActivityInfo()
 
 class MockApplicationError(Exception):
-    def __init__(self, message, non_retryable=False, *args, **kwargs):
-        super().__init__(message, *args, **kwargs)
+    def __init__(self, message, *details, non_retryable=False, **kwargs):
+        super().__init__(message, *details)
         self.message = message
+        self.details = details
         self.non_retryable = non_retryable
+        self.kwargs = kwargs
 
 class MockResponse:
     def __init__(self, payload=None, status_code=200):
@@ -911,7 +1013,23 @@ def workflow_run(func):
     return func
 
 async def workflow_execute_activity(fn, input_data=None, *args, **kwargs):
-    result = fn(input_data or {})
+    payload = input_data or {}
+    if isinstance(payload, dict):
+        sig = inspect.signature(fn)
+        positional_params = [
+            p for p in sig.parameters.values()
+            if p.kind in (
+                inspect.Parameter.POSITIONAL_ONLY,
+                inspect.Parameter.POSITIONAL_OR_KEYWORD,
+            )
+        ]
+        has_var_kwargs = any(
+            p.kind == inspect.Parameter.VAR_KEYWORD for p in sig.parameters.values()
+        )
+        accepts_single_dict = len(positional_params) == 1 and not has_var_kwargs
+        result = fn(payload) if accepts_single_dict else fn(**payload)
+    else:
+        result = fn(payload)
     import asyncio
     if asyncio.iscoroutine(result):
         return await result

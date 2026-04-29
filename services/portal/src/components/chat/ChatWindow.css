@@ -37,6 +37,21 @@
   backdrop-filter: blur(18px);
 }
 
+[data-theme='dark'] .chat-window {
+  --chat-bg: #0f172a;
+  --chat-surface: rgba(30, 41, 59, 0.92);
+  --chat-surface-strong: #1e293b;
+  --chat-border: rgba(148, 163, 184, 0.18);
+  --chat-text: #f8fafc;
+  --chat-muted: rgba(148, 163, 184, 0.72);
+  --chat-accent: #818cf8;
+  background:
+    radial-gradient(circle at top right, rgba(99, 102, 241, 0.15), transparent 28%),
+    radial-gradient(circle at left bottom, rgba(30, 58, 138, 0.28), transparent 36%),
+    linear-gradient(180deg, rgba(15, 23, 42, 0.99) 0%, rgba(30, 41, 59, 0.96) 100%);
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.4);
+}
+
 .chat-window-actions {
   position: absolute;
   top: 16px;
@@ -52,6 +67,11 @@
   background: rgba(255, 255, 255, 0.78);
   border: 1px solid rgba(148, 163, 184, 0.12);
   backdrop-filter: blur(12px);
+}
+
+[data-theme='dark'] .chat-window-close-btn {
+  background: rgba(30, 41, 59, 0.78);
+  border-color: rgba(148, 163, 184, 0.18);
 }
 
 .chat-window-close-btn:hover {
@@ -98,6 +118,10 @@
   font-size: 16px;
   font-weight: 600;
   color: #334155;
+}
+
+[data-theme='dark'] .chat-empty-title {
+  color: #f8fafc;
 }
 
 /* 流式输出指示器 */

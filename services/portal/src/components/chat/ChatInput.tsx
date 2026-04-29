@@ -3,7 +3,7 @@
  * 聊天输入框组件 - 包含模式切换和停止按钮
  */
 
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Input, Button, Upload, Space, Tag, Switch, Select } from 'antd';
 import { SendOutlined, PaperClipOutlined, StopOutlined, PlusOutlined, MessageOutlined, RobotOutlined } from '@ant-design/icons';
 import { RcFile } from 'antd/es/upload';
@@ -46,7 +46,18 @@ const ChatInput: React.FC<ChatInputProps> = ({
     enableWebSearch,
     setEnableThinking,
     setEnableWebSearch,
+    draftMessage,
+    setDraftMessage,
   } = useChatStore();
+
+  useEffect(() => {
+    if (!draftMessage) {
+      return;
+    }
+    setMessage(draftMessage);
+    setDraftMessage('');
+    inputRef.current?.focus();
+  }, [draftMessage, setDraftMessage]);
 
   // 发送消息
   const handleSend = () => {
@@ -130,18 +141,18 @@ const ChatInput: React.FC<ChatInputProps> = ({
           </Button>
 
           <Switch
-            size="small"
             checked={enableWebSearch}
             onChange={setEnableWebSearch}
             checkedChildren="联网"
             unCheckedChildren="本地"
+            className="chat-input-toggle-switch"
           />
           <Switch
-            size="small"
             checked={enableThinking}
             onChange={setEnableThinking}
             checkedChildren="思考"
             unCheckedChildren="直答"
+            className="chat-input-toggle-switch"
           />
           {chatMode === 'task' && <Tag color="processing">ReAct</Tag>}
 

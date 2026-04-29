@@ -22,6 +22,8 @@ import {
   FileParseTool,
   GenerateParametersTool,
   DocumentRenderTool,
+  DocumentIntakeTool,
+  DocumentParamRecoverTool,
   PreviewParamsTool,
   ApiCallTool,
   FlowExecuteTool,
@@ -67,6 +69,8 @@ export class ToolExecutor {
       new FileParseTool(),
       new GenerateParametersTool(),
       new DocumentRenderTool(),
+      new DocumentIntakeTool(),
+      new DocumentParamRecoverTool(),
       new PreviewParamsTool(),
       new ApiCallTool(),
       new FlowExecuteTool(),
@@ -328,7 +332,7 @@ export class ToolExecutor {
       };
     }
 
-    if (['param_collect', 'generate_parameters', 'document_render', 'flow_execute'].includes(toolName)) {
+    if (['param_collect', 'document_intake', 'generate_parameters', 'document_render', 'document_param_recover', 'flow_execute'].includes(toolName)) {
       this.bindSkillContext(params, context);
     }
 
@@ -415,6 +419,7 @@ export class ToolExecutor {
         tool: toolName,
         params,
         result,
+        downloadUrl: (result.data as Record<string, unknown> | undefined)?.downloadUrl,
         requiresUserInput: result.requiresUserInput,
       },
       iteration,

@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Table, Card, Button, Input, Space, Tag, Typography, Modal, message, Form, Select, Descriptions, Tabs, Tooltip, Collapse, Steps, Divider, Badge, Alert, Popconfirm, Progress } from 'antd';
 import {
   SearchOutlined,
@@ -175,6 +176,7 @@ const getValidationProgressMeta = (stage: string, isRunning: boolean, pulse: num
 const SkillAdminPage: React.FC = () => {
   const { t } = useTranslation(['common', 'admin']);
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
 
   const [searchText, setSearchText] = useState('');
   const [editModalVisible, setEditModalVisible] = useState(false);
@@ -500,7 +502,7 @@ const SkillAdminPage: React.FC = () => {
   const filteredSkills = skillsQuery.data?.skills?.filter(
     (skill) =>
       skill.name.toLowerCase().includes(searchText.toLowerCase()) ||
-      skill.description.toLowerCase().includes(searchText.toLowerCase())
+      (skill.description || '').toLowerCase().includes(searchText.toLowerCase())
   );
   const validationProgressMeta = getValidationProgressMeta(
     validationResult ? '验证完成' : validationStage,
@@ -626,6 +628,16 @@ const SkillAdminPage: React.FC = () => {
       ),
     },
     {
+      title: '公开状态',
+      key: 'published',
+      width: 140,
+      render: (_, record) => (
+        <Tag color={record.isPublished ? 'success' : 'default'}>
+          {record.isPublished ? '已公开可执行' : '仅系统定义'}
+        </Tag>
+      ),
+    },
+    {
       title: t('admin:skillStatus'),
       dataIndex: 'isActive',
       key: 'isActive',
@@ -639,7 +651,7 @@ const SkillAdminPage: React.FC = () => {
     {
       title: t('common:actions'),
       key: 'actions',
-      width: 220,
+      width: 300,
       fixed: 'right',
       render: (_, record) => (
         <Space size="small">
@@ -668,14 +680,27 @@ const SkillAdminPage: React.FC = () => {
           >
             {t('common:edit')}
           </Button>
-          <Button
-            type="link"
-            size="small"
-            icon={<KeyOutlined />}
-            onClick={() => handleManagePermissions(record)}
-          >
-            权限
-          </Button>
+          <Tooltip title={record.isPublished ? '为普通角色分配该公开 Skill 的使用权限' : '只有已公开发布的 Skill 才能分配给普通用户'}>
+            <Button
+              type="link"
+              size="small"
+              icon={<KeyOutlined />}
+              disabled={!record.isPublished}
+              onClick={() => handleManagePermissions(record)}
+            >
+              权限
+            </Button>
+          </Tooltip>
+          {record.isPublished ? (
+            <Button
+              type="link"
+              size="small"
+              icon={<RocketOutlined />}
+              onClick={() => navigate(`/published-skills/${record.id}`)}
+            >
+              公开详情
+            </Button>
+          ) : null}
           <Button
             type="link"
             size="small"
@@ -737,15 +762,24 @@ const SkillAdminPage: React.FC = () => {
 
       <Card style={{ marginTop: 8, marginBottom: 16 }}>
         <Space direction="vertical" size="small">
-          <Text strong>Skills管理说明：</Text>
-          <Text>• Skills定义了系统能执行的操作，包括文档生成、数据分析、自动化流程等</Text>
-          <Text>• 每个Skill可配置<strong>执行步骤</strong>、<strong>触发关键字</strong>、<strong>权限</strong>等属性</Text>
+          <Text strong>系统 Skills 管理说明：</Text>
+          <Text>• 这里管理的是系统里的 Skill 定义，用于配置能力、流程、参数和触发词</Text>
+          <Text>• 只有完成公开发布的 Skill，才会进入公开 Skill 列表，并成为普通用户可执行对象</Text>
+          <Text>• 普通角色权限只能分配给已公开的 Skill；未公开 Skill 仅供管理员设计和维护</Text>
           <Divider style={{ margin: '8px 0' }} />
           <Text strong>匹配机制：</Text>
           <Text>• <Badge status="success">AI语义匹配</Badge> - 主要方式，自动识别用户意图</Text>
           <Text>• <Badge status="warning">触发关键字</Badge> - 回退方案。AI服务不可用时使用</Text>
         </Space>
       </Card>
+
+      <Alert
+        type="info"
+        showIcon
+        style={{ marginBottom: 16 }}
+        message="执行对象规则"
+        description="`admin/skills` 管的是系统 Skill 定义；`published-skills` 管的是已经公开、可被执行和授权的 Skill 对象。"
+      />
 
       <Card>
         <Space style={{ marginBottom: 16, width: '100%', justifyContent: 'space-between' }}>
@@ -838,6 +872,20 @@ const SkillAdminPage: React.FC = () => {
               <Descriptions bordered size="small" column={2}>
                 <Descriptions.Item label="技能ID">{selectedSkill.id}</Descriptions.Item>
                 <Descriptions.Item label="描述" span={2}>{selectedSkill.description}</Descriptions.Item>
+                <Descriptions.Item label="公开状态">
+                  <Tag color={selectedSkill.isPublished ? 'success' : 'default'}>
+                    {selectedSkill.isPublished ? '已公开可执行' : '仅系统定义'}
+                  </Tag>
+                </Descriptions.Item>
+                <Descriptions.Item label="公开来源">
+                  {selectedSkill.publishedSourceType || <Text type="secondary">未公开</Text>}
+                </Descriptions.Item>
+                <Descriptions.Item label="关联 Release">
+                  {selectedSkill.publishedReleaseId || <Text type="secondary">未公开</Text>}
+                </Descriptions.Item>
+                <Descriptions.Item label="部署状态">
+                  {selectedSkill.publishedDeploymentStatus || <Text type="secondary">未公开</Text>}
+                </Descriptions.Item>
                 <Descriptions.Item label="触发关键字" span={2}>
                   <Space wrap>
                     {selectedSkill.triggerKeywords?.map((kw) => (

@@ -163,6 +163,111 @@ export class StudioController {
     }
   }
 
+  private isPlainObject(value: unknown): value is Record<string, any> {
+    return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
+  }
+
+  private parsePathSegments(pathValue: string): Array<string | number> {
+    const segments: Array<string | number> = [];
+    const matches = pathValue.match(/[^.[\]]+|\[(\d+)\]/g) || [];
+
+    for (const match of matches) {
+      if (match.startsWith('[') && match.endsWith(']')) {
+        segments.push(Number(match.slice(1, -1)));
+      } else {
+        segments.push(match);
+      }
+    }
+
+    return segments;
+  }
+
+  private mergeObjects(target: Record<string, any>, source: Record<string, any>): Record<string, any> {
+    for (const [key, value] of Object.entries(source)) {
+      if (this.isPlainObject(value) && this.isPlainObject(target[key])) {
+        this.mergeObjects(target[key], value);
+      } else {
+        target[key] = value;
+      }
+    }
+
+    return target;
+  }
+
+  private setNestedValue(target: Record<string, any>, pathValue: string, value: unknown): void {
+    const segments = this.parsePathSegments(pathValue);
+    if (segments.length === 0) {
+      return;
+    }
+
+    let current: any = target;
+    for (let i = 0; i < segments.length; i += 1) {
+      const segment = segments[i];
+      const isLast = i === segments.length - 1;
+      const nextSegment = segments[i + 1];
+
+      if (isLast) {
+        if (typeof segment === 'number') {
+          if (!Array.isArray(current)) {
+            return;
+          }
+          current[segment] = value;
+        } else {
+          current[segment] = value;
+        }
+        return;
+      }
+
+      const containerShouldBeArray = typeof nextSegment === 'number';
+      if (typeof segment === 'number') {
+        if (!Array.isArray(current)) {
+          return;
+        }
+        if (current[segment] === undefined) {
+          current[segment] = containerShouldBeArray ? [] : {};
+        }
+        current = current[segment];
+      } else {
+        if (current[segment] === undefined) {
+          current[segment] = containerShouldBeArray ? [] : {};
+        }
+        current = current[segment];
+      }
+    }
+  }
+
+  private normalizeRenderData(data: Record<string, any>): Record<string, any> {
+    const normalized: Record<string, any> = {};
+
+    for (const [key, value] of Object.entries(data || {})) {
+      // Some callers still send { d: {...} }; unwrap it so the renderer can
+      // resolve template markers like {d.partyA.name} against root data.
+      if (key === 'd' && this.isPlainObject(value)) {
+        this.mergeObjects(normalized, this.normalizeRenderData(value));
+        continue;
+      }
+
+      if (key.includes('.')) {
+        this.setNestedValue(normalized, key, value);
+        continue;
+      }
+
+      if (this.isPlainObject(value)) {
+        const existing = normalized[key];
+        if (this.isPlainObject(existing)) {
+          this.mergeObjects(existing, this.normalizeRenderData(value));
+        } else {
+          normalized[key] = this.normalizeRenderData(value);
+        }
+        continue;
+      }
+
+      normalized[key] = value;
+    }
+
+    return normalized;
+  }
+
   /**
    * 获取模板信息
    */
@@ -201,6 +306,7 @@ export class StudioController {
   async renderTemplate(@Body() dto: RenderDto): Promise<RenderResponse> {
     const meta = this.getTemplateMeta(dto.templateId);
     const templatePath = path.join(this.templatesDir, `${dto.templateId}.${meta.format}`);
+    const normalizedData = this.normalizeRenderData(dto.data || {});
 
     if (!fs.existsSync(templatePath)) {
       throw new HttpException('Template file not found', HttpStatus.NOT_FOUND);
@@ -208,7 +314,7 @@ export class StudioController {
 
     try {
       // 验证数据
-      const validation = this.engine.validateData(meta as TemplateInfoForValidation, dto.data);
+      const validation = this.engine.validateData(meta as TemplateInfoForValidation, normalizedData);
       if (!validation.valid) {
         console.warn(`Missing data for variables: ${validation.missing.join(', ')}`);
       }
@@ -217,7 +323,7 @@ export class StudioController {
       const templateBuffer = fs.readFileSync(templatePath);
       const config = meta.templateConfig || {};
       const markedBuffer = await this.documentStructureService.applyConfigToDocx(templateBuffer, config);
-      const outputBuffer = await this.engine.render(markedBuffer, dto.data, meta.fileName);
+      const outputBuffer = await this.engine.render(markedBuffer, normalizedData, meta.fileName);
 
       // 保存输出文件
       const outputId = uuidv4();
@@ -279,8 +385,7 @@ export class StudioController {
     }
 
     try {
-      // 包装参数数据为标准格式 { d: params }
-      const data = { d: dto.params };
+      const data = this.normalizeRenderData(dto.params || {});
 
       // 渲染模板
       const templateBuffer = fs.readFileSync(templatePath);

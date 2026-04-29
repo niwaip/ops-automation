@@ -143,6 +143,7 @@ export interface ExecuteCapabilityRuntimeResultDTO {
   fn?: string;
   taskQueue?: string;
   success: boolean;
+  downloadUrl?: string | null;
   output?: Record<string, unknown> | null;
   result?: Record<string, unknown> | null;
   logs: string[];

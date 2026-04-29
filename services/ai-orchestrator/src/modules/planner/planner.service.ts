@@ -55,6 +55,7 @@ export class PlannerService {
       input.authToken,
       input.traceId,
       availableSkills,
+      input.request.context,
     );
 
     if (!matchedSkill) {
@@ -276,12 +277,13 @@ export class PlannerService {
     authToken: string | undefined,
     traceId: string | undefined,
     availableSkills: AvailableSkillDefinition[],
+    context?: Record<string, unknown>,
   ): Promise<SkillMatchResult | null> {
     if (userId) {
       try {
         const response = await axios.post<{ match: SkillMatchResult | null }>(
           `${this.authServiceUrl}/skills/match`,
-          { userInput, userId },
+          { userInput, userId, context },
           {
             headers: {
               ...(authToken ? { Authorization: authToken } : {}),

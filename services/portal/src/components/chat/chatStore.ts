@@ -18,6 +18,8 @@ interface ChatState {
   isLoading: boolean;
   streamingContent: string;
   streamingEvents: StreamEvent[];
+  draftMessage: string;
+  draftExecutionId: string | null;
 
   // 聊天模式：chat(普通聊天) | task(任务模式-ReAct)
   chatMode: 'chat' | 'task';
@@ -59,6 +61,8 @@ interface ChatActions {
   appendStreamingContent: (content: string) => void;
   addStreamEvent: (event: StreamEvent) => void;
   clearStreaming: () => void;
+  setDraftMessage: (message: string) => void;
+  setDraftExecutionId: (executionId: string | null) => void;
 
   // UI控制
   toggleChat: () => void;
@@ -91,6 +95,8 @@ export const useChatStore = create<ChatState & ChatActions>((set, get) => ({
   isLoading: false,
   streamingContent: '',
   streamingEvents: [],
+  draftMessage: '',
+  draftExecutionId: null,
   chatMode: 'chat',  // 默认普通聊天模式
   enableThinking: true,
   enableWebSearch: false,
@@ -115,11 +121,12 @@ export const useChatStore = create<ChatState & ChatActions>((set, get) => ({
       currentSession: newSession,
       sessions: [newSession, ...get().sessions],
       messages: [],
+      draftExecutionId: null,
     });
   },
 
   setCurrentSession: (session) => {
-    set({ currentSession: session, messages: [] });
+    set({ currentSession: session, messages: [], draftExecutionId: null });
   },
 
   loadSessions: () => {
@@ -203,6 +210,14 @@ export const useChatStore = create<ChatState & ChatActions>((set, get) => ({
 
   clearStreaming: () => {
     set({ streamingContent: '', streamingEvents: [] });
+  },
+
+  setDraftMessage: (message) => {
+    set({ draftMessage: message });
+  },
+
+  setDraftExecutionId: (executionId) => {
+    set({ draftExecutionId: executionId });
   },
 
   // UI控制

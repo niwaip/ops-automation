@@ -17,7 +17,7 @@ type DocumentRenderResponse = {
 // Carbone引擎服务地址（内部调用）
 const CARBONE_SERVICE_URL = process.env.CARBONE_SERVICE_URL || 'http://carbone-engine:3009';
 // 外部可访问的下载地址（返回给用户）
-const CARBONE_EXTERNAL_URL = process.env.CARBONE_EXTERNAL_URL || 'http://localhost:3009';
+const CARBONE_EXTERNAL_URL = process.env.CARBONE_EXTERNAL_URL || `http://${process.env.HOST_IP || 'localhost'}:3009`;
 
 export class DocumentRenderTool extends BaseTool {
   constructor() {
@@ -57,24 +57,44 @@ export class DocumentRenderTool extends BaseTool {
     params: Record<string, unknown>,
     context: ExecutionContext,
   ): Promise<ToolResult> {
-    // 优先从params获取，如果没有则从context获取
-    let templateId = params.templateId as string | undefined;
+    const lockedTemplateId = context.documentContext?.selectedTemplateId;
+    const requestedTemplateId = params.templateId as string | undefined;
+    const templateId = lockedTemplateId || requestedTemplateId || context.skill?.carboneTemplateId;
     let data = params.data as Record<string, unknown> | undefined;
     const format = (params.format as string) || 'docx';
 
-    // 如果params中没有提供，从context中获取
     if (!data && context.collectedParams) {
       data = context.collectedParams;
     }
-    if (!templateId && context.skill?.carboneTemplateId) {
-      templateId = context.skill.carboneTemplateId;
+
+    if (
+      lockedTemplateId
+      && requestedTemplateId
+      && lockedTemplateId !== requestedTemplateId
+    ) {
+      return {
+        success: false,
+        output: `模板已锁定为 ${lockedTemplateId}，当前请求模板 ${requestedTemplateId} 与已选模板不一致。`,
+        data: {
+          error: 'template_mismatch',
+          lockedTemplateId,
+          requestedTemplateId,
+        },
+        requiresUserInput: true,
+        userInputPrompt:
+          `当前会话已锁定模板（templateId=${lockedTemplateId}）。请确认是否继续使用该模板，或先通过 document_intake 重新选择模板。`,
+      };
     }
 
     if (!templateId || !data) {
       return {
         success: false,
         output: '缺少必要参数：需要提供templateId和data，或者先执行参数收集步骤',
-        data: { error: 'missing_params' },
+        data: {
+          error: 'missing_params',
+          missingTemplateId: !templateId,
+          missingData: !data,
+        },
       };
     }
 
@@ -92,20 +112,17 @@ export class DocumentRenderTool extends BaseTool {
       if (renderResult && renderResult.downloadUrl) {
         // 外部可访问的下载链接
         const externalDownloadUrl = `${CARBONE_EXTERNAL_URL}${renderResult.downloadUrl}`;
+        const finalAnswer = `文档生成成功！您可以点击下方链接下载：\n\n[${renderResult.fileName}](${externalDownloadUrl})`;
 
         return {
           success: true,
-          output: `文档生成成功！任务已完成。
-
-文件名: ${renderResult.fileName}
-下载链接: ${externalDownloadUrl}
-
-【任务完成】请输出 Final Answer，告知用户文档已生成并提供下载链接。不要再调用任何工具。`,
+          output: `文档生成成功！任务已完成。\n\n文件名: ${renderResult.fileName}\n下载链接: ${externalDownloadUrl}\n\n【任务完成】请输出 Final Answer，告知用户文档已生成并提供下载链接。不要再调用任何工具。`,
           data: {
             fileName: renderResult.fileName,
             downloadUrl: externalDownloadUrl,
             format: renderResult.format || format,
             taskComplete: true,
+            finalAnswer,
           },
         };
       }
@@ -113,19 +130,17 @@ export class DocumentRenderTool extends BaseTool {
       // 兼容旧格式 {documentId}
       if (renderResult && renderResult.documentId) {
         const downloadUrl = `${CARBONE_EXTERNAL_URL}/studio/download/${renderResult.documentId}`;
+        const finalAnswer = `文档生成成功！您可以点击下方链接下载：\n\n[下载文档](${downloadUrl})`;
 
         return {
           success: true,
-          output: `文档生成成功！任务已完成。
-
-下载链接: ${downloadUrl}
-
-【任务完成】请输出 Final Answer，告知用户文档已生成并提供下载链接。不要再调用任何工具。`,
+          output: `文档生成成功！任务已完成。\n\n下载链接: ${downloadUrl}\n\n【任务完成】请输出 Final Answer，告知用户文档已生成并提供下载链接。不要再调用任何工具。`,
           data: {
             documentId: renderResult.documentId,
             downloadUrl,
             format,
             taskComplete: true,
+            finalAnswer,
           },
         };
       }

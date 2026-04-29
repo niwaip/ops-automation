@@ -13,6 +13,7 @@ import tempfile
 import traceback
 import ssl
 import certifi
+import inspect
 from typing import Dict, Any
 
 
@@ -65,6 +66,7 @@ import traceback
 import asyncio
 import types
 import ssl
+import inspect
 
 # Set SSL certificates
 os.environ['SSL_CERT_FILE'] = 'CERT_FILE_PATH'
@@ -113,10 +115,12 @@ class MockActivity:
     def info(self): return MockActivityInfo()
 
 class MockApplicationError(Exception):
-    def __init__(self, message, non_retryable=False, *args, **kwargs):
-        super().__init__(message, *args, **kwargs)
+    def __init__(self, message, *details, non_retryable=False, **kwargs):
+        super().__init__(message, *details)
         self.message = message
+        self.details = details
         self.non_retryable = non_retryable
+        self.kwargs = kwargs
 
 # Build module hierarchy
 mock_temporalio = types.ModuleType('temporalio')
@@ -151,7 +155,22 @@ class MockWorkflow:
         if callable(activity):
             print(f"[Sandbox] Executing local activity: {act_name}", flush=True)
             try:
-                res = activity(input_data)
+                if isinstance(input_data, dict):
+                    sig = inspect.signature(activity)
+                    positional_params = [
+                        p for p in sig.parameters.values()
+                        if p.kind in (
+                            inspect.Parameter.POSITIONAL_ONLY,
+                            inspect.Parameter.POSITIONAL_OR_KEYWORD,
+                        )
+                    ]
+                    has_var_kwargs = any(
+                        p.kind == inspect.Parameter.VAR_KEYWORD for p in sig.parameters.values()
+                    )
+                    accepts_single_dict = len(positional_params) == 1 and not has_var_kwargs
+                    res = activity(input_data) if accepts_single_dict else activity(**input_data)
+                else:
+                    res = activity(input_data)
                 return await res if asyncio.iscoroutine(res) else res
             except Exception as e:
                 print(f"[Sandbox] Activity {act_name} failed: {str(e)}", flush=True)
@@ -229,7 +248,7 @@ class MockRequests:
         class RequestException(Exception): pass
         class Timeout(RequestException): pass
         class HTTPError(RequestException): pass
-        class ConnectionError(Exception): pass
+        class ConnectionError(RequestException): pass
         
         # Attach to the module instance
         self.RequestException = RequestException
@@ -273,7 +292,13 @@ class MockRequests:
 
     def post(self, url, data=None, json_data=None, headers=None, timeout=None, **kwargs):
         try:
-            body = json.dumps(json_data).encode('utf-8') if json_data else (data.encode('utf-8') if isinstance(data, str) else data)
+            request_json = json_data if json_data is not None else kwargs.get('json')
+            request_headers = dict(headers or {})
+            if request_json is not None:
+                body = json.dumps(request_json).encode('utf-8')
+                request_headers.setdefault('Content-Type', 'application/json')
+            else:
+                body = data.encode('utf-8') if isinstance(data, str) else data
             parsed = urllib.parse.urlsplit(url)
             normalized_url = urllib.parse.urlunsplit((
                 parsed.scheme,
@@ -282,13 +307,15 @@ class MockRequests:
                 urllib.parse.quote(parsed.query, safe='=&%/:,+-._~'),
                 parsed.fragment,
             ))
-            req = urllib.request.Request(normalized_url, data=body, headers=headers or {}, method='POST')
+            req = urllib.request.Request(normalized_url, data=body, headers=request_headers, method='POST')
             with urllib.request.urlopen(req, timeout=timeout or 30, context=_ssl_context) as r:
                 return MockResponse(r.status, r.read(), dict(r.headers), url=normalized_url, exceptions_source=self)
         except urllib.error.HTTPError as e:
             body = e.read() if e.fp else b''
             response_headers = dict(e.headers) if e.headers else {}
             return MockResponse(e.code, body, response_headers, url=normalized_url, reason=str(e), exceptions_source=self)
+        except urllib.error.URLError as e:
+            raise self.ConnectionError(str(e))
         except Exception as e:
             raise self.RequestException(str(e))
 

@@ -63,8 +63,23 @@ const PublishedSkillDetailPage: React.FC = () => {
         return;
       }
 
-      if (!map.has(release.publishedSkillId)) {
-        map.set(release.publishedSkillId, {
+      const sourceKey = [
+        release.sourceType,
+        release.sourceId || release.sourceName || release.publishedSkillId,
+      ].join('::');
+      const current = map.get(sourceKey);
+      const currentVersion = current?.release.releaseVersion || 0;
+      const nextVersion = release.releaseVersion || 0;
+      const shouldReplace =
+        !current ||
+        nextVersion > currentVersion ||
+        (
+          nextVersion === currentVersion &&
+          new Date(release.updatedAt).getTime() > new Date(current.release.updatedAt).getTime()
+        );
+
+      if (shouldReplace) {
+        map.set(sourceKey, {
           skillId: release.publishedSkillId,
           skillName: release.sourceName || release.sourceId || release.publishedSkillId,
           release,
@@ -180,23 +195,28 @@ const PublishedSkillDetailPage: React.FC = () => {
       <Space style={{ width: '100%', justifyContent: 'space-between', marginBottom: 16 }} wrap>
         <Space direction="vertical" size={4}>
           <Title level={4} style={{ margin: 0 }}>
-            Published Skills
+            公开 Skills
           </Title>
           <Text type="secondary">
-            查看已发布技能的当前配置、关联 release、部署状态和后续操作入口。
+            这里只展示已公开发布、可被执行的 Skill 对象，并可继续查看其 Release 与部署状态。
           </Text>
         </Space>
-        <Button icon={<ReloadOutlined />} onClick={() => releasesQuery.refetch()}>
-          刷新
-        </Button>
+        <Space>
+          <Button onClick={() => navigate('/admin/skills')}>
+            系统 Skills
+          </Button>
+          <Button icon={<ReloadOutlined />} onClick={() => releasesQuery.refetch()}>
+            刷新
+          </Button>
+        </Space>
       </Space>
 
       <Alert
         type="info"
         showIcon
         style={{ marginBottom: 16 }}
-        message="已发布 Skill 管理"
-        description="这里聚合已经完成发布的 Skill，支持追溯关联 Release，并从当前 Skill 继续发起下一轮发布。"
+        message="公开 Skill 管理"
+        description="只有公开后的 Skill 才是执行对象，并且可以分配给普通用户使用。系统定义请到“系统 Skills”页维护。"
       />
 
       <Row gutter={16} align="top">
