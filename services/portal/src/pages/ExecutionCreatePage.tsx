@@ -22,7 +22,7 @@ import { useMutation, useQuery, useQueryClient } from 'react-query';
 import { useTranslation } from 'react-i18next';
 import { executionApi } from '../api/execution';
 import { capabilityReleaseApi } from '../api/capability-release';
-import { ParamsSchema, skillApi, SkillConfigDTO } from '../api/skill';
+import { SkillParamsSchema, skillApi, SkillConfigDTO } from '../api/skill';
 import { aiApi } from '../api/ai';
 import type { UploadProps } from 'antd';
 import { Modal, Upload } from 'antd';
@@ -48,7 +48,7 @@ type PublishedSkillCandidate = PublishedSkillOption & {
   releaseVersion: number;
 };
 
-const getSchemaFields = (schema?: ParamsSchema): SchemaField[] => {
+const getSchemaFields = (schema?: SkillParamsSchema): SchemaField[] => {
   if (!schema?.properties) {
     return [];
   }

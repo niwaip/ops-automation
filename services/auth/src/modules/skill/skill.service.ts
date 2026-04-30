@@ -13,6 +13,7 @@ import {
   SkillPermissionDTO,
   AIMatchResponse,
   SkillValidationResult,
+  LLMUsage,
 } from './interfaces';
 import axios from 'axios';
 import { ExecutionFlowTemplateService } from '../execution-flow/execution-flow.service';
@@ -733,7 +734,7 @@ ${skillsXml}
     // 4. 调用 AI Orchestrator 进行语义匹配
     try {
       const aiOrchestratorUrl = getAiOrchestratorUrl();
-      const response = await axios.post<{ result: string }>(`${aiOrchestratorUrl}/ai/model/call`, {
+      const response = await axios.post<{ result: string; usage?: LLMUsage }>(`${aiOrchestratorUrl}/ai/model/call`, {
         modelId: 'default',
         prompt,
       });
@@ -761,6 +762,7 @@ ${skillsXml}
             goal: (matchedSkill.apiEndpoints as any)?.runtimeMetadata?.goal,
             expectedResult: (matchedSkill.apiEndpoints as any)?.runtimeMetadata?.expectedResult,
             outputParams: (matchedSkill.apiEndpoints as any)?.runtimeMetadata?.outputParams,
+            usage: response.data.usage,
           };
         }
       }

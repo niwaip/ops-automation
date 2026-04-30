@@ -29,6 +29,7 @@ class ApiClient {
   private client;
   private refreshClient;
   private refreshPromise: any = null;
+  private static readonly TOKEN_REFRESH_BUFFER_MS = 60 * 1000;
 
   constructor() {
     this.client = axios.create({
@@ -82,11 +83,44 @@ class ApiClient {
     return this.refreshPromise;
   }
 
+  private decodeJwtExpiry(token: string): number | null {
+    try {
+      const [, payload] = token.split('.');
+      if (!payload) {
+        return null;
+      }
+      const normalizedPayload = payload.replace(/-/g, '+').replace(/_/g, '/');
+      const decodedPayload = JSON.parse(window.atob(normalizedPayload));
+      return typeof decodedPayload?.exp === 'number' ? decodedPayload.exp * 1000 : null;
+    } catch {
+      return null;
+    }
+  }
+
+  async ensureFreshAccessToken(): Promise<string | null> {
+    const { accessToken } = useAuthStore.getState();
+    if (!accessToken) {
+      return null;
+    }
+
+    const expiresAt = this.decodeJwtExpiry(accessToken);
+    if (!expiresAt) {
+      return accessToken;
+    }
+
+    const shouldRefresh = expiresAt - Date.now() <= ApiClient.TOKEN_REFRESH_BUFFER_MS;
+    if (!shouldRefresh) {
+      return accessToken;
+    }
+
+    return this.refreshAccessToken();
+  }
+
   private setupInterceptors() {
     // Request interceptor - add auth token
     this.client.interceptors.request.use(
-      (config: any) => {
-        const token = useAuthStore.getState().accessToken;
+      async (config: any) => {
+        const token = await this.ensureFreshAccessToken();
         if (token) {
           config.headers = config.headers ?? {};
           config.headers.Authorization = `Bearer ${token}`;
@@ -152,4 +186,5 @@ class ApiClient {
 
 export const apiClient = new ApiClient();
 export const refreshAccessToken = () => apiClient.refreshAccessToken();
+export const ensureFreshAccessToken = () => apiClient.ensureFreshAccessToken();
 export default apiClient;

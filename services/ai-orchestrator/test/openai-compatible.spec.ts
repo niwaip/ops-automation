@@ -42,17 +42,23 @@ describe('OpenAICompatibleClient', () => {
       mockAxiosInstance.post.mockResolvedValueOnce({
         data: {
           choices: [{ message: { content: 'AI response' } }],
+          usage: { prompt_tokens: 10, completion_tokens: 5, total_tokens: 15 },
+        },
+        headers: {
+          'x-ratelimit-remaining-requests': '99',
         },
       });
 
       const messages = [
-        { role: 'user', content: 'Hello' },
+        { role: 'user' as const, content: 'Hello' },
       ];
 
       const result = await client.chatCompletion(messages);
 
-      expect(result).toBe('AI response');
-      expect(mockAxiosInstance.post).toHaveBeenCalledWith('/v1/chat/completions', {
+      expect(result.content).toBe('AI response');
+      expect(result.usage?.total_tokens).toBe(15);
+      expect(result.rateLimit?.requests_remaining).toBe(99);
+      expect(mockAxiosInstance.post).toHaveBeenCalledWith('/chat/completions', {
         model: 'gpt-4',
         messages,
       });

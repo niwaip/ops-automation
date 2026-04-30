@@ -13,6 +13,34 @@ type DocumentGenerateResponse = {
   format?: string;
 };
 
+const isSkillVisibleInSnapshot = (
+  skillId: string | undefined,
+  context: ExecutionContext,
+): boolean => {
+  if (!skillId || !context.capabilitySnapshot) {
+    return true;
+  }
+
+  return context.capabilitySnapshot.visibleSkills.some((skill) => skill.skillId === skillId);
+};
+
+const isTemplateVisibleInSnapshot = (
+  templateId: string | undefined,
+  context: ExecutionContext,
+): boolean => {
+  if (!templateId || !context.capabilitySnapshot) {
+    return true;
+  }
+
+  return context.capabilitySnapshot.visibleSkills.some((skill) => {
+    return Boolean(
+      skill.carboneTemplateId === templateId
+      || skill.templateId === templateId
+      || skill.executionFlowTemplateIds?.includes(templateId),
+    );
+  });
+};
+
 export class DocumentGenTool extends BaseTool {
   private carboneApiUrl: string;
 
@@ -52,21 +80,60 @@ export class DocumentGenTool extends BaseTool {
     const skillId = params.skillId as string;
     const renderParams = params.params as Record<string, unknown>;
     const outputFormat = (params.outputFormat as string) || 'docx';
+    const templateId = (
+      (params.templateId as string | undefined)
+      || context.documentContext?.selectedTemplateId
+      || context.skill?.carboneTemplateId
+      || context.skill?.templateId
+    );
+
+    if (!isSkillVisibleInSnapshot(skillId, context)) {
+      return {
+        success: false,
+        output: `当前权限下不可使用 skillId=${skillId} 生成文档。`,
+        code: 'skill_not_visible_in_capability_snapshot',
+        severity: 'error',
+        data: { error: 'skill_not_visible_in_capability_snapshot', skillId },
+        meta: {
+          toolName: this.name,
+          capabilityChecked: true,
+          selectedSkillId: skillId,
+        },
+      };
+    }
+
+    if (!templateId) {
+      return {
+        success: false,
+        output: '未找到关联的模板，无法生成文档',
+        code: 'template_not_found',
+        severity: 'error',
+        data: { error: 'template_not_found' },
+        meta: {
+          toolName: this.name,
+          capabilityChecked: Boolean(context.capabilitySnapshot),
+          selectedSkillId: skillId,
+        },
+      };
+    }
+
+    if (!isTemplateVisibleInSnapshot(templateId, context)) {
+      return {
+        success: false,
+        output: `当前权限下不可使用模板 ${templateId} 生成文档。`,
+        code: 'template_not_visible_in_capability_snapshot',
+        severity: 'error',
+        data: { error: 'template_not_visible_in_capability_snapshot', templateId },
+        meta: {
+          toolName: this.name,
+          capabilityChecked: true,
+          selectedSkillId: skillId,
+          selectedTemplateId: templateId,
+        },
+      };
+    }
 
     try {
-      // 获取Skill关联的模板ID
-      // 这里需要调用SkillService获取templateId
-      // 暂时从context中获取
-      const templateId = context.skill?.templateId || params.templateId;
-
-      if (!templateId) {
-        return {
-          success: false,
-          output: '未找到关联的模板，无法生成文档',
-          data: { error: 'template_not_found' },
-        };
-      }
-
       // 调用Carbone渲染API
       const response = await axios.post<DocumentGenerateResponse>(
         `${this.carboneApiUrl}/studio/render`,
@@ -86,6 +153,8 @@ export class DocumentGenTool extends BaseTool {
         return {
           success: true,
           output: `文档已生成，下载链接: ${downloadUrl}`,
+          code: 'document_generate_completed',
+          severity: 'info',
           data: {
             downloadUrl,
             fileName,
@@ -93,20 +162,42 @@ export class DocumentGenTool extends BaseTool {
             taskComplete: true,
             finalAnswer,
           },
+          meta: {
+            toolName: this.name,
+            capabilityChecked: Boolean(context.capabilitySnapshot),
+            selectedSkillId: skillId,
+            selectedTemplateId: templateId,
+          },
         };
       }
 
       return {
         success: false,
         output: '文档生成失败，API返回异常',
+        code: 'render_failed',
+        severity: 'error',
         data: { error: 'render_failed', response: response.data },
+        meta: {
+          toolName: this.name,
+          capabilityChecked: Boolean(context.capabilitySnapshot),
+          selectedSkillId: skillId,
+          selectedTemplateId: templateId,
+        },
       };
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : 'Unknown error';
       return {
         success: false,
         output: `文档生成异常: ${errorMsg}`,
+        code: 'render_error',
+        severity: 'error',
         data: { error: 'render_error', message: errorMsg },
+        meta: {
+          toolName: this.name,
+          capabilityChecked: Boolean(context.capabilitySnapshot),
+          selectedSkillId: skillId,
+          selectedTemplateId: templateId,
+        },
       };
     }
   }

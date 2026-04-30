@@ -94,6 +94,15 @@ export interface SkillConfigDTO {
   publishedSourceType?: string | null;
 }
 
+export interface LLMUsage {
+  prompt_tokens: number;
+  completion_tokens: number;
+  total_tokens: number;
+  completion_tokens_details?: {
+    reasoning_tokens?: number;
+  };
+}
+
 /**
  * Skill匹配结果
  */
@@ -120,6 +129,8 @@ export interface SkillMatchResult {
   outputParams?: Record<string, unknown>;
   // 新增：AI 匹配原因
   matchReason?: string;
+  // 新增：消耗
+  usage?: LLMUsage;
 }
 
 /**

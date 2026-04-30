@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { ChatMessage, OpenAICompatibleConfig } from '../interfaces';
+import { ChatMessage, OpenAICompatibleConfig, LLMResponse, LLMUsage, LLMRateLimit } from '../interfaces';
 
 type AxiosLikeError = {
   code?: string;
@@ -19,6 +19,7 @@ type ChatCompletionResponse = {
       content?: string;
     };
   }>;
+  usage?: LLMUsage;
 };
 
 type ModelListResponse = {
@@ -59,9 +60,9 @@ export class OpenAICompatibleClient {
   /**
    * Send chat completion request to OpenAI-compatible API
    * @param messages - Array of chat messages
-   * @returns Promise resolving to assistant response content
+   * @returns Promise resolving to structured LLM response
    */
-  async chatCompletion(messages: ChatMessage[]): Promise<string> {
+  async chatCompletion(messages: ChatMessage[]): Promise<LLMResponse> {
     try {
       const data: any = {
         model: this.model,
@@ -75,7 +76,11 @@ export class OpenAICompatibleClient {
       // Use /chat/completions since baseURL already includes /v1
       const response = await this.client.post<ChatCompletionResponse>('/chat/completions', data);
 
-      return response.data?.choices?.[0]?.message?.content || '';
+      return {
+        content: response.data?.choices?.[0]?.message?.content || '',
+        usage: response.data?.usage,
+        rateLimit: this.extractRateLimit(response.headers),
+      };
     } catch (error: unknown) {
       const axiosError = error as AxiosLikeError;
       if (axiosError.message) {
@@ -93,17 +98,18 @@ export class OpenAICompatibleClient {
    * Send chat completion request with streaming support
    * @param messages - Array of chat messages
    * @param onChunk - Callback for each streamed chunk
-   * @returns Promise resolving to full assistant response content
+   * @returns Promise resolving to structured LLM response
    */
   async chatCompletionStream(
     messages: ChatMessage[],
     onChunk: (chunk: string) => void,
-  ): Promise<string> {
+  ): Promise<LLMResponse> {
     try {
       const data: any = {
         model: this.model,
         messages,
         stream: true,
+        stream_options: { include_usage: true }, // Request usage in the last chunk
       };
 
       if (this.useJsonMode) {
@@ -116,6 +122,8 @@ export class OpenAICompatibleClient {
       });
 
       let fullContent = '';
+      let finalUsage: LLMUsage | undefined;
+      const rateLimit = this.extractRateLimit(response.headers);
       const stream = response.data;
 
       stream.on('data', (chunk: Buffer) => {
@@ -125,7 +133,13 @@ export class OpenAICompatibleClient {
           if (message === '[DONE]') continue;
           try {
             const parsed = JSON.parse(message);
-            const content = parsed.choices[0]?.delta?.content || '';
+            
+            // Handle usage in stream
+            if (parsed.usage) {
+              finalUsage = parsed.usage;
+            }
+
+            const content = parsed.choices?.[0]?.delta?.content || '';
             if (content) {
               fullContent += content;
               onChunk(content);
@@ -137,7 +151,11 @@ export class OpenAICompatibleClient {
       });
 
       return new Promise((resolve, reject) => {
-        stream.on('end', () => resolve(fullContent));
+        stream.on('end', () => resolve({
+          content: fullContent,
+          usage: finalUsage,
+          rateLimit,
+        }));
         stream.on('error', reject);
       });
     } catch (error: unknown) {
@@ -147,6 +165,42 @@ export class OpenAICompatibleClient {
       }
       throw error;
     }
+  }
+
+  /**
+   * Extract rate limit information from response headers
+   */
+  private extractRateLimit(headers: any): LLMRateLimit | undefined {
+    const rateLimit: LLMRateLimit = {};
+    let hasInfo = false;
+
+    // Standard OpenAI rate limit headers
+    if (headers['x-ratelimit-limit-requests']) {
+      rateLimit.requests_limit = parseInt(headers['x-ratelimit-limit-requests'], 10);
+      hasInfo = true;
+    }
+    if (headers['x-ratelimit-remaining-requests']) {
+      rateLimit.requests_remaining = parseInt(headers['x-ratelimit-remaining-requests'], 10);
+      hasInfo = true;
+    }
+    if (headers['x-ratelimit-reset-requests']) {
+      rateLimit.requests_reset = headers['x-ratelimit-reset-requests'];
+      hasInfo = true;
+    }
+    if (headers['x-ratelimit-limit-tokens']) {
+      rateLimit.tokens_limit = parseInt(headers['x-ratelimit-limit-tokens'], 10);
+      hasInfo = true;
+    }
+    if (headers['x-ratelimit-remaining-tokens']) {
+      rateLimit.tokens_remaining = parseInt(headers['x-ratelimit-remaining-tokens'], 10);
+      hasInfo = true;
+    }
+    if (headers['x-ratelimit-reset-tokens']) {
+      rateLimit.tokens_reset = headers['x-ratelimit-reset-tokens'];
+      hasInfo = true;
+    }
+
+    return hasInfo ? rateLimit : undefined;
   }
 
   /**

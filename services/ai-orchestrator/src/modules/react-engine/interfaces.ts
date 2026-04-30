@@ -1,3 +1,7 @@
+import { LLMUsage, LLMRateLimit } from '../../interfaces';
+
+export { LLMUsage, LLMRateLimit };
+
 /**
  * ReAct Engine Interfaces
  * ReAct (Reasoning + Acting) 架构核心类型定义
@@ -19,6 +23,35 @@ export enum StreamEventType {
 }
 
 /**
+ * 执行过程中的 LLM 消耗明细
+ */
+export interface LLMCallDetail {
+  iteration: number;
+  modelId: string;
+  usage?: LLMUsage;
+  rateLimit?: LLMRateLimit;
+  cost?: number;
+  currency?: string;
+  timestamp: Date;
+  type: 'reasoning' | 'auxiliary'; // 区分推理与辅助调用
+}
+
+/**
+ * 累积消耗统计
+ */
+export interface ExecutionUsage {
+  prompt_tokens: number;
+  completion_tokens: number;
+  total_tokens: number;
+  completion_tokens_details?: {
+    reasoning_tokens?: number;
+  };
+  totalCost: number;
+  currency: string;
+  calls: LLMCallDetail[];
+}
+
+/**
  * 流式事件
  */
 export interface StreamEvent {
@@ -26,6 +59,24 @@ export interface StreamEvent {
   content: string;
   data?: Record<string, unknown>;
   iteration?: number;
+}
+
+export interface RoutingMeta {
+  modelId?: string;
+  attemptedModelIds?: string[];
+  routingReason?: string;
+}
+
+export interface PromptAssemblyMeta {
+  systemPromptSectionKeys?: string[];
+  systemPromptSectionSources?: string[];
+  userPromptSectionKeys?: string[];
+  userPromptSectionSources?: string[];
+}
+
+export interface DecisionContext {
+  routing: RoutingMeta;
+  promptAssembly: PromptAssemblyMeta;
 }
 
 /**
@@ -42,6 +93,17 @@ export interface ReActState {
   isWaitingForUserInput?: boolean;
   finalAnswer?: string;
   finalResultData?: Record<string, unknown>;
+  lastToolResult?: ToolResult;
+  contextSummary?: string;
+  usage?: ExecutionUsage; // 消耗统计
+  promptAssembly?: PromptAssemblyMeta;
+  retryState?: {
+    sameAction?: number;
+    modelInference?: number;
+    activeModelId?: string;
+    attemptedModelIds?: string[];
+    routingReason?: string;
+  };
 }
 
 /**
@@ -53,6 +115,66 @@ export interface ReActConfig {
   timeoutMs?: number;     // 每步超时时间
   tools: string[];        // 可用工具列表
   mode?: 'chat' | 'task'; // 执行模式：聊天或任务
+  thinking?: boolean;     // 是否显示/保留思维链
+  webSearch?: boolean;
+}
+
+export interface CapabilityVisibleTool {
+  name: string;
+  description: string;
+  category?: 'discovery' | 'parameter' | 'execution' | 'utility' | 'flow';
+  requiresConfirmation?: boolean;
+  requiredRoles?: string[];
+  parameters: ToolDefinition['parameters'];
+  exposure: 'prompt_and_runtime' | 'runtime_only';
+}
+
+export interface CapabilityVisibleSkill {
+  skillId: string;
+  skillName: string;
+  description?: string;
+  triggerKeywords: string[];
+  paramsSchema: ParamsSchema;
+  executionType: 'document' | 'flow' | 'query';
+  templateId?: string;
+  carboneSkillId?: string;
+  carboneTemplateId?: string;
+  executionFlowTemplateIds?: string[];
+  executionFlow?: string[];
+  permissionTags?: string[];
+  runtimeHints?: {
+    goal?: string;
+    expectedResult?: string;
+    outputParams?: Record<string, unknown>;
+  };
+}
+
+export interface CapabilityConstraints {
+  disallowToolNames: string[];
+  disallowSkillIds: string[];
+  forceSkillBoundExecution: boolean;
+  forbidExternalApiInTaskMode: boolean;
+  maxVisibleSkills: number;
+}
+
+export interface CapabilityPolicies {
+  requireConfirmToolNames: string[];
+  requireHumanReviewOnWrite: boolean;
+  documentTemplateClarificationEnabled: boolean;
+}
+
+export interface CapabilitySnapshot {
+  userId: string;
+  tenantId?: string;
+  sessionId: string;
+  roles: string[];
+  mode: 'chat' | 'task';
+  visibleTools: CapabilityVisibleTool[];
+  visibleSkills: CapabilityVisibleSkill[];
+  constraints: CapabilityConstraints;
+  policies: CapabilityPolicies;
+  generatedAt: string;
+  version: string;
 }
 
 /**
@@ -83,11 +205,28 @@ export interface ToolDefinition {
 export interface ToolResult {
   success: boolean;
   output: string;
+  code?: string;
+  severity?: 'info' | 'warning' | 'error';
   data?: Record<string, unknown>;
   requiresUserInput?: boolean;
   userInputPrompt?: string;
   nextAction?: string;           // 建议下一步调用的工具
   nextActionParams?: Record<string, unknown>;  // 下一步工具的参数
+  meta?: {
+    toolName?: string;
+    capabilityChecked?: boolean;
+    selectedSkillId?: string;
+    selectedTemplateId?: string;
+    modelId?: string;
+    attemptedModelIds?: string[];
+    routingReason?: string;
+    tokenEstimate?: number;
+    truncated?: boolean;
+    systemPromptSectionKeys?: string[];
+    systemPromptSectionSources?: string[];
+    userPromptSectionKeys?: string[];
+    userPromptSectionSources?: string[];
+  };
 }
 
 /**
@@ -100,6 +239,7 @@ export interface ExecutionContext {
   executionId?: string;           // Execution ID for step tracking
   userRoles?: string[];           // 新增：当前用户的角色
   authToken?: string;             // 新增：当前用户的认证令牌 (Bearer token)
+  capabilitySnapshot?: CapabilitySnapshot;
   originalUserInput?: string;     // 初始用户输入，供工具缺省参数兜底
   history: ChatMessage[];
   availableSkills?: AvailableSkillDefinition[];
@@ -167,6 +307,7 @@ export interface AvailableSkillDefinition {
   description?: string;
   triggerKeywords: string[];
   paramsSchema: ParamsSchema;
+  executionType?: 'document' | 'flow' | 'query';
   templateId?: string;
   carboneTemplateId?: string;
   carboneSkillId?: string;
@@ -181,6 +322,7 @@ export interface AvailableSkillDefinition {
   goal?: string;
   expectedResult?: string;
   outputParams?: Record<string, unknown>;
+  usage?: LLMUsage;
 }
 
 /**
@@ -222,6 +364,7 @@ export interface SkillMatchResult {
   goal?: string;
   expectedResult?: string;
   outputParams?: Record<string, unknown>;
+  usage?: LLMUsage;
 }
 
 /**

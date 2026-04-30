@@ -141,13 +141,13 @@ export class AgentService {
 
       // Add response to context
       context.push({ role: 'user', content: message });
-      context.push({ role: 'assistant', content: response });
+      context.push({ role: 'assistant', content: response.content });
       this.agentContexts.set(id, context);
 
       // Update status back to idle
       await this.setAgentStatus(id, 'idle');
 
-      return response;
+      return response.content;
     } catch (error) {
       await this.setAgentStatus(id, 'error');
       throw error;

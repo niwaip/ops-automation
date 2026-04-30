@@ -75,14 +75,58 @@ export class DocumentIntakeTool extends BaseTool {
       return {
         success: false,
         output: '缺少用户需求描述，无法进行模板识别与参数初稿生成。',
+        code: 'missing_user_input',
+        severity: 'warning',
         data: { error: 'missing_user_input' },
         requiresUserInput: true,
         userInputPrompt: '请先描述你要生成的文档内容（例如：生成保密合同，甲方xxx，乙方yyy）。',
+        meta: {
+          toolName: this.name,
+          capabilityChecked: Boolean(context.capabilitySnapshot),
+        },
       };
     }
 
-    const availableSkills = context.availableSkills || [];
+    const availableSkills = context.capabilitySnapshot
+      ? context.capabilitySnapshot.visibleSkills
+          .filter((skill) => skill.executionType === 'document')
+          .map<AvailableSkillDefinition>((skill) => ({
+            skillId: skill.skillId,
+            skillName: skill.skillName,
+            description: skill.description,
+            triggerKeywords: skill.triggerKeywords,
+            paramsSchema: skill.paramsSchema,
+            templateId: skill.templateId,
+            carboneSkillId: skill.carboneSkillId,
+            carboneTemplateId: skill.carboneTemplateId,
+            executionFlowTemplateIds: skill.executionFlowTemplateIds,
+            executionFlow: skill.executionFlow,
+            goal: skill.runtimeHints?.goal,
+            expectedResult: skill.runtimeHints?.expectedResult,
+            outputParams: skill.runtimeHints?.outputParams,
+          }))
+      : (context.availableSkills || []);
     const templateRegistry = await this.fetchTemplateRegistry();
+
+    if (
+      requestedTemplateId
+      && context.capabilitySnapshot
+      && !availableSkills.some((skill) => skill.carboneTemplateId === requestedTemplateId)
+    ) {
+      return {
+        success: false,
+        output: `当前权限下不可使用模板 ${requestedTemplateId}。`,
+        code: 'template_not_visible_in_capability_snapshot',
+        severity: 'error',
+        data: { error: 'template_not_visible_in_capability_snapshot', templateId: requestedTemplateId },
+        meta: {
+          toolName: this.name,
+          capabilityChecked: true,
+          selectedTemplateId: requestedTemplateId,
+        },
+      };
+    }
+
     const candidates = this.rankDocumentSkills(
       availableSkills,
       templateRegistry,
@@ -99,6 +143,8 @@ export class DocumentIntakeTool extends BaseTool {
         return {
           success: false,
           output: `模板「${matchedTemplate.name}」已选择，但当前未找到绑定该模板的可执行技能。`,
+          code: 'template_without_bound_skill',
+          severity: 'warning',
           data: {
             error: 'template_without_bound_skill',
             templateId: matchedTemplate.id,
@@ -106,12 +152,23 @@ export class DocumentIntakeTool extends BaseTool {
           },
           requiresUserInput: true,
           userInputPrompt: '请改选其他模板，或先在技能配置中绑定该模板后再试。',
+          meta: {
+            toolName: this.name,
+            capabilityChecked: Boolean(context.capabilitySnapshot),
+            selectedTemplateId: matchedTemplate.id,
+          },
         };
       }
       return {
         success: false,
         output: '当前未找到可用于文档生成的技能（需要配置 carboneSkillId/carboneTemplateId）。',
+        code: 'document_skill_not_found',
+        severity: 'error',
         data: { error: 'document_skill_not_found' },
+        meta: {
+          toolName: this.name,
+          capabilityChecked: Boolean(context.capabilitySnapshot),
+        },
       };
     }
 
@@ -136,6 +193,8 @@ export class DocumentIntakeTool extends BaseTool {
       return {
         success: false,
         output: '检测到多个文档模板候选，需先确认模板后再生成参数。',
+        code: 'template_ambiguous',
+        severity: 'warning',
         data: {
           error: 'template_ambiguous',
           candidates: candidates.slice(0, 3).map((item) => ({
@@ -150,6 +209,10 @@ export class DocumentIntakeTool extends BaseTool {
         requiresUserInput: true,
         userInputPrompt:
           `我识别到多个可能模板，请选择其一并回复 templateId 或 skillId：\n${topCandidates.join('\n')}`,
+        meta: {
+          toolName: this.name,
+          capabilityChecked: Boolean(context.capabilitySnapshot),
+        },
       };
     }
 
@@ -157,9 +220,16 @@ export class DocumentIntakeTool extends BaseTool {
       return {
         success: false,
         output: `技能 ${selectedSkill.skillName} 缺少文档引擎配置（carboneSkillId/carboneTemplateId）。`,
+        code: 'missing_carbone_binding',
+        severity: 'error',
         data: {
           error: 'missing_carbone_binding',
           skillId: selectedSkill.skillId,
+        },
+        meta: {
+          toolName: this.name,
+          capabilityChecked: Boolean(context.capabilitySnapshot),
+          selectedSkillId: selectedSkill.skillId,
         },
       };
     }
@@ -215,6 +285,8 @@ export class DocumentIntakeTool extends BaseTool {
       return {
         success: true,
         output: `文档入口处理完成：已选择模板「${selectedSkill.skillName}」并生成参数初稿。`,
+        code: 'document_intake_completed',
+        severity: 'info',
         data: {
           selectedSkillId: selectedSkill.skillId,
           selectedSkillName: selectedSkill.skillName,
@@ -236,16 +308,30 @@ export class DocumentIntakeTool extends BaseTool {
           templateId: selectedSkill.carboneTemplateId,
           data: generatedParams,
         },
+        meta: {
+          toolName: this.name,
+          capabilityChecked: Boolean(context.capabilitySnapshot),
+          selectedSkillId: selectedSkill.skillId,
+          selectedTemplateId: selectedSkill.carboneTemplateId,
+        },
       };
     } catch (error) {
       const message = error instanceof Error ? error.message : 'unknown error';
       return {
         success: false,
         output: `文档入口阶段失败：参数初稿生成失败（${message}）。`,
+        code: 'document_intake_failed',
+        severity: 'error',
         data: {
           error: 'document_intake_failed',
           message,
           selectedSkillId: selectedSkill.skillId,
+        },
+        meta: {
+          toolName: this.name,
+          capabilityChecked: Boolean(context.capabilitySnapshot),
+          selectedSkillId: selectedSkill.skillId,
+          selectedTemplateId: selectedSkill.carboneTemplateId,
         },
       };
     }

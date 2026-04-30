@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
 import { Card, Typography, Descriptions, Tag, Button, Space, Divider, Collapse, List, Alert, Spin, message, Progress } from 'antd';
 import { DownloadOutlined, ReloadOutlined } from '@ant-design/icons';
 import { reportApi, Report, ReportStatus, ValidationResult, AIAnalysisResult, NotificationResult } from '../api/report';
@@ -10,7 +10,6 @@ const { Panel } = Collapse;
 
 const ReportDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
-  const navigate = useNavigate();
   const [report, setReport] = useState<Report | null>(null);
   const [loading, setLoading] = useState(false);
   const [polling, setPolling] = useState(false);

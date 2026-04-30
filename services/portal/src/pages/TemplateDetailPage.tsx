@@ -11,7 +11,7 @@ import {
 } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
 import { useQuery, useMutation, useQueryClient } from 'react-query';
-import { templateApi, TemplateStep, ParamsSchema } from '../api/template';
+import { templateApi, TemplateStep, TemplateParamsSchema } from '../api/template';
 import { sessionApi, workerApi } from '../api/session';
 import { useAuthStore } from '../store/authStore';
 
@@ -139,13 +139,13 @@ const TemplateDetailPage: React.FC = () => {
 
   // Extract parameter definitions from params_schema
   const paramProperties = useMemo(() => {
-    const schema = template?.params_schema as ParamsSchema | undefined;
+    const schema = template?.params_schema as TemplateParamsSchema | undefined;
     if (!schema?.properties) return {};
     return schema.properties as Record<string, ParamProperty>;
   }, [template?.params_schema]);
 
   const requiredParams = useMemo(() => {
-    const schema = template?.params_schema as ParamsSchema | undefined;
+    const schema = template?.params_schema as TemplateParamsSchema | undefined;
     return schema?.required || [];
   }, [template?.params_schema]);
 
@@ -390,30 +390,29 @@ const TemplateDetailPage: React.FC = () => {
                   key={index}
                 >
                   <Descriptions column={1} size="small">
-                    <Descriptions.Item label={t('template:stepType')}>
-                      <Tag>{step.type}</Tag>
-                    </Descriptions.Item>
                     <Descriptions.Item label={t('template:stepAction')}>
                       {step.action}
                     </Descriptions.Item>
-                    {step.selector && (
+                    {step.locator && (
                       <Descriptions.Item label={t('template:stepSelector')}>
-                        <Text code>{step.selector}</Text>
+                        <Tag>{step.locator.type}</Tag>
+                        <Text code>{step.locator.value}</Text>
                       </Descriptions.Item>
                     )}
-                    {step.value && (
-                      <Descriptions.Item label={t('template:stepValue')}>
-                        {step.value}
+                    {step.params && Object.keys(step.params).length > 0 && (
+                      <Descriptions.Item label={t('template:stepParams')}>
+                        <pre style={{ margin: 0 }}>{JSON.stringify(step.params, null, 2)}</pre>
                       </Descriptions.Item>
                     )}
-                    {step.timeout && (
+                    {step.wait && (
                       <Descriptions.Item label={t('template:stepTimeout')}>
-                        {step.timeout} ms
+                        <Tag>{step.wait.type}</Tag>
+                        {step.wait.value}
                       </Descriptions.Item>
                     )}
                     {step.retry && (
                       <Descriptions.Item label={t('template:stepRetry')}>
-                        {step.retry}
+                        {step.retry.max_attempts} attempts, {step.retry.delay_ms}ms delay
                       </Descriptions.Item>
                     )}
                   </Descriptions>

@@ -28,6 +28,24 @@ export interface StreamEvent {
   iteration?: number;
 }
 
+export interface LLMUsage {
+  prompt_tokens: number;
+  completion_tokens: number;
+  total_tokens: number;
+  completion_tokens_details?: {
+    reasoning_tokens?: number;
+  };
+}
+
+export interface LLMRateLimit {
+  requests_limit?: number;
+  requests_remaining?: number;
+  requests_reset?: string;
+  tokens_limit?: number;
+  tokens_remaining?: number;
+  tokens_reset?: string;
+}
+
 /**
  * 聊天消息
  */
@@ -38,6 +56,10 @@ export interface ChatMessage {
   content: string;
   timestamp: Date;
   metadata?: {
+    mode?: 'chat' | 'task';
+    showThinking?: boolean;
+    usage?: LLMUsage;
+    rateLimit?: LLMRateLimit;
     skillUsed?: string;
     params?: Record<string, unknown>;
     files?: string[];

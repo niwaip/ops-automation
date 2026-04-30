@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Card, Tag, Button, Space, Typography, message, Spin, Popconfirm, List, Collapse, Image, Empty, Radio, DatePicker, TimePicker, Divider } from 'antd';
+import { Card, Tag, Button, Space, Typography, message, Spin, Popconfirm, List, Collapse, Image, Empty, Radio, DatePicker, TimePicker } from 'antd';
 import {
   ArrowLeftOutlined,
   PlayCircleOutlined,
@@ -14,7 +14,6 @@ import {
   ClockCircleOutlined,
   EyeOutlined,
   CalendarOutlined,
-  ThunderboltOutlined,
 } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
 import { useQuery, useMutation } from 'react-query';
@@ -85,8 +84,8 @@ const ScheduleConfig: React.FC<{
 
     const config = {
       mode: scheduleMode,
-      date: scheduleDate,
-      time: scheduleTime,
+      date: scheduleDate || undefined,
+      time: scheduleTime || undefined,
       recurringType: scheduleMode === 'recurring' ? recurringType : undefined,
     };
 

@@ -24,12 +24,55 @@ export interface OpenAICompatibleConfig {
   useJsonMode?: boolean;
 }
 
+/**
+ * LLM Token Usage
+ */
+export interface LLMUsage {
+  prompt_tokens: number;
+  completion_tokens: number;
+  total_tokens: number;
+  completion_tokens_details?: {
+    reasoning_tokens?: number;
+  };
+}
+
+/**
+ * LLM Rate Limit Info (from response headers)
+ */
+export interface LLMRateLimit {
+  requests_limit?: number;
+  requests_remaining?: number;
+  requests_reset?: string;
+  tokens_limit?: number;
+  tokens_remaining?: number;
+  tokens_reset?: string;
+}
+
+/**
+ * LLM Structured Response
+ */
+export interface LLMResponse {
+  content: string;
+  usage?: LLMUsage;
+  rateLimit?: LLMRateLimit;
+}
+
+/**
+ * Model Pricing Configuration
+ */
+export interface ModelPricing {
+  input_price_per_1k: number;  // Price per 1,000 input tokens
+  output_price_per_1k: number; // Price per 1,000 output tokens
+  currency: string;            // e.g., 'CNY', 'USD'
+}
+
 export interface AIModelDTO {
   id: string;
   name: string;
   provider: string;
   api_endpoint: string;
   config: Record<string, unknown>;
+  pricing?: ModelPricing;
   status: 'active' | 'inactive';
   hasApiKey?: boolean; // Indicates if API key is configured (without exposing the actual key)
   created_at: Date;
@@ -75,6 +118,7 @@ export interface RecognizeParamsDTO {
 export interface RecognizeParamsResponseDTO {
   params: Record<string, unknown>;
   confidence: number;
+  usage?: LLMUsage;
 }
 
 export interface DecideFailureDTO {
@@ -155,6 +199,7 @@ export interface PlanDraftDTO {
   skill_match?: PlanSkillMatchDTO;
   steps: PlanStepDTO[];
   required_inputs: RequiredInputDTO[];
+  usage?: LLMUsage;
   risk_summary: RiskSummaryDTO;
   metadata?: Record<string, unknown>;
 }

@@ -57,6 +57,15 @@ interface BrowserExecuteStepResult {
   takeoverReason?: string;
 }
 
+interface LLMUsage {
+  prompt_tokens: number;
+  completion_tokens: number;
+  total_tokens: number;
+  completion_tokens_details?: {
+    reasoning_tokens?: number;
+  };
+}
+
 interface CapabilityRuntimeExecuteResult {
   releaseId: string;
   capabilityId: string;
@@ -68,6 +77,7 @@ interface CapabilityRuntimeExecuteResult {
   success: boolean;
   output?: Record<string, unknown> | null;
   result?: Record<string, unknown> | null;
+  usage?: LLMUsage;
   logs: string[];
   error?: string | null;
 }
@@ -115,6 +125,7 @@ interface PlannerPlanDraft {
     items: string[];
   };
   metadata?: Record<string, unknown>;
+  usage?: LLMUsage;
 }
 
 // Valid status transitions
@@ -201,6 +212,13 @@ export class ExecutionService {
     const effectiveSkillId = plannedCapabilityId || resolvedSkillId;
     const effectiveSkillVersion = resolvedSkillVersion;
     const normalizedInput = this.buildNormalizedInput(resolvedDto, planDraft);
+
+    // 注入 usage 到 normalizedInput 中以便持久化
+    const usage = planDraft?.usage || resolvedDto.usage;
+    if (usage) {
+      (normalizedInput as any).__usage = usage;
+    }
+
     const execution = await this.prisma.execution.create({
       data: {
         createdBy: userId,
@@ -605,6 +623,9 @@ export class ExecutionService {
 
     const remainingMissingInputs = updatedRequiredInputs.filter((item) => item.required && item.missing);
     const isFullySubmitted = remainingMissingInputs.length === 0;
+    const currentUsage = normalized.__usage as unknown as LLMUsage | undefined;
+    const submittedUsage = dto.usage as unknown as LLMUsage | undefined;
+    const totalUsage = this.sumUsage(currentUsage, submittedUsage);
 
     const normalizedInputData =
       normalized.input && typeof normalized.input === 'object'
@@ -612,6 +633,7 @@ export class ExecutionService {
         : {};
     const updatedNormalized = {
       ...normalized,
+      ...(totalUsage ? { __usage: totalUsage } : {}),
       ...dto.input,
       input: {
         ...normalizedInputData,
@@ -941,7 +963,17 @@ export class ExecutionService {
     await this.updateStatus(executionId, 'failed');
   }
 
-  private toDto(execution: Record<string, unknown>, createdByName?: string): ExecutionDto {
+  private toDto(execution: any, createdByName?: string): ExecutionDto {
+    const normalizedInput = (execution.normalizedInputJson || execution.normalized_input_json) as Record<string, any> | undefined;
+    const input = (execution.inputJson || execution.input_json) as Record<string, any> | undefined;
+    
+    // 尝试从多个地方提取 usage
+    let usage = (normalizedInput?.__usage || input?.__usage) as Record<string, unknown> | undefined;
+    
+    if (!usage && execution.usage) {
+      usage = execution.usage;
+    }
+
     return {
       id: execution.id as string,
       orgId: execution.orgId as string | undefined,
@@ -954,9 +986,9 @@ export class ExecutionService {
       status: execution.status as string,
       runtimeType: execution.runtimeType as string,
       riskLevel: execution.riskLevel as string,
-      input: execution.inputJson as Record<string, unknown> | undefined,
-      normalizedInput: execution.normalizedInputJson as Record<string, unknown> | undefined,
-      result: execution.resultJson as Record<string, unknown> | undefined,
+      input,
+      normalizedInput,
+      result: (execution.resultJson || execution.result_json) as Record<string, unknown> | undefined,
       failureReason: execution.failureReason as string | undefined,
       failureCode: execution.failureCode as string | undefined,
       currentStepId: execution.currentStepId as string | undefined,
@@ -964,6 +996,7 @@ export class ExecutionService {
       approvalStatus: execution.approvalStatus as string | undefined,
       takeoverRequired: execution.takeoverRequired as boolean,
       takeoverReason: execution.takeoverReason as string | undefined,
+      usage,
       startedAt: execution.startedAt as Date | undefined,
       endedAt: execution.endedAt as Date | undefined,
       createdAt: execution.createdAt as Date,
@@ -1530,10 +1563,28 @@ export class ExecutionService {
     });
 
     if (result.success) {
+      // 获取当前 usage 并累加
+      const currentExecution = await this.prisma.execution.findUnique({
+        where: { id: executionId },
+        select: { normalizedInputJson: true },
+      });
+
+      const normalizedInput = currentExecution?.normalizedInputJson as Record<string, unknown> | undefined;
+      const currentUsage = normalizedInput?.__usage as unknown as LLMUsage | undefined;
+      const stepUsage = result.usage;
+      const totalUsage = this.sumUsage(currentUsage, stepUsage);
+
+      // 更新 normalizedInputJson 中的 usage
+      const updatedNormalizedInput = {
+        ...(normalizedInput || {}),
+        ...(totalUsage ? { __usage: totalUsage } : {}),
+      };
+
       await this.prisma.execution.update({
         where: { id: executionId },
         data: {
           resultJson: this.asJsonValue(output),
+          normalizedInputJson: this.asJsonValue(updatedNormalizedInput),
         },
       });
       await this.advanceExecutionFlow(executionId, runtimeSessionId);
@@ -1549,6 +1600,36 @@ export class ExecutionService {
     });
     await this.skipPendingSteps(executionId, stepId, 'Execution failed before remaining planned steps were executed');
     await this.updateStatus(executionId, 'failed');
+  }
+
+  private sumUsage(...usages: (LLMUsage | undefined)[]): LLMUsage | undefined {
+    const validUsages = usages.filter((u): u is LLMUsage => !!u && (u.total_tokens > 0 || u.prompt_tokens > 0));
+    if (validUsages.length === 0) return undefined;
+
+    const result: LLMUsage = {
+      prompt_tokens: 0,
+      completion_tokens: 0,
+      total_tokens: 0,
+      completion_tokens_details: {
+        reasoning_tokens: 0,
+      },
+    };
+
+    for (const usage of validUsages) {
+      result.prompt_tokens += (usage.prompt_tokens || 0);
+      result.completion_tokens += (usage.completion_tokens || 0);
+      result.total_tokens += (usage.total_tokens || 0);
+      if (usage.completion_tokens_details?.reasoning_tokens) {
+        if (!result.completion_tokens_details) {
+          result.completion_tokens_details = { reasoning_tokens: 0 };
+        }
+        result.completion_tokens_details.reasoning_tokens =
+          (result.completion_tokens_details.reasoning_tokens || 0) +
+          usage.completion_tokens_details.reasoning_tokens;
+      }
+    }
+
+    return result;
   }
 
   private mapPlannerStepType(kind: PlannerPlanDraft['steps'][number]['kind']): string {
