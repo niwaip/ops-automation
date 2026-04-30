@@ -3,7 +3,7 @@ import { apiClient } from './client';
 // Types based on template service entity
 export type TemplateStatus = 'DRAFT' | 'REVIEW' | 'PUBLISHED' | 'DEPRECATED' | 'REVOKED';
 
-export interface ParamsSchema {
+export interface TemplateParamsSchema {
   type?: string;
   properties?: Record<string, unknown>;
   required?: string[];
@@ -25,7 +25,7 @@ export interface Template {
   version: string;
   status: TemplateStatus;
   description?: string;
-  params_schema: ParamsSchema;
+  params_schema: TemplateParamsSchema;
   steps: TemplateStep[];
   guards: Record<string, unknown>[];
   config: Record<string, unknown>;
@@ -48,7 +48,7 @@ export interface CreateTemplateRequest {
   name: string;
   version?: string;
   description?: string;
-  params_schema?: ParamsSchema;
+  params_schema?: TemplateParamsSchema;
   steps?: TemplateStep[];
   created_by: string;
 }
@@ -57,7 +57,7 @@ export interface UpdateTemplateRequest {
   name?: string;
   version?: string;
   description?: string;
-  params_schema?: ParamsSchema;
+  params_schema?: TemplateParamsSchema;
   steps?: TemplateStep[];
 }
 
@@ -84,7 +84,7 @@ export interface CompileResult {
     name: string;
     version: string;
     status: string;
-    params_schema: ParamsSchema;
+    params_schema: TemplateParamsSchema;
     steps: CompileResultStep[];
     metadata: {
       created_by: string;

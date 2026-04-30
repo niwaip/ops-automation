@@ -5,7 +5,7 @@
 
 import { StreamEvent, ChatRequest, AIModel, UploadedFile } from './types';
 import { useAuthStore } from '../../store/authStore';
-import { refreshAccessToken } from '../../api/client';
+import { ensureFreshAccessToken, refreshAccessToken } from '../../api/client';
 
 // 使用Vite代理路径 /api/ai -> ops-ai-orchestrator:3007
 const AI_API_BASE = '/api/ai';
@@ -41,7 +41,8 @@ const fetchWithAuthRetry = async (
     });
   };
 
-  let response = await executeRequest();
+  const freshToken = await ensureFreshAccessToken();
+  let response = await executeRequest(freshToken);
 
   if (response.status !== 401) {
     return response;

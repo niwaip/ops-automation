@@ -6,11 +6,6 @@ import {
   reportApi,
   CreateReportTemplateParams,
   ReportSection,
-  ReportFormat,
-  SectionType,
-  SectionSource,
-  ValidationFailAction,
-  NotificationType,
 } from '../api/report';
 
 const { Title, Text } = Typography;
@@ -52,7 +47,7 @@ const ReportTemplateCreatePage: React.FC = () => {
         notification_config: values.notification_enabled ? {
           enabled: true,
           type: values.notification_type,
-          recipients: values.recipients?.split(',').map(r => r.trim()),
+          recipients: values.recipients?.split(',').map((r: string) => r.trim()),
           webhook_url: values.webhook_url,
         } : undefined,
       };

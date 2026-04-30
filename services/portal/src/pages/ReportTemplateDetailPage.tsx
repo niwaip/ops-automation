@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Card, Typography, Descriptions, Tag, Button, Space, Divider, List, Collapse, message, Spin } from 'antd';
+import { Card, Typography, Descriptions, Tag, Button, Space, Divider, Collapse, message, Spin } from 'antd';
 import { EditOutlined, DeleteOutlined, FileWordOutlined, FileExcelOutlined, FilePdfOutlined } from '@ant-design/icons';
 import { reportApi, ReportTemplate, ReportFormat, SectionType, SectionSource } from '../api/report';
 

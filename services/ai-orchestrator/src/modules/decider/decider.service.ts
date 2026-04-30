@@ -147,7 +147,7 @@ export class DeciderService {
 
     try {
       const response = await this.defaultClient!.chatCompletion(messages);
-      return this.parseDecisionResponse(response);
+      return this.parseDecisionResponse(response.content);
     } catch {
       return null;
     }

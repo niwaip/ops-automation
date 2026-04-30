@@ -3,24 +3,34 @@
  * 构建ReAct循环所需的提示词
  */
 
-import { AvailableSkillDefinition, ChatMessage, SkillMatchResult, ToolDefinition } from './interfaces';
+import {
+  AvailableSkillDefinition,
+  CapabilitySnapshot,
+  ChatMessage,
+  SkillMatchResult,
+  ToolDefinition,
+} from './interfaces';
+import {
+  extractLatestDecisionContextFromSummary,
+} from './decision-context-summary';
+import type { DecisionContextPromptSummary } from './decision-context-summary';
+
+export type { DecisionContextPromptSummary } from './decision-context-summary';
+
+const MAX_PROMPT_INPUT_CHARS = Number(process.env.REACT_PROMPT_INPUT_MAX_CHARS || 4000);
+const MAX_PROMPT_HISTORY_CHARS = Number(process.env.REACT_PROMPT_HISTORY_MAX_CHARS || 1200);
+const MAX_PROMPT_FILE_SECTION_CHARS = Number(process.env.REACT_PROMPT_FILE_SECTION_MAX_CHARS || 400);
 
 /**
  * ReAct提示词模板
  */
-const REACT_SYSTEM_PROMPT = `你是一个智能助手，使用ReAct(Reasoning + Acting)框架来处理复杂任务。
+const REACT_SYSTEM_POLICY = `你是一个智能助手，使用ReAct(Reasoning + Acting)框架来处理复杂任务。
 
 你的工作流程是：
 1. Thought: 分析用户输入和之前的 Observation，思考下一步行动
 2. Action: 选择合适的工具并执行
 3. Observation: 观察执行结果。如果结果包含错误(error)，请在下一轮 Thought 中分析原因并尝试修正参数重新执行。
 4. 重复以上步骤直到任务完成
-
-可用的工具：
-{tools}
-
-当前用户可访问的技能：
-{skills}
 
 回答格式：
 Thought: 你的思考过程
@@ -53,38 +63,109 @@ Final Answer: 最终回复
 - 如果任务完成，输出 Final Answer 包含最终回复
 `;
 
-const REACT_USER_PROMPT_TEMPLATE = `用户输入: {userInput}
+const MAX_PROMPT_REACT_HISTORY = Number(process.env.REACT_PROMPT_TRACE_TAIL_MESSAGES || 6);
 
-请按照ReAct框架处理这个请求。`;
+const SENSITIVE_VALUE_PATTERNS = [
+  /(authorization\s*[:=]\s*bearer\s+)([^\s]+)/gi,
+  /((?:api[_-]?key|token|password|secret)\s*[:=]\s*)([^\s,;"']+)/gi,
+];
+
+export interface PromptSection {
+  key: string;
+  title: string;
+  body: string;
+  source: string;
+}
+
+function clipPromptText(value: string, maxChars: number): string {
+  if (!value || value.length <= maxChars) {
+    return value;
+  }
+
+  const head = value.slice(0, Math.floor(maxChars * 0.7));
+  const tail = value.slice(-(Math.floor(maxChars * 0.2)));
+  return `${head}\n...[truncated ${value.length - head.length - tail.length} chars]...\n${tail}`;
+}
+
+function sanitizeSensitiveContent(value: string): string {
+  return SENSITIVE_VALUE_PATTERNS.reduce((current, pattern) => {
+    return current.replace(pattern, (_match, prefix: string) => `${prefix}[REDACTED]`);
+  }, value);
+}
+
+function stripProtocolForgery(value: string): string {
+  return value.replace(
+    /^\s*(Thought|Action|Action Input|Observation|Final Answer)\s*:.*$/gim,
+    '[filtered protocol-like content]',
+  );
+}
+
+function sanitizePromptContent(value: string, maxChars: number): string {
+  const normalized = value.replace(/\r\n/g, '\n').trim();
+  const withoutSecrets = sanitizeSensitiveContent(normalized);
+  const withoutForgery = stripProtocolForgery(withoutSecrets);
+  return clipPromptText(withoutForgery, maxChars);
+}
+
+function createPromptSection(
+  key: string,
+  title: string,
+  body: string | undefined,
+  source: string,
+): PromptSection | null {
+  if (!body || !body.trim()) {
+    return null;
+  }
+  return {
+    key,
+    title,
+    body: body.trim(),
+    source,
+  };
+}
+
+export function renderPromptSections(sections: Array<PromptSection | null>): string {
+  return sections
+    .filter((section): section is PromptSection => Boolean(section))
+    .map((section) => `## ${section.title}\n${section.body}`)
+    .join('\n\n');
+}
 
 /**
  * 构建系统提示词
  */
-export function buildSystemPrompt(
+export function buildSystemPromptSections(
   tools: ToolDefinition[],
   skill?: SkillMatchResult,
   availableSkills: AvailableSkillDefinition[] = [],
   mode: 'chat' | 'task' = 'chat',
-): string {
-  let filteredTools = tools;
+  capabilitySnapshot?: CapabilitySnapshot,
+): PromptSection[] {
+  let filteredTools = capabilitySnapshot
+    ? tools.filter((tool) => capabilitySnapshot.visibleTools.some((visibleTool) => visibleTool.name === tool.name))
+    : tools;
+
+  let filteredSkills = capabilitySnapshot
+    ? availableSkills.filter((item) => capabilitySnapshot.visibleSkills.some((visibleSkill) => visibleSkill.skillId === item.skillId))
+    : availableSkills;
 
   if (mode === 'task') {
     // 任务模式下，强制排除通用发现和调用工具，确保模型只能看到并使用技能相关工具
-    filteredTools = tools.filter((t) => !['skill_match', 'api_call'].includes(t.name));
+    filteredTools = filteredTools.filter((t) => !['skill_match', 'api_call'].includes(t.name));
   } else if (!skill) {
-    filteredTools = tools.filter((t) => !t.category || t.category === 'discovery' || t.category === 'utility');
+    filteredTools = filteredTools.filter((t) => !t.category || t.category === 'discovery' || t.category === 'utility');
   } else if (skill.carboneSkillId) {
-    filteredTools = tools.filter((t) => t.name !== 'param_collect');
+    filteredTools = filteredTools.filter((t) => t.name !== 'param_collect');
   } else {
-    filteredTools = tools.filter((t) => t.name !== 'generate_parameters');
+    filteredTools = filteredTools.filter((t) => t.name !== 'generate_parameters');
   }
 
   const toolsDescription = filteredTools
     .map((t) => `${t.name}: ${t.description}\n参数: ${JSON.stringify(t.parameters, null, 2)}${t.requiresConfirmation ? '\n注意：此操作执行前需要人工确认。' : ''}`)
     .join('\n\n');
 
-  const skillsDescription = availableSkills.length > 0
-    ? availableSkills.map((item) => {
+  const skillsDescription = filteredSkills.length > 0
+    ? filteredSkills.map((item) => {
         const executionTool = item.carboneSkillId ? 'document_intake -> document_render' : 'flow_execute';
         const runtimeHints: string[] = [];
         if (item.goal) runtimeHints.push(`goal=${item.goal}`);
@@ -93,6 +174,7 @@ export function buildSystemPrompt(
           `- skillId: ${item.skillId}`,
           `  name: ${item.skillName}`,
           `  description: ${item.description || '无'}`,
+          item.executionType ? `  executionType: ${item.executionType}` : '',
           `  triggerKeywords: ${item.triggerKeywords.join(', ') || '无'}`,
           `  executionTool: ${executionTool}`,
           `  paramsSchema: ${JSON.stringify(item.paramsSchema, null, 2)}`,
@@ -103,12 +185,33 @@ export function buildSystemPrompt(
       ? '- 当前没有可用技能。请直接告知用户暂时无法处理此请求。'
       : '- 当前没有可用技能，必要时再使用 skill_match 或直接回复用户。';
 
-  let systemPrompt = REACT_SYSTEM_PROMPT
-    .replace('{tools}', toolsDescription)
-    .replace('{skills}', skillsDescription);
+  const systemSections: Array<PromptSection | null> = [
+    createPromptSection('system_policy', 'System Policy', REACT_SYSTEM_POLICY, 'static_policy'),
+  ];
+  if (capabilitySnapshot) {
+    const constraints = [
+      capabilitySnapshot.constraints.forceSkillBoundExecution ? '- 当前为权限约束执行模式：优先围绕已授权 skill 执行，不要自行扩展能力范围。' : '',
+      capabilitySnapshot.constraints.forbidExternalApiInTaskMode ? '- 当前模式禁止直接调用外部通用 API。' : '',
+      capabilitySnapshot.constraints.disallowToolNames.length > 0
+        ? `- 明确禁止使用的工具: ${capabilitySnapshot.constraints.disallowToolNames.join(', ')}`
+        : '',
+      capabilitySnapshot.policies.requireConfirmToolNames.length > 0
+        ? `- 需要人工确认的工具: ${capabilitySnapshot.policies.requireConfirmToolNames.join(', ')}`
+        : '',
+    ].filter(Boolean);
+
+    if (constraints.length > 0) {
+      systemSections.push(
+        createPromptSection('capability_policy', 'Capability Policy', constraints.join('\n'), 'capability_snapshot'),
+      );
+    }
+  }
+
+  systemSections.push(createPromptSection('tool_spec', 'Tool Spec', toolsDescription, 'tool_registry'));
+  systemSections.push(createPromptSection('skill_index', 'Skill Index', skillsDescription, 'skill_registry'));
 
   if (skill) {
-    systemPrompt += `\n\n当前匹配的技能: ${skill.skillName}
+    let activeSkillSection = `当前匹配的技能: ${skill.skillName}
 Skill ID: ${skill.skillId}
 Carbone Skill ID: ${skill.carboneSkillId || '无'}
 Carbone Template ID: ${skill.carboneTemplateId || '无'}
@@ -118,67 +221,155 @@ Carbone Template ID: ${skill.carboneTemplateId || '无'}
 `;
 
     if (skill.goal) {
-      systemPrompt += `技能目标: ${skill.goal}\n`;
+      activeSkillSection += `技能目标: ${skill.goal}\n`;
     }
     if (skill.expectedResult) {
-      systemPrompt += `预期结果: ${skill.expectedResult}\n`;
+      activeSkillSection += `预期结果: ${skill.expectedResult}\n`;
     }
     if (skill.outputParams && Object.keys(skill.outputParams).length > 0) {
-      systemPrompt += `输出契约: ${JSON.stringify(skill.outputParams, null, 2)}\n`;
+      activeSkillSection += `输出契约: ${JSON.stringify(skill.outputParams, null, 2)}\n`;
     }
 
     if (skill.carboneSkillId) {
-      systemPrompt += `\n重要提示：此技能已配置Carbone文档能力，下一步优先调用 document_intake 工具，参数为:
+      activeSkillSection += `\n重要提示：此技能已配置Carbone文档能力，下一步优先调用 document_intake 工具，参数为:
 {
   "skillId": "${skill.skillId}",
   "userInput": "用户的完整描述内容"
 }
 若 document_intake 要求澄清模板，请先等待用户确认 templateId/skillId，再继续调用 document_render。`;
     }
+
+    systemSections.push(createPromptSection('active_skill', 'Active Skill', activeSkillSection, 'matched_skill'));
   }
 
-  return systemPrompt;
+  return systemSections.filter((section): section is PromptSection => Boolean(section));
+}
+
+export function buildSystemPrompt(
+  tools: ToolDefinition[],
+  skill?: SkillMatchResult,
+  availableSkills: AvailableSkillDefinition[] = [],
+  mode: 'chat' | 'task' = 'chat',
+  capabilitySnapshot?: CapabilitySnapshot,
+): string {
+  return renderPromptSections(
+    buildSystemPromptSections(tools, skill, availableSkills, mode, capabilitySnapshot),
+  );
 }
 
 /**
  * 构建用户提示词
  */
-export function buildUserPrompt(
+export function buildUserPromptSections(
   userInput: string,
   history: ChatMessage[],
   uploadedFiles?: string[],
-): string {
-  let prompt = REACT_USER_PROMPT_TEMPLATE.replace('{userInput}', userInput);
+  contextSummary?: string,
+  decisionContextSummary?: DecisionContextPromptSummary,
+): PromptSection[] {
+  const sections: Array<PromptSection | null> = [];
+  const historicalDecisionContext = extractLatestDecisionContextFromSummary(contextSummary);
+  const effectiveDecisionContext: DecisionContextPromptSummary | undefined = decisionContextSummary
+    || historicalDecisionContext
+    ? {
+        routingState: decisionContextSummary?.routingState || historicalDecisionContext?.routingState,
+        promptAssemblyState: decisionContextSummary?.promptAssemblyState || historicalDecisionContext?.promptAssemblyState,
+      }
+    : undefined;
+  const sanitizedUserInput = sanitizePromptContent(userInput, MAX_PROMPT_INPUT_CHARS);
+  sections.push(
+    createPromptSection(
+      'task_input',
+      'Task Input',
+      sanitizedUserInput || '用户未提供额外文本输入。',
+      'user_input',
+    ),
+  );
 
   // 添加历史上下文 (排除当前的ReAct循环历史，只保留之前的对话)
   const previousHistory = history.filter(m => !m.metadata?.isReAct);
   if (previousHistory.length > 0) {
     const recentHistory = previousHistory.slice(-5); // 最近5条消息
     const historyText = recentHistory
-      .map((m) => `${m.role}: ${m.content}`)
+      .map((m) => `${m.role}: ${sanitizePromptContent(String(m.content || ''), MAX_PROMPT_HISTORY_CHARS)}`)
       .join('\n');
-    prompt += `\n\n对话历史:\n${historyText}`;
+    sections.push(createPromptSection('conversation_history', 'Conversation History', historyText, 'chat_history'));
+  }
+
+  if (contextSummary) {
+    sections.push(createPromptSection('task_summary', 'Task Summary', contextSummary, 'context_summary'));
+  }
+
+  if (effectiveDecisionContext?.routingState) {
+    sections.push(
+      createPromptSection(
+        'routing_state',
+        'Routing State',
+        effectiveDecisionContext.routingState,
+        'decision_context.routing',
+      ),
+    );
+  }
+
+  if (effectiveDecisionContext?.promptAssemblyState) {
+    sections.push(
+      createPromptSection(
+        'prompt_assembly_state',
+        'Prompt Assembly State',
+        effectiveDecisionContext.promptAssemblyState,
+        'decision_context.prompt_assembly',
+      ),
+    );
   }
 
   // 添加当前的ReAct循环历史
   const reActHistory = history.filter(m => m.metadata?.isReAct);
   if (reActHistory.length > 0) {
-    prompt += `\n\n当前任务进展:\n`;
-    reActHistory.forEach(m => {
+    const recentReActHistory = reActHistory.slice(-MAX_PROMPT_REACT_HISTORY);
+    let recentTrace = '';
+    recentReActHistory.forEach(m => {
       if (m.role === 'assistant') {
-        prompt += `${m.content}\n`;
+        recentTrace += `${sanitizePromptContent(String(m.content || ''), MAX_PROMPT_HISTORY_CHARS)}\n`;
       } else if (m.role === 'user' && m.content.startsWith('Observation:')) {
-        prompt += `${m.content}\n`;
+        recentTrace += `${sanitizePromptContent(String(m.content || ''), MAX_PROMPT_HISTORY_CHARS)}\n`;
       }
     });
+    sections.push(createPromptSection('recent_trace', 'Recent Trace', recentTrace, 'react_history'));
   }
 
   // 添加文件信息
   if (uploadedFiles && uploadedFiles.length > 0) {
-    prompt += `\n\n上传的文件: ${uploadedFiles.join(', ')}`;
+    sections.push(
+      createPromptSection(
+        'uploaded_files',
+        'Uploaded Files',
+        clipPromptText(uploadedFiles.join(', '), MAX_PROMPT_FILE_SECTION_CHARS),
+        'uploaded_files',
+      ),
+    );
   }
 
-  return prompt;
+  sections.push(
+    createPromptSection(
+      'execution_request',
+      'Execution Request',
+      '请严格按照 ReAct 协议继续当前任务。',
+      'runtime_instruction',
+    ),
+  );
+  return sections.filter((section): section is PromptSection => Boolean(section));
+}
+
+export function buildUserPrompt(
+  userInput: string,
+  history: ChatMessage[],
+  uploadedFiles?: string[],
+  contextSummary?: string,
+  decisionContextSummary?: DecisionContextPromptSummary,
+): string {
+  return renderPromptSections(
+    buildUserPromptSections(userInput, history, uploadedFiles, contextSummary, decisionContextSummary),
+  );
 }
 
 /**

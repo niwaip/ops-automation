@@ -530,8 +530,8 @@ const AIModelAdminPage: React.FC = () => {
             rules={[{ required: true }]}
           >
             <Input
-              readOnly={PRESET_ENDPOINTS[selectedProvider]}
-              disabled={PRESET_ENDPOINTS[selectedProvider]}
+              readOnly={!!PRESET_ENDPOINTS[selectedProvider]}
+              disabled={!!PRESET_ENDPOINTS[selectedProvider]}
               prefix={PRESET_ENDPOINTS[selectedProvider] ? <LockOutlined /> : null}
               suffix={PRESET_ENDPOINTS[selectedProvider] ? (
                 <Tooltip title="预设供应商 Endpoint 已固定">
@@ -635,8 +635,8 @@ const AIModelAdminPage: React.FC = () => {
             rules={[{ required: true }]}
           >
             <Input
-              readOnly={PRESET_ENDPOINTS[selectedProvider]}
-              disabled={PRESET_ENDPOINTS[selectedProvider]}
+              readOnly={!!PRESET_ENDPOINTS[selectedProvider]}
+              disabled={!!PRESET_ENDPOINTS[selectedProvider]}
               prefix={PRESET_ENDPOINTS[selectedProvider] ? <LockOutlined /> : null}
               suffix={PRESET_ENDPOINTS[selectedProvider] ? (
                 <Tooltip title="预设供应商 Endpoint 已固定">

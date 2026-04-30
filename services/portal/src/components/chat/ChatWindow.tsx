@@ -134,6 +134,8 @@ const ChatWindow: React.FC = () => {
       timestamp: new Date(),
       isStreaming: true,
       metadata: {
+        mode: chatMode,
+        showThinking: enableThinking,
         taskStatus: undefined,
         finalResult: '',
         finalResultData: undefined,
@@ -179,6 +181,8 @@ const ChatWindow: React.FC = () => {
     setLocalStreamingContent('');
 
     let accumulatedContent = '';
+    const showThinking = request.config?.thinking !== false;
+    const isChatRequest = request.config?.mode === 'chat';
 
     const abortStreaming = streamChat(
       request,
@@ -186,25 +190,39 @@ const ChatWindow: React.FC = () => {
         addStreamEvent(event);
 
         if (event.type === StreamEventType.THOUGHT) {
-          accumulatedContent += `【思考】${event.content}\n`;
+          if (showThinking) {
+            accumulatedContent += `【思考】${event.content}\n`;
+          }
           updateMessageMetadataById(assistantMessageId, {
+            mode: request.config?.mode,
+            showThinking,
             taskStatus: 'running',
             executionId: event.data?.executionId as string | undefined,
             executionStatus: event.data?.status as string | undefined,
             errorMessage: '',
           });
         } else if (event.type === StreamEventType.ACTION) {
-          accumulatedContent += `【行动】${event.content}\n`;
+          if (showThinking) {
+            accumulatedContent += `【行动】${event.content}\n`;
+          }
           updateMessageMetadataById(assistantMessageId, {
+            mode: request.config?.mode,
+            showThinking,
             taskStatus: 'running',
             executionId: event.data?.executionId as string | undefined,
             executionStatus: event.data?.status as string | undefined,
             errorMessage: '',
           });
         } else if (event.type === StreamEventType.OBSERVATION && !Boolean(event.data?.hasBusinessResult) && !event.data?.downloadUrl) {
-          accumulatedContent += `【观察】${event.content}\n`;
+          if (isChatRequest) {
+            accumulatedContent = event.content;
+          } else if (showThinking) {
+            accumulatedContent += `【观察】${event.content}\n`;
+          }
           updateMessageMetadataById(assistantMessageId, {
-            finalSummary: accumulatedContent,
+            mode: request.config?.mode,
+            showThinking,
+            finalSummary: isChatRequest ? '' : accumulatedContent,
             errorMessage: '',
           });
         } else if (
@@ -216,34 +234,62 @@ const ChatWindow: React.FC = () => {
           const hasBusinessResult = Boolean(event.data?.hasBusinessResult);
           const executionStatus = event.data?.status as string | undefined;
           const missingInputs = event.data?.missingInputs as any[];
+          const eventMode = (event.data?.mode as 'chat' | 'task' | undefined) || request.config?.mode;
 
-          if (event.type === StreamEventType.RESULT) {
-            accumulatedContent = ''; // 结果事件清空累积内容
+          if (eventMode === 'chat' && event.type === StreamEventType.RESULT) {
+            accumulatedContent = event.content;
+            updateMessageMetadataById(assistantMessageId, {
+              mode: 'chat',
+              showThinking,
+              taskStatus: undefined,
+              executionId: undefined,
+              executionStatus: undefined,
+              finalResult: '',
+              finalResultData: event.data,
+              usage: event.data?.usage as any,
+              rateLimit: event.data?.rateLimit as any,
+              finalSummary: '',
+              downloadUrl: undefined,
+              hasBusinessResult: false,
+              missingInputs: undefined,
+              errorMessage: '',
+            });
+          } else {
+            if (event.type === StreamEventType.RESULT) {
+              accumulatedContent = ''; // 结果事件清空累积内容
+            }
+
+            // 提取结果数据
+            const downloadUrl = event.data?.downloadUrl as string | undefined;
+            updateMessageMetadataById(assistantMessageId, {
+              mode: eventMode,
+              showThinking,
+              taskStatus: resolveTaskStatus(event.type as any, executionStatus),
+              executionId: event.data?.executionId as string,
+              executionStatus,
+              finalResult: event.type === StreamEventType.RESULT && hasBusinessResult ? event.content : '',
+              finalResultData: event.type === StreamEventType.RESULT ? (event.data?.result || event.data) : undefined,
+              usage: event.data?.usage as any,
+              rateLimit: event.data?.rateLimit as any,
+              finalSummary: event.type === StreamEventType.WAITING_INPUT || !hasBusinessResult ? event.content : '',
+              downloadUrl: downloadUrl || undefined,
+              hasBusinessResult,
+              missingInputs,
+              errorMessage: '',
+            });
           }
-
-          // 提取结果数据
-          const downloadUrl = event.data?.downloadUrl as string | undefined;
-          updateMessageMetadataById(assistantMessageId, {
-            taskStatus: resolveTaskStatus(event.type as any, executionStatus),
-            executionId: event.data?.executionId as string,
-            executionStatus,
-            finalResult: event.type === StreamEventType.RESULT && hasBusinessResult ? event.content : '',
-            finalResultData: event.type === StreamEventType.RESULT ? (event.data?.result || event.data) : undefined,
-            finalSummary: event.type === StreamEventType.WAITING_INPUT || !hasBusinessResult ? event.content : '',
-            downloadUrl: downloadUrl || undefined,
-            hasBusinessResult,
-            missingInputs,
-            errorMessage: '',
-          });
         } else if (event.type === 'error') {
           if (event.content) {
-            accumulatedContent += `${event.content}\n`;
+            accumulatedContent += isChatRequest ? event.content : `${event.content}\n`;
           }
           updateMessageMetadataById(assistantMessageId, {
+            mode: request.config?.mode,
+            showThinking,
             taskStatus: 'failed',
             executionId: event.data?.executionId as string | undefined,
             executionStatus: event.data?.status as string | undefined,
             finalResultData: undefined,
+            usage: event.data?.usage as any,
             errorMessage: event.content,
           });
         } else if (event.type === 'params_confirm') {

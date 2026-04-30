@@ -42,6 +42,11 @@ export class CreateExecutionDto {
   @IsOptional()
   @IsString()
   idempotencyKey?: string;
+
+  @ApiProperty({ description: 'Token usage from planner phase', required: false })
+  @IsOptional()
+  @IsObject()
+  usage?: Record<string, unknown>;
 }
 
 export class ExecutionDto {
@@ -121,6 +126,9 @@ export class ExecutionDto {
 
   @ApiProperty({ required: false })
   takeoverReason?: string;
+
+  @ApiProperty({ required: false })
+  usage?: Record<string, unknown>;
 
   @ApiProperty({ required: false })
   startedAt?: Date;
@@ -269,6 +277,11 @@ export class SubmitInputDto {
   @ApiProperty({ description: 'Submitted input data' })
   @IsObject()
   input: Record<string, unknown>;
+
+  @ApiProperty({ description: 'Token usage collected while resolving missing inputs', required: false })
+  @IsOptional()
+  @IsObject()
+  usage?: Record<string, unknown>;
 
   @ApiProperty({ description: 'User submitting the input', required: false })
   @IsOptional()

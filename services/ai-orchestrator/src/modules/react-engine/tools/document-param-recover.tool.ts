@@ -14,6 +14,23 @@ interface GenerateParamsResponse {
   generatedData?: Record<string, unknown>;
 }
 
+const isTemplateVisibleInSnapshot = (
+  templateId: string | undefined,
+  context: ExecutionContext,
+): boolean => {
+  if (!templateId || !context.capabilitySnapshot) {
+    return true;
+  }
+
+  return context.capabilitySnapshot.visibleSkills.some((skill) => {
+    return Boolean(
+      skill.carboneTemplateId === templateId
+      || skill.templateId === templateId
+      || skill.executionFlowTemplateIds?.includes(templateId),
+    );
+  });
+};
+
 export class DocumentParamRecoverTool extends BaseTool {
   constructor() {
     super(
@@ -58,10 +75,18 @@ export class DocumentParamRecoverTool extends BaseTool {
       return {
         success: false,
         output: '无法执行参数修复：缺少模板或技能绑定信息。',
+        code: 'missing_document_binding',
+        severity: 'error',
         data: {
           error: 'missing_document_binding',
           hasTemplateId: Boolean(lockedTemplateId),
           hasCarboneSkillId: Boolean(carboneSkillId),
+        },
+        meta: {
+          toolName: this.name,
+          capabilityChecked: Boolean(context.capabilitySnapshot),
+          selectedTemplateId: lockedTemplateId,
+          selectedSkillId: context.skill?.skillId,
         },
       };
     }
@@ -70,9 +95,36 @@ export class DocumentParamRecoverTool extends BaseTool {
       return {
         success: false,
         output: '无法执行参数修复：缺少用户原始需求描述。',
+        code: 'missing_user_input',
+        severity: 'warning',
         data: { error: 'missing_user_input' },
         requiresUserInput: true,
         userInputPrompt: '请补充完整文档需求描述，我将仅修复参数并继续渲染。',
+        meta: {
+          toolName: this.name,
+          capabilityChecked: Boolean(context.capabilitySnapshot),
+          selectedTemplateId: lockedTemplateId,
+          selectedSkillId: context.skill?.skillId,
+        },
+      };
+    }
+
+    if (!isTemplateVisibleInSnapshot(lockedTemplateId, context)) {
+      return {
+        success: false,
+        output: `当前权限下不可修复模板 ${lockedTemplateId} 的参数。`,
+        code: 'template_not_visible_in_capability_snapshot',
+        severity: 'error',
+        data: {
+          error: 'template_not_visible_in_capability_snapshot',
+          templateId: lockedTemplateId,
+        },
+        meta: {
+          toolName: this.name,
+          capabilityChecked: true,
+          selectedTemplateId: lockedTemplateId,
+          selectedSkillId: context.skill?.skillId,
+        },
       };
     }
 
@@ -97,9 +149,17 @@ export class DocumentParamRecoverTool extends BaseTool {
         return {
           success: false,
           output: '参数修复失败：未返回有效参数。',
+          code: 'param_recover_failed',
+          severity: 'warning',
           data: { error: 'param_recover_failed' },
           requiresUserInput: true,
           userInputPrompt: '参数自动修复失败，请手动补充或修正关键参数后再试。',
+          meta: {
+            toolName: this.name,
+            capabilityChecked: Boolean(context.capabilitySnapshot),
+            selectedTemplateId: lockedTemplateId,
+            selectedSkillId: context.skill?.skillId,
+          },
         };
       }
 
@@ -108,6 +168,8 @@ export class DocumentParamRecoverTool extends BaseTool {
       return {
         success: true,
         output: `参数修复完成，将使用原模板 ${lockedTemplateId} 重新渲染。`,
+        code: 'document_param_recover_completed',
+        severity: 'info',
         data: {
           templateId: lockedTemplateId,
           repairedParams,
@@ -118,18 +180,32 @@ export class DocumentParamRecoverTool extends BaseTool {
           templateId: lockedTemplateId,
           data: repairedParams,
         },
+        meta: {
+          toolName: this.name,
+          capabilityChecked: Boolean(context.capabilitySnapshot),
+          selectedTemplateId: lockedTemplateId,
+          selectedSkillId: context.skill?.skillId,
+        },
       };
     } catch (error) {
       const message = error instanceof Error ? error.message : 'unknown error';
       return {
         success: false,
         output: `参数修复服务调用失败：${message}`,
+        code: 'service_error',
+        severity: 'error',
         data: {
           error: 'service_error',
           message,
         },
         requiresUserInput: true,
         userInputPrompt: '参数修复失败，是否需要我引导你手动补充参数后重试？',
+        meta: {
+          toolName: this.name,
+          capabilityChecked: Boolean(context.capabilitySnapshot),
+          selectedTemplateId: lockedTemplateId,
+          selectedSkillId: context.skill?.skillId,
+        },
       };
     }
   }

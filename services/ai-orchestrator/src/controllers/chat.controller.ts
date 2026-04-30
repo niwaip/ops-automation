@@ -21,7 +21,7 @@ import { ReActEngineService } from '../modules/react-engine/react-engine.service
 import { PlannerService } from '../modules/planner/planner.service';
 import { getOrCreateTraceId } from '../common/trace.util';
 import { ContentBlock, ChatMessage as MultimodalChatMessage } from '../interfaces';
-import { ChatRequestDTO, ExecutionContext, StreamEvent, StreamEventType } from '../modules/react-engine/interfaces';
+import { ChatRequestDTO, ExecutionContext, StreamEvent, StreamEventType, LLMUsage } from '../modules/react-engine/interfaces';
 import { SessionService } from '../modules/redis/session.service';
 
 const fileStore = new Map<string, { fileName: string; mimeType: string; size: number; content: string }>();
@@ -46,6 +46,8 @@ const getControlPlaneUrl = () => {
   }
   return 'http://localhost:3003/api';
 };
+
+const getInternalServiceSecret = () => process.env.INTERNAL_API_SHARED_SECRET || process.env.JWT_SECRET;
 
 const extractDownloadUrl = (value: unknown): string | undefined => {
   const queue: unknown[] = [value];
@@ -100,6 +102,36 @@ export class ChatController {
     res.write(`data: ${JSON.stringify(payload)}\n\n`);
   }
 
+  private selectPrimaryRole(userRoles?: string[]): string | undefined {
+    if (!Array.isArray(userRoles) || userRoles.length === 0) {
+      return undefined;
+    }
+    if (userRoles.includes('admin')) {
+      return 'admin';
+    }
+    return userRoles[0];
+  }
+
+  private buildControlPlaneHeaders(
+    authToken?: string,
+    user?: { userId?: string; userRoles?: string[] },
+  ): Record<string, string> | undefined {
+    const internalSecret = getInternalServiceSecret();
+    if (internalSecret && user?.userId) {
+      const headers: Record<string, string> = {
+        'X-Internal-Auth': internalSecret,
+        'X-User-Id': user.userId,
+      };
+      const primaryRole = this.selectPrimaryRole(user.userRoles);
+      if (primaryRole) {
+        headers['X-User-Role'] = primaryRole;
+      }
+      return headers;
+    }
+
+    return authToken ? { Authorization: authToken } : undefined;
+  }
+
   private normalizeContentToText(content: string | ContentBlock[]): string {
     if (typeof content === 'string') return content;
     return content
@@ -114,6 +146,26 @@ export class ChatController {
       })
       .filter(Boolean)
       .join('\n');
+  }
+
+  private isThinkingEnabled(body: ChatRequestDTO): boolean {
+    return body.config?.thinking !== false;
+  }
+
+  private buildChatSystemMessage(thinkingEnabled: boolean, includeFiles: boolean): string {
+    const basePrompt = includeFiles
+      ? '你是一个智能助手，请用中文友好地回答用户的问题。如果用户上传了文件，请分析文件内容并给出相关回答。'
+      : '你是一个智能助手，请用中文友好地回答用户的问题。';
+
+    if (thinkingEnabled) {
+      return `${basePrompt} 如模型支持推理或 think 模式，请先充分思考，再给出清晰结论。`;
+    }
+
+    return `${basePrompt} 直接输出结论，不要输出思考过程、推理细节或 <think> 标签。`;
+  }
+
+  private getVisibleChatContent(content: string, thinkingEnabled: boolean): string {
+    return thinkingEnabled ? content : this.modelService.stripThinkingTags(content);
   }
 
   private parseJsonObjectMessage(message?: string): Record<string, unknown> | null {
@@ -280,7 +332,7 @@ export class ChatController {
     authToken?: string,
     originalObjective?: string,
     userId?: string,
-  ): Promise<Record<string, unknown>> {
+  ): Promise<{ input: Record<string, unknown>; usage?: LLMUsage }> {
     if (missingInputs.length === 0) {
       throw new Error('当前执行单没有可补充的缺失参数。');
     }
@@ -292,7 +344,9 @@ export class ChatController {
       const allowedKeys = new Set(missingInputs.map((item) => item.name));
       const filteredEntries = Object.entries(parsedObject).filter(([key]) => allowedKeys.has(key));
       if (filteredEntries.length > 0) {
-        return Object.fromEntries(filteredEntries);
+        return {
+          input: Object.fromEntries(filteredEntries),
+        };
       }
     }
 
@@ -330,7 +384,10 @@ export class ChatController {
       ));
 
       if (recognizedEntries.length > 0) {
-        return Object.fromEntries(recognizedEntries);
+        return {
+          input: Object.fromEntries(recognizedEntries),
+          usage: recognized.usage,
+        };
       }
 
       // If recognizer cannot confidently map free-form follow-up text,
@@ -364,7 +421,10 @@ export class ChatController {
           ));
 
         if (plannedResolvedEntries.length > 0) {
-          return Object.fromEntries(plannedResolvedEntries);
+          return {
+            input: Object.fromEntries(plannedResolvedEntries),
+            usage: this.sumUsage(recognized?.usage, planDraft.usage),
+          };
         }
       } catch (error) {
         this.logger.warn(
@@ -375,13 +435,44 @@ export class ChatController {
 
     if (missingInputs.length === 1) {
       return {
-        [firstMissingInput!.name]: message.trim(),
+        input: {
+          [firstMissingInput!.name]: message.trim(),
+        },
       };
     }
 
     throw new Error(
       `当前还缺少多个参数：${missingInputs.map((item) => item.name).join('、')}。请继续用自然语言逐项补充（例如：甲方签字用公司名称、乙方签字用公司名称、附件填写无）。`,
     );
+  }
+
+  private sumUsage(...usages: Array<LLMUsage | undefined>): LLMUsage | undefined {
+    const validUsages = usages.filter((usage): usage is LLMUsage => !!usage);
+    if (validUsages.length === 0) {
+      return undefined;
+    }
+
+    const total: LLMUsage = {
+      prompt_tokens: 0,
+      completion_tokens: 0,
+      total_tokens: 0,
+    };
+
+    for (const usage of validUsages) {
+      total.prompt_tokens += usage.prompt_tokens || 0;
+      total.completion_tokens += usage.completion_tokens || 0;
+      total.total_tokens += usage.total_tokens || 0;
+      if (usage.completion_tokens_details?.reasoning_tokens) {
+        if (!total.completion_tokens_details) {
+          total.completion_tokens_details = { reasoning_tokens: 0 };
+        }
+        total.completion_tokens_details.reasoning_tokens =
+          (total.completion_tokens_details.reasoning_tokens || 0)
+          + usage.completion_tokens_details.reasoning_tokens;
+      }
+    }
+
+    return total;
   }
 
   private async resolveSkillExecutionRuntimeType(
@@ -476,6 +567,7 @@ export class ChatController {
       if (mode === 'chat') {
         const modelId = body.modelId || 'default';
         const sessionId = body.sessionId || 'default';
+        const thinkingEnabled = this.isThinkingEnabled(body);
         const client = this.modelService.getClient(modelId);
 
         if (!client) {
@@ -495,7 +587,10 @@ export class ChatController {
         });
 
         let messageContent: string | ContentBlock[];
-        const systemMessage = '你是一个智能助手，请用中文友好地回答用户的问题。如果用户上传了文件，请分析文件内容并给出相关回答。';
+        const systemMessage = this.buildChatSystemMessage(
+          thinkingEnabled,
+          Boolean(body.files && body.files.length > 0),
+        );
 
         if (body.files && body.files.length > 0) {
           const contentBlocks: ContentBlock[] = [{ type: 'text', text: body.message }];
@@ -554,18 +649,37 @@ export class ChatController {
 
         const userMessageForHistory = this.normalizeContentToText(messageContent);
         let fullContent = '';
-        await this.modelService.callModelStreamWithMessages(modelId, messages, (chunk: string) => {
+        const response = await this.modelService.callModelStreamWithMessages(modelId, messages, (chunk: string) => {
           fullContent += chunk;
+          const visibleContent = this.getVisibleChatContent(fullContent, thinkingEnabled);
           this.writeSse(res, {
             type: StreamEventType.OBSERVATION,
-            content: fullContent,
+            content: visibleContent,
+            data: {
+              mode: 'chat',
+              thinking: thinkingEnabled,
+            },
             traceId,
           });
         });
 
+        const visibleContent = this.getVisibleChatContent(fullContent || '处理完成', thinkingEnabled);
+        const historyAssistantContent = this.modelService.stripThinkingTags(fullContent || '处理完成');
+
+        // P2: Log usage if needed
+        if (response.usage) {
+          this.logger.debug(`Chat completion usage: ${JSON.stringify(response.usage)}`);
+        }
+
         this.writeSse(res, {
           type: StreamEventType.RESULT,
-          content: fullContent || '处理完成',
+          content: visibleContent,
+          data: {
+            mode: 'chat',
+            thinking: thinkingEnabled,
+            usage: response.usage,
+            rateLimit: response.rateLimit,
+          },
           traceId,
         });
 
@@ -577,7 +691,7 @@ export class ChatController {
           },
           {
             role: 'assistant',
-            content: fullContent || '处理完成',
+            content: historyAssistantContent,
             timestamp: new Date().toISOString(),
           },
         ]);
@@ -650,7 +764,10 @@ export class ChatController {
             }>;
           };
         }>(`${getControlPlaneUrl()}/executions/${executionId}`, {
-          headers: authToken ? { Authorization: authToken } : {},
+          headers: this.buildControlPlaneHeaders(authToken, {
+            userId: context.userId,
+            userRoles: context.userRoles,
+          }),
         });
         const execution = response.data;
 
@@ -663,7 +780,10 @@ export class ChatController {
 
           // 获取等待输入的步骤
           const stepsResponse = await axios.get<any[]>(`${getControlPlaneUrl()}/executions/${executionId}/steps`, {
-            headers: authToken ? { Authorization: authToken } : {},
+            headers: this.buildControlPlaneHeaders(authToken, {
+              userId: context.userId,
+              userRoles: context.userRoles,
+            }),
           });
           const steps = stepsResponse.data;
           const waitingStep = steps.find((s: any) => s.status === 'waiting_input' || s.type === 'input_collection');
@@ -673,7 +793,7 @@ export class ChatController {
               const missingInputs = Array.isArray(execution.normalizedInput?.requiredInputs)
                 ? execution.normalizedInput.requiredInputs.filter((item) => item?.missing)
                 : [];
-              const inputPayload = await this.buildWaitingInputPayload(
+              const waitingInputPayload = await this.buildWaitingInputPayload(
                 body.message,
                 missingInputs,
                 execution.skillId,
@@ -688,10 +808,14 @@ export class ChatController {
                 `${getControlPlaneUrl()}/executions/${executionId}/submit-input`,
                 {
                   stepId: waitingStep.id,
-                  input: inputPayload,
+                  input: waitingInputPayload.input,
+                  usage: waitingInputPayload.usage,
                 },
                 {
-                  headers: authToken ? { Authorization: authToken } : {},
+                  headers: this.buildControlPlaneHeaders(authToken, {
+                    userId: context.userId,
+                    userRoles: context.userRoles,
+                  }),
                 },
               );
 
@@ -700,7 +824,10 @@ export class ChatController {
                 content: '信息已提交，任务继续执行。',
               };
 
-              for await (const event of this.observeExecution(executionId, authToken)) {
+              for await (const event of this.observeExecution(executionId, authToken, {
+                userId: context.userId,
+                userRoles: context.userRoles,
+              })) {
                 yield event;
               }
               return;
@@ -721,7 +848,10 @@ export class ChatController {
             content: `任务正在执行中 (状态: ${execution.status})，正在为您实时观察进度...`,
           };
           
-          for await (const event of this.observeExecution(executionId, authToken)) {
+          for await (const event of this.observeExecution(executionId, authToken, {
+            userId: context.userId,
+            userRoles: context.userRoles,
+          })) {
             yield event;
           }
           return;
@@ -802,13 +932,20 @@ export class ChatController {
                 ),
               },
               runtimeType,
+              usage: planDraft.usage,
             },
             {
-              headers: authToken ? { Authorization: authToken } : {},
+              headers: this.buildControlPlaneHeaders(authToken, {
+                userId: context.userId,
+                userRoles: context.userRoles,
+              }),
             },
           );
 
-          for await (const event of this.observeExecution(response.data.id, authToken)) {
+          for await (const event of this.observeExecution(response.data.id, authToken, {
+            userId: context.userId,
+            userRoles: context.userRoles,
+          })) {
             yield event;
           }
           return;
@@ -852,9 +989,13 @@ export class ChatController {
               ),
             },
             runtimeType,
+            usage: planDraft.usage,
           },
           {
-            headers: authToken ? { Authorization: authToken } : {},
+            headers: this.buildControlPlaneHeaders(authToken, {
+              userId: context.userId,
+              userRoles: context.userRoles,
+            }),
           },
         );
 
@@ -868,11 +1009,15 @@ export class ChatController {
             status: 'queued',
             hasBusinessResult: false,
             plan: planDraft,
+            usage: planDraft.usage,
           },
         };
 
         // 启动后立即开始观察进度
-        for await (const event of this.observeExecution(execution.id, authToken)) {
+        for await (const event of this.observeExecution(execution.id, authToken, {
+          userId: context.userId,
+          userRoles: context.userRoles,
+        })) {
           yield event;
         }
         return;
@@ -899,12 +1044,13 @@ export class ChatController {
   private async *observeExecution(
     executionId: string,
     authToken?: string,
+    user?: { userId?: string; userRoles?: string[] },
   ): AsyncGenerator<StreamEvent> {
     const url = `${getControlPlaneUrl()}/executions/${executionId}/events/stream`;
     this.logger.log(`Starting to observe execution ${executionId} via ${url}`);
 
     try {
-      const immediateStateEvent = await this.buildLatestExecutionStateEvent(executionId, authToken);
+      const immediateStateEvent = await this.buildLatestExecutionStateEvent(executionId, authToken, user);
       if (immediateStateEvent) {
         yield immediateStateEvent;
         return;
@@ -912,7 +1058,7 @@ export class ChatController {
 
       const response = await axios.get(url, {
         responseType: 'stream',
-        headers: authToken ? { Authorization: authToken } : {},
+        headers: this.buildControlPlaneHeaders(authToken, user),
       });
 
       const stream = response.data as Readable;
@@ -939,6 +1085,7 @@ export class ChatController {
                   executionId,
                   event.payload.newStatus,
                   authToken,
+                  user,
                 );
                 if (terminalEvent) {
                   yield terminalEvent;
@@ -959,7 +1106,7 @@ export class ChatController {
         }
       }
 
-      const latestEvent = await this.buildLatestExecutionStateEvent(executionId, authToken);
+      const latestEvent = await this.buildLatestExecutionStateEvent(executionId, authToken, user);
       if (latestEvent) {
         yield latestEvent;
       }
@@ -975,12 +1122,14 @@ export class ChatController {
   private async buildLatestExecutionStateEvent(
     executionId: string,
     authToken?: string,
+    user?: { userId?: string; userRoles?: string[] },
   ): Promise<StreamEvent | null> {
     try {
       const response = await axios.get<{
         id: string;
         status: string;
         approvalStatus?: string;
+        usage?: LLMUsage;
         normalizedInput?: {
           requiredInputs?: Array<{
             name?: string;
@@ -989,16 +1138,18 @@ export class ChatController {
           }>;
         };
       }>(`${getControlPlaneUrl()}/executions/${executionId}`, {
-        headers: authToken ? { Authorization: authToken } : {},
+        headers: this.buildControlPlaneHeaders(authToken, user),
       });
 
       const status = response.data.status;
+      const usage = response.data.usage;
 
       if (['succeeded', 'failed', 'cancelled'].includes(status)) {
         return this.buildTerminalExecutionEvent(
           executionId,
           status as 'succeeded' | 'failed' | 'cancelled',
           authToken,
+          user,
         );
       }
 
@@ -1016,6 +1167,7 @@ export class ChatController {
             status,
             hasBusinessResult: false,
             missingInputs,
+            usage,
           },
         };
       }
@@ -1029,6 +1181,7 @@ export class ChatController {
             status,
             approvalStatus: response.data.approvalStatus || 'pending',
             hasBusinessResult: false,
+            usage,
           },
         };
       }
@@ -1046,6 +1199,7 @@ export class ChatController {
     executionId: string,
     status: 'succeeded' | 'failed' | 'cancelled',
     authToken?: string,
+    user?: { userId?: string; userRoles?: string[] },
   ): Promise<StreamEvent | null> {
     try {
       const response = await axios.get<{
@@ -1054,8 +1208,9 @@ export class ChatController {
         result?: unknown;
         resultJson?: unknown;
         failureReason?: string;
+        usage?: LLMUsage;
       }>(`${getControlPlaneUrl()}/executions/${executionId}`, {
-        headers: authToken ? { Authorization: authToken } : {},
+        headers: this.buildControlPlaneHeaders(authToken, user),
       });
 
       const execution = response.data;
@@ -1073,6 +1228,7 @@ export class ChatController {
               result: rawResult,
               downloadUrl,
               hasBusinessResult: true,
+              usage: execution.usage,
             },
           };
         }
@@ -1084,6 +1240,7 @@ export class ChatController {
             executionId,
             status,
             hasBusinessResult: false,
+            usage: execution.usage,
           },
         };
       }
@@ -1092,14 +1249,23 @@ export class ChatController {
         return {
           type: StreamEventType.ERROR,
           content: `任务执行失败。\n\n原因: ${execution.failureReason || '未知原因'}\n执行单 ID: ${executionId}`,
-          data: { executionId, status },
+          data: {
+            executionId,
+            status,
+            usage: execution.usage,
+          },
         };
       }
 
       return {
         type: StreamEventType.RESULT,
         content: `任务已取消。\n\n执行单 ID: ${executionId}`,
-        data: { executionId, status, hasBusinessResult: false },
+        data: {
+          executionId,
+          status,
+          hasBusinessResult: false,
+          usage: execution.usage,
+        },
       };
     } catch (error) {
       this.logger.warn(
@@ -1266,6 +1432,7 @@ export class ChatController {
     if (mode === 'chat') {
       const modelId = body.modelId || 'default';
       const sessionId = body.sessionId || 'default';
+      const thinkingEnabled = this.isThinkingEnabled(body);
       const client = this.modelService.getClient(modelId);
       if (!client) {
         return {
@@ -1274,7 +1441,7 @@ export class ChatController {
         };
       }
 
-      const systemMessage = '你是一个智能助手，请用中文友好地回答用户的问题。';
+      const systemMessage = this.buildChatSystemMessage(thinkingEnabled, false);
       const chatSession = await this.sessionService.getChatSession(sessionId);
       const historyMessages: MultimodalChatMessage[] = (chatSession?.history || []).map((msg) => ({
         role: msg.role,
@@ -1287,6 +1454,8 @@ export class ChatController {
         { role: 'user', content: userContent },
       ];
       const response = await client.chatCompletion(messages);
+      const visibleContent = this.getVisibleChatContent(response.content, thinkingEnabled);
+      const historyAssistantContent = this.modelService.stripThinkingTags(response.content);
 
       await this.sessionService.appendChatMessages(sessionId, [
         {
@@ -1296,17 +1465,24 @@ export class ChatController {
         },
         {
           role: 'assistant',
-          content: response,
+          content: historyAssistantContent,
           timestamp: new Date().toISOString(),
         },
       ]);
 
       return {
-        response,
+        response: visibleContent,
         events: [{
           type: StreamEventType.RESULT,
-          content: response,
-          data: { traceId, sessionId, mode: 'chat' },
+          content: visibleContent,
+          data: {
+            traceId,
+            sessionId,
+            mode: 'chat',
+            thinking: thinkingEnabled,
+            usage: response.usage,
+            rateLimit: response.rateLimit,
+          },
         }],
       };
     }

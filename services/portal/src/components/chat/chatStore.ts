@@ -51,7 +51,7 @@ interface ChatActions {
   addMessage: (message: ChatMessage) => void;
   updateLastMessage: (content: string) => void;
   updateMessageById: (messageId: string, content: string, isStreaming?: boolean) => void;
-  updateMessageMetadataById: (messageId: string, metadata: NonNullable<ChatMessage['metadata']>) => void;
+  updateMessageMetadataById: (messageId: string, metadata: Partial<NonNullable<ChatMessage['metadata']>>) => void;
   clearMessages: () => void;
 
   // 流式处理
@@ -163,10 +163,13 @@ export const useChatStore = create<ChatState & ChatActions>((set, get) => ({
 
   updateMessageMetadataById: (messageId, metadata) => {
     const messages = get().messages;
+    const sanitizedMetadata = Object.fromEntries(
+      Object.entries(metadata).filter(([, value]) => value !== undefined)
+    ) as Partial<NonNullable<ChatMessage['metadata']>>;
     set({
       messages: messages.map((msg) =>
         msg.id === messageId
-          ? { ...msg, metadata: { ...(msg.metadata || {}), ...metadata } }
+          ? { ...msg, metadata: { ...(msg.metadata || {}), ...sanitizedMetadata } }
           : msg
       ),
     });
@@ -222,9 +225,17 @@ export const useChatStore = create<ChatState & ChatActions>((set, get) => ({
 
   // UI控制
   toggleChat: () => {
-    set({ isOpen: !get().isOpen });
-    if (!get().isOpen && !get().currentSession) {
-      get().createSession();
+    const isOpen = get().isOpen;
+    if (isOpen) {
+      // 如果已经打开，点击则是隐藏
+      set({ isOpen: false });
+    } else {
+      // 如果是关闭的，点击则是显示
+      set({ isOpen: true });
+      // 只有在没有当前会话时才创建新会话
+      if (!get().currentSession) {
+        get().createSession();
+      }
     }
   },
 

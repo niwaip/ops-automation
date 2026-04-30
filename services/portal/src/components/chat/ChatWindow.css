@@ -4,11 +4,11 @@
 
 .chat-window-container {
   position: fixed;
-  bottom: max(16px, env(safe-area-inset-bottom));
+  bottom: max(100px, env(safe-area-inset-bottom));
   right: max(16px, env(safe-area-inset-right));
   z-index: 999;
   width: min(960px, calc(100vw - 32px));
-  height: min(86vh, 920px);
+  height: min(80vh, 920px);
 }
 
 .chat-window {

@@ -29,6 +29,7 @@ const parseMessageContent = (content: string): { thoughts: string[]; answer: str
   const thoughtRegex = /【思考】([^\n]*(?:\n(?!【)[^\n]*)*)/g;
   const actionRegex = /【行动】([^\n]*(?:\n(?!【)[^\n]*)*)/g;
   const observationRegex = /【观察】([^\n]*(?:\n(?!【)[^\n]*)*)/g;
+  const thinkTagRegex = /<think>([\s\S]*?)<\/think>/gi;
 
   // 提取所有思考内容
   let match;
@@ -37,6 +38,12 @@ const parseMessageContent = (content: string): { thoughts: string[]; answer: str
   }
   while ((match = actionRegex.exec(content)) !== null) {
     thoughts.push(`🔧 行动: ${match[1].trim()}`);
+  }
+  while ((match = thinkTagRegex.exec(content)) !== null) {
+    const thought = match[1].trim();
+    if (thought) {
+      thoughts.push(`💭 思考: ${thought}`);
+    }
   }
   while ((match = observationRegex.exec(content)) !== null) {
     // 观察内容通常是模型回复，不作为思考过程
@@ -47,6 +54,7 @@ const parseMessageContent = (content: string): { thoughts: string[]; answer: str
     .replace(thoughtRegex, '')
     .replace(actionRegex, '')
     .replace(observationRegex, '')
+    .replace(thinkTagRegex, '')
     .replace(/❌ 错误: [^\n]+/g, '')  // 移除错误信息（如果有）
     .trim();
 
@@ -125,9 +133,10 @@ const ChatMessageComponent: React.FC<ChatMessageProps> = ({
   const [taskCompleted, setTaskCompleted] = useState(true);
   const [approvalAction, setApprovalAction] = useState<'approve' | 'reject' | null>(null);
   const isUser = message.role === 'user';
+  const isTaskMode = message.metadata?.mode === 'task';
   const rawContent = isStreaming && streamingContent ? streamingContent : message.content;
-  const isWaitingInput = message.metadata?.taskStatus === 'waiting_input';
-  const isPendingApproval = message.metadata?.taskStatus === 'pending_approval';
+  const isWaitingInput = isTaskMode && message.metadata?.taskStatus === 'waiting_input';
+  const isPendingApproval = isTaskMode && message.metadata?.taskStatus === 'pending_approval';
   const finalResult = message.metadata?.finalResult?.trim();
   const finalResultData = message.metadata?.finalResultData;
   const finalSummary = message.metadata?.finalSummary?.trim();
@@ -136,8 +145,10 @@ const ChatMessageComponent: React.FC<ChatMessageProps> = ({
   const hasBusinessResult = message.metadata?.hasBusinessResult;
   const executionId = message.metadata?.executionId;
   const executionStatus = formatExecutionStatus(message.metadata?.executionStatus);
-  const isRunning = message.metadata?.taskStatus === 'running';
-  const showRunningState = isRunning || (Boolean(isStreaming) && !isWaitingInput && !isPendingApproval && !errorMessage);
+  const usage = message.metadata?.usage;
+  const showThinking = message.metadata?.showThinking !== false;
+  const isRunning = isTaskMode && message.metadata?.taskStatus === 'running';
+  const showRunningState = isTaskMode && (isRunning || (Boolean(isStreaming) && !isWaitingInput && !isPendingApproval && !errorMessage));
   const missingInputs = (message.metadata?.missingInputs || []).filter((item) => item?.missing !== false);
   const structuredResultText = useMemo(
     () => toStructuredResultText(finalResultData),
@@ -221,9 +232,31 @@ const ChatMessageComponent: React.FC<ChatMessageProps> = ({
     );
   };
 
+  // 渲染用量统计
+  const renderUsage = () => {
+    if (!usage) return null;
+    const { prompt_tokens = 0, completion_tokens = 0, total_tokens = 0, completion_tokens_details } = usage;
+    if (total_tokens === 0) return null;
+    
+    const reasoning_tokens = completion_tokens_details?.reasoning_tokens;
+    return (
+      <div className="chat-message-usage">
+        <Space size={4} split={<span className="chat-usage-divider">/</span>}>
+          <span className="chat-usage-item">
+            <span className="chat-usage-label">Tokens:</span>
+            <span className="chat-usage-value">{total_tokens}</span>
+          </span>
+          <span className="chat-usage-detail">
+            输入:{prompt_tokens} 输出:{completion_tokens}{reasoning_tokens ? ` (含推理:${reasoning_tokens})` : ''}
+          </span>
+        </Space>
+      </div>
+    );
+  };
+
   // 渲染思考过程（可折叠）
   const renderThoughts = () => {
-    if (thoughts.length === 0 || isUser) return null;
+    if (!showThinking || thoughts.length === 0 || isUser) return null;
 
     return (
       <div className="chat-thoughts-wrapper">
@@ -424,16 +457,31 @@ const ChatMessageComponent: React.FC<ChatMessageProps> = ({
         <div className={`chat-message-meta ${isUser ? 'user' : 'assistant'}`}>
           {!isUser && (
             <div className="chat-message-actions">
-              <Space size={8}>
-                <Button size="small" type="text" icon={<CopyOutlined />} onClick={handleCopy}>
-                  复制
-                </Button>
-                {onRetry && (
-                  <Button size="small" type="text" icon={<RedoOutlined />} onClick={() => onRetry(message.id)}>
-                    重试
+              <Space size={12}>
+                {renderUsage()}
+                <div className="chat-action-buttons">
+                  <Button
+                    size="small"
+                    type="text"
+                    icon={<CopyOutlined />}
+                    onClick={handleCopy}
+                    className="chat-action-btn"
+                  >
+                    复制
                   </Button>
-                )}
-                {(answer.includes('任务完成') || message.metadata?.taskStatus === 'completed') && (
+                  {onRetry && (
+                    <Button
+                      size="small"
+                      type="text"
+                      icon={<RedoOutlined />}
+                      onClick={() => onRetry(message.id)}
+                      className="chat-action-btn"
+                    >
+                      重试
+                    </Button>
+                  )}
+                </div>
+                {isTaskMode && (answer.includes('任务完成') || message.metadata?.taskStatus === 'completed') && (
                   <div className="chat-task-switch">
                     <span>任务完成</span>
                     <Switch

@@ -284,6 +284,27 @@ export class ToolExecutor {
     };
   }
 
+  private isToolVisibleInSnapshot(toolName: string, context: ExecutionContext): boolean {
+    if (!context.capabilitySnapshot) {
+      return true;
+    }
+    return context.capabilitySnapshot.visibleTools.some((tool) => tool.name === toolName);
+  }
+
+  private buildToolResult(
+    toolName: string,
+    partial: Omit<ToolResult, 'meta'> & { meta?: ToolResult['meta'] },
+  ): ToolResult {
+    return {
+      ...partial,
+      meta: {
+        toolName,
+        capabilityChecked: true,
+        ...(partial.meta || {}),
+      },
+    };
+  }
+
   /**
    * 执行工具（含权限二次校验）
    */
@@ -296,32 +317,49 @@ export class ToolExecutor {
     this.logger.debug(`${tracePrefix}Allowed tools for current run: ${JSON.stringify(context.allowedToolNames || [])}`);
     if (context.allowedToolNames && !context.allowedToolNames.includes(toolName)) {
       this.logger.warn(`${tracePrefix}Tool NOT ALLOWED in current run: ${toolName}. This is a protocol violation.`);
-      return {
+      return this.buildToolResult(toolName, {
         success: false,
         output: `工具 "${toolName}" 不在当前任务允许列表中 (白名单约束)。请检查是否应使用技能(skillId)执行。`,
+        code: 'tool_not_allowed',
+        severity: 'error',
         data: { error: 'tool_not_allowed', allowedTools: context.allowedToolNames },
-      };
+      });
+    }
+
+    if (!this.isToolVisibleInSnapshot(toolName, context)) {
+      this.logger.warn(`${tracePrefix}Tool NOT VISIBLE in capability snapshot: ${toolName}`);
+      return this.buildToolResult(toolName, {
+        success: false,
+        output: `工具 "${toolName}" 不在当前权限快照允许范围内。`,
+        code: 'tool_not_visible_in_capability_snapshot',
+        severity: 'error',
+        data: { error: 'tool_not_visible_in_capability_snapshot' },
+      });
     }
 
     const tool = this.tools.get(toolName);
 
     if (!tool) {
       this.logger.warn(`${tracePrefix}Tool not found: ${toolName}`);
-      return {
+      return this.buildToolResult(toolName, {
         success: false,
         output: `工具 "${toolName}" 不存在`,
+        code: 'tool_not_found',
+        severity: 'error',
         data: { error: 'tool_not_found' },
-      };
+      });
     }
 
     // 权限二次校验（防御性编程）
     if (tool instanceof BaseTool && !tool.isAuthorized(context.userRoles)) {
       this.logger.warn(`${tracePrefix}Unauthorized tool access: user=${context.userId}, tool=${toolName}`);
-      return {
+      return this.buildToolResult(toolName, {
         success: false,
         output: `抱歉，您没有权限执行 "${tool.description.split(':')[0]}" 相关的操作。`,
+        code: 'unauthorized_access',
+        severity: 'error',
         data: { error: 'unauthorized_access' },
-      };
+      });
     }
 
     // 对部分核心工具做参数兜底，避免模型遗漏必填字段导致流程中断。
@@ -356,11 +394,13 @@ export class ToolExecutor {
         !context.allowedToolNames.includes('skill_match');
 
       if (isTaskConstrainedRun && !incomingSkillId && !matchedSkillId) {
-        return {
+        return this.buildToolResult(toolName, {
           success: false,
           output: '任务模式下必须先基于 skillId 选择技能，再执行 flow_execute',
+          code: 'skill_id_required_in_task_mode',
+          severity: 'error',
           data: { error: 'skill_id_required_in_task_mode' },
-        };
+        });
       }
 
       params = {
@@ -374,13 +414,15 @@ export class ToolExecutor {
     const validation = tool.validateParams(params);
     if (!validation.valid) {
       this.logger.debug(`${tracePrefix}Tool ${toolName} missing params: ${validation.missing.join(', ')}`);
-      return {
+      return this.buildToolResult(toolName, {
         success: false,
         output: `参数不完整，缺少: ${validation.missing.join(', ')}`,
+        code: 'missing_params',
+        severity: 'warning',
         data: { missingParams: validation.missing },
         requiresUserInput: true,
         userInputPrompt: `请提供以下参数: ${validation.missing.join(', ')}`,
-      };
+      });
     }
 
     try {
@@ -393,11 +435,13 @@ export class ToolExecutor {
       const errorMsg = error instanceof Error ? error.message : 'Unknown error';
       this.logger.error(`${tracePrefix}Tool ${toolName} execution failed: ${errorMsg}`);
 
-      return {
+      return this.buildToolResult(toolName, {
         success: false,
         output: `工具执行失败: ${errorMsg}`,
+        code: 'execution_error',
+        severity: 'error',
         data: { error: 'execution_error', message: errorMsg },
-      };
+      });
     }
   }
 
@@ -411,6 +455,7 @@ export class ToolExecutor {
     iteration: number,
   ): Promise<StreamEvent> {
     const result = await this.executeTool(toolName, params, context);
+    const resultData = result.data as Record<string, unknown> | undefined;
 
     return {
       type: StreamEventType.OBSERVATION,
@@ -419,7 +464,15 @@ export class ToolExecutor {
         tool: toolName,
         params,
         result,
-        downloadUrl: (result.data as Record<string, unknown> | undefined)?.downloadUrl,
+        success: result.success,
+        code: result.code,
+        severity: result.severity,
+        meta: result.meta,
+        nextAction: result.nextAction,
+        nextActionParams: result.nextActionParams,
+        taskComplete: resultData?.taskComplete,
+        finalAnswer: resultData?.finalAnswer,
+        downloadUrl: resultData?.downloadUrl,
         requiresUserInput: result.requiresUserInput,
       },
       iteration,

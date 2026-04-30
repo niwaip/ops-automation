@@ -7,8 +7,8 @@ import { Injectable, Logger } from '@nestjs/common';
 import { ModelService } from '../model/model.service';
 import { ToolExecutor } from './tool-executor';
 import { SessionService } from '../redis/session.service';
+import { CapabilityResolver } from './capability-resolver';
 import {
-  AvailableSkillDefinition,
   StreamEvent,
   StreamEventType,
   ReActState,
@@ -19,13 +19,28 @@ import {
   SkillMatchResult,
   ToolResult,
   ToolDefinition,
+  RoutingMeta,
+  PromptAssemblyMeta,
+  DecisionContext,
+  ExecutionUsage,
+  LLMCallDetail,
 } from './interfaces';
 import {
-  buildSystemPrompt,
-  buildUserPrompt,
+  buildSystemPromptSections,
+  buildUserPromptSections,
+  DecisionContextPromptSummary,
   parseActionResponse,
   buildObservationPrompt,
+  renderPromptSections,
 } from './prompt-builder';
+import { buildDecisionContextPromptSummary } from './decision-context-summary';
+import { ContextWindowManager } from './context-window-manager';
+import { ModelRouterService } from './model-router.service';
+import {
+  attachErrorCategory,
+  decideRecoveryAction,
+} from './error-recovery-policy';
+import { LLMResponse } from '../../interfaces';
 
 /**
  * 默认配置
@@ -37,78 +52,106 @@ const DEFAULT_CONFIG: ReActConfig = {
   mode: 'task',
 };
 
+const MAX_SAME_ACTION_RETRIES = Number(process.env.REACT_MAX_SAME_ACTION_RETRIES || 1);
+const MAX_MODEL_INFERENCE_RETRIES = Number(process.env.REACT_MAX_MODEL_INFERENCE_RETRIES || 1);
+
 @Injectable()
 export class ReActEngineService {
   private readonly logger = new Logger(ReActEngineService.name);
+  private readonly contextWindowManager = new ContextWindowManager();
 
   constructor(
     private readonly modelService: ModelService,
     private readonly toolExecutor: ToolExecutor,
     private readonly sessionService: SessionService,
+    private readonly capabilityResolver: CapabilityResolver,
+    private readonly modelRouterService: ModelRouterService,
   ) {}
 
   private tracePrefix(context: ExecutionContext): string {
     return context.traceId ? `[${context.traceId}] ` : '';
   }
 
-  private async loadAvailableSkills(context: ExecutionContext): Promise<AvailableSkillDefinition[]> {
-    if (!context.userId) {
-      return [];
-    }
-
-    try {
-      const authUrl = process.env.AUTH_SERVICE_URL
-        || (process.env.DOCKER_ENV === 'true' || process.env.NODE_ENV === 'production'
-          ? 'http://ops-auth:3001'
-          : 'http://localhost:3001');
-      const response = await fetch(`${authUrl}/skills`, {
-        headers: {
-          ...(context.authToken ? { Authorization: context.authToken } : {}),
-          ...(context.traceId ? { 'x-trace-id': context.traceId } : {}),
+  private appendReActTrace(
+    messages: ChatMessage[],
+    state: ReActState,
+  ): ChatMessage[] {
+    const decisionContext = this.buildDecisionContextPayload(state);
+    const routingMeta = decisionContext.routing;
+    const observationRecord = this.contextWindowManager.buildObservationRecord(state.observation || '');
+    const nextMessages = [
+      ...messages,
+      {
+        role: 'assistant' as const,
+        content: JSON.stringify({
+          thought: state.thought,
+          action: state.action,
+          actionInput: state.actionInput,
+        }),
+        timestamp: new Date(),
+        metadata: {
+          isReAct: true,
+          iteration: state.iteration,
+          routing: routingMeta,
+          decisionContext,
         },
-      });
+      },
+      {
+        role: 'user' as const,
+        content: observationRecord.content,
+        timestamp: new Date(),
+        metadata: {
+          isReAct: true,
+          iteration: state.iteration,
+          routing: routingMeta,
+          decisionContext,
+          ...observationRecord.meta,
+        },
+      },
+    ];
 
-      if (!response.ok) {
-        this.logger.warn(`${this.tracePrefix(context)}Failed to load available skills: ${response.status}`);
-        return [];
-      }
+    return this.contextWindowManager.compactReActHistory(state, nextMessages);
+  }
 
-      const payload = await response.json() as { skills?: Array<Record<string, unknown>> };
-      const rawSkills = Array.isArray(payload.skills) ? payload.skills : [];
+  private appendProtocolViolationTrace(
+    messages: ChatMessage[],
+    response: string,
+    protocolError: string,
+    state: ReActState,
+  ): ChatMessage[] {
+    const decisionContext = this.buildDecisionContextPayload(state);
+    const routingMeta = decisionContext.routing;
+    const observationRecord = this.contextWindowManager.buildObservationRecord(protocolError);
+    const nextMessages = [
+      ...messages,
+      {
+        role: 'assistant' as const,
+        content: response,
+        timestamp: new Date(),
+        metadata: {
+          isReAct: true,
+          iteration: state.iteration,
+          protocolViolation: true,
+          routing: routingMeta,
+          decisionContext,
+        },
+      },
+      {
+        role: 'user' as const,
+        content: observationRecord.content,
+        timestamp: new Date(),
+        metadata: {
+          isReAct: true,
+          iteration: state.iteration,
+          protocolViolation: true,
+          routing: routingMeta,
+          decisionContext,
+          ...observationRecord.meta,
+        },
+      },
+    ];
 
-      return rawSkills.map((item) => {
-        const apiEndpoints = (typeof item.apiEndpoints === 'object' && item.apiEndpoints)
-          ? item.apiEndpoints as AvailableSkillDefinition['apiEndpoints']
-          : undefined;
-
-        return {
-          skillId: String(item.id || ''),
-          skillName: String(item.name || ''),
-          description: typeof item.description === 'string' ? item.description : undefined,
-          triggerKeywords: Array.isArray(item.triggerKeywords) ? item.triggerKeywords.map(String) : [],
-          paramsSchema: (item.paramsSchema as AvailableSkillDefinition['paramsSchema']) || { properties: {}, required: [] },
-          templateId: typeof item.templateId === 'string' ? item.templateId : undefined,
-          carboneTemplateId: typeof item.carboneTemplateId === 'string' ? item.carboneTemplateId : undefined,
-          carboneSkillId: typeof item.carboneSkillId === 'string' ? item.carboneSkillId : undefined,
-          executionFlowTemplateIds: Array.isArray(item.executionFlowTemplateIds) ? item.executionFlowTemplateIds.map(String) : [],
-          executionFlow: Array.isArray(item.executionFlow)
-            ? item.executionFlow
-                .map((step) => (step && typeof step === 'object'
-                  ? String((step as Record<string, unknown>).name || (step as Record<string, unknown>).type || '')
-                  : ''))
-                .filter(Boolean)
-            : [],
-          apiEndpoints,
-          goal: apiEndpoints?.runtimeMetadata?.goal,
-          expectedResult: apiEndpoints?.runtimeMetadata?.expectedResult,
-          outputParams: apiEndpoints?.runtimeMetadata?.outputParams,
-        };
-      }).filter((item) => item.skillId && item.skillName);
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'unknown';
-      this.logger.warn(`${this.tracePrefix(context)}Failed to load available skills: ${message}`);
-      return [];
-    }
+    return this.contextWindowManager.compactReActHistory(state, nextMessages);
   }
 
   private createInitialState(maxIterations: number): ReActState {
@@ -121,7 +164,157 @@ export class ReActEngineService {
       maxIterations,
       isFinished: false,
       isWaitingForUserInput: false,
+      retryState: {},
     };
+  }
+
+  private resetRetryState(
+    state: ReActState,
+    target: 'same_action' | 'model_inference',
+  ): void {
+    state.retryState = {
+      ...(state.retryState || {}),
+      [target === 'same_action' ? 'sameAction' : 'modelInference']: 0,
+    };
+  }
+
+  private buildRoutingMeta(state: ReActState): RoutingMeta {
+    return {
+      modelId: state.retryState?.activeModelId,
+      attemptedModelIds: state.retryState?.attemptedModelIds,
+      routingReason: state.retryState?.routingReason,
+    };
+  }
+
+  private buildDecisionContextSummary(state: ReActState): DecisionContextPromptSummary | undefined {
+    return buildDecisionContextPromptSummary({
+      routing: this.buildRoutingMeta(state),
+      promptAssembly: this.buildPromptAssemblyPayload(state),
+    });
+  }
+
+  private setPromptAssemblyMeta(
+    state: ReActState,
+    systemSections: Array<{ key: string; source: string }>,
+    userSections: Array<{ key: string; source: string }>,
+  ): void {
+    state.promptAssembly = {
+      systemPromptSectionKeys: systemSections.map((section) => section.key),
+      systemPromptSectionSources: systemSections.map((section) => section.source),
+      userPromptSectionKeys: userSections.map((section) => section.key),
+      userPromptSectionSources: userSections.map((section) => section.source),
+    };
+  }
+
+  private buildPromptAssemblyMeta(state: ReActState): PromptAssemblyMeta {
+    return {
+      systemPromptSectionKeys: state.promptAssembly?.systemPromptSectionKeys,
+      systemPromptSectionSources: state.promptAssembly?.systemPromptSectionSources,
+      userPromptSectionKeys: state.promptAssembly?.userPromptSectionKeys,
+      userPromptSectionSources: state.promptAssembly?.userPromptSectionSources,
+    };
+  }
+
+  private buildPromptAssemblyPayload(state: ReActState): PromptAssemblyMeta {
+    return this.buildPromptAssemblyMeta(state);
+  }
+
+  private buildDecisionContextPayload(state: ReActState): DecisionContext {
+    return {
+      routing: this.buildRoutingMeta(state),
+      promptAssembly: this.buildPromptAssemblyPayload(state),
+    };
+  }
+
+  private scheduleRetry(
+    state: ReActState,
+    context: ExecutionContext,
+    target: 'same_action' | 'model_inference',
+    options: {
+      action?: string;
+      params?: Record<string, unknown>;
+      message?: string;
+    } = {},
+  ): boolean {
+    const retryKey = target === 'same_action' ? 'sameAction' : 'modelInference';
+    const maxRetries = target === 'same_action'
+      ? MAX_SAME_ACTION_RETRIES
+      : MAX_MODEL_INFERENCE_RETRIES;
+    const currentRetries = state.retryState?.[retryKey] || 0;
+    if (currentRetries >= maxRetries) {
+      return false;
+    }
+
+    state.retryState = {
+      ...(state.retryState || {}),
+      [retryKey]: currentRetries + 1,
+    };
+    state.isWaitingForUserInput = false;
+    if (options.message) {
+      state.observation = options.message;
+    }
+
+    if (target === 'same_action' && options.action) {
+      context.nextAction = options.action;
+      context.nextActionParams = options.params || {};
+    }
+
+    return true;
+  }
+
+  private async ensureActiveModelId(
+    state: ReActState,
+    config: ReActConfig,
+    context: ExecutionContext,
+  ): Promise<void> {
+    const routingDecision = this.modelRouterService.resolveInitialModel(
+      config.modelId,
+      state.retryState?.activeModelId,
+      state.retryState?.attemptedModelIds,
+      {
+        mode: context.capabilitySnapshot?.mode || config.mode,
+        userInput: context.originalUserInput,
+        availableSkills: context.availableSkills,
+      },
+    );
+    state.retryState = {
+      ...(state.retryState || {}),
+      activeModelId: routingDecision.modelId,
+      attemptedModelIds: routingDecision.attemptedModelIds,
+      routingReason: routingDecision.reason,
+    };
+    config.modelId = routingDecision.modelId;
+    this.logger.debug(`Model routing initialized: ${routingDecision.reason} -> ${routingDecision.modelId}`);
+  }
+
+  private async switchToFallbackModel(
+    state: ReActState,
+    config: ReActConfig,
+    context: ExecutionContext,
+  ): Promise<boolean> {
+    const activeModelId = state.retryState?.activeModelId || config.modelId;
+    const routingDecision = this.modelRouterService.resolveFallbackModel(
+      activeModelId,
+      state.retryState?.attemptedModelIds || [],
+      state.lastToolResult,
+    );
+    if (!routingDecision) {
+      return false;
+    }
+
+    state.retryState = {
+      ...(state.retryState || {}),
+      activeModelId: routingDecision.modelId,
+      attemptedModelIds: routingDecision.attemptedModelIds,
+      routingReason: routingDecision.reason,
+      modelInference: 0,
+    };
+    config.modelId = routingDecision.modelId;
+    state.isWaitingForUserInput = false;
+    state.observation = `当前模型恢复失败，已按 ${routingDecision.reason} 策略切换到后备模型 ${routingDecision.modelId} 继续执行。`;
+    this.logger.warn(`${this.tracePrefix(context)}Model fallback selected: ${routingDecision.reason} -> ${routingDecision.modelId}`);
+
+    return true;
   }
 
   /**
@@ -217,14 +410,28 @@ export class ReActEngineService {
     // 加载动态流程工具
     await this.toolExecutor.loadDynamicFlowTools(false, context.traceId);
 
-    context.availableSkills = await this.loadAvailableSkills(context);
-
-    // 获取工具列表时应用权限过滤 (任务模式强制收紧)
-    const configuredTools = config.mode === 'task'
-      ? config.tools.filter((toolName) => !['skill_match', 'api_call'].includes(toolName))
-      : config.tools;
-    const tools = this.toolExecutor.getTools(configuredTools, context.userRoles);
-    context.allowedToolNames = tools.map((tool) => tool.name);
+    const capabilitySnapshot = await this.capabilityResolver.resolveIfNeeded(request, context);
+    context.capabilitySnapshot = capabilitySnapshot;
+    context.userRoles = capabilitySnapshot.roles;
+    context.availableSkills = capabilitySnapshot.visibleSkills.map((skill) => ({
+      skillId: skill.skillId,
+      skillName: skill.skillName,
+      description: skill.description,
+      triggerKeywords: skill.triggerKeywords,
+      paramsSchema: skill.paramsSchema,
+      templateId: skill.templateId,
+      carboneSkillId: skill.carboneSkillId,
+      carboneTemplateId: skill.carboneTemplateId,
+      executionFlowTemplateIds: skill.executionFlowTemplateIds,
+      executionFlow: skill.executionFlow,
+      goal: skill.runtimeHints?.goal,
+      expectedResult: skill.runtimeHints?.expectedResult,
+      outputParams: skill.runtimeHints?.outputParams,
+      executionType: skill.executionType,
+    }));
+    context.allowedToolNames = capabilitySnapshot.visibleTools.map((tool) => tool.name);
+    const tools = this.toolExecutor.getTools(context.allowedToolNames, context.userRoles);
+    await this.ensureActiveModelId(state, config, context);
 
     // 开始循环
     while (!state.isFinished && state.iteration < state.maxIterations) {
@@ -255,7 +462,12 @@ export class ReActEngineService {
         yield {
           type: StreamEventType.ACTION,
           content: state.action,
-          data: { actionInput: state.actionInput },
+          data: {
+            actionInput: state.actionInput,
+            promptAssembly: this.buildPromptAssemblyPayload(state),
+            routing: this.buildRoutingMeta(state),
+            decisionContext: this.buildDecisionContextPayload(state),
+          },
           iteration: state.iteration,
         };
 
@@ -263,22 +475,7 @@ export class ReActEngineService {
         yield* this.executeAction(state, context);
 
         // 将这一步加入历史
-        messages.push({
-          role: 'assistant',
-          content: JSON.stringify({
-            thought: state.thought,
-            action: state.action,
-            actionInput: state.actionInput
-          }),
-          timestamp: new Date(),
-          metadata: { isReAct: true, iteration: state.iteration },
-        });
-        messages.push({
-          role: 'user',
-          content: `Observation: ${state.observation}`,
-          timestamp: new Date(),
-          metadata: { isReAct: true, iteration: state.iteration },
-        });
+        messages = this.appendReActTrace(messages, state);
 
         // 检查是否完成
         if (state.action === 'finish' || state.isFinished) {
@@ -297,6 +494,7 @@ export class ReActEngineService {
               collectedParams: context.collectedParams,
               documentContext: context.documentContext,
               userRoles: context.userRoles,
+              capabilitySnapshot: context.capabilitySnapshot,
             },
           });
           yield this.createWaitingEvent(state);
@@ -351,7 +549,12 @@ export class ReActEngineService {
         yield {
           type: StreamEventType.ACTION,
           content: state.action,
-          data: { actionInput: state.actionInput },
+          data: {
+            actionInput: state.actionInput,
+            promptAssembly: this.buildPromptAssemblyPayload(state),
+            routing: this.buildRoutingMeta(state),
+            decisionContext: this.buildDecisionContextPayload(state),
+          },
           iteration: state.iteration,
         };
 
@@ -359,22 +562,7 @@ export class ReActEngineService {
         yield* this.executeAction(state, context);
 
         // 将这一步加入历史
-        messages.push({
-          role: 'assistant',
-          content: JSON.stringify({
-            thought: state.thought,
-            action: state.action,
-            actionInput: state.actionInput
-          }),
-          timestamp: new Date(),
-          metadata: { isReAct: true, iteration: state.iteration },
-        });
-        messages.push({
-          role: 'user',
-          content: `Observation: ${state.observation}`,
-          timestamp: new Date(),
-          metadata: { isReAct: true, iteration: state.iteration },
-        });
+        messages = this.appendReActTrace(messages, state);
 
         // 检查是否完成
         if (state.action === 'finish' || state.isFinished) {
@@ -393,6 +581,7 @@ export class ReActEngineService {
               collectedParams: context.collectedParams,
               documentContext: context.documentContext,
               userRoles: context.userRoles,
+              capabilitySnapshot: context.capabilitySnapshot,
             },
           });
           yield this.createWaitingEvent(state);
@@ -402,12 +591,30 @@ export class ReActEngineService {
       }
 
       // 2. 构建提示词并调用AI获取Thought和Action
-      const aiResponse = await this.generateThoughtAndAction(state, context, messages, tools, config);
+      const aiResponse = this.generateThoughtAndAction(state, context, messages, tools, config);
       for await (const event of aiResponse) {
         yield event;
       }
 
       // AI 决策失败时，保留上下文并暂停，等待用户补充或重试
+      if (!state.action && !state.isFinished) {
+        const recoveryAction = decideRecoveryAction('model_inference', state.lastToolResult);
+        if (recoveryAction.type === 'retry' && recoveryAction.retryTarget === 'model_inference') {
+          const scheduled = this.scheduleRetry(state, context, 'model_inference', {
+            message: recoveryAction.message,
+          });
+          if (scheduled) {
+            continue;
+          }
+          const fallbackSwitched = await this.switchToFallbackModel(state, config, context);
+          if (fallbackSwitched) {
+            continue;
+          }
+          state.isWaitingForUserInput = true;
+          state.observation = recoveryAction.message || state.observation;
+        }
+      }
+
       if (state.isWaitingForUserInput && !state.action && !state.isFinished) {
         await this.sessionService.saveSession(context.sessionId, {
           state,
@@ -419,6 +626,7 @@ export class ReActEngineService {
             collectedParams: context.collectedParams,
             documentContext: context.documentContext,
             userRoles: context.userRoles,
+            capabilitySnapshot: context.capabilitySnapshot,
           },
         });
         yield this.createWaitingEvent(state);
@@ -436,6 +644,9 @@ export class ReActEngineService {
             data: {
               action: state.action,
               actionInput: state.actionInput,
+              promptAssembly: this.buildPromptAssemblyPayload(state),
+              routing: this.buildRoutingMeta(state),
+              decisionContext: this.buildDecisionContextPayload(state),
             },
             iteration: state.iteration,
           };
@@ -452,32 +663,16 @@ export class ReActEngineService {
               collectedParams: context.collectedParams,
               documentContext: context.documentContext,
               userRoles: context.userRoles, // 存入 Session
+              capabilitySnapshot: context.capabilitySnapshot,
             }
           });
           break;
         }
 
-        // 将AI响应加入历史
-        messages.push({
-          role: 'assistant',
-          content: JSON.stringify({
-            thought: state.thought,
-            action: state.action,
-            actionInput: state.actionInput
-          }),
-          timestamp: new Date(),
-          metadata: { isReAct: true, iteration: state.iteration },
-        });
-
         yield* this.executeAction(state, context);
 
-        // 将观察结果加入历史
-        messages.push({
-          role: 'user',
-          content: `Observation: ${state.observation}`,
-          timestamp: new Date(),
-          metadata: { isReAct: true, iteration: state.iteration },
-        });
+        // 将AI响应与观察结果加入历史（会进行裁剪和滚动摘要）
+        messages = this.appendReActTrace(messages, state);
 
         // 每一轮迭代后持久化状态
         await this.sessionService.saveSession(context.sessionId, {
@@ -490,6 +685,7 @@ export class ReActEngineService {
             collectedParams: context.collectedParams,
             documentContext: context.documentContext,
             userRoles: context.userRoles,
+            capabilitySnapshot: context.capabilitySnapshot,
           }
         });
       }
@@ -513,6 +709,7 @@ export class ReActEngineService {
             collectedParams: context.collectedParams,
             documentContext: context.documentContext,
             userRoles: context.userRoles,
+            capabilitySnapshot: context.capabilitySnapshot,
           },
         });
         yield this.createWaitingEvent(state);
@@ -532,6 +729,7 @@ export class ReActEngineService {
           collectedParams: context.collectedParams,
           documentContext: context.documentContext,
           userRoles: context.userRoles,
+          capabilitySnapshot: context.capabilitySnapshot,
         },
       });
       yield {
@@ -540,6 +738,9 @@ export class ReActEngineService {
         data: {
           taskStatus: 'failed',
           canResume: true,
+          promptAssembly: this.buildPromptAssemblyPayload(state),
+          routing: this.buildRoutingMeta(state),
+          decisionContext: this.buildDecisionContextPayload(state),
         },
         iteration: state.iteration,
       };
@@ -557,12 +758,14 @@ export class ReActEngineService {
     config: ReActConfig,
   ): AsyncGenerator<StreamEvent> {
     // 构建提示词
-    const systemPrompt = buildSystemPrompt(
+    const systemSections = buildSystemPromptSections(
       tools,
       context.skill,
       context.availableSkills || [],
       config.mode || 'task',
+      context.capabilitySnapshot,
     );
+    const systemPrompt = renderPromptSections(systemSections);
     
     // 提取最初的用户输入
     const originalUserMessage = messages.find(m => m.role === 'user' && !m.metadata?.isReAct);
@@ -578,18 +781,52 @@ export class ReActEngineService {
       }
     }
 
-    const userPrompt = buildUserPrompt(
+    const userSections = buildUserPromptSections(
       userInput,
       messages,
       context.uploadedFiles?.map((f) => f.fileName),
+      state.contextSummary,
+      this.buildDecisionContextSummary(state),
+    );
+    const userPrompt = renderPromptSections(userSections);
+    this.setPromptAssemblyMeta(state, systemSections, userSections);
+    this.logger.debug(
+      `${this.tracePrefix(context)}Prompt assembly: `
+      + `system=${state.promptAssembly?.systemPromptSectionKeys?.join(',') || 'none'} `
+      + `user=${state.promptAssembly?.userPromptSectionKeys?.join(',') || 'none'}`,
     );
 
     // 调用AI模型（流式）
     const client = this.modelService.getClient(config.modelId);
     if (!client) {
+      state.lastToolResult = {
+        success: false,
+        output: `模型 ${config.modelId} 未初始化`,
+        code: 'model_not_initialized',
+        severity: 'error',
+        data: {
+          error: 'model_not_initialized',
+          errorCategory: 'provider_error',
+          modelId: config.modelId,
+        },
+        meta: {
+          toolName: 'model_inference',
+          ...this.buildRoutingMeta(state),
+          ...this.buildPromptAssemblyMeta(state),
+        },
+      };
       yield {
         type: StreamEventType.ERROR,
         content: `模型 ${config.modelId} 未初始化`,
+        data: {
+          code: state.lastToolResult.code,
+          severity: state.lastToolResult.severity,
+          meta: state.lastToolResult.meta,
+          promptAssembly: this.buildPromptAssemblyPayload(state),
+          routing: this.buildRoutingMeta(state),
+          decisionContext: this.buildDecisionContextPayload(state),
+          toolResult: state.lastToolResult,
+        },
       };
       return;
     }
@@ -611,12 +848,17 @@ export class ReActEngineService {
 
     try {
       // 使用流式API
-      const response = await client.chatCompletion(aiMessages as any);
+      const rawResponse = await client.chatCompletion(aiMessages as any);
+      const response = this.normalizeLLMResponse(rawResponse);
+
+      // 记录消耗 (P2-1)
+      await this.recordLLMCall(state, config.modelId, response);
 
       // 解析响应
-      const parsed = parseActionResponse(response);
+      const parsed = parseActionResponse(response.content);
 
       if (parsed) {
+        this.resetRetryState(state, 'model_inference');
         state.thought = parsed.thought;
         state.action = parsed.action;
         state.actionInput = parsed.actionInput;
@@ -637,7 +879,13 @@ export class ReActEngineService {
         yield {
           type: StreamEventType.ACTION,
           content: `${parsed.action}`,
-          data: { actionInput: parsed.actionInput },
+          data: {
+            actionInput: parsed.actionInput,
+            promptAssembly: this.buildPromptAssemblyPayload(state),
+            routing: this.buildRoutingMeta(state),
+            decisionContext: this.buildDecisionContextPayload(state),
+            usage: state.usage,
+          },
           iteration: state.iteration,
         };
       } else {
@@ -647,23 +895,36 @@ export class ReActEngineService {
         state.action = '';
         state.actionInput = {};
         state.observation = protocolError;
+        state.lastToolResult = {
+          success: false,
+          output: protocolError,
+          code: 'protocol_error',
+          severity: 'error',
+          data: {
+            error: 'protocol_error',
+            errorCategory: 'protocol_error',
+          },
+          meta: {
+            toolName: 'model_inference',
+            ...this.buildRoutingMeta(state),
+            ...this.buildPromptAssemblyMeta(state),
+          },
+        };
 
-        messages.push({
-          role: 'assistant',
-          content: response,
-          timestamp: new Date(),
-          metadata: { isReAct: true, iteration: state.iteration, protocolViolation: true },
-        });
-        messages.push({
-          role: 'user',
-          content: `Observation: ${protocolError}`,
-          timestamp: new Date(),
-          metadata: { isReAct: true, iteration: state.iteration, protocolViolation: true },
-        });
+        messages = this.appendProtocolViolationTrace(messages, response.content, protocolError, state);
 
         yield {
           type: StreamEventType.ERROR,
           content: protocolError,
+          data: {
+            code: state.lastToolResult.code,
+            severity: state.lastToolResult.severity,
+            meta: state.lastToolResult.meta,
+            promptAssembly: this.buildPromptAssemblyPayload(state),
+            routing: this.buildRoutingMeta(state),
+            decisionContext: this.buildDecisionContextPayload(state),
+            toolResult: state.lastToolResult,
+          },
           iteration: state.iteration,
         };
       }
@@ -671,9 +932,34 @@ export class ReActEngineService {
       const errorMsg = error instanceof Error ? error.message : 'Unknown error';
       state.observation = `AI调用失败: ${errorMsg}`;
       state.isWaitingForUserInput = true;
+      state.lastToolResult = {
+        success: false,
+        output: `AI调用失败: ${errorMsg}`,
+        code: 'provider_error',
+        severity: 'error',
+        data: {
+          error: 'provider_error',
+          errorCategory: 'provider_error',
+          message: errorMsg,
+        },
+        meta: {
+          toolName: 'model_inference',
+          ...this.buildRoutingMeta(state),
+          ...this.buildPromptAssemblyMeta(state),
+        },
+      };
       yield {
         type: StreamEventType.ERROR,
         content: `AI调用失败: ${errorMsg}`,
+        data: {
+          code: state.lastToolResult.code,
+          severity: state.lastToolResult.severity,
+          meta: state.lastToolResult.meta,
+          promptAssembly: this.buildPromptAssemblyPayload(state),
+          routing: this.buildRoutingMeta(state),
+          decisionContext: this.buildDecisionContextPayload(state),
+          toolResult: state.lastToolResult,
+        },
         iteration: state.iteration,
       };
     }
@@ -701,25 +987,70 @@ export class ReActEngineService {
     state.isWaitingForUserInput = Boolean(event.data?.requiresUserInput) || toolName === 'user_ask';
 
     // Extract result data with proper typing
-    const resultData = event.data?.result as ToolResult | undefined;
+    const rawResultData = event.data?.result as ToolResult | undefined;
+    const resultData = attachErrorCategory(rawResultData);
     const innerData = resultData?.data;
+    if (event.data && resultData) {
+      event.data.result = resultData as unknown as Record<string, unknown>;
+      event.data.code = resultData.code;
+      event.data.severity = resultData.severity;
+      event.data.meta = {
+        ...(resultData.meta || {}),
+        ...this.buildRoutingMeta(state),
+        ...this.buildPromptAssemblyMeta(state),
+      };
+      event.data.promptAssembly = this.buildPromptAssemblyPayload(state);
+      event.data.decisionContext = this.buildDecisionContextPayload(state);
+      event.data.errorCategory = typeof innerData?.errorCategory === 'string'
+        ? innerData.errorCategory
+        : undefined;
+      event.data.routing = this.buildRoutingMeta(state);
+    }
+
+    state.lastToolResult = resultData;
+    if (resultData?.success) {
+      this.resetRetryState(state, 'same_action');
+    }
 
     // 优先输出结构化的用户提示文案，避免仅显示“参数不完整”这类内部描述
     if (state.isWaitingForUserInput && resultData?.userInputPrompt) {
       state.observation = resultData.userInputPrompt;
     }
 
-    if (
-      this.shouldTriggerDocumentParamRecover(toolName, resultData)
-      && !state.isWaitingForUserInput
-    ) {
-      context.nextAction = 'document_param_recover';
+    const recoveryAction = decideRecoveryAction(toolName, resultData);
+    if (recoveryAction.type === 'next_action' && !state.isWaitingForUserInput) {
+      context.nextAction = recoveryAction.action;
       context.nextActionParams = {
-        errorMessage: state.observation || 'document_render failed',
+        errorMessage: state.observation || `${toolName} failed`,
         currentParams: context.collectedParams || {},
         userInput: context.originalUserInput || '',
+        ...(recoveryAction.params || {}),
       };
-      state.observation = `${state.observation}\n\n已进入参数恢复流程（仅修复参数，不切换模板）。`;
+      if (recoveryAction.observationSuffix) {
+        state.observation = `${state.observation}\n\n${recoveryAction.observationSuffix}`;
+      }
+    } else if (recoveryAction.type === 'wait_user_input') {
+      state.isWaitingForUserInput = true;
+      state.observation = recoveryAction.message || state.observation;
+      context.nextAction = undefined;
+      context.nextActionParams = undefined;
+    } else if (recoveryAction.type === 'terminate') {
+      state.isFinished = true;
+      state.observation = recoveryAction.message || state.observation;
+      state.finalAnswer = recoveryAction.message || state.observation || '任务终止';
+      state.finalResultData = {
+        ...(resultData?.data || {}),
+        taskStatus: 'terminated',
+        finalAnswer: state.finalAnswer,
+      };
+      context.nextAction = undefined;
+      context.nextActionParams = undefined;
+    } else if (recoveryAction.type === 'retry' && recoveryAction.retryTarget === 'same_action') {
+      this.scheduleRetry(state, context, 'same_action', {
+        action: toolName,
+        params,
+        message: recoveryAction.message,
+      });
     }
 
     // 更新context中的skill信息
@@ -755,6 +1086,9 @@ export class ReActEngineService {
         data: {
           params: innerData.params,
           skill: context.skill,
+          promptAssembly: this.buildPromptAssemblyPayload(state),
+          routing: this.buildRoutingMeta(state),
+          decisionContext: this.buildDecisionContextPayload(state),
         },
         iteration: state.iteration,
       };
@@ -762,44 +1096,13 @@ export class ReActEngineService {
 
     yield event;
 
-    // 构建下一次循环的输入
     if (!event.data?.requiresUserInput) {
-      // 添加observation到消息历史
-      const nextPrompt = buildObservationPrompt(
+      buildObservationPrompt(
         state.observation,
         state.iteration,
         state.maxIterations,
       );
-      // 这里可以继续循环
     }
-  }
-
-  private shouldTriggerDocumentParamRecover(
-    toolName: string,
-    result?: ToolResult,
-  ): boolean {
-    if (toolName !== 'document_render') {
-      return false;
-    }
-    if (!result || result.success || result.requiresUserInput) {
-      return false;
-    }
-
-    const error = typeof result.data?.error === 'string' ? result.data.error : '';
-    if (error === 'template_mismatch') {
-      return false;
-    }
-    if (['missing_params', 'render_failed', 'param_validation_failed'].includes(error)) {
-      return true;
-    }
-
-    const output = (result.output || '').toLowerCase();
-    return (
-      output.includes('参数')
-      || output.includes('missing')
-      || output.includes('invalid')
-      || output.includes('validation')
-    );
   }
 
   /**
@@ -815,6 +1118,18 @@ export class ReActEngineService {
         taskStatus: 'completed',
         hasBusinessResult: !!state.finalResultData,
         result: state.finalResultData,
+        toolResult: state.lastToolResult,
+        code: state.lastToolResult?.code,
+        severity: state.lastToolResult?.severity,
+        meta: {
+          ...(state.lastToolResult?.meta || {}),
+          ...this.buildRoutingMeta(state),
+          ...this.buildPromptAssemblyMeta(state),
+        },
+        promptAssembly: this.buildPromptAssemblyPayload(state),
+        routing: this.buildRoutingMeta(state),
+        decisionContext: this.buildDecisionContextPayload(state),
+        usage: state.usage,
         downloadUrl: state.finalResultData?.downloadUrl,
       },
       iteration: state.iteration,
@@ -822,10 +1137,10 @@ export class ReActEngineService {
   }
 
   private appendTaskCompletedCheckbox(content: string): string {
-    if (content.includes('- [x] 任务完成')) {
+    if (content.includes('任务完成')) {
       return content;
     }
-    return `${content}\n\n- [x] 任务完成（可改为未完成）`;
+    return `${content}\n\n任务完成`;
   }
 
   /**
@@ -839,6 +1154,18 @@ export class ReActEngineService {
         requiresUserInput: true,
         taskStatus: 'waiting_input',
         action: state.action,
+        toolResult: state.lastToolResult,
+        code: state.lastToolResult?.code,
+        severity: state.lastToolResult?.severity,
+        meta: {
+          ...(state.lastToolResult?.meta || {}),
+          ...this.buildRoutingMeta(state),
+          ...this.buildPromptAssemblyMeta(state),
+        },
+        promptAssembly: this.buildPromptAssemblyPayload(state),
+        routing: this.buildRoutingMeta(state),
+        decisionContext: this.buildDecisionContextPayload(state),
+        usage: state.usage,
       },
       iteration: state.iteration,
     };
@@ -868,6 +1195,95 @@ export class ReActEngineService {
       context,
     );
   }
+
+  /**
+   * 记录 LLM 调用消耗 (P2-1)
+   */
+  private async recordLLMCall(
+    state: ReActState,
+    modelId: string,
+    response: LLMResponse,
+    type: 'reasoning' | 'auxiliary' = 'reasoning',
+  ): Promise<void> {
+    if (!state.usage) {
+      state.usage = {
+        prompt_tokens: 0,
+        completion_tokens: 0,
+        total_tokens: 0,
+        completion_tokens_details: {
+          reasoning_tokens: 0,
+        },
+        totalCost: 0,
+        currency: 'CNY', // 默认币种
+        calls: [],
+      };
+    }
+
+    const usage = response.usage;
+    const rateLimit = response.rateLimit;
+    let cost = 0;
+    let currency = state.usage.currency;
+
+    if (usage) {
+      // 获取模型计费信息
+      const model = await this.modelService.getModel(modelId);
+      if (model?.pricing) {
+        const inputCost = (usage.prompt_tokens / 1000) * model.pricing.input_price_per_1k;
+        const outputCost = (usage.completion_tokens / 1000) * model.pricing.output_price_per_1k;
+        cost = inputCost + outputCost;
+        currency = model.pricing.currency;
+      }
+
+      state.usage.prompt_tokens += usage.prompt_tokens;
+      state.usage.completion_tokens += usage.completion_tokens;
+      state.usage.total_tokens += usage.total_tokens;
+
+      if (usage.completion_tokens_details?.reasoning_tokens) {
+        if (!state.usage.completion_tokens_details) {
+          state.usage.completion_tokens_details = { reasoning_tokens: 0 };
+        }
+        state.usage.completion_tokens_details.reasoning_tokens = (state.usage.completion_tokens_details.reasoning_tokens || 0) + usage.completion_tokens_details.reasoning_tokens;
+      }
+
+      state.usage.totalCost += cost;
+      state.usage.currency = currency;
+    }
+
+    const callDetail: LLMCallDetail = {
+      iteration: state.iteration,
+      modelId,
+      usage,
+      rateLimit,
+      cost,
+      currency,
+      timestamp: new Date(),
+      type,
+    };
+
+    state.usage.calls.push(callDetail);
+
+    this.logger.debug(
+      `${this.tracePrefix({ sessionId: '' } as any)}LLM Call Recorded: `
+      + `model=${modelId} tokens=${usage?.total_tokens || 0} cost=${cost.toFixed(6)}${currency}`,
+    );
+  }
+
+  private normalizeLLMResponse(response: string | LLMResponse | undefined): LLMResponse {
+    if (!response) {
+      return { content: '' };
+    }
+
+    if (typeof response === 'string') {
+      return { content: response };
+    }
+
+    return {
+      content: response.content || '',
+      usage: response.usage,
+      rateLimit: response.rateLimit,
+    };
+  }
+
 
   /**
    * Create initial execution steps for an Execution
@@ -910,7 +1326,7 @@ export class ReActEngineService {
   async finalizeExecution(
     context: ExecutionContext,
     status: 'succeeded' | 'failed' | 'cancelled' | 'human_control',
-    result?: Record<string, unknown>,
+    _result?: Record<string, unknown>,
     _failureReason?: string,
   ): Promise<void> {
     if (!context.executionId) {

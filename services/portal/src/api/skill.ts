@@ -9,7 +9,7 @@ export interface ApiEndpoint {
   description: string;
 }
 
-export interface ParamsSchema {
+export interface SkillParamsSchema {
   properties: Record<string, {
     type: 'string' | 'number' | 'date' | 'boolean';
     description: string;
@@ -25,7 +25,7 @@ export interface SkillConfigDTO {
   name: string;
   description: string;
   triggerKeywords: string[];
-  paramsSchema: ParamsSchema;
+  paramsSchema: SkillParamsSchema;
   templateId?: string;
   carboneTemplateId?: string;
   carboneSkillId?: string;
@@ -59,7 +59,7 @@ export interface CreateSkillDTO {
   name: string;
   description: string;
   triggerKeywords: string[];
-  paramsSchema: ParamsSchema;
+  paramsSchema: SkillParamsSchema;
   templateId?: string;
   carboneTemplateId?: string;
   carboneSkillId?: string;

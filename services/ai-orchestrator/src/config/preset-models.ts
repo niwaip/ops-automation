@@ -1,3 +1,5 @@
+import { ModelPricing } from '../interfaces';
+
 /**
  * Preset AI Model Configurations
  * Pre-configured models for common AI providers
@@ -11,6 +13,7 @@ export interface PresetModelConfig {
   description: string;
   env_key: string; // Environment variable name for API key
   config?: Record<string, unknown>;
+  pricing?: ModelPricing; // Optional pricing information
 }
 
 /**
@@ -33,6 +36,11 @@ export const ALIBABA_CODING_MODELS: PresetModelConfig[] = [
       context_window: 1000000,
       input: ['text', 'image'],
     },
+    pricing: {
+      input_price_per_1k: 0.0008,
+      output_price_per_1k: 0.002,
+      currency: 'CNY',
+    },
   },
   {
     name: 'qwen3-max-2026-01-23',
@@ -46,6 +54,11 @@ export const ALIBABA_CODING_MODELS: PresetModelConfig[] = [
       temperature: 0.7,
       context_window: 262144,
       input: ['text'],
+    },
+    pricing: {
+      input_price_per_1k: 0.04,
+      output_price_per_1k: 0.12,
+      currency: 'CNY',
     },
   },
   {
@@ -75,6 +88,11 @@ export const ALIBABA_CODING_MODELS: PresetModelConfig[] = [
       context_window: 1000000,
       input: ['text'],
     },
+    pricing: {
+      input_price_per_1k: 0.0008,
+      output_price_per_1k: 0.002,
+      currency: 'CNY',
+    },
   },
   {
     name: 'MiniMax-M2.5',
@@ -88,6 +106,11 @@ export const ALIBABA_CODING_MODELS: PresetModelConfig[] = [
       temperature: 0.7,
       context_window: 196608,
       input: ['text'],
+    },
+    pricing: {
+      input_price_per_1k: 0.0008,
+      output_price_per_1k: 0.002,
+      currency: 'CNY',
     },
   },
   {

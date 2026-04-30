@@ -194,6 +194,51 @@ const formatRuntimeSummary = (skillName: string, runtimeData: Record<string, unk
   return lines.join('\n');
 };
 
+const normalizeFlowToolNameFromTemplateId = (templateId: string): string => {
+  return `flow_${templateId.replace(/-/g, '_')}`;
+};
+
+const isSkillVisibleInSnapshot = (
+  skillId: string | undefined,
+  context: ExecutionContext,
+): boolean => {
+  if (!skillId || !context.capabilitySnapshot) {
+    return true;
+  }
+
+  return context.capabilitySnapshot.visibleSkills.some((skill) => skill.skillId === skillId);
+};
+
+const isTemplateVisibleInSnapshot = (
+  templateId: string | undefined,
+  context: ExecutionContext,
+): boolean => {
+  if (!templateId || !context.capabilitySnapshot) {
+    return true;
+  }
+
+  const visibleBySkillBinding = context.capabilitySnapshot.visibleSkills.some((skill) => {
+    return Boolean(
+      skill.executionFlowTemplateIds?.includes(templateId)
+      || skill.carboneTemplateId === templateId,
+    );
+  });
+  if (visibleBySkillBinding) {
+    return true;
+  }
+
+  const visibleByCurrentSkill = Boolean(
+    context.skill?.executionFlowTemplateIds?.includes(templateId)
+    || context.skill?.carboneTemplateId === templateId,
+  );
+  if (visibleByCurrentSkill) {
+    return true;
+  }
+
+  const aliasedToolName = normalizeFlowToolNameFromTemplateId(templateId);
+  return context.capabilitySnapshot.visibleTools.some((tool) => tool.name === aliasedToolName);
+};
+
 export class FlowExecuteTool extends BaseTool {
   constructor() {
     super(
@@ -267,7 +312,43 @@ export class FlowExecuteTool extends BaseTool {
       return {
         success: false,
         output: '必须提供 templateId 或 skillId 之一',
+        code: 'missing_id',
+        severity: 'error',
         data: { error: 'missing_id' },
+        meta: {
+          toolName: this.name,
+          capabilityChecked: Boolean(context.capabilitySnapshot),
+        },
+      };
+    }
+
+    if (!isSkillVisibleInSnapshot(skillId, context)) {
+      return {
+        success: false,
+        output: `当前权限下不可执行 skillId=${skillId} 对应的流程。`,
+        code: 'skill_not_visible_in_capability_snapshot',
+        severity: 'error',
+        data: { error: 'skill_not_visible_in_capability_snapshot', skillId },
+        meta: {
+          toolName: this.name,
+          capabilityChecked: true,
+          selectedSkillId: skillId,
+        },
+      };
+    }
+
+    if (!isTemplateVisibleInSnapshot(templateId, context)) {
+      return {
+        success: false,
+        output: `当前权限下不可执行 templateId=${templateId} 对应的流程模板。`,
+        code: 'template_not_visible_in_capability_snapshot',
+        severity: 'error',
+        data: { error: 'template_not_visible_in_capability_snapshot', templateId },
+        meta: {
+          toolName: this.name,
+          capabilityChecked: true,
+          selectedTemplateId: templateId,
+        },
       };
     }
 
@@ -316,6 +397,8 @@ export class FlowExecuteTool extends BaseTool {
               output: runtimeData.success
                 ? formatRuntimeSummary(skill.name, runtimeSummaryData)
                 : `Temporal Workflow 执行失败: ${String(runtimeData.error || '未知错误')}`,
+              code: runtimeData.success ? 'temporal_workflow_completed' : 'temporal_workflow_failed',
+              severity: runtimeData.success ? 'info' : 'error',
               data: {
                 runtime: 'temporal_workflow',
                 taskComplete: Boolean(runtimeData.success),
@@ -327,6 +410,11 @@ export class FlowExecuteTool extends BaseTool {
                 logs: runtimeData.logs ?? [],
                 workflowSteps: skill.apiEndpoints?.runtimeMetadata?.workflowSteps ?? [],
                 error: runtimeData.error ?? null,
+              },
+              meta: {
+                toolName: this.name,
+                capabilityChecked: Boolean(context.capabilitySnapshot),
+                selectedSkillId: resolvedSkillId,
               },
             },
           };
@@ -361,7 +449,14 @@ export class FlowExecuteTool extends BaseTool {
             return {
               success: false,
               output: `无法加载流程模板 (ID: ${templateId})，请确认模板是否存在。错误: ${fetchError.message}`,
+              code: 'template_fetch_failed',
+              severity: 'error',
               data: { error: 'template_fetch_failed', templateId, status: fetchError.response?.status },
+              meta: {
+                toolName: this.name,
+                capabilityChecked: Boolean(context.capabilitySnapshot),
+                selectedTemplateId: templateId,
+              },
             };
           }
         }
@@ -371,7 +466,13 @@ export class FlowExecuteTool extends BaseTool {
           return {
             success: false,
             output: '无法确定要执行的技能',
+            code: 'missing_skill_id',
+            severity: 'error',
             data: { error: 'missing_skill_id' },
+            meta: {
+              toolName: this.name,
+              capabilityChecked: Boolean(context.capabilitySnapshot),
+            },
           };
         }
         const loaded = await loadSkillExecution(resolvedSkillId);
@@ -385,7 +486,15 @@ export class FlowExecuteTool extends BaseTool {
         return {
           success: false,
           output: `流程定义不存在或没有步骤: ${templateId || skillId}`,
+          code: 'flow_definition_empty',
+          severity: 'error',
           data: { error: 'flow_definition_empty' },
+          meta: {
+            toolName: this.name,
+            capabilityChecked: Boolean(context.capabilitySnapshot),
+            selectedSkillId: skillId,
+            selectedTemplateId: templateId,
+          },
         };
       }
 
@@ -396,7 +505,15 @@ export class FlowExecuteTool extends BaseTool {
         return {
           success: true,
           output: finalAnswer,
+          code: 'flow_completed',
+          severity: 'info',
           data: { taskComplete: true, templateId, finalAnswer },
+          meta: {
+            toolName: this.name,
+            capabilityChecked: Boolean(context.capabilitySnapshot),
+            selectedSkillId: skillId,
+            selectedTemplateId: templateId,
+          },
         };
       }
 
@@ -406,7 +523,15 @@ export class FlowExecuteTool extends BaseTool {
         return {
           success: false,
           output: `步骤索引 ${stepIndex} 超出范围`,
+          code: 'invalid_step_index',
+          severity: 'error',
           data: { error: 'invalid_step_index', stepIndex },
+          meta: {
+            toolName: this.name,
+            capabilityChecked: Boolean(context.capabilitySnapshot),
+            selectedSkillId: skillId,
+            selectedTemplateId: templateId,
+          },
         };
       }
       let stepResult: string;
@@ -427,7 +552,15 @@ export class FlowExecuteTool extends BaseTool {
             return {
               success: false,
               output: stepResult,
+              code: 'missing_api_endpoint',
+              severity: 'error',
               data: { error: 'missing_api_endpoint', stepIndex },
+              meta: {
+                toolName: this.name,
+                capabilityChecked: Boolean(context.capabilitySnapshot),
+                selectedSkillId: skillId,
+                selectedTemplateId: templateId,
+              },
             };
           }
 
@@ -467,7 +600,15 @@ export class FlowExecuteTool extends BaseTool {
             return {
               success: false,
               output: stepResult,
+              code: 'api_error',
+              severity: 'error',
               data: { error: 'api_error', stepIndex, message: errorMsg },
+              meta: {
+                toolName: this.name,
+                capabilityChecked: Boolean(context.capabilitySnapshot),
+                selectedSkillId: skillId,
+                selectedTemplateId: templateId,
+              },
             };
           }
           break;
@@ -479,7 +620,15 @@ export class FlowExecuteTool extends BaseTool {
             return {
               success: false,
               output: stepResult,
+              code: 'missing_tool_name',
+              severity: 'error',
               data: { error: 'missing_tool_name', stepIndex },
+              meta: {
+                toolName: this.name,
+                capabilityChecked: Boolean(context.capabilitySnapshot),
+                selectedSkillId: skillId,
+                selectedTemplateId: templateId,
+              },
             };
           }
 
@@ -492,6 +641,8 @@ export class FlowExecuteTool extends BaseTool {
           return {
             success: true,
             output: stepResult,
+            code: 'flow_requires_tool_call',
+            severity: 'info',
             data: {
               templateId,
               stepIndex,
@@ -502,6 +653,12 @@ export class FlowExecuteTool extends BaseTool {
             },
             nextAction: currentStep.tool.name,
             nextActionParams: toolParams,
+            meta: {
+              toolName: this.name,
+              capabilityChecked: Boolean(context.capabilitySnapshot),
+              selectedSkillId: skillId,
+              selectedTemplateId: templateId,
+            },
           };
 
         case 'script':
@@ -519,6 +676,8 @@ export class FlowExecuteTool extends BaseTool {
       const result: ToolResult = {
         success: true,
         output: stepResult,
+        code: 'flow_step_completed',
+        severity: 'info',
         data: {
           templateId,
           templateName: template.name,
@@ -528,6 +687,12 @@ export class FlowExecuteTool extends BaseTool {
           nextStepIndex,
           isLastStep,
           collectedParams: context.collectedParams,
+        },
+        meta: {
+          toolName: this.name,
+          capabilityChecked: Boolean(context.capabilitySnapshot),
+          selectedSkillId: skillId,
+          selectedTemplateId: templateId,
         },
       };
 
@@ -557,7 +722,14 @@ export class FlowExecuteTool extends BaseTool {
           return {
             success: false,
             output: `流程模板不存在: ${templateId}`,
+            code: 'template_not_found',
+            severity: 'error',
             data: { error: 'template_not_found', templateId },
+            meta: {
+              toolName: this.name,
+              capabilityChecked: Boolean(context.capabilitySnapshot),
+              selectedTemplateId: templateId,
+            },
           };
         }
       }
@@ -565,7 +737,15 @@ export class FlowExecuteTool extends BaseTool {
       return {
         success: false,
         output: `流程执行失败: ${errorMsg}`,
+        code: 'execution_error',
+        severity: 'error',
         data: { error: 'execution_error', templateId, stepIndex },
+        meta: {
+          toolName: this.name,
+          capabilityChecked: Boolean(context.capabilitySnapshot),
+          selectedSkillId: skillId,
+          selectedTemplateId: templateId,
+        },
       };
     }
   }

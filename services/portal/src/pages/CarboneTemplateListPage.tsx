@@ -22,8 +22,8 @@ const CarboneTemplateListPage: React.FC = () => {
     setLoading(true);
     try {
       const response = await carboneAPI.getTemplates();
-      // Ensure response is an array - handle both array and {templates: []} formats
-      const templatesData = Array.isArray(response) ? response : (response?.templates || []);
+      // Ensure response is an array
+      const templatesData = Array.isArray(response) ? response : [];
       setTemplates(templatesData);
     } catch (error: any) {
       message.error('加载模板列表失败: ' + (error.message || '未知错误'));
@@ -165,7 +165,7 @@ const CarboneTemplateListPage: React.FC = () => {
     {
       title: '操作',
       key: 'actions',
-      render: (_, record: CarboneTemplate) => (
+      render: (_: any, record: CarboneTemplate) => (
         <Space>
           <Button
             icon={<EyeOutlined />}
@@ -261,16 +261,16 @@ const CarboneTemplateListPage: React.FC = () => {
                     <Descriptions.Item label="更新时间">{selectedTemplate.updatedAt ? new Date(selectedTemplate.updatedAt).toLocaleString() : '-'}</Descriptions.Item>
                     <Descriptions.Item label="Skill ID">{selectedTemplate.skillId || '无'}</Descriptions.Item>
                     <Descriptions.Item label="变量列表" span={2}>
-                      {selectedTemplate.variables?.length > 0 ? (
+                      {(selectedTemplate.variables?.length ?? 0) > 0 ? (
                         <Space wrap>
-                          {selectedTemplate.variables.map((v, i) => <Tag key={i}>{v}</Tag>)}
+                          {selectedTemplate.variables?.map((v, i) => <Tag key={i}>{v}</Tag>)}
                         </Space>
                       ) : '无'}
                     </Descriptions.Item>
                     <Descriptions.Item label="循环配置" span={2}>
-                      {selectedTemplate.loops?.length > 0 ? (
+                      {(selectedTemplate.loops?.length ?? 0) > 0 ? (
                         <Space wrap>
-                          {selectedTemplate.loops.map((l, i) => <Tag key={i} color="purple">{l.arrayPath}</Tag>)}
+                          {selectedTemplate.loops?.map((l, i) => <Tag key={i} color="purple">{l.arrayPath}</Tag>)}
                         </Space>
                       ) : '无'}
                     </Descriptions.Item>

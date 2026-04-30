@@ -114,6 +114,7 @@ services:
       <<: *common-env
       PORT: ${CONTROL_PLANE_PORT:-3003}
       JWT_SECRET: jwt_secret_key_change_in_production
+      INTERNAL_API_SHARED_SECRET: ${INTERNAL_API_SHARED_SECRET:-ops_internal_shared_secret_change_me}
       AI_ORCHESTRATOR_URL: http://${AI_ORCHESTRATOR_HOST:-ai-orchestrator}:${AI_ORCHESTRATOR_PORT:-3007}
       SESSION_BROKER_URL: http://${SESSION_BROKER_HOST:-session-broker}:${SESSION_BROKER_PORT:-3002}
     ports:
@@ -187,6 +188,7 @@ services:
     environment:
       <<: *common-env
       PORT: ${AI_ORCHESTRATOR_PORT:-3007}
+      INTERNAL_API_SHARED_SECRET: ${INTERNAL_API_SHARED_SECRET:-ops_internal_shared_secret_change_me}
       AUTH_SERVICE_URL: http://${AUTH_SERVICE_HOST:-auth}:${AUTH_PORT:-3001}
       BROWSER_WORKER_URL: http://${BROWSER_WORKER_HOST:-browser-worker}:${BROWSER_WORKER_PORT:-3004}
       CONTROL_PLANE_URL: http://${CONTROL_PLANE_HOST:-control-plane}:${CONTROL_PLANE_PORT:-3003}

@@ -101,7 +101,7 @@ const ReportTemplateListPage: React.FC = () => {
     {
       title: 'Actions',
       key: 'actions',
-      render: (_, record: ReportTemplate) => (
+      render: (_: any, record: ReportTemplate) => (
         <Space>
           <Button
             icon={<EyeOutlined />}

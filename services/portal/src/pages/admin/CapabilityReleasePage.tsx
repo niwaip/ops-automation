@@ -647,19 +647,6 @@ const CapabilityReleasePage: React.FC<CapabilityReleasePageProps> = ({ mode = 'm
     },
   );
 
-  const rollbackMutation = useMutation(
-    ({ id }: { id: string }) => capabilityReleaseApi.rollback(id, { reason: 'Portal 手工触发回滚' }),
-    {
-      onSuccess: async (result, variables) => {
-        message.success(`已回滚到 Release: ${result.targetReleaseId.slice(0, 8)}`);
-        await refreshQueries(variables.id);
-      },
-      onError: (error: any) => {
-        message.error(error?.message || '回滚失败');
-      },
-    },
-  );
-
   const validateSkillMutation = useMutation(
     ({ skillId }: { skillId: string }) => skillApi.validate(skillId),
     {
@@ -1516,33 +1503,6 @@ const CapabilityReleasePage: React.FC<CapabilityReleasePageProps> = ({ mode = 'm
       [next[index], next[targetIndex]] = [next[targetIndex], next[index]];
       return next;
     });
-  };
-
-  const addSkillDraftApiEndpoint = () => {
-    setSkillDraftApiEndpointFields((current) => [
-      ...current,
-      {
-        id: createApiEndpointId(),
-        key: '',
-        method: 'POST',
-        url: '',
-        description: '',
-        extraJson: '',
-      },
-    ]);
-  };
-
-  const updateSkillDraftApiEndpoint = (
-    id: string,
-    patch: Partial<ApiEndpointDraft>,
-  ) => {
-    setSkillDraftApiEndpointFields((current) =>
-      current.map((item) => (item.id === id ? { ...item, ...patch } : item)),
-    );
-  };
-
-  const removeSkillDraftApiEndpoint = (id: string) => {
-    setSkillDraftApiEndpointFields((current) => current.filter((item) => item.id !== id));
   };
 
   const studioContent = selectedDetail ? (

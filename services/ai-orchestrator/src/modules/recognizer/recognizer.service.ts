@@ -117,8 +117,19 @@ export class RecognizerService {
     }
 
     try {
-      const response = await client.chatCompletion(messages);
-      return this.parseAIResponse(response, properties);
+      // Get the first available active model's ID
+      const models = await this.modelService.listModels();
+      const activeModels = models.filter(m => m.status === 'active');
+      const firstActiveModel = activeModels[0];
+      const modelId = firstActiveModel ? firstActiveModel.id : 'default';
+
+      const prompt = `${systemPrompt}\n\n${this.buildUserPrompt(dto, properties)}`;
+      const response = await this.modelService.callModel(modelId, prompt, 'auxiliary');
+      const result = this.parseAIResponse(response.content, properties);
+      return {
+        ...result,
+        usage: response.usage,
+      };
     } catch (error) {
       this.logger.error(`AI call failed: ${error}`);
       // Fallback to basic pattern matching on AI failures

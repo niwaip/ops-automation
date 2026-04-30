@@ -140,20 +140,26 @@ const ChatInput: React.FC<ChatInputProps> = ({
             {chatMode === 'chat' ? '聊天' : '任务'}
           </Button>
 
-          <Switch
-            checked={enableWebSearch}
-            onChange={setEnableWebSearch}
-            checkedChildren="联网"
-            unCheckedChildren="本地"
-            className="chat-input-toggle-switch"
-          />
-          <Switch
-            checked={enableThinking}
-            onChange={setEnableThinking}
-            checkedChildren="思考"
-            unCheckedChildren="直答"
-            className="chat-input-toggle-switch"
-          />
+          <div className="chat-input-controls">
+            <div className="chat-control-item">
+              <span className="chat-control-label">联网</span>
+              <Switch
+                size="small"
+                checked={enableWebSearch}
+                onChange={setEnableWebSearch}
+                className="chat-input-dot-switch"
+              />
+            </div>
+            <div className="chat-control-item">
+              <span className="chat-control-label">思考</span>
+              <Switch
+                size="small"
+                checked={enableThinking}
+                onChange={setEnableThinking}
+                className="chat-input-dot-switch"
+              />
+            </div>
+          </div>
           {chatMode === 'task' && <Tag color="processing">ReAct</Tag>}
 
           <div className="chat-input-toolbar-spacer" />

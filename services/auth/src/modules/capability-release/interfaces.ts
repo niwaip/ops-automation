@@ -134,6 +134,15 @@ export interface ExecuteCapabilityRuntimeDTO {
   input?: Record<string, unknown>;
 }
 
+export interface LLMUsage {
+  prompt_tokens: number;
+  completion_tokens: number;
+  total_tokens: number;
+  completion_tokens_details?: {
+    reasoning_tokens?: number;
+  };
+}
+
 export interface ExecuteCapabilityRuntimeResultDTO {
   releaseId: string;
   capabilityId: string;
@@ -146,6 +155,7 @@ export interface ExecuteCapabilityRuntimeResultDTO {
   downloadUrl?: string | null;
   output?: Record<string, unknown> | null;
   result?: Record<string, unknown> | null;
+  usage?: LLMUsage;
   logs: string[];
   error?: string | null;
 }

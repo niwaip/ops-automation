@@ -4,7 +4,7 @@ import { Table, Button, Space, Tag, Card, Typography, message } from 'antd';
 import { EyeOutlined, DownloadOutlined, ReloadOutlined } from '@ant-design/icons';
 import { reportApi, Report, ReportStatus } from '../api/report';
 
-const { Title } = Typography;
+const { Title, Text } = Typography;
 
 const ReportListPage: React.FC = () => {
   const navigate = useNavigate();
@@ -92,7 +92,7 @@ const ReportListPage: React.FC = () => {
     {
       title: 'Actions',
       key: 'actions',
-      render: (_, record: Report) => (
+      render: (_: any, record: Report) => (
         <Space>
           <Button
             icon={<EyeOutlined />}

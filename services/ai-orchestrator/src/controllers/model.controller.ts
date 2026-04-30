@@ -2,7 +2,7 @@ import { Body, Controller, Delete, Get, HttpException, HttpStatus, Param, Patch,
 import { ApiConsumes, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { Response } from 'express';
 import { ModelService } from '../modules/model/model.service';
-import { AIModelDTO, CreateModelDTO } from '../interfaces';
+import { AIModelDTO, CreateModelDTO, LLMUsage } from '../interfaces';
 
 @ApiTags('AI-Models')
 @Controller('ai')
@@ -25,12 +25,15 @@ export class ModelController {
 
   @Post('model/call')
   @ApiOperation({ summary: 'Call AI model with a prompt (for skill matching)' })
-  async callModel(@Body() body: { modelId: string; prompt: string }): Promise<{ result: string }> {
+  async callModel(@Body() body: { modelId: string; prompt: string }): Promise<{ result: string; usage?: LLMUsage }> {
     const modelId = body.modelId || 'default';
 
     try {
-      const result = await this.modelService.callModel(modelId, body.prompt);
-      return { result };
+      const response = await this.modelService.callModel(modelId, body.prompt);
+      return {
+        result: response.content,
+        usage: response.usage,
+      };
     } catch (error: unknown) {
       const errorMsg = error instanceof Error ? error.message : 'Unknown error';
       throw new HttpException(`Model call failed: ${errorMsg}`, HttpStatus.INTERNAL_SERVER_ERROR);
@@ -109,7 +112,7 @@ export class ModelController {
     }
     try {
       const response = await this.modelService.callModel(id, 'Hello, this is a test.');
-      return { success: true, response };
+      return { success: true, response: response.content };
     } catch (error: unknown) {
       const errorMsg = error instanceof Error ? error.message : 'Unknown error';
       return { success: false, error: errorMsg };
@@ -125,7 +128,7 @@ export class ModelController {
     }
     try {
       const response = await this.modelService.callModel(id, body.prompt || 'Hello, this is a test.');
-      return { success: true, response };
+      return { success: true, response: response.content };
     } catch (error: unknown) {
       const errorMsg = error instanceof Error ? error.message : 'Unknown error';
       return { success: false, error: errorMsg };
@@ -180,7 +183,7 @@ export class ModelController {
       });
       const messages = [{ role: 'user' as const, content: 'Hello, this is a test message.' }];
       const response = await client.chatCompletion(messages);
-      return { success: true, response };
+      return { success: true, response: response.content };
     } catch (error: unknown) {
       const errorMsg = error instanceof Error ? error.message : 'Unknown error';
       return { success: false, error: errorMsg };

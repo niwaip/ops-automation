@@ -1,5 +1,7 @@
 import axios from 'axios';
 import { ReActEngineService } from './react-engine.service';
+import { CapabilityResolver } from './capability-resolver';
+import { ModelRouterService } from './model-router.service';
 import { ToolExecutor } from './tool-executor';
 import { ModelService } from '../model/model.service';
 import { SessionService } from '../redis/session.service';
@@ -76,12 +78,46 @@ describe('ReActEngineService Document Flow E2E', () => {
     });
 
     const modelService = {
-      getClient: jest.fn().mockReturnValue({
-        updateConfig: jest.fn(),
-        chatCompletion: jest.fn().mockResolvedValue(
-          'Thought: 先执行文档入口\nAction: document_intake\nAction Input: {"userInput":"生成合同，甲方A，乙方B"}',
-        ),
+      getClient: jest.fn((id: string) => {
+        if (id === 'doc-model' || id === 'default') {
+          return {
+            updateConfig: jest.fn(),
+            chatCompletion: jest.fn().mockResolvedValue(
+              'Thought: 先执行文档入口\nAction: document_intake\nAction Input: {"userInput":"生成合同，甲方A，乙方B"}',
+            ),
+          };
+        }
+        return null;
       }),
+      getFallbackModelIds: jest.fn().mockReturnValue(['default']),
+      listActiveModelsForRouting: jest.fn().mockReturnValue([
+        {
+          id: 'doc-model',
+          name: 'gpt-4o',
+          provider: 'openai',
+          api_endpoint: 'https://example.com',
+          status: 'active',
+          created_at: new Date(),
+          updated_at: new Date(),
+          config: {
+            description: '多模态模型',
+            input: ['text', 'image'],
+          },
+        },
+        {
+          id: 'default',
+          name: 'abab6.5s-chat',
+          provider: 'minimax',
+          api_endpoint: 'https://example.com',
+          status: 'active',
+          created_at: new Date(),
+          updated_at: new Date(),
+          config: {
+            description: '对话模型',
+            default: true,
+          },
+        },
+      ]),
     } as unknown as ModelService;
 
     const sessionService = {
@@ -90,10 +126,15 @@ describe('ReActEngineService Document Flow E2E', () => {
       deleteSession: jest.fn().mockResolvedValue(undefined),
     } as unknown as SessionService;
 
+    const toolExecutor = new ToolExecutor();
+    const capabilityResolver = new CapabilityResolver(toolExecutor);
+    const modelRouterService = new ModelRouterService(modelService);
     const service = new ReActEngineService(
       modelService,
-      new ToolExecutor(),
+      toolExecutor,
       sessionService,
+      capabilityResolver,
+      modelRouterService,
     );
 
     const request: ChatRequestDTO = {
@@ -119,11 +160,43 @@ describe('ReActEngineService Document Flow E2E', () => {
     const resultContent = resultEvent?.content || '';
     expect(resultContent).toContain('文档生成成功');
     expect(resultContent).toContain('/studio/download/doc-1');
+    expect(resultEvent?.data?.code).toBe('document_render_completed');
+    expect(resultEvent?.data?.severity).toBe('info');
 
     const actions = events
       .filter((event) => event.type === StreamEventType.ACTION)
-      .map((event) => event.content);
-    expect(actions).toContain('document_param_recover');
+      .map((event) => ({
+        content: event.content,
+        routing: event.data?.routing,
+      }));
+    expect(actions.map((item) => item.content)).toContain('document_param_recover');
+    expect(actions[0]?.routing).toMatchObject({
+      modelId: 'doc-model',
+      attemptedModelIds: ['doc-model'],
+      routingReason: 'task_type_document',
+    });
+
+    const renderObservation = events.find((event) => {
+      return event.type === StreamEventType.OBSERVATION
+        && event.data?.tool === 'document_render'
+        && event.data?.code === 'param_validation_failed';
+    });
+    expect(renderObservation).toBeDefined();
+    expect(renderObservation?.data?.severity).toBe('error');
+    expect(renderObservation?.data?.routing).toMatchObject({
+      modelId: 'doc-model',
+      attemptedModelIds: ['doc-model'],
+      routingReason: 'task_type_document',
+    });
+    expect((renderObservation?.data?.result as Record<string, unknown> | undefined)?.data).toMatchObject({
+      errorCategory: 'tool_runtime_error',
+      parameterIssue: true,
+    });
+    expect(resultEvent?.data?.routing).toMatchObject({
+      modelId: 'doc-model',
+      attemptedModelIds: ['doc-model'],
+      routingReason: 'task_type_document',
+    });
 
     expect(mockedAxios.post).toHaveBeenCalledTimes(4);
     expect(sessionService.deleteSession).toHaveBeenCalledWith('s-1');

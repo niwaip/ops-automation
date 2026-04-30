@@ -7,6 +7,7 @@ import {
   PlanSkillMatchDTO,
   PlanStepDTO,
   RequiredInputDTO,
+  LLMUsage,
 } from '../../interfaces';
 import { TRACE_ID_HEADER } from '../../common/trace.util';
 import { RecognizerService } from '../recognizer/recognizer.service';
@@ -82,6 +83,9 @@ export class PlannerService {
       },
     });
 
+    // 累积消耗
+    const totalUsage = this.sumUsage(matchedSkill.usage, recognized.usage);
+
     const requiredInputs = this.buildRequiredInputs(matchedSkill, recognized.params);
     const steps = this.buildPlanSteps(matchedSkill, requiredInputs);
     const missingInputs = requiredInputs.filter((item) => item.missing);
@@ -99,6 +103,7 @@ export class PlannerService {
       skill_match: this.toPlanSkillMatch(matchedSkill),
       steps,
       required_inputs: requiredInputs,
+      usage: totalUsage,
       risk_summary: {
         level: missingInputs.length > 0 ? 'medium' : 'low',
         requires_human_review: requiresHumanReview,
@@ -360,6 +365,31 @@ export class PlannerService {
       expectedResult: bestSkill.expectedResult,
       outputParams: bestSkill.outputParams,
     };
+  }
+
+  private sumUsage(...usages: (LLMUsage | undefined)[]): LLMUsage | undefined {
+    const validUsages = usages.filter((u): u is LLMUsage => !!u);
+    if (validUsages.length === 0) return undefined;
+
+    const result: LLMUsage = {
+      prompt_tokens: 0,
+      completion_tokens: 0,
+      total_tokens: 0,
+    };
+
+    for (const usage of validUsages) {
+      result.prompt_tokens += usage.prompt_tokens;
+      result.completion_tokens += usage.completion_tokens;
+      result.total_tokens += usage.total_tokens;
+      if (usage.completion_tokens_details?.reasoning_tokens) {
+        if (!result.completion_tokens_details) {
+          result.completion_tokens_details = { reasoning_tokens: 0 };
+        }
+        result.completion_tokens_details.reasoning_tokens = (result.completion_tokens_details.reasoning_tokens || 0) + usage.completion_tokens_details.reasoning_tokens;
+      }
+    }
+
+    return result;
   }
 
   private buildFallbackPlan(objective: string, hasVisibleSkills: boolean): PlanDraftDTO {

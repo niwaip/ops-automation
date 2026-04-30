@@ -630,13 +630,13 @@ Respond with ONLY the JSON object:`;
       // Call the AI model
       const response = await this.modelService.callModel(chatModel.id, prompt);
 
-      this.logger.debug(`AI raw response: ${response}`);
+      this.logger.debug(`AI raw response: ${response.content}`);
 
       // Parse the response - try to extract JSON
-      let jsonStr = response;
+      let jsonStr = response.content;
 
       // Try to find JSON in the response
-      const jsonMatch = response.match(/\{[\s\S]*\}/);
+      const jsonMatch = response.content.match(/\{[\s\S]*\}/);
       if (jsonMatch) {
         jsonStr = jsonMatch[0];
       }

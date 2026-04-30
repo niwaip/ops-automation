@@ -2,7 +2,7 @@ import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import * as fs from 'fs';
 import * as path from 'path';
 import { v4 as uuidv4 } from 'uuid';
-import { AIModelDTO, CreateModelDTO, APIKeyReference, ChatMessage, ContentBlock } from '../../interfaces';
+import { AIModelDTO, CreateModelDTO, APIKeyReference, ChatMessage, ContentBlock, LLMResponse } from '../../interfaces';
 import { OpenAICompatibleClient } from '../../client/openai-compatible';
 import { PRESET_MODELS, PresetModelConfig } from '../../config/preset-models';
 
@@ -193,6 +193,7 @@ export class ModelService implements OnModuleInit {
       name: preset.model_id,
       provider: preset.provider,
       api_endpoint: preset.api_endpoint,
+      pricing: preset.pricing,
       config: {
         ...preset.config,
         display_name: preset.name,
@@ -297,6 +298,75 @@ export class ModelService implements OnModuleInit {
     }
 
     return null;
+  }
+
+  private resolveModelEntity(id: string): AIModelDTO | null {
+    if (id === 'default') {
+      return this.getDefaultModel();
+    }
+
+    const directModel = this.models.get(id);
+    if (directModel) {
+      return directModel;
+    }
+
+    for (const model of this.models.values()) {
+      if (model.name === id) {
+        return model;
+      }
+    }
+
+    return null;
+  }
+
+  private getActiveModelsWithClients(): AIModelDTO[] {
+    return Array.from(this.models.values()).filter((model) => {
+      return model.status === 'active' && this.clients.has(model.id);
+    });
+  }
+
+  private sortFallbackCandidates(models: AIModelDTO[]): AIModelDTO[] {
+    return [...models].sort((left, right) => {
+      const leftDefault = left.config?.default === true ? 1 : 0;
+      const rightDefault = right.config?.default === true ? 1 : 0;
+      return rightDefault - leftDefault;
+    });
+  }
+
+  listActiveModelsForRouting(): AIModelDTO[] {
+    return this.sortFallbackCandidates(this.getActiveModelsWithClients());
+  }
+
+  getFallbackModelIds(
+    id: string,
+    strategy?: {
+      groupOrder: Array<'same_provider' | 'cross_provider'>;
+      includeCurrentModel: boolean;
+    },
+  ): string[] {
+    const activeModels = this.getActiveModelsWithClients();
+    const currentModel = this.resolveModelEntity(id);
+    if (!currentModel) {
+      return this.sortFallbackCandidates(activeModels).map((model) => model.id);
+    }
+
+    const sameProviderModels = this.sortFallbackCandidates(activeModels.filter((model) => {
+      return model.id !== currentModel.id && model.provider === currentModel.provider;
+    }));
+    const crossProviderModels = this.sortFallbackCandidates(activeModels.filter((model) => {
+      return model.id !== currentModel.id && model.provider !== currentModel.provider;
+    }));
+    const groupedCandidates = {
+      same_provider: sameProviderModels.map((model) => model.id),
+      cross_provider: crossProviderModels.map((model) => model.id),
+    };
+    const groupOrder = strategy?.groupOrder || ['same_provider', 'cross_provider'];
+    const orderedCandidates = groupOrder.flatMap((group) => groupedCandidates[group]);
+
+    return [
+      ...(strategy?.includeCurrentModel === false ? [] : [currentModel.id]),
+      ...orderedCandidates,
+    ];
   }
 
   /**
@@ -531,17 +601,17 @@ export class ModelService implements OnModuleInit {
   /**
    * Call a model with a prompt (supports both UUID and model name)
    */
-  async callModel(id: string, prompt: string): Promise<string> {
+  async callModel(id: string, prompt: string, type: 'reasoning' | 'auxiliary' = 'reasoning'): Promise<LLMResponse> {
     const client = this.getClient(id);
     if (!client) {
       throw new Error(`No client initialized for model ${id}`);
     }
 
     const messages = [{ role: 'user' as const, content: prompt }];
-    let result = await client.chatCompletion(messages);
+    const result = await client.chatCompletion(messages);
 
     // Strip thinking tags from MiniMax model response
-    result = this.stripThinkingTags(result);
+    result.content = this.stripThinkingTags(result.content);
 
     return result;
   }
@@ -550,10 +620,11 @@ export class ModelService implements OnModuleInit {
    * Strip <think> and </thinking> tags from model response
    * MiniMax models include thinking tags which can interfere with JSON parsing
    */
-  private stripThinkingTags(content: string): string {
+  stripThinkingTags(content: string): string {
     // Remove <think>...</think> blocks
     return content
       .replace(/<think>[\s\S]*?<\/think>/gi, '')
+      .replace(/<think>[\s\S]*$/gi, '')
       .trim();
   }
 
@@ -563,7 +634,7 @@ export class ModelService implements OnModuleInit {
    * @param prompt Prompt to send
    * @param onChunk Callback for each chunk
    */
-  async callModelStream(id: string, prompt: string, onChunk: (chunk: string) => void): Promise<string> {
+  async callModelStream(id: string, prompt: string, onChunk: (chunk: string) => void): Promise<LLMResponse> {
     const client = this.getClient(id);
     if (!client) {
       throw new Error(`No client initialized for model ${id}`);
@@ -576,7 +647,7 @@ export class ModelService implements OnModuleInit {
   /**
    * Call model with streaming support - supports multimodal messages (supports both UUID and model name)
    */
-  async callModelStreamWithMessages(id: string, messages: ChatMessage[], onChunk: (chunk: string) => void): Promise<string> {
+  async callModelStreamWithMessages(id: string, messages: ChatMessage[], onChunk: (chunk: string) => void): Promise<LLMResponse> {
     const client = this.getClient(id);
     if (!client) {
       throw new Error(`No client initialized for model ${id}`);
