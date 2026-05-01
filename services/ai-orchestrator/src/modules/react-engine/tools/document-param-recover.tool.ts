@@ -4,8 +4,10 @@
  */
 
 import axios from 'axios';
+import { Injectable } from '@nestjs/common';
 import { BaseTool } from './base.tool';
 import { ExecutionContext, ToolResult } from '../interfaces';
+import { Tool } from '../decorators/tool.decorator';
 
 const CARBONE_SERVICE_URL = process.env.CARBONE_SERVICE_URL || 'http://carbone-engine:3009';
 
@@ -31,31 +33,38 @@ const isTemplateVisibleInSnapshot = (
   });
 };
 
+@Injectable()
+@Tool({
+  name: 'document_param_recover',
+  description: '从会话历史或上下文中恢复已填写的文档参数，防止重复询问。',
+  parameters: {
+    type: 'object',
+    properties: {
+      skillId: {
+        type: 'string',
+        description: '技能ID',
+        required: true,
+      },
+    },
+    required: ['skillId'],
+  },
+  isDefault: true,
+})
 export class DocumentParamRecoverTool extends BaseTool {
   constructor() {
     super(
       'document_param_recover',
-      '文档渲染失败时进行参数修复。该工具只允许修复参数，不允许修改模板选择。',
+      '从会话历史或上下文中恢复已填写的文档参数，防止重复询问。',
       {
         type: 'object',
         properties: {
-          errorMessage: {
+          skillId: {
             type: 'string',
-            description: '渲染失败的错误信息',
+            description: '技能ID',
             required: true,
           },
-          userInput: {
-            type: 'string',
-            description: '用户原始需求描述，不传则使用上下文',
-            required: false,
-          },
-          currentParams: {
-            type: 'object',
-            description: '当前参数快照，不传则使用上下文 collectedParams',
-            required: false,
-          },
         },
-        required: ['errorMessage'],
+        required: ['skillId'],
       },
       { category: 'parameter' },
     );

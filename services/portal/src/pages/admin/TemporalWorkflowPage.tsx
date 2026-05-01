@@ -13,7 +13,7 @@ import { useQuery, useMutation, useQueryClient } from 'react-query';
 import {
   temporalWorkflowApi, TemporalWorkflowDTO, CreateTemporalWorkflowDTO,
   WorkflowDsl, ActivityDsl, TemporalValidationResult, DEFAULT_WORKFLOW_DSL, DEFAULT_ACTIVITY_DSL,
-  WorkflowCodeResult, WorkflowRealValidationResult, TemplateWorkflowDraft
+  WorkflowCodeResult, WorkflowRealValidationResult, TemplateWorkflowDraft, TemporalWorkflowSourceTemplate
 } from '../../api/temporal-workflow';
 import { carboneAPI, CarboneTemplate } from '../../api/carbone';
 import { activityApi, ActivityDTO } from '../../api/activity';
@@ -82,6 +82,38 @@ const formatDurationValue = (value?: number | null, unit: DurationUnit = DEFAULT
     return undefined;
   }
   return `${Math.max(0, Number(value))}${unit}`;
+};
+
+const deriveWorkflowSourceTemplate = (
+  workflowDsl?: WorkflowDsl | null,
+  activityDsl?: ActivityDsl | null,
+): TemporalWorkflowSourceTemplate | null => {
+  const workflowDslRecord = workflowDsl as unknown as Record<string, unknown> | undefined;
+  const workflowSource = workflowDslRecord && typeof workflowDslRecord.sourceTemplate === 'object'
+    ? (workflowDsl as unknown as { sourceTemplate?: TemporalWorkflowSourceTemplate }).sourceTemplate
+    : undefined;
+  const activities = Array.isArray(activityDsl?.activities) ? activityDsl.activities : [];
+  const carboneActivity = activities.find((activity) => {
+    if (activity?.handler === 'carbone') {
+      return true;
+    }
+    const steps = Array.isArray(activity?.config?.steps) ? activity.config.steps : [];
+    return steps.some((step: Record<string, any>) => step?.type === 'carbone');
+  });
+  const carboneStep = Array.isArray(carboneActivity?.config?.steps)
+    ? carboneActivity?.config?.steps.find((step: Record<string, any>) => step?.type === 'carbone')
+    : null;
+  const sourceTemplate: TemporalWorkflowSourceTemplate = {
+    templateId: workflowSource?.templateId || carboneStep?.config?.templateId || carboneActivity?.config?.templateId,
+    skillId: workflowSource?.skillId || carboneActivity?.config?.skillId || undefined,
+    fileName: workflowSource?.fileName || carboneActivity?.config?.fileName || undefined,
+    format: workflowSource?.format || carboneStep?.config?.format || carboneActivity?.config?.format || undefined,
+    variableCount: workflowSource?.variableCount || carboneActivity?.config?.variableCount || Object.keys(workflowDsl?.inputParams || {}).length || undefined,
+  };
+  if (!sourceTemplate.templateId && !sourceTemplate.skillId && !sourceTemplate.fileName) {
+    return null;
+  }
+  return sourceTemplate;
 };
 
 interface RealValidationState {
@@ -816,6 +848,10 @@ const TemporalWorkflowPage: React.FC = () => {
   ];
   const currentWorkflowDisplayName = (workflowDsl.workflowDefnName || form.getFieldValue('name') || workflowDsl.name || '未命名工作流') as string;
   const currentWorkflowClassName = (workflowDsl.workflowClassName || `${((form.getFieldValue('name') || workflowDsl.name || 'Custom') as string).replace(/\s+/g, '')}Workflow`) as string;
+  const currentSourceTemplate = useMemo(
+    () => editingWorkflow?.sourceTemplate || deriveWorkflowSourceTemplate(workflowDsl, activityDsl),
+    [editingWorkflow?.id, editingWorkflow?.sourceTemplate, workflowDsl, activityDsl],
+  );
   const workflowOverviewStats = [
     {
       label: '工作流总数',
@@ -1014,6 +1050,25 @@ const TemporalWorkflowPage: React.FC = () => {
                 <Col span={24}><Text><strong>描述:</strong> {selectedWorkflow.description || '无'}</Text></Col>
               </Row>
             </Card>
+            {selectedWorkflow.sourceTemplate && (
+              <Card size="small" style={SECTION_CARD_STYLE} styles={{ body: { padding: 14 } }}>
+                <Row gutter={[12, 10]}>
+                  <Col span={12}><Text><strong>模板 ID:</strong> <Tag color="purple">{selectedWorkflow.sourceTemplate.templateId || '无'}</Tag></Text></Col>
+                  <Col span={12}><Text><strong>模板内置 Skill:</strong> {selectedWorkflow.sourceTemplate.skillId ? <Tag color="geekblue">{selectedWorkflow.sourceTemplate.skillId}</Tag> : '无'}</Text></Col>
+                  <Col span={12}><Text><strong>模板文件:</strong> {selectedWorkflow.sourceTemplate.fileName || '无'}</Text></Col>
+                  <Col span={12}><Text><strong>格式:</strong> <Tag>{selectedWorkflow.sourceTemplate.format || '未知'}</Tag></Text></Col>
+                  <Col span={12}><Text><strong>变量数:</strong> {selectedWorkflow.sourceTemplate.variableCount ?? '-'}</Text></Col>
+                  <Col span={24}>
+                    <Alert
+                      type="info"
+                      showIcon
+                      message="后续 Skill 关联说明"
+                      description="当 Capability Release 以该 Temporal Workflow 作为 sourceType=temporal_workflow 发布时，Skill 会继承这里的工作流 DSL、参数定义与输出定义；模板 ID / 内置 Skill ID 则作为来源情报继续用于理解该工作流来自哪个 Carbone 模板。"
+                    />
+                  </Col>
+                </Row>
+              </Card>
+            )}
             <Collapse defaultActiveKey={['workflow', 'activities']} ghost>
               <Panel header={<Text><CodeOutlined /> Workflow DSL</Text>} key="workflow">
                 <pre style={{ background: 'var(--bg-secondary)', color: 'var(--text-primary)', padding: 16, borderRadius: 10, maxHeight: 320, overflow: 'auto', fontSize: 12 }}>{JSON.stringify(selectedWorkflow.workflowDsl, null, 2)}</pre>
@@ -1040,6 +1095,23 @@ const TemporalWorkflowPage: React.FC = () => {
         width={1200} style={{ top: 20 }}>
         <Form form={form} layout="vertical">
           <Card title="基础信息" size="small" style={{ ...SECTION_CARD_STYLE, marginBottom: 16 }} styles={{ body: SECTION_CARD_BODY_STYLE }}>
+            {currentSourceTemplate && (
+              <Alert
+                type="info"
+                showIcon
+                style={{ marginBottom: 12 }}
+                message="当前工作流来自模板"
+                description={
+                  <Space wrap size={[8, 8]}>
+                    <Tag color="purple">模板 ID: {currentSourceTemplate.templateId || '无'}</Tag>
+                    {currentSourceTemplate.skillId ? <Tag color="geekblue">内置 Skill: {currentSourceTemplate.skillId}</Tag> : <Tag>内置 Skill: 无</Tag>}
+                    {currentSourceTemplate.fileName ? <Tag>文件: {currentSourceTemplate.fileName}</Tag> : null}
+                    {currentSourceTemplate.format ? <Tag>格式: {currentSourceTemplate.format}</Tag> : null}
+                    {currentSourceTemplate.variableCount !== undefined ? <Tag>变量数: {currentSourceTemplate.variableCount}</Tag> : null}
+                  </Space>
+                }
+              />
+            )}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 12, marginBottom: 12 }}>
               <div style={{ minWidth: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
                 <Text style={{ whiteSpace: 'nowrap', minWidth: 72 }}>工作流名称</Text>

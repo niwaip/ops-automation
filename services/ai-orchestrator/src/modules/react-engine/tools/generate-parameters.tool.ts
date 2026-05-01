@@ -3,13 +3,42 @@
  * 使用Carbone引擎的AI技能生成参数数据
  */
 
+import { Injectable } from '@nestjs/common';
 import axios from 'axios';
 import { BaseTool } from './base.tool';
 import { ToolResult, ExecutionContext } from '../interfaces';
+import { Tool } from '../decorators/tool.decorator';
 
 // Carbone引擎服务地址
 const CARBONE_SERVICE_URL = process.env.CARBONE_SERVICE_URL || 'http://carbone-engine:3009';
 
+@Injectable()
+@Tool({
+  name: 'generate_parameters',
+  description: '使用AI技能从用户描述中生成模板参数数据。调用Carbone引擎的generate-parameters API，参数为skillId和description。',
+  parameters: {
+    type: 'object',
+    properties: {
+      skillId: {
+        type: 'string',
+        description: 'Carbone引擎中的Skill ID',
+        required: true,
+      },
+      description: {
+        type: 'string',
+        description: '用户的描述内容，包含需要填充的参数信息',
+        required: true,
+      },
+      userInput: {
+        type: 'string',
+        description: '用户原始输入（兼容参数，等同于description）',
+        required: false,
+      },
+    },
+    required: ['skillId'],
+  },
+  isDefault: true,
+})
 export class GenerateParametersTool extends BaseTool {
   constructor() {
     super(

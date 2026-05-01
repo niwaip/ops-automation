@@ -3,9 +3,11 @@
  * 调用Carbone引擎生成文档
  */
 
+import { Injectable } from '@nestjs/common';
 import { BaseTool } from './base.tool';
 import { ToolResult, ExecutionContext } from '../interfaces';
 import axios from 'axios';
+import { Tool } from '../decorators/tool.decorator';
 
 type DocumentGenerateResponse = {
   downloadUrl?: string;
@@ -41,10 +43,43 @@ const isTemplateVisibleInSnapshot = (
   });
 };
 
+@Injectable()
+@Tool({
+  name: 'document_generate',
+  description: '根据Skill和参数生成文档。调用Carbone引擎渲染模板并返回下载链接。',
+  parameters: {
+    type: 'object',
+    properties: {
+      skillId: {
+        type: 'string',
+        description: '技能ID',
+        required: true,
+      },
+      templateId: {
+        type: 'string',
+        description: 'Carbone模板ID',
+        required: true,
+      },
+      data: {
+        type: 'object',
+        description: '填充模板的数据对象',
+        required: true,
+      },
+      format: {
+        type: 'string',
+        description: '输出格式：pdf, docx, xlsx',
+        required: false,
+      },
+    },
+    required: ['skillId', 'templateId', 'data'],
+  },
+  isDefault: true,
+})
 export class DocumentGenTool extends BaseTool {
   private carboneApiUrl: string;
 
-  constructor(carboneApiUrl: string = process.env.CARBONE_API_URL || 'http://localhost:3010') {
+  constructor() {
+    const carboneApiUrl = process.env.CARBONE_API_URL || 'http://localhost:3010';
     super(
       'document_generate',
       '根据Skill和参数生成文档。调用Carbone引擎渲染模板并返回下载链接。',
@@ -53,21 +88,26 @@ export class DocumentGenTool extends BaseTool {
         properties: {
           skillId: {
             type: 'string',
-            description: '技能ID，用于获取关联的模板',
+            description: '技能ID',
             required: true,
           },
-          params: {
-            type: 'object',
-            description: '渲染参数（完整填充）',
-            required: true,
-          },
-          outputFormat: {
+          templateId: {
             type: 'string',
-            description: '输出格式：docx, pdf, html 等',
+            description: 'Carbone模板ID',
+            required: true,
+          },
+          data: {
+            type: 'object',
+            description: '填充模板的数据对象',
+            required: true,
+          },
+          format: {
+            type: 'string',
+            description: '输出格式：pdf, docx, xlsx',
             required: false,
           },
         },
-        required: ['skillId', 'params'],
+        required: ['skillId', 'templateId', 'data'],
       },
     );
     this.carboneApiUrl = carboneApiUrl;
@@ -78,14 +118,12 @@ export class DocumentGenTool extends BaseTool {
     context: ExecutionContext,
   ): Promise<ToolResult> {
     const skillId = params.skillId as string;
-    const renderParams = params.params as Record<string, unknown>;
-    const outputFormat = (params.outputFormat as string) || 'docx';
-    const templateId = (
-      (params.templateId as string | undefined)
+    const renderParams = params.data as Record<string, unknown>;
+    const outputFormat = (params.format as string) || 'docx';
+    const templateId = (params.templateId as string)
       || context.documentContext?.selectedTemplateId
       || context.skill?.carboneTemplateId
-      || context.skill?.templateId
-    );
+      || context.skill?.templateId;
 
     if (!isSkillVisibleInSnapshot(skillId, context)) {
       return {

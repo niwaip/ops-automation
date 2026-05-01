@@ -14,9 +14,8 @@ import type { ColumnsType } from 'antd/es/table';
 import { ReloadOutlined } from '@ant-design/icons';
 import { useQuery } from 'react-query';
 import { useNavigate } from 'react-router-dom';
-import { capabilityReleaseApi, CapabilityRelease } from '../api/capability-release';
+import { capabilityReleaseApi } from '../api/capability-release';
 import { skillApi } from '../api/skill';
-import { useAuthStore } from '../store/authStore';
 
 const { Title, Text } = Typography;
 
@@ -39,68 +38,26 @@ const statusColor = (status?: string) => {
 const PublishedSkillDetailPage: React.FC = () => {
   const navigate = useNavigate();
   const [searchText, setSearchText] = useState('');
-  const { user } = useAuthStore();
 
   const releasesQuery = useQuery(['published-skills'], capabilityReleaseApi.listReleaseCenter);
   const skillsQuery = useQuery(['authorized-skills'], skillApi.list);
-  const releases = releasesQuery.data?.releases || [];
-  const authorizedSkills = skillsQuery.data?.skills || [];
-  const authorizedSkillIds = useMemo(
-    () => new Set(authorizedSkills.map((skill) => skill.id)),
-    [authorizedSkills],
-  );
-  const authorizedSkillMap = useMemo(
-    () => new Map(authorizedSkills.map((skill) => [skill.id, skill])),
-    [authorizedSkills],
-  );
+  const skills = skillsQuery.data?.skills || [];
 
   const publishedSkillItems = useMemo(() => {
-    const map = new Map<
-      string,
-      {
-        skillId: string;
-        skillName: string;
-        skillDescription: string;
-        release: CapabilityRelease;
-      }
-    >();
-
-    releases.forEach((release) => {
-      if (!release.publishedSkillId) {
-        return;
-      }
-      if (user?.role !== 'admin' && !authorizedSkillIds.has(release.publishedSkillId)) {
-        return;
-      }
-
-      const sourceKey = [
-        release.sourceType,
-        release.sourceId || release.sourceName || release.publishedSkillId,
-      ].join('::');
-      const current = map.get(sourceKey);
-      const currentVersion = current?.release.releaseVersion || 0;
-      const nextVersion = release.releaseVersion || 0;
-      const shouldReplace =
-        !current ||
-        nextVersion > currentVersion ||
-        (
-          nextVersion === currentVersion &&
-          new Date(release.updatedAt).getTime() > new Date(current.release.updatedAt).getTime()
-        );
-
-      if (shouldReplace) {
-        const skillMeta = authorizedSkillMap.get(release.publishedSkillId);
-        map.set(sourceKey, {
-          skillId: release.publishedSkillId,
-          skillName: skillMeta?.name || release.sourceName || release.sourceId || release.publishedSkillId,
-          skillDescription: skillMeta?.description || '',
-          release,
-        });
-      }
-    });
-
-    return Array.from(map.values());
-  }, [authorizedSkillIds, authorizedSkillMap, releases, user?.role]);
+    return skills
+      .filter((skill) => skill.isPublished)
+      .map((skill) => ({
+        skillId: skill.id,
+        skillName: skill.name,
+        skillDescription: skill.description,
+        publishedSourceType: skill.publishedSourceType,
+        publishedReleaseId: skill.publishedReleaseId,
+        publishedReleaseVersion: skill.publishedReleaseVersion,
+        publishedReleaseStatus: skill.publishedReleaseStatus,
+        publishedDeploymentStatus: skill.publishedDeploymentStatus,
+        skill,
+      }));
+  }, [skills]);
 
   const filteredItems = useMemo(() => {
     const keyword = searchText.trim().toLowerCase();
@@ -112,8 +69,10 @@ const PublishedSkillDetailPage: React.FC = () => {
       return (
         item.skillId.toLowerCase().includes(keyword) ||
         item.skillName.toLowerCase().includes(keyword) ||
-        item.release.status.toLowerCase().includes(keyword) ||
-        String(item.release.sourceType).toLowerCase().includes(keyword)
+        item.skillDescription.toLowerCase().includes(keyword) ||
+        String(item.publishedReleaseStatus || '').toLowerCase().includes(keyword) ||
+        String(item.publishedDeploymentStatus || '').toLowerCase().includes(keyword) ||
+        String(item.publishedSourceType || '').toLowerCase().includes(keyword)
       );
     });
   }, [publishedSkillItems, searchText]);
@@ -141,14 +100,28 @@ const PublishedSkillDetailPage: React.FC = () => {
       title: '发布状态',
       key: 'status',
       width: 120,
-      render: (_, record) => <Tag color={statusColor(record.release.status)}>{record.release.status}</Tag>,
+      render: (_, record) => (
+        <Tag color={statusColor(record.publishedReleaseStatus || undefined)}>
+          {record.publishedReleaseStatus || 'published'}
+        </Tag>
+      ),
     },
     {
       title: '部署状态',
       key: 'deploymentStatus',
       width: 120,
       render: (_, record) => (
-        <Tag color={statusColor(record.release.deploymentStatus)}>{record.release.deploymentStatus}</Tag>
+        <Tag color={statusColor(record.publishedDeploymentStatus || undefined)}>
+          {record.publishedDeploymentStatus || '未部署'}
+        </Tag>
+      ),
+    },
+    {
+      title: '来源',
+      key: 'sourceType',
+      width: 140,
+      render: (_, record) => (
+        <Tag>{record.publishedSourceType || '未知'}</Tag>
       ),
     },
     {
@@ -167,7 +140,8 @@ const PublishedSkillDetailPage: React.FC = () => {
           <Button
             type="link"
             size="small"
-            onClick={() => navigate(`/admin/capability-releases?releaseId=${record.release.id}&mode=view`)}
+            disabled={!record.publishedReleaseId}
+            onClick={() => record.publishedReleaseId && navigate(`/admin/capability-releases?releaseId=${record.publishedReleaseId}&mode=view`)}
           >
             发布详情
           </Button>
@@ -191,7 +165,13 @@ const PublishedSkillDetailPage: React.FC = () => {
           <Button onClick={() => navigate('/admin/skills')}>
             系统 Skills
           </Button>
-          <Button icon={<ReloadOutlined />} onClick={() => releasesQuery.refetch()}>
+          <Button
+            icon={<ReloadOutlined />}
+            onClick={() => {
+              releasesQuery.refetch();
+              skillsQuery.refetch();
+            }}
+          >
             刷新
           </Button>
         </Space>
@@ -202,7 +182,7 @@ const PublishedSkillDetailPage: React.FC = () => {
         showIcon
         style={{ marginBottom: 16 }}
         message="公开 Skill 管理"
-        description="一览仅展示已公开可执行的 Skill，并包含 Skill 说明。系统定义请到“系统 Skills”页维护。"
+        description="当前页直接展示已公开的 Skill 对象本身，并补充其关联 Release / 部署状态；对象口径与“系统 Skills”页保持一致。"
       />
       <Card>
         <Space direction="vertical" size="middle" style={{ width: '100%' }}>

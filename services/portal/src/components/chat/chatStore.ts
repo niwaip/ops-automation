@@ -4,14 +4,54 @@
  */
 
 import { create } from 'zustand';
-import { ChatMessage, ChatSession, UploadedFile, AIModel, StreamEvent } from './types';
+import {
+  ChatMessage,
+  ChatSession,
+  UploadedFile,
+  AIModel,
+  StreamEvent,
+  PromptDebugPayload,
+  PromptDebugRecord,
+} from './types';
 import { v4 as uuidv4 } from 'uuid';
+
+const PROMPT_DEBUG_STORAGE_KEY = 'portal-prompt-debug-history';
+
+const loadPromptDebugHistory = (): PromptDebugRecord[] => {
+  if (typeof window === 'undefined') {
+    return [];
+  }
+
+  try {
+    const raw = window.localStorage.getItem(PROMPT_DEBUG_STORAGE_KEY);
+    if (!raw) {
+      return [];
+    }
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed as PromptDebugRecord[] : [];
+  } catch {
+    return [];
+  }
+};
+
+const persistPromptDebugHistory = (records: PromptDebugRecord[]): void => {
+  if (typeof window === 'undefined') {
+    return;
+  }
+
+  try {
+    window.localStorage.setItem(PROMPT_DEBUG_STORAGE_KEY, JSON.stringify(records));
+  } catch {
+    // Ignore storage failures and keep in-memory behavior.
+  }
+};
 
 interface ChatState {
   // 会话相关
   currentSession: ChatSession | null;
   sessions: ChatSession[];
   messages: ChatMessage[];
+  promptDebugHistory: PromptDebugRecord[];
 
   // UI状态
   isOpen: boolean;
@@ -52,6 +92,15 @@ interface ChatActions {
   updateLastMessage: (content: string) => void;
   updateMessageById: (messageId: string, content: string, isStreaming?: boolean) => void;
   updateMessageMetadataById: (messageId: string, metadata: Partial<NonNullable<ChatMessage['metadata']>>) => void;
+  upsertPromptDebugRecord: (record: {
+    messageId: string;
+    sessionId?: string;
+    executionId?: string;
+    mode?: 'chat' | 'task';
+    taskStatus?: 'waiting_input' | 'pending_approval' | 'running' | 'completed' | 'failed';
+    sourceEventType: PromptDebugRecord['sourceEventType'];
+    promptDebug: PromptDebugPayload;
+  }) => void;
   clearMessages: () => void;
 
   // 流式处理
@@ -91,6 +140,7 @@ export const useChatStore = create<ChatState & ChatActions>((set, get) => ({
   currentSession: null,
   sessions: [],
   messages: [],
+  promptDebugHistory: loadPromptDebugHistory(),
   isOpen: false,
   isLoading: false,
   streamingContent: '',
@@ -172,6 +222,30 @@ export const useChatStore = create<ChatState & ChatActions>((set, get) => ({
           ? { ...msg, metadata: { ...(msg.metadata || {}), ...sanitizedMetadata } }
           : msg
       ),
+    });
+  },
+
+  upsertPromptDebugRecord: (record) => {
+    const now = new Date().toISOString();
+    const existing = get().promptDebugHistory;
+    const nextRecord: PromptDebugRecord = {
+      id: record.messageId,
+      messageId: record.messageId,
+      sessionId: record.sessionId,
+      executionId: record.executionId,
+      mode: record.mode,
+      taskStatus: record.taskStatus,
+      sourceEventType: record.sourceEventType,
+      promptDebug: record.promptDebug,
+      createdAt: existing.find((item) => item.id === record.messageId)?.createdAt || now,
+      updatedAt: now,
+    };
+
+    const filtered = existing.filter((item) => item.id !== record.messageId);
+    const nextHistory = [nextRecord, ...filtered].slice(0, 20);
+    persistPromptDebugHistory(nextHistory);
+    set({
+      promptDebugHistory: nextHistory,
     });
   },
 

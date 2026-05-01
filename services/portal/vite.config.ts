@@ -38,6 +38,11 @@ export default defineConfig({
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/api/, ''),
       },
+      '/api/tools': {
+        target: getProxyTarget('ops-auth', 3001),
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api/, ''),
+      },
       '/api/users': {
         target: getProxyTarget('ops-auth', 3001),
         changeOrigin: true,

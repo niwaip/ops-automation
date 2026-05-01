@@ -3,10 +3,12 @@
  * 根据用户输入匹配合适的Skill（支持AI语义匹配和权限管控）
  */
 
+import { Injectable } from '@nestjs/common';
 import axios from 'axios';
 import { BaseTool } from './base.tool';
 import { ToolResult, ExecutionContext, SkillMatchResult } from '../interfaces';
 import { TRACE_ID_HEADER } from '../../../common/trace.util';
+import { Tool } from '../decorators/tool.decorator';
 
 // Auth服务地址（SkillService所在）
 // Docker环境使用服务名，本地使用localhost
@@ -22,6 +24,29 @@ const getAuthServiceUrl = () => {
 };
 const AUTH_SERVICE_URL = getAuthServiceUrl();
 
+@Injectable()
+@Tool({
+  name: 'skill_match',
+  description: '根据用户输入匹配合适的技能(Skill)。使用AI语义匹配，自动过滤用户无权限的技能。返回匹配的skillId、置信度和匹配原因。',
+  parameters: {
+    type: 'object',
+    properties: {
+      userInput: {
+        type: 'string',
+        description: '用户的输入文本',
+        required: true,
+      },
+      context: {
+        type: 'string',
+        description: '额外的上下文信息（可选）',
+        required: false,
+      },
+    },
+    required: ['userInput'],
+  },
+  category: 'discovery',
+  isDefault: true,
+})
 export class SkillMatchTool extends BaseTool {
   constructor() {
     super(

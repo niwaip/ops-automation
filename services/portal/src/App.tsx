@@ -12,6 +12,8 @@ import RecorderPage from './pages/RecorderPage';
 import UserAdminPage from './pages/admin/UserAdminPage';
 import AIModelAdminPage from './pages/admin/AIModelAdminPage';
 import SkillAdminPage from './pages/admin/SkillAdminPage';
+import SystemToolAdminPage from './pages/admin/SystemToolAdminPage';
+import PromptDebugPage from './pages/admin/PromptDebugPage';
 import ExecutionFlowTemplatePage from './pages/admin/ExecutionFlowTemplatePage';
 import TemporalWorkflowPage from './pages/admin/TemporalWorkflowPage';
 import ActivityPage from './pages/admin/ActivityPage';
@@ -131,6 +133,22 @@ function App() {
             element={
               <AdminRoute>
                 <SkillAdminPage />
+              </AdminRoute>
+            }
+          />
+          <Route
+            path="admin/tools"
+            element={
+              <AdminRoute>
+                <SystemToolAdminPage />
+              </AdminRoute>
+            }
+          />
+          <Route
+            path="admin/prompt-debug"
+            element={
+              <AdminRoute>
+                <PromptDebugPage />
               </AdminRoute>
             }
           />

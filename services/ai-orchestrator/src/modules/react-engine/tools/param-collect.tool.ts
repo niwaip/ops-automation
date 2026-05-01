@@ -3,9 +3,38 @@
  * 收集和验证Skill所需的参数
  */
 
+import { Injectable } from '@nestjs/common';
 import { BaseTool } from './base.tool';
 import { ToolResult, ExecutionContext, ParamProperty } from '../interfaces';
+import { Tool } from '../decorators/tool.decorator';
 
+@Injectable()
+@Tool({
+  name: 'param_collect',
+  description: '收集并验证技能执行所需的参数。检查参数是否完整，提取缺失参数列表。',
+  parameters: {
+    type: 'object',
+    properties: {
+      skillId: {
+        type: 'string',
+        description: '技能ID',
+        required: true,
+      },
+      userInput: {
+        type: 'string',
+        description: '用户输入，从中提取参数',
+        required: true,
+      },
+      existingParams: {
+        type: 'object',
+        description: '已收集的参数',
+        required: false,
+      },
+    },
+    required: ['skillId', 'userInput'],
+  },
+  isDefault: true,
+})
 export class ParamCollectTool extends BaseTool {
   constructor() {
     super(

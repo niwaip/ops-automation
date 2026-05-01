@@ -15,10 +15,20 @@ export interface ApiEndpoint {
 }
 
 export interface SkillRuntimeMetadata {
+  matchSummary?: string;
+  paramCollectionGuidance?: string;
+  validationRules?: string;
   goal?: string;
   expectedResult?: string;
   outputParams?: Record<string, unknown>;
   sourceType?: 'execution_flow_template' | 'temporal_workflow' | string;
+  sourceTemplate?: {
+    templateId?: string;
+    skillId?: string;
+    fileName?: string;
+    format?: string;
+    variableCount?: number;
+  };
   taskQueue?: string;
   workflowSteps?: Array<{
     id?: string;
@@ -26,6 +36,79 @@ export interface SkillRuntimeMetadata {
     type?: string;
     activityName?: string;
   }>;
+}
+
+export type ToolCatalogStatus = 'active' | 'disabled' | 'deprecated';
+export type ToolRiskLevel = 'L0' | 'L1' | 'L2' | 'L3';
+export type ToolPromptExposure = 'hidden' | 'prompt_only' | 'runtime_only' | 'prompt_and_runtime';
+export type SkillToolBindingSource = 'declared' | 'inferred_from_flow' | 'system_required';
+
+export interface ToolCatalogDTO {
+  id: string;
+  name: string;
+  displayName: string;
+  description?: string;
+  category?: string;
+  runtimeType?: string;
+  status: ToolCatalogStatus;
+  riskLevel: ToolRiskLevel;
+  allowSkillBinding: boolean;
+  promptExposure: ToolPromptExposure;
+  defaultRequiresConfirmation: boolean;
+  defaultRequiresApproval: boolean;
+  metadataJson?: Record<string, unknown>;
+  usageSummary?: {
+    boundSkillCount: number;
+    boundSkillNames?: string[];
+    boundSkills?: Array<{
+      id: string;
+      name: string;
+      isActive: boolean;
+      configStatus?: string;
+      isPublished: boolean;
+      publishedReleaseStatus?: string | null;
+      publishedDeploymentStatus?: string | null;
+    }>;
+  };
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface UpdateToolCatalogDTO {
+  displayName?: string;
+  description?: string;
+  status?: ToolCatalogStatus;
+  riskLevel?: ToolRiskLevel;
+  allowSkillBinding?: boolean;
+  promptExposure?: ToolPromptExposure;
+  defaultRequiresConfirmation?: boolean;
+  defaultRequiresApproval?: boolean;
+  metadataJson?: Record<string, unknown>;
+}
+
+export interface SkillToolBindingDTO {
+  skillId: string;
+  toolName: string;
+  bindingSource: SkillToolBindingSource;
+}
+
+export interface SkillToolValidationMessage {
+  code: string;
+  toolName?: string;
+  severity: 'info' | 'warning' | 'error';
+  message: string;
+}
+
+export interface SkillToolValidationResult {
+  isValid: boolean;
+  declaredTools: string[];
+  inferredTools: string[];
+  effectiveTools: string[];
+  missingTools: string[];
+  disabledTools: string[];
+  forbiddenSkillTools: string[];
+  undeclaredFlowTools: string[];
+  messages: SkillToolValidationMessage[];
 }
 
 /**
@@ -79,6 +162,7 @@ export interface SkillConfigDTO {
   executionFlowTemplateIds: string[];  // 关联的多个流程模板ID
   executionFlow: ExecutionFlowStep[];
   tools: string[];
+  effectiveTools?: string[];
   apiEndpoints?: {
     generateParameters?: ApiEndpoint;
     render?: ApiEndpoint;
@@ -86,6 +170,8 @@ export interface SkillConfigDTO {
     runtimeMetadata?: SkillRuntimeMetadata;
   };
   isActive: boolean;
+  configStatus?: string;
+  lastValidationSummary?: Record<string, unknown> | null;
   isPublished: boolean;
   publishedReleaseId?: string | null;
   publishedReleaseVersion?: number | null;
@@ -131,6 +217,20 @@ export interface SkillMatchResult {
   matchReason?: string;
   // 新增：消耗
   usage?: LLMUsage;
+  debug?: {
+    llmCalls?: Array<{
+      stage: string;
+      label: string;
+      modelId?: string;
+      requestMessages?: Array<{
+        role: 'system' | 'user' | 'assistant';
+        content: string;
+      }>;
+      responseText?: string;
+      note?: string;
+    }>;
+    notes?: string[];
+  };
 }
 
 /**
@@ -177,9 +277,11 @@ export interface SkillValidationResult {
       hasParamsSchema: boolean;
       hasTemplate: boolean;
       hasFlowTemplate: boolean;
+      toolValidationPassed?: boolean;
       triggerKeywordQuality: string;
       paramsSchemaCompleteness: string;
     };
+    toolValidation?: SkillToolValidationResult;
     skillSimulation?: {
       success: boolean;
       validationScore: number;

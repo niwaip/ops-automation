@@ -20,6 +20,8 @@ import {
   OrderedListOutlined,
   PlayCircleOutlined,
   BgColorsOutlined,
+  ToolOutlined,
+  BugOutlined,
 } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
 import { useAuthStore } from '../store/authStore';
@@ -126,6 +128,16 @@ const MainLayout: React.FC = () => {
                 label: t('skills'),
               },
               {
+                key: '/admin/tools',
+                icon: <ToolOutlined />,
+                label: '系统工具',
+              },
+              {
+                key: '/admin/prompt-debug',
+                icon: <BugOutlined />,
+                label: 'Prompt 调试',
+              },
+              {
                 key: '/admin/execution-flows',
                 icon: <OrderedListOutlined />,
                 label: t('executionFlows'),
@@ -187,6 +199,8 @@ const MainLayout: React.FC = () => {
     if (path.startsWith('/admin/capability-studio')) return '/admin/capability-studio';
     if (path.startsWith('/admin/capability-builds')) return '/admin/capability-studio';
     if (path.startsWith('/admin/skills')) return '/admin/skills';
+    if (path.startsWith('/admin/tools')) return '/admin/tools';
+    if (path.startsWith('/admin/prompt-debug')) return '/admin/prompt-debug';
     if (path.startsWith('/admin/execution-flows')) return '/admin/execution-flows';
     if (path.startsWith('/admin/temporal-workflows')) return '/admin/temporal-workflows';
     if (path.startsWith('/admin/activities')) return '/admin/activities';

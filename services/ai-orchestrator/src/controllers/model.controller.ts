@@ -3,11 +3,15 @@ import { ApiConsumes, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger
 import { Response } from 'express';
 import { ModelService } from '../modules/model/model.service';
 import { AIModelDTO, CreateModelDTO, LLMUsage } from '../interfaces';
+import { PromptDebugSettingsService } from '../modules/debug-settings/prompt-debug-settings.service';
 
 @ApiTags('AI-Models')
 @Controller('ai')
 export class ModelController {
-  constructor(private readonly modelService: ModelService) {}
+  constructor(
+    private readonly modelService: ModelService,
+    private readonly promptDebugSettingsService: PromptDebugSettingsService,
+  ) {}
 
   @Get('models')
   @ApiOperation({ summary: 'List all registered AI models' })
@@ -25,7 +29,19 @@ export class ModelController {
 
   @Post('model/call')
   @ApiOperation({ summary: 'Call AI model with a prompt (for skill matching)' })
-  async callModel(@Body() body: { modelId: string; prompt: string }): Promise<{ result: string; usage?: LLMUsage }> {
+  async callModel(@Body() body: {
+    modelId: string;
+    prompt: string;
+    includeDebug?: boolean;
+  }): Promise<{
+    result: string;
+    usage?: LLMUsage;
+    debug?: {
+      modelId: string;
+      requestMessages: Array<{ role: 'user'; content: string }>;
+      responseText: string;
+    };
+  }> {
     const modelId = body.modelId || 'default';
 
     try {
@@ -33,11 +49,37 @@ export class ModelController {
       return {
         result: response.content,
         usage: response.usage,
+        ...(body.includeDebug ? {
+          debug: {
+            modelId,
+            requestMessages: [{ role: 'user', content: body.prompt }],
+            responseText: response.content,
+          },
+        } : {}),
       };
     } catch (error: unknown) {
       const errorMsg = error instanceof Error ? error.message : 'Unknown error';
       throw new HttpException(`Model call failed: ${errorMsg}`, HttpStatus.INTERNAL_SERVER_ERROR);
     }
+  }
+
+  @Get('debug-settings')
+  @ApiOperation({ summary: 'Get prompt debug settings' })
+  async getDebugSettings(): Promise<{ promptDebugEnabled: boolean }> {
+    return this.promptDebugSettingsService.getSettings();
+  }
+
+  @Patch('debug-settings')
+  @ApiOperation({ summary: 'Update prompt debug settings' })
+  async updateDebugSettings(
+    @Body() body: { promptDebugEnabled?: boolean },
+  ): Promise<{ promptDebugEnabled: boolean }> {
+    if (typeof body.promptDebugEnabled !== 'boolean') {
+      throw new HttpException('promptDebugEnabled must be boolean', HttpStatus.BAD_REQUEST);
+    }
+    return this.promptDebugSettingsService.updateSettings({
+      promptDebugEnabled: body.promptDebugEnabled,
+    });
   }
 
   @Get('models/presets')

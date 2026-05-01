@@ -3,9 +3,11 @@
  * 执行外部API调用，用于流程模板中的API步骤
  */
 
+import { Injectable } from '@nestjs/common';
 import axios from 'axios';
 import { BaseTool } from './base.tool';
 import { ToolResult, ExecutionContext } from '../interfaces';
+import { Tool } from '../decorators/tool.decorator';
 
 type AxiosLikeError = {
   code?: string;
@@ -15,6 +17,38 @@ type AxiosLikeError = {
   };
 };
 
+@Injectable()
+@Tool({
+  name: 'api_call',
+  description: '执行外部API调用。用于流程模板中的API步骤，可以调用GET或POST接口获取数据。',
+  parameters: {
+    type: 'object',
+    properties: {
+      url: {
+        type: 'string',
+        description: 'API的完整URL地址',
+        required: true,
+      },
+      method: {
+        type: 'string',
+        description: 'HTTP方法：GET或POST',
+        required: false,
+      },
+      params: {
+        type: 'object',
+        description: '请求参数（GET查询参数或POST请求体）',
+        required: false,
+      },
+      headers: {
+        type: 'object',
+        description: '额外的请求头',
+        required: false,
+      },
+    },
+    required: ['url'],
+  },
+  isDefault: true,
+})
 export class ApiCallTool extends BaseTool {
   constructor() {
     super(

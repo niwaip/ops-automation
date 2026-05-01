@@ -145,6 +145,13 @@ export function buildSystemPromptSections(
     ? tools.filter((tool) => capabilitySnapshot.visibleTools.some((visibleTool) => visibleTool.name === tool.name))
     : tools;
 
+  if (capabilitySnapshot) {
+    filteredTools = filteredTools.filter((tool) => {
+      const visibleTool = capabilitySnapshot.visibleTools.find((item) => item.name === tool.name);
+      return visibleTool?.exposure !== 'runtime_only';
+    });
+  }
+
   let filteredSkills = capabilitySnapshot
     ? availableSkills.filter((item) => capabilitySnapshot.visibleSkills.some((visibleSkill) => visibleSkill.skillId === item.skillId))
     : availableSkills;
@@ -161,7 +168,18 @@ export function buildSystemPromptSections(
   }
 
   const toolsDescription = filteredTools
-    .map((t) => `${t.name}: ${t.description}\n参数: ${JSON.stringify(t.parameters, null, 2)}${t.requiresConfirmation ? '\n注意：此操作执行前需要人工确认。' : ''}`)
+    .map((t) => {
+      const visibleTool = capabilitySnapshot?.visibleTools.find((item) => item.name === t.name);
+      const notes: string[] = [];
+      if (visibleTool?.requiresConfirmation || t.requiresConfirmation) {
+        notes.push('注意：此操作执行前需要人工确认。');
+      }
+      if (visibleTool?.requiresApproval) {
+        notes.push('注意：此操作需要审批后才能真正执行。');
+      }
+
+      return `${t.name}: ${t.description}\n参数: ${JSON.stringify(t.parameters, null, 2)}${notes.length > 0 ? `\n${notes.join('\n')}` : ''}`;
+    })
     .join('\n\n');
 
   const skillsDescription = filteredSkills.length > 0
@@ -197,6 +215,9 @@ export function buildSystemPromptSections(
         : '',
       capabilitySnapshot.policies.requireConfirmToolNames.length > 0
         ? `- 需要人工确认的工具: ${capabilitySnapshot.policies.requireConfirmToolNames.join(', ')}`
+        : '',
+      capabilitySnapshot.policies.requireApprovalToolNames?.length
+        ? `- 需要审批的工具: ${capabilitySnapshot.policies.requireApprovalToolNames.join(', ')}`
         : '',
     ].filter(Boolean);
 

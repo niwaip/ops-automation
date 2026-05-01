@@ -9,6 +9,8 @@ import { PrismaModule } from '../../prisma/prisma.module';
 import { SkillService } from './skill.service';
 import { SkillController } from './skill.controller';
 import { ExecutionFlowModule } from '../execution-flow/execution-flow.module';
+import { ToolCatalogService } from './tool-catalog.service';
+import { ToolCatalogController } from './tool-catalog.controller';
 
 @Module({
   imports: [
@@ -20,8 +22,8 @@ import { ExecutionFlowModule } from '../execution-flow/execution-flow.module';
     }),
     ExecutionFlowModule,
   ],
-  controllers: [SkillController],
-  providers: [SkillService],
-  exports: [SkillService],
+  controllers: [SkillController, ToolCatalogController],
+  providers: [SkillService, ToolCatalogService],
+  exports: [SkillService, ToolCatalogService],
 })
 export class SkillModule {}

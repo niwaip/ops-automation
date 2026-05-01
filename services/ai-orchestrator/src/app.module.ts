@@ -12,6 +12,7 @@ import { PlannerModule } from './modules/planner/planner.module';
 import { ModelController } from './controllers/model.controller';
 import { ChatController } from './controllers/chat.controller';
 import { OrchestrationController } from './controllers/orchestration.controller';
+import { DebugSettingsModule } from './modules/debug-settings/debug-settings.module';
 
 @Module({
   imports: [
@@ -25,6 +26,7 @@ import { OrchestrationController } from './controllers/orchestration.controller'
     ReActEngineModule,
     RedisModule,
     PlannerModule,
+    DebugSettingsModule,
   ],
   controllers: [ModelController, ChatController, OrchestrationController],
 })

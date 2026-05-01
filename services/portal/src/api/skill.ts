@@ -32,10 +32,34 @@ export interface SkillConfigDTO {
   executionFlowTemplateIds: string[];  // 关联的多个流程模板ID
   executionFlow: ExecutionFlowStep[];
   tools: string[];
+  effectiveTools?: string[];
   apiEndpoints?: {
     generateParameters?: ApiEndpoint;
     render?: ApiEndpoint;
     getSkill?: ApiEndpoint;
+    runtimeMetadata?: {
+      matchSummary?: string;
+      paramCollectionGuidance?: string;
+      validationRules?: string;
+      goal?: string;
+      expectedResult?: string;
+      outputParams?: Record<string, unknown>;
+      sourceType?: string;
+      sourceTemplate?: {
+        templateId?: string;
+        skillId?: string;
+        fileName?: string;
+        format?: string;
+        variableCount?: number;
+      };
+      taskQueue?: string;
+      workflowSteps?: Array<{
+        id?: string;
+        name?: string;
+        type?: string;
+        activityName?: string;
+      }>;
+    };
   };
   isActive: boolean;
   isPublished: boolean;

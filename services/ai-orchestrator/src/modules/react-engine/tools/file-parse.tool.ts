@@ -3,9 +3,37 @@
  * 解析上传的文件内容
  */
 
+import { Injectable } from '@nestjs/common';
 import { BaseTool } from './base.tool';
 import { ToolResult, ExecutionContext, UploadedFile } from '../interfaces';
+import { Tool } from '../decorators/tool.decorator';
+import { Secure } from '../decorators/security.decorator';
 
+@Injectable()
+@Tool({
+  name: 'file_parse',
+  description: '解析上传的文件内容，提取文本信息用于参数提取或上下文补充。',
+  parameters: {
+    type: 'object',
+    properties: {
+      fileId: {
+        type: 'string',
+        description: '上传文件的ID',
+        required: true,
+      },
+      parseType: {
+        type: 'string',
+        description: '解析类型：full(全部), extract(提取关键信息)',
+        required: false,
+      },
+    },
+    required: ['fileId'],
+  },
+  isDefault: true,
+})
+@Secure({
+  validatePath: true,
+})
 export class FileParseTool extends BaseTool {
   constructor() {
     super(

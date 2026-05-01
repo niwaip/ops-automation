@@ -12,6 +12,8 @@ import { TemporalWorkflowService } from '../temporal-workflow/temporal-workflow.
 import { ActivityService } from '../temporal-workflow/activity.service';
 import { ExecutionFlowTemplateService } from '../execution-flow/execution-flow.service';
 import { SkillService } from '../skill/skill.service';
+import { ToolCatalogService } from '../skill/tool-catalog.service';
+import { ToolPromptExposure } from '../skill/interfaces';
 import {
   ApproveCapabilityReleaseDTO,
   CapabilityBuildDTO,
@@ -41,6 +43,14 @@ import {
   SuggestReleaseWizardAssistDTO,
   SuggestReleaseWizardAssistResultDTO,
 } from './interfaces';
+
+type SkillRuntimeToolPolicy = {
+  name: string;
+  promptExposure: ToolPromptExposure;
+  defaultRequiresConfirmation: boolean;
+  defaultRequiresApproval: boolean;
+  status: string;
+};
 
 const asRecord = (value: unknown): Record<string, unknown> | undefined => {
   if (!value || typeof value !== 'object' || Array.isArray(value)) {
@@ -102,6 +112,7 @@ export class CapabilityReleaseService implements OnModuleInit {
     private readonly activityService: ActivityService,
     private readonly executionFlowTemplateService: ExecutionFlowTemplateService,
     private readonly skillService: SkillService,
+    private readonly toolCatalogService: ToolCatalogService,
   ) {}
 
   async onModuleInit() {
@@ -277,6 +288,8 @@ export class CapabilityReleaseService implements OnModuleInit {
     sourceType: string;
     runtimeType: string;
     runtimeSource: 'deployment' | 'sandbox_fallback' | 'flow_runtime_fallback';
+    allowedToolNames: string[];
+    toolPolicies: SkillRuntimeToolPolicy[];
     environment?: string | null;
     deploymentId?: string | null;
   }> {
@@ -295,6 +308,9 @@ export class CapabilityReleaseService implements OnModuleInit {
     }
 
     const release = this.mapRelease(releaseRows[0]);
+    const toolBindings = await this.skillService.getSkillToolBindings(skillId);
+    const allowedToolNames = toolBindings.validation.effectiveTools;
+    const toolPolicies = await this.buildRuntimeToolPolicies(allowedToolNames);
 
     const latestSuccessfulDeploymentRows = await this.prisma.$queryRawUnsafe<any[]>(
       `SELECT *
@@ -330,6 +346,8 @@ export class CapabilityReleaseService implements OnModuleInit {
         sourceType: release.sourceType,
         runtimeType: deployment.runtimeType,
         runtimeSource: 'deployment',
+        allowedToolNames,
+        toolPolicies,
         environment: deployment.environment,
         deploymentId: deployment.id,
       };
@@ -342,6 +360,8 @@ export class CapabilityReleaseService implements OnModuleInit {
         sourceType: release.sourceType,
         runtimeType: 'sandbox',
         runtimeSource: 'sandbox_fallback',
+        allowedToolNames,
+        toolPolicies,
         environment: null,
         deploymentId: null,
       };
@@ -353,9 +373,30 @@ export class CapabilityReleaseService implements OnModuleInit {
       sourceType: release.sourceType,
       runtimeType: 'flow_runtime',
       runtimeSource: 'flow_runtime_fallback',
+      allowedToolNames,
+      toolPolicies,
       environment: null,
       deploymentId: null,
     };
+  }
+
+  private async buildRuntimeToolPolicies(toolNames: string[]): Promise<SkillRuntimeToolPolicy[]> {
+    const uniqueToolNames = Array.from(new Set(toolNames.filter(Boolean)));
+    if (uniqueToolNames.length === 0) {
+      return [];
+    }
+
+    const catalogMap = await this.toolCatalogService.getCatalogItemsByNames(uniqueToolNames);
+    return uniqueToolNames.map((toolName) => {
+      const catalogItem = catalogMap.get(toolName);
+      return {
+        name: toolName,
+        promptExposure: catalogItem?.promptExposure || 'prompt_and_runtime',
+        defaultRequiresConfirmation: Boolean(catalogItem?.defaultRequiresConfirmation),
+        defaultRequiresApproval: Boolean(catalogItem?.defaultRequiresApproval),
+        status: catalogItem?.status || 'active',
+      };
+    });
   }
 
   async executePublishedSkill(
@@ -1369,6 +1410,26 @@ export class CapabilityReleaseService implements OnModuleInit {
     }
     const previousPublishedSkillId = release.publishedSkillId;
     const draft = await this.getSkillDraftOrThrow(draftId);
+    const toolValidation = await this.skillService.validateSkillToolsPayload({
+      tools: draft.tools,
+      executionFlow: [],
+      executionFlowTemplateIds: draft.executionFlowTemplateIds,
+    });
+
+    if (!toolValidation.isValid) {
+      await this.insertAuditEvent(
+        id,
+        'skill_publish_blocked_by_tool_validation',
+        userId,
+        false,
+        '发布前工具校验失败',
+        { toolValidation },
+      );
+      throw new BadRequestException({
+        message: '发布前工具校验失败',
+        toolValidation,
+      });
+    }
 
     const payload = { ...(draft.draftPayload as Record<string, unknown>) };
     if (typeof payload.description === 'string' && payload.description.length > 500) {
@@ -1475,6 +1536,23 @@ export class CapabilityReleaseService implements OnModuleInit {
       dto.strategy ||
       (typeof deploymentProfile.strategy === 'string' ? deploymentProfile.strategy : undefined) ||
       'rolling_restart';
+    let preResolvedTemporalBuild: CapabilityBuildDTO | null = null;
+
+    if (release.sourceType === 'temporal_workflow') {
+      try {
+        preResolvedTemporalBuild = await this.resolveTemporalExecutableBuildOrThrow(
+          release,
+          snapshot,
+          undefined,
+          userId,
+        );
+      } catch (error) {
+        const message = error instanceof Error ? error.message : '当前 Release 缺少可执行代码';
+        throw new BadRequestException(
+          `${message}。请先在该 Release 上执行“构建 / AI 生成代码”，确认生成的 Workflow 代码已保存，再重新部署。`,
+        );
+      }
+    }
 
     await this.prisma.$executeRawUnsafe(
       `INSERT INTO deployment_records (
@@ -1517,7 +1595,7 @@ export class CapabilityReleaseService implements OnModuleInit {
       let deploymentBuild: CapabilityBuildDTO | null = null;
 
       if (release.sourceType === 'temporal_workflow') {
-        const build = await this.resolveTemporalExecutableBuildOrThrow(release, snapshot, undefined, userId);
+        const build = preResolvedTemporalBuild || await this.resolveTemporalExecutableBuildOrThrow(release, snapshot, undefined, userId);
         deploymentBuild = build;
         const workflowDsl = this.expectRecord(snapshot.sourcePayload.workflowDsl, '缺少 workflowDsl');
         const activityDsl = this.expectRecord(snapshot.sourcePayload.activityDsl, '缺少 activityDsl');
@@ -2981,6 +3059,7 @@ ${logs.join('\n')}
         executionFlowKeys: this.buildTemporalExecutionFlowKeys(rows[0].name, workflowDsl, activityDsl),
         outputParams: this.parseJson(workflowDsl.outputParams) || {},
         workflowSteps: this.buildTemporalWorkflowSteps(workflowDsl),
+        sourceTemplate: this.extractTemporalSourceTemplate(workflowDsl, activityDsl),
       };
     }
 
@@ -3549,43 +3628,119 @@ ${logs.join('\n')}
   private buildTemporalSkillDescription(
     payload: Record<string, unknown>,
     baseName: string,
-    paramsSchema: Record<string, unknown>,
+    _paramsSchema: Record<string, unknown>,
   ): string {
-    const sections: string[] = [];
-    const baseDescription = typeof payload.description === 'string' && payload.description.trim()
-      ? payload.description.trim()
+    const baseDescription = typeof payload.description === 'string' && this.sanitizeSkillNarrative(payload.description).trim()
+      ? this.sanitizeSkillNarrative(payload.description).trim()
       : `${baseName} 自动生成技能`;
-    sections.push(baseDescription);
+    return baseDescription;
+  }
 
-    if (typeof payload.goal === 'string' && payload.goal.trim() && payload.goal.trim() !== baseDescription) {
-      sections.push(`目标: ${payload.goal.trim()}`);
+  private sanitizeSkillNarrative(value: string): string {
+    const text = String(value || '').trim();
+    if (!text) {
+      return '';
     }
 
-    const properties = paramsSchema && typeof paramsSchema === 'object'
-      ? ((paramsSchema as Record<string, unknown>).properties as Record<string, unknown> | undefined)
+    const markers = [
+      /\n\s*输入参数\s*[：:]/,
+      /\n\s*参数定义\s*[：:]/,
+      /\n\s*请求参数\s*[：:]/,
+      /\n\s*必填参数\s*[：:]/,
+      /\n\s*参数列表\s*[：:]/,
+    ];
+
+    let sliced = text;
+    for (const marker of markers) {
+      const match = sliced.match(marker);
+      if (match?.index !== undefined) {
+        sliced = sliced.slice(0, match.index).trim();
+        break;
+      }
+    }
+
+    return sliced
+      .replace(/\s*\n{3,}/g, '\n\n')
+      .replace(/[ \t]{2,}/g, ' ')
+      .trim();
+  }
+
+  private buildSkillMatchSummary(
+    payload: Record<string, unknown>,
+    baseName: string,
+    expectedResult?: string,
+  ): string {
+    const parts: string[] = [];
+    const description = typeof payload.description === 'string'
+      ? this.sanitizeSkillNarrative(payload.description).trim()
+      : '';
+    const goal = typeof payload.goal === 'string'
+      ? this.sanitizeSkillNarrative(payload.goal).trim()
+      : '';
+    const normalizedExpectedResult = typeof expectedResult === 'string'
+      ? this.sanitizeSkillNarrative(expectedResult).trim()
+      : '';
+
+    if (description) {
+      parts.push(description);
+    } else {
+      parts.push(`${baseName} 自动生成技能`);
+    }
+
+    if (
+      normalizedExpectedResult
+      && normalizedExpectedResult !== description
+      && normalizedExpectedResult !== goal
+      && normalizedExpectedResult.length <= 80
+    ) {
+      parts.push(`输出：${normalizedExpectedResult}`);
+    }
+
+    return parts.join('；').slice(0, 240);
+  }
+
+  private buildParamCollectionGuidance(
+    paramsSchema: Record<string, unknown>,
+  ): string | undefined {
+    const schema = paramsSchema && typeof paramsSchema === 'object'
+      ? paramsSchema as Record<string, unknown>
       : undefined;
-    const required = Array.isArray((paramsSchema as Record<string, unknown> | undefined)?.required)
-      ? ((paramsSchema as Record<string, unknown>).required as string[])
+    const properties = schema?.properties && typeof schema.properties === 'object'
+      ? schema.properties as Record<string, unknown>
+      : undefined;
+    const required = Array.isArray(schema?.required)
+      ? schema.required.filter((item): item is string => typeof item === 'string' && item.trim().length > 0)
       : [];
-    if (properties && Object.keys(properties).length > 0) {
-      const inputLines = Object.entries(properties).map(([key, value]) => {
-        const definition = value && typeof value === 'object'
-          ? (value as Record<string, unknown>)
-          : {};
-        const description = typeof definition.description === 'string'
-          ? definition.description.trim()
-          : key;
-        const requiredLabel = required.includes(key) ? '必填' : '可选';
-        return `- ${key}: ${description} (${requiredLabel})`;
-      });
-      sections.push(`输入参数:\n${inputLines.join('\n')}`);
+
+    if (!properties || Object.keys(properties).length === 0) {
+      return undefined;
     }
 
-    if (typeof payload.expectedResult === 'string' && payload.expectedResult.trim()) {
-      sections.push(`预期输出: ${payload.expectedResult.trim()}`);
-    }
+    const orderedKeys = [
+      ...required,
+      ...Object.keys(properties).filter((key) => !required.includes(key)),
+    ];
 
-    return sections.join('\n\n');
+    const lines = orderedKeys.map((key) => {
+      const definition = properties[key] && typeof properties[key] === 'object'
+        ? properties[key] as Record<string, unknown>
+        : {};
+      const label = typeof definition.description === 'string' && definition.description.trim()
+        ? definition.description.trim()
+        : key;
+      return `${key}: ${label}${required.includes(key) ? '（必填）' : '（可选）'}`;
+    });
+
+    return `收集参数时，请优先补齐以下信息：${lines.join('；')}`.slice(0, 600);
+  }
+
+  private buildValidationRules(
+    payload: Record<string, unknown>,
+  ): string | undefined {
+    const goal = typeof payload.goal === 'string'
+      ? this.sanitizeSkillNarrative(payload.goal).trim()
+      : '';
+    return goal || undefined;
   }
 
   private validateExecutionFlowPayload(payload: Record<string, unknown>) {
@@ -3658,7 +3813,10 @@ ${logs.join('\n')}
       : [];
     const description = release.sourceType === 'temporal_workflow'
       ? this.buildTemporalSkillDescription(payload, baseName, paramsSchema || { properties: {}, required: [] })
-      : String(payload.description || payload.goal || `${baseName} 自动生成技能`);
+      : this.sanitizeSkillNarrative(String(payload.description || payload.goal || `${baseName} 自动生成技能`));
+    const matchSummary = this.buildSkillMatchSummary(payload, baseName, expectedResult);
+    const paramCollectionGuidance = this.buildParamCollectionGuidance(paramsSchema || {});
+    const validationRules = this.buildValidationRules(payload);
 
     const finalDescription = description.length > 500 ? description.slice(0, 497) + '...' : description;
 
@@ -3670,7 +3828,17 @@ ${logs.join('\n')}
         paramsSchema: paramsSchema || { properties: {}, required: [] },
         executionFlowTemplateIds: release.sourceId ? [release.sourceId] : [],
         tools: ['skill_match', 'flow_execute'],
-        apiEndpoints: null,
+        apiEndpoints: {
+          runtimeMetadata: {
+            sourceType: 'execution_flow_template',
+            goal: typeof payload.goal === 'string' ? payload.goal : undefined,
+            expectedResult,
+            outputParams: resolvedOutputParams || {},
+            matchSummary,
+            paramCollectionGuidance,
+            validationRules,
+          },
+        },
         validationId: validation.id,
       };
     }
@@ -3684,7 +3852,14 @@ ${logs.join('\n')}
       tools: ['skill_match', 'flow_execute'],
       apiEndpoints: {
         runtimeMetadata: {
+          matchSummary,
+          paramCollectionGuidance,
+          validationRules,
           sourceType: 'temporal_workflow',
+          sourceTemplate: this.extractTemporalSourceTemplate(
+            this.parseJson(payload.workflowDsl) as Record<string, unknown> || {},
+            this.parseJson(payload.activityDsl) as Record<string, unknown> || {},
+          ),
           goal: typeof payload.goal === 'string' ? payload.goal : undefined,
           expectedResult,
           outputParams: resolvedOutputParams || {},
@@ -3694,6 +3869,69 @@ ${logs.join('\n')}
       },
       validationId: validation.id,
     };
+  }
+
+  private extractTemporalSourceTemplate(
+    workflowDsl: Record<string, unknown>,
+    activityDsl: Record<string, unknown>,
+  ): Record<string, unknown> | undefined {
+    const workflowSource = this.parseJson<Record<string, unknown>>(workflowDsl.sourceTemplate) || {};
+    const activities = Array.isArray(activityDsl.activities) ? activityDsl.activities as Array<Record<string, unknown>> : [];
+    const carboneActivity = activities.find((activity) => {
+      if (activity?.handler === 'carbone') {
+        return true;
+      }
+      const config = activity?.config && typeof activity.config === 'object'
+        ? activity.config as Record<string, unknown>
+        : {};
+      const steps = Array.isArray(config.steps) ? config.steps as Array<Record<string, unknown>> : [];
+      return steps.some((step) => step?.type === 'carbone');
+    });
+    const carboneConfig = carboneActivity?.config && typeof carboneActivity.config === 'object'
+      ? carboneActivity.config as Record<string, unknown>
+      : {};
+    const carboneSteps = Array.isArray(carboneConfig.steps) ? carboneConfig.steps as Array<Record<string, unknown>> : [];
+    const carboneStep = carboneSteps.find((step) => step?.type === 'carbone');
+    const carboneStepConfig = carboneStep?.config && typeof carboneStep.config === 'object'
+      ? carboneStep.config as Record<string, unknown>
+      : {};
+    const inputParams = this.parseJson<Record<string, unknown>>(workflowDsl.inputParams) || {};
+
+    const sourceTemplate = {
+      templateId: this.pickFirstNonEmptyString(workflowSource.templateId, carboneStepConfig.templateId, carboneConfig.templateId),
+      skillId: this.pickFirstNonEmptyString(workflowSource.skillId, carboneConfig.skillId),
+      fileName: this.pickFirstNonEmptyString(workflowSource.fileName, carboneConfig.fileName),
+      format: this.pickFirstNonEmptyString(workflowSource.format, carboneStepConfig.format, carboneConfig.format),
+      variableCount: this.pickFirstPositiveNumber(
+        workflowSource.variableCount,
+        carboneConfig.variableCount,
+        Object.keys(inputParams).length,
+      ),
+    };
+
+    if (!sourceTemplate.templateId && !sourceTemplate.skillId && !sourceTemplate.fileName) {
+      return undefined;
+    }
+
+    return sourceTemplate;
+  }
+
+  private pickFirstNonEmptyString(...values: unknown[]): string | undefined {
+    for (const value of values) {
+      if (typeof value === 'string' && value.trim()) {
+        return value.trim();
+      }
+    }
+    return undefined;
+  }
+
+  private pickFirstPositiveNumber(...values: unknown[]): number | undefined {
+    for (const value of values) {
+      if (typeof value === 'number' && Number.isFinite(value) && value > 0) {
+        return value;
+      }
+    }
+    return undefined;
   }
 
   private expectRecord(value: unknown, errorMessage: string): Record<string, unknown> {

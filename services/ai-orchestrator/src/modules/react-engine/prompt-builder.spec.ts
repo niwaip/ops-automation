@@ -65,6 +65,7 @@ describe('prompt-builder', () => {
       },
       policies: {
         requireConfirmToolNames: [],
+        requireApprovalToolNames: ['document_intake'],
         requireHumanReviewOnWrite: false,
         documentTemplateClarificationEnabled: true,
       },
@@ -89,6 +90,7 @@ describe('prompt-builder', () => {
     expect(prompt).toContain('## Capability Policy');
     expect(prompt).toContain('## Tool Spec');
     expect(prompt).toContain('## Skill Index');
+    expect(prompt).toContain('需要审批的工具: document_intake');
   });
 
   it('builds structured system sections with stable keys and sources', () => {
@@ -161,6 +163,7 @@ describe('prompt-builder', () => {
         },
         policies: {
           requireConfirmToolNames: [],
+          requireApprovalToolNames: [],
           requireHumanReviewOnWrite: false,
           documentTemplateClarificationEnabled: true,
         },

@@ -3,7 +3,8 @@
  * 工具执行器，管理工具注册和执行
  */
 
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
+import { DiscoveryService, Reflector } from '@nestjs/core';
 import axios from 'axios';
 import {
   ToolDefinition,
@@ -14,22 +15,10 @@ import {
   FlowTemplate,
 } from './interfaces';
 import { TRACE_ID_HEADER } from '../../common/trace.util';
-import {
-  SkillMatchTool,
-  ParamCollectTool,
-  DocumentGenTool,
-  UserAskTool,
-  FileParseTool,
-  GenerateParametersTool,
-  DocumentRenderTool,
-  DocumentIntakeTool,
-  DocumentParamRecoverTool,
-  PreviewParamsTool,
-  ApiCallTool,
-  FlowExecuteTool,
-  BrowserStepTool,
-} from './tools';
 import { BaseTool } from './tools/base.tool';
+import { TOOL_METADATA_KEY, ToolOptions } from './decorators/tool.decorator';
+import { TOOL_SECURITY_KEY, SecurityPolicy } from './decorators/security.decorator';
+import { FlowExecuteTool } from './tools';
 
 // Auth服务地址
 const getAuthServiceUrl = () => {
@@ -43,45 +32,115 @@ const getAuthServiceUrl = () => {
 };
 
 @Injectable()
-export class ToolExecutor {
+export class ToolExecutor implements OnModuleInit {
   private readonly logger = new Logger(ToolExecutor.name);
   private tools: Map<string, ToolDefinition> = new Map();
-  private defaultTools: ToolDefinition[] = [];
   private dynamicFlowToolNames: Set<string> = new Set();
   private isFlowsLoaded = false;
   private lastDynamicFlowLoadAt = 0;
   private readonly dynamicFlowTtlMs = Number(process.env.DYNAMIC_FLOW_TOOLS_TTL_MS || 60_000);
 
-  constructor() {
-    // 注册默认工具
-    this.registerDefaultTools();
+  constructor(
+    private readonly discoveryService: DiscoveryService,
+    private readonly reflector: Reflector,
+  ) {}
+
+  async onModuleInit() {
+    this.discoverAndRegisterTools();
   }
 
   /**
-   * 注册默认工具集
+   * 使用 DiscoveryService 自动发现并注册带有 @Tool 装饰器的工具
    */
-  private registerDefaultTools(): void {
-    this.defaultTools = [
-      new SkillMatchTool(),
-      new ParamCollectTool(),
-      new DocumentGenTool(),
-      new UserAskTool(),
-      new FileParseTool(),
-      new GenerateParametersTool(),
-      new DocumentRenderTool(),
-      new DocumentIntakeTool(),
-      new DocumentParamRecoverTool(),
-      new PreviewParamsTool(),
-      new ApiCallTool(),
-      new FlowExecuteTool(),
-      new BrowserStepTool(),
-    ];
+  private discoverAndRegisterTools(): void {
+    const providers = this.discoveryService.getProviders();
+    let registeredCount = 0;
 
-    for (const tool of this.defaultTools) {
-      this.tools.set(tool.name, tool);
-    }
+    providers.forEach((wrapper) => {
+      const { instance } = wrapper;
+      if (!instance || typeof instance !== 'object') return;
 
-    this.logger.log(`Registered ${this.defaultTools.length} default tools`);
+      const metadata = this.reflector.get<ToolOptions>(
+        TOOL_METADATA_KEY,
+        instance.constructor,
+      );
+
+      if (metadata) {
+        let tool = instance as ToolDefinition;
+
+        // 应用 SecurityPolicy
+        const securityPolicy = this.reflector.get<SecurityPolicy>(
+          TOOL_SECURITY_KEY,
+          instance.constructor,
+        );
+        if (securityPolicy) {
+          this.logger.debug(`Applying security policy to tool ${metadata.name}`);
+          tool = this.wrapWithSecurityPolicy(tool, securityPolicy);
+        }
+
+        this.tools.set(metadata.name, tool);
+        registeredCount++;
+      }
+    });
+
+    this.logger.log(`Automatically discovered and registered ${registeredCount} tools via decorators`);
+  }
+
+  /**
+   * 包装工具执行逻辑以应用安全策略 (Security Middleware)
+   */
+  private wrapWithSecurityPolicy(tool: ToolDefinition, policy: SecurityPolicy): ToolDefinition {
+    const originalExecute = tool.execute.bind(tool);
+
+    tool.execute = async (params: Record<string, unknown>, context: ExecutionContext): Promise<ToolResult> => {
+      // 1. 路径安全检查
+      if (policy.validatePath) {
+        for (const [key, value] of Object.entries(params)) {
+          if (typeof value === 'string' && (key.toLowerCase().includes('path') || key.toLowerCase().includes('file'))) {
+            if (value.includes('..') || value.startsWith('/') || value.includes('~')) {
+              this.logger.warn(`Security Block: Path traversal attempt in tool ${tool.name}, parameter ${key}: ${value}`);
+              return {
+                success: false,
+                output: `安全阻断：参数 ${key} 包含非法路径字符 (.. 或 绝对路径)。只允许相对当前工作目录的路径。`,
+                data: { error: 'security_path_violation', parameter: key },
+              };
+            }
+          }
+        }
+      }
+
+      // 2. 命令注入检查
+      if (policy.validateCommand) {
+        const command = params.command as string | undefined;
+        if (command && (command.includes(';') || command.includes('&') || command.includes('|') || command.includes('`') || command.includes('$'))) {
+          this.logger.warn(`Security Block: Command injection attempt in tool ${tool.name}: ${command}`);
+          return {
+            success: false,
+            output: '安全阻断：检测到潜在的命令注入风险字符。',
+            data: { error: 'security_command_violation' },
+          };
+        }
+      }
+
+      // 3. 内容长度检查
+      if (policy.maxContentLength) {
+        for (const [key, value] of Object.entries(params)) {
+          if (typeof value === 'string' && value.length > policy.maxContentLength) {
+            this.logger.warn(`Security Block: Content too long in tool ${tool.name}, parameter ${key}`);
+            return {
+              success: false,
+              output: `安全阻断：参数 ${key} 内容过长 (限制 ${policy.maxContentLength} 字符)。`,
+              data: { error: 'security_length_violation', parameter: key },
+            };
+          }
+        }
+      }
+
+      // 执行原始逻辑
+      return originalExecute(params, context);
+    };
+
+    return tool;
   }
 
   /**
@@ -282,6 +341,7 @@ export class ToolExecutor {
       outputParams: availableSkill.outputParams,
       matchReason: 'selected_from_available_skills',
     };
+    context.selectedSkillToolNames = availableSkill.effectiveTools || context.selectedSkillToolNames;
   }
 
   private isToolVisibleInSnapshot(toolName: string, context: ExecutionContext): boolean {
@@ -289,6 +349,14 @@ export class ToolExecutor {
       return true;
     }
     return context.capabilitySnapshot.visibleTools.some((tool) => tool.name === toolName);
+  }
+
+  private getCapabilityVisibleTool(toolName: string, context: ExecutionContext) {
+    return context.capabilitySnapshot?.visibleTools.find((tool) => tool.name === toolName);
+  }
+
+  private hasApprovalForTool(toolName: string, context: ExecutionContext): boolean {
+    return Boolean(context.approvedToolNames?.includes(toolName));
   }
 
   private buildToolResult(
@@ -303,6 +371,23 @@ export class ToolExecutor {
         ...(partial.meta || {}),
       },
     };
+  }
+
+  private isToolAllowedInSelectedSkill(toolName: string, context: ExecutionContext): boolean {
+    const selectedSkillId =
+      context.skill?.skillId
+      || context.documentContext?.selectedSkillId
+      || context.capabilitySnapshot?.selectedSkillId;
+    const selectedSkillToolNames =
+      context.selectedSkillToolNames
+      || context.capabilitySnapshot?.skillScopedToolNames
+      || context.availableSkills?.find((item) => item.skillId === selectedSkillId)?.effectiveTools;
+
+    if (!selectedSkillId || !selectedSkillToolNames || selectedSkillToolNames.length === 0) {
+      return true;
+    }
+
+    return selectedSkillToolNames.includes(toolName);
   }
 
   /**
@@ -334,6 +419,60 @@ export class ToolExecutor {
         code: 'tool_not_visible_in_capability_snapshot',
         severity: 'error',
         data: { error: 'tool_not_visible_in_capability_snapshot' },
+      });
+    }
+
+    const capabilityVisibleTool = this.getCapabilityVisibleTool(toolName, context);
+    if (capabilityVisibleTool?.exposure === 'prompt_only') {
+      this.logger.warn(`${tracePrefix}Tool is prompt-only and cannot run at runtime: ${toolName}`);
+      return this.buildToolResult(toolName, {
+        success: false,
+        output: `工具 "${toolName}" 当前仅允许暴露给策略层，不能直接在运行时执行。`,
+        code: 'tool_prompt_only',
+        severity: 'error',
+        data: { error: 'tool_prompt_only', toolName },
+      });
+    }
+
+    if (!this.isToolAllowedInSelectedSkill(toolName, context)) {
+      this.logger.warn(`${tracePrefix}Tool NOT BOUND to selected skill: ${toolName}`);
+      return this.buildToolResult(toolName, {
+        success: false,
+        output: `工具 "${toolName}" 不在当前技能允许的工具范围内。请仅使用该 Skill 已绑定的工具。`,
+        code: 'tool_not_bound_to_skill',
+        severity: 'error',
+        data: {
+          error: 'tool_not_bound_to_skill',
+          selectedSkillId:
+            context.skill?.skillId
+            || context.documentContext?.selectedSkillId
+            || context.capabilitySnapshot?.selectedSkillId,
+          allowedTools:
+            context.selectedSkillToolNames
+            || context.capabilitySnapshot?.skillScopedToolNames
+            || [],
+        },
+      });
+    }
+
+    const requiresApproval = Boolean(
+      context.capabilitySnapshot?.policies.requireApprovalToolNames?.includes(toolName)
+      || capabilityVisibleTool?.requiresApproval,
+    );
+    if (requiresApproval && !this.hasApprovalForTool(toolName, context)) {
+      this.logger.warn(`${tracePrefix}Tool requires approval before execution: ${toolName}`);
+      return this.buildToolResult(toolName, {
+        success: false,
+        output: `工具 "${toolName}" 需要审批后才能执行，当前请求未携带审批通过状态。`,
+        code: 'tool_requires_approval',
+        severity: 'error',
+        data: {
+          error: 'tool_requires_approval',
+          toolName,
+          approvedToolNames: context.approvedToolNames || [],
+        },
+        requiresUserInput: true,
+        userInputPrompt: `请先完成工具 "${toolName}" 的审批，再继续执行。`,
       });
     }
 

@@ -3,9 +3,11 @@
  * 使用Carbone引擎渲染模板生成文档
  */
 
+import { Injectable } from '@nestjs/common';
 import axios from 'axios';
 import { BaseTool } from './base.tool';
 import { ToolResult, ExecutionContext } from '../interfaces';
+import { Tool } from '../decorators/tool.decorator';
 
 type DocumentRenderResponse = {
   downloadUrl?: string;
@@ -51,36 +53,58 @@ const CARBONE_SERVICE_URL = process.env.CARBONE_SERVICE_URL || 'http://carbone-e
 // 外部可访问的下载地址（返回给用户）
 const CARBONE_EXTERNAL_URL = process.env.CARBONE_EXTERNAL_URL || `http://${process.env.HOST_IP || 'localhost'}:3009`;
 
+@Injectable()
+@Tool({
+  name: 'document_render',
+  description: '调用Carbone引擎根据模板ID和数据渲染文档。返回下载链接。',
+  parameters: {
+    type: 'object',
+    properties: {
+      templateId: {
+        type: 'string',
+        description: 'Carbone引擎中的模板ID',
+        required: true,
+      },
+      data: {
+        type: 'object',
+        description: '填充模板的数据',
+        required: true,
+      },
+      format: {
+        type: 'string',
+        description: '输出格式（如pdf, docx, xlsx），默认docx',
+        required: false,
+      },
+    },
+    required: ['templateId', 'data'],
+  },
+  isDefault: true,
+})
 export class DocumentRenderTool extends BaseTool {
   constructor() {
     super(
       'document_render',
-      '渲染模板生成最终文档。调用Carbone引擎的render API生成文档文件。可以接收templateId和data参数，或直接使用上下文中的collectedParams和carboneTemplateId。',
+      '调用Carbone引擎根据模板ID和数据渲染文档。返回下载链接。',
       {
         type: 'object',
         properties: {
           templateId: {
             type: 'string',
-            description: '模板ID',
+            description: 'Carbone引擎中的模板ID',
             required: true,
           },
           data: {
             type: 'object',
-            description: '用于渲染模板的参数数据',
+            description: '填充模板的数据',
             required: true,
           },
           format: {
             type: 'string',
-            description: '输出格式（docx, pdf等）',
+            description: '输出格式（如pdf, docx, xlsx），默认docx',
             required: false,
           },
         },
         required: ['templateId', 'data'],
-      },
-      { 
-        category: 'execution', 
-        requiresConfirmation: true,
-        requiredRoles: ['admin'] // 仅管理员可执行最终渲染
       },
     );
   }

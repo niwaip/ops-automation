@@ -21,6 +21,7 @@ import {
   ToolDefinition,
   RoutingMeta,
   PromptAssemblyMeta,
+  PromptDebugPayload,
   DecisionContext,
   ExecutionUsage,
   LLMCallDetail,
@@ -41,6 +42,7 @@ import {
   decideRecoveryAction,
 } from './error-recovery-policy';
 import { LLMResponse } from '../../interfaces';
+import { PromptDebugSettingsService } from '../debug-settings/prompt-debug-settings.service';
 
 /**
  * 默认配置
@@ -66,10 +68,51 @@ export class ReActEngineService {
     private readonly sessionService: SessionService,
     private readonly capabilityResolver: CapabilityResolver,
     private readonly modelRouterService: ModelRouterService,
+    private readonly promptDebugSettingsService: PromptDebugSettingsService,
   ) {}
 
   private tracePrefix(context: ExecutionContext): string {
     return context.traceId ? `[${context.traceId}] ` : '';
+  }
+
+  private mergeApprovedToolNames(
+    existing: string[] | undefined,
+    incoming: string[] | undefined,
+  ): string[] | undefined {
+    const merged = Array.from(new Set([...(existing || []), ...(incoming || [])].filter(Boolean)));
+    return merged.length > 0 ? merged : undefined;
+  }
+
+  private getPendingApprovalToolName(state: ReActState): string | undefined {
+    if (state.lastToolResult?.code !== 'tool_requires_approval') {
+      return undefined;
+    }
+    const toolName = state.lastToolResult.data?.toolName;
+    return typeof toolName === 'string' && toolName.trim().length > 0 ? toolName : undefined;
+  }
+
+  private canResumeApprovedAction(
+    request: ChatRequestDTO,
+    state: ReActState,
+  ): boolean {
+    const pendingToolName = this.getPendingApprovalToolName(state);
+    return Boolean(
+      pendingToolName
+      && request.approvedToolNames?.includes(pendingToolName),
+    );
+  }
+
+  private buildPersistedContext(context: ExecutionContext): Partial<ExecutionContext> {
+    return {
+      skill: context.skill,
+      availableSkills: context.availableSkills,
+      uploadedFiles: context.uploadedFiles,
+      collectedParams: context.collectedParams,
+      documentContext: context.documentContext,
+      userRoles: context.userRoles,
+      capabilitySnapshot: context.capabilitySnapshot,
+      approvedToolNames: context.approvedToolNames,
+    };
   }
 
   private appendReActTrace(
@@ -219,6 +262,21 @@ export class ReActEngineService {
     return this.buildPromptAssemblyMeta(state);
   }
 
+  private canExposePromptDebug(context: ExecutionContext): boolean {
+    return this.promptDebugSettingsService.isPromptDebugEnabled()
+      && Boolean(context.userRoles?.includes('admin'));
+  }
+
+  private buildPromptDebugPayload(
+    state: ReActState,
+    context: ExecutionContext,
+  ): PromptDebugPayload | undefined {
+    if (!this.canExposePromptDebug(context)) {
+      return undefined;
+    }
+    return state.promptDebug;
+  }
+
   private buildDecisionContextPayload(state: ReActState): DecisionContext {
     return {
       routing: this.buildRoutingMeta(state),
@@ -337,6 +395,10 @@ export class ReActEngineService {
     if (request.userRoles) {
       context.userRoles = request.userRoles;
     }
+    context.approvedToolNames = this.mergeApprovedToolNames(
+      context.approvedToolNames,
+      request.approvedToolNames,
+    );
     if (request.message?.trim()) {
       context.originalUserInput = request.message.trim();
     }
@@ -350,8 +412,9 @@ export class ReActEngineService {
     // 尝试从Session中恢复
     const savedSession = await this.sessionService.getSession(context.sessionId);
     if (savedSession) {
+      const canResumeApprovedAction = this.canResumeApprovedAction(request, savedSession.state);
       // 已进入等待用户输入状态时，若本次没有新输入，则直接返回等待事件，避免重复执行工具
-      if (savedSession.state.isWaitingForUserInput && !request.message?.trim()) {
+      if (savedSession.state.isWaitingForUserInput && !request.message?.trim() && !canResumeApprovedAction) {
         this.logger.debug(`${this.tracePrefix(context)}Session ${context.sessionId} is waiting for user input`);
         yield this.createWaitingEvent(savedSession.state);
         return;
@@ -371,12 +434,21 @@ export class ReActEngineService {
         state = savedSession.state;
         messages = savedSession.history;
         // 收到新输入后解除等待状态，继续后续步骤
-        if (request.message?.trim()) {
+        if (request.message?.trim() || canResumeApprovedAction) {
           state.isWaitingForUserInput = false;
         }
         // 恢复context中的数据
         if (savedSession.context) {
           Object.assign(context, savedSession.context);
+        }
+        context.approvedToolNames = this.mergeApprovedToolNames(
+          context.approvedToolNames,
+          request.approvedToolNames,
+        );
+        if (canResumeApprovedAction && state.action) {
+          context.nextAction = state.action;
+          context.nextActionParams = state.actionInput || {};
+          this.logger.log(`${this.tracePrefix(context)}Resuming approved action ${state.action} for session ${context.sessionId}`);
         }
       }
       
@@ -428,8 +500,12 @@ export class ReActEngineService {
       expectedResult: skill.runtimeHints?.expectedResult,
       outputParams: skill.runtimeHints?.outputParams,
       executionType: skill.executionType,
+      effectiveTools: capabilitySnapshot.selectedSkillId === skill.skillId
+        ? (capabilitySnapshot.skillScopedToolNames || [])
+        : undefined,
     }));
     context.allowedToolNames = capabilitySnapshot.visibleTools.map((tool) => tool.name);
+    context.selectedSkillToolNames = capabilitySnapshot.skillScopedToolNames || [];
     const tools = this.toolExecutor.getTools(context.allowedToolNames, context.userRoles);
     await this.ensureActiveModelId(state, config, context);
 
@@ -464,6 +540,7 @@ export class ReActEngineService {
           content: state.action,
           data: {
             actionInput: state.actionInput,
+            promptDebug: this.buildPromptDebugPayload(state, context),
             promptAssembly: this.buildPromptAssemblyPayload(state),
             routing: this.buildRoutingMeta(state),
             decisionContext: this.buildDecisionContextPayload(state),
@@ -487,15 +564,7 @@ export class ReActEngineService {
           await this.sessionService.saveSession(context.sessionId, {
             state,
             history: messages,
-            context: {
-              skill: context.skill,
-              availableSkills: context.availableSkills,
-              uploadedFiles: context.uploadedFiles,
-              collectedParams: context.collectedParams,
-              documentContext: context.documentContext,
-              userRoles: context.userRoles,
-              capabilitySnapshot: context.capabilitySnapshot,
-            },
+            context: this.buildPersistedContext(context),
           });
           yield this.createWaitingEvent(state);
           break;
@@ -551,6 +620,7 @@ export class ReActEngineService {
           content: state.action,
           data: {
             actionInput: state.actionInput,
+            promptDebug: this.buildPromptDebugPayload(state, context),
             promptAssembly: this.buildPromptAssemblyPayload(state),
             routing: this.buildRoutingMeta(state),
             decisionContext: this.buildDecisionContextPayload(state),
@@ -619,15 +689,7 @@ export class ReActEngineService {
         await this.sessionService.saveSession(context.sessionId, {
           state,
           history: messages,
-          context: {
-            skill: context.skill,
-            availableSkills: context.availableSkills,
-            uploadedFiles: context.uploadedFiles,
-            collectedParams: context.collectedParams,
-            documentContext: context.documentContext,
-            userRoles: context.userRoles,
-            capabilitySnapshot: context.capabilitySnapshot,
-          },
+          context: this.buildPersistedContext(context),
         });
         yield this.createWaitingEvent(state);
         break;
@@ -637,13 +699,19 @@ export class ReActEngineService {
       if (state.action && state.action !== 'finish') {
         // 检查动作是否需要确认
         const tool = this.toolExecutor.getTool(state.action);
-        if (tool?.requiresConfirmation && !request.isConfirmed) {
+        const requiresConfirmation = Boolean(
+          tool?.requiresConfirmation
+          || context.capabilitySnapshot?.policies.requireConfirmToolNames.includes(state.action)
+          || context.capabilitySnapshot?.visibleTools.find((item) => item.name === state.action)?.requiresConfirmation,
+        );
+        if (requiresConfirmation && !request.isConfirmed) {
           yield {
             type: StreamEventType.ACTION_CONFIRM,
             content: `操作 "${state.action}" 需要您的确认才能执行。`,
             data: {
               action: state.action,
               actionInput: state.actionInput,
+              promptDebug: this.buildPromptDebugPayload(state, context),
               promptAssembly: this.buildPromptAssemblyPayload(state),
               routing: this.buildRoutingMeta(state),
               decisionContext: this.buildDecisionContextPayload(state),
@@ -656,15 +724,7 @@ export class ReActEngineService {
           await this.sessionService.saveSession(context.sessionId, {
             state,
             history: messages,
-            context: {
-              skill: context.skill,
-              availableSkills: context.availableSkills,
-              uploadedFiles: context.uploadedFiles,
-              collectedParams: context.collectedParams,
-              documentContext: context.documentContext,
-              userRoles: context.userRoles, // 存入 Session
-              capabilitySnapshot: context.capabilitySnapshot,
-            }
+            context: this.buildPersistedContext(context),
           });
           break;
         }
@@ -678,15 +738,7 @@ export class ReActEngineService {
         await this.sessionService.saveSession(context.sessionId, {
           state,
           history: messages,
-          context: {
-            skill: context.skill,
-            availableSkills: context.availableSkills,
-            uploadedFiles: context.uploadedFiles,
-            collectedParams: context.collectedParams,
-            documentContext: context.documentContext,
-            userRoles: context.userRoles,
-            capabilitySnapshot: context.capabilitySnapshot,
-          }
+          context: this.buildPersistedContext(context),
         });
       }
 
@@ -702,15 +754,7 @@ export class ReActEngineService {
         await this.sessionService.saveSession(context.sessionId, {
           state,
           history: messages,
-          context: {
-            skill: context.skill,
-            availableSkills: context.availableSkills,
-            uploadedFiles: context.uploadedFiles,
-            collectedParams: context.collectedParams,
-            documentContext: context.documentContext,
-            userRoles: context.userRoles,
-            capabilitySnapshot: context.capabilitySnapshot,
-          },
+          context: this.buildPersistedContext(context),
         });
         yield this.createWaitingEvent(state);
         break;
@@ -722,21 +766,14 @@ export class ReActEngineService {
       await this.sessionService.saveSession(context.sessionId, {
         state,
         history: messages,
-        context: {
-          skill: context.skill,
-          availableSkills: context.availableSkills,
-          uploadedFiles: context.uploadedFiles,
-          collectedParams: context.collectedParams,
-          documentContext: context.documentContext,
-          userRoles: context.userRoles,
-          capabilitySnapshot: context.capabilitySnapshot,
-        },
+        context: this.buildPersistedContext(context),
       });
       yield {
         type: StreamEventType.ERROR,
         content: `达到最大迭代次数 ${state.maxIterations}，任务未完成`,
         data: {
           taskStatus: 'failed',
+          promptDebug: this.buildPromptDebugPayload(state, context),
           canResume: true,
           promptAssembly: this.buildPromptAssemblyPayload(state),
           routing: this.buildRoutingMeta(state),
@@ -790,6 +827,33 @@ export class ReActEngineService {
     );
     const userPrompt = renderPromptSections(userSections);
     this.setPromptAssemblyMeta(state, systemSections, userSections);
+    state.promptDebug = this.canExposePromptDebug(context)
+      ? {
+        debugSource: 'react-engine',
+        systemPrompt,
+        userPrompt,
+        systemPromptSectionKeys: systemSections.map((section) => section.key),
+        systemPromptSectionSources: systemSections.map((section) => section.source),
+        userPromptSectionKeys: userSections.map((section) => section.key),
+        userPromptSectionSources: userSections.map((section) => section.source),
+        modelId: config.modelId,
+        llmRequestMessages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: userPrompt },
+        ],
+        llmCalls: [
+          {
+            stage: 'react-engine',
+            label: 'ReAct 推理',
+            modelId: config.modelId,
+            requestMessages: [
+              { role: 'system', content: systemPrompt },
+              { role: 'user', content: userPrompt },
+            ],
+          },
+        ],
+      }
+      : undefined;
     this.logger.debug(
       `${this.tracePrefix(context)}Prompt assembly: `
       + `system=${state.promptAssembly?.systemPromptSectionKeys?.join(',') || 'none'} `
@@ -822,6 +886,7 @@ export class ReActEngineService {
           code: state.lastToolResult.code,
           severity: state.lastToolResult.severity,
           meta: state.lastToolResult.meta,
+          promptDebug: this.buildPromptDebugPayload(state, context),
           promptAssembly: this.buildPromptAssemblyPayload(state),
           routing: this.buildRoutingMeta(state),
           decisionContext: this.buildDecisionContextPayload(state),
@@ -850,6 +915,25 @@ export class ReActEngineService {
       // 使用流式API
       const rawResponse = await client.chatCompletion(aiMessages as any);
       const response = this.normalizeLLMResponse(rawResponse);
+      if (state.promptDebug) {
+        const llmCalls = Array.isArray(state.promptDebug.llmCalls)
+          ? [...state.promptDebug.llmCalls]
+          : [];
+        const lastCall = llmCalls[llmCalls.length - 1];
+        if (lastCall) {
+          lastCall.responseText = response.content;
+        }
+        state.promptDebug = {
+          ...state.promptDebug,
+          modelId: config.modelId,
+          llmRequestMessages: aiMessages.map((message) => ({
+            role: message.role as 'system' | 'user' | 'assistant',
+            content: String(message.content || ''),
+          })),
+          llmResponseText: response.content,
+          llmCalls,
+        };
+      }
 
       // 记录消耗 (P2-1)
       await this.recordLLMCall(state, config.modelId, response);
@@ -881,6 +965,7 @@ export class ReActEngineService {
           content: `${parsed.action}`,
           data: {
             actionInput: parsed.actionInput,
+            promptDebug: this.buildPromptDebugPayload(state, context),
             promptAssembly: this.buildPromptAssemblyPayload(state),
             routing: this.buildRoutingMeta(state),
             decisionContext: this.buildDecisionContextPayload(state),
@@ -920,6 +1005,7 @@ export class ReActEngineService {
             code: state.lastToolResult.code,
             severity: state.lastToolResult.severity,
             meta: state.lastToolResult.meta,
+            promptDebug: this.buildPromptDebugPayload(state, context),
             promptAssembly: this.buildPromptAssemblyPayload(state),
             routing: this.buildRoutingMeta(state),
             decisionContext: this.buildDecisionContextPayload(state),
@@ -955,6 +1041,7 @@ export class ReActEngineService {
           code: state.lastToolResult.code,
           severity: state.lastToolResult.severity,
           meta: state.lastToolResult.meta,
+          promptDebug: this.buildPromptDebugPayload(state, context),
           promptAssembly: this.buildPromptAssemblyPayload(state),
           routing: this.buildRoutingMeta(state),
           decisionContext: this.buildDecisionContextPayload(state),
@@ -1086,6 +1173,7 @@ export class ReActEngineService {
         data: {
           params: innerData.params,
           skill: context.skill,
+          promptDebug: this.buildPromptDebugPayload(state, context),
           promptAssembly: this.buildPromptAssemblyPayload(state),
           routing: this.buildRoutingMeta(state),
           decisionContext: this.buildDecisionContextPayload(state),
@@ -1126,6 +1214,7 @@ export class ReActEngineService {
           ...this.buildRoutingMeta(state),
           ...this.buildPromptAssemblyMeta(state),
         },
+        promptDebug: state.promptDebug,
         promptAssembly: this.buildPromptAssemblyPayload(state),
         routing: this.buildRoutingMeta(state),
         decisionContext: this.buildDecisionContextPayload(state),
@@ -1147,12 +1236,15 @@ export class ReActEngineService {
    * 创建等待用户输入事件
    */
   private createWaitingEvent(state: ReActState): StreamEvent {
+    const approvalToolName = this.getPendingApprovalToolName(state);
     return {
       type: StreamEventType.WAITING_INPUT,
       content: state.observation,
       data: {
         requiresUserInput: true,
         taskStatus: 'waiting_input',
+        waitReason: approvalToolName ? 'approval' : 'user_input',
+        approvalToolName,
         action: state.action,
         toolResult: state.lastToolResult,
         code: state.lastToolResult?.code,
@@ -1162,6 +1254,7 @@ export class ReActEngineService {
           ...this.buildRoutingMeta(state),
           ...this.buildPromptAssemblyMeta(state),
         },
+        promptDebug: state.promptDebug,
         promptAssembly: this.buildPromptAssemblyPayload(state),
         routing: this.buildRoutingMeta(state),
         decisionContext: this.buildDecisionContextPayload(state),

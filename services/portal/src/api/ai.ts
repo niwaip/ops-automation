@@ -47,6 +47,10 @@ export interface PresetModelsResponse {
   presets: PresetModelStatus[];
 }
 
+export interface PromptDebugSettings {
+  promptDebugEnabled: boolean;
+}
+
 // AI Model API
 export const aiModelApi = {
   list: async (): Promise<AIModelListResponse> => {
@@ -95,6 +99,14 @@ export const aiModelApi = {
 
   testConfig: async (endpoint: string, apiKey: string, modelName: string): Promise<{ success: boolean; response?: string; error?: string }> => {
     return apiClient.post('/ai/models/test-config', { endpoint, apiKey, modelName });
+  },
+
+  getDebugSettings: async (): Promise<PromptDebugSettings> => {
+    return apiClient.get<PromptDebugSettings>('/ai/debug-settings');
+  },
+
+  updateDebugSettings: async (data: PromptDebugSettings): Promise<PromptDebugSettings> => {
+    return apiClient.patch<PromptDebugSettings>('/ai/debug-settings', data);
   },
 };
 
