@@ -7,7 +7,7 @@ import { BrowserCommandModule } from './modules/browser-command/browser-command.
 import { ReActEngineModule } from './modules/react-engine/react-engine.module';
 import { RedisModule } from './modules/redis/redis.module';
 import { PrismaModule } from './modules/prisma/prisma.module';
-import { ExecutionStepModule } from './modules/execution-step/execution-step.module';
+import { ControlPlaneClientModule } from './client/control-plane-client.module';
 import { PlannerModule } from './modules/planner/planner.module';
 import { ModelController } from './controllers/model.controller';
 import { ChatController } from './controllers/chat.controller';
@@ -17,7 +17,7 @@ import { DebugSettingsModule } from './modules/debug-settings/debug-settings.mod
 @Module({
   imports: [
     PrismaModule,
-    ExecutionStepModule,
+    ControlPlaneClientModule,
     ModelModule,
     AgentModule,
     RecognizerModule,

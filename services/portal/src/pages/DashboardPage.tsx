@@ -14,6 +14,10 @@ import { executionApi, ExecutionDto, ExecutionStatus } from '../api/execution';
 import { skillApi } from '../api/skill';
 import { capabilityReleaseApi } from '../api/capability-release';
 import { templateApi } from '../api/template';
+import {
+  buildExecutionStatusLabels,
+  EXECUTION_STATUS_COLORS,
+} from '../utils/executionStatusMeta';
 
 const summarizeText = (value?: string, maxLength = 38) => {
   if (!value) return '';
@@ -131,21 +135,8 @@ const DashboardPage: React.FC = () => {
   );
   const templatesStatsQuery = useQuery(['templates-stats'], () => templateApi.list());
 
-  const statusColors: Record<ExecutionStatus, string> = {
-    draft: 'default',
-    queued: 'default',
-    running: 'processing',
-    waiting_input: 'warning',
-    pending_approval: 'warning',
-    human_control: 'error',
-    paused: 'default',
-    succeeded: 'success',
-    failed: 'error',
-    cancelled: 'default',
-    rolled_back: 'default',
-  };
-
-  const statusLabels: Record<ExecutionStatus, string> = {
+  const statusColors = EXECUTION_STATUS_COLORS;
+  const statusLabels = buildExecutionStatusLabels({
     draft: t('executionStatusDraft'),
     queued: t('executionStatusQueued'),
     running: t('executionStatusRunning'),
@@ -157,7 +148,7 @@ const DashboardPage: React.FC = () => {
     failed: t('executionStatusFailed'),
     cancelled: t('executionStatusCancelled'),
     rolled_back: t('executionStatusRolledBack'),
-  };
+  });
 
   const skillNameMap = useMemo(() => {
     const map = new Map<string, string>();

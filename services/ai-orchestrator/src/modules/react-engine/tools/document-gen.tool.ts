@@ -3,7 +3,7 @@
  * 调用Carbone引擎生成文档
  */
 
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable, Optional } from '@nestjs/common';
 import { BaseTool } from './base.tool';
 import { ToolResult, ExecutionContext } from '../interfaces';
 import axios from 'axios';
@@ -78,8 +78,9 @@ const isTemplateVisibleInSnapshot = (
 export class DocumentGenTool extends BaseTool {
   private carboneApiUrl: string;
 
-  constructor() {
-    const carboneApiUrl = process.env.CARBONE_API_URL || 'http://localhost:3010';
+  constructor(
+    @Optional() @Inject('CARBONE_API_URL') carboneApiUrl?: string,
+  ) {
     super(
       'document_generate',
       '根据Skill和参数生成文档。调用Carbone引擎渲染模板并返回下载链接。',
@@ -110,7 +111,7 @@ export class DocumentGenTool extends BaseTool {
         required: ['skillId', 'templateId', 'data'],
       },
     );
-    this.carboneApiUrl = carboneApiUrl;
+    this.carboneApiUrl = carboneApiUrl || process.env.CARBONE_API_URL || 'http://localhost:3010';
   }
 
   async execute(

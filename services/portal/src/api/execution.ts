@@ -3,7 +3,18 @@
  * API client for Execution management (NIW-136, Phase 2)
  */
 
+import type {
+  ApprovalStatus,
+  ExecutionStatus,
+  ExecutionStepStatus,
+} from '@ops/contracts';
 import { apiClient } from './client';
+
+export type {
+  ApprovalStatus,
+  ExecutionStatus,
+  ExecutionStepStatus,
+} from '@ops/contracts';
 
 const CONTROL_PLANE_API_BASE_URL = import.meta.env.VITE_CONTROL_PLANE_API_URL || '';
 
@@ -14,20 +25,6 @@ const getExecutionApiUrl = (path: string) => {
 
   return path;
 };
-
-// Execution status type
-export type ExecutionStatus =
-  | 'draft'
-  | 'queued'
-  | 'running'
-  | 'waiting_input'
-  | 'pending_approval'
-  | 'human_control'
-  | 'paused'
-  | 'succeeded'
-  | 'failed'
-  | 'cancelled'
-  | 'rolled_back';
 
 // Execution DTO from control-plane
 export interface ExecutionDto {
@@ -47,7 +44,7 @@ export interface ExecutionDto {
   failureCode?: string;
   currentStepId?: string;
   requiresApproval: boolean;
-  approvalStatus?: string;
+  approvalStatus?: ApprovalStatus;
   takeoverRequired: boolean;
   takeoverReason?: string;
   startedAt?: string;
@@ -63,7 +60,7 @@ export interface ExecutionStepDto {
   stepIndex: number;
   name?: string;
   type: string;
-  status: string;
+  status: ExecutionStepStatus;
   action?: string;
   target?: Record<string, unknown>;
   input?: Record<string, unknown>;

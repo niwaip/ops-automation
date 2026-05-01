@@ -2,6 +2,16 @@ import { Injectable, Logger, NotFoundException, BadRequestException, ForbiddenEx
 import { PrismaService } from '../prisma/prisma.service';
 import { Prisma } from '@prisma/client';
 import { Subject, filter } from 'rxjs';
+import { APPROVAL_STATUS } from './contracts/approval-status';
+import { EXECUTION_STATUS, ExecutionStatus } from './contracts/execution-status';
+import { EXECUTION_EVENT_TYPE } from './contracts/execution-event-type';
+import { EXECUTION_STEP_STATUS } from './contracts/execution-step-status';
+import { CreateExecutionEventOptions, ExecutionEventService, ExecutionStreamEventPayload } from './execution-event.service';
+import { mapExecutionStepToDto, mapExecutionToDto } from './execution.mapper';
+import { buildPlannedExecutionSteps } from './execution-plan-step.builder';
+import { canTransitionExecutionStatus, isTerminalExecutionStatus } from './execution-transition-policy';
+import { ExecutionStateService } from './execution-state.service';
+import { ExecutionStepService } from './execution-step.service';
 import {
   CreateExecutionDto,
   ExecutionDto,
@@ -15,28 +25,6 @@ import {
   ApprovalDecisionDto,
 } from './execution.dto';
 import axios from 'axios';
-
-// Execution event for streaming
-interface ExecutionEventPayload {
-  executionId: string;
-  eventType: string;
-  payload: any;
-  timestamp: string;
-}
-
-// Execution status type
-type ExecutionStatus =
-  | 'draft'
-  | 'queued'
-  | 'running'
-  | 'waiting_input'
-  | 'pending_approval'
-  | 'human_control'
-  | 'paused'
-  | 'succeeded'
-  | 'failed'
-  | 'cancelled'
-  | 'rolled_back';
 
 interface BrowserExecuteStepRequest {
   executionId: string;
@@ -128,21 +116,6 @@ interface PlannerPlanDraft {
   usage?: LLMUsage;
 }
 
-// Valid status transitions
-const validTransitions: Record<ExecutionStatus, ExecutionStatus[]> = {
-  draft: ['queued', 'cancelled'],
-  queued: ['running', 'waiting_input', 'pending_approval', 'cancelled'],
-  running: ['waiting_input', 'pending_approval', 'human_control', 'paused', 'succeeded', 'failed', 'cancelled'],
-  waiting_input: ['queued', 'running', 'cancelled'],
-  pending_approval: ['queued', 'running', 'cancelled'],
-  human_control: ['running', 'cancelled'],
-  paused: ['running', 'cancelled'],
-  succeeded: [],
-  failed: [],
-  cancelled: [],
-  rolled_back: [],
-};
-
 @Injectable()
 export class ExecutionService {
   private readonly logger = new Logger(ExecutionService.name);
@@ -152,34 +125,46 @@ export class ExecutionService {
   private readonly aiOrchestratorUrl =
     process.env.AI_ORCHESTRATOR_URL || process.env.AI_SERVICE_URL || 'http://ops-ai-orchestrator:3007';
 
-  private readonly eventSubject = new Subject<ExecutionEventPayload>();
+  private readonly eventSubject = new Subject<ExecutionStreamEventPayload>();
+  private readonly executionEventService: ExecutionEventService;
+  private readonly executionStateService: ExecutionStateService;
+  private readonly executionStepService: ExecutionStepService;
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    executionEventService?: ExecutionEventService,
+    executionStateService?: ExecutionStateService,
+    executionStepService?: ExecutionStepService,
+  ) {
+    this.executionEventService = executionEventService || new ExecutionEventService(prisma);
+    this.executionStateService = executionStateService || new ExecutionStateService(
+      prisma,
+      this.executionEventService,
+    );
+    this.executionStepService = executionStepService || new ExecutionStepService(prisma);
+  }
 
-  subscribeToEvents(executionId: string, callback: (event: ExecutionEventPayload) => void) {
+  subscribeToEvents(executionId: string, callback: (event: ExecutionStreamEventPayload) => void) {
     const subscription = this.eventSubject
       .pipe(filter((e) => e.executionId === executionId))
       .subscribe(callback);
     return subscription;
   }
 
-  private async createEvent(executionId: string, eventType: string, payload: any): Promise<void> {
-    const timestamp = new Date().toISOString();
-    await this.prisma.executionEvent.create({
-      data: {
-        executionId,
-        eventType,
-        eventSource: 'control-plane',
-        payloadJson: this.asJsonValue(payload),
-      },
-    });
-
-    this.eventSubject.next({
+  private async createEvent(
+    executionId: string,
+    eventType: typeof EXECUTION_EVENT_TYPE[keyof typeof EXECUTION_EVENT_TYPE],
+    payload: any,
+    options: CreateExecutionEventOptions = {},
+  ): Promise<void> {
+    const event = await this.executionEventService.createEvent(
       executionId,
       eventType,
-      payload,
-      timestamp,
-    });
+      this.asJsonValue(payload),
+      options,
+    );
+
+    this.eventSubject.next(event);
   }
 
   async create(
@@ -224,19 +209,23 @@ export class ExecutionService {
         createdBy: userId,
         skillId: effectiveSkillId,
         skillVersion: effectiveSkillVersion,
-        status: planDraft?.risk_summary.requires_human_review ? 'pending_approval' : 'queued',
+        status: planDraft?.risk_summary.requires_human_review
+          ? EXECUTION_STATUS.PENDING_APPROVAL
+          : EXECUTION_STATUS.QUEUED,
         runtimeType: resolvedDto.runtimeType || 'browser',
         inputJson: this.asJsonValue(resolvedDto.input),
         normalizedInputJson: this.asJsonValue(normalizedInput),
         riskLevel: this.mapPlannerRiskLevel(planDraft),
         requiresApproval: planDraft?.risk_summary.requires_human_review || false,
-        approvalStatus: planDraft?.risk_summary.requires_human_review ? 'pending' : 'not_required',
+        approvalStatus: planDraft?.risk_summary.requires_human_review
+          ? APPROVAL_STATUS.PENDING
+          : APPROVAL_STATUS.NOT_REQUIRED,
         takeoverRequired: false,
       },
     });
 
     // Create execution event
-    await this.createEvent(execution.id, 'execution.created', {
+    await this.createEvent(execution.id, EXECUTION_EVENT_TYPE.EXECUTION_CREATED, {
       userId,
       skillId: effectiveSkillId,
       capabilityId: plannedCapabilityId || resolvedDto.capabilityId || resolvedSkillId,
@@ -244,7 +233,7 @@ export class ExecutionService {
     });
 
     if (planDraft) {
-      await this.createEvent(execution.id, 'execution.plan.generated', {
+      await this.createEvent(execution.id, EXECUTION_EVENT_TYPE.EXECUTION_PLAN_GENERATED, {
         planId: planDraft.plan_id,
         plannerMode: planDraft.planner_mode,
         summary: planDraft.summary,
@@ -271,14 +260,7 @@ export class ExecutionService {
 
     if (!execution.requiresApproval) {
       if (hasMissingRequiredInputs) {
-        const waitingInputStep = await this.prisma.executionStep.findFirst({
-          where: {
-            executionId: execution.id,
-            type: 'input_collection',
-            status: 'pending',
-          },
-          orderBy: { stepIndex: 'asc' },
-        });
+        const waitingInputStep = await this.executionStepService.findPendingInputCollectionStep(execution.id);
 
         if (waitingInputStep) {
           await this.enterWaitingInput(execution as any, waitingInputStep.id);
@@ -308,10 +290,10 @@ export class ExecutionService {
     }
 
     // Update status to running
-    await this.updateStatus(executionId, 'running');
+    await this.updateStatus(executionId, EXECUTION_STATUS.RUNNING);
 
     if (execution.runtimeType !== 'browser') {
-      await this.createEvent(execution.id, 'runtime.skipped', {
+      await this.createEvent(execution.id, EXECUTION_EVENT_TYPE.RUNTIME_SKIPPED, {
         runtimeType: execution.runtimeType,
         mode: 'non_browser_runtime',
       });
@@ -335,7 +317,7 @@ export class ExecutionService {
       this.logger.log(`Runtime session allocated: ${runtimeSession.id}`);
 
       // Create event (RuntimeSession record is created by runtime-session service)
-      await this.createEvent(execution.id, 'runtime.allocated', {
+      await this.createEvent(execution.id, EXECUTION_EVENT_TYPE.RUNTIME_ALLOCATED, {
         runtimeSessionId: runtimeSession.id,
       });
 
@@ -344,7 +326,7 @@ export class ExecutionService {
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : String(error);
       this.logger.error(`Failed to allocate runtime for execution ${executionId}: ${errorMsg}`);
-      await this.updateStatus(executionId, 'failed');
+      await this.updateStatus(executionId, EXECUTION_STATUS.FAILED);
       await this.prisma.execution.update({
         where: { id: executionId },
         data: {
@@ -385,10 +367,7 @@ export class ExecutionService {
 
     this.ensureExecutionPermission(execution.createdBy, requester);
 
-    const steps = await this.prisma.executionStep.findMany({
-      where: { executionId: id },
-      orderBy: { stepIndex: 'asc' },
-    });
+    const steps = await this.executionStepService.listByExecutionId(id);
 
     return steps.map((s) => this.toStepDto(s));
   }
@@ -404,7 +383,7 @@ export class ExecutionService {
 
     this.ensureExecutionPermission(execution.createdBy, requester || { id: userId });
 
-    if (!validTransitions[execution.status as ExecutionStatus].includes('human_control')) {
+    if (!canTransitionExecutionStatus(execution.status as ExecutionStatus, EXECUTION_STATUS.HUMAN_CONTROL)) {
       throw new BadRequestException(`Cannot takeover from status ${execution.status}`);
     }
 
@@ -412,7 +391,7 @@ export class ExecutionService {
     await this.prisma.execution.update({
       where: { id },
       data: {
-        status: 'human_control',
+        status: EXECUTION_STATUS.HUMAN_CONTROL,
         takeoverRequired: true,
         takeoverReason: dto.reason,
       },
@@ -435,12 +414,12 @@ export class ExecutionService {
     }
 
     // Create event
-    await this.createEvent(id, 'execution.takeover_requested', {
+    await this.createEvent(id, EXECUTION_EVENT_TYPE.EXECUTION_TAKEOVER_REQUESTED, {
       userId,
       reason: dto.reason,
     });
 
-    this.logger.log(`Execution ${id} entered human_control`);
+    this.logger.log(`Execution ${id} entered ${EXECUTION_STATUS.HUMAN_CONTROL}`);
 
     return this.getById(id, requester || { id: userId });
   }
@@ -456,12 +435,12 @@ export class ExecutionService {
 
     this.ensureExecutionPermission(execution.createdBy, requester || { id: userId });
 
-    if (execution.status !== 'human_control') {
-      throw new BadRequestException(`Execution ${id} is not in human_control status`);
+    if (execution.status !== EXECUTION_STATUS.HUMAN_CONTROL) {
+      throw new BadRequestException(`Execution ${id} is not in ${EXECUTION_STATUS.HUMAN_CONTROL} status`);
     }
 
     // Update execution
-    await this.updateStatus(id, 'running');
+    await this.updateStatus(id, EXECUTION_STATUS.RUNNING);
 
     // Resume runtime session
     const runtimeSession = await this.prisma.runtimeSession.findFirst({
@@ -480,7 +459,7 @@ export class ExecutionService {
     }
 
     // Create event
-    await this.createEvent(id, 'execution.resumed', {
+    await this.createEvent(id, EXECUTION_EVENT_TYPE.EXECUTION_RESUMED, {
       userId,
       stepId: dto.stepId,
       comment: dto.comment,
@@ -506,18 +485,18 @@ export class ExecutionService {
 
     this.ensureExecutionPermission(execution.createdBy, requester || { id: userId });
 
-    if (execution.status !== 'pending_approval') {
-      throw new BadRequestException(`Execution ${id} is not in pending_approval status`);
+    if (execution.status !== EXECUTION_STATUS.PENDING_APPROVAL) {
+      throw new BadRequestException(`Execution ${id} is not in ${EXECUTION_STATUS.PENDING_APPROVAL} status`);
     }
 
     await this.prisma.execution.update({
       where: { id },
       data: {
-        approvalStatus: 'approved',
+        approvalStatus: APPROVAL_STATUS.APPROVED,
       },
     });
-    await this.updateStatus(id, 'queued');
-    await this.createEvent(id, 'execution.approved', {
+    await this.updateStatus(id, EXECUTION_STATUS.QUEUED);
+    await this.createEvent(id, EXECUTION_EVENT_TYPE.EXECUTION_APPROVED, {
       userId,
       decidedBy: dto.decidedBy || userId,
       comment: dto.comment,
@@ -543,20 +522,20 @@ export class ExecutionService {
 
     this.ensureExecutionPermission(execution.createdBy, requester || { id: userId });
 
-    if (execution.status !== 'pending_approval') {
-      throw new BadRequestException(`Execution ${id} is not in pending_approval status`);
+    if (execution.status !== EXECUTION_STATUS.PENDING_APPROVAL) {
+      throw new BadRequestException(`Execution ${id} is not in ${EXECUTION_STATUS.PENDING_APPROVAL} status`);
     }
 
     await this.prisma.execution.update({
       where: { id },
       data: {
-        approvalStatus: 'rejected',
+        approvalStatus: APPROVAL_STATUS.REJECTED,
         failureReason: dto.comment || 'Execution rejected during approval',
         failureCode: 'APPROVAL_REJECTED',
       },
     });
-    await this.updateStatus(id, 'cancelled');
-    await this.createEvent(id, 'execution.rejected', {
+    await this.updateStatus(id, EXECUTION_STATUS.CANCELLED);
+    await this.createEvent(id, EXECUTION_EVENT_TYPE.EXECUTION_REJECTED, {
       userId,
       decidedBy: dto.decidedBy || userId,
       comment: dto.comment,
@@ -577,13 +556,11 @@ export class ExecutionService {
 
     this.ensureExecutionPermission(execution.createdBy, requester || { id: userId });
 
-    if (execution.status !== 'waiting_input') {
-      throw new BadRequestException(`Execution ${id} is not in waiting_input status`);
+    if (execution.status !== EXECUTION_STATUS.WAITING_INPUT) {
+      throw new BadRequestException(`Execution ${id} is not in ${EXECUTION_STATUS.WAITING_INPUT} status`);
     }
 
-    const step = await this.prisma.executionStep.findUnique({
-      where: { id: dto.stepId },
-    });
+    const step = await this.executionStepService.getById(dto.stepId);
 
     if (!step || step.executionId !== id || step.type !== 'input_collection') {
       throw new BadRequestException('Invalid step ID for input submission');
@@ -646,7 +623,7 @@ export class ExecutionService {
       this.prisma.executionStep.update({
         where: { id: dto.stepId },
         data: {
-          status: isFullySubmitted ? 'succeeded' : 'waiting_input',
+          status: isFullySubmitted ? EXECUTION_STEP_STATUS.SUCCEEDED : EXECUTION_STEP_STATUS.WAITING_INPUT,
           inputJson: this.asJsonValue({
             requiredInputs: updatedRequiredInputs.filter((item) => item.missing),
           }),
@@ -658,7 +635,7 @@ export class ExecutionService {
         where: { id },
         data: {
           normalizedInputJson: this.asJsonValue(updatedNormalized),
-          status: isFullySubmitted ? 'queued' : 'waiting_input',
+          status: isFullySubmitted ? EXECUTION_STATUS.QUEUED : EXECUTION_STATUS.WAITING_INPUT,
         },
       }),
     ]);
@@ -668,11 +645,17 @@ export class ExecutionService {
       orderBy: { createdAt: 'desc' },
     });
 
-    await this.createEvent(id, isFullySubmitted ? 'execution.input_submitted' : 'execution.partial_input_submitted', {
+    await this.createEvent(
+      id,
+      isFullySubmitted
+        ? EXECUTION_EVENT_TYPE.EXECUTION_INPUT_SUBMITTED
+        : EXECUTION_EVENT_TYPE.EXECUTION_PARTIAL_INPUT_SUBMITTED,
+      {
       stepId: dto.stepId,
       input: dto.input,
       remainingMissing: remainingMissingInputs.map(i => i.name),
-    });
+      },
+    );
 
     if (!isFullySubmitted) {
       this.logger.log(`Partial input submitted for execution ${id}; remaining: ${remainingMissingInputs.length}`);
@@ -685,21 +668,20 @@ export class ExecutionService {
       return this.getById(id, requester || { id: userId });
     }
 
-    await this.updateStatus(id, 'running');
+    await this.updateStatus(id, EXECUTION_STATUS.RUNNING);
 
-    await this.prisma.executionEvent.create({
-      data: {
-        executionId: id,
+    await this.createEvent(
+      id,
+      EXECUTION_EVENT_TYPE.EXECUTION_RESUMED,
+      {
+        userId,
+        reason: 'input_submitted',
+      },
+      {
         runtimeSessionId: runtimeSession.id,
         stepId: dto.stepId,
-        eventType: 'execution.resumed',
-        eventSource: 'control-plane',
-        payloadJson: this.asJsonValue({
-          userId,
-          reason: 'input_submitted',
-        }),
       },
-    });
+    );
 
     await this.advanceExecutionFlow(id, runtimeSession.id);
     this.logger.log(`Input submitted and execution ${id} resumed from step ${dto.stepId}`);
@@ -716,11 +698,11 @@ export class ExecutionService {
 
     this.ensureExecutionPermission(execution.createdBy, requester || { id: userId });
 
-    if (!validTransitions[execution.status as ExecutionStatus].includes('cancelled')) {
+    if (!canTransitionExecutionStatus(execution.status as ExecutionStatus, EXECUTION_STATUS.CANCELLED)) {
       throw new BadRequestException(`Cannot cancel from status ${execution.status}`);
     }
 
-    await this.updateStatus(id, 'cancelled');
+    await this.updateStatus(id, EXECUTION_STATUS.CANCELLED);
 
     // Close runtime session
     const runtimeSession = await this.prisma.runtimeSession.findFirst({
@@ -737,7 +719,7 @@ export class ExecutionService {
     }
 
     // Create event
-    await this.createEvent(id, 'execution.cancelled', { userId });
+    await this.createEvent(id, EXECUTION_EVENT_TYPE.EXECUTION_CANCELLED, { userId });
 
     this.logger.log(`Execution ${id} cancelled`);
 
@@ -791,33 +773,8 @@ export class ExecutionService {
   }
 
   private async updateStatus(id: string, newStatus: ExecutionStatus): Promise<void> {
-    const execution = await this.prisma.execution.findUnique({
-      where: { id },
-    });
-
-    if (!execution) {
-      throw new NotFoundException(`Execution ${id} not found`);
-    }
-
-    const currentStatus = execution.status as ExecutionStatus;
-    if (!validTransitions[currentStatus].includes(newStatus)) {
-      throw new BadRequestException(`Invalid transition from ${currentStatus} to ${newStatus}`);
-    }
-
-    await this.prisma.execution.update({
-      where: { id },
-      data: {
-        status: newStatus,
-        startedAt: newStatus === 'running' && !execution.startedAt ? new Date() : execution.startedAt,
-        endedAt: ['succeeded', 'failed', 'cancelled'].includes(newStatus) ? new Date() : execution.endedAt,
-      },
-    });
-
-    // Create event
-    await this.createEvent(id, 'execution.status_changed', {
-      oldStatus: currentStatus,
-      newStatus,
-    });
+    const event = await this.executionStateService.updateStatus(id, newStatus);
+    this.eventSubject.next(event);
   }
 
   private async bootstrapBrowserExecution(
@@ -842,40 +799,22 @@ export class ExecutionService {
       return;
     }
 
-    let step = await this.prisma.executionStep.findFirst({
-      where: {
-        executionId: execution.id as string,
-        type: 'browser_action',
-        action: 'goto',
-        status: 'pending',
-      },
-      orderBy: { stepIndex: 'asc' },
-    });
+    let step = await this.executionStepService.findPendingBrowserGotoStep(execution.id as string);
     let createdStep = false;
 
     if (!step) {
-      step = await this.prisma.executionStep.create({
-        data: {
-          executionId: execution.id as string,
-          stepIndex: 1,
-          name: 'Open target page',
-          type: 'browser_action',
-          status: 'pending',
-          action: 'goto',
-          targetJson: this.asJsonValue({ url }),
-          inputJson: this.asJsonValue({ url }),
-        },
+      step = await this.executionStepService.createBootstrapGotoStep({
+        executionId: execution.id as string,
+        stepIndex: 1,
+        url,
       });
       createdStep = true;
     }
 
-    await this.prisma.execution.update({
-      where: { id: execution.id as string },
-      data: { currentStepId: step.id },
-    });
+    await this.executionStepService.setCurrentStep(execution.id as string, step.id);
 
     if (createdStep) {
-      await this.createEvent(execution.id as string, 'step.created', {
+      await this.createEvent(execution.id as string, EXECUTION_EVENT_TYPE.STEP_CREATED, {
         runtimeSessionId,
         stepId: step.id,
         action: 'goto',
@@ -883,7 +822,7 @@ export class ExecutionService {
       });
     }
 
-    await this.createEvent(execution.id as string, 'step.started', {
+    await this.createEvent(execution.id as string, EXECUTION_EVENT_TYPE.STEP_STARTED, {
       runtimeSessionId,
       stepId: step.id,
       action: 'goto',
@@ -891,13 +830,7 @@ export class ExecutionService {
     });
 
     await axios.post<{ success: boolean; message: string }>(`${this.browserWorkerUrl}/browser/init`, {});
-    await this.prisma.executionStep.update({
-      where: { id: step.id },
-      data: {
-        status: 'running',
-        startedAt: new Date(),
-      },
-    });
+    await this.executionStepService.startStep(step.id);
 
     const result = await axios.post<BrowserExecuteStepResult>(
       `${this.browserWorkerUrl}/browser/execute-step`,
@@ -919,26 +852,19 @@ export class ExecutionService {
     stepId: string,
     result: BrowserExecuteStepResult,
   ): Promise<void> {
-    await this.prisma.executionStep.update({
-      where: { id: stepId },
-      data: {
-        status: result.success ? 'succeeded' : 'failed',
-        outputJson: this.asJsonValue(result.output),
-        errorCode: result.errorCode,
-        errorMessage: result.errorMessage,
-        snapshotId: result.snapshotId,
-        takeoverTriggered: result.shouldTakeover,
-        endedAt: new Date(),
-      },
-    });
+    await this.executionStepService.finishBrowserStep(stepId, result);
 
-    await this.createEvent(executionId, result.success ? 'step.succeeded' : 'step.failed', {
+    await this.createEvent(
+      executionId,
+      result.success ? EXECUTION_EVENT_TYPE.STEP_SUCCEEDED : EXECUTION_EVENT_TYPE.STEP_FAILED,
+      {
       runtimeSessionId,
       stepId,
       snapshotId: result.snapshotId,
       errorCode: result.errorCode,
       shouldTakeover: result.shouldTakeover,
-    });
+      },
+    );
 
     if (result.shouldTakeover) {
       await this.takeover(executionId, 'system', {
@@ -960,73 +886,15 @@ export class ExecutionService {
       },
     });
     await this.skipPendingSteps(executionId, stepId, 'Execution failed before remaining planned steps were executed');
-    await this.updateStatus(executionId, 'failed');
+    await this.updateStatus(executionId, EXECUTION_STATUS.FAILED);
   }
 
   private toDto(execution: any, createdByName?: string): ExecutionDto {
-    const normalizedInput = (execution.normalizedInputJson || execution.normalized_input_json) as Record<string, any> | undefined;
-    const input = (execution.inputJson || execution.input_json) as Record<string, any> | undefined;
-    
-    // 尝试从多个地方提取 usage
-    let usage = (normalizedInput?.__usage || input?.__usage) as Record<string, unknown> | undefined;
-    
-    if (!usage && execution.usage) {
-      usage = execution.usage;
-    }
-
-    return {
-      id: execution.id as string,
-      orgId: execution.orgId as string | undefined,
-      createdBy: execution.createdBy as string,
-      createdByName,
-      skillId: execution.skillId as string,
-      capabilityId: execution.skillId as string,
-      skillVersion: execution.skillVersion as string | undefined,
-      capabilityVersion: execution.skillVersion as string | undefined,
-      status: execution.status as string,
-      runtimeType: execution.runtimeType as string,
-      riskLevel: execution.riskLevel as string,
-      input,
-      normalizedInput,
-      result: (execution.resultJson || execution.result_json) as Record<string, unknown> | undefined,
-      failureReason: execution.failureReason as string | undefined,
-      failureCode: execution.failureCode as string | undefined,
-      currentStepId: execution.currentStepId as string | undefined,
-      requiresApproval: execution.requiresApproval as boolean,
-      approvalStatus: execution.approvalStatus as string | undefined,
-      takeoverRequired: execution.takeoverRequired as boolean,
-      takeoverReason: execution.takeoverReason as string | undefined,
-      usage,
-      startedAt: execution.startedAt as Date | undefined,
-      endedAt: execution.endedAt as Date | undefined,
-      createdAt: execution.createdAt as Date,
-      updatedAt: execution.updatedAt as Date,
-    };
+    return mapExecutionToDto(execution, createdByName);
   }
 
   private toStepDto(step: Record<string, unknown>): ExecutionStepDto {
-    return {
-      id: step.id as string,
-      executionId: step.executionId as string,
-      stepIndex: step.stepIndex as number,
-      name: step.name as string | undefined,
-      type: step.type as string,
-      status: step.status as string,
-      action: step.action as string | undefined,
-      target: step.targetJson as Record<string, unknown> | undefined,
-      input: step.inputJson as Record<string, unknown> | undefined,
-      output: step.outputJson as Record<string, unknown> | undefined,
-      assertion: step.assertionJson as Record<string, unknown> | undefined,
-      errorMessage: step.errorMessage as string | undefined,
-      errorCode: step.errorCode as string | undefined,
-      retryCount: step.retryCount as number,
-      snapshotId: step.snapshotId as string | undefined,
-      takeoverTriggered: step.takeoverTriggered as boolean,
-      startedAt: step.startedAt as Date | undefined,
-      endedAt: step.endedAt as Date | undefined,
-      createdAt: step.createdAt as Date,
-      updatedAt: step.updatedAt as Date,
-    };
+    return mapExecutionStepToDto(step);
   }
 
   private asJsonValue(value: unknown): Prisma.JsonValue {
@@ -1295,23 +1163,17 @@ export class ExecutionService {
         throw new NotFoundException(`Execution ${executionId} not found`);
       }
 
-      if (['succeeded', 'failed', 'cancelled'].includes(execution.status)) {
+      if (isTerminalExecutionStatus(execution.status)) {
         this.logger.log(`Execution ${executionId} is in terminal status ${execution.status}; stopping flow`);
         return;
       }
 
-      const nextStep = await this.prisma.executionStep.findFirst({
-        where: {
-          executionId,
-          status: 'pending',
-        },
-        orderBy: { stepIndex: 'asc' },
-      });
+      const nextStep = await this.executionStepService.findNextPendingStep(executionId);
 
       if (!nextStep) {
         this.logger.log(`No more pending steps for execution ${executionId}`);
-        if (execution.status === 'running') {
-          await this.updateStatus(executionId, 'succeeded');
+        if (execution.status === EXECUTION_STATUS.RUNNING) {
+          await this.updateStatus(executionId, EXECUTION_STATUS.SUCCEEDED);
           this.logger.log(`Execution ${executionId} marked as succeeded`);
         }
         return;
@@ -1358,51 +1220,15 @@ export class ExecutionService {
     normalizedInput: Record<string, unknown>,
     planDraft?: PlannerPlanDraft,
   ): Promise<void> {
-    const steps: Prisma.ExecutionStepCreateManyInput[] = [];
-    let stepIndex = 1;
-    const bootstrapUrl = typeof normalizedInput.url === 'string' ? normalizedInput.url : undefined;
-
-    if (bootstrapUrl) {
-      steps.push({
-        executionId,
-        stepIndex: stepIndex++,
-        name: 'Open target page',
-        type: 'browser_action',
-        status: 'pending',
-        action: 'goto',
-        targetJson: this.asJsonValue({ url: bootstrapUrl, source: 'phase1_bootstrap' }),
-        inputJson: this.asJsonValue({ url: bootstrapUrl }),
-      });
-    }
-
-    for (const planStep of planDraft?.steps || []) {
-      steps.push({
-        executionId,
-        stepIndex: stepIndex++,
-        name: planStep.title,
-        type: this.mapPlannerStepType(planStep.kind),
-        status: 'pending',
-        action: planStep.tool_name || this.mapPlannerStepAction(planStep.kind),
-        targetJson: this.asJsonValue({
-          plannerStepId: planStep.id,
-          plannerKind: planStep.kind,
-        }),
-        inputJson: this.asJsonValue({
-          description: planStep.description,
-          plannerStatus: planStep.status,
-        }),
-      });
-    }
+    const { steps, bootstrapUrl } = buildPlannedExecutionSteps(executionId, normalizedInput, planDraft);
 
     if (steps.length === 0) {
       return;
     }
 
-    await this.prisma.executionStep.createMany({
-      data: steps,
-    });
+    await this.executionStepService.createManyPlannedSteps(steps);
 
-    await this.createEvent(executionId, 'execution.steps.planned', {
+    await this.createEvent(executionId, EXECUTION_EVENT_TYPE.EXECUTION_STEPS_PLANNED, {
       stepCount: steps.length,
       bootstrapUrl,
       plannerStepCount: planDraft?.steps.length || 0,
@@ -1415,31 +1241,22 @@ export class ExecutionService {
     stepId: string,
     url: string,
   ): Promise<void> {
-    await this.prisma.execution.update({
-      where: { id: executionId },
-      data: { currentStepId: stepId },
-    });
+    await this.executionStepService.setCurrentStep(executionId, stepId);
 
-    await this.prisma.executionEvent.create({
-      data: {
-        executionId,
+    await this.createEvent(
+      executionId,
+      EXECUTION_EVENT_TYPE.STEP_STARTED,
+      { action: 'goto', url },
+      {
         runtimeSessionId,
         stepId,
-        eventType: 'step.started',
-        eventSource: 'control-plane',
-        payloadJson: this.asJsonValue({ action: 'goto', url }),
       },
-    });
+    );
 
     await axios.post<{ success: boolean; message: string }>(`${this.browserWorkerUrl}/browser/init`, {});
-    await this.prisma.executionStep.update({
-      where: { id: stepId },
-      data: {
-        status: 'running',
-        startedAt: new Date(),
-        targetJson: this.asJsonValue({ url }),
-        inputJson: this.asJsonValue({ url }),
-      },
+    await this.executionStepService.startStep(stepId, {
+      targetJson: { url },
+      inputJson: { url },
     });
 
     const result = await axios.post<BrowserExecuteStepResult>(
@@ -1475,13 +1292,10 @@ export class ExecutionService {
     const input = this.resolveExecutionInput(execution);
     this.logger.log(`Calling auth runtime for capability ${capabilityId} (version: ${capabilityVersion || 'latest'}) with input: ${JSON.stringify(input)}`);
 
-    await this.prisma.execution.update({
-      where: { id: executionId },
-      data: { currentStepId: stepId },
-    });
+    await this.executionStepService.setCurrentStep(executionId, stepId);
 
     // Create start event
-    await this.createEvent(executionId, 'step.started', {
+    await this.createEvent(executionId, EXECUTION_EVENT_TYPE.STEP_STARTED, {
       runtimeSessionId,
       stepId,
       action: 'execute_skill',
@@ -1489,17 +1303,12 @@ export class ExecutionService {
       capabilityVersion,
     });
 
-    await this.prisma.executionStep.update({
-      where: { id: stepId },
-      data: {
-        status: 'running',
-        startedAt: new Date(),
-        inputJson: this.asJsonValue(input),
-        targetJson: this.asJsonValue({
-          capabilityId,
-          capabilityVersion,
-          runtime: 'capability_runtime',
-        }),
+    await this.executionStepService.startStep(stepId, {
+      inputJson: input,
+      targetJson: {
+        capabilityId,
+        capabilityVersion,
+        runtime: 'capability_runtime',
       },
     });
 
@@ -1547,31 +1356,18 @@ export class ExecutionService {
   ): Promise<void> {
     const output = result.output || result.result || null;
 
-    await this.prisma.executionStep.update({
-      where: { id: stepId },
-      data: {
-        status: result.success ? 'succeeded' : 'failed',
-        outputJson: this.asJsonValue({
-          runtime: result.runtime,
-          releaseId: result.releaseId,
-          capabilityId: result.capabilityId,
-          capabilityVersion: result.capabilityVersion,
-          publishedSkillId: result.publishedSkillId,
-          result: output,
-          logs: result.logs,
-        }),
-        errorMessage: result.error || undefined,
-        errorCode: result.success ? undefined : 'CAPABILITY_RUNTIME_FAILED',
-        endedAt: new Date(),
-      },
-    });
+    await this.executionStepService.finishSystemSkillStep(stepId, result);
 
-    await this.createEvent(executionId, result.success ? 'step.succeeded' : 'step.failed', {
+    await this.createEvent(
+      executionId,
+      result.success ? EXECUTION_EVENT_TYPE.STEP_SUCCEEDED : EXECUTION_EVENT_TYPE.STEP_FAILED,
+      {
       runtimeSessionId,
       stepId,
       result: result.result || result.output,
       error: result.error,
-    });
+      },
+    );
 
     if (result.success) {
       // 获取当前 usage 并累加
@@ -1610,7 +1406,7 @@ export class ExecutionService {
       },
     });
     await this.skipPendingSteps(executionId, stepId, 'Execution failed before remaining planned steps were executed');
-    await this.updateStatus(executionId, 'failed');
+    await this.updateStatus(executionId, EXECUTION_STATUS.FAILED);
   }
 
   private sumUsage(...usages: (LLMUsage | undefined)[]): LLMUsage | undefined {
@@ -1643,74 +1439,32 @@ export class ExecutionService {
     return result;
   }
 
-  private mapPlannerStepType(kind: PlannerPlanDraft['steps'][number]['kind']): string {
-    switch (kind) {
-      case 'human_input':
-        return 'input_collection';
-      case 'skill':
-      case 'tool':
-      case 'execution':
-      default:
-        return 'system';
-    }
-  }
-
-  private mapPlannerStepAction(kind: PlannerPlanDraft['steps'][number]['kind']): string {
-    switch (kind) {
-      case 'human_input':
-        return 'collect_input';
-      case 'skill':
-      case 'tool':
-        return 'execute_skill';
-      case 'execution':
-        return 'execute_plan';
-      default:
-        return 'planner_step';
-    }
-  }
-
   private async skipPendingSteps(
     executionId: string,
     currentStepId: string,
     reason: string,
   ): Promise<void> {
-    const pendingSteps = await this.prisma.executionStep.findMany({
-      where: {
-        executionId,
-        status: 'pending',
-        id: { not: currentStepId },
-      },
-    });
+    const skippedStepIds = await this.executionStepService.skipPendingSteps(
+      executionId,
+      currentStepId,
+      reason,
+    );
 
-    if (pendingSteps.length === 0) {
+    if (skippedStepIds.length === 0) {
       return;
     }
 
-    await this.prisma.executionStep.updateMany({
-      where: {
-        executionId,
-        status: 'pending',
-        id: { not: currentStepId },
+    await this.createEvent(
+      executionId,
+      EXECUTION_EVENT_TYPE.STEPS_SKIPPED,
+      {
+        skippedStepIds,
+        reason,
       },
-      data: {
-        status: 'skipped',
-        errorMessage: reason,
-        endedAt: new Date(),
-      },
-    });
-
-    await this.prisma.executionEvent.create({
-      data: {
-        executionId,
+      {
         stepId: currentStepId,
-        eventType: 'steps.skipped',
-        eventSource: 'control-plane',
-        payloadJson: this.asJsonValue({
-          skippedStepIds: pendingSteps.map((step) => step.id),
-          reason,
-        }),
       },
-    });
+    );
   }
 
   private async skipSingleStep(
@@ -1718,24 +1472,16 @@ export class ExecutionService {
     executionId: string,
     reason: string,
   ): Promise<void> {
-    await this.prisma.executionStep.update({
-      where: { id: stepId },
-      data: {
-        status: 'skipped',
-        errorMessage: reason,
-        endedAt: new Date(),
-      },
-    });
+    await this.executionStepService.skipSingleStep(stepId, reason);
 
-    await this.prisma.executionEvent.create({
-      data: {
-        executionId,
+    await this.createEvent(
+      executionId,
+      EXECUTION_EVENT_TYPE.STEP_SKIPPED,
+      { reason },
+      {
         stepId,
-        eventType: 'step.skipped',
-        eventSource: 'control-plane',
-        payloadJson: this.asJsonValue({ reason }),
       },
-    });
+    );
   }
 
   private async enterWaitingInput(
@@ -1744,34 +1490,23 @@ export class ExecutionService {
   ): Promise<void> {
     const missingInputs = this.getMissingRequiredInputs(execution);
 
-    await this.prisma.execution.update({
-      where: { id: execution.id as string },
-      data: { currentStepId: stepId },
-    });
+    await this.executionStepService.prepareWaitingInputStep(
+      execution.id as string,
+      stepId,
+      missingInputs,
+    );
 
-    await this.prisma.executionStep.update({
-      where: { id: stepId },
-      data: {
-        status: 'running',
-        startedAt: new Date(),
-        inputJson: this.asJsonValue({
-          requiredInputs: missingInputs,
-        }),
+    await this.updateStatus(execution.id as string, EXECUTION_STATUS.WAITING_INPUT);
+    await this.createEvent(
+      execution.id as string,
+      EXECUTION_EVENT_TYPE.STEP_WAITING_INPUT,
+      {
+        requiredInputs: missingInputs,
       },
-    });
-
-    await this.updateStatus(execution.id as string, 'waiting_input');
-    await this.prisma.executionEvent.create({
-      data: {
-        executionId: execution.id as string,
+      {
         stepId,
-        eventType: 'step.waiting_input',
-        eventSource: 'control-plane',
-        payloadJson: this.asJsonValue({
-          requiredInputs: missingInputs,
-        }),
       },
-    });
+    );
   }
 
   private getMissingRequiredInputs(execution: Record<string, unknown>): PlannerRequiredInput[] {
@@ -1857,9 +1592,7 @@ export class ExecutionService {
 
     this.ensureExecutionPermission(execution.createdBy, requester || { id: userId });
 
-    await this.prisma.executionStep.deleteMany({
-      where: { executionId: id },
-    });
+    await this.executionStepService.deleteByExecutionId(id);
 
     await this.prisma.executionEvent.deleteMany({
       where: { executionId: id },

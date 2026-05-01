@@ -18,10 +18,16 @@ import {
   WarningOutlined,
 } from '@ant-design/icons';
 import { useMutation, useQuery, useQueryClient } from 'react-query';
-import { executionApi, ExecutionDto, ExecutionStepDto, ExecutionStatus } from '../api/execution';
+import { executionApi, ExecutionDto, ExecutionStepDto } from '../api/execution';
 import { skillApi } from '../api/skill';
 import { capabilityReleaseApi } from '../api/capability-release';
 import { useAuthStore } from '../store/authStore';
+import {
+  EXECUTION_ACTIVE_POLLING_STATUSES,
+  EXECUTION_STATUS_COLORS,
+  EXECUTION_STATUS_LABELS_EN,
+  EXECUTION_STATUS_LABELS_ZH,
+} from '../utils/executionStatusMeta';
 
 const { Title, Text } = Typography;
 
@@ -35,19 +41,7 @@ interface RequiredInputField {
   source: 'user_input' | 'default' | 'unresolved';
 }
 
-const statusColors: Record<ExecutionStatus, string> = {
-  draft: 'default',
-  queued: 'default',
-  running: 'processing',
-  waiting_input: 'warning',
-  pending_approval: 'warning',
-  human_control: 'error',
-  paused: 'default',
-  succeeded: 'success',
-  failed: 'error',
-  cancelled: 'default',
-  rolled_back: 'default',
-};
+const statusColors = EXECUTION_STATUS_COLORS;
 
 const stepTypeLabels: Record<string, { zh: string; en: string }> = {
   input_collection: { zh: '输入采集', en: 'Input Collection' },
@@ -139,19 +133,7 @@ const ExecutionDetailPage: React.FC = () => {
     error: isEnglish ? 'Error' : '错误',
     duration: isEnglish ? 'Duration' : '耗时',
   };
-  const statusLabels: Record<ExecutionStatus, string> = {
-    draft: isEnglish ? 'Draft' : '草稿',
-    queued: isEnglish ? 'Queued' : '排队中',
-    running: isEnglish ? 'Running' : '执行中',
-    waiting_input: isEnglish ? 'Waiting Input' : '待补输入',
-    pending_approval: isEnglish ? 'Pending Approval' : '待审批',
-    human_control: isEnglish ? 'Human Control' : '人工接管',
-    paused: isEnglish ? 'Paused' : '已暂停',
-    succeeded: isEnglish ? 'Succeeded' : '已完成',
-    failed: isEnglish ? 'Failed' : '失败',
-    cancelled: isEnglish ? 'Cancelled' : '已取消',
-    rolled_back: isEnglish ? 'Rolled Back' : '已回滚',
-  };
+  const statusLabels = isEnglish ? EXECUTION_STATUS_LABELS_EN : EXECUTION_STATUS_LABELS_ZH;
 
   // Fetch execution details
   const { data: execution, isLoading: isLoadingExecution, error: errorExecution } = useQuery<ExecutionDto, Error>(
@@ -161,9 +143,7 @@ const ExecutionDetailPage: React.FC = () => {
       enabled: !!id,
       refetchInterval: (data) => {
         if (!data) return false;
-        // 只有在非终态时才轮询
-        const nonTerminalStates: ExecutionStatus[] = ['running', 'queued', 'waiting_input', 'pending_approval', 'human_control'];
-        return nonTerminalStates.includes(data.status) ? 3000 : false;
+        return EXECUTION_ACTIVE_POLLING_STATUSES.includes(data.status) ? 3000 : false;
       },
     }
   );
@@ -177,8 +157,7 @@ const ExecutionDetailPage: React.FC = () => {
       refetchInterval: () => {
         // 如果详情在轮询，步骤也一起轮询
         if (!execution) return false;
-        const nonTerminalStates: ExecutionStatus[] = ['running', 'queued', 'waiting_input', 'pending_approval', 'human_control'];
-        return nonTerminalStates.includes(execution.status) ? 3000 : false;
+        return EXECUTION_ACTIVE_POLLING_STATUSES.includes(execution.status) ? 3000 : false;
       },
     }
   );

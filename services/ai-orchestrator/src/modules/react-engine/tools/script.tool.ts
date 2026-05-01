@@ -52,6 +52,7 @@ export class ScriptTool extends BaseTool {
         properties: {
           steps: {
             type: 'array',
+            description: '按顺序执行的步骤列表',
             items: {
               type: 'object',
               properties: {
