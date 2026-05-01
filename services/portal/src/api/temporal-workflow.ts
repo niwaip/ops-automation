@@ -90,6 +90,14 @@ export interface ActivityDsl {
   }>;
 }
 
+export interface TemporalWorkflowSourceTemplate {
+  templateId?: string;
+  skillId?: string;
+  fileName?: string;
+  format?: string;
+  variableCount?: number;
+}
+
 export interface TemporalWorkflowDTO {
   id: string;
   name: string;
@@ -102,6 +110,7 @@ export interface TemporalWorkflowDTO {
   deployedAt: string | null;
   createdAt: string;
   updatedAt: string;
+  sourceTemplate?: TemporalWorkflowSourceTemplate | null;
 }
 
 export interface CreateTemporalWorkflowDTO {

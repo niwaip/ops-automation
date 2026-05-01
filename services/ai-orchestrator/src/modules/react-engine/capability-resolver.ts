@@ -10,12 +10,27 @@ import {
 } from './interfaces';
 import { ToolExecutor } from './tool-executor';
 
+type RuntimeToolPolicy = {
+  name: string;
+  promptExposure: 'hidden' | 'prompt_only' | 'runtime_only' | 'prompt_and_runtime';
+  defaultRequiresConfirmation: boolean;
+  defaultRequiresApproval: boolean;
+  status: string;
+};
+
 @Injectable()
 export class CapabilityResolver {
   private readonly logger = new Logger(CapabilityResolver.name);
   private readonly snapshotTtlMs = Number(process.env.REACT_CAPABILITY_SNAPSHOT_TTL_MS || 300_000);
 
   constructor(private readonly toolExecutor: ToolExecutor) {}
+
+  private getAuthServiceUrl(): string {
+    return process.env.AUTH_SERVICE_URL
+      || (process.env.DOCKER_ENV === 'true' || process.env.NODE_ENV === 'production'
+        ? 'http://ops-auth:3001'
+        : 'http://localhost:3001');
+  }
 
   async resolve(
     request: ChatRequestDTO,
@@ -24,14 +39,25 @@ export class CapabilityResolver {
     const mode = request.config?.mode || 'task';
     const roles = request.userRoles || context.userRoles || [];
     const availableSkills = await this.loadAvailableSkills(context);
+    const selectedSkillId =
+      context.skill?.skillId
+      || context.documentContext?.selectedSkillId;
 
     const visibleSkills = this.toVisibleSkills(availableSkills);
     const configuredToolNames = request.config?.tools;
     const allVisibleTools = configuredToolNames?.length
       ? this.toolExecutor.getTools(configuredToolNames, roles)
       : this.toolExecutor.getAllTools(roles);
+    const toolScope = await this.loadSelectedSkillToolScope(selectedSkillId, context);
     const visibleTools = this.toVisibleTools(
-      this.applyToolVisibilityPolicy(allVisibleTools, visibleSkills, mode),
+      this.applyToolVisibilityPolicy(allVisibleTools, visibleSkills, mode)
+        .filter((tool) => {
+          if (!toolScope.allowedToolNames?.length) {
+            return true;
+          }
+          return toolScope.allowedToolNames.includes(tool.name);
+        }),
+      toolScope.toolPolicies,
     );
 
     return {
@@ -39,6 +65,9 @@ export class CapabilityResolver {
       sessionId: context.sessionId,
       roles,
       mode,
+      selectedSkillId,
+      skillScopedToolNames: toolScope.allowedToolNames,
+      deniedToolNames: toolScope.deniedToolNames,
       visibleTools,
       visibleSkills: visibleSkills.slice(0, 20),
       constraints: {
@@ -51,6 +80,9 @@ export class CapabilityResolver {
       policies: {
         requireConfirmToolNames: visibleTools
           .filter((tool) => tool.requiresConfirmation)
+          .map((tool) => tool.name),
+        requireApprovalToolNames: visibleTools
+          .filter((tool) => tool.requiresApproval)
           .map((tool) => tool.name),
         requireHumanReviewOnWrite: true,
         documentTemplateClarificationEnabled: true,
@@ -112,11 +144,7 @@ export class CapabilityResolver {
     }
 
     try {
-      const authUrl = process.env.AUTH_SERVICE_URL
-        || (process.env.DOCKER_ENV === 'true' || process.env.NODE_ENV === 'production'
-          ? 'http://ops-auth:3001'
-          : 'http://localhost:3001');
-      const response = await fetch(`${authUrl}/skills`, {
+      const response = await fetch(`${this.getAuthServiceUrl()}/skills`, {
         headers: {
           ...(context.authToken ? { Authorization: context.authToken } : {}),
           ...(context.traceId ? { 'x-trace-id': context.traceId } : {}),
@@ -157,6 +185,7 @@ export class CapabilityResolver {
           goal: apiEndpoints?.runtimeMetadata?.goal,
           expectedResult: apiEndpoints?.runtimeMetadata?.expectedResult,
           outputParams: apiEndpoints?.runtimeMetadata?.outputParams,
+          effectiveTools: Array.isArray(item.effectiveTools) ? item.effectiveTools.map(String) : undefined,
         };
       }).filter((item) => item.skillId && item.skillName);
     } catch (error) {
@@ -190,16 +219,106 @@ export class CapabilityResolver {
     });
   }
 
-  private toVisibleTools(tools: ToolDefinition[]): CapabilityVisibleTool[] {
-    return tools.map((tool) => ({
-      name: tool.name,
-      description: tool.description,
-      category: tool.category,
-      requiresConfirmation: tool.requiresConfirmation,
-      requiredRoles: tool.requiredRoles,
-      parameters: tool.parameters,
-      exposure: 'prompt_and_runtime',
-    }));
+  private async loadSelectedSkillToolScope(
+    selectedSkillId: string | undefined,
+    context: ExecutionContext,
+  ): Promise<{
+    allowedToolNames: string[];
+    deniedToolNames: string[];
+    toolPolicies: Map<string, RuntimeToolPolicy>;
+  }> {
+    if (!selectedSkillId) {
+      return {
+        allowedToolNames: [],
+        deniedToolNames: [],
+        toolPolicies: new Map(),
+      };
+    }
+
+    try {
+      const response = await fetch(`${this.getAuthServiceUrl()}/capability-releases/runtime/skills/${selectedSkillId}/context`, {
+        headers: {
+          ...(context.authToken ? { Authorization: context.authToken } : {}),
+          ...(context.traceId ? { 'x-trace-id': context.traceId } : {}),
+        },
+      });
+
+      if (!response.ok) {
+        this.logger.warn(`Failed to load tool scope for skill ${selectedSkillId}: ${response.status}`);
+        return {
+          allowedToolNames: [],
+          deniedToolNames: [],
+          toolPolicies: new Map(),
+        };
+      }
+
+      const payload = await response.json() as {
+        allowedToolNames?: string[];
+        toolPolicies?: RuntimeToolPolicy[];
+      };
+      const allowedToolNames = Array.isArray(payload.allowedToolNames)
+        ? payload.allowedToolNames.map(String)
+        : [];
+      const toolPolicies = new Map(
+        (Array.isArray(payload.toolPolicies) ? payload.toolPolicies : [])
+          .filter((item): item is RuntimeToolPolicy => Boolean(item?.name))
+          .map((item) => [String(item.name), {
+            name: String(item.name),
+            promptExposure: item.promptExposure || 'prompt_and_runtime',
+            defaultRequiresConfirmation: Boolean(item.defaultRequiresConfirmation),
+            defaultRequiresApproval: Boolean(item.defaultRequiresApproval),
+            status: String(item.status || 'active'),
+          }]),
+      );
+
+      return {
+        allowedToolNames,
+        deniedToolNames: [],
+        toolPolicies,
+      };
+    } catch (error) {
+      this.logger.warn(
+        `Failed to load tool scope for skill ${selectedSkillId}: ${error instanceof Error ? error.message : 'unknown'}`,
+      );
+      return {
+        allowedToolNames: [],
+        deniedToolNames: [],
+        toolPolicies: new Map(),
+      };
+    }
+  }
+
+  private toVisibleTools(
+    tools: ToolDefinition[],
+    toolPolicies: Map<string, RuntimeToolPolicy> = new Map(),
+  ): CapabilityVisibleTool[] {
+    const visibleTools: CapabilityVisibleTool[] = [];
+
+    for (const tool of tools) {
+      const policy = toolPolicies.get(tool.name);
+      const exposure = policy?.promptExposure || 'prompt_and_runtime';
+      if (exposure === 'hidden' || (policy?.status && policy.status !== 'active')) {
+        continue;
+      }
+
+      visibleTools.push({
+        name: tool.name,
+        description: tool.description,
+        category: tool.category,
+        requiresConfirmation: Boolean(tool.requiresConfirmation || policy?.defaultRequiresConfirmation),
+        requiresApproval: Boolean(policy?.defaultRequiresApproval),
+        requiredRoles: tool.requiredRoles,
+        parameters: tool.parameters,
+        exposure:
+          exposure === 'runtime_only'
+            ? 'runtime_only'
+            : exposure === 'prompt_only'
+              ? 'prompt_only'
+              : 'prompt_and_runtime',
+      });
+    }
+
+    return visibleTools;
   }
 
   private toVisibleSkills(skills: AvailableSkillDefinition[]): CapabilityVisibleSkill[] {

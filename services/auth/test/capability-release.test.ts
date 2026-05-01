@@ -4,6 +4,15 @@ describe('CapabilityReleaseService', () => {
   const createService = () => {
     const prisma = {
       $executeRawUnsafe: jest.fn(),
+      $queryRawUnsafe: jest.fn(),
+    };
+    const skillService = {
+      validateSkillToolsPayload: jest.fn(),
+      createSkill: jest.fn(),
+      getSkillToolBindings: jest.fn(),
+    };
+    const toolCatalogService = {
+      getCatalogItemsByNames: jest.fn(),
     };
 
     const service = new CapabilityReleaseService(
@@ -11,10 +20,11 @@ describe('CapabilityReleaseService', () => {
       {} as any,
       {} as any,
       {} as any,
-      {} as any,
+      skillService as any,
+      toolCatalogService as any,
     );
 
-    return { service, prisma };
+    return { service, prisma, skillService, toolCatalogService };
   };
 
   it('archives the release and deactivates its published skill', async () => {
@@ -54,5 +64,120 @@ describe('CapabilityReleaseService', () => {
       true,
       '归档 Capability Release',
     );
+  });
+
+  it('blocks publishing when tool validation fails', async () => {
+    const { service, skillService } = createService();
+
+    jest.spyOn(service as any, 'getReleaseOrThrow').mockResolvedValue({
+      id: 'release-1',
+      approvalStatus: 'approved',
+      status: 'approved',
+      currentSkillDraftId: 'draft-1',
+      publishedSkillId: null,
+    });
+    jest.spyOn(service as any, 'getSkillDraftOrThrow').mockResolvedValue({
+      id: 'draft-1',
+      tools: ['api_call'],
+      executionFlowTemplateIds: ['tpl-1'],
+      draftPayload: {
+        name: 'Test Draft',
+        description: 'desc',
+        tools: ['api_call'],
+        executionFlowTemplateIds: ['tpl-1'],
+      },
+    });
+    jest.spyOn(service as any, 'insertAuditEvent').mockResolvedValue(undefined);
+    skillService.validateSkillToolsPayload.mockResolvedValue({
+      isValid: false,
+      declaredTools: ['api_call'],
+      inferredTools: [],
+      effectiveTools: ['api_call'],
+      missingTools: [],
+      disabledTools: ['api_call'],
+      forbiddenSkillTools: [],
+      undeclaredFlowTools: [],
+      messages: [
+        {
+          code: 'tool_disabled',
+          toolName: 'api_call',
+          severity: 'error',
+          message: '工具 "api_call" 当前已被禁用',
+        },
+      ],
+    });
+
+    await expect(service.publishSkill('release-1', {}, 'user-1')).rejects.toThrow('发布前工具校验失败');
+    expect((service as any).insertAuditEvent).toHaveBeenCalledWith(
+      'release-1',
+      'skill_publish_blocked_by_tool_validation',
+      'user-1',
+      false,
+      '发布前工具校验失败',
+      expect.objectContaining({
+        toolValidation: expect.objectContaining({
+          isValid: false,
+        }),
+      }),
+    );
+  });
+
+  it('returns runtime tool policies from tool catalog metadata', async () => {
+    const { service, prisma, skillService, toolCatalogService } = createService();
+
+    prisma.$queryRawUnsafe
+      .mockResolvedValueOnce([{ id: 'release-row-1' }])
+      .mockResolvedValueOnce([{ id: 'deployment-row-1' }]);
+    jest.spyOn(service as any, 'mapRelease').mockReturnValue({
+      id: 'release-1',
+      sourceType: 'execution_flow_template',
+      lastDeploymentId: null,
+    });
+    jest.spyOn(service as any, 'mapDeployment').mockReturnValue({
+      id: 'deployment-1',
+      runtimeType: 'flow_runtime',
+      environment: 'dev',
+    });
+    skillService.getSkillToolBindings.mockResolvedValue({
+      validation: {
+        effectiveTools: ['api_call', 'user_ask'],
+      },
+    });
+    toolCatalogService.getCatalogItemsByNames.mockResolvedValue(
+      new Map([
+        ['api_call', {
+          promptExposure: 'prompt_and_runtime',
+          defaultRequiresConfirmation: false,
+          defaultRequiresApproval: true,
+          status: 'active',
+        }],
+        ['user_ask', {
+          promptExposure: 'runtime_only',
+          defaultRequiresConfirmation: false,
+          defaultRequiresApproval: false,
+          status: 'active',
+        }],
+      ]),
+    );
+
+    const result = await service.getPublishedSkillRuntimeContext('skill-1');
+
+    expect(result.allowedToolNames).toEqual(['api_call', 'user_ask']);
+    expect(result.toolPolicies).toEqual([
+      {
+        name: 'api_call',
+        promptExposure: 'prompt_and_runtime',
+        defaultRequiresConfirmation: false,
+        defaultRequiresApproval: true,
+        status: 'active',
+      },
+      {
+        name: 'user_ask',
+        promptExposure: 'runtime_only',
+        defaultRequiresConfirmation: false,
+        defaultRequiresApproval: false,
+        status: 'active',
+      },
+    ]);
   });
 });

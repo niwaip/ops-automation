@@ -5,6 +5,7 @@ import { AuditModule } from './modules/audit/audit.module';
 import { ExecutionModule } from './modules/execution/execution.module';
 import { PrismaModule } from './modules/prisma/prisma.module';
 import { AuthMiddleware } from './modules/auth/auth.middleware';
+import { McpModule } from './modules/mcp/mcp.module';
 
 @Module({
   imports: [
@@ -16,13 +17,14 @@ import { AuthMiddleware } from './modules/auth/auth.middleware';
     ProxyModule,
     AuditModule,
     ExecutionModule,
+    McpModule,
   ],
 })
 export class AppModule implements NestModule {
   configure(consumer: MiddlewareConsumer) {
     consumer
       .apply(AuthMiddleware)
-      .exclude('auth/login', 'auth/register', 'auth/refresh', 'health', 'api/docs')
+      .exclude('auth/login', 'auth/register', 'auth/refresh', 'health', 'api/docs', 'mcp/sse', 'mcp/message')
       .forRoutes('*');
   }
 }

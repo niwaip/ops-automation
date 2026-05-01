@@ -1192,7 +1192,10 @@ export class ExecutionService {
     dto: CreateExecutionDto,
     planDraft?: PlannerPlanDraft,
   ): Record<string, unknown> {
-    const input = dto.input || {};
+    const rawInput = dto.input || {};
+    const promptDebugCandidate = (rawInput as Record<string, unknown>).__promptDebug;
+    const input = { ...rawInput } as Record<string, unknown>;
+    delete input.__promptDebug;
     const plannerExtractedInput = (planDraft?.required_inputs || []).reduce<Record<string, unknown>>(
       (acc, item) => {
         if (!item || item.missing || item.value === undefined || item.value === null) {
@@ -1237,6 +1240,14 @@ export class ExecutionService {
     const bootstrapUrl = this.extractBootstrapUrl(mergedInput, planDraft);
     if (bootstrapUrl) {
       normalizedInput.url = bootstrapUrl;
+    }
+
+    if (
+      promptDebugCandidate
+      && typeof promptDebugCandidate === 'object'
+      && !Array.isArray(promptDebugCandidate)
+    ) {
+      normalizedInput.promptDebug = promptDebugCandidate;
     }
 
     return normalizedInput;

@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Table, Card, Button, Input, Space, Tag, Typography, Modal, message, Form, Select, Descriptions, Tabs, Tooltip, Collapse, Steps, Divider, Badge, Alert, Popconfirm, Progress } from 'antd';
 import {
   SearchOutlined,
@@ -178,8 +178,9 @@ const SkillAdminPage: React.FC = () => {
   const { t } = useTranslation(['common', 'admin']);
   const queryClient = useQueryClient();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
 
-  const [searchText, setSearchText] = useState('');
+  const [searchText, setSearchText] = useState(searchParams.get('q') || '');
   const [editModalVisible, setEditModalVisible] = useState(false);
   const [detailModalVisible, setDetailModalVisible] = useState(false);
   const [permissionModalVisible, setPermissionModalVisible] = useState(false);
@@ -331,6 +332,11 @@ const SkillAdminPage: React.FC = () => {
       stopValidationStream();
     };
   }, []);
+
+  useEffect(() => {
+    const keyword = searchParams.get('q') || '';
+    setSearchText(keyword);
+  }, [searchParams]);
 
   useEffect(() => {
     if (!validatingSkillId) {
@@ -507,9 +513,16 @@ const SkillAdminPage: React.FC = () => {
 
   // Filter skills by search text
   const filteredSkills = skillsQuery.data?.skills?.filter(
-    (skill) =>
-      skill.name.toLowerCase().includes(searchText.toLowerCase()) ||
-      (skill.description || '').toLowerCase().includes(searchText.toLowerCase())
+    (skill) => {
+      const keyword = searchText.toLowerCase();
+      return (
+        skill.name.toLowerCase().includes(keyword) ||
+        (skill.description || '').toLowerCase().includes(keyword) ||
+        skill.triggerKeywords?.some((triggerKeyword) => triggerKeyword.toLowerCase().includes(keyword)) ||
+        skill.tools?.some((toolName) => toolName.toLowerCase().includes(keyword)) ||
+        skill.effectiveTools?.some((toolName) => toolName.toLowerCase().includes(keyword))
+      );
+    }
   );
   const validationProgressMeta = getValidationProgressMeta(
     validationResult ? '验证完成' : validationStage,
@@ -807,7 +820,15 @@ const SkillAdminPage: React.FC = () => {
               placeholder={t('common:search')}
               prefix={<SearchOutlined />}
               value={searchText}
-              onChange={(e) => setSearchText(e.target.value)}
+              onChange={(e) => {
+                const nextValue = e.target.value;
+                setSearchText(nextValue);
+                if (nextValue) {
+                  setSearchParams({ q: nextValue }, { replace: true });
+                } else {
+                  setSearchParams({}, { replace: true });
+                }
+              }}
               style={{ width: 200 }}
               allowClear
             />

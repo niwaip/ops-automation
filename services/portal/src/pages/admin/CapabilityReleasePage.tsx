@@ -98,6 +98,12 @@ interface CapabilitySourceOption {
   description?: string;
 }
 
+interface TemporalDeployReadiness {
+  hasExecutableCode: boolean;
+  message?: string;
+  source?: 'build' | 'snapshot' | 'workflow' | 'missing';
+}
+
 const statusColor = (status: string) => {
   switch (status) {
     case 'draft_ready':
@@ -227,6 +233,41 @@ const buildSnapshotDiffRows = (
       status,
     };
   });
+};
+
+const hasNonEmptyCode = (value: unknown): value is string =>
+  typeof value === 'string' && value.trim().length > 0;
+
+const getTemporalDeployReadiness = (
+  detail: CapabilityReleaseDetail | undefined,
+  sourceWorkflow?: TemporalWorkflowDTO | null,
+): TemporalDeployReadiness => {
+  if (!detail || detail.release.sourceType !== 'temporal_workflow') {
+    return { hasExecutableCode: true };
+  }
+
+  const successfulBuild = detail.builds?.find(
+    (build) => build.status === 'succeeded' && hasNonEmptyCode(build.generatedCode),
+  );
+  if (successfulBuild) {
+    return { hasExecutableCode: true, source: 'build' };
+  }
+
+  const snapshotCode = detail.currentSourceSnapshot?.sourcePayload?.generatedCode;
+  if (hasNonEmptyCode(snapshotCode)) {
+    return { hasExecutableCode: true, source: 'snapshot' };
+  }
+
+  if (hasNonEmptyCode(sourceWorkflow?.generatedCode)) {
+    return { hasExecutableCode: true, source: 'workflow' };
+  }
+
+  return {
+    hasExecutableCode: false,
+    source: 'missing',
+    message:
+      '当前 Release 还没有可执行 Workflow 代码。请先执行一次“构建 / AI 生成代码”，确认代码已保存，再进行部署。',
+  };
 };
 
 const parseJsonDraft = <T,>(raw: string, fallbackLabel: string): { valid: true; value: T } | { valid: false; error: string } => {
@@ -507,6 +548,13 @@ const CapabilityReleasePage: React.FC<CapabilityReleasePageProps> = ({ mode = 'm
       : createSourceType === 'execution_flow_template'
         ? executionFlowOptionsQuery.isLoading
         : false;
+  const temporalWorkflowMap = useMemo(
+    () =>
+      new Map(
+        (temporalWorkflowOptionsQuery.data || []).map((workflow) => [workflow.id, workflow]),
+      ),
+    [temporalWorkflowOptionsQuery.data],
+  );
 
   useEffect(() => {
     if (!createVisible) {
@@ -920,6 +968,37 @@ const CapabilityReleasePage: React.FC<CapabilityReleasePageProps> = ({ mode = 'm
 
   const selectedDetail: CapabilityReleaseDetail | undefined = detailQuery.data?.release;
   const wizardDetail: CapabilityReleaseDetail | undefined = wizardDetailQuery.data?.release;
+  const selectedSourceWorkflow = useMemo(
+    () =>
+      selectedDetail?.release.sourceId
+        ? temporalWorkflowMap.get(selectedDetail.release.sourceId) || null
+        : null,
+    [selectedDetail?.release.sourceId, temporalWorkflowMap],
+  );
+  const wizardSourceWorkflow = useMemo(
+    () =>
+      wizardDetail?.release.sourceId
+        ? temporalWorkflowMap.get(wizardDetail.release.sourceId) || null
+        : null,
+    [wizardDetail?.release.sourceId, temporalWorkflowMap],
+  );
+  const selectedDeployReadiness = useMemo(
+    () => getTemporalDeployReadiness(selectedDetail, selectedSourceWorkflow),
+    [selectedDetail, selectedSourceWorkflow],
+  );
+  const wizardDeployReadiness = useMemo(
+    () => getTemporalDeployReadiness(wizardDetail, wizardSourceWorkflow),
+    [wizardDetail, wizardSourceWorkflow],
+  );
+  const currentSkillDraftRuntimeMetadata = useMemo(() => {
+    const runtimeMetadata = selectedDetail?.currentSkillDraft?.apiEndpoints
+      && typeof selectedDetail.currentSkillDraft.apiEndpoints === 'object'
+      ? (selectedDetail.currentSkillDraft.apiEndpoints as Record<string, unknown>).runtimeMetadata
+      : undefined;
+    return runtimeMetadata && typeof runtimeMetadata === 'object'
+      ? runtimeMetadata as Record<string, unknown>
+      : {};
+  }, [selectedDetail?.currentSkillDraft?.id, selectedDetail?.currentSkillDraft?.updatedAt]);
   const wizardRelease =
     wizardDetail?.release ||
     (releasesQuery.data?.releases || []).find((item) => item.id === wizardReleaseId);
@@ -1277,6 +1356,10 @@ const CapabilityReleasePage: React.FC<CapabilityReleasePageProps> = ({ mode = 'm
     if (!deployTargetReleaseId) {
       return;
     }
+    if (!selectedDeployReadiness.hasExecutableCode) {
+      message.warning(selectedDeployReadiness.message || '请先生成可执行代码后再部署');
+      return;
+    }
     if (deployEnvironment === 'prod' && !hasSuccessfulStagingDeployment) {
       message.warning('请先完成一次 staging 成功部署，再发布到 prod');
       return;
@@ -1327,6 +1410,10 @@ const CapabilityReleasePage: React.FC<CapabilityReleasePageProps> = ({ mode = 'm
 
   const handleWizardDeploy = () => {
     if (!wizardReleaseId) {
+      return;
+    }
+    if (!wizardDeployReadiness.hasExecutableCode) {
+      message.warning(wizardDeployReadiness.message || '请先生成可执行代码后再部署');
       return;
     }
     if (deployEnvironment === 'prod' && !wizardHasSuccessfulStagingDeployment) {
@@ -1629,6 +1716,12 @@ const CapabilityReleasePage: React.FC<CapabilityReleasePageProps> = ({ mode = 'm
             isEditingSkillDraft ? (
               <div style={{ maxHeight: 500, overflowY: 'auto', paddingRight: 4 }}>
                 <Space direction="vertical" size="small" style={{ width: '100%' }}>
+                  <Alert
+                    type="info"
+                    showIcon
+                    message="Skill Draft 职责"
+                    description="description 只写业务说明；触发与匹配走 triggerKeywords / matchSummary；参数补充与校验说明放在运行时元数据里，不再塞进 description。"
+                  />
                   <Input
                     placeholder="Skill 名称"
                     value={skillDraftName}
@@ -1677,13 +1770,31 @@ const CapabilityReleasePage: React.FC<CapabilityReleasePageProps> = ({ mode = 'm
                   <Descriptions.Item label="状态">
                     <Tag color="blue">{selectedDetail.currentSkillDraft.status}</Tag>
                   </Descriptions.Item>
+                  <Descriptions.Item label="描述">
+                    {selectedDetail.currentSkillDraft.description || '无'}
+                  </Descriptions.Item>
+                  <Descriptions.Item label="匹配摘要">
+                    {typeof currentSkillDraftRuntimeMetadata.matchSummary === 'string'
+                      ? currentSkillDraftRuntimeMetadata.matchSummary
+                      : '无'}
+                  </Descriptions.Item>
                   <Descriptions.Item label="触发词">
                     {selectedDetail.currentSkillDraft.triggerKeywords?.slice(0, 3).join(', ') || '无'}
                     {(selectedDetail.currentSkillDraft.triggerKeywords?.length || 0) > 3 && ' ...'}
                   </Descriptions.Item>
+                  <Descriptions.Item label="参数补充情报">
+                    {typeof currentSkillDraftRuntimeMetadata.paramCollectionGuidance === 'string'
+                      ? currentSkillDraftRuntimeMetadata.paramCollectionGuidance
+                      : '无'}
+                  </Descriptions.Item>
+                  <Descriptions.Item label="校验规则">
+                    {typeof currentSkillDraftRuntimeMetadata.validationRules === 'string'
+                      ? currentSkillDraftRuntimeMetadata.validationRules
+                      : '无'}
+                  </Descriptions.Item>
                 </Descriptions>
                 <Text type="secondary" style={{ fontSize: 12 }}>
-                  面向 AI 的能力描述，定义了如何触发及提取参数。
+                  description 负责说明能力本身；参数补充情报与校验规则已拆到独立元数据，避免继续污染 skill match。
                 </Text>
               </div>
             )
@@ -1793,11 +1904,19 @@ const CapabilityReleasePage: React.FC<CapabilityReleasePageProps> = ({ mode = 'm
             description={
               <Space direction="vertical" size="small">
                 <Text>当前 Release 已准备就绪，建议将其部署到测试环境进行最后的冒烟验证。</Text>
+                {!selectedDeployReadiness.hasExecutableCode ? (
+                  <Alert
+                    type="warning"
+                    showIcon
+                    message={selectedDeployReadiness.message}
+                  />
+                ) : null}
                 <Button
                   size="small"
                   type="primary"
                   ghost
                   icon={<RocketOutlined />}
+                  disabled={!selectedDeployReadiness.hasExecutableCode}
                   onClick={() => openDeployModal(selectedDetail.release.id)}
                 >
                   前往部署配置
@@ -2369,6 +2488,14 @@ const CapabilityReleasePage: React.FC<CapabilityReleasePageProps> = ({ mode = 'm
                       message="生产发布建议"
                       description="prod 建议使用 rolling_restart 并先小流量观察，确认无异常后再全量；保留回滚路径。"
                     />
+                    {!wizardDeployReadiness.hasExecutableCode ? (
+                      <Alert
+                        type="error"
+                        showIcon
+                        message="缺少可执行代码"
+                        description={wizardDeployReadiness.message}
+                      />
+                    ) : null}
                     <Space wrap style={{ width: '100%' }}>
                       <Select
                         style={{ width: 180 }}
@@ -2457,7 +2584,10 @@ const CapabilityReleasePage: React.FC<CapabilityReleasePageProps> = ({ mode = 'm
                   <Button
                     type="primary"
                     loading={deployMutation.isLoading}
-                    disabled={deployEnvironment === 'prod' && !wizardHasSuccessfulStagingDeployment}
+                    disabled={
+                      !wizardDeployReadiness.hasExecutableCode
+                      || (deployEnvironment === 'prod' && !wizardHasSuccessfulStagingDeployment)
+                    }
                     onClick={handleWizardDeploy}
                   >
                     部署到 {deployEnvironment}
@@ -2636,6 +2766,7 @@ const CapabilityReleasePage: React.FC<CapabilityReleasePageProps> = ({ mode = 'm
         okButtonProps={{
           disabled:
             !deployOverridesState.valid
+            || !selectedDeployReadiness.hasExecutableCode
             || (deployEnvironment === 'prod' && !hasSuccessfulStagingDeployment),
         }}
         width={760}
@@ -2708,6 +2839,14 @@ const CapabilityReleasePage: React.FC<CapabilityReleasePageProps> = ({ mode = 'm
               showIcon
               message="prod 发布门禁"
               description="当前 Release 尚无 staging 成功部署记录，不能直接发布到 prod。"
+            />
+          ) : null}
+          {!selectedDeployReadiness.hasExecutableCode ? (
+            <Alert
+              type="error"
+              showIcon
+              message="缺少可执行代码"
+              description={selectedDeployReadiness.message}
             />
           ) : null}
           <Text type="secondary">
@@ -2968,6 +3107,7 @@ const CapabilityReleasePage: React.FC<CapabilityReleasePageProps> = ({ mode = 'm
                         size="small"
                         ghost
                         loading={deployMutation.isLoading}
+                        disabled={!selectedDeployReadiness.hasExecutableCode}
                         onClick={() => openDeployModal(selectedDetail.release.id)}
                       >
                         代码部署

@@ -4,8 +4,10 @@
  */
 
 import axios from 'axios';
+import { Injectable } from '@nestjs/common';
 import { BaseTool } from './base.tool';
 import { ToolResult, ExecutionContext, AvailableSkillDefinition } from '../interfaces';
+import { Tool } from '../decorators/tool.decorator';
 
 const CARBONE_SERVICE_URL = process.env.CARBONE_SERVICE_URL || 'http://carbone-engine:3009';
 const REPORT_SERVICE_URL = process.env.REPORT_SERVICE_URL || 'http://ops-report:3008';
@@ -29,33 +31,49 @@ interface ReportTemplateRegistryItem {
   ai_config?: Record<string, unknown>;
 }
 
+@Injectable()
+@Tool({
+  name: 'document_intake',
+  description: '提取和解析文档内容，识别其中的结构化数据。常用于初始化复杂的文档填报任务。',
+  parameters: {
+    type: 'object',
+    properties: {
+      fileId: {
+        type: 'string',
+        description: '已上传文件的ID',
+        required: true,
+      },
+      skillId: {
+        type: 'string',
+        description: '关联的技能ID（可选）',
+        required: false,
+      },
+    },
+    required: ['fileId'],
+  },
+  isDefault: true,
+})
 export class DocumentIntakeTool extends BaseTool {
   constructor() {
     super(
       'document_intake',
-      '文档入口工具：先选择文档模板，再根据用户描述生成参数初稿。适用于“文档生成”类任务的前置阶段。',
+      '提取和解析文档内容，识别其中的结构化数据。常用于初始化复杂的文档填报任务。',
       {
         type: 'object',
         properties: {
-          userInput: {
+          fileId: {
             type: 'string',
-            description: '用户原始需求描述',
-            required: false,
-          },
-          templateId: {
-            type: 'string',
-            description: '可选，显式指定文档模板ID（通常等于 carboneTemplateId）',
-            required: false,
+            description: '已上传文件的ID',
+            required: true,
           },
           skillId: {
             type: 'string',
-            description: '可选，指定要使用的平台 skillId',
+            description: '关联的技能ID（可选）',
             required: false,
           },
         },
-        required: [],
+        required: ['fileId'],
       },
-      { category: 'parameter' },
     );
   }
 

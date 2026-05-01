@@ -3,10 +3,12 @@
  * 执行标准化的浏览器步骤，支持人工接管流程
  */
 
+import { Injectable } from '@nestjs/common';
 import axios from 'axios';
 import { BaseTool } from './base.tool';
 import { ToolResult, ExecutionContext } from '../interfaces';
 import { TRACE_ID_HEADER } from '../../../common/trace.util';
+import { Tool } from '../decorators/tool.decorator';
 
 // Browser Worker service URL
 const getBrowserWorkerUrl = () => {
@@ -54,47 +56,71 @@ interface ExecuteStepResultDto {
   takeoverReason?: string;
 }
 
+@Injectable()
+@Tool({
+  name: 'browser_step',
+  description: '执行标准化的浏览器自动化步骤。支持页面跳转、点击、输入、滚动、截图等操作。',
+  parameters: {
+    type: 'object',
+    properties: {
+      action: {
+        type: 'string',
+        description: '动作类型：goto, click, fill, scroll, screenshot, wait, extract',
+        required: true,
+      },
+      target: {
+        type: 'string',
+        description: '动作目标：URL或CSS选择器',
+        required: false,
+      },
+      args: {
+        type: 'object',
+        description: '动作参数（如输入内容）',
+        required: false,
+      },
+      stepId: {
+        type: 'string',
+        description: '步骤ID（可选）',
+        required: false,
+      },
+    },
+    required: ['action'],
+  },
+  category: 'execution',
+  isDefault: true,
+})
 export class BrowserStepTool extends BaseTool {
   constructor() {
     super(
       'browser_step',
-      '执行标准化的浏览器步骤。调用browser-worker执行goto、click、fill、screenshot等操作。当shouldTakeover为true时，自动触发人工接管流程。',
+      '执行标准化的浏览器自动化步骤。支持页面跳转、点击、输入、滚动、截图等操作。',
       {
         type: 'object',
         properties: {
-          runtimeSessionId: {
-            type: 'string',
-            description: '运行时会话ID',
-            required: true,
-          },
-          stepId: {
-            type: 'string',
-            description: '步骤ID',
-            required: true,
-          },
           action: {
             type: 'string',
-            description: '操作类型：goto、click、fill、screenshot、snapshot、evaluate、wait、scroll、press_key、hover',
+            description: '动作类型：goto, click, fill, scroll, screenshot, wait, extract',
             required: true,
           },
           target: {
             type: 'string',
-            description: '目标选择器或标识符',
+            description: '动作目标：URL或CSS选择器',
             required: false,
           },
           args: {
             type: 'object',
-            description: '额外参数',
+            description: '动作参数（如输入内容）',
             required: false,
           },
-          assertion: {
-            type: 'object',
-            description: '断言配置',
+          stepId: {
+            type: 'string',
+            description: '步骤ID（可选）',
             required: false,
           },
         },
-        required: ['runtimeSessionId', 'stepId', 'action'],
+        required: ['action'],
       },
+      { category: 'execution' },
     );
   }
 

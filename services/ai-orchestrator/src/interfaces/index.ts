@@ -115,10 +115,26 @@ export interface RecognizeParamsDTO {
   };
 }
 
+export interface PromptDebugLLMCall {
+  stage: string;
+  label: string;
+  modelId?: string;
+  requestMessages?: Array<{
+    role: 'system' | 'user' | 'assistant';
+    content: string;
+  }>;
+  responseText?: string;
+  note?: string;
+}
+
 export interface RecognizeParamsResponseDTO {
   params: Record<string, unknown>;
   confidence: number;
   usage?: LLMUsage;
+  debug?: {
+    llmCalls?: PromptDebugLLMCall[];
+    notes?: string[];
+  };
 }
 
 export interface DecideFailureDTO {

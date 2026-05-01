@@ -3,10 +3,12 @@
  * 执行流程模板步骤，支持text、api、tool、script类型步骤
  */
 
+import { Injectable } from '@nestjs/common';
 import axios from 'axios';
 import { BaseTool } from './base.tool';
 import { ToolResult, ExecutionContext } from '../interfaces';
 import { TRACE_ID_HEADER } from '../../../common/trace.util';
+import { Tool } from '../decorators/tool.decorator';
 
 // Auth服务地址
 const getAuthServiceUrl = () => {
@@ -239,37 +241,125 @@ const isTemplateVisibleInSnapshot = (
   return context.capabilitySnapshot.visibleTools.some((tool) => tool.name === aliasedToolName);
 };
 
+const getSelectedSkillId = (
+  explicitSkillId: string | undefined,
+  context: ExecutionContext,
+): string | undefined => {
+  return explicitSkillId
+    || context.skill?.skillId
+    || context.documentContext?.selectedSkillId
+    || context.capabilitySnapshot?.selectedSkillId;
+};
+
+const getSelectedSkillToolNames = (
+  selectedSkillId: string | undefined,
+  context: ExecutionContext,
+): string[] | undefined => {
+  return context.selectedSkillToolNames
+    || context.capabilitySnapshot?.skillScopedToolNames
+    || context.availableSkills?.find((item) => item.skillId === selectedSkillId)?.effectiveTools;
+};
+
+const isToolAllowedInSkillScope = (
+  toolName: string,
+  selectedSkillId: string | undefined,
+  context: ExecutionContext,
+): boolean => {
+  const scopedTools = getSelectedSkillToolNames(selectedSkillId, context);
+  if (!selectedSkillId || !scopedTools || scopedTools.length === 0) {
+    return true;
+  }
+  return scopedTools.includes(toolName);
+};
+
+const getCapabilityVisibleTool = (
+  toolName: string,
+  context: ExecutionContext,
+) => {
+  return context.capabilitySnapshot?.visibleTools.find((tool) => tool.name === toolName);
+};
+
+const hasApprovalForTool = (
+  toolName: string,
+  context: ExecutionContext,
+): boolean => {
+  return Boolean(context.approvedToolNames?.includes(toolName));
+};
+
+const buildApprovalRejection = (
+  toolName: string,
+  stepName: string,
+  stepId: string,
+  templateId: string | undefined,
+  selectedSkillId: string | undefined,
+  context: ExecutionContext,
+): ToolResult => ({
+  success: false,
+  output: `步骤"${stepName}" 需要调用工具 "${toolName}"，但该工具当前需要审批后才能执行。`,
+  code: 'tool_requires_approval',
+  severity: 'error',
+  data: {
+    error: 'tool_requires_approval',
+    stepId,
+    stepName,
+    toolName,
+    selectedSkillId,
+  },
+  requiresUserInput: true,
+  userInputPrompt: `请先完成工具 "${toolName}" 的审批，再继续执行该流程步骤。`,
+  meta: {
+    toolName: 'flow_execute',
+    capabilityChecked: Boolean(context.capabilitySnapshot),
+    selectedSkillId,
+    selectedTemplateId: templateId,
+  },
+});
+
+@Injectable()
+@Tool({
+  name: 'flow_execute',
+  description: '执行技能的工作流模板(ExecutionFlow)。按步骤顺序执行text、api、tool、script等操作。',
+  parameters: {
+    type: 'object',
+    properties: {
+      templateId: {
+        type: 'string',
+        description: '工作流模板ID',
+        required: true,
+      },
+      params: {
+        type: 'object',
+        description: '传递给工作流的参数',
+        required: false,
+      },
+    },
+    required: ['templateId'],
+  },
+  category: 'flow',
+  isDefault: true,
+})
 export class FlowExecuteTool extends BaseTool {
   constructor() {
     super(
       'flow_execute',
-      '执行流程模板步骤。根据模板ID或技能ID获取步骤定义，并按顺序执行每个步骤。支持API调用、文本指导、工具调用等步骤类型。',
+      '执行技能的工作流模板(ExecutionFlow)。按步骤顺序执行text、api、tool、script等操作。',
       {
         type: 'object',
         properties: {
           templateId: {
             type: 'string',
-            description: '流程模板ID（优先使用）',
-            required: false,
-          },
-          skillId: {
-            type: 'string',
-            description: '技能ID（如果无模板ID，则执行技能内编排的流程）',
-            required: false,
-          },
-          stepIndex: {
-            type: 'number',
-            description: '从第几步开始执行（可选，默认从0开始）',
-            required: false,
+            description: '工作流模板ID',
+            required: true,
           },
           params: {
             type: 'object',
-            description: '执行参数（用于填充步骤中的变量）',
+            description: '传递给工作流的参数',
             required: false,
           },
         },
-        required: [],
+        required: ['templateId'],
       },
+      { category: 'flow' },
     );
   }
 
@@ -307,6 +397,7 @@ export class FlowExecuteTool extends BaseTool {
     const skillId = params.skillId as string;
     const stepIndex = (params.stepIndex as number) || 0;
     const execParams = params.params as Record<string, unknown> || {};
+    const resolvedSelectedSkillId = getSelectedSkillId(skillId, context);
 
     if (!templateId && !skillId) {
       return {
@@ -546,6 +637,46 @@ export class FlowExecuteTool extends BaseTool {
           break;
 
         case 'api':
+          if (!isToolAllowedInSkillScope('api_call', resolvedSelectedSkillId, context)) {
+            return {
+              success: false,
+              output: `步骤"${currentStep.name}" 需要调用工具 "api_call"，但该工具不在当前技能允许范围内。`,
+              code: 'tool_not_bound_to_skill',
+              severity: 'error',
+              data: {
+                error: 'tool_not_bound_to_skill',
+                stepId: currentStep.id || `step_${stepIndex}`,
+                stepName: currentStep.name,
+                toolName: 'api_call',
+                selectedSkillId: resolvedSelectedSkillId,
+                allowedTools: getSelectedSkillToolNames(resolvedSelectedSkillId, context) || [],
+              },
+              meta: {
+                toolName: this.name,
+                capabilityChecked: Boolean(context.capabilitySnapshot),
+                selectedSkillId: resolvedSelectedSkillId,
+                selectedTemplateId: templateId,
+              },
+            };
+          }
+
+          if (
+            (
+              context.capabilitySnapshot?.policies.requireApprovalToolNames?.includes('api_call')
+              || getCapabilityVisibleTool('api_call', context)?.requiresApproval
+            )
+            && !hasApprovalForTool('api_call', context)
+          ) {
+            return buildApprovalRejection(
+              'api_call',
+              currentStep.name,
+              currentStep.id || `step_${stepIndex}`,
+              templateId,
+              resolvedSelectedSkillId,
+              context,
+            );
+          }
+
           // API调用步骤
           if (!currentStep.api?.endpoint) {
             stepResult = `步骤"${currentStep.name}"缺少API端点配置`;
@@ -630,6 +761,46 @@ export class FlowExecuteTool extends BaseTool {
                 selectedTemplateId: templateId,
               },
             };
+          }
+
+          if (!isToolAllowedInSkillScope(currentStep.tool.name, resolvedSelectedSkillId, context)) {
+            return {
+              success: false,
+              output: `步骤"${currentStep.name}" 需要调用工具 "${currentStep.tool.name}"，但该工具不在当前技能允许范围内。`,
+              code: 'tool_not_bound_to_skill',
+              severity: 'error',
+              data: {
+                error: 'tool_not_bound_to_skill',
+                stepId: currentStep.id || `step_${stepIndex}`,
+                stepName: currentStep.name,
+                toolName: currentStep.tool.name,
+                selectedSkillId: resolvedSelectedSkillId,
+                allowedTools: getSelectedSkillToolNames(resolvedSelectedSkillId, context) || [],
+              },
+              meta: {
+                toolName: this.name,
+                capabilityChecked: Boolean(context.capabilitySnapshot),
+                selectedSkillId: resolvedSelectedSkillId,
+                selectedTemplateId: templateId,
+              },
+            };
+          }
+
+          if (
+            (
+              context.capabilitySnapshot?.policies.requireApprovalToolNames?.includes(currentStep.tool.name)
+              || getCapabilityVisibleTool(currentStep.tool.name, context)?.requiresApproval
+            )
+            && !hasApprovalForTool(currentStep.tool.name, context)
+          ) {
+            return buildApprovalRejection(
+              currentStep.tool.name,
+              currentStep.name,
+              currentStep.id || `step_${stepIndex}`,
+              templateId,
+              resolvedSelectedSkillId,
+              context,
+            );
           }
 
           // 合并参数

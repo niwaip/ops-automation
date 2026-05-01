@@ -114,6 +114,16 @@ export class PlannerService {
         expected_result: matchedSkill.expectedResult,
         goal: matchedSkill.goal,
         template_id: matchedSkill.templateId,
+        debug: {
+          llmCalls: [
+            ...(matchedSkill.debug?.llmCalls || []),
+            ...(recognized.debug?.llmCalls || []),
+          ],
+          notes: [
+            ...(matchedSkill.debug?.notes || []),
+            ...(recognized.debug?.notes || []),
+          ],
+        },
       },
     };
   }
@@ -430,6 +440,9 @@ export class PlannerService {
       },
       metadata: {
         has_visible_skills: hasVisibleSkills,
+        debug: {
+          notes: ['当前为 fallback 规划结果，没有额外的上游 LLM request/response 可展示。'],
+        },
       },
     };
   }

@@ -28,6 +28,49 @@ export interface StreamEvent {
   iteration?: number;
 }
 
+export interface PromptDebugPayload {
+  systemPrompt: string;
+  userPrompt: string;
+  debugSource?: 'planner' | 'react-engine';
+  systemPromptSectionKeys?: string[];
+  systemPromptSectionSources?: string[];
+  userPromptSectionKeys?: string[];
+  userPromptSectionSources?: string[];
+  modelId?: string;
+  llmRequestMessages?: Array<{
+    role: 'system' | 'user' | 'assistant';
+    content: string;
+  }>;
+  llmResponseText?: string;
+  llmCalls?: PromptDebugLLMCall[];
+  notes?: string[];
+}
+
+export interface PromptDebugLLMCall {
+  stage: string;
+  label: string;
+  modelId?: string;
+  requestMessages?: Array<{
+    role: 'system' | 'user' | 'assistant';
+    content: string;
+  }>;
+  responseText?: string;
+  note?: string;
+}
+
+export interface PromptDebugRecord {
+  id: string;
+  sessionId?: string;
+  messageId: string;
+  executionId?: string;
+  mode?: 'chat' | 'task';
+  taskStatus?: 'waiting_input' | 'pending_approval' | 'running' | 'completed' | 'failed';
+  sourceEventType: StreamEventType;
+  promptDebug: PromptDebugPayload;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface LLMUsage {
   prompt_tokens: number;
   completion_tokens: number;
@@ -78,6 +121,7 @@ export interface ChatMessage {
     finalSummary?: string;
     errorMessage?: string;
     hasBusinessResult?: boolean;
+    promptDebug?: PromptDebugPayload;
   };
   isStreaming?: boolean;
 }

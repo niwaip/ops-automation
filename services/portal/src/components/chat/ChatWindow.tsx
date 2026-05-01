@@ -35,6 +35,7 @@ const ChatWindow: React.FC = () => {
     addMessage,
     updateMessageById,
     updateMessageMetadataById,
+    upsertPromptDebugRecord,
     setStreaming,
     setAbortStreaming,
     addStreamEvent,
@@ -141,6 +142,7 @@ const ChatWindow: React.FC = () => {
         finalResultData: undefined,
         finalSummary: '',
         errorMessage: '',
+          promptDebug: undefined,
       },
     };
     addMessage(assistantMessage);
@@ -183,6 +185,24 @@ const ChatWindow: React.FC = () => {
     let accumulatedContent = '';
     const showThinking = request.config?.thinking !== false;
     const isChatRequest = request.config?.mode === 'chat';
+    const syncPromptDebug = (
+      event: any,
+      taskStatus: 'waiting_input' | 'pending_approval' | 'running' | 'completed' | 'failed' | undefined,
+      sourceEventType: StreamEventType,
+    ) => {
+      if (!event.data?.promptDebug) {
+        return;
+      }
+      upsertPromptDebugRecord({
+        messageId: assistantMessageId,
+        sessionId: request.sessionId,
+        executionId: event.data?.executionId as string | undefined,
+        mode: (event.data?.mode as 'chat' | 'task' | undefined) || request.config?.mode,
+        taskStatus,
+        sourceEventType,
+        promptDebug: event.data.promptDebug as any,
+      });
+    };
 
     const abortStreaming = streamChat(
       request,
@@ -200,7 +220,9 @@ const ChatWindow: React.FC = () => {
             executionId: event.data?.executionId as string | undefined,
             executionStatus: event.data?.status as string | undefined,
             errorMessage: '',
+            promptDebug: event.data?.promptDebug as any,
           });
+          syncPromptDebug(event, 'running', StreamEventType.THOUGHT);
         } else if (event.type === StreamEventType.ACTION) {
           if (showThinking) {
             accumulatedContent += `【行动】${event.content}\n`;
@@ -212,7 +234,9 @@ const ChatWindow: React.FC = () => {
             executionId: event.data?.executionId as string | undefined,
             executionStatus: event.data?.status as string | undefined,
             errorMessage: '',
+            promptDebug: event.data?.promptDebug as any,
           });
+          syncPromptDebug(event, 'running', StreamEventType.ACTION);
         } else if (event.type === StreamEventType.OBSERVATION && !Boolean(event.data?.hasBusinessResult) && !event.data?.downloadUrl) {
           if (isChatRequest) {
             accumulatedContent = event.content;
@@ -224,7 +248,9 @@ const ChatWindow: React.FC = () => {
             showThinking,
             finalSummary: isChatRequest ? '' : accumulatedContent,
             errorMessage: '',
+            promptDebug: event.data?.promptDebug as any,
           });
+          syncPromptDebug(event, undefined, StreamEventType.OBSERVATION);
         } else if (
           event.type === StreamEventType.RESULT ||
           event.type === StreamEventType.WAITING_INPUT ||
@@ -253,8 +279,11 @@ const ChatWindow: React.FC = () => {
               hasBusinessResult: false,
               missingInputs: undefined,
               errorMessage: '',
+              promptDebug: event.data?.promptDebug as any,
             });
+            syncPromptDebug(event, undefined, StreamEventType.RESULT);
           } else {
+            const nextTaskStatus = resolveTaskStatus(event.type as any, executionStatus);
             if (event.type === StreamEventType.RESULT) {
               accumulatedContent = ''; // 结果事件清空累积内容
             }
@@ -264,7 +293,7 @@ const ChatWindow: React.FC = () => {
             updateMessageMetadataById(assistantMessageId, {
               mode: eventMode,
               showThinking,
-              taskStatus: resolveTaskStatus(event.type as any, executionStatus),
+              taskStatus: nextTaskStatus,
               executionId: event.data?.executionId as string,
               executionStatus,
               finalResult: event.type === StreamEventType.RESULT && hasBusinessResult ? event.content : '',
@@ -276,7 +305,9 @@ const ChatWindow: React.FC = () => {
               hasBusinessResult,
               missingInputs,
               errorMessage: '',
+              promptDebug: event.data?.promptDebug as any,
             });
+            syncPromptDebug(event, nextTaskStatus, event.type as StreamEventType);
           }
         } else if (event.type === 'error') {
           if (event.content) {
@@ -291,13 +322,16 @@ const ChatWindow: React.FC = () => {
             finalResultData: undefined,
             usage: event.data?.usage as any,
             errorMessage: event.content,
+            promptDebug: event.data?.promptDebug as any,
           });
+          syncPromptDebug(event, 'failed', StreamEventType.ERROR);
         } else if (event.type === 'params_confirm') {
           const skill = event.data?.skill as { skillName?: string } | undefined;
           setPendingParamsConfirm(
             event.data?.params as Record<string, unknown>,
             skill?.skillName || null,
           );
+          syncPromptDebug(event, 'running', StreamEventType.PARAMS_CONFIRM);
         }
 
         setLocalStreamingContent(accumulatedContent);

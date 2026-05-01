@@ -31,6 +31,8 @@ import {
   SkillPermissionDTO,
   GrantSkillDTO,
   SkillValidationResult,
+  SkillToolBindingDTO,
+  SkillToolValidationResult,
 } from './interfaces';
 
 @Controller('skills')
@@ -70,6 +72,15 @@ export class SkillController {
     @Param('id') id: string,
   ): Promise<{ validation: SkillValidationResult }> {
     const validation = await this.skillService.validateSkill(id);
+    return { validation };
+  }
+
+  @Post(':id/validate-tools')
+  @Roles('admin')
+  async validateSkillTools(
+    @Param('id') id: string,
+  ): Promise<{ validation: SkillToolValidationResult }> {
+    const validation = await this.skillService.validateSkillTools(id);
     return { validation };
   }
 
@@ -236,5 +247,22 @@ export class SkillController {
   ): Promise<{ permissions: SkillPermissionDTO[] }> {
     const permissions = await this.skillService.getSkillPermissions(skillId);
     return { permissions };
+  }
+
+  @Get(':id/tool-bindings')
+  @Roles('admin')
+  async getSkillToolBindings(
+    @Param('id') skillId: string,
+  ): Promise<{ bindings: SkillToolBindingDTO[]; validation: SkillToolValidationResult }> {
+    return this.skillService.getSkillToolBindings(skillId);
+  }
+
+  @Put(':id/tool-bindings')
+  @Roles('admin')
+  async setSkillToolBindings(
+    @Param('id') skillId: string,
+    @Body() body: { tools: string[] },
+  ): Promise<{ bindings: SkillToolBindingDTO[]; validation: SkillToolValidationResult }> {
+    return this.skillService.setSkillToolBindings(skillId, body.tools || []);
   }
 }

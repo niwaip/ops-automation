@@ -1,6 +1,6 @@
-import { LLMUsage, LLMRateLimit } from '../../interfaces';
+import { LLMUsage, LLMRateLimit, PromptDebugLLMCall } from '../../interfaces';
 
-export { LLMUsage, LLMRateLimit };
+export { LLMUsage, LLMRateLimit, PromptDebugLLMCall };
 
 /**
  * ReAct Engine Interfaces
@@ -74,6 +74,24 @@ export interface PromptAssemblyMeta {
   userPromptSectionSources?: string[];
 }
 
+export interface PromptDebugPayload {
+  systemPrompt: string;
+  userPrompt: string;
+  debugSource?: 'planner' | 'react-engine';
+  systemPromptSectionKeys?: string[];
+  systemPromptSectionSources?: string[];
+  userPromptSectionKeys?: string[];
+  userPromptSectionSources?: string[];
+  modelId?: string;
+  llmRequestMessages?: Array<{
+    role: 'system' | 'user' | 'assistant';
+    content: string;
+  }>;
+  llmResponseText?: string;
+  llmCalls?: PromptDebugLLMCall[];
+  notes?: string[];
+}
+
 export interface DecisionContext {
   routing: RoutingMeta;
   promptAssembly: PromptAssemblyMeta;
@@ -97,6 +115,7 @@ export interface ReActState {
   contextSummary?: string;
   usage?: ExecutionUsage; // 消耗统计
   promptAssembly?: PromptAssemblyMeta;
+  promptDebug?: PromptDebugPayload;
   retryState?: {
     sameAction?: number;
     modelInference?: number;
@@ -124,9 +143,10 @@ export interface CapabilityVisibleTool {
   description: string;
   category?: 'discovery' | 'parameter' | 'execution' | 'utility' | 'flow';
   requiresConfirmation?: boolean;
+  requiresApproval?: boolean;
   requiredRoles?: string[];
   parameters: ToolDefinition['parameters'];
-  exposure: 'prompt_and_runtime' | 'runtime_only';
+  exposure: 'prompt_and_runtime' | 'runtime_only' | 'prompt_only';
 }
 
 export interface CapabilityVisibleSkill {
@@ -159,6 +179,7 @@ export interface CapabilityConstraints {
 
 export interface CapabilityPolicies {
   requireConfirmToolNames: string[];
+  requireApprovalToolNames?: string[];
   requireHumanReviewOnWrite: boolean;
   documentTemplateClarificationEnabled: boolean;
 }
@@ -169,6 +190,9 @@ export interface CapabilitySnapshot {
   sessionId: string;
   roles: string[];
   mode: 'chat' | 'task';
+  selectedSkillId?: string;
+  skillScopedToolNames?: string[];
+  deniedToolNames?: string[];
   visibleTools: CapabilityVisibleTool[];
   visibleSkills: CapabilityVisibleSkill[];
   constraints: CapabilityConstraints;
@@ -192,6 +216,7 @@ export interface ToolDefinition {
       type: 'string' | 'number' | 'boolean' | 'array' | 'object';
       description: string;
       required?: boolean;
+      items?: any; // 新增：支持数组项定义
     }>;
     required: string[];
   };
@@ -244,6 +269,8 @@ export interface ExecutionContext {
   history: ChatMessage[];
   availableSkills?: AvailableSkillDefinition[];
   allowedToolNames?: string[];
+  selectedSkillToolNames?: string[];
+  approvedToolNames?: string[];
   currentThought?: string;
   skill?: SkillMatchResult;
   uploadedFiles?: UploadedFile[];
@@ -322,6 +349,7 @@ export interface AvailableSkillDefinition {
   goal?: string;
   expectedResult?: string;
   outputParams?: Record<string, unknown>;
+  effectiveTools?: string[];
   usage?: LLMUsage;
 }
 
@@ -365,6 +393,10 @@ export interface SkillMatchResult {
   expectedResult?: string;
   outputParams?: Record<string, unknown>;
   usage?: LLMUsage;
+  debug?: {
+    llmCalls?: PromptDebugLLMCall[];
+    notes?: string[];
+  };
 }
 
 /**
@@ -412,6 +444,7 @@ export interface ChatRequestDTO {
   files?: UploadedFile[];
   config?: Partial<ReActConfig>;
   isConfirmed?: boolean;         // 是否已确认执行敏感操作
+  approvedToolNames?: string[];  // 已完成审批并允许放行的工具名
 }
 
 /**

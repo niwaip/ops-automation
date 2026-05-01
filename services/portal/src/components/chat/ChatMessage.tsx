@@ -4,11 +4,12 @@
  */
 
 import React, { useMemo, useState } from 'react';
-import { Avatar, Button, Space, Switch, Tag, message as antdMessage } from 'antd';
-import { UserOutlined, RobotOutlined, FileTextOutlined, DownOutlined, RightOutlined, CopyOutlined, RedoOutlined, CheckOutlined, CloseOutlined, LoadingOutlined } from '@ant-design/icons';
+import { Avatar, Button, Modal, Space, Switch, Tag, Typography, message as antdMessage } from 'antd';
+import { UserOutlined, RobotOutlined, FileTextOutlined, DownOutlined, RightOutlined, CopyOutlined, RedoOutlined, CheckOutlined, CloseOutlined, LoadingOutlined, EyeOutlined } from '@ant-design/icons';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { ChatMessage } from './types';
+import { useAuthStore } from '../../store/authStore';
 import './ChatMessage.css';
 
 interface ChatMessageProps {
@@ -129,9 +130,12 @@ const ChatMessageComponent: React.FC<ChatMessageProps> = ({
   onApproveExecution,
   onRejectExecution,
 }) => {
+  const { Text, Paragraph } = Typography;
   const [thoughtsExpanded, setThoughtsExpanded] = useState(true); // 默认展开思考内容
   const [taskCompleted, setTaskCompleted] = useState(true);
   const [approvalAction, setApprovalAction] = useState<'approve' | 'reject' | null>(null);
+  const [promptViewerOpen, setPromptViewerOpen] = useState(false);
+  const isAdmin = useAuthStore((state) => state.user?.role === 'admin');
   const isUser = message.role === 'user';
   const isTaskMode = message.metadata?.mode === 'task';
   const rawContent = isStreaming && streamingContent ? streamingContent : message.content;
@@ -146,6 +150,7 @@ const ChatMessageComponent: React.FC<ChatMessageProps> = ({
   const executionId = message.metadata?.executionId;
   const executionStatus = formatExecutionStatus(message.metadata?.executionStatus);
   const usage = message.metadata?.usage;
+  const promptDebug = message.metadata?.promptDebug;
   const showThinking = message.metadata?.showThinking !== false;
   const isRunning = isTaskMode && message.metadata?.taskStatus === 'running';
   const showRunningState = isTaskMode && (isRunning || (Boolean(isStreaming) && !isWaitingInput && !isPendingApproval && !errorMessage));
@@ -159,6 +164,43 @@ const ChatMessageComponent: React.FC<ChatMessageProps> = ({
     finalResultData &&
     typeof finalResultData !== 'string' &&
     structuredResultText !== finalResult,
+  );
+  const canViewPrompt = Boolean(
+    !isUser
+    && isAdmin
+    && promptDebug
+    && (promptDebug.systemPrompt || promptDebug.userPrompt),
+  );
+  const hasDetailedLlmCalls = Boolean(promptDebug?.llmCalls?.length);
+  const combinedPromptText = useMemo(
+    () => {
+      if (!promptDebug) {
+        return '';
+      }
+      return [
+        '## Debug Source',
+        promptDebug.debugSource || '',
+        '',
+        '## System Prompt',
+        promptDebug.systemPrompt || '',
+        '',
+        '## User Prompt',
+        promptDebug.userPrompt || '',
+        '',
+        '## Notes',
+        (promptDebug.notes || []).join('\n'),
+        '',
+        '## LLM Request Messages',
+        JSON.stringify(promptDebug.llmRequestMessages || [], null, 2),
+        '',
+        '## LLM Raw Response',
+        promptDebug.llmResponseText || '',
+        '',
+        '## LLM Calls',
+        JSON.stringify(promptDebug.llmCalls || [], null, 2),
+      ].join('\n');
+    },
+    [promptDebug],
   );
 
   // 解析内容
@@ -177,6 +219,18 @@ const ChatMessageComponent: React.FC<ChatMessageProps> = ({
       antdMessage.success('已复制');
     } catch {
       antdMessage.error('复制失败');
+    }
+  };
+
+  const handleCopyPrompt = async () => {
+    if (!combinedPromptText) {
+      return;
+    }
+    try {
+      await navigator.clipboard.writeText(combinedPromptText);
+      antdMessage.success('Prompt 已复制');
+    } catch {
+      antdMessage.error('Prompt 复制失败');
     }
   };
 
@@ -420,96 +474,206 @@ const ChatMessageComponent: React.FC<ChatMessageProps> = ({
     return null;
   };
 
-  return (
-    <div className={`chat-message ${isUser ? 'user' : 'assistant'}`}>
-      {!isUser && (
-        <Avatar
-          icon={<RobotOutlined />}
-          className="chat-message-avatar assistant"
-        />
-      )}
+  const renderPromptDebugModal = () => {
+    if (!promptDebug) {
+      return null;
+    }
 
-      <div className={`chat-message-stack ${isUser ? 'user' : 'assistant'}`}>
-        <div className={`chat-message-content ${isUser ? 'user' : 'assistant'}`}>
-          {renderThoughts()}
-          {isWaitingInput && (
-            <Tag color="gold" className="chat-waiting-tag">
-              等待你输入
-            </Tag>
-          )}
-          {showRunningState && (
-            <Tag color="processing" className="chat-running-tag">
-              <LoadingOutlined className="chat-running-icon" />
-              执行中
-            </Tag>
-          )}
-          {isPendingApproval && (
-            <Tag color="orange" className="chat-waiting-tag">
-              等待你审批
-            </Tag>
-          )}
-          {renderOutcomeCard()}
-          {renderContent()}
-          {renderFiles()}
-          {renderDownloadLink()}
+    return (
+      <Modal
+        title="本轮 Prompt"
+        open={promptViewerOpen}
+        onCancel={() => setPromptViewerOpen(false)}
+        width={960}
+        destroyOnHidden
+        footer={[
+          <Button key="copy" icon={<CopyOutlined />} onClick={handleCopyPrompt}>
+            复制 Prompt
+          </Button>,
+          <Button key="close" type="primary" onClick={() => setPromptViewerOpen(false)}>
+            关闭
+          </Button>,
+        ]}
+      >
+        <div className="chat-prompt-viewer">
+          <Paragraph type="secondary" className="chat-prompt-viewer-hint">
+            仅管理员可见，用于查看当前这轮发送给模型的完整 Prompt。
+          </Paragraph>
+          <div className="chat-prompt-meta-row">
+            <Text strong>Debug Source</Text>
+            <div className="chat-prompt-tag-list">
+              <Tag>{promptDebug.debugSource || 'unknown'}</Tag>
+              {promptDebug.modelId ? <Tag>{promptDebug.modelId}</Tag> : null}
+            </div>
+          </div>
+          {(promptDebug.notes || []).length ? (
+            <div className="chat-prompt-section">
+              <div className="chat-prompt-section-title">Notes</div>
+              <pre className="chat-prompt-pre">{(promptDebug.notes || []).join('\n')}</pre>
+            </div>
+          ) : null}
+          <div className="chat-prompt-meta-row">
+            <Text strong>System Sections</Text>
+            <div className="chat-prompt-tag-list">
+              {(promptDebug.systemPromptSectionKeys || []).length ? (
+                promptDebug.systemPromptSectionKeys?.map((key) => (
+                  <Tag key={`system-${key}`}>{key}</Tag>
+                ))
+              ) : (
+                <Text type="secondary">无</Text>
+              )}
+            </div>
+          </div>
+          <div className="chat-prompt-meta-row">
+            <Text strong>User Sections</Text>
+            <div className="chat-prompt-tag-list">
+              {(promptDebug.userPromptSectionKeys || []).length ? (
+                promptDebug.userPromptSectionKeys?.map((key) => (
+                  <Tag key={`user-${key}`}>{key}</Tag>
+                ))
+              ) : (
+                <Text type="secondary">无</Text>
+              )}
+            </div>
+          </div>
+          <div className="chat-prompt-section">
+            <div className="chat-prompt-section-title">System Prompt</div>
+            <pre className="chat-prompt-pre">{promptDebug.systemPrompt}</pre>
+          </div>
+          <div className="chat-prompt-section">
+            <div className="chat-prompt-section-title">User Prompt</div>
+            <pre className="chat-prompt-pre">{promptDebug.userPrompt}</pre>
+          </div>
+          {!hasDetailedLlmCalls ? (
+            <>
+              <div className="chat-prompt-section">
+                <div className="chat-prompt-section-title">LLM Request Messages</div>
+                <pre className="chat-prompt-pre">{JSON.stringify(promptDebug.llmRequestMessages || [], null, 2)}</pre>
+              </div>
+              <div className="chat-prompt-section">
+                <div className="chat-prompt-section-title">LLM Raw Response</div>
+                <pre className="chat-prompt-pre">
+                  {promptDebug.llmResponseText || '当前仅记录了 Prompt，尚未保存模型原始回复。'}
+                </pre>
+              </div>
+            </>
+          ) : null}
+          {(promptDebug.llmCalls || []).map((call, index) => (
+            <div className="chat-prompt-section" key={`${call.stage}-${index}`}>
+              <div className="chat-prompt-section-title">{`LLM Call ${index + 1}: ${call.label}`}</div>
+              <pre className="chat-prompt-pre">{JSON.stringify(call.requestMessages || [], null, 2)}</pre>
+              <pre className="chat-prompt-pre">{call.responseText || call.note || '当前调用还没有保存 response。'}</pre>
+            </div>
+          ))}
         </div>
+      </Modal>
+    );
+  };
 
-        <div className={`chat-message-meta ${isUser ? 'user' : 'assistant'}`}>
-          {!isUser && (
-            <div className="chat-message-actions">
-              <Space size={12}>
-                {renderUsage()}
-                <div className="chat-action-buttons">
-                  <Button
-                    size="small"
-                    type="text"
-                    icon={<CopyOutlined />}
-                    onClick={handleCopy}
-                    className="chat-action-btn"
-                  >
-                    复制
-                  </Button>
-                  {onRetry && (
+  return (
+    <>
+      <div className={`chat-message ${isUser ? 'user' : 'assistant'}`}>
+        {!isUser && (
+          <Avatar
+            icon={<RobotOutlined />}
+            className="chat-message-avatar assistant"
+          />
+        )}
+
+        <div className={`chat-message-stack ${isUser ? 'user' : 'assistant'}`}>
+          <div className={`chat-message-content ${isUser ? 'user' : 'assistant'}`}>
+            {renderThoughts()}
+            {isWaitingInput && (
+              <Tag color="gold" className="chat-waiting-tag">
+                等待你输入
+              </Tag>
+            )}
+            {showRunningState && (
+              <Tag color="processing" className="chat-running-tag">
+                <LoadingOutlined className="chat-running-icon" />
+                执行中
+              </Tag>
+            )}
+            {isPendingApproval && (
+              <Tag color="orange" className="chat-waiting-tag">
+                等待你审批
+              </Tag>
+            )}
+            {renderOutcomeCard()}
+            {renderContent()}
+            {renderFiles()}
+            {renderDownloadLink()}
+          </div>
+
+          <div className={`chat-message-meta ${isUser ? 'user' : 'assistant'}`}>
+            {!isUser && (
+              <div className="chat-message-actions">
+                <Space size={12}>
+                  {renderUsage()}
+                  <div className="chat-action-buttons">
                     <Button
                       size="small"
                       type="text"
-                      icon={<RedoOutlined />}
-                      onClick={() => onRetry(message.id)}
+                      icon={<CopyOutlined />}
+                      onClick={handleCopy}
                       className="chat-action-btn"
                     >
-                      重试
+                      复制
                     </Button>
-                  )}
-                </div>
-                {isTaskMode && (answer.includes('任务完成') || message.metadata?.taskStatus === 'completed') && (
-                  <div className="chat-task-switch">
-                    <span>任务完成</span>
-                    <Switch
-                      size="small"
-                      checked={taskCompleted}
-                      onChange={setTaskCompleted}
-                      checkedChildren="是"
-                      unCheckedChildren="否"
-                    />
+                    {canViewPrompt && (
+                      <Button
+                        size="small"
+                        type="text"
+                        icon={<EyeOutlined />}
+                        onClick={() => setPromptViewerOpen(true)}
+                        className="chat-action-btn"
+                      >
+                        查看 Prompt
+                      </Button>
+                    )}
+                    {onRetry && (
+                      <Button
+                        size="small"
+                        type="text"
+                        icon={<RedoOutlined />}
+                        onClick={() => onRetry(message.id)}
+                        className="chat-action-btn"
+                      >
+                        重试
+                      </Button>
+                    )}
                   </div>
-                )}
-              </Space>
-            </div>
-          )}
+                  {isTaskMode && (answer.includes('任务完成') || message.metadata?.taskStatus === 'completed') && (
+                    <div className="chat-task-switch">
+                      <span>任务完成</span>
+                      <Switch
+                        size="small"
+                        checked={taskCompleted}
+                        onChange={setTaskCompleted}
+                        checkedChildren="是"
+                        unCheckedChildren="否"
+                      />
+                    </div>
+                  )}
+                </Space>
+              </div>
+            )}
 
-          <div className="chat-message-time">
-            {message.timestamp.toLocaleTimeString()}
+            <div className="chat-message-time">
+              {message.timestamp.toLocaleTimeString()}
+            </div>
           </div>
         </div>
-      </div>
 
-      {isUser && (
-        <Avatar
-          icon={<UserOutlined />}
-          className="chat-message-avatar user"
-        />
-      )}
-    </div>
+        {isUser && (
+          <Avatar
+            icon={<UserOutlined />}
+            className="chat-message-avatar user"
+          />
+        )}
+      </div>
+      {renderPromptDebugModal()}
+    </>
   );
 };
 

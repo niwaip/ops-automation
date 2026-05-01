@@ -1,5 +1,10 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { RecognizeParamsDTO, RecognizeParamsResponseDTO, ChatMessage } from '../../interfaces';
+import {
+  RecognizeParamsDTO,
+  RecognizeParamsResponseDTO,
+  ChatMessage,
+  PromptDebugLLMCall,
+} from '../../interfaces';
 import { OpenAICompatibleClient } from '../../client/openai-compatible';
 import { ModelService } from '../model/model.service';
 
@@ -40,17 +45,26 @@ export class RecognizerService {
   }
 
   /**
-   * Get the default AI client from ModelService
+   * Get the default AI client and model id from ModelService
    */
-  private async getDefaultClient(): Promise<OpenAICompatibleClient | null> {
-    // Get the first available active model's client
+  private async getDefaultModelRuntime(): Promise<{ modelId: string; client: OpenAICompatibleClient } | null> {
     const models = await this.modelService.listModels();
     const activeModels = models.filter(m => m.status === 'active');
     if (activeModels.length === 0) {
       return null;
     }
-    // Use the first active model's client
-    return this.modelService.getClient(activeModels[0]!.id);
+    const firstActiveModel = activeModels[0];
+    if (!firstActiveModel) {
+      return null;
+    }
+    const client = this.modelService.getClient(firstActiveModel.id);
+    if (!client) {
+      return null;
+    }
+    return {
+      modelId: firstActiveModel.id,
+      client,
+    };
   }
 
   /**
@@ -110,30 +124,50 @@ export class RecognizerService {
     ];
 
     // Get the default AI client from ModelService
-    const client = await this.getDefaultClient();
-    if (!client) {
+    const runtime = await this.getDefaultModelRuntime();
+    if (!runtime) {
       this.logger.warn('No AI client available, using basic pattern matching');
-      return this.basicPatternMatching(dto.user_input, properties);
+      return {
+        ...this.basicPatternMatching(dto.user_input, properties),
+        debug: {
+          notes: ['recognizer 未找到可用模型，已回退到基础模式匹配。'],
+        },
+      };
     }
 
     try {
-      // Get the first available active model's ID
-      const models = await this.modelService.listModels();
-      const activeModels = models.filter(m => m.status === 'active');
-      const firstActiveModel = activeModels[0];
-      const modelId = firstActiveModel ? firstActiveModel.id : 'default';
-
-      const prompt = `${systemPrompt}\n\n${this.buildUserPrompt(dto, properties)}`;
-      const response = await this.modelService.callModel(modelId, prompt, 'auxiliary');
+      const response = await runtime.client.chatCompletion(messages);
+      const llmCalls: PromptDebugLLMCall[] = [
+        {
+          stage: 'recognizer',
+          label: '参数识别',
+          modelId: runtime.modelId,
+          requestMessages: messages.map((message) => ({
+            role: message.role,
+            content: String(message.content || ''),
+          })),
+          responseText: response.content,
+        },
+      ];
       const result = this.parseAIResponse(response.content, properties);
       return {
         ...result,
         usage: response.usage,
+        debug: {
+          llmCalls,
+        },
       };
     } catch (error) {
       this.logger.error(`AI call failed: ${error}`);
       // Fallback to basic pattern matching on AI failures
-      return this.basicPatternMatching(dto.user_input, properties);
+      return {
+        ...this.basicPatternMatching(dto.user_input, properties),
+        debug: {
+          notes: [
+            `recognizer 模型调用失败，已回退到基础模式匹配: ${error instanceof Error ? error.message : String(error)}`,
+          ],
+        },
+      };
     }
   }
 

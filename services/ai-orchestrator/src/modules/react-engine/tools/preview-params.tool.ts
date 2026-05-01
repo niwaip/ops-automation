@@ -4,9 +4,11 @@
  * 调用Carbone引擎的preview-with-skill API
  */
 
+import { Injectable } from '@nestjs/common';
 import axios from 'axios';
 import { BaseTool } from './base.tool';
 import { ToolResult, ExecutionContext } from '../interfaces';
+import { Tool } from '../decorators/tool.decorator';
 
 type PreviewParamsResponse = {
   success?: boolean;
@@ -21,6 +23,33 @@ const CARBONE_SERVICE_URL = process.env.CARBONE_SERVICE_URL || 'http://carbone-e
 // 外部可访问的下载地址（返回给用户）
 const CARBONE_EXTERNAL_URL = process.env.CARBONE_EXTERNAL_URL || 'http://localhost:3009';
 
+@Injectable()
+@Tool({
+  name: 'preview_params',
+  description: '使用AI生成的参数预览文档效果。调用preview-with-skill API验证参数是否正确填充到模板中。',
+  parameters: {
+    type: 'object',
+    properties: {
+      templateId: {
+        type: 'string',
+        description: '模板ID',
+        required: true,
+      },
+      skillId: {
+        type: 'string',
+        description: 'AI Skill ID',
+        required: false,
+      },
+      data: {
+        type: 'object',
+        description: '用于预览的参数数据',
+        required: true,
+      },
+    },
+    required: ['templateId', 'data'],
+  },
+  isDefault: true,
+})
 export class PreviewParamsTool extends BaseTool {
   constructor() {
     super(

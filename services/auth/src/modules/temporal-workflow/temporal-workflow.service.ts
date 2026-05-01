@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { TemporalWorkflow } from '@prisma/client';
 import axios from 'axios';
@@ -85,6 +85,18 @@ export interface CreateTemporalWorkflowDTO {
   generatedCode?: string;
 }
 
+export interface TemporalWorkflowSourceTemplate {
+  templateId?: string;
+  skillId?: string;
+  fileName?: string;
+  format?: string;
+  variableCount?: number;
+}
+
+export interface TemporalWorkflowDTO extends TemporalWorkflow {
+  sourceTemplate?: TemporalWorkflowSourceTemplate | null;
+}
+
 export interface UpdateTemporalWorkflowDTO {
   name?: string;
   description?: string;
@@ -155,43 +167,66 @@ export class TemporalWorkflowService {
 
   constructor(private prisma: PrismaService) {}
 
-  async findAll(): Promise<TemporalWorkflow[]> {
-    return this.prisma.temporalWorkflow.findMany({
+  async findAll(): Promise<TemporalWorkflowDTO[]> {
+    const workflows = await this.prisma.temporalWorkflow.findMany({
       orderBy: { createdAt: 'desc' },
     });
+    return workflows.map((workflow) => this.toWorkflowDto(workflow));
   }
 
-  async findOne(id: string): Promise<TemporalWorkflow | null> {
-    return this.prisma.temporalWorkflow.findUnique({ where: { id } });
+  async findOne(id: string): Promise<TemporalWorkflowDTO | null> {
+    const workflow = await this.prisma.temporalWorkflow.findUnique({ where: { id } });
+    return workflow ? this.toWorkflowDto(workflow) : null;
   }
 
-  async create(data: CreateTemporalWorkflowDTO): Promise<TemporalWorkflow> {
-    return this.prisma.temporalWorkflow.create({
-      data: {
-        name: data.name,
-        description: data.description,
-        taskQueue: data.taskQueue || 'SKILL_TASK_QUEUE',
-        workflowDsl: data.workflowDsl as any,
-        activityDsl: data.activityDsl as any,
-        generatedCode: data.generatedCode || null,
-        isActive: true,
-      },
-    });
+  async create(data: CreateTemporalWorkflowDTO): Promise<TemporalWorkflowDTO> {
+    try {
+      const created = await this.prisma.temporalWorkflow.create({
+        data: {
+          name: this.normalizeName(data.name),
+          description: this.normalizeDescription(data.description),
+          taskQueue: this.normalizeTaskQueue(data.taskQueue || data.workflowDsl?.taskQueue),
+          workflowDsl: this.normalizeWorkflowDsl(data.workflowDsl, data.name, data.taskQueue) as any,
+          activityDsl: this.normalizeActivityDsl(data.activityDsl) as any,
+          generatedCode: data.generatedCode || null,
+          isActive: true,
+        },
+      });
+      return this.toWorkflowDto(created);
+    } catch (error: any) {
+      this.logger.error(`Create temporal workflow failed: ${error.message}`);
+      throw new BadRequestException(`创建 Temporal Workflow 失败: ${error.message}`);
+    }
   }
 
-  async update(id: string, data: UpdateTemporalWorkflowDTO): Promise<TemporalWorkflow> {
-    return this.prisma.temporalWorkflow.update({
-      where: { id },
-      data: {
-        ...(data.name && { name: data.name }),
-        ...(data.description !== undefined && { description: data.description }),
-        ...(data.taskQueue && { taskQueue: data.taskQueue }),
-        ...(data.workflowDsl && { workflowDsl: data.workflowDsl as any }),
-        ...(data.activityDsl && { activityDsl: data.activityDsl as any }),
-        ...(data.isActive !== undefined && { isActive: data.isActive }),
-        ...(data.generatedCode !== undefined && { generatedCode: data.generatedCode }),
-      },
-    });
+  async update(id: string, data: UpdateTemporalWorkflowDTO): Promise<TemporalWorkflowDTO> {
+    const existing = await this.prisma.temporalWorkflow.findUnique({ where: { id } });
+    if (!existing) {
+      throw new NotFoundException(`Temporal Workflow 不存在: ${id}`);
+    }
+
+    try {
+      const nextName = data.name !== undefined ? data.name : existing.name;
+      const nextTaskQueue = data.taskQueue !== undefined
+        ? data.taskQueue
+        : this.parseJson<WorkflowDsl>(existing.workflowDsl)?.taskQueue || existing.taskQueue;
+      const updated = await this.prisma.temporalWorkflow.update({
+        where: { id },
+        data: {
+          ...(data.name !== undefined && { name: this.normalizeName(data.name) }),
+          ...(data.description !== undefined && { description: this.normalizeDescription(data.description) }),
+          ...(data.taskQueue !== undefined && { taskQueue: this.normalizeTaskQueue(nextTaskQueue) }),
+          ...(data.workflowDsl && { workflowDsl: this.normalizeWorkflowDsl(data.workflowDsl, nextName, nextTaskQueue) as any }),
+          ...(data.activityDsl && { activityDsl: this.normalizeActivityDsl(data.activityDsl) as any }),
+          ...(data.isActive !== undefined && { isActive: data.isActive }),
+          ...(data.generatedCode !== undefined && { generatedCode: data.generatedCode || null }),
+        },
+      });
+      return this.toWorkflowDto(updated);
+    } catch (error: any) {
+      this.logger.error(`Update temporal workflow ${id} failed: ${error.message}`);
+      throw new BadRequestException(`更新 Temporal Workflow 失败: ${error.message}`);
+    }
   }
 
   async delete(id: string): Promise<{ success: boolean }> {
@@ -199,11 +234,12 @@ export class TemporalWorkflowService {
     return { success: true };
   }
 
-  async deploy(id: string): Promise<TemporalWorkflow> {
-    return this.prisma.temporalWorkflow.update({
+  async deploy(id: string): Promise<TemporalWorkflowDTO> {
+    const deployed = await this.prisma.temporalWorkflow.update({
       where: { id },
       data: { deployedAt: new Date() },
     });
+    return this.toWorkflowDto(deployed);
   }
 
   async generateTemplateWorkflowDraft(templateId: string): Promise<TemplateWorkflowDraft> {
@@ -296,6 +332,9 @@ export class TemporalWorkflowService {
               description: activityDescription,
               templateId: template.id,
               skillId: template.skillId || null,
+              fileName: template.fileName || null,
+              format: template.format || 'docx',
+              variableCount: variables.length,
               steps: [
                 {
                   name: `渲染${documentType}`,
@@ -1094,8 +1133,163 @@ export class TemporalWorkflowService {
     }
   }
 
+  private parseJson<T = unknown>(value: unknown): T {
+    if (value === null || value === undefined) {
+      return value as T;
+    }
+    if (typeof value === 'string') {
+      try {
+        return JSON.parse(value) as T;
+      } catch {
+        return value as T;
+      }
+    }
+    return value as T;
+  }
+
   private uniqueVariables(variables: string[]): string[] {
     return [...new Set((variables || []).filter((item) => typeof item === 'string' && item.trim()))];
+  }
+
+  private toWorkflowDto(workflow: TemporalWorkflow): TemporalWorkflowDTO {
+    const workflowDsl = this.parseJson<WorkflowDsl>(workflow.workflowDsl) || DEFAULT_TEMPLATE_WORKFLOW_DSL;
+    const activityDsl = this.parseJson<ActivityDsl>(workflow.activityDsl) || { activities: [] };
+    return {
+      ...workflow,
+      workflowDsl: workflowDsl as any,
+      activityDsl: activityDsl as any,
+      sourceTemplate: this.extractSourceTemplate(workflowDsl, activityDsl),
+    };
+  }
+
+  private extractSourceTemplate(
+    workflowDsl: WorkflowDsl | Record<string, unknown> | null | undefined,
+    activityDsl: ActivityDsl | Record<string, unknown> | null | undefined,
+  ): TemporalWorkflowSourceTemplate | null {
+    const workflowRecord = workflowDsl && typeof workflowDsl === 'object'
+      ? workflowDsl as Record<string, unknown>
+      : {};
+    const workflowLevelSource = this.parseJson<Record<string, unknown>>(workflowRecord.sourceTemplate);
+
+    const activities = Array.isArray((activityDsl as ActivityDsl | undefined)?.activities)
+      ? (activityDsl as ActivityDsl).activities
+      : [];
+    const carboneActivity = activities.find((activity) => {
+      if (activity?.handler === 'carbone') {
+        return true;
+      }
+      const steps = Array.isArray(activity?.config?.steps) ? activity.config.steps : [];
+      return steps.some((step: Record<string, any>) => step?.type === 'carbone');
+    });
+    const carboneStep = Array.isArray(carboneActivity?.config?.steps)
+      ? carboneActivity?.config?.steps.find((step: Record<string, any>) => step?.type === 'carbone')
+      : null;
+
+    const sourceTemplate: TemporalWorkflowSourceTemplate = {
+      templateId: this.pickFirstNonEmptyString(
+        workflowLevelSource?.templateId,
+        carboneStep?.config?.templateId,
+        carboneActivity?.config?.templateId,
+      ),
+      skillId: this.pickFirstNonEmptyString(
+        workflowLevelSource?.skillId,
+        carboneActivity?.config?.skillId,
+      ),
+      fileName: this.pickFirstNonEmptyString(
+        workflowLevelSource?.fileName,
+        carboneActivity?.config?.fileName,
+      ),
+      format: this.pickFirstNonEmptyString(
+        workflowLevelSource?.format,
+        carboneStep?.config?.format,
+        carboneActivity?.config?.format,
+      ),
+      variableCount: this.pickFirstPositiveNumber(
+        workflowLevelSource?.variableCount,
+        carboneActivity?.config?.variableCount,
+        Object.keys(this.parseJson<Record<string, unknown>>(workflowRecord.inputParams) || {}).length,
+      ),
+    };
+
+    if (!sourceTemplate.templateId && !sourceTemplate.skillId && !sourceTemplate.fileName) {
+      return null;
+    }
+
+    return sourceTemplate;
+  }
+
+  private normalizeWorkflowDsl(
+    workflowDsl: WorkflowDsl,
+    workflowName?: string,
+    taskQueue?: string,
+  ): WorkflowDsl {
+    const normalized = this.sanitizeJsonValue(workflowDsl) as WorkflowDsl;
+    return {
+      ...normalized,
+      name: this.normalizeName(workflowName || normalized.name || '未命名工作流'),
+      taskQueue: this.normalizeTaskQueue(taskQueue || normalized.taskQueue),
+    };
+  }
+
+  private normalizeActivityDsl(activityDsl: ActivityDsl): ActivityDsl {
+    return this.sanitizeJsonValue(activityDsl) as ActivityDsl;
+  }
+
+  private sanitizeJsonValue<T>(value: T): T {
+    if (Array.isArray(value)) {
+      return value
+        .map((item) => this.sanitizeJsonValue(item))
+        .filter((item) => item !== undefined) as T;
+    }
+    if (value && typeof value === 'object') {
+      return Object.entries(value as Record<string, unknown>).reduce<Record<string, unknown>>((acc, [key, item]) => {
+        if (item === undefined) {
+          return acc;
+        }
+        acc[key] = this.sanitizeJsonValue(item);
+        return acc;
+      }, {}) as T;
+    }
+    return value;
+  }
+
+  private normalizeName(value?: string): string {
+    const normalized = String(value || '').trim();
+    return normalized.slice(0, 255) || '未命名工作流';
+  }
+
+  private normalizeDescription(value?: string | null): string | null {
+    if (value === undefined || value === null) {
+      return null;
+    }
+    const normalized = String(value).trim();
+    if (!normalized) {
+      return null;
+    }
+    return normalized.slice(0, 500);
+  }
+
+  private normalizeTaskQueue(value?: string): string {
+    const normalized = String(value || '').trim();
+    return normalized.slice(0, 255) || 'SKILL_TASK_QUEUE';
+  }
+
+  private pickFirstNonEmptyString(...values: unknown[]): string | undefined {
+    for (const value of values) {
+      if (typeof value === 'string' && value.trim()) {
+        return value.trim();
+      }
+    }
+    return undefined;
+  }
+
+  private pickFirstPositiveNumber(...values: unknown[]): number | undefined {
+    for (const value of values) {
+      if (typeof value === 'number' && Number.isFinite(value) && value > 0) {
+        return value;
+      }
+    }
+    return undefined;
   }
 
   private variableToKey(variable: string): string {

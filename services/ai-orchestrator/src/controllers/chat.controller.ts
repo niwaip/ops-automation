@@ -23,6 +23,8 @@ import { getOrCreateTraceId } from '../common/trace.util';
 import { ContentBlock, ChatMessage as MultimodalChatMessage } from '../interfaces';
 import { ChatRequestDTO, ExecutionContext, StreamEvent, StreamEventType, LLMUsage } from '../modules/react-engine/interfaces';
 import { SessionService } from '../modules/redis/session.service';
+import { PlanDraftDTO } from '../interfaces';
+import { PromptDebugSettingsService } from '../modules/debug-settings/prompt-debug-settings.service';
 
 const fileStore = new Map<string, { fileName: string; mimeType: string; size: number; content: string }>();
 const getAuthServiceUrl = () => {
@@ -96,7 +98,13 @@ export class ChatController {
     private readonly reactEngineService: ReActEngineService,
     private readonly sessionService: SessionService,
     private readonly plannerService: PlannerService,
+    private readonly promptDebugSettingsService: PromptDebugSettingsService,
   ) {}
+
+  private canExposePromptDebug(context: ExecutionContext): boolean {
+    return this.promptDebugSettingsService.isPromptDebugEnabled()
+      && Boolean(context.userRoles?.includes('admin'));
+  }
 
   private writeSse(res: Response, payload: Record<string, unknown>): void {
     res.write(`data: ${JSON.stringify(payload)}\n\n`);
@@ -473,6 +481,53 @@ export class ChatController {
     }
 
     return total;
+  }
+
+  private buildPlannerPromptDebug(
+    message: string,
+    planDraft: PlanDraftDTO,
+  ): Record<string, unknown> {
+    const metadata = (planDraft.metadata && typeof planDraft.metadata === 'object')
+      ? planDraft.metadata as Record<string, unknown>
+      : undefined;
+    const debug = (metadata?.debug && typeof metadata.debug === 'object' && !Array.isArray(metadata.debug))
+      ? metadata.debug as Record<string, unknown>
+      : undefined;
+    const llmCalls = Array.isArray(debug?.llmCalls)
+      ? debug.llmCalls.filter((item) => item && typeof item === 'object')
+      : [];
+    const latestLlmCall = llmCalls.length > 0
+      ? llmCalls[llmCalls.length - 1] as Record<string, unknown>
+      : undefined;
+    const notes = Array.isArray(debug?.notes)
+      ? debug.notes.filter((item): item is string => typeof item === 'string' && item.trim().length > 0)
+      : [];
+    const systemLines = [
+      'Planner Debug Snapshot',
+      `planner_mode: ${planDraft.planner_mode}`,
+      `summary: ${planDraft.summary}`,
+      `objective: ${planDraft.objective}`,
+      `matched_skill: ${planDraft.skill_match?.skill_name || 'none'}`,
+      `required_inputs: ${planDraft.required_inputs.map((item) => `${item.name}:${item.missing ? 'missing' : 'ready'}`).join(', ') || 'none'}`,
+      `steps: ${planDraft.steps.map((step) => `${step.kind}:${step.title}`).join(' | ') || 'none'}`,
+    ];
+
+    return {
+      debugSource: 'planner',
+      systemPrompt: systemLines.join('\n'),
+      userPrompt: message,
+      systemPromptSectionKeys: ['planner_mode', 'planner_summary', 'planner_objective', 'planner_steps'],
+      userPromptSectionKeys: ['user_message'],
+      modelId: typeof latestLlmCall?.modelId === 'string' ? latestLlmCall.modelId : undefined,
+      llmRequestMessages: Array.isArray(latestLlmCall?.requestMessages)
+        ? latestLlmCall.requestMessages
+        : undefined,
+      llmResponseText: typeof latestLlmCall?.responseText === 'string'
+        ? latestLlmCall.responseText
+        : undefined,
+      llmCalls,
+      notes,
+    };
   }
 
   private async resolveSkillExecutionRuntimeType(
@@ -905,6 +960,9 @@ export class ChatController {
 
     // 2. 如果匹配到技能，则在 control-plane 创建执行
     if (planDraft && planDraft.planner_mode === 'skill' && planDraft.skill_match) {
+      const plannerPromptDebug = this.canExposePromptDebug(context)
+        ? this.buildPlannerPromptDebug(body.message, planDraft)
+        : undefined;
       const missingInputs = planDraft.required_inputs.filter((input) => input.missing);
       const runtimeType = await this.resolveSkillExecutionRuntimeType(
         planDraft.skill_match.skill_id,
@@ -925,6 +983,7 @@ export class ChatController {
               skillId: planDraft.skill_match.skill_id,
               input: {
                 prompt: body.message,
+                ...(plannerPromptDebug ? { __promptDebug: plannerPromptDebug } : {}),
                 ...Object.fromEntries(
                   planDraft.required_inputs
                     .filter((input) => !input.missing)
@@ -941,6 +1000,20 @@ export class ChatController {
               }),
             },
           );
+
+          yield {
+            type: StreamEventType.RESULT,
+            content: `已创建等待补充信息的执行单。执行单 ID: ${response.data.id}\n\n${planDraft.summary}`,
+            data: {
+              executionId: response.data.id,
+              status: 'waiting_input',
+              hasBusinessResult: false,
+              missingInputs,
+              plan: planDraft,
+              usage: planDraft.usage,
+              ...(plannerPromptDebug ? { promptDebug: plannerPromptDebug } : {}),
+            },
+          };
 
           for await (const event of this.observeExecution(response.data.id, authToken, {
             userId: context.userId,
@@ -965,6 +1038,7 @@ export class ChatController {
             hasBusinessResult: false,
             missingInputs,
             plan: planDraft,
+            ...(plannerPromptDebug ? { promptDebug: plannerPromptDebug } : {}),
           },
         };
         return;
@@ -982,6 +1056,7 @@ export class ChatController {
             skillId: planDraft.skill_match.skill_id,
             input: {
               prompt: body.message,
+              ...(plannerPromptDebug ? { __promptDebug: plannerPromptDebug } : {}),
               ...Object.fromEntries(
                 planDraft.required_inputs
                   .filter((i) => !i.missing)
@@ -1010,6 +1085,7 @@ export class ChatController {
             hasBusinessResult: false,
             plan: planDraft,
             usage: planDraft.usage,
+            ...(plannerPromptDebug ? { promptDebug: plannerPromptDebug } : {}),
           },
         };
 

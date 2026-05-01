@@ -320,15 +320,19 @@ model SkillConfig {
   executionFlow     Json     @default("[]") @map("execution_flow")
   executionFlowTemplateIds Json @default("[]") @map("execution_flow_template_ids") // 支持关联多个流程模板ID
   tools             Json     @default("[]")
+  configStatus      String   @default("draft") @map("config_status") @db.VarChar(32)
+  lastValidationSummary Json? @map("last_validation_summary")
   isActive          Boolean  @default(true) @map("is_active")
   createdAt         DateTime @default(now()) @map("created_at") @db.Timestamptz
   updatedAt         DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
 
   // Relations
   permissions       SkillPermission[] // Roles granted access to this skill
+  toolBindings      SkillToolBinding[]
 
   @@index([name])
   @@index([isActive])
+  @@index([configStatus])
   @@map("skill_configs")
 }
 
@@ -346,6 +350,44 @@ model SkillPermission {
   @@index([skillId])
   @@index([roleId])
   @@map("skill_permissions")
+}
+
+model ToolCatalog {
+  id                         String   @id @default(uuid()) @db.Uuid
+  name                       String   @unique @db.VarChar(100)
+  displayName                String   @map("display_name") @db.VarChar(100)
+  description                String?  @db.VarChar(500)
+  category                   String?  @db.VarChar(50)
+  runtimeType                String?  @map("runtime_type") @db.VarChar(50)
+  status                     String   @default("active") @db.VarChar(20)
+  riskLevel                  String   @default("L0") @map("risk_level") @db.VarChar(10)
+  allowSkillBinding          Boolean  @default(true) @map("allow_skill_binding")
+  promptExposure             String   @default("prompt_and_runtime") @map("prompt_exposure") @db.VarChar(30)
+  defaultRequiresConfirmation Boolean @default(false) @map("default_requires_confirmation")
+  defaultRequiresApproval    Boolean  @default(false) @map("default_requires_approval")
+  metadataJson               Json     @default("{}") @map("metadata_json")
+  createdAt                  DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt                  DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  @@index([status])
+  @@index([category, status])
+  @@index([runtimeType, status])
+  @@map("tool_catalogs")
+}
+
+model SkillToolBinding {
+  id            String   @id @default(uuid()) @db.Uuid
+  skillId       String   @map("skill_id") @db.Uuid
+  toolName      String   @map("tool_name") @db.VarChar(100)
+  bindingSource String   @default("declared") @map("binding_source") @db.VarChar(30)
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt     DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  skill SkillConfig @relation(fields: [skillId], references: [id], onDelete: Cascade)
+
+  @@unique([skillId, toolName])
+  @@index([toolName])
+  @@map("skill_tool_bindings")
 }
 
 // Chat Session Table

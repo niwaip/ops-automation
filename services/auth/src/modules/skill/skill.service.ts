@@ -14,9 +14,14 @@ import {
   AIMatchResponse,
   SkillValidationResult,
   LLMUsage,
+  SkillToolBindingDTO,
+  SkillToolValidationMessage,
+  SkillToolValidationResult,
+  ToolCatalogDTO,
 } from './interfaces';
 import axios from 'axios';
 import { ExecutionFlowTemplateService } from '../execution-flow/execution-flow.service';
+import { ToolCatalogService } from './tool-catalog.service';
 
 // UUID验证正则表达式
 const UUID_REGEX = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
@@ -128,7 +133,7 @@ const DEFAULT_SKILLS: CreateSkillDTO[] = [
     executionFlow: [
       { type: 'tool', name: 'AI语义匹配', tool: { name: 'skill_match' } },
       { type: 'tool', name: 'AI生成参数', tool: { name: 'generate_parameters' } },
-      { type: 'tool', name: '用户确认', tool: { name: 'confirm' } },
+      { type: 'tool', name: '用户确认', tool: { name: 'user_ask' } },
       { type: 'tool', name: '文档渲染', tool: { name: 'document_render' } },
     ],
     tools: ['skill_match', 'generate_parameters', 'user_ask', 'document_render'],
@@ -190,8 +195,8 @@ const DEFAULT_SKILLS: CreateSkillDTO[] = [
     templateId: 'labor-contract-template',
     executionFlow: [
       { type: 'tool', name: '收集参数', tool: { name: 'param_collect' } },
-      { type: 'tool', name: '用户确认', tool: { name: 'confirm' } },
-      { type: 'tool', name: '渲染输出', tool: { name: 'render' } },
+      { type: 'tool', name: '用户确认', tool: { name: 'user_ask' } },
+      { type: 'tool', name: '渲染输出', tool: { name: 'document_generate' } },
     ],
     tools: ['param_collect', 'user_ask', 'document_generate'],
   },
@@ -204,15 +209,46 @@ export class SkillService implements OnModuleInit {
   constructor(
     private readonly prisma: PrismaService,
     private readonly executionFlowService: ExecutionFlowTemplateService,
+    private readonly toolCatalogService: ToolCatalogService,
   ) {}
+
+  private logStructured(
+    level: 'log' | 'warn' | 'error',
+    event: string,
+    payload: Record<string, unknown>,
+  ): void {
+    const message = JSON.stringify({
+      event,
+      module: SkillService.name,
+      ...payload,
+    });
+
+    if (level === 'error') {
+      this.logger.error(message);
+      return;
+    }
+    if (level === 'warn') {
+      this.logger.warn(message);
+      return;
+    }
+    this.logger.log(message);
+  }
 
   /**
    * 模块初始化时加载默认Skills
    */
   async onModuleInit() {
-    this.logger.log('Initializing Skill Service...');
+    this.logStructured('log', 'skill_service_init_started', {
+      defaultSkillCount: DEFAULT_SKILLS.length,
+    });
+    await this.toolCatalogService.ensureInfrastructure();
     await this.ensureSystemRoles();
+    await this.toolCatalogService.seedSystemCatalog();
+    await this.validateDefaultSkillsStartupConsistency();
     await this.loadDefaultSkills();
+    this.logStructured('log', 'skill_service_init_completed', {
+      defaultSkillCount: DEFAULT_SKILLS.length,
+    });
   }
 
   /**
@@ -268,39 +304,295 @@ export class SkillService implements OnModuleInit {
    */
   private async loadDefaultSkills() {
     for (const skill of DEFAULT_SKILLS) {
-      const existing = await this.prisma.skillConfig.findUnique({
-        where: { name: skill.name },
-      });
+      try {
+        const existing = await this.prisma.skillConfig.findUnique({
+          where: { name: skill.name },
+        });
 
-      if (!existing) {
-        await this.createSkill(skill);
-        this.logger.log(`Created default skill: ${skill.name}`);
-      } else {
-        // 同步默认技能的核心配置，防止被误修改或丢失
-        const shouldSyncParams = !existing.paramsSchema ||
-          Object.keys((existing.paramsSchema as any).properties || {}).length === 0;
-
-        const existingFlowTemplateIds = (existing.executionFlowTemplateIds as string[]) || [];
-
-        if (shouldSyncParams) {
-          await this.prisma.skillConfig.update({
-            where: { id: existing.id },
-            data: {
-              paramsSchema: skill.paramsSchema as any,
-              triggerKeywords: (existing.triggerKeywords as any[] || []).length === 0 ? skill.triggerKeywords : (existing.triggerKeywords as any[]),
-              executionFlowTemplateIds: existingFlowTemplateIds,
-            },
+        if (!existing) {
+          await this.createSkill(skill);
+          this.logStructured('log', 'default_skill_created', {
+            skillName: skill.name,
+            triggerKeywordCount: skill.triggerKeywords.length,
+            declaredTools: this.normalizeToolNames(skill.tools),
+            flowTools: this.extractToolNamesFromExecutionFlow(skill.executionFlow as any[]),
           });
-          this.logger.log(`Synced default skill configuration: ${skill.name}`);
+        } else {
+          // 同步默认技能的核心配置，防止被误修改或丢失
+          const shouldSyncParams = !existing.paramsSchema ||
+            Object.keys((existing.paramsSchema as any).properties || {}).length === 0;
+
+          const existingFlowTemplateIds = (existing.executionFlowTemplateIds as string[]) || [];
+
+          if (shouldSyncParams) {
+            await this.prisma.skillConfig.update({
+              where: { id: existing.id },
+              data: {
+                paramsSchema: skill.paramsSchema as any,
+                triggerKeywords: (existing.triggerKeywords as any[] || []).length === 0 ? skill.triggerKeywords : (existing.triggerKeywords as any[]),
+                executionFlowTemplateIds: existingFlowTemplateIds,
+              },
+            });
+            this.logStructured('log', 'default_skill_synced', {
+              skillName: skill.name,
+              skillId: existing.id,
+              syncedFields: ['paramsSchema', 'triggerKeywords', 'executionFlowTemplateIds'],
+            });
+          }
+        }
+      } catch (error) {
+        const validation = await this.buildSkillToolValidation(skill).catch(() => null);
+        this.logStructured('error', 'default_skill_ensure_failed', {
+          skillName: skill.name,
+          declaredTools: this.normalizeToolNames(skill.tools),
+          flowTools: this.extractToolNamesFromExecutionFlow(skill.executionFlow as any[]),
+          validation: validation
+            ? {
+                isValid: validation.isValid,
+                missingTools: validation.missingTools,
+                disabledTools: validation.disabledTools,
+                forbiddenSkillTools: validation.forbiddenSkillTools,
+                undeclaredFlowTools: validation.undeclaredFlowTools,
+                messages: validation.messages.map((item) => ({
+                  code: item.code,
+                  severity: item.severity,
+                  toolName: item.toolName,
+                  message: item.message,
+                })),
+              }
+            : null,
+          errorMessage: error instanceof Error ? error.message : 'unknown',
+        });
+      }
+    }
+  }
+
+  private async validateDefaultSkillsStartupConsistency(): Promise<void> {
+    for (const skill of DEFAULT_SKILLS) {
+      const declaredTools = this.normalizeToolNames(skill.tools);
+      const flowTools = this.extractToolNamesFromExecutionFlow(skill.executionFlow as any[]);
+      const validation = await this.buildSkillToolValidation(skill);
+      const payload = {
+        skillName: skill.name,
+        declaredTools,
+        flowTools,
+        inferredTools: validation.inferredTools,
+        missingTools: validation.missingTools,
+        disabledTools: validation.disabledTools,
+        forbiddenSkillTools: validation.forbiddenSkillTools,
+        undeclaredFlowTools: validation.undeclaredFlowTools,
+        isValid: validation.isValid,
+      };
+
+      if (validation.isValid) {
+        this.logStructured('log', 'default_skill_startup_validation_passed', payload);
+        continue;
+      }
+
+      this.logStructured('error', 'default_skill_startup_validation_failed', {
+        ...payload,
+        messages: validation.messages.map((item) => ({
+          code: item.code,
+          severity: item.severity,
+          toolName: item.toolName,
+          message: item.message,
+        })),
+      });
+    }
+  }
+
+  private normalizeToolNames(toolNames?: string[]): string[] {
+    return Array.from(new Set((toolNames || []).map((item) => String(item || '').trim()).filter(Boolean)));
+  }
+
+  private extractToolNamesFromExecutionFlow(executionFlow?: Array<Record<string, any>>): string[] {
+    if (!Array.isArray(executionFlow)) {
+      return [];
+    }
+
+    const inferred = executionFlow.flatMap((step) => {
+      if (!step || typeof step !== 'object') {
+        return [];
+      }
+      if (step.type === 'api') {
+        return ['api_call'];
+      }
+      return typeof step?.tool?.name === 'string' ? [step.tool.name] : [];
+    });
+
+    return this.normalizeToolNames(inferred);
+  }
+
+  private async inferToolNamesFromTemplates(templateIds?: string[]): Promise<string[]> {
+    const inferred = new Set<string>();
+    const normalizedTemplateIds = this.normalizeToolNames(templateIds);
+
+    if (normalizedTemplateIds.length === 0) {
+      return [];
+    }
+
+    inferred.add('flow_execute');
+
+    for (const templateId of normalizedTemplateIds) {
+      const template = await this.executionFlowService.getTemplate(templateId);
+      if (!template) {
+        continue;
+      }
+      for (const step of template.steps || []) {
+        if (step?.type === 'api') {
+          inferred.add('api_call');
+        }
+        if (step?.tool?.name) {
+          inferred.add(step.tool.name);
         }
       }
     }
+
+    return Array.from(inferred);
+  }
+
+  private async buildSkillToolValidation(
+    payload: Pick<CreateSkillDTO, 'tools' | 'executionFlow' | 'executionFlowTemplateIds'>,
+  ): Promise<SkillToolValidationResult> {
+    const declaredTools = this.normalizeToolNames(payload.tools);
+    const inferredFromFlow = this.extractToolNamesFromExecutionFlow(payload.executionFlow as any[]);
+    const inferredFromTemplates = await this.inferToolNamesFromTemplates(payload.executionFlowTemplateIds);
+    const inferredTools = this.normalizeToolNames([...inferredFromFlow, ...inferredFromTemplates]);
+    const effectiveTools = this.normalizeToolNames([...declaredTools, ...inferredTools]);
+
+    const catalogMap = await this.toolCatalogService.getCatalogItemsByNames(effectiveTools);
+    const missingTools = effectiveTools.filter((toolName) => !catalogMap.has(toolName));
+    const disabledTools = effectiveTools.filter((toolName) => catalogMap.get(toolName)?.status !== 'active');
+    const forbiddenSkillTools = declaredTools.filter((toolName) => {
+      const tool = catalogMap.get(toolName);
+      return tool ? !tool.allowSkillBinding : false;
+    });
+    const undeclaredFlowTools = inferredTools.filter((toolName) => !declaredTools.includes(toolName));
+
+    const messages: SkillToolValidationMessage[] = [];
+    missingTools.forEach((toolName) => {
+      messages.push({
+        code: 'tool_not_registered_in_catalog',
+        toolName,
+        severity: 'error',
+        message: `工具 "${toolName}" 未注册到工具目录中`,
+      });
+    });
+    disabledTools.forEach((toolName) => {
+      messages.push({
+        code: 'tool_disabled',
+        toolName,
+        severity: 'error',
+        message: `工具 "${toolName}" 当前已被禁用`,
+      });
+    });
+    forbiddenSkillTools.forEach((toolName) => {
+      messages.push({
+        code: 'tool_binding_forbidden',
+        toolName,
+        severity: 'error',
+        message: `工具 "${toolName}" 不允许被 Skill 绑定`,
+      });
+    });
+    undeclaredFlowTools.forEach((toolName) => {
+      messages.push({
+        code: 'undeclared_flow_tool',
+        toolName,
+        severity: 'error',
+        message: `执行流中推导出了工具 "${toolName}"，但 Skill.tools 未显式声明该工具`,
+      });
+    });
+
+    return {
+      isValid: messages.every((item) => item.severity !== 'error'),
+      declaredTools,
+      inferredTools,
+      effectiveTools,
+      missingTools,
+      disabledTools,
+      forbiddenSkillTools,
+      undeclaredFlowTools,
+      messages,
+    };
+  }
+
+  private async syncSkillToolBindings(
+    skillId: string,
+    payload: Pick<CreateSkillDTO, 'tools' | 'executionFlow' | 'executionFlowTemplateIds'>,
+  ): Promise<void> {
+    const declaredTools = this.normalizeToolNames(payload.tools);
+    const inferredFromFlow = this.extractToolNamesFromExecutionFlow(payload.executionFlow as any[]);
+    const inferredFromTemplates = await this.inferToolNamesFromTemplates(payload.executionFlowTemplateIds);
+
+    const bindingRows = [
+      ...declaredTools.map((toolName) => ({ toolName, bindingSource: 'declared' })),
+      ...this.normalizeToolNames([...inferredFromFlow, ...inferredFromTemplates])
+        .filter((toolName) => !declaredTools.includes(toolName))
+        .map((toolName) => ({
+          toolName,
+          bindingSource: toolName === 'flow_execute' ? 'system_required' : 'inferred_from_flow',
+        })),
+    ];
+
+    await this.prisma.$executeRawUnsafe(
+      `DELETE FROM skill_tool_bindings WHERE skill_id = $1::uuid`,
+      skillId,
+    );
+
+    for (const row of bindingRows) {
+      await this.prisma.$executeRawUnsafe(
+        `INSERT INTO skill_tool_bindings (
+          id, skill_id, tool_name, binding_source, created_at, updated_at
+        ) VALUES (
+          $1::uuid, $2::uuid, $3, $4, now(), now()
+        )`,
+        randomUUID(),
+        skillId,
+        row.toolName,
+        row.bindingSource,
+      );
+    }
+  }
+
+  private async getSkillToolBindingMap(skillIds: string[]): Promise<Map<string, SkillToolBindingDTO[]>> {
+    const uniqueSkillIds = Array.from(new Set(skillIds.filter((id) => isValidUUID(id))));
+    if (uniqueSkillIds.length === 0) {
+      return new Map();
+    }
+
+    const rows = await this.prisma.$queryRawUnsafe<any[]>(
+      `SELECT skill_id, tool_name, binding_source
+       FROM skill_tool_bindings
+       WHERE skill_id = ANY($1::uuid[])
+       ORDER BY tool_name ASC`,
+      uniqueSkillIds,
+    );
+
+    const map = new Map<string, SkillToolBindingDTO[]>();
+    for (const row of rows) {
+      const current = map.get(row.skill_id) || [];
+      current.push({
+        skillId: row.skill_id,
+        toolName: row.tool_name,
+        bindingSource: row.binding_source,
+      });
+      map.set(row.skill_id, current);
+    }
+    return map;
   }
 
   /**
    * 创建Skill
    */
   async createSkill(dto: CreateSkillDTO): Promise<SkillConfigDTO> {
+    const toolValidation = await this.buildSkillToolValidation(dto);
+    if (!toolValidation.isValid) {
+      throw new BadRequestException({
+        message: 'Skill 工具校验失败',
+        toolValidation,
+      });
+    }
+
     const skill = await this.prisma.skillConfig.create({
       data: {
         name: dto.name,
@@ -318,6 +610,16 @@ export class SkillService implements OnModuleInit {
       },
     });
 
+    await this.prisma.$executeRawUnsafe(
+      `UPDATE skill_configs
+       SET config_status = 'valid',
+           last_validation_summary = $2::jsonb,
+           updated_at = now()
+       WHERE id = $1::uuid`,
+      skill.id,
+      JSON.stringify(toolValidation),
+    );
+    await this.syncSkillToolBindings(skill.id, dto);
     return this.toDTO(skill);
   }
 
@@ -357,6 +659,35 @@ export class SkillService implements OnModuleInit {
       return null;
     }
     try {
+      const current = await this.prisma.skillConfig.findUnique({
+        where: { id },
+      });
+      if (!current) {
+        return null;
+      }
+
+      const mergedPayload: CreateSkillDTO = {
+        name: dto.name ?? current.name,
+        description: dto.description ?? current.description ?? '',
+        triggerKeywords: dto.triggerKeywords ?? (current.triggerKeywords as string[]),
+        paramsSchema: (dto.paramsSchema ?? current.paramsSchema) as any,
+        templateId: dto.templateId ?? current.templateId ?? undefined,
+        carboneTemplateId: dto.carboneTemplateId ?? current.carboneTemplateId ?? undefined,
+        carboneSkillId: dto.carboneSkillId ?? current.carboneSkillId ?? undefined,
+        executionFlowTemplateIds: dto.executionFlowTemplateIds ?? ((current.executionFlowTemplateIds as string[]) || []),
+        executionFlow: (dto.executionFlow ?? (current.executionFlow as any[]) ?? []) as any,
+        tools: dto.tools ?? ((current.tools as string[]) || []),
+        apiEndpoints: (dto.apiEndpoints ?? current.apiEndpoints) as any,
+      };
+
+      const toolValidation = await this.buildSkillToolValidation(mergedPayload);
+      if (!toolValidation.isValid) {
+        throw new BadRequestException({
+          message: 'Skill 工具校验失败',
+          toolValidation,
+        });
+      }
+
       const skill = await this.prisma.skillConfig.update({
         where: { id },
         data: {
@@ -374,9 +705,22 @@ export class SkillService implements OnModuleInit {
         },
       });
 
+      await this.prisma.$executeRawUnsafe(
+        `UPDATE skill_configs
+         SET config_status = 'valid',
+             last_validation_summary = $2::jsonb,
+             updated_at = now()
+         WHERE id = $1::uuid`,
+        id,
+        JSON.stringify(toolValidation),
+      );
+      await this.syncSkillToolBindings(id, mergedPayload);
       return this.toDTO(skill);
     } catch (error) {
       const message = error instanceof Error ? error.message : '';
+      if (error instanceof BadRequestException) {
+        throw error;
+      }
       if (message.includes('Record to update not found')) {
         return null;
       }
@@ -391,11 +735,50 @@ export class SkillService implements OnModuleInit {
     if (!isValidUUID(id)) {
       return false;
     }
-    const result = await this.prisma.skillConfig.delete({
+    const skill = await this.prisma.skillConfig.findUnique({
+      where: { id },
+    });
+    if (!skill) {
+      return false;
+    }
+
+    const [executionCount, publishedReleaseRefs] = await Promise.all([
+      this.prisma.execution.count({
+        where: { skillId: id },
+      }),
+      this.prisma.$queryRawUnsafe<Array<{ count: bigint | number }>>(
+        `SELECT COUNT(*)::int AS count
+         FROM capability_releases
+         WHERE published_skill_id = $1::uuid
+           AND archived_at IS NULL`,
+        id,
+      ),
+    ]);
+
+    const releaseRefCount = Number(publishedReleaseRefs[0]?.count || 0);
+    const hasRuntimeReferences = executionCount > 0 || releaseRefCount > 0;
+
+    if (hasRuntimeReferences) {
+      await this.prisma.$executeRawUnsafe(
+        `UPDATE skill_configs
+         SET is_active = false,
+             config_status = 'archived',
+             updated_at = now()
+         WHERE id = $1::uuid`,
+        id,
+      );
+
+      this.logger.warn(
+        `Skill ${id} has runtime references (executions=${executionCount}, releases=${releaseRefCount}), archived instead of hard delete`,
+      );
+      return true;
+    }
+
+    await this.prisma.skillConfig.delete({
       where: { id },
     });
 
-    return !!result;
+    return true;
   }
 
   /**
@@ -696,6 +1079,113 @@ export class SkillService implements OnModuleInit {
     }));
   }
 
+  async getSkillToolBindings(skillId: string): Promise<{
+    bindings: SkillToolBindingDTO[];
+    validation: SkillToolValidationResult;
+  }> {
+    const skill = await this.getSkill(skillId);
+    if (!skill) {
+      throw new NotFoundException('Skill not found');
+    }
+
+    const bindingsMap = await this.getSkillToolBindingMap([skillId]);
+    const bindings = bindingsMap.get(skillId) || [];
+    const validation = await this.buildSkillToolValidation({
+      tools: skill.tools,
+      executionFlow: skill.executionFlow,
+      executionFlowTemplateIds: skill.executionFlowTemplateIds,
+    });
+
+    return { bindings, validation };
+  }
+
+  async setSkillToolBindings(skillId: string, tools: string[]): Promise<{
+    bindings: SkillToolBindingDTO[];
+    validation: SkillToolValidationResult;
+  }> {
+    const skill = await this.getSkill(skillId);
+    if (!skill) {
+      throw new NotFoundException('Skill not found');
+    }
+
+    const mergedPayload: CreateSkillDTO = {
+      name: skill.name,
+      description: skill.description,
+      triggerKeywords: skill.triggerKeywords,
+      paramsSchema: skill.paramsSchema,
+      templateId: skill.templateId,
+      carboneTemplateId: skill.carboneTemplateId,
+      carboneSkillId: skill.carboneSkillId,
+      executionFlowTemplateIds: skill.executionFlowTemplateIds,
+      executionFlow: skill.executionFlow,
+      tools,
+      apiEndpoints: skill.apiEndpoints,
+    };
+
+    const validation = await this.buildSkillToolValidation(mergedPayload);
+    if (!validation.isValid) {
+      throw new BadRequestException({
+        message: 'Skill 工具校验失败',
+        toolValidation: validation,
+      });
+    }
+
+    await this.prisma.skillConfig.update({
+      where: { id: skillId },
+      data: {
+        tools,
+      },
+    });
+    await this.prisma.$executeRawUnsafe(
+      `UPDATE skill_configs
+       SET config_status = 'valid',
+           last_validation_summary = $2::jsonb,
+           updated_at = now()
+       WHERE id = $1::uuid`,
+      skillId,
+      JSON.stringify(validation),
+    );
+    await this.syncSkillToolBindings(skillId, mergedPayload);
+
+    const bindingsMap = await this.getSkillToolBindingMap([skillId]);
+    return {
+      bindings: bindingsMap.get(skillId) || [],
+      validation,
+    };
+  }
+
+  async validateSkillTools(skillId: string): Promise<SkillToolValidationResult> {
+    const skill = await this.getSkill(skillId);
+    if (!skill) {
+      throw new NotFoundException('Skill not found');
+    }
+
+    const validation = await this.buildSkillToolValidation({
+      tools: skill.tools,
+      executionFlow: skill.executionFlow,
+      executionFlowTemplateIds: skill.executionFlowTemplateIds,
+    });
+
+    await this.prisma.$executeRawUnsafe(
+      `UPDATE skill_configs
+       SET config_status = $2,
+           last_validation_summary = $3::jsonb,
+           updated_at = now()
+       WHERE id = $1::uuid`,
+      skillId,
+      validation.isValid ? 'valid' : 'invalid',
+      JSON.stringify(validation),
+    );
+
+    return validation;
+  }
+
+  async validateSkillToolsPayload(
+    payload: Pick<CreateSkillDTO, 'tools' | 'executionFlow' | 'executionFlowTemplateIds'>,
+  ): Promise<SkillToolValidationResult> {
+    return this.buildSkillToolValidation(payload);
+  }
+
   /**
    * AI 语义匹配 Skill（带权限过滤）
    */
@@ -734,9 +1224,18 @@ ${skillsXml}
     // 4. 调用 AI Orchestrator 进行语义匹配
     try {
       const aiOrchestratorUrl = getAiOrchestratorUrl();
-      const response = await axios.post<{ result: string; usage?: LLMUsage }>(`${aiOrchestratorUrl}/ai/model/call`, {
+      const response = await axios.post<{
+        result: string;
+        usage?: LLMUsage;
+        debug?: {
+          modelId: string;
+          requestMessages: Array<{ role: 'user'; content: string }>;
+          responseText: string;
+        };
+      }>(`${aiOrchestratorUrl}/ai/model/call`, {
         modelId: 'default',
         prompt,
+        includeDebug: true,
       });
 
       const aiResponse = this.parseAiMatchResponse(response.data.result, availableSkills);
@@ -763,6 +1262,17 @@ ${skillsXml}
             expectedResult: (matchedSkill.apiEndpoints as any)?.runtimeMetadata?.expectedResult,
             outputParams: (matchedSkill.apiEndpoints as any)?.runtimeMetadata?.outputParams,
             usage: response.data.usage,
+            debug: {
+              llmCalls: response.data.debug ? [
+                {
+                  stage: 'skills-match',
+                  label: '技能匹配',
+                  modelId: response.data.debug.modelId,
+                  requestMessages: response.data.debug.requestMessages,
+                  responseText: response.data.debug.responseText,
+                },
+              ] : [],
+            },
           };
         }
       }
@@ -780,9 +1290,17 @@ ${skillsXml}
    * 构建 Skills Prompt XML
    */
   private buildSkillsPromptXml(skills: SkillConfigDTO[]): string {
+    const getMatchSummary = (skill: SkillConfigDTO): string => {
+      const runtimeMetadata = skill.apiEndpoints?.runtimeMetadata as Record<string, unknown> | undefined;
+      const matchSummary = typeof runtimeMetadata?.matchSummary === 'string'
+        ? runtimeMetadata.matchSummary.trim()
+        : '';
+      return matchSummary || skill.description || '';
+    };
+
     const lines = skills.map(s => `  <skill>
     <name>${s.name}</name>
-    <description>${s.description || ''}</description>
+    <description>${getMatchSummary(s)}</description>
   </skill>`).join('\n');
     return `<available_skills>\n${lines}\n</available_skills>`;
   }
@@ -913,6 +1431,7 @@ ${skillsXml}
     const skillIds = skills.map((skill) => skill.id);
     const publicationMap = await this.getPublishedReleaseMap(skillIds);
     const publishedBindingSet = await this.getPublishedSkillBindingSet(skillIds);
+    const toolBindingMap = await this.getSkillToolBindingMap(skillIds);
     return skills
       .filter((skill) => {
         if (!options?.hideHistoricalPublishedVersions) {
@@ -922,7 +1441,7 @@ ${skillsXml}
         const hasPublishedHistory = publishedBindingSet.has(skill.id);
         return isCurrentPublished || !hasPublishedHistory;
       })
-      .map((skill) => this.toDTO(skill, publicationMap.get(skill.id)));
+      .map((skill) => this.toDTO(skill, publicationMap.get(skill.id), toolBindingMap.get(skill.id) || []));
   }
 
   private async getPublishedReleaseMap(skillIds: string[]): Promise<Map<string, PublishedSkillReleaseMeta>> {
@@ -984,7 +1503,11 @@ ${skillsXml}
     );
   }
 
-  private toDTO(skill: any, publication?: PublishedSkillReleaseMeta): SkillConfigDTO {
+  private toDTO(
+    skill: any,
+    publication?: PublishedSkillReleaseMeta,
+    bindings: SkillToolBindingDTO[] = [],
+  ): SkillConfigDTO {
     return {
       id: skill.id,
       name: skill.name,
@@ -998,7 +1521,10 @@ ${skillsXml}
       apiEndpoints: skill.apiEndpoints as any,
       executionFlow: (skill.executionFlow as any[]) || [],
       tools: skill.tools as string[],
+      effectiveTools: bindings.map((item) => item.toolName),
       isActive: skill.isActive,
+      configStatus: skill.configStatus || skill.config_status || undefined,
+      lastValidationSummary: (skill.lastValidationSummary || skill.last_validation_summary || null) as Record<string, unknown> | null,
       isPublished: Boolean(publication),
       publishedReleaseId: publication?.releaseId || null,
       publishedReleaseVersion: publication?.releaseVersion ?? null,
