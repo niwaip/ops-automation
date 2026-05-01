@@ -23,7 +23,6 @@ import {
   PromptAssemblyMeta,
   PromptDebugPayload,
   DecisionContext,
-  ExecutionUsage,
   LLMCallDetail,
 } from './interfaces';
 import {
@@ -43,6 +42,7 @@ import {
 } from './error-recovery-policy';
 import { LLMResponse } from '../../interfaces';
 import { PromptDebugSettingsService } from '../debug-settings/prompt-debug-settings.service';
+import { CONTROL_PLANE_EXECUTION_STATUS } from '../../client/control-plane.contracts';
 
 /**
  * 默认配置
@@ -68,7 +68,7 @@ export class ReActEngineService {
     private readonly sessionService: SessionService,
     private readonly capabilityResolver: CapabilityResolver,
     private readonly modelRouterService: ModelRouterService,
-    private readonly promptDebugSettingsService: PromptDebugSettingsService,
+    private readonly promptDebugSettingsService: PromptDebugSettingsService = new PromptDebugSettingsService(),
   ) {}
 
   private tracePrefix(context: ExecutionContext): string {
@@ -772,7 +772,7 @@ export class ReActEngineService {
         type: StreamEventType.ERROR,
         content: `达到最大迭代次数 ${state.maxIterations}，任务未完成`,
         data: {
-          taskStatus: 'failed',
+          taskStatus: CONTROL_PLANE_EXECUTION_STATUS.FAILED,
           promptDebug: this.buildPromptDebugPayload(state, context),
           canResume: true,
           promptAssembly: this.buildPromptAssemblyPayload(state),
@@ -1242,7 +1242,7 @@ export class ReActEngineService {
       content: state.observation,
       data: {
         requiresUserInput: true,
-        taskStatus: 'waiting_input',
+        taskStatus: CONTROL_PLANE_EXECUTION_STATUS.WAITING_INPUT,
         waitReason: approvalToolName ? 'approval' : 'user_input',
         approvalToolName,
         action: state.action,
@@ -1418,7 +1418,11 @@ export class ReActEngineService {
    */
   async finalizeExecution(
     context: ExecutionContext,
-    status: 'succeeded' | 'failed' | 'cancelled' | 'human_control',
+    status:
+      | typeof CONTROL_PLANE_EXECUTION_STATUS.SUCCEEDED
+      | typeof CONTROL_PLANE_EXECUTION_STATUS.FAILED
+      | typeof CONTROL_PLANE_EXECUTION_STATUS.CANCELLED
+      | typeof CONTROL_PLANE_EXECUTION_STATUS.HUMAN_CONTROL,
     _result?: Record<string, unknown>,
     _failureReason?: string,
   ): Promise<void> {

@@ -12,16 +12,29 @@ import {
 } from '@nestjs/common';
 import { ApiConsumes, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { FileInterceptor } from '@nestjs/platform-express';
-import { Request, Response } from 'express';
-import { Readable } from 'stream';
+import type { Request, Response } from 'express';
 import axios from 'axios';
+import { ControlPlaneClient } from '../client/control-plane.client';
+import {
+  CONTROL_PLANE_APPROVAL_STATUS,
+  CONTROL_PLANE_EVENT_TYPE,
+  CONTROL_PLANE_EXECUTION_STATUS,
+  LEGACY_CONTROL_PLANE_EVENT_TYPE,
+  isTerminalControlPlaneExecutionStatus,
+} from '../client/control-plane.contracts';
 import { ModelService } from '../modules/model/model.service';
 import { RecognizerService } from '../modules/recognizer/recognizer.service';
 import { ReActEngineService } from '../modules/react-engine/react-engine.service';
 import { PlannerService } from '../modules/planner/planner.service';
 import { getOrCreateTraceId } from '../common/trace.util';
 import { ContentBlock, ChatMessage as MultimodalChatMessage } from '../interfaces';
-import { ChatRequestDTO, ExecutionContext, StreamEvent, StreamEventType, LLMUsage } from '../modules/react-engine/interfaces';
+import { StreamEventType } from '../modules/react-engine/interfaces';
+import type {
+  ChatRequestDTO,
+  ExecutionContext,
+  LLMUsage,
+  StreamEvent,
+} from '../modules/react-engine/interfaces';
 import { SessionService } from '../modules/redis/session.service';
 import { PlanDraftDTO } from '../interfaces';
 import { PromptDebugSettingsService } from '../modules/debug-settings/prompt-debug-settings.service';
@@ -36,20 +49,6 @@ const getAuthServiceUrl = () => {
   }
   return 'http://localhost:3001';
 };
-
-const getControlPlaneUrl = () => {
-  if (process.env.CONTROL_PLANE_URL) {
-    return process.env.CONTROL_PLANE_URL.endsWith('/api') 
-      ? process.env.CONTROL_PLANE_URL 
-      : `${process.env.CONTROL_PLANE_URL}/api`;
-  }
-  if (process.env.DOCKER_ENV === 'true' || process.env.NODE_ENV === 'production') {
-    return 'http://ops-control-plane:3003/api';
-  }
-  return 'http://localhost:3003/api';
-};
-
-const getInternalServiceSecret = () => process.env.INTERNAL_API_SHARED_SECRET || process.env.JWT_SECRET;
 
 const extractDownloadUrl = (value: unknown): string | undefined => {
   const queue: unknown[] = [value];
@@ -93,6 +92,7 @@ export class ChatController {
   private readonly logger = new Logger(ChatController.name);
 
   constructor(
+    private readonly controlPlaneClient: ControlPlaneClient,
     private readonly modelService: ModelService,
     private readonly recognizerService: RecognizerService,
     private readonly reactEngineService: ReActEngineService,
@@ -110,34 +110,14 @@ export class ChatController {
     res.write(`data: ${JSON.stringify(payload)}\n\n`);
   }
 
-  private selectPrimaryRole(userRoles?: string[]): string | undefined {
-    if (!Array.isArray(userRoles) || userRoles.length === 0) {
-      return undefined;
-    }
-    if (userRoles.includes('admin')) {
-      return 'admin';
-    }
-    return userRoles[0];
-  }
-
-  private buildControlPlaneHeaders(
+  private buildControlPlaneRequestOptions(
     authToken?: string,
     user?: { userId?: string; userRoles?: string[] },
-  ): Record<string, string> | undefined {
-    const internalSecret = getInternalServiceSecret();
-    if (internalSecret && user?.userId) {
-      const headers: Record<string, string> = {
-        'X-Internal-Auth': internalSecret,
-        'X-User-Id': user.userId,
-      };
-      const primaryRole = this.selectPrimaryRole(user.userRoles);
-      if (primaryRole) {
-        headers['X-User-Role'] = primaryRole;
-      }
-      return headers;
-    }
-
-    return authToken ? { Authorization: authToken } : undefined;
+  ) {
+    return {
+      authToken,
+      user,
+    };
   }
 
   private normalizeContentToText(content: string | ContentBlock[]): string {
@@ -808,7 +788,7 @@ export class ChatController {
     if (executionId) {
       try {
         // 查询执行单状态
-        const response = await axios.get<{
+        const execution = await this.controlPlaneClient.getExecution<{
           skillId?: string;
           status: string;
           normalizedInput?: {
@@ -818,30 +798,33 @@ export class ChatController {
               missing?: boolean;
             }>;
           };
-        }>(`${getControlPlaneUrl()}/executions/${executionId}`, {
-          headers: this.buildControlPlaneHeaders(authToken, {
+        }>(
+          executionId,
+          this.buildControlPlaneRequestOptions(authToken, {
             userId: context.userId,
             userRoles: context.userRoles,
           }),
-        });
-        const execution = response.data;
+        );
 
         // 如果执行单在等待输入，且用户提供了消息，则提交输入
-        if (execution.status === 'waiting_input' && body.message) {
+        if (execution.status === CONTROL_PLANE_EXECUTION_STATUS.WAITING_INPUT && body.message) {
           yield {
             type: StreamEventType.THOUGHT,
             content: '正在提交您补充的信息...',
           };
 
           // 获取等待输入的步骤
-          const stepsResponse = await axios.get<any[]>(`${getControlPlaneUrl()}/executions/${executionId}/steps`, {
-            headers: this.buildControlPlaneHeaders(authToken, {
+          const steps = await this.controlPlaneClient.getExecutionSteps<any[]>(
+            executionId,
+            this.buildControlPlaneRequestOptions(authToken, {
               userId: context.userId,
               userRoles: context.userRoles,
             }),
-          });
-          const steps = stepsResponse.data;
-          const waitingStep = steps.find((s: any) => s.status === 'waiting_input' || s.type === 'input_collection');
+          );
+          const waitingStep = steps.find(
+            (s: any) =>
+              s.status === CONTROL_PLANE_EXECUTION_STATUS.WAITING_INPUT || s.type === 'input_collection',
+          );
 
           if (waitingStep) {
             try {
@@ -859,19 +842,17 @@ export class ChatController {
                 context.userId,
               );
 
-              await axios.post(
-                `${getControlPlaneUrl()}/executions/${executionId}/submit-input`,
+              await this.controlPlaneClient.submitExecutionInput(
+                executionId,
                 {
                   stepId: waitingStep.id,
                   input: waitingInputPayload.input,
                   usage: waitingInputPayload.usage,
                 },
-                {
-                  headers: this.buildControlPlaneHeaders(authToken, {
-                    userId: context.userId,
-                    userRoles: context.userRoles,
-                  }),
-                },
+                this.buildControlPlaneRequestOptions(authToken, {
+                  userId: context.userId,
+                  userRoles: context.userRoles,
+                }),
               );
 
               yield {
@@ -897,7 +878,12 @@ export class ChatController {
         }
 
         // 如果执行单还在运行中，返回状态并开始观察
-        if (['queued', 'running', 'pending_approval', 'waiting_input'].includes(execution.status)) {
+        if (
+          execution.status === CONTROL_PLANE_EXECUTION_STATUS.QUEUED
+          || execution.status === CONTROL_PLANE_EXECUTION_STATUS.RUNNING
+          || execution.status === CONTROL_PLANE_EXECUTION_STATUS.PENDING_APPROVAL
+          || execution.status === CONTROL_PLANE_EXECUTION_STATUS.WAITING_INPUT
+        ) {
           yield {
             type: StreamEventType.THOUGHT,
             content: `任务正在执行中 (状态: ${execution.status})，正在为您实时观察进度...`,
@@ -977,8 +963,7 @@ export class ChatController {
         };
 
         try {
-          const response = await axios.post<{ id: string }>(
-            `${getControlPlaneUrl()}/executions`,
+          const response = await this.controlPlaneClient.createExecution<{ id: string }>(
             {
               skillId: planDraft.skill_match.skill_id,
               input: {
@@ -993,20 +978,18 @@ export class ChatController {
               runtimeType,
               usage: planDraft.usage,
             },
-            {
-              headers: this.buildControlPlaneHeaders(authToken, {
-                userId: context.userId,
-                userRoles: context.userRoles,
-              }),
-            },
+            this.buildControlPlaneRequestOptions(authToken, {
+              userId: context.userId,
+              userRoles: context.userRoles,
+            }),
           );
 
           yield {
             type: StreamEventType.RESULT,
-            content: `已创建等待补充信息的执行单。执行单 ID: ${response.data.id}\n\n${planDraft.summary}`,
+            content: `已创建等待补充信息的执行单。执行单 ID: ${response.id}\n\n${planDraft.summary}`,
             data: {
-              executionId: response.data.id,
-              status: 'waiting_input',
+              executionId: response.id,
+              status: CONTROL_PLANE_EXECUTION_STATUS.WAITING_INPUT,
               hasBusinessResult: false,
               missingInputs,
               plan: planDraft,
@@ -1015,7 +998,7 @@ export class ChatController {
             },
           };
 
-          for await (const event of this.observeExecution(response.data.id, authToken, {
+          for await (const event of this.observeExecution(response.id, authToken, {
             userId: context.userId,
             userRoles: context.userRoles,
           })) {
@@ -1034,7 +1017,7 @@ export class ChatController {
           type: StreamEventType.WAITING_INPUT,
           content: `已识别到技能 ${planDraft.skill_match.skill_name}，但还缺少必要信息：${missingInputs.map((input) => input.name).join('、')}。\n\n请先补充后再继续。`,
           data: {
-            status: 'waiting_input',
+            status: CONTROL_PLANE_EXECUTION_STATUS.WAITING_INPUT,
             hasBusinessResult: false,
             missingInputs,
             plan: planDraft,
@@ -1050,8 +1033,7 @@ export class ChatController {
       };
 
       try {
-        const response = await axios.post<{ id: string }>(
-          `${getControlPlaneUrl()}/executions`,
+        const execution = await this.controlPlaneClient.createExecution<{ id: string }>(
           {
             skillId: planDraft.skill_match.skill_id,
             input: {
@@ -1066,22 +1048,18 @@ export class ChatController {
             runtimeType,
             usage: planDraft.usage,
           },
-          {
-            headers: this.buildControlPlaneHeaders(authToken, {
-              userId: context.userId,
-              userRoles: context.userRoles,
-            }),
-          },
+          this.buildControlPlaneRequestOptions(authToken, {
+            userId: context.userId,
+            userRoles: context.userRoles,
+          }),
         );
-
-        const execution = response.data;
 
         yield {
           type: StreamEventType.RESULT,
           content: `任务已启动。执行单 ID: ${execution.id}\n\n${planDraft.summary}`,
           data: {
             executionId: execution.id,
-            status: 'queued',
+            status: CONTROL_PLANE_EXECUTION_STATUS.QUEUED,
             hasBusinessResult: false,
             plan: planDraft,
             usage: planDraft.usage,
@@ -1122,8 +1100,7 @@ export class ChatController {
     authToken?: string,
     user?: { userId?: string; userRoles?: string[] },
   ): AsyncGenerator<StreamEvent> {
-    const url = `${getControlPlaneUrl()}/executions/${executionId}/events/stream`;
-    this.logger.log(`Starting to observe execution ${executionId} via ${url}`);
+    this.logger.log(`Starting to observe execution ${executionId} via control-plane stream`);
 
     try {
       const immediateStateEvent = await this.buildLatestExecutionStateEvent(executionId, authToken, user);
@@ -1132,12 +1109,10 @@ export class ChatController {
         return;
       }
 
-      const response = await axios.get(url, {
-        responseType: 'stream',
-        headers: this.buildControlPlaneHeaders(authToken, user),
-      });
-
-      const stream = response.data as Readable;
+      const stream = await this.controlPlaneClient.streamExecutionEvents(
+        executionId,
+        this.buildControlPlaneRequestOptions(authToken, user),
+      );
       let buffer = '';
 
       for await (const chunk of stream) {
@@ -1154,8 +1129,8 @@ export class ChatController {
 
               // 如果执行结束，停止观察
               if (
-                event.eventType === 'execution.status_changed' &&
-                ['succeeded', 'failed', 'cancelled'].includes(event.payload.newStatus)
+                event.eventType === CONTROL_PLANE_EVENT_TYPE.EXECUTION_STATUS_CHANGED &&
+                isTerminalControlPlaneExecutionStatus(event.payload.newStatus)
               ) {
                 const terminalEvent = await this.buildTerminalExecutionEvent(
                   executionId,
@@ -1201,7 +1176,7 @@ export class ChatController {
     user?: { userId?: string; userRoles?: string[] },
   ): Promise<StreamEvent | null> {
     try {
-      const response = await axios.get<{
+      const execution = await this.controlPlaneClient.getExecution<{
         id: string;
         status: string;
         approvalStatus?: string;
@@ -1212,31 +1187,29 @@ export class ChatController {
             description?: string;
             missing?: boolean;
           }>;
-        };
-      }>(`${getControlPlaneUrl()}/executions/${executionId}`, {
-        headers: this.buildControlPlaneHeaders(authToken, user),
-      });
+          };
+      }>(executionId, this.buildControlPlaneRequestOptions(authToken, user));
 
-      const status = response.data.status;
-      const usage = response.data.usage;
+      const status = execution.status;
+      const usage = execution.usage;
 
-      if (['succeeded', 'failed', 'cancelled'].includes(status)) {
+      if (isTerminalControlPlaneExecutionStatus(status)) {
         return this.buildTerminalExecutionEvent(
           executionId,
-          status as 'succeeded' | 'failed' | 'cancelled',
+          status,
           authToken,
           user,
         );
       }
 
-      if (status === 'waiting_input') {
-        const missingInputs = Array.isArray(response.data.normalizedInput?.requiredInputs)
-          ? response.data.normalizedInput.requiredInputs.filter((item) => item?.missing)
+      if (status === CONTROL_PLANE_EXECUTION_STATUS.WAITING_INPUT) {
+        const missingInputs = Array.isArray(execution.normalizedInput?.requiredInputs)
+          ? execution.normalizedInput.requiredInputs.filter((item) => item?.missing)
           : [];
         return {
           type: StreamEventType.WAITING_INPUT,
           content: missingInputs.length > 0
-            ? `任务需要你补充信息后才能继续。\n\n缺少参数：${missingInputs.map((item) => item.name).join('、')}\n\n执行单 ID: ${executionId}`
+            ? `任务需要你补充信息后才能继续执行。\n\n缺少参数：${missingInputs.map((item) => item.name).join('、')}\n\n执行单 ID: ${executionId}`
             : `任务需要你补充信息后才能继续。\n\n执行单 ID: ${executionId}`,
           data: {
             executionId,
@@ -1248,14 +1221,14 @@ export class ChatController {
         };
       }
 
-      if (status === 'pending_approval') {
+      if (status === CONTROL_PLANE_EXECUTION_STATUS.PENDING_APPROVAL) {
         return {
           type: StreamEventType.RESULT,
-          content: `任务需要审批后才能继续执行。\n\n当前审批状态: ${response.data.approvalStatus || 'pending'}\n执行单 ID: ${executionId}`,
+            content: `任务需要审批后才能继续执行。\n\n当前审批状态: ${execution.approvalStatus || CONTROL_PLANE_APPROVAL_STATUS.PENDING}\n执行单 ID: ${executionId}`,
           data: {
             executionId,
             status,
-            approvalStatus: response.data.approvalStatus || 'pending',
+            approvalStatus: execution.approvalStatus || CONTROL_PLANE_APPROVAL_STATUS.PENDING,
             hasBusinessResult: false,
             usage,
           },
@@ -1273,26 +1246,25 @@ export class ChatController {
 
   private async buildTerminalExecutionEvent(
     executionId: string,
-    status: 'succeeded' | 'failed' | 'cancelled',
+    status:
+      | typeof CONTROL_PLANE_EXECUTION_STATUS.SUCCEEDED
+      | typeof CONTROL_PLANE_EXECUTION_STATUS.FAILED
+      | typeof CONTROL_PLANE_EXECUTION_STATUS.CANCELLED,
     authToken?: string,
     user?: { userId?: string; userRoles?: string[] },
   ): Promise<StreamEvent | null> {
     try {
-      const response = await axios.get<{
+      const execution = await this.controlPlaneClient.getExecution<{
         id: string;
         status: string;
         result?: unknown;
         resultJson?: unknown;
         failureReason?: string;
         usage?: LLMUsage;
-      }>(`${getControlPlaneUrl()}/executions/${executionId}`, {
-        headers: this.buildControlPlaneHeaders(authToken, user),
-      });
-
-      const execution = response.data;
+      }>(executionId, this.buildControlPlaneRequestOptions(authToken, user));
       const rawResult = execution.resultJson ?? execution.result;
 
-      if (status === 'succeeded') {
+      if (status === CONTROL_PLANE_EXECUTION_STATUS.SUCCEEDED) {
         if (rawResult !== null && rawResult !== undefined) {
           const downloadUrl = extractDownloadUrl(rawResult);
           return {
@@ -1321,7 +1293,7 @@ export class ChatController {
         };
       }
 
-      if (status === 'failed') {
+      if (status === CONTROL_PLANE_EXECUTION_STATUS.FAILED) {
         return {
           type: StreamEventType.ERROR,
           content: `任务执行失败。\n\n原因: ${execution.failureReason || '未知原因'}\n执行单 ID: ${executionId}`,
@@ -1353,9 +1325,12 @@ export class ChatController {
 
   private fallbackTerminalExecutionEvent(
     executionId: string,
-    status: 'succeeded' | 'failed' | 'cancelled',
+    status:
+      | typeof CONTROL_PLANE_EXECUTION_STATUS.SUCCEEDED
+      | typeof CONTROL_PLANE_EXECUTION_STATUS.FAILED
+      | typeof CONTROL_PLANE_EXECUTION_STATUS.CANCELLED,
   ): StreamEvent {
-    if (status === 'succeeded') {
+    if (status === CONTROL_PLANE_EXECUTION_STATUS.SUCCEEDED) {
       return {
         type: StreamEventType.RESULT,
         content: `任务已完成。\n\n执行单 ID: ${executionId}`,
@@ -1363,7 +1338,7 @@ export class ChatController {
       };
     }
 
-    if (status === 'failed') {
+    if (status === CONTROL_PLANE_EXECUTION_STATUS.FAILED) {
       return {
         type: StreamEventType.ERROR,
         content: `任务执行失败。\n\n执行单 ID: ${executionId}`,
@@ -1404,8 +1379,8 @@ export class ChatController {
     const { eventType, payload } = event;
 
     switch (eventType) {
-      case 'execution.status_changed':
-        if (payload.newStatus === 'waiting_input') {
+      case CONTROL_PLANE_EVENT_TYPE.EXECUTION_STATUS_CHANGED:
+        if (payload.newStatus === CONTROL_PLANE_EXECUTION_STATUS.WAITING_INPUT) {
           const missingInputs = Array.isArray(payload.requiredInputs)
             ? payload.requiredInputs.filter((item: any) => item?.missing)
             : [];
@@ -1423,14 +1398,14 @@ export class ChatController {
           };
         }
 
-        if (payload.newStatus === 'pending_approval') {
+        if (payload.newStatus === CONTROL_PLANE_EXECUTION_STATUS.PENDING_APPROVAL) {
           return {
             type: StreamEventType.RESULT,
-            content: `任务需要审批后才能继续执行。\n\n当前审批状态: pending\n执行单 ID: ${event.executionId}`,
+            content: `任务需要审批后才能继续执行。\n\n当前审批状态: ${CONTROL_PLANE_APPROVAL_STATUS.PENDING}\n执行单 ID: ${event.executionId}`,
             data: {
               executionId: event.executionId,
               status: payload.newStatus,
-              approvalStatus: 'pending',
+              approvalStatus: CONTROL_PLANE_APPROVAL_STATUS.PENDING,
               hasBusinessResult: false,
             },
           };
@@ -1441,13 +1416,13 @@ export class ChatController {
           content: `任务状态变更为: ${payload.newStatus}`,
           data: { executionId: event.executionId, status: payload.newStatus },
         };
-      case 'step.started':
+      case CONTROL_PLANE_EVENT_TYPE.STEP_STARTED:
         return {
           type: StreamEventType.ACTION,
           content: `正在执行: ${payload.stepName || payload.action || '系统步骤'}`,
           data: { stepId: payload.stepId },
         };
-      case 'step.succeeded':
+      case CONTROL_PLANE_EVENT_TYPE.STEP_SUCCEEDED:
         let observationContent = '步骤执行成功。';
         const downloadUrl = extractDownloadUrl(payload.result);
         if (payload.result) {
@@ -1459,24 +1434,24 @@ export class ChatController {
           content: observationContent,
           data: { stepId: payload.stepId, result: payload.result, downloadUrl },
         };
-      case 'step.failed':
+      case CONTROL_PLANE_EVENT_TYPE.STEP_FAILED:
         return {
           type: StreamEventType.ERROR,
           content: `步骤执行失败: ${payload.error || '未知错误'}`,
           data: { stepId: payload.stepId, error: payload.error },
         };
-      case 'runtime.allocated':
+      case CONTROL_PLANE_EVENT_TYPE.RUNTIME_ALLOCATED:
         return {
           type: StreamEventType.THOUGHT,
           content: `🚀 已分配运行环境，准备开始执行...`,
         };
-      case 'execution.input_submitted':
+      case CONTROL_PLANE_EVENT_TYPE.EXECUTION_INPUT_SUBMITTED:
         return {
           type: StreamEventType.THOUGHT,
           content: `📥 已接收到您补充的信息，正在继续执行...`,
         };
-      case 'execution.waiting_input':
-      case 'step.waiting_input': {
+      case LEGACY_CONTROL_PLANE_EVENT_TYPE.EXECUTION_WAITING_INPUT:
+      case CONTROL_PLANE_EVENT_TYPE.STEP_WAITING_INPUT: {
         const missingInputs = Array.isArray(payload.requiredInputs)
           ? payload.requiredInputs.filter((item: any) => item?.missing)
           : [];

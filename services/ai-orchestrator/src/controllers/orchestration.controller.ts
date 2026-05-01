@@ -9,14 +9,14 @@ import {
   Req,
 } from '@nestjs/common';
 import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
-import { Request } from 'express';
+import type { Request } from 'express';
 import { AgentService } from '../modules/agent/agent.service';
 import { RecognizerService } from '../modules/recognizer/recognizer.service';
 import { DeciderService } from '../modules/decider/decider.service';
 import { ModelService } from '../modules/model/model.service';
 import { PlannerService } from '../modules/planner/planner.service';
 import { ToolExecutor } from '../modules/react-engine/tool-executor';
-import {
+import type {
   AIAgentDTO,
   CreateAgentDTO,
   DecideFailureDTO,

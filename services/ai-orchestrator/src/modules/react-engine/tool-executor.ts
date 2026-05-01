@@ -41,8 +41,8 @@ export class ToolExecutor implements OnModuleInit {
   private readonly dynamicFlowTtlMs = Number(process.env.DYNAMIC_FLOW_TOOLS_TTL_MS || 60_000);
 
   constructor(
-    private readonly discoveryService: DiscoveryService,
-    private readonly reflector: Reflector,
+    private readonly discoveryService?: DiscoveryService,
+    private readonly reflector: Reflector = new Reflector(),
   ) {}
 
   async onModuleInit() {
@@ -53,6 +53,11 @@ export class ToolExecutor implements OnModuleInit {
    * 使用 DiscoveryService 自动发现并注册带有 @Tool 装饰器的工具
    */
   private discoverAndRegisterTools(): void {
+    if (!this.discoveryService) {
+      this.logger.debug('DiscoveryService not provided; skipping auto tool discovery');
+      return;
+    }
+
     const providers = this.discoveryService.getProviders();
     let registeredCount = 0;
 

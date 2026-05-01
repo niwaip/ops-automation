@@ -4,6 +4,7 @@
 
 import { Module } from '@nestjs/common';
 import { DiscoveryModule } from '@nestjs/core';
+import { ControlPlaneClientModule } from '../../client/control-plane-client.module';
 import { ModelModule } from '../model/model.module';
 import { DebugSettingsModule } from '../debug-settings/debug-settings.module';
 import { ReActEngineService } from './react-engine.service';
@@ -13,7 +14,7 @@ import { ModelRouterService } from './model-router.service';
 import { ALL_TOOLS } from './tools';
 
 @Module({
-  imports: [ModelModule, DiscoveryModule, DebugSettingsModule],
+  imports: [ModelModule, DiscoveryModule, DebugSettingsModule, ControlPlaneClientModule],
   providers: [
     ReActEngineService,
     ToolExecutor,

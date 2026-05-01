@@ -45,36 +45,17 @@ import { capabilityReleaseApi } from '../api/capability-release';
 import { useChatStore } from '../components/chat';
 import { ListSectionHeader, PageTitleBlock } from '../components/page/PageScaffold';
 import { useAuthStore } from '../store/authStore';
+import {
+  EXECUTION_FINISHED_STATUSES,
+  EXECUTION_STATUS_COLORS,
+  EXECUTION_STATUS_LABELS_ZH,
+  EXECUTION_STATUS_OPTIONS_ZH,
+  EXECUTION_WAITING_STATUSES,
+} from '../utils/executionStatusMeta';
 
 const { Text } = Typography;
-
-const statusColors: Record<ExecutionStatus, string> = {
-  draft: 'default',
-  queued: 'default',
-  running: 'processing',
-  waiting_input: 'warning',
-  pending_approval: 'warning',
-  human_control: 'error',
-  paused: 'default',
-  succeeded: 'success',
-  failed: 'error',
-  cancelled: 'default',
-  rolled_back: 'default',
-};
-
-const statusLabels: Record<ExecutionStatus, string> = {
-  draft: '草稿',
-  queued: '排队中',
-  running: '执行中',
-  waiting_input: '待补输入',
-  pending_approval: '待审批',
-  human_control: '人工接管',
-  paused: '已暂停',
-  succeeded: '已完成',
-  failed: '失败',
-  cancelled: '已取消',
-  rolled_back: '已回滚',
-};
+const statusColors = EXECUTION_STATUS_COLORS;
+const statusLabels = EXECUTION_STATUS_LABELS_ZH;
 
 const formatDateTime = (date?: string) => (date ? new Date(date).toLocaleString() : '-');
 
@@ -595,8 +576,8 @@ const ExecutionListPage: React.FC = () => {
     return {
       total: rows.length,
       running: rows.filter((item) => item.status === 'running').length,
-      waiting: rows.filter((item) => ['waiting_input', 'pending_approval'].includes(item.status)).length,
-      finished: rows.filter((item) => ['succeeded', 'failed', 'cancelled', 'rolled_back'].includes(item.status)).length,
+      waiting: rows.filter((item) => EXECUTION_WAITING_STATUSES.includes(item.status)).length,
+      finished: rows.filter((item) => EXECUTION_FINISHED_STATUSES.includes(item.status)).length,
     };
   }, [filteredAndSortedData]);
 
@@ -832,17 +813,11 @@ const ExecutionListPage: React.FC = () => {
                 value={statusFilter}
                 onChange={setStatusFilter}
               >
-                <Select.Option value="draft">草稿</Select.Option>
-                <Select.Option value="queued">排队中</Select.Option>
-                <Select.Option value="running">执行中</Select.Option>
-                <Select.Option value="waiting_input">待补输入</Select.Option>
-                <Select.Option value="pending_approval">待审批</Select.Option>
-                <Select.Option value="human_control">人工接管</Select.Option>
-                <Select.Option value="paused">已暂停</Select.Option>
-                <Select.Option value="succeeded">已完成</Select.Option>
-                <Select.Option value="failed">失败</Select.Option>
-                <Select.Option value="cancelled">已取消</Select.Option>
-                <Select.Option value="rolled_back">已回滚</Select.Option>
+                {EXECUTION_STATUS_OPTIONS_ZH.map((option) => (
+                  <Select.Option key={option.value} value={option.value}>
+                    {option.label}
+                  </Select.Option>
+                ))}
               </Select>
               </Space>
 

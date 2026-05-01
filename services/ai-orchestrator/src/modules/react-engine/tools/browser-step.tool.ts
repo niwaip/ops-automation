@@ -5,6 +5,7 @@
 
 import { Injectable } from '@nestjs/common';
 import axios from 'axios';
+import { ControlPlaneClient } from '../../../client/control-plane.client';
 import { BaseTool } from './base.tool';
 import { ToolResult, ExecutionContext } from '../interfaces';
 import { TRACE_ID_HEADER } from '../../../common/trace.util';
@@ -19,18 +20,6 @@ const getBrowserWorkerUrl = () => {
     return 'http://ops-browser-worker:3004';
   }
   return 'http://localhost:3004';
-};
-
-// Control Plane service URL
-const getControlPlaneUrl = () => {
-  if (process.env.CONTROL_PLANE_URL) {
-    const url = process.env.CONTROL_PLANE_URL;
-    return url.endsWith('/api') ? url : `${url}/api`;
-  }
-  if (process.env.DOCKER_ENV === 'true' || process.env.NODE_ENV === 'production') {
-    return 'http://ops-control-plane:3003/api';
-  }
-  return 'http://localhost:3003/api';
 };
 
 interface ExecuteStepDto {
@@ -90,7 +79,9 @@ interface ExecuteStepResultDto {
   isDefault: true,
 })
 export class BrowserStepTool extends BaseTool {
-  constructor() {
+  constructor(
+    private readonly controlPlaneClient: ControlPlaneClient,
+  ) {
     super(
       'browser_step',
       '执行标准化的浏览器自动化步骤。支持页面跳转、点击、输入、滚动、截图等操作。',
@@ -139,7 +130,6 @@ export class BrowserStepTool extends BaseTool {
     const executionId = context.executionId || 'unknown';
 
     const browserWorkerUrl = getBrowserWorkerUrl();
-    const controlPlaneUrl = getControlPlaneUrl();
     const traceHeaders = context.traceId ? { [TRACE_ID_HEADER]: context.traceId } : undefined;
 
     const stepDto: ExecuteStepDto = {
@@ -188,15 +178,17 @@ export class BrowserStepTool extends BaseTool {
 
         // Call control-plane to trigger takeover
         try {
-          await axios.post(
-            `${controlPlaneUrl}/api/executions/${executionId}/takeover`,
-            { reason: result.takeoverReason || 'Human takeover required' },
+          await this.controlPlaneClient.triggerTakeover(
+            executionId,
+            result.takeoverReason || 'Human takeover required',
             {
-              timeout: 10000,
-              headers: {
-                'Content-Type': 'application/json',
-                ...(traceHeaders || {}),
+              authToken: context.authToken,
+              user: {
+                userId: context.userId,
+                userRoles: context.userRoles,
               },
+              extraHeaders: traceHeaders,
+              timeout: 10000,
             },
           );
           this.logger.log(`Takeover triggered for execution ${executionId}`);

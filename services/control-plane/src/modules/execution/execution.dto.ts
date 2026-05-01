@@ -7,6 +7,9 @@ import {
   Min,
 } from 'class-validator';
 import { Type } from 'class-transformer';
+import { ApprovalStatus, APPROVAL_STATUS_VALUES } from './contracts/approval-status';
+import { ExecutionStatus, EXECUTION_STATUS_VALUES } from './contracts/execution-status';
+import { ExecutionStepStatus, EXECUTION_STEP_STATUS_VALUES } from './contracts/execution-step-status';
 
 export class CreateExecutionDto {
   @ApiProperty({ description: 'Skill ID', example: 'skill-123', required: false })
@@ -74,22 +77,8 @@ export class ExecutionDto {
   @ApiProperty({ required: false })
   capabilityVersion?: string;
 
-  @ApiProperty({
-    enum: [
-      'draft',
-      'queued',
-      'running',
-      'waiting_input',
-      'pending_approval',
-      'human_control',
-      'paused',
-      'succeeded',
-      'failed',
-      'cancelled',
-      'rolled_back',
-    ],
-  })
-  status: string;
+  @ApiProperty({ enum: EXECUTION_STATUS_VALUES })
+  status: ExecutionStatus;
 
   @ApiProperty({ default: 'browser' })
   runtimeType: string;
@@ -118,8 +107,8 @@ export class ExecutionDto {
   @ApiProperty({ default: false })
   requiresApproval: boolean;
 
-  @ApiProperty({ required: false })
-  approvalStatus?: string;
+  @ApiProperty({ required: false, enum: APPROVAL_STATUS_VALUES })
+  approvalStatus?: ApprovalStatus;
 
   @ApiProperty({ default: false })
   takeoverRequired: boolean;
@@ -159,8 +148,8 @@ export class ExecutionStepDto {
   @ApiProperty({ enum: ['browser_action', 'assertion', 'input_collection', 'system'] })
   type: string;
 
-  @ApiProperty({ enum: ['pending', 'running', 'succeeded', 'failed', 'skipped'] })
-  status: string;
+  @ApiProperty({ enum: EXECUTION_STEP_STATUS_VALUES })
+  status: ExecutionStepStatus;
 
   @ApiProperty({ required: false })
   action?: string;
