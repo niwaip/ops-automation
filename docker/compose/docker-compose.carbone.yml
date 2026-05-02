@@ -1,0 +1,66 @@
+# Carbone Engine - 独立模板编辑器服务
+# 使用方法: ./docker/start-smart.sh docker-compose.carbone.yml up -d
+
+services:
+  carbone-engine:
+    image: docker.1ms.run/library/node:20-bullseye
+    container_name: carbone-engine
+    working_dir: /app
+    command: >
+      sh -c "apt-get update || true && apt-get install -y --no-install-recommends libreoffice-writer libreoffice-calc libreoffice-impress curl || echo 'LibreOffice install skipped; template listing APIs can still run without it' && apt-get clean && rm -rf /var/lib/apt/lists/* && npm config set registry https://registry.npmmirror.com && npm install --include=dev && npm run build && npm run start"
+    environment:
+      - NODE_ENV=production
+      - PORT=3009
+      - TEMPLATES_DIR=/app/templates
+      - OUTPUTS_DIR=/app/outputs
+      - LIBREOFFICE_PATH=/usr/bin/soffice
+      - TMP_DIR=/tmp/carbone-preview
+      - AI_ORCHESTRATOR_URL=http://ops-ai-orchestrator:3007
+    ports:
+      - "3009:3009"
+    volumes:
+      - ${PROJECT_ROOT:-..}/apps/carbone-engine:/app
+      - carbone_engine_node_modules:/app/node_modules
+      - carbone_templates:/app/templates
+      - carbone_outputs:/app/outputs
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3009/api"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # 开发模式配置（可选）
+  carbone-engine-dev:
+    image: docker.1ms.run/library/node:20-bullseye
+    container_name: carbone-engine-dev
+    working_dir: /app
+    command: sh -c "npm config set registry https://registry.npmmirror.com && npm install && npm run dev"
+    environment:
+      - NODE_ENV=development
+      - PORT=3009
+      - TEMPLATES_DIR=/app/templates
+      - OUTPUTS_DIR=/app/outputs
+    ports:
+      - "3010:3009"
+    volumes:
+      - ${PROJECT_ROOT:-..}/apps/carbone-engine:/app
+      - carbone_engine_dev_node_modules:/app/node_modules
+      - carbone_templates:/app/templates
+      - carbone_outputs:/app/outputs
+    profiles:
+      - dev
+
+volumes:
+  carbone_engine_node_modules:
+    driver: local
+  carbone_engine_dev_node_modules:
+    driver: local
+  carbone_templates:
+    driver: local
+  carbone_outputs:
+    driver: local
+
+networks:
+  default:
+    name: ${NETWORK_NAME:-ops-network}
+    external: true

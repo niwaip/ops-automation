@@ -1,0 +1,54 @@
+# Carbone API + Office Add-in development stack
+# Recommended entrypoint: ./docker/start-smart.sh docker-compose.addin.yml up -d
+
+services:
+  carbone-api:
+    build:
+      context: ../carbone-official
+      dockerfile: Dockerfile.community
+    container_name: carbone-api
+    ports:
+      - "3100:3100"
+      - "3443:3443"
+    volumes:
+      - ../carbone-official/templates:/app/templates
+      - ../office-addin/certs:/app/certs:ro
+    environment:
+      - CARBONE_API_PORT=3100
+      - CARBONE_API_HTTPS_PORT=3443
+      - ENABLE_HTTPS=true
+      - CERT_PATH=/app/certs
+      - NODE_ENV=production
+      - CARBONE_ENGINE_URL=http://host.docker.internal:3009
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - >
+          node -e "require('https').get({host:'localhost',port:3443,path:'/health',rejectUnauthorized:false},(r)=>process.exit(r.statusCode===200?0:1)).on('error',()=>process.exit(1))"
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: unless-stopped
+
+  office-addin:
+    build:
+      context: ${PROJECT_ROOT:-..}/apps/office-addin
+      dockerfile: ../../docker/office-addin/Dockerfile.dev
+    container_name: office-addin
+    ports:
+      - "3000:3000"
+    volumes:
+      - ${PROJECT_ROOT:-..}/apps/office-addin/src:/app/src
+      - ${PROJECT_ROOT:-..}/apps/office-addin/public:/app/public
+      - ../office-addin/certs:/app/certs:ro
+    environment:
+      - VITE_API_URL=https://carbone-api:3443
+      - NODE_ENV=development
+      - DOCKER=true
+    depends_on:
+      - carbone-api
+    restart: unless-stopped
+
+networks:
+  carbone-network:
+    external: true

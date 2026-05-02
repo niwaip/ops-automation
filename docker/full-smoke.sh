@@ -1,0 +1,1 @@
+scripts/full-smoke.sh

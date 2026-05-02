@@ -1,0 +1,1 @@
+scripts/planner-smoke.sh
