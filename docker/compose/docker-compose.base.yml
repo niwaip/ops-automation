@@ -81,7 +81,7 @@ services:
     ports:
       - "${AUTH_PORT:-3001}:${AUTH_PORT:-3001}"
     volumes:
-      - ${PROJECT_ROOT:-..}/apps/auth:/app
+      - ${PROJECT_ROOT:-..}/apps/backend/core/auth:/app
       - auth_node_modules:/app/node_modules
     depends_on:
       postgres:
@@ -98,7 +98,7 @@ services:
     ports:
       - "${SESSION_BROKER_PORT:-3002}:${SESSION_BROKER_PORT:-3002}"
     volumes:
-      - ${PROJECT_ROOT:-..}/apps/session-broker:/app
+      - ${PROJECT_ROOT:-..}/apps/backend/runtime/session-broker:/app
       - session_broker_node_modules:/app/node_modules
     depends_on:
       postgres:
@@ -120,7 +120,7 @@ services:
     ports:
       - "${CONTROL_PLANE_PORT:-3003}:${CONTROL_PLANE_PORT:-3003}"
     volumes:
-      - ${PROJECT_ROOT:-..}/apps/control-plane:/app
+      - ${PROJECT_ROOT:-..}/apps/backend/core/control-plane:/app
       - ${PROJECT_ROOT:-..}/packages/contracts:/packages/contracts
       - control_plane_node_modules:/app/node_modules
     depends_on:
@@ -141,7 +141,7 @@ services:
     ports:
       - "${BROWSER_WORKER_PORT:-3004}:${BROWSER_WORKER_PORT:-3004}"
     volumes:
-      - ${PROJECT_ROOT:-..}/apps/browser-worker:/app
+      - ${PROJECT_ROOT:-..}/apps/backend/runtime/browser-worker:/app
       - browser_worker_node_modules:/app/node_modules
     depends_on:
       - browser-chrome
@@ -160,7 +160,7 @@ services:
     ports:
       - "${TEMPLATE_PORT:-3005}:${TEMPLATE_PORT:-3005}"
     volumes:
-      - ${PROJECT_ROOT:-..}/apps/template:/app
+      - ${PROJECT_ROOT:-..}/apps/backend/domain/template:/app
       - template_node_modules:/app/node_modules
     depends_on:
       postgres:
@@ -175,7 +175,7 @@ services:
     ports:
       - "${REPLAY_ENGINE_PORT:-3006}:${REPLAY_ENGINE_PORT:-3006}"
     volumes:
-      - ${PROJECT_ROOT:-..}/apps/replay-engine:/app
+      - ${PROJECT_ROOT:-..}/apps/backend/domain/replay-engine:/app
       - replay_engine_node_modules:/app/node_modules
     depends_on:
       postgres:
@@ -202,7 +202,7 @@ services:
     ports:
       - "${AI_ORCHESTRATOR_PORT:-3007}:${AI_ORCHESTRATOR_PORT:-3007}"
     volumes:
-      - ${PROJECT_ROOT:-..}/apps/ai-orchestrator:/app
+      - ${PROJECT_ROOT:-..}/apps/backend/core/ai-orchestrator:/app
       - ${PROJECT_ROOT:-..}/packages/contracts:/packages/contracts
       - ai_orchestrator_node_modules:/app/node_modules
       - ai_orchestrator_data:/app/data
@@ -224,7 +224,7 @@ services:
     ports:
       - "${REPORT_PORT:-3008}:${REPORT_PORT:-3008}"
     volumes:
-      - ${PROJECT_ROOT:-..}/apps/report:/app
+      - ${PROJECT_ROOT:-..}/apps/backend/domain/report:/app
       - report_node_modules:/app/node_modules
       - report_files:/app/files
     depends_on:
@@ -255,7 +255,7 @@ services:
     ports:
       - "${PORTAL_PORT:-5173}:${PORTAL_PORT:-5173}"
     volumes:
-      - ${PROJECT_ROOT:-..}/apps/portal:/app
+      - ${PROJECT_ROOT:-..}/apps/frontend/portal:/app
       - ${PROJECT_ROOT:-..}/packages/contracts:/packages/contracts
       - portal_node_modules:/app/node_modules
     depends_on:

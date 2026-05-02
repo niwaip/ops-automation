@@ -11,7 +11,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@ops/contracts": "file:../../packages/contracts",
+    "@ops/contracts": "file:../../../packages/contracts",
     "@ant-design/icons": "^5.2.6",
     "@types/uuid": "^10.0.0",
     "antd": "^5.12.0",

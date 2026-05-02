@@ -79,18 +79,18 @@ jobs:
       - name: Build services
         run: |
           # Generate Prisma client for auth service
-          cd services/auth && npx prisma generate && cd ../..
+          cd apps/backend/core/auth && npx prisma generate && cd ../../../..
           # Build all services
           pnpm -r run build
 
       - name: Start services (background)
         run: |
           # Start all services in background
-          node services/auth/dist/main.js &
-          node services/session-broker/dist/main.js &
-          node services/template/dist/main.js &
-          node services/ai-orchestrator/dist/main.js &
-          node services/replay-engine/dist/main.js &
+          node apps/backend/core/auth/dist/main.js &
+          node apps/backend/core/session-broker/dist/main.js &
+          node apps/backend/domain/template/dist/main.js &
+          node apps/backend/core/ai-orchestrator/dist/main.js &
+          node apps/backend/domain/replay-engine/dist/main.js &
 
           # Wait for services to start
           sleep 10
@@ -106,7 +106,7 @@ jobs:
 
       - name: Run E2E tests
         run: |
-          pnpm exec jest --config test/integration/jest.config.js --coverage
+          pnpm exec jest --config tests/integration/jest.config.js --coverage
         env:
           DATABASE_URL: postgresql://ops:ops_secret@localhost:5432/ops
           REDIS_URL: redis://localhost:6379
@@ -178,7 +178,7 @@ jobs:
           sleep 30
 
       - name: Run E2E tests
-        run: pnpm exec jest --config test/integration/jest.config.js
+        run: pnpm exec jest --config tests/integration/jest.config.js
         env:
           DATABASE_URL: postgresql://ops:ops_secret@postgres:5432/ops
           REDIS_URL: redis://redis:6379

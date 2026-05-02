@@ -21,14 +21,15 @@
     "docker:addin:smoke": "bash ./docker/addin-smoke.sh",
     "docker:v4:validate": "bash ./docker/validate-layering.sh && bash ./docker/validate-full-alignment.sh",
     "docker:v4:acceptance": "bash ./docker/v4-acceptance.sh",
-    "test:e2e": "jest --config test/integration/jest.config.js",
-    "test:e2e:coverage": "jest --config test/integration/jest.config.js --coverage",
+    "test:e2e": "jest --config tests/integration/jest.config.js",
+    "test:e2e:coverage": "jest --config tests/integration/jest.config.js --coverage",
     "test:unit": "pnpm run test:unit --filter @ops/*",
     "test:integration": "pnpm run test:integration --filter @ops/*"
   },
   "workspaces": [
     "apps/*",
-    "test/*"
+    "apps/*/*",
+    "tests/*"
   ],
   "devDependencies": {
     "@jest/globals": "^30.3.0",
