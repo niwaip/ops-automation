@@ -1,1 +1,0 @@
-scripts/validate-layering.sh

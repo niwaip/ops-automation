@@ -51,7 +51,7 @@
 ## Agent 操作约束
 
 - 不要直接执行 `docker compose -f ...`，除非明确设置了当前 `PROJECT_ROOT` 且已确认路径正确。
-- 不要默认使用 `docker/start.sh`、`docker/start-all.sh`、`docker/start-addin.sh` 作为通用入口。
+- 不要使用旧的 `docker/scripts/start-all.sh` 或 `docker/scripts/start-addin.sh` 作为通用入口。
 - 当用户说“在 vibekanban/worktree 里开发”时，必须优先选择 `start-smart.sh`。
 - 在执行启动命令前，先确认当前目录是目标 worktree 根目录。
 

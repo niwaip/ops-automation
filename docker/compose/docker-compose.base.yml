@@ -98,7 +98,7 @@ services:
     ports:
       - "${SESSION_BROKER_PORT:-3002}:${SESSION_BROKER_PORT:-3002}"
     volumes:
-      - ${PROJECT_ROOT:-..}/apps/backend/runtime/session-broker:/app
+      - ${PROJECT_ROOT:-..}/apps/backend/core/session-broker:/app
       - session_broker_node_modules:/app/node_modules
     depends_on:
       postgres:
@@ -175,7 +175,7 @@ services:
     ports:
       - "${REPLAY_ENGINE_PORT:-3006}:${REPLAY_ENGINE_PORT:-3006}"
     volumes:
-      - ${PROJECT_ROOT:-..}/apps/backend/domain/replay-engine:/app
+      - ${PROJECT_ROOT:-..}/apps/backend/runtime/replay-engine:/app
       - replay_engine_node_modules:/app/node_modules
     depends_on:
       postgres:
@@ -268,8 +268,8 @@ services:
   # ============================================
   browser-chrome:
     build:
-      context: .
-      dockerfile: browser-worker.Dockerfile
+      context: ../..
+      dockerfile: docker/browser-worker/Dockerfile
     container_name: ops-browser-chrome
     ports:
       - "${NOVNC_PORT:-6080}:8080"

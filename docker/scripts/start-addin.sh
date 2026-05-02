@@ -4,6 +4,11 @@
 set -e
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+ROOT_DIR="$(dirname "$SCRIPT_DIR")"
+
+echo "[DEPRECATED] 建议优先使用 ./docker/scripts/start-smart.sh docker-compose.addin.yml up -d"
+echo "[DEPRECATED] 如需自动部署 Manifest，可继续使用当前脚本。"
+echo ""
 
 echo "=========================================="
 echo "   Carbone Office Add-in 一键启动"
@@ -33,7 +38,7 @@ echo "   ✅ Office Add-in: https://localhost:3000"
 # 3. 信任证书
 echo ""
 echo "3. 信任SSL证书..."
-CERT_FILE="$(pwd)/office-addin/certs/server.crt"
+CERT_FILE="$ROOT_DIR/office-addin/certs/server.crt"
 if [ -f "$CERT_FILE" ]; then
     echo "   请输入密码以信任证书:"
     sudo security add-trusted-cert -d -r trustRoot -k /Library/Keychains/System.keychain "$CERT_FILE" 2>/dev/null && \

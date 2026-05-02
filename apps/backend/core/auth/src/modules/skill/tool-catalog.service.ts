@@ -1,4 +1,4 @@
-import { Injectable, Logger, NotFoundException, OnModuleInit } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { randomUUID } from 'crypto';
 import { PrismaService } from '../../prisma/prisma.service';
 import {
@@ -124,19 +124,89 @@ const SYSTEM_TOOL_CATALOG: ToolCatalogSeed[] = [
 ];
 
 @Injectable()
-export class ToolCatalogService implements OnModuleInit {
+export class ToolCatalogService {
   private readonly logger = new Logger(ToolCatalogService.name);
 
   constructor(private readonly prisma: PrismaService) {}
 
-  async onModuleInit(): Promise<void> {
-    await this.ensureInfrastructure();
-    await this.seedSystemCatalog();
+  private async tableExists(tableName: string): Promise<boolean> {
+    const rows = await this.prisma.$queryRawUnsafe<Array<{ exists: boolean }>>(
+      `SELECT EXISTS (
+         SELECT 1
+         FROM information_schema.tables
+         WHERE table_schema = 'public'
+           AND table_name = $1
+       ) AS "exists"`,
+      tableName,
+    );
+
+    return Boolean(rows[0]?.exists);
+  }
+
+  private async indexExists(indexName: string): Promise<boolean> {
+    const rows = await this.prisma.$queryRawUnsafe<Array<{ exists: boolean }>>(
+      `SELECT EXISTS (
+         SELECT 1
+         FROM pg_indexes
+         WHERE schemaname = 'public'
+           AND indexname = $1
+       ) AS "exists"`,
+      indexName,
+    );
+
+    return Boolean(rows[0]?.exists);
+  }
+
+  private async columnExists(tableName: string, columnName: string): Promise<boolean> {
+    const rows = await this.prisma.$queryRawUnsafe<Array<{ exists: boolean }>>(
+      `SELECT EXISTS (
+         SELECT 1
+         FROM information_schema.columns
+         WHERE table_schema = 'public'
+           AND table_name = $1
+           AND column_name = $2
+       ) AS "exists"`,
+      tableName,
+      columnName,
+    );
+
+    return Boolean(rows[0]?.exists);
+  }
+
+  private isIgnorableDdlError(error: unknown, objectName: string): boolean {
+    const details = JSON.stringify(error);
+    return details.includes('42P07')
+      || details.includes('42710')
+      || details.includes('23505')
+      || details.includes('already exists')
+      || details.includes(`(${objectName}, 2200)`);
+  }
+
+  private async ensureStatement(
+    existsCheck: () => Promise<boolean>,
+    statement: string,
+    objectName: string,
+  ): Promise<void> {
+    if (await existsCheck()) {
+      return;
+    }
+
+    try {
+      await this.prisma.$executeRawUnsafe(statement);
+    } catch (error) {
+      if ((await existsCheck()) || this.isIgnorableDdlError(error, objectName)) {
+        this.logger.warn(`Ignored concurrent DDL conflict for ${objectName}`);
+        return;
+      }
+
+      throw error;
+    }
   }
 
   async ensureInfrastructure(): Promise<void> {
-    const statements = [
-      `CREATE TABLE IF NOT EXISTS tool_catalogs (
+    await this.ensureStatement(
+      () => this.tableExists('tool_catalogs'),
+      `CREATE TABLE tool_catalogs (
         id uuid PRIMARY KEY,
         name varchar(100) NOT NULL UNIQUE,
         display_name varchar(100) NOT NULL,
@@ -153,7 +223,12 @@ export class ToolCatalogService implements OnModuleInit {
         created_at timestamptz NOT NULL DEFAULT now(),
         updated_at timestamptz NOT NULL DEFAULT now()
       )`,
-      `CREATE TABLE IF NOT EXISTS skill_tool_bindings (
+      'tool_catalogs',
+    );
+
+    await this.ensureStatement(
+      () => this.tableExists('skill_tool_bindings'),
+      `CREATE TABLE skill_tool_bindings (
         id uuid PRIMARY KEY,
         skill_id uuid NOT NULL REFERENCES skill_configs(id) ON DELETE CASCADE,
         tool_name varchar(100) NOT NULL,
@@ -162,18 +237,44 @@ export class ToolCatalogService implements OnModuleInit {
         updated_at timestamptz NOT NULL DEFAULT now(),
         UNIQUE (skill_id, tool_name)
       )`,
-      `CREATE INDEX IF NOT EXISTS idx_tool_catalogs_status ON tool_catalogs(status)`,
-      `CREATE INDEX IF NOT EXISTS idx_tool_catalogs_category_status ON tool_catalogs(category, status)`,
-      `CREATE INDEX IF NOT EXISTS idx_tool_catalogs_runtime_status ON tool_catalogs(runtime_type, status)`,
-      `CREATE INDEX IF NOT EXISTS idx_skill_tool_bindings_skill_id ON skill_tool_bindings(skill_id)`,
-      `CREATE INDEX IF NOT EXISTS idx_skill_tool_bindings_tool_name ON skill_tool_bindings(tool_name)`,
-      `ALTER TABLE skill_configs ADD COLUMN IF NOT EXISTS config_status varchar(32) NOT NULL DEFAULT 'draft'`,
-      `ALTER TABLE skill_configs ADD COLUMN IF NOT EXISTS last_validation_summary jsonb NULL`,
-    ];
+      'skill_tool_bindings',
+    );
 
-    for (const statement of statements) {
-      await this.prisma.$executeRawUnsafe(statement);
-    }
+    await this.ensureStatement(
+      () => this.indexExists('idx_tool_catalogs_status'),
+      `CREATE INDEX idx_tool_catalogs_status ON tool_catalogs(status)`,
+      'idx_tool_catalogs_status',
+    );
+    await this.ensureStatement(
+      () => this.indexExists('idx_tool_catalogs_category_status'),
+      `CREATE INDEX idx_tool_catalogs_category_status ON tool_catalogs(category, status)`,
+      'idx_tool_catalogs_category_status',
+    );
+    await this.ensureStatement(
+      () => this.indexExists('idx_tool_catalogs_runtime_status'),
+      `CREATE INDEX idx_tool_catalogs_runtime_status ON tool_catalogs(runtime_type, status)`,
+      'idx_tool_catalogs_runtime_status',
+    );
+    await this.ensureStatement(
+      () => this.indexExists('idx_skill_tool_bindings_skill_id'),
+      `CREATE INDEX idx_skill_tool_bindings_skill_id ON skill_tool_bindings(skill_id)`,
+      'idx_skill_tool_bindings_skill_id',
+    );
+    await this.ensureStatement(
+      () => this.indexExists('idx_skill_tool_bindings_tool_name'),
+      `CREATE INDEX idx_skill_tool_bindings_tool_name ON skill_tool_bindings(tool_name)`,
+      'idx_skill_tool_bindings_tool_name',
+    );
+    await this.ensureStatement(
+      () => this.columnExists('skill_configs', 'config_status'),
+      `ALTER TABLE skill_configs ADD COLUMN config_status varchar(32) NOT NULL DEFAULT 'draft'`,
+      'skill_configs.config_status',
+    );
+    await this.ensureStatement(
+      () => this.columnExists('skill_configs', 'last_validation_summary'),
+      `ALTER TABLE skill_configs ADD COLUMN last_validation_summary jsonb NULL`,
+      'skill_configs.last_validation_summary',
+    );
   }
 
   async seedSystemCatalog(): Promise<void> {

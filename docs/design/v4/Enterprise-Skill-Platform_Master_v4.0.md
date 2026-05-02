@@ -88,7 +88,7 @@
 
 ### 4.1 架构总方案
 
-- [Stable-Interface-and-External-Capability-Architecture_v4.0.md](file:///Users/chain/Documents/MyProject/ops-automation/design/v4/Enterprise-Skill-Platform_Stable-Interface-and-External-Capability-Architecture_v4.0.md)
+- [Stable-Interface-and-External-Capability-Architecture_v4.0.md](file:///Users/chain/Documents/MyProject/ops-automation/docs/design/v4/Enterprise-Skill-Platform_Stable-Interface-and-External-Capability-Architecture_v4.0.md)
 
 用途：
 
@@ -99,7 +99,7 @@
 
 ### 4.2 接口契约规范
 
-- [API-Contract-Spec_v4.0.md](file:///Users/chain/Documents/MyProject/ops-automation/design/v4/Enterprise-Skill-Platform_API-Contract-Spec_v4.0.md)
+- [API-Contract-Spec_v4.0.md](file:///Users/chain/Documents/MyProject/ops-automation/docs/design/v4/Enterprise-Skill-Platform_API-Contract-Spec_v4.0.md)
 
 用途：
 
@@ -109,7 +109,7 @@
 
 ### 4.3 Runtime 协议规范
 
-- [Runtime-Capability-Protocol-Spec_v4.0.md](file:///Users/chain/Documents/MyProject/ops-automation/design/v4/Enterprise-Skill-Platform_Runtime-Capability-Protocol-Spec_v4.0.md)
+- [Runtime-Capability-Protocol-Spec_v4.0.md](file:///Users/chain/Documents/MyProject/ops-automation/docs/design/v4/Enterprise-Skill-Platform_Runtime-Capability-Protocol-Spec_v4.0.md)
 
 用途：
 
@@ -118,7 +118,7 @@
 
 ### 4.4 Docker 与部署蓝图
 
-- [Docker-and-Deployment-Blueprint_v4.0.md](file:///Users/chain/Documents/MyProject/ops-automation/design/v4/Enterprise-Skill-Platform_Docker-and-Deployment-Blueprint_v4.0.md)
+- [Docker-and-Deployment-Blueprint_v4.0.md](file:///Users/chain/Documents/MyProject/ops-automation/docs/design/v4/Enterprise-Skill-Platform_Docker-and-Deployment-Blueprint_v4.0.md)
 
 用途：
 
@@ -128,7 +128,7 @@
 
 ### 4.5 迁移实施方案
 
-- [Migration-Plan_v4.0.md](file:///Users/chain/Documents/MyProject/ops-automation/design/v4/Enterprise-Skill-Platform_Migration-Plan_v4.0.md)
+- [Migration-Plan_v4.0.md](file:///Users/chain/Documents/MyProject/ops-automation/docs/design/v4/Enterprise-Skill-Platform_Migration-Plan_v4.0.md)
 
 用途：
 
@@ -361,12 +361,12 @@
 
 建议按以下顺序阅读：
 
-1. [Master_v4.0.md](file:///Users/chain/Documents/MyProject/ops-automation/design/v4/Enterprise-Skill-Platform_Master_v4.0.md)
-2. [Stable-Interface-and-External-Capability-Architecture_v4.0.md](file:///Users/chain/Documents/MyProject/ops-automation/design/v4/Enterprise-Skill-Platform_Stable-Interface-and-External-Capability-Architecture_v4.0.md)
-3. [API-Contract-Spec_v4.0.md](file:///Users/chain/Documents/MyProject/ops-automation/design/v4/Enterprise-Skill-Platform_API-Contract-Spec_v4.0.md)
-4. [Runtime-Capability-Protocol-Spec_v4.0.md](file:///Users/chain/Documents/MyProject/ops-automation/design/v4/Enterprise-Skill-Platform_Runtime-Capability-Protocol-Spec_v4.0.md)
-5. [Docker-and-Deployment-Blueprint_v4.0.md](file:///Users/chain/Documents/MyProject/ops-automation/design/v4/Enterprise-Skill-Platform_Docker-and-Deployment-Blueprint_v4.0.md)
-6. [Migration-Plan_v4.0.md](file:///Users/chain/Documents/MyProject/ops-automation/design/v4/Enterprise-Skill-Platform_Migration-Plan_v4.0.md)
+1. [Master_v4.0.md](file:///Users/chain/Documents/MyProject/ops-automation/docs/design/v4/Enterprise-Skill-Platform_Master_v4.0.md)
+2. [Stable-Interface-and-External-Capability-Architecture_v4.0.md](file:///Users/chain/Documents/MyProject/ops-automation/docs/design/v4/Enterprise-Skill-Platform_Stable-Interface-and-External-Capability-Architecture_v4.0.md)
+3. [API-Contract-Spec_v4.0.md](file:///Users/chain/Documents/MyProject/ops-automation/docs/design/v4/Enterprise-Skill-Platform_API-Contract-Spec_v4.0.md)
+4. [Runtime-Capability-Protocol-Spec_v4.0.md](file:///Users/chain/Documents/MyProject/ops-automation/docs/design/v4/Enterprise-Skill-Platform_Runtime-Capability-Protocol-Spec_v4.0.md)
+5. [Docker-and-Deployment-Blueprint_v4.0.md](file:///Users/chain/Documents/MyProject/ops-automation/docs/design/v4/Enterprise-Skill-Platform_Docker-and-Deployment-Blueprint_v4.0.md)
+6. [Migration-Plan_v4.0.md](file:///Users/chain/Documents/MyProject/ops-automation/docs/design/v4/Enterprise-Skill-Platform_Migration-Plan_v4.0.md)
 
 推荐用途：
 

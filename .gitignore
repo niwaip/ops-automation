@@ -55,6 +55,7 @@ test-results/
 tmp/
 temp/
 .cache/
+.data/
 
 # Turbo
 .turbo/
@@ -78,6 +79,7 @@ outputs/
 # Generated test files in root
 保密协议*.docx
 confidential_agreement*.docx
+doc-preview-*.png
 # Playwright MCP test files
 .playwright-mcp/
 *.png

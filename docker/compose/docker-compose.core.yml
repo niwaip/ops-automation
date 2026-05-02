@@ -1,5 +1,5 @@
 # V4 Core Group
-# 承载平台最小核心：postgres / redis / auth / control-plane
+# 承载平台最小核心：postgres / redis / auth / control-plane / session-broker
 # 推荐通过 ./docker/start-smart.sh docker-compose.core.yml up -d 启动
 
 services:
@@ -104,6 +104,32 @@ services:
     networks:
       - ops-network
 
+  session-broker:
+    image: ${DOCKER_REGISTRY:-}node:20-bullseye
+    container_name: ops-session-broker
+    working_dir: /app
+    command: sh -c "npm config set registry https://registry.npmmirror.com && npm install --legacy-peer-deps && npm run dev"
+    environment:
+      NODE_ENV: development
+      DATABASE_URL: postgresql://${POSTGRES_USER:-ops}:${POSTGRES_PASSWORD:-ops_secret}@postgres:5432/${POSTGRES_DB:-ops}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-redis_secret}
+      PORT: ${SESSION_BROKER_PORT:-3002}
+      EXTERNAL_HOST: ${HOST_IP:-localhost}
+    ports:
+      - "${SESSION_BROKER_PORT:-3002}:${SESSION_BROKER_PORT:-3002}"
+    volumes:
+      - ${PROJECT_ROOT:-..}/apps/backend/core/session-broker:/app
+      - session_broker_node_modules:/app/node_modules
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - ops-network
+
 volumes:
   postgres_data:
     driver: local
@@ -111,6 +137,7 @@ volumes:
     driver: local
   auth_node_modules:
   control_plane_node_modules:
+  session_broker_node_modules:
 
 networks:
   ops-network:

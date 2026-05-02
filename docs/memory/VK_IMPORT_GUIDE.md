@@ -432,10 +432,10 @@ Vibe-Kanban MCP Server 已连接
 
 ## 快速导入命令
 
-将以上内容保存到项目的 `memory/` 目录：
+将以上内容保存到项目的 `docs/memory/` 目录：
 
 ```
-memory/
+docs/memory/
 ├── MEMORY.md          ← 框架核心定义
 ├── vk-plan.md         ← Skill 1: 规划技能
 └── vk-execute.md      ← Skill 2: 执行技能

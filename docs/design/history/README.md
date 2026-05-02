@@ -14,7 +14,7 @@
 - 不再作为当前架构与服务拆分的主依据
 - 部分文件存在重复命名、草稿格式和历史残留内容
 
-当前应优先阅读 `design/` 根目录下的 v2 文档：
+当前应优先阅读 `docs/design/` 下的 v2 文档：
 
 - `Enterprise-Skill-Platform_Master_v2.0.md`
 - `Enterprise-Skill-Platform_Domain-Model_v2.0.md`

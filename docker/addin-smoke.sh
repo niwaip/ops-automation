@@ -1,1 +1,0 @@
-scripts/addin-smoke.sh
