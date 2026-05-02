@@ -1,0 +1,35 @@
+# V4 Experience Group
+# 承载体验层：portal
+# 预期与 core / planner / runtime 组配合使用
+
+services:
+  portal:
+    image: ${DOCKER_REGISTRY:-}node:20-bullseye
+    container_name: ops-portal
+    working_dir: /app
+    command: sh -c "npm config set registry https://registry.npmmirror.com && npm install --legacy-peer-deps && npm run dev"
+    environment:
+      NODE_ENV: development
+      DOCKER_ENV: true
+      VITE_API_BASE_URL: /api
+      VITE_CONTROL_PLANE_API_URL: http://${HOST_IP:-localhost}:${CONTROL_PLANE_PORT:-3003}/api
+      VITE_HOST_IP: ${HOST_IP:-localhost}
+      VITE_RECORDER_WS_URL: ws://${HOST_IP:-localhost}:${BROWSER_WORKER_PORT:-3004}
+      VITE_CARBONE_API_URL: http://${HOST_IP:-localhost}:${CARBONE_ENGINE_PORT:-3009}
+      VITE_NOVNC_URL: http://${HOST_IP:-localhost}:${NOVNC_PORT:-6080}/vnc.html
+    ports:
+      - "${PORTAL_PORT:-5173}:${PORTAL_PORT:-5173}"
+    volumes:
+      - ${PROJECT_ROOT:-..}/apps/portal:/app
+      - ${PROJECT_ROOT:-..}/packages/contracts:/packages/contracts
+      - portal_node_modules:/app/node_modules
+    networks:
+      - ops-network
+
+volumes:
+  portal_node_modules:
+
+networks:
+  ops-network:
+    external: true
+    name: ${NETWORK_NAME:-ops-network}

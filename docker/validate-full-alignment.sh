@@ -1,0 +1,1 @@
+scripts/validate-full-alignment.sh

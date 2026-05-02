@@ -11,16 +11,23 @@
     "typecheck": "tsc --noEmit",
     "build": "pnpm run --filter @ops/* build",
     "clean": "rm -rf node_modules dist .turbo",
-    "docker:up": "docker compose -f docker/docker-compose.shared.yml up -d",
-    "docker:down": "docker compose -f docker/docker-compose.shared.yml down",
-    "docker:dev": "docker compose -f docker/docker-compose.shared.yml -f docker/docker-compose.dev.yml up -d",
+    "docker:up": "bash ./docker/start-smart.sh docker-compose.yml up -d",
+    "docker:down": "bash ./docker/start-smart.sh docker-compose.yml down",
+    "docker:dev": "bash ./docker/start-smart.sh docker-compose.yml -f docker-compose.dev.yml up -d",
+    "docker:infra:up": "bash ./docker/start-smart.sh docker-compose.yml up -d",
+    "docker:infra:down": "bash ./docker/start-smart.sh docker-compose.yml down",
+    "docker:addin:up": "bash ./docker/start-smart.sh docker-compose.addin.yml up -d",
+    "docker:addin:down": "bash ./docker/start-smart.sh docker-compose.addin.yml down",
+    "docker:addin:smoke": "bash ./docker/addin-smoke.sh",
+    "docker:v4:validate": "bash ./docker/validate-layering.sh && bash ./docker/validate-full-alignment.sh",
+    "docker:v4:acceptance": "bash ./docker/v4-acceptance.sh",
     "test:e2e": "jest --config test/integration/jest.config.js",
     "test:e2e:coverage": "jest --config test/integration/jest.config.js --coverage",
     "test:unit": "pnpm run test:unit --filter @ops/*",
     "test:integration": "pnpm run test:integration --filter @ops/*"
   },
   "workspaces": [
-    "services/*",
+    "apps/*",
     "test/*"
   ],
   "devDependencies": {

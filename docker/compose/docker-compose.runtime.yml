@@ -1,0 +1,172 @@
+# V4 Runtime Group
+# 承载运行时资源与执行器：
+# session-broker / browser-worker / carbone-engine / temporal / temporal-sandbox-agent
+
+services:
+  session-broker:
+    image: ${DOCKER_REGISTRY:-}node:20-bullseye
+    container_name: ops-session-broker
+    working_dir: /app
+    command: sh -c "npm config set registry https://registry.npmmirror.com && npm install --legacy-peer-deps && npm run dev"
+    environment:
+      NODE_ENV: development
+      DATABASE_URL: postgresql://${POSTGRES_USER:-ops}:${POSTGRES_PASSWORD:-ops_secret}@postgres:5432/${POSTGRES_DB:-ops}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-redis_secret}
+      PORT: ${SESSION_BROKER_PORT:-3002}
+      EXTERNAL_HOST: ${HOST_IP:-localhost}
+    ports:
+      - "${SESSION_BROKER_PORT:-3002}:${SESSION_BROKER_PORT:-3002}"
+    volumes:
+      - ${PROJECT_ROOT:-..}/apps/session-broker:/app
+      - session_broker_node_modules:/app/node_modules
+    networks:
+      - ops-network
+
+  browser-worker:
+    image: ${DOCKER_REGISTRY:-}node:20-bullseye
+    container_name: ops-browser-worker
+    working_dir: /app
+    command: sh -c "npm config set registry https://registry.npmmirror.com && npm install --legacy-peer-deps && npm run dev"
+    environment:
+      NODE_ENV: development
+      PORT: ${BROWSER_WORKER_PORT:-3004}
+      CHROME_REMOTE_DEBUGGING_HOST: browser-chrome
+      CHROME_REMOTE_DEBUGGING_PORT: ${CDP_PORT:-9222}
+      CODEGEN_API_PORT: ${CODEGEN_API_PORT:-3011}
+    ports:
+      - "${BROWSER_WORKER_PORT:-3004}:${BROWSER_WORKER_PORT:-3004}"
+    volumes:
+      - ${PROJECT_ROOT:-..}/apps/browser-worker:/app
+      - browser_worker_node_modules:/app/node_modules
+    depends_on:
+      - browser-chrome
+    networks:
+      - ops-network
+
+  carbone-engine:
+    image: ${DOCKER_REGISTRY:-}node:20-bullseye
+    container_name: carbone-engine
+    working_dir: /app
+    command: >
+      sh -c "apt-get update || true && apt-get install -y --no-install-recommends libreoffice-writer libreoffice-calc libreoffice-impress curl || echo 'LibreOffice install skipped; template listing APIs can still run without it' && apt-get clean && rm -rf /var/lib/apt/lists/* && npm config set registry https://registry.npmmirror.com && npm install --include=dev && npm run build && npm run start"
+    environment:
+      NODE_ENV: production
+      PORT: ${CARBONE_ENGINE_PORT:-3009}
+      TEMPLATES_DIR: /app/templates
+      OUTPUTS_DIR: /app/outputs
+      LIBREOFFICE_PATH: /usr/bin/soffice
+      TMP_DIR: /tmp/carbone-preview
+      AI_ORCHESTRATOR_URL: http://${AI_ORCHESTRATOR_HOST:-ai-orchestrator}:${AI_ORCHESTRATOR_PORT:-3007}
+    ports:
+      - "${CARBONE_ENGINE_PORT:-3009}:${CARBONE_ENGINE_PORT:-3009}"
+    volumes:
+      - ${PROJECT_ROOT:-..}/apps/carbone-engine:/app
+      - carbone_engine_node_modules:/app/node_modules
+      - carbone_templates:/app/templates
+      - carbone_outputs:/app/outputs
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:${CARBONE_ENGINE_PORT:-3009}/api"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - ops-network
+
+  browser-chrome:
+    build:
+      context: .
+      dockerfile: browser-worker.Dockerfile
+    container_name: ops-browser-chrome
+    ports:
+      - "${NOVNC_PORT:-6080}:8080"
+      - "${CDP_PORT:-9222}:9222"
+      - "${VNC_PORT:-5900}:5900"
+      - "${CODEGEN_API_PORT:-3011}:${CODEGEN_API_PORT:-3011}"
+    environment:
+      SCREEN_WIDTH: 1920
+      SCREEN_HEIGHT: 1080
+      CODEGEN_API_PORT: ${CODEGEN_API_PORT:-3011}
+    command: ["/start-recorder.sh"]
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:8080/vnc.html >/dev/null && curl -fsS http://localhost:${CODEGEN_API_PORT:-3011}/status >/dev/null"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    networks:
+      - ops-network
+
+  temporal:
+    image: docker.1ms.run/library/temporalio/auto-setup:1.22.0
+    container_name: ops-temporal
+    ports:
+      - "7233:7233"
+      - "7234:7234"
+      - "7235:7235"
+      - "7236:7236"
+    environment:
+      DB: postgresql
+      POSTGRES_SEEDS: postgres
+      DB_PORT: 5432
+      POSTGRES_USER: ${POSTGRES_USER:-ops}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-ops_secret}
+      POSTGRES_DB: temporal
+      DYNAMIC_CONFIG_FILE_PATH: /etc/temporal/dynamic_config.yaml
+    volumes:
+      - temporal_data:/var/lib/postgresql/data
+      - ./dynamic_config.yaml:/etc/temporal/dynamic_config.yaml:ro
+    networks:
+      - ops-network
+
+  temporal-ui:
+    image: docker.1ms.run/library/temporalio/ui:2.20.0
+    container_name: ops-temporal-ui
+    ports:
+      - "8088:8080"
+    environment:
+      TEMPORAL_ADDRESS: temporal:7233
+      TEMPORAL_CORS_ORIGINS: http://${HOST_IP:-localhost}:8088,http://${HOST_IP:-localhost}:${PORTAL_PORT:-5173}
+    depends_on:
+      - temporal
+    networks:
+      - ops-network
+
+  temporal-sandbox-agent:
+    build:
+      context: .
+      dockerfile: temporal-sandbox-agent.Dockerfile
+    container_name: ops-temporal-sandbox-agent
+    working_dir: /app
+    environment:
+      TEMPORAL_ADDRESS: temporal:7233
+      TEMPORAL_NAMESPACE: default
+      AUTH_SERVICE_URL: http://${AUTH_SERVICE_HOST:-auth}:${AUTH_PORT:-3001}
+      SANDBOX_TASK_QUEUE: sandbox-agent-task-queue
+      ACTIVITY_VALIDATION_TASK_QUEUE: activity-validation-task-queue
+      SANDBOX_HTTP_PORT: 8090
+      CARBONE_SERVICE_URL: http://${CARBONE_ENGINE_HOST:-carbone-engine}:${CARBONE_ENGINE_PORT:-3009}
+      CARBONE_EXTERNAL_URL: http://${HOST_IP:-localhost}:${CARBONE_ENGINE_PORT:-3009}
+    ports:
+      - "8090:8090"
+    volumes:
+      - ${PROJECT_ROOT:-..}/apps/temporal-sandbox-agent:/app
+      - /var/run/docker.sock:/var/run/docker.sock
+    depends_on:
+      - temporal
+    networks:
+      - ops-network
+
+volumes:
+  session_broker_node_modules:
+  browser_worker_node_modules:
+  carbone_engine_node_modules:
+  carbone_templates:
+  carbone_outputs:
+  temporal_data:
+
+networks:
+  ops-network:
+    external: true
+    name: ${NETWORK_NAME:-ops-network}

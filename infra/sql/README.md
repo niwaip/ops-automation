@@ -128,7 +128,7 @@ The `docker/init-db.sh` script automatically runs migrations on first container 
 
 ```bash
 # Start services
-docker-compose -f docker/docker-compose.shared.yml up -d
+./docker/start-smart.sh docker-compose.yml up -d
 
 # Verify tables
 docker exec ops-postgres psql -U ops -d ops -c "\dt"

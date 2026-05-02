@@ -72,10 +72,51 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Validate docker-compose.shared.yml
+      - name: Validate infrastructure compose
         run: |
-          docker compose -f docker/docker-compose.shared.yml config --quiet
+          ./docker/start-smart.sh docker-compose.yml config --quiet
 
-      - name: Validate docker-compose.dev.yml
+      - name: Validate add-in compose
         run: |
-          docker compose -f docker/docker-compose.shared.yml -f docker/docker-compose.dev.yml config --quiet
+          ./docker/start-smart.sh docker-compose.addin.yml config --quiet
+
+      - name: Validate infrastructure dev overrides
+        run: |
+          ./docker/start-smart.sh docker-compose.yml -f docker-compose.dev.yml config --quiet
+
+      - name: Validate V4 core compose
+        run: |
+          ./docker/start-smart.sh docker-compose.core.yml config --quiet
+
+      - name: Validate V4 planner compose
+        run: |
+          ./docker/start-smart.sh docker-compose.planner.yml config --quiet
+
+      - name: Validate V4 runtime compose
+        run: |
+          ./docker/start-smart.sh docker-compose.runtime.yml config --quiet
+
+      - name: Validate V4 experience compose
+        run: |
+          ./docker/start-smart.sh docker-compose.experience.yml config --quiet
+
+      - name: Validate V4 full compose
+        run: |
+          ./docker/start-smart.sh docker-compose.full.yml config --quiet
+
+      - name: Run V4 layering audit
+        run: |
+          bash ./docker/validate-layering.sh
+
+      - name: Run V4 full alignment audit
+        run: |
+          bash ./docker/validate-full-alignment.sh
+
+      - name: Check V4 shell entrypoints
+        run: |
+          bash -n ./docker/addin-smoke.sh
+          bash -n ./docker/core-smoke.sh
+          bash -n ./docker/planner-smoke.sh
+          bash -n ./docker/runtime-smoke.sh
+          bash -n ./docker/full-smoke.sh
+          bash -n ./docker/v4-acceptance.sh

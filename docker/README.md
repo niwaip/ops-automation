@@ -6,11 +6,16 @@ Docker 配置文件用于不同场景的服务部署。
 
 | 文件 | 用途 | 主要服务 |
 |------|------|----------|
+| `docker-compose.core.yml` | V4 最小核心 | postgres, redis, auth, control-plane |
+| `docker-compose.planner.yml` | V4 规划层 | ai-orchestrator |
+| `docker-compose.runtime.yml` | V4 运行时层 | session-broker, browser-worker, carbone-engine, temporal |
+| `docker-compose.experience.yml` | V4 体验层 | portal |
 | `docker-compose.base.yml` | **统一基础配置** | 所有服务模板 + 基础设施 |
 | `docker-compose.yml` | 仅基础设施 | postgres, redis |
 | `docker-compose.full.yml` | 全栈开发环境 | 所有后端服务 + portal + browser-chrome |
 | `docker-compose.carbone.yml` | Carbone 模板服务 | carbone-engine |
-| `docker-compose.shared.yml` | Carbone + Office Add-in | carbone-api, office-addin |
+| `docker-compose.addin.yml` | Carbone + Office Add-in | carbone-api, office-addin |
+| `docker-compose.shared.yml` | 兼容别名 | 指向基础设施 compose |
 | `docker-compose.test.yml` | 测试环境 | mock-ai-server, carbone-engine-test |
 
 ## 环境配置
@@ -37,6 +42,14 @@ cp .env.example .env
 ```bash
 # 智能启动（自动检测 worktree）
 ./docker/start-smart.sh docker-compose.full.yml up -d
+
+# V4 最小核心
+./docker/start-smart.sh docker-compose.core.yml up -d
+
+# 在核心之上挂 planner / runtime / experience
+./docker/start-smart.sh docker-compose.planner.yml up -d
+./docker/start-smart.sh docker-compose.runtime.yml up -d
+./docker/start-smart.sh docker-compose.experience.yml up -d
 
 # 或手动设置 PROJECT_ROOT
 export PROJECT_ROOT=/path/to/worktree
@@ -91,14 +104,170 @@ docker compose -f docker-compose.full.yml up -d
 # 全栈开发环境
 ./docker/start-smart.sh docker-compose.full.yml up -d
 
+# V4 最小核心
+./docker/start-smart.sh docker-compose.core.yml up -d
+
+# 追加规划层 / 运行时层 / 体验层
+./docker/start-smart.sh docker-compose.planner.yml up -d
+./docker/start-smart.sh docker-compose.runtime.yml up -d
+./docker/start-smart.sh docker-compose.experience.yml up -d
+
 # 仅基础设施
 ./docker/start-smart.sh docker-compose.yml up -d
 ```
 
+### 分层校验
+
+```bash
+# 校验 V4 core / planner / runtime / experience 分层是否仍然符合蓝图
+bash ./docker/validate-layering.sh
+
+# 审计 legacy docker-compose.full.yml 是否至少覆盖了 V4 分层组合
+bash ./docker/validate-full-alignment.sh
+
+# 一次性执行 V4 分层审计 + core/planner/runtime/full 冒烟
+bash ./docker/v4-acceptance.sh
+
+# 独立验证 Carbone + Office Add-in 链路
+bash ./docker/addin-smoke.sh
+
+# 也可通过仓库级脚本触发
+pnpm docker:addin:smoke
+pnpm docker:v4:validate
+pnpm docker:v4:acceptance
+```
+
+### Core 冒烟
+
+```bash
+# 启动 V4 core，并验证 auth 登录 + control-plane 受保护 API
+bash ./docker/core-smoke.sh
+```
+
+`core-smoke.sh` 会自动完成以下动作：
+- 确保 `ops-network` 存在
+- 通过 `./docker/start-smart.sh docker-compose.core.yml up -d` 启动 core 组
+- 优先直接验证现有 `auth` / `control-plane` 是否可用；如果登录失败，再尝试无损的 `npm run seed`
+- 使用种子账号 `admin / admin123` 登录 `auth`
+- 携带 JWT 访问 `control-plane` 的 `/api/executions`
+
+默认不会执行 `prisma db push`。只有在隔离空库中明确设置 `CORE_SMOKE_ALLOW_DB_PUSH=1` 时，脚本才会允许执行带数据变更风险的 schema push。
+
+脚本成功后会保留 core 服务继续运行；如需停止，请执行：
+
+```bash
+./docker/start-smart.sh docker-compose.core.yml down
+```
+
+### Planner 冒烟
+
+```bash
+# 在 core 之上启动 planner，并验证 /ai/chat 的任务链路可用
+bash ./docker/planner-smoke.sh
+```
+
+该脚本会：
+- 确保 core 组运行（auth + control-plane）
+- 启动 `ai-orchestrator`（planner 层）
+- 用 `admin/admin123` 登录，携带 JWT 调用 `POST /ai/chat`（任务模式）
+- 验证返回中包含有效事件，并再次确认 control-plane `/api/executions` 可访问
+
+停止 planner：
+
+```bash
+./docker/start-smart.sh docker-compose.planner.yml down
+```
+
+### Runtime 冒烟
+
+```bash
+# 启动运行时层并做基础存活校验（容器运行状态）
+bash ./docker/runtime-smoke.sh
+```
+
+该脚本会确认以下容器处于运行状态：
+- `ops-session-broker`
+- `ops-browser-worker`
+- `ops-browser-chrome`
+- `carbone-engine`
+- `ops-temporal`
+- `ops-temporal-ui`
+- `ops-temporal-sandbox-agent`
+
+停止 runtime：
+
+```bash
+./docker/start-smart.sh docker-compose.runtime.yml down
+```
+
+### Add-in 冒烟
+
+```bash
+# 启动 add-in 组合，并验证 carbone-api / office-addin / manifest 基本可用
+bash ./docker/addin-smoke.sh
+```
+
+该脚本会：
+- 通过 `./docker/start-smart.sh docker-compose.addin.yml up -d` 启动 add-in 组合
+- 校验 `carbone-api` 与 `office-addin` 容器均已运行
+- 验证 `carbone-api` 的 HTTP `health` 可访问
+- 验证 `carbone-api` 的 HTTPS `health` 可访问
+- 验证 `office-addin` 的 HTTPS `health` 可访问
+- 验证 `office-addin` 的 `manifest-word.xml` 可访问
+
+停止 add-in：
+
+```bash
+./docker/start-smart.sh docker-compose.addin.yml down
+```
+
+### Full 冒烟
+
+```bash
+# 启动 full 组合，并验证 portal + planner + control-plane + carbone 基本可用
+bash ./docker/full-smoke.sh
+```
+
+该脚本会：
+- 通过 `./docker/start-smart.sh docker-compose.full.yml up -d` 启动全栈
+- 校验 V4 关键服务容器均已运行
+- 用 `admin/admin123` 登录 `auth`
+- 验证 `portal` 首页可访问
+- 验证 `carbone-engine` 的 `/api` 可访问
+- 携带 JWT 调用 `ai-orchestrator` 的 `POST /ai/chat`
+- 验证 `control-plane` 的 `/api/executions` 可访问
+- 提取任务返回的 `executionId`，轮询最终状态必须为 `succeeded`
+- 验证执行单总数增长，确保这次任务真实创建了新的 execution
+- 使用同一 `idempotencyKey` 重放一次请求，验证命中同一 execution，且不会再次新增 execution
+
+`full-smoke.sh` 默认会在基底层容忍偶发外部网络抖动，不会对具体 skill、域名或协议做硬编码兼容。需要调整回归耐心时，可按需覆盖以下环境变量：
+
+```bash
+# fresh idempotencyKey 的外层尝试次数，默认 6
+FULL_SMOKE_TASK_ATTEMPTS=6
+
+# 外层 fresh-key 尝试之间的等待秒数，默认 8
+FULL_SMOKE_TASK_ATTEMPT_DELAY=8
+
+# 单个 execution 轮询最终状态的最大次数，默认 36
+FULL_SMOKE_EXECUTION_POLL_ATTEMPTS=36
+
+# execution 状态轮询间隔秒数，默认 5
+FULL_SMOKE_EXECUTION_POLL_DELAY=5
+```
+
+停止 full：
+
+```bash
+./docker/start-smart.sh docker-compose.full.yml down
+```
 ### 方式二：直接使用 docker compose
 
 ```bash
 cd docker
+
+# 仅在你已明确设置当前 worktree 的 PROJECT_ROOT 时直接使用
+export PROJECT_ROOT=/path/to/current/worktree
 
 # 全栈开发环境
 docker compose -f docker-compose.full.yml up -d
@@ -107,14 +276,14 @@ docker compose -f docker-compose.full.yml up -d
 docker compose -f docker-compose.yml up -d
 
 # 本地开发（启动后端服务）
-./scripts/start-dev.sh
+../tools/scripts/start-dev.sh
 ```
 
 ### 方式三：仅 Carbone + Office Add-in
 
 ```bash
 cd docker
-docker compose -f docker-compose.shared.yml up -d
+./start-smart.sh docker-compose.addin.yml up -d
 ```
 
 ## 配置改善说明
@@ -146,7 +315,7 @@ DOCKER_REGISTRY=
 
 ```yaml
 volumes:
-  - ${PROJECT_ROOT:-..}/services/auth:/app
+  - ${PROJECT_ROOT:-..}/apps/auth:/app
 ```
 
 ## SSL 证书

@@ -13,7 +13,7 @@
 - 所有 Docker 启动、测试、停止操作，默认从仓库根目录执行。
 - 所有 `docker compose` 调用，优先通过 `docker/start-smart.sh` 触发。
 - 必须保证 `PROJECT_ROOT` 指向当前工作目录（当前 worktree 根目录）。
-- Compose 中的代码挂载路径必须使用 `${PROJECT_ROOT}`，禁止写死 `../services/...`。
+- Compose 中的代码挂载路径必须使用 `${PROJECT_ROOT}`，禁止写死 `../apps/...`。
 
 ## 标准执行方式
 
