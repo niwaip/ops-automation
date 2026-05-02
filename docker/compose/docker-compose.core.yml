@@ -63,7 +63,7 @@ services:
     ports:
       - "${AUTH_PORT:-3001}:${AUTH_PORT:-3001}"
     volumes:
-      - ${PROJECT_ROOT:-..}/apps/auth:/app
+      - ${PROJECT_ROOT:-..}/apps/backend/core/auth:/app
       - auth_node_modules:/app/node_modules
     depends_on:
       postgres:
@@ -93,7 +93,7 @@ services:
     ports:
       - "${CONTROL_PLANE_PORT:-3003}:${CONTROL_PLANE_PORT:-3003}"
     volumes:
-      - ${PROJECT_ROOT:-..}/apps/control-plane:/app
+      - ${PROJECT_ROOT:-..}/apps/backend/core/control-plane:/app
       - ${PROJECT_ROOT:-..}/packages/contracts:/packages/contracts
       - control_plane_node_modules:/app/node_modules
     depends_on:

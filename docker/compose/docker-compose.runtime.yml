@@ -19,7 +19,7 @@ services:
     ports:
       - "${SESSION_BROKER_PORT:-3002}:${SESSION_BROKER_PORT:-3002}"
     volumes:
-      - ${PROJECT_ROOT:-..}/apps/session-broker:/app
+      - ${PROJECT_ROOT:-..}/apps/backend/runtime/session-broker:/app
       - session_broker_node_modules:/app/node_modules
     networks:
       - ops-network
@@ -38,7 +38,7 @@ services:
     ports:
       - "${BROWSER_WORKER_PORT:-3004}:${BROWSER_WORKER_PORT:-3004}"
     volumes:
-      - ${PROJECT_ROOT:-..}/apps/browser-worker:/app
+      - ${PROJECT_ROOT:-..}/apps/backend/runtime/browser-worker:/app
       - browser_worker_node_modules:/app/node_modules
     depends_on:
       - browser-chrome
@@ -62,7 +62,7 @@ services:
     ports:
       - "${CARBONE_ENGINE_PORT:-3009}:${CARBONE_ENGINE_PORT:-3009}"
     volumes:
-      - ${PROJECT_ROOT:-..}/apps/carbone-engine:/app
+      - ${PROJECT_ROOT:-..}/apps/backend/runtime/carbone-engine:/app
       - carbone_engine_node_modules:/app/node_modules
       - carbone_templates:/app/templates
       - carbone_outputs:/app/outputs

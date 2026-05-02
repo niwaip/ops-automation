@@ -32,14 +32,14 @@ services:
 
   office-addin:
     build:
-      context: ${PROJECT_ROOT:-..}/apps/office-addin
-      dockerfile: ../../docker/office-addin/Dockerfile.dev
+      context: ${PROJECT_ROOT:-..}/apps/frontend/office-addin
+      dockerfile: ../../../docker/office-addin/Dockerfile.dev
     container_name: office-addin
     ports:
       - "3000:3000"
     volumes:
-      - ${PROJECT_ROOT:-..}/apps/office-addin/src:/app/src
-      - ${PROJECT_ROOT:-..}/apps/office-addin/public:/app/public
+      - ${PROJECT_ROOT:-..}/apps/frontend/office-addin/src:/app/src
+      - ${PROJECT_ROOT:-..}/apps/frontend/office-addin/public:/app/public
       - ../office-addin/certs:/app/certs:ro
     environment:
       - VITE_API_URL=https://carbone-api:3443
