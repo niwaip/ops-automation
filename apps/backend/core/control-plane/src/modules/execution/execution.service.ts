@@ -91,7 +91,7 @@ export class ExecutionService {
   private readonly sessionBrokerUrl = process.env.SESSION_BROKER_URL || 'http://session-broker:3002';
   private readonly authServiceUrl = process.env.AUTH_SERVICE_URL || 'http://ops-auth:3001';
   private readonly aiOrchestratorUrl =
-    process.env.AI_ORCHESTRATOR_URL || process.env.AI_SERVICE_URL || 'http://ops-ai-orchestrator:3007';
+    process.env.AI_ORCHESTRATOR_URL || process.env.AI_SERVICE_URL || 'http://ai-orchestrator:3007';
 
   private readonly eventSubject = new Subject<ExecutionStreamEventPayload>();
   private readonly executionEventService: ExecutionEventService;

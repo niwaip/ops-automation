@@ -38,7 +38,7 @@ const getAiOrchestratorUrl = () => {
     return process.env.AI_ORCHESTRATOR_URL;
   }
   if (process.env.DOCKER_ENV === 'true' || process.env.NODE_ENV === 'production') {
-    return 'http://ops-ai-orchestrator:3007';  // Docker 内部通信使用服务名
+    return 'http://ai-orchestrator:3007';  // Docker 内部通信使用服务名
   }
   // 本地开发：使用外部访问地址（如果设置）或 localhost
   const externalHost = process.env.EXTERNAL_HOST || 'localhost';

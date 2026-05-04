@@ -7,7 +7,7 @@ import { StreamEvent, ChatRequest, AIModel, UploadedFile } from './types';
 import { useAuthStore } from '../../store/authStore';
 import { ensureFreshAccessToken, refreshAccessToken } from '../../api/client';
 
-// 使用Vite代理路径 /api/ai -> ops-ai-orchestrator:3007
+// 使用 Vite 代理路径 /api/ai -> ai-orchestrator:3007
 const AI_API_BASE = '/api/ai';
 
 const buildAuthHeaders = (): Record<string, string> => {

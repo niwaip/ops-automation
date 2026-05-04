@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Put, Delete, Body, Param, Res } from '@nestjs/common';
+import { Controller, Get, Post, Put, Delete, Body, Param, Res, Request } from '@nestjs/common';
 import { ApiTags, ApiOperation } from '@nestjs/swagger';
 import { Response } from 'express';
 import {
@@ -8,6 +8,12 @@ import {
   TemporalValidationResult,
   WorkflowDsl,
   ActivityDsl,
+  GenerateAiWorkflowDraftDTO,
+  AiWorkflowDraft,
+  AiWorkflowDraftSession,
+  AiWorkflowDraftSessionListItem,
+  GenerateAiWorkflowDraftSessionDTO,
+  RefineAiWorkflowDraftSessionDTO,
 } from './temporal-workflow.service';
 import { TemporalWorkflow } from '@prisma/client';
 
@@ -20,12 +26,6 @@ export class TemporalWorkflowController {
   @ApiOperation({ summary: 'List all temporal workflows' })
   async findAll(): Promise<TemporalWorkflow[]> {
     return this.temporalWorkflowService.findAll();
-  }
-
-  @Get(':id')
-  @ApiOperation({ summary: 'Get workflow by ID' })
-  async findOne(@Param('id') id: string): Promise<TemporalWorkflow | null> {
-    return this.temporalWorkflowService.findOne(id);
   }
 
   @Post()
@@ -66,9 +66,52 @@ export class TemporalWorkflowController {
   @Post('generate-code')
   @ApiOperation({ summary: 'Generate workflow Python code from DSL' })
   async generateCode(
-    @Body() data: { workflowDsl: WorkflowDsl; activityDsl: ActivityDsl; errorContext?: string },
-  ): Promise<{ success: boolean; code?: string; error?: string }> {
-    return this.temporalWorkflowService.generateWorkflowCode(data.workflowDsl, data.activityDsl, data.errorContext);
+    @Body() data: { workflowDsl: WorkflowDsl; activityDsl: ActivityDsl; errorContext?: string; forceAiGeneration?: boolean },
+  ): Promise<{ success: boolean; code?: string; error?: string; attempts?: number; autoRetried?: boolean; generationMode?: 'deterministic' | 'ai' }> {
+    return this.temporalWorkflowService.generateWorkflowCode(
+      data.workflowDsl,
+      data.activityDsl,
+      data.errorContext,
+      Boolean(data.forceAiGeneration),
+    );
+  }
+
+  @Post('generate-code/stream')
+  @ApiOperation({ summary: 'Generate workflow Python code from DSL with streaming status' })
+  async generateCodeStream(
+    @Body() data: { workflowDsl: WorkflowDsl; activityDsl: ActivityDsl; errorContext?: string; forceAiGeneration?: boolean },
+    @Res() res: Response,
+  ): Promise<void> {
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Connection', 'keep-alive');
+    res.setHeader('X-Accel-Buffering', 'no');
+
+    try {
+      const result = await this.temporalWorkflowService.generateWorkflowCodeStreaming(
+        data.workflowDsl,
+        data.activityDsl,
+        data.errorContext,
+        data.forceAiGeneration,
+        (log: string) => {
+          res.write(`data: ${JSON.stringify({ type: 'log', content: log })}\n\n`);
+        },
+      );
+
+      res.write(`data: ${JSON.stringify({
+        type: 'done',
+        success: result.success,
+        code: result.code,
+        error: result.error,
+        attempts: result.attempts,
+        autoRetried: result.autoRetried,
+        generationMode: result.generationMode,
+      })}\n\n`);
+    } catch (error: any) {
+      res.write(`data: ${JSON.stringify({ type: 'error', content: error.message })}\n\n`);
+    }
+
+    res.end();
   }
 
   @Post('generate-template-draft')
@@ -77,6 +120,109 @@ export class TemporalWorkflowController {
     @Body() data: { templateId: string },
   ): Promise<import('./temporal-workflow.service').TemplateWorkflowDraft> {
     return this.temporalWorkflowService.generateTemplateWorkflowDraft(data.templateId);
+  }
+
+  @Post('generate-ai-draft')
+  @ApiOperation({ summary: 'Generate AI-assisted workflow draft from natural language and optional URL' })
+  async generateAiDraft(
+    @Body() data: GenerateAiWorkflowDraftDTO,
+  ): Promise<AiWorkflowDraft> {
+    return this.temporalWorkflowService.generateAiWorkflowDraft(data);
+  }
+
+  @Post('draft-sessions')
+  @ApiOperation({ summary: 'Create persistent AI workflow draft session' })
+  async createAiDraftSession(
+    @Body() data: GenerateAiWorkflowDraftSessionDTO,
+    @Request() req: any,
+  ): Promise<AiWorkflowDraftSession> {
+    return this.temporalWorkflowService.createAiDraftSession(data, req.user?.id);
+  }
+
+  @Get('draft-sessions')
+  @ApiOperation({ summary: 'List persistent AI workflow draft sessions' })
+  async listAiDraftSessions(@Request() req: any): Promise<AiWorkflowDraftSessionListItem[]> {
+    return this.temporalWorkflowService.listAiDraftSessions(req.user?.id);
+  }
+
+  @Get('draft-sessions/:sessionId')
+  @ApiOperation({ summary: 'Get persistent AI workflow draft session' })
+  async getAiDraftSession(
+    @Param('sessionId') sessionId: string,
+    @Request() req: any,
+  ): Promise<AiWorkflowDraftSession> {
+    return this.temporalWorkflowService.getAiDraftSession(sessionId, req.user?.id);
+  }
+
+  @Delete('draft-sessions/:sessionId')
+  @ApiOperation({ summary: 'Delete persistent AI workflow draft session' })
+  async deleteAiDraftSession(
+    @Param('sessionId') sessionId: string,
+    @Request() req: any,
+  ): Promise<{ success: boolean }> {
+    return this.temporalWorkflowService.deleteAiDraftSession(sessionId, req.user?.id);
+  }
+
+  @Get(':id')
+  @ApiOperation({ summary: 'Get workflow by ID' })
+  async findOne(@Param('id') id: string): Promise<TemporalWorkflow | null> {
+    return this.temporalWorkflowService.findOne(id);
+  }
+
+  @Post('refine-ai-draft')
+  @ApiOperation({ summary: 'Refine existing AI-assisted workflow draft with multi-round feedback' })
+  async refineAiDraft(
+    @Body() data: import('./temporal-workflow.service').RefineAiWorkflowDraftDTO,
+  ): Promise<AiWorkflowDraft> {
+    return this.temporalWorkflowService.refineAiWorkflowDraft(data);
+  }
+
+  @Post('draft-sessions/:sessionId/messages')
+  @ApiOperation({ summary: 'Append a refinement message to persistent AI workflow draft session' })
+  async refineAiDraftSession(
+    @Param('sessionId') sessionId: string,
+    @Body() data: { userPrompt: string },
+    @Request() req: any,
+  ): Promise<AiWorkflowDraftSession> {
+    return this.temporalWorkflowService.refineAiDraftSession({
+      sessionId,
+      userPrompt: data.userPrompt,
+    } as RefineAiWorkflowDraftSessionDTO, req.user?.id);
+  }
+
+  @Post('optimize-http-config')
+  @ApiOperation({ summary: 'Optimize builtin httpRequest step config with AI and live response preview' })
+  async optimizeHttpConfig(
+    @Body() data: { stepConfig: Record<string, any>; inputParams?: Record<string, any>; userRequest?: string },
+  ): Promise<{ success: boolean; optimizedConfig?: Record<string, any>; previewResponse?: Record<string, any>; explanation?: string; error?: string }> {
+    return this.temporalWorkflowService.optimizeHttpRequestConfig(
+      data.stepConfig || {},
+      data.inputParams || {},
+      data.userRequest,
+    );
+  }
+
+  @Post('preview-http-config')
+  @ApiOperation({ summary: 'Preview builtin httpRequest step config with live response' })
+  async previewHttpConfig(
+    @Body() data: { stepConfig: Record<string, any>; inputParams?: Record<string, any> },
+  ): Promise<{ success: boolean; baseConfig?: Record<string, any>; resolvedRequest?: Record<string, any>; previewResponse?: Record<string, any>; error?: string }> {
+    return this.temporalWorkflowService.previewHttpRequestConfig(
+      data.stepConfig || {},
+      data.inputParams || {},
+    );
+  }
+
+  @Post('generate-structured-transform-config')
+  @ApiOperation({ summary: 'Generate builtin structuredTransform step config from real sample and user goal' })
+  async generateStructuredTransformConfig(
+    @Body() data: { sourceSample: any; userRequest: string; existingConfig?: Record<string, any> },
+  ): Promise<{ success: boolean; config?: Record<string, any>; explanation?: string; error?: string }> {
+    return this.temporalWorkflowService.generateStructuredTransformConfig(
+      data.sourceSample,
+      data.userRequest,
+      data.existingConfig || {},
+    );
   }
 
   @Post('validate-code')
@@ -110,9 +256,9 @@ export class TemporalWorkflowController {
       );
 
       if (result.success) {
-        res.write(`data: ${JSON.stringify({ type: 'done', success: true, score: result.score, result: result.result })}\n\n`);
+        res.write(`data: ${JSON.stringify({ type: 'done', success: true, score: result.score, result: result.result, traceback: result.traceback })}\n\n`);
       } else {
-        res.write(`data: ${JSON.stringify({ type: 'done', success: false, error: result.error, score: result.score })}\n\n`);
+        res.write(`data: ${JSON.stringify({ type: 'done', success: false, error: result.error, score: result.score, result: result.result, traceback: result.traceback, logs: result.logs })}\n\n`);
       }
     } catch (error: any) {
       res.write(`data: ${JSON.stringify({ type: 'error', content: error.message })}\n\n`);

@@ -19,6 +19,11 @@ export const postSseStream = ({
   onEvent,
 }: PostSseStreamOptions): Promise<void> => {
   return new Promise((resolve, reject) => {
+    if (!token) {
+      reject(new Error('登录状态已失效，请重新登录后再试'));
+      return;
+    }
+
     const xhr = new XMLHttpRequest();
     let processedLength = 0;
     let lineBuffer = '';
@@ -75,8 +80,13 @@ export const postSseStream = ({
         } else {
           reject(new Error('SSE stream ended without done event'));
         }
+      } else if (xhr.status === 401) {
+        reject(new Error('登录状态已失效，请重新登录后再试'));
+      } else if (xhr.status === 403) {
+        reject(new Error('当前账号无权执行该操作'));
       } else {
-        reject(new Error(`HTTP ${xhr.status}: ${xhr.statusText}`));
+        const responseText = xhr.responseText?.trim();
+        reject(new Error(responseText || `HTTP ${xhr.status}: ${xhr.statusText}`));
       }
     };
 

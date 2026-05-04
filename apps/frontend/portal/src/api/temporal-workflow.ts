@@ -1,4 +1,4 @@
-import apiClient from './client';
+import apiClient, { ensureFreshAccessToken } from './client';
 import { useAuthStore } from '../store/authStore';
 import { postSseStream } from './streaming';
 
@@ -16,6 +16,7 @@ export interface WorkflowStep {
   id: string;
   name: string;
   type: 'activity' | 'signal' | 'query' | 'childWorkflow' | 'parallel';
+  activityRef?: string;
   activityName?: string;
   input?: Record<string, any>;
   // Activity execution timeout (e.g., "30s", "1m")
@@ -36,6 +37,23 @@ export interface WorkflowStep {
   parallelSteps?: string[];
 }
 
+export type WorkflowInputParamSource =
+  | 'declared'
+  | 'inferred_from_template'
+  | 'inferred_from_reference_url'
+  | 'merged';
+
+export type WorkflowInputParamType = 'string' | 'number' | 'boolean' | 'date';
+
+export interface WorkflowInputParamDefinition {
+  description?: string;
+  required?: boolean;
+  defaultValue?: string;
+  source?: WorkflowInputParamSource;
+  type?: WorkflowInputParamType;
+  exampleValue?: string | number | boolean;
+}
+
 export interface WorkflowDsl {
   name: string;
   // Python class name used for workflow entrypoint lookup during validation/execution
@@ -44,8 +62,9 @@ export interface WorkflowDsl {
   workflowDefnName?: string;
   taskQueue: string;
   steps: WorkflowStep[];
-  // Entry parameters - first step's input params are the workflow's input interface
-  inputParams?: Record<string, { description?: string; required?: boolean; defaultValue?: string }>;
+  sourceContext?: TemporalWorkflowSourceContext;
+  // Entry parameters - aggregate template variables and explicit inputs from workflow steps
+  inputParams?: Record<string, WorkflowInputParamDefinition>;
   // Output parameters - defaults to last step's output, can be customized
   outputParams?: Record<string, { description?: string; sourceStep?: string }>;
   // Extra guidance for AI code generation
@@ -84,9 +103,10 @@ export interface ActivityDsl {
     name: string;
     fn: string;
     timeout: string;
-    retryPolicy?: { maxRetries: number };
+    retryPolicy?: { maxRetries?: number; backoffMs?: number };
     handler: 'api' | 'carbone' | 'browser' | 'script';
     config: Record<string, any>;
+    generatedCode?: string;
   }>;
 }
 
@@ -96,6 +116,15 @@ export interface TemporalWorkflowSourceTemplate {
   fileName?: string;
   format?: string;
   variableCount?: number;
+}
+
+export interface TemporalWorkflowSourceContext {
+  sourceType?: 'template' | 'ai' | 'text' | 'url';
+  referenceUrl?: string;
+  userDescription?: string;
+  generatedAt?: string;
+  warnings?: string[];
+  sourceTemplate?: TemporalWorkflowSourceTemplate | null;
 }
 
 export interface TemporalWorkflowDTO {
@@ -111,6 +140,7 @@ export interface TemporalWorkflowDTO {
   createdAt: string;
   updatedAt: string;
   sourceTemplate?: TemporalWorkflowSourceTemplate | null;
+  sourceContext?: TemporalWorkflowSourceContext | null;
 }
 
 export interface CreateTemporalWorkflowDTO {
@@ -143,6 +173,20 @@ export interface WorkflowCodeResult {
   success: boolean;
   code?: string;
   error?: string;
+  attempts?: number;
+  autoRetried?: boolean;
+  generationMode?: 'deterministic' | 'ai';
+}
+
+export interface WorkflowCodeStreamEvent {
+  type: string;
+  content?: string;
+  success?: boolean;
+  code?: string;
+  error?: string;
+  attempts?: number;
+  autoRetried?: boolean;
+  generationMode?: 'deterministic' | 'ai';
 }
 
 export interface WorkflowRealValidationResult {
@@ -150,7 +194,24 @@ export interface WorkflowRealValidationResult {
   logs: string[];
   result?: any;
   error?: string;
+  traceback?: string;
   score: number;
+}
+
+export interface HttpRequestOptimizeResult {
+  success: boolean;
+  optimizedConfig?: Record<string, any>;
+  previewResponse?: Record<string, any>;
+  explanation?: string;
+  error?: string;
+}
+
+export interface HttpRequestPreviewResult {
+  success: boolean;
+  baseConfig?: Record<string, any>;
+  resolvedRequest?: Record<string, any>;
+  previewResponse?: Record<string, any>;
+  error?: string;
 }
 
 export interface TemplateWorkflowDraft {
@@ -166,6 +227,57 @@ export interface TemplateWorkflowDraft {
     format?: string;
     variableCount: number;
   };
+}
+
+export interface GenerateAiWorkflowDraftDTO {
+  description?: string;
+  referenceUrl?: string;
+}
+
+export interface GenerateAiWorkflowDraftSessionDTO extends GenerateAiWorkflowDraftDTO {
+  title?: string;
+}
+
+export interface RefineAiWorkflowDraftDTO {
+  currentWorkflowDsl: WorkflowDsl;
+  currentActivityDsl: ActivityDsl;
+  userPrompt: string;
+}
+
+export interface AiWorkflowDraftSessionMessage {
+  id: string;
+  role: 'user' | 'assistant' | 'system';
+  content: string;
+  createdAt: string;
+  draft?: AiWorkflowDraft;
+}
+
+export interface AiWorkflowDraftSession {
+  sessionId: string;
+  title?: string;
+  status: string;
+  messages: AiWorkflowDraftSessionMessage[];
+  currentDraft?: AiWorkflowDraft | null;
+}
+
+export interface AiWorkflowDraftSessionListItem {
+  sessionId: string;
+  title?: string;
+  status: string;
+  updatedAt: string;
+  messageCount: number;
+  currentDraftName?: string;
+  currentDraftDescription?: string;
+}
+
+export interface AiWorkflowDraft {
+  name: string;
+  description: string;
+  taskQueue: string;
+  workflowDsl: WorkflowDsl;
+  activityDsl: ActivityDsl;
+  warnings: string[];
+  sourceContext?: TemporalWorkflowSourceContext;
 }
 
 export const temporalWorkflowApi = {
@@ -201,13 +313,30 @@ export const temporalWorkflowApi = {
     return apiClient.post<WorkflowCodeResult>('/temporal-workflow/generate-code', { workflowDsl, activityDsl, errorContext });
   },
 
+  generateWorkflowCodeStream: async (
+    workflowDsl: WorkflowDsl,
+    activityDsl: ActivityDsl,
+    errorContext: string | undefined,
+    forceAiGeneration: boolean | undefined,
+    onEvent: (event: WorkflowCodeStreamEvent) => void,
+  ): Promise<void> => {
+    const token = await ensureFreshAccessToken() || useAuthStore.getState().accessToken;
+    return postSseStream({
+      url: '/api/temporal-workflow/generate-code/stream',
+      payload: { workflowDsl, activityDsl, errorContext, forceAiGeneration },
+      token,
+      requireDoneEvent: true,
+      onEvent: onEvent as (event: { type: string; [key: string]: unknown }) => void,
+    });
+  },
+
   validateWorkflowReal: async (code: string, fn: string, input?: Record<string, any>, taskQueue?: string): Promise<WorkflowRealValidationResult> => {
     return apiClient.post<WorkflowRealValidationResult>('/temporal-workflow/validate-code', { code, fn, input, taskQueue });
   },
 
   // SSE streaming real validation with the workflow test worker
-  validateWorkflowRealStream: (code: string, fn: string, input: Record<string, any>, taskQueue: string | undefined, onEvent: (event: { type: string; content?: string; result?: any; error?: string; success?: boolean; score?: number }) => void): Promise<void> => {
-    const token = useAuthStore.getState().accessToken;
+  validateWorkflowRealStream: async (code: string, fn: string, input: Record<string, any>, taskQueue: string | undefined, onEvent: (event: { type: string; content?: string; result?: any; error?: string; success?: boolean; score?: number }) => void): Promise<void> => {
+    const token = await ensureFreshAccessToken() || useAuthStore.getState().accessToken;
     return postSseStream({
       url: '/api/temporal-workflow/validate-code/stream',
       payload: { code, fn, input, taskQueue },
@@ -219,6 +348,68 @@ export const temporalWorkflowApi = {
 
   generateTemplateDraft: async (templateId: string): Promise<TemplateWorkflowDraft> => {
     return apiClient.post<TemplateWorkflowDraft>('/temporal-workflow/generate-template-draft', { templateId });
+  },
+
+  generateAiDraft: async (data: GenerateAiWorkflowDraftDTO): Promise<AiWorkflowDraft> => {
+    return apiClient.post<AiWorkflowDraft>('/temporal-workflow/generate-ai-draft', data);
+  },
+
+  createAiDraftSession: async (data: GenerateAiWorkflowDraftSessionDTO): Promise<AiWorkflowDraftSession> => {
+    return apiClient.post<AiWorkflowDraftSession>('/temporal-workflow/draft-sessions', data);
+  },
+
+  listAiDraftSessions: async (): Promise<AiWorkflowDraftSessionListItem[]> => {
+    return apiClient.get<AiWorkflowDraftSessionListItem[]>('/temporal-workflow/draft-sessions');
+  },
+
+  getAiDraftSession: async (sessionId: string): Promise<AiWorkflowDraftSession> => {
+    return apiClient.get<AiWorkflowDraftSession>(`/temporal-workflow/draft-sessions/${sessionId}`);
+  },
+
+  deleteAiDraftSession: async (sessionId: string): Promise<{ success: boolean }> => {
+    return apiClient.delete<{ success: boolean }>(`/temporal-workflow/draft-sessions/${sessionId}`);
+  },
+
+  refineAiWorkflowDraft: async (data: RefineAiWorkflowDraftDTO): Promise<AiWorkflowDraft> => {
+    return apiClient.post<AiWorkflowDraft>('/temporal-workflow/refine-ai-draft', data);
+  },
+
+  refineAiDraftSession: async (sessionId: string, userPrompt: string): Promise<AiWorkflowDraftSession> => {
+    return apiClient.post<AiWorkflowDraftSession>(`/temporal-workflow/draft-sessions/${sessionId}/messages`, { userPrompt });
+  },
+
+  optimizeHttpRequestConfig: async (
+    stepConfig: Record<string, any>,
+    inputParams: Record<string, any>,
+    userRequest: string,
+  ): Promise<HttpRequestOptimizeResult> => {
+    return apiClient.post<HttpRequestOptimizeResult>('/temporal-workflow/optimize-http-config', {
+      stepConfig,
+      inputParams,
+      userRequest,
+    });
+  },
+
+  previewHttpRequestConfig: async (
+    stepConfig: Record<string, any>,
+    inputParams: Record<string, any>,
+  ): Promise<HttpRequestPreviewResult> => {
+    return apiClient.post<HttpRequestPreviewResult>('/temporal-workflow/preview-http-config', {
+      stepConfig,
+      inputParams,
+    });
+  },
+
+  generateStructuredTransformConfig: async (
+    sourceSample: any,
+    userRequest: string,
+    existingConfig?: Record<string, any>,
+  ): Promise<{ success: boolean; config?: Record<string, any>; explanation?: string; error?: string }> => {
+    return apiClient.post('/temporal-workflow/generate-structured-transform-config', {
+      sourceSample,
+      userRequest,
+      existingConfig,
+    });
   },
 };
 

@@ -4,11 +4,11 @@
  */
 
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { Input, Button, Upload, Space, Tag, Switch, Select, message as antdMessage } from 'antd';
+import { Input, Button, Upload, Tag, Switch, Select, message as antdMessage } from 'antd';
 import { SendOutlined, PaperClipOutlined, StopOutlined, PlusOutlined, MessageOutlined, RobotOutlined, AudioOutlined } from '@ant-design/icons';
 import type { TextAreaRef } from 'antd/es/input/TextArea';
-import { RcFile } from 'antd/es/upload';
-import { UploadedFile, AIModel } from './types';
+import type { RcFile } from 'antd/es/upload';
+import type { UploadedFile, AIModel } from './types';
 import { uploadFile } from './chatApi';
 import { useChatStore } from './chatStore';
 import './ChatInput.css';
@@ -256,7 +256,11 @@ const ChatInput: React.FC<ChatInputProps> = ({
       {/* 已上传文件显示 */}
       {uploadedFiles.length > 0 && (
         <div className="chat-uploaded-files">
-          <Space>
+          <div className="chat-uploaded-files-header">
+            <span className="chat-uploaded-files-title">附件</span>
+            <span className="chat-uploaded-files-count">{uploadedFiles.length}</span>
+          </div>
+          <div className="chat-uploaded-files-list">
             {uploadedFiles.map((file) => (
               <Tag
                 key={file.fileId}
@@ -268,7 +272,7 @@ const ChatInput: React.FC<ChatInputProps> = ({
                 {file.fileName}
               </Tag>
             ))}
-          </Space>
+          </div>
         </div>
       )}
 

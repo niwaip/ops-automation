@@ -2054,7 +2054,7 @@ ${logs.join('\n')}
 }`;
 
     try {
-      const orchestratorUrl = process.env.AI_ORCHESTRATOR_URL || 'http://ops-ai-orchestrator:3007';
+      const orchestratorUrl = process.env.AI_ORCHESTRATOR_URL || 'http://ai-orchestrator:3007';
       const response = await axios.post<{ result: string }>(
         `${orchestratorUrl}/ai/model/call`,
         {
@@ -2124,7 +2124,7 @@ ${logs.join('\n')}
     )}\n源定义快照: ${JSON.stringify(snapshot.sourcePayload, null, 2)}\n\n要求：\n1. 返回一个适合演示和校验的 testInput JSON。\n2. 如果有比较合理的 testUserInput，自然语言给一句。\n3. deployConfig 只返回用户本次需要重点关注或覆盖的字段；没有必要覆盖则返回空对象。\n4. explanation 用中文，告诉用户这些参数为什么这样推荐。\n5. 只返回 JSON，不要 Markdown。\n\n返回格式：\n{\n  "explanation": "中文说明",\n  "deployConfig": {},\n  "testInput": {},\n  "testUserInput": "..." \n}`;
 
     try {
-      const orchestratorUrl = process.env.AI_ORCHESTRATOR_URL || 'http://ops-ai-orchestrator:3007';
+      const orchestratorUrl = process.env.AI_ORCHESTRATOR_URL || 'http://ai-orchestrator:3007';
       const response = await axios.post<{ result: string }>(
         `${orchestratorUrl}/ai/model/call`,
         { modelId: 'default', prompt },

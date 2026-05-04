@@ -15,6 +15,22 @@ import JSZip from 'jszip';
 import axios from 'axios';
 import { DocumentElement, DocumentStructure, PreserveMarker } from './document-structure.service';
 
+type AiModelDescriptor = {
+  id: string;
+  status: string;
+  [key: string]: unknown;
+};
+
+type AiModelsResponse = {
+  models?: AiModelDescriptor[];
+};
+
+type AiTestResponse = {
+  success?: boolean;
+  response?: string;
+  error?: string;
+};
+
 /**
  * 处理阶段枚举
  */
@@ -2061,23 +2077,23 @@ ${blankList}
     this.logger.log(`Calling AI service at ${aiOrchestratorUrl}/ai/models/${aiModelId}/test (retry: ${retryCount})`);
 
     try {
-      // 使用正确的 ops-ai-orchestrator 端点
+      // 使用统一的 AI orchestrator 端点
       // 如果是重试，添加格式强调
       const actualPrompt = retryCount > 0
         ? `${prompt}\n\n【重要】请务必返回标准JSON数组格式，不要使用markdown代码块，不要添加任何解释文字。格式示例：[{"index": 1, "variableName": "xxx", "meaning": "xxx", "fieldType": "text"}]`
         : prompt;
 
-      const response = await axios.post(
+      const response = await axios.post<AiTestResponse>(
         `${aiOrchestratorUrl}/ai/models/${aiModelId}/test`,
         {
-          prompt: actualPrompt  // ops-ai-orchestrator 使用 prompt 字段
+          prompt: actualPrompt  // AI orchestrator 使用 prompt 字段
         },
         { timeout: 360000 }  // 6分钟超时，AI分析可能需要较长时间
       );
 
       this.logger.log('AI service responded successfully');
 
-      // ops-ai-orchestrator 返回格式: {success: true, response: "..."}
+      // AI orchestrator 返回格式: {success: true, response: "..."}
       let content = response.data?.response || '';
 
       // 记录原始响应内容（调试用，截取前500字符）
@@ -2411,7 +2427,7 @@ ${description}
     this.logger.log(`Calling AI service for parameter generation at ${aiOrchestratorUrl}/ai/models/${aiModelId}/test`);
 
     try {
-      const response = await axios.post(
+      const response = await axios.post<AiTestResponse>(
         `${aiOrchestratorUrl}/ai/models/${aiModelId}/test`,
         { prompt },
         { timeout: 360000 }  // 6分钟超时
@@ -3899,7 +3915,7 @@ curl -X POST http://localhost:3000/api/carbone/render \
   ): Promise<TemplateConfig | null> {
     try {
       // 获取可用的 AI 模型
-      const modelsResponse = await axios.get(`${this.aiOrchestratorUrl}/ai/models`, {
+      const modelsResponse = await axios.get<AiModelsResponse>(`${this.aiOrchestratorUrl}/ai/models`, {
         timeout: 5000,
       });
       const models = modelsResponse.data.models || [];
@@ -3920,7 +3936,7 @@ curl -X POST http://localhost:3000/api/carbone/render \
       const prompt = this.buildAIAnalysisPrompt(elements, context, manualMarkings, markingSummary);
 
       // 调用 AI 模型（增加超时时间到180秒）
-      const testResponse = await axios.post(
+      const testResponse = await axios.post<AiTestResponse>(
         `${this.aiOrchestratorUrl}/ai/models/${activeModel.id}/test`,
         { prompt },
         { timeout: 180000 },
@@ -3932,7 +3948,7 @@ curl -X POST http://localhost:3000/api/carbone/render \
       }
 
       // 解析 AI 响应
-      return this.parseAIAnalysisResponse(testResponse.data.response, elements);
+      return this.parseAIAnalysisResponse(testResponse.data.response || '', elements);
     } catch (error) {
       this.logger.error(`AI analysis error: ${error}`);
       return null;
@@ -3957,7 +3973,7 @@ curl -X POST http://localhost:3000/api/carbone/render \
     try {
       this.logger.log('Starting AI stream analysis...');
       // 获取活跃的AI模型
-      const modelsResponse = await axios.get(`${this.aiOrchestratorUrl}/ai/models`, {
+      const modelsResponse = await axios.get<AiModelsResponse>(`${this.aiOrchestratorUrl}/ai/models`, {
         timeout: 5000,
       });
       const models = modelsResponse.data?.models || [];
@@ -4698,7 +4714,7 @@ ${JSON.stringify(testData, null, 2)}
 
     try {
       // 获取活跃的AI模型
-      const modelsResponse = await axios.get(`${aiUrl}/ai/models`);
+      const modelsResponse = await axios.get<AiModelsResponse>(`${aiUrl}/ai/models`);
       const models = modelsResponse.data?.models || [];
       const activeModel = models.find((m: { status: string }) => m.status === 'active');
 
@@ -4708,7 +4724,7 @@ ${JSON.stringify(testData, null, 2)}
       }
 
       // 调用AI模型
-      const testResponse = await axios.post(
+      const testResponse = await axios.post<AiTestResponse>(
         `${aiUrl}/ai/models/${activeModel.id}/test`,
         { prompt: `${systemPrompt}\n\n${userPrompt}` },
         { timeout: 60000 },
