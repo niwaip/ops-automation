@@ -35,7 +35,7 @@ import {
 } from '../../api/skill';
 import { userApi } from '../../api/auth';
 import { carboneApi, CarboneTemplateDTO } from '../../api/carbone';
-import { executionFlowApi } from '../../api/execution-flow';
+import { executionFlowApi } from '../../api/flows';
 import type { ColumnsType } from 'antd/es/table';
 
 const { Title, Text } = Typography;
@@ -205,7 +205,7 @@ const SkillAdminPage: React.FC = () => {
     { enabled: permissionModalVisible },
   );
   const templatesQuery = useQuery(['carbone-templates'], carboneApi.list);
-  const executionFlowTemplatesQuery = useQuery(['execution-flow-templates'], () => executionFlowApi.list({ isActive: true }));
+  const executionFlowTemplatesQuery = useQuery(['flows'], () => executionFlowApi.list({ isActive: true }));
 
   const permissionsQuery = useQuery(
     ['skill-permissions', selectedSkill?.id],
@@ -840,7 +840,7 @@ const SkillAdminPage: React.FC = () => {
             </Button>
             <Button
               icon={<OrderedListOutlined />}
-              onClick={() => window.location.href = '/admin/execution-flows'}
+              onClick={() => window.location.href = '/admin/flows'}
             >
               流程模板
             </Button>

@@ -18,7 +18,7 @@ const getAuthServiceUrl = () => {
   }
   // Docker环境下使用服务名
   if (process.env.DOCKER_ENV === 'true' || process.env.NODE_ENV === 'production') {
-    return 'http://ops-auth:3001';
+    return process.env.PLATFORM_SERVICE_URL || 'http://platform:3001';
   }
   return 'http://localhost:3001';
 };

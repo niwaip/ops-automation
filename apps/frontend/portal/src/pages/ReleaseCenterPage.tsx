@@ -22,7 +22,7 @@ import type { ColumnsType } from 'antd/es/table';
 import { DeploymentUnitOutlined, ReloadOutlined, RocketOutlined, SafetyCertificateOutlined } from '@ant-design/icons';
 import { useMutation, useQuery } from 'react-query';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { CapabilityRelease, CapabilityReleaseDetail, capabilityReleaseApi } from '../api/capability-release';
+import { CapabilityRelease, CapabilityReleaseDetail, capabilityReleaseApi } from '../api/capabilities';
 
 const { Title, Text } = Typography;
 
@@ -121,9 +121,9 @@ const ReleaseCenterPage: React.FC = () => {
     'rolling_restart',
   );
   const [deployOverridesDraft, setDeployOverridesDraft] = useState('{}');
-  const releasesQuery = useQuery(['release-center'], capabilityReleaseApi.listReleaseCenter);
+  const releasesQuery = useQuery(['capabilities-release-center'], capabilityReleaseApi.listReleaseCenter);
   const detailQuery = useQuery(
-    ['release-center-detail', selectedReleaseId],
+    ['capabilities-release-center-detail', selectedReleaseId],
     () => capabilityReleaseApi.getReleaseCenterById(selectedReleaseId as string),
     { enabled: Boolean(selectedReleaseId) },
   );
@@ -406,7 +406,7 @@ const ReleaseCenterPage: React.FC = () => {
           <Button
             type="link"
             size="small"
-            onClick={() => navigate(`/admin/capability-releases?releaseId=${record.id}`)}
+            onClick={() => navigate(`/admin/capabilities?releaseId=${record.id}`)}
           >
             打开 Release
           </Button>
@@ -574,7 +574,7 @@ const ReleaseCenterPage: React.FC = () => {
                 </Descriptions>
                 <Button
                   type="primary"
-                  onClick={() => navigate(`/admin/capability-releases?releaseId=${selectedDetail.release.id}`)}
+                  onClick={() => navigate(`/admin/capabilities?releaseId=${selectedDetail.release.id}`)}
                 >
                   打开 Capability Release
                 </Button>

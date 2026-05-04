@@ -108,7 +108,7 @@ export class ExecutorService {
    * Find execution by session ID
    */
   findExecutionBySession(sessionId: string): ExecutionState | null {
-    for (const execution of this.executions.values()) {
+    for (const execution of Array.from(this.executions.values())) {
       if (execution.session_id === sessionId) {
         return execution;
       }

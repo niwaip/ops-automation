@@ -16,7 +16,7 @@ const getAuthServiceUrl = () => {
     return process.env.AUTH_SERVICE_URL;
   }
   if (process.env.DOCKER_ENV === 'true' || process.env.NODE_ENV === 'production') {
-    return 'http://ops-auth:3001';
+    return process.env.PLATFORM_SERVICE_URL || 'http://platform:3001';
   }
   return 'http://localhost:3001';
 };
@@ -471,7 +471,7 @@ export class FlowExecuteTool extends BaseTool {
           && skill.apiEndpoints?.runtimeMetadata?.sourceType === 'temporal_workflow'
         ) {
           const runtimeResponse = await axios.post(
-            `${authUrl}/capability-releases/runtime/skills/${resolvedSkillId}/execute`,
+            `${authUrl}/capabilities/runtime/skills/${resolvedSkillId}/execute`,
             { input: execParams },
             { headers: traceHeaders },
           );
@@ -520,7 +520,7 @@ export class FlowExecuteTool extends BaseTool {
       };
 
       if (templateId) {
-        const url = `${authUrl}/execution-flow-templates/${templateId}`;
+        const url = `${authUrl}/flows/${templateId}`;
         this.logger.debug(`Fetching template from: ${url}`);
         try {
           const response = await axios.get(url, { headers: traceHeaders });

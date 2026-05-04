@@ -1,8 +1,8 @@
 import React from 'react';
-import CapabilityReleasePage from './CapabilityReleasePage';
+import CapabilitiesPage from './CapabilitiesPage';
 
 const CapabilityStudioPage: React.FC = () => {
-  return <CapabilityReleasePage mode="studio" />;
+  return <CapabilitiesPage mode="studio" />;
 };
 
 export default CapabilityStudioPage;

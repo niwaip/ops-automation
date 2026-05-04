@@ -23,7 +23,7 @@ import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import {
   CapabilityValidation,
   capabilityReleaseApi,
-} from '../../api/capability-release';
+} from '../../api/capabilities';
 
 const { Title, Text } = Typography;
 
@@ -71,7 +71,7 @@ const CapabilityBuildDetailPage: React.FC = () => {
   const releaseIdFromQuery = searchParams.get('releaseId');
   const validationIdFromQuery = searchParams.get('validationId');
 
-  const releasesQuery = useQuery(['capability-releases'], capabilityReleaseApi.list);
+  const releasesQuery = useQuery(['capabilities'], capabilityReleaseApi.list);
 
   const resolvedReleaseId = useMemo(() => {
     if (releaseIdFromQuery) {
@@ -223,8 +223,8 @@ const CapabilityBuildDetailPage: React.FC = () => {
           <Button
             onClick={() =>
               resolvedReleaseId
-                ? navigate(`/admin/capability-releases?releaseId=${resolvedReleaseId}`)
-                : navigate('/admin/capability-releases')
+                ? navigate(`/admin/capabilities?releaseId=${resolvedReleaseId}`)
+                : navigate('/admin/capabilities')
             }
           >
             打开 Release
@@ -234,7 +234,7 @@ const CapabilityBuildDetailPage: React.FC = () => {
             disabled={!resolvedReleaseId}
             onClick={() =>
               resolvedReleaseId
-                ? navigate(`/admin/capability-releases?releaseId=${resolvedReleaseId}&mode=view`)
+                ? navigate(`/admin/capabilities?releaseId=${resolvedReleaseId}&mode=view`)
                 : undefined
             }
           >

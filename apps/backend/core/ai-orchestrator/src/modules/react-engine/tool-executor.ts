@@ -26,7 +26,7 @@ const getAuthServiceUrl = () => {
     return process.env.AUTH_SERVICE_URL;
   }
   if (process.env.DOCKER_ENV === 'true' || process.env.NODE_ENV === 'production') {
-    return 'http://ops-auth:3001';
+    return process.env.PLATFORM_SERVICE_URL || 'http://platform:3001';
   }
   return 'http://localhost:3001';
 };
@@ -171,7 +171,7 @@ export class ToolExecutor implements OnModuleInit {
       const tracePrefix = traceId ? `[${traceId}] ` : '';
       this.logger.log(`${tracePrefix}Loading dynamic flow templates as tools...`);
       const authUrl = getAuthServiceUrl();
-      const response = await axios.get<{ templates: FlowTemplate[] }>(`${authUrl}/execution-flow-templates`, {
+      const response = await axios.get<{ templates: FlowTemplate[] }>(`${authUrl}/flows`, {
         headers: traceId ? { [TRACE_ID_HEADER]: traceId } : undefined,
       });
       const templates = response.data.templates;
@@ -538,7 +538,12 @@ export class ToolExecutor implements OnModuleInit {
         !context.allowedToolNames.includes('api_call') &&
         !context.allowedToolNames.includes('skill_match');
 
-      if (isTaskConstrainedRun && !incomingSkillId && !matchedSkillId) {
+      // 自动补全 skillId：如果模型没传，但上下文中有唯一匹配的技能，则自动补齐
+      if (!incomingSkillId && matchedSkillId) {
+        params.skillId = matchedSkillId;
+      }
+
+      if (isTaskConstrainedRun && !params.skillId) {
         return this.buildToolResult(toolName, {
           success: false,
           output: '任务模式下必须先基于 skillId 选择技能，再执行 flow_execute',
@@ -550,7 +555,7 @@ export class ToolExecutor implements OnModuleInit {
 
       params = {
         ...params,
-        skillId: incomingSkillId || matchedSkillId,
+        skillId: params.skillId,
         params: params.params || context.collectedParams || {},
       };
     }

@@ -27,9 +27,23 @@ export class ProxyController {
     private readonly auditService: AuditService,
   ) {}
 
-  // Auth Service Routes
+  // Platform Service Routes
+  @All('platform/*path')
+  @ApiOperation({ summary: 'Proxy to Platform service' })
+  @ApiResponse({ status: 200, description: 'Successful response from Platform service' })
+  async proxyPlatform(
+    @Req() req: AuthenticatedRequest,
+    @Res() res: Response,
+    @Param('path') path: string,
+    @Body() body: unknown,
+    @Query() query: Record<string, string>,
+  ) {
+    return this.proxyToService(req, res, 'platform', path, body, query);
+  }
+
+  // Auth Service Routes (Legacy)
   @All('auth/*path')
-  @ApiOperation({ summary: 'Proxy to Auth service' })
+  @ApiOperation({ summary: 'Proxy to Auth service (Legacy)' })
   @ApiResponse({ status: 200, description: 'Successful response from Auth service' })
   async proxyAuth(
     @Req() req: AuthenticatedRequest,
@@ -38,7 +52,7 @@ export class ProxyController {
     @Body() body: unknown,
     @Query() query: Record<string, string>,
   ) {
-    return this.proxyToService(req, res, 'auth', path, body, query);
+    return this.proxyToService(req, res, 'platform', path, body, query);
   }
 
   // Template Service Routes
@@ -180,9 +194,9 @@ export class ProxyController {
 
     for (const serviceName of this.proxyService.getServiceNames()) {
       try {
-        await this.proxyService.proxyRequest(serviceName, 'GET', '/health');
+        const reachable = await this.proxyService.checkServiceHealth(serviceName);
         healthStatus[serviceName] = {
-          status: 'healthy',
+          status: reachable ? 'healthy' : 'unhealthy',
           url: this.proxyService.getServiceUrl(serviceName),
         };
       } catch (error) {

@@ -45,9 +45,26 @@ const getAuthServiceUrl = () => {
     return process.env.AUTH_SERVICE_URL;
   }
   if (process.env.DOCKER_ENV === 'true' || process.env.NODE_ENV === 'production') {
-    return 'http://ops-auth:3001';
+    return process.env.PLATFORM_SERVICE_URL || 'http://platform:3001';
   }
   return 'http://localhost:3001';
+};
+
+const tryParseJsonString = (value: unknown): unknown => {
+  if (typeof value !== 'string') {
+    return undefined;
+  }
+
+  const trimmed = value.trim();
+  if (!trimmed.startsWith('{') && !trimmed.startsWith('[')) {
+    return undefined;
+  }
+
+  try {
+    return JSON.parse(trimmed);
+  } catch {
+    return undefined;
+  }
 };
 
 const extractDownloadUrl = (value: unknown): string | undefined => {
@@ -58,6 +75,12 @@ const extractDownloadUrl = (value: unknown): string | undefined => {
   while (queue.length > 0 && inspected < 50) {
     const current = queue.shift();
     inspected += 1;
+
+    const parsed = tryParseJsonString(current);
+    if (parsed !== undefined) {
+      queue.push(parsed);
+      continue;
+    }
 
     if (!current || typeof current !== 'object' || visited.has(current)) {
       continue;
@@ -94,6 +117,12 @@ const extractTemporalLink = (value: unknown): string | undefined => {
   while (queue.length > 0 && inspected < 50) {
     const current = queue.shift();
     inspected += 1;
+
+    const parsed = tryParseJsonString(current);
+    if (parsed !== undefined) {
+      queue.push(parsed);
+      continue;
+    }
 
     if (!current || typeof current !== 'object' || visited.has(current)) {
       continue;
@@ -621,7 +650,7 @@ export class ChatController {
     try {
       const response = await axios.get<{
         runtimeType?: string;
-      }>(`${getAuthServiceUrl()}/capability-releases/runtime/skills/${skillId}/context`, {
+      }>(`${getAuthServiceUrl()}/capabilities/runtime/skills/${skillId}/context`, {
         headers: authToken ? { Authorization: authToken } : {},
       });
 

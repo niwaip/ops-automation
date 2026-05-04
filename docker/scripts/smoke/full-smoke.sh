@@ -6,7 +6,7 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-REPO_ROOT="$(dirname "$SCRIPT_DIR")"
+REPO_ROOT="$(cd "$SCRIPT_DIR/../../.." && pwd)"
 
 if [ "$(pwd)" != "$REPO_ROOT" ]; then
   echo "Please run this script from the repository root:"
@@ -22,7 +22,7 @@ if [ -f "$REPO_ROOT/docker/.env" ]; then
 fi
 
 NETWORK_NAME="${NETWORK_NAME:-ops-network}"
-AUTH_PORT="${AUTH_PORT:-3001}"
+PLATFORM_PORT="${PLATFORM_PORT:-${AUTH_PORT:-3001}}"
 CONTROL_PLANE_PORT="${CONTROL_PLANE_PORT:-3003}"
 AI_ORCHESTRATOR_PORT="${AI_ORCHESTRATOR_PORT:-3007}"
 CARBONE_ENGINE_PORT="${CARBONE_ENGINE_PORT:-3009}"
@@ -32,7 +32,7 @@ FULL_SMOKE_TASK_ATTEMPT_DELAY="${FULL_SMOKE_TASK_ATTEMPT_DELAY:-8}"
 FULL_SMOKE_EXECUTION_POLL_ATTEMPTS="${FULL_SMOKE_EXECUTION_POLL_ATTEMPTS:-36}"
 FULL_SMOKE_EXECUTION_POLL_DELAY="${FULL_SMOKE_EXECUTION_POLL_DELAY:-5}"
 
-AUTH_BASE_URL="http://127.0.0.1:${AUTH_PORT}"
+PLATFORM_BASE_URL="http://127.0.0.1:${PLATFORM_PORT}"
 CONTROL_PLANE_BASE_URL="http://127.0.0.1:${CONTROL_PLANE_PORT}/api"
 AI_ORCHESTRATOR_BASE_URL="http://127.0.0.1:${AI_ORCHESTRATOR_PORT}"
 CARBONE_BASE_URL="http://127.0.0.1:${CARBONE_ENGINE_PORT}"
@@ -105,13 +105,13 @@ retry() {
   return 1
 }
 
-auth_login() {
+platform_login() {
   local response_file
   local http_code
 
   response_file="$(mktemp)"
   http_code="$(curl -sS -o "$response_file" -w '%{http_code}' \
-    -X POST "${AUTH_BASE_URL}/auth/login" \
+    -X POST "${PLATFORM_BASE_URL}/auth/login" \
     -H 'Content-Type: application/json' \
     -d '{"username":"admin","password":"admin123"}' || true)"
 
@@ -330,7 +330,7 @@ main() {
   ensure_network
   ./docker/start-smart.sh docker-compose.full.yml up -d
 
-  retry "auth container running" 36 5 container_running "ops-auth" || fail "auth container not ready"
+  retry "platform container running" 36 5 container_running "ops-platform" || fail "platform container not ready"
   retry "control-plane container running" 36 5 container_running "ops-control-plane" || fail "control-plane container not ready"
   retry "ai-orchestrator container running" 36 5 container_running "ops-ai-orchestrator" || fail "ai-orchestrator container not ready"
   retry "session-broker container running" 36 5 container_running "ops-session-broker" || fail "session-broker container not ready"
@@ -342,7 +342,7 @@ main() {
   retry "temporal-ui container running" 36 5 container_running "ops-temporal-ui" || fail "temporal-ui container not ready"
   retry "temporal-sandbox-agent container running" 36 5 container_running "ops-temporal-sandbox-agent" || fail "temporal-sandbox-agent container not ready"
 
-  retry "admin login" 24 5 auth_login || fail "admin login unavailable"
+  retry "admin login" 24 5 platform_login || fail "admin login unavailable"
   token="$(extract_token)"
   idempotency_key="full-smoke-$(date +%s)-$$"
   EXECUTION_BEFORE_FILE="$(mktemp)"

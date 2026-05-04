@@ -74,7 +74,7 @@ export class RetryService {
    * Clear all retry counts for a session
    */
   clearSessionRetries(sessionId: string): void {
-    for (const [key] of this.retryCounts.entries()) {
+    for (const [key] of Array.from(this.retryCounts.entries())) {
       if (key.startsWith(`${sessionId}:`)) {
         this.retryCounts.delete(key);
       }

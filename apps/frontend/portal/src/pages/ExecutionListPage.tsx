@@ -40,7 +40,7 @@ import {
 import { useMutation, useQuery, useQueryClient } from 'react-query';
 import { executionApi, ExecutionDto, ExecutionStatus, ExecutionStepDto } from '../api/execution';
 import { skillApi } from '../api/skill';
-import { capabilityReleaseApi } from '../api/capability-release';
+import { capabilityReleaseApi } from '../api/capabilities';
 import { useChatStore } from '../components/chat';
 import { ListSectionHeader, PageTitleBlock } from '../components/page/PageScaffold';
 import { useAuthStore } from '../store/authStore';

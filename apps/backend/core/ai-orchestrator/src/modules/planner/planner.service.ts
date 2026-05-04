@@ -30,7 +30,7 @@ const getAuthServiceUrl = () => {
     return process.env.AUTH_SERVICE_URL;
   }
   if (process.env.DOCKER_ENV === 'true' || process.env.NODE_ENV === 'production') {
-    return 'http://ops-auth:3001';
+    return process.env.PLATFORM_SERVICE_URL || 'http://platform:3001';
   }
   return 'http://localhost:3001';
 };
@@ -224,7 +224,7 @@ export class PlannerService {
       templateIds.map(async (templateId) => {
         try {
           const response = await axios.get<ExecutionFlowTemplateResponse>(
-            `${this.authServiceUrl}/execution-flow-templates/${templateId}`,
+            `${this.authServiceUrl}/flows/${templateId}`,
             { headers },
           );
           return response.data.paramsSchema;

@@ -112,6 +112,9 @@ export class ReActEngineService {
       userRoles: context.userRoles,
       capabilitySnapshot: context.capabilitySnapshot,
       approvedToolNames: context.approvedToolNames,
+      executionId: context.executionId,
+      originalUserInput: context.originalUserInput,
+      currentFlowStep: context.currentFlowStep,
     };
   }
 

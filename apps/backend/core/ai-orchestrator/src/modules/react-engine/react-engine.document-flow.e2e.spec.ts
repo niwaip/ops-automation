@@ -18,7 +18,7 @@ describe('ReActEngineService Document Flow E2E', () => {
 
   it('runs document intake -> render fail -> param recover -> render success end-to-end', async () => {
     mockedAxios.get.mockImplementation(async (url: string) => {
-      if (url.includes('/execution-flow-templates')) {
+      if (url.includes('/flows')) {
         return { data: { templates: [] } } as any;
       }
       if (url.includes('/report-templates')) {

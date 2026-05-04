@@ -1,5 +1,5 @@
 import { apiClient } from './client';
-import { ExecutionFlowStep } from './execution-flow';
+import { ExecutionFlowStep } from './flows';
 import { useAuthStore } from '../store/authStore';
 
 // Types based on auth service DTOs

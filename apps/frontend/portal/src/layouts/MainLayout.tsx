@@ -54,12 +54,12 @@ const MainLayout: React.FC = () => {
             label: '工作单元',
           },
           {
-            key: '/admin/temporal-workflows',
+            key: '/admin/temporal',
             icon: <ThunderboltOutlined />,
             label: '工作流',
           },
           {
-            key: '/admin/capability-releases',
+            key: '/admin/capabilities',
             icon: <ThunderboltOutlined />,
             label: '流程发布',
           },
@@ -138,7 +138,7 @@ const MainLayout: React.FC = () => {
                 label: 'Prompt 调试',
               },
               {
-                key: '/admin/execution-flows',
+                key: '/admin/flows',
                 icon: <OrderedListOutlined />,
                 label: t('executionFlows'),
               },
@@ -195,14 +195,14 @@ const MainLayout: React.FC = () => {
     if (path.startsWith('/carbone-templates')) return '/carbone-templates';
     if (path.startsWith('/admin/users')) return '/admin/users';
     if (path.startsWith('/admin/models')) return '/admin/models';
-    if (path.startsWith('/admin/capability-releases')) return '/admin/capability-releases';
+    if (path.startsWith('/admin/capabilities')) return '/admin/capabilities';
     if (path.startsWith('/admin/capability-studio')) return '/admin/capability-studio';
     if (path.startsWith('/admin/capability-builds')) return '/admin/capability-studio';
     if (path.startsWith('/admin/skills')) return '/admin/skills';
     if (path.startsWith('/admin/tools')) return '/admin/tools';
     if (path.startsWith('/admin/prompt-debug')) return '/admin/prompt-debug';
-    if (path.startsWith('/admin/execution-flows')) return '/admin/execution-flows';
-    if (path.startsWith('/admin/temporal-workflows')) return '/admin/temporal-workflows';
+    if (path.startsWith('/admin/flows')) return '/admin/flows';
+    if (path.startsWith('/admin/temporal')) return '/admin/temporal';
     if (path.startsWith('/admin/activities')) return '/admin/activities';
     return path;
   };
@@ -210,8 +210,8 @@ const MainLayout: React.FC = () => {
   const getOpenKey = () => {
     const path = location.pathname;
     if (path.startsWith('/admin/activities')) return undefined;
-    if (path.startsWith('/admin/temporal-workflows')) return undefined;
-    if (path.startsWith('/admin/capability-releases')) return undefined;
+    if (path.startsWith('/admin/temporal')) return undefined;
+    if (path.startsWith('/admin/capabilities')) return undefined;
     if (path.startsWith('/admin')) return '/admin';
     return undefined;
   };

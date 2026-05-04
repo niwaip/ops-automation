@@ -14,10 +14,10 @@ import AIModelAdminPage from './pages/admin/AIModelAdminPage';
 import SkillAdminPage from './pages/admin/SkillAdminPage';
 import SystemToolAdminPage from './pages/admin/SystemToolAdminPage';
 import PromptDebugPage from './pages/admin/PromptDebugPage';
-import ExecutionFlowTemplatePage from './pages/admin/ExecutionFlowTemplatePage';
-import TemporalWorkflowPage from './pages/admin/TemporalWorkflowPage';
+import FlowsPage from './pages/admin/FlowsPage';
+import TemporalPage from './pages/admin/TemporalPage';
 import ActivityPage from './pages/admin/ActivityPage';
-import CapabilityReleasePage from './pages/admin/CapabilityReleasePage';
+import CapabilitiesPage from './pages/admin/CapabilitiesPage';
 import CapabilityStudioPage from './pages/admin/CapabilityStudioPage';
 import CapabilityBuildDetailPage from './pages/admin/CapabilityBuildDetailPage';
 import ReportTemplateListPage from './pages/ReportTemplateListPage';
@@ -85,7 +85,10 @@ function App() {
           <Route path="executions/new" element={<ExecutionCreatePage />} />
           <Route path="executions/:id" element={<ExecutionDetailPage />} />
           <Route path="executions/:id/takeover" element={<TakeoverWorkbenchPage />} />
-          <Route path="release-center" element={<Navigate to="/admin/capability-releases" replace />} />
+          <Route path="release-center" element={<Navigate to="/admin/capabilities" replace />} />
+          <Route path="admin/capability-releases" element={<Navigate to="/admin/capabilities" replace />} />
+          <Route path="admin/execution-flows" element={<Navigate to="/admin/flows" replace />} />
+          <Route path="admin/temporal-workflows" element={<Navigate to="/admin/temporal" replace />} />
           <Route path="published-skills" element={<PublishedSkillDetailPage />} />
           <Route path="published-skills/:skillId" element={<PublishedSkillDetailPage />} />
           <Route
@@ -105,10 +108,10 @@ function App() {
             }
           />
           <Route
-            path="admin/capability-releases"
+            path="admin/capabilities"
             element={
               <AdminRoute>
-                <CapabilityReleasePage />
+                <CapabilitiesPage />
               </AdminRoute>
             }
           />
@@ -153,18 +156,18 @@ function App() {
             }
           />
           <Route
-            path="admin/execution-flows"
+            path="admin/flows"
             element={
               <AdminRoute>
-                <ExecutionFlowTemplatePage />
+                <FlowsPage />
               </AdminRoute>
             }
           />
           <Route
-            path="admin/temporal-workflows"
+            path="admin/temporal"
             element={
               <AdminRoute>
-                <TemporalWorkflowPage />
+                <TemporalPage />
               </AdminRoute>
             }
           />

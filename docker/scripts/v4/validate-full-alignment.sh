@@ -7,8 +7,7 @@ set -euo pipefail
 
 SCRIPT_PATH="$(python3 -c 'import os,sys; print(os.path.realpath(sys.argv[1]))' "${BASH_SOURCE[0]}")"
 SCRIPT_DIR="$(cd "$(dirname "$SCRIPT_PATH")" && pwd)"
-DOCKER_DIR="$(dirname "$SCRIPT_DIR")"
-REPO_ROOT="$(dirname "$DOCKER_DIR")"
+REPO_ROOT="$(cd "$SCRIPT_DIR/../../.." && pwd)"
 
 if [ "$(pwd)" != "$REPO_ROOT" ]; then
   echo "Please run this script from the repository root:"
@@ -24,7 +23,8 @@ run_services() {
     /^Ops Automation - Docker Compose Launcher$/ { next }
     /^Environment configured:$/ { next }
     /^  PROJECT_ROOT:/ { next }
-    /^Running: docker compose -f / { next }
+    /^Using env file:/ { next }
+    /^Running: docker compose / { next }
     NF == 0 { next }
     { print }
   ' | sort -u
@@ -36,8 +36,8 @@ subtract_lines() {
   comm -23 <(printf '%s\n' "$left") <(printf '%s\n' "$right")
 }
 
-layered_services="$(run_services docker-compose.core.yml -f docker-compose.planner.yml -f docker-compose.runtime.yml -f docker-compose.experience.yml)"
-full_services="$(run_services docker-compose.full.yml)"
+layered_services="$(run_services compose/docker-compose.core.yml -f compose/docker-compose.planner.yml -f compose/docker-compose.runtime.yml -f compose/docker-compose.experience.yml)"
+full_services="$(run_services compose/docker-compose.full.yml)"
 
 missing_from_full="$(subtract_lines "$layered_services" "$full_services")"
 legacy_only_in_full="$(subtract_lines "$full_services" "$layered_services")"
