@@ -21,6 +21,9 @@ describe('CapabilityReleaseService', () => {
       $executeRawUnsafe: jest.fn(),
       $queryRawUnsafe: jest.fn(),
     };
+    const activityService = {
+      executeCodeInTemporalSandbox: jest.fn(),
+    };
     const skillService = {
       validateSkillToolsPayload: jest.fn(),
       createSkill: jest.fn(),
@@ -33,13 +36,13 @@ describe('CapabilityReleaseService', () => {
     const service = new CapabilityReleaseService(
       prisma as any,
       {} as any,
-      {} as any,
+      activityService as any,
       {} as any,
       skillService as any,
       toolCatalogService as any,
     );
 
-    return { service, prisma, skillService, toolCatalogService };
+    return { service, prisma, skillService, toolCatalogService, activityService };
   };
 
   it('archives the release and deactivates its published skill', async () => {
@@ -355,5 +358,76 @@ describe('CapabilityReleaseService', () => {
     expect(result.runtime).toBe('document');
     expect(result.success).toBe(true);
     expect(result.downloadUrl).toBe('http://localhost:3009/studio/download/doc-2');
+  });
+
+  it('executes document skill and wraps non-object response from carbone engine', async () => {
+    const { service, prisma } = createService();
+
+    prisma.$queryRawUnsafe.mockResolvedValueOnce([{ id: 'release-row-1' }]);
+    jest.spyOn(service as any, 'mapRelease').mockReturnValue({
+      id: 'release-1',
+      sourceType: 'execution_flow_template',
+    });
+    jest.spyOn(service as any, 'getCurrentSnapshotOrThrow').mockResolvedValue({
+      id: 'snapshot-1',
+      sourcePayload: {
+        sourceTemplate: JSON.stringify({ templateId: 'tpl-1' }),
+      },
+    });
+    jest.spyOn(service as any, 'insertAuditEvent').mockResolvedValue(undefined);
+    
+    // Carbone engine returns a plain string for some reason (hypothetical)
+    mockedAxios.post.mockResolvedValue({
+      data: 'SUCCESS_STRING',
+    } as any);
+
+    const result = await service.executePublishedSkill(
+      'skill-doc-string',
+      {},
+      'user-1',
+    );
+
+    expect(result.success).toBe(true);
+    expect(result.output).toEqual({ result: 'SUCCESS_STRING', templateId: 'tpl-1' });
+  });
+
+  it('executes temporal workflow and wraps string result into object', async () => {
+    const { service, prisma, activityService } = createService();
+
+    prisma.$queryRawUnsafe.mockResolvedValueOnce([{ id: 'release-row-1' }]);
+    jest.spyOn(service as any, 'mapRelease').mockReturnValue({
+      id: 'release-1',
+      sourceType: 'temporal_workflow',
+    });
+    jest.spyOn(service as any, 'getCurrentSnapshotOrThrow').mockResolvedValue({
+      id: 'snapshot-1',
+      sourcePayload: {
+        workflowDsl: {
+          workflowClassName: 'WeatherWorkflow',
+        },
+      },
+    });
+    jest.spyOn(service as any, 'resolveTemporalExecutableBuildOrThrow').mockResolvedValue({
+      id: 'build-1',
+      generatedCode: 'PYTHON_CODE',
+    });
+    jest.spyOn(service as any, 'insertAuditEvent').mockResolvedValue(undefined);
+    
+    // Mock activity service to return a string
+    jest.spyOn(activityService, 'executeCodeInTemporalSandbox').mockResolvedValue({
+      success: true,
+      result: '上海天气：晴，25度',
+      logs: ['Log 1'],
+    });
+
+    const result = await service.executePublishedSkill(
+      'skill-temporal',
+      { city: 'shanghai' },
+      'user-1',
+    );
+
+    expect(result.success).toBe(true);
+    expect(result.output).toEqual({ result: '上海天气：晴，25度' });
+    expect(result.result).toEqual({ result: '上海天气：晴，25度' });
   });
 });

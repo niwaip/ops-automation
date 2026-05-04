@@ -471,8 +471,30 @@ export class CapabilityReleaseService implements OnModuleInit {
         taskQueue,
         input as Record<string, any> | undefined,
       );
-      const normalizedResult = asRecord(result.result) || null;
-      const downloadUrl = extractDownloadUrl(result.result);
+
+      const rawResult = result.result;
+      const downloadUrl = extractDownloadUrl(rawResult);
+      const temporalWorkflowId = result.workflowId;
+      const temporalLink = temporalWorkflowId 
+        ? `http://localhost:8088/namespaces/default/workflows/${temporalWorkflowId}`
+        : null;
+
+      // 允许非对象结果透传，包装为标准对象
+      const normalizedResult = (rawResult !== undefined && rawResult !== null)
+        ? (typeof rawResult === 'object' && !Array.isArray(rawResult)
+          ? { 
+              ...(rawResult as Record<string, unknown>), 
+              ...(downloadUrl ? { downloadUrl } : {}),
+              ...(temporalLink ? { temporalLink } : {})
+            }
+          : { 
+              result: rawResult, 
+              ...(downloadUrl ? { downloadUrl } : {}),
+              ...(temporalLink ? { temporalLink } : {})
+            })
+        : (downloadUrl || temporalLink 
+            ? { ...(downloadUrl ? { downloadUrl } : {}), ...(temporalLink ? { temporalLink } : {}) } 
+            : null);
 
       await this.insertAuditEvent(
         release.id,
@@ -492,6 +514,7 @@ export class CapabilityReleaseService implements OnModuleInit {
           stepId: options?.stepId || null,
           fn,
           taskQueue,
+          temporalWorkflowId,
         },
       );
 
@@ -505,18 +528,9 @@ export class CapabilityReleaseService implements OnModuleInit {
         taskQueue,
         success: result.success,
         downloadUrl: downloadUrl || null,
-        output: normalizedResult
-          ? {
-              ...normalizedResult,
-              ...(downloadUrl ? { downloadUrl } : {}),
-            }
-          : null,
-        result: normalizedResult
-          ? {
-              ...normalizedResult,
-              ...(downloadUrl ? { downloadUrl } : {}),
-            }
-          : null,
+        temporalWorkflowId: temporalWorkflowId || null,
+        output: normalizedResult,
+        result: normalizedResult,
         logs: result.logs || [],
         error: result.error || null,
       };
@@ -4080,8 +4094,15 @@ ${logs.join('\n')}
       const response = await axios.post<Record<string, unknown>>(url, requestBody, {
         timeout: 120000,
       });
-      const rawResult = asRecord(response.data) || {};
-      const downloadUrl = extractDownloadUrl(rawResult);
+      const responseData = response.data;
+      const downloadUrl = extractDownloadUrl(responseData);
+      
+      const rawResult = (responseData !== undefined && responseData !== null)
+        ? (typeof responseData === 'object' && !Array.isArray(responseData)
+          ? (responseData as Record<string, unknown>)
+          : { result: responseData })
+        : {};
+
       const normalizedResult = {
         ...rawResult,
         ...(downloadUrl ? { downloadUrl } : {}),

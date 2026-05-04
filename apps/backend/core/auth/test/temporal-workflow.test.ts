@@ -1637,6 +1637,134 @@ describe('TemporalWorkflowService', () => {
     expect(repaired.warnings.join('\n')).toContain('fieldMappings');
   });
 
+  it('auto-fills blank fieldMappings from bodyMap aliases during AI draft repair', () => {
+    const { aiDraftService } = createService();
+
+    const repaired = (aiDraftService as any).repairCommonDraftPlanIssues({
+      workflowName: '天气查询',
+      inputParams: {
+        city: {
+          description: '城市',
+          required: true,
+          defaultValue: '',
+        },
+      },
+      steps: [
+        {
+          id: 'step_1',
+          name: '查询天气接口',
+          type: 'activity',
+          activityRef: 'builtin:httpRequest',
+          input: {
+            __httpRequest: {
+              method: 'GET',
+              urlTemplate: 'https://wttr.in/{city}',
+              responseMode: 'bodyMap',
+              responseFieldMappings: {
+                city: 'nearest_area.0.areaName.0.value',
+                temperature: 'current_condition.0.temp_C',
+              },
+            },
+          },
+        },
+        {
+          id: 'step_2',
+          name: '整理天气结果',
+          type: 'activity',
+          activityRef: 'builtin:structuredTransform',
+          input: {
+            __structuredTransform: {
+              contentType: 'json',
+              contentTemplate: '{content}',
+              outputMode: 'json',
+              outputSchema: {
+                city: 'string',
+                temperature: 'string',
+              },
+              contextTemplate: '',
+              fieldMappings: {
+                city: '',
+                temperature: '',
+              },
+              textTemplate: '',
+            },
+          },
+        },
+      ],
+    });
+
+    const transformConfig = repaired.steps[1].input.__structuredTransform;
+    expect(transformConfig.fieldMappings).toEqual({
+      city: 'city',
+      temperature: 'temperature',
+    });
+    expect(repaired.warnings.join('\n')).toContain('空 fieldMapping');
+  });
+
+  it('rejects fixed structuredTransform configs with blank fieldMappings', async () => {
+    const { service } = createService();
+
+    const result = await service.validate(
+      {
+        name: '空映射工作流',
+        workflowClassName: 'BlankFieldMappingWorkflow',
+        workflowDefnName: '空映射工作流',
+        taskQueue: 'SKILL_TASK_QUEUE',
+        steps: [
+          {
+            id: 'step_http',
+            name: '查询天气接口',
+            type: 'activity',
+            activityRef: 'builtin:httpRequest',
+            activityName: 'httpRequest',
+            input: {
+              __httpRequest: {
+                method: 'GET',
+                urlTemplate: 'https://wttr.in/{city}',
+                responseMode: 'bodyMap',
+                responseFieldMappings: {
+                  city: 'nearest_area.0.areaName.0.value',
+                  temperature: 'current_condition.0.temp_C',
+                },
+              },
+            },
+          },
+          {
+            id: 'step_transform',
+            name: '整理天气结果',
+            type: 'activity',
+            activityRef: 'builtin:structuredTransform',
+            activityName: 'structuredTransform',
+            input: {
+              __structuredTransform: {
+                contentType: 'json',
+                contentTemplate: '{content}',
+                instructionTemplate: '整理天气结果',
+                outputMode: 'json',
+                outputSchema: {
+                  city: 'string',
+                  temperature: 'string',
+                },
+                contextTemplate: '',
+                fieldMappings: {
+                  city: '',
+                  temperature: 'temperature',
+                },
+                textTemplate: '',
+              },
+            },
+          },
+        ],
+      },
+      {
+        activities: [],
+      },
+    );
+
+    expect(result.isValid).toBe(false);
+    expect(result.errors).toContain('整理天气结果 的 fieldMappings 存在空映射: city。空字符串会导致运行时把整块 content 回填到该字段，请显式填写来源路径、别名或删除这些字段。');
+  });
+
   it('uses configurable timeout for AI draft generation', async () => {
     const { aiDraftService } = createService();
     const originalTimeout = process.env.TEMPORAL_WORKFLOW_AI_DRAFT_TIMEOUT_MS;

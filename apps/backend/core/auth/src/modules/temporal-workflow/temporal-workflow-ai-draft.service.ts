@@ -347,6 +347,16 @@ export class TemporalWorkflowAiDraftService {
           ) {
             issues.push(`${stepName} 的 outputMode 为 json 时，必须提供非空 outputSchema。`);
           }
+          if (!isAiTransform) {
+            const blankFieldMappingKeys = this.collectBlankFieldMappingKeys(
+              fieldMappings && typeof fieldMappings === 'object' && !Array.isArray(fieldMappings)
+                ? fieldMappings as Record<string, any>
+                : {},
+            );
+            if (blankFieldMappingKeys.length > 0) {
+              issues.push(`${stepName} 的 fieldMappings 存在空映射: ${blankFieldMappingKeys.join('、')}。空字符串会导致运行时把整块 content 回填到该字段，请显式填写来源路径、别名或删除这些字段。`);
+            }
+          }
           if (!isAiTransform && outputMode === 'json') {
             const hasFieldMappings = Boolean(
               fieldMappings
@@ -530,6 +540,18 @@ export class TemporalWorkflowAiDraftService {
       const fieldMappings = transformConfig.fieldMappings && typeof transformConfig.fieldMappings === 'object' && !Array.isArray(transformConfig.fieldMappings)
         ? { ...(transformConfig.fieldMappings as Record<string, any>) }
         : {};
+      const blankFieldMappingKeys = this.collectBlankFieldMappingKeys(fieldMappings);
+      let repairedBlankFieldMappings = false;
+      blankFieldMappingKeys.forEach((key) => {
+        if (availableAliases.has(key) || runtimeInputKeys.has(key)) {
+          fieldMappings[key] = key;
+          repairedBlankFieldMappings = true;
+          warnings.push(`已自动修正步骤「${step?.name || step?.id || `step_${index + 1}`}」的空 fieldMapping: ${key} -> ${key}。`);
+        }
+      });
+      if (repairedBlankFieldMappings) {
+        transformConfig.fieldMappings = fieldMappings;
+      }
       let textTemplate = String(transformConfig.textTemplate || '').trim();
       let rewroteTemplate = false;
       for (const placeholder of this.extractTemplatePlaceholders(textTemplate)) {
@@ -614,6 +636,16 @@ export class TemporalWorkflowAiDraftService {
       }
     });
     return keys;
+  }
+
+  private collectBlankFieldMappingKeys(fieldMappings: Record<string, any>): string[] {
+    return Object.entries(fieldMappings || {})
+      .map(([key, value]) => ({
+        key: String(key || '').trim(),
+        value: typeof value === 'string' ? value.trim() : String(value ?? '').trim(),
+      }))
+      .filter((item) => item.key && !item.value)
+      .map((item) => item.key);
   }
 
   private hasUsableContextTemplate(value: unknown): boolean {

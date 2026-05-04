@@ -540,6 +540,7 @@ export class ActivityService {
     result?: any;
     logs?: string[];
     error?: string;
+    workflowId?: string;
   }> {
     const logger = new Logger('ActivityService.executeCodeInTemporalSandbox');
     const logs: string[] = [];
@@ -572,6 +573,7 @@ export class ActivityService {
         result: result.result,
         error: result.error,
         logs,
+        workflowId: result.workflowId,
       };
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : 'Unknown error';
@@ -766,9 +768,9 @@ export class ActivityService {
     fn: string,
     input: Record<string, any> | undefined,
     onLog: (log: string) => void,
-  ): Promise<{ success: boolean; result?: any; error?: string }> {
+  ): Promise<{ success: boolean; result?: any; error?: string; workflowId?: string }> {
     const activityId = `activity-${Date.now()}-${Math.random().toString(36).substring(7)}`;
-    const timeoutMs = Number(process.env.SANDBOX_AGENT_TIMEOUT_MS || 20000);
+    const timeoutMs = Number(process.env.SANDBOX_AGENT_TIMEOUT_MS || 180000);
 
     onLog(`[${new Date().toISOString()}] 连接到 Sandbox Agent: ${sandboxUrl}`);
     onLog(`[${new Date().toISOString()}] Activity ID: ${activityId}`);
@@ -838,7 +840,7 @@ export class ActivityService {
       const result = normalizeDocumentExecutionResult(executionResult?.result ?? executionResult);
 
       onLog(`[${new Date().toISOString()}] 代码执行成功，返回结果: ${JSON.stringify(result, null, 2)}`);
-      return { success: true, result };
+      return { success: true, result, workflowId: data.workflow_id };
     } catch (error) {
       const errorCode =
         error && typeof error === 'object' && 'code' in error ? String((error as any).code) : '';
