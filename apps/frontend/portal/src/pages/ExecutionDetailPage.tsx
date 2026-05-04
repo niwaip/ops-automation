@@ -24,7 +24,7 @@ import {
 import { useMutation, useQuery, useQueryClient } from 'react-query';
 import { executionApi, ExecutionDto, ExecutionStepDto } from '../api/execution';
 import { skillApi } from '../api/skill';
-import { capabilityReleaseApi } from '../api/capability-release';
+import { capabilityReleaseApi } from '../api/capabilities';
 import { useAuthStore } from '../store/authStore';
 import {
   EXECUTION_ACTIVE_POLLING_STATUSES,
@@ -56,6 +56,23 @@ const fixLocalhostLink = (url?: string): string | undefined => {
   return url;
 };
 
+const tryParseJsonValue = (value: unknown): unknown => {
+  if (typeof value !== 'string') {
+    return value;
+  }
+
+  const trimmed = value.trim();
+  if (!trimmed.startsWith('{') && !trimmed.startsWith('[')) {
+    return value;
+  }
+
+  try {
+    return JSON.parse(trimmed);
+  } catch {
+    return value;
+  }
+};
+
 // 美化文本内容，处理连续换行
 const beautifyText = (text: string, useDivider = true): string => {
   if (!text) return '';
@@ -64,6 +81,75 @@ const beautifyText = (text: string, useDivider = true): string => {
     .replace(/[ \t]+\n/g, '\n') // 去除行尾空格
     .replace(/\n\s*\n\s*\n+/g, useDivider ? '\n\n---\n\n' : '\n\n') // 将3个及以上的连续换行替换为分割线
     .replace(/^[\s\n]+|[\s\n]+$/g, ''); // 去除首尾空白
+};
+
+const renderJsonValue = (value: unknown, path = 'root'): React.ReactNode => {
+  if (typeof value === 'string') {
+    return `"${value}"`;
+  }
+
+  if (typeof value === 'number' || typeof value === 'boolean') {
+    return String(value);
+  }
+
+  if (value === null) {
+    return 'null';
+  }
+
+  if (Array.isArray(value)) {
+    return (
+      <>
+        [
+        {value.length > 0 && (
+          <div style={{ paddingLeft: 16 }}>
+            {value.map((item, index) => (
+              <div key={`${path}-${index}`}>
+                {renderJsonValue(item, `${path}.${index}`)}
+                {index < value.length - 1 ? ',' : ''}
+              </div>
+            ))}
+          </div>
+        )}
+        ]
+      </>
+    );
+  }
+
+  if (value && typeof value === 'object') {
+    const entries = Object.entries(value as Record<string, unknown>);
+    return (
+      <>
+        {'{'}
+        {entries.length > 0 && (
+          <div style={{ paddingLeft: 16 }}>
+            {entries.map(([key, item], index) => {
+              const isTemporalLink = key === 'temporalLink' && typeof item === 'string';
+              const fixedLink = isTemporalLink ? fixLocalhostLink(item) : undefined;
+
+              return (
+                <div key={`${path}.${key}`}>
+                  <span>"{key}": </span>
+                  {fixedLink ? (
+                    <>
+                      <a href={fixedLink} target="_blank" rel="noopener noreferrer">
+                        {fixedLink}
+                      </a>
+                    </>
+                  ) : (
+                    renderJsonValue(item, `${path}.${key}`)
+                  )}
+                  {index < entries.length - 1 ? ',' : ''}
+                </div>
+              );
+            })}
+          </div>
+        )}
+        {'}'}
+      </>
+    );
+  }
+
+  return String(value);
 };
 
 const stepTypeLabels: Record<string, { zh: string; en: string }> = {
@@ -521,6 +607,63 @@ const ExecutionDetailPage: React.FC = () => {
 
       {/* Execution Info */}
       <Card style={{ marginBottom: 16 }}>
+        {(() => {
+          const parsedResult = tryParseJsonValue(execution.resultJson) as any;
+          const temporalLink = fixLocalhostLink(parsedResult?.temporalLink);
+          if (!temporalLink) {
+            return null;
+          }
+
+          return (
+            <Descriptions column={2}>
+              <Descriptions.Item label={text.status}>
+                <Tag color={statusColors[execution.status]}>{statusLabels[execution.status]}</Tag>
+              </Descriptions.Item>
+              <Descriptions.Item label={isEnglish ? 'Skill' : '技能'}>
+                <Space direction="vertical" size={0}>
+                  <Text>{getSkillDisplayName(execution.skillId)}</Text>
+                  {getSkillDisplayName(execution.skillId) !== execution.skillId ? (
+                    <Text type="secondary">{`${text.skillId}: ${execution.skillId}`}</Text>
+                  ) : null}
+                </Space>
+              </Descriptions.Item>
+              <Descriptions.Item label={text.runtimeType}>{execution.runtimeType}</Descriptions.Item>
+              <Descriptions.Item label={text.riskLevel}>{execution.riskLevel}</Descriptions.Item>
+              <Descriptions.Item label={text.approvalStatus}>{execution.approvalStatus || '-'}</Descriptions.Item>
+              <Descriptions.Item label={text.createdAt}>
+                {new Date(execution.createdAt).toLocaleString()}
+              </Descriptions.Item>
+              {execution.startedAt && (
+                <Descriptions.Item label={text.startedAt}>
+                  {new Date(execution.startedAt).toLocaleString()}
+                </Descriptions.Item>
+              )}
+              {execution.endedAt && (
+                <Descriptions.Item label={text.endedAt}>
+                  {new Date(execution.endedAt).toLocaleString()}
+                </Descriptions.Item>
+              )}
+              {execution.failureReason && (
+                <Descriptions.Item label={text.failureReason} span={2}>
+                  <Text type="danger">{execution.failureReason}</Text>
+                </Descriptions.Item>
+              )}
+              {execution.failureCode && (
+                <Descriptions.Item label={text.failureCode}>
+                  <Text type="danger">{execution.failureCode}</Text>
+                </Descriptions.Item>
+              )}
+              <Descriptions.Item label={isEnglish ? 'Temporal Link' : 'Temporal 链接'} span={2}>
+                <a href={temporalLink} target="_blank" rel="noopener noreferrer">
+                  <Space>
+                    <ThunderboltOutlined />
+                    {temporalLink}
+                  </Space>
+                </a>
+              </Descriptions.Item>
+            </Descriptions>
+          );
+        })() || (
         <Descriptions column={2}>
           <Descriptions.Item label={text.status}>
             <Tag color={statusColors[execution.status]}>{statusLabels[execution.status]}</Tag>
@@ -559,17 +702,8 @@ const ExecutionDetailPage: React.FC = () => {
               <Text type="danger">{execution.failureCode}</Text>
             </Descriptions.Item>
           )}
-          {(execution.resultJson as any)?.temporalLink && (
-            <Descriptions.Item label={isEnglish ? 'Temporal Link' : 'Temporal 链接'} span={2}>
-              <a href={fixLocalhostLink((execution.resultJson as any).temporalLink)} target="_blank" rel="noopener noreferrer">
-                <Space>
-                  <ThunderboltOutlined />
-                  {fixLocalhostLink((execution.resultJson as any).temporalLink)}
-                </Space>
-              </a>
-            </Descriptions.Item>
-          )}
         </Descriptions>
+        )}
       </Card>
 
       {/* Output */}
@@ -579,14 +713,16 @@ const ExecutionDetailPage: React.FC = () => {
             <div>
               <Text strong>{text.result}:</Text>
               {(() => {
-                const resultObj = execution.resultJson as any;
+                const resultObj = tryParseJsonValue(execution.resultJson) as any;
                 const hasResult = resultObj && typeof resultObj === 'object' && 'result' in resultObj && typeof resultObj.result === 'string';
-                
-                // 过滤掉已在其他地方显示的字段
-                const filteredResult = { ...resultObj };
-                delete filteredResult.temporalLink;
-                const remainingKeys = Object.keys(filteredResult);
-                const onlyHasResultField = remainingKeys.length === 1 && 'result' in filteredResult;
+
+                const filteredResult = resultObj && typeof resultObj === 'object' && !Array.isArray(resultObj)
+                  ? { ...resultObj }
+                  : resultObj;
+                const remainingKeys = filteredResult && typeof filteredResult === 'object' && !Array.isArray(filteredResult)
+                  ? Object.keys(filteredResult)
+                  : [];
+                const onlyHasResultField = remainingKeys.length === 1 && remainingKeys[0] === 'result';
 
                 if (hasResult && onlyHasResultField) {
                   return (
@@ -608,7 +744,7 @@ const ExecutionDetailPage: React.FC = () => {
 
                 return (
                   <pre style={{ background: 'var(--bg-secondary)', color: 'var(--text-primary)', border: '1px solid var(--bg-secondary)', padding: 12, borderRadius: 8, overflow: 'auto', marginTop: 8, lineHeight: '1.6' }}>
-                    {JSON.stringify(filteredResult, null, 2)}
+                    {renderJsonValue(filteredResult)}
                   </pre>
                 );
               })()}

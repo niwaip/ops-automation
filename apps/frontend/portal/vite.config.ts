@@ -29,22 +29,22 @@ export default defineConfig({
     },
     proxy: {
       '/api/auth': {
-        target: getProxyTarget('ops-auth', 3001),
+        target: getProxyTarget('ops-platform', 3001),
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/api/, ''),
       },
       '/api/skills': {
-        target: getProxyTarget('ops-auth', 3001),
+        target: getProxyTarget('ops-platform', 3001),
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/api/, ''),
       },
       '/api/tools': {
-        target: getProxyTarget('ops-auth', 3001),
+        target: getProxyTarget('ops-platform', 3001),
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/api/, ''),
       },
       '/api/users': {
-        target: getProxyTarget('ops-auth', 3001),
+        target: getProxyTarget('ops-platform', 3001),
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/api/, ''),
       },
@@ -97,23 +97,23 @@ export default defineConfig({
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/api\/carbone/, '/studio'),
       },
-      '/api/execution-flow-templates': {
-        target: getProxyTarget('ops-auth', 3001),
+      '/api/flows': {
+        target: getProxyTarget('ops-platform', 3001),
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/api/, ''),
       },
-      '/api/temporal-workflow': {
-        target: getProxyTarget('ops-auth', 3001),
+      '/api/temporal': {
+        target: getProxyTarget('ops-platform', 3001),
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/api/, ''),
       },
       '/api/activities': {
-        target: getProxyTarget('ops-auth', 3001),
+        target: getProxyTarget('ops-platform', 3001),
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/api/, ''),
       },
-      '/api/capability-releases': {
-        target: getProxyTarget('ops-auth', 3001),
+      '/api/capabilities': {
+        target: getProxyTarget('ops-platform', 3001),
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/api/, ''),
       },

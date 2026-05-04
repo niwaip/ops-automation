@@ -1,12 +1,12 @@
 #!/bin/bash
 
 # Minimal live smoke test for the V4 core layer:
-# postgres + redis + auth + control-plane + session-broker
+# postgres + redis + platform + control-plane + session-broker
 
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-REPO_ROOT="$(dirname "$SCRIPT_DIR")"
+REPO_ROOT="$(cd "$SCRIPT_DIR/../../.." && pwd)"
 
 if [ "$(pwd)" != "$REPO_ROOT" ]; then
   echo "Please run this script from the repository root:"
@@ -23,11 +23,11 @@ if [ -f "$REPO_ROOT/docker/.env" ]; then
 fi
 
 NETWORK_NAME="${NETWORK_NAME:-ops-network}"
-AUTH_PORT="${AUTH_PORT:-3001}"
+PLATFORM_PORT="${PLATFORM_PORT:-${AUTH_PORT:-3001}}"
 CONTROL_PLANE_PORT="${CONTROL_PLANE_PORT:-3003}"
-AUTH_BASE_URL="http://127.0.0.1:${AUTH_PORT}"
+PLATFORM_BASE_URL="http://127.0.0.1:${PLATFORM_PORT}"
 CONTROL_PLANE_BASE_URL="http://127.0.0.1:${CONTROL_PLANE_PORT}/api"
-AUTH_CONTAINER="${AUTH_CONTAINER:-ops-auth}"
+PLATFORM_CONTAINER="${PLATFORM_CONTAINER:-${AUTH_CONTAINER:-ops-platform}}"
 CONTROL_PLANE_CONTAINER="${CONTROL_PLANE_CONTAINER:-ops-control-plane}"
 SESSION_BROKER_CONTAINER="${SESSION_BROKER_CONTAINER:-ops-session-broker}"
 ALLOW_DB_PUSH="${CORE_SMOKE_ALLOW_DB_PUSH:-0}"
@@ -105,25 +105,25 @@ exec_in_container() {
   docker exec "$container_name" sh -lc "$command"
 }
 
-auth_prisma_generate() {
-  exec_in_container "$AUTH_CONTAINER" "cd /app && npx prisma generate"
+platform_prisma_generate() {
+  exec_in_container "$PLATFORM_CONTAINER" "cd /app && npx prisma generate"
 }
 
-auth_db_push() {
-  exec_in_container "$AUTH_CONTAINER" "cd /app && npx prisma db push --accept-data-loss"
+platform_db_push() {
+  exec_in_container "$PLATFORM_CONTAINER" "cd /app && npx prisma db push --accept-data-loss"
 }
 
-auth_seed() {
-  exec_in_container "$AUTH_CONTAINER" "cd /app && npm run seed"
+platform_seed() {
+  exec_in_container "$PLATFORM_CONTAINER" "cd /app && npm run seed"
 }
 
-auth_login() {
+platform_login() {
   local response_file
   local http_code
 
   response_file="$(mktemp)"
   http_code="$(curl -sS -o "$response_file" -w '%{http_code}' \
-    -X POST "${AUTH_BASE_URL}/auth/login" \
+    -X POST "${PLATFORM_BASE_URL}/auth/login" \
     -H 'Content-Type: application/json' \
     -d '{"username":"admin","password":"admin123"}' || true)"
 
@@ -145,14 +145,14 @@ extract_access_token() {
   node -e "const fs=require('fs'); const data=JSON.parse(fs.readFileSync(process.argv[1],'utf8')); process.stdout.write(data.accessToken);" "$LOGIN_RESPONSE_FILE"
 }
 
-auth_me() {
+platform_me() {
   local token="$1"
   local response_file
   local http_code
 
   response_file="$(mktemp)"
   http_code="$(curl -sS -o "$response_file" -w '%{http_code}' \
-    "${AUTH_BASE_URL}/auth/me" \
+    "${PLATFORM_BASE_URL}/auth/me" \
     -H "Authorization: Bearer ${token}" || true)"
 
   if [ "$http_code" != "200" ]; then
@@ -200,41 +200,41 @@ main() {
   ensure_network
   run_core_compose up -d
 
-  retry "auth container running" 36 5 container_running "$AUTH_CONTAINER" || fail "auth container did not become ready"
+  retry "platform container running" 36 5 container_running "$PLATFORM_CONTAINER" || fail "platform container did not become ready"
   retry "control-plane container running" 36 5 container_running "$CONTROL_PLANE_CONTAINER" || fail "control-plane container did not become ready"
   retry "session-broker container running" 36 5 container_running "$SESSION_BROKER_CONTAINER" || fail "session-broker container did not become ready"
 
-  if ! retry "admin login" 6 5 auth_login; then
-    log "Existing admin login is not ready; attempting non-destructive auth seed"
-    retry "auth prisma generate" 24 5 auth_prisma_generate || fail "auth prisma generate did not become ready"
-    retry "auth seed" 24 5 auth_seed || fail "auth seed did not become ready"
+  if ! retry "admin login" 6 5 platform_login; then
+    log "Existing admin login is not ready; attempting non-destructive platform seed"
+    retry "platform prisma generate" 24 5 platform_prisma_generate || fail "platform prisma generate did not become ready"
+    retry "platform seed" 24 5 platform_seed || fail "platform seed did not become ready"
 
-    log "Restarting auth and control-plane after auth seed"
-    docker restart "$AUTH_CONTAINER" "$CONTROL_PLANE_CONTAINER" >/dev/null
-    retry "auth container running after restart" 24 5 container_running "$AUTH_CONTAINER" || fail "auth container did not become ready after restart"
+    log "Restarting platform and control-plane after platform seed"
+    docker restart "$PLATFORM_CONTAINER" "$CONTROL_PLANE_CONTAINER" >/dev/null
+    retry "platform container running after restart" 24 5 container_running "$PLATFORM_CONTAINER" || fail "platform container did not become ready after restart"
     retry "control-plane container running after restart" 24 5 container_running "$CONTROL_PLANE_CONTAINER" || fail "control-plane container did not become ready after restart"
 
-    if ! retry "admin login after auth seed" 12 5 auth_login; then
+    if ! retry "admin login after platform seed" 12 5 platform_login; then
       if [ "$ALLOW_DB_PUSH" != "1" ]; then
         fail "admin login is still unavailable after seed; set CORE_SMOKE_ALLOW_DB_PUSH=1 only for an isolated database if you want the script to run prisma db push"
       fi
 
       log "CORE_SMOKE_ALLOW_DB_PUSH=1 detected; running destructive-capable prisma db push for isolated database bootstrap"
-      retry "auth prisma db push" 12 5 auth_db_push || fail "auth prisma db push did not become ready"
-      retry "auth seed after db push" 12 5 auth_seed || fail "auth seed after db push did not become ready"
-      docker restart "$AUTH_CONTAINER" "$CONTROL_PLANE_CONTAINER" >/dev/null
-      retry "auth container running after db push restart" 24 5 container_running "$AUTH_CONTAINER" || fail "auth container did not become ready after db push restart"
+      retry "platform prisma db push" 12 5 platform_db_push || fail "platform prisma db push did not become ready"
+      retry "platform seed after db push" 12 5 platform_seed || fail "platform seed after db push did not become ready"
+      docker restart "$PLATFORM_CONTAINER" "$CONTROL_PLANE_CONTAINER" >/dev/null
+      retry "platform container running after db push restart" 24 5 container_running "$PLATFORM_CONTAINER" || fail "platform container did not become ready after db push restart"
       retry "control-plane container running after db push restart" 24 5 container_running "$CONTROL_PLANE_CONTAINER" || fail "control-plane container did not become ready after db push restart"
-      retry "admin login after db push" 20 5 auth_login || fail "admin login is unavailable after db push bootstrap"
+      retry "admin login after db push" 20 5 platform_login || fail "admin login is unavailable after db push bootstrap"
     fi
   fi
 
   access_token="$(extract_access_token)"
-  retry "auth /auth/me" 10 3 auth_me "$access_token" || fail "auth /auth/me did not become ready"
+  retry "platform /auth/me" 10 3 platform_me "$access_token" || fail "platform /auth/me did not become ready"
   retry "control-plane /api/executions" 20 5 control_plane_list_executions "$access_token" || fail "control-plane /api/executions did not become ready"
 
   log "Smoke test passed"
-  log "Auth login succeeded at ${AUTH_BASE_URL}/auth/login"
+  log "Platform login succeeded at ${PLATFORM_BASE_URL}/auth/login"
   log "Control-plane execution list succeeded at ${CONTROL_PLANE_BASE_URL}/executions"
 
   node -e "const fs=require('fs'); const data=JSON.parse(fs.readFileSync(process.argv[1],'utf8')); console.log('[core-smoke] executions total:', data.total);" "$EXECUTIONS_RESPONSE_FILE"

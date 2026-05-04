@@ -402,6 +402,42 @@ const ChatMessageComponent: React.FC<ChatMessageProps> = ({
 
     const downloadUrl = fixLocalhostLink(message.metadata?.downloadUrl);
     const temporalLink = fixLocalhostLink(message.metadata?.temporalLink);
+    const renderResourceLinks = () => (
+      <div className="chat-outcome-actions" style={{ marginTop: 12 }}>
+        <Space size={12} wrap>
+          {downloadUrl && (
+            <Button
+              type="primary"
+              ghost
+              size="small"
+              icon={<DownloadOutlined />}
+              onClick={() => window.open(downloadUrl, '_blank')}
+            >
+              下载生成的文档
+            </Button>
+          )}
+          {temporalLink && (
+            <Button
+              type="primary"
+              ghost
+              size="small"
+              icon={<ThunderboltOutlined />}
+              onClick={() => window.open(temporalLink, '_blank')}
+            >
+              在 Temporal 中查看详情
+            </Button>
+          )}
+        </Space>
+        {temporalLink && (
+          <div style={{ marginTop: 8 }}>
+            <Text type="secondary">Temporal URL：</Text>
+            <Typography.Link href={temporalLink} target="_blank" rel="noopener noreferrer" copyable>
+              {temporalLink}
+            </Typography.Link>
+          </div>
+        )}
+      </div>
+    );
 
     if (errorMessage) {
       return (
@@ -434,34 +470,7 @@ const ChatMessageComponent: React.FC<ChatMessageProps> = ({
               {fixedFinalResult}
             </ReactMarkdown>
           </div>
-          {(downloadUrl || temporalLink) && (
-            <div className="chat-outcome-actions" style={{ marginTop: 12 }}>
-              <Space size={12}>
-                {downloadUrl && (
-                  <Button
-                    type="primary"
-                    ghost
-                    size="small"
-                    icon={<DownloadOutlined />}
-                    onClick={() => window.open(downloadUrl, '_blank')}
-                  >
-                    下载生成的文档
-                  </Button>
-                )}
-                {temporalLink && (
-                  <Button
-                    type="primary"
-                    ghost
-                    size="small"
-                    icon={<ThunderboltOutlined />}
-                    onClick={() => window.open(temporalLink, '_blank')}
-                  >
-                    在 Temporal 中查看详情
-                  </Button>
-                )}
-              </Space>
-            </div>
-          )}
+          {(downloadUrl || temporalLink) && renderResourceLinks()}
           {shouldShowStructuredResult && (
             <details className="chat-outcome-details">
               <summary>查看结构化结果</summary>
@@ -489,34 +498,7 @@ const ChatMessageComponent: React.FC<ChatMessageProps> = ({
               {summaryToDisplay}
             </ReactMarkdown>
           </div>
-          {(downloadUrl || temporalLink) && (
-            <div className="chat-outcome-actions" style={{ marginTop: 12 }}>
-              <Space size={12}>
-                {downloadUrl && (
-                  <Button
-                    type="primary"
-                    ghost
-                    size="small"
-                    icon={<DownloadOutlined />}
-                    onClick={() => window.open(downloadUrl, '_blank')}
-                  >
-                    下载生成的文档
-                  </Button>
-                )}
-                {temporalLink && (
-                  <Button
-                    type="primary"
-                    ghost
-                    size="small"
-                    icon={<ThunderboltOutlined />}
-                    onClick={() => window.open(temporalLink, '_blank')}
-                  >
-                    在 Temporal 中查看详情
-                  </Button>
-                )}
-              </Space>
-            </div>
-          )}
+          {(downloadUrl || temporalLink) && renderResourceLinks()}
           {isWaitingInput && missingInputs.length > 0 && (
             <div className="chat-outcome-body">
               <div>请补充以下信息：</div>

@@ -143,7 +143,7 @@ services:
     environment:
       TEMPORAL_ADDRESS: temporal:7233
       TEMPORAL_NAMESPACE: default
-      AUTH_SERVICE_URL: http://${AUTH_SERVICE_HOST:-auth}:${AUTH_PORT:-3001}
+      AUTH_SERVICE_URL: http://${PLATFORM_SERVICE_HOST:-platform}:${PLATFORM_PORT:-3001}
       AI_ORCHESTRATOR_URL: http://${AI_ORCHESTRATOR_HOST:-ai-orchestrator}:${AI_ORCHESTRATOR_PORT:-3007}
       SANDBOX_TASK_QUEUE: sandbox-agent-task-queue
       ACTIVITY_VALIDATION_TASK_QUEUE: activity-validation-task-queue

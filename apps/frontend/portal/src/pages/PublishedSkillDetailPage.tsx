@@ -14,7 +14,7 @@ import type { ColumnsType } from 'antd/es/table';
 import { ReloadOutlined } from '@ant-design/icons';
 import { useQuery } from 'react-query';
 import { useNavigate } from 'react-router-dom';
-import { capabilityReleaseApi } from '../api/capability-release';
+import { capabilityReleaseApi } from '../api/capabilities';
 import { skillApi } from '../api/skill';
 
 const { Title, Text } = Typography;
@@ -141,7 +141,7 @@ const PublishedSkillDetailPage: React.FC = () => {
             type="link"
             size="small"
             disabled={!record.publishedReleaseId}
-            onClick={() => record.publishedReleaseId && navigate(`/admin/capability-releases?releaseId=${record.publishedReleaseId}&mode=view`)}
+            onClick={() => record.publishedReleaseId && navigate(`/admin/capabilities?releaseId=${record.publishedReleaseId}&mode=view`)}
           >
             发布详情
           </Button>

@@ -1,12 +1,12 @@
 #!/bin/bash
 
 # Minimal live smoke test for V4 planner layer on top of core:
-# ai-orchestrator + auth + control-plane (core)
+# ai-orchestrator + platform + control-plane (core)
 
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-REPO_ROOT="$(dirname "$SCRIPT_DIR")"
+REPO_ROOT="$(cd "$SCRIPT_DIR/../../.." && pwd)"
 
 if [ "$(pwd)" != "$REPO_ROOT" ]; then
   echo "Please run this script from the repository root:"
@@ -22,16 +22,16 @@ if [ -f "$REPO_ROOT/docker/.env" ]; then
 fi
 
 NETWORK_NAME="${NETWORK_NAME:-ops-network}"
-AUTH_PORT="${AUTH_PORT:-3001}"
+PLATFORM_PORT="${PLATFORM_PORT:-${AUTH_PORT:-3001}}"
 CONTROL_PLANE_PORT="${CONTROL_PLANE_PORT:-3003}"
 AI_ORCHESTRATOR_PORT="${AI_ORCHESTRATOR_PORT:-3007}"
 
-AUTH_BASE_URL="http://127.0.0.1:${AUTH_PORT}"
+PLATFORM_BASE_URL="http://127.0.0.1:${PLATFORM_PORT}"
 CONTROL_PLANE_BASE_URL="http://127.0.0.1:${CONTROL_PLANE_PORT}/api"
 AI_ORCHESTRATOR_BASE_URL="http://127.0.0.1:${AI_ORCHESTRATOR_PORT}"
 
 AI_CONTAINER="${AI_CONTAINER:-ops-ai-orchestrator}"
-AUTH_CONTAINER="${AUTH_CONTAINER:-ops-auth}"
+PLATFORM_CONTAINER="${PLATFORM_CONTAINER:-${AUTH_CONTAINER:-ops-platform}}"
 CONTROL_PLANE_CONTAINER="${CONTROL_PLANE_CONTAINER:-ops-control-plane}"
 
 LOGIN_RESPONSE_FILE=""
@@ -95,12 +95,12 @@ retry() {
   return 1
 }
 
-auth_login() {
+platform_login() {
   local response_file
   local http_code
   response_file="$(mktemp)"
   http_code="$(curl -sS -o "$response_file" -w '%{http_code}' \
-    -X POST "${AUTH_BASE_URL}/auth/login" \
+    -X POST "${PLATFORM_BASE_URL}/auth/login" \
     -H 'Content-Type: application/json' \
     -d '{"username":"admin","password":"admin123"}' || true)"
   if [ "$http_code" != "200" ] && [ "$http_code" != "201" ]; then
@@ -166,14 +166,14 @@ main() {
   log "Ensuring core layer is up"
   ensure_network
   run_compose docker-compose.core.yml up -d
-  retry "auth running" 36 5 container_running "$AUTH_CONTAINER" || fail "auth container not ready"
+  retry "platform running" 36 5 container_running "$PLATFORM_CONTAINER" || fail "platform container not ready"
   retry "control-plane running" 36 5 container_running "$CONTROL_PLANE_CONTAINER" || fail "control-plane container not ready"
 
   log "Starting planner layer"
   run_compose docker-compose.planner.yml up -d
   retry "ai-orchestrator running" 36 5 container_running "$AI_CONTAINER" || fail "ai-orchestrator container not ready"
 
-  retry "admin login" 12 5 auth_login || fail "admin login unavailable"
+  retry "admin login" 12 5 platform_login || fail "admin login unavailable"
   TOKEN="$(extract_token)"
   retry "planner /ai/chat task" 12 5 ai_chat_task "$TOKEN" || fail "planner task chat failed"
   retry "control-plane /api/executions" 12 5 control_plane_list "$TOKEN" || fail "control-plane list failed"

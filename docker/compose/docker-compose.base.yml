@@ -67,22 +67,22 @@ services:
   # ============================================
   # Backend Service Templates (override as needed)
   # ============================================
-  auth:
+  platform:
     <<: *common-node-service
-    container_name: ops-auth
+    container_name: ops-platform
     environment:
       <<: *common-env
       DOCKER_ENV: true
-      PORT: ${AUTH_PORT:-3001}
+      PORT: ${PLATFORM_PORT:-3001}
       JWT_SECRET: jwt_secret_key_change_in_production
       AI_ORCHESTRATOR_URL: http://${AI_ORCHESTRATOR_HOST:-ai-orchestrator}:${AI_ORCHESTRATOR_PORT:-3007}
       SANDBOX_AGENT_URL: http://temporal-sandbox-agent:8090
       TEMPORAL_SANDBOX_AGENT_URL: http://temporal-sandbox-agent:8090
       ACTIVITY_VALIDATION_AGENT_URL: http://temporal-sandbox-agent:8090
     ports:
-      - "${AUTH_PORT:-3001}:${AUTH_PORT:-3001}"
+      - "${PLATFORM_PORT:-3001}:${PLATFORM_PORT:-3001}"
     volumes:
-      - ${PROJECT_ROOT:-..}/apps/backend/core/auth:/app
+      - ${PROJECT_ROOT:-..}/apps/backend/core/platform:/app
       - auth_node_modules:/app/node_modules
     depends_on:
       postgres:
@@ -191,7 +191,7 @@ services:
       <<: *common-env
       PORT: ${AI_ORCHESTRATOR_PORT:-3007}
       INTERNAL_API_SHARED_SECRET: ${INTERNAL_API_SHARED_SECRET:-ops_internal_shared_secret_change_me}
-      AUTH_SERVICE_URL: http://${AUTH_SERVICE_HOST:-auth}:${AUTH_PORT:-3001}
+      AUTH_SERVICE_URL: http://${PLATFORM_SERVICE_HOST:-platform}:${PLATFORM_PORT:-3001}
       BROWSER_WORKER_URL: http://${BROWSER_WORKER_HOST:-browser-worker}:${BROWSER_WORKER_PORT:-3004}
       CONTROL_PLANE_URL: http://${CONTROL_PLANE_HOST:-control-plane}:${CONTROL_PLANE_PORT:-3003}
       CARBONE_SERVICE_URL: http://${CARBONE_ENGINE_HOST:-carbone-engine}:${CARBONE_ENGINE_PORT:-3009}
@@ -260,7 +260,7 @@ services:
       - ${PROJECT_ROOT:-..}/packages/contracts:/packages/contracts
       - portal_node_modules:/app/node_modules
     depends_on:
-      - auth
+      - platform
       - browser-worker
       - template
 

@@ -38,7 +38,7 @@ interface CapabilityRuntimeExecuteResult {
 export class DocumentRuntimeAdapter implements RuntimeAdapter {
   readonly runtimeType = 'document' as const;
   readonly routeKeys = [buildRuntimeAdapterRouteKey('document', 'document.render')] as const;
-  private readonly authServiceUrl = process.env.AUTH_SERVICE_URL || 'http://ops-auth:3001';
+  private readonly authServiceUrl = process.env.PLATFORM_SERVICE_URL || 'http://platform:3001';
 
   supports(request: RuntimeStepInvokeRequest): boolean {
     return request.runtimeType === 'document' && request.capabilityType === 'document.render';
@@ -46,7 +46,7 @@ export class DocumentRuntimeAdapter implements RuntimeAdapter {
 
   async invokeStep(request: RuntimeStepInvokeRequest): Promise<RuntimeStepInvokeResult> {
     const response = await axios.post<CapabilityRuntimeExecuteResult>(
-      `${this.authServiceUrl}/capability-releases/runtime/execute`,
+      `${this.authServiceUrl}/capabilities/runtime/execute`,
       {
         capabilityId: request.publishedSkillId || request.skillId,
         capabilityVersion:

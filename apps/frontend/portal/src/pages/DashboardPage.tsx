@@ -12,7 +12,7 @@ import { useTranslation } from 'react-i18next';
 import { useQuery } from 'react-query';
 import { executionApi, ExecutionDto, ExecutionStatus } from '../api/execution';
 import { skillApi } from '../api/skill';
-import { capabilityReleaseApi } from '../api/capability-release';
+import { capabilityReleaseApi } from '../api/capabilities';
 import { templateApi } from '../api/template';
 import {
   buildExecutionStatusLabels,

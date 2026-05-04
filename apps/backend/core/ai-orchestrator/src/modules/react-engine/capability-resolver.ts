@@ -28,7 +28,7 @@ export class CapabilityResolver {
   private getAuthServiceUrl(): string {
     return process.env.AUTH_SERVICE_URL
       || (process.env.DOCKER_ENV === 'true' || process.env.NODE_ENV === 'production'
-        ? 'http://ops-auth:3001'
+        ? (process.env.PLATFORM_SERVICE_URL || 'http://platform:3001')
         : 'http://localhost:3001');
   }
 
@@ -261,7 +261,7 @@ export class CapabilityResolver {
     }
 
     try {
-      const response = await fetch(`${this.getAuthServiceUrl()}/capability-releases/runtime/skills/${selectedSkillId}/context`, {
+      const response = await fetch(`${this.getAuthServiceUrl()}/capabilities/runtime/skills/${selectedSkillId}/context`, {
         headers: {
           ...(context.authToken ? { Authorization: context.authToken } : {}),
           ...(context.traceId ? { 'x-trace-id': context.traceId } : {}),

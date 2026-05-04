@@ -26,7 +26,7 @@ const getAuthServiceUrl = () => {
     return process.env.AUTH_SERVICE_URL;
   }
   if (process.env.DOCKER_ENV === 'true' || process.env.NODE_ENV === 'production') {
-    return 'http://ops-auth:3001';
+    return process.env.PLATFORM_SERVICE_URL || 'http://platform:3001';
   }
   return 'http://localhost:3001';
 };
@@ -171,7 +171,7 @@ export class ToolExecutor implements OnModuleInit {
       const tracePrefix = traceId ? `[${traceId}] ` : '';
       this.logger.log(`${tracePrefix}Loading dynamic flow templates as tools...`);
       const authUrl = getAuthServiceUrl();
-      const response = await axios.get<{ templates: FlowTemplate[] }>(`${authUrl}/execution-flow-templates`, {
+      const response = await axios.get<{ templates: FlowTemplate[] }>(`${authUrl}/flows`, {
         headers: traceId ? { [TRACE_ID_HEADER]: traceId } : undefined,
       });
       const templates = response.data.templates;

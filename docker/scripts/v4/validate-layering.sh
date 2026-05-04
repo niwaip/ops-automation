@@ -8,8 +8,7 @@ set -euo pipefail
 
 SCRIPT_PATH="$(python3 -c 'import os,sys; print(os.path.realpath(sys.argv[1]))' "${BASH_SOURCE[0]}")"
 SCRIPT_DIR="$(cd "$(dirname "$SCRIPT_PATH")" && pwd)"
-DOCKER_DIR="$(dirname "$SCRIPT_DIR")"
-REPO_ROOT="$(dirname "$DOCKER_DIR")"
+REPO_ROOT="$(cd "$SCRIPT_DIR/../../.." && pwd)"
 
 if [ "$(pwd)" != "$REPO_ROOT" ]; then
   echo "Please run this script from the repository root:"
@@ -25,7 +24,8 @@ run_services() {
     /^Ops Automation - Docker Compose Launcher$/ { next }
     /^Environment configured:$/ { next }
     /^  PROJECT_ROOT:/ { next }
-    /^Running: docker compose -f / { next }
+    /^Using env file:/ { next }
+    /^Running: docker compose / { next }
     NF == 0 { next }
     { print }
   '
@@ -50,8 +50,8 @@ assert_services_equal() {
 }
 
 core_expected=$(cat <<'EOF'
-auth
 control-plane
+platform
 postgres
 redis
 session-broker
@@ -81,11 +81,11 @@ EOF
 
 full_expected=$(cat <<'EOF'
 ai-orchestrator
-auth
 browser-chrome
 browser-worker
 carbone-engine
 control-plane
+platform
 portal
 postgres
 redis
@@ -97,14 +97,15 @@ temporal-ui
 EOF
 )
 
+
 echo "Validating V4 compose layers from $REPO_ROOT"
 echo ""
 
-core_actual="$(run_services docker-compose.core.yml | sort)"
-planner_actual="$(run_services docker-compose.planner.yml | sort)"
-runtime_actual="$(run_services docker-compose.runtime.yml | sort)"
-experience_actual="$(run_services docker-compose.experience.yml | sort)"
-full_actual="$(run_services docker-compose.core.yml -f docker-compose.planner.yml -f docker-compose.runtime.yml -f docker-compose.experience.yml | sort)"
+core_actual="$(run_services compose/docker-compose.core.yml | sort)"
+planner_actual="$(run_services compose/docker-compose.planner.yml | sort)"
+runtime_actual="$(run_services compose/docker-compose.runtime.yml | sort)"
+experience_actual="$(run_services compose/docker-compose.experience.yml | sort)"
+full_actual="$(run_services compose/docker-compose.core.yml -f compose/docker-compose.planner.yml -f compose/docker-compose.runtime.yml -f compose/docker-compose.experience.yml | sort)"
 
 assert_services_equal "core layer" "$core_actual" "$core_expected"
 assert_services_equal "planner layer" "$planner_actual" "$planner_expected"

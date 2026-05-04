@@ -10,9 +10,14 @@ export interface ServiceConfig {
 @Injectable()
 export class ProxyService {
   private serviceConfigs: Record<string, ServiceConfig> = {
+    platform: {
+      name: 'platform',
+      baseUrl: process.env.PLATFORM_SERVICE_URL || 'http://platform:3001',
+      timeout: 5000,
+    },
     auth: {
-      name: 'auth',
-      baseUrl: process.env.AUTH_SERVICE_URL || 'http://auth:3001',
+      name: 'platform',
+      baseUrl: process.env.PLATFORM_SERVICE_URL || 'http://platform:3001',
       timeout: 5000,
     },
     template: {

@@ -28,6 +28,7 @@ cd "$PROJECT_ROOT"
 get_service_port() {
     case "$1" in
         "ai-orchestrator") echo 3007 ;;
+        "platform") echo 3001 ;;
         "auth") echo 3001 ;;
         "session-broker") echo 3002 ;;
         "control-plane") echo 3003 ;;
@@ -42,7 +43,8 @@ get_service_port() {
 get_service_dir() {
     case "$1" in
         "ai-orchestrator") echo "apps/backend/core/ai-orchestrator" ;;
-        "auth") echo "apps/backend/core/auth" ;;
+        "platform") echo "apps/backend/core/platform" ;;
+        "auth") echo "apps/backend/core/platform" ;;
         "session-broker") echo "apps/backend/core/session-broker" ;;
         "control-plane") echo "apps/backend/core/control-plane" ;;
         "browser-worker") echo "apps/backend/runtime/browser-worker" ;;
@@ -54,7 +56,7 @@ get_service_dir() {
 }
 
 # Services to start (NestJS services only, portal is separate)
-NEST_SERVICES="ai-orchestrator auth session-broker control-plane template replay-engine browser-worker"
+NEST_SERVICES="ai-orchestrator platform session-broker control-plane template replay-engine browser-worker"
 
 # Log directory
 LOG_DIR="$PROJECT_ROOT/docker/logs"
@@ -156,10 +158,10 @@ run_migrations() {
         done
     fi
 
-    # Run Prisma migrations for auth service
-    if [ -d "apps/backend/core/auth/prisma" ]; then
-        log_info "Running Prisma migrations for auth service..."
-        cd apps/backend/core/auth
+    # Run Prisma migrations for platform service
+    if [ -d "apps/backend/core/platform/prisma" ]; then
+        log_info "Running Prisma migrations for platform service..."
+        cd apps/backend/core/platform
         if [ -f "prisma/schema.prisma" ]; then
             npx prisma migrate deploy 2>/dev/null || npx prisma db push --skip-generate 2>/dev/null || true
         fi
@@ -293,7 +295,7 @@ show_status() {
     echo "=========================================="
     echo ""
 
-    for service in ai-orchestrator auth session-broker control-plane template replay-engine browser-worker portal; do
+    for service in ai-orchestrator platform session-broker control-plane template replay-engine browser-worker portal; do
         local port=$(get_service_port "$service")
         local status="NOT RUNNING"
         local color=$RED
@@ -391,7 +393,7 @@ if [ -n "$ONLY_SERVICE" ]; then
         wait_for_service "$ONLY_SERVICE" "$port"
     else
         log_error "Unknown service: $ONLY_SERVICE"
-        echo "Available services: ai-orchestrator auth session-broker control-plane template replay-engine browser-worker portal"
+        echo "Available services: ai-orchestrator platform session-broker control-plane template replay-engine browser-worker portal"
         exit 1
     fi
 else
@@ -405,7 +407,7 @@ log_success "Development environment is ready!"
 echo ""
 echo "Service URLs:"
 echo "  - AI Orchestrator:  http://localhost:3000"
-echo "  - Auth:             http://localhost:3001"
+echo "  - Platform:         http://localhost:3001"
 echo "  - Session Broker:   http://localhost:3002"
 echo "  - Control Plane:    http://localhost:3003"
 echo "  - Template:         http://localhost:3004"

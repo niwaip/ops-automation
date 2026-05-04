@@ -17,7 +17,8 @@
     "noFallthroughCasesInSwitch": true,
     "baseUrl": ".",
     "paths": {
-      "@/*": ["src/*"]
+      "@/*": ["src/*"],
+      "@ops/contracts": ["../../../packages/contracts/index.d.ts"]
     }
   },
   "include": ["src"],

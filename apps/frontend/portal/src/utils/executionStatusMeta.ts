@@ -90,7 +90,22 @@ export const EXECUTION_STATUS_OPTIONS_ZH = EXECUTION_STATUS_VALUES.map((status) 
 
 export const buildExecutionStatusLabels = (
   overrides?: Partial<Record<ExecutionStatus, string>>,
-): Record<ExecutionStatus, string> => ({
-  ...EXECUTION_STATUS_LABELS_ZH,
-  ...overrides,
-});
+): Record<ExecutionStatus, string> => {
+  const labels: Record<ExecutionStatus, string> = {
+    ...EXECUTION_STATUS_LABELS_ZH,
+  };
+
+  if (!overrides) {
+    return labels;
+  }
+
+  for (const [status, label] of Object.entries(overrides) as Array<
+    [ExecutionStatus, string | undefined]
+  >) {
+    if (label !== undefined) {
+      labels[status] = label;
+    }
+  }
+
+  return labels;
+};

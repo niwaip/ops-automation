@@ -21,7 +21,7 @@ import { ArrowLeftOutlined, LoadingOutlined, PlayCircleOutlined, RobotOutlined, 
 import { useMutation, useQuery, useQueryClient } from 'react-query';
 import { useTranslation } from 'react-i18next';
 import { executionApi } from '../api/execution';
-import { capabilityReleaseApi } from '../api/capability-release';
+import { capabilityReleaseApi } from '../api/capabilities';
 import { SkillParamsSchema, skillApi, SkillConfigDTO } from '../api/skill';
 import { aiApi } from '../api/ai';
 import type { UploadProps } from 'antd';

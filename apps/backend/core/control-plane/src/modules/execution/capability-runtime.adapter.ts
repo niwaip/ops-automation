@@ -36,7 +36,7 @@ interface CapabilityRuntimeExecuteResult {
 export class CapabilityRuntimeAdapter implements RuntimeAdapter {
   readonly runtimeType = 'custom' as const;
   readonly routeKeys = [buildRuntimeAdapterRouteKey('custom', 'skill.runtime')] as const;
-  private readonly authServiceUrl = process.env.AUTH_SERVICE_URL || 'http://ops-auth:3001';
+  private readonly authServiceUrl = process.env.PLATFORM_SERVICE_URL || 'http://platform:3001';
 
   supports(request: RuntimeStepInvokeRequest): boolean {
     return request.capabilityType === 'skill.runtime';
@@ -44,7 +44,7 @@ export class CapabilityRuntimeAdapter implements RuntimeAdapter {
 
   async invokeStep(request: RuntimeStepInvokeRequest): Promise<RuntimeStepInvokeResult> {
     const response = await axios.post<CapabilityRuntimeExecuteResult>(
-      `${this.authServiceUrl}/capability-releases/runtime/execute`,
+      `${this.authServiceUrl}/capabilities/runtime/execute`,
       {
         capabilityId: request.publishedSkillId || request.skillId,
         capabilityVersion:
