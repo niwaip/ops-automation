@@ -153,6 +153,7 @@ export interface ExecuteCapabilityRuntimeResultDTO {
   taskQueue?: string;
   success: boolean;
   downloadUrl?: string | null;
+  temporalWorkflowId?: string | null;
   output?: Record<string, unknown> | null;
   result?: Record<string, unknown> | null;
   usage?: LLMUsage;

@@ -86,6 +86,42 @@ const extractDownloadUrl = (value: unknown): string | undefined => {
   return undefined;
 };
 
+const extractTemporalLink = (value: unknown): string | undefined => {
+  const queue: unknown[] = [value];
+  const visited = new Set<unknown>();
+  let inspected = 0;
+
+  while (queue.length > 0 && inspected < 50) {
+    const current = queue.shift();
+    inspected += 1;
+
+    if (!current || typeof current !== 'object' || visited.has(current)) {
+      continue;
+    }
+    visited.add(current);
+
+    if (Array.isArray(current)) {
+      current.forEach((item) => queue.push(item));
+      continue;
+    }
+
+    const record = current as Record<string, unknown>;
+    const directUrl = [record.temporalLink, record.temporal_link]
+      .find((item): item is string => typeof item === 'string' && item.trim().length > 0);
+    if (directUrl) {
+      return directUrl;
+    }
+
+    Object.values(record).forEach((item) => {
+      if (item && typeof item === 'object') {
+        queue.push(item);
+      }
+    });
+  }
+
+  return undefined;
+};
+
 @ApiTags('AI-Chat')
 @Controller('ai')
 export class ChatController {
@@ -1374,6 +1410,7 @@ export class ChatController {
       if (status === CONTROL_PLANE_EXECUTION_STATUS.SUCCEEDED) {
         if (rawResult !== null && rawResult !== undefined) {
           const downloadUrl = extractDownloadUrl(rawResult);
+          const temporalLink = extractTemporalLink(rawResult);
           return {
             type: StreamEventType.RESULT,
             content: this.formatExecutionResult(rawResult, executionId),
@@ -1382,6 +1419,7 @@ export class ChatController {
               status,
               result: rawResult,
               downloadUrl,
+              temporalLink,
               hasBusinessResult: true,
               usage: execution.usage,
             },
@@ -1467,13 +1505,18 @@ export class ChatController {
 
     if (result && typeof result === 'object') {
       const record = result as Record<string, unknown>;
-      const preferredFields = ['finalAnswer', 'formatted_output', 'summary', 'message', 'text', 'content', 'output'];
+      const preferredFields = ['finalAnswer', 'formatted_output', 'summary', 'message', 'text', 'content', 'output', 'result'];
 
       for (const field of preferredFields) {
         const value = record[field];
         if (typeof value === 'string' && value.trim()) {
           return value;
         }
+      }
+
+      // 如果没有找到首选文本字段，但包含 temporalLink，也要确保不只是返回 JSON
+      if (record.temporalLink && Object.keys(record).length <= 2) {
+        return '任务执行成功。';
       }
 
       return `任务已完成，返回结果如下：\n\n${JSON.stringify(result, null, 2)}\n\n执行单 ID: ${executionId}`;

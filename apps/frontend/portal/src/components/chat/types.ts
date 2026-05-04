@@ -108,6 +108,7 @@ export interface ChatMessage {
     files?: string[];
     fileUrl?: string;
     downloadUrl?: string;
+    temporalLink?: string;
     missingInputs?: Array<{
       name?: string;
       description?: string;
