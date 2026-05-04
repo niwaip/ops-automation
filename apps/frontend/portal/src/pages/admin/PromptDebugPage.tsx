@@ -27,6 +27,9 @@ import {
 } from '@ant-design/icons';
 import { useMutation, useQuery, useQueryClient } from 'react-query';
 import { useSearchParams } from 'react-router-dom';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+import '../../components/chat/ChatMessage.css';
 import { useChatStore } from '../../components/chat';
 import type { PromptDebugRecord } from '../../components/chat/types';
 import { executionApi, ExecutionDto, ExecutionStepDto } from '../../api/execution';
@@ -52,6 +55,16 @@ const renderTag = (label: string, color?: string) => (
 );
 
 const stringifyPretty = (value: unknown) => JSON.stringify(value, null, 2);
+
+// 美化文本内容，处理连续换行
+const beautifyText = (text: string, useDivider = true): string => {
+  if (!text) return '';
+  return text
+    .replace(/\r\n/g, '\n') // 统一换行符
+    .replace(/[ \t]+\n/g, '\n') // 去除行尾空格
+    .replace(/\n\s*\n\s*\n+/g, useDivider ? '\n\n---\n\n' : '\n\n') // 将3个及以上的连续换行替换为分割线
+    .replace(/^[\s\n]+|[\s\n]+$/g, ''); // 去除首尾空白
+};
 
 const hasDetailedLlmCalls = (
   promptDebug?: PromptDebugRecord['promptDebug'] | null,
@@ -95,9 +108,11 @@ const renderMessageBubble = (
     styles={{ body: { padding: 12 } }}
     title={<Space size={8}><Tag color={role === 'system' ? 'purple' : role === 'assistant' ? 'green' : 'blue'}>{role}</Tag></Space>}
   >
-    <pre style={{ margin: 0, whiteSpace: 'pre-wrap', wordBreak: 'break-word', maxHeight: 240, overflow: 'auto' }}>
-      {content}
-    </pre>
+    <div className="chat-message-markdown" style={{ maxHeight: 240, overflow: 'auto' }}>
+      <ReactMarkdown remarkPlugins={[remarkGfm]}>
+        {beautifyText(content)}
+      </ReactMarkdown>
+    </div>
   </Card>
 );
 

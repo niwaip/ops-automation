@@ -5,7 +5,7 @@
 
 import React, { useMemo, useState } from 'react';
 import { Avatar, Button, Modal, Space, Switch, Tag, Typography, message as antdMessage } from 'antd';
-import { UserOutlined, RobotOutlined, FileTextOutlined, DownOutlined, RightOutlined, CopyOutlined, RedoOutlined, CheckOutlined, CloseOutlined, LoadingOutlined, EyeOutlined } from '@ant-design/icons';
+import { UserOutlined, RobotOutlined, FileTextOutlined, DownOutlined, RightOutlined, CopyOutlined, RedoOutlined, CheckOutlined, CloseOutlined, LoadingOutlined, EyeOutlined, DownloadOutlined, ThunderboltOutlined } from '@ant-design/icons';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { ChatMessage } from './types';
@@ -122,6 +122,17 @@ const fixLocalhostLink = (url?: string): string | undefined => {
   return url;
 };
 
+// 美化文本内容，处理连续换行
+const beautifyText = (text: string, useDivider = true): string => {
+  if (!text) return '';
+  const normalized = text
+    .replace(/\r\n/g, '\n') // 统一换行符
+    .replace(/[ \t]+\n/g, '\n') // 去除行尾空格
+    .replace(/\n\s*\n\s*\n+/g, useDivider ? '\n\n---\n\n' : '\n\n') // 将3个及以上的连续换行替换为分割线或双换行
+    .replace(/^[\s\n]+|[\s\n]+$/g, ''); // 去除首尾空白
+  return normalized;
+};
+
 const ChatMessageComponent: React.FC<ChatMessageProps> = ({
   message,
   isStreaming,
@@ -223,7 +234,7 @@ const ChatMessageComponent: React.FC<ChatMessageProps> = ({
   const answerWithoutTaskCheckbox = useMemo(
     () => {
       const cleaned = answer.replace(/\n?- \[x\]\s*任务完成（可改为未完成）\s*$/m, '').trim();
-      return fixLocalhostLink(cleaned) || '';
+      return beautifyText(fixLocalhostLink(cleaned) || '');
     },
     [answer],
   );
@@ -289,16 +300,7 @@ const ChatMessageComponent: React.FC<ChatMessageProps> = ({
 
   // 渲染下载链接
   const renderDownloadLink = () => {
-    const downloadUrl = fixLocalhostLink(message.metadata?.downloadUrl);
-    if (!downloadUrl) return null;
-
-    return (
-      <div className="chat-message-download">
-        <a href={downloadUrl} target="_blank" rel="noopener noreferrer">
-          点击下载文档
-        </a>
-      </div>
-    );
+    return null; // 已集成到 renderOutcomeCard 中
   };
 
   // 渲染用量统计
@@ -342,7 +344,7 @@ const ChatMessageComponent: React.FC<ChatMessageProps> = ({
         {thoughtsExpanded && (
           <div className="chat-thoughts-content">
             {thoughts.map((thought, idx) => (
-              <div key={idx} className="chat-thought-step">{thought}</div>
+              <div key={idx} className="chat-thought-step">{beautifyText(thought, false)}</div>
             ))}
           </div>
         )}
@@ -398,6 +400,9 @@ const ChatMessageComponent: React.FC<ChatMessageProps> = ({
   const renderOutcomeCard = () => {
     if (isUser) return null;
 
+    const downloadUrl = fixLocalhostLink(message.metadata?.downloadUrl);
+    const temporalLink = fixLocalhostLink(message.metadata?.temporalLink);
+
     if (errorMessage) {
       return (
         <div className="chat-outcome-card error">
@@ -416,7 +421,7 @@ const ChatMessageComponent: React.FC<ChatMessageProps> = ({
     }
 
     if (finalResult) {
-      const fixedFinalResult = fixLocalhostLink(finalResult);
+      const fixedFinalResult = beautifyText(fixLocalhostLink(finalResult) || '');
       return (
         <div className="chat-outcome-card success">
           <div className="chat-outcome-title">{hasBusinessResult ? '任务结果' : '任务完成'}</div>
@@ -426,9 +431,37 @@ const ChatMessageComponent: React.FC<ChatMessageProps> = ({
           </div>
           <div className="chat-outcome-body">
             <ReactMarkdown remarkPlugins={[remarkGfm]}>
-              {fixedFinalResult || ''}
+              {fixedFinalResult}
             </ReactMarkdown>
           </div>
+          {(downloadUrl || temporalLink) && (
+            <div className="chat-outcome-actions" style={{ marginTop: 12 }}>
+              <Space size={12}>
+                {downloadUrl && (
+                  <Button
+                    type="primary"
+                    ghost
+                    size="small"
+                    icon={<DownloadOutlined />}
+                    onClick={() => window.open(downloadUrl, '_blank')}
+                  >
+                    下载生成的文档
+                  </Button>
+                )}
+                {temporalLink && (
+                  <Button
+                    type="primary"
+                    ghost
+                    size="small"
+                    icon={<ThunderboltOutlined />}
+                    onClick={() => window.open(temporalLink, '_blank')}
+                  >
+                    在 Temporal 中查看详情
+                  </Button>
+                )}
+              </Space>
+            </div>
+          )}
           {shouldShowStructuredResult && (
             <details className="chat-outcome-details">
               <summary>查看结构化结果</summary>
@@ -440,6 +473,7 @@ const ChatMessageComponent: React.FC<ChatMessageProps> = ({
     }
 
     if (finalSummary || waitingInputSummary) {
+      const summaryToDisplay = beautifyText(waitingInputSummary || finalSummary || '');
       return (
         <div className={`chat-outcome-card ${isWaitingInput || isPendingApproval ? 'waiting' : 'neutral'}`}>
           <div className={`chat-outcome-title ${showRunningState ? 'running' : ''}`}>
@@ -450,7 +484,39 @@ const ChatMessageComponent: React.FC<ChatMessageProps> = ({
             {executionStatus && <span>状态：{executionStatus}</span>}
             {executionId && <span>执行单 ID：{executionId}</span>}
           </div>
-          <div className="chat-outcome-body">{waitingInputSummary}</div>
+          <div className="chat-outcome-body">
+            <ReactMarkdown remarkPlugins={[remarkGfm]}>
+              {summaryToDisplay}
+            </ReactMarkdown>
+          </div>
+          {(downloadUrl || temporalLink) && (
+            <div className="chat-outcome-actions" style={{ marginTop: 12 }}>
+              <Space size={12}>
+                {downloadUrl && (
+                  <Button
+                    type="primary"
+                    ghost
+                    size="small"
+                    icon={<DownloadOutlined />}
+                    onClick={() => window.open(downloadUrl, '_blank')}
+                  >
+                    下载生成的文档
+                  </Button>
+                )}
+                {temporalLink && (
+                  <Button
+                    type="primary"
+                    ghost
+                    size="small"
+                    icon={<ThunderboltOutlined />}
+                    onClick={() => window.open(temporalLink, '_blank')}
+                  >
+                    在 Temporal 中查看详情
+                  </Button>
+                )}
+              </Space>
+            </div>
+          )}
           {isWaitingInput && missingInputs.length > 0 && (
             <div className="chat-outcome-body">
               <div>请补充以下信息：</div>
@@ -626,8 +692,8 @@ const ChatMessageComponent: React.FC<ChatMessageProps> = ({
             )}
             {renderOutcomeCard()}
             {renderContent()}
-            {renderFiles()}
             {renderDownloadLink()}
+            {renderFiles()}
           </div>
 
           <div className={`chat-message-meta ${isUser ? 'user' : 'assistant'}`}>

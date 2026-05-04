@@ -10,6 +10,9 @@ import {
 } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
 import { useQuery, useMutation, useQueryClient } from 'react-query';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+import '../../components/chat/ChatMessage.css';
 import {
   temporalWorkflowApi, TemporalWorkflowDTO, CreateTemporalWorkflowDTO,
   WorkflowDsl, ActivityDsl, TemporalValidationResult, DEFAULT_WORKFLOW_DSL, DEFAULT_ACTIVITY_DSL,
@@ -73,6 +76,16 @@ const TWO_COLUMN_GRID_STYLE: React.CSSProperties = {
   display: 'grid',
   gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
   gap: 10,
+};
+
+// 美化文本内容，处理连续换行
+const beautifyText = (text: string, useDivider = true): string => {
+  if (!text) return '';
+  return text
+    .replace(/\r\n/g, '\n') // 统一换行符
+    .replace(/[ \t]+\n/g, '\n') // 去除行尾空格
+    .replace(/\n\s*\n\s*\n+/g, useDivider ? '\n\n---\n\n' : '\n\n') // 将3个及以上的连续换行替换为分割线
+    .replace(/^[\s\n]+|[\s\n]+$/g, ''); // 去除首尾空白
 };
 
 const DURATION_INPUT_WIDTH = 64;
@@ -261,6 +274,29 @@ const collectTemplateVariablesFromValue = (value: unknown, target: Set<string> =
     Object.values(value as Record<string, unknown>).forEach((item) => collectTemplateVariablesFromValue(item, target));
   }
   return target;
+};
+
+const extractTemplatePlaceholders = (template: string): string[] => (
+  Array.from(String(template || '').matchAll(/\{([^{}]+)\}/g))
+    .map((match) => String(match[1] || '').trim())
+    .filter(Boolean)
+);
+
+const collectContextReferenceKeys = (fieldMappings: Record<string, any>): string[] => (
+  Object.values(fieldMappings || {})
+    .filter((value): value is string => typeof value === 'string')
+    .map((value) => String(value || '').trim().match(/^context\.([^.\s]+)$/)?.[1] || '')
+    .filter(Boolean)
+);
+
+const hasUsableContextTemplate = (value: unknown): boolean => {
+  if (typeof value === 'string') {
+    return Boolean(value.trim());
+  }
+  if (value && typeof value === 'object' && !Array.isArray(value)) {
+    return Object.keys(value as Record<string, unknown>).length > 0;
+  }
+  return false;
 };
 
 const normalizeValidationInputValue = (value: unknown): string => {
@@ -1901,6 +1937,79 @@ const TemporalWorkflowPage: React.FC = () => {
   const selectedStepAiApplySummary = selectedStep?.id ? (httpAiApplySummaries[selectedStep.id] || []) : [];
   const selectedStepAiSelectedLeafPaths = selectedStep?.id ? (httpAiSelectedLeafPaths[selectedStep.id] || []) : [];
   const selectedStepAiLeafAliases = selectedStep?.id ? (httpAiLeafAliases[selectedStep.id] || {}) : {};
+  const selectedStructuredTransformIssues = useMemo(() => {
+    if (!selectedStep || !isStructuredTransformActivity(selectedStepActivity, selectedStep)) {
+      return [] as string[];
+    }
+
+    const issues: string[] = [];
+    const isAiTransform = selectedStep.activityRef === 'builtin:aiStructuredTransform';
+    const outputMode = String(selectedStepStructuredTransformConfig.outputMode || 'json').trim().toLowerCase();
+    const outputSchema = asPlainRecord(selectedStepStructuredTransformConfig.outputSchema);
+    const fieldMappings = asPlainRecord(selectedStepStructuredTransformConfig.fieldMappings);
+    const blankMappingKeys = Object.entries(fieldMappings)
+      .filter(([key, value]) => String(key || '').trim() && !String(value ?? '').trim())
+      .map(([key]) => String(key));
+
+    if (!isAiTransform && blankMappingKeys.length > 0) {
+      issues.push(`fieldMappings 中存在空映射字段: ${blankMappingKeys.join('、')}。这会导致运行时把整块结果对象回填到该字段。`);
+    }
+
+    if (!isAiTransform && outputMode === 'json') {
+      const unmappedSchemaKeys = Object.keys(outputSchema).filter((key) => !String(fieldMappings[key] ?? '').trim());
+      if (unmappedSchemaKeys.length > 0) {
+        issues.push(`outputSchema 中这些字段还没有对应映射: ${unmappedSchemaKeys.join('、')}。`);
+      }
+    }
+
+    const previousStep = selectedStepIndexForConfig !== null && selectedStepIndexForConfig > 0
+      ? workflowDsl.steps[selectedStepIndexForConfig - 1]
+      : undefined;
+    const previousActivity = resolveStepActivity(previousStep);
+    if (previousStep && isHttpRequestActivity(previousActivity, previousStep)) {
+      const previousHttpConfig = getStepHttpRequestConfig(previousStep, previousActivity);
+      const responseMode = String(previousHttpConfig.responseMode || 'body').trim();
+      const availableAliases = new Set(
+        Object.keys(asPlainRecord(previousHttpConfig.responseFieldMappings))
+          .map((key) => String(key || '').trim())
+          .filter(Boolean),
+      );
+
+      if (responseMode === 'bodyMap' && availableAliases.size === 0) {
+        issues.push('上一步 httpRequest 使用了 bodyMap，但 responseFieldMappings 为空。');
+      }
+
+      if (responseMode === 'bodyMap') {
+        const invalidFieldMappings = Object.entries(fieldMappings)
+          .filter(([, value]) => typeof value === 'string')
+          .map(([key, value]) => ({ key: String(key || '').trim(), value: String(value || '').trim() }))
+          .filter((item) => item.value && item.value.includes('.') && !item.value.startsWith('context.') && !availableAliases.has(item.value))
+          .map((item) => `${item.key}<-${item.value}`);
+        if (invalidFieldMappings.length > 0) {
+          issues.push(`当前 fieldMappings 仍引用了上游原始路径，而不是 bodyMap 别名: ${invalidFieldMappings.join('、')}。`);
+        }
+
+        const rawPathPlaceholders = extractTemplatePlaceholders(String(selectedStepStructuredTransformConfig.textTemplate || ''))
+          .filter((item) => item.includes('.') && !item.startsWith('context.') && !availableAliases.has(item));
+        if (rawPathPlaceholders.length > 0) {
+          issues.push(`textTemplate 仍引用了上游原始路径占位符: ${rawPathPlaceholders.join('、')}。`);
+        }
+      }
+    }
+
+    const contextKeys = collectContextReferenceKeys(fieldMappings);
+    if (contextKeys.length > 0 && !hasUsableContextTemplate(selectedStepStructuredTransformConfig.contextTemplate)) {
+      issues.push(`fieldMappings 使用了 context.* 字段，但 contextTemplate 仍为空: ${contextKeys.join('、')}。`);
+    }
+
+    return issues;
+  }, [
+    selectedStep,
+    selectedStepActivity,
+    selectedStepIndexForConfig,
+    selectedStepStructuredTransformConfig,
+    workflowDsl.steps,
+  ]);
   const showDedicatedHttpAiZone = Boolean(
     selectedStep?.id
     && activeHttpAiStepId === selectedStep.id
@@ -3335,7 +3444,15 @@ const TemporalWorkflowPage: React.FC = () => {
                       borderBottomLeftRadius: msg.role === 'assistant' ? 2 : 12,
                     }}
                   >
-                    <div style={{ whiteSpace: 'pre-wrap' }}>{msg.content}</div>
+                    <div className={msg.role === 'assistant' ? 'chat-message-markdown' : ''}>
+                      {msg.role === 'assistant' ? (
+                        <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                          {beautifyText(msg.content)}
+                        </ReactMarkdown>
+                      ) : (
+                        <div style={{ whiteSpace: 'pre-wrap' }}>{msg.content}</div>
+                      )}
+                    </div>
                     {msg.draft && (
                        <div
                          style={{
@@ -4360,6 +4477,22 @@ const TemporalWorkflowPage: React.FC = () => {
                           {!isAiStructuredTransform && renderStructuredTransformMapEditor(
                             '字段映射',
                             '固定规则模式下，左侧是输出字段名，右侧是来源路径或变量名，例如 weatherText -> current.weather.text。',
+                          )}
+
+                          {!isAiStructuredTransform && selectedStructuredTransformIssues.length > 0 && (
+                            <Alert
+                              style={{ marginBottom: 10 }}
+                              type="warning"
+                              showIcon
+                              message="固定规则转换配置未对齐"
+                              description={(
+                                <div>
+                                  {selectedStructuredTransformIssues.map((item, index) => (
+                                    <div key={`structured-transform-issue-${index}`}>{item}</div>
+                                  ))}
+                                </div>
+                              )}
+                            />
                           )}
 
                           {!isAiStructuredTransform && (selectedStepStructuredTransformConfig.outputMode || 'json') === 'text' && (

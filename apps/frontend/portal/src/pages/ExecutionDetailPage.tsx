@@ -7,6 +7,9 @@
 import React from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Card, Descriptions, Tag, Button, Space, Typography, Spin, Alert, Table, Steps, Empty, Form, Input, InputNumber, Switch, message } from 'antd';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+import '../components/chat/ChatMessage.css';
 import {
   ArrowLeftOutlined,
   PlayCircleOutlined,
@@ -16,6 +19,7 @@ import {
   ClockCircleOutlined,
   UserOutlined,
   WarningOutlined,
+  ThunderboltOutlined,
 } from '@ant-design/icons';
 import { useMutation, useQuery, useQueryClient } from 'react-query';
 import { executionApi, ExecutionDto, ExecutionStepDto } from '../api/execution';
@@ -42,6 +46,25 @@ interface RequiredInputField {
 }
 
 const statusColors = EXECUTION_STATUS_COLORS;
+
+const fixLocalhostLink = (url?: string): string | undefined => {
+  if (!url) return undefined;
+  // 如果链接包含 localhost，且当前页面不在 localhost，则尝试替换为当前主机的 IP/域名
+  if (url.includes('localhost') && window.location.hostname !== 'localhost') {
+    return url.replace('localhost', window.location.hostname);
+  }
+  return url;
+};
+
+// 美化文本内容，处理连续换行
+const beautifyText = (text: string, useDivider = true): string => {
+  if (!text) return '';
+  return text
+    .replace(/\r\n/g, '\n') // 统一换行符
+    .replace(/[ \t]+\n/g, '\n') // 去除行尾空格
+    .replace(/\n\s*\n\s*\n+/g, useDivider ? '\n\n---\n\n' : '\n\n') // 将3个及以上的连续换行替换为分割线
+    .replace(/^[\s\n]+|[\s\n]+$/g, ''); // 去除首尾空白
+};
 
 const stepTypeLabels: Record<string, { zh: string; en: string }> = {
   input_collection: { zh: '输入采集', en: 'Input Collection' },
@@ -536,6 +559,16 @@ const ExecutionDetailPage: React.FC = () => {
               <Text type="danger">{execution.failureCode}</Text>
             </Descriptions.Item>
           )}
+          {(execution.resultJson as any)?.temporalLink && (
+            <Descriptions.Item label={isEnglish ? 'Temporal Link' : 'Temporal 链接'} span={2}>
+              <a href={fixLocalhostLink((execution.resultJson as any).temporalLink)} target="_blank" rel="noopener noreferrer">
+                <Space>
+                  <ThunderboltOutlined />
+                  {fixLocalhostLink((execution.resultJson as any).temporalLink)}
+                </Space>
+              </a>
+            </Descriptions.Item>
+          )}
         </Descriptions>
       </Card>
 
@@ -545,9 +578,40 @@ const ExecutionDetailPage: React.FC = () => {
           {execution.resultJson && (
             <div>
               <Text strong>{text.result}:</Text>
-              <pre style={{ background: 'var(--bg-secondary)', color: 'var(--text-primary)', border: '1px solid var(--bg-secondary)', padding: 12, borderRadius: 8, overflow: 'auto' }}>
-                {JSON.stringify(execution.resultJson, null, 2)}
-              </pre>
+              {(() => {
+                const resultObj = execution.resultJson as any;
+                const hasResult = resultObj && typeof resultObj === 'object' && 'result' in resultObj && typeof resultObj.result === 'string';
+                
+                // 过滤掉已在其他地方显示的字段
+                const filteredResult = { ...resultObj };
+                delete filteredResult.temporalLink;
+                const remainingKeys = Object.keys(filteredResult);
+                const onlyHasResultField = remainingKeys.length === 1 && 'result' in filteredResult;
+
+                if (hasResult && onlyHasResultField) {
+                  return (
+                    <div className="chat-message-markdown" style={{ 
+                      background: 'var(--bg-secondary)', 
+                      color: 'var(--text-primary)', 
+                      border: '1px solid var(--bg-secondary)', 
+                      padding: 12, 
+                      borderRadius: 8, 
+                      marginTop: 8,
+                      lineHeight: '1.6'
+                    }}>
+                      <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                        {beautifyText(resultObj.result)}
+                      </ReactMarkdown>
+                    </div>
+                  );
+                }
+
+                return (
+                  <pre style={{ background: 'var(--bg-secondary)', color: 'var(--text-primary)', border: '1px solid var(--bg-secondary)', padding: 12, borderRadius: 8, overflow: 'auto', marginTop: 8, lineHeight: '1.6' }}>
+                    {JSON.stringify(filteredResult, null, 2)}
+                  </pre>
+                );
+              })()}
             </div>
           )}
         </Card>
