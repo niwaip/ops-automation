@@ -14,7 +14,7 @@ services:
       - postgres_dev_data:/var/lib/postgresql/data
       - ./init-db.sh:/docker-entrypoint-initdb.d/init-db.sh:ro
       # Mount for local development - allows SQL file execution
-      - ${PROJECT_ROOT:-..}/infra/sql/migrations:/migrations:ro
+      - ${PROJECT_ROOT:-..}/docker/sql/migrations:/migrations:ro
 
   redis:
     container_name: ops-redis-dev

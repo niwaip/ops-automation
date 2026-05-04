@@ -3,17 +3,16 @@
 ## 快速启动（推荐）
 
 ```bash
-# 一键启动所有服务并加载 Add-in
-cd docker
-chmod +x start-all.sh
-./start-all.sh
+# 使用 Smart Launcher 启动 Add-in 环境
+./docker/scripts/start-smart.sh docker-compose.addin.yml up -d
 ```
 
-此脚本会：
-1. 启动 Docker 服务
-2. 信任 SSL 证书（需要密码）
-3. 下载 Manifest 文件
-4. 自动加载到 Office
+此命令会：
+1. 自动识别当前工作区 (Worktree) 并挂载代码
+2. 启动全栈基础设施及 Office Add-in 服务
+3. 确保环境变量及网络配置正确
+
+> **提示**：如果需要一键完成 SSL 证书信任及自动加载，可以使用旧脚本 `./docker/scripts/start-all.sh`（不推荐在 Worktree 中长期使用）。
 
 ---
 

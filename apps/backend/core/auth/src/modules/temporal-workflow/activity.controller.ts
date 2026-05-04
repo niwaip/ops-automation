@@ -1,12 +1,24 @@
 import { Controller, Get, Post, Put, Delete, Body, Param, Res } from '@nestjs/common';
 import { ApiTags, ApiOperation } from '@nestjs/swagger';
-import { ActivityService, ActivityFormData, ActivityValidationResult, GenerateCodeResult } from './activity.service';
+import { ActivityService, ActivityFormData, ActivityValidationResult, BuiltinActivityDTO, GenerateCodeResult } from './activity.service';
 import { Activity } from '@prisma/client';
 
 @ApiTags('Activities')
 @Controller('activities')
 export class ActivityController {
   constructor(private readonly activityService: ActivityService) {}
+
+  @Get('builtin')
+  @ApiOperation({ summary: 'List all builtin activities' })
+  async listBuiltin(): Promise<BuiltinActivityDTO[]> {
+    return this.activityService.listBuiltin();
+  }
+
+  @Get('builtin/:key')
+  @ApiOperation({ summary: 'Get builtin activity by key' })
+  async getBuiltin(@Param('key') key: string): Promise<BuiltinActivityDTO | null> {
+    return this.activityService.getBuiltin(key);
+  }
 
   @Get()
   @ApiOperation({ summary: 'List all activities' })

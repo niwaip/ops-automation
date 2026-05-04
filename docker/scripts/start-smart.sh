@@ -28,8 +28,8 @@ fi
 
 # Create .env file if not exists
 if [ ! -f "$DOCKER_DIR/.env" ]; then
-    if [ -f "$DOCKER_DIR/.env.example" ]; then
-        cp "$DOCKER_DIR/.env.example" "$DOCKER_DIR/.env"
+    if [ -f "$DOCKER_DIR/env/.env.example" ]; then
+        cp "$DOCKER_DIR/env/.env.example" "$DOCKER_DIR/.env"
         echo "Created .env from .env.example"
     fi
 fi

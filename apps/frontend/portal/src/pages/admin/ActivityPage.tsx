@@ -8,11 +8,11 @@ import {
   SearchOutlined, PlusOutlined, DeleteOutlined, PlayCircleOutlined,
   ReloadOutlined, ApiOutlined, CodeOutlined, FileTextOutlined, ChromeOutlined,
   ThunderboltOutlined, LineChartOutlined, OrderedListOutlined, CopyOutlined,
-  SaveOutlined, RobotOutlined, EyeOutlined, LoadingOutlined
+  SaveOutlined, RobotOutlined, EyeOutlined, LoadingOutlined, LockOutlined
 } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
 import { useQuery, useMutation, useQueryClient } from 'react-query';
-import { activityApi, ActivityDTO, CreateActivityDto, UpdateActivityDto, ActivityValidationResult } from '../../api/activity';
+import { activityApi, ActivityDTO, BuiltinActivityDTO, CreateActivityDto, UpdateActivityDto, ActivityValidationResult } from '../../api/activity';
 import { ListSectionHeader, OverviewStatGrid, PageTitleBlock } from '../../components/page/PageScaffold';
 import { normalizeExecutionResult } from '../../api/execution-normalizer';
 import type { ColumnsType } from 'antd/es/table';
@@ -315,6 +315,7 @@ const ActivityPage: React.FC = () => {
   });
 
   const activitiesQuery = useQuery(['activities'], () => activityApi.list());
+  const builtinActivitiesQuery = useQuery(['builtin-activities'], () => activityApi.listBuiltin());
 
   const appendRealValidateLog = (content: string) => {
     dispatchRealValidate({ type: 'APPEND_LOG', payload: content });
@@ -948,6 +949,89 @@ const ActivityPage: React.FC = () => {
     },
   ];
 
+  const builtinColumns: ColumnsType<BuiltinActivityDTO> = [
+    {
+      title: '名称',
+      dataIndex: 'name',
+      key: 'name',
+      width: 220,
+      align: 'center',
+      render: (name) => <Text strong>{name}</Text>,
+    },
+    {
+      title: '引用',
+      dataIndex: 'ref',
+      key: 'ref',
+      width: 220,
+      align: 'center',
+      render: (ref) => (
+        <Text
+          code
+          style={{
+            display: 'inline-block',
+            padding: '3px 10px',
+            borderRadius: 999,
+            background: 'var(--bg-secondary)',
+            fontSize: 12,
+          }}
+        >
+          {ref}
+        </Text>
+      ),
+    },
+    {
+      title: '函数名',
+      dataIndex: 'fn',
+      key: 'fn',
+      width: 180,
+      align: 'center',
+      render: (fn) => (
+        <Text
+          code
+          style={{
+            display: 'inline-block',
+            padding: '3px 10px',
+            borderRadius: 999,
+            background: 'var(--bg-secondary)',
+            fontSize: 12,
+          }}
+        >
+          {fn}
+        </Text>
+      ),
+    },
+    {
+      title: '处理器',
+      key: 'handler',
+      width: 110,
+      align: 'center',
+      render: (_, record) => (
+        <Tag color={HANDLER_CONFIG[record.handler]?.color} style={{ marginInlineEnd: 0, paddingInline: 10, borderRadius: 999, fontWeight: 600 }}>
+          {HANDLER_CONFIG[record.handler]?.label}
+        </Tag>
+      ),
+    },
+    {
+      title: '版本',
+      dataIndex: 'version',
+      key: 'version',
+      width: 110,
+      align: 'center',
+      render: (version) => <Text strong>{version}</Text>,
+    },
+    {
+      title: '模式',
+      key: 'readonly',
+      width: 120,
+      align: 'center',
+      render: () => (
+        <Tag color="gold" style={{ marginInlineEnd: 0, paddingInline: 10, borderRadius: 999, fontWeight: 600 }}>
+          只读内置
+        </Tag>
+      ),
+    },
+  ];
+
   const filteredActivities = (activitiesQuery.data || []).filter(a =>
     a.name.toLowerCase().includes(searchText.toLowerCase()) || a.fn.toLowerCase().includes(searchText.toLowerCase())
   );
@@ -1011,9 +1095,12 @@ const ActivityPage: React.FC = () => {
           >
             <Space direction="vertical" size={2}>
               <Text strong style={{ fontSize: 16 }}>工作单元总览</Text>
-              <Text type="secondary">支持检索、创建和刷新工作单元列表</Text>
+              <Text type="secondary">支持检索、创建和刷新自定义工作单元列表</Text>
             </Space>
             <Space wrap>
+              <Button size="large" icon={<LockOutlined />} onClick={() => { void builtinActivitiesQuery.refetch(); }}>
+                刷新内置
+              </Button>
               <Button size="large" icon={<ReloadOutlined />} onClick={() => { void activitiesQuery.refetch(); }}>
                 刷新
               </Button>
@@ -1061,6 +1148,45 @@ const ActivityPage: React.FC = () => {
           extra={<Text type="secondary">共 {filteredActivities.length} 条</Text>}
         />
         <Table columns={columns} dataSource={filteredActivities} rowKey="id" loading={activitiesQuery.isLoading} pagination={{ showSizeChanger: true, showTotal: total => `共 ${total} 条` }} />
+      </Card>
+
+      <Card style={{ ...SECTION_CARD_STYLE, marginTop: 16 }}>
+        <ListSectionHeader
+          title="系统内置 Activities"
+          subtitle="由平台维护的只读能力，模板工作流默认可直接引用"
+          extra={<Text type="secondary">共 {builtinActivitiesQuery.data?.length || 0} 条</Text>}
+        />
+        <Alert
+          type="info"
+          showIcon
+          style={{ marginBottom: 16 }}
+          message="模板工作流无需再预先创建 Carbone Activity"
+          description="系统现在直接提供内置 documentRender Activity，后续也会在这里统一展示更多内置能力。"
+        />
+        <Table
+          columns={builtinColumns}
+          dataSource={builtinActivitiesQuery.data || []}
+          rowKey="ref"
+          loading={builtinActivitiesQuery.isLoading}
+          pagination={false}
+          expandable={{
+            expandedRowRender: (record) => (
+              <Descriptions
+                column={1}
+                size="small"
+                styles={{ content: { paddingBottom: 8 }, label: { width: 96 } }}
+              >
+                <Descriptions.Item label="说明">{record.description || '无'}</Descriptions.Item>
+                <Descriptions.Item label="默认超时">{record.timeout}</Descriptions.Item>
+                <Descriptions.Item label="重试策略">
+                  {record.retryPolicy?.maxRetries !== undefined
+                    ? `maxRetries=${record.retryPolicy.maxRetries}, backoffMs=${record.retryPolicy.backoffMs ?? 1000}`
+                    : '未设置'}
+                </Descriptions.Item>
+              </Descriptions>
+            ),
+          }}
+        />
       </Card>
 
       {/* Edit Modal */}

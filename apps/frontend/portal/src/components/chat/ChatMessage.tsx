@@ -155,6 +155,21 @@ const ChatMessageComponent: React.FC<ChatMessageProps> = ({
   const isRunning = isTaskMode && message.metadata?.taskStatus === 'running';
   const showRunningState = isTaskMode && (isRunning || (Boolean(isStreaming) && !isWaitingInput && !isPendingApproval && !errorMessage));
   const missingInputs = (message.metadata?.missingInputs || []).filter((item) => item?.missing !== false);
+  const waitingInputLabels = useMemo(
+    () => missingInputs
+      .map((item) => (item?.description || item?.name || '').trim())
+      .filter(Boolean),
+    [missingInputs],
+  );
+  const waitingInputSummary = useMemo(
+    () => {
+      if (!isWaitingInput || waitingInputLabels.length === 0) {
+        return finalSummary;
+      }
+      return '还需要你补充以下信息后，任务才能继续执行。';
+    },
+    [finalSummary, isWaitingInput, waitingInputLabels],
+  );
   const structuredResultText = useMemo(
     () => toStructuredResultText(finalResultData),
     [finalResultData],
@@ -341,6 +356,10 @@ const ChatMessageComponent: React.FC<ChatMessageProps> = ({
       return <div className="chat-message-plain">{answerWithoutTaskCheckbox}</div>;
     }
 
+    if (isWaitingInput && missingInputs.length > 0) {
+      return null;
+    }
+
     if (!answerWithoutTaskCheckbox) {
       return null;
     }
@@ -420,7 +439,7 @@ const ChatMessageComponent: React.FC<ChatMessageProps> = ({
       );
     }
 
-    if (finalSummary) {
+    if (finalSummary || waitingInputSummary) {
       return (
         <div className={`chat-outcome-card ${isWaitingInput || isPendingApproval ? 'waiting' : 'neutral'}`}>
           <div className={`chat-outcome-title ${showRunningState ? 'running' : ''}`}>
@@ -431,15 +450,21 @@ const ChatMessageComponent: React.FC<ChatMessageProps> = ({
             {executionStatus && <span>状态：{executionStatus}</span>}
             {executionId && <span>执行单 ID：{executionId}</span>}
           </div>
-          <div className="chat-outcome-body">{finalSummary}</div>
+          <div className="chat-outcome-body">{waitingInputSummary}</div>
           {isWaitingInput && missingInputs.length > 0 && (
             <div className="chat-outcome-body">
-              <div>请补充以下参数：</div>
-              <ul>
+              <div>请补充以下信息：</div>
+              <ul style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
+                columnGap: 16,
+                rowGap: 6,
+                paddingLeft: 20,
+                marginBottom: 0,
+              }}>
                 {missingInputs.map((item, index) => (
-                  <li key={`${item.name || 'missing'}-${index}`}>
-                    {item.name || '未命名参数'}
-                    {item.description ? `：${item.description}` : ''}
+                  <li key={`${item.name || 'missing'}-${index}`} style={{ minWidth: 0 }}>
+                    {item.description || item.name || '未命名信息'}
                   </li>
                 ))}
               </ul>

@@ -64,7 +64,7 @@ export default defineConfig({
         rewrite: (path) => path.replace(/^\/api/, ''),
       },
       '/api/ai': {
-        target: getProxyTarget('ops-ai-orchestrator', 3007),
+        target: getProxyTarget('ai-orchestrator', 3007),
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/api/, ''),
       },

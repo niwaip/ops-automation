@@ -6,6 +6,10 @@ SCRIPT_DIR="$(cd "$(dirname "$SCRIPT_PATH")" && pwd)"
 DOCKER_DIR="$(dirname "$SCRIPT_DIR")"
 REPO_ROOT="$(dirname "$DOCKER_DIR")"
 
+echo "[DEPRECATED] 建议优先使用 ./docker/scripts/start-dev.sh 或 ./docker/scripts/start-smart.sh"
+echo "[DEPRECATED] 本脚本仅保留为 Office Add-in 本地验证入口。"
+echo ""
+
 echo "=== Carbone 本地开发验证 ==="
 echo ""
 
@@ -26,7 +30,7 @@ fi
 
 echo ""
 echo "2. 安装 Office Add-in 依赖..."
-cd "$REPO_ROOT/apps/office-addin"
+cd "$REPO_ROOT/apps/frontend/office-addin"
 npm install
 
 echo ""
@@ -39,9 +43,9 @@ echo "=== Sideload 到 Office ==="
 echo "1. 打开 Word/Excel/PPT"
 echo "2. 插入 > 获取加载项 > 管理我的加载项 > 上载我的加载项"
 echo "3. 选择 manifest 文件:"
-echo "   - $REPO_ROOT/apps/office-addin/manifest-word.xml"
-echo "   - $REPO_ROOT/apps/office-addin/manifest-excel.xml"
-echo "   - $REPO_ROOT/apps/office-addin/manifest-ppt.xml"
+echo "   - $REPO_ROOT/apps/frontend/office-addin/manifest-word.xml"
+echo "   - $REPO_ROOT/apps/frontend/office-addin/manifest-excel.xml"
+echo "   - $REPO_ROOT/apps/frontend/office-addin/manifest-ppt.xml"
 echo ""
 echo "=== Carbone API ==="
 echo "如果需要 Carbone API，请单独启动:"

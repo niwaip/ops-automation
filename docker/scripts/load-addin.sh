@@ -2,21 +2,22 @@
 # 加载 Office Add-in
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-ROOT_DIR="$(dirname "$SCRIPT_DIR")"
+DOCKER_DIR="$(dirname "$SCRIPT_DIR")"
+REPO_ROOT="$(dirname "$DOCKER_DIR")"
 
 APP=${1:-word}
 
 case $APP in
     word)
-        MANIFEST="$ROOT_DIR/apps/office-addin/manifest-word.xml"
+        MANIFEST="$REPO_ROOT/apps/frontend/office-addin/manifest-word.xml"
         APP_NAME="Microsoft Word"
         ;;
     excel)
-        MANIFEST="$ROOT_DIR/apps/office-addin/manifest-excel.xml"
+        MANIFEST="$REPO_ROOT/apps/frontend/office-addin/manifest-excel.xml"
         APP_NAME="Microsoft Excel"
         ;;
     ppt|powerpoint)
-        MANIFEST="$ROOT_DIR/apps/office-addin/manifest-ppt.xml"
+        MANIFEST="$REPO_ROOT/apps/frontend/office-addin/manifest-ppt.xml"
         APP_NAME="Microsoft PowerPoint"
         ;;
     *)

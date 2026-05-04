@@ -75,6 +75,7 @@ services:
       DOCKER_ENV: true
       PORT: ${AUTH_PORT:-3001}
       JWT_SECRET: jwt_secret_key_change_in_production
+      AI_ORCHESTRATOR_URL: http://${AI_ORCHESTRATOR_HOST:-ai-orchestrator}:${AI_ORCHESTRATOR_PORT:-3007}
       SANDBOX_AGENT_URL: http://temporal-sandbox-agent:8090
       TEMPORAL_SANDBOX_AGENT_URL: http://temporal-sandbox-agent:8090
       ACTIVITY_VALIDATION_AGENT_URL: http://temporal-sandbox-agent:8090
@@ -98,7 +99,7 @@ services:
     ports:
       - "${SESSION_BROKER_PORT:-3002}:${SESSION_BROKER_PORT:-3002}"
     volumes:
-      - ${PROJECT_ROOT:-..}/apps/backend/runtime/session-broker:/app
+      - ${PROJECT_ROOT:-..}/apps/backend/core/session-broker:/app
       - session_broker_node_modules:/app/node_modules
     depends_on:
       postgres:
@@ -175,7 +176,7 @@ services:
     ports:
       - "${REPLAY_ENGINE_PORT:-3006}:${REPLAY_ENGINE_PORT:-3006}"
     volumes:
-      - ${PROJECT_ROOT:-..}/apps/backend/domain/replay-engine:/app
+      - ${PROJECT_ROOT:-..}/apps/backend/runtime/replay-engine:/app
       - replay_engine_node_modules:/app/node_modules
     depends_on:
       postgres:
@@ -268,8 +269,8 @@ services:
   # ============================================
   browser-chrome:
     build:
-      context: .
-      dockerfile: browser-worker.Dockerfile
+      context: ../..
+      dockerfile: docker/browser-worker/Dockerfile
     container_name: ops-browser-chrome
     ports:
       - "${NOVNC_PORT:-6080}:8080"

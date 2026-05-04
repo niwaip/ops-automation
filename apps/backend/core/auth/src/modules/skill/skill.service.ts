@@ -38,7 +38,7 @@ const getAiOrchestratorUrl = () => {
     return process.env.AI_ORCHESTRATOR_URL;
   }
   if (process.env.DOCKER_ENV === 'true' || process.env.NODE_ENV === 'production') {
-    return 'http://ops-ai-orchestrator:3007';  // Docker 内部通信使用服务名
+    return 'http://ai-orchestrator:3007';  // Docker 内部通信使用服务名
   }
   // 本地开发：使用外部访问地址（如果设置）或 localhost
   const externalHost = process.env.EXTERNAL_HOST || 'localhost';
@@ -67,131 +67,72 @@ type PublishedSkillReleaseMeta = {
  */
 const DEFAULT_SKILLS: CreateSkillDTO[] = [
   {
-    name: '保密合同生成',
-    description: '生成保密协议/NDA文档',
-    triggerKeywords: ['保密', 'NDA', '保密协议', '保密合同', '机密', '保密条款'],
+    name: 'general_document_generator',
+    description: '通用文档生成技能 - 根据模板和参数生成 Office 文档',
+    triggerKeywords: ['生成文档', '创建报告', '导出Word', '生成Excel'],
     paramsSchema: {
       properties: {
-        甲方名称: {
+        templateName: {
           type: 'string',
-          description: '甲方公司名称',
-          required: true,
-          extractionPrompt: '从"甲方"、"甲方名称"、"甲方公司"等关键词后提取',
-        },
-        甲方地址: {
-          type: 'string',
-          description: '甲方公司地址',
-          required: false,
-        },
-        乙方名称: {
-          type: 'string',
-          description: '乙方公司名称',
-          required: true,
-          extractionPrompt: '从"乙方"、"乙方名称"、"乙方公司"等关键词后提取',
-        },
-        乙方地址: {
-          type: 'string',
-          description: '乙方公司地址',
-          required: false,
-        },
-        签订日期: {
-          type: 'date',
-          description: '合同签订日期',
+          description: '模板名称',
           required: true,
         },
-        保密期限: {
+        title: {
           type: 'string',
-          description: '保密期限（如：3年、永久）',
-          required: false,
-          default: '3年',
+          description: '文档标题',
+          required: true,
         },
-        保密范围: {
+        content: {
           type: 'string',
-          description: '保密内容范围描述',
-          required: false,
-          default: '技术资料、商业信息、客户数据等',
+          description: '文档主要内容',
+          required: true,
         },
       },
-      required: ['甲方名称', '乙方名称', '签订日期'],
+      required: ['templateName', 'title'],
     },
-    apiEndpoints: {
-      runtimeMetadata: {
-        sourceType: 'document',
-      },
-    },
+    tools: ['document_intake', 'document_render'],
     executionFlow: [
-      { type: 'tool', name: 'AI语义匹配', tool: { name: 'skill_match' } },
-      { type: 'tool', name: 'AI生成参数', tool: { name: 'generate_parameters' } },
-      { type: 'tool', name: '用户确认', tool: { name: 'user_ask' } },
-      { type: 'tool', name: '文档渲染', tool: { name: 'document_render' } },
+      {
+        id: 'step1',
+        name: '选择模板',
+        type: 'tool',
+        tool: { name: 'document_intake' },
+      },
+      {
+        id: 'step2',
+        name: '渲染文档',
+        type: 'tool',
+        tool: { name: 'document_render' },
+      },
     ],
-    tools: ['skill_match', 'generate_parameters', 'user_ask', 'document_render'],
   },
   {
-    name: '劳动合同生成',
-    description: '生成劳动合同文档',
-    triggerKeywords: ['劳动合同', '雇佣合同', '入职合同', '员工合同', '劳动合同书'],
+    name: 'system_status_checker',
+    description: '系统状态检查 - 检查当前自动化服务的健康状态',
+    triggerKeywords: ['系统状态', '服务检查', '健康检查', 'status'],
     paramsSchema: {
       properties: {
-        用人单位名称: {
+        serviceName: {
           type: 'string',
-          description: '用人单位/公司名称',
-          required: true,
-        },
-        劳动者姓名: {
-          type: 'string',
-          description: '员工姓名',
-          required: true,
-        },
-        劳动者身份证号: {
-          type: 'string',
-          description: '员工身份证号码',
-          required: true,
-        },
-        劳动者地址: {
-          type: 'string',
-          description: '员工住址',
+          description: '指定检查的服务名称（可选）',
           required: false,
         },
-        合同期限: {
-          type: 'string',
-          description: '劳动合同期限（如：3年）',
-          required: true,
-        },
-        工作岗位: {
-          type: 'string',
-          description: '工作岗位名称',
-          required: true,
-        },
-        工作地点: {
-          type: 'string',
-          description: '工作地点',
-          required: false,
-        },
-        月薪: {
-          type: 'number',
-          description: '月薪金额',
-          required: true,
-        },
-        签订日期: {
-          type: 'date',
-          description: '合同签订日期',
-          required: true,
-        },
       },
-      required: ['用人单位名称', '劳动者姓名', '劳动者身份证号', '合同期限', '工作岗位', '月薪', '签订日期'],
+      required: [],
     },
-    apiEndpoints: {
-      runtimeMetadata: {
-        sourceType: 'document',
-      },
-    },
+    tools: ['api_call'],
     executionFlow: [
-      { type: 'tool', name: '收集参数', tool: { name: 'param_collect' } },
-      { type: 'tool', name: '用户确认', tool: { name: 'user_ask' } },
-      { type: 'tool', name: '渲染输出', tool: { name: 'document_generate' } },
+      {
+        id: 'step1',
+        name: '检查健康状态',
+        type: 'api',
+        api: {
+          url: '/health',
+          method: 'GET',
+          description: '调用健康检查接口',
+        },
+      },
     ],
-    tools: ['param_collect', 'user_ask', 'document_generate'],
   },
 ];
 

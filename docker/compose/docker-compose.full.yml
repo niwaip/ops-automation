@@ -87,7 +87,7 @@ services:
     ports:
       - "${SESSION_BROKER_PORT:-3002}:${SESSION_BROKER_PORT:-3002}"
     volumes:
-      - ${PROJECT_ROOT:-..}/apps/backend/runtime/session-broker:/app
+      - ${PROJECT_ROOT:-..}/apps/backend/core/session-broker:/app
       - session_broker_node_modules:/app/node_modules
     depends_on:
       postgres:
@@ -158,10 +158,10 @@ services:
     ports:
       - "${CARBONE_ENGINE_PORT:-3009}:${CARBONE_ENGINE_PORT:-3009}"
     volumes:
-      - ${PROJECT_ROOT:-..}/apps/backend/runtime/carbone-engine:/app
+      - ${PROJECT_ROOT:-..}/apps/backend/domain/carbone-engine:/app
       - carbone_engine_node_modules:/app/node_modules
-      - carbone_templates:/app/templates
-      - carbone_outputs:/app/outputs
+      - ${PROJECT_ROOT:-..}/.data/carbone-engine/templates:/app/templates
+      - ${PROJECT_ROOT:-..}/.data/carbone-engine/outputs:/app/outputs
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:${CARBONE_ENGINE_PORT:-3009}/api"]
       interval: 30s
@@ -205,7 +205,7 @@ services:
     ports:
       - "${REPLAY_ENGINE_PORT:-3006}:${REPLAY_ENGINE_PORT:-3006}"
     volumes:
-      - ${PROJECT_ROOT:-..}/apps/backend/domain/replay-engine:/app
+      - ${PROJECT_ROOT:-..}/apps/backend/runtime/replay-engine:/app
       - replay_engine_node_modules:/app/node_modules
     depends_on:
       postgres:
@@ -317,8 +317,8 @@ services:
   # ============================================
   browser-chrome:
     build:
-      context: .
-      dockerfile: browser-worker.Dockerfile
+      context: ../..
+      dockerfile: docker/browser-worker/Dockerfile
     container_name: ops-browser-chrome
     ports:
       - "${NOVNC_PORT:-6080}:8080"  # noVNC
@@ -354,11 +354,12 @@ services:
       - DB_PORT=5432
       - POSTGRES_USER=${POSTGRES_USER:-ops}
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-ops_secret}
+      - POSTGRES_PWD=${POSTGRES_PASSWORD:-ops_secret}
       - POSTGRES_DB=temporal
       - DYNAMIC_CONFIG_FILE_PATH=/etc/temporal/dynamic_config.yaml
     volumes:
       - temporal_data:/var/lib/postgresql/data
-      - ./dynamic_config.yaml:/etc/temporal/dynamic_config.yaml:ro
+      - ../temporal/dynamic_config.yaml:/etc/temporal/dynamic_config.yaml:ro
     depends_on:
       postgres:
         condition: service_healthy
@@ -384,8 +385,8 @@ services:
   # ============================================
   temporal-sandbox-agent:
     build:
-      context: .
-      dockerfile: temporal-sandbox-agent.Dockerfile
+      context: ../..
+      dockerfile: docker/temporal/Dockerfile
     container_name: ops-temporal-sandbox-agent
     working_dir: /app
     environment:
@@ -400,7 +401,7 @@ services:
     ports:
       - "8090:8090"
     volumes:
-      - ${PROJECT_ROOT:-..}/apps/temporal-sandbox-agent:/app
+      - ${PROJECT_ROOT:-..}/apps/backend/runtime/temporal-sandbox-agent:/app
       - /var/run/docker.sock:/var/run/docker.sock  # For Docker sandbox backend
     depends_on:
       - temporal
@@ -424,8 +425,6 @@ volumes:
   portal_node_modules:
   report_node_modules:
   report_files:
-  carbone_templates:
-  carbone_outputs:
   temporal_data:
 
 networks:

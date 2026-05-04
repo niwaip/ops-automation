@@ -43,6 +43,7 @@ class TemporalSandboxServer:
         self._app.router.add_post('/execute', self.handle_execute)
         self._app.router.add_post('/validate-activity', self.handle_validate_activity)
         self._app.router.add_post('/validate-workflow', self.handle_validate_workflow)
+        self._app.router.add_post('/validate-workflow/stream', self.handle_validate_workflow_stream)
         self._app.router.add_get('/health', self.handle_health)
 
     async def handle_health(self, request: web.Request) -> web.Response:
@@ -242,6 +243,91 @@ class TemporalSandboxServer:
             import traceback
             logger.error(f"Workflow validation failed: {e}\n{traceback.format_exc()}")
             return web.json_response({"error": str(e)}, status=500)
+
+    async def handle_validate_workflow_stream(self, request: web.Request) -> web.StreamResponse:
+        """Execute Workflow validation and stream incremental logs via SSE."""
+        try:
+            data = await request.json()
+        except json.JSONDecodeError:
+            response = web.StreamResponse(status=400, headers={
+                'Content-Type': 'text/event-stream',
+                'Cache-Control': 'no-cache',
+                'Connection': 'keep-alive',
+            })
+            await response.prepare(request)
+            await response.write(f"data: {json.dumps({'type': 'error', 'content': 'Invalid JSON'}, ensure_ascii=False)}\n\n".encode('utf-8'))
+            await response.write_eof()
+            return response
+
+        code = data.get('code')
+        fn_name = data.get('fn_name')
+        workflow_id = data.get('workflow_id') or f"workflow-validation-{uuid.uuid4()}"
+        input_data = data.get('input_data', {}) or {}
+        task_queue = data.get('task_queue') or "SKILL_TASK_QUEUE"
+
+        response = web.StreamResponse(status=200, headers={
+            'Content-Type': 'text/event-stream',
+            'Cache-Control': 'no-cache',
+            'Connection': 'keep-alive',
+            'X-Accel-Buffering': 'no',
+        })
+        await response.prepare(request)
+
+        async def emit(event: dict):
+            await response.write(f"data: {json.dumps(event, ensure_ascii=False)}\n\n".encode('utf-8'))
+
+        if not code or not fn_name:
+            await emit({"type": "error", "content": "code and fn_name are required"})
+            await response.write_eof()
+            return response
+
+        async def emit_log(message: str):
+            await emit({"type": "log", "content": message})
+
+        try:
+            await emit_log(f"[ValidationWorker] 开始真实验证 Workflow: {workflow_id}")
+            await emit_log(f"[ValidationWorker] Workflow 类: {fn_name}")
+            await emit_log(f"[ValidationWorker] 目标 Task Queue: {task_queue}")
+
+            from sandbox_executor import execute_in_sandbox_streaming
+
+            async def forward_log(message: str):
+                await emit_log(f"[Workflow Attempt] {message}")
+
+            execution_result = await execute_in_sandbox_streaming(
+                code,
+                fn_name,
+                input_data,
+                forward_log,
+                attempt=1,
+            )
+
+            if execution_result.get("success", execution_result.get("error") is None):
+                await emit_log("[ValidationWorker] Workflow 真实验证成功")
+                await emit({
+                    "type": "done",
+                    "success": True,
+                    "result": execution_result.get("result"),
+                    "logs": execution_result.get("logs", []),
+                })
+            else:
+                error_msg = execution_result.get("error") or "Workflow validation failed"
+                await emit_log(f"[ValidationWorker] Workflow 真实验证失败: {error_msg}")
+                await emit({
+                    "type": "done",
+                    "success": False,
+                    "error": error_msg,
+                    "traceback": execution_result.get("traceback"),
+                    "result": execution_result.get("result"),
+                    "logs": execution_result.get("logs", []),
+                })
+        except Exception as e:
+            import traceback
+            logger.error(f"Workflow streaming validation failed: {e}\n{traceback.format_exc()}")
+            await emit({"type": "error", "content": str(e)})
+
+        await response.write_eof()
+        return response
 
 
 async def run_http_server(client: Client, validation_task_queue: str, port: int = 8090):

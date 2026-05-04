@@ -90,7 +90,7 @@ jobs:
           node apps/backend/core/session-broker/dist/main.js &
           node apps/backend/domain/template/dist/main.js &
           node apps/backend/core/ai-orchestrator/dist/main.js &
-          node apps/backend/domain/replay-engine/dist/main.js &
+          node apps/backend/runtime/replay-engine/dist/main.js &
 
           # Wait for services to start
           sleep 10

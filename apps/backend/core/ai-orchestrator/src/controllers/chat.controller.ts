@@ -120,6 +120,55 @@ export class ChatController {
     };
   }
 
+  private async loadWaitingInputDetails(
+    executionId: string,
+    authToken?: string,
+    user?: { userId?: string; userRoles?: string[] },
+  ): Promise<{
+    waitingStepId?: string;
+    missingInputs: Array<{
+      name: string;
+      description?: string;
+      missing?: boolean;
+    }>;
+  }> {
+    try {
+      const steps = await this.controlPlaneClient.getExecutionSteps<any[]>(
+        executionId,
+        this.buildControlPlaneRequestOptions(authToken, user),
+      );
+      const waitingStep = Array.isArray(steps)
+        ? steps.find(
+          (step: any) =>
+            step?.status === CONTROL_PLANE_EXECUTION_STATUS.WAITING_INPUT
+            || step?.type === 'input_collection',
+        )
+        : undefined;
+      const requiredInputs = Array.isArray(waitingStep?.inputJson?.requiredInputs)
+        ? waitingStep.inputJson.requiredInputs
+        : [];
+      const missingInputs = requiredInputs
+        .filter((item: any) => item?.missing !== false && typeof item?.name === 'string' && item.name.trim())
+        .map((item: any) => ({
+          name: String(item.name).trim(),
+          description: typeof item.description === 'string' ? item.description : undefined,
+          missing: item.missing !== false,
+        }));
+      return {
+        waitingStepId: waitingStep?.id,
+        missingInputs,
+      };
+    } catch (error) {
+      this.logger.warn(
+        `Failed to load waiting_input details for ${executionId}: ${error instanceof Error ? error.message : 'unknown'}`,
+      );
+      return {
+        waitingStepId: undefined,
+        missingInputs: [],
+      };
+    }
+  }
+
   private normalizeContentToText(content: string | ContentBlock[]): string {
     if (typeof content === 'string') return content;
     return content
@@ -858,10 +907,6 @@ export class ChatController {
           status: string;
           normalizedInput?: {
             objective?: string;
-            requiredInputs?: Array<{
-              name: string;
-              missing?: boolean;
-            }>;
           };
         }>(
           executionId,
@@ -878,27 +923,19 @@ export class ChatController {
             content: '正在提交您补充的信息...',
           };
 
-          // 获取等待输入的步骤
-          const steps = await this.controlPlaneClient.getExecutionSteps<any[]>(
+          const waitingInputDetails = await this.loadWaitingInputDetails(
             executionId,
-            this.buildControlPlaneRequestOptions(authToken, {
+            authToken,
+            {
               userId: context.userId,
               userRoles: context.userRoles,
-            }),
+            },
           );
-          const waitingStep = steps.find(
-            (s: any) =>
-              s.status === CONTROL_PLANE_EXECUTION_STATUS.WAITING_INPUT || s.type === 'input_collection',
-          );
-
-          if (waitingStep) {
+          if (waitingInputDetails.waitingStepId) {
             try {
-              const missingInputs = Array.isArray(execution.normalizedInput?.requiredInputs)
-                ? execution.normalizedInput.requiredInputs.filter((item) => item?.missing)
-                : [];
               const waitingInputPayload = await this.buildWaitingInputPayload(
                 body.message,
-                missingInputs,
+                waitingInputDetails.missingInputs,
                 execution.skillId,
                 authToken,
                 typeof execution.normalizedInput?.objective === 'string'
@@ -911,7 +948,7 @@ export class ChatController {
               await this.controlPlaneClient.submitExecutionInput(
                 executionId,
                 {
-                  stepId: waitingStep.id,
+                  stepId: waitingInputDetails.waitingStepId,
                   input: waitingInputPayload.input,
                   usage: waitingInputPayload.usage,
                 },
@@ -1274,9 +1311,8 @@ export class ChatController {
       }
 
       if (status === CONTROL_PLANE_EXECUTION_STATUS.WAITING_INPUT) {
-        const missingInputs = Array.isArray(execution.normalizedInput?.requiredInputs)
-          ? execution.normalizedInput.requiredInputs.filter((item) => item?.missing)
-          : [];
+        const waitingInputDetails = await this.loadWaitingInputDetails(executionId, authToken, user);
+        const missingInputs = waitingInputDetails.missingInputs;
         return {
           type: StreamEventType.WAITING_INPUT,
           content: missingInputs.length > 0

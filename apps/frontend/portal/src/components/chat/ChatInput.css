@@ -18,24 +18,73 @@
 }
 
 .chat-uploaded-files {
-  margin-bottom: 10px;
+  margin-bottom: 8px;
+  padding: 6px 8px;
+  border-radius: 12px;
+  border: 1px solid rgba(148, 163, 184, 0.14);
+  background: rgba(255, 255, 255, 0.5);
+}
+
+.chat-uploaded-files-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 6px;
+}
+
+.chat-uploaded-files-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary, #475569);
+}
+
+.chat-uploaded-files-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: rgba(99, 102, 241, 0.12);
+  color: #4f46e5;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.chat-uploaded-files-list {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  white-space: nowrap;
+  padding-bottom: 2px;
+  scrollbar-width: thin;
 }
 
 .chat-uploaded-file-tag {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  margin-inline-end: 8px;
-  padding: 6px 12px;
+  gap: 4px;
+  margin-inline-end: 0;
+  padding: 2px 8px;
+  min-height: 24px;
   border-radius: 999px;
   border: 1px solid rgba(99, 102, 241, 0.18);
   background: linear-gradient(135deg, rgba(238, 242, 255, 0.98) 0%, rgba(224, 231, 255, 0.92) 100%);
   color: #4338ca;
   font-weight: 500;
+  font-size: 12px;
+  line-height: 1;
+  flex: 0 0 auto;
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .chat-uploaded-file-tag .anticon-paper-clip {
   color: #6366f1;
+  font-size: 12px;
 }
 
 .chat-input-shell {
@@ -198,6 +247,19 @@
   color: #cbd5e1;
 }
 
+.chat-input-voice-btn.chat-input-voice-btn-active {
+  background: linear-gradient(135deg, rgba(254, 226, 226, 0.96) 0%, rgba(254, 202, 202, 0.92) 100%) !important;
+  border-color: rgba(239, 68, 68, 0.28) !important;
+  color: #dc2626 !important;
+  box-shadow: 0 0 0 4px rgba(239, 68, 68, 0.12);
+}
+
+[data-theme='dark'] .chat-input-voice-btn.chat-input-voice-btn-active {
+  background: linear-gradient(135deg, rgba(127, 29, 29, 0.88) 0%, rgba(69, 10, 10, 0.92) 100%) !important;
+  border-color: rgba(248, 113, 113, 0.3) !important;
+  color: #fecaca !important;
+}
+
 .chat-input-toolbar .ant-btn-primary:not(.ant-btn-dangerous) {
   background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
   border: none;
@@ -259,4 +321,13 @@
   background: linear-gradient(135deg, rgba(49, 46, 129, 0.8) 0%, rgba(30, 41, 59, 0.9) 100%);
   border-color: rgba(129, 140, 248, 0.24);
   color: #c7d2fe;
+}
+
+[data-theme='dark'] .chat-uploaded-files {
+  border-color: rgba(148, 163, 184, 0.16);
+  background: rgba(15, 23, 42, 0.42);
+}
+
+[data-theme='dark'] .chat-uploaded-files-title {
+  color: rgba(226, 232, 240, 0.88);
 }

@@ -22,7 +22,7 @@ const getAiOrchestratorUrl = () => {
     return process.env.AI_ORCHESTRATOR_URL;
   }
   if (process.env.DOCKER_ENV === 'true' || process.env.NODE_ENV === 'production') {
-    return 'http://ops-ai-orchestrator:3007';
+    return 'http://ai-orchestrator:3007';
   }
   const externalHost = process.env.EXTERNAL_HOST || 'localhost';
   return `http://${externalHost}:3007`;
@@ -273,20 +273,20 @@ print(json.dumps(result))
   async initialize(): Promise<void> {
     if (this.isInitialized) return;
 
-    onLog('[SandboxWorker] Initializing...');
-    onLog('[SandboxWorker] Cache directory: ' + CACHE_DIR);
-    onLog('[SandboxWorker] Python path: ' + process.env.PYTHONPATH);
+    console.log('[SandboxWorker] Initializing...');
+    console.log('[SandboxWorker] Cache directory: ' + CACHE_DIR);
+    console.log('[SandboxWorker] Python path: ' + process.env.PYTHONPATH);
 
     // Verify Python is available
     try {
       const result = await this.runCommand('python3', ['--version']);
-      onLog('[SandboxWorker] Python version: ' + result);
+      console.log('[SandboxWorker] Python version: ' + result);
     } catch (e) {
-      onLog('[SandboxWorker] Warning: python3 not found');
+      console.log('[SandboxWorker] Warning: python3 not found');
     }
 
     this.isInitialized = true;
-    onLog('[SandboxWorker] Initialization complete');
+    console.log('[SandboxWorker] Initialization complete');
   }
 
   private runCommand(cmd: string, args: string[]): Promise<string> {

@@ -616,7 +616,7 @@ interface XXXPageProps {
 参考 OpenAI Harness Engineering 方法论：
 
 ### 1. 仓库即记录系统
-- 所有规划文档必须提交到 `memory/` 目录
+- 所有规划文档必须提交到 `docs/memory/` 目录
 - 不在仓库里的东西，对智能体不存在
 - 决策、规范、计划都作为版本化工件
 

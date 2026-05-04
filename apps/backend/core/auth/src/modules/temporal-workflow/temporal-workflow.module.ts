@@ -3,8 +3,10 @@ import { PassportModule } from '@nestjs/passport';
 import { JwtModule } from '@nestjs/jwt';
 import { TemporalWorkflowController } from './temporal-workflow.controller';
 import { TemporalWorkflowService } from './temporal-workflow.service';
+import { TemporalWorkflowAiDraftService } from './temporal-workflow-ai-draft.service';
 import { ActivityController } from './activity.controller';
 import { ActivityService } from './activity.service';
+import { BuiltinActivityRegistry } from './builtin-activity.registry';
 
 @Module({
   imports: [
@@ -15,7 +17,7 @@ import { ActivityService } from './activity.service';
     }),
   ],
   controllers: [TemporalWorkflowController, ActivityController],
-  providers: [TemporalWorkflowService, ActivityService],
-  exports: [TemporalWorkflowService, ActivityService],
+  providers: [TemporalWorkflowService, TemporalWorkflowAiDraftService, ActivityService, BuiltinActivityRegistry],
+  exports: [TemporalWorkflowService, TemporalWorkflowAiDraftService, ActivityService, BuiltinActivityRegistry],
 })
 export class TemporalWorkflowModule {}

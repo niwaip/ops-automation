@@ -22,6 +22,21 @@ export interface ActivityDTO {
   updatedAt: string;
 }
 
+export interface BuiltinActivityDTO {
+  key: string;
+  ref: string;
+  version: string;
+  name: string;
+  fn: string;
+  timeout: string;
+  retryPolicy?: { maxRetries?: number; backoffMs?: number };
+  handler: 'api' | 'carbone' | 'browser' | 'script';
+  config: Record<string, any>;
+  generatedCode: string;
+  readonly: true;
+  description?: string;
+}
+
 export interface CreateActivityDto {
   name: string;
   fn: string;
@@ -83,6 +98,10 @@ export interface StreamEvent {
 }
 
 export const activityApi = {
+  listBuiltin: async (): Promise<BuiltinActivityDTO[]> => {
+    return apiClient.get<BuiltinActivityDTO[]>('/activities/builtin');
+  },
+
   /**
    * 获取所有 Activity 列表
    */

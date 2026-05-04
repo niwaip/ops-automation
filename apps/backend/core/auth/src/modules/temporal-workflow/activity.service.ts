@@ -7,6 +7,10 @@ import { promises as fs } from 'fs';
 import { existsSync } from 'fs';
 import * as path from 'path';
 import { spawn } from 'child_process';
+import {
+  BuiltinActivityDefinition,
+  BuiltinActivityRegistry,
+} from './builtin-activity.registry';
 
 const exec = promisify(require('child_process').exec);
 
@@ -34,6 +38,8 @@ export interface GenerateCodeResult {
   code?: string;
   error?: string;
 }
+
+export interface BuiltinActivityDTO extends BuiltinActivityDefinition {}
 
 interface ActivityExecutionOptions {
   timeout?: string;
@@ -160,7 +166,7 @@ const getAiOrchestratorUrl = () => {
     return process.env.AI_ORCHESTRATOR_URL;
   }
   if (process.env.DOCKER_ENV === 'true' || process.env.NODE_ENV === 'production') {
-    return 'http://ops-ai-orchestrator:3007';
+    return 'http://ai-orchestrator:3007';
   }
   const externalHost = process.env.EXTERNAL_HOST || 'localhost';
   return `http://${externalHost}:3007`;
@@ -168,7 +174,18 @@ const getAiOrchestratorUrl = () => {
 
 @Injectable()
 export class ActivityService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private readonly builtinActivityRegistry: BuiltinActivityRegistry,
+  ) {}
+
+  listBuiltin(): BuiltinActivityDTO[] {
+    return this.builtinActivityRegistry.list();
+  }
+
+  getBuiltin(key: string): BuiltinActivityDTO | null {
+    return this.builtinActivityRegistry.getByKey(key);
+  }
 
   async findAll(): Promise<Activity[]> {
     return this.prisma.activity.findMany({
@@ -952,9 +969,12 @@ class MockApplicationError(Exception):
         self.kwargs = kwargs
 
 class MockResponse:
-    def __init__(self, payload=None, status_code=200):
+    def __init__(self, payload=None, status_code=200, headers=None, url="", text=None):
         self._payload = payload or {}
         self.status_code = status_code
+        self.headers = headers or {"Content-Type": "application/json"}
+        self.url = url
+        self.text = text if text is not None else json.dumps(self._payload)
 
     def raise_for_status(self):
         if self.status_code >= 400:
@@ -966,18 +986,29 @@ class MockResponse:
 class MockRequestException(Exception):
     pass
 
-def mock_requests_get(url, timeout=30, **kwargs):
-    return MockResponse({
+def mock_requests_request(method, url, timeout=30, **kwargs):
+    payload = {
         "ok": True,
         "mocked": True,
         "request": {
+            "method": method,
             "url": url,
             "timeout": timeout,
+            "kwargs": kwargs,
         },
         "data": {
             "message": "sandbox mock response"
         }
-    })
+    }
+    return MockResponse({
+        **payload
+    }, url=url)
+
+def mock_requests_get(url, timeout=30, **kwargs):
+    return mock_requests_request("GET", url, timeout=timeout, **kwargs)
+
+def mock_requests_post(url, timeout=30, **kwargs):
+    return mock_requests_request("POST", url, timeout=timeout, **kwargs)
 
 # Create mock temporalio module as a proper ModuleType with submodules
 mock_temporalio = types.ModuleType('temporalio')
@@ -1042,7 +1073,8 @@ mock_temporalio.workflow.execute_activity = workflow_execute_activity
 
 mock_temporalio.exceptions.ApplicationError = MockApplicationError
 mock_requests.get = mock_requests_get
-mock_requests.post = mock_requests_get
+mock_requests.post = mock_requests_post
+mock_requests.request = mock_requests_request
 mock_requests.RequestException = MockRequestException
 
 # RetryPolicy mock - accept various parameter names

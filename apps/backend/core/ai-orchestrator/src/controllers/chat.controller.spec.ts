@@ -68,6 +68,15 @@ describe('ChatController control-plane integration', () => {
         id: 'step-1',
         status: 'waiting_input',
         type: 'input_collection',
+        inputJson: {
+          requiredInputs: [
+            {
+              name: 'url',
+              description: '待处理链接',
+              missing: true,
+            },
+          ],
+        },
       },
     ]);
     controlPlaneClient.submitExecutionInput.mockResolvedValue({
@@ -153,16 +162,24 @@ describe('ChatController control-plane integration', () => {
     controlPlaneClient.getExecution.mockResolvedValue({
       id: 'execution-2',
       status: 'waiting_input',
-      normalizedInput: {
-        requiredInputs: [
-          {
-            name: 'url',
-            missing: true,
-          },
-        ],
-      },
       usage: { total_tokens: 12 },
     });
+    controlPlaneClient.getExecutionSteps.mockResolvedValue([
+      {
+        id: 'step-input-2',
+        type: 'input_collection',
+        status: 'waiting_input',
+        inputJson: {
+          requiredInputs: [
+            {
+              name: 'partyA',
+              description: '甲方公司名称',
+              missing: true,
+            },
+          ],
+        },
+      },
+    ]);
 
     const events = [];
     for await (const event of (controller as any).observeExecution(
@@ -180,12 +197,12 @@ describe('ChatController control-plane integration', () => {
     expect(events).toEqual([
       {
         type: StreamEventType.WAITING_INPUT,
-        content: '任务需要你补充信息后才能继续执行。\n\n缺少参数：url\n\n执行单 ID: execution-2',
+        content: '任务需要你补充信息后才能继续执行。\n\n缺少参数：partyA\n\n执行单 ID: execution-2',
         data: {
           executionId: 'execution-2',
           status: 'waiting_input',
           hasBusinessResult: false,
-          missingInputs: [{ name: 'url', missing: true }],
+          missingInputs: [{ name: 'partyA', description: '甲方公司名称', missing: true }],
           usage: { total_tokens: 12 },
         },
       },

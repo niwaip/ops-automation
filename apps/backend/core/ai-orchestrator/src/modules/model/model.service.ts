@@ -290,6 +290,26 @@ export class ModelService implements OnModuleInit {
     return null;
   }
 
+  private buildModelApiKeyRef(modelId: string, config?: AIModelConfig): APIKeyReference {
+    const explicitRefId = config?.env_key as string | undefined;
+    if (explicitRefId) {
+      return {
+        reference_id: explicitRefId,
+        secret_type: (config?.secret_type as 'vault' | 'env' | 'k8s_secret') || 'env',
+      };
+    }
+
+    return {
+      reference_id: `AI_API_KEY_${modelId}`,
+      secret_type: 'env',
+    };
+  }
+
+  private clearModelCredential(id: string): void {
+    this.apiKeys.delete(id);
+    this.apiKeyReferences.delete(id);
+  }
+
   getPreferredDefaultModel(context?: ModelSelectionPolicyContext): AIModelDTO | null {
     const userRoles = context?.userRoles || [];
     const isAdmin = userRoles.includes('admin');
@@ -835,7 +855,7 @@ export class ModelService implements OnModuleInit {
     const now = new Date();
 
     let apiKey: string | null = null;
-    let apiKeyRef: APIKeyReference;
+    let apiKeyRef: APIKeyReference = this.buildModelApiKeyRef(id, dto.config);
 
     const existingProviderConfig = dto.providerConfigId ? this.providers.get(dto.providerConfigId) : null;
     const providerConfig = existingProviderConfig
@@ -856,46 +876,24 @@ export class ModelService implements OnModuleInit {
 
     if (dto.api_key) {
       apiKey = dto.api_key;
-      apiKeyRef = {
-        reference_id: id,
-        secret_type: 'env',
-      };
       this.apiKeys.set(id, apiKey);
       this.logger.log(`Model ${dto.name} created with direct API key input`);
     } else {
       const explicitRefId = dto.config?.env_key as string | undefined;
       if (explicitRefId) {
-        apiKeyRef = {
-          reference_id: explicitRefId,
-          secret_type: (dto.config?.secret_type as 'vault' | 'env' | 'k8s_secret') || 'env',
-        };
         apiKey = this.resolveApiKey(apiKeyRef);
       } else {
         const providerCredential = this.resolveProviderCredential(providerConfig.id);
         if (providerCredential) {
           apiKey = providerCredential;
-          apiKeyRef = {
-            reference_id: id,
-            secret_type: 'env',
-          };
-          this.apiKeys.set(id, apiKey);
           this.logger.log(`Model ${dto.name} reusing provider credentials from provider ${providerConfig.provider}`);
         } else {
           const reusableCredential = this.findReusableProviderCredential(dto.provider, dto.api_endpoint);
           if (reusableCredential) {
             apiKey = reusableCredential.apiKey;
-            apiKeyRef = {
-              reference_id: id,
-              secret_type: 'env',
-            };
-            this.apiKeys.set(id, apiKey);
             this.logger.log(`Model ${dto.name} reusing provider credentials from model ${reusableCredential.sourceModelId}`);
           } else {
-          apiKeyRef = {
-            reference_id: `AI_API_KEY_${id}`,
-            secret_type: 'env',
-          };
-          apiKey = this.resolveApiKey(apiKeyRef);
+            apiKey = this.resolveApiKey(apiKeyRef);
           }
         }
       }
@@ -920,7 +918,11 @@ export class ModelService implements OnModuleInit {
 
     this.clearDefaultScopeOnOtherModels(id, normalizedConfig);
     this.models.set(id, model);
-    this.apiKeyReferences.set(id, apiKeyRef);
+    if (dto.api_key || dto.config?.env_key) {
+      this.apiKeyReferences.set(id, apiKeyRef);
+    } else {
+      this.clearModelCredential(id);
+    }
 
     if (apiKey) {
       const client = new OpenAICompatibleClient({
@@ -944,10 +946,6 @@ export class ModelService implements OnModuleInit {
   async updateModel(id: string, updates: Partial<CreateModelDTO>): Promise<AIModelDTO | null> {
     const model = this.models.get(id);
     if (!model) return null;
-
-    if (updates.api_key) {
-      this.apiKeys.set(id, updates.api_key);
-    }
 
     const currentProviderConfig = this.getProviderConfigForModel(model);
     const requestedProviderConfig = updates.providerConfigId
@@ -984,6 +982,20 @@ export class ModelService implements OnModuleInit {
 
     this.clearDefaultScopeOnOtherModels(id, normalizedConfig);
     this.models.set(id, updatedModel);
+
+    if (updates.api_key) {
+      if (updatedModel.providerConfigId) {
+        this.clearModelCredential(id);
+      } else {
+        this.apiKeys.set(id, updates.api_key);
+        this.apiKeyReferences.set(id, this.buildModelApiKeyRef(id, normalizedConfig));
+      }
+    } else if (updates.config?.env_key) {
+      this.apiKeys.delete(id);
+      this.apiKeyReferences.set(id, this.buildModelApiKeyRef(id, normalizedConfig));
+    } else if (updatedModel.providerConfigId) {
+      this.clearModelCredential(id);
+    }
 
     // Reinitialize client if needed
     if (updates.api_endpoint || updates.name || updates.api_key || updates.providerConfigId) {
