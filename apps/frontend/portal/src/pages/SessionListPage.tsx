@@ -278,7 +278,7 @@ const SessionListPage: React.FC = () => {
           {templatesQuery.data?.templates?.length === 0 && (
             <div style={{ color: 'var(--text-secondary)', textAlign: 'center', padding: '20px 0' }}>
               <p>{t('session:noTemplates', 'No report templates available')}</p>
-              <Button type="link" onClick={() => navigate('/report-templates/new')}>
+              <Button type="link" onClick={() => navigate('/carbone-templates')}>
                 {t('session:createTemplate', 'Create a template')}
               </Button>
             </div>

@@ -2,18 +2,18 @@ import React, { useReducer, useState, useEffect } from 'react';
 import {
   Table, Card, Button, Input, Space, Tag, Typography, Modal, message, Form, Select,
   Alert, Collapse, Badge, Popconfirm, Statistic, Row, Col, Switch, InputNumber, Descriptions,
-  Steps, Progress
+  Steps, Progress, Tooltip
 } from 'antd';
 import {
   SearchOutlined, PlusOutlined, DeleteOutlined, PlayCircleOutlined,
   ReloadOutlined, ApiOutlined, CodeOutlined, FileTextOutlined, ChromeOutlined,
   ThunderboltOutlined, LineChartOutlined, OrderedListOutlined, CopyOutlined,
-  SaveOutlined, RobotOutlined, EyeOutlined, LoadingOutlined, LockOutlined
+  SaveOutlined, RobotOutlined, EyeOutlined, LoadingOutlined, LockOutlined, InfoCircleOutlined
 } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
 import { useQuery, useMutation, useQueryClient } from 'react-query';
 import { activityApi, ActivityDTO, BuiltinActivityDTO, CreateActivityDto, UpdateActivityDto, ActivityValidationResult } from '../../api/activity';
-import { ListSectionHeader, OverviewStatGrid, PageTitleBlock } from '../../components/page/PageScaffold';
+import { ListSectionHeader } from '../../components/page/PageScaffold';
 import { normalizeExecutionResult } from '../../api/execution-normalizer';
 import type { ColumnsType } from 'antd/es/table';
 
@@ -287,6 +287,7 @@ const ActivityPage: React.FC = () => {
   const queryClient = useQueryClient();
   const [form] = Form.useForm();
   const [searchText, setSearchText] = useState('');
+  const [builtinSearchText, setBuiltinSearchText] = useState('');
   const [editModalVisible, setEditModalVisible] = useState(false);
   const [detailModalVisible, setDetailModalVisible] = useState(false);
   const [validateModalVisible, setValidateModalVisible] = useState(false);
@@ -959,46 +960,12 @@ const ActivityPage: React.FC = () => {
       render: (name) => <Text strong>{name}</Text>,
     },
     {
-      title: '引用',
-      dataIndex: 'ref',
-      key: 'ref',
-      width: 220,
-      align: 'center',
-      render: (ref) => (
-        <Text
-          code
-          style={{
-            display: 'inline-block',
-            padding: '3px 10px',
-            borderRadius: 999,
-            background: 'var(--bg-secondary)',
-            fontSize: 12,
-          }}
-        >
-          {ref}
-        </Text>
-      ),
-    },
-    {
-      title: '函数名',
-      dataIndex: 'fn',
-      key: 'fn',
-      width: 180,
-      align: 'center',
-      render: (fn) => (
-        <Text
-          code
-          style={{
-            display: 'inline-block',
-            padding: '3px 10px',
-            borderRadius: 999,
-            background: 'var(--bg-secondary)',
-            fontSize: 12,
-          }}
-        >
-          {fn}
-        </Text>
-      ),
+      title: '说明',
+      dataIndex: 'description',
+      key: 'description',
+      width: 360,
+      align: 'left',
+      render: (desc) => <Text type="secondary">{desc || '无'}</Text>,
     },
     {
       title: '处理器',
@@ -1036,156 +1003,200 @@ const ActivityPage: React.FC = () => {
     a.name.toLowerCase().includes(searchText.toLowerCase()) || a.fn.toLowerCase().includes(searchText.toLowerCase())
   );
 
+  const userActivities = activitiesQuery.data || [];
+  const builtinActivities = builtinActivitiesQuery.data || [];
+  const filteredBuiltinActivities = builtinActivities.filter((activity) => {
+    const keyword = builtinSearchText.trim().toLowerCase();
+    if (!keyword) {
+      return true;
+    }
+    return [
+      activity.name,
+      activity.description,
+      activity.fn,
+      activity.ref,
+    ]
+      .filter(Boolean)
+      .some((value) => String(value).toLowerCase().includes(keyword));
+  });
+  const countsSource = userActivities;
   const stats = {
-    total: activitiesQuery.data?.length || 0,
-    api: activitiesQuery.data?.filter(a => a.handler === 'api').length || 0,
-    script: activitiesQuery.data?.filter(a => a.handler === 'script').length || 0,
-    active: activitiesQuery.data?.filter(a => a.isActive).length || 0,
+    userCreated: countsSource.length,
+    builtin: builtinActivities.length,
+    active: countsSource.filter(a => a.isActive).length,
+    visible: filteredActivities.length,
   };
   const activityOverviewStats = [
     {
-      key: 'total',
-      label: '总数',
-      value: stats.total,
+      key: 'userCreated',
+      label: '用户创建',
+      value: stats.userCreated,
       color: 'var(--text-primary)',
       icon: <ThunderboltOutlined style={{ color: 'var(--text-secondary)' }} />,
     },
     {
-      key: 'api',
-      label: 'API',
-      value: stats.api,
+      key: 'builtin',
+      label: '系统内置',
+      value: stats.builtin,
       color: 'var(--success-color)',
-      icon: <ApiOutlined style={{ color: 'var(--success-color)' }} />,
-    },
-    {
-      key: 'script',
-      label: '脚本',
-      value: stats.script,
-      color: 'var(--warning-color)',
-      icon: <CodeOutlined style={{ color: 'var(--warning-color)' }} />,
+      icon: <LockOutlined style={{ color: 'var(--success-color)' }} />,
     },
     {
       key: 'active',
       label: '已启用',
       value: stats.active,
+      color: 'var(--warning-color)',
+      icon: <LineChartOutlined style={{ color: 'var(--warning-color)' }} />,
+    },
+    {
+      key: 'visible',
+      label: '当前显示',
+      value: stats.visible,
       color: 'var(--info-color)',
-      icon: <LineChartOutlined style={{ color: 'var(--info-color)' }} />,
+      icon: <SearchOutlined style={{ color: 'var(--info-color)' }} />,
     },
   ];
 
   return (
     <div>
-      <PageTitleBlock
-        title="Activities"
-        subtitle="查看、筛选并维护工作单元配置"
-      />
-
-      <OverviewStatGrid items={activityOverviewStats} />
-
-      <Card style={{ ...SECTION_CARD_STYLE, marginBottom: 16 }} styles={{ body: { padding: 20 } }}>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              gap: 16,
-              flexWrap: 'wrap',
-            }}
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(4, minmax(0, 1fr))',
+          gap: 12,
+          marginBottom: 16,
+        }}
+      >
+        {activityOverviewStats.map((item) => (
+          <Card
+            key={item.key}
+            size="small"
+            style={{ ...SECTION_CARD_STYLE, borderRadius: 14 }}
+            styles={{ body: { padding: '12px 16px' } }}
           >
-            <Space direction="vertical" size={2}>
-              <Text strong style={{ fontSize: 16 }}>工作单元总览</Text>
-              <Text type="secondary">支持检索、创建和刷新自定义工作单元列表</Text>
-            </Space>
-            <Space wrap>
-              <Button size="large" icon={<LockOutlined />} onClick={() => { void builtinActivitiesQuery.refetch(); }}>
-                刷新内置
-              </Button>
-              <Button size="large" icon={<ReloadOutlined />} onClick={() => { void activitiesQuery.refetch(); }}>
-                刷新
-              </Button>
-              <Button size="large" icon={<PlusOutlined />} type="primary" onClick={handleCreate}>
-                新建 Activity
-              </Button>
-            </Space>
-          </div>
-
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'stretch',
-              justifyContent: 'space-between',
-              gap: 16,
-              flexWrap: 'wrap',
-            }}
-          >
-            <Input
-              size="large"
-              placeholder="搜索 Activity 名称或函数名..."
-              prefix={<SearchOutlined />}
-              variant="borderless"
-              value={searchText}
-              onChange={e => setSearchText(e.target.value)}
-              style={{
-                width: 360,
-                height: 44,
-                background: 'var(--bg-secondary)',
-                borderRadius: 12,
-              }}
-              allowClear
-            />
-            <Text type="secondary" style={{ display: 'flex', alignItems: 'center' }}>
-              当前展示 {filteredActivities.length} 条
-            </Text>
-          </div>
-        </div>
-      </Card>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+              <Space size={10} align="center">
+                <span style={{ display: 'inline-flex', fontSize: 16 }}>{item.icon}</span>
+                <Text type="secondary" style={{ fontSize: 13 }}>{item.label}</Text>
+              </Space>
+              <Text style={{ fontSize: 24, fontWeight: 700, color: item.color, lineHeight: 1 }}>
+                {item.value}
+              </Text>
+            </div>
+          </Card>
+        ))}
+      </div>
 
       <Card style={SECTION_CARD_STYLE}>
         <ListSectionHeader
-          title="工作单元记录列表"
-          subtitle="支持查看详情、编辑配置和删除工作单元"
-          extra={<Text type="secondary">共 {filteredActivities.length} 条</Text>}
+          title={(
+            <Space wrap size={12}>
+              <Text strong style={{ fontSize: 16 }}>用户创建工作单元</Text>
+              <Input
+                size="large"
+                placeholder="搜索工作单元名称或函数名..."
+                prefix={<SearchOutlined />}
+                variant="borderless"
+                value={searchText}
+                onChange={e => setSearchText(e.target.value)}
+                style={{
+                  width: 360,
+                  height: 44,
+                  background: 'var(--bg-secondary)',
+                  borderRadius: 12,
+                }}
+                allowClear
+              />
+            </Space>
+          )}
+          extra={(
+            <Space wrap size={12}>
+              <Text type="secondary">当前显示 {filteredActivities.length} 条</Text>
+              <Button size="large" icon={<ReloadOutlined />} onClick={() => { void activitiesQuery.refetch(); }} className="btn-pill">
+                刷新
+              </Button>
+              <Button size="large" icon={<PlusOutlined />} type="primary" onClick={handleCreate} className="btn-pill">
+                创建
+              </Button>
+            </Space>
+          )}
         />
         <Table columns={columns} dataSource={filteredActivities} rowKey="id" loading={activitiesQuery.isLoading} pagination={{ showSizeChanger: true, showTotal: total => `共 ${total} 条` }} />
       </Card>
 
       <Card style={{ ...SECTION_CARD_STYLE, marginTop: 16 }}>
-        <ListSectionHeader
-          title="系统内置 Activities"
-          subtitle="由平台维护的只读能力，模板工作流默认可直接引用"
-          extra={<Text type="secondary">共 {builtinActivitiesQuery.data?.length || 0} 条</Text>}
-        />
-        <Alert
-          type="info"
-          showIcon
-          style={{ marginBottom: 16 }}
-          message="模板工作流无需再预先创建 Carbone Activity"
-          description="系统现在直接提供内置 documentRender Activity，后续也会在这里统一展示更多内置能力。"
-        />
-        <Table
-          columns={builtinColumns}
-          dataSource={builtinActivitiesQuery.data || []}
-          rowKey="ref"
-          loading={builtinActivitiesQuery.isLoading}
-          pagination={false}
-          expandable={{
-            expandedRowRender: (record) => (
-              <Descriptions
-                column={1}
-                size="small"
-                styles={{ content: { paddingBottom: 8 }, label: { width: 96 } }}
-              >
-                <Descriptions.Item label="说明">{record.description || '无'}</Descriptions.Item>
-                <Descriptions.Item label="默认超时">{record.timeout}</Descriptions.Item>
-                <Descriptions.Item label="重试策略">
-                  {record.retryPolicy?.maxRetries !== undefined
-                    ? `maxRetries=${record.retryPolicy.maxRetries}, backoffMs=${record.retryPolicy.backoffMs ?? 1000}`
-                    : '未设置'}
-                </Descriptions.Item>
-              </Descriptions>
-            ),
-          }}
+        <Collapse
+          ghost
+          defaultActiveKey={[]}
+          items={[
+            {
+              key: 'builtin-activities',
+              label: (
+                <div
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    gap: 12,
+                    width: '100%',
+                    paddingRight: 8,
+                    flexWrap: 'wrap',
+                  }}
+                >
+                  <Space size={8} align="center">
+                    <Text strong style={{ fontSize: 16 }}>系统内置工作单元</Text>
+                    <Tooltip title="模板工作流无需预先创建 Carbone Activity；系统提供内置 documentRender Activity，后续也会在这里统一展示更多内置能力">
+                      <InfoCircleOutlined style={{ color: 'var(--text-secondary)' }} />
+                    </Tooltip>
+                  </Space>
+                  <Text type="secondary">共 {builtinActivities.length} 条</Text>
+                </div>
+              ),
+              children: (
+                <Space direction="vertical" size={16} style={{ width: '100%' }}>
+                  <Input
+                    size="large"
+                    placeholder="搜索内置工作单元名称或说明..."
+                    prefix={<SearchOutlined />}
+                    variant="borderless"
+                    value={builtinSearchText}
+                    onChange={(e) => setBuiltinSearchText(e.target.value)}
+                    style={{
+                      width: 360,
+                      height: 44,
+                      background: 'var(--bg-secondary)',
+                      borderRadius: 12,
+                    }}
+                    allowClear
+                  />
+                  <Table
+                    columns={builtinColumns}
+                    dataSource={filteredBuiltinActivities}
+                    rowKey="ref"
+                    loading={builtinActivitiesQuery.isLoading}
+                    pagination={false}
+                    expandable={{
+                      expandedRowRender: (record) => (
+                        <Descriptions
+                          column={1}
+                          size="small"
+                          styles={{ content: { paddingBottom: 8 }, label: { width: 96 } }}
+                        >
+                          <Descriptions.Item label="说明">{record.description || '无'}</Descriptions.Item>
+                          <Descriptions.Item label="默认超时">{record.timeout}</Descriptions.Item>
+                          <Descriptions.Item label="重试策略">
+                            {record.retryPolicy?.maxRetries !== undefined
+                              ? `maxRetries=${record.retryPolicy.maxRetries}, backoffMs=${record.retryPolicy.backoffMs ?? 1000}`
+                              : '未设置'}
+                          </Descriptions.Item>
+                        </Descriptions>
+                      ),
+                    }}
+                  />
+                </Space>
+              ),
+            },
+          ]}
         />
       </Card>
 

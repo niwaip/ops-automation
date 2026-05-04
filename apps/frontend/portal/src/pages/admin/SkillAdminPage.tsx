@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { Table, Card, Button, Input, Space, Tag, Typography, Modal, message, Form, Select, Descriptions, Tabs, Tooltip, Collapse, Steps, Divider, Badge, Alert, Popconfirm, Progress } from 'antd';
+import { Table, Card, Button, Input, Space, Tag, Typography, Modal, message, Form, Select, Descriptions, Tabs, Tooltip, Collapse, Steps, Divider, Badge, Alert, Popconfirm, Progress, Empty } from 'antd';
 import {
   SearchOutlined,
   ReloadOutlined,
@@ -174,7 +174,12 @@ const getValidationProgressMeta = (stage: string, isRunning: boolean, pulse: num
   };
 };
 
-const SkillAdminPage: React.FC = () => {
+interface SkillAdminPageProps {
+  embedded?: boolean;
+  initialSkillId?: string;
+}
+
+const SkillAdminPage: React.FC<SkillAdminPageProps> = ({ embedded, initialSkillId }) => {
   const { t } = useTranslation(['common', 'admin']);
   const queryClient = useQueryClient();
   const navigate = useNavigate();
@@ -334,9 +339,27 @@ const SkillAdminPage: React.FC = () => {
   }, []);
 
   useEffect(() => {
+    if (embedded && initialSkillId && skillsQuery.data?.skills) {
+      const skill = skillsQuery.data.skills.find(s => s.id === initialSkillId);
+      if (skill) {
+        setSelectedSkill(skill);
+        // 在内嵌模式下，我们直接展示详情内容，不需要 Modal
+      }
+      return;
+    }
+
     const keyword = searchParams.get('q') || '';
     setSearchText(keyword);
-  }, [searchParams]);
+    
+    const skillId = searchParams.get('id');
+    if (skillId && skillsQuery.data?.skills) {
+      const skill = skillsQuery.data.skills.find(s => s.id === skillId);
+      if (skill) {
+        setSelectedSkill(skill);
+        setDetailModalVisible(true);
+      }
+    }
+  }, [searchParams, skillsQuery.data?.skills, embedded, initialSkillId]);
 
   useEffect(() => {
     if (!validatingSkillId) {
@@ -721,6 +744,16 @@ const SkillAdminPage: React.FC = () => {
               公开详情
             </Button>
           ) : null}
+          {record.publishedReleaseId ? (
+            <Button
+              type="link"
+              size="small"
+              icon={<OrderedListOutlined />}
+              onClick={() => navigate(`/admin/capabilities?releaseId=${record.publishedReleaseId}&mode=view`)}
+            >
+              发布溯源
+            </Button>
+          ) : null}
           <Button
             type="link"
             size="small"
@@ -787,6 +820,134 @@ const SkillAdminPage: React.FC = () => {
     value: t.id,
     label: `${t.name} (${t.id.slice(0, 8)}...)`,
   }));
+
+  const renderDetailContent = (skill: SkillConfigDTO) => (
+    <Collapse defaultActiveKey={['basic', 'flow', 'params']} ghost={embedded}>
+      <Panel header="基本信息" key="basic">
+        <Descriptions bordered={!embedded} size="small" column={embedded ? 1 : 2}>
+          <Descriptions.Item label="技能ID">{skill.id}</Descriptions.Item>
+          <Descriptions.Item label="描述" span={embedded ? 1 : 2}>{skill.description}</Descriptions.Item>
+          <Descriptions.Item label="公开状态">
+            <Tag color={skill.isPublished ? 'success' : 'default'}>
+              {skill.isPublished ? '已公开可执行' : '仅系统定义'}
+            </Tag>
+          </Descriptions.Item>
+          <Descriptions.Item label="公开来源">
+            {skill.publishedSourceType || <Text type="secondary">未公开</Text>}
+          </Descriptions.Item>
+          <Descriptions.Item label="关联 Release">
+            {skill.publishedReleaseId || <Text type="secondary">未公开</Text>}
+          </Descriptions.Item>
+          <Descriptions.Item label="部署状态">
+            {skill.publishedDeploymentStatus || <Text type="secondary">未公开</Text>}
+          </Descriptions.Item>
+          <Descriptions.Item label="触发关键字" span={embedded ? 1 : 2}>
+            <Space wrap>
+              {skill.triggerKeywords?.map((kw) => (
+                <Tag key={kw} color="orange">{kw}</Tag>
+              ))}
+            </Space>
+          </Descriptions.Item>
+        </Descriptions>
+      </Panel>
+
+      <Panel header="执行流程" key="flow">
+        <div style={{ padding: '8px 16px' }}>
+          {skill.executionFlowTemplateIds && skill.executionFlowTemplateIds.length > 0 ? (
+            <Space direction="vertical" style={{ width: '100%' }}>
+              <Alert
+                message="此技能关联了流程模板，将按顺序执行模板步骤，随后执行手动追加的步骤"
+                type="info"
+                showIcon
+              />
+              <div style={{ marginTop: 8 }}>
+                <Text strong>关联模板 ID：</Text>
+                {skill.executionFlowTemplateIds.map(id => (
+                  <Tag key={id} color="blue">{id}</Tag>
+                ))}
+              </div>
+              <div style={{ marginTop: 16 }}>
+                {renderExecutionFlow(skill.executionFlow)}
+              </div>
+            </Space>
+          ) : (
+            renderExecutionFlow(skill.executionFlow)
+          )}
+        </div>
+      </Panel>
+
+      <Panel header="参数与配置" key="params">
+        <div style={{ padding: 16 }}>
+          <Tabs size="small">
+            <TabPane tab="参数 Schema" key="schema">
+              {Object.keys(skill.paramsSchema?.properties || {}).length > 0 ? (
+                <Space direction="vertical" style={{ width: '100%' }}>
+                  <div style={{ marginBottom: 8 }}>
+                    <Text strong>必填参数：</Text>
+                    {skill.paramsSchema.required.map((param) => (
+                      <Tag key={param} color="red" style={{ marginLeft: 8 }}>{param}</Tag>
+                    ))}
+                  </div>
+                  {Object.entries(skill.paramsSchema.properties).map(([key, value]) => (
+                    <Card key={key} size="small" style={{ marginBottom: 8 }} title={
+                      <Space>
+                        <Text strong>{key}</Text>
+                        <Tag color={value.required ? 'red' : 'default'}>{value.required ? '必填' : '可选'}</Tag>
+                        <Tag color="processing">{value.type}</Tag>
+                      </Space>
+                    }>
+                      <Text>{value.description}</Text>
+                      {value.extractionPrompt && (
+                        <div style={{ marginTop: 4 }}>
+                          <Text type="secondary" style={{ fontSize: 12 }}>提取提示: {value.extractionPrompt}</Text>
+                        </div>
+                      )}
+                    </Card>
+                  ))}
+                </Space>
+              ) : (
+                <Text type="secondary">未配置参数Schema</Text>
+              )}
+            </TabPane>
+            <TabPane tab="文档生成配置" key="carbone">
+              <Descriptions bordered={!embedded} size="small" column={1}>
+                <Descriptions.Item label="Carbone模板ID">
+                  {skill.carboneTemplateId || <Text type="secondary">未配置</Text>}
+                </Descriptions.Item>
+                <Descriptions.Item label="Carbone技能ID">
+                  {skill.carboneSkillId || <Text type="secondary">未配置</Text>}
+                </Descriptions.Item>
+                <Descriptions.Item label="内部模板ID">
+                  {skill.templateId || <Text type="secondary">未配置</Text>}
+                </Descriptions.Item>
+              </Descriptions>
+            </TabPane>
+            <TabPane tab="API 端点" key="api">
+              <Card size="small" title="运行时 API 配置" style={{ marginBottom: 16 }}>
+                {renderApiEndpoints(skill.apiEndpoints)}
+              </Card>
+              {skill.publishedSourceType === 'temporal_workflow' && (
+                <Alert
+                  message="编排型能力说明"
+                  description="此 Skill 由 Temporal 工作流发布，其核心逻辑由编排引擎托管。详情请参考关联的 Release 定义。"
+                  type="info"
+                  showIcon
+                />
+              )}
+            </TabPane>
+          </Tabs>
+        </div>
+      </Panel>
+    </Collapse>
+  );
+
+  if (embedded) {
+    return (
+      <div style={{ padding: 24 }}>
+        {selectedSkill ? renderDetailContent(selectedSkill) : <Empty description="未找到技能详情" />}
+      </div>
+    );
+  }
 
   return (
     <div>
@@ -906,115 +1067,7 @@ const SkillAdminPage: React.FC = () => {
         }
         width={850}
       >
-        {selectedSkill && (
-          <Collapse defaultActiveKey={['basic', 'flow', 'params']}>
-            <Panel header="基本信息" key="basic">
-              <Descriptions bordered size="small" column={2}>
-                <Descriptions.Item label="技能ID">{selectedSkill.id}</Descriptions.Item>
-                <Descriptions.Item label="描述" span={2}>{selectedSkill.description}</Descriptions.Item>
-                <Descriptions.Item label="公开状态">
-                  <Tag color={selectedSkill.isPublished ? 'success' : 'default'}>
-                    {selectedSkill.isPublished ? '已公开可执行' : '仅系统定义'}
-                  </Tag>
-                </Descriptions.Item>
-                <Descriptions.Item label="公开来源">
-                  {selectedSkill.publishedSourceType || <Text type="secondary">未公开</Text>}
-                </Descriptions.Item>
-                <Descriptions.Item label="关联 Release">
-                  {selectedSkill.publishedReleaseId || <Text type="secondary">未公开</Text>}
-                </Descriptions.Item>
-                <Descriptions.Item label="部署状态">
-                  {selectedSkill.publishedDeploymentStatus || <Text type="secondary">未公开</Text>}
-                </Descriptions.Item>
-                <Descriptions.Item label="触发关键字" span={2}>
-                  <Space wrap>
-                    {selectedSkill.triggerKeywords?.map((kw) => (
-                      <Tag key={kw} color="orange">{kw}</Tag>
-                    ))}
-                  </Space>
-                </Descriptions.Item>
-              </Descriptions>
-            </Panel>
-
-            <Panel header="执行流程" key="flow">
-              <div style={{ padding: '8px 16px' }}>
-                {selectedSkill.executionFlowTemplateIds && selectedSkill.executionFlowTemplateIds.length > 0 ? (
-                  <Space direction="vertical" style={{ width: '100%' }}>
-                    <Alert
-                      message="此技能关联了流程模板，将按顺序执行模板步骤，随后执行手动追加的步骤"
-                      type="info"
-                      showIcon
-                    />
-                    <div style={{ marginTop: 8 }}>
-                      <Text strong>关联模板 ID：</Text>
-                      {selectedSkill.executionFlowTemplateIds.map(id => (
-                        <Tag key={id} color="blue">{id}</Tag>
-                      ))}
-                    </div>
-                    <div style={{ marginTop: 16 }}>
-                      {renderExecutionFlow(selectedSkill.executionFlow)}
-                    </div>
-                  </Space>
-                ) : (
-                  renderExecutionFlow(selectedSkill.executionFlow)
-                )}
-              </div>
-            </Panel>
-
-            <Panel header="参数与配置" key="params">
-              <div style={{ padding: 16 }}>
-                <Tabs size="small">
-                  <TabPane tab="参数 Schema" key="schema">
-                    {Object.keys(selectedSkill.paramsSchema?.properties || {}).length > 0 ? (
-                      <Space direction="vertical" style={{ width: '100%' }}>
-                        <div style={{ marginBottom: 8 }}>
-                          <Text strong>必填参数：</Text>
-                          {selectedSkill.paramsSchema.required.map((param) => (
-                            <Tag key={param} color="red" style={{ marginLeft: 8 }}>{param}</Tag>
-                          ))}
-                        </div>
-                        {Object.entries(selectedSkill.paramsSchema.properties).map(([key, value]) => (
-                          <Card key={key} size="small" style={{ marginBottom: 8 }} title={
-                            <Space>
-                              <Text strong>{key}</Text>
-                              <Tag color={value.required ? 'red' : 'default'}>{value.required ? '必填' : '可选'}</Tag>
-                              <Tag color="processing">{value.type}</Tag>
-                            </Space>
-                          }>
-                            <Text>{value.description}</Text>
-                            {value.extractionPrompt && (
-                              <div style={{ marginTop: 4 }}>
-                                <Text type="secondary" style={{ fontSize: 12 }}>提取提示: {value.extractionPrompt}</Text>
-                              </div>
-                            )}
-                          </Card>
-                        ))}
-                      </Space>
-                    ) : (
-                      <Text type="secondary">未配置参数Schema</Text>
-                    )}
-                  </TabPane>
-                  <TabPane tab="文档生成配置" key="carbone">
-                    <Descriptions bordered size="small" column={1}>
-                      <Descriptions.Item label="Carbone模板ID">
-                        {selectedSkill.carboneTemplateId || <Text type="secondary">未配置</Text>}
-                      </Descriptions.Item>
-                      <Descriptions.Item label="Carbone技能ID">
-                        {selectedSkill.carboneSkillId || <Text type="secondary">未配置</Text>}
-                      </Descriptions.Item>
-                      <Descriptions.Item label="内部模板ID">
-                        {selectedSkill.templateId || <Text type="secondary">未配置</Text>}
-                      </Descriptions.Item>
-                    </Descriptions>
-                  </TabPane>
-                  <TabPane tab="API 端点" key="api">
-                    {renderApiEndpoints(selectedSkill.apiEndpoints)}
-                  </TabPane>
-                </Tabs>
-              </div>
-            </Panel>
-          </Collapse>
-        )}
+        {selectedSkill && renderDetailContent(selectedSkill)}
       </Modal>
 
       {/* Edit/Create Modal */}
@@ -1059,7 +1112,7 @@ const SkillAdminPage: React.FC = () => {
         ]}
       >
         <Form form={form} layout="vertical">
-          <Collapse defaultActiveKey={['basic', 'flow', 'params']} ghost>
+          <Collapse defaultActiveKey={[]} ghost>
             <Panel header={<Text strong style={{ fontSize: 16 }}><InfoCircleOutlined /> 基本信息</Text>} key="basic">
               <div style={{ padding: '0 16px' }}>
                 <Form.Item

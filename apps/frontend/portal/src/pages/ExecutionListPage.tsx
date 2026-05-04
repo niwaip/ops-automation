@@ -26,6 +26,7 @@ import {
   Switch,
   Alert,
   message,
+  Tooltip,
 } from 'antd';
 import {
   SearchOutlined,
@@ -36,13 +37,14 @@ import {
   RobotOutlined,
   CopyOutlined,
   ClockCircleOutlined,
+  InfoCircleOutlined,
 } from '@ant-design/icons';
 import { useMutation, useQuery, useQueryClient } from 'react-query';
 import { executionApi, ExecutionDto, ExecutionStatus, ExecutionStepDto } from '../api/execution';
 import { skillApi } from '../api/skill';
 import { capabilityReleaseApi } from '../api/capabilities';
 import { useChatStore } from '../components/chat';
-import { ListSectionHeader, PageTitleBlock } from '../components/page/PageScaffold';
+import { ListSectionHeader } from '../components/page/PageScaffold';
 import { useAuthStore } from '../store/authStore';
 import {
   EXECUTION_FINISHED_STATUSES,
@@ -57,6 +59,19 @@ const statusColors = EXECUTION_STATUS_COLORS;
 const statusLabels = EXECUTION_STATUS_LABELS_ZH;
 
 const formatDateTime = (date?: string) => (date ? new Date(date).toLocaleString() : '-');
+
+const summarizeText = (value?: string, maxLength = 64) => {
+  if (!value) {
+    return '';
+  }
+
+  const normalized = value.replace(/\s+/g, ' ').trim();
+  if (!normalized) {
+    return '';
+  }
+
+  return normalized.length > maxLength ? `${normalized.slice(0, maxLength)}...` : normalized;
+};
 
 const getExecutionTime = (record: ExecutionDto) => {
   const source = record.startedAt || record.createdAt;
@@ -89,8 +104,106 @@ const formatDuration = (record: ExecutionDto) => {
   return `${seconds}s`;
 };
 
+const fixLocalhostLink = (url?: string): string | undefined => {
+  if (!url) {
+    return undefined;
+  }
+
+  if (url.includes('localhost') && window.location.hostname !== 'localhost') {
+    return url.replace('localhost', window.location.hostname);
+  }
+
+  return url;
+};
+
+const tryParseJsonValue = (value: unknown): unknown => {
+  if (typeof value !== 'string') {
+    return value;
+  }
+
+  const trimmed = value.trim();
+  if (!trimmed.startsWith('{') && !trimmed.startsWith('[')) {
+    return value;
+  }
+
+  try {
+    return JSON.parse(trimmed);
+  } catch {
+    return value;
+  }
+};
+
+const renderJsonValue = (value: unknown, path = 'root'): React.ReactNode => {
+  const parsedValue = tryParseJsonValue(value);
+
+  if (typeof parsedValue === 'string') {
+    return `"${parsedValue}"`;
+  }
+
+  if (typeof parsedValue === 'number' || typeof parsedValue === 'boolean') {
+    return String(parsedValue);
+  }
+
+  if (parsedValue === null) {
+    return 'null';
+  }
+
+  if (Array.isArray(parsedValue)) {
+    return (
+      <>
+        [
+        {parsedValue.length > 0 && (
+          <div style={{ paddingLeft: 16 }}>
+            {parsedValue.map((item, index) => (
+              <div key={`${path}.${index}`}>
+                {renderJsonValue(item, `${path}.${index}`)}
+                {index < parsedValue.length - 1 ? ',' : ''}
+              </div>
+            ))}
+          </div>
+        )}
+        ]
+      </>
+    );
+  }
+
+  if (parsedValue && typeof parsedValue === 'object') {
+    const entries = Object.entries(parsedValue as Record<string, unknown>);
+    return (
+      <>
+        {'{'}
+        {entries.length > 0 && (
+          <div style={{ paddingLeft: 16 }}>
+            {entries.map(([key, item], index) => {
+              const isTemporalLink = key === 'temporalLink' && typeof item === 'string';
+              const fixedLink = isTemporalLink ? fixLocalhostLink(item) : undefined;
+
+              return (
+                <div key={`${path}.${key}`}>
+                  <span>"{key}": </span>
+                  {fixedLink ? (
+                    <a href={fixedLink} target="_blank" rel="noopener noreferrer">
+                      {fixedLink}
+                    </a>
+                  ) : (
+                    renderJsonValue(item, `${path}.${key}`)
+                  )}
+                  {index < entries.length - 1 ? ',' : ''}
+                </div>
+              );
+            })}
+          </div>
+        )}
+        {'}'}
+      </>
+    );
+  }
+
+  return String(parsedValue);
+};
+
 const renderJsonBlock = (value: unknown) => (
-  <pre
+  <div
     style={{
       margin: 0,
       padding: 14,
@@ -102,10 +215,13 @@ const renderJsonBlock = (value: unknown) => (
       color: 'var(--text-primary)',
       border: '1px solid var(--bg-secondary)',
       borderRadius: 12,
+      fontFamily: 'ui-monospace, SFMono-Regular, SF Mono, Consolas, Liberation Mono, Menlo, monospace',
+      fontSize: 13,
+      lineHeight: 1.6,
     }}
   >
-    {JSON.stringify(value, null, 2)}
-  </pre>
+    {renderJsonValue(value)}
+  </div>
 );
 
 const detailPanelStyle = {
@@ -237,7 +353,67 @@ const getExecutionRowStyle = (status: ExecutionStatus, isDarkTheme: boolean) => 
   }
 };
 
-const summarizeExecutionListInput = (record: ExecutionDto) => record.skillId;
+const INPUT_TEXT_CANDIDATE_KEYS = ['user_input', 'prompt', 'task', 'goal', 'instruction', 'query', 'url'] as const;
+
+const asRecord = (value: unknown): Record<string, unknown> | undefined => {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    return undefined;
+  }
+
+  return value as Record<string, unknown>;
+};
+
+const extractInputText = (value?: Record<string, unknown>): string | undefined => {
+  if (!value) {
+    return undefined;
+  }
+
+  for (const key of INPUT_TEXT_CANDIDATE_KEYS) {
+    const candidate = value[key];
+    if (typeof candidate === 'string' && candidate.trim()) {
+      return candidate.trim();
+    }
+  }
+
+  return undefined;
+};
+
+const summarizeInputShape = (value?: Record<string, unknown>) => {
+  if (!value || Object.keys(value).length === 0) {
+    return '';
+  }
+
+  const keys = Object.keys(value).filter((key) => !key.startsWith('__') && key !== 'promptDebug');
+  if (keys.length === 0) {
+    return '';
+  }
+
+  const preview = keys.slice(0, 3).join('、');
+  return keys.length > 3 ? `${preview} 等 ${keys.length} 项` : preview;
+};
+
+const summarizeExecutionListInput = (record: ExecutionDto) => {
+  const normalizedInput = asRecord(record.normalizedInput);
+  const nestedNormalizedInput = asRecord(normalizedInput?.input);
+
+  const summary = summarizeText(
+    extractInputText(asRecord(record.input))
+      || (typeof normalizedInput?.objective === 'string' ? normalizedInput.objective : undefined)
+      || extractInputText(nestedNormalizedInput),
+    72,
+  );
+
+  if (summary) {
+    return summary;
+  }
+
+  return (
+    summarizeInputShape(asRecord(record.input))
+    || summarizeInputShape(nestedNormalizedInput)
+    || summarizeInputShape(normalizedInput)
+    || '暂无输入'
+  );
+};
 
 interface RequiredInputField {
   name: string;
@@ -316,7 +492,7 @@ const buildAiResumeDraft = (
   execution: ExecutionDto,
   submittedInput?: Record<string, unknown>,
 ) => {
-  const originalContent = execution.skillId;
+  const originalContent = summarizeExecutionListInput(execution);
 
   const supplement = submittedInput && Object.keys(submittedInput).length > 0
     ? JSON.stringify(submittedInput, null, 2)
@@ -513,6 +689,7 @@ const ExecutionListPage: React.FC = () => {
         getSkillDisplayName(record.skillId),
         record.riskLevel,
         record.status,
+        summarizeExecutionListInput(record),
       ]
         .filter(Boolean)
         .some((item) => String(item).toLowerCase().includes(keyword));
@@ -539,14 +716,7 @@ const ExecutionListPage: React.FC = () => {
       width: 280,
       render: (_: unknown, record: ExecutionDto) => (
         <Space direction="vertical" size={4}>
-          <Space size={6} wrap>
-            <Text strong style={{ fontSize: 16 }}>{getSkillDisplayName(record.skillId)}</Text>
-            {record.currentStepId ? (
-              <Text type="secondary" style={{ fontSize: 12 }}>
-                当前步骤: {record.currentStepId}
-              </Text>
-            ) : null}
-          </Space>
+          <Text strong style={{ fontSize: 16 }}>{getSkillDisplayName(record.skillId)}</Text>
         </Space>
       ),
     },
@@ -558,9 +728,9 @@ const ExecutionListPage: React.FC = () => {
       defaultSortOrder: 'descend' as const,
       sorter: (a: ExecutionDto, b: ExecutionDto) => getExecutionTime(a) - getExecutionTime(b),
       render: (_: string | undefined, record: ExecutionDto) => (
-        <Space direction="vertical" size={0}>
+        <Space size={8} wrap={false}>
           <Text>{formatDateTime(record.startedAt || record.createdAt)}</Text>
-          <Text type="secondary" style={{ fontSize: 12 }}>
+          <Text type="secondary" style={{ fontSize: 12, whiteSpace: 'nowrap' }}>
             {record.endedAt ? `耗时 ${formatDuration(record)}` : `已运行 ${formatDuration(record)}`}
           </Text>
         </Space>
@@ -634,35 +804,15 @@ const ExecutionListPage: React.FC = () => {
               >
                 下载结果
               </Button>
-            ) : (
-              <Text type="secondary" style={{ fontSize: 12 }}>
-                暂无可下载文件
-              </Text>
-            )}
+            ) : null}
           </Space>
         );
       },
-    },
-    {
-      title: '执行 ID',
-      dataIndex: 'id',
-      key: 'id',
-      width: 180,
-      render: (id: string) => (
-        <Space size={8}>
-          <Text copyable>{id.slice(0, 8)}...</Text>
-        </Space>
-      ),
     },
   ];
 
   return (
     <div style={{ padding: 24 }}>
-      <PageTitleBlock
-        title="执行历史"
-        subtitle="查看、筛选并跟进所有技能执行记录"
-      />
-
       {/* Filters */}
       <Card
         style={{
@@ -676,44 +826,15 @@ const ExecutionListPage: React.FC = () => {
           <div
             style={{
               display: 'flex',
-              flexDirection: 'column',
+              alignItems: 'stretch',
+              justifyContent: 'space-between',
               gap: 16,
+              flexWrap: 'wrap',
             }}
           >
-            <div
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                gap: 16,
-                flexWrap: 'wrap',
-              }}
-            >
-              <Space direction="vertical" size={2}>
-                <Text strong style={{ fontSize: 16 }}>执行记录总览</Text>
-                <Text type="secondary">按状态和关键字快速筛选并进入执行详情</Text>
-              </Space>
-              <Space wrap>
-                <Button size="large" icon={<ReloadOutlined />} onClick={() => refetch()} loading={isFetching}>
-                  刷新
-                </Button>
-                <Button size="large" type="primary" icon={<PlusOutlined />} onClick={() => navigate('/executions/new')}>
-                  新建执行
-                </Button>
-              </Space>
-            </div>
-
-            <div
-              style={{
-                display: 'flex',
-                alignItems: 'stretch',
-                justifyContent: 'space-between',
-                gap: 16,
-                flexWrap: 'wrap',
-              }}
-            >
-              <Space wrap size={12} style={{ flex: 1 }}>
+            <Space wrap size={12} style={{ flex: 1 }}>
               <Input
+                className="execution-search-input"
                 size="large"
                 placeholder="搜索执行单 ID、技能、执行人、状态或输入内容"
                 prefix={<SearchOutlined />}
@@ -729,14 +850,12 @@ const ExecutionListPage: React.FC = () => {
                 allowClear
               />
               <Select
+                className="execution-status-filter"
                 size="large"
                 placeholder="全部状态"
                 variant="borderless"
                 style={{
                   width: 180,
-                  height: 44,
-                  background: 'var(--bg-secondary)',
-                  borderRadius: 12,
                 }}
                 allowClear
                 value={statusFilter}
@@ -748,36 +867,35 @@ const ExecutionListPage: React.FC = () => {
                   </Select.Option>
                 ))}
               </Select>
-              </Space>
+            </Space>
 
-              <Space size={10} wrap style={{ justifyContent: 'flex-end' }}>
-                {[
-                  { label: '总记录', value: executionOverviewStats.total, color: 'var(--text-primary)' },
-                  { label: '执行中', value: executionOverviewStats.running, color: 'var(--info-color)' },
-                  { label: '待处理', value: executionOverviewStats.waiting, color: 'var(--warning-color)' },
-                  { label: '已结束', value: executionOverviewStats.finished, color: 'var(--success-color)' },
-                ].map((item) => (
-                  <Card
-                    key={item.label}
-                    size="small"
-                    style={{
-                      minWidth: 108,
-                      minHeight: 44,
-                      borderRadius: 14,
-                      border: '1px solid var(--bg-secondary)',
-                      background: 'var(--bg-card)',
-                      boxShadow: 'var(--shadow-sm)',
-                    }}
-                    styles={{ body: { padding: '10px 14px', textAlign: 'center' } }}
-                  >
-                    <Space direction="vertical" size={2} style={{ width: '100%' }}>
-                      <Text type="secondary" style={{ fontSize: 12 }}>{item.label}</Text>
-                      <Text style={{ fontSize: 22, fontWeight: 700, color: item.color, display: 'block' }}>{item.value}</Text>
-                    </Space>
-                  </Card>
-                ))}
-              </Space>
-            </div>
+            <Space size={10} wrap style={{ justifyContent: 'flex-end' }}>
+              {[
+                { label: '总记录', value: executionOverviewStats.total, color: 'var(--text-primary)' },
+                { label: '执行中', value: executionOverviewStats.running, color: 'var(--info-color)' },
+                { label: '待处理', value: executionOverviewStats.waiting, color: 'var(--warning-color)' },
+                { label: '已结束', value: executionOverviewStats.finished, color: 'var(--success-color)' },
+              ].map((item) => (
+                <Card
+                  key={item.label}
+                  size="small"
+                  style={{
+                    minWidth: 100,
+                    minHeight: 44,
+                    borderRadius: 14,
+                    border: '1px solid var(--bg-secondary)',
+                    background: 'var(--bg-card)',
+                    boxShadow: 'var(--shadow-sm)',
+                  }}
+                  styles={{ body: { padding: '8px 12px', textAlign: 'center' } }}
+                >
+                  <Space direction="vertical" size={1} style={{ width: '100%' }}>
+                    <Text type="secondary" style={{ fontSize: 12 }}>{item.label}</Text>
+                    <Text style={{ fontSize: 20, fontWeight: 700, color: item.color, display: 'block', lineHeight: 1.1 }}>{item.value}</Text>
+                  </Space>
+                </Card>
+              ))}
+            </Space>
           </div>
       </Card>
 
@@ -792,8 +910,37 @@ const ExecutionListPage: React.FC = () => {
       >
         <ListSectionHeader
           title="执行记录列表"
-          subtitle="按开始时间倒序展示，可点击任一行查看详情"
-          extra={<Text type="secondary">当前展示 {filteredAndSortedData.length} 条</Text>}
+          tip={(
+            <Tooltip title="按开始时间倒序展示，可点击任一行查看详情">
+              <InfoCircleOutlined style={{ color: 'var(--text-secondary)', fontSize: 14 }} />
+            </Tooltip>
+          )}
+          extra={(
+            <Space wrap size={12} style={{ justifyContent: 'flex-end' }}>
+              <Text type="secondary">当前展示 {filteredAndSortedData.length} 条</Text>
+              <Button
+                size="large"
+                icon={<ReloadOutlined />}
+                onClick={() => refetch()}
+                loading={isFetching}
+                className="btn-pill"
+              >
+                刷新
+              </Button>
+              <Button
+                size="large"
+                type="primary"
+                icon={<PlusOutlined />}
+                onClick={() => navigate('/executions/new')}
+                className="btn-pill"
+                style={{
+                  boxShadow: '0 10px 24px rgba(99, 102, 241, 0.24)',
+                }}
+              >
+                新建执行
+              </Button>
+            </Space>
+          )}
         />
         <Table
           columns={columns}
@@ -814,7 +961,7 @@ const ExecutionListPage: React.FC = () => {
               setPageSize(ps);
             },
           }}
-          scroll={{ x: 1450 }}
+          scroll={{ x: 1260 }}
           onRow={(record) => ({
             style: {
               cursor: 'pointer',

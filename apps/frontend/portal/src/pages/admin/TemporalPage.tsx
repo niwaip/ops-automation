@@ -21,7 +21,7 @@ import {
 import { carboneAPI, CarboneTemplate } from '../../api/carbone';
 import { activityApi } from '../../api/activity';
 import { normalizeExecutionResult } from '../../api/execution-normalizer';
-import { ListSectionHeader, OverviewStatGrid, PageTitleBlock } from '../../components/page/PageScaffold';
+import { ListSectionHeader } from '../../components/page/PageScaffold';
 import type { ColumnsType } from 'antd/es/table';
 
 const { Text } = Typography;
@@ -2409,27 +2409,31 @@ const TemporalPage: React.FC = () => {
   );
   const workflowOverviewStats = [
     {
+      key: 'total',
       label: '工作流总数',
       value: workflowsQuery.data?.length || 0,
       icon: <ThunderboltOutlined style={{ color: 'var(--text-secondary)' }} />,
       color: 'var(--text-primary)',
     },
     {
+      key: 'queues',
       label: 'Task Queue 数',
       value: new Set((workflowsQuery.data || []).map(w => w.taskQueue).filter(Boolean)).size,
       icon: <RocketOutlined style={{ color: 'var(--info-color)' }} />,
       color: 'var(--info-color)',
     },
     {
-      label: '步骤总数',
-      value: workflowsQuery.data?.reduce((sum, w) => sum + (w.workflowDsl?.steps?.length || 0), 0) || 0,
-      icon: <ApiOutlined style={{ color: 'var(--success-color)' }} />,
+      key: 'active',
+      label: '已启用',
+      value: workflowsQuery.data?.filter(w => w.isActive).length || 0,
+      icon: <CheckCircleOutlined style={{ color: 'var(--success-color)' }} />,
       color: 'var(--success-color)',
     },
     {
-      label: '已启用',
-      value: workflowsQuery.data?.filter(w => w.isActive).length || 0,
-      icon: <CheckCircleOutlined style={{ color: 'var(--warning-color)' }} />,
+      key: 'visible',
+      label: '当前显示',
+      value: filteredWorkflows.length,
+      icon: <SearchOutlined style={{ color: 'var(--warning-color)' }} />,
       color: 'var(--warning-color)',
     },
   ];
@@ -3146,84 +3150,73 @@ const TemporalPage: React.FC = () => {
 
   return (
     <div style={{ padding: '8px 4px 12px' }}>
-      <PageTitleBlock
-        title="Temporal Workflows"
-        subtitle="查看、筛选并维护工作流编排配置"
-      />
-
-      <OverviewStatGrid
-        items={workflowOverviewStats.map((item) => ({
-          key: item.label,
-          label: item.label,
-          value: item.value,
-          color: item.color,
-          icon: item.icon,
-        }))}
-      />
-
-      <Card style={{ ...SECTION_CARD_STYLE, marginBottom: 16 }} styles={{ body: { padding: 20 } }}>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              gap: 16,
-              flexWrap: 'wrap',
-            }}
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(4, minmax(0, 1fr))',
+          gap: 12,
+          marginBottom: 16,
+        }}
+      >
+        {workflowOverviewStats.map((item) => (
+          <Card
+            key={item.key}
+            size="small"
+            style={{ ...SECTION_CARD_STYLE, borderRadius: 14 }}
+            styles={{ body: { padding: '12px 16px' } }}
           >
-            <Space direction="vertical" size={2}>
-              <Text strong style={{ fontSize: 16 }}>工作流总览</Text>
-              <Text type="secondary">支持搜索、创建、AI 起草和模板生成</Text>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+              <Space size={10} align="center">
+                <span style={{ display: 'inline-flex', fontSize: 16 }}>{item.icon}</span>
+                <Text type="secondary" style={{ fontSize: 13 }}>{item.label}</Text>
+              </Space>
+              <Text style={{ fontSize: 24, fontWeight: 700, color: item.color, lineHeight: 1 }}>
+                {item.value}
+              </Text>
+            </div>
+          </Card>
+        ))}
+      </div>
+
+      <Card style={SECTION_CARD_STYLE} styles={{ body: { padding: 16 } }}>
+        <ListSectionHeader
+          title={(
+            <Space wrap size={12}>
+              <Text strong style={{ fontSize: 16 }}>工作流记录列表</Text>
+              <Input
+                size="large"
+                placeholder="搜索工作流名称、描述或任务队列"
+                prefix={<SearchOutlined />}
+                value={searchText}
+                onChange={e => setSearchText(e.target.value)}
+                style={{ width: 360, height: 44, background: 'var(--bg-secondary)', borderRadius: 12 }}
+                variant="borderless"
+                allowClear
+              />
             </Space>
-            <Space wrap>
-              <Button size="large" icon={<ReloadOutlined />} onClick={() => workflowsQuery.refetch()}>
+          )}
+          tip={(
+            <Tooltip title="Workflow DSL 定义确定性编排逻辑，Temporal 会 replay 这部分逻辑恢复状态；工作单元 DSL 定义 API 调用、文档渲染、浏览器操作、脚本执行等非确定性副作用操作。">
+              <InfoCircleOutlined style={{ color: 'var(--text-secondary)' }} />
+            </Tooltip>
+          )}
+          extra={(
+            <Space wrap size={12}>
+              <Text type="secondary">当前显示 {filteredWorkflows.length} 条</Text>
+              <Button size="large" icon={<ReloadOutlined />} onClick={() => workflowsQuery.refetch()} className="btn-pill">
                 {t('common:refresh')}
               </Button>
-              <Button size="large" icon={<RobotOutlined />} onClick={openAiDraftModal}>
+              <Button size="large" icon={<RobotOutlined />} onClick={openAiDraftModal} className="btn-pill">
                 AI 创建
               </Button>
-              <Button size="large" icon={<RobotOutlined />} onClick={openTemplateModal}>
+              <Button size="large" icon={<RobotOutlined />} onClick={openTemplateModal} className="btn-pill">
                 模版工作流
               </Button>
-              <Button size="large" icon={<PlusOutlined />} type="primary" onClick={handleCreate}>
+              <Button size="large" icon={<PlusOutlined />} type="primary" onClick={handleCreate} className="btn-pill">
                 创建工作流
               </Button>
             </Space>
-          </div>
-
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'stretch',
-              justifyContent: 'space-between',
-              gap: 16,
-              flexWrap: 'wrap',
-            }}
-          >
-            <Input
-              size="large"
-              placeholder="搜索工作流名称、描述或任务队列"
-              prefix={<SearchOutlined />}
-              value={searchText}
-              onChange={e => setSearchText(e.target.value)}
-              style={{ width: 360, height: 44, background: 'var(--bg-secondary)', borderRadius: 12 }}
-              variant="borderless"
-              allowClear
-            />
-            <Text type="secondary" style={{ display: 'flex', alignItems: 'center' }}>
-              当前展示 {filteredWorkflows.length} 条
-            </Text>
-          </div>
-        </div>
-      </Card>
-
-      <Card style={SECTION_CARD_STYLE} styles={{ body: { padding: 16 } }}>
-        <Alert message="工作流说明" description={<Space direction="vertical" size="small"><Text><strong>Workflow DSL</strong>：定义确定性编排逻辑。Temporal 会 replay 这个逻辑来恢复状态。</Text><Text><strong>工作单元 DSL</strong>：定义非确定性副作用操作（API调用、文档渲染、浏览器操作、脚本执行）。</Text></Space>} type="info" showIcon style={{ marginBottom: 14, borderRadius: 10 }} />
-        <ListSectionHeader
-          title="工作流记录列表"
-          subtitle="可查看详情、编辑配置或删除工作流"
-          extra={<Text type="secondary">共 {filteredWorkflows.length} 条</Text>}
+          )}
         />
         <Table
           columns={columns}

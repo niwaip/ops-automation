@@ -64,6 +64,18 @@ export class ExecutionDto {
   @ApiProperty()
   skillId: string;
 
+  @ApiProperty({ required: false })
+  @IsOptional()
+  capabilityId?: string | null;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  skillVersion?: string | null;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  capabilityVersion?: string | null;
+
   @ApiProperty({ enum: EXECUTION_STATUS_VALUES })
   status: ExecutionStatus;
 
@@ -101,6 +113,30 @@ export class ExecutionDto {
 
   @ApiProperty({ required: false })
   @IsOptional()
+  inputJson?: Record<string, unknown> | null;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  normalizedInputJson?: Record<string, unknown> | null;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  input?: Record<string, unknown> | null;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  normalizedInput?: Record<string, unknown> | null;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  result?: Record<string, unknown> | null;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  usage?: Record<string, unknown> | null;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
   failureCode?: string | null;
 
   @ApiProperty({ required: false })
@@ -120,6 +156,14 @@ export class ExecutionDto {
 
   @ApiProperty()
   updatedAt: string;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  createdBy?: string | null;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  createdByName?: string | null;
 }
 
 export class ExecutionStepDto {

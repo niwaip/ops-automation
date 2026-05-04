@@ -6,14 +6,12 @@ import {
   DashboardOutlined,
   DesktopOutlined,
   FileTextOutlined,
-  VideoCameraOutlined,
   SettingOutlined,
   UserOutlined,
   MenuFoldOutlined,
   MenuUnfoldOutlined,
   GlobalOutlined,
   LogoutOutlined,
-  FilePdfOutlined,
   BarChartOutlined,
   FileWordOutlined,
   ThunderboltOutlined,
@@ -46,6 +44,11 @@ const MainLayout: React.FC = () => {
       icon: <PlayCircleOutlined />,
       label: t('executions'),
     },
+    {
+      key: '/reports',
+      icon: <BarChartOutlined />,
+      label: t('reports'),
+    },
     ...(user?.role === 'admin'
       ? [
           {
@@ -63,6 +66,11 @@ const MainLayout: React.FC = () => {
             icon: <ThunderboltOutlined />,
             label: '流程发布',
           },
+          {
+            key: '/published-skills',
+            icon: <ThunderboltOutlined />,
+            label: '可用技能',
+          },
         ]
       : []),
     {
@@ -73,32 +81,12 @@ const MainLayout: React.FC = () => {
     {
       key: '/templates',
       icon: <FileTextOutlined />,
-      label: t('templates'),
-    },
-    {
-      key: '/report-templates',
-      icon: <FilePdfOutlined />,
-      label: t('reportTemplates'),
-    },
-    {
-      key: '/reports',
-      icon: <BarChartOutlined />,
-      label: t('reports'),
-    },
-    {
-      key: '/published-skills',
-      icon: <ThunderboltOutlined />,
-      label: 'Published Skills',
+      label: '浏览器模版',
     },
     {
       key: '/carbone-templates',
       icon: <FileWordOutlined />,
       label: t('carboneTemplates'),
-    },
-    {
-      key: '/recorder',
-      icon: <VideoCameraOutlined />,
-      label: t('recorder'),
     },
     ...(user?.role === 'admin'
       ? [
@@ -189,7 +177,6 @@ const MainLayout: React.FC = () => {
     if (path === '/sessions/new') return '/sessions/new';
     if (path.startsWith('/sessions')) return '/sessions';
     if (path.startsWith('/templates')) return '/templates';
-    if (path.startsWith('/report-templates')) return '/report-templates';
     if (path.startsWith('/reports')) return '/reports';
     if (path.startsWith('/published-skills')) return '/published-skills';
     if (path.startsWith('/carbone-templates')) return '/carbone-templates';

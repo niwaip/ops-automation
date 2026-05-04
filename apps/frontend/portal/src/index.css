@@ -322,11 +322,18 @@ body {
   transition: all var(--transition-normal) !important;
   box-shadow: var(--shadow-sm);
   border: none !important;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .ant-btn:hover {
-  transform: translateY(-1px);
+  transform: translateY(-1.5px);
   box-shadow: var(--shadow-md);
+}
+
+.ant-btn:active {
+  transform: translateY(0);
 }
 
 .ant-btn-primary {
@@ -342,22 +349,27 @@ body {
 }
 
 .ant-btn-primary:disabled {
-  background: linear-gradient(135deg, #94a3b8 0%, #64748b 100%) !important;
+  background: #cbd5e1 !important;
   box-shadow: none !important;
   color: rgba(255, 255, 255, 0.65) !important;
 }
 
-/* Default button styling - for secondary actions like "重置池" */
+/* Default button styling - for secondary actions like "刷新", "重置" */
 .ant-btn-default {
   background: var(--bg-secondary) !important;
-  border: 1px solid var(--bg-secondary) !important;
+  border: none !important;
   color: var(--text-primary) !important;
 }
 
 .ant-btn-default:hover {
-  background: var(--primary-color) !important;
-  color: #fff !important;
-  border-color: var(--primary-color) !important;
+  background: #e2e8f0 !important;
+  color: var(--primary-color) !important;
+}
+
+/* Rounded Pill Button Style */
+.btn-pill {
+  border-radius: 999px !important;
+  padding-inline: 20px !important;
 }
 
 /* Action button group styling */
@@ -382,12 +394,30 @@ body {
   color: #fff !important;
 }
 
-/* Ensure disabled state works with custom gradient buttons */
-.ant-btn[disabled] {
-  background: linear-gradient(135deg, #94a3b8 0%, #64748b 100%) !important;
-  color: rgba(255, 255, 255, 0.65) !important;
+/* Ghost button styling */
+.ant-btn-background-ghost.ant-btn-primary {
+  background: transparent !important;
+  border: 2px solid var(--primary-color) !important;
+  color: var(--primary-color) !important;
   box-shadow: none !important;
-  cursor: not-allowed !important;
+}
+
+.ant-btn-background-ghost.ant-btn-primary:hover {
+  background: var(--primary-color) !important;
+  color: #fff !important;
+}
+
+/* Link button styling */
+.ant-btn-link {
+  box-shadow: none !important;
+  background: transparent !important;
+  padding: 4px 8px !important;
+  height: auto !important;
+}
+
+.ant-btn-link:hover {
+  transform: none !important;
+  background: var(--bg-secondary) !important;
 }
 
 .ant-input {
@@ -412,6 +442,42 @@ body {
 .ant-select-focused .ant-select-selector {
   border-color: var(--primary-color) !important;
   box-shadow: 0 0 0 3px rgb(99 102 241 / 0.1) !important;
+}
+
+.execution-search-input.ant-input-affix-wrapper {
+  height: 44px;
+  padding-inline: 14px !important;
+  align-items: center;
+}
+
+.execution-search-input.ant-input-affix-wrapper .ant-input {
+  height: 100%;
+}
+
+.execution-status-filter.ant-select {
+  height: 44px;
+}
+
+.execution-status-filter.ant-select .ant-select-selector {
+  min-height: 44px !important;
+  height: 44px !important;
+  display: flex;
+  align-items: center;
+  background: var(--bg-secondary) !important;
+  border-radius: 12px !important;
+  box-shadow: none !important;
+  padding-inline: 14px !important;
+}
+
+.execution-status-filter.ant-select .ant-select-selection-wrap {
+  align-items: center;
+}
+
+.execution-status-filter.ant-select .ant-select-selection-item,
+.execution-status-filter.ant-select .ant-select-selection-placeholder,
+.execution-status-filter.ant-select .ant-select-selection-search-input {
+  line-height: 42px !important;
+  height: 42px !important;
 }
 
 .ant-tag {
@@ -742,7 +808,30 @@ body {
 [data-theme='dark'] .ant-input-number,
 [data-theme='dark'] .ant-input-number-input,
 [data-theme='dark'] .ant-checkbox-wrapper,
-[data-theme='dark'] .ant-radio-wrapper {
+[data-theme='dark'] .ant-radio-wrapper,
+[data-theme='dark'] .ant-tabs-tab,
+[data-theme='dark'] .ant-tabs-tab-btn,
+[data-theme='dark'] .ant-typography {
   color: #f8fafc !important;
+}
+
+[data-theme='dark'] .ant-alert-info {
+  background-color: rgba(59, 130, 246, 0.15) !important;
+  border: 1px solid rgba(59, 130, 246, 0.3) !important;
+}
+
+[data-theme='dark'] .ant-alert-success {
+  background-color: rgba(16, 185, 129, 0.15) !important;
+  border: 1px solid rgba(16, 185, 129, 0.3) !important;
+}
+
+[data-theme='dark'] .ant-alert-warning {
+  background-color: rgba(245, 158, 11, 0.15) !important;
+  border: 1px solid rgba(245, 158, 11, 0.3) !important;
+}
+
+[data-theme='dark'] .ant-alert-error {
+  background-color: rgba(239, 68, 68, 0.15) !important;
+  border: 1px solid rgba(239, 68, 68, 0.3) !important;
 }
 

@@ -20,9 +20,6 @@ import ActivityPage from './pages/admin/ActivityPage';
 import CapabilitiesPage from './pages/admin/CapabilitiesPage';
 import CapabilityStudioPage from './pages/admin/CapabilityStudioPage';
 import CapabilityBuildDetailPage from './pages/admin/CapabilityBuildDetailPage';
-import ReportTemplateListPage from './pages/ReportTemplateListPage';
-import ReportTemplateDetailPage from './pages/ReportTemplateDetailPage';
-import ReportTemplateCreatePage from './pages/ReportTemplateCreatePage';
 import ReportListPage from './pages/ReportListPage';
 import ReportDetailPage from './pages/ReportDetailPage';
 import CarboneTemplateListPage from './pages/CarboneTemplateListPage';
@@ -74,10 +71,10 @@ function App() {
           <Route path="templates" element={<TemplateListPage />} />
           <Route path="templates/:id" element={<TemplateDetailPage />} />
           <Route path="recorder" element={<RecorderPage />} />
-          <Route path="report-templates" element={<ReportTemplateListPage />} />
-          <Route path="report-templates/new" element={<ReportTemplateCreatePage />} />
-          <Route path="report-templates/:id" element={<ReportTemplateDetailPage />} />
-          <Route path="report-templates/:id/edit" element={<ReportTemplateCreatePage />} />
+          <Route path="report-templates" element={<Navigate to="/carbone-templates" replace />} />
+          <Route path="report-templates/new" element={<Navigate to="/carbone-templates" replace />} />
+          <Route path="report-templates/:id" element={<Navigate to="/carbone-templates" replace />} />
+          <Route path="report-templates/:id/edit" element={<Navigate to="/carbone-templates" replace />} />
           <Route path="reports" element={<ReportListPage />} />
           <Route path="reports/:id" element={<ReportDetailPage />} />
           <Route path="carbone-templates" element={<CarboneTemplateListPage />} />

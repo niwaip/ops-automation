@@ -4,6 +4,7 @@ import {
   Alert,
   Button,
   Card,
+  Collapse,
   Descriptions,
   Empty,
   Form,
@@ -17,7 +18,13 @@ import {
   Typography,
   message,
 } from 'antd';
-import { ArrowLeftOutlined, LoadingOutlined, PlayCircleOutlined, RobotOutlined, UploadOutlined } from '@ant-design/icons';
+import { 
+  ArrowLeftOutlined, 
+  LoadingOutlined, 
+  PlayCircleOutlined, 
+  RobotOutlined, 
+  UploadOutlined 
+} from '@ant-design/icons';
 import { useMutation, useQuery, useQueryClient } from 'react-query';
 import { useTranslation } from 'react-i18next';
 import { executionApi } from '../api/execution';
@@ -29,6 +36,7 @@ import { Modal, Upload } from 'antd';
 import { useAuthStore } from '../store/authStore';
 
 const { Title, Text } = Typography;
+const { Panel } = Collapse;
 
 type SchemaField = {
   name: string;
@@ -140,6 +148,15 @@ const ExecutionCreatePage: React.FC = () => {
   const [uploadedText, setUploadedText] = useState<string>('');
   const [uploadedFileName, setUploadedFileName] = useState<string>('');
   const { user } = useAuthStore();
+
+  // 为页面容器增加一个最大高度和溢出处理，确保在大屏幕下不出现全局滚动条
+  const containerStyle: React.CSSProperties = {
+    height: '100%',
+    minHeight: 0,
+    overflow: 'hidden',
+    display: 'flex',
+    flexDirection: 'column',
+  };
 
   const publishedSkillsQuery = useQuery(
     ['published-skills-for-execution-create'],
@@ -382,28 +399,17 @@ const ExecutionCreatePage: React.FC = () => {
   };
 
   return (
-    <div style={{ padding: 24 }}>
-      <div style={{ marginBottom: 24 }}>
-        <Space align="center" style={{ marginBottom: 16 }}>
-          <Button icon={<ArrowLeftOutlined />} onClick={() => navigate('/executions')}>
+    <div style={containerStyle}>
+      <div style={{ marginBottom: 16 }}>
+        <Space align="center" style={{ marginBottom: 8 }}>
+          <Button size="small" icon={<ArrowLeftOutlined />} onClick={() => navigate('/executions')}>
             返回执行列表
           </Button>
         </Space>
-        <Title level={2} style={{ marginBottom: 8 }}>
+        <Title level={4} style={{ margin: 0 }}>
           {t('newExecution')}
         </Title>
-        <Text type="secondary">
-          选择一个可用技能并填写参数后，系统会立即创建执行并按风险策略进入排队或审批流程。
-        </Text>
       </div>
-
-      <Alert
-        type="info"
-        showIcon
-        style={{ marginBottom: 16 }}
-        message="创建说明"
-        description="如果技能参数 schema 中包含对象类型字段，请输入合法 JSON；创建成功后会自动跳转到执行详情页。"
-      />
 
       {createMutation.isLoading && (
         <Alert
@@ -415,8 +421,16 @@ const ExecutionCreatePage: React.FC = () => {
         />
       )}
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 2fr) minmax(320px, 1fr)', gap: 16 }}>
-        <Card title="执行配置">
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateColumns: 'minmax(0, 2fr) minmax(320px, 1fr)',
+          gap: 16,
+          minHeight: 0,
+          flex: 1,
+        }}
+      >
+        <Card title="执行配置" styles={{ body: { maxHeight: '100%', overflowY: 'auto' } }}>
           {publishedSkillsQuery.isLoading || authorizedSkillsQuery.isLoading ? (
             <div style={{ display: 'flex', justifyContent: 'center', padding: '48px 0' }}>
               <Spin tip="正在加载已发布技能..." />
@@ -574,7 +588,7 @@ const ExecutionCreatePage: React.FC = () => {
           )}
         </Card>
 
-        <Space direction="vertical" size="middle" style={{ width: '100%' }}>
+        <Space direction="vertical" size="middle" style={{ width: '100%', minHeight: 0, overflowY: 'auto' }}>
           <Card title="技能信息">
             {selectedSkill ? (
               <Descriptions bordered size="small" column={1}>
@@ -611,14 +625,18 @@ const ExecutionCreatePage: React.FC = () => {
             )}
           </Card>
 
-          <Card title="参数 Schema">
-            {selectedSkill?.paramsSchema ? (
-              <pre style={{ margin: 0, maxHeight: 360, overflow: 'auto', whiteSpace: 'pre-wrap', background: 'var(--bg-secondary)', color: 'var(--text-primary)', border: '1px solid var(--bg-secondary)', padding: 12, borderRadius: 8 }}>
-                {JSON.stringify(selectedSkill.paramsSchema, null, 2)}
-              </pre>
-            ) : (
-              <Empty description="暂无参数 schema" />
-            )}
+          <Card styles={{ body: { padding: 0 } }}>
+            <Collapse ghost defaultActiveKey={[]}>
+              <Panel header="参数 Schema" key="params-schema">
+                {selectedSkill?.paramsSchema ? (
+                  <pre style={{ margin: 0, maxHeight: 360, overflow: 'auto', whiteSpace: 'pre-wrap', background: 'var(--bg-secondary)', color: 'var(--text-primary)', border: '1px solid var(--bg-secondary)', padding: 12, borderRadius: 8 }}>
+                    {JSON.stringify(selectedSkill.paramsSchema, null, 2)}
+                  </pre>
+                ) : (
+                  <Empty description="暂无参数 schema" />
+                )}
+              </Panel>
+            </Collapse>
           </Card>
         </Space>
       </div>

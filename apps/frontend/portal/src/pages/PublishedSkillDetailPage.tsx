@@ -3,19 +3,32 @@ import {
   Alert,
   Button,
   Card,
+  Drawer,
   Empty,
   Input,
   Space,
   Table,
   Tag,
+  Tooltip,
   Typography,
 } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
-import { ReloadOutlined } from '@ant-design/icons';
+import {
+  CheckCircleOutlined,
+  CloseOutlined,
+  DeleteOutlined,
+  InfoCircleOutlined,
+  ReloadOutlined,
+  RocketOutlined,
+  SearchOutlined,
+  ThunderboltOutlined,
+} from '@ant-design/icons';
 import { useQuery } from 'react-query';
 import { useNavigate } from 'react-router-dom';
 import { capabilityReleaseApi } from '../api/capabilities';
 import { skillApi } from '../api/skill';
+import { ListSectionHeader } from '../components/page/PageScaffold';
+import SkillAdminPage from './admin/SkillAdminPage';
 
 const { Title, Text } = Typography;
 
@@ -38,10 +51,17 @@ const statusColor = (status?: string) => {
 const PublishedSkillDetailPage: React.FC = () => {
   const navigate = useNavigate();
   const [searchText, setSearchText] = useState('');
+  const [drawerVisible, setDrawerVisible] = useState(false);
+  const [selectedSkillId, setSelectedSkillId] = useState<string | null>(null);
 
   const releasesQuery = useQuery(['published-skills'], capabilityReleaseApi.listReleaseCenter);
   const skillsQuery = useQuery(['authorized-skills'], skillApi.list);
   const skills = skillsQuery.data?.skills || [];
+
+  const handleOpenDetail = (skillId: string) => {
+    setSelectedSkillId(skillId);
+    setDrawerVisible(true);
+  };
 
   const publishedSkillItems = useMemo(() => {
     return skills
@@ -77,135 +97,241 @@ const PublishedSkillDetailPage: React.FC = () => {
     });
   }, [publishedSkillItems, searchText]);
 
+  const stats = {
+    total: publishedSkillItems.length,
+    deployed: publishedSkillItems.filter(item => item.publishedDeploymentStatus === 'deployed' || item.publishedDeploymentStatus === 'succeeded').length,
+    temporal: publishedSkillItems.filter(item => item.publishedSourceType === 'temporal_workflow').length,
+    template: publishedSkillItems.filter(item => item.publishedSourceType === 'execution_flow_template').length,
+  };
+
+  const skillOverviewStats = [
+    {
+      key: 'total',
+      label: '公开 Skills 总数',
+      value: stats.total,
+      color: 'var(--text-primary)',
+      icon: <RocketOutlined style={{ color: '#1677ff' }} />,
+    },
+    {
+      key: 'deployed',
+      label: '已部署版本',
+      value: stats.deployed,
+      color: 'var(--success-color)',
+      icon: <ThunderboltOutlined style={{ color: '#52c41a' }} />,
+    },
+    {
+      key: 'temporal',
+      label: '编排型能力',
+      value: stats.temporal,
+      color: 'var(--warning-color)',
+      icon: <RocketOutlined style={{ color: '#722ed1' }} />,
+    },
+    {
+      key: 'template',
+      label: '模版型能力',
+      value: stats.template,
+      color: 'var(--info-color)',
+      icon: <SearchOutlined style={{ color: 'var(--info-color)' }} />,
+    },
+  ];
+
   const columns: ColumnsType<(typeof publishedSkillItems)[number]> = [
     {
-      title: 'Skill',
+      title: <div style={{ textAlign: 'center' }}>Skill 名称</div>,
       dataIndex: 'skillName',
       key: 'skillName',
+      width: 220,
+      align: 'center',
       render: (value: string, record) => (
         <Space direction="vertical" size={2}>
           <Text strong>{value}</Text>
-          <Text type="secondary" code>
+          <Text type="secondary" code style={{ fontSize: 11 }}>
             {record.skillId.slice(0, 8)}
           </Text>
-          {record.skillDescription ? (
-            <Text type="secondary">
-              {record.skillDescription}
-            </Text>
-          ) : null}
         </Space>
       ),
     },
     {
-      title: '发布状态',
+      title: <div style={{ textAlign: 'center' }}>技能说明</div>,
+      dataIndex: 'skillDescription',
+      key: 'skillDescription',
+      width: 320,
+      align: 'center',
+      render: (value: string) => (
+        <Text type="secondary" style={{ fontSize: 13 }}>
+          {value || '暂无说明'}
+        </Text>
+      ),
+    },
+    {
+      title: <div style={{ textAlign: 'center' }}>发布状态</div>,
       key: 'status',
       width: 120,
+      align: 'center',
       render: (_, record) => (
-        <Tag color={statusColor(record.publishedReleaseStatus || undefined)}>
+        <Tag color={statusColor(record.publishedReleaseStatus || undefined)} style={{ marginRight: 0 }}>
           {record.publishedReleaseStatus || 'published'}
         </Tag>
       ),
     },
     {
-      title: '部署状态',
-      key: 'deploymentStatus',
-      width: 120,
-      render: (_, record) => (
-        <Tag color={statusColor(record.publishedDeploymentStatus || undefined)}>
-          {record.publishedDeploymentStatus || '未部署'}
-        </Tag>
-      ),
-    },
-    {
-      title: '来源',
-      key: 'sourceType',
-      width: 140,
-      render: (_, record) => (
-        <Tag>{record.publishedSourceType || '未知'}</Tag>
-      ),
-    },
-    {
-      title: '操作',
+      title: <div style={{ textAlign: 'center' }}>操作</div>,
       key: 'actions',
-      width: 180,
+      width: 150,
+      align: 'center',
       render: (_, record) => (
         <Space size="small">
           <Button
             type="link"
             size="small"
-            onClick={() => navigate(`/published-skills/${record.skillId}`)}
+            onClick={() => navigate(`/executions/new?skillId=${record.skillId}`)}
           >
-            查看
+            发起执行
           </Button>
           <Button
             type="link"
             size="small"
-            disabled={!record.publishedReleaseId}
-            onClick={() => record.publishedReleaseId && navigate(`/admin/capabilities?releaseId=${record.publishedReleaseId}&mode=view`)}
+            onClick={() => handleOpenDetail(record.skillId)}
           >
-            发布详情
+            详情
           </Button>
         </Space>
       ),
     },
   ];
 
+  const selectedSkillForDrawer = useMemo(() => {
+    return skills.find(s => s.id === selectedSkillId);
+  }, [skills, selectedSkillId]);
+
   return (
     <div>
-      <Space style={{ width: '100%', justifyContent: 'space-between', marginBottom: 16 }} wrap>
-        <Space direction="vertical" size={4}>
-          <Title level={4} style={{ margin: 0 }}>
-            公开 Skills
-          </Title>
-          <Text type="secondary">
-            这里只展示已公开发布、可被执行的 Skill 对象，并可继续查看其 Release 与部署状态。
-          </Text>
-        </Space>
-        <Space>
-          <Button onClick={() => navigate('/admin/skills')}>
-            系统 Skills
-          </Button>
-          <Button
-            icon={<ReloadOutlined />}
-            onClick={() => {
-              releasesQuery.refetch();
-              skillsQuery.refetch();
-            }}
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(4, minmax(0, 1fr))',
+          gap: 12,
+          marginBottom: 16,
+        }}
+      >
+        {skillOverviewStats.map((item) => (
+          <Card
+            key={item.key}
+            size="small"
+            style={{ borderRadius: 14, border: '1px solid var(--bg-secondary)', boxShadow: 'var(--shadow-md)' }}
+            styles={{ body: { padding: '12px 16px' } }}
           >
-            刷新
-          </Button>
-        </Space>
-      </Space>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+              <Space size={10} align="center">
+                <span style={{ display: 'inline-flex', fontSize: 16 }}>{item.icon}</span>
+                <Text type="secondary" style={{ fontSize: 13 }}>{item.label}</Text>
+              </Space>
+              <Text style={{ fontSize: 24, fontWeight: 700, color: item.color, lineHeight: 1 }}>
+                {item.value}
+              </Text>
+            </div>
+          </Card>
+        ))}
+      </div>
 
-      <Alert
-        type="info"
-        showIcon
-        style={{ marginBottom: 16 }}
-        message="公开 Skill 管理"
-        description="当前页直接展示已公开的 Skill 对象本身，并补充其关联 Release / 部署状态；对象口径与“系统 Skills”页保持一致。"
-      />
-      <Card>
-        <Space direction="vertical" size="middle" style={{ width: '100%' }}>
-          <Input
-            allowClear
-            placeholder="搜索 Skill / 说明 / 状态 / 类型"
-            value={searchText}
-            onChange={(event) => setSearchText(event.target.value)}
-          />
-
-          {filteredItems.length > 0 ? (
-            <Table
-              rowKey="skillId"
-              columns={columns}
-              dataSource={filteredItems}
-              loading={releasesQuery.isLoading || skillsQuery.isLoading}
-              pagination={{ pageSize: 10, showSizeChanger: false }}
-            />
-          ) : (
-            <Empty description="暂无已发布 Skill" />
+      <Card style={{ borderRadius: 16, border: '1px solid var(--bg-secondary)', boxShadow: 'var(--shadow-md)' }}>
+        <ListSectionHeader
+          title={(
+            <Space wrap size={12}>
+              <Text strong style={{ fontSize: 16 }}>公开 Skills 列表</Text>
+              <Input
+                size="large"
+                placeholder="搜索 Skill / 说明 / 状态 / 类型"
+                prefix={<SearchOutlined />}
+                variant="borderless"
+                value={searchText}
+                onChange={(event) => setSearchText(event.target.value)}
+                allowClear
+                style={{
+                  width: 360,
+                  height: 44,
+                  background: 'var(--bg-secondary)',
+                  borderRadius: 12,
+                }}
+              />
+              <Tooltip title="这里展示已公开发布、可被执行的 Skill 对象，可查看其 Release 溯源与最新部署状态。">
+                <InfoCircleOutlined style={{ color: 'var(--text-secondary)', fontSize: 14, cursor: 'help' }} />
+              </Tooltip>
+            </Space>
           )}
-        </Space>
+          extra={(
+            <Space wrap size={12}>
+              <Text type="secondary">当前显示 {filteredItems.length} 条</Text>
+              <Button 
+                size="large" 
+                icon={<ReloadOutlined />} 
+                onClick={() => {
+                  releasesQuery.refetch();
+                  skillsQuery.refetch();
+                }} 
+                className="btn-pill"
+              >
+                刷新
+              </Button>
+            </Space>
+          )}
+        />
+        <Table
+          rowKey="skillId"
+          columns={columns}
+          dataSource={filteredItems}
+          loading={releasesQuery.isLoading || skillsQuery.isLoading}
+          pagination={{ pageSize: 10, showSizeChanger: true, showTotal: (total) => `共 ${total} 条` }}
+        />
       </Card>
+
+      <Drawer
+        title={
+          <Space>
+            <RocketOutlined style={{ color: 'var(--primary-color)' }} />
+            <span>技能配置详情</span>
+            {selectedSkillForDrawer && (
+              <Tag color="blue">{selectedSkillForDrawer.name}</Tag>
+            )}
+          </Space>
+        }
+        placement="right"
+        width={800}
+        onClose={() => {
+          setDrawerVisible(false);
+          setSelectedSkillId(null);
+        }}
+        open={drawerVisible}
+        styles={{ body: { padding: 0 } }}
+        extra={
+          <Space>
+            {selectedSkillForDrawer?.publishedReleaseId && (
+              <Button 
+                icon={<InfoCircleOutlined />}
+                onClick={() => navigate(`/admin/capabilities?releaseId=${selectedSkillForDrawer.publishedReleaseId}&mode=view`)}
+              >
+                发布溯源
+              </Button>
+            )}
+            <Button 
+              type="primary" 
+              icon={<ThunderboltOutlined />}
+              onClick={() => navigate(`/executions/new?skillId=${selectedSkillId}`)}
+            >
+              立即执行
+            </Button>
+          </Space>
+        }
+      >
+        {selectedSkillId && (
+          <div className="skill-drawer-content">
+            <SkillAdminPage 
+              embedded 
+              initialSkillId={selectedSkillId} 
+            />
+          </div>
+        )}
+      </Drawer>
     </div>
   );
 };

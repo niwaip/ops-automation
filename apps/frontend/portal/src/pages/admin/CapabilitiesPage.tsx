@@ -27,11 +27,13 @@ import {
   DeleteOutlined,
   EditOutlined,
   EyeOutlined,
+  InfoCircleOutlined,
   LeftOutlined,
   QuestionCircleOutlined,
   RocketOutlined,
   ReloadOutlined,
   SafetyCertificateOutlined,
+  SearchOutlined,
 } from '@ant-design/icons';
 import { useMutation, useQuery, useQueryClient } from 'react-query';
 import { useNavigate, useSearchParams } from 'react-router-dom';
@@ -50,6 +52,7 @@ import { skillApi } from '../../api/skill';
 import ParamSchemaEditor, {
   ParamSchemaFieldDraft,
 } from '../../components/capability-release/ParamSchemaEditor';
+import { ListSectionHeader } from '../../components/page/PageScaffold';
 
 const { Title, Text } = Typography;
 const { TextArea } = Input;
@@ -836,24 +839,6 @@ const CapabilitiesPage: React.FC<CapabilitiesPageProps> = ({ mode = 'manager' })
       );
     });
   }, [releasesQuery.data?.releases, searchText]);
-  const enteredReleaseCenterCount = useMemo(
-    () => (releasesQuery.data?.releases || []).filter((release) => canEnterReleaseCenter(release)).length,
-    [releasesQuery.data?.releases],
-  );
-  const publishedSkillCount = useMemo(
-    () => (releasesQuery.data?.releases || []).filter((release) => Boolean(release.publishedSkillId)).length,
-    [releasesQuery.data?.releases],
-  );
-  const deployedVersionCount = useMemo(
-    () =>
-      (releasesQuery.data?.releases || []).filter(
-        (release) =>
-          release.deploymentStatus === 'succeeded'
-          || release.deploymentStatus === 'deployed'
-          || release.status === 'deployed',
-      ).length,
-    [releasesQuery.data?.releases],
-  );
 
   const columns: ColumnsType<CapabilityRelease> = [
     {
@@ -2244,73 +2229,117 @@ const CapabilitiesPage: React.FC<CapabilitiesPageProps> = ({ mode = 'manager' })
     );
   }
 
+  const countsSource = releasesQuery.data?.releases || [];
+  const stats = {
+    entered: countsSource.filter((release) => canEnterReleaseCenter(release)).length,
+    published: countsSource.filter((release) => Boolean(release.publishedSkillId)).length,
+    deployed: countsSource.filter(
+      (release) =>
+        release.deploymentStatus === 'succeeded' ||
+        release.deploymentStatus === 'deployed' ||
+        release.status === 'deployed',
+    ).length,
+    visible: filteredReleases.length,
+  };
+
+  const capabilityOverviewStats = [
+    {
+      key: 'entered',
+      label: '已进入发布中心',
+      value: stats.entered,
+      color: 'var(--text-primary)',
+      icon: <RocketOutlined style={{ color: '#1677ff' }} />,
+    },
+    {
+      key: 'published',
+      label: '已发布 Skill',
+      value: stats.published,
+      color: 'var(--success-color)',
+      icon: <SafetyCertificateOutlined style={{ color: '#52c41a' }} />,
+    },
+    {
+      key: 'deployed',
+      label: '已部署版本',
+      value: stats.deployed,
+      color: 'var(--warning-color)',
+      icon: <RocketOutlined style={{ color: '#722ed1' }} />,
+    },
+    {
+      key: 'visible',
+      label: '当前显示',
+      value: stats.visible,
+      color: 'var(--info-color)',
+      icon: <SearchOutlined style={{ color: 'var(--info-color)' }} />,
+    },
+  ];
+
   return (
     <div>
-      <Title level={4}>Capability Release</Title>
-
-      <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
-        <Col xs={24} md={8}>
-          <Card style={{ textAlign: 'center' }}>
-            <Space direction="vertical" size={4} style={{ width: '100%' }}>
-              <Space style={{ justifyContent: 'center' }}>
-                <RocketOutlined style={{ color: '#1677ff' }} />
-                <Text>已进入发布中心</Text>
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(4, minmax(0, 1fr))',
+          gap: 12,
+          marginBottom: 16,
+        }}
+      >
+        {capabilityOverviewStats.map((item) => (
+          <Card
+            key={item.key}
+            size="small"
+            style={{ borderRadius: 14, border: '1px solid var(--bg-secondary)', boxShadow: 'var(--shadow-md)' }}
+            styles={{ body: { padding: '12px 16px' } }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+              <Space size={10} align="center">
+                <span style={{ display: 'inline-flex', fontSize: 16 }}>{item.icon}</span>
+                <Text type="secondary" style={{ fontSize: 13 }}>{item.label}</Text>
               </Space>
-              <Title level={3} style={{ margin: 0 }}>
-                {enteredReleaseCenterCount}
-              </Title>
-            </Space>
+              <Text style={{ fontSize: 24, fontWeight: 700, color: item.color, lineHeight: 1 }}>
+                {item.value}
+              </Text>
+            </div>
           </Card>
-        </Col>
-        <Col xs={24} md={8}>
-          <Card style={{ textAlign: 'center' }}>
-            <Space direction="vertical" size={4} style={{ width: '100%' }}>
-              <Space style={{ justifyContent: 'center' }}>
-                <SafetyCertificateOutlined style={{ color: '#52c41a' }} />
-                <Text>已发布 Skill</Text>
-              </Space>
-              <Title level={3} style={{ margin: 0 }}>
-                {publishedSkillCount}
-              </Title>
-            </Space>
-          </Card>
-        </Col>
-        <Col xs={24} md={8}>
-          <Card style={{ textAlign: 'center' }}>
-            <Space direction="vertical" size={4} style={{ width: '100%' }}>
-              <Space style={{ justifyContent: 'center' }}>
-                <RocketOutlined style={{ color: '#722ed1' }} />
-                <Text>已部署版本</Text>
-              </Space>
-              <Title level={3} style={{ margin: 0 }}>
-                {deployedVersionCount}
-              </Title>
-            </Space>
-          </Card>
-        </Col>
-      </Row>
+        ))}
+      </div>
 
-      <Card style={{ marginBottom: 16 }}>
-        <Space style={{ width: '100%', justifyContent: 'space-between' }}>
-          <Input
-            placeholder="搜索 Release / 能力名称 / 状态"
-            value={searchText}
-            onChange={(event) => setSearchText(event.target.value)}
-            allowClear
-            style={{ width: 320 }}
-          />
-          <Space>
-            <Button icon={<ReloadOutlined />} onClick={() => refreshQueries(selectedReleaseId || undefined)}>
-              刷新
-            </Button>
-            <Button type="primary" icon={<AppstoreAddOutlined />} onClick={openCreateWizard}>
-              新建 Release
-            </Button>
-          </Space>
-        </Space>
-      </Card>
-
-      <Card>
+      <Card style={{ borderRadius: 16, border: '1px solid var(--bg-secondary)', boxShadow: 'var(--shadow-md)' }}>
+        <ListSectionHeader
+          title={(
+            <Space wrap size={12}>
+              <Text strong style={{ fontSize: 16 }}>流程发布列表</Text>
+              <Input
+                size="large"
+                placeholder="搜索 Release / 能力名称 / 状态"
+                prefix={<SearchOutlined />}
+                variant="borderless"
+                value={searchText}
+                onChange={(event) => setSearchText(event.target.value)}
+                allowClear
+                style={{
+                  width: 360,
+                  height: 44,
+                  background: 'var(--bg-secondary)',
+                  borderRadius: 12,
+                }}
+              />
+              <Tooltip title="查看、筛选并管理能力发布的生命周期，包括构建、校验、部署及 Skill 发布。">
+                <InfoCircleOutlined style={{ color: 'var(--text-secondary)', fontSize: 14, cursor: 'help' }} />
+              </Tooltip>
+            </Space>
+          )}
+          extra={(
+            <Space wrap size={12}>
+              <Text type="secondary">当前显示 {filteredReleases.length} 条</Text>
+              <Button size="large" icon={<ReloadOutlined />} onClick={() => refreshQueries(selectedReleaseId || undefined)} className="btn-pill">
+                刷新
+              </Button>
+              <Button size="large" type="primary" icon={<AppstoreAddOutlined />} onClick={openCreateWizard} className="btn-pill">
+                新建 Release
+              </Button>
+            </Space>
+          )}
+        />
         <Table
           rowKey="id"
           columns={columns}

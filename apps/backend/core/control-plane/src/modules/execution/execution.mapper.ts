@@ -6,9 +6,23 @@ import { ExecutionStepStatus } from './contracts/execution-step-status';
 export const mapExecutionToDto = (
   execution: Record<string, unknown>,
 ): ExecutionDto => {
+  const normalizedInput =
+    (execution.normalizedInputJson || execution.normalized_input_json) as Record<string, unknown> | null;
+  const input =
+    (execution.inputJson || execution.input_json) as Record<string, unknown> | null;
+  const result =
+    (execution.resultJson || execution.result_json) as Record<string, unknown> | null;
+  const usage =
+    (normalizedInput && typeof normalizedInput === 'object'
+      ? (normalizedInput.__usage as Record<string, unknown> | undefined)
+      : undefined) || null;
+
   return {
     id: execution.id as string,
     skillId: execution.skillId as string,
+    capabilityId: (execution.capabilityId || execution.skillId) as string | null,
+    skillVersion: (execution.skillVersion || execution.skill_version) as string | null,
+    capabilityVersion: (execution.capabilityVersion || execution.skillVersion || execution.capability_version || execution.skill_version) as string | null,
     status: execution.status as ExecutionStatus,
     runtimeType: execution.runtimeType as string | null,
     riskLevel: execution.riskLevel as 'L0' | 'L1' | 'L2' | 'L3' | null,
@@ -17,13 +31,21 @@ export const mapExecutionToDto = (
     approvalStatus: execution.approvalStatus as ApprovalStatus | null,
     takeoverRequired: execution.takeoverRequired as boolean,
     takeoverReason: execution.takeoverReason as string | null,
-    resultJson: (execution.resultJson || execution.result_json) as Record<string, unknown> | null,
+    resultJson: result,
+    inputJson: input,
+    normalizedInputJson: normalizedInput,
+    input,
+    normalizedInput,
+    result,
+    usage,
     failureCode: execution.failureCode as string | null,
     failureReason: execution.failureReason as string | null,
     startedAt: execution.startedAt ? (execution.startedAt as Date).toISOString() : null,
     endedAt: execution.endedAt ? (execution.endedAt as Date).toISOString() : null,
     createdAt: (execution.createdAt as Date).toISOString(),
     updatedAt: (execution.updatedAt as Date).toISOString(),
+    createdBy: (execution.createdBy || execution.created_by) as string | null,
+    createdByName: (execution.createdByName || execution.created_by_name) as string | null,
   };
 };
 

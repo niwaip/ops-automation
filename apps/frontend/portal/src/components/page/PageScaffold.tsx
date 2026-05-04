@@ -70,12 +70,13 @@ export const OverviewStatGrid: React.FC<OverviewStatGridProps> = ({ items, gutte
 );
 
 interface ListSectionHeaderProps {
-  title: string;
-  subtitle: string;
+  title: React.ReactNode;
+  subtitle?: React.ReactNode;
+  tip?: React.ReactNode;
   extra?: React.ReactNode;
 }
 
-export const ListSectionHeader: React.FC<ListSectionHeaderProps> = ({ title, subtitle, extra }) => (
+export const ListSectionHeader: React.FC<ListSectionHeaderProps> = ({ title, subtitle, tip, extra }) => (
   <div
     style={{
       display: 'flex',
@@ -87,10 +88,13 @@ export const ListSectionHeader: React.FC<ListSectionHeaderProps> = ({ title, sub
     }}
   >
     <Space direction="vertical" size={2}>
-      <Text strong style={{ fontSize: 16 }}>
-        {title}
-      </Text>
-      <Text type="secondary">{subtitle}</Text>
+      <Space size={6} align="center">
+        <Text strong style={{ fontSize: 16 }}>
+          {title}
+        </Text>
+        {tip}
+      </Space>
+      {subtitle ? <Text type="secondary">{subtitle}</Text> : null}
     </Space>
     {extra}
   </div>

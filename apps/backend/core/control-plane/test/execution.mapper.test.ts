@@ -5,6 +5,7 @@ describe('execution.mapper', () => {
     const dto = mapExecutionToDto({
       id: 'execution-1',
       createdBy: 'user-1',
+      createdByName: 'Alice',
       skillId: 'skill-1',
       skillVersion: 'v1',
       status: 'running',
@@ -25,8 +26,15 @@ describe('execution.mapper', () => {
     expect(dto.id).toBe('execution-1');
     expect(dto.capabilityId).toBe('skill-1');
     expect(dto.capabilityVersion).toBe('v1');
+    expect(dto.input).toEqual({ prompt: 'hello' });
+    expect(dto.normalizedInput).toEqual({
+      input: { prompt: 'hello' },
+      __usage: { total_tokens: 10 },
+    });
     expect(dto.usage).toEqual({ total_tokens: 10 });
     expect(dto.result).toEqual({ ok: true });
+    expect(dto.createdBy).toBe('user-1');
+    expect(dto.createdByName).toBe('Alice');
   });
 
   it('maps execution step record to dto', () => {
