@@ -180,9 +180,9 @@ export class ProxyController {
 
     for (const serviceName of this.proxyService.getServiceNames()) {
       try {
-        await this.proxyService.proxyRequest(serviceName, 'GET', '/health');
+        const reachable = await this.proxyService.checkServiceHealth(serviceName);
         healthStatus[serviceName] = {
-          status: 'healthy',
+          status: reachable ? 'healthy' : 'unhealthy',
           url: this.proxyService.getServiceUrl(serviceName),
         };
       } catch (error) {

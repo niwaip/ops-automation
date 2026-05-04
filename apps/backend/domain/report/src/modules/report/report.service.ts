@@ -34,6 +34,9 @@ export class ReportService {
     this.redis = new Redis({
       host: process.env.REDIS_HOST || 'redis',
       port: parseInt(process.env.REDIS_PORT || '6379', 10),
+      ...(process.env.REDIS_PASSWORD
+        ? { password: process.env.REDIS_PASSWORD }
+        : {}),
     });
     this.sessionBrokerUrl = process.env.SESSION_BROKER_URL || 'http://session-broker:3002';
   }
@@ -144,7 +147,9 @@ export class ReportService {
 
       // Fallback to session broker API
       this.logger.log(`No steps found in Redis, trying session broker API`);
-      const response = await axios.get(`${this.sessionBrokerUrl}/session/${sessionId}/results`);
+      const response = await axios.get<{ results?: StepResult[] }>(
+        `${this.sessionBrokerUrl}/session/${sessionId}/results`,
+      );
       return response.data.results || [];
     } catch (error) {
       this.logger.error(`Failed to get step results: ${error}`);

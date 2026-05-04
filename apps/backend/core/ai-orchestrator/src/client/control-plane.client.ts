@@ -23,7 +23,7 @@ export class ControlPlaneClient {
         : `${process.env.CONTROL_PLANE_URL}/api`;
     }
     if (process.env.DOCKER_ENV === 'true' || process.env.NODE_ENV === 'production') {
-      return 'http://ops-control-plane:3003/api';
+      return 'http://control-plane:3003/api';
     }
     return 'http://localhost:3003/api';
   }

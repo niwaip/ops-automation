@@ -51,7 +51,8 @@ fi
 
 # Run docker compose
 cd "$DOCKER_DIR"
-echo "Running: docker compose -f $compose_file $*"
+echo "Using env file: $DOCKER_DIR/.env"
+echo "Running: docker compose --env-file $DOCKER_DIR/.env -f $compose_file $*"
 echo ""
 
-docker compose -f "$compose_file" "$@"
+docker compose --env-file "$DOCKER_DIR/.env" -f "$compose_file" "$@"
