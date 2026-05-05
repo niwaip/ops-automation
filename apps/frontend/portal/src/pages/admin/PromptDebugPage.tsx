@@ -37,6 +37,19 @@ import { aiModelApi, AIModel } from '../../api/ai';
 
 const { Title, Text } = Typography;
 
+const promptPreviewPreStyle: React.CSSProperties = {
+  margin: '8px 0 0',
+  padding: 12,
+  whiteSpace: 'pre-wrap',
+  wordBreak: 'break-word',
+  maxHeight: 240,
+  overflow: 'auto',
+  background: 'var(--bg-secondary)',
+  border: '1px solid var(--border-color)',
+  borderRadius: 10,
+  color: 'var(--text-primary)',
+};
+
 const formatDateTime = (value?: string) => {
   if (!value) {
     return '-';
@@ -241,34 +254,34 @@ const getTimelineCardTone = (color?: string) => {
   switch (color) {
     case 'green':
       return {
-        borderColor: '#b7eb8f',
-        background: 'linear-gradient(180deg, #f6ffed 0%, #ffffff 100%)',
-        accent: '#52c41a',
+        borderColor: 'rgba(16, 185, 129, 0.28)',
+        background: 'linear-gradient(180deg, rgba(16, 185, 129, 0.12) 0%, var(--bg-card) 100%)',
+        accent: 'var(--success-color)',
       };
     case 'red':
       return {
-        borderColor: '#ffccc7',
-        background: 'linear-gradient(180deg, #fff2f0 0%, #ffffff 100%)',
-        accent: '#ff4d4f',
+        borderColor: 'rgba(239, 68, 68, 0.28)',
+        background: 'linear-gradient(180deg, rgba(239, 68, 68, 0.12) 0%, var(--bg-card) 100%)',
+        accent: 'var(--error-color)',
       };
     case 'processing':
       return {
-        borderColor: '#91caff',
-        background: 'linear-gradient(180deg, #e6f4ff 0%, #ffffff 100%)',
-        accent: '#1677ff',
+        borderColor: 'rgba(59, 130, 246, 0.28)',
+        background: 'linear-gradient(180deg, rgba(59, 130, 246, 0.12) 0%, var(--bg-card) 100%)',
+        accent: 'var(--info-color)',
       };
     case 'gray':
       return {
-        borderColor: '#d9d9d9',
-        background: 'linear-gradient(180deg, #fafafa 0%, #ffffff 100%)',
-        accent: '#8c8c8c',
+        borderColor: 'var(--border-color)',
+        background: 'linear-gradient(180deg, var(--bg-secondary) 0%, var(--bg-card) 100%)',
+        accent: 'var(--text-light)',
       };
     case 'blue':
     default:
       return {
-        borderColor: '#adc6ff',
-        background: 'linear-gradient(180deg, #f0f5ff 0%, #ffffff 100%)',
-        accent: '#2f54eb',
+        borderColor: 'rgba(99, 102, 241, 0.28)',
+        background: 'linear-gradient(180deg, rgba(99, 102, 241, 0.12) 0%, var(--bg-card) 100%)',
+        accent: 'var(--primary-color)',
       };
   }
 };
@@ -298,7 +311,7 @@ const TimelineNodeCard: React.FC<{
         borderRadius: 12,
         borderColor: tone.borderColor,
         background: tone.background,
-        boxShadow: '0 6px 18px rgba(15, 23, 42, 0.04)',
+        boxShadow: 'var(--shadow-sm)',
       }}
     >
       <Space direction="vertical" size={8} style={{ width: '100%' }}>
@@ -341,7 +354,7 @@ const TimelineNodeCard: React.FC<{
               icon={expanded ? <DownOutlined /> : <RightOutlined />}
               style={{
                 color: tone.accent,
-                background: 'rgba(255, 255, 255, 0.72)',
+                background: 'var(--bg-card)',
                 borderRadius: 999,
               }}
               onClick={(event) => {
@@ -762,7 +775,7 @@ const PromptDebugPage: React.FC = () => {
                 <Tooltip
                   title={`当前页面展示前端内存中的最近 20 条 Prompt 调试记录。请使用管理员账号，在聊天窗口切到 task 模式执行一轮任务；有了新记录后，这里会自动出现。也可以直接输入 executionId 查询执行单里落库的调试快照。当前系统调试开关：${debugSettingsQuery.data?.promptDebugEnabled === false ? '关闭' : '开启'}`}
                 >
-                  <InfoCircleOutlined style={{ color: '#8c8c8c', fontSize: 16 }} />
+                  <InfoCircleOutlined style={{ color: 'var(--text-light)', fontSize: 16 }} />
                 </Tooltip>
               </Space>
             </div>
@@ -884,13 +897,13 @@ const PromptDebugPage: React.FC = () => {
                           </div>
                           <div>
                             <Text strong>System Prompt</Text>
-                            <pre style={{ margin: '8px 0 0', whiteSpace: 'pre-wrap', wordBreak: 'break-word', maxHeight: 240, overflow: 'auto' }}>
+                            <pre style={promptPreviewPreStyle}>
                               {activePromptDebug.systemPrompt || ''}
                             </pre>
                           </div>
                           <div>
                             <Text strong>User Prompt</Text>
-                            <pre style={{ margin: '8px 0 0', whiteSpace: 'pre-wrap', wordBreak: 'break-word', maxHeight: 240, overflow: 'auto' }}>
+                            <pre style={promptPreviewPreStyle}>
                               {activePromptDebug.userPrompt || ''}
                             </pre>
                           </div>
@@ -898,13 +911,13 @@ const PromptDebugPage: React.FC = () => {
                             <>
                               <div>
                                 <Text strong>LLM Request Messages</Text>
-                                <pre style={{ margin: '8px 0 0', whiteSpace: 'pre-wrap', wordBreak: 'break-word', maxHeight: 240, overflow: 'auto' }}>
+                                <pre style={promptPreviewPreStyle}>
                                   {stringifyPretty(activePromptDebug.llmRequestMessages || [])}
                                 </pre>
                               </div>
                               <div>
                                 <Text strong>LLM Raw Response</Text>
-                                <pre style={{ margin: '8px 0 0', whiteSpace: 'pre-wrap', wordBreak: 'break-word', maxHeight: 240, overflow: 'auto' }}>
+                                <pre style={promptPreviewPreStyle}>
                                   {activePromptDebug.llmResponseText || '当前仅记录了 Prompt，尚未保存模型原始回复。'}
                                 </pre>
                               </div>
@@ -954,7 +967,7 @@ const PromptDebugPage: React.FC = () => {
                       padding: 12,
                       cursor: 'pointer',
                       background: isActive ? 'rgba(99, 102, 241, 0.08)' : 'transparent',
-                      borderLeft: isActive ? '3px solid #6366f1' : '3px solid transparent',
+                      borderLeft: isActive ? '3px solid var(--primary-color)' : '3px solid transparent',
                     }}
                     onClick={() => setSelectedRecordId(item.id)}
                   >

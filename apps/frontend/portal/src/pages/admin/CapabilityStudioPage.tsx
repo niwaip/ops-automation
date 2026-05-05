@@ -1,8 +1,14 @@
 import React from 'react';
-import CapabilitiesPage from './CapabilitiesPage';
+import { Navigate, useSearchParams } from 'react-router-dom';
 
 const CapabilityStudioPage: React.FC = () => {
-  return <CapabilitiesPage mode="studio" />;
+  const [searchParams] = useSearchParams();
+  const releaseId = searchParams.get('releaseId');
+  const target = releaseId
+    ? `/admin/capabilities?releaseId=${encodeURIComponent(releaseId)}&mode=view&tab=studio`
+    : '/admin/capabilities';
+
+  return <Navigate to={target} replace />;
 };
 
 export default CapabilityStudioPage;

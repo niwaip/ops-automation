@@ -1769,7 +1769,7 @@ const TemporalPage: React.FC = () => {
     <Space size={4}>
       <span>{label}</span>
       <Tooltip title={tip}>
-        <InfoCircleOutlined style={{ color: '#8c8c8c' }} />
+        <InfoCircleOutlined style={{ color: 'var(--text-light)' }} />
       </Tooltip>
     </Space>
   );
@@ -2716,8 +2716,8 @@ const TemporalPage: React.FC = () => {
     return (
       <div
         style={{
-          border: '1px solid rgba(24, 144, 255, 0.22)',
-          background: 'linear-gradient(180deg, rgba(24, 144, 255, 0.08) 0%, rgba(24, 144, 255, 0.02) 100%)',
+          border: '1px solid rgba(99, 102, 241, 0.24)',
+          background: 'linear-gradient(180deg, rgba(99, 102, 241, 0.1) 0%, var(--bg-card) 100%)',
           borderRadius: 12,
           padding: 12,
         }}
@@ -3430,7 +3430,7 @@ const TemporalPage: React.FC = () => {
                       alignSelf: msg.role === 'user' ? 'flex-end' : 'flex-start',
                       maxWidth: '85%',
                       background: msg.role === 'user' ? 'var(--primary-color)' : 'var(--bg-secondary)',
-                      color: msg.role === 'user' ? '#fff' : 'var(--text-primary)',
+                      color: msg.role === 'user' ? 'white' : 'var(--text-primary)',
                       padding: '10px 14px',
                       borderRadius: 12,
                       borderBottomRightRadius: msg.role === 'user' ? 2 : 12,
@@ -3450,14 +3450,14 @@ const TemporalPage: React.FC = () => {
                        <div
                          style={{
                            marginTop: 10,
-                           borderTop: '1px solid rgba(0,0,0,0.05)',
+                          borderTop: '1px solid var(--border-color)',
                            paddingTop: 10,
                          }}
                        >
                          <Space direction="vertical" size={10} style={{ width: '100%' }}>
                            <div>
                              <Space wrap size={[6, 6]}>
-                               <Text strong style={{ color: msg.role === 'user' ? '#fff' : 'inherit', fontSize: 13 }}>
+                              <Text strong style={{ color: msg.role === 'user' ? 'white' : 'inherit', fontSize: 13 }}>
                                  草稿预览: {msg.draft.workflowDsl.name}
                                </Text>
                                <Tag color={isLatestDraft ? 'processing' : 'default'} style={{ margin: 0 }}>
@@ -3498,21 +3498,21 @@ const TemporalPage: React.FC = () => {
                                {renderDraftContractCard(msg.draft)}
 
                                <div>
-                                 <Text strong style={{ color: msg.role === 'user' ? '#fff' : 'inherit' }}>关键输入参数</Text>
+                                <Text strong style={{ color: msg.role === 'user' ? 'white' : 'inherit' }}>关键输入参数</Text>
                                  <div style={{ marginTop: 6 }}>
                                    {renderDraftInputParamSummary(msg.draft)}
                                  </div>
                                </div>
 
                                <div>
-                                 <Text strong style={{ color: msg.role === 'user' ? '#fff' : 'inherit' }}>输出结构</Text>
+                                <Text strong style={{ color: msg.role === 'user' ? 'white' : 'inherit' }}>输出结构</Text>
                                  <div style={{ marginTop: 6 }}>
                                    {renderDraftOutputParamSummary(msg.draft)}
                                  </div>
                                </div>
 
                                <div>
-                                 <Text strong style={{ color: msg.role === 'user' ? '#fff' : 'inherit' }}>步骤摘要</Text>
+                                <Text strong style={{ color: msg.role === 'user' ? 'white' : 'inherit' }}>步骤摘要</Text>
                                  <div style={{ marginTop: 6 }}>
                                    {renderDraftStepSummary(msg.draft)}
                                  </div>
@@ -4872,7 +4872,7 @@ const TemporalPage: React.FC = () => {
           <Button key="close" onClick={() => setCodeModalVisible(false)}>关闭</Button>
         ]} width={900}>
         {generatedCode && (
-          <pre style={{ background: '#1e1e1e', color: '#d4d4d4', padding: 16, borderRadius: 8, maxHeight: 500, overflow: 'auto', fontSize: 12, fontFamily: 'Monaco, Menlo, monospace' }}>
+          <pre style={{ background: 'var(--bg-secondary)', color: 'var(--text-primary)', border: '1px solid var(--border-color)', padding: 16, borderRadius: 8, maxHeight: 500, overflow: 'auto', fontSize: 12, fontFamily: 'Monaco, Menlo, monospace' }}>
             {generatedCode}
           </pre>
         )}

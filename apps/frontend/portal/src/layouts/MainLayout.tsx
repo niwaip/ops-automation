@@ -106,11 +106,6 @@ const MainLayout: React.FC = () => {
                 label: t('models'),
               },
               {
-                key: '/admin/capability-studio',
-                icon: <ThunderboltOutlined />,
-                label: 'Capability Studio',
-              },
-              {
                 key: '/admin/skills',
                 icon: <ThunderboltOutlined />,
                 label: t('skills'),
@@ -183,8 +178,8 @@ const MainLayout: React.FC = () => {
     if (path.startsWith('/admin/users')) return '/admin/users';
     if (path.startsWith('/admin/models')) return '/admin/models';
     if (path.startsWith('/admin/capabilities')) return '/admin/capabilities';
-    if (path.startsWith('/admin/capability-studio')) return '/admin/capability-studio';
-    if (path.startsWith('/admin/capability-builds')) return '/admin/capability-studio';
+    if (path.startsWith('/admin/capability-studio')) return '/admin/capabilities';
+    if (path.startsWith('/admin/capability-builds')) return '/admin/capabilities';
     if (path.startsWith('/admin/skills')) return '/admin/skills';
     if (path.startsWith('/admin/tools')) return '/admin/tools';
     if (path.startsWith('/admin/prompt-debug')) return '/admin/prompt-debug';
