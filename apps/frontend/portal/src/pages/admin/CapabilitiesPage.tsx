@@ -61,6 +61,18 @@ const studioPaneStyle: React.CSSProperties = {
   maxHeight: 320,
   overflow: 'auto',
   whiteSpace: 'pre-wrap',
+  background: 'var(--bg-secondary)',
+  border: '1px solid var(--border-color)',
+  borderRadius: 8,
+  color: 'var(--text-primary)',
+  padding: 12,
+};
+
+const modalJsonPaneStyle: React.CSSProperties = {
+  background: 'var(--bg-secondary)',
+  border: '1px solid var(--border-color)',
+  borderRadius: 8,
+  color: 'var(--text-primary)',
 };
 
 type SnapshotDiffStatus = 'same' | 'changed' | 'added' | 'removed';
@@ -904,7 +916,7 @@ const CapabilitiesPage: React.FC<CapabilitiesPageProps> = ({ mode = 'manager' })
         return (
           <Space direction="vertical" size={0} style={{ width: '100%', textAlign: 'center' }}>
             {env && (
-              <div style={{ fontSize: 11, color: '#8c8c8c', marginBottom: 2 }}>
+              <div style={{ fontSize: 11, color: 'var(--text-light)', marginBottom: 2 }}>
                 环境: <Text strong>{env}</Text>
               </div>
             )}
@@ -1038,6 +1050,24 @@ const CapabilitiesPage: React.FC<CapabilitiesPageProps> = ({ mode = 'manager' })
       }),
     [selectedDetail?.sourceSnapshots],
   );
+  const activeDetailTab = searchParams.get('tab') === 'studio' ? 'studio' : 'ops';
+
+  const handleDetailTabChange = (tab: 'ops' | 'studio') => {
+    if (!selectedReleaseId) {
+      return;
+    }
+
+    const nextParams = new URLSearchParams(searchParams);
+    nextParams.set('releaseId', selectedReleaseId);
+    nextParams.set('mode', drawerMode || 'view');
+    if (tab === 'studio') {
+      nextParams.set('tab', 'studio');
+    } else {
+      nextParams.delete('tab');
+    }
+    setSearchParams(nextParams);
+  };
+
   useEffect(() => {
     const releaseIdFromQuery = searchParams.get('releaseId');
     const modeFromQuery = searchParams.get('mode') as 'view' | 'edit' | null;
@@ -1837,7 +1867,7 @@ const CapabilitiesPage: React.FC<CapabilitiesPageProps> = ({ mode = 'manager' })
                 <Tag color="red">删除 {snapshotDiffSummary.removed}</Tag>
               </Space>
 
-              <div style={{ maxHeight: 300, overflowY: 'auto', border: '1px solid #f0f0f0', borderRadius: 4 }}>
+              <div style={{ maxHeight: 300, overflowY: 'auto', border: '1px solid var(--border-color)', borderRadius: 8 }}>
                 {visibleSnapshotDiffRows.length > 0 ? (
                   visibleSnapshotDiffRows.map((row) => (
                     <div
@@ -1851,9 +1881,16 @@ const CapabilitiesPage: React.FC<CapabilitiesPageProps> = ({ mode = 'manager' })
                         display: 'flex',
                         justifyContent: 'space-between',
                         padding: '8px 12px',
-                        borderBottom: '1px solid #f0f0f0',
+                        borderBottom: '1px solid var(--border-color)',
                         cursor: 'pointer',
-                        background: row.status === 'changed' ? '#fffbe6' : row.status === 'added' ? '#f6ffed' : row.status === 'removed' ? '#fff2f0' : 'transparent'
+                        background:
+                          row.status === 'changed'
+                            ? 'rgba(245, 158, 11, 0.12)'
+                            : row.status === 'added'
+                              ? 'rgba(16, 185, 129, 0.12)'
+                              : row.status === 'removed'
+                                ? 'rgba(239, 68, 68, 0.12)'
+                                : 'transparent',
                       }}
                     >
                       <Text code>{row.path}</Text>
@@ -2017,7 +2054,7 @@ const CapabilitiesPage: React.FC<CapabilitiesPageProps> = ({ mode = 'manager' })
                       setIsAuditModalVisible(true);
                     }}
                     style={{
-                      borderLeft: `4px solid ${event.success ? '#52c41a' : '#ff4d4f'}`,
+                      borderLeft: `4px solid ${event.success ? 'var(--success-color)' : 'var(--error-color)'}`,
                       marginBottom: 8,
                     }}
                     styles={{ body: { padding: '8px 12px' } }}
@@ -2037,7 +2074,7 @@ const CapabilitiesPage: React.FC<CapabilitiesPageProps> = ({ mode = 'manager' })
                         >
                           {event.summary}
                         </div>
-                        <div style={{ fontSize: 12, color: '#8c8c8c' }}>
+                        <div style={{ fontSize: 12, color: 'var(--text-light)' }}>
                           {new Date(event.createdAt).toLocaleString()} · {event.actorName || 'System'}
                         </div>
                       </div>
@@ -2248,21 +2285,21 @@ const CapabilitiesPage: React.FC<CapabilitiesPageProps> = ({ mode = 'manager' })
       label: '已进入发布中心',
       value: stats.entered,
       color: 'var(--text-primary)',
-      icon: <RocketOutlined style={{ color: '#1677ff' }} />,
+      icon: <RocketOutlined style={{ color: 'var(--primary-color)' }} />,
     },
     {
       key: 'published',
       label: '已发布 Skill',
       value: stats.published,
       color: 'var(--success-color)',
-      icon: <SafetyCertificateOutlined style={{ color: '#52c41a' }} />,
+      icon: <SafetyCertificateOutlined style={{ color: 'var(--success-color)' }} />,
     },
     {
       key: 'deployed',
       label: '已部署版本',
       value: stats.deployed,
       color: 'var(--warning-color)',
-      icon: <RocketOutlined style={{ color: '#722ed1' }} />,
+      icon: <RocketOutlined style={{ color: 'var(--accent-color)' }} />,
     },
     {
       key: 'visible',
@@ -2888,7 +2925,7 @@ const CapabilitiesPage: React.FC<CapabilitiesPageProps> = ({ mode = 'manager' })
       <Modal
         title={
           <Space>
-            <SafetyCertificateOutlined style={{ color: '#1890ff' }} />
+            <SafetyCertificateOutlined style={{ color: 'var(--primary-color)' }} />
             <span>AI 失败原因分析</span>
           </Space>
         }
@@ -2929,9 +2966,8 @@ const CapabilitiesPage: React.FC<CapabilitiesPageProps> = ({ mode = 'manager' })
               <Title level={5}>详细分析</Title>
               <div
                 style={{
-                  background: '#f5f5f5',
+                  ...modalJsonPaneStyle,
                   padding: '12px 16px',
-                  borderRadius: 4,
                   fontSize: 14,
                   lineHeight: 1.6,
                 }}
@@ -2944,9 +2980,8 @@ const CapabilitiesPage: React.FC<CapabilitiesPageProps> = ({ mode = 'manager' })
                 <Title level={5}>建议参数 (JSON)</Title>
                 <pre
                   style={{
-                    background: '#f5f5f5',
+                    ...modalJsonPaneStyle,
                     padding: 12,
-                    borderRadius: 4,
                     maxHeight: 200,
                     overflow: 'auto',
                     margin: 0,
@@ -2969,7 +3004,7 @@ const CapabilitiesPage: React.FC<CapabilitiesPageProps> = ({ mode = 'manager' })
       <Modal
         title={
           <Space>
-            <EyeOutlined style={{ color: '#1890ff' }} />
+            <EyeOutlined style={{ color: 'var(--primary-color)' }} />
             <span>审计事件详情</span>
           </Space>
         }
@@ -3008,9 +3043,8 @@ const CapabilitiesPage: React.FC<CapabilitiesPageProps> = ({ mode = 'manager' })
                 <div style={{ fontWeight: 'bold', marginBottom: 8 }}>详细信息 (JSON):</div>
                 <pre
                   style={{
-                    background: '#f5f5f5',
+                    ...modalJsonPaneStyle,
                     padding: 12,
-                    borderRadius: 4,
                     maxHeight: 400,
                     overflow: 'auto',
                     margin: 0,
@@ -3028,7 +3062,7 @@ const CapabilitiesPage: React.FC<CapabilitiesPageProps> = ({ mode = 'manager' })
       <Modal
         title={
           <Space>
-            <EyeOutlined style={{ color: '#1890ff' }} />
+            <EyeOutlined style={{ color: 'var(--primary-color)' }} />
             <span>{jsonViewTitle}</span>
           </Space>
         }
@@ -3043,9 +3077,8 @@ const CapabilitiesPage: React.FC<CapabilitiesPageProps> = ({ mode = 'manager' })
       >
         <pre
           style={{
-            background: '#f5f5f5',
+            ...modalJsonPaneStyle,
             padding: 16,
-            borderRadius: 4,
             maxHeight: 600,
             overflow: 'auto',
             margin: 0,
@@ -3094,6 +3127,8 @@ const CapabilitiesPage: React.FC<CapabilitiesPageProps> = ({ mode = 'manager' })
             {drawerMode === 'view' ? (
               <Tabs
                 size="small"
+                activeKey={activeDetailTab}
+                onChange={(key) => handleDetailTabChange(key as 'ops' | 'studio')}
                 items={[
                   { key: 'studio', label: '设计详情 (Studio)', children: studioContent },
                   { key: 'ops', label: '运维详情', children: operationsContent },
@@ -3109,7 +3144,7 @@ const CapabilitiesPage: React.FC<CapabilitiesPageProps> = ({ mode = 'manager' })
                       style={{ textAlign: 'center', width: '100%' }}
                       styles={{ body: { minHeight: 130, display: 'flex', flexDirection: 'column', justifyContent: 'center' } }}
                     >
-                      <SafetyCertificateOutlined style={{ fontSize: 24, color: '#1890ff', marginBottom: 8 }} />
+                      <SafetyCertificateOutlined style={{ fontSize: 24, color: 'var(--primary-color)', marginBottom: 8 }} />
                       <div style={{ fontWeight: 'bold', marginBottom: 4 }}>1. 检查</div>
                       <Button
                         type="primary"
@@ -3129,7 +3164,7 @@ const CapabilitiesPage: React.FC<CapabilitiesPageProps> = ({ mode = 'manager' })
                       style={{ textAlign: 'center', width: '100%' }}
                       styles={{ body: { minHeight: 130, display: 'flex', flexDirection: 'column', justifyContent: 'center' } }}
                     >
-                      <RocketOutlined style={{ fontSize: 24, color: '#52c41a', marginBottom: 8 }} />
+                      <RocketOutlined style={{ fontSize: 24, color: 'var(--success-color)', marginBottom: 8 }} />
                       <div style={{ fontWeight: 'bold', marginBottom: 4 }}>2. 重新部署</div>
                       <Button
                         type="primary"
@@ -3150,7 +3185,7 @@ const CapabilitiesPage: React.FC<CapabilitiesPageProps> = ({ mode = 'manager' })
                       style={{ textAlign: 'center', width: '100%' }}
                       styles={{ body: { minHeight: 130, display: 'flex', flexDirection: 'column', justifyContent: 'center' } }}
                     >
-                      <AppstoreAddOutlined style={{ fontSize: 24, color: '#722ed1', marginBottom: 8 }} />
+                      <AppstoreAddOutlined style={{ fontSize: 24, color: 'var(--accent-color)', marginBottom: 8 }} />
                       <Tooltip title="将当前 Release 的设计（触发词、参数 Schema、API 端点）发布到 Skill Center。发布后，AI 即可通过这些配置识别并调用此能力。">
                         <div style={{ fontWeight: 'bold', marginBottom: 4, cursor: 'help' }}>
                           3. 发布 Skill <QuestionCircleOutlined style={{ fontSize: 12 }} />
@@ -3190,7 +3225,7 @@ const CapabilitiesPage: React.FC<CapabilitiesPageProps> = ({ mode = 'manager' })
                       style={{ textAlign: 'center', width: '100%' }}
                       styles={{ body: { minHeight: 130, display: 'flex', flexDirection: 'column', justifyContent: 'center' } }}
                     >
-                      <CheckCircleOutlined style={{ fontSize: 24, color: '#faad14', marginBottom: 8 }} />
+                      <CheckCircleOutlined style={{ fontSize: 24, color: 'var(--warning-color)', marginBottom: 8 }} />
                       <Tooltip title="在隔离的 Sandbox 或连接真实插件环境执行测试用例，验证代码逻辑与环境集成是否正常。建议在发布到生产环境前完成此步骤。">
                         <div style={{ fontWeight: 'bold', marginBottom: 4, cursor: 'help' }}>
                           4. 验证 <QuestionCircleOutlined style={{ fontSize: 12 }} />
@@ -3214,7 +3249,8 @@ const CapabilitiesPage: React.FC<CapabilitiesPageProps> = ({ mode = 'manager' })
 
                 <Tabs
                   size="small"
-                  defaultActiveKey="ops"
+                  activeKey={activeDetailTab}
+                  onChange={(key) => handleDetailTabChange(key as 'ops' | 'studio')}
                   items={[
                     { key: 'ops', label: '运维详情', children: operationsContent },
                     { key: 'studio', label: '设计详情 (Studio)', children: studioContent },
@@ -3225,8 +3261,8 @@ const CapabilitiesPage: React.FC<CapabilitiesPageProps> = ({ mode = 'manager' })
           </Space>
         ) : (
           <div style={{ textAlign: 'center', padding: '40px 0' }}>
-            <ReloadOutlined spin style={{ fontSize: 24, color: '#1890ff' }} />
-            <div style={{ marginTop: 12, color: '#999' }}>正在加载详情...</div>
+            <ReloadOutlined spin style={{ fontSize: 24, color: 'var(--primary-color)' }} />
+            <div style={{ marginTop: 12, color: 'var(--text-light)' }}>正在加载详情...</div>
           </div>
         )}
       </Drawer>

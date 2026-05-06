@@ -2,7 +2,7 @@
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
   line-height: 1.6;
   font-weight: 400;
-  color-scheme: light;
+  color-scheme: light dark;
 
   /* Modern color palette */
   --primary-color: #6366f1;
@@ -20,6 +20,9 @@
   --bg-card: #ffffff;
   --bg-sidebar: linear-gradient(180deg, #1e1b4b 0%, #312e81 50%, #4338ca 100%);
   --bg-header: rgba(255, 255, 255, 0.95);
+  --bg-hover: #e2e8f0;
+  --border-color: #e2e8f0;
+  --border-strong: #cbd5e1;
 
   /* Text colors */
   --text-primary: #1e293b;
@@ -58,6 +61,9 @@
   --bg-secondary: #334155;
   --bg-card: #1e293b;
   --bg-header: rgba(30, 41, 59, 0.95);
+  --bg-hover: #243244;
+  --border-color: #334155;
+  --border-strong: #475569;
   --text-primary: #f8fafc;
   --text-secondary: #cbd5e1;
   --text-light: #94a3b8;
@@ -65,6 +71,7 @@
   --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.2);
   --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.3), 0 2px 4px -2px rgb(0 0 0 / 0.2);
   --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.3), 0 4px 6px -4px rgb(0 0 0 / 0.2);
+  color-scheme: dark;
 }
 
 /* Dark mode page background with subtle gradient */
@@ -259,7 +266,7 @@ body {
 }
 
 .ant-card-head {
-  border-bottom: 1px solid var(--bg-secondary) !important;
+  border-bottom: 1px solid var(--border-color) !important;
   padding: 16px 24px !important;
 }
 
@@ -296,13 +303,13 @@ body {
 
 .ant-table-tbody > tr > td {
   padding: 16px !important;
-  border-bottom: 1px solid var(--bg-secondary) !important;
+  border-bottom: 1px solid var(--border-color) !important;
   color: var(--text-primary) !important;
   text-align: center !important;
 }
 
 .ant-table-tbody > tr:hover > td {
-  background: var(--bg-secondary) !important;
+  background: var(--bg-hover) !important;
 }
 
 /* Table cell content - ensure all text is visible */
@@ -362,7 +369,7 @@ body {
 }
 
 .ant-btn-default:hover {
-  background: #e2e8f0 !important;
+  background: var(--bg-hover) !important;
   color: var(--primary-color) !important;
 }
 
@@ -422,7 +429,7 @@ body {
 
 .ant-input {
   border-radius: var(--radius-md) !important;
-  border: 2px solid var(--bg-secondary) !important;
+  border: 2px solid var(--border-color) !important;
   transition: all var(--transition-normal) !important;
   padding: 8px 12px !important;
 }
@@ -435,7 +442,7 @@ body {
 
 .ant-select-selector {
   border-radius: var(--radius-md) !important;
-  border: 2px solid var(--bg-secondary) !important;
+  border: 2px solid var(--border-color) !important;
   transition: all var(--transition-normal) !important;
 }
 
@@ -525,6 +532,10 @@ body {
   background: rgba(255, 255, 255, 0.8);
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
+}
+
+[data-theme='dark'] .glass-effect {
+  background: rgba(15, 23, 42, 0.72);
 }
 
 .card-gradient-1 {
@@ -660,7 +671,7 @@ body {
 
 /* Dark mode card styling - add visible border */
 [data-theme='dark'] .ant-card {
-  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  border: 1px solid var(--border-color) !important;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3) !important;
   background: #1e293b !important;
 }
@@ -671,9 +682,23 @@ body {
   border-bottom-color: #334155 !important;
 }
 
+[data-theme='dark'] .ant-card-head-title,
+[data-theme='dark'] .ant-card-extra,
+[data-theme='dark'] .ant-card-extra * {
+  color: #f8fafc !important;
+}
+
 /* Dark mode card body */
 [data-theme='dark'] .ant-card-body {
   background: transparent !important;
+}
+
+[data-theme='dark'] .ant-list-item,
+[data-theme='dark'] .ant-list-item-meta,
+[data-theme='dark'] .ant-list-item-meta-title,
+[data-theme='dark'] .ant-list-item-meta-description {
+  color: #f8fafc !important;
+  border-color: #334155 !important;
 }
 
 /* Dark mode input styling */
@@ -681,7 +706,7 @@ body {
 [data-theme='dark'] .ant-input-affix-wrapper,
 [data-theme='dark'] .ant-select-selector {
   background-color: #1e293b !important;
-  border-color: #475569 !important;
+  border-color: var(--border-strong) !important;
   color: var(--text-primary) !important;
 }
 
@@ -702,6 +727,40 @@ body {
 [data-theme='dark'] .ant-table-thead > tr > th {
   background: #273449 !important;
   border-bottom-color: #334155 !important;
+  color: #f8fafc !important;
+}
+
+[data-theme='dark'] .ant-table-thead > tr > th .ant-table-column-title,
+[data-theme='dark'] .ant-table-thead > tr > th .ant-table-filter-column,
+[data-theme='dark'] .ant-table-thead > tr > th .ant-table-column-sorters,
+[data-theme='dark'] .ant-table-thead > tr > th .ant-table-column-sorters *,
+[data-theme='dark'] .ant-table-thead > tr > th .ant-table-selection-column,
+[data-theme='dark'] .ant-table-thead > tr > th .ant-checkbox-wrapper,
+[data-theme='dark'] .ant-table-thead > tr > th .ant-checkbox,
+[data-theme='dark'] .ant-table-thead > tr > th .ant-checkbox-inner {
+  color: #f8fafc !important;
+}
+
+[data-theme='dark'] .ant-table-thead > tr > th .ant-table-column-sorter,
+[data-theme='dark'] .ant-table-thead > tr > th .ant-table-filter-trigger,
+[data-theme='dark'] .ant-table-thead > tr > th .ant-table-filter-trigger .anticon,
+[data-theme='dark'] .ant-table-thead > tr > th .ant-table-column-sorter .anticon,
+[data-theme='dark'] .ant-table-thead > tr > th .anticon {
+  color: #94a3b8 !important;
+}
+
+[data-theme='dark'] .ant-table-thead > tr > th .ant-table-column-sorter-up.active,
+[data-theme='dark'] .ant-table-thead > tr > th .ant-table-column-sorter-down.active,
+[data-theme='dark'] .ant-table-thead > tr > th .ant-table-filter-trigger.active,
+[data-theme='dark'] .ant-table-thead > tr > th .ant-table-filter-trigger.active .anticon {
+  color: #818cf8 !important;
+}
+
+[data-theme='dark'] .ant-table-title,
+[data-theme='dark'] .ant-table-footer {
+  background: #1e293b !important;
+  color: #f8fafc !important;
+  border-color: #334155 !important;
 }
 
 [data-theme='dark'] .ant-table-tbody > tr > td,
@@ -760,6 +819,18 @@ body {
   border-bottom-color: #334155 !important;
 }
 
+[data-theme='dark'] .ant-drawer-close,
+[data-theme='dark'] .ant-drawer-close .anticon,
+[data-theme='dark'] .ant-modal-close,
+[data-theme='dark'] .ant-modal-close .anticon {
+  color: #cbd5e1 !important;
+}
+
+[data-theme='dark'] .ant-drawer-close:hover,
+[data-theme='dark'] .ant-modal-close:hover {
+  background: rgba(148, 163, 184, 0.12) !important;
+}
+
 [data-theme='dark'] .ant-dropdown-menu-item,
 [data-theme='dark'] .ant-dropdown-menu-submenu-title,
 [data-theme='dark'] .ant-select-item,
@@ -775,6 +846,23 @@ body {
 [data-theme='dark'] .ant-collapse-content,
 [data-theme='dark'] .ant-collapse-content-box {
   color: #f8fafc !important;
+}
+
+[data-theme='dark'] .ant-select-item-option-selected:not(.ant-select-item-option-disabled) {
+  background: rgba(99, 102, 241, 0.18) !important;
+}
+
+[data-theme='dark'] .ant-select-item-option-active:not(.ant-select-item-option-disabled),
+[data-theme='dark'] .ant-dropdown-menu-item:hover,
+[data-theme='dark'] .ant-dropdown-menu-submenu-title:hover {
+  background: rgba(148, 163, 184, 0.12) !important;
+}
+
+[data-theme='dark'] .ant-select-arrow,
+[data-theme='dark'] .ant-select-clear,
+[data-theme='dark'] .ant-picker-suffix,
+[data-theme='dark'] .ant-picker-clear {
+  color: #94a3b8 !important;
 }
 
 [data-theme='dark'] .ant-descriptions-bordered .ant-descriptions-item-label,
@@ -798,6 +886,11 @@ body {
   border-color: #334155 !important;
 }
 
+[data-theme='dark'] .ant-collapse > .ant-collapse-item > .ant-collapse-header .ant-collapse-expand-icon,
+[data-theme='dark'] .ant-collapse-arrow {
+  color: #94a3b8 !important;
+}
+
 [data-theme='dark'] .ant-empty-normal,
 [data-theme='dark'] .ant-spin-text,
 [data-theme='dark'] .ant-form-item-label > label,
@@ -813,6 +906,24 @@ body {
 [data-theme='dark'] .ant-tabs-tab-btn,
 [data-theme='dark'] .ant-typography {
   color: #f8fafc !important;
+}
+
+[data-theme='dark'] .ant-tabs-tab.ant-tabs-tab-active .ant-tabs-tab-btn {
+  color: #818cf8 !important;
+}
+
+[data-theme='dark'] .ant-tabs-ink-bar {
+  background: #818cf8 !important;
+}
+
+[data-theme='dark'] .ant-typography.ant-typography-secondary,
+[data-theme='dark'] .ant-descriptions-item-content .ant-typography-secondary,
+[data-theme='dark'] .ant-modal-content .ant-typography-secondary,
+[data-theme='dark'] .ant-drawer-content .ant-typography-secondary,
+[data-theme='dark'] .ant-form-item-extra,
+[data-theme='dark'] .ant-form-item-explain,
+[data-theme='dark'] .ant-form-item-explain-error {
+  color: #cbd5e1 !important;
 }
 
 [data-theme='dark'] .ant-alert-info {

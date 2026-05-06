@@ -817,7 +817,7 @@ const AIModelAdminPage: React.FC = () => {
             <List.Item
               style={{
                 cursor: 'pointer',
-                background: providerFilter === providerConfig.provider ? '#f0f5ff' : undefined,
+                background: providerFilter === providerConfig.provider ? 'rgba(99, 102, 241, 0.14)' : 'transparent',
                 borderRadius: 8,
                 paddingInline: 12,
               }}
@@ -919,14 +919,15 @@ const AIModelAdminPage: React.FC = () => {
           groupedModels.map(({ providerConfig, models }) => (
             <div key={providerConfig?.id || 'unlinked'} style={{ marginBottom: 24 }}>
               <div style={{
-                background: '#fafafa',
+                background: 'var(--bg-secondary)',
                 padding: '8px 16px',
-                borderLeft: '4px solid #1890ff',
+                borderLeft: '4px solid var(--primary-color)',
                 marginBottom: 8,
                 display: 'flex',
                 justifyContent: 'space-between',
                 alignItems: 'center',
                 borderRadius: '0 4px 4px 0',
+                color: 'var(--text-primary)',
               }}>
                 <Space>
                   <Text strong>{providerConfig ? getProviderConfigLabel(providerConfig) : '未绑定 Provider (旧版)'}</Text>

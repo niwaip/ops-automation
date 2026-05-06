@@ -214,11 +214,11 @@ const CapabilityBuildDetailPage: React.FC = () => {
             icon={<LeftOutlined />}
             onClick={() =>
               resolvedReleaseId
-                ? navigate(`/admin/capability-studio?releaseId=${resolvedReleaseId}`)
-                : navigate('/admin/capability-studio')
+                ? navigate(`/admin/capabilities?releaseId=${resolvedReleaseId}&mode=view&tab=studio`)
+                : navigate('/admin/capabilities')
             }
           >
-            返回 Studio
+            返回设计详情
           </Button>
           <Button
             onClick={() =>

@@ -1354,14 +1354,14 @@ const FlowsPage: React.FC = () => {
             <div style={{
               margin: '20px 0',
               padding: '12px',
-              backgroundColor: '#f5f5f5',
+              backgroundColor: 'var(--bg-secondary)',
               borderRadius: '4px',
               textAlign: 'left',
               maxHeight: '200px',
               overflowY: 'auto',
-              border: '1px solid #e8e8e8'
+              border: '1px solid var(--border-color)'
             }}>
-              <div style={{ fontWeight: 'bold', marginBottom: '8px', borderBottom: '1px solid #ddd', paddingBottom: '4px' }}>
+              <div style={{ fontWeight: 'bold', marginBottom: '8px', borderBottom: '1px solid var(--border-color)', paddingBottom: '4px', color: 'var(--text-primary)' }}>
                 实时验证日志
               </div>
               {executionLogs.map((log, index) => (
@@ -1372,7 +1372,7 @@ const FlowsPage: React.FC = () => {
                   color: log.startsWith('[Error]') ? '#ff4d4f' :
                          log.startsWith('[Audit]') ? '#1890ff' :
                          log.startsWith('[Execution]') ? '#52c41a' :
-                         '#555'
+                         'var(--text-secondary)'
                 }}>
                   {log}
                 </div>

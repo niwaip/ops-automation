@@ -1331,7 +1331,7 @@ const ActivityPage: React.FC = () => {
 
                   {/* API 类型配置 */}
                   {step.type === 'api' && (
-                    <div style={{ padding: 12, background: 'color-mix(in srgb, var(--success-color) 10%, var(--bg-card))', borderRadius: 8, border: '1px solid rgba(16, 185, 129, 0.35)' }}>
+                    <div style={{ padding: 12, background: 'rgba(16, 185, 129, 0.08)', borderRadius: 8, border: '1px solid rgba(16, 185, 129, 0.35)' }}>
                       {/* 输入参数区域 - 小标签形式 */}
                       <div style={{ marginBottom: 12 }}>
                         <Text type="secondary" style={{ fontSize: 12, marginBottom: 8, display: 'block' }}>
@@ -1373,7 +1373,7 @@ const ActivityPage: React.FC = () => {
                               }}
                               onMouseEnter={(e) => {
                                 e.currentTarget.style.background = param.required ? 'var(--success-color)' : 'var(--primary-color)';
-                                e.currentTarget.style.color = '#fff';
+                                e.currentTarget.style.color = 'white';
                                 e.currentTarget.style.borderColor = param.required ? 'var(--success-color)' : 'var(--primary-color)';
                               }}
                               onMouseLeave={(e) => {
@@ -1488,7 +1488,7 @@ const ActivityPage: React.FC = () => {
 
                   {/* 脚本类型配置 */}
                   {step.type === 'script' && (
-                    <div style={{ padding: 12, background: 'color-mix(in srgb, var(--warning-color) 10%, var(--bg-card))', borderRadius: 8, border: '1px solid rgba(245, 158, 11, 0.35)' }}>
+                    <div style={{ padding: 12, background: 'rgba(245, 158, 11, 0.08)', borderRadius: 8, border: '1px solid rgba(245, 158, 11, 0.35)' }}>
                       <TextArea
                         value={step.config.script || ''}
                         onChange={e => updateStep(step.id, 'config', { ...step.config, script: e.target.value })}
@@ -1542,14 +1542,14 @@ const ActivityPage: React.FC = () => {
         <Paragraph type="secondary" style={{ marginBottom: 16 }}>
           以下代码由 AI 根据您的配置自动生成，可用于参考或复制到 Temporal Worker 中使用。点击"缓存代码"可保存到配置中。
         </Paragraph>
-        <Card styles={{ body: { padding: 0 } }} style={{ background: '#0b1120', borderRadius: 8, border: '1px solid var(--bg-secondary)' }}>
+        <Card styles={{ body: { padding: 0 } }} style={{ background: 'var(--bg-primary)', borderRadius: 8, border: '1px solid var(--border-color)' }}>
           {isGeneratingCode ? (
-            <div style={{ padding: 40, textAlign: 'center', color: '#d4d4d4' }}>
+            <div style={{ padding: 40, textAlign: 'center', color: 'var(--text-secondary)' }}>
               <LoadingOutlined style={{ fontSize: 24 }} /><br /><br />
               正在生成代码，请稍候...
             </div>
           ) : (
-            <pre style={{ color: '#d4d4d4', padding: 16, margin: 0, fontFamily: 'Monaco, Menlo, "Ubuntu Mono", monospace', fontSize: 12, lineHeight: 1.5, overflow: 'auto', maxHeight: 500 }}>
+            <pre style={{ color: 'var(--text-primary)', padding: 16, margin: 0, fontFamily: 'Monaco, Menlo, "Ubuntu Mono", monospace', fontSize: 12, lineHeight: 1.5, overflow: 'auto', maxHeight: 500, background: 'transparent' }}>
               {generatedCode || generatePythonCode(activityForm)}
             </pre>
           )}
@@ -1748,7 +1748,7 @@ const ActivityPage: React.FC = () => {
 
           <div>
             <Text strong>执行日志：</Text>
-            <div style={{ background: '#0b1120', color: '#d4d4d4', padding: 12, borderRadius: 4, maxHeight: 300, overflow: 'auto', marginTop: 8, border: '1px solid var(--bg-secondary)' }}>
+            <div style={{ background: 'var(--bg-primary)', color: 'var(--text-primary)', padding: 12, borderRadius: 4, maxHeight: 300, overflow: 'auto', marginTop: 8, border: '1px solid var(--border-color)' }}>
               <pre style={{ margin: 0, fontSize: 11 }}>
                 {realValidateState.logs.map((log: string, i: number) => (
                   <div key={i}>{log}</div>

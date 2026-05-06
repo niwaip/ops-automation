@@ -390,9 +390,9 @@ const ReleaseCenterPage: React.FC = () => {
           <Button
             type="link"
             size="small"
-            onClick={() => navigate(`/admin/capability-studio?releaseId=${record.id}`)}
+            onClick={() => navigate(`/admin/capabilities?releaseId=${record.id}&mode=view&tab=studio`)}
           >
-            Studio
+            设计详情
           </Button>
           {record.publishedSkillId ? (
             <Button
@@ -625,8 +625,8 @@ const ReleaseCenterPage: React.FC = () => {
                 >
                   回滚
                 </Button>
-                <Button onClick={() => navigate(`/admin/capability-studio?releaseId=${selectedDetail.release.id}`)}>
-                  打开 Studio
+                <Button onClick={() => navigate(`/admin/capabilities?releaseId=${selectedDetail.release.id}&mode=view&tab=studio`)}>
+                  打开设计详情
                 </Button>
                 {selectedDetail.release.currentBuildId ? (
                   <Button

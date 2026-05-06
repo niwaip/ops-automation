@@ -573,7 +573,7 @@ const SkillAdminPage: React.FC<SkillAdminPageProps> = ({ embedded, initialSkillI
               </Space>
             ),
             description: (
-              <div style={{ fontSize: 12, color: '#666' }}>
+              <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
                 {step.content || step.api?.endpoint || step.tool?.name || step.script?.language || '无详情'}
               </div>
             ),
@@ -646,7 +646,7 @@ const SkillAdminPage: React.FC<SkillAdminPageProps> = ({ embedded, initialSkillI
         return (
           <Space wrap>
             {record.executionFlow.map((step, idx) => (
-              <Badge key={idx} count={idx + 1} size="small" style={{ backgroundColor: '#1890ff' }}>
+              <Badge key={idx} count={idx + 1} size="small" style={{ backgroundColor: 'var(--primary-color)' }}>
                 <Tag style={{ margin: 0 }}>{step.name}</Tag>
               </Badge>
             ))}
@@ -1173,10 +1173,10 @@ const SkillAdminPage: React.FC<SkillAdminPageProps> = ({ embedded, initialSkillI
                         <Card
                           key={key}
                           size="small"
-                          style={{ marginBottom: 12, borderLeft: '4px solid #1890ff' }}
+                          style={{ marginBottom: 12, borderLeft: '4px solid var(--primary-color)' }}
                           title={
                             <Space>
-                              <DragOutlined style={{ cursor: 'grab', color: '#999' }} />
+                              <DragOutlined style={{ cursor: 'grab', color: 'var(--text-light)' }} />
                               <Text strong>步骤 {index + 1}</Text>
                             </Space>
                           }
@@ -1229,7 +1229,7 @@ const SkillAdminPage: React.FC<SkillAdminPageProps> = ({ embedded, initialSkillI
                               }
                               if (type === 'api') {
                                 return (
-                                  <div style={{ backgroundColor: '#f5f5f5', padding: 12, borderRadius: 4 }}>
+                                  <div style={{ backgroundColor: 'var(--bg-secondary)', padding: 12, borderRadius: 4 }}>
                                     <Form.Item {...restField} name={[name, 'api', 'endpoint']} label="API 地址">
                                       <Input placeholder="https://api.example.com/v1/..." />
                                     </Form.Item>
@@ -1258,7 +1258,7 @@ const SkillAdminPage: React.FC<SkillAdminPageProps> = ({ embedded, initialSkillI
                               }
                               if (type === 'script') {
                                 return (
-                                  <div style={{ backgroundColor: '#f5f5f5', padding: 12, borderRadius: 4 }}>
+                                  <div style={{ backgroundColor: 'var(--bg-secondary)', padding: 12, borderRadius: 4 }}>
                                     <Form.Item {...restField} name={[name, 'script', 'language']} label="脚本语言">
                                       <Select defaultValue="javascript">
                                         <Option value="javascript">JavaScript</Option>
@@ -1391,7 +1391,7 @@ const SkillAdminPage: React.FC<SkillAdminPageProps> = ({ embedded, initialSkillI
                 </Card>
               ))}
               {availableRoles?.length === 0 && (
-                <div style={{ textAlign: 'center', color: '#999', padding: 20 }}>
+                <div style={{ textAlign: 'center', color: 'var(--text-light)', padding: 20 }}>
                   {t('admin:noAvailableRoles')}
                 </div>
               )}
@@ -1512,7 +1512,7 @@ const SkillAdminPage: React.FC<SkillAdminPageProps> = ({ embedded, initialSkillI
         {validatingSkillId && !validationResult && (
           <div style={{ textAlign: 'center', padding: 32 }}>
             <Space direction="vertical" size="large">
-              <RocketOutlined spin style={{ fontSize: 48, color: '#1890ff' }} />
+              <RocketOutlined spin style={{ fontSize: 48, color: 'var(--primary-color)' }} />
               <Text strong style={{ fontSize: 16 }}>正在验证{validationAnimatedDots}</Text>
               <Text type="secondary">当前阶段：{validationStage}</Text>
               <div style={{ width: 520, maxWidth: '100%' }}>
@@ -1533,7 +1533,7 @@ const SkillAdminPage: React.FC<SkillAdminPageProps> = ({ embedded, initialSkillI
                   percent={validationProgressMeta.percent}
                   status={validationProgressMeta.status}
                   showInfo={false}
-                  strokeColor="#1890ff"
+                  strokeColor="var(--primary-color)"
                   style={{ marginTop: 16, marginBottom: 8 }}
                 />
                 <Text type="secondary">正在执行真实代码验证与 AI 审计，日志会持续刷新</Text>
@@ -1561,9 +1561,9 @@ const SkillAdminPage: React.FC<SkillAdminPageProps> = ({ embedded, initialSkillI
               <Space style={{ width: '100%', justifyContent: 'space-between' }}>
                 <Space>
                   {validationResult.isValid ? (
-                    <CheckCircleOutlined style={{ fontSize: 32, color: '#52c41a' }} />
+                    <CheckCircleOutlined style={{ fontSize: 32, color: 'var(--success-color)' }} />
                   ) : (
-                    <ExclamationCircleOutlined style={{ fontSize: 32, color: '#ff4d4f' }} />
+                    <ExclamationCircleOutlined style={{ fontSize: 32, color: 'var(--error-color)' }} />
                   )}
                   <Text strong style={{ fontSize: 18 }}>
                     {validationResult.isValid ? '验证通过' : '验证失败'}
