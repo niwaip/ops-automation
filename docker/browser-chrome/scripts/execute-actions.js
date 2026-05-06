@@ -136,7 +136,7 @@ async function executeActions(actions, sessionId) {
           result.success = true;
           result.message = `Got HTML from ${selector}`;
           result.html = html || '';
-        } else if (actionType === 'smart_search') {
+        } else if (actionType === 'search' || actionType === 'smart_search') {
           const searchText = action.value || action.text || action.search || '';
           const selector = action.selector || `[placeholder*="search"], input[type="search"], [role="searchbox"]`;
           if (searchText) {

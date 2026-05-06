@@ -2,9 +2,10 @@ import { ApiProperty } from '@nestjs/swagger';
 import { IsString, IsOptional, IsBoolean, IsObject, IsEnum } from 'class-validator';
 
 export class WorkerEndpointsDto {
-  @ApiProperty({ example: 'http://localhost:8080', description: 'noVNC endpoint URL' })
+  @ApiProperty({ example: 'http://localhost:8080', description: 'noVNC endpoint URL', required: false })
+  @IsOptional()
   @IsString()
-  novnc!: string;
+  novnc?: string;
 
   @ApiProperty({ example: 'http://localhost:9222', description: 'Chrome DevTools Protocol endpoint URL' })
   @IsString()
@@ -30,6 +31,11 @@ export class CreateWorkerRequestDto {
   @IsOptional()
   @IsString()
   initial_url?: string;
+
+  @ApiProperty({ example: 'runtime-session-123', description: 'Runtime session ID to bind this worker to', required: false })
+  @IsOptional()
+  @IsString()
+  runtime_session_id?: string;
 }
 
 export class CreateWorkerResponseDto {
@@ -113,6 +119,21 @@ export enum StepAction {
   SCROLL = 'scroll',
   PRESS_KEY = 'press_key',
   HOVER = 'hover',
+  SEARCH = 'search',
+  SMART_SEARCH = 'smart_search',
+  TYPE_TEXT = 'type_text',
+  GET_TEXT = 'get_text',
+  READ_PAGE = 'read_page',
+  LIST_SEARCH_RESULTS = 'list_search_results',
+  CLICK_RESULT = 'click_result',
+  SWITCH_LATEST_TAB = 'switch_latest_tab',
+}
+
+export enum BrowserExecutionBackendDto {
+  LEGACY = 'legacy',
+  CLI = 'cli',
+  CHROME_DEVTOOLS = 'chrome-devtools',
+  MCP = 'mcp',
 }
 
 export class ExecuteStepDto {
@@ -124,11 +145,38 @@ export class ExecuteStepDto {
   @IsString()
   runtimeSessionId!: string;
 
+  @ApiProperty({ description: 'Browser execution backend', enum: BrowserExecutionBackendDto, required: false, default: BrowserExecutionBackendDto.LEGACY })
+  @IsOptional()
+  @IsEnum(BrowserExecutionBackendDto)
+  backend?: BrowserExecutionBackendDto;
+
   @ApiProperty({ description: 'Step ID' })
   @IsString()
   stepId!: string;
 
-  @ApiProperty({ description: 'Action to perform', enum: ['goto', 'click', 'fill', 'screenshot', 'snapshot', 'evaluate', 'wait', 'scroll', 'press_key', 'hover'] })
+  @ApiProperty({
+    description: 'Action to perform',
+    enum: [
+      'goto',
+      'click',
+      'fill',
+      'screenshot',
+      'snapshot',
+      'evaluate',
+      'wait',
+      'scroll',
+      'press_key',
+      'hover',
+      'search',
+      'smart_search',
+      'type_text',
+      'get_text',
+      'read_page',
+      'list_search_results',
+      'click_result',
+      'switch_latest_tab',
+    ],
+  })
   @IsEnum(StepAction)
   action!: string;
 
@@ -190,6 +238,11 @@ export class FreezeBrowserSessionDto {
   @IsString()
   runtimeSessionId!: string;
 
+  @ApiProperty({ description: 'Browser execution backend', enum: BrowserExecutionBackendDto, required: false, default: BrowserExecutionBackendDto.LEGACY })
+  @IsOptional()
+  @IsEnum(BrowserExecutionBackendDto)
+  backend?: BrowserExecutionBackendDto;
+
   @ApiProperty({ description: 'Reason for freezing execution', required: false })
   @IsOptional()
   @IsString()
@@ -200,6 +253,11 @@ export class ResumeBrowserSessionDto {
   @ApiProperty({ description: 'Runtime session ID associated with the browser session' })
   @IsString()
   runtimeSessionId!: string;
+
+  @ApiProperty({ description: 'Browser execution backend', enum: BrowserExecutionBackendDto, required: false, default: BrowserExecutionBackendDto.LEGACY })
+  @IsOptional()
+  @IsEnum(BrowserExecutionBackendDto)
+  backend?: BrowserExecutionBackendDto;
 
   @ApiProperty({ description: 'Optional step ID to continue from', required: false })
   @IsOptional()

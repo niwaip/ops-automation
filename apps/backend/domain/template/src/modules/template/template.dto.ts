@@ -1,4 +1,13 @@
-import { IsString, IsOptional, IsArray, ValidateNested, IsUUID, Matches, IsNotEmpty } from 'class-validator';
+import {
+  IsString,
+  IsOptional,
+  IsArray,
+  ValidateNested,
+  IsUUID,
+  Matches,
+  IsNotEmpty,
+  IsObject,
+} from 'class-validator';
 import { Type } from 'class-transformer';
 import { TemplateStatus, TemplateStep, ParamsSchema } from '../../types/template.types';
 
@@ -28,6 +37,16 @@ export class CreateTemplateDto {
   @ValidateNested({ each: true })
   @Type(() => Object)
   steps?: TemplateStep[];
+
+  @IsOptional()
+  @IsArray()
+  @Type(() => Object)
+  guards?: Record<string, unknown>[];
+
+  @IsOptional()
+  @IsObject()
+  @Type(() => Object)
+  config?: Record<string, unknown>;
 
   @IsString()
   @IsNotEmpty()
@@ -60,6 +79,16 @@ export class UpdateTemplateDto {
   @ValidateNested({ each: true })
   @Type(() => Object)
   steps?: TemplateStep[];
+
+  @IsOptional()
+  @IsArray()
+  @Type(() => Object)
+  guards?: Record<string, unknown>[];
+
+  @IsOptional()
+  @IsObject()
+  @Type(() => Object)
+  config?: Record<string, unknown>;
 }
 
 export class PublishTemplateDto {
@@ -82,5 +111,7 @@ export class ValidateTemplateDto {
   status: TemplateStatus;
   params_schema: ParamsSchema;
   steps: TemplateStep[];
+  guards?: Record<string, unknown>[];
+  config?: Record<string, unknown>;
   created_by: string;
 }

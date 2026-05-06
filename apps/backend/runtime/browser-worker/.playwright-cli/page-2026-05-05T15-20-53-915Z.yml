@@ -1,0 +1,1488 @@
+- generic [ref=e1]:
+  - generic [ref=e3]:
+    - generic [ref=e4]:
+      - generic [ref=e5]:
+        - generic [ref=e6]:
+          - link "网页" [ref=e7] [cursor=pointer]:
+            - /url: https://www.baidu.com/s?ie=utf-8&fr=bks0000&wd=模型上下文协议
+          - link "新闻" [ref=e8] [cursor=pointer]:
+            - /url: http://news.baidu.com/ns?tn=news&cl=2&rn=20&ct=1&fr=bks0000&ie=utf-8&word=模型上下文协议
+          - link "贴吧" [ref=e9] [cursor=pointer]:
+            - /url: https://tieba.baidu.com/f?ie=utf-8&fr=bks0000&kw=模型上下文协议
+          - link "知道" [ref=e10] [cursor=pointer]:
+            - /url: https://zhidao.baidu.com/search?pn=0&&rn=10&lm=0&fr=bks0000&word=模型上下文协议
+          - link "网盘" [ref=e11] [cursor=pointer]:
+            - /url: https://pan.baidu.com/disk/home#/search?from=1027327l&key=模型上下文协议
+          - link "图片" [ref=e12] [cursor=pointer]:
+            - /url: http://image.baidu.com/search/index?tn=baiduimage&ct=201326592&lm=-1&cl=2&nc=1&ie=utf-8&word=模型上下文协议
+          - link "视频" [ref=e13] [cursor=pointer]:
+            - /url: https://www.baidu.com/sf/vsearch?pd=video&tn=vsearch&ie=utf-8&rsv_spt=17&wd=模型上下文协议
+          - link "地图" [ref=e14] [cursor=pointer]:
+            - /url: http://map.baidu.com/m?ie=utf-8&fr=bks0000&word=模型上下文协议
+          - link "文库" [ref=e15] [cursor=pointer]:
+            - /url: https://wenku.baidu.com/search?lm=0&od=0&ie=utf-8&fr=bks0000&word=模型上下文协议
+          - link "资讯" [ref=e16] [cursor=pointer]:
+            - /url: https://www.baidu.com/s?rtt=1&bsst=1&cl=2&tn=news&fr=baike&word=模型上下文协议
+          - link "采购" [ref=e17] [cursor=pointer]:
+            - /url: https://b2b.baidu.com/s?fr=bks0000&q=模型上下文协议
+          - generic [ref=e18]: 百科
+        - generic [ref=e21]:
+          - link "百度首页" [ref=e23] [cursor=pointer]:
+            - /url: http://www.baidu.com
+          - generic [ref=e24]: 登录
+          - link "注册" [ref=e26] [cursor=pointer]:
+            - /url: https://passport.baidu.com/v2/?reg&regType=1&tpl=wk
+      - generic [ref=e29]:
+        - link "百度百科" [ref=e30] [cursor=pointer]:
+          - /url: /#home
+          - img "百度百科" [ref=e31]
+        - generic [ref=e32]:
+          - generic [ref=e33]:
+            - textbox [active] [ref=e34]: 模型上下文协议
+            - img [ref=e36] [cursor=pointer]
+          - button "进入词条" [ref=e38] [cursor=pointer]
+          - button "全站搜索" [ref=e39] [cursor=pointer]
+          - link "国际版" [ref=e40] [cursor=pointer]:
+            - /url: https://baike.baidu.com/en/index
+          - link "帮助" [ref=e41] [cursor=pointer]:
+            - /url: /help
+      - generic [ref=e42]:
+        - generic [ref=e44]:
+          - link "百度百科" [ref=e45] [cursor=pointer]:
+            - /url: /#home
+            - img "百度百科" [ref=e46]
+          - generic [ref=e47]:
+            - generic [ref=e48]:
+              - textbox [ref=e49]: 模型上下文协议
+              - img [ref=e51] [cursor=pointer]
+            - button "进入词条" [ref=e53] [cursor=pointer]
+        - generic [ref=e54]:
+          - generic [ref=e56] [cursor=pointer]:
+            - img [ref=e57]
+            - text: 播报
+          - generic [ref=e60] [cursor=pointer]:
+            - img [ref=e61]
+            - text: 编辑
+          - link "讨论 3" [ref=e63] [cursor=pointer]:
+            - /url: /planet/talk?lemmaId=65540618
+            - img [ref=e64]
+            - text: 讨论
+            - generic [ref=e67]: "3"
+          - generic [ref=e68] [cursor=pointer]:
+            - img [ref=e69]
+            - text: 收藏
+          - generic [ref=e71] [cursor=pointer]:
+            - img [ref=e72]
+            - text: 赞
+        - generic [ref=e74] [cursor=pointer]: 登录
+      - generic [ref=e77]:
+        - generic [ref=e78]:
+          - term [ref=e79] [cursor=pointer]:
+            - link "首页" [ref=e80]:
+              - /url: /
+          - definition [ref=e81]:
+            - link "历史上的今天" [ref=e83] [cursor=pointer]:
+              - /url: /calendar
+            - link "百科冷知识" [ref=e85] [cursor=pointer]:
+              - /url: /vbaike
+            - link "图解百科" [ref=e87] [cursor=pointer]:
+              - /url: /vbaike#gallary
+        - generic [ref=e88]:
+          - term [ref=e89] [cursor=pointer]:
+            - link "秒懂百科" [ref=e90]:
+              - /url: "#"
+          - definition [ref=e91]:
+            - link "懂啦" [ref=e93] [cursor=pointer]:
+              - /url: https://child.baidu.com
+            - link "秒懂本尊答" [ref=e95] [cursor=pointer]:
+              - /url: /item/秒懂本尊答
+            - link "秒懂大师说" [ref=e97] [cursor=pointer]:
+              - /url: /item/秒懂大师说
+            - link "秒懂看瓦特" [ref=e99] [cursor=pointer]:
+              - /url: /item/秒懂看瓦特
+            - link "秒懂五千年" [ref=e101] [cursor=pointer]:
+              - /url: /item/秒懂五千年
+            - link "秒懂全视界" [ref=e103] [cursor=pointer]:
+              - /url: /item/秒懂全视界
+        - generic [ref=e104]:
+          - term [ref=e105] [cursor=pointer]:
+            - link "特色百科" [ref=e106]:
+              - /url: "#"
+          - definition [ref=e107]:
+            - link "动态百科" [ref=e109] [cursor=pointer]:
+              - /url: https://baike.baidu.com/wikiflow
+            - link "数字博物馆" [ref=e111] [cursor=pointer]:
+              - /url: /museum
+            - link "非遗百科" [ref=e113] [cursor=pointer]:
+              - /url: /feiyi?fr=dhlfeiyi
+            - link "艺术百科" [ref=e115] [cursor=pointer]:
+              - /url: /art
+            - link "科学百科" [ref=e117] [cursor=pointer]:
+              - /url: /science
+        - generic [ref=e118]:
+          - term [ref=e119] [cursor=pointer]:
+            - link "知识专题" [ref=e120]:
+              - /url: "#"
+          - definition [ref=e121]:
+            - link "史记2025·科学100词" [ref=e123] [cursor=pointer]:
+              - /url: https://baike.baidu.com/activity/knowledge?pageKey=82fQmzO0-2&cdVersion=0.1.29
+            - link "观千年·见今朝" [ref=e125] [cursor=pointer]:
+              - /url: https://baike.baidu.com/activity/knowledge?pageKey=UIwTRplC-2&cdVersion=0.1.29&channel=baike_pcnavbar
+            - link "中国航天" [ref=e127] [cursor=pointer]:
+              - /url: https://baike.baidu.com/activity/knowledge?pageKey=0GUwzPFY-1&cdVersion=0.1.15&channel=baike_pcnavbar
+            - link "食品百科" [ref=e129] [cursor=pointer]:
+              - /url: https://baike.baidu.com/activity/knowledge?pageKey=zQ0sHkZz-1&cdVersion=0.1.15&channel=baike_pcnavbar
+            - link "80年，80件" [ref=e131] [cursor=pointer]:
+              - /url: https://baike.baidu.com/activity/knowledge?pageKey=06n2FDhp-1&cdVersion=0.1.29
+            - link "数字文物守护计划" [ref=e133] [cursor=pointer]:
+              - /url: https://baike.baidu.com/activity/knowledge?pageKey=4rZkPpPK-1&cdVersion=0.1.29&channel=baike_pcnavbar
+        - generic [ref=e134]:
+          - term [ref=e135] [cursor=pointer]:
+            - link "加入百科" [ref=e136]:
+              - /url: "#"
+          - definition [ref=e137]:
+            - link "新人成长" [ref=e139] [cursor=pointer]:
+              - /url: /activity/knowledge?pageKey=faGAUJvT-1&cdVersion=0.1.15
+            - link "进阶成长" [ref=e141] [cursor=pointer]:
+              - /url: /ucenter/college/advance
+            - link "任务广场" [ref=e143] [cursor=pointer]:
+              - /url: /wikitask/square
+        - generic [ref=e144]:
+          - term [ref=e145] [cursor=pointer]:
+            - link "百科团队" [ref=e146]:
+              - /url: "#"
+          - definition [ref=e147]:
+            - link "校园团" [ref=e149] [cursor=pointer]:
+              - /url: /campus
+            - link "分类达人团" [ref=e151] [cursor=pointer]:
+              - /url: https://baike.baidu.com/talent/home/index
+            - link "热词团" [ref=e153] [cursor=pointer]:
+              - /url: /item/百科热词团队
+            - link "繁星团" [ref=e155] [cursor=pointer]:
+              - /url: /tashuo/browse/content?id=8ebf3bd36116a39085e0da29
+            - link "蝌蚪团" [ref=e157] [cursor=pointer]:
+              - /url: /kedou/
+        - generic [ref=e158]:
+          - term [ref=e159] [cursor=pointer]:
+            - link "权威合作" [ref=e160]:
+              - /url: "#"
+          - definition [ref=e161]:
+            - link "合作模式" [ref=e163] [cursor=pointer]:
+              - /url: /operation/cooperation#joint
+            - link "常见问题" [ref=e165] [cursor=pointer]:
+              - /url: /operation/cooperation#issue
+            - link "联系方式" [ref=e167] [cursor=pointer]:
+              - /url: /operation/cooperation#connection
+        - link "个人中心" [ref=e170] [cursor=pointer]:
+          - /url: /usercenter
+          - img [ref=e171]
+          - text: 个人中心
+    - generic [ref=e174]:
+      - generic [ref=e177]:
+        - generic [ref=e179]:
+          - generic [ref=e180]:
+            - heading "模型上下文协议" [level=1] [ref=e181]
+            - generic [ref=e182]:
+              - generic [ref=e184] [cursor=pointer]:
+                - img [ref=e185]
+                - generic [ref=e188]: 播报
+              - generic [ref=e189] [cursor=pointer]:
+                - img [ref=e190]
+                - text: 编辑
+              - link "讨论 3" [ref=e192] [cursor=pointer]:
+                - /url: /planet/talk?lemmaId=65540618&fromModule=lemma_right-issue-btn
+                - img [ref=e193]
+                - text: 讨论
+                - generic [ref=e195]: "3"
+              - generic [ref=e196] [cursor=pointer]:
+                - img [ref=e197]
+                - text: 上传视频
+              - generic [ref=e201] [cursor=pointer]:
+                - img [ref=e202]
+                - text: 中文
+              - img [ref=e205] [cursor=pointer]
+          - generic [ref=e208]:
+            - generic [ref=e209]: Anthropic推出的开源协议
+            - generic [ref=e210] [cursor=pointer]:
+              - text: 展开12个同名词条
+              - img [ref=e211]
+        - generic [ref=e215]:
+          - generic [ref=e217]:
+            - generic [ref=e219]:
+              - generic [ref=e221] [cursor=pointer]:
+                - img [ref=e223]
+                - generic [ref=e224]:
+                  - img [ref=e226]
+                  - generic [ref=e227]:
+                    - generic [ref=e228]: 一分钟了解模型上下文协议
+                    - generic [ref=e229]: 01:05
+              - generic [ref=e234] [cursor=pointer]:
+                - img [ref=e236]
+                - generic [ref=e237]:
+                  - img [ref=e239]
+                  - generic [ref=e240]:
+                    - generic [ref=e241]: Anthropic 工程师 详谈 模型上下文协议 (MCP)
+                    - generic [ref=e242]: 19:35
+              - generic [ref=e245] [cursor=pointer]:
+                - img [ref=e247]
+                - generic [ref=e248]:
+                  - img [ref=e250]
+                  - generic [ref=e251]:
+                    - generic [ref=e252]: 模型上下文协议(MCP)快速入门
+                    - generic [ref=e253]: 02:36
+            - generic [ref=e256]:
+              - generic [ref=e262] [cursor=pointer]:
+                - generic [ref=e263]: 【AI技术】探索模型上下文协议(MCP):改变AI应用连接外部数据与工具的新标准
+                - generic [ref=e264]: 19:35
+              - generic [ref=e271] [cursor=pointer]:
+                - generic [ref=e272]: "[AI新闻]为何构建并捐赠模型上下文协议(MCP)"
+                - generic [ref=e273]: 35:32
+              - generic [ref=e280] [cursor=pointer]:
+                - generic [ref=e281]: 大模型上下文协议MCP,短期泡沫还是未来之光?颠覆现在的互联网?AI大模型训练
+                - generic [ref=e282]: 03:41
+            - generic [ref=e291] [cursor=pointer]:
+              - generic [ref=e292]: 我们为何构建并捐赠模型上下文协议(MCP)
+              - generic [ref=e293]: 35:32
+          - text: prev
+          - generic [ref=e295] [cursor=pointer]:
+            - img [ref=e296]
+            - text: next
+      - generic [ref=e300]:
+        - generic [ref=e302]:
+          - generic [ref=e304]:
+            - generic [ref=e306] [cursor=pointer]:
+              - img "订阅" [ref=e307]
+              - generic [ref=e308]: 订阅
+            - generic [ref=e310] [cursor=pointer]:
+              - img [ref=e311]
+              - generic [ref=e313]: "6"
+            - generic [ref=e314] [cursor=pointer]:
+              - generic:
+                - img [ref=e315]
+                - generic [ref=e317]: "5"
+          - generic [ref=e318]:
+            - link "同义词" [ref=e319] [cursor=pointer]:
+              - /url: /item/百度百科：跳转关系/16202814?fromModule=lemma_inlink&fromtitle=同义词&fromid=2740569
+            - text: MCP（模型上下文协议）一般指模型上下文协议
+          - generic [ref=e320]:
+            - generic [ref=e321]:
+              - text: 模型上下文协议（Model Context Protocol，MCP），是由
+              - link "Anthropic" [ref=e323] [cursor=pointer]:
+                - /url: /item/Anthropic/62639515?fromModule=lemma_inlink
+              - text: 推出的开源协议，旨在实现大语言模型与外部数据源和工具的集成，用来在大模型和数据源之间建立安全双向的连接。该协议通过相同的协议同时处理本地资源（例如数据库、文件、服务等）和远程资源（例如Slack或GitHub等API）
+              - superscript [ref=e325] [cursor=pointer]:
+                - text: "[1]"
+                - emphasis
+              - text: 。
+            - generic [ref=e326]:
+              - text: 模型上下文协议是专为高效获得模型所需上下文信息而设计的通用接口，旨在推动大语言模型应用的标准化和去中心化。作为开放协议，它定义了类似于
+              - link "OpenAPI" [ref=e328] [cursor=pointer]:
+                - /url: /item/OpenAPI/801962?fromModule=lemma_inlink
+              - text: 的标准，包含通用的通信协议、数据格式和规则，具有简化开发、灵活、实时响应、安全合规、可扩展的特点
+              - superscript [ref=e330] [cursor=pointer]:
+                - text: "[5]"
+                - emphasis
+              - text: 。该协议采用客户端-服务器架构，支持工具、资源和提示三种功能类型，主机应用可通过标准化接口连接多个服务器获取LLM可理解的上下文数据
+              - superscript [ref=e332] [cursor=pointer]:
+                - text: "[2]"
+                - emphasis
+              - superscript [ref=e334] [cursor=pointer]:
+                - text: "[11]"
+                - emphasis
+              - text: 。国内主要科技企业如
+              - link "百度地图" [ref=e336] [cursor=pointer]:
+                - /url: /item/%E7%99%BE%E5%BA%A6%E5%9C%B0%E5%9B%BE/3702797?fromModule=lemma_inlink
+              - text: 、
+              - link "高德地图" [ref=e338] [cursor=pointer]:
+                - /url: /item/%E9%AB%98%E5%BE%B7%E5%9C%B0%E5%9B%BE/2726788?fromModule=lemma_inlink
+              - text: 、
+              - link "腾讯位置服务" [ref=e340] [cursor=pointer]:
+                - /url: /item/%E8%85%BE%E8%AE%AF%E4%BD%8D%E7%BD%AE%E6%9C%8D%E5%8A%A1/20102302?fromModule=lemma_inlink
+              - text: 已推出基于MCP协议的服务器，提供天气查询、导航定位等场景化服务接口
+              - superscript [ref=e342] [cursor=pointer]:
+                - text: "[6-8]"
+                - emphasis
+                - emphasis
+                - emphasis
+              - text: 。
+            - generic [ref=e343]:
+              - text: Anthropic于2024年底首次提出该协议
+              - superscript [ref=e345] [cursor=pointer]:
+                - text: "[13]"
+                - emphasis
+              - text: ，2025年3月
+              - link "OpenAI" [ref=e347] [cursor=pointer]:
+                - /url: /item/OpenAI/19758408?fromModule=lemma_inlink
+              - text: 宣布其Agent SDK支持该协议，ChatGPT桌面应用及
+              - link "Responses API" [ref=e349] [cursor=pointer]:
+                - /url: /item/Responses%20API/65710963?fromModule=lemma_inlink
+              - text: 也将接入
+              - superscript [ref=e351] [cursor=pointer]:
+                - text: "[3]"
+                - emphasis
+              - text: 。截至当月，已有超过1000个社区服务器和数千个集成MCP协议的应用投入实际使用
+              - superscript [ref=e353] [cursor=pointer]:
+                - text: "[4]"
+                - emphasis
+              - text: 。2025年12月
+              - link "Linux基金会" [ref=e355] [cursor=pointer]:
+                - /url: /item/Linux%E5%9F%BA%E9%87%91%E4%BC%9A/4514386?fromModule=lemma_inlink
+              - text: 成立Agentic AI Foundation（AAIF），MCP被正式移交至该基金会管理
+              - superscript [ref=e357] [cursor=pointer]:
+                - text: "[12]"
+                - emphasis
+              - text: 。
+              - link "支付宝" [ref=e359] [cursor=pointer]:
+                - /url: /item/%E6%94%AF%E4%BB%98%E5%AE%9D/496859?fromModule=lemma_inlink
+              - text: 于2025年4月推出国内首个支付领域MCP Server服务，
+              - link "百度" [ref=e361] [cursor=pointer]:
+                - /url: /item/%E7%99%BE%E5%BA%A6/6699?fromModule=lemma_inlink
+              - text: 则于同月25日发布云厂商中首家专门面向MCP的门户商店MCP store
+              - superscript [ref=e363] [cursor=pointer]:
+                - text: "[9-10]"
+                - emphasis
+                - emphasis
+              - text: 。
+          - generic [ref=e364]:
+            - generic [ref=e365]:
+              - generic [ref=e366]:
+                - term [ref=e367]: 中文名
+                - definition [ref=e368]: 模型上下文协议
+              - generic [ref=e369]:
+                - term [ref=e370]: 外文名
+                - definition [ref=e371]: Model Context Protocol
+            - generic [ref=e372]:
+              - generic [ref=e373]:
+                - term [ref=e374]: 发表日期
+                - definition [ref=e375]: 2024年11月25日
+              - generic [ref=e376]:
+                - term [ref=e377]: 发表公司
+                - definition [ref=e378]:
+                  - link "Anthropic" [ref=e380] [cursor=pointer]:
+                    - /url: /item/Anthropic/62639515?fromModule=lemma_inlink
+          - generic [ref=e382]:
+            - heading "目录" [level=2] [ref=e383]
+            - generic [ref=e384]:
+              - list [ref=e385]:
+                - listitem [ref=e386]:
+                  - generic [ref=e387]: "1"
+                  - link "整体架构" [ref=e389] [cursor=pointer]:
+                    - /url: "#1"
+                - listitem [ref=e390]:
+                  - generic [ref=e391]: "2"
+                  - link "核心组件" [ref=e393] [cursor=pointer]:
+                    - /url: "#2"
+                - listitem [ref=e394]:
+                  - generic [ref=e395]: "3"
+                  - link "核心工作流程" [ref=e397] [cursor=pointer]:
+                    - /url: "#3"
+                - listitem [ref=e398]:
+                  - generic [ref=e399]: "4"
+                  - link "应用场景" [ref=e401] [cursor=pointer]:
+                    - /url: "#4"
+              - list [ref=e402]:
+                - listitem [ref=e403]:
+                  - generic [ref=e404]: ▪
+                  - link "智能开发助手" [ref=e406] [cursor=pointer]:
+                    - /url: "#4-1"
+                - listitem [ref=e407]:
+                  - generic [ref=e408]: ▪
+                  - link "企业知识中枢" [ref=e410] [cursor=pointer]:
+                    - /url: "#4-2"
+                - listitem [ref=e411]:
+                  - generic [ref=e412]: ▪
+                  - link "跨平台AI智能体" [ref=e414] [cursor=pointer]:
+                    - /url: "#4-3"
+                - listitem [ref=e415]:
+                  - generic [ref=e416]: "5"
+                  - link "经典案例" [ref=e418] [cursor=pointer]:
+                    - /url: "#5"
+                - listitem [ref=e419]:
+                  - generic [ref=e420]: ▪
+                  - link "百度地图MCP Server" [ref=e422] [cursor=pointer]:
+                    - /url: "#5-1"
+              - list [ref=e423]:
+                - listitem [ref=e424]:
+                  - generic [ref=e425]: ▪
+                  - link "高德地图 MCP Server" [ref=e427] [cursor=pointer]:
+                    - /url: "#5-2"
+                - listitem [ref=e428]:
+                  - generic [ref=e429]: ▪
+                  - link "腾讯位置服务 MCP Server" [ref=e431] [cursor=pointer]:
+                    - /url: "#5-3"
+          - generic [ref=e432]:
+            - generic [ref=e433]:
+              - text: 2024年11月25日，
+              - link "Anthropic" [ref=e435] [cursor=pointer]:
+                - /url: /item/Anthropic/62639515?fromModule=lemma_inlink
+              - text: 正式发布模型上下文协议（Model Context Protocol，MCP）。12月，Claude+MCP应用案例涌现。
+            - generic [ref=e436]:
+              - text: 2025年3月，
+              - link "OpenAI" [ref=e438] [cursor=pointer]:
+                - /url: /item/OpenAI/19758408?fromModule=lemma_inlink
+              - text: 宣布，Agent SDK支持MCP协议，ChatGPT桌面应用及Responses API也即将支持该协议 ，
+              - superscript [ref=e440] [cursor=pointer]:
+                - text: "[3]"
+                - emphasis
+              - text: MCP生态进入规模化应用。3月27日，OpenAI支持MCP。
+            - generic [ref=e441]:
+              - text: 截至2025年3月，已有超过1000个基于MCP协议构建的社区服务器和数千个集成MCP协议的应用 。
+              - superscript [ref=e443] [cursor=pointer]:
+                - text: "[4]"
+                - emphasis
+            - generic [ref=e444]:
+              - text: 2025年4月15日，支付宝联合魔搭社区率先在国内推出“支付MCP Server”服务。
+              - superscript [ref=e446] [cursor=pointer]:
+                - text: "[9]"
+                - emphasis
+            - generic [ref=e447]: 2025年4月，百度智能云宣布千帆大模型平台接入集成MCP。
+            - generic [ref=e448]:
+              - text: 2025年4月25日，Create大会MCP分会场发布云厂商中首家专门面向MCP的门户商店MCP store。
+              - superscript [ref=e450] [cursor=pointer]:
+                - text: "[10]"
+                - emphasis
+            - generic [ref=e451]:
+              - text: 2025年12月9日，Linux 基金会成立Agentic AI Foundation（AAIF），MCP被正式移交至AAIF。
+              - superscript [ref=e453] [cursor=pointer]:
+                - text: "[12]"
+                - emphasis
+            - generic [ref=e454]:
+              - heading "整体架构" [level=2] [ref=e455]
+              - generic [ref=e458] [cursor=pointer]:
+                - img [ref=e459]
+                - generic [ref=e462]: 播报
+              - generic [ref=e463] [cursor=pointer]:
+                - img [ref=e464]
+                - generic [ref=e466]: 编辑
+            - generic [ref=e467]:
+              - text: MCP采用客户端-服务器架构，主机应用可以连接多个服务器。
+              - superscript [ref=e469] [cursor=pointer]:
+                - text: "[2]"
+                - emphasis
+              - generic [ref=e470]:
+                - link "原理图" [ref=e471] [cursor=pointer]:
+                  - /url: /pic/%E6%A8%A1%E5%9E%8B%E4%B8%8A%E4%B8%8B%E6%96%87%E5%8D%8F%E8%AE%AE/65540618/0/b21bb051f8198618367a210eb2b439738bd4b21c48bc?fr=lemma&fromModule=lemma_content-image
+                - generic [ref=e473]: 原理图
+            - generic [ref=e474]:
+              - heading "核心组件" [level=2] [ref=e475]
+              - generic [ref=e478] [cursor=pointer]:
+                - img [ref=e479]
+                - generic [ref=e482]: 播报
+              - generic [ref=e483] [cursor=pointer]:
+                - img [ref=e484]
+                - generic [ref=e486]: 编辑
+            - table "核心组件" [ref=e489]:
+              - caption [ref=e490]: 核心组件
+              - rowgroup [ref=e491]:
+                - row "组件 角色说明 示例" [ref=e492]:
+                  - columnheader "组件" [ref=e493]:
+                    - generic [ref=e494]: 组件
+                  - columnheader "角色说明" [ref=e495]:
+                    - generic [ref=e496]: 角色说明
+                  - columnheader "示例" [ref=e497]:
+                    - generic [ref=e498]: 示例
+                - row "MCP Hosts 受控本地资源，通过安全通道访问应用入口层，发起上下文请求 Claude Desktop、AI开发IDE" [ref=e499]:
+                  - cell "MCP Hosts" [ref=e500]:
+                    - generic [ref=e501]: MCP Hosts
+                  - cell "受控本地资源，通过安全通道访问应用入口层，发起上下文请求" [ref=e502]:
+                    - generic [ref=e503]: 受控本地资源，通过安全通道访问应用入口层，发起上下文请求
+                  - cell "Claude Desktop、AI开发IDE" [ref=e504]:
+                    - generic [ref=e505]: Claude Desktop、AI开发IDE
+                - row "MCP Clients 协议转换层，维护与服务端的持久连接 语言模型接口适配器" [ref=e506]:
+                  - cell "MCP Clients" [ref=e507]:
+                    - generic [ref=e508]: MCP Clients
+                  - cell "协议转换层，维护与服务端的持久连接" [ref=e509]:
+                    - generic [ref=e510]: 协议转换层，维护与服务端的持久连接
+                  - cell "语言模型接口适配器" [ref=e511]:
+                    - generic [ref=e512]: 语言模型接口适配器
+                - row "MCP Transports MCP Clients与MCP Server通讯的协议 本地调用使用stdio方式，远程调用通过Streamable HTTP协议完成（Streamable HTTP在MCP 协议版本2025-03-26版本替换了原来HTTP+SSE） [13]" [ref=e513]:
+                  - cell "MCP Transports" [ref=e514]:
+                    - generic [ref=e515]: MCP Transports
+                  - cell "MCP Clients与MCP Server通讯的协议" [ref=e516]:
+                    - generic [ref=e517]: MCP Clients与MCP Server通讯的协议
+                  - cell "本地调用使用stdio方式，远程调用通过Streamable HTTP协议完成（Streamable HTTP在MCP 协议版本2025-03-26版本替换了原来HTTP+SSE） [13]" [ref=e518]:
+                    - generic [ref=e519]:
+                      - text: 本地调用使用stdio方式，远程调用通过Streamable HTTP协议完成（Streamable HTTP在MCP 协议版本2025-03-26版本替换了原来HTTP+SSE）
+                      - superscript [ref=e521] [cursor=pointer]:
+                        - text: "[13]"
+                        - emphasis
+                - row "MCP Servers 功能提供层，标准化封装数据/工具能力 文档解析服务、API网关服务" [ref=e522]:
+                  - cell "MCP Servers" [ref=e523]:
+                    - generic [ref=e524]: MCP Servers
+                  - cell "功能提供层，标准化封装数据/工具能力" [ref=e525]:
+                    - generic [ref=e526]: 功能提供层，标准化封装数据/工具能力
+                  - cell "文档解析服务、API网关服务" [ref=e527]:
+                    - generic [ref=e528]: 文档解析服务、API网关服务
+                - row "Local Data 受控本地资源，通过安全通道访问 企业知识库、私有数据库" [ref=e529]:
+                  - cell "Local Data" [ref=e530]:
+                    - generic [ref=e531]: Local Data
+                  - cell "受控本地资源，通过安全通道访问" [ref=e532]:
+                    - generic [ref=e533]: 受控本地资源，通过安全通道访问
+                  - cell "企业知识库、私有数据库" [ref=e534]:
+                    - generic [ref=e535]: 企业知识库、私有数据库
+                - row "Remote Services 云端扩展能力，支持分布式集成 SaaS API、区块链节点" [ref=e536]:
+                  - cell "Remote Services" [ref=e537]:
+                    - generic [ref=e538]: Remote Services
+                  - cell "云端扩展能力，支持分布式集成" [ref=e539]:
+                    - generic [ref=e540]: 云端扩展能力，支持分布式集成
+                  - cell "SaaS API、区块链节点" [ref=e541]:
+                    - generic [ref=e542]: SaaS API、区块链节点
+                - row "参考资料： [2]" [ref=e543]:
+                  - cell "参考资料： [2]" [ref=e544]:
+                    - generic [ref=e545]:
+                      - text: 参考资料：
+                      - superscript [ref=e547] [cursor=pointer]:
+                        - text: "[2]"
+                        - emphasis
+            - generic [ref=e548]:
+              - heading "核心工作流程" [level=2] [ref=e549]
+              - generic [ref=e552] [cursor=pointer]:
+                - img [ref=e553]
+                - generic [ref=e556]: 播报
+              - generic [ref=e557] [cursor=pointer]:
+                - img [ref=e558]
+                - generic [ref=e560]: 编辑
+            - list [ref=e561]:
+              - listitem [ref=e562]:
+                - text: ●
+                - generic [ref=e563]: 上下文请求
+            - generic [ref=e564]: 主机发起包含语义意图的标准化请求。
+            - list [ref=e565]:
+              - listitem [ref=e566]:
+                - text: ●
+                - generic [ref=e567]: 智能路由
+            - generic [ref=e568]: 客户端自动选择最优服务端组合。
+            - list [ref=e569]:
+              - listitem [ref=e570]:
+                - text: ●
+                - generic [ref=e571]: 安全访问
+            - generic [ref=e572]: Server通过认证机制访问本地/云端资源。
+            - list [ref=e573]:
+              - listitem [ref=e574]:
+                - text: ●
+                - generic [ref=e575]: 上下文组装
+            - generic [ref=e576]: 多源数据经清洗后形成结构化上下文。
+            - list [ref=e577]:
+              - listitem [ref=e578]:
+                - text: ●
+                - generic [ref=e579]: 响应交付
+            - generic [ref=e580]:
+              - text: 标准化格式返回LLM可理解的上下文包。
+              - superscript [ref=e582] [cursor=pointer]:
+                - text: "[2]"
+                - emphasis
+            - generic [ref=e584]:
+              - link "核心工作流程图" [ref=e585] [cursor=pointer]:
+                - /url: /pic/%E6%A8%A1%E5%9E%8B%E4%B8%8A%E4%B8%8B%E6%96%87%E5%8D%8F%E8%AE%AE/65540618/0/adaf2edda3cc7cd98d1065c1c558363fb80e7bec3b2b?fr=lemma&fromModule=lemma_content-image
+              - generic [ref=e587]: 核心工作流程图
+            - generic [ref=e588]:
+              - heading "应用场景" [level=2] [ref=e589]
+              - generic [ref=e592] [cursor=pointer]:
+                - img [ref=e593]
+                - generic [ref=e596]: 播报
+              - generic [ref=e597] [cursor=pointer]:
+                - img [ref=e598]
+                - generic [ref=e600]: 编辑
+            - heading "智能开发助手" [level=3] [ref=e602]
+            - list [ref=e603]:
+              - listitem [ref=e604]:
+                - text: ●
+                - generic [ref=e605]: 综述
+            - generic [ref=e606]: 实时接入代码仓库+文档库，提供精准编码建议。主要是以MCP客户端为主：Cursor、WindSurf、Cline、AutoDev等。
+            - list [ref=e607]:
+              - listitem [ref=e608]:
+                - text: ●
+                - generic [ref=e609]: 核心架构
+            - generic [ref=e610]: MCP客户端集成层
+            - generic [ref=e611]: 深度对接主流智能IDE（Cursor/WindSurf/Cline/AutoDev等）实时同步：代码仓库变更（Git/SVN）、技术文档更新（Confluence/Markdown）、API规范变动（Swagger/GraphQL）
+            - generic [ref=e612]: 智能服务中枢
+            - generic [ref=e613]: 通过MCP协议提供：上下文感知的代码补全、跨仓库的范式推荐、文档关联的智能提示、架构合规性检查
+            - list [ref=e614]:
+              - listitem [ref=e615]:
+                - text: ●
+                - generic [ref=e616]: 核心能力矩阵
+            - table [ref=e619]:
+              - rowgroup [ref=e620]:
+                - row "功能维度 传统插件方案 MCP增强方案" [ref=e621]:
+                  - columnheader "功能维度" [ref=e622]:
+                    - generic [ref=e623]: 功能维度
+                  - columnheader "传统插件方案" [ref=e624]:
+                    - generic [ref=e625]: 传统插件方案
+                  - columnheader "MCP增强方案" [ref=e626]:
+                    - generic [ref=e627]: MCP增强方案
+                - row "上下文获取 单项目扫描 全组织知识图谱关联" [ref=e628]:
+                  - cell "上下文获取" [ref=e629]:
+                    - generic [ref=e630]: 上下文获取
+                  - cell "单项目扫描" [ref=e631]:
+                    - generic [ref=e632]: 单项目扫描
+                  - cell "全组织知识图谱关联" [ref=e633]:
+                    - generic [ref=e634]: 全组织知识图谱关联
+                - row "响应速度 200-500ms 取决于实现策略" [ref=e635]:
+                  - cell "响应速度" [ref=e636]:
+                    - generic [ref=e637]: 响应速度
+                  - cell "200-500ms" [ref=e638]:
+                    - generic [ref=e639]: 200-500ms
+                  - cell "取决于实现策略" [ref=e640]:
+                    - generic [ref=e641]: 取决于实现策略
+                - row "知识保鲜度 手动同步 实时触发式更新" [ref=e642]:
+                  - cell "知识保鲜度" [ref=e643]:
+                    - generic [ref=e644]: 知识保鲜度
+                  - cell "手动同步" [ref=e645]:
+                    - generic [ref=e646]: 手动同步
+                  - cell "实时触发式更新" [ref=e647]:
+                    - generic [ref=e648]: 实时触发式更新
+                - row "多IDE一致性 各自实现 统一协议保障体验一致" [ref=e649]:
+                  - cell "多IDE一致性" [ref=e650]:
+                    - generic [ref=e651]: 多IDE一致性
+                  - cell "各自实现" [ref=e652]:
+                    - generic [ref=e653]: 各自实现
+                  - cell "统一协议保障体验一致" [ref=e654]:
+                    - generic [ref=e655]: 统一协议保障体验一致
+            - list [ref=e656]:
+              - listitem [ref=e657]:
+                - text: ●
+                - generic [ref=e658]: 典型工作流
+            - generic [ref=e659]: 智能感知
+            - generic [ref=e660]: 输入@db.query时自动关联：企业DAO层最佳实践、近期相似业务代码片段、数据库性能调优文档
+            - generic [ref=e661]: 风险拦截
+            - generic [ref=e663]: "# 输入时实时提示 def save_user(password):# [!] 安全警告：检测到明文密码存储 → 推荐方案：使用CredentialService.encrypt() → 相关规范：《安全开发手册#3.2》"
+            - generic [ref=e664]: 文档伴随
+            - generic [ref=e666]: // 悬浮显示关联文档 @CircuitBreaker(timeout=2000) // 📚 熔断策略标准： // - 超时阈值应<业务SLA的50% // - 需配置fallback方法
+            - list [ref=e667]:
+              - listitem [ref=e668]:
+                - text: ●
+                - generic [ref=e669]: 部署拓扑
+            - generic [ref=e671]: A[Cursor IDE] -->MCPI B(智能中枢)C[WindSurf] --> B D[代码仓库] --> B E[API文档] -->B B --> F[安全审计] B --> G[模式学习引擎
+            - list [ref=e672]:
+              - listitem [ref=e673]:
+                - text: ●
+                - generic [ref=e674]: 价值亮点
+            - generic [ref=e675]: 精准度跃升：结合当前函数上下文+相似业务历史代码+最新文档规范；零摩擦集成：已有开发环境无需改造，安装MCP插件即用；合规自动化：自动规避已记录的anti-patterns（如SQL注入模式）。
+            - heading "企业知识中枢" [level=3] [ref=e677]
+            - generic [ref=e678]: 安全整合内部知识图谱，构建可信问答系统。服务端（知识中枢）深度整合企业知识图谱、文档库及业务数据库，实施基于RBAC模型的细粒度访问控制，提供标准化MCP接口，支持：动态知识检索与验证、溯源引用生成、实时权限校验。客户端（智能交互层）通过加密通道接入知识中枢服务支持多形态交互：自然语言问答终端、业务系统嵌入式AI助手、自动化工作流触发接口。
+            - heading "跨平台AI智能体" [level=3] [ref=e680]
+            - list [ref=e681]:
+              - listitem [ref=e682]:
+                - text: ●
+                - generic [ref=e683]: 综述
+            - generic [ref=e684]:
+              - text: 统一连接CRM/ERP系统，实现业务流程自动化。
+              - superscript [ref=e686] [cursor=pointer]:
+                - text: "[2]"
+                - emphasis
+            - list [ref=e687]:
+              - listitem [ref=e688]:
+                - text: ●
+                - generic [ref=e689]: 核心架构
+            - generic [ref=e690]: MCP协议层
+            - generic [ref=e691]: 标准化接入主流业务系统：CRM（Salesforce/纷享销客）、ERP（SAP/用友/金蝶）、供应链管理（Oracle SCM）。
+            - generic [ref=e692]: 支持双向交互协议：业务数据智能查询、工作流自动触发、异常状态实时预警。
+            - list [ref=e693]:
+              - listitem [ref=e694]:
+                - text: ●
+                - generic [ref=e695]: 智能体矩阵
+            - generic [ref=e697]: graph LR subgraph AI 助手 A[销售AI助手] C[财务AI审核] E[物流AI调度] end subgraph MCP中间件 M[MCP协议中心] end %% 后端企业系统 subgraph 企业系统 B(CRM系统) D(ERP系统) F(WMS系统) end A -->|MCP| M C -->|MCP| M E -->|MCP| M M -->|MCP| B M -->|MCP| D M -->|MCP| F
+            - generic [ref=e699]:
+              - link "智能体矩阵图谱" [ref=e700] [cursor=pointer]:
+                - /url: /pic/%E6%A8%A1%E5%9E%8B%E4%B8%8A%E4%B8%8B%E6%96%87%E5%8D%8F%E8%AE%AE/65540618/0/3ac79f3df8dcd100baa1633f8ed25010b912c8fc8121?fr=lemma&fromModule=lemma_content-image
+              - generic [ref=e702]: 智能体矩阵图谱
+            - list [ref=e703]:
+              - listitem [ref=e704]:
+                - text: ●
+                - generic [ref=e705]: 核心能力
+            - generic [ref=e706]: 智能流程编排
+            - generic [ref=e707]: 自动识别典型业务场景：
+            - generic [ref=e708]: 从商机到回款（OTC）全链路追踪
+            - generic [ref=e709]: 采购申请→审批→付款三单匹配
+            - generic [ref=e710]: 库存预警→智能补货建议
+            - generic [ref=e711]: 多系统协同
+            - generic [ref=e713]: "# 智能自动化工单示例 def process_order(order): if order.amount > 100000: # 触发多系统联动 CRM.flag_vip_client(order.client_id) # 标记VIP客户 ERP.reserve_inventory(order.items) # 锁定库存 SCM.prioritize_shipping(order.id) # 优先配送"
+            - generic [ref=e714]: 业务异常处理
+            - generic [ref=e715]: 实时检测：应收账款逾期、采购价格异常波动、物流时效偏差
+            - generic [ref=e716]: 自动触发：催收流程、比价审批、备用路线规划
+            - list [ref=e717]:
+              - listitem [ref=e718]:
+                - text: ●
+                - generic [ref=e719]: 技术优势
+            - table [ref=e722]:
+              - rowgroup [ref=e723]:
+                - row "维度 传统方案 MCP智能体方案" [ref=e724]:
+                  - columnheader "维度" [ref=e725]:
+                    - generic [ref=e726]: 维度
+                  - columnheader "传统方案" [ref=e727]:
+                    - generic [ref=e728]: 传统方案
+                  - columnheader "MCP智能体方案" [ref=e729]:
+                    - generic [ref=e730]: MCP智能体方案
+                - row "接入周期 3-6个月/系统 2-4周/系统" [ref=e731]:
+                  - cell "接入周期" [ref=e732]:
+                    - generic [ref=e733]: 接入周期
+                  - cell "3-6个月/系统" [ref=e734]:
+                    - generic [ref=e735]: 3-6个月/系统
+                  - cell "2-4周/系统" [ref=e736]:
+                    - generic [ref=e737]: 2-4周/系统
+                - row "数据一致性 手动同步存在误差 协议级实时同步" [ref=e738]:
+                  - cell "数据一致性" [ref=e739]:
+                    - generic [ref=e740]: 数据一致性
+                  - cell "手动同步存在误差" [ref=e741]:
+                    - generic [ref=e742]: 手动同步存在误差
+                  - cell "协议级实时同步" [ref=e743]:
+                    - generic [ref=e744]: 协议级实时同步
+                - row "流程灵活性 硬编码难以修改 自然语言配置业务规则" [ref=e745]:
+                  - cell "流程灵活性" [ref=e746]:
+                    - generic [ref=e747]: 流程灵活性
+                  - cell "硬编码难以修改" [ref=e748]:
+                    - generic [ref=e749]: 硬编码难以修改
+                  - cell "自然语言配置业务规则" [ref=e750]:
+                    - generic [ref=e751]: 自然语言配置业务规则
+                - row "审计追踪 分散日志 全链路区块链存证" [ref=e752]:
+                  - cell "审计追踪" [ref=e753]:
+                    - generic [ref=e754]: 审计追踪
+                  - cell "分散日志" [ref=e755]:
+                    - generic [ref=e756]: 分散日志
+                  - cell "全链路区块链存证" [ref=e757]:
+                    - generic [ref=e758]: 全链路区块链存证
+            - list [ref=e759]:
+              - listitem [ref=e760]:
+                - text: ●
+                - generic [ref=e761]: 典型应用场景
+            - generic [ref=e762]: 智能销售助手
+            - generic [ref=e763]: 自动生成客户拜访报告、预测商机转化概率、推荐最优产品组合
+            - generic [ref=e764]: 财务机器人
+            - generic [ref=e765]: 发票智能验真、异常交易识别、现金流预测
+            - generic [ref=e766]: 供应链大脑
+            - generic [ref=e767]: 需求波动预测、供应商风险评估、智能运输路线规划
+            - generic [ref=e768]:
+              - heading "经典案例" [level=2] [ref=e769]
+              - generic [ref=e772] [cursor=pointer]:
+                - img [ref=e773]
+                - generic [ref=e776]: 播报
+              - generic [ref=e777] [cursor=pointer]:
+                - img [ref=e778]
+                - generic [ref=e780]: 编辑
+            - heading "百度地图MCP Server" [level=3] [ref=e782]
+            - list [ref=e783]:
+              - listitem [ref=e784]:
+                - text: ●
+                - generic [ref=e785]: 综述
+            - generic [ref=e786]:
+              - text: 百度是国内首家兼容MCP协议的地图服务商，地图持续拓展功能边界，开发者在智能体应用的开发过程中，可轻松通过百度地图MCP Server调起地图能力，满足用户在各类出行场景中的需求。继此前完成 8 个核心 API 接口与 MCP 协议的对接后，百度地图 MCP Server 再次迎来更新，新增了三个超实用的地图服务接口，同时优化了 Python 接入形式，让安装配置过程更加简便。
+              - superscript [ref=e788] [cursor=pointer]:
+                - text: "[6]"
+                - emphasis
+              - generic [ref=e789]:
+                - link "百度地图MCP Server" [ref=e790] [cursor=pointer]:
+                  - /url: /pic/%E6%A8%A1%E5%9E%8B%E4%B8%8A%E4%B8%8B%E6%96%87%E5%8D%8F%E8%AE%AE/65540618/0/a044ad345982b2b7d0a25686cdf4dcef76094b362d65?fr=lemma&fromModule=lemma_content-image
+                - generic [ref=e792]: 百度地图MCP Server
+            - list [ref=e793]:
+              - listitem [ref=e794]:
+                - text: ●
+                - generic [ref=e795]: 功能特点
+            - table [ref=e798]:
+              - rowgroup [ref=e799]:
+                - row "功能 特点" [ref=e800]:
+                  - columnheader "功能" [ref=e801]:
+                    - generic [ref=e802]: 功能
+                  - columnheader "特点" [ref=e803]:
+                    - generic [ref=e804]: 特点
+                - row "地理编码 将地址解析为对应的位置坐标" [ref=e805]:
+                  - cell "地理编码" [ref=e806]:
+                    - generic [ref=e807]: 地理编码
+                  - cell "将地址解析为对应的位置坐标" [ref=e808]:
+                    - generic [ref=e809]: 将地址解析为对应的位置坐标
+                - row "地点检索 多种场景的地点（POI检索，包括城市检索、圆形区域检索）" [ref=e810]:
+                  - cell "地点检索" [ref=e811]:
+                    - generic [ref=e812]: 地点检索
+                  - cell "多种场景的地点（POI检索，包括城市检索、圆形区域检索）" [ref=e813]:
+                    - generic [ref=e814]: 多种场景的地点（POI检索，包括城市检索、圆形区域检索）
+                - row "批量算路 计算所有起终点组合间的路线距离和行驶时间" [ref=e815]:
+                  - cell "批量算路" [ref=e816]:
+                    - generic [ref=e817]: 批量算路
+                  - cell "计算所有起终点组合间的路线距离和行驶时间" [ref=e818]:
+                    - generic [ref=e819]: 计算所有起终点组合间的路线距离和行驶时间
+                - row "天气查询 根据行政区划编码查询天气" [ref=e820]:
+                  - cell "天气查询" [ref=e821]:
+                    - generic [ref=e822]: 天气查询
+                  - cell "根据行政区划编码查询天气" [ref=e823]:
+                    - generic [ref=e824]: 根据行政区划编码查询天气
+                - row "逆地理编码 将坐标点转换为对应语义化地址" [ref=e825]:
+                  - cell "逆地理编码" [ref=e826]:
+                    - generic [ref=e827]: 逆地理编码
+                  - cell "将坐标点转换为对应语义化地址" [ref=e828]:
+                    - generic [ref=e829]: 将坐标点转换为对应语义化地址
+                - row "地点详情检索 根据POI的uid，检索POI详情信息" [ref=e830]:
+                  - cell "地点详情检索" [ref=e831]:
+                    - generic [ref=e832]: 地点详情检索
+                  - cell "根据POI的uid，检索POI详情信息" [ref=e833]:
+                    - generic [ref=e834]: 根据POI的uid，检索POI详情信息
+                - row "路线规划 规划出行路线和耗时，支持驾车/步行/骑行/公交" [ref=e835]:
+                  - cell "路线规划" [ref=e836]:
+                    - generic [ref=e837]: 路线规划
+                  - cell "规划出行路线和耗时，支持驾车/步行/骑行/公交" [ref=e838]:
+                    - generic [ref=e839]: 规划出行路线和耗时，支持驾车/步行/骑行/公交
+                - row "IP定位 根据IP获取当前位置(城市级)，IPv6需高级权限" [ref=e840]:
+                  - cell "IP定位" [ref=e841]:
+                    - generic [ref=e842]: IP定位
+                  - cell "根据IP获取当前位置(城市级)，IPv6需高级权限" [ref=e843]:
+                    - generic [ref=e844]: 根据IP获取当前位置(城市级)，IPv6需高级权限
+                - row "参考资料： [6]" [ref=e845]:
+                  - cell "参考资料： [6]" [ref=e846]:
+                    - generic [ref=e847]:
+                      - text: 参考资料：
+                      - superscript [ref=e849] [cursor=pointer]:
+                        - text: "[6]"
+                        - emphasis
+            - list [ref=e850]:
+              - listitem [ref=e851]:
+                - text: ●
+                - generic [ref=e852]: 新增接口亮点
+            - generic [ref=e853]: POI 智能提取
+            - generic [ref=e854]: 能够从文字中精准提取 POI 信息，涵盖位置、详情、打卡点、价格等多维度内容。当 Agent 与用户交互时，遇到热门 POI 及旅行路线规划相关需求，可借助此服务为用户提供丰富且真实的 POI 信息，助力用户更好地规划行程。
+            - generic [ref=e855]: 根据道路名称查询路况
+            - generic [ref=e856]: 可实时查询特定道路或区域的拥堵状况及趋势，适用于智能音箱、智能车载设备等场景，能快速回答用户诸如“这条路堵不堵”的问题，为出行提供及时参考。
+            - generic [ref=e857]: 根据坐标查询天气
+            - generic [ref=e858]:
+              - text: 通过经纬度信息，不仅可查询实时天气情况，还能获取未来 7 天天气预报，以及未来 24 小时逐小时预报，为用户出行计划的制定提供全面的天气信息支持。
+              - superscript [ref=e860] [cursor=pointer]:
+                - text: "[6]"
+                - emphasis
+            - heading "高德地图 MCP Server" [level=3] [ref=e862]
+            - list [ref=e863]:
+              - listitem [ref=e864]:
+                - text: ●
+                - generic [ref=e865]: 综述
+            - generic [ref=e866]:
+              - text: 高德地图 MCP Server 基于 MCP 协议构建，12 大核心功能全场景覆盖，其12项核心功能涵盖了地图服务的方方面面，满足企业开发的多样化需求。整合了高德开放平台的地图服务与智能算法，以简单易用的地图服务接口，为企业及开发者提供了全场景的地图服务解决方案。
+              - superscript [ref=e868] [cursor=pointer]:
+                - text: "[7]"
+                - emphasis
+              - generic [ref=e869]:
+                - link "高德地图 MCP Server" [ref=e870] [cursor=pointer]:
+                  - /url: /pic/%E6%A8%A1%E5%9E%8B%E4%B8%8A%E4%B8%8B%E6%96%87%E5%8D%8F%E8%AE%AE/65540618/0/48540923dd54564e92585f7b4f878b82d158ccbfe165?fr=lemma&fromModule=lemma_content-image
+                - generic [ref=e872]: 高德地图 MCP Server
+            - list [ref=e873]:
+              - listitem [ref=e874]:
+                - text: ●
+                - generic [ref=e875]: 功能特点
+            - table [ref=e878]:
+              - rowgroup [ref=e879]:
+                - row "功能 特点" [ref=e880]:
+                  - columnheader "功能" [ref=e881]:
+                    - generic [ref=e882]: 功能
+                  - columnheader "特点" [ref=e883]:
+                    - generic [ref=e884]: 特点
+                - row "地理编码与逆地理编码 实现地址 - 坐标双向转换 地图位置查询与展示的基础功能 支持结构化地址解析" [ref=e885]:
+                  - cell "地理编码与逆地理编码" [ref=e886]:
+                    - generic [ref=e887]: 地理编码与逆地理编码
+                  - cell "实现地址 - 坐标双向转换 地图位置查询与展示的基础功能 支持结构化地址解析" [ref=e888]:
+                    - generic [ref=e889]: 实现地址 - 坐标双向转换
+                    - generic [ref=e890]: 地图位置查询与展示的基础功能
+                    - generic [ref=e891]: 支持结构化地址解析
+                - row "天气查询 通过城市/adcode查询 为出行计划提供天气参考 实时天气与预报数据" [ref=e892]:
+                  - cell "天气查询" [ref=e893]:
+                    - generic [ref=e894]: 天气查询
+                  - cell "通过城市/adcode查询 为出行计划提供天气参考 实时天气与预报数据" [ref=e895]:
+                    - generic [ref=e896]: 通过城市/adcode查询
+                    - generic [ref=e897]: 为出行计划提供天气参考
+                    - generic [ref=e898]: 实时天气与预报数据
+                - row "距离测量 坐标间精准测距 支持驾车/步行/球面距离 批量计算支持" [ref=e899]:
+                  - cell "距离测量" [ref=e900]:
+                    - generic [ref=e901]: 距离测量
+                  - cell "坐标间精准测距 支持驾车/步行/球面距离 批量计算支持" [ref=e902]:
+                    - generic [ref=e903]: 坐标间精准测距
+                    - generic [ref=e904]: 支持驾车/步行/球面距离
+                    - generic [ref=e905]: 批量计算支持
+                - row "IP 定位 根据IP地址快速定位 用户位置初始化等场景 支持IPv4/IPv6" [ref=e906]:
+                  - cell "IP 定位" [ref=e907]:
+                    - generic [ref=e908]: IP 定位
+                  - cell "根据IP地址快速定位 用户位置初始化等场景 支持IPv4/IPv6" [ref=e909]:
+                    - generic [ref=e910]: 根据IP地址快速定位
+                    - generic [ref=e911]: 用户位置初始化等场景
+                    - generic [ref=e912]: 支持IPv4/IPv6
+                - row "路径规划 多方式出行路线规划 考虑实际路况与用户偏好 驾车/步行/骑行/公交" [ref=e913]:
+                  - cell "路径规划" [ref=e914]:
+                    - generic [ref=e915]: 路径规划
+                  - cell "多方式出行路线规划 考虑实际路况与用户偏好 驾车/步行/骑行/公交" [ref=e916]:
+                    - generic [ref=e917]: 多方式出行路线规划
+                    - generic [ref=e918]: 考虑实际路况与用户偏好
+                    - generic [ref=e919]: 驾车/步行/骑行/公交
+                - row "搜索功能 关键词/坐标搜索POI 支持半径范围限定 城市/圆形区域检索" [ref=e920]:
+                  - cell "搜索功能" [ref=e921]:
+                    - generic [ref=e922]: 搜索功能
+                  - cell "关键词/坐标搜索POI 支持半径范围限定 城市/圆形区域检索" [ref=e923]:
+                    - generic [ref=e924]: 关键词/坐标搜索POI
+                    - generic [ref=e925]: 支持半径范围限定
+                    - generic [ref=e926]: 城市/圆形区域检索
+                - row "详情查询 通过POIID获取详细信息 包含名称、位置、分类等数据 品牌信息/营业时间/评分等" [ref=e927]:
+                  - cell "详情查询" [ref=e928]:
+                    - generic [ref=e929]: 详情查询
+                  - cell "通过POIID获取详细信息 包含名称、位置、分类等数据 品牌信息/营业时间/评分等" [ref=e930]:
+                    - generic [ref=e931]: 通过POIID获取详细信息
+                    - generic [ref=e932]: 包含名称、位置、分类等数据
+                    - generic [ref=e933]: 品牌信息/营业时间/评分等
+                - row "参考资料： [7]" [ref=e934]:
+                  - cell "参考资料： [7]" [ref=e935]:
+                    - generic [ref=e936]:
+                      - text: 参考资料：
+                      - superscript [ref=e938] [cursor=pointer]:
+                        - text: "[7]"
+                        - emphasis
+            - heading "腾讯位置服务 MCP Server" [level=3] [ref=e940]
+            - list [ref=e941]:
+              - listitem [ref=e942]:
+                - text: ●
+                - generic [ref=e943]: 综述
+            - generic [ref=e944]:
+              - text: 腾讯位置服务紧跟行业趋势，推出了基于 MCP 协议的位置服务开发接口，助力开发者快速实现基于地理位置的AI 服务。其MCP Server（SSE）具有使用简单、自动升级、更易于大模型理解等显著特点，让开发者能够更加便捷地接入并使用腾讯位置服务。
+              - superscript [ref=e946] [cursor=pointer]:
+                - text: "[8]"
+                - emphasis
+            - generic [ref=e947]: 功能特点
+            - table [ref=e950]:
+              - rowgroup [ref=e951]:
+                - row "功能 特点" [ref=e952]:
+                  - columnheader "功能" [ref=e953]:
+                    - generic [ref=e954]: 功能
+                  - columnheader "特点" [ref=e955]:
+                    - generic [ref=e956]: 特点
+                - row "地址解析 文字地址 - 经纬度坐标 结构化省市区地址信息 支持全球主要地区地址标准" [ref=e957]:
+                  - cell "地址解析" [ref=e958]:
+                    - generic [ref=e959]: 地址解析
+                  - cell "文字地址 - 经纬度坐标 结构化省市区地址信息 支持全球主要地区地址标准" [ref=e960]:
+                    - generic [ref=e961]: 文字地址 - 经纬度坐标
+                    - generic [ref=e962]: 结构化省市区地址信息
+                    - generic [ref=e963]: 支持全球主要地区地址标准
+                - row "地点搜索 城市/区域搜索 周边搜索 &沿途搜索高级] POI详情查询 (名称/地址/评分) 多条件筛选与排序" [ref=e964]:
+                  - cell "地点搜索" [ref=e965]:
+                    - generic [ref=e966]: 地点搜索
+                  - cell "城市/区域搜索 周边搜索 &沿途搜索高级] POI详情查询 (名称/地址/评分) 多条件筛选与排序" [ref=e967]:
+                    - generic [ref=e968]: 城市/区域搜索
+                    - generic [ref=e969]: 周边搜索 &沿途搜索高级]
+                    - generic [ref=e970]: POI详情查询 (名称/地址/评分)
+                    - generic [ref=e971]: 多条件筛选与排序
+                - row "距离矩阵 批量起终点导航距离计算 物流配送路径优化 支持大规模异步计算" [ref=e972]:
+                  - cell "距离矩阵" [ref=e973]:
+                    - generic [ref=e974]: 距离矩阵
+                  - cell "批量起终点导航距离计算 物流配送路径优化 支持大规模异步计算" [ref=e975]:
+                    - generic [ref=e976]: 批量起终点导航距离计算
+                    - generic [ref=e977]: 物流配送路径优化
+                    - generic [ref=e978]: 支持大规模异步计算
+                - row "逆地址解析 经纬度坐标 一文字地址 返回周边POI及位置信息 多语言地址返回支持" [ref=e979]:
+                  - cell "逆地址解析" [ref=e980]:
+                    - generic [ref=e981]: 逆地址解析
+                  - cell "经纬度坐标 一文字地址 返回周边POI及位置信息 多语言地址返回支持" [ref=e982]:
+                    - generic [ref=e983]: 经纬度坐标 一文字地址
+                    - generic [ref=e984]: 返回周边POI及位置信息
+                    - generic [ref=e985]: 多语言地址返回支持
+                - row "路线规划 驾车/公交/骑行/步行规划 途经点智能排序优化 未来路线预测 (基于历史路况) 实时交通躲避 & 偏好设置" [ref=e986]:
+                  - cell "路线规划" [ref=e987]:
+                    - generic [ref=e988]: 路线规划
+                  - cell "驾车/公交/骑行/步行规划 途经点智能排序优化 未来路线预测 (基于历史路况) 实时交通躲避 & 偏好设置" [ref=e989]:
+                    - generic [ref=e990]: 驾车/公交/骑行/步行规划
+                    - generic [ref=e991]: 途经点智能排序优化
+                    - generic [ref=e992]: 未来路线预测 (基于历史路况)
+                    - generic [ref=e993]: 实时交通躲避 & 偏好设置
+                - row "IP定位 通过IP获取地理位置 城市级精度定位 支持IPv4/IPv6双协议" [ref=e994]:
+                  - cell "IP定位" [ref=e995]:
+                    - generic [ref=e996]: IP定位
+                  - cell "通过IP获取地理位置 城市级精度定位 支持IPv4/IPv6双协议" [ref=e997]:
+                    - generic [ref=e998]: 通过IP获取地理位置
+                    - generic [ref=e999]: 城市级精度定位
+                    - generic [ref=e1000]: 支持IPv4/IPv6双协议
+                - row "天气查询 通过行政区划编码查询 实时天气 & 7天预报 气象预警通知" [ref=e1001]:
+                  - cell "天气查询" [ref=e1002]:
+                    - generic [ref=e1003]: 天气查询
+                  - cell "通过行政区划编码查询 实时天气 & 7天预报 气象预警通知" [ref=e1004]:
+                    - generic [ref=e1005]: 通过行政区划编码查询
+                    - generic [ref=e1006]: 实时天气 & 7天预报
+                    - generic [ref=e1007]: 气象预警通知
+                - row "参考资料： [8]" [ref=e1008]:
+                  - cell "参考资料： [8]" [ref=e1009]:
+                    - generic [ref=e1010]:
+                      - text: 参考资料：
+                      - superscript [ref=e1012] [cursor=pointer]:
+                        - text: "[8]"
+                        - emphasis
+            - list [ref=e1013]:
+              - listitem [ref=e1014]:
+                - text: ●
+                - generic [ref=e1015]: 新增接口亮点
+            - generic [ref=e1016]: 使用更为简单
+            - generic [ref=e1017]: 基于 MCP（SSE）方式，开发者无需部署本地服务，只需进行简单配置即可快速接入，大大节省了开发时间和精力。
+            - generic [ref=e1018]: 自动升级
+            - generic [ref=e1019]: 会持续进行迭代改进，以云端化服务的形式为开发者提供最新功能与优化，开发者无需进行任何额外操作，即可享受服务的持续升级，始终保持应用的先进性。
+            - generic [ref=e1020]: 更易于大模型理解
+            - generic [ref=e1021]:
+              - text: 对原始的 JSON 结果进行了语义化的转换，使其更易于大模型理解，从而更好地与 AI 大模型进行融合，提升应用的智能化水平。
+              - superscript [ref=e1023] [cursor=pointer]:
+                - text: "[8]"
+                - emphasis
+          - generic [ref=e1024]:
+            - link "词条图册 更多图册" [ref=e1026] [cursor=pointer]:
+              - /url: /pic/模型上下文协议/65540618?fr=lemma
+              - text: 词条图册
+              - generic [ref=e1027]:
+                - text: 更多图册
+                - img [ref=e1028]
+            - generic [ref=e1033]:
+              - link "1 概述图册" [ref=e1035] [cursor=pointer]:
+                - /url: /pic/%E6%A8%A1%E5%9E%8B%E4%B8%8A%E4%B8%8B%E6%96%87%E5%8D%8F%E8%AE%AE/65540618/1/ae51f3deb48f8c5494ee72a3c2703af5e0fe9825d1bf?fr=lemma&fromModule=lemma_content-image
+                - generic [ref=e1038]:
+                  - img [ref=e1039]
+                  - generic [ref=e1042]: "1"
+                - generic [ref=e1044]: 概述图册
+              - link "5 词条图片" [ref=e1046] [cursor=pointer]:
+                - /url: /pic/%E6%A8%A1%E5%9E%8B%E4%B8%8A%E4%B8%8B%E6%96%87%E5%8D%8F%E8%AE%AE/65540618/0/b21bb051f8198618367a210eb2b439738bd4b21c48bc?fr=lemma&fromModule=lemma_content-image
+                - generic [ref=e1049]:
+                  - img [ref=e1050]
+                  - generic [ref=e1053]: "5"
+                - generic [ref=e1055]: 词条图片
+          - generic [ref=e1056]:
+            - generic [ref=e1058] [cursor=pointer]:
+              - text: 分享你的世界
+              - generic [ref=e1059]:
+                - text: 查看更多
+                - img [ref=e1060]
+            - generic [ref=e1064]:
+              - generic [ref=e1070] [cursor=pointer]:
+                - img [ref=e1071]
+                - strong [ref=e1073]: "1"
+              - generic [ref=e1074]:
+                - generic [ref=e1075] [cursor=pointer]:
+                  - generic [ref=e1076]: 这才是AI电商的最优解？百度优选MCP做开放是认真的
+                  - generic [ref=e1077]: 25年外卖战火重燃。不过业内人士均认为，外卖大战本质还是零售大战，美团闪购冲击京东大本营，京东不得不“以攻为守”。外卖需要长周期、大规模的资金投入且难以盈利，京东与美团的外卖大战本质是零和博弈，2月11日京东外卖上线至今（4月25日港股收盘），京东与美团的股价分别下跌了22%和23%。
+                - generic [ref=e1082] [cursor=pointer]: 罗超频道 鲲鹏计划获奖作者
+          - generic [ref=e1083]:
+            - generic [ref=e1084]: 参考资料
+            - list [ref=e1085]:
+              - listitem [ref=e1086]:
+                - text: "1"
+                - link [ref=e1088] [cursor=pointer]:
+                  - /url: "#sup-1"
+                  - img [ref=e1090]
+                - link "打破LLM数据孤岛！Anthropic革命性MCP让大模型解锁全网数据" [ref=e1093] [cursor=pointer]:
+                  - /url: /reference/65540618/533aYdO6cr3_z3kATPeJzvrzZybGMdSv6-XbWrdzzqIPmGapB4zkU4I74d8-8bllFQLPpdZhb9tahbejXkZE5vYWdus1QbEnnn_5UzHBzrzv6Z5n2NwH49MXDe8B0a6zuwSv
+                  - text: 打破LLM数据孤岛！Anthropic革命性MCP让大模型解锁全网数据
+                  - img [ref=e1094]
+                - generic [ref=e1097]: ．新智元
+                - generic [ref=e1098]: "[引用日期2025-03-30]"
+                - emphasis
+              - listitem [ref=e1099]:
+                - text: "2"
+                - link [ref=e1101] [cursor=pointer]:
+                  - /url: "#sup-2"
+                  - img [ref=e1103]
+                - link "Introduction" [ref=e1106] [cursor=pointer]:
+                  - /url: /reference/65540618/533aYdO6cr3_z3kATPHfn_imMXrCZ9WkuOeFAbdzzqIPmGapB4PqXo0-49gx6vJ_ABvZv4xtY9kZ2OGlFRIbqrVPJahmBux9ww
+                  - text: Introduction
+                  - img [ref=e1107]
+                - generic [ref=e1110]: ．Model Context Protocol
+                - generic [ref=e1111]: "[引用日期2025-04-01]"
+                - emphasis
+              - listitem [ref=e1112]:
+                - text: "3"
+                - link [ref=e1114] [cursor=pointer]:
+                  - /url: "#sup-3"
+                  - img [ref=e1116]
+                - link "凌晨2点，再次Open！奥特曼宣布：OpenAI正式支持对手MCP协议" [ref=e1119] [cursor=pointer]:
+                  - /url: /reference/65540618/533aYdO6cr3_z3kATKaMnvj5Mn7APtT-6LWHBrVzzqIPmGapB4zkU4I74d8-8bllFQLPpdZhb9tahbejXkZE5vUXduw0RLcjlXD5UDrKwb3j6Z5n2NwH49MXDe8B0a6zuwSv
+                  - text: 凌晨2点，再次Open！奥特曼宣布：OpenAI正式支持对手MCP协议
+                  - img [ref=e1120]
+                - generic [ref=e1123]: ．百家号
+                - generic [ref=e1124]: "[引用日期2025-04-01]"
+                - emphasis
+              - listitem [ref=e1125]:
+                - text: "4"
+                - link [ref=e1127] [cursor=pointer]:
+                  - /url: "#sup-4"
+                  - img [ref=e1129]
+                - link "OpenAI宣布采用竞对Anthropic协议，一夜将MCP送上热搜！Karpathy：赶紧歇了吧" [ref=e1132] [cursor=pointer]:
+                  - /url: /reference/65540618/533aYdO6cr3_z3kATPzYzqihZirGM96ou7OFUeZzzqIPmGapB5nyTcY77tEw77lkGkTKooxrY9oQ2cugXyJDrvFqdJxKROp24xSiJmqW
+                  - text: OpenAI宣布采用竞对Anthropic协议，一夜将MCP送上热搜！Karpathy：赶紧歇了吧
+                  - img [ref=e1133]
+                - generic [ref=e1136]: ．InfoQ精选文章
+                - generic [ref=e1137]: "[引用日期2025-04-01]"
+                - emphasis
+              - listitem [ref=e1138]:
+                - text: "5"
+                - link [ref=e1140] [cursor=pointer]:
+                  - /url: "#sup-5"
+                  - img [ref=e1142]
+                - link "1次搭建完胜1亿次编码，MCP硅谷疯传！Anthropic协议解锁智能体" [ref=e1145] [cursor=pointer]:
+                  - /url: /reference/65540618/533aYdO6cr3_z3kATKbenar1NSbFN4-u6rKCVuBzzqIPmGapB4zkU4I74d8-8bllFQLPpdZhb9tahbejXkZE5vUWcOUyRrcqm3P8UDXLyrrh6Z5n2NwH49MXDe8B0a6zuwSv
+                  - text: 1次搭建完胜1亿次编码，MCP硅谷疯传！Anthropic协议解锁智能体
+                  - img [ref=e1146]
+                - generic [ref=e1149]: ．新智元
+                - generic [ref=e1150]: "[引用日期2025-04-01]"
+                - emphasis
+              - listitem [ref=e1151]:
+                - text: "6"
+                - link [ref=e1153] [cursor=pointer]:
+                  - /url: "#sup-6"
+                  - img [ref=e1155]
+                - link "Import Copy" [ref=e1158] [cursor=pointer]:
+                  - /url: /reference/65540618/533aYdO6cr3_z3kATPOIzviiZ3nGMIms6LLbV-NzzqIPmGapB4LnSZEn7pk9__5jAUXIv5UtP8Uag_qpX0Yeq6ZOJqRsLedzxCK6RXeBxL_g-tE0ndhNpYhKX68
+                  - text: Import Copy
+                  - img [ref=e1159]
+                - generic [ref=e1162]: ．百度地图开放平台
+                - generic [ref=e1163]: "[引用日期2025-04-02]"
+                - emphasis
+              - listitem [ref=e1164]:
+                - text: "7"
+                - link [ref=e1166] [cursor=pointer]:
+                  - /url: "#sup-7"
+                  - img [ref=e1168]
+                - link "高德开放平台 | 高德地图API" [ref=e1171] [cursor=pointer]:
+                  - /url: /reference/65540618/533aYdO6cr3_z3kATP2Mz_n3M3yWN4j5uL2HULRzzqIPmGapB4LnScYz7dYvsPRoGUQ
+                  - text: 高德开放平台 | 高德地图API
+                  - img [ref=e1172]
+                - generic [ref=e1175]: ．高德开放平台
+                - generic [ref=e1176]: "[引用日期2025-04-02]"
+                - emphasis
+              - listitem [ref=e1177]:
+                - text: "8"
+                - link [ref=e1179] [cursor=pointer]:
+                  - /url: "#sup-8"
+                  - img [ref=e1181]
+                - link "腾讯位置服务" [ref=e1184] [cursor=pointer]:
+                  - /url: /reference/65540618/533aYdO6cr3_z3kATPKMy_ShZn7DNtqp77faW-FzzqIPmGapB4LnScYj8Zk88fooFgLMtJl2YZkBmf24UwgY8Q
+                  - text: 腾讯位置服务
+                  - img [ref=e1185]
+                - generic [ref=e1188]: ．腾讯位置服务
+                - generic [ref=e1189]: "[引用日期2025-04-02]"
+                - emphasis
+              - listitem [ref=e1190]:
+                - text: "9"
+                - link [ref=e1192] [cursor=pointer]:
+                  - /url: "#sup-9"
+                  - img [ref=e1194]
+                - link "国内首个支付MCP来了 AI应用可一键调用支付宝" [ref=e1197] [cursor=pointer]:
+                  - /url: /reference/65540618/533aYdO6cr3_z3kATKGOz6ikNijDZNms7LDTVLZzzqIPmGapB4P1FJ836c828Ll2BUXIv5Utc5kMhPKOXCglmPQRN4xVQOlamXeJJkij
+                  - text: 国内首个支付MCP来了 AI应用可一键调用支付宝
+                  - img [ref=e1198]
+                - generic [ref=e1201]: ．支付宝
+                - generic [ref=e1202]: ．2025-04-15
+                - generic [ref=e1203]: "[引用日期2025-04-15]"
+                - emphasis
+              - listitem [ref=e1204]:
+                - text: "10"
+                - link [ref=e1206] [cursor=pointer]:
+                  - /url: "#sup-10"
+                  - img [ref=e1208]
+                - link "李彦宏主题演讲《模型的世界，应用的天下》官宣，百度Create开发者大会将带来多项新发布" [ref=e1211] [cursor=pointer]:
+                  - /url: /reference/65540618/533aYdO6cr3_z3kATKCDnqr0MXzANNv9t7HbVLtzzqIPmGapB4zkU4I74d8-8bllFQLPpdZhb9tahbejXkZE5vUZd-49RrMlm3P6UjvHzr3h6Z5n2NwH49MXDe8B0a6zuwSv
+                  - text: 李彦宏主题演讲《模型的世界，应用的天下》官宣，百度Create开发者大会将带来多项新发布
+                  - img [ref=e1212]
+                - generic [ref=e1215]: ．扬子晚报
+                - generic [ref=e1216]: ．2025-04-25
+                - generic [ref=e1217]: "[引用日期2025-04-25]"
+                - emphasis
+            - generic [ref=e1219] [cursor=pointer]:
+              - text: 展开全部
+              - img [ref=e1220]
+          - generic [ref=e1222]:
+            - generic [ref=e1223]:
+              - text: 学术论文
+              - generic [ref=e1224]: 内容来自
+            - list [ref=e1226]:
+              - listitem [ref=e1227]:
+                - link "吴国伟，任广臣. 带上下文感知能力的SLP协议模型研究．" [ref=e1228] [cursor=pointer]:
+                  - /url: https://xueshu.baidu.com/usercenter/paper/show?paperid=fc0f75819e7bbe88802e3b7ca1b0c3a8&tn=SE_baiduxueshu_c1gjeupa&ie=utf-8&site=baike
+                  - generic [ref=e1229]: 吴国伟，任广臣.
+                  - generic [ref=e1231]: 带上下文感知能力的SLP协议模型研究．
+                - generic [ref=e1232]: 《
+                - generic [ref=e1233]: CNKI
+                - generic [ref=e1234]: 》
+                - generic [ref=e1235]: ，
+                - generic [ref=e1236]: "2009"
+            - generic [ref=e1238] [cursor=pointer]:
+              - text: 查看全部
+              - img [ref=e1239]
+        - generic [ref=e1241]:
+          - generic [ref=e1242] [cursor=pointer]:
+            - img [ref=e1243]
+            - generic [ref=e1244]:
+              - img [ref=e1245]
+              - text: 模型上下文协议的概述图（1张）
+          - generic [ref=e1247]:
+            - generic [ref=e1249] [cursor=pointer]:
+              - text: 分享你的世界
+              - generic [ref=e1250]:
+                - text: 查看更多
+                - img [ref=e1251]
+            - generic [ref=e1254]:
+              - generic [ref=e1255]:
+                - img [ref=e1258] [cursor=pointer]
+                - generic [ref=e1259]:
+                  - generic [ref=e1261] [cursor=pointer]: 这才是AI电商的最优解？百度优选MCP做开放是认真的
+                  - generic [ref=e1266] [cursor=pointer]: 罗超频道 鲲鹏计划获奖作者
+              - generic [ref=e1267]:
+                - img [ref=e1270] [cursor=pointer]
+                - generic [ref=e1271]:
+                  - generic [ref=e1273] [cursor=pointer]: 这才是AI电商的最优解？百度优选MCP做开放是认真的
+                  - generic [ref=e1274] [cursor=pointer]:
+                    - img [ref=e1276]
+                    - generic [ref=e1278]: 罗超频道 鲲鹏计划获奖作者
+              - generic [ref=e1279]:
+                - img [ref=e1282] [cursor=pointer]
+                - generic [ref=e1283]:
+                  - generic [ref=e1285] [cursor=pointer]: 这才是AI电商的最优解？百度优选MCP做开放是认真的
+                  - generic [ref=e1286] [cursor=pointer]:
+                    - img [ref=e1288]
+                    - generic [ref=e1290]: 罗超频道 鲲鹏计划获奖作者
+          - generic [ref=e1291]:
+            - generic [ref=e1292]: 词条统计
+            - generic [ref=e1293]:
+              - generic [ref=e1294]: 浏览次数：133316次
+              - generic [ref=e1295]:
+                - text: 编辑次数：18次
+                - link "历史版本" [ref=e1296] [cursor=pointer]:
+                  - /url: /p/history?lemmaTitle=%E6%A8%A1%E5%9E%8B%E4%B8%8A%E4%B8%8B%E6%96%87%E5%8D%8F%E8%AE%AE&lemmaId=65540618&noadapt=1
+              - generic [ref=e1297]:
+                - text: 最近更新：
+                - link "长城旅人" [ref=e1301] [cursor=pointer]:
+                  - /url: /usercenter/userpage?uk=TONZHz54MWYc_GyPjSQwqw&from=lemma
+                - text: （2026-01-04）
+            - generic [ref=e1302]:
+              - generic [ref=e1303]: 突出贡献榜
+              - generic [ref=e1304]:
+                - generic [ref=e1305]:
+                  - generic [ref=e1307]:
+                    - link "思旅追青空" [ref=e1309] [cursor=pointer]:
+                      - /url: /usercenter/userpage?uk=xFZT8ZFJzt8OvI304HDEYQ&from=lemma
+                    - link "科龄勋章" [ref=e1310] [cursor=pointer]:
+                      - /url: /item/%E7%A7%91%E9%BE%84%E5%8B%8B%E7%AB%A0/59405227
+                      - img [ref=e1311]
+                    - link "百科热词团" [ref=e1312] [cursor=pointer]:
+                      - /url: https://baike.baidu.com/item/百科热词团队
+                      - img [ref=e1313]
+                  - link "热词版本" [ref=e1318] [cursor=pointer]:
+                    - /url: /item/%E7%99%BE%E5%BA%A6%E7%99%BE%E7%A7%91%EF%BC%9A%E7%83%AD%E8%AF%8D%E7%89%88%E6%9C%AC
+                    - img [ref=e1319]
+                - generic [ref=e1322]:
+                  - generic [ref=e1324]:
+                    - link "54hehezi" [ref=e1326] [cursor=pointer]:
+                      - /url: /usercenter/userpage?uk=yQO0AfQgptN60ZuLAlNSsQ&from=lemma
+                    - link "科龄勋章" [ref=e1327] [cursor=pointer]:
+                      - /url: /item/%E7%A7%91%E9%BE%84%E5%8B%8B%E7%AB%A0/59405227
+                      - img [ref=e1328]
+                    - link "百科热词团" [ref=e1329] [cursor=pointer]:
+                      - /url: https://baike.baidu.com/item/百科热词团队
+                      - img [ref=e1330]
+                  - link "创建版本" [ref=e1335] [cursor=pointer]:
+                    - /url: /item/%E7%99%BE%E5%BA%A6%E7%99%BE%E7%A7%91%EF%BC%9A%E5%88%9B%E5%BB%BA%E7%89%88%E6%9C%AC
+                    - img [ref=e1336]
+          - iframe [ref=e1341]:
+            - generic [ref=f1e2]:
+              - generic [ref=f1e3] [cursor=pointer]:
+                - generic [ref=f1e4]: "1"
+                - link "律师事务所婚姻" [ref=f1e6]:
+                  - /url: https://cpro.baidu.com/cpro/ui/uijs.php?en=mywWUA71T1YsFh7sT7qGujYsFhPC5H0huAbqrauGTdq9TZ0qnauJp1d-PHn3mHbkn1D1PvfsuAu-Fh_qFRFaFRR4FRfzFRmvFRFjFRfzFRPDFRDdFRnzFRn4FRPKFRDvFhkdpvbqniuVmLKV5HDdnWmdPzuk5HnLnjbYnHfsgvPsTBuzmWYsFMF15HDhTvN_UANzgv-b5HDhTv-b5yu-nAfLujD1nHP9rHn3uHRhTLwGujY3FMfqIZKWUA-WpvNbndqCmzuYujYkrHbLPWn1FMwV5Hcvrj6sn1R3niuYUgnqnHTLP1b4nWD4riuYIHddnHb4P1m1nzud5y9YIZK1FHPKFHFAFHFAmh7GpvR-nbNBmy-bIiRzwyPEUiuv5HchpHYsnv7WuAw9Pf&besl=6&c=news&cf=1&ctag=6-0&cvrq=0&device_id_v2=02AAADF54B6BECFE1307ED273428F3C6&efc=0&expid=200008_200075&fr=2&fv=0&haacp=358&img_typ=0&itm=0&lu_idc=nj02&lukid=1&lus=fe0d7d1313a938e5&lust=69fa0207&luwtr=7896515843722637558&mscf=0&n=10&nttp=1&p=baidu&pbs=220093&rcl=0&sce=7&sig=0&sr=408&ssp2=1&sti=50039&tpl=baiduCustITagLinkUnitRankCol&tsf=dtp:1&tt_sign=%C2%C9%CA%A6%CA%C2%CE%F1%CB%F9%BB%E9%D2%F6&tt_src=0&tu_type=0&u=%2Fitem%2F%25E6%25A8%25A1%25E5%259E%258B%25E4%25B8%258A%25E4%25B8%258B%25E6%2596%2587%25E5%258D%258F%25E8%25AE%25AE%2F65540618%3Ffromtitle%3DMCP%26fromid%3D65540620%26fr%3Daladdin&uicf=lurecv&urlid=0&eot=1
+              - generic [ref=f1e8] [cursor=pointer]:
+                - generic [ref=f1e9]: "12"
+                - link "共享充电宝厂家" [ref=f1e11]:
+                  - /url: https://cpro.baidu.com/cpro/ui/uijs.php?en=mywWUA71T1YsFh7sT7qGujYsFhPC5H0huAbqrauGTdq9TZ0qnauJp1d-PHn3mHbkn1D1PvfsuAu-Fh_qFRc4FRczFRPAFRNDFRc1FRRYFRcdFRRLFRckFRDvFRfYFRmdFRn1FRcYFRFKFRPAFRfLFRmLFhkdpvbqnHchUyPsUHY1PWTzPBuk5HnLnjbYnHfsgvPsTBuzmWYsFMF15HDhTvN_UANzgv-b5HDhTv-b5yu-nAfLujD1nHP9rHn3uHRhTLwGujY3FMfqIZKWUA-WpvNbndqCmzuYujYkrHbLPWn1FMwV5Hcvrj6sn1R3niuYUgnqnHTLP1b4nWD4riuYIHddnHb4P1m1nzud5y9YIZK1FHPKFHFAFHFAmh7GpvR-nbNBmy-bIiRzwyPEUiuv5HchpHYLrycYrj01ms&besl=6&c=news&cf=1&ctag=6-0&cvrq=0&device_id_v2=02AAADF54B6BECFE1307ED273428F3C6&efc=0&expid=200008_200075&fr=2&fv=0&haacp=476&img_typ=0&itm=0&lu_idc=nj02&lukid=12&lus=fe0d7d1313a938e5&lust=69fa0207&luwtr=6959236746467242459&mscf=0&n=10&nttp=1&p=baidu&pbs=220093&rcl=0&sce=7&sig=0&sr=408&ssp2=1&sti=50039&tpl=baiduCustITagLinkUnitRankCol&tsf=dtp:1&tt_sign=%B9%B2%CF%ED%B3%E4%B5%E7%B1%A6%B3%A7%BC%D2&tt_src=0&tu_type=0&u=%2Fitem%2F%25E6%25A8%25A1%25E5%259E%258B%25E4%25B8%258A%25E4%25B8%258B%25E6%2596%2587%25E5%258D%258F%25E8%25AE%25AE%2F65540618%3Ffromtitle%3DMCP%26fromid%3D65540620%26fr%3Daladdin&uicf=lurecv&urlid=0&eot=1
+              - generic [ref=f1e13] [cursor=pointer]:
+                - generic [ref=f1e14]: "2"
+                - link "心肺复苏模型" [ref=f1e16]:
+                  - /url: https://cpro.baidu.com/cpro/ui/uijs.php?en=mywWUA71T1YsFh7sT7qGujYsFhPC5H0huAbqrauGTdq9TZ0qnauJp1d-PHn3mHbkn1D1PvfsuAu-Fh_qFRfsFRnYFRcLFRP7FRc3FRcYFRPaFRfdFRnYFRD1FRnYFRRzFRn3FRPaFhkdpvbqnBuVmLKV5HRvnj0kFMDqn1TsrHfkPjKxmLKzFMFB5H0hTMnqniu1uyk_ugFxpyfqniu1pyfquhRsujIbnHnknvD4n19-Piu1IA-b5H6hIjdYTAP_pyPouyf1gv9WFMwb5HD4rHTvn1nhIAYqnWm3rj01PH6kFMwVT1YkP1TLrHbznHb4FMwd5gRkrHbLPWn1FMRqpZwYTZn-nYD-nbm-nbuBmy-ouiRzwyF9pywdFHF7mvqVFMmqnBuG5HbzuWmvmWfd&besl=6&c=news&cf=1&ctag=6-0&cvrq=0&device_id_v2=02AAADF54B6BECFE1307ED273428F3C6&efc=0&expid=200008_200075&fr=2&fv=0&haacp=816&img_typ=0&itm=0&lu_idc=nj02&lukid=2&lus=fe0d7d1313a938e5&lust=69fa0207&luwtr=2338753601558840136&mscf=0&n=10&nttp=1&p=baidu&pbs=220093&rcl=0&sce=7&sig=0&sr=408&ssp2=1&sti=50039&tpl=baiduCustITagLinkUnitRankCol&tsf=dtp:1&tt_sign=%D0%C4%B7%CE%B8%B4%CB%D5%C4%A3%D0%CD&tt_src=0&tu_type=0&u=%2Fitem%2F%25E6%25A8%25A1%25E5%259E%258B%25E4%25B8%258A%25E4%25B8%258B%25E6%2596%2587%25E5%258D%258F%25E8%25AE%25AE%2F65540618%3Ffromtitle%3DMCP%26fromid%3D65540620%26fr%3Daladdin&uicf=lurecv&urlid=0&eot=1
+              - generic [ref=f1e18] [cursor=pointer]:
+                - generic [ref=f1e19]: "13"
+                - link "找婚姻律师" [ref=f1e21]:
+                  - /url: https://cpro.baidu.com/cpro/ui/uijs.php?en=mywWUA71T1YsFh7sT7qGujYsFhPC5H0huAbqrauGTdq9TZ0qnauJp1d-PHn3mHbkn1D1PvfsuAu-Fh_qFRfdFRfzFRnzFRn4FRPKFRDvFhkdpvbqnHnhUyPsUHYknHDsrjThTHY1P104PjDYn7qWTZchThcqnauzT1YkFMP-UAk-T-qGujYkFMPGujdhuHKbPvfkn1D1mHb1rARdFMPYpyfqrauY5gwsmvkGmvV-ujPxpAnhIAfqnHb4P1m1nzuYUHYzPW63njndrjDhIAd15HDLP1T4rHckrHbhIZRqIHD4rHTvn1nhIHdCIZwsTzR1fiRzwBRzwhF9pyV-FHF7mh7GuZR-nbNWUvYhIWYzFhbqmWI9nAD3PhD&besl=6&c=news&cf=1&ctag=6-0&cvrq=0&device_id_v2=02AAADF54B6BECFE1307ED273428F3C6&efc=0&expid=200008_200075&fr=2&fv=0&haacp=416&img_typ=0&itm=0&lu_idc=nj02&lukid=13&lus=fe0d7d1313a938e5&lust=69fa0207&luwtr=753513071811998636&mscf=0&n=10&nttp=1&p=baidu&pbs=220093&rcl=0&sce=7&sig=0&sr=408&ssp2=1&sti=50039&tpl=baiduCustITagLinkUnitRankCol&tsf=dtp:1&tt_sign=%D5%D2%BB%E9%D2%F6%C2%C9%CA%A6&tt_src=0&tu_type=0&u=%2Fitem%2F%25E6%25A8%25A1%25E5%259E%258B%25E4%25B8%258A%25E4%25B8%258B%25E6%2596%2587%25E5%258D%258F%25E8%25AE%25AE%2F65540618%3Ffromtitle%3DMCP%26fromid%3D65540620%26fr%3Daladdin&uicf=lurecv&urlid=0&eot=1
+              - generic [ref=f1e23] [cursor=pointer]:
+                - generic [ref=f1e24]: "3"
+                - link "模具加工厂家" [ref=f1e26]:
+                  - /url: https://cpro.baidu.com/cpro/ui/uijs.php?en=mywWUA71T1YsFh7sT7qGujYsFhPC5H0huAbqrauGTdq9TZ0qnauJp1d-PHn3mHbkn1D1PvfsuAu-Fh_qFRcsFRRdFRczFRnYFRc1FRDLFRFjFRfzFhkdpvbqnzuVmLKV5Hm3P1TLFMDqn1TsrHfkPjKxmLKzFMFB5H0hTMnqniu1uyk_ugFxpyfqniu1pyfquhRsujIbnHnknvD4n19-Piu1IA-b5H6hIjdYTAP_pyPouyf1gv9WFMwb5HD4rHTvn1nhIAYqnWm3rj01PH6kFMwVT1YkP1TLrHbznHb4FMwd5gRkrHbLPWn1FMRqpZwYTZn-nYD-nbm-nbuBmy-ouiRzwyF9pywdFHF7mvqVFMmqnBuG5H6vmHIbuHw-&besl=6&c=news&cf=1&ctag=6-0&cvrq=0&device_id_v2=02AAADF54B6BECFE1307ED273428F3C6&efc=0&expid=200008_200075&fr=2&fv=0&haacp=319&img_typ=0&itm=0&lu_idc=nj02&lukid=3&lus=fe0d7d1313a938e5&lust=69fa0207&luwtr=2056700237596994086&mscf=0&n=10&nttp=1&p=baidu&pbs=220093&rcl=0&sce=7&sig=0&sr=408&ssp2=1&sti=50039&tpl=baiduCustITagLinkUnitRankCol&tsf=dtp:1&tt_sign=%C4%A3%BE%DF%BC%D3%B9%A4%B3%A7%BC%D2&tt_src=0&tu_type=0&u=%2Fitem%2F%25E6%25A8%25A1%25E5%259E%258B%25E4%25B8%258A%25E4%25B8%258B%25E6%2596%2587%25E5%258D%258F%25E8%25AE%25AE%2F65540618%3Ffromtitle%3DMCP%26fromid%3D65540620%26fr%3Daladdin&uicf=lurecv&urlid=0&eot=1
+              - generic [ref=f1e28] [cursor=pointer]:
+                - generic [ref=f1e29]: "14"
+                - link "代账公司" [ref=f1e31]:
+                  - /url: https://cpro.baidu.com/cpro/ui/uijs.php?en=mywWUA71T1YsFh7sT7qGujYsFhPC5H0huAbqrauGTdq9TZ0qnauJp1d-PHn3mHbkn1D1PvfsuAu-Fh_qFRcYFRuKFRfdFRPaFRc4FR7aFRPaFRF7FhkdpvbqnHfhUyPsUHYkrjcYniuk5HnLnjbYnHfsgvPsTBuzmWYsFMF15HDhTvN_UANzgv-b5HDhTv-b5yu-nAfLujD1nHP9rHn3uHRhTLwGujY3FMfqIZKWUA-WpvNbndqCmzuYujYkrHbLPWn1FMwV5Hcvrj6sn1R3niuYUgnqnHTLP1b4nWD4riuYIHddnHb4P1m1nzud5y9YIZK1FHPKFHFAFHFAmh7GpvR-nbNBmy-bIiRzwyPEUiuv5HchpHdhuWnvPhNBPs&besl=6&c=news&cf=1&ctag=6-0&cvrq=0&device_id_v2=02AAADF54B6BECFE1307ED273428F3C6&efc=0&expid=200008_200075&fr=2&fv=0&haacp=412&img_typ=0&itm=0&lu_idc=nj02&lukid=14&lus=fe0d7d1313a938e5&lust=69fa0207&luwtr=14687921413940816825&mscf=0&n=10&nttp=1&p=baidu&pbs=220093&rcl=0&sce=7&sig=0&sr=408&ssp2=1&sti=50039&tpl=baiduCustITagLinkUnitRankCol&tsf=dtp:1&tt_sign=%B4%FA%D5%CB%B9%AB%CB%BE&tt_src=0&tu_type=0&u=%2Fitem%2F%25E6%25A8%25A1%25E5%259E%258B%25E4%25B8%258A%25E4%25B8%258B%25E6%2596%2587%25E5%258D%258F%25E8%25AE%25AE%2F65540618%3Ffromtitle%3DMCP%26fromid%3D65540620%26fr%3Daladdin&uicf=lurecv&urlid=0&eot=1
+              - generic [ref=f1e33] [cursor=pointer]:
+                - generic [ref=f1e34]: "4"
+                - link "找代理记账公司" [ref=f1e36]:
+                  - /url: https://cpro.baidu.com/cpro/ui/uijs.php?en=mywWUA71T1YsFh7sT7qGujYsFhPC5H0huAbqrauGTdq9TZ0qnauJp1d-PHn3mHbkn1D1PvfsuAu-Fh_qFRcYFRuKFRnsFRNDFRFjFRnLFRfdFRPaFRc4FR7aFRPaFRF7FhkdpvbqPauVmLKV5H6srjTYFMDqn1TsrHfkPjKxmLKzFMFB5H0hTMnqniu1uyk_ugFxpyfqniu1pyfquhRsujIbnHnknvD4n19-Piu1IA-b5H6hIjdYTAP_pyPouyf1gv9WFMwb5HD4rHTvn1nhIAYqnWm3rj01PH6kFMwVT1YkP1TLrHbznHb4FMwd5gRkrHbLPWn1FMRqpZwYTZn-nYD-nbm-nbuBmy-ouiRzwyF9pywdFHF7mvqVFMmqnBuG5H6Ynvu9PjFb&besl=6&c=news&cf=1&ctag=6-0&cvrq=0&device_id_v2=02AAADF54B6BECFE1307ED273428F3C6&efc=0&expid=200008_200075&fr=2&fv=0&haacp=412&img_typ=0&itm=0&lu_idc=nj02&lukid=4&lus=fe0d7d1313a938e5&lust=69fa0207&luwtr=6490348982330525392&mscf=0&n=10&nttp=1&p=baidu&pbs=220093&rcl=0&sce=7&sig=0&sr=408&ssp2=1&sti=50039&tpl=baiduCustITagLinkUnitRankCol&tsf=dtp:1&tt_sign=%D5%D2%B4%FA%C0%ED%BC%C7%D5%CB%B9%AB%CB%BE&tt_src=0&tu_type=0&u=%2Fitem%2F%25E6%25A8%25A1%25E5%259E%258B%25E4%25B8%258A%25E4%25B8%258B%25E6%2596%2587%25E5%258D%258F%25E8%25AE%25AE%2F65540618%3Ffromtitle%3DMCP%26fromid%3D65540620%26fr%3Daladdin&uicf=lurecv&urlid=0&eot=1
+              - generic [ref=f1e38] [cursor=pointer]:
+                - generic [ref=f1e39]: "15"
+                - link "涂塑复合管厂家" [ref=f1e41]:
+                  - /url: https://cpro.baidu.com/cpro/ui/uijs.php?en=mywWUA71T1YsFh7sT7qGujYsFhPC5H0huAbqrauGTdq9TZ0qnauJp1d-PHn3mHbkn1D1PvfsuAu-Fh_qFRPDFRFAFRPaFRwjFRc3FRcYFRFKFRPAFRc3FRfvFRc4FRwjFhkdpvbqnHRhUyPsUHYzrjf4Pauk5HnLnjbYnHfsgvPsTBuzmWYsFMF15HDhTvN_UANzgv-b5HDhTv-b5yu-nAfLujD1nHP9rHn3uHRhTLwGujY3FMfqIZKWUA-WpvNbndqCmzuYujYkrHbLPWn1FMwV5Hcvrj6sn1R3niuYUgnqnHTLP1b4nWD4riuYIHddnHb4P1m1nzud5y9YIZK1FHPKFHFAFHFAmh7GpvR-nbNBmy-bIiRzwyPEUiuv5HchpHdWm1N-nWP9ns&besl=6&c=news&cf=1&ctag=6-0&cvrq=0&device_id_v2=02AAADF54B6BECFE1307ED273428F3C6&efc=0&expid=200008_200075&fr=2&fv=0&haacp=607&img_typ=0&itm=0&lu_idc=nj02&lukid=15&lus=fe0d7d1313a938e5&lust=69fa0207&luwtr=6907936952755994034&mscf=0&n=10&nttp=1&p=baidu&pbs=220093&rcl=0&sce=7&sig=0&sr=408&ssp2=1&sti=50039&tpl=baiduCustITagLinkUnitRankCol&tsf=dtp:1&tt_sign=%CD%BF%CB%DC%B8%B4%BA%CF%B9%DC%B3%A7%BC%D2&tt_src=0&tu_type=0&u=%2Fitem%2F%25E6%25A8%25A1%25E5%259E%258B%25E4%25B8%258A%25E4%25B8%258B%25E6%2596%2587%25E5%258D%258F%25E8%25AE%25AE%2F65540618%3Ffromtitle%3DMCP%26fromid%3D65540620%26fr%3Daladdin&uicf=lurecv&urlid=0&eot=1
+              - generic [ref=f1e43] [cursor=pointer]:
+                - generic [ref=f1e44]: "5"
+                - link "上海婚姻律师" [ref=f1e46]:
+                  - /url: https://cpro.baidu.com/cpro/ui/uijs.php?en=mywWUA71T1YsFh7sT7qGujYsFhPC5H0huAbqrauGTdq9TZ0qnauJp1d-PHn3mHbkn1D1PvfsuAu-Fh_qFRn4FRPAFRFKFRD1FRFaFRR4FRfzFRmvFRnzFRn4FRPKFRDvFhkdpvbqPiuVmLKV5HT1rHTdFMDqn1TsrHfkPjKxmLKzFMFB5H0hTMnqniu1uyk_ugFxpyfqniu1pyfquhRsujIbnHnknvD4n19-Piu1IA-b5H6hIjdYTAP_pyPouyf1gv9WFMwb5HD4rHTvn1nhIAYqnWm3rj01PH6kFMwVT1YkP1TLrHbznHb4FMwd5gRkrHbLPWn1FMRqpZwYTZn-nYD-nbm-nbuBmy-ouiRzwyF9pywdFHF7mvqVFMmqnBuG5HbYPvf1mH7W&besl=6&c=news&cf=1&ctag=6-0&cvrq=0&device_id_v2=02AAADF54B6BECFE1307ED273428F3C6&efc=0&expid=200008_200075&fr=2&fv=0&haacp=279&img_typ=0&itm=0&lu_idc=nj02&lukid=5&lus=fe0d7d1313a938e5&lust=69fa0207&luwtr=2383418345414574905&mscf=0&n=10&nttp=1&p=baidu&pbs=220093&rcl=0&sce=7&sig=0&sr=408&ssp2=1&sti=50039&tpl=baiduCustITagLinkUnitRankCol&tsf=dtp:1&tt_sign=%C9%CF%BA%A3%BB%E9%D2%F6%C2%C9%CA%A6&tt_src=0&tu_type=0&u=%2Fitem%2F%25E6%25A8%25A1%25E5%259E%258B%25E4%25B8%258A%25E4%25B8%258B%25E6%2596%2587%25E5%258D%258F%25E8%25AE%25AE%2F65540618%3Ffromtitle%3DMCP%26fromid%3D65540620%26fr%3Daladdin&uicf=lurecv&urlid=0&eot=1
+              - generic [ref=f1e48] [cursor=pointer]:
+                - generic [ref=f1e49]: "16"
+                - link "东芝笔记本" [ref=f1e51]:
+                  - /url: https://cpro.baidu.com/cpro/ui/uijs.php?en=mywWUA71T1YsFh7sT7qGujYsFhPC5H0huAbqrauGTdq9TZ0qnauJp1d-PHn3mHbkn1D1PvfsuAu-Fh_qFRcvFR7aFRfvFRDdFRcdFRRLFRnYFRfYFRckFRPKFRFjFRnLFRckFRF7FhkdpvbqnHmhUyPsUHYznj61Pzuk5HnLnjbYnHfsgvPsTBuzmWYsFMF15HDhTvN_UANzgv-b5HDhTv-b5yu-nAfLujD1nHP9rHn3uHRhTLwGujY3FMfqIZKWUA-WpvNbndqCmzuYujYkrHbLPWn1FMwV5Hcvrj6sn1R3niuYUgnqnHTLP1b4nWD4riuYIHddnHb4P1m1nzud5y9YIZK1FHPKFHFAFHFAmh7GpvR-nbNBmy-bIiRzwyPEUiuv5HchpHYYrynsPHDsnf&besl=6&c=news&cf=1&ctag=6-0&cvrq=0&device_id_v2=02AAADF54B6BECFE1307ED273428F3C6&efc=0&expid=200008_200075&fr=2&fv=0&haacp=476&img_typ=0&itm=0&lu_idc=nj02&lukid=16&lus=fe0d7d1313a938e5&lust=69fa0207&luwtr=709993446688609777&mscf=0&n=10&nttp=1&p=baidu&pbs=220093&rcl=0&sce=7&sig=0&sr=408&ssp2=1&sti=50039&tpl=baiduCustITagLinkUnitRankCol&tsf=dtp:1&tt_sign=%B6%AB%D6%A5%B1%CA%BC%C7%B1%BE&tt_src=0&tu_type=0&u=%2Fitem%2F%25E6%25A8%25A1%25E5%259E%258B%25E4%25B8%258A%25E4%25B8%258B%25E6%2596%2587%25E5%258D%258F%25E8%25AE%25AE%2F65540618%3Ffromtitle%3DMCP%26fromid%3D65540620%26fr%3Daladdin&uicf=lurecv&urlid=0&eot=1
+              - generic [ref=f1e53] [cursor=pointer]:
+                - generic [ref=f1e54]: "6"
+                - link "代理记账" [ref=f1e56]:
+                  - /url: https://cpro.baidu.com/cpro/ui/uijs.php?en=mywWUA71T1YsFh7sT7qGujYsFhPC5H0huAbqrauGTdq9TZ0qnauJp1d-PHn3mHbkn1D1PvfsuAu-Fh_qFRcYFRuKFRnsFRNDFRFjFRnLFRfdFRPaFhkdpvbqPBuVmLKV5HndPHf3FMDqn1TsrHfkPjKxmLKzFMFB5H0hTMnqniu1uyk_ugFxpyfqniu1pyfquhRsujIbnHnknvD4n19-Piu1IA-b5H6hIjdYTAP_pyPouyf1gv9WFMwb5HD4rHTvn1nhIAYqnWm3rj01PH6kFMwVT1YkP1TLrHbznHb4FMwd5gRkrHbLPWn1FMRqpZwYTZn-nYD-nbm-nbuBmy-ouiRzwyF9pywdFHF7mvqVFMmqnBuG5HN-ryF-PyDs&besl=6&c=news&cf=1&ctag=6-0&cvrq=0&device_id_v2=02AAADF54B6BECFE1307ED273428F3C6&efc=0&expid=200008_200075&fr=2&fv=0&haacp=1393&img_typ=0&itm=0&lu_idc=nj02&lukid=6&lus=fe0d7d1313a938e5&lust=69fa0207&luwtr=17131968636938209212&mscf=0&n=10&nttp=1&p=baidu&pbs=220093&rcl=0&sce=7&sig=0&sr=408&ssp2=1&sti=50039&tpl=baiduCustITagLinkUnitRankCol&tsf=dtp:1&tt_sign=%B4%FA%C0%ED%BC%C7%D5%CB&tt_src=0&tu_type=0&u=%2Fitem%2F%25E6%25A8%25A1%25E5%259E%258B%25E4%25B8%258A%25E4%25B8%258B%25E6%2596%2587%25E5%258D%258F%25E8%25AE%25AE%2F65540618%3Ffromtitle%3DMCP%26fromid%3D65540620%26fr%3Daladdin&uicf=lurecv&urlid=0&eot=1
+              - generic [ref=f1e58] [cursor=pointer]:
+                - generic [ref=f1e59]: "17"
+                - link "钢套保温管" [ref=f1e61]:
+                  - /url: https://cpro.baidu.com/cpro/ui/uijs.php?en=mywWUA71T1YsFh7sT7qGujYsFhPC5H0huAbqrauGTdq9TZ0qnauJp1d-PHn3mHbkn1D1PvfsuAu-Fh_qFRc3FRfvFRPjFRfLFRc3FRfvFRfYFRDYFRfvFRnvFRfvFRckFRnzFRmkFRckFRD1FRP7FRnzFRc4FRwjFhkdpvbqnHThUyPsUHYkPWf3Pauk5HnLnjbYnHfsgvPsTBuzmWYsFMF15HDhTvN_UANzgv-b5HDhTv-b5yu-nAfLujD1nHP9rHn3uHRhTLwGujY3FMfqIZKWUA-WpvNbndqCmzuYujYkrHbLPWn1FMwV5Hcvrj6sn1R3niuYUgnqnHTLP1b4nWD4riuYIHddnHb4P1m1nzud5y9YIZK1FHPKFHFAFHFAmh7GpvR-nbNBmy-bIiRzwyPEUiuv5HchpHd9mW6zn1T1n6&besl=6&c=news&cf=1&ctag=6-0&cvrq=0&device_id_v2=02AAADF54B6BECFE1307ED273428F3C6&efc=0&expid=200008_200075&fr=2&fv=0&haacp=362&img_typ=0&itm=0&lu_idc=nj02&lukid=17&lus=fe0d7d1313a938e5&lust=69fa0207&luwtr=710665639436014847&mscf=0&n=10&nttp=1&p=baidu&pbs=220093&rcl=0&sce=7&sig=0&sr=408&ssp2=1&sti=50039&tpl=baiduCustITagLinkUnitRankCol&tsf=dtp:1&tt_sign=%B8%D6%CC%D7%B1%A3%CE%C2%B9%DC&tt_src=0&tu_type=0&u=%2Fitem%2F%25E6%25A8%25A1%25E5%259E%258B%25E4%25B8%258A%25E4%25B8%258B%25E6%2596%2587%25E5%258D%258F%25E8%25AE%25AE%2F65540618%3Ffromtitle%3DMCP%26fromid%3D65540620%26fr%3Daladdin&uicf=lurecv&urlid=0&eot=1
+              - generic [ref=f1e63] [cursor=pointer]:
+                - generic [ref=f1e64]: "7"
+                - link "跨境电商怎么做" [ref=f1e66]:
+                  - /url: https://cpro.baidu.com/cpro/ui/uijs.php?en=mywWUA71T1YsFh7sT7qGujYsFhPC5H0huAbqrauGTdq9TZ0qnauJp1d-PHn3mHbkn1D1PvfsuAu-Fh_qFRn3FRRLFRFKFRP7FRfLFRmvFRFAFRRLFRF7FRc1FRcdFRRLFRn4FRPjFhkdpvbqPzuVmLKV5Hmvn1nkFMDqn1TsrHfkPjKxmLKzFMFB5H0hTMnqniu1uyk_ugFxpyfqniu1pyfquhRsujIbnHnknvD4n19-Piu1IA-b5H6hIjdYTAP_pyPouyf1gv9WFMwb5HD4rHTvn1nhIAYqnWm3rj01PH6kFMwVT1YkP1TLrHbznHb4FMwd5gRkrHbLPWn1FMRqpZwYTZn-nYD-nbm-nbuBmy-ouiRzwyF9pywdFHF7mvqVFMmqnBuG5HIWuj0znW6s&besl=6&c=news&cf=1&ctag=6-0&cvrq=0&device_id_v2=02AAADF54B6BECFE1307ED273428F3C6&efc=0&expid=200008_200075&fr=2&fv=0&haacp=547&img_typ=0&itm=0&lu_idc=nj02&lukid=7&lus=fe0d7d1313a938e5&lust=69fa0207&luwtr=7854595136681394006&mscf=0&n=10&nttp=1&p=baidu&pbs=220093&rcl=0&sce=7&sig=0&sr=408&ssp2=1&sti=50039&tpl=baiduCustITagLinkUnitRankCol&tsf=dtp:1&tt_sign=%BF%E7%BE%B3%B5%E7%C9%CC%D4%F5%C3%B4%D7%F6&tt_src=0&tu_type=0&u=%2Fitem%2F%25E6%25A8%25A1%25E5%259E%258B%25E4%25B8%258A%25E4%25B8%258B%25E6%2596%2587%25E5%258D%258F%25E8%25AE%25AE%2F65540618%3Ffromtitle%3DMCP%26fromid%3D65540620%26fr%3Daladdin&uicf=lurecv&urlid=0&eot=1
+              - generic [ref=f1e68] [cursor=pointer]:
+                - generic [ref=f1e69]: "18"
+                - link "燃气热水锅炉" [ref=f1e71]:
+                  - /url: https://cpro.baidu.com/cpro/ui/uijs.php?en=mywWUA71T1YsFh7sT7qGujYsFhPC5H0huAbqrauGTdq9TZ0qnauJp1d-PHn3mHbkn1D1PvfsuAu-Fh_qFRn3FRFjFRnvFRm3FRc4FRm3FRnzFR7AFRn3FRn3FRPaFR77FRc4FRm3FRnzFR7AFhkdpvbqnH6hUyPsUHYznHm3nBuk5HnLnjbYnHfsgvPsTBuzmWYsFMF15HDhTvN_UANzgv-b5HDhTv-b5yu-nAfLujD1nHP9rHn3uHRhTLwGujY3FMfqIZKWUA-WpvNbndqCmzuYujYkrHbLPWn1FMwV5Hcvrj6sn1R3niuYUgnqnHTLP1b4nWD4riuYIHddnHb4P1m1nzud5y9YIZK1FHPKFHFAFHFAmh7GpvR-nbNBmy-bIiRzwyPEUiuv5HchpHdBnHRkrjfdns&besl=6&c=news&cf=1&ctag=6-0&cvrq=0&device_id_v2=02AAADF54B6BECFE1307ED273428F3C6&efc=0&expid=200008_200075&fr=2&fv=0&haacp=341&img_typ=0&itm=0&lu_idc=nj02&lukid=18&lus=fe0d7d1313a938e5&lust=69fa0207&luwtr=2147459717506922380&mscf=0&n=10&nttp=1&p=baidu&pbs=220093&rcl=0&sce=7&sig=0&sr=408&ssp2=1&sti=50039&tpl=baiduCustITagLinkUnitRankCol&tsf=dtp:1&tt_sign=%C8%BC%C6%F8%C8%C8%CB%AE%B9%F8%C2%AF&tt_src=0&tu_type=0&u=%2Fitem%2F%25E6%25A8%25A1%25E5%259E%258B%25E4%25B8%258A%25E4%25B8%258B%25E6%2596%2587%25E5%258D%258F%25E8%25AE%25AE%2F65540618%3Ffromtitle%3DMCP%26fromid%3D65540620%26fr%3Daladdin&uicf=lurecv&urlid=0&eot=1
+              - generic [ref=f1e73] [cursor=pointer]:
+                - generic [ref=f1e74]: "8"
+                - link "山海经异兽" [ref=f1e76]:
+                  - /url: https://cpro.baidu.com/cpro/ui/uijs.php?en=mywWUA71T1YsFh7sT7qGujYsFhPC5H0huAbqrauGTdq9TZ0qnauJp1d-PHn3mHbkn1D1PvfsuAu-Fh_qFRn4FRFDFRFKFRD1FRF7FR7DFRfzFRNjFRPKFRw7FRnzFRFjFRf1FRP7FRPAFRcLFhkdpvbqrauVmLKV5HckrH0YFMDqn1TsrHfkPjKxmLKzFMFB5H0hTMnqniu1uyk_ugFxpyfqniu1pyfquhRsujIbnHnknvD4n19-Piu1IA-b5H6hIjdYTAP_pyPouyf1gv9WFMwb5HD4rHTvn1nhIAYqnWm3rj01PH6kFMwVT1YkP1TLrHbznHb4FMwd5gRkrHbLPWn1FMRqpZwYTZn-nYD-nbm-nbuBmy-ouiRzwyF9pywdFHF7mvqVFMmqnBuG5ynvnWPBrjKB&besl=6&c=news&cf=1&ctag=6-0&cvrq=0&device_id_v2=02AAADF54B6BECFE1307ED273428F3C6&efc=0&expid=200008_200075&fr=2&fv=0&haacp=613&img_typ=0&itm=0&lu_idc=nj02&lukid=8&lus=fe0d7d1313a938e5&lust=69fa0207&luwtr=820952080943459004&mscf=0&n=10&nttp=1&p=baidu&pbs=220093&rcl=0&sce=7&sig=0&sr=408&ssp2=1&sti=50039&tpl=baiduCustITagLinkUnitRankCol&tsf=dtp:1&tt_sign=%C9%BD%BA%A3%BE%AD%D2%EC%CA%DE&tt_src=0&tu_type=0&u=%2Fitem%2F%25E6%25A8%25A1%25E5%259E%258B%25E4%25B8%258A%25E4%25B8%258B%25E6%2596%2587%25E5%258D%258F%25E8%25AE%25AE%2F65540618%3Ffromtitle%3DMCP%26fromid%3D65540620%26fr%3Daladdin&uicf=lurecv&urlid=0&eot=1
+              - generic [ref=f1e78] [cursor=pointer]:
+                - generic [ref=f1e79]: "19"
+                - link "可爬楼梯的轮椅" [ref=f1e81]:
+                  - /url: https://cpro.baidu.com/cpro/ui/uijs.php?en=mywWUA71T1YsFh7sT7qGujYsFhPC5H0huAbqrauGTdq9TZ0qnauJp1d-PHn3mHbkn1D1PvfsuAu-Fh_qFRndFRnsFRnzFRDdFRPjFRwDFRcdFRnYFRnzFRfvFRfzFRP7FhkdpvbqnHbhUyPsUHYkPW6kPauk5HnLnjbYnHfsgvPsTBuzmWYsFMF15HDhTvN_UANzgv-b5HDhTv-b5yu-nAfLujD1nHP9rHn3uHRhTLwGujY3FMfqIZKWUA-WpvNbndqCmzuYujYkrHbLPWn1FMwV5Hcvrj6sn1R3niuYUgnqnHTLP1b4nWD4riuYIHddnHb4P1m1nzud5y9YIZK1FHPKFHFAFHFAmh7GpvR-nbNBmy-bIiRzwyPEUiuv5HchpHYdujb4PWnzu0&besl=6&c=news&cf=1&ctag=6-0&cvrq=0&device_id_v2=02AAADF54B6BECFE1307ED273428F3C6&efc=0&expid=200008_200075&fr=2&fv=0&haacp=173&img_typ=0&itm=0&lu_idc=nj02&lukid=19&lus=fe0d7d1313a938e5&lust=69fa0207&luwtr=6978793717689407192&mscf=0&n=10&nttp=1&p=baidu&pbs=220093&rcl=0&sce=7&sig=0&sr=408&ssp2=1&sti=50039&tpl=baiduCustITagLinkUnitRankCol&tsf=dtp:1&tt_sign=%BF%C9%C5%C0%C2%A5%CC%DD%B5%C4%C2%D6%D2%CE&tt_src=0&tu_type=0&u=%2Fitem%2F%25E6%25A8%25A1%25E5%259E%258B%25E4%25B8%258A%25E4%25B8%258B%25E6%2596%2587%25E5%258D%258F%25E8%25AE%25AE%2F65540618%3Ffromtitle%3DMCP%26fromid%3D65540620%26fr%3Daladdin&uicf=lurecv&urlid=0&eot=1
+              - generic [ref=f1e83] [cursor=pointer]:
+                - generic [ref=f1e84]: "9"
+                - link "诉讼律师" [ref=f1e86]:
+                  - /url: https://cpro.baidu.com/cpro/ui/uijs.php?en=mywWUA71T1YsFh7sT7qGujYsFhPC5H0huAbqrauGTdq9TZ0qnauJp1d-PHn3mHbkn1D1PvfsuAu-Fh_qFRckFRckFRF7FRD4FRfsFRfsFRfdFRu7FRPaFRwAFRPaFRPAFRnzFRn4FRPKFRDvFRPKFRnzFRP7FRmkFRPaFRm4FhkdpvbqriuVmLKV5HT3P10sFMDqn1TsrHfkPjKxmLKzFMFB5H0hTMnqniu1uyk_ugFxpyfqniu1pyfquhRsujIbnHnknvD4n19-Piu1IA-b5H6hIjdYTAP_pyPouyf1gv9WFMwb5HD4rHTvn1nhIAYqnWm3rj01PH6kFMwVT1YkP1TLrHbznHb4FMwd5gRkrHbLPWn1FMRqpZwYTZn-nYD-nbm-nbuBmy-ouiRzwyF9pywdFHF7mvqVFMmqnBuG5y79uW9bn1bL&besl=6&c=news&cf=1&ctag=6-0&cvrq=0&device_id_v2=02AAADF54B6BECFE1307ED273428F3C6&efc=0&expid=200008_200075&fr=2&fv=0&haacp=416&img_typ=0&itm=0&lu_idc=nj02&lukid=9&lus=fe0d7d1313a938e5&lust=69fa0207&luwtr=14973307451893008834&mscf=0&n=10&nttp=1&p=baidu&pbs=220093&rcl=0&sce=7&sig=0&sr=408&ssp2=1&sti=50039&tpl=baiduCustITagLinkUnitRankCol&tsf=dtp:1&tt_sign=%CB%DF%CB%CF%C2%C9%CA%A6&tt_src=0&tu_type=0&u=%2Fitem%2F%25E6%25A8%25A1%25E5%259E%258B%25E4%25B8%258A%25E4%25B8%258B%25E6%2596%2587%25E5%258D%258F%25E8%25AE%25AE%2F65540618%3Ffromtitle%3DMCP%26fromid%3D65540620%26fr%3Daladdin&uicf=lurecv&urlid=0&eot=1
+              - generic [ref=f1e88] [cursor=pointer]:
+                - generic [ref=f1e89]: "20"
+                - link "和田碧玉" [ref=f1e91]:
+                  - /url: https://cpro.baidu.com/cpro/ui/uijs.php?en=mywWUA71T1YsFh7sT7qGujYsFhPC5H0huAbqrauGTdq9TZ0qnauJp1d-PHn3mHbkn1D1PvfsuAu-Fh_qFRFKFRPDFRPjFRNAFRf1FRmkFhkdpvbqnW0hUyPsUHYkPHm4niuk5HnLnjbYnHfsgvPsTBuzmWYsFMF15HDhTvN_UANzgv-b5HDhTv-b5yu-nAfLujD1nHP9rHn3uHRhTLwGujY3FMfqIZKWUA-WpvNbndqCmzuYujYkrHbLPWn1FMwV5Hcvrj6sn1R3niuYUgnqnHTLP1b4nWD4riuYIHddnHb4P1m1nzud5y9YIZK1FHPKFHFAFHFAmh7GpvR-nbNBmy-bIiRzwyPEUiuv5HchpHYsrAmsPvcdn0&besl=6&c=news&cf=1&ctag=6-0&cvrq=0&device_id_v2=02AAADF54B6BECFE1307ED273428F3C6&efc=0&expid=200008_200075&fr=2&fv=0&haacp=267&img_typ=0&itm=0&lu_idc=nj02&lukid=20&lus=fe0d7d1313a938e5&lust=69fa0207&luwtr=17279412073118551217&mscf=0&n=10&nttp=1&p=baidu&pbs=220093&rcl=0&sce=7&sig=0&sr=408&ssp2=1&sti=50039&tpl=baiduCustITagLinkUnitRankCol&tsf=dtp:1&tt_sign=%BA%CD%CC%EF%B1%CC%D3%F1&tt_src=0&tu_type=0&u=%2Fitem%2F%25E6%25A8%25A1%25E5%259E%258B%25E4%25B8%258A%25E4%25B8%258B%25E6%2596%2587%25E5%258D%258F%25E8%25AE%25AE%2F65540618%3Ffromtitle%3DMCP%26fromid%3D65540620%26fr%3Daladdin&uicf=lurecv&urlid=0&eot=1
+              - generic [ref=f1e93] [cursor=pointer]:
+                - generic [ref=f1e94]: "10"
+                - link "代记账" [ref=f1e96]:
+                  - /url: https://cpro.baidu.com/cpro/ui/uijs.php?en=mywWUA71T1YsFh7sT7qGujYsFhPC5H0huAbqrauGTdq9TZ0qnauJp1d-PHn3mHbkn1D1PvfsuAu-Fh_qFRcYFRuKFRFjFRnLFRfdFRPaFRc4FR7aFRPaFRF7FhkdpvbqnH0hUyPsUHYznHmzriuk5HnLnjbYnHfsgvPsTBuzmWYsFMF15HDhTvN_UANzgv-b5HDhTv-b5yu-nAfLujD1nHP9rHn3uHRhTLwGujY3FMfqIZKWUA-WpvNbndqCmzuYujYkrHbLPWn1FMwV5Hcvrj6sn1R3niuYUgnqnHTLP1b4nWD4riuYIHddnHb4P1m1nzud5y9YIZK1FHPKFHFAFHFAmh7GpvR-nbNBmy-bIiRzwyPEUiuv5HchpHd-nhNWryF-nf&besl=6&c=news&cf=1&ctag=6-0&cvrq=0&device_id_v2=02AAADF54B6BECFE1307ED273428F3C6&efc=0&expid=200008_200075&fr=2&fv=0&haacp=396&img_typ=0&itm=0&lu_idc=nj02&lukid=10&lus=fe0d7d1313a938e5&lust=69fa0207&luwtr=14392654160170372053&mscf=0&n=10&nttp=1&p=baidu&pbs=220093&rcl=0&sce=7&sig=0&sr=408&ssp2=1&sti=50039&tpl=baiduCustITagLinkUnitRankCol&tsf=dtp:1&tt_sign=%B4%FA%BC%C7%D5%CB&tt_src=0&tu_type=0&u=%2Fitem%2F%25E6%25A8%25A1%25E5%259E%258B%25E4%25B8%258A%25E4%25B8%258B%25E6%2596%2587%25E5%258D%258F%25E8%25AE%25AE%2F65540618%3Ffromtitle%3DMCP%26fromid%3D65540620%26fr%3Daladdin&uicf=lurecv&urlid=0&eot=1
+              - generic [ref=f1e98] [cursor=pointer]:
+                - generic [ref=f1e99]: "21"
+                - link "粉体输送泵" [ref=f1e101]:
+                  - /url: https://cpro.baidu.com/cpro/ui/uijs.php?en=mywWUA71T1YsFh7sT7qGujYsFhPC5H0huAbqrauGTdq9TZ0qnauJp1d-PHn3mHbkn1D1PvfsuAu-Fh_qFRcLFRwaFRPjFRRdFRPKFRRYFRPaFRPDFRckFRn1FhkdpvbqnWDhUyPsUHY1njn1Pauk5HnLnjbYnHfsgvPsTBuzmWYsFMF15HDhTvN_UANzgv-b5HDhTv-b5yu-nAfLujD1nHP9rHn3uHRhTLwGujY3FMfqIZKWUA-WpvNbndqCmzuYujYkrHbLPWn1FMwV5Hcvrj6sn1R3niuYUgnqnHTLP1b4nWD4riuYIHddnHb4P1m1nzud5y9YIZK1FHPKFHFAFHFAmh7GpvR-nbNBmy-bIiRzwyPEUiuv5HchpHYduhfsuA7hrf&besl=6&c=news&cf=1&ctag=6-0&cvrq=0&device_id_v2=02AAADF54B6BECFE1307ED273428F3C6&efc=0&expid=200008_200075&fr=2&fv=0&haacp=341&img_typ=0&itm=0&lu_idc=nj02&lukid=21&lus=fe0d7d1313a938e5&lust=69fa0207&luwtr=760324468663236966&mscf=0&n=10&nttp=1&p=baidu&pbs=220093&rcl=0&sce=7&sig=0&sr=408&ssp2=1&sti=50039&tpl=baiduCustITagLinkUnitRankCol&tsf=dtp:1&tt_sign=%B7%DB%CC%E5%CA%E4%CB%CD%B1%C3&tt_src=0&tu_type=0&u=%2Fitem%2F%25E6%25A8%25A1%25E5%259E%258B%25E4%25B8%258A%25E4%25B8%258B%25E6%2596%2587%25E5%258D%258F%25E8%25AE%25AE%2F65540618%3Ffromtitle%3DMCP%26fromid%3D65540620%26fr%3Daladdin&uicf=lurecv&urlid=0&eot=1
+              - generic [ref=f1e103] [cursor=pointer]:
+                - generic [ref=f1e104]: "11"
+                - link "办公桌厂家" [ref=f1e106]:
+                  - /url: https://cpro.baidu.com/cpro/ui/uijs.php?en=mywWUA71T1YsFh7sT7qGujYsFhPC5H0huAbqrauGTdq9TZ0qnauJp1d-PHn3mHbkn1D1PvfsuAu-Fh_qFRcsFRNjFRc4FR7aFRfLFRnsFhkdpvbqnHDhUyPsUHY1n1nvPBuk5HnLnjbYnHfsgvPsTBuzmWYsFMF15HDhTvN_UANzgv-b5HDhTv-b5yu-nAfLujD1nHP9rHn3uHRhTLwGujY3FMfqIZKWUA-WpvNbndqCmzuYujYkrHbLPWn1FMwV5Hcvrj6sn1R3niuYUgnqnHTLP1b4nWD4riuYIHddnHb4P1m1nzud5y9YIZK1FHPKFHFAFHFAmh7GpvR-nbNBmy-bIiRzwyPEUiuv5HchpHY1rHf4njDYr0&besl=6&c=news&cf=1&ctag=6-0&cvrq=0&device_id_v2=02AAADF54B6BECFE1307ED273428F3C6&efc=0&expid=200008_200075&fr=2&fv=0&haacp=15&img_typ=0&itm=0&lu_idc=nj02&lukid=11&lus=fe0d7d1313a938e5&lust=69fa0207&luwtr=679831059874928964&mscf=0&n=10&nttp=1&p=baidu&pbs=220093&rcl=0&sce=7&sig=0&sr=408&ssp2=1&sti=50039&tpl=baiduCustITagLinkUnitRankCol&tsf=dtp:1&tt_sign=%B0%EC%B9%AB%D7%C0%B3%A7%BC%D2&tt_src=0&tu_type=0&u=%2Fitem%2F%25E6%25A8%25A1%25E5%259E%258B%25E4%25B8%258A%25E4%25B8%258B%25E6%2596%2587%25E5%258D%258F%25E8%25AE%25AE%2F65540618%3Ffromtitle%3DMCP%26fromid%3D65540620%26fr%3Daladdin&uicf=lurecv&urlid=0&eot=1
+              - generic [ref=f1e108] [cursor=pointer]:
+                - generic [ref=f1e109]: "22"
+                - link "律师事务所婚姻" [ref=f1e111]:
+                  - /url: https://cpro.baidu.com/cpro/ui/uijs.php?en=mywWUA71T1YsFh7sT7qGujYsFhPC5H0huAbqrauGTdq9TZ0qnauJp1d-PHn3mHbkn1D1PvfsuAu-Fh_qFRFaFRR4FRfzFRmvFRFjFRfzFRPDFRDdFRnzFRn4FRPKFRDvFhkdpvbqniuVmLKV5HDdnWmdPzuk5HnLnjbYnHfsgvPsTBuzmWYsFMF15HDhTvN_UANzgv-b5HDhTv-b5yu-nAfLujD1nHP9rHn3uHRhTLwGujY3FMfqIZKWUA-WpvNbndqCmzuYujYkrHbLPWn1FMwV5Hcvrj6sn1R3niuYUgnqnHTLP1b4nWD4riuYIHddnHb4P1m1nzud5y9YIZK1FHPKFHFAFHFAmh7GpvR-nbNBmy-bIiRzwyPEUiuv5HchpHYsnv7WuAw9Pf&besl=6&c=news&cf=1&ctag=6-0&cvrq=0&device_id_v2=02AAADF54B6BECFE1307ED273428F3C6&efc=0&expid=200008_200075&fr=2&fv=0&haacp=358&img_typ=0&itm=0&lu_idc=nj02&lukid=1&lus=fe0d7d1313a938e5&lust=69fa0207&luwtr=7896515843722637558&mscf=0&n=10&nttp=1&p=baidu&pbs=220093&rcl=0&sce=7&sig=0&sr=408&ssp2=1&sti=50039&tpl=baiduCustITagLinkUnitRankCol&tsf=dtp:1&tt_sign=%C2%C9%CA%A6%CA%C2%CE%F1%CB%F9%BB%E9%D2%F6&tt_src=0&tu_type=0&u=%2Fitem%2F%25E6%25A8%25A1%25E5%259E%258B%25E4%25B8%258A%25E4%25B8%258B%25E6%2596%2587%25E5%258D%258F%25E8%25AE%25AE%2F65540618%3Ffromtitle%3DMCP%26fromid%3D65540620%26fr%3Daladdin&uicf=lurecv&urlid=0&eot=1
+              - generic [ref=f1e112]:
+                - link:
+                  - /url: https://union.baidu.com
+                  - img [ref=f1e113] [cursor=pointer]
+                - link:
+                  - /url: javascript:;
+                  - img [ref=f1e115] [cursor=pointer]
+      - generic [ref=e1344]:
+        - heading "相关搜索" [level=6] [ref=e1345]
+        - list [ref=e1346]:
+          - listitem [ref=e1347]:
+            - link "普通托辊生产厂家" [ref=e1348] [cursor=pointer]:
+              - /url: https://www.baidu.com/s?word=普通托辊生产厂家&tn=SE_baikepcxf02_fcetbk02&pos=baike_pc_turbo_1767&ori_sid=07a62b14c36d54a0
+          - listitem [ref=e1349]:
+            - link "婚介加盟哪家好" [ref=e1350] [cursor=pointer]:
+              - /url: https://www.baidu.com/s?word=婚介加盟哪家好&tn=SE_baikepcxf02_fcetbk02&pos=baike_pc_turbo_1767&ori_sid=07a62b14c36d54a0
+          - listitem [ref=e1351]:
+            - link "打呼噜能治好吗" [ref=e1352] [cursor=pointer]:
+              - /url: https://www.baidu.com/s?word=打呼噜能治好吗&tn=SE_baikepcxf02_fcetbk02&pos=baike_pc_turbo_1767&ori_sid=07a62b14c36d54a0
+          - listitem [ref=e1353]:
+            - link "声波电动牙刷" [ref=e1354] [cursor=pointer]:
+              - /url: https://www.baidu.com/s?word=声波电动牙刷&tn=SE_baikepcxf02_fcetbk02&pos=baike_pc_turbo_1767&ori_sid=07a62b14c36d54a0
+          - listitem [ref=e1355]:
+            - link "装抽油烟机" [ref=e1356] [cursor=pointer]:
+              - /url: https://www.baidu.com/s?word=装抽油烟机&tn=SE_baikepcxf02_fcetbk02&pos=baike_pc_turbo_1767&ori_sid=07a62b14c36d54a0
+          - listitem [ref=e1357]:
+            - link "西点蛋糕培训" [ref=e1358] [cursor=pointer]:
+              - /url: https://www.baidu.com/s?word=西点蛋糕培训&tn=SE_baikepcxf02_fcetbk02&pos=baike_pc_turbo_1767&ori_sid=07a62b14c36d54a0
+          - listitem [ref=e1359]:
+            - link "双屏笔记本" [ref=e1360] [cursor=pointer]:
+              - /url: https://www.baidu.com/s?word=双屏笔记本&tn=SE_baikepcxf02_fcetbk02&pos=baike_pc_turbo_1767&ori_sid=07a62b14c36d54a0
+    - generic [ref=e1361]:
+      - generic [ref=e1362]:
+        - generic [ref=e1363]:
+          - generic [ref=e1364]:
+            - img [ref=e1365]
+            - text: 新手上路
+          - generic [ref=e1368]:
+            - link "成长任务" [ref=e1369] [cursor=pointer]:
+              - /url: /usercenter/tasks#guide
+            - link "编辑入门" [ref=e1370] [cursor=pointer]:
+              - /url: /help#main01
+            - link "编辑规则" [ref=e1371] [cursor=pointer]:
+              - /url: /help#main06
+            - link "本人编辑 new" [ref=e1372] [cursor=pointer]:
+              - /url: /item/百度百科：本人词条编辑服务/22442459?bk_fr=pcFooter
+              - text: 本人编辑
+              - img "new" [ref=e1373]
+        - generic [ref=e1374]:
+          - generic [ref=e1375]:
+            - img [ref=e1376]
+            - text: 我有疑问
+          - generic [ref=e1378]:
+            - generic [ref=e1379] [cursor=pointer]: 内容质疑
+            - link "在线客服" [ref=e1380] [cursor=pointer]:
+              - /url: https://ufosdk.baidu.com/bailingPC/getEntryPath/aKo-PBP84zlnBbgvj2STxzZNwlrmWT8XVd-PzIQ3C-c=
+            - link "官方贴吧" [ref=e1381] [cursor=pointer]:
+              - /url: http://tieba.baidu.com/f?ie=utf-8&fr=bks0000&kw=%E7%99%BE%E5%BA%A6%E7%99%BE%E7%A7%91
+            - generic [ref=e1382] [cursor=pointer]: 意见反馈
+        - generic [ref=e1383]:
+          - generic [ref=e1384]:
+            - img [ref=e1385]
+            - text: 投诉建议
+          - generic [ref=e1388]:
+            - link "举报不良信息" [ref=e1389] [cursor=pointer]:
+              - /url: http://help.baidu.com/newadd?prod_id=10&category=1
+            - link "未通过词条申诉" [ref=e1390] [cursor=pointer]:
+              - /url: http://help.baidu.com/newadd?prod_id=10&category=2
+            - link "投诉侵权信息" [ref=e1391] [cursor=pointer]:
+              - /url: http://help.baidu.com/newadd?prod_id=10&category=6
+            - link "封禁查询与解封" [ref=e1392] [cursor=pointer]:
+              - /url: http://help.baidu.com/newadd?prod_id=10&category=5
+      - generic [ref=e1393]:
+        - paragraph [ref=e1394]:
+          - text: ©2026 Baidu
+          - link "使用百度前必读" [ref=e1395] [cursor=pointer]:
+            - /url: http://www.baidu.com/duty/
+          - text: "|"
+          - link "百科协议" [ref=e1396] [cursor=pointer]:
+            - /url: http://help.baidu.com/question?prod_en=baike&class=89&id=1637
+          - text: "|"
+          - link "隐私政策" [ref=e1397] [cursor=pointer]:
+            - /url: http://help.baidu.com/question?prod_id=10&class=690&id=1001779
+          - text: "|"
+          - link "百度百科合作平台" [ref=e1398] [cursor=pointer]:
+            - /url: /operation/cooperation
+          - text: "|"
+          - link "京ICP证030173号" [ref=e1399] [cursor=pointer]:
+            - /url: https://beian.miit.gov.cn/
+          - img [ref=e1400]
+        - paragraph [ref=e1401]:
+          - link "京公网安备11000002000001号" [ref=e1402] [cursor=pointer]:
+            - /url: http://www.beian.gov.cn/portal/registerSystemInfo?recordcode=11000002000001
+            - text: 京公网安备11000002000001号
+  - generic:
+    - generic:
+      - generic:
+        - generic:
+          - generic:
+            - text: 订阅词条
+            - generic: 0人已订阅
+        - generic:
+          - generic: 可以前往个人中心-订阅词条查看所有已订阅词条
+          - generic:
+            - generic:
+              - generic:
+                - generic: 词条内容更新
+                - generic: 当词条有内容变更时，将通过短信和百科站内信通知您
+              - generic:
+                - img
+            - generic:
+              - generic:
+                - generic: 词条热门讨论
+                - generic: 当词条有热门讨论时，将通过短信和百科站内信通知您
+              - generic:
+                - img
+          - generic: 确认订阅
+  - generic:
+    - generic:
+      - generic:
+        - generic: 是否取消订阅更新？
+        - generic: 取消订阅后将无法收到当前词条的内容或讨论的更新
+        - generic:
+          - generic: 取消订阅
+          - generic: 再想想

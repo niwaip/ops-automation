@@ -4,7 +4,7 @@ export type ControlMode = 'AGENT_RUNNING' | 'HUMAN_CONTROL';
 
 // Worker Endpoints
 export interface WorkerEndpoints {
-  novnc: string;
+  novnc?: string;
   cdp: string;
   vnc?: string;
 }

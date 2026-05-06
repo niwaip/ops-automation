@@ -4,7 +4,7 @@ import { RedisService } from '../lock/redis.service';
 import { LockService } from '../lock/lock.service';
 import { AllocationService } from '../allocation/allocation.service';
 import { FreezeService } from '../freeze/freeze.service';
-import { TemplateClient } from '../template/template.client';
+import { TemplateClient, TemplateParamsSchema } from '../template/template.client';
 import { CdpExecutor, TemplateStep } from '../execution/cdp.executor';
 import {
   Session,
@@ -20,6 +20,9 @@ import {
 
 // Session TTL: 86400 seconds (24 hours)
 const SESSION_TTL_SECONDS = 86400;
+const STEP_MESSAGE_MAX_LENGTH = 12000;
+const STEP_TEXT_MAX_LENGTH = 12000;
+const STEP_HTML_MAX_LENGTH = 120000;
 
 // Step result interface
 export interface StepResult {
@@ -48,6 +51,138 @@ export class SessionService {
     private readonly cdpExecutor: CdpExecutor,
   ) {}
 
+  private buildParamDefaultBindingMap(
+    paramsSchema?: TemplateParamsSchema,
+    requestParams: Record<string, unknown> = {},
+  ): Map<string, string> {
+    const candidates = new Map<string, string[]>();
+    const properties = paramsSchema?.properties || {};
+
+    for (const [paramName, schema] of Object.entries(properties)) {
+      if (requestParams[paramName] === undefined || schema.default === undefined) {
+        continue;
+      }
+
+      for (const bindingKey of this.toBindingKeys(schema.default)) {
+        const paramNames = candidates.get(bindingKey) || [];
+        paramNames.push(paramName);
+        candidates.set(bindingKey, paramNames);
+      }
+    }
+
+    const bindingMap = new Map<string, string>();
+    for (const [bindingKey, paramNames] of candidates.entries()) {
+      if (paramNames.length === 1) {
+        bindingMap.set(bindingKey, paramNames[0]);
+      }
+    }
+
+    return bindingMap;
+  }
+
+  private toBindingKeys(value: unknown): string[] {
+    if (value === null) {
+      return ['null'];
+    }
+
+    if (Array.isArray(value) || typeof value === 'object') {
+      return [`json:${JSON.stringify(value)}`];
+    }
+
+    const keys = [`strict:${typeof value}:${String(value)}`];
+    if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
+      keys.push(`scalar:${String(value)}`);
+    }
+    return [...new Set(keys)];
+  }
+
+  private rewriteLegacyTemplateValue(value: unknown, bindingMap: Map<string, string>): unknown {
+    if (typeof value === 'string') {
+      if (value.includes('${')) {
+        return value;
+      }
+
+      const paramName = this.toBindingKeys(value)
+        .map((key) => bindingMap.get(key))
+        .find((binding) => Boolean(binding));
+      return paramName ? `\${${paramName}}` : value;
+    }
+
+    if (typeof value === 'number' || typeof value === 'boolean') {
+      const paramName = this.toBindingKeys(value)
+        .map((key) => bindingMap.get(key))
+        .find((binding) => Boolean(binding));
+      return paramName ? `\${${paramName}}` : value;
+    }
+
+    if (Array.isArray(value)) {
+      return value.map((item) => this.rewriteLegacyTemplateValue(item, bindingMap));
+    }
+
+    if (value && typeof value === 'object') {
+      return Object.fromEntries(
+        Object.entries(value).map(([key, entryValue]) => [
+          key,
+          this.rewriteLegacyTemplateValue(entryValue, bindingMap),
+        ]),
+      );
+    }
+
+    return value;
+  }
+
+  private normalizeTemplateSteps(
+    steps: TemplateStep[],
+    paramsSchema?: TemplateParamsSchema,
+    requestParams: Record<string, unknown> = {},
+  ): TemplateStep[] {
+    const bindingMap = this.buildParamDefaultBindingMap(paramsSchema, requestParams);
+    if (bindingMap.size === 0) {
+      return steps;
+    }
+
+    return steps.map((step) => ({
+      ...step,
+      params: step.params
+        ? (this.rewriteLegacyTemplateValue(step.params, bindingMap) as Record<string, unknown>)
+        : step.params,
+    }));
+  }
+
+  private truncateField(value: string | undefined, maxLength: number, suffix: string): string | undefined {
+    if (!value || value.length <= maxLength) {
+      return value;
+    }
+
+    return `${value.slice(0, maxLength)}\n${suffix}`;
+  }
+
+  private compactHtml(html?: string): string | undefined {
+    if (!html) {
+      return html;
+    }
+
+    const sanitized = html
+      .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
+      .replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, '')
+      .replace(/data:image\/[^;]+;base64,[A-Za-z0-9+/=]+/g, 'data:image/omitted;base64,[truncated]');
+
+    if (sanitized.length <= STEP_HTML_MAX_LENGTH) {
+      return sanitized;
+    }
+
+    return `${sanitized.slice(0, STEP_HTML_MAX_LENGTH)}\n<!-- html truncated -->`;
+  }
+
+  private compactStepResult(step: StepResult): StepResult {
+    return {
+      ...step,
+      message: this.truncateField(step.message, STEP_MESSAGE_MAX_LENGTH, '[message truncated]'),
+      text: this.truncateField(step.text, STEP_TEXT_MAX_LENGTH, '[text truncated]'),
+      html: this.compactHtml(step.html),
+    };
+  }
+
   /**
    * Create a new session
    * 1. Acquire profile write lock
@@ -68,7 +203,7 @@ export class SessionService {
     // }
 
     // Step 2: Allocate a worker
-    const workerInfo = await this.allocationService.allocateWorker(sessionId);
+    const workerInfo = await this.allocationService.allocateWorker(sessionId, request.user_id);
 
     if (!workerInfo) {
       // No workers available - release lock and throw error
@@ -98,7 +233,9 @@ export class SessionService {
 
     // Add endpoints
     if (workerInfo.endpoints) {
-      sessionData.novnc_url = workerInfo.endpoints.novnc;
+      if (workerInfo.endpoints.novnc) {
+        sessionData.novnc_url = workerInfo.endpoints.novnc;
+      }
       sessionData.cdp_url = workerInfo.endpoints.cdp;
       if (workerInfo.endpoints.vnc) {
         sessionData.vnc_url = workerInfo.endpoints.vnc;
@@ -158,23 +295,41 @@ export class SessionService {
     // Get template and execute all steps
     const template = await this.templateClient.getTemplate(request.template_id);
     const totalSteps = template?.steps?.length || 0;
+    const executionBackend = typeof template?.config?.backend === 'string'
+      ? template.config.backend
+      : 'legacy';
 
     if (template && template.steps && template.steps.length > 0) {
+      const normalizedSteps = this.normalizeTemplateSteps(
+        template.steps as TemplateStep[],
+        template.params_schema,
+        request.params || {},
+      );
+
       // Execute all steps with parameter substitution
       this.logger.log(`Executing ${template.steps.length} steps for session ${sessionId} with params: ${JSON.stringify(request.params)}`);
 
       const results = await this.cdpExecutor.executeSteps(
-        template.steps as TemplateStep[],
+        normalizedSteps,
         sessionId,
         request.params || {},
+        executionBackend,
       );
+
+      const finalStateResult = await this.cdpExecutor.captureFinalState(
+        sessionId,
+        executionBackend,
+      );
+      if (finalStateResult.success || finalStateResult.screenshot || finalStateResult.html || finalStateResult.text) {
+        results.push(finalStateResult);
+      }
 
       // Store step results in Redis
       const stepsKey = `session:${sessionId}:steps`;
       const stepResults: StepResult[] = results.map((r, i) => ({
         step_id: r.step_id,
         step_index: i,
-        action: r.action || template.steps[i].action,
+        action: r.action || normalizedSteps[i].action,
         success: r.success,
         error: r.error,
         message: r.message,
@@ -182,7 +337,7 @@ export class SessionService {
         text: r.text,
         html: r.html,
         timestamp: Date.now(),
-      }));
+      })).map((step) => this.compactStepResult(step));
       await this.redisService.set(stepsKey, JSON.stringify(stepResults), SESSION_TTL_SECONDS);
 
       const failedSteps = results.filter(r => !r.success);
@@ -202,6 +357,9 @@ export class SessionService {
         });
 
         this.logger.error(`Session ${sessionId} failed at step ${lastFailedStep.step_id}`);
+        if (currentSession.worker_ref) {
+          await this.allocationService.releaseWorker(currentSession.worker_ref);
+        }
       } else {
         this.logger.log(`All ${results.length} steps completed successfully`);
         // Update session state to CLOSED after all steps completed
@@ -209,12 +367,15 @@ export class SessionService {
           state: 'CLOSED',
           template_id: request.template_id,
           params: JSON.stringify(request.params),
-          current_step: `step_${totalSteps - 1}`,
-          step_index: String(totalSteps - 1),
+          current_step: finalStateResult.success ? 'final_state' : `step_${totalSteps - 1}`,
+          step_index: String(finalStateResult.success ? results.length - 1 : totalSteps - 1),
           last_activity: String(Date.now()),
         });
 
-        this.logger.log(`Session ${sessionId} completed all ${totalSteps} steps`);
+        this.logger.log(`Session ${sessionId} completed all ${results.length} recorded steps`);
+        if (currentSession.worker_ref) {
+          await this.allocationService.releaseWorker(currentSession.worker_ref);
+        }
       }
     } else {
       // No steps to execute, just update state
@@ -260,6 +421,15 @@ export class SessionService {
 
     if (!freezeResult.success) {
       throw new BadRequestException(`Failed to freeze session ${sessionId}`);
+    }
+
+    if (currentSession.worker_ref) {
+      const workerInfo = await this.allocationService.getWorkerInfo(currentSession.worker_ref, true);
+      if (workerInfo?.endpoints?.novnc) {
+        await this.redisService.hmset(`session:${sessionId}`, {
+          novnc_url: workerInfo.endpoints.novnc,
+        });
+      }
     }
 
     this.logger.log(`Session takeover: session=${sessionId}, reason=${request.reason}`);
@@ -382,7 +552,7 @@ export class SessionService {
     }
 
     try {
-      return JSON.parse(stepsData) as StepResult[];
+      return (JSON.parse(stepsData) as StepResult[]).map((step) => this.compactStepResult(step));
     } catch (e) {
       this.logger.error(`Failed to parse step results for session ${sessionId}`);
       return [];
@@ -467,11 +637,13 @@ export class SessionService {
     }
 
     // Build endpoints
-    const endpoints: WorkerEndpoints | undefined = data.novnc_url ? {
-      novnc: data.novnc_url,
-      cdp: data.cdp_url || '',
-      vnc: data.vnc_url,
-    } : undefined;
+    const endpoints: WorkerEndpoints | undefined = data.cdp_url
+      ? {
+          cdp: data.cdp_url || '',
+          novnc: data.novnc_url || undefined,
+          vnc: data.vnc_url,
+        }
+      : undefined;
 
     // Parse params if exists, but tolerate malformed historical data.
     let params: Record<string, unknown> | undefined;

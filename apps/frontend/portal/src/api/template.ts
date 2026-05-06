@@ -50,6 +50,8 @@ export interface CreateTemplateRequest {
   description?: string;
   params_schema?: TemplateParamsSchema;
   steps?: TemplateStep[];
+  guards?: Record<string, unknown>[];
+  config?: Record<string, unknown>;
   created_by: string;
 }
 
@@ -59,6 +61,8 @@ export interface UpdateTemplateRequest {
   description?: string;
   params_schema?: TemplateParamsSchema;
   steps?: TemplateStep[];
+  guards?: Record<string, unknown>[];
+  config?: Record<string, unknown>;
 }
 
 export interface TemplateQueryParams {

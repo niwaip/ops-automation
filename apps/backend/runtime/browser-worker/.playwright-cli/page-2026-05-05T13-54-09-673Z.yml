@@ -1,0 +1,578 @@
+- generic [active] [ref=e1]:
+  - link "欢迎进入 百度一下，你就知道，盲人用户进入读屏幕模式请按快捷键Ctrl加Alt加R；阅读详细操作说明请按快捷键Ctrl加Alt加问号键。":
+    - /url: javascript:void(0)
+  - generic [ref=e2]:
+    - generic [ref=e3]:
+      - generic [ref=e146]:
+        - link "百度首页" [ref=e147] [cursor=pointer]:
+          - /url: /
+        - link "设置" [ref=e148] [cursor=pointer]:
+          - /url: javascript:;
+        - link "登录" [ref=e149] [cursor=pointer]:
+          - /url: https://passport.baidu.com/v2/?login&tpl=mn&u=http%3A%2F%2Fwww.baidu.com%2F&sms=5
+      - generic [ref=e23]:
+        - generic:
+          - link "到百度首页" [ref=e151] [cursor=pointer]:
+            - /url: /
+            - img "到百度首页" [ref=e152]
+          - generic [ref=e216]:
+            - textbox [ref=e218]: c'li
+            - generic [ref=e220]:
+              - generic [ref=e221]:
+                - img [ref=e223] [cursor=pointer]
+                - img [ref=e233] [cursor=pointer]
+                - generic [ref=e236]:
+                  - img [ref=e240] [cursor=pointer]
+                  - img [ref=e245] [cursor=pointer]
+              - button "百度一下" [ref=e249] [cursor=pointer]
+    - generic [ref=e253]:
+      - link [ref=e254] [cursor=pointer]:
+        - /url: https://chat.baidu.com/search?word=c%27li&dyTabStr=MTIsMCwzLDEsMiwxMyw3LDYsNSw5&pd=csaitab&setype=csaitab&extParamsJson=%7B%22enter_type%22%3A%22search_a_tab%22%2C%22sa%22%3A%22vs_tab%22%2C%22apagelid%22%3A%2211323315134238021868%22%2C%22ori_lid%22%3A%2211323315134238021868%22%7D
+        - img [ref=e255]
+      - generic [ref=e256]: 网页
+      - link "图片" [ref=e257] [cursor=pointer]:
+        - /url: http://image.baidu.com/i?tn=baiduimage&ps=1&ct=201326592&lm=-1&cl=2&nc=1&ie=utf-8&lid=9d247f1f000fd8ec&dyTabStr=MTIsMCwzLDEsMiwxMyw3LDYsNSw5&word=c%27li
+      - link "资讯" [ref=e258] [cursor=pointer]:
+        - /url: https://www.baidu.com/s?rtt=1&bsst=1&cl=2&tn=news&ie=utf-8&word=c%27li
+      - link "视频" [ref=e259] [cursor=pointer]:
+        - /url: /sf/vsearch?pd=video&tn=vsearch&lid=9d247f1f000fd8ec&ie=utf-8&wd=c%27li&rsv_spt=7&rsv_bp=1&f=8&oq=c%27li&rsv_pq=9d247f1f000fd8ec&rsv_t=1610BUbJtJMStAkQ5sq45zTxu63Wvfa9BOJrF6yibtagIceluunMYctBiyc
+      - link "笔记" [ref=e260] [cursor=pointer]:
+        - /url: https://www.baidu.com/s?pd=note&rpf=pc&dyTabStr=MTIsMCwzLDEsMiwxMyw3LDYsNSw5&word=c%27li
+      - link "地图" [ref=e261] [cursor=pointer]:
+        - /url: https://map.baidu.com/?newmap=1&ie=utf-8&from=pstab&s=s%26wd%3Dc%27li
+      - link "贴吧" [ref=e262] [cursor=pointer]:
+        - /url: http://tieba.baidu.com/f?fr=wwwt&ie=utf-8&dyTabStr=MTIsMCwzLDEsMiwxMyw3LDYsNSw5&kw=c%27li
+      - link "文库" [ref=e263] [cursor=pointer]:
+        - /url: http://wenku.baidu.com/search?lm=0&od=0&ie=utf-8&dyTabStr=MTIsMCwzLDEsMiwxMyw3LDYsNSw5&word=c%27li
+      - link "更多" [ref=e264] [cursor=pointer]:
+        - /url: http://www.baidu.com/more/
+      - generic [ref=e265] [cursor=pointer]: 搜索工具
+    - generic [ref=e266]:
+      - generic [ref=e267]:
+        - table [ref=e269]:
+          - rowgroup [ref=e270]:
+            - row "相关搜索  c++程序设计  c语言程序设计cap  lilcec是什么  c li c  c语言ioctl函数  现代C++    换一换 热搜榜 民生榜 财经榜  总书记对青年学子的殷切期待 1 机场提示禁止携带越王勾践剑登机 热 2 女乞丐NPC被游客们投喂零食走红 热 3 小长假里看中国 4 史上最严控烟来了 哪座城市烟味最淡 热 5 杭州“挖鼻孔”长颈鹿走红 6 浏阳爆炸事故将成立国务院调查组 热 7 套现约455亿 李嘉诚又卖了 8 沉浸式陪伴观影暗藏色情服务 热 9 军犬救援演练发现是熟人扭头就走 热 10 高速上一车辆主副驾疑似全在睡觉 热 11 网传“驻马店突发火情”系谣言 12 大连现“全李酒店” 曾是全季酒店 13 谢娜首场演唱会开唱 新 14 外国男子景区未戴面具被罚囚笼车巡游 热 15 上海一女子200多元买刮刮乐中100万" [ref=e271]:
+              - cell "相关搜索  c++程序设计  c语言程序设计cap  lilcec是什么  c li c  c语言ioctl函数  现代C++    换一换 热搜榜 民生榜 财经榜  总书记对青年学子的殷切期待 1 机场提示禁止携带越王勾践剑登机 热 2 女乞丐NPC被游客们投喂零食走红 热 3 小长假里看中国 4 史上最严控烟来了 哪座城市烟味最淡 热 5 杭州“挖鼻孔”长颈鹿走红 6 浏阳爆炸事故将成立国务院调查组 热 7 套现约455亿 李嘉诚又卖了 8 沉浸式陪伴观影暗藏色情服务 热 9 军犬救援演练发现是熟人扭头就走 热 10 高速上一车辆主副驾疑似全在睡觉 热 11 网传“驻马店突发火情”系谣言 12 大连现“全李酒店” 曾是全季酒店 13 谢娜首场演唱会开唱 新 14 外国男子景区未戴面具被罚囚笼车巡游 热 15 上海一女子200多元买刮刮乐中100万" [ref=e272]:
+                - generic [ref=e273]:
+                  - generic [ref=e279]:
+                    - generic [ref=e281]: 相关搜索
+                    - generic [ref=e282]:
+                      - link " c++程序设计" [ref=e285] [cursor=pointer]:
+                        - /url: /s?rsv_idx=1&wd=c%2B%2B%E7%A8%8B%E5%BA%8F%E8%AE%BE%E8%AE%A1&fenlei=256&usm=2&ie=utf-8&rsv_pq=9d247f1f000fd8ec&oq=c'li&rsv_t=d2e0wf9kjOx1rTgkD7xv4NLtNnrqOrGDW6KUuKrW6Y0TZpI5MhuzMCNQ3Kc&rfqid=9d247f1f000fd8ec&rsv_dl=0_prs_28616_1&rq=c'li&rsf=101636803
+                        - generic [ref=e286]:
+                          - generic [ref=e287]: 
+                          - generic [ref=e288]: c++程序设计
+                      - link " c语言程序设计cap" [ref=e291] [cursor=pointer]:
+                        - /url: /s?rsv_idx=1&wd=c%E8%AF%AD%E8%A8%80%E7%A8%8B%E5%BA%8F%E8%AE%BE%E8%AE%A1cap&fenlei=256&usm=2&ie=utf-8&rsv_pq=9d247f1f000fd8ec&oq=c'li&rsv_t=d2e0wf9kjOx1rTgkD7xv4NLtNnrqOrGDW6KUuKrW6Y0TZpI5MhuzMCNQ3Kc&rfqid=9d247f1f000fd8ec&rsv_dl=0_prs_28616_2&rq=c'li&rsf=101633403
+                        - generic [ref=e292]:
+                          - generic [ref=e293]: 
+                          - generic [ref=e294]: c语言程序设计cap
+                      - link " lilcec是什么" [ref=e297] [cursor=pointer]:
+                        - /url: /s?rsv_idx=1&wd=lilcec%E6%98%AF%E4%BB%80%E4%B9%88&fenlei=256&usm=2&ie=utf-8&rsv_pq=9d247f1f000fd8ec&oq=c'li&rsv_t=d2e0wf9kjOx1rTgkD7xv4NLtNnrqOrGDW6KUuKrW6Y0TZpI5MhuzMCNQ3Kc&rfqid=9d247f1f000fd8ec&rsv_dl=0_prs_28616_3&rq=c'li&rsf=101636803
+                        - generic [ref=e298]:
+                          - generic [ref=e299]: 
+                          - generic [ref=e300]: lilcec是什么
+                      - link " c li c" [ref=e303] [cursor=pointer]:
+                        - /url: /s?rsv_idx=1&wd=c%E2%80%86li%E2%80%86c&fenlei=256&usm=2&ie=utf-8&rsv_pq=9d247f1f000fd8ec&oq=c'li&rsv_t=d2e0wf9kjOx1rTgkD7xv4NLtNnrqOrGDW6KUuKrW6Y0TZpI5MhuzMCNQ3Kc&rfqid=9d247f1f000fd8ec&rsv_dl=0_prs_28616_4&rq=c'li&rsf=101631202
+                        - generic [ref=e304]:
+                          - generic [ref=e305]: 
+                          - generic [ref=e306]: c li c
+                      - link " c语言ioctl函数" [ref=e309] [cursor=pointer]:
+                        - /url: /s?rsv_idx=1&wd=c%E8%AF%AD%E8%A8%80ioctl%E5%87%BD%E6%95%B0&fenlei=256&usm=2&ie=utf-8&rsv_pq=9d247f1f000fd8ec&oq=c'li&rsv_t=b06f30W3YgFMUYOg2%2FDfqcTuAo4849dJrH%2FSmWuDFhqqvf88%2F4YwBCLoyuQ&rfqid=9d247f1f000fd8ec&rsv_dl=0_prs_28616_5&rq=c'li&rsf=101633403
+                        - generic [ref=e310]:
+                          - generic [ref=e311]: 
+                          - generic [ref=e312]: c语言ioctl函数
+                      - link " 现代C++" [ref=e315] [cursor=pointer]:
+                        - /url: /s?rsv_idx=1&wd=%E7%8E%B0%E4%BB%A3C%2B%2B&fenlei=256&usm=2&ie=utf-8&rsv_pq=9d247f1f000fd8ec&oq=c'li&rsv_t=b06f30W3YgFMUYOg2%2FDfqcTuAo4849dJrH%2FSmWuDFhqqvf88%2F4YwBCLoyuQ&rfqid=9d247f1f000fd8ec&rsv_dl=0_prs_28616_6&rq=c'li&rsf=101633403
+                        - generic [ref=e316]:
+                          - generic [ref=e317]: 
+                          - generic [ref=e318]: 现代C++
+                  - generic [ref=e322]:
+                    - generic "百度热搜" [ref=e323]:
+                      - link " " [ref=e324] [cursor=pointer]:
+                        - /url: https://top.baidu.com/board?platform=pc&sa=pcindex_a_right
+                        - generic [ref=e325]: 
+                        - generic [ref=e326]: 
+                      - link " 换一换" [ref=e328] [cursor=pointer]:
+                        - /url: javascript:void(0);
+                        - generic [ref=e329]: 
+                        - text: 换一换
+                    - generic [ref=e330]:
+                      - generic [ref=e331] [cursor=pointer]: 热搜榜
+                      - generic [ref=e332] [cursor=pointer]: 民生榜
+                      - generic [ref=e333] [cursor=pointer]: 财经榜
+                    - generic [ref=e335]:
+                      - generic [ref=e337]:
+                        - generic [ref=e339]: 
+                        - link "总书记对青年学子的殷切期待" [ref=e340] [cursor=pointer]:
+                          - /url: /s?rsv_idx=1&wd=%E6%80%BB%E4%B9%A6%E8%AE%B0%E5%AF%B9%E9%9D%92%E5%B9%B4%E5%AD%A6%E5%AD%90%E7%9A%84%E6%AE%B7%E5%88%87%E6%9C%9F%E5%BE%85&fenlei=256&usm=2&ie=utf-8&rsv_pq=9d247f1f000fd8ec&oq=c'li&rsv_t=b06f30W3YgFMUYOg2%2FDfqcTuAo4849dJrH%2FSmWuDFhqqvf88%2F4YwBCLoyuQ&rqid=9d247f1f000fd8ec&rsf=11c3330ce62e26388ccfccb9b5419650_1_15_1&rsv_dl=0_right_fyb_pchot_20811&sa=0_right_fyb_pchot_20811
+                      - generic [ref=e342]:
+                        - generic [ref=e343]: "1"
+                        - link "机场提示禁止携带越王勾践剑登机" [ref=e344] [cursor=pointer]:
+                          - /url: /s?rsv_idx=1&wd=%E6%9C%BA%E5%9C%BA%E6%8F%90%E7%A4%BA%E7%A6%81%E6%AD%A2%E6%90%BA%E5%B8%A6%E8%B6%8A%E7%8E%8B%E5%8B%BE%E8%B7%B5%E5%89%91%E7%99%BB%E6%9C%BA&fenlei=256&usm=2&ie=utf-8&rsv_pq=9d247f1f000fd8ec&oq=c'li&rsv_t=b06f30W3YgFMUYOg2%2FDfqcTuAo4849dJrH%2FSmWuDFhqqvf88%2F4YwBCLoyuQ&rqid=9d247f1f000fd8ec&rsf=11c3330ce62e26388ccfccb9b5419650_1_15_2&rsv_dl=0_right_fyb_pchot_20811&sa=0_right_fyb_pchot_20811
+                        - generic [ref=e345]: 热
+                      - generic [ref=e347]:
+                        - generic [ref=e348]: "2"
+                        - link "女乞丐NPC被游客们投喂零食走红" [ref=e349] [cursor=pointer]:
+                          - /url: /s?rsv_idx=1&wd=%E5%A5%B3%E4%B9%9E%E4%B8%90NPC%E8%A2%AB%E6%B8%B8%E5%AE%A2%E4%BB%AC%E6%8A%95%E5%96%82%E9%9B%B6%E9%A3%9F%E8%B5%B0%E7%BA%A2&fenlei=256&usm=2&ie=utf-8&rsv_pq=9d247f1f000fd8ec&oq=c'li&rsv_t=b06f30W3YgFMUYOg2%2FDfqcTuAo4849dJrH%2FSmWuDFhqqvf88%2F4YwBCLoyuQ&rqid=9d247f1f000fd8ec&rsf=11c3330ce62e26388ccfccb9b5419650_1_15_3&rsv_dl=0_right_fyb_pchot_20811&sa=0_right_fyb_pchot_20811
+                        - generic [ref=e350]: 热
+                      - generic [ref=e352]:
+                        - generic [ref=e353]: "3"
+                        - link "小长假里看中国" [ref=e354] [cursor=pointer]:
+                          - /url: /s?rsv_idx=1&wd=%E5%B0%8F%E9%95%BF%E5%81%87%E9%87%8C%E7%9C%8B%E4%B8%AD%E5%9B%BD&fenlei=256&usm=2&ie=utf-8&rsv_pq=9d247f1f000fd8ec&oq=c'li&rsv_t=b06f30W3YgFMUYOg2%2FDfqcTuAo4849dJrH%2FSmWuDFhqqvf88%2F4YwBCLoyuQ&rqid=9d247f1f000fd8ec&rsf=11c3330ce62e26388ccfccb9b5419650_1_15_4&rsv_dl=0_right_fyb_pchot_20811&sa=0_right_fyb_pchot_20811
+                      - generic [ref=e356]:
+                        - generic [ref=e357]: "4"
+                        - link "史上最严控烟来了 哪座城市烟味最淡" [ref=e358] [cursor=pointer]:
+                          - /url: /s?rsv_idx=1&wd=%E5%8F%B2%E4%B8%8A%E6%9C%80%E4%B8%A5%E6%8E%A7%E7%83%9F%E6%9D%A5%E4%BA%86%20%E5%93%AA%E5%BA%A7%E5%9F%8E%E5%B8%82%E7%83%9F%E5%91%B3%E6%9C%80%E6%B7%A1&fenlei=256&usm=2&ie=utf-8&rsv_pq=9d247f1f000fd8ec&oq=c'li&rsv_t=b06f30W3YgFMUYOg2%2FDfqcTuAo4849dJrH%2FSmWuDFhqqvf88%2F4YwBCLoyuQ&rqid=9d247f1f000fd8ec&rsf=11c3330ce62e26388ccfccb9b5419650_1_15_5&rsv_dl=0_right_fyb_pchot_20811&sa=0_right_fyb_pchot_20811
+                        - generic [ref=e359]: 热
+                      - generic [ref=e361]:
+                        - generic [ref=e362]: "5"
+                        - link "杭州“挖鼻孔”长颈鹿走红" [ref=e363] [cursor=pointer]:
+                          - /url: /s?rsv_idx=1&wd=%E6%9D%AD%E5%B7%9E%E2%80%9C%E6%8C%96%E9%BC%BB%E5%AD%94%E2%80%9D%E9%95%BF%E9%A2%88%E9%B9%BF%E8%B5%B0%E7%BA%A2&fenlei=256&usm=2&ie=utf-8&rsv_pq=9d247f1f000fd8ec&oq=c'li&rsv_t=b06f30W3YgFMUYOg2%2FDfqcTuAo4849dJrH%2FSmWuDFhqqvf88%2F4YwBCLoyuQ&rqid=9d247f1f000fd8ec&rsf=11c3330ce62e26388ccfccb9b5419650_1_15_6&rsv_dl=0_right_fyb_pchot_20811&sa=0_right_fyb_pchot_20811
+                      - generic [ref=e365]:
+                        - generic [ref=e366]: "6"
+                        - link "浏阳爆炸事故将成立国务院调查组" [ref=e367] [cursor=pointer]:
+                          - /url: /s?rsv_idx=1&wd=%E6%B5%8F%E9%98%B3%E7%88%86%E7%82%B8%E4%BA%8B%E6%95%85%E5%B0%86%E6%88%90%E7%AB%8B%E5%9B%BD%E5%8A%A1%E9%99%A2%E8%B0%83%E6%9F%A5%E7%BB%84&fenlei=256&usm=2&ie=utf-8&rsv_pq=9d247f1f000fd8ec&oq=c'li&rsv_t=b06f30W3YgFMUYOg2%2FDfqcTuAo4849dJrH%2FSmWuDFhqqvf88%2F4YwBCLoyuQ&rqid=9d247f1f000fd8ec&rsf=11c3330ce62e26388ccfccb9b5419650_1_15_7&rsv_dl=0_right_fyb_pchot_20811&sa=0_right_fyb_pchot_20811
+                        - generic [ref=e368]: 热
+                      - generic [ref=e370]:
+                        - generic [ref=e371]: "7"
+                        - link "套现约455亿 李嘉诚又卖了" [ref=e372] [cursor=pointer]:
+                          - /url: /s?rsv_idx=1&wd=%E5%A5%97%E7%8E%B0%E7%BA%A6455%E4%BA%BF%20%E6%9D%8E%E5%98%89%E8%AF%9A%E5%8F%88%E5%8D%96%E4%BA%86&fenlei=256&usm=2&ie=utf-8&rsv_pq=9d247f1f000fd8ec&oq=c'li&rsv_t=b06f30W3YgFMUYOg2%2FDfqcTuAo4849dJrH%2FSmWuDFhqqvf88%2F4YwBCLoyuQ&rqid=9d247f1f000fd8ec&rsf=11c3330ce62e26388ccfccb9b5419650_1_15_8&rsv_dl=0_right_fyb_pchot_20811&sa=0_right_fyb_pchot_20811
+                      - generic [ref=e374]:
+                        - generic [ref=e375]: "8"
+                        - link "沉浸式陪伴观影暗藏色情服务" [ref=e376] [cursor=pointer]:
+                          - /url: /s?rsv_idx=1&wd=%E6%B2%89%E6%B5%B8%E5%BC%8F%E9%99%AA%E4%BC%B4%E8%A7%82%E5%BD%B1%E6%9A%97%E8%97%8F%E8%89%B2%E6%83%85%E6%9C%8D%E5%8A%A1&fenlei=256&usm=2&ie=utf-8&rsv_pq=9d247f1f000fd8ec&oq=c'li&rsv_t=b06f30W3YgFMUYOg2%2FDfqcTuAo4849dJrH%2FSmWuDFhqqvf88%2F4YwBCLoyuQ&rqid=9d247f1f000fd8ec&rsf=11c3330ce62e26388ccfccb9b5419650_1_15_9&rsv_dl=0_right_fyb_pchot_20811&sa=0_right_fyb_pchot_20811
+                        - generic [ref=e377]: 热
+                      - generic [ref=e379]:
+                        - generic [ref=e380]: "9"
+                        - link "军犬救援演练发现是熟人扭头就走" [ref=e381] [cursor=pointer]:
+                          - /url: /s?rsv_idx=1&wd=%E5%86%9B%E7%8A%AC%E6%95%91%E6%8F%B4%E6%BC%94%E7%BB%83%E5%8F%91%E7%8E%B0%E6%98%AF%E7%86%9F%E4%BA%BA%E6%89%AD%E5%A4%B4%E5%B0%B1%E8%B5%B0&fenlei=256&usm=2&ie=utf-8&rsv_pq=9d247f1f000fd8ec&oq=c'li&rsv_t=b06f30W3YgFMUYOg2%2FDfqcTuAo4849dJrH%2FSmWuDFhqqvf88%2F4YwBCLoyuQ&rqid=9d247f1f000fd8ec&rsf=11c3330ce62e26388ccfccb9b5419650_1_15_10&rsv_dl=0_right_fyb_pchot_20811&sa=0_right_fyb_pchot_20811
+                        - generic [ref=e382]: 热
+                      - generic [ref=e384]:
+                        - generic [ref=e385]: "10"
+                        - link "高速上一车辆主副驾疑似全在睡觉" [ref=e386] [cursor=pointer]:
+                          - /url: /s?rsv_idx=1&wd=%E9%AB%98%E9%80%9F%E4%B8%8A%E4%B8%80%E8%BD%A6%E8%BE%86%E4%B8%BB%E5%89%AF%E9%A9%BE%E7%96%91%E4%BC%BC%E5%85%A8%E5%9C%A8%E7%9D%A1%E8%A7%89&fenlei=256&usm=2&ie=utf-8&rsv_pq=9d247f1f000fd8ec&oq=c'li&rsv_t=b06f30W3YgFMUYOg2%2FDfqcTuAo4849dJrH%2FSmWuDFhqqvf88%2F4YwBCLoyuQ&rqid=9d247f1f000fd8ec&rsf=11c3330ce62e26388ccfccb9b5419650_1_15_11&rsv_dl=0_right_fyb_pchot_20811&sa=0_right_fyb_pchot_20811
+                        - generic [ref=e387]: 热
+                      - generic [ref=e389]:
+                        - generic [ref=e390]: "11"
+                        - link "网传“驻马店突发火情”系谣言" [ref=e391] [cursor=pointer]:
+                          - /url: /s?rsv_idx=1&wd=%E7%BD%91%E4%BC%A0%E2%80%9C%E9%A9%BB%E9%A9%AC%E5%BA%97%E7%AA%81%E5%8F%91%E7%81%AB%E6%83%85%E2%80%9D%E7%B3%BB%E8%B0%A3%E8%A8%80&fenlei=256&usm=2&ie=utf-8&rsv_pq=9d247f1f000fd8ec&oq=c'li&rsv_t=77f6JP%2ByNfJVqCCBEh5SgPfIuLaKtHFcZ5fQR9Dl80djWlixlhUO14AIxR4&rqid=9d247f1f000fd8ec&rsf=11c3330ce62e26388ccfccb9b5419650_1_15_12&rsv_dl=0_right_fyb_pchot_20811&sa=0_right_fyb_pchot_20811
+                      - generic [ref=e393]:
+                        - generic [ref=e394]: "12"
+                        - link "大连现“全李酒店” 曾是全季酒店" [ref=e395] [cursor=pointer]:
+                          - /url: /s?rsv_idx=1&wd=%E5%A4%A7%E8%BF%9E%E7%8E%B0%E2%80%9C%E5%85%A8%E6%9D%8E%E9%85%92%E5%BA%97%E2%80%9D%20%E6%9B%BE%E6%98%AF%E5%85%A8%E5%AD%A3%E9%85%92%E5%BA%97&fenlei=256&usm=2&ie=utf-8&rsv_pq=9d247f1f000fd8ec&oq=c'li&rsv_t=77f6JP%2ByNfJVqCCBEh5SgPfIuLaKtHFcZ5fQR9Dl80djWlixlhUO14AIxR4&rqid=9d247f1f000fd8ec&rsf=11c3330ce62e26388ccfccb9b5419650_1_15_13&rsv_dl=0_right_fyb_pchot_20811&sa=0_right_fyb_pchot_20811
+                      - generic [ref=e397]:
+                        - generic [ref=e398]: "13"
+                        - link "谢娜首场演唱会开唱" [ref=e399] [cursor=pointer]:
+                          - /url: /s?rsv_idx=1&wd=%E8%B0%A2%E5%A8%9C%E9%A6%96%E5%9C%BA%E6%BC%94%E5%94%B1%E4%BC%9A%E5%BC%80%E5%94%B1&fenlei=256&usm=2&ie=utf-8&rsv_pq=9d247f1f000fd8ec&oq=c'li&rsv_t=77f6JP%2ByNfJVqCCBEh5SgPfIuLaKtHFcZ5fQR9Dl80djWlixlhUO14AIxR4&rqid=9d247f1f000fd8ec&rsf=11c3330ce62e26388ccfccb9b5419650_1_15_14&rsv_dl=0_right_fyb_pchot_20811&sa=0_right_fyb_pchot_20811
+                        - generic [ref=e400]: 新
+                      - generic [ref=e402]:
+                        - generic [ref=e403]: "14"
+                        - link "外国男子景区未戴面具被罚囚笼车巡游" [ref=e404] [cursor=pointer]:
+                          - /url: /s?rsv_idx=1&wd=%E5%A4%96%E5%9B%BD%E7%94%B7%E5%AD%90%E6%99%AF%E5%8C%BA%E6%9C%AA%E6%88%B4%E9%9D%A2%E5%85%B7%E8%A2%AB%E7%BD%9A%E5%9B%9A%E7%AC%BC%E8%BD%A6%E5%B7%A1%E6%B8%B8&fenlei=256&usm=2&ie=utf-8&rsv_pq=9d247f1f000fd8ec&oq=c'li&rsv_t=77f6JP%2ByNfJVqCCBEh5SgPfIuLaKtHFcZ5fQR9Dl80djWlixlhUO14AIxR4&rqid=9d247f1f000fd8ec&rsf=11c3330ce62e26388ccfccb9b5419650_1_15_15&rsv_dl=0_right_fyb_pchot_20811&sa=0_right_fyb_pchot_20811
+                        - generic [ref=e405]: 热
+                      - generic [ref=e407]:
+                        - generic [ref=e408]: "15"
+                        - link "上海一女子200多元买刮刮乐中100万" [ref=e409] [cursor=pointer]:
+                          - /url: /s?rsv_idx=1&wd=%E4%B8%8A%E6%B5%B7%E4%B8%80%E5%A5%B3%E5%AD%90200%E5%A4%9A%E5%85%83%E4%B9%B0%E5%88%AE%E5%88%AE%E4%B9%90%E4%B8%AD100%E4%B8%87&fenlei=256&usm=2&ie=utf-8&rsv_pq=9d247f1f000fd8ec&oq=c'li&rsv_t=77f6JP%2ByNfJVqCCBEh5SgPfIuLaKtHFcZ5fQR9Dl80djWlixlhUO14AIxR4&rqid=9d247f1f000fd8ec&rsf=11c3330ce62e26388ccfccb9b5419650_16_30_16&rsv_dl=0_right_fyb_pchot_20811&sa=0_right_fyb_pchot_20811
+        - generic [ref=e410]:
+          - generic [ref=e412]:
+            - heading "C.LI(女包品牌) - 百度百科" [level=3] [ref=e413]:
+              - link "C.LI(女包品牌) - 百度百科" [ref=e414] [cursor=pointer]:
+                - /url: http://www.baidu.com/link?url=OeqYm11P3bh3q1RXgc3aFUVhLV0m7n7jLUQzPz040utjJkkdcECwuU31ZClKkalCijmwqd7nf9QZG6cdnzhSFK
+                - paragraph [ref=e417]:
+                  - generic [ref=e419]:
+                    - emphasis [ref=e420]: C
+                    - text: .
+                    - emphasis [ref=e421]: LI
+                    - text: (女包品牌) - 百度百科
+            - generic [ref=e425]:
+              - link [ref=e427] [cursor=pointer]:
+                - /url: http://www.baidu.com/link?url=OeqYm11P3bh3q1RXgc3aFUVhLV0m7n7jLUQzPz040utjJkkdcECwuU31ZClKkalCijmwqd7nf9QZG6cdnzhSFK
+              - generic [ref=e430]:
+                - paragraph [ref=e434]:
+                  - generic [ref=e436]:
+                    - emphasis [ref=e437]: C
+                    - text: .
+                    - emphasis [ref=e438]: LI
+                    - text: 是原创女包品牌，由杨洺、舒亚薇夫妇于2020年2月14日创立，隶属于河北春丽皮具有限公司。品牌以“Keep
+                    - emphasis [ref=e439]: C
+                    - text: .
+                    - emphasis [ref=e440]: LI
+                    - text: ，不止美力”为口号，并采用豹猫作为IP形象。其产品设计注重质感，融合装饰元素与环保理念，采用非动物皮草面料及24K电镀五金工艺。创始人出生于河北箱包世家，其...
+                  - generic [ref=e442]:
+                    - link "详情" [ref=e443] [cursor=pointer]:
+                      - /url: http://www.baidu.com/link?url=OeqYm11P3bh3q1RXgc3aFUVhLV0m7n7jLUQzPz040utjJkkdcECwuU31ZClKkalCijmwqd7nf9QZG6cdnzhSFK
+                    - link "" [ref=e444] [cursor=pointer]:
+                      - /url: http://www.baidu.com/link?url=OeqYm11P3bh3q1RXgc3aFUVhLV0m7n7jLUQzPz040utjJkkdcECwuU31ZClKkalCijmwqd7nf9QZG6cdnzhSFK
+                      - generic [ref=e445]: 
+                - generic [ref=e448]:
+                  - link "历史沿革" [ref=e450] [cursor=pointer]:
+                    - /url: http://www.baidu.com/link?url=mRM7N93Q3Hhn3u5kInP7Ho0lSO8VxRRvZF_IjLMkSTooDUcFmHC2RCCVlOleB3A7dgPFZbeH4dd6b1u0w47qy_
+                    - generic [ref=e451]: 历史沿革
+                  - link "企业治理" [ref=e453] [cursor=pointer]:
+                    - /url: http://www.baidu.com/link?url=mRM7N93Q3Hhn3u5kInP7Ho0lSO8VxRRvZF_IjLMkSTooDUcFmHC2RCCVlOleB3A7tQdZvZlt_BN0g5iPoPJzFq
+                    - generic [ref=e454]: 企业治理
+                  - link "主要产品" [ref=e456] [cursor=pointer]:
+                    - /url: http://www.baidu.com/link?url=mRM7N93Q3Hhn3u5kInP7Ho0lSO8VxRRvZF_IjLMkSTooDUcFmHC2RCCVlOleB3A7J19-o95IIkWmdy_iiaxQwq
+                    - generic [ref=e457]: 主要产品
+                  - link "经营状况" [ref=e459] [cursor=pointer]:
+                    - /url: http://www.baidu.com/link?url=mRM7N93Q3Hhn3u5kInP7Ho0lSO8VxRRvZF_IjLMkSTooDUcFmHC2RCCVlOleB3A7YAFtzrxwcIOoxdNt8YQ2jq
+                    - generic [ref=e460]: 经营状况
+            - generic [ref=e461]:
+              - link "百度百科" [ref=e464] [cursor=pointer]:
+                - /url: http://www.baidu.com/link?url=OeqYm11P3bh3q1RXgc3aFUVhLV0m7n7jLUQzPz040utjJkkdcECwuU31ZClKkalCijmwqd7nf9QZG6cdnzhSFK
+                - generic [ref=e465]: 百度百科
+              - generic [ref=e467] [cursor=pointer]: 
+          - generic [ref=e472]:
+            - heading "c'li - 百度图片" [level=3] [ref=e477]:
+              - link "c'li - 百度图片" [ref=e478] [cursor=pointer]:
+                - /url: https://image.baidu.com/search/index?tn=baiduimage&ct=201326592&lm=-1&cl=2&ie=utf8&sa=vs_ala_img&fr=ala&ala=1&alatpl=normal&pos=3&dyTabStr=MCwzLDEsMiwxMyw3LDYsNSwxMiw5&word=c%27li&lid=9d247f1f000fd8ec&topic=c%27li
+                - generic [ref=e480]:
+                  - paragraph [ref=e481]:
+                    - emphasis [ref=e482]: c'li
+                  - paragraph [ref=e483]: "- 百度图片"
+            - generic [ref=e484]:
+              - generic [ref=e488]:
+                - link "意思" [ref=e490] [cursor=pointer]:
+                  - /url: http://www.baidu.com/link?url=OeqYm11P3bh3q1RXgc3aFZLT2FTx7GUTCeo8S3VuYthRq2cd1-ex5_UYA9tuVckFv69EVaP9Fur5JS9wQGut3YSJdp2oeU4A91g-Q8-fqSoRJcdjbwSihesLCMgsl3Of2yXijys7HLsfkAILEnfa86d_36jPlhygwh2mk0kH3KRnnkb4gpwtQ-5heLZj5NnMTd6Nq8f7WhmHnyp06OCeHHptzSX_RbGPLMCEz5pYd8GItDrsg25POhu8UlTIOAe1bFPuM-Md4XxU7SpBoWiMuQPSZOmR8Ae_QN29GZ2M5P5vCm0smX3vf2hizcLMfITKPQVOzgnTlCutpAddd-LI_oM7GQEtM769FZE8OVQvYCSDsUyQN_OEUNsc8s2ahr4HaMwmGU1sOc5dDbOQ7EvchW3hvgxJ7dMEYvt4EHTgM0Ie6DyXYGsnG5a1rKQX_z9DkTcKDW565n-R25Bsl48G2dVTOTysJQ4n7_naRt85OYW7E1vizw9H6Kaq1WHe3bnktZxYwJHi9j3GStNyjSw0C_
+                  - generic [ref=e491]: 意思
+                - link "vue" [ref=e493] [cursor=pointer]:
+                  - /url: http://www.baidu.com/link?url=XE3s7zBzTeKk3CIUPnO92lcGWvasxBZhzFi3f_HNy1d_wIKxaumXGFYKzydKqYOQZpDcpYXdsJKRDXVpn_TTYNFz--6pyZwn5vucQ_Dj8eFu7x4XYINQyicILUJlMRZJskhlq65EhjmdQu6YdYWnqI9nYoyx9rT5rsmTslgViRTpVppRzNHymUwlBLvnW96DhAQjEsaSNAnBuC8Si1OlaXQZ6VsJJw799KoaZV4nqgkNN_5Y2Jw27KrJiNe3KOVlK73yiFqj8-eSDy6QOZj33GB5f5KZ3ktm_NEZk6lAqBXRT1Ldcs0mQoMGtk-UKzjBHR2NuqTv3HMm2KIDa7jQHwjaWhTRrRLraYwGWkXQhXL4oI6appG3W8bAjbJCSmnhRX2nr0XYzr-hghiHF06Z6w-SuytP9oFRVL7AF3OdfQ6NZLoHGmUAx9STqEUJsh-Cy0vy5vAS3ZJTsEmV0VqmNkeosNWIh3Jm0BXYnvVYB6A7cNX1hO6RpntwfRqnZcj_
+                  - generic [ref=e494]: vue
+                - link "service" [ref=e496] [cursor=pointer]:
+                  - /url: http://www.baidu.com/link?url=oLc4MCq07QwFg1p8tlLB8E2jnxikAeOqjNrcrkRdBQgLeh1YMgQ4qW6D07T1c9AZJcUJKlQO0itDXUrk0yPdOvtwY0STDoFCdhmNdlT0x5yd76Ts2bFAMdT2Nd_GOXJ64VO2hwdQAYdGBMIsjTG9g-0J5qw30Z17C7QIDPlEUn7osn32eboFLJowVHA3Zio6E55BSVCsO9bbrxTQtYriqJztEJ14oW9wycqDgeJzauBIKGTrITmNkLgmG1pjRmBxvAOd3hyqIWlM8lYuuv1JOZk_FRsbq7l2vMzcPqCVEo9bybTQ02IkPC0znMg35nHXgcpfv5QkpRgy1KRwW0lVFzDHJ9CGswSuE9vZrgt_ZesJ_SvznzLH2uSfYm7aPjews0_6eaPpFCbGCaTrbEhPjEiVbqw-nNFI-eNG9RNgSBWcNgZJvp_OyLC6ADhuOwBO0dVOHzEZ64LYCiSd9uxxrK2FBfNAx-O9j-0uz0TaBx3tUUFWWBJS9vlCLvGryFcS
+                  - generic [ref=e497]: service
+              - generic [ref=e498]:
+                - generic [ref=e499]:
+                  - generic [ref=e502]:
+                    - generic [ref=e503]:
+                      - link [ref=e504] [cursor=pointer]:
+                        - /url: https://image.baidu.com/search/detail?ct=503316480&z=0&tn=baiduimagedetail&ipn=d&cl=2&cm=1&sc=0&sa=vs_ala_img_datu&lm=-1&ie=utf8&pn=0&rn=1&di=7630500745602662401&ln=0&word=c%27li&os=3319120759,3858022399&cs=4289278984,2409717313&objurl=http%3A%2F%2Fpics0.baidu.com%2Ffeed%2Fb219ebc4b74543a919eec8b8c369f58db801145e.jpeg%3Ftoken%3D96c3bc13ffba0307a4ae931d1c64bff1&bdtype=0&simid=4289278984,2409717313&pi=0&adpicid=0&timingneed=&spn=0&is=0,0&lid=9d247f1f000fd8ec
+                      - link " 11" [ref=e508] [cursor=pointer]:
+                        - /url: https://image.baidu.com/search/detail?ct=503316480&z=0&tn=baiduimagedetail&ipn=d&cl=2&cm=1&sc=0&sa=vs_ala_img_datu&lm=-1&ie=utf8&pn=1&rn=1&di=7630500745602662401&ln=0&word=c%27li&os=729311644,136045232&cs=2462864268,1670850982&objurl=http%3A%2F%2Fp3-pc-sign.douyinpic.com%2Ftos-cn-i-0813c001%2Foo6fAnHI8A8nAq5bAgvExCmf4A9XAA0uDQ6CAl%7Etplv-dy-aweme-images%3Aq75.webp&bdtype=0&simid=2462864268,1670850982&pi=0&adpicid=0&timingneed=&spn=0&is=729311644,136045232&lid=9d247f1f000fd8ec
+                        - generic [ref=e512]:
+                          - generic [ref=e513]: 
+                          - generic [ref=e514]: "11"
+                      - link [ref=e515] [cursor=pointer]:
+                        - /url: https://image.baidu.com/search/detail?ct=503316480&z=0&tn=baiduimagedetail&ipn=d&cl=2&cm=1&sc=0&sa=vs_ala_img_datu&lm=-1&ie=utf8&pn=2&rn=1&di=7633448046692401153&ln=0&word=c%27li&os=2669560767,20405991&cs=868739965,675959271&objurl=http%3A%2F%2Fpic.rmb.bdstatic.com%2Fbjh%2Fnews%2Fdcbb7a829c871a18e654438e2d27ed38.jpeg&bdtype=10&simid=3391813974,254743583&pi=0&adpicid=0&timingneed=&spn=0&is=0,0&lid=9d247f1f000fd8ec
+                    - generic [ref=e519]:
+                      - link [ref=e520] [cursor=pointer]:
+                        - /url: https://image.baidu.com/search/detail?ct=503316480&z=0&tn=baiduimagedetail&ipn=d&cl=2&cm=1&sc=0&sa=vs_ala_img_datu&lm=-1&ie=utf8&pn=3&rn=1&di=7633448046692401153&ln=0&word=c%27li&os=2273531337,211928884&cs=3774219228,1220102303&objurl=http%3A%2F%2Ft12.baidu.com%2Fit%2Fu%3D2045157462%2C260888198%26fm%3D30%26app%3D106%26f%3DJPEG%3Fw%3D500%26h%3D667%26s%3DB7B41D88541E33EF62814DC30300E0BB&bdtype=10&simid=4234223093,679093723&pi=0&adpicid=0&timingneed=&spn=0&is=0,0&lid=9d247f1f000fd8ec
+                      - link [ref=e524] [cursor=pointer]:
+                        - /url: https://image.baidu.com/search/detail?ct=503316480&z=0&tn=baiduimagedetail&ipn=d&cl=2&cm=1&sc=0&sa=vs_ala_img_datu&lm=-1&ie=utf8&pn=4&rn=1&di=7630500745602662401&ln=0&word=c%27li&os=4239191189,60008663&cs=3137192029,2273404465&objurl=http%3A%2F%2Fimg.ithome.com%2Fnewsuploadfiles%2F2025%2F1%2F69ad1486-6def-4a8b-a03c-bc101fdec474.jpg%3Fx-bce-process%3Dimage%2Fformat%2Cf_auto&bdtype=0&simid=60084754,576727225&pi=0&adpicid=0&timingneed=&spn=0&is=0,0&lid=9d247f1f000fd8ec
+                      - link [ref=e528] [cursor=pointer]:
+                        - /url: https://image.baidu.com/search/detail?ct=503316480&z=0&tn=baiduimagedetail&ipn=d&cl=2&cm=1&sc=0&sa=vs_ala_img_datu&lm=-1&ie=utf8&pn=5&rn=1&di=7620110360720179201&ln=0&word=c%27li&os=2044874895,3307461137&cs=3547421762,800897964&objurl=http%3A%2F%2Fpic.rmb.bdstatic.com%2F5a4158d556bf90238d3b00f2da58504b.jpeg&bdtype=0&simid=4157835827,619390256&pi=0&adpicid=0&timingneed=&spn=0&is=0,0&lid=9d247f1f000fd8ec
+                  - link "查看全部494张图片 " [ref=e534] [cursor=pointer]:
+                    - /url: http://www.baidu.com/link?url=mRM7N93Q3Hhn3u5kInP7Hop14Ai5EgzliZsEPiM0HjY2Ib7iKyDkPksruJSqdaJ1lKbq4BKROaE1LU4NoAIAHaXM4oHIcP35roDmuOQjz_GwocHg5OiC7us-Rem1plJXeXCTab7m2pIWRuy8wjBtN6-PDvx8xfRcPgfxVnTcrjjy17xGqjGW6xMqQMBByByFcNNQ4FZuzwq_75Q2AsCoK2fju8gW2xb7uulWX_b0utgxiFnTlrVRrtQs1utaOYJd6LF2GOEqw_9b6cfN6Zl_XCF8bUlxuraKyajUswWDMSe
+                    - generic [ref=e535]:
+                      - generic [ref=e536]: 查看全部494张图片
+                      - generic [ref=e537]: 
+                - generic [ref=e538]:
+                  - textbox "用AI一秒生成“c'li”" [ref=e539]
+                  - link "免费AI生图" [ref=e541] [cursor=pointer]:
+                    - /url: http://www.baidu.com/link?url=37RiyCsg8C_aMgAA1m4Jv6tQJtdOtE_dQmKoQEIReXlPy_iuW41b1V_JWa1tBe5QLWHj6dtDVwnZIVW3PjugcwWgbZH1nGRejs2nwWQGYT0qqLAUcM_oJGeAaeC2cZ-2cEFwfMUAPzcP0TwaDnQjv7ib6pZJAfm6CTiBD6wnlxgPWvfYh52MolJetl2aPCJdaX5LM0YUifRMj-biaBrXLPe0EL7e4_2Bs5tZrJOkZ77cxcq9r9cUmJ7UVoqP3GeGaRSWPLSxc8UA96zQVeEiia
+                    - button "免费AI生图" [ref=e542]:
+                      - generic [ref=e543]: 免费AI生图
+              - generic [ref=e545]:
+                - generic [ref=e549]: 百度图片
+                - generic [ref=e552] [cursor=pointer]: 
+          - generic [ref=e556]:
+            - heading "c.li包包是什么档次的 - 百度知道" [level=3] [ref=e559]:
+              - link "c.li包包是什么档次的 - 百度知道" [ref=e560] [cursor=pointer]:
+                - /url: http://www.baidu.com/link?url=8JBsDI5RpvUtsbPqjd15SDBwGSDqRIl8Q3HAuAPXOuVKusJFXdhnHs0JdzDsiGmpUXVUYXi-ehcuhHswuVKACOk2jCmhdLkllms2ESZTHca
+                - paragraph [ref=e563]:
+                  - generic [ref=e566]:
+                    - emphasis [ref=e567]: c
+                    - text: .
+                    - emphasis [ref=e568]: li
+                    - text: 包包是什么档次的 - 百度知道
+            - generic [ref=e570]: "1个回答 - 回答时间: 2022年11月25日"
+            - generic [ref=e575]:
+              - text: "最佳答案:"
+              - generic [ref=e576]:
+                - emphasis [ref=e577]: c.li
+                - text: 包包是中档次的。
+                - emphasis [ref=e578]: C.LI
+                - text: 包包是一个高级时尚女包品牌，由杨洺、舒亚薇夫妇创立，以高简、质感且独具装饰美感的风格，演绎当代女性酷而明亮的气质。
+            - link "更多关于c'li的问题>>" [ref=e582] [cursor=pointer]:
+              - /url: http://zhidao.baidu.com/q?ct=17&pn=0&tn=ikaslist&rn=10&word=c%27li&dyTabStr=MTIsMCwzLDEsMiwxMyw3LDYsNSw5
+            - link "百度知道" [ref=e587] [cursor=pointer]:
+              - /url: http://www.baidu.com/link?url=8JBsDI5RpvUtsbPqjd15SDBwGSDqRIl8Q3HAuAPXOuVKusJFXdhnHs0JdzDsiGmpUXVUYXi-ehcuhHswuVKACOk2jCmhdLkllms2ESZTHca
+              - generic [ref=e588]: 百度知道
+              - generic [ref=e590]: 
+          - generic [ref=e593]:
+            - heading "c. li，演员，百度百科" [level=3] [ref=e594]:
+              - link "c. li，演员，百度百科" [ref=e595] [cursor=pointer]:
+                - /url: http://www.baidu.com/link?url=8JBsDI5RpvUtsbPqjd15SC-mxY_UqJfDEP-DF2sqCPSXXcuOPaPbsFwXEIPju1eRd1PV4RgyrvxhWAsOhYLqD59kPKqV9z7daPcwHeNuIrS
+                - emphasis [ref=e596]: C
+                - text: .
+                - emphasis [ref=e597]: Li
+                - text: "- 百度百科"
+            - generic [ref=e599]:
+              - generic "职业：演员" [ref=e600]
+              - generic "代表作品：异类战神" [ref=e601]
+              - generic "C. Li，演员，代表作为电影《异类战神》。" [ref=e603]:
+                - generic [ref=e604]:
+                  - emphasis [ref=e605]: C
+                  - text: .
+                  - emphasis [ref=e606]: Li
+                  - text: ，演员，代表作为电影《异类战神》。
+              - generic [ref=e608]:
+                - link "演艺经历" [ref=e609] [cursor=pointer]:
+                  - /url: http://www.baidu.com/link?url=OeqYm11P3bh3q1RXgc3aFUVhLV0m7n7jLUQzPz040utjJkkdcECwuU31ZClKkalCUl6UYDQHrtPKXvdt_TG67tZZuBG0sZxRv1DRUbJTv5_
+                - link "参演电影" [ref=e610] [cursor=pointer]:
+                  - /url: http://www.baidu.com/link?url=OeqYm11P3bh3q1RXgc3aFUVhLV0m7n7jLUQzPz040utjJkkdcECwuU31ZClKkalCUl6UYDQHrtPKXvdt_TG67rbHO3blDbnzgFiMjJ__Rju
+              - generic [ref=e611]:
+                - link "百度百科" [ref=e612] [cursor=pointer]:
+                  - /url: http://www.baidu.com/link?url=8JBsDI5RpvUtsbPqjd15SC-mxY_UqJfDEP-DF2sqCPSXXcuOPaPbsFwXEIPju1eRd1PV4RgyrvxhWAsOhYLqD59kPKqV9z7daPcwHeNuIrS
+                  - img [ref=e617]
+                  - text: 百度百科
+                - generic [ref=e619] [cursor=pointer]: 
+          - generic [ref=e621]:
+            - generic [ref=e622]: 大家还在搜
+            - generic [ref=e623]:
+              - link "c++程序设计" [ref=e624] [cursor=pointer]:
+                - /url: /s?rsv_idx=1&wd=c%2B%2B%E7%A8%8B%E5%BA%8F%E8%AE%BE%E8%AE%A1&fenlei=256&usm=2&ie=utf-8&rsv_pq=9d247f1f000fd8ec&oq=c'li&rsv_t=19f8ZueVuAAmeWaZcs0MrhvThONYJO2bFmtHtrovgjFuX%2BLwASEP6%2By3CnY&rsf=101636803&rsv_dl=0_prs_28608_1
+                - generic [ref=e626]: c++程序设计
+              - link "c语言程序设计cap" [ref=e627] [cursor=pointer]:
+                - /url: /s?rsv_idx=1&wd=c%E8%AF%AD%E8%A8%80%E7%A8%8B%E5%BA%8F%E8%AE%BE%E8%AE%A1cap&fenlei=256&usm=2&ie=utf-8&rsv_pq=9d247f1f000fd8ec&oq=c'li&rsv_t=19f8ZueVuAAmeWaZcs0MrhvThONYJO2bFmtHtrovgjFuX%2BLwASEP6%2By3CnY&rsf=101633403&rsv_dl=0_prs_28608_2
+                - generic [ref=e629]: c语言程序设计cap
+              - link "lilcec是什么" [ref=e630] [cursor=pointer]:
+                - /url: /s?rsv_idx=1&wd=lilcec%E6%98%AF%E4%BB%80%E4%B9%88&fenlei=256&usm=2&ie=utf-8&rsv_pq=9d247f1f000fd8ec&oq=c'li&rsv_t=eb6b1fg7QIaeGvUC9c%2FOzj44ieUzoj%2BdnuUbjA0fQIyE6Z7VjEa8vLQDVrs&rsf=101636803&rsv_dl=0_prs_28608_3
+                - generic [ref=e632]: lilcec是什么
+              - link "c li c" [ref=e633] [cursor=pointer]:
+                - /url: /s?rsv_idx=1&wd=c%E2%80%86li%E2%80%86c&fenlei=256&usm=2&ie=utf-8&rsv_pq=9d247f1f000fd8ec&oq=c'li&rsv_t=eb6b1fg7QIaeGvUC9c%2FOzj44ieUzoj%2BdnuUbjA0fQIyE6Z7VjEa8vLQDVrs&rsf=101631202&rsv_dl=0_prs_28608_4
+                - generic [ref=e635]: c li c
+              - link "c语言ioctl函数" [ref=e636] [cursor=pointer]:
+                - /url: /s?rsv_idx=1&wd=c%E8%AF%AD%E8%A8%80ioctl%E5%87%BD%E6%95%B0&fenlei=256&usm=2&ie=utf-8&rsv_pq=9d247f1f000fd8ec&oq=c'li&rsv_t=eb6b1fg7QIaeGvUC9c%2FOzj44ieUzoj%2BdnuUbjA0fQIyE6Z7VjEa8vLQDVrs&rsf=101633403&rsv_dl=0_prs_28608_5
+                - generic [ref=e638]: c语言ioctl函数
+              - link "现代C++" [ref=e639] [cursor=pointer]:
+                - /url: /s?rsv_idx=1&wd=%E7%8E%B0%E4%BB%A3C%2B%2B&fenlei=256&usm=2&ie=utf-8&rsv_pq=9d247f1f000fd8ec&oq=c'li&rsv_t=eb6b1fg7QIaeGvUC9c%2FOzj44ieUzoj%2BdnuUbjA0fQIyE6Z7VjEa8vLQDVrs&rsf=101633403&rsv_dl=0_prs_28608_6
+                - generic [ref=e641]: 现代C++
+              - link "使用cli的优缺点" [ref=e642] [cursor=pointer]:
+                - /url: /s?rsv_idx=1&wd=%E4%BD%BF%E7%94%A8cli%E7%9A%84%E4%BC%98%E7%BC%BA%E7%82%B9&fenlei=256&usm=2&ie=utf-8&rsv_pq=9d247f1f000fd8ec&oq=c'li&rsv_t=eb6b1fg7QIaeGvUC9c%2FOzj44ieUzoj%2BdnuUbjA0fQIyE6Z7VjEa8vLQDVrs&rsf=101633301&rsv_dl=0_prs_28608_7
+                - generic [ref=e644]: 使用cli的优缺点
+              - link "c++是什么软件" [ref=e645] [cursor=pointer]:
+                - /url: /s?rsv_idx=1&wd=c%2B%2B%E6%98%AF%E4%BB%80%E4%B9%88%E8%BD%AF%E4%BB%B6&fenlei=256&usm=2&ie=utf-8&rsv_pq=9d247f1f000fd8ec&oq=c'li&rsv_t=eb6b1fg7QIaeGvUC9c%2FOzj44ieUzoj%2BdnuUbjA0fQIyE6Z7VjEa8vLQDVrs&rsf=101636803&rsv_dl=0_prs_28608_8
+                - generic [ref=e647]: c++是什么软件
+              - link "c/c++是什么" [ref=e648] [cursor=pointer]:
+                - /url: /s?rsv_idx=1&wd=c%2Fc%2B%2B%E6%98%AF%E4%BB%80%E4%B9%88&fenlei=256&usm=2&ie=utf-8&rsv_pq=9d247f1f000fd8ec&oq=c'li&rsv_t=eb6b1fg7QIaeGvUC9c%2FOzj44ieUzoj%2BdnuUbjA0fQIyE6Z7VjEa8vLQDVrs&rsf=101633403&rsv_dl=0_prs_28608_9
+                - generic [ref=e650]: c/c++是什么
+              - link "使用cli的注意事项" [ref=e651] [cursor=pointer]:
+                - /url: /s?rsv_idx=1&wd=%E4%BD%BF%E7%94%A8cli%E7%9A%84%E6%B3%A8%E6%84%8F%E4%BA%8B%E9%A1%B9&fenlei=256&usm=2&ie=utf-8&rsv_pq=9d247f1f000fd8ec&oq=c'li&rsv_t=eb6b1fg7QIaeGvUC9c%2FOzj44ieUzoj%2BdnuUbjA0fQIyE6Z7VjEa8vLQDVrs&rsf=101633301&rsv_dl=0_prs_28608_10
+                - generic [ref=e653]: 使用cli的注意事项
+              - link "c-loong" [ref=e654] [cursor=pointer]:
+                - /url: /s?rsv_idx=1&wd=c-loong&fenlei=256&usm=2&ie=utf-8&rsv_pq=9d247f1f000fd8ec&oq=c'li&rsv_t=eb6b1fg7QIaeGvUC9c%2FOzj44ieUzoj%2BdnuUbjA0fQIyE6Z7VjEa8vLQDVrs&rsf=100636803&rsv_dl=0_prs_28608_11
+                - generic [ref=e656]: c-loong
+              - link "c-class" [ref=e657] [cursor=pointer]:
+                - /url: /s?rsv_idx=1&wd=c-class&fenlei=256&usm=2&ie=utf-8&rsv_pq=9d247f1f000fd8ec&oq=c'li&rsv_t=eb6b1fg7QIaeGvUC9c%2FOzj44ieUzoj%2BdnuUbjA0fQIyE6Z7VjEa8vLQDVrs&rsf=100633403&rsv_dl=0_prs_28608_12
+                - generic [ref=e659]: c-class
+          - generic [ref=e663]:
+            - heading "36套灰色大衣好看的搭配方法,不老气穿出高级感" [level=3] [ref=e666]:
+              - link "36套灰色大衣好看的搭配方法,不老气穿出高级感" [ref=e667] [cursor=pointer]:
+                - /url: http://www.baidu.com/link?url=lv5uqMMwtPMyNWNObmNrm15ol5qeWFw1ECKUEeoZjUyu0YIX0yRYoIhRjNMr8nSab-wqqniXfOk9Bd1hq66uOeYlMBwixnOqS6Oo8UBAPBm
+                - paragraph [ref=e670]:
+                  - generic [ref=e673]: 36套灰色大衣好看的搭配方法,不老气穿出高级感
+            - generic [ref=e678]:
+              - text: 2022年10月25日
+              - generic [ref=e679]:
+                - text: "深灰色大衣很适合日常通勤,针织上衣+黑色半裙再搭配绒面黑短靴,是秋冬季节简约的高级感~~ 大衣:SCOFIELD;包:"
+                - emphasis [ref=e680]: C
+                - text: .
+                - emphasis [ref=e681]: LI
+                - text: 青蛙包 look11 灰色大衣+牛仔衣/黑色高领 灰大衣显高级,版型大气耐看,叠穿高领打底衫和牛仔衣高级感upup,下半身搭配黑色毛边九分牛仔裤和帆布鞋,一套韩系叠穿氛围感满满~~ 大衣:OK好好;衬衣:HeiN...
+            - generic [ref=e682]:
+              - link [ref=e683] [cursor=pointer]:
+                - /url: http://www.baidu.com/link?url=lv5uqMMwtPMyNWNObmNrm15ol5qeWFw1ECKUEeoZjUyu0YIX0yRYoIhRjNMr8nSab-wqqniXfOk9Bd1hq66uOeYlMBwixnOqS6Oo8UBAPBm
+              - link [ref=e687] [cursor=pointer]:
+                - /url: http://www.baidu.com/link?url=lv5uqMMwtPMyNWNObmNrm15ol5qeWFw1ECKUEeoZjUyu0YIX0yRYoIhRjNMr8nSab-wqqniXfOk9Bd1hq66uOeYlMBwixnOqS6Oo8UBAPBm
+              - link [ref=e691] [cursor=pointer]:
+                - /url: http://www.baidu.com/link?url=lv5uqMMwtPMyNWNObmNrm15ol5qeWFw1ECKUEeoZjUyu0YIX0yRYoIhRjNMr8nSab-wqqniXfOk9Bd1hq66uOeYlMBwixnOqS6Oo8UBAPBm
+              - link [ref=e695] [cursor=pointer]:
+                - /url: http://www.baidu.com/link?url=lv5uqMMwtPMyNWNObmNrm15ol5qeWFw1ECKUEeoZjUyu0YIX0yRYoIhRjNMr8nSab-wqqniXfOk9Bd1hq66uOeYlMBwixnOqS6Oo8UBAPBm
+              - link "54" [ref=e699] [cursor=pointer]:
+                - /url: http://www.baidu.com/link?url=lv5uqMMwtPMyNWNObmNrm15ol5qeWFw1ECKUEeoZjUyu0YIX0yRYoIhRjNMr8nSab-wqqniXfOk9Bd1hq66uOeYlMBwixnOqS6Oo8UBAPBm
+                - generic [ref=e704]:
+                  - generic [ref=e705]: 
+                  - text: "54"
+            - link "微博" [ref=e710] [cursor=pointer]:
+              - /url: http://www.baidu.com/link?url=lv5uqMMwtPMyNWNObmNrm15ol5qeWFw1ECKUEeoZjUyu0YIX0yRYoIhRjNMr8nSab-wqqniXfOk9Bd1hq66uOeYlMBwixnOqS6Oo8UBAPBm
+              - generic [ref=e711]: 微博
+              - generic [ref=e713]: 
+          - generic [ref=e717]:
+            - heading "618 | 精选好设计,开启新生活" [level=3] [ref=e720]:
+              - link "618 | 精选好设计,开启新生活" [ref=e721] [cursor=pointer]:
+                - /url: http://www.baidu.com/link?url=lv5uqMMwtPMyNWNObmNrm15ol5qeWFw1ECKUEeoZjUyu0YIX0yRYoIhRjNMr8nSab-wqqniXfOk9Bd1hq66uOn8Wuvpt7Tf_rDWJVNs4l8u
+                - paragraph [ref=e724]:
+                  - generic [ref=e727]: 618 | 精选好设计,开启新生活
+            - generic [ref=e732]:
+              - text: 2022年6月15日
+              - generic [ref=e733]:
+                - text: 俗话说得好,“包”治百病,618大促的好机会,怎么能少得了一只漂亮的包包。如果你的衣柜里缺一只有设计感的包包,不如看看这只
+                - emphasis [ref=e734]: C
+                - text: .
+                - emphasis [ref=e735]: LI
+                - text: 的复古法棍包,中芬设计园园区企业晟邦设计携手春丽打造,原创设计超级百搭。 采用近年来非常流行的复古法棍包型,简洁梯形线条,四周做了圆角设计,整体简洁圆润,带来舒适的视觉享受。
+            - link "微博" [ref=e740] [cursor=pointer]:
+              - /url: http://www.baidu.com/link?url=lv5uqMMwtPMyNWNObmNrm15ol5qeWFw1ECKUEeoZjUyu0YIX0yRYoIhRjNMr8nSab-wqqniXfOk9Bd1hq66uOn8Wuvpt7Tf_rDWJVNs4l8u
+              - generic [ref=e741]: 微博
+              - generic [ref=e743]: 
+          - generic [ref=e747]:
+            - heading "密歇根大学Victor C. Li教授讲学通知_哈尔滨工业大学土木工程学院" [level=3] [ref=e750]:
+              - link "密歇根大学Victor C. Li教授讲学通知_哈尔滨工业大学土木工程学院" [ref=e751] [cursor=pointer]:
+                - /url: http://www.baidu.com/link?url=8JBsDI5RpvUtsbPqjd15SC-mxY_UqJfDEP-DF2sqCPSrJ6-9jbOEc5UPQXYDRZLg-uAGoNxgQjc6sTpO1aMKxjnxbYm_yyTTI9Nayk1WRgy
+                - paragraph [ref=e754]:
+                  - generic [ref=e757]:
+                    - text: 密歇根大学Victor
+                    - emphasis [ref=e758]: C
+                    - text: .
+                    - emphasis [ref=e759]: Li
+                    - text: 教授讲学通知_哈尔滨工业大学土木工程学院
+            - generic [ref=e764]:
+              - text: 2024年8月4日
+              - generic [ref=e765]:
+                - text: Victor
+                - emphasis [ref=e766]: C
+                - text: .
+                - emphasis [ref=e767]: Li
+                - text: 教授是密歇根大学James R. Rice杰出大学名誉教授和EB Wylie学院名誉教授。他的研究方向是多功能材料,旨在提高土木工程基础设施的可持续性。他领导的研究团队发明了高延性纤维增强水泥基复合材料(Engineered Cementitious Composites, ECC),即可弯曲混凝土。Li教授是美国土木工程师协会、美国力学工程师协会、世...
+            - link "哈尔滨工业大学土木学院" [ref=e772] [cursor=pointer]:
+              - /url: http://www.baidu.com/link?url=8JBsDI5RpvUtsbPqjd15SC-mxY_UqJfDEP-DF2sqCPSrJ6-9jbOEc5UPQXYDRZLg-uAGoNxgQjc6sTpO1aMKxjnxbYm_yyTTI9Nayk1WRgy
+              - generic [ref=e773]: 哈尔滨工业大学土木学院
+              - generic [ref=e775]: 
+          - generic [ref=e779]:
+            - heading "DevelopmentCodeNames - Ubuntu Wiki" [level=3] [ref=e782]:
+              - link "DevelopmentCodeNames - Ubuntu Wiki" [ref=e783] [cursor=pointer]:
+                - /url: http://www.baidu.com/link?url=lv5uqMMwtPMyNWNObmNrm2Ev4wt0nnBnP8G06vHbcHDX0sHah1eVKxlLnV9LvtZoc4VD_iPImmsfMYa5DLK_J_
+                - paragraph [ref=e786]:
+                  - generic [ref=e789]: DevelopmentCodeNames - Ubuntu Wiki
+            - generic [ref=e794]: B ) parrot just brings up the accusations of Canonical "aping Apple" and C) python is almost too obvious like penguin for the programming language association. I think Platypus is nice for two reasons, firstly just the general WTF-ness of the platypus as a strange seeming amalgamation of ge...
+            - link "wiki.ubuntu.com/DevelopmentCodeNam..." [ref=e799] [cursor=pointer]:
+              - /url: http://www.baidu.com/link?url=lv5uqMMwtPMyNWNObmNrm2Ev4wt0nnBnP8G06vHbcHDX0sHah1eVKxlLnV9LvtZoc4VD_iPImmsfMYa5DLK_J_
+              - generic [ref=e800]: wiki.ubuntu.com/DevelopmentCodeNam...
+              - generic [ref=e802]: 
+          - generic [ref=e806]:
+            - generic [ref=e808]:
+              - generic [ref=e809]: 
+              - heading "3、C语言编程li - 百度文库" [level=3] [ref=e810]:
+                - link "3、C语言编程li - 百度文库" [ref=e811] [cursor=pointer]:
+                  - /url: http://www.baidu.com/link?url=OeqYm11P3bh3q1RXgc3aFWavTyzVQ7tN6OFeEkzMipVOd8wH23_FpLTdqBAGYVlMl5zwxwDEuDNYBLIOAXNU0ipdmoGsH8hhcRvcuCRawPN-SJzpc-GfolzR3H6Qmpg2
+                  - paragraph [ref=e814]:
+                    - generic [ref=e817]:
+                      - text: 3、
+                      - emphasis [ref=e818]: C
+                      - text: 语言编程
+                      - emphasis [ref=e819]: li
+                      - text: "- 百度文库"
+            - generic [ref=e820]:
+              - link [ref=e822] [cursor=pointer]:
+                - /url: http://www.baidu.com/link?url=OeqYm11P3bh3q1RXgc3aFWavTyzVQ7tN6OFeEkzMipVOd8wH23_FpLTdqBAGYVlMl5zwxwDEuDNYBLIOAXNU0ipdmoGsH8hhcRvcuCRawPN-SJzpc-GfolzR3H6Qmpg2
+              - generic [ref=e827]:
+                - generic [ref=e829]: "26页 发布时间: 2022年05月13日"
+                - generic [ref=e835]:
+                  - text: 3、
+                  - emphasis [ref=e836]: C
+                  - text: 语言编程
+                  - emphasis [ref=e837]: li
+                  - text: 第三讲与图形学相关的C语言编程 目的：掌握与图形学相关的基本的C语言编程方法要求：1.平时作业用C语言(或者其他语言)完成2.实验报告包括:实验名称、实验目的与要求、实验内容、实验结果分析三个部分。一.了解
+                  - emphasis [ref=e838]: c
+                  - text: 语言的图形函数 •TurboC提供了非常丰富的图形函数,所有的图形函数的原型在graphics.h中...
+                - link "百度文库" [ref=e843] [cursor=pointer]:
+                  - /url: http://www.baidu.com/link?url=OeqYm11P3bh3q1RXgc3aFWavTyzVQ7tN6OFeEkzMipVOd8wH23_FpLTdqBAGYVlMl5zwxwDEuDNYBLIOAXNU0ipdmoGsH8hhcRvcuCRawPN-SJzpc-GfolzR3H6Qmpg2
+                  - generic [ref=e844]: 百度文库
+                  - generic [ref=e846]: 
+        - generic [ref=e849]:
+          - generic [ref=e850]: 相关搜索
+          - table [ref=e851]:
+            - rowgroup [ref=e852]:
+              - row "c++程序设计 c li c" [ref=e853]:
+                - cell "c++程序设计" [ref=e854]:
+                  - link "c++程序设计" [ref=e855] [cursor=pointer]:
+                    - /url: /s?wd=c%2B%2B%E7%A8%8B%E5%BA%8F%E8%AE%BE%E8%AE%A1&rsf=101636803&rsp=0&f=1&rs_src=0&rsv_pq=9d247f1f000fd8ec&rsv_t=1610BUbJtJMStAkQ5sq45zTxu63Wvfa9BOJrF6yibtagIceluunMYctBiyc&rsv_dl=brs_28338_1
+                    - generic [ref=e857]: c++程序设计
+                - cell "c li c" [ref=e858]:
+                  - link "c li c" [ref=e859] [cursor=pointer]:
+                    - /url: /s?wd=c%E2%80%86li%E2%80%86c&rsf=101631202&rsp=1&f=1&rs_src=0&rsv_pq=9d247f1f000fd8ec&rsv_t=1610BUbJtJMStAkQ5sq45zTxu63Wvfa9BOJrF6yibtagIceluunMYctBiyc&rsv_dl=brs_28338_2
+                    - generic [ref=e861]: c li c
+              - row "lilcec是什么 现代C++" [ref=e862]:
+                - cell "lilcec是什么" [ref=e863]:
+                  - link "lilcec是什么" [ref=e864] [cursor=pointer]:
+                    - /url: /s?wd=lilcec%E6%98%AF%E4%BB%80%E4%B9%88&rsf=101636803&rsp=2&f=1&rs_src=0&rsv_pq=9d247f1f000fd8ec&rsv_t=1610BUbJtJMStAkQ5sq45zTxu63Wvfa9BOJrF6yibtagIceluunMYctBiyc&rsv_dl=brs_28338_3
+                    - generic [ref=e866]: lilcec是什么
+                - cell "现代C++" [ref=e867]:
+                  - link "现代C++" [ref=e868] [cursor=pointer]:
+                    - /url: /s?wd=%E7%8E%B0%E4%BB%A3C%2B%2B&rsf=101633403&rsp=3&f=1&rs_src=0&rsv_pq=9d247f1f000fd8ec&rsv_t=1610BUbJtJMStAkQ5sq45zTxu63Wvfa9BOJrF6yibtagIceluunMYctBiyc&rsv_dl=brs_28338_4
+                    - generic [ref=e870]: 现代C++
+              - row "c/c++是什么 使用cli的优缺点" [ref=e871]:
+                - cell "c/c++是什么" [ref=e872]:
+                  - link "c/c++是什么" [ref=e873] [cursor=pointer]:
+                    - /url: /s?wd=c%2Fc%2B%2B%E6%98%AF%E4%BB%80%E4%B9%88&rsf=101633403&rsp=4&f=1&rs_src=0&rsv_pq=9d247f1f000fd8ec&rsv_t=1610BUbJtJMStAkQ5sq45zTxu63Wvfa9BOJrF6yibtagIceluunMYctBiyc&rsv_dl=brs_28338_5
+                    - generic [ref=e875]: c/c++是什么
+                - cell "使用cli的优缺点" [ref=e876]:
+                  - link "使用cli的优缺点" [ref=e877] [cursor=pointer]:
+                    - /url: /s?wd=%E4%BD%BF%E7%94%A8cli%E7%9A%84%E4%BC%98%E7%BC%BA%E7%82%B9&rsf=101633301&rsp=5&f=1&rs_src=0&rsv_pq=9d247f1f000fd8ec&rsv_t=1610BUbJtJMStAkQ5sq45zTxu63Wvfa9BOJrF6yibtagIceluunMYctBiyc&rsv_dl=brs_28338_6
+                    - generic [ref=e879]: 使用cli的优缺点
+              - row "c语言ioctl函数 c++是什么软件" [ref=e880]:
+                - cell "c语言ioctl函数" [ref=e881]:
+                  - link "c语言ioctl函数" [ref=e882] [cursor=pointer]:
+                    - /url: /s?wd=c%E8%AF%AD%E8%A8%80ioctl%E5%87%BD%E6%95%B0&rsf=101633403&rsp=6&f=1&rs_src=0&rsv_pq=9d247f1f000fd8ec&rsv_t=1610BUbJtJMStAkQ5sq45zTxu63Wvfa9BOJrF6yibtagIceluunMYctBiyc&rsv_dl=brs_28338_7
+                    - generic [ref=e884]: c语言ioctl函数
+                - cell "c++是什么软件" [ref=e885]:
+                  - link "c++是什么软件" [ref=e886] [cursor=pointer]:
+                    - /url: /s?wd=c%2B%2B%E6%98%AF%E4%BB%80%E4%B9%88%E8%BD%AF%E4%BB%B6&rsf=101636803&rsp=7&f=1&rs_src=0&rsv_pq=9d247f1f000fd8ec&rsv_t=1610BUbJtJMStAkQ5sq45zTxu63Wvfa9BOJrF6yibtagIceluunMYctBiyc&rsv_dl=brs_28338_8
+                    - generic [ref=e888]: c++是什么软件
+              - row "c c++区别 使用cli的注意事项" [ref=e889]:
+                - cell "c c++区别" [ref=e890]:
+                  - link "c c++区别" [ref=e891] [cursor=pointer]:
+                    - /url: /s?wd=c%20c%2B%2B%E5%8C%BA%E5%88%AB&rsf=101633403&rsp=8&f=1&rs_src=0&rsv_pq=9d247f1f000fd8ec&rsv_t=1610BUbJtJMStAkQ5sq45zTxu63Wvfa9BOJrF6yibtagIceluunMYctBiyc&rsv_dl=brs_28338_9
+                    - generic [ref=e893]: c c++区别
+                - cell "使用cli的注意事项" [ref=e894]:
+                  - link "使用cli的注意事项" [ref=e895] [cursor=pointer]:
+                    - /url: /s?wd=%E4%BD%BF%E7%94%A8cli%E7%9A%84%E6%B3%A8%E6%84%8F%E4%BA%8B%E9%A1%B9&rsf=101633301&rsp=9&f=1&rs_src=0&rsv_pq=9d247f1f000fd8ec&rsv_t=1610BUbJtJMStAkQ5sq45zTxu63Wvfa9BOJrF6yibtagIceluunMYctBiyc&rsv_dl=brs_28338_10
+                    - generic [ref=e897]: 使用cli的注意事项
+      - generic [ref=e900]:
+        - link "上一页":
+          - /url: ""
+          - img "上一页"
+        - strong [ref=e901]:
+          - generic [ref=e902]: "1"
+        - link "2" [ref=e903] [cursor=pointer]:
+          - /url: /s?wd=c%27li&pn=10&oq=c%27li&ie=utf-8&usm=2&fenlei=256&rsv_idx=1&rsv_pq=9d247f1f000fd8ec&rsv_t=1610BUbJtJMStAkQ5sq45zTxu63Wvfa9BOJrF6yibtagIceluunMYctBiyc&topic_pn=
+          - generic [ref=e904]: "2"
+        - link "3" [ref=e905] [cursor=pointer]:
+          - /url: /s?wd=c%27li&pn=20&oq=c%27li&ie=utf-8&usm=2&fenlei=256&rsv_idx=1&rsv_pq=9d247f1f000fd8ec&rsv_t=1610BUbJtJMStAkQ5sq45zTxu63Wvfa9BOJrF6yibtagIceluunMYctBiyc&topic_pn=
+          - generic [ref=e906]: "3"
+        - link "4" [ref=e907] [cursor=pointer]:
+          - /url: /s?wd=c%27li&pn=30&oq=c%27li&ie=utf-8&usm=2&fenlei=256&rsv_idx=1&rsv_pq=9d247f1f000fd8ec&rsv_t=1610BUbJtJMStAkQ5sq45zTxu63Wvfa9BOJrF6yibtagIceluunMYctBiyc&topic_pn=
+          - generic [ref=e908]: "4"
+        - link "5" [ref=e909] [cursor=pointer]:
+          - /url: /s?wd=c%27li&pn=40&oq=c%27li&ie=utf-8&usm=2&fenlei=256&rsv_idx=1&rsv_pq=9d247f1f000fd8ec&rsv_t=1610BUbJtJMStAkQ5sq45zTxu63Wvfa9BOJrF6yibtagIceluunMYctBiyc&topic_pn=
+          - generic [ref=e910]: "5"
+        - link "6" [ref=e911] [cursor=pointer]:
+          - /url: /s?wd=c%27li&pn=50&oq=c%27li&ie=utf-8&usm=2&fenlei=256&rsv_idx=1&rsv_pq=9d247f1f000fd8ec&rsv_t=1610BUbJtJMStAkQ5sq45zTxu63Wvfa9BOJrF6yibtagIceluunMYctBiyc&topic_pn=
+          - generic [ref=e912]: "6"
+        - link "7" [ref=e913] [cursor=pointer]:
+          - /url: /s?wd=c%27li&pn=60&oq=c%27li&ie=utf-8&usm=2&fenlei=256&rsv_idx=1&rsv_pq=9d247f1f000fd8ec&rsv_t=1610BUbJtJMStAkQ5sq45zTxu63Wvfa9BOJrF6yibtagIceluunMYctBiyc&topic_pn=
+          - generic [ref=e914]: "7"
+        - link "8" [ref=e915] [cursor=pointer]:
+          - /url: /s?wd=c%27li&pn=70&oq=c%27li&ie=utf-8&usm=2&fenlei=256&rsv_idx=1&rsv_pq=9d247f1f000fd8ec&rsv_t=1610BUbJtJMStAkQ5sq45zTxu63Wvfa9BOJrF6yibtagIceluunMYctBiyc&topic_pn=
+          - generic [ref=e916]: "8"
+        - link "9" [ref=e917] [cursor=pointer]:
+          - /url: /s?wd=c%27li&pn=80&oq=c%27li&ie=utf-8&usm=2&fenlei=256&rsv_idx=1&rsv_pq=9d247f1f000fd8ec&rsv_t=1610BUbJtJMStAkQ5sq45zTxu63Wvfa9BOJrF6yibtagIceluunMYctBiyc&topic_pn=
+          - generic [ref=e918]: "9"
+        - link "10" [ref=e919] [cursor=pointer]:
+          - /url: /s?wd=c%27li&pn=90&oq=c%27li&ie=utf-8&usm=2&fenlei=256&rsv_idx=1&rsv_pq=9d247f1f000fd8ec&rsv_t=1610BUbJtJMStAkQ5sq45zTxu63Wvfa9BOJrF6yibtagIceluunMYctBiyc&topic_pn=
+          - generic [ref=e920]: "10"
+        - link "下一页" [ref=e921] [cursor=pointer]:
+          - /url: /s?wd=c%27li&pn=10&oq=c%27li&ie=utf-8&usm=2&fenlei=256&rsv_idx=1&rsv_pq=9d247f1f000fd8ec&rsv_t=1610BUbJtJMStAkQ5sq45zTxu63Wvfa9BOJrF6yibtagIceluunMYctBiyc&topic_pn=&rsv_page=1
+          - img "下一页" [ref=e922]
+      - generic [ref=e925]:
+        - link "帮助" [ref=e926] [cursor=pointer]:
+          - /url: https://help.baidu.com/question?prod_id=1
+        - link "举报" [ref=e927] [cursor=pointer]:
+          - /url: https://help.baidu.com/jubao?source=search
+        - link "用户反馈" [ref=e928] [cursor=pointer]:
+          - /url: javascript:;
+        - link "企业推广" [ref=e929] [cursor=pointer]:
+          - /url: https://e.baidu.com/lp/search/?refer=1298

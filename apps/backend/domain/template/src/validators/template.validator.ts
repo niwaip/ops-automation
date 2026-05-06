@@ -40,7 +40,29 @@ export class TemplateValidator {
         }
 
         // Action validation
-        const validActions = ['click', 'fill', 'navigate', 'wait', 'select', 'check', 'screenshot', 'assert', 'smart_search', 'hover', 'press', 'scroll', 'type_text', 'get_text', 'snapshot', 'read_page'];
+        const validActions = [
+          'click',
+          'fill',
+          'navigate',
+          'wait',
+          'select',
+          'check',
+          'screenshot',
+          'assert',
+          'search',
+          'smart_search',
+          'hover',
+          'press',
+          'press_key',
+          'scroll',
+          'type_text',
+          'get_text',
+          'snapshot',
+          'read_page',
+          'list_search_results',
+          'click_result',
+          'switch_latest_tab',
+        ];
         if (!validActions.includes(step.action)) {
           errors.push(`Step "${step.step_id}" has invalid action "${step.action}"`);
         }

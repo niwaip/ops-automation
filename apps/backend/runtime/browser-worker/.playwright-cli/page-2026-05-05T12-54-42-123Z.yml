@@ -1,0 +1,124 @@
+- generic [ref=e2]:
+  - generic [ref=e3]:
+    - generic:
+      - generic [ref=e6]:
+        - link "新闻" [ref=e7] [cursor=pointer]:
+          - /url: http://news.baidu.com
+        - link "hao123" [ref=e8] [cursor=pointer]:
+          - /url: https://www.hao123.com?src=from_pc
+        - link "地图" [ref=e9] [cursor=pointer]:
+          - /url: http://map.baidu.com
+        - link "贴吧" [ref=e10] [cursor=pointer]:
+          - /url: http://tieba.baidu.com/
+        - link "视频" [ref=e11] [cursor=pointer]:
+          - /url: https://haokan.baidu.com/?sfrom=baidu-top
+        - link "图片" [ref=e12] [cursor=pointer]:
+          - /url: http://image.baidu.com/
+        - link "网盘" [ref=e13] [cursor=pointer]:
+          - /url: https://pan.baidu.com?from=1026962h
+        - link "文库" [ref=e14] [cursor=pointer]:
+          - /url: https://wenku.baidu.com/?fr=bdpcindex
+        - link "文心" [ref=e15] [cursor=pointer]:
+          - /url: https://chat.baidu.com/search?isShowHello=1&pd=csaitab&setype=csaitab&extParamsJson=%7B%22enter_type%22%3A%22home_tab%22%7D
+        - link "搭子DuMate" [ref=e16] [cursor=pointer]:
+          - /url: https://cloud.baidu.com/product/dumate.html?track=bdsy
+        - link "更多" [ref=e18] [cursor=pointer]:
+          - /url: http://www.baidu.com/more/
+      - generic [ref=e19]:
+        - generic [ref=e20] [cursor=pointer]: 设置
+        - link "登录" [ref=e21] [cursor=pointer]:
+          - /url: https://passport.baidu.com/v2/?login&tpl=mn&u=http%3A%2F%2Fwww.baidu.com%2F&sms=5
+    - generic [ref=e24]:
+      - generic [ref=e25]:
+        - img [ref=e26]
+        - generic:
+          - link "点击一下，了解更多":
+            - /url: //www.baidu.com/s?wd=%E7%99%BE%E5%BA%A6%E7%83%AD%E6%90%9C&sa=ire_dl_gh_logo_texing&rsv_dl=igh_logo_pcs
+      - generic [ref=e31]:
+        - generic [ref=e34]:
+          - textbox "国乒男团晋级16强" [active] [ref=e36]
+          - generic [ref=e38]:
+            - generic [ref=e39]:
+              - img [ref=e47] [cursor=pointer]
+              - generic [ref=e50]:
+                - img [ref=e54] [cursor=pointer]
+                - img [ref=e59] [cursor=pointer]
+            - button "百度一下" [ref=e63] [cursor=pointer]
+        - link "复杂问题就找文心助手，深入思考回答更优 " [ref=e67] [cursor=pointer]:
+          - /url: https://chat.baidu.com/search?extParams=%7B%22enter_type%22%3A%22home_operate%22%7D&isShowHello=1
+          - img [ref=e68]
+          - generic [ref=e69]:
+            - generic [ref=e70]: 复杂问题就找文心助手，深入思考回答更优
+            - generic [ref=e71]: 
+      - generic [ref=e74]:
+        - generic [ref=e75]:
+          - link "百度热搜":
+            - /url: https://top.baidu.com/board?platform=pc&sa=pcindex_entry
+            - generic "百度热搜" [ref=e76] [cursor=pointer]: 
+          - generic [ref=e77] [cursor=pointer]:
+            - generic [ref=e78]: 
+            - text: 换一换
+        - list:
+          - listitem [ref=e79]:
+            - link " 总书记对青年学子的殷切期待" [ref=e80] [cursor=pointer]:
+              - /url: https://www.baidu.com/s?wd=%E6%80%BB%E4%B9%A6%E8%AE%B0%E5%AF%B9%E9%9D%92%E5%B9%B4%E5%AD%A6%E5%AD%90%E7%9A%84%E6%AE%B7%E5%88%87%E6%9C%9F%E5%BE%85&sa=fyb_n_homepage&rsv_dl=fyb_n_homepage&from=super&cl=3&tn=baidutop10&fr=top1000&rsv_idx=2&hisfilter=1
+              - generic [ref=e81]: 
+              - text: 总书记对青年学子的殷切期待
+          - listitem [ref=e83]:
+            - link "5 丈夫每月打赏上百万 妻子能追回吗" [ref=e84] [cursor=pointer]:
+              - /url: https://www.baidu.com/s?wd=%E4%B8%88%E5%A4%AB%E6%AF%8F%E6%9C%88%E6%89%93%E8%B5%8F%E4%B8%8A%E7%99%BE%E4%B8%87+%E5%A6%BB%E5%AD%90%E8%83%BD%E8%BF%BD%E5%9B%9E%E5%90%97&sa=fyb_n_homepage&rsv_dl=fyb_n_homepage&from=super&cl=3&tn=baidutop10&fr=top1000&rsv_idx=2&hisfilter=1
+              - generic [ref=e85]: "5"
+              - text: 丈夫每月打赏上百万 妻子能追回吗
+            - generic [ref=e86]: 新
+          - listitem [ref=e87]:
+            - link "1 机场提示禁止携带越王勾践剑登机" [ref=e88] [cursor=pointer]:
+              - /url: https://www.baidu.com/s?wd=%E6%9C%BA%E5%9C%BA%E6%8F%90%E7%A4%BA%E7%A6%81%E6%AD%A2%E6%90%BA%E5%B8%A6%E8%B6%8A%E7%8E%8B%E5%8B%BE%E8%B7%B5%E5%89%91%E7%99%BB%E6%9C%BA&sa=fyb_n_homepage&rsv_dl=fyb_n_homepage&from=super&cl=3&tn=baidutop10&fr=top1000&rsv_idx=2&hisfilter=1
+              - generic [ref=e89]: "1"
+              - text: 机场提示禁止携带越王勾践剑登机
+            - generic [ref=e90]: 热
+          - listitem [ref=e91]:
+            - link "6 浏阳烟花厂爆炸事故已致26死61伤" [ref=e92] [cursor=pointer]:
+              - /url: https://www.baidu.com/s?wd=%E6%B5%8F%E9%98%B3%E7%83%9F%E8%8A%B1%E5%8E%82%E7%88%86%E7%82%B8%E4%BA%8B%E6%95%85%E5%B7%B2%E8%87%B426%E6%AD%BB61%E4%BC%A4&sa=fyb_n_homepage&rsv_dl=fyb_n_homepage&from=super&cl=3&tn=baidutop10&fr=top1000&rsv_idx=2&hisfilter=1
+              - generic [ref=e93]: "6"
+              - text: 浏阳烟花厂爆炸事故已致26死61伤
+          - listitem [ref=e95]:
+            - link "2 女乞丐NPC被游客们投喂零食走红" [ref=e96] [cursor=pointer]:
+              - /url: https://www.baidu.com/s?wd=%E5%A5%B3%E4%B9%9E%E4%B8%90NPC%E8%A2%AB%E6%B8%B8%E5%AE%A2%E4%BB%AC%E6%8A%95%E5%96%82%E9%9B%B6%E9%A3%9F%E8%B5%B0%E7%BA%A2&sa=fyb_n_homepage&rsv_dl=fyb_n_homepage&from=super&cl=3&tn=baidutop10&fr=top1000&rsv_idx=2&hisfilter=1
+              - generic [ref=e97]: "2"
+              - text: 女乞丐NPC被游客们投喂零食走红
+            - generic [ref=e98]: 热
+          - listitem [ref=e99]:
+            - link "7 军犬救援演练发现是熟人扭头就走" [ref=e100] [cursor=pointer]:
+              - /url: https://www.baidu.com/s?wd=%E5%86%9B%E7%8A%AC%E6%95%91%E6%8F%B4%E6%BC%94%E7%BB%83%E5%8F%91%E7%8E%B0%E6%98%AF%E7%86%9F%E4%BA%BA%E6%89%AD%E5%A4%B4%E5%B0%B1%E8%B5%B0&sa=fyb_n_homepage&rsv_dl=fyb_n_homepage&from=super&cl=3&tn=baidutop10&fr=top1000&rsv_idx=2&hisfilter=1
+              - generic [ref=e101]: "7"
+              - text: 军犬救援演练发现是熟人扭头就走
+            - generic [ref=e102]: 热
+          - listitem [ref=e103]:
+            - link "3 小长假里看中国" [ref=e104] [cursor=pointer]:
+              - /url: https://www.baidu.com/s?wd=%E5%B0%8F%E9%95%BF%E5%81%87%E9%87%8C%E7%9C%8B%E4%B8%AD%E5%9B%BD&sa=fyb_n_homepage&rsv_dl=fyb_n_homepage&from=super&cl=3&tn=baidutop10&fr=top1000&rsv_idx=2&hisfilter=1
+              - generic [ref=e105]: "3"
+              - text: 小长假里看中国
+          - listitem [ref=e107]:
+            - link "8 女子体检正常 确诊胃癌到去世仅俩月" [ref=e108] [cursor=pointer]:
+              - /url: https://www.baidu.com/s?wd=%E5%A5%B3%E5%AD%90%E4%BD%93%E6%A3%80%E6%AD%A3%E5%B8%B8+%E7%A1%AE%E8%AF%8A%E8%83%83%E7%99%8C%E5%88%B0%E5%8E%BB%E4%B8%96%E4%BB%85%E4%BF%A9%E6%9C%88&sa=fyb_n_homepage&rsv_dl=fyb_n_homepage&from=super&cl=3&tn=baidutop10&fr=top1000&rsv_idx=2&hisfilter=1
+              - generic [ref=e109]: "8"
+              - text: 女子体检正常 确诊胃癌到去世仅俩月
+            - generic [ref=e110]: 热
+          - listitem [ref=e111]:
+            - link "4 史上最严控烟来了 哪座城市烟味最淡" [ref=e112] [cursor=pointer]:
+              - /url: https://www.baidu.com/s?wd=%E5%8F%B2%E4%B8%8A%E6%9C%80%E4%B8%A5%E6%8E%A7%E7%83%9F%E6%9D%A5%E4%BA%86+%E5%93%AA%E5%BA%A7%E5%9F%8E%E5%B8%82%E7%83%9F%E5%91%B3%E6%9C%80%E6%B7%A1&sa=fyb_n_homepage&rsv_dl=fyb_n_homepage&from=super&cl=3&tn=baidutop10&fr=top1000&rsv_idx=2&hisfilter=1
+              - generic [ref=e113]: "4"
+              - text: 史上最严控烟来了 哪座城市烟味最淡
+            - generic [ref=e114]: 热
+          - listitem [ref=e115]:
+            - link "9 大连现“全李酒店” 曾是全季酒店" [ref=e116] [cursor=pointer]:
+              - /url: https://www.baidu.com/s?wd=%E5%A4%A7%E8%BF%9E%E7%8E%B0%E2%80%9C%E5%85%A8%E6%9D%8E%E9%85%92%E5%BA%97%E2%80%9D+%E6%9B%BE%E6%98%AF%E5%85%A8%E5%AD%A3%E9%85%92%E5%BA%97&sa=fyb_n_homepage&rsv_dl=fyb_n_homepage&from=super&cl=3&tn=baidutop10&fr=top1000&rsv_idx=2&hisfilter=1
+              - generic [ref=e117]: "9"
+              - text: 大连现“全李酒店” 曾是全季酒店
+            - generic [ref=e118]: 热
+  - generic [ref=e119]:
+    - generic:
+      - generic:
+        - generic:
+          - img
+    - img [ref=e124] [cursor=pointer]

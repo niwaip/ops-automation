@@ -34,6 +34,7 @@
   ],
   "devDependencies": {
     "@jest/globals": "^30.3.0",
+    "@playwright/cli": "^0.1.11",
     "@types/jest": "^29.5.0",
     "@types/node": "^20.10.0",
     "@types/pg": "^8.10.0",

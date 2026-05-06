@@ -1,13 +1,15 @@
 import { Controller, Post, Body } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
-import { BrowserService, MCPCommand } from './browser.service';
+import { BrowserService } from './browser.service';
 import {
+  BrowserExecutionBackendDto,
   BrowserControlStateDto,
   ExecuteStepDto,
   ExecuteStepResultDto,
   FreezeBrowserSessionDto,
   ResumeBrowserSessionDto,
 } from '../../dto/worker.dto';
+import { MCPCommand } from './adapters/browser-execution.adapter';
 
 @ApiTags('browser')
 @Controller('browser')
@@ -18,23 +20,43 @@ export class BrowserController {
   @ApiOperation({ summary: 'Initialize browser session for AI control' })
   @ApiResponse({ status: 200, description: 'Browser initialized successfully' })
   @ApiResponse({ status: 500, description: 'Failed to initialize browser' })
-  async initBrowser(): Promise<{ success: boolean; message: string }> {
-    return this.browserService.initBrowser();
+  async initBrowser(
+    @Body()
+    body: {
+      backend?: BrowserExecutionBackendDto;
+      runtimeSessionId?: string;
+      initialUrl?: string;
+    } = {},
+  ): Promise<{ success: boolean; message: string; endpoints?: any }> {
+    return this.browserService.initBrowser(body);
   }
 
   @Post('execute')
   @ApiOperation({ summary: 'Execute MCP commands on the browser' })
   @ApiResponse({ status: 200, description: 'Commands executed successfully' })
   @ApiResponse({ status: 400, description: 'Browser not initialized' })
-  async executeCommands(@Body() body: { commands: MCPCommand[] }): Promise<{ success: boolean; results: any[]; message?: string }> {
-    return this.browserService.executeCommands(body.commands);
+  async executeCommands(
+    @Body()
+    body: {
+      commands: MCPCommand[];
+      backend?: BrowserExecutionBackendDto;
+      runtimeSessionId?: string;
+    },
+  ): Promise<{ success: boolean; results: any[]; message?: string }> {
+    return this.browserService.executeCommands(body.commands, body);
   }
 
   @Post('reset')
   @ApiOperation({ summary: 'Reset browser session' })
   @ApiResponse({ status: 200, description: 'Browser reset successfully' })
-  async resetBrowser(): Promise<{ success: boolean }> {
-    await this.browserService.resetBrowser();
+  async resetBrowser(
+    @Body()
+    body: {
+      backend?: BrowserExecutionBackendDto;
+      runtimeSessionId?: string;
+    } = {},
+  ): Promise<{ success: boolean }> {
+    await this.browserService.resetBrowser(body);
     return { success: true };
   }
 

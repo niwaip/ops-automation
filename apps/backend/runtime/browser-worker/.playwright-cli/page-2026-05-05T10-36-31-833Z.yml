@@ -1,0 +1,25 @@
+- generic [ref=e5]:
+  - generic [ref=e6]:
+    - generic [ref=e7]: O
+    - heading "Ops Automation Platform" [level=1] [ref=e8]
+  - paragraph [ref=e9]: Ops Automation Platform Login
+  - generic [ref=e10]:
+    - generic [ref=e16]:
+      - img "user" [ref=e18]:
+        - img [ref=e19]
+      - textbox "Enter username" [ref=e21]
+    - generic [ref=e27]:
+      - img "lock" [ref=e29]:
+        - img [ref=e30]
+      - textbox "Enter password" [ref=e32]
+      - img "eye-invisible" [ref=e34] [cursor=pointer]:
+        - img [ref=e35]
+    - generic [ref=e43] [cursor=pointer]:
+      - checkbox "Remember me" [ref=e45]
+      - generic [ref=e47]: Remember me
+    - button "Login" [ref=e53] [cursor=pointer]:
+      - generic [ref=e54]: Login
+  - button "global 简体中文" [ref=e56] [cursor=pointer]:
+    - img "global" [ref=e58]:
+      - img [ref=e59]
+    - generic [ref=e61]: 简体中文

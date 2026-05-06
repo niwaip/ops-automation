@@ -1,0 +1,14 @@
+- main [ref=e16]:
+  - generic [ref=e18]:
+    - heading "Trending Now on Bing" [level=1] [ref=e19]
+    - navigation
+  - generic [ref=e20]:
+    - generic [ref=e21]:
+      - generic [ref=e22]: 国内版
+      - generic [ref=e23] [cursor=pointer]: 国际版
+    - generic [ref=e24]:
+      - generic "Enter your search term" [ref=e25]:
+        - searchbox "Enter your search term" [active] [ref=e26]
+      - button "Search"
+      - generic "Search the web" [ref=e28] [cursor=pointer]:
+        - img [ref=e29]

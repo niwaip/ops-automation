@@ -93,6 +93,7 @@ services:
   session-broker:
     <<: *common-node-service
     container_name: ops-session-broker
+    command: sh -c "npm config set registry https://registry.npmmirror.com && npm install --legacy-peer-deps && rm -f tsconfig.tsbuildinfo && npx tsc && node dist/main.js"
     environment:
       <<: *common-env
       PORT: ${SESSION_BROKER_PORT:-3002}
@@ -118,6 +119,14 @@ services:
       INTERNAL_API_SHARED_SECRET: ${INTERNAL_API_SHARED_SECRET:-ops_internal_shared_secret_change_me}
       AI_ORCHESTRATOR_URL: http://${AI_ORCHESTRATOR_HOST:-ai-orchestrator}:${AI_ORCHESTRATOR_PORT:-3007}
       SESSION_BROKER_URL: http://${SESSION_BROKER_HOST:-session-broker}:${SESSION_BROKER_PORT:-3002}
+      PROXY_TIMEOUT_DEFAULT_MS: ${PROXY_TIMEOUT_DEFAULT_MS:-60000}
+      PROXY_TIMEOUT_PLATFORM_MS: ${PROXY_TIMEOUT_PLATFORM_MS:-60000}
+      PROXY_TIMEOUT_AUTH_MS: ${PROXY_TIMEOUT_AUTH_MS:-60000}
+      PROXY_TIMEOUT_TEMPLATE_MS: ${PROXY_TIMEOUT_TEMPLATE_MS:-60000}
+      PROXY_TIMEOUT_SESSION_MS: ${PROXY_TIMEOUT_SESSION_MS:-60000}
+      PROXY_TIMEOUT_AI_MS: ${PROXY_TIMEOUT_AI_MS:-60000}
+      PROXY_TIMEOUT_WORKER_MS: ${PROXY_TIMEOUT_WORKER_MS:-60000}
+      PROXY_TIMEOUT_REPLAY_MS: ${PROXY_TIMEOUT_REPLAY_MS:-60000}
     ports:
       - "${CONTROL_PLANE_PORT:-3003}:${CONTROL_PLANE_PORT:-3003}"
     volumes:
@@ -133,17 +142,26 @@ services:
   browser-worker:
     <<: *common-node-service
     container_name: ops-browser-worker
+    command: sh -c "npm config set registry https://registry.npmmirror.com && npm install --legacy-peer-deps && npm run dev"
     environment:
       NODE_ENV: development
+      DOCKER_ENV: true
       PORT: ${BROWSER_WORKER_PORT:-3004}
       CHROME_REMOTE_DEBUGGING_HOST: browser-chrome
       CHROME_REMOTE_DEBUGGING_PORT: ${CDP_PORT:-9222}
       CODEGEN_API_PORT: ${CODEGEN_API_PORT:-3011}
+      PLAYWRIGHT_CLI_ACTION_TIMEOUT_MS: ${PLAYWRIGHT_CLI_ACTION_TIMEOUT_MS:-60000}
+      PLAYWRIGHT_CLI_NAVIGATION_TIMEOUT_MS: ${PLAYWRIGHT_CLI_NAVIGATION_TIMEOUT_MS:-60000}
+      PLAYWRIGHT_CLI_PROCESS_TIMEOUT_MS: ${PLAYWRIGHT_CLI_PROCESS_TIMEOUT_MS:-120000}
+      SESSION_BROWSER_IMAGE: ${SESSION_BROWSER_IMAGE:-ops-browser-chrome:local}
+      NETWORK_NAME: ${NETWORK_NAME:-ops-network}
+      EXTERNAL_HOST: ${HOST_IP:-localhost}
     ports:
       - "${BROWSER_WORKER_PORT:-3004}:${BROWSER_WORKER_PORT:-3004}"
     volumes:
       - ${PROJECT_ROOT:-..}/apps/backend/runtime/browser-worker:/app
       - browser_worker_node_modules:/app/node_modules
+      - /var/run/docker.sock:/var/run/docker.sock
     depends_on:
       - browser-chrome
 
@@ -271,6 +289,7 @@ services:
     build:
       context: ../..
       dockerfile: docker/browser-worker/Dockerfile
+    image: ${SESSION_BROWSER_IMAGE:-ops-browser-chrome:local}
     container_name: ops-browser-chrome
     ports:
       - "${NOVNC_PORT:-6080}:8080"

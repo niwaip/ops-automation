@@ -2,8 +2,8 @@ import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { IsString, IsOptional, IsObject, IsUUID } from 'class-validator';
 
 export class WorkerEndpointsDto {
-  @ApiProperty({ example: 'http://10.0.0.5:8080/vnc.html', description: 'noVNC endpoint URL' })
-  novnc!: string;
+  @ApiPropertyOptional({ example: 'http://10.0.0.5:8080/vnc.html', description: 'noVNC endpoint URL' })
+  novnc?: string;
 
   @ApiProperty({ example: 'ws://10.0.0.5:9222', description: 'Chrome DevTools Protocol endpoint URL' })
   cdp!: string;
