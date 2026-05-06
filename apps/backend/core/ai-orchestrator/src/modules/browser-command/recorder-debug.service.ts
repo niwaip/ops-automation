@@ -364,6 +364,11 @@ export class RecorderDebugService {
       {
         backend: session.backend,
         runtimeSessionId: session.runtimeSessionId,
+        sessionPreferences: {
+          mode: 'interactive',
+          enableCodegen: true,
+          headless: false,
+        },
       },
       {
         timeout: 60000,

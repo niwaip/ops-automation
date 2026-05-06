@@ -44,12 +44,18 @@ export class BrowserService implements OnModuleDestroy {
     backend?: BrowserExecutionBackend;
     runtimeSessionId?: string;
     initialUrl?: string;
+    sessionPreferences?: {
+      mode?: 'interactive' | 'agent';
+      enableCodegen?: boolean;
+      headless?: boolean;
+    };
   }): Promise<{ success: boolean; message: string; endpoints?: any }> {
     const backend = options?.backend || 'legacy';
     this.logger.log(`Initializing browser using backend: ${backend}`);
     const result = await this.getAdapter(backend).initBrowser({
       runtimeSessionId: options?.runtimeSessionId,
       initialUrl: options?.initialUrl,
+      sessionPreferences: options?.sessionPreferences,
     });
 
     // If we have a runtimeSessionId, try to get the worker endpoints

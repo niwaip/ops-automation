@@ -478,9 +478,13 @@ const TemplateDetailPage: React.FC = () => {
               <Space direction="vertical" style={{ width: '100%', marginBottom: 16 }} size="middle">
                 {exportedScript && (
                   <Card size="small" title="JS 脚本">
-                    <pre style={scriptBlockStyle}>
-                      {exportedScript}
-                    </pre>
+                    <Collapse ghost defaultActiveKey={[]}>
+                      <Panel header="展开查看 JS 脚本" key="script">
+                        <pre style={scriptBlockStyle}>
+                          {exportedScript}
+                        </pre>
+                      </Panel>
+                    </Collapse>
                   </Card>
                 )}
                 {exportedOutputs.length > 0 && (

@@ -109,7 +109,11 @@ export class PlaywrightCliAdapter implements BrowserExecutionAdapter {
     this.logger.log(`Initializing Playwright CLI session ${sessionId} at ${initialUrl}`);
 
     try {
-      await this.workerService.ensureSessionWorker(sessionId);
+      await this.workerService.ensureSessionWorker(sessionId, {
+        mode: options?.sessionPreferences?.mode,
+        enableCodegen: options?.sessionPreferences?.enableCodegen,
+        headless: options?.sessionPreferences?.headless,
+      });
       await this.ensureDirectories();
       await this.openSession(sessionId, initialUrl);
       await this.configureSessionTimeouts(sessionId);
@@ -1475,6 +1479,7 @@ export class PlaywrightCliAdapter implements BrowserExecutionAdapter {
   }
 
   private async execCli(sessionId: string, args: string[]): Promise<CliExecResult> {
+    this.workerService.touchWorkerByRuntimeSessionId(sessionId);
     const binary = await this.resolveCliBinary();
     const fullArgs = [...binary.baseArgs, `-s=${sessionId}`, ...args];
     this.logger.debug(`Running CLI command: ${binary.command} ${fullArgs.join(' ')}`);

@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Table, Card, Button, Input, Space, Tag, Select, Modal, message, Form } from 'antd';
+import { Table, Card, Button, Input, Space, Tag, Select, Modal, message, Form, Drawer, Descriptions, Timeline, Typography, Collapse } from 'antd';
 import {
   SearchOutlined,
   PlusOutlined,
@@ -11,14 +11,78 @@ import {
 } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
 import { useQuery, useMutation, useQueryClient } from 'react-query';
-import { sessionApi, Session } from '../api/session';
+import { sessionApi, Session, StepResult } from '../api/session';
 import { reportApi, ReportTemplate } from '../api/report';
+import { templateApi } from '../api/template';
+import { userApi } from '../api/auth';
 import type { ColumnsType } from 'antd/es/table';
 
 const { Option } = Select;
+const { Text } = Typography;
 
 // Session state type matching backend
 type SessionState = 'IDLE' | 'RUNNING' | 'HUMAN_CONTROL' | 'CLOSED' | 'ERROR';
+type SessionRow = Session & {
+  template_name?: string;
+  username?: string;
+};
+
+const cleanInlineValue = (value?: string): string => (value || '').replace(/`/g, '').trim();
+
+const parseCliHtmlSummary = (rawHtml?: string): {
+  result?: unknown;
+  code?: string;
+  pageUrl?: string;
+  pageTitle?: string;
+  events: string[];
+} => {
+  if (!rawHtml) {
+    return { events: [] };
+  }
+
+  const section = (title: string): string | undefined => {
+    const regex = new RegExp(`### ${title}\\s*([\\s\\S]*?)(?=\\n### |$)`, 'i');
+    const match = rawHtml.match(regex);
+    return match?.[1]?.trim();
+  };
+
+  const parseMaybeJson = (value?: string): unknown => {
+    if (!value) {
+      return undefined;
+    }
+    const trimmed = value.trim();
+    try {
+      const firstPass = JSON.parse(trimmed);
+      if (typeof firstPass === 'string') {
+        try {
+          return JSON.parse(firstPass);
+        } catch {
+          return firstPass;
+        }
+      }
+      return firstPass;
+    } catch {
+      return cleanInlineValue(trimmed);
+    }
+  };
+
+  const resultSection = section('Result');
+  const codeMatch = rawHtml.match(/```(?:js|javascript)?\s*([\s\S]*?)```/i);
+  const pageUrlMatch = rawHtml.match(/- Page URL:\s*`([^`]+)`/i);
+  const pageTitleMatch = rawHtml.match(/- Page Title:\s*(.+)/i);
+  const eventsSection = section('Events');
+
+  return {
+    result: parseMaybeJson(resultSection),
+    code: codeMatch?.[1]?.trim(),
+    pageUrl: cleanInlineValue(pageUrlMatch?.[1]),
+    pageTitle: cleanInlineValue(pageTitleMatch?.[1]),
+    events: (eventsSection || '')
+      .split('\n')
+      .map((line) => line.replace(/^-+\s*/, '').trim())
+      .filter(Boolean),
+  };
+};
 
 const SessionListPage: React.FC = () => {
   const { t } = useTranslation(['common', 'session']);
@@ -32,11 +96,80 @@ const SessionListPage: React.FC = () => {
   const [reportModalVisible, setReportModalVisible] = useState(false);
   const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null);
   const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(null);
+  const [dialogDrawerVisible, setDialogDrawerVisible] = useState(false);
+  const [selectedSession, setSelectedSession] = useState<SessionRow | null>(null);
   const [generatingReport, setGeneratingReport] = useState(false);
 
   const sessionsQuery = useQuery(
     ['sessions', { page, pageSize, status: statusFilter, search: searchText }],
-    () => sessionApi.list({ page, pageSize, status: statusFilter, search: searchText })
+    async () => {
+      const listResult = await sessionApi.list({ page, pageSize, status: statusFilter, search: searchText });
+      const sessions = listResult.sessions || [];
+
+      const [templateNameMap, userNameMap] = await Promise.all([
+        (async () => {
+          const templateIds = Array.from(
+            new Set(sessions.map((session) => session.template_id).filter(Boolean) as string[]),
+          );
+          if (templateIds.length === 0) {
+            return new Map<string, string>();
+          }
+
+          const templatePairs = await Promise.all(
+            templateIds.map(async (templateId) => {
+              try {
+                const template = await templateApi.getById(templateId);
+                return [templateId, template.name] as const;
+              } catch {
+                return [templateId, '-'] as const;
+              }
+            }),
+          );
+
+          return new Map<string, string>(templatePairs);
+        })(),
+        (async () => {
+          const userIds = Array.from(
+            new Set(sessions.map((session) => session.user_id).filter(Boolean) as string[]),
+          );
+          if (userIds.length === 0) {
+            return new Map<string, string>();
+          }
+
+          const userPairs = await Promise.all(
+            userIds.map(async (userId) => {
+              try {
+                const user = await userApi.getById(userId);
+                return [userId, user.username] as const;
+              } catch {
+                return [userId, userId] as const;
+              }
+            }),
+          );
+
+          return new Map<string, string>(userPairs);
+        })(),
+      ]);
+
+      const enrichedSessions: SessionRow[] = sessions.map((session) => ({
+        ...session,
+        template_name: session.template_id ? templateNameMap.get(session.template_id) || '-' : '-',
+        username: session.user_id ? userNameMap.get(session.user_id) || session.user_id : '-',
+      }));
+
+      return {
+        ...listResult,
+        sessions: enrichedSessions,
+      };
+    }
+  );
+
+  const sessionStepsQuery = useQuery(
+    ['sessionSteps', selectedSession?.id],
+    () => sessionApi.getStepResults(selectedSession!.id),
+    {
+      enabled: dialogDrawerVisible && !!selectedSession?.id,
+    },
   );
 
   const templatesQuery = useQuery(
@@ -102,22 +235,150 @@ const SessionListPage: React.FC = () => {
     return colorMap[state] || 'default';
   };
 
-  const columns: ColumnsType<Session> = [
+  const dialogTimelineItems = useMemo(() => {
+    const steps = sessionStepsQuery.data || [];
+    return steps.map((step: StepResult) => {
+      const hasError = !step.success;
+      const textPreview = step.text?.slice(0, 120);
+      const action = (step.action || '').toLowerCase();
+      const isWaitStep = action.includes('wait');
+      const isScreenshotStep = action.includes('screenshot');
+      const parsedHtml = parseCliHtmlSummary(step.html);
+
+      const detailContent = isWaitStep ? (
+        <Text type="secondary">wait 步骤不展示详细内容</Text>
+      ) : isScreenshotStep ? (
+        step.screenshot ? (
+          <img
+            src={step.screenshot.startsWith('data:') ? step.screenshot : `data:image/png;base64,${step.screenshot}`}
+            alt={`step-${step.step_index}-screenshot`}
+            style={{ width: '100%', borderRadius: 8, border: '1px solid var(--bg-secondary)' }}
+          />
+        ) : (
+          <Text type="secondary">暂无截图</Text>
+        )
+      ) : (
+        <Space direction="vertical" size={10} style={{ width: '100%' }}>
+          {step.screenshot ? (
+            <div>
+              <Text strong>截图</Text>
+              <div style={{ marginTop: 6 }}>
+                <img
+                  src={step.screenshot.startsWith('data:') ? step.screenshot : `data:image/png;base64,${step.screenshot}`}
+                  alt={`step-${step.step_index}-screenshot`}
+                  style={{ width: '100%', borderRadius: 8, border: '1px solid var(--bg-secondary)' }}
+                />
+              </div>
+            </div>
+          ) : null}
+          {step.text ? (
+            <div>
+              <Text strong>文本输出</Text>
+              <div style={{ marginTop: 6, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{step.text}</div>
+            </div>
+          ) : null}
+          {parsedHtml.result !== undefined ? (
+            <div>
+              <Text strong>结果</Text>
+              <pre
+                style={{
+                  marginTop: 6,
+                  padding: 10,
+                  borderRadius: 8,
+                  background: 'var(--bg-secondary)',
+                  border: '1px solid var(--bg-secondary)',
+                  whiteSpace: 'pre-wrap',
+                  wordBreak: 'break-word',
+                  fontSize: 12,
+                }}
+              >
+                {typeof parsedHtml.result === 'string'
+                  ? parsedHtml.result
+                  : JSON.stringify(parsedHtml.result, null, 2)}
+              </pre>
+            </div>
+          ) : null}
+          {parsedHtml.pageUrl || parsedHtml.pageTitle ? (
+            <div>
+              <Text strong>页面信息</Text>
+              <div style={{ marginTop: 6 }}>
+                {parsedHtml.pageUrl ? <div>URL: {parsedHtml.pageUrl}</div> : null}
+                {parsedHtml.pageTitle ? <div>Title: {parsedHtml.pageTitle}</div> : null}
+              </div>
+            </div>
+          ) : null}
+          {parsedHtml.events.length > 0 ? (
+            <div>
+              <Text strong>事件</Text>
+              <div style={{ marginTop: 6 }}>
+                {parsedHtml.events.map((eventText, idx) => (
+                  <div key={`${step.step_id}-event-${idx}`}>- {eventText}</div>
+                ))}
+              </div>
+            </div>
+          ) : null}
+          {parsedHtml.code ? (
+            <div>
+              <Text strong>执行代码</Text>
+              <pre
+                style={{
+                  marginTop: 6,
+                  maxHeight: 220,
+                  overflow: 'auto',
+                  padding: 10,
+                  borderRadius: 8,
+                  background: 'var(--bg-secondary)',
+                  border: '1px solid var(--bg-secondary)',
+                  whiteSpace: 'pre-wrap',
+                  wordBreak: 'break-word',
+                  fontSize: 12,
+                }}
+              >
+                {parsedHtml.code}
+              </pre>
+            </div>
+          ) : null}
+        </Space>
+      );
+      const detailNode = isWaitStep ? (
+        <Text type="secondary">wait 不展示详细内容</Text>
+      ) : (
+        <Collapse
+          ghost
+          items={[
+            {
+              key: `detail-${step.step_id}`,
+              label: '查看详情',
+              children: detailContent,
+            },
+          ]}
+          defaultActiveKey={[]}
+        />
+      );
+
+      return {
+        color: hasError ? 'red' : 'green',
+        children: (
+          <Space direction="vertical" size={8} style={{ width: '100%' }}>
+            <Text strong>{`${step.step_index}. ${step.action}`}</Text>
+            <Text type={hasError ? 'danger' : 'secondary'}>
+              {hasError ? (step.error || step.message || '执行失败') : '执行成功'}
+            </Text>
+            {textPreview ? <Text type="secondary">{textPreview}</Text> : null}
+            {detailNode}
+          </Space>
+        ),
+      };
+    });
+  }, [sessionStepsQuery.data]);
+
+  const columns: ColumnsType<SessionRow> = [
     {
-      title: t('session:sessionId'),
-      dataIndex: 'id',
-      key: 'id',
-      width: 120,
+      title: '模板名称',
+      dataIndex: 'template_name',
+      key: 'template_name',
+      width: 220,
       ellipsis: true,
-      render: (id: string) => <span style={{ fontSize: 11 }}>{id.substring(0, 8)}...</span>,
-    },
-    {
-      title: t('session:template'),
-      dataIndex: 'template_id',
-      key: 'template_id',
-      width: 120,
-      ellipsis: true,
-      render: (templateId: string) => templateId ? <span style={{ fontSize: 11 }}>{templateId.substring(0, 8)}...</span> : '-',
     },
     {
       title: t('session:sessionStatus'),
@@ -129,11 +390,11 @@ const SessionListPage: React.FC = () => {
     },
     {
       title: t('session:owner'),
-      dataIndex: 'user_id',
-      key: 'user_id',
+      dataIndex: 'username',
+      key: 'username',
       width: 120,
       ellipsis: true,
-      render: (userId: string) => <span style={{ fontSize: 11 }}>{userId ? userId.substring(0, 8) + '...' : '-'}</span>,
+      render: (username: string) => <span>{username || '-'}</span>,
     },
     {
       title: t('session:startTime'),
@@ -151,9 +412,12 @@ const SessionListPage: React.FC = () => {
             type="link"
             size="small"
             icon={<EyeOutlined />}
-            onClick={() => navigate(`/sessions/${record.id}`)}
+            onClick={() => {
+              setSelectedSession(record);
+              setDialogDrawerVisible(true);
+            }}
           >
-            {t('session:viewSession')}
+            查看对话
           </Button>
           <Button
             type="link"
@@ -243,6 +507,39 @@ const SessionListPage: React.FC = () => {
           }}
         />
       </Card>
+
+      <Drawer
+        title="会话对话详情"
+        placement="right"
+        width={680}
+        open={dialogDrawerVisible}
+        onClose={() => setDialogDrawerVisible(false)}
+      >
+        {selectedSession ? (
+          <Space direction="vertical" size={16} style={{ width: '100%' }}>
+            <Descriptions column={1} size="small" bordered>
+              <Descriptions.Item label="模板名称">{selectedSession.template_name || '-'}</Descriptions.Item>
+              <Descriptions.Item label="所属用户">{selectedSession.username || '-'}</Descriptions.Item>
+              <Descriptions.Item label="会话状态">
+                <Tag color={getStateColor(selectedSession.state)}>{selectedSession.state}</Tag>
+              </Descriptions.Item>
+              <Descriptions.Item label="开始时间">
+                {selectedSession.created_at ? new Date(selectedSession.created_at).toLocaleString() : '-'}
+              </Descriptions.Item>
+            </Descriptions>
+
+            <Card title="执行步骤" size="small">
+              {sessionStepsQuery.isLoading ? (
+                <Text type="secondary">加载中...</Text>
+              ) : (sessionStepsQuery.data || []).length === 0 ? (
+                <Text type="secondary">暂无对话/步骤记录</Text>
+              ) : (
+                <Timeline items={dialogTimelineItems} />
+              )}
+            </Card>
+          </Space>
+        ) : null}
+      </Drawer>
 
       {/* Generate Report Modal */}
       <Modal

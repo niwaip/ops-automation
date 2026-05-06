@@ -26,6 +26,11 @@ export class BrowserController {
       backend?: BrowserExecutionBackendDto;
       runtimeSessionId?: string;
       initialUrl?: string;
+      sessionPreferences?: {
+        mode?: 'interactive' | 'agent';
+        enableCodegen?: boolean;
+        headless?: boolean;
+      };
     } = {},
   ): Promise<{ success: boolean; message: string; endpoints?: any }> {
     return this.browserService.initBrowser(body);

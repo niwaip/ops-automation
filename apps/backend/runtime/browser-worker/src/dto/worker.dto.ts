@@ -17,6 +17,11 @@ export class WorkerEndpointsDto {
   vnc?: string;
 }
 
+export enum WorkerSessionModeDto {
+  INTERACTIVE = 'interactive',
+  AGENT = 'agent',
+}
+
 export class CreateWorkerRequestDto {
   @ApiProperty({ example: 'user-123', description: 'User ID for the worker' })
   @IsString()
@@ -36,6 +41,37 @@ export class CreateWorkerRequestDto {
   @IsOptional()
   @IsString()
   runtime_session_id?: string;
+
+  @ApiProperty({
+    example: 'interactive',
+    enum: WorkerSessionModeDto,
+    description: 'Session mode: interactive keeps GUI/noVNC, agent prefers lightweight automation',
+    required: false,
+    default: 'interactive',
+  })
+  @IsOptional()
+  @IsEnum(WorkerSessionModeDto)
+  mode?: 'interactive' | 'agent';
+
+  @ApiProperty({
+    example: true,
+    description: 'Enable codegen HTTP API inside session container',
+    required: false,
+    default: true,
+  })
+  @IsOptional()
+  @IsBoolean()
+  enable_codegen?: boolean;
+
+  @ApiProperty({
+    example: false,
+    description: 'Run Chrome in headless mode (no GUI/noVNC)',
+    required: false,
+    default: false,
+  })
+  @IsOptional()
+  @IsBoolean()
+  headless?: boolean;
 }
 
 export class CreateWorkerResponseDto {

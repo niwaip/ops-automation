@@ -1,4 +1,4 @@
-import { Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
 import * as http from 'http';
 import { v4 as uuidv4 } from 'uuid';
 import {
@@ -14,12 +14,23 @@ interface ManagedWorkerStatus extends WorkerStatusDto {
   container_name: string;
   container_ip: string;
   runtime_session_id?: string;
+  mode: 'interactive' | 'agent';
+  enable_codegen: boolean;
+  headless: boolean;
   internal_cdp_url: string;
-  internal_codegen_url: string;
+  internal_codegen_url?: string;
+}
+
+interface SessionWorkerOptions {
+  userId?: string;
+  profilePath?: string;
+  mode?: 'interactive' | 'agent';
+  enableCodegen?: boolean;
+  headless?: boolean;
 }
 
 @Injectable()
-export class WorkerService {
+export class WorkerService implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(WorkerService.name);
   private readonly workers = new Map<string, ManagedWorkerStatus>();
   private readonly runtimeSessionIndex = new Map<string, string>();
@@ -27,12 +38,67 @@ export class WorkerService {
   private readonly dockerNetworkName = process.env.NETWORK_NAME || 'ops-network';
   private readonly sessionBrowserImage = process.env.SESSION_BROWSER_IMAGE || 'ops-browser-chrome:local';
   private readonly externalHost = process.env.EXTERNAL_HOST || process.env.HOST_IP || 'localhost';
+  private readonly defaultSessionMode =
+    process.env.SESSION_DEFAULT_MODE === 'agent' ? 'agent' : 'interactive';
+  private readonly defaultEnableCodegen =
+    (process.env.SESSION_ENABLE_CODEGEN || 'false').toLowerCase() !== 'false';
+  private readonly defaultHeadless =
+    (process.env.SESSION_HEADLESS || 'false').toLowerCase() === 'true';
+  private readonly sessionBrokerUrl = process.env.SESSION_BROKER_URL || 'http://session-broker:3002';
+  private readonly orphanSweepEnabled =
+    (process.env.BROWSER_WORKER_ORPHAN_SWEEP_ENABLED || 'true').toLowerCase() !== 'false';
+  private readonly orphanSweepIntervalMs = this.readPositiveInt(
+    process.env.BROWSER_WORKER_ORPHAN_SWEEP_INTERVAL_MS,
+    30000,
+  );
+  private readonly orphanSweepRequestTimeoutMs = this.readPositiveInt(
+    process.env.BROWSER_WORKER_ORPHAN_SWEEP_REQUEST_TIMEOUT_MS,
+    3000,
+  );
+  private readonly orphanSweepMinIdleMs = this.readPositiveInt(
+    process.env.BROWSER_WORKER_ORPHAN_SWEEP_MIN_IDLE_MS,
+    90000,
+  );
+  private orphanSweepTimer?: NodeJS.Timeout;
+  private orphanSweepRunning = false;
+
+  onModuleInit() {
+    if (!this.orphanSweepEnabled) {
+      this.logger.log('Orphan worker sweep is disabled');
+      return;
+    }
+
+    this.orphanSweepTimer = setInterval(() => {
+      this.sweepOrphanWorkers('periodic').catch((error: unknown) => {
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        this.logger.warn(`Periodic orphan sweep failed: ${errorMessage}`);
+      });
+    }, this.orphanSweepIntervalMs);
+
+    setTimeout(() => {
+      this.sweepOrphanWorkers('startup').catch((error: unknown) => {
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        this.logger.warn(`Startup orphan sweep failed: ${errorMessage}`);
+      });
+    }, 2000);
+  }
+
+  onModuleDestroy() {
+    if (this.orphanSweepTimer) {
+      clearInterval(this.orphanSweepTimer);
+      this.orphanSweepTimer = undefined;
+    }
+  }
 
   async createWorker(request: CreateWorkerRequestDto): Promise<CreateWorkerResponseDto> {
     const workerId = uuidv4();
     const containerName = `ops-browser-session-${workerId}`;
     const runtimeSessionId = request.runtime_session_id;
     const profilePath = request.profile_path || `/tmp/browser-profiles/${request.user_id}/${workerId}`;
+    const mode = request.mode || this.defaultSessionMode;
+    const headless = request.headless ?? (mode === 'agent' ? true : this.defaultHeadless);
+    const enableCodegen = request.enable_codegen ?? this.defaultEnableCodegen;
+    const effectiveEnableCodegen = headless ? false : enableCodegen;
     this.logger.log(`Creating browser worker ${workerId} for user ${request.user_id}`);
 
     const container = await this.docker.createContainer({
@@ -47,6 +113,9 @@ export class WorkerService {
         'VNC_PORT=5900',
         'CHROME_DEBUG_PORT=9222',
         'CODEGEN_API_PORT=3011',
+        `SESSION_MODE=${mode}`,
+        `HEADLESS=${headless ? 'true' : 'false'}`,
+        `ENABLE_CODEGEN=${effectiveEnableCodegen ? 'true' : 'false'}`,
         `CHROME_PROFILE_PATH=${profilePath}`,
       ],
       ExposedPorts: {
@@ -85,8 +154,11 @@ export class WorkerService {
       container_name: containerName,
       container_ip: containerIp,
       runtime_session_id: runtimeSessionId,
+      mode,
+      enable_codegen: effectiveEnableCodegen,
+      headless,
       internal_cdp_url: `http://${containerIp}:9222`,
-      internal_codegen_url: `http://${containerIp}:3011`,
+      internal_codegen_url: effectiveEnableCodegen ? `http://${containerIp}:3011` : undefined,
     };
 
     this.workers.set(workerId, workerStatus);
@@ -164,7 +236,7 @@ export class WorkerService {
 
   async ensureSessionWorker(
     runtimeSessionId: string,
-    options?: { userId?: string; profilePath?: string },
+    options?: SessionWorkerOptions,
   ): Promise<WorkerStatusDto> {
     const existingWorkerId = this.runtimeSessionIndex.get(runtimeSessionId);
     if (existingWorkerId) {
@@ -190,6 +262,9 @@ export class WorkerService {
       user_id: options?.userId || `runtime-${runtimeSessionId}`,
       profile_path: options?.profilePath,
       runtime_session_id: runtimeSessionId,
+      mode: options?.mode,
+      enable_codegen: options?.enableCodegen,
+      headless: options?.headless,
     });
     return this.getWorker(created.worker_id);
   }
@@ -200,6 +275,19 @@ export class WorkerService {
       return null;
     }
     return this.getWorker(workerId);
+  }
+
+  touchWorkerByRuntimeSessionId(runtimeSessionId: string): void {
+    const workerId = this.runtimeSessionIndex.get(runtimeSessionId);
+    if (!workerId) {
+      return;
+    }
+    const worker = this.workers.get(workerId);
+    if (!worker) {
+      return;
+    }
+    worker.updated_at = new Date();
+    this.workers.set(workerId, worker);
   }
 
   getInternalCdpUrl(runtimeSessionId: string): string | undefined {
@@ -242,7 +330,13 @@ export class WorkerService {
   getInternalCodegenUrl(runtimeSessionId: string): string | undefined {
     const workerId = this.runtimeSessionIndex.get(runtimeSessionId);
     const worker = workerId ? this.workers.get(workerId) : undefined;
-    return worker?.internal_codegen_url;
+    if (worker?.internal_codegen_url) {
+      return worker.internal_codegen_url;
+    }
+    if (worker?.enable_codegen === false) {
+      return undefined;
+    }
+    return worker ? `http://${worker.container_ip}:3011` : undefined;
   }
 
   // Method to check if worker is healthy (called by health service)
@@ -276,7 +370,9 @@ export class WorkerService {
 
   private async waitForWorkerReady(worker: ManagedWorkerStatus): Promise<void> {
     await this.waitForHttpReady(`${worker.internal_cdp_url}/json/version`, 30000);
-    await this.waitForHttpReady(`${worker.internal_codegen_url}/status`, 30000);
+    if (worker.enable_codegen && worker.internal_codegen_url) {
+      await this.waitForHttpReady(`${worker.internal_codegen_url}/status`, 30000);
+    }
   }
 
   private async waitForHttpReady(url: string, timeoutMs: number): Promise<void> {
@@ -305,7 +401,7 @@ export class WorkerService {
     });
   }
 
-  private async readJson<T>(url: string): Promise<T> {
+  private async readJson<T>(url: string, timeoutMs = 5000): Promise<T> {
     return new Promise((resolve, reject) => {
       const req = http.get(url, (res) => {
         const chunks: Buffer[] = [];
@@ -331,9 +427,113 @@ export class WorkerService {
       });
 
       req.on('error', reject);
-      req.setTimeout(5000, () => {
+      req.setTimeout(timeoutMs, () => {
         req.destroy(new Error(`GET ${url} timed out`));
       });
     });
+  }
+
+  private async sweepOrphanWorkers(reason: 'startup' | 'periodic'): Promise<void> {
+    if (this.orphanSweepRunning) {
+      return;
+    }
+
+    this.orphanSweepRunning = true;
+    try {
+      const candidates = Array.from(this.workers.values())
+        .filter((worker) => Boolean(worker.runtime_session_id))
+        .filter((worker) => {
+          const ageMs = Date.now() - worker.updated_at.getTime();
+          return ageMs >= this.orphanSweepMinIdleMs;
+        })
+        .map((worker) => ({
+          workerId: worker.worker_id,
+          runtimeSessionId: worker.runtime_session_id as string,
+        }));
+      if (candidates.length === 0) {
+        return;
+      }
+      this.logger.log(`Orphan sweep (${reason}) checking ${candidates.length} worker(s)`);
+
+      let removedCount = 0;
+      for (const candidate of candidates) {
+        const exists = await this.runtimeSessionExists(candidate.runtimeSessionId);
+        if (!exists) {
+          this.logger.warn(
+            `Removing orphan worker ${candidate.workerId} for missing runtime session ${candidate.runtimeSessionId} (${reason})`,
+          );
+          await this.deleteWorker(candidate.workerId).catch((error: unknown) => {
+            const errorMessage = error instanceof Error ? error.message : String(error);
+            this.logger.warn(`Failed to delete orphan worker ${candidate.workerId}: ${errorMessage}`);
+          });
+          removedCount += 1;
+        }
+      }
+
+      if (removedCount > 0) {
+        this.logger.log(`Orphan sweep (${reason}) removed ${removedCount} worker(s)`);
+      }
+    } finally {
+      this.orphanSweepRunning = false;
+    }
+  }
+
+  private async runtimeSessionExists(runtimeSessionId: string): Promise<boolean> {
+    const sessionUrl = `${this.sessionBrokerUrl}/runtime-sessions/${runtimeSessionId}`;
+    const statusCode = await this.readStatusCode(sessionUrl, this.orphanSweepRequestTimeoutMs);
+    if (statusCode === 404) {
+      this.logger.warn(`Runtime session ${runtimeSessionId} not found (404), worker can be removed`);
+      return false;
+    }
+    if (statusCode >= 200 && statusCode < 300) {
+      try {
+        const runtimeSession = await this.readJson<{ state?: string }>(
+          sessionUrl,
+          this.orphanSweepRequestTimeoutMs,
+        );
+        if (runtimeSession.state === 'closed') {
+          this.logger.warn(
+            `Runtime session ${runtimeSessionId} is closed, treating worker as orphan`,
+          );
+          return false;
+        }
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        this.logger.warn(
+          `Failed to read runtime session ${runtimeSessionId} payload, keeping worker: ${errorMessage}`,
+        );
+      }
+      return true;
+    }
+    this.logger.warn(
+      `Runtime session lookup for ${runtimeSessionId} returned status ${statusCode}, keeping worker`,
+    );
+    // On transient failures (network/5xx), avoid false positives.
+    return true;
+  }
+
+  private async readStatusCode(url: string, timeoutMs: number): Promise<number> {
+    return new Promise((resolve) => {
+      const req = http.get(url, (res) => {
+        res.resume();
+        resolve(res.statusCode || 500);
+      });
+      req.on('error', () => resolve(0));
+      req.setTimeout(timeoutMs, () => {
+        req.destroy();
+        resolve(0);
+      });
+    });
+  }
+
+  private readPositiveInt(input: string | undefined, fallback: number): number {
+    if (!input) {
+      return fallback;
+    }
+    const parsed = Number(input);
+    if (!Number.isFinite(parsed) || parsed <= 0) {
+      return fallback;
+    }
+    return Math.floor(parsed);
   }
 }

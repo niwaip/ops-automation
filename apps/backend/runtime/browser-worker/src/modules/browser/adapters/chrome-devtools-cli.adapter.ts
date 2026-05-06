@@ -66,14 +66,19 @@ export class ChromeDevtoolsCliAdapter implements BrowserExecutionAdapter {
   private readonly chromeRemoteDebuggingHost =
     process.env.CHROME_REMOTE_DEBUGGING_HOST || 'browser-chrome';
   private readonly chromeRemoteDebuggingPort = Number(process.env.CHROME_REMOTE_DEBUGGING_PORT || '9222');
+  private readonly cliIdleTtlMs = this.readPositiveInt(
+    process.env.CHROME_DEVTOOLS_CLI_IDLE_TTL_MS,
+    300000,
+  );
   private cliBinaryPromise?: Promise<DevtoolsCliBinary>;
   private cliServerReadyPromise?: Promise<void>;
+  private cliIdleTimer?: NodeJS.Timeout;
 
   constructor(private readonly workerService: WorkerService) {}
 
   async onModuleDestroy() {
     this.sessions.clear();
-    this.cliServerReadyPromise = undefined;
+    await this.shutdownCliServer('module destroy');
   }
 
   async initBrowser(options?: BrowserInitOptions): Promise<{ success: boolean; message: string }> {
@@ -81,7 +86,11 @@ export class ChromeDevtoolsCliAdapter implements BrowserExecutionAdapter {
     const initialUrl = options?.initialUrl || 'about:blank';
 
     try {
-      await this.workerService.ensureSessionWorker(sessionId);
+      await this.workerService.ensureSessionWorker(sessionId, {
+        mode: options?.sessionPreferences?.mode,
+        enableCodegen: options?.sessionPreferences?.enableCodegen,
+        headless: options?.sessionPreferences?.headless,
+      });
       await this.ensureDirectories();
       await this.ensurePageSelected(sessionId, initialUrl, true);
       return { success: true, message: `Chrome DevTools CLI session ${sessionId} initialized` };
@@ -131,6 +140,9 @@ export class ChromeDevtoolsCliAdapter implements BrowserExecutionAdapter {
         const errorMessage = error instanceof Error ? error.message : 'Unknown error';
         this.logger.warn(`Failed to delete worker for ${sessionId}: ${errorMessage}`);
       });
+    }
+    if (this.sessions.size === 0) {
+      await this.shutdownCliServer('all devtools sessions were reset');
     }
   }
 
@@ -697,7 +709,11 @@ export class ChromeDevtoolsCliAdapter implements BrowserExecutionAdapter {
     await this.ensureCliServerStarted(sessionId);
     const fullArgs = [...binary.baseArgs, ...args];
     this.logger.debug(`Running Chrome DevTools CLI command for ${sessionId}: ${binary.command} ${fullArgs.join(' ')}`);
-    return this.execFileAsync(binary.command, fullArgs);
+    try {
+      return await this.execFileAsync(binary.command, fullArgs);
+    } finally {
+      this.scheduleCliServerIdleShutdown();
+    }
   }
 
   private async ensureCliServerStarted(sessionId?: string): Promise<void> {
@@ -707,6 +723,7 @@ export class ChromeDevtoolsCliAdapter implements BrowserExecutionAdapter {
 
     try {
       await this.cliServerReadyPromise;
+      this.scheduleCliServerIdleShutdown();
     } catch (error) {
       this.cliServerReadyPromise = undefined;
       throw error;
@@ -720,6 +737,50 @@ export class ChromeDevtoolsCliAdapter implements BrowserExecutionAdapter {
 
     this.logger.debug(`Starting Chrome DevTools CLI server: ${binary.command} ${startArgs.join(' ')}`);
     await this.execFileAsync(binary.command, startArgs);
+  }
+
+  private scheduleCliServerIdleShutdown(): void {
+    this.clearCliIdleTimer();
+    if (this.cliIdleTtlMs <= 0 || this.sessions.size === 0) {
+      return;
+    }
+    this.cliIdleTimer = setTimeout(() => {
+      void this.shutdownCliServer(`idle timeout reached (${this.cliIdleTtlMs}ms)`);
+    }, this.cliIdleTtlMs);
+  }
+
+  private clearCliIdleTimer(): void {
+    if (this.cliIdleTimer) {
+      clearTimeout(this.cliIdleTimer);
+      this.cliIdleTimer = undefined;
+    }
+  }
+
+  private async shutdownCliServer(reason: string): Promise<void> {
+    this.clearCliIdleTimer();
+    if (!this.cliServerReadyPromise) {
+      return;
+    }
+    this.cliServerReadyPromise = undefined;
+    try {
+      await this.execFileAsync('pkill', ['-f', 'chrome-devtools-mcp']);
+      this.logger.log(`Stopped Chrome DevTools CLI server (${reason})`);
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      if (/no process found|not found/i.test(errorMessage)) {
+        this.logger.debug(`No Chrome DevTools CLI process to stop (${reason})`);
+        return;
+      }
+      this.logger.warn(`Failed to stop Chrome DevTools CLI server (${reason}): ${errorMessage}`);
+    }
+  }
+
+  private readPositiveInt(raw: string | undefined, fallback: number): number {
+    const parsed = Number(raw);
+    if (!Number.isFinite(parsed) || parsed <= 0) {
+      return fallback;
+    }
+    return Math.floor(parsed);
   }
 
   private async resolveCliBinary(): Promise<DevtoolsCliBinary> {

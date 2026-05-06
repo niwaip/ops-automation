@@ -792,6 +792,25 @@ export class ExecutionService {
     this.eventSubject.next(event);
   }
 
+  private async closeRuntimeSessionQuietly(
+    runtimeSessionId: string,
+    executionId: string,
+    reason: string,
+  ): Promise<void> {
+    try {
+      await axios.post(`${this.sessionBrokerUrl}/runtime-sessions/${runtimeSessionId}/close`, {});
+      this.logger.log(
+        `Runtime session ${runtimeSessionId} closed for execution ${executionId} (${reason})`,
+      );
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      // Close should be best-effort here to avoid breaking terminal state transitions.
+      this.logger.warn(
+        `Failed to close runtime session ${runtimeSessionId} for execution ${executionId} (${reason}): ${errorMessage}`,
+      );
+    }
+  }
+
   private async bootstrapBrowserExecution(
     execution: Record<string, unknown>,
     runtimeSessionId: string,
@@ -882,6 +901,7 @@ export class ExecutionService {
             stepId,
             failureReason,
             failureCode,
+            runtimeSessionId,
           }),
         enterWaitingInput: (requiredInputs, reason) =>
           this.enterRuntimeWaitingInput(executionId, runtimeSessionId, stepId, requiredInputs, reason),
@@ -1182,6 +1202,7 @@ export class ExecutionService {
         if (execution.status === EXECUTION_STATUS.RUNNING) {
           await this.updateStatus(executionId, EXECUTION_STATUS.SUCCEEDED);
           this.logger.log(`Execution ${executionId} marked as succeeded`);
+          await this.closeRuntimeSessionQuietly(runtimeSessionId, executionId, 'execution_succeeded');
         }
         return;
       }
@@ -1381,6 +1402,7 @@ export class ExecutionService {
             stepId,
             failureReason,
             failureCode,
+            runtimeSessionId,
           }),
         enterWaitingInput: (requiredInputs, reason) =>
           this.enterRuntimeWaitingInput(executionId, runtimeSessionId, stepId, requiredInputs, reason),
@@ -1396,6 +1418,7 @@ export class ExecutionService {
     stepId: string;
     failureReason: string;
     failureCode: string;
+    runtimeSessionId?: string;
   }): Promise<void> {
     await this.prisma.execution.update({
       where: { id: input.executionId },
@@ -1410,6 +1433,9 @@ export class ExecutionService {
       'Execution failed before remaining planned steps were executed',
     );
     await this.updateStatus(input.executionId, EXECUTION_STATUS.FAILED);
+    if (input.runtimeSessionId) {
+      await this.closeRuntimeSessionQuietly(input.runtimeSessionId, input.executionId, 'runtime_step_failed');
+    }
   }
 
   private async enterRuntimeWaitingInput(

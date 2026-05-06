@@ -17,6 +17,11 @@ export interface MCPCommand {
 export interface BrowserInitOptions {
   runtimeSessionId?: string;
   initialUrl?: string;
+  sessionPreferences?: {
+    mode?: 'interactive' | 'agent';
+    enableCodegen?: boolean;
+    headless?: boolean;
+  };
 }
 
 export interface BrowserExecutionOptions {
