@@ -1,9 +1,11 @@
 import { Body, Controller, Delete, Get, Param, Post, Put, Query, Request, Res } from '@nestjs/common';
 import type { Response } from 'express';
+import { ApiBody, ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { Roles, Public } from '../../decorators';
 import { CapabilityReleaseService } from './capability-release.service';
 import {
   ApproveCapabilityReleaseDTO,
+  BridgeRecorderExportDTO,
   CreateCapabilityBuildDTO,
   CreateCapabilityReleaseDTO,
   DeployCapabilityReleaseDTO,
@@ -18,6 +20,7 @@ import {
   SuggestReleaseWizardAssistDTO,
 } from './interfaces';
 
+@ApiTags('Capabilities')
 @Controller('capabilities')
 export class CapabilityReleaseController {
   constructor(private readonly capabilityReleaseService: CapabilityReleaseService) {}
@@ -33,6 +36,65 @@ export class CapabilityReleaseController {
   async listPublishedCapabilities() {
     const releases = await this.capabilityReleaseService.listPublishedCapabilities();
     return { releases };
+  }
+
+  @Post('bridge/recorder-export')
+  @Roles('admin')
+  @ApiOperation({ summary: 'Bridge recorder export artifacts into release + skill draft' })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      required: ['exportArtifacts'],
+      properties: {
+        releaseId: { type: 'string', format: 'uuid', nullable: true },
+        userGoal: { type: 'string', nullable: true },
+        sourceName: { type: 'string', nullable: true },
+        exportArtifacts: {
+          type: 'object',
+          properties: {
+            guidance: { type: 'string', nullable: true },
+            commands: {
+              type: 'array',
+              items: { type: 'object', additionalProperties: true },
+            },
+            skillDraft: {
+              type: 'object',
+              properties: {
+                name: { type: 'string', nullable: true },
+                description: { type: 'string', nullable: true },
+                publishPayload: { type: 'object', additionalProperties: true },
+              },
+            },
+          },
+        },
+      },
+      additionalProperties: false,
+    },
+  })
+  @ApiOkResponse({
+    schema: {
+      type: 'object',
+      properties: {
+        release: {
+          type: 'object',
+          properties: {
+            id: { type: 'string', format: 'uuid' },
+            sourceType: { type: 'string', example: 'browser_recording' },
+          },
+        },
+        skillDraft: {
+          type: 'object',
+          properties: {
+            id: { type: 'string', format: 'uuid' },
+            name: { type: 'string' },
+          },
+        },
+        bridgeMode: { type: 'string', example: 'browser_recording_native' },
+      },
+    },
+  })
+  async bridgeRecorderExport(@Body() body: BridgeRecorderExportDTO, @Request() req: any) {
+    return this.capabilityReleaseService.bridgeRecorderExport(body, req.user?.id);
   }
 
   @Post('runtime/execute')

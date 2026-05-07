@@ -16,6 +16,8 @@ import { ToolCatalogService } from '../skill/tool-catalog.service';
 import { ToolPromptExposure } from '../skill/interfaces';
 import {
   ApproveCapabilityReleaseDTO,
+  BridgeRecorderExportDTO,
+  BridgeRecorderExportResultDTO,
   CapabilityBuildDTO,
   CapabilityBuildType,
   CapabilityDeploymentRuntimeType,
@@ -42,6 +44,7 @@ import {
   AnalyzeFailureResultDTO,
   SuggestReleaseWizardAssistDTO,
   SuggestReleaseWizardAssistResultDTO,
+  RecorderBridgePublishPayloadDTO,
 } from './interfaces';
 
 type SkillRuntimeToolPolicy = {
@@ -52,11 +55,34 @@ type SkillRuntimeToolPolicy = {
   status: string;
 };
 
+const CAPABILITY_RELEASE_ERROR_CODE = {
+  MISSING_PUBLISH_PAYLOAD: 'missing_publish_payload',
+  INVALID_RELEASE_TYPE: 'invalid_release_type',
+  RELEASE_APPROVAL_PENDING: 'release_approval_pending',
+  RELEASE_APPROVAL_REJECTED: 'release_approval_rejected',
+  SKILL_DRAFT_NOT_FOUND: 'skill_draft_not_found',
+  SKILL_PUBLISH_TOOL_VALIDATION_FAILED: 'skill_publish_tool_validation_failed',
+  RELEASE_NOT_PUBLISHED_FOR_DEPLOY: 'release_not_published_for_deploy',
+  RELEASE_DEPLOYING: 'release_deploying',
+  TEMPORAL_BUILD_NOT_EXECUTABLE: 'temporal_build_not_executable',
+  ROLLBACK_TARGET_SAME_RELEASE: 'rollback_target_same_release',
+  ROLLBACK_SOURCE_IDENTIFIER_MISSING: 'rollback_source_identifier_missing',
+  ROLLBACK_TARGET_RELEASE_NOT_FOUND: 'rollback_target_release_not_found',
+} as const;
+
 const asRecord = (value: unknown): Record<string, unknown> | undefined => {
   if (!value || typeof value !== 'object' || Array.isArray(value)) {
     return undefined;
   }
   return value as Record<string, unknown>;
+};
+
+const normalizeBrowserRecordingToolName = (toolName: unknown): string | undefined => {
+  if (typeof toolName !== 'string' || !toolName.trim()) {
+    return undefined;
+  }
+  const normalized = toolName.trim();
+  return normalized === 'browser_execute' ? 'browser_step' : normalized;
 };
 
 const getCarboneServiceUrl = (): string => {
@@ -68,6 +94,17 @@ const getCarboneServiceUrl = (): string => {
     return 'http://carbone-engine:3009';
   }
   return 'http://localhost:3009';
+};
+
+const getBrowserWorkerUrl = (): string => {
+  const configured = process.env.BROWSER_WORKER_URL;
+  if (configured && configured.trim()) {
+    return configured.replace(/\/$/, '');
+  }
+  if (process.env.DOCKER_ENV === 'true' || process.env.NODE_ENV === 'production') {
+    return 'http://ops-browser-worker:3004';
+  }
+  return 'http://localhost:3004';
 };
 
 const getCarboneExternalUrl = (): string => (
@@ -308,6 +345,7 @@ export class CapabilityReleaseService implements OnModuleInit {
         stepId: dto.stepId,
         capabilityVersion: dto.capabilityVersion,
         runtimeType: dto.runtimeType,
+        runtimeSessionId: dto.runtimeSessionId,
       },
     );
   }
@@ -438,6 +476,7 @@ export class CapabilityReleaseService implements OnModuleInit {
       stepId?: string;
       capabilityVersion?: string;
       runtimeType?: string;
+      runtimeSessionId?: string;
     },
   ): Promise<ExecuteCapabilityRuntimeResultDTO> {
     const releaseRows = await this.prisma.$queryRawUnsafe<any[]>(
@@ -540,6 +579,10 @@ export class CapabilityReleaseService implements OnModuleInit {
       return this.executeDocumentPublishedSkill(release, skillId, input, userId, options);
     }
 
+    if (release.sourceType === 'browser_recording') {
+      return this.executeBrowserRecordingPublishedSkill(release, skillId, input, userId, options);
+    }
+
     throw new BadRequestException(`当前不支持执行 ${release.sourceType} 类型的已发布 Skill`);
   }
 
@@ -588,6 +631,122 @@ export class CapabilityReleaseService implements OnModuleInit {
 
     await this.insertAuditEvent(releaseId, 'release_created', userId, true, '创建 Capability');
     return this.getCapabilityDetail(releaseId);
+  }
+
+  async bridgeRecorderExport(
+    dto: BridgeRecorderExportDTO,
+    userId?: string,
+  ): Promise<BridgeRecorderExportResultDTO> {
+    const publishPayload = dto.exportArtifacts?.skillDraft?.publishPayload;
+    if (!publishPayload || typeof publishPayload !== 'object' || Array.isArray(publishPayload)) {
+      throw new BadRequestException({
+        code: CAPABILITY_RELEASE_ERROR_CODE.MISSING_PUBLISH_PAYLOAD,
+        message: '缺少 exportArtifacts.skillDraft.publishPayload',
+      });
+    }
+
+    const normalizedPayload = this.normalizeRecorderPublishPayload(publishPayload);
+    const sourcePayload = this.buildRecorderSourcePayload(dto, normalizedPayload);
+
+    const sourceName = dto.sourceName
+      || normalizedPayload.name
+      || dto.userGoal
+      || dto.exportArtifacts?.skillDraft?.name
+      || 'Recorder Bridge Capability';
+
+    let releaseId = dto.releaseId;
+    if (releaseId) {
+      const existing = await this.getReleaseOrThrow(releaseId);
+      if (existing.sourceType !== 'browser_recording') {
+        throw new BadRequestException({
+          code: CAPABILITY_RELEASE_ERROR_CODE.INVALID_RELEASE_TYPE,
+          message: 'bridge 仅支持 browser_recording 类型 release',
+          expected: 'browser_recording',
+          actual: existing.sourceType,
+        });
+      }
+      await this.updateSource(
+        releaseId,
+        { sourceName, sourcePayload },
+        userId,
+      );
+    } else {
+      const created = await this.createCapability(
+        {
+          sourceType: 'browser_recording',
+          sourceName,
+          sourcePayload,
+        },
+        userId,
+      );
+      releaseId = created.release.id;
+    }
+
+    const release = await this.getReleaseOrThrow(releaseId);
+    const draftPayload = {
+      ...normalizedPayload,
+      sourceType: 'browser_recording',
+      bridgeMode: 'browser_recording_native',
+      recorderBridge: {
+        userGoal: dto.userGoal || null,
+        guidance: typeof dto.exportArtifacts?.guidance === 'string' ? dto.exportArtifacts.guidance : null,
+        commandCount: Array.isArray(dto.exportArtifacts?.commands) ? dto.exportArtifacts.commands.length : 0,
+      },
+    } as Record<string, unknown>;
+
+    const draftId = randomUUID();
+    await this.prisma.$executeRawUnsafe(
+      `INSERT INTO skill_drafts (
+        id, release_id, generated_from_build_id, generated_from_validation_id, source_type,
+        name, description, trigger_keywords, params_schema, execution_flow_template_ids,
+        tools, api_endpoints, draft_payload_json, status, created_by, created_at, updated_at
+      ) VALUES (
+        $1::uuid, $2::uuid, NULL, NULL, $3,
+        $4, $5, $6::jsonb, $7::jsonb, $8::jsonb,
+        $9::jsonb, $10::jsonb, $11::jsonb, 'draft', $12::uuid, now(), now()
+      )`,
+      draftId,
+      releaseId,
+      release.sourceType,
+      normalizedPayload.name,
+      normalizedPayload.description,
+      JSON.stringify(normalizedPayload.triggerKeywords),
+      JSON.stringify(normalizedPayload.paramsSchema),
+      JSON.stringify(normalizedPayload.executionFlowTemplateIds),
+      JSON.stringify(normalizedPayload.tools),
+      JSON.stringify(normalizedPayload.apiEndpoints || null),
+      JSON.stringify(draftPayload),
+      userId || null,
+    );
+
+    await this.prisma.$executeRawUnsafe(
+      `UPDATE capability_releases
+       SET current_skill_draft_id = $2::uuid,
+           status = 'pending_approval',
+           approval_status = 'pending',
+           updated_at = now()
+       WHERE id = $1::uuid`,
+      releaseId,
+      draftId,
+    );
+
+    await this.insertAuditEvent(
+      releaseId,
+      'recorder_export_bridged',
+      userId,
+      true,
+      'Recorder 导出结果已桥接为 Skill 草案',
+      {
+        bridgeMode: 'browser_recording_native',
+        commandCount: Array.isArray(dto.exportArtifacts?.commands) ? dto.exportArtifacts.commands.length : 0,
+      },
+    );
+
+    return {
+      release: await this.getReleaseOrThrow(releaseId),
+      skillDraft: await this.getSkillDraftOrThrow(draftId),
+      bridgeMode: 'browser_recording_native',
+    };
   }
 
   async updateSource(
@@ -1020,6 +1179,7 @@ export class CapabilityReleaseService implements OnModuleInit {
       const naturalLanguageCases = testCasesFromRequest.length > 0
         ? testCasesFromRequest
         : (dto.testUserInput?.trim() ? [dto.testUserInput.trim()] : []);
+      const templateId = this.resolveExecutionTemplateIdForRuntime(release, snapshot);
 
       if (release.sourceType === 'temporal_workflow') {
         if (naturalLanguageCases.length > 0 && (!dto.input || Object.keys(dto.input).length === 0)) {
@@ -1089,9 +1249,19 @@ export class CapabilityReleaseService implements OnModuleInit {
           };
           errorSummary = result.error || null;
         }
-      } else if (release.sourceId) {
+      } else if (release.sourceType === 'browser_recording') {
+        const result = this.validateBrowserRecordingSnapshot(snapshot, {
+          input: dto.input,
+          testCases: naturalLanguageCases,
+        });
+        success = result.success;
+        score = result.score;
+        logs = result.logs;
+        resultSnapshot = result.resultSnapshot;
+        errorSummary = result.errorSummary;
+      } else if (templateId) {
         const validation = await this.executionFlowTemplateService.validateTemplate(
-          release.sourceId,
+          templateId,
           undefined,
           dto.input,
           true,
@@ -1103,7 +1273,7 @@ export class CapabilityReleaseService implements OnModuleInit {
         resultSnapshot = validation as unknown as Record<string, unknown>;
         errorSummary = validation.warnings?.[0] || null;
       } else {
-        throw new Error('模板型能力当前仅支持基于已保存模板进行 Sandbox 校验');
+        throw new Error('模板/浏览器能力缺少可用模板标识，无法执行 Sandbox 校验');
       }
 
       await this.finishValidation(
@@ -1176,6 +1346,13 @@ export class CapabilityReleaseService implements OnModuleInit {
       let resultSnapshot: Record<string, unknown> | null = null;
       let errorSummary: string | null = null;
       const streamedLogs: string[] = [];
+      const testCasesFromRequest = Array.isArray(dto.testCases)
+        ? dto.testCases.map((item) => (typeof item === 'string' ? item.trim() : '')).filter(Boolean)
+        : [];
+      const naturalLanguageCases = testCasesFromRequest.length > 0
+        ? testCasesFromRequest
+        : (dto.testUserInput?.trim() ? [dto.testUserInput.trim()] : []);
+      const templateId = this.resolveExecutionTemplateIdForRuntime(release, snapshot);
 
       if (release.sourceType === 'temporal_workflow') {
         if (!build.generatedCode) {
@@ -1207,14 +1384,32 @@ export class CapabilityReleaseService implements OnModuleInit {
           fn,
         };
         errorSummary = result.error || null;
-      } else if (release.sourceId) {
+      } else if (release.sourceType === 'browser_recording') {
+        onEvent('status', {
+          phase: 'executing',
+          runtime: 'browser_recording',
+          note: '当前浏览器录制能力通过静态快照校验回放日志',
+        });
+        const result = this.validateBrowserRecordingSnapshot(snapshot, {
+          input: dto.input,
+          testCases: naturalLanguageCases,
+        });
+        success = result.success;
+        score = result.score;
+        logs = result.logs;
+        for (const log of logs) {
+          onEvent('log', { message: log });
+        }
+        resultSnapshot = result.resultSnapshot;
+        errorSummary = result.errorSummary;
+      } else if (templateId) {
         onEvent('status', {
           phase: 'executing',
           runtime: 'flow_runtime',
           note: '当前模板型能力通过同步校验结果回放日志',
         });
         const validation = await this.executionFlowTemplateService.validateTemplate(
-          release.sourceId,
+          templateId,
           undefined,
           dto.input,
           true,
@@ -1229,7 +1424,7 @@ export class CapabilityReleaseService implements OnModuleInit {
         resultSnapshot = validation as unknown as Record<string, unknown>;
         errorSummary = validation.warnings?.[0] || null;
       } else {
-        throw new Error('模板型能力当前仅支持基于已保存模板进行 Sandbox 校验');
+        throw new Error('模板/浏览器能力缺少可用模板标识，无法执行 Sandbox 校验');
       }
 
       await this.finishValidation(
@@ -1362,6 +1557,7 @@ export class CapabilityReleaseService implements OnModuleInit {
       ...(dto.description !== undefined ? { description: dto.description } : {}),
       ...(dto.triggerKeywords !== undefined ? { triggerKeywords: dto.triggerKeywords } : {}),
       ...(dto.paramsSchema !== undefined ? { paramsSchema: dto.paramsSchema } : {}),
+      ...(dto.executionFlow !== undefined ? { executionFlow: dto.executionFlow } : {}),
       ...(dto.executionFlowTemplateIds !== undefined
         ? { executionFlowTemplateIds: dto.executionFlowTemplateIds }
         : {}),
@@ -1447,20 +1643,52 @@ export class CapabilityReleaseService implements OnModuleInit {
   ): Promise<{ release: CapabilityReleaseDTO; publishedSkillId: string }> {
     const release = await this.getReleaseOrThrow(id);
     if (release.approvalStatus === 'pending' || release.status === 'pending_approval') {
-      throw new BadRequestException('当前 Release 尚未审批通过');
+      throw new BadRequestException({
+        code: CAPABILITY_RELEASE_ERROR_CODE.RELEASE_APPROVAL_PENDING,
+        message: '当前 Release 尚未审批通过',
+      });
     }
     if (release.approvalStatus === 'rejected') {
-      throw new BadRequestException('当前 Release 审批未通过，请调整草案后重新提交');
+      throw new BadRequestException({
+        code: CAPABILITY_RELEASE_ERROR_CODE.RELEASE_APPROVAL_REJECTED,
+        message: '当前 Release 审批未通过，请调整草案后重新提交',
+      });
     }
     const draftId = dto.draftId || release.currentSkillDraftId;
     if (!draftId) {
-      throw new NotFoundException('没有可发布的 Skill 草案');
+      throw new NotFoundException({
+        code: CAPABILITY_RELEASE_ERROR_CODE.SKILL_DRAFT_NOT_FOUND,
+        message: '没有可发布的 Skill 草案',
+      });
     }
     const previousPublishedSkillId = release.publishedSkillId;
     const draft = await this.getSkillDraftOrThrow(draftId);
+    const normalizedDraftTools = release.sourceType === 'browser_recording'
+      ? (Array.isArray(draft.tools)
+        ? draft.tools
+          .map((item) => normalizeBrowserRecordingToolName(item))
+          .filter((item): item is string => typeof item === 'string')
+        : [])
+      : draft.tools;
+    const normalizedDraftPayload: Record<string, unknown> =
+      release.sourceType === 'browser_recording'
+        ? {
+            ...(draft.draftPayload as Record<string, unknown>),
+            tools: Array.isArray((draft.draftPayload as Record<string, unknown>).tools)
+              ? ((draft.draftPayload as Record<string, unknown>).tools as unknown[])
+                .map((item) => normalizeBrowserRecordingToolName(item))
+                .filter((item): item is string => typeof item === 'string')
+              : normalizedDraftTools,
+            executionFlow: this.normalizeBrowserRecordingExecutionFlow(
+              (draft.draftPayload as Record<string, unknown>).executionFlow,
+            ),
+          }
+        : { ...(draft.draftPayload as Record<string, unknown>) };
     const toolValidation = await this.skillService.validateSkillToolsPayload({
-      tools: draft.tools,
-      executionFlow: [],
+      tools: normalizedDraftTools,
+      executionFlow: release.sourceType === 'browser_recording'
+        ? (normalizedDraftPayload.executionFlow as Record<string, unknown>[])
+        : [],
       executionFlowTemplateIds: draft.executionFlowTemplateIds,
     });
 
@@ -1474,12 +1702,13 @@ export class CapabilityReleaseService implements OnModuleInit {
         { toolValidation },
       );
       throw new BadRequestException({
+        code: CAPABILITY_RELEASE_ERROR_CODE.SKILL_PUBLISH_TOOL_VALIDATION_FAILED,
         message: '发布前工具校验失败',
         toolValidation,
       });
     }
 
-    const payload = { ...(draft.draftPayload as Record<string, unknown>) };
+    const payload: Record<string, unknown> = normalizedDraftPayload;
     if (typeof payload.description === 'string' && payload.description.length > 500) {
       payload.description = payload.description.slice(0, 497) + '...';
     }
@@ -1565,11 +1794,11 @@ export class CapabilityReleaseService implements OnModuleInit {
     userId?: string,
   ): Promise<{ release: CapabilityReleaseDTO; deployment: DeploymentRecordDTO }> {
     const release = await this.getReleaseOrThrow(id);
-    if (!release.publishedSkillId && release.sourceType !== 'temporal_workflow') {
-      throw new BadRequestException('当前 Release 尚未发布 Skill，不能部署');
-    }
     if (release.status === 'deploying') {
-      throw new BadRequestException('当前 Release 正在部署中');
+      throw new BadRequestException({
+        code: CAPABILITY_RELEASE_ERROR_CODE.RELEASE_DEPLOYING,
+        message: '当前 Release 正在部署中',
+      });
     }
 
     const deploymentId = randomUUID();
@@ -1596,9 +1825,10 @@ export class CapabilityReleaseService implements OnModuleInit {
         );
       } catch (error) {
         const message = error instanceof Error ? error.message : '当前 Release 缺少可执行代码';
-        throw new BadRequestException(
-          `${message}。请先在该 Release 上执行“构建 / AI 生成代码”，确认生成的 Workflow 代码已保存，再重新部署。`,
-        );
+        throw new BadRequestException({
+          code: CAPABILITY_RELEASE_ERROR_CODE.TEMPORAL_BUILD_NOT_EXECUTABLE,
+          message: `${message}。请先在该 Release 上执行“构建 / AI 生成代码”，确认生成的 Workflow 代码已保存，再重新部署。`,
+        });
       }
     }
 
@@ -1691,28 +1921,29 @@ export class CapabilityReleaseService implements OnModuleInit {
                 generatedCode,
               });
 
+        const workflowRef = workflow as any;
         if (!release.sourceId) {
           await this.prisma.$executeRawUnsafe(
             `UPDATE capability_releases
              SET source_id = $2::uuid, source_name = $3, updated_at = now()
              WHERE id = $1::uuid`,
             id,
-            workflow.id,
-            workflow.name,
+            workflowRef.id,
+            workflowRef.name,
           );
         }
 
-        const deployedWorkflow = await this.temporalWorkflowService.deploy(workflow.id);
+        const deployedWorkflowRef = await this.temporalWorkflowService.deploy(workflowRef.id) as any;
         logs.push('Workflow code synced to ops-temporal metadata');
-        logs.push(`Temporal workflow deployed: ${deployedWorkflow.id}`);
-        logs.push(`Task queue: ${deployedWorkflow.taskQueue}`);
-        artifactUri = `temporal-workflow://${deployedWorkflow.id}`;
+        logs.push(`Temporal workflow deployed: ${deployedWorkflowRef.id}`);
+        logs.push(`Task queue: ${deployedWorkflowRef.taskQueue}`);
+        artifactUri = `temporal-workflow://${deployedWorkflowRef.id}`;
         artifactHash = build.id;
         workerVersion = build.id;
         resultSnapshot = {
-          workflowId: deployedWorkflow.id,
-          taskQueue: deployedWorkflow.taskQueue,
-          deployedAt: deployedWorkflow.deployedAt?.toISOString?.() || null,
+          workflowId: deployedWorkflowRef.id,
+          taskQueue: deployedWorkflowRef.taskQueue,
+          deployedAt: deployedWorkflowRef.deployedAt?.toISOString?.() || null,
           generatedFromBuildId: build.id,
           targetService: 'ops-temporal',
           environment,
@@ -1723,6 +1954,7 @@ export class CapabilityReleaseService implements OnModuleInit {
         };
       } else {
         deploymentBuild = await this.resolveBuildForValidation(release, snapshot, undefined, userId);
+        const templateId = this.resolveExecutionTemplateIdForRuntime(release, snapshot);
         logs.push(`Environment: ${environment}`);
         logs.push(`Strategy: ${strategy}`);
         if (Object.keys(deploymentProfile).length > 0) {
@@ -1731,12 +1963,23 @@ export class CapabilityReleaseService implements OnModuleInit {
         if (Object.keys(configOverrides).length > 0) {
           logs.push(`Deployment overrides applied: ${JSON.stringify(configOverrides)}`);
         }
-        logs.push('模板型能力无需独立 Worker 部署，已将当前已发布 Skill 作为生效版本');
-        artifactUri = release.publishedSkillId ? `skill-config://${release.publishedSkillId}` : null;
-        artifactHash = release.publishedSkillId || null;
+        logs.push('模板/浏览器能力无需独立 Worker 部署，已完成运行配置下发并进入 smoke test');
+        if (release.publishedSkillId) {
+          logs.push(`当前绑定已发布 Skill: ${release.publishedSkillId}`);
+        } else {
+          logs.push('当前尚未发布 Skill，本次部署用于验证运行链路与参数，不影响线上 Skill 路由');
+        }
+        artifactUri = release.publishedSkillId
+          ? `skill-config://${release.publishedSkillId}`
+          : templateId
+            ? `template-runtime://${templateId}`
+            : `release-runtime://${release.id}`;
+        artifactHash = release.publishedSkillId || templateId || release.id;
         resultSnapshot = {
           publishedSkillId: release.publishedSkillId,
           mode: 'skill_config_activation',
+          prePublishDeploy: !release.publishedSkillId,
+          sourceTemplateId: templateId,
           environment,
           strategy,
           deploymentProfile,
@@ -1938,11 +2181,12 @@ export class CapabilityReleaseService implements OnModuleInit {
                 generatedCode,
               });
 
-        await this.temporalWorkflowService.deploy(workflow.id);
+        const workflowRef = workflow as any;
+        await this.temporalWorkflowService.deploy(workflowRef.id);
         logs.push('Workflow code synced to ops-temporal metadata');
         logs.push(`Temporal workflow rolled back to build ${targetBuild.id}`);
         resultSnapshot = {
-          workflowId: workflow.id,
+          workflowId: workflowRef.id,
           restoredFromReleaseId: targetRelease.id,
           restoredBuildId: targetBuild.id,
           restoredSkillId,
@@ -2825,6 +3069,59 @@ ${logs.join('\n')}
     );
   }
 
+  private validateBrowserRecordingSnapshot(
+    snapshot: CapabilitySourceSnapshotDTO,
+    options?: {
+      environment?: string;
+      deploymentId?: string;
+      input?: Record<string, unknown>;
+      testCases?: string[];
+    },
+  ): {
+    success: boolean;
+    score: number;
+    logs: string[];
+    resultSnapshot: Record<string, unknown>;
+    errorSummary: string | null;
+  } {
+    const payload = (snapshot.sourcePayload as Record<string, unknown>) || {};
+    const steps = Array.isArray(payload.steps) ? payload.steps : [];
+    const executionFlow = this.normalizeBrowserRecordingExecutionFlow(payload.executionFlow);
+    const testCases = Array.isArray(options?.testCases) ? options?.testCases.filter(Boolean) : [];
+
+    if (steps.length === 0 && executionFlow.length === 0) {
+      throw new Error('浏览器录制快照缺少执行步骤或执行流');
+    }
+
+    const logs = [
+      '开始执行浏览器录制快照静态验证...',
+      '当前浏览器录制 Sandbox 校验采用静态快照验证，尚未接入静默回放。',
+      `快照验证通过: 包含 ${steps.length} 个录制步骤, ${executionFlow.length} 个执行节点`,
+    ];
+    if (testCases.length > 0) {
+      logs.push(`收到 ${testCases.length} 条自然语言测试用例，将记录到校验结果中`);
+      testCases.forEach((item, index) => {
+        logs.push(`[Case ${index + 1}] ${item}`);
+      });
+    }
+
+    return {
+      success: true,
+      score: 100,
+      logs,
+      resultSnapshot: {
+        mode: 'static_snapshot_validation',
+        environment: options?.environment || null,
+        deploymentId: options?.deploymentId || null,
+        stepCount: steps.length,
+        flowNodeCount: executionFlow.length,
+        testCases,
+        input: options?.input || null,
+      },
+      errorSummary: null,
+    };
+  }
+
   private async runPostDeploySmokeTest(
     release: CapabilityReleaseDTO,
     snapshot: CapabilitySourceSnapshotDTO,
@@ -2854,6 +3151,7 @@ ${logs.join('\n')}
       let resultSnapshot: Record<string, unknown> | null = null;
       let errorSummary: string | null = null;
       const smokeInput = this.buildSmokeTestInput(release, snapshot, environment);
+      const templateId = this.resolveExecutionTemplateIdForRuntime(release, snapshot);
 
       if (release.sourceType === 'temporal_workflow') {
         if (!build.generatedCode) {
@@ -2877,9 +3175,21 @@ ${logs.join('\n')}
           input: smokeInput,
         };
         errorSummary = result.error || null;
-      } else if (release.sourceId) {
+      } else if (release.sourceType === 'browser_recording') {
+        const result = this.validateBrowserRecordingSnapshot(snapshot, {
+          environment,
+          deploymentId,
+          input: smokeInput,
+          testCases: [`smoke test for ${environment}`],
+        });
+        success = result.success;
+        score = result.score;
+        logs = result.logs;
+        resultSnapshot = result.resultSnapshot;
+        errorSummary = result.errorSummary;
+      } else if (templateId) {
         const validation = await this.executionFlowTemplateService.validateTemplate(
-          release.sourceId,
+          templateId,
           undefined,
           smokeInput,
           true,
@@ -2896,7 +3206,7 @@ ${logs.join('\n')}
         };
         errorSummary = validation.warnings?.[0] || null;
       } else {
-        throw new Error('当前能力缺少 sourceId，无法执行部署后 smoke test');
+        throw new Error('当前能力缺少可用模板标识，无法执行部署后 smoke test');
       }
 
       await this.finishSmokeValidation(
@@ -3003,6 +3313,64 @@ ${logs.join('\n')}
     return this.getBuildOrThrow(syntheticBuildId);
   }
 
+  private resolveExecutionTemplateIdForRuntime(
+    release: CapabilityReleaseDTO,
+    snapshot: CapabilitySourceSnapshotDTO,
+  ): string | null {
+    if (release.sourceType === 'temporal_workflow') {
+      return null;
+    }
+    if (release.sourceId && release.sourceId.trim()) {
+      return release.sourceId.trim();
+    }
+    const payload = snapshot.sourcePayload && typeof snapshot.sourcePayload === 'object'
+      ? snapshot.sourcePayload as Record<string, unknown>
+      : {};
+    const sourceTemplate = payload.sourceTemplate && typeof payload.sourceTemplate === 'object'
+      ? payload.sourceTemplate as Record<string, unknown>
+      : {};
+    const fromTemplate = sourceTemplate.templateId;
+    if (typeof fromTemplate === 'string' && fromTemplate.trim()) {
+      return fromTemplate.trim();
+    }
+    const fromPayloadId = payload.id;
+    if (typeof fromPayloadId === 'string' && fromPayloadId.trim()) {
+      return fromPayloadId.trim();
+    }
+    return null;
+  }
+
+  private normalizeBrowserRecordingExecutionFlow(
+    flow: unknown,
+  ): Array<Record<string, unknown>> {
+    if (!Array.isArray(flow)) {
+      return [];
+    }
+    return flow
+      .filter(
+        (item): item is Record<string, unknown> => Boolean(item) && typeof item === 'object' && !Array.isArray(item),
+      )
+      .map((step) => {
+        const tool = step.tool;
+        if (!tool || typeof tool !== 'object' || Array.isArray(tool)) {
+          return step;
+        }
+        const normalizedToolName = normalizeBrowserRecordingToolName(
+          (tool as Record<string, unknown>).name,
+        );
+        if (!normalizedToolName) {
+          return step;
+        }
+        return {
+          ...step,
+          tool: {
+            ...(tool as Record<string, unknown>),
+            name: normalizedToolName,
+          },
+        };
+      });
+  }
+
   private async getRollbackTargetOrThrow(
     release: CapabilityReleaseDTO,
     targetReleaseId?: string,
@@ -3010,13 +3378,19 @@ ${logs.join('\n')}
     if (targetReleaseId) {
       const target = await this.getReleaseOrThrow(targetReleaseId);
       if (target.id === release.id) {
-        throw new BadRequestException('不能回滚到当前 Release 自身');
+        throw new BadRequestException({
+          code: CAPABILITY_RELEASE_ERROR_CODE.ROLLBACK_TARGET_SAME_RELEASE,
+          message: '不能回滚到当前 Release 自身',
+        });
       }
       return target;
     }
 
     if (!release.sourceId && !release.sourceName) {
-      throw new BadRequestException('当前 Release 缺少可用于推断回滚目标的源标识');
+      throw new BadRequestException({
+        code: CAPABILITY_RELEASE_ERROR_CODE.ROLLBACK_SOURCE_IDENTIFIER_MISSING,
+        message: '当前 Release 缺少可用于推断回滚目标的源标识',
+      });
     }
 
     const rows = await this.prisma.$queryRawUnsafe<any[]>(
@@ -3039,7 +3413,10 @@ ${logs.join('\n')}
     );
 
     if (!rows[0]) {
-      throw new NotFoundException('未找到可回滚的目标 Release');
+      throw new NotFoundException({
+        code: CAPABILITY_RELEASE_ERROR_CODE.ROLLBACK_TARGET_RELEASE_NOT_FOUND,
+        message: '未找到可回滚的目标 Release',
+      });
     }
 
     return this.mapRelease(rows[0]);
@@ -3073,6 +3450,10 @@ ${logs.join('\n')}
     sourceType: string,
     sourceId: string,
   ): Promise<Record<string, unknown>> {
+    if (sourceType === 'browser_recording') {
+      throw new BadRequestException('browser_recording 类型不支持通过 sourceId 自动加载，请直接提供 sourcePayload');
+    }
+
     if (sourceType === 'temporal_workflow') {
       const rows = await this.prisma.$queryRawUnsafe<any[]>(
         `SELECT id,
@@ -3570,12 +3951,12 @@ ${logs.join('\n')}
       const definition = rawValue && typeof rawValue === 'object'
         ? (rawValue as Record<string, unknown>)
         : {};
+      const type = typeof definition.type === 'string' ? definition.type : 'string';
       if (definition.default !== undefined) {
-        acc[key] = definition.default;
+        acc[key] = this.normalizeSmokeInputValue(key, definition.default, type);
         return acc;
       }
 
-      const type = typeof definition.type === 'string' ? definition.type : 'string';
       if (type === 'number') {
         acc[key] = 1;
       } else if (type === 'boolean') {
@@ -3585,11 +3966,45 @@ ${logs.join('\n')}
       } else if (type === 'object') {
         acc[key] = {};
       } else {
-        acc[key] = `test_${key}`;
+        acc[key] = this.normalizeSmokeInputValue(key, `test_${key}`, type);
       }
 
       return acc;
     }, {});
+  }
+
+  private normalizeSmokeInputValue(key: string, value: unknown, typeHint?: string): unknown {
+    if (typeof value !== 'string') {
+      return value;
+    }
+
+    const trimmed = value.trim();
+    // Guard against markdown-style quoted URLs such as: `https://www.bing.com`
+    const unquoted = trimmed.startsWith('`') && trimmed.endsWith('`')
+      ? trimmed.slice(1, -1).trim()
+      : trimmed;
+
+    const type = String(typeHint || '').toLowerCase();
+    const isUrlLikeKey = /(^|_)(url|uri|link|endpoint|site|website)$|^(url|uri|link)$/i.test(String(key));
+    if (type === 'string' && isUrlLikeKey) {
+      return this.normalizeUrlLikeSmokeValue(unquoted);
+    }
+
+    return unquoted;
+  }
+
+  private normalizeUrlLikeSmokeValue(value: string): string {
+    const normalized = String(value || '').trim();
+    if (!normalized || /^test[_-]?url$/i.test(normalized) || /^test_/i.test(normalized)) {
+      return 'https://www.bing.com';
+    }
+    if (/^https?:\/\//i.test(normalized)) {
+      return normalized;
+    }
+    if (/^[\w.-]+\.[a-z]{2,}(\/.*)?$/i.test(normalized)) {
+      return `https://${normalized}`;
+    }
+    return 'https://www.bing.com';
   }
 
   private buildSmokeTestInput(
@@ -3878,6 +4293,50 @@ ${logs.join('\n')}
     const validationRules = this.buildValidationRules(payload);
 
     const finalDescription = description.length > 500 ? description.slice(0, 497) + '...' : description;
+
+    if (release.sourceType === 'browser_recording') {
+      const browserExecutionFlow = this.normalizeBrowserRecordingExecutionFlow(payload.executionFlow);
+      const declaredTools = Array.isArray(payload.tools)
+        ? payload.tools
+          .map((item) => normalizeBrowserRecordingToolName(item))
+          .filter((item): item is string => typeof item === 'string')
+        : [];
+      const flowTools = browserExecutionFlow
+        .map((step) => {
+          const tool = step.tool;
+          if (!tool || typeof tool !== 'object' || Array.isArray(tool)) {
+            return undefined;
+          }
+          return normalizeBrowserRecordingToolName((tool as Record<string, unknown>).name);
+        })
+        .filter((item): item is string => typeof item === 'string');
+      const tools = Array.from(new Set(['skill_match', ...declaredTools, ...flowTools]));
+      const apiEndpoints =
+        payload.apiEndpoints && typeof payload.apiEndpoints === 'object' && !Array.isArray(payload.apiEndpoints)
+          ? payload.apiEndpoints as Record<string, unknown>
+          : {
+              runtimeMetadata: {
+                sourceType: 'browser_recording',
+                matchSummary,
+                paramCollectionGuidance,
+                validationRules,
+                goal: typeof payload.goal === 'string' ? payload.goal : undefined,
+                expectedResult,
+              },
+            };
+
+      return {
+        name: baseName,
+        description: finalDescription,
+        triggerKeywords: executionFlowKeys.length > 0 ? executionFlowKeys : [baseName],
+        paramsSchema: paramsSchema || { properties: {}, required: [] },
+        executionFlowTemplateIds: [],
+        executionFlow: browserExecutionFlow,
+        tools,
+        apiEndpoints,
+        validationId: validation.id,
+      };
+    }
 
     if (release.sourceType === 'execution_flow_template') {
       return {
@@ -4181,6 +4640,367 @@ ${logs.join('\n')}
     }
   }
 
+  private async executeBrowserRecordingPublishedSkill(
+    release: CapabilityReleaseDTO,
+    skillId: string,
+    input: Record<string, unknown> | undefined,
+    userId?: string,
+    options?: {
+      executionId?: string;
+      stepId?: string;
+      capabilityVersion?: string;
+      runtimeType?: string;
+      runtimeSessionId?: string;
+    },
+  ): Promise<ExecuteCapabilityRuntimeResultDTO> {
+    const snapshot = await this.getCurrentSnapshotOrThrow(release);
+    const runtimeInput = input || {};
+    const runtimeSessionId = options?.runtimeSessionId || `capability-runtime-${randomUUID()}`;
+    const shouldResetSession = !options?.runtimeSessionId;
+    const backend = this.resolveBrowserRecordingBackend(snapshot.sourcePayload);
+    const browserWorkerUrl = getBrowserWorkerUrl();
+    const runtimeExecutionId = options?.executionId || `capability-runtime-${release.id}`;
+    const runtimeSteps = this.buildBrowserRecordingRuntimeSteps(snapshot.sourcePayload, runtimeInput);
+    const initialUrl = this.pickFirstNonEmptyString(
+      runtimeInput.url,
+      runtimeSteps.find((step) => step.action === 'goto')?.target,
+    );
+    const logs = [
+      `[BrowserRuntime] 调用浏览器录制运行时`,
+      `[BrowserRuntime] backend=${backend}`,
+      `[BrowserRuntime] runtimeSessionId=${runtimeSessionId}`,
+      `[BrowserRuntime] publishedSkillId=${skillId}`,
+      `[BrowserRuntime] stepCount=${runtimeSteps.length}`,
+    ];
+
+    try {
+      await axios.post<{ success: boolean; message?: string }>(
+        `${browserWorkerUrl}/browser/init`,
+        {
+          backend,
+          runtimeSessionId,
+          ...(initialUrl ? { initialUrl } : {}),
+          sessionPreferences: this.resolveBrowserRecordingSessionPreferences(snapshot.sourcePayload),
+        },
+        { timeout: 60000 },
+      );
+
+      const stepResults: Array<Record<string, unknown>> = [];
+      for (let index = 0; index < runtimeSteps.length; index += 1) {
+        const step = runtimeSteps[index] as {
+          id: string;
+          name: string;
+          action: string;
+          target?: string;
+          args?: Record<string, unknown>;
+        };
+        logs.push(`[BrowserRuntime][Step ${index + 1}] ${step.action}${step.target ? ` -> ${step.target}` : ''}`);
+
+        const response = await axios.post<{
+          success: boolean;
+          snapshotId?: string;
+          output?: Record<string, unknown>;
+          errorCode?: string;
+          errorMessage?: string;
+          shouldTakeover?: boolean;
+          takeoverReason?: string;
+        }>(
+          `${browserWorkerUrl}/browser/execute-step`,
+          {
+            executionId: runtimeExecutionId,
+            runtimeSessionId,
+            backend,
+            stepId: `${options?.stepId || release.id}:${step.id}`,
+            action: step.action,
+            ...(step.target ? { target: step.target } : {}),
+            ...(step.args && Object.keys(step.args).length > 0 ? { args: step.args } : {}),
+          },
+          { timeout: 120000 },
+        );
+
+        const result = response.data;
+        if (!result.success) {
+          const message = result.errorMessage || `浏览器步骤执行失败: ${step.action}`;
+          logs.push(`[BrowserRuntime][Error] ${message}`);
+          return {
+            releaseId: release.id,
+            capabilityId: skillId,
+            capabilityVersion: options?.capabilityVersion || null,
+            publishedSkillId: skillId,
+            runtime: 'browser_recording',
+            success: false,
+            output: {
+              stepResults,
+              failedStep: step.name,
+              failedAction: step.action,
+              snapshotId: result.snapshotId || null,
+            },
+            result: {
+              stepResults,
+              failedStep: step.name,
+              failedAction: step.action,
+              snapshotId: result.snapshotId || null,
+            },
+            logs,
+            error: message,
+          };
+        }
+
+        stepResults.push({
+          stepId: step.id,
+          name: step.name,
+          action: step.action,
+          target: step.target || null,
+          snapshotId: result.snapshotId || null,
+          output: result.output || null,
+        });
+      }
+
+      const normalizedResult = {
+        runtimeSessionId,
+        backend,
+        stepResults,
+      };
+
+      await this.insertAuditEvent(
+        release.id,
+        'skill_runtime_invoked',
+        userId,
+        true,
+        `运行时调用 Browser Recording Skill 成功: ${skillId}`,
+        {
+          publishedSkillId: skillId,
+          capabilityId: skillId,
+          capabilityVersion: options?.capabilityVersion || null,
+          runtime: 'browser_recording',
+          requestedRuntimeType: options?.runtimeType || null,
+          executionId: options?.executionId || null,
+          stepId: options?.stepId || null,
+          runtimeSessionId,
+          backend,
+        },
+      );
+
+      return {
+        releaseId: release.id,
+        capabilityId: skillId,
+        capabilityVersion: options?.capabilityVersion || null,
+        publishedSkillId: skillId,
+        runtime: 'browser_recording',
+        success: true,
+        output: normalizedResult,
+        result: normalizedResult,
+        logs,
+        error: null,
+      };
+    } catch (error) {
+      const axiosLikeError = error as { response?: { status?: number; data?: unknown }; message?: string } | undefined;
+      const message = axiosLikeError?.response
+        ? (() => {
+            const detail = axiosLikeError.response?.data;
+            if (detail !== undefined) {
+              return `HTTP ${axiosLikeError.response?.status || 500}: ${JSON.stringify(detail)}`;
+            }
+            return axiosLikeError.message || 'Browser recording runtime execution failed';
+          })()
+        : error instanceof Error
+          ? error.message
+          : 'Browser recording runtime execution failed';
+      logs.push(`[BrowserRuntime][Error] ${message}`);
+
+      await this.insertAuditEvent(
+        release.id,
+        'skill_runtime_invoked',
+        userId,
+        false,
+        `运行时调用 Browser Recording Skill 失败: ${skillId}`,
+        {
+          publishedSkillId: skillId,
+          capabilityId: skillId,
+          capabilityVersion: options?.capabilityVersion || null,
+          runtime: 'browser_recording',
+          requestedRuntimeType: options?.runtimeType || null,
+          executionId: options?.executionId || null,
+          stepId: options?.stepId || null,
+          runtimeSessionId,
+          backend,
+          error: message,
+        },
+      );
+
+      return {
+        releaseId: release.id,
+        capabilityId: skillId,
+        capabilityVersion: options?.capabilityVersion || null,
+        publishedSkillId: skillId,
+        runtime: 'browser_recording',
+        success: false,
+        output: null,
+        result: null,
+        logs,
+        error: message,
+      };
+    } finally {
+      if (shouldResetSession) {
+        await axios.post(
+          `${browserWorkerUrl}/browser/reset`,
+          { backend, runtimeSessionId },
+          { timeout: 30000 },
+        ).catch(() => undefined);
+      }
+    }
+  }
+
+  private resolveBrowserRecordingBackend(payload: Record<string, unknown>): string {
+    const apiEndpoints = asRecord(payload.apiEndpoints);
+    const runtimeMetadata = asRecord(apiEndpoints?.runtimeMetadata);
+    const executionPlan = asRecord(runtimeMetadata?.executionPlan);
+
+    return this.pickFirstNonEmptyString(
+      payload.backend,
+      payload.executionBackend,
+      runtimeMetadata?.backend,
+      executionPlan?.backend,
+      process.env.BROWSER_RECORDING_BACKEND,
+      process.env.BROWSER_EXECUTION_BACKEND,
+      'cli',
+    ) || 'cli';
+  }
+
+  private resolveBrowserRecordingSessionPreferences(
+    payload: Record<string, unknown>,
+  ): {
+    mode?: 'interactive' | 'agent';
+    enableCodegen?: boolean;
+    headless?: boolean;
+  } {
+    const apiEndpoints = asRecord(payload.apiEndpoints);
+    const runtimeMetadata = asRecord(apiEndpoints?.runtimeMetadata);
+    const executionPlan = asRecord(runtimeMetadata?.executionPlan);
+    const sessionPreferences =
+      asRecord(payload.sessionPreferences)
+      || asRecord(runtimeMetadata?.sessionPreferences)
+      || asRecord(executionPlan?.sessionPreferences)
+      || {};
+    const mode = this.pickFirstNonEmptyString(
+      sessionPreferences.mode,
+      process.env.BROWSER_RUNTIME_SESSION_MODE,
+      'agent',
+    );
+
+    return {
+      ...(mode === 'interactive' || mode === 'agent' ? { mode } : {}),
+      enableCodegen:
+        typeof sessionPreferences.enableCodegen === 'boolean'
+          ? sessionPreferences.enableCodegen
+          : process.env.BROWSER_RUNTIME_ENABLE_CODEGEN === 'true'
+            ? true
+            : process.env.BROWSER_RUNTIME_ENABLE_CODEGEN === 'false'
+              ? false
+              : false,
+      headless:
+        typeof sessionPreferences.headless === 'boolean'
+          ? sessionPreferences.headless
+          : process.env.BROWSER_RUNTIME_HEADLESS === 'true'
+            ? true
+            : process.env.BROWSER_RUNTIME_HEADLESS === 'false'
+              ? false
+              : false,
+    };
+  }
+
+  private buildBrowserRecordingRuntimeSteps(
+    payload: Record<string, unknown>,
+    runtimeInput: Record<string, unknown>,
+  ): Array<{
+    id: string;
+    name: string;
+    action: string;
+    target?: string;
+    args?: Record<string, unknown>;
+  }> {
+    const executionFlow = this.normalizeBrowserRecordingExecutionFlow(payload.executionFlow);
+    const sourceSteps = Array.isArray(payload.steps)
+      ? payload.steps.filter(
+          (item): item is Record<string, unknown> => Boolean(item) && typeof item === 'object' && !Array.isArray(item),
+        )
+      : [];
+    const baseSteps = executionFlow.length > 0 ? executionFlow : sourceSteps;
+
+    return baseSteps.map((step, index) => {
+      const runtimePayload = asRecord(step.input) || asRecord(step.config) || {};
+      const resolvedPayload = asRecord(
+        this.resolveBrowserRecordingRuntimeValue(runtimePayload, runtimeInput),
+      ) || {};
+      const resolvedParams = asRecord(resolvedPayload.params) || {};
+      const action = this.normalizeBrowserRecordingStepAction(
+        this.pickFirstNonEmptyString(resolvedPayload.action, step.action),
+      );
+      if (!action) {
+        throw new BadRequestException(`浏览器录制步骤缺少 action: ${step.id || `step_${index + 1}`}`);
+      }
+      const target = this.pickFirstNonEmptyString(
+        resolvedPayload.target,
+        resolvedPayload.selector,
+        resolvedParams.target,
+        resolvedParams.selector,
+        action === 'goto' ? resolvedParams.url : undefined,
+      );
+
+      return {
+        id: this.pickFirstNonEmptyString(step.id, resolvedPayload.id, `step_${index + 1}`) || `step_${index + 1}`,
+        name: this.pickFirstNonEmptyString(step.name, `Step ${index + 1}`) || `Step ${index + 1}`,
+        action,
+        ...(target ? { target } : {}),
+        ...(Object.keys(resolvedParams).length > 0 ? { args: resolvedParams } : {}),
+      };
+    });
+  }
+
+  private normalizeBrowserRecordingStepAction(action: string | undefined): string | undefined {
+    if (!action) {
+      return undefined;
+    }
+    const normalized = action.trim().toLowerCase();
+    switch (normalized) {
+      case 'navigate':
+        return 'goto';
+      case 'press':
+        return 'press_key';
+      case 'type':
+        return 'type_text';
+      default:
+        return normalized;
+    }
+  }
+
+  private resolveBrowserRecordingRuntimeValue(
+    value: unknown,
+    runtimeInput: Record<string, unknown>,
+  ): unknown {
+    if (typeof value === 'string') {
+      const exactMatch = value.match(/^\$\{([^}]+)\}$/);
+      if (exactMatch) {
+        const directValue = runtimeInput[exactMatch[1] as string];
+        return directValue !== undefined ? directValue : value;
+      }
+      return value.replace(/\$\{([^}]+)\}/g, (_match, key: string) => {
+        const resolved = runtimeInput[key];
+        return resolved === undefined || resolved === null ? '' : String(resolved);
+      });
+    }
+    if (Array.isArray(value)) {
+      return value.map((item) => this.resolveBrowserRecordingRuntimeValue(item, runtimeInput));
+    }
+    if (value && typeof value === 'object') {
+      return Object.entries(value as Record<string, unknown>).reduce<Record<string, unknown>>((acc, [key, current]) => {
+        acc[key] = this.resolveBrowserRecordingRuntimeValue(current, runtimeInput);
+        return acc;
+      }, {});
+    }
+    return value;
+  }
+
   private resolveDocumentRenderInput(
     input: Record<string, unknown> | undefined,
     sourceTemplate: Record<string, unknown>,
@@ -4273,6 +5093,88 @@ ${logs.join('\n')}
       }
     }
     return value as T;
+  }
+
+  private normalizeRecorderPublishPayload(
+    input: RecorderBridgePublishPayloadDTO,
+  ): {
+    name: string;
+    description: string;
+    triggerKeywords: string[];
+    paramsSchema: Record<string, unknown>;
+    executionFlowTemplateIds: string[];
+    executionFlow: Array<Record<string, unknown>>;
+    tools: string[];
+    apiEndpoints: Record<string, unknown> | null;
+  } {
+    const name = typeof input.name === 'string' && input.name.trim()
+      ? input.name.trim()
+      : `recorder-bridge-${Date.now()}`;
+    const description = typeof input.description === 'string' && input.description.trim()
+      ? input.description.trim()
+      : `浏览器录制桥接草案：${name}`;
+    const triggerKeywords = Array.isArray(input.triggerKeywords)
+      ? input.triggerKeywords.filter((item): item is string => typeof item === 'string' && item.trim().length > 0)
+      : [];
+    const paramsSchema = input.paramsSchema && typeof input.paramsSchema === 'object' && !Array.isArray(input.paramsSchema)
+      ? input.paramsSchema
+      : { properties: {}, required: [] };
+    const executionFlowTemplateIds = Array.isArray(input.executionFlowTemplateIds)
+      ? input.executionFlowTemplateIds.filter((item): item is string => typeof item === 'string' && item.trim().length > 0)
+      : [];
+    const executionFlow = this.normalizeBrowserRecordingExecutionFlow(input.executionFlow);
+    const toolNamesFromFlow = executionFlow
+      .map((step) => {
+        const tool = step.tool;
+        if (!tool || typeof tool !== 'object' || Array.isArray(tool)) {
+          return undefined;
+        }
+        return normalizeBrowserRecordingToolName((tool as Record<string, unknown>).name);
+      })
+      .filter((item): item is string => typeof item === 'string');
+    const declaredTools = Array.isArray(input.tools)
+      ? input.tools
+        .map((item) => normalizeBrowserRecordingToolName(item))
+        .filter((item): item is string => typeof item === 'string')
+      : [];
+    const tools = Array.from(new Set(['skill_match', ...declaredTools, ...toolNamesFromFlow]));
+    const apiEndpoints = input.apiEndpoints && typeof input.apiEndpoints === 'object' && !Array.isArray(input.apiEndpoints)
+      ? input.apiEndpoints
+      : null;
+
+    return {
+      name,
+      description,
+      triggerKeywords: triggerKeywords.length > 0 ? triggerKeywords : [name],
+      paramsSchema,
+      executionFlowTemplateIds,
+      executionFlow,
+      tools,
+      apiEndpoints,
+    };
+  }
+
+  private buildRecorderSourcePayload(
+    dto: BridgeRecorderExportDTO,
+    normalizedPayload: {
+      description: string;
+      paramsSchema: Record<string, unknown>;
+      executionFlow: Array<Record<string, unknown>>;
+      tools: string[];
+      apiEndpoints: Record<string, unknown> | null;
+    },
+  ): Record<string, unknown> {
+    return {
+      goal: dto.userGoal || normalizedPayload.description,
+      description: normalizedPayload.description,
+      paramsSchema: normalizedPayload.paramsSchema,
+      executionFlow: normalizedPayload.executionFlow,
+      tools: normalizedPayload.tools,
+      runtimeMetadata: normalizedPayload.apiEndpoints?.runtimeMetadata || {},
+      recordingCommands: Array.isArray(dto.exportArtifacts?.commands) ? dto.exportArtifacts.commands : [],
+      guidance: typeof dto.exportArtifacts?.guidance === 'string' ? dto.exportArtifacts.guidance : '',
+      sourceType: 'browser_recording',
+    };
   }
 
   private mapRelease(raw: any): CapabilityReleaseDTO {

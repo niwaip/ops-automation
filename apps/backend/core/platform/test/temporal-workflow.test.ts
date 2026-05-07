@@ -1,7 +1,7 @@
 import axios from 'axios';
-import { TemporalWorkflowAiDraftService } from '../src/modules/temporal/temporal-draft.service';
-import { TemporalWorkflowService } from '../src/modules/temporal/temporal-workflow.service';
-import { BuiltinActivityRegistry } from '../src/modules/temporal/builtin-activity.registry';
+import { TemporalWorkflowAiDraftService } from '../src/modules/temporal-workflow/temporal-workflow-draft.service';
+import { TemporalWorkflowService } from '../src/modules/temporal-workflow/temporal-workflow.service';
+import { BuiltinActivityRegistry } from '../src/modules/temporal-workflow/builtin-activity.registry';
 
 jest.mock('axios');
 
@@ -231,6 +231,122 @@ describe('TemporalWorkflowService', () => {
       ref: 'builtin:aiStructuredTransform',
       fn: 'aiStructuredTransform',
     }));
+  });
+
+  it('generates browser template draft from playwright-like script', async () => {
+    const { service } = createService();
+
+    const draft = await service.generateBrowserWorkflowDraft({
+      script: [
+        'await page.goto("https://example.com/login");',
+        'await page.fill("#username", "{username}");',
+        'await page.fill("#password", "{password}");',
+        'await page.click("button[type=submit]");',
+      ].join('\n'),
+      name: '登录自动化',
+    });
+
+    expect(draft.name).toBe('登录自动化');
+    expect(draft.workflowDsl.sourceContext).toEqual(expect.objectContaining({
+      sourceType: 'browser_template',
+    }));
+    expect(draft.workflowDsl.steps[0]).toEqual(expect.objectContaining({
+      activityRef: expect.stringMatching(/^custom:/),
+    }));
+    expect(draft.browserTemplate.commandCount).toBe(4);
+    expect(draft.browserTemplate.placeholders).toEqual(expect.arrayContaining(['username', 'password']));
+    expect(draft.activityDsl.activities[0]).toEqual(expect.objectContaining({
+      handler: 'browser',
+    }));
+    expect((draft.activityDsl.activities[0].config as any).steps).toHaveLength(4);
+  });
+
+  it('validates browser recording draft for baidu search mcp scenario', async () => {
+    const { service } = createService();
+    const draft = await service.generateBrowserWorkflowDraft({
+      script: [
+        'await page.goto("https://www.baidu.com");',
+        'await page.fill("#kw", "mcp");',
+        'await page.press("#kw", "Enter");',
+      ].join('\n'),
+      name: 'browser_recording_打开百度_搜索mcp',
+      description: '打开百度并搜索 mcp',
+    });
+
+    const validation = await service.validate(draft.workflowDsl, draft.activityDsl);
+    expect(validation.isValid).toBe(true);
+    expect(validation.errors).toEqual([]);
+  });
+
+  it('does not crash validate when browser draft custom ref is not a database uuid', async () => {
+    const { service, prisma } = createService();
+    prisma.activity.findUnique.mockRejectedValue(new Error('invalid input syntax for type uuid'));
+
+    const draft = await service.generateBrowserWorkflowDraft({
+      script: 'await page.goto("${url}");',
+      name: 'browser_recording_uuid_guard',
+      description: '验证 custom activityRef 非 uuid 时不触发 500',
+    });
+
+    const validation = await service.validate(draft.workflowDsl, draft.activityDsl);
+    expect(validation.isValid).toBe(true);
+    expect(validation.errors).toEqual([]);
+  });
+
+  it('generates deterministic browser activity code that calls browser-worker endpoints', async () => {
+    const { service } = createService();
+
+    const result = await service.generateWorkflowCode(
+      {
+        name: 'browser_recording_打开百度_搜索mcp',
+        workflowClassName: 'BrowserBaiduSearchWorkflow',
+        workflowDefnName: 'browser_recording_打开百度_搜索mcp',
+        taskQueue: 'SKILL_TASK_QUEUE',
+        inputParams: {
+          keyword: {
+            required: true,
+            defaultValue: '',
+            description: '搜索关键字',
+            type: 'string',
+          },
+        },
+        steps: [
+          {
+            id: 'step_1',
+            name: '执行浏览器脚本',
+            type: 'activity',
+            activityRef: 'custom:browserTemplateRun000001',
+            activityName: '浏览器自动化执行',
+            startToCloseTimeout: '120s',
+          },
+        ],
+      } as any,
+      {
+        activities: [
+          {
+            name: '浏览器自动化执行',
+            fn: 'browserTemplateRun000001',
+            timeout: '120s',
+            handler: 'browser',
+            config: {
+              steps: [
+                { name: '1. 访问页面', type: 'browser', timeout: '30s', config: { action: 'goto', url: 'https://www.baidu.com' } },
+                { name: '2. 输入关键字', type: 'browser', timeout: '30s', config: { action: 'fill', selector: '#kw', value: '{keyword}' } },
+                { name: '3. 键盘按键', type: 'browser', timeout: '30s', config: { action: 'press', selector: '#kw', value: 'Enter' } },
+              ],
+            },
+          },
+        ],
+      } as any,
+    );
+
+    expect(result.code).toContain('/browser/init');
+    expect(result.code).toContain('/browser/execute');
+    expect(result.code).toContain('"tool": "navigate"');
+    expect(result.code).toContain('"tool": "fill"');
+    expect(result.code).toContain('"tool": "press_key"');
+    expect(result.code).toContain('缺少必需参数');
+    expect(result.code).toContain('first_failed_command=');
   });
 
   it('generates deterministic code for builtin httpRequest with step-level config', async () => {
@@ -513,7 +629,7 @@ describe('TemporalWorkflowService', () => {
       },
       undefined,
       undefined,
-      (log) => logs.push(log),
+      (log: string) => logs.push(log),
     );
 
     expect(result.success).toBe(true);
@@ -1522,7 +1638,7 @@ describe('TemporalWorkflowService', () => {
     );
     expect((draft.workflowDsl.steps[0].input as any).__httpRequest.responseMode).toBe('bodyMap');
     expect((draft.workflowDsl.steps[1].input as any).__structuredTransform.textTemplate).toContain('Weather: {weatherText}');
-    expect((draft.warnings || []).some((item) => item.includes('真实响应样本'))).toBe(true);
+    expect((draft.warnings || []).some((item: string) => item.includes('真实响应样本'))).toBe(true);
   });
 
   it('builds generic sample inputs instead of hardcoded domain values', () => {
@@ -2098,7 +2214,7 @@ describe('TemporalWorkflowService', () => {
     expect((draft.workflowDsl.steps[0].input as any).__httpRequest.responseMode).toBe('bodyMap');
     expect((draft.workflowDsl.steps[1].input as any).__structuredTransform.instructionTemplate).toContain('出行建议');
     expect((draft.workflowDsl.steps[2].input as any).__structuredTransform.textTemplate).toContain('Summary: {summary}');
-    expect((draft.warnings || []).some((item) => item.includes('AI 转换配置'))).toBe(true);
+    expect((draft.warnings || []).some((item: string) => item.includes('AI 转换配置'))).toBe(true);
   });
 
   it('repairs AI draft once when builtin structuredTransform config is incomplete', async () => {

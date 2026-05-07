@@ -119,7 +119,7 @@ export interface TemporalWorkflowSourceTemplate {
 }
 
 export interface TemporalWorkflowSourceContext {
-  sourceType?: 'template' | 'ai' | 'text' | 'url';
+  sourceType?: 'template' | 'browser_template' | 'ai' | 'text' | 'url';
   referenceUrl?: string;
   userDescription?: string;
   generatedAt?: string;
@@ -226,6 +226,19 @@ export interface TemplateWorkflowDraft {
     fileName?: string;
     format?: string;
     variableCount: number;
+  };
+}
+
+export interface BrowserWorkflowDraft {
+  name: string;
+  description: string;
+  taskQueue: string;
+  workflowDsl: WorkflowDsl;
+  activityDsl: ActivityDsl;
+  browserTemplate: {
+    commandCount: number;
+    placeholderCount: number;
+    placeholders: string[];
   };
 }
 
@@ -348,6 +361,10 @@ export const temporalWorkflowApi = {
 
   generateTemplateDraft: async (templateId: string): Promise<TemplateWorkflowDraft> => {
     return apiClient.post<TemplateWorkflowDraft>('/temporal/generate-template-draft', { templateId });
+  },
+
+  generateBrowserDraft: async (data: { script: string; name?: string; description?: string }): Promise<BrowserWorkflowDraft> => {
+    return apiClient.post<BrowserWorkflowDraft>('/temporal/generate-browser-draft', data);
   },
 
   generateAiDraft: async (data: GenerateAiWorkflowDraftDTO): Promise<AiWorkflowDraft> => {
