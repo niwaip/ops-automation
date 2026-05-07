@@ -40,7 +40,7 @@ export class RuntimeSessionService {
 
     // If no workerId provided, allocate one
     if (!workerId) {
-      const workerInfo = await this.allocationService.allocateWorker(dto.executionId || 'temp');
+      const workerInfo = await this.allocationService.allocateWorker(dto.executionId || 'temp', dto.userId);
       if (!workerInfo) {
         throw new BadRequestException('No available workers in pool');
       }

@@ -36,6 +36,8 @@ const RecorderPage: React.FC = () => {
 
   const [isConnected, setIsConnected] = useState(false);
   const [isBrowserInitialized, setIsBrowserInitialized] = useState(false);
+  const [dynamicNoVncUrl, setDynamicNoVncUrl] = useState<string | null>(null);
+  const [previewMode, setPreviewMode] = useState<'idle' | 'shared' | 'session'>('idle');
   const [template, setTemplate] = useState<CompiledTemplate | null>(null);
   const [validation, setValidation] = useState<ValidationResult | null>(null);
 
@@ -159,11 +161,17 @@ const RecorderPage: React.FC = () => {
   const handleDisconnect = useCallback(() => {
     recorderService.disconnect();
     setIsConnected(false);
+    setDynamicNoVncUrl(null);
+    setPreviewMode('idle');
+    setIsBrowserInitialized(false);
     setRecorderState({ status: 'idle', script: '', targetUrl: '' });
   }, []);
 
   const handleStart = useCallback((url: string) => {
     setRecorderState((prev) => ({ ...prev, targetUrl: url, script: '' }));
+    setDynamicNoVncUrl(null);
+    setPreviewMode('shared');
+    setIsBrowserInitialized(false);
     setTemplate(null);
     setValidation(null);
     recorderService.startRecording(url);
@@ -205,7 +213,12 @@ const RecorderPage: React.FC = () => {
   }, [handleStart]);
 
   // noVNC URL
-  const NOVNC_URL = import.meta.env.VITE_NOVNC_URL || `http://${import.meta.env.VITE_HOST_IP || 'localhost'}:6080/vnc.html`;
+  const DEFAULT_NOVNC_URL = import.meta.env.VITE_NOVNC_URL || `http://${import.meta.env.VITE_HOST_IP || 'localhost'}:6080/vnc.html`;
+  const NOVNC_URL = previewMode === 'session'
+    ? dynamicNoVncUrl
+    : previewMode === 'shared'
+      ? DEFAULT_NOVNC_URL
+      : null;
 
   return (
     <div
@@ -230,9 +243,6 @@ const RecorderPage: React.FC = () => {
           <Title level={4} style={{ margin: 0 }}>
             {t('common:recorder')}
           </Title>
-          <Tag color={isConnected ? 'success' : 'default'}>
-            {isConnected ? '已连接' : '未连接'}
-          </Tag>
           {isBrowserInitialized && (
             <Tag color="processing" icon={<RobotOutlined />}>
               浏览器就绪
@@ -285,6 +295,15 @@ const RecorderPage: React.FC = () => {
             <AIControls
               onCommandExecuted={handleAICommandExecuted}
               onBrowserReady={setIsBrowserInitialized}
+              onBrowserEndpoints={(endpoints) => {
+                if (endpoints.novnc) {
+                  setDynamicNoVncUrl(endpoints.novnc);
+                  setPreviewMode('session');
+                } else {
+                  setDynamicNoVncUrl(null);
+                  setPreviewMode('idle');
+                }
+              }}
               recorderStatus={recorderState.status}
               isConnected={isConnected}
               onStartRecording={handleStartWithReset}
@@ -333,7 +352,12 @@ const RecorderPage: React.FC = () => {
               <Button
                 type="link"
                 size="small"
-                onClick={() => window.open(`${NOVNC_URL}?autoconnect=true&resize=scale`, '_blank')}
+                onClick={() => {
+                  if (NOVNC_URL) {
+                    window.open(`${NOVNC_URL}?autoconnect=true&resize=scale`, '_blank');
+                  }
+                }}
+                disabled={!NOVNC_URL}
                 style={{ color: '#6366f1' }}
               >
                 {t('session:openInNewTab') || '新标签页打开'}
@@ -351,8 +375,9 @@ const RecorderPage: React.FC = () => {
                 overflow: 'hidden',
               }}
             >
-              {recorderState.status === 'recording' || recorderState.status === 'paused' || isConnected || isBrowserInitialized ? (
+              {NOVNC_URL ? (
                 <iframe
+                  key={NOVNC_URL}
                   src={`${NOVNC_URL}?autoconnect=true&resize=scale&reconnect=true`}
                   style={{
                     width: '100%',
@@ -365,10 +390,18 @@ const RecorderPage: React.FC = () => {
                 <div style={{ textAlign: 'center', color: 'var(--text-secondary)' }}>
                   <DesktopOutlined style={{ fontSize: 48, marginBottom: 16, color: 'var(--text-secondary)' }} />
                   <p style={{ color: 'var(--text-primary)', marginBottom: 8 }}>
-                    {t('recorder:ai.startToPreview') || '初始化浏览器后开始控制'}
+                    {previewMode === 'session'
+                      ? (t('recorder:ai.startToPreview') || '初始化浏览器后开始控制')
+                      : previewMode === 'shared'
+                        ? '手动录制已连接共享浏览器'
+                        : (t('recorder:ai.startToPreview') || '初始化浏览器后开始控制')}
                   </p>
                   <p style={{ color: 'var(--text-secondary)', fontSize: 12 }}>
-                    {t('recorder:novncHint') || 'noVNC will show browser after initialization'}
+                    {previewMode === 'idle'
+                      ? (t('recorder:novncHint') || 'noVNC will show browser after initialization')
+                      : previewMode === 'shared'
+                        ? 'AI 模式不会再回退显示共享 noVNC，拿到会话地址后才显示专属浏览器'
+                        : (t('recorder:novncHint') || 'noVNC will show browser after initialization')}
                   </p>
                 </div>
               )}

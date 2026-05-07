@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Card, Tag, Button, Space, Typography, message, Spin, Popconfirm, List, Collapse, Image, Empty, Radio, DatePicker, TimePicker } from 'antd';
+import { Card, Tag, Button, Space, Typography, message, Spin, Popconfirm, List, Collapse, Image, Empty, Radio, DatePicker, TimePicker, Tabs, theme as antdTheme } from 'antd';
 import {
   ArrowLeftOutlined,
   PlayCircleOutlined,
@@ -20,6 +20,8 @@ import { useQuery, useMutation } from 'react-query';
 import { sessionApi, StepResult } from '../api/session';
 
 const { Title, Text } = Typography;
+
+const isTerminalSessionState = (state?: string): boolean => state === 'CLOSED' || state === 'ERROR';
 
 // Transform localhost URLs to use VITE_HOST_IP for LAN access
 const transformLocalhostUrl = (url: string | undefined): string => {
@@ -187,13 +189,14 @@ const SessionDetailPage: React.FC = () => {
   const { t } = useTranslation(['common', 'session']);
   const navigate = useNavigate();
   const [scheduleLoading, setScheduleLoading] = useState(false);
+  const { token } = antdTheme.useToken();
 
   const sessionQuery = useQuery(
     ['session', id],
     () => sessionApi.getById(id!),
     {
       enabled: !!id,
-      refetchInterval: 3000, // Auto refresh every 3 seconds
+      refetchInterval: (data) => (isTerminalSessionState(data?.state) ? false : 3000),
     }
   );
 
@@ -202,7 +205,7 @@ const SessionDetailPage: React.FC = () => {
     () => sessionApi.getStepResults(id!),
     {
       enabled: !!id,
-      refetchInterval: 3000, // Auto refresh every 3 seconds
+      refetchInterval: () => (isTerminalSessionState(sessionQuery.data?.state) ? false : 3000),
     }
   );
 
@@ -242,6 +245,19 @@ const SessionDetailPage: React.FC = () => {
 
   const session = sessionQuery.data;
   const steps = stepsQuery.data || [];
+  const jsonBlockStyle: React.CSSProperties = {
+    background: token.colorFillAlter,
+    color: token.colorText,
+    border: `1px solid ${token.colorBorderSecondary}`,
+    padding: 8,
+    borderRadius: 4,
+    fontSize: 11,
+    maxHeight: 200,
+    overflow: 'auto',
+    margin: 0,
+    whiteSpace: 'pre-wrap',
+    wordBreak: 'break-word',
+  };
 
   const getStateColor = (state: string) => {
     const colorMap: Record<string, string> = {
@@ -365,7 +381,15 @@ const SessionDetailPage: React.FC = () => {
           {session.params && Object.keys(session.params).filter(k => k !== 'schedule').length > 0 && (
             <div style={{ marginTop: 8 }}>
               <Text type="secondary">{t('session:params')}: </Text>
-              <Card size="small" style={{ background: '#f5f5f5', borderRadius: 8, marginTop: 4 }}>
+              <Card
+                size="small"
+                style={{
+                  background: token.colorFillAlter,
+                  borderRadius: 8,
+                  marginTop: 4,
+                  borderColor: token.colorBorderSecondary,
+                }}
+              >
                 {Object.entries(session.params)
                   .filter(([key]) => key !== 'schedule')
                   .map(([key, value]) => (
@@ -434,7 +458,8 @@ const SessionDetailPage: React.FC = () => {
               <List.Item
                 key={step.step_id}
                 style={{
-                  background: step.success ? '#f6ffed' : '#fff2f0',
+                  background: step.success ? 'rgba(16, 185, 129, 0.10)' : 'rgba(239, 68, 68, 0.10)',
+                  border: `1px solid ${step.success ? 'rgba(16, 185, 129, 0.28)' : 'rgba(239, 68, 68, 0.28)'}`,
                   borderRadius: 8,
                   marginBottom: 8,
                   padding: 12,
@@ -462,14 +487,28 @@ const SessionDetailPage: React.FC = () => {
 
                   {/* Error message */}
                   {step.error && (
-                    <div style={{ background: '#fff1f0', padding: 8, borderRadius: 4 }}>
+                    <div
+                      style={{
+                        background: 'rgba(239, 68, 68, 0.12)',
+                        border: '1px solid rgba(239, 68, 68, 0.24)',
+                        padding: 8,
+                        borderRadius: 4,
+                      }}
+                    >
                       <Text type="danger">{step.error}</Text>
                     </div>
                   )}
 
                   {/* Success message */}
                   {step.message && step.success && (
-                    <div style={{ background: '#f6ffed', padding: 8, borderRadius: 4 }}>
+                    <div
+                      style={{
+                        background: 'rgba(16, 185, 129, 0.12)',
+                        border: '1px solid rgba(16, 185, 129, 0.24)',
+                        padding: 8,
+                        borderRadius: 4,
+                      }}
+                    >
                       <Text type="success">{step.message}</Text>
                     </div>
                   )}
@@ -519,18 +558,7 @@ const SessionDetailPage: React.FC = () => {
                             </Space>
                           ),
                           children: (
-                            <pre
-                              style={{
-                                background: '#f5f5f5',
-                                padding: 8,
-                                borderRadius: 4,
-                                fontSize: 11,
-                                maxHeight: 200,
-                                overflow: 'auto',
-                                margin: 0,
-                                whiteSpace: 'pre-wrap',
-                              }}
-                            >
+                            <pre style={jsonBlockStyle}>
                               {step.text}
                             </pre>
                           ),
@@ -554,20 +582,46 @@ const SessionDetailPage: React.FC = () => {
                             </Space>
                           ),
                           children: (
-                            <pre
-                              style={{
-                                background: '#f5f5f5',
-                                padding: 8,
-                                borderRadius: 4,
-                                fontSize: 11,
-                                maxHeight: 200,
-                                overflow: 'auto',
-                                margin: 0,
-                                whiteSpace: 'pre-wrap',
-                              }}
-                            >
-                              {step.html}
-                            </pre>
+                            <Tabs
+                              size="small"
+                              items={[
+                                {
+                                  key: 'preview',
+                                  label: '预览',
+                                  children: (
+                                    <div
+                                      style={{
+                                        border: `1px solid ${token.colorBorderSecondary}`,
+                                        borderRadius: 4,
+                                        overflow: 'hidden',
+                                        background: token.colorBgContainer,
+                                      }}
+                                    >
+                                      <iframe
+                                        srcDoc={step.html}
+                                        sandbox=""
+                                        title={`${step.step_id}-html-preview`}
+                                        style={{
+                                          width: '100%',
+                                          height: 420,
+                                          border: 'none',
+                                          background: '#fff',
+                                        }}
+                                      />
+                                    </div>
+                                  ),
+                                },
+                                {
+                                  key: 'source',
+                                  label: '源码',
+                                  children: (
+                                    <pre style={jsonBlockStyle}>
+                                      {step.html}
+                                    </pre>
+                                  ),
+                                },
+                              ]}
+                            />
                           ),
                         },
                       ]}

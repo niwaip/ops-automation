@@ -54,6 +54,8 @@ export class TemplateService {
       description: dto.description,
       params_schema: dto.params_schema || { type: 'object', properties: {}, required: [] },
       steps: dto.steps || [],
+      guards: dto.guards || [],
+      config: dto.config || {},
       created_by: dto.created_by,
       status: 'DRAFT',
     });
@@ -88,7 +90,7 @@ export class TemplateService {
     const [templates, total] = await qb.getManyAndCount();
 
     return {
-      templates: templates.map(t => this.toJSON(t)),
+      templates: templates.map((template) => this.toJSON(template)),
       total,
       page,
       limit,
@@ -126,6 +128,8 @@ export class TemplateService {
     if (dto.description) template.description = dto.description;
     if (dto.params_schema) template.params_schema = dto.params_schema;
     if (dto.steps) template.steps = dto.steps;
+    if (dto.guards) template.guards = dto.guards;
+    if (dto.config) template.config = dto.config;
 
     // Validate updated template
     const validation = this.templateValidator.validate(this.toJSON(template));
@@ -236,17 +240,28 @@ export class TemplateService {
    * Convert entity to JSON format
    */
   private toJSON(entity: TemplateEntity): TemplateJSON {
+    const createdAt = entity.created_at?.toISOString() || new Date().toISOString();
+    const updatedAt = entity.updated_at?.toISOString() || new Date().toISOString();
     return {
       id: entity.id,
       name: entity.name,
       version: entity.version,
       status: entity.status,
+      description: entity.description,
       params_schema: entity.params_schema,
       steps: entity.steps,
+      guards: entity.guards || [],
+      config: entity.config || {},
+      created_by: entity.created_by,
+      reviewed_by: entity.reviewed_by || null,
+      published_at: entity.published_at?.toISOString() || null,
+      created_at: createdAt,
+      updated_at: updatedAt,
+      deprecated_at: entity.deprecated_at?.toISOString() || null,
       metadata: {
         created_by: entity.created_by,
-        created_at: entity.created_at?.toISOString() || new Date().toISOString(),
-        updated_at: entity.updated_at?.toISOString() || new Date().toISOString(),
+        created_at: createdAt,
+        updated_at: updatedAt,
         description: entity.description,
       },
     };

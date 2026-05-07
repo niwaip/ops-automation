@@ -1,0 +1,331 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e62]:
+    - complementary [ref=e63]:
+      - generic [ref=e64]:
+        - generic [ref=e66]:
+          - generic [ref=e67]: O
+          - generic [ref=e69]: 自动化平台
+        - menu [ref=e70]:
+          - menuitem "dashboard 仪表盘" [ref=e71] [cursor=pointer]:
+            - img "dashboard" [ref=e72]:
+              - img [ref=e73]
+            - generic [ref=e75]: 仪表盘
+          - menuitem "play-circle 执行管理" [ref=e76] [cursor=pointer]:
+            - img "play-circle" [ref=e77]:
+              - img [ref=e78]
+            - generic [ref=e81]: 执行管理
+          - menuitem "bar-chart 报告列表" [ref=e82] [cursor=pointer]:
+            - img "bar-chart" [ref=e83]:
+              - img [ref=e84]
+            - generic [ref=e86]: 报告列表
+          - menuitem "thunderbolt 工作单元" [ref=e87] [cursor=pointer]:
+            - img "thunderbolt" [ref=e88]:
+              - img [ref=e89]
+            - generic [ref=e91]: 工作单元
+          - menuitem "thunderbolt 工作流" [ref=e92] [cursor=pointer]:
+            - img "thunderbolt" [ref=e93]:
+              - img [ref=e94]
+            - generic [ref=e96]: 工作流
+          - menuitem "thunderbolt 流程发布" [ref=e97] [cursor=pointer]:
+            - img "thunderbolt" [ref=e98]:
+              - img [ref=e99]
+            - generic [ref=e101]: 流程发布
+          - menuitem "thunderbolt 可用技能" [ref=e102] [cursor=pointer]:
+            - img "thunderbolt" [ref=e103]:
+              - img [ref=e104]
+            - generic [ref=e106]: 可用技能
+          - menuitem "desktop 会话管理" [ref=e107] [cursor=pointer]:
+            - img "desktop" [ref=e108]:
+              - img [ref=e109]
+            - generic [ref=e111]: 会话管理
+          - menuitem "file-text 浏览器模版" [ref=e112] [cursor=pointer]:
+            - img "file-text" [ref=e113]:
+              - img [ref=e114]
+            - generic [ref=e116]: 浏览器模版
+          - menuitem "file-word 文档模板" [ref=e117] [cursor=pointer]:
+            - img "file-word" [ref=e118]:
+              - img [ref=e119]
+            - generic [ref=e121]: 文档模板
+          - menuitem "setting 系统管理" [ref=e122] [cursor=pointer]:
+            - img "setting" [ref=e123]:
+              - img [ref=e124]
+            - generic [ref=e126]: 系统管理
+        - button "menu-fold 收起导航" [ref=e128] [cursor=pointer]:
+          - img "menu-fold" [ref=e130]:
+            - img [ref=e131]
+          - generic [ref=e133]: 收起导航
+    - generic [ref=e134]:
+      - banner [ref=e135]:
+        - button "menu-fold" [ref=e137] [cursor=pointer]:
+          - img "menu-fold" [ref=e139]:
+            - img [ref=e140]
+        - generic [ref=e142]:
+          - button "bg-colors 深色" [ref=e144] [cursor=pointer]:
+            - img "bg-colors" [ref=e146]:
+              - img [ref=e147]
+            - generic [ref=e149]: 深色
+          - button "global 中文" [ref=e151] [cursor=pointer]:
+            - img "global" [ref=e153]:
+              - img [ref=e154]
+            - generic [ref=e156]: 中文
+          - generic [ref=e158] [cursor=pointer]:
+            - generic [ref=e161]: A
+            - generic [ref=e162]: admin
+      - main [ref=e163]:
+        - generic [ref=e164]:
+          - generic [ref=e167]:
+            - generic [ref=e168]:
+              - generic [ref=e170]:
+                - img "search" [ref=e172]:
+                  - img [ref=e173]
+                - textbox "搜索执行单 ID、技能、执行人、状态或输入内容" [ref=e175]
+              - generic [ref=e178] [cursor=pointer]:
+                - generic [ref=e180]:
+                  - combobox [ref=e182]
+                  - generic: 全部状态
+                - generic:
+                  - img:
+                    - img
+            - generic [ref=e183]:
+              - generic [ref=e187]:
+                - generic [ref=e188]: 总记录
+                - generic [ref=e190]: "10"
+              - generic [ref=e194]:
+                - generic [ref=e195]: 执行中
+                - generic [ref=e197]: "0"
+              - generic [ref=e201]:
+                - generic [ref=e202]: 待处理
+                - generic [ref=e204]: "0"
+              - generic [ref=e208]:
+                - generic [ref=e209]: 已结束
+                - generic [ref=e211]: "10"
+          - generic [ref=e213]:
+            - generic [ref=e214]:
+              - generic [ref=e217]:
+                - strong [ref=e220]: 执行记录列表
+                - img "info-circle" [ref=e222]:
+                  - img [ref=e223]
+              - generic [ref=e226]:
+                - generic [ref=e228]: 当前展示 10 条
+                - button "reload 刷新" [ref=e230] [cursor=pointer]:
+                  - img "reload" [ref=e232]:
+                    - img [ref=e233]
+                  - generic [ref=e235]: 刷新
+                - button "plus 新建执行" [ref=e237] [cursor=pointer]:
+                  - img "plus" [ref=e239]:
+                    - img [ref=e240]
+                  - generic [ref=e243]: 新建执行
+            - generic [ref=e246]:
+              - table [ref=e250]:
+                - rowgroup [ref=e258]:
+                  - row "技能名称 开始时间 状态 风险 用户输入 执行结果" [ref=e259]:
+                    - columnheader "技能名称" [ref=e260]
+                    - columnheader "开始时间" [ref=e261] [cursor=pointer]:
+                      - generic [ref=e262]:
+                        - generic [ref=e263]: 开始时间
+                        - generic [ref=e265]:
+                          - img [ref=e266]:
+                            - img [ref=e267]
+                          - img [ref=e269]:
+                            - img [ref=e270]
+                    - columnheader "状态" [ref=e272]
+                    - columnheader "风险" [ref=e273]
+                    - columnheader "用户输入" [ref=e274]
+                    - columnheader "执行结果" [ref=e275]
+                - rowgroup [ref=e276]:
+                  - generic:
+                    - generic: 开始时间
+                    - generic:
+                      - generic:
+                        - img:
+                          - img
+                        - img:
+                          - img
+                  - row "城市天气查询工作流 2026/5/4 21:11:16 耗时 2s 已完成 L0 北京的天气 result、temporalLink" [ref=e277] [cursor=pointer]:
+                    - cell "城市天气查询工作流" [ref=e278]:
+                      - strong [ref=e282]: 城市天气查询工作流
+                    - cell "2026/5/4 21:11:16 耗时 2s" [ref=e283]:
+                      - generic [ref=e284]:
+                        - generic [ref=e285]: 2026/5/4 21:11:16
+                        - generic [ref=e286]: 耗时 2s
+                    - cell "已完成" [ref=e287]:
+                      - generic [ref=e288]: 已完成
+                    - cell "L0" [ref=e289]:
+                      - generic [ref=e290]: L0
+                    - cell "北京的天气" [ref=e291]:
+                      - generic [ref=e293]: 北京的天气
+                    - cell "result、temporalLink" [ref=e294]:
+                      - generic [ref=e296]: result、temporalLink
+                  - row "城市天气查询工作流 2026/5/4 20:58:11 耗时 2s 已完成 L0 查询上海的天气 result、temporalLink" [ref=e297] [cursor=pointer]:
+                    - cell "城市天气查询工作流" [ref=e298]:
+                      - strong [ref=e302]: 城市天气查询工作流
+                    - cell "2026/5/4 20:58:11 耗时 2s" [ref=e303]:
+                      - generic [ref=e304]:
+                        - generic [ref=e305]: 2026/5/4 20:58:11
+                        - generic [ref=e306]: 耗时 2s
+                    - cell "已完成" [ref=e307]:
+                      - generic [ref=e308]: 已完成
+                    - cell "L0" [ref=e309]:
+                      - generic [ref=e310]: L0
+                    - cell "查询上海的天气" [ref=e311]:
+                      - generic [ref=e313]: 查询上海的天气
+                    - cell "result、temporalLink" [ref=e314]:
+                      - generic [ref=e316]: result、temporalLink
+                  - row "城市天气查询工作流 2026/5/4 20:57:23 耗时 32s 失败 L0 查询上海的天气 暂无结果" [ref=e317] [cursor=pointer]:
+                    - cell "城市天气查询工作流" [ref=e318]:
+                      - strong [ref=e322]: 城市天气查询工作流
+                    - cell "2026/5/4 20:57:23 耗时 32s" [ref=e323]:
+                      - generic [ref=e324]:
+                        - generic [ref=e325]: 2026/5/4 20:57:23
+                        - generic [ref=e326]: 耗时 32s
+                    - cell "失败" [ref=e327]:
+                      - generic [ref=e328]: 失败
+                    - cell "L0" [ref=e329]:
+                      - generic [ref=e330]: L0
+                    - cell "查询上海的天气" [ref=e331]:
+                      - generic [ref=e333]: 查询上海的天气
+                    - cell "暂无结果" [ref=e334]:
+                      - generic [ref=e336]: 暂无结果
+                  - row "城市天气查询工作流 2026/5/4 20:39:48 耗时 2s 已完成 L0 查询上海的天气 result、temporalLink" [ref=e337] [cursor=pointer]:
+                    - cell "城市天气查询工作流" [ref=e338]:
+                      - strong [ref=e342]: 城市天气查询工作流
+                    - cell "2026/5/4 20:39:48 耗时 2s" [ref=e343]:
+                      - generic [ref=e344]:
+                        - generic [ref=e345]: 2026/5/4 20:39:48
+                        - generic [ref=e346]: 耗时 2s
+                    - cell "已完成" [ref=e347]:
+                      - generic [ref=e348]: 已完成
+                    - cell "L0" [ref=e349]:
+                      - generic [ref=e350]: L0
+                    - cell "查询上海的天气" [ref=e351]:
+                      - generic [ref=e353]: 查询上海的天气
+                    - cell "result、temporalLink" [ref=e354]:
+                      - generic [ref=e356]: result、temporalLink
+                  - row "城市天气查询工作流 2026/5/4 20:38:42 耗时 2s 已完成 L0 查询上海的天气 result、temporalLink" [ref=e357] [cursor=pointer]:
+                    - cell "城市天气查询工作流" [ref=e358]:
+                      - strong [ref=e362]: 城市天气查询工作流
+                    - cell "2026/5/4 20:38:42 耗时 2s" [ref=e363]:
+                      - generic [ref=e364]:
+                        - generic [ref=e365]: 2026/5/4 20:38:42
+                        - generic [ref=e366]: 耗时 2s
+                    - cell "已完成" [ref=e367]:
+                      - generic [ref=e368]: 已完成
+                    - cell "L0" [ref=e369]:
+                      - generic [ref=e370]: L0
+                    - cell "查询上海的天气" [ref=e371]:
+                      - generic [ref=e373]: 查询上海的天气
+                    - cell "result、temporalLink" [ref=e374]:
+                      - generic [ref=e376]: result、temporalLink
+                  - row "城市天气查询工作流 2026/5/4 20:30:22 耗时 2s 已完成 L0 北京的天气 result、temporalLink" [ref=e377] [cursor=pointer]:
+                    - cell "城市天气查询工作流" [ref=e378]:
+                      - strong [ref=e382]: 城市天气查询工作流
+                    - cell "2026/5/4 20:30:22 耗时 2s" [ref=e383]:
+                      - generic [ref=e384]:
+                        - generic [ref=e385]: 2026/5/4 20:30:22
+                        - generic [ref=e386]: 耗时 2s
+                    - cell "已完成" [ref=e387]:
+                      - generic [ref=e388]: 已完成
+                    - cell "L0" [ref=e389]:
+                      - generic [ref=e390]: L0
+                    - cell "北京的天气" [ref=e391]:
+                      - generic [ref=e393]: 北京的天气
+                    - cell "result、temporalLink" [ref=e394]:
+                      - generic [ref=e396]: result、temporalLink
+                  - row "保密协议生成工作流 2026/5/4 20:21:23 耗时 1s 已完成 L1 生成保密协议 保密协议_1777897283763.docx download 下载结果" [ref=e397] [cursor=pointer]:
+                    - cell "保密协议生成工作流" [ref=e398]:
+                      - strong [ref=e402]: 保密协议生成工作流
+                    - cell "2026/5/4 20:21:23 耗时 1s" [ref=e403]:
+                      - generic [ref=e404]:
+                        - generic [ref=e405]: 2026/5/4 20:21:23
+                        - generic [ref=e406]: 耗时 1s
+                    - cell "已完成" [ref=e407]:
+                      - generic [ref=e408]: 已完成
+                    - cell "L1" [ref=e409]:
+                      - generic [ref=e410]: L1
+                    - cell "生成保密协议" [ref=e411]:
+                      - generic [ref=e413]: 生成保密协议
+                    - cell "保密协议_1777897283763.docx download 下载结果" [ref=e414]:
+                      - generic [ref=e415]:
+                        - generic [ref=e416]: 保密协议_1777897283763.docx
+                        - button "download 下载结果" [ref=e418]:
+                          - img "download" [ref=e420]:
+                            - img [ref=e421]
+                          - generic [ref=e423]: 下载结果
+                  - row "城市天气查询工作流 2026/5/4 20:19:43 耗时 2s 已完成 L1 天气怎么样 result、temporalLink" [ref=e424] [cursor=pointer]:
+                    - cell "城市天气查询工作流" [ref=e425]:
+                      - strong [ref=e429]: 城市天气查询工作流
+                    - cell "2026/5/4 20:19:43 耗时 2s" [ref=e430]:
+                      - generic [ref=e431]:
+                        - generic [ref=e432]: 2026/5/4 20:19:43
+                        - generic [ref=e433]: 耗时 2s
+                    - cell "已完成" [ref=e434]:
+                      - generic [ref=e435]: 已完成
+                    - cell "L1" [ref=e436]:
+                      - generic [ref=e437]: L1
+                    - cell "天气怎么样" [ref=e438]:
+                      - generic [ref=e440]: 天气怎么样
+                    - cell "result、temporalLink" [ref=e441]:
+                      - generic [ref=e443]: result、temporalLink
+                  - row "城市天气查询工作流 2026/5/4 20:10:19 耗时 2s 已完成 L0 查询上海的天气 result、temporalLink" [ref=e444] [cursor=pointer]:
+                    - cell "城市天气查询工作流" [ref=e445]:
+                      - strong [ref=e449]: 城市天气查询工作流
+                    - cell "2026/5/4 20:10:19 耗时 2s" [ref=e450]:
+                      - generic [ref=e451]:
+                        - generic [ref=e452]: 2026/5/4 20:10:19
+                        - generic [ref=e453]: 耗时 2s
+                    - cell "已完成" [ref=e454]:
+                      - generic [ref=e455]: 已完成
+                    - cell "L0" [ref=e456]:
+                      - generic [ref=e457]: L0
+                    - cell "查询上海的天气" [ref=e458]:
+                      - generic [ref=e460]: 查询上海的天气
+                    - cell "result、temporalLink" [ref=e461]:
+                      - generic [ref=e463]: result、temporalLink
+                  - row "城市天气查询工作流 2026/5/4 20:09:28 耗时 2s 已完成 L0 查询上海的天气 result、temporalLink" [ref=e464] [cursor=pointer]:
+                    - cell "城市天气查询工作流" [ref=e465]:
+                      - strong [ref=e469]: 城市天气查询工作流
+                    - cell "2026/5/4 20:09:28 耗时 2s" [ref=e470]:
+                      - generic [ref=e471]:
+                        - generic [ref=e472]: 2026/5/4 20:09:28
+                        - generic [ref=e473]: 耗时 2s
+                    - cell "已完成" [ref=e474]:
+                      - generic [ref=e475]: 已完成
+                    - cell "L0" [ref=e476]:
+                      - generic [ref=e477]: L0
+                    - cell "查询上海的天气" [ref=e478]:
+                      - generic [ref=e480]: 查询上海的天气
+                    - cell "result、temporalLink" [ref=e481]:
+                      - generic [ref=e483]: result、temporalLink
+              - list [ref=e484]:
+                - listitem [ref=e485]: 共 37 条执行记录
+                - listitem "上一页" [ref=e486]:
+                  - button "left" [disabled] [ref=e487]:
+                    - img "left" [ref=e488]:
+                      - img [ref=e489]
+                - listitem "1" [ref=e491] [cursor=pointer]:
+                  - generic [ref=e492]: "1"
+                - listitem "2" [ref=e493] [cursor=pointer]:
+                  - generic [ref=e494]: "2"
+                - listitem "3" [ref=e495] [cursor=pointer]:
+                  - generic [ref=e496]: "3"
+                - listitem "4" [ref=e497] [cursor=pointer]:
+                  - generic [ref=e498]: "4"
+                - listitem "下一页" [ref=e499] [cursor=pointer]:
+                  - button "right" [ref=e500]:
+                    - img "right" [ref=e501]:
+                      - img [ref=e502]
+                - listitem [ref=e504]:
+                  - generic "页码" [ref=e505] [cursor=pointer]:
+                    - generic [ref=e507]:
+                      - combobox "页码" [ref=e509]
+                      - generic "10 条/页" [ref=e510]
+                    - generic:
+                      - img:
+                        - img
+    - button "message" [ref=e513] [cursor=pointer]:
+      - img "message" [ref=e515]:
+        - img [ref=e516]
+  - generic [ref=e519]:
+    - img "check-circle" [ref=e520]:
+      - img [ref=e521]
+    - generic [ref=e523]: 登录成功

@@ -561,6 +561,88 @@ describe('ExecutionService.startExecution runtime selection', () => {
   });
 });
 
+describe('ExecutionService runtime session close on terminal state', () => {
+  const createService = () => {
+    const prisma = {
+      execution: {
+        findUnique: jest.fn(),
+        update: jest.fn(),
+      },
+      executionStep: {
+        findNextPendingStep: jest.fn(),
+        findFirst: jest.fn(),
+      },
+      executionEvent: {
+        create: jest.fn(),
+      },
+      runtimeSession: {
+        findFirst: jest.fn(),
+      },
+      $queryRawUnsafe: jest.fn().mockResolvedValue([]),
+      $transaction: jest.fn((operations: Array<Promise<unknown>>) => Promise.all(operations)),
+    };
+
+    const service = new ExecutionService(prisma as never, {} as never, {} as never, {} as never);
+    const internals = service as any;
+    jest.spyOn(internals, 'updateStatus').mockResolvedValue(undefined);
+    jest.spyOn(internals, 'closeRuntimeSessionQuietly').mockResolvedValue(undefined);
+    jest.spyOn(internals, 'skipPendingSteps').mockResolvedValue(undefined);
+
+    return { service, prisma };
+  };
+
+  it('closes runtime session when execution has no pending step and is marked succeeded', async () => {
+    const { service, prisma } = createService();
+    prisma.execution.findUnique.mockResolvedValue({
+      id: 'execution-terminal-1',
+      status: EXECUTION_STATUS.RUNNING,
+    });
+    prisma.executionStep.findFirst.mockResolvedValue(null);
+
+    await (service as any).advanceExecutionFlow('execution-terminal-1', 'runtime-terminal-1');
+
+    expect((service as any).updateStatus).toHaveBeenCalledWith(
+      'execution-terminal-1',
+      EXECUTION_STATUS.SUCCEEDED,
+    );
+    expect((service as any).closeRuntimeSessionQuietly).toHaveBeenCalledWith(
+      'runtime-terminal-1',
+      'execution-terminal-1',
+      'execution_succeeded',
+    );
+  });
+
+  it('closes runtime session when runtime step failure marks execution failed', async () => {
+    const { service, prisma } = createService();
+    prisma.execution.update.mockResolvedValue(undefined);
+
+    await (service as any).failExecutionFromRuntimeStep({
+      executionId: 'execution-terminal-2',
+      stepId: 'step-1',
+      failureReason: 'boom',
+      failureCode: 'ERR',
+      runtimeSessionId: 'runtime-terminal-2',
+    });
+
+    expect(prisma.execution.update).toHaveBeenCalledWith({
+      where: { id: 'execution-terminal-2' },
+      data: {
+        failureReason: 'boom',
+        failureCode: 'ERR',
+      },
+    });
+    expect((service as any).updateStatus).toHaveBeenCalledWith(
+      'execution-terminal-2',
+      EXECUTION_STATUS.FAILED,
+    );
+    expect((service as any).closeRuntimeSessionQuietly).toHaveBeenCalledWith(
+      'runtime-terminal-2',
+      'execution-terminal-2',
+      'runtime_step_failed',
+    );
+  });
+});
+
 describe('ExecutionService.create planner draft reuse', () => {
   const createService = () => {
     const prisma = {

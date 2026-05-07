@@ -1,0 +1,741 @@
+- generic [active] [ref=e1]:
+  - link "欢迎进入 百度一下，你就知道，盲人用户进入读屏幕模式请按快捷键Ctrl加Alt加R；阅读详细操作说明请按快捷键Ctrl加Alt加问号键。":
+    - /url: javascript:void(0)
+  - generic [ref=e2]:
+    - generic [ref=e3]:
+      - generic [ref=e146]:
+        - link "百度首页" [ref=e147] [cursor=pointer]:
+          - /url: /
+        - link "设置" [ref=e148] [cursor=pointer]:
+          - /url: javascript:;
+        - link "登录" [ref=e149] [cursor=pointer]:
+          - /url: https://passport.baidu.com/v2/?login&tpl=mn&u=http%3A%2F%2Fwww.baidu.com%2F&sms=5
+      - generic [ref=e23]:
+        - generic:
+          - link "到百度首页" [ref=e151] [cursor=pointer]:
+            - /url: /
+            - img "到百度首页" [ref=e152]
+          - generic [ref=e216]:
+            - textbox [ref=e218]: skills
+            - generic [ref=e220]:
+              - generic [ref=e221]:
+                - img [ref=e223] [cursor=pointer]
+                - img [ref=e233] [cursor=pointer]
+                - generic [ref=e236]:
+                  - img [ref=e240] [cursor=pointer]
+                  - img [ref=e245] [cursor=pointer]
+              - button "百度一下" [ref=e249] [cursor=pointer]
+    - generic [ref=e253]:
+      - link [ref=e254] [cursor=pointer]:
+        - /url: https://chat.baidu.com/search?word=skills&dyTabStr=MTIsMCwzLDEsMiwxMyw3LDYsNSw5&pd=csaitab&setype=csaitab&extParamsJson=%7B%22enter_type%22%3A%22search_a_tab%22%2C%22sa%22%3A%22vs_tab%22%2C%22apagelid%22%3A%229927288589426872037%22%2C%22ori_lid%22%3A%229927288589426872037%22%7D
+        - img [ref=e255]
+      - generic [ref=e256]: 网页
+      - link "图片" [ref=e257] [cursor=pointer]:
+        - /url: http://image.baidu.com/i?tn=baiduimage&ps=1&ct=201326592&lm=-1&cl=2&nc=1&ie=utf-8&lid=89c4d0600393cee5&dyTabStr=MTIsMCwzLDEsMiwxMyw3LDYsNSw5&word=skills
+      - link "资讯" [ref=e258] [cursor=pointer]:
+        - /url: https://www.baidu.com/s?rtt=1&bsst=1&cl=2&tn=news&ie=utf-8&word=skills
+      - link "视频" [ref=e259] [cursor=pointer]:
+        - /url: /sf/vsearch?pd=video&tn=vsearch&lid=89c4d0600393cee5&ie=utf-8&wd=skills&rsv_spt=7&rsv_bp=1&f=8&oq=skills&rsv_pq=89c4d0600393cee5&rsv_t=79b9354JNPDgQEcMZTBhLeimdGPwWPbS6xng0aOh1XFyMYIaEPrvVae6GBA
+      - link "笔记" [ref=e260] [cursor=pointer]:
+        - /url: https://www.baidu.com/s?pd=note&rpf=pc&dyTabStr=MTIsMCwzLDEsMiwxMyw3LDYsNSw5&word=skills
+      - link "地图" [ref=e261] [cursor=pointer]:
+        - /url: https://map.baidu.com/?newmap=1&ie=utf-8&from=pstab&s=s%26wd%3Dskills
+      - link "贴吧" [ref=e262] [cursor=pointer]:
+        - /url: http://tieba.baidu.com/f?fr=wwwt&ie=utf-8&dyTabStr=MTIsMCwzLDEsMiwxMyw3LDYsNSw5&kw=skills
+      - link "文库" [ref=e263] [cursor=pointer]:
+        - /url: http://wenku.baidu.com/search?lm=0&od=0&ie=utf-8&dyTabStr=MTIsMCwzLDEsMiwxMyw3LDYsNSw5&word=skills
+      - link "更多" [ref=e264] [cursor=pointer]:
+        - /url: http://www.baidu.com/more/
+      - generic [ref=e265] [cursor=pointer]: 搜索工具
+    - generic [ref=e266]:
+      - generic [ref=e267]:
+        - table [ref=e269]:
+          - rowgroup [ref=e270]:
+            - row "相关搜索  skills智能体  《SKILL》铃木一彻主演-上映时间  《skill》在线观看高清星辰  skills中文  《skill》日剧全集190  skill在线观看全集第一季    换一换 热搜榜 民生榜 财经榜  总书记对青年学子的殷切期待 1 年轻人开始报“兴趣班”旅行 新 2 高速上一车辆主副驾疑似全在睡觉 热 3 小长假里看中国 4 套现约455亿 李嘉诚又卖了 热 5 从猫狗到水果 AI短剧还能火多久 新 6 湖南烟花爆竹企业全面停产整顿 新 7 女乞丐NPC被游客们投喂零食走红 热 8 沉浸式陪伴观影暗藏色情服务 热 9 上海一女子200多元买刮刮乐中100万 10 史上最严控烟来了 哪座城市烟味最淡 11 网传“驻马店突发火情”系谣言 12 浏阳爆炸事故将成立国务院调查组 热 13 再上33天班又要放假了 热 14 演员许鹏退圈后在夜市摆摊卖橙汁 新 15 机场提示禁止携带越王勾践剑登机 热" [ref=e271]:
+              - cell "相关搜索  skills智能体  《SKILL》铃木一彻主演-上映时间  《skill》在线观看高清星辰  skills中文  《skill》日剧全集190  skill在线观看全集第一季    换一换 热搜榜 民生榜 财经榜  总书记对青年学子的殷切期待 1 年轻人开始报“兴趣班”旅行 新 2 高速上一车辆主副驾疑似全在睡觉 热 3 小长假里看中国 4 套现约455亿 李嘉诚又卖了 热 5 从猫狗到水果 AI短剧还能火多久 新 6 湖南烟花爆竹企业全面停产整顿 新 7 女乞丐NPC被游客们投喂零食走红 热 8 沉浸式陪伴观影暗藏色情服务 热 9 上海一女子200多元买刮刮乐中100万 10 史上最严控烟来了 哪座城市烟味最淡 11 网传“驻马店突发火情”系谣言 12 浏阳爆炸事故将成立国务院调查组 热 13 再上33天班又要放假了 热 14 演员许鹏退圈后在夜市摆摊卖橙汁 新 15 机场提示禁止携带越王勾践剑登机 热" [ref=e272]:
+                - generic [ref=e273]:
+                  - generic [ref=e279]:
+                    - generic [ref=e281]: 相关搜索
+                    - generic [ref=e282]:
+                      - link " skills智能体" [ref=e285] [cursor=pointer]:
+                        - /url: /s?rsv_idx=1&wd=skills%E6%99%BA%E8%83%BD%E4%BD%93&fenlei=256&usm=4&ie=utf-8&rsv_pq=89c4d0600393cee5&oq=skills&rsv_t=6b24%2FdpgGLaiywTWseTURqXql7UR2nHFsl9ciRlGDubxsDP7mf2Desjb4Jg&rfqid=89c4d0600393cee5&rsv_dl=0_prs_28616_1&rq=skills&rsf=101633601
+                        - generic [ref=e286]:
+                          - generic [ref=e287]: 
+                          - generic [ref=e288]: skills智能体
+                      - link " 《SKILL》铃木一彻主演-上映时间" [ref=e291] [cursor=pointer]:
+                        - /url: /s?rsv_idx=1&wd=%E3%80%8ASKILL%E3%80%8B%E9%93%83%E6%9C%A8%E4%B8%80%E5%BD%BB%E4%B8%BB%E6%BC%94-%E4%B8%8A%E6%98%A0%E6%97%B6%E9%97%B4&fenlei=256&usm=4&ie=utf-8&rsv_pq=89c4d0600393cee5&oq=skills&rsv_t=6b24%2FdpgGLaiywTWseTURqXql7UR2nHFsl9ciRlGDubxsDP7mf2Desjb4Jg&rfqid=89c4d0600393cee5&rsv_dl=0_prs_28616_2&rq=skills&rsf=101631101
+                        - generic [ref=e292]:
+                          - generic [ref=e293]: 
+                          - generic [ref=e294]: 《SKILL》铃木一彻主演-上映时间
+                      - link " 《skill》在线观看高清星辰" [ref=e297] [cursor=pointer]:
+                        - /url: /s?rsv_idx=1&wd=%E3%80%8Askill%E3%80%8B%E5%9C%A8%E7%BA%BF%E8%A7%82%E7%9C%8B%E9%AB%98%E6%B8%85%E6%98%9F%E8%BE%B0&fenlei=256&usm=4&ie=utf-8&rsv_pq=89c4d0600393cee5&oq=skills&rsv_t=6b24%2FdpgGLaiywTWseTURqXql7UR2nHFsl9ciRlGDubxsDP7mf2Desjb4Jg&rfqid=89c4d0600393cee5&rsv_dl=0_prs_28616_3&rq=skills&rsf=101631101
+                        - generic [ref=e298]:
+                          - generic [ref=e299]: 
+                          - generic [ref=e300]: 《skill》在线观看高清星辰
+                      - link " skills中文" [ref=e303] [cursor=pointer]:
+                        - /url: /s?rsv_idx=1&wd=skills%E4%B8%AD%E6%96%87&fenlei=256&usm=4&ie=utf-8&rsv_pq=89c4d0600393cee5&oq=skills&rsv_t=e76acRCv4HMWFi21dlQlDRImTqB429R%2FmhVNuzcpHtDtlZTRyjbf9Y67Z0U&rfqid=89c4d0600393cee5&rsv_dl=0_prs_28616_4&rq=skills&rsf=101631161
+                        - generic [ref=e304]:
+                          - generic [ref=e305]: 
+                          - generic [ref=e306]: skills中文
+                      - link " 《skill》日剧全集190" [ref=e309] [cursor=pointer]:
+                        - /url: /s?rsv_idx=1&wd=%E3%80%8Askill%E3%80%8B%E6%97%A5%E5%89%A7%E5%85%A8%E9%9B%86190&fenlei=256&usm=4&ie=utf-8&rsv_pq=89c4d0600393cee5&oq=skills&rsv_t=e76acRCv4HMWFi21dlQlDRImTqB429R%2FmhVNuzcpHtDtlZTRyjbf9Y67Z0U&rfqid=89c4d0600393cee5&rsv_dl=0_prs_28616_5&rq=skills&rsf=100631101
+                        - generic [ref=e310]:
+                          - generic [ref=e311]: 
+                          - generic [ref=e312]: 《skill》日剧全集190
+                      - link " skill在线观看全集第一季" [ref=e315] [cursor=pointer]:
+                        - /url: /s?rsv_idx=1&wd=skill%E5%9C%A8%E7%BA%BF%E8%A7%82%E7%9C%8B%E5%85%A8%E9%9B%86%E7%AC%AC%E4%B8%80%E5%AD%A3&fenlei=256&usm=4&ie=utf-8&rsv_pq=89c4d0600393cee5&oq=skills&rsv_t=e76acRCv4HMWFi21dlQlDRImTqB429R%2FmhVNuzcpHtDtlZTRyjbf9Y67Z0U&rfqid=89c4d0600393cee5&rsv_dl=0_prs_28616_6&rq=skills&rsf=100633601
+                        - generic [ref=e316]:
+                          - generic [ref=e317]: 
+                          - generic [ref=e318]: skill在线观看全集第一季
+                  - generic [ref=e322]:
+                    - generic "百度热搜" [ref=e323]:
+                      - link " " [ref=e324] [cursor=pointer]:
+                        - /url: https://top.baidu.com/board?platform=pc&sa=pcindex_a_right
+                        - generic [ref=e325]: 
+                        - generic [ref=e326]: 
+                      - link " 换一换" [ref=e328] [cursor=pointer]:
+                        - /url: javascript:void(0);
+                        - generic [ref=e329]: 
+                        - text: 换一换
+                    - generic [ref=e330]:
+                      - generic [ref=e331] [cursor=pointer]: 热搜榜
+                      - generic [ref=e332] [cursor=pointer]: 民生榜
+                      - generic [ref=e333] [cursor=pointer]: 财经榜
+                    - generic [ref=e335]:
+                      - generic [ref=e337]:
+                        - generic [ref=e339]: 
+                        - link "总书记对青年学子的殷切期待" [ref=e340] [cursor=pointer]:
+                          - /url: /s?rsv_idx=1&wd=%E6%80%BB%E4%B9%A6%E8%AE%B0%E5%AF%B9%E9%9D%92%E5%B9%B4%E5%AD%A6%E5%AD%90%E7%9A%84%E6%AE%B7%E5%88%87%E6%9C%9F%E5%BE%85&fenlei=256&usm=4&ie=utf-8&rsv_pq=89c4d0600393cee5&oq=skills&rsv_t=b29dcwiA3XSyN9Ugvkyi2rrCuu2p8am%2FvCATV0bojY1WqgdIij6GCHpeC2Y&rqid=89c4d0600393cee5&rsf=e1d0d9251560f909f599850503165873_1_15_1&rsv_dl=0_right_fyb_pchot_20811&sa=0_right_fyb_pchot_20811
+                      - generic [ref=e342]:
+                        - generic [ref=e343]: "1"
+                        - link "年轻人开始报“兴趣班”旅行" [ref=e344] [cursor=pointer]:
+                          - /url: /s?rsv_idx=1&wd=%E5%B9%B4%E8%BD%BB%E4%BA%BA%E5%BC%80%E5%A7%8B%E6%8A%A5%E2%80%9C%E5%85%B4%E8%B6%A3%E7%8F%AD%E2%80%9D%E6%97%85%E8%A1%8C&fenlei=256&usm=4&ie=utf-8&rsv_pq=89c4d0600393cee5&oq=skills&rsv_t=b29dcwiA3XSyN9Ugvkyi2rrCuu2p8am%2FvCATV0bojY1WqgdIij6GCHpeC2Y&rqid=89c4d0600393cee5&rsf=e1d0d9251560f909f599850503165873_1_15_2&rsv_dl=0_right_fyb_pchot_20811&sa=0_right_fyb_pchot_20811
+                        - generic [ref=e345]: 新
+                      - generic [ref=e347]:
+                        - generic [ref=e348]: "2"
+                        - link "高速上一车辆主副驾疑似全在睡觉" [ref=e349] [cursor=pointer]:
+                          - /url: /s?rsv_idx=1&wd=%E9%AB%98%E9%80%9F%E4%B8%8A%E4%B8%80%E8%BD%A6%E8%BE%86%E4%B8%BB%E5%89%AF%E9%A9%BE%E7%96%91%E4%BC%BC%E5%85%A8%E5%9C%A8%E7%9D%A1%E8%A7%89&fenlei=256&usm=4&ie=utf-8&rsv_pq=89c4d0600393cee5&oq=skills&rsv_t=b29dcwiA3XSyN9Ugvkyi2rrCuu2p8am%2FvCATV0bojY1WqgdIij6GCHpeC2Y&rqid=89c4d0600393cee5&rsf=e1d0d9251560f909f599850503165873_1_15_3&rsv_dl=0_right_fyb_pchot_20811&sa=0_right_fyb_pchot_20811
+                        - generic [ref=e350]: 热
+                      - generic [ref=e352]:
+                        - generic [ref=e353]: "3"
+                        - link "小长假里看中国" [ref=e354] [cursor=pointer]:
+                          - /url: /s?rsv_idx=1&wd=%E5%B0%8F%E9%95%BF%E5%81%87%E9%87%8C%E7%9C%8B%E4%B8%AD%E5%9B%BD&fenlei=256&usm=4&ie=utf-8&rsv_pq=89c4d0600393cee5&oq=skills&rsv_t=b29dcwiA3XSyN9Ugvkyi2rrCuu2p8am%2FvCATV0bojY1WqgdIij6GCHpeC2Y&rqid=89c4d0600393cee5&rsf=e1d0d9251560f909f599850503165873_1_15_4&rsv_dl=0_right_fyb_pchot_20811&sa=0_right_fyb_pchot_20811
+                      - generic [ref=e356]:
+                        - generic [ref=e357]: "4"
+                        - link "套现约455亿 李嘉诚又卖了" [ref=e358] [cursor=pointer]:
+                          - /url: /s?rsv_idx=1&wd=%E5%A5%97%E7%8E%B0%E7%BA%A6455%E4%BA%BF%20%E6%9D%8E%E5%98%89%E8%AF%9A%E5%8F%88%E5%8D%96%E4%BA%86&fenlei=256&usm=4&ie=utf-8&rsv_pq=89c4d0600393cee5&oq=skills&rsv_t=b29dcwiA3XSyN9Ugvkyi2rrCuu2p8am%2FvCATV0bojY1WqgdIij6GCHpeC2Y&rqid=89c4d0600393cee5&rsf=e1d0d9251560f909f599850503165873_1_15_5&rsv_dl=0_right_fyb_pchot_20811&sa=0_right_fyb_pchot_20811
+                        - generic [ref=e359]: 热
+                      - generic [ref=e361]:
+                        - generic [ref=e362]: "5"
+                        - link "从猫狗到水果 AI短剧还能火多久" [ref=e363] [cursor=pointer]:
+                          - /url: /s?rsv_idx=1&wd=%E4%BB%8E%E7%8C%AB%E7%8B%97%E5%88%B0%E6%B0%B4%E6%9E%9C%20AI%E7%9F%AD%E5%89%A7%E8%BF%98%E8%83%BD%E7%81%AB%E5%A4%9A%E4%B9%85&fenlei=256&usm=4&ie=utf-8&rsv_pq=89c4d0600393cee5&oq=skills&rsv_t=b29dcwiA3XSyN9Ugvkyi2rrCuu2p8am%2FvCATV0bojY1WqgdIij6GCHpeC2Y&rqid=89c4d0600393cee5&rsf=e1d0d9251560f909f599850503165873_1_15_6&rsv_dl=0_right_fyb_pchot_20811&sa=0_right_fyb_pchot_20811
+                        - generic [ref=e364]: 新
+                      - generic [ref=e366]:
+                        - generic [ref=e367]: "6"
+                        - link "湖南烟花爆竹企业全面停产整顿" [ref=e368] [cursor=pointer]:
+                          - /url: /s?rsv_idx=1&wd=%E6%B9%96%E5%8D%97%E7%83%9F%E8%8A%B1%E7%88%86%E7%AB%B9%E4%BC%81%E4%B8%9A%E5%85%A8%E9%9D%A2%E5%81%9C%E4%BA%A7%E6%95%B4%E9%A1%BF&fenlei=256&usm=4&ie=utf-8&rsv_pq=89c4d0600393cee5&oq=skills&rsv_t=b29dcwiA3XSyN9Ugvkyi2rrCuu2p8am%2FvCATV0bojY1WqgdIij6GCHpeC2Y&rqid=89c4d0600393cee5&rsf=e1d0d9251560f909f599850503165873_1_15_7&rsv_dl=0_right_fyb_pchot_20811&sa=0_right_fyb_pchot_20811
+                        - generic [ref=e369]: 新
+                      - generic [ref=e371]:
+                        - generic [ref=e372]: "7"
+                        - link "女乞丐NPC被游客们投喂零食走红" [ref=e373] [cursor=pointer]:
+                          - /url: /s?rsv_idx=1&wd=%E5%A5%B3%E4%B9%9E%E4%B8%90NPC%E8%A2%AB%E6%B8%B8%E5%AE%A2%E4%BB%AC%E6%8A%95%E5%96%82%E9%9B%B6%E9%A3%9F%E8%B5%B0%E7%BA%A2&fenlei=256&usm=4&ie=utf-8&rsv_pq=89c4d0600393cee5&oq=skills&rsv_t=b29dcwiA3XSyN9Ugvkyi2rrCuu2p8am%2FvCATV0bojY1WqgdIij6GCHpeC2Y&rqid=89c4d0600393cee5&rsf=e1d0d9251560f909f599850503165873_1_15_8&rsv_dl=0_right_fyb_pchot_20811&sa=0_right_fyb_pchot_20811
+                        - generic [ref=e374]: 热
+                      - generic [ref=e376]:
+                        - generic [ref=e377]: "8"
+                        - link "沉浸式陪伴观影暗藏色情服务" [ref=e378] [cursor=pointer]:
+                          - /url: /s?rsv_idx=1&wd=%E6%B2%89%E6%B5%B8%E5%BC%8F%E9%99%AA%E4%BC%B4%E8%A7%82%E5%BD%B1%E6%9A%97%E8%97%8F%E8%89%B2%E6%83%85%E6%9C%8D%E5%8A%A1&fenlei=256&usm=4&ie=utf-8&rsv_pq=89c4d0600393cee5&oq=skills&rsv_t=b29dcwiA3XSyN9Ugvkyi2rrCuu2p8am%2FvCATV0bojY1WqgdIij6GCHpeC2Y&rqid=89c4d0600393cee5&rsf=e1d0d9251560f909f599850503165873_1_15_9&rsv_dl=0_right_fyb_pchot_20811&sa=0_right_fyb_pchot_20811
+                        - generic [ref=e379]: 热
+                      - generic [ref=e381]:
+                        - generic [ref=e382]: "9"
+                        - link "上海一女子200多元买刮刮乐中100万" [ref=e383] [cursor=pointer]:
+                          - /url: /s?rsv_idx=1&wd=%E4%B8%8A%E6%B5%B7%E4%B8%80%E5%A5%B3%E5%AD%90200%E5%A4%9A%E5%85%83%E4%B9%B0%E5%88%AE%E5%88%AE%E4%B9%90%E4%B8%AD100%E4%B8%87&fenlei=256&usm=4&ie=utf-8&rsv_pq=89c4d0600393cee5&oq=skills&rsv_t=b29dcwiA3XSyN9Ugvkyi2rrCuu2p8am%2FvCATV0bojY1WqgdIij6GCHpeC2Y&rqid=89c4d0600393cee5&rsf=e1d0d9251560f909f599850503165873_1_15_10&rsv_dl=0_right_fyb_pchot_20811&sa=0_right_fyb_pchot_20811
+                      - generic [ref=e385]:
+                        - generic [ref=e386]: "10"
+                        - link "史上最严控烟来了 哪座城市烟味最淡" [ref=e387] [cursor=pointer]:
+                          - /url: /s?rsv_idx=1&wd=%E5%8F%B2%E4%B8%8A%E6%9C%80%E4%B8%A5%E6%8E%A7%E7%83%9F%E6%9D%A5%E4%BA%86%20%E5%93%AA%E5%BA%A7%E5%9F%8E%E5%B8%82%E7%83%9F%E5%91%B3%E6%9C%80%E6%B7%A1&fenlei=256&usm=4&ie=utf-8&rsv_pq=89c4d0600393cee5&oq=skills&rsv_t=b29dcwiA3XSyN9Ugvkyi2rrCuu2p8am%2FvCATV0bojY1WqgdIij6GCHpeC2Y&rqid=89c4d0600393cee5&rsf=e1d0d9251560f909f599850503165873_1_15_11&rsv_dl=0_right_fyb_pchot_20811&sa=0_right_fyb_pchot_20811
+                      - generic [ref=e389]:
+                        - generic [ref=e390]: "11"
+                        - link "网传“驻马店突发火情”系谣言" [ref=e391] [cursor=pointer]:
+                          - /url: /s?rsv_idx=1&wd=%E7%BD%91%E4%BC%A0%E2%80%9C%E9%A9%BB%E9%A9%AC%E5%BA%97%E7%AA%81%E5%8F%91%E7%81%AB%E6%83%85%E2%80%9D%E7%B3%BB%E8%B0%A3%E8%A8%80&fenlei=256&usm=4&ie=utf-8&rsv_pq=89c4d0600393cee5&oq=skills&rsv_t=b29dcwiA3XSyN9Ugvkyi2rrCuu2p8am%2FvCATV0bojY1WqgdIij6GCHpeC2Y&rqid=89c4d0600393cee5&rsf=e1d0d9251560f909f599850503165873_1_15_12&rsv_dl=0_right_fyb_pchot_20811&sa=0_right_fyb_pchot_20811
+                      - generic [ref=e393]:
+                        - generic [ref=e394]: "12"
+                        - link "浏阳爆炸事故将成立国务院调查组" [ref=e395] [cursor=pointer]:
+                          - /url: /s?rsv_idx=1&wd=%E6%B5%8F%E9%98%B3%E7%88%86%E7%82%B8%E4%BA%8B%E6%95%85%E5%B0%86%E6%88%90%E7%AB%8B%E5%9B%BD%E5%8A%A1%E9%99%A2%E8%B0%83%E6%9F%A5%E7%BB%84&fenlei=256&usm=4&ie=utf-8&rsv_pq=89c4d0600393cee5&oq=skills&rsv_t=b29dcwiA3XSyN9Ugvkyi2rrCuu2p8am%2FvCATV0bojY1WqgdIij6GCHpeC2Y&rqid=89c4d0600393cee5&rsf=e1d0d9251560f909f599850503165873_1_15_13&rsv_dl=0_right_fyb_pchot_20811&sa=0_right_fyb_pchot_20811
+                        - generic [ref=e396]: 热
+                      - generic [ref=e398]:
+                        - generic [ref=e399]: "13"
+                        - link "再上33天班又要放假了" [ref=e400] [cursor=pointer]:
+                          - /url: /s?rsv_idx=1&wd=%E5%86%8D%E4%B8%8A33%E5%A4%A9%E7%8F%AD%E5%8F%88%E8%A6%81%E6%94%BE%E5%81%87%E4%BA%86&fenlei=256&usm=4&ie=utf-8&rsv_pq=89c4d0600393cee5&oq=skills&rsv_t=b29dcwiA3XSyN9Ugvkyi2rrCuu2p8am%2FvCATV0bojY1WqgdIij6GCHpeC2Y&rqid=89c4d0600393cee5&rsf=e1d0d9251560f909f599850503165873_1_15_14&rsv_dl=0_right_fyb_pchot_20811&sa=0_right_fyb_pchot_20811
+                        - generic [ref=e401]: 热
+                      - generic [ref=e403]:
+                        - generic [ref=e404]: "14"
+                        - link "演员许鹏退圈后在夜市摆摊卖橙汁" [ref=e405] [cursor=pointer]:
+                          - /url: /s?rsv_idx=1&wd=%E6%BC%94%E5%91%98%E8%AE%B8%E9%B9%8F%E9%80%80%E5%9C%88%E5%90%8E%E5%9C%A8%E5%A4%9C%E5%B8%82%E6%91%86%E6%91%8A%E5%8D%96%E6%A9%99%E6%B1%81&fenlei=256&usm=4&ie=utf-8&rsv_pq=89c4d0600393cee5&oq=skills&rsv_t=f18bzUmGnb6KsjEl%2FI6UNHRwTh2fcd55FloAE9aD4u%2B403mX1GjhgnocPNg&rqid=89c4d0600393cee5&rsf=e1d0d9251560f909f599850503165873_1_15_15&rsv_dl=0_right_fyb_pchot_20811&sa=0_right_fyb_pchot_20811
+                        - generic [ref=e406]: 新
+                      - generic [ref=e408]:
+                        - generic [ref=e409]: "15"
+                        - link "机场提示禁止携带越王勾践剑登机" [ref=e410] [cursor=pointer]:
+                          - /url: /s?rsv_idx=1&wd=%E6%9C%BA%E5%9C%BA%E6%8F%90%E7%A4%BA%E7%A6%81%E6%AD%A2%E6%90%BA%E5%B8%A6%E8%B6%8A%E7%8E%8B%E5%8B%BE%E8%B7%B5%E5%89%91%E7%99%BB%E6%9C%BA&fenlei=256&usm=4&ie=utf-8&rsv_pq=89c4d0600393cee5&oq=skills&rsv_t=f18bzUmGnb6KsjEl%2FI6UNHRwTh2fcd55FloAE9aD4u%2B403mX1GjhgnocPNg&rqid=89c4d0600393cee5&rsf=e1d0d9251560f909f599850503165873_16_30_16&rsv_dl=0_right_fyb_pchot_20811&sa=0_right_fyb_pchot_20811
+                        - generic [ref=e411]: 热
+        - generic [ref=e412]:
+          - generic [ref=e413]:
+            - generic [ref=e418]:
+              - link [ref=e419] [cursor=pointer]:
+                - /url: http://www.baidu.com/link?url=7CGwPd_pyv2nXsQC2uRqn9nuFfynNU_XB3HI78cy91iQJLAz4ChGIthpQDn6d-LAexE9ChfstoL6iuHvcowidK
+                - img [ref=e423]
+              - link "skills - 技能 常见释义" [ref=e427] [cursor=pointer]:
+                - /url: http://www.baidu.com/link?url=7CGwPd_pyv2nXsQC2uRqn9nuFfynNU_XB3HI78cy91iQJLAz4ChGIthpQDn6d-LAexE9ChfstoL6iuHvcowidK
+                - generic [ref=e428]: skills - 技能
+                - generic [ref=e429]: 常见释义
+              - generic [ref=e432]:
+                - generic [ref=e433]:
+                  - generic [ref=e435] [cursor=pointer]:
+                    - generic [ref=e436]: 英[ˈskɪlz]
+                    - img [ref=e439]
+                  - img [ref=e447] [cursor=pointer]
+                - generic [ref=e453]:
+                  - generic [ref=e455] [cursor=pointer]:
+                    - generic [ref=e456]: 美[skɪlz]
+                    - img [ref=e459]
+                  - img [ref=e467] [cursor=pointer]
+              - generic [ref=e475]:
+                - generic [ref=e476]: n.
+                - generic [ref=e477]: 技能;技术;技巧;技艺;
+              - generic [ref=e478]:
+                - generic [ref=e479]:
+                  - generic [ref=e480]: 例句
+                  - generic [ref=e481]:
+                    - generic [ref=e482]:
+                      - generic [ref=e483]:
+                        - generic [ref=e484]: If he improved his IT skills, he'd easily get a job.
+                        - img [ref=e489] [cursor=pointer]
+                      - generic [ref=e493]: 他如果提高了自己的信息技术技能，就会容易找到工作。
+                    - generic:
+                      - link:
+                        - /url: http://www.baidu.com/link?url=Jw6qpZyOZzGT3dxsCvZF6OekkkBirau38awoXl9LytfHG7zd1ie-f7cveUPFLirvn8PKbXDeidp_M72ZtX6RMrDdPNbSV57-Z2Rs1D0Ev7K
+                - generic [ref=e496]: 来源于：《牛津高阶英汉双解词典》
+              - generic [ref=e497]:
+                - generic [ref=e498]: 变形
+                - generic [ref=e500]:
+                  - generic [ref=e501]: 原型
+                  - generic [ref=e503]:
+                    - link "skill" [ref=e504] [cursor=pointer]:
+                      - /url: /s?rsv_idx=1&wd=skill%E7%BF%BB%E8%AF%91&fenlei=256&usm=4&ie=utf-8&rsv_pq=89c4d0600393cee5&oq=skills&rsv_t=51abL%2FHEVHl1UGLNQiidXV3TW4gBl8mu4TOgUsE1%2B0XRBYqVV2eoHk%2B8AQU&sa=re_fy_huisou
+                    - generic [ref=e505]: 
+              - generic [ref=e507]:
+                - generic [ref=e508]: 考频
+                - generic [ref=e509]:
+                  - generic [ref=e513]:
+                    - generic [ref=e514]: 中考
+                    - generic [ref=e515]: 高考
+                    - generic [ref=e516]: 四级
+                    - generic [ref=e517]: 六级
+                    - generic [ref=e518]: 考研
+                  - generic [ref=e521]:
+                    - generic [ref=e522]:
+                      - generic [ref=e523]: 近四年共出现213次
+                      - generic [ref=e524]:
+                        - text: 重要程度
+                        - generic [ref=e527]:
+                          - generic [ref=e529]: 
+                          - generic [ref=e531]: 
+                          - generic [ref=e533]: 
+                          - generic [ref=e535]: 
+                          - generic [ref=e537]: 
+                    - generic [ref=e539]:
+                      - generic [ref=e543]: 100%
+                      - generic [ref=e544]: n/v. 本领;技能; 培训
+            - generic [ref=e552]:
+              - generic [ref=e557]:
+                - generic [ref=e558]:
+                  - generic [ref=e559]:
+                    - generic [ref=e561]: AI领域的核心概念：Skills规范
+                    - text: 
+                  - generic [ref=e564]:
+                    - generic [ref=e570]:
+                      - paragraph [ref=e571]:
+                        - text: 在人工智能，特别是大模型与智能体（Agent）技术快速发展的背景下，
+                        - mark [ref=e572]:
+                          - text: ‌
+                          - strong [ref=e573]: “Skills”已从一个普通词汇演变为一个特定的技术概念
+                          - text: ‌
+                        - text: 。它最早由Anthropic公司为其大模型Claude提出，并于2025年成为一个开放的行业标准。‌‌‌
+                        - generic [ref=e578] [cursor=pointer]: 百科
+                        - text: ‌
+                      - list [ref=e584]:
+                        - listitem [ref=e585]:
+                          - mark [ref=e586]:
+                            - text: ‌
+                            - strong [ref=e587]: 基本定义与作用
+                            - text: ‌
+                            - mark [ref=e588]: ：一个Skill是一个打包好的“技能包”或“专家级操作手册”。
+                            - text: ‌
+                            - strong [ref=e589]: 它将完成特定任务（如预订机票、生成简历）所需的领域知识、操作流程、工具调用和最佳实践封装在一起
+                            - text: ‌
+                          - text: 。当用户向AI智能体提出请求时，智能体会自动匹配并加载相应的Skill，从而稳定、一致地输出高质量结果，而非依赖一次性的临时提示词（prompt）。
+                        - listitem [ref=e590]:
+                          - mark [ref=e591]:
+                            - text: ‌
+                            - strong [ref=e592]: 技术实现与架构
+                            - text: ‌
+                          - text: ：从技术上看，一个Skill通常是一个包含核心文件
+                          - code [ref=e593]: SKILL.md
+                          - text: 的文件夹。
+                          - mark [ref=e594]:
+                            - text: ‌
+                            - strong [ref=e595]:
+                              - code [ref=e596]: SKILL.md
+                              - text: 文件定义了该技能的元数据、执行指令和上下文
+                            - text: ‌
+                          - text: ，还可能包含脚本、参考文档等资源。AI智能体通过读取这份“说明书”来理解如何执行任务。在整体架构中，Skills属于“行为规范层”，负责定义业务逻辑和流程，它与负责提供底层工具和数据的MCP（Model Context Protocol）协议以及负责整体协调执行的Agent共同协作。
+                        - listitem [ref=e597]:
+                          - mark [ref=e598]:
+                            - text: ‌
+                            - strong [ref=e599]: 发展现状与生态
+                            - text: ‌
+                            - mark [ref=e600]: ：目前，
+                            - text: ‌
+                            - strong [ref=e601]: Skills规范已获得微软Azure、GitHub Copilot等主流平台的支持
+                            - text: ‌
+                          - text: ，正在从Claude独有的功能发展为行业通用标准。许多企业也开始集成或开发自己的Skills，例如在金融、支付、地图服务等领域，通过Skills让AI能够执行专业的业务流程。‌‌‌
+                          - generic [ref=e606] [cursor=pointer]: 百科
+                          - text: ‌
+                    - link "" [ref=e619] [cursor=pointer]:
+                      - /url: http://www.baidu.com/link?url=gjBAzkbdzJGkrsa5paYS-ChMvk3s4OfeB6bQ7BUWCe0QeV86lOj-EKzgf7-LOnB_vgEftxCFPnrMyM3Pzm6-MK
+                      - generic [ref=e621]:
+                        - generic [ref=e626]: 
+                        - text: 
+                - generic [ref=e628]:
+                  - generic [ref=e629]:
+                    - generic [ref=e631]: 作为英语单词的详解
+                    - text: 
+                  - generic [ref=e640]:
+                    - paragraph [ref=e641]: 抛开技术语境，“skills”是名词“skill”的复数形式，其基本释义在全球范围内通用。
+                    - list [ref=e642]:
+                      - listitem [ref=e643]:
+                        - mark [ref=e644]:
+                          - text: ‌
+                          - strong [ref=e645]: 核心释义
+                          - text: ‌
+                          - mark [ref=e646]: ：
+                          - text: ‌
+                          - strong [ref=e647]: 指通过学习和实践获得的能力，通常翻译为“技能”、“技巧”、“技艺”或“熟练性”
+                          - text: ‌
+                        - text: 。
+                      - listitem [ref=e648]:
+                        - mark [ref=e649]:
+                          - text: ‌
+                          - strong [ref=e650]: 常见搭配与例句
+                          - text: ‌
+                        - text: ：
+                        - list [ref=e651]:
+                          - listitem [ref=e652]:
+                            - mark [ref=e653]:
+                              - text: ‌
+                              - strong [ref=e654]: 沟通技巧
+                              - text: ‌
+                            - text: ：Good oral communication skills are necessary.（良好的口头沟通技巧是必要的。）。
+                          - listitem [ref=e655]:
+                            - mark [ref=e656]:
+                              - text: ‌
+                              - strong [ref=e657]: 生活技能
+                              - text: ‌
+                            - text: ：life-skills（生活技能）。
+                          - listitem [ref=e658]:
+                            - mark [ref=e659]:
+                              - text: ‌
+                              - strong [ref=e660]: 专业技能
+                              - text: ‌
+                            - text: ：develop one's professional skills（提升专业技能）。
+                          - listitem [ref=e661]:
+                            - mark [ref=e662]:
+                              - text: ‌
+                              - strong [ref=e663]: 软技能
+                              - text: ‌
+                            - text: ：soft skills（指人际交往、团队协作等能力）。
+                      - listitem [ref=e664]:
+                        - mark [ref=e665]:
+                          - text: ‌
+                          - strong [ref=e666]: 考试重要性
+                          - text: ‌
+                          - mark [ref=e667]: ：该词汇在
+                          - text: ‌
+                          - strong [ref=e668]: 中考、高考、大学英语四六级及研究生入学考试中均为最高频和重要的词汇之一（考频重要性为5）
+                          - text: ‌
+                        - text: ，主要考察其作为“技能、技巧”的名词含义。‌‌‌
+              - generic [ref=e680] [cursor=pointer]:
+                - generic [ref=e681]: 展开剩余69%内容
+                - generic [ref=e682]: 
+          - generic [ref=e684]:
+            - heading "Skills - 百度百科" [level=3] [ref=e685]:
+              - link "Skills - 百度百科" [ref=e686] [cursor=pointer]:
+                - /url: http://www.baidu.com/link?url=DG7YT229NGPA5XfAAUSGpCWgaVebdphyQiq8xkhMld3BbDNsf6AxGK4lAzY2INOs29lxVyUlO9jpoNPMF47WKK
+                - paragraph [ref=e689]:
+                  - generic [ref=e691]:
+                    - emphasis [ref=e692]: Skills
+                    - text: "- 百度百科"
+            - generic [ref=e696]:
+              - generic [ref=e702] [cursor=pointer]: 
+              - generic [ref=e704]:
+                - paragraph [ref=e708]:
+                  - generic [ref=e710]:
+                    - emphasis [ref=e711]: Skills
+                    - text: ，一种标准扩展规范，是可以让Agent变得可靠、可控、可复用的技能包。“
+                    - emphasis [ref=e712]: Skills
+                    - text: ”这个概念最早由Anthropic公司提出，作为其大模型Claude的一种能力扩展机制，并于2025年10月16日正式推出。随着这套做法越来越成熟，并被社区广泛接受，
+                    - emphasis [ref=e713]: Skills
+                    - text: 如今已成为大多数Agent开发工...
+                  - generic [ref=e715]:
+                    - link "详情" [ref=e716] [cursor=pointer]:
+                      - /url: http://www.baidu.com/link?url=DG7YT229NGPA5XfAAUSGpCWgaVebdphyQiq8xkhMld3BbDNsf6AxGK4lAzY2INOs29lxVyUlO9jpoNPMF47WKK
+                    - link "" [ref=e717] [cursor=pointer]:
+                      - /url: http://www.baidu.com/link?url=DG7YT229NGPA5XfAAUSGpCWgaVebdphyQiq8xkhMld3BbDNsf6AxGK4lAzY2INOs29lxVyUlO9jpoNPMF47WKK
+                      - generic [ref=e718]: 
+                - generic [ref=e721]:
+                  - link "概念简介" [ref=e723] [cursor=pointer]:
+                    - /url: http://www.baidu.com/link?url=6WNX-lqJyeJyEFozUZniaupszhY-j3zJajjtKb30kipE8mklxpn7GE29JOOfTProVdJBnwKNCp40llIkyQTZ5rAHHCxro7vyj4uWvdnf7Hm
+                    - generic [ref=e724]: 概念简介
+                  - link "构成组件" [ref=e726] [cursor=pointer]:
+                    - /url: http://www.baidu.com/link?url=6WNX-lqJyeJyEFozUZniaupszhY-j3zJajjtKb30kipE8mklxpn7GE29JOOfTProVdJBnwKNCp40llIkyQTZ5xKIEYMHcRk4B5e_dZogp6K
+                    - generic [ref=e727]: 构成组件
+                  - link "原理介绍" [ref=e729] [cursor=pointer]:
+                    - /url: http://www.baidu.com/link?url=6WNX-lqJyeJyEFozUZniaupszhY-j3zJajjtKb30kipE8mklxpn7GE29JOOfTProVdJBnwKNCp40llIkyQTZ5y-jHW4z719i1M7uzwwjXXC
+                    - generic [ref=e730]: 原理介绍
+                  - link "发展历史" [ref=e732] [cursor=pointer]:
+                    - /url: http://www.baidu.com/link?url=6WNX-lqJyeJyEFozUZniaupszhY-j3zJajjtKb30kipE8mklxpn7GE29JOOfTProVdJBnwKNCp40llIkyQTZ5zExjAmAODjvxnDfWPfFVm7
+                    - generic [ref=e733]: 发展历史
+            - generic [ref=e734]:
+              - link "百度百科" [ref=e737] [cursor=pointer]:
+                - /url: http://www.baidu.com/link?url=DG7YT229NGPA5XfAAUSGpCWgaVebdphyQiq8xkhMld3BbDNsf6AxGK4lAzY2INOs29lxVyUlO9jpoNPMF47WKK
+                - generic [ref=e738]: 百度百科
+              - generic [ref=e740] [cursor=pointer]: 
+          - generic [ref=e745]:
+            - heading "skills - 百度图片" [level=3] [ref=e750]:
+              - link "skills - 百度图片" [ref=e751] [cursor=pointer]:
+                - /url: https://image.baidu.com/search/index?tn=baiduimage&ct=201326592&lm=-1&cl=2&ie=utf8&sa=vs_ala_img&fr=ala&ala=1&alatpl=normal&pos=3&dyTabStr=MCwzLDEsMiwxMyw3LDYsNSwxMiw5&word=skills&lid=89c4d0600393cee5&topic=skills
+                - generic [ref=e753]:
+                  - paragraph [ref=e754]:
+                    - emphasis [ref=e755]: skills
+                  - paragraph [ref=e756]: "- 百度图片"
+            - generic [ref=e757]:
+              - generic [ref=e761]:
+                - link "my" [ref=e763] [cursor=pointer]:
+                  - /url: http://www.baidu.com/link?url=gjBAzkbdzJGkrsa5paYS-H6wVmkLr-mt3WVOM7NkcE3J71mc3DzKUdOKvAeedmQh_5lonMUwZnpLHoF8xZxNVTsmxZP8_EXFUDe_DvPz4W_49tQN80lfTRqzKktAY3FwHm9LORhaau4dewDOSe_n64XMXHtuKhs6SewH-a9nQ5Yvw1-l4IzdNLNTMwQHI8KY2HKcHfRAdHHNfeijsXWRZsagpJhxaQztFZcrIaHbOVyyogNuG7YY3wy3YMCk6FnbHUEBwTOnNfoY0btHYEtyRpGnr2yySKVSCnkmHy7LhoYjF0rHYapz_074E3sIpkbdGYoc5UuUsRY_kZm5f6lGay3aAUxQ2FNBtCqew7ChjRfZdpk6gwR7q1a5E8z9CVa9ukbiQ2jB8YXegkaCpMeRPJJ2waTbJODqrVcAxQDlIUhVUp2W15aoCeHKQlqEXTyYtOZ9I0oFGeLT1zQbvYfcHSKWYgiocPHPrmJLG76oznOxpj_9OY3bCYhpjNc7tDLr
+                  - generic [ref=e764]: my
+                - link "org" [ref=e766] [cursor=pointer]:
+                  - /url: http://www.baidu.com/link?url=Jw6qpZyOZzGT3dxsCvZF6XdEuBsNCEe3xZ02k7v8xNdVkJGNuEp9OHiaEF5P_b_iFzhZdZljY982nwp0gRKUi83gT1yTsrd3qNS1nlYLvJ_c6eE2CEMZ4vzhMDh3VXVpPjOmfM_ikdFL_rEi_bA87GoT8wQ3b9mH1_pPxa-MO0MtkktSbym_S5mJ56zTrNjK8lwVVUAKoNmpMHaqv3BLjvVeOUuazFEpQaFiXr3uOXxnuj0D_QJwcjCMYttt55UL_9C-lyZYsa8-0BoYRymw2C6NCxW40SPZvjKWefYUrysih8s2bpJJ8hZg9FGb93UzHiHe3bvM8TX1VZ1hloFEzjk4wFcG0aCIxIaI1W87aoAUvywS4n5NA1qBPjewsGmRJKAojnnQoUNASAGhcXt6kn2MnIb7URzCf0dJJOxVd1YyKYqCvAGkOgoYtpIjgAbu0uLK5afwLNC05Q6mS_rPLP6wCowOjGJbOmO5Wmw8P4Q_idIiQPZbO58zi6kDPfJm
+                  - generic [ref=e767]: org
+                - link "list" [ref=e769] [cursor=pointer]:
+                  - /url: http://www.baidu.com/link?url=DG7YT229NGPA5XfAAUSGp1OvKgEEclyX3-LAVGWelsiJuHCdYU6mPjc_OcbYyC3DgmpEk9bUnvmbhUNWCImRwnRfArBN2RK4xTqE9lqKOYSP-01gV0_T-O_AWSpvni4Vu9fd4y8-wJ6MVNobyWFc6ukQOc0Bg80N2H_cpqutyIdCUyKpIVEJOMQUsKb4SBuPvS7ryyxaCX9a2acyl6Rpwlas94nR_OwJF5CGHfHPPWGLn6CLlA9fJ5PpTj_JVX-aD2S7IrZxmveIc1jlHSWUScyzl2IAHggT0XFV9zGsFIW2g31CELLHHHuh0thsHYPL7E3HY-sX0hBxqtZv1KVrykdzYk5rXhK2hbOPK4w9dMNFqXP0wJNWggc81w15hWEuWkZ5DQxXK2KYFT8jLIFQPsrJ4oyLLC5l72ECWiF8YGJDW7phTYJ8UuEVgfSmCUkED-_0xNwfqwuNPNfA_7dtQY9tvTkOWX9CJppS4QvklzDKEcwoJ4HvfqpaR1ngfWtT
+                  - generic [ref=e770]: list
+                - link "意思" [ref=e772] [cursor=pointer]:
+                  - /url: http://www.baidu.com/link?url=gjBAzkbdzJGkrsa5paYS-H6wVmkLr-mt3WVOM7NkcE3J71mc3DzKUdOKvAeedmQh_5lonMUwZnpLHoF8xZxNVTsmxZP8_EXFUDe_DvPz4W_49tQN80lfTRqzKktAY3FwHm9LORhaau4dewDOSe_n64XMXHtuKhs6SewH-a9nQ5Yvw1-l4IzdNLNTMwQHI8KY2HKcHfRAdHHNfeijsXWRZsagpJhxaQztFZcrIaHbOVyyogNuG7YY3wy3YMCk6FnbHUEBwTOnNfoY0btHYEtyRpGnr2yySKVSCnkmHy7LhoYjF0rHYapz_074E3sIpkbdGYoc5UuUsRY_kZm5f6lGay3aAUxQ2FNBtCqew7ChjRfZdpk6gwR7q1a5E8z9CVa9ukbiQ2jB8YXegkaCpMeRPJJ2waTbJODqrVcAxQDlIUhVUp2W15aoCeHKQlqEXTyYtOZ9I0oFGeLT1zQbvYfcHOyZbujz1nPVN7hwpjhtnTucyo3lIdxLQQXiYJLVE8QFUWzKQVuTfuOuQ_WDFLsUNK
+                  - generic [ref=e773]: 意思
+                - link "you" [ref=e775] [cursor=pointer]:
+                  - /url: http://www.baidu.com/link?url=Jw6qpZyOZzGT3dxsCvZF6XdEuBsNCEe3xZ02k7v8xNdVkJGNuEp9OHiaEF5P_b_iFzhZdZljY982nwp0gRKUi83gT1yTsrd3qNS1nlYLvJ_c6eE2CEMZ4vzhMDh3VXVpPjOmfM_ikdFL_rEi_bA87GoT8wQ3b9mH1_pPxa-MO0MtkktSbym_S5mJ56zTrNjK8lwVVUAKoNmpMHaqv3BLjvVeOUuazFEpQaFiXr3uOXxnuj0D_QJwcjCMYttt55UL_9C-lyZYsa8-0BoYRymw2C6NCxW40SPZvjKWefYUrysih8s2bpJJ8hZg9FGb93UzHiHe3bvM8TX1VZ1hloFEzjk4wFcG0aCIxIaI1W87aoAUvywS4n5NA1qBPjewsGmRJKAojnnQoUNASAGhcXt6kn2MnIb7URzCf0dJJOxVd1YyKYqCvAGkOgoYtpIjgAbu0uLK5afwLNC05Q6mS_rPLU9vN8fBhbBsa5eRdzmoVq-1AwKCHmOn0wPeICbjEKNt
+                  - generic [ref=e776]: you
+              - generic [ref=e777]:
+                - generic [ref=e778]:
+                  - generic [ref=e781]:
+                    - generic [ref=e782]:
+                      - link [ref=e783] [cursor=pointer]:
+                        - /url: https://image.baidu.com/search/detail?ct=503316480&z=0&tn=baiduimagedetail&ipn=d&cl=2&cm=1&sc=0&sa=vs_ala_img_datu&lm=-1&ie=utf8&pn=0&rn=1&di=7609719975837696001&ln=0&word=skills&os=130720278,1702811908&cs=3393886190,146840674&objurl=http%3A%2F%2Fi2.hdslb.com%2Fbfs%2Farchive%2F20f99b6cc532cb4c47568bdaf9f2cb1d1fe6b5e7.jpg&bdtype=0&simid=4039069413,705572155&pi=0&adpicid=0&timingneed=&spn=0&is=0,0&lid=89c4d0600393cee5
+                      - link [ref=e787] [cursor=pointer]:
+                        - /url: https://image.baidu.com/search/detail?ct=503316480&z=0&tn=baiduimagedetail&ipn=d&cl=2&cm=1&sc=0&sa=vs_ala_img_datu&lm=-1&ie=utf8&pn=1&rn=1&di=7620110360720179201&ln=0&word=skills&os=2279333684,320080369&cs=2775871690,2203277482&objurl=http%3A%2F%2Fi2.hdslb.com%2Fbfs%2Farchive%2Fc35f37e393cda5eba550080fed215c8541cdcfc0.jpg&bdtype=0&simid=4269331290,603137875&pi=0&adpicid=0&timingneed=&spn=0&is=0,0&lid=89c4d0600393cee5
+                      - link " 7" [ref=e791] [cursor=pointer]:
+                        - /url: https://image.baidu.com/search/detail?ct=503316480&z=0&tn=baiduimagedetail&ipn=d&cl=2&cm=1&sc=0&sa=vs_ala_img_datu&lm=-1&ie=utf8&pn=2&rn=1&di=7620110360720179201&ln=0&word=skills&os=3465896666,1442540579&cs=315375715,1059898637&objurl=http%3A%2F%2Fsafe-img.xhscdn.com%2Fbw1%2F014ebe9b-8ac6-4507-91fc-f4d31d97f5fd%3FimageView2%2F2%2Fw%2F1080%2Fformat%2Fjpg&bdtype=0&simid=315375715,1059898637&pi=0&adpicid=0&timingneed=&spn=0&is=3465896666,1442540579&lid=89c4d0600393cee5
+                        - generic [ref=e795]:
+                          - generic [ref=e796]: 
+                          - generic [ref=e797]: "7"
+                    - generic [ref=e798]:
+                      - link " 6" [ref=e799] [cursor=pointer]:
+                        - /url: https://image.baidu.com/search/detail?ct=503316480&z=0&tn=baiduimagedetail&ipn=d&cl=2&cm=1&sc=0&sa=vs_ala_img_datu&lm=-1&ie=utf8&pn=3&rn=1&di=7620110360720179201&ln=0&word=skills&os=3988513891,2194508321&cs=2613098964,1541587776&objurl=http%3A%2F%2Fsns-img-hw.xhscdn.com%2F1000g00823ptruiefo0005n8mrms47f0tu9t5v0g%3FimageView2%2F2%2Fw%2F1080%2Fformat%2Fwebp&bdtype=0&simid=2613098964,1541587776&pi=0&adpicid=0&timingneed=&spn=0&is=3988513891,2194508321&lid=89c4d0600393cee5
+                        - generic [ref=e803]:
+                          - generic [ref=e804]: 
+                          - generic [ref=e805]: "6"
+                      - link [ref=e806] [cursor=pointer]:
+                        - /url: https://image.baidu.com/search/detail?ct=503316480&z=0&tn=baiduimagedetail&ipn=d&cl=2&cm=1&sc=0&sa=vs_ala_img_datu&lm=-1&ie=utf8&pn=4&rn=1&di=7620110360720179201&ln=0&word=skills&os=3309574800,299952080&cs=3616450230,918613311&objurl=http%3A%2F%2Fleadershipchamps.files.wordpress.com%2F2013%2F04%2Fpms-essential-soft-skills.jpg&bdtype=0&simid=3616450230,918613311&pi=0&adpicid=0&timingneed=&spn=0&is=0,0&lid=89c4d0600393cee5
+                      - link " 4" [ref=e810] [cursor=pointer]:
+                        - /url: https://image.baidu.com/search/detail?ct=503316480&z=0&tn=baiduimagedetail&ipn=d&cl=2&cm=1&sc=0&sa=vs_ala_img_datu&lm=-1&ie=utf8&pn=5&rn=1&di=7609719975837696001&ln=0&word=skills&os=3421291509,227926986&cs=1740894481,2807289057&objurl=http%3A%2F%2Fsafe-img.xhscdn.com%2Fbw1%2F556784fe-e0ec-453f-906b-1b5a7817cf68%3FimageView2%2F2%2Fw%2F1080%2Fformat%2Fjpg&bdtype=0&simid=1740894481,2807289057&pi=0&adpicid=0&timingneed=&spn=0&is=3421291509,227926986&lid=89c4d0600393cee5
+                        - generic [ref=e814]:
+                          - generic [ref=e815]: 
+                          - generic [ref=e816]: "4"
+                  - link "查看全部85856张图片 " [ref=e819] [cursor=pointer]:
+                    - /url: http://www.baidu.com/link?url=YhW4KRd8p36HpMgqSRHnHh1vp5S0cSipGRdRgwqDD3va0KykeKWbIHGWZZl7egnI-BQJlUvuME1W-JVvGDIyHiwSGsvH8KDtx0PdSOkAxMXOZ2s85u7Eh1HSHlMi2oTyIm-ybHltX9H3uBnkVdB0czMf4oI5RbhptCL7mkrj1TQRD26do7IRvdlEOenbIncVRPeOd7_87CAY3EIw4gQ_9nkYJ6CfzWyy0wYM4rI3oImkPVmdqplybQxCmFssSwCySgz4I6LaMXkVX42EtDvkXxWPzlrETDQ-yi2ofcBovUy
+                    - generic [ref=e820]:
+                      - generic [ref=e821]: 查看全部85856张图片
+                      - generic [ref=e822]: 
+                - generic [ref=e823]:
+                  - textbox "用AI一秒生成“skills”" [ref=e824]
+                  - link "免费AI生图" [ref=e826] [cursor=pointer]:
+                    - /url: http://www.baidu.com/link?url=26-OzoexbiT2sWgICH1f2pGcd4wHQp1go9weFB1TQwTkP6KcUAebw46NRdxZA6oik16cUUWcIyUkPhTPTr6L-rFGXSOyFHZxaTB01NZv-d38OALHIBgHpCLkiF8z5uyaK3DqA_Lcp9x5funH4Oj-S0Huc_-foStFpMkkkoqov3B9Us27Hpu58Jntr2gyYKG54iTn1RK66rJdsouM-MQQpKzlZYUime_TchPoc5awxHKMKOQFIkZZwrZOS4udqKXQ1nnHbjSLx2pNmNjanR9Ve_
+                    - button "免费AI生图" [ref=e827]:
+                      - generic [ref=e828]: 免费AI生图
+              - generic [ref=e830]:
+                - generic [ref=e834]: 百度图片
+                - generic [ref=e837] [cursor=pointer]: 
+          - generic [ref=e839]:
+            - generic [ref=e840]: 大家还在搜
+            - generic [ref=e841]:
+              - link "skills智能体" [ref=e842] [cursor=pointer]:
+                - /url: /s?rsv_idx=1&wd=skills%E6%99%BA%E8%83%BD%E4%BD%93&fenlei=256&usm=4&ie=utf-8&rsv_pq=89c4d0600393cee5&oq=skills&rsv_t=9d9ca6D1%2FOLSPwr2UHjH7ZJNU0GhvRHdDSaAVLRgk4kkkPu9fKtoF%2FtFPgo&rsf=101633601&rsv_dl=0_prs_28608_1
+                - generic [ref=e844]: skills智能体
+              - link "《SKILL》铃木一彻主演-上映时间" [ref=e845] [cursor=pointer]:
+                - /url: /s?rsv_idx=1&wd=%E3%80%8ASKILL%E3%80%8B%E9%93%83%E6%9C%A8%E4%B8%80%E5%BD%BB%E4%B8%BB%E6%BC%94-%E4%B8%8A%E6%98%A0%E6%97%B6%E9%97%B4&fenlei=256&usm=4&ie=utf-8&rsv_pq=89c4d0600393cee5&oq=skills&rsv_t=9d9ca6D1%2FOLSPwr2UHjH7ZJNU0GhvRHdDSaAVLRgk4kkkPu9fKtoF%2FtFPgo&rsf=101631101&rsv_dl=0_prs_28608_2
+                - generic [ref=e847]: 《SKILL》铃木一彻主演-上映时间
+              - link "《skill》在线观看高清星辰" [ref=e848] [cursor=pointer]:
+                - /url: /s?rsv_idx=1&wd=%E3%80%8Askill%E3%80%8B%E5%9C%A8%E7%BA%BF%E8%A7%82%E7%9C%8B%E9%AB%98%E6%B8%85%E6%98%9F%E8%BE%B0&fenlei=256&usm=4&ie=utf-8&rsv_pq=89c4d0600393cee5&oq=skills&rsv_t=9d9ca6D1%2FOLSPwr2UHjH7ZJNU0GhvRHdDSaAVLRgk4kkkPu9fKtoF%2FtFPgo&rsf=101631101&rsv_dl=0_prs_28608_3
+                - generic [ref=e850]: 《skill》在线观看高清星辰
+              - link "skills中文" [ref=e851] [cursor=pointer]:
+                - /url: /s?rsv_idx=1&wd=skills%E4%B8%AD%E6%96%87&fenlei=256&usm=4&ie=utf-8&rsv_pq=89c4d0600393cee5&oq=skills&rsv_t=9d9ca6D1%2FOLSPwr2UHjH7ZJNU0GhvRHdDSaAVLRgk4kkkPu9fKtoF%2FtFPgo&rsf=101631161&rsv_dl=0_prs_28608_4
+                - generic [ref=e853]: skills中文
+              - link "《skill》日剧全集190" [ref=e854] [cursor=pointer]:
+                - /url: /s?rsv_idx=1&wd=%E3%80%8Askill%E3%80%8B%E6%97%A5%E5%89%A7%E5%85%A8%E9%9B%86190&fenlei=256&usm=4&ie=utf-8&rsv_pq=89c4d0600393cee5&oq=skills&rsv_t=9d9ca6D1%2FOLSPwr2UHjH7ZJNU0GhvRHdDSaAVLRgk4kkkPu9fKtoF%2FtFPgo&rsf=100631101&rsv_dl=0_prs_28608_5
+                - generic [ref=e856]: 《skill》日剧全集190
+              - link "skill在线观看全集第一季" [ref=e857] [cursor=pointer]:
+                - /url: /s?rsv_idx=1&wd=skill%E5%9C%A8%E7%BA%BF%E8%A7%82%E7%9C%8B%E5%85%A8%E9%9B%86%E7%AC%AC%E4%B8%80%E5%AD%A3&fenlei=256&usm=4&ie=utf-8&rsv_pq=89c4d0600393cee5&oq=skills&rsv_t=9d9ca6D1%2FOLSPwr2UHjH7ZJNU0GhvRHdDSaAVLRgk4kkkPu9fKtoF%2FtFPgo&rsf=100633601&rsv_dl=0_prs_28608_6
+                - generic [ref=e859]: skill在线观看全集第一季
+          - generic [ref=e860]:
+            - heading "moserware/Skills - GitHub" [level=3] [ref=e861]:
+              - link "moserware/Skills - GitHub" [ref=e862] [cursor=pointer]:
+                - /url: http://www.baidu.com/link?url=DwAkH89Z-OUzv9k2U951jr-3v0ZS2LEVZtK_8hcceJMQUZjT-SpeV5gGouCXkKn7
+                - text: moserware/
+                - emphasis [ref=e863]: Skills
+                - text: "- GitHub"
+            - paragraph [ref=e864]: A detailed implementation of the TrueSkill algorithm to go along with my "Computing Your Skill" blog post
+            - generic [ref=e865]:
+              - generic [ref=e866]:
+                - generic [ref=e867]: 语言：
+                - generic [ref=e868]: C#
+              - generic [ref=e869]:
+                - generic [ref=e870]: 官网：
+                - link "http://www.moserware.com/2010/03/computing-your-skill.html" [ref=e871] [cursor=pointer]:
+                  - /url: http://www.baidu.com/link?url=gjBAzkbdzJGkrsa5paYS-ChMvk3s4OfeB6bQ7BUWCe_DBZ4eK9qlYVuhaD9kmtW3OVA15nFOECR3bu0gXg7VIXVOb3pSABmO-zAlmxApEy_
+            - generic [ref=e872]:
+              - generic [ref=e873]:
+                - generic [ref=e874]: Star：
+                - generic [ref=e875]: "383"
+              - generic [ref=e876]:
+                - generic [ref=e877]: Fork：
+                - generic [ref=e878]: "137"
+            - link "Pull requests" [ref=e880] [cursor=pointer]:
+              - /url: http://www.baidu.com/link?url=6WNX-lqJyeJyEFozUZniarUCvImsbeQl4c3IAlTsV7GskBFUEZmWYLeCbl5g0g6jeyuaOfjQVSN4SYui601CVq
+            - link "Issues" [ref=e882] [cursor=pointer]:
+              - /url: http://www.baidu.com/link?url=gjBAzkbdzJGkrsa5paYS-1Sj4lFC43SPNliu-_DV1cy3zhnXyfdYWa5ImriySP-bCIRFZEhXxmHhSdLeiX1ZB_
+            - generic [ref=e883]:
+              - link [ref=e884] [cursor=pointer]:
+                - /url: http://www.baidu.com/link?url=DwAkH89Z-OUzv9k2U951jr-3v0ZS2LEVZtK_8hcceJMQUZjT-SpeV5gGouCXkKn7
+                - text: https://github.com/moserware/Skills
+              - generic [ref=e886] [cursor=pointer]: 
+          - generic [ref=e890]:
+            - heading "skills是什么意思_skills的翻译_音标_读音_用法_例句_爱词霸在线..." [level=3] [ref=e893]:
+              - link "skills是什么意思_skills的翻译_音标_读音_用法_例句_爱词霸在线..." [ref=e894] [cursor=pointer]:
+                - /url: http://www.baidu.com/link?url=d8df4mHh7uW_5omz-Uf4EJgGVgOx-irbGJaxVcZJjb2lKktd5PNOBiRFmbkxdLEeEl2-HA8JBCjIiA6B4eImV_
+                - paragraph [ref=e897]:
+                  - generic [ref=e900]:
+                    - emphasis [ref=e901]: skills
+                    - text: 是什么意思_skills的翻译_音标_读音_用法_例句_爱词霸在线...
+            - generic [ref=e907]:
+              - text: "大小写变形:"
+              - emphasis [ref=e908]: Skills
+              - text: 实用场景例句 全部 She improved her sketching
+              - emphasis [ref=e909]: skills
+              - text: by tracing a picture from an old storybook. 她通过临摹一本古老故事书中的图画来提高素描技巧。 金山词霸 No detectiveskillsare required for me to deduce that. 不需要侦探技巧,我也能推
+            - link "金山词霸" [ref=e914] [cursor=pointer]:
+              - /url: http://www.baidu.com/link?url=d8df4mHh7uW_5omz-Uf4EJgGVgOx-irbGJaxVcZJjb2lKktd5PNOBiRFmbkxdLEeEl2-HA8JBCjIiA6B4eImV_
+              - generic [ref=e915]: 金山词霸
+              - generic [ref=e917]: 
+          - generic [ref=e921]:
+            - heading "skills - 搜索 词典" [level=3] [ref=e924]:
+              - link "skills - 搜索 词典" [ref=e925] [cursor=pointer]:
+                - /url: http://www.baidu.com/link?url=7CGwPd_pyv2nXsQC2uRqn9Zqw3d4vqDrtiV6VCn_4WkmUafkekHCcl8fn9Uuc3wA
+                - paragraph [ref=e928]:
+                  - generic [ref=e931]:
+                    - emphasis [ref=e932]: skills
+                    - text: "- 搜索 词典"
+            - generic [ref=e938]:
+              - text: "英[skɪl] n.技能;手艺;本领;熟练 v.有助于;有影响;〈古〉起作用 网络技巧;技术;基本技能 复数:"
+              - emphasis [ref=e939]: skills
+              - text: 搭配 同义词 adj.+n. great skill,basic skill,technical skill,professional skill,special skill v.+n. learn skill,use skill,acquire skill,develop skill,master skill ...
+            - link "Bing" [ref=e944] [cursor=pointer]:
+              - /url: http://www.baidu.com/link?url=7CGwPd_pyv2nXsQC2uRqn9Zqw3d4vqDrtiV6VCn_4WkmUafkekHCcl8fn9Uuc3wA
+              - generic [ref=e945]: Bing
+              - generic [ref=e947]: 
+          - generic [ref=e951]:
+            - heading "Skills - 百家号" [level=3] [ref=e952]:
+              - generic [ref=e954]:
+                - emphasis [ref=e955]: Skills
+                - text: "- 百家号"
+            - link "头像 Skills 8932粉丝 实在智能是一家专注于人工智能与超自动化解决方案的科技公司‌，基于AI Agent（智能体）和自研TARS大模型技术，提供实在Agent、实在RPA数字员工等产品，助力电商、制造、医药、金融等领域企业实现数字化转型。‌ 关注" [ref=e957] [cursor=pointer]:
+              - /url: http://www.baidu.com/link?url=l3Ms09xJg8XKVfNvCJKeEX_iIKAEmjlTsquHX-6zSbwRXydeGDNaEyxyd4vN0qWFIB08FgH4eld5Xl5x52867q
+              - generic [ref=e958]:
+                - img "头像" [ref=e962]
+                - generic [ref=e963]:
+                  - generic [ref=e964]: Skills
+                  - generic [ref=e965]: 8932粉丝 实在智能是一家专注于人工智能与超自动化解决方案的科技公司‌，基于AI Agent（智能体）和自研TARS大模型技术，提供实在Agent、实在RPA数字员工等产品，助力电商、制造、医药、金融等领域企业实现数字化转型。‌
+                - button "关注" [ref=e967]:
+                  - generic [ref=e968]: 关注
+            - generic [ref=e969]:
+              - link "识别脑膜炎的预警信号 脑膜炎的早期症状如发烧、头痛、乏力等，确实容易和感冒混淆。但如果出现以下情况，就必须立刻警惕并就医： · 剧烈头痛：头痛程度剧烈，难以缓解，甚至伴有恶心、喷射状的呕吐。 · 持续高热：出现持续性的高热（39-40℃以上），一般的退烧药效果不佳。 2025年11月8日" [ref=e970] [cursor=pointer]:
+                - /url: http://www.baidu.com/link?url=1Of9PObvvVBYuxQ7S7gwbLqh_aQiDm5zE2nnPQbmaR5Qm1b_KsexhOp9Y3OjfHMpf3ucsmngHSHXlQ_FFIwXNFeQnmvbbShfrVpPN1zEjr1Q4oFJk0QjW71B-bQiZsB74v-WPGv7nweokduCllNdAq
+                - generic [ref=e974]:
+                  - generic [ref=e975]: 识别脑膜炎的预警信号 脑膜炎的早期症状如发烧、头痛、乏力等，确实容易和感冒混淆。但如果出现以下情况，就必须立刻警惕并就医： · 剧烈头痛：头痛程度剧烈，难以缓解，甚至伴有恶心、喷射状的呕吐。 · 持续高热：出现持续性的高热（39-40℃以上），一般的退烧药效果不佳。
+                  - generic [ref=e977]: 2025年11月8日
+              - link " 02:01 两分钟带你了解大米生产的全过程 2025年11月8日 1条评论" [ref=e979] [cursor=pointer]:
+                - /url: http://www.baidu.com/link?url=1Of9PObvvVBYuxQ7S7gwbWF9lt6KWXMaS7QSBboB21Hmbr-XZ5gRrVLxwN-Be3snNt2Fn0INp79WnsKKJPFqju1k1aiMn2MDIbTswKzUit7
+                - generic [ref=e982]:
+                  - generic [ref=e984]: 
+                  - generic [ref=e985]: 02:01
+                - generic [ref=e987]:
+                  - generic [ref=e988]: 两分钟带你了解大米生产的全过程
+                  - generic [ref=e989]:
+                    - generic [ref=e990]: 2025年11月8日
+                    - generic [ref=e991]: 1条评论
+              - link "查看更多 " [ref=e992] [cursor=pointer]:
+                - /url: http://www.baidu.com/link?url=l3Ms09xJg8XKVfNvCJKeEX_iIKAEmjlTsquHX-6zSbwRXydeGDNaEyxyd4vN0qWFIB08FgH4eld5Xl5x52867q
+                - generic [ref=e993]:
+                  - generic [ref=e994]: 查看更多
+                  - generic [ref=e995]: 
+            - generic [ref=e999]:
+              - generic [ref=e1000]: 百家号
+              - generic [ref=e1002] [cursor=pointer]: 
+          - generic [ref=e1006]:
+            - heading "skills是什么意思_skills怎么读_中文意思_用法_翻译" [level=3] [ref=e1009]:
+              - link "skills是什么意思_skills怎么读_中文意思_用法_翻译" [ref=e1010] [cursor=pointer]:
+                - /url: http://www.baidu.com/link?url=xBpZ2bfLCPL2LNHQTjPB72odHd3_DrD8oaRqF-Io-DwNwDkpdsvfddMp3RhaiiWl
+                - paragraph [ref=e1013]:
+                  - generic [ref=e1016]:
+                    - emphasis [ref=e1017]: skills
+                    - text: 是什么意思_skills怎么读_中文意思_用法_翻译
+            - generic [ref=e1022]:
+              - text: 2026年4月11日
+              - generic [ref=e1023]:
+                - text: skills是什么意思、skills怎么读 读音:英[ˈskɪlz] 美[skɪlz] 雅思
+                - emphasis [ref=e1024]: skills
+                - text: 基本解释 n. 技能( skill的名词复数 );熟练;巧妙;擅长 skills 词性变化 原型:skill 词组短语 1、chinaskills中国技能 2、softskillsn.软性技巧(指人际交往的技巧,如团队工作时的沟通能力) ...
+            - link "http://danci.gongjucha.com/skills...." [ref=e1029] [cursor=pointer]:
+              - /url: http://www.baidu.com/link?url=xBpZ2bfLCPL2LNHQTjPB72odHd3_DrD8oaRqF-Io-DwNwDkpdsvfddMp3RhaiiWl
+              - generic [ref=e1030]: http://danci.gongjucha.com/skills....
+              - generic [ref=e1032]: 
+          - generic [ref=e1036]:
+            - heading "skills. - 百度" [level=3] [ref=e1039]:
+              - link "skills. - 百度" [ref=e1040] [cursor=pointer]:
+                - /url: http://www.baidu.com/link?url=1Of9PObvvVBYuxQ7S7gwbWK4COfJiNaQRfuAmQ8ZPID_08eoOpHs557IAKQmhijsvUSlOfRjreZw2eUJ37_l47_xnExfMN5msg3EtrXKn78Mo06UXmJNvsFMPzvCZzNe0VKvPtW8sDOHYP2EP5pN6OdsaMuh_YaHcbAseXiM6xv3pZWRRPmw5K9yz4RFotAzmHSpmMY9CuRXjxBlq_V6ESpkii687m8RTZEWMzW2duraH5JCKvCXVkVW55FBlBlyw5Ma1tjAFainlVb4y1quTK0tJCPvfe1fPMKTm0hUMnq
+                - paragraph [ref=e1043]:
+                  - generic [ref=e1046]:
+                    - emphasis [ref=e1047]: skills
+                    - text: . - 百度
+            - generic [ref=e1053]:
+              - text: ":"
+              - emphasis [ref=e1054]: skills
+              - text: "是名词 skill的复数形式,单数形式为 skill.‌‌‌ ‌ 核心释义 ‌ : 技能,技术:指通过训练或实践获得的能力.‌‌‌ 技巧,技艺:尤指在执行学习过的体力任务时的灵巧性或协调性.‌‌‌ 熟练,擅长:表示在某领域的精通程度.‌‌‌ ‌ 发音信息..."
+            - generic [ref=e1055]:
+              - link [ref=e1057] [cursor=pointer]:
+                - /url: http://www.baidu.com/link?url=1Of9PObvvVBYuxQ7S7gwbWK4COfJiNaQRfuAmQ8ZPID_08eoOpHs557IAKQmhijsvUSlOfRjreZw2eUJ37_l47_xnExfMN5msg3EtrXKn78Mo06UXmJNvsFMPzvCZzNe0VKvPtW8sDOHYP2EP5pN6OdsaMuh_YaHcbAseXiM6xv3pZWRRPmw5K9yz4RFotAzmHSpmMY9CuRXjxBlq_V6ESpkii687m8RTZEWMzW2duraH5JCKvCXVkVW55FBlBlyw5Ma1tjAFainlVb4y1quTK0tJCPvfe1fPMKTm0hUMnq
+              - link [ref=e1061] [cursor=pointer]:
+                - /url: http://www.baidu.com/link?url=1Of9PObvvVBYuxQ7S7gwbWK4COfJiNaQRfuAmQ8ZPID_08eoOpHs557IAKQmhijsvUSlOfRjreZw2eUJ37_l47_xnExfMN5msg3EtrXKn78Mo06UXmJNvsFMPzvCZzNe0VKvPtW8sDOHYP2EP5pN6OdsaMuh_YaHcbAseXiM6xv3pZWRRPmw5K9yz4RFotAzmHSpmMY9CuRXjxBlq_V6ESpkii687m8RTZEWMzW2duraH5JCKvCXVkVW55FBlBlyw5Ma1tjAFainlVb4y1quTK0tJCPvfe1fPMKTm0hUMnq
+              - link [ref=e1065] [cursor=pointer]:
+                - /url: http://www.baidu.com/link?url=1Of9PObvvVBYuxQ7S7gwbWK4COfJiNaQRfuAmQ8ZPID_08eoOpHs557IAKQmhijsvUSlOfRjreZw2eUJ37_l47_xnExfMN5msg3EtrXKn78Mo06UXmJNvsFMPzvCZzNe0VKvPtW8sDOHYP2EP5pN6OdsaMuh_YaHcbAseXiM6xv3pZWRRPmw5K9yz4RFotAzmHSpmMY9CuRXjxBlq_V6ESpkii687m8RTZEWMzW2duraH5JCKvCXVkVW55FBlBlyw5Ma1tjAFainlVb4y1quTK0tJCPvfe1fPMKTm0hUMnq
+              - link "5" [ref=e1069] [cursor=pointer]:
+                - /url: http://www.baidu.com/link?url=1Of9PObvvVBYuxQ7S7gwbWK4COfJiNaQRfuAmQ8ZPID_08eoOpHs557IAKQmhijsvUSlOfRjreZw2eUJ37_l47_xnExfMN5msg3EtrXKn78Mo06UXmJNvsFMPzvCZzNe0VKvPtW8sDOHYP2EP5pN6OdsaMuh_YaHcbAseXiM6xv3pZWRRPmw5K9yz4RFotAzmHSpmMY9CuRXjxBlq_V6ESpkii687m8RTZEWMzW2duraH5JCKvCXVkVW55FBlBlyw5Ma1tjAFainlVb4y1quTK0tJCPvfe1fPMKTm0hUMnq
+                - generic [ref=e1072]:
+                  - generic [ref=e1073]: 
+                  - text: "5"
+            - link "百度" [ref=e1078] [cursor=pointer]:
+              - /url: http://www.baidu.com/link?url=1Of9PObvvVBYuxQ7S7gwbWK4COfJiNaQRfuAmQ8ZPID_08eoOpHs557IAKQmhijsvUSlOfRjreZw2eUJ37_l47_xnExfMN5msg3EtrXKn78Mo06UXmJNvsFMPzvCZzNe0VKvPtW8sDOHYP2EP5pN6OdsaMuh_YaHcbAseXiM6xv3pZWRRPmw5K9yz4RFotAzmHSpmMY9CuRXjxBlq_V6ESpkii687m8RTZEWMzW2duraH5JCKvCXVkVW55FBlBlyw5Ma1tjAFainlVb4y1quTK0tJCPvfe1fPMKTm0hUMnq
+              - generic [ref=e1079]: 百度
+              - generic [ref=e1081]: 
+        - generic [ref=e1084]:
+          - generic [ref=e1085]: 相关搜索
+          - table [ref=e1086]:
+            - rowgroup [ref=e1087]:
+              - row "skills智能体 《SKILL》铃木一彻主演-上映时间" [ref=e1088]:
+                - cell "skills智能体" [ref=e1089]:
+                  - link "skills智能体" [ref=e1090] [cursor=pointer]:
+                    - /url: /s?wd=skills%E6%99%BA%E8%83%BD%E4%BD%93&rsf=101633601&rsp=0&f=1&rs_src=0&rsv_pq=89c4d0600393cee5&rsv_t=79b9354JNPDgQEcMZTBhLeimdGPwWPbS6xng0aOh1XFyMYIaEPrvVae6GBA&rsv_dl=brs_28338_1
+                    - generic [ref=e1092]: skills智能体
+                - cell "《SKILL》铃木一彻主演-上映时间" [ref=e1093]:
+                  - link "《SKILL》铃木一彻主演-上映时间" [ref=e1094] [cursor=pointer]:
+                    - /url: /s?wd=%E3%80%8ASKILL%E3%80%8B%E9%93%83%E6%9C%A8%E4%B8%80%E5%BD%BB%E4%B8%BB%E6%BC%94-%E4%B8%8A%E6%98%A0%E6%97%B6%E9%97%B4&rsf=101631101&rsp=1&f=1&rs_src=0&rsv_pq=89c4d0600393cee5&rsv_t=79b9354JNPDgQEcMZTBhLeimdGPwWPbS6xng0aOh1XFyMYIaEPrvVae6GBA&rsv_dl=brs_28338_2
+                    - generic [ref=e1096]: 《SKILL》铃木一彻主演-上映时间
+              - row "《skill》在线观看高清星辰 skills中文" [ref=e1097]:
+                - cell "《skill》在线观看高清星辰" [ref=e1098]:
+                  - link "《skill》在线观看高清星辰" [ref=e1099] [cursor=pointer]:
+                    - /url: /s?wd=%E3%80%8Askill%E3%80%8B%E5%9C%A8%E7%BA%BF%E8%A7%82%E7%9C%8B%E9%AB%98%E6%B8%85%E6%98%9F%E8%BE%B0&rsf=101631101&rsp=2&f=1&rs_src=0&rsv_pq=89c4d0600393cee5&rsv_t=79b9354JNPDgQEcMZTBhLeimdGPwWPbS6xng0aOh1XFyMYIaEPrvVae6GBA&rsv_dl=brs_28338_3
+                    - generic [ref=e1101]: 《skill》在线观看高清星辰
+                - cell "skills中文" [ref=e1102]:
+                  - link "skills中文" [ref=e1103] [cursor=pointer]:
+                    - /url: /s?wd=skills%E4%B8%AD%E6%96%87&rsf=101631161&rsp=3&f=1&rs_src=0&rsv_pq=89c4d0600393cee5&rsv_t=79b9354JNPDgQEcMZTBhLeimdGPwWPbS6xng0aOh1XFyMYIaEPrvVae6GBA&rsv_dl=brs_28338_4
+                    - generic [ref=e1105]: skills中文
+              - row "skill在线观看全集第一季 《skill》日剧全集190" [ref=e1106]:
+                - cell "skill在线观看全集第一季" [ref=e1107]:
+                  - link "skill在线观看全集第一季" [ref=e1108] [cursor=pointer]:
+                    - /url: /s?wd=skill%E5%9C%A8%E7%BA%BF%E8%A7%82%E7%9C%8B%E5%85%A8%E9%9B%86%E7%AC%AC%E4%B8%80%E5%AD%A3&rsf=101633601&rsp=4&f=1&rs_src=0&rsv_pq=89c4d0600393cee5&rsv_t=79b9354JNPDgQEcMZTBhLeimdGPwWPbS6xng0aOh1XFyMYIaEPrvVae6GBA&rsv_dl=brs_28338_5
+                    - generic [ref=e1110]: skill在线观看全集第一季
+                - cell "《skill》日剧全集190" [ref=e1111]:
+                  - link "《skill》日剧全集190" [ref=e1112] [cursor=pointer]:
+                    - /url: /s?wd=%E3%80%8Askill%E3%80%8B%E6%97%A5%E5%89%A7%E5%85%A8%E9%9B%86190&rsf=100631101&rsp=5&f=1&rs_src=0&rsv_pq=89c4d0600393cee5&rsv_t=79b9354JNPDgQEcMZTBhLeimdGPwWPbS6xng0aOh1XFyMYIaEPrvVae6GBA&rsv_dl=brs_28338_6
+                    - generic [ref=e1114]: 《skill》日剧全集190
+              - row "铃木一彻电视剧全集silk silklabo电视剧免费观看" [ref=e1115]:
+                - cell "铃木一彻电视剧全集silk" [ref=e1116]:
+                  - link "铃木一彻电视剧全集silk" [ref=e1117] [cursor=pointer]:
+                    - /url: /s?wd=%E9%93%83%E6%9C%A8%E4%B8%80%E5%BD%BB%E7%94%B5%E8%A7%86%E5%89%A7%E5%85%A8%E9%9B%86silk&rsf=100631151&rsp=6&f=1&rs_src=0&rsv_pq=89c4d0600393cee5&rsv_t=79b9354JNPDgQEcMZTBhLeimdGPwWPbS6xng0aOh1XFyMYIaEPrvVae6GBA&rsv_dl=brs_28338_7
+                    - generic [ref=e1119]: 铃木一彻电视剧全集silk
+                - cell "silklabo电视剧免费观看" [ref=e1120]:
+                  - link "silklabo电视剧免费观看" [ref=e1121] [cursor=pointer]:
+                    - /url: /s?wd=silklabo%E7%94%B5%E8%A7%86%E5%89%A7%E5%85%8D%E8%B4%B9%E8%A7%82%E7%9C%8B&rsf=100633803&rsp=7&f=1&rs_src=0&rsv_pq=89c4d0600393cee5&rsv_t=79b9354JNPDgQEcMZTBhLeimdGPwWPbS6xng0aOh1XFyMYIaEPrvVae6GBA&rsv_dl=brs_28338_8
+                    - generic [ref=e1123]: silklabo电视剧免费观看
+              - row "skill来源于 silk第一季" [ref=e1124]:
+                - cell "skill来源于" [ref=e1125]:
+                  - link "skill来源于" [ref=e1126] [cursor=pointer]:
+                    - /url: /s?wd=skill%E6%9D%A5%E6%BA%90%E4%BA%8E&rsf=100633101&rsp=8&f=1&rs_src=0&rsv_pq=89c4d0600393cee5&rsv_t=79b9354JNPDgQEcMZTBhLeimdGPwWPbS6xng0aOh1XFyMYIaEPrvVae6GBA&rsv_dl=brs_28338_9
+                    - generic [ref=e1128]: skill来源于
+                - cell "silk第一季" [ref=e1129]:
+                  - link "silk第一季" [ref=e1130] [cursor=pointer]:
+                    - /url: /s?wd=silk%E7%AC%AC%E4%B8%80%E5%AD%A3&rsf=100634503&rsp=9&f=1&rs_src=0&rsv_pq=89c4d0600393cee5&rsv_t=79b9354JNPDgQEcMZTBhLeimdGPwWPbS6xng0aOh1XFyMYIaEPrvVae6GBA&rsv_dl=brs_28338_10
+                    - generic [ref=e1132]: silk第一季
+      - generic [ref=e1135]:
+        - link "上一页":
+          - /url: ""
+          - img "上一页"
+        - strong [ref=e1136]:
+          - generic [ref=e1137]: "1"
+        - link "2" [ref=e1138] [cursor=pointer]:
+          - /url: /s?wd=skills&pn=10&oq=skills&ie=utf-8&usm=4&fenlei=256&rsv_idx=1&rsv_pq=89c4d0600393cee5&rsv_t=79b9354JNPDgQEcMZTBhLeimdGPwWPbS6xng0aOh1XFyMYIaEPrvVae6GBA&topic_pn=
+          - generic [ref=e1139]: "2"
+        - link "3" [ref=e1140] [cursor=pointer]:
+          - /url: /s?wd=skills&pn=20&oq=skills&ie=utf-8&usm=4&fenlei=256&rsv_idx=1&rsv_pq=89c4d0600393cee5&rsv_t=79b9354JNPDgQEcMZTBhLeimdGPwWPbS6xng0aOh1XFyMYIaEPrvVae6GBA&topic_pn=
+          - generic [ref=e1141]: "3"
+        - link "4" [ref=e1142] [cursor=pointer]:
+          - /url: /s?wd=skills&pn=30&oq=skills&ie=utf-8&usm=4&fenlei=256&rsv_idx=1&rsv_pq=89c4d0600393cee5&rsv_t=79b9354JNPDgQEcMZTBhLeimdGPwWPbS6xng0aOh1XFyMYIaEPrvVae6GBA&topic_pn=
+          - generic [ref=e1143]: "4"
+        - link "5" [ref=e1144] [cursor=pointer]:
+          - /url: /s?wd=skills&pn=40&oq=skills&ie=utf-8&usm=4&fenlei=256&rsv_idx=1&rsv_pq=89c4d0600393cee5&rsv_t=79b9354JNPDgQEcMZTBhLeimdGPwWPbS6xng0aOh1XFyMYIaEPrvVae6GBA&topic_pn=
+          - generic [ref=e1145]: "5"
+        - link "6" [ref=e1146] [cursor=pointer]:
+          - /url: /s?wd=skills&pn=50&oq=skills&ie=utf-8&usm=4&fenlei=256&rsv_idx=1&rsv_pq=89c4d0600393cee5&rsv_t=79b9354JNPDgQEcMZTBhLeimdGPwWPbS6xng0aOh1XFyMYIaEPrvVae6GBA&topic_pn=
+          - generic [ref=e1147]: "6"
+        - link "7" [ref=e1148] [cursor=pointer]:
+          - /url: /s?wd=skills&pn=60&oq=skills&ie=utf-8&usm=4&fenlei=256&rsv_idx=1&rsv_pq=89c4d0600393cee5&rsv_t=79b9354JNPDgQEcMZTBhLeimdGPwWPbS6xng0aOh1XFyMYIaEPrvVae6GBA&topic_pn=
+          - generic [ref=e1149]: "7"
+        - link "8" [ref=e1150] [cursor=pointer]:
+          - /url: /s?wd=skills&pn=70&oq=skills&ie=utf-8&usm=4&fenlei=256&rsv_idx=1&rsv_pq=89c4d0600393cee5&rsv_t=79b9354JNPDgQEcMZTBhLeimdGPwWPbS6xng0aOh1XFyMYIaEPrvVae6GBA&topic_pn=
+          - generic [ref=e1151]: "8"
+        - link "9" [ref=e1152] [cursor=pointer]:
+          - /url: /s?wd=skills&pn=80&oq=skills&ie=utf-8&usm=4&fenlei=256&rsv_idx=1&rsv_pq=89c4d0600393cee5&rsv_t=79b9354JNPDgQEcMZTBhLeimdGPwWPbS6xng0aOh1XFyMYIaEPrvVae6GBA&topic_pn=
+          - generic [ref=e1153]: "9"
+        - link "10" [ref=e1154] [cursor=pointer]:
+          - /url: /s?wd=skills&pn=90&oq=skills&ie=utf-8&usm=4&fenlei=256&rsv_idx=1&rsv_pq=89c4d0600393cee5&rsv_t=79b9354JNPDgQEcMZTBhLeimdGPwWPbS6xng0aOh1XFyMYIaEPrvVae6GBA&topic_pn=
+          - generic [ref=e1155]: "10"
+        - link "下一页" [ref=e1156] [cursor=pointer]:
+          - /url: /s?wd=skills&pn=10&oq=skills&ie=utf-8&usm=4&fenlei=256&rsv_idx=1&rsv_pq=89c4d0600393cee5&rsv_t=79b9354JNPDgQEcMZTBhLeimdGPwWPbS6xng0aOh1XFyMYIaEPrvVae6GBA&topic_pn=&rsv_page=1
+          - img "下一页" [ref=e1157]
+      - generic [ref=e1160]:
+        - link "帮助" [ref=e1161] [cursor=pointer]:
+          - /url: https://help.baidu.com/question?prod_id=1
+        - link "举报" [ref=e1162] [cursor=pointer]:
+          - /url: https://help.baidu.com/jubao?source=search
+        - link "用户反馈" [ref=e1163] [cursor=pointer]:
+          - /url: javascript:;
+        - link "企业推广" [ref=e1164] [cursor=pointer]:
+          - /url: https://e.baidu.com/lp/search/?refer=1298

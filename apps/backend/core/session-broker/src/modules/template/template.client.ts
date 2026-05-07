@@ -7,10 +7,25 @@ export interface TemplateStep {
   on_fail?: string;
 }
 
+export interface TemplateParamSchemaProperty {
+  type?: string;
+  description?: string;
+  default?: unknown;
+  required?: boolean;
+}
+
+export interface TemplateParamsSchema {
+  type?: string;
+  properties?: Record<string, TemplateParamSchemaProperty>;
+  required?: string[];
+}
+
 export interface Template {
   id: string;
   name: string;
   steps: TemplateStep[];
+  params_schema?: TemplateParamsSchema;
+  config?: Record<string, unknown>;
 }
 
 @Injectable()

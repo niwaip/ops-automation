@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
-import { Card, Descriptions, Tag, Button, Space, Typography, Tabs, Collapse, Spin, message, Modal, Form, Input, Alert } from 'antd';
+import { Card, Descriptions, Tag, Button, Space, Typography, Tabs, Collapse, Spin, message, Modal, Form, Input, Alert, theme as antdTheme } from 'antd';
 import {
   ArrowLeftOutlined,
   CloudUploadOutlined,
@@ -30,6 +30,7 @@ const TemplateDetailPage: React.FC = () => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { user } = useAuthStore();
+  const { token } = antdTheme.useToken();
 
   const [executeModalVisible, setExecuteModalVisible] = useState(false);
   const [testModalVisible, setTestModalVisible] = useState(false);
@@ -170,6 +171,13 @@ const TemplateDetailPage: React.FC = () => {
   const handleTestConfirm = async () => {
     try {
       const values = await form.validateFields();
+      // Close popup immediately; test continues in background.
+      setTestModalVisible(false);
+      message.loading({
+        content: '测试已提交，正在后台执行...',
+        key: 'template-test-progress',
+        duration: 0,
+      });
       testMutation.mutate(values);
     } catch {
       // Form validation failed
@@ -196,19 +204,26 @@ const TemplateDetailPage: React.FC = () => {
     },
     {
       onSuccess: (session) => {
-        message.success(t('template:testSuccess'));
-        setTestModalVisible(false);
+        message.success({
+          content: `${t('template:testSuccess')}（Session: ${session.id}）`,
+          key: 'template-test-progress',
+        });
         setWorkerExhausted(false);
-        navigate(`/sessions/${session.id}`);
       },
       onError: (error: any) => {
         const errorMsg = error.response?.data?.message || error.message || '';
         // Check if worker pool is exhausted
         if (errorMsg.includes('No available workers') || errorMsg.includes('workers')) {
           setWorkerExhausted(true);
-          message.error(t('template:workerExhausted'));
+          message.error({
+            content: t('template:workerExhausted'),
+            key: 'template-test-progress',
+          });
         } else {
-          message.error(errorMsg || t('template:testFailed'));
+          message.error({
+            content: errorMsg || t('template:testFailed'),
+            key: 'template-test-progress',
+          });
         }
       },
     }
@@ -252,6 +267,31 @@ const TemplateDetailPage: React.FC = () => {
       </Card>
     );
   }
+
+  const templateConfig = (template.config || {}) as Record<string, unknown>;
+  const exportedScript = typeof templateConfig.script === 'string' ? templateConfig.script : '';
+  const exportedOutputs = Array.isArray(templateConfig.outputs)
+    ? templateConfig.outputs as Array<Record<string, unknown>>
+    : [];
+  const exportedSkillDraft = templateConfig.skillDraft && typeof templateConfig.skillDraft === 'object'
+    ? templateConfig.skillDraft as Record<string, unknown>
+    : null;
+  const jsonBlockStyle: React.CSSProperties = {
+    margin: 0,
+    background: token.colorFillAlter,
+    color: token.colorText,
+    border: `1px solid ${token.colorBorderSecondary}`,
+    padding: 16,
+    borderRadius: token.borderRadius,
+    overflow: 'auto',
+    whiteSpace: 'pre-wrap',
+    wordBreak: 'break-word',
+  };
+  const scriptBlockStyle: React.CSSProperties = {
+    ...jsonBlockStyle,
+    background: token.colorBgElevated,
+    color: token.colorText,
+  };
 
   return (
     <div>
@@ -401,7 +441,7 @@ const TemplateDetailPage: React.FC = () => {
                     )}
                     {step.params && Object.keys(step.params).length > 0 && (
                       <Descriptions.Item label={t('template:stepParams')}>
-                        <pre style={{ margin: 0 }}>{JSON.stringify(step.params, null, 2)}</pre>
+                        <pre style={jsonBlockStyle}>{JSON.stringify(step.params, null, 2)}</pre>
                       </Descriptions.Item>
                     )}
                     {step.wait && (
@@ -422,40 +462,58 @@ const TemplateDetailPage: React.FC = () => {
           </Tabs.TabPane>
 
           <Tabs.TabPane tab={t('template:templateParams')} key="params">
-            <pre
-              style={{
-                background: '#f5f5f5',
-                padding: 16,
-                borderRadius: 4,
-                overflow: 'auto',
-              }}
-            >
+            <pre style={jsonBlockStyle}>
               {JSON.stringify(template.params_schema, null, 2)}
             </pre>
           </Tabs.TabPane>
 
           <Tabs.TabPane tab={t('template:templateGuards')} key="guards">
-            <pre
-              style={{
-                background: '#f5f5f5',
-                padding: 16,
-                borderRadius: 4,
-                overflow: 'auto',
-              }}
-            >
+            <pre style={jsonBlockStyle}>
               {JSON.stringify(template.guards, null, 2)}
             </pre>
           </Tabs.TabPane>
 
           <Tabs.TabPane tab={t('template:templateConfig')} key="config">
-            <pre
-              style={{
-                background: '#f5f5f5',
-                padding: 16,
-                borderRadius: 4,
-                overflow: 'auto',
-              }}
-            >
+            {(exportedScript || exportedOutputs.length > 0 || exportedSkillDraft) && (
+              <Space direction="vertical" style={{ width: '100%', marginBottom: 16 }} size="middle">
+                {exportedScript && (
+                  <Card size="small" title="JS 脚本">
+                    <Collapse ghost defaultActiveKey={[]}>
+                      <Panel header="展开查看 JS 脚本" key="script">
+                        <pre style={scriptBlockStyle}>
+                          {exportedScript}
+                        </pre>
+                      </Panel>
+                    </Collapse>
+                  </Card>
+                )}
+                {exportedOutputs.length > 0 && (
+                  <Card size="small" title="输出内容">
+                    <Descriptions column={1} size="small" bordered>
+                      {exportedOutputs.map((output, index) => (
+                        <Descriptions.Item
+                          key={`${index}-${String(output.name || 'output')}`}
+                          label={String(output.name || `output_${index + 1}`)}
+                        >
+                          <div>{String(output.description || '-')}</div>
+                          <div style={{ marginTop: 4 }}>
+                            <Text type="secondary">位置: {String(output.location || '-')}</Text>
+                          </div>
+                        </Descriptions.Item>
+                      ))}
+                    </Descriptions>
+                  </Card>
+                )}
+                {exportedSkillDraft && (
+                  <Card size="small" title="Skill 草稿">
+                    <pre style={jsonBlockStyle}>
+                      {JSON.stringify(exportedSkillDraft, null, 2)}
+                    </pre>
+                  </Card>
+                )}
+              </Space>
+            )}
+            <pre style={jsonBlockStyle}>
               {JSON.stringify(template.config, null, 2)}
             </pre>
           </Tabs.TabPane>

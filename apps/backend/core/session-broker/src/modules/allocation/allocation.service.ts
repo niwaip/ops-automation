@@ -2,158 +2,154 @@ import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { RedisService } from '../lock/redis.service';
 import { WorkerEndpoints, WorkerInfo } from '../../interfaces';
 
-// Worker pool key patterns
-const WORKER_POOL_AVAILABLE = 'worker:pool:available';
-const WORKER_BUSY_PREFIX = 'worker:pool:busy:';
-const WORKER_HEARTBEAT_PREFIX = 'worker:heartbeat:';
-
-// Default worker pool size for development
-const DEFAULT_WORKER_POOL_SIZE = 10;
-
 @Injectable()
 export class AllocationService implements OnModuleInit {
   private readonly logger = new Logger(AllocationService.name);
+  private readonly browserWorkerUrl = process.env.BROWSER_WORKER_URL || 'http://browser-worker:3004';
 
   constructor(private readonly redisService: RedisService) {}
 
   async onModuleInit() {
-    // Initialize worker pool if empty (for dev/test environments)
-    const availableCount = await this.getAvailableWorkerCount();
-    if (availableCount === 0) {
-      const defaultWorkers = Array.from(
-        { length: DEFAULT_WORKER_POOL_SIZE },
-        (_, i) => `worker-${i + 1}`
-      );
-      await this.initializeWorkerPool(defaultWorkers);
-      this.logger.log(`Initialized default worker pool with ${DEFAULT_WORKER_POOL_SIZE} workers (dev mode)`);
-    } else {
-      this.logger.log(`Worker pool already has ${availableCount} available workers`);
-    }
+    this.logger.log('Allocation service running in dynamic per-session worker mode');
   }
 
   /**
-   * Get an available worker from the pool
-   * Uses SPOP to atomically remove a worker from the available set
+   * Allocate an isolated browser worker for the session.
    */
-  async allocateWorker(sessionId: string): Promise<WorkerInfo | null> {
-    // Try to get an available worker
-    const workerRef = await this.redisService.spop(WORKER_POOL_AVAILABLE);
+  async allocateWorker(sessionId: string, userId: string = 'system'): Promise<WorkerInfo | null> {
+    try {
+      const created = await this.postJson<{
+        worker_id: string;
+        endpoints?: WorkerEndpoints;
+      }>('/workers', {
+        user_id: userId,
+        runtime_session_id: sessionId,
+      });
 
-    if (!workerRef) {
-      this.logger.warn('No available workers in pool');
+      const endpoints = created.endpoints
+        ? {
+            cdp: created.endpoints.cdp,
+            vnc: created.endpoints.vnc,
+            novnc: created.endpoints.novnc,
+          }
+        : undefined;
+
+      this.logger.log(`Worker allocated: worker=${created.worker_id}, session=${sessionId}`);
+
+      return {
+        worker_id: created.worker_id,
+        status: 'busy',
+        session_id: sessionId,
+        endpoints,
+      };
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      this.logger.error(`Failed to allocate worker for session ${sessionId}: ${errorMessage}`);
       return null;
     }
-
-    // Mark worker as busy
-    const busyKey = `${WORKER_BUSY_PREFIX}${workerRef}`;
-    await this.redisService.set(busyKey, sessionId, 86400);
-
-    // Generate endpoints for this worker
-    const endpoints = this.generateWorkerEndpoints(workerRef);
-
-    this.logger.log(`Worker allocated: worker=${workerRef}, session=${sessionId}`);
-
-    return {
-      worker_id: workerRef,
-      status: 'busy',
-      session_id: sessionId,
-      endpoints,
-    };
   }
 
   /**
-   * Return a worker to the pool
+   * Destroy the isolated browser worker for the session.
    */
   async releaseWorker(workerRef: string): Promise<boolean> {
-    const busyKey = `${WORKER_BUSY_PREFIX}${workerRef}`;
-
-    // Remove busy state
-    await this.redisService.del(busyKey);
-
-    // Add back to available pool
-    await this.redisService.sadd(WORKER_POOL_AVAILABLE, [workerRef]);
-
-    this.logger.log(`Worker released: worker=${workerRef}`);
-    return true;
+    try {
+      await this.deleteJson(`/workers/${workerRef}`);
+      this.logger.log(`Worker released: worker=${workerRef}`);
+      return true;
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      this.logger.warn(`Failed to release worker ${workerRef}: ${errorMessage}`);
+      return false;
+    }
   }
 
   /**
    * Get worker info
    */
-  async getWorkerInfo(workerRef: string): Promise<WorkerInfo | null> {
-    const busyKey = `${WORKER_BUSY_PREFIX}${workerRef}`;
-    const sessionId = await this.redisService.get(busyKey);
-    const heartbeat = await this.redisService.get(`${WORKER_HEARTBEAT_PREFIX}${workerRef}`);
+  async getWorkerInfo(workerRef: string, includeNoVnc: boolean = false): Promise<WorkerInfo | null> {
+    try {
+      const worker = await this.getJson<{
+        worker_id: string;
+        status: 'starting' | 'running' | 'stopping' | 'stopped' | 'error';
+        endpoints?: WorkerEndpoints;
+      }>(`/workers/${workerRef}`);
 
-    const status: 'available' | 'busy' | 'error' = sessionId ? 'busy' : 'available';
-    const endpoints = this.generateWorkerEndpoints(workerRef);
-
-    return {
-      worker_id: workerRef,
-      status,
-      session_id: sessionId || undefined,
-      endpoints,
-      last_heartbeat: heartbeat ? parseInt(heartbeat, 10) : undefined,
-    };
+      return {
+        worker_id: worker.worker_id,
+        status: worker.status === 'running' ? 'busy' : (worker.status === 'error' ? 'error' : 'available'),
+        endpoints: worker.endpoints
+          ? {
+              cdp: worker.endpoints.cdp,
+              novnc: includeNoVnc ? worker.endpoints.novnc : undefined,
+              vnc: worker.endpoints.vnc,
+            }
+          : undefined,
+      };
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      this.logger.warn(`Failed to get worker info ${workerRef}: ${errorMessage}`);
+      return null;
+    }
   }
 
   /**
    * Check worker health (heartbeat)
    */
   async checkWorkerHealth(workerRef: string): Promise<boolean> {
-    const heartbeat = await this.redisService.get(`${WORKER_HEARTBEAT_PREFIX}${workerRef}`);
-    if (!heartbeat) {
-      return false;
-    }
-
-    const lastHeartbeat = parseInt(heartbeat, 10);
-    const now = Date.now();
-    const threshold = 30000; // 30 seconds
-
-    return (now - lastHeartbeat) < threshold;
+    return (await this.getWorkerInfo(workerRef)) !== null;
   }
 
   /**
    * Update worker heartbeat
    */
   async updateHeartbeat(workerRef: string): Promise<void> {
-    const heartbeatKey = `${WORKER_HEARTBEAT_PREFIX}${workerRef}`;
-    await this.redisService.set(heartbeatKey, String(Date.now()), 30);
+    await this.redisService.set(`worker:heartbeat:${workerRef}`, String(Date.now()), 30);
   }
 
   /**
    * Get count of available workers
    */
   async getAvailableWorkerCount(): Promise<number> {
-    const members = await this.redisService.smembers(WORKER_POOL_AVAILABLE);
-    return members.length;
+    return 999;
   }
 
   /**
    * Initialize worker pool (for testing/setup)
    */
   async initializeWorkerPool(workerIds: string[]): Promise<void> {
-    await this.redisService.sadd(WORKER_POOL_AVAILABLE, workerIds);
-    this.logger.log(`Worker pool initialized with ${workerIds.length} workers`);
+    this.logger.log(`Dynamic worker mode active, initializeWorkerPool ignored for ${workerIds.length} ids`);
   }
 
-  /**
-   * Generate worker endpoints based on worker reference
-   * Uses real ops-browser-chrome service endpoints
-   */
-  private generateWorkerEndpoints(workerRef: string): WorkerEndpoints {
-    // In Docker, use service name; locally use localhost
-    const host = process.env.DOCKER_ENV ? 'ops-browser-chrome' : 'localhost';
+  private async postJson<T>(path: string, body: Record<string, unknown>): Promise<T> {
+    const response = await fetch(`${this.browserWorkerUrl}${path}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    const text = await response.text();
+    if (!response.ok) {
+      throw new Error(text || `Request failed with status ${response.status}`);
+    }
+    return JSON.parse(text) as T;
+  }
 
-    // Real browser-chrome ports (mapped from container)
-    const novncPort = process.env.DOCKER_ENV ? 8080 : 6080;
-    const cdpPort = process.env.DOCKER_ENV ? 9222 : 9222;
-    const vncPort = process.env.DOCKER_ENV ? 5900 : 5901;
+  private async getJson<T>(path: string): Promise<T> {
+    const response = await fetch(`${this.browserWorkerUrl}${path}`);
+    const text = await response.text();
+    if (!response.ok) {
+      throw new Error(text || `Request failed with status ${response.status}`);
+    }
+    return JSON.parse(text) as T;
+  }
 
-    return {
-      novnc: `http://${host}:${novncPort}/vnc.html`,
-      cdp: `ws://${host}:${cdpPort}`,
-      vnc: `vnc://${host}:${vncPort}`,
-    };
+  private async deleteJson(path: string): Promise<void> {
+    const response = await fetch(`${this.browserWorkerUrl}${path}`, {
+      method: 'DELETE',
+    });
+    if (!response.ok) {
+      const text = await response.text();
+      throw new Error(text || `Request failed with status ${response.status}`);
+    }
   }
 }

@@ -26,6 +26,12 @@ interface LegacyBrowserExecuteStepResult {
   takeoverReason?: string;
 }
 
+interface BrowserSessionPreferencesPayload {
+  mode?: 'interactive' | 'agent';
+  enableCodegen?: boolean;
+  headless?: boolean;
+}
+
 @Injectable()
 export class BrowserRuntimeAdapter implements RuntimeAdapter {
   readonly runtimeType = 'browser' as const;
@@ -37,14 +43,35 @@ export class BrowserRuntimeAdapter implements RuntimeAdapter {
     return request.runtimeType === 'browser' && request.capabilityType === 'browser.step';
   }
 
-  async initializeSession(_runtimeSessionId: string): Promise<void> {
+  private resolveSessionPreferences(
+    _request?: RuntimeStepInvokeRequest,
+  ): BrowserSessionPreferencesPayload {
+    return {
+      mode: 'interactive',
+      headless: false,
+      enableCodegen: false,
+    };
+  }
+
+  async initializeSession(runtimeSessionId: string): Promise<void> {
     await axios.post<{ success: boolean; message: string }>(
       `${this.browserWorkerUrl}/browser/init`,
-      {},
+      {
+        runtimeSessionId,
+        sessionPreferences: this.resolveSessionPreferences(),
+      },
     );
   }
 
   async invokeStep(request: RuntimeStepInvokeRequest): Promise<RuntimeStepInvokeResult> {
+    await axios.post<{ success: boolean; message: string }>(
+      `${this.browserWorkerUrl}/browser/init`,
+      {
+        runtimeSessionId: request.runtimeSessionId || '',
+        sessionPreferences: this.resolveSessionPreferences(request),
+      },
+    );
+
     const payload: LegacyBrowserExecuteStepRequest = {
       executionId: request.executionId,
       runtimeSessionId: request.runtimeSessionId || '',

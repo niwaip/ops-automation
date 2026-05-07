@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Table, Card, Button, Input, Space, Tag, Select, Typography, Modal, message } from 'antd';
+import { Table, Card, Button, Input, Space, Select, Typography, Modal, message, Drawer, Descriptions, Collapse } from 'antd';
 import {
   SearchOutlined,
   PlusOutlined,
@@ -15,11 +15,17 @@ import {
 import { useTranslation } from 'react-i18next';
 import { useQuery, useMutation, useQueryClient } from 'react-query';
 import { templateApi, Template, TemplateStatus } from '../api/template';
+import { userApi } from '../api/auth';
 import { useAuthStore } from '../store/authStore';
 import type { ColumnsType } from 'antd/es/table';
 
 const { Title } = Typography;
 const { Option } = Select;
+const { Text } = Typography;
+
+type TemplateRow = Template & {
+  created_by_username?: string;
+};
 
 const TemplateListPage: React.FC = () => {
   const { t } = useTranslation(['common', 'template']);
@@ -31,10 +37,39 @@ const TemplateListPage: React.FC = () => {
   const [pageSize, setPageSize] = useState(10);
   const [statusFilter, setStatusFilter] = useState<TemplateStatus | undefined>();
   const [searchText, setSearchText] = useState('');
+  const [detailDrawerVisible, setDetailDrawerVisible] = useState(false);
+  const [selectedTemplate, setSelectedTemplate] = useState<TemplateRow | null>(null);
 
   const templatesQuery = useQuery(
     ['templates', { page, pageSize, status: statusFilter, search: searchText }],
-    () => templateApi.list({ page, pageSize, status: statusFilter, search: searchText })
+    async () => {
+      const result = await templateApi.list({ page, pageSize, status: statusFilter, search: searchText });
+      const templates = result.templates || [];
+      const creatorIds = Array.from(
+        new Set(templates.map((template) => template.created_by).filter(Boolean)),
+      );
+
+      const userNamePairs = await Promise.all(
+        creatorIds.map(async (userId) => {
+          try {
+            const user = await userApi.getById(userId);
+            return [userId, user.username] as const;
+          } catch {
+            return [userId, userId] as const;
+          }
+        }),
+      );
+      const userNameMap = new Map<string, string>(userNamePairs);
+      const enrichedTemplates: TemplateRow[] = templates.map((template) => ({
+        ...template,
+        created_by_username: userNameMap.get(template.created_by) || template.created_by,
+      }));
+
+      return {
+        ...result,
+        templates: enrichedTemplates,
+      };
+    }
   );
 
   const publishMutation = useMutation(
@@ -49,16 +84,6 @@ const TemplateListPage: React.FC = () => {
       },
     }
   );
-
-  const submitForReviewMutation = useMutation(templateApi.submitForReview, {
-    onSuccess: () => {
-      message.success(t('common:success'));
-      queryClient.invalidateQueries(['templates']);
-    },
-    onError: () => {
-      message.error(t('common:error'));
-    },
-  });
 
   const deprecateMutation = useMutation(templateApi.deprecate, {
     onSuccess: () => {
@@ -87,13 +112,6 @@ const TemplateListPage: React.FC = () => {
     });
   };
 
-  const handleSubmitForReview = (id: string) => {
-    Modal.confirm({
-      title: t('template:submitForReview'),
-      onOk: () => submitForReviewMutation.mutate(id),
-    });
-  };
-
   const handleDeprecate = (id: string) => {
     Modal.confirm({
       title: t('template:deprecateTemplate'),
@@ -108,37 +126,28 @@ const TemplateListPage: React.FC = () => {
     });
   };
 
-  const columns: ColumnsType<Template> = [
+  const stepItems = useMemo(() => {
+    const steps = selectedTemplate?.steps || [];
+    return steps.map((step, index) => ({
+      key: `${step.step_id || index}`,
+      label: `${index + 1}. ${step.action}`,
+      children: (
+        <Space direction="vertical" size={4} style={{ width: '100%' }}>
+          {step.locator ? <Text type="secondary">locator: {JSON.stringify(step.locator)}</Text> : null}
+          {step.params ? <Text type="secondary">params: {JSON.stringify(step.params)}</Text> : null}
+          {step.wait ? <Text type="secondary">wait: {JSON.stringify(step.wait)}</Text> : null}
+          {step.retry ? <Text type="secondary">retry: {JSON.stringify(step.retry)}</Text> : null}
+        </Space>
+      ),
+    }));
+  }, [selectedTemplate]);
+
+  const columns: ColumnsType<TemplateRow> = [
     {
       title: t('template:templateName'),
       dataIndex: 'name',
       key: 'name',
       sorter: true,
-    },
-    {
-      title: t('template:templateVersion'),
-      dataIndex: 'version',
-      key: 'version',
-      width: 100,
-    },
-    {
-      title: t('template:templateStatus'),
-      dataIndex: 'status',
-      key: 'status',
-      render: (status: TemplateStatus) => {
-        const colorMap: Record<TemplateStatus, string> = {
-          DRAFT: 'default',
-          REVIEW: 'processing',
-          PUBLISHED: 'success',
-          DEPRECATED: 'warning',
-          REVOKED: 'error',
-        };
-        return (
-          <Tag color={colorMap[status]}>
-            {t(`template:status${status}`)}
-          </Tag>
-        );
-      },
     },
     {
       title: t('common:description'),
@@ -149,8 +158,8 @@ const TemplateListPage: React.FC = () => {
     },
     {
       title: t('template:createdBy'),
-      dataIndex: 'created_by',
-      key: 'created_by',
+      dataIndex: 'created_by_username',
+      key: 'created_by_username',
       width: 100,
       ellipsis: true,
     },
@@ -170,9 +179,12 @@ const TemplateListPage: React.FC = () => {
             type="link"
             size="small"
             icon={<EyeOutlined />}
-            onClick={() => navigate(`/templates/${record.id}`)}
+            onClick={() => {
+              setSelectedTemplate(record);
+              setDetailDrawerVisible(true);
+            }}
           >
-            {t('common:edit')}
+            查看详情
           </Button>
           <Button
             type="link"
@@ -190,16 +202,6 @@ const TemplateListPage: React.FC = () => {
               onClick={() => navigate(`/templates/${record.id}?execute=true`)}
             >
               {t('template:executeTemplate')}
-            </Button>
-          )}
-          {record.status === 'DRAFT' && (
-            <Button
-              type="link"
-              size="small"
-              icon={<CloudUploadOutlined />}
-              onClick={() => handleSubmitForReview(record.id)}
-            >
-              {t('template:submitForReview')}
             </Button>
           )}
           {record.status === 'REVIEW' && user?.role === 'admin' && (
@@ -304,6 +306,37 @@ const TemplateListPage: React.FC = () => {
           }}
         />
       </Card>
+
+      <Drawer
+        title="模板详情"
+        placement="right"
+        width={720}
+        open={detailDrawerVisible}
+        onClose={() => setDetailDrawerVisible(false)}
+      >
+        {selectedTemplate ? (
+          <Space direction="vertical" size={16} style={{ width: '100%' }}>
+            <Descriptions bordered size="small" column={1}>
+              <Descriptions.Item label="模板名称">{selectedTemplate.name}</Descriptions.Item>
+              <Descriptions.Item label="描述">{selectedTemplate.description || '-'}</Descriptions.Item>
+              <Descriptions.Item label="创建者">{selectedTemplate.created_by_username || '-'}</Descriptions.Item>
+              <Descriptions.Item label="创建时间">
+                {selectedTemplate.created_at ? new Date(selectedTemplate.created_at).toLocaleString() : '-'}
+              </Descriptions.Item>
+              <Descriptions.Item label="更新时间">
+                {selectedTemplate.updated_at ? new Date(selectedTemplate.updated_at).toLocaleString() : '-'}
+              </Descriptions.Item>
+            </Descriptions>
+            <Card title="步骤详情" size="small">
+              {(selectedTemplate.steps || []).length > 0 ? (
+                <Collapse items={stepItems} defaultActiveKey={[]} />
+              ) : (
+                <Text type="secondary">暂无步骤</Text>
+              )}
+            </Card>
+          </Space>
+        ) : null}
+      </Drawer>
     </div>
   );
 };

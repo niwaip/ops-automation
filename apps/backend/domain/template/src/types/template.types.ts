@@ -14,7 +14,19 @@ export type ActionType =
   | 'select'
   | 'check'
   | 'screenshot'
-  | 'assert';
+  | 'assert'
+  | 'search'
+  | 'smart_search'
+  | 'hover'
+  | 'press_key'
+  | 'scroll'
+  | 'type_text'
+  | 'get_text'
+  | 'snapshot'
+  | 'read_page'
+  | 'list_search_results'
+  | 'click_result'
+  | 'switch_latest_tab';
 
 export type WaitType = 'timeout' | 'visible' | 'hidden' | 'text';
 
@@ -55,7 +67,7 @@ export interface TemplateStep {
 }
 
 export interface ParamSchema {
-  type: 'string' | 'number' | 'boolean' | 'object' | 'array';
+  type: 'string' | 'number' | 'boolean' | 'object' | 'array' | 'date';
   description?: string;
   default?: string | number | boolean;
   required?: boolean;
@@ -82,8 +94,17 @@ export interface TemplateJSON {
   name: string;
   version: string;
   status: TemplateStatus;
+  description?: string;
   params_schema: ParamsSchema;
   steps: TemplateStep[];
+  guards: Record<string, unknown>[];
+  config: Record<string, unknown>;
+  created_by: string;
+  reviewed_by?: string | null;
+  published_at?: string | null;
+  created_at: string;
+  updated_at: string;
+  deprecated_at?: string | null;
   metadata: TemplateMetadata;
 }
 

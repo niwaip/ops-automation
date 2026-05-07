@@ -1,0 +1,12 @@
+- main [ref=e16]:
+  - generic [ref=e18]:
+    - heading "Trending Now on Bing" [level=1] [ref=e19]
+    - navigation
+  - search [ref=e21]:
+    - img [ref=e23] [cursor=pointer]
+    - combobox "Enter your search here - Search suggestions will show as you type" [active] [ref=e27]
+    - button "Search using voice" [ref=e30]:
+      - img [ref=e31]
+    - button "Search using an image" [ref=e35] [cursor=pointer]
+    - link "Open Copilot":
+      - /url: /chat?FORM=hpcodx&intent=bing

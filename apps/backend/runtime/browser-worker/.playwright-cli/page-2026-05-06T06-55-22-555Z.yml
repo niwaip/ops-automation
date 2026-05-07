@@ -1,0 +1,847 @@
+- generic [ref=e1]:
+  - link "欢迎进入 百度一下，你就知道，盲人用户进入读屏幕模式请按快捷键Ctrl加Alt加R；阅读详细操作说明请按快捷键Ctrl加Alt加问号键。":
+    - /url: javascript:void(0)
+  - generic [ref=e2]:
+    - generic [ref=e3]:
+      - generic [ref=e4]:
+        - link "百度首页" [ref=e5] [cursor=pointer]:
+          - /url: /
+        - link "设置" [ref=e6] [cursor=pointer]:
+          - /url: javascript:;
+        - link "登录" [ref=e7] [cursor=pointer]:
+          - /url: https://passport.baidu.com/v2/?login&tpl=mn&u=http%3A%2F%2Fwww.baidu.com%2F&sms=5
+      - generic [ref=e9]:
+        - generic:
+          - link "到百度首页" [ref=e10] [cursor=pointer]:
+            - /url: /
+            - img "到百度首页" [ref=e11]
+          - generic [ref=e14]:
+            - textbox [ref=e16]: mcp
+            - generic [ref=e18]:
+              - generic [ref=e19]:
+                - img [ref=e21] [cursor=pointer]
+                - img [ref=e31] [cursor=pointer]
+                - generic [ref=e34]:
+                  - img [ref=e38] [cursor=pointer]
+                  - img [ref=e43] [cursor=pointer]
+              - button "百度一下" [ref=e47] [cursor=pointer]
+    - generic [ref=e51]:
+      - link [ref=e52] [cursor=pointer]:
+        - /url: https://chat.baidu.com/search?word=mcp&dyTabStr=MTIsMCwzLDEsMiwxMyw3LDYsNSw5&pd=csaitab&setype=csaitab&extParamsJson=%7B%22enter_type%22%3A%22search_a_tab%22%2C%22sa%22%3A%22vs_tab%22%2C%22apagelid%22%3A%2212229136974173268571%22%2C%22ori_lid%22%3A%2212229136974173268571%22%7D
+        - img [ref=e53]
+      - generic [ref=e54]: 网页
+      - link "图片" [ref=e55] [cursor=pointer]:
+        - /url: http://image.baidu.com/i?tn=baiduimage&ps=1&ct=201326592&lm=-1&cl=2&nc=1&ie=utf-8&lid=a9b69f4907316a5b&dyTabStr=MTIsMCwzLDEsMiwxMyw3LDYsNSw5&word=mcp
+      - link "资讯" [ref=e56] [cursor=pointer]:
+        - /url: https://www.baidu.com/s?rtt=1&bsst=1&cl=2&tn=news&ie=utf-8&word=mcp
+      - link "视频" [ref=e57] [cursor=pointer]:
+        - /url: /sf/vsearch?pd=video&tn=vsearch&lid=a9b69f4907316a5b&ie=utf-8&wd=mcp&rsv_spt=7&rsv_bp=1&f=8&oq=mcp&rsv_pq=a9b69f4907316a5b&rsv_t=b411eHdGBGwlwfpWRJr3vUGpm2BkVI8M%2FB%2Fpsem0wHhRkrGv%2FQCCCoe8ySQ
+      - link "笔记" [ref=e58] [cursor=pointer]:
+        - /url: https://www.baidu.com/s?pd=note&rpf=pc&dyTabStr=MTIsMCwzLDEsMiwxMyw3LDYsNSw5&word=mcp
+      - link "地图" [ref=e59] [cursor=pointer]:
+        - /url: https://map.baidu.com/?newmap=1&ie=utf-8&from=pstab&s=s%26wd%3Dmcp
+      - link "贴吧" [ref=e60] [cursor=pointer]:
+        - /url: http://tieba.baidu.com/f?fr=wwwt&ie=utf-8&dyTabStr=MTIsMCwzLDEsMiwxMyw3LDYsNSw5&kw=mcp
+      - link "文库" [ref=e61] [cursor=pointer]:
+        - /url: http://wenku.baidu.com/search?lm=0&od=0&ie=utf-8&dyTabStr=MTIsMCwzLDEsMiwxMyw3LDYsNSw5&word=mcp
+      - link "更多" [ref=e62] [cursor=pointer]:
+        - /url: http://www.baidu.com/more/
+      - generic [ref=e63] [cursor=pointer]: 搜索工具
+    - generic [ref=e72]:
+      - paragraph [ref=e73]: 探索海量 MCP Servers
+      - paragraph [ref=e74]: mcpworld 是全国领先的 MCP 导航检索网站；收录最全的优质 MCP server 资源，涵盖效率工具、天气地理位置、内容生成等多种功能分类，满足用户全方位需求；平台具备国内顶尖的深度搜索功能，支持直接在搜索框中输入需求，平台会深度理解并且识别用户多个维度的意图，针对不同意图提供精准高效的服务满足。
+      - link "进入MCP广场" [ref=e76] [cursor=pointer]:
+        - /url: https://www.mcpworld.com/mcp
+        - paragraph [ref=e77]: 进入MCP广场
+    - generic [ref=e80]:
+      - generic [ref=e81]:
+        - table [ref=e83]:
+          - rowgroup [ref=e84]:
+            - row " 登录百度帐号 交易更有保障  相关搜索  mcp企查查  mcp-1是什么细胞因子  肯德基mcp  mcp是啥  mcp服务端配置  mcp检查是什么意思    换一换 热搜榜 民生榜 财经榜  奋斗是青春最亮丽的底色 1 男子买高铁票后无法上车 平台回应 2 伊朗外长身穿休闲装抵达北京 热 3 这个“五一”各地文旅实力“宠客” 4 日本战后首次在境外发射进攻型导弹 热 5 演唱会外给人化妆13天暴赚3万 新 6 涉网企业未办网络安全备案后果严重 7 金建希案二审法官死在法院内 热 8 长期食用冰箱存货 病菌可能“上脑” 9 7年前丢的手机发回定位 机主找回 10 日本被曝几乎有造核武器的所有条件 11 两网民编造太原阳城两地谣言被罚 12 世界杯FIFA向中国开出天价版权费 新 13 “没绑紧”三个字值一条命 14 金建希二审法官遗书内容曝光 热 15 美称对伊朗军事行动已结束 伊朗否认 热 ▶想在此推广您的mcp吗？ 咨询热线：400-800-8888 e.baidu.com" [ref=e85]:
+              - cell " 登录百度帐号 交易更有保障  相关搜索  mcp企查查  mcp-1是什么细胞因子  肯德基mcp  mcp是啥  mcp服务端配置  mcp检查是什么意思    换一换 热搜榜 民生榜 财经榜  奋斗是青春最亮丽的底色 1 男子买高铁票后无法上车 平台回应 2 伊朗外长身穿休闲装抵达北京 热 3 这个“五一”各地文旅实力“宠客” 4 日本战后首次在境外发射进攻型导弹 热 5 演唱会外给人化妆13天暴赚3万 新 6 涉网企业未办网络安全备案后果严重 7 金建希案二审法官死在法院内 热 8 长期食用冰箱存货 病菌可能“上脑” 9 7年前丢的手机发回定位 机主找回 10 日本被曝几乎有造核武器的所有条件 11 两网民编造太原阳城两地谣言被罚 12 世界杯FIFA向中国开出天价版权费 新 13 “没绑紧”三个字值一条命 14 金建希二审法官遗书内容曝光 热 15 美称对伊朗军事行动已结束 伊朗否认 热 ▶想在此推广您的mcp吗？ 咨询热线：400-800-8888 e.baidu.com" [ref=e86]:
+                - list [ref=e89]:
+                  - listitem [ref=e90]:
+                    - generic [ref=e93]:
+                      - generic [ref=e94]: 
+                      - text: 登录百度帐号 交易更有保障
+                      - generic [ref=e95]: 
+                - generic [ref=e96]:
+                  - generic [ref=e102]:
+                    - generic [ref=e104]: 相关搜索
+                    - generic [ref=e105]:
+                      - link " mcp企查查" [ref=e108] [cursor=pointer]:
+                        - /url: /s?rsv_idx=1&wd=mcp%E4%BC%81%E6%9F%A5%E6%9F%A5&fenlei=256&usm=4&ie=utf-8&rsv_pq=a9b69f4907316a5b&oq=mcp&rsv_t=25d0%2BQccz6acabZ6gAmM3yIlCblKW%2FQahv2HZYBhs%2F8yqTp4qUQnr9DqFmA&rfqid=a9b69f4907316a5b&rsv_dl=0_prs_28616_1&rq=mcp&rsf=101531151
+                        - generic [ref=e109]:
+                          - generic [ref=e110]: 
+                          - generic [ref=e111]: mcp企查查
+                      - link " mcp-1是什么细胞因子" [ref=e114] [cursor=pointer]:
+                        - /url: /s?rsv_idx=1&wd=mcp-1%E6%98%AF%E4%BB%80%E4%B9%88%E7%BB%86%E8%83%9E%E5%9B%A0%E5%AD%90&fenlei=256&usm=4&ie=utf-8&rsv_pq=a9b69f4907316a5b&oq=mcp&rsv_t=25d0%2BQccz6acabZ6gAmM3yIlCblKW%2FQahv2HZYBhs%2F8yqTp4qUQnr9DqFmA&rfqid=a9b69f4907316a5b&rsv_dl=0_prs_28616_2&rq=mcp&rsf=101533803
+                        - generic [ref=e115]:
+                          - generic [ref=e116]: 
+                          - generic [ref=e117]: mcp-1是什么细胞因子
+                      - link " 肯德基mcp" [ref=e120] [cursor=pointer]:
+                        - /url: /s?rsv_idx=1&wd=%E8%82%AF%E5%BE%B7%E5%9F%BAmcp&fenlei=256&usm=4&ie=utf-8&rsv_pq=a9b69f4907316a5b&oq=mcp&rsv_t=25d0%2BQccz6acabZ6gAmM3yIlCblKW%2FQahv2HZYBhs%2F8yqTp4qUQnr9DqFmA&rfqid=a9b69f4907316a5b&rsv_dl=0_prs_28616_3&rq=mcp&rsf=101531151
+                        - generic [ref=e121]:
+                          - generic [ref=e122]: 
+                          - generic [ref=e123]: 肯德基mcp
+                      - link " mcp是啥" [ref=e126] [cursor=pointer]:
+                        - /url: /s?rsv_idx=1&wd=mcp%E6%98%AF%E5%95%A5&fenlei=256&usm=4&ie=utf-8&rsv_pq=a9b69f4907316a5b&oq=mcp&rsv_t=25d0%2BQccz6acabZ6gAmM3yIlCblKW%2FQahv2HZYBhs%2F8yqTp4qUQnr9DqFmA&rfqid=a9b69f4907316a5b&rsv_dl=0_prs_28616_4&rq=mcp&rsf=101531161
+                        - generic [ref=e127]:
+                          - generic [ref=e128]: 
+                          - generic [ref=e129]: mcp是啥
+                      - link " mcp服务端配置" [ref=e132] [cursor=pointer]:
+                        - /url: /s?rsv_idx=1&wd=mcp%E6%9C%8D%E5%8A%A1%E7%AB%AF%E9%85%8D%E7%BD%AE&fenlei=256&usm=4&ie=utf-8&rsv_pq=a9b69f4907316a5b&oq=mcp&rsv_t=25d0%2BQccz6acabZ6gAmM3yIlCblKW%2FQahv2HZYBhs%2F8yqTp4qUQnr9DqFmA&rfqid=a9b69f4907316a5b&rsv_dl=0_prs_28616_5&rq=mcp&rsf=101531151
+                        - generic [ref=e133]:
+                          - generic [ref=e134]: 
+                          - generic [ref=e135]: mcp服务端配置
+                      - link " mcp检查是什么意思" [ref=e138] [cursor=pointer]:
+                        - /url: /s?rsv_idx=1&wd=mcp%E6%A3%80%E6%9F%A5%E6%98%AF%E4%BB%80%E4%B9%88%E6%84%8F%E6%80%9D&fenlei=256&usm=4&ie=utf-8&rsv_pq=a9b69f4907316a5b&oq=mcp&rsv_t=25d0%2BQccz6acabZ6gAmM3yIlCblKW%2FQahv2HZYBhs%2F8yqTp4qUQnr9DqFmA&rfqid=a9b69f4907316a5b&rsv_dl=0_prs_28616_6&rq=mcp&rsf=101533101
+                        - generic [ref=e139]:
+                          - generic [ref=e140]: 
+                          - generic [ref=e141]: mcp检查是什么意思
+                  - generic [ref=e145]:
+                    - generic "百度热搜" [ref=e146]:
+                      - link " " [ref=e147] [cursor=pointer]:
+                        - /url: https://top.baidu.com/board?platform=pc&sa=pcindex_a_right
+                        - generic [ref=e148]: 
+                        - generic [ref=e149]: 
+                      - link " 换一换" [ref=e151] [cursor=pointer]:
+                        - /url: javascript:void(0);
+                        - generic [ref=e152]: 
+                        - text: 换一换
+                    - generic [ref=e153]:
+                      - generic [ref=e154] [cursor=pointer]: 热搜榜
+                      - generic [ref=e155] [cursor=pointer]: 民生榜
+                      - generic [ref=e156] [cursor=pointer]: 财经榜
+                    - generic [ref=e158]:
+                      - generic [ref=e160]:
+                        - generic [ref=e162]: 
+                        - link "奋斗是青春最亮丽的底色" [ref=e163] [cursor=pointer]:
+                          - /url: /s?rsv_idx=1&wd=%E5%A5%8B%E6%96%97%E6%98%AF%E9%9D%92%E6%98%A5%E6%9C%80%E4%BA%AE%E4%B8%BD%E7%9A%84%E5%BA%95%E8%89%B2&fenlei=256&usm=4&ie=utf-8&rsv_pq=a9b69f4907316a5b&oq=mcp&rsv_t=e5a8rOB6JXKlawVCYAUx3jV7n%2FLNeT4VfVrffhV6WbtqCVyfQf6yZ2xsf40&rqid=a9b69f4907316a5b&rsf=b806447cb3392d187283165fbd7b8c58_1_15_1&rsv_dl=0_right_fyb_pchot_20811&sa=0_right_fyb_pchot_20811
+                      - generic [ref=e165]:
+                        - generic [ref=e166]: "1"
+                        - link "男子买高铁票后无法上车 平台回应" [ref=e167] [cursor=pointer]:
+                          - /url: /s?rsv_idx=1&wd=%E7%94%B7%E5%AD%90%E4%B9%B0%E9%AB%98%E9%93%81%E7%A5%A8%E5%90%8E%E6%97%A0%E6%B3%95%E4%B8%8A%E8%BD%A6%20%E5%B9%B3%E5%8F%B0%E5%9B%9E%E5%BA%94&fenlei=256&usm=4&ie=utf-8&rsv_pq=a9b69f4907316a5b&oq=mcp&rsv_t=e5a8rOB6JXKlawVCYAUx3jV7n%2FLNeT4VfVrffhV6WbtqCVyfQf6yZ2xsf40&rqid=a9b69f4907316a5b&rsf=b806447cb3392d187283165fbd7b8c58_1_15_2&rsv_dl=0_right_fyb_pchot_20811&sa=0_right_fyb_pchot_20811
+                      - generic [ref=e169]:
+                        - generic [ref=e170]: "2"
+                        - link "伊朗外长身穿休闲装抵达北京" [ref=e171] [cursor=pointer]:
+                          - /url: /s?rsv_idx=1&wd=%E4%BC%8A%E6%9C%97%E5%A4%96%E9%95%BF%E8%BA%AB%E7%A9%BF%E4%BC%91%E9%97%B2%E8%A3%85%E6%8A%B5%E8%BE%BE%E5%8C%97%E4%BA%AC&fenlei=256&usm=4&ie=utf-8&rsv_pq=a9b69f4907316a5b&oq=mcp&rsv_t=e5a8rOB6JXKlawVCYAUx3jV7n%2FLNeT4VfVrffhV6WbtqCVyfQf6yZ2xsf40&rqid=a9b69f4907316a5b&rsf=b806447cb3392d187283165fbd7b8c58_1_15_3&rsv_dl=0_right_fyb_pchot_20811&sa=0_right_fyb_pchot_20811
+                        - generic [ref=e172]: 热
+                      - generic [ref=e174]:
+                        - generic [ref=e175]: "3"
+                        - link "这个“五一”各地文旅实力“宠客”" [ref=e176] [cursor=pointer]:
+                          - /url: /s?rsv_idx=1&wd=%E8%BF%99%E4%B8%AA%E2%80%9C%E4%BA%94%E4%B8%80%E2%80%9D%E5%90%84%E5%9C%B0%E6%96%87%E6%97%85%E5%AE%9E%E5%8A%9B%E2%80%9C%E5%AE%A0%E5%AE%A2%E2%80%9D&fenlei=256&usm=4&ie=utf-8&rsv_pq=a9b69f4907316a5b&oq=mcp&rsv_t=e5a8rOB6JXKlawVCYAUx3jV7n%2FLNeT4VfVrffhV6WbtqCVyfQf6yZ2xsf40&rqid=a9b69f4907316a5b&rsf=b806447cb3392d187283165fbd7b8c58_1_15_4&rsv_dl=0_right_fyb_pchot_20811&sa=0_right_fyb_pchot_20811
+                      - generic [ref=e178]:
+                        - generic [ref=e179]: "4"
+                        - link "日本战后首次在境外发射进攻型导弹" [ref=e180] [cursor=pointer]:
+                          - /url: /s?rsv_idx=1&wd=%E6%97%A5%E6%9C%AC%E6%88%98%E5%90%8E%E9%A6%96%E6%AC%A1%E5%9C%A8%E5%A2%83%E5%A4%96%E5%8F%91%E5%B0%84%E8%BF%9B%E6%94%BB%E5%9E%8B%E5%AF%BC%E5%BC%B9&fenlei=256&usm=4&ie=utf-8&rsv_pq=a9b69f4907316a5b&oq=mcp&rsv_t=e5a8rOB6JXKlawVCYAUx3jV7n%2FLNeT4VfVrffhV6WbtqCVyfQf6yZ2xsf40&rqid=a9b69f4907316a5b&rsf=b806447cb3392d187283165fbd7b8c58_1_15_5&rsv_dl=0_right_fyb_pchot_20811&sa=0_right_fyb_pchot_20811
+                        - generic [ref=e181]: 热
+                      - generic [ref=e183]:
+                        - generic [ref=e184]: "5"
+                        - link "演唱会外给人化妆13天暴赚3万" [ref=e185] [cursor=pointer]:
+                          - /url: /s?rsv_idx=1&wd=%E6%BC%94%E5%94%B1%E4%BC%9A%E5%A4%96%E7%BB%99%E4%BA%BA%E5%8C%96%E5%A6%8613%E5%A4%A9%E6%9A%B4%E8%B5%9A3%E4%B8%87&fenlei=256&usm=4&ie=utf-8&rsv_pq=a9b69f4907316a5b&oq=mcp&rsv_t=e5a8rOB6JXKlawVCYAUx3jV7n%2FLNeT4VfVrffhV6WbtqCVyfQf6yZ2xsf40&rqid=a9b69f4907316a5b&rsf=b806447cb3392d187283165fbd7b8c58_1_15_6&rsv_dl=0_right_fyb_pchot_20811&sa=0_right_fyb_pchot_20811
+                        - generic [ref=e186]: 新
+                      - generic [ref=e188]:
+                        - generic [ref=e189]: "6"
+                        - link "涉网企业未办网络安全备案后果严重" [ref=e190] [cursor=pointer]:
+                          - /url: /s?rsv_idx=1&wd=%E6%B6%89%E7%BD%91%E4%BC%81%E4%B8%9A%E6%9C%AA%E5%8A%9E%E7%BD%91%E7%BB%9C%E5%AE%89%E5%85%A8%E5%A4%87%E6%A1%88%E5%90%8E%E6%9E%9C%E4%B8%A5%E9%87%8D&fenlei=256&usm=4&ie=utf-8&rsv_pq=a9b69f4907316a5b&oq=mcp&rsv_t=e5a8rOB6JXKlawVCYAUx3jV7n%2FLNeT4VfVrffhV6WbtqCVyfQf6yZ2xsf40&rqid=a9b69f4907316a5b&rsf=b806447cb3392d187283165fbd7b8c58_1_15_7&rsv_dl=0_right_fyb_pchot_20811&sa=0_right_fyb_pchot_20811
+                      - generic [ref=e192]:
+                        - generic [ref=e193]: "7"
+                        - link "金建希案二审法官死在法院内" [ref=e194] [cursor=pointer]:
+                          - /url: /s?rsv_idx=1&wd=%E9%87%91%E5%BB%BA%E5%B8%8C%E6%A1%88%E4%BA%8C%E5%AE%A1%E6%B3%95%E5%AE%98%E6%AD%BB%E5%9C%A8%E6%B3%95%E9%99%A2%E5%86%85&fenlei=256&usm=4&ie=utf-8&rsv_pq=a9b69f4907316a5b&oq=mcp&rsv_t=e5a8rOB6JXKlawVCYAUx3jV7n%2FLNeT4VfVrffhV6WbtqCVyfQf6yZ2xsf40&rqid=a9b69f4907316a5b&rsf=b806447cb3392d187283165fbd7b8c58_1_15_8&rsv_dl=0_right_fyb_pchot_20811&sa=0_right_fyb_pchot_20811
+                        - generic [ref=e195]: 热
+                      - generic [ref=e197]:
+                        - generic [ref=e198]: "8"
+                        - link "长期食用冰箱存货 病菌可能“上脑”" [ref=e199] [cursor=pointer]:
+                          - /url: /s?rsv_idx=1&wd=%E9%95%BF%E6%9C%9F%E9%A3%9F%E7%94%A8%E5%86%B0%E7%AE%B1%E5%AD%98%E8%B4%A7%20%E7%97%85%E8%8F%8C%E5%8F%AF%E8%83%BD%E2%80%9C%E4%B8%8A%E8%84%91%E2%80%9D&fenlei=256&usm=4&ie=utf-8&rsv_pq=a9b69f4907316a5b&oq=mcp&rsv_t=e5a8rOB6JXKlawVCYAUx3jV7n%2FLNeT4VfVrffhV6WbtqCVyfQf6yZ2xsf40&rqid=a9b69f4907316a5b&rsf=b806447cb3392d187283165fbd7b8c58_1_15_9&rsv_dl=0_right_fyb_pchot_20811&sa=0_right_fyb_pchot_20811
+                      - generic [ref=e201]:
+                        - generic [ref=e202]: "9"
+                        - link "7年前丢的手机发回定位 机主找回" [ref=e203] [cursor=pointer]:
+                          - /url: /s?rsv_idx=1&wd=7%E5%B9%B4%E5%89%8D%E4%B8%A2%E7%9A%84%E6%89%8B%E6%9C%BA%E5%8F%91%E5%9B%9E%E5%AE%9A%E4%BD%8D%20%E6%9C%BA%E4%B8%BB%E6%89%BE%E5%9B%9E&fenlei=256&usm=4&ie=utf-8&rsv_pq=a9b69f4907316a5b&oq=mcp&rsv_t=e5a8rOB6JXKlawVCYAUx3jV7n%2FLNeT4VfVrffhV6WbtqCVyfQf6yZ2xsf40&rqid=a9b69f4907316a5b&rsf=b806447cb3392d187283165fbd7b8c58_1_15_10&rsv_dl=0_right_fyb_pchot_20811&sa=0_right_fyb_pchot_20811
+                      - generic [ref=e205]:
+                        - generic [ref=e206]: "10"
+                        - link "日本被曝几乎有造核武器的所有条件" [ref=e207] [cursor=pointer]:
+                          - /url: /s?rsv_idx=1&wd=%E6%97%A5%E6%9C%AC%E8%A2%AB%E6%9B%9D%E5%87%A0%E4%B9%8E%E6%9C%89%E9%80%A0%E6%A0%B8%E6%AD%A6%E5%99%A8%E7%9A%84%E6%89%80%E6%9C%89%E6%9D%A1%E4%BB%B6&fenlei=256&usm=4&ie=utf-8&rsv_pq=a9b69f4907316a5b&oq=mcp&rsv_t=e5a8rOB6JXKlawVCYAUx3jV7n%2FLNeT4VfVrffhV6WbtqCVyfQf6yZ2xsf40&rqid=a9b69f4907316a5b&rsf=b806447cb3392d187283165fbd7b8c58_1_15_11&rsv_dl=0_right_fyb_pchot_20811&sa=0_right_fyb_pchot_20811
+                      - generic [ref=e209]:
+                        - generic [ref=e210]: "11"
+                        - link "两网民编造太原阳城两地谣言被罚" [ref=e211] [cursor=pointer]:
+                          - /url: /s?rsv_idx=1&wd=%E4%B8%A4%E7%BD%91%E6%B0%91%E7%BC%96%E9%80%A0%E5%A4%AA%E5%8E%9F%E9%98%B3%E5%9F%8E%E4%B8%A4%E5%9C%B0%E8%B0%A3%E8%A8%80%E8%A2%AB%E7%BD%9A&fenlei=256&usm=4&ie=utf-8&rsv_pq=a9b69f4907316a5b&oq=mcp&rsv_t=e5a8rOB6JXKlawVCYAUx3jV7n%2FLNeT4VfVrffhV6WbtqCVyfQf6yZ2xsf40&rqid=a9b69f4907316a5b&rsf=b806447cb3392d187283165fbd7b8c58_1_15_12&rsv_dl=0_right_fyb_pchot_20811&sa=0_right_fyb_pchot_20811
+                      - generic [ref=e213]:
+                        - generic [ref=e214]: "12"
+                        - link "世界杯FIFA向中国开出天价版权费" [ref=e215] [cursor=pointer]:
+                          - /url: /s?rsv_idx=1&wd=%E4%B8%96%E7%95%8C%E6%9D%AFFIFA%E5%90%91%E4%B8%AD%E5%9B%BD%E5%BC%80%E5%87%BA%E5%A4%A9%E4%BB%B7%E7%89%88%E6%9D%83%E8%B4%B9&fenlei=256&usm=4&ie=utf-8&rsv_pq=a9b69f4907316a5b&oq=mcp&rsv_t=e5a8rOB6JXKlawVCYAUx3jV7n%2FLNeT4VfVrffhV6WbtqCVyfQf6yZ2xsf40&rqid=a9b69f4907316a5b&rsf=b806447cb3392d187283165fbd7b8c58_1_15_13&rsv_dl=0_right_fyb_pchot_20811&sa=0_right_fyb_pchot_20811
+                        - generic [ref=e216]: 新
+                      - generic [ref=e218]:
+                        - generic [ref=e219]: "13"
+                        - link "“没绑紧”三个字值一条命" [ref=e220] [cursor=pointer]:
+                          - /url: /s?rsv_idx=1&wd=%E2%80%9C%E6%B2%A1%E7%BB%91%E7%B4%A7%E2%80%9D%E4%B8%89%E4%B8%AA%E5%AD%97%E5%80%BC%E4%B8%80%E6%9D%A1%E5%91%BD&fenlei=256&usm=4&ie=utf-8&rsv_pq=a9b69f4907316a5b&oq=mcp&rsv_t=13de8HetXAYpvOg1A3r7ZkzvTBpqQYKiA9HFSB4lTYx5V%2F5HH9yzVrLeuWs&rqid=a9b69f4907316a5b&rsf=b806447cb3392d187283165fbd7b8c58_1_15_14&rsv_dl=0_right_fyb_pchot_20811&sa=0_right_fyb_pchot_20811
+                      - generic [ref=e222]:
+                        - generic [ref=e223]: "14"
+                        - link "金建希二审法官遗书内容曝光" [ref=e224] [cursor=pointer]:
+                          - /url: /s?rsv_idx=1&wd=%E9%87%91%E5%BB%BA%E5%B8%8C%E4%BA%8C%E5%AE%A1%E6%B3%95%E5%AE%98%E9%81%97%E4%B9%A6%E5%86%85%E5%AE%B9%E6%9B%9D%E5%85%89&fenlei=256&usm=4&ie=utf-8&rsv_pq=a9b69f4907316a5b&oq=mcp&rsv_t=13de8HetXAYpvOg1A3r7ZkzvTBpqQYKiA9HFSB4lTYx5V%2F5HH9yzVrLeuWs&rqid=a9b69f4907316a5b&rsf=b806447cb3392d187283165fbd7b8c58_1_15_15&rsv_dl=0_right_fyb_pchot_20811&sa=0_right_fyb_pchot_20811
+                        - generic [ref=e225]: 热
+                      - generic [ref=e227]:
+                        - generic [ref=e228]: "15"
+                        - link "美称对伊朗军事行动已结束 伊朗否认" [ref=e229] [cursor=pointer]:
+                          - /url: /s?rsv_idx=1&wd=%E7%BE%8E%E7%A7%B0%E5%AF%B9%E4%BC%8A%E6%9C%97%E5%86%9B%E4%BA%8B%E8%A1%8C%E5%8A%A8%E5%B7%B2%E7%BB%93%E6%9D%9F%20%E4%BC%8A%E6%9C%97%E5%90%A6%E8%AE%A4&fenlei=256&usm=4&ie=utf-8&rsv_pq=a9b69f4907316a5b&oq=mcp&rsv_t=13de8HetXAYpvOg1A3r7ZkzvTBpqQYKiA9HFSB4lTYx5V%2F5HH9yzVrLeuWs&rqid=a9b69f4907316a5b&rsf=b806447cb3392d187283165fbd7b8c58_16_30_16&rsv_dl=0_right_fyb_pchot_20811&sa=0_right_fyb_pchot_20811
+                        - generic [ref=e230]: 热
+                - generic [ref=e237]:
+                  - heading "▶想在此推广您的mcp吗？" [level=2] [ref=e238]:
+                    - link "▶想在此推广您的mcp吗？" [ref=e239] [cursor=pointer]:
+                      - /url: https://www.baidu.com/other.php?url=Kf0000Kj8uzDMlOMLkbhAkTo4u8N5d-fnxwq2qqAXzIHqzrvczDoMNrYq2RGE-cZJ2MQwWoihWZuuK0GKfDq07KELWw5qtKYL-GraQBLwWZuJGROfEZHoOEefXoDbhv5rQr_RxQ8LbIX5USmFLxswFWyH65kGbh905CQBbO71_4OussE2AiWoeIeJlpVmzVL4EZ2CC2WC39_XmjJhar1DE46HzdE.Db_NR2Ar5Od66H4g_3_ac2rra6ePCIh6e1FdGhmo_3JN9h9moLNqrt0.TLFWgv-b5Hc0TLFWpyfqn6Kk5fKYUHdVmL00IgP-T-qYXgK-5H00mywxIZ-suHYkn6KLULFb5ydWT0KzmLmqn0KdThkxpyfqnHRYnWf1n10sPsKVINqGujYs0Adxpyfqn0KVIZK_gv-b5H00TZuxpyfqn0KGuAnqHbG2RsKspyfqn6KWpyfqPj0k0AN3T7qYpyd-5HnzPH01PWRknW00Tv7xuhk9u1Ys0APzm1Y1nHckPs&dt=1778050346&wd=mcp&ai=0_427675661_1_1&tpl=tpl_10341_15816_11345&l=1542433007
+                      - text: ▶想在此推广您的
+                      - emphasis [ref=e240]: mcp
+                      - text: 吗？
+                  - link "咨询热线：400-800-8888" [ref=e241] [cursor=pointer]:
+                    - /url: https://www.baidu.com/other.php?url=Kf0000Kj8uzDMlOMLYPN5z0jeezZrpVC2QaOTQsEBRqfgfI96Lh7iHbp-j9dwLivfqjZZ4E-QcrpF2WQpBgdXxIh4Y2EgrL65tQougSSpD5Ujs3Ripp8QR1bwHUI5LT7olIPV9QeSg1TwYgoK7LZfy_jG4JFE7Istssbqa1mTb_RhVpK6mXF0EVII-AEUnL2GZbMs0UruyS5Iw8LJiFzfJUXHhLd.Db_NR2Ar5Od66H4g_3_ac2rra6ePCIh6e1FdGhmo_3JN9h9moLNqrt0.TLFWgv-b5Hc0TLFWpyfqn6Kk5fKYUHdVmL00IgP-T-qYXgK-5H00mywxIZ-suHYkn6KLULFb5ydWT0KzmLmqn0KdThkxpyfqnHRYnWf1n10sr0KVINqGujYs0Adxpyfqn0KVIZK_gv-b5H00TZuxpyfqn0KGuAnqHbG2RsKspyfqn6KWpyfqPj0k0AN3T7qYpyd-5HnzPH01PWRknW00Tv7xuhk9u1Ys0APzm1YzPHD4n0&dt=1778050346&wd=mcp&ai=0_427675661_1_1&tpl=tpl_10341_15816_11345&l=1542433008
+                  - link "e.baidu.com" [ref=e242] [cursor=pointer]:
+                    - /url: https://www.baidu.com/other.php?url=Kf0000Kj8uzDMlOMLOGw--GGLrXqE5ws0a00dA1UJoou_DZsw2-pKLhTF7uDb934ljLRql6WjIOARSoRXr10vcBGSy1XwpO1q2-_ag2gScLDc1bJHdgBsbUb4ilP9R9hjYnoijyj4ivRSlFUv887KNIKfVqVEbMktdv8IxoidlQUjT2myyzMnOBrokFKS8ookkdTBAUJMJ_jphGbADuiPyPBP1um.Db_NR2Ar5Od66H4g_3_ac2rra6ePCIh6e1FdGhmo_3JN9h9moLNqrt0.TLFWgv-b5Hc0TLFWpyfqn6Kk5fKYUHdVmL00IgP-T-qYXgK-5H00mywxIZ-suHYkn6KLULFb5ydWT0KzmLmqn0KdThkxpyfqnHRYnWf1n10srfKVINqGujYs0Adxpyfqn0KVIZK_gv-b5H00TZuxpyfqn0KGuAnqHbG2RsKspyfqn6KWpyfqPj0k0AN3T7qYpyd-5HnzPH01PWRknW00Tv7xuhk9u1Ys0APzm1Y1nWD3P6&dt=1778050346&wd=mcp&ai=0_427675661_1_1&tpl=tpl_10341_15816_11345&l=1542433009
+        - generic [ref=e243]:
+          - generic [ref=e248]:
+            - heading "PHOTONISmcp" [level=3] [ref=e252]:
+              - link "PHOTONISmcp" [ref=e254] [cursor=pointer]:
+                - /url: https://www.baidu.com/baidu.php?url=Kf0000j03OVOaEKBr8Y9VRwnTQ_Xxl2pmLkyvbBK8uzP8_nLJdc9whuOQZL6xOQHw6izF5XgEEm-FVFd6f-OsIDyoSUMY0ufFMQx77PaZN34ijK_x-cHq1KlzlYjzi1QzPf_ELTJKPnazO3kpU3EQGvg-QZlcsaTkYaGNpmP0r0-JP42NvzsprgAASmhnY25rxjLcG1tu3pH0QJqB1DVHWL4dnC5.DD_NR2Ar5Od663rj6tCtUnLUMIWCRsy4LYDlTqIxu1RojPakY4r1u_R.U1Yk0ZDqUyPs0ZKGm1Yk0ZfqUyPs0A-V5HczPfKM5yq-TZns0ZNG5yF9pywd0ZKGujYz0APGujYYnjD0UgfqnH0kPdtYnjmsg1csPH7xnH0krNtzPjNxn1msnfKopHYs0ZFY5HTvPfKBpHYkPH9xnW0Y0AdW5HDsnHIxn10Yrjfzn1nvP-tznjRkg1DsnH-xnWfdg100TgKGujYs0Z7Wpyfqn0KzuLw9u1Ys0A49pyfqn0K8mgws5H00mLNb5HRdnjbYnWTk0A7B5HKxn0K-ThTqn0KsTjYs0A4vTjYsQW0snj0snj0s0AdYTjYs0AwbUL0qn0KzpWYs0Aw-IWdsmsKhIjYs0ZKC5H00ULnqn0KBI1Ykn0K8IjYs0ZPl5fK9TdqGuAnqTZP9ThYVUhC0pywW5R42i-n0TA9YXHY0IA7zuvNY5Hm1g1KxnHRs0ZwdT1Yknjc4rH64nW6krH6LPHckrjR4n6Kzug7Y5HDLP16sPH01PjmdrHR0pynqn0K1pyfqmH-BPW-hPjbsP1nkPhDdm6KWTvYqnYnzwDN7rDRYrjm4nDR1f6K_mMnqn0K9m1Yk0ZK85H00TydY5H00Tyd15H00XMfqn0KBIhfqn0KVmdqhThqV5HKxn7tsg1Kxn7ts0Aw9UMNBuNqsUA78pyw15HKxn7tsg1Kxn7ts0ZK9I7qhUA7M5H00uAPGujYkrHbznWbYP0K-IA-b5iYk0A71TAPW5H00IgKGUhPW5H00Tydh5H00uhPdIjYs0A-1mvsqn0K9uAu_myTqnfK_uhnqn0KbmvPb5fKYTh7buHYdrj0vnjT0mhwGujY3wDmkPDR3wjfvfbPjfHujPjDLfW63fWTvnH77njNan6KEm1Yk0AFY5H00Uv7YI1Ys0AqY5Hc0ULFsIjYzc10WPH_vc1Dsnj0WnHmkP1nYnjRdPinsc108nj0snj0sc1DWnH0snansczYWna3snW0snj0Wni3snj0snj0Wnansc108nj0snj0sc10Wnansc10Wnansc100mh78pv7Wm1Ysc10Wnans0Z91IZRqPHT4nHnvP6KkgLmqna3sn7tsQW0sg108njKxna3sPdtsQWn3g108PHNxni3sndtkQW01g1Kxn7ts0AF1gLKzUvwGujYs0ZFEpyu_myTqn0KVugfqn0KWugw9u1Yk0APv5fKGTdqWTADqn0KWTjYs0AN1IjYs0Z7MIvfqn0KETjDqn0KsTjfqn6KWThnqPHn1P10&us=newvui&xst=mWY3wDmkPDR3wjfvfbPjfHujPjDLfW63fWTvnH77njNan6715HDznWc4nHnvrHTYnHT1nWm3PHTkg1czPNts0gTqUyPs0gDqUyPs0gRqPHT4nHnvP67Y5HDLP16sPH01PjmKUgDqn0cs0BYKmv6quhPxTAnKUZRqn07WUWdBmy-bIf7zIjYs0HRLnjn1PW01n0&cegduid=PHT4nHnvP6&solutionId=4320232&word=&ck=0.0.0.0.0.0.0.0&shh=www.baidu.com&sht=baidu
+            - generic [ref=e255]:
+              - link [ref=e258] [cursor=pointer]:
+                - /url: https://www.baidu.com/baidu.php?url=Kf0000j03OVOaEKBr8Y9VRwnTQ_Xxl2pmLkyvbBK8uzP8_nLJdc9whuOQZL6xOQHw6izF5XgEEm-FVFd6f-OsIDyoSUMY0ufFMQx77PaZN34ijK_x-cHq1KlzlYjzi1QzPf_ELTJKPnazO3kpU3EQGvg-QZlcsaTkYaGNpmP0r0-JP42NvzsprgAASmhnY25rxjLcG1tu3pH0QJqB1DVHWL4dnC5.DD_NR2Ar5Od663rj6tCtUnLUMIWCRsy4LYDlTqIxu1RojPakY4r1u_R.U1Yk0ZDqUyPs0ZKGm1Yk0ZfqUyPs0A-V5HczPfKM5yq-TZns0ZNG5yF9pywd0ZKGujYz0APGujYYnjD0UgfqnH0kPdtYnjmsg1csPH7xnH0krNtzPjNxn1msnfKopHYs0ZFY5HTvPfKBpHYkPH9xnW0Y0AdW5HDsnHIxn10Yrjfzn1nvP-tznjRkg1DsnH-xnWfdg100TgKGujYs0Z7Wpyfqn0KzuLw9u1Ys0A49pyfqn0K8mgws5H00mLNb5HRdnjbYnWTk0A7B5HKxn0K-ThTqn0KsTjYs0A4vTjYsQW0snj0snj0s0AdYTjYs0AwbUL0qn0KzpWYs0Aw-IWdsmsKhIjYs0ZKC5H00ULnqn0KBI1Ykn0K8IjYs0ZPl5fK9TdqGuAnqTZP9ThYVUhC0pywW5R42i-n0TA9YXHY0IA7zuvNY5Hm1g1KxnHRs0ZwdT1Yknjc4rH64nW6krH6LPHckrjR4n6Kzug7Y5HDLP16sPH01PjmdrHR0pynqn0K1pyfqmH-BPW-hPjbsP1nkPhDdm6KWTvYqnYnzwDN7rDRYrjm4nDR1f6K_mMnqn0K9m1Yk0ZK85H00TydY5H00Tyd15H00XMfqn0KBIhfqn0KVmdqhThqV5HKxn7tsg1Kxn7ts0Aw9UMNBuNqsUA78pyw15HKxn7tsg1Kxn7ts0ZK9I7qhUA7M5H00uAPGujYkrHbznWbYP0K-IA-b5iYk0A71TAPW5H00IgKGUhPW5H00Tydh5H00uhPdIjYs0A-1mvsqn0K9uAu_myTqnfK_uhnqn0KbmvPb5fKYTh7buHYdrj0vnjT0mhwGujY3wDmkPDR3wjfvfbPjfHujPjDLfW63fWTvnH77njNan6KEm1Yk0AFY5H00Uv7YI1Ys0AqY5Hc0ULFsIjYzc10WPH_vc1Dsnj0WnHmkP1nYnjRdPinsc108nj0snj0sc1DWnH0snansczYWna3snW0snj0Wni3snj0snj0Wnansc108nj0snj0sc10Wnansc10Wnansc100mh78pv7Wm1Ysc10Wnans0Z91IZRqPHT4nHnvP6KkgLmqna3sn7tsQW0sg108njKxna3sPdtsQWn3g108PHNxni3sndtkQW01g1Kxn7ts0AF1gLKzUvwGujYs0ZFEpyu_myTqn0KVugfqn0KWugw9u1Yk0APv5fKGTdqWTADqn0KWTjYs0AN1IjYs0Z7MIvfqn0KETjDqn0KsTjfqn6KWThnqPHn1P10&us=newvui&xst=mWY3wDmkPDR3wjfvfbPjfHujPjDLfW63fWTvnH77njNan6715HDznWc4nHnvrHTYnHT1nWm3PHTkg1czPNts0gTqUyPs0gDqUyPs0gRqPHT4nHnvP67Y5HDLP16sPH01PjmKUgDqn0cs0BYKmv6quhPxTAnKUZRqn07WUWdBmy-bIf7zIjYs0HRLnjn1PW01n0&cegduid=PHT4nHnvP6&solutionId=4320232&word=&ck=0.0.0.0.0.0.0.0&shh=www.baidu.com&sht=baidu
+                - img [ref=e259]
+              - link "Photonis生产的离子/电子成像器件,提供微小孔径的mcp,有非常高的空间分辨率,也可以根据要求提供各种形状的探测面.闪光科技代理." [ref=e263] [cursor=pointer]:
+                - /url: https://www.baidu.com/baidu.php?url=Kf0000j03OVOaEKBr8Y9VRwnTQ_Xxl2pmLkyvbBK8uzP8_nLJdc9whuOQZL6xOQHw6izF5XgEEm-FVFd6f-OsIDyoSUMY0ufFMQx77PaZN34ijK_x-cHq1KlzlYjzi1QzPf_ELTJKPnazO3kpU3EQGvg-QZlcsaTkYaGNpmP0r0-JP42NvzsprgAASmhnY25rxjLcG1tu3pH0QJqB1DVHWL4dnC5.DD_NR2Ar5Od663rj6tCtUnLUMIWCRsy4LYDlTqIxu1RojPakY4r1u_R.U1Yk0ZDqUyPs0ZKGm1Yk0ZfqUyPs0A-V5HczPfKM5yq-TZns0ZNG5yF9pywd0ZKGujYz0APGujYYnjD0UgfqnH0kPdtYnjmsg1csPH7xnH0krNtzPjNxn1msnfKopHYs0ZFY5HTvPfKBpHYkPH9xnW0Y0AdW5HDsnHIxn10Yrjfzn1nvP-tznjRkg1DsnH-xnWfdg100TgKGujYs0Z7Wpyfqn0KzuLw9u1Ys0A49pyfqn0K8mgws5H00mLNb5HRdnjbYnWTk0A7B5HKxn0K-ThTqn0KsTjYs0A4vTjYsQW0snj0snj0s0AdYTjYs0AwbUL0qn0KzpWYs0Aw-IWdsmsKhIjYs0ZKC5H00ULnqn0KBI1Ykn0K8IjYs0ZPl5fK9TdqGuAnqTZP9ThYVUhC0pywW5R42i-n0TA9YXHY0IA7zuvNY5Hm1g1KxnHRs0ZwdT1Yknjc4rH64nW6krH6LPHckrjR4n6Kzug7Y5HDLP16sPH01PjmdrHR0pynqn0K1pyfqmH-BPW-hPjbsP1nkPhDdm6KWTvYqnYnzwDN7rDRYrjm4nDR1f6K_mMnqn0K9m1Yk0ZK85H00TydY5H00Tyd15H00XMfqn0KBIhfqn0KVmdqhThqV5HKxn7tsg1Kxn7ts0Aw9UMNBuNqsUA78pyw15HKxn7tsg1Kxn7ts0ZK9I7qhUA7M5H00uAPGujYkrHbznWbYP0K-IA-b5iYk0A71TAPW5H00IgKGUhPW5H00Tydh5H00uhPdIjYs0A-1mvsqn0K9uAu_myTqnfK_uhnqn0KbmvPb5fKYTh7buHYdrj0vnjT0mhwGujY3wDmkPDR3wjfvfbPjfHujPjDLfW63fWTvnH77njNan6KEm1Yk0AFY5H00Uv7YI1Ys0AqY5Hc0ULFsIjYzc10WPH_vc1Dsnj0WnHmkP1nYnjRdPinsc108nj0snj0sc1DWnH0snansczYWna3snW0snj0Wni3snj0snj0Wnansc108nj0snj0sc10Wnansc10Wnansc100mh78pv7Wm1Ysc10Wnans0Z91IZRqPHT4nHnvP6KkgLmqna3sn7tsQW0sg108njKxna3sPdtsQWn3g108PHNxni3sndtkQW01g1Kxn7ts0AF1gLKzUvwGujYs0ZFEpyu_myTqn0KVugfqn0KWugw9u1Yk0APv5fKGTdqWTADqn0KWTjYs0AN1IjYs0Z7MIvfqn0KETjDqn0KsTjfqn6KWThnqPHn1P10&us=newvui&xst=mWY3wDmkPDR3wjfvfbPjfHujPjDLfW63fWTvnH77njNan6715HDznWc4nHnvrHTYnHT1nWm3PHTkg1czPNts0gTqUyPs0gDqUyPs0gRqPHT4nHnvP67Y5HDLP16sPH01PjmKUgDqn0cs0BYKmv6quhPxTAnKUZRqn07WUWdBmy-bIf7zIjYs0HRLnjn1PW01n0&cegduid=PHT4nHnvP6&solutionId=4320232&word=&ck=0.0.0.0.0.0.0.0&shh=www.baidu.com&sht=baidu
+                - generic [ref=e265]: Photonis生产的离子/电子成像器件,提供微小孔径的mcp,有非常高的空间分辨率,也可以根据要求提供各种形状的探测面.闪光科技代理.
+            - generic [ref=e267]:
+              - generic [ref=e269]:
+                - generic [ref=e270]: 东方闪光，专注光学仪器
+                - generic [ref=e273]:
+                  - generic [ref=e275]:
+                    - generic [ref=e276]: "姓名:"
+                    - textbox "输入姓名" [ref=e278]
+                  - generic [ref=e280]:
+                    - generic [ref=e281]: "联系方式:"
+                    - textbox "请输入您的手机号码" [ref=e283]
+                  - link "立即提交" [ref=e285] [cursor=pointer]:
+                    - /url: javascript:void(0);
+                    - button "立即提交" [ref=e286]
+              - link "东方闪光(北京)光电科技 2026-05  广告" [ref=e290] [cursor=pointer]:
+                - /url: https://www.baidu.com/baidu.php?url=Kf0000j03OVOaEKBr8Y9VRwnTQ_Xxl2pmLkyvbBK8uzP8_nLJdc9whuOQZL6xOQHw6izF5XgEEm-FVFd6f-OsIDyoSUMY0ufFMQx77PaZN34ijK_x-cHq1KlzlYjzi1QzPf_ELTJKPnazO3kpU3EQGvg-QZlcsaTkYaGNpmP0r0-JP42NvzsprgAASmhnY25rxjLcG1tu3pH0QJqB1DVHWL4dnC5.DD_NR2Ar5Od663rj6tCtUnLUMIWCRsy4LYDlTqIxu1RojPakY4r1u_R.U1Yk0ZDqUyPs0ZKGm1Yk0ZfqUyPs0A-V5HczPfKM5yq-TZns0ZNG5yF9pywd0ZKGujYz0APGujYYnjD0UgfqnH0kPdtYnjmsg1csPH7xnH0krNtzPjNxn1msnfKopHYs0ZFY5HTvPfKBpHYkPH9xnW0Y0AdW5HDsnHIxn10Yrjfzn1nvP-tznjRkg1DsnH-xnWfdg100TgKGujYs0Z7Wpyfqn0KzuLw9u1Ys0A49pyfqn0K8mgws5H00mLNb5HRdnjbYnWTk0A7B5HKxn0K-ThTqn0KsTjYs0A4vTjYsQW0snj0snj0s0AdYTjYs0AwbUL0qn0KzpWYs0Aw-IWdsmsKhIjYs0ZKC5H00ULnqn0KBI1Ykn0K8IjYs0ZPl5fK9TdqGuAnqTZP9ThYVUhC0pywW5R42i-n0TA9YXHY0IA7zuvNY5Hm1g1KxnHRs0ZwdT1Yknjc4rH64nW6krH6LPHckrjR4n6Kzug7Y5HDLP16sPH01PjmdrHR0pynqn0K1pyfqmH-BPW-hPjbsP1nkPhDdm6KWTvYqnYnzwDN7rDRYrjm4nDR1f6K_mMnqn0K9m1Yk0ZK85H00TydY5H00Tyd15H00XMfqn0KBIhfqn0KVmdqhThqV5HKxn7tsg1Kxn7ts0Aw9UMNBuNqsUA78pyw15HKxn7tsg1Kxn7ts0ZK9I7qhUA7M5H00uAPGujYkrHbznWbYP0K-IA-b5iYk0A71TAPW5H00IgKGUhPW5H00Tydh5H00uhPdIjYs0A-1mvsqn0K9uAu_myTqnfK_uhnqn0KbmvPb5fKYTh7buHYdrj0vnjT0mhwGujY3wDmkPDR3wjfvfbPjfHujPjDLfW63fWTvnH77njNan6KEm1Yk0AFY5H00Uv7YI1Ys0AqY5Hc0ULFsIjYzc10WPH_vc1Dsnj0WnHmkP1nYnjRdPinsc108nj0snj0sc1DWnH0snansczYWna3snW0snj0Wni3snj0snj0Wnansc108nj0snj0sc10Wnansc10Wnansc100mh78pv7Wm1Ysc10Wnans0Z91IZRqPHT4nHnvP6KkgLmqna3sn7tsQW0sg108njKxna3sPdtsQWn3g108PHNxni3sndtkQW01g1Kxn7ts0AF1gLKzUvwGujYs0ZFEpyu_myTqn0KVugfqn0KWugw9u1Yk0APv5fKGTdqWTADqn0KWTjYs0AN1IjYs0Z7MIvfqn0KETjDqn0KsTjfqn6KWThnqPHn1P10&us=newvui&xst=mWY3wDmkPDR3wjfvfbPjfHujPjDLfW63fWTvnH77njNan6715HDznWc4nHnvrHTYnHT1nWm3PHTkg1czPNts0gTqUyPs0gDqUyPs0gRqPHT4nHnvP67Y5HDLP16sPH01PjmKUgDqn0cs0BYKmv6quhPxTAnKUZRqn07WUWdBmy-bIf7zIjYs0HRLnjn1PW01n0&cegduid=PHT4nHnvP6&solutionId=4320232&word=&ck=0.0.0.0.0.0.0.0&shh=www.baidu.com&sht=baidu
+                - generic [ref=e291]: 东方闪光(北京)光电科技
+                - text: 2026-05
+                - generic [ref=e294]: 
+                - generic [ref=e295]: 广告
+          - generic [ref=e300]:
+            - heading "mcp，模型上下文协议，百度百科" [level=3] [ref=e301]:
+              - link "mcp，模型上下文协议，百度百科" [active] [ref=e302] [cursor=pointer]:
+                - /url: https://www.baidu.com/link?url=N7g8cHDpHftVKqjPtPDbJliow12Ez2EnIG4JDJ2c8zULI1Q3rSLgq00bDisv69EbfYZiLbzxYVJ_pDuEAsIYY52Dho_UirQ9kETau9HHWCLoxONLJjsJ3MIYpF3FPiSbYd4tHyHyOZZ8gWNIYgEYfvHZI0ua37YC08NfN90maB_ZvckwomqzqFt_EpPolYMxTwOJeQzR7IULRcytyOwstK&wd=&eqid=a9b69f4907316a5b0000000469fae52a
+                - emphasis [ref=e303]: MCP
+                - text: (模型上下文协议) - 百度百科
+            - generic [ref=e304]:
+              - generic "播放视频" [ref=e305] [cursor=pointer]:
+                - generic [ref=e307]:
+                  - generic [ref=e308]: 
+                  - img [ref=e312]
+              - generic [ref=e314]:
+                - generic "模型上下文协议（Model Context Protocol，MCP），是由Anthropic推出的开源协议，旨在实现大语言模型与外部数据源和工具的集成，用来在大模型和数据源之间建立安全双向的连接。该协议通过相同的协议同时处理本地资源（例如数据库、文件、服务等）和远程资源（例如Slack或GitHub等API）。模型上下文协议是专为高效获得模型所需上下文信息而设计的通用接口，旨在推动大语言模型应用的标准化和去中心化。作为开放协议，它定义了类似于OpenAPI的标准，包含通用的通信协议、数据格式和规则，具有简化开发、灵活、实时响应、安全合规、可扩展的特点。该协议采用客户端-服务器架构，支持工具、资源和提示三种功能类型，主机应用可通过标准化接口连接多个服务器获取LLM可理解的上下文数据。国内主要科技企业如百度地图、高德地图、腾讯位置服务已推出基于MCP协议的服务器，提供天气查询、导航定位等场景" [ref=e316]:
+                  - generic [ref=e317]:
+                    - text: 简介：
+                    - emphasis [ref=e318]: MCP
+                    - text: 一般指模型上下文协议。 模型上下文协议（Model Context Protocol，
+                    - emphasis [ref=e319]: MCP
+                    - text: ），是由Anthropic推出的开源协议，旨在实现大语言模型与外部数据源和工具的集成，用来在大模型和数据源之间建立安全双向的连接。该协议通过相同的协议同时处理本地资源（例如数...
+                - generic [ref=e321]:
+                  - link "整体架构" [ref=e322] [cursor=pointer]:
+                    - /url: http://www.baidu.com/link?url=y2r5evMtXwgdd8NDjfNwc6qEgUZO3EGeW5bdNooStjMiygOpIBNbg_4Y-EdUUMCI99yrqU_PNw3o8WiQw2tbcpR1_vlMxcI2aaQnFxYHxfvPgZW15OcNvYvNoP2rhBRGgfdxy_gpbztNuQarT3GtPXzpZNq2dqMWkCpmZqj1M_-eO89llBrTKdDv96JOBTYytB15oTiLgTpkJTOLhc_faq
+                  - link "核心组件" [ref=e323] [cursor=pointer]:
+                    - /url: http://www.baidu.com/link?url=y2r5evMtXwgdd8NDjfNwc6qEgUZO3EGeW5bdNooStjMiygOpIBNbg_4Y-EdUUMCI99yrqU_PNw3o8WiQw2tbcpR1_vlMxcI2aaQnFxYHxfvPgZW15OcNvYvNoP2rhBRGgfdxy_gpbztNuQarT3GtPXzpZNq2dqMWkCpmZqj1M_-eO89llBrTKdDv96JOBTYyGVn4nFWNmxjUpMRLUJVR7K
+                  - link "核心工作流程" [ref=e324] [cursor=pointer]:
+                    - /url: http://www.baidu.com/link?url=y2r5evMtXwgdd8NDjfNwc6qEgUZO3EGeW5bdNooStjMiygOpIBNbg_4Y-EdUUMCI99yrqU_PNw3o8WiQw2tbcpR1_vlMxcI2aaQnFxYHxfvPgZW15OcNvYvNoP2rhBRGgfdxy_gpbztNuQarT3GtPXzpZNq2dqMWkCpmZqj1M_-eO89llBrTKdDv96JOBTYyr7-ea3sVma050TC10DlCPa
+                  - link "应用场景" [ref=e325] [cursor=pointer]:
+                    - /url: http://www.baidu.com/link?url=y2r5evMtXwgdd8NDjfNwc6qEgUZO3EGeW5bdNooStjMiygOpIBNbg_4Y-EdUUMCI99yrqU_PNw3o8WiQw2tbcpR1_vlMxcI2aaQnFxYHxfvPgZW15OcNvYvNoP2rhBRGgfdxy_gpbztNuQarT3GtPXzpZNq2dqMWkCpmZqj1M_-eO89llBrTKdDv96JOBTYy6-G9wzso-Sr6zPZfYlO5ga
+                  - link "经典案例" [ref=e326] [cursor=pointer]:
+                    - /url: http://www.baidu.com/link?url=y2r5evMtXwgdd8NDjfNwc6qEgUZO3EGeW5bdNooStjMiygOpIBNbg_4Y-EdUUMCI99yrqU_PNw3o8WiQw2tbcpR1_vlMxcI2aaQnFxYHxfvPgZW15OcNvYvNoP2rhBRGgfdxy_gpbztNuQarT3GtPXzpZNq2dqMWkCpmZqj1M_-eO89llBrTKdDv96JOBTYy83o_3KM4XclKtthqXfp60_
+                - generic [ref=e327]:
+                  - link "百度百科" [ref=e328] [cursor=pointer]:
+                    - /url: http://www.baidu.com/link?url=N7g8cHDpHftVKqjPtPDbJliow12Ez2EnIG4JDJ2c8zULI1Q3rSLgq00bDisv69EbfYZiLbzxYVJ_pDuEAsIYY52Dho_UirQ9kETau9HHWCLoxONLJjsJ3MIYpF3FPiSbYd4tHyHyOZZ8gWNIYgEYfvHZI0ua37YC08NfN90maB_ZvckwomqzqFt_EpPolYMxTwOJeQzR7IULRcytyOwstK
+                    - img [ref=e333]
+                    - text: 百度百科
+                  - generic [ref=e335] [cursor=pointer]: 
+          - generic [ref=e340]:
+            - generic [ref=e342]:
+              - generic [ref=e343]:
+                - img [ref=e345]
+                - generic [ref=e346]:
+                  - text: 总结全网38篇结果
+                  - generic [ref=e348]: 
+              - generic [ref=e352]:
+                - generic [ref=e353]: 
+                - generic [ref=e354]: 听
+            - generic [ref=e355]:
+              - generic [ref=e356]:
+                - paragraph [ref=e366]:
+                  - mark [ref=e367]:
+                    - text: ‌
+                    - strong [ref=e368]: MCP
+                    - text: ‌
+                    - mark [ref=e369]: 主要有两个含义：在人工智能领域指
+                    - text: ‌
+                    - strong [ref=e370]: 模型上下文协议（Model Context Protocol）
+                    - text: ‌
+                    - mark [ref=e371]: ，是由 Anthropic 于 2024 年 11 月推出的开放标准协议；在集成电路领域指
+                    - text: ‌
+                    - strong [ref=e372]: 多芯片封装（Multi-Chip Package）
+                    - text: ‌
+                  - text: 技术 。当前 AI 领域的 MCP 更为热门，被视为
+                  - mark [ref=e373]:
+                    - text: ‌
+                    - strong [ref=e374]: AI 应用的"USB-C 接口"
+                    - text: ‌
+                  - text: ，用于实现大模型与外部数据源和工具的无缝集成 。‌‌
+                  - generic [ref=e379] [cursor=pointer]: 百科
+                  - text: ‌
+                - generic [ref=e389]:
+                  - generic [ref=e390]:
+                    - generic [ref=e391]:
+                      - generic [ref=e393]: MCP 的核心概念与定位
+                      - text: 
+                    - generic [ref=e396]:
+                      - list [ref=e403]:
+                        - listitem [ref=e404]:
+                          - mark [ref=e405]:
+                            - text: ‌
+                            - strong [ref=e406]: 定义与推出背景
+                            - text: ‌
+                          - text: ：MCP（Model Context Protocol，模型上下文协议）是由 Anthropic（Claude 的母公司）于 2024 年 11 月底推出的开源协议，旨在统一大模型与外部数据源和工具之间的通信标准 。‌‌‌
+                        - listitem [ref=e412]:
+                          - mark [ref=e413]:
+                            - text: ‌
+                            - strong [ref=e414]: 核心定位
+                            - text: ‌
+                          - text: ：
+                          - list [ref=e415]:
+                            - listitem [ref=e416]:
+                              - mark [ref=e417]:
+                                - text: ‌
+                                - strong [ref=e418]: 标准化连接
+                                - text: ‌
+                              - text: ：如同 USB-C 统一了设备连接方式，MCP 统一了 AI 模型接入各种外部能力的方式，避免为每个数据源单独开发定制化连接器。
+                            - listitem [ref=e419]:
+                              - mark [ref=e420]:
+                                - text: ‌
+                                - strong [ref=e421]: 安全双向链接
+                                - text: ‌
+                              - text: ：在大模型和数据源之间建立安全双向的链接，数据源所有者始终掌握访问权。
+                            - listitem [ref=e422]:
+                              - mark [ref=e423]:
+                                - text: ‌
+                                - strong [ref=e424]: 打破数据孤岛
+                                - text: ‌
+                              - text: ：解决 AI 模型因数据孤岛限制而无法充分发挥潜力的难题。‌‌‌
+                        - listitem [ref=e430]:
+                          - mark [ref=e431]:
+                            - text: ‌
+                            - strong [ref=e432]: 与多芯片封装 MCP 的区别
+                            - text: ‌
+                          - text: ：集成电路领域的 MCP（多芯片封装）是通过 2.5D/3D 集成架构将逻辑芯片、存储芯片等异构模块集成于单一封装体的技术，与 AI 领域的模型上下文协议完全不同 。‌‌
+                          - generic [ref=e437] [cursor=pointer]: 百科
+                      - link "" [ref=e445] [cursor=pointer]:
+                        - /url: http://www.baidu.com/link?url=J9SE4xUmLj0TSRqXIJEgjWQxcrgDTCGdlRzudSogVbJWIVPI2DyKHTUEx0v2tI5IvqjMgBFkqn8cAWXMXhLdj_
+                        - generic [ref=e447]:
+                          - generic [ref=e452]: 
+                          - text: 
+                  - generic [ref=e454]:
+                    - generic [ref=e455]:
+                      - generic [ref=e457]: MCP 的技术架构与工作原理
+                      - text: 
+                    - generic [ref=e460]:
+                      - list [ref=e467]:
+                        - listitem [ref=e468]:
+                          - mark [ref=e469]:
+                            - text: ‌
+                            - strong [ref=e470]: 客户端 - 服务器架构
+                            - text: ‌
+                          - text: ：MCP 采用分层设计，包含三个核心模块 ：
+                          - list [ref=e471]:
+                            - listitem [ref=e472]:
+                              - mark [ref=e473]:
+                                - text: ‌
+                                - strong [ref=e474]: 协议层
+                                - text: ‌
+                              - text: ：定义标准化的交互接口，包括请求结构（工具标识、输入参数、上下文快照）和响应结构（执行结果、状态码、更新后的上下文）。
+                            - listitem [ref=e475]:
+                              - mark [ref=e476]:
+                                - text: ‌
+                                - strong [ref=e477]: 工具适配层
+                                - text: ‌
+                              - text: ：负责将具体工具的 API 转换为 MCP 协议格式。
+                            - listitem [ref=e478]:
+                              - mark [ref=e479]:
+                                - text: ‌
+                                - strong [ref=e480]: 模型集成层
+                                - text: ‌
+                              - text: ：在模型推理流程中嵌入 MCP 调用节点。
+                        - listitem [ref=e481]:
+                          - mark [ref=e482]:
+                            - text: ‌
+                            - strong [ref=e483]: MCP 服务器功能
+                            - text: ‌
+                          - text: ：MCP 服务器是系统中的资源供应方，负责连接 AI 模型所需的外部能力和数据 ：
+                          - list [ref=e484]:
+                            - listitem [ref=e485]: 支持远程（URL 和凭据）和本地（命令行调用）服务器配置。
+                            - listitem [ref=e486]: 可连接文件访问、存储库管理、PR 创建等功能。
+                            - listitem [ref=e487]: 遵循组织管理员在 GitHub 上设置的白名单策略。
+                        - listitem [ref=e488]:
+                          - mark [ref=e489]:
+                            - text: ‌
+                            - strong [ref=e490]: 与 Function Calling 的区别
+                            - text: ‌
+                          - text: ：
+                          - list [ref=e491]:
+                            - listitem [ref=e492]:
+                              - mark [ref=e493]:
+                                - text: ‌
+                                - strong [ref=e494]: 上下文管理
+                                - text: ‌
+                              - text: ：MCP 可细粒度控制模型行为，实现多轮对话；Function Calling 缺乏上下文管理能力。
+                            - listitem [ref=e495]:
+                              - mark [ref=e496]:
+                                - text: ‌
+                                - strong [ref=e497]: 执行方式
+                                - text: ‌
+                              - text: ：MCP 支持异步执行，可调用多个任务；Function Calling 为同步调用。
+                            - listitem [ref=e498]:
+                              - mark [ref=e499]:
+                                - text: ‌
+                                - strong [ref=e500]: 开发成本
+                                - text: ‌
+                              - text: ：MCP 有统一标准，适配 MCP 的 Server 可用统一代码调用；Function Calling 需针对每个工具定制开发。‌‌‌
+                      - link "" [ref=e513] [cursor=pointer]:
+                        - /url: http://www.baidu.com/link?url=J9SE4xUmLj0TSRqXIJEgjWQxcrgDTCGdlRzudSogVbJWIVPI2DyKHTUEx0v2tI5IEhvMrS3wG_7jpU27OiSLaq
+                        - generic [ref=e515]:
+                          - generic [ref=e520]: 
+                          - text: 
+                  - generic [ref=e522]:
+                    - generic [ref=e523]:
+                      - generic [ref=e525]: MCP 的应用场景与优势
+                      - text: 
+                    - generic [ref=e528]:
+                      - list [ref=e535]:
+                        - listitem [ref=e536]:
+                          - paragraph [ref=e537]:
+                            - mark [ref=e538]:
+                              - text: ‌
+                              - strong [ref=e539]: 核心优势
+                              - text: ‌
+                            - text: ：
+                          - list [ref=e540]:
+                            - listitem [ref=e541]:
+                              - mark [ref=e542]:
+                                - text: ‌
+                                - strong [ref=e543]: 实时双向通信
+                                - text: ‌
+                              - text: ：赋予 AI 动态获取与发送信息的能力，实现信息的即时互通与流转。
+                            - listitem [ref=e544]:
+                              - mark [ref=e545]:
+                                - text: ‌
+                                - strong [ref=e546]: 工具自动发现
+                                - text: ‌
+                              - text: ：AI 能够自主检测并集成新工具，提升效率与便捷性。
+                            - listitem [ref=e547]:
+                              - mark [ref=e548]:
+                                - text: ‌
+                                - strong [ref=e549]: 高可伸缩性
+                                - text: ‌
+                              - text: ：支持在不干扰现有工作流程的前提下，轻松集成新服务。
+                            - listitem [ref=e550]:
+                              - mark [ref=e551]:
+                                - text: ‌
+                                - strong [ref=e552]: 强化安全保障
+                                - text: ‌
+                              - text: ：采用标准化的安全协议，为所有集成提供全方位防护。‌‌‌
+                        - listitem [ref=e558]:
+                          - paragraph [ref=e559]:
+                            - mark [ref=e560]:
+                              - text: ‌
+                              - strong [ref=e561]: 典型应用场景
+                              - text: ‌
+                            - text: ：
+                          - list [ref=e562]:
+                            - listitem [ref=e563]:
+                              - mark [ref=e564]:
+                                - text: ‌
+                                - strong [ref=e565]: AI 助手集成
+                                - text: ‌
+                              - text: ：在 Visual Studio 中，MCP 允许 GitHub Copilot 代理连接 MCP 服务器使用外部工具。
+                            - listitem [ref=e566]:
+                              - mark [ref=e567]:
+                                - text: ‌
+                                - strong [ref=e568]: 多工具协同
+                                - text: ‌
+                              - text: ：允许单一模型同时调用多个工具（如数据库查询 + 文件生成 + 邮件发送）。
+                            - listitem [ref=e569]:
+                              - mark [ref=e570]:
+                                - text: ‌
+                                - strong [ref=e571]: 动态上下文管理
+                                - text: ‌
+                              - text: ：支持在对话过程中动态注入工具调用结果，使模型能基于实时数据调整响应策略。
+                            - listitem [ref=e572]:
+                              - mark [ref=e573]:
+                                - text: ‌
+                                - strong [ref=e574]: 自主 Agent 构建
+                                - text: ‌
+                              - text: ：帮助开发者在大模型之上构建代理和复杂的工作流。‌‌‌
+                        - listitem [ref=e580]:
+                          - paragraph [ref=e581]:
+                            - mark [ref=e582]:
+                              - text: ‌
+                              - strong [ref=e583]: 生态发展
+                              - text: ‌
+                            - text: ：Anthropic 在发布时提供了初步的规范和 SDK（如 Python 和 TypeScript），并开源了多个预构建的 MCP 服务器（如 Google Drive、GitHub 集成），以加速社区采纳 。‌‌‌
+                      - link "" [ref=e596] [cursor=pointer]:
+                        - /url: http://www.baidu.com/link?url=J9SE4xUmLj0TSRqXIJEgjWQxcrgDTCGdlRzudSogVbJWIVPI2DyKHTUEx0v2tI5I9VTKR55e6oSFaskTtovPja
+                        - generic [ref=e598]:
+                          - generic [ref=e603]: 
+                          - text: 
+              - generic [ref=e610] [cursor=pointer]:
+                - generic [ref=e611]: 展开剩余78%内容
+                - generic [ref=e612]: 
+              - generic [ref=e616]:
+                - generic [ref=e620]: 
+                - generic [ref=e624]: 
+                - generic [ref=e625]:
+                  - generic [ref=e629]: 
+                  - generic [ref=e632]:
+                    - generic [ref=e634]: mcp
+                    - generic [ref=e637]:
+                      - img [ref=e638]
+                      - generic [ref=e639]:
+                        - generic [ref=e640]: 长按识别，即刻体验百度AI
+                        - generic [ref=e641]: 以上内容均由AI生成
+                - generic [ref=e646]: 
+          - generic [ref=e651]:
+            - heading "mcp - 百度翻译" [level=3] [ref=e654]:
+              - heading "mcp - 百度翻译" [level=3] [ref=e657]:
+                - link "mcp - 百度翻译" [ref=e658] [cursor=pointer]:
+                  - /url: http://www.baidu.com/link?url=FEQn-WBRA7KQ5UV4WCdoHgXnSTSXBY8wgs8EccBgY3UnNTLlzodvCZbY_vc_DU1YUs2PBejAe2WR4Gu1vQs0fq
+                  - generic [ref=e659]:
+                    - emphasis [ref=e660]: mcp
+                    - text: "- 百度翻译"
+            - generic [ref=e663]:
+              - generic [ref=e664]: 主控程序
+              - generic [ref=e665]: 常见释义
+            - generic [ref=e668]:
+              - generic [ref=e669]:
+                - generic [ref=e671] [cursor=pointer]:
+                  - generic [ref=e672]: 英
+                  - img [ref=e675]
+                - img [ref=e683] [cursor=pointer]
+              - generic [ref=e689]:
+                - generic [ref=e691] [cursor=pointer]:
+                  - generic [ref=e692]: 美
+                  - img [ref=e695]
+                - img [ref=e703] [cursor=pointer]
+            - generic [ref=e711]:
+              - generic [ref=e712]: abbr.
+              - generic [ref=e713]: 磁罗经导航(Magnetic Compass Pilot);军事空运司令部指挥所(MAC Command Post);主冷却泵(Main Condensate Pump);
+            - generic [ref=e715]:
+              - generic [ref=e716]: 例句
+              - generic [ref=e717]:
+                - generic [ref=e718]:
+                  - generic [ref=e719]:
+                    - generic [ref=e720]: Analysis and Research of Dark Current in High Speed MCP PMT
+                    - img [ref=e725] [cursor=pointer]
+                  - generic [ref=e729]: 快速MCP型光电倍增管中暗电流的分析与研究
+                - link "" [ref=e731] [cursor=pointer]:
+                  - /url: http://www.baidu.com/link?url=lG5wngdTjDcrV5V5KlSN1dfZGf5yxlY3D8JDkeBqwWrO7x5M8ghDAHChI_AlDypqNtEgPiojpNcH9GIztJL13Q5VmtApzwzqJmSNmU3Dz5_
+                  - generic [ref=e732]: 
+          - generic [ref=e734]:
+            - heading "MCP(IT产业名词) - 百度百科" [level=3] [ref=e735]:
+              - link "MCP(IT产业名词) - 百度百科" [ref=e736] [cursor=pointer]:
+                - /url: http://www.baidu.com/link?url=lG5wngdTjDcrV5V5KlSN1eCM_SNG5PL05FizWnL7tY1BFccrKUCh55XxA-e-VuMJG86vxS0qIkHtmIzoiHCmpK
+                - paragraph [ref=e739]:
+                  - generic [ref=e741]:
+                    - emphasis [ref=e742]: MCP
+                    - text: (IT产业名词) - 百度百科
+            - generic [ref=e746]:
+              - generic [ref=e752] [cursor=pointer]: 
+              - generic [ref=e754]:
+                - paragraph [ref=e758]:
+                  - generic [ref=e760]:
+                    - emphasis [ref=e761]: MCP
+                    - text: 是多网内容提供者（Multinet Content Provider）的英文缩写，中文名为内容整合商，外文名对应为Master Content Provider。该术语既指代三网融合背景下扩展至物联网、金融网等多元网络的内容服务模式（区别于传统ICP），同时也代表金属继续感知（Metal Continue Perception...
+                  - generic [ref=e763]:
+                    - link "详情" [ref=e764] [cursor=pointer]:
+                      - /url: http://www.baidu.com/link?url=lG5wngdTjDcrV5V5KlSN1eCM_SNG5PL05FizWnL7tY1BFccrKUCh55XxA-e-VuMJG86vxS0qIkHtmIzoiHCmpK
+                    - link "" [ref=e765] [cursor=pointer]:
+                      - /url: http://www.baidu.com/link?url=lG5wngdTjDcrV5V5KlSN1eCM_SNG5PL05FizWnL7tY1BFccrKUCh55XxA-e-VuMJG86vxS0qIkHtmIzoiHCmpK
+                      - generic [ref=e766]: 
+                - generic [ref=e769]:
+                  - link "简介" [ref=e771] [cursor=pointer]:
+                    - /url: http://www.baidu.com/link?url=d_SZHVegJvy6XqOg3qlZ9w52dcCuv-0lRTvXhR7kH7f5NiNiWtKR9nGxmYi103DdE-h1p-oWOvMBTUtmrXaKg_
+                    - generic [ref=e772]: 简介
+                  - link "技术架构" [ref=e774] [cursor=pointer]:
+                    - /url: http://www.baidu.com/link?url=d_SZHVegJvy6XqOg3qlZ9w52dcCuv-0lRTvXhR7kH7f5NiNiWtKR9nGxmYi103DdB8BAbsFy_WypkenbDoGDwK
+                    - generic [ref=e775]: 技术架构
+                  - link "应用场景" [ref=e777] [cursor=pointer]:
+                    - /url: http://www.baidu.com/link?url=d_SZHVegJvy6XqOg3qlZ9w52dcCuv-0lRTvXhR7kH7f5NiNiWtKR9nGxmYi103Dd2EgqjM8K22LxZd2sdZRoia
+                    - generic [ref=e778]: 应用场景
+                  - link "演进方向" [ref=e780] [cursor=pointer]:
+                    - /url: http://www.baidu.com/link?url=d_SZHVegJvy6XqOg3qlZ9w52dcCuv-0lRTvXhR7kH7f5NiNiWtKR9nGxmYi103DdOu_Rg0ycgsmXiEfmc4quLq
+                    - generic [ref=e781]: 演进方向
+            - generic [ref=e782]:
+              - link "百度百科" [ref=e785] [cursor=pointer]:
+                - /url: http://www.baidu.com/link?url=lG5wngdTjDcrV5V5KlSN1eCM_SNG5PL05FizWnL7tY1BFccrKUCh55XxA-e-VuMJG86vxS0qIkHtmIzoiHCmpK
+                - generic [ref=e786]: 百度百科
+              - generic [ref=e788] [cursor=pointer]: 
+          - generic [ref=e790]:
+            - generic [ref=e791]: 大家还在搜
+            - generic [ref=e792]:
+              - link "mcp企查查" [ref=e793] [cursor=pointer]:
+                - /url: /s?rsv_idx=1&wd=mcp%E4%BC%81%E6%9F%A5%E6%9F%A5&fenlei=256&usm=4&ie=utf-8&rsv_pq=a9b69f4907316a5b&oq=mcp&rsv_t=256f5%2F0uDX17tV6aRK0aegfBrroDqiXDDG%2FqqxFD650rKFWgR0vr1Hx4a%2BQ&rsf=101531151&rsv_dl=0_prs_28608_1
+                - generic [ref=e795]: mcp企查查
+              - link "mcp-1是什么细胞因子" [ref=e796] [cursor=pointer]:
+                - /url: /s?rsv_idx=1&wd=mcp-1%E6%98%AF%E4%BB%80%E4%B9%88%E7%BB%86%E8%83%9E%E5%9B%A0%E5%AD%90&fenlei=256&usm=4&ie=utf-8&rsv_pq=a9b69f4907316a5b&oq=mcp&rsv_t=256f5%2F0uDX17tV6aRK0aegfBrroDqiXDDG%2FqqxFD650rKFWgR0vr1Hx4a%2BQ&rsf=101533803&rsv_dl=0_prs_28608_2
+                - generic [ref=e798]: mcp-1是什么细胞因子
+              - link "肯德基mcp" [ref=e799] [cursor=pointer]:
+                - /url: /s?rsv_idx=1&wd=%E8%82%AF%E5%BE%B7%E5%9F%BAmcp&fenlei=256&usm=4&ie=utf-8&rsv_pq=a9b69f4907316a5b&oq=mcp&rsv_t=256f5%2F0uDX17tV6aRK0aegfBrroDqiXDDG%2FqqxFD650rKFWgR0vr1Hx4a%2BQ&rsf=101531151&rsv_dl=0_prs_28608_3
+                - generic [ref=e801]: 肯德基mcp
+              - link "mcp是啥" [ref=e802] [cursor=pointer]:
+                - /url: /s?rsv_idx=1&wd=mcp%E6%98%AF%E5%95%A5&fenlei=256&usm=4&ie=utf-8&rsv_pq=a9b69f4907316a5b&oq=mcp&rsv_t=256f5%2F0uDX17tV6aRK0aegfBrroDqiXDDG%2FqqxFD650rKFWgR0vr1Hx4a%2BQ&rsf=101531161&rsv_dl=0_prs_28608_4
+                - generic [ref=e804]: mcp是啥
+              - link "mcp服务端配置" [ref=e805] [cursor=pointer]:
+                - /url: /s?rsv_idx=1&wd=mcp%E6%9C%8D%E5%8A%A1%E7%AB%AF%E9%85%8D%E7%BD%AE&fenlei=256&usm=4&ie=utf-8&rsv_pq=a9b69f4907316a5b&oq=mcp&rsv_t=256f5%2F0uDX17tV6aRK0aegfBrroDqiXDDG%2FqqxFD650rKFWgR0vr1Hx4a%2BQ&rsf=101531151&rsv_dl=0_prs_28608_5
+                - generic [ref=e807]: mcp服务端配置
+              - link "mcp检查是什么意思" [ref=e808] [cursor=pointer]:
+                - /url: /s?rsv_idx=1&wd=mcp%E6%A3%80%E6%9F%A5%E6%98%AF%E4%BB%80%E4%B9%88%E6%84%8F%E6%80%9D&fenlei=256&usm=4&ie=utf-8&rsv_pq=a9b69f4907316a5b&oq=mcp&rsv_t=256f5%2F0uDX17tV6aRK0aegfBrroDqiXDDG%2FqqxFD650rKFWgR0vr1Hx4a%2BQ&rsf=101533101&rsv_dl=0_prs_28608_6
+                - generic [ref=e810]: mcp检查是什么意思
+              - link "mcp接入deepseek详细步骤" [ref=e811] [cursor=pointer]:
+                - /url: /s?rsv_idx=1&wd=mcp%E6%8E%A5%E5%85%A5deepseek%E8%AF%A6%E7%BB%86%E6%AD%A5%E9%AA%A4&fenlei=256&usm=4&ie=utf-8&rsv_pq=a9b69f4907316a5b&oq=mcp&rsv_t=256f5%2F0uDX17tV6aRK0aegfBrroDqiXDDG%2FqqxFD650rKFWgR0vr1Hx4a%2BQ&rsf=101531151&rsv_dl=0_prs_28608_7
+                - generic [ref=e813]: mcp接入deepseek详细步骤
+              - link "mcp是什么软件" [ref=e814] [cursor=pointer]:
+                - /url: /s?rsv_idx=1&wd=mcp%E6%98%AF%E4%BB%80%E4%B9%88%E8%BD%AF%E4%BB%B6&fenlei=256&usm=4&ie=utf-8&rsv_pq=a9b69f4907316a5b&oq=mcp&rsv_t=256f5%2F0uDX17tV6aRK0aegfBrroDqiXDDG%2FqqxFD650rKFWgR0vr1Hx4a%2BQ&rsf=101531101&rsv_dl=0_prs_28608_8
+                - generic [ref=e816]: mcp是什么软件
+              - link "mimo的mcp客户端用的是什么" [ref=e817] [cursor=pointer]:
+                - /url: /s?rsv_idx=1&wd=mimo%E7%9A%84mcp%E5%AE%A2%E6%88%B7%E7%AB%AF%E7%94%A8%E7%9A%84%E6%98%AF%E4%BB%80%E4%B9%88&fenlei=256&usm=4&ie=utf-8&rsv_pq=a9b69f4907316a5b&oq=mcp&rsv_t=256f5%2F0uDX17tV6aRK0aegfBrroDqiXDDG%2FqqxFD650rKFWgR0vr1Hx4a%2BQ&rsf=101531151&rsv_dl=0_prs_28608_9
+                - generic [ref=e819]: mimo的mcp客户端用的是什么
+              - link "mcp通信协议" [ref=e820] [cursor=pointer]:
+                - /url: /s?rsv_idx=1&wd=mcp%E9%80%9A%E4%BF%A1%E5%8D%8F%E8%AE%AE&fenlei=256&usm=4&ie=utf-8&rsv_pq=a9b69f4907316a5b&oq=mcp&rsv_t=256f5%2F0uDX17tV6aRK0aegfBrroDqiXDDG%2FqqxFD650rKFWgR0vr1Hx4a%2BQ&rsf=101531161&rsv_dl=0_prs_28608_10
+                - generic [ref=e822]: mcp通信协议
+          - generic [ref=e826]:
+            - heading "使用MCP 服务器 - Visual Studio (Windows) | Microsoft Learn" [level=3] [ref=e829]:
+              - link "使用MCP 服务器 - Visual Studio (Windows) | Microsoft Learn" [ref=e830] [cursor=pointer]:
+                - /url: http://www.baidu.com/link?url=N7g8cHDpHftVKqjPtPDbJnc-vX-yAjZLSua7dx4v714hntYsLUe_Oj_F94Ha-4zMjK6EpAj2D4lzoaIfaDYAYoBYRbIkJbc_TKg7isfps8i
+                - paragraph [ref=e833]:
+                  - generic [ref=e836]:
+                    - text: 使用
+                    - emphasis [ref=e837]: MCP
+                    - text: 服务器 - Visual Studio (Windows) | Microsoft Learn
+            - generic [ref=e842]:
+              - text: 6天前
+              - generic [ref=e843]:
+                - text: 可以通过 Visual Studio 中的扩展直接从 GitHub
+                - emphasis [ref=e844]: MCP
+                - text: 服务器注册表安装
+                - emphasis [ref=e845]: MCP
+                - text: 服务器。 在Visual Studio菜单中,选择Extensions>MCP 注册表...打开MCP 服务器管理器。 选择所需的服务器,然后为Visual Studio实例选择 Install。 将MCP 服务器添加到 .mcp.json文件 以下步骤将引导你完成 Gi
+            - link "Microsoft" [ref=e850] [cursor=pointer]:
+              - /url: http://www.baidu.com/link?url=N7g8cHDpHftVKqjPtPDbJnc-vX-yAjZLSua7dx4v714hntYsLUe_Oj_F94Ha-4zMjK6EpAj2D4lzoaIfaDYAYoBYRbIkJbc_TKg7isfps8i
+              - generic [ref=e851]: Microsoft
+              - generic [ref=e853]: 
+          - generic [ref=e863]:
+            - heading "MCP 是什么?为什么它是 AI 落地的 “超级翻译官”?从作用到原理一文吃透..." [level=3] [ref=e866]:
+              - link "MCP 是什么?为什么它是 AI 落地的 “超级翻译官”?从作用到原理一文吃透..." [ref=e867] [cursor=pointer]:
+                - /url: http://www.baidu.com/link?url=80jNZQnmhpWjD6FtDSo4-ogdBWlmir_LJzmUF3MToMlODE4gDdYHVwVPGdfLyr2mOUGeZSa4TaXCBpAAuAiyO92z4OeumA7gd6c2csy-NvS
+                - paragraph [ref=e870]:
+                  - generic [ref=e873]:
+                    - emphasis [ref=e874]: MCP
+                    - text: 是什么?为什么它是 AI 落地的 “超级翻译官”?从作用到原理一文吃透...
+            - generic [ref=e879]:
+              - text: 2025年9月29日
+              - generic [ref=e880]:
+                - emphasis [ref=e881]: MCP
+                - text: 遵循CS架构,由三个核心组件构成:MCP主机、MCP客户端(通常集成于主机内部)以及MCP服务器。其中,MCP主机是搭载AI智能体的应用系统(例如聊天应用),负责发起请求;MCP服务器则提供对所需数据和工具的访问权限。它们之间通过MCP协议进行高效通信。 2.1 MCP Host MCP主机是启动连接和查询MCP服务器的AI驱动应用程序,典型...
+            - generic [ref=e882]:
+              - link [ref=e884] [cursor=pointer]:
+                - /url: http://www.baidu.com/link?url=80jNZQnmhpWjD6FtDSo4-ogdBWlmir_LJzmUF3MToMlODE4gDdYHVwVPGdfLyr2mOUGeZSa4TaXCBpAAuAiyO92z4OeumA7gd6c2csy-NvS
+              - link [ref=e888] [cursor=pointer]:
+                - /url: http://www.baidu.com/link?url=80jNZQnmhpWjD6FtDSo4-ogdBWlmir_LJzmUF3MToMlODE4gDdYHVwVPGdfLyr2mOUGeZSa4TaXCBpAAuAiyO92z4OeumA7gd6c2csy-NvS
+              - link [ref=e892] [cursor=pointer]:
+                - /url: http://www.baidu.com/link?url=80jNZQnmhpWjD6FtDSo4-ogdBWlmir_LJzmUF3MToMlODE4gDdYHVwVPGdfLyr2mOUGeZSa4TaXCBpAAuAiyO92z4OeumA7gd6c2csy-NvS
+              - link "5" [ref=e896] [cursor=pointer]:
+                - /url: http://www.baidu.com/link?url=80jNZQnmhpWjD6FtDSo4-ogdBWlmir_LJzmUF3MToMlODE4gDdYHVwVPGdfLyr2mOUGeZSa4TaXCBpAAuAiyO92z4OeumA7gd6c2csy-NvS
+                - generic [ref=e899]:
+                  - generic [ref=e900]: 
+                  - text: "5"
+            - link "头像 CSDN博客" [ref=e905] [cursor=pointer]:
+              - /url: http://www.baidu.com/link?url=80jNZQnmhpWjD6FtDSo4-ogdBWlmir_LJzmUF3MToMlODE4gDdYHVwVPGdfLyr2mOUGeZSa4TaXCBpAAuAiyO92z4OeumA7gd6c2csy-NvS
+              - img "头像" [ref=e908]
+              - generic [ref=e909]: CSDN博客
+              - generic [ref=e911]: 
+          - generic [ref=e915]:
+            - heading "一文带你了解MCP概念、核心架构、工作原理及应用场景-CSDN博客" [level=3] [ref=e918]:
+              - link "一文带你了解MCP概念、核心架构、工作原理及应用场景-CSDN博客" [ref=e919] [cursor=pointer]:
+                - /url: http://www.baidu.com/link?url=lG5wngdTjDcrV5V5KlSN1dQqibSQJEsovBRv7xwIubsLBKylZ0tYsrTp8HVTd7y6DI0pD2wkEHqm0G0nDp8tjK4s13T5Tf0WYd9VYuIK8tu
+                - paragraph [ref=e922]:
+                  - generic [ref=e925]:
+                    - text: 一文带你了解
+                    - emphasis [ref=e926]: MCP
+                    - text: 概念、核心架构、工作原理及应用场景-CSDN博客
+            - generic [ref=e931]:
+              - text: 2025年6月30日
+              - generic [ref=e932]:
+                - emphasis [ref=e933]: MCP
+                - text: 采用 C/S 架构,包含MCP 主机(Hosts)、MCP 客户端(Clients)和 MCP 服务器(Servers)三个核心组件。其中,MCP 主机是发起请求的大模型(LLM)应用程序,如 Claude Desktop、IDE 或 AI 工具等;MCP 客户端在主机程序内部,与 MCP 服务器保持 1:1 的连接;MCP 服务器则为 MCP 客户端提供上下文、工具和 prompt ...
+            - generic [ref=e934]:
+              - link [ref=e935] [cursor=pointer]:
+                - /url: http://www.baidu.com/link?url=lG5wngdTjDcrV5V5KlSN1dQqibSQJEsovBRv7xwIubsLBKylZ0tYsrTp8HVTd7y6DI0pD2wkEHqm0G0nDp8tjK4s13T5Tf0WYd9VYuIK8tu
+              - link [ref=e939] [cursor=pointer]:
+                - /url: http://www.baidu.com/link?url=lG5wngdTjDcrV5V5KlSN1dQqibSQJEsovBRv7xwIubsLBKylZ0tYsrTp8HVTd7y6DI0pD2wkEHqm0G0nDp8tjK4s13T5Tf0WYd9VYuIK8tu
+              - link [ref=e943] [cursor=pointer]:
+                - /url: http://www.baidu.com/link?url=lG5wngdTjDcrV5V5KlSN1dQqibSQJEsovBRv7xwIubsLBKylZ0tYsrTp8HVTd7y6DI0pD2wkEHqm0G0nDp8tjK4s13T5Tf0WYd9VYuIK8tu
+              - link [ref=e947] [cursor=pointer]:
+                - /url: http://www.baidu.com/link?url=lG5wngdTjDcrV5V5KlSN1dQqibSQJEsovBRv7xwIubsLBKylZ0tYsrTp8HVTd7y6DI0pD2wkEHqm0G0nDp8tjK4s13T5Tf0WYd9VYuIK8tu
+              - link "5" [ref=e951] [cursor=pointer]:
+                - /url: http://www.baidu.com/link?url=lG5wngdTjDcrV5V5KlSN1dQqibSQJEsovBRv7xwIubsLBKylZ0tYsrTp8HVTd7y6DI0pD2wkEHqm0G0nDp8tjK4s13T5Tf0WYd9VYuIK8tu
+                - generic [ref=e956]:
+                  - generic [ref=e957]: 
+                  - text: "5"
+            - link "头像 CSDN博客" [ref=e962] [cursor=pointer]:
+              - /url: http://www.baidu.com/link?url=lG5wngdTjDcrV5V5KlSN1dQqibSQJEsovBRv7xwIubsLBKylZ0tYsrTp8HVTd7y6DI0pD2wkEHqm0G0nDp8tjK4s13T5Tf0WYd9VYuIK8tu
+              - img "头像" [ref=e965]
+              - generic [ref=e966]: CSDN博客
+              - generic [ref=e968]: 
+          - generic [ref=e972]:
+            - heading "MCP协议:让AI应用开发像「搭积木」一样简单" [level=3] [ref=e975]:
+              - link "MCP协议:让AI应用开发像「搭积木」一样简单" [ref=e976] [cursor=pointer]:
+                - /url: http://www.baidu.com/link?url=jeTrkxqdt_-62ms5CUvux3FJoaqlJV4WaBGB4Pd1INy0Y-XX85SNW0m3T4IXQS8aQi6WQ6SeXXyRwezP-yLXRZIPpvHfuuzf9Rx4DR8GsvO
+                - paragraph [ref=e979]:
+                  - generic [ref=e982]:
+                    - emphasis [ref=e983]: MCP
+                    - text: 协议:让AI应用开发像「搭积木」一样简单
+            - generic [ref=e984]:
+              - link [ref=e986] [cursor=pointer]:
+                - /url: http://www.baidu.com/link?url=jeTrkxqdt_-62ms5CUvux3FJoaqlJV4WaBGB4Pd1INy0Y-XX85SNW0m3T4IXQS8aQi6WQ6SeXXyRwezP-yLXRZIPpvHfuuzf9Rx4DR8GsvO
+              - generic [ref=e991]:
+                - generic [ref=e996]:
+                  - text: 7天前
+                  - generic [ref=e997]:
+                    - emphasis [ref=e998]: MCP
+                    - text: 的架构其实不复杂，核心三个角色：1. 主机（Host）——也就是你的AI应用本身，比如Claude Desktop、Cursor IDE，或者你自己开发的AI产品。它负责整体流程控制。2. 客户端（Client）——嵌在主机里，每个已连接的工具对应一个客户端。它负责和对应的服务端对话。3. 服务端（Server）——每个工具或数据源背后都...
+                - link "头像 发哥的技术分享" [ref=e1003] [cursor=pointer]:
+                  - /url: http://www.baidu.com/link?url=jeTrkxqdt_-62ms5CUvux3FJoaqlJV4WaBGB4Pd1INy0Y-XX85SNW0m3T4IXQS8aQi6WQ6SeXXyRwezP-yLXRZIPpvHfuuzf9Rx4DR8GsvO
+                  - img "头像" [ref=e1006]
+                  - generic [ref=e1007]: 发哥的技术分享
+                  - generic [ref=e1009]: 
+          - generic [ref=e1013]:
+            - heading "银联MCP智能支付服务解决方案" [level=3] [ref=e1016]:
+              - link "银联MCP智能支付服务解决方案" [ref=e1017] [cursor=pointer]:
+                - /url: http://www.baidu.com/link?url=J9SE4xUmLj0TSRqXIJEgjZBGW2L36hipyJIoV9BC4Qsb4e5YOHR_-0rSd0Q8O1cyfS88o5woLY_OJ0wpms-dMq
+                - paragraph [ref=e1020]:
+                  - generic [ref=e1023]:
+                    - text: 银联
+                    - emphasis [ref=e1024]: MCP
+                    - text: 智能支付服务解决方案
+            - generic [ref=e1025]:
+              - link [ref=e1027] [cursor=pointer]:
+                - /url: http://www.baidu.com/link?url=J9SE4xUmLj0TSRqXIJEgjZBGW2L36hipyJIoV9BC4Qsb4e5YOHR_-0rSd0Q8O1cyfS88o5woLY_OJ0wpms-dMq
+              - generic [ref=e1032]:
+                - generic [ref=e1038]:
+                  - emphasis [ref=e1039]: MCP
+                  - text: "二维码支付 在智能对话中实时生成并展示支付二维码,用户使用云闪付APP等支持银联二维码的支付工具扫码即可完成付款动作。 MCP跨境支付 银联国际发布MCP跨境支付: https://open.unionpayintl.com/#/home/introduction/paybylink-"
+                  - emphasis [ref=e1040]: mcp
+                  - text: "-server/onLine 场景示例 行程规划助手 ..."
+                - link "数字金融生长力" [ref=e1045] [cursor=pointer]:
+                  - /url: http://www.baidu.com/link?url=J9SE4xUmLj0TSRqXIJEgjZBGW2L36hipyJIoV9BC4Qsb4e5YOHR_-0rSd0Q8O1cyfS88o5woLY_OJ0wpms-dMq
+                  - generic [ref=e1046]: 数字金融生长力
+                  - generic [ref=e1048]: 
+        - generic [ref=e1051]:
+          - generic [ref=e1052]: 相关搜索
+          - table [ref=e1053]:
+            - rowgroup [ref=e1054]:
+              - row "mcp企查查 mcp-1是什么细胞因子" [ref=e1055]:
+                - cell "mcp企查查" [ref=e1056]:
+                  - link "mcp企查查" [ref=e1057] [cursor=pointer]:
+                    - /url: /s?wd=mcp%E4%BC%81%E6%9F%A5%E6%9F%A5&rsf=101531151&rsp=0&f=1&rs_src=0&rsv_pq=a9b69f4907316a5b&rsv_t=b411eHdGBGwlwfpWRJr3vUGpm2BkVI8M%2FB%2Fpsem0wHhRkrGv%2FQCCCoe8ySQ&rsv_dl=brs_28338_1
+                    - generic [ref=e1059]: mcp企查查
+                - cell "mcp-1是什么细胞因子" [ref=e1060]:
+                  - link "mcp-1是什么细胞因子" [ref=e1061] [cursor=pointer]:
+                    - /url: /s?wd=mcp-1%E6%98%AF%E4%BB%80%E4%B9%88%E7%BB%86%E8%83%9E%E5%9B%A0%E5%AD%90&rsf=101533803&rsp=1&f=1&rs_src=0&rsv_pq=a9b69f4907316a5b&rsv_t=b411eHdGBGwlwfpWRJr3vUGpm2BkVI8M%2FB%2Fpsem0wHhRkrGv%2FQCCCoe8ySQ&rsv_dl=brs_28338_2
+                    - generic [ref=e1063]: mcp-1是什么细胞因子
+              - row "肯德基mcp mcp是啥" [ref=e1064]:
+                - cell "肯德基mcp" [ref=e1065]:
+                  - link "肯德基mcp" [ref=e1066] [cursor=pointer]:
+                    - /url: /s?wd=%E8%82%AF%E5%BE%B7%E5%9F%BAmcp&rsf=101531151&rsp=2&f=1&rs_src=0&rsv_pq=a9b69f4907316a5b&rsv_t=b411eHdGBGwlwfpWRJr3vUGpm2BkVI8M%2FB%2Fpsem0wHhRkrGv%2FQCCCoe8ySQ&rsv_dl=brs_28338_3
+                    - generic [ref=e1068]: 肯德基mcp
+                - cell "mcp是啥" [ref=e1069]:
+                  - link "mcp是啥" [ref=e1070] [cursor=pointer]:
+                    - /url: /s?wd=mcp%E6%98%AF%E5%95%A5&rsf=101531161&rsp=3&f=1&rs_src=0&rsv_pq=a9b69f4907316a5b&rsv_t=b411eHdGBGwlwfpWRJr3vUGpm2BkVI8M%2FB%2Fpsem0wHhRkrGv%2FQCCCoe8ySQ&rsv_dl=brs_28338_4
+                    - generic [ref=e1072]: mcp是啥
+              - row "mcp服务端配置 mcp检查是什么意思" [ref=e1073]:
+                - cell "mcp服务端配置" [ref=e1074]:
+                  - link "mcp服务端配置" [ref=e1075] [cursor=pointer]:
+                    - /url: /s?wd=mcp%E6%9C%8D%E5%8A%A1%E7%AB%AF%E9%85%8D%E7%BD%AE&rsf=101531151&rsp=4&f=1&rs_src=0&rsv_pq=a9b69f4907316a5b&rsv_t=b411eHdGBGwlwfpWRJr3vUGpm2BkVI8M%2FB%2Fpsem0wHhRkrGv%2FQCCCoe8ySQ&rsv_dl=brs_28338_5
+                    - generic [ref=e1077]: mcp服务端配置
+                - cell "mcp检查是什么意思" [ref=e1078]:
+                  - link "mcp检查是什么意思" [ref=e1079] [cursor=pointer]:
+                    - /url: /s?wd=mcp%E6%A3%80%E6%9F%A5%E6%98%AF%E4%BB%80%E4%B9%88%E6%84%8F%E6%80%9D&rsf=101533101&rsp=5&f=1&rs_src=0&rsv_pq=a9b69f4907316a5b&rsv_t=b411eHdGBGwlwfpWRJr3vUGpm2BkVI8M%2FB%2Fpsem0wHhRkrGv%2FQCCCoe8ySQ&rsv_dl=brs_28338_6
+                    - generic [ref=e1081]: mcp检查是什么意思
+              - row "mcp接入deepseek详细步骤 mcp是什么软件" [ref=e1082]:
+                - cell "mcp接入deepseek详细步骤" [ref=e1083]:
+                  - link "mcp接入deepseek详细步骤" [ref=e1084] [cursor=pointer]:
+                    - /url: /s?wd=mcp%E6%8E%A5%E5%85%A5deepseek%E8%AF%A6%E7%BB%86%E6%AD%A5%E9%AA%A4&rsf=101531151&rsp=6&f=1&rs_src=0&rsv_pq=a9b69f4907316a5b&rsv_t=b411eHdGBGwlwfpWRJr3vUGpm2BkVI8M%2FB%2Fpsem0wHhRkrGv%2FQCCCoe8ySQ&rsv_dl=brs_28338_7
+                    - generic [ref=e1086]: mcp接入deepseek详细步骤
+                - cell "mcp是什么软件" [ref=e1087]:
+                  - link "mcp是什么软件" [ref=e1088] [cursor=pointer]:
+                    - /url: /s?wd=mcp%E6%98%AF%E4%BB%80%E4%B9%88%E8%BD%AF%E4%BB%B6&rsf=101531101&rsp=7&f=1&rs_src=0&rsv_pq=a9b69f4907316a5b&rsv_t=b411eHdGBGwlwfpWRJr3vUGpm2BkVI8M%2FB%2Fpsem0wHhRkrGv%2FQCCCoe8ySQ&rsv_dl=brs_28338_8
+                    - generic [ref=e1090]: mcp是什么软件
+              - row "mimo的mcp客户端用的是什么 mcp通信协议" [ref=e1091]:
+                - cell "mimo的mcp客户端用的是什么" [ref=e1092]:
+                  - link "mimo的mcp客户端用的是什么" [ref=e1093] [cursor=pointer]:
+                    - /url: /s?wd=mimo%E7%9A%84mcp%E5%AE%A2%E6%88%B7%E7%AB%AF%E7%94%A8%E7%9A%84%E6%98%AF%E4%BB%80%E4%B9%88&rsf=101531151&rsp=8&f=1&rs_src=0&rsv_pq=a9b69f4907316a5b&rsv_t=b411eHdGBGwlwfpWRJr3vUGpm2BkVI8M%2FB%2Fpsem0wHhRkrGv%2FQCCCoe8ySQ&rsv_dl=brs_28338_9
+                    - generic [ref=e1095]: mimo的mcp客户端用的是什么
+                - cell "mcp通信协议" [ref=e1096]:
+                  - link "mcp通信协议" [ref=e1097] [cursor=pointer]:
+                    - /url: /s?wd=mcp%E9%80%9A%E4%BF%A1%E5%8D%8F%E8%AE%AE&rsf=101531161&rsp=9&f=1&rs_src=0&rsv_pq=a9b69f4907316a5b&rsv_t=b411eHdGBGwlwfpWRJr3vUGpm2BkVI8M%2FB%2Fpsem0wHhRkrGv%2FQCCCoe8ySQ&rsv_dl=brs_28338_10
+                    - generic [ref=e1099]: mcp通信协议
+      - generic [ref=e1102]:
+        - link "上一页":
+          - /url: ""
+          - img "上一页"
+        - strong [ref=e1103]:
+          - generic [ref=e1104]: "1"
+        - link "2" [ref=e1105] [cursor=pointer]:
+          - /url: /s?wd=mcp&pn=10&oq=mcp&ie=utf-8&usm=4&fenlei=256&rsv_idx=1&rsv_pq=a9b69f4907316a5b&rsv_t=b411eHdGBGwlwfpWRJr3vUGpm2BkVI8M%2FB%2Fpsem0wHhRkrGv%2FQCCCoe8ySQ&topic_pn=
+          - generic [ref=e1106]: "2"
+        - link "3" [ref=e1107] [cursor=pointer]:
+          - /url: /s?wd=mcp&pn=20&oq=mcp&ie=utf-8&usm=4&fenlei=256&rsv_idx=1&rsv_pq=a9b69f4907316a5b&rsv_t=b411eHdGBGwlwfpWRJr3vUGpm2BkVI8M%2FB%2Fpsem0wHhRkrGv%2FQCCCoe8ySQ&topic_pn=
+          - generic [ref=e1108]: "3"
+        - link "4" [ref=e1109] [cursor=pointer]:
+          - /url: /s?wd=mcp&pn=30&oq=mcp&ie=utf-8&usm=4&fenlei=256&rsv_idx=1&rsv_pq=a9b69f4907316a5b&rsv_t=b411eHdGBGwlwfpWRJr3vUGpm2BkVI8M%2FB%2Fpsem0wHhRkrGv%2FQCCCoe8ySQ&topic_pn=
+          - generic [ref=e1110]: "4"
+        - link "5" [ref=e1111] [cursor=pointer]:
+          - /url: /s?wd=mcp&pn=40&oq=mcp&ie=utf-8&usm=4&fenlei=256&rsv_idx=1&rsv_pq=a9b69f4907316a5b&rsv_t=b411eHdGBGwlwfpWRJr3vUGpm2BkVI8M%2FB%2Fpsem0wHhRkrGv%2FQCCCoe8ySQ&topic_pn=
+          - generic [ref=e1112]: "5"
+        - link "6" [ref=e1113] [cursor=pointer]:
+          - /url: /s?wd=mcp&pn=50&oq=mcp&ie=utf-8&usm=4&fenlei=256&rsv_idx=1&rsv_pq=a9b69f4907316a5b&rsv_t=b411eHdGBGwlwfpWRJr3vUGpm2BkVI8M%2FB%2Fpsem0wHhRkrGv%2FQCCCoe8ySQ&topic_pn=
+          - generic [ref=e1114]: "6"
+        - link "7" [ref=e1115] [cursor=pointer]:
+          - /url: /s?wd=mcp&pn=60&oq=mcp&ie=utf-8&usm=4&fenlei=256&rsv_idx=1&rsv_pq=a9b69f4907316a5b&rsv_t=b411eHdGBGwlwfpWRJr3vUGpm2BkVI8M%2FB%2Fpsem0wHhRkrGv%2FQCCCoe8ySQ&topic_pn=
+          - generic [ref=e1116]: "7"
+        - link "8" [ref=e1117] [cursor=pointer]:
+          - /url: /s?wd=mcp&pn=70&oq=mcp&ie=utf-8&usm=4&fenlei=256&rsv_idx=1&rsv_pq=a9b69f4907316a5b&rsv_t=b411eHdGBGwlwfpWRJr3vUGpm2BkVI8M%2FB%2Fpsem0wHhRkrGv%2FQCCCoe8ySQ&topic_pn=
+          - generic [ref=e1118]: "8"
+        - link "9" [ref=e1119] [cursor=pointer]:
+          - /url: /s?wd=mcp&pn=80&oq=mcp&ie=utf-8&usm=4&fenlei=256&rsv_idx=1&rsv_pq=a9b69f4907316a5b&rsv_t=b411eHdGBGwlwfpWRJr3vUGpm2BkVI8M%2FB%2Fpsem0wHhRkrGv%2FQCCCoe8ySQ&topic_pn=
+          - generic [ref=e1120]: "9"
+        - link "10" [ref=e1121] [cursor=pointer]:
+          - /url: /s?wd=mcp&pn=90&oq=mcp&ie=utf-8&usm=4&fenlei=256&rsv_idx=1&rsv_pq=a9b69f4907316a5b&rsv_t=b411eHdGBGwlwfpWRJr3vUGpm2BkVI8M%2FB%2Fpsem0wHhRkrGv%2FQCCCoe8ySQ&topic_pn=
+          - generic [ref=e1122]: "10"
+        - link "下一页" [ref=e1123] [cursor=pointer]:
+          - /url: /s?wd=mcp&pn=10&oq=mcp&ie=utf-8&usm=4&fenlei=256&rsv_idx=1&rsv_pq=a9b69f4907316a5b&rsv_t=b411eHdGBGwlwfpWRJr3vUGpm2BkVI8M%2FB%2Fpsem0wHhRkrGv%2FQCCCoe8ySQ&topic_pn=&rsv_page=1
+          - img "下一页" [ref=e1124]
+      - generic [ref=e1127]:
+        - link "帮助" [ref=e1128] [cursor=pointer]:
+          - /url: https://help.baidu.com/question?prod_id=1
+        - link "举报" [ref=e1129] [cursor=pointer]:
+          - /url: https://help.baidu.com/jubao?source=search
+        - link "用户反馈" [ref=e1130] [cursor=pointer]:
+          - /url: javascript:;
+        - link "企业推广" [ref=e1131] [cursor=pointer]:
+          - /url: https://e.baidu.com/lp/search/?refer=1298

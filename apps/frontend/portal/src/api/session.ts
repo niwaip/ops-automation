@@ -5,7 +5,7 @@ export type SessionState = 'IDLE' | 'RUNNING' | 'HUMAN_CONTROL' | 'CLOSED' | 'ER
 export type ControlMode = 'AGENT_RUNNING' | 'HUMAN_CONTROL';
 
 export interface WorkerEndpoints {
-  novnc: string;
+  novnc?: string;
   cdp: string;
   vnc?: string;
 }

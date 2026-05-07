@@ -1,5 +1,4 @@
 import { Injectable, Logger, OnModuleDestroy } from '@nestjs/common';
-import * as http from 'http';
 
 export interface TemplateStep {
   step_id: string;
@@ -36,66 +35,34 @@ export interface ExecutionResult {
 @Injectable()
 export class CdpExecutor implements OnModuleDestroy {
   private readonly logger = new Logger(CdpExecutor.name);
-
-  // Codegen API endpoint in browser-chrome container
-  private readonly codegenHost = process.env.CDP_HOST || 'ops-browser-chrome';
-  private readonly codegenPort = parseInt(process.env.CODEGEN_API_PORT || '3011', 10);
+  private readonly browserWorkerUrl = process.env.BROWSER_WORKER_URL || 'http://ops-browser-worker:3004';
 
   async onModuleDestroy() {
     // No persistent browser connection to close
     this.logger.log('CdpExecutor destroyed');
   }
 
-  /**
-   * Make HTTP request to codegen API
-   */
-  private async makeRequest(path: string, method: string = 'GET', body?: any): Promise<any> {
-    return new Promise<any>((resolve, reject) => {
-      const bodyStr = body ? JSON.stringify(body) : '';
-      this.logger.log(`Making ${method} request to ${path} with body: ${bodyStr}`);
-
-      const options = {
-        hostname: this.codegenHost,
-        port: this.codegenPort,
-        path: path,
-        method: method,
-        headers: {
-          'Content-Type': 'application/json',
-          'Content-Length': Buffer.byteLength(bodyStr),
-        },
-      };
-
-      const req = http.request(options, (res) => {
-        let data = '';
-        res.on('data', (chunk) => data += chunk);
-        res.on('end', () => {
-          try {
-            const result = JSON.parse(data);
-            this.logger.log(`Response from ${path}: ${JSON.stringify(result)}`);
-            resolve(result);
-          } catch (e) {
-            this.logger.error(`Failed to parse response: ${data}`);
-            reject(new Error(`Failed to parse response: ${data}`));
-          }
-        });
-      });
-
-      req.on('error', (err) => {
-        this.logger.error(`HTTP request error: ${err.message}`);
-        reject(err);
-      });
-
-      req.setTimeout(60000, () => {
-        req.destroy();
-        reject(new Error('Request timeout'));
-      });
-
-      if (bodyStr) {
-        req.write(bodyStr);
-      }
-
-      req.end();
+  private async postJson<T>(path: string, body: Record<string, unknown>): Promise<T> {
+    this.logger.log(`POST ${path} with body: ${JSON.stringify(body)}`);
+    const response = await fetch(`${this.browserWorkerUrl}${path}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(body),
     });
+
+    const text = await response.text();
+    if (!response.ok) {
+      this.logger.error(`Request failed ${path}: ${response.status} ${text}`);
+      throw new Error(text || `Request failed with status ${response.status}`);
+    }
+
+    try {
+      return JSON.parse(text) as T;
+    } catch {
+      throw new Error(`Failed to parse response: ${text}`);
+    }
   }
 
   /**
@@ -104,18 +71,14 @@ export class CdpExecutor implements OnModuleDestroy {
   async startBrowser(sessionId: string, url: string): Promise<{ success: boolean; error?: string }> {
     try {
       this.logger.log(`Starting browser for session ${sessionId} at ${url}`);
-
-      const result = await this.makeRequest(
-        `/start?session=${encodeURIComponent(sessionId)}&url=${encodeURIComponent(url)}`
-      );
-
-      if (result.status === 'started') {
-        this.logger.log(`Browser started successfully for session ${sessionId}`);
-        return { success: true };
-      } else {
-        this.logger.error(`Failed to start browser: ${result.error || 'Unknown error'}`);
-        return { success: false, error: result.error || 'Failed to start browser' };
-      }
+      const result = await this.postJson<{ success: boolean; message?: string }>('/browser/init', {
+        runtimeSessionId: sessionId,
+        initialUrl: url,
+        backend: 'legacy',
+      });
+      return result.success
+        ? { success: true }
+        : { success: false, error: result.message || 'Failed to start browser' };
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : String(error);
       this.logger.error(`Failed to start browser: ${errorMsg}`);
@@ -131,40 +94,39 @@ export class CdpExecutor implements OnModuleDestroy {
     return this.startBrowser(sid, url);
   }
 
-  /**
-   * Execute a single step by calling codegen API
-   */
   async executeStep(step: TemplateStep, sessionId?: string): Promise<ExecutionResult> {
     this.logger.log(`Executing step ${step.step_id}: ${step.action}`);
 
-    // Map step to action format expected by codegen API
-    const action = this.mapStepToAction(step);
-
     try {
-      const result = await this.makeRequest('/execute', 'POST', {
-        session: sessionId,
-        actions: [action],
+      const backend = 'legacy';
+      const initResult = await this.postJson<{ success: boolean; message?: string }>('/browser/init', {
+        runtimeSessionId: sessionId,
+        backend,
       });
-
-      if (result.status === 'completed' && result.results && result.results.length > 0) {
-        const stepResult = result.results[0];
+      if (!initResult.success) {
+        throw new Error(initResult.message || 'Failed to initialize browser');
+      }
+      const result = await this.postJson<{
+        success: boolean;
+        results: Array<Record<string, unknown>>;
+        message?: string;
+      }>('/browser/execute', {
+        runtimeSessionId: sessionId,
+        backend,
+        commands: [this.mapStepToCommand(step)],
+      });
+      if (Array.isArray(result.results) && result.results.length > 0) {
+        const stepResult = result.results[0] || {};
+        const success = stepResult.status !== 'error';
         return {
-          success: stepResult.success,
+          success,
           step_id: step.step_id,
-          step: stepResult.step,
-          action: stepResult.action,
-          error: stepResult.success ? undefined : stepResult.message,
-          message: stepResult.message,
-        };
-      } else if (result.error) {
-        return {
-          success: false,
-          step_id: step.step_id,
-          error: result.error,
+          action: String(stepResult.command || step.action),
+          error: success ? undefined : String(stepResult.message || result.message || 'Step execution failed'),
+          message: String(stepResult.message || result.message || ''),
         };
       }
-
-      return { success: true, step_id: step.step_id };
+      return { success: result.success, step_id: step.step_id, error: result.message };
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : String(error);
       this.logger.error(`Step ${step.step_id} failed: ${errorMsg}`);
@@ -189,55 +151,41 @@ export class CdpExecutor implements OnModuleDestroy {
     return value;
   }
 
-  /**
-   * Map template step to action format for codegen API
-   */
-  private mapStepToAction(step: TemplateStep, params: Record<string, unknown> = {}): any {
-    const action: any = {
-      action: step.action,
-      step_number: step.step_number || parseInt(step.step_id.replace('step-', ''), 10) || 1,
-      on_fail: step.on_fail || 'stop',
-    };
+  private mapStepToCommand(
+    step: TemplateStep,
+    params: Record<string, unknown> = {},
+  ): { tool: string; params: Record<string, unknown> } {
+    const commandParams: Record<string, unknown> = { ...(step.params || {}) };
 
-    // Copy common fields
-    if (step.selector) action.selector = step.selector;
-    if (step.target) action.selector = step.target;
-    if (step.value) action.value = step.value;
-    if (step.url) action.url = step.url;
-    if (step.text) action.value = step.text;
-    if (step.key) action.key = step.key;
-    if (step.duration) action.duration = step.duration;
-    if (step.direction) action.direction = step.direction;
-    if (step.amount) action.amount = step.amount;
-
-    // Handle locator
-    if (step.locator) {
-      action.selector = this.buildSelector(step.locator);
+    if (step.selector && commandParams.selector === undefined) commandParams.selector = step.selector;
+    if (step.target && commandParams.target === undefined) commandParams.target = step.target;
+    if (step.value && commandParams.value === undefined) commandParams.value = step.value;
+    if (step.url && commandParams.url === undefined) commandParams.url = step.url;
+    if (step.text && commandParams.text === undefined) commandParams.text = step.text;
+    if (step.key && commandParams.key === undefined) commandParams.key = step.key;
+    if (step.duration !== undefined && commandParams.duration === undefined) commandParams.duration = step.duration;
+    if (step.direction && commandParams.direction === undefined) commandParams.direction = step.direction;
+    if (step.amount !== undefined && commandParams.amount === undefined) commandParams.amount = step.amount;
+    if (step.locator && commandParams.selector === undefined) {
+      commandParams.selector = this.buildSelector(step.locator);
     }
-
-    // Handle params
-    if (step.params) {
-      Object.assign(action, step.params);
-      if (step.params.url) action.url = step.params.url;
-      if (step.params.value) action.value = step.params.value;
-      if (step.params.text) action.value = step.params.text;
-      if (step.params.selector) action.selector = step.params.selector;
-      if (step.params.target) action.selector = step.params.target;
-    }
-
-    // Handle wait
     if (step.wait) {
-      action.wait_type = step.wait.type;
-      action.wait_value = step.wait.value;
-      action.timeout = step.wait.timeout;
+      if (step.wait.value && commandParams.selector === undefined) {
+        commandParams.selector = step.wait.value;
+      }
+      if (step.wait.timeout !== undefined && commandParams.duration === undefined) {
+        commandParams.duration = step.wait.timeout;
+      }
     }
 
-    // Replace ${param_name} placeholders with actual values
-    for (const key of Object.keys(action)) {
-      action[key] = this.replaceParams(action[key], params);
+    for (const key of Object.keys(commandParams)) {
+      commandParams[key] = this.replaceParams(commandParams[key], params);
     }
 
-    return action;
+    return {
+      tool: step.action,
+      params: commandParams,
+    };
   }
 
   /**
@@ -278,49 +226,52 @@ export class CdpExecutor implements OnModuleDestroy {
     steps: TemplateStep[],
     sessionId?: string,
     params: Record<string, unknown> = {},
+    backend: string = 'legacy',
   ): Promise<ExecutionResult[]> {
     this.logger.log(`Executing ${steps.length} steps for session ${sessionId}`);
     this.logger.debug(`Steps: ${JSON.stringify(steps)}, Params: ${JSON.stringify(params)}`);
-
-    // Map all steps to actions format with param substitution
-    const actions = steps.map((step, index) => ({
-      ...this.mapStepToAction(step, params),
-      step_number: step.step_number || index + 1,
-    }));
-
-    this.logger.log(`Mapped actions: ${JSON.stringify(actions)}`);
+    const commands = steps.map((step) => this.mapStepToCommand(step, params));
+    this.logger.log(`Mapped commands: ${JSON.stringify(commands)}`);
 
     try {
-      // Send all actions in one request
-      const result = await this.makeRequest('/execute', 'POST', {
-        session: sessionId,
-        actions: actions,
+      const initResult = await this.postJson<{ success: boolean; message?: string }>('/browser/init', {
+        runtimeSessionId: sessionId,
+        backend,
+      });
+      if (!initResult.success) {
+        throw new Error(initResult.message || 'Failed to initialize browser');
+      }
+
+      const result = await this.postJson<{
+        success: boolean;
+        results: Array<Record<string, unknown>>;
+        message?: string;
+      }>('/browser/execute', {
+        runtimeSessionId: sessionId,
+        backend,
+        commands,
       });
 
       this.logger.log(`Execution result: ${JSON.stringify(result)}`);
 
-      if (result.status === 'completed' && result.results) {
+      if (Array.isArray(result.results)) {
         return result.results.map((r: any, i: number) => ({
-          success: r.success,
+          success: r.status !== 'error',
           step_id: steps[i]?.step_id || `step-${i + 1}`,
-          step: r.step,
-          action: r.action,
-          error: r.success ? undefined : r.message,
-          message: r.message,
+          action: r.command || steps[i]?.action,
+          error: r.status === 'error' ? r.message : undefined,
+          message: r.message || r.stdout,
           screenshot: r.screenshot,
-          text: r.text,
-          html: r.html,
-        }));
-      } else if (result.error) {
-        // All steps failed
-        return steps.map((step) => ({
-          success: false,
-          step_id: step.step_id,
-          error: result.error,
+          text: r.data?.text || r.text,
+          html: r.html || r.stdout,
         }));
       }
 
-      return steps.map((step) => ({ success: true, step_id: step.step_id }));
+      return steps.map((step) => ({
+        success: false,
+        step_id: step.step_id,
+        error: result.message || 'Execution failed',
+      }));
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : String(error);
       this.logger.error(`Execution failed: ${errorMsg}`);
@@ -333,13 +284,83 @@ export class CdpExecutor implements OnModuleDestroy {
     }
   }
 
+  async captureFinalState(
+    sessionId?: string,
+    backend: string = 'legacy',
+  ): Promise<ExecutionResult> {
+    try {
+      const result = await this.postJson<{
+        success: boolean;
+        results: Array<Record<string, unknown>>;
+        message?: string;
+      }>('/browser/execute', {
+        runtimeSessionId: sessionId,
+        backend,
+        commands: [
+          {
+            tool: 'read_page',
+            params: { max_length: 4000 },
+          },
+          {
+            tool: 'screenshot',
+            params: {},
+          },
+        ],
+      });
+
+      const rawPage: any = result.results?.[0] || {};
+      const rawPageData: any = rawPage.data || {};
+      const rawScreenshot: any = result.results?.[1] || {};
+      const pageSuccess = rawPage.status !== 'error';
+      const screenshotSuccess = !rawScreenshot?.status || rawScreenshot.status !== 'error';
+      return {
+        success: pageSuccess,
+        step_id: 'final_state',
+        action: 'final_state',
+        error: pageSuccess
+          ? undefined
+          : String(
+              rawPage.message ||
+                rawScreenshot.message ||
+                result.message ||
+                'Final state capture failed',
+            ),
+        message: String(rawPage.message || rawPage.stdout || result.message || ''),
+        screenshot:
+          screenshotSuccess && typeof rawScreenshot.screenshot === 'string'
+            ? rawScreenshot.screenshot
+            : (typeof rawPage.screenshot === 'string' ? rawPage.screenshot : undefined),
+        text:
+          typeof rawPageData.text === 'string'
+            ? rawPageData.text
+            : (typeof rawPage.text === 'string' ? rawPage.text : undefined),
+        html:
+          typeof rawPage.html === 'string'
+            ? rawPage.html
+            : (typeof rawPage.stdout === 'string' ? rawPage.stdout : undefined),
+      };
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : String(error);
+      this.logger.error(`Final state capture failed: ${errorMsg}`);
+      return {
+        success: false,
+        step_id: 'final_state',
+        action: 'final_state',
+        error: errorMsg,
+      };
+    }
+  }
+
   /**
    * Close browser connection (stop codegen)
    */
   async closeBrowser(sessionId?: string): Promise<void> {
     try {
-      const result = await this.makeRequest('/stop');
-      this.logger.log(`Browser stopped: ${result.status}`);
+      const result = await this.postJson<{ success: boolean }>('/browser/reset', {
+        runtimeSessionId: sessionId,
+        backend: 'legacy',
+      });
+      this.logger.log(`Browser stopped: ${result.success}`);
     } catch (error) {
       this.logger.warn(`Failed to stop browser: ${error}`);
     }

@@ -1689,10 +1689,10 @@ class CodegenHandler(BaseHTTPRequestHandler):
             selector = action.get('selector')
             return ai_get_text(selector)
 
-        elif action_type == 'smart_search':
+        elif action_type in ('search', 'smart_search'):
             query = action.get('query')
             if not query:
-                return {'status': 'error', 'error': 'Missing query for smart_search action'}
+                return {'status': 'error', 'error': f'Missing query for {action_type} action'}
             return ai_smart_search(query)
 
         else:

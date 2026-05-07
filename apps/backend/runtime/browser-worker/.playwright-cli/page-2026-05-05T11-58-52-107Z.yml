@@ -1,0 +1,66 @@
+- generic [active] [ref=e1]:
+  - banner [ref=e2]:
+    - button "Skip to content" [ref=e4] [cursor=pointer]:
+      - generic [ref=e6]: Skip to content
+    - button "Accessibility Feedback" [ref=e7] [cursor=pointer]:
+      - generic [ref=e9]: Accessibility Feedback
+    - generic [ref=e10]:
+      - link "Back to Bing search" [ref=e11] [cursor=pointer]:
+        - /url: /?FORM=Z9FD1
+        - heading "Back to Bing search" [level=1] [ref=e12]
+      - search [ref=e13]:
+        - button "Search" [ref=e16] [cursor=pointer]
+        - searchbox "Enter your search here - Search suggestions will show as you type" [ref=e17]: mcp 点击第一个结果
+    - complementary "Account Rewards and Preferences" [ref=e18]:
+      - button "Microsoft Rewards" [ref=e19] [cursor=pointer]:
+        - generic [ref=e21]:
+          - generic [ref=e22]: Rewards
+          - img [ref=e24]
+      - link "Sign in" [ref=e36] [cursor=pointer]:
+        - /url: javascript:void(0)
+        - generic "Sign in" [ref=e37]
+    - generic:
+      - generic "国内版" [ref=e38]
+      - generic "国际版" [ref=e39] [cursor=pointer]
+    - navigation "Search Filter" [ref=e40]:
+      - list [ref=e41]:
+        - listitem [ref=e42]:
+          - link "Web" [ref=e43] [cursor=pointer]:
+            - /url: /?scope=web&FORM=HDRSC1
+        - listitem [ref=e44]:
+          - link "Images" [ref=e45] [cursor=pointer]:
+            - /url: /images/search?q=mcp+%e7%82%b9%e5%87%bb%e7%ac%ac%e4%b8%80%e4%b8%aa%e7%bb%93%e6%9e%9c&FORM=HDRSC2
+        - listitem [ref=e46]:
+          - link "Videos" [ref=e47] [cursor=pointer]:
+            - /url: /videos/search?q=mcp+%e7%82%b9%e5%87%bb%e7%ac%ac%e4%b8%80%e4%b8%aa%e7%bb%93%e6%9e%9c&FORM=HDRSC3
+        - listitem [ref=e48]:
+          - link "Academic" [ref=e49] [cursor=pointer]:
+            - /url: /academic/search?q=mcp+%e7%82%b9%e5%87%bb%e7%ac%ac%e4%b8%80%e4%b8%aa%e7%bb%93%e6%9e%9c&FORM=HDRSC4
+        - listitem [ref=e50]:
+          - link "Dict" [ref=e51] [cursor=pointer]:
+            - /url: /dict/search?q=mcp+%e7%82%b9%e5%87%bb%e7%ac%ac%e4%b8%80%e4%b8%aa%e7%bb%93%e6%9e%9c&FORM=HDRSC6
+        - listitem [ref=e52]:
+          - link "Maps" [ref=e53] [cursor=pointer]:
+            - /url: /maps?q=mcp+%e7%82%b9%e5%87%bb%e7%ac%ac%e4%b8%80%e4%b8%aa%e7%bb%93%e6%9e%9c&FORM=HDRSC7
+        - listitem [ref=e54]:
+          - button "More" [ref=e55] [cursor=pointer]:
+            - img [ref=e57]
+            - text: More
+  - contentinfo [ref=e59]:
+    - list [ref=e61]:
+      - listitem [ref=e62]:
+        - link "增值电信业务经营许可证：合字B2-20090007" [ref=e63] [cursor=pointer]:
+          - /url: https://dxzhgl.miit.gov.cn/dxxzsp/xkz/xkzgl/resource/qiyereport.jsp?num=caf04fa4-bd8a-4d9e-80b6-2aa1b86c1509&type=yreport
+      - listitem [ref=e64]:
+        - link "京ICP备10036305号-7" [ref=e65] [cursor=pointer]:
+          - /url: https://beian.miit.gov.cn
+      - listitem [ref=e66]:
+        - link "京公网安备11010802047360号" [ref=e67] [cursor=pointer]:
+          - /url: https://beian.mps.gov.cn/#/query/webSearch?code=11010802047360
+      - listitem [ref=e68]:
+        - link "Privacy" [ref=e69] [cursor=pointer]:
+          - /url: http://go.microsoft.com/fwlink/?LinkId=521839
+      - listitem [ref=e70]:
+        - link "Terms" [ref=e71] [cursor=pointer]:
+          - /url: http://go.microsoft.com/fwlink/?LinkID=246338
+  - dialog "Quick Search"
