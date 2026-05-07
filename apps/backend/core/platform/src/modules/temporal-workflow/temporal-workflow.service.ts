@@ -133,7 +133,7 @@ export interface TemporalWorkflowSourceTemplate {
 }
 
 export interface TemporalWorkflowSourceContext {
-  sourceType?: 'template' | 'ai' | 'text' | 'url';
+  sourceType?: 'template' | 'browser_template' | 'ai' | 'text' | 'url';
   referenceUrl?: string;
   userDescription?: string;
   generatedAt?: string;
@@ -175,6 +175,19 @@ export interface TemplateWorkflowDraft {
     fileName?: string;
     format?: string;
     variableCount: number;
+  };
+}
+
+export interface BrowserWorkflowDraft {
+  name: string;
+  description: string;
+  taskQueue: string;
+  workflowDsl: WorkflowDsl;
+  activityDsl: ActivityDsl;
+  browserTemplate: {
+    commandCount: number;
+    placeholderCount: number;
+    placeholders: string[];
   };
 }
 
@@ -264,6 +277,14 @@ interface TemplateWorkflowAiAnalysis {
   outputDescription?: string;
   inputParamDescriptions?: Record<string, string>;
   extraPrompt?: string;
+}
+
+interface BrowserScriptCommand {
+  action: 'goto' | 'click' | 'fill' | 'press' | 'waitForSelector' | 'waitForTimeout';
+  url?: string;
+  selector?: string;
+  value?: string;
+  timeoutMs?: number;
 }
 
 @Injectable()
@@ -489,6 +510,133 @@ export class TemporalWorkflowService {
         fileName: template.fileName,
         format: template.format,
         variableCount: variables.length,
+      },
+    };
+  }
+
+  async generateBrowserWorkflowDraft(
+    data: { script: string; name?: string; description?: string },
+  ): Promise<BrowserWorkflowDraft> {
+    const script = String(data?.script || '').trim();
+    if (!script) {
+      throw new BadRequestException('浏览器模板脚本不能为空');
+    }
+
+    const commands = this.parseBrowserScriptCommands(script);
+    if (commands.length === 0) {
+      throw new BadRequestException('未识别到可执行浏览器指令，请检查脚本格式');
+    }
+
+    const placeholders = this.extractScriptPlaceholders(script);
+    const short = String(Date.now()).slice(-6);
+    const workflowName = this.normalizeName(
+      String(data?.name || '').trim() || `浏览器模板-${short}-工作流`,
+    );
+    const workflowDescription = this.normalizeDescription(
+      String(data?.description || '').trim() || '基于浏览器脚本自动生成的执行工作流',
+    ) || '基于浏览器脚本自动生成的执行工作流';
+    const activityName = '浏览器自动化执行';
+    const activityFn = `browserTemplateRun${short}`;
+    const activityTimeout = this.inferBrowserTemplateTimeout(commands);
+    const inputParams = placeholders.reduce<Record<string, WorkflowInputParamDefinition>>((acc, key) => {
+      acc[key] = {
+        required: true,
+        defaultValue: '',
+        description: `脚本变量 ${key}`,
+        source: 'inferred_from_template',
+        type: 'string',
+        exampleValue: `sample_${key}`,
+      };
+      return acc;
+    }, {});
+
+    const activitySteps = commands.map((command, index) => {
+      const stepConfig: Record<string, unknown> = {
+        action: command.action,
+      };
+      if (command.url) {
+        stepConfig.url = command.url;
+      }
+      if (command.selector) {
+        stepConfig.selector = command.selector;
+      }
+      if (command.value !== undefined) {
+        stepConfig.value = command.value;
+      }
+      if (command.timeoutMs !== undefined) {
+        stepConfig.timeoutMs = command.timeoutMs;
+      }
+      return {
+        name: `${index + 1}. ${this.browserActionLabel(command.action)}`,
+        type: 'browser',
+        timeout: '30s',
+        config: stepConfig,
+        inputParams: {},
+      };
+    });
+
+    return {
+      name: workflowName,
+      description: workflowDescription,
+      taskQueue: 'SKILL_TASK_QUEUE',
+      workflowDsl: {
+        ...DEFAULT_TEMPLATE_WORKFLOW_DSL,
+        name: workflowName,
+        workflowClassName: `BrowserTemplate${short}Workflow`,
+        workflowDefnName: workflowName,
+        taskQueue: 'SKILL_TASK_QUEUE',
+        sourceContext: {
+          sourceType: 'browser_template',
+          generatedAt: new Date().toISOString(),
+          userDescription: workflowDescription,
+          warnings: [
+            '该草稿由浏览器脚本自动转换，请在发布前确认每个步骤的选择器与参数。',
+          ],
+        },
+        inputParams,
+        outputParams: {
+          result: {
+            sourceStep: 'step_1',
+            description: '浏览器执行结果',
+          },
+        },
+        extraPrompt: [
+          '该工作流由浏览器脚本转换而来。',
+          '请保持步骤顺序，按 activity.config.steps 逐步执行浏览器动作。',
+          '优先将输入参数渲染到脚本占位符后执行，避免硬编码业务值。',
+        ].join('\n'),
+        steps: [
+          {
+            id: 'step_1',
+            name: '执行浏览器脚本',
+            type: 'activity',
+            activityRef: `custom:${activityFn}`,
+            activityName,
+            startToCloseTimeout: activityTimeout,
+          },
+        ],
+      },
+      activityDsl: {
+        activities: [
+          {
+            name: activityName,
+            fn: activityFn,
+            timeout: activityTimeout,
+            retryPolicy: { maxRetries: 1, backoffMs: 1000 },
+            handler: 'browser',
+            config: {
+              description: '浏览器脚本执行 Activity（由模板工作流自动生成）',
+              script,
+              commandCount: commands.length,
+              steps: activitySteps,
+            },
+          },
+        ],
+      },
+      browserTemplate: {
+        commandCount: commands.length,
+        placeholderCount: placeholders.length,
+        placeholders,
       },
     };
   }
@@ -752,7 +900,21 @@ export class TemporalWorkflowService {
       generatedCode: item.generatedCode,
       description: item.description,
     }));
-    errors.push(...this.validateAiDraftPlan({ steps: workflowDsl.steps as any }, builtinActivityResources));
+    const customActivityResources = (activityDsl.activities || []).map((activity, index) => ({
+      ref: `custom:${String(activity.fn || activity.name || `activity_${index + 1}`).trim()}`,
+      name: activity.name,
+      fn: activity.fn,
+      timeout: activity.timeout,
+      retryPolicy: activity.retryPolicy,
+      handler: activity.handler,
+      config: activity.config || {},
+      generatedCode: activity.generatedCode,
+      description: undefined,
+    }));
+    errors.push(...this.validateAiDraftPlan(
+      { steps: workflowDsl.steps as any },
+      [...builtinActivityResources, ...customActivityResources],
+    ));
 
     if (!activityDsl.activities || activityDsl.activities.length === 0) {
       warnings.push('No activities defined');
@@ -806,7 +968,15 @@ export class TemporalWorkflowService {
     };
 
     for (const activity of activityDsl.activities) {
-      pushActivity(await this.enrichActivityDefinition(activity));
+      const enriched = await this.enrichActivityDefinition(activity);
+      if (enriched.handler === 'browser') {
+        // Browser activity code evolves frequently (cleanup/error-surface fixes).
+        // Always regenerate to avoid stale persisted generatedCode shadowing latest logic.
+        enriched.generatedCode = this.buildDeterministicActivityCode(enriched) || enriched.generatedCode || undefined;
+      } else if (!enriched.generatedCode) {
+        enriched.generatedCode = this.buildDeterministicActivityCode(enriched) || undefined;
+      }
+      pushActivity(enriched);
     }
 
     for (const step of workflowDsl.steps.filter((item) => item.type === 'activity')) {
@@ -1074,8 +1244,17 @@ export class TemporalWorkflowService {
       if (!activityId) {
         return null;
       }
-      const dbActivity = await this.prisma.activity.findUnique({ where: { id: activityId } });
-      return dbActivity ? this.mapDbActivityToDefinition(dbActivity) : null;
+      if (this.isLikelyUuid(activityId)) {
+        const dbActivity = await this.prisma.activity.findUnique({ where: { id: activityId } }).catch(() => null);
+        if (dbActivity) {
+          return this.mapDbActivityToDefinition(dbActivity);
+        }
+      }
+      // Draft-mode custom refs (e.g. custom:<fn>) may not exist in DB yet.
+      if (activityFromDsl) {
+        return this.enrichActivityDefinition(activityFromDsl);
+      }
+      return null;
     }
 
     if (activityFromDsl) {
@@ -1445,6 +1624,10 @@ export class TemporalWorkflowService {
   }
 
   private buildDeterministicActivityCode(activityDef: ActivityDsl['activities'][number]): string | null {
+    if (activityDef.handler === 'browser') {
+      return this.buildDeterministicBrowserActivityCode(activityDef);
+    }
+
     if (activityDef.handler !== 'carbone') {
       return null;
     }
@@ -1470,6 +1653,11 @@ export class TemporalWorkflowService {
     const templateId = carboneStep.config?.templateId || activityDef.config?.templateId || '';
 
     return [
+      'from typing import Any, Dict',
+      '',
+      'from temporalio import activity',
+      'from temporalio.exceptions import ApplicationError',
+      '',
       'import os',
       'import requests',
       '',
@@ -1557,6 +1745,259 @@ export class TemporalWorkflowService {
       '        "documentId": render_result.get("documentId"),',
       '        "raw": render_result,',
       '    }',
+      '',
+    ].join('\n');
+  }
+
+  private buildDeterministicBrowserActivityCode(activityDef: ActivityDsl['activities'][number]): string | null {
+    const steps = this.normalizeBrowserActivitySteps(activityDef.config?.steps);
+    if (steps.length === 0) {
+      return null;
+    }
+
+    const requiredParams = this.extractBrowserActivityPlaceholders(steps);
+    const firstGotoStep = steps.find((step) => step.action === 'goto');
+    const configuredInitialUrl = typeof firstGotoStep?.config?.url === 'string'
+      ? firstGotoStep.config.url
+      : '';
+
+    return [
+      'from typing import Any, Dict',
+      '',
+      'from temporalio import activity',
+      'from temporalio.exceptions import ApplicationError',
+      '',
+      'import os',
+      'import re',
+      'import uuid',
+      'import requests',
+      '',
+      `@activity.defn(name=${JSON.stringify(activityDef.fn)})`,
+      `async def ${activityDef.fn}(input_data: Dict[str, Any]) -> Dict[str, Any]:`,
+      '    if not isinstance(input_data, dict):',
+      '        raise ApplicationError("input_data 必须是 dict", non_retryable=True)',
+      '',
+      `    configured_steps = ${JSON.stringify(steps)}`,
+      '    if not configured_steps:',
+      '        raise ApplicationError("浏览器 Activity 缺少可执行步骤", non_retryable=True)',
+      '',
+      `    required_params = ${JSON.stringify(requiredParams)}`,
+      '    browser_worker_base_url = (os.getenv("BROWSER_WORKER_URL") or "http://ops-browser-worker:3004").rstrip("/")',
+      '    requested_backend = str(input_data.get("backend") or os.getenv("BROWSER_EXECUTION_BACKEND") or "cli").strip() or "cli"',
+      '    runtime_session_id = str(input_data.get("runtimeSessionId") or "").strip() or f"temporal-browser-{uuid.uuid4().hex}"',
+      `    configured_initial_url = ${JSON.stringify(configuredInitialUrl)}`,
+      '',
+      '    def _stringify(value: Any) -> str:',
+      '        if value is None:',
+      '            return ""',
+      '        if isinstance(value, bool):',
+      '            return "true" if value else "false"',
+      '        return str(value)',
+      '',
+      '    def _is_missing(value: Any) -> bool:',
+      '        if value is None:',
+      '            return True',
+      '        if isinstance(value, str):',
+      '            return not value.strip()',
+      '        return False',
+      '',
+      '    def _resolve_text(template: str) -> str:',
+      '        if not isinstance(template, str) or not template:',
+      '            return ""',
+      '',
+      '        def _replace_braced(match: re.Match[str]) -> str:',
+      '            key = str(match.group(1) or "").strip()',
+      '            if not key:',
+      '                return match.group(0)',
+      '            value = input_data.get(key)',
+      '            return match.group(0) if value is None else _stringify(value)',
+      '',
+      '        def _replace_dollar(match: re.Match[str]) -> str:',
+      '            key = str(match.group(1) or "").strip()',
+      '            if not key:',
+      '                return match.group(0)',
+      '            value = input_data.get(key)',
+      '            return match.group(0) if value is None else _stringify(value)',
+      '',
+      '        rendered = re.sub(r"\\$\\{([^{}]+)\\}", _replace_dollar, template)',
+      '        return re.sub(r"\\{([^{}]+)\\}", _replace_braced, rendered)',
+      '',
+      '    def _resolve_value(value: Any) -> Any:',
+      '        if isinstance(value, str):',
+      '            return _resolve_text(value)',
+      '        if isinstance(value, list):',
+      '            return [_resolve_value(item) for item in value]',
+      '        if isinstance(value, dict):',
+      '            return {str(key): _resolve_value(item) for key, item in value.items()}',
+      '        return value',
+      '',
+      '    missing_params = [key for key in required_params if _is_missing(input_data.get(key))]',
+      '    if missing_params:',
+      '        raise ApplicationError(f"缺少必需参数: {\', \'.join(missing_params)}", non_retryable=True)',
+      '',
+      '    def _build_command(step: Dict[str, Any]) -> Dict[str, Any]:',
+      '        action = str(step.get("action") or "").strip()',
+      '        config = _resolve_value(step.get("config") or {})',
+      '        if action in ("goto", "navigate"):',
+      '            url = _stringify(config.get("url") or config.get("target"))',
+      '            if not url:',
+      '                raise ApplicationError("浏览器步骤 goto 缺少 url", non_retryable=True)',
+      '            return {"tool": "navigate", "params": {"url": url}}',
+      '        if action in ("click", "hover"):',
+      '            target = _stringify(config.get("target") or config.get("selector") or config.get("text"))',
+      '            if not target:',
+      '                raise ApplicationError("浏览器步骤 click 缺少 selector", non_retryable=True)',
+      '            return {"tool": action, "params": {"target": target}}',
+      '        if action in ("fill", "type", "type_text"):',
+      '            target = _stringify(config.get("target") or config.get("selector"))',
+      '            if not target:',
+      '                raise ApplicationError("浏览器步骤 fill 缺少 selector", non_retryable=True)',
+      '            value = _stringify(config.get("value") or config.get("text") or config.get("query"))',
+      '            return {"tool": action, "params": {"target": target, "value": value, "text": value}}',
+      '        if action in ("press", "press_key"):',
+      '            key = _stringify(config.get("key") or config.get("value"))',
+      '            if not key:',
+      '                raise ApplicationError("浏览器步骤 press 缺少按键值", non_retryable=True)',
+      '            params = {"key": key}',
+      '            target = _stringify(config.get("target") or config.get("selector"))',
+      '            if target:',
+      '                params["target"] = target',
+      '            return {"tool": "press_key", "params": params}',
+      '        if action in ("search", "smart_search"):',
+      '            query = _stringify(config.get("query") or config.get("text") or config.get("value"))',
+      '            if not query:',
+      '                raise ApplicationError("浏览器步骤 smart_search 缺少 query", non_retryable=True)',
+      '            return {"tool": action, "params": {"query": query}}',
+      '        if action == "click_result":',
+      '            index = config.get("index")',
+      '            if isinstance(index, str) and index.strip().isdigit():',
+      '                index = int(index.strip())',
+      '            if not isinstance(index, int) or index <= 0:',
+      '                index = 1',
+      '            return {"tool": "click_result", "params": {"index": index}}',
+      '        if action == "waitForSelector":',
+      '            selector = _stringify(config.get("selector"))',
+      '            if not selector:',
+      '                raise ApplicationError("浏览器步骤 waitForSelector 缺少 selector", non_retryable=True)',
+      '            duration = config.get("timeoutMs") or config.get("duration")',
+      '            if isinstance(duration, str) and duration.strip().isdigit():',
+      '                duration = int(duration.strip())',
+      '            if not isinstance(duration, int) or duration <= 0:',
+      '                duration = 30000',
+      '            return {"tool": "wait", "params": {"selector": selector, "duration": duration}}',
+      '        if action in ("waitForTimeout", "wait"):',
+      '            selector = _stringify(config.get("selector") or config.get("target"))',
+      '            duration = config.get("timeoutMs") or config.get("duration")',
+      '            if isinstance(duration, str) and duration.strip().isdigit():',
+      '                duration = int(duration.strip())',
+      '            if not isinstance(duration, int) or duration <= 0:',
+      '                duration = 1000',
+      '            params = {"duration": duration}',
+      '            if selector:',
+      '                params["selector"] = selector',
+      '            return {"tool": "wait", "params": params}',
+      '        if action in ("screenshot", "snapshot", "read_page", "get_text", "switch_latest_tab", "focus_latest_page"):',
+      '            return {"tool": action, "params": {k: v for k, v in config.items() if k != "action"}}',
+      '        raise ApplicationError(f"暂不支持的浏览器动作: {action}", non_retryable=True)',
+      '',
+      '    commands = [_build_command(step) for step in configured_steps]',
+      '    initial_url = _resolve_text(_stringify(input_data.get("initialUrl")) or configured_initial_url)',
+      '    backend_candidates = [requested_backend, "cli", "chrome-devtools", "legacy"]',
+      '    ordered_backends = []',
+      '    for backend_name in backend_candidates:',
+      '        normalized_backend = str(backend_name or "").strip()',
+      '        if normalized_backend and normalized_backend not in ordered_backends:',
+      '            ordered_backends.append(normalized_backend)',
+      '',
+      '    selected_backend = ""',
+      '    init_result: Dict[str, Any] = {}',
+      '    init_error_message = ""',
+      '',
+      '    try:',
+      '        for backend in ordered_backends:',
+      '            init_payload: Dict[str, Any] = {',
+      '                "runtimeSessionId": runtime_session_id,',
+      '                "backend": backend,',
+      '                "sessionPreferences": {',
+      '                    "mode": "agent",',
+      '                    "enableCodegen": False,',
+      '                    "headless": True,',
+      '                },',
+      '            }',
+      '            if initial_url:',
+      '                init_payload["initialUrl"] = initial_url',
+      '',
+      '            activity.logger.info("开始初始化浏览器执行会话", extra={"runtimeSessionId": runtime_session_id, "backend": backend, "commandCount": len(commands)})',
+      '            try:',
+      '                init_response = requests.post(f"{browser_worker_base_url}/browser/init", json=init_payload, timeout=60)',
+      '                init_response.raise_for_status()',
+      '                candidate_result = init_response.json()',
+      '            except requests.RequestException as exc:',
+      '                init_error_message = str(exc)',
+      '                activity.logger.warning("browser-worker 初始化请求失败，尝试下一个 backend", extra={"backend": backend, "error": init_error_message})',
+      '                continue',
+      '',
+      '            if bool(candidate_result.get("success")):',
+      '                selected_backend = backend',
+      '                init_result = candidate_result',
+      '                break',
+      '',
+      '            init_error_message = str(candidate_result.get("message") or "unknown error")',
+      '            activity.logger.warning("browser-worker 初始化失败，尝试下一个 backend", extra={"backend": backend, "error": init_error_message})',
+      '',
+      '        if not selected_backend:',
+      '            raise ApplicationError(f"browser-worker 初始化失败: {init_error_message or \'unknown error\'}", non_retryable=False)',
+      '',
+      '        activity.heartbeat("browser_init_completed")',
+      '',
+      '        execute_payload = {',
+      '            "runtimeSessionId": runtime_session_id,',
+      '            "backend": selected_backend,',
+      '            "commands": commands,',
+      '        }',
+      '        activity.logger.info("开始执行浏览器模板命令", extra={"runtimeSessionId": runtime_session_id, "backend": selected_backend})',
+      '        try:',
+      '            execute_response = requests.post(f"{browser_worker_base_url}/browser/execute", json=execute_payload, timeout=120)',
+      '            execute_response.raise_for_status()',
+      '            execute_result = execute_response.json()',
+      '        except requests.RequestException as exc:',
+      '            raise ApplicationError(f"browser-worker 执行失败: {exc}", non_retryable=False)',
+      '',
+      '        raw_results = execute_result.get("results") or []',
+      '        if not isinstance(raw_results, list):',
+      '            raw_results = []',
+      '        failed_results = [item for item in raw_results if isinstance(item, dict) and str(item.get("status") or "").lower() == "error"]',
+      '        if not bool(execute_result.get("success")) and failed_results:',
+      '            first_error = failed_results[0]',
+      '            first_command = str(first_error.get("command") or "unknown")',
+      '            first_message = str(first_error.get("message") or "unknown error")',
+      '            raise ApplicationError(f"browser-worker 执行失败: {execute_result.get(\'message\') or \'unknown error\'}; first_failed_command={first_command}; detail={first_message}", non_retryable=False)',
+      '',
+      '        if not bool(execute_result.get("success")):',
+      '            raise ApplicationError(f"browser-worker 执行失败: {execute_result.get(\'message\') or \'unknown error\'}", non_retryable=False)',
+      '',
+      '        if failed_results:',
+      '            first_error = failed_results[0]',
+      '            first_command = str(first_error.get("command") or "unknown")',
+      '            first_message = str(first_error.get("message") or "unknown error")',
+      '            raise ApplicationError(f"浏览器命令执行失败: command={first_command}; detail={first_message}", non_retryable=False)',
+      '',
+      '        activity.heartbeat("browser_execute_completed")',
+      '        return {',
+      '            "status": "completed",',
+      '            "runtimeSessionId": runtime_session_id,',
+      '            "backend": selected_backend,',
+      '            "commandCount": len(commands),',
+      '            "commands": commands,',
+      '            "results": raw_results,',
+      '            "raw": execute_result,',
+      '        }',
+      '    finally:',
+      '        activity.logger.info("清理浏览器会话资源", extra={"runtimeSessionId": runtime_session_id})',
+      '        try:',
+      '            requests.post(f"{browser_worker_base_url}/browser/reset", json={"runtimeSessionId": runtime_session_id}, timeout=30)',
+      '        except Exception as exc:',
+      '            activity.logger.warning("清理浏览器会话失败 (可能已自动释放)", extra={"runtimeSessionId": runtime_session_id, "error": str(exc)})',
       '',
     ].join('\n');
   }
@@ -3686,8 +4127,8 @@ export class TemporalWorkflowService {
 
     if (normalizedStep.activityRef?.startsWith('custom:')) {
       const activityId = normalizedStep.activityRef.slice('custom:'.length).trim();
-      const dbActivity = activityId
-        ? await this.prisma.activity.findUnique({ where: { id: activityId } })
+      const dbActivity = activityId && this.isLikelyUuid(activityId)
+        ? await this.prisma.activity.findUnique({ where: { id: activityId } }).catch(() => null)
         : null;
       return {
         ...normalizedStep,
@@ -4359,6 +4800,193 @@ export class TemporalWorkflowService {
 
   private stripTemplateExtension(fileName: string): string {
     return String(fileName || '').replace(/\.[^.]+$/, '');
+  }
+
+  private isLikelyUuid(value: string): boolean {
+    return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(String(value || '').trim());
+  }
+
+  private normalizeBrowserActivitySteps(steps: unknown): Array<{
+    name: string;
+    action: string;
+    config: Record<string, unknown>;
+  }> {
+    if (!Array.isArray(steps)) {
+      return [];
+    }
+
+    const normalized = steps.map((step, index) => {
+      const stepIndexLabel = `${index + 1}. 浏览器操作`;
+      const emptyConfig: Record<string, unknown> = {};
+      const normalizedConfig: Record<string, unknown> = {};
+      const rawStep = step && typeof step === 'object' ? step as Record<string, unknown> : null;
+      const config = rawStep?.config && typeof rawStep.config === 'object'
+        ? rawStep.config as Record<string, unknown>
+        : emptyConfig;
+      const action = String(config.action || '').trim();
+      if (!action) {
+        return null;
+      }
+      // Keep full config payload from recorder/template DSL; activity code is responsible for action-specific normalization.
+      Object.entries(config).forEach(([key, value]) => {
+        if (value !== undefined) {
+          normalizedConfig[key] = value;
+        }
+      });
+      normalizedConfig.action = action;
+      return {
+        name: String(rawStep?.name || stepIndexLabel).trim() || stepIndexLabel,
+        action,
+        config: normalizedConfig,
+      };
+    });
+
+    return normalized.filter((step): step is {
+      name: string;
+      action: string;
+      config: Record<string, unknown>;
+    } => step !== null);
+  }
+
+  private extractBrowserActivityPlaceholders(steps: Array<{
+    name: string;
+    action: string;
+    config: Record<string, unknown>;
+  }>): string[] {
+    const keys = new Set<string>();
+    const visit = (value: unknown) => {
+      if (typeof value === 'string') {
+        const matches = [
+          ...value.matchAll(/\{([^{}]+)\}/g),
+          ...value.matchAll(/\$\{([^{}]+)\}/g),
+        ];
+        matches.forEach((match) => {
+          const key = String(match[1] || '').trim();
+          if (key) {
+            keys.add(key);
+          }
+        });
+        return;
+      }
+      if (Array.isArray(value)) {
+        value.forEach(visit);
+        return;
+      }
+      if (value && typeof value === 'object') {
+        Object.values(value as Record<string, unknown>).forEach(visit);
+      }
+    };
+
+    steps.forEach((step) => visit(step.config));
+    return Array.from(keys);
+  }
+
+  private parseBrowserScriptCommands(script: string): BrowserScriptCommand[] {
+    const commands: BrowserScriptCommand[] = [];
+    const lines = String(script || '')
+      .split('\n')
+      .map((line) => line.trim())
+      .filter(Boolean);
+
+    lines.forEach((line) => {
+      const gotoMatch = line.match(/\.goto\(\s*(['"`])((?:\\.|(?!\1).)+)\1/);
+      if (gotoMatch) {
+        commands.push({ action: 'goto', url: gotoMatch[2] });
+        return;
+      }
+
+      const locatorClickMatch = line.match(/\.locator\(\s*(['"`])((?:\\.|(?!\1).)+)\1\s*\)\.click\(/);
+      if (locatorClickMatch) {
+        commands.push({ action: 'click', selector: locatorClickMatch[2] });
+        return;
+      }
+
+      const clickMatch = line.match(/\.click\(\s*(['"`])((?:\\.|(?!\1).)+)\1/);
+      if (clickMatch) {
+        commands.push({ action: 'click', selector: clickMatch[2] });
+        return;
+      }
+
+      const locatorFillMatch = line.match(/\.locator\(\s*(['"`])((?:\\.|(?!\1).)+)\1\s*\)\.fill\(\s*(['"`])((?:\\.|(?!\3).)+)\3/);
+      if (locatorFillMatch) {
+        commands.push({ action: 'fill', selector: locatorFillMatch[2], value: locatorFillMatch[4] || '' });
+        return;
+      }
+
+      const fillMatch = line.match(/\.fill\(\s*(['"`])((?:\\.|(?!\1).)+)\1\s*,\s*(['"`])((?:\\.|(?!\3).)+)\3/);
+      if (fillMatch) {
+        commands.push({ action: 'fill', selector: fillMatch[2], value: fillMatch[4] || '' });
+        return;
+      }
+
+      const locatorPressMatch = line.match(/\.locator\(\s*(['"`])((?:\\.|(?!\1).)+)\1\s*\)\.press\(\s*(['"`])((?:\\.|(?!\3).)+)\3/);
+      if (locatorPressMatch) {
+        commands.push({ action: 'press', selector: locatorPressMatch[2], value: locatorPressMatch[4] });
+        return;
+      }
+
+      const pressMatch = line.match(/\.press\(\s*(['"`])((?:\\.|(?!\1).)+)\1\s*,\s*(['"`])((?:\\.|(?!\3).)+)\3/);
+      if (pressMatch) {
+        commands.push({ action: 'press', selector: pressMatch[2], value: pressMatch[4] });
+        return;
+      }
+
+      const waitForSelectorMatch = line.match(/\.waitForSelector\(\s*(['"`])((?:\\.|(?!\1).)+)\1/);
+      if (waitForSelectorMatch) {
+        commands.push({ action: 'waitForSelector', selector: waitForSelectorMatch[2] });
+        return;
+      }
+
+      const waitForTimeoutMatch = line.match(/\.waitForTimeout\(\s*(\d+)\s*\)/);
+      if (waitForTimeoutMatch) {
+        commands.push({
+          action: 'waitForTimeout',
+          timeoutMs: Number(waitForTimeoutMatch[1]),
+        });
+      }
+    });
+
+    return commands;
+  }
+
+  private extractScriptPlaceholders(script: string): string[] {
+    const scriptStr = String(script || '');
+    const matches = [
+      ...scriptStr.matchAll(/\{([^{}]+)\}/g),
+      ...scriptStr.matchAll(/\$\{([^{}]+)\}/g),
+    ];
+    const keys = matches
+      .map((match) => String(match[1] || '').trim())
+      .filter(Boolean);
+    return Array.from(new Set(keys));
+  }
+
+  private inferBrowserTemplateTimeout(commands: BrowserScriptCommand[]): string {
+    const waitMs = commands.reduce((acc, item) => (
+      acc + (item.action === 'waitForTimeout' ? Number(item.timeoutMs || 0) : 0)
+    ), 0);
+    const estimatedSeconds = Math.ceil((waitMs / 1000) + commands.length * 8);
+    const timeoutSeconds = Math.min(Math.max(estimatedSeconds, 60), 900);
+    return `${timeoutSeconds}s`;
+  }
+
+  private browserActionLabel(action: BrowserScriptCommand['action']): string {
+    switch (action) {
+      case 'goto':
+        return '访问页面';
+      case 'click':
+        return '点击元素';
+      case 'fill':
+        return '输入文本';
+      case 'press':
+        return '键盘按键';
+      case 'waitForSelector':
+        return '等待元素出现';
+      case 'waitForTimeout':
+        return '等待时间';
+      default:
+        return '浏览器操作';
+    }
   }
 }
 

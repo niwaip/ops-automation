@@ -1,7 +1,7 @@
 import apiClient from './client';
 import { useAuthStore } from '../store/authStore';
 
-export type CapabilitySourceType = 'execution_flow_template' | 'temporal_workflow';
+export type CapabilitySourceType = 'execution_flow_template' | 'temporal_workflow' | 'browser_recording';
 
 export interface CapabilityRelease {
   id: string;

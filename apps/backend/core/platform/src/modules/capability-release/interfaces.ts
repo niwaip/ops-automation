@@ -1,4 +1,15 @@
-export type CapabilitySourceType = 'execution_flow_template' | 'temporal_workflow';
+import { Type } from 'class-transformer';
+import {
+  IsArray,
+  IsDefined,
+  IsObject,
+  IsOptional,
+  IsString,
+  IsUUID,
+  ValidateNested,
+} from 'class-validator';
+
+export type CapabilitySourceType = 'execution_flow_template' | 'temporal_workflow' | 'browser_recording';
 
 export type CapabilityReleaseStatus =
   | 'draft'
@@ -64,11 +75,100 @@ export interface GenerateSkillDraftDTO {
   modelId?: string;
 }
 
+export class RecorderBridgePublishPayloadDTO {
+  @IsOptional()
+  @IsString()
+  name?: string;
+
+  @IsOptional()
+  @IsString()
+  description?: string;
+
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  triggerKeywords?: string[];
+
+  @IsOptional()
+  @IsObject()
+  paramsSchema?: Record<string, unknown>;
+
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  executionFlowTemplateIds?: string[];
+
+  @IsOptional()
+  @IsArray()
+  @IsObject({ each: true })
+  executionFlow?: Array<Record<string, unknown>>;
+
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  tools?: string[];
+
+  @IsOptional()
+  @IsObject()
+  apiEndpoints?: Record<string, unknown>;
+}
+
+export class RecorderBridgeSkillDraftDTO {
+  @IsOptional()
+  @IsString()
+  name?: string;
+
+  @IsOptional()
+  @IsString()
+  description?: string;
+
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => RecorderBridgePublishPayloadDTO)
+  publishPayload?: RecorderBridgePublishPayloadDTO;
+}
+
+export class RecorderBridgeExportArtifactsDTO {
+  @IsOptional()
+  @IsString()
+  guidance?: string;
+
+  @IsOptional()
+  @IsArray()
+  @IsObject({ each: true })
+  commands?: Array<Record<string, unknown>>;
+
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => RecorderBridgeSkillDraftDTO)
+  skillDraft?: RecorderBridgeSkillDraftDTO;
+}
+
+export class BridgeRecorderExportDTO {
+  @IsOptional()
+  @IsUUID()
+  releaseId?: string;
+
+  @IsOptional()
+  @IsString()
+  userGoal?: string;
+
+  @IsOptional()
+  @IsString()
+  sourceName?: string;
+
+  @IsDefined()
+  @ValidateNested()
+  @Type(() => RecorderBridgeExportArtifactsDTO)
+  exportArtifacts!: RecorderBridgeExportArtifactsDTO;
+}
+
 export interface UpdateSkillDraftDTO {
   name?: string;
   description?: string;
   triggerKeywords?: string[];
   paramsSchema?: Record<string, unknown>;
+  executionFlow?: Array<Record<string, unknown>>;
   executionFlowTemplateIds?: string[];
   tools?: string[];
   apiEndpoints?: Record<string, unknown>;
@@ -131,6 +231,7 @@ export interface ExecuteCapabilityRuntimeDTO {
   runtimeType?: string;
   executionId?: string;
   stepId?: string;
+  runtimeSessionId?: string;
   input?: Record<string, unknown>;
 }
 
@@ -299,4 +400,10 @@ export interface CapabilityReleaseDetailDTO {
   currentSkillDraft?: SkillDraftDTO | null;
   deployments?: DeploymentRecordDTO[];
   auditEvents?: ReleaseAuditEventDTO[];
+}
+
+export interface BridgeRecorderExportResultDTO {
+  release: CapabilityReleaseDTO;
+  skillDraft: SkillDraftDTO;
+  bridgeMode: 'browser_recording_native';
 }

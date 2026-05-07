@@ -1,5 +1,8 @@
 import axios from 'axios';
+import { plainToInstance } from 'class-transformer';
+import { validateSync } from 'class-validator';
 import { CapabilityReleaseService } from '../src/modules/capability-release/capability-release.service';
+import { BridgeRecorderExportDTO } from '../src/modules/capability-release/interfaces';
 
 jest.mock('axios');
 
@@ -54,7 +57,7 @@ describe('CapabilityReleaseService', () => {
     });
     jest.spyOn(service as any, 'insertAuditEvent').mockResolvedValue(undefined);
 
-    const result = await service.archiveRelease('release-1', 'user-1');
+    const result = await service.archiveCapability('release-1', 'user-1');
 
     expect(result).toEqual({ success: true, archivedId: 'release-1' });
     expect(prisma.$executeRawUnsafe).toHaveBeenNthCalledWith(
@@ -80,7 +83,7 @@ describe('CapabilityReleaseService', () => {
       'release_archived',
       'user-1',
       true,
-      '归档 Capability Release',
+      '归档 Capability',
     );
   });
 
@@ -125,7 +128,12 @@ describe('CapabilityReleaseService', () => {
       ],
     });
 
-    await expect(service.publishSkill('release-1', {}, 'user-1')).rejects.toThrow('发布前工具校验失败');
+    await expect(service.publishSkill('release-1', {}, 'user-1')).rejects.toMatchObject({
+      response: expect.objectContaining({
+        code: 'skill_publish_tool_validation_failed',
+        message: '发布前工具校验失败',
+      }),
+    });
     expect((service as any).insertAuditEvent).toHaveBeenCalledWith(
       'release-1',
       'skill_publish_blocked_by_tool_validation',
@@ -138,6 +146,214 @@ describe('CapabilityReleaseService', () => {
         }),
       }),
     );
+  });
+
+  it('normalizes legacy browser_execute tool names when publishing browser recording skills', async () => {
+    const { service, skillService, prisma } = createService();
+
+    jest.spyOn(service as any, 'getReleaseOrThrow').mockResolvedValue({
+      id: 'release-browser-1',
+      approvalStatus: 'approved',
+      status: 'approved',
+      sourceType: 'browser_recording',
+      sourceName: 'Browser Skill',
+      currentSkillDraftId: 'draft-browser-1',
+      publishedSkillId: null,
+    });
+    jest.spyOn(service as any, 'getSkillDraftOrThrow').mockResolvedValue({
+      id: 'draft-browser-1',
+      tools: ['skill_match', 'browser_execute'],
+      executionFlowTemplateIds: [],
+      draftPayload: {
+        name: 'Browser Skill',
+        description: 'desc',
+        tools: ['skill_match', 'browser_execute'],
+        executionFlow: [
+          {
+            id: 'step-1',
+            type: 'tool',
+            tool: { name: 'browser_execute' },
+            config: { executionPlan: { commands: [] } },
+          },
+        ],
+        executionFlowTemplateIds: [],
+      },
+    });
+    jest.spyOn(service as any, 'insertAuditEvent').mockResolvedValue(undefined);
+    prisma.$queryRawUnsafe.mockResolvedValue([]);
+    skillService.validateSkillToolsPayload.mockResolvedValue({
+      isValid: true,
+      declaredTools: ['skill_match', 'browser_step'],
+      inferredTools: ['browser_step'],
+      effectiveTools: ['skill_match', 'browser_step'],
+      missingTools: [],
+      disabledTools: [],
+      forbiddenSkillTools: [],
+      undeclaredFlowTools: [],
+      messages: [],
+    });
+    skillService.createSkill.mockResolvedValue({ id: 'skill-browser-1' });
+
+    const result = await service.publishSkill('release-browser-1', {}, 'user-1');
+
+    expect(skillService.validateSkillToolsPayload).toHaveBeenCalledWith({
+      tools: ['skill_match', 'browser_step'],
+      executionFlow: [
+        expect.objectContaining({
+          tool: expect.objectContaining({ name: 'browser_step' }),
+        }),
+      ],
+      executionFlowTemplateIds: [],
+    });
+    expect(skillService.createSkill).toHaveBeenCalledWith(
+      expect.objectContaining({
+        tools: ['skill_match', 'browser_step'],
+        executionFlow: [
+          expect.objectContaining({
+            tool: expect.objectContaining({ name: 'browser_step' }),
+          }),
+        ],
+      }),
+    );
+    expect(result).toEqual({
+      release: expect.objectContaining({ id: 'release-browser-1' }),
+      publishedSkillId: 'skill-browser-1',
+    });
+  });
+
+  it('rejects publishing when release approval is pending', async () => {
+    const { service } = createService();
+
+    jest.spyOn(service as any, 'getReleaseOrThrow').mockResolvedValue({
+      id: 'release-pending',
+      approvalStatus: 'pending',
+      status: 'pending_approval',
+      currentSkillDraftId: 'draft-1',
+    });
+
+    await expect(service.publishSkill('release-pending', {}, 'user-1')).rejects.toMatchObject({
+      response: expect.objectContaining({
+        code: 'release_approval_pending',
+        message: '当前 Release 尚未审批通过',
+      }),
+    });
+  });
+
+  it('rejects publishing when release approval is rejected', async () => {
+    const { service } = createService();
+
+    jest.spyOn(service as any, 'getReleaseOrThrow').mockResolvedValue({
+      id: 'release-rejected',
+      approvalStatus: 'rejected',
+      status: 'draft',
+      currentSkillDraftId: 'draft-1',
+    });
+
+    await expect(service.publishSkill('release-rejected', {}, 'user-1')).rejects.toMatchObject({
+      response: expect.objectContaining({
+        code: 'release_approval_rejected',
+        message: '当前 Release 审批未通过，请调整草案后重新提交',
+      }),
+    });
+  });
+
+  it('rejects deploy when non-temporal release has not published skill', async () => {
+    const { service } = createService();
+
+    jest.spyOn(service as any, 'getReleaseOrThrow').mockResolvedValue({
+      id: 'release-no-skill',
+      sourceType: 'browser_recording',
+      publishedSkillId: null,
+      status: 'approved',
+    });
+
+    await expect(service.deploy('release-no-skill', {}, 'user-1')).rejects.toMatchObject({
+      response: expect.objectContaining({
+        code: 'release_not_published_for_deploy',
+        message: '当前 Release 尚未发布 Skill，不能部署',
+      }),
+    });
+  });
+
+  it('rejects deploy when release is already deploying', async () => {
+    const { service } = createService();
+
+    jest.spyOn(service as any, 'getReleaseOrThrow').mockResolvedValue({
+      id: 'release-deploying',
+      sourceType: 'browser_recording',
+      publishedSkillId: 'skill-1',
+      status: 'deploying',
+    });
+
+    await expect(service.deploy('release-deploying', {}, 'user-1')).rejects.toMatchObject({
+      response: expect.objectContaining({
+        code: 'release_deploying',
+        message: '当前 Release 正在部署中',
+      }),
+    });
+  });
+
+  it('uses snapshot validation for browser recording sandbox validation', async () => {
+    const { service } = createService();
+
+    jest.spyOn(service as any, 'getReleaseOrThrow')
+      .mockResolvedValueOnce({
+        id: 'release-browser-validate-1',
+        sourceType: 'browser_recording',
+        status: 'draft',
+      })
+      .mockResolvedValueOnce({
+        id: 'release-browser-validate-1',
+        sourceType: 'browser_recording',
+        status: 'draft_ready',
+      });
+    jest.spyOn(service as any, 'getCurrentSnapshotOrThrow').mockResolvedValue({
+      id: 'snapshot-1',
+      sourcePayload: {
+        steps: [{ id: 'step_1', name: '打开页面' }],
+        executionFlow: [{ id: 'flow-1', tool: { name: 'browser_step' } }],
+      },
+    });
+    jest.spyOn(service as any, 'resolveBuildForValidation').mockResolvedValue({
+      id: 'build-1',
+    });
+    jest.spyOn(service as any, 'shouldPreserveReleaseStatusDuringValidation').mockReturnValue(false);
+    jest.spyOn(service as any, 'createValidationRecord').mockResolvedValue('validation-1');
+    jest.spyOn(service as any, 'finishValidation').mockResolvedValue(undefined);
+    jest.spyOn(service as any, 'insertAuditEvent').mockResolvedValue(undefined);
+    jest.spyOn(service as any, 'getValidationOrThrow').mockResolvedValue({
+      id: 'validation-1',
+      success: true,
+      score: 100,
+    });
+
+    const result = await service.validateSandbox(
+      'release-browser-validate-1',
+      { testCases: ['通过 bing 查询mcp'] },
+      'user-1',
+    );
+
+    expect((service as any).finishValidation).toHaveBeenCalledWith(
+      'validation-1',
+      'release-browser-validate-1',
+      'draft_ready',
+      true,
+      100,
+      expect.arrayContaining([
+        '开始执行浏览器录制快照静态验证...',
+        expect.stringContaining('通过 bing 查询mcp'),
+      ]),
+      expect.objectContaining({
+        mode: 'static_snapshot_validation',
+        testCases: ['通过 bing 查询mcp'],
+      }),
+      null,
+      false,
+    );
+    expect(result).toEqual({
+      release: expect.objectContaining({ id: 'release-browser-validate-1' }),
+      validation: expect.objectContaining({ id: 'validation-1' }),
+    });
   });
 
   it('returns runtime tool policies from tool catalog metadata', async () => {
@@ -429,5 +645,291 @@ describe('CapabilityReleaseService', () => {
     expect(result.success).toBe(true);
     expect(result.output).toEqual({ result: '上海天气：晴，25度' });
     expect(result.result).toEqual({ result: '上海天气：晴，25度' });
+  });
+
+  it('executes published browser recording skill via browser worker with shared runtime session', async () => {
+    const { service, prisma } = createService();
+
+    prisma.$queryRawUnsafe.mockResolvedValueOnce([{ id: 'release-row-1' }]);
+    jest.spyOn(service as any, 'mapRelease').mockReturnValue({
+      id: 'release-browser-runtime-1',
+      sourceType: 'browser_recording',
+    });
+    jest.spyOn(service as any, 'getCurrentSnapshotOrThrow').mockResolvedValue({
+      id: 'snapshot-browser-1',
+      sourcePayload: {
+        executionFlow: [
+          {
+            id: 'step_1',
+            name: '1. navigate',
+            tool: { name: 'browser_step' },
+            input: {
+              action: 'navigate',
+              params: { url: '${url}' },
+            },
+          },
+          {
+            id: 'step_2',
+            name: '2. smart_search',
+            tool: { name: 'browser_step' },
+            input: {
+              action: 'smart_search',
+              params: { query: '${query}' },
+            },
+          },
+        ],
+      },
+    });
+    jest.spyOn(service as any, 'insertAuditEvent').mockResolvedValue(undefined);
+    mockedAxios.post
+      .mockResolvedValueOnce({ data: { success: true, message: 'initialized' } } as any)
+      .mockResolvedValueOnce({ data: { success: true, output: { status: 'navigated' } } } as any)
+      .mockResolvedValueOnce({ data: { success: true, output: { status: 'searched' } } } as any);
+
+    const result = await service.executePublishedSkill(
+      'skill-browser-runtime',
+      {
+        url: 'https://www.bing.com',
+        query: 'mcp',
+      },
+      'user-1',
+      {
+        executionId: 'exec-browser-1',
+        stepId: 'step-system-1',
+        runtimeSessionId: 'runtime-browser-1',
+      },
+    );
+
+    expect(mockedAxios.post).toHaveBeenNthCalledWith(
+      1,
+      'http://localhost:3004/browser/init',
+      expect.objectContaining({
+        backend: 'cli',
+        runtimeSessionId: 'runtime-browser-1',
+        initialUrl: 'https://www.bing.com',
+      }),
+      { timeout: 60000 },
+    );
+    expect(mockedAxios.post).toHaveBeenNthCalledWith(
+      2,
+      'http://localhost:3004/browser/execute-step',
+      expect.objectContaining({
+        executionId: 'exec-browser-1',
+        runtimeSessionId: 'runtime-browser-1',
+        action: 'goto',
+        target: 'https://www.bing.com',
+        args: { url: 'https://www.bing.com' },
+      }),
+      { timeout: 120000 },
+    );
+    expect(mockedAxios.post).toHaveBeenNthCalledWith(
+      3,
+      'http://localhost:3004/browser/execute-step',
+      expect.objectContaining({
+        executionId: 'exec-browser-1',
+        runtimeSessionId: 'runtime-browser-1',
+        action: 'smart_search',
+        args: { query: 'mcp' },
+      }),
+      { timeout: 120000 },
+    );
+    expect(result).toEqual(
+      expect.objectContaining({
+        releaseId: 'release-browser-runtime-1',
+        runtime: 'browser_recording',
+        success: true,
+      }),
+    );
+  });
+
+  it('bridges recorder export into release and skill draft', async () => {
+    const { service, prisma } = createService();
+
+    jest.spyOn(service as any, 'createCapability').mockResolvedValue({
+      release: { id: 'release-bridge-1' },
+    });
+    jest.spyOn(service as any, 'getReleaseOrThrow').mockResolvedValue({
+      id: 'release-bridge-1',
+      sourceType: 'browser_recording',
+    });
+    jest.spyOn(service as any, 'getSkillDraftOrThrow').mockResolvedValue({
+      id: 'draft-bridge-1',
+      name: 'recorder-skill',
+    });
+    jest.spyOn(service as any, 'insertAuditEvent').mockResolvedValue(undefined);
+
+    const result = await service.bridgeRecorderExport(
+      {
+        userGoal: '登录并查询报表',
+        exportArtifacts: {
+          guidance: 'g',
+          commands: [{ tool: 'navigate', params: { url: 'https://example.com' } }],
+          skillDraft: {
+            publishPayload: {
+              name: 'recorder-skill',
+              description: 'desc',
+              triggerKeywords: ['报表查询'],
+              paramsSchema: { properties: {}, required: [] },
+              executionFlowTemplateIds: [],
+              executionFlow: [
+                {
+                  id: 'step-1',
+                  type: 'tool',
+                  tool: { name: 'browser_step' },
+                  config: { executionPlan: { commands: [] } },
+                },
+              ],
+              tools: ['browser_step'],
+              apiEndpoints: { runtimeMetadata: { sourceType: 'browser_recording' } },
+            },
+          },
+        },
+      },
+      'user-1',
+    );
+
+    expect((service as any).createCapability).toHaveBeenCalledWith(
+      expect.objectContaining({
+        sourceType: 'browser_recording',
+        sourceName: 'recorder-skill',
+      }),
+      'user-1',
+    );
+    expect(prisma.$executeRawUnsafe).toHaveBeenCalledWith(
+      expect.stringContaining('INSERT INTO skill_drafts'),
+      expect.any(String),
+      'release-bridge-1',
+      'browser_recording',
+      'recorder-skill',
+      'desc',
+      expect.any(String),
+      expect.any(String),
+      expect.any(String),
+      expect.any(String),
+      expect.any(String),
+      expect.any(String),
+      'user-1',
+    );
+    expect(result).toEqual({
+      release: {
+        id: 'release-bridge-1',
+        sourceType: 'browser_recording',
+      },
+      skillDraft: {
+        id: 'draft-bridge-1',
+        name: 'recorder-skill',
+      },
+      bridgeMode: 'browser_recording_native',
+    });
+  });
+
+  it('rejects bridge when target release type is not browser_recording', async () => {
+    const { service } = createService();
+
+    jest.spyOn(service as any, 'getReleaseOrThrow').mockResolvedValue({
+      id: 'release-2',
+      sourceType: 'temporal_workflow',
+    });
+
+    await expect(
+      service.bridgeRecorderExport({
+        releaseId: 'release-2',
+        exportArtifacts: {
+          skillDraft: {
+            publishPayload: {
+              name: 'bad-bridge',
+            },
+          },
+        },
+      }),
+    ).rejects.toMatchObject({
+      response: expect.objectContaining({
+        code: 'invalid_release_type',
+        message: 'bridge 仅支持 browser_recording 类型 release',
+        expected: 'browser_recording',
+        actual: 'temporal_workflow',
+      }),
+    });
+  });
+
+  it('rejects bridge when publishPayload is missing', async () => {
+    const { service } = createService();
+
+    await expect(
+      service.bridgeRecorderExport({
+        userGoal: '登录并查询报表',
+        exportArtifacts: {
+          guidance: 'g',
+          skillDraft: {
+            name: 'recorder-skill',
+          },
+        },
+      } as any),
+    ).rejects.toMatchObject({
+      response: expect.objectContaining({
+        code: 'missing_publish_payload',
+        message: '缺少 exportArtifacts.skillDraft.publishPayload',
+      }),
+    });
+  });
+
+  it('validates bridge DTO: releaseId must be uuid', () => {
+    const dto = plainToInstance(BridgeRecorderExportDTO, {
+      releaseId: 'not-a-uuid',
+      exportArtifacts: {
+        skillDraft: {
+          publishPayload: {
+            name: 'recorder-skill',
+          },
+        },
+      },
+    });
+
+    const errors = validateSync(dto);
+    const hasReleaseIdError = errors.some((error) => error.property === 'releaseId');
+    expect(hasReleaseIdError).toBe(true);
+  });
+
+  it('validates bridge DTO: exportArtifacts is required', () => {
+    const dto = plainToInstance(BridgeRecorderExportDTO, {
+      userGoal: '登录并查询报表',
+    });
+
+    const errors = validateSync(dto);
+    const hasExportArtifactsError = errors.some((error) => error.property === 'exportArtifacts');
+    expect(hasExportArtifactsError).toBe(true);
+  });
+
+  it('rejects rollback target when target release equals current release', async () => {
+    const { service } = createService();
+
+    jest.spyOn(service as any, 'getReleaseOrThrow').mockResolvedValue({ id: 'release-1' });
+
+    await expect(
+      (service as any).getRollbackTargetOrThrow(
+        { id: 'release-1', sourceId: 'src-1', sourceName: 's', sourceType: 'browser_recording' },
+        'release-1',
+      ),
+    ).rejects.toMatchObject({
+      response: expect.objectContaining({
+        code: 'rollback_target_same_release',
+        message: '不能回滚到当前 Release 自身',
+      }),
+    });
+  });
+
+  it('rejects rollback inference when current release has no source identifiers', async () => {
+    const { service } = createService();
+
+    await expect(
+      (service as any).getRollbackTargetOrThrow(
+        { id: 'release-1', sourceId: null, sourceName: null, sourceType: 'browser_recording' },
+      ),
+    ).rejects.toMatchObject({
+      response: expect.objectContaining({
+        code: 'rollback_source_identifier_missing',
+        message: '当前 Release 缺少可用于推断回滚目标的源标识',
+      }),
+    });
   });
 });

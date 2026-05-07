@@ -561,6 +561,68 @@ describe('ExecutionService.startExecution runtime selection', () => {
   });
 });
 
+describe('ExecutionService.bootstrapBrowserExecution', () => {
+  const createService = () => {
+    const prisma = {
+      execution: {
+        findUnique: jest.fn(),
+        update: jest.fn(),
+      },
+      executionStep: {
+        findFirst: jest.fn(),
+        findUnique: jest.fn(),
+        create: jest.fn(),
+        update: jest.fn(),
+      },
+      executionEvent: {
+        create: jest.fn(),
+      },
+      runtimeSession: {
+        findFirst: jest.fn(),
+      },
+      $queryRawUnsafe: jest.fn().mockResolvedValue([]),
+      $transaction: jest.fn((operations: Array<Promise<unknown>>) => Promise.all(operations)),
+    };
+
+    const service = new ExecutionService(prisma as never, {} as never, {} as never, {} as never);
+    const serviceInternals = service as any;
+    jest.spyOn(serviceInternals, 'advanceExecutionFlow').mockResolvedValue(undefined);
+
+    return { service, prisma };
+  };
+
+  it('skips runtime bootstrap goto for direct skill execution mode', async () => {
+    const { service, prisma } = createService();
+
+    await (service as any).bootstrapBrowserExecution(
+      {
+        id: 'execution-browser-skill-1',
+        runtimeType: 'browser',
+        normalizedInputJson: {
+          plannerMode: 'skill',
+          url: 'https://www.bing.com',
+          input: {
+            url: 'https://www.bing.com',
+            query: 'mcp',
+          },
+        },
+        inputJson: {
+          url: 'https://www.bing.com',
+          query: 'mcp',
+        },
+      },
+      'runtime-browser-skill-1',
+    );
+
+    expect(prisma.executionStep.findFirst).not.toHaveBeenCalled();
+    expect(prisma.executionStep.create).not.toHaveBeenCalled();
+    expect((service as any).advanceExecutionFlow).toHaveBeenCalledWith(
+      'execution-browser-skill-1',
+      'runtime-browser-skill-1',
+    );
+  });
+});
+
 describe('ExecutionService runtime session close on terminal state', () => {
   const createService = () => {
     const prisma = {

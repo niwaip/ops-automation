@@ -822,6 +822,19 @@ export class ExecutionService {
 
     const normalizedInput = execution.normalizedInputJson as Record<string, unknown> | undefined;
     const input = execution.inputJson as Record<string, unknown> | undefined;
+    const plannerMode =
+      typeof normalizedInput?.plannerMode === 'string' && normalizedInput.plannerMode.trim()
+        ? normalizedInput.plannerMode.trim()
+        : undefined;
+
+    if (plannerMode === 'skill') {
+      this.logger.log(
+        `Execution ${String(execution.id)} uses plannerMode=skill; skipping runtime bootstrap goto step`,
+      );
+      await this.advanceExecutionFlow(execution.id as string, runtimeSessionId);
+      return;
+    }
+
     const url = typeof normalizedInput?.url === 'string'
       ? normalizedInput.url
       : typeof input?.url === 'string'

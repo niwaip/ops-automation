@@ -44,6 +44,7 @@ import {
   capabilityReleaseApi,
 } from '../../api/capabilities';
 import { executionFlowApi } from '../../api/flows';
+import { templateApi, Template } from '../../api/template';
 import {
   TemporalWorkflowDTO,
   temporalWorkflowApi,
@@ -105,6 +106,7 @@ const MISSING_VALUE = '__capability_snapshot_missing__';
 const SOURCE_TYPE_OPTIONS = [
   { label: '模版型', value: 'execution_flow_template' },
   { label: '编排型', value: 'temporal_workflow' },
+  { label: '浏览器录制', value: 'browser_recording' },
 ] as const;
 
 interface CapabilitySourceOption {
@@ -141,8 +143,11 @@ const statusColor = (status: string) => {
   }
 };
 
-const getSourceTypeLabel = (value: string) =>
-  value === 'temporal_workflow' ? '编排型' : '模版型';
+const getSourceTypeLabel = (value: string) => {
+  if (value === 'temporal_workflow') return '编排型';
+  if (value === 'browser_recording') return '浏览器录制';
+  return '模版型';
+};
 
 const getValidationTypeLabel = (value: string) => {
   if (value === 'sandbox') return '真实验证';
@@ -162,11 +167,25 @@ const getNextStepHint = (release: CapabilityRelease): { label: string; color: st
   if (release.sourceType === 'temporal_workflow' && release.latestSuccessfulValidationId) {
     return { label: '代码部署 / 发布 Skill', color: 'blue' };
   }
-  if (release.publishedSkillId) return { label: '代码部署', color: 'blue' };
+  if (release.sourceType === 'browser_recording' && release.latestSuccessfulValidationId) {
+    return { label: '发布 Browser Skill', color: 'cyan' };
+  }
+  if (release.publishedSkillId) {
+    return {
+      label: release.sourceType === 'browser_recording' ? '部署浏览器能力' : '代码部署',
+      color: 'blue',
+    };
+  }
   if (release.approvalStatus === 'approved') return { label: '发布 Skill', color: 'cyan' };
   if (release.currentSkillDraftId) return { label: '发布 Skill', color: 'gold' };
-  if (release.latestSuccessfulValidationId) return { label: '发布 Skill', color: 'lime' };
+  if (release.latestSuccessfulValidationId) {
+    return {
+      label: release.sourceType === 'browser_recording' ? '发布 Browser Skill' : '发布 Skill',
+      color: 'lime',
+    };
+  }
   if (release.currentBuildId || release.latestSuccessfulBuildId) return { label: 'Sandbox 校验', color: 'purple' };
+  if (release.sourceType === 'browser_recording') return { label: '准备浏览器回放校验', color: 'default' };
 
   return { label: '开始构建', color: 'default' };
 };
@@ -430,6 +449,70 @@ const parseApiEndpointsToDraft = (value: Record<string, unknown> | null | undefi
   });
 };
 
+const toBrowserTemplateSelector = (step: Template['steps'][number]): string => {
+  if (!step.locator?.value) {
+    return '';
+  }
+  const locatorType = String(step.locator.type || '').toLowerCase();
+  if (locatorType === 'test-id') {
+    return `[data-testid="${step.locator.value}"]`;
+  }
+  return String(step.locator.value);
+};
+
+const buildBrowserRecordingSourcePayload = (template: Template): Record<string, unknown> => {
+  const templateSteps = Array.isArray(template.steps) ? template.steps : [];
+  const normalizedSteps = templateSteps.map((step, index) => {
+    const action = String(step.action || '').trim() || 'browser_action';
+    const params = step.params && typeof step.params === 'object'
+      ? step.params as Record<string, unknown>
+      : {};
+    const selector = toBrowserTemplateSelector(step);
+    return {
+      id: String(step.step_id || `step_${index + 1}`),
+      name: `${index + 1}. ${action}`,
+      type: 'browser',
+      config: {
+        action,
+        ...(selector ? { selector, target: selector } : {}),
+        ...(Object.keys(params).length > 0 ? { params } : {}),
+      },
+    };
+  });
+
+  const executionFlow = normalizedSteps.map((step) => ({
+    name: String(step.name || 'browser_step'),
+    tool: { name: 'browser_step' },
+    input: {
+      action: (step.config as Record<string, unknown>).action,
+      selector: (step.config as Record<string, unknown>).selector,
+      params: (step.config as Record<string, unknown>).params,
+    },
+  }));
+
+  const paramsSchema = template.params_schema && typeof template.params_schema === 'object'
+    ? template.params_schema
+    : { type: 'object', properties: {}, required: [] };
+
+  return {
+    id: template.id,
+    name: template.name,
+    description: template.description || '',
+    goal: template.description || template.name,
+    sourceType: 'browser_recording',
+    sourceTemplate: {
+      templateId: template.id,
+      templateName: template.name,
+      templateVersion: template.version,
+    },
+    paramsSchema,
+    steps: normalizedSteps,
+    executionFlow,
+    tools: ['skill_match', 'browser_step'],
+    executionFlowKeys: [template.name].filter(Boolean),
+  };
+};
+
 interface CapabilitiesPageProps {
   mode?: 'manager' | 'studio';
 }
@@ -523,6 +606,11 @@ const CapabilitiesPage: React.FC<CapabilitiesPageProps> = ({ mode = 'manager' })
     () => executionFlowApi.list({ limit: 200, isActive: true }),
     { staleTime: 30_000 },
   );
+  const templateOptionsQuery = useQuery(
+    ['template-options'],
+    () => templateApi.list({ page: 1, pageSize: 200 }),
+    { staleTime: 30_000 },
+  );
   const detailQuery = useQuery(
     ['capability-detail', selectedReleaseId],
     () => capabilityReleaseApi.getById(selectedReleaseId as string),
@@ -551,10 +639,26 @@ const CapabilitiesPage: React.FC<CapabilitiesPageProps> = ({ mode = 'manager' })
       }));
     }
 
+    if (createSourceType === 'browser_recording') {
+      return (templateOptionsQuery.data?.templates || [])
+        .filter((template: Template) => {
+          const guards = Array.isArray(template.guards) ? template.guards : [];
+          return guards.some((guard) => (
+            guard && typeof guard === 'object' && String((guard as Record<string, unknown>).type || '').trim() === 'recorder_export'
+          ));
+        })
+        .map((template: Template) => ({
+          label: template.name || `Browser Recording ${template.id.slice(0, 8)}`,
+          value: template.id,
+          description: template.description || `状态: ${template.status}`,
+        }));
+    }
+
     return [];
   }, [
     createSourceType,
     executionFlowOptionsQuery.data?.templates,
+    templateOptionsQuery.data?.templates,
     temporalWorkflowOptionsQuery.data,
   ]);
   const isCreateSourceLoading =
@@ -562,6 +666,8 @@ const CapabilitiesPage: React.FC<CapabilitiesPageProps> = ({ mode = 'manager' })
       ? temporalWorkflowOptionsQuery.isLoading
       : createSourceType === 'execution_flow_template'
         ? executionFlowOptionsQuery.isLoading
+        : createSourceType === 'browser_recording'
+          ? templateOptionsQuery.isLoading
         : false;
   const temporalWorkflowMap = useMemo(
     () =>
@@ -886,7 +992,9 @@ const CapabilitiesPage: React.FC<CapabilitiesPageProps> = ({ mode = 'manager' })
       width: 120,
       align: 'center',
       render: (value: string) => (
-        <Tag color={value === 'temporal_workflow' ? 'purple' : 'blue'}>{getSourceTypeLabel(value)}</Tag>
+        <Tag color={value === 'temporal_workflow' ? 'purple' : value === 'browser_recording' ? 'cyan' : 'blue'}>
+          {getSourceTypeLabel(value)}
+        </Tag>
       ),
     },
     {
@@ -1342,7 +1450,14 @@ const CapabilitiesPage: React.FC<CapabilitiesPageProps> = ({ mode = 'manager' })
         return;
       }
       let sourcePayload: Record<string, unknown> | undefined;
-      if (values.sourcePayload?.trim()) {
+      if (values.sourceType === 'browser_recording') {
+        if (values.sourcePayload?.trim()) {
+          sourcePayload = JSON.parse(values.sourcePayload);
+        } else if (values.sourceId) {
+          const templateDetail = await templateApi.getById(values.sourceId);
+          sourcePayload = buildBrowserRecordingSourcePayload(templateDetail);
+        }
+      } else if (values.sourcePayload?.trim()) {
         sourcePayload = JSON.parse(values.sourcePayload);
       }
       createMutation.mutate({
@@ -2412,8 +2527,10 @@ const CapabilitiesPage: React.FC<CapabilitiesPageProps> = ({ mode = 'manager' })
                 title: '部署',
                 description:
                   wizardRelease?.sourceType === 'execution_flow_template'
-                    ? '模板型能力可跳过代码部署'
-                    : '配置环境与策略',
+                    ? '模板型能力可按需跳过部署'
+                    : wizardRelease?.sourceType === 'browser_recording'
+                      ? '配置浏览器运行环境并执行回放部署'
+                      : '配置运行环境与策略',
               },
               {
                 title: '发布 Skills',
@@ -2445,13 +2562,25 @@ const CapabilitiesPage: React.FC<CapabilitiesPageProps> = ({ mode = 'manager' })
                   {createSourceType ? (
                     <Form.Item
                       name="sourceId"
-                      label={createSourceType === 'temporal_workflow' ? '选择编排工作流' : '选择模版'}
+                      label={
+                        createSourceType === 'temporal_workflow'
+                          ? '选择编排工作流'
+                          : createSourceType === 'browser_recording'
+                            ? '选择浏览器录制模板'
+                            : '选择模版'
+                      }
                     >
                       <Select
                         allowClear
                         showSearch
                         loading={isCreateSourceLoading}
-                        placeholder={createSourceType === 'temporal_workflow' ? '选择一个已有工作流' : '选择一个已有模版'}
+                        placeholder={
+                          createSourceType === 'temporal_workflow'
+                            ? '选择一个已有工作流'
+                            : createSourceType === 'browser_recording'
+                              ? '选择一个浏览器录制模板'
+                              : '选择一个已有模版'
+                        }
                         optionFilterProp="label"
                         options={createSourceOptions}
                         optionRender={(option) => {
@@ -2478,12 +2607,16 @@ const CapabilitiesPage: React.FC<CapabilitiesPageProps> = ({ mode = 'manager' })
                       message={
                         createSourceType === 'temporal_workflow'
                           ? '当前没有可选的编排工作流'
-                          : '当前没有可选的模版'
+                          : createSourceType === 'browser_recording'
+                            ? '当前没有可选的浏览器录制模板'
+                            : '当前没有可选的模版'
                       }
                       description={
                         createSourceType === 'temporal_workflow'
                           ? '请先在工作流页面创建后再回来。'
-                          : '请先在模板页面创建后再回来。'
+                          : createSourceType === 'browser_recording'
+                            ? '请先在 Recorder 页面导出模板后再回来。'
+                            : '请先在模板页面创建后再回来。'
                       }
                     />
                   ) : null}
@@ -2535,7 +2668,7 @@ const CapabilitiesPage: React.FC<CapabilitiesPageProps> = ({ mode = 'manager' })
                   <Alert
                     type="success"
                     showIcon
-                    message="模版型能力无需独立代码部署"
+                    message="模版型能力可按需跳过部署"
                     description="当前步骤可直接跳过，进入 Skills 发布。"
                     style={{ marginTop: 12 }}
                   />
@@ -2544,15 +2677,27 @@ const CapabilitiesPage: React.FC<CapabilitiesPageProps> = ({ mode = 'manager' })
                     <Alert
                       type="info"
                       showIcon
-                      message="这一步是在配置“本次部署”"
-                      description="建议先部署到 staging 完成最终验证，再发布到 prod。环境、策略、覆盖参数只影响本次部署记录。"
+                      message={
+                        wizardRelease?.sourceType === 'browser_recording'
+                          ? '这一步是在配置“浏览器运行部署”'
+                          : '这一步是在配置“本次运行部署”'
+                      }
+                      description={
+                        wizardRelease?.sourceType === 'browser_recording'
+                          ? '建议先部署到 staging，并完成一次浏览器回放/冒烟验证，再推广到 prod。环境、策略、覆盖参数只影响本次部署记录。'
+                          : '建议先部署到 staging 完成最终验证，再发布到 prod。环境、策略、覆盖参数只影响本次部署记录。'
+                      }
                       style={{ marginTop: 12 }}
                     />
                     <Alert
                       type="warning"
                       showIcon
-                      message="生产发布建议"
-                      description="prod 建议使用 rolling_restart 并先小流量观察，确认无异常后再全量；保留回滚路径。"
+                      message={wizardRelease?.sourceType === 'browser_recording' ? '浏览器能力发布建议' : '生产发布建议'}
+                      description={
+                        wizardRelease?.sourceType === 'browser_recording'
+                          ? 'prod 建议先小流量验证目标站点可达性、选择器稳定性与凭证有效期，确认无异常后再全量；保留回滚路径。'
+                          : 'prod 建议使用 rolling_restart 并先小流量观察，确认无异常后再全量；保留回滚路径。'
+                      }
                     />
                     {!wizardDeployReadiness.hasExecutableCode ? (
                       <Alert

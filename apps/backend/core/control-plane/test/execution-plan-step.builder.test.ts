@@ -128,4 +128,36 @@ describe('execution-plan-step.builder', () => {
     expect(result.bootstrapUrl).toBeUndefined();
     expect(result.steps).toEqual([]);
   });
+
+  it('skips bootstrap goto when planner mode is direct skill execution', () => {
+    const result = buildPlannedExecutionSteps(
+      'execution-5',
+      {
+        plannerMode: 'skill',
+        url: 'https://example.com',
+      },
+      {
+        steps: [
+          {
+            id: 'plan-step-5',
+            title: 'Execute skill',
+            description: 'Run matched skill directly',
+            kind: 'skill',
+            status: 'planned',
+          },
+        ],
+      },
+    );
+
+    expect(result.bootstrapUrl).toBeUndefined();
+    expect(result.steps).toHaveLength(1);
+    expect(result.steps[0]).toMatchObject({
+      executionId: 'execution-5',
+      stepIndex: 1,
+      name: 'Execute skill',
+      type: 'system',
+      action: 'execute_skill',
+      targetJson: { plannerStepId: 'plan-step-5', plannerKind: 'skill' },
+    });
+  });
 });

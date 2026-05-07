@@ -329,8 +329,8 @@ const ReleaseCenterPage: React.FC = () => {
       key: 'sourceType',
       width: 140,
       render: (value: string) => (
-        <Tag color={value === 'temporal_workflow' ? 'purple' : 'blue'}>
-          {value === 'temporal_workflow' ? 'Temporal' : 'Template'}
+        <Tag color={value === 'temporal_workflow' ? 'purple' : value === 'browser_recording' ? 'cyan' : 'blue'}>
+          {value === 'temporal_workflow' ? 'Temporal' : value === 'browser_recording' ? 'Browser Recording' : 'Template'}
         </Tag>
       ),
     },

@@ -152,10 +152,21 @@ export class PlaywrightCliAdapter implements BrowserExecutionAdapter {
     }
 
     const success = results.every((result) => result.status !== 'error');
+    const firstFailure = results.find((result) => result?.status === 'error');
+    const failureSummary = firstFailure
+      ? [
+        String(firstFailure.command || 'unknown'),
+        String(firstFailure.message || 'unknown error'),
+      ].join(': ')
+      : '';
     return {
       success,
       results,
-      message: success ? undefined : 'One or more CLI commands failed',
+      message: success
+        ? undefined
+        : (failureSummary
+          ? `One or more CLI commands failed. First failure: ${failureSummary}`
+          : 'One or more CLI commands failed'),
     };
   }
 

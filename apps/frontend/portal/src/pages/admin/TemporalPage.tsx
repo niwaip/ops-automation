@@ -12,14 +12,17 @@ import { useTranslation } from 'react-i18next';
 import { useQuery, useMutation, useQueryClient } from 'react-query';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import { useNavigate } from 'react-router-dom';
 import '../../components/chat/ChatMessage.css';
 import {
   temporalWorkflowApi, TemporalWorkflowDTO, CreateTemporalWorkflowDTO,
   WorkflowDsl, ActivityDsl, TemporalValidationResult, DEFAULT_WORKFLOW_DSL, DEFAULT_ACTIVITY_DSL,
-  WorkflowCodeResult, WorkflowCodeStreamEvent, WorkflowRealValidationResult, TemplateWorkflowDraft, TemporalWorkflowSourceTemplate, TemporalWorkflowSourceContext, HttpRequestOptimizeResult, HttpRequestPreviewResult, AiWorkflowDraft, AiWorkflowDraftSession, AiWorkflowDraftSessionListItem, AiWorkflowDraftSessionMessage
+  WorkflowCodeResult, WorkflowCodeStreamEvent, WorkflowRealValidationResult, TemplateWorkflowDraft, BrowserWorkflowDraft, TemporalWorkflowSourceTemplate, TemporalWorkflowSourceContext, HttpRequestOptimizeResult, HttpRequestPreviewResult, AiWorkflowDraft, AiWorkflowDraftSession, AiWorkflowDraftSessionListItem, AiWorkflowDraftSessionMessage
 } from '../../api/temporal';
 import { carboneAPI, CarboneTemplate } from '../../api/carbone';
+import { templateApi, Template } from '../../api/template';
 import { activityApi } from '../../api/activity';
+import { executionApi } from '../../api/execution';
 import { normalizeExecutionResult } from '../../api/execution-normalizer';
 import { ListSectionHeader } from '../../components/page/PageScaffold';
 import type { ColumnsType } from 'antd/es/table';
@@ -33,6 +36,8 @@ type StepDurationField = 'startToCloseTimeout' | 'scheduleToCloseTimeout' | 'hea
 type WorkflowDurationField = 'workflowExecutionTimeout' | 'workflowRunTimeout' | 'workflowTaskTimeout';
 type ActivityResourceSource = 'builtin' | 'custom';
 type HttpResponseMode = 'body' | 'full' | 'bodyPath' | 'bodyMap';
+type TemplateModalMode = 'document' | 'browser';
+type BrowserTemplateStep = Template['steps'][number];
 const DEFAULT_DURATION_UNIT: DurationUnit = 's';
 const HTTP_REQUEST_STEP_CONFIG_KEY = '__httpRequest';
 const STRUCTURED_TRANSFORM_STEP_CONFIG_KEY = '__structuredTransform';
@@ -121,6 +126,208 @@ const formatDurationValue = (value?: number | null, unit: DurationUnit = DEFAULT
     return undefined;
   }
   return `${Math.max(0, Number(value))}${unit}`;
+};
+
+const toLocatorSelector = (step: BrowserTemplateStep): string => {
+  if (!step.locator?.value) {
+    return '';
+  }
+  const locatorType = String(step.locator.type || '').toLowerCase();
+  if (locatorType === 'test-id') {
+    return `[data-testid="${step.locator.value}"]`;
+  }
+  return String(step.locator.value);
+};
+
+const buildBrowserInputParamsFromTemplate = (
+  template: Template,
+): Record<string, {
+  description?: string;
+  required?: boolean;
+  defaultValue?: string;
+  source?: 'declared' | 'inferred_from_template' | 'inferred_from_reference_url' | 'merged';
+  type?: 'string' | 'number' | 'boolean' | 'date';
+  exampleValue?: string | number | boolean;
+}> => {
+  const schema = template?.params_schema || {};
+  const properties = schema.properties && typeof schema.properties === 'object'
+    ? schema.properties as Record<string, Record<string, unknown>>
+    : {};
+  const requiredList = Array.isArray(schema.required) ? schema.required.map((item) => String(item)) : [];
+
+  return Object.entries(properties).reduce<Record<string, {
+    description?: string;
+    required?: boolean;
+    defaultValue?: string;
+    source?: 'declared' | 'inferred_from_template' | 'inferred_from_reference_url' | 'merged';
+    type?: 'string' | 'number' | 'boolean' | 'date';
+    exampleValue?: string | number | boolean;
+  }>>((acc, [key, propertySchema]) => {
+    const propertyType = String(propertySchema?.type || 'string').toLowerCase();
+    const normalizedType = (['string', 'number', 'boolean', 'date'].includes(propertyType) ? propertyType : 'string') as 'string' | 'number' | 'boolean' | 'date';
+    const defaultValue = propertySchema?.default;
+    const requiredFromSchema = propertySchema?.required === true || requiredList.includes(key);
+    acc[key] = {
+      required: requiredFromSchema,
+      defaultValue: defaultValue === undefined || defaultValue === null ? '' : String(defaultValue),
+      description: String(propertySchema?.description || `模板参数 ${key}`),
+      source: 'declared',
+      type: normalizedType,
+      exampleValue: defaultValue as string | number | boolean,
+    };
+    return acc;
+  }, {});
+};
+
+const buildBrowserActivityStepsFromTemplate = (template: Template): Array<{
+  name: string;
+  type: 'browser';
+  timeout: string;
+  config: Record<string, unknown>;
+  inputParams: Record<string, unknown>;
+}> => {
+  const steps = Array.isArray(template?.steps) ? template.steps : [];
+  return steps.map((step, index) => {
+    const action = String(step.action || '').trim();
+    const selector = toLocatorSelector(step);
+    const params = step.params || {};
+    const config: Record<string, unknown> = {
+      action,
+    };
+
+    if (selector) {
+      config.selector = selector;
+      config.target = selector;
+    }
+
+    const putFirst = (...values: unknown[]) => {
+      const found = values.find((item) => item !== undefined && item !== null && String(item).trim() !== '');
+      return found === undefined ? undefined : found;
+    };
+
+    const url = putFirst(params.url, params.targetUrl, params.href, params.target, params.value);
+    if (url !== undefined) {
+      config.url = String(url);
+      config.target = String(url);
+    }
+
+    const textValue = putFirst(params.value, params.text, params.query, params.keyword, params.content, params.input, params.searchQuery);
+    if (textValue !== undefined) {
+      config.value = String(textValue);
+      config.text = String(textValue);
+      config.query = String(textValue);
+    }
+
+    const keyValue = putFirst(params.key, params.value, params.code);
+    if (keyValue !== undefined) {
+      config.key = String(keyValue);
+    }
+
+    const indexValue = putFirst(params.index, params.resultIndex);
+    if (indexValue !== undefined) {
+      const num = Number(indexValue);
+      config.index = Number.isFinite(num) ? num : 1;
+    }
+
+    const timeoutValue = putFirst(step.wait?.value, params.duration, params.timeoutMs, params.timeout);
+    if (timeoutValue !== undefined) {
+      const num = Number(timeoutValue);
+      config.timeoutMs = Number.isFinite(num) ? num : timeoutValue;
+      config.duration = Number.isFinite(num) ? num : timeoutValue;
+    }
+
+    return {
+      name: `${index + 1}. ${action || '浏览器操作'}`,
+      type: 'browser' as const,
+      timeout: '30s',
+      config,
+      inputParams: {},
+    };
+  });
+};
+
+const buildBrowserDraftFromTemplateDetail = (template: Template): BrowserWorkflowDraft => {
+  const short = String(Date.now()).slice(-6);
+  const workflowName = String(template?.name || '').trim() || `浏览器模板-${short}-工作流`;
+  const workflowDescription = String(template?.description || '').trim() || '基于浏览器模板直接生成的执行工作流';
+  const activityFn = `browserTemplateRun${short}`;
+  const activitySteps = buildBrowserActivityStepsFromTemplate(template);
+  const inputParams = buildBrowserInputParamsFromTemplate(template);
+
+  return {
+    name: workflowName,
+    description: workflowDescription,
+    taskQueue: 'SKILL_TASK_QUEUE',
+    workflowDsl: {
+      ...DEFAULT_WORKFLOW_DSL,
+      name: workflowName,
+      workflowClassName: `BrowserTemplate${short}Workflow`,
+      workflowDefnName: workflowName,
+      taskQueue: 'SKILL_TASK_QUEUE',
+      sourceContext: {
+        sourceType: 'browser_template',
+        generatedAt: new Date().toISOString(),
+        userDescription: workflowDescription,
+        warnings: [
+          '该草稿直接复用浏览器模板 DSL 与参数定义，不再进行命令二次生成。',
+        ],
+      },
+      inputParams,
+      outputParams: {
+        result: {
+          sourceStep: 'step_1',
+          description: '浏览器执行结果',
+        },
+      },
+      steps: [
+        {
+          id: 'step_1',
+          name: '执行浏览器脚本',
+          type: 'activity',
+          activityRef: `custom:${activityFn}`,
+          activityName: '浏览器自动化执行',
+          startToCloseTimeout: '300s',
+        },
+      ],
+    },
+    activityDsl: {
+      activities: [
+        {
+          name: '浏览器自动化执行',
+          fn: activityFn,
+          timeout: '300s',
+          retryPolicy: { maxRetries: 1, backoffMs: 1000 },
+          handler: 'browser',
+          config: {
+            description: '浏览器模板执行 Activity（直接复用模板 DSL）',
+            templateId: template.id,
+            commandCount: activitySteps.length,
+            steps: activitySteps,
+          },
+        },
+      ],
+    },
+    browserTemplate: {
+      commandCount: activitySteps.length,
+      placeholderCount: Object.keys(inputParams).length,
+      placeholders: Object.keys(inputParams),
+    },
+  };
+};
+
+const resolveApiErrorMessage = (error: any, fallback = '请求失败'): string => {
+  const responseData = error?.response?.data;
+  const messageText = typeof responseData?.message === 'string'
+    ? responseData.message
+    : typeof error?.message === 'string'
+      ? error.message
+      : fallback;
+  const codeText = typeof responseData?.code === 'string'
+    ? responseData.code
+    : typeof responseData?.error === 'string'
+      ? responseData.error
+      : '';
+  return codeText ? `${messageText} (${codeText})` : messageText;
 };
 
 const deriveWorkflowSourceTemplate = (
@@ -512,6 +719,7 @@ const codeGenerationReducer = (state: CodeGenerationState, action: CodeGeneratio
 
 const TemporalPage: React.FC = () => {
   const { t } = useTranslation(['common', 'admin']);
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [form] = Form.useForm();
 
@@ -554,10 +762,16 @@ const TemporalPage: React.FC = () => {
   const [realValidationState, dispatchRealValidation] = useReducer(realValidationReducer, initialRealValidationState);
   const [realValidationInputParams, setRealValidationInputParams] = useState<Record<string, string>>({}); // 真实验证时的输入参数
   const [templateModalVisible, setTemplateModalVisible] = useState(false);
+  const [templateModalMode, setTemplateModalMode] = useState<TemplateModalMode>('document');
   const [templates, setTemplates] = useState<CarboneTemplate[]>([]);
   const [templatesLoading, setTemplatesLoading] = useState(false);
   const [templateSearch, setTemplateSearch] = useState('');
   const [generatingTemplateId, setGeneratingTemplateId] = useState<string | null>(null);
+  const [browserTemplates, setBrowserTemplates] = useState<Template[]>([]);
+  const [browserTemplatesLoading, setBrowserTemplatesLoading] = useState(false);
+  const [browserTemplateSearch, setBrowserTemplateSearch] = useState('');
+  const [generatingBrowserTemplateId, setGeneratingBrowserTemplateId] = useState<string | null>(null);
+  const [creatingExecutionWorkflowId, setCreatingExecutionWorkflowId] = useState<string | null>(null);
   const [aiDraftDrawerVisible, setAiDraftDrawerVisible] = useState(false);
   const [applyDraftConfirmVisible, setApplyDraftConfirmVisible] = useState(false);
   const [aiDraftSessionId, setAiDraftSessionId] = useState<string | null>(null);
@@ -1024,7 +1238,15 @@ const TemporalPage: React.FC = () => {
   const validateMutation = useMutation(
     ({ workflowDsl: wfd, activityDsl: ad }: { workflowDsl: WorkflowDsl; activityDsl: ActivityDsl }) =>
       temporalWorkflowApi.validate(wfd, ad),
-    { onSuccess: (result) => { setValidationResult(result); message.success('验证完成'); }, onError: () => { message.error('验证失败'); } }
+    {
+      onSuccess: (result) => {
+        setValidationResult(result);
+        message.success('验证完成');
+      },
+      onError: (error: any) => {
+        message.error(resolveApiErrorMessage(error, '验证失败'));
+      },
+    }
   );
 
   const optimizeHttpConfigMutation = useMutation(
@@ -1276,8 +1498,7 @@ const TemporalPage: React.FC = () => {
     setAiDraftDrawerVisible(false);
   };
 
-  const openTemplateModal = async () => {
-    setTemplateModalVisible(true);
+  const loadDocumentTemplates = async () => {
     setTemplatesLoading(true);
     try {
       const data = await carboneAPI.getTemplates();
@@ -1287,6 +1508,38 @@ const TemporalPage: React.FC = () => {
       setTemplates([]);
     } finally {
       setTemplatesLoading(false);
+    }
+  };
+
+  const loadBrowserTemplates = async () => {
+    setBrowserTemplatesLoading(true);
+    try {
+      const data = await templateApi.list({ page: 1, pageSize: 200 });
+      setBrowserTemplates(Array.isArray(data?.templates) ? data.templates : []);
+    } catch (error: any) {
+      message.error('加载浏览器模板失败: ' + (error.message || '未知错误'));
+      setBrowserTemplates([]);
+    } finally {
+      setBrowserTemplatesLoading(false);
+    }
+  };
+
+  const openTemplateModal = async () => {
+    setTemplateModalVisible(true);
+    if (templateModalMode === 'document') {
+      await loadDocumentTemplates();
+    } else {
+      await loadBrowserTemplates();
+    }
+  };
+
+  const handleTemplateModeChange = async (value: string | number) => {
+    const nextMode = value === 'browser' ? 'browser' : 'document';
+    setTemplateModalMode(nextMode);
+    if (nextMode === 'document') {
+      await loadDocumentTemplates();
+    } else {
+      await loadBrowserTemplates();
     }
   };
 
@@ -1300,6 +1553,24 @@ const TemporalPage: React.FC = () => {
       message.error('生成模板工作流失败: ' + (error.message || '未知错误'));
     } finally {
       setGeneratingTemplateId(null);
+    }
+  };
+
+  const handleSelectBrowserTemplate = async (template: Template) => {
+    try {
+      setGeneratingBrowserTemplateId(template.id);
+      const detail = await templateApi.getById(template.id);
+      const draft = buildBrowserDraftFromTemplateDetail(detail);
+      if (!draft.activityDsl.activities[0]?.config?.steps || (draft.activityDsl.activities[0]?.config?.steps as Array<unknown>).length === 0) {
+        message.warning('该浏览器模板缺少可执行步骤，请先在模板页补充步骤');
+        return;
+      }
+      applyDraftToEditor(draft, `已基于模板 DSL 生成浏览器工作流草稿（${draft.browserTemplate.commandCount} 个步骤）`);
+      setTemplateModalVisible(false);
+    } catch (error: any) {
+      message.error('使用浏览器模板生成工作流失败: ' + (error.message || '未知错误'));
+    } finally {
+      setGeneratingBrowserTemplateId(null);
     }
   };
 
@@ -1320,6 +1591,56 @@ const TemporalPage: React.FC = () => {
   };
 
   const handleViewDetail = (workflow: TemporalWorkflowDTO) => { setSelectedWorkflow(workflow); setDetailModalVisible(true); };
+
+  const resolveWorkflowSourceSkillId = (workflow?: TemporalWorkflowDTO | null): string => {
+    const sourceTemplate = workflow?.sourceTemplate || workflow?.sourceContext?.sourceTemplate;
+    return String(sourceTemplate?.skillId || '').trim();
+  };
+
+  const buildExecutionInputFromWorkflow = (workflow: TemporalWorkflowDTO): Record<string, unknown> => {
+    const params = workflow.workflowDsl?.inputParams || {};
+    const input: Record<string, unknown> = {};
+    Object.entries(params).forEach(([key, config]) => {
+      if (config?.defaultValue !== undefined && String(config.defaultValue).trim() !== '') {
+        input[key] = config.defaultValue;
+        return;
+      }
+      if (config?.exampleValue !== undefined && config.exampleValue !== null) {
+        input[key] = config.exampleValue;
+        return;
+      }
+      input[key] = '';
+    });
+    return input;
+  };
+
+  const handleCreateExecutionFromWorkflow = async () => {
+    if (!selectedWorkflow) {
+      return;
+    }
+    const skillId = resolveWorkflowSourceSkillId(selectedWorkflow);
+    if (!skillId) {
+      message.warning('该工作流未绑定可执行 Skill，请先发布为 Skill 后再创建执行记录');
+      return;
+    }
+
+    try {
+      setCreatingExecutionWorkflowId(selectedWorkflow.id);
+      const execution = await executionApi.create({
+        skillId,
+        runtimeType: 'browser',
+        input: buildExecutionInputFromWorkflow(selectedWorkflow),
+      });
+      message.success('已创建执行记录，正在跳转执行详情');
+      setDetailModalVisible(false);
+      queryClient.invalidateQueries('executions');
+      navigate(`/executions/${execution.id}`);
+    } catch (error: any) {
+      message.error('创建执行记录失败: ' + (error?.message || '未知错误'));
+    } finally {
+      setCreatingExecutionWorkflowId(null);
+    }
+  };
 
   const handleValidate = () => {
     const formValues = form.getFieldsValue();
@@ -3246,56 +3567,123 @@ const TemporalPage: React.FC = () => {
       </Modal>
 
       <Modal
-        title="选择文档模板生成工作流"
+        title="模板工作流"
         open={templateModalVisible}
         onCancel={() => setTemplateModalVisible(false)}
         footer={null}
         width={900}
       >
-        <Space style={{ marginBottom: 12, width: '100%', justifyContent: 'space-between' }}>
-          <Input
-            placeholder="搜索模板..."
-            prefix={<SearchOutlined />}
-            value={templateSearch}
-            onChange={(e) => setTemplateSearch(e.target.value)}
-            style={{ width: 240 }}
-            allowClear
+        <div style={{ marginBottom: 12 }}>
+          <Segmented
+            options={[
+              { label: '文档模版', value: 'document' },
+              { label: '浏览器模版', value: 'browser' },
+            ]}
+            value={templateModalMode}
+            onChange={handleTemplateModeChange}
           />
-          <Button icon={<ReloadOutlined />} onClick={openTemplateModal} loading={templatesLoading} disabled={Boolean(generatingTemplateId)}>刷新</Button>
-        </Space>
-        <div style={{ maxHeight: 520, overflow: 'auto', paddingRight: 4 }}>
-          {(templates || []).filter(t => {
-            const kw = templateSearch.trim().toLowerCase();
-            if (!kw) return true;
-            const name = (t.fileName || '').toLowerCase();
-            const id = (t.id || '').toLowerCase();
-            return name.includes(kw) || id.includes(kw);
-          }).map((t) => (
-            <Card key={t.id} size="small" style={{ marginBottom: 10 }}>
-              <Space style={{ width: '100%', justifyContent: 'space-between' }}>
-                <Space>
-                  <Tag color={t.format === 'docx' ? 'blue' : t.format === 'xlsx' ? 'green' : 'purple'}>{t.format?.toUpperCase() || 'DOC'}</Tag>
-                  <Text strong>{t.fileName || t.id}</Text>
-                  <Text type="secondary">ID: {t.id}</Text>
-                  {t.skillId ? <Tag color="geekblue">Skill: {t.skillId}</Tag> : <Tag>无Skill</Tag>}
-                </Space>
-                <Space>
-                  <Button
-                    type="primary"
-                    onClick={() => handleSelectTemplate(t)}
-                    loading={generatingTemplateId === t.id}
-                    disabled={Boolean(generatingTemplateId)}
-                  >
-                    {generatingTemplateId === t.id ? '生成中...' : '用此模板生成'}
-                  </Button>
-                </Space>
-              </Space>
-            </Card>
-          ))}
-          {(!templates || templates.length === 0) && (
-            <Alert message="暂无模板，或加载失败" type="warning" showIcon />
-          )}
         </div>
+        {templateModalMode === 'document' ? (
+          <>
+            <Space style={{ marginBottom: 12, width: '100%', justifyContent: 'space-between' }}>
+              <Input
+                placeholder="搜索模板..."
+                prefix={<SearchOutlined />}
+                value={templateSearch}
+                onChange={(e) => setTemplateSearch(e.target.value)}
+                style={{ width: 240 }}
+                allowClear
+              />
+              <Button icon={<ReloadOutlined />} onClick={loadDocumentTemplates} loading={templatesLoading} disabled={Boolean(generatingTemplateId)}>刷新</Button>
+            </Space>
+            <div style={{ maxHeight: 520, overflow: 'auto', paddingRight: 4 }}>
+              {(templates || []).filter(t => {
+                const kw = templateSearch.trim().toLowerCase();
+                if (!kw) return true;
+                const name = (t.fileName || '').toLowerCase();
+                const id = (t.id || '').toLowerCase();
+                return name.includes(kw) || id.includes(kw);
+              }).map((t) => (
+                <Card key={t.id} size="small" style={{ marginBottom: 10 }}>
+                  <Space style={{ width: '100%', justifyContent: 'space-between' }}>
+                    <Space>
+                      <Tag color={t.format === 'docx' ? 'blue' : t.format === 'xlsx' ? 'green' : 'purple'}>{t.format?.toUpperCase() || 'DOC'}</Tag>
+                      <Text strong>{t.fileName || t.id}</Text>
+                      <Text type="secondary">ID: {t.id}</Text>
+                      {t.skillId ? <Tag color="geekblue">Skill: {t.skillId}</Tag> : <Tag>无Skill</Tag>}
+                    </Space>
+                    <Space>
+                      <Button
+                        type="primary"
+                        onClick={() => handleSelectTemplate(t)}
+                        loading={generatingTemplateId === t.id}
+                        disabled={Boolean(generatingTemplateId)}
+                      >
+                        {generatingTemplateId === t.id ? '生成中...' : '用此模板生成'}
+                      </Button>
+                    </Space>
+                  </Space>
+                </Card>
+              ))}
+              {(!templates || templates.length === 0) && (
+                <Alert message="暂无模板，或加载失败" type="warning" showIcon />
+              )}
+            </div>
+          </>
+        ) : (
+          <Space direction="vertical" style={{ width: '100%' }} size={12}>
+            <Alert
+              type="info"
+              showIcon
+              message="请选择已生成的浏览器模板，系统将自动转换为 Browser Activity 工作流草稿"
+            />
+            <Space style={{ width: '100%', justifyContent: 'space-between' }}>
+              <Input
+                placeholder="搜索已生成浏览器模板..."
+                prefix={<SearchOutlined />}
+                value={browserTemplateSearch}
+                onChange={(e) => setBrowserTemplateSearch(e.target.value)}
+                style={{ width: 280 }}
+                allowClear
+              />
+              <Button icon={<ReloadOutlined />} onClick={loadBrowserTemplates} loading={browserTemplatesLoading} disabled={Boolean(generatingBrowserTemplateId)}>
+                刷新模板
+              </Button>
+            </Space>
+            <div style={{ maxHeight: 280, overflow: 'auto', paddingRight: 4 }}>
+              {(browserTemplates || []).filter((item) => {
+                const kw = browserTemplateSearch.trim().toLowerCase();
+                if (!kw) return true;
+                const name = String(item.name || '').toLowerCase();
+                const id = String(item.id || '').toLowerCase();
+                const desc = String(item.description || '').toLowerCase();
+                return name.includes(kw) || id.includes(kw) || desc.includes(kw);
+              }).map((item) => (
+                <Card key={item.id} size="small" style={{ marginBottom: 8 }}>
+                  <Space style={{ width: '100%', justifyContent: 'space-between' }}>
+                    <Space>
+                      <Tag color={item.status === 'PUBLISHED' ? 'green' : item.status === 'REVIEW' ? 'gold' : 'blue'}>{item.status}</Tag>
+                      <Text strong>{item.name || item.id}</Text>
+                      <Text type="secondary">ID: {item.id}</Text>
+                      <Tag>步骤: {Array.isArray(item.steps) ? item.steps.length : 0}</Tag>
+                    </Space>
+                    <Button
+                      type="primary"
+                      onClick={() => handleSelectBrowserTemplate(item)}
+                      loading={generatingBrowserTemplateId === item.id}
+                      disabled={Boolean(generatingBrowserTemplateId)}
+                    >
+                      {generatingBrowserTemplateId === item.id ? '生成中...' : '用此浏览器模板生成'}
+                    </Button>
+                  </Space>
+                </Card>
+              ))}
+              {(!browserTemplates || browserTemplates.length === 0) && (
+                <Alert message="暂无已生成浏览器模板，或加载失败" type="warning" showIcon />
+              )}
+            </div>
+          </Space>
+        )}
       </Modal>
 
       <Drawer
@@ -3685,6 +4073,27 @@ const TemporalPage: React.FC = () => {
                 <Col span={12}><Text><strong>状态:</strong> <Tag color={selectedWorkflow.isActive ? 'green' : 'default'}>{selectedWorkflow.isActive ? '已启用' : '已禁用'}</Tag></Text></Col>
                 <Col span={24}><Text><strong>描述:</strong> {selectedWorkflow.description || '无'}</Text></Col>
               </Row>
+            </Card>
+            <Card size="small" style={SECTION_CARD_STYLE} styles={{ body: { padding: 14 } }}>
+              <Space style={{ width: '100%', justifyContent: 'space-between' }} align="center">
+                <Space direction="vertical" size={0}>
+                  <Text strong>执行记录</Text>
+                  <Text type="secondary">
+                    {resolveWorkflowSourceSkillId(selectedWorkflow)
+                      ? `已关联 Skill: ${resolveWorkflowSourceSkillId(selectedWorkflow)}`
+                      : '当前工作流未关联 Skill，无法直接创建 executions 记录'}
+                  </Text>
+                </Space>
+                <Button
+                  type="primary"
+                  icon={<PlayCircleOutlined />}
+                  onClick={handleCreateExecutionFromWorkflow}
+                  loading={creatingExecutionWorkflowId === selectedWorkflow.id}
+                  disabled={!resolveWorkflowSourceSkillId(selectedWorkflow)}
+                >
+                  创建执行记录
+                </Button>
+              </Space>
             </Card>
             {selectedWorkflow.sourceContext && (
               <Card size="small" style={SECTION_CARD_STYLE} styles={{ body: { padding: 14 } }}>

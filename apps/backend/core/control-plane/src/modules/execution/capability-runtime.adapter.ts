@@ -53,6 +53,7 @@ export class CapabilityRuntimeAdapter implements RuntimeAdapter {
             : undefined,
         executionId: request.executionId,
         stepId: request.stepId,
+        runtimeSessionId: request.runtimeSessionId || undefined,
         input: request.input,
       },
     );

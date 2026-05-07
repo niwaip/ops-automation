@@ -51,8 +51,14 @@ export const buildPlannedExecutionSteps = (
 } => {
   const steps: Prisma.ExecutionStepCreateManyInput[] = [];
   let stepIndex = 1;
+  const plannerMode =
+    typeof normalizedInput.plannerMode === 'string' && normalizedInput.plannerMode.trim()
+      ? normalizedInput.plannerMode.trim()
+      : undefined;
   const bootstrapUrl =
-    typeof normalizedInput.url === 'string' && normalizedInput.url.trim()
+    plannerMode === 'skill'
+      ? undefined
+      : typeof normalizedInput.url === 'string' && normalizedInput.url.trim()
       ? normalizedInput.url.trim()
       : undefined;
 

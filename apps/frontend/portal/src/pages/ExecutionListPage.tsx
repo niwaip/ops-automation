@@ -27,6 +27,8 @@ import {
   Alert,
   message,
   Tooltip,
+  Image,
+  Carousel,
 } from 'antd';
 import {
   SearchOutlined,
@@ -38,6 +40,8 @@ import {
   CopyOutlined,
   ClockCircleOutlined,
   InfoCircleOutlined,
+  DownOutlined,
+  RightOutlined,
 } from '@ant-design/icons';
 import { useMutation, useQuery, useQueryClient } from 'react-query';
 import { executionApi, ExecutionDto, ExecutionStatus, ExecutionStepDto } from '../api/execution';
@@ -425,6 +429,32 @@ interface RequiredInputField {
   source: 'user_input' | 'default' | 'unresolved';
 }
 
+interface BrowserExecutionStepResult {
+  stepId?: string;
+  name?: string;
+  action?: string;
+  target?: string | null;
+  snapshotId?: string | null;
+  output?: Record<string, unknown> | null;
+}
+
+interface BrowserExecutionResultViewModel {
+  runtimeSessionId?: string;
+  backend?: string;
+  stepResults: BrowserExecutionStepResult[];
+  failedStep?: string;
+  failedAction?: string;
+  snapshotId?: string | null;
+}
+
+interface TimelineNodeCardProps {
+  title: string;
+  subtitle?: string;
+  preview?: React.ReactNode;
+  color?: 'green' | 'red' | 'processing' | 'gray' | 'blue';
+  details?: React.ReactNode;
+}
+
 const renderInputField = (field: RequiredInputField) => {
   const normalizedType = field.type.toLowerCase();
 
@@ -461,6 +491,427 @@ const normalizeSubmittedValues = (
     acc[field.name] = rawValue;
     return acc;
   }, {});
+};
+
+const extractBrowserExecutionResult = (value: unknown): BrowserExecutionResultViewModel | null => {
+  const parsed = tryParseJsonValue(value);
+  const candidates = [
+    asRecord(parsed),
+    asRecord(asRecord(parsed)?.result),
+    asRecord(asRecord(parsed)?.output),
+  ].filter((item): item is Record<string, unknown> => Boolean(item));
+
+  for (const candidate of candidates) {
+    const rawStepResults = candidate.stepResults;
+    if (!Array.isArray(rawStepResults)) {
+      continue;
+    }
+
+    const stepResults = rawStepResults
+      .filter((item): item is Record<string, unknown> => Boolean(item) && typeof item === 'object' && !Array.isArray(item))
+      .map((item) => ({
+        stepId: typeof item.stepId === 'string' ? item.stepId : undefined,
+        name: typeof item.name === 'string' ? item.name : undefined,
+        action: typeof item.action === 'string' ? item.action : undefined,
+        target: typeof item.target === 'string' ? item.target : null,
+        snapshotId: typeof item.snapshotId === 'string' ? item.snapshotId : null,
+        output: asRecord(item.output) || null,
+      }));
+
+    return {
+      runtimeSessionId: typeof candidate.runtimeSessionId === 'string' ? candidate.runtimeSessionId : undefined,
+      backend: typeof candidate.backend === 'string' ? candidate.backend : undefined,
+      stepResults,
+      failedStep: typeof candidate.failedStep === 'string' ? candidate.failedStep : undefined,
+      failedAction: typeof candidate.failedAction === 'string' ? candidate.failedAction : undefined,
+      snapshotId: typeof candidate.snapshotId === 'string' ? candidate.snapshotId : null,
+    };
+  }
+
+  return null;
+};
+
+const previewText = (value: unknown, maxLength = 180) => {
+  const text = typeof value === 'string' ? value : JSON.stringify(value, null, 2);
+  return text.length > maxLength ? `${text.slice(0, maxLength)}...` : text;
+};
+
+const sanitizeBrowserOutputForDisplay = (value: unknown): unknown => {
+  if (typeof value === 'string') {
+    if (value.length > 400 && /^[A-Za-z0-9+/=]+$/.test(value)) {
+      return `[omitted large base64 string, length=${value.length}]`;
+    }
+    return value.length > 1200 ? `${value.slice(0, 1200)}...` : value;
+  }
+  if (Array.isArray(value)) {
+    return value.map((item) => sanitizeBrowserOutputForDisplay(item));
+  }
+  if (value && typeof value === 'object') {
+    return Object.entries(value as Record<string, unknown>).reduce<Record<string, unknown>>((acc, [key, current]) => {
+      if (key.toLowerCase().includes('base64') && typeof current === 'string') {
+        acc[key] = `[omitted base64 payload, length=${current.length}]`;
+        return acc;
+      }
+      acc[key] = sanitizeBrowserOutputForDisplay(current);
+      return acc;
+    }, {});
+  }
+  return value;
+};
+
+const parseBrowserStdoutResult = (stdout: string | undefined): unknown => {
+  if (!stdout) {
+    return undefined;
+  }
+  const marker = '### Result';
+  const codeMarker = '### Ran Playwright code';
+  const startIndex = stdout.indexOf(marker);
+  if (startIndex < 0) {
+    return undefined;
+  }
+
+  const contentStart = startIndex + marker.length;
+  const codeIndex = stdout.indexOf(codeMarker, contentStart);
+  const rawResult = stdout.slice(contentStart, codeIndex >= 0 ? codeIndex : undefined).trim();
+  if (!rawResult) {
+    return undefined;
+  }
+
+  try {
+    return JSON.parse(rawResult);
+  } catch {
+    return rawResult;
+  }
+};
+
+const isLikelyImageUrl = (value: string) => /^https?:\/\/.+\.(png|jpg|jpeg|gif|webp)(\?.*)?$/i.test(value);
+
+const isLikelyBase64ImagePayload = (value: string) => (
+  value.length > 200
+  && /^[A-Za-z0-9+/=]+$/.test(value)
+);
+
+const extractBrowserImageSrc = (value: unknown, hint?: string): string | undefined => {
+  if (typeof value === 'string') {
+    const trimmed = value.trim();
+    if (trimmed.startsWith('data:image/')) {
+      return trimmed;
+    }
+    if (isLikelyImageUrl(trimmed)) {
+      return trimmed;
+    }
+    if (hint && /(screenshot|image|img|base64)/i.test(hint) && isLikelyBase64ImagePayload(trimmed)) {
+      return `data:image/png;base64,${trimmed}`;
+    }
+    return undefined;
+  }
+
+  if (Array.isArray(value)) {
+    for (const item of value) {
+      const found = extractBrowserImageSrc(item, hint);
+      if (found) {
+        return found;
+      }
+    }
+    return undefined;
+  }
+
+  if (value && typeof value === 'object') {
+    for (const [key, current] of Object.entries(value as Record<string, unknown>)) {
+      const found = extractBrowserImageSrc(current, key);
+      if (found) {
+        return found;
+      }
+    }
+  }
+
+  return undefined;
+};
+
+const extractBrowserImageSources = (value: unknown, hint?: string): string[] => {
+  const found = new Set<string>();
+
+  const visit = (current: unknown, currentHint?: string) => {
+    const single = extractBrowserImageSrc(current, currentHint);
+    if (single) {
+      found.add(single);
+    }
+
+    if (Array.isArray(current)) {
+      current.forEach((item) => visit(item, currentHint));
+      return;
+    }
+
+    if (current && typeof current === 'object') {
+      Object.entries(current as Record<string, unknown>).forEach(([key, item]) => {
+        visit(item, key);
+      });
+    }
+  };
+
+  visit(value, hint);
+  return Array.from(found);
+};
+
+const formatWaitSeconds = (durationMs: number | undefined): string | undefined => {
+  if (typeof durationMs !== 'number' || Number.isNaN(durationMs) || durationMs < 0) {
+    return undefined;
+  }
+  const seconds = durationMs / 1000;
+  return Number.isInteger(seconds) ? `${seconds}` : seconds.toFixed(1);
+};
+
+const resolveBrowserWaitSeconds = (
+  stepResult: BrowserExecutionStepResult,
+  output: Record<string, unknown> | null | undefined,
+): string | undefined => {
+  if (stepResult.action !== 'wait') {
+    return undefined;
+  }
+  const outputRecord = asRecord(output) || {};
+  const data = asRecord(outputRecord.data) || {};
+  const rawDuration = data.duration;
+  return typeof rawDuration === 'number' ? formatWaitSeconds(rawDuration) : undefined;
+};
+
+const buildBrowserOutputDisplay = (output: Record<string, unknown> | null | undefined) => {
+  if (!output) {
+    return {
+      summary: undefined as unknown,
+      imageSrc: undefined as string | undefined,
+      imageSources: [] as string[],
+      details: undefined as unknown,
+      status: undefined as string | undefined,
+      command: undefined as string | undefined,
+    };
+  }
+
+  const sanitized = asRecord(sanitizeBrowserOutputForDisplay(output)) || {};
+  const status = typeof sanitized.status === 'string' ? sanitized.status : undefined;
+  const command = typeof sanitized.command === 'string' ? sanitized.command : undefined;
+  const data = asRecord(sanitized.data);
+  const stdout = typeof sanitized.stdout === 'string' ? sanitized.stdout : undefined;
+  const stderr = typeof sanitized.stderr === 'string' && sanitized.stderr.trim() ? sanitized.stderr : undefined;
+  const parsedStdoutResult = parseBrowserStdoutResult(stdout);
+  const imageSrc = extractBrowserImageSrc(output);
+  const imageSources = extractBrowserImageSources(output);
+  const summary = data || parsedStdoutResult || {
+    ...(status ? { status } : {}),
+    ...(command ? { command } : {}),
+  };
+
+  return {
+    summary,
+    imageSrc,
+    imageSources,
+    details: {
+      ...(status ? { status } : {}),
+      ...(command ? { command } : {}),
+      ...(data ? { data } : {}),
+      ...(!data && parsedStdoutResult !== undefined ? { result: parsedStdoutResult } : {}),
+      ...(stderr ? { stderr } : {}),
+    },
+    status,
+    command,
+  };
+};
+
+const renderSummaryChips = (
+  items: Array<{ label: string; value: React.ReactNode; color?: string }>,
+) => {
+  const visibleItems = items.filter((item) => item.value !== undefined && item.value !== null && item.value !== '');
+  if (!visibleItems.length) {
+    return null;
+  }
+
+  return (
+    <div
+      style={{
+        display: 'flex',
+        flexWrap: 'wrap',
+        gap: 8,
+        justifyContent: 'flex-start',
+      }}
+    >
+      {visibleItems.map((item) => (
+        <Tag
+          key={`${item.label}-${String(item.value)}`}
+          color={item.color}
+          style={{
+            marginInlineEnd: 0,
+            paddingInline: 10,
+            paddingBlock: 4,
+            borderRadius: 999,
+          }}
+        >
+          <Space size={4}>
+            <Text type="secondary">{item.label}</Text>
+            <Text strong>{item.value}</Text>
+          </Space>
+        </Tag>
+      ))}
+    </div>
+  );
+};
+
+const renderTimelineDetails = (
+  sections: Array<{ label: string; value: unknown }>,
+) => {
+  const visibleSections = sections.filter((section) => {
+    if (section.value === undefined || section.value === null) {
+      return false;
+    }
+    if (typeof section.value === 'string') {
+      return section.value.trim().length > 0;
+    }
+    if (Array.isArray(section.value)) {
+      return section.value.length > 0;
+    }
+    if (typeof section.value === 'object') {
+      return Object.keys(section.value as Record<string, unknown>).length > 0;
+    }
+    return true;
+  });
+
+  if (!visibleSections.length) {
+    return null;
+  }
+
+  return (
+    <Space direction="vertical" size={12} style={{ width: '100%' }}>
+      {visibleSections.map((section) => (
+        <div key={section.label}>
+          <Text strong>{section.label}</Text>
+          <pre style={{ margin: '8px 0 0', whiteSpace: 'pre-wrap', wordBreak: 'break-word', maxHeight: 320, overflow: 'auto' }}>
+            {typeof section.value === 'string' ? section.value : JSON.stringify(section.value, null, 2)}
+          </pre>
+        </div>
+      ))}
+    </Space>
+  );
+};
+
+const getTimelineCardTone = (color?: TimelineNodeCardProps['color']) => {
+  switch (color) {
+    case 'green':
+      return {
+        borderColor: 'rgba(16, 185, 129, 0.28)',
+        background: 'linear-gradient(180deg, rgba(16, 185, 129, 0.12) 0%, var(--bg-card) 100%)',
+        accent: 'var(--success-color)',
+      };
+    case 'red':
+      return {
+        borderColor: 'rgba(239, 68, 68, 0.28)',
+        background: 'linear-gradient(180deg, rgba(239, 68, 68, 0.12) 0%, var(--bg-card) 100%)',
+        accent: 'var(--error-color)',
+      };
+    case 'processing':
+      return {
+        borderColor: 'rgba(59, 130, 246, 0.28)',
+        background: 'linear-gradient(180deg, rgba(59, 130, 246, 0.12) 0%, var(--bg-card) 100%)',
+        accent: 'var(--info-color)',
+      };
+    case 'gray':
+      return {
+        borderColor: 'var(--border-color)',
+        background: 'linear-gradient(180deg, var(--bg-secondary) 0%, var(--bg-card) 100%)',
+        accent: 'var(--text-light)',
+      };
+    case 'blue':
+    default:
+      return {
+        borderColor: 'rgba(99, 102, 241, 0.28)',
+        background: 'linear-gradient(180deg, rgba(99, 102, 241, 0.12) 0%, var(--bg-card) 100%)',
+        accent: 'var(--primary-color)',
+      };
+  }
+};
+
+const TimelineNodeCard: React.FC<TimelineNodeCardProps> = ({
+  title,
+  subtitle,
+  preview,
+  color,
+  details,
+}) => {
+  const [expanded, setExpanded] = useState(false);
+  const canToggle = Boolean(details);
+  const tone = getTimelineCardTone(color);
+
+  const toggleExpanded = () => {
+    if (!canToggle) {
+      return;
+    }
+    setExpanded((value) => !value);
+  };
+
+  return (
+    <Card
+      size="small"
+      styles={{ body: { padding: 12 } }}
+      style={{
+        borderRadius: 12,
+        borderColor: tone.borderColor,
+        background: tone.background,
+        boxShadow: 'var(--shadow-sm)',
+      }}
+    >
+      <Space direction="vertical" size={8} style={{ width: '100%' }}>
+        <div
+          onClick={toggleExpanded}
+          onKeyDown={(event) => {
+            if ((event.key === 'Enter' || event.key === ' ') && canToggle) {
+              event.preventDefault();
+              toggleExpanded();
+            }
+          }}
+          role={canToggle ? 'button' : undefined}
+          tabIndex={canToggle ? 0 : undefined}
+          style={{
+            width: '100%',
+            cursor: canToggle ? 'pointer' : 'default',
+            borderRadius: 10,
+            padding: 6,
+          }}
+        >
+          <Space style={{ width: '100%', justifyContent: 'space-between' }} align="start">
+            <Space direction="vertical" size={2} style={{ minWidth: 0, flex: 1, alignItems: 'flex-start', textAlign: 'left' }}>
+              <div
+                style={{
+                  width: '100%',
+                  height: 3,
+                  borderRadius: 999,
+                  background: tone.accent,
+                  opacity: 0.18,
+                  marginBottom: 6,
+                }}
+              />
+              <Text strong style={{ width: '100%', textAlign: 'left' }}>{title}</Text>
+              {subtitle ? <Text type="secondary" style={{ width: '100%', textAlign: 'left' }}>{subtitle}</Text> : null}
+            </Space>
+            {details ? (
+              <Button
+                type="text"
+                size="small"
+                icon={expanded ? <DownOutlined /> : <RightOutlined />}
+                style={{
+                  color: tone.accent,
+                  background: 'var(--bg-card)',
+                  borderRadius: 999,
+                }}
+                onClick={(event) => {
+                  event.stopPropagation();
+                  toggleExpanded();
+                }}
+              />
+            ) : null}
+          </Space>
+        </div>
+        {preview ? <div style={{ paddingTop: 4 }}>{preview}</div> : null}
+        {expanded && details ? <div style={{ paddingTop: 4 }}>{details}</div> : null}
+      </Space>
+    </Card>
+  );
 };
 
 const extractDownloadUrl = (result?: Record<string, unknown>): string | undefined => {
@@ -810,6 +1261,172 @@ const ExecutionListPage: React.FC = () => {
       },
     },
   ];
+
+  const selectedBrowserExecutionResult = extractBrowserExecutionResult(selectedExecution?.resultJson);
+  const selectedBrowserTimelineItems = selectedBrowserExecutionResult
+    ? [
+        {
+          color: 'gray' as const,
+          children: (
+            <TimelineNodeCard
+              title="浏览器运行信息"
+              subtitle={formatDateTime(selectedExecution?.endedAt || selectedExecution?.updatedAt)}
+              color="gray"
+              preview={renderSummaryChips([
+                { label: '后端', value: selectedBrowserExecutionResult.backend || '-', color: 'blue' },
+                { label: '步骤数', value: selectedBrowserExecutionResult.stepResults.length, color: 'processing' },
+                { label: '状态', value: selectedExecution ? statusLabels[selectedExecution.status] : '-', color: selectedExecution ? statusColors[selectedExecution.status] : 'default' },
+              ])}
+              details={renderTimelineDetails([
+                { label: 'Runtime Session', value: selectedBrowserExecutionResult.runtimeSessionId || '-' },
+                { label: 'Runtime', value: {
+                  backend: selectedBrowserExecutionResult.backend,
+                  runtimeSessionId: selectedBrowserExecutionResult.runtimeSessionId,
+                  stepCount: selectedBrowserExecutionResult.stepResults.length,
+                  failedStep: selectedBrowserExecutionResult.failedStep,
+                  failedAction: selectedBrowserExecutionResult.failedAction,
+                } },
+              ])}
+            />
+          ),
+        },
+        ...selectedBrowserExecutionResult.stepResults.map((stepResult, index) => {
+          const outputDisplay = buildBrowserOutputDisplay(stepResult.output || null);
+          const waitSeconds = resolveBrowserWaitSeconds(stepResult, stepResult.output || null);
+          const isWaitStep = stepResult.action === 'wait';
+          const imageSources = outputDisplay.imageSources.length > 0
+            ? outputDisplay.imageSources
+            : outputDisplay.imageSrc
+              ? [outputDisplay.imageSrc]
+              : [];
+          const stepColor: TimelineNodeCardProps['color'] =
+            selectedBrowserExecutionResult.failedStep && index === selectedBrowserExecutionResult.stepResults.length - 1
+            ? 'red'
+            : 'green';
+
+          return {
+            color: stepColor,
+            children: (
+              <TimelineNodeCard
+                key={`${stepResult.stepId || stepResult.name || stepResult.action || 'browser-step'}-${index}`}
+                title={`步骤 ${index + 1}: ${isWaitStep && waitSeconds ? `wait ${waitSeconds}s` : stepResult.name || stepResult.action || '-'}`}
+                subtitle={
+                  isWaitStep
+                    ? waitSeconds
+                      ? `等待 ${waitSeconds} 秒`
+                      : '等待'
+                    : stepResult.target || outputDisplay.command || stepResult.stepId || '-'
+                }
+                color={stepColor}
+                preview={
+                  <Space direction="vertical" size={10} style={{ width: '100%' }}>
+                    {isWaitStep ? (
+                      renderSummaryChips([
+                        { label: '等待', value: waitSeconds ? `${waitSeconds} 秒` : '-', color: 'processing' },
+                        {
+                          label: 'status',
+                          value: outputDisplay.status || '-',
+                          color: outputDisplay.status === 'success' ? 'green' : 'default',
+                        },
+                      ])
+                    ) : (
+                      <>
+                        {renderSummaryChips([
+                          { label: '动作', value: stepResult.action || '-', color: 'processing' },
+                          { label: '目标', value: stepResult.target || '-', color: 'blue' },
+                          { label: '快照', value: stepResult.snapshotId || '-', color: 'default' },
+                          {
+                            label: 'status',
+                            value: outputDisplay.status || '-',
+                            color: outputDisplay.status === 'success' ? 'green' : 'default',
+                          },
+                        ])}
+                        <Text
+                          type="secondary"
+                          style={{
+                            display: 'block',
+                            textAlign: 'left',
+                            whiteSpace: 'pre-wrap',
+                            wordBreak: 'break-word',
+                            lineHeight: 1.6,
+                          }}
+                        >
+                          {previewText(outputDisplay.summary || '暂无结构化输出', 220)}
+                        </Text>
+                      </>
+                    )}
+                    {imageSources.length > 0 ? (
+                      <div
+                        style={{
+                          marginTop: 4,
+                          borderRadius: 12,
+                          overflow: 'hidden',
+                          border: '1px solid var(--bg-secondary)',
+                          background: 'var(--bg-card)',
+                          padding: 12,
+                        }}
+                      >
+                        <Image.PreviewGroup>
+                          {imageSources.length === 1 ? (
+                            <Image
+                              src={imageSources[0]}
+                              alt={stepResult.name || stepResult.action || 'browser screenshot'}
+                              style={{
+                                width: '100%',
+                                maxHeight: 280,
+                                objectFit: 'contain',
+                                background: 'var(--bg-secondary)',
+                                borderRadius: 8,
+                              }}
+                            />
+                          ) : (
+                            <Carousel dots>
+                              {imageSources.map((src, imageIndex) => (
+                                <div key={`${src}-${imageIndex}`}>
+                                  <div
+                                    style={{
+                                      display: 'flex',
+                                      justifyContent: 'center',
+                                      background: 'var(--bg-secondary)',
+                                      borderRadius: 8,
+                                      padding: 8,
+                                    }}
+                                  >
+                                    <Image
+                                      src={src}
+                                      alt={`${stepResult.name || stepResult.action || 'browser screenshot'}-${imageIndex + 1}`}
+                                      style={{
+                                        maxHeight: 280,
+                                        objectFit: 'contain',
+                                        borderRadius: 8,
+                                      }}
+                                    />
+                                  </div>
+                                </div>
+                              ))}
+                            </Carousel>
+                          )}
+                        </Image.PreviewGroup>
+                      </div>
+                    ) : null}
+                  </Space>
+                }
+                details={renderTimelineDetails([
+                  { label: 'Step', value: {
+                    stepId: stepResult.stepId,
+                    name: stepResult.name,
+                    action: stepResult.action,
+                    target: stepResult.target,
+                    snapshotId: stepResult.snapshotId,
+                  } },
+                  { label: '步骤输出', value: outputDisplay.details || '暂无结构化输出' },
+                ])}
+              />
+            ),
+          };
+        }),
+      ]
+    : [];
 
   return (
     <div style={{ padding: 24 }}>
@@ -1215,7 +1832,9 @@ const ExecutionListPage: React.FC = () => {
                   children: selectedExecution.resultJson ? (
                     <Space direction="vertical" size={12} style={{ width: '100%' }}>
                       <Space style={{ width: '100%', justifyContent: 'space-between' }} wrap>
-                        <Text type="secondary">已格式化显示执行结果 JSON</Text>
+                        <Text type="secondary">
+                          {selectedBrowserExecutionResult ? '已按浏览器步骤时间线显示执行结果' : '已格式化显示执行结果 JSON'}
+                        </Text>
                         <Space wrap>
                           {extractDownloadUrl(selectedExecution.resultJson) ? (
                             <Button
@@ -1235,7 +1854,18 @@ const ExecutionListPage: React.FC = () => {
                           </Button>
                         </Space>
                       </Space>
-                      {renderJsonBlock(selectedExecution.resultJson)}
+                      {selectedBrowserExecutionResult ? (
+                        <>
+                          {selectedBrowserExecutionResult.runtimeSessionId ? (
+                            <Text copyable={{ text: selectedBrowserExecutionResult.runtimeSessionId }}>
+                              {`运行会话: ${selectedBrowserExecutionResult.runtimeSessionId}`}
+                            </Text>
+                          ) : null}
+                          <Timeline items={selectedBrowserTimelineItems} />
+                        </>
+                      ) : (
+                        renderJsonBlock(selectedExecution.resultJson)
+                      )}
                     </Space>
                   ) : (
                     <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无结果" />
