@@ -166,8 +166,12 @@ export class CdpExecutor implements OnModuleDestroy {
     if (step.duration !== undefined && commandParams.duration === undefined) commandParams.duration = step.duration;
     if (step.direction && commandParams.direction === undefined) commandParams.direction = step.direction;
     if (step.amount !== undefined && commandParams.amount === undefined) commandParams.amount = step.amount;
-    if (step.locator && commandParams.selector === undefined) {
-      commandParams.selector = this.buildSelector(step.locator);
+    if (step.locator) {
+      if (step.locator.type === 'ref' && commandParams.target === undefined) {
+        commandParams.target = step.locator.value;
+      } else if (commandParams.selector === undefined) {
+        commandParams.selector = this.buildSelector(step.locator);
+      }
     }
     if (step.wait) {
       if (step.wait.value && commandParams.selector === undefined) {
@@ -204,6 +208,9 @@ export class CdpExecutor implements OnModuleDestroy {
 
       case 'role':
         return `role=${locator.value}`;
+
+      case 'ref':
+        return locator.value;
 
       case 'placeholder':
         return `[placeholder="${locator.value}"]`;

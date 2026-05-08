@@ -237,6 +237,18 @@ export class PlaywrightCliAdapter implements BrowserExecutionAdapter {
     return this.getControlState(dto.runtimeSessionId);
   }
 
+  async generateLocator(
+    targetRef: string,
+    options?: BrowserExecutionOptions,
+  ): Promise<string | undefined> {
+    const sessionId = options?.runtimeSessionId || 'default';
+    await this.ensureSessionReady(sessionId);
+    const result = await this.execCli(sessionId, ['--raw', 'generate-locator', targetRef]);
+    this.assertNoCliError(result, 'Generate locator failed');
+    const locator = result.stdout.trim();
+    return locator || undefined;
+  }
+
   private async runCliAction(
     action: string,
     params: Record<string, unknown>,
@@ -418,6 +430,7 @@ export class PlaywrightCliAdapter implements BrowserExecutionAdapter {
     args.push(`--filename=${snapshotPath}`);
     const result = await this.execCli(sessionId, args);
     this.assertNoCliError(result, 'Snapshot failed');
+    const snapshotContent = await fs.readFile(snapshotPath, 'utf8');
 
     return {
       status: 'success',
@@ -428,7 +441,7 @@ export class PlaywrightCliAdapter implements BrowserExecutionAdapter {
         id: path.basename(snapshotPath, '.yaml'),
         path: snapshotPath,
       },
-      data: { path: snapshotPath },
+      data: { path: snapshotPath, content: snapshotContent },
     };
   }
 

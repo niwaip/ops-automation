@@ -5,6 +5,7 @@ import {
   FreezeBrowserSessionDto,
   ResumeBrowserSessionDto,
 } from '../../../dto/worker.dto';
+import { BrowserRuntimeLocator } from '../domain/browser-step.types';
 
 export type BrowserExecutionBackend = 'legacy' | 'cli' | 'chrome-devtools' | 'mcp';
 
@@ -12,6 +13,11 @@ export interface MCPCommand {
   tool: string;
   params: Record<string, unknown>;
   description?: string;
+  locator?: BrowserRuntimeLocator;
+  assertion?: {
+    type: string;
+    expected?: unknown;
+  };
 }
 
 export interface BrowserInitOptions {
@@ -48,5 +54,6 @@ export interface BrowserExecutionAdapter {
   executeStep(dto: ExecuteStepDto): Promise<ExecuteStepResultDto>;
   freeze(dto: FreezeBrowserSessionDto): Promise<BrowserControlStateDto>;
   resume(dto: ResumeBrowserSessionDto): Promise<BrowserControlStateDto>;
+  generateLocator?(targetRef: string, options?: BrowserExecutionOptions): Promise<string | undefined>;
   onModuleDestroy?(): Promise<void>;
 }

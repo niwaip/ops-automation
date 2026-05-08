@@ -7,6 +7,14 @@ export interface BrowserCommand {
   tool: string;
   params: Record<string, unknown>;
   description?: string;
+  locator?: {
+    strategy?: string;
+    value?: string;
+    expression?: string;
+    role?: string;
+    name?: string;
+    exact?: boolean;
+  };
 }
 
 export interface ParseBrowserCommandRequest {
@@ -18,6 +26,9 @@ interface BrowserCommandContext {
   commandType?: string;
   currentPageUrl?: string;
   backend?: string;
+  lastObservationText?: string;
+  availableInputs?: string[];
+  availableButtons?: string[];
 }
 
 type BrowserPlanAction =
@@ -316,6 +327,11 @@ export class BrowserCommandService {
 
     const commandContext = this.normalizeContext(request.context);
 
+    const loginResult = this.parseLoginCommand(input);
+    if (loginResult) {
+      return loginResult;
+    }
+
     const contextResult = this.parseWithCommandContext(input, commandContext);
     if (contextResult) {
       return contextResult;
@@ -356,10 +372,20 @@ export class BrowserCommandService {
       return {};
     }
 
+    const availableInputs = Array.isArray(context.availableInputs)
+      ? context.availableInputs.filter((item): item is string => typeof item === 'string' && item.trim().length > 0)
+      : undefined;
+    const availableButtons = Array.isArray(context.availableButtons)
+      ? context.availableButtons.filter((item): item is string => typeof item === 'string' && item.trim().length > 0)
+      : undefined;
+
     return {
       commandType: typeof context.commandType === 'string' ? context.commandType : undefined,
       currentPageUrl: typeof context.currentPageUrl === 'string' ? context.currentPageUrl : undefined,
       backend: typeof context.backend === 'string' ? context.backend : undefined,
+      lastObservationText: typeof context.lastObservationText === 'string' ? context.lastObservationText : undefined,
+      availableInputs,
+      availableButtons,
     };
   }
 
@@ -442,6 +468,79 @@ export class BrowserCommandService {
     }
 
     return null;
+  }
+
+  private parseLoginCommand(input: string): ParseBrowserCommandResponse | null {
+    const normalizedInput = input.replace(/\s+/g, ' ').trim();
+    if (!normalizedInput) {
+      return null;
+    }
+
+    const hasLoginIntent = /(登录|登入|sign\s*in|log\s*in)/i.test(normalizedInput);
+    if (!hasLoginIntent) {
+      return null;
+    }
+
+    const usernameMatch = normalizedInput.match(/(?:用户名|账号|账户|user(?:name)?)\s*(?:是|为|:)?\s*([^\s，。,；;]+)/i);
+    const passwordMatch = normalizedInput.match(/(?:密码|password|pass)\s*(?:是|为|:)?\s*([^\s，。,；;]+)/i);
+    if (!usernameMatch?.[1] || !passwordMatch?.[1]) {
+      return null;
+    }
+
+    const commands: BrowserCommand[] = [];
+    const explanations: string[] = [];
+
+    const navigateTarget = this.extractSequentialNavigateTarget(normalizedInput);
+    if (navigateTarget) {
+      const url = this.resolveUrl(navigateTarget.target);
+      commands.push({
+        tool: 'navigate',
+        params: { url },
+        description: `打开 ${navigateTarget.target}`,
+      });
+      explanations.push(`打开 ${url}`);
+    }
+
+    const username = usernameMatch[1].trim();
+    const password = passwordMatch[1].trim();
+
+    commands.push(
+      {
+        tool: 'fill',
+        params: { selector: '用户名', value: username },
+        description: '填写用户名',
+      },
+      {
+        tool: 'fill',
+        params: { selector: '密码', value: password },
+        description: '填写密码',
+      },
+      {
+        tool: 'click',
+        params: { text: '登录' },
+        description: '点击登录',
+      },
+    );
+    explanations.push('填写用户名和密码并提交登录');
+
+    const trailingAction = normalizedInput.match(
+      /(?:然后|并|再|接着|之后|登录成功后)\s*(点击|打开|进入)\s*([^\s，。,；;]+)/i,
+    );
+    if (trailingAction?.[2]) {
+      const targetText = trailingAction[2].trim();
+      commands.push({
+        tool: 'click',
+        params: { text: targetText },
+        description: `点击${targetText}`,
+      });
+      explanations.push(`点击 ${targetText}`);
+    }
+
+    return {
+      success: true,
+      commands,
+      explanation: `将依次${explanations.join('，')}`,
+    };
   }
 
   private stripLeadingConnector(text: string): string {
@@ -935,6 +1034,9 @@ export class BrowserCommandService {
       context.commandType ? `- Preferred command type: ${context.commandType}` : null,
       context.currentPageUrl ? `- Current page URL: ${context.currentPageUrl}` : null,
       context.backend ? `- Execution backend: ${context.backend}` : null,
+      context.lastObservationText ? `- Current page text excerpt: ${context.lastObservationText.slice(0, 800)}` : null,
+      context.availableInputs?.length ? `- Visible inputs: ${context.availableInputs.join(', ')}` : null,
+      context.availableButtons?.length ? `- Visible buttons: ${context.availableButtons.join(', ')}` : null,
     ]
       .filter(Boolean)
       .join('\n');
@@ -968,6 +1070,13 @@ IMPORTANT for SEARCH operations ("搜索xxx"):
 - Only use navigate to search engine URL when user explicitly specifies engine (e.g., "在百度搜索")
 - If current page URL is known and user says "搜索 xxx" without naming a search engine, prefer staying on the current page/site instead of navigating away
 
+IMPORTANT for LOGIN / FORM operations:
+- When the user provides username/password/account/credential values, you MUST emit fill steps before any login click
+- Prefer "fill" for input fields such as 用户名 / 账号 / 密码 / 手机号 / 邮箱
+- Do NOT collapse a full login request into only one click step
+- For login submit, prefer clicking text like "登录" / "Sign in" after all fill steps
+- Keep literal credential values exactly as the user provided them
+
 Examples:
 - "打开微博" -> {"commands":[{"tool":"navigate","params":{"url":"https://weibo.com"},"description":"打开微博"}],"explanation":"导航到微博"}
 - "打开百度" -> {"commands":[{"tool":"navigate","params":{"url":"https://www.baidu.com"},"description":"打开百度"}],"explanation":"导航到百度首页"}
@@ -979,6 +1088,7 @@ Examples:
 - "点击第一个搜索结果" -> {"commands":[{"tool":"click_result","params":{"index":1},"description":"点击第一个结果"}],"explanation":"点击第一个搜索结果"}
 - "切到最新标签页" -> {"commands":[{"tool":"switch_latest_tab","params":{},"description":"切换到最新标签页"}],"explanation":"切换到最新标签页"}
 - "截图" -> {"commands":[{"tool":"screenshot","params":{},"description":"截图"}],"explanation":"截取当前页面"}
+- "打开示例站点 用test 密码test123进行登录 然后点击执行管理" -> {"commands":[{"tool":"navigate","params":{"url":"https://example.com/login"},"description":"打开登录页"},{"tool":"fill","params":{"selector":"用户名","value":"test"},"description":"填写用户名"},{"tool":"fill","params":{"selector":"密码","value":"test123"},"description":"填写密码"},{"tool":"click","params":{"text":"登录"},"description":"点击登录"},{"tool":"click","params":{"text":"执行管理"},"description":"点击执行管理"}],"explanation":"依次打开站点、填写用户名和密码、提交登录并进入执行管理"}
 
 Respond with ONLY the JSON object:`;
 
@@ -1066,6 +1176,9 @@ Respond with ONLY the JSON object:`;
       context.commandType ? `- Preferred command type: ${context.commandType}` : null,
       context.currentPageUrl ? `- Current page URL: ${context.currentPageUrl}` : null,
       context.backend ? `- Execution backend: ${context.backend}` : null,
+      context.lastObservationText ? `- Current page text excerpt: ${context.lastObservationText.slice(0, 800)}` : null,
+      context.availableInputs?.length ? `- Visible inputs: ${context.availableInputs.join(', ')}` : null,
+      context.availableButtons?.length ? `- Visible buttons: ${context.availableButtons.join(', ')}` : null,
     ]
       .filter(Boolean)
       .join('\n');
@@ -1111,6 +1224,10 @@ Rules:
 - Use "list_search_results" when the user asks to查看/列出当前搜索结果候选.
 - Use "click_result" when the user says "点击第一个结果" or similar.
 - Use "switch_latest_tab" when the user wants to切到最新标签页/最新页面.
+- When the user provides credentials such as 用户名/账号/密码, decompose the request into multiple steps and include "fill" steps before "click".
+- For login pages, prefer selectors like "用户名", "账号", "密码" for fill params.selector.
+- Do not output a single "click 登录" step for a full login request that includes credentials.
+- Preserve the execution order exactly: navigate -> fill fields -> submit -> post-login navigation.
 - Do not invent unavailable actions.
 - If a site name maps to a known URL, put the final URL in navigate.params.url.
 
@@ -1137,6 +1254,9 @@ JSON: {"steps":[{"action":"navigate","params":{"url":"https://www.baidu.com"},"d
 
 User: 点击登录
 JSON: {"steps":[{"action":"click","params":{"text":"登录"},"description":"点击登录"}],"explanation":"点击登录"}
+
+User: 打开示例站点 用test 密码test123进行登录 然后点击执行管理
+JSON: {"steps":[{"action":"navigate","params":{"url":"https://example.com/login"},"description":"打开登录页"},{"action":"fill","params":{"selector":"用户名","value":"test"},"description":"填写用户名"},{"action":"fill","params":{"selector":"密码","value":"test123"},"description":"填写密码"},{"action":"click","params":{"text":"登录"},"description":"点击登录"},{"action":"click","params":{"text":"执行管理"},"description":"点击执行管理"}],"explanation":"依次打开站点、填写用户名和密码、提交登录并进入执行管理"}
 `;
 
     try {

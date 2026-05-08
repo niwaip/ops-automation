@@ -10,6 +10,8 @@ import {
   ResumeBrowserSessionDto,
 } from '../../dto/worker.dto';
 import { MCPCommand } from './adapters/browser-execution.adapter';
+import { BrowserActionStep } from './domain/browser-step.types';
+import { ExportOptions } from './application/browser-script-export.service';
 
 @ApiTags('browser')
 @Controller('browser')
@@ -47,7 +49,7 @@ export class BrowserController {
       backend?: BrowserExecutionBackendDto;
       runtimeSessionId?: string;
     },
-  ): Promise<{ success: boolean; results: any[]; message?: string }> {
+  ): Promise<{ success: boolean; results: any[]; message?: string; steps?: BrowserActionStep[] }> {
     return this.browserService.executeCommands(body.commands, body);
   }
 
@@ -85,5 +87,32 @@ export class BrowserController {
   @ApiResponse({ status: 200, type: BrowserControlStateDto, description: 'Browser session resumed' })
   async resume(@Body() dto: ResumeBrowserSessionDto): Promise<BrowserControlStateDto> {
     return this.browserService.resume(dto);
+  }
+
+  @Post('export-script')
+  @ApiOperation({ summary: 'Export steps to Playwright script' })
+  @ApiResponse({ status: 200, description: 'Script exported successfully' })
+  async exportScript(
+    @Body()
+    body: {
+      steps: BrowserActionStep[];
+      options?: ExportOptions;
+    },
+  ): Promise<{ script: string }> {
+    const script = this.browserService.exportScript(body.steps, body.options);
+    return { script };
+  }
+
+  @Post('generate-schema')
+  @ApiOperation({ summary: 'Generate params schema from steps' })
+  @ApiResponse({ status: 200, description: 'Schema generated successfully' })
+  async generateSchema(
+    @Body()
+    body: {
+      steps: BrowserActionStep[];
+    },
+  ): Promise<{ schema: Record<string, any> }> {
+    const schema = this.browserService.generateParamsSchema(body.steps);
+    return { schema };
   }
 }
