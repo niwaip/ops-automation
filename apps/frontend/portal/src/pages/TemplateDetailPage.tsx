@@ -3,17 +3,15 @@ import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { Card, Descriptions, Tag, Button, Space, Typography, Tabs, Collapse, Spin, message, Modal, Form, Input, Alert, theme as antdTheme } from 'antd';
 import {
   ArrowLeftOutlined,
-  CloudUploadOutlined,
-  CopyOutlined,
-  PlayCircleOutlined,
   BugOutlined,
-  ReloadOutlined,
+  EditOutlined,
+  SaveOutlined,
 } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
 import { useQuery, useMutation, useQueryClient } from 'react-query';
-import { templateApi, TemplateStep, TemplateParamsSchema } from '../api/template';
-import { sessionApi, workerApi } from '../api/session';
 import { useAuthStore } from '../store/authStore';
+import { templateApi, TemplateStep, TemplateParamsSchema } from '../api/template';
+import { sessionApi } from '../api/session';
 
 const { Title, Text } = Typography;
 const { Panel } = Collapse;
@@ -29,35 +27,22 @@ const TemplateDetailPage: React.FC = () => {
   const { t } = useTranslation(['common', 'template']);
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const { user } = useAuthStore();
   const { token } = antdTheme.useToken();
+  const { user } = useAuthStore();
 
   const [executeModalVisible, setExecuteModalVisible] = useState(false);
   const [testModalVisible, setTestModalVisible] = useState(false);
   const [workerExhausted, setWorkerExhausted] = useState(false);
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [draftName, setDraftName] = useState('');
+  const [draftDescription, setDraftDescription] = useState('');
+  const [draftSteps, setDraftSteps] = useState<TemplateStep[]>([]);
   const [form] = Form.useForm();
 
   const templateQuery = useQuery(
     ['template', id],
     () => templateApi.getById(id!),
     { enabled: !!id }
-  );
-
-  // Reset worker pool mutation
-  const resetWorkerMutation = useMutation(
-    async () => {
-      const result = await workerApi.reset();
-      setWorkerExhausted(false);
-      return result;
-    },
-    {
-      onSuccess: (result) => {
-        message.success(result.message || t('template:workerResetSuccess'));
-      },
-      onError: () => {
-        message.error(t('template:workerResetFailed'));
-      },
-    }
   );
 
   // Auto-open execute modal if execute=true in query params
@@ -71,32 +56,20 @@ const TemplateDetailPage: React.FC = () => {
     }
   }, [searchParams, templateQuery.data?.status, templateQuery.data]);
 
-  const publishMutation = useMutation(
-    (templateId: string) => templateApi.publish(templateId, user?.id || ''),
+  const updateMutation = useMutation(
+    (payload: { id: string; data: { name?: string; description?: string; steps?: TemplateStep[] } }) =>
+      templateApi.update(payload.id, payload.data),
     {
       onSuccess: () => {
-        message.success(t('common:success'));
+        message.success('模板已更新');
+        setIsEditMode(false);
         queryClient.invalidateQueries(['template', id]);
+      },
+      onError: () => {
+        message.error('更新模板失败');
       },
     }
   );
-
-  const submitForReviewMutation = useMutation(
-    (templateId: string) => templateApi.submitForReview(templateId),
-    {
-      onSuccess: () => {
-        message.success(t('common:success'));
-        queryClient.invalidateQueries(['template', id]);
-      },
-    }
-  );
-
-  const cloneMutation = useMutation(templateApi.clone, {
-    onSuccess: (newTemplate) => {
-      message.success(t('common:success'));
-      navigate(`/templates/${newTemplate.id}`);
-    },
-  });
 
   const executeMutation = useMutation(
     async (params: Record<string, unknown>) => {
@@ -138,6 +111,13 @@ const TemplateDetailPage: React.FC = () => {
 
   const template = templateQuery.data;
 
+  useEffect(() => {
+    if (!template) return;
+    setDraftName(template.name || '');
+    setDraftDescription(template.description || '');
+    setDraftSteps((template.steps || []).map((step) => ({ ...step })));
+  }, [template]);
+
   // Extract parameter definitions from params_schema
   const paramProperties = useMemo(() => {
     const schema = template?.params_schema as TemplateParamsSchema | undefined;
@@ -151,14 +131,6 @@ const TemplateDetailPage: React.FC = () => {
   }, [template?.params_schema]);
 
   const hasParams = Object.keys(paramProperties).length > 0;
-
-  const handleExecuteClick = () => {
-    if (hasParams) {
-      setExecuteModalVisible(true);
-    } else {
-      executeMutation.mutate({});
-    }
-  };
 
   const handleTestClick = () => {
     if (hasParams) {
@@ -238,6 +210,47 @@ const TemplateDetailPage: React.FC = () => {
     }
   };
 
+  const updateDraftStepField = (
+    index: number,
+    key: 'action' | 'step_id',
+    value: string,
+  ) => {
+    setDraftSteps((prev) =>
+      prev.map((step, idx) => (idx === index ? { ...step, [key]: value } : step))
+    );
+  };
+
+  const handleDeleteDraftStep = (index: number) => {
+    setDraftSteps((prev) => prev.filter((_, idx) => idx !== index));
+  };
+
+  const handleAddDraftStep = () => {
+    setDraftSteps((prev) => [
+      ...prev,
+      {
+        step_id: `step_${prev.length + 1}`,
+        action: 'new_action',
+      },
+    ]);
+  };
+
+  const handleSaveTemplateDraft = () => {
+    if (!template) return;
+    const normalizedSteps = draftSteps.map((step, idx) => ({
+      ...step,
+      step_id: (step.step_id || `step_${idx + 1}`).trim(),
+      action: (step.action || 'action').trim(),
+    }));
+    updateMutation.mutate({
+      id: template.id,
+      data: {
+        name: draftName.trim() || template.name,
+        description: draftDescription,
+        steps: normalizedSteps,
+      },
+    });
+  };
+
   const getStatusColor = (status: string) => {
     const colorMap: Record<string, string> = {
       DRAFT: 'default',
@@ -308,19 +321,7 @@ const TemplateDetailPage: React.FC = () => {
           showIcon
           style={{ marginBottom: 16 }}
           message={t('template:workerExhaustedTitle')}
-          description={
-            <Space direction="vertical" size="small">
-              <span>{t('template:workerExhaustedDesc')}</span>
-              <Button
-                type="primary"
-                icon={<ReloadOutlined />}
-                onClick={() => resetWorkerMutation.mutate()}
-                loading={resetWorkerMutation.isLoading}
-              >
-                {t('template:resetWorkers')}
-              </Button>
-            </Space>
-          }
+          description={<span>{t('template:workerExhaustedDesc')}</span>}
         />
       )}
 
@@ -331,63 +332,47 @@ const TemplateDetailPage: React.FC = () => {
               {t('template:templateDetail')} - {template.name}
             </span>
             <Space>
-              {template.status === 'PUBLISHED' && (
-                <Button
-                  type="primary"
-                  icon={<PlayCircleOutlined />}
-                  onClick={handleExecuteClick}
-                  loading={executeMutation.isLoading}
-                >
-                  {t('template:executeTemplate')}
-                </Button>
-              )}
-              {template.status === 'DRAFT' && (
-                <Button
-                  type="primary"
-                  icon={<CloudUploadOutlined />}
-                  onClick={() => submitForReviewMutation.mutate(template.id)}
-                  loading={submitForReviewMutation.isLoading}
-                >
-                  {t('template:submitForReview')}
-                </Button>
-              )}
-              {template.status === 'REVIEW' && user?.role === 'admin' && (
-                <Button
-                  type="primary"
-                  icon={<CloudUploadOutlined />}
-                  onClick={() => publishMutation.mutate(template.id)}
-                  loading={publishMutation.isLoading}
-                >
-                  {t('template:publishTemplate')}
+              {isEditMode && (
+                <Button onClick={() => setIsEditMode(false)} disabled={updateMutation.isLoading}>
+                  取消
                 </Button>
               )}
               <Button
-                icon={<CopyOutlined />}
-                onClick={() => cloneMutation.mutate(template.id)}
-                loading={cloneMutation.isLoading}
+                type={isEditMode ? 'primary' : 'default'}
+                icon={isEditMode ? <SaveOutlined /> : <EditOutlined />}
+                onClick={isEditMode ? handleSaveTemplateDraft : () => setIsEditMode(true)}
+                loading={updateMutation.isLoading}
+                style={{ borderRadius: 8 }}
               >
-                {t('template:cloneTemplate')}
+                {isEditMode ? '保存' : '编辑'}
               </Button>
-              <Button
-                icon={<BugOutlined />}
-                onClick={handleTestClick}
-                loading={testMutation.isLoading}
-              >
-                {t('template:testTemplate')}
-              </Button>
-              <Button
-                icon={<ReloadOutlined />}
-                onClick={() => resetWorkerMutation.mutate()}
-                loading={resetWorkerMutation.isLoading}
-              >
-                {t('template:resetWorkers')}
-              </Button>
+              {!isEditMode && (
+                <Button
+                  type="primary"
+                  icon={<BugOutlined />}
+                  onClick={handleTestClick}
+                  loading={testMutation.isLoading}
+                  style={{ borderRadius: 8 }}
+                >
+                  测试
+                </Button>
+              )}
             </Space>
           </Space>
         }
       >
         <Descriptions bordered column={{ xs: 1, sm: 2, md: 3 }}>
-          <Descriptions.Item label={t('template:templateName')}>{template.name}</Descriptions.Item>
+          <Descriptions.Item label={t('template:templateName')}>
+            {isEditMode ? (
+              <Input
+                value={draftName}
+                onChange={(e) => setDraftName(e.target.value)}
+                placeholder="模板名称"
+              />
+            ) : (
+              template.name
+            )}
+          </Descriptions.Item>
           <Descriptions.Item label={t('template:templateVersion')}>
             {template.version}
           </Descriptions.Item>
@@ -397,7 +382,16 @@ const TemplateDetailPage: React.FC = () => {
             </Tag>
           </Descriptions.Item>
           <Descriptions.Item label={t('common:description')} span={3}>
-            {template.description || '-'}
+            {isEditMode ? (
+              <Input.TextArea
+                value={draftDescription}
+                onChange={(e) => setDraftDescription(e.target.value)}
+                rows={3}
+                placeholder="补充情报"
+              />
+            ) : (
+              template.description || '-'
+            )}
           </Descriptions.Item>
           <Descriptions.Item label={t('template:createdBy')}>
             {template.created_by}
@@ -423,15 +417,67 @@ const TemplateDetailPage: React.FC = () => {
       <Card style={{ marginTop: 16 }}>
         <Tabs defaultActiveKey="steps">
           <Tabs.TabPane tab={t('template:templateSteps')} key="steps">
+            {isEditMode && (
+              <Button
+                type="dashed"
+                onClick={handleAddDraftStep}
+                block
+                style={{ marginBottom: 16 }}
+              >
+                + 添加步骤
+              </Button>
+            )}
             <Collapse accordion>
-              {template.steps?.map((step: TemplateStep, index: number) => (
+              {(isEditMode ? draftSteps : (template.steps || [])).map((step: TemplateStep, index: number) => (
                 <Panel
-                  header={`Step ${index + 1}: ${step.action}`}
+                  header={
+                    isEditMode ? (
+                      <Input
+                        value={step.action}
+                        onChange={(e) => updateDraftStepField(index, 'action', e.target.value)}
+                        onClick={(e) => e.stopPropagation()}
+                        style={{ width: '80%' }}
+                        placeholder="步骤动作"
+                      />
+                    ) : (
+                      `Step ${index + 1}: ${step.action}`
+                    )
+                  }
                   key={index}
+                  extra={isEditMode ? (
+                    <Button
+                      size="small"
+                      danger
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        handleDeleteDraftStep(index);
+                      }}
+                    >
+                      删除
+                    </Button>
+                  ) : undefined}
                 >
                   <Descriptions column={1} size="small">
+                    <Descriptions.Item label="步骤 ID">
+                      {isEditMode ? (
+                        <Input
+                          value={step.step_id}
+                          onChange={(e) => updateDraftStepField(index, 'step_id', e.target.value)}
+                          placeholder="步骤 ID"
+                        />
+                      ) : (
+                        step.step_id
+                      )}
+                    </Descriptions.Item>
                     <Descriptions.Item label={t('template:stepAction')}>
-                      {step.action}
+                      {isEditMode ? (
+                        <Input
+                          value={step.action}
+                          onChange={(e) => updateDraftStepField(index, 'action', e.target.value)}
+                        />
+                      ) : (
+                        step.action
+                      )}
                     </Descriptions.Item>
                     {step.locator && (
                       <Descriptions.Item label={t('template:stepSelector')}>

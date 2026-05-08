@@ -1,22 +1,20 @@
 import React, { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Table, Card, Button, Input, Space, Select, Typography, Modal, message, Drawer, Descriptions, Collapse } from 'antd';
+import { Table, Card, Button, Input, Space, Select, Typography, Drawer, Descriptions, Collapse, Modal, message } from 'antd';
 import {
   SearchOutlined,
   PlusOutlined,
   ReloadOutlined,
   EyeOutlined,
-  DeleteOutlined,
-  CloudUploadOutlined,
-  CloudDownloadOutlined,
-  PlayCircleOutlined,
   BugOutlined,
+  DeleteOutlined,
+  ClockCircleOutlined,
 } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
 import { useQuery, useMutation, useQueryClient } from 'react-query';
 import { templateApi, Template, TemplateStatus } from '../api/template';
+import { sessionApi } from '../api/session';
 import { userApi } from '../api/auth';
-import { useAuthStore } from '../store/authStore';
 import type { ColumnsType } from 'antd/es/table';
 
 const { Title } = Typography;
@@ -27,11 +25,14 @@ type TemplateRow = Template & {
   created_by_username?: string;
 };
 
+const isUuidLike = (value: string): boolean => (
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(String(value || '').trim())
+);
+
 const TemplateListPage: React.FC = () => {
   const { t } = useTranslation(['common', 'template']);
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const { user } = useAuthStore();
 
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
@@ -39,6 +40,7 @@ const TemplateListPage: React.FC = () => {
   const [searchText, setSearchText] = useState('');
   const [detailDrawerVisible, setDetailDrawerVisible] = useState(false);
   const [selectedTemplate, setSelectedTemplate] = useState<TemplateRow | null>(null);
+  const [openingHistoryTemplateId, setOpeningHistoryTemplateId] = useState<string | null>(null);
 
   const templatesQuery = useQuery(
     ['templates', { page, pageSize, status: statusFilter, search: searchText }],
@@ -51,6 +53,9 @@ const TemplateListPage: React.FC = () => {
 
       const userNamePairs = await Promise.all(
         creatorIds.map(async (userId) => {
+          if (!isUuidLike(userId)) {
+            return [userId, userId] as const;
+          }
           try {
             const user = await userApi.getById(userId);
             return [userId, user.username] as const;
@@ -72,29 +77,6 @@ const TemplateListPage: React.FC = () => {
     }
   );
 
-  const publishMutation = useMutation(
-    (id: string) => templateApi.publish(id, user?.id || ''),
-    {
-      onSuccess: () => {
-        message.success(t('common:success'));
-        queryClient.invalidateQueries(['templates']);
-      },
-      onError: () => {
-        message.error(t('common:error'));
-      },
-    }
-  );
-
-  const deprecateMutation = useMutation(templateApi.deprecate, {
-    onSuccess: () => {
-      message.success(t('common:success'));
-      queryClient.invalidateQueries(['templates']);
-    },
-    onError: () => {
-      message.error(t('common:error'));
-    },
-  });
-
   const deleteMutation = useMutation(templateApi.delete, {
     onSuccess: () => {
       message.success(t('common:success'));
@@ -105,25 +87,33 @@ const TemplateListPage: React.FC = () => {
     },
   });
 
-  const handlePublish = (id: string) => {
-    Modal.confirm({
-      title: t('template:publishTemplate'),
-      onOk: () => publishMutation.mutate(id),
-    });
-  };
-
-  const handleDeprecate = (id: string) => {
-    Modal.confirm({
-      title: t('template:deprecateTemplate'),
-      onOk: () => deprecateMutation.mutate(id),
-    });
-  };
-
   const handleDelete = (id: string) => {
     Modal.confirm({
       title: t('common:confirmDelete'),
       onOk: () => deleteMutation.mutate(id),
     });
+  };
+
+  const handleOpenLatestSession = async (templateId: string) => {
+    try {
+      setOpeningHistoryTemplateId(templateId);
+      const result = await sessionApi.list({ page: 1, pageSize: 500 });
+      const sessions = (result.sessions || [])
+        .filter((session) => session.template_id === templateId)
+        .sort((a, b) => Number(b.last_activity || b.created_at || 0) - Number(a.last_activity || a.created_at || 0));
+      
+      if (!sessions.length) {
+        message.info('该模板暂无会话历史');
+        return;
+      }
+      
+      // Navigate to the latest session
+      navigate(`/sessions/${sessions[0].id}`);
+    } catch {
+      message.error('获取最新会话失败');
+    } finally {
+      setOpeningHistoryTemplateId(null);
+    }
   };
 
   const stepItems = useMemo(() => {
@@ -172,19 +162,16 @@ const TemplateListPage: React.FC = () => {
     {
       title: t('common:actions'),
       key: 'actions',
-      width: 400,
+      width: 420,
       render: (_, record) => (
-        <Space wrap>
+        <Space wrap onClick={(e) => e.stopPropagation()}>
           <Button
             type="link"
             size="small"
             icon={<EyeOutlined />}
-            onClick={() => {
-              setSelectedTemplate(record);
-              setDetailDrawerVisible(true);
-            }}
+            onClick={() => navigate(`/templates/${record.id}`)}
           >
-            查看详情
+            编辑
           </Button>
           <Button
             type="link"
@@ -192,40 +179,17 @@ const TemplateListPage: React.FC = () => {
             icon={<BugOutlined />}
             onClick={() => navigate(`/templates/${record.id}?test=true`)}
           >
-            {t('template:testTemplate')}
+            测试
           </Button>
-          {record.status === 'PUBLISHED' && (
-            <Button
-              type="link"
-              size="small"
-              icon={<PlayCircleOutlined />}
-              onClick={() => navigate(`/templates/${record.id}?execute=true`)}
-            >
-              {t('template:executeTemplate')}
-            </Button>
-          )}
-          {record.status === 'REVIEW' && user?.role === 'admin' && (
-            <Button
-              type="link"
-              size="small"
-              icon={<CloudUploadOutlined />}
-              onClick={() => handlePublish(record.id)}
-            >
-              {t('template:publishTemplate')}
-            </Button>
-          )}
-          {record.status === 'PUBLISHED' && user?.role === 'admin' && (
-            <Button
-              type="link"
-              size="small"
-              danger
-              icon={<CloudDownloadOutlined />}
-              onClick={() => handleDeprecate(record.id)}
-            >
-              {t('template:deprecateTemplate')}
-            </Button>
-          )}
-          {/* Allow delete for all statuses */}
+          <Button
+            type="link"
+            size="small"
+            icon={<ClockCircleOutlined />}
+            loading={openingHistoryTemplateId === record.id}
+            onClick={() => handleOpenLatestSession(record.id)}
+          >
+            最新会话
+          </Button>
           <Button
             type="link"
             size="small"
@@ -233,7 +197,7 @@ const TemplateListPage: React.FC = () => {
             icon={<DeleteOutlined />}
             onClick={() => handleDelete(record.id)}
           >
-            {t('common:delete')}
+            删除
           </Button>
         </Space>
       ),
@@ -293,6 +257,13 @@ const TemplateListPage: React.FC = () => {
           dataSource={templatesQuery.data?.templates || []}
           rowKey="id"
           loading={templatesQuery.isLoading}
+          onRow={(record) => ({
+            onClick: () => {
+              setSelectedTemplate(record);
+              setDetailDrawerVisible(true);
+            },
+            style: { cursor: 'pointer' },
+          })}
           pagination={{
             current: page,
             pageSize,

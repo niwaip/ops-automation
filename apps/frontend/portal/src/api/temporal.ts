@@ -242,6 +242,26 @@ export interface BrowserWorkflowDraft {
   };
 }
 
+export interface BrowserDraftCommandInput {
+  tool: string;
+  params?: Record<string, unknown>;
+  description?: string;
+  locator?: {
+    strategy?: string;
+    value?: string;
+    role?: string;
+    name?: string;
+  };
+}
+
+export interface GenerateBrowserDraftDTO {
+  script?: string;
+  commands?: BrowserDraftCommandInput[];
+  name?: string;
+  description?: string;
+  inputParams?: Record<string, WorkflowInputParamDefinition>;
+}
+
 export interface GenerateAiWorkflowDraftDTO {
   description?: string;
   referenceUrl?: string;
@@ -363,7 +383,7 @@ export const temporalWorkflowApi = {
     return apiClient.post<TemplateWorkflowDraft>('/temporal/generate-template-draft', { templateId });
   },
 
-  generateBrowserDraft: async (data: { script: string; name?: string; description?: string }): Promise<BrowserWorkflowDraft> => {
+  generateBrowserDraft: async (data: GenerateBrowserDraftDTO): Promise<BrowserWorkflowDraft> => {
     return apiClient.post<BrowserWorkflowDraft>('/temporal/generate-browser-draft', data);
   },
 

@@ -119,7 +119,7 @@ export const templateApi = {
   },
 
   update: async (id: string, data: UpdateTemplateRequest): Promise<Template> => {
-    return apiClient.put<Template>(`/templates/${id}`, data);
+    return apiClient.patch<Template>(`/templates/${id}`, data);
   },
 
   delete: async (id: string): Promise<void> => {

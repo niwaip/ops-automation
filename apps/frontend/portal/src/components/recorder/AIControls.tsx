@@ -182,6 +182,68 @@ interface CommandHistoryEntry {
   rawParam?: string;
 }
 
+const buildCompactAiReply = (
+  reply: string | undefined,
+  resultPayload: {
+    execution?: unknown;
+    observation?: unknown;
+    exportArtifacts?: unknown;
+  },
+): string => {
+  const replyText = String(reply || '');
+  const hasBrowserExecutionPayload = Boolean(
+    resultPayload.execution || resultPayload.observation || resultPayload.exportArtifacts,
+  );
+  const looksLikeVerboseExecutionReply = (
+    replyText.length > 500
+    || /stepResults|### Ran Playwright code|stdout|snapshotId|backend/i.test(replyText)
+    || /任务已完成[,，]?\s*返回结果/.test(replyText)
+  );
+  if (hasBrowserExecutionPayload || looksLikeVerboseExecutionReply) {
+    return '浏览器执行已完成，详细信息请点击下方“查看详情”或“打开链接”。';
+  }
+  return replyText || 'OK';
+};
+
+const buildCompactHistoryBubbleText = (entry: CommandHistoryEntry): string => {
+  if (entry.type === 'user') {
+    return entry.content;
+  }
+
+  const hasExecutionLikeResult = Boolean(
+    entry.result
+    && (
+      entry.result.execution
+      || entry.result.observation
+      || entry.result.exportArtifacts
+      || entry.result.status
+    ),
+  );
+  if (entry.type === 'ai' && hasExecutionLikeResult) {
+    return '浏览器执行已完成，详细信息请点击下方“查看详情”或“打开链接”。';
+  }
+
+  const compacted = entry.type === 'ai'
+    ? buildCompactAiReply(entry.content, {
+      execution: entry.result?.execution,
+      observation: entry.result?.observation,
+      exportArtifacts: entry.result?.exportArtifacts,
+    })
+    : String(entry.content || '');
+
+  const text = String(compacted || '').trim();
+  if (!text) {
+    return 'OK';
+  }
+  if (text.length > 280) {
+    return `${text.slice(0, 260)}...（内容已折叠）`;
+  }
+  if (text.length > 120 && /^[\s\S]*[\{\[][\s\S]*[\}\]][\s\S]*$/.test(text)) {
+    return '已返回结构化内容，详细结果已折叠。';
+  }
+  return text;
+};
+
 const createRuntimeSessionId = () => `recorder-ui-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 
 // Template step - deterministic command for replay
@@ -250,7 +312,7 @@ const AIControls: React.FC<AIControlsProps> = ({
   const [isReplaceable, setIsReplaceable] = useState(true);
   const [history, setHistory] = useState<CommandHistoryEntry[]>([]);
   const [isBrowserReady, setIsBrowserReady] = useState(false);
-  const [waitDuration, setWaitDuration] = useState(2);
+  const [waitDuration, setWaitDuration] = useState(1);
   const [autoAppendScreenshots, setAutoAppendScreenshots] = useState(true);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -445,7 +507,7 @@ const AIControls: React.FC<AIControlsProps> = ({
       backendSteps.push({
         step_id: `step_${stepCounter}`,
         action: 'wait',
-        params: { duration: 2000 },
+        params: { duration: waitDuration * 1000 },
       });
       stepCounter++;
 
@@ -459,7 +521,7 @@ const AIControls: React.FC<AIControlsProps> = ({
       backendSteps.push({
         step_id: `step_${stepCounter}`,
         action: 'wait',
-        params: { duration: 2000 },
+        params: { duration: waitDuration * 1000 },
       });
       stepCounter++;
     });
@@ -763,7 +825,7 @@ const AIControls: React.FC<AIControlsProps> = ({
           {
             id: Date.now().toString(),
             type: 'ai',
-            content: data.reply || 'OK',
+            content: buildCompactAiReply(data.reply, resultPayload),
             timestamp: new Date(),
             backend: executionBackend,
             result: resultPayload,
@@ -882,49 +944,6 @@ const AIControls: React.FC<AIControlsProps> = ({
   const handleCopyCommand = (command: MCPCommand) => {
     navigator.clipboard.writeText(JSON.stringify(command, null, 2));
     message.success(t('common:copied'));
-  };
-
-  // Add deterministic command to template
-  const handleAddToTemplate = (templateInfo: { tool: string; params: Record<string, unknown>; description: string }) => {
-    // Find the last ai entry that has matching tool to get replaceable info
-    const lastAiEntry = [...history].reverse().find(e =>
-      e.type === 'ai' &&
-      e.result?.template_info?.tool === templateInfo.tool
-    );
-
-    const replaceableParams: Record<string, boolean> = {};
-    if (lastAiEntry?.replaceable && lastAiEntry?.rawParam) {
-      // 根据命令类型标记可替换参数
-      switch (templateInfo.tool) {
-        case 'navigate':
-          replaceableParams['url'] = true;
-          break;
-        case 'search':
-        case 'smart_search':
-          replaceableParams['query'] = true;
-          break;
-        case 'fill':
-          replaceableParams['value'] = true;
-          break;
-        case 'click':
-          if (templateInfo.params.text) replaceableParams['text'] = true;
-          break;
-        case 'type_text':
-          replaceableParams['text'] = true;
-          break;
-      }
-    }
-
-    const step: TemplateStep = {
-      id: Date.now().toString(),
-      tool: templateInfo.tool,
-      params: templateInfo.params,
-      description: templateInfo.description,
-      timestamp: new Date(),
-      replaceableParams,
-    };
-    setTemplateSteps((prev) => [...prev, step]);
-    message.success(`已添加到模版: ${templateInfo.description}`);
   };
 
   // Remove step from template
@@ -1281,12 +1300,12 @@ const AIControls: React.FC<AIControlsProps> = ({
       }
 
       if (autoAppendScreenshots) {
-        // Add screenshot pattern after each step: wait 2s → screenshot → wait 2s
+        // Add screenshot pattern after each step using the configured wait duration.
         lines.push('  // Wait before screenshot');
-        lines.push('  await page.waitForTimeout(2000);');
+        lines.push(`  await page.waitForTimeout(${waitDuration * 1000});`);
         lines.push(`  await page.screenshot({ path: 'screenshot-step-${index + 1}.png' });`);
         lines.push('  // Wait after screenshot');
-        lines.push('  await page.waitForTimeout(2000);');
+        lines.push(`  await page.waitForTimeout(${waitDuration * 1000});`);
         lines.push('');
       }
     });
@@ -1849,71 +1868,6 @@ const AIControls: React.FC<AIControlsProps> = ({
     .find((entry) => entry.type === 'ai' && entry.result?.observation?.suggestedParameters?.length > 0)
     ?.result?.observation?.suggestedParameters as RecorderDebugObservation['suggestedParameters'];
 
-  const getExecutionInsight = (execution?: {
-    success?: boolean;
-    message?: string;
-    results?: Array<Record<string, unknown>>;
-  }) => {
-    const results = Array.isArray(execution?.results) ? execution.results : [];
-    const listResult = results.find((item) => item.command === 'list_search_results');
-    const listData = listResult?.data && typeof listResult.data === 'object'
-      ? listResult.data as Record<string, unknown>
-      : undefined;
-    const clickResult = results.find((item) => item.command === 'click_result');
-    const clickData = clickResult?.data && typeof clickResult.data === 'object'
-      ? clickResult.data as Record<string, unknown>
-      : undefined;
-    const openedNewPage = typeof clickData?.openedNewPage === 'boolean'
-      ? clickData.openedNewPage
-      : undefined;
-    const landedUrl = typeof clickData?.landedUrl === 'string'
-      ? clickData.landedUrl
-      : undefined;
-    const title = typeof clickData?.title === 'string'
-      ? clickData.title
-      : undefined;
-    const selectedText = typeof clickData?.selectedText === 'string'
-      ? clickData.selectedText
-      : undefined;
-    const selectedHref = typeof clickData?.selectedHref === 'string'
-      ? clickData.selectedHref
-      : undefined;
-    const candidateCount = typeof clickData?.candidateCount === 'number'
-      ? clickData.candidateCount
-      : undefined;
-    const searchResults = Array.isArray(listData?.results)
-      ? listData.results
-        .filter((item): item is Record<string, unknown> => Boolean(item) && typeof item === 'object')
-        .map((item) => ({
-          rank: typeof item.rank === 'number' ? item.rank : undefined,
-          text: typeof item.text === 'string' ? item.text : undefined,
-          href: typeof item.href === 'string' ? item.href : undefined,
-          score: typeof item.score === 'number' ? item.score : undefined,
-        }))
-      : undefined;
-
-    if (
-      openedNewPage === undefined
-      && !landedUrl
-      && !title
-      && !selectedText
-      && !selectedHref
-      && (!searchResults || searchResults.length === 0)
-    ) {
-      return null;
-    }
-
-    return {
-      openedNewPage,
-      landedUrl,
-      title,
-      selectedText,
-      selectedHref,
-      candidateCount,
-      searchResults,
-    };
-  };
-
   const handleInsertSuggestedParameter = (name: string) => {
     const template = `${name}: `;
     setParamInput((prev) => {
@@ -1926,208 +1880,6 @@ const AIControls: React.FC<AIControlsProps> = ({
       }
       return `${trimmed}\n${template}`;
     });
-  };
-
-  const renderReactObservation = (observation?: RecorderDebugObservation) => {
-    if (!observation) {
-      return null;
-    }
-
-    const inputCount = observation.inputs?.length || 0;
-    const buttonCount = observation.buttons?.length || 0;
-    const headingPreview = (observation.headings || []).slice(0, 3);
-    const suggestedParameters = observation.suggestedParameters || [];
-
-    return (
-      <div
-        style={{
-          marginTop: 8,
-          padding: 10,
-          borderRadius: 10,
-          background: isDarkTheme ? '#0f172a' : '#f8fafc',
-          border: isDarkTheme ? '1px solid #334155' : '1px solid #e2e8f0',
-          fontSize: 12,
-        }}
-      >
-        <div><Text strong>当前页面</Text></div>
-        <div style={{ marginTop: 4 }}>标题: {observation.title || '-'}</div>
-        <div style={{ marginTop: 2, wordBreak: 'break-all' }}>URL: {observation.currentPageUrl || '-'}</div>
-        <div style={{ marginTop: 2 }}>可交互项: {inputCount} 个输入项, {buttonCount} 个按钮</div>
-        {headingPreview.length > 0 && (
-          <div style={{ marginTop: 2 }}>关键标题: {headingPreview.join(' / ')}</div>
-        )}
-        {suggestedParameters.length > 0 && (
-          <div style={{ marginTop: 8 }}>
-            <div><Text strong>建议补充参数</Text></div>
-            <div style={{ marginTop: 4, display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-              {suggestedParameters.map((param) => (
-                <Tooltip key={param.name} title={`${param.label}${param.reason ? `: ${param.reason}` : ''}`}>
-                  <Tag
-                    color={param.required ? 'processing' : 'default'}
-                    onClick={() => handleInsertSuggestedParameter(param.name)}
-                    style={{ cursor: 'pointer', marginInlineEnd: 0 }}
-                  >
-                    {param.name}
-                  </Tag>
-                </Tooltip>
-              ))}
-            </div>
-            <div style={{ marginTop: 4, color: isDarkTheme ? '#94a3b8' : '#64748b' }}>
-              点击参数名可直接填入聊天输入框
-            </div>
-          </div>
-        )}
-      </div>
-    );
-  };
-
-  const renderReactArtifacts = (artifacts?: RecorderDebugExportArtifacts) => {
-    if (!artifacts) {
-      return null;
-    }
-
-    return (
-      <div style={{ marginTop: 8 }}>
-        {artifacts.script && (
-          <div
-            style={{
-              background: isDarkTheme ? '#111827' : '#f5f5f5',
-              padding: 8,
-              borderRadius: 8,
-              fontSize: 11,
-              fontFamily: 'monospace',
-              whiteSpace: 'pre',
-              overflowX: 'auto',
-              border: isDarkTheme ? '1px solid #334155' : '1px solid #e5e7eb',
-              marginBottom: 8,
-            }}
-          >
-            <div style={{ marginBottom: 6, fontFamily: 'inherit' }}><Text strong>完整执行脚本</Text></div>
-            {artifacts.script}
-          </div>
-        )}
-        {artifacts.guidance && (
-          <div
-            style={{
-              background: isDarkTheme ? '#0f172a' : '#eff6ff',
-              padding: 8,
-              borderRadius: 8,
-              fontSize: 12,
-              whiteSpace: 'pre-wrap',
-              border: isDarkTheme ? '1px solid #1e3a8a' : '1px solid #bfdbfe',
-              marginBottom: artifacts.skillDraft ? 8 : 0,
-            }}
-          >
-            {artifacts.guidance}
-          </div>
-        )}
-        {artifacts.skillDraft && (
-          <div
-            style={{
-              background: isDarkTheme ? '#1e293b' : '#fff7ed',
-              padding: 8,
-              borderRadius: 8,
-              fontSize: 12,
-              whiteSpace: 'pre-wrap',
-              border: isDarkTheme ? '1px solid #475569' : '1px solid #fed7aa',
-            }}
-          >
-            <div><Text strong>Skill 草稿</Text></div>
-            <div style={{ marginTop: 4 }}>名称: {artifacts.skillDraft.name || '-'}</div>
-            <div style={{ marginTop: 2 }}>调用: {artifacts.skillDraft.invocation || '-'}</div>
-            {artifacts.skillDraft.parameterOnly && (
-              <div style={{ marginTop: 2 }}>模式: 仅解析参数并调用 skill</div>
-            )}
-            {artifacts.skillDraft.description && (
-              <div style={{ marginTop: 2 }}>说明: {artifacts.skillDraft.description}</div>
-            )}
-            {artifacts.skillDraft.executionPlan && (
-              <div style={{ marginTop: 2 }}>
-                执行计划: {artifacts.skillDraft.executionPlan.backend || '-'} / commands {artifacts.skillDraft.executionPlan.commands?.length || 0}
-              </div>
-            )}
-            {artifacts.skillDraft.parameters && artifacts.skillDraft.parameters.length > 0 && (
-              <div style={{ marginTop: 8 }}>
-                <Text strong>参数</Text>
-                <div style={{ marginTop: 4 }}>
-                  {artifacts.skillDraft.parameters.map((param) => (
-                    <div key={param.name} style={{ marginTop: 2 }}>
-                      {param.name}: {param.description} / {param.required ? '必填' : '可选'}
-                      {param.exampleValue ? ` / 示例: ${param.exampleValue}` : ''}
-                      {param.source ? ` / 来源: ${param.source}` : ''}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-            {artifacts.skillDraft.outputs && artifacts.skillDraft.outputs.length > 0 && (
-              <div style={{ marginTop: 8 }}>
-                <Text strong>输出</Text>
-                <div style={{ marginTop: 4 }}>
-                  {artifacts.skillDraft.outputs.map((output) => (
-                    <div key={output.name} style={{ marginTop: 2 }}>
-                      {output.name}: {output.description} / 位置: {output.location}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-            {artifacts.skillDraft.usageNotes && artifacts.skillDraft.usageNotes.length > 0 && (
-              <div style={{ marginTop: 8 }}>
-                <Text strong>使用约束</Text>
-                <div style={{ marginTop: 4 }}>
-                  {artifacts.skillDraft.usageNotes.map((note, index) => (
-                    <div key={`${index}-${note}`} style={{ marginTop: 2 }}>
-                      - {note}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-            {artifacts.skillDraft.usageMarkdown && (
-              <div
-                style={{
-                  marginTop: 8,
-                  background: isDarkTheme ? '#0f172a' : '#fff',
-                  border: isDarkTheme ? '1px solid #334155' : '1px solid #fed7aa',
-                  borderRadius: 8,
-                  padding: 8,
-                  fontFamily: 'monospace',
-                  fontSize: 11,
-                  whiteSpace: 'pre-wrap',
-                }}
-              >
-                {artifacts.skillDraft.usageMarkdown}
-              </div>
-            )}
-            {artifacts.skillDraft.publishPayload && (
-              <div
-                style={{
-                  marginTop: 8,
-                  background: isDarkTheme ? '#111827' : '#fff',
-                  border: isDarkTheme ? '1px solid #334155' : '1px solid #fed7aa',
-                  borderRadius: 8,
-                  padding: 8,
-                  fontSize: 12,
-                  whiteSpace: 'pre-wrap',
-                }}
-              >
-                <div><Text strong>发布载荷</Text></div>
-                <div style={{ marginTop: 4 }}>name: {artifacts.skillDraft.publishPayload.name || '-'}</div>
-                <div style={{ marginTop: 2 }}>tools: {artifacts.skillDraft.publishPayload.tools?.join(', ') || '-'}</div>
-                <div style={{ marginTop: 2 }}>triggerKeywords: {artifacts.skillDraft.publishPayload.triggerKeywords?.join(', ') || '-'}</div>
-                <div style={{ marginTop: 2 }}>
-                  paramsSchema.required: {artifacts.skillDraft.publishPayload.paramsSchema?.required?.join(', ') || '-'}
-                </div>
-                <div style={{ marginTop: 2 }}>
-                  executionFlow: {artifacts.skillDraft.publishPayload.executionFlow?.length || 0} steps
-                </div>
-              </div>
-            )}
-          </div>
-        )}
-      </div>
-    );
   };
 
   const isRecording = recorderStatus === 'recording';
@@ -2217,7 +1969,7 @@ const AIControls: React.FC<AIControlsProps> = ({
               min={0}
               max={120}
               value={waitDuration}
-              onChange={(val) => setWaitDuration(val ?? 2)}
+              onChange={(val) => setWaitDuration(val ?? 1)}
               style={{ width: 64 }}
             />
             <Button size="small" disabled>
@@ -2280,6 +2032,9 @@ const AIControls: React.FC<AIControlsProps> = ({
             />
           ) : (
             history.map((entry) => (
+              (() => {
+                const displayContent = buildCompactHistoryBubbleText(entry);
+                return (
               <div
                 key={entry.id}
                 style={{
@@ -2311,9 +2066,14 @@ const AIControls: React.FC<AIControlsProps> = ({
                     </div>
                   )}
                   <Text
-                    style={{ color: entry.type === 'user' ? '#fff' : 'inherit' }}
+                    style={{
+                      color: entry.type === 'user' ? '#fff' : 'inherit',
+                      whiteSpace: 'pre-wrap',
+                      wordBreak: 'break-word',
+                      overflowWrap: 'anywhere',
+                    }}
                   >
-                    {entry.content}
+                    {displayContent}
                   </Text>
 
                   {/* Show commands if present */}
@@ -2391,85 +2151,50 @@ const AIControls: React.FC<AIControlsProps> = ({
                               </Text>
                             </div>
                           )}
-                          {entry.result.execution && (
+                          {(entry.result.execution || entry.result.observation || entry.result.exportArtifacts) && (
                             <div
                               style={{
                                 marginBottom: 8,
-                                padding: '6px 8px',
+                                padding: '8px 10px',
                                 borderRadius: 8,
                                 background: isDarkTheme ? '#111827' : '#f8fafc',
                                 border: isDarkTheme ? '1px solid #334155' : '1px solid #e2e8f0',
                                 fontSize: 12,
                               }}
                             >
-                              {entry.result.execution.success === false ? '执行失败' : '页面操作已执行'}
-                              {entry.result.execution.message ? `: ${entry.result.execution.message}` : ''}
+                              <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                                <div>
+                                  <div>
+                                    {entry.result.execution?.success === false ? '浏览器执行失败' : '浏览器执行详情已生成'}
+                                  </div>
+                                  <div style={{ marginTop: 2, color: isDarkTheme ? '#94a3b8' : '#64748b' }}>
+                                    {entry.commands?.length ? `命令数 ${entry.commands.length}` : '已隐藏详细执行内容，请按需查看详情'}
+                                  </div>
+                                </div>
+                                <Space size={4} wrap>
+                                  {entry.sessionId ? (
+                                    <>
+                                      <Button
+                                        size="small"
+                                        icon={<EyeOutlined />}
+                                        onClick={() => navigate(`/sessions/${entry.sessionId}`)}
+                                      >
+                                        查看详情
+                                      </Button>
+                                      <Button
+                                        size="small"
+                                        type="link"
+                                        icon={<LinkOutlined />}
+                                        onClick={() => window.open(`/sessions/${entry.sessionId}`, '_blank', 'noopener,noreferrer')}
+                                      >
+                                        打开链接
+                                      </Button>
+                                    </>
+                                  ) : null}
+                                </Space>
+                              </div>
                             </div>
                           )}
-                          {(() => {
-                            const insight = getExecutionInsight(entry.result.execution);
-                            if (!insight) {
-                              return null;
-                            }
-
-                            return (
-                              <div
-                                style={{
-                                  marginBottom: 8,
-                                  padding: '6px 8px',
-                                  borderRadius: 8,
-                                  background: isDarkTheme ? '#0f172a' : '#fff7ed',
-                                  border: isDarkTheme ? '1px solid #334155' : '1px solid #fed7aa',
-                                  fontSize: 12,
-                                }}
-                              >
-                                <div>
-                                  {insight.openedNewPage === true
-                                    ? '点击结果后打开了新页面'
-                                    : insight.openedNewPage === false
-                                      ? '点击结果后仍停留在当前页面/标签页'
-                                      : '点击结果后页面状态已更新'}
-                                </div>
-                                {insight.title && (
-                                  <div style={{ marginTop: 2 }}>标题: {insight.title}</div>
-                                )}
-                                {insight.landedUrl && (
-                                  <div style={{ marginTop: 2, wordBreak: 'break-all' }}>
-                                    最终 URL: {insight.landedUrl}
-                                  </div>
-                                )}
-                                {insight.selectedText && (
-                                  <div style={{ marginTop: 2 }}>
-                                    选中结果标题: {insight.selectedText}
-                                  </div>
-                                )}
-                                {insight.selectedHref && (
-                                  <div style={{ marginTop: 2, wordBreak: 'break-all' }}>
-                                    选中结果链接: {insight.selectedHref}
-                                  </div>
-                                )}
-                                {typeof insight.candidateCount === 'number' && (
-                                  <div style={{ marginTop: 2 }}>
-                                    CLI 排序候选数: {insight.candidateCount}
-                                  </div>
-                                )}
-                                {insight.searchResults && insight.searchResults.length > 0 && (
-                                  <div style={{ marginTop: 6 }}>
-                                    <div>搜索结果候选:</div>
-                                    {insight.searchResults.slice(0, 5).map((result, resultIndex) => (
-                                      <div key={`${resultIndex}-${result.href || result.text || 'candidate'}`} style={{ marginTop: 2 }}>
-                                        [{result.rank || resultIndex + 1}] {result.text || '-'}
-                                        {result.href ? ` / ${result.href}` : ''}
-                                        {typeof result.score === 'number' ? ` / score ${result.score}` : ''}
-                                      </div>
-                                    ))}
-                                  </div>
-                                )}
-                              </div>
-                            );
-                          })()}
-                          {renderReactObservation(entry.result.observation)}
-                          {renderReactArtifacts(entry.result.exportArtifacts)}
                         </div>
                       ) : (
                         <Collapse
@@ -2493,166 +2218,39 @@ const AIControls: React.FC<AIControlsProps> = ({
                                 </Space>
                               ),
                               children: (
-                                <div style={{ maxHeight: 300, overflow: 'auto' }}>
-                                {/* Screenshot result */}
-                                {entry.result.screenshot && (
-                                  <img
-                                    src={entry.result.screenshot.startsWith('data:')
-                                      ? entry.result.screenshot
-                                      : `data:image/png;base64,${entry.result.screenshot}`}
-                                    alt="Screenshot"
-                                    style={{ maxWidth: '100%', borderRadius: 4 }}
-                                  />
-                                )}
-                                {/* Text/HTML content result */}
-                                {entry.result.text && (
-                                  <div
-                                    style={{
-                                      background: isDarkTheme ? '#1e293b' : '#f5f5f5',
-                                      padding: 8,
-                                      borderRadius: 4,
-                                      fontSize: 11,
-                                      whiteSpace: 'pre-wrap',
-                                      wordBreak: 'break-all',
-                                      maxHeight: 200,
-                                      overflow: 'auto',
-                                      border: isDarkTheme ? '1px solid #334155' : 'none',
-                                    }}
-                                  >
-                                    {entry.result.text}
+                                <div
+                                  style={{
+                                    padding: '8px 10px',
+                                    borderRadius: 8,
+                                    background: isDarkTheme ? '#111827' : '#f8fafc',
+                                    border: isDarkTheme ? '1px solid #334155' : '1px solid #e2e8f0',
+                                    fontSize: 12,
+                                  }}
+                                >
+                                  <div style={{ marginBottom: 6 }}>
+                                    已隐藏详细执行内容，请按需查看详情。
                                   </div>
-                                )}
-                                {/* HTML content result */}
-                                {entry.result.html && (
-                                  <div
-                                    style={{
-                                      background: isDarkTheme ? '#1e293b' : '#f5f5f5',
-                                      padding: 8,
-                                      borderRadius: 4,
-                                      fontSize: 11,
-                                      fontFamily: 'monospace',
-                                      whiteSpace: 'pre-wrap',
-                                      wordBreak: 'break-all',
-                                      maxHeight: 200,
-                                      overflow: 'auto',
-                                      border: isDarkTheme ? '1px solid #334155' : 'none',
-                                    }}
-                                  >
-                                    {entry.result.html}
-                                  </div>
-                                )}
-                                {/* Snapshot/Accessibility tree result */}
-                                {entry.result.snapshot && (
-                                  <pre
-                                    style={{
-                                      background: isDarkTheme ? '#1e293b' : '#f5f5f5',
-                                      padding: 8,
-                                      borderRadius: 4,
-                                      fontSize: 10,
-                                      maxHeight: 200,
-                                      overflow: 'auto',
-                                      margin: 0,
-                                      border: isDarkTheme ? '1px solid #334155' : 'none',
-                                      color: 'inherit',
-                                    }}
-                                  >
-                                    {typeof entry.result.snapshot === 'string'
-                                      ? entry.result.snapshot
-                                      : JSON.stringify(entry.result.snapshot, null, 2)}
-                                  </pre>
-                                )}
-                                {entry.result.stdout && (
-                                  <div
-                                    style={{
-                                      background: isDarkTheme ? '#1e293b' : '#f5f5f5',
-                                      padding: 8,
-                                      borderRadius: 4,
-                                      fontSize: 11,
-                                      whiteSpace: 'pre-wrap',
-                                      wordBreak: 'break-all',
-                                      maxHeight: 200,
-                                      overflow: 'auto',
-                                      border: isDarkTheme ? '1px solid #334155' : 'none',
-                                      marginTop: 8,
-                                    }}
-                                  >
-                                    {entry.result.stdout}
-                                  </div>
-                                )}
-                                {(entry.result.snapshot?.path || entry.result.data?.path) && (
-                                  <div style={{ marginTop: 8 }}>
-                                    <Text type="secondary" style={{ fontSize: 11 }}>
-                                      产物路径
-                                    </Text>
-                                    <div
-                                      style={{
-                                        background: isDarkTheme ? '#1e293b' : '#f5f5f5',
-                                        padding: 8,
-                                        borderRadius: 4,
-                                        fontSize: 11,
-                                        fontFamily: 'monospace',
-                                        wordBreak: 'break-all',
-                                        border: isDarkTheme ? '1px solid #334155' : 'none',
-                                      }}
-                                    >
-                                      {entry.result.snapshot?.path || entry.result.data?.path}
-                                    </div>
-                                  </div>
-                                )}
-                                {/* Template info - for all commands */}
-                                {entry.result.template_info && (
-                                  <div style={{ 
-                                    marginTop: 8, 
-                                    padding: 8, 
-                                    background: isDarkTheme ? '#1e3a8a' : '#e6f7ff', 
-                                    borderRadius: 4, 
-                                    border: isDarkTheme ? '1px solid #1e40af' : '1px solid #91d5ff' 
-                                  }}>
-                                    <Text strong style={{ fontSize: 11 }}>确定性命令：</Text>
-                                    <div style={{ 
-                                      marginTop: 4, 
-                                      fontSize: 10, 
-                                      fontFamily: 'monospace', 
-                                      background: isDarkTheme ? 'var(--bg-card)' : '#fff', 
-                                      padding: 4, 
-                                      borderRadius: 2,
-                                      border: isDarkTheme ? '1px solid #334155' : 'none',
-                                    }}>
-                                      <pre style={{ margin: 0, whiteSpace: 'pre-wrap', color: 'inherit' }}>{JSON.stringify(entry.result.template_info, null, 2)}</pre>
-                                    </div>
-                                    <Space style={{ marginTop: 8 }}>
-                                      <Button
-                                        type="primary"
-                                        size="small"
-                                        icon={<FileAddOutlined />}
-                                        onClick={() => handleAddToTemplate(entry.result.template_info)}
-                                      >
-                                        添加到模版
-                                      </Button>
-                                      <Text type="secondary" style={{ fontSize: 10 }}>
-                                        可直接用于模版编译，无需 AI 解析
-                                      </Text>
-                                    </Space>
-                                  </div>
-                                )}
-                                {/* Generic result - show as JSON */}
-                                {!entry.result.screenshot && !entry.result.text && !entry.result.html && !entry.result.snapshot && (
-                                  <pre
-                                    style={{
-                                      background: isDarkTheme ? '#1e293b' : '#f5f5f5',
-                                      padding: 8,
-                                      borderRadius: 4,
-                                      fontSize: 10,
-                                      maxHeight: 200,
-                                      overflow: 'auto',
-                                      margin: 0,
-                                      border: isDarkTheme ? '1px solid #334155' : 'none',
-                                      color: 'inherit',
-                                    }}
-                                  >
-                                    {JSON.stringify(entry.result, null, 2)}
-                                  </pre>
-                                )}
+                                  <Space size={4} wrap>
+                                    {entry.sessionId ? (
+                                      <>
+                                        <Button
+                                          size="small"
+                                          icon={<EyeOutlined />}
+                                          onClick={() => navigate(`/sessions/${entry.sessionId}`)}
+                                        >
+                                          查看详情
+                                        </Button>
+                                        <Button
+                                          size="small"
+                                          type="link"
+                                          icon={<LinkOutlined />}
+                                          onClick={() => window.open(`/sessions/${entry.sessionId}`, '_blank', 'noopener,noreferrer')}
+                                        >
+                                          打开链接
+                                        </Button>
+                                      </>
+                                    ) : null}
+                                  </Space>
                                 </div>
                               ),
                             },
@@ -2666,6 +2264,8 @@ const AIControls: React.FC<AIControlsProps> = ({
                   {entry.timestamp.toLocaleTimeString()}
                 </div>
               </div>
+                );
+              })()
             ))
           )}
           <div ref={messagesEndRef} />

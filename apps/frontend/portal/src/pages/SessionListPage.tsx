@@ -27,6 +27,10 @@ type SessionRow = Session & {
   username?: string;
 };
 
+const isUuidLike = (value: string): boolean => (
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(String(value || '').trim())
+);
+
 const cleanInlineValue = (value?: string): string => (value || '').replace(/`/g, '').trim();
 
 const parseCliHtmlSummary = (rawHtml?: string): {
@@ -138,6 +142,9 @@ const SessionListPage: React.FC = () => {
 
           const userPairs = await Promise.all(
             userIds.map(async (userId) => {
+              if (!isUuidLike(userId)) {
+                return [userId, userId] as const;
+              }
               try {
                 const user = await userApi.getById(userId);
                 return [userId, user.username] as const;

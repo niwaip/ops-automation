@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Card, Tag, Button, Space, Typography, message, Spin, Popconfirm, List, Collapse, Image, Empty, Radio, DatePicker, TimePicker, Tabs, theme as antdTheme } from 'antd';
+import { Card, Tag, Button, Space, Typography, message, Spin, Popconfirm, Collapse, Image, Empty, Tabs, Select, Timeline, theme as antdTheme } from 'antd';
 import {
   ArrowLeftOutlined,
   PlayCircleOutlined,
@@ -13,15 +13,20 @@ import {
   CodeOutlined,
   ClockCircleOutlined,
   EyeOutlined,
-  CalendarOutlined,
 } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
 import { useQuery, useMutation } from 'react-query';
 import { sessionApi, StepResult } from '../api/session';
+import { templateApi } from '../api/template';
 
 const { Title, Text } = Typography;
 
 const isTerminalSessionState = (state?: string): boolean => state === 'CLOSED' || state === 'ERROR';
+
+const formatSessionTime = (timestamp?: number): string => {
+  if (!timestamp) return '-';
+  return new Date(timestamp).toLocaleString();
+};
 
 // Transform localhost URLs to use VITE_HOST_IP for LAN access
 const transformLocalhostUrl = (url: string | undefined): string => {
@@ -33,162 +38,10 @@ const transformLocalhostUrl = (url: string | undefined): string => {
   return url;
 };
 
-// Schedule Display Component
-const ScheduleDisplay: React.FC<{ schedule: Record<string, unknown> }> = ({ schedule }) => (
-  <Card size="small" style={{ background: '#f6ffed', borderRadius: 8, marginTop: 8 }}>
-    <Space direction="vertical" size={4}>
-      <Space>
-        <ClockCircleOutlined style={{ color: '#52c41a' }} />
-        <Text strong>
-          {schedule.mode === 'scheduled' && '定时执行'}
-          {schedule.mode === 'recurring' && '周期执行'}
-        </Text>
-      </Space>
-      {schedule.mode === 'scheduled' && (
-        <Text type="secondary">
-          执行时间: {String(schedule.date)} {String(schedule.time)}
-        </Text>
-      )}
-      {schedule.mode === 'recurring' && (
-        <Space direction="vertical" size={2}>
-          <Text type="secondary">
-            周期: {schedule.recurringType === 'daily' && '每天'}
-            {schedule.recurringType === 'weekly' && '每周'}
-            {schedule.recurringType === 'monthly' && '每月'}
-            {schedule.time ? ` ${String(schedule.time)}` : ''}
-          </Text>
-        </Space>
-      )}
-    </Space>
-  </Card>
-);
-
-// Schedule Config Component for re-running tasks
-const ScheduleConfig: React.FC<{
-  onSchedule: (config: { mode: 'scheduled' | 'recurring'; date?: string; time?: string; recurringType?: 'daily' | 'weekly' | 'monthly' }) => void;
-  onRecurring: (config: { mode: 'scheduled' | 'recurring'; date?: string; time?: string; recurringType?: 'daily' | 'weekly' | 'monthly' }) => void;
-  loading: boolean;
-}> = ({ onSchedule, onRecurring, loading }) => {
-  const [scheduleMode, setScheduleMode] = useState<'scheduled' | 'recurring'>('scheduled');
-  const [scheduleDate, setScheduleDate] = useState<string | null>(null);
-  const [scheduleTime, setScheduleTime] = useState<string | null>(null);
-  const [recurringType, setRecurringType] = useState<'daily' | 'weekly' | 'monthly'>('daily');
-
-  const handleSchedule = () => {
-    if (scheduleMode === 'scheduled' && (!scheduleDate || !scheduleTime)) {
-      message.warning('请选择日期和时间');
-      return;
-    }
-    if (scheduleMode === 'recurring' && !scheduleTime) {
-      message.warning('请选择执行时间');
-      return;
-    }
-
-    const config = {
-      mode: scheduleMode,
-      date: scheduleDate || undefined,
-      time: scheduleTime || undefined,
-      recurringType: scheduleMode === 'recurring' ? recurringType : undefined,
-    };
-
-    if (scheduleMode === 'scheduled') {
-      onSchedule(config);
-    } else {
-      onRecurring(config);
-    }
-  };
-
-  return (
-    <Card size="small" style={{ background: '#f0f5ff', borderRadius: 8, marginTop: 12 }}>
-      <Space direction="vertical" size={12}>
-        <Space>
-          <Radio.Group
-            value={scheduleMode}
-            onChange={(e) => setScheduleMode(e.target.value)}
-            optionType="button"
-            buttonStyle="solid"
-            size="small"
-          >
-            <Radio.Button value="scheduled">
-              <CalendarOutlined style={{ marginRight: 4 }} />
-              定时执行
-            </Radio.Button>
-            <Radio.Button value="recurring">
-              <ClockCircleOutlined style={{ marginRight: 4 }} />
-              周期执行
-            </Radio.Button>
-          </Radio.Group>
-        </Space>
-
-        {scheduleMode === 'scheduled' && (
-          <Space size={16}>
-            <div>
-              <Text type="secondary" style={{ marginRight: 8 }}>日期</Text>
-              <DatePicker
-                size="small"
-                style={{ borderRadius: 8 }}
-                onChange={(_, dateString) => setScheduleDate(dateString as string)}
-              />
-            </div>
-            <div>
-              <Text type="secondary" style={{ marginRight: 8 }}>时间</Text>
-              <TimePicker
-                size="small"
-                style={{ borderRadius: 8 }}
-                format="HH:mm"
-                onChange={(_, timeString) => setScheduleTime(timeString as string)}
-              />
-            </div>
-          </Space>
-        )}
-
-        {scheduleMode === 'recurring' && (
-          <Space direction="vertical" size={8}>
-            <Space>
-              <Text type="secondary">周期</Text>
-              <Radio.Group
-                value={recurringType}
-                onChange={(e) => setRecurringType(e.target.value)}
-                optionType="button"
-                buttonStyle="solid"
-                size="small"
-              >
-                <Radio.Button value="daily">每天</Radio.Button>
-                <Radio.Button value="weekly">每周</Radio.Button>
-                <Radio.Button value="monthly">每月</Radio.Button>
-              </Radio.Group>
-            </Space>
-            <div>
-              <Text type="secondary" style={{ marginRight: 8 }}>执行时间</Text>
-              <TimePicker
-                size="small"
-                style={{ borderRadius: 8 }}
-                format="HH:mm"
-                onChange={(_, timeString) => setScheduleTime(timeString as string)}
-              />
-            </div>
-          </Space>
-        )}
-
-        <Button
-          type="primary"
-          size="small"
-          icon={scheduleMode === 'scheduled' ? <CalendarOutlined /> : <ClockCircleOutlined />}
-          onClick={handleSchedule}
-          loading={loading}
-        >
-          {scheduleMode === 'scheduled' ? '设置定时执行' : '设置周期执行'}
-        </Button>
-      </Space>
-    </Card>
-  );
-};
-
 const SessionDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const { t } = useTranslation(['common', 'session']);
   const navigate = useNavigate();
-  const [scheduleLoading, setScheduleLoading] = useState(false);
   const { token } = antdTheme.useToken();
 
   const sessionQuery = useQuery(
@@ -208,42 +61,40 @@ const SessionDetailPage: React.FC = () => {
       refetchInterval: () => (isTerminalSessionState(sessionQuery.data?.state) ? false : 3000),
     }
   );
+  const session = sessionQuery.data;
+
+  const templateDetailQuery = useQuery(
+    ['template-brief', session?.template_id],
+    () => templateApi.getById(session!.template_id!),
+    {
+      enabled: Boolean(session?.template_id),
+    },
+  );
+
+  const templateSessionHistoryQuery = useQuery(
+    ['template-session-history', sessionQuery.data?.template_id],
+    async () => {
+      const templateId = sessionQuery.data?.template_id;
+      if (!templateId) {
+        return [];
+      }
+      const result = await sessionApi.list({ page: 1, pageSize: 200 });
+      return (result.sessions || [])
+        .filter((item) => item.template_id === templateId)
+        .sort((a, b) => Number(b.last_activity || b.created_at || 0) - Number(a.last_activity || a.created_at || 0));
+    },
+    {
+      enabled: Boolean(sessionQuery.data?.template_id),
+    },
+  );
 
   const deleteMutation = useMutation(sessionApi.delete, {
     onSuccess: () => {
       message.success(t('common:success'));
-      navigate('/sessions');
+      navigate('/templates');
     },
   });
 
-  // Handler for creating scheduled/recurring session based on current session
-  const handleScheduleSession = async (config: { mode: 'scheduled' | 'recurring'; date?: string; time?: string; recurringType?: 'daily' | 'weekly' | 'monthly' }) => {
-    if (!session) return;
-    setScheduleLoading(true);
-    try {
-      // Create new session with same template and params but with schedule config
-      const params = session.params || {};
-      const newParams = {
-        ...params,
-        schedule: config,
-      };
-
-      const result = await sessionApi.create({
-        user_id: session.user_id || '',
-        template_id: session.template_id || '',
-        params: newParams,
-      });
-
-      message.success(config.mode === 'scheduled' ? '定时任务已创建' : '周期任务已创建');
-      navigate(`/sessions/${result.session.id}`);
-    } catch (error) {
-      message.error('创建任务失败');
-    } finally {
-      setScheduleLoading(false);
-    }
-  };
-
-  const session = sessionQuery.data;
   const steps = stepsQuery.data || [];
   const jsonBlockStyle: React.CSSProperties = {
     background: token.colorFillAlter,
@@ -303,7 +154,7 @@ const SessionDetailPage: React.FC = () => {
     return (
       <Card>
         <Title level={4}>{t('common:noData')}</Title>
-        <Button onClick={() => navigate('/sessions')}>
+        <Button onClick={() => navigate('/templates')}>
           <ArrowLeftOutlined /> {t('session:sessionList')}
         </Button>
       </Card>
@@ -313,7 +164,7 @@ const SessionDetailPage: React.FC = () => {
   return (
     <div>
       <Space style={{ marginBottom: 16 }}>
-        <Button onClick={() => navigate('/sessions')}>
+        <Button onClick={() => navigate('/templates')}>
           <ArrowLeftOutlined /> {t('session:sessionList')}
         </Button>
       </Space>
@@ -340,7 +191,7 @@ const SessionDetailPage: React.FC = () => {
                 onConfirm={() => deleteMutation.mutate(session.id)}
               >
                 <Button danger icon={<StopOutlined />}>
-                  {t('session:closeSession')}
+                  删除会话
                 </Button>
               </Popconfirm>
             </Space>
@@ -348,33 +199,36 @@ const SessionDetailPage: React.FC = () => {
         }
       >
         <Space direction="vertical" style={{ width: '100%' }} size="small">
-          <div>
-            <Text type="secondary">{t('session:sessionId')}: </Text>
-            <Text code>{session.id}</Text>
-          </div>
-          <div>
-            <Text type="secondary">{t('session:template')}: </Text>
-            <Text>{session.template_id || '-'}</Text>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
+            <Space size={8}>
+              <Text type="secondary">模板:</Text>
+              <Text strong>{templateDetailQuery.data?.name || session.template_id || '-'}</Text>
+            </Space>
+            {session.template_id ? (
+              <Space size={8}>
+                <Text type="secondary">历史会话:</Text>
+                <Select
+                  size="small"
+                  style={{ minWidth: 420 }}
+                  loading={templateSessionHistoryQuery.isLoading}
+                  value={session.id}
+                  onChange={(nextSessionId) => {
+                    if (nextSessionId !== session.id) {
+                      navigate(`/sessions/${nextSessionId}`);
+                    }
+                  }}
+                  options={(templateSessionHistoryQuery.data || []).map((item) => ({
+                    value: item.id,
+                    label: `${item.state} · ${formatSessionTime(item.last_activity || item.created_at)}`,
+                  }))}
+                />
+              </Space>
+            ) : null}
           </div>
           {session.step_index !== undefined && (
             <div>
               <Text type="secondary">Step: </Text>
               <Text>{session.step_index + 1} {session.current_step ? `(${session.current_step})` : ''}</Text>
-            </div>
-          )}
-          {/* Schedule Info Display */}
-          {session.params?.schedule ? (
-            <ScheduleDisplay schedule={session.params.schedule as Record<string, unknown>} />
-          ) : null}
-          {/* Schedule Config - Allow re-running task with schedule */}
-          {session.template_id && (
-            <div style={{ marginTop: 8 }}>
-              <Text type="secondary">重新执行设置: </Text>
-              <ScheduleConfig
-                onSchedule={handleScheduleSession}
-                onRecurring={handleScheduleSession}
-                loading={scheduleLoading}
-              />
             </div>
           )}
           {/* Execution Parameters Display */}
@@ -452,20 +306,21 @@ const SessionDetailPage: React.FC = () => {
             description={session.state === 'RUNNING' ? '正在执行中...' : '暂无步骤结果'}
           />
         ) : (
-          <List
-            dataSource={steps}
-            renderItem={(step: StepResult, index: number) => (
-              <List.Item
-                key={step.step_id}
-                style={{
-                  background: step.success ? 'rgba(16, 185, 129, 0.10)' : 'rgba(239, 68, 68, 0.10)',
-                  border: `1px solid ${step.success ? 'rgba(16, 185, 129, 0.28)' : 'rgba(239, 68, 68, 0.28)'}`,
-                  borderRadius: 8,
-                  marginBottom: 8,
-                  padding: 12,
-                }}
-              >
-                <Space direction="vertical" style={{ width: '100%' }} size="small">
+          <Timeline
+            items={steps.map((step: StepResult, index: number) => ({
+              color: step.success ? 'green' : 'red',
+              dot: step.success ? <CheckCircleOutlined /> : <CloseCircleOutlined />,
+              children: (
+                <Card
+                  size="small"
+                  style={{
+                    background: step.success ? 'rgba(16, 185, 129, 0.10)' : 'rgba(239, 68, 68, 0.10)',
+                    border: `1px solid ${step.success ? 'rgba(16, 185, 129, 0.28)' : 'rgba(239, 68, 68, 0.28)'}`,
+                    borderRadius: 8,
+                    marginBottom: 8,
+                  }}
+                >
+                  <Space direction="vertical" style={{ width: '100%' }} size="small">
                   <Space style={{ width: '100%', justifyContent: 'space-between' }}>
                     <Space>
                       <Tag color={step.success ? 'success' : 'error'}>
@@ -476,9 +331,6 @@ const SessionDetailPage: React.FC = () => {
                         {getActionIcon(step.action)}
                         <Text strong>{step.action}</Text>
                       </Space>
-                      <Text type="secondary" style={{ fontSize: 11 }}>
-                        {step.step_id}
-                      </Text>
                     </Space>
                     <Text type="secondary" style={{ fontSize: 11 }}>
                       {new Date(step.timestamp).toLocaleTimeString()}
@@ -627,9 +479,10 @@ const SessionDetailPage: React.FC = () => {
                       ]}
                     />
                   )}
-                </Space>
-              </List.Item>
-            )}
+                  </Space>
+                </Card>
+              ),
+            }))}
           />
         )}
       </Card>

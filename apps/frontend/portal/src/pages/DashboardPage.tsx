@@ -46,77 +46,15 @@ const summarizeExecutionInput = (execution: ExecutionDto) => {
   return '暂无输入';
 };
 
-const extractResultFileName = (value?: Record<string, unknown>): string | undefined => {
-  if (!value || typeof value !== 'object') return undefined;
-  if (typeof value.fileName === 'string' && value.fileName.trim()) return value.fileName;
-
-  const raw = value.raw;
-  if (raw && typeof raw === 'object' && raw !== null) {
-    const rawFileName = (raw as Record<string, unknown>).fileName;
-    if (typeof rawFileName === 'string' && rawFileName.trim()) return rawFileName;
-  }
-
-  const nestedResult = value.result;
-  if (nestedResult && typeof nestedResult === 'object') {
-    return extractResultFileName(nestedResult as Record<string, unknown>);
-  }
-
-  return undefined;
-};
-
-const extractDownloadUrl = (result?: Record<string, unknown>): string | undefined => {
-  if (!result || typeof result !== 'object') return undefined;
-  if (typeof result.downloadUrl === 'string' && result.downloadUrl.trim()) return result.downloadUrl;
-
-  const raw = result.raw;
-  if (raw && typeof raw === 'object' && raw !== null && 'downloadUrl' in raw) {
-    const rawDownloadUrl = (raw as Record<string, unknown>).downloadUrl;
-    if (typeof rawDownloadUrl === 'string' && rawDownloadUrl.trim()) return rawDownloadUrl;
-  }
-
-  const nestedResult = result.result;
-  if (nestedResult && typeof nestedResult === 'object') {
-    return extractDownloadUrl(nestedResult as Record<string, unknown>);
-  }
-
-  return undefined;
-};
-
-const summarizeExecutionResult = (result?: Record<string, unknown>) => {
-  if (!result || Object.keys(result).length === 0) {
-    return { title: '暂无结果', detail: '执行尚未生成可展示结果' };
-  }
-
-  const fileName = extractResultFileName(result);
-  if (fileName) {
-    return { title: fileName, detail: '已生成文件结果' };
-  }
-
-  const downloadUrl = extractDownloadUrl(result);
-  if (downloadUrl) {
-    return { title: '可下载结果', detail: '存在下载链接，可在详情中查看' };
-  }
-
-  if (typeof result.status === 'string' && result.status.trim()) {
-    return { title: `状态: ${result.status}`, detail: '结果对象包含状态字段' };
-  }
-
-  const keys = Object.keys(result);
-  const preview = keys.slice(0, 3).join('、');
-  return {
-    title: keys.length > 3 ? `${preview} 等 ${keys.length} 项` : preview,
-    detail: `结果字段: ${keys.join('、')}`,
-  };
-};
-
 const DashboardPage: React.FC = () => {
   const { t } = useTranslation('common');
   const navigate = useNavigate();
   const { Text } = Typography;
+  const recentExecutionPageSize = 6;
 
   const recentExecutionsQuery = useQuery(
-    ['dashboard-executions-recent'],
-    () => executionApi.list({ page: 1, pageSize: 5 })
+    ['dashboard-executions-recent', recentExecutionPageSize],
+    () => executionApi.list({ page: 1, pageSize: recentExecutionPageSize })
   );
   const skillsQuery = useQuery(['dashboard-skills-name-map'], () => skillApi.list());
   const releasesQuery = useQuery(['dashboard-published-skills-name-map'], () => capabilityReleaseApi.listReleaseCenter());
@@ -177,7 +115,8 @@ const DashboardPage: React.FC = () => {
       title: '技能',
       dataIndex: 'skillId',
       key: 'skill',
-      width: 220,
+      width: '20%',
+      ellipsis: true,
       render: (skillId: string) => (
         <Space direction="vertical" size={2}>
           <Text strong>{getSkillDisplayName(skillId)}</Text>
@@ -187,43 +126,27 @@ const DashboardPage: React.FC = () => {
     {
       title: '输入摘要',
       key: 'inputSummary',
-      width: 260,
+      width: '36%',
       render: (_: unknown, record: ExecutionDto) => (
         <Tooltip title={JSON.stringify(record.input || {}, null, 2)}>
-          <Space direction="vertical" size={2}>
-            <Text>{summarizeExecutionInput(record)}</Text>
-            <Text type="secondary" style={{ fontSize: 12 }}>
-              {record.input && Object.keys(record.input).length > 0
-                ? `${Object.keys(record.input).length} 个字段`
-                : '无结构化参数'}
-            </Text>
-          </Space>
+          <Text
+            style={{
+              display: 'block',
+              whiteSpace: 'nowrap',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+            }}
+          >
+            {summarizeExecutionInput(record)}
+          </Text>
         </Tooltip>
       ),
-    },
-    {
-      title: '执行结果',
-      key: 'resultSummary',
-      width: 260,
-      render: (_: unknown, record: ExecutionDto) => {
-        const resultSummary = summarizeExecutionResult(record.result);
-        return (
-          <Tooltip title={JSON.stringify(record.result || {}, null, 2)}>
-            <Space direction="vertical" size={2}>
-              <Text>{resultSummary.title}</Text>
-              <Text type="secondary" style={{ fontSize: 12 }}>
-                {resultSummary.detail}
-              </Text>
-            </Space>
-          </Tooltip>
-        );
-      },
     },
     {
       title: t('status'),
       dataIndex: 'status',
       key: 'status',
-      width: 160,
+      width: '14%',
       render: (status: ExecutionStatus) => (
         <Tag color={statusColors[status]}>{statusLabels[status]}</Tag>
       ),
@@ -232,36 +155,27 @@ const DashboardPage: React.FC = () => {
       title: '风险',
       dataIndex: 'riskLevel',
       key: 'riskLevel',
-      width: 100,
+      width: '10%',
       render: (riskLevel?: string) => riskLevel || '-',
     },
     {
       title: t('createdAt'),
       dataIndex: 'createdAt',
       key: 'createdAt',
-      width: 180,
+      width: '20%',
       render: (createdAt: string) => new Date(createdAt).toLocaleString(),
     },
   ];
 
   return (
     <div>
-      <Space style={{ width: '100%', justifyContent: 'space-between', marginBottom: 16 }}>
-        <div className="page-title" style={{ marginBottom: 0 }}>
-          {t('dashboard')}
-        </div>
-        <Button
-          type="primary"
-          icon={<PlayCircleOutlined />}
-          onClick={() => navigate('/executions/new')}
-        >
-          {t('newExecution')}
-        </Button>
-      </Space>
-
-      <Row gutter={[24, 24]} style={{ marginTop: 0 }}>
+      <Row gutter={[16, 16]} style={{ marginTop: 0 }}>
         <Col xs={24} sm={12} md={6}>
-          <Card className="stat-card dashboard-stat-card card-gradient-1 animate-fade-in-up" variant="borderless">
+          <Card
+            className="stat-card dashboard-stat-card card-gradient-1 animate-fade-in-up"
+            variant="borderless"
+            styles={{ body: { padding: '14px 16px' } }}
+          >
             <Statistic
               title={t('executions')}
               value={executionsTotalQuery.data?.total || 0}
@@ -270,7 +184,11 @@ const DashboardPage: React.FC = () => {
           </Card>
         </Col>
         <Col xs={24} sm={12} md={6}>
-          <Card className="stat-card dashboard-stat-card card-gradient-2 animate-fade-in-up" variant="borderless">
+          <Card
+            className="stat-card dashboard-stat-card card-gradient-2 animate-fade-in-up"
+            variant="borderless"
+            styles={{ body: { padding: '14px 16px' } }}
+          >
             <Statistic
               title={t('executionStatusRunning')}
               value={runningExecutionsQuery.data?.total || 0}
@@ -279,7 +197,11 @@ const DashboardPage: React.FC = () => {
           </Card>
         </Col>
         <Col xs={24} sm={12} md={6}>
-          <Card className="stat-card dashboard-stat-card card-gradient-3 animate-fade-in-up" variant="borderless">
+          <Card
+            className="stat-card dashboard-stat-card card-gradient-3 animate-fade-in-up"
+            variant="borderless"
+            styles={{ body: { padding: '14px 16px' } }}
+          >
             <Statistic
               title={t('executionStatusPendingApproval')}
               value={pendingApprovalExecutionsQuery.data?.total || 0}
@@ -288,7 +210,11 @@ const DashboardPage: React.FC = () => {
           </Card>
         </Col>
         <Col xs={24} sm={12} md={6}>
-          <Card className="stat-card dashboard-stat-card card-gradient-4 animate-fade-in-up" variant="borderless">
+          <Card
+            className="stat-card dashboard-stat-card card-gradient-4 animate-fade-in-up"
+            variant="borderless"
+            styles={{ body: { padding: '14px 16px' } }}
+          >
             <Statistic
               title={t('templates')}
               value={templatesStatsQuery.data?.total || 0}
@@ -302,21 +228,31 @@ const DashboardPage: React.FC = () => {
         title={
           <Space style={{ width: '100%', justifyContent: 'space-between' }}>
             <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{t('recentExecutions')}</span>
-            <Button
-              icon={<ReloadOutlined />}
-              onClick={() => {
-                void recentExecutionsQuery.refetch();
-              }}
-              style={{
-                borderRadius: 8,
-                fontWeight: 500,
-              }}
-            >
-              {t('refresh')}
-            </Button>
+            <Space>
+              <Button
+                icon={<ReloadOutlined />}
+                onClick={() => {
+                  void recentExecutionsQuery.refetch();
+                }}
+                style={{
+                  borderRadius: 8,
+                  fontWeight: 500,
+                }}
+              >
+                {t('refresh')}
+              </Button>
+              <Button
+                type="primary"
+                icon={<PlayCircleOutlined />}
+                onClick={() => navigate('/executions/new')}
+                style={{ borderRadius: 8, fontWeight: 500 }}
+              >
+                {t('newExecution')}
+              </Button>
+            </Space>
           </Space>
         }
-        style={{ marginTop: 24 }}
+        style={{ marginTop: 16 }}
         variant="borderless"
       >
         <Table
@@ -326,6 +262,7 @@ const DashboardPage: React.FC = () => {
           loading={recentExecutionsQuery.isLoading}
           pagination={false}
           size="middle"
+          tableLayout="fixed"
           onRow={(record: ExecutionDto) => ({
             style: { cursor: 'pointer' },
             onClick: () => navigate(`/executions/${record.id}`),

@@ -17,7 +17,7 @@ import '../../components/chat/ChatMessage.css';
 import {
   temporalWorkflowApi, TemporalWorkflowDTO, CreateTemporalWorkflowDTO,
   WorkflowDsl, ActivityDsl, TemporalValidationResult, DEFAULT_WORKFLOW_DSL, DEFAULT_ACTIVITY_DSL,
-  WorkflowCodeResult, WorkflowCodeStreamEvent, WorkflowRealValidationResult, TemplateWorkflowDraft, BrowserWorkflowDraft, TemporalWorkflowSourceTemplate, TemporalWorkflowSourceContext, HttpRequestOptimizeResult, HttpRequestPreviewResult, AiWorkflowDraft, AiWorkflowDraftSession, AiWorkflowDraftSessionListItem, AiWorkflowDraftSessionMessage
+  WorkflowCodeResult, WorkflowCodeStreamEvent, WorkflowRealValidationResult, TemplateWorkflowDraft, BrowserWorkflowDraft, TemporalWorkflowSourceTemplate, TemporalWorkflowSourceContext, HttpRequestOptimizeResult, HttpRequestPreviewResult, AiWorkflowDraft, AiWorkflowDraftSession, AiWorkflowDraftSessionListItem, AiWorkflowDraftSessionMessage, BrowserDraftCommandInput, WorkflowInputParamDefinition
 } from '../../api/temporal';
 import { carboneAPI, CarboneTemplate } from '../../api/carbone';
 import { templateApi, Template } from '../../api/template';
@@ -149,13 +149,17 @@ const buildBrowserInputParamsFromTemplate = (
   type?: 'string' | 'number' | 'boolean' | 'date';
   exampleValue?: string | number | boolean;
 }> => {
-  const schema = template?.params_schema || {};
+  const schema = (
+    template?.params_schema
+    || ((template as unknown as { paramsSchema?: Record<string, unknown> })?.paramsSchema)
+    || {}
+  ) as Record<string, unknown>;
   const properties = schema.properties && typeof schema.properties === 'object'
     ? schema.properties as Record<string, Record<string, unknown>>
     : {};
   const requiredList = Array.isArray(schema.required) ? schema.required.map((item) => String(item)) : [];
 
-  return Object.entries(properties).reduce<Record<string, {
+  const declaredInputParams = Object.entries(properties).reduce<Record<string, {
     description?: string;
     required?: boolean;
     defaultValue?: string;
@@ -177,6 +181,64 @@ const buildBrowserInputParamsFromTemplate = (
     };
     return acc;
   }, {});
+
+  if (Object.keys(declaredInputParams).length > 0) {
+    return declaredInputParams;
+  }
+
+  // 兜底：当后端未返回 params_schema 时，尝试从模板步骤推断常用参数
+  const inferredInputParams: Record<string, {
+    description?: string;
+    required?: boolean;
+    defaultValue?: string;
+    source?: 'declared' | 'inferred_from_template' | 'inferred_from_reference_url' | 'merged';
+    type?: 'string' | 'number' | 'boolean' | 'date';
+    exampleValue?: string | number | boolean;
+  }> = {};
+  const steps = Array.isArray(template?.steps) ? template.steps : [];
+  steps.forEach((step) => {
+    const action = String(step?.action || '').toLowerCase();
+    const selector = String(step?.locator?.value || '');
+    const params = step?.params || {};
+    const hint = `${selector} ${String(params?.field || '')} ${String(params?.name || '')}`;
+    const value = String(params?.value || params?.text || '').trim();
+    const url = String(params?.url || params?.targetUrl || params?.href || params?.target || '').trim();
+
+    if (!inferredInputParams.startUrl && action.includes('goto') && url) {
+      inferredInputParams.startUrl = {
+        description: '起始页面地址，默认使用当前录制时的地址',
+        required: false,
+        defaultValue: url,
+        source: 'inferred_from_template',
+        type: 'string',
+        exampleValue: url,
+      };
+    }
+
+    if (!inferredInputParams.username && /(用户名|账号|账户|user\s*name|username|account|email|邮箱|手机号|mobile)/i.test(hint)) {
+      inferredInputParams.username = {
+        description: '登录用户名',
+        required: true,
+        defaultValue: value || '',
+        source: 'inferred_from_template',
+        type: 'string',
+        exampleValue: value || 'test',
+      };
+    }
+
+    if (!inferredInputParams.loginCredential && /(密码|password|passwd|passcode|pin|secret)/i.test(hint)) {
+      inferredInputParams.loginCredential = {
+        description: '登录密码',
+        required: true,
+        defaultValue: value || '',
+        source: 'inferred_from_template',
+        type: 'string',
+        exampleValue: value || 'test123',
+      };
+    }
+  });
+
+  return inferredInputParams;
 };
 
 const buildBrowserActivityStepsFromTemplate = (template: Template): Array<{
@@ -236,12 +298,27 @@ const buildBrowserActivityStepsFromTemplate = (template: Template): Array<{
       config.duration = Number.isFinite(num) ? num : timeoutValue;
     }
 
+    // 提取步骤中使用的参数占位符
+    const stepInputParams: Record<string, string> = {};
+    const placeholders = new Set<string>([
+      ...extractTemplatePlaceholders(selector || ''),
+      ...extractTemplatePlaceholders(String(config.url || '')),
+      ...extractTemplatePlaceholders(String(config.value || '')),
+      ...extractTemplatePlaceholders(String(config.text || '')),
+      ...extractTemplatePlaceholders(String(config.query || '')),
+      ...extractTemplatePlaceholders(String(config.key || '')),
+    ]);
+
+    placeholders.forEach((p) => {
+      stepInputParams[p] = '';
+    });
+
     return {
       name: `${index + 1}. ${action || '浏览器操作'}`,
       type: 'browser' as const,
       timeout: '30s',
       config,
-      inputParams: {},
+      inputParams: stepInputParams,
     };
   });
 };
@@ -481,6 +558,120 @@ const collectTemplateVariablesFromValue = (value: unknown, target: Set<string> =
     Object.values(value as Record<string, unknown>).forEach((item) => collectTemplateVariablesFromValue(item, target));
   }
   return target;
+};
+
+const normalizeWorkflowInputParamMap = (
+  inputParams?: Record<string, WorkflowInputParamDefinition>,
+): Record<string, WorkflowInputParamDefinition> => {
+  if (!inputParams || typeof inputParams !== 'object') {
+    return {};
+  }
+  return Object.entries(inputParams).reduce<Record<string, WorkflowInputParamDefinition>>((acc, [rawKey, value]) => {
+    const key = String(rawKey || '').trim();
+    if (!key) {
+      return acc;
+    }
+    acc[key] = {
+      description: typeof value?.description === 'string' ? value.description : '',
+      required: value?.required === true,
+      defaultValue: value?.defaultValue === undefined || value?.defaultValue === null ? '' : String(value.defaultValue),
+      source: value?.source,
+      type: value?.type,
+      exampleValue: value?.exampleValue,
+    };
+    return acc;
+  }, {});
+};
+
+const normalizeActivityInputParams = (
+  inputParams: unknown
+): Array<{ key: string; value: string; required: boolean }> => {
+  if (!inputParams) {
+    return [];
+  }
+  if (Array.isArray(inputParams)) {
+    return inputParams.map((item: any) => ({
+      key: item?.key || '',
+      value: item?.value || '',
+      required: Boolean(item?.required),
+    }));
+  }
+  if (typeof inputParams === 'object') {
+    return Object.entries(inputParams as Record<string, any>).map(([key, value]) => ({
+      key,
+      value: value || '',
+      required: !value,
+    }));
+  }
+  return [];
+};
+
+const buildWorkflowInputParamsFromActivityDsl = (
+  activityDsl?: ActivityDsl,
+): Record<string, WorkflowInputParamDefinition> => {
+  const merged: Record<string, WorkflowInputParamDefinition> = {};
+  (activityDsl?.activities || []).forEach((activity) => {
+    const config = activity?.config as Record<string, any> | undefined;
+    const steps = Array.isArray(config?.steps) ? config.steps : [];
+    steps.forEach((step) => {
+      normalizeActivityInputParams((step as Record<string, any>)?.inputParams).forEach((param) => {
+        const key = String(param.key || '').trim();
+        if (!key || merged[key]) {
+          return;
+        }
+        merged[key] = {
+          description: '',
+          required: param.required,
+          defaultValue: param.value || '',
+        };
+      });
+    });
+  });
+  return merged;
+};
+
+const mergeWorkflowInputParamMaps = (
+  preferred?: Record<string, WorkflowInputParamDefinition>,
+  fallback?: Record<string, WorkflowInputParamDefinition>,
+): Record<string, WorkflowInputParamDefinition> => {
+  const base = normalizeWorkflowInputParamMap(fallback);
+  const overlay = normalizeWorkflowInputParamMap(preferred);
+  const mergedKeys = Array.from(new Set([
+    ...Object.keys(base),
+    ...Object.keys(overlay),
+  ]));
+  return mergedKeys.reduce<Record<string, WorkflowInputParamDefinition>>((acc, key) => {
+    const fallbackValue = base[key] || {};
+    const preferredValue = overlay[key] || {};
+    acc[key] = {
+      ...fallbackValue,
+      ...preferredValue,
+      description: preferredValue.description || fallbackValue.description || '',
+      required: preferredValue.required ?? fallbackValue.required ?? false,
+      defaultValue: preferredValue.defaultValue ?? fallbackValue.defaultValue ?? '',
+      source: preferredValue.source ?? fallbackValue.source,
+      type: preferredValue.type ?? fallbackValue.type,
+      exampleValue: preferredValue.exampleValue ?? fallbackValue.exampleValue,
+    };
+    return acc;
+  }, {});
+};
+
+const withNormalizedWorkflowInputParams = (
+  workflowDsl: WorkflowDsl,
+  activityDsl?: ActivityDsl,
+): WorkflowDsl => {
+  const mergedInputParams = mergeWorkflowInputParamMaps(
+    workflowDsl?.inputParams,
+    buildWorkflowInputParamsFromActivityDsl(activityDsl),
+  );
+  if (Object.keys(mergedInputParams).length === 0) {
+    return workflowDsl.inputParams ? { ...workflowDsl, inputParams: {} } : workflowDsl;
+  }
+  return {
+    ...workflowDsl,
+    inputParams: mergedInputParams,
+  };
 };
 
 const extractTemplatePlaceholders = (template: string): string[] => (
@@ -835,31 +1026,56 @@ const TemporalPage: React.FC = () => {
     if (!step) {
       return undefined;
     }
+    // 1. 先尝试从 activityResources 找基础定义 (内置或已发布的)
     const base = activityResources.find((activity) =>
       (step.activityRef && activity.ref === step.activityRef)
       || (step.activityName && activity.name === step.activityName)
       || (step.activityName && activity.fn === step.activityName),
     );
-    if (!base) {
-      return undefined;
-    }
+
+    // 2. 尝试从当前正在编辑的 activityDsl 中找 (包含草稿/未发布的)
     const overlay = (activityDsl.activities || []).find((activity) =>
       activity.name === step.activityName
       || activity.fn === step.activityName
-      || activity.fn === base.fn
-      || activity.name === base.name,
+      || (base && (activity.fn === base.fn || activity.name === base.name)),
     );
-    if (!overlay) {
-      return base;
+
+    if (!base && !overlay) {
+      return undefined;
     }
+
+    // 如果只有 overlay (例如新建的草稿 Activity)，则基于 overlay 构建基础资源对象
+    if (!base && overlay) {
+      return {
+        id: String(overlay.name || overlay.fn || 'draft-activity'),
+        source: 'custom' as const,
+        ref: `custom:${overlay.fn || overlay.name}`,
+        name: overlay.name || '未命名 Activity',
+        fn: overlay.fn || '',
+        timeout: overlay.timeout || '300s',
+        retryPolicy: overlay.retryPolicy || null,
+        handler: overlay.handler || 'browser',
+        config: overlay.config || {},
+        generatedCode: overlay.generatedCode || '',
+        isActive: true,
+        readonly: false,
+      };
+    }
+
+    // 如果都没有更新，直接返回 base (此时 base 必然存在，因为前面已经判断了 !base && !overlay)
+    if (!overlay) {
+      return base!;
+    }
+
+    // 如果都有，则以 overlay 覆盖 base
     return {
-      ...base,
-      name: overlay.name || base.name,
-      timeout: overlay.timeout || base.timeout,
-      retryPolicy: overlay.retryPolicy || base.retryPolicy,
-      handler: overlay.handler || base.handler,
-      config: overlay.config || base.config,
-      generatedCode: overlay.generatedCode || base.generatedCode,
+      ...base!,
+      name: overlay.name || base!.name,
+      timeout: overlay.timeout || base!.timeout,
+      retryPolicy: overlay.retryPolicy || base!.retryPolicy,
+      handler: overlay.handler || base!.handler,
+      config: overlay.config || base!.config,
+      generatedCode: overlay.generatedCode || base!.generatedCode,
     };
   };
 
@@ -877,39 +1093,18 @@ const TemporalPage: React.FC = () => {
     }
   }, [realValidationState.visible]);
 
-  const normalizeActivityInputParams = (
-    inputParams: unknown
-  ): Array<{ key: string; value: string; required: boolean }> => {
-    if (!inputParams) {
-      return [];
-    }
-    if (Array.isArray(inputParams)) {
-      return inputParams.map((item: any) => ({
-        key: item?.key || '',
-        value: item?.value || '',
-        required: Boolean(item?.required),
-      }));
-    }
-    if (typeof inputParams === 'object') {
-      return Object.entries(inputParams as Record<string, any>).map(([key, value]) => ({
-        key,
-        value: value || '',
-        required: !value,
-      }));
-    }
-    return [];
-  };
-
   // 从Activity的config中提取inputParams (存储在config.steps[].inputParams中)
   const getActivityInputParams = (activity: WorkflowSelectableActivity): Record<string, string> => {
     const params: Record<string, string> = {};
     try {
       const config = activity.config as Record<string, any>;
       if (config?.steps && Array.isArray(config.steps) && config.steps.length > 0) {
-        normalizeActivityInputParams(config.steps[0]?.inputParams).forEach((param) => {
-          if (param.key.trim()) {
-            params[param.key] = param.value || '';
-          }
+        config.steps.forEach((step: Record<string, any>) => {
+          normalizeActivityInputParams(step?.inputParams).forEach((param) => {
+            if (param.key.trim() && !(param.key in params)) {
+              params[param.key] = param.value || '';
+            }
+          });
         });
       }
     } catch (e) {
@@ -918,22 +1113,25 @@ const TemporalPage: React.FC = () => {
     return params;
   };
 
-  const getActivityInputParamDefinitions = (activity?: WorkflowSelectableActivity): Record<string, { description?: string; required?: boolean; defaultValue?: string }> => {
-    const definitions: Record<string, { description?: string; required?: boolean; defaultValue?: string }> = {};
+  const getActivityInputParamDefinitions = (activity?: WorkflowSelectableActivity): Record<string, WorkflowInputParamDefinition> => {
+    const definitions: Record<string, WorkflowInputParamDefinition> = {};
     if (!activity) {
       return definitions;
     }
     try {
       const config = activity.config as Record<string, any>;
       if (config?.steps && Array.isArray(config.steps) && config.steps.length > 0) {
-        normalizeActivityInputParams(config.steps[0]?.inputParams).forEach((param) => {
-          if (param.key.trim()) {
-            definitions[param.key] = {
-              description: '',
-              required: param.required,
-              defaultValue: param.value || '',
-            };
-          }
+        config.steps.forEach((step: Record<string, any>) => {
+          normalizeActivityInputParams(step?.inputParams).forEach((param) => {
+            if (param.key.trim() && !definitions[param.key]) {
+              definitions[param.key] = {
+                description: '',
+                required: param.required,
+                defaultValue: param.value || '',
+                source: 'inferred_from_template',
+              };
+            }
+          });
         });
       }
     } catch (e) {
@@ -1069,71 +1267,99 @@ const TemporalPage: React.FC = () => {
   const syncWorkflowInputParamsFromSteps = () => {
     setWorkflowDsl((prev) => {
       if (!prev.steps.length) {
-        return prev.inputParams ? { ...prev, inputParams: {} } : prev;
+        return prev.inputParams && Object.keys(prev.inputParams).length > 0 ? { ...prev, inputParams: {} } : prev;
       }
       const currentDefinitions = prev.inputParams || {};
-      const nextInputParams: Record<string, { description?: string; required?: boolean; defaultValue?: string }> = {};
+      // 分析所有步骤（不仅是第一个），提取自动生成的参数
+      // 浏览器模板场景下，所有步骤都在 activityDsl.activities[0].config.steps 中
+      const discoveredParams: Record<string, WorkflowInputParamDefinition> = {};
 
-      // 只分析第一个步骤，提取自动生成的参数
-      const firstStep = prev.steps[0];
-      const activity = resolveStepActivity(firstStep);
-      const activityDefinitions = getActivityInputParamDefinitions(activity);
-      const stepInputEntries = getStepInputPublicEntries(firstStep);
-      const httpTemplateVariables = isHttpRequestActivity(activity, firstStep)
-        ? Array.from(collectTemplateVariablesFromValue(getStepHttpRequestConfig(firstStep, activity)))
-        : [];
-      const structuredTransformVariables = isStructuredTransformActivity(activity, firstStep)
-        ? Array.from(collectTemplateVariablesFromValue(getStepStructuredTransformConfig(firstStep, activity)))
-        : [];
+      prev.steps.forEach((step) => {
+        const activity = resolveStepActivity(step);
+        const activityDefinitions = getActivityInputParamDefinitions(activity);
+        const stepInputEntries = getStepInputPublicEntries(step);
 
-      Object.entries(activityDefinitions).forEach(([key, definition]) => {
-        nextInputParams[key] = {
-          description: currentDefinitions[key]?.description || definition.description || '',
-          required: currentDefinitions[key]?.required ?? definition.required ?? false,
-          defaultValue: currentDefinitions[key]?.defaultValue ?? definition.defaultValue ?? '',
-        };
-      });
+        Object.entries(activityDefinitions).forEach(([key, definition]) => {
+          const def = definition as WorkflowInputParamDefinition;
+          const currentDef = currentDefinitions[key] as WorkflowInputParamDefinition | undefined;
+          if (!discoveredParams[key]) {
+            discoveredParams[key] = {
+              description: currentDef?.description || def.description || '',
+              required: currentDef?.required ?? def.required ?? false,
+              defaultValue: currentDef?.defaultValue ?? def.defaultValue ?? '',
+              source: currentDef?.source ?? def.source,
+              type: currentDef?.type ?? def.type,
+              exampleValue: currentDef?.exampleValue ?? def.exampleValue,
+            };
+          }
+        });
 
-      stepInputEntries.forEach(([key, value]) => {
-        nextInputParams[key] = {
-          description: currentDefinitions[key]?.description || '',
-          required: currentDefinitions[key]?.required ?? false,
-          defaultValue: typeof value === 'string'
-            ? value
-            : currentDefinitions[key]?.defaultValue ?? JSON.stringify(value),
-        };
-      });
+        stepInputEntries.forEach(([key, value]) => {
+          const currentDef = currentDefinitions[key] as WorkflowInputParamDefinition | undefined;
+          if (!discoveredParams[key]) {
+            discoveredParams[key] = {
+              description: currentDef?.description || '',
+              required: currentDef?.required ?? false,
+              defaultValue: typeof value === 'string'
+                ? value
+                : currentDef?.defaultValue ?? JSON.stringify(value),
+              source: currentDef?.source,
+              type: currentDef?.type,
+              exampleValue: currentDef?.exampleValue,
+            };
+          }
+        });
 
-      httpTemplateVariables.forEach((key) => {
-        nextInputParams[key] = {
-          description: currentDefinitions[key]?.description || '',
-          required: currentDefinitions[key]?.required ?? true,
-          defaultValue: currentDefinitions[key]?.defaultValue ?? '',
-        };
-      });
-      structuredTransformVariables.forEach((key) => {
-        nextInputParams[key] = {
-          description: currentDefinitions[key]?.description || '',
-          required: currentDefinitions[key]?.required ?? true,
-          defaultValue: currentDefinitions[key]?.defaultValue ?? '',
-        };
-      });
+        if (isHttpRequestActivity(activity, step)) {
+          const httpVariables = Array.from(collectTemplateVariablesFromValue(getStepHttpRequestConfig(step, activity)));
+          httpVariables.forEach((key) => {
+            const currentDef = currentDefinitions[key] as WorkflowInputParamDefinition | undefined;
+            if (!discoveredParams[key]) {
+              discoveredParams[key] = {
+                description: currentDef?.description || '',
+                required: currentDef?.required ?? true,
+                defaultValue: currentDef?.defaultValue ?? '',
+                source: currentDef?.source,
+                type: currentDef?.type,
+                exampleValue: currentDef?.exampleValue,
+              };
+            }
+          });
+        }
 
-      // 关键：保留不在第一个步骤中但用户手动追加或 AI 之前生成的参数
-      // 避免多步骤流程中，由于逻辑变更导致后续步骤需要的全局参数被意外删除
-      Object.entries(currentDefinitions).forEach(([key, definition]) => {
-        if (!nextInputParams[key]) {
-          nextInputParams[key] = definition;
+        if (isStructuredTransformActivity(activity, step)) {
+          const stVariables = Array.from(collectTemplateVariablesFromValue(getStepStructuredTransformConfig(step, activity)));
+          stVariables.forEach((key) => {
+            const currentDef = currentDefinitions[key] as WorkflowInputParamDefinition | undefined;
+            if (!discoveredParams[key]) {
+              discoveredParams[key] = {
+                description: currentDef?.description || '',
+                required: currentDef?.required ?? true,
+                defaultValue: currentDef?.defaultValue ?? '',
+                source: currentDef?.source,
+                type: currentDef?.type,
+                exampleValue: currentDef?.exampleValue,
+              };
+            }
+          });
         }
       });
 
-      if (JSON.stringify(currentDefinitions) === JSON.stringify(nextInputParams)) {
+      // 关键：保留不在步骤中但用户手动追加或从模板带入的参数
+      const mergedParams = { ...discoveredParams };
+      Object.entries(currentDefinitions).forEach(([key, definition]) => {
+        if (!mergedParams[key]) {
+          mergedParams[key] = definition;
+        }
+      });
+
+      if (JSON.stringify(currentDefinitions) === JSON.stringify(mergedParams)) {
         return prev;
       }
 
       return {
         ...prev,
-        inputParams: nextInputParams,
+        inputParams: mergedParams,
       };
     });
   };
@@ -1419,6 +1645,7 @@ const TemporalPage: React.FC = () => {
     draft: Pick<TemplateWorkflowDraft, 'name' | 'description' | 'taskQueue' | 'workflowDsl' | 'activityDsl'>,
     successMessage: string,
   ) => {
+    const nextWorkflowDsl = withNormalizedWorkflowInputParams(draft.workflowDsl, draft.activityDsl);
     setEditingWorkflow(null);
     didInitializeCodeSignatureRef.current = false;
     form.setFieldsValue({
@@ -1426,12 +1653,12 @@ const TemporalPage: React.FC = () => {
       description: draft.description,
       taskQueue: draft.taskQueue || 'SKILL_TASK_QUEUE',
     });
-    setWorkflowDsl(draft.workflowDsl);
+    setWorkflowDsl(nextWorkflowDsl);
     setActivityDsl(draft.activityDsl);
     setGeneratedCode(null);
     setLastGeneratedSignature(null);
     setIsGeneratedCodeStale(false);
-    setSelectedStepIndexForConfig(draft.workflowDsl?.steps?.length ? 0 : null);
+    setSelectedStepIndexForConfig(nextWorkflowDsl?.steps?.length ? 0 : null);
     setEditModalVisible(true);
     message.success(successMessage);
   };
@@ -1560,12 +1787,35 @@ const TemporalPage: React.FC = () => {
     try {
       setGeneratingBrowserTemplateId(template.id);
       const detail = await templateApi.getById(template.id);
-      const draft = buildBrowserDraftFromTemplateDetail(detail);
+      const templateSteps = Array.isArray(detail?.steps) ? detail.steps : [];
+      const executionPlan = detail?.config && typeof detail.config === 'object'
+        ? (detail.config as { executionPlan?: { commands?: BrowserDraftCommandInput[] } }).executionPlan
+        : undefined;
+      const executionPlanCommands = Array.isArray(executionPlan?.commands)
+        ? executionPlan.commands.filter((command): command is BrowserDraftCommandInput => Boolean(command && typeof command === 'object'))
+        : [];
+      const draft = templateSteps.length > 0
+        ? buildBrowserDraftFromTemplateDetail(detail)
+        : executionPlanCommands.length > 0
+          ? await temporalWorkflowApi.generateBrowserDraft({
+          name: detail.name,
+          description: detail.description,
+          commands: executionPlanCommands,
+          inputParams: buildBrowserInputParamsFromTemplate(detail),
+        })
+          : buildBrowserDraftFromTemplateDetail(detail);
       if (!draft.activityDsl.activities[0]?.config?.steps || (draft.activityDsl.activities[0]?.config?.steps as Array<unknown>).length === 0) {
         message.warning('该浏览器模板缺少可执行步骤，请先在模板页补充步骤');
         return;
       }
-      applyDraftToEditor(draft, `已基于模板 DSL 生成浏览器工作流草稿（${draft.browserTemplate.commandCount} 个步骤）`);
+      applyDraftToEditor(
+        draft,
+        templateSteps.length > 0
+          ? `已基于模板步骤生成浏览器工作流草稿（${draft.browserTemplate.commandCount} 个步骤）`
+          : executionPlanCommands.length > 0
+            ? `已基于 executionPlan.commands 生成浏览器工作流草稿（${draft.browserTemplate.commandCount} 个步骤）`
+            : `已基于模板 DSL 生成浏览器工作流草稿（${draft.browserTemplate.commandCount} 个步骤）`,
+      );
       setTemplateModalVisible(false);
     } catch (error: any) {
       message.error('使用浏览器模板生成工作流失败: ' + (error.message || '未知错误'));
@@ -1575,18 +1825,19 @@ const TemporalPage: React.FC = () => {
   };
 
   const handleEdit = (workflow: TemporalWorkflowDTO) => {
+    const nextWorkflowDsl = withNormalizedWorkflowInputParams({
+      ...DEFAULT_WORKFLOW_DSL,
+      ...(workflow.workflowDsl || {}),
+    }, workflow.activityDsl || DEFAULT_ACTIVITY_DSL);
     setEditingWorkflow(workflow);
     didInitializeCodeSignatureRef.current = false;
     form.setFieldsValue({ name: workflow.name, description: workflow.description, taskQueue: workflow.taskQueue });
-    setWorkflowDsl({
-      ...DEFAULT_WORKFLOW_DSL,
-      ...(workflow.workflowDsl || {}),
-    });
+    setWorkflowDsl(nextWorkflowDsl);
     setActivityDsl(workflow.activityDsl || DEFAULT_ACTIVITY_DSL);
     setGeneratedCode(workflow.generatedCode || null);
     setLastGeneratedSignature(null);
     setIsGeneratedCodeStale(false);
-    setSelectedStepIndexForConfig(workflow.workflowDsl?.steps?.length ? 0 : null);
+    setSelectedStepIndexForConfig(nextWorkflowDsl.steps?.length ? 0 : null);
     setEditModalVisible(true);
   };
 
@@ -3484,14 +3735,14 @@ const TemporalPage: React.FC = () => {
             key={item.key}
             size="small"
             style={{ ...SECTION_CARD_STYLE, borderRadius: 14 }}
-            styles={{ body: { padding: '12px 16px' } }}
+            styles={{ body: { padding: '10px 14px' } }}
           >
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
-              <Space size={10} align="center">
-                <span style={{ display: 'inline-flex', fontSize: 16 }}>{item.icon}</span>
-                <Text type="secondary" style={{ fontSize: 13 }}>{item.label}</Text>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
+              <Space size={8} align="center">
+                <span style={{ display: 'inline-flex', fontSize: 14 }}>{item.icon}</span>
+                <Text type="secondary" style={{ fontSize: 12 }}>{item.label}</Text>
               </Space>
-              <Text style={{ fontSize: 24, fontWeight: 700, color: item.color, lineHeight: 1 }}>
+              <Text style={{ fontSize: 20, fontWeight: 700, color: item.color, lineHeight: 1 }}>
                 {item.value}
               </Text>
             </div>
@@ -3499,18 +3750,18 @@ const TemporalPage: React.FC = () => {
         ))}
       </div>
 
-      <Card style={SECTION_CARD_STYLE} styles={{ body: { padding: 16 } }}>
+      <Card style={SECTION_CARD_STYLE} styles={{ body: { padding: '12px 16px' } }}>
         <ListSectionHeader
           title={(
-            <Space wrap size={12}>
+            <Space size={16}>
               <Text strong style={{ fontSize: 16 }}>工作流记录列表</Text>
               <Input
-                size="large"
+                size="small"
                 placeholder="搜索工作流名称、描述或任务队列"
                 prefix={<SearchOutlined />}
                 value={searchText}
                 onChange={e => setSearchText(e.target.value)}
-                style={{ width: 360, height: 44, background: 'var(--bg-secondary)', borderRadius: 12 }}
+                style={{ width: 300, background: 'var(--bg-secondary)', borderRadius: 6, fontSize: 12 }}
                 variant="borderless"
                 allowClear
               />
@@ -3522,23 +3773,24 @@ const TemporalPage: React.FC = () => {
             </Tooltip>
           )}
           extra={(
-            <Space wrap size={12}>
-              <Text type="secondary">当前显示 {filteredWorkflows.length} 条</Text>
-              <Button size="large" icon={<ReloadOutlined />} onClick={() => workflowsQuery.refetch()} className="btn-pill">
-                {t('common:refresh')}
+            <Space wrap size={8}>
+              <Text type="secondary" style={{ fontSize: 13 }}>共 {filteredWorkflows.length} 条</Text>
+              <Button size="middle" icon={<ReloadOutlined />} onClick={() => workflowsQuery.refetch()} className="btn-pill">
+                刷新
               </Button>
-              <Button size="large" icon={<RobotOutlined />} onClick={openAiDraftModal} className="btn-pill">
+              <Button size="middle" icon={<RobotOutlined />} onClick={openAiDraftModal} className="btn-pill">
                 AI 创建
               </Button>
-              <Button size="large" icon={<RobotOutlined />} onClick={openTemplateModal} className="btn-pill">
+              <Button size="middle" icon={<RobotOutlined />} onClick={openTemplateModal} className="btn-pill">
                 模版工作流
               </Button>
-              <Button size="large" icon={<PlusOutlined />} type="primary" onClick={handleCreate} className="btn-pill">
+              <Button size="middle" icon={<PlusOutlined />} type="primary" onClick={handleCreate} className="btn-pill">
                 创建工作流
               </Button>
             </Space>
           )}
         />
+
         <Table
           columns={columns}
           dataSource={filteredWorkflows}
