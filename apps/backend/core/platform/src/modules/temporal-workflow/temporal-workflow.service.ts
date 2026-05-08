@@ -283,8 +283,13 @@ interface BrowserScriptCommand {
   action: 'goto' | 'click' | 'fill' | 'press' | 'waitForSelector' | 'waitForTimeout';
   url?: string;
   selector?: string;
+  target?: string;
   value?: string;
   timeoutMs?: number;
+  locator?: {
+    type: string;
+    value: string;
+  };
 }
 
 @Injectable()
@@ -557,8 +562,14 @@ export class TemporalWorkflowService {
       if (command.url) {
         stepConfig.url = command.url;
       }
+      if (command.target) {
+        stepConfig.target = command.target;
+      }
       if (command.selector) {
         stepConfig.selector = command.selector;
+      }
+      if (command.locator) {
+        stepConfig.locator = command.locator;
       }
       if (command.value !== undefined) {
         stepConfig.value = command.value;
@@ -1831,6 +1842,33 @@ export class TemporalWorkflowService {
       '            return {str(key): _resolve_value(item) for key, item in value.items()}',
       '        return value',
       '',
+      '    def _build_target_from_locator(locator: Any) -> str:',
+      '        if not isinstance(locator, dict):',
+      '            return ""',
+      '        locator_type = _stringify(locator.get("type")).strip().lower()',
+      '        locator_value = _stringify(locator.get("value")).strip()',
+      '        if not locator_value:',
+      '            return ""',
+      '        if locator_type == "ref":',
+      '            return locator_value',
+      '        if locator_type == "role":',
+      '            return f"role={locator_value}"',
+      '        if locator_type == "text":',
+      '            return f"text={locator_value}"',
+      '        if locator_type == "test-id":',
+      '            return f"[data-testid=\\"{locator_value}\\"]"',
+      '        if locator_type == "xpath":',
+      '            return f"xpath={locator_value}"',
+      '        return locator_value',
+      '',
+      '    def _normalize_target(raw: Any) -> str:',
+      '        target = _stringify(raw).strip()',
+      '        if not target:',
+      '            return ""',
+      '        if re.match(r"^[a-zA-Z-]+\\[name=.*\\]$", target) and "=" not in target.split("[", 1)[0]:',
+      '            return f"role={target}"',
+      '        return target',
+      '',
       '    missing_params = [key for key in required_params if _is_missing(input_data.get(key))]',
       '    if missing_params:',
       '        raise ApplicationError(f"缺少必需参数: {\', \'.join(missing_params)}", non_retryable=True)',
@@ -1844,12 +1882,22 @@ export class TemporalWorkflowService {
       '                raise ApplicationError("浏览器步骤 goto 缺少 url", non_retryable=True)',
       '            return {"tool": "navigate", "params": {"url": url}}',
       '        if action in ("click", "hover"):',
-      '            target = _stringify(config.get("target") or config.get("selector") or config.get("text"))',
+      '            target = _build_target_from_locator(config.get("locator"))',
+      '            if not target:',
+      '                target = _normalize_target(config.get("selector"))',
+      '            if not target:',
+      '                target = _normalize_target(config.get("target"))',
+      '            if not target:',
+      '                target = _stringify(config.get("text"))',
       '            if not target:',
       '                raise ApplicationError("浏览器步骤 click 缺少 selector", non_retryable=True)',
       '            return {"tool": action, "params": {"target": target}}',
       '        if action in ("fill", "type", "type_text"):',
-      '            target = _stringify(config.get("target") or config.get("selector"))',
+      '            target = _build_target_from_locator(config.get("locator"))',
+      '            if not target:',
+      '                target = _normalize_target(config.get("selector"))',
+      '            if not target:',
+      '                target = _normalize_target(config.get("target"))',
       '            if not target:',
       '                raise ApplicationError("浏览器步骤 fill 缺少 selector", non_retryable=True)',
       '            value = _stringify(config.get("value") or config.get("text") or config.get("query"))',
@@ -1859,7 +1907,11 @@ export class TemporalWorkflowService {
       '            if not key:',
       '                raise ApplicationError("浏览器步骤 press 缺少按键值", non_retryable=True)',
       '            params = {"key": key}',
-      '            target = _stringify(config.get("target") or config.get("selector"))',
+      '            target = _build_target_from_locator(config.get("locator"))',
+      '            if not target:',
+      '                target = _normalize_target(config.get("selector"))',
+      '            if not target:',
+      '                target = _normalize_target(config.get("target"))',
       '            if target:',
       '                params["target"] = target',
       '            return {"tool": "press_key", "params": params}',
@@ -4895,9 +4947,14 @@ export class TemporalWorkflowService {
         return;
       }
 
-      const locatorClickMatch = line.match(/\.locator\(\s*(['"`])((?:\\.|(?!\1).)+)\1\s*\)\.click\(/);
+      const locatorClickMatch = line.match(/\.locator\(\s*(['"`])((?:\\.|(?!\1).)+)\1\s*\)(?:\.first\(\))?\.click\(/);
       if (locatorClickMatch) {
-        commands.push({ action: 'click', selector: locatorClickMatch[2] });
+        const locatorValue = locatorClickMatch[2]!;
+        if (/^e\d+$/i.test(locatorValue)) {
+          commands.push({ action: 'click', target: locatorValue, locator: { type: 'ref', value: locatorValue } });
+        } else {
+          commands.push({ action: 'click', selector: locatorValue });
+        }
         return;
       }
 
@@ -4907,9 +4964,19 @@ export class TemporalWorkflowService {
         return;
       }
 
-      const locatorFillMatch = line.match(/\.locator\(\s*(['"`])((?:\\.|(?!\1).)+)\1\s*\)\.fill\(\s*(['"`])((?:\\.|(?!\3).)+)\3/);
+      const locatorFillMatch = line.match(/\.locator\(\s*(['"`])((?:\\.|(?!\1).)+)\1\s*\)(?:\.first\(\))?\.fill\(\s*(['"`])((?:\\.|(?!\3).)+)\3/);
       if (locatorFillMatch) {
-        commands.push({ action: 'fill', selector: locatorFillMatch[2], value: locatorFillMatch[4] || '' });
+        const locatorValue = locatorFillMatch[2]!;
+        if (/^e\d+$/i.test(locatorValue)) {
+          commands.push({
+            action: 'fill',
+            target: locatorValue,
+            value: locatorFillMatch[4] || '',
+            locator: { type: 'ref', value: locatorValue },
+          });
+        } else {
+          commands.push({ action: 'fill', selector: locatorValue, value: locatorFillMatch[4] || '' });
+        }
         return;
       }
 
@@ -4919,9 +4986,50 @@ export class TemporalWorkflowService {
         return;
       }
 
-      const locatorPressMatch = line.match(/\.locator\(\s*(['"`])((?:\\.|(?!\1).)+)\1\s*\)\.press\(\s*(['"`])((?:\\.|(?!\3).)+)\3/);
+      const locatorPressMatch = line.match(/\.locator\(\s*(['"`])((?:\\.|(?!\1).)+)\1\s*\)(?:\.first\(\))?\.press\(\s*(['"`])((?:\\.|(?!\3).)+)\3/);
       if (locatorPressMatch) {
-        commands.push({ action: 'press', selector: locatorPressMatch[2], value: locatorPressMatch[4] });
+        const locatorValue = locatorPressMatch[2]!;
+        if (/^e\d+$/i.test(locatorValue)) {
+          commands.push({
+            action: 'press',
+            target: locatorValue,
+            value: locatorPressMatch[4],
+            locator: { type: 'ref', value: locatorValue },
+          });
+        } else {
+          commands.push({ action: 'press', selector: locatorValue, value: locatorPressMatch[4] });
+        }
+        return;
+      }
+
+      const getByRoleFillMatch = line.match(/page\.getByRole\(\s*(['"`])([^'"`]+)\1\s*,\s*\{\s*name:\s*(['"`])((?:\\.|(?!\3).)+)\3\s*\}\s*\)(?:\.first\(\))?\.fill\(\s*([^)]*?)\s*\)/);
+      if (getByRoleFillMatch) {
+        commands.push({
+          action: 'fill',
+          selector: `role=${getByRoleFillMatch[2]}[name="${getByRoleFillMatch[4]}"]`,
+          locator: { type: 'role', value: `${getByRoleFillMatch[2]}[name="${getByRoleFillMatch[4]}"]` },
+          value: getByRoleFillMatch[5]?.trim().replace(/^['"`]|['"`]$/g, '') || '',
+        });
+        return;
+      }
+
+      const getByRoleClickMatch = line.match(/page\.getByRole\(\s*(['"`])([^'"`]+)\1\s*,\s*\{\s*name:\s*(['"`])((?:\\.|(?!\3).)+)\3\s*\}\s*\)(?:\.first\(\))?\.click\(\s*\)/);
+      if (getByRoleClickMatch) {
+        commands.push({
+          action: 'click',
+          selector: `role=${getByRoleClickMatch[2]}[name="${getByRoleClickMatch[4]}"]`,
+          locator: { type: 'role', value: `${getByRoleClickMatch[2]}[name="${getByRoleClickMatch[4]}"]` },
+        });
+        return;
+      }
+
+      const getByTextClickMatch = line.match(/page\.getByText\(\s*(['"`])((?:\\.|(?!\1).)+)\1(?:,\s*\{[^}]*\})?\s*\)(?:\.first\(\))?\.click\(\s*\)/);
+      if (getByTextClickMatch) {
+        commands.push({
+          action: 'click',
+          selector: `text=${getByTextClickMatch[2]}`,
+          locator: { type: 'text', value: getByTextClickMatch[2]! },
+        });
         return;
       }
 

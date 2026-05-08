@@ -1,4 +1,4 @@
-import { Injectable, Logger, OnModuleDestroy } from '@nestjs/common';
+import { Injectable, OnModuleDestroy } from '@nestjs/common';
 import {
   BrowserControlStateDto,
   ExecuteStepDto,
@@ -6,110 +6,69 @@ import {
   FreezeBrowserSessionDto,
   ResumeBrowserSessionDto,
 } from '../../dto/worker.dto';
-import {
-  BrowserExecutionAdapter,
-  BrowserExecutionBackend,
-  MCPCommand,
-} from './adapters/browser-execution.adapter';
-import { ChromeDevtoolsCliAdapter } from './adapters/chrome-devtools-cli.adapter';
-import { LegacyCodegenAdapter } from './adapters/legacy-codegen.adapter';
-import { PlaywrightCliAdapter } from './adapters/playwright-cli.adapter';
-import { WorkerService } from '../worker/worker.service';
+import { BrowserExecutionBackend, MCPCommand } from './adapters/browser-execution.adapter';
+import { BrowserCommandService } from './application/browser-command.service';
+import { BrowserSessionService } from './application/browser-session.service';
+import { BrowserScriptExportService, ExportOptions } from './application/browser-script-export.service';
+import { BrowserSchemaService } from './application/browser-schema.service';
+import { BrowserActionStep } from './domain/browser-step.types';
+import { BrowserSessionPreferences } from './domain/browser.types';
 
 @Injectable()
 export class BrowserService implements OnModuleDestroy {
-  private readonly logger = new Logger(BrowserService.name);
-  private readonly adapters: Map<BrowserExecutionBackend, BrowserExecutionAdapter>;
-
   constructor(
-    private readonly workerService: WorkerService,
-    private readonly legacyCodegenAdapter: LegacyCodegenAdapter,
-    private readonly playwrightCliAdapter: PlaywrightCliAdapter,
-    private readonly chromeDevtoolsCliAdapter: ChromeDevtoolsCliAdapter,
-  ) {
-    this.adapters = new Map<BrowserExecutionBackend, BrowserExecutionAdapter>([
-      ['legacy', this.legacyCodegenAdapter],
-      ['cli', this.playwrightCliAdapter],
-      ['chrome-devtools', this.chromeDevtoolsCliAdapter],
-    ]);
-  }
+    private readonly browserSessionService: BrowserSessionService,
+    private readonly browserCommandService: BrowserCommandService,
+    private readonly browserScriptExportService: BrowserScriptExportService,
+    private readonly browserSchemaService: BrowserSchemaService,
+  ) {}
 
   async onModuleDestroy() {
-    for (const adapter of this.adapters.values()) {
+    for (const adapter of this.browserCommandService.getAdapters()) {
       await adapter.onModuleDestroy?.();
     }
+  }
+
+  exportScript(steps: BrowserActionStep[], options?: ExportOptions): string {
+    return this.browserScriptExportService.exportToPlaywright(steps, options);
+  }
+
+  generateParamsSchema(steps: BrowserActionStep[]): Record<string, any> {
+    return this.browserSchemaService.generateParamsSchema(steps);
   }
 
   async initBrowser(options?: {
     backend?: BrowserExecutionBackend;
     runtimeSessionId?: string;
     initialUrl?: string;
-    sessionPreferences?: {
-      mode?: 'interactive' | 'agent';
-      enableCodegen?: boolean;
-      headless?: boolean;
-    };
+    sessionPreferences?: BrowserSessionPreferences;
   }): Promise<{ success: boolean; message: string; endpoints?: any }> {
-    const backend = options?.backend || 'legacy';
-    this.logger.log(`Initializing browser using backend: ${backend}`);
-    const result = await this.getAdapter(backend).initBrowser({
-      runtimeSessionId: options?.runtimeSessionId,
-      initialUrl: options?.initialUrl,
-      sessionPreferences: options?.sessionPreferences,
-    });
-
-    // If we have a runtimeSessionId, try to get the worker endpoints
-    let endpoints;
-    if (options?.runtimeSessionId) {
-      const worker = await this.workerService.getWorkerByRuntimeSessionId(options.runtimeSessionId);
-      if (worker) {
-        endpoints = worker.endpoints;
-      }
-    }
-
-    return {
-      ...result,
-      endpoints,
-    };
+    return this.browserSessionService.initBrowser(options);
   }
 
   async executeCommands(
     commands: MCPCommand[],
     options?: { backend?: BrowserExecutionBackend; runtimeSessionId?: string },
-  ): Promise<{ success: boolean; results: any[]; message?: string }> {
-    const backend = options?.backend || 'legacy';
-    return this.getAdapter(backend).executeCommands(commands, {
-      runtimeSessionId: options?.runtimeSessionId,
-    });
+  ): Promise<{ success: boolean; results: any[]; message?: string; steps?: BrowserActionStep[] }> {
+    return this.browserCommandService.executeCommands(commands, options);
   }
 
   async resetBrowser(options?: {
     backend?: BrowserExecutionBackend;
     runtimeSessionId?: string;
   }): Promise<void> {
-    const backend = options?.backend || 'legacy';
-    await this.getAdapter(backend).resetBrowser({
-      runtimeSessionId: options?.runtimeSessionId,
-    });
+    await this.browserSessionService.resetBrowser(options);
   }
 
   async executeStep(dto: ExecuteStepDto): Promise<ExecuteStepResultDto> {
-    return this.getAdapter(dto.backend || 'legacy').executeStep(dto);
+    return this.browserCommandService.executeStep(dto);
   }
 
   async freeze(dto: FreezeBrowserSessionDto): Promise<BrowserControlStateDto> {
-    return this.getAdapter(dto.backend || 'legacy').freeze(dto);
+    return this.browserSessionService.freeze(dto);
   }
 
   async resume(dto: ResumeBrowserSessionDto): Promise<BrowserControlStateDto> {
-    return this.getAdapter(dto.backend || 'legacy').resume(dto);
-  }
-
-  private getAdapter(backend: BrowserExecutionBackend): BrowserExecutionAdapter {
-    const adapter = this.adapters.get(backend);
-    if (!adapter) {
-      throw new Error(`Browser execution backend not registered: ${backend}`);
-    }
-    return adapter;
+    return this.browserSessionService.resume(dto);
   }
 }

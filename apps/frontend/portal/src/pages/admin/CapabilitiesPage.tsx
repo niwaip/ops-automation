@@ -44,10 +44,10 @@ import {
   capabilityReleaseApi,
 } from '../../api/capabilities';
 import { executionFlowApi } from '../../api/flows';
-import { templateApi, Template } from '../../api/template';
 import {
   TemporalWorkflowDTO,
   temporalWorkflowApi,
+  WorkflowInputParamDefinition,
 } from '../../api/temporal';
 import { skillApi } from '../../api/skill';
 import ParamSchemaEditor, {
@@ -449,67 +449,150 @@ const parseApiEndpointsToDraft = (value: Record<string, unknown> | null | undefi
   });
 };
 
-const toBrowserTemplateSelector = (step: Template['steps'][number]): string => {
-  if (!step.locator?.value) {
-    return '';
+const normalizeBrowserWorkflowStepConfig = (config: Record<string, unknown>): Record<string, unknown> => {
+  const action = typeof config.action === 'string' ? config.action : '';
+  const normalized: Record<string, unknown> = {
+    ...(action ? { action } : {}),
+  };
+
+  if (typeof config.url === 'string' && config.url.trim()) {
+    normalized.url = config.url;
   }
-  const locatorType = String(step.locator.type || '').toLowerCase();
-  if (locatorType === 'test-id') {
-    return `[data-testid="${step.locator.value}"]`;
+  if (typeof config.target === 'string' && config.target.trim()) {
+    normalized.target = config.target;
   }
-  return String(step.locator.value);
+  if (typeof config.selector === 'string' && config.selector.trim()) {
+    normalized.selector = config.selector;
+  }
+  if (config.locator && typeof config.locator === 'object' && !Array.isArray(config.locator)) {
+    normalized.locator = config.locator;
+  }
+  if (config.value !== undefined) {
+    normalized.value = config.value;
+  }
+  if (config.timeoutMs !== undefined) {
+    normalized.timeoutMs = config.timeoutMs;
+  }
+  if (config.duration !== undefined) {
+    normalized.duration = config.duration;
+  }
+
+  return normalized;
 };
 
-const buildBrowserRecordingSourcePayload = (template: Template): Record<string, unknown> => {
-  const templateSteps = Array.isArray(template.steps) ? template.steps : [];
-  const normalizedSteps = templateSteps.map((step, index) => {
-    const action = String(step.action || '').trim() || 'browser_action';
-    const params = step.params && typeof step.params === 'object'
-      ? step.params as Record<string, unknown>
+const buildBrowserWorkflowParamsSchema = (
+  inputParams?: Record<string, WorkflowInputParamDefinition>,
+): Record<string, unknown> => {
+  const entries = Object.entries(inputParams || {});
+  return {
+    type: 'object',
+    properties: Object.fromEntries(entries.map(([key, definition]) => [
+      key,
+      {
+        type: definition?.type || 'string',
+        description: definition?.description || '',
+        default: definition?.defaultValue,
+        required: Boolean(definition?.required),
+      },
+    ])),
+    required: entries
+      .filter(([, definition]) => Boolean(definition?.required))
+      .map(([key]) => key),
+  };
+};
+
+const extractBrowserWorkflowSteps = (workflow: TemporalWorkflowDTO): Array<Record<string, unknown>> => {
+  const activities = Array.isArray(workflow.activityDsl?.activities)
+    ? workflow.activityDsl.activities
+    : [];
+  const browserActivity = activities.find((activity) => {
+    if (activity?.handler === 'browser') {
+      return true;
+    }
+    const config = activity?.config && typeof activity.config === 'object'
+      ? activity.config as Record<string, unknown>
       : {};
-    const selector = toBrowserTemplateSelector(step);
+    const steps = Array.isArray(config.steps) ? config.steps : [];
+    return steps.some((step) => step && typeof step === 'object');
+  });
+  const config = browserActivity?.config && typeof browserActivity.config === 'object'
+    ? browserActivity.config as Record<string, unknown>
+    : {};
+  return Array.isArray(config.steps)
+    ? config.steps.filter(
+      (step): step is Record<string, unknown> => Boolean(step) && typeof step === 'object' && !Array.isArray(step),
+    )
+    : [];
+};
+
+const buildBrowserRecordingSourcePayload = (workflow: TemporalWorkflowDTO): Record<string, unknown> => {
+  const workflowSteps = extractBrowserWorkflowSteps(workflow);
+  const normalizedSteps = workflowSteps.map((step, index) => {
+    const config = step.config && typeof step.config === 'object'
+      ? step.config as Record<string, unknown>
+      : {};
+    const normalizedConfig = normalizeBrowserWorkflowStepConfig(config);
+    const action = String(normalizedConfig.action || step.action || 'browser_action').trim() || 'browser_action';
     return {
-      id: String(step.step_id || `step_${index + 1}`),
-      name: `${index + 1}. ${action}`,
+      id: String(step.id || `step_${index + 1}`),
+      name: String(step.name || `${index + 1}. ${action}`),
       type: 'browser',
-      config: {
-        action,
-        ...(selector ? { selector, target: selector } : {}),
+      config: normalizedConfig,
+    };
+  });
+
+  const executionFlow = normalizedSteps.map((step) => {
+    const config = step.config as Record<string, unknown>;
+    const params: Record<string, unknown> = {};
+    if (config.value !== undefined) {
+      params.value = config.value;
+    }
+    if (config.url !== undefined) {
+      params.url = config.url;
+    }
+    if (config.duration !== undefined) {
+      params.duration = config.duration;
+    } else if (config.timeoutMs !== undefined) {
+      params.duration = config.timeoutMs;
+    }
+
+    return {
+      name: String(step.name || 'browser_step'),
+      tool: { name: 'browser_step' },
+      input: {
+        action: config.action,
+        ...(typeof config.target === 'string' && config.target.trim() ? { target: config.target } : {}),
+        ...(typeof config.selector === 'string' && config.selector.trim() ? { selector: config.selector } : {}),
+        ...(config.locator && typeof config.locator === 'object' ? { locator: config.locator } : {}),
         ...(Object.keys(params).length > 0 ? { params } : {}),
       },
     };
   });
 
-  const executionFlow = normalizedSteps.map((step) => ({
-    name: String(step.name || 'browser_step'),
-    tool: { name: 'browser_step' },
-    input: {
-      action: (step.config as Record<string, unknown>).action,
-      selector: (step.config as Record<string, unknown>).selector,
-      params: (step.config as Record<string, unknown>).params,
-    },
-  }));
-
-  const paramsSchema = template.params_schema && typeof template.params_schema === 'object'
-    ? template.params_schema
-    : { type: 'object', properties: {}, required: [] };
-
   return {
-    id: template.id,
-    name: template.name,
-    description: template.description || '',
-    goal: template.description || template.name,
+    id: workflow.id,
+    name: workflow.name,
+    description: workflow.description || '',
+    goal: workflow.description || workflow.name,
     sourceType: 'browser_recording',
     sourceTemplate: {
-      templateId: template.id,
-      templateName: template.name,
-      templateVersion: template.version,
+      workflowId: workflow.id,
+      workflowName: workflow.name,
+      ...(workflow.sourceTemplate || {}),
     },
-    paramsSchema,
+    paramsSchema: buildBrowserWorkflowParamsSchema(workflow.workflowDsl?.inputParams),
     steps: normalizedSteps,
     executionFlow,
     tools: ['skill_match', 'browser_step'],
-    executionFlowKeys: [template.name].filter(Boolean),
+    executionFlowKeys: [workflow.name].filter(Boolean),
+    backend: 'cli',
+    apiEndpoints: {
+      runtimeMetadata: {
+        sourceType: 'browser_recording',
+        backend: 'cli',
+        goal: workflow.description || workflow.name,
+      },
+    },
   };
 };
 
@@ -606,11 +689,6 @@ const CapabilitiesPage: React.FC<CapabilitiesPageProps> = ({ mode = 'manager' })
     () => executionFlowApi.list({ limit: 200, isActive: true }),
     { staleTime: 30_000 },
   );
-  const templateOptionsQuery = useQuery(
-    ['template-options'],
-    () => templateApi.list({ page: 1, pageSize: 200 }),
-    { staleTime: 30_000 },
-  );
   const detailQuery = useQuery(
     ['capability-detail', selectedReleaseId],
     () => capabilityReleaseApi.getById(selectedReleaseId as string),
@@ -640,17 +718,12 @@ const CapabilitiesPage: React.FC<CapabilitiesPageProps> = ({ mode = 'manager' })
     }
 
     if (createSourceType === 'browser_recording') {
-      return (templateOptionsQuery.data?.templates || [])
-        .filter((template: Template) => {
-          const guards = Array.isArray(template.guards) ? template.guards : [];
-          return guards.some((guard) => (
-            guard && typeof guard === 'object' && String((guard as Record<string, unknown>).type || '').trim() === 'recorder_export'
-          ));
-        })
-        .map((template: Template) => ({
-          label: template.name || `Browser Recording ${template.id.slice(0, 8)}`,
-          value: template.id,
-          description: template.description || `状态: ${template.status}`,
+      return (temporalWorkflowOptionsQuery.data || [])
+        .filter((workflow: TemporalWorkflowDTO) => workflow.sourceContext?.sourceType === 'browser_template')
+        .map((workflow: TemporalWorkflowDTO) => ({
+          label: workflow.name || `Browser Workflow ${workflow.id.slice(0, 8)}`,
+          value: workflow.id,
+          description: workflow.description || `Task Queue: ${workflow.taskQueue}`,
         }));
     }
 
@@ -658,7 +731,6 @@ const CapabilitiesPage: React.FC<CapabilitiesPageProps> = ({ mode = 'manager' })
   }, [
     createSourceType,
     executionFlowOptionsQuery.data?.templates,
-    templateOptionsQuery.data?.templates,
     temporalWorkflowOptionsQuery.data,
   ]);
   const isCreateSourceLoading =
@@ -667,7 +739,7 @@ const CapabilitiesPage: React.FC<CapabilitiesPageProps> = ({ mode = 'manager' })
       : createSourceType === 'execution_flow_template'
         ? executionFlowOptionsQuery.isLoading
         : createSourceType === 'browser_recording'
-          ? templateOptionsQuery.isLoading
+          ? temporalWorkflowOptionsQuery.isLoading
         : false;
   const temporalWorkflowMap = useMemo(
     () =>
@@ -1454,8 +1526,8 @@ const CapabilitiesPage: React.FC<CapabilitiesPageProps> = ({ mode = 'manager' })
         if (values.sourcePayload?.trim()) {
           sourcePayload = JSON.parse(values.sourcePayload);
         } else if (values.sourceId) {
-          const templateDetail = await templateApi.getById(values.sourceId);
-          sourcePayload = buildBrowserRecordingSourcePayload(templateDetail);
+          const workflowDetail = await temporalWorkflowApi.getById(values.sourceId);
+          sourcePayload = buildBrowserRecordingSourcePayload(workflowDetail);
         }
       } else if (values.sourcePayload?.trim()) {
         sourcePayload = JSON.parse(values.sourcePayload);
@@ -2566,7 +2638,7 @@ const CapabilitiesPage: React.FC<CapabilitiesPageProps> = ({ mode = 'manager' })
                         createSourceType === 'temporal_workflow'
                           ? '选择编排工作流'
                           : createSourceType === 'browser_recording'
-                            ? '选择浏览器录制模板'
+                            ? '选择浏览器工作流'
                             : '选择模版'
                       }
                     >
@@ -2578,7 +2650,7 @@ const CapabilitiesPage: React.FC<CapabilitiesPageProps> = ({ mode = 'manager' })
                           createSourceType === 'temporal_workflow'
                             ? '选择一个已有工作流'
                             : createSourceType === 'browser_recording'
-                              ? '选择一个浏览器录制模板'
+                              ? '选择一个浏览器工作流'
                               : '选择一个已有模版'
                         }
                         optionFilterProp="label"
@@ -2608,14 +2680,14 @@ const CapabilitiesPage: React.FC<CapabilitiesPageProps> = ({ mode = 'manager' })
                         createSourceType === 'temporal_workflow'
                           ? '当前没有可选的编排工作流'
                           : createSourceType === 'browser_recording'
-                            ? '当前没有可选的浏览器录制模板'
+                            ? '当前没有可选的浏览器工作流'
                             : '当前没有可选的模版'
                       }
                       description={
                         createSourceType === 'temporal_workflow'
                           ? '请先在工作流页面创建后再回来。'
                           : createSourceType === 'browser_recording'
-                            ? '请先在 Recorder 页面导出模板后再回来。'
+                            ? '请先在 Temporal 页面生成浏览器工作流后再回来。'
                             : '请先在模板页面创建后再回来。'
                       }
                     />

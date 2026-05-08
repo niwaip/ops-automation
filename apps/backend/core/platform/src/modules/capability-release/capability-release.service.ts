@@ -4939,12 +4939,15 @@ ${logs.join('\n')}
       if (!action) {
         throw new BadRequestException(`浏览器录制步骤缺少 action: ${step.id || `step_${index + 1}`}`);
       }
-      const target = this.pickFirstNonEmptyString(
-        resolvedPayload.target,
-        resolvedPayload.selector,
-        resolvedParams.target,
-        resolvedParams.selector,
-        action === 'goto' ? resolvedParams.url : undefined,
+      const target = this.resolveBrowserRecordingRuntimeTarget(
+        action,
+        resolvedPayload,
+        resolvedParams,
+      );
+      const args = this.buildBrowserRecordingRuntimeArgs(
+        action,
+        resolvedPayload,
+        resolvedParams,
       );
 
       return {
@@ -4952,9 +4955,205 @@ ${logs.join('\n')}
         name: this.pickFirstNonEmptyString(step.name, `Step ${index + 1}`) || `Step ${index + 1}`,
         action,
         ...(target ? { target } : {}),
-        ...(Object.keys(resolvedParams).length > 0 ? { args: resolvedParams } : {}),
+        ...(Object.keys(args).length > 0 ? { args } : {}),
       };
     });
+  }
+
+  private resolveBrowserRecordingRuntimeTarget(
+    action: string,
+    resolvedPayload: Record<string, unknown>,
+    resolvedParams: Record<string, unknown>,
+  ): string | undefined {
+    const locatorTarget = this.buildBrowserRecordingTargetFromLocator(
+      asRecord(resolvedPayload.locator) || asRecord(resolvedParams.locator),
+    );
+    if (locatorTarget) {
+      return locatorTarget;
+    }
+
+    const selectorTarget = this.normalizeBrowserRecordingTarget(
+      this.pickFirstNonEmptyString(
+        resolvedPayload.selector,
+        resolvedParams.selector,
+      ),
+    );
+    if (selectorTarget) {
+      return selectorTarget;
+    }
+
+    const explicitTarget = this.normalizeBrowserRecordingTarget(
+      this.pickFirstNonEmptyString(
+        resolvedPayload.target,
+        resolvedParams.target,
+        action === 'goto' ? resolvedPayload.url : undefined,
+        action === 'goto' ? resolvedParams.url : undefined,
+      ),
+    );
+    if (!explicitTarget) {
+      return undefined;
+    }
+
+    if (this.isSuspiciousBrowserRecordingTarget(action, explicitTarget, resolvedPayload, resolvedParams)) {
+      return undefined;
+    }
+
+    return explicitTarget;
+  }
+
+  private buildBrowserRecordingRuntimeArgs(
+    action: string,
+    resolvedPayload: Record<string, unknown>,
+    resolvedParams: Record<string, unknown>,
+  ): Record<string, unknown> {
+    const pick = (...values: unknown[]) => values.find((value) => value !== undefined);
+
+    switch (action) {
+      case 'goto':
+        return Object.fromEntries(
+          Object.entries({
+            url: pick(resolvedPayload.url, resolvedParams.url),
+          }).filter(([, value]) => value !== undefined),
+        );
+      case 'fill':
+        return Object.fromEntries(
+          Object.entries({
+            value: pick(resolvedParams.value, resolvedPayload.value, resolvedPayload.text, resolvedPayload.query),
+          }).filter(([, value]) => value !== undefined),
+        );
+      case 'type_text':
+        return Object.fromEntries(
+          Object.entries({
+            text: pick(resolvedParams.text, resolvedPayload.text, resolvedPayload.value),
+            submit_key: pick(resolvedParams.submit_key, resolvedPayload.submit_key),
+          }).filter(([, value]) => value !== undefined),
+        );
+      case 'press_key':
+        return Object.fromEntries(
+          Object.entries({
+            key: pick(resolvedParams.key, resolvedPayload.key, resolvedPayload.value),
+          }).filter(([, value]) => value !== undefined),
+        );
+      case 'wait':
+        return Object.fromEntries(
+          Object.entries({
+            duration: pick(resolvedParams.duration, resolvedPayload.duration, resolvedPayload.timeoutMs),
+            selector: pick(resolvedParams.selector, resolvedPayload.selector),
+          }).filter(([, value]) => value !== undefined),
+        );
+      case 'smart_search':
+      case 'search':
+        return Object.fromEntries(
+          Object.entries({
+            query: pick(resolvedParams.query, resolvedPayload.query, resolvedPayload.text, resolvedPayload.value),
+          }).filter(([, value]) => value !== undefined),
+        );
+      case 'click_result':
+        return Object.fromEntries(
+          Object.entries({
+            index: pick(resolvedParams.index, resolvedPayload.index),
+          }).filter(([, value]) => value !== undefined),
+        );
+      case 'screenshot':
+      case 'snapshot':
+      case 'read_page':
+      case 'get_text':
+      case 'switch_latest_tab':
+      case 'hover':
+      case 'click':
+        return {};
+      default:
+        return { ...resolvedParams };
+    }
+  }
+
+  private buildBrowserRecordingTargetFromLocator(
+    locator?: Record<string, unknown>,
+  ): string | undefined {
+    if (!locator) {
+      return undefined;
+    }
+
+    const locatorType = this.pickFirstNonEmptyString(locator.type)?.toLowerCase();
+    const locatorValue = this.pickFirstNonEmptyString(locator.value);
+    if (!locatorType || !locatorValue) {
+      return undefined;
+    }
+
+    switch (locatorType) {
+      case 'ref':
+        return locatorValue;
+      case 'role':
+        return `role=${locatorValue}`;
+      case 'text':
+        return `text=${locatorValue}`;
+      case 'test-id':
+        return `[data-testid="${locatorValue}"]`;
+      case 'xpath':
+        return `xpath=${locatorValue}`;
+      default:
+        return locatorValue;
+    }
+  }
+
+  private normalizeBrowserRecordingTarget(target?: string): string | undefined {
+    const value = typeof target === 'string' ? target.trim() : '';
+    if (!value) {
+      return undefined;
+    }
+
+    if (/^[a-zA-Z-]+\[name=.*\]$/.test(value) && !value.split('[', 1)[0]?.includes('=')) {
+      return `role=${value}`;
+    }
+
+    return value;
+  }
+
+  private isSuspiciousBrowserRecordingTarget(
+    action: string,
+    target: string,
+    resolvedPayload: Record<string, unknown>,
+    resolvedParams: Record<string, unknown>,
+  ): boolean {
+    if (!['fill', 'click', 'hover', 'press_key', 'type_text'].includes(action)) {
+      return false;
+    }
+
+    if (this.looksLikeBrowserSelector(target)) {
+      return false;
+    }
+
+    const valueCandidates = [
+      resolvedPayload.value,
+      resolvedPayload.text,
+      resolvedPayload.query,
+      resolvedPayload.url,
+      resolvedPayload.key,
+      resolvedParams.value,
+      resolvedParams.text,
+      resolvedParams.query,
+      resolvedParams.url,
+      resolvedParams.key,
+    ]
+      .filter((value): value is string => typeof value === 'string' && value.trim().length > 0)
+      .map((value) => value.trim());
+
+    return valueCandidates.includes(target);
+  }
+
+  private looksLikeBrowserSelector(target: string): boolean {
+    const value = target.trim();
+    if (!value) {
+      return false;
+    }
+
+    return /^e\d+$/i.test(value)
+      || /^(role|text|xpath)=/i.test(value)
+      || /^(#|\.|\[|\/\/)/.test(value)
+      || /[a-zA-Z-]+\[name=/.test(value)
+      || value.includes('>>')
+      || value.includes(':has')
+      || value.includes('[data-testid=');
   }
 
   private normalizeBrowserRecordingStepAction(action: string | undefined): string | undefined {

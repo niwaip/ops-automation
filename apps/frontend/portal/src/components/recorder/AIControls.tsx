@@ -44,6 +44,13 @@ interface MCPCommand {
   tool: string;
   params: Record<string, unknown>;
   description?: string;
+  locator?: {
+    strategy?: string;
+    value?: string;
+    expression?: string;
+    role?: string;
+    name?: string;
+  };
 }
 
 // AI response interface
@@ -1587,19 +1594,11 @@ const AIControls: React.FC<AIControlsProps> = ({
 
   const buildTemplateDescriptionFromArtifacts = (
     artifacts: RecorderDebugExportArtifacts,
-    backend: ExecutionBackend,
   ) => {
-    const descriptionParts = [
-      artifacts.skillDraft?.description || artifacts.guidance,
-      `执行后端: ${backendLabels[backend]}`,
-      artifacts.skillDraft?.parameters?.length
-        ? `参数数: ${artifacts.skillDraft.parameters.length}`
-        : '参数数: 0',
-      artifacts.skillDraft?.outputs?.length
-        ? `输出数: ${artifacts.skillDraft.outputs.length}`
-        : '输出数: 0',
-    ].filter(Boolean);
-    return descriptionParts.join(' | ');
+    return artifacts.skillDraft?.publishPayload?.description
+      || artifacts.skillDraft?.description
+      || artifacts.guidance
+      || '由录制流程自动生成的浏览器执行模板';
   };
 
   const buildTemplateNameFromArtifacts = (artifacts: RecorderDebugExportArtifacts) => {
@@ -1612,6 +1611,7 @@ const AIControls: React.FC<AIControlsProps> = ({
   const buildTemplateStepsFromArtifacts = (artifacts: RecorderDebugExportArtifacts): Array<{
     step_id: string;
     action: string;
+    locator?: { type: string; value: string; fallback?: { type: string; value: string } };
     params?: Record<string, string | number>;
   }> => {
     const parameterSources = new Map<string, string>();
@@ -1621,30 +1621,114 @@ const AIControls: React.FC<AIControlsProps> = ({
       }
     });
 
-    const coreSteps = (artifacts.skillDraft?.executionPlan?.commands || []).map((command) => {
+    const coreSteps = (artifacts.skillDraft?.executionPlan?.commands || []).map((command, commandIndex) => {
       const rawParams = Object.fromEntries(
         Object.entries(command.params || {}).filter(([, value]) =>
           ['string', 'number'].includes(typeof value),
         ),
       ) as Record<string, string | number>;
+      const locator = inferTemplateLocatorFromCommand(command);
+      const locatorParamKeys = new Set(['selector', 'target', 'text']);
 
-      const substitutedParams = Object.fromEntries(
-        Object.entries(rawParams).map(([key, value]) => {
-          const parameterName = parameterSources.get(`${command.tool}.${key}`);
+      const substitutedEntries = Object.entries(rawParams)
+        .map(([key, value]) => {
+          const parameterName = parameterSources.get(`command.${commandIndex}.${key}`)
+            || parameterSources.get(`${command.tool}.${key}`);
           if (!parameterName) {
             return [key, value];
           }
           return [key, `\${${parameterName}}`];
-        }),
+        })
+        .filter((entry): entry is [string, string | number] => !locatorParamKeys.has(String(entry[0])));
+
+      const normalizedParams = Object.fromEntries(
+        substitutedEntries,
       ) as Record<string, string | number>;
 
       return {
         action: command.tool,
-        params: substitutedParams,
+        ...(locator ? { locator } : {}),
+        ...(Object.keys(normalizedParams).length > 0 ? { params: normalizedParams } : {}),
       };
     });
 
     return appendTemplateScreenshotSteps(coreSteps);
+  };
+
+  const inferTemplateLocatorFromCommand = (command: MCPCommand): { type: string; value: string } | undefined => {
+    const runtimeLocator = command.locator;
+    if (runtimeLocator?.value && runtimeLocator.strategy) {
+      const mappedType = mapRuntimeLocatorType(runtimeLocator.strategy);
+      if (mappedType) {
+        return {
+          type: mappedType,
+          value: buildTemplateLocatorValue(runtimeLocator),
+        };
+      }
+    }
+
+    const params = command.params || {};
+    const candidate = typeof params.selector === 'string'
+      ? params.selector
+      : typeof params.text === 'string'
+        ? params.text
+        : typeof params.target === 'string' && !/^e\d+$/i.test(params.target)
+          ? params.target
+          : undefined;
+
+    if (!candidate || !['click', 'fill', 'select', 'check'].includes(command.tool)) {
+      return undefined;
+    }
+
+    return {
+      type: inferLocatorTypeFromValue(candidate),
+      value: candidate,
+    };
+  };
+
+  const mapRuntimeLocatorType = (strategy: string): string | undefined => {
+    switch (strategy) {
+      case 'ref':
+        return 'ref';
+      case 'role':
+        return 'role';
+      case 'text':
+      case 'label':
+      case 'placeholder':
+        return 'text';
+      case 'testid':
+        return 'test-id';
+      case 'css':
+        return 'css';
+      default:
+        return undefined;
+    }
+  };
+
+  const buildTemplateLocatorValue = (locator: NonNullable<MCPCommand['locator']>): string => {
+    if (locator.strategy === 'role' && locator.role && locator.name) {
+      const escapedName = locator.name.replace(/"/g, '\\"');
+      return `${locator.role}[name="${escapedName}"]`;
+    }
+
+    return locator.value || '';
+  };
+
+  const inferLocatorTypeFromValue = (value: string): string => {
+    const trimmed = value.trim();
+    if (trimmed.startsWith('//') || trimmed.startsWith('xpath=')) {
+      return 'xpath';
+    }
+    if (
+      trimmed.startsWith('#')
+      || trimmed.startsWith('.')
+      || trimmed.startsWith('[')
+      || trimmed.includes('>')
+      || trimmed.includes(':')
+    ) {
+      return 'css';
+    }
+    return 'text';
   };
 
   const buildTemplateParamsSchemaFromArtifacts = (artifacts: RecorderDebugExportArtifacts) => {
@@ -1715,7 +1799,7 @@ const AIControls: React.FC<AIControlsProps> = ({
       const artifacts = exported.exportArtifacts;
       const createdTemplate = await templateApi.create({
         name: buildTemplateNameFromArtifacts(artifacts),
-        description: `${buildTemplateDescriptionFromArtifacts(artifacts, executionBackend)} | ${getScreenshotModeLabel()}`,
+        description: buildTemplateDescriptionFromArtifacts(artifacts),
         params_schema: buildTemplateParamsSchemaFromArtifacts(artifacts),
         steps: buildTemplateStepsFromArtifacts(artifacts),
         guards: [

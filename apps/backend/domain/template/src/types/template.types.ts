@@ -4,7 +4,7 @@
 
 export type TemplateStatus = 'DRAFT' | 'REVIEW' | 'PUBLISHED' | 'DEPRECATED' | 'REVOKED';
 
-export type LocatorType = 'role' | 'text' | 'test-id' | 'css' | 'xpath';
+export type LocatorType = 'role' | 'text' | 'test-id' | 'css' | 'xpath' | 'ref';
 
 export type ActionType =
   | 'click'
@@ -140,6 +140,7 @@ export const LOCATOR_PRIORITY: Record<LocatorType, number> = {
   'test-id': 3,
   'css': 4,
   'xpath': 5,
+  'ref': 1,
 };
 
 // Forbidden parameter names (security check)
