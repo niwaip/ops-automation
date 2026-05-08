@@ -86,4 +86,5 @@ doc-preview-*.png
 test_contract.docx
 
 # Browser worker runtime artifacts
+.playwright-cli/
 apps/backend/runtime/browser-worker/.playwright-cli/page-*.yml

@@ -278,6 +278,108 @@ describe('TemporalWorkflowService', () => {
     expect(validation.errors).toEqual([]);
   });
 
+  it('generates browser template draft from structured execution commands', async () => {
+    const { service } = createService();
+
+    const draft = await service.generateBrowserWorkflowDraft({
+      name: '录制登录工作流',
+      description: '直接复用 executionPlan.commands',
+      commands: [
+        {
+          tool: 'navigate',
+          params: { url: 'https://example.com/login' },
+          description: '打开登录页',
+        },
+        {
+          tool: 'fill',
+          params: { target: 'e12', value: '${username}' },
+          description: '输入用户名',
+          locator: { strategy: 'ref', value: 'e12' },
+        },
+        {
+          tool: 'click',
+          params: { target: 'e20' },
+          description: '点击登录',
+          locator: { strategy: 'ref', value: 'e20' },
+        },
+      ],
+    });
+
+    expect(draft.name).toBe('录制登录工作流');
+    expect(draft.browserTemplate.commandCount).toBe(3);
+    expect(draft.browserTemplate.placeholders).toEqual(expect.arrayContaining(['username']));
+    expect(draft.workflowDsl.sourceContext).toEqual(expect.objectContaining({
+      sourceType: 'browser_template',
+      warnings: expect.arrayContaining([
+        expect.stringContaining('executionPlan.commands'),
+      ]),
+    }));
+    expect((draft.activityDsl.activities[0].config as any).steps).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        config: expect.objectContaining({
+          action: 'fill',
+          target: 'e12',
+          locator: expect.objectContaining({ type: 'ref', value: 'e12' }),
+          value: '${username}',
+        }),
+      }),
+    ]));
+  });
+
+  it('preserves declared browser template input params when commands do not expose placeholders', async () => {
+    const { service } = createService();
+
+    const draft = await service.generateBrowserWorkflowDraft({
+      name: '录制登录工作流',
+      description: 'executionPlan.commands 使用运行时字面值，但模板已声明参数',
+      commands: [
+        {
+          tool: 'navigate',
+          params: { url: 'http://192.168.100.143:5173/' },
+          description: '打开登录页',
+        },
+        {
+          tool: 'fill',
+          params: { target: 'e12', value: 'test' },
+          description: '输入用户名',
+          locator: { strategy: 'ref', value: 'e12' },
+        },
+      ],
+      inputParams: {
+        startUrl: {
+          description: '起始页面地址',
+          required: false,
+          defaultValue: 'http://192.168.100.143:5173/',
+          source: 'declared',
+          type: 'string',
+          exampleValue: 'http://192.168.100.143:5173/',
+        },
+        username: {
+          description: '登录用户名',
+          required: true,
+          defaultValue: 'test',
+          source: 'declared',
+          type: 'string',
+          exampleValue: 'test',
+        },
+      },
+    });
+
+    expect(draft.workflowDsl.inputParams).toEqual(expect.objectContaining({
+      startUrl: expect.objectContaining({
+        required: false,
+        defaultValue: 'http://192.168.100.143:5173/',
+        description: '起始页面地址',
+      }),
+      username: expect.objectContaining({
+        required: true,
+        defaultValue: 'test',
+        description: '登录用户名',
+      }),
+    }));
+    expect(draft.browserTemplate.placeholders).toEqual([]);
+  });
+
   it('does not crash validate when browser draft custom ref is not a database uuid', async () => {
     const { service, prisma } = createService();
     prisma.activity.findUnique.mockRejectedValue(new Error('invalid input syntax for type uuid'));
@@ -343,7 +445,7 @@ describe('TemporalWorkflowService', () => {
     expect(result.code).toContain('/browser/init');
     expect(result.code).toContain('/browser/execute');
     expect(result.code).toContain('"tool": "navigate"');
-    expect(result.code).toContain('"tool": "fill"');
+    expect(result.code).toContain('if action in ("fill", "type", "type_text"):');
     expect(result.code).toContain('"tool": "press_key"');
     expect(result.code).toContain('缺少必需参数');
     expect(result.code).toContain('first_failed_command=');
