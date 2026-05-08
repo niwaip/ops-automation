@@ -166,7 +166,6 @@ export enum StepAction {
 }
 
 export enum BrowserExecutionBackendDto {
-  LEGACY = 'legacy',
   CLI = 'cli',
   CHROME_DEVTOOLS = 'chrome-devtools',
   MCP = 'mcp',
@@ -181,7 +180,7 @@ export class ExecuteStepDto {
   @IsString()
   runtimeSessionId!: string;
 
-  @ApiProperty({ description: 'Browser execution backend', enum: BrowserExecutionBackendDto, required: false, default: BrowserExecutionBackendDto.LEGACY })
+  @ApiProperty({ description: 'Browser execution backend', enum: BrowserExecutionBackendDto, required: false, default: BrowserExecutionBackendDto.CLI })
   @IsOptional()
   @IsEnum(BrowserExecutionBackendDto)
   backend?: BrowserExecutionBackendDto;
@@ -274,7 +273,7 @@ export class FreezeBrowserSessionDto {
   @IsString()
   runtimeSessionId!: string;
 
-  @ApiProperty({ description: 'Browser execution backend', enum: BrowserExecutionBackendDto, required: false, default: BrowserExecutionBackendDto.LEGACY })
+  @ApiProperty({ description: 'Browser execution backend', enum: BrowserExecutionBackendDto, required: false, default: BrowserExecutionBackendDto.CLI })
   @IsOptional()
   @IsEnum(BrowserExecutionBackendDto)
   backend?: BrowserExecutionBackendDto;
@@ -290,7 +289,7 @@ export class ResumeBrowserSessionDto {
   @IsString()
   runtimeSessionId!: string;
 
-  @ApiProperty({ description: 'Browser execution backend', enum: BrowserExecutionBackendDto, required: false, default: BrowserExecutionBackendDto.LEGACY })
+  @ApiProperty({ description: 'Browser execution backend', enum: BrowserExecutionBackendDto, required: false, default: BrowserExecutionBackendDto.CLI })
   @IsOptional()
   @IsEnum(BrowserExecutionBackendDto)
   backend?: BrowserExecutionBackendDto;

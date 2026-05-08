@@ -33,7 +33,7 @@ get_service_port() {
         "session-broker") echo 3002 ;;
         "control-plane") echo 3003 ;;
         "browser-worker") echo 3004 ;;
-        "template") echo 3005 ;;
+        "browser-template") echo 3005 ;;
         "replay-engine") echo 3006 ;;
         "portal") echo 5173 ;;
         *) echo "" ;;
@@ -49,14 +49,14 @@ get_service_dir() {
         "control-plane") echo "apps/backend/core/control-plane" ;;
         "browser-worker") echo "apps/backend/runtime/browser-worker" ;;
         "replay-engine") echo "apps/backend/runtime/replay-engine" ;;
-        "template") echo "apps/backend/domain/template" ;;
+        "browser-template") echo "apps/backend/domain/browser-template" ;;
         "portal") echo "apps/frontend/portal" ;;
         *) echo "" ;;
     esac
 }
 
 # Services to start (NestJS services only, portal is separate)
-NEST_SERVICES="ai-orchestrator platform session-broker control-plane template replay-engine browser-worker"
+NEST_SERVICES="ai-orchestrator platform session-broker control-plane browser-template browser-worker"
 
 # Log directory
 LOG_DIR="$PROJECT_ROOT/docker/logs"

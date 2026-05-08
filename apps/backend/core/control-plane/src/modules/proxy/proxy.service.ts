@@ -21,10 +21,10 @@ export class ProxyService {
       baseUrl: process.env.PLATFORM_SERVICE_URL || 'http://platform:3001',
       timeout: this.readTimeoutMs('PROXY_TIMEOUT_AUTH_MS', this.defaultTimeoutMs),
     },
-    template: {
-      name: 'template',
-      baseUrl: process.env.TEMPLATE_SERVICE_URL || 'http://template:3005',
-      timeout: this.readTimeoutMs('PROXY_TIMEOUT_TEMPLATE_MS', this.defaultTimeoutMs),
+    'browser-template': {
+      name: 'browser-template',
+      baseUrl: process.env.BROWSER_TEMPLATE_SERVICE_URL || 'http://browser-template:3005',
+      timeout: this.readTimeoutMs('PROXY_TIMEOUT_BROWSER_TEMPLATE_MS', this.defaultTimeoutMs),
     },
     session: {
       name: 'session-broker',
@@ -40,11 +40,6 @@ export class ProxyService {
       name: 'browser-worker',
       baseUrl: process.env.WORKER_SERVICE_URL || 'http://browser-worker:3004',
       timeout: this.readTimeoutMs('PROXY_TIMEOUT_WORKER_MS', 60000),
-    },
-    replay: {
-      name: 'replay-engine',
-      baseUrl: process.env.REPLAY_SERVICE_URL || 'http://replay-engine:3006',
-      timeout: this.readTimeoutMs('PROXY_TIMEOUT_REPLAY_MS', 60000),
     },
   };
 

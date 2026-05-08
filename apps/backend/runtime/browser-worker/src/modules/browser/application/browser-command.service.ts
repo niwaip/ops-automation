@@ -12,7 +12,6 @@ import {
   MCPCommand,
 } from '../adapters/browser-execution.adapter';
 import { ChromeDevtoolsCliAdapter } from '../adapters/chrome-devtools-cli.adapter';
-import { LegacyCodegenAdapter } from '../adapters/legacy-codegen.adapter';
 import { PlaywrightCliAdapter } from '../adapters/playwright-cli.adapter';
 import { BrowserActionStep } from '../domain/browser-step.types';
 import { BrowserStepService } from './browser-step.service';
@@ -22,13 +21,11 @@ export class BrowserCommandService {
   private readonly adapters: Map<BrowserExecutionBackend, BrowserExecutionAdapter>;
 
   constructor(
-    private readonly legacyCodegenAdapter: LegacyCodegenAdapter,
     private readonly playwrightCliAdapter: PlaywrightCliAdapter,
     private readonly chromeDevtoolsCliAdapter: ChromeDevtoolsCliAdapter,
     private readonly browserStepService: BrowserStepService,
   ) {
     this.adapters = new Map<BrowserExecutionBackend, BrowserExecutionAdapter>([
-      ['legacy', this.legacyCodegenAdapter],
       ['cli', this.playwrightCliAdapter],
       ['chrome-devtools', this.chromeDevtoolsCliAdapter],
     ]);
@@ -38,7 +35,7 @@ export class BrowserCommandService {
     commands: MCPCommand[],
     options?: { backend?: BrowserExecutionBackend; runtimeSessionId?: string },
   ): Promise<{ success: boolean; results: any[]; message?: string; steps?: BrowserActionStep[] }> {
-    const backend = options?.backend || 'legacy';
+    const backend = options?.backend || 'cli';
     const adapter = this.getAdapter(backend);
     const adapterOptions = {
       runtimeSessionId: options?.runtimeSessionId,
@@ -58,15 +55,15 @@ export class BrowserCommandService {
   }
 
   async executeStep(dto: ExecuteStepDto): Promise<ExecuteStepResultDto> {
-    return this.getAdapter((dto.backend || 'legacy') as BrowserExecutionBackend).executeStep(dto);
+    return this.getAdapter((dto.backend || 'cli') as BrowserExecutionBackend).executeStep(dto);
   }
 
   async freeze(dto: FreezeBrowserSessionDto): Promise<BrowserControlStateDto> {
-    return this.getAdapter((dto.backend || 'legacy') as BrowserExecutionBackend).freeze(dto);
+    return this.getAdapter((dto.backend || 'cli') as BrowserExecutionBackend).freeze(dto);
   }
 
   async resume(dto: ResumeBrowserSessionDto): Promise<BrowserControlStateDto> {
-    return this.getAdapter((dto.backend || 'legacy') as BrowserExecutionBackend).resume(dto);
+    return this.getAdapter((dto.backend || 'cli') as BrowserExecutionBackend).resume(dto);
   }
 
   getAdapters(): BrowserExecutionAdapter[] {

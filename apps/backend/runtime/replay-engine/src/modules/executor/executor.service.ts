@@ -408,7 +408,7 @@ export class ExecutorService {
       return this.templateCache.get(templateId)!;
     }
 
-    const templateServiceUrl = process.env.TEMPLATE_SERVICE_URL ?? 'http://localhost:3002';
+    const templateServiceUrl = process.env.BROWSER_TEMPLATE_SERVICE_URL ?? 'http://browser-template:3005';
     try {
       const response = await fetch(`${templateServiceUrl}/templates/${templateId}`);
       if (!response.ok) {

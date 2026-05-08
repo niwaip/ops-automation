@@ -2,7 +2,6 @@ import { Module } from '@nestjs/common';
 import { BrowserController } from './browser.controller';
 import { BrowserService } from './browser.service';
 import { ChromeDevtoolsCliAdapter } from './adapters/chrome-devtools-cli.adapter';
-import { LegacyCodegenAdapter } from './adapters/legacy-codegen.adapter';
 import { PlaywrightCliAdapter } from './adapters/playwright-cli.adapter';
 import { WorkerModule } from '../worker/worker.module';
 import { BrowserSessionService } from './application/browser-session.service';
@@ -27,7 +26,6 @@ import { BrowserStepMapper } from './mappers/browser-step.mapper';
     BrowserSchemaService,
     BrowserStepMapper,
     BrowserSessionRegistry,
-    LegacyCodegenAdapter,
     PlaywrightCliAdapter,
     ChromeDevtoolsCliAdapter,
   ],

@@ -2008,7 +2008,7 @@ export class TemporalWorkflowService {
       '',
       '    commands = [_build_command(step) for step in configured_steps]',
       '    initial_url = _resolve_text(_stringify(input_data.get("initialUrl")) or configured_initial_url)',
-      '    backend_candidates = [requested_backend, "cli", "chrome-devtools", "legacy"]',
+      '    backend_candidates = [requested_backend, "cli", "chrome-devtools"]',
       '    ordered_backends = []',
       '    for backend_name in backend_candidates:',
       '        normalized_backend = str(backend_name or "").strip()',

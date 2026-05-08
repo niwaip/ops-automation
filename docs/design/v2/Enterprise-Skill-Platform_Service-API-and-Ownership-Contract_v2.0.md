@@ -57,7 +57,7 @@
 - `runtime-manager`
 - `browser-runtime`
 - `execution-engine`
-- `template-service`
+- `browser-template`
 - `document-runtime`
 - `artifact-service`
 - `portal`
@@ -153,7 +153,7 @@
 
 - 保留为 `execution-engine`
 
-### `template`
+### `browser-template` (formerly `template`)
 
 当前职责：
 

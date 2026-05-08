@@ -54,7 +54,7 @@ export default async function globalSetup(): Promise<void> {
   const services = [
     { name: 'Auth', baseUrl: SERVICE_CONFIG.AUTH.baseUrl() },
     { name: 'Session Broker', baseUrl: SERVICE_CONFIG.SESSION_BROKER.baseUrl() },
-    { name: 'Template', baseUrl: SERVICE_CONFIG.TEMPLATE.baseUrl() },
+    { name: 'Browser Template', baseUrl: SERVICE_CONFIG.BROWSER_TEMPLATE.baseUrl() },
     { name: 'AI Orchestrator', baseUrl: SERVICE_CONFIG.AI_ORCHESTRATOR.baseUrl() },
     { name: 'Replay Engine', baseUrl: SERVICE_CONFIG.REPLAY_ENGINE.baseUrl() },
   ];

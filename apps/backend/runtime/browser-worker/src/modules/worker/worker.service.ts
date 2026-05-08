@@ -80,7 +80,58 @@ export class WorkerService implements OnModuleInit, OnModuleDestroy {
         const errorMessage = error instanceof Error ? error.message : String(error);
         this.logger.warn(`Startup orphan sweep failed: ${errorMessage}`);
       });
+      // Also perform a Docker-level sweep to find containers not in memory (e.g. after service restart)
+      this.sweepDockerOrphanContainers().catch((error: unknown) => {
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        this.logger.warn(`Docker orphan container sweep failed: ${errorMessage}`);
+      });
     }, 2000);
+  }
+
+  private async sweepDockerOrphanContainers(): Promise<void> {
+    this.logger.log('Scanning Docker for orphan browser session containers...');
+    try {
+      const containers = await this.docker.listContainers({
+        all: true,
+        filters: {
+          name: ['ops-browser-session-'],
+        },
+      });
+
+      let removedCount = 0;
+      for (const containerInfo of containers) {
+        // Find the full name (dockerode returns names starting with /)
+        const name = containerInfo.Names.find((n: string) => n.includes('ops-browser-session-'))?.replace(/^\//, '');
+        if (!name) continue;
+
+        const workerId = name.replace('ops-browser-session-', '');
+        
+        // If it's not in our memory map, it's an orphan from a previous run
+        if (!this.workers.has(workerId)) {
+          this.logger.warn(`Found untracked container ${name}, checking if its session still exists...`);
+          
+          // Use the workerId as runtimeSessionId (fallback logic in ensureSessionWorker)
+          const exists = await this.runtimeSessionExists(workerId);
+          if (!exists) {
+            this.logger.warn(`Removing untracked orphan container ${name}`);
+            try {
+              const container = this.docker.getContainer(containerInfo.Id);
+              await container.remove({ force: true });
+              removedCount += 1;
+            } catch (error) {
+              const errorMessage = error instanceof Error ? error.message : String(error);
+              this.logger.warn(`Failed to remove untracked container ${name}: ${errorMessage}`);
+            }
+          }
+        }
+      }
+
+      if (removedCount > 0) {
+        this.logger.log(`Docker orphan sweep removed ${removedCount} untracked container(s)`);
+      }
+    } catch (error) {
+      throw error;
+    }
   }
 
   onModuleDestroy() {

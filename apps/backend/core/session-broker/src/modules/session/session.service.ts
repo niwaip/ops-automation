@@ -295,9 +295,10 @@ export class SessionService {
     // Get template and execute all steps
     const template = await this.templateClient.getTemplate(request.template_id);
     const totalSteps = template?.steps?.length || 0;
-    const executionBackend = typeof template?.config?.backend === 'string'
+    const rawExecutionBackend = typeof template?.config?.backend === 'string'
       ? template.config.backend
-      : 'legacy';
+      : 'cli';
+    const executionBackend = rawExecutionBackend === 'legacy' ? 'cli' : rawExecutionBackend;
 
     if (template && template.steps && template.steps.length > 0) {
       const normalizedSteps = this.normalizeTemplateSteps(

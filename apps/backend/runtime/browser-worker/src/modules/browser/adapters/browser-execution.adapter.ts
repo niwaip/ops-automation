@@ -7,7 +7,7 @@ import {
 } from '../../../dto/worker.dto';
 import { BrowserRuntimeLocator } from '../domain/browser-step.types';
 
-export type BrowserExecutionBackend = 'legacy' | 'cli' | 'chrome-devtools' | 'mcp';
+export type BrowserExecutionBackend = 'cli' | 'chrome-devtools' | 'mcp';
 
 export interface MCPCommand {
   tool: string;

@@ -15,7 +15,7 @@ beforeAll(async () => {
   console.log('[Integration Setup] Service endpoints:');
   console.log(`  Auth: ${SERVICE_CONFIG.AUTH.baseUrl()}`);
   console.log(`  Session Broker: ${SERVICE_CONFIG.SESSION_BROKER.baseUrl()}`);
-  console.log(`  Template: ${SERVICE_CONFIG.TEMPLATE.baseUrl()}`);
+  console.log(`  Browser Template: ${SERVICE_CONFIG.BROWSER_TEMPLATE.baseUrl()}`);
   console.log(`  AI Orchestrator: ${SERVICE_CONFIG.AI_ORCHESTRATOR.baseUrl()}`);
   console.log(`  Replay Engine: ${SERVICE_CONFIG.REPLAY_ENGINE.baseUrl()}`);
 });

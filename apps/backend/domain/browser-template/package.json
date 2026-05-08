@@ -1,5 +1,5 @@
 {
-  "name": "@ops/template",
+  "name": "@ops/browser-template",
   "version": "1.0.0",
   "private": true,
   "description": "Template service for Browser Control Plane",

@@ -55,10 +55,10 @@ export class ProxyController {
     return this.proxyToService(req, res, 'platform', path, body, query);
   }
 
-  // Template Service Routes
+  // Browser Template Service Routes
   @All('templates/*path')
-  @ApiOperation({ summary: 'Proxy to Template service' })
-  @ApiResponse({ status: 200, description: 'Successful response from Template service' })
+  @ApiOperation({ summary: 'Proxy to Browser Template service' })
+  @ApiResponse({ status: 200, description: 'Successful response from Browser Template service' })
   async proxyTemplate(
     @Req() req: AuthenticatedRequest,
     @Res() res: Response,
@@ -66,7 +66,7 @@ export class ProxyController {
     @Body() body: unknown,
     @Query() query: Record<string, string>,
   ) {
-    return this.proxyToService(req, res, 'template', path, body, query);
+    return this.proxyToService(req, res, 'browser-template', path, body, query);
   }
 
   // Session Service Routes
@@ -111,20 +111,6 @@ export class ProxyController {
     return this.proxyToService(req, res, 'worker', path, body, query);
   }
 
-  // Replay Engine Service Routes
-  @All('replay/*path')
-  @ApiOperation({ summary: 'Proxy to Replay Engine service' })
-  @ApiResponse({ status: 200, description: 'Successful response from Replay service' })
-  async proxyReplay(
-    @Req() req: AuthenticatedRequest,
-    @Res() res: Response,
-    @Param('path') path: string,
-    @Body() body: unknown,
-    @Query() query: Record<string, string>,
-  ) {
-    return this.proxyToService(req, res, 'replay', path, body, query);
-  }
-
   // Root route handlers for services
   @All('auth')
   async proxyAuthRoot(
@@ -143,7 +129,7 @@ export class ProxyController {
     @Body() body: unknown,
     @Query() query: Record<string, string>,
   ) {
-    return this.proxyToService(req, res, 'template', '', body, query);
+    return this.proxyToService(req, res, 'browser-template', '', body, query);
   }
 
   @All('sessions')
@@ -174,16 +160,6 @@ export class ProxyController {
     @Query() query: Record<string, string>,
   ) {
     return this.proxyToService(req, res, 'worker', '', body, query);
-  }
-
-  @All('replay')
-  async proxyReplayRoot(
-    @Req() req: AuthenticatedRequest,
-    @Res() res: Response,
-    @Body() body: unknown,
-    @Query() query: Record<string, string>,
-  ) {
-    return this.proxyToService(req, res, 'replay', '', body, query);
   }
 
   // Health check endpoint

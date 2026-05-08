@@ -8,7 +8,7 @@ import recorderService, { RecorderStatus, CompiledTemplate, ValidationResult } f
 import { templateApi, CompileResult } from '../api/template';
 import { useAuthStore } from '../store/authStore';
 
-const { Title, Text } = Typography;
+const { Text } = Typography;
 
 interface RecorderState {
   status: RecorderStatus;
@@ -219,64 +219,68 @@ const RecorderPage: React.FC = () => {
     : previewMode === 'shared'
       ? DEFAULT_NOVNC_URL
       : null;
+  const showTopActions = isBrowserInitialized || hasExecuted || isExpanded;
 
   return (
     <div
       style={{
-        padding: '24px 48px',
-        minHeight: '100vh',
+        padding: '0 8px',
+        height: 'calc(100vh - 60px)',
+        overflow: 'hidden',
+        boxSizing: 'border-box',
+        display: 'flex',
+        flexDirection: 'column',
         background: isDarkTheme
           ? 'var(--bg-primary)'
           : 'linear-gradient(135deg, var(--bg-secondary) 0%, var(--bg-primary) 100%)',
       }}
     >
-      {/* Header with status */}
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          marginBottom: 24,
-        }}
-      >
-        <Space>
-          <Title level={4} style={{ margin: 0 }}>
-            {t('common:recorder')}
-          </Title>
-          {isBrowserInitialized && (
-            <Tag color="processing" icon={<RobotOutlined />}>
-              浏览器就绪
-            </Tag>
-          )}
-        </Space>
+      {showTopActions && (
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'flex-end',
+            marginBottom: 6,
+            flexShrink: 0,
+          }}
+        >
+          <Space>
+            {isBrowserInitialized && (
+              <Tag color="processing" icon={<RobotOutlined />}>
+                浏览器就绪
+              </Tag>
+            )}
+            {(hasExecuted || isExpanded) && (
+              <Button
+                type="text"
+                icon={isExpanded ? <CompressOutlined /> : <FullscreenOutlined />}
+                onClick={handleToggleExpand}
+                style={{ color: '#6366f1' }}
+              >
+                {isExpanded ? '收起控制面板' : '展开浏览器'}
+              </Button>
+            )}
+          </Space>
+        </div>
+      )}
 
-        {/* Expand/Collapse toggle */}
-        <Space>
-          {(hasExecuted || isExpanded) && (
-            <Button
-              type="text"
-              icon={isExpanded ? <CompressOutlined /> : <FullscreenOutlined />}
-              onClick={handleToggleExpand}
-              style={{ color: '#6366f1' }}
-            >
-              {isExpanded ? '收起控制面板' : '展开浏览器'}
-            </Button>
-          )}
-        </Space>
-      </div>
-
-      <Row gutter={[24, 24]} style={{ minHeight: 'calc(100vh - 120px)' }}>
+      <Row gutter={[8, 8]} style={{ flex: 1, minHeight: 0 }}>
         {/* Left Column: Controls */}
         <Col
           xs={24}
           lg={leftSpan}
           style={{
+            height: '100%',
+            display: 'flex',
+            minHeight: 0,
             transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
           }}
         >
           <Card
             style={{
-              height: '100%',
+              flex: 1,
+              height: 'auto',
               borderRadius: 16,
               boxShadow: isDarkTheme ? '0 8px 24px rgba(0, 0, 0, 0.24)' : '0 4px 20px rgba(0, 0, 0, 0.08)',
               border: '1px solid var(--bg-secondary)',
@@ -285,7 +289,7 @@ const RecorderPage: React.FC = () => {
             }}
             styles={{
               body: {
-                padding: 20,
+                padding: 8,
                 height: '100%',
                 display: 'flex',
                 flexDirection: 'column',
@@ -322,6 +326,9 @@ const RecorderPage: React.FC = () => {
           xs={24}
           lg={rightSpan}
           style={{
+            height: '100%',
+            display: 'flex',
+            minHeight: 0,
             transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
           }}
         >
@@ -333,7 +340,8 @@ const RecorderPage: React.FC = () => {
               </Space>
             }
             style={{
-              height: '100%',
+              flex: 1,
+              height: 'auto',
               borderRadius: 16,
               boxShadow: isDarkTheme ? '0 8px 24px rgba(0, 0, 0, 0.24)' : '0 4px 20px rgba(0, 0, 0, 0.08)',
               border: '1px solid var(--bg-secondary)',
@@ -342,6 +350,10 @@ const RecorderPage: React.FC = () => {
               flexDirection: 'column',
             }}
             styles={{
+              header: {
+                minHeight: 34,
+                padding: '0 8px',
+              },
               body: {
                 flex: 1,
                 padding: 0,

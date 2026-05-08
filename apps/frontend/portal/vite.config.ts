@@ -50,7 +50,7 @@ export default defineConfig({
         rewrite: (path) => path.replace(/^\/api/, ''),
       },
       '/api/templates': {
-        target: getProxyTarget('ops-template', 3005),
+        target: getProxyTarget('ops-browser-template', 3005),
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/api/, ''),
       },
@@ -66,11 +66,6 @@ export default defineConfig({
       },
       '/api/ai': {
         target: getProxyTarget('ai-orchestrator', 3007),
-        changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/api/, ''),
-      },
-      '/api/replay': {
-        target: getProxyTarget('ops-replay-engine', 3006),
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/api/, ''),
       },

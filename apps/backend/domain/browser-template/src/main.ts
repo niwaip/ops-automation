@@ -22,7 +22,7 @@ async function bootstrap() {
 
   const port = process.env.PORT || 3004;
   await app.listen(port);
-  console.log(`Template Service running on port ${port}`);
+  console.log(`Browser Template Service running on port ${port}`);
 }
 
 bootstrap();

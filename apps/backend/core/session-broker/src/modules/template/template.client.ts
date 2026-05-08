@@ -32,7 +32,7 @@ export interface Template {
 export class TemplateClient {
   private readonly logger = new Logger(TemplateClient.name);
   // Always use Docker service name (session-broker runs in Docker)
-  private readonly templateServiceUrl = process.env.TEMPLATE_SERVICE_URL || 'http://ops-template:3005';
+  private readonly templateServiceUrl = process.env.BROWSER_TEMPLATE_SERVICE_URL || 'http://ops-browser-template:3005';
 
   async getTemplate(templateId: string): Promise<Template | null> {
     try {
