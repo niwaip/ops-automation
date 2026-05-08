@@ -449,26 +449,176 @@ const parseApiEndpointsToDraft = (value: Record<string, unknown> | null | undefi
   });
 };
 
+const normalizeBrowserWorkflowAction = (action: string): string => {
+  const normalized = action.trim().toLowerCase();
+  switch (normalized) {
+    case 'goto':
+      return 'navigate';
+    case 'press':
+      return 'press_key';
+    case 'type':
+      return 'type_text';
+    default:
+      return normalized;
+  }
+};
+
+const looksLikeTemplatePlaceholder = (value: string): boolean => {
+  const target = value.trim();
+  return /^\$\{[^{}]+\}$/.test(target) || /^\{[^{}]+\}$/.test(target);
+};
+
+const looksLikeBrowserSelector = (value: string): boolean => {
+  const target = value.trim();
+  if (!target) {
+    return false;
+  }
+  if (/^e\d+$/i.test(target)) {
+    return true;
+  }
+  if (/^(role|text|xpath)=/i.test(target)) {
+    return true;
+  }
+  if (/^[#.[]/.test(target) || target.startsWith('//') || target.startsWith('..')) {
+    return true;
+  }
+  if (/(^|[a-z-])\[name=.+\]$/i.test(target)) {
+    return true;
+  }
+  return false;
+};
+
+const normalizeBrowserWorkflowLocator = (
+  locator: unknown,
+): Record<string, unknown> | undefined => {
+  if (!locator || typeof locator !== 'object' || Array.isArray(locator)) {
+    return undefined;
+  }
+
+  const raw = locator as Record<string, unknown>;
+  const type = typeof raw.type === 'string' ? raw.type.trim() : '';
+  const value = typeof raw.value === 'string' ? raw.value.trim() : '';
+  if (!type || !value) {
+    return undefined;
+  }
+
+  return {
+    type,
+    value,
+  };
+};
+
+const browserPlaceholder = (name: string) => `\${${name}}`;
+
+const inferBrowserWorkflowParamDefinition = (
+  stepName: string,
+  config: Record<string, unknown>,
+): { name: string; definition: WorkflowInputParamDefinition } | undefined => {
+  const action = normalizeBrowserWorkflowAction(typeof config.action === 'string' ? config.action : '');
+  const locator = normalizeBrowserWorkflowLocator(config.locator);
+  const url = typeof config.url === 'string' ? config.url.trim() : '';
+  const value = config.value === undefined || config.value === null ? '' : String(config.value).trim();
+  const hint = [
+    stepName,
+    typeof config.selector === 'string' ? config.selector : '',
+    typeof config.target === 'string' ? config.target : '',
+    typeof locator?.value === 'string' ? locator.value : '',
+  ].filter(Boolean).join(' ');
+
+  if (action === 'navigate' && url) {
+    return {
+      name: 'startUrl',
+      definition: {
+        description: '起始页面地址',
+        required: false,
+        defaultValue: url,
+        source: 'inferred_from_template',
+        type: 'string',
+        exampleValue: url,
+      },
+    };
+  }
+
+  if (!['fill', 'type_text'].includes(action)) {
+    return undefined;
+  }
+
+  if (/(用户名|账号|账户|user\s*name|username|account|email|邮箱|手机号|mobile)/i.test(hint)) {
+    return {
+      name: 'username',
+      definition: {
+        description: '登录用户名',
+        required: true,
+        defaultValue: value,
+        source: 'inferred_from_template',
+        type: 'string',
+        exampleValue: value || 'test',
+      },
+    };
+  }
+
+  if (/(密码|password|passwd|passcode|pin|secret)/i.test(hint)) {
+    return {
+      name: 'loginCredential',
+      definition: {
+        description: '登录密码',
+        required: true,
+        defaultValue: value,
+        source: 'inferred_from_template',
+        type: 'string',
+        exampleValue: value || 'test123',
+      },
+    };
+  }
+
+  return undefined;
+};
+
 const normalizeBrowserWorkflowStepConfig = (config: Record<string, unknown>): Record<string, unknown> => {
-  const action = typeof config.action === 'string' ? config.action : '';
+  const action = normalizeBrowserWorkflowAction(typeof config.action === 'string' ? config.action : '');
+  const url = typeof config.url === 'string' ? config.url.trim() : '';
+  const selector = typeof config.selector === 'string' ? config.selector.trim() : '';
+  const rawTarget = typeof config.target === 'string' ? config.target.trim() : '';
+  const locator = normalizeBrowserWorkflowLocator(config.locator);
+  const valueCandidate = [config.value, config.text, config.query]
+    .find((item) => item !== undefined && item !== null && String(item).trim() !== '');
+  const keyCandidate = [config.key, config.value]
+    .find((item) => item !== undefined && item !== null && String(item).trim() !== '');
   const normalized: Record<string, unknown> = {
     ...(action ? { action } : {}),
   };
 
-  if (typeof config.url === 'string' && config.url.trim()) {
-    normalized.url = config.url;
+  if (action === 'navigate' && url) {
+    normalized.url = url;
   }
-  if (typeof config.target === 'string' && config.target.trim()) {
-    normalized.target = config.target;
+  if (selector) {
+    normalized.selector = selector;
   }
-  if (typeof config.selector === 'string' && config.selector.trim()) {
-    normalized.selector = config.selector;
+  if (locator) {
+    normalized.locator = locator;
   }
-  if (config.locator && typeof config.locator === 'object' && !Array.isArray(config.locator)) {
-    normalized.locator = config.locator;
+
+  const targetLooksSuspicious = rawTarget
+    && !looksLikeBrowserSelector(rawTarget)
+    && (
+      looksLikeTemplatePlaceholder(rawTarget)
+      || (valueCandidate !== undefined && String(valueCandidate).trim() === rawTarget)
+    );
+  const shouldKeepTarget = rawTarget
+    && (
+      action === 'navigate'
+      || /^e\d+$/i.test(rawTarget)
+      || (!targetLooksSuspicious && (!selector || rawTarget !== selector))
+    );
+  if (shouldKeepTarget) {
+    normalized.target = rawTarget;
   }
-  if (config.value !== undefined) {
-    normalized.value = config.value;
+
+  if (valueCandidate !== undefined) {
+    normalized.value = valueCandidate;
+  }
+  if (keyCandidate !== undefined && action === 'press_key') {
+    normalized.key = keyCandidate;
   }
   if (config.timeoutMs !== undefined) {
     normalized.timeoutMs = config.timeoutMs;
@@ -480,10 +630,44 @@ const normalizeBrowserWorkflowStepConfig = (config: Record<string, unknown>): Re
   return normalized;
 };
 
+const parameterizeBrowserWorkflowStepConfig = (
+  stepName: string,
+  config: Record<string, unknown>,
+): {
+  config: Record<string, unknown>;
+  inferredParam?: { name: string; definition: WorkflowInputParamDefinition };
+} => {
+  const normalizedConfig = normalizeBrowserWorkflowStepConfig(config);
+  const inferredParam = inferBrowserWorkflowParamDefinition(stepName, normalizedConfig);
+  if (!inferredParam) {
+    return { config: normalizedConfig };
+  }
+
+  const nextConfig: Record<string, unknown> = {
+    ...normalizedConfig,
+  };
+
+  if (inferredParam.name === 'startUrl') {
+    nextConfig.url = browserPlaceholder(inferredParam.name);
+    delete nextConfig.target;
+  } else if (['fill', 'type_text'].includes(String(nextConfig.action || ''))) {
+    nextConfig.value = browserPlaceholder(inferredParam.name);
+  }
+
+  return {
+    config: nextConfig,
+    inferredParam,
+  };
+};
+
 const buildBrowserWorkflowParamsSchema = (
   inputParams?: Record<string, WorkflowInputParamDefinition>,
+  inferredParams?: Record<string, WorkflowInputParamDefinition>,
 ): Record<string, unknown> => {
-  const entries = Object.entries(inputParams || {});
+  const entries = Object.entries({
+    ...(inferredParams || {}),
+    ...(inputParams || {}),
+  });
   return {
     type: 'object',
     properties: Object.fromEntries(entries.map(([key, definition]) => [
@@ -527,15 +711,20 @@ const extractBrowserWorkflowSteps = (workflow: TemporalWorkflowDTO): Array<Recor
 
 const buildBrowserRecordingSourcePayload = (workflow: TemporalWorkflowDTO): Record<string, unknown> => {
   const workflowSteps = extractBrowserWorkflowSteps(workflow);
+  const inferredParams: Record<string, WorkflowInputParamDefinition> = {};
   const normalizedSteps = workflowSteps.map((step, index) => {
     const config = step.config && typeof step.config === 'object'
       ? step.config as Record<string, unknown>
       : {};
-    const normalizedConfig = normalizeBrowserWorkflowStepConfig(config);
+    const stepName = String(step.name || `${index + 1}. browser_action`);
+    const { config: normalizedConfig, inferredParam } = parameterizeBrowserWorkflowStepConfig(stepName, config);
+    if (inferredParam && !inferredParams[inferredParam.name]) {
+      inferredParams[inferredParam.name] = inferredParam.definition;
+    }
     const action = String(normalizedConfig.action || step.action || 'browser_action').trim() || 'browser_action';
     return {
       id: String(step.id || `step_${index + 1}`),
-      name: String(step.name || `${index + 1}. ${action}`),
+      name: stepName || `${index + 1}. ${action}`,
       type: 'browser',
       config: normalizedConfig,
     };
@@ -543,12 +732,16 @@ const buildBrowserRecordingSourcePayload = (workflow: TemporalWorkflowDTO): Reco
 
   const executionFlow = normalizedSteps.map((step) => {
     const config = step.config as Record<string, unknown>;
+    const action = String(config.action || '').trim();
     const params: Record<string, unknown> = {};
-    if (config.value !== undefined) {
+    if (action === 'navigate' && config.url !== undefined) {
+      params.url = config.url;
+    }
+    if (['fill', 'type_text'].includes(action) && config.value !== undefined) {
       params.value = config.value;
     }
-    if (config.url !== undefined) {
-      params.url = config.url;
+    if (action === 'press_key' && config.key !== undefined) {
+      params.key = config.key;
     }
     if (config.duration !== undefined) {
       params.duration = config.duration;
@@ -560,7 +753,7 @@ const buildBrowserRecordingSourcePayload = (workflow: TemporalWorkflowDTO): Reco
       name: String(step.name || 'browser_step'),
       tool: { name: 'browser_step' },
       input: {
-        action: config.action,
+        action,
         ...(typeof config.target === 'string' && config.target.trim() ? { target: config.target } : {}),
         ...(typeof config.selector === 'string' && config.selector.trim() ? { selector: config.selector } : {}),
         ...(config.locator && typeof config.locator === 'object' ? { locator: config.locator } : {}),
@@ -580,7 +773,7 @@ const buildBrowserRecordingSourcePayload = (workflow: TemporalWorkflowDTO): Reco
       workflowName: workflow.name,
       ...(workflow.sourceTemplate || {}),
     },
-    paramsSchema: buildBrowserWorkflowParamsSchema(workflow.workflowDsl?.inputParams),
+    paramsSchema: buildBrowserWorkflowParamsSchema(workflow.workflowDsl?.inputParams, inferredParams),
     steps: normalizedSteps,
     executionFlow,
     tools: ['skill_match', 'browser_step'],

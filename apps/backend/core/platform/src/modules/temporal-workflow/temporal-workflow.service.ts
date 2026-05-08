@@ -279,6 +279,26 @@ interface TemplateWorkflowAiAnalysis {
   extraPrompt?: string;
 }
 
+export interface BrowserDraftCommandInput {
+  tool: string;
+  params?: Record<string, unknown>;
+  description?: string;
+  locator?: {
+    strategy?: string;
+    value?: string;
+    role?: string;
+    name?: string;
+  };
+}
+
+export interface GenerateBrowserWorkflowDraftDTO {
+  script?: string;
+  commands?: BrowserDraftCommandInput[];
+  name?: string;
+  description?: string;
+  inputParams?: Record<string, WorkflowInputParamDefinition>;
+}
+
 interface BrowserScriptCommand {
   action: 'goto' | 'click' | 'fill' | 'press' | 'waitForSelector' | 'waitForTimeout';
   url?: string;
@@ -520,19 +540,81 @@ export class TemporalWorkflowService {
   }
 
   async generateBrowserWorkflowDraft(
-    data: { script: string; name?: string; description?: string },
+    data: GenerateBrowserWorkflowDraftDTO,
   ): Promise<BrowserWorkflowDraft> {
     const script = String(data?.script || '').trim();
-    if (!script) {
-      throw new BadRequestException('浏览器模板脚本不能为空');
-    }
+    const structuredCommands = Array.isArray(data?.commands)
+      ? data.commands.filter((command): command is BrowserDraftCommandInput => Boolean(command && typeof command === 'object'))
+      : [];
 
-    const commands = this.parseBrowserScriptCommands(script);
-    if (commands.length === 0) {
-      throw new BadRequestException('未识别到可执行浏览器指令，请检查脚本格式');
-    }
+    let activitySteps: Array<{
+      name: string;
+      type: 'browser';
+      timeout: string;
+      config: Record<string, unknown>;
+      inputParams: Record<string, unknown>;
+    }> = [];
+    let commandCount = 0;
+    let placeholders: string[] = [];
+    let activityTimeout = '60s';
+    let generationWarning = '该草稿由浏览器脚本自动转换，请在发布前确认每个步骤的选择器与参数。';
+    let generatedScript: string | undefined;
 
-    const placeholders = this.extractScriptPlaceholders(script);
+    if (structuredCommands.length > 0) {
+      activitySteps = this.buildBrowserActivityStepsFromDraftCommands(structuredCommands);
+      commandCount = structuredCommands.length;
+      placeholders = this.extractBrowserActivityPlaceholders(activitySteps);
+      activityTimeout = this.inferBrowserTemplateTimeoutFromSteps(activitySteps);
+      generationWarning = '该草稿直接复用结构化 executionPlan.commands，优先保留运行时稳定定位信息。';
+      generatedScript = script || undefined;
+    } else {
+      if (!script) {
+        throw new BadRequestException('浏览器模板脚本或结构化 commands 不能为空');
+      }
+
+      const commands = this.parseBrowserScriptCommands(script);
+      if (commands.length === 0) {
+        throw new BadRequestException('未识别到可执行浏览器指令，请检查脚本格式');
+      }
+
+      commandCount = commands.length;
+      activitySteps = commands.map((command, index) => {
+        const stepConfig: Record<string, unknown> = {
+          action: command.action,
+        };
+        if (command.url) {
+          stepConfig.url = command.url;
+        }
+        if (command.target) {
+          stepConfig.target = command.target;
+        }
+        if (command.selector) {
+          stepConfig.selector = command.selector;
+        }
+        if (command.locator) {
+          stepConfig.locator = command.locator;
+        }
+        if (command.value !== undefined) {
+          stepConfig.value = command.value;
+        }
+        if (command.timeoutMs !== undefined) {
+          stepConfig.timeoutMs = command.timeoutMs;
+        }
+        return {
+          name: `${index + 1}. ${this.browserActionLabel(command.action)}`,
+          type: 'browser' as const,
+          timeout: '30s',
+          config: stepConfig,
+          inputParams: {},
+        };
+      });
+      placeholders = Array.from(new Set([
+        ...this.extractScriptPlaceholders(script),
+        ...this.extractBrowserActivityPlaceholders(activitySteps),
+      ]));
+      activityTimeout = this.inferBrowserTemplateTimeout(commands);
+      generatedScript = script;
+    }
     const short = String(Date.now()).slice(-6);
     const workflowName = this.normalizeName(
       String(data?.name || '').trim() || `浏览器模板-${short}-工作流`,
@@ -542,49 +624,19 @@ export class TemporalWorkflowService {
     ) || '基于浏览器脚本自动生成的执行工作流';
     const activityName = '浏览器自动化执行';
     const activityFn = `browserTemplateRun${short}`;
-    const activityTimeout = this.inferBrowserTemplateTimeout(commands);
+    const declaredInputParams = this.normalizeDraftInputParams(data?.inputParams);
     const inputParams = placeholders.reduce<Record<string, WorkflowInputParamDefinition>>((acc, key) => {
       acc[key] = {
+        ...acc[key],
         required: true,
-        defaultValue: '',
-        description: `脚本变量 ${key}`,
-        source: 'inferred_from_template',
-        type: 'string',
-        exampleValue: `sample_${key}`,
+        defaultValue: acc[key]?.defaultValue ?? '',
+        description: acc[key]?.description || `脚本变量 ${key}`,
+        source: acc[key]?.source || 'inferred_from_template',
+        type: acc[key]?.type || 'string',
+        exampleValue: acc[key]?.exampleValue ?? `sample_${key}`,
       };
       return acc;
-    }, {});
-
-    const activitySteps = commands.map((command, index) => {
-      const stepConfig: Record<string, unknown> = {
-        action: command.action,
-      };
-      if (command.url) {
-        stepConfig.url = command.url;
-      }
-      if (command.target) {
-        stepConfig.target = command.target;
-      }
-      if (command.selector) {
-        stepConfig.selector = command.selector;
-      }
-      if (command.locator) {
-        stepConfig.locator = command.locator;
-      }
-      if (command.value !== undefined) {
-        stepConfig.value = command.value;
-      }
-      if (command.timeoutMs !== undefined) {
-        stepConfig.timeoutMs = command.timeoutMs;
-      }
-      return {
-        name: `${index + 1}. ${this.browserActionLabel(command.action)}`,
-        type: 'browser',
-        timeout: '30s',
-        config: stepConfig,
-        inputParams: {},
-      };
-    });
+    }, { ...declaredInputParams });
 
     return {
       name: workflowName,
@@ -601,7 +653,7 @@ export class TemporalWorkflowService {
           generatedAt: new Date().toISOString(),
           userDescription: workflowDescription,
           warnings: [
-            '该草稿由浏览器脚本自动转换，请在发布前确认每个步骤的选择器与参数。',
+            generationWarning,
           ],
         },
         inputParams,
@@ -636,16 +688,18 @@ export class TemporalWorkflowService {
             retryPolicy: { maxRetries: 1, backoffMs: 1000 },
             handler: 'browser',
             config: {
-              description: '浏览器脚本执行 Activity（由模板工作流自动生成）',
-              script,
-              commandCount: commands.length,
+              description: structuredCommands.length > 0
+                ? '浏览器命令执行 Activity（由结构化执行计划自动生成）'
+                : '浏览器脚本执行 Activity（由模板工作流自动生成）',
+              ...(generatedScript ? { script: generatedScript } : {}),
+              commandCount,
               steps: activitySteps,
             },
           },
         ],
       },
       browserTemplate: {
-        commandCount: commands.length,
+        commandCount,
         placeholderCount: placeholders.length,
         placeholders,
       },
@@ -4901,8 +4955,6 @@ export class TemporalWorkflowService {
   }
 
   private extractBrowserActivityPlaceholders(steps: Array<{
-    name: string;
-    action: string;
     config: Record<string, unknown>;
   }>): string[] {
     const keys = new Set<string>();
@@ -4931,6 +4983,68 @@ export class TemporalWorkflowService {
 
     steps.forEach((step) => visit(step.config));
     return Array.from(keys);
+  }
+
+  private buildBrowserActivityStepsFromDraftCommands(
+    commands: BrowserDraftCommandInput[],
+  ): Array<{
+    name: string;
+    type: 'browser';
+    timeout: string;
+    config: Record<string, unknown>;
+    inputParams: Record<string, unknown>;
+  }> {
+    return commands.map((command, index) => {
+      const action = String(command.tool || '').trim();
+      const params = command.params && typeof command.params === 'object'
+        ? command.params
+        : {};
+      const config: Record<string, unknown> = {
+        action,
+      };
+      const locator = this.normalizeBrowserDraftLocator(command.locator);
+
+      Object.entries(params).forEach(([key, value]) => {
+        if (value !== undefined) {
+          config[key] = value;
+        }
+      });
+
+      if (locator) {
+        config.locator = locator;
+      }
+
+      return {
+        name: `${index + 1}. ${String(command.description || action || '浏览器操作').trim() || '浏览器操作'}`,
+        type: 'browser' as const,
+        timeout: '30s',
+        config,
+        inputParams: {},
+      };
+    });
+  }
+
+  private normalizeBrowserDraftLocator(
+    locator?: BrowserDraftCommandInput['locator'],
+  ): { type: string; value: string } | undefined {
+    if (!locator?.value) {
+      return undefined;
+    }
+
+    const strategy = String(locator.strategy || '').trim().toLowerCase();
+    const locatorType = strategy === 'testid' ? 'test-id' : strategy;
+    const locatorValue = locator.role && locator.name
+      ? `${locator.role}[name="${locator.name}"]`
+      : String(locator.value);
+
+    if (!locatorType || !locatorValue.trim()) {
+      return undefined;
+    }
+
+    return {
+      type: locatorType,
+      value: locatorValue.trim(),
+    };
   }
 
   private parseBrowserScriptCommands(script: string): BrowserScriptCommand[] {
@@ -5074,6 +5188,23 @@ export class TemporalWorkflowService {
       acc + (item.action === 'waitForTimeout' ? Number(item.timeoutMs || 0) : 0)
     ), 0);
     const estimatedSeconds = Math.ceil((waitMs / 1000) + commands.length * 8);
+    const timeoutSeconds = Math.min(Math.max(estimatedSeconds, 60), 900);
+    return `${timeoutSeconds}s`;
+  }
+
+  private inferBrowserTemplateTimeoutFromSteps(
+    steps: Array<{ config: Record<string, unknown> }>,
+  ): string {
+    const waitMs = steps.reduce((acc, step) => {
+      const config = step.config || {};
+      const action = String(config.action || '').trim();
+      if (!['wait', 'waitForTimeout', 'waitForSelector'].includes(action)) {
+        return acc;
+      }
+      const duration = Number(config.timeoutMs ?? config.duration ?? 0);
+      return acc + (Number.isFinite(duration) ? duration : 0);
+    }, 0);
+    const estimatedSeconds = Math.ceil((waitMs / 1000) + steps.length * 8);
     const timeoutSeconds = Math.min(Math.max(estimatedSeconds, 60), 900);
     return `${timeoutSeconds}s`;
   }

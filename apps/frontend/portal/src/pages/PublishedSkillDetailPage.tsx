@@ -1,10 +1,8 @@
 import React, { useMemo, useState } from 'react';
 import {
-  Alert,
   Button,
   Card,
   Drawer,
-  Empty,
   Input,
   Space,
   Table,
@@ -14,9 +12,6 @@ import {
 } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import {
-  CheckCircleOutlined,
-  CloseOutlined,
-  DeleteOutlined,
   InfoCircleOutlined,
   ReloadOutlined,
   RocketOutlined,
@@ -30,7 +25,7 @@ import { skillApi } from '../api/skill';
 import { ListSectionHeader } from '../components/page/PageScaffold';
 import SkillAdminPage from './admin/SkillAdminPage';
 
-const { Title, Text } = Typography;
+const { Text } = Typography;
 
 const statusColor = (status?: string) => {
   switch (status) {

@@ -15,6 +15,7 @@ import {
   GenerateAiWorkflowDraftSessionDTO,
   RefineAiWorkflowDraftSessionDTO,
   BrowserWorkflowDraft,
+  GenerateBrowserWorkflowDraftDTO,
 } from './temporal-workflow.service';
 import { TemporalWorkflow } from '@prisma/client';
 
@@ -124,9 +125,9 @@ export class TemporalWorkflowController {
   }
 
   @Post('generate-browser-draft')
-  @ApiOperation({ summary: 'Generate browser-template workflow draft from browser script' })
+  @ApiOperation({ summary: 'Generate browser-template workflow draft from browser script or structured commands' })
   async generateBrowserDraft(
-    @Body() data: { script: string; name?: string; description?: string },
+    @Body() data: GenerateBrowserWorkflowDraftDTO,
   ): Promise<BrowserWorkflowDraft> {
     return this.temporalWorkflowService.generateBrowserWorkflowDraft(data);
   }

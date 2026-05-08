@@ -83,7 +83,7 @@ export const ListSectionHeader: React.FC<ListSectionHeaderProps> = ({ title, sub
       alignItems: 'center',
       justifyContent: 'space-between',
       gap: 12,
-      padding: '4px 8px 16px',
+      padding: '4px 8px 12px',
       flexWrap: 'wrap',
     }}
   >

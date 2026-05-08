@@ -4,7 +4,6 @@ import { Layout, Menu, Dropdown, Button, Avatar, Space } from 'antd';
 import type { MenuProps } from 'antd';
 import {
   DashboardOutlined,
-  DesktopOutlined,
   FileTextOutlined,
   SettingOutlined,
   UserOutlined,
@@ -12,7 +11,6 @@ import {
   MenuUnfoldOutlined,
   GlobalOutlined,
   LogoutOutlined,
-  BarChartOutlined,
   FileWordOutlined,
   ThunderboltOutlined,
   OrderedListOutlined,
@@ -44,11 +42,6 @@ const MainLayout: React.FC = () => {
       icon: <PlayCircleOutlined />,
       label: t('executions'),
     },
-    {
-      key: '/reports',
-      icon: <BarChartOutlined />,
-      label: t('reports'),
-    },
     ...(user?.role === 'admin'
       ? [
           {
@@ -74,20 +67,24 @@ const MainLayout: React.FC = () => {
         ]
       : []),
     {
-      key: '/sessions',
-      icon: <DesktopOutlined />,
-      label: t('sessions'),
+      key: '/carbone-templates',
+      icon: <FileWordOutlined />,
+      label: t('carboneTemplates'),
     },
     {
       key: '/templates',
       icon: <FileTextOutlined />,
       label: '浏览器模版',
     },
-    {
-      key: '/carbone-templates',
-      icon: <FileWordOutlined />,
-      label: t('carboneTemplates'),
-    },
+    ...(user?.role === 'admin'
+      ? [
+          {
+            key: '/admin/flows',
+            icon: <OrderedListOutlined />,
+            label: t('executionFlows'),
+          },
+        ]
+      : []),
     ...(user?.role === 'admin'
       ? [
           {
@@ -119,11 +116,6 @@ const MainLayout: React.FC = () => {
                 key: '/admin/prompt-debug',
                 icon: <BugOutlined />,
                 label: 'Prompt 调试',
-              },
-              {
-                key: '/admin/flows',
-                icon: <OrderedListOutlined />,
-                label: t('executionFlows'),
               },
             ],
           },
@@ -294,34 +286,6 @@ const MainLayout: React.FC = () => {
           }}
         />
 
-        {/* Bottom collapse button */}
-        <div
-          className="portal-sider-footer"
-          style={{
-            position: 'absolute',
-            bottom: 16,
-            left: 0,
-            right: 0,
-            display: 'flex',
-            justifyContent: 'center',
-          }}
-        >
-          <Button
-            type="text"
-            icon={sidebarCollapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
-            onClick={toggleSidebar}
-            style={{
-              color: 'rgba(255,255,255,0.7)',
-              fontSize: 16,
-              width: sidebarCollapsed ? 40 : 116,
-              height: 40,
-              borderRadius: 12,
-              background: 'rgba(255,255,255,0.1)',
-            }}
-          >
-            {!sidebarCollapsed ? '收起导航' : null}
-          </Button>
-        </div>
       </Sider>
 
       <Layout

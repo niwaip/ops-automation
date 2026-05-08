@@ -567,7 +567,7 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  min-height: 168px;
+  min-height: 112px;
   text-align: center;
 }
 
@@ -602,7 +602,7 @@ body {
 }
 
 .stat-card .anticon {
-  font-size: 32px;
+  font-size: 24px;
   opacity: 0.8;
 }
 

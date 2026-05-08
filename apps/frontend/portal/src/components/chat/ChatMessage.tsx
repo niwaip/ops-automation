@@ -133,6 +133,48 @@ const beautifyText = (text: string, useDivider = true): string => {
   return normalized;
 };
 
+const looksLikeVerboseExecutionContent = (text?: string): boolean => {
+  const raw = String(text || '').trim();
+  if (!raw) return false;
+  if (raw.length > 600) return true;
+  return /stepResults|### Ran Playwright code|snapshotId|stdout|executedCommands|任务已完成[,，]?\s*返回结果|```json/i.test(raw);
+};
+
+const compactExecutionText = (text?: string): string => {
+  const raw = String(text || '').trim();
+  if (!raw) return '';
+  if (looksLikeVerboseExecutionContent(raw)) {
+    return '浏览器执行已完成，详细信息请通过下方链接查看。';
+  }
+  return raw;
+};
+
+const getExecutionStepCount = (value: unknown): number | undefined => {
+  if (!value || typeof value !== 'object') return undefined;
+  const obj = value as Record<string, unknown>;
+  const candidates = [obj.stepResults, obj.executedCommands, obj.results, obj.steps];
+  for (const candidate of candidates) {
+    if (Array.isArray(candidate) && candidate.length > 0) {
+      return candidate.length;
+    }
+  }
+  return undefined;
+};
+
+const isBrowserExecutionResult = (
+  executionId: string | undefined,
+  answerText: string,
+  finalResultData: unknown,
+): boolean => {
+  if (!executionId) {
+    return false;
+  }
+  if (looksLikeVerboseExecutionContent(answerText)) {
+    return true;
+  }
+  return getExecutionStepCount(finalResultData) !== undefined;
+};
+
 const ChatMessageComponent: React.FC<ChatMessageProps> = ({
   message,
   isStreaming,
@@ -237,6 +279,28 @@ const ChatMessageComponent: React.FC<ChatMessageProps> = ({
       return beautifyText(fixLocalhostLink(cleaned) || '');
     },
     [answer],
+  );
+  const hasExecutionContext = Boolean(
+    message.metadata?.executionId
+    || message.metadata?.executionStatus
+    || message.metadata?.temporalLink
+    || message.metadata?.taskStatus,
+  );
+  const compactAnswer = useMemo(
+    () => (
+      hasExecutionContext
+        ? compactExecutionText(answerWithoutTaskCheckbox)
+        : answerWithoutTaskCheckbox
+    ),
+    [hasExecutionContext, answerWithoutTaskCheckbox],
+  );
+  const executionStepCount = useMemo(
+    () => getExecutionStepCount(finalResultData),
+    [finalResultData],
+  );
+  const browserExecutionMode = useMemo(
+    () => isBrowserExecutionResult(executionId, answerWithoutTaskCheckbox, finalResultData),
+    [executionId, answerWithoutTaskCheckbox, finalResultData],
   );
 
   const handleCopy = async () => {
@@ -362,7 +426,7 @@ const ChatMessageComponent: React.FC<ChatMessageProps> = ({
       return null;
     }
 
-    if (!answerWithoutTaskCheckbox) {
+    if (!compactAnswer) {
       return null;
     }
 
@@ -390,7 +454,7 @@ const ChatMessageComponent: React.FC<ChatMessageProps> = ({
             ),
           }}
         >
-          {answerWithoutTaskCheckbox}
+          {compactAnswer}
         </ReactMarkdown>
         {isStreaming && <span className="streaming-indicator">...</span>}
       </div>
@@ -402,10 +466,13 @@ const ChatMessageComponent: React.FC<ChatMessageProps> = ({
 
     const downloadUrl = fixLocalhostLink(message.metadata?.downloadUrl);
     const temporalLink = fixLocalhostLink(message.metadata?.temporalLink);
+    const executionDetailLink = executionId ? `/executions/${executionId}` : undefined;
+    const showDownloadButton = Boolean(downloadUrl && !browserExecutionMode);
+    const showDetailButton = Boolean(executionDetailLink || temporalLink);
     const renderResourceLinks = () => (
       <div className="chat-outcome-actions" style={{ marginTop: 12 }}>
         <Space size={12} wrap>
-          {downloadUrl && (
+          {showDownloadButton && downloadUrl && (
             <Button
               type="primary"
               ghost
@@ -416,15 +483,15 @@ const ChatMessageComponent: React.FC<ChatMessageProps> = ({
               下载生成的文档
             </Button>
           )}
-          {temporalLink && (
+          {showDetailButton && (
             <Button
               type="primary"
               ghost
               size="small"
               icon={<ThunderboltOutlined />}
-              onClick={() => window.open(temporalLink, '_blank')}
+              onClick={() => window.open(executionDetailLink || temporalLink, '_blank')}
             >
-              在 Temporal 中查看详情
+              导航到详细页面
             </Button>
           )}
         </Space>
@@ -446,6 +513,7 @@ const ChatMessageComponent: React.FC<ChatMessageProps> = ({
           <div className="chat-outcome-meta">
             {executionStatus && <span>状态：{executionStatus}</span>}
             {executionId && <span>执行单 ID：{executionId}</span>}
+            {executionStepCount !== undefined && <span>执行步骤数：{executionStepCount}</span>}
           </div>
           <div className="chat-outcome-body">{errorPreview}</div>
           <details className="chat-outcome-details">
@@ -457,13 +525,14 @@ const ChatMessageComponent: React.FC<ChatMessageProps> = ({
     }
 
     if (finalResult) {
-      const fixedFinalResult = beautifyText(fixLocalhostLink(finalResult) || '');
+      const fixedFinalResult = compactExecutionText(beautifyText(fixLocalhostLink(finalResult) || ''));
       return (
         <div className="chat-outcome-card success">
           <div className="chat-outcome-title">{hasBusinessResult ? '任务结果' : '任务完成'}</div>
           <div className="chat-outcome-meta">
             {executionStatus && <span>状态：{executionStatus}</span>}
             {executionId && <span>执行单 ID：{executionId}</span>}
+            {executionStepCount !== undefined && <span>执行步骤数：{executionStepCount}</span>}
           </div>
           <div className="chat-outcome-body">
             <ReactMarkdown remarkPlugins={[remarkGfm]}>
@@ -492,6 +561,7 @@ const ChatMessageComponent: React.FC<ChatMessageProps> = ({
           <div className="chat-outcome-meta">
             {executionStatus && <span>状态：{executionStatus}</span>}
             {executionId && <span>执行单 ID：{executionId}</span>}
+            {executionStepCount !== undefined && <span>执行步骤数：{executionStepCount}</span>}
           </div>
           <div className="chat-outcome-body">
             <ReactMarkdown remarkPlugins={[remarkGfm]}>

@@ -51,16 +51,23 @@ import { useChatStore } from '../components/chat';
 import { ListSectionHeader } from '../components/page/PageScaffold';
 import { useAuthStore } from '../store/authStore';
 import {
-  EXECUTION_FINISHED_STATUSES,
   EXECUTION_STATUS_COLORS,
   EXECUTION_STATUS_LABELS_ZH,
-  EXECUTION_STATUS_OPTIONS_ZH,
-  EXECUTION_WAITING_STATUSES,
 } from '../utils/executionStatusMeta';
 
 const { Text } = Typography;
 const statusColors = EXECUTION_STATUS_COLORS;
 const statusLabels = EXECUTION_STATUS_LABELS_ZH;
+const EXECUTION_STATUS_FILTER_OPTIONS: Array<{ value?: ExecutionStatus; label: string }> = [
+  { value: undefined, label: '全部状态' },
+  { value: 'running', label: '执行中' },
+  { value: 'waiting_input', label: '待补输入' },
+  { value: 'pending_approval', label: '待审批' },
+  { value: 'human_control', label: '人工接管' },
+  { value: 'succeeded', label: '已完成' },
+  { value: 'failed', label: '失败' },
+  { value: 'cancelled', label: '已取消' },
+];
 
 const formatDateTime = (date?: string) => (date ? new Date(date).toLocaleString() : '-');
 
@@ -1150,16 +1157,6 @@ const ExecutionListPage: React.FC = () => {
     return rows;
   }, [data?.data, searchText, skillNameMap]);
 
-  const executionOverviewStats = useMemo(() => {
-    const rows = filteredAndSortedData;
-    return {
-      total: rows.length,
-      running: rows.filter((item) => item.status === 'running').length,
-      waiting: rows.filter((item) => EXECUTION_WAITING_STATUSES.includes(item.status)).length,
-      finished: rows.filter((item) => EXECUTION_FINISHED_STATUSES.includes(item.status)).length,
-    };
-  }, [filteredAndSortedData]);
-
   const columns = [
     {
       title: '技能名称',
@@ -1229,36 +1226,17 @@ const ExecutionListPage: React.FC = () => {
       width: 320,
       ellipsis: true,
       render: (_: unknown, record: ExecutionDto) => (
-        <Space direction="vertical" size={2}>
-          <Text>{summarizeExecutionListInput(record)}</Text>
-        </Space>
+        <Text
+          style={{
+            display: 'block',
+            whiteSpace: 'nowrap',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+          }}
+        >
+          {summarizeExecutionListInput(record)}
+        </Text>
       ),
-    },
-    {
-      title: '执行结果',
-      key: 'result',
-      width: 220,
-      render: (_: unknown, record: ExecutionDto) => {
-        const downloadUrl = extractDownloadUrl(record.resultJson || undefined);
-        return (
-          <Space direction="vertical" size={4}>
-            <Text>{summarizeExecutionResult(record.resultJson || null)}</Text>
-            {downloadUrl ? (
-              <Button
-                type="link"
-                icon={<DownloadOutlined />}
-                style={{ paddingInline: 0, fontWeight: 600, height: 'auto' }}
-                onClick={(event) => {
-                  event.stopPropagation();
-                  window.open(downloadUrl, '_blank', 'noopener,noreferrer');
-                }}
-              >
-                下载结果
-              </Button>
-            ) : null}
-          </Space>
-        );
-      },
     },
   ];
 
@@ -1430,92 +1408,6 @@ const ExecutionListPage: React.FC = () => {
 
   return (
     <div style={{ padding: 24 }}>
-      {/* Filters */}
-      <Card
-        style={{
-          marginBottom: 16,
-          borderRadius: 16,
-          border: '1px solid var(--bg-secondary)',
-          boxShadow: 'var(--shadow-md)',
-        }}
-        styles={{ body: { padding: 20 } }}
-      >
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'stretch',
-              justifyContent: 'space-between',
-              gap: 16,
-              flexWrap: 'wrap',
-            }}
-          >
-            <Space wrap size={12} style={{ flex: 1 }}>
-              <Input
-                className="execution-search-input"
-                size="large"
-                placeholder="搜索执行单 ID、技能、执行人、状态或输入内容"
-                prefix={<SearchOutlined />}
-                variant="borderless"
-                style={{
-                  width: 360,
-                  height: 44,
-                  background: 'var(--bg-secondary)',
-                  borderRadius: 12,
-                }}
-                value={searchText}
-                onChange={(e) => setSearchText(e.target.value)}
-                allowClear
-              />
-              <Select
-                className="execution-status-filter"
-                size="large"
-                placeholder="全部状态"
-                variant="borderless"
-                style={{
-                  width: 180,
-                }}
-                allowClear
-                value={statusFilter}
-                onChange={setStatusFilter}
-              >
-                {EXECUTION_STATUS_OPTIONS_ZH.map((option) => (
-                  <Select.Option key={option.value} value={option.value}>
-                    {option.label}
-                  </Select.Option>
-                ))}
-              </Select>
-            </Space>
-
-            <Space size={10} wrap style={{ justifyContent: 'flex-end' }}>
-              {[
-                { label: '总记录', value: executionOverviewStats.total, color: 'var(--text-primary)' },
-                { label: '执行中', value: executionOverviewStats.running, color: 'var(--info-color)' },
-                { label: '待处理', value: executionOverviewStats.waiting, color: 'var(--warning-color)' },
-                { label: '已结束', value: executionOverviewStats.finished, color: 'var(--success-color)' },
-              ].map((item) => (
-                <Card
-                  key={item.label}
-                  size="small"
-                  style={{
-                    minWidth: 100,
-                    minHeight: 44,
-                    borderRadius: 14,
-                    border: '1px solid var(--bg-secondary)',
-                    background: 'var(--bg-card)',
-                    boxShadow: 'var(--shadow-sm)',
-                  }}
-                  styles={{ body: { padding: '8px 12px', textAlign: 'center' } }}
-                >
-                  <Space direction="vertical" size={1} style={{ width: '100%' }}>
-                    <Text type="secondary" style={{ fontSize: 12 }}>{item.label}</Text>
-                    <Text style={{ fontSize: 20, fontWeight: 700, color: item.color, display: 'block', lineHeight: 1.1 }}>{item.value}</Text>
-                  </Space>
-                </Card>
-              ))}
-            </Space>
-          </div>
-      </Card>
-
       {/* Table */}
       <Card
         style={{
@@ -1526,17 +1418,59 @@ const ExecutionListPage: React.FC = () => {
         styles={{ body: { padding: 12 } }}
       >
         <ListSectionHeader
-          title="执行记录列表"
+          title={(
+            <Space size={16}>
+              <Text strong style={{ fontSize: 16 }}>执行记录列表</Text>
+              <Input
+                className="execution-search-input"
+                size="small"
+                placeholder="内容过滤"
+                prefix={<SearchOutlined />}
+                variant="borderless"
+                style={{
+                  width: 200,
+                  background: 'var(--bg-secondary)',
+                  borderRadius: 6,
+                  fontSize: 12,
+                }}
+                value={searchText}
+                onChange={(e) => setSearchText(e.target.value)}
+                allowClear
+              />
+              <Select
+                className="execution-status-filter"
+                size="small"
+                placeholder="全部状态"
+                variant="borderless"
+                style={{
+                  width: 110,
+                  background: 'var(--bg-secondary)',
+                  borderRadius: 6,
+                  fontSize: 12,
+                }}
+                allowClear
+                value={statusFilter}
+                onChange={(value) => setStatusFilter(value)}
+                popupMatchSelectWidth={false}
+              >
+                {EXECUTION_STATUS_FILTER_OPTIONS.map((option) => (
+                  <Select.Option key={option.value ?? 'all'} value={option.value}>
+                    {option.label}
+                  </Select.Option>
+                ))}
+              </Select>
+            </Space>
+          )}
           tip={(
             <Tooltip title="按开始时间倒序展示，可点击任一行查看详情">
               <InfoCircleOutlined style={{ color: 'var(--text-secondary)', fontSize: 14 }} />
             </Tooltip>
           )}
           extra={(
-            <Space wrap size={12} style={{ justifyContent: 'flex-end' }}>
-              <Text type="secondary">当前展示 {filteredAndSortedData.length} 条</Text>
+            <Space wrap size={8} style={{ justifyContent: 'flex-end' }}>
+              <Text type="secondary" style={{ fontSize: 13 }}>共 {filteredAndSortedData.length} 条</Text>
               <Button
-                size="large"
+                size="middle"
                 icon={<ReloadOutlined />}
                 onClick={() => refetch()}
                 loading={isFetching}
@@ -1545,7 +1479,7 @@ const ExecutionListPage: React.FC = () => {
                 刷新
               </Button>
               <Button
-                size="large"
+                size="middle"
                 type="primary"
                 icon={<PlusOutlined />}
                 onClick={() => navigate('/executions/new')}
