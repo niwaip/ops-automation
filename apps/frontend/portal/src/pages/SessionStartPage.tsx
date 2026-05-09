@@ -13,6 +13,7 @@ import { useQuery, useMutation } from 'react-query';
 import { templateApi, Template } from '../api/template';
 import { aiApi, RecognizeParamsResponse } from '../api/ai';
 import { sessionApi, workerApi } from '../api/session';
+import { runtimeConfig } from '../config/runtime';
 import { useAuthStore } from '../store/authStore';
 
 const normalizeParamsSchema = (template?: Template) => {
@@ -33,7 +34,7 @@ const { Option } = Select;
 const { Title, Text } = Typography;
 
 // noVNC URL - use environment variable or default
-const NOVNC_URL = import.meta.env.VITE_NOVNC_URL || `http://${import.meta.env.VITE_HOST_IP || 'localhost'}:6080/vnc.html`;
+const NOVNC_URL = runtimeConfig.noVncUrl;
 
 // Action descriptions mapping
 const ACTION_DESCRIPTIONS: Record<string, string> = {

@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import axios from 'axios';
+import { getAuthServiceUrl } from '../../config/service-endpoints';
 import {
   buildRuntimeAdapterRouteKey,
   RuntimeAdapter,
@@ -36,7 +37,7 @@ interface CapabilityRuntimeExecuteResult {
 export class CapabilityRuntimeAdapter implements RuntimeAdapter {
   readonly runtimeType = 'custom' as const;
   readonly routeKeys = [buildRuntimeAdapterRouteKey('custom', 'skill.runtime')] as const;
-  private readonly authServiceUrl = process.env.PLATFORM_SERVICE_URL || 'http://platform:3001';
+  private readonly authServiceUrl = getAuthServiceUrl();
 
   supports(request: RuntimeStepInvokeRequest): boolean {
     return request.capabilityType === 'skill.runtime';

@@ -16,6 +16,7 @@ import {
 } from '@ant-design/icons';
 import { useQuery, useMutation, useQueryClient } from 'react-query';
 import { executionApi, ExecutionDto } from '../api/execution';
+import { runtimeConfig } from '../config/runtime';
 
 const { Title, Text, Paragraph } = Typography;
 
@@ -122,7 +123,7 @@ const TakeoverWorkbenchPage: React.FC = () => {
   // are surfaced through a dedicated execution/runtime query.
   const novncUrl =
     (execution.result?.novncUrl as string | undefined) ||
-    `http://${import.meta.env.VITE_HOST_IP || 'localhost'}:6080/vnc.html`;
+    runtimeConfig.noVncUrl;
 
   return (
     <div style={{ padding: 24 }}>

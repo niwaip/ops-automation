@@ -1,3 +1,9 @@
+import {
+  getAiOrchestratorUrl,
+  getCarboneExternalUrl,
+  getCarboneServiceUrl,
+} from '../../config/service-endpoints';
+
 export const FIXED_DOCUMENT_RENDER_ACTIVITY_FN = 'documentRender';
 export const FIXED_HTTP_REQUEST_ACTIVITY_FN = 'httpRequest';
 export const FIXED_STRUCTURED_TRANSFORM_ACTIVITY_FN = 'structuredTransform';
@@ -28,23 +34,15 @@ async def documentRender(input_data: Dict[str, Any]) -> Dict[str, Any]:
     if not isinstance(render_data, dict):
         raise ApplicationError("data 参数必须是字典类型", non_retryable=True)
 
-    external_base_url = (
-        os.getenv("CARBONE_EXTERNAL_URL")
-        or f"http://{os.getenv('HOST_IP') or os.getenv('EXTERNAL_HOST') or 'localhost'}:3009"
-    ).rstrip("/")
+    external_base_url = (os.getenv("CARBONE_EXTERNAL_URL") or ${JSON.stringify(getCarboneExternalUrl())}).rstrip("/")
 
     candidate_base_urls = []
-    configured_base_url = (
-        os.getenv("CARBONE_SERVICE_URL")
-        or ("http://carbone-engine:3009" if os.getenv("DOCKER_ENV") == "true" or os.getenv("NODE_ENV") == "production" else "http://localhost:3009")
-    )
+    configured_base_url = (os.getenv("CARBONE_SERVICE_URL") or ${JSON.stringify(getCarboneServiceUrl())})
     if configured_base_url:
         candidate_base_urls.append(str(configured_base_url).rstrip("/"))
-    candidate_base_urls.extend([
-        "http://carbone-engine:3009",
-        "http://host.docker.internal:3009",
-        "http://localhost:3009",
-    ])
+    default_base_url = ${JSON.stringify(getCarboneServiceUrl())}
+    if default_base_url:
+        candidate_base_urls.append(str(default_base_url).rstrip("/"))
 
     deduped_base_urls = []
     for candidate in candidate_base_urls:
@@ -511,10 +509,7 @@ async def aiStructuredTransform(input_data: Dict[str, Any]) -> Dict[str, Any]:
     if output_mode not in {"json", "text"}:
         raise ApplicationError(f"不支持的 outputMode: {output_mode}", non_retryable=True)
 
-    ai_orchestrator_url = (
-        os.getenv("AI_ORCHESTRATOR_URL")
-        or ("http://ai-orchestrator:3007" if os.getenv("DOCKER_ENV") == "true" or os.getenv("NODE_ENV") == "production" else "http://localhost:3007")
-    ).rstrip("/")
+    ai_orchestrator_url = (os.getenv("AI_ORCHESTRATOR_URL") or ${JSON.stringify(getAiOrchestratorUrl())}).rstrip("/")
 
     serialized_content = content if isinstance(content, str) else json.dumps(content, ensure_ascii=False)
     serialized_context = ""

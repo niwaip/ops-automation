@@ -1,4 +1,5 @@
 import { Injectable, Logger, OnModuleDestroy } from '@nestjs/common';
+import { getBrowserWorkerUrl } from '../../config/service-endpoints';
 
 export interface TemplateStep {
   step_id: string;
@@ -35,7 +36,7 @@ export interface ExecutionResult {
 @Injectable()
 export class CdpExecutor implements OnModuleDestroy {
   private readonly logger = new Logger(CdpExecutor.name);
-  private readonly browserWorkerUrl = process.env.BROWSER_WORKER_URL || 'http://ops-browser-worker:3004';
+  private readonly browserWorkerUrl = getBrowserWorkerUrl();
 
   async onModuleDestroy() {
     // No persistent browser connection to close
@@ -66,7 +67,7 @@ export class CdpExecutor implements OnModuleDestroy {
   }
 
   /**
-   * Start browser session via codegen API
+   * Start browser session via browser worker backend
    */
   async startBrowser(sessionId: string, url: string): Promise<{ success: boolean; error?: string }> {
     try {
@@ -74,7 +75,7 @@ export class CdpExecutor implements OnModuleDestroy {
       const result = await this.postJson<{ success: boolean; message?: string }>('/browser/init', {
         runtimeSessionId: sessionId,
         initialUrl: url,
-        backend: 'legacy',
+        backend: 'cli',
       });
       return result.success
         ? { success: true }
@@ -98,7 +99,7 @@ export class CdpExecutor implements OnModuleDestroy {
     this.logger.log(`Executing step ${step.step_id}: ${step.action}`);
 
     try {
-      const backend = 'legacy';
+      const backend = 'cli';
       const initResult = await this.postJson<{ success: boolean; message?: string }>('/browser/init', {
         runtimeSessionId: sessionId,
         backend,
@@ -233,7 +234,7 @@ export class CdpExecutor implements OnModuleDestroy {
     steps: TemplateStep[],
     sessionId?: string,
     params: Record<string, unknown> = {},
-    backend: string = 'legacy',
+    backend: string = 'cli',
   ): Promise<ExecutionResult[]> {
     this.logger.log(`Executing ${steps.length} steps for session ${sessionId}`);
     this.logger.debug(`Steps: ${JSON.stringify(steps)}, Params: ${JSON.stringify(params)}`);
@@ -293,7 +294,7 @@ export class CdpExecutor implements OnModuleDestroy {
 
   async captureFinalState(
     sessionId?: string,
-    backend: string = 'legacy',
+    backend: string = 'cli',
   ): Promise<ExecutionResult> {
     try {
       const result = await this.postJson<{
@@ -359,13 +360,13 @@ export class CdpExecutor implements OnModuleDestroy {
   }
 
   /**
-   * Close browser connection (stop codegen)
+   * Close browser connection
    */
   async closeBrowser(sessionId?: string): Promise<void> {
     try {
       const result = await this.postJson<{ success: boolean }>('/browser/reset', {
         runtimeSessionId: sessionId,
-        backend: 'legacy',
+        backend: 'cli',
       });
       this.logger.log(`Browser stopped: ${result.success}`);
     } catch (error) {

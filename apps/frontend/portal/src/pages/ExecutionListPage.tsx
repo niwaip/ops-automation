@@ -5,7 +5,7 @@
  */
 
 import React, { useEffect, useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
   Card,
   Collapse,
@@ -50,6 +50,7 @@ import { capabilityReleaseApi } from '../api/capabilities';
 import { useChatStore } from '../components/chat';
 import { ListSectionHeader } from '../components/page/PageScaffold';
 import { useAuthStore } from '../store/authStore';
+import { replaceLocalhostWithCurrentHost } from '../utils/publicUrl';
 import {
   EXECUTION_STATUS_COLORS,
   EXECUTION_STATUS_LABELS_ZH,
@@ -115,17 +116,7 @@ const formatDuration = (record: ExecutionDto) => {
   return `${seconds}s`;
 };
 
-const fixLocalhostLink = (url?: string): string | undefined => {
-  if (!url) {
-    return undefined;
-  }
-
-  if (url.includes('localhost') && window.location.hostname !== 'localhost') {
-    return url.replace('localhost', window.location.hostname);
-  }
-
-  return url;
-};
+const fixLocalhostLink = (url?: string): string | undefined => replaceLocalhostWithCurrentHost(url);
 
 const tryParseJsonValue = (value: unknown): unknown => {
   if (typeof value !== 'string') {
@@ -971,6 +962,7 @@ const buildAiResumeDraft = (
 
 const ExecutionListPage: React.FC = () => {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const queryClient = useQueryClient();
   const [resumeForm] = Form.useForm();
   const {
@@ -986,9 +978,16 @@ const ExecutionListPage: React.FC = () => {
   const [pageSize, setPageSize] = useState(10);
   const [statusFilter, setStatusFilter] = useState<ExecutionStatus | undefined>();
   const [searchText, setSearchText] = useState('');
-  const [selectedExecutionId, setSelectedExecutionId] = useState<string>();
+  const [selectedExecutionId, setSelectedExecutionId] = useState<string | undefined>(
+    searchParams.get('executionId') || undefined,
+  );
   const { theme } = useAuthStore();
   const isDarkTheme = theme === 'dark';
+
+  useEffect(() => {
+    const executionId = searchParams.get('executionId') || undefined;
+    setSelectedExecutionId(executionId);
+  }, [searchParams]);
 
   // Fetch executions
   const { data, isLoading, isFetching, refetch } = useQuery(
@@ -1406,6 +1405,16 @@ const ExecutionListPage: React.FC = () => {
       ]
     : [];
 
+  const updateExecutionSelection = (executionId?: string) => {
+    const nextSearchParams = new URLSearchParams(searchParams);
+    if (executionId) {
+      nextSearchParams.set('executionId', executionId);
+    } else {
+      nextSearchParams.delete('executionId');
+    }
+    setSearchParams(nextSearchParams, { replace: true });
+  };
+
   return (
     <div style={{ padding: 24 }}>
       {/* Table */}
@@ -1519,7 +1528,7 @@ const ExecutionListPage: React.FC = () => {
               transition: 'background 0.2s ease',
               ...getExecutionRowStyle(record.status, isDarkTheme),
             },
-            onClick: () => setSelectedExecutionId(record.id),
+            onClick: () => updateExecutionSelection(record.id),
           })}
         />
       </Card>
@@ -1529,7 +1538,7 @@ const ExecutionListPage: React.FC = () => {
         placement="right"
         width={720}
         open={!!selectedExecutionId}
-        onClose={() => setSelectedExecutionId(undefined)}
+        onClose={() => updateExecutionSelection(undefined)}
         styles={{ body: { background: 'var(--bg-primary)' } }}
       >
         {isDetailLoading ? (

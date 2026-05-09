@@ -1,5 +1,6 @@
 import { Injectable, Logger, OnModuleInit, OnModuleDestroy } from '@nestjs/common';
 import { Pool, PoolClient, QueryResult, QueryResultRow } from 'pg';
+import { getDatabaseUrl } from '../../config/service-endpoints';
 
 /**
  * Database Service
@@ -11,7 +12,7 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
   private pool: Pool | null = null;
 
   async onModuleInit() {
-    const databaseUrl = process.env.DATABASE_URL ?? 'postgresql://ops:ops_secret@localhost:5432/ops';
+    const databaseUrl = getDatabaseUrl();
     this.logger.log(`Connecting to database: ${databaseUrl}`);
 
     this.pool = new Pool({

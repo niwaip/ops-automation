@@ -6,21 +6,11 @@
 import { Injectable } from '@nestjs/common';
 import axios from 'axios';
 import { ControlPlaneClient } from '../../../client/control-plane.client';
+import { getBrowserWorkerUrl } from '../../../config/service-endpoints';
 import { BaseTool } from './base.tool';
 import { ToolResult, ExecutionContext } from '../interfaces';
 import { TRACE_ID_HEADER } from '../../../common/trace.util';
 import { Tool } from '../decorators/tool.decorator';
-
-// Browser Worker service URL
-const getBrowserWorkerUrl = () => {
-  if (process.env.BROWSER_WORKER_URL) {
-    return process.env.BROWSER_WORKER_URL;
-  }
-  if (process.env.DOCKER_ENV === 'true' || process.env.NODE_ENV === 'production') {
-    return 'http://ops-browser-worker:3004';
-  }
-  return 'http://localhost:3004';
-};
 
 interface ExecuteStepDto {
   executionId: string;

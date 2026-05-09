@@ -1,4 +1,4 @@
-export type BrowserExecutionBackend = 'legacy' | 'cli' | 'chrome-devtools' | 'mcp';
+export type BrowserExecutionBackend = 'cli' | 'chrome-devtools' | 'mcp';
 
 export interface BrowserSessionPreferences {
   mode?: 'interactive' | 'agent';

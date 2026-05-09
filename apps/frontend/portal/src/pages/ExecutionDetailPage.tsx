@@ -28,6 +28,7 @@ import { executionApi, ExecutionDto, ExecutionStepDto } from '../api/execution';
 import { skillApi } from '../api/skill';
 import { capabilityReleaseApi } from '../api/capabilities';
 import { useAuthStore } from '../store/authStore';
+import { replaceLocalhostWithCurrentHost } from '../utils/publicUrl';
 import {
   EXECUTION_ACTIVE_POLLING_STATUSES,
   EXECUTION_STATUS_COLORS,
@@ -75,14 +76,7 @@ interface TimelineNodeCardProps {
 
 const statusColors = EXECUTION_STATUS_COLORS;
 
-const fixLocalhostLink = (url?: string): string | undefined => {
-  if (!url) return undefined;
-  // 如果链接包含 localhost，且当前页面不在 localhost，则尝试替换为当前主机的 IP/域名
-  if (url.includes('localhost') && window.location.hostname !== 'localhost') {
-    return url.replace('localhost', window.location.hostname);
-  }
-  return url;
-};
+const fixLocalhostLink = (url?: string): string | undefined => replaceLocalhostWithCurrentHost(url);
 
 const tryParseJsonValue = (value: unknown): unknown => {
   if (typeof value !== 'string') {

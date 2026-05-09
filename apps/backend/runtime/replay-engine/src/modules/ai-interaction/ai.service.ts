@@ -3,6 +3,7 @@ import {
   DecideFailureRequest,
   DecideFailureResponse,
 } from '../../interfaces';
+import { getAiOrchestratorUrl } from '../../config/service-endpoints';
 
 interface DeciderResponse {
   decision: 'takeover' | 'retry' | 'skip';
@@ -25,7 +26,7 @@ export class AiService {
   private decisionTimeoutMs: number = 5000; // 5 seconds timeout for decisions
 
   constructor() {
-    this.aiOrchestratorUrl = process.env.AI_ORCHESTRATOR_URL ?? 'http://localhost:3003';
+    this.aiOrchestratorUrl = getAiOrchestratorUrl();
   }
 
   /**

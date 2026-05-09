@@ -1,4 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { getAuthServiceUrl } from '../../config/service-endpoints';
 import {
   AvailableSkillDefinition,
   CapabilitySnapshot,
@@ -22,15 +23,9 @@ type RuntimeToolPolicy = {
 export class CapabilityResolver {
   private readonly logger = new Logger(CapabilityResolver.name);
   private readonly snapshotTtlMs = Number(process.env.REACT_CAPABILITY_SNAPSHOT_TTL_MS || 300_000);
+  private readonly authServiceUrl = getAuthServiceUrl();
 
   constructor(private readonly toolExecutor: ToolExecutor) {}
-
-  private getAuthServiceUrl(): string {
-    return process.env.AUTH_SERVICE_URL
-      || (process.env.DOCKER_ENV === 'true' || process.env.NODE_ENV === 'production'
-        ? (process.env.PLATFORM_SERVICE_URL || 'http://platform:3001')
-        : 'http://localhost:3001');
-  }
 
   async resolve(
     request: ChatRequestDTO,
@@ -144,7 +139,7 @@ export class CapabilityResolver {
     }
 
     try {
-      const response = await fetch(`${this.getAuthServiceUrl()}/skills`, {
+      const response = await fetch(`${this.authServiceUrl}/skills`, {
         headers: {
           ...(context.authToken ? { Authorization: context.authToken } : {}),
           ...(context.traceId ? { 'x-trace-id': context.traceId } : {}),
@@ -261,7 +256,7 @@ export class CapabilityResolver {
     }
 
     try {
-      const response = await fetch(`${this.getAuthServiceUrl()}/capabilities/runtime/skills/${selectedSkillId}/context`, {
+      const response = await fetch(`${this.authServiceUrl}/capabilities/runtime/skills/${selectedSkillId}/context`, {
         headers: {
           ...(context.authToken ? { Authorization: context.authToken } : {}),
           ...(context.traceId ? { 'x-trace-id': context.traceId } : {}),

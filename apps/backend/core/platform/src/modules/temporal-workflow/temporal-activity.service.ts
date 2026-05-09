@@ -11,6 +11,12 @@ import {
   BuiltinActivityDefinition,
   BuiltinActivityRegistry,
 } from './builtin-activity.registry';
+import {
+  getAiOrchestratorUrl,
+  getCarboneExternalUrl,
+  getCarboneServiceUrl,
+  getWorkflowValidationAgentUrl,
+} from '../../config/service-endpoints';
 
 const exec = promisify(require('child_process').exec);
 
@@ -71,13 +77,6 @@ const asRecord = (value: unknown): Record<string, any> | undefined => {
     return undefined;
   }
   return value as Record<string, any>;
-};
-
-const getCarboneExternalUrl = () => {
-  if (process.env.CARBONE_EXTERNAL_URL) {
-    return process.env.CARBONE_EXTERNAL_URL.replace(/\/$/, '');
-  }
-  return `http://${process.env.HOST_IP || process.env.EXTERNAL_HOST || 'localhost'}:3009`;
 };
 
 const toExternalDownloadUrl = (value?: unknown): string | undefined => {
@@ -158,18 +157,6 @@ const normalizeDocumentExecutionResult = (value: unknown): unknown => {
     ...record,
     downloadUrl,
   };
-};
-
-// AI Orchestrator URL helper
-const getAiOrchestratorUrl = () => {
-  if (process.env.AI_ORCHESTRATOR_URL) {
-    return process.env.AI_ORCHESTRATOR_URL;
-  }
-  if (process.env.DOCKER_ENV === 'true' || process.env.NODE_ENV === 'production') {
-    return 'http://ai-orchestrator:3007';
-  }
-  const externalHost = process.env.EXTERNAL_HOST || 'localhost';
-  return `http://${externalHost}:3007`;
 };
 
 @Injectable()
@@ -360,9 +347,9 @@ export class ActivityService {
       '8. 【幂等】：尽可能确保代码是幂等的。如果返回包含多个字段的结果字典，请确保结果结构清晰。',
       '9. 【环境】：沙箱已 Mock `requests`，请放心使用同步的 `requests.get/post`，无需使用 aiohttp。',
       '10. 【Carbone 渲染】：如果步骤涉及 Carbone 渲染（type=carbone），必须调用 Carbone API。',
-      '    - 内部 API 地址：`http://carbone-engine:3009/studio/render` (Docker 环境) 或 `http://localhost:3009/studio/render` (本地)。优先尝试 `carbone-engine`。',
+      `    - 内部 API 地址：\`${getCarboneServiceUrl()}/studio/render\`。`,
       '    - 拼接规则：必须使用环境变量 `CARBONE_EXTERNAL_URL` 作为前缀。',
-      `    - 注意：如果 ` + '`CARBONE_EXTERNAL_URL`' + ` 未设置，默认使用 http://${process.env.HOST_IP || 'localhost'}:3009。`,
+      `    - 注意：如果 ` + '`CARBONE_EXTERNAL_URL`' + ` 未设置，默认使用 ${getCarboneExternalUrl()}。`,
       '    - 最终返回结果必须包含 `downloadUrl` 字段。',
       '',
     );
@@ -658,25 +645,8 @@ export class ActivityService {
   /**
    * Get sandbox agent URL from environment
    */
-  private getSandboxAgentUrl(): string | null {
-    // Check for sandbox agent URL in environment
-    if (process.env.SANDBOX_AGENT_URL) {
-      return process.env.SANDBOX_AGENT_URL;
-    }
-    if (process.env.TEMPORAL_SANDBOX_AGENT_URL) {
-      return process.env.TEMPORAL_SANDBOX_AGENT_URL;
-    }
-    // In Docker, use the container name
-    if (
-      process.env.DOCKER_ENV === 'true' ||
-      process.env.NODE_ENV === 'production' ||
-      existsSync('/.dockerenv')
-    ) {
-      return 'http://temporal-sandbox-agent:8090';
-    }
-    // Local development - try localhost
-    const externalHost = process.env.EXTERNAL_HOST || 'localhost';
-    return `http://${externalHost}:8090`;
+  private getSandboxAgentUrl(): string {
+    return getWorkflowValidationAgentUrl();
   }
 
   private getActivityValidationAgentUrl(): string | null {

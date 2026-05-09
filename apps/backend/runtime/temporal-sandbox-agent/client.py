@@ -36,7 +36,10 @@ class TemporalSandboxClient:
         if self._client:
             return
 
-        temporal_address = os.getenv("TEMPORAL_ADDRESS", "localhost:7233")
+        temporal_address = os.getenv("TEMPORAL_ADDRESS")
+        if not temporal_address:
+            docker_env = os.getenv("DOCKER_ENV") == "true" or os.getenv("NODE_ENV") == "production"
+            temporal_address = "temporal:7233" if docker_env else "localhost:7233"
         temporal_namespace = os.getenv("TEMPORAL_NAMESPACE", "default")
 
         logger.info(f"Connecting to Temporal at {temporal_address}...")

@@ -12,6 +12,7 @@ import {
   StepResult,
   Locator,
 } from '../../interfaces';
+import { getBrowserTemplateServiceUrl } from '../../config/service-endpoints';
 
 /**
  * Default step timeout in milliseconds
@@ -408,7 +409,7 @@ export class ExecutorService {
       return this.templateCache.get(templateId)!;
     }
 
-    const templateServiceUrl = process.env.TEMPLATE_SERVICE_URL ?? 'http://localhost:3002';
+    const templateServiceUrl = getBrowserTemplateServiceUrl();
     try {
       const response = await fetch(`${templateServiceUrl}/templates/${templateId}`);
       if (!response.ok) {

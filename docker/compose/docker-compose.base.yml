@@ -114,19 +114,20 @@ services:
     command: sh -c "npm config set registry https://registry.npmmirror.com && npm install --legacy-peer-deps && npx prisma generate && npm run dev"
     environment:
       <<: *common-env
+      DOCKER_ENV: true
       PORT: ${CONTROL_PLANE_PORT:-3003}
       JWT_SECRET: jwt_secret_key_change_in_production
       INTERNAL_API_SHARED_SECRET: ${INTERNAL_API_SHARED_SECRET:-ops_internal_shared_secret_change_me}
+      AUTH_SERVICE_URL: http://${PLATFORM_SERVICE_HOST:-platform}:${PLATFORM_PORT:-3001}
       AI_ORCHESTRATOR_URL: http://${AI_ORCHESTRATOR_HOST:-ai-orchestrator}:${AI_ORCHESTRATOR_PORT:-3007}
       SESSION_BROKER_URL: http://${SESSION_BROKER_HOST:-session-broker}:${SESSION_BROKER_PORT:-3002}
       PROXY_TIMEOUT_DEFAULT_MS: ${PROXY_TIMEOUT_DEFAULT_MS:-60000}
       PROXY_TIMEOUT_PLATFORM_MS: ${PROXY_TIMEOUT_PLATFORM_MS:-60000}
       PROXY_TIMEOUT_AUTH_MS: ${PROXY_TIMEOUT_AUTH_MS:-60000}
-      PROXY_TIMEOUT_TEMPLATE_MS: ${PROXY_TIMEOUT_TEMPLATE_MS:-60000}
+      PROXY_TIMEOUT_BROWSER_TEMPLATE_MS: ${PROXY_TIMEOUT_BROWSER_TEMPLATE_MS:-60000}
       PROXY_TIMEOUT_SESSION_MS: ${PROXY_TIMEOUT_SESSION_MS:-60000}
       PROXY_TIMEOUT_AI_MS: ${PROXY_TIMEOUT_AI_MS:-60000}
       PROXY_TIMEOUT_WORKER_MS: ${PROXY_TIMEOUT_WORKER_MS:-60000}
-      PROXY_TIMEOUT_REPLAY_MS: ${PROXY_TIMEOUT_REPLAY_MS:-60000}
     ports:
       - "${CONTROL_PLANE_PORT:-3003}:${CONTROL_PLANE_PORT:-3003}"
     volumes:
@@ -175,9 +176,10 @@ services:
     depends_on:
       - browser-chrome
 
-  template:
+  browser-template:
     <<: *common-node-service
-    container_name: ops-template
+    container_name: ops-browser-template
+    command: sh -c "npm config set registry https://registry.npmmirror.com && npm install --legacy-peer-deps --include=dev && npm run dev"
     environment:
       <<: *common-env
       DB_HOST: postgres
@@ -185,31 +187,14 @@ services:
       DB_USERNAME: ${POSTGRES_USER:-ops}
       DB_PASSWORD: ${POSTGRES_PASSWORD:-ops_secret}
       DB_DATABASE: ${POSTGRES_DB:-ops}
-      PORT: ${TEMPLATE_PORT:-3005}
+      PORT: ${BROWSER_TEMPLATE_PORT:-3005}
     ports:
-      - "${TEMPLATE_PORT:-3005}:${TEMPLATE_PORT:-3005}"
+      - "${BROWSER_TEMPLATE_PORT:-3005}:${BROWSER_TEMPLATE_PORT:-3005}"
     volumes:
-      - ${PROJECT_ROOT:-..}/apps/backend/domain/template:/app
-      - template_node_modules:/app/node_modules
+      - ${PROJECT_ROOT:-..}/apps/backend/domain/browser-template:/app
+      - browser_template_node_modules:/app/node_modules
     depends_on:
       postgres:
-        condition: service_healthy
-
-  replay-engine:
-    <<: *common-node-service
-    container_name: ops-replay-engine
-    environment:
-      <<: *common-env
-      PORT: ${REPLAY_ENGINE_PORT:-3006}
-    ports:
-      - "${REPLAY_ENGINE_PORT:-3006}:${REPLAY_ENGINE_PORT:-3006}"
-    volumes:
-      - ${PROJECT_ROOT:-..}/apps/backend/runtime/replay-engine:/app
-      - replay_engine_node_modules:/app/node_modules
-    depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
         condition: service_healthy
 
   ai-orchestrator:
@@ -290,7 +275,7 @@ services:
     depends_on:
       - platform
       - browser-worker
-      - template
+      - browser-template
 
   # ============================================
   # Browser Chrome (noVNC + CDP + Codegen)
@@ -329,8 +314,7 @@ volumes:
   session_broker_node_modules:
   control_plane_node_modules:
   browser_worker_node_modules:
-  template_node_modules:
-  replay_engine_node_modules:
+  browser_template_node_modules:
   ai_orchestrator_node_modules:
   ai_orchestrator_data:
   portal_node_modules:

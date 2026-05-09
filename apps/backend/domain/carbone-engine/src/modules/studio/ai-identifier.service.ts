@@ -14,6 +14,7 @@ import * as path from 'path';
 import JSZip from 'jszip';
 import axios from 'axios';
 import { DocumentElement, DocumentStructure, PreserveMarker } from './document-structure.service';
+import { getAiOrchestratorUrl } from '../../config/service-endpoints';
 
 type AiModelDescriptor = {
   id: string;
@@ -294,7 +295,7 @@ export class AIIdentifierService {
   private readonly aiOrchestratorUrl: string;
 
   constructor() {
-    this.aiOrchestratorUrl = process.env.AI_ORCHESTRATOR_URL || 'http://localhost:3007';
+    this.aiOrchestratorUrl = getAiOrchestratorUrl();
   }
 
   /**
@@ -2070,7 +2071,7 @@ ${blankList}
    * 如果JSON解析失败，自动重试最多3次，每次调整提示词强调JSON格式
    */
   private async callAIService(prompt: string, retryCount: number = 0): Promise<any> {
-    const aiOrchestratorUrl = process.env.AI_ORCHESTRATOR_URL || 'http://localhost:3007';
+    const aiOrchestratorUrl = getAiOrchestratorUrl();
     const aiModelId = process.env.AI_MODEL_ID || 'default';  // 默认使用系统默认模型
     const maxRetries = 3;
 
@@ -2421,7 +2422,7 @@ ${description}
 4. 只返回JSON对象，不要解释文字，不要markdown代码块`;
 
     // 直接调用AI服务
-    const aiOrchestratorUrl = process.env.AI_ORCHESTRATOR_URL || 'http://localhost:3007';
+    const aiOrchestratorUrl = getAiOrchestratorUrl();
     const aiModelId = process.env.AI_MODEL_ID || '00ddd35d-6578-4acb-bc09-d629560f6ab6';
 
     this.logger.log(`Calling AI service for parameter generation at ${aiOrchestratorUrl}/ai/models/${aiModelId}/test`);
@@ -4684,7 +4685,7 @@ ${elementSummary}
     templateConfig: any,
     testData: any
   ): Promise<{ report: string }> {
-    const aiUrl = process.env.AI_ORCHESTRATOR_URL || 'http://localhost:3007';
+    const aiUrl = getAiOrchestratorUrl();
 
     // 构建AI请求
     const systemPrompt = `你是一个文档模版验证助手。用户会提供一个模版配置和验证需求，你需要根据这些信息生成一份示例报告内容。

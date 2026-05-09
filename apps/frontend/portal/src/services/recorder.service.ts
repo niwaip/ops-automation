@@ -3,6 +3,7 @@
  */
 
 import { io, Socket } from 'socket.io-client';
+import { runtimeConfig } from '../config/runtime';
 
 export type RecorderStatus = 'idle' | 'connecting' | 'recording' | 'paused' | 'stopped' | 'error';
 
@@ -47,7 +48,7 @@ export interface ValidationResult {
   warnings: string[];
 }
 
-const WS_URL = import.meta.env.VITE_RECORDER_WS_URL || `ws://${import.meta.env.VITE_HOST_IP || 'localhost'}:3004`;
+const WS_URL = runtimeConfig.recorderWsUrl;
 const WS_PATH = '/recorder';
 
 class RecorderService {

@@ -5,6 +5,7 @@
 
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
+import { getAiOrchestratorUrl } from '../../config/service-endpoints';
 import {
   CreateExecutionFlowTemplateDTO,
   UpdateExecutionFlowTemplateDTO,
@@ -460,7 +461,7 @@ export class ExecutionFlowTemplateService implements OnModuleInit {
 
     // 2. AI 驱动的深度逻辑审计
     try {
-      const orchestratorUrl = aiServiceUrl || process.env.AI_ORCHESTRATOR_URL || 'http://ai-orchestrator:3007';
+      const orchestratorUrl = aiServiceUrl || getAiOrchestratorUrl();
       
       const auditPrompt = `你是一个高级系统架构师和 AI Agent 专家。请审计以下“执行流程模板 (Execution Flow Template)”，并验证它作为一个“宏工具”时，是否只封装了一个清晰、原子、可确定执行的能力。
 
@@ -569,7 +570,7 @@ ${template.paramsSchema ? `参数定义: ${JSON.stringify(template.paramsSchema,
     // 2.5 真实执行测试（可选）- 通过 ReAct 引擎以“Skill 整体能力”进行验证
     if (enableExecutionTest) {
       try {
-        const orchestratorUrl = aiServiceUrl || process.env.AI_ORCHESTRATOR_URL || 'http://ai-orchestrator:3007';
+        const orchestratorUrl = aiServiceUrl || getAiOrchestratorUrl();
 
         this.logger.log(`Starting skill-based execution test for template ${id}`);
 

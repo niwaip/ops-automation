@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import axios from 'axios';
+import { getBrowserWorkerUrl } from '../../config/service-endpoints';
 import {
   buildRuntimeAdapterRouteKey,
   RuntimeAdapter,
@@ -36,8 +37,7 @@ interface BrowserSessionPreferencesPayload {
 export class BrowserRuntimeAdapter implements RuntimeAdapter {
   readonly runtimeType = 'browser' as const;
   readonly routeKeys = [buildRuntimeAdapterRouteKey('browser', 'browser.step')] as const;
-  private readonly browserWorkerUrl =
-    process.env.BROWSER_WORKER_URL || 'http://ops-browser-worker:3004';
+  private readonly browserWorkerUrl = getBrowserWorkerUrl();
 
   supports(request: RuntimeStepInvokeRequest): boolean {
     return request.runtimeType === 'browser' && request.capabilityType === 'browser.step';

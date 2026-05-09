@@ -17,19 +17,19 @@ export const SERVICE_CONFIG = {
     port: parseInt(process.env.SESSION_BROKER_PORT || '3002', 10),
     baseUrl: () => `http://${SERVICE_CONFIG.SESSION_BROKER.host}:${SERVICE_CONFIG.SESSION_BROKER.port}`,
   },
-  TEMPLATE: {
-    host: process.env.TEMPLATE_HOST || 'localhost',
-    port: parseInt(process.env.TEMPLATE_PORT || '3004', 10),
-    baseUrl: () => `http://${SERVICE_CONFIG.TEMPLATE.host}:${SERVICE_CONFIG.TEMPLATE.port}`,
+  BROWSER_TEMPLATE: {
+    host: process.env.BROWSER_TEMPLATE_HOST || 'localhost',
+    port: parseInt(process.env.BROWSER_TEMPLATE_PORT || '3005', 10),
+    baseUrl: () => `http://${SERVICE_CONFIG.BROWSER_TEMPLATE.host}:${SERVICE_CONFIG.BROWSER_TEMPLATE.port}`,
   },
   AI_ORCHESTRATOR: {
     host: process.env.AI_ORCHESTRATOR_HOST || 'localhost',
-    port: parseInt(process.env.AI_ORCHESTRATOR_PORT || '3000', 10),
+    port: parseInt(process.env.AI_ORCHESTRATOR_PORT || '3007', 10),
     baseUrl: () => `http://${SERVICE_CONFIG.AI_ORCHESTRATOR.host}:${SERVICE_CONFIG.AI_ORCHESTRATOR.port}`,
   },
   REPLAY_ENGINE: {
     host: process.env.REPLAY_ENGINE_HOST || 'localhost',
-    port: parseInt(process.env.REPLAY_ENGINE_PORT || '3005', 10),
+    port: parseInt(process.env.REPLAY_ENGINE_PORT || '3006', 10),
     baseUrl: () => `http://${SERVICE_CONFIG.REPLAY_ENGINE.host}:${SERVICE_CONFIG.REPLAY_ENGINE.port}`,
   },
 };

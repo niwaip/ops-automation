@@ -22,6 +22,7 @@ import {
 import { useTranslation } from 'react-i18next';
 import { useAuthStore } from '../store/authStore';
 import { ChatWidget } from '../components/chat';
+import ExecutionNotificationCenter from '../components/notifications/ExecutionNotificationCenter';
 
 const { Header, Sider, Content } = Layout;
 
@@ -342,6 +343,8 @@ const MainLayout: React.FC = () => {
             >
               {theme === 'light' ? '深色' : '浅色'}
             </Button>
+
+            <ExecutionNotificationCenter />
 
             <Dropdown menu={languageMenu} placement="bottomRight" trigger={['click']}>
               <Button

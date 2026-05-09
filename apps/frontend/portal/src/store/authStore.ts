@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import i18n from '../i18n';
 import type { UserDto } from '../api/auth';
+import { useNotificationStore } from './notificationStore';
 
 type Language = 'zh-CN' | 'en-US' | 'ja-JP';
 type ThemeMode = 'light' | 'dark';
@@ -59,11 +60,14 @@ export const useAuthStore = create<AuthState & AuthActions>()(
         }),
 
       logout: () =>
-        set({
-          accessToken: null,
-          refreshToken: null,
-          user: null,
-          isAuthenticated: false,
+        set(() => {
+          useNotificationStore.getState().reset();
+          return {
+            accessToken: null,
+            refreshToken: null,
+            user: null,
+            isAuthenticated: false,
+          };
         }),
 
       setLanguage: (language) => {

@@ -2,6 +2,7 @@ import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { AppModule } from './app.module';
+import { getReplayEnginePort, getReplayEnginePublicBaseUrl } from './config/service-endpoints';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -24,11 +25,12 @@ async function bootstrap() {
   const document = SwaggerModule.createDocument(app, config);
   SwaggerModule.setup('api', app, document);
 
-  const port = process.env.PORT || 3004;
+  const port = getReplayEnginePort();
   await app.listen(port);
 
+  const publicBaseUrl = getReplayEnginePublicBaseUrl();
   console.log(`🚀 Replay Engine service running on port ${port}`);
-  console.log(`📚 API documentation available at http://localhost:${port}/api`);
+  console.log(`📚 API documentation available at ${publicBaseUrl}/api`);
 }
 
 bootstrap();

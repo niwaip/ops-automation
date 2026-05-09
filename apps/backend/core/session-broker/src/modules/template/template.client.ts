@@ -1,4 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { getBrowserTemplateServiceUrl } from '../../config/service-endpoints';
 
 export interface TemplateStep {
   step_id: string;
@@ -31,8 +32,7 @@ export interface Template {
 @Injectable()
 export class TemplateClient {
   private readonly logger = new Logger(TemplateClient.name);
-  // Always use Docker service name (session-broker runs in Docker)
-  private readonly templateServiceUrl = process.env.TEMPLATE_SERVICE_URL || 'http://ops-template:3005';
+  private readonly templateServiceUrl = getBrowserTemplateServiceUrl();
 
   async getTemplate(templateId: string): Promise<Template | null> {
     try {

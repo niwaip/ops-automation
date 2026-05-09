@@ -2,6 +2,7 @@ import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { AppModule } from './app.module';
+import { getPublicHost } from './config/service-endpoints';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -36,11 +37,14 @@ async function bootstrap() {
   // API prefix
   app.setGlobalPrefix('api');
 
-  const port = process.env.PORT || process.env.CONTROL_PLANE_PORT || 3000;
+  const port = process.env.PORT || process.env.CONTROL_PLANE_PORT || 3003;
   await app.listen(port);
 
+  const publicHost = getPublicHost();
+  const publicBaseUrl = `http://${publicHost}:${port}`;
+
   console.log(`[control-plane] API Gateway running on port ${port}`);
-  console.log(`[control-plane] Swagger docs available at http://localhost:${port}/api/docs`);
+  console.log(`[control-plane] Swagger docs available at ${publicBaseUrl}/api/docs`);
 }
 
 bootstrap();

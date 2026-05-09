@@ -52,7 +52,7 @@
 - `ai-orchestrator`
 - `session-broker`
 - `browser-worker`
-- `template`
+- `browser-template` (formerly `template`)
 - `control-plane`
 - `report`
 - `carbone-engine`
@@ -143,7 +143,7 @@
 - 提供标准化 browser capability，而不是混合很多演示型接口
 - 明确 profile、snapshot、step log、freeze、health 的正式协议
 
-### 4.5 `template`
+### 4.5 `browser-template` (formerly `template`)
 
 当前职责：
 

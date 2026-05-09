@@ -747,8 +747,7 @@ export const TemplateConfigPanel: React.FC = () => {
             <button
               className="download-btn preview-download"
               onClick={() => {
-                const baseUrl = apiBaseUrl || 'http://localhost:3009';
-                window.open(`${baseUrl}${skillPreviewResult.downloadUrl}`, '_blank');
+                window.open(`${apiBaseUrl}${skillPreviewResult.downloadUrl}`, '_blank');
               }}
             >
               下载预览文档
@@ -760,8 +759,7 @@ export const TemplateConfigPanel: React.FC = () => {
               className="download-btn"
               onClick={() => {
                 const url = localStorage.getItem('lastTemplateDownloadUrl') || '';
-                const baseUrl = apiBaseUrl || 'https://localhost:3443';
-                window.open(`${baseUrl}${url}`, '_blank');
+                window.open(`${apiBaseUrl}${url}`, '_blank');
               }}
             >
               下载模板

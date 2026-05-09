@@ -2,11 +2,24 @@
  * 下载页面路由
  */
 
+import type { IncomingMessage, ServerResponse } from 'node:http';
+import type { ViteDevServer } from 'vite';
+import {
+  DEFAULT_OFFICE_ADDIN_API_BASE_URL,
+  DEFAULT_OFFICE_ADDIN_BASE_URL,
+} from './config/defaults';
+
+type MiddlewareNext = (err?: unknown) => void;
+
 export function downloadPagePlugin() {
   return {
     name: 'download-page',
-    configureServer(server) {
-      server.middlewares.use((req, res, next) => {
+    configureServer(server: ViteDevServer) {
+      server.middlewares.use((
+        req: IncomingMessage & { url?: string },
+        res: ServerResponse,
+        next: MiddlewareNext,
+      ) => {
         const url = req.url || '';
 
         // /taskpane.html -> 让 Vite 处理 index.html
@@ -16,8 +29,8 @@ export function downloadPagePlugin() {
           return;
         }
 
-        // /download -> 返回下载页面（不拦截 /download.html，让Vite处理public目录的文件）
-        if (url === '/download') {
+        // /download 和 /download.html -> 返回动态下载页面
+        if (url === '/download' || url === '/download.html') {
           res.setHeader('Content-Type', 'text/html; charset=utf-8');
           res.end(getDownloadPageHtml());
           return;
@@ -31,6 +44,10 @@ export function downloadPagePlugin() {
 }
 
 function getDownloadPageHtml(): string {
+  const addinBaseUrl = process.env.VITE_ADDIN_BASE_URL || DEFAULT_OFFICE_ADDIN_BASE_URL;
+  const apiBaseUrl = process.env.VITE_API_URL || DEFAULT_OFFICE_ADDIN_API_BASE_URL;
+  const addinHost = safeGetHost(addinBaseUrl);
+
   return `<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
@@ -214,10 +231,10 @@ reg add HKCU\\SOFTWARE\\Microsoft\\Office\\16.0\\Wef /v DevelopmentLocation /t R
 
     <div class="warning">
       <h4>⚠️ 重要提示</h4>
-      <p>服务地址使用 HTTPS 和主机IP <strong>localhost</strong>，请确保：</p>
+      <p>服务地址使用当前配置的 HTTPS 主机 <strong>${escapeHtml(addinHost)}</strong>，请确保：</p>
       <ul>
         <li>CA证书已正确安装到"受信任的根证书颁发机构"</li>
-        <li>Windows主机可以访问 localhost（同一网络）</li>
+        <li>Windows主机可以访问当前配置的服务主机或局域网 IP</li>
         <li>防火墙允许 3000 端口访问</li>
       </ul>
     </div>
@@ -226,9 +243,9 @@ reg add HKCU\\SOFTWARE\\Microsoft\\Office\\16.0\\Wef /v DevelopmentLocation /t R
       <h2>🌐 服务地址</h2>
       <table>
         <tr><th>服务</th><th>地址</th></tr>
-        <tr><td>Add-in 页面</td><td><code>https://localhost:3000/taskpane.html</code></td></tr>
-        <tr><td>Carbone API</td><td><code>http://localhost:3100</code></td></tr>
-        <tr><td>健康检查</td><td><code>https://localhost:3000/health</code></td></tr>
+        <tr><td>Add-in 页面</td><td><code>${addinBaseUrl}/taskpane.html</code></td></tr>
+        <tr><td>Carbone API</td><td><code>${apiBaseUrl}</code></td></tr>
+        <tr><td>健康检查</td><td><code>${addinBaseUrl}/health</code></td></tr>
       </table>
     </div>
 
@@ -242,4 +259,21 @@ reg add HKCU\\SOFTWARE\\Microsoft\\Office\\16.0\\Wef /v DevelopmentLocation /t R
   </div>
 </body>
 </html>`;
+}
+
+function safeGetHost(url: string): string {
+  try {
+    return new URL(url).host;
+  } catch {
+    return url;
+  }
+}
+
+function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
 }

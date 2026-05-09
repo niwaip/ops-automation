@@ -6,6 +6,10 @@
 
 import { Injectable } from '@nestjs/common';
 import axios from 'axios';
+import {
+  getCarboneExternalUrl,
+  getCarboneServiceUrl,
+} from '../../../config/service-endpoints';
 import { BaseTool } from './base.tool';
 import { ToolResult, ExecutionContext } from '../interfaces';
 import { Tool } from '../decorators/tool.decorator';
@@ -17,11 +21,6 @@ type PreviewParamsResponse = {
   generatedData?: Record<string, unknown>;
   skillUsed?: string;
 };
-
-// Carbone引擎服务地址（内部调用）
-const CARBONE_SERVICE_URL = process.env.CARBONE_SERVICE_URL || 'http://carbone-engine:3009';
-// 外部可访问的下载地址（返回给用户）
-const CARBONE_EXTERNAL_URL = process.env.CARBONE_EXTERNAL_URL || 'http://localhost:3009';
 
 @Injectable()
 @Tool({
@@ -109,7 +108,7 @@ export class PreviewParamsTool extends BaseTool {
 
     try {
       // 调用Carbone引擎的preview-with-skill API
-      const response = await axios.post<PreviewParamsResponse>(`${CARBONE_SERVICE_URL}/studio/preview-with-skill`, {
+      const response = await axios.post<PreviewParamsResponse>(`${getCarboneServiceUrl()}/studio/preview-with-skill`, {
         templateId,
         skillId,
         simulatedData: data,
@@ -122,8 +121,8 @@ export class PreviewParamsTool extends BaseTool {
         const downloadUrl = previewResult.downloadUrl;
 
         // 外部可访问的URL
-        const externalPreviewUrl = previewUrl ? `${CARBONE_EXTERNAL_URL}${previewUrl}` : null;
-        const externalDownloadUrl = downloadUrl ? `${CARBONE_EXTERNAL_URL}${downloadUrl}` : null;
+        const externalPreviewUrl = previewUrl ? `${getCarboneExternalUrl()}${previewUrl}` : null;
+        const externalDownloadUrl = downloadUrl ? `${getCarboneExternalUrl()}${downloadUrl}` : null;
 
         return {
           success: true,

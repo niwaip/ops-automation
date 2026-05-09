@@ -3,6 +3,7 @@ import { ValidationPipe } from '@nestjs/common';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { AppModule } from './app.module';
 import { TraceInterceptor } from './common/trace.interceptor';
+import { getPublicHost } from './config/service-endpoints';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -24,9 +25,10 @@ async function bootstrap() {
   const document = SwaggerModule.createDocument(app, config);
   SwaggerModule.setup('api/docs', app, document);
 
-  const port = process.env.PORT || 3000;
+  const port = process.env.PORT || process.env.AI_ORCHESTRATOR_PORT || 3007;
   await app.listen(port);
-  console.log(`AI Orchestrator Service running on port ${port}`);
+  const publicHost = getPublicHost();
+  console.log(`AI Orchestrator Service running on: http://${publicHost}:${port}`);
 }
 
 bootstrap();

@@ -1,11 +1,12 @@
 import { Injectable, Logger } from '@nestjs/common';
 import axios from 'axios';
 import * as fs from 'fs/promises';
+import { getBrowserWorkerUrl } from '../../config/service-endpoints';
 import { BrowserCommand, BrowserCommandService } from './browser-command.service';
 import { ModelService } from '../model/model.service';
 import { RedisService } from '../redis/redis.service';
 
-type RecorderDebugBackend = 'legacy' | 'cli' | 'chrome-devtools' | 'mcp';
+type RecorderDebugBackend = 'cli' | 'chrome-devtools' | 'mcp';
 type RecorderDebugTurnRole = 'user' | 'assistant' | 'system';
 
 interface BrowserExecuteResponse {
@@ -168,16 +169,6 @@ export interface RecorderDebugChatResponse {
   exportArtifacts?: RecorderDebugExportArtifacts;
 }
 
-const getBrowserWorkerUrl = () => {
-  if (process.env.BROWSER_WORKER_URL) {
-    return process.env.BROWSER_WORKER_URL;
-  }
-  if (process.env.DOCKER_ENV === 'true' || process.env.NODE_ENV === 'production') {
-    return 'http://ops-browser-worker:3004';
-  }
-  return 'http://localhost:3004';
-};
-
 @Injectable()
 export class RecorderDebugService {
   private readonly logger = new Logger(RecorderDebugService.name);
@@ -292,9 +283,6 @@ export class RecorderDebugService {
         session.lastObservation = nextObservation;
         session.currentPageUrl = nextObservation.currentPageUrl || session.currentPageUrl;
         session.executedCommands.push(...(execution.executedCommands || parsed.commands));
-        if (execution.success) {
-          void this.refreshObservationAfterExecution(session.sessionId);
-        }
 
         const reply = execution.success
           ? `${parsed.explanation}\n已执行当前页面操作。`
@@ -325,6 +313,9 @@ export class RecorderDebugService {
     session.history = session.history.slice(-this.maxHistory);
     session.updatedAt = new Date().toISOString();
     await this.saveSession(session);
+    if (response.status === 'executed' && response.execution?.success) {
+      void this.refreshObservationAfterExecution(session);
+    }
     return response;
   }
 
@@ -597,20 +588,17 @@ export class RecorderDebugService {
     return undefined;
   }
 
-  private async refreshObservationAfterExecution(sessionId: string): Promise<void> {
-    const session = await this.loadSession(sessionId);
-    if (!session) {
-      return;
-    }
-
+  private async refreshObservationAfterExecution(session: RecorderDebugSession): Promise<void> {
     const refreshedObservation = await this.observePageSafely(
       session,
       session.lastObservation,
     );
-    session.lastObservation = refreshedObservation;
-    session.currentPageUrl = refreshedObservation.currentPageUrl || session.currentPageUrl;
-    session.updatedAt = new Date().toISOString();
-    await this.saveSession(session);
+    const latestSession = await this.loadSession(session.sessionId);
+    const sessionToUpdate = latestSession || session;
+    sessionToUpdate.lastObservation = refreshedObservation;
+    sessionToUpdate.currentPageUrl = refreshedObservation.currentPageUrl || sessionToUpdate.currentPageUrl;
+    sessionToUpdate.updatedAt = new Date().toISOString();
+    await this.saveSession(sessionToUpdate);
   }
 
   private requiresSnapshotBeforeAction(command: BrowserCommand): boolean {

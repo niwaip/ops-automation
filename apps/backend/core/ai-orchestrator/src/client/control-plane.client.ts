@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import axios from 'axios';
 import { Readable } from 'stream';
+import { getControlPlaneApiUrl } from '../config/service-endpoints';
 
 interface ControlPlaneUserContext {
   userId?: string;
@@ -17,15 +18,7 @@ interface ControlPlaneRequestOptions {
 @Injectable()
 export class ControlPlaneClient {
   private getBaseUrl(): string {
-    if (process.env.CONTROL_PLANE_URL) {
-      return process.env.CONTROL_PLANE_URL.endsWith('/api')
-        ? process.env.CONTROL_PLANE_URL
-        : `${process.env.CONTROL_PLANE_URL}/api`;
-    }
-    if (process.env.DOCKER_ENV === 'true' || process.env.NODE_ENV === 'production') {
-      return 'http://control-plane:3003/api';
-    }
-    return 'http://localhost:3003/api';
+    return getControlPlaneApiUrl();
   }
 
   private getInternalServiceSecret(): string | undefined {

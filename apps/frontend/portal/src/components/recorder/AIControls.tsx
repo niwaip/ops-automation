@@ -6,7 +6,6 @@ import {
   RobotOutlined,
   DeleteOutlined,
   CodeOutlined,
-  DesktopOutlined,
   CopyOutlined,
   PlayCircleOutlined,
   CameraOutlined,
@@ -275,7 +274,7 @@ interface AIControlsProps {
   recordedScript?: string;
 }
 
-type ExecutionBackend = 'legacy' | 'cli' | 'chrome-devtools';
+type ExecutionBackend = 'cli' | 'chrome-devtools';
 
 const AIControls: React.FC<AIControlsProps> = ({
   onCommandExecuted,
@@ -312,7 +311,7 @@ const AIControls: React.FC<AIControlsProps> = ({
   const [isReplaceable, setIsReplaceable] = useState(true);
   const [history, setHistory] = useState<CommandHistoryEntry[]>([]);
   const [isBrowserReady, setIsBrowserReady] = useState(false);
-  const [waitDuration, setWaitDuration] = useState(1);
+  const [waitDuration, setWaitDuration] = useState(0.5);
   const [autoAppendScreenshots, setAutoAppendScreenshots] = useState(true);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -338,7 +337,7 @@ const AIControls: React.FC<AIControlsProps> = ({
   const [isAIMode, setIsAIMode] = useState(true);
   const [executionBackend, setExecutionBackend] = useState<ExecutionBackend>('cli');
   const [currentPageUrl, setCurrentPageUrl] = useState<string>();
-  const [isReactChatMode, setIsReactChatMode] = useState(false);
+  const [isReactChatMode, setIsReactChatMode] = useState(true);
   const [recorderDebugSessionId, setRecorderDebugSessionId] = useState<string>();
   const [recorderDebugRuntimeSessionId, setRecorderDebugRuntimeSessionId] = useState<string>();
   const [browserRuntimeSessionId, setBrowserRuntimeSessionId] = useState<string>(createRuntimeSessionId);
@@ -1596,17 +1595,14 @@ const AIControls: React.FC<AIControlsProps> = ({
   // Check if any mutation is loading
   const isLoading = parseCommandMutation.isLoading || executeCommandMutation.isLoading;
   const backendLabels: Record<ExecutionBackend, string> = {
-    legacy: 'Legacy',
     cli: 'Playwright CLI',
     'chrome-devtools': 'Chrome DevTools CLI',
   };
   const backendTagColors: Record<ExecutionBackend, string> = {
-    legacy: 'blue',
     cli: 'purple',
     'chrome-devtools': 'cyan',
   };
   const backendButtonLabels: Record<ExecutionBackend, string> = {
-    legacy: 'Legacy',
     cli: 'PW CLI',
     'chrome-devtools': 'CDT CLI',
   };
@@ -1884,18 +1880,54 @@ const AIControls: React.FC<AIControlsProps> = ({
 
   const isRecording = recorderStatus === 'recording';
   const isPaused = recorderStatus === 'paused';
+  const canSend = Boolean(
+    isReactChatMode
+      ? paramInput.trim()
+      : (predefinedCommands.find(c => c.value === selectedCommand)?.prefix + paramInput.trim()).trim(),
+  );
+  const canExport = Boolean(recorderDebugSessionId && recorderDebugRuntimeSessionId);
+  const actionColumnHeight = 112;
+  const primaryActionButtonStyle = {
+    height: 44,
+    borderRadius: 18,
+    width: 108,
+    paddingInline: 18,
+    border: isDarkTheme ? '1px solid #7c83ff' : '1px solid #4f46e5',
+    color: '#ffffff',
+    fontWeight: 600,
+    background: isDarkTheme ? '#4f46e5' : '#4f46e5',
+    boxShadow: isDarkTheme
+      ? '0 10px 24px rgba(79, 70, 229, 0.4)'
+      : '0 6px 16px rgba(79, 70, 229, 0.24)',
+  } satisfies React.CSSProperties;
+  const secondaryActionButtonStyle = {
+    height: 44,
+    borderRadius: 18,
+    width: 108,
+    paddingInline: 18,
+    border: isDarkTheme ? '1px solid #6366f1' : '1px solid #c7d2fe',
+    background: isDarkTheme ? '#1f2540' : '#eef2ff',
+    color: isDarkTheme ? '#e0e7ff' : '#4338ca',
+    fontWeight: 600,
+    boxShadow: isDarkTheme
+      ? '0 10px 24px rgba(15, 23, 42, 0.32)'
+      : '0 6px 16px rgba(99, 102, 241, 0.12)',
+  } satisfies React.CSSProperties;
+  const mutedActionButtonStyle = {
+    opacity: 0.72,
+    cursor: 'not-allowed',
+  } satisfies React.CSSProperties;
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', gap: 16 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0, gap: 4 }}>
       {/* Header section with controls */}
       <div
         style={{
           display: 'flex',
-          alignItems: 'center',
-          flexWrap: 'wrap',
+          flexDirection: 'column',
+          alignItems: 'stretch',
           gap: 8,
-          justifyContent: 'space-between',
-          padding: '12px 16px',
+          padding: '8px 10px',
           background: isDarkTheme
             ? 'var(--bg-secondary)'
             : 'linear-gradient(135deg, #f0f4ff 0%, #e8f0fe 100%)',
@@ -1903,125 +1935,79 @@ const AIControls: React.FC<AIControlsProps> = ({
           border: isDarkTheme ? '1px solid #334155' : '1px solid rgba(99, 102, 241, 0.1)',
         }}
       >
-        <Space wrap>
-          <Switch
-            checked={isAIMode}
-            onChange={setIsAIMode}
-            checkedChildren={<><RobotOutlined /> AI</>}
-            unCheckedChildren={<><VideoCameraOutlined /> 手动</>}
-          />
-        </Space>
-        <Space wrap>
-          <Radio.Group
-            value={executionBackend}
-            onChange={(e) => {
-              void handleExecutionBackendChange(e.target.value as ExecutionBackend);
-            }}
-            size="small"
-            optionType="button"
-            buttonStyle="solid"
-          >
-            <Radio.Button value="legacy">{backendButtonLabels.legacy}</Radio.Button>
-            <Radio.Button value="cli">{backendButtonLabels.cli}</Radio.Button>
-            <Radio.Button value="chrome-devtools">{backendButtonLabels['chrome-devtools']}</Radio.Button>
-          </Radio.Group>
-          <Button
-            type={isBrowserReady ? 'default' : 'primary'}
-            size="small"
-            icon={<DesktopOutlined />}
-            onClick={() => initBrowserMutation.mutate()}
-            loading={initBrowserMutation.isLoading}
-            title={isBrowserReady
-              ? `重新初始化 ${backendButtonLabels[executionBackend]}`
-              : `初始化 ${backendButtonLabels[executionBackend]}`}
-            style={{ borderRadius: 8 }}
-          >
-            初始化
-          </Button>
-          {isAIMode && (
-            <Space size="small">
-              <Switch checked={isReactChatMode} onChange={setIsReactChatMode} />
-              <Text style={{ fontSize: 12 }}>
-                {isReactChatMode ? '对话调试' : '解析执行'}
-              </Text>
-            </Space>
-          )}
-          {isReactChatMode && (
-            <Button
-              size="small"
-              type="primary"
-              icon={<SaveOutlined />}
-              onClick={handleExportTemplateFromRecorder}
-              loading={exportTemplateLoading}
-              disabled={!recorderDebugSessionId || !recorderDebugRuntimeSessionId}
-            >
-              导出到模板
-            </Button>
-          )}
-        </Space>
-        <Space wrap size="small">
-          <Text type="secondary" style={{ fontSize: 12 }}>
-            每步后等待
-          </Text>
-          <Space.Compact size="small">
-            <InputNumber
-              size="small"
-              min={0}
-              max={120}
-              value={waitDuration}
-              onChange={(val) => setWaitDuration(val ?? 1)}
-              style={{ width: 64 }}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
+          <Space>
+            <Switch
+              checked={isAIMode}
+              onChange={setIsAIMode}
+              checkedChildren={<><RobotOutlined /> AI</>}
+              unCheckedChildren={<><VideoCameraOutlined /> 手动</>}
             />
-            <Button size="small" disabled>
+          </Space>
+          <Space wrap>
+            <Radio.Group
+              value={executionBackend}
+              onChange={(e) => {
+                void handleExecutionBackendChange(e.target.value as ExecutionBackend);
+              }}
+              size="middle"
+              optionType="button"
+              buttonStyle="solid"
+            >
+              <Radio.Button value="cli">{backendButtonLabels.cli}</Radio.Button>
+              <Radio.Button value="chrome-devtools">{backendButtonLabels['chrome-devtools']}</Radio.Button>
+            </Radio.Group>
+            {isAIMode && (
+              <Space>
+                <Text type="secondary" style={{ fontSize: 14 }}>
+                  模式
+                </Text>
+                <Switch
+                  checked={isReactChatMode}
+                  onChange={setIsReactChatMode}
+                  checkedChildren="对话"
+                  unCheckedChildren="单步"
+                />
+              </Space>
+            )}
+          </Space>
+        </div>
+        <Space wrap>
+          <Text type="secondary" style={{ fontSize: 14 }}>
+            等待
+          </Text>
+          <Space.Compact>
+            <InputNumber
+              min={0.5}
+              max={120}
+              step={0.5}
+              value={waitDuration}
+              onChange={(val) => setWaitDuration(val ?? 0.5)}
+              style={{ width: 68 }}
+            />
+            <Button disabled>
               s
             </Button>
           </Space.Compact>
-          <Text type="secondary" style={{ fontSize: 12, marginLeft: 8 }}>
+          <Text type="secondary" style={{ fontSize: 14, marginLeft: 8 }}>
             自动截图
           </Text>
-          <Switch
-            size="small"
-            checked={autoAppendScreenshots}
-            onChange={setAutoAppendScreenshots}
-          />
+          <Switch checked={autoAppendScreenshots} onChange={setAutoAppendScreenshots} />
         </Space>
       </div>
 
       {isAIMode ? (
         // AI Mode Content
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 12, flex: 1, overflow: 'hidden' }}>
-          {isReactChatMode && (
-            <div
-              style={{
-                padding: '10px 12px',
-                borderRadius: 12,
-                background: isDarkTheme ? '#0f172a' : '#f8fafc',
-                border: isDarkTheme ? '1px solid #334155' : '1px solid #e2e8f0',
-                fontSize: 12,
-              }}
-            >
-              <div><Text strong>对话调试模式</Text></div>
-              <div style={{ marginTop: 4, color: isDarkTheme ? '#cbd5e1' : '#475569' }}>
-                直接描述你的目标，系统会结合当前页面连续对话、追问参数并执行操作，不再单独突出单步面板。
-              </div>
-              {currentPageUrl && (
-                <div style={{ marginTop: 6, color: isDarkTheme ? '#94a3b8' : '#64748b', wordBreak: 'break-all' }}>
-                  当前页面: {currentPageUrl}
-                </div>
-              )}
-            </div>
-          )}
-
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 2, flex: 1, minHeight: 0, overflow: 'hidden' }}>
           {/* Message history */}
           <div
             style={{
               flex: 1,
-              minHeight: 200,
-              maxHeight: 400,
+              minHeight: 0,
               overflowY: 'auto',
               background: isDarkTheme ? 'var(--bg-primary)' : '#fafafa',
               borderRadius: 12,
-              padding: 12,
+              padding: 8,
               border: isDarkTheme ? '1px solid #334155' : '1px solid #e5e7eb',
             }}
           >
@@ -2272,7 +2258,7 @@ const AIControls: React.FC<AIControlsProps> = ({
         </div>
 
         {/* Input area - 3列2行布局 */}
-        <div style={{ marginTop: 12 }}>
+        <div style={{ marginTop: 0, flexShrink: 0 }}>
           {isReactChatMode && latestReactSuggestedParameters && latestReactSuggestedParameters.length > 0 && (
             <div
               style={{
@@ -2331,8 +2317,8 @@ const AIControls: React.FC<AIControlsProps> = ({
             </div>
           )}
 
-          {/* Row 2: 参数输入 | 发送按钮 | 参数可替换 */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          {/* Row 2: 参数输入 | 按钮区 | 参数可替换 */}
+          <div style={{ display: 'flex', alignItems: 'stretch', gap: 10 }}>
             {/* 参数输入 */}
             <TextArea
               value={paramInput}
@@ -2342,7 +2328,7 @@ const AIControls: React.FC<AIControlsProps> = ({
                   ? '直接描述你的目标，或询问页面结构、需要填写的参数'
                   : (predefinedCommands.find(c => c.value === selectedCommand)?.placeholder || '输入参数')
               }
-              autoSize={{ minRows: 2, maxRows: 4 }}
+              autoSize={isReactChatMode ? false : { minRows: 2, maxRows: 4 }}
               onPressEnter={(e) => {
                 if (!e.shiftKey) {
                   e.preventDefault();
@@ -2350,40 +2336,72 @@ const AIControls: React.FC<AIControlsProps> = ({
                 }
               }}
               disabled={isLoading}
-              style={{ flex: 1, minWidth: 180, borderRadius: 16, padding: '6px 12px' }}
+              style={{
+                flex: 1,
+                minWidth: 180,
+                height: isReactChatMode ? actionColumnHeight : undefined,
+                borderRadius: 20,
+                padding: isReactChatMode ? '10px 14px' : '8px 14px',
+                background: isDarkTheme ? '#0f172a' : '#ffffff',
+                borderColor: isDarkTheme ? '#475569' : '#cbd5e1',
+                color: 'var(--text-primary)',
+                resize: 'none',
+              }}
             />
-
-            {/* 发送按钮 */}
-            <Button
-              type="primary"
-              icon={<SendOutlined />}
-              onClick={handleSend}
-              loading={isLoading}
-              disabled={!(isReactChatMode ? paramInput.trim() : (predefinedCommands.find(c => c.value === selectedCommand)?.prefix + paramInput.trim()).trim())}
-              style={{ height: 32, borderRadius: 16, minWidth: 70 }}
+            <div
+              style={{
+                display: 'flex',
+                flexDirection: 'column',
+                justifyContent: 'flex-start',
+                alignItems: 'stretch',
+                gap: 8,
+                paddingTop: 0,
+                height: isReactChatMode ? actionColumnHeight : undefined,
+              }}
             >
-              {t('common:send')}
-            </Button>
-
-            {/* 参数可替换 */}
-            {!isReactChatMode && (
-              <Checkbox
-                checked={isReplaceable}
-                onChange={(e) => setIsReplaceable(e.target.checked)}
-                disabled={!paramInput.trim()}
-                style={{ marginLeft: 8 }}
+              <Button
+                icon={<SendOutlined />}
+                onClick={handleSend}
+                loading={isLoading}
+                style={{
+                  ...primaryActionButtonStyle,
+                  ...(!canSend ? mutedActionButtonStyle : {}),
+                }}
               >
-                <Tooltip title="勾选后，此参数在生成模版时会被标记为可替换参数">
-                  <Text style={{ fontSize: 12, color: isReplaceable ? '#6366f1' : '#999' }}>可替换</Text>
-                </Tooltip>
-              </Checkbox>
-            )}
+                {t('common:send')}
+              </Button>
+              {isReactChatMode ? (
+                <Button
+                  size="middle"
+                  icon={<SaveOutlined />}
+                  onClick={handleExportTemplateFromRecorder}
+                  loading={exportTemplateLoading}
+                  style={{
+                    ...secondaryActionButtonStyle,
+                    ...(!canExport ? mutedActionButtonStyle : {}),
+                  }}
+                >
+                  导出
+                </Button>
+              ) : (
+                <Checkbox
+                  checked={isReplaceable}
+                  onChange={(e) => setIsReplaceable(e.target.checked)}
+                  disabled={!paramInput.trim()}
+                  style={{ marginLeft: 4 }}
+                >
+                  <Tooltip title="勾选后，此参数在生成模版时会被标记为可替换参数">
+                    <Text style={{ fontSize: 12, color: isReplaceable ? '#6366f1' : '#999' }}>可替换</Text>
+                  </Tooltip>
+                </Checkbox>
+              )}
+            </div>
           </div>
         </div>
 
         {/* Quick action buttons */}
         {!isReactChatMode && (
-        <div style={{ marginTop: 12 }}>
+        <div style={{ marginTop: 2 }}>
 
           {/* Direct execution commands - click to execute immediately */}
           <div style={{ marginBottom: 8 }}>
@@ -2468,43 +2486,40 @@ const AIControls: React.FC<AIControlsProps> = ({
             type="text"
             icon={<DeleteOutlined />}
             onClick={handleClearHistory}
-            style={{ color: '#999' }}
+            style={{ color: '#999', marginTop: 2 }}
           >
             {t('recorder:ai.clearHistory') || '清空记录'}
           </Button>
         )}
 
         {/* Template section */}
-        <Divider style={{ margin: '12px 0' }} />
-        <Collapse
-          size="small"
-          activeKey={isTemplatePanelExpanded ? ['template'] : []}
-          onChange={(keys) => setIsTemplatePanelExpanded(Array.isArray(keys) ? keys.includes('template') : keys === 'template')}
-          items={[
-            {
-              key: 'template',
-              label: (
-                <Space style={{ width: '100%', justifyContent: 'space-between' }}>
-                  <Space>
-                    <Text strong style={{ fontSize: 13 }}>
-                      <FileAddOutlined style={{ marginRight: 4 }} />
-                      {isReactChatMode ? '模版与调试细节' : '模版录制'}
-                    </Text>
-                    <Tag color={templateSteps.length > 0 ? 'processing' : 'default'}>
-                      {templateSteps.length} 步
-                    </Tag>
-                    {savedTemplateId && (
-                      <Tag color="success">已保存</Tag>
-                    )}
-                    {isReactChatMode && (
-                      <Text type="secondary" style={{ fontSize: 12 }}>
-                        次级区域，按需展开
-                      </Text>
-                    )}
-                  </Space>
-                </Space>
-              ),
-              children: (
+        {!isReactChatMode && (
+          <>
+            <Divider style={{ margin: '12px 0' }} />
+            <Collapse
+              size="small"
+              activeKey={isTemplatePanelExpanded ? ['template'] : []}
+              onChange={(keys) => setIsTemplatePanelExpanded(Array.isArray(keys) ? keys.includes('template') : keys === 'template')}
+              items={[
+                {
+                  key: 'template',
+                  label: (
+                    <Space style={{ width: '100%', justifyContent: 'space-between' }}>
+                      <Space>
+                        <Text strong style={{ fontSize: 13 }}>
+                          <FileAddOutlined style={{ marginRight: 4 }} />
+                          模版录制
+                        </Text>
+                        <Tag color={templateSteps.length > 0 ? 'processing' : 'default'}>
+                          {templateSteps.length} 步
+                        </Tag>
+                        {savedTemplateId && (
+                          <Tag color="success">已保存</Tag>
+                        )}
+                      </Space>
+                    </Space>
+                  ),
+                  children: (
                 <div style={{ background: isDarkTheme ? 'var(--bg-secondary)' : '#f6f8fa', borderRadius: 8, padding: 12, border: isDarkTheme ? '1px solid #334155' : 'none' }}>
                   <Space style={{ width: '100%', justifyContent: 'space-between' }}>
                     <Space>
@@ -2605,10 +2620,12 @@ const AIControls: React.FC<AIControlsProps> = ({
                     </div>
                   )}
                 </div>
-              ),
-            },
-          ]}
-        />
+                  ),
+                },
+              ]}
+            />
+          </>
+        )}
 
         {/* Template save modal */}
         <Modal
@@ -2732,7 +2749,6 @@ const AIControls: React.FC<AIControlsProps> = ({
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
           {/* Connection Controls */}
           <Space>
-            <Text strong>录制器</Text>
             {!isConnected ? (
               <Button
                 type="primary"

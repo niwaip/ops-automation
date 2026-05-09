@@ -24,18 +24,40 @@ NC='\033[0m' # No Color
 PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 cd "$PROJECT_ROOT"
 
+# Load local overrides from repository root .env when available.
+if [ -f "$PROJECT_ROOT/.env" ]; then
+    set -a
+    . "$PROJECT_ROOT/.env"
+    set +a
+fi
+
+# Common local development defaults (can be overridden from environment/.env).
+DEV_HOST="${DEV_HOST:-localhost}"
+DEV_PUBLIC_HOST="${DEV_PUBLIC_HOST:-${HOST_IP:-$DEV_HOST}}"
+LOCAL_DB_HOST="${LOCAL_DB_HOST:-$DEV_HOST}"
+LOCAL_REDIS_HOST="${LOCAL_REDIS_HOST:-$DEV_HOST}"
+POSTGRES_USER="${POSTGRES_USER:-ops}"
+POSTGRES_PASSWORD="${POSTGRES_PASSWORD:-ops_secret}"
+POSTGRES_DB="${POSTGRES_DB:-ops}"
+POSTGRES_PORT="${POSTGRES_PORT:-5432}"
+REDIS_PASSWORD="${REDIS_PASSWORD:-redis_secret}"
+REDIS_PORT="${REDIS_PORT:-6379}"
+OFFICE_ADDIN_PORT="${OFFICE_ADDIN_PORT:-3000}"
+NOVNC_PORT="${NOVNC_PORT:-6080}"
+CARBONE_ENGINE_PORT="${CARBONE_ENGINE_PORT:-3009}"
+
 # Service ports (bash 3.x compatible)
 get_service_port() {
     case "$1" in
-        "ai-orchestrator") echo 3007 ;;
-        "platform") echo 3001 ;;
-        "auth") echo 3001 ;;
-        "session-broker") echo 3002 ;;
-        "control-plane") echo 3003 ;;
-        "browser-worker") echo 3004 ;;
-        "template") echo 3005 ;;
-        "replay-engine") echo 3006 ;;
-        "portal") echo 5173 ;;
+        "ai-orchestrator") echo "${AI_ORCHESTRATOR_PORT:-3007}" ;;
+        "platform") echo "${PLATFORM_PORT:-3001}" ;;
+        "auth") echo "${AUTH_PORT:-3001}" ;;
+        "session-broker") echo "${SESSION_BROKER_PORT:-3002}" ;;
+        "control-plane") echo "${CONTROL_PLANE_PORT:-3003}" ;;
+        "browser-worker") echo "${BROWSER_WORKER_PORT:-3004}" ;;
+        "browser-template") echo "${BROWSER_TEMPLATE_PORT:-3005}" ;;
+        "replay-engine") echo "${REPLAY_ENGINE_PORT:-3006}" ;;
+        "portal") echo "${PORTAL_PORT:-5173}" ;;
         *) echo "" ;;
     esac
 }
@@ -49,14 +71,14 @@ get_service_dir() {
         "control-plane") echo "apps/backend/core/control-plane" ;;
         "browser-worker") echo "apps/backend/runtime/browser-worker" ;;
         "replay-engine") echo "apps/backend/runtime/replay-engine" ;;
-        "template") echo "apps/backend/domain/template" ;;
+        "browser-template") echo "apps/backend/domain/browser-template" ;;
         "portal") echo "apps/frontend/portal" ;;
         *) echo "" ;;
     esac
 }
 
 # Services to start (NestJS services only, portal is separate)
-NEST_SERVICES="ai-orchestrator platform session-broker control-plane template replay-engine browser-worker"
+NEST_SERVICES="ai-orchestrator platform session-broker control-plane browser-template browser-worker"
 
 # Log directory
 LOG_DIR="$PROJECT_ROOT/docker/logs"
@@ -88,13 +110,14 @@ command_exists() {
 wait_for_service() {
     local name=$1
     local port=$2
+    local host="${3:-$DEV_HOST}"
     local max_attempts=30
     local attempt=1
 
-    log_info "Waiting for $name to be ready on port $port..."
+    log_info "Waiting for $name to be ready on ${host}:${port}..."
 
     while [ $attempt -le $max_attempts ]; do
-        if curl -s "http://localhost:$port/health" >/dev/null 2>&1 || curl -s "http://localhost:$port" >/dev/null 2>&1; then
+        if curl -s "http://${host}:$port/health" >/dev/null 2>&1 || curl -s "http://${host}:$port" >/dev/null 2>&1; then
             log_success "$name is ready!"
             return 0
         fi
@@ -128,7 +151,8 @@ start_docker() {
     # Wait for PostgreSQL
     log_info "Waiting for PostgreSQL to be ready..."
     sleep 5
-    bash ./docker/start-smart.sh docker-compose.yml exec -T postgres pg_isready -U ops -d ops
+    bash ./docker/start-smart.sh docker-compose.yml exec -T postgres \
+        pg_isready -U "${POSTGRES_USER}" -d "${POSTGRES_DB}"
 
     log_success "Docker containers started!"
 }
@@ -145,7 +169,7 @@ run_migrations() {
     log_info "Running database migrations..."
 
     # Set database URL
-    export DATABASE_URL="postgresql://ops:ops_secret@localhost:5432/ops"
+    export DATABASE_URL="${DATABASE_URL:-postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${LOCAL_DB_HOST}:${POSTGRES_PORT}/${POSTGRES_DB}}"
 
     # Run SQL migrations if they exist
     if [ -d "docker/sql/migrations" ]; then
@@ -209,20 +233,35 @@ start_service() {
 
     # Set environment variables
     export PORT=$port
-    export DATABASE_URL="postgresql://ops:ops_secret@localhost:5432/ops"
-    export REDIS_URL="redis://localhost:6379"
-    export AUTH_HOST=localhost
-    export AUTH_PORT=3001
-    export SESSION_BROKER_HOST=localhost
-    export SESSION_BROKER_PORT=3002
-    export TEMPLATE_HOST=localhost
-    export BROWSER_WORKER_HOST=localhost
-    export BROWSER_WORKER_PORT=3004
-    export TEMPLATE_PORT=3005
-    export AI_ORCHESTRATOR_HOST=localhost
-    export AI_ORCHESTRATOR_PORT=3007
-    export REPLAY_ENGINE_HOST=localhost
-    export REPLAY_ENGINE_PORT=3006
+    export DATABASE_URL="${DATABASE_URL:-postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${LOCAL_DB_HOST}:${POSTGRES_PORT}/${POSTGRES_DB}}"
+    export REDIS_URL="${REDIS_URL:-redis://:${REDIS_PASSWORD}@${LOCAL_REDIS_HOST}:${REDIS_PORT}}"
+    export AUTH_HOST="${AUTH_HOST:-$DEV_HOST}"
+    export AUTH_PORT="${AUTH_PORT:-3001}"
+    export PLATFORM_PORT="${PLATFORM_PORT:-3001}"
+    export PLATFORM_SERVICE_URL="${PLATFORM_SERVICE_URL:-http://${DEV_HOST}:${PLATFORM_PORT}}"
+    export AUTH_SERVICE_URL="${AUTH_SERVICE_URL:-$PLATFORM_SERVICE_URL}"
+    export SESSION_BROKER_HOST="${SESSION_BROKER_HOST:-$DEV_HOST}"
+    export SESSION_BROKER_PORT="${SESSION_BROKER_PORT:-3002}"
+    export SESSION_BROKER_URL="${SESSION_BROKER_URL:-http://${DEV_HOST}:${SESSION_BROKER_PORT}}"
+    export TEMPLATE_HOST="${TEMPLATE_HOST:-$DEV_HOST}"
+    export TEMPLATE_PORT="${TEMPLATE_PORT:-3005}"
+    export BROWSER_TEMPLATE_HOST="${BROWSER_TEMPLATE_HOST:-$TEMPLATE_HOST}"
+    export BROWSER_TEMPLATE_PORT="${BROWSER_TEMPLATE_PORT:-$TEMPLATE_PORT}"
+    export BROWSER_TEMPLATE_SERVICE_URL="${BROWSER_TEMPLATE_SERVICE_URL:-http://${DEV_HOST}:${BROWSER_TEMPLATE_PORT}}"
+    export BROWSER_WORKER_HOST="${BROWSER_WORKER_HOST:-$DEV_HOST}"
+    export BROWSER_WORKER_PORT="${BROWSER_WORKER_PORT:-3004}"
+    export BROWSER_WORKER_URL="${BROWSER_WORKER_URL:-http://${DEV_HOST}:${BROWSER_WORKER_PORT}}"
+    export AI_ORCHESTRATOR_HOST="${AI_ORCHESTRATOR_HOST:-$DEV_HOST}"
+    export AI_ORCHESTRATOR_PORT="${AI_ORCHESTRATOR_PORT:-3007}"
+    export AI_ORCHESTRATOR_URL="${AI_ORCHESTRATOR_URL:-http://${DEV_HOST}:${AI_ORCHESTRATOR_PORT}}"
+    export REPLAY_ENGINE_HOST="${REPLAY_ENGINE_HOST:-$DEV_HOST}"
+    export REPLAY_ENGINE_PORT="${REPLAY_ENGINE_PORT:-3006}"
+    export CARBONE_SERVICE_URL="${CARBONE_SERVICE_URL:-http://${DEV_HOST}:${CARBONE_ENGINE_PORT}}"
+    export CARBONE_EXTERNAL_URL="${CARBONE_EXTERNAL_URL:-http://${DEV_PUBLIC_HOST}:${CARBONE_ENGINE_PORT}}"
+    export VITE_HOST_IP="${VITE_HOST_IP:-$DEV_PUBLIC_HOST}"
+    export VITE_RECORDER_WS_URL="${VITE_RECORDER_WS_URL:-ws://${DEV_PUBLIC_HOST}:${BROWSER_WORKER_PORT}}"
+    export VITE_NOVNC_URL="${VITE_NOVNC_URL:-http://${DEV_PUBLIC_HOST}:${NOVNC_PORT}/vnc.html}"
+    export VITE_OFFICE_ADDIN_BASE_URL="${VITE_OFFICE_ADDIN_BASE_URL:-https://${DEV_PUBLIC_HOST}:${OFFICE_ADDIN_PORT}}"
 
     # Start the service
     cd "$service_dir"
@@ -259,7 +298,16 @@ stop_services() {
     done
 
     # Also kill any node processes on our ports
-    for port in 3000 3001 3002 3003 3004 3005 3006 5173; do
+    for port in \
+        "${OFFICE_ADDIN_PORT}" \
+        "${PLATFORM_PORT:-3001}" \
+        "${SESSION_BROKER_PORT:-3002}" \
+        "${CONTROL_PLANE_PORT:-3003}" \
+        "${BROWSER_WORKER_PORT:-3004}" \
+        "${BROWSER_TEMPLATE_PORT:-3005}" \
+        "${REPLAY_ENGINE_PORT:-3006}" \
+        "${AI_ORCHESTRATOR_PORT:-3007}" \
+        "${PORTAL_PORT:-5173}"; do
         local pids=$(lsof -ti:$port 2>/dev/null || true)
         if [ -n "$pids" ]; then
             echo "$pids" | xargs kill 2>/dev/null || true
@@ -281,7 +329,7 @@ start_all_services() {
     # Wait for all services to be ready
     for service in $NEST_SERVICES; do
         local port=$(get_service_port "$service")
-        wait_for_service "$service" "$port"
+        wait_for_service "$service" "$port" "$DEV_HOST"
     done
 
     log_success "All services started!"
@@ -295,12 +343,12 @@ show_status() {
     echo "=========================================="
     echo ""
 
-    for service in ai-orchestrator platform session-broker control-plane template replay-engine browser-worker portal; do
+    for service in ai-orchestrator platform session-broker control-plane browser-template replay-engine browser-worker portal; do
         local port=$(get_service_port "$service")
         local status="NOT RUNNING"
         local color=$RED
 
-        if curl -s "http://localhost:$port/health" >/dev/null 2>&1 || curl -s "http://localhost:$port" >/dev/null 2>&1; then
+        if curl -s "http://${DEV_HOST}:$port/health" >/dev/null 2>&1 || curl -s "http://${DEV_HOST}:$port" >/dev/null 2>&1; then
             status="RUNNING"
             color=$GREEN
         fi
@@ -390,10 +438,10 @@ if [ -n "$ONLY_SERVICE" ]; then
     port=$(get_service_port "$ONLY_SERVICE")
     if [ -n "$port" ]; then
         start_service "$ONLY_SERVICE"
-        wait_for_service "$ONLY_SERVICE" "$port"
+        wait_for_service "$ONLY_SERVICE" "$port" "$DEV_HOST"
     else
         log_error "Unknown service: $ONLY_SERVICE"
-        echo "Available services: ai-orchestrator platform session-broker control-plane template replay-engine browser-worker portal"
+        echo "Available services: ai-orchestrator platform session-broker control-plane browser-template replay-engine browser-worker portal"
         exit 1
     fi
 else
@@ -406,13 +454,14 @@ show_status
 log_success "Development environment is ready!"
 echo ""
 echo "Service URLs:"
-echo "  - AI Orchestrator:  http://localhost:3000"
-echo "  - Platform:         http://localhost:3001"
-echo "  - Session Broker:   http://localhost:3002"
-echo "  - Control Plane:    http://localhost:3003"
-echo "  - Template:         http://localhost:3004"
-echo "  - Replay Engine:    http://localhost:3005"
-echo "  - Browser Worker:   http://localhost:3006"
+echo "  - AI Orchestrator:  http://${DEV_PUBLIC_HOST}:${AI_ORCHESTRATOR_PORT:-3007}"
+echo "  - Platform:         http://${DEV_PUBLIC_HOST}:${PLATFORM_PORT:-3001}"
+echo "  - Session Broker:   http://${DEV_PUBLIC_HOST}:${SESSION_BROKER_PORT:-3002}"
+echo "  - Control Plane:    http://${DEV_PUBLIC_HOST}:${CONTROL_PLANE_PORT:-3003}"
+echo "  - Browser Template: http://${DEV_PUBLIC_HOST}:${BROWSER_TEMPLATE_PORT:-3005}"
+echo "  - Replay Engine:    http://${DEV_PUBLIC_HOST}:${REPLAY_ENGINE_PORT:-3006}"
+echo "  - Browser Worker:   http://${DEV_PUBLIC_HOST}:${BROWSER_WORKER_PORT:-3004}"
+echo "  - Portal:           http://${DEV_PUBLIC_HOST}:${PORTAL_PORT:-5173}"
 echo ""
 echo "Logs are available in: $LOG_DIR"
 echo ""

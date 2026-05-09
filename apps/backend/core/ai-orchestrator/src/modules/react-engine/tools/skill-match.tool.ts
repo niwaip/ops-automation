@@ -5,23 +5,11 @@
 
 import { Injectable } from '@nestjs/common';
 import axios from 'axios';
+import { getAuthServiceUrl } from '../../../config/service-endpoints';
 import { BaseTool } from './base.tool';
 import { ToolResult, ExecutionContext, SkillMatchResult } from '../interfaces';
 import { TRACE_ID_HEADER } from '../../../common/trace.util';
 import { Tool } from '../decorators/tool.decorator';
-
-// Auth服务地址（SkillService所在）
-// Docker环境使用服务名，本地使用localhost
-const getAuthServiceUrl = () => {
-  if (process.env.AUTH_SERVICE_URL) {
-    return process.env.AUTH_SERVICE_URL;
-  }
-  // Docker环境下使用服务名
-  if (process.env.DOCKER_ENV === 'true' || process.env.NODE_ENV === 'production') {
-    return process.env.PLATFORM_SERVICE_URL || 'http://platform:3001';
-  }
-  return 'http://localhost:3001';
-};
 const AUTH_SERVICE_URL = getAuthServiceUrl();
 
 @Injectable()

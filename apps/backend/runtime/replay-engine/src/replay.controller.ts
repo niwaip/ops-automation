@@ -18,6 +18,7 @@ import { ExecutorService } from './modules/executor';
 import { CdpService } from './modules/cdp';
 import { LogService } from './modules/log';
 import { AiService } from './modules/ai-interaction';
+import { getDefaultCdpUrl } from './config/service-endpoints';
 import {
   StartReplayRequestDto,
   StartReplayResponseDto,
@@ -63,7 +64,7 @@ export class ReplayController {
     );
 
     // Get CDP URL from session (would normally call Session Broker)
-    const cdpUrl = process.env.CDP_URL || 'ws://localhost:9222';
+    const cdpUrl = getDefaultCdpUrl();
 
     try {
       const executionId = await this.executorService.startExecution(

@@ -15,18 +15,7 @@ import { spawn, ChildProcess } from 'child_process';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
-
-// AI Orchestrator URL helper
-const getAiOrchestratorUrl = () => {
-  if (process.env.AI_ORCHESTRATOR_URL) {
-    return process.env.AI_ORCHESTRATOR_URL;
-  }
-  if (process.env.DOCKER_ENV === 'true' || process.env.NODE_ENV === 'production') {
-    return 'http://ai-orchestrator:3007';
-  }
-  const externalHost = process.env.EXTERNAL_HOST || 'localhost';
-  return `http://${externalHost}:3007`;
-};
+import { getAiOrchestratorUrl } from './config/service-endpoints';
 
 interface CachedActivity {
   fn: string;

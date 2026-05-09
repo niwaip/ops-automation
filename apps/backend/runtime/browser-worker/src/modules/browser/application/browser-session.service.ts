@@ -10,7 +10,6 @@ import {
   BrowserExecutionBackend,
 } from '../adapters/browser-execution.adapter';
 import { ChromeDevtoolsCliAdapter } from '../adapters/chrome-devtools-cli.adapter';
-import { LegacyCodegenAdapter } from '../adapters/legacy-codegen.adapter';
 import { PlaywrightCliAdapter } from '../adapters/playwright-cli.adapter';
 import { BrowserSessionRegistry } from '../infrastructure/browser-session.registry';
 import { WorkerService } from '../../worker/worker.service';
@@ -24,12 +23,10 @@ export class BrowserSessionService {
   constructor(
     private readonly workerService: WorkerService,
     private readonly sessionRegistry: BrowserSessionRegistry,
-    private readonly legacyCodegenAdapter: LegacyCodegenAdapter,
     private readonly playwrightCliAdapter: PlaywrightCliAdapter,
     private readonly chromeDevtoolsCliAdapter: ChromeDevtoolsCliAdapter,
   ) {
     this.adapters = new Map<BrowserExecutionBackend, BrowserExecutionAdapter>([
-      ['legacy', this.legacyCodegenAdapter],
       ['cli', this.playwrightCliAdapter],
       ['chrome-devtools', this.chromeDevtoolsCliAdapter],
     ]);
@@ -41,7 +38,7 @@ export class BrowserSessionService {
     initialUrl?: string;
     sessionPreferences?: BrowserSessionPreferences;
   }): Promise<{ success: boolean; message: string; endpoints?: BrowserEndpoints }> {
-    const backend = options?.backend || 'legacy';
+    const backend = options?.backend || 'cli';
     this.logger.log(`Initializing browser using backend: ${backend}`);
 
     const result = await this.getAdapter(backend).initBrowser({
@@ -74,7 +71,7 @@ export class BrowserSessionService {
     backend?: BrowserExecutionBackend;
     runtimeSessionId?: string;
   }): Promise<void> {
-    const backend = options?.backend || 'legacy';
+    const backend = options?.backend || 'cli';
     await this.getAdapter(backend).resetBrowser({
       runtimeSessionId: options?.runtimeSessionId,
     });
@@ -109,7 +106,7 @@ export class BrowserSessionService {
   }
 
   private normalizeBackend(backend?: BrowserExecutionBackendDto): BrowserExecutionBackend {
-    return (backend || BrowserExecutionBackendDto.LEGACY) as BrowserExecutionBackend;
+    return (backend || BrowserExecutionBackendDto.CLI) as BrowserExecutionBackend;
   }
 
   private getAdapter(backend: BrowserExecutionBackend): BrowserExecutionAdapter {

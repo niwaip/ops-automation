@@ -25,6 +25,11 @@ import {
   ApprovalDecisionDto,
 } from './execution.dto';
 import axios from 'axios';
+import {
+  getAiOrchestratorUrl,
+  getAuthServiceUrl,
+  getSessionBrokerUrl,
+} from '../../config/service-endpoints';
 import { RuntimeStepInvokeResult } from './runtime-adapter.interface';
 import { RuntimeExecutionOrchestrator } from './runtime-execution.orchestrator';
 import { RuntimeResultInterpreter } from './runtime-result.interpreter';
@@ -88,10 +93,9 @@ interface PlannerPlanDraft {
 @Injectable()
 export class ExecutionService {
   private readonly logger = new Logger(ExecutionService.name);
-  private readonly sessionBrokerUrl = process.env.SESSION_BROKER_URL || 'http://session-broker:3002';
-  private readonly authServiceUrl = process.env.PLATFORM_SERVICE_URL || 'http://platform:3001';
-  private readonly aiOrchestratorUrl =
-    process.env.AI_ORCHESTRATOR_URL || process.env.AI_SERVICE_URL || 'http://ai-orchestrator:3007';
+  private readonly sessionBrokerUrl = getSessionBrokerUrl();
+  private readonly authServiceUrl = getAuthServiceUrl();
+  private readonly aiOrchestratorUrl = getAiOrchestratorUrl();
 
   private readonly eventSubject = new Subject<ExecutionStreamEventPayload>();
   private readonly executionEventService: ExecutionEventService;

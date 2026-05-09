@@ -18,6 +18,7 @@ import { useTranslation } from 'react-i18next';
 import { useQuery, useMutation } from 'react-query';
 import { sessionApi, StepResult } from '../api/session';
 import { templateApi } from '../api/template';
+import { replaceLocalhostWithCurrentHost } from '../utils/publicUrl';
 
 const { Title, Text } = Typography;
 
@@ -30,12 +31,7 @@ const formatSessionTime = (timestamp?: number): string => {
 
 // Transform localhost URLs to use VITE_HOST_IP for LAN access
 const transformLocalhostUrl = (url: string | undefined): string => {
-  if (!url) return url || '';
-  const hostIp = import.meta.env.VITE_HOST_IP;
-  if (hostIp && url.includes('localhost')) {
-    return url.replace(/http:\/\/localhost:/, `http://${hostIp}:`);
-  }
-  return url;
+  return replaceLocalhostWithCurrentHost(url) || '';
 };
 
 const SessionDetailPage: React.FC = () => {
