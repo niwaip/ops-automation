@@ -2,10 +2,11 @@ import React, { useEffect, useState } from 'react';
 import { Table, Button, Space, Tag, Card, Typography, Modal, message, Input, Tabs, Descriptions, Alert } from 'antd';
 import { DeleteOutlined, EditOutlined, EyeOutlined, DownloadOutlined, FileWordOutlined, FileExcelOutlined, FilePdfOutlined, SyncOutlined, PlusOutlined } from '@ant-design/icons';
 import { carboneAPI, CarboneTemplate, CarboneSkill } from '../api/carbone';
+import { buildOfficeAddinUrl } from '../config/runtime';
 
 const { Title, Text } = Typography;
-const OFFICE_ADDIN_TASKPANE_URL = 'https://localhost:3000/taskpane.html';
-const OFFICE_ADDIN_DOWNLOAD_URL = 'https://localhost:3000/download';
+const OFFICE_ADDIN_TASKPANE_URL = buildOfficeAddinUrl('/taskpane.html');
+const OFFICE_ADDIN_DOWNLOAD_URL = buildOfficeAddinUrl('/download');
 
 const CarboneTemplateListPage: React.FC = () => {
   const [templates, setTemplates] = useState<CarboneTemplate[]>([]);

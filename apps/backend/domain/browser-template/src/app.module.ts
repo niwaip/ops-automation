@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { TemplateModule } from './modules/template/template.module';
+import { getDatabaseHost } from './config/service-endpoints';
 
 // Parse DATABASE_URL if available, otherwise use individual env vars
 const getDatabaseConfig = () => {
@@ -24,7 +25,7 @@ const getDatabaseConfig = () => {
 
   return {
     type: 'postgres' as const,
-    host: process.env.DB_HOST || 'localhost',
+    host: getDatabaseHost(),
     port: parseInt(process.env.DB_PORT || '5432', 10),
     username: process.env.DB_USERNAME || 'ops',
     password: process.env.DB_PASSWORD || 'ops_secret',

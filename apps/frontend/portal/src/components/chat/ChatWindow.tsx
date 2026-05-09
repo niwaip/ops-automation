@@ -13,7 +13,10 @@ import ChatInput from './ChatInput';
 import SkillConfirm from './SkillConfirm';
 import { streamChat, getAvailableModels } from './chatApi';
 import { executionApi } from '../../api/execution';
+import type { ExecutionDto, ExecutionStatus } from '../../api/execution';
 import { ChatRequest, StreamEventType } from './types';
+import { toExecutionNotification, RELEVANT_EXECUTION_STATUSES } from '../../notifications/executionNotifications';
+import { useNotificationStore } from '../../store/notificationStore';
 import { v4 as uuidv4 } from 'uuid';
 import './ChatWindow.css';
 
@@ -52,6 +55,7 @@ const ChatWindow: React.FC = () => {
 
   // 获取当前登录用户的ID
   const { user } = useAuthStore();
+  const upsertNotification = useNotificationStore((state) => state.upsertNotification);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   // 本地流式内容状态，用于实时显示
@@ -208,6 +212,29 @@ const ChatWindow: React.FC = () => {
       request,
       (event) => {
         addStreamEvent(event);
+
+        const executionId = event.data?.executionId as string | undefined;
+        const executionStatus = event.data?.status as ExecutionStatus | undefined;
+        if (
+          executionId
+          && executionStatus
+          && RELEVANT_EXECUTION_STATUSES.has(executionStatus)
+        ) {
+          const notification = toExecutionNotification({
+            id: executionId,
+            skillId: typeof event.data?.skillId === 'string' ? event.data.skillId : '',
+            status: executionStatus,
+            approvalStatus: typeof event.data?.approvalStatus === 'string' ? event.data.approvalStatus as any : undefined,
+            failureReason: executionStatus === 'failed' ? event.content : undefined,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+            endedAt: ['succeeded', 'failed', 'cancelled'].includes(executionStatus) ? new Date().toISOString() : undefined,
+          } satisfies ExecutionDto);
+
+          if (notification) {
+            upsertNotification(notification, true);
+          }
+        }
 
         if (event.type === StreamEventType.THOUGHT) {
           if (showThinking) {

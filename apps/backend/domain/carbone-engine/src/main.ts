@@ -7,6 +7,7 @@ import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import { join } from 'path';
 import { AppModule } from './app.module';
+import { getPublicHost } from './config/service-endpoints';
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
@@ -30,11 +31,13 @@ async function bootstrap() {
     credentials: true,
   });
 
-  const port = process.env.PORT || 3009;
+  const port = process.env.PORT || process.env.CARBONE_ENGINE_PORT || process.env.CARBONE_PORT || 3009;
   await app.listen(port);
-  console.log(`Carbone Engine is running on: http://localhost:${port}`);
-  console.log(`API Documentation: http://localhost:${port}/api`);
-  console.log(`Studio UI: http://localhost:${port}/`);
+  const publicHost = getPublicHost();
+  const publicBaseUrl = `http://${publicHost}:${port}`;
+  console.log(`Carbone Engine is running on: ${publicBaseUrl}`);
+  console.log(`API Documentation: ${publicBaseUrl}/api`);
+  console.log(`Studio UI: ${publicBaseUrl}/`);
 }
 
 bootstrap();

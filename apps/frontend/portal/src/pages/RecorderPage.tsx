@@ -6,6 +6,7 @@ import { RobotOutlined, DesktopOutlined, FullscreenOutlined, CompressOutlined } 
 import { AIControls, TemplatePreview } from '../components/recorder';
 import recorderService, { RecorderStatus, CompiledTemplate, ValidationResult } from '../services/recorder.service';
 import { templateApi, CompileResult } from '../api/template';
+import { runtimeConfig } from '../config/runtime';
 import { useAuthStore } from '../store/authStore';
 
 const { Text } = Typography;
@@ -213,7 +214,7 @@ const RecorderPage: React.FC = () => {
   }, [handleStart]);
 
   // noVNC URL
-  const DEFAULT_NOVNC_URL = import.meta.env.VITE_NOVNC_URL || `http://${import.meta.env.VITE_HOST_IP || 'localhost'}:6080/vnc.html`;
+  const DEFAULT_NOVNC_URL = runtimeConfig.noVncUrl;
   const NOVNC_URL = previewMode === 'session'
     ? dynamicNoVncUrl
     : previewMode === 'shared'

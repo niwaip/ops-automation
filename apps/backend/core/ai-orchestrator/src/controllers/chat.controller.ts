@@ -38,17 +38,9 @@ import type {
 import { SessionService } from '../modules/redis/session.service';
 import { PlanDraftDTO } from '../interfaces';
 import { PromptDebugSettingsService } from '../modules/debug-settings/prompt-debug-settings.service';
+import { getAuthServiceUrl } from '../config/service-endpoints';
 
 const fileStore = new Map<string, { fileName: string; mimeType: string; size: number; content: string }>();
-const getAuthServiceUrl = () => {
-  if (process.env.AUTH_SERVICE_URL) {
-    return process.env.AUTH_SERVICE_URL;
-  }
-  if (process.env.DOCKER_ENV === 'true' || process.env.NODE_ENV === 'production') {
-    return process.env.PLATFORM_SERVICE_URL || 'http://platform:3001';
-  }
-  return 'http://localhost:3001';
-};
 
 const tryParseJsonString = (value: unknown): unknown => {
   if (typeof value !== 'string') {

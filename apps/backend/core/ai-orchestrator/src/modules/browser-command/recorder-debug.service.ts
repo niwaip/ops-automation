@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import axios from 'axios';
 import * as fs from 'fs/promises';
+import { getBrowserWorkerUrl } from '../../config/service-endpoints';
 import { BrowserCommand, BrowserCommandService } from './browser-command.service';
 import { ModelService } from '../model/model.service';
 import { RedisService } from '../redis/redis.service';
@@ -167,16 +168,6 @@ export interface RecorderDebugChatResponse {
   execution?: BrowserExecuteResponse;
   exportArtifacts?: RecorderDebugExportArtifacts;
 }
-
-const getBrowserWorkerUrl = () => {
-  if (process.env.BROWSER_WORKER_URL) {
-    return process.env.BROWSER_WORKER_URL;
-  }
-  if (process.env.DOCKER_ENV === 'true' || process.env.NODE_ENV === 'production') {
-    return 'http://ops-browser-worker:3004';
-  }
-  return 'http://localhost:3004';
-};
 
 @Injectable()
 export class RecorderDebugService {

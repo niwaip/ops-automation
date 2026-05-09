@@ -5,11 +5,10 @@
 
 import axios from 'axios';
 import { Injectable } from '@nestjs/common';
+import { getCarboneServiceUrl } from '../../../config/service-endpoints';
 import { BaseTool } from './base.tool';
 import { ExecutionContext, ToolResult } from '../interfaces';
 import { Tool } from '../decorators/tool.decorator';
-
-const CARBONE_SERVICE_URL = process.env.CARBONE_SERVICE_URL || 'http://carbone-engine:3009';
 
 interface GenerateParamsResponse {
   success?: boolean;
@@ -146,7 +145,7 @@ export class DocumentParamRecoverTool extends BaseTool {
 
     try {
       const response = await axios.post<GenerateParamsResponse>(
-        `${CARBONE_SERVICE_URL}/studio/generate-parameters`,
+        `${getCarboneServiceUrl()}/studio/generate-parameters`,
         {
           skillId: carboneSkillId,
           description: recoverDescription,

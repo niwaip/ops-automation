@@ -6,6 +6,7 @@
 import { Injectable, Logger, OnModuleInit, ForbiddenException, NotFoundException, BadRequestException } from '@nestjs/common';
 import { randomUUID } from 'crypto';
 import { PrismaService } from '../../prisma/prisma.service';
+import { getAiOrchestratorUrl } from '../../config/service-endpoints';
 import {
   SkillConfigDto,
   CreateSkillDTO,
@@ -31,19 +32,6 @@ const UUID_REGEX = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}
 function isValidUUID(str: string): boolean {
   return UUID_REGEX.test(str);
 }
-
-// AI Orchestrator 服务地址
-const getAiOrchestratorUrl = () => {
-  if (process.env.AI_ORCHESTRATOR_URL) {
-    return process.env.AI_ORCHESTRATOR_URL;
-  }
-  if (process.env.DOCKER_ENV === 'true' || process.env.NODE_ENV === 'production') {
-    return 'http://ai-orchestrator:3007';  // Docker 内部通信使用服务名
-  }
-  // 本地开发：使用外部访问地址（如果设置）或 localhost
-  const externalHost = process.env.EXTERNAL_HOST || 'localhost';
-  return `http://${externalHost}:3007`;
-};
 
 type SkillValidationStreamEvent = {
   type: 'stage' | 'log' | 'result' | 'error';

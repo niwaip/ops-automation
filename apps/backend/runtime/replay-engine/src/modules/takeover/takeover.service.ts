@@ -3,6 +3,7 @@ import {
   TakeoverTriggerRequest,
   TakeoverTriggerResponse,
 } from '../../interfaces';
+import { getSessionBrokerUrl } from '../../config/service-endpoints';
 
 interface TakeoverResponse {
   state: string;
@@ -18,7 +19,7 @@ export class TakeoverService {
   private sessionBrokerUrl: string;
 
   constructor() {
-    this.sessionBrokerUrl = process.env.SESSION_BROKER_URL ?? 'http://localhost:3001';
+    this.sessionBrokerUrl = getSessionBrokerUrl();
   }
 
   /**

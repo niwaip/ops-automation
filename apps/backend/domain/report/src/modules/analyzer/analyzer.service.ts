@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import axios from 'axios';
+import { getAiOrchestratorUrl } from '../../config/service-endpoints';
 import {
   ReportTemplateDTO,
   ReportSection,
@@ -13,7 +14,7 @@ export class AnalyzerService {
   private readonly aiOrchestratorUrl: string;
 
   constructor() {
-    this.aiOrchestratorUrl = process.env.AI_ORCHESTRATOR_URL || 'http://ai-orchestrator:3007';
+    this.aiOrchestratorUrl = getAiOrchestratorUrl();
   }
 
   async analyzeSections(

@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import * as http from 'http';
+import { getBrowserWorkerUrl } from '../../config/service-endpoints';
 import { RedisService } from '../lock/redis.service';
 
 export interface FreezeResult {
@@ -12,7 +13,7 @@ export interface FreezeResult {
 @Injectable()
 export class FreezeService {
   private readonly logger = new Logger(FreezeService.name);
-  private readonly browserWorkerUrl = process.env.BROWSER_WORKER_URL || 'http://ops-browser-worker:3004';
+  private readonly browserWorkerUrl = getBrowserWorkerUrl();
 
   constructor(private readonly redisService: RedisService) {}
 

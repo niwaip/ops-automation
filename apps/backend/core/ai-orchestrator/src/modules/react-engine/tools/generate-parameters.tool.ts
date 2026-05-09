@@ -5,12 +5,10 @@
 
 import { Injectable } from '@nestjs/common';
 import axios from 'axios';
+import { getCarboneServiceUrl } from '../../../config/service-endpoints';
 import { BaseTool } from './base.tool';
 import { ToolResult, ExecutionContext } from '../interfaces';
 import { Tool } from '../decorators/tool.decorator';
-
-// Carbone引擎服务地址
-const CARBONE_SERVICE_URL = process.env.CARBONE_SERVICE_URL || 'http://carbone-engine:3009';
 
 @Injectable()
 @Tool({
@@ -92,7 +90,7 @@ export class GenerateParametersTool extends BaseTool {
     try {
       // 调用Carbone引擎的generate-parameters API（使用description参数）
       const response = await axios.post<{ success: boolean; generatedData: Record<string, unknown> }>(
-        `${CARBONE_SERVICE_URL}/studio/generate-parameters`,
+        `${getCarboneServiceUrl()}/studio/generate-parameters`,
         {
           skillId,
           description, // Carbone API使用description参数名

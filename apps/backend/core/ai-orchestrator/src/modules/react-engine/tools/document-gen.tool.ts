@@ -8,6 +8,7 @@ import { BaseTool } from './base.tool';
 import { ToolResult, ExecutionContext } from '../interfaces';
 import axios from 'axios';
 import { Tool } from '../decorators/tool.decorator';
+import { getCarboneServiceUrl } from '../../../config/service-endpoints';
 
 type DocumentGenerateResponse = {
   downloadUrl?: string;
@@ -111,7 +112,7 @@ export class DocumentGenTool extends BaseTool {
         required: ['skillId', 'templateId', 'data'],
       },
     );
-    this.carboneApiUrl = carboneApiUrl || process.env.CARBONE_API_URL || 'http://localhost:3010';
+    this.carboneApiUrl = carboneApiUrl || getCarboneServiceUrl();
   }
 
   async execute(

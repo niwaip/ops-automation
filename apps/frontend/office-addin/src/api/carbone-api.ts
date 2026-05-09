@@ -5,6 +5,7 @@
 
 import axios, { AxiosRequestConfig } from 'axios';
 import { AISuggestion, TemplateConfig } from '../taskpane/store';
+import { officeAddinRuntimeConfig } from '../config/runtime';
 
 // 获取 axios 配置（根据 URL 是否为 HTTPS）
 // 注意：浏览器环境不需要 httpsAgent，浏览器会自动处理 TLS
@@ -104,7 +105,7 @@ export interface GenerateTemplateResponse {
 class CarboneAPI {
   private baseUrl: string;
 
-  constructor(baseUrl: string = 'https://localhost:3443') {
+  constructor(baseUrl: string = officeAddinRuntimeConfig.apiBaseUrl) {
     this.baseUrl = baseUrl;
   }
 

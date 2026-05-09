@@ -5,32 +5,11 @@
 
 import { Injectable } from '@nestjs/common';
 import axios from 'axios';
+import { getAuthServiceUrl, getCarboneServiceUrl } from '../../../config/service-endpoints';
 import { BaseTool } from './base.tool';
 import { ToolResult, ExecutionContext } from '../interfaces';
 import { TRACE_ID_HEADER } from '../../../common/trace.util';
 import { Tool } from '../decorators/tool.decorator';
-
-// Auth服务地址
-const getAuthServiceUrl = () => {
-  if (process.env.AUTH_SERVICE_URL) {
-    return process.env.AUTH_SERVICE_URL;
-  }
-  if (process.env.DOCKER_ENV === 'true' || process.env.NODE_ENV === 'production') {
-    return process.env.PLATFORM_SERVICE_URL || 'http://platform:3001';
-  }
-  return 'http://localhost:3001';
-};
-
-// Carbone服务地址
-const getCarboneServiceUrl = () => {
-  if (process.env.CARBONE_SERVICE_URL) {
-    return process.env.CARBONE_SERVICE_URL;
-  }
-  if (process.env.DOCKER_ENV === 'true' || process.env.NODE_ENV === 'production') {
-    return 'http://carbone-engine:3009';
-  }
-  return 'http://localhost:3009';
-};
 
 // 解析API端点URL，添加必要的base URL
 const resolveApiUrl = (endpoint: string): string => {

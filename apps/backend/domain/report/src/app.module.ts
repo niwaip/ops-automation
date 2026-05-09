@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { TemplateModule } from './modules/template/template.module';
 import { ReportModule } from './modules/report/report.module';
+import { getDatabaseHost } from './config/service-endpoints';
 
 const getDatabaseConfig = () => {
   const databaseUrl = process.env.DATABASE_URL;
@@ -23,7 +24,7 @@ const getDatabaseConfig = () => {
 
   return {
     type: 'postgres' as const,
-    host: process.env.DB_HOST || 'localhost',
+    host: getDatabaseHost(),
     port: parseInt(process.env.DB_PORT || '5432', 10),
     username: process.env.DB_USERNAME || 'ops',
     password: process.env.DB_PASSWORD || 'ops_secret',

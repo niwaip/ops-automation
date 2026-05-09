@@ -1,5 +1,6 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import axios from 'axios';
+import { getAiOrchestratorUrl } from '../../config/service-endpoints';
 import { PrismaService } from '../../prisma/prisma.service';
 import {
   BuiltinActivityRegistry,
@@ -704,7 +705,7 @@ export class TemporalWorkflowAiDraftService {
     activityResources: AiDraftActivityResource[],
     support: TemporalWorkflowAiDraftSupport,
   ): Promise<AiWorkflowDraftPlan> {
-    const aiOrchestratorUrl = process.env.AI_ORCHESTRATOR_URL || 'http://ai-orchestrator:3007';
+    const aiOrchestratorUrl = getAiOrchestratorUrl();
     const prompt = buildAnalyzeAiWorkflowDraftPrompt({
       description,
       referenceUrl,
@@ -1268,7 +1269,7 @@ export class TemporalWorkflowAiDraftService {
     activityResources: AiDraftActivityResource[],
     support: TemporalWorkflowAiDraftSupport,
   ): Promise<AiWorkflowDraftPlan> {
-    const aiOrchestratorUrl = process.env.AI_ORCHESTRATOR_URL || 'http://ai-orchestrator:3007';
+    const aiOrchestratorUrl = getAiOrchestratorUrl();
     const prompt = buildRepairAiWorkflowDraftPlanPrompt({
       currentPlan,
       issues,
@@ -1293,7 +1294,7 @@ export class TemporalWorkflowAiDraftService {
     activityResources: AiDraftActivityResource[],
     support: TemporalWorkflowAiDraftSupport,
   ): Promise<AiWorkflowDraftPlan> {
-    const aiOrchestratorUrl = process.env.AI_ORCHESTRATOR_URL || 'http://ai-orchestrator:3007';
+    const aiOrchestratorUrl = getAiOrchestratorUrl();
     const prompt = buildAnalyzeAiWorkflowRefinementPrompt({
       currentWorkflowDsl,
       currentActivityDsl,

@@ -7,8 +7,11 @@ import {
   WorkerStatusDto,
   WorkerEndpointsDto,
 } from '../../dto';
+import { getPublicHost, getSessionBrokerUrl } from '../../config/service-endpoints';
 
 const Docker = require('dockerode');
+
+const DEFAULT_DOCKER_SOCKET_PATH = '/var/run/docker.sock';
 
 interface ManagedWorkerStatus extends WorkerStatusDto {
   container_name: string;
@@ -34,17 +37,19 @@ export class WorkerService implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(WorkerService.name);
   private readonly workers = new Map<string, ManagedWorkerStatus>();
   private readonly runtimeSessionIndex = new Map<string, string>();
-  private readonly docker = new Docker({ socketPath: '/var/run/docker.sock' });
+  private readonly dockerSocketPath =
+    process.env.DOCKER_SOCKET_PATH || process.env.DOCKER_SOCK || DEFAULT_DOCKER_SOCKET_PATH;
+  private readonly docker = new Docker({ socketPath: this.dockerSocketPath });
   private readonly dockerNetworkName = process.env.NETWORK_NAME || 'ops-network';
   private readonly sessionBrowserImage = process.env.SESSION_BROWSER_IMAGE || 'ops-browser-chrome:local';
-  private readonly externalHost = process.env.EXTERNAL_HOST || process.env.HOST_IP || 'localhost';
+  private readonly externalHost = getPublicHost();
   private readonly defaultSessionMode =
     process.env.SESSION_DEFAULT_MODE === 'agent' ? 'agent' : 'interactive';
   private readonly defaultEnableCodegen =
     (process.env.SESSION_ENABLE_CODEGEN || 'false').toLowerCase() !== 'false';
   private readonly defaultHeadless =
     (process.env.SESSION_HEADLESS || 'false').toLowerCase() === 'true';
-  private readonly sessionBrokerUrl = process.env.SESSION_BROKER_URL || 'http://session-broker:3002';
+  private readonly sessionBrokerUrl = getSessionBrokerUrl();
   private readonly orphanSweepEnabled =
     (process.env.BROWSER_WORKER_ORPHAN_SWEEP_ENABLED || 'true').toLowerCase() !== 'false';
   private readonly orphanSweepIntervalMs = this.readPositiveInt(
@@ -63,6 +68,7 @@ export class WorkerService implements OnModuleInit, OnModuleDestroy {
   private orphanSweepRunning = false;
 
   onModuleInit() {
+    this.logger.log(`Using Docker socket path: ${this.dockerSocketPath}`);
     if (!this.orphanSweepEnabled) {
       this.logger.log('Orphan worker sweep is disabled');
       return;

@@ -1,11 +1,12 @@
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { RedisService } from '../lock/redis.service';
+import { getBrowserWorkerUrl } from '../../config/service-endpoints';
 import { WorkerEndpoints, WorkerInfo } from '../../interfaces';
 
 @Injectable()
 export class AllocationService implements OnModuleInit {
   private readonly logger = new Logger(AllocationService.name);
-  private readonly browserWorkerUrl = process.env.BROWSER_WORKER_URL || 'http://browser-worker:3004';
+  private readonly browserWorkerUrl = getBrowserWorkerUrl('http://browser-worker:3004');
 
   constructor(private readonly redisService: RedisService) {}
 

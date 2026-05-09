@@ -28,7 +28,7 @@ export class ProxyController {
   ) {}
 
   // Platform Service Routes
-  @All('platform/*path')
+  @All('platform/:path(*)')
   @ApiOperation({ summary: 'Proxy to Platform service' })
   @ApiResponse({ status: 200, description: 'Successful response from Platform service' })
   async proxyPlatform(
@@ -42,7 +42,7 @@ export class ProxyController {
   }
 
   // Auth Service Routes (Legacy)
-  @All('auth/*path')
+  @All('auth/:path(*)')
   @ApiOperation({ summary: 'Proxy to Auth service (Legacy)' })
   @ApiResponse({ status: 200, description: 'Successful response from Auth service' })
   async proxyAuth(
@@ -56,7 +56,7 @@ export class ProxyController {
   }
 
   // Browser Template Service Routes
-  @All('templates/*path')
+  @All('templates/:path(*)')
   @ApiOperation({ summary: 'Proxy to Browser Template service' })
   @ApiResponse({ status: 200, description: 'Successful response from Browser Template service' })
   async proxyTemplate(
@@ -70,7 +70,7 @@ export class ProxyController {
   }
 
   // Session Service Routes
-  @All('sessions/*path')
+  @All('sessions/:path(*)')
   @ApiOperation({ summary: 'Proxy to Session Broker service' })
   @ApiResponse({ status: 200, description: 'Successful response from Session service' })
   async proxySession(
@@ -84,7 +84,7 @@ export class ProxyController {
   }
 
   // AI Orchestrator Service Routes
-  @All('ai/*path')
+  @All('ai/:path(*)')
   @ApiOperation({ summary: 'Proxy to AI Orchestrator service' })
   @ApiResponse({ status: 200, description: 'Successful response from AI service' })
   async proxyAI(
@@ -98,7 +98,7 @@ export class ProxyController {
   }
 
   // Browser Worker Service Routes
-  @All('workers/*path')
+  @All('workers/:path(*)')
   @ApiOperation({ summary: 'Proxy to Browser Worker service' })
   @ApiResponse({ status: 200, description: 'Successful response from Worker service' })
   async proxyWorker(

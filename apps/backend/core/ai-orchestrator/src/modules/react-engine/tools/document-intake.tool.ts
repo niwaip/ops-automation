@@ -5,12 +5,11 @@
 
 import axios from 'axios';
 import { Injectable } from '@nestjs/common';
+import { getCarboneServiceUrl, getReportServiceUrl } from '../../../config/service-endpoints';
 import { BaseTool } from './base.tool';
 import { ToolResult, ExecutionContext, AvailableSkillDefinition } from '../interfaces';
 import { Tool } from '../decorators/tool.decorator';
-
-const CARBONE_SERVICE_URL = process.env.CARBONE_SERVICE_URL || 'http://carbone-engine:3009';
-const REPORT_SERVICE_URL = process.env.REPORT_SERVICE_URL || 'http://ops-report:3008';
+const REPORT_SERVICE_URL = getReportServiceUrl();
 
 interface GenerateParamsResponse {
   success?: boolean;
@@ -254,7 +253,7 @@ export class DocumentIntakeTool extends BaseTool {
 
     try {
       const response = await axios.post<GenerateParamsResponse>(
-        `${CARBONE_SERVICE_URL}/studio/generate-parameters`,
+        `${getCarboneServiceUrl()}/studio/generate-parameters`,
         {
           // Carbone 引擎侧 skillId 为 carboneSkillId（不是平台 skillId）
           skillId: selectedSkill.carboneSkillId,

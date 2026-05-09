@@ -10,6 +10,7 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { ChatMessage } from './types';
 import { useAuthStore } from '../../store/authStore';
+import { replaceLocalhostWithCurrentHost } from '../../utils/publicUrl';
 import './ChatMessage.css';
 
 interface ChatMessageProps {
@@ -113,14 +114,7 @@ const getErrorPreview = (value?: string): string => {
   return preview || '任务执行失败，请展开查看具体错误信息。';
 };
 
-const fixLocalhostLink = (url?: string): string | undefined => {
-  if (!url) return undefined;
-  // 如果链接包含 localhost，且当前页面不在 localhost，则尝试替换为当前主机的 IP/域名
-  if (url.includes('localhost') && window.location.hostname !== 'localhost') {
-    return url.replace('localhost', window.location.hostname);
-  }
-  return url;
-};
+const fixLocalhostLink = (url?: string): string | undefined => replaceLocalhostWithCurrentHost(url);
 
 // 美化文本内容，处理连续换行
 const beautifyText = (text: string, useDivider = true): string => {

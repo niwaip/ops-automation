@@ -8,6 +8,14 @@ import {
 import { randomUUID } from 'crypto';
 import axios from 'axios';
 import { PrismaService } from '../../prisma/prisma.service';
+import {
+  getAiOrchestratorUrl,
+  getBrowserWorkerUrl,
+  getCarboneExternalUrl,
+  getCarboneServiceUrl,
+  getControlPlaneApiUrl,
+  getTemporalUiUrl,
+} from '../../config/service-endpoints';
 import { TemporalWorkflowService } from '../temporal-workflow/temporal-workflow.service';
 import { ActivityService } from '../temporal-workflow/temporal-activity.service';
 import { ExecutionFlowTemplateService } from '../execution-flow/execution-flow-template.service';
@@ -84,33 +92,6 @@ const normalizeBrowserRecordingToolName = (toolName: unknown): string | undefine
   const normalized = toolName.trim();
   return normalized === 'browser_execute' ? 'browser_step' : normalized;
 };
-
-const getCarboneServiceUrl = (): string => {
-  const configured = process.env.CARBONE_SERVICE_URL;
-  if (configured && configured.trim()) {
-    return configured.replace(/\/$/, '');
-  }
-  if (process.env.DOCKER_ENV === 'true' || process.env.NODE_ENV === 'production') {
-    return 'http://carbone-engine:3009';
-  }
-  return 'http://localhost:3009';
-};
-
-const getBrowserWorkerUrl = (): string => {
-  const configured = process.env.BROWSER_WORKER_URL;
-  if (configured && configured.trim()) {
-    return configured.replace(/\/$/, '');
-  }
-  if (process.env.DOCKER_ENV === 'true' || process.env.NODE_ENV === 'production') {
-    return 'http://ops-browser-worker:3004';
-  }
-  return 'http://localhost:3004';
-};
-
-const getCarboneExternalUrl = (): string => (
-  process.env.CARBONE_EXTERNAL_URL
-  || `http://${process.env.HOST_IP || process.env.EXTERNAL_HOST || 'localhost'}:3009`
-).replace(/\/$/, '');
 
 const toExternalCarboneUrl = (value: unknown): string | undefined => {
   if (typeof value !== 'string' || !value.trim()) {
@@ -515,7 +496,7 @@ export class CapabilityReleaseService implements OnModuleInit {
       const downloadUrl = extractDownloadUrl(rawResult);
       const temporalWorkflowId = result.workflowId;
       const temporalLink = temporalWorkflowId 
-        ? `http://localhost:8088/namespaces/default/workflows/${temporalWorkflowId}`
+        ? `${getTemporalUiUrl()}/namespaces/default/workflows/${temporalWorkflowId}`
         : null;
 
       // 允许非对象结果透传，包装为标准对象
@@ -2312,7 +2293,7 @@ ${logs.join('\n')}
 }`;
 
     try {
-      const orchestratorUrl = process.env.AI_ORCHESTRATOR_URL || 'http://ai-orchestrator:3007';
+      const orchestratorUrl = getAiOrchestratorUrl();
       const response = await axios.post<{ result: string }>(
         `${orchestratorUrl}/ai/model/call`,
         {
@@ -2382,7 +2363,7 @@ ${logs.join('\n')}
     )}\n源定义快照: ${JSON.stringify(snapshot.sourcePayload, null, 2)}\n\n要求：\n1. 返回一个适合演示和校验的 testInput JSON。\n2. 如果有比较合理的 testUserInput，自然语言给一句。\n3. deployConfig 只返回用户本次需要重点关注或覆盖的字段；没有必要覆盖则返回空对象。\n4. explanation 用中文，告诉用户这些参数为什么这样推荐。\n5. 只返回 JSON，不要 Markdown。\n\n返回格式：\n{\n  "explanation": "中文说明",\n  "deployConfig": {},\n  "testInput": {},\n  "testUserInput": "..." \n}`;
 
     try {
-      const orchestratorUrl = process.env.AI_ORCHESTRATOR_URL || 'http://ai-orchestrator:3007';
+      const orchestratorUrl = getAiOrchestratorUrl();
       const response = await axios.post<{ result: string }>(
         `${orchestratorUrl}/ai/model/call`,
         { modelId: 'default', prompt },
@@ -3676,24 +3657,13 @@ ${logs.join('\n')}
     return workflowClassName;
   }
 
-  private getControlPlaneApiUrl(): string {
-    const configured = process.env.CONTROL_PLANE_URL;
-    if (configured && configured.trim()) {
-      return configured.endsWith('/api') ? configured : `${configured}/api`;
-    }
-    if (process.env.DOCKER_ENV === 'true' || process.env.NODE_ENV === 'production') {
-      return 'http://ops-control-plane:3003/api';
-    }
-    return 'http://localhost:3003/api';
-  }
-
   private async executePublishedSkillByPromptForValidation(
     skillId: string,
     prompt: string,
     authToken?: string,
   ): Promise<{ success: boolean; logs: string[]; result?: Record<string, unknown> | null; error?: string }> {
     const runtimeContext = await this.getPublishedSkillRuntimeContext(skillId);
-    const controlPlaneUrl = this.getControlPlaneApiUrl();
+    const controlPlaneUrl = getControlPlaneApiUrl();
     const logs: string[] = [
       `[NL-Validation] 使用自然语言调用已发布 Skill: ${skillId}`,
       `[NL-Validation] runtimeType=${runtimeContext.runtimeType}, runtimeSource=${runtimeContext.runtimeSource}`,

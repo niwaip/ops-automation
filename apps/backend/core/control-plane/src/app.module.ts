@@ -3,6 +3,7 @@ import { JwtModule } from '@nestjs/jwt';
 import { ProxyModule } from './modules/proxy/proxy.module';
 import { AuditModule } from './modules/audit/audit.module';
 import { ExecutionModule } from './modules/execution/execution.module';
+import { NotificationModule } from './modules/notifications/notification.module';
 import { PrismaModule } from './modules/prisma/prisma.module';
 import { AuthMiddleware } from './modules/auth/auth.middleware';
 import { McpModule } from './modules/mcp/mcp.module';
@@ -17,6 +18,7 @@ import { McpModule } from './modules/mcp/mcp.module';
     ProxyModule,
     AuditModule,
     ExecutionModule,
+    NotificationModule,
     McpModule,
   ],
 })

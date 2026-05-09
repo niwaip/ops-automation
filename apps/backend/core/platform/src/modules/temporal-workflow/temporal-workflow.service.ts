@@ -7,6 +7,13 @@ import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import {
+  getAiOrchestratorUrl,
+  getBrowserWorkerUrl,
+  getCarboneExternalUrl,
+  getCarboneServiceUrl,
+  getWorkflowValidationAgentUrl,
+} from '../../config/service-endpoints';
+import {
   AI_STRUCTURED_TRANSFORM_ACTIVITY_KEY,
   BuiltinActivityDefinition,
   BuiltinActivityRegistry,
@@ -1515,16 +1522,7 @@ export class TemporalWorkflowService {
   }
 
   private getWorkflowValidationAgentUrl(): string {
-    if (process.env.WORKFLOW_VALIDATION_AGENT_URL) {
-      return process.env.WORKFLOW_VALIDATION_AGENT_URL;
-    }
-    if (process.env.ACTIVITY_VALIDATION_AGENT_URL) {
-      return process.env.ACTIVITY_VALIDATION_AGENT_URL;
-    }
-    if (process.env.TEMPORAL_SANDBOX_AGENT_URL) {
-      return process.env.TEMPORAL_SANDBOX_AGENT_URL;
-    }
-    return 'http://host.docker.internal:8090';
+    return getWorkflowValidationAgentUrl();
   }
 
   private buildRepeatedStepGuidance(workflowDsl: WorkflowDsl): string[] {
@@ -1712,7 +1710,7 @@ export class TemporalWorkflowService {
     const requiredParams = inputParams.filter((param) => param.required).map((param) => param.key);
     const internalBaseExpr = activityDef.config?.internalBaseUrl
       ? JSON.stringify(String(activityDef.config.internalBaseUrl))
-      : `(os.getenv("CARBONE_SERVICE_URL") or ("http://carbone-engine:3009" if os.getenv("DOCKER_ENV") == "true" or os.getenv("NODE_ENV") == "production" else "http://localhost:3009"))`;
+      : `(os.getenv("CARBONE_SERVICE_URL") or ${JSON.stringify(getCarboneServiceUrl())})`;
     const outputName = carboneStep.config?.outputName || '';
     const format = carboneStep.config?.format || 'docx';
     const templateId = carboneStep.config?.templateId || activityDef.config?.templateId || '';
@@ -1749,7 +1747,7 @@ export class TemporalWorkflowService {
       '    if missing_params:',
       '        raise ApplicationError(f"缺少必需参数: {\', \'.join(missing_params)}", non_retryable=True)',
       '',
-      '    external_base_url = (os.getenv("CARBONE_EXTERNAL_URL") or f"http://{os.getenv(\'HOST_IP\') or os.getenv(\'EXTERNAL_HOST\') or \'localhost\'}:3009").rstrip("/")',
+      `    external_base_url = (os.getenv("CARBONE_EXTERNAL_URL") or ${JSON.stringify(getCarboneExternalUrl())}).rstrip("/")`,
       '    payload = {',
       '        "templateId": template_id,',
       '        "data": render_data,',
@@ -1762,11 +1760,9 @@ export class TemporalWorkflowService {
       `    configured_base_url = ${internalBaseExpr}`,
       '    if configured_base_url:',
       '        candidate_base_urls.append(str(configured_base_url).rstrip("/"))',
-      '    candidate_base_urls.extend([',
-      '        "http://carbone-engine:3009",',
-      '        "http://host.docker.internal:3009",',
-      '        "http://localhost:3009",',
-      '    ])',
+      `    default_base_url = ${JSON.stringify(getCarboneServiceUrl())}`,
+      '    if default_base_url:',
+      '        candidate_base_urls.append(str(default_base_url).rstrip("/"))',
       '    deduped_base_urls = []',
       '    for candidate in candidate_base_urls:',
       '        if candidate and candidate not in deduped_base_urls:',
@@ -1847,7 +1843,7 @@ export class TemporalWorkflowService {
       '        raise ApplicationError("浏览器 Activity 缺少可执行步骤", non_retryable=True)',
       '',
       `    required_params = ${JSON.stringify(requiredParams)}`,
-      '    browser_worker_base_url = (os.getenv("BROWSER_WORKER_URL") or "http://ops-browser-worker:3004").rstrip("/")',
+      `    browser_worker_base_url = (os.getenv("BROWSER_WORKER_URL") or ${JSON.stringify(getBrowserWorkerUrl())}).rstrip("/")`,
       '    requested_backend = str(input_data.get("backend") or os.getenv("BROWSER_EXECUTION_BACKEND") or "cli").strip() or "cli"',
       '    runtime_session_id = str(input_data.get("runtimeSessionId") or "").strip() or f"temporal-browser-{uuid.uuid4().hex}"',
       `    configured_initial_url = ${JSON.stringify(configuredInitialUrl)}`,
@@ -3206,7 +3202,7 @@ export class TemporalWorkflowService {
     initialErrorContext?: string,
     onProgress?: (log: string) => void,
   ): Promise<{ success: boolean; code?: string; error?: string; attempts: number; autoRetried: boolean }> {
-    const aiOrchestratorUrl = process.env.AI_ORCHESTRATOR_URL || 'http://ai-orchestrator:3007';
+    const aiOrchestratorUrl = getAiOrchestratorUrl();
     let errorContext = initialErrorContext;
     let attempts = 0;
 
@@ -3338,7 +3334,7 @@ export class TemporalWorkflowService {
   ): Promise<TemplateWorkflowAiAnalysis> {
     const fallback: TemplateWorkflowAiAnalysis = {};
     try {
-      const aiOrchestratorUrl = process.env.AI_ORCHESTRATOR_URL || 'http://ai-orchestrator:3007';
+      const aiOrchestratorUrl = getAiOrchestratorUrl();
       const previewHtml = await this.fetchTemplatePreviewHtml(template.id).catch(() => '');
       const prompt = [
         '你是一个企业文档自动化专家，需要根据 Carbone 文档模板信息生成一个“模板工作流草稿”。',
@@ -3703,13 +3699,7 @@ export class TemporalWorkflowService {
   }
 
   private getCarboneBaseUrl(): string {
-    if (process.env.CARBONE_SERVICE_URL) {
-      return String(process.env.CARBONE_SERVICE_URL).replace(/\/$/, '');
-    }
-    if (process.env.DOCKER_ENV === 'true' || process.env.NODE_ENV === 'production') {
-      return 'http://carbone-engine:3009';
-    }
-    return 'http://localhost:3009';
+    return getCarboneServiceUrl();
   }
 
   private parseJsonFromAiContent(content: string): Record<string, any> {
@@ -4501,7 +4491,7 @@ export class TemporalWorkflowService {
     previewResponse: Record<string, any>,
     userGoal: string,
   ): Promise<Record<string, any>> {
-    const aiOrchestratorUrl = process.env.AI_ORCHESTRATOR_URL || 'http://ai-orchestrator:3007';
+    const aiOrchestratorUrl = getAiOrchestratorUrl();
     const responseBody = previewResponse.body ?? previewResponse;
     const responsePreview = JSON.stringify(responseBody, null, 2).slice(0, 20000);
     const responseLeafPaths = this.collectResponseLeafPaths(responseBody)
@@ -4653,7 +4643,7 @@ export class TemporalWorkflowService {
     sourceSample: Record<string, any> | string,
     userGoal: string,
   ): Promise<Record<string, any>> {
-    const aiOrchestratorUrl = process.env.AI_ORCHESTRATOR_URL || 'http://ai-orchestrator:3007';
+    const aiOrchestratorUrl = getAiOrchestratorUrl();
     const body = typeof sourceSample === 'string' ? sourceSample : JSON.stringify(sourceSample, null, 2);
     const leafPaths = typeof sourceSample === 'object'
       ? this.collectResponseLeafPaths(sourceSample as Record<string, any>).slice(0, 80).map(({ path, value }) => `${path} = ${JSON.stringify(value)}`).join('\n')
@@ -4690,7 +4680,7 @@ export class TemporalWorkflowService {
     sourceSample: Record<string, any> | string,
     userGoal: string,
   ): Promise<Record<string, any>> {
-    const aiOrchestratorUrl = process.env.AI_ORCHESTRATOR_URL || 'http://ai-orchestrator:3007';
+    const aiOrchestratorUrl = getAiOrchestratorUrl();
     const body = typeof sourceSample === 'string' ? sourceSample : JSON.stringify(sourceSample, null, 2);
     const leafPaths = typeof sourceSample === 'object'
       ? this.collectResponseLeafPaths(sourceSample as Record<string, any>).slice(0, 80).map(({ path, value }) => `${path} = ${JSON.stringify(value)}`).join('\n')

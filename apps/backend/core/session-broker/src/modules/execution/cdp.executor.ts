@@ -1,4 +1,5 @@
 import { Injectable, Logger, OnModuleDestroy } from '@nestjs/common';
+import { getBrowserWorkerUrl } from '../../config/service-endpoints';
 
 export interface TemplateStep {
   step_id: string;
@@ -35,7 +36,7 @@ export interface ExecutionResult {
 @Injectable()
 export class CdpExecutor implements OnModuleDestroy {
   private readonly logger = new Logger(CdpExecutor.name);
-  private readonly browserWorkerUrl = process.env.BROWSER_WORKER_URL || 'http://ops-browser-worker:3004';
+  private readonly browserWorkerUrl = getBrowserWorkerUrl();
 
   async onModuleDestroy() {
     // No persistent browser connection to close

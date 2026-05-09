@@ -4,6 +4,7 @@
  */
 
 import { create } from 'zustand';
+import { officeAddinRuntimeConfig } from '../config/runtime';
 
 // AI 识别结果类型
 export interface AISuggestion {
@@ -163,7 +164,7 @@ export const useAppStore = create<AppState>((set, get) => ({
     })),
   clearSelectedElements: () => set({ selectedElements: [] }),
 
-  apiBaseUrl: 'https://192.168.100.143:3443',  // HTTPS代理端口（Office插件必须使用HTTPS）
+  apiBaseUrl: officeAddinRuntimeConfig.apiBaseUrl,
   setApiBaseUrl: (url) => set({ apiBaseUrl: url }),
 
   // 调试日志功能

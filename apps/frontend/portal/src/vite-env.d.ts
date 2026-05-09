@@ -47,6 +47,10 @@ interface SpeechRecognitionConstructor {
 
 interface ImportMetaEnv {
   readonly VITE_API_BASE_URL?: string;
+  readonly VITE_HOST_IP?: string;
+  readonly VITE_RECORDER_WS_URL?: string;
+  readonly VITE_NOVNC_URL?: string;
+  readonly VITE_OFFICE_ADDIN_BASE_URL?: string;
 }
 
 interface ImportMeta {

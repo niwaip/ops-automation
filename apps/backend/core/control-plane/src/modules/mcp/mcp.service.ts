@@ -1,6 +1,7 @@
 import { Injectable, Logger, NotFoundException, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import axios from 'axios';
+import { getAuthServiceUrl } from '../../config/service-endpoints';
 import { PrismaService } from '../prisma/prisma.service';
 import { ExecutionService } from '../execution/execution.service';
 import {
@@ -11,17 +12,6 @@ import {
   TakeoverExecutionDto,
 } from '../execution/execution.dto';
 import { IncomingHttpHeaders } from 'http';
-
-// Auth服务地址
-const getAuthServiceUrl = () => {
-  if (process.env.AUTH_SERVICE_URL) {
-    return process.env.AUTH_SERVICE_URL;
-  }
-  if (process.env.DOCKER_ENV === 'true' || process.env.NODE_ENV === 'production') {
-    return process.env.PLATFORM_SERVICE_URL || 'http://platform:3001';
-  }
-  return 'http://localhost:3001';
-};
 
 @Injectable()
 export class McpService {

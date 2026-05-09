@@ -8,6 +8,7 @@ import { TemplateService } from '../template/template.service';
 import { GeneratorService } from '../generator/generator.service';
 import { AnalyzerService } from '../analyzer/analyzer.service';
 import { NotificationService } from '../notification/notification.service';
+import { getRedisHost, getSessionBrokerUrl } from '../../config/service-endpoints';
 import {
   CreateReportDTO,
   ReportDTO,
@@ -32,13 +33,13 @@ export class ReportService {
     private readonly notificationService: NotificationService,
   ) {
     this.redis = new Redis({
-      host: process.env.REDIS_HOST || 'redis',
+      host: getRedisHost(),
       port: parseInt(process.env.REDIS_PORT || '6379', 10),
       ...(process.env.REDIS_PASSWORD
         ? { password: process.env.REDIS_PASSWORD }
         : {}),
     });
-    this.sessionBrokerUrl = process.env.SESSION_BROKER_URL || 'http://session-broker:3002';
+    this.sessionBrokerUrl = getSessionBrokerUrl();
   }
 
   async create(dto: CreateReportDTO): Promise<ReportDTO> {
