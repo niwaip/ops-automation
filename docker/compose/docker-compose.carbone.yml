@@ -3,11 +3,13 @@
 
 services:
   carbone-engine:
-    image: docker.1ms.run/library/node:20-bullseye
+    build:
+      context: ../..
+      dockerfile: docker/carbone-engine/Dockerfile
     container_name: carbone-engine
     working_dir: /app
     command: >
-      sh -c "apt-get update || true && apt-get install -y --no-install-recommends libreoffice-writer libreoffice-calc libreoffice-impress curl || echo 'LibreOffice install skipped; template listing APIs can still run without it' && apt-get clean && rm -rf /var/lib/apt/lists/* && npm config set registry https://registry.npmmirror.com && npm install --include=dev && npm run build && npm run start"
+      sh -c "npm config set registry https://registry.npmmirror.com && npm install --include=dev && npm run build && npm run start"
     environment:
       - NODE_ENV=production
       - PORT=3009
@@ -28,6 +30,8 @@ services:
       interval: 30s
       timeout: 10s
       retries: 3
+    networks:
+      - ops-network
 
   # 开发模式配置（可选）
   carbone-engine-dev:
@@ -47,6 +51,8 @@ services:
       - carbone_engine_dev_node_modules:/app/node_modules
       - ${PROJECT_ROOT:-..}/.data/carbone-engine/templates:/app/templates
       - ${PROJECT_ROOT:-..}/.data/carbone-engine/outputs:/app/outputs
+    networks:
+      - ops-network
     profiles:
       - dev
 
@@ -57,6 +63,6 @@ volumes:
     driver: local
 
 networks:
-  default:
+  ops-network:
     name: ${NETWORK_NAME:-ops-network}
     external: true

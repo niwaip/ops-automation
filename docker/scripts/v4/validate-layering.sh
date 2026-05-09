@@ -67,7 +67,6 @@ runtime_expected=$(cat <<'EOF'
 browser-chrome
 browser-worker
 carbone-engine
-replay-engine
 temporal
 temporal-sandbox-agent
 temporal-ui
@@ -89,7 +88,6 @@ platform
 portal
 postgres
 redis
-replay-engine
 session-broker
 temporal
 temporal-sandbox-agent

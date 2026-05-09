@@ -2,6 +2,7 @@
 
 # Unified V4 Docker acceptance entrypoint.
 # Runs layering audits first, then smoke tests from core to full.
+# Optional profiles such as `report` are excluded from the default acceptance path.
 
 set -euo pipefail
 

@@ -1,6 +1,6 @@
 # V4 Runtime Group
 # 承载运行时资源与执行器：
-# browser-worker / replay-engine / temporal / temporal-sandbox-agent
+# browser-worker / temporal / temporal-sandbox-agent
 
 services:
   browser-worker:
@@ -29,33 +29,14 @@ services:
     networks:
       - ops-network
 
-  replay-engine:
-    image: ${DOCKER_REGISTRY:-}node:20-bullseye
-    container_name: ops-replay-engine
-    working_dir: /app
-    command: sh -c "npm config set registry https://registry.npmmirror.com && npm install --legacy-peer-deps && npm run dev"
-    environment:
-      NODE_ENV: development
-      DATABASE_URL: postgresql://${POSTGRES_USER:-ops}:${POSTGRES_PASSWORD:-ops_secret}@postgres:5432/${POSTGRES_DB:-ops}
-      REDIS_HOST: redis
-      REDIS_PORT: 6379
-      REDIS_PASSWORD: ${REDIS_PASSWORD:-redis_secret}
-      PORT: ${REPLAY_ENGINE_PORT:-3006}
-      EXTERNAL_HOST: ${HOST_IP:-localhost}
-    ports:
-      - "${REPLAY_ENGINE_PORT:-3006}:${REPLAY_ENGINE_PORT:-3006}"
-    volumes:
-      - ${PROJECT_ROOT:-..}/apps/backend/runtime/replay-engine:/app
-      - replay_engine_node_modules:/app/node_modules
-    networks:
-      - ops-network
-
   carbone-engine:
-    image: ${DOCKER_REGISTRY:-}node:20-bullseye
+    build:
+      context: ../..
+      dockerfile: docker/carbone-engine/Dockerfile
     container_name: carbone-engine
     working_dir: /app
     command: >
-      sh -c "apt-get update || true && apt-get install -y --no-install-recommends libreoffice-writer libreoffice-calc libreoffice-impress curl || echo 'LibreOffice install skipped; template listing APIs can still run without it' && apt-get clean && rm -rf /var/lib/apt/lists/* && npm config set registry https://registry.npmmirror.com && npm install --include=dev && npm run build && npm run start"
+      sh -c "npm config set registry https://registry.npmmirror.com && npm install --include=dev && npm run build && npm run start"
     environment:
       NODE_ENV: production
       PORT: ${CARBONE_ENGINE_PORT:-3009}
@@ -167,7 +148,6 @@ services:
 
 volumes:
   browser_worker_node_modules:
-  replay_engine_node_modules:
   carbone_engine_node_modules:
   temporal_data:
 

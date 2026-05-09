@@ -1,5 +1,6 @@
 # Ops Automation - Base Docker Compose Configuration
 # This file defines common infrastructure and service templates
+# Optional services such as `report` are gated by compose profiles
 # Usage: docker compose -f docker-compose.base.yml [other overrides] up -d
 
 x-common-env: &common-env
@@ -250,6 +251,8 @@ services:
         condition: service_started
       session-broker:
         condition: service_started
+    profiles:
+      - report
 
   # ============================================
   # Frontend
