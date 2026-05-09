@@ -85,14 +85,14 @@
         <bt:Url id="GetStarted.LearnMoreUrl" DefaultValue="https://carbone.io/documentation"/>
       </bt:Urls>
       <bt:ShortStrings>
-        <bt:String id="GetStarted.Title" DefaultValue="欢迎使用Carbone模板助手"/>
+        <bt:String id="GetStarted.Title" DefaultValue="Welcome to Carbone Template Assistant"/>
         <bt:String id="Group.Label" DefaultValue="Carbone"/>
-        <bt:String id="TaskpaneButton.Label" DefaultValue="模板助手"/>
-        <bt:String id="TaskpaneButton.Title" DefaultValue="打开Carbone模板助手"/>
+        <bt:String id="TaskpaneButton.Label" DefaultValue="Carbone Assistant"/>
+        <bt:String id="TaskpaneButton.Title" DefaultValue="Open Carbone Template Assistant"/>
       </bt:ShortStrings>
       <bt:LongStrings>
-        <bt:String id="GetStarted.Description" DefaultValue="使用AI自动识别Excel结构，一键生成模板变量"/>
-        <bt:String id="TaskpaneButton.Description" DefaultValue="打开任务窗格，使用AI辅助生成Carbone模板"/>
+        <bt:String id="GetStarted.Description" DefaultValue="AI-powered spreadsheet analysis and template generation"/>
+        <bt:String id="TaskpaneButton.Description" DefaultValue="Open taskpane for AI-assisted Carbone template generation"/>
       </bt:LongStrings>
     </Resources>
   </VersionOverrides>

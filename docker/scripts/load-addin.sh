@@ -4,20 +4,31 @@
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 DOCKER_DIR="$(dirname "$SCRIPT_DIR")"
 REPO_ROOT="$(dirname "$DOCKER_DIR")"
+ADDIN_BASE_URL="${OFFICE_ADDIN_BASE_URL:-${VITE_ADDIN_BASE_URL:-https://localhost:3000}}"
+TMP_DIR="$(mktemp -d)"
+
+cleanup() {
+    rm -rf "$TMP_DIR"
+}
+
+trap cleanup EXIT
 
 APP=${1:-word}
 
 case $APP in
     word)
-        MANIFEST="$REPO_ROOT/apps/frontend/office-addin/manifest-word.xml"
+        MANIFEST_URL="$ADDIN_BASE_URL/manifest-word.xml"
+        MANIFEST="$TMP_DIR/manifest-word.xml"
         APP_NAME="Microsoft Word"
         ;;
     excel)
-        MANIFEST="$REPO_ROOT/apps/frontend/office-addin/manifest-excel.xml"
+        MANIFEST_URL="$ADDIN_BASE_URL/manifest-excel.xml"
+        MANIFEST="$TMP_DIR/manifest-excel.xml"
         APP_NAME="Microsoft Excel"
         ;;
     ppt|powerpoint)
-        MANIFEST="$REPO_ROOT/apps/frontend/office-addin/manifest-ppt.xml"
+        MANIFEST_URL="$ADDIN_BASE_URL/manifest-ppt.xml"
+        MANIFEST="$TMP_DIR/manifest-ppt.xml"
         APP_NAME="Microsoft PowerPoint"
         ;;
     *)
@@ -31,17 +42,26 @@ echo "   加载 Office Add-in"
 echo "=========================================="
 echo ""
 echo "目标应用: $APP_NAME"
-echo "Manifest: $MANIFEST"
+echo "Add-in Base URL: $ADDIN_BASE_URL"
+echo "Manifest URL: $MANIFEST_URL"
 echo ""
 
 # 检查服务是否运行
-if ! curl -k -s https://localhost:3000 > /dev/null 2>&1; then
+if ! curl -k -s "$ADDIN_BASE_URL/health" > /dev/null 2>&1; then
     echo "❌ Office Add-in 服务未运行"
     echo "请先运行: $SCRIPT_DIR/start-cn.sh"
     exit 1
 fi
 
 echo "✅ Office Add-in 服务运行中"
+echo ""
+
+echo "下载当前运行配置对应的 manifest..."
+if ! curl -k -fsSL "$MANIFEST_URL" -o "$MANIFEST"; then
+    echo "❌ Manifest 下载失败: $MANIFEST_URL"
+    exit 1
+fi
+echo "✅ Manifest 已下载到: $MANIFEST"
 echo ""
 
 # 检测操作系统

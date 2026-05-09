@@ -73,14 +73,6 @@ body {
   cursor: pointer;
 }
 
-.api-url input {
-  width: 150px;
-  padding: 4px 8px;
-  font-size: 12px;
-  border: 1px solid var(--border-color);
-  border-radius: 4px;
-}
-
 /* Content Area */
 .content-area {
   flex: 1;

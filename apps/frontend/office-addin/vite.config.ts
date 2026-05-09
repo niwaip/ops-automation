@@ -3,7 +3,7 @@ import react from '@vitejs/plugin-react';
 import fs from 'fs';
 import path from 'path';
 import { DEFAULT_OFFICE_ADDIN_API_BASE_URL } from './src/config/defaults';
-import { downloadPagePlugin } from './src/download-plugin';
+import { wizardPagePlugin } from './src/download-plugin';
 
 // 检测是否在 Docker 容器中运行
 const isDocker = fs.existsSync('/.dockerenv') || process.env.DOCKER === 'true';
@@ -33,8 +33,8 @@ export default {
         });
       }
     },
-    // 添加下载页面 /download
-    downloadPagePlugin()
+    // 添加向导页面 /wizard
+    wizardPagePlugin()
   ],
   publicDir: 'public',
   server: {

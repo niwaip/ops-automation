@@ -42,7 +42,8 @@ services:
       - ${PROJECT_ROOT:-..}/apps/frontend/office-addin/public:/app/public
       - ../office-addin/certs:/app/certs:ro
     environment:
-      - VITE_API_URL=https://carbone-api:3443
+      - VITE_ADDIN_BASE_URL=https://${OFFICE_ADDIN_PUBLIC_HOST:-localhost}:${OFFICE_ADDIN_PORT:-3000}
+      - VITE_API_URL=https://${CARBONE_API_PUBLIC_HOST:-localhost}:${CARBONE_API_HTTPS_PORT:-3443}
       - NODE_ENV=development
       - DOCKER=true
     depends_on:

@@ -5,13 +5,13 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { useAppStore, OfficeAppType } from './store';
+import { useAppStore } from './store';
 import { AIIdentifyPanel } from '../components/AIIdentifyPanel';
 import { DebugLogPanel } from '../components/DebugLogPanel';
 import { OfficeHelper } from '../utils/office-api';
 
 export const App: React.FC = () => {
-  const { officeType, setOfficeType, apiBaseUrl, setApiBaseUrl, addDebugLog, showDebugPanel } = useAppStore();
+  const { officeType, setOfficeType, apiBaseUrl, addDebugLog } = useAppStore();
   const [connectionStatus, setConnectionStatus] = useState<'checking' | 'connected' | 'disconnected' | 'error'>('checking');
   const [connectionError, setConnectionError] = useState<string | null>(null);
 
@@ -119,16 +119,6 @@ export const App: React.FC = () => {
               {connectionError}
             </div>
           )}
-        </div>
-
-        <div className="api-url">
-          <input
-            type="text"
-            value={apiBaseUrl}
-            onChange={(e) => setApiBaseUrl(e.target.value)}
-            onBlur={checkBackendConnection}
-            placeholder="后端API地址"
-          />
         </div>
       </header>
 
