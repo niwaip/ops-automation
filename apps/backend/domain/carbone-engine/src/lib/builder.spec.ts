@@ -96,6 +96,21 @@ describe('Builder', () => {
       expect(result.xml).toBeDefined();
     });
 
+    it('should process explicit loops with [] array markers', () => {
+      const xml = '<row>{#d.items}{d.items[].name}|{d.items[].price}{/d.items}</row>';
+      const data = {
+        items: [
+          { name: 'Apple', price: 10 },
+          { name: 'Banana', price: 20 },
+        ],
+      };
+
+      const result = builder.buildXML(xml, data);
+
+      expect(result.xml).toContain('<row>Apple|10Banana|20</row>');
+      expect(result.warnings).toBeUndefined();
+    });
+
     it('should handle empty arrays', () => {
       const xml = '<tr>{d.items[i].name}</tr>';
       const data = { items: [] };

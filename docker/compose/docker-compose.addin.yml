@@ -44,6 +44,9 @@ services:
     environment:
       - VITE_ADDIN_BASE_URL=https://${OFFICE_ADDIN_PUBLIC_HOST:-localhost}:${OFFICE_ADDIN_PORT:-3000}
       - VITE_API_URL=https://${CARBONE_API_PUBLIC_HOST:-localhost}:${CARBONE_API_HTTPS_PORT:-3443}
+      - VITE_HOST_IP=${HOST_IP:-localhost}
+      - VITE_AI_ORCHESTRATOR_URL=https://${OFFICE_ADDIN_PUBLIC_HOST:-localhost}:${OFFICE_ADDIN_PORT:-3000}/proxy/ai-orchestrator
+      - VITE_AI_ORCHESTRATOR_PROXY_TARGET=http://${HOST_IP:-localhost}:${AI_ORCHESTRATOR_PORT:-3007}
       - NODE_ENV=development
       - DOCKER=true
     depends_on:

@@ -3,10 +3,11 @@
  * 选择模板类型、输出格式、参数配置
  */
 
-import React, { useState, useEffect } from 'react';
-import { useAppStore, TemplateConfig } from '../taskpane/store';
+import React, { useEffect, useMemo, useState } from 'react';
+import { useAppStore } from '../taskpane/store';
 import { carboneAPI } from '../api/carbone-api';
-import { OfficeHelper } from '../utils/office-api';
+import { createHostAdapter } from '../adapters';
+import { exportTemplateSource } from '../services/template-source-service';
 
 interface TemplateTypeOption {
   id: string;
@@ -32,21 +33,23 @@ export const TemplateConfigPanel: React.FC = () => {
     addDebugLog,
   } = useAppStore();
 
-  const [templateTypes, setTemplateTypes] = useState<TemplateTypeOption[]>([
+  const hostAdapter = useMemo(() => createHostAdapter(officeType), [officeType]);
+
+  const templateTypes: TemplateTypeOption[] = [
     { id: 'report', name: '报告文档', description: '业务报告、分析报告等', icon: '📄' },
     { id: 'invoice', name: '发票账单', description: '发票、收据、账单等', icon: '🧾' },
     { id: 'certificate', name: '证书证明', description: '证书、证明、执照等', icon: '📜' },
     { id: 'contract', name: '合同协议', description: '合同、协议、备忘录等', icon: '📋' },
     { id: 'letter', name: '信函通知', description: '信函、通知、公告等', icon: '📨' },
-  ]);
+  ];
 
-  const [formatters, setFormatters] = useState<FormatterOption[]>([
+  const formatters: FormatterOption[] = [
     { name: 'formatDate', syntax: ':formatDate(YYYY-MM-DD)', description: '日期格式化', example: '{d.date:formatDate(YYYY-MM-DD)}' },
     { name: 'formatNumber', syntax: ':formatNumber(#,##0.00)', description: '数字格式化', example: '{d.amount:formatNumber(#,##0.00)}' },
     { name: 'upper', syntax: ':upper', description: '转大写', example: '{d.name:upper}' },
     { name: 'lower', syntax: ':lower', description: '转小写', example: '{d.code:lower}' },
     { name: 'convCurrency', syntax: ':convCurrency(USD)', description: '货币转换', example: '{d.price:convCurrency(USD)}' },
-  ]);
+  ];
 
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
   const [validationWarnings, setValidationWarnings] = useState<string[]>([]);
@@ -67,6 +70,24 @@ export const TemplateConfigPanel: React.FC = () => {
   const [templateName, setTemplateName] = useState<string>('');
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
   const [uploadedFileBase64, setUploadedFileBase64] = useState<string>('');
+
+  const getUploadedFileFormat = (file: File | null): 'docx' | 'xlsx' | 'pptx' => {
+    const fileName = file?.name.toLowerCase() || '';
+    if (fileName.endsWith('.xlsx')) return 'xlsx';
+    if (fileName.endsWith('.pptx')) return 'pptx';
+    return 'docx';
+  };
+
+  const loadTemplateSource = async () => {
+    const source = await exportTemplateSource(hostAdapter);
+    source.warnings?.forEach((warning) => addDebugLog('warn', '模板源导出提示', warning));
+
+    return {
+      documentContent: source.content,
+      format: source.format,
+      isBinaryFile: source.isBinaryFile,
+    };
+  };
 
   /**
    * 处理文档文件上传
@@ -137,7 +158,7 @@ export const TemplateConfigPanel: React.FC = () => {
         documentContent: 'base64:' + uploadedFileBase64,
         suggestions: suggestions.filter(s => s.applied),
         templateConfig,
-        format: uploadedFile?.name.endsWith('.xlsx') ? 'xlsx' : 'docx',
+        format: getUploadedFileFormat(uploadedFile),
       });
 
       if (!templateResult.success) {
@@ -152,11 +173,12 @@ export const TemplateConfigPanel: React.FC = () => {
       });
 
       // 显示调试日志
-      if (result.debugLogs && result.debugLogs.length > 0) {
+      const debugLogs = (result as any).debugLogs as string[] | undefined;
+      if (debugLogs && debugLogs.length > 0) {
         console.log('=== 预览验证调试日志 ===');
-        result.debugLogs.forEach(log => console.log(log));
+        debugLogs.forEach((log: string) => console.log(log));
         addDebugLog('info', '=== 预览验证调试日志 ===', '');
-        result.debugLogs.forEach(log => addDebugLog('debug', log, ''));
+        debugLogs.forEach((log: string) => addDebugLog('debug', log, ''));
       }
 
       if (result.success) {
@@ -198,7 +220,7 @@ export const TemplateConfigPanel: React.FC = () => {
         suggestions: suggestions.filter(s => s.applied),
         templateConfig,
         skill: generatedSkill,
-        format: uploadedFile?.name.endsWith('.xlsx') ? 'xlsx' : 'docx',
+        format: getUploadedFileFormat(uploadedFile),
         templateName: templateName || uploadedFile?.name || `template_${Date.now()}`,
       });
 
@@ -304,18 +326,7 @@ export const TemplateConfigPanel: React.FC = () => {
     setStatusMessage('正在生成预览...');
 
     try {
-      // 获取当前文档内容
-      let documentContent = '';
-      let format = 'docx';
-
-      if (officeType === 'word') {
-        documentContent = await OfficeHelper.Word.getDocumentContent();
-        format = 'docx';
-      } else if (officeType === 'excel') {
-        const sheetData = await OfficeHelper.Excel.getSheetData();
-        documentContent = JSON.stringify(sheetData.values);
-        format = 'xlsx';
-      }
+      const { documentContent, format } = await loadTemplateSource();
 
       carboneAPI.setBaseUrl(apiBaseUrl);
       const result = await carboneAPI.previewRenderContent(
@@ -348,17 +359,7 @@ export const TemplateConfigPanel: React.FC = () => {
     setStatusMessage('正在生成模板...');
 
     try {
-      let documentContent = '';
-      let format = 'docx';
-
-      if (officeType === 'word') {
-        documentContent = await OfficeHelper.Word.getDocumentContent();
-        format = 'docx';
-      } else if (officeType === 'excel') {
-        const sheetData = await OfficeHelper.Excel.getSheetData();
-        documentContent = JSON.stringify(sheetData.values);
-        format = 'xlsx';
-      }
+      const { documentContent, format } = await loadTemplateSource();
 
       carboneAPI.setBaseUrl(apiBaseUrl);
       const result = await carboneAPI.generateTemplate({
@@ -442,32 +443,10 @@ export const TemplateConfigPanel: React.FC = () => {
     setStatusMessage('正在使用AI指南进行预览验证...');
 
     try {
-      let documentContent = '';
-      let format = 'docx';
-      let contentMethod = '';
+      const { documentContent, format, isBinaryFile } = await loadTemplateSource();
 
-      if (officeType === 'word') {
-        // 尝试多种方式获取文档内容（优先使用Word.run getFileOrNull）
-        try {
-          const result = await OfficeHelper.Word.getDocumentFileBase64WithFallback();
-          documentContent = 'base64:' + result.base64;
-          contentMethod = result.method;
-          console.log('文档获取方式:', contentMethod, '是否有效docx:', result.isValidDocx);
-
-          if (!result.isValidDocx) {
-            setStatusMessage(`注意：使用${contentMethod}方式获取的文档可能不完整（无docx格式头），预览可能受限`);
-          }
-        } catch (e: any) {
-          console.error('获取文档失败:', e);
-          setStatusMessage(`获取文档失败: ${e.message}`);
-          setLoadingStates(prev => ({ ...prev, skillPreview: false }));
-          return;
-        }
-        format = 'docx';
-      } else if (officeType === 'excel') {
-        const sheetData = await OfficeHelper.Excel.getSheetData();
-        documentContent = JSON.stringify(sheetData.values);
-        format = 'xlsx';
+      if (!isBinaryFile && format === 'docx') {
+        setStatusMessage('注意：当前导出的 Word 模板源可能不是完整 docx 文件，预览可能受限');
       }
 
       carboneAPI.setBaseUrl(apiBaseUrl);
@@ -489,7 +468,9 @@ export const TemplateConfigPanel: React.FC = () => {
       if (!templateResult.hasValidFile) {
         setStatusMessage(`模板配置已保存（模板ID: ${templateResult.templateId}），但由于无法获取完整的docx文件，预览功能暂不可用。请手动上传Word文档到模板管理页面进行完整预览。`);
         setCurrentStep(4);
-        setSkillPreviewResult({ generatedData: generatedSkill.parameters?.map(p => ({ [p.name]: p.example })) });
+        setSkillPreviewResult({
+          generatedData: generatedSkill.parameters?.map((p: any) => ({ [p.name]: p.example }))
+        });
         return;
       }
 
@@ -529,31 +510,10 @@ export const TemplateConfigPanel: React.FC = () => {
     setStatusMessage('正在保存完整模板...');
 
     try {
-      let documentContent = '';
-      let format = 'docx';
+      const { documentContent, format, isBinaryFile } = await loadTemplateSource();
 
-      if (officeType === 'word') {
-        // 尝试多种方式获取文档内容（优先使用Word.run getFileOrNull）
-        try {
-          const result = await OfficeHelper.Word.getDocumentFileBase64WithFallback();
-          documentContent = 'base64:' + result.base64;
-          console.log('保存文档获取方式:', result.method, '是否有效docx:', result.isValidDocx);
-
-          if (!result.isValidDocx) {
-            console.warn('获取的文档无有效docx格式头，模板文件可能不完整');
-            setStatusMessage(`警告：获取的文档格式不完整，保存的模板可能无法正常渲染`);
-          }
-        } catch (e: any) {
-          console.error('获取文档失败:', e);
-          setStatusMessage(`获取文档失败: ${e.message}`);
-          setLoadingStates(prev => ({ ...prev, fullSave: false }));
-          return;
-        }
-        format = 'docx';
-      } else if (officeType === 'excel') {
-        const sheetData = await OfficeHelper.Excel.getSheetData();
-        documentContent = JSON.stringify(sheetData.values);
-        format = 'xlsx';
+      if (!isBinaryFile && format === 'docx') {
+        setStatusMessage('警告：当前导出的 Word 模板源可能不是完整 docx 文件，保存结果可能受限');
       }
 
       carboneAPI.setBaseUrl(apiBaseUrl);
@@ -619,6 +579,36 @@ export const TemplateConfigPanel: React.FC = () => {
           placeholder="输入模板名称（可选）"
           className="template-name-input"
         />
+      </div>
+
+      <div className="config-section">
+        <h3>文件上传预览</h3>
+        <input
+          type="file"
+          accept=".docx,.xlsx,.pptx"
+          onChange={handleFileUpload}
+        />
+        {uploadedFile && (
+          <div style={{ marginTop: '8px', fontSize: '12px', color: '#666' }}>
+            已上传: {uploadedFile.name}
+          </div>
+        )}
+        <div className="quick-actions" style={{ marginTop: '10px' }}>
+          <button
+            className="preview-btn"
+            onClick={handlePreviewWithUploadedFile}
+            disabled={loadingStates.skillPreview || !uploadedFileBase64 || !generatedSkill}
+          >
+            {loadingStates.skillPreview ? '预览中...' : '上传文件预览'}
+          </button>
+          <button
+            className="generate-btn"
+            onClick={handleSaveWithUploadedFile}
+            disabled={loadingStates.fullSave || !uploadedFileBase64 || !generatedSkill}
+          >
+            {loadingStates.fullSave ? '保存中...' : '上传文件保存'}
+          </button>
+        </div>
       </div>
 
       {/* 模板类型选择 */}
@@ -1078,7 +1068,7 @@ const TemplateManager: React.FC = () => {
               <p>Skill文件包含模板的参数化指南，结构如下：</p>
               <ul style={{ margin: '5px 0', paddingLeft: '20px' }}>
                 <li><strong>parameters</strong>: 参数列表，每个参数包含：</li>
-                <li style={{ marginLeft: '15px' }}><code>name</code>: 变量名（如 {d.partyA.name}）</li>
+                <li style={{ marginLeft: '15px' }}><code>name</code>: 变量名（如 <code>{'{d.partyA.name}'}</code>）</li>
                 <li style={{ marginLeft: '15px' }}><code>usage</code>: 用途说明（如"甲方名称"）</li>
                 <li style={{ marginLeft: '15px' }}><code>dataType</code>: 数据类型（text, number, date等）</li>
                 <li style={{ marginLeft: '15px' }}><code>extractionHint</code>: AI提取数据的提示</li>

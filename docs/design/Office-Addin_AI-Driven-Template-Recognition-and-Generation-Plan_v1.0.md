@@ -110,6 +110,7 @@
 - 文本搜索仅作为 fallback，不作为主回写路径。
 - 统一宿主抽象，宿主差异收敛到 adapter 层。
 - 统一结构化文档模型，AI 只处理结构与语义，不处理宿主细节。
+- Excel 模板默认采用“成对 sheet”组织，而不是在同一个 sheet 中混放模板占位与真实数据。
 - 最终模板尽量基于完整文件导出。
 - Word 优先产品化，Excel 第二阶段，PPT 第三阶段。
 
@@ -180,10 +181,13 @@ export interface DocumentIR {
   elements: DocumentElement[];
   anchors: Anchor[];
   stats: {
+    sheetCount?: number;
+    sheetPairCount?: number;
     paragraphCount?: number;
     tableCount?: number;
     rowCount?: number;
     cellCount?: number;
+    namedRangeCount?: number;
     slideCount?: number;
     shapeCount?: number;
   };
@@ -192,6 +196,7 @@ export interface DocumentIR {
 
 `DocumentElement` 包含：
 
+- `sheet`
 - `paragraph`
 - `table`
 - `cell`
@@ -206,6 +211,7 @@ export interface DocumentIR {
   - `word-range`
   - `word-content-control`
 - Excel：
+  - `excel-sheet-pair`
   - `excel-range`
   - `excel-table`
   - `excel-named-range`
@@ -253,6 +259,7 @@ export interface DocumentIR {
 #### 目标
 
 - 从“读取二维数据”升级为“识别结构化工作表模板”。
+- 建立“模拟区 / 真实数据区”成对 sheet 的模板约束，避免模板结构与真实数据在同一 sheet 中互相污染。
 
 #### 重点官方 API
 
@@ -271,20 +278,32 @@ export interface DocumentIR {
 
 - 提取工作簿结构：
   - sheet
+  - sheet pair
   - table
   - named range
   - used range
+- Excel 模板组织约束：
+  - 一组 sheet 作为模拟区，结构与真实数据区保持一致，关键数据留白
+  - 一组 sheet 作为真实数据区，填写真实合同数据
+  - 循环场景拆为独立的成对 sheet，例如明细 / 交付 / 付款各自成对管理
 - 识别重点：
+  - 成对 sheet 的结构一致性
+  - 模拟区留白字段与真实数据区已填字段的映射关系
   - 表头
   - 数据区
   - 汇总区
   - 公式区
   - 单值参数区
 - 回写优先级：
+  - sheet pair anchor
   - named range
   - table region
   - explicit cell address
   - 当前选区 fallback
+- `DocumentIR` 中需要为 Excel sheet 补充：
+  - `sheetRole`: `mock` | `data`
+  - `pairKey`: 用于标识成对 sheet 关系
+  - `pairedSheetName`: 对应 sheet 名称
 - 模板导出优先使用完整 `xlsx` 文件，而不是仅传 `values`。
 
 ### 7.3 PowerPointAdapter
@@ -328,6 +347,7 @@ export interface DocumentIR {
   - 章节标题规则
   - 表格头规则
 - Excel：
+  - 成对 sheet 配对规则
   - 表头规则
   - 数据区规则
   - 汇总区规则
@@ -348,6 +368,82 @@ AI 主要负责：
 - 歧义消解
 
 AI 不负责最终对象定位，所有建议必须落在 `Anchor` 上。
+
+### 8.3 Excel 分析编排
+
+对于 Excel 成对 sheet 模式，AI 分析不应只把整本工作簿一次性丢给模型，而应采用“全局理解 + 逐对照组分析”的编排：
+
+1. Office API 先读取当前参与模板化的全部真实数据 sheet。
+2. 基于全部真实数据 sheet 做一次全局内容理解：
+   - 识别业务主题
+   - 识别关键实体与字段簇
+   - 推断建议数据模型命名
+   - 统一不同对照组的变量命名口径
+3. 对当前保留且参与比较的每个成对 sheet，逐组执行：
+   - 先由 Office 原生结构解析得到该对照组的差异摘要
+   - 只把当前对照组的局部 `DocumentIR`、差异摘要以及全局理解结果传给 AI
+   - 让 AI 为该对照组生成参数名称、描述、类型、循环块建议
+4. 前端对所有对照组结果做汇总、去重、冲突合并，再与本地启发式结果融合。
+
+这样做的好处：
+
+- AI 能先理解整份真实数据的业务语义，避免不同 sheet 命名风格不一致。
+- 每次局部分析只关注单个对照组，提示词更短、更稳定，也更容易定位循环表。
+- 可以清晰记录每个建议来自哪个对照组，便于后续人工修订与回写。
+- 某个对照组 AI 失败时，可以只回退该对照组，而不是整本工作簿全部失败。
+
+### 8.4 分析能力复用
+
+系统中已经同时存在：
+
+- `studio/direct-ai-identify` 与 `studio/direct-ai-identify-multistage` 这类结构化识别接口
+- `chat` 普通聊天模式
+- `task/react` 编排模式
+- `thinking` 开关
+
+Office Addin 不应直接耦合某一个模式，而应抽象一个统一的“分析执行器”层：
+
+```ts
+interface AnalysisExecutor {
+  kind: 'studio' | 'chat' | 'react';
+  supportsThinking?: boolean;
+  analyze(input: StructuredAnalysisInput): Promise<StructuredAnalysisResult>;
+}
+```
+
+推荐策略：
+
+- 第一阶段：
+  - Addin 默认使用 `studio` 执行器
+  - 先完成 Excel 的“全局理解 + 对照组循环分析”编排
+  - 若需要额外推理能力，仅接入 `chat + thinking`
+- 第二阶段：
+  - 将 `chat` 模式包装为可选执行器，用于更强的语义理解或描述生成
+  - 复用已有 `thinking` 控制，但保持最终输出仍回到统一结构化结果
+- 暂不接入：
+  - `task/react` 模式
+  - 原因是其依赖公开 skills 与任务编排能力，不适合作为当前 Addin 分析主链路
+
+关键原则：
+
+- `chat/react/thinking` 负责增强推理和编排，不直接替代 Office 原生结构提取。
+- Addin 侧始终只依赖统一的结构化结果，不感知底层到底是 `studio`、`chat` 还是 `react`。
+- 所有模式最终都必须输出：
+  - 参数名
+  - 描述
+  - 类型
+  - 循环路径
+  - 宿主锚点定位信息
+
+当前实现约束：
+
+- Office Addin 分析阶段只允许：
+  - `studio`
+  - `chat + thinking`
+- Office Addin 分析阶段不调用：
+  - `task/react`
+  - skills
+  - 工具执行链
 
 ## 9. 后端接口设计
 
@@ -525,6 +621,7 @@ POST /studio/save-template-with-skill
 
 - 定义 `DocumentIR`
 - Adapter 输出结构化对象
+- 为 Excel 补充 `sheetRole / pairKey / pairedSheetName` 表达
 - 调整后端接口请求模型
 
 ### 阶段 3：Word 产品化
@@ -548,8 +645,9 @@ POST /studio/save-template-with-skill
 
 任务：
 
+- 成对 sheet 配对识别与校验
 - table / named range / formula 区识别
-- 单值字段与明细循环支持
+- 单值字段与明细 / 交付 / 付款循环 sheet 支持
 - xlsx 文件导出
 
 ### 阶段 5：PPT 基础产品化
@@ -593,7 +691,7 @@ POST /studio/save-template-with-skill
 
 ### 第 5-6 周
 
-- 完成 Excel 结构化识别与保存
+- 完成 Excel 成对 sheet 识别、结构化保存与循环 sheet Beta
 
 ### 第 7-8 周
 
@@ -618,7 +716,9 @@ POST /studio/save-template-with-skill
 
 ### Excel
 
-- 支持结构提取、单元格变量化、表格循环 Beta
+- 支持成对 sheet 结构提取
+- 支持单值字段变量化
+- 支持明细 / 交付 / 付款成对循环 sheet Beta
 
 ### PPT
 
@@ -656,6 +756,14 @@ POST /studio/save-template-with-skill
 - Excel/PPT 逐步替换
 - 使用能力开关防止未完成路径暴露
 
+### 风险 5：Excel 成对 sheet 命名和配对不稳定
+
+应对：
+
+- 在 adapter 层增加 sheet 配对校验和错误提示
+- 优先基于显式配置或稳定命名规则建立 `pairKey`
+- 当配对失败时禁止进入自动回写，仅允许用户修正后继续
+
 ## 15. 验收标准
 
 ### 功能验收
@@ -663,7 +771,8 @@ POST /studio/save-template-with-skill
 - Word：
   - 至少 3 类文档模板稳定完成识别和保存
 - Excel：
-  - 至少 2 类工作表模板稳定完成识别和保存
+  - 至少 2 类成对 sheet 工作簿模板稳定完成识别和保存
+  - 至少 1 类包含明细 / 交付 / 付款循环 sheet 的模板完成 Beta 验证
 - PPT：
   - 至少 1 类演示模板完成文本框变量化
 

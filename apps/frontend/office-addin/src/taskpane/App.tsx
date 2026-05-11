@@ -8,12 +8,15 @@ import React, { useState, useEffect } from 'react';
 import { useAppStore } from './store';
 import { AIIdentifyPanel } from '../components/AIIdentifyPanel';
 import { DebugLogPanel } from '../components/DebugLogPanel';
+import { ExcelSheetPairsTab } from '../components/ExcelSheetPairsTab';
 import { OfficeHelper } from '../utils/office-api';
 
 export const App: React.FC = () => {
   const { officeType, setOfficeType, apiBaseUrl, addDebugLog } = useAppStore();
   const [connectionStatus, setConnectionStatus] = useState<'checking' | 'connected' | 'disconnected' | 'error'>('checking');
   const [connectionError, setConnectionError] = useState<string | null>(null);
+  const [showHelp, setShowHelp] = useState(false);
+  const currentTemplateTab = officeType === 'excel' ? 'excel' : 'word';
 
   /**
    * 初始化检测 Office 类型
@@ -122,9 +125,31 @@ export const App: React.FC = () => {
         </div>
       </header>
 
-      {/* 主内容区 - 直接显示AI识别面板（线性流程） */}
+      <div className="host-template-tabs">
+        <button
+          className={`host-template-tab ${currentTemplateTab === 'word' ? 'active' : ''}`}
+          type="button"
+        >
+          Word 模板
+        </button>
+        <button
+          className={`host-template-tab ${currentTemplateTab === 'excel' ? 'active' : ''}`}
+          type="button"
+        >
+          Excel 模板
+        </button>
+      </div>
+
+      {/* 主内容区 */}
       <main className="content-area">
-        <AIIdentifyPanel />
+        {officeType === 'excel' ? (
+          <div className="excel-workspace">
+            <ExcelSheetPairsTab />
+            <AIIdentifyPanel />
+          </div>
+        ) : (
+          <AIIdentifyPanel />
+        )}
         {/* 调试日志面板 */}
         <DebugLogPanel />
       </main>
@@ -132,10 +157,33 @@ export const App: React.FC = () => {
       {/* 底部快捷操作 */}
       <footer className="quick-actions">
         <div className="syntax-help">
-          <button className="help-btn">语法帮助</button>
+          <button className="help-btn" onClick={() => setShowHelp(true)}>语法帮助</button>
         </div>
         <div className="version">v1.0.0</div>
       </footer>
+
+      {showHelp && (
+        <div className="help-modal-overlay" onClick={() => setShowHelp(false)}>
+          <div className="help-modal" onClick={(event) => event.stopPropagation()}>
+            <div className="help-modal-header">
+              <h3>帮助</h3>
+              <button className="help-modal-close" onClick={() => setShowHelp(false)}>关闭</button>
+            </div>
+            {officeType === 'excel' ? (
+              <div className="help-modal-content">
+                <p>默认规则：左侧使用 sheet `0 / 2 / 4 ...` 作为空白模板，右侧使用 sheet `1 / 3 / 5 ...` 作为真实数据。</p>
+                <p>对照组的勾选与删除放在第二步“参数识别”卡片中；文档理解区域只负责理解工作簿内容。</p>
+                <p>Excel 模板流程：第一步先理解工作簿内容；第二步再基于对照组执行参数识别。</p>
+              </div>
+            ) : (
+              <div className="help-modal-content">
+                <p>使用 AI 识别参数后，可预览并应用变量到当前文档。</p>
+                <p>如需查看模型请求原文或原始返回，可在分析结果区域展开调试信息。</p>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 };
