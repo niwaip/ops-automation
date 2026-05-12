@@ -21,6 +21,29 @@ export const DebugLogPanel: React.FC = () => {
   const { debugLogs, clearDebugLogs, showDebugPanel, setShowDebugPanel } = useAppStore();
   const [copySuccess, setCopySuccess] = useState<string | null>(null);
 
+  const latestLogsByModule = useMemo(() => {
+    const latestMap = new Map<DebugModuleKey, DebugLogEntry>();
+
+    debugLogs.forEach((log) => {
+      if (!log || !log.message) return;
+      latestMap.set(classifyLogModule(log), log);
+    });
+
+    return DEBUG_MODULES
+      .map((module) => {
+        const log = latestMap.get(module.key);
+        if (!log) {
+          return null;
+        }
+        return {
+          moduleKey: module.key,
+          moduleLabel: module.label,
+          log,
+        };
+      })
+      .filter((item): item is { moduleKey: DebugModuleKey; moduleLabel: string; log: DebugLogEntry } => Boolean(item));
+  }, [debugLogs]);
+
   if (!showDebugPanel) return null;
 
   const formatLogTime = (timestamp: DebugLogEntry['timestamp']) => {
@@ -151,28 +174,6 @@ export const DebugLogPanel: React.FC = () => {
 
     return 'other';
   };
-
-  const latestLogsByModule = useMemo(() => {
-    const latestMap = new Map<DebugModuleKey, DebugLogEntry>();
-
-    debugLogs.forEach((log) => {
-      latestMap.set(classifyLogModule(log), log);
-    });
-
-    return DEBUG_MODULES
-      .map((module) => {
-        const log = latestMap.get(module.key);
-        if (!log) {
-          return null;
-        }
-        return {
-          moduleKey: module.key,
-          moduleLabel: module.label,
-          log,
-        };
-      })
-      .filter((item): item is { moduleKey: DebugModuleKey; moduleLabel: string; log: DebugLogEntry } => Boolean(item));
-  }, [debugLogs]);
 
   return (
     <div className="flow-log-panel">
