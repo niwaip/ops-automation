@@ -23,11 +23,24 @@ export const DebugLogPanel: React.FC = () => {
 
   if (!showDebugPanel) return null;
 
+  const formatLogTime = (timestamp: DebugLogEntry['timestamp']) => {
+    try {
+      const date = timestamp instanceof Date ? timestamp : new Date(timestamp);
+      if (Number.isNaN(date.getTime())) {
+        return '--:--:--';
+      }
+      return date.toLocaleTimeString();
+    } catch {
+      return '--:--:--';
+    }
+  };
+
   /**
    * 复制单条日志到剪贴板
    */
   const copyLogToClipboard = async (log: DebugLogEntry) => {
-    const logText = `[${log.level.toUpperCase()}] ${log.timestamp.toLocaleTimeString()} - ${log.message}\n${log.details || ''}`;
+    if (!log) return;
+    const logText = `[${log.level ? log.level.toUpperCase() : 'INFO'}] ${formatLogTime(log.timestamp)} - ${log.message || ''}\n${log.details || ''}`;
     try {
       await navigator.clipboard.writeText(logText);
       setCopySuccess(log.id);
@@ -42,7 +55,7 @@ export const DebugLogPanel: React.FC = () => {
    */
   const copyAllLogsToClipboard = async () => {
     const allLogsText = latestLogsByModule.map(({ moduleLabel, log }) =>
-      `【${moduleLabel}】 [${log.level.toUpperCase()}] ${log.timestamp.toLocaleTimeString()} - ${log.message}\n${log.details || ''}`
+      `【${moduleLabel}】 [${log?.level ? log.level.toUpperCase() : 'INFO'}] ${formatLogTime(log?.timestamp)} - ${log?.message || ''}\n${log?.details || ''}`
     ).join('\n\n');
     try {
       await navigator.clipboard.writeText(allLogsText);
@@ -74,6 +87,7 @@ export const DebugLogPanel: React.FC = () => {
   };
 
   const classifyLogModule = (log: DebugLogEntry): DebugModuleKey => {
+    if (!log || !log.message) return 'other';
     const text = `${log.message} ${log.details || ''}`.toLowerCase();
 
     if (
@@ -161,10 +175,10 @@ export const DebugLogPanel: React.FC = () => {
   }, [debugLogs]);
 
   return (
-    <div className="debug-log-panel">
-      <div className="debug-header">
+    <div className="flow-log-panel">
+      <div className="flow-log-header">
         <h3>流程日志</h3>
-        <div className="debug-actions">
+        <div className="flow-log-actions">
           <button onClick={copyAllLogsToClipboard} disabled={latestLogsByModule.length === 0}>
             {copySuccess === 'all' ? '✓ 已复制' : '📋 复制全部'}
           </button>
@@ -173,41 +187,44 @@ export const DebugLogPanel: React.FC = () => {
         </div>
       </div>
 
-      <div className="debug-content">
+      <div className="flow-log-content">
         {latestLogsByModule.length === 0 ? (
-          <div className="no-logs">暂无日志</div>
+          <div className="flow-log-empty">暂无日志</div>
         ) : (
-          latestLogsByModule.map(({ moduleKey, moduleLabel, log }) => (
-            <div key={moduleKey} className="log-entry module-log-entry" style={{ borderColor: getLevelColor(log.level) }}>
-              <div className="log-header">
-                <span className="log-module-tag">{moduleLabel}</span>
-                <span className="log-icon">{getLevelIcon(log.level)}</span>
-                <span className="log-time">
-                  {log.timestamp.toLocaleTimeString()}
-                </span>
-                <span className="log-level" style={{ color: getLevelColor(log.level) }}>
-                  [{log.level.toUpperCase()}]
-                </span>
-                <span className="log-message">{log.message}</span>
-                <button
-                  className="copy-log-btn"
-                  onClick={() => copyLogToClipboard(log)}
-                  title="复制此日志"
-                >
-                  {copySuccess === log.id ? '✓' : '📋'}
-                </button>
-              </div>
-              {log.details && (
-                <div className="log-details">
-                  <pre>{log.details}</pre>
+          latestLogsByModule.map(({ moduleKey, moduleLabel, log }) => {
+            if (!log) return null;
+            return (
+              <div key={moduleKey} className="flow-log-entry" style={{ borderColor: getLevelColor(log.level) }}>
+                <div className="flow-log-entry-header">
+                  <span className="flow-log-module-tag">{moduleLabel}</span>
+                  <span className="flow-log-icon">{getLevelIcon(log.level)}</span>
+                  <span className="flow-log-time">
+                    {formatLogTime(log.timestamp)}
+                  </span>
+                  <span className="flow-log-level" style={{ color: getLevelColor(log.level) }}>
+                    [{log.level ? log.level.toUpperCase() : 'INFO'}]
+                  </span>
+                  <span className="flow-log-message">{log.message || '空内容'}</span>
+                  <button
+                    className="flow-log-copy-btn"
+                    onClick={() => copyLogToClipboard(log)}
+                    title="复制此日志"
+                  >
+                    {copySuccess === log.id ? '✓' : '📋'}
+                  </button>
                 </div>
-              )}
-            </div>
-          ))
+                {log.details && (
+                  <div className="flow-log-details">
+                    <pre>{log.details}</pre>
+                  </div>
+                )}
+              </div>
+            );
+          })
         )}
       </div>
 
-      <div className="debug-footer">
+      <div className="flow-log-footer">
         <span>显示 {latestLogsByModule.length} 个模块的最新日志</span>
         <span>原始日志 {debugLogs.length} 条</span>
       </div>

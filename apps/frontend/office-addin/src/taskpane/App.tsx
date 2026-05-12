@@ -8,6 +8,7 @@ import React, { useState, useEffect } from 'react';
 import { useAppStore } from './store';
 import { AIIdentifyPanel } from '../components/AIIdentifyPanel';
 import { DebugLogPanel } from '../components/DebugLogPanel';
+import { ErrorBoundary } from '../components/ErrorBoundary';
 import { ExcelSheetPairsTab } from '../components/ExcelSheetPairsTab';
 import { OfficeHelper } from '../utils/office-api';
 
@@ -151,7 +152,9 @@ export const App: React.FC = () => {
           <AIIdentifyPanel />
         )}
         {/* 调试日志面板 */}
-        <DebugLogPanel />
+        <ErrorBoundary>
+          <DebugLogPanel />
+        </ErrorBoundary>
       </main>
 
       {/* 底部快捷操作 */}
