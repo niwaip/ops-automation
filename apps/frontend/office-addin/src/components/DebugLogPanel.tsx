@@ -21,31 +21,6 @@ export const DebugLogPanel: React.FC = () => {
   const { debugLogs, clearDebugLogs, showDebugPanel, setShowDebugPanel } = useAppStore();
   const [copySuccess, setCopySuccess] = useState<string | null>(null);
 
-  const latestLogsByModule = useMemo(() => {
-    const latestMap = new Map<DebugModuleKey, DebugLogEntry>();
-
-    debugLogs.forEach((log) => {
-      if (!log || !log.message) return;
-      latestMap.set(classifyLogModule(log), log);
-    });
-
-    return DEBUG_MODULES
-      .map((module) => {
-        const log = latestMap.get(module.key);
-        if (!log) {
-          return null;
-        }
-        return {
-          moduleKey: module.key,
-          moduleLabel: module.label,
-          log,
-        };
-      })
-      .filter((item): item is { moduleKey: DebugModuleKey; moduleLabel: string; log: DebugLogEntry } => Boolean(item));
-  }, [debugLogs]);
-
-  if (!showDebugPanel) return null;
-
   const formatLogTime = (timestamp: DebugLogEntry['timestamp']) => {
     try {
       const date = timestamp instanceof Date ? timestamp : new Date(timestamp);
@@ -55,57 +30,6 @@ export const DebugLogPanel: React.FC = () => {
       return date.toLocaleTimeString();
     } catch {
       return '--:--:--';
-    }
-  };
-
-  /**
-   * 复制单条日志到剪贴板
-   */
-  const copyLogToClipboard = async (log: DebugLogEntry) => {
-    if (!log) return;
-    const logText = `[${log.level ? log.level.toUpperCase() : 'INFO'}] ${formatLogTime(log.timestamp)} - ${log.message || ''}\n${log.details || ''}`;
-    try {
-      await navigator.clipboard.writeText(logText);
-      setCopySuccess(log.id);
-      setTimeout(() => setCopySuccess(null), 2000);
-    } catch (err) {
-      console.error('Failed to copy:', err);
-    }
-  };
-
-  /**
-   * 复制所有日志到剪贴板
-   */
-  const copyAllLogsToClipboard = async () => {
-    const allLogsText = latestLogsByModule.map(({ moduleLabel, log }) =>
-      `【${moduleLabel}】 [${log?.level ? log.level.toUpperCase() : 'INFO'}] ${formatLogTime(log?.timestamp)} - ${log?.message || ''}\n${log?.details || ''}`
-    ).join('\n\n');
-    try {
-      await navigator.clipboard.writeText(allLogsText);
-      setCopySuccess('all');
-      setTimeout(() => setCopySuccess(null), 2000);
-    } catch (err) {
-      console.error('Failed to copy all:', err);
-    }
-  };
-
-  const getLevelColor = (level: DebugLogEntry['level']) => {
-    switch (level) {
-      case 'error': return '#dc3545';
-      case 'warn': return '#ffc107';
-      case 'info': return '#17a2b8';
-      case 'debug': return '#6c757d';
-      default: return '#333';
-    }
-  };
-
-  const getLevelIcon = (level: DebugLogEntry['level']) => {
-    switch (level) {
-      case 'error': return '❌';
-      case 'warn': return '⚠️';
-      case 'info': return 'ℹ️';
-      case 'debug': return '🔍';
-      default: return '•';
     }
   };
 
@@ -173,6 +97,82 @@ export const DebugLogPanel: React.FC = () => {
     }
 
     return 'other';
+  };
+
+  const latestLogsByModule = useMemo(() => {
+    const latestMap = new Map<DebugModuleKey, DebugLogEntry>();
+
+    debugLogs.forEach((log) => {
+      if (!log || !log.message) return;
+      latestMap.set(classifyLogModule(log), log);
+    });
+
+    return DEBUG_MODULES
+      .map((module) => {
+        const log = latestMap.get(module.key);
+        if (!log) {
+          return null;
+        }
+        return {
+          moduleKey: module.key,
+          moduleLabel: module.label,
+          log,
+        };
+      })
+      .filter((item): item is { moduleKey: DebugModuleKey; moduleLabel: string; log: DebugLogEntry } => Boolean(item));
+  }, [debugLogs]);
+
+  if (!showDebugPanel) return null;
+
+  /**
+   * 复制单条日志到剪贴板
+   */
+  const copyLogToClipboard = async (log: DebugLogEntry) => {
+    if (!log) return;
+    const logText = `[${log.level ? log.level.toUpperCase() : 'INFO'}] ${formatLogTime(log.timestamp)} - ${log.message || ''}\n${log.details || ''}`;
+    try {
+      await navigator.clipboard.writeText(logText);
+      setCopySuccess(log.id);
+      setTimeout(() => setCopySuccess(null), 2000);
+    } catch (err) {
+      console.error('Failed to copy:', err);
+    }
+  };
+
+  /**
+   * 复制所有日志到剪贴板
+   */
+  const copyAllLogsToClipboard = async () => {
+    const allLogsText = latestLogsByModule.map(({ moduleLabel, log }) =>
+      `【${moduleLabel}】 [${log?.level ? log.level.toUpperCase() : 'INFO'}] ${formatLogTime(log?.timestamp)} - ${log?.message || ''}\n${log?.details || ''}`
+    ).join('\n\n');
+    try {
+      await navigator.clipboard.writeText(allLogsText);
+      setCopySuccess('all');
+      setTimeout(() => setCopySuccess(null), 2000);
+    } catch (err) {
+      console.error('Failed to copy all:', err);
+    }
+  };
+
+  const getLevelColor = (level: DebugLogEntry['level']) => {
+    switch (level) {
+      case 'error': return '#dc3545';
+      case 'warn': return '#ffc107';
+      case 'info': return '#17a2b8';
+      case 'debug': return '#6c757d';
+      default: return '#333';
+    }
+  };
+
+  const getLevelIcon = (level: DebugLogEntry['level']) => {
+    switch (level) {
+      case 'error': return '❌';
+      case 'warn': return '⚠️';
+      case 'info': return 'ℹ️';
+      case 'debug': return '🔍';
+      default: return '•';
+    }
   };
 
   return (
