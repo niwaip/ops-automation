@@ -228,94 +228,28 @@ function buildAsciiIdentifier(value: string, fallback: string): string {
 }
 
 function mapExcelBusinessFieldName(label: string): string | undefined {
-  const normalizedLabel = normalizeText(label);
-  const mappings: Array<[RegExp, string]> = [
-    [/批次/, 'batch'],
-    [/交付地点|到货地点/, 'deliveryLocation'],
-    [/计划到货日|计划交付日|预计到货日/, 'plannedArrivalDate'],
-    [/安装完成日|安装完成时间/, 'installationCompletionDate'],
-    [/验收类型|验收方式/, 'acceptanceType'],
-    [/验收标准/, 'acceptanceStandard'],
-    [/安装条件说明|安装条件/, 'installationConditionNotes'],
-    [/付款节点|付款阶段/, 'paymentStage'],
-    [/付款条件/, 'paymentCondition'],
-    [/应付金额|付款金额/, 'payableAmount'],
-    [/合同编号|编号/, 'contractNo'],
-    [/签订日期/, 'signDate'],
-    [/甲方|采购方/, 'buyerName'],
-    [/乙方|供应商/, 'supplierName'],
-    [/项目名称|项目/, 'projectName'],
-    [/币种/, 'currency'],
-    [/质保期/, 'warrantyPeriodMonths'],
-    [/合同摘要|摘要/, 'summary'],
-    [/序号/, 'seq'],
-    [/设备编号|设备编码|物料编码|物料编号/, 'materialCode'],
-    [/设备名称|产品名称|货物名称/, 'deviceName'],
-    [/规格型号|规格|型号/, 'model'],
-    [/单位/, 'unit'],
-    [/数量/, 'quantity'],
-    [/单价/, 'unitPrice'],
-    [/小计/, 'subtotal'],
-    [/合计|总价/, 'totalAmount'],
-    [/金额/, 'amount'],
-    [/日期/, 'date'],
-    [/状态/, 'status'],
-    [/备注/, 'note'],
-  ];
-
-  for (const [pattern, fieldName] of mappings) {
-    if (pattern.test(normalizedLabel)) {
-      return fieldName;
-    }
-  }
-
+  // 移除硬编码的业务字段映射，进行标准化
   return undefined;
 }
 
 function mapExcelSheetFieldGroup(sheetName: string): string {
+  // 移除硬编码的业务分组映射，进行标准化
   const normalizedSheet = stripExcelSheetRoleSuffix(sheetName);
-  const mappings: Array<[RegExp, string]> = [
-    [/采购明细|明细|detail/i, 'procurement'],
-    [/交付验收|交付|delivery/i, 'delivery'],
-    [/付款违约|付款|payment/i, 'payment'],
-    [/合同首页|合同正文|合同/i, 'contract'],
-  ];
-
-  for (const [pattern, fieldGroup] of mappings) {
-    if (pattern.test(normalizedSheet)) {
-      return fieldGroup;
-    }
-  }
-
-  return 'sheet';
+  const asciiName = buildAsciiIdentifier(normalizedSheet, '');
+  return asciiName || 'sheet';
 }
 
 function buildExcelFieldName(label: string, sheetName: string, rowIndex: number, colIndex: number): string {
-  const mappedFieldName = mapExcelBusinessFieldName(label);
-  if (mappedFieldName) {
-    return `d.${mappedFieldName}`;
-  }
-
   const sheetSegment = mapExcelSheetFieldGroup(sheetName);
   const fieldSegment = buildAsciiIdentifier(label, `fieldR${rowIndex + 1}C${colIndex + 1}`);
   return `d.${sheetSegment}.${fieldSegment}`;
 }
 
 function buildExcelArrayPath(sheetName: string): string {
+  // 移除硬编码的数组路径映射，进行标准化
   const normalizedSheet = stripExcelSheetRoleSuffix(sheetName);
-  const mappings: Array<[RegExp, string]> = [
-    [/采购明细|明细|detail/i, 'd.procurementDetails'],
-    [/交付验收|交付|delivery/i, 'd.deliveryPlans'],
-    [/付款违约|付款|payment/i, 'd.paymentTerms'],
-  ];
-
-  for (const [pattern, value] of mappings) {
-    if (pattern.test(normalizedSheet)) {
-      return value;
-    }
-  }
-
-  return 'd.rows';
+  const asciiName = buildAsciiIdentifier(normalizedSheet, '');
+  return asciiName ? `d.${asciiName}List` : 'd.rows';
 }
 
 function normalizeLoopArrayBasePath(arrayPath: string): string {

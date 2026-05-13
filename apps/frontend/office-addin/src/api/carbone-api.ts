@@ -197,7 +197,7 @@ class CarboneAPI {
     const params = new URLSearchParams({
       documentContent: request.documentContent,
       documentType: request.documentType,
-      templateType: request.templateType || 'contract',
+      templateType: request.templateType || 'report',
       context: request.context || ''
     });
 
