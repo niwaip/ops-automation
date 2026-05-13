@@ -91,6 +91,8 @@ export const AISuggestionItem: React.FC<{
     manual: '手动',
     'ai+heuristic': 'AI+启发式',
   };
+  const descriptionSummary = suggestion.details?.description?.trim() || '';
+  const sampleValue = suggestion.originalText?.trim() || '';
 
   return (
     <div
@@ -99,17 +101,10 @@ export const AISuggestionItem: React.FC<{
       onBlurCapture={handleCardBlur}
     >
       <div className="suggestion-header" onClick={() => setExpanded(!expanded)}>
-        <div className="confidence-badge">
-          {suggestion.confidence > 0.8 ? '🟢' : suggestion.confidence > 0.5 ? '🟡' : '🔴'}
-          {Math.round(suggestion.confidence * 100)}%
-        </div>
-
         <div className="suggestion-content" onDoubleClick={(event) => {
           event.stopPropagation();
           enterEditMode();
         }}>
-          <span className="original">{suggestion.originalText}</span>
-          <span className="arrow">→</span>
           {isEditing ? (
             <input
               type="text"
@@ -128,75 +123,94 @@ export const AISuggestionItem: React.FC<{
               autoFocus
             />
           ) : (
-            <span className="suggested">{suggestion.suggestedName}</span>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div
+                style={{
+                  fontSize: '13px',
+                  lineHeight: 1.6,
+                  color: '#0f172a',
+                  display: '-webkit-box',
+                  WebkitLineClamp: 3,
+                  WebkitBoxOrient: 'vertical',
+                  overflow: 'hidden',
+                  wordBreak: 'break-word',
+                }}
+              >
+                <span className="suggested">{suggestion.suggestedName}</span>
+                {sampleValue && (
+                  <>
+                    <span className="arrow" style={{ margin: '0 8px', color: '#94a3b8' }}>←</span>
+                    <span className="original" style={{ color: '#64748b' }}>{sampleValue}</span>
+                  </>
+                )}
+                {descriptionSummary && (
+                  <span style={{ color: '#475569', marginLeft: sampleValue ? '8px' : '0' }}>
+                    说明: {descriptionSummary}
+                  </span>
+                )}
+              </div>
+            </div>
           )}
         </div>
 
-        {suggestion.applied && <span className="applied-badge">已应用</span>}
-        <button
-          className="dismiss-btn"
-          onClick={(event) => {
-            event.stopPropagation();
-            onDismiss();
-          }}
-        >
-          删除
-        </button>
-      </div>
-
-      {/* 显示原文位置（格式化显示） */}
-      <div className="suggestion-context">
-        <span className="context-label">原文位置:</span>
-        <span className="context-text position-format">{getPositionInfo(suggestion)}</span>
-      </div>
-
-      <div className="suggestion-meta-row">
-        <span className={`suggestion-source-badge source-${suggestion.details?.source || 'heuristic'}`}>
-          来源: {sourceLabelMap[suggestion.details?.source || 'heuristic'] || '未知'}
-        </span>
-        <span className="suggestion-field-type">
-          类型: {suggestion.details?.fieldType || 'text'}
-        </span>
-      </div>
-
-      {suggestion.details?.description && (
-        <div className="suggestion-description">
-          <span className="description-label">参数描述:</span>
-          <span className="description-text">{suggestion.details.description}</span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          {suggestion.applied && <span className="applied-badge">已应用</span>}
+          <button
+            className="dismiss-btn"
+            onClick={(event) => {
+              event.stopPropagation();
+              onDismiss();
+            }}
+          >
+            删除
+          </button>
         </div>
-      )}
-
-      {/* 显示项目意义 */}
-      {suggestion.details?.significance && (
-        <div className="suggestion-significance">
-          <span className="significance-label">用途说明:</span>
-          <span className="significance-text">{suggestion.details.significance}</span>
-        </div>
-      )}
-
-      {/* 显示上下文内容 */}
-      {suggestion.details?.context && (
-        <div className="context-snippet">
-          <span className="snippet-label">上下文:</span>
-          <span className="snippet-text">...{suggestion.details.context}...</span>
-        </div>
-      )}
+      </div>
 
       {expanded && (
-        <div className="suggestion-details">
-          <p>变量路径: <code>{suggestion.suggestedName}</code></p>
-          <p>原始文本: <code>{suggestion.originalText}</code></p>
-          <p>建议来源: <code>{sourceLabelMap[suggestion.details?.source || 'heuristic'] || '未知'}</code></p>
+        <div className="suggestion-details" style={{ marginTop: '12px', paddingTop: '12px', borderTop: '1px solid #e2e8f0' }}>
+          <div className="suggestion-meta-row" style={{ marginBottom: '12px', display: 'flex', gap: '12px' }}>
+            <span className={`suggestion-source-badge source-${suggestion.details?.source || 'heuristic'}`}>
+              来源: {sourceLabelMap[suggestion.details?.source || 'heuristic'] || '未知'}
+            </span>
+            <span className="suggestion-field-type" style={{ fontSize: '12px', color: '#64748b', background: '#f1f5f9', padding: '2px 6px', borderRadius: '4px' }}>
+              类型: {suggestion.details?.fieldType || 'text'}
+            </span>
+            <span className="confidence-badge" style={{ fontSize: '12px', color: '#64748b', background: '#f1f5f9', padding: '2px 6px', borderRadius: '4px' }}>
+              置信度: {Math.round(suggestion.confidence * 100)}%
+            </span>
+          </div>
+
+          <div className="suggestion-context" style={{ marginBottom: '8px' }}>
+            <span className="context-label" style={{ fontWeight: 600 }}>文档位置:</span>
+            <span className="context-text position-format" style={{ marginLeft: '4px' }}>{getPositionInfo(suggestion)}</span>
+          </div>
+
+          {suggestion.details?.significance && (
+            <div className="suggestion-significance" style={{ marginBottom: '8px' }}>
+              <span className="significance-label" style={{ fontWeight: 600 }}>用途说明:</span>
+              <span className="significance-text" style={{ marginLeft: '4px' }}>{suggestion.details.significance}</span>
+            </div>
+          )}
           {suggestion.details?.formatter && (
-            <p>建议格式化器: <code>{suggestion.details.formatter}</code></p>
+            <p style={{ marginBottom: '8px' }}><span style={{ fontWeight: 600 }}>建议格式化器:</span> <code>{suggestion.details.formatter}</code></p>
           )}
 
-          <div className="suggestion-actions">
+          <div className="suggestion-actions" style={{ marginTop: '16px', display: 'flex', gap: '8px' }}>
             {!isEditing ? (
               <>
-                {!suggestion.applied && (
+                {!suggestion.applied ? (
                   <button className="apply-btn" onClick={onApply}>
                     ✅ 应用
+                  </button>
+                ) : (
+                  <button 
+                    className="apply-btn" 
+                    onClick={onApply} 
+                    style={{ backgroundColor: '#f3f4f6', color: '#4b5563', border: '1px solid #d1d5db' }}
+                    title="重新将此参数写入到 Excel 中"
+                  >
+                    🔄 重新应用
                   </button>
                 )}
               </>

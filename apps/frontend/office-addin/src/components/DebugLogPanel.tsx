@@ -20,6 +20,16 @@ const DEBUG_MODULES: Array<{ key: DebugModuleKey; label: string }> = [
 export const DebugLogPanel: React.FC = () => {
   const { debugLogs, clearDebugLogs, showDebugPanel, setShowDebugPanel } = useAppStore();
   const [copySuccess, setCopySuccess] = useState<string | null>(null);
+  const [collapsedLogs, setCollapsedLogs] = useState<Record<string, boolean>>({});
+
+  // 默认折叠详情
+  const isLogCollapsed = (logId: string) => {
+    return collapsedLogs[logId] !== false; // 默认 true (折叠)
+  };
+
+  const toggleLogCollapse = (logId: string) => {
+    setCollapsedLogs(prev => ({ ...prev, [logId]: !isLogCollapsed(logId) }));
+  };
 
   const formatLogTime = (timestamp: DebugLogEntry['timestamp']) => {
     try {
@@ -35,13 +45,29 @@ export const DebugLogPanel: React.FC = () => {
 
   const classifyLogModule = (log: DebugLogEntry): DebugModuleKey => {
     if (!log || !log.message) return 'other';
+    const messageTitle = log.message.toLowerCase();
     const text = `${log.message} ${log.details || ''}`.toLowerCase();
 
+    // 优先通过日志标题明确分类
+    if (messageTitle.includes('文档理解') || messageTitle.includes('模板源导出提示')) {
+      return 'understanding';
+    }
+
+    if (
+      messageTitle.includes('参数识别') ||
+      messageTitle.includes('ai 识别') ||
+      messageTitle.includes('识别')
+    ) {
+      return 'identify';
+    }
+
+    // 后备分类规则
     if (
       text.includes('工作表') ||
       text.includes('sheet') ||
       text.includes('全局 ai') ||
       text.includes('对照组') ||
+      text.includes('文档理解') ||
       text.includes('模板源导出提示')
     ) {
       return 'understanding';
@@ -195,7 +221,7 @@ export const DebugLogPanel: React.FC = () => {
           latestLogsByModule.map(({ moduleKey, moduleLabel, log }) => {
             if (!log) return null;
             return (
-              <div key={moduleKey} className="flow-log-entry" style={{ borderColor: getLevelColor(log.level) }}>
+              <div key={log.id} className="flow-log-entry module-log-entry" style={{ borderColor: getLevelColor(log.level) }}>
                 <div className="flow-log-entry-header">
                   <span className="flow-log-module-tag">{moduleLabel}</span>
                   <span className="flow-log-icon">{getLevelIcon(log.level)}</span>
@@ -206,15 +232,26 @@ export const DebugLogPanel: React.FC = () => {
                     [{log.level ? log.level.toUpperCase() : 'INFO'}]
                   </span>
                   <span className="flow-log-message">{log.message || '空内容'}</span>
-                  <button
-                    className="flow-log-copy-btn"
-                    onClick={() => copyLogToClipboard(log)}
-                    title="复制此日志"
-                  >
-                    {copySuccess === log.id ? '✓' : '📋'}
-                  </button>
+                  <div style={{ marginLeft: 'auto', display: 'flex', gap: '4px' }}>
+                    {log.details && (
+                      <button
+                        className="flow-log-copy-btn"
+                        onClick={() => toggleLogCollapse(log.id)}
+                        title={isLogCollapsed(log.id) ? '展开详情' : '折叠详情'}
+                      >
+                        {isLogCollapsed(log.id) ? '🔽 展开' : '🔼 折叠'}
+                      </button>
+                    )}
+                    <button
+                      className="flow-log-copy-btn"
+                      onClick={() => copyLogToClipboard(log)}
+                      title="复制此日志"
+                    >
+                      {copySuccess === log.id ? '✓' : '📋'}
+                    </button>
+                  </div>
                 </div>
-                {log.details && (
+                {log.details && !isLogCollapsed(log.id) && (
                   <div className="flow-log-details">
                     <pre>{log.details}</pre>
                   </div>

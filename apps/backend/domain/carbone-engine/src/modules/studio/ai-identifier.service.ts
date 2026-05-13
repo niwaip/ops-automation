@@ -2953,30 +2953,41 @@ ${parameterRules || '- 暂无参数定义'}
 
       for (let i = 0; i < pathParts.length; i++) {
         const part = pathParts[i];
-        const isArrayPart = part.endsWith('[]');
-        const key = isArrayPart ? part.slice(0, -2) : part;
+        
+        // Handle array index: items[0] or items[] or items[i]
+        const arrayMatch = part.match(/^([^\[]+)\[(\d+|i)?\]$/);
+        const isArrayPart = !!arrayMatch;
+        const key = arrayMatch ? arrayMatch[1] : part;
+        
+        let arrayIndex = -1;
+        if (arrayMatch && arrayMatch[2] !== undefined) {
+           if (arrayMatch[2] === 'i') {
+             arrayIndex = 0;
+           } else {
+             arrayIndex = parseInt(arrayMatch[2], 10);
+           }
+        } else if (isArrayPart) {
+           arrayIndex = 0;
+        }
+        
         const isLast = i === pathParts.length - 1;
 
         if (isArrayPart) {
           if (!Array.isArray(current[key])) {
             current[key] = [];
           }
-          if (current[key].length === 0) {
-            current[key].push({});
-          }
-
+          
+          const index = arrayIndex >= 0 ? arrayIndex : 0;
+          
           if (isLast) {
-            if (current[key].length === 0) {
-              current[key].push(value ?? {});
-            }
+            current[key][index] = value;
             return;
           }
 
-          const firstItem = current[key][0];
-          if (!firstItem || typeof firstItem !== 'object' || Array.isArray(firstItem)) {
-            current[key][0] = {};
+          if (!current[key][index] || typeof current[key][index] !== 'object' || Array.isArray(current[key][index])) {
+            current[key][index] = {};
           }
-          current = current[key][0];
+          current = current[key][index];
           continue;
         }
 

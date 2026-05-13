@@ -11,6 +11,7 @@ export interface BuildOptions {
   timezone?: string;
   complement?: Record<string, any>;
   formatters?: Record<string, Function>;
+  skipLoops?: boolean;
 }
 
 export interface BuildResult {
@@ -25,6 +26,20 @@ export class Builder {
   constructor() {
     this.parser = new Parser();
     this.formatterPipeline = new FormatterPipeline();
+  }
+
+  private sanitizeXmlText(value: string): string {
+    return value.replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\uFFFE\uFFFF]/g, '');
+  }
+
+  private escapeXmlText(value: string): string {
+    const sanitized = this.sanitizeXmlText(value);
+    return sanitized
+      .replace(/&(?!(?:[a-zA-Z]+|#\d+);)/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&apos;');
   }
 
   /**
@@ -67,11 +82,11 @@ export class Builder {
         return undefined;
       }
 
-      // 处理数组索引
-      const arrayMatch = part.match(/^(\w+)\[(\d+)\]$/);
+      // Handle array index: items[0] or items[]
+      const arrayMatch = part.match(/^([^\[]+)\[(\d+)?\]$/);
       if (arrayMatch) {
         const key = arrayMatch[1];
-        const index = parseInt(arrayMatch[2], 10);
+        const index = arrayMatch[2] !== undefined ? parseInt(arrayMatch[2], 10) : 0;
         current = current[key]?.[index];
       } else {
         current = current[part];
@@ -183,7 +198,7 @@ export class Builder {
         const normalizedPath = `${path}${indexToken}${propertySuffix}`.replace(/\[(?:i)?\]/g, `[${index}]`);
         const value = this.evaluatePath(`${contextChar}.${normalizedPath}`, data);
         const formatters = this.parseFormatters(formatterSuffix);
-        return String(this.formatterPipeline.apply(value, formatters) ?? '');
+        return this.escapeXmlText(String(this.formatterPipeline.apply(value, formatters) ?? ''));
       }
 
       // 不属于当前循环，保持原样（等待父循环处理）
@@ -207,7 +222,7 @@ export class Builder {
       const normalizedParentPath = parentPart.replace(/\[i\]/g, `[${index}]`);
       const value = this.evaluatePath(`d.${normalizedParentPath}`, data);
       const formatters = this.parseFormatters(suffix);
-      return String(this.formatterPipeline.apply(value, formatters) ?? '');
+      return this.escapeXmlText(String(this.formatterPipeline.apply(value, formatters) ?? ''));
     });
   }
 
@@ -257,7 +272,8 @@ export class Builder {
       const markerString = `{${marker.name}}`;
       const value = this.evaluatePath(marker.name, data);
       const formattedValue = this.formatterPipeline.apply(value, marker.formatters);
-      resultXml = resultXml.replace(markerString, String(formattedValue ?? ''));
+      const replacement = this.escapeXmlText(String(formattedValue ?? ''));
+      resultXml = resultXml.split(markerString).join(replacement);
     }
 
     // 清理剩余的占位符
@@ -291,7 +307,7 @@ export class Builder {
     }
 
     // 处理循环
-    let processedXml = this.processLoops(xml, parsed.loops, data);
+    let processedXml = options.skipLoops ? xml : this.processLoops(xml, parsed.loops, data);
 
     // 替换简单变量
     processedXml = this.replaceVariables(processedXml, parsed.markers, data, options);

@@ -105,6 +105,31 @@ describe('XmlPreprocessor', () => {
       expect(Array.isArray(result.issues)).toBe(true);
     });
 
+    it('should repair split markers in xlsx sharedStrings <t> nodes without breaking XML structure', () => {
+      const xml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<sst xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" count="1" uniqueCount="1">
+  <si>
+    <r><t>{d.latePayment</t></r>
+    <r><t>PenaltyRatio}</t></r>
+  </si>
+</sst>`;
+      const result = preprocessor.process(xml);
+      expect(result.xml).toContain('<r><t>{d.latePaymentPenaltyRatio}</t></r>');
+      expect(result.xml).toContain('<r><t></t></r>');
+    });
+
+    it('should not merge markers across different sharedStrings <si> entries', () => {
+      const xml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<sst xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" count="2" uniqueCount="2">
+  <si><r><t>{d.latePayment</t></r></si>
+  <si><r><t>PenaltyRatio}</t></r></si>
+</sst>`;
+      const result = preprocessor.process(xml);
+      expect(result.xml).toContain('<si><r><t>{d.latePayment</t></r></si>');
+      expect(result.xml).toContain('<si><r><t>PenaltyRatio}</t></r></si>');
+      expect(result.xml).not.toContain('{d.latePaymentPenaltyRatio}');
+    });
+
     it('should apply full preprocessing pipeline', () => {
       const xml = `<w:p>
         <w:r>

@@ -45,6 +45,8 @@ export interface VirtualFlattenResult {
 }
 
 export class XmlPreprocessor {
+  private readonly carboneMarkerRegex = /\{[cdt][.#\/]?\.[^}]+\}/g;
+
   /**
    * 扁平化XML - 合并被拆分的文本节点
    * Word经常将 {d.name} 拆分成 <w:t>{d.</w:t><w:t>name}</w:t>
@@ -111,72 +113,130 @@ export class XmlPreprocessor {
   private repairSplitCarboneMarkers(xml: string): string {
     let result = xml;
 
-    // 方法1: 找到所有包含 { 或 d. 或 } 的 <w:t> 节点，分析是否组成拆分的标记
-    // 首先提取所有w:t节点的位置和内容
-    const textNodes: Array<{ start: number; end: number; text: string; full: string }> = [];
-    const textPattern = /<w:t[^>]*>([^<]*)<\/w:t>/g;
-    let textMatch;
+    if (result.includes('<w:t')) {
+      result = this.repairSplitCarboneMarkersInWordTextNodes(result);
+    }
+    if (this.looksLikeExcelXml(result)) {
+      result = this.repairSplitCarboneMarkersInExcelTextNodes(result);
+    }
+
+    return result;
+  }
+
+  private looksLikeExcelXml(xml: string): boolean {
+    return (
+      xml.includes('http://schemas.openxmlformats.org/spreadsheetml')
+      || xml.includes('<sst')
+      || xml.includes('<worksheet')
+      || xml.includes('<sheetData')
+    );
+  }
+
+  private repairSplitCarboneMarkersInWordTextNodes(xml: string): string {
+    let result = xml;
+    const textNodes: Array<{ start: number; end: number; attributes: string; text: string }> = [];
+    const textPattern = /<w:t([^>]*)>([^<]*)<\/w:t>/g;
+    let textMatch: RegExpExecArray | null;
     while ((textMatch = textPattern.exec(result)) !== null) {
       textNodes.push({
         start: textMatch.index,
         end: textMatch.index + textMatch[0].length,
-        text: textMatch[1],
-        full: textMatch[0]
+        attributes: textMatch[1],
+        text: textMatch[2],
       });
     }
 
-    // 找到拆分的标记：{ ... d.xxx ... } 被分成多个节点
-    // 模式：节点i有 '{'，节点j有 'd.xxx...'，节点k有 '}'
     for (let i = 0; i < textNodes.length; i++) {
       const nodeI = textNodes[i];
-      // 找到以 { 开头或包含 { 的节点
-      if (nodeI.text.includes('{')) {
-        // 向后查找组成完整标记的节点
-        let markerText = nodeI.text;
-        let endNodeIdx = -1;
+      if (!nodeI.text.includes('{')) {
+        continue;
+      }
 
-        for (let j = i + 1; j < textNodes.length && j < i + 10; j++) {
-          markerText += textNodes[j].text;
-          // 检查是否形成了完整的标记
-          if (markerText.match(/^\{[cdt][.#\/]?\.[^}]+\}$/)) {
-            endNodeIdx = j;
-            break;
-          }
-          // 如果已经超过可能的标记长度，停止
-          if (markerText.length > 100 || markerText.includes('}{')) {
-            break;
-          }
+      let windowText = nodeI.text;
+      let endNodeIdx = -1;
+
+      for (let j = i + 1; j < textNodes.length && j <= i + 12; j++) {
+        windowText += textNodes[j].text;
+        const markerMatches = Array.from(windowText.matchAll(this.carboneMarkerRegex));
+        const crossesFirstNode = markerMatches.some((match) => {
+          const start = match.index ?? -1;
+          if (start < 0) return false;
+          const end = start + match[0].length;
+          return start < nodeI.text.length && end > nodeI.text.length;
+        });
+        if (crossesFirstNode) {
+          endNodeIdx = j;
+          break;
         }
-
-        // 如果找到了完整的拆分标记
-        if (endNodeIdx !== -1) {
-          // 替换第一个节点的文本为完整标记，清空其他节点
-          const firstNode = textNodes[i];
-          const newTextContent = markerText;
-
-          // 替换第一个节点
-          const newFirstNode = firstNode.full.replace(
-            /<w:t[^>]*>([^<]*)<\/w:t>/,
-            `<w:t>${newTextContent}</w:t>`
-          );
-          result = result.substring(0, firstNode.start) + newFirstNode +
-                   result.substring(firstNode.end);
-
-          // 清空其他节点（替换为空的w:t）
-          for (let j = i + 1; j <= endNodeIdx; j++) {
-            const nodeJ = textNodes[j];
-            // 注意：位置已经因为之前的替换而改变，需要重新查找
-            const emptyNode = nodeJ.full.replace(
-              /<w:t[^>]*>([^<]*)<\/w:t>/,
-              `<w:t></w:t>`
-            );
-            // 在当前result中找到并替换（使用唯一标识）
-            result = result.replace(nodeJ.full, emptyNode);
-          }
+        if (windowText.length > 512) {
+          break;
         }
       }
+
+      if (endNodeIdx === -1) {
+        continue;
+      }
+
+      const updates: Array<{ start: number; end: number; attributes: string; text: string }> = [];
+      updates.push({ ...nodeI, text: windowText });
+      for (let j = i + 1; j <= endNodeIdx; j++) {
+        updates.push({ ...textNodes[j], text: '' });
+      }
+      updates.sort((a, b) => b.start - a.start);
+      for (const update of updates) {
+        const newFullMatch = `<w:t${update.attributes}>${update.text}</w:t>`;
+        result = result.substring(0, update.start) + newFullMatch + result.substring(update.end);
+      }
+
+      i = endNodeIdx;
     }
 
+    return result;
+  }
+
+  private repairSplitCarboneMarkersInExcelTextNodes(xml: string): string {
+    const repairContainer = (containerXml: string): string => {
+      if (!containerXml.includes('<t')) {
+        return containerXml;
+      }
+      const tNodes = Array.from(containerXml.matchAll(/<t([^>]*)>([\s\S]*?)<\/t>/g)).map((match) => ({
+        full: match[0],
+        attrs: match[1],
+        text: match[2],
+      }));
+      if (tNodes.length <= 1) {
+        return containerXml;
+      }
+      const combined = tNodes.map((node) => node.text).join('');
+      if (!combined.includes('{')) {
+        return containerXml;
+      }
+      if (!this.carboneMarkerRegex.test(combined)) {
+        this.carboneMarkerRegex.lastIndex = 0;
+        return containerXml;
+      }
+      this.carboneMarkerRegex.lastIndex = 0;
+      const hasMarkerInSingleNode = tNodes.some((node) => {
+        const hit = this.carboneMarkerRegex.test(node.text);
+        this.carboneMarkerRegex.lastIndex = 0;
+        return hit;
+      });
+      if (hasMarkerInSingleNode) {
+        return containerXml;
+      }
+      let index = 0;
+      return containerXml.replace(/<t([^>]*)>([\s\S]*?)<\/t>/g, (_match, attrs) => {
+        index += 1;
+        if (index === 1) {
+          return `<t${attrs}>${combined}</t>`;
+        }
+        return `<t${attrs}></t>`;
+      });
+    };
+
+    let result = xml;
+    result = result.replace(/<si\b[\s\S]*?<\/si>/g, (match) => repairContainer(match));
+    result = result.replace(/<is\b[\s\S]*?<\/is>/g, (match) => repairContainer(match));
     return result;
   }
 
@@ -371,10 +431,16 @@ export class XmlPreprocessor {
     let result = xml;
 
     // 修复开始标记 {d. -> {d.
-    result = this.repairSplitMarkerStart(result);
+    if (result.includes('<w:t')) {
+      result = this.repairSplitMarkerStart(result);
+    }
 
     // 修复结束标记 } -> }
     result = this.repairSplitMarkerEnd(result);
+
+    if (this.looksLikeExcelXml(result)) {
+      result = this.repairSplitCarboneMarkersInExcelTextNodes(result);
+    }
 
     return result;
   }

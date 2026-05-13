@@ -49,6 +49,12 @@ export const AnalysisSourceCard: React.FC<{
             <span className="analysis-source-value">AI 原始返回存在格式问题，已自动修复</span>
           </div>
         )}
+
+        <div className="analysis-source-item analysis-source-item-block" style={{ marginTop: '8px', paddingTop: '8px', borderTop: '1px dashed #e2e8f0' }}>
+          <span className="analysis-source-value" style={{ fontSize: '12px', color: '#64748b' }}>
+            ℹ️ 详细的提示词原文和 AI 原始返回内容已记录至底部的「运行日志」面板中。
+          </span>
+        </div>
       </div>
     </div>
   );

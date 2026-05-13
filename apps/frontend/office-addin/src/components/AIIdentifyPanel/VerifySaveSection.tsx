@@ -83,7 +83,7 @@ export const VerifySaveSection: React.FC<VerifySaveSectionProps> = ({
                 <button
                   className="generate-params-btn"
                   onClick={handleGenerateParameters}
-                  disabled={isGeneratingParams || !aiDescription.trim()}
+                  disabled={isGeneratingParams}
                 >
                   {isGeneratingParams ? '⏳ 生成中...' : '🤖 生成数据'}
                 </button>
@@ -97,7 +97,7 @@ export const VerifySaveSection: React.FC<VerifySaveSectionProps> = ({
               </div>
               <textarea
                 className="ai-description-input"
-                placeholder="先输入业务描述点击“生成数据”，或直接粘贴/编辑 JSON 数据用于预览"
+                placeholder="可先输入业务描述点击“生成数据”，也可以留空直接生成默认实例参数；生成后可继续编辑下方 JSON 用于预览"
                 value={aiDescription}
                 onChange={(e) => handleAiDescriptionChange(e.target.value)}
                 rows={8}

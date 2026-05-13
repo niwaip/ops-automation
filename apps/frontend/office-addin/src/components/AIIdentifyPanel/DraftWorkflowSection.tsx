@@ -120,15 +120,19 @@ export const DraftWorkflowSection: React.FC<DraftWorkflowSectionProps> = ({
 
           {aiSkillGuide && (
             <div className="ai-guide-preview">
-              <div className="ai-guide-header">
+              <div
+                className="ai-guide-header"
+                onClick={() => setGuidePreviewCollapsed((value) => !value)}
+                style={{ cursor: 'pointer' }}
+              >
                 <span className="ai-guide-title">✅ 指南已生成</span>
                 <div className="ai-guide-header-actions">
                   <span className="ai-guide-info">
                     {aiSkillGuide.parameters?.length || 0} 个参数
                   </span>
-                  <button className="sheet-action-btn" onClick={() => setGuidePreviewCollapsed((value) => !value)}>
-                    {guidePreviewCollapsed ? '展开' : '折叠'}
-                  </button>
+                  <span className="ai-guide-info">
+                    {guidePreviewCollapsed ? '已折叠' : '已展开'}
+                  </span>
                 </div>
               </div>
               {!guidePreviewCollapsed && aiSkillGuide.skillGuideMarkdown && (

@@ -355,6 +355,17 @@ export function useParameterApply(hostAdapter: any, isExcelMode: boolean) {
     }
   };
 
+  const handleReapplyGroup = async (groupName: string, onApplyComplete?: () => void) => {
+    try {
+      const groupItems = groupedSuggestions[groupName] || [];
+      const applied = groupItems.filter((s) => s.applied);
+      await applySuggestionBatch(applied, 'reapply', onApplyComplete);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : '未知错误';
+      addDebugLog('error', `重新应用分组[${groupName}]失败`, message);
+    }
+  };
+
   return {
     showPreview,
     previewContent,
@@ -389,6 +400,7 @@ export function useParameterApply(hostAdapter: any, isExcelMode: boolean) {
     handleApplyAll,
     handleReapplyAll,
     handleApplyGroup,
+    handleReapplyGroup,
     handleCancelPreview,
     handleGetSelection,
     generateManualMarker,

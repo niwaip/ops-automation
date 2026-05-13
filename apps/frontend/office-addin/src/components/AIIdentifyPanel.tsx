@@ -63,6 +63,7 @@ export const AIIdentifyPanel: React.FC<Props> = ({ onApplyComplete }) => {
     setShowErrorDetails,
     analysisSummary,
     handleAnalyze,
+    handleAnalyzePair,
     handleTestConnection,
 
     aiSkillGuide,
@@ -101,7 +102,7 @@ export const AIIdentifyPanel: React.FC<Props> = ({ onApplyComplete }) => {
   const [excelAnalysisCollapsed, setExcelAnalysisCollapsed] = React.useState(false);
   const [excelReferenceCardsCollapsed, setExcelReferenceCardsCollapsed] = React.useState(false);
   const [draftWorkflowCollapsed, setDraftWorkflowCollapsed] = React.useState(false);
-  const [guidePreviewCollapsed, setGuidePreviewCollapsed] = React.useState(false);
+  const [guidePreviewCollapsed, setGuidePreviewCollapsed] = React.useState(true);
   const [verifySaveCollapsed, setVerifySaveCollapsed] = React.useState(false);
 
   const visibleExcelPairs = useMemo(
@@ -177,6 +178,7 @@ export const AIIdentifyPanel: React.FC<Props> = ({ onApplyComplete }) => {
             setAnalysisThinkingEnabled={setAnalysisThinkingEnabled}
             isAnalyzing={isAnalyzing}
             onAnalyze={handleAnalyze}
+            onAnalyzePair={handleAnalyzePair}
             excelAnalysisCollapsed={excelAnalysisCollapsed}
             setExcelAnalysisCollapsed={setExcelAnalysisCollapsed}
             visibleExcelPairs={visibleExcelPairs}
@@ -191,6 +193,7 @@ export const AIIdentifyPanel: React.FC<Props> = ({ onApplyComplete }) => {
             togglePairDetailsCollapse={togglePairDetailsCollapse}
             groupedSuggestions={applyState.groupedSuggestions}
             applyState={applyState}
+            onApplyComplete={onApplyComplete}
           />
       ) : (
         <>
@@ -231,7 +234,7 @@ export const AIIdentifyPanel: React.FC<Props> = ({ onApplyComplete }) => {
         </>
       )}
 
-      {analysisSummary && (
+      {analysisSummary && !isExcelMode && (
         <AnalysisSourceCard
           analysisSummary={analysisSummary}
           isExcelMode={isExcelMode}

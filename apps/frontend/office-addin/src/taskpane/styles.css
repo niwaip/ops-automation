@@ -1581,6 +1581,8 @@ body {
   word-break: break-word;
   font-size: 12px;
   color: #334155;
+  max-height: 200px;
+  overflow-y: auto;
 }
 
 .flow-log-footer {

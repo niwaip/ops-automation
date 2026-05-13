@@ -9,6 +9,7 @@ export const ExcelAnalysisCard: React.FC<{
   setAnalysisThinkingEnabled: (enabled: boolean) => void;
   isAnalyzing: boolean;
   onAnalyze: () => void;
+  onAnalyzePair: (pairId: string) => void;
   excelAnalysisCollapsed: boolean;
   setExcelAnalysisCollapsed: (updater: (value: boolean) => boolean) => void;
   visibleExcelPairs: ExcelSheetPairState[];
@@ -28,6 +29,7 @@ export const ExcelAnalysisCard: React.FC<{
   setAnalysisThinkingEnabled,
   isAnalyzing,
   onAnalyze,
+  onAnalyzePair,
   excelAnalysisCollapsed,
   setExcelAnalysisCollapsed,
   visibleExcelPairs,
@@ -37,8 +39,6 @@ export const ExcelAnalysisCard: React.FC<{
   toggleExcelSheetPairCompare,
   removeExcelSheetPair,
   analysisSummary,
-  collapsedPairDetails,
-  togglePairDetailsCollapse,
   groupedSuggestions,
   applyState,
   onApplyComplete,
@@ -75,16 +75,30 @@ export const ExcelAnalysisCard: React.FC<{
             ) : '识别'}
           </button>
           
-          <button
-            className="sheet-action-btn sheet-action-btn-primary"
-            onClick={(e) => {
-              e.stopPropagation();
-              void applyState.handleApplyAll(onApplyComplete);
-            }}
-            disabled={!applyState.suggestions || applyState.suggestions.filter((s: any) => !s.applied).length === 0}
-          >
-            全部应用 ({applyState.suggestions ? applyState.suggestions.filter((s: any) => !s.applied).length : 0})
-          </button>
+          <div className="header-actions" onClick={(e) => e.stopPropagation()} style={{ display: 'flex', gap: '8px' }}>
+            <button
+              className="apply-all-btn"
+              onClick={(e) => {
+                e.stopPropagation();
+                void applyState.handleApplyAll(onApplyComplete);
+              }}
+              disabled={!applyState.suggestions || applyState.suggestions.filter((s: any) => !s.applied).length === 0}
+            >
+              全部应用 ({applyState.suggestions ? applyState.suggestions.filter((s: any) => !s.applied).length : 0})
+            </button>
+            <button
+              className="apply-all-btn"
+              onClick={(e) => {
+                e.stopPropagation();
+                void applyState.handleReapplyAll(onApplyComplete);
+              }}
+              disabled={!applyState.suggestions || applyState.suggestions.filter((s: any) => s.applied).length === 0}
+              style={{ backgroundColor: '#f3f4f6', color: '#4b5563', border: '1px solid #d1d5db' }}
+              title="重新应用所有已应用的参数"
+            >
+              全部重新应用
+            </button>
+          </div>
         </div>
       </div>
 
@@ -156,8 +170,23 @@ export const ExcelAnalysisCard: React.FC<{
                           <span>{pair.leftSheetName || '缺少模板 sheet'}</span>
                           <span>↔</span>
                           <span>{pair.rightSheetName || '缺少数据 sheet'}</span>
+                          {!pair.rightSheetName && (
+                            <span
+                              className="analysis-pair-result-badge neutral"
+                              style={{ marginLeft: '8px' }}
+                            >
+                              草稿态
+                            </span>
+                          )}
                         </div>
                         <div className="sheet-pair-actions">
+                          <button
+                            className="sheet-action-btn"
+                            onClick={() => onAnalyzePair(pair.id)}
+                            disabled={isAnalyzing}
+                          >
+                            识别
+                          </button>
                           <button
                             className="sheet-pair-danger-btn"
                             onClick={() => removeExcelSheetPair(pair.id)}
@@ -176,10 +205,7 @@ export const ExcelAnalysisCard: React.FC<{
                                 ? { label: 'AI 成功', className: 'success' }
                                 : { label: 'AI 成功但无建议', className: 'neutral' };
                             return (
-                              <div
-                                className="analysis-pair-result-header"
-                                onClick={() => togglePairDetailsCollapse(pairAnalysis.pairIndex)}
-                              >
+                              <div className="analysis-pair-result-header">
                                 <div>
                                   <span className="analysis-pair-result-name" style={{ fontWeight: 600 }}>
                                     分析结果
@@ -188,40 +214,21 @@ export const ExcelAnalysisCard: React.FC<{
                                     {pairStatus.label}
                                   </span>
                                 </div>
-                                <span className="sheet-action-btn-text">
-                                  {collapsedPairDetails[pairAnalysis.pairIndex] === true ? '展开' : '折叠'}
-                                </span>
                               </div>
                             );
                           })()}
 
-                          {collapsedPairDetails[pairAnalysis.pairIndex] === true ? null : (
-                            <>
-                              <div className="analysis-pair-result-meta">
-                                候选差异 {pairAnalysis.candidateCount} · 建议 {pairAnalysis.suggestionCount} · {pairAnalysis.loopDetected ? '含循环区域' : '单值为主'}
-                              </div>
-                              {pairAnalysis.error && (
-                                <div className="analysis-pair-result-error">
-                                  失败原因: {pairAnalysis.error.message || '未知错误'}
-                                  {pairAnalysis.error.reason ? ` · ${pairAnalysis.error.reason}` : ''}
-                                  {pairAnalysis.error.status ? ` · HTTP ${pairAnalysis.error.status}` : ''}
-                                  {pairAnalysis.error.url ? ` · ${pairAnalysis.error.url}` : ''}
-                                </div>
-                              )}
-                              {pairAnalysis.promptRequestText && (
-                                <div className="analysis-pair-debug-block">
-                                  <span className="analysis-source-label">参数分析请求原文</span>
-                                  <pre className="analysis-source-debug analysis-pair-debug">{pairAnalysis.promptRequestText}</pre>
-                                </div>
-                              )}
-                              {pairAnalysis.rawAiResponse && (
-                                <div className="analysis-pair-debug-block">
-                                  <span className="analysis-source-label">参数分析原始返回</span>
-                                  <pre className="analysis-source-debug analysis-pair-debug">{pairAnalysis.rawAiResponse}</pre>
-                                </div>
-                              )}
-                             </>
-                           )}
+                          <div className="analysis-pair-result-meta">
+                            候选差异 {pairAnalysis.candidateCount} · 建议 {pairAnalysis.suggestionCount} · {pairAnalysis.loopDetected ? '含循环区域' : '单值为主'}
+                          </div>
+                          {pairAnalysis.error && (
+                            <div className="analysis-pair-result-error">
+                              失败原因: {pairAnalysis.error.message || '未知错误'}
+                              {pairAnalysis.error.reason ? ` · ${pairAnalysis.error.reason}` : ''}
+                              {pairAnalysis.error.status ? ` · HTTP ${pairAnalysis.error.status}` : ''}
+                              {pairAnalysis.error.url ? ` · ${pairAnalysis.error.url}` : ''}
+                            </div>
+                          )}
                         </div>
                       )}
                       
@@ -251,6 +258,15 @@ export const ExcelAnalysisCard: React.FC<{
                                   disabled={groupedSuggestions[sheetKey].filter((s: any) => !s.applied).length === 0}
                                 >
                                   应用 ({groupedSuggestions[sheetKey].filter((s: any) => !s.applied).length})
+                                </button>
+                                <button
+                                  className="sheet-action-btn sheet-action-btn-primary"
+                                  onClick={() => { void applyState.handleReapplyGroup(sheetKey, onApplyComplete); }}
+                                  disabled={groupedSuggestions[sheetKey].filter((s: any) => s.applied).length === 0}
+                                  style={{ backgroundColor: '#f3f4f6', color: '#4b5563', border: '1px solid #d1d5db' }}
+                                  title="重新应用当前表已应用的参数"
+                                >
+                                  重新应用
                                 </button>
                               </div>
                             </h4>
@@ -286,4 +302,3 @@ export const ExcelAnalysisCard: React.FC<{
     </div>
   );
 };
-

@@ -8,6 +8,8 @@ const EXCEL_UNDERSTANDING_CACHE_STORAGE_KEY = 'office-addin:excel-understanding-
 interface ExcelUnderstandingCacheEntry {
   cacheKey: string;
   summary: string;
+  promptRequestText?: string;
+  rawAiResponse?: string;
   updatedAt: number;
 }
 
@@ -175,13 +177,12 @@ export const ExcelSheetPairsTab: React.FC = () => {
     if (cachedEntry) {
       setExcelWorkbookUnderstandingState({
         summary: cachedEntry.summary,
-        promptRequestText: undefined,
+        promptRequestText: cachedEntry.promptRequestText,
         promptDebugSummary: undefined,
-        rawAiResponse: undefined,
+        rawAiResponse: cachedEntry.rawAiResponse,
         error: null,
       });
-      // 记录加载缓存的日志
-      addDebugLog('info', 'Excel 文档理解 (命中缓存)', `【理解摘要】\n${cachedEntry.summary}`);
+      // 仅在初始加载且有缓存时，作为初始状态载入，不强制拦截“理解”按钮的点击
       return;
     }
 
@@ -258,9 +259,11 @@ export const ExcelSheetPairsTab: React.FC = () => {
       saveExcelUnderstandingCacheEntry({
         cacheKey: understandingCacheKey,
         summary: result.summary,
+        promptRequestText: result.contextAnalysis?.promptRequestText ? String(result.contextAnalysis.promptRequestText) : undefined,
+        rawAiResponse: result.contextAnalysis?.rawAiResponse ? String(result.contextAnalysis.rawAiResponse) : undefined,
         updatedAt: Date.now(),
       });
-      addDebugLog('info', 'Excel 文档理解完成', 
+      addDebugLog('info', 'Excel 文档理解', 
         `【理解摘要】\n${result.summary}\n\n【发送给 AI 的请求原文】\n${result.contextAnalysis?.promptRequestText || '无'}\n\n【AI 原始返回】\n${result.contextAnalysis?.rawAiResponse || '无'}`
       );
     } catch (understandingError) {
@@ -364,7 +367,7 @@ export const ExcelSheetPairsTab: React.FC = () => {
         {excelWorkbookUnderstanding.summary && (
           <div className="verify-result success">
             <span className="verify-result-message">
-              ✅ {currentCacheEntry ? '已加载缓存的文档理解结果' : '文档理解执行成功'}，详细内容已记录至运行日志。
+              ✅ 文档理解执行成功，详细内容已记录至运行日志。
             </span>
           </div>
         )}
