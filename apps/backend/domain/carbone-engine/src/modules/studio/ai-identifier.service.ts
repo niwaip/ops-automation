@@ -2239,45 +2239,115 @@ ${blankList}
   ): Promise<any> {
     this.logger.log('Generating AI Skill Guide...');
 
-    // 构建变量列表（包含详细用途说明）
-    const parameters = suggestions
-      .filter(s => s.applied)
-      .map(s => {
-        const fieldType = s.details?.fieldType || this.inferFieldType(s.suggestedName, s.originalText);
-        const variableName = s.suggestedName || s.details?.variableName || '';
-        const cleanName = variableName.replace(/[:\[].*/g, '');
+    const appliedSuggestions = Array.isArray(suggestions)
+      ? suggestions.filter((s) => s?.applied)
+      : [];
+    const effectiveTableLoops = this.buildSkillTableLoops(appliedSuggestions, templateConfig);
 
-        return {
-          name: cleanName,
-          originalText: s.originalText,
-          displayName: s.details?.variableName || cleanName,
+    const parameterMap = new Map<string, any>();
+    const registerParameter = (parameter: any) => {
+      const cleanName = this.normalizeSkillParameterPath(parameter?.name || '');
+      if (!cleanName || this.isPlaceholderSkillParameterPath(cleanName)) {
+        this.logger.warn(`Skipping placeholder skill parameter: ${parameter?.name || cleanName || 'empty'}`);
+        return;
+      }
 
-          // 参数用途
-          usage: s.details?.reason || s.details?.significance || this.inferParameterUsage(cleanName, fieldType, templateType),
+      const normalizedParameter = {
+        ...parameter,
+        name: cleanName,
+        displayName: parameter?.displayName || cleanName,
+      };
 
-          // 数据类型
-          dataType: fieldType,
-          formatter: s.details?.formatter || this.getDefaultFormatter(fieldType),
+      const existing = parameterMap.get(cleanName);
+      if (!existing) {
+        parameterMap.set(cleanName, normalizedParameter);
+        return;
+      }
 
-          // 提取提示（如何从内容中提取该参数）
-          extractionHint: this.generateExtractionHint(cleanName, fieldType, s.originalText, templateType),
-
-          // 示例值
-          example: this.generateExampleValue(fieldType, cleanName),
-
-          // 验证规则
-          validation: this.getValidationRules(fieldType, cleanName),
-
-          // 是否必填
-          required: true,
-        };
+      parameterMap.set(cleanName, {
+        ...existing,
+        ...normalizedParameter,
+        usage: normalizedParameter.usage || existing.usage,
+        formatter: normalizedParameter.formatter || existing.formatter,
+        extractionHint: normalizedParameter.extractionHint || existing.extractionHint,
+        example: normalizedParameter.example || existing.example,
+        validation: normalizedParameter.validation || existing.validation,
       });
+    };
+
+    for (const suggestion of appliedSuggestions) {
+      const variableName = suggestion?.suggestedName || suggestion?.details?.variableName || '';
+      const fieldType = suggestion?.details?.fieldType || this.inferFieldType(variableName, suggestion?.originalText || '');
+      const exampleValue = this.buildSkillExampleValue(suggestion?.originalText, fieldType, variableName);
+
+      if (suggestion?.type === 'loop' || fieldType === 'loop') {
+        const arrayPath = suggestion?.details?.arrayPath || variableName;
+        const loopColumns = this.extractLoopColumnMappings(suggestion, effectiveTableLoops, arrayPath);
+
+        if (loopColumns.length > 0) {
+          const tableName = suggestion?.details?.tableName || suggestion?.originalText || '明细表';
+          for (const column of loopColumns) {
+            const cleanName = this.normalizeSkillParameterPath(column.variablePath || '');
+            if (!cleanName || this.isPlaceholderSkillParameterPath(cleanName)) {
+              continue;
+            }
+            const columnFieldType = this.inferFieldType(column.headerName || cleanName, column.sampleValue || '');
+            const columnExample = this.buildSkillExampleValue(column.sampleValue, columnFieldType, cleanName);
+
+            registerParameter({
+              name: cleanName,
+              originalText: column.sampleValue || suggestion?.originalText || '',
+              displayName: `${tableName}.${column.headerName || cleanName}`,
+              usage:
+                suggestion?.details?.significance
+                  ? `${suggestion.details.significance} 其中字段“${column.headerName || cleanName}”用于表格列填充`
+                  : `用于填写 ${tableName} 中“${column.headerName || cleanName}”这一列的值`,
+              dataType: columnFieldType,
+              formatter: this.getDefaultFormatter(columnFieldType),
+              extractionHint: this.generateExtractionHint(
+                column.headerName || cleanName,
+                columnFieldType,
+                column.sampleValue || suggestion?.originalText || '',
+                templateType
+              ),
+              example: columnExample,
+              validation: this.getValidationRules(columnFieldType, cleanName),
+              required: true,
+            });
+          }
+          continue;
+        }
+      }
+
+      registerParameter({
+        name: variableName,
+        originalText: suggestion?.originalText,
+        displayName: suggestion?.details?.variableName || this.normalizeSkillParameterPath(variableName),
+        usage:
+          suggestion?.details?.reason
+          || suggestion?.details?.significance
+          || this.inferParameterUsage(this.normalizeSkillParameterPath(variableName), fieldType, templateType),
+        dataType: fieldType,
+        formatter: suggestion?.details?.formatter || this.getDefaultFormatter(fieldType),
+        extractionHint: this.generateExtractionHint(
+          this.normalizeSkillParameterPath(variableName),
+          fieldType,
+          suggestion?.originalText || '',
+          templateType
+        ),
+        example: exampleValue,
+        validation: this.getValidationRules(fieldType, this.normalizeSkillParameterPath(variableName)),
+        required: true,
+      });
+    }
+
+    const parameters = Array.from(parameterMap.values());
 
     // 根据模板类型生成特定的AI指导
     const templateDescription = this.generateTemplateDescription(templateType, documentDescription, parameters);
 
     // 构建数据示例JSON（完整可用的数据结构）
-    const dataExampleJson = this.buildDataExampleJson(parameters);
+    const dataExampleJson = this.buildDataExampleJson(parameters, effectiveTableLoops);
 
     // 构建完整的skill结构
     const skill = {
@@ -2314,7 +2384,7 @@ ${blankList}
         sourceType: 'json',
         mappingHints: parameters.map(p => ({
           parameter: p.name,
-          path: `{d.${p.name}}`,
+          path: this.buildSkillCarboneSyntax(p.name, p.dataType),
           description: p.usage,
           example: p.example,
         })),
@@ -2327,7 +2397,7 @@ ${blankList}
       specialRules: {
         dateFormat: 'YYYY-MM-DD',
         amountFormat: '保留两位小数，使用逗号分隔千位',
-        tableLoops: templateConfig?.tableLoops || [],
+        tableLoops: effectiveTableLoops,
       },
 
       // 验证规则
@@ -2368,18 +2438,30 @@ ${blankList}
   async generateParametersFromDescription(description: string, skill: any): Promise<any> {
     this.logger.log(`Generating parameters from description: ${description}`);
 
+    const sanitizedParameters = Array.isArray(skill.parameters)
+      ? skill.parameters.filter((p: any) => !this.isPlaceholderSkillParameterPath(p?.name || ''))
+      : [];
+    const sanitizedDataExampleJson = this.sanitizeSkillDataExample(skill.dataExampleJson || {});
+    const templateType = typeof skill.templateType === 'string' && skill.templateType.trim()
+      ? skill.templateType
+      : 'custom';
+    const templateDescription = typeof skill.templateDescription === 'string'
+      ? skill.templateDescription
+      : '';
+
     // 获取dataExampleJson作为输出格式参考
-    const dataExampleJson = skill.dataExampleJson || {};
+    const dataExampleJson = sanitizedDataExampleJson;
     const dataExampleStr = JSON.stringify(dataExampleJson, null, 2);
 
     // Skill Guide Markdown作为参数定义参考
-    const skillGuideMarkdown = skill.skillGuideMarkdown || '';
+    const skillGuideMarkdown = sanitizedParameters.length > 0
+      ? this.buildSkillGuideMarkdown(templateType, templateDescription, sanitizedParameters, dataExampleStr)
+      : (skill.skillGuideMarkdown || '');
 
     // 如果Skill Guide不存在，尝试从parameters构建简要指南（后备方案）
     let fallbackGuide = '';
     if (!skillGuideMarkdown) {
-      const parameters = skill.parameters || [];
-      const paramList = parameters.map((p: any) => {
+      const paramList = sanitizedParameters.map((p: any) => {
         return `- ${p.name}: ${p.usage || '需要填写'} (示例: ${p.example || '无'})`;
       }).join('\n');
       fallbackGuide = `## 参数列表\n${paramList}`;
@@ -2423,7 +2505,7 @@ ${description}
 
     // 直接调用AI服务
     const aiOrchestratorUrl = getAiOrchestratorUrl();
-    const aiModelId = process.env.AI_MODEL_ID || '00ddd35d-6578-4acb-bc09-d629560f6ab6';
+    const aiModelId = await this.resolveActiveAiModelId();
 
     this.logger.log(`Calling AI service for parameter generation at ${aiOrchestratorUrl}/ai/models/${aiModelId}/test`);
 
@@ -2592,22 +2674,134 @@ ${description}
   }
 
   /**
+   * 将模板变量路径标准化为纯 JSON 路径
+   * 例如:
+   * - {d.contract.contractNo} -> contract.contractNo
+   * - d.contract.contractNo -> contract.contractNo
+   * - {#d.items}{/d.items} -> items
+   */
+  private normalizeSkillParameterPath(variableName: string): string {
+    const rawValue = String(variableName || '').trim();
+    if (!rawValue) {
+      return '';
+    }
+
+    const explicitLoopMatch = rawValue.match(/\{#([cdt])\.([^}]+)\}/);
+    if (explicitLoopMatch?.[2]) {
+      return explicitLoopMatch[2]
+        .replace(/\[(?:i(?:\+\d+)?)|\d+\]/g, '[]')
+        .trim();
+    }
+
+    const markerMatch = rawValue.match(/\{([cdt])\.([^}:]+)(?::[^}]*)?\}/);
+    if (markerMatch?.[2]) {
+      return markerMatch[2]
+        .replace(/\[(?:i(?:\+\d+)?)|\d+\]/g, '[]')
+        .trim();
+    }
+
+    return rawValue
+      .replace(/\{[#/]?/g, '')
+      .replace(/\}/g, '')
+      .replace(/^d\./, '')
+      .replace(/\[(?:i(?:\+\d+)?)|\d+\]/g, '[]')
+      .replace(/:.*$/g, '')
+      .trim();
+  }
+
+  private isPlaceholderSkillParameterPath(variableName: string): boolean {
+    const normalized = this.normalizeSkillParameterPath(variableName);
+    if (!normalized) {
+      return true;
+    }
+
+    return normalized
+      .split('.')
+      .some((segment) => /^field(?:[_-]?\d+)?$/i.test(segment.trim()));
+  }
+
+  private sanitizeSkillDataExample(value: unknown): unknown {
+    if (Array.isArray(value)) {
+      return value.map((item) => this.sanitizeSkillDataExample(item));
+    }
+
+    if (!value || typeof value !== 'object') {
+      return value;
+    }
+
+    const sanitized: Record<string, unknown> = {};
+    for (const [key, nestedValue] of Object.entries(value as Record<string, unknown>)) {
+      if (this.isPlaceholderSkillParameterPath(key)) {
+        continue;
+      }
+      sanitized[key] = this.sanitizeSkillDataExample(nestedValue);
+    }
+
+    return sanitized;
+  }
+
+  private async resolveActiveAiModelId(): Promise<string> {
+    const configuredModelId = process.env.AI_MODEL_ID?.trim();
+    const modelsResponse = await axios.get<AiModelsResponse>(`${this.aiOrchestratorUrl}/ai/models`, {
+      timeout: 5000,
+    });
+    const models = modelsResponse.data.models || [];
+
+    if (configuredModelId) {
+      const configuredModel = models.find((model) => model.id === configuredModelId && model.status === 'active');
+      if (configuredModel) {
+        return configuredModel.id;
+      }
+      this.logger.warn(`Configured AI_MODEL_ID ${configuredModelId} is unavailable, falling back to active model`);
+    }
+
+    const activeModel = models.find((model) => model.status === 'active');
+    if (!activeModel?.id) {
+      throw new Error('No active AI models available');
+    }
+
+    return activeModel.id;
+  }
+
+  /**
+   * Skill Guide 中的示例值优先使用真实识别值，缺失时再回退到通用示例
+   */
+  private buildSkillExampleValue(originalText: unknown, fieldType: string, variableName: string): string {
+    const normalized = this.sanitizeSkillExampleSource(originalText);
+    if (normalized) {
+      return normalized;
+    }
+
+    return this.generateExampleValue(fieldType, variableName);
+  }
+
+  private sanitizeSkillExampleSource(value: unknown): string {
+    const normalized = String(value ?? '').trim();
+    if (!normalized) {
+      return '';
+    }
+
+    // Ignore Carbone markers when deriving skill examples. They are template syntax,
+    // not business sample values.
+    if (/^\{[#/d][^}]*\}$/.test(normalized) || /\{[#/d][^}]*\}/.test(normalized)) {
+      return '';
+    }
+
+    return normalized;
+  }
+
+  /**
    * 生成模板描述
    */
   private generateTemplateDescription(templateType: string, documentDescription?: string, parameters?: any[]): string {
-    const typeDescriptions: Record<string, string> = {
-      contract: '合同模板用于生成正式合同文档。合同是双方或多方当事人之间设立、变更、终止民事法律关系的协议。本模板用于规范合同格式，确保合同内容的完整性和法律效力。',
-      invoice: '发票模板用于生成正式发票文档。发票是经营活动中的重要凭证，用于记录交易内容和金额。本模板用于规范发票格式，确保财务记录的准确性。',
-      report: '报告模板用于生成业务报告文档。报告用于汇报工作进展、分析数据结果或提出建议。本模板用于规范报告格式，确保信息传达的有效性。',
-      certificate: '证书模板用于生成证书证明文档。证书用于证明某人或某事项的真实性或有效性。本模板用于规范证书格式，确保证书的权威性。',
-      letter: '信函模板用于生成正式信函文档。信函用于正式沟通、通知或请求。本模板用于规范信函格式，确保沟通的正式性和有效性。',
-    };
-
-    const baseDescription = typeDescriptions[templateType] || '这是一个模板，用于生成标准化文档，规范内容格式和信息完整性。';
+    const baseDescription = `这是一个 ${templateType || 'custom'} 类型的模板渲染任务，需要根据文档理解结果和参数定义生成结构化数据，并用于最终文档渲染。`;
     const paramCount = parameters?.length || 0;
-    const paramSummary = `本模板包含 ${paramCount} 个参数需要填充，包括：${parameters?.slice(0, 5).map(p => p.displayName || p.name).join('、') || '待填充字段'}等。`;
+    const paramNames = parameters?.slice(0, 8).map((p) => p.displayName || p.name).join('、') || '待填充字段';
+    const paramSummary = `当前共识别 ${paramCount} 个待填充参数，典型参数包括：${paramNames}。该说明主要用于帮助 AI 判断这份文档的语义范围、理解应补充哪些字段，以及如何把自然语言输入组织成最终渲染数据。`;
 
-    return documentDescription ? `${baseDescription}\n${documentDescription}\n${paramSummary}` : `${baseDescription}\n${paramSummary}`;
+    return documentDescription
+      ? `${documentDescription}\n\n${paramSummary}`
+      : `${baseDescription}\n${paramSummary}`;
   }
 
   /**
@@ -2629,43 +2823,84 @@ ${description}
    * 生成示例值
    */
   private generateExampleValue(fieldType: string, variableName: string): string {
-    // 清理变量名：移除花括号和d.前缀
-    let cleanName = variableName || '';
-    cleanName = cleanName.replace(/^\{/, '').replace(/\}$/, '');
-    cleanName = cleanName.replace(/^d\./, '');
-    // 取最后一段作为名称（如partyA.name -> name）
-    const lastPart = cleanName.split('.').pop() || cleanName;
+    const cleanPath = this.normalizeSkillParameterPath(variableName || '');
+    const exampleByPath = this.getBusinessExampleValue(cleanPath, fieldType);
+    if (exampleByPath) {
+      return exampleByPath;
+    }
+
+    const lastPart = cleanPath.split('.').pop() || cleanPath || variableName;
 
     switch (fieldType) {
       case 'date':
-        return '2024-01-15';
+        return '2026-05-10';
       case 'amount':
-        return '10000.00';
+        return '740,000.00';
       case 'number':
-        return '100';
+        return '4';
       case 'phone':
         return '13800138000';
       case 'email':
-        return 'example@email.com';
+        return 'procurement@example.com';
       case 'address':
-        return '北京市朝阳区xxx街道xxx号';
+        return '北京市朝阳区望京东路 1 号';
       case 'name':
-        return '张三';
+        return '北京智造科技有限公司';
       case 'code':
-        return 'ABC123456';
+        return 'PC-2026-001';
       case 'text':
       default:
         // 根据变量名称生成更合适的示例
-        if (lastPart.includes('名称') || lastPart.includes('name')) return '示例公司';
-        if (lastPart.includes('地址') || lastPart.includes('address')) return '北京市朝阳区xxx街道xxx号';
-        if (lastPart.includes('日期') || lastPart.includes('date') || lastPart.includes('year')) return '2024';
-        if (lastPart.includes('月')) return '01';
-        if (lastPart.includes('日') || lastPart.includes('day')) return '15';
-        if (lastPart.includes('金额') || lastPart.includes('amount')) return '10000.00';
-        if (lastPart.includes('签字') || lastPart.includes('sign')) return '签字人';
-        if (lastPart.includes('保密') || lastPart.includes('confidential')) return '5';
+        if (lastPart.includes('名称') || lastPart.includes('name')) return '北京智造科技有限公司';
+        if (lastPart.includes('地址') || lastPart.includes('address')) return '北京市朝阳区望京东路 1 号';
+        if (lastPart.includes('日期') || lastPart.includes('date') || lastPart.includes('year')) return '2026';
+        if (lastPart.includes('月')) return '05';
+        if (lastPart.includes('日') || lastPart.includes('day')) return '10';
+        if (lastPart.includes('金额') || lastPart.includes('amount')) return '740,000.00';
+        if (lastPart.includes('签字') || lastPart.includes('sign')) return '王建国';
+        if (lastPart.includes('保密') || lastPart.includes('confidential')) return '3';
         return `示例${lastPart}`;
     }
+  }
+
+  private getBusinessExampleValue(cleanPath: string, fieldType: string): string | null {
+    const normalized = cleanPath.toLowerCase();
+    const exactPatterns: Array<[RegExp, string]> = [
+      [/(^|\.)(seq|serialno|serialnumber|lineNo|lineno)$/, '1'],
+      [/(^|\.)(materialcode|itemcode|productcode|sku|code)$/, 'RB-6A-001'],
+      [/(^|\.)(devicename|productname|itemname|goodsname)$/, '工业机器人'],
+      [/(^|\.)(model|spec|specification)$/, 'XR-600'],
+      [/(^|\.)(unit)$/, '台'],
+      [/(^|\.)(quantity|qty|count|num)$/, '4'],
+      [/(^|\.)(unitprice|price)$/, '185,000.00'],
+      [/(^|\.)(subtotal|amount|total)$/, '740,000.00'],
+      [/(^|\.)(contractno|contractnumber)$/, 'PC-2026-001'],
+      [/(^|\.)(projectname)$/, '智能制造产线升级项目'],
+      [/(^|\.)(buyername|partya|customername)$/, '北京智造科技有限公司'],
+      [/(^|\.)(suppliername|partyb|vendorname)$/, '上海远擎自动化设备有限公司'],
+      [/(^|\.)(contactname|signer|signname)$/, '王建国'],
+      [/(^|\.)(address)$/, '北京市朝阳区望京东路 1 号'],
+      [/(^|\.)(phone|mobile|tel)$/, '13800138000'],
+      [/(^|\.)(email)$/, 'procurement@example.com'],
+    ];
+
+    for (const [pattern, value] of exactPatterns) {
+      if (pattern.test(normalized)) {
+        return value;
+      }
+    }
+
+    if (fieldType === 'amount') {
+      return '740,000.00';
+    }
+    if (fieldType === 'number') {
+      return '4';
+    }
+    if (fieldType === 'date') {
+      return '2026-05-10';
+    }
+
+    return null;
   }
 
   /**
@@ -2676,85 +2911,195 @@ ${description}
     parameters: any[],
     documentDescription?: string
   ): string {
-    const typeDesc = this.getTypeInstructions(templateType);
-
-    // 参数列表（包含用途和提取提示）
-    const paramList = parameters
-      .map(p => `- **${p.name}**: ${p.usage || '填写对应值'}
-  - 数据类型: ${p.dataType}
-  - 提取提示: ${p.extractionHint}
-  - 示例值: ${p.example}`)
+    const parameterRules = parameters
+      .map((p) => `- ${p.name}: ${p.usage || '填写对应值'}；类型=${p.dataType}；提取提示=${p.extractionHint || '结合上下文提取'}；示例=${p.example}`)
       .join('\n');
 
-    // 参数解析步骤
-    const parsingSteps = `
-## 参数解析步骤
-1. **分析输入内容**: 理解用户提供的内容或文件结构
-2. **识别关键词**: 根据参数用途和搜索关键词定位相关内容
-3. **提取参数值**: 使用提取模式从内容中提取对应值
-4. **验证格式**: 检查提取值是否符合参数类型要求
-5. **格式化处理**: 应用格式化器处理特殊类型
+    return `【系统提示词】
+你是模板渲染数据助手。你的任务是根据“文档整体理解”“参数定义”和“用户输入”，生成可直接用于模板渲染的 JSON 数据。
 
-## 参数提取规则
-${parameters.map(p => `### ${p.name}
-- **用途**: ${p.usage}
-- **搜索关键词**: ${p.searchKeywords?.join(', ') || p.name}
-- **提取模式**: ${p.extractionPattern || '根据上下文提取'}
-- **示例值**: ${p.example}`).join('\n')}
-`;
+要求：
+1. 只输出合法 JSON 对象，不要输出解释、Markdown、代码块或额外说明。
+2. 输出结构必须与给定的数据结构示例一致。
+3. 优先依据文档整体理解和参数用途补足字段，不要臆造与模板无关的数据。
+4. 日期、数字、布尔值等字段要符合对应类型要求。
 
-    return `
-## 模板概述
-${documentDescription || typeDesc}
+【用户提示词】
+文档整体理解：
+${documentDescription || `这是一个 ${templateType || 'custom'} 类型的模板渲染任务。`}
 
-## 参数列表
-${paramList}
+参数定义：
+${parameterRules || '- 暂无参数定义'}
 
-${parsingSteps}
-
-## 数据示例
-\`\`\`json
-{
-${parameters.slice(0, 5).map(p => `  "${p.name?.replace(/[:\[].*/g, '')}": "${p.example}"`).join(',\n')}
-}
-\`\`\`
-
-## 注意事项
-- 所有必填字段必须提供有效值
-- 日期格式统一为 YYYY-MM-DD
-- 金额保留两位小数
-- 表格数据需提供数组格式
-`;
+请根据用户输入生成最终渲染数据。`;
   }
 
   /**
    * 构建完整的JSON数据示例
    * 用于展示如何构建可用的数据结构
    */
-  private buildDataExampleJson(parameters: any[]): string {
+  private buildDataExampleJson(parameters: any[], tableLoops: Array<Partial<TableLoop>> = []): string {
     // 构建嵌套的数据结构
     const dataObj: any = {};
 
-    for (const p of parameters) {
-      const cleanName = p.name?.replace(/[:\[].*/g, '') || '';
-      const pathParts = cleanName.split('.');
+    const setValueAtPath = (target: Record<string, any>, rawPath: string, value: unknown) => {
+      const cleanPath = this.normalizeSkillParameterPath(rawPath);
+      if (!cleanPath || this.isPlaceholderSkillParameterPath(cleanPath)) {
+        return;
+      }
 
-      // 构建嵌套路径
-      if (pathParts.length > 1) {
-        let current = dataObj;
-        for (let i = 0; i < pathParts.length - 1; i++) {
-          if (!current[pathParts[i]]) {
-            current[pathParts[i]] = {};
+      const pathParts = cleanPath.split('.').filter(Boolean);
+      let current = target;
+
+      for (let i = 0; i < pathParts.length; i++) {
+        const part = pathParts[i];
+        const isArrayPart = part.endsWith('[]');
+        const key = isArrayPart ? part.slice(0, -2) : part;
+        const isLast = i === pathParts.length - 1;
+
+        if (isArrayPart) {
+          if (!Array.isArray(current[key])) {
+            current[key] = [];
           }
-          current = current[pathParts[i]];
+          if (current[key].length === 0) {
+            current[key].push({});
+          }
+
+          if (isLast) {
+            if (current[key].length === 0) {
+              current[key].push(value ?? {});
+            }
+            return;
+          }
+
+          const firstItem = current[key][0];
+          if (!firstItem || typeof firstItem !== 'object' || Array.isArray(firstItem)) {
+            current[key][0] = {};
+          }
+          current = current[key][0];
+          continue;
         }
-        current[pathParts[pathParts.length - 1]] = p.example;
-      } else {
-        dataObj[cleanName] = p.example;
+
+        if (isLast) {
+          current[key] = value;
+          return;
+        }
+
+        if (!current[key] || typeof current[key] !== 'object' || Array.isArray(current[key])) {
+          current[key] = {};
+        }
+        current = current[key];
+      }
+    };
+
+    for (const p of parameters) {
+      const cleanName = this.normalizeSkillParameterPath(p.name || '');
+      if (!cleanName || this.isPlaceholderSkillParameterPath(cleanName)) {
+        continue;
+      }
+      setValueAtPath(dataObj, cleanName, p.example);
+    }
+
+    for (const loop of tableLoops) {
+      const arrayPath = this.normalizeSkillParameterPath(loop.arrayPath || '');
+      if (!arrayPath) {
+        continue;
+      }
+
+      setValueAtPath(dataObj, `${arrayPath}[]`, {});
+
+      if (Array.isArray(loop.columnMappings)) {
+        for (const column of loop.columnMappings) {
+          const cleanColumnPath = this.normalizeSkillParameterPath(column?.variablePath || '');
+          if (!cleanColumnPath || this.isPlaceholderSkillParameterPath(cleanColumnPath)) {
+            continue;
+          }
+          const sampleValue = this.sanitizeSkillExampleSource(column?.sampleValue) || this.generateExampleValue(
+            this.inferFieldType(column?.headerName || cleanColumnPath, String(this.sanitizeSkillExampleSource(column?.sampleValue) || '')),
+            cleanColumnPath
+          );
+          setValueAtPath(dataObj, cleanColumnPath, sampleValue);
+        }
       }
     }
 
     return JSON.stringify(dataObj, null, 2);
+  }
+
+  private extractLoopColumnMappings(
+    suggestion: any,
+    tableLoops: Array<Partial<TableLoop>>,
+    arrayPath: string
+  ): ColumnMapping[] {
+    if (Array.isArray(suggestion?.details?.columnMappings) && suggestion.details.columnMappings.length > 0) {
+      return suggestion.details.columnMappings as ColumnMapping[];
+    }
+
+    const normalizedArrayPath = String(arrayPath || '').trim();
+    if (!normalizedArrayPath) {
+      return [];
+    }
+
+    const matchedLoop = tableLoops.find((loop) => String(loop.arrayPath || '').trim() === normalizedArrayPath);
+    return Array.isArray(matchedLoop?.columnMappings) ? matchedLoop.columnMappings as ColumnMapping[] : [];
+  }
+
+  private buildSkillTableLoops(suggestions: any[], templateConfig: any): TableLoop[] {
+    const loopMap = new Map<string, TableLoop>();
+
+    const addLoop = (loop: Partial<TableLoop> | null | undefined) => {
+      const arrayPath = String(loop?.arrayPath || '').trim();
+      if (!arrayPath) {
+        return;
+      }
+
+      const normalizedColumnMappings = Array.isArray(loop?.columnMappings)
+        ? loop!.columnMappings.map((column: any, index: number) => ({
+            headerName: String(column?.headerName || `Column ${index + 1}`),
+            variablePath: String(column?.variablePath || '').trim(),
+            sampleValue: String(column?.sampleValue || ''),
+            columnIndex: column?.columnIndex !== undefined ? Number(column.columnIndex) : index,
+          })).filter((column: ColumnMapping) => Boolean(column.variablePath))
+        : [];
+
+      const existing = loopMap.get(arrayPath);
+      loopMap.set(arrayPath, {
+        tableIndex: loop?.tableIndex !== undefined ? Number(loop.tableIndex) : existing?.tableIndex ?? -1,
+        headerRow: String(loop?.headerRow || existing?.headerRow || ''),
+        dataRowCount: loop?.dataRowCount !== undefined ? Number(loop.dataRowCount) : existing?.dataRowCount ?? 0,
+        arrayPath,
+        columnMappings: normalizedColumnMappings.length > 0 ? normalizedColumnMappings : existing?.columnMappings || [],
+        reason: String(loop?.reason || existing?.reason || '根据循环建议推导的表格循环'),
+        confidence: loop?.confidence !== undefined ? Number(loop.confidence) : existing?.confidence ?? 0.9,
+      });
+    };
+
+    if (Array.isArray(templateConfig?.tableLoops)) {
+      templateConfig.tableLoops.forEach((loop: Partial<TableLoop>) => addLoop(loop));
+    }
+
+    for (const suggestion of suggestions) {
+      if (suggestion?.type !== 'loop' && suggestion?.details?.fieldType !== 'loop') {
+        continue;
+      }
+
+      const arrayPath = String(
+        suggestion?.details?.arrayPath
+        || suggestion?.suggestedName
+        || ''
+      ).trim();
+
+      addLoop({
+        arrayPath,
+        headerRow: String(suggestion?.elementPath || suggestion?.details?.displayPosition || ''),
+        dataRowCount: 1,
+        reason: String(suggestion?.details?.significance || suggestion?.context || '来自前端循环建议'),
+        confidence: suggestion?.confidence !== undefined ? Number(suggestion.confidence) : 0.9,
+        columnMappings: Array.isArray(suggestion?.details?.columnMappings) ? suggestion.details.columnMappings : [],
+      });
+    }
+
+    return Array.from(loopMap.values());
   }
 
   /**
@@ -2769,40 +3114,13 @@ ${parameters.slice(0, 5).map(p => `  "${p.name?.replace(/[:\[].*/g, '')}": "${p.
   ): string {
     const now = new Date().toISOString().split('T')[0];
 
-    // 参数表格
     const paramTable = parameters.map(p => {
-      const varPath = p.name?.replace(/[:\[].*/g, '');
-      return `| ${varPath} | ${p.usage || '填写对应值'} | ${p.dataType} | ${p.example} | {d.${varPath}} |`;
+      const varPath = this.normalizeSkillParameterPath(p.name || '');
+      return `| \`${varPath}\` | ${p.usage || '填写对应值'} | ${p.dataType} | ${p.example} | \`${this.buildSkillCarboneSyntax(p.name, p.dataType)}\` |`;
     }).join('\n');
+    const apiDataExample = JSON.stringify({ data: JSON.parse(dataExampleJson) }, null, 2);
 
-    // 循环参数单独列出
-    const loopParams = parameters.filter(p => p.dataType === 'loop' || p.arrayPath);
-    const loopSection = loopParams.length > 0 ? `
-## 循环数据（表格/列表）
-
-以下参数需要在数组中重复填充：
-
-${loopParams.map(p => {
-  const arrayPath = p.arrayPath || p.name?.split('.')[0] || 'items';
-  return `
-### ${arrayPath} 数组
-- **用途**: ${p.usage}
-- **Carbone语法**: \`{#d.${arrayPath}}{d.${arrayPath}.${p.name?.split('.')[1] || 'item'}}{/d.${arrayPath}}\`
-- **数据格式**: 数组，每个元素包含对应字段
-- **示例**:
-\`\`\`json
-{
-  "${arrayPath}": [
-    { "field1": "示例值1", "field2": "示例值2" },
-    { "field1": "示例值3", "field2": "示例值4" }
-  ]
-}
-\`\`\`
-`;
-}).join('\n')}
-` : '';
-
-    return `# ${templateType}模板 Skill Guide
+    return `# ${templateType} 模板 Skill Guide
 
 > 本文档是AI Skill的完整指南，用于指导如何生成替换参数数据。
 > 生成时间: ${now}
@@ -2815,92 +3133,96 @@ ${templateDescription}
 
 ---
 
-## 2. Carbone变量语法说明
+## 2. Carbone 变量语法说明
 
-本模板使用 **Carbone** 模板引擎，变量语法如下：
+本模板使用 **Carbone** 模板引擎，常见变量语法如下：
 
 | 语法 | 说明 | 示例 |
 |------|------|------|
-| \`{d.xxx}\` | 单值变量替换 | \`{d.name}\` → 张三 |
-| \`{d.xxx:formatD(YMD)}\` | 日期格式化 | \`{d.date:formatD(YMD)}\` → 2024-01-15 |
-| \`{d.xxx:formatN(2)}\` | 数字格式化（保留2位小数） | \`{d.amount:formatN(2)}\` → 10,000.00 |
-| \`{#d.xxx}...{/d.xxx}\` | 循环（数组数据） | 表格行循环 |
+| \`{d.xxx}\` | 单值变量替换 | \`{d.contract.contractNo}\` |
+| \`{d.xxx:formatD(YMD)}\` | 日期格式化 | \`{d.contract.signingDate:formatD(YMD)}\` |
+| \`{d.xxx:formatN(2)}\` | 数字格式化 | \`{d.contract.amount:formatN(2)}\` |
+| \`{#d.xxx}...{/d.xxx}\` | 循环数组 | \`{#d.items}{d.items.name}{/d.items}\` |
+
+注意：
+- Carbone 模板中的 \`{d.xxx}\` 是模板占位语法，不是最终 JSON 的键名。
+- 最终渲染数据里应只保留纯 JSON 路径，例如 \`contract.contractNo\`、\`items[0].name\`。
 
 ---
 
 ## 3. 参数列表
 
-本模板需要填充以下参数：
-
 | 参数路径 | 用途说明 | 数据类型 | 示例值 | Carbone语法 |
 |----------|----------|----------|--------|-------------|
 ${paramTable}
-
-${loopSection}
 
 ---
 
 ## 4. 完整数据示例
 
-以下是可直接用于渲染模板的JSON数据结构：
+以下 JSON 结构可直接作为渲染模板的输入数据：
 
 \`\`\`json
 ${dataExampleJson}
 \`\`\`
 
-**使用说明**:
-1. 将上面的JSON数据作为 \`data\` 参数传递给Carbone渲染API
-2. 确保所有必填字段都有有效值
-3. 日期格式统一为 \`YYYY-MM-DD\`
-4. 金额字段为数值类型（不含货币符号）
-
 ---
 
 ## 5. 数据提取步骤
 
-按照以下步骤从原始内容中提取参数值：
+建议按以下顺序从自然语言或业务输入中提取数据：
 
-1. **识别关键内容**: 根据参数用途定位文档中的对应位置
-   - 例如：\`partyA.name\` → 查找"甲方"附近的名称文字
-
-2. **提取对应值**: 根据数据类型使用正确的提取方式
-   - **日期**: YYYY年MM月DD日、YYYY-MM-DD、YYYY/MM/DD 等格式
-   - **金额**: 数字+单位（元、万元）、带货币符号
-   - **名称**: 甲乙方、公司名、人名等
-   - **编号**: 合同号、发票号等唯一标识
-
-3. **验证格式**: 检查提取值是否符合参数类型要求
-
-4. **构建数据结构**: 按照第4节的数据示例格式组装JSON
+1. 先根据“模板概述”和“参数列表”判断当前输入对应的文档场景。
+2. 再根据参数用途、示例值和字段名称定位用户表达中的关键信息。
+3. 将提取到的值转换成正确类型，例如日期、数字、布尔值、数组。
+4. 按“完整数据示例”的结构组装最终 JSON。
+5. 保证输出的字段结构稳定，不要把 Carbone 模板语法写进 JSON 键名。
 
 ---
 
 ## 6. API调用示例
 
+渲染时，应将最终生成的 JSON 作为 Carbone 渲染接口的 \`data\` 参数传入。
+
 \`\`\`bash
-# 使用Carbone API渲染模板
-curl -X POST http://localhost:3000/api/carbone/render \
-  -H "Content-Type: application/json" \
+curl -X POST http://localhost:3009/studio/render \\
+  -H "Content-Type: application/json" \\
   -d '{
     "templateId": "your-template-id",
     "data": ${JSON.stringify(JSON.parse(dataExampleJson))}
   }'
 \`\`\`
 
+调用时请确保：
+1. JSON 键名是纯数据路径，不要包含 \`{d.\` 或 \`}\`
+2. 单值字段用普通值，循环字段用数组
+3. 输出结构与“完整数据示例”保持一致
+
 ---
 
 ## 7. 注意事项
 
-- 所有必填字段必须提供有效值
-- 日期格式统一为 YYYY-MM-DD
-- 金额保留两位小数，使用逗号分隔千位
-- 表格数据需提供数组格式
-- 如参数无法提取，标记为需要用户提供
+- 参数用途说明应优先指导模型从自然语言或业务输入中提取值。
+- 输出 JSON 必须与“完整数据示例”中的字段结构保持一致。
+- 如果模板更新，应同步更新参数清单和完整数据示例。
 
 ---
 
 *本文档由AI自动生成，用于指导如何生成替换参数数据。*
 `;
+  }
+
+  private buildSkillCarboneSyntax(parameterName: string, dataType?: string): string {
+    const normalizedPath = this.normalizeSkillParameterPath(parameterName || '');
+    if (!normalizedPath) {
+      return '{d.value}';
+    }
+
+    if (dataType === 'loop' && !normalizedPath.includes('[].')) {
+      return `{#d.${normalizedPath}}...{/d.${normalizedPath}}`;
+    }
+
+    return `{d.${normalizedPath}}`;
   }
 
   /**

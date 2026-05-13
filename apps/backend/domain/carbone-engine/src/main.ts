@@ -11,6 +11,14 @@ import { getPublicHost } from './config/service-endpoints';
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
+  const express = require('express') as {
+    json: (options: { limit: string }) => ReturnType<NestExpressApplication['use']>;
+    urlencoded: (options: { extended: boolean; limit: string }) => ReturnType<NestExpressApplication['use']>;
+  };
+
+  // Office add-in 暂存副本会携带 base64 文档内容与完整参数 JSON，需放宽 body 限制
+  app.use(express.json({ limit: '50mb' }));
+  app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
   // Serve static files from public directory
   app.useStaticAssets(join(__dirname, '..', 'public'));

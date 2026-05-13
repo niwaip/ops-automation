@@ -9,7 +9,7 @@ import { officeAddinRuntimeConfig } from '../config/runtime';
 
 // 获取 axios 配置（根据 URL 是否为 HTTPS）
 // 注意：浏览器环境不需要 httpsAgent，浏览器会自动处理 TLS
-function getAxiosConfig(url: string, options: AxiosRequestConfig = {}): AxiosRequestConfig {
+function getAxiosConfig(_url: string, options: AxiosRequestConfig = {}): AxiosRequestConfig {
   const config: AxiosRequestConfig = { ...options };
   // 浏览器环境不需要 httpsAgent，浏览器有自己的证书处理机制
   // 如果需要忽略自签名证书，需要在浏览器中手动信任证书

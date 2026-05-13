@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Minimal live smoke test for V4 runtime layer:
-# browser-worker / replay-engine / carbone-engine / temporal / temporal-ui / temporal-sandbox-agent
+# browser-worker / carbone-engine / temporal / temporal-ui / temporal-sandbox-agent
 
 set -euo pipefail
 
@@ -25,7 +25,6 @@ NETWORK_NAME="${NETWORK_NAME:-ops-network}"
 
 # Container names from docker-compose.runtime.yml
 BW_CONTAINER="${BW_CONTAINER:-ops-browser-worker}"
-REPLAY_CONTAINER="${REPLAY_CONTAINER:-ops-replay-engine}"
 CHROME_CONTAINER="${CHROME_CONTAINER:-ops-browser-chrome}"
 CARBONE_CONTAINER="${CARBONE_CONTAINER:-carbone-engine}"
 TEMPORAL_CONTAINER="${TEMPORAL_CONTAINER:-ops-temporal}"
@@ -86,7 +85,6 @@ main() {
 
   # These checks cover the essential runtime components
   retry "browser-worker running" 36 5 container_running "$BW_CONTAINER" || fail "browser-worker not ready"
-  retry "replay-engine running" 36 5 container_running "$REPLAY_CONTAINER" || fail "replay-engine not ready"
   retry "browser-chrome running" 36 5 container_running "$CHROME_CONTAINER" || fail "browser-chrome not ready"
   retry "carbone-engine running" 36 5 container_running "$CARBONE_CONTAINER" || fail "carbone-engine not ready"
   retry "temporal running" 36 5 container_running "$TEMPORAL_CONTAINER" || fail "temporal not ready"

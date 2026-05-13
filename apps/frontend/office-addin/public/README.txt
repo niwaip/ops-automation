@@ -1,19 +1,23 @@
-Carbone Office Add-in Installation Instructions
+Carbone Office Add-in Wizard
 
-1. Trust the SSL Certificate (Mandatory)
-   Double-click 'ca.crt' and install it into "Trusted Root Certification Authorities".
+1. Open the wizard page
+   https://<OFFICE_ADDIN_PUBLIC_HOST>:3000/wizard
 
-2. Configure Manifest
-   The manifest files (manifest-word.xml, manifest-excel.xml, manifest-ppt.xml) are pre-configured to point to https://localhost:3000.
-   Ensure the Carbone Office Add-in service is running.
+2. Download the unified script
+   office-addin-wizard.ps1
 
-3. Sideload to Office
-   - For Word: Go to "Insert" -> "My Add-ins" -> "Upload My Add-in" -> select 'manifest-word.xml'.
-   - For Excel: Go to "Insert" -> "My Add-ins" -> "Upload My Add-in" -> select 'manifest-excel.xml'.
+3. Run the script in Windows PowerShell
+   powershell -ExecutionPolicy Bypass -File .\office-addin-wizard.ps1 -HostName <OFFICE_ADDIN_PUBLIC_HOST>
 
-4. Troubleshooting
-   - Ensure you are using HTTPS.
-   - Ensure port 3000 is accessible.
-   - If using a different machine, update 'localhost' in the manifest to your server's IP.
+4. Use the menu
+   1 = Install certificate
+   2 = Check certificate status
+   3 = Install Word add-in
+   4 = Install Excel add-in
+   5 = Install PowerPoint add-in
+   6 = Deep diagnosis
 
-For more information, visit https://carbone.io
+5. Notes
+   - The wizard downloads the latest certificate and manifest from the running add-in service.
+   - The host used in Office must exist in the certificate SAN.
+   - Old scripts are still present only as compatibility wrappers.

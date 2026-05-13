@@ -1,4 +1,5 @@
-# Full development environment with all services
+# Full development environment with default services
+# Optional services such as `report` require explicit profiles
 # Usage: docker compose up -d
 # Set HOST_IP to your machine's IP for external access (e.g., HOST_IP=192.168.100.143)
 
@@ -29,6 +30,8 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+    networks:
+      - ops-network
 
   redis:
     image: ${DOCKER_REGISTRY:-}redis:7-alpine
@@ -43,6 +46,8 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+    networks:
+      - ops-network
 
   # ============================================
   # Backend Services (with code mount for hot reload)
@@ -71,6 +76,8 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+    networks:
+      - ops-network
 
   session-broker:
     image: ${DOCKER_REGISTRY:-}node:20-bullseye
@@ -94,6 +101,8 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+    networks:
+      - ops-network
 
   control-plane:
     image: ${DOCKER_REGISTRY:-}node:20-bullseye
@@ -123,6 +132,8 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+    networks:
+      - ops-network
 
   browser-worker:
     image: ${DOCKER_REGISTRY:-}node:20-bullseye
@@ -147,13 +158,17 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock
     depends_on:
       - browser-chrome
+    networks:
+      - ops-network
 
   carbone-engine:
-    image: ${DOCKER_REGISTRY:-}node:20-bullseye
+    build:
+      context: ../..
+      dockerfile: docker/carbone-engine/Dockerfile
     container_name: carbone-engine
     working_dir: /app
     command: >
-      sh -c "apt-get update || true && apt-get install -y --no-install-recommends libreoffice-writer libreoffice-calc libreoffice-impress curl || echo 'LibreOffice install skipped; template listing APIs can still run without it' && apt-get clean && rm -rf /var/lib/apt/lists/* && npm config set registry https://registry.npmmirror.com && npm install --include=dev && npm run build && npm run start"
+      sh -c "npm config set registry https://registry.npmmirror.com && npm install --include=dev && npm run build && npm run start"
     environment:
       - NODE_ENV=production
       - PORT=${CARBONE_ENGINE_PORT:-3009}
@@ -174,6 +189,8 @@ services:
       interval: 30s
       timeout: 10s
       retries: 3
+    networks:
+      - ops-network
 
   browser-template:
     image: ${DOCKER_REGISTRY:-}node:20-bullseye
@@ -197,6 +214,8 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+    networks:
+      - ops-network
 
   ai-orchestrator:
     image: ${DOCKER_REGISTRY:-}node:20-bullseye
@@ -238,6 +257,8 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+    networks:
+      - ops-network
 
   report:
     image: ${DOCKER_REGISTRY:-}node:20-bullseye
@@ -269,6 +290,10 @@ services:
         condition: service_started
       session-broker:
         condition: service_started
+    networks:
+      - ops-network
+    profiles:
+      - report
 
   # ============================================
   # Frontend Service
@@ -297,6 +322,8 @@ services:
       - platform
       - browser-worker
       - browser-template
+    networks:
+      - ops-network
 
   # ============================================
   # Browser Worker (Chrome + noVNC + Codegen)
@@ -322,6 +349,8 @@ services:
       timeout: 10s
       retries: 3
       start_period: 60s
+    networks:
+      - ops-network
 
   # ============================================
   # Temporal Server & UI
@@ -350,7 +379,7 @@ services:
       postgres:
         condition: service_healthy
     networks:
-      - default
+      - ops-network
 
   temporal-ui:
     image: docker.1ms.run/library/temporalio/ui:2.20.0
@@ -363,7 +392,7 @@ services:
     depends_on:
       - temporal
     networks:
-      - default
+      - ops-network
 
   # ============================================
   # Temporal Sandbox Agent (Python)
@@ -392,7 +421,7 @@ services:
     depends_on:
       - temporal
     networks:
-      - default
+      - ops-network
 
 volumes:
   postgres_data:
@@ -413,6 +442,6 @@ volumes:
   temporal_data:
 
 networks:
-  default:
+  ops-network:
     external: true
     name: ${NETWORK_NAME:-ops-network}

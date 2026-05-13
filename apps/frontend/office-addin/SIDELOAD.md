@@ -7,39 +7,74 @@
 ./docker/scripts/start-smart.sh docker-compose.addin.yml up -d
 ```
 
+如果需要从局域网其他机器访问，请先在 `docker/.env` 中设置：
+
+```bash
+HOST_IP=192.168.100.143
+OFFICE_ADDIN_PUBLIC_HOST=192.168.100.143
+CARBONE_API_PUBLIC_HOST=192.168.100.143
+OFFICE_ADDIN_TLS_HOSTS=localhost,127.0.0.1,192.168.100.143
+```
+
 此命令会：
 1. 自动识别当前工作区 (Worktree) 并挂载代码
 2. 启动全栈基础设施及 Office Add-in 服务
 3. 确保环境变量及网络配置正确
 
-> **提示**：如果需要一键完成 SSL 证书信任及自动加载，可以使用旧脚本 `./docker/scripts/start-all.sh`（不推荐在 Worktree 中长期使用）。
+> **提示**：Windows 本地安装、证书信任、Word/Excel/PowerPoint 注册和深度排查，统一走 `https://${OFFICE_ADDIN_PUBLIC_HOST:-localhost}:3000/wizard` 下载 `office-addin-wizard.ps1`。
 
 ---
 
-## 方法一：命令行自动加载
+## 方法一：统一向导（Windows，推荐）
+
+1. 打开：
+
+```text
+https://${OFFICE_ADDIN_PUBLIC_HOST:-localhost}:3000/wizard
+```
+
+2. 下载 `office-addin-wizard.ps1`
+
+3. 在管理员 PowerShell 里执行：
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\office-addin-wizard.ps1 -HostName ${OFFICE_ADDIN_PUBLIC_HOST:-localhost}
+```
+
+4. 按菜单选择：
+   - `1` 证书安装
+   - `2` 证书状态确认
+   - `3` 安装 Word
+   - `4` 安装 Excel
+   - `5` 安装 PowerPoint
+   - `6` 深度解析
+
+---
+
+## 方法二：命令行自动加载
 
 ```bash
 # 安装工具
 npm install -g office-addin-debugging
 
-# 下载 manifest
-curl -k https://localhost:3000/manifest-word.xml -o /tmp/manifest-word.xml
+# 下载当前运行实例生成的 manifest
+curl -k https://${OFFICE_ADDIN_PUBLIC_HOST:-localhost}:3000/manifest-word.xml -o /tmp/manifest-word.xml
 
 # 加载到 Word
 office-addin-debugging start /tmp/manifest-word.xml
 
 # 加载到 Excel
-curl -k https://localhost:3000/manifest-excel.xml -o /tmp/manifest-excel.xml
+curl -k https://${OFFICE_ADDIN_PUBLIC_HOST:-localhost}:3000/manifest-excel.xml -o /tmp/manifest-excel.xml
 office-addin-debugging start /tmp/manifest-excel.xml
 
 # 加载到 PowerPoint
-curl -k https://localhost:3000/manifest-ppt.xml -o /tmp/manifest-ppt.xml
+curl -k https://${OFFICE_ADDIN_PUBLIC_HOST:-localhost}:3000/manifest-ppt.xml -o /tmp/manifest-ppt.xml
 office-addin-debugging start /tmp/manifest-ppt.xml
 ```
 
 ---
 
-## 方法二：通过 Office 应用加载
+## 方法三：通过 Office 应用加载
 
 ### Word 2016+ / Microsoft 365
 
@@ -66,7 +101,7 @@ office-addin-debugging start /tmp/manifest-ppt.xml
 
 ---
 
-## 方法二：通过 Web 版 Office 加载
+## 方法四：通过 Web 版 Office 加载
 
 ### Word Online
 
@@ -78,7 +113,7 @@ office-addin-debugging start /tmp/manifest-ppt.xml
 
 ---
 
-## 方法三：使用 Office Add-in Debugger（开发者）
+## 方法五：使用 Office Add-in Debugger（开发者）
 
 ```bash
 # 安装 office-addin-debugging
@@ -91,7 +126,7 @@ npm run sideload:word
 
 ---
 
-## 方法四：手动注册 manifest（Windows）
+## 方法六：手动注册 manifest（Windows）
 
 1. 打开注册表编辑器 (regedit)
 2. 导航到 `HKEY_CURRENT_USER\SOFTWARE\Microsoft\Office\16.0\Wef\Developer`
@@ -100,7 +135,7 @@ npm run sideload:word
 
 ---
 
-## 方法五：使用 Microsoft 365 开发者计划
+## 方法七：使用 Microsoft 365 开发者计划
 
 1. 注册 Microsoft 365 开发者账号
 2. 使用 App Source 部署
@@ -111,7 +146,7 @@ npm run sideload:word
 
 ### Q: 提示"加载项错误"？
 
-**最常见原因：SSL 证书不被信任**
+**最常见原因：TLS 证书不被信任，或访问主机名不在证书 SAN 中**
 
 **解决方案 (MacOS)：**
 ```bash
@@ -131,9 +166,28 @@ certutil -addstore "Root" docker\office-addin\certs\server.crt
 ```
 
 **检查清单：**
-1. 确保服务已启动: `curl -k https://localhost:3000/health`
-2. 确保 SSL 证书已信任（打开浏览器访问 https://localhost:3000 不报警告）
-3. 检查 manifest 文件中的 URL 是 `https://localhost:3000`
+1. 确保服务已启动: `curl -k https://${OFFICE_ADDIN_PUBLIC_HOST:-localhost}:3000/health`
+2. 确保当前服务使用的证书已信任
+3. 确保 manifest 文件中的 URL 与当前访问主机一致
+4. 确保证书 SAN 中包含当前访问主机名或局域网 IP
+
+### Q: 局域网访问时报"不安全连接"？
+
+**原因：**
+- 证书只覆盖了 `localhost`
+- 你正在通过局域网 IP 或另一台机器访问 Add-in
+- Office WebView 不接受主机名与证书 SAN 不匹配的 HTTPS 连接
+
+**最佳实践：**
+1. 生成覆盖所有开发入口的证书
+2. `manifest`、Taskpane、API 全部使用同一个对外主机
+3. 团队协作时优先使用内部 CA 或 `mkcert`
+
+**示例：**
+```bash
+export OFFICE_ADDIN_TLS_HOSTS=localhost,127.0.0.1,192.168.100.143,addin.dev.local
+./docker/office-addin/generate-certs.sh
+```
 
 ### Q: 找不到"上传我的加载项"选项？
 
@@ -150,8 +204,8 @@ certutil -addstore "Root" docker\office-addin\certs\server.crt
 ### Q: 提示"无法加载加载项"？
 
 **检查清单：**
-1. 确保服务已启动: https://localhost:3000
-2. 确保 SSL 证书已信任
+1. 确保服务已启动: `https://${OFFICE_ADDIN_PUBLIC_HOST:-localhost}:3000`
+2. 确保 TLS 证书已信任
 3. 检查 manifest 文件路径正确
 
 **信任 SSL 证书 (MacOS)：**
@@ -172,19 +226,20 @@ sudo security add-trusted-cert -d -r trustRoot -k /Library/Keychains/System.keyc
 
 ```bash
 # 检查 Office Add-in
-curl -k https://localhost:3000
+curl -k https://${OFFICE_ADDIN_PUBLIC_HOST:-localhost}:3000
 
 # 检查 Carbone API
-curl http://localhost:3100/health
+curl -k https://${CARBONE_API_PUBLIC_HOST:-localhost}:3443/health
 ```
 
 ---
 
 ## Manifest 文件位置
 
-```
-services/office-addin/
-├── manifest-word.xml   # Word
-├── manifest-excel.xml  # Excel
-└── manifest-ppt.xml    # PowerPoint
+动态下载地址：
+
+```text
+https://${OFFICE_ADDIN_PUBLIC_HOST:-localhost}:3000/manifest-word.xml
+https://${OFFICE_ADDIN_PUBLIC_HOST:-localhost}:3000/manifest-excel.xml
+https://${OFFICE_ADDIN_PUBLIC_HOST:-localhost}:3000/manifest-ppt.xml
 ```

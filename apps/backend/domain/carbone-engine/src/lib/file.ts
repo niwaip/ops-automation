@@ -42,6 +42,11 @@ export interface ImageInfo {
   height?: number;
 }
 
+interface WorksheetRenderContext {
+  numericColumns: Set<string>;
+  headerLabels: Map<string, string>;
+}
+
 export class FileHandler {
   private parser: Parser;
   private builder: Builder;
@@ -118,6 +123,17 @@ export class FileHandler {
   }
 
   /**
+   * 获取ZIP中的特定文件内容（可选）
+   */
+  async getOptionalFileContent(zip: JSZip, filePath: string): Promise<string | null> {
+    const file = zip.file(filePath);
+    if (!file) {
+      return null;
+    }
+    return file.async('text');
+  }
+
+  /**
    * 设置ZIP中的文件内容
    */
   setFileContent(zip: JSZip, filePath: string, content: string): void {
@@ -180,6 +196,7 @@ export class FileHandler {
   ): Promise<Buffer> {
     const format = this.getFormat(fileName);
     const zip = await this.loadZipFromBuffer(templateBuffer);
+    const originalSharedStringsXml = format === 'xlsx' ? await this.getOptionalFileContent(zip, 'xl/sharedStrings.xml') : null;
 
     // 获取所有需要处理的XML文件
     const xmlFiles = this.getXmlFilesToProcess(zip, format);
@@ -202,6 +219,9 @@ export class FileHandler {
     // 处理sharedStrings（Excel特有）
     if (format === 'xlsx') {
       await this.processSharedStrings(zip, data);
+      if (originalSharedStringsXml) {
+        await this.expandSharedStringLoopRows(zip, data, originalSharedStringsXml);
+      }
     }
 
     // 处理图片替换
@@ -295,6 +315,559 @@ export class FileHandler {
       const result = this.builder.buildXML(processedXml, data);
       this.setFileContent(zip, sharedStringsPath, result.xml);
     }
+  }
+
+  /**
+   * 对于将循环标记放在 sharedStrings 中的 Excel 模板，
+   * 需要在工作表层面把后续空白行绑定到新增的 shared string 索引。
+   */
+  private async expandSharedStringLoopRows(zip: JSZip, data: any, originalSharedStringsXml: string): Promise<void> {
+    const renderedSharedStringsXml = await this.getOptionalFileContent(zip, 'xl/sharedStrings.xml');
+    if (!renderedSharedStringsXml) {
+      return;
+    }
+
+    const originalStrings = this.extractSharedStringTexts(originalSharedStringsXml);
+    const sharedStringDocument = this.parseSharedStringDocument(renderedSharedStringsXml);
+    const sheetFiles = zip.file(/xl\/worksheets\/sheet\d+\.xml/);
+    const sheetExpansions = new Map<string, Array<{ startRow: number; oldEndRow: number; newEndRow: number; delta: number }>>();
+
+    for (const sheetFile of sheetFiles) {
+      const originalSheetXml = await sheetFile.async('text');
+      const { xml: expandedSheetXml, expansions } = this.expandWorksheetSharedStringLoops(
+        originalSheetXml,
+        originalStrings,
+        sharedStringDocument,
+        data
+      );
+      if (expandedSheetXml !== originalSheetXml) {
+        zip.file(sheetFile.name, expandedSheetXml);
+      }
+      if (expansions.length > 0) {
+        sheetExpansions.set(sheetFile.name, expansions);
+      }
+    }
+
+    zip.file('xl/sharedStrings.xml', this.buildSharedStringDocument(sharedStringDocument));
+    await this.updateWorksheetTables(zip, sheetExpansions);
+    await this.enableWorkbookRecalculation(zip);
+  }
+
+  private extractSharedStringTexts(xml: string): string[] {
+    const values: string[] = [];
+    const regex = /<si\b[\s\S]*?<\/si>/g;
+    let match: RegExpExecArray | null;
+
+    while ((match = regex.exec(xml)) !== null) {
+      const siXml = match[0];
+      const text = Array.from(siXml.matchAll(/<t[^>]*>([\s\S]*?)<\/t>/g))
+        .map(item => item[1])
+        .join('');
+      values.push(text);
+    }
+
+    return values;
+  }
+
+  private parseSharedStringDocument(xml: string): { prefix: string; suffix: string; entries: string[]; values: string[] } {
+    const firstSi = xml.indexOf('<si');
+    const lastSi = xml.lastIndexOf('</si>');
+    if (firstSi < 0 || lastSi < 0) {
+      return { prefix: xml, suffix: '', entries: [], values: [] };
+    }
+
+    const prefix = xml.slice(0, firstSi);
+    const suffix = xml.slice(lastSi + '</si>'.length);
+    const entries = Array.from(xml.matchAll(/<si\b[\s\S]*?<\/si>/g)).map((match) => match[0]);
+    const values = entries.map((entry) =>
+      Array.from(entry.matchAll(/<t[^>]*>([\s\S]*?)<\/t>/g))
+        .map((item) => item[1])
+        .join('')
+    );
+
+    return { prefix, suffix, entries, values };
+  }
+
+  private buildSharedStringDocument(document: { prefix: string; suffix: string; entries: string[]; values: string[] }): string {
+    const count = document.entries.length;
+    const prefix = document.prefix
+      .replace(/\bcount="(\d+)"/, `count="${count}"`)
+      .replace(/\buniqueCount="(\d+)"/, `uniqueCount="${count}"`);
+    return `${prefix}${document.entries.join('')}${document.suffix}`;
+  }
+
+  private expandWorksheetSharedStringLoops(
+    sheetXml: string,
+    originalStrings: string[],
+    sharedStringDocument: { prefix: string; suffix: string; entries: string[]; values: string[] },
+    data: any
+  ): { xml: string; expansions: Array<{ startRow: number; oldEndRow: number; newEndRow: number; delta: number }> } {
+    const sheetDataMatch = sheetXml.match(/<sheetData>([\s\S]*?)<\/sheetData>/);
+    if (!sheetDataMatch) {
+      return { xml: sheetXml, expansions: [] };
+    }
+
+    const rowRegex = /<row\b[^>]*r="(\d+)"[^>]*>[\s\S]*?<\/row>/g;
+    const rows = Array.from(sheetDataMatch[1].matchAll(rowRegex)).map((match) => ({
+      xml: match[0],
+      rowNumber: parseInt(match[1], 10),
+    }));
+
+    if (rows.length === 0) {
+      return { xml: sheetXml, expansions: [] };
+    }
+
+    const worksheetContext = this.buildWorksheetRenderContext(sheetDataMatch[1], originalStrings);
+    const expansions: Array<{ startRow: number; oldEndRow: number; newEndRow: number; delta: number }> = [];
+    const renderedRows: string[] = [];
+    let rowOffset = 0;
+
+    for (let rowIndex = 0; rowIndex < rows.length; rowIndex++) {
+      const row = rows[rowIndex];
+      const loopTemplate = this.detectLoopTemplateRow(row.xml, originalStrings, data);
+
+      if (!loopTemplate) {
+        renderedRows.push(this.shiftRowXml(row.xml, rowOffset, expansions));
+        continue;
+      }
+
+      let placeholderCount = 0;
+      while (rowIndex + placeholderCount + 1 < rows.length) {
+        const nextRow = rows[rowIndex + placeholderCount + 1];
+        if (!this.isBlankSharedStringPlaceholderRow(nextRow.xml)) {
+          break;
+        }
+        placeholderCount++;
+      }
+
+      const capacity = 1 + placeholderCount;
+      const extraRows = Math.max(0, loopTemplate.items.length - capacity);
+      const oldEndRow = row.rowNumber + capacity - 1;
+      const newEndRow = row.rowNumber + loopTemplate.items.length - 1;
+
+      expansions.push({
+        startRow: row.rowNumber,
+        oldEndRow,
+        newEndRow,
+        delta: extraRows,
+      });
+
+      for (let itemIndex = 0; itemIndex < loopTemplate.items.length; itemIndex++) {
+        renderedRows.push(
+          this.renderLoopTemplateRow(
+            row.xml,
+            row.rowNumber + rowOffset + itemIndex,
+            loopTemplate,
+            itemIndex,
+            sharedStringDocument,
+            data,
+            worksheetContext
+          )
+        );
+      }
+
+      for (let blankIndex = loopTemplate.items.length; blankIndex < capacity; blankIndex++) {
+        const placeholderRow = rows[rowIndex + blankIndex];
+        renderedRows.push(this.shiftRowXml(placeholderRow.xml, rowOffset, expansions));
+      }
+
+      rowIndex += placeholderCount;
+      rowOffset += extraRows;
+    }
+
+    const updatedSheetData = `<sheetData>${renderedRows.join('')}</sheetData>`;
+    let resultXml = sheetXml.replace(/<sheetData>[\s\S]*?<\/sheetData>/, updatedSheetData);
+    resultXml = this.updateWorksheetDimension(resultXml, renderedRows);
+    resultXml = this.clearFormulaCachedValues(resultXml);
+
+    return {
+      xml: resultXml,
+      expansions,
+    };
+  }
+
+  private extractSharedStringCells(rowXml: string): Array<{ cellRef: string; sharedStringIndex: number }> {
+    const cells: Array<{ cellRef: string; sharedStringIndex: number }> = [];
+    const cellRegex = /<c\b[^>]*r="([A-Z]+)(\d+)"[^>]*t="s"[^>]*>[\s\S]*?<v>(\d+)<\/v>[\s\S]*?<\/c>/g;
+    let match: RegExpExecArray | null;
+
+    while ((match = cellRegex.exec(rowXml)) !== null) {
+      cells.push({
+        cellRef: `${match[1]}${match[2]}`,
+        sharedStringIndex: parseInt(match[3], 10),
+      });
+    }
+
+    return cells;
+  }
+
+  private isBlankSharedStringPlaceholderRow(rowXml: string): boolean {
+    return /<c\b/i.test(rowXml) && !/<v>[\s\S]*?<\/v>/.test(rowXml) && !/<f>[\s\S]*?<\/f>/.test(rowXml);
+  }
+
+  private detectLoopTemplateRow(
+    rowXml: string,
+    originalStrings: string[],
+    data: any
+  ): {
+    sharedCells: Array<{ cellRef: string; sharedStringIndex: number }>;
+    rowTexts: string[];
+    loopStartCellIndex: number;
+    loopEndCellIndex: number;
+    items: any[];
+  } | null {
+    const sharedCells = this.extractSharedStringCells(rowXml);
+    if (sharedCells.length === 0) {
+      return null;
+    }
+
+    const rowTexts = sharedCells.map((cell) => originalStrings[cell.sharedStringIndex] || '');
+    const combinedText = rowTexts.join('');
+    const loopMatch = combinedText.match(/\{#([cdt]\.[^}]+)\}/);
+    if (!loopMatch) {
+      return null;
+    }
+
+    const loopStartCellIndex = rowTexts.findIndex((text) => /\{#([cdt]\.[^}]+)\}/.test(text));
+    const reverseEndIndex = [...rowTexts].reverse().findIndex((text) => /\{\/([cdt]\.[^}]+)\}/.test(text));
+    if (loopStartCellIndex < 0 || reverseEndIndex < 0) {
+      return null;
+    }
+
+    const loopEndCellIndex = rowTexts.length - 1 - reverseEndIndex;
+    const items = this.resolveLoopItems(data, loopMatch[1]);
+
+    return {
+      sharedCells,
+      rowTexts,
+      loopStartCellIndex,
+      loopEndCellIndex,
+      items,
+    };
+  }
+
+  private renderLoopTemplateRow(
+    templateRowXml: string,
+    targetRowNumber: number,
+    loopTemplate: {
+      sharedCells: Array<{ cellRef: string; sharedStringIndex: number }>;
+      rowTexts: string[];
+      loopStartCellIndex: number;
+      loopEndCellIndex: number;
+    },
+    itemIndex: number,
+    sharedStringDocument: { prefix: string; suffix: string; entries: string[]; values: string[] },
+    data: any,
+    worksheetContext: WorksheetRenderContext
+  ): string {
+    let cloned = templateRowXml;
+
+    cloned = cloned.replace(/(<row\b[^>]*r=")\d+(")/, `$1${targetRowNumber}$2`);
+    cloned = cloned.replace(/(<c\b[^>]*r=")([A-Z]+)\d+(")/g, (_match, prefix, col, suffix) => `${prefix}${col}${targetRowNumber}${suffix}`);
+
+    for (let cellIndex = loopTemplate.loopStartCellIndex; cellIndex <= loopTemplate.loopEndCellIndex; cellIndex++) {
+      const cell = loopTemplate.sharedCells[cellIndex];
+      const targetRef = cell.cellRef.replace(/\d+$/, String(targetRowNumber));
+      const templateText = loopTemplate.rowTexts[cellIndex];
+      const renderedText = this.renderLoopCellText(templateText, data, itemIndex);
+
+      if (this.shouldWriteNumericCell(templateText, renderedText, targetRef, worksheetContext)) {
+        cloned = this.replaceCellWithNumber(cloned, targetRef, this.normalizeNumericCellValue(renderedText));
+      } else {
+        const sharedStringIndex = this.appendSharedStringValue(sharedStringDocument, renderedText);
+        const cellPattern = new RegExp(`(<c\\b[^>]*r="${targetRef}"[^>]*t="s"[^>]*>[\\s\\S]*?<v>)\\d+(<\\/v>)`);
+        cloned = cloned.replace(cellPattern, `$1${sharedStringIndex}$2`);
+      }
+    }
+
+    return cloned;
+  }
+
+  private shiftRowXml(
+    rowXml: string,
+    rowOffset: number,
+    expansions: Array<{ startRow: number; oldEndRow: number; newEndRow: number; delta: number }>
+  ): string {
+    let shifted = rowXml;
+    const originalRowNumber = parseInt(rowXml.match(/<row\b[^>]*r="(\d+)"/)?.[1] || '0', 10);
+    const targetRowNumber = originalRowNumber + rowOffset;
+
+    shifted = shifted.replace(/(<row\b[^>]*r=")\d+(")/, `$1${targetRowNumber}$2`);
+    shifted = shifted.replace(/(<c\b[^>]*r=")([A-Z]+)\d+(")/g, (_match, prefix, col, suffix) => `${prefix}${col}${targetRowNumber}${suffix}`);
+    shifted = shifted.replace(/<f>([\s\S]*?)<\/f>/g, (_match, formula) => `<f>${this.rewriteFormula(formula, expansions)}</f>`);
+
+    return shifted;
+  }
+
+  private resolveLoopItems(data: any, arrayPath: string): any[] {
+    const cleanPath = arrayPath.replace(/^[dct]\./, '').replace(/\[i\]/g, '');
+    const parts = cleanPath.split('.').filter(Boolean);
+    let current = data;
+
+    for (const part of parts) {
+      if (current === null || current === undefined) {
+        return [];
+      }
+      current = current[part];
+    }
+
+    return Array.isArray(current) ? current : [];
+  }
+
+  private appendSharedStringValue(
+    document: { prefix: string; suffix: string; entries: string[]; values: string[] },
+    value: string
+  ): number {
+    const escaped = this.escapeXml(value);
+    document.entries.push(`<si><t>${escaped}</t></si>`);
+    document.values.push(value);
+    return document.values.length - 1;
+  }
+
+  private renderLoopCellText(templateText: string, data: any, loopIndex: number): string {
+    const textWithoutLoopMarkers = templateText
+      .replace(/\{#[cdt]\.[^}]+\}/g, '')
+      .replace(/\{\/[cdt]\.[^}]+\}/g, '');
+
+    const markerMatch = textWithoutLoopMarkers.match(/\{([cdt])\.([^}:]+(?:\[[^\]]*\])?(?:[^}]*)?)(:[^}]*)?\}/);
+    if (!markerMatch) {
+      return textWithoutLoopMarkers;
+    }
+
+    const contextChar = markerMatch[1];
+    const path = markerMatch[2].replace(/\[\]/g, '[i]');
+    const resolvedValue = this.builder.evaluatePath(`${contextChar}.${path}`, data, { loopIndex });
+    return String(resolvedValue ?? '');
+  }
+
+  private shouldWriteNumericCell(
+    templateText: string,
+    renderedText: string,
+    targetRef: string,
+    worksheetContext: WorksheetRenderContext
+  ): boolean {
+    const normalized = renderedText.replace(/,/g, '').trim();
+    if (!/^-?\d+(?:\.\d+)?$/.test(normalized)) {
+      return false;
+    }
+
+    const markerOnlyText = templateText
+      .replace(/\{#[cdt]\.[^}]+\}/g, '')
+      .replace(/\{\/[cdt]\.[^}]+\}/g, '')
+      .trim();
+
+    if (!/^\{[cdt]\.[^}]+\}$/.test(markerOnlyText)) {
+      return false;
+    }
+
+    const column = this.extractColumnLetters(targetRef);
+    if (worksheetContext.numericColumns.has(column)) {
+      return true;
+    }
+
+    const headerLabel = worksheetContext.headerLabels.get(column) || '';
+    if (this.looksLikeNumericHeader(headerLabel)) {
+      return true;
+    }
+
+    // Fallback for decimal / formatted amount strings when worksheet context is unavailable.
+    return renderedText.includes(',') || normalized.includes('.');
+  }
+
+  private normalizeNumericCellValue(value: string): string {
+    return value.replace(/,/g, '').trim();
+  }
+
+  private replaceCellWithNumber(rowXml: string, targetRef: string, numericValue: string): string {
+    const cellPattern = new RegExp(`<c\\b([^>]*r="${targetRef}"[^>]*)>[\\s\\S]*?<\\/c>`);
+    return rowXml.replace(cellPattern, (_match, attrs) => `<c${String(attrs).replace(/\s+t="s"/, '')}><v>${numericValue}</v></c>`);
+  }
+
+  private buildWorksheetRenderContext(sheetDataXml: string, sharedStrings: string[]): WorksheetRenderContext {
+    const numericColumns = new Set<string>();
+    const headerLabels = new Map<string, string>();
+    const rowRegex = /<row\b[^>]*r="(\d+)"[^>]*>[\s\S]*?<\/row>/g;
+    const rows = Array.from(sheetDataXml.matchAll(rowRegex)).map((match) => ({
+      rowNumber: parseInt(match[1], 10),
+      xml: match[0],
+    }));
+
+    for (const row of rows) {
+      const formulaMatches = Array.from(row.xml.matchAll(/<c\b[^>]*r="([A-Z]+)\d+"[^>]*>[\s\S]*?<f>([\s\S]*?)<\/f>[\s\S]*?<\/c>/g));
+      for (const formulaMatch of formulaMatches) {
+        const formula = formulaMatch[2];
+        for (const rangeMatch of formula.matchAll(/([A-Z]+)\d+:([A-Z]+)\d+/g)) {
+          if (rangeMatch[1] === rangeMatch[2]) {
+            numericColumns.add(rangeMatch[1]);
+          }
+        }
+      }
+
+      for (const sharedCell of this.extractSharedStringCells(row.xml)) {
+        const column = this.extractColumnLetters(sharedCell.cellRef);
+        const text = (sharedStrings[sharedCell.sharedStringIndex] || '').trim();
+        if (!text || /\{[#/]/.test(text)) {
+          continue;
+        }
+        if (!headerLabels.has(column)) {
+          headerLabels.set(column, text);
+        }
+      }
+    }
+
+    return { numericColumns, headerLabels };
+  }
+
+  private looksLikeNumericHeader(label: string): boolean {
+    return /(金额|单价|总价|小计|合计|税额|数量|比例|税率|price|amount|total|subtotal|qty|quantity|rate|percent)/i.test(label);
+  }
+
+  private extractColumnLetters(cellRef: string): string {
+    return cellRef.replace(/\d+/g, '');
+  }
+
+  private updateWorksheetDimension(sheetXml: string, renderedRows: string[]): string {
+    const rowNumbers = renderedRows.map((row) => parseInt(row.match(/<row\b[^>]*r="(\d+)"/)?.[1] || '0', 10));
+    const maxRow = rowNumbers.reduce((max, value) => Math.max(max, value), 0);
+    if (maxRow === 0) {
+      return sheetXml;
+    }
+
+    return sheetXml.replace(/<dimension ref="([A-Z]+)(\d+):([A-Z]+)(\d+)"\/>/, (_match, startCol, startRow, endCol) => {
+      return `<dimension ref="${startCol}${startRow}:${endCol}${maxRow}"/>`;
+    });
+  }
+
+  private clearFormulaCachedValues(sheetXml: string): string {
+    return sheetXml.replace(/(<c\b[^>]*>\s*<f>[\s\S]*?<\/f>)\s*<v>[\s\S]*?<\/v>\s*<\/c>/g, '$1</c>');
+  }
+
+  private rewriteFormula(
+    formula: string,
+    expansions: Array<{ startRow: number; oldEndRow: number; newEndRow: number; delta: number }>
+  ): string {
+    let rewritten = formula;
+
+    for (const expansion of expansions) {
+      rewritten = rewritten.replace(/([A-Z]+)(\d+):([A-Z]+)(\d+)/g, (_match, startCol, startRow, endCol, endRow) => {
+        let fromRow = parseInt(startRow, 10);
+        let toRow = parseInt(endRow, 10);
+        let expandedRange = false;
+
+        if (toRow === expansion.oldEndRow && fromRow >= expansion.startRow && fromRow <= expansion.oldEndRow) {
+          toRow = expansion.newEndRow;
+          expandedRange = true;
+        }
+
+        if (fromRow > expansion.oldEndRow) {
+          fromRow += expansion.delta;
+        }
+        if (!expandedRange && toRow > expansion.oldEndRow) {
+          toRow += expansion.delta;
+        }
+
+        return `${startCol}${fromRow}:${endCol}${toRow}`;
+      });
+    }
+
+    return rewritten;
+  }
+
+  private async updateWorksheetTables(
+    zip: JSZip,
+    sheetExpansions: Map<string, Array<{ startRow: number; oldEndRow: number; newEndRow: number; delta: number }>>
+  ): Promise<void> {
+    for (const [sheetPath, expansions] of sheetExpansions.entries()) {
+      const tablePaths = await this.getWorksheetTablePaths(zip, sheetPath);
+      for (const tablePath of tablePaths) {
+        const tableXml = await this.getOptionalFileContent(zip, tablePath);
+        if (!tableXml) {
+          continue;
+        }
+
+        let updated = tableXml;
+        for (const expansion of expansions) {
+          updated = updated.replace(/ref="([A-Z]+)(\d+):([A-Z]+)(\d+)"/g, (_match, startCol, startRow, endCol, endRow) => {
+            const bottomRow = parseInt(endRow, 10);
+            if (bottomRow !== expansion.oldEndRow) {
+              return `ref="${startCol}${startRow}:${endCol}${endRow}"`;
+            }
+            return `ref="${startCol}${startRow}:${endCol}${expansion.newEndRow}"`;
+          });
+        }
+
+        zip.file(tablePath, updated);
+      }
+    }
+  }
+
+  private async getWorksheetTablePaths(zip: JSZip, sheetPath: string): Promise<string[]> {
+    const relsPath = sheetPath.replace('worksheets/', 'worksheets/_rels/') + '.rels';
+    const relsXml = await this.getOptionalFileContent(zip, relsPath);
+    if (!relsXml) {
+      return [];
+    }
+
+    const tablePaths: string[] = [];
+    const relRegex = /<Relationship[^>]*Type="[^"]*\/table"[^>]*Target="([^"]+)"[^>]*\/>/g;
+    let match: RegExpExecArray | null;
+    while ((match = relRegex.exec(relsXml)) !== null) {
+      const target = match[1].replace(/^\.\.\//, 'xl/');
+      tablePaths.push(target.startsWith('xl/') ? target : `xl/${target}`);
+    }
+
+    return tablePaths;
+  }
+
+  private async enableWorkbookRecalculation(zip: JSZip): Promise<void> {
+    const workbookPath = 'xl/workbook.xml';
+    const workbookXml = await this.getOptionalFileContent(zip, workbookPath);
+    if (!workbookXml) {
+      return;
+    }
+
+    let updated = workbookXml;
+    if (/<calcPr\b/.test(updated)) {
+      updated = updated.replace(/<calcPr\b[^>]*\/>/, (match) => this.upsertCalcPrTag(match));
+      updated = updated.replace(/<calcPr\b[^>]*>(?![\s\S]*<calcPr\b)/, (match) => this.upsertCalcPrTag(match));
+    } else {
+      updated = updated.replace('</workbook>', '<calcPr calcMode="auto" fullCalcOnLoad="1" forceFullCalc="1"/></workbook>');
+    }
+
+    zip.file(workbookPath, updated);
+    if (zip.file('xl/calcChain.xml')) {
+      zip.remove('xl/calcChain.xml');
+    }
+  }
+
+  private upsertCalcPrTag(tag: string): string {
+    const selfClosing = /\/>$/.test(tag);
+    const attrMatch = tag.match(/^<calcPr\b([\s\S]*?)(\/?>)$/);
+    const rawAttrs = attrMatch?.[1] ?? '';
+    let attrs = rawAttrs;
+
+    attrs = this.upsertXmlAttribute(attrs, 'calcMode', 'auto');
+    attrs = this.upsertXmlAttribute(attrs, 'fullCalcOnLoad', '1');
+    attrs = this.upsertXmlAttribute(attrs, 'forceFullCalc', '1');
+
+    return `<calcPr${attrs}${selfClosing ? '/>' : '>'}`;
+  }
+
+  private upsertXmlAttribute(attrs: string, name: string, value: string): string {
+    const pattern = new RegExp(`\\s${name}="[^"]*"`);
+    if (pattern.test(attrs)) {
+      return attrs.replace(pattern, ` ${name}="${value}"`);
+    }
+    return `${attrs} ${name}="${value}"`;
+  }
+
+  private escapeXml(value: string): string {
+    return value
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&apos;');
   }
 
   /**

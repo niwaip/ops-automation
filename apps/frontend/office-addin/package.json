@@ -6,9 +6,12 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "sideload:word": "office-addin-debugging start word --manifest manifest-word.xml",
-    "sideload:excel": "office-addin-debugging start excel --manifest manifest-excel.xml",
-    "sideload:ppt": "office-addin-debugging start powerpoint --manifest manifest-ppt.xml"
+    "prepare-manifest:word": "node scripts/render-manifest.mjs manifest-word.xml .generated/manifest-word.xml",
+    "prepare-manifest:excel": "node scripts/render-manifest.mjs manifest-excel.xml .generated/manifest-excel.xml",
+    "prepare-manifest:ppt": "node scripts/render-manifest.mjs manifest-ppt.xml .generated/manifest-ppt.xml",
+    "sideload:word": "npm run prepare-manifest:word && office-addin-debugging start word --manifest .generated/manifest-word.xml",
+    "sideload:excel": "npm run prepare-manifest:excel && office-addin-debugging start excel --manifest .generated/manifest-excel.xml",
+    "sideload:ppt": "npm run prepare-manifest:ppt && office-addin-debugging start powerpoint --manifest .generated/manifest-ppt.xml"
   },
   "dependencies": {
     "@microsoft/office-js": "^1.1.79",

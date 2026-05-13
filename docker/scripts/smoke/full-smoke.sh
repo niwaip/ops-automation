@@ -2,6 +2,7 @@
 
 # Full-stack smoke test for the V4 full development composition.
 # Verifies demo/e2e baseline on top of docker-compose.full.yml.
+# Optional profiles such as `report` remain disabled in this smoke test.
 
 set -euo pipefail
 
@@ -326,7 +327,7 @@ main() {
   local task_succeeded=0
   local wait_status
 
-  log "Starting full V4-compatible development stack"
+  log "Starting full V4-compatible development stack (without optional report profile)"
   ensure_network
   ./docker/start-smart.sh docker-compose.full.yml up -d
 

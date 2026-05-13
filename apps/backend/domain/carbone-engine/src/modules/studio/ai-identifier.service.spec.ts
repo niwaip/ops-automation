@@ -725,6 +725,85 @@ describe('AIIdentifierService', () => {
   // 测试10: 边界情况
   // ============================================
   describe('Edge Cases', () => {
+    it('should generate skill guide with array parameters from loop column mappings', async () => {
+      const skill = await service.generateAISkillGuide(
+        [
+          {
+            id: 'loop-1',
+            type: 'loop',
+            applied: true,
+            suggestedName: '{#d.contract.procurementDetails}{/d.contract.procurementDetails}',
+            originalText: 'tblProcurementDetail',
+            details: {
+              fieldType: 'loop',
+              arrayPath: 'd.contract.procurementDetails',
+              tableName: 'tblProcurementDetail',
+              significance: '采购明细数组',
+              columnMappings: [
+                {
+                  headerName: '序号',
+                  variablePath: 'd.contract.procurementDetails[].seq',
+                  sampleValue: '1',
+                  columnIndex: 0,
+                },
+                {
+                  headerName: '物料编码',
+                  variablePath: 'd.contract.procurementDetails[].materialCode',
+                  sampleValue: 'RB-6A-001',
+                  columnIndex: 1,
+                },
+                {
+                  headerName: '数量',
+                  variablePath: 'd.contract.procurementDetails[].quantity',
+                  sampleValue: '2',
+                  columnIndex: 2,
+                },
+              ],
+            },
+          },
+          {
+            id: 'var-1',
+            type: 'variable',
+            applied: true,
+            suggestedName: '{d.contract.contractNo}',
+            originalText: 'PC-2026-001',
+            details: {
+              fieldType: 'text',
+              significance: '合同编号',
+            },
+          },
+        ],
+        {
+          tableLoops: [],
+        },
+        'contract',
+        '采购合同模板'
+      );
+
+      expect(skill.parameters.map((p: any) => p.name)).toEqual(
+        expect.arrayContaining([
+          'contract.contractNo',
+          'contract.procurementDetails[].seq',
+          'contract.procurementDetails[].materialCode',
+          'contract.procurementDetails[].quantity',
+        ])
+      );
+
+      expect(skill.specialRules.tableLoops).toHaveLength(1);
+      expect(skill.specialRules.tableLoops[0].arrayPath).toBe('d.contract.procurementDetails');
+
+      const exampleData = JSON.parse(skill.dataExampleJson);
+      expect(exampleData.contract.contractNo).toBe('PC-2026-001');
+      expect(Array.isArray(exampleData.contract.procurementDetails)).toBe(true);
+      expect(exampleData.contract.procurementDetails[0]).toMatchObject({
+        seq: '1',
+        materialCode: 'RB-6A-001',
+        quantity: '2',
+        unitPrice: '185,000.00',
+        subtotal: '740,000.00',
+      });
+    });
+
     it('should handle empty document content', async () => {
       mockedAxios.post.mockResolvedValue({ data: mockAIResponse });
 

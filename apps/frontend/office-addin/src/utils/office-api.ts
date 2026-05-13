@@ -15,6 +15,16 @@ export function getOfficeType(): OfficeAppType {
   return 'word'; // 默认
 }
 
+function hasZipHeader(base64: string): boolean {
+  try {
+    const decoded = atob(base64.substring(0, 100));
+    return decoded.substring(0, 2) === 'PK';
+  } catch (error) {
+    console.warn('base64 zip header验证失败:', error);
+    return false;
+  }
+}
+
 /**
  * Word 操作
  */
@@ -234,7 +244,6 @@ export const WordAPI = {
 
         // 方法1：尝试获取OOXML格式的完整文档
         const ooxml = body.getOoxml();
-        ooxml.load('value');
         await context.sync();
 
         if (ooxml.value && ooxml.value.length > 0) {
@@ -264,12 +273,20 @@ export const WordAPI = {
    */
   async getFileContentBase64(): Promise<string> {
     // 检查是否支持getFileContentAsync（较新的API）
-    if (Office.context.document.getFileContentAsync) {
+    const documentWithContentApi = Office.context.document as Office.Document & {
+      getFileContentAsync?: (
+        fileType: Office.FileType,
+        callback: (result: Office.AsyncResult<string | ArrayBuffer>) => void
+      ) => void;
+    };
+
+    if (documentWithContentApi.getFileContentAsync) {
       return new Promise((resolve, reject) => {
-        Office.context.document.getFileContentAsync(Office.FileType.Compressed, (result) => {
+        documentWithContentApi.getFileContentAsync?.(Office.FileType.Compressed, (result: Office.AsyncResult<string | ArrayBuffer>) => {
           if (result.status === Office.AsyncResultStatus.Succeeded) {
             const data = result.value;
-            console.log('getFileContentAsync成功，数据类型:', typeof data, 'isArrayBuffer:', data instanceof ArrayBuffer, '长度:', data?.length);
+            const dataLength = typeof data === 'string' ? data.length : data instanceof ArrayBuffer ? data.byteLength : 0;
+            console.log('getFileContentAsync成功，数据类型:', typeof data, 'isArrayBuffer:', data instanceof ArrayBuffer, '长度:', dataLength);
 
             // 处理不同数据格式
             let base64: string;
@@ -307,7 +324,6 @@ export const WordAPI = {
       Word.run(async (context) => {
         const body = context.document.body;
         const ooxml = body.getOoxml();
-        ooxml.load('value');
         await context.sync();
         console.log('OOXML length:', ooxml.value?.length);
         resolve(ooxml.value);
@@ -448,12 +464,13 @@ export const WordAPI = {
 
         // 获取表格
         const tables = context.document.body.tables;
-        tables.load('rowCount,columnCount');
+        tables.load('items');
         await context.sync();
 
         const tableData = [];
         for (let i = 0; i < tables.items.length; i++) {
           const table = tables.items[i];
+          table.load('rowCount,columnCount');
           const rows = table.rows;
           rows.load('items');
           await context.sync();
@@ -472,7 +489,7 @@ export const WordAPI = {
           }
           tableData.push({
             rows: table.rowCount,
-            cols: table.columnCount,
+            cols: content[0]?.length || 0,
             content,
             index: i,
           });
@@ -485,7 +502,7 @@ export const WordAPI = {
 
         const imageData = images.items.map((img, idx) => ({
           index: idx,
-          altText: img.altText || '',
+          altText: img.altTextTitle || img.altTextDescription || '',
         }));
 
         resolve({
@@ -497,6 +514,116 @@ export const WordAPI = {
           images: imageData,
         });
       }).catch(reject);
+    });
+  },
+
+  /**
+   * 获取 Word 内容控件信息
+   */
+  async getContentControls(): Promise<Array<{
+    id: number;
+    title: string;
+    tag: string;
+    text: string;
+    type: string;
+    subtype?: string;
+    appearance?: string;
+    cannotDelete: boolean;
+    cannotEdit: boolean;
+    parentTableCell?: { rowIndex: number; cellIndex: number } | null;
+  }>> {
+    return new Promise((resolve) => {
+      Word.run(async (context) => {
+        const controls = context.document.contentControls;
+        controls.load('items');
+        await context.sync();
+
+        for (const control of controls.items) {
+          control.load('id,title,tag,text,type,subtype,appearance,cannotDelete,cannotEdit');
+          control.parentTableCellOrNullObject.load('isNullObject,rowIndex,cellIndex');
+        }
+        await context.sync();
+
+        resolve(
+          controls.items.map((control) => ({
+            id: control.id,
+            title: control.title || '',
+            tag: control.tag || '',
+            text: control.text || '',
+            type: String(control.type || ''),
+            subtype: control.subtype ? String(control.subtype) : undefined,
+            appearance: control.appearance ? String(control.appearance) : undefined,
+            cannotDelete: Boolean(control.cannotDelete),
+            cannotEdit: Boolean(control.cannotEdit),
+            parentTableCell: control.parentTableCellOrNullObject.isNullObject
+              ? null
+              : {
+                  rowIndex: control.parentTableCellOrNullObject.rowIndex,
+                  cellIndex: control.parentTableCellOrNullObject.cellIndex,
+                },
+          }))
+        );
+      }).catch((error) => {
+        console.warn('getContentControls error:', error);
+        resolve([]);
+      });
+    });
+  },
+
+  /**
+   * 获取表格单元格结构
+   */
+  async getTableCells(): Promise<Array<{
+    tableIndex: number;
+    rowIndex: number;
+    cellIndex: number;
+    text: string;
+  }>> {
+    return new Promise((resolve) => {
+      Word.run(async (context) => {
+        const tables = context.document.body.tables;
+        tables.load('items');
+        await context.sync();
+
+        const cellsData: Array<{
+          tableIndex: number;
+          rowIndex: number;
+          cellIndex: number;
+          text: string;
+        }> = [];
+
+        for (let tableIndex = 0; tableIndex < tables.items.length; tableIndex += 1) {
+          const table = tables.items[tableIndex];
+          const rows = table.rows;
+          rows.load('items');
+          await context.sync();
+
+          for (const row of rows.items) {
+            const cells = row.cells;
+            cells.load('items');
+            await context.sync();
+
+            for (const cell of cells.items) {
+              cell.load('rowIndex,cellIndex,value');
+            }
+            await context.sync();
+
+            for (const cell of cells.items) {
+              cellsData.push({
+                tableIndex,
+                rowIndex: cell.rowIndex,
+                cellIndex: cell.cellIndex,
+                text: cell.value || '',
+              });
+            }
+          }
+        }
+
+        resolve(cellsData);
+      }).catch((error) => {
+        console.warn('getTableCells error:', error);
+        resolve([]);
+      });
     });
   },
 
@@ -581,7 +708,7 @@ export const WordAPI = {
         const result = [];
         for (let i = 0; i < images.items.length; i++) {
           const img = images.items[i];
-          img.load('altText,width,height');
+          img.load('altTextTitle,altTextDescription,width,height');
 
           // 获取图片Base64数据
           const imageBase64 = img.getBase64ImageSrc();
@@ -589,8 +716,8 @@ export const WordAPI = {
 
           result.push({
             index: i,
-            altText: img.altText || '',
-            base64: imageBase64 || '',
+            altText: img.altTextTitle || img.altTextDescription || '',
+            base64: imageBase64.value || '',
             width: img.width || 0,
             height: img.height || 0
           });
@@ -710,7 +837,7 @@ export const WordAPI = {
                 // 对于纯空格文本，通常所有匹配都会有相同的格式
                 const hasUnderlineFormat = searchResults.items.some(foundRange => {
                   const underline = foundRange.font.underline;
-                  return underline && underline !== 'None' && underline !== 'mixed';
+                  return underline && underline !== 'None' && underline !== 'Mixed';
                 });
 
                 if (hasUnderlineFormat) {
@@ -750,7 +877,7 @@ export const WordAPI = {
    * 按段落索引和位置高亮下划线区域
    * 使用扩展文本搜索来精确定位（解决相同文本多次出现的问题）
    */
-  async highlightUnderlineByPosition(paragraphIndex: number, startPos: number, endPos: number, textHint?: string): Promise<boolean> {
+  async highlightUnderlineByPosition(paragraphIndex: number, startPos: number, endPos: number, _textHint?: string): Promise<boolean> {
     return new Promise((resolve) => {
       Word.run(async (context) => {
         const paragraphs = context.document.body.paragraphs;
@@ -857,7 +984,7 @@ export const WordAPI = {
    * 按段落索引和位置替换下划线区域为参数标记
    * 使用原始段落文本（避免替换后文本变化导致位置错乱）
    */
-  async replaceUnderlineByPosition(paragraphIndex: number, startPos: number, endPos: number, replacement: string, textHint?: string, originalParagraphText?: string): Promise<boolean> {
+  async replaceUnderlineByPosition(paragraphIndex: number, startPos: number, endPos: number, replacement: string, _textHint?: string, originalParagraphText?: string): Promise<boolean> {
     return new Promise((resolve) => {
       Word.run(async (context) => {
         const paragraphs = context.document.body.paragraphs;
@@ -1036,6 +1163,125 @@ export const WordAPI = {
     });
   },
 
+  async highlightContentControlById(contentControlId: number): Promise<boolean> {
+    return new Promise((resolve) => {
+      Word.run(async (context) => {
+        const contentControl = context.document.contentControls.getByIdOrNullObject(contentControlId);
+        contentControl.load('isNullObject');
+        await context.sync();
+
+        if (contentControl.isNullObject) {
+          resolve(false);
+          return;
+        }
+
+        const range = contentControl.getRange(Word.RangeLocation.whole);
+        range.select();
+        range.font.highlightColor = 'yellow';
+        await context.sync();
+        resolve(true);
+      }).catch((error) => {
+        console.warn('highlightContentControlById error:', error);
+        resolve(false);
+      });
+    });
+  },
+
+  async replaceContentControlText(contentControlId: number, replacementText: string): Promise<boolean> {
+    return new Promise((resolve) => {
+      Word.run(async (context) => {
+        const contentControl = context.document.contentControls.getByIdOrNullObject(contentControlId);
+        contentControl.load('isNullObject');
+        await context.sync();
+
+        if (contentControl.isNullObject) {
+          resolve(false);
+          return;
+        }
+
+        const contentRange = contentControl.getRange(Word.RangeLocation.content);
+        contentRange.insertText(replacementText, Word.InsertLocation.replace);
+        await context.sync();
+        resolve(true);
+      }).catch((error) => {
+        console.warn('replaceContentControlText error:', error);
+        resolve(false);
+      });
+    });
+  },
+
+  async highlightTableCell(tableIndex: number, rowIndex: number, cellIndex: number): Promise<boolean> {
+    return new Promise((resolve) => {
+      Word.run(async (context) => {
+        const tables = context.document.body.tables;
+        tables.load('items');
+        await context.sync();
+
+        if (tableIndex < 0 || tableIndex >= tables.items.length) {
+          resolve(false);
+          return;
+        }
+
+        const cell = tables.items[tableIndex].getCell(rowIndex, cellIndex);
+        cell.load('value');
+        await context.sync();
+
+        if (!cell.value) {
+          resolve(false);
+          return;
+        }
+
+        const paragraphs = cell.body.paragraphs;
+        paragraphs.load('items');
+        await context.sync();
+
+        if (paragraphs.items.length === 0) {
+          resolve(false);
+          return;
+        }
+
+        for (const paragraph of paragraphs.items) {
+          const range = paragraph.getRange(Word.RangeLocation.whole);
+          range.font.highlightColor = 'yellow';
+        }
+        paragraphs.items[0].getRange(Word.RangeLocation.whole).select();
+        await context.sync();
+        resolve(true);
+      }).catch((error) => {
+        console.warn('highlightTableCell error:', error);
+        resolve(false);
+      });
+    });
+  },
+
+  async replaceTableCellText(
+    tableIndex: number,
+    rowIndex: number,
+    cellIndex: number,
+    replacementText: string
+  ): Promise<boolean> {
+    return new Promise((resolve) => {
+      Word.run(async (context) => {
+        const tables = context.document.body.tables;
+        tables.load('items');
+        await context.sync();
+
+        if (tableIndex < 0 || tableIndex >= tables.items.length) {
+          resolve(false);
+          return;
+        }
+
+        const cell = tables.items[tableIndex].getCell(rowIndex, cellIndex);
+        cell.value = replacementText;
+        await context.sync();
+        resolve(true);
+      }).catch((error) => {
+        console.warn('replaceTableCellText error:', error);
+        resolve(false);
+      });
+    });
+  },
+
   /**
    * 替换文本
    */
@@ -1110,7 +1356,7 @@ export const WordAPI = {
    * 在预览新内容前先清除之前的高亮
    */
   async clearAllHighlights(): Promise<void> {
-    return new Promise((resolve, reject) => {
+    return new Promise((resolve) => {
       Word.run(async (context) => {
         // 获取文档中的所有段落
         const paragraphs = context.document.body.paragraphs;
@@ -1448,7 +1694,7 @@ export const WordAPI = {
   /**
    * 在选中位置插入循环标记
    */
-  async insertLoopMarker(arrayPath: string, selectionContent: string): Promise<void> {
+  async insertLoopMarker(arrayPath: string, _selectionContent: string): Promise<void> {
     return new Promise((resolve, reject) => {
       Word.run(async (context) => {
         const selection = context.document.getSelection();
@@ -1470,6 +1716,157 @@ export const WordAPI = {
  * Excel 操作
  */
 export const ExcelAPI = {
+  /**
+   * 获取整个工作簿的 sheet 概览
+   * 用于 Excel 模板页按成对 sheet 展示空白模板和真实数据。
+   */
+  async getWorkbookSheets(): Promise<Array<{
+    name: string;
+    index: number;
+    address: string;
+    rowCount: number;
+    columnCount: number;
+    tables: Array<{
+      name: string;
+      address: string;
+      headerAddress?: string;
+      dataBodyAddress?: string;
+    }>;
+    values: (string | number | boolean | null)[][];
+    formulas: string[][];
+    sampleValues: string[][];
+  }>> {
+    return new Promise((resolve, reject) => {
+      Excel.run(async (context) => {
+        const worksheets = context.workbook.worksheets;
+        worksheets.load('items/name');
+        await context.sync();
+
+        const sheetRefs: Array<{
+          index: number;
+          sheet: Excel.Worksheet;
+          usedRange: Excel.Range;
+          tables: Excel.TableCollection;
+          tableRefs: Array<{
+            table: Excel.Table;
+            tableRange: Excel.Range;
+            headerRange: Excel.Range;
+          }>;
+        }> = worksheets.items.map((sheet, index) => {
+          const usedRange = sheet.getUsedRange();
+          usedRange.load('address,rowCount,columnCount,values,formulas');
+
+          const tables = sheet.tables;
+          tables.load('items/name');
+
+          return {
+            index,
+            sheet,
+            usedRange,
+            tables,
+            tableRefs: [],
+          };
+        });
+
+        await context.sync();
+
+        for (const sheetRef of sheetRefs) {
+          sheetRef.tableRefs = sheetRef.tables.items.map((table) => {
+            const tableRange = table.getRange();
+            const headerRange = table.getHeaderRowRange();
+            table.load('name');
+            tableRange.load('address,rowIndex,columnIndex,rowCount,columnCount');
+            headerRange.load('address,rowIndex,columnIndex');
+            return {
+              table,
+              tableRange,
+              headerRange,
+            };
+          });
+        }
+
+        await context.sync();
+
+        resolve(
+          sheetRefs.map(({ index, sheet, usedRange, tableRefs = [] }) => ({
+            name: sheet.name,
+            index,
+            address: usedRange.address || `${sheet.name}!A1`,
+            rowCount: usedRange.rowCount || 0,
+            columnCount: usedRange.columnCount || 0,
+            tables: tableRefs.map(({ table, tableRange, headerRange }) => {
+              const hasDataRows = (tableRange.rowCount || 0) > 1;
+              const dataStartRow = (tableRange.rowIndex || 0) + 1;
+              const dataEndRow = (tableRange.rowIndex || 0) + Math.max((tableRange.rowCount || 1) - 1, 1);
+              const dataEndCol = (tableRange.columnIndex || 0) + Math.max((tableRange.columnCount || 1) - 1, 0);
+              return {
+                name: table.name || '',
+                address: tableRange.address || '',
+                headerAddress: headerRange.address || '',
+                dataBodyAddress: hasDataRows
+                  ? `${sheet.name}!R${dataStartRow + 1}C${(tableRange.columnIndex || 0) + 1}:R${dataEndRow + 1}C${dataEndCol + 1}`
+                  : '',
+              };
+            }),
+            values: (usedRange.values as (string | number | boolean | null)[][]) || [],
+            formulas: (usedRange.formulas as string[][]) || [],
+            sampleValues: ((usedRange.values as (string | number | boolean | null)[][]) || [])
+              .slice(0, 8)
+              .map((row) =>
+                row.slice(0, 6).map((cell) => {
+                  if (cell == null) return '';
+                  return String(cell);
+                })
+              ),
+          }))
+        );
+      }).catch(reject);
+    });
+  },
+
+  async getWorkbookFileBase64WithFallback(): Promise<{
+    content: string;
+    method: string;
+    isValidXlsx: boolean;
+    mode: 'base64' | 'json';
+  }> {
+    try {
+      const base64 = await WordAPI.getFileContentBase64();
+      if (base64 && base64.length > 0) {
+        return {
+          content: base64,
+          method: 'getFileContentAsync',
+          isValidXlsx: hasZipHeader(base64),
+          mode: 'base64',
+        };
+      }
+    } catch (error) {
+      console.warn('Excel getFileContentAsync失败或不支持:', error);
+    }
+
+    try {
+      const base64 = await WordAPI.getDocumentFileBase64();
+      if (base64 && base64.length > 0) {
+        return {
+          content: base64,
+          method: 'getFileAsync',
+          isValidXlsx: hasZipHeader(base64),
+          mode: 'base64',
+        };
+      }
+    } catch (error) {
+      console.warn('Excel getFileAsync失败:', error);
+    }
+
+    const sheetData = await this.getSheetData();
+    return {
+      content: JSON.stringify(sheetData.values),
+      method: 'json',
+      isValidXlsx: false,
+      mode: 'json',
+    };
+  },
+
   /**
    * 获取当前工作表数据
    */
@@ -1551,6 +1948,91 @@ export const ExcelAPI = {
       }).catch(reject);
     });
   },
+
+  async insertMarkerInSheetCell(sheetName: string, address: string, marker: string): Promise<void> {
+    return new Promise((resolve, reject) => {
+      Excel.run(async (context) => {
+        const sheet = context.workbook.worksheets.getItem(sheetName);
+        const range = sheet.getRange(address);
+        range.load('values');
+        await context.sync();
+
+        const existingValue = range.values?.[0]?.[0] == null ? '' : String(range.values[0][0]);
+        const loopStartMatches = existingValue.match(/\{#[^}]+\}/g) || [];
+        const loopEndMatches = existingValue.match(/\{\/[^}]+\}/g) || [];
+
+        let nextValue = marker;
+        if (!marker.includes('{#') && loopStartMatches.length > 0) {
+          nextValue = `${loopStartMatches.join('')}${nextValue}`;
+        }
+        if (!marker.includes('{/') && loopEndMatches.length > 0) {
+          nextValue = `${nextValue}${loopEndMatches.join('')}`;
+        }
+
+        range.values = [[nextValue]];
+        await context.sync();
+        resolve();
+      }).catch(reject);
+    });
+  },
+
+  async insertLoopMarkersInTable(
+    sheetName: string,
+    tableName: string,
+    arrayPath: string,
+    columnMappings?: Array<{
+      headerName: string;
+      variablePath: string;
+      sampleValue?: string;
+      columnIndex?: number;
+    }>
+  ): Promise<void> {
+    return new Promise((resolve, reject) => {
+      Excel.run(async (context) => {
+        const sheet = context.workbook.worksheets.getItem(sheetName);
+        const table = sheet.tables.getItem(tableName);
+        const tableRange = table.getRange();
+        const tableRows = table.rows;
+        tableRange.load('rowIndex,columnIndex,rowCount,columnCount');
+        tableRows.load('count');
+        await context.sync();
+
+        const columnCount = Math.max(tableRange.columnCount || 1, 1);
+
+        // 仅确保模板表至少存在 1 条数据行，不删除任何已有行，避免破坏真实数据或 Excel table 结构。
+        if ((tableRows.count || 0) === 0) {
+          table.rows.add(undefined, [Array.from({ length: columnCount }, () => '')]);
+          await context.sync();
+        }
+
+        const templateRowIndex = (tableRange.rowIndex || 0) + 1;
+        const templateCells = Array.from({ length: columnCount }, (_, columnOffset) =>
+          sheet.getCell(templateRowIndex, (tableRange.columnIndex || 0) + columnOffset)
+        );
+        templateCells.forEach((cell) => cell.load('values'));
+        await context.sync();
+
+        templateCells.forEach((cell, columnOffset) => {
+          const existingValue = cell.values?.[0]?.[0] == null ? '' : String(cell.values[0][0]);
+          const matchedMapping = columnMappings?.find((mapping) => (mapping.columnIndex ?? columnOffset) === columnOffset);
+          let nextValue = matchedMapping?.variablePath
+            ? `{${matchedMapping.variablePath}}`
+            : existingValue;
+
+          if (columnOffset === 0) {
+            nextValue = `{#${arrayPath}}${nextValue}`;
+          }
+          if (columnOffset === columnCount - 1) {
+            nextValue = `${nextValue}{/${arrayPath}}`;
+          }
+
+          cell.values = [[nextValue]];
+        });
+        await context.sync();
+        resolve();
+      }).catch(reject);
+    });
+  },
 };
 
 /**
@@ -1561,7 +2043,7 @@ export const PPTAPI = {
    * 获取所有幻灯片内容
    */
   async getSlidesContent(): Promise<Array<{
-    index: number;
+    index: string;
     shapes: Array<{ type: string; text: string; id: string }>;
   }>> {
     return new Promise((resolve, reject) => {
@@ -1597,9 +2079,17 @@ export const PPTAPI = {
   },
 
   /**
+   * 获取整个演示文稿内容摘要
+   */
+  async getDocumentContent(): Promise<string> {
+    const slides = await this.getSlidesContent();
+    return JSON.stringify(slides);
+  },
+
+  /**
    * 在幻灯片形状中插入标记
    */
-  async insertMarkerInShape(slideId: number, shapeId: string, marker: string): Promise<void> {
+  async insertMarkerInShape(slideId: string, shapeId: string, marker: string): Promise<void> {
     return new Promise((resolve, reject) => {
       PowerPoint.run(async (context) => {
         const slide = context.presentation.slides.getItem(slideId);
@@ -1614,11 +2104,11 @@ export const PPTAPI = {
   /**
    * 创建幻灯片循环标记（复制幻灯片作为模板）
    */
-  async setupSlideLoop(slideIndex: number, arrayPath: string): Promise<void> {
+  async setupSlideLoop(slideId: string, arrayPath: string): Promise<void> {
     return new Promise((resolve, reject) => {
       PowerPoint.run(async (context) => {
         // PowerPoint 不直接支持循环，需要通过特殊标记实现
-        const slide = context.presentation.slides.getItem(slideIndex);
+        const slide = context.presentation.slides.getItem(slideId);
         const shapes = slide.shapes;
         shapes.load('items');
         await context.sync();

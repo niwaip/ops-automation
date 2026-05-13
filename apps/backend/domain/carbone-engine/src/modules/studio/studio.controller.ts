@@ -268,6 +268,24 @@ export class StudioController {
     return normalized;
   }
 
+  private getPreviewSeedDataFromSkill(skill: any): Record<string, any> | null {
+    const raw = skill?.dataExampleJson;
+    if (!raw) {
+      return null;
+    }
+
+    if (typeof raw === 'string') {
+      try {
+        const parsed = JSON.parse(raw);
+        return this.isPlainObject(parsed) ? parsed : null;
+      } catch {
+        return null;
+      }
+    }
+
+    return this.isPlainObject(raw) ? raw : null;
+  }
+
   /**
    * 获取模板信息
    */
@@ -2144,11 +2162,21 @@ export class StudioController {
       let simulatedData = body.simulatedData;
       if (!simulatedData) {
         addLog('[步骤3] 开始生成模拟数据...');
-        simulatedData = this.generateSimulatedData(skill);
+        const seedData = this.getPreviewSeedDataFromSkill(skill);
+        if (seedData) {
+          simulatedData = seedData;
+          addLog('[步骤3] 使用 skill.dataExampleJson 作为模拟数据');
+        } else {
+          simulatedData = this.generateSimulatedData(skill);
+          addLog('[步骤3] skill.dataExampleJson 不可用，回退到 generateSimulatedData');
+        }
         addLog(`[步骤3] 生成的数据结构: ${JSON.stringify(simulatedData, null, 2)}`);
       } else {
         addLog(`[步骤3] 使用提供的模拟数据: ${JSON.stringify(simulatedData)}`);
       }
+
+      simulatedData = this.normalizeRenderData(simulatedData || {});
+      addLog(`[步骤3] 归一化后的数据结构: ${JSON.stringify(simulatedData, null, 2)}`);
 
       // 获取模板
       let templateBuffer: Buffer | undefined;
@@ -2447,26 +2475,47 @@ export class StudioController {
 
   // Helper methods for skill generation
   private generateExampleValue(fieldType: string, name: string): string {
+    const normalizedName = String(name || '').replace(/^\{/, '').replace(/\}$/, '').replace(/^d\./, '').toLowerCase();
+
+    const exactPatterns: Array<[RegExp, string]> = [
+      [/(^|\.)(seq|serialno|serialnumber|lineno)$/, '1'],
+      [/(^|\.)(materialcode|itemcode|productcode|sku|code)$/, 'RB-6A-001'],
+      [/(^|\.)(devicename|productname|itemname|goodsname)$/, '工业机器人'],
+      [/(^|\.)(model|spec|specification)$/, 'XR-600'],
+      [/(^|\.)(unit)$/, '台'],
+      [/(^|\.)(quantity|qty|count|num)$/, '4'],
+      [/(^|\.)(unitprice|price)$/, '185,000.00'],
+      [/(^|\.)(subtotal|amount|total)$/, '740,000.00'],
+      [/(^|\.)(contractno|contractnumber)$/, 'PC-2026-001'],
+      [/(^|\.)(projectname)$/, '智能制造产线升级项目'],
+    ];
+
+    for (const [pattern, value] of exactPatterns) {
+      if (pattern.test(normalizedName)) {
+        return value;
+      }
+    }
+
     switch (fieldType) {
       case 'date':
-        return '2024-01-15';
+        return '2026-05-10';
       case 'amount':
       case 'number':
-        return '10000.00';
+        return fieldType === 'number' ? '4' : '740,000.00';
       case 'phone':
-        return '138-0000-0000';
+        return '13800138000';
       case 'email':
-        return 'example@email.com';
+        return 'procurement@example.com';
       case 'address':
-        return '北京市朝阳区xxx街道xxx号';
+        return '北京市朝阳区望京东路 1 号';
       case 'name':
-        return '张三';
+        return '北京智造科技有限公司';
       default:
-        if (name.includes('金额') || name.includes('价格')) return '10000.00';
-        if (name.includes('日期') || name.includes('时间')) return '2024-01-15';
-        if (name.includes('电话') || name.includes('手机')) return '138-0000-0000';
-        if (name.includes('地址')) return '北京市朝阳区xxx街道xxx号';
-        if (name.includes('名称') || name.includes('姓名')) return '张三';
+        if (name.includes('金额') || name.includes('价格')) return '740,000.00';
+        if (name.includes('日期') || name.includes('时间')) return '2026-05-10';
+        if (name.includes('电话') || name.includes('手机')) return '13800138000';
+        if (name.includes('地址')) return '北京市朝阳区望京东路 1 号';
+        if (name.includes('名称') || name.includes('姓名')) return '北京智造科技有限公司';
         return `示例${name}`;
     }
   }
@@ -2520,18 +2569,11 @@ ${exampleData}
       varPath = varPath.replace(/^\{/, '').replace(/\}$/, '');
       // 移除 d. 或 c. 或 t. 前缀
       varPath = varPath.replace(/^([cdt])\./, '');
+      // 将数组占位路径转换为首项路径，便于生成预览示例数据
+      varPath = varPath.replace(/\[\]/g, '[0]');
 
-      if (varPath && varPath.includes('.')) {
-        // 构建嵌套数据结构
-        const parts = varPath.split('.');
-        let current = data;
-        for (let i = 0; i < parts.length - 1; i++) {
-          if (!current[parts[i]]) {
-            current[parts[i]] = {};
-          }
-          current = current[parts[i]];
-        }
-        current[parts[parts.length - 1]] = exampleValue;
+      if (varPath && (varPath.includes('.') || varPath.includes('['))) {
+        this.setNestedValue(data, varPath, exampleValue);
       } else {
         // 单层路径，直接赋值
         data[varPath || variable.name] = exampleValue;

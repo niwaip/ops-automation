@@ -1,8 +1,10 @@
 /**
- * 下载页面路由
+ * Office Add-in 向导页面路由
  */
 
 import type { IncomingMessage, ServerResponse } from 'node:http';
+import fs from 'node:fs';
+import path from 'node:path';
 import type { ViteDevServer } from 'vite';
 import {
   DEFAULT_OFFICE_ADDIN_API_BASE_URL,
@@ -11,9 +13,22 @@ import {
 
 type MiddlewareNext = (err?: unknown) => void;
 
-export function downloadPagePlugin() {
+const isDocker = fs.existsSync('/.dockerenv') || process.env.DOCKER === 'true';
+const certsPath = isDocker
+  ? '/app/certs'
+  : path.resolve(process.cwd(), '../../../docker/office-addin/certs');
+const publicPath = path.resolve(process.cwd(), 'public');
+const manifestFiles = new Set([
+  'manifest-word.xml',
+  'manifest-excel.xml',
+  'manifest-ppt.xml',
+  'manifest-word-simple.xml',
+  'manifest-test.xml',
+]);
+
+export function wizardPagePlugin() {
   return {
-    name: 'download-page',
+    name: 'wizard-page',
     configureServer(server: ViteDevServer) {
       server.middlewares.use((
         req: IncomingMessage & { url?: string },
@@ -22,38 +37,63 @@ export function downloadPagePlugin() {
       ) => {
         const url = req.url || '';
 
-        // /taskpane.html -> 让 Vite 处理 index.html
         if (url === '/taskpane.html' || url === '/taskpane') {
           req.url = '/index.html';
           next();
           return;
         }
 
-        // /download 和 /download.html -> 返回动态下载页面
-        if (url === '/download' || url === '/download.html') {
-          res.setHeader('Content-Type', 'text/html; charset=utf-8');
-          res.end(getDownloadPageHtml());
+        const manifestName = url.replace(/^\//, '');
+        if (manifestFiles.has(manifestName)) {
+          res.setHeader('Content-Type', 'application/xml; charset=utf-8');
+          res.end(renderManifest(manifestName));
           return;
         }
 
-        // 其他请求 -> Vite 处理
+        if (url === '/server.crt') {
+          res.setHeader('Content-Type', 'application/x-x509-ca-cert');
+          res.setHeader('Content-Disposition', 'attachment; filename="server.crt"');
+          res.end(fs.readFileSync(path.join(certsPath, 'server.crt')));
+          return;
+        }
+
+        if (url === '/download' || url === '/download.html') {
+          res.statusCode = 302;
+          res.setHeader('Location', '/wizard');
+          res.end();
+          return;
+        }
+
+        if (url === '/wizard' || url === '/wizard.html') {
+          res.setHeader('Content-Type', 'text/html; charset=utf-8');
+          res.end(getWizardPageHtml());
+          return;
+        }
+
         next();
       });
     }
   };
 }
 
-function getDownloadPageHtml(): string {
+function renderManifest(manifestName: string): string {
+  const addinBaseUrl = process.env.VITE_ADDIN_BASE_URL || DEFAULT_OFFICE_ADDIN_BASE_URL;
+  const templatePath = path.join(publicPath, manifestName);
+  const template = fs.readFileSync(templatePath, 'utf8');
+  return template.split(DEFAULT_OFFICE_ADDIN_BASE_URL).join(addinBaseUrl);
+}
+
+function getWizardPageHtml(): string {
   const addinBaseUrl = process.env.VITE_ADDIN_BASE_URL || DEFAULT_OFFICE_ADDIN_BASE_URL;
   const apiBaseUrl = process.env.VITE_API_URL || DEFAULT_OFFICE_ADDIN_API_BASE_URL;
-  const addinHost = safeGetHost(addinBaseUrl);
+  const addinHostname = safeGetHostname(addinBaseUrl);
 
   return `<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Carbone Office Add-in 下载</title>
+  <title>Carbone Office Add-in 向导</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
@@ -63,207 +103,239 @@ function getDownloadPageHtml(): string {
       padding: 40px 20px;
     }
     .container {
-      max-width: 900px;
+      max-width: 1100px;
       margin: 0 auto;
       background: white;
       border-radius: 16px;
-      padding: 40px;
-      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+      padding: 36px;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.28);
     }
     h1 { color: #4A90D9; font-size: 32px; margin-bottom: 10px; }
-    .subtitle { color: #666; font-size: 18px; margin-bottom: 30px; }
-    .download-box {
+    .subtitle { color: #666; font-size: 18px; margin-bottom: 24px; }
+    .hero-box {
       background: #f0f7ff;
       border: 2px solid #4A90D9;
       border-radius: 12px;
-      padding: 30px;
-      text-align: center;
-      margin: 30px 0;
+      padding: 24px;
+      margin-bottom: 24px;
+    }
+    .hero-box p {
+      color: #555;
+      line-height: 1.7;
     }
     .download-btn {
-      display: inline-block;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
       background: #4A90D9;
       color: white;
-      font-size: 20px;
-      padding: 15px 40px;
+      font-size: 16px;
+      padding: 14px 22px;
       border-radius: 8px;
       text-decoration: none;
-      margin: 10px;
+      margin-top: 16px;
       transition: all 0.3s;
     }
     .download-btn:hover {
       background: #357ABD;
       transform: translateY(-2px);
-      box-shadow: 0 5px 20px rgba(74,144,217,0.4);
+      box-shadow: 0 5px 20px rgba(74, 144, 217, 0.35);
     }
     .section {
-      margin: 30px 0;
+      margin-top: 20px;
       padding: 20px;
       background: #f8f9fa;
-      border-radius: 8px;
+      border-radius: 10px;
     }
     .section h2 { color: #333; margin-bottom: 15px; font-size: 20px; }
-    .section h3 { color: #555; margin: 20px 0 10px; font-size: 16px; }
-    .steps { counter-reset: step; }
     .step {
       position: relative;
-      padding: 15px 20px 15px 50px;
+      padding: 16px 18px 16px 56px;
       margin: 10px 0;
       background: white;
       border-radius: 8px;
       border-left: 4px solid #4A90D9;
+      line-height: 1.7;
     }
     .step::before {
-      counter-increment: step;
-      content: counter(step);
+      content: attr(data-step);
       position: absolute;
-      left: 15px;
+      left: 16px;
       top: 50%;
       transform: translateY(-50%);
       background: #4A90D9;
       color: white;
-      width: 24px;
-      height: 24px;
+      width: 26px;
+      height: 26px;
       border-radius: 50%;
       text-align: center;
-      line-height: 24px;
-      font-weight: bold;
+      line-height: 26px;
+      font-weight: 700;
+      font-size: 13px;
     }
     .code {
       background: #1e1e1e;
       color: #d4d4d4;
-      padding: 15px;
-      border-radius: 6px;
+      padding: 14px;
+      border-radius: 8px;
       font-family: 'Consolas', monospace;
-      margin: 10px 0;
-      overflow-x: auto;
       white-space: pre-wrap;
+      overflow-x: auto;
+      margin: 10px 0;
     }
-    .warning {
-      background: #fff3cd;
-      border: 1px solid #ffc107;
-      border-radius: 8px;
-      padding: 15px;
-      margin: 20px 0;
+    .checks {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 12px;
+      margin-top: 12px;
     }
-    .warning h4 { color: #856404; margin-bottom: 10px; }
-    .files { display: flex; gap: 20px; margin: 20px 0; flex-wrap: wrap; }
-    .file {
-      flex: 1;
-      min-width: 150px;
-      padding: 15px;
+    .check-item {
       background: white;
-      border-radius: 8px;
-      text-align: center;
       border: 1px solid #ddd;
+      border-radius: 8px;
+      padding: 12px;
     }
-    .file .icon { font-size: 40px; margin-bottom: 10px; }
-    .file .name { font-weight: bold; color: #333; }
-    .file .desc { color: #666; font-size: 14px; }
-    .test-link {
+    .check-title { font-weight: 600; margin-bottom: 8px; color: #333; }
+    .check-value { font-family: monospace; font-size: 13px; color: #333; word-break: break-all; }
+    .badge {
       display: inline-block;
-      margin-top: 20px;
-      padding: 10px 20px;
-      background: #28a745;
-      color: white;
-      border-radius: 6px;
-      text-decoration: none;
+      margin-top: 8px;
+      padding: 3px 8px;
+      border-radius: 999px;
+      font-size: 12px;
+      color: #fff;
+      background: #6c757d;
     }
-    .test-link:hover { background: #218838; }
-    ul { padding-left: 20px; }
-    li { margin: 5px 0; }
-    table { width: 100%; border-collapse: collapse; }
-    th, td { padding: 10px; text-align: left; }
-    th { background: #4A90D9; color: white; }
-    td { border-bottom: 1px solid #ddd; }
+    .badge.ok { background: #28a745; }
+    .badge.fail { background: #dc3545; }
+    .menu-list {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 12px;
+      margin-top: 12px;
+    }
+    .menu-item {
+      background: white;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      padding: 12px;
+      line-height: 1.6;
+    }
+    .menu-item strong {
+      display: block;
+      color: #4A90D9;
+      margin-bottom: 4px;
+    }
   </style>
 </head>
 <body>
   <div class="container">
-    <h1>📄 Carbone Office Add-in</h1>
-    <p class="subtitle">AI辅助模板生成工具 - 下载与安装</p>
+    <h1>Carbone Office Add-in 向导</h1>
+    <p class="subtitle">按步骤完成脚本下载、执行和菜单操作</p>
 
-    <div class="download-box">
-      <p style="font-size: 16px; margin-bottom: 20px; color: #555;">下载完整安装包（包含manifest和CA证书）</p>
-      <a class="download-btn" href="/carbone-addin-package.zip" download>
-        📦 下载安装包 (ZIP)
-      </a>
-      <p style="margin-top: 15px; color: #888; font-size: 14px;">包含: manifest-word.xml, ca.crt, README.txt</p>
+    <div class="hero-box">
+      <p>统一脚本会自动下载当前运行实例对应的证书和 manifest，并处理证书安装、Word/Excel/PowerPoint 安装以及深度诊断。</p>
+      <a class="download-btn" href="/office-addin-wizard.ps1" download>1. 下载 office-addin-wizard.ps1</a>
     </div>
 
-    <div class="files">
-      <div class="file">
-        <div class="icon">📝</div>
-        <div class="name">manifest-word.xml</div>
-        <div class="desc">Word加载项配置</div>
-      </div>
-      <div class="file">
-        <div class="icon">🔐</div>
-        <div class="name">ca.crt</div>
-        <div class="desc">SSL CA证书</div>
-      </div>
-      <div class="file">
-        <div class="icon">📋</div>
-        <div class="name">README.txt</div>
-        <div class="desc">安装说明</div>
+    <div class="section">
+      <h2>步骤 1：下载脚本</h2>
+      <div class="step" data-step="1">点击上方按钮下载 <code>office-addin-wizard.ps1</code>，建议保存到 Windows 本地目录，例如 <code>C:\\OfficeAddins</code>。</div>
+    </div>
+
+    <div class="section">
+      <h2>步骤 2：执行脚本</h2>
+      <div class="step" data-step="2">使用管理员 PowerShell 进入脚本所在目录后执行下面命令。</div>
+      <div class="code">powershell -ExecutionPolicy Bypass -File .\\office-addin-wizard.ps1 -HostName ${escapeHtml(addinHostname)}</div>
+    </div>
+
+    <div class="section">
+      <h2>步骤 3：菜单</h2>
+      <div class="menu-list">
+        <div class="menu-item"><strong>1. 证书安装</strong>导入当前服务的证书。</div>
+        <div class="menu-item"><strong>2. 证书状态确认</strong>检查 HTTPS、SAN、证书存储。</div>
+        <div class="menu-item"><strong>3. 安装 Word</strong>安装并注册 Word 加载项。</div>
+        <div class="menu-item"><strong>4. 安装 Excel</strong>安装并注册 Excel 加载项。</div>
+        <div class="menu-item"><strong>5. 安装 PowerPoint</strong>安装并注册 PPT 加载项。</div>
+        <div class="menu-item"><strong>6. 深度解析</strong>做完整本地排查。</div>
       </div>
     </div>
 
     <div class="section">
-      <h2>🔧 Windows 安装步骤</h2>
-
-      <h3>步骤1: 安装CA证书（必须）</h3>
-      <div class="step">双击 ca.crt 文件，选择"安装证书" → "本地计算机" → "受信任的根证书颁发机构"</div>
-      <div class="code">certutil -addstore -f "Root" ca.crt</div>
-
-      <h3>步骤2: 配置加载项目录</h3>
-      <div class="step">创建目录并注册到Office</div>
-      <div class="code">mkdir C:\\OfficeAddins
-copy manifest-word.xml C:\\OfficeAddins\\
-reg add HKCU\\SOFTWARE\\Microsoft\\Office\\16.0\\Wef /v DevelopmentLocation /t REG_SZ /d "C:\\OfficeAddins" /f</div>
-
-      <h3>步骤3: 重启Word</h3>
-      <div class="step">关闭所有Word窗口，重新打开Word</div>
-
-      <h3>步骤4: 查看加载项</h3>
-      <div class="step">插入 → 我的加载项 → 共享文件夹 → Carbone Template Assistant</div>
-    </div>
-
-    <div class="warning">
-      <h4>⚠️ 重要提示</h4>
-      <p>服务地址使用当前配置的 HTTPS 主机 <strong>${escapeHtml(addinHost)}</strong>，请确保：</p>
-      <ul>
-        <li>CA证书已正确安装到"受信任的根证书颁发机构"</li>
-        <li>Windows主机可以访问当前配置的服务主机或局域网 IP</li>
-        <li>防火墙允许 3000 端口访问</li>
-      </ul>
-    </div>
-
-    <div class="section">
-      <h2>🌐 服务地址</h2>
-      <table>
-        <tr><th>服务</th><th>地址</th></tr>
-        <tr><td>Add-in 页面</td><td><code>${addinBaseUrl}/taskpane.html</code></td></tr>
-        <tr><td>Carbone API</td><td><code>${apiBaseUrl}</code></td></tr>
-        <tr><td>健康检查</td><td><code>${addinBaseUrl}/health</code></td></tr>
-      </table>
-    </div>
-
-    <div class="section" style="text-align: center;">
-      <h2>✅ 测试连接</h2>
-      <p style="margin-bottom: 15px;">在浏览器中测试服务是否正常运行：</p>
-      <a class="test-link" href="/health" target="_blank">测试服务状态</a>
-      <a class="test-link" href="/test.html" target="_blank" style="background: #17a2b8;">测试页面</a>
-      <a class="test-link" href="/taskpane.html" target="_blank" style="background: #6c757d;">查看Taskpane</a>
+      <h2>环境自检与服务地址</h2>
+      <div class="checks">
+        <div class="check-item">
+          <div class="check-title">Add-in</div>
+          <div class="check-value">${escapeHtml(addinBaseUrl)}</div>
+          <span class="badge" id="check-addin-badge">检测中...</span>
+        </div>
+        <div class="check-item">
+          <div class="check-title">Carbone API</div>
+          <div class="check-value">${escapeHtml(apiBaseUrl)}</div>
+          <span class="badge" id="check-api-badge">检测中...</span>
+        </div>
+        <div class="check-item">
+          <div class="check-title">Manifest Host</div>
+          <div class="check-value">${escapeHtml(addinBaseUrl)}/manifest-word.xml</div>
+          <span class="badge" id="check-manifest-badge">检测中...</span>
+        </div>
+        <div class="check-item">
+          <div class="check-title">Wizard</div>
+          <div class="check-value">${escapeHtml(addinBaseUrl)}/wizard</div>
+          <span class="badge ok">当前页面</span>
+        </div>
+      </div>
     </div>
   </div>
+  <script>
+    (async function runChecks() {
+      const addinBaseUrl = ${JSON.stringify(addinBaseUrl)};
+      const apiBaseUrl = ${JSON.stringify(apiBaseUrl)};
+
+      const setBadge = (id, ok, text) => {
+        const el = document.getElementById(id);
+        if (!el) return;
+        el.textContent = text;
+        el.classList.remove('ok', 'fail');
+        el.classList.add(ok ? 'ok' : 'fail');
+      };
+
+      const checkJson = async (url, badgeId, successText, failText) => {
+        try {
+          const res = await fetch(url, { method: 'GET', mode: 'cors' });
+          if (!res.ok) {
+            setBadge(badgeId, false, failText + ' (HTTP ' + res.status + ')');
+            return false;
+          }
+          setBadge(badgeId, true, successText);
+          return true;
+        } catch (_err) {
+          setBadge(badgeId, false, failText);
+          return false;
+        }
+      };
+
+      await checkJson(addinBaseUrl + '/health', 'check-addin-badge', '可访问', '不可访问');
+      await checkJson(apiBaseUrl + '/health', 'check-api-badge', '可访问', '不可访问');
+
+      try {
+        const manifestRes = await fetch(addinBaseUrl + '/manifest-word.xml');
+        const manifestText = await manifestRes.text();
+        const host = new URL(addinBaseUrl).host;
+        const matched = manifestText.includes(host);
+        setBadge('check-manifest-badge', matched, matched ? '主机一致' : '主机不一致');
+      } catch (_err) {
+        setBadge('check-manifest-badge', false, '获取失败');
+      }
+    })();
+  </script>
 </body>
 </html>`;
 }
 
-function safeGetHost(url: string): string {
+function safeGetHostname(url: string): string {
   try {
-    return new URL(url).host;
+    return new URL(url).hostname;
   } catch {
     return url;
   }

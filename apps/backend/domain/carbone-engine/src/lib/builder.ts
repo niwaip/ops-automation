@@ -172,20 +172,17 @@ export class Builder {
    * 替换循环变量
    */
   private replaceLoopVariables(unit: string, arrayPath: string, index: number, data: any): string {
-    // 构建变量匹配模式
-    // 例如: d.items[i].name -> 匹配 {d.items[i].name}
-    const pathPrefix = arrayPath;
+    return unit.replace(/\{([cdt])\.([^}]+)(\[(?:i)?\])([^}]*)\}/g, (match, contextChar, path, indexToken, suffix) => {
+      const expectedPrefix = arrayPath.replace(/^[cdt]\./, '').replace(/\[i\]/g, '');
+      const formatterStart = suffix.indexOf(':');
+      const propertySuffix = formatterStart >= 0 ? suffix.substring(0, formatterStart) : suffix;
+      const formatterSuffix = formatterStart >= 0 ? suffix.substring(formatterStart) : '';
 
-    return unit.replace(/\{[cdt]\.([^}]+)\[i\]([^}]*)\}/g, (match, path, suffix) => {
-      // 检查是否属于当前循环
-      const fullPath = `${path}[i]`;
-      const expectedPrefix = arrayPath.replace(/^[cdt]\./, '');
-
-      if (path.startsWith(expectedPrefix.replace(/\[i\]/g, ''))) {
+      if (path.startsWith(expectedPrefix)) {
         // 属于当前循环，进行替换
-        const normalizedPath = path.replace(/\[i\]/g, `[${index}]`);
-        const value = this.evaluatePath(normalizedPath.startsWith('d.') ? normalizedPath : `d.${normalizedPath}`, data);
-        const formatters = this.parseFormatters(suffix);
+        const normalizedPath = `${path}${indexToken}${propertySuffix}`.replace(/\[(?:i)?\]/g, `[${index}]`);
+        const value = this.evaluatePath(`${contextChar}.${normalizedPath}`, data);
+        const formatters = this.parseFormatters(formatterSuffix);
         return String(this.formatterPipeline.apply(value, formatters) ?? '');
       }
 
@@ -275,9 +272,18 @@ export class Builder {
   buildXML(xml: string, data: any, options: BuildOptions = {}): BuildResult {
     const parsed = this.parser.parse(xml);
     const warnings: string[] = [];
+    const arrayBackedVariables = new Set(
+      parsed.markers
+        .filter(marker => marker.isArray)
+        .map(marker => marker.name.replace(/\[(?:i(?:\+\d+)?)?\]/g, ''))
+    );
 
     // 检查数据完整性
     for (const variable of parsed.variables) {
+      if (arrayBackedVariables.has(variable)) {
+        continue;
+      }
+
       const value = this.evaluatePath(variable, data);
       if (value === undefined) {
         warnings.push(`Missing data for variable: ${variable}`);

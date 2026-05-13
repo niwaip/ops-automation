@@ -24,10 +24,18 @@ export interface AISuggestion {
     underlineType?: string;
   };
   details?: {
+    source?: 'ai' | 'heuristic' | 'manual' | 'ai+heuristic';
+    description?: string;
     formatter?: string;
     loopType?: 'explicit' | 'implicit';
     arrayPath?: string;
     tableName?: string;
+    columnMappings?: Array<{
+      headerName: string;
+      variablePath: string;
+      sampleValue?: string;
+      columnIndex?: number;
+    }>;
     slideIndex?: number;
     context?: string;
     chapter?: string;  // 所在章节信息（用于分组）
@@ -36,6 +44,27 @@ export interface AISuggestion {
     beforeBlank?: string;  // 空白前文本
     afterBlank?: string;  // 空白后文本
     fieldType?: string;  // 字段类型（text/date/number等）
+    wordAnchor?: {
+      type: 'content-control' | 'table-cell';
+      contentControlId?: number;
+      tableIndex?: number;
+      rowIndex?: number;
+      cellIndex?: number;
+    };
+    excelAnchor?: {
+      type: 'cell' | 'table';
+      sheetName: string;
+      sheetIndex?: number;
+      pairIndex?: number;
+      address?: string;
+      rowIndex?: number;
+      colIndex?: number;
+      tableName?: string;
+      startAddress?: string;
+      endAddress?: string;
+      dataStartRowIndex?: number;
+      dataEndRowIndex?: number;
+    };
   };
 }
 
@@ -53,6 +82,7 @@ export interface TemplateConfig {
 
 // Office 应用类型
 export type OfficeAppType = 'word' | 'excel' | 'ppt';
+export type AnalysisExecutorType = 'studio' | 'chat';
 
 // 调试日志条目
 export interface DebugLogEntry {
@@ -61,6 +91,32 @@ export interface DebugLogEntry {
   level: 'info' | 'warn' | 'error' | 'debug';
   message: string;
   details?: string;  // 详细信息，如堆栈、响应数据等
+}
+
+export interface ExcelSheetPairState {
+  id: string;
+  pairIndex: number;
+  compare: boolean;
+  hidden?: boolean;
+  leftSheetName?: string;
+  leftSheetIndex?: number;
+  rightSheetName?: string;
+  rightSheetIndex?: number;
+}
+
+export interface ExcelWorkbookUnderstandingState {
+  selectedSheetIndexes: number[];
+  isUnderstanding: boolean;
+  summary: string | null;
+  promptRequestText?: string;
+  promptDebugSummary?: string;
+  rawAiResponse?: string;
+  error?: {
+    message?: string;
+    reason?: string;
+    url?: string;
+    status?: number;
+  } | null;
 }
 
 // 主状态
@@ -83,10 +139,22 @@ interface AppState {
   applyAllSuggestions: () => void;
   dismissSuggestion: (id: string) => void;
   updateSuggestionName: (id: string, newName: string) => void;  // 更新建议名称
+  updateSuggestionDetails: (id: string, details: Partial<NonNullable<AISuggestion['details']>>) => void;
 
   // 模板配置
   templateConfig: TemplateConfig;
   setTemplateConfig: (config: Partial<TemplateConfig>) => void;
+
+  // Excel sheet 对照组状态
+  excelSheetPairs: ExcelSheetPairState[];
+  setExcelSheetPairs: (pairs: ExcelSheetPairState[]) => void;
+  toggleExcelSheetPairCompare: (id: string) => void;
+  removeExcelSheetPair: (id: string) => void;
+  excelWorkbookUnderstanding: ExcelWorkbookUnderstandingState;
+  setExcelUnderstandingSelectedSheets: (sheetIndexes: number[]) => void;
+  toggleExcelUnderstandingSheet: (sheetIndex: number) => void;
+  setExcelWorkbookUnderstandingState: (state: Partial<ExcelWorkbookUnderstandingState>) => void;
+  resetExcelWorkbookUnderstanding: () => void;
 
   // 选择的单元格/元素
   selectedElements: Array<{ type: string; id: string; content: string }>;
@@ -96,6 +164,14 @@ interface AppState {
   // 后端 API 配置
   apiBaseUrl: string;
   setApiBaseUrl: (url: string) => void;
+  aiOrchestratorBaseUrl: string;
+  setAiOrchestratorBaseUrl: (url: string) => void;
+  analysisExecutor: AnalysisExecutorType;
+  setAnalysisExecutor: (executor: AnalysisExecutorType) => void;
+  analysisThinkingEnabled: boolean;
+  setAnalysisThinkingEnabled: (enabled: boolean) => void;
+  aiOrchestratorAuthToken: string;
+  setAiOrchestratorAuthToken: (token: string) => void;
 
   // 调试日志
   debugLogs: DebugLogEntry[];
@@ -105,7 +181,7 @@ interface AppState {
   setShowDebugPanel: (show: boolean) => void;
 }
 
-export const useAppStore = create<AppState>((set, get) => ({
+export const useAppStore = create<AppState>((set) => ({
   officeType: 'word',
   setOfficeType: (type) => set({ officeType: type }),
 
@@ -145,6 +221,22 @@ export const useAppStore = create<AppState>((set, get) => ({
     }));
   },
 
+  updateSuggestionDetails: (id, details) => {
+    set((state) => ({
+      suggestions: state.suggestions.map((s) =>
+        s.id === id
+          ? {
+              ...s,
+              details: {
+                ...s.details,
+                ...details,
+              },
+            }
+          : s
+      ),
+    }));
+  },
+
   templateConfig: {
     templateType: 'report',
     outputPath: '',
@@ -157,6 +249,71 @@ export const useAppStore = create<AppState>((set, get) => ({
       templateConfig: { ...state.templateConfig, ...config },
     })),
 
+  excelSheetPairs: [],
+  setExcelSheetPairs: (pairs) => set({ excelSheetPairs: pairs }),
+  toggleExcelSheetPairCompare: (id) =>
+    set((state) => ({
+      excelSheetPairs: state.excelSheetPairs.map((pair) =>
+        pair.id === id ? { ...pair, compare: !pair.compare } : pair
+      ),
+    })),
+  removeExcelSheetPair: (id) =>
+    set((state) => ({
+      excelSheetPairs: state.excelSheetPairs.map((pair) =>
+        pair.id === id ? { ...pair, hidden: true, compare: false } : pair
+      ),
+    })),
+
+  excelWorkbookUnderstanding: {
+    selectedSheetIndexes: [],
+    isUnderstanding: false,
+    summary: null,
+    promptRequestText: undefined,
+    promptDebugSummary: undefined,
+    rawAiResponse: undefined,
+    error: null,
+  },
+  setExcelUnderstandingSelectedSheets: (selectedSheetIndexes) =>
+    set((state) => ({
+      excelWorkbookUnderstanding: {
+        ...state.excelWorkbookUnderstanding,
+        selectedSheetIndexes,
+      },
+    })),
+  toggleExcelUnderstandingSheet: (sheetIndex) =>
+    set((state) => {
+      const selected = state.excelWorkbookUnderstanding.selectedSheetIndexes;
+      const nextSelected = selected.includes(sheetIndex)
+        ? selected.filter((value) => value !== sheetIndex)
+        : [...selected, sheetIndex].sort((a, b) => a - b);
+
+      return {
+        excelWorkbookUnderstanding: {
+          ...state.excelWorkbookUnderstanding,
+          selectedSheetIndexes: nextSelected,
+        },
+      };
+    }),
+  setExcelWorkbookUnderstandingState: (nextState) =>
+    set((state) => ({
+      excelWorkbookUnderstanding: {
+        ...state.excelWorkbookUnderstanding,
+        ...nextState,
+      },
+    })),
+  resetExcelWorkbookUnderstanding: () =>
+    set((state) => ({
+      excelWorkbookUnderstanding: {
+        ...state.excelWorkbookUnderstanding,
+        isUnderstanding: false,
+        summary: null,
+        promptRequestText: undefined,
+        promptDebugSummary: undefined,
+        rawAiResponse: undefined,
+        error: null,
+      },
+    })),
+
   selectedElements: [],
   addSelectedElement: (element) =>
     set((state) => ({
@@ -166,12 +323,20 @@ export const useAppStore = create<AppState>((set, get) => ({
 
   apiBaseUrl: officeAddinRuntimeConfig.apiBaseUrl,
   setApiBaseUrl: (url) => set({ apiBaseUrl: url }),
+  aiOrchestratorBaseUrl: officeAddinRuntimeConfig.aiOrchestratorBaseUrl,
+  setAiOrchestratorBaseUrl: (url) => set({ aiOrchestratorBaseUrl: url }),
+  analysisExecutor: 'studio',
+  setAnalysisExecutor: (analysisExecutor) => set({ analysisExecutor }),
+  analysisThinkingEnabled: false,
+  setAnalysisThinkingEnabled: (analysisThinkingEnabled) => set({ analysisThinkingEnabled }),
+  aiOrchestratorAuthToken: '',
+  setAiOrchestratorAuthToken: (aiOrchestratorAuthToken) => set({ aiOrchestratorAuthToken }),
 
   // 调试日志功能
   debugLogs: [],
   addDebugLog: (level, message, details) => {
     const entry: DebugLogEntry = {
-      id: `log-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+      id: `log-${Date.now()}-${Math.random().toString(36).slice(2, 11)}`,
       timestamp: new Date(),
       level,
       message,

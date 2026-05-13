@@ -56,7 +56,6 @@ get_service_port() {
         "control-plane") echo "${CONTROL_PLANE_PORT:-3003}" ;;
         "browser-worker") echo "${BROWSER_WORKER_PORT:-3004}" ;;
         "browser-template") echo "${BROWSER_TEMPLATE_PORT:-3005}" ;;
-        "replay-engine") echo "${REPLAY_ENGINE_PORT:-3006}" ;;
         "portal") echo "${PORTAL_PORT:-5173}" ;;
         *) echo "" ;;
     esac
@@ -70,7 +69,6 @@ get_service_dir() {
         "session-broker") echo "apps/backend/core/session-broker" ;;
         "control-plane") echo "apps/backend/core/control-plane" ;;
         "browser-worker") echo "apps/backend/runtime/browser-worker" ;;
-        "replay-engine") echo "apps/backend/runtime/replay-engine" ;;
         "browser-template") echo "apps/backend/domain/browser-template" ;;
         "portal") echo "apps/frontend/portal" ;;
         *) echo "" ;;
@@ -254,8 +252,6 @@ start_service() {
     export AI_ORCHESTRATOR_HOST="${AI_ORCHESTRATOR_HOST:-$DEV_HOST}"
     export AI_ORCHESTRATOR_PORT="${AI_ORCHESTRATOR_PORT:-3007}"
     export AI_ORCHESTRATOR_URL="${AI_ORCHESTRATOR_URL:-http://${DEV_HOST}:${AI_ORCHESTRATOR_PORT}}"
-    export REPLAY_ENGINE_HOST="${REPLAY_ENGINE_HOST:-$DEV_HOST}"
-    export REPLAY_ENGINE_PORT="${REPLAY_ENGINE_PORT:-3006}"
     export CARBONE_SERVICE_URL="${CARBONE_SERVICE_URL:-http://${DEV_HOST}:${CARBONE_ENGINE_PORT}}"
     export CARBONE_EXTERNAL_URL="${CARBONE_EXTERNAL_URL:-http://${DEV_PUBLIC_HOST}:${CARBONE_ENGINE_PORT}}"
     export VITE_HOST_IP="${VITE_HOST_IP:-$DEV_PUBLIC_HOST}"
@@ -305,7 +301,6 @@ stop_services() {
         "${CONTROL_PLANE_PORT:-3003}" \
         "${BROWSER_WORKER_PORT:-3004}" \
         "${BROWSER_TEMPLATE_PORT:-3005}" \
-        "${REPLAY_ENGINE_PORT:-3006}" \
         "${AI_ORCHESTRATOR_PORT:-3007}" \
         "${PORTAL_PORT:-5173}"; do
         local pids=$(lsof -ti:$port 2>/dev/null || true)
@@ -343,7 +338,7 @@ show_status() {
     echo "=========================================="
     echo ""
 
-    for service in ai-orchestrator platform session-broker control-plane browser-template replay-engine browser-worker portal; do
+    for service in ai-orchestrator platform session-broker control-plane browser-template browser-worker portal; do
         local port=$(get_service_port "$service")
         local status="NOT RUNNING"
         local color=$RED
@@ -441,7 +436,7 @@ if [ -n "$ONLY_SERVICE" ]; then
         wait_for_service "$ONLY_SERVICE" "$port" "$DEV_HOST"
     else
         log_error "Unknown service: $ONLY_SERVICE"
-        echo "Available services: ai-orchestrator platform session-broker control-plane browser-template replay-engine browser-worker portal"
+        echo "Available services: ai-orchestrator platform session-broker control-plane browser-template browser-worker portal"
         exit 1
     fi
 else
@@ -459,7 +454,6 @@ echo "  - Platform:         http://${DEV_PUBLIC_HOST}:${PLATFORM_PORT:-3001}"
 echo "  - Session Broker:   http://${DEV_PUBLIC_HOST}:${SESSION_BROKER_PORT:-3002}"
 echo "  - Control Plane:    http://${DEV_PUBLIC_HOST}:${CONTROL_PLANE_PORT:-3003}"
 echo "  - Browser Template: http://${DEV_PUBLIC_HOST}:${BROWSER_TEMPLATE_PORT:-3005}"
-echo "  - Replay Engine:    http://${DEV_PUBLIC_HOST}:${REPLAY_ENGINE_PORT:-3006}"
 echo "  - Browser Worker:   http://${DEV_PUBLIC_HOST}:${BROWSER_WORKER_PORT:-3004}"
 echo "  - Portal:           http://${DEV_PUBLIC_HOST}:${PORTAL_PORT:-5173}"
 echo ""

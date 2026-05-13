@@ -43,7 +43,7 @@ export interface ImplicitArray {
 
 // 正则表达式定义
 const CARBONE_MARKER_REGEX = /\{([cdt])\.([^}]+)\}/g;
-const ARRAY_INDEX_REGEX = /\[i\]|\[i\+\d+\]/;  // 支持 [i] 和 [i+1]
+const ARRAY_INDEX_REGEX = /\[(?:i(?:\+\d+)?)?\]/;  // 支持 []、[i] 和 [i+1]
 const FORMATTER_REGEX = /:([a-zA-Z]+)(?:\(([^)]*)\))?/g;
 const LOOP_PATTERN_REGEX = /\{[cdt]\.([^}]+)\[i\+1\][^}]*\}/g;
 
@@ -114,7 +114,7 @@ export class Parser {
 
       if (isArray) {
         // 提取数组路径 (例如 d.steps[i].name -> d.steps)
-        const arrayMatch = pathPart.match(/^([^[]+)\[i/);
+        const arrayMatch = pathPart.match(/^([^[]+)\[/);
         if (arrayMatch) {
           arrayPath = `${contextChar}.${arrayMatch[1]}`;
         }
@@ -376,7 +376,7 @@ export class Parser {
 
     for (const marker of markers) {
       // 移除数组索引部分
-      const cleanPath = marker.name.replace(/\[i\+?\d?\]/g, '');
+      const cleanPath = marker.name.replace(/\[(?:i(?:\+\d+)?)?\]/g, '');
       variables.add(cleanPath);
     }
 
