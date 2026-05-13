@@ -312,7 +312,8 @@ export class FileHandler {
     if (sharedStringsFile) {
       const xml = await sharedStringsFile.async('text');
       const { xml: processedXml } = this.preprocessor.process(xml);
-      const result = this.builder.buildXML(processedXml, data);
+      // Keep loop markers in-place so worksheet sharedString indexes stay stable.
+      const result = this.builder.buildXML(processedXml, data, { skipLoops: true });
       this.setFileContent(zip, sharedStringsPath, result.xml);
     }
   }
@@ -600,7 +601,7 @@ export class FileHandler {
   }
 
   private resolveLoopItems(data: any, arrayPath: string): any[] {
-    const cleanPath = arrayPath.replace(/^[dct]\./, '').replace(/\[i\]/g, '');
+    const cleanPath = arrayPath.replace(/^[dct]\./, '').replace(/\[i(?:(?:\+\d+)?)?\]|\[\]/g, '');
     const parts = cleanPath.split('.').filter(Boolean);
     let current = data;
 

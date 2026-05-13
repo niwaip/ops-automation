@@ -2,7 +2,6 @@ import type { IncomingMessage, ServerResponse } from 'node:http';
 import react from '@vitejs/plugin-react';
 import fs from 'fs';
 import path from 'path';
-import { DEFAULT_OFFICE_ADDIN_API_BASE_URL } from './src/config/defaults';
 import { wizardPagePlugin } from './src/download-plugin';
 
 // 检测是否在 Docker 容器中运行
@@ -65,8 +64,5 @@ export default {
   build: {
     outDir: 'dist',
     sourcemap: true
-  },
-  define: {
-    'process.env.VITE_API_URL': JSON.stringify(process.env.VITE_API_URL || DEFAULT_OFFICE_ADDIN_API_BASE_URL)
   }
 };

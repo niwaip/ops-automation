@@ -1716,6 +1716,14 @@ export const WordAPI = {
  * Excel 操作
  */
 export const ExcelAPI = {
+  normalizeDraftTemplateSheetName(sheetName: string): string {
+    const sanitized = sheetName
+      .replace(/\[_模板\]/g, '')
+      .replace(/_模板$/g, '')
+      .trim();
+    return sanitized || sheetName;
+  },
+
   /**
    * 获取整个工作簿的 sheet 概览
    * 用于 Excel 模板页按成对 sheet 展示空白模板和真实数据。
@@ -2016,7 +2024,7 @@ export const ExcelAPI = {
           const existingValue = cell.values?.[0]?.[0] == null ? '' : String(cell.values[0][0]);
           const matchedMapping = columnMappings?.find((mapping) => (mapping.columnIndex ?? columnOffset) === columnOffset);
           let nextValue = matchedMapping?.variablePath
-            ? `{${matchedMapping.variablePath}}`
+            ? (matchedMapping.variablePath.startsWith('d.') ? `{${matchedMapping.variablePath}}` : `{d.${matchedMapping.variablePath}}`)
             : existingValue;
 
           if (columnOffset === 0) {
@@ -2030,6 +2038,171 @@ export const ExcelAPI = {
         });
         await context.sync();
         resolve();
+      }).catch(reject);
+    });
+  },
+
+  async prepareWorkbookForDraft(
+    pairs: Array<{
+      hidden?: boolean;
+      leftSheetName?: string;
+      rightSheetName?: string;
+    }>
+  ): Promise<{
+    renamedSheets: Array<{ from: string; to: string }>;
+    deletedSheets: string[];
+    frozenFormulaCount: number;
+    deletedNamedItemCount: number;
+  }> {
+    const visiblePairs = pairs.filter((pair) => !pair.hidden);
+    const deletedSheets = Array.from(
+      new Set(
+        visiblePairs
+          .map((pair) => pair.rightSheetName?.trim())
+          .filter((name): name is string => Boolean(name))
+      )
+    );
+
+    return new Promise((resolve, reject) => {
+      Excel.run(async (context) => {
+        const worksheets = context.workbook.worksheets;
+        worksheets.load('items/name');
+        await context.sync();
+
+        const existingNames = new Set(worksheets.items.map((sheet) => sheet.name));
+        const escapeSheetName = (name: string) => name.replace(/'/g, "''");
+        const referencesDeletedSheet = (formula: string): boolean =>
+          deletedSheets.some((sheetName) =>
+            formula.includes(`${sheetName}!`) || formula.includes(`'${escapeSheetName(sheetName)}'!`)
+          );
+
+        let frozenFormulaCount = 0;
+        let deletedNamedItemCount = 0;
+        const keepSheets = worksheets.items.filter((sheet) => !deletedSheets.includes(sheet.name));
+        const keepSheetRanges = keepSheets.map((sheet) => {
+          const usedRange = sheet.getUsedRange();
+          usedRange.load('rowIndex,columnIndex,rowCount,columnCount,formulas,values');
+          return { sheet, usedRange };
+        });
+        const workbookNames = context.workbook.names;
+        workbookNames.load('items/name,items/formula');
+        const worksheetNameCollections = keepSheets.map((sheet) => {
+          const names = sheet.names;
+          names.load('items/name,items/formula');
+          return names;
+        });
+        await context.sync();
+
+        for (const { sheet, usedRange } of keepSheetRanges) {
+          const formulas = (usedRange.formulas as string[][]) || [];
+          const values = (usedRange.values as (string | number | boolean | null)[][]) || [];
+          for (let rowIndex = 0; rowIndex < formulas.length; rowIndex += 1) {
+            for (let columnIndex = 0; columnIndex < (formulas[rowIndex] || []).length; columnIndex += 1) {
+              const formula = formulas[rowIndex]?.[columnIndex];
+              if (typeof formula === 'string' && formula.startsWith('=') && referencesDeletedSheet(formula)) {
+                const currentValue = values[rowIndex]?.[columnIndex] ?? '';
+                sheet.getCell((usedRange.rowIndex || 0) + rowIndex, (usedRange.columnIndex || 0) + columnIndex).values = [[currentValue]];
+                frozenFormulaCount += 1;
+              }
+            }
+          }
+        }
+
+        // Remove workbook-level and worksheet-level named items that still point to deleted sheets.
+        for (const namedItem of workbookNames.items) {
+          const formula = typeof namedItem.formula === 'string' ? namedItem.formula : '';
+          if (formula && referencesDeletedSheet(formula)) {
+            namedItem.delete();
+            deletedNamedItemCount += 1;
+          }
+        }
+
+        for (const names of worksheetNameCollections) {
+          for (const namedItem of names.items) {
+            const formula = typeof namedItem.formula === 'string' ? namedItem.formula : '';
+            if (formula && referencesDeletedSheet(formula)) {
+              namedItem.delete();
+              deletedNamedItemCount += 1;
+            }
+          }
+        }
+
+        const renamedSheets: Array<{ from: string; to: string }> = [];
+        const reservedNames = new Set(
+          worksheets.items
+            .map((sheet) => sheet.name)
+            .filter((name) => !deletedSheets.includes(name))
+        );
+
+        deletedSheets.forEach((sheetName) => {
+          if (existingNames.has(sheetName)) {
+            worksheets.getItem(sheetName).delete();
+          }
+        });
+        await context.sync();
+
+        // After deletion, some defined names (like Print_Area, FilterDatabase) might become #REF! or orphaned.
+        // We should clean up any remaining workbook-level and worksheet-level names that are broken.
+        workbookNames.load('items/name,items/formula,items/value');
+        const postWorksheetNameCollections = keepSheets.map((sheet) => {
+          const names = sheet.names;
+          names.load('items/name,items/formula,items/value');
+          return names;
+        });
+        await context.sync();
+
+        const cleanRefNames = (namesCollection: Excel.NamedItemCollection) => {
+          for (const namedItem of namesCollection.items) {
+            try {
+              const formula = typeof namedItem.formula === 'string' ? namedItem.formula : '';
+              const value = typeof namedItem.value === 'string' ? namedItem.value : '';
+              if (formula.includes('#REF!') || value.includes('#REF!')) {
+                namedItem.delete();
+                deletedNamedItemCount += 1;
+              }
+            } catch (e) {
+              // Ignore if already deleted or inaccessible
+            }
+          }
+        };
+
+        cleanRefNames(workbookNames);
+        for (const names of postWorksheetNameCollections) {
+          cleanRefNames(names);
+        }
+        await context.sync();
+
+        for (const pair of visiblePairs) {
+          const fromName = pair.leftSheetName?.trim();
+          if (!fromName || !existingNames.has(fromName)) {
+            continue;
+          }
+
+          const normalizedBaseName = this.normalizeDraftTemplateSheetName(fromName);
+          let candidateName = normalizedBaseName.slice(0, 31) || fromName;
+          let suffix = 1;
+
+          reservedNames.delete(fromName);
+          while (reservedNames.has(candidateName)) {
+            const suffixLabel = ` (${suffix})`;
+            candidateName = `${normalizedBaseName.slice(0, Math.max(31 - suffixLabel.length, 1))}${suffixLabel}`;
+            suffix += 1;
+          }
+
+          if (candidateName !== fromName) {
+            worksheets.getItem(fromName).name = candidateName;
+            renamedSheets.push({ from: fromName, to: candidateName });
+          }
+          reservedNames.add(candidateName);
+        }
+
+        await context.sync();
+        resolve({
+          renamedSheets,
+          deletedSheets,
+          frozenFormulaCount,
+          deletedNamedItemCount,
+        });
       }).catch(reject);
     });
   },

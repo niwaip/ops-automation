@@ -35,12 +35,12 @@ export class ExcelAdapter implements HostAdapter {
     const anchorSheetIndex = excelAnchor?.sheetIndex;
 
     const matchedPair =
-      pairs.find((pair) => typeof excelAnchor?.pairIndex === 'number' && pair.pairIndex === excelAnchor.pairIndex)
-      || pairs.find((pair) =>
+      pairs.find((pair) =>
         (anchorSheetName && (pair.leftSheetName === anchorSheetName || pair.rightSheetName === anchorSheetName))
         || (typeof anchorSheetIndex === 'number'
           && (pair.leftSheetIndex === anchorSheetIndex || pair.rightSheetIndex === anchorSheetIndex))
-      );
+      )
+      || pairs.find((pair) => typeof excelAnchor?.pairIndex === 'number' && pair.pairIndex === excelAnchor.pairIndex);
 
     if (!matchedPair) {
       return {
@@ -57,13 +57,47 @@ export class ExcelAdapter implements HostAdapter {
 
   private buildDefaultPairs(sheets: WorkbookSheetSummary[]): ExcelSheetPairState[] {
     const pairs: ExcelSheetPairState[] = [];
+    const usedSheetIndexes = new Set<number>();
 
-    for (let index = 0; index < sheets.length; index += 2) {
-      const leftSheet = sheets[index];
-      const rightSheet = sheets[index + 1];
+    const byName = new Map<string, WorkbookSheetSummary>();
+    for (const sheet of sheets) {
+      byName.set(sheet.name, sheet);
+    }
+
+    for (const sheet of sheets) {
+      if (usedSheetIndexes.has(sheet.index)) {
+        continue;
+      }
+
+      if (sheet.name.endsWith('_数据')) {
+        const baseName = sheet.name.replace(/_数据$/, '');
+        const mockSheet = byName.get(baseName);
+        if (mockSheet && !usedSheetIndexes.has(mockSheet.index)) {
+          const pairIndex = pairs.length;
+          pairs.push({
+            id: `sheet-pair-${pairIndex}`,
+            pairIndex,
+            compare: true,
+            hidden: false,
+            leftSheetName: mockSheet.name,
+            leftSheetIndex: mockSheet.index,
+            rightSheetName: sheet.name,
+            rightSheetIndex: sheet.index,
+          });
+          usedSheetIndexes.add(mockSheet.index);
+          usedSheetIndexes.add(sheet.index);
+        }
+      }
+    }
+
+    const remaining = sheets.filter((sheet) => !usedSheetIndexes.has(sheet.index));
+    for (let index = 0; index < remaining.length; index += 2) {
+      const leftSheet = remaining[index];
+      const rightSheet = remaining[index + 1];
+      const pairIndex = pairs.length;
       pairs.push({
-        id: `sheet-pair-${index}`,
-        pairIndex: Math.floor(index / 2),
+        id: `sheet-pair-${pairIndex}`,
+        pairIndex,
         compare: true,
         hidden: false,
         leftSheetName: leftSheet?.name,
@@ -133,7 +167,14 @@ export class ExcelAdapter implements HostAdapter {
       });
 
       for (const sheet of pairSheets) {
-        const sheetRole = sheet.index % 2 === 0 ? 'mock' : 'data';
+        const sheetRole =
+          typeof pair.leftSheetIndex === 'number' && sheet.index === pair.leftSheetIndex
+            ? 'mock'
+            : typeof pair.rightSheetIndex === 'number' && sheet.index === pair.rightSheetIndex
+              ? 'data'
+              : sheet.index % 2 === 0
+                ? 'mock'
+                : 'data';
         const sheetElementId = `excel-sheet-${sheet.index}`;
         includedSheetCount += 1;
 
@@ -236,10 +277,14 @@ export class ExcelAdapter implements HostAdapter {
     const targetSheet = excelAnchor ? this.resolveTemplateSheetTarget(excelAnchor) : undefined;
 
     if (excelAnchor?.type === 'cell' && targetSheet?.sheetName && excelAnchor.address) {
+      let marker = suggestion.suggestedName;
+      if (!marker.startsWith('{')) {
+        marker = marker.startsWith('d.') ? `{${marker}}` : `{d.${marker}}`;
+      }
       await OfficeHelper.Excel.insertMarkerInSheetCell(
         targetSheet.sheetName,
         excelAnchor.address,
-        suggestion.suggestedName
+        marker
       );
       return;
     }

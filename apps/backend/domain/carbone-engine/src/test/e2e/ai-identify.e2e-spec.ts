@@ -473,7 +473,7 @@ describe('AI Identify API (e2e)', () => {
       const validateRes = await request(app.getHttpServer())
         .post('/studio/validate-content')
         .send({
-          template: identifyRes.body.suggestions.map(s => s.suggestedName).join(' ')
+          template: identifyRes.body.suggestions.map((s: any) => s.suggestedName).join(' ')
         })
         .expect(200);
 

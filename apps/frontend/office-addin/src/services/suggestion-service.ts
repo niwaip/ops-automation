@@ -105,6 +105,18 @@ interface ExcelPairAnalysisInput {
   loopDetected: boolean;
 }
 
+interface ExcelPairAttemptResult {
+  pairSuggestions: AISuggestion[];
+  aiCallSucceeded: boolean;
+  error?: Record<string, unknown>;
+  promptDebugSummary?: string;
+  promptRequestText?: string;
+  rawAiResponse?: string;
+  salvagedMalformedJson: boolean;
+  qualityIssues: string[];
+  needsRetry: boolean;
+}
+
 interface WorkbookSheetSummary {
   name: string;
   index: number;
@@ -227,99 +239,39 @@ function buildAsciiIdentifier(value: string, fallback: string): string {
   return normalized || fallback;
 }
 
-function mapExcelBusinessFieldName(label: string): string | undefined {
-  const normalizedLabel = normalizeText(label);
-  const mappings: Array<[RegExp, string]> = [
-    [/批次/, 'batch'],
-    [/交付地点|到货地点/, 'deliveryLocation'],
-    [/计划到货日|计划交付日|预计到货日/, 'plannedArrivalDate'],
-    [/安装完成日|安装完成时间/, 'installationCompletionDate'],
-    [/验收类型|验收方式/, 'acceptanceType'],
-    [/验收标准/, 'acceptanceStandard'],
-    [/安装条件说明|安装条件/, 'installationConditionNotes'],
-    [/付款节点|付款阶段/, 'paymentStage'],
-    [/付款条件/, 'paymentCondition'],
-    [/应付金额|付款金额/, 'payableAmount'],
-    [/合同编号|编号/, 'contractNo'],
-    [/签订日期/, 'signDate'],
-    [/甲方|采购方/, 'buyerName'],
-    [/乙方|供应商/, 'supplierName'],
-    [/项目名称|项目/, 'projectName'],
-    [/币种/, 'currency'],
-    [/质保期/, 'warrantyPeriodMonths'],
-    [/合同摘要|摘要/, 'summary'],
-    [/序号/, 'seq'],
-    [/设备编号|设备编码|物料编码|物料编号/, 'materialCode'],
-    [/设备名称|产品名称|货物名称/, 'deviceName'],
-    [/规格型号|规格|型号/, 'model'],
-    [/单位/, 'unit'],
-    [/数量/, 'quantity'],
-    [/单价/, 'unitPrice'],
-    [/小计/, 'subtotal'],
-    [/合计|总价/, 'totalAmount'],
-    [/金额/, 'amount'],
-    [/日期/, 'date'],
-    [/状态/, 'status'],
-    [/备注/, 'note'],
-  ];
-
-  for (const [pattern, fieldName] of mappings) {
-    if (pattern.test(normalizedLabel)) {
-      return fieldName;
-    }
-  }
-
+function mapExcelBusinessFieldName(_label: string): string | undefined {
+  // 移除硬编码的业务字段映射，进行标准化
   return undefined;
 }
 
 function mapExcelSheetFieldGroup(sheetName: string): string {
+  // 移除硬编码的业务分组映射，进行标准化
   const normalizedSheet = stripExcelSheetRoleSuffix(sheetName);
-  const mappings: Array<[RegExp, string]> = [
-    [/采购明细|明细|detail/i, 'procurement'],
-    [/交付验收|交付|delivery/i, 'delivery'],
-    [/付款违约|付款|payment/i, 'payment'],
-    [/合同首页|合同正文|合同/i, 'contract'],
-  ];
-
-  for (const [pattern, fieldGroup] of mappings) {
-    if (pattern.test(normalizedSheet)) {
-      return fieldGroup;
-    }
-  }
-
-  return 'sheet';
+  const asciiName = buildAsciiIdentifier(normalizedSheet, '');
+  return asciiName || 'sheet';
 }
 
 function buildExcelFieldName(label: string, sheetName: string, rowIndex: number, colIndex: number): string {
-  const mappedFieldName = mapExcelBusinessFieldName(label);
-  if (mappedFieldName) {
-    return `d.${mappedFieldName}`;
-  }
-
   const sheetSegment = mapExcelSheetFieldGroup(sheetName);
   const fieldSegment = buildAsciiIdentifier(label, `fieldR${rowIndex + 1}C${colIndex + 1}`);
   return `d.${sheetSegment}.${fieldSegment}`;
 }
 
 function buildExcelArrayPath(sheetName: string): string {
+  // 移除硬编码的数组路径映射，进行标准化
   const normalizedSheet = stripExcelSheetRoleSuffix(sheetName);
-  const mappings: Array<[RegExp, string]> = [
-    [/采购明细|明细|detail/i, 'd.procurementDetails'],
-    [/交付验收|交付|delivery/i, 'd.deliveryPlans'],
-    [/付款违约|付款|payment/i, 'd.paymentTerms'],
-  ];
-
-  for (const [pattern, value] of mappings) {
-    if (pattern.test(normalizedSheet)) {
-      return value;
-    }
-  }
-
-  return 'd.rows';
+  const asciiName = buildAsciiIdentifier(normalizedSheet, '');
+  return asciiName ? `d.${asciiName}List` : 'd.rows';
 }
 
 function normalizeLoopArrayBasePath(arrayPath: string): string {
   return normalizeText(arrayPath).replace(/(\[(?:i)?\])+$/g, '');
+}
+
+function extractVariableArrayPath(value: string): string {
+  const normalized = normalizeText(value).replace(/[{}]/g, '');
+  const match = normalized.match(/^(d\.[A-Za-z_][A-Za-z0-9_.]*)\[\]\.[A-Za-z_][A-Za-z0-9_]*$/);
+  return match?.[1] || '';
 }
 
 function columnNameToIndex(columnName: string): number {
@@ -728,78 +680,13 @@ function inferExcelFieldType(value: string, formula: string): string {
   return 'text';
 }
 
-function inferExcelFieldTypeWithLabel(value: string, formula: string, label: string): string {
-  const normalizedLabel = normalizeText(label);
-
-  if (/(合同编号|编号|编码|单号)/.test(normalizedLabel)) {
-    return 'text';
-  }
-
-  if (/(签订日期|日期|时间)/.test(normalizedLabel)) {
-    return 'date';
-  }
-
-  if (/(金额|总额|小计|合计|价款|税额)/.test(normalizedLabel)) {
-    return 'number';
-  }
-
-  if (/(比例|税率|折扣|rate)/i.test(normalizedLabel)) {
-    return normalizeText(value).includes('%') ? 'percent' : 'number';
-  }
-
-  if (/(数量|月数|天数|期数|期)/.test(normalizedLabel)) {
-    return 'number';
-  }
-
-  if (/(是否|启用|有效)/.test(normalizedLabel)) {
-    return 'boolean';
-  }
-
-  if (/(币种|甲方|乙方|名称|地址|电话|邮箱|地点|摘要|说明|条款|标准)/.test(normalizedLabel)) {
-    return 'text';
-  }
-
+function inferExcelFieldTypeWithLabel(value: string, formula: string, _label: string): string {
+  // 移除硬编码的业务字段类型映射，优先依赖基础类型推断
   return inferExcelFieldType(value, formula);
 }
 
 function buildExcelExtractionHint(label: string, variablePath: string, fieldType: string): string {
   const normalizedLabel = normalizeText(label);
-
-  if (/(合同编号|编号|编码|单号)/.test(normalizedLabel)) {
-    return `用于从自然语言中提取“${label || '合同编号'}”。例如“合同编号是 PC-2026-0178”时，应将“PC-2026-0178”赋值给 ${variablePath}。`;
-  }
-
-  if (/(签订日期|日期|时间)/.test(normalizedLabel)) {
-    return `用于从自然语言中提取“${label || '日期'}”。例如“签订日期为 2026-05-09”或“合同于 2026 年 5 月 9 日签订”时，应将日期赋值给 ${variablePath}。`;
-  }
-
-  if (/(金额|总额|小计|合计|价款|税额)/.test(normalizedLabel)) {
-    return `用于从自然语言中提取“${label || '金额'}”。例如“合同总额 125000 元”时，应抽取金额数值并赋值给 ${variablePath}。`;
-  }
-
-  if (/(比例|税率|折扣|rate)/i.test(normalizedLabel)) {
-    return `用于从自然语言中提取“${label || '比例'}”。例如“税率 13%”时，应抽取比例并赋值给 ${variablePath}。`;
-  }
-
-  if (/(甲方|采购方)/.test(normalizedLabel)) {
-    return `用于从自然语言中提取“${label || '甲方'}”名称。例如“甲方是某某公司”时，应将公司名称赋值给 ${variablePath}。`;
-  }
-
-  if (/(乙方|供应商)/.test(normalizedLabel)) {
-    return `用于从自然语言中提取“${label || '乙方'}”名称。例如“供应商为某某科技有限公司”时，应将公司名称赋值给 ${variablePath}。`;
-  }
-
-  if (/(地址|地点)/.test(normalizedLabel)) {
-    return `用于从自然语言中提取“${label || '地址'}”文本。例如“交付地点为上海浦东新区某地址”时，应将地址赋值给 ${variablePath}。`;
-  }
-
-  if (/(电话|手机号|联系方式)/.test(normalizedLabel)) {
-    return `用于从自然语言中提取“${label || '联系方式'}”。例如“联系电话 13800000000”时，应将号码赋值给 ${variablePath}。`;
-  }
-
-  if (/(邮箱|邮件)/.test(normalizedLabel)) {
-    return `用于从自然语言中提取“${label || '邮箱'}”。例如“邮箱为 buyer@example.com”时，应将邮箱地址赋值给 ${variablePath}。`;
-  }
 
   if (fieldType === 'date') {
     return `用于从自然语言中提取日期类参数，并将识别到的日期值赋值给 ${variablePath}。`;
@@ -809,7 +696,7 @@ function buildExcelExtractionHint(label: string, variablePath: string, fieldType
     return `用于从自然语言中提取数值类参数，并将识别到的数值赋值给 ${variablePath}。`;
   }
 
-  return `用于从自然语言或结构化输入中提取“${label || variablePath}”的值，并赋值给 ${variablePath}。`;
+  return `用于从自然语言或结构化输入中提取“${normalizedLabel || variablePath}”的值，并赋值给 ${variablePath}。`;
 }
 
 function buildExcelHeuristicDescription(label: string, variablePath: string): string {
@@ -1328,10 +1215,25 @@ function annotateSuggestionSource(
 function expandExcelLoopColumnSuggestions(suggestions: AISuggestion[]): AISuggestion[] {
   const expanded: AISuggestion[] = [];
   const existingVariableKeys = new Set<string>();
+  const explicitVariableArrayKeys = new Set<string>();
+
+  const buildArrayExpansionKey = (arrayPath: string, pairIndex?: number): string => {
+    const normalizedArrayPath = normalizeLoopArrayBasePath(arrayPath);
+    return `${pairIndex ?? -1}:${normalizedArrayPath}`;
+  };
 
   for (const suggestion of suggestions) {
     if (suggestion.type === 'variable') {
       existingVariableKeys.add(normalizeText(suggestion.suggestedName));
+      const arrayPath = normalizeLoopArrayBasePath(
+        suggestion.details?.arrayPath
+          || extractVariableArrayPath(suggestion.suggestedName)
+      );
+      if (arrayPath) {
+        explicitVariableArrayKeys.add(
+          buildArrayExpansionKey(arrayPath, suggestion.details?.excelAnchor?.pairIndex)
+        );
+      }
     }
   }
 
@@ -1369,6 +1271,10 @@ function expandExcelLoopColumnSuggestions(suggestions: AISuggestion[]): AISugges
         : suggestion.elementPath;
       const inferredFieldType = inferExcelFieldTypeWithLabel(mapping.sampleValue || '', '', mapping.headerName);
       const normalizedLoopArrayPath = normalizeLoopArrayBasePath(extractLoopArrayPath(suggestion));
+
+    if (explicitVariableArrayKeys.has(buildArrayExpansionKey(normalizedLoopArrayPath, tableAnchor?.pairIndex))) {
+      return;
+    }
 
       expanded.push({
         id: `${suggestion.id}-col-${relativeColumnIndex}`,
@@ -1573,6 +1479,162 @@ function applyDefaultExcelSuggestionMetadata(
       },
     };
   });
+}
+
+function normalizeSuggestionPathForQualityCheck(value: string): string {
+  return value.replace(/[{}]/g, '').trim();
+}
+
+function isGenericFallbackSuggestedName(value: string): boolean {
+  return /^(?:d\.)?(?:[A-Za-z_][A-Za-z0-9_]*\[\]\.)?(field\d*|textValue|textField\d*|value\d*|var\d*|param\d*|undefined|null|unknown)$/i
+    .test(normalizeSuggestionPathForQualityCheck(value));
+}
+
+function buildExcelPairPayload(
+  pair: ExcelPairAnalysisInput,
+  documentType: 'docx' | 'xlsx' | 'pptx',
+  templateType: string,
+  globalUnderstandingSummary: string
+): StructuredAnalyzeRequest {
+  return {
+    host: 'excel',
+    documentIR: pair.pairDocumentIR,
+    documentContent: serializeDocument(pair.pairDocumentIR),
+    documentType,
+    templateType,
+    context: buildExcelPairAnalysisContext(pair, templateType, globalUnderstandingSummary),
+    analysisStage: 'excel-pair-analysis',
+    pairLabel: pair.pairLabel,
+    globalUnderstandingSummary,
+    diffSummary: pair.diffSummary,
+    diffOverview: pair.diffOverview,
+    candidateFieldList: pair.candidateFieldList,
+  };
+}
+
+function normalizeExcelPairSuggestions(
+  pair: ExcelPairAnalysisInput,
+  pairResponse: AnalyzeDocumentResult & { rawSuggestions?: AISuggestion[] }
+): AISuggestion[] {
+  return dedupeExcelArraySuggestions(
+    expandExcelLoopColumnSuggestions(
+      applyDefaultExcelSuggestionMetadata(
+        annotateSuggestionSource((pairResponse.rawSuggestions || pairResponse.suggestions) as AISuggestion[], 'ai'),
+        pair
+      )
+    )
+  );
+}
+
+function evaluateExcelPairAttempt(
+  pair: ExcelPairAnalysisInput,
+  pairSuggestions: AISuggestion[],
+  contextAnalysis?: Record<string, unknown>
+): {
+  salvagedMalformedJson: boolean;
+  qualityIssues: string[];
+  needsRetry: boolean;
+} {
+  const qualityIssues: string[] = [];
+  const salvagedMalformedJson = Boolean(contextAnalysis?.salvagedMalformedJson);
+  if (salvagedMalformedJson) {
+    qualityIssues.push('malformed-json');
+  }
+
+  if (pairSuggestions.length === 0) {
+    qualityIssues.push('empty-result');
+  }
+
+  if (pair.loopDetected && !pairSuggestions.some((suggestion) => suggestion.type === 'loop')) {
+    qualityIssues.push('missing-loop');
+  }
+
+  if (pairSuggestions.some((suggestion) => isGenericFallbackSuggestedName(suggestion.suggestedName || ''))) {
+    qualityIssues.push('generic-name');
+  }
+
+  return {
+    salvagedMalformedJson,
+    qualityIssues,
+    needsRetry: qualityIssues.length > 0,
+  };
+}
+
+function scoreExcelPairAttempt(attempt: ExcelPairAttemptResult): number {
+  let score = attempt.aiCallSucceeded ? 100 : -100;
+  score += attempt.pairSuggestions.length * 10;
+  score -= attempt.qualityIssues.length * 20;
+  if (attempt.salvagedMalformedJson) {
+    score -= 30;
+  }
+  return score;
+}
+
+function choosePreferredExcelPairAttempt(
+  primaryAttempt: ExcelPairAttemptResult,
+  retryAttempt?: ExcelPairAttemptResult
+): ExcelPairAttemptResult {
+  if (!retryAttempt) {
+    return primaryAttempt;
+  }
+
+  if (retryAttempt.aiCallSucceeded && !retryAttempt.needsRetry) {
+    return retryAttempt;
+  }
+
+  if (primaryAttempt.aiCallSucceeded && !primaryAttempt.needsRetry) {
+    return primaryAttempt;
+  }
+
+  return scoreExcelPairAttempt(retryAttempt) >= scoreExcelPairAttempt(primaryAttempt)
+    ? retryAttempt
+    : primaryAttempt;
+}
+
+async function executeExcelPairAttempt(
+  executor: ReturnType<typeof resolveAnalysisExecutor>,
+  pair: ExcelPairAnalysisInput,
+  documentType: 'docx' | 'xlsx' | 'pptx',
+  templateType: string,
+  globalUnderstandingSummary: string
+): Promise<ExcelPairAttemptResult> {
+  try {
+    const pairResponse = await executor.analyze(
+      buildExcelPairPayload(pair, documentType, templateType, globalUnderstandingSummary)
+    );
+    const pairSuggestions = normalizeExcelPairSuggestions(pair, pairResponse);
+    const quality = evaluateExcelPairAttempt(
+      pair,
+      pairSuggestions,
+      pairResponse.contextAnalysis as Record<string, unknown> | undefined
+    );
+
+    return {
+      pairSuggestions,
+      aiCallSucceeded: true,
+      promptDebugSummary: pairResponse.contextAnalysis?.promptDebugSummary
+        ? String(pairResponse.contextAnalysis.promptDebugSummary)
+        : undefined,
+      promptRequestText: pairResponse.contextAnalysis?.promptRequestText
+        ? String(pairResponse.contextAnalysis.promptRequestText)
+        : undefined,
+      rawAiResponse: pairResponse.contextAnalysis?.rawAiResponse
+        ? String(pairResponse.contextAnalysis.rawAiResponse)
+        : undefined,
+      salvagedMalformedJson: quality.salvagedMalformedJson,
+      qualityIssues: quality.qualityIssues,
+      needsRetry: quality.needsRetry,
+    };
+  } catch (error) {
+    return {
+      pairSuggestions: [],
+      aiCallSucceeded: false,
+      error: toErrorInfo(error),
+      salvagedMalformedJson: false,
+      qualityIssues: ['request-failed'],
+      needsRetry: true,
+    };
+  }
 }
 
 function buildExcelGlobalUnderstandingContext(documentIR: DocumentIR, templateType: string): string {
@@ -1866,65 +1928,63 @@ export async function analyzeDocumentWithAI(
       }
     }
 
-    const remotePairSuggestions: AISuggestion[] = [];
+    const remotePairSuggestionsByIndex = new Map<number, AISuggestion[]>();
+    const retryExecutor = executor.supportsThinking && options.thinking !== true
+      ? resolveAnalysisExecutor({
+          apiBaseUrl: options.apiBaseUrl,
+          useMultiStage: options.useMultiStage,
+          requestedKind: options.analysisExecutor,
+          thinking: true,
+          aiOrchestratorBaseUrl: options.aiOrchestratorBaseUrl,
+          aiOrchestratorAuthToken: options.aiOrchestratorAuthToken,
+        })
+      : executor;
+    let retriedPairCount = 0;
 
     for (const pair of pairInputs) {
-      const pairPayload = {
-        host: adapter.host,
-        documentIR: pair.pairDocumentIR,
-        documentContent: serializeDocument(pair.pairDocumentIR),
+      const firstAttempt = await executeExcelPairAttempt(
+        executor,
+        pair,
         documentType,
-        templateType: options.templateType,
-        context: buildExcelPairAnalysisContext(pair, options.templateType, globalUnderstandingSummary),
-        analysisStage: 'excel-pair-analysis' as const,
-        pairLabel: pair.pairLabel,
-        globalUnderstandingSummary,
-        diffSummary: pair.diffSummary,
-        diffOverview: pair.diffOverview,
-        candidateFieldList: pair.candidateFieldList,
-      };
+        options.templateType,
+        globalUnderstandingSummary
+      );
 
-      try {
-        const pairResponse = await executor.analyze(pairPayload);
-        const pairSuggestions = dedupeExcelArraySuggestions(
-          expandExcelLoopColumnSuggestions(
-            applyDefaultExcelSuggestionMetadata(
-              annotateSuggestionSource((pairResponse.rawSuggestions || pairResponse.suggestions) as AISuggestion[], 'ai'),
-              pair
-            )
-          )
+      let retryAttempt: ExcelPairAttemptResult | undefined;
+      if (firstAttempt.needsRetry) {
+        retriedPairCount += 1;
+        retryAttempt = await executeExcelPairAttempt(
+          retryExecutor,
+          pair,
+          documentType,
+          options.templateType,
+          globalUnderstandingSummary
         );
-        remotePairSuggestions.push(...pairSuggestions);
-        pairResults.push({
-          pairIndex: pair.pairIndex,
-          pairLabel: pair.pairLabel,
-          aiCallSucceeded: true,
-          candidateCount: pair.candidateCount,
-          loopDetected: pair.loopDetected,
-          suggestionCount: pairSuggestions.length,
-          promptDebugSummary: pairResponse.contextAnalysis?.promptDebugSummary
-            ? String(pairResponse.contextAnalysis.promptDebugSummary)
-            : undefined,
-          promptRequestText: pairResponse.contextAnalysis?.promptRequestText
-            ? String(pairResponse.contextAnalysis.promptRequestText)
-            : undefined,
-          rawAiResponse: pairResponse.contextAnalysis?.rawAiResponse
-            ? String(pairResponse.contextAnalysis.rawAiResponse)
-            : undefined,
-        });
-      } catch (error) {
-        const errorInfo = toErrorInfo(error);
-        pairResults.push({
-          pairIndex: pair.pairIndex,
-          pairLabel: pair.pairLabel,
-          aiCallSucceeded: false,
-          candidateCount: pair.candidateCount,
-          loopDetected: pair.loopDetected,
-          suggestionCount: 0,
-          error: errorInfo,
-        });
       }
+
+      const finalAttempt = choosePreferredExcelPairAttempt(firstAttempt, retryAttempt);
+      if (finalAttempt.pairSuggestions.length > 0) {
+        remotePairSuggestionsByIndex.set(pair.pairIndex, finalAttempt.pairSuggestions);
+      }
+
+      pairResults.push({
+        pairIndex: pair.pairIndex,
+        pairLabel: pair.pairLabel,
+        aiCallSucceeded: finalAttempt.aiCallSucceeded,
+        candidateCount: pair.candidateCount,
+        loopDetected: pair.loopDetected,
+        suggestionCount: finalAttempt.pairSuggestions.length,
+        promptDebugSummary: finalAttempt.promptDebugSummary,
+        promptRequestText: finalAttempt.promptRequestText,
+        rawAiResponse: finalAttempt.rawAiResponse,
+        error: finalAttempt.error,
+        salvagedMalformedJson: finalAttempt.salvagedMalformedJson,
+        localRetryCount: retryAttempt ? 1 : 0,
+        qualityIssues: finalAttempt.qualityIssues,
+      });
     }
+
+    const remotePairSuggestions = Array.from(remotePairSuggestionsByIndex.values()).flat();
 
     const finalSuggestions = remotePairSuggestions.length > 0
       ? dedupeExcelArraySuggestions(remotePairSuggestions)
@@ -1987,6 +2047,7 @@ export async function analyzeDocumentWithAI(
         resultSource: summary.resultSource,
         sourceCounts: summary.sourceCounts,
         pairResults,
+        retriedPairCount,
         succeededPairCount,
         totalPairCount: pairInputs.length,
         descriptionOrigin:

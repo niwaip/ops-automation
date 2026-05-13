@@ -43,7 +43,7 @@ export interface ImplicitArray {
 
 // 正则表达式定义
 const CARBONE_MARKER_REGEX = /\{([cdt])\.([^}]+)\}/g;
-const ARRAY_INDEX_REGEX = /\[(?:i(?:\+\d+)?)?\]/;  // 支持 []、[i] 和 [i+1]
+const ARRAY_INDEX_REGEX = /\[(?:i(?:\+\d+)?)?\]/;  // 支持 []、[i] 和 [i+n]
 const FORMATTER_REGEX = /:([a-zA-Z]+)(?:\(([^)]*)\))?/g;
 const LOOP_PATTERN_REGEX = /\{[cdt]\.([^}]+)\[i\+1\][^}]*\}/g;
 
@@ -89,7 +89,7 @@ export class Parser {
     while ((match = CARBONE_MARKER_REGEX.exec(xml)) !== null) {
       const fullMarker = match[0];
       const contextChar = match[1];
-      const markerContent = match[2];
+      const markerContent = match[2].trim(); // Trim to handle spaces inside braces
 
       // 解析路径和格式化器
       const colonIndex = markerContent.indexOf(':');

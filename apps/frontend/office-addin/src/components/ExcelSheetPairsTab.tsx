@@ -8,6 +8,8 @@ const EXCEL_UNDERSTANDING_CACHE_STORAGE_KEY = 'office-addin:excel-understanding-
 interface ExcelUnderstandingCacheEntry {
   cacheKey: string;
   summary: string;
+  promptRequestText?: string;
+  rawAiResponse?: string;
   updatedAt: number;
 }
 
@@ -95,7 +97,6 @@ export const ExcelSheetPairsTab: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [understandingCollapsed, setUnderstandingCollapsed] = useState(false);
-  const [understandingResultCollapsed, setUnderstandingResultCollapsed] = useState(false);
   const [hasSelectionInteraction, setHasSelectionInteraction] = useState(false);
 
   const loadWorkbookSheets = useCallback(async () => {
@@ -115,9 +116,15 @@ export const ExcelSheetPairsTab: React.FC = () => {
       setExcelSheetPairs(nextPairs);
       const previousSelectedSheets = useAppStore.getState().excelWorkbookUnderstanding.selectedSheetIndexes;
       const availableSheetIndexes = sheets.map((sheet) => sheet.index);
+      
+      // 默认选中所有“右侧”（数据）sheet
+      const dataSheetIndexes = nextPairs
+        .map((pair) => pair.rightSheetIndex)
+        .filter((idx): idx is number => typeof idx === 'number');
+
       const nextSelectedSheets = previousSelectedSheets.length > 0
         ? previousSelectedSheets.filter((sheetIndex) => availableSheetIndexes.includes(sheetIndex))
-        : availableSheetIndexes;
+        : dataSheetIndexes;
       setExcelUnderstandingSelectedSheets(nextSelectedSheets);
       addDebugLog('info', 'Excel sheet 对照加载成功', `共 ${sheets.length} 个 sheet，生成 ${nextPairs.length} 个对照组`);
     } catch (loadError) {
@@ -130,7 +137,7 @@ export const ExcelSheetPairsTab: React.FC = () => {
   }, [addDebugLog, setExcelSheetPairs, setExcelUnderstandingSelectedSheets]);
 
   useEffect(() => {
-    loadWorkbookSheets();
+    void loadWorkbookSheets();
   }, [loadWorkbookSheets]);
 
   const sheetPairs = useMemo(
@@ -170,11 +177,12 @@ export const ExcelSheetPairsTab: React.FC = () => {
     if (cachedEntry) {
       setExcelWorkbookUnderstandingState({
         summary: cachedEntry.summary,
-        promptRequestText: undefined,
+        promptRequestText: cachedEntry.promptRequestText,
         promptDebugSummary: undefined,
-        rawAiResponse: undefined,
+        rawAiResponse: cachedEntry.rawAiResponse,
         error: null,
       });
+      // 仅在初始加载且有缓存时，作为初始状态载入，不强制拦截“理解”按钮的点击
       return;
     }
 
@@ -224,7 +232,7 @@ export const ExcelSheetPairsTab: React.FC = () => {
     try {
       const result = await analyzeExcelWorkbookUnderstanding({
         apiBaseUrl,
-        templateType: 'contract',
+        templateType: useAppStore.getState().templateConfig?.templateType || 'report',
         useMultiStage: false,
         analysisExecutor,
         thinking: analysisThinkingEnabled,
@@ -251,9 +259,13 @@ export const ExcelSheetPairsTab: React.FC = () => {
       saveExcelUnderstandingCacheEntry({
         cacheKey: understandingCacheKey,
         summary: result.summary,
+        promptRequestText: result.contextAnalysis?.promptRequestText ? String(result.contextAnalysis.promptRequestText) : undefined,
+        rawAiResponse: result.contextAnalysis?.rawAiResponse ? String(result.contextAnalysis.rawAiResponse) : undefined,
         updatedAt: Date.now(),
       });
-      addDebugLog('info', 'Excel 文档理解完成', result.summary);
+      addDebugLog('info', 'Excel 文档理解', 
+        `【理解摘要】\n${result.summary}\n\n【发送给 AI 的请求原文】\n${result.contextAnalysis?.promptRequestText || '无'}\n\n【AI 原始返回】\n${result.contextAnalysis?.rawAiResponse || '无'}`
+      );
     } catch (understandingError) {
       const errorMessage = understandingError instanceof Error ? understandingError.message : '文档理解失败';
       setExcelWorkbookUnderstandingState({
@@ -284,13 +296,16 @@ export const ExcelSheetPairsTab: React.FC = () => {
   return (
     <div className="excel-sheet-pairs-tab">
       <div className="excel-understanding-card">
-        <div className="excel-understanding-header">
+        <div 
+          className="excel-understanding-header"
+          onClick={() => setUnderstandingCollapsed((value) => !value)}
+        >
           <div>
             <h3>理解文档</h3>
             <p>选择要参与业务理解的 sheet，然后单独执行文档理解。</p>
           </div>
-          <div className="excel-understanding-actions">
-            <button className="sheet-action-btn refresh-btn" onClick={loadWorkbookSheets} disabled={loading}>
+          <div className="excel-understanding-actions" onClick={(e) => e.stopPropagation()}>
+            <button className="sheet-action-btn refresh-btn" onClick={() => { void loadWorkbookSheets(); }} disabled={loading}>
               {loading ? '加载中...' : '刷新'}
             </button>
             <button
@@ -309,16 +324,10 @@ export const ExcelSheetPairsTab: React.FC = () => {
             </button>
             <button
               className="sheet-action-btn sheet-action-btn-primary"
-              onClick={handleUnderstandWorkbook}
+              onClick={() => { void handleUnderstandWorkbook(); }}
               disabled={loading || excelWorkbookUnderstanding.isUnderstanding}
             >
-              {excelWorkbookUnderstanding.isUnderstanding ? '理解中...' : '理解文档'}
-            </button>
-            <button
-              className="sheet-action-btn"
-              onClick={() => setUnderstandingCollapsed((value) => !value)}
-            >
-              {understandingCollapsed ? '展开' : '折叠'}
+              {excelWorkbookUnderstanding.isUnderstanding ? '理解中...' : '理解'}
             </button>
           </div>
         </div>
@@ -352,41 +361,14 @@ export const ExcelSheetPairsTab: React.FC = () => {
         )}
 
         {excelWorkbookUnderstanding.error?.message && (
-          <div className="analysis-pair-result-error">{excelWorkbookUnderstanding.error.message}</div>
+          <div className="analysis-pair-result-error">❌ {excelWorkbookUnderstanding.error.message}</div>
         )}
 
         {excelWorkbookUnderstanding.summary && (
-          <div className="analysis-source-card">
-            <div className="analysis-source-header">
-              <span className="analysis-source-title">文档理解结果</span>
-              <span className="analysis-source-badge source-ai">AI</span>
-              <button
-                className="sheet-action-btn"
-                onClick={() => setUnderstandingResultCollapsed((value) => !value)}
-              >
-                {understandingResultCollapsed ? '展开' : '折叠'}
-              </button>
-            </div>
-            {!understandingResultCollapsed && (
-              <div className="analysis-source-grid">
-                <div className="analysis-source-item analysis-source-item-block">
-                  <span className="analysis-source-label">理解内容</span>
-                  <pre className="analysis-source-debug">{excelWorkbookUnderstanding.summary}</pre>
-                </div>
-                {excelWorkbookUnderstanding.promptRequestText && (
-                  <div className="analysis-source-item analysis-source-item-block">
-                    <span className="analysis-source-label">发送给 AI 的请求原文</span>
-                    <pre className="analysis-source-debug">{excelWorkbookUnderstanding.promptRequestText}</pre>
-                  </div>
-                )}
-                {excelWorkbookUnderstanding.rawAiResponse && (
-                  <div className="analysis-source-item analysis-source-item-block">
-                    <span className="analysis-source-label">AI 原始返回</span>
-                    <pre className="analysis-source-debug">{excelWorkbookUnderstanding.rawAiResponse}</pre>
-                  </div>
-                )}
-              </div>
-            )}
+          <div className="verify-result success">
+            <span className="verify-result-message">
+              ✅ 文档理解执行成功，详细内容已记录至运行日志。
+            </span>
           </div>
         )}
       </div>
