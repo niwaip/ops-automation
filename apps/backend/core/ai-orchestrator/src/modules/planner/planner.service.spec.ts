@@ -266,4 +266,136 @@ describe('PlannerService - required inputs without hardcoded defaults', () => {
       ]),
     );
   });
+
+  it('keeps previewReady true when only non-blocking groups are missing and cleans technical noise/types', async () => {
+    const skill: AvailableSkillDefinition = {
+      skillId: 'document-contract',
+      skillName: 'documentContractService',
+      description: 'Generate contract document',
+      triggerKeywords: ['合同', '采购'],
+      paramsSchema: {
+        properties: {
+          '__rowIndex': {
+            type: 'int',
+            description: 'row index technical noise',
+            required: true,
+          } as any,
+          '{#d.items}{/d.items}': {
+            type: 'string',
+            description: 'template loop marker',
+            required: true,
+          } as any,
+          'items[].deviceName': {
+            type: 'string',
+            description: '设备名称',
+            required: true,
+          } as any,
+          'items[].quantity': {
+            type: 'int',
+            description: '数量',
+            required: true,
+          } as any,
+          'deliveryItems[].date': {
+            type: 'string',
+            description: '交付日期',
+            required: true,
+          } as any,
+          'paymentSchedule[].amount': {
+            type: 'number',
+            description: '付款金额',
+            required: true,
+          } as any,
+          isUrgent: {
+            type: 'bool',
+            description: '是否加急',
+            required: true,
+          } as any,
+        },
+        required: [
+          '__rowIndex',
+          '{#d.items}{/d.items}',
+          'items[].deviceName',
+          'items[].quantity',
+          'deliveryItems[].date',
+          'paymentSchedule[].amount',
+          'isUrgent',
+        ],
+      },
+      templateId: 'tpl-contract',
+      carboneTemplateId: 'carbone-tpl-1',
+      carboneSkillId: 'carbone-skill-1',
+      executionFlowTemplateIds: ['flow-1'],
+      executionFlow: ['generate_parameters', 'document_render'],
+      apiEndpoints: {
+        runtimeMetadata: {
+          sourceType: 'document',
+        },
+      } as any,
+      goal: 'Generate contract',
+      expectedResult: 'Completed contract document',
+      outputParams: undefined,
+    };
+
+    const match: SkillMatchResult = {
+      skillId: skill.skillId,
+      skillName: skill.skillName,
+      matchedKeywords: ['合同'],
+      confidence: 0.95,
+      collectedParams: {},
+      missingParams: ['paymentSchedule[].amount'],
+      paramsSchema: skill.paramsSchema,
+      templateId: skill.templateId,
+      carboneTemplateId: skill.carboneTemplateId,
+      carboneSkillId: skill.carboneSkillId,
+      executionFlowTemplateIds: skill.executionFlowTemplateIds,
+      executionFlow: skill.executionFlow,
+      apiEndpoints: skill.apiEndpoints,
+      matchReason: 'test',
+      goal: skill.goal,
+      expectedResult: skill.expectedResult,
+      outputParams: undefined,
+    };
+
+    jest
+      .spyOn(service as any, 'loadAvailableSkills')
+      .mockResolvedValue([skill] as AvailableSkillDefinition[]);
+    jest.spyOn(service as any, 'matchSkill').mockResolvedValue(match);
+    jest.spyOn(recognizerService, 'recognizeParams').mockResolvedValue({
+      params: {
+        'items[].deviceName': '设备A',
+        'items[].quantity': 10,
+        'deliveryItems[].date': '2026-05-14',
+        isUrgent: false,
+      },
+      confidence: 0.2,
+    });
+
+    const plan = await service.generatePlan({
+      request: { user_input: '帮我生成采购合同', user_id: 'u1', modelId: 'selected-model-id' } as any,
+      userId: 'u1',
+      authToken: 'Bearer test',
+      traceId: 'trace-1',
+    });
+
+    expect(plan.required_inputs.some((item) => item.name === '__rowIndex')).toBe(false);
+    expect(plan.required_inputs.some((item) => item.name === '{#d.items}{/d.items}')).toBe(false);
+
+    const quantity = plan.required_inputs.find((item) => item.name === 'items[].quantity');
+    expect(quantity?.type).toBe('array');
+
+    const urgent = plan.required_inputs.find((item) => item.name === 'isUrgent');
+    expect(urgent?.type).toBe('boolean');
+    expect(urgent?.missing).toBe(false);
+
+    expect(plan.semantic?.mode).toBe('complex_document');
+    expect(plan.semantic?.previewReady).toBe(true);
+    expect(plan.semantic?.finalReady).toBe(false);
+    expect(plan.semantic?.groupedMissing).toEqual([
+      expect.objectContaining({
+        key: 'paymentSchedule',
+        kind: 'array_group',
+        blocking: false,
+      }),
+    ]);
+  });
 });
