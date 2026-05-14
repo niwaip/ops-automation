@@ -1504,6 +1504,7 @@ export class ExecutionService {
     requiredInputs: unknown[],
     reason?: string,
   ): Promise<void> {
+    const semantic = await this.loadExecutionSemantic(executionId);
     await this.updateStatus(executionId, EXECUTION_STATUS.WAITING_INPUT);
     await this.createEvent(
       executionId,
@@ -1511,6 +1512,7 @@ export class ExecutionService {
       {
         requiredInputs,
         reason,
+        ...(semantic ? { semantic } : {}),
       },
       {
         runtimeSessionId,
@@ -1616,6 +1618,7 @@ export class ExecutionService {
     stepId: string,
   ): Promise<void> {
     const missingInputs = this.getMissingRequiredInputs(execution);
+    const semantic = this.extractSemanticFromExecution(execution);
 
     await this.executionStepService.prepareWaitingInputStep(
       execution.id as string,
@@ -1629,11 +1632,40 @@ export class ExecutionService {
       EXECUTION_EVENT_TYPE.STEP_WAITING_INPUT,
       {
         requiredInputs: missingInputs,
+        ...(semantic ? { semantic } : {}),
       },
       {
         stepId,
       },
     );
+  }
+
+  private extractSemanticFromExecution(execution: Record<string, unknown>): Record<string, unknown> | undefined {
+    const normalizedInput = execution.normalizedInputJson as Record<string, unknown> | undefined;
+    const semantic = normalizedInput?.semantic;
+    if (semantic && typeof semantic === 'object' && !Array.isArray(semantic)) {
+      return semantic as Record<string, unknown>;
+    }
+    return undefined;
+  }
+
+  private async loadExecutionSemantic(executionId: string): Promise<Record<string, unknown> | undefined> {
+    try {
+      const row = await this.prisma.execution.findUnique({
+        where: { id: executionId },
+        select: { normalizedInputJson: true },
+      });
+      if (!row?.normalizedInputJson || typeof row.normalizedInputJson !== 'object' || Array.isArray(row.normalizedInputJson)) {
+        return undefined;
+      }
+      const semantic = (row.normalizedInputJson as Record<string, unknown>).semantic;
+      if (semantic && typeof semantic === 'object' && !Array.isArray(semantic)) {
+        return semantic as Record<string, unknown>;
+      }
+      return undefined;
+    } catch {
+      return undefined;
+    }
   }
 
   private getMissingRequiredInputs(execution: Record<string, unknown>): PlannerRequiredInput[] {
