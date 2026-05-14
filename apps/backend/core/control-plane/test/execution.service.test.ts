@@ -273,6 +273,65 @@ describe('ExecutionService.submitInputAndResume', () => {
   });
 });
 
+describe('ExecutionService waiting_input semantic passthrough', () => {
+  const createService = () => {
+    const prisma = {
+      execution: {
+        findUnique: jest.fn(),
+      },
+      executionEvent: {
+        create: jest.fn(),
+      },
+      $queryRawUnsafe: jest.fn().mockResolvedValue([]),
+      $transaction: jest.fn((operations: Array<Promise<unknown>>) => Promise.all(operations)),
+    };
+
+    const service = new ExecutionService(prisma as never, {} as never, {} as never, {} as never);
+    const serviceInternals = service as any;
+    jest.spyOn(serviceInternals, 'updateStatus').mockResolvedValue(undefined);
+    jest.spyOn(serviceInternals, 'createEvent').mockResolvedValue(undefined);
+
+    return { service, prisma };
+  };
+
+  it('includes semantic snapshot in runtime waiting_input events when available', async () => {
+    const { service, prisma } = createService();
+    const semantic = {
+      enabled: true,
+      mode: 'complex_document',
+      previewReady: true,
+      finalReady: false,
+      fallbackToFieldLevel: false,
+      groupedMissing: [],
+    };
+    prisma.execution.findUnique.mockResolvedValue({
+      normalizedInputJson: { semantic },
+    });
+
+    await (service as any).enterRuntimeWaitingInput(
+      'execution-1',
+      'runtime-1',
+      'step-1',
+      [{ name: 'url', type: 'string' }],
+      'missing fields',
+    );
+
+    expect((service as any).createEvent).toHaveBeenCalledWith(
+      'execution-1',
+      EXECUTION_EVENT_TYPE.STEP_WAITING_INPUT,
+      expect.objectContaining({
+        requiredInputs: [{ name: 'url', type: 'string' }],
+        reason: 'missing fields',
+        semantic,
+      }),
+      expect.objectContaining({
+        runtimeSessionId: 'runtime-1',
+        stepId: 'step-1',
+      }),
+    );
+  });
+});
+
 describe('ExecutionService approval flow', () => {
   const createService = () => {
     const prisma = {
