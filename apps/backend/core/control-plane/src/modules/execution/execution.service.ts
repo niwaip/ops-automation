@@ -66,6 +66,35 @@ interface PlannerSkillMatch {
   match_reason?: string;
 }
 
+interface PlannerSemanticGroupedMissing {
+  key: string;
+  label: string;
+  kind: 'field' | 'array_group';
+  blocking: boolean;
+  required: boolean;
+  fieldNames: string[];
+  missingFieldNames: string[];
+  description?: string;
+}
+
+interface PlannerSemantic {
+  enabled: boolean;
+  mode: 'field_level' | 'complex_document';
+  previewReady: boolean;
+  finalReady: boolean;
+  fallbackToFieldLevel: boolean;
+  summary?: string;
+  groupedMissing: PlannerSemanticGroupedMissing[];
+  complexity: {
+    category: 'simple' | 'complex_document';
+    totalFields: number;
+    requiredFields: number;
+    missingFields: number;
+    arrayGroups: number;
+    reasonCodes: string[];
+  };
+}
+
 interface PlannerPlanDraft {
   plan_id: string;
   planner_mode: 'skill' | 'fallback';
@@ -86,6 +115,7 @@ interface PlannerPlanDraft {
     requires_human_review: boolean;
     items: string[];
   };
+  semantic?: PlannerSemantic;
   metadata?: Record<string, unknown>;
   usage?: LLMUsage;
 }
@@ -280,6 +310,14 @@ export class ExecutionService {
             }
           : undefined,
         riskSummary: planDraft.risk_summary,
+        semantic: planDraft.semantic
+          ? {
+              mode: planDraft.semantic.mode,
+              previewReady: planDraft.semantic.previewReady,
+              finalReady: planDraft.semantic.finalReady,
+              groupedMissingCount: planDraft.semantic.groupedMissing.length,
+            }
+          : undefined,
       });
     }
 
@@ -1147,6 +1185,10 @@ export class ExecutionService {
 
     if (planDraft?.risk_summary) {
       normalizedInput.riskSummary = planDraft.risk_summary;
+    }
+
+    if (planDraft?.semantic) {
+      normalizedInput.semantic = planDraft.semantic;
     }
 
     const bootstrapUrl = this.extractBootstrapUrl(mergedInput, planDraft);

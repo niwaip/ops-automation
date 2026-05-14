@@ -209,6 +209,115 @@ describe('ChatController control-plane integration', () => {
     ]);
   });
 
+  it('prefers semantic groupedMissing when waiting_input execution contains business-group summary', async () => {
+    const { controller, controlPlaneClient } = createController();
+
+    controlPlaneClient.getExecution.mockResolvedValue({
+      id: 'execution-semantic-1',
+      status: 'waiting_input',
+      usage: { total_tokens: 18 },
+      semantic: {
+        mode: 'complex_document',
+        previewReady: false,
+        finalReady: false,
+        summary: '文档仍缺少 2 个关键业务组。',
+        groupedMissing: [
+          {
+            key: 'items',
+            label: '标的清单',
+            kind: 'array_group',
+            blocking: true,
+            required: true,
+            missingFieldNames: ['items[].deviceName', 'items[].quantity'],
+          },
+          {
+            key: 'deliveryItems',
+            label: '交付计划',
+            kind: 'array_group',
+            blocking: true,
+            required: true,
+            missingFieldNames: ['deliveryItems[].date'],
+          },
+        ],
+      },
+    });
+    controlPlaneClient.getExecutionSteps.mockResolvedValue([
+      {
+        id: 'step-input-semantic-1',
+        type: 'input_collection',
+        status: 'waiting_input',
+        inputJson: {
+          requiredInputs: [
+            {
+              name: 'items[].deviceName',
+              description: '设备名称',
+              missing: true,
+            },
+            {
+              name: 'deliveryItems[].date',
+              description: '交付日期',
+              missing: true,
+            },
+          ],
+        },
+      },
+    ]);
+
+    const events = [];
+    for await (const event of (controller as any).observeExecution(
+      'execution-semantic-1',
+      'Bearer token-semantic',
+      {
+        userId: 'user-semantic',
+        userRoles: ['employee'],
+      },
+    )) {
+      events.push(event);
+    }
+
+    expect(controlPlaneClient.streamExecutionEvents).not.toHaveBeenCalled();
+    expect(events).toEqual([
+      {
+        type: StreamEventType.WAITING_INPUT,
+        content: '任务需要你补充信息后才能继续执行。\n\n文档仍缺少 2 个关键业务组。\n\n缺少业务组：标的清单、交付计划\n\n字段兜底：items[].deviceName、deliveryItems[].date\n\n可预览：否；可正式生成：否\n\n执行单 ID: execution-semantic-1',
+        data: {
+          executionId: 'execution-semantic-1',
+          status: 'waiting_input',
+          hasBusinessResult: false,
+          missingInputs: [
+            { name: 'items[].deviceName', description: '设备名称', missing: true },
+            { name: 'deliveryItems[].date', description: '交付日期', missing: true },
+          ],
+          semantic: {
+            mode: 'complex_document',
+            previewReady: false,
+            finalReady: false,
+            summary: '文档仍缺少 2 个关键业务组。',
+            groupedMissing: [
+              {
+                key: 'items',
+                label: '标的清单',
+                kind: 'array_group',
+                blocking: true,
+                required: true,
+                missingFieldNames: ['items[].deviceName', 'items[].quantity'],
+              },
+              {
+                key: 'deliveryItems',
+                label: '交付计划',
+                kind: 'array_group',
+                blocking: true,
+                required: true,
+                missingFieldNames: ['deliveryItems[].date'],
+              },
+            ],
+          },
+          usage: { total_tokens: 18 },
+        },
+      },
+    ]);
+  });
+
   it('returns immediate pending_approval state without opening event stream', async () => {
     const { controller, controlPlaneClient } = createController();
 

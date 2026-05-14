@@ -15,6 +15,11 @@ describe('execution.mapper', () => {
       normalizedInputJson: {
         input: { prompt: 'hello' },
         __usage: { total_tokens: 10 },
+        semantic: {
+          mode: 'complex_document',
+          previewReady: true,
+          finalReady: false,
+        },
       },
       resultJson: { ok: true },
       requiresApproval: false,
@@ -30,6 +35,16 @@ describe('execution.mapper', () => {
     expect(dto.normalizedInput).toEqual({
       input: { prompt: 'hello' },
       __usage: { total_tokens: 10 },
+      semantic: {
+        mode: 'complex_document',
+        previewReady: true,
+        finalReady: false,
+      },
+    });
+    expect(dto.semantic).toEqual({
+      mode: 'complex_document',
+      previewReady: true,
+      finalReady: false,
     });
     expect(dto.usage).toEqual({ total_tokens: 10 });
     expect(dto.result).toEqual({ ok: true });
@@ -57,8 +72,7 @@ describe('execution.mapper', () => {
     });
 
     expect(dto.id).toBe('step-1');
-    expect(dto.target).toEqual({ url: 'https://example.com' });
-    expect(dto.output).toEqual({ success: true });
-    expect(dto.assertion).toEqual({ expected: true });
+    expect(dto.inputJson).toEqual({ url: 'https://example.com' });
+    expect(dto.outputJson).toEqual({ success: true });
   });
 });

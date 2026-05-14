@@ -129,6 +129,10 @@ export class ExecutionDto {
 
   @ApiProperty({ required: false })
   @IsOptional()
+  semantic?: Record<string, unknown> | null;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
   result?: Record<string, unknown> | null;
 
   @ApiProperty({ required: false })

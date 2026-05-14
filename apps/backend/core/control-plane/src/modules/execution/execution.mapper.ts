@@ -16,6 +16,10 @@ export const mapExecutionToDto = (
     (normalizedInput && typeof normalizedInput === 'object'
       ? (normalizedInput.__usage as Record<string, unknown> | undefined)
       : undefined) || null;
+  const semantic =
+    (normalizedInput && typeof normalizedInput === 'object'
+      ? (normalizedInput.semantic as Record<string, unknown> | undefined)
+      : undefined) || null;
 
   return {
     id: execution.id as string,
@@ -36,6 +40,7 @@ export const mapExecutionToDto = (
     normalizedInputJson: normalizedInput,
     input,
     normalizedInput,
+    semantic,
     result,
     usage,
     failureCode: execution.failureCode as string | null,

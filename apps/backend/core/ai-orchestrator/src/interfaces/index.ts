@@ -282,6 +282,37 @@ export interface RiskSummaryDTO {
   items: string[];
 }
 
+export interface SemanticGroupedMissingDTO {
+  key: string;
+  label: string;
+  kind: 'field' | 'array_group';
+  blocking: boolean;
+  required: boolean;
+  fieldNames: string[];
+  missingFieldNames: string[];
+  description?: string;
+}
+
+export interface PlanSemanticComplexityDTO {
+  category: 'simple' | 'complex_document';
+  totalFields: number;
+  requiredFields: number;
+  missingFields: number;
+  arrayGroups: number;
+  reasonCodes: string[];
+}
+
+export interface PlanSemanticDTO {
+  enabled: boolean;
+  mode: 'field_level' | 'complex_document';
+  previewReady: boolean;
+  finalReady: boolean;
+  fallbackToFieldLevel: boolean;
+  summary?: string;
+  groupedMissing: SemanticGroupedMissingDTO[];
+  complexity: PlanSemanticComplexityDTO;
+}
+
 export interface PlanDraftDTO {
   plan_id: string;
   planner_mode: 'skill' | 'fallback';
@@ -290,6 +321,7 @@ export interface PlanDraftDTO {
   skill_match?: PlanSkillMatchDTO;
   steps: PlanStepDTO[];
   required_inputs: RequiredInputDTO[];
+  semantic?: PlanSemanticDTO;
   usage?: LLMUsage;
   risk_summary: RiskSummaryDTO;
   metadata?: Record<string, unknown>;

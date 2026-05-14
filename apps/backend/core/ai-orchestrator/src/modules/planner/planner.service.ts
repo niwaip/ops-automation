@@ -5,9 +5,11 @@ import { getAuthServiceUrl } from '../../config/service-endpoints';
 import {
   GeneratePlanDTO,
   PlanDraftDTO,
+  PlanSemanticDTO,
   PlanSkillMatchDTO,
   PlanStepDTO,
   RequiredInputDTO,
+  SemanticGroupedMissingDTO,
   LLMUsage,
 } from '../../interfaces';
 import { TRACE_ID_HEADER } from '../../common/trace.util';
@@ -24,6 +26,16 @@ type ExecutionFlowTemplateResponse = {
     properties?: Record<string, unknown>;
     required?: string[];
   };
+};
+
+const DOCUMENT_SEMANTIC_ENABLED = (process.env.DOCUMENT_SEMANTIC_SUBAGENT_ENABLED || 'true').toLowerCase() !== 'false';
+const DOCUMENT_COMPLEX_PARAM_THRESHOLD = Number(process.env.DOCUMENT_SEMANTIC_PARAM_THRESHOLD || 8);
+const DOCUMENT_COMPLEX_MISSING_THRESHOLD = Number(process.env.DOCUMENT_SEMANTIC_MISSING_THRESHOLD || 4);
+const DOCUMENT_COMPLEX_ARRAY_GROUP_THRESHOLD = Number(process.env.DOCUMENT_SEMANTIC_ARRAY_GROUP_THRESHOLD || 2);
+const BUSINESS_GROUP_LABELS: Record<string, string> = {
+  items: '标的清单',
+  deliveryItems: '交付计划',
+  paymentSchedule: '付款计划',
 };
 
 @Injectable()
@@ -78,14 +90,21 @@ export class PlannerService {
     // 累积消耗
     const totalUsage = this.sumUsage(matchedSkill.usage, recognized.usage);
 
-    const requiredInputs = this.buildRequiredInputs(matchedSkill, recognized.params);
+    const semanticContext = this.buildDocumentSemanticContext(
+      matchedSkill,
+      this.buildRequiredInputs(matchedSkill, recognized.params),
+    );
+    const requiredInputs = semanticContext.requiredInputs;
     const steps = this.buildPlanSteps(matchedSkill, requiredInputs);
     const missingInputs = requiredInputs.filter((item) => item.missing);
     // Missing required inputs should be handled by waiting_input, not approval.
     const requiresHumanReview = false;
-    const summary = missingInputs.length > 0
+    const baseSummary = missingInputs.length > 0
       ? `已识别技能 ${matchedSkill.skillName}，但仍缺少 ${missingInputs.length} 个关键输入。`
       : `已识别技能 ${matchedSkill.skillName}，可以按计划进入执行。`;
+    const summary = semanticContext.semantic?.summary
+      ? `${baseSummary} ${semanticContext.semantic.summary}`
+      : baseSummary;
 
     return {
       plan_id: uuidv4(),
@@ -95,6 +114,7 @@ export class PlannerService {
       skill_match: this.toPlanSkillMatch(matchedSkill),
       steps,
       required_inputs: requiredInputs,
+      semantic: semanticContext.semantic,
       usage: totalUsage,
       risk_summary: {
         level: missingInputs.length > 0 ? 'medium' : 'low',
@@ -114,6 +134,7 @@ export class PlannerService {
             ...(matchedSkill.debug?.notes || []),
             ...(recognized.debug?.notes || []),
           ],
+          semanticDebug: semanticContext.debug,
         },
       },
     };
@@ -489,6 +510,228 @@ export class PlannerService {
         source: hasValue ? 'user_input' : canUseDefault && value !== undefined ? 'default' : 'unresolved',
       };
     });
+  }
+
+  private buildDocumentSemanticContext(
+    matchedSkill: SkillMatchResult,
+    requiredInputs: RequiredInputDTO[],
+  ): {
+    requiredInputs: RequiredInputDTO[];
+    semantic?: PlanSemanticDTO;
+    debug: Record<string, unknown>;
+  } {
+    const isDocumentTask = this.isDocumentTask(matchedSkill);
+    if (!isDocumentTask) {
+      return {
+        requiredInputs,
+        semantic: undefined,
+        debug: {
+          enabled: DOCUMENT_SEMANTIC_ENABLED,
+          isDocumentTask: false,
+        },
+      };
+    }
+
+    const complexity = this.analyzeDocumentComplexity(requiredInputs);
+    const shouldUseSemanticBypass =
+      DOCUMENT_SEMANTIC_ENABLED && complexity.category === 'complex_document';
+    const cleanedRequiredInputs = shouldUseSemanticBypass
+      ? this.cleanRequiredInputs(requiredInputs)
+      : requiredInputs;
+    const semantic = DOCUMENT_SEMANTIC_ENABLED
+      ? this.buildPlanSemantic(cleanedRequiredInputs, complexity, shouldUseSemanticBypass)
+      : undefined;
+
+    return {
+      requiredInputs: cleanedRequiredInputs,
+      semantic,
+      debug: {
+        enabled: DOCUMENT_SEMANTIC_ENABLED,
+        isDocumentTask,
+        shouldUseSemanticBypass,
+        complexity,
+        originalFieldCount: requiredInputs.length,
+        cleanedFieldCount: cleanedRequiredInputs.length,
+      },
+    };
+  }
+
+  private isDocumentTask(matchedSkill: SkillMatchResult): boolean {
+    return matchedSkill.apiEndpoints?.runtimeMetadata?.sourceType === 'document'
+      || matchedSkill.executionFlow?.includes('generate_parameters')
+      || matchedSkill.executionFlow?.includes('document_render')
+      || Boolean(matchedSkill.carboneTemplateId)
+      || Boolean(matchedSkill.executionFlowTemplateIds?.length);
+  }
+
+  private analyzeDocumentComplexity(requiredInputs: RequiredInputDTO[]): PlanSemanticDTO['complexity'] {
+    const requiredFields = requiredInputs.filter((item) => item.required).length;
+    const missingFields = requiredInputs.filter((item) => item.required && item.missing).length;
+    const arrayGroups = new Set(
+      requiredInputs
+        .map((item) => this.extractArrayGroupKey(item.name, item.type))
+        .filter((item): item is string => Boolean(item)),
+    ).size;
+    const reasonCodes: string[] = [];
+
+    if (requiredInputs.length >= DOCUMENT_COMPLEX_PARAM_THRESHOLD) {
+      reasonCodes.push('param_count_threshold');
+    }
+    if (missingFields >= DOCUMENT_COMPLEX_MISSING_THRESHOLD) {
+      reasonCodes.push('missing_input_threshold');
+    }
+    if (arrayGroups >= DOCUMENT_COMPLEX_ARRAY_GROUP_THRESHOLD) {
+      reasonCodes.push('array_group_threshold');
+    }
+
+    return {
+      category: reasonCodes.length > 0 ? 'complex_document' : 'simple',
+      totalFields: requiredInputs.length,
+      requiredFields,
+      missingFields,
+      arrayGroups,
+      reasonCodes,
+    };
+  }
+
+  private cleanRequiredInputs(requiredInputs: RequiredInputDTO[]): RequiredInputDTO[] {
+    const seen = new Set<string>();
+
+    return requiredInputs.reduce<RequiredInputDTO[]>((acc, item) => {
+      if (this.isTemplateLoopMarker(item) || this.isTechnicalNoiseField(item)) {
+        return acc;
+      }
+
+      if (seen.has(item.name)) {
+        return acc;
+      }
+      seen.add(item.name);
+
+      acc.push({
+        ...item,
+        type: this.normalizeRequiredInputType(item.name, item.type),
+      });
+      return acc;
+    }, []);
+  }
+
+  private isTemplateLoopMarker(item: RequiredInputDTO): boolean {
+    const values = [item.name, item.description || ''];
+    return values.some((value) => /\{#.+\}|\{\/.+\}/.test(value));
+  }
+
+  private isTechnicalNoiseField(item: RequiredInputDTO): boolean {
+    const normalizedName = item.name.toLowerCase();
+    if (normalizedName.includes('__') || normalizedName.includes('loop') || normalizedName.includes('foreach')) {
+      return true;
+    }
+
+    return /(^|\.)(index|idx|rowindex|colindex|length)$/.test(normalizedName);
+  }
+
+  private normalizeRequiredInputType(name: string, rawType: string): RequiredInputDTO['type'] {
+    const normalizedType = String(rawType || 'string').toLowerCase();
+    if (this.extractArrayGroupKey(name, normalizedType)) {
+      return 'array';
+    }
+    if (normalizedType === 'int' || normalizedType === 'integer' || normalizedType === 'float') {
+      return 'number';
+    }
+    if (normalizedType === 'bool') {
+      return 'boolean';
+    }
+    if (normalizedType === 'json') {
+      return 'object';
+    }
+    if (['string', 'number', 'boolean', 'object', 'array', 'date'].includes(normalizedType)) {
+      return normalizedType;
+    }
+    return 'string';
+  }
+
+  private buildPlanSemantic(
+    requiredInputs: RequiredInputDTO[],
+    complexity: PlanSemanticDTO['complexity'],
+    shouldUseSemanticBypass: boolean,
+  ): PlanSemanticDTO {
+    const groupedMissing = this.buildGroupedMissing(requiredInputs);
+    const blockingGroups = groupedMissing.filter((item) => item.blocking);
+    const previewReady = blockingGroups.length === 0;
+    const finalReady = groupedMissing.length === 0;
+
+    return {
+      enabled: true,
+      mode: shouldUseSemanticBypass ? 'complex_document' : 'field_level',
+      previewReady,
+      finalReady,
+      fallbackToFieldLevel: !shouldUseSemanticBypass,
+      summary: finalReady
+        ? '文档参数已满足最终渲染要求。'
+        : previewReady
+          ? `文档可以先进入预览，但仍缺少 ${groupedMissing.length} 个业务组。`
+          : `文档仍缺少 ${blockingGroups.length} 个关键业务组。`,
+      groupedMissing,
+      complexity,
+    };
+  }
+
+  private buildGroupedMissing(requiredInputs: RequiredInputDTO[]): SemanticGroupedMissingDTO[] {
+    const missingRequiredInputs = requiredInputs.filter((item) => item.required && item.missing);
+    const groups = new Map<string, SemanticGroupedMissingDTO>();
+
+    missingRequiredInputs.forEach((item) => {
+      const arrayGroupKey = this.extractArrayGroupKey(item.name, item.type);
+      const key = arrayGroupKey || item.name;
+      const existing = groups.get(key);
+      const kind = arrayGroupKey ? 'array_group' as const : 'field' as const;
+      const label = arrayGroupKey ? this.resolveBusinessGroupLabel(arrayGroupKey) : item.description || item.name;
+
+      if (existing) {
+        existing.fieldNames.push(item.name);
+        existing.missingFieldNames.push(item.name);
+        return;
+      }
+
+      groups.set(key, {
+        key,
+        label,
+        kind,
+        blocking: this.isPreviewBlockingGroup(key),
+        required: true,
+        fieldNames: [item.name],
+        missingFieldNames: [item.name],
+        description: kind === 'array_group'
+          ? `请按业务组补充 ${label}`
+          : item.description || `请补充 ${label}`,
+      });
+    });
+
+    return Array.from(groups.values());
+  }
+
+  private extractArrayGroupKey(name: string, type?: string): string | undefined {
+    const arrayPathMatch = name.match(/^([a-zA-Z0-9_]+)\[\]/);
+    if (arrayPathMatch?.[1]) {
+      return arrayPathMatch[1];
+    }
+
+    if (String(type || '').toLowerCase() === 'array') {
+      return name;
+    }
+
+    if (/^[a-zA-Z0-9_]+(items|list|schedule|details)$/i.test(name)) {
+      return name;
+    }
+
+    return undefined;
+  }
+
+  private resolveBusinessGroupLabel(groupKey: string): string {
+    return BUSINESS_GROUP_LABELS[groupKey] || groupKey;
+  }
+
+  private isPreviewBlockingGroup(groupKey: string): boolean {
+    return !['paymentSchedule', 'supplementaryTerms', 'notes', 'remarks'].includes(groupKey);
   }
 
   private buildPlanSteps(
