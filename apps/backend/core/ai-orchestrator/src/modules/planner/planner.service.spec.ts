@@ -267,6 +267,99 @@ describe('PlannerService - required inputs without hardcoded defaults', () => {
     );
   });
 
+  it('treats temporal_workflow skills with template loop markers as document tasks', async () => {
+    const skill: AvailableSkillDefinition = {
+      skillId: 'purchase-contract',
+      skillName: '采购合同渲染',
+      description: 'Temporal workflow that renders document',
+      triggerKeywords: ['采购合同'],
+      paramsSchema: {
+        properties: {
+          '{#d.items}{/d.items}': {
+            type: 'string',
+            description: 'template loop marker',
+            required: true,
+          } as any,
+          'items[].deviceName': {
+            type: 'string',
+            description: '设备名称',
+            required: true,
+          } as any,
+          'deliveryItems[].date': {
+            type: 'string',
+            description: '交付日期',
+            required: true,
+          } as any,
+        },
+        required: [
+          '{#d.items}{/d.items}',
+          'items[].deviceName',
+          'deliveryItems[].date',
+        ],
+      },
+      templateId: 'tpl-contract',
+      carboneTemplateId: undefined,
+      carboneSkillId: undefined,
+      executionFlowTemplateIds: [],
+      executionFlow: [],
+      apiEndpoints: {
+        runtimeMetadata: {
+          sourceType: 'temporal_workflow',
+        },
+      } as any,
+      goal: 'Render contract',
+      expectedResult: 'Contract document',
+      outputParams: undefined,
+    };
+
+    const match: SkillMatchResult = {
+      skillId: skill.skillId,
+      skillName: skill.skillName,
+      matchedKeywords: ['采购合同'],
+      confidence: 0.95,
+      collectedParams: {},
+      missingParams: skill.paramsSchema.required as string[],
+      paramsSchema: skill.paramsSchema,
+      templateId: skill.templateId,
+      carboneTemplateId: undefined,
+      carboneSkillId: undefined,
+      executionFlowTemplateIds: [],
+      executionFlow: [],
+      apiEndpoints: skill.apiEndpoints,
+      matchReason: 'test',
+      goal: skill.goal,
+      expectedResult: skill.expectedResult,
+      outputParams: undefined,
+    };
+
+    jest
+      .spyOn(service as any, 'loadAvailableSkills')
+      .mockResolvedValue([skill] as AvailableSkillDefinition[]);
+    jest.spyOn(service as any, 'matchSkill').mockResolvedValue(match);
+    jest.spyOn(recognizerService, 'recognizeParams').mockResolvedValue({
+      params: {},
+      confidence: 0.1,
+    });
+
+    const plan = await service.generatePlan({
+      request: { user_input: '创建采购合同', user_id: 'u1', modelId: 'selected-model-id' } as any,
+      userId: 'u1',
+      authToken: 'Bearer test',
+      traceId: 'trace-1',
+    });
+
+    expect(plan.semantic?.mode).toBe('complex_document');
+    expect(plan.required_inputs.some((item) => item.name === '{#d.items}{/d.items}')).toBe(false);
+    expect(plan.semantic?.groupedMissing).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          key: 'items',
+          kind: 'array_group',
+        }),
+      ]),
+    );
+  });
+
   it('keeps previewReady true when only non-blocking groups are missing and cleans technical noise/types', async () => {
     const skill: AvailableSkillDefinition = {
       skillId: 'document-contract',

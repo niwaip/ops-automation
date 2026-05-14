@@ -557,11 +557,20 @@ export class PlannerService {
   }
 
   private isDocumentTask(matchedSkill: SkillMatchResult): boolean {
+    const schemaProperties = matchedSkill.paramsSchema?.properties || {};
+    const hasTemplateLoopMarkers = Object.entries(schemaProperties).some(([name, schema]) => {
+      const description = schema && typeof schema === 'object'
+        ? String((schema as unknown as { description?: unknown }).description || '')
+        : '';
+      return [name, description].some((value) => /\{#.+\}|\{\/.+\}/.test(value));
+    });
+
     return matchedSkill.apiEndpoints?.runtimeMetadata?.sourceType === 'document'
       || matchedSkill.executionFlow?.includes('generate_parameters')
       || matchedSkill.executionFlow?.includes('document_render')
       || Boolean(matchedSkill.carboneTemplateId)
-      || Boolean(matchedSkill.executionFlowTemplateIds?.length);
+      || Boolean(matchedSkill.executionFlowTemplateIds?.length)
+      || hasTemplateLoopMarkers;
   }
 
   private analyzeDocumentComplexity(requiredInputs: RequiredInputDTO[]): PlanSemanticDTO['complexity'] {
