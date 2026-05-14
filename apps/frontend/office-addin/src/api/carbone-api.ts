@@ -16,6 +16,11 @@ function getAxiosConfig(_url: string, options: AxiosRequestConfig = {}): AxiosRe
   return config;
 }
 
+function isDraftDocumentTemplate(template: { fileName?: string }): boolean {
+  const fileName = String(template.fileName || '').trim().toLowerCase();
+  return fileName.startsWith('draft-');
+}
+
 export interface DocumentStructure {
   elements: Array<{
     type: string;
@@ -439,7 +444,10 @@ class CarboneAPI {
       `${this.baseUrl}/studio/templates`,
       getAxiosConfig(this.baseUrl)
     );
-    return response.data;
+    return {
+      ...response.data,
+      templates: (response.data.templates || []).filter((template: { fileName?: string }) => !isDraftDocumentTemplate(template)),
+    };
   }
 
   /**

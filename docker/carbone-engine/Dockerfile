@@ -3,8 +3,9 @@
 
 FROM docker.1ms.run/library/node:20-bullseye
 
-# Install LibreOffice and other dependencies
-RUN apt-get update && apt-get install -y --no-install-recommends \
+# Install LibreOffice with retries because Debian mirrors can close long downloads.
+RUN apt-get -o Acquire::Retries=5 update \
+    && apt-get -o Acquire::Retries=5 install -y --fix-missing --no-install-recommends \
     libreoffice-writer \
     libreoffice-calc \
     libreoffice-impress \

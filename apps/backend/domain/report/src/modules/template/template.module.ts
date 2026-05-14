@@ -1,11 +1,10 @@
 import { Module } from '@nestjs/common';
-import { TypeOrmModule } from '@nestjs/typeorm';
-import { ReportTemplateEntity } from './template.entity';
 import { TemplateService } from './template.service';
 import { TemplateController } from './template.controller';
+import { PrismaModule } from '../../prisma/prisma.module';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([ReportTemplateEntity])],
+  imports: [PrismaModule],
   controllers: [TemplateController],
   providers: [TemplateService],
   exports: [TemplateService],

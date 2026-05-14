@@ -7,6 +7,10 @@ import { buildOfficeAddinUrl } from '../config/runtime';
 const { Title, Text } = Typography;
 const OFFICE_ADDIN_TASKPANE_URL = buildOfficeAddinUrl('/taskpane.html');
 const OFFICE_ADDIN_DOWNLOAD_URL = buildOfficeAddinUrl('/download');
+const isDraftDocumentTemplate = (template: CarboneTemplate): boolean => {
+  const fileName = String(template.fileName || '').trim().toLowerCase();
+  return fileName.startsWith('draft-');
+};
 
 const CarboneTemplateListPage: React.FC = () => {
   const [templates, setTemplates] = useState<CarboneTemplate[]>([]);
@@ -25,8 +29,10 @@ const CarboneTemplateListPage: React.FC = () => {
     setLoading(true);
     try {
       const response = await carboneAPI.getTemplates();
-      // Ensure response is an array
-      const templatesData = Array.isArray(response) ? response : [];
+      // Hide temporary draft copies created during document templating.
+      const templatesData = (Array.isArray(response) ? response : []).filter(
+        (template) => !isDraftDocumentTemplate(template),
+      );
       setTemplates(templatesData);
     } catch (error: any) {
       message.error('加载模板列表失败: ' + (error.message || '未知错误'));

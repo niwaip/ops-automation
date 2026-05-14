@@ -26,6 +26,9 @@ import { PreviewService } from './preview.service';
 import { AIIdentifierService, AIIdentifyResponse } from './ai-identifier.service';
 import { DocumentStructureService, DocumentStructure } from './document-structure.service';
 import { TemplateResponse, RenderResponse } from './studio.types';
+import { TemplateRepository } from './template.repository';
+import { SkillRepository } from './skill.repository';
+import { RenderOutputRepository } from './render-output.repository';
 
 // DTOs with proper initialization
 export class UploadTemplateDto {
@@ -148,7 +151,10 @@ export class StudioController {
   constructor(
     private readonly previewService: PreviewService,
     private readonly aiIdentifierService: AIIdentifierService,
-    private readonly documentStructureService: DocumentStructureService
+    private readonly documentStructureService: DocumentStructureService,
+    private readonly templateRepository: TemplateRepository,
+    private readonly skillRepository: SkillRepository,
+    private readonly renderOutputRepository: RenderOutputRepository,
   ) {
     this.engine = new CarboneEngine();
     this.templatesDir = process.env.TEMPLATES_DIR || path.join(process.cwd(), 'templates');
@@ -286,13 +292,248 @@ export class StudioController {
     return this.isPlainObject(raw) ? raw : null;
   }
 
+  private buildHydratedSkillSampleData(skill: any): Record<string, any> | null {
+    const seedData = this.getPreviewSeedDataFromSkill(skill);
+    const generatedData = this.generateSimulatedData(skill);
+
+    if (seedData && this.hasNonEmptySampleData(generatedData)) {
+      const merged = this.normalizeRenderData(JSON.parse(JSON.stringify(seedData)));
+      this.mergeObjects(merged, generatedData);
+      return merged;
+    }
+
+    if (seedData) {
+      return this.normalizeRenderData(seedData);
+    }
+
+    return this.hasNonEmptySampleData(generatedData) ? generatedData : null;
+  }
+
+  private extractLoopsFromMeta(meta: Record<string, any>): Array<{ arrayPath: string }> {
+    const seen = new Set<string>();
+    const loops: Array<{ arrayPath: string }> = [];
+    const addLoop = (arrayPath: unknown) => {
+      if (typeof arrayPath !== 'string') {
+        return;
+      }
+      const normalized = arrayPath.trim();
+      if (!normalized || seen.has(normalized)) {
+        return;
+      }
+      seen.add(normalized);
+      loops.push({ arrayPath: normalized });
+    };
+
+    const configs = [meta.templateConfig, meta.config];
+    for (const config of configs) {
+      if (!this.isPlainObject(config)) {
+        continue;
+      }
+
+      if (Array.isArray(config.tableLoops)) {
+        for (const loop of config.tableLoops) {
+          if (this.isPlainObject(loop)) {
+            addLoop(loop.arrayPath);
+          }
+        }
+      }
+
+      if (Array.isArray(config.loops)) {
+        for (const loop of config.loops) {
+          if (typeof loop === 'string') {
+            addLoop(loop);
+          } else if (this.isPlainObject(loop)) {
+            addLoop(loop.arrayPath);
+          }
+        }
+      }
+    }
+
+    if (Array.isArray(meta.suggestions)) {
+      for (const suggestion of meta.suggestions) {
+        if (!this.isPlainObject(suggestion) || suggestion.type !== 'loop') {
+          continue;
+        }
+        if (this.isPlainObject(suggestion.details)) {
+          addLoop(suggestion.details.arrayPath);
+        }
+      }
+    }
+
+    return loops;
+  }
+
+  private hasNonEmptySampleData(value: unknown): boolean {
+    return this.isPlainObject(value) && Object.keys(value).length > 0;
+  }
+
+  private countDeclaredVariables(meta: TemplateResponse): number {
+    return Array.isArray(meta.variables) ? meta.variables.length : 0;
+  }
+
+  private hasUsableTemplateConfig(config: Record<string, any>): boolean {
+    return Array.isArray(config.variableMappings)
+      || Array.isArray(config.tableLoops)
+      || Array.isArray(config.combinedVariables)
+      || Array.isArray(config.mappings);
+  }
+
+  private async generateTemplateSampleData(
+    meta: TemplateResponse,
+    templateInfo: TemplateInfoForValidation,
+    config: Record<string, any>,
+    rowCount: number,
+  ): Promise<Record<string, any>> {
+    if (config && Object.keys(config).length > 0 && this.hasUsableTemplateConfig(config)) {
+      return this.engine.generateSampleDataFromConfig(config, config.tableLoops?.[0]?.dataRowCount || rowCount, true);
+    }
+
+    const parsedSampleData = this.engine.generateSampleData(templateInfo, rowCount);
+    const parsedVariableCount = Array.isArray(templateInfo.variables) ? templateInfo.variables.length : 0;
+    const declaredVariableCount = this.countDeclaredVariables(meta);
+    const hasComparableCoverage = declaredVariableCount === 0 || parsedVariableCount >= declaredVariableCount;
+
+    if (this.hasNonEmptySampleData(parsedSampleData) && hasComparableCoverage) {
+      return parsedSampleData;
+    }
+
+    if (typeof meta.skillId === 'string') {
+      const skill = await this.getSkillWithDbFallback(meta.skillId);
+      if (skill) {
+        const seedData = this.buildHydratedSkillSampleData(skill);
+        if (seedData) {
+          return seedData;
+        }
+
+        const simulatedData = this.generateSimulatedData(skill);
+        if (this.hasNonEmptySampleData(simulatedData)) {
+          return simulatedData;
+        }
+      }
+    }
+
+    return parsedSampleData;
+  }
+
+  private listTemplateMetasFromFiles(): TemplateResponse[] {
+    const templates: TemplateResponse[] = [];
+    const files = fs.readdirSync(this.templatesDir);
+
+    for (const file of files) {
+      if (file.endsWith('.json') && !file.startsWith('skill_')) {
+        const meta = JSON.parse(fs.readFileSync(path.join(this.templatesDir, file), 'utf-8'));
+        templates.push(meta);
+      }
+    }
+
+    return templates;
+  }
+
+  private async getTemplateMetaWithDbFallback(id: string): Promise<TemplateResponse> {
+    const dbMeta = await this.templateRepository.findById(id);
+    return dbMeta ?? this.getTemplateMeta(id);
+  }
+
+  private async listTemplateMetasWithDbFallback(): Promise<TemplateResponse[]> {
+    const dbTemplates = await this.templateRepository.list();
+    return dbTemplates.length > 0 ? dbTemplates : this.listTemplateMetasFromFiles();
+  }
+
+  private async getSkillWithDbFallback(id: string): Promise<Record<string, unknown> | null> {
+    const dbSkill = await this.skillRepository.findById(id);
+    if (dbSkill) {
+      return dbSkill;
+    }
+
+    const legacyCandidates = [
+      path.join(this.templatesDir, `skill_${id}.json`),
+      path.join(this.templatesDir, 'skills', `${id}.json`),
+    ];
+
+    for (const skillPath of legacyCandidates) {
+      if (fs.existsSync(skillPath)) {
+        return JSON.parse(fs.readFileSync(skillPath, 'utf-8')) as Record<string, unknown>;
+      }
+    }
+
+    return null;
+  }
+
+  private async syncTemplateMetaToDb(
+    id: string,
+    meta: Record<string, any> & { format: string },
+    filePath?: string,
+  ): Promise<void> {
+    try {
+      await this.templateRepository.upsertFromMeta(
+        id,
+        filePath ?? path.join(this.templatesDir, `${id}.${meta.format}`),
+        meta,
+      );
+    } catch (error) {
+      console.warn(`Failed to sync template ${id} to database`, error);
+    }
+  }
+
+  private async syncTemplateMarkingsToDb(id: string, updatedMeta: Record<string, any>): Promise<void> {
+    try {
+      await this.templateRepository.updateMarkings(id, {
+        markings: updatedMeta.markings,
+        ignoredElements: updatedMeta.ignoredElements,
+        elementGroups: updatedMeta.elementGroups,
+        ignoredGroups: updatedMeta.ignoredGroups,
+        savedAt: new Date(updatedMeta.savedAt),
+      });
+    } catch (error) {
+      console.warn(`Failed to sync template markings for ${id} to database`, error);
+    }
+  }
+
+  private async syncTemplateConfigToDb(id: string, templateConfig: unknown, savedAt: string): Promise<void> {
+    try {
+      await this.templateRepository.updateConfig(id, templateConfig, new Date(savedAt));
+    } catch (error) {
+      console.warn(`Failed to sync template config for ${id} to database`, error);
+    }
+  }
+
+  private async syncSkillToDb(skill: Record<string, unknown>, templateId?: string): Promise<void> {
+    try {
+      await this.skillRepository.upsertFromDocument(skill, templateId);
+    } catch (error) {
+      console.warn(`Failed to sync skill ${String(skill.id ?? '')} to database`, error);
+    }
+  }
+
+  private async syncRenderOutputToDb(meta: Record<string, any>, filePath: string): Promise<void> {
+    try {
+      await this.renderOutputRepository.createFromMeta(meta as {
+        id: string;
+        templateId?: string;
+        markedTemplateId?: string;
+        skillId?: string;
+        fileName: string;
+        format: string;
+        size?: number;
+        params?: unknown;
+        sampleData?: unknown;
+        simulatedData?: unknown;
+        debugLogs?: unknown;
+        renderedAt?: string;
+        createdAt?: string;
+      }, filePath);
+    } catch (error) {
+      console.warn(`Failed to sync render output ${String(meta.id ?? '')} to database`, error);
+    }
+  }
+
   /**
    * 获取模板信息
    */
   @Get('templates/:id')
   @ApiOperation({ summary: 'Get template information' })
   async getTemplate(@Param('id') id: string): Promise<TemplateResponse> {
-    return this.getTemplateMeta(id);
+    return this.getTemplateMetaWithDbFallback(id);
   }
 
   /**
@@ -301,7 +542,7 @@ export class StudioController {
   @Get('templates/:id/variables')
   @ApiOperation({ summary: 'Get template variables' })
   async getVariables(@Param('id') id: string): Promise<{ variables: string[] }> {
-    const meta = this.getTemplateMeta(id);
+    const meta = await this.getTemplateMetaWithDbFallback(id);
     return { variables: meta.variables };
   }
 
@@ -311,7 +552,7 @@ export class StudioController {
   @Get('templates/:id/loops')
   @ApiOperation({ summary: 'Get template loop configurations' })
   async getLoops(@Param('id') id: string): Promise<{ loops: Array<{ arrayPath: string }> }> {
-    const meta = this.getTemplateMeta(id);
+    const meta = await this.getTemplateMetaWithDbFallback(id);
     return { loops: meta.loops };
   }
 
@@ -351,15 +592,17 @@ export class StudioController {
       fs.writeFileSync(outputPath, outputBuffer);
 
       // 保存输出元数据
-      const outputMetaPath = path.join(this.outputsDir, `${outputId}.json`);
-      fs.writeFileSync(outputMetaPath, JSON.stringify({
+      const outputMeta = {
         id: outputId,
         templateId: dto.templateId,
         fileName: outputFileName,
         format: outputFormat,
         size: outputBuffer.length,
-        renderedAt: new Date().toISOString()
-      }));
+        renderedAt: new Date().toISOString(),
+      };
+      const outputMetaPath = path.join(this.outputsDir, `${outputId}.json`);
+      fs.writeFileSync(outputMetaPath, JSON.stringify(outputMeta));
+      await this.syncRenderOutputToDb(outputMeta, outputPath);
 
       return {
         downloadUrl: `/studio/download/${outputId}`,
@@ -383,17 +626,8 @@ export class StudioController {
   @ApiOperation({ summary: 'Render document based on skill and params' })
   @ApiBody({ type: RenderWithSkillDto })
   async renderWithSkill(@Body() dto: RenderWithSkillDto): Promise<RenderResponse> {
-    // 从Skill元数据获取模板ID
-    const skillMetaPath = path.join(this.templatesDir, `skills`, `${dto.skillId}.json`);
-    let templateId: string;
-
-    if (fs.existsSync(skillMetaPath)) {
-      const skillMeta = JSON.parse(fs.readFileSync(skillMetaPath, 'utf-8'));
-      templateId = skillMeta.templateId || dto.skillId;
-    } else {
-      // 直接使用skillId作为templateId
-      templateId = dto.skillId;
-    }
+    const skillMeta = await this.getSkillWithDbFallback(dto.skillId);
+    const templateId = typeof skillMeta?.templateId === 'string' ? skillMeta.templateId : dto.skillId;
 
     const meta = this.getTemplateMeta(templateId);
     const templatePath = path.join(this.templatesDir, `${templateId}.${meta.format}`);
@@ -419,8 +653,7 @@ export class StudioController {
       fs.writeFileSync(outputPath, outputBuffer);
 
       // 保存输出元数据
-      const outputMetaPath = path.join(this.outputsDir, `${outputId}.json`);
-      fs.writeFileSync(outputMetaPath, JSON.stringify({
+      const outputMeta = {
         id: outputId,
         templateId,
         skillId: dto.skillId,
@@ -428,8 +661,11 @@ export class StudioController {
         format: outputFormat,
         size: outputBuffer.length,
         params: dto.params,
-        renderedAt: new Date().toISOString()
-      }));
+        renderedAt: new Date().toISOString(),
+      };
+      const outputMetaPath = path.join(this.outputsDir, `${outputId}.json`);
+      fs.writeFileSync(outputMetaPath, JSON.stringify(outputMeta));
+      await this.syncRenderOutputToDb(outputMeta, outputPath);
 
       return {
         downloadUrl: `/studio/download/${outputId}`,
@@ -649,7 +885,7 @@ export class StudioController {
     sampleData?: any;
     markedTemplateId?: string;
   }> {
-    const meta = this.getTemplateMeta(dto.templateId);
+    const meta = await this.getTemplateMetaWithDbFallback(dto.templateId);
 
     // 检查是否有保存的验证结果和示例数据
     const verifyResult = (meta as any).verifyResult;
@@ -659,7 +895,7 @@ export class StudioController {
     let templatePath = path.join(this.templatesDir, `${dto.templateId}.${meta.format}`);
     let templateBuffer: Buffer = fs.readFileSync(templatePath);
     let config = meta.templateConfig || {};
-    let markedTemplateId = (meta as any).markedTemplateId || (dto.data as any)?.markedTemplateId;
+    let markedTemplateId = verifyResult?.markedTemplateId || (meta as any).markedTemplateId || (dto.data as any)?.markedTemplateId;
 
     if (markedTemplateId) {
       const markedMetaPath = path.join(this.templatesDir, `${markedTemplateId}.json`);
@@ -690,12 +926,7 @@ export class StudioController {
     // 使用保存的示例数据，如果没有则生成新的
     let sampleData = savedSampleData;
     if (!sampleData) {
-      // 使用模版配置生成模拟数据
-      if (config && Object.keys(config).length > 0) {
-        sampleData = this.engine.generateSampleDataFromConfig(config, config.tableLoops?.[0]?.dataRowCount || 8, true);
-      } else {
-        sampleData = this.engine.generateSampleData(templateInfo, 8);
-      }
+      sampleData = await this.generateTemplateSampleData(meta, templateInfo, config, 8);
     }
 
     // 渲染文档
@@ -708,15 +939,17 @@ export class StudioController {
       const outputMetaPath = path.join(this.outputsDir, `${outputId}.json`);
 
       fs.writeFileSync(outputPath, outputBuffer);
-      fs.writeFileSync(outputMetaPath, JSON.stringify({
+      const outputMeta = {
         id: outputId,
         templateId: dto.templateId,
         markedTemplateId: markedTemplateId,
         fileName: `validate_${meta.fileName}`,
         format: meta.format,
         createdAt: new Date().toISOString(),
-        sampleData: sampleData
-      }));
+        sampleData: sampleData,
+      };
+      fs.writeFileSync(outputMetaPath, JSON.stringify(outputMeta));
+      await this.syncRenderOutputToDb(outputMeta, outputPath);
 
       return {
         valid: true,
@@ -827,6 +1060,8 @@ export class StudioController {
         }
       }
 
+      let persistedTemplatePath = templateFilePath;
+
       // 只有有效文件才保存物理文件，否则只保存元数据
       if (isValidDocx && templateBuffer.length > 0) {
         fs.writeFileSync(templateFilePath, templateBuffer);
@@ -835,18 +1070,22 @@ export class StudioController {
         // 保存文本内容作为参考
         const textPath = path.join(this.templatesDir, `${templateId}_content.txt`);
         fs.writeFileSync(textPath, templateBuffer.toString('utf-8'));
+        persistedTemplatePath = textPath;
       }
 
       // 保存模板配置
-      fs.writeFileSync(templateMetaPath, JSON.stringify({
+      const templateMeta = {
         id: templateId,
         format,
         fileName: `template_${templateId}.${format}`,
         config: templateConfig,
+        templateConfig,
         suggestions: body.suggestions,
         hasValidFile: isValidDocx,
         createdAt: new Date().toISOString(),
-      }));
+      };
+      fs.writeFileSync(templateMetaPath, JSON.stringify(templateMeta));
+      await this.syncTemplateMetaToDb(templateId, templateMeta, persistedTemplatePath);
 
       return {
         success: true,
@@ -943,18 +1182,7 @@ export class StudioController {
   @Get('templates')
   @ApiOperation({ summary: 'List all templates' })
   async listTemplates(): Promise<{ templates: TemplateResponse[] }> {
-    const templates: TemplateResponse[] = [];
-
-    const files = fs.readdirSync(this.templatesDir);
-    for (const file of files) {
-      // 过滤掉skill文件，只列出模板元数据文件
-      if (file.endsWith('.json') && !file.startsWith('skill_')) {
-        const meta = JSON.parse(fs.readFileSync(path.join(this.templatesDir, file), 'utf-8'));
-        templates.push(meta);
-      }
-    }
-
-    return { templates };
+    return { templates: await this.listTemplateMetasWithDbFallback() };
   }
 
   /**
@@ -963,7 +1191,7 @@ export class StudioController {
   @Post('templates/:id/delete')
   @ApiOperation({ summary: 'Delete template' })
   async deleteTemplate(@Param('id') id: string): Promise<{ success: boolean }> {
-    const meta = this.getTemplateMeta(id);
+    const meta = await this.getTemplateMetaWithDbFallback(id);
     const templatePath = path.join(this.templatesDir, `${id}.${meta.format}`);
     const metaPath = path.join(this.templatesDir, `${id}.json`);
 
@@ -980,7 +1208,10 @@ export class StudioController {
       if (fs.existsSync(skillPath)) {
         fs.unlinkSync(skillPath);
       }
+      await this.skillRepository.delete(meta.skillId).catch(() => undefined);
     }
+
+    await this.templateRepository.delete(id).catch(() => undefined);
 
     return { success: true };
   }
@@ -1016,6 +1247,7 @@ export class StudioController {
     existingMeta.updatedAt = new Date().toISOString();
 
     fs.writeFileSync(metaPath, JSON.stringify(existingMeta, null, 2));
+    await this.syncTemplateMetaToDb(id, existingMeta);
 
     return { success: true, fileName: newFileName };
   }
@@ -1390,6 +1622,7 @@ export class StudioController {
     };
 
     fs.writeFileSync(metaPath, JSON.stringify(updatedMeta, null, 2));
+    await this.syncTemplateMarkingsToDb(id, updatedMeta);
 
     return {
       success: true,
@@ -1440,6 +1673,8 @@ export class StudioController {
     };
 
     fs.writeFileSync(metaPath, JSON.stringify(updatedMeta, null, 2));
+    await this.syncTemplateConfigToDb(id, dto.templateConfig, updatedMeta.configSavedAt);
+    await this.syncTemplateMetaToDb(id, updatedMeta);
 
     return {
       success: true,
@@ -1604,7 +1839,7 @@ export class StudioController {
       const markedMetaPath = path.join(this.templatesDir, `${markedTemplateId}.json`);
 
       fs.writeFileSync(markedTemplatePath, markedBuffer);
-      fs.writeFileSync(markedMetaPath, JSON.stringify({
+      const markedMeta = {
         id: markedTemplateId,
         originalTemplateId: id,
         fileName: `marked_${meta.fileName}`,
@@ -1614,8 +1849,10 @@ export class StudioController {
         loops: templateInfo.loops,
         createdAt: new Date().toISOString(),
         templateConfig: config,
-        type: 'marked_template'  // 标记为注入后的模版
-      }));
+        type: 'marked_template',  // 标记为注入后的模版
+      };
+      fs.writeFileSync(markedMetaPath, JSON.stringify(markedMeta));
+      await this.syncTemplateMetaToDb(markedTemplateId, markedMeta, markedTemplatePath);
 
       // 步骤6: 先生成outputId，再保存验证结果
       const outputId = uuidv4();
@@ -1637,6 +1874,7 @@ export class StudioController {
           verifiedAt: new Date().toISOString()
         };
         fs.writeFileSync(originalMetaPath, JSON.stringify(originalMeta, null, 2));
+        await this.syncTemplateMetaToDb(id, originalMeta);
       }
 
       sendProgress('save_marked', 88, '保存注入后的模版...');
@@ -1646,15 +1884,17 @@ export class StudioController {
       const outputMetaPath = path.join(this.outputsDir, `${outputId}.json`);
 
       fs.writeFileSync(outputPath, outputBuffer);
-      fs.writeFileSync(outputMetaPath, JSON.stringify({
+      const outputMeta = {
         id: outputId,
         templateId: id,
         markedTemplateId: markedTemplateId,  // 关联注入后的模版
         fileName: `verify_${meta.fileName}`,
         format: meta.format,
         createdAt: new Date().toISOString(),
-        sampleData: sampleData
-      }));
+        sampleData: sampleData,
+      };
+      fs.writeFileSync(outputMetaPath, JSON.stringify(outputMeta));
+      await this.syncRenderOutputToDb(outputMeta, outputPath);
 
       sendProgress('save', 95, '保存渲染结果...');
 
@@ -1794,7 +2034,7 @@ export class StudioController {
       const markedMetaPath = path.join(this.templatesDir, `${markedTemplateId}.json`);
 
       fs.writeFileSync(markedTemplatePath, markedBuffer);
-      fs.writeFileSync(markedMetaPath, JSON.stringify({
+      const markedMeta = {
         id: markedTemplateId,
         originalTemplateId: id,
         fileName: `marked_${meta.fileName}`,
@@ -1804,8 +2044,10 @@ export class StudioController {
         loops: templateInfo.loops,
         createdAt: new Date().toISOString(),
         templateConfig: config,
-        type: 'marked_template'  // 标记为注入后的模版
-      }));
+        type: 'marked_template',  // 标记为注入后的模版
+      };
+      fs.writeFileSync(markedMetaPath, JSON.stringify(markedMeta));
+      await this.syncTemplateMetaToDb(markedTemplateId, markedMeta, markedTemplatePath);
 
       // 步骤6: 先生成outputId，再保存验证结果
       const outputId = uuidv4();
@@ -1827,6 +2069,7 @@ export class StudioController {
           verifiedAt: new Date().toISOString()
         };
         fs.writeFileSync(originalMetaPath, JSON.stringify(originalMeta, null, 2));
+        await this.syncTemplateMetaToDb(id, originalMeta);
       }
 
       sendProgress('save_marked', 88, '保存注入后的模版...');
@@ -1836,15 +2079,17 @@ export class StudioController {
       const outputMetaPath = path.join(this.outputsDir, `${outputId}.json`);
 
       fs.writeFileSync(outputPath, outputBuffer);
-      fs.writeFileSync(outputMetaPath, JSON.stringify({
+      const outputMeta = {
         id: outputId,
         templateId: id,
         markedTemplateId: markedTemplateId,  // 关联注入后的模版
         fileName: `verify_${meta.fileName}`,
         format: meta.format,
         createdAt: new Date().toISOString(),
-        sampleData: sampleData
-      }));
+        sampleData: sampleData,
+      };
+      fs.writeFileSync(outputMetaPath, JSON.stringify(outputMeta));
+      await this.syncRenderOutputToDb(outputMeta, outputPath);
 
       sendProgress('save', 95, '保存渲染结果...');
 
@@ -1996,6 +2241,10 @@ export class StudioController {
       }
     }
 
+    if (!Array.isArray(meta.loops) || meta.loops.length === 0) {
+      meta.loops = this.extractLoopsFromMeta(meta);
+    }
+
     return meta;
   }
 
@@ -2070,6 +2319,7 @@ export class StudioController {
       const skillId = skill.id;
       const skillPath = path.join(this.templatesDir, `skill_${skillId}.json`);
       fs.writeFileSync(skillPath, JSON.stringify(skill, null, 2));
+      await this.syncSkillToDb(skill as Record<string, unknown>, body.templateId);
 
       // 如果有templateId，关联skill到模板
       if (body.templateId) {
@@ -2078,6 +2328,7 @@ export class StudioController {
           const meta = JSON.parse(fs.readFileSync(metaPath, 'utf-8'));
           meta.skillId = skillId;
           fs.writeFileSync(metaPath, JSON.stringify(meta, null, 2));
+          await this.syncTemplateMetaToDb(body.templateId, meta);
         }
       }
 
@@ -2141,10 +2392,9 @@ export class StudioController {
       // 获取skill
       let skill = body.skill;
       if (body.skillId && !skill) {
-        const skillPath = path.join(this.templatesDir, `skill_${body.skillId}.json`);
-        if (fs.existsSync(skillPath)) {
-          skill = JSON.parse(fs.readFileSync(skillPath, 'utf-8'));
-          addLog(`[步骤2] 从文件加载skill: ${skillPath}`);
+        skill = await this.getSkillWithDbFallback(body.skillId);
+        if (skill) {
+          addLog(`[步骤2] 从存储加载skill: ${body.skillId}`);
         }
       }
 
@@ -2162,7 +2412,7 @@ export class StudioController {
       let simulatedData = body.simulatedData;
       if (!simulatedData) {
         addLog('[步骤3] 开始生成模拟数据...');
-        const seedData = this.getPreviewSeedDataFromSkill(skill);
+        const seedData = this.buildHydratedSkillSampleData(skill);
         if (seedData) {
           simulatedData = seedData;
           addLog('[步骤3] 使用 skill.dataExampleJson 作为模拟数据');
@@ -2215,8 +2465,7 @@ export class StudioController {
       addLog(`[步骤6] 输出保存到: ${outputPath}`);
 
       // 保存输出元数据
-      const outputMetaPath = path.join(this.outputsDir, `${outputId}.json`);
-      fs.writeFileSync(outputMetaPath, JSON.stringify({
+      const outputMeta = {
         id: outputId,
         templateId,
         skillId: skill.id,
@@ -2225,7 +2474,10 @@ export class StudioController {
         createdAt: new Date().toISOString(),
         simulatedData,
         debugLogs,
-      }));
+      };
+      const outputMetaPath = path.join(this.outputsDir, `${outputId}.json`);
+      fs.writeFileSync(outputMetaPath, JSON.stringify(outputMeta));
+      await this.syncRenderOutputToDb(outputMeta, outputPath);
 
       addLog('[完成] 预览验证成功!');
 
@@ -2282,10 +2534,7 @@ export class StudioController {
       // 获取skill
       let skill = body.skill;
       if (body.skillId && !skill) {
-        const skillPath = path.join(this.templatesDir, `skill_${body.skillId}.json`);
-        if (fs.existsSync(skillPath)) {
-          skill = JSON.parse(fs.readFileSync(skillPath, 'utf-8'));
-        }
+        skill = await this.getSkillWithDbFallback(body.skillId);
       }
 
       if (!skill) {
@@ -2403,6 +2652,7 @@ export class StudioController {
         };
         const skillPath = path.join(this.templatesDir, `skill_${skillId}.json`);
         fs.writeFileSync(skillPath, JSON.stringify(skill, null, 2));
+        await this.syncSkillToDb(skill as Record<string, unknown>, templateId);
       }
 
       // 保存或更新模板元数据
@@ -2426,6 +2676,8 @@ export class StudioController {
         updatedAt: new Date().toISOString(),
         createdAt: existingMeta.createdAt || new Date().toISOString(),
       }));
+      const latestMeta = JSON.parse(fs.readFileSync(metaPath, 'utf-8'));
+      await this.syncTemplateMetaToDb(templateId, latestMeta);
 
       return {
         success: true,
@@ -2453,11 +2705,11 @@ export class StudioController {
     @Param('id') id: string,
     @Res({ passthrough: true }) res: Response,
   ): Promise<any> {
-    const skillPath = path.join(this.templatesDir, `skill_${id}.json`);
-    if (!fs.existsSync(skillPath)) {
+    const skill = await this.getSkillWithDbFallback(id);
+    if (!skill) {
       throw new HttpException('Skill not found', HttpStatus.NOT_FOUND);
     }
-    return JSON.parse(fs.readFileSync(skillPath, 'utf-8'));
+    return skill;
   }
 
   /**
@@ -2466,11 +2718,11 @@ export class StudioController {
   @Get('skill/:id')
   @ApiOperation({ summary: 'Get AI skill by ID' })
   async getSkill(@Param('id') id: string): Promise<any> {
-    const skillPath = path.join(this.templatesDir, `skill_${id}.json`);
-    if (!fs.existsSync(skillPath)) {
+    const skill = await this.getSkillWithDbFallback(id);
+    if (!skill) {
       throw new HttpException('Skill not found', HttpStatus.NOT_FOUND);
     }
-    return JSON.parse(fs.readFileSync(skillPath, 'utf-8'));
+    return skill;
   }
 
   // Helper methods for skill generation
@@ -2553,12 +2805,54 @@ ${exampleData}
     return baseInstructions;
   }
 
+  private coerceSkillExampleValue(rawValue: unknown, fieldType?: string): unknown {
+    const normalizedType = String(fieldType || '').toLowerCase();
+    if (rawValue === null || rawValue === undefined) {
+      return rawValue;
+    }
+
+    if (normalizedType === 'boolean') {
+      if (typeof rawValue === 'boolean') {
+        return rawValue;
+      }
+      const normalized = String(rawValue).trim().toLowerCase();
+      if (['true', '1', 'yes', 'y', '是'].includes(normalized)) {
+        return true;
+      }
+      if (['false', '0', 'no', 'n', '否'].includes(normalized)) {
+        return false;
+      }
+      return Boolean(rawValue);
+    }
+
+    if (normalizedType === 'number' || normalizedType === 'amount') {
+      if (typeof rawValue === 'number') {
+        return rawValue;
+      }
+      const normalized = String(rawValue).replace(/,/g, '').trim();
+      const parsed = Number(normalized);
+      return Number.isFinite(parsed) ? parsed : rawValue;
+    }
+
+    if (normalizedType === 'date') {
+      if (rawValue instanceof Date && !Number.isNaN(rawValue.getTime())) {
+        return rawValue.toISOString().slice(0, 10);
+      }
+      const normalized = String(rawValue).trim();
+      const parsed = new Date(normalized);
+      return Number.isNaN(parsed.getTime()) ? normalized : parsed.toISOString().slice(0, 10);
+    }
+
+    return rawValue;
+  }
+
   private generateSimulatedData(skill: any): any {
     const data: any = {};  // 数据直接在根层级，不需要 d 包装
     // 使用新的parameters结构
     const variables = skill.parameters || skill.parameterization?.variables || [];
     for (const variable of variables) {
-      const exampleValue = variable.example || this.generateExampleValue(variable.dataType || variable.fieldType, variable.name);
+      const rawExampleValue = variable.example ?? this.generateExampleValue(variable.dataType || variable.fieldType, variable.name);
+      const exampleValue = this.coerceSkillExampleValue(rawExampleValue, variable.dataType || variable.fieldType);
 
       // 解析变量路径，支持多种格式：
       // 1. {d.partyA.name} -> partyA.name (带花括号)

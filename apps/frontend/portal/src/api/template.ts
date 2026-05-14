@@ -69,6 +69,7 @@ export interface TemplateQueryParams {
   page?: number;
   pageSize?: number;
   status?: TemplateStatus;
+  excludeDraft?: boolean;
   search?: string;
 }
 

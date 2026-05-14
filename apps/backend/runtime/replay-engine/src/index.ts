@@ -14,4 +14,5 @@ export * from './modules/retry';
 export * from './modules/log';
 export * from './modules/ai-interaction';
 export * from './modules/takeover';
-export * from './modules/database';
+export * from './prisma/prisma.module';
+export * from './prisma/prisma.service';

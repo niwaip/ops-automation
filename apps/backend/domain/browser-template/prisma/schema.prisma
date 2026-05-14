@@ -1,0 +1,38 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum TemplateStatus {
+  DRAFT
+  REVIEW
+  PUBLISHED
+  DEPRECATED
+  REVOKED
+
+  @@map("templates_status_enum")
+}
+
+model Template {
+  id           String         @id(map: "PK_515948649ce0bbbe391de702ae5") @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  name         String         @db.VarChar(255)
+  version      String         @default("1.0.0") @db.VarChar(50)
+  status       TemplateStatus @default(DRAFT)
+  description  String?        @db.VarChar(1000)
+  paramsSchema Json           @default("{}") @map("params_schema")
+  steps        Json           @default("[]")
+  guards       Json           @default("[]")
+  config       Json           @default("{}")
+  createdBy    String         @default("system") @map("created_by") @db.VarChar(255)
+  reviewedBy   String?        @map("reviewed_by") @db.VarChar(255)
+  publishedAt  DateTime?      @map("published_at") @db.Timestamp(6)
+  createdAt    DateTime       @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt    DateTime       @default(now()) @updatedAt @map("updated_at") @db.Timestamp(6)
+  deprecatedAt DateTime?      @map("deprecated_at") @db.Timestamp(6)
+
+  @@map("templates")
+}

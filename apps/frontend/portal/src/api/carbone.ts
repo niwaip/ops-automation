@@ -61,13 +61,18 @@ export interface CarboneSkill {
   updatedAt?: string;
 }
 
+const isDraftDocumentTemplate = (template: CarboneTemplate): boolean => {
+  const fileName = String(template.fileName || '').trim().toLowerCase();
+  return fileName.startsWith('draft-');
+};
+
 class CarboneAPI {
   /**
    * 获取所有模板列表
    */
   async getTemplates(): Promise<CarboneTemplate[]> {
     const response = await apiClient.get<{ templates: CarboneTemplate[] }>(`/carbone/templates`);
-    return response.templates || [];
+    return (response.templates || []).filter((template) => !isDraftDocumentTemplate(template));
   }
 
   /**

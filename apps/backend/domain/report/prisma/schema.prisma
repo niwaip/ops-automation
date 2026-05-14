@@ -1,0 +1,42 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model ReportTemplate {
+  id                 String   @id(map: "PK_f85e16e6beea41a2b3a3350b84e") @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  name               String   @db.VarChar(255)
+  format             String   @db.VarChar(20)
+  templateFile       String?  @map("template_file") @db.VarChar(500)
+  sections           Json
+  globalConfig       Json?    @map("global_config")
+  aiConfig           Json?    @map("ai_config")
+  notificationConfig Json?    @map("notification_config")
+  createdBy          String?  @map("created_by") @db.VarChar(255)
+  createdAt          DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt          DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamp(6)
+  reports            Report[]
+
+  @@map("report_templates")
+}
+
+model Report {
+  id                String         @id(map: "PK_d9013193989303580053c0b5ef6") @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  templateId        String         @map("template_id") @db.Uuid
+  sessionId         String         @map("session_id") @db.VarChar(255)
+  status            String         @default("pending") @db.VarChar(20)
+  resultFile        String?        @map("result_file") @db.VarChar(500)
+  aiAnalysis        Json?          @map("ai_analysis")
+  validationResults Json?          @map("validation_results")
+  notifications     Json?
+  error             String?        @db.Text
+  createdAt         DateTime       @default(now()) @map("created_at") @db.Timestamp(6)
+  completedAt       DateTime?      @map("completed_at") @db.Timestamp(6)
+  template          ReportTemplate @relation(fields: [templateId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "FK_6f8e618c3d55635fdbbc6cbe01c")
+
+  @@map("reports")
+}

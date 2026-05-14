@@ -1,16 +1,15 @@
 import { Module } from '@nestjs/common';
-import { TypeOrmModule } from '@nestjs/typeorm';
-import { ReportEntity } from './report.entity';
 import { ReportService } from './report.service';
 import { ReportController } from './report.controller';
 import { TemplateModule } from '../template/template.module';
 import { GeneratorModule } from '../generator/generator.module';
 import { AnalyzerModule } from '../analyzer/analyzer.module';
 import { NotificationModule } from '../notification/notification.module';
+import { PrismaModule } from '../../prisma/prisma.module';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([ReportEntity]),
+    PrismaModule,
     TemplateModule,
     GeneratorModule,
     AnalyzerModule,
