@@ -6,6 +6,7 @@
 import type {
   ApprovalStatus,
   ExecutionStatus,
+  ExecutionSemantic,
   ExecutionStepStatus,
 } from '@ops/contracts';
 import { apiClient } from './client';
@@ -13,6 +14,7 @@ import { apiClient } from './client';
 export type {
   ApprovalStatus,
   ExecutionStatus,
+  ExecutionSemantic,
   ExecutionStepStatus,
 } from '@ops/contracts';
 
@@ -25,35 +27,6 @@ const getExecutionApiUrl = (path: string) => {
 
   return path;
 };
-
-export interface ExecutionSemanticGroup {
-  key: string;
-  label: string;
-  kind: 'field' | 'array_group';
-  blocking: boolean;
-  required: boolean;
-  fieldNames: string[];
-  missingFieldNames: string[];
-  description?: string;
-}
-
-export interface ExecutionSemantic {
-  enabled: boolean;
-  mode: 'field_level' | 'complex_document';
-  previewReady: boolean;
-  finalReady: boolean;
-  fallbackToFieldLevel: boolean;
-  summary?: string;
-  groupedMissing: ExecutionSemanticGroup[];
-  complexity?: {
-    category: 'simple' | 'complex_document';
-    totalFields: number;
-    requiredFields: number;
-    missingFields: number;
-    arrayGroups: number;
-    reasonCodes: string[];
-  };
-}
 
 // Execution DTO from control-plane
 export interface ExecutionDto {

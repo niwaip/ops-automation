@@ -16,9 +16,12 @@ describe('execution.mapper', () => {
         input: { prompt: 'hello' },
         __usage: { total_tokens: 10 },
         semantic: {
+          enabled: true,
           mode: 'complex_document',
           previewReady: true,
           finalReady: false,
+          fallbackToFieldLevel: false,
+          groupedMissing: [],
         },
       },
       resultJson: { ok: true },
@@ -36,15 +39,21 @@ describe('execution.mapper', () => {
       input: { prompt: 'hello' },
       __usage: { total_tokens: 10 },
       semantic: {
+        enabled: true,
         mode: 'complex_document',
         previewReady: true,
         finalReady: false,
+        fallbackToFieldLevel: false,
+        groupedMissing: [],
       },
     });
     expect(dto.semantic).toEqual({
+      enabled: true,
       mode: 'complex_document',
       previewReady: true,
       finalReady: false,
+      fallbackToFieldLevel: false,
+      groupedMissing: [],
     });
     expect(dto.usage).toEqual({ total_tokens: 10 });
     expect(dto.result).toEqual({ ok: true });

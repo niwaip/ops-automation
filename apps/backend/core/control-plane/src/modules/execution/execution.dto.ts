@@ -7,6 +7,7 @@ import {
   Min,
 } from 'class-validator';
 import { Type } from 'class-transformer';
+import type { ExecutionSemantic } from '@ops/contracts';
 import { ApprovalStatus, APPROVAL_STATUS_VALUES } from './contracts/approval-status';
 import { ExecutionStatus, EXECUTION_STATUS_VALUES } from './contracts/execution-status';
 import { ExecutionStepStatus, EXECUTION_STEP_STATUS_VALUES } from './contracts/execution-step-status';
@@ -129,7 +130,7 @@ export class ExecutionDto {
 
   @ApiProperty({ required: false })
   @IsOptional()
-  semantic?: Record<string, unknown> | null;
+  semantic?: ExecutionSemantic | null;
 
   @ApiProperty({ required: false })
   @IsOptional()

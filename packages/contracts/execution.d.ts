@@ -71,3 +71,34 @@ export type ExecutionEventType =
 export declare const EXECUTION_EVENT_TYPE_VALUES: ExecutionEventType[];
 
 export declare function isTerminalExecutionStatus(status: string): status is ExecutionStatus;
+
+export type ExecutionSemanticMode = 'field_level' | 'complex_document';
+
+export interface ExecutionSemanticGroup {
+  key: string;
+  label: string;
+  kind: 'field' | 'array_group';
+  blocking: boolean;
+  required: boolean;
+  fieldNames: string[];
+  missingFieldNames: string[];
+  description?: string;
+}
+
+export interface ExecutionSemantic {
+  enabled: boolean;
+  mode: ExecutionSemanticMode;
+  previewReady: boolean;
+  finalReady: boolean;
+  fallbackToFieldLevel: boolean;
+  summary?: string;
+  groupedMissing: ExecutionSemanticGroup[];
+  complexity?: {
+    category: 'simple' | 'complex_document';
+    totalFields: number;
+    requiredFields: number;
+    missingFields: number;
+    arrayGroups: number;
+    reasonCodes: string[];
+  };
+}
