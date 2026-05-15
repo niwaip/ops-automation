@@ -1,3 +1,4 @@
+import axios from 'axios';
 import { PlannerService } from './planner.service';
 import { RecognizerService } from '../recognizer/recognizer.service';
 import { AvailableSkillDefinition, SkillMatchResult } from '../react-engine/interfaces';
@@ -11,6 +12,10 @@ describe('PlannerService - required inputs without hardcoded defaults', () => {
       recognizeParams: jest.fn(),
     };
     service = new PlannerService(recognizerService as unknown as RecognizerService);
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
   });
 
   it('marks required params as missing and applies defaults only to optional params', async () => {
@@ -1011,6 +1016,206 @@ describe('PlannerService - required inputs without hardcoded defaults', () => {
     );
   });
 
+  it('loads only the targeted skill when target_skill_id is provided', async () => {
+    const axiosGet = jest.spyOn(axios, 'get').mockImplementation(async (url: string) => {
+      if (url.endsWith('/skills/skill-contract')) {
+        return {
+          data: {
+            id: 'skill-contract',
+            name: 'contractService',
+            description: 'Generate contract',
+            triggerKeywords: ['合同'],
+            paramsSchema: {
+              properties: {
+                'info.partyA': {
+                  type: 'string',
+                  description: '甲方名称',
+                  required: true,
+                },
+              },
+              required: ['info.partyA'],
+            },
+            apiEndpoints: {
+              runtimeMetadata: {
+                sourceType: 'document',
+              },
+            },
+            executionFlowTemplateIds: [],
+            executionFlow: ['generate_parameters', 'document_render'],
+            goal: 'Generate contract',
+            expectedResult: 'Contract document',
+          },
+        } as any;
+      }
+      throw new Error(`Unexpected GET ${url}`);
+    });
+    const axiosPost = jest.spyOn(axios, 'post');
+    jest.spyOn(recognizerService, 'recognizeParams').mockResolvedValue({
+      params: {},
+      confidence: 0.9,
+    });
+
+    const plan = await service.generatePlan({
+      request: {
+        user_input: '补充甲方名称为星海智造科技有限公司',
+        user_id: 'u1',
+        modelId: 'selected-model-id',
+        context: {
+          mode: 'waiting_input_resume',
+          target_skill_id: 'skill-contract',
+        },
+      } as any,
+      userId: 'u1',
+      authToken: 'Bearer test',
+      traceId: 'trace-1',
+    });
+
+    expect(plan.skill_match).toEqual(
+      expect.objectContaining({
+        skill_id: 'skill-contract',
+        skill_name: 'contractService',
+      }),
+    );
+    expect(axiosGet).toHaveBeenCalledWith(
+      expect.stringContaining('/skills/skill-contract'),
+      expect.any(Object),
+    );
+    expect(axiosGet.mock.calls.filter(([url]) => String(url).endsWith('/skills'))).toHaveLength(0);
+    expect(axiosPost).not.toHaveBeenCalled();
+  });
+
+  it('caches available skills and linked flow schemas within the same planner instance', async () => {
+    const axiosGet = jest.spyOn(axios, 'get').mockImplementation(async (url: string) => {
+      if (url.endsWith('/skills')) {
+        return {
+          data: {
+            skills: [
+              {
+                id: 'document-contract',
+                name: 'documentContractService',
+                description: 'Generate contract document',
+                triggerKeywords: ['合同'],
+                paramsSchema: {
+                  properties: {
+                    subject: {
+                      type: 'string',
+                      description: '合同主题',
+                      required: true,
+                    },
+                  },
+                  required: ['subject'],
+                },
+                executionFlowTemplateIds: ['flow-1'],
+                apiEndpoints: {
+                  runtimeMetadata: {
+                    sourceType: 'document',
+                  },
+                },
+              },
+            ],
+          },
+        } as any;
+      }
+      if (url.endsWith('/flows/flow-1')) {
+        return {
+          data: {
+            paramsSchema: {
+              properties: {
+                'paymentSchedule[].amount': {
+                  type: 'number',
+                  description: '付款金额',
+                  required: true,
+                },
+              },
+              required: ['paymentSchedule[].amount'],
+            },
+          },
+        } as any;
+      }
+      throw new Error(`Unexpected GET ${url}`);
+    });
+
+    const first = await (service as any).loadAvailableSkills('Bearer test', 'trace-1');
+    const second = await (service as any).loadAvailableSkills('Bearer test', 'trace-2');
+
+    expect(first).toHaveLength(1);
+    expect(second).toHaveLength(1);
+    expect(first[0].paramsSchema.required).toEqual(
+      expect.arrayContaining(['subject', 'paymentSchedule[].amount']),
+    );
+    expect(axiosGet).toHaveBeenCalledTimes(2);
+    expect(axiosGet.mock.calls.filter(([url]) => String(url).endsWith('/skills'))).toHaveLength(1);
+    expect(axiosGet.mock.calls.filter(([url]) => String(url).endsWith('/flows/flow-1'))).toHaveLength(1);
+  });
+
+  it('hydrates API match results with local skill execution metadata when the match payload is sparse', async () => {
+    const availableSkills: AvailableSkillDefinition[] = [
+      {
+        skillId: 'document-contract',
+        skillName: 'documentContractService',
+        description: 'Generate contract document',
+        triggerKeywords: ['合同'],
+        paramsSchema: {
+          properties: {
+            subject: {
+              type: 'string',
+              description: '合同主题',
+              required: true,
+            } as any,
+          },
+          required: ['subject'],
+        },
+        executionType: 'document',
+        templateId: 'tpl-contract',
+        carboneTemplateId: 'carbone-tpl-1',
+        carboneSkillId: 'carbone-skill-1',
+        executionFlowTemplateIds: ['flow-1'],
+        executionFlow: ['generate_parameters', 'document_render'],
+        apiEndpoints: {
+          runtimeMetadata: {
+            sourceType: 'document',
+          },
+        } as any,
+        goal: 'Generate contract',
+        expectedResult: 'Completed contract document',
+        outputParams: undefined,
+      },
+    ];
+    jest.spyOn(axios, 'post').mockResolvedValue({
+      data: {
+        match: {
+          skillId: 'document-contract',
+          skillName: 'documentContractService',
+          matchedKeywords: ['合同'],
+          confidence: 0.92,
+          collectedParams: {},
+          missingParams: ['subject'],
+          paramsSchema: {
+            properties: {},
+            required: [],
+          },
+        },
+      },
+    } as any);
+
+    const matched = await (service as any).matchSkill(
+      '帮我生成采购合同',
+      'u1',
+      'Bearer test',
+      'trace-1',
+      availableSkills,
+      {},
+    );
+
+    expect(matched).toMatchObject({
+      skillId: 'document-contract',
+      executionType: 'document',
+      executionFlow: ['generate_parameters', 'document_render'],
+      carboneTemplateId: 'carbone-tpl-1',
+    });
+    expect(matched?.paramsSchema.required).toEqual(['subject']);
+  });
+
   it('merges required inputs from linked execution flow template schema without hardcoding', () => {
     const merged = (service as any).mergeParamsSchemas(
       {
@@ -1162,6 +1367,14 @@ describe('PlannerService - required inputs without hardcoded defaults', () => {
 
     expect(plan.required_inputs.some((item) => item.name === '{#d.items}{/d.items}')).toBe(false);
     expect(plan.semantic?.mode).toBe('complex_document');
+    expect(plan.semantic?.complexity).toEqual(
+      expect.objectContaining({
+        totalFields: 4,
+        requiredFields: 4,
+        missingFields: 4,
+        arrayGroups: 3,
+      }),
+    );
     expect(plan.semantic?.groupedMissing).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
@@ -1497,6 +1710,14 @@ describe('PlannerService - required inputs without hardcoded defaults', () => {
       }),
     ]);
     expect(plan.semantic?.previewReady).toBe(true);
+  });
+
+  it('does not classify plain string fields with list-like suffixes as array groups', () => {
+    expect((service as any).extractArrayGroupKey('statusList', 'string')).toBeUndefined();
+    expect((service as any).extractArrayGroupKey('reportDetails', 'string')).toBeUndefined();
+    expect((service as any).extractArrayGroupKey('agendaItems', 'string')).toBeUndefined();
+    expect((service as any).extractArrayGroupKey('statusList', 'array')).toBe('statusList');
+    expect((service as any).extractArrayGroupKey('items[].name', 'string')).toBe('items');
   });
 
   it('falls back to concise Chinese labels when schema display name is still a machine path', async () => {

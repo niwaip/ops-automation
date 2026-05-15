@@ -1,3 +1,4 @@
+import { createHash } from 'crypto';
 import { Injectable, Logger } from '@nestjs/common';
 import axios from 'axios';
 import { v4 as uuidv4 } from 'uuid';
@@ -8,6 +9,7 @@ import {
   PlanSemanticDTO,
   PlanSkillMatchDTO,
   PlanStepDTO,
+  RecognizeParamsDTO,
   RequiredInputDTO,
   SemanticGroupedMissingDTO,
   LLMUsage,
@@ -32,12 +34,18 @@ type ExecutionFlowTemplateResponse = {
   };
 };
 
+type SkillCacheEntry<T> = {
+  expiresAt: number;
+  value: T;
+};
+
 const DOCUMENT_SEMANTIC_ENABLED = (process.env.DOCUMENT_SEMANTIC_SUBAGENT_ENABLED || 'true').toLowerCase() !== 'false';
 const DOCUMENT_COMPLEX_PARAM_THRESHOLD = Number(process.env.DOCUMENT_SEMANTIC_PARAM_THRESHOLD || 8);
 const DOCUMENT_COMPLEX_MISSING_THRESHOLD = Number(process.env.DOCUMENT_SEMANTIC_MISSING_THRESHOLD || 4);
 const DOCUMENT_COMPLEX_ARRAY_GROUP_THRESHOLD = Number(process.env.DOCUMENT_SEMANTIC_ARRAY_GROUP_THRESHOLD || 2);
 const RECOGNIZED_FIELD_LOW_CONFIDENCE_THRESHOLD = Number(process.env.PARAM_FIELD_LOW_CONFIDENCE_THRESHOLD || 0.7);
 const RECOGNITION_RESULT_LOW_CONFIDENCE_THRESHOLD = Number(process.env.PARAM_RESULT_LOW_CONFIDENCE_THRESHOLD || 0.45);
+const PLANNER_SKILL_CACHE_TTL_MS = Number(process.env.PLANNER_SKILL_CACHE_TTL_MS || 60_000);
 const BUSINESS_GROUP_LABELS: Record<string, string> = {
   items: '标的清单',
   deliveryItems: '交付计划',
@@ -48,6 +56,9 @@ const BUSINESS_GROUP_LABELS: Record<string, string> = {
 export class PlannerService {
   private readonly logger = new Logger(PlannerService.name);
   private readonly authServiceUrl = getAuthServiceUrl();
+  private readonly availableSkillsCache = new Map<string, SkillCacheEntry<AvailableSkillDefinition[]>>();
+  private readonly skillByIdCache = new Map<string, SkillCacheEntry<AvailableSkillDefinition | null>>();
+  private readonly flowSchemaCache = new Map<string, SkillCacheEntry<ExecutionFlowTemplateResponse['paramsSchema'] | undefined>>();
 
   constructor(private readonly recognizerService: RecognizerService) {}
 
@@ -58,7 +69,10 @@ export class PlannerService {
     traceId?: string;
   }): Promise<PlanDraftDTO> {
     const objective = input.request.user_input.trim();
-    const availableSkills = await this.loadAvailableSkills(input.authToken, input.traceId);
+    const targetSkillId = typeof input.request.context?.target_skill_id === 'string'
+      ? input.request.context.target_skill_id.trim()
+      : '';
+    const availableSkills = await this.loadAvailableSkills(input.authToken, input.traceId, targetSkillId || undefined);
     const matchedSkill = await this.matchSkill(
       objective,
       input.userId || input.request.user_id,
@@ -89,33 +103,7 @@ export class PlannerService {
         runtimeMetadata: matchedSkill.apiEndpoints?.runtimeMetadata,
       }),
       params_schema: {
-        properties: Object.fromEntries(
-          Object.entries(matchedSkill.paramsSchema?.properties || {}).map(([name, schema]) => [
-            name,
-            {
-              type: schema.type,
-              description: schema.description,
-              extractionPrompt: (schema as any).extractionPrompt,
-              default: schema.default as string | number | boolean | undefined,
-              semanticRole: (schema as any).semanticRole,
-              extractionHints: Array.isArray((schema as any).extractionHints)
-                ? (schema as any).extractionHints
-                : undefined,
-              displayName: typeof (schema as any).displayName === 'string'
-                ? (schema as any).displayName
-                : undefined,
-              groupLabel: typeof (schema as any).groupLabel === 'string'
-                ? (schema as any).groupLabel
-                : undefined,
-              previewBlocking: typeof (schema as any).previewBlocking === 'boolean'
-                ? (schema as any).previewBlocking
-                : undefined,
-              confirmationThreshold: typeof (schema as any).confirmationThreshold === 'number'
-                ? (schema as any).confirmationThreshold
-                : undefined,
-            },
-          ]),
-        ),
+        properties: this.buildRecognizerParamsSchemaProperties(matchedSkill.paramsSchema?.properties || {}),
         required: matchedSkill.paramsSchema?.required || [],
       },
     });
@@ -176,78 +164,148 @@ export class PlannerService {
   private async loadAvailableSkills(
     authToken?: string,
     traceId?: string,
+    targetSkillId?: string,
   ): Promise<AvailableSkillDefinition[]> {
+    if (targetSkillId) {
+      const skill = await this.loadSkillById(targetSkillId, authToken, traceId);
+      if (skill) {
+        return [skill];
+      }
+      this.logger.warn(`Target skill ${targetSkillId} could not be loaded directly, falling back to full skill list`);
+    }
+
+    const cacheKey = this.buildAuthCacheKey(authToken);
+    const cachedSkills = this.getCacheValue(this.availableSkillsCache, cacheKey);
+    if (cachedSkills) {
+      return cachedSkills;
+    }
+
     try {
-      const headers = {
-        ...(authToken ? { Authorization: authToken } : {}),
-        ...(traceId ? { [TRACE_ID_HEADER]: traceId } : {}),
-      };
+      const headers = this.buildRequestHeaders(authToken, traceId);
       const response = await axios.get<SkillListResponse>(`${this.authServiceUrl}/skills`, { headers });
 
       const rawSkills = Array.isArray(response.data.skills) ? response.data.skills : [];
       const mappedSkills = rawSkills
-        .map((item) => {
-          const apiEndpoints = (typeof item.apiEndpoints === 'object' && item.apiEndpoints)
-            ? item.apiEndpoints as AvailableSkillDefinition['apiEndpoints']
-            : undefined;
-          const sourceTemplate = apiEndpoints?.runtimeMetadata?.sourceTemplate;
-          const sourceType = apiEndpoints?.runtimeMetadata?.sourceType;
-          const executionType: AvailableSkillDefinition['executionType'] =
-            sourceType === 'document' || sourceType === 'execution_flow_template'
-              ? 'document'
-              : undefined;
-
-          return {
-            skillId: String(item.id || ''),
-            skillName: String(item.name || ''),
-            description: typeof item.description === 'string' ? item.description : undefined,
-            triggerKeywords: Array.isArray(item.triggerKeywords) ? item.triggerKeywords.map(String) : [],
-            paramsSchema: (item.paramsSchema as AvailableSkillDefinition['paramsSchema']) || { properties: {}, required: [] },
-            executionType,
-            templateId:
-              typeof item.templateId === 'string'
-                ? item.templateId
-                : typeof sourceTemplate?.templateId === 'string'
-                  ? sourceTemplate.templateId
-                  : undefined,
-            carboneTemplateId:
-              typeof item.carboneTemplateId === 'string'
-                ? item.carboneTemplateId
-                : typeof sourceTemplate?.templateId === 'string'
-                  ? sourceTemplate.templateId
-                  : undefined,
-            carboneSkillId:
-              typeof item.carboneSkillId === 'string'
-                ? item.carboneSkillId
-                : typeof sourceTemplate?.skillId === 'string'
-                  ? sourceTemplate.skillId
-                  : undefined,
-            executionFlowTemplateIds: Array.isArray(item.executionFlowTemplateIds) ? item.executionFlowTemplateIds.map(String) : [],
-            executionFlow: Array.isArray(item.executionFlow)
-              ? item.executionFlow
-                  .map((step) => (step && typeof step === 'object'
-                    ? String((step as Record<string, unknown>).name || (step as Record<string, unknown>).type || '')
-                    : String(step || '')))
-                  .filter(Boolean)
-              : [],
-            apiEndpoints,
-            goal: typeof item.goal === 'string' ? item.goal : undefined,
-            expectedResult: typeof item.expectedResult === 'string' ? item.expectedResult : undefined,
-            outputParams: typeof item.outputParams === 'object' && item.outputParams
-              ? item.outputParams as Record<string, unknown>
-              : undefined,
-          };
-        })
+        .map((item) => this.mapRawSkillDefinition(item))
         .filter((item) => item.skillId && item.skillName);
 
-      return Promise.all(
+      const enrichedSkills = await Promise.all(
         mappedSkills.map((skill) => this.enrichSkillParamsSchema(skill, headers)),
       );
+      this.setCacheValue(this.availableSkillsCache, cacheKey, enrichedSkills);
+      enrichedSkills.forEach((skill) => {
+        this.setCacheValue(this.skillByIdCache, this.buildSkillCacheKey(cacheKey, skill.skillId), skill);
+      });
+      return enrichedSkills;
     } catch (error) {
       const message = error instanceof Error ? error.message : 'unknown';
       this.logger.warn(`Failed to load available skills for planner: ${message}`);
       return [];
     }
+  }
+
+  private async loadSkillById(
+    skillId: string,
+    authToken?: string,
+    traceId?: string,
+  ): Promise<AvailableSkillDefinition | null> {
+    const trimmedSkillId = skillId.trim();
+    if (!trimmedSkillId) {
+      return null;
+    }
+
+    const authCacheKey = this.buildAuthCacheKey(authToken);
+    const cachedSkill = this.getCacheValue(
+      this.skillByIdCache,
+      this.buildSkillCacheKey(authCacheKey, trimmedSkillId),
+    );
+    if (cachedSkill !== undefined) {
+      return cachedSkill;
+    }
+
+    const headers = this.buildRequestHeaders(authToken, traceId);
+    try {
+      const response = await axios.get<Record<string, unknown>>(
+        `${this.authServiceUrl}/skills/${trimmedSkillId}`,
+        { headers },
+      );
+      const mappedSkill = this.mapRawSkillDefinition(response.data);
+      if (!mappedSkill.skillId || !mappedSkill.skillName) {
+        this.setCacheValue(
+          this.skillByIdCache,
+          this.buildSkillCacheKey(authCacheKey, trimmedSkillId),
+          null,
+        );
+        return null;
+      }
+
+      const enrichedSkill = await this.enrichSkillParamsSchema(mappedSkill, headers);
+      this.setCacheValue(
+        this.skillByIdCache,
+        this.buildSkillCacheKey(authCacheKey, trimmedSkillId),
+        enrichedSkill,
+      );
+      return enrichedSkill;
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'unknown';
+      this.logger.warn(`Failed to load planner target skill ${trimmedSkillId}: ${message}`);
+      return null;
+    }
+  }
+
+  private mapRawSkillDefinition(item: Record<string, unknown>): AvailableSkillDefinition {
+    const apiEndpoints = (typeof item.apiEndpoints === 'object' && item.apiEndpoints)
+      ? item.apiEndpoints as AvailableSkillDefinition['apiEndpoints']
+      : undefined;
+    const sourceTemplate = apiEndpoints?.runtimeMetadata?.sourceTemplate;
+    const sourceType = apiEndpoints?.runtimeMetadata?.sourceType;
+    const executionType = this.resolveExecutionType(
+      typeof item.executionType === 'string' ? item.executionType : undefined,
+      sourceType,
+    );
+
+    return {
+      skillId: String(item.id || item.skillId || ''),
+      skillName: String(item.name || item.skillName || ''),
+      description: typeof item.description === 'string' ? item.description : undefined,
+      triggerKeywords: Array.isArray(item.triggerKeywords) ? item.triggerKeywords.map(String) : [],
+      paramsSchema: this.normalizeParamsSchema(
+        (item.paramsSchema as AvailableSkillDefinition['paramsSchema']) || { properties: {}, required: [] },
+      ),
+      executionType,
+      templateId:
+        typeof item.templateId === 'string'
+          ? item.templateId
+          : typeof sourceTemplate?.templateId === 'string'
+            ? sourceTemplate.templateId
+            : undefined,
+      carboneTemplateId:
+        typeof item.carboneTemplateId === 'string'
+          ? item.carboneTemplateId
+          : typeof sourceTemplate?.templateId === 'string'
+            ? sourceTemplate.templateId
+            : undefined,
+      carboneSkillId:
+        typeof item.carboneSkillId === 'string'
+          ? item.carboneSkillId
+          : typeof sourceTemplate?.skillId === 'string'
+            ? sourceTemplate.skillId
+            : undefined,
+      executionFlowTemplateIds: Array.isArray(item.executionFlowTemplateIds) ? item.executionFlowTemplateIds.map(String) : [],
+      executionFlow: Array.isArray(item.executionFlow)
+        ? item.executionFlow
+            .map((step) => (step && typeof step === 'object'
+              ? String((step as Record<string, unknown>).name || (step as Record<string, unknown>).type || '')
+              : String(step || '')))
+            .filter(Boolean)
+        : [],
+      apiEndpoints,
+      goal: typeof item.goal === 'string' ? item.goal : undefined,
+      expectedResult: typeof item.expectedResult === 'string' ? item.expectedResult : undefined,
+      outputParams: typeof item.outputParams === 'object' && item.outputParams
+        ? item.outputParams as Record<string, unknown>
+        : undefined,
+    };
   }
 
   private async enrichSkillParamsSchema(
@@ -267,12 +325,26 @@ export class PlannerService {
 
     const templateSchemas = await Promise.all(
       templateIds.map(async (templateId) => {
+        const cachedSchema = this.getCacheValue(
+          this.flowSchemaCache,
+          this.buildFlowSchemaCacheKey(headers.Authorization, templateId),
+        );
+        if (cachedSchema !== undefined) {
+          return cachedSchema;
+        }
+
         try {
           const response = await axios.get<ExecutionFlowTemplateResponse>(
             `${this.authServiceUrl}/flows/${templateId}`,
             { headers },
           );
-          return response.data.paramsSchema;
+          const paramsSchema = response.data.paramsSchema;
+          this.setCacheValue(
+            this.flowSchemaCache,
+            this.buildFlowSchemaCacheKey(headers.Authorization, templateId),
+            paramsSchema,
+          );
+          return paramsSchema;
         } catch (error) {
           const message = error instanceof Error ? error.message : 'unknown';
           this.logger.warn(`Failed to load execution flow template ${templateId}: ${message}`);
@@ -422,7 +494,7 @@ export class PlannerService {
           },
         );
 
-        const matchedSkill = response.data.match;
+        const matchedSkill = this.hydrateMatchedSkill(response.data.match, availableSkills);
         if (matchedSkill?.confidence && matchedSkill.confidence > 0) {
           if (matchedSkill.apiEndpoints?.runtimeMetadata?.sourceType === 'document' && (!matchedSkill.executionFlow || matchedSkill.executionFlow.length === 0)) {
             matchedSkill.executionFlow = ['generate_parameters', 'document_render'];
@@ -479,6 +551,7 @@ export class PlannerService {
       carboneTemplateId: bestSkill.carboneTemplateId,
       executionFlowTemplateId: bestSkill.executionFlowTemplateIds?.[0],
       executionFlowTemplateIds: bestSkill.executionFlowTemplateIds,
+      executionType: bestSkill.executionType,
       executionFlow: bestSkill.executionFlow?.length
         ? bestSkill.executionFlow
         : bestSkill.apiEndpoints?.runtimeMetadata?.sourceType === 'document'
@@ -821,12 +894,9 @@ export class PlannerService {
       };
     }
 
-    const complexity = this.analyzeDocumentComplexity(requiredInputs);
-    const shouldUseSemanticBypass =
-      DOCUMENT_SEMANTIC_ENABLED && complexity.category === 'complex_document';
-    const cleanedRequiredInputs = shouldUseSemanticBypass
-      ? this.cleanRequiredInputs(requiredInputs)
-      : requiredInputs;
+    const cleanedRequiredInputs = this.cleanRequiredInputs(requiredInputs);
+    const complexity = this.analyzeDocumentComplexity(cleanedRequiredInputs);
+    const shouldUseSemanticBypass = DOCUMENT_SEMANTIC_ENABLED && complexity.category === 'complex_document';
     const semantic = DOCUMENT_SEMANTIC_ENABLED
       ? this.buildPlanSemantic(cleanedRequiredInputs, complexity, shouldUseSemanticBypass)
       : undefined;
@@ -846,6 +916,10 @@ export class PlannerService {
   }
 
   private isDocumentTask(matchedSkill: SkillMatchResult): boolean {
+    if (matchedSkill.executionType === 'document') {
+      return true;
+    }
+
     const schemaProperties = matchedSkill.paramsSchema?.properties || {};
     const hasTemplateLoopMarkers = Object.entries(schemaProperties).some(([name, schema]) => {
       const description = schema && typeof schema === 'object'
@@ -1023,11 +1097,120 @@ export class PlannerService {
       return name;
     }
 
-    if (/^[a-zA-Z0-9_]+(items|list|schedule|details)$/i.test(name)) {
-      return name;
+    return undefined;
+  }
+
+  private hydrateMatchedSkill(
+    matchedSkill: SkillMatchResult | null | undefined,
+    availableSkills: AvailableSkillDefinition[],
+  ): SkillMatchResult | null {
+    if (!matchedSkill) {
+      return null;
     }
 
+    const sourceSkill = availableSkills.find((skill) => skill.skillId === matchedSkill.skillId);
+    if (!sourceSkill) {
+      return matchedSkill;
+    }
+
+    return {
+      ...matchedSkill,
+      paramsSchema: Object.keys(matchedSkill.paramsSchema?.properties || {}).length > 0
+        ? this.normalizeParamsSchema(matchedSkill.paramsSchema)
+        : sourceSkill.paramsSchema,
+      templateId: matchedSkill.templateId || sourceSkill.templateId,
+      carboneSkillId: matchedSkill.carboneSkillId || sourceSkill.carboneSkillId,
+      carboneTemplateId: matchedSkill.carboneTemplateId || sourceSkill.carboneTemplateId,
+      executionFlowTemplateIds: matchedSkill.executionFlowTemplateIds?.length
+        ? matchedSkill.executionFlowTemplateIds
+        : sourceSkill.executionFlowTemplateIds,
+      executionType: matchedSkill.executionType || sourceSkill.executionType,
+      executionFlow: matchedSkill.executionFlow?.length
+        ? matchedSkill.executionFlow
+        : sourceSkill.executionFlow,
+      apiEndpoints: matchedSkill.apiEndpoints || sourceSkill.apiEndpoints,
+      goal: matchedSkill.goal || sourceSkill.goal,
+      expectedResult: matchedSkill.expectedResult || sourceSkill.expectedResult,
+      outputParams: matchedSkill.outputParams || sourceSkill.outputParams,
+    };
+  }
+
+  private resolveExecutionType(
+    executionType?: string,
+    sourceType?: string,
+  ): AvailableSkillDefinition['executionType'] {
+    if (executionType === 'document' || executionType === 'flow' || executionType === 'query') {
+      return executionType;
+    }
+    if (sourceType === 'document' || sourceType === 'execution_flow_template') {
+      return 'document';
+    }
     return undefined;
+  }
+
+  private buildRecognizerParamsSchemaProperties(
+    properties: NonNullable<AvailableSkillDefinition['paramsSchema']>['properties'],
+  ): NonNullable<RecognizeParamsDTO['params_schema']>['properties'] {
+    return Object.fromEntries(
+      Object.entries(properties).map(([name, schema]) => {
+        const { required: _required, default: schemaDefault, ...rest } = schema;
+        const recognizerProperty: NonNullable<RecognizeParamsDTO['params_schema']>['properties'][string] = {
+          ...rest,
+          ...(typeof schemaDefault === 'string'
+            || typeof schemaDefault === 'number'
+            || typeof schemaDefault === 'boolean'
+            ? { default: schemaDefault }
+            : {}),
+        };
+        return [name, recognizerProperty];
+      }),
+    );
+  }
+
+  private buildRequestHeaders(authToken?: string, traceId?: string): Record<string, string> {
+    return {
+      ...(authToken ? { Authorization: authToken } : {}),
+      ...(traceId ? { [TRACE_ID_HEADER]: traceId } : {}),
+    };
+  }
+
+  private buildAuthCacheKey(authToken?: string): string {
+    const normalized = (authToken || 'anonymous').trim();
+    return createHash('sha1').update(normalized).digest('hex');
+  }
+
+  private buildSkillCacheKey(authCacheKey: string, skillId: string): string {
+    return `${authCacheKey}:skill:${skillId}`;
+  }
+
+  private buildFlowSchemaCacheKey(authToken: string | undefined, templateId: string): string {
+    return `${this.buildAuthCacheKey(authToken)}:flow:${templateId}`;
+  }
+
+  private getCacheValue<T>(
+    cache: Map<string, SkillCacheEntry<T>>,
+    key: string,
+  ): T | undefined {
+    const entry = cache.get(key);
+    if (!entry) {
+      return undefined;
+    }
+    if (entry.expiresAt <= Date.now()) {
+      cache.delete(key);
+      return undefined;
+    }
+    return entry.value;
+  }
+
+  private setCacheValue<T>(
+    cache: Map<string, SkillCacheEntry<T>>,
+    key: string,
+    value: T,
+  ): void {
+    cache.set(key, {
+      value,
+      expiresAt: Date.now() + PLANNER_SKILL_CACHE_TTL_MS,
+    });
   }
 
   private resolveBusinessGroupLabel(groupKey: string, item?: RequiredInputDTO): string {
