@@ -193,6 +193,85 @@ describe('PlannerService - required inputs without hardcoded defaults', () => {
     expect(signDate?.missing).toBe(false);
   });
 
+  it('locks waiting_input resume to the provided target skill instead of re-matching skills', async () => {
+    const skills: AvailableSkillDefinition[] = [
+      {
+        skillId: 'skill-contract',
+        skillName: 'contractService',
+        description: 'Generate contract',
+        triggerKeywords: ['合同'],
+        paramsSchema: {
+          properties: {
+            'info.partyA': {
+              type: 'string',
+              description: '甲方名称',
+              required: true,
+            } as any,
+          },
+          required: ['info.partyA'],
+        },
+        templateId: 'tpl-contract',
+        carboneTemplateId: 'tpl-contract',
+        carboneSkillId: 'carbone-contract',
+        executionFlowTemplateIds: [],
+        executionFlow: ['generate_parameters', 'document_render'],
+        apiEndpoints: {
+          runtimeMetadata: {
+            sourceType: 'document',
+          },
+        } as any,
+        goal: 'Generate contract',
+        expectedResult: 'Contract document',
+        outputParams: undefined,
+      },
+      {
+        skillId: 'skill-invoice',
+        skillName: 'invoiceService',
+        description: 'Generate invoice',
+        triggerKeywords: ['发票'],
+        paramsSchema: {
+          properties: {
+            invoiceTitle: {
+              type: 'string',
+              description: '发票抬头',
+              required: true,
+            } as any,
+          },
+          required: ['invoiceTitle'],
+        },
+        templateId: 'tpl-invoice',
+        carboneTemplateId: undefined,
+        carboneSkillId: undefined,
+        executionFlowTemplateIds: [],
+        executionFlow: ['generate_parameters'],
+        apiEndpoints: undefined,
+        goal: 'Generate invoice',
+        expectedResult: 'Invoice data',
+        outputParams: undefined,
+      },
+    ];
+
+    const matched = await (service as any).matchSkill(
+      '补充甲方名称为星海智造科技有限公司',
+      'u1',
+      'Bearer test',
+      'trace-1',
+      skills,
+      {
+        mode: 'waiting_input_resume',
+        target_skill_id: 'skill-contract',
+      },
+    );
+
+    expect(matched).toMatchObject({
+      skillId: 'skill-contract',
+      skillName: 'contractService',
+      matchReason: 'target_skill_context',
+      confidence: 1,
+    });
+    expect(matched?.paramsSchema.required).toEqual(['info.partyA']);
+  });
+
   it('does not treat placeholder-like recognized strings as meaningful filled inputs', async () => {
     const skill: AvailableSkillDefinition = {
       skillId: 'generic-query',

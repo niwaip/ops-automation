@@ -243,6 +243,123 @@ describe('ExecutionService.submitInputAndResume', () => {
     expect(response).toBe(result);
   });
 
+  it('refreshes semantic groupedMissing after partial submission', async () => {
+    const { service, prisma } = createService();
+    const executionWithSemantic = {
+      ...baseExecution,
+      normalizedInputJson: {
+        input: {},
+        requiredInputs: [
+          {
+            name: 'info.partyA',
+            type: 'string',
+            description: '甲方名称',
+            required: true,
+            missing: true,
+            source: 'unresolved',
+          },
+          {
+            name: 'info.partyB',
+            type: 'string',
+            description: '乙方名称',
+            required: true,
+            missing: true,
+            source: 'unresolved',
+          },
+        ],
+        semantic: {
+          enabled: true,
+          mode: 'field_level',
+          previewReady: false,
+          finalReady: false,
+          fallbackToFieldLevel: true,
+          summary: '文档仍缺少 2 个关键业务组。',
+          groupedMissing: [
+            {
+              key: 'info.partyA',
+              label: '甲方名称',
+              kind: 'field',
+              blocking: true,
+              required: true,
+              fieldNames: ['info.partyA'],
+              missingFieldNames: ['info.partyA'],
+              description: '请补充甲方名称',
+            },
+            {
+              key: 'info.partyB',
+              label: '乙方名称',
+              kind: 'field',
+              blocking: true,
+              required: true,
+              fieldNames: ['info.partyB'],
+              missingFieldNames: ['info.partyB'],
+              description: '请补充乙方名称',
+            },
+          ],
+          complexity: {
+            category: 'simple',
+            totalFields: 2,
+            requiredFields: 2,
+            missingFields: 2,
+            arrayGroups: 0,
+            reasonCodes: [],
+          },
+        },
+      },
+    };
+    const dto: SubmitInputDto = {
+      stepId: 'step-1',
+      input: {
+        'info.partyA': '星海智造科技有限公司',
+      },
+    };
+    const result = {
+      id: 'execution-1',
+      status: 'waiting_input',
+    };
+
+    prisma.execution.findUnique.mockResolvedValue(executionWithSemantic);
+    prisma.executionStep.findUnique.mockResolvedValue(baseStep);
+    prisma.execution.update.mockResolvedValue(undefined);
+    prisma.executionStep.update.mockResolvedValue(undefined);
+    prisma.executionEvent.create.mockResolvedValue(undefined);
+    prisma.runtimeSession.findFirst.mockResolvedValue({ id: 'runtime-1' });
+    jest.spyOn(service, 'getById').mockResolvedValue(result as never);
+
+    await service.submitInputAndResume('execution-1', 'user-1', dto);
+
+    expect(prisma.execution.update).toHaveBeenCalledWith({
+      where: { id: 'execution-1' },
+      data: {
+        normalizedInputJson: expect.objectContaining({
+          input: {
+            'info.partyA': '星海智造科技有限公司',
+          },
+          requiredInputs: [
+            expect.objectContaining({ name: 'info.partyA', missing: false }),
+            expect.objectContaining({ name: 'info.partyB', missing: true }),
+          ],
+          semantic: expect.objectContaining({
+            previewReady: false,
+            finalReady: false,
+            summary: '文档仍缺少 1 个关键业务组。',
+            groupedMissing: [
+              expect.objectContaining({
+                key: 'info.partyB',
+                missingFieldNames: ['info.partyB'],
+              }),
+            ],
+            complexity: expect.objectContaining({
+              missingFields: 1,
+            }),
+          }),
+          'info.partyA': '星海智造科技有限公司',
+        }),
+        status: 'waiting_input',
+      },
+    });
+  });
+
   it('keeps placeholder-like submitted values as missing inputs', async () => {
     const { service, prisma } = createService();
     const executionWithThreeRequiredInputs = {
@@ -447,6 +564,43 @@ describe('ExecutionService.submitInputAndResume', () => {
     expect((service as any).updateStatus).not.toHaveBeenCalled();
     expect((service as any).startExecution).toHaveBeenCalledWith('execution-1');
     expect(response).toBe(result);
+  });
+
+  it('does not block HTTP response on asynchronous advanceExecutionFlow after full submission', async () => {
+    const { service, prisma } = createService();
+    const result = {
+      id: 'execution-1',
+      status: 'running',
+    };
+    const dto: SubmitInputDto = {
+      stepId: 'step-1',
+      input: {
+        url: 'https://example.com',
+      },
+    };
+    let resolveAdvance: (() => void) | undefined;
+    const advancePromise = new Promise<void>((resolve) => {
+      resolveAdvance = resolve;
+    });
+
+    prisma.execution.findUnique.mockResolvedValue(baseExecution);
+    prisma.executionStep.findUnique.mockResolvedValue(baseStep);
+    prisma.execution.update.mockResolvedValue(undefined);
+    prisma.executionStep.update.mockResolvedValue(undefined);
+    prisma.executionEvent.create.mockResolvedValue(undefined);
+    prisma.runtimeSession.findFirst.mockResolvedValue({ id: 'runtime-1' });
+    jest.spyOn(service, 'getById').mockResolvedValue(result as never);
+    jest.spyOn(service as any, 'advanceExecutionFlow').mockReturnValue(advancePromise);
+
+    const submitPromise = service.submitInputAndResume('execution-1', 'user-1', dto);
+    const outcome = await Promise.race([
+      submitPromise.then(() => 'resolved'),
+      new Promise<string>((resolve) => setTimeout(() => resolve('timeout'), 20)),
+    ]);
+
+    expect(outcome).toBe('resolved');
+    resolveAdvance?.();
+    await advancePromise;
   });
 });
 

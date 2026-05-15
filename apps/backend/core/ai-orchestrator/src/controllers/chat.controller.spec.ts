@@ -262,6 +262,55 @@ describe('ChatController control-plane integration', () => {
     ]);
   });
 
+  it('ignores waiting_input step fields that are not explicitly marked as missing', async () => {
+    const { controller, controlPlaneClient } = createController();
+
+    controlPlaneClient.getExecutionSteps.mockResolvedValue([
+      {
+        id: 'step-ignore-1',
+        status: 'waiting_input',
+        type: 'input_collection',
+        inputJson: {
+          requiredInputs: [
+            {
+              name: 'info.partyA',
+              description: '甲方名称',
+              missing: true,
+            },
+            {
+              name: 'info.partyB',
+              description: '乙方名称',
+            },
+          ],
+        },
+      },
+    ]);
+
+    const details = await (controller as any).loadWaitingInputDetails(
+      'execution-ignore-1',
+      'Bearer token-ignore',
+      {
+        userId: 'user-ignore',
+        userRoles: ['employee'],
+      },
+    );
+
+    expect(details).toEqual({
+      waitingStepId: 'step-ignore-1',
+      missingInputs: [
+        {
+          name: 'info.partyA',
+          type: undefined,
+          description: '甲方名称',
+          group_label: undefined,
+          display_name: undefined,
+          missing: true,
+          needs_confirmation: false,
+        },
+      ],
+    });
+  });
+
   it('passes document guide context into recognizer during waiting_input resume', async () => {
     const { controller, controlPlaneClient, recognizerService } = createController();
 
@@ -378,6 +427,326 @@ describe('ChatController control-plane integration', () => {
       {
         type: StreamEventType.RESULT,
         content: '任务继续执行',
+      },
+    ]);
+  });
+
+  it('does not fall back to raw single-field text for non-string waiting_input fields', async () => {
+    const { controller, recognizerService, plannerService } = createController();
+
+    recognizerService.recognizeParams.mockResolvedValue({
+      params: {},
+      confidence: 0.1,
+    });
+    plannerService.generatePlan.mockResolvedValue({
+      required_inputs: [
+        {
+          name: 'deliveryItems[].installationDate',
+          missing: true,
+        },
+      ],
+      usage: undefined,
+    });
+
+    await expect((controller as any).buildWaitingInputPayload(
+      '下周三安装',
+      [
+        {
+          name: 'deliveryItems[].installationDate',
+          type: 'date',
+        },
+      ],
+      undefined,
+      undefined,
+      undefined,
+      '补充安装日期',
+      'user-date-1',
+      'selected-model-id',
+    )).rejects.toThrow(
+      '当前还缺少多个参数：deliveryItems[].installationDate',
+    );
+  });
+
+  it('runs task mode through planner, waiting_input, resume, and final result across two turns', async () => {
+    const { controller, controlPlaneClient, plannerService } = createController();
+    const executionId = 'execution-chain-1';
+    const planDraft = {
+      plan_id: 'plan-chain-1',
+      planner_mode: 'skill',
+      objective: '生成采购合同',
+      summary: '已识别技能 采购合同，但仍缺少 1 个关键输入。',
+      skill_match: {
+        skill_id: 'skill-contract',
+        skill_name: '采购合同',
+        confidence: 0.96,
+      },
+      required_inputs: [
+        {
+          name: 'info.partyA',
+          type: 'string',
+          description: '甲方名称',
+          required: true,
+          missing: true,
+          source: 'unresolved',
+        },
+        {
+          name: 'contractType',
+          type: 'string',
+          description: '合同类型',
+          required: true,
+          missing: false,
+          value: '采购合同',
+          source: 'user_input',
+        },
+      ],
+      steps: [
+        {
+          id: 'collect-required-inputs',
+          title: 'Collect required inputs',
+          description: '补齐必填参数: info.partyA',
+          kind: 'human_input',
+          status: 'planned',
+        },
+        {
+          id: 'step-2',
+          title: 'Render document',
+          description: '执行 document_render 步骤。',
+          kind: 'tool',
+          tool_name: 'document_render',
+          status: 'planned',
+        },
+      ],
+      semantic: {
+        enabled: true,
+        mode: 'field_level',
+        previewReady: false,
+        finalReady: false,
+        fallbackToFieldLevel: true,
+        summary: '文档仍缺少 1 个关键业务组。',
+        groupedMissing: [
+          {
+            key: 'info.partyA',
+            label: '甲方名称',
+            kind: 'field',
+            blocking: true,
+            required: true,
+            fieldNames: ['info.partyA'],
+            missingFieldNames: ['info.partyA'],
+            description: '请补充甲方名称',
+          },
+        ],
+        complexity: {
+          category: 'simple',
+          totalFields: 2,
+          requiredFields: 2,
+          missingFields: 1,
+          arrayGroups: 0,
+          reasonCodes: [],
+        },
+      },
+      usage: {
+        prompt_tokens: 12,
+        completion_tokens: 8,
+        total_tokens: 20,
+      },
+      risk_summary: {
+        level: 'medium',
+        requires_human_review: false,
+        items: ['missing_required_inputs'],
+      },
+    };
+
+    plannerService.generatePlan.mockResolvedValue(planDraft);
+    controlPlaneClient.createExecution.mockResolvedValue({ id: executionId });
+    controlPlaneClient.getExecution
+      .mockResolvedValueOnce({
+        id: executionId,
+        skillId: 'skill-contract',
+        status: 'waiting_input',
+        normalizedInput: {
+          objective: '生成采购合同',
+        },
+      })
+      .mockResolvedValueOnce({
+        id: executionId,
+        status: 'running',
+      });
+    controlPlaneClient.getExecutionSteps.mockResolvedValue([
+      {
+        id: 'step-chain-waiting-1',
+        status: 'waiting_input',
+        type: 'input_collection',
+        inputJson: {
+          requiredInputs: [
+            {
+              name: 'info.partyA',
+              description: '甲方名称',
+              missing: true,
+            },
+          ],
+        },
+      },
+    ]);
+    controlPlaneClient.submitExecutionInput.mockResolvedValue({
+      id: executionId,
+      status: 'running',
+    });
+
+    jest.spyOn(controller as any, 'resolveSkillExecutionRuntimeType').mockResolvedValue('workflow');
+    jest.spyOn(controller as any, 'observeExecution')
+      .mockImplementationOnce(async function* () {
+        yield {
+          type: StreamEventType.WAITING_INPUT,
+          content: `任务需要你补充信息后才能继续执行。\n\n缺少参数：甲方名称\n\n执行单 ID: ${executionId}`,
+          data: {
+            executionId,
+            status: 'waiting_input',
+            hasBusinessResult: false,
+            missingInputs: [
+              {
+                name: 'info.partyA',
+                description: '甲方名称',
+                missing: true,
+              },
+            ],
+          },
+        };
+      })
+      .mockImplementationOnce(async function* () {
+        yield {
+          type: StreamEventType.RESULT,
+          content: '采购合同已生成',
+          data: {
+            executionId,
+            status: 'succeeded',
+            hasBusinessResult: true,
+            result: {
+              finalAnswer: '采购合同已生成',
+              downloadUrl: '/files/contract.docx',
+            },
+          },
+        };
+      });
+
+    const firstTurnEvents: Array<{ type: StreamEventType; content: string }> = [];
+    for await (const event of (controller as any).handleTaskMode(
+      {
+        message: '帮我生成采购合同',
+        sessionId: 'session-chain-1',
+      },
+      {
+        sessionId: 'session-chain-1',
+        userId: 'user-chain-1',
+        userRoles: ['employee'],
+        traceId: 'trace-chain-1',
+        history: [],
+      },
+      'Bearer token-chain-1',
+    )) {
+      firstTurnEvents.push({ type: event.type, content: event.content });
+    }
+
+    expect(plannerService.generatePlan).toHaveBeenCalledWith({
+      request: {
+        user_input: '帮我生成采购合同',
+        user_id: 'user-chain-1',
+        modelId: undefined,
+        context: {
+          sessionId: 'session-chain-1',
+          uploadedFiles: undefined,
+          history: [],
+        },
+      },
+      userId: 'user-chain-1',
+      authToken: 'Bearer token-chain-1',
+      traceId: 'trace-chain-1',
+    });
+    expect(controlPlaneClient.createExecution).toHaveBeenCalledWith(
+      {
+        skillId: 'skill-contract',
+        input: {
+          prompt: '帮我生成采购合同',
+          contractType: '采购合同',
+        },
+        runtimeType: 'workflow',
+        usage: planDraft.usage,
+        planDraft,
+      },
+      {
+        authToken: 'Bearer token-chain-1',
+        user: {
+          userId: 'user-chain-1',
+          userRoles: ['employee'],
+        },
+      },
+    );
+    expect(firstTurnEvents).toEqual([
+      {
+        type: StreamEventType.THOUGHT,
+        content: '正在规划任务...',
+      },
+      {
+        type: StreamEventType.THOUGHT,
+        content: '已识别到技能: 采购合同，正在创建可恢复的执行单...',
+      },
+      {
+        type: StreamEventType.RESULT,
+        content: `已创建等待补充信息的执行单。\n\n文档仍缺少 1 个关键业务组。\n\n缺少业务组：甲方名称\n\n字段兜底：甲方名称\n\n可预览：否；可正式生成：否\n\n执行单 ID: ${executionId}`,
+      },
+      {
+        type: StreamEventType.WAITING_INPUT,
+        content: `任务需要你补充信息后才能继续执行。\n\n缺少参数：甲方名称\n\n执行单 ID: ${executionId}`,
+      },
+    ]);
+
+    const secondTurnEvents: Array<{ type: StreamEventType; content: string }> = [];
+    for await (const event of (controller as any).handleTaskMode(
+      {
+        message: '{"info.partyA":"星海智造科技有限公司"}',
+        executionId,
+      },
+      {
+        sessionId: 'session-chain-1',
+        userId: 'user-chain-1',
+        userRoles: ['employee'],
+        traceId: 'trace-chain-2',
+        history: [],
+        executionId,
+      },
+      'Bearer token-chain-1',
+    )) {
+      secondTurnEvents.push({ type: event.type, content: event.content });
+    }
+
+    expect(controlPlaneClient.submitExecutionInput).toHaveBeenCalledWith(
+      executionId,
+      {
+        stepId: 'step-chain-waiting-1',
+        input: {
+          'info.partyA': '星海智造科技有限公司',
+        },
+        usage: undefined,
+      },
+      {
+        authToken: 'Bearer token-chain-1',
+        user: {
+          userId: 'user-chain-1',
+          userRoles: ['employee'],
+        },
+      },
+    );
+    expect(secondTurnEvents).toEqual([
+      {
+        type: StreamEventType.THOUGHT,
+        content: '正在提交您补充的信息...',
+      },
+      {
+        type: StreamEventType.THOUGHT,
+        content: '信息已提交，任务继续执行。',
+      },
+      {
+        type: StreamEventType.RESULT,
+        content: '采购合同已生成',
       },
     ]);
   });

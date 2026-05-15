@@ -374,6 +374,41 @@ export class PlannerService {
     availableSkills: AvailableSkillDefinition[],
     context?: Record<string, unknown>,
   ): Promise<SkillMatchResult | null> {
+    const targetSkillId = typeof context?.target_skill_id === 'string'
+      ? context.target_skill_id.trim()
+      : '';
+    if (targetSkillId) {
+      const targetedSkill = availableSkills.find((skill) => skill.skillId === targetSkillId);
+      if (targetedSkill) {
+        return {
+          skillId: targetedSkill.skillId,
+          skillName: targetedSkill.skillName,
+          matchedKeywords: targetedSkill.triggerKeywords.filter((keyword) =>
+            keyword && userInput.toLowerCase().includes(keyword.toLowerCase()),
+          ),
+          confidence: 1,
+          collectedParams: {},
+          missingParams: targetedSkill.paramsSchema.required || [],
+          paramsSchema: targetedSkill.paramsSchema,
+          templateId: targetedSkill.templateId,
+          carboneSkillId: targetedSkill.carboneSkillId,
+          carboneTemplateId: targetedSkill.carboneTemplateId,
+          executionFlowTemplateId: targetedSkill.executionFlowTemplateIds?.[0],
+          executionFlowTemplateIds: targetedSkill.executionFlowTemplateIds,
+          executionFlow: targetedSkill.executionFlow?.length
+            ? targetedSkill.executionFlow
+            : targetedSkill.apiEndpoints?.runtimeMetadata?.sourceType === 'document'
+              ? ['generate_parameters', 'document_render']
+              : undefined,
+          apiEndpoints: targetedSkill.apiEndpoints,
+          matchReason: 'target_skill_context',
+          goal: targetedSkill.goal,
+          expectedResult: targetedSkill.expectedResult,
+          outputParams: targetedSkill.outputParams,
+        };
+      }
+    }
+
     if (userId) {
       try {
         const response = await axios.post<{ match: SkillMatchResult | null }>(
