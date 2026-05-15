@@ -11,8 +11,12 @@ import {
   RequiredInputDTO,
   SemanticGroupedMissingDTO,
   LLMUsage,
+  RecognizeParamsResponseDTO,
 } from '../../interfaces';
 import { TRACE_ID_HEADER } from '../../common/trace.util';
+import { buildDocumentGuideContext } from '../../common/document-guide';
+import { resolveFriendlyInputDisplayName } from '../../common/input-label';
+import { isPlaceholderTextValue } from '../../common/placeholder-value';
 import { RecognizerService } from '../recognizer/recognizer.service';
 import { AvailableSkillDefinition, SkillMatchResult } from '../react-engine/interfaces';
 
@@ -32,6 +36,8 @@ const DOCUMENT_SEMANTIC_ENABLED = (process.env.DOCUMENT_SEMANTIC_SUBAGENT_ENABLE
 const DOCUMENT_COMPLEX_PARAM_THRESHOLD = Number(process.env.DOCUMENT_SEMANTIC_PARAM_THRESHOLD || 8);
 const DOCUMENT_COMPLEX_MISSING_THRESHOLD = Number(process.env.DOCUMENT_SEMANTIC_MISSING_THRESHOLD || 4);
 const DOCUMENT_COMPLEX_ARRAY_GROUP_THRESHOLD = Number(process.env.DOCUMENT_SEMANTIC_ARRAY_GROUP_THRESHOLD || 2);
+const RECOGNIZED_FIELD_LOW_CONFIDENCE_THRESHOLD = Number(process.env.PARAM_FIELD_LOW_CONFIDENCE_THRESHOLD || 0.7);
+const RECOGNITION_RESULT_LOW_CONFIDENCE_THRESHOLD = Number(process.env.PARAM_RESULT_LOW_CONFIDENCE_THRESHOLD || 0.45);
 const BUSINESS_GROUP_LABELS: Record<string, string> = {
   items: '标的清单',
   deliveryItems: '交付计划',
@@ -66,11 +72,22 @@ export class PlannerService {
       return this.buildFallbackPlan(objective, availableSkills.length > 0);
     }
 
+    const isDocumentSkill = this.isDocumentTask(matchedSkill);
     const recognized = await this.recognizerService.recognizeParams({
       template_id: matchedSkill.skillId,
       user_input: objective,
       modelId: input.request.modelId,
       context: input.request.context,
+      guide_context: buildDocumentGuideContext({
+        enabled: isDocumentSkill,
+        skillName: matchedSkill.skillName,
+        description: matchedSkill.matchReason || matchedSkill.skillName,
+        goal: matchedSkill.goal,
+        expectedResult: matchedSkill.expectedResult,
+        outputParams: matchedSkill.outputParams,
+        paramsSchema: matchedSkill.paramsSchema,
+        runtimeMetadata: matchedSkill.apiEndpoints?.runtimeMetadata,
+      }),
       params_schema: {
         properties: Object.fromEntries(
           Object.entries(matchedSkill.paramsSchema?.properties || {}).map(([name, schema]) => [
@@ -80,6 +97,22 @@ export class PlannerService {
               description: schema.description,
               extractionPrompt: (schema as any).extractionPrompt,
               default: schema.default as string | number | boolean | undefined,
+              semanticRole: (schema as any).semanticRole,
+              extractionHints: Array.isArray((schema as any).extractionHints)
+                ? (schema as any).extractionHints
+                : undefined,
+              displayName: typeof (schema as any).displayName === 'string'
+                ? (schema as any).displayName
+                : undefined,
+              groupLabel: typeof (schema as any).groupLabel === 'string'
+                ? (schema as any).groupLabel
+                : undefined,
+              previewBlocking: typeof (schema as any).previewBlocking === 'boolean'
+                ? (schema as any).previewBlocking
+                : undefined,
+              confirmationThreshold: typeof (schema as any).confirmationThreshold === 'number'
+                ? (schema as any).confirmationThreshold
+                : undefined,
             },
           ]),
         ),
@@ -92,7 +125,7 @@ export class PlannerService {
 
     const semanticContext = this.buildDocumentSemanticContext(
       matchedSkill,
-      this.buildRequiredInputs(matchedSkill, recognized.params),
+      this.buildRequiredInputs(matchedSkill, recognized),
     );
     const requiredInputs = semanticContext.requiredInputs;
     const steps = this.buildPlanSteps(matchedSkill, requiredInputs);
@@ -304,6 +337,14 @@ export class PlannerService {
             required: Boolean(property.required),
             ...(property.default !== undefined ? { default: property.default } : {}),
             ...(property.extractionPrompt !== undefined ? { extractionPrompt: property.extractionPrompt } : {}),
+            ...(typeof property.semanticRole === 'string' ? { semanticRole: property.semanticRole } : {}),
+            ...(Array.isArray(property.extractionHints) ? { extractionHints: property.extractionHints } : {}),
+            ...(typeof property.displayName === 'string' ? { displayName: property.displayName } : {}),
+            ...(typeof property.groupLabel === 'string' ? { groupLabel: property.groupLabel } : {}),
+            ...(typeof property.previewBlocking === 'boolean' ? { previewBlocking: property.previewBlocking } : {}),
+            ...(typeof property.confirmationThreshold === 'number'
+              ? { confirmationThreshold: property.confirmationThreshold }
+              : {}),
           },
         ];
       }),
@@ -488,28 +529,241 @@ export class PlannerService {
 
   private buildRequiredInputs(
     matchedSkill: SkillMatchResult,
-    recognizedParams: Record<string, unknown>,
+    recognized: RecognizeParamsResponseDTO,
   ): RequiredInputDTO[] {
+    const recognizedParams = recognized.params || {};
+    const uncertainFields = new Set(recognized.uncertain_fields || []);
+    const fieldConfidences = recognized.field_confidences || {};
+    const overallLowConfidence = (recognized.confidence || 0) < RECOGNITION_RESULT_LOW_CONFIDENCE_THRESHOLD;
+    const arrayGroupTargetCounts = this.buildArrayGroupTargetCounts(
+      matchedSkill.paramsSchema?.properties || {},
+      recognizedParams,
+    );
+
     return Object.entries(matchedSkill.paramsSchema?.properties || {}).map(([name, schema]) => {
+      const schemaMeta = schema as unknown as Record<string, unknown>;
       const required = Boolean(schema.required || matchedSkill.paramsSchema.required?.includes(name));
-      const hasValue = Object.prototype.hasOwnProperty.call(recognizedParams, name);
-      const canUseDefault = !required && schema.default !== undefined;
-      const value = hasValue ? recognizedParams[name] : canUseDefault ? schema.default : undefined;
+      const rawHasValue = Object.prototype.hasOwnProperty.call(recognizedParams, name);
+      const rawValue = rawHasValue ? recognizedParams[name] : undefined;
+      const normalizedRawValue = rawHasValue ? this.normalizeMeaningfulInputValue(rawValue) : undefined;
+      const hasValue = this.hasMeaningfulRequiredInputValue(normalizedRawValue);
+      const normalizedDefaultValue = !required
+        ? this.normalizeOptionalDefaultValue(schema.default)
+        : undefined;
+      const canUseDefault = !required && !hasValue && normalizedDefaultValue !== undefined;
+      const value = hasValue ? normalizedRawValue : canUseDefault ? normalizedDefaultValue : undefined;
+      const arrayGroupKey = this.extractArrayGroupKey(name, schema.type);
+      const groupTargetCount = arrayGroupKey ? (arrayGroupTargetCounts[arrayGroupKey] || 0) : 0;
+      const valueItemCount = this.countMeaningfulRequiredInputItems(value);
+      const hasPartialArrayGroupValue = Boolean(
+        required
+        && arrayGroupKey
+        && groupTargetCount > 1
+        && valueItemCount > 0
+        && valueItemCount < groupTargetCount,
+      );
+      const fieldConfidence = typeof fieldConfidences[name] === 'number'
+        ? Math.max(0, Math.min(1, fieldConfidences[name] as number))
+        : undefined;
+      const confirmationThreshold = typeof schemaMeta.confirmationThreshold === 'number'
+        && Number.isFinite(schemaMeta.confirmationThreshold)
+        ? Math.max(0, Math.min(1, schemaMeta.confirmationThreshold))
+        : RECOGNIZED_FIELD_LOW_CONFIDENCE_THRESHOLD;
+      const previewBlocking = typeof schemaMeta.previewBlocking === 'boolean'
+        ? Boolean(schemaMeta.previewBlocking)
+        : undefined;
+      const shouldBlockOnConfirmation = required || previewBlocking === true;
+      const needsConfirmation = hasValue && shouldBlockOnConfirmation && (
+        uncertainFields.has(name)
+        || (fieldConfidence !== undefined && fieldConfidence < confirmationThreshold)
+        || (required && overallLowConfidence)
+      );
+      const isValueMissing = !this.hasMeaningfulRequiredInputValue(value) || hasPartialArrayGroupValue;
+      const isBlockingMissing = (required && isValueMissing) || needsConfirmation;
+      const missingReason = isBlockingMissing && needsConfirmation
+        ? overallLowConfidence && (fieldConfidence === undefined || fieldConfidence >= RECOGNIZED_FIELD_LOW_CONFIDENCE_THRESHOLD)
+          ? 'overall_low_confidence' as const
+          : 'low_confidence' as const
+        : isBlockingMissing && required && isValueMissing
+          ? 'missing' as const
+          : undefined;
+      const description = this.decorateRequiredInputDescription(
+        this.decorateArrayGroupCompletenessDescription(
+          schema.description,
+          valueItemCount,
+          groupTargetCount,
+          hasPartialArrayGroupValue,
+        ),
+        value,
+        missingReason,
+        fieldConfidence,
+      );
+      const displayName = this.resolveRequiredInputDisplayName(
+        name,
+        typeof schemaMeta.displayName === 'string' ? schemaMeta.displayName : undefined,
+        schema.description,
+      );
 
       return {
         name,
         type: schema.type,
-        description: schema.description,
+        description,
+        ...(displayName
+          ? { display_name: displayName }
+          : {}),
+        ...(typeof schemaMeta.groupLabel === 'string'
+          ? { group_label: String(schemaMeta.groupLabel) }
+          : {}),
         required,
         value,
-        missing: required && (
-          value === undefined ||
-          value === null ||
-          (typeof value === 'string' && value.trim() === '')
-        ),
+        missing: isBlockingMissing,
         source: hasValue ? 'user_input' : canUseDefault && value !== undefined ? 'default' : 'unresolved',
+        confidence: fieldConfidence,
+        needs_confirmation: needsConfirmation,
+        confirmation_threshold: confirmationThreshold,
+        ...(typeof previewBlocking === 'boolean'
+          ? { preview_blocking: previewBlocking }
+          : {}),
+        ...(missingReason ? { missing_reason: missingReason } : {}),
       };
     });
+  }
+
+  private buildArrayGroupTargetCounts(
+    properties: Record<string, { type: string }>,
+    recognizedParams: Record<string, unknown>,
+  ): Record<string, number> {
+    return Object.entries(properties).reduce<Record<string, number>>((acc, [name, schema]) => {
+      const groupKey = this.extractArrayGroupKey(name, schema.type);
+      if (!groupKey) {
+        return acc;
+      }
+      const count = this.countMeaningfulRequiredInputItems(recognizedParams[name]);
+      if (count > 0) {
+        acc[groupKey] = Math.max(acc[groupKey] || 0, count);
+      }
+      return acc;
+    }, {});
+  }
+
+  private hasMeaningfulRequiredInputValue(value: unknown): boolean {
+    if (value === undefined || value === null) {
+      return false;
+    }
+    if (typeof value === 'string') {
+      const trimmed = value.trim();
+      return trimmed.length > 0 && !isPlaceholderTextValue(trimmed);
+    }
+    if (Array.isArray(value)) {
+      return value.some((item) => this.hasMeaningfulRequiredInputValue(item));
+    }
+    if (typeof value === 'object') {
+      return Object.values(value as Record<string, unknown>).some((item) => this.hasMeaningfulRequiredInputValue(item));
+    }
+    return true;
+  }
+
+  private normalizeMeaningfulInputValue(value: unknown): unknown {
+    if (value === undefined || value === null) {
+      return undefined;
+    }
+    if (typeof value === 'string') {
+      const trimmed = value.trim();
+      return trimmed.length > 0 && !isPlaceholderTextValue(trimmed) ? trimmed : undefined;
+    }
+    if (Array.isArray(value)) {
+      const normalized = value
+        .map((item) => this.normalizeMeaningfulInputValue(item))
+        .filter((item) => item !== undefined);
+      return normalized.length > 0 ? normalized : undefined;
+    }
+    if (typeof value === 'object') {
+      const normalizedEntries = Object.entries(value as Record<string, unknown>)
+        .map(([key, item]) => [key, this.normalizeMeaningfulInputValue(item)] as const)
+        .filter(([, item]) => item !== undefined);
+      return normalizedEntries.length > 0 ? Object.fromEntries(normalizedEntries) : undefined;
+    }
+    return value;
+  }
+
+  private countMeaningfulRequiredInputItems(value: unknown): number {
+    if (value === undefined || value === null) {
+      return 0;
+    }
+    if (Array.isArray(value)) {
+      return value.filter((item) => this.hasMeaningfulRequiredInputValue(item)).length;
+    }
+    return this.hasMeaningfulRequiredInputValue(value) ? 1 : 0;
+  }
+
+  private normalizeOptionalDefaultValue(value: unknown): unknown {
+    return this.normalizeMeaningfulInputValue(value);
+  }
+
+  private decorateArrayGroupCompletenessDescription(
+    description: string | undefined,
+    currentCount: number,
+    targetCount: number,
+    incomplete: boolean,
+  ): string | undefined {
+    const base = String(description || '').trim();
+    if (!incomplete) {
+      return base || description;
+    }
+    const note = `当前仅识别 ${currentCount}/${targetCount} 条，请补齐同组其它行`;
+    return base ? `${base}；${note}` : note;
+  }
+
+  private resolveRequiredInputDisplayName(
+    name: string,
+    displayName?: string,
+    description?: string,
+  ): string | undefined {
+    const resolved = resolveFriendlyInputDisplayName({
+      name,
+      display_name: displayName,
+      description,
+    });
+    return resolved || displayName || name;
+  }
+
+  private decorateRequiredInputDescription(
+    description: string | undefined,
+    value: unknown,
+    missingReason: RequiredInputDTO['missing_reason'],
+    confidence?: number,
+  ): string | undefined {
+    const base = String(description || '').trim();
+    if (!missingReason || missingReason === 'missing') {
+      return base || description;
+    }
+
+    const preview = this.summarizeInputValue(value);
+    const confidenceText = typeof confidence === 'number'
+      ? `，当前识别置信度 ${(confidence * 100).toFixed(0)}%`
+      : '';
+    const reason = missingReason === 'overall_low_confidence'
+      ? `已识别候选值“${preview}”，但本轮整体识别置信度偏低${confidenceText}，请确认或改写`
+      : `已识别候选值“${preview}”，但该字段置信度偏低${confidenceText}，请确认或改写`;
+    return base ? `${base}；${reason}` : reason;
+  }
+
+  private summarizeInputValue(value: unknown): string {
+    if (Array.isArray(value)) {
+      const normalized = value
+        .map((item) => String(item ?? '').trim())
+        .filter(Boolean);
+      if (normalized.length === 0) {
+        return '空';
+      }
+      return normalized.length === 1 ? normalized[0]! : `${normalized[0]} 等 ${normalized.length} 项`;
+    }
+
+    const text = String(value ?? '').trim();
+    if (!text) {
+      return '空';
+    }
+    return text.length > 80 ? `${text.slice(0, 80)}...` : text;
   }
 
   private buildDocumentSemanticContext(
@@ -693,11 +947,17 @@ export class PlannerService {
       const key = arrayGroupKey || item.name;
       const existing = groups.get(key);
       const kind = arrayGroupKey ? 'array_group' as const : 'field' as const;
-      const label = arrayGroupKey ? this.resolveBusinessGroupLabel(arrayGroupKey) : item.description || item.name;
+      const label = arrayGroupKey
+        ? this.resolveBusinessGroupLabel(arrayGroupKey, item)
+        : item.display_name || item.description || item.name;
+      const blocking = this.resolvePreviewBlocking(key, item);
 
       if (existing) {
         existing.fieldNames.push(item.name);
         existing.missingFieldNames.push(item.name);
+        if (item.preview_blocking === true) {
+          existing.blocking = true;
+        }
         return;
       }
 
@@ -705,7 +965,7 @@ export class PlannerService {
         key,
         label,
         kind,
-        blocking: this.isPreviewBlockingGroup(key),
+        blocking,
         required: true,
         fieldNames: [item.name],
         missingFieldNames: [item.name],
@@ -735,8 +995,15 @@ export class PlannerService {
     return undefined;
   }
 
-  private resolveBusinessGroupLabel(groupKey: string): string {
-    return BUSINESS_GROUP_LABELS[groupKey] || groupKey;
+  private resolveBusinessGroupLabel(groupKey: string, item?: RequiredInputDTO): string {
+    return item?.group_label || BUSINESS_GROUP_LABELS[groupKey] || groupKey;
+  }
+
+  private resolvePreviewBlocking(groupKey: string, item?: RequiredInputDTO): boolean {
+    if (typeof item?.preview_blocking === 'boolean') {
+      return item.preview_blocking;
+    }
+    return this.isPreviewBlockingGroup(groupKey);
   }
 
   private isPreviewBlockingGroup(groupKey: string): boolean {

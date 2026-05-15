@@ -375,8 +375,11 @@ export class Parser {
     const variables = new Set<string>();
 
     for (const marker of markers) {
-      // 移除数组索引部分
-      const cleanPath = marker.name.replace(/\[(?:i(?:\+\d+)?)?\]/g, '');
+      // 移除数组索引部分和可能存在的花括号
+      const cleanName = marker.name.startsWith('{') && marker.name.endsWith('}') 
+        ? marker.name.slice(1, -1) 
+        : marker.name;
+      const cleanPath = cleanName.replace(/\[(?:i(?:\+\d+)?)?\]/g, '');
       variables.add(cleanPath);
     }
 

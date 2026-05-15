@@ -39,6 +39,8 @@ import { SessionService } from '../modules/redis/session.service';
 import { PlanDraftDTO } from '../interfaces';
 import { PromptDebugSettingsService } from '../modules/debug-settings/prompt-debug-settings.service';
 import { getAuthServiceUrl } from '../config/service-endpoints';
+import { buildDocumentGuideContext } from '../common/document-guide';
+import { resolveFriendlyInputDisplayName } from '../common/input-label';
 
 const fileStore = new Map<string, { fileName: string; mimeType: string; size: number; content: string }>();
 
@@ -205,7 +207,10 @@ export class ChatController {
     missingInputs: Array<{
       name: string;
       description?: string;
+      group_label?: string;
+      display_name?: string;
       missing?: boolean;
+      needs_confirmation?: boolean;
     }>;
   }> {
     try {
@@ -228,7 +233,10 @@ export class ChatController {
         .map((item: any) => ({
           name: String(item.name).trim(),
           description: typeof item.description === 'string' ? item.description : undefined,
+          group_label: typeof item.group_label === 'string' ? item.group_label : undefined,
+          display_name: typeof item.display_name === 'string' ? item.display_name : undefined,
           missing: item.missing !== false,
+          needs_confirmation: item.needs_confirmation === true,
         }));
       return {
         waitingStepId: waitingStep?.id,
@@ -270,13 +278,30 @@ export class ChatController {
   private formatWaitingInputMessage(input: {
     executionId?: string;
     intro?: string;
-    missingInputs: Array<{ name: string; description?: string; missing?: boolean }>;
+    missingInputs: Array<{
+      name: string;
+      description?: string;
+      group_label?: string;
+      display_name?: string;
+      missing?: boolean;
+      needs_confirmation?: boolean;
+    }>;
     semantic?: WaitingInputSemantic;
   }): string {
     const lines: string[] = [input.intro || '任务需要你补充信息后才能继续执行。'];
     const groupedMissing = Array.isArray(input.semantic?.groupedMissing)
       ? input.semantic!.groupedMissing.filter((item) => item?.label)
       : [];
+    const groupedInputs = input.missingInputs.reduce<Map<string, typeof input.missingInputs>>((acc, item) => {
+      const label = typeof item.group_label === 'string' ? item.group_label.trim() : '';
+      if (!label) {
+        return acc;
+      }
+      const existing = acc.get(label) || [];
+      existing.push(item);
+      acc.set(label, existing);
+      return acc;
+    }, new Map());
 
     if (input.semantic?.summary) {
       lines.push(input.semantic.summary);
@@ -286,9 +311,16 @@ export class ChatController {
       lines.push(`缺少业务组：${groupedMissing.map((item) => item.label).join('、')}`);
     }
 
-    if (input.missingInputs.length > 0) {
+    if (groupedInputs.size > 0) {
+      lines.push('请补充以下信息：');
+      groupedInputs.forEach((items, label) => {
+        lines.push(
+          `${label}：${items.map((item) => this.resolveWaitingInputLabel(item)).join('、')}`,
+        );
+      });
+    } else if (input.missingInputs.length > 0) {
       lines.push(
-        `${groupedMissing.length > 0 ? '字段兜底' : '缺少参数'}：${input.missingInputs.map((item) => item.name).join('、')}`,
+        `${groupedMissing.length > 0 ? '字段兜底' : '缺少参数'}：${input.missingInputs.map((item) => this.resolveWaitingInputLabel(item)).join('、')}`,
       );
     } else if (groupedMissing.length === 0) {
       lines.push('请继续补充必要参数。');
@@ -307,6 +339,14 @@ export class ChatController {
     return lines.join('\n\n');
   }
 
+  private resolveWaitingInputLabel(input: {
+    name: string;
+    description?: string;
+    display_name?: string;
+  }): string {
+    return resolveFriendlyInputDisplayName(input);
+  }
+
   private buildWaitingInputFollowupHint(
     missingInputs: Array<{ name: string }>,
     semantic?: WaitingInputSemantic,
@@ -320,6 +360,56 @@ export class ChatController {
     }
 
     return `当前还缺少多个参数：${missingInputs.map((item) => item.name).join('、')}。请继续用自然语言逐项补充（例如：甲方签字用公司名称、乙方签字用公司名称、附件填写无）。`;
+  }
+
+  private formatFieldNameList(fieldNames: string[], limit = 12): string {
+    const normalized = fieldNames
+      .map((item) => String(item || '').trim())
+      .filter(Boolean);
+    if (normalized.length === 0) {
+      return '无';
+    }
+    if (normalized.length <= limit) {
+      return normalized.join('、');
+    }
+    return `${normalized.slice(0, limit).join('、')} 等 ${normalized.length} 项`;
+  }
+
+  private buildWaitingInputSubmissionFeedback(input: {
+    executionId?: string;
+    resolvedFieldNames: string[];
+    remainingMissingInputs: Array<{ name: string }>;
+    semantic?: WaitingInputSemantic;
+  }): string {
+    const lines = ['已提交补充信息。'];
+    const resolvedCount = input.resolvedFieldNames.length;
+    if (resolvedCount > 0) {
+      lines.push(
+        `本次识别到 ${resolvedCount} 个字段：${this.formatFieldNameList(input.resolvedFieldNames)}`,
+      );
+    }
+
+    const groupedMissing = Array.isArray(input.semantic?.groupedMissing)
+      ? input.semantic.groupedMissing.filter((item) => item?.label)
+      : [];
+    if (groupedMissing.length > 0) {
+      lines.push(`仍缺少业务组：${groupedMissing.map((item) => item.label).join('、')}`);
+    }
+
+    if (input.remainingMissingInputs.length > 0) {
+      lines.push(
+        `仍缺少 ${input.remainingMissingInputs.length} 个字段：${this.formatFieldNameList(input.remainingMissingInputs.map((item) => item.name))}`,
+      );
+      lines.push('已保留当前执行单，请继续补充剩余信息。');
+    } else {
+      lines.push('当前缺失字段已补齐，任务将继续执行。');
+    }
+
+    if (input.executionId) {
+      lines.push(`执行单 ID: ${input.executionId}`);
+    }
+
+    return lines.join('\n\n');
   }
 
   private normalizeContentToText(content: string | ContentBlock[]): string {
@@ -453,6 +543,7 @@ export class ChatController {
     authToken?: string,
   ): Promise<{
     name?: string;
+    description?: string;
     paramsSchema?: {
       properties?: Record<string, {
         type: string;
@@ -462,10 +553,12 @@ export class ChatController {
       }>;
       required?: string[];
     };
+    guideContext?: import('../interfaces').DocumentGuideContext;
   } | null> {
     try {
       const response = await axios.get<{
         name?: string;
+        description?: string;
         paramsSchema?: {
           properties?: Record<string, {
             type: string;
@@ -475,10 +568,31 @@ export class ChatController {
           }>;
           required?: string[];
         };
+        apiEndpoints?: {
+          runtimeMetadata?: import('../modules/react-engine/interfaces').SkillRuntimeMetadata;
+        };
+        goal?: string;
+        expectedResult?: string;
+        outputParams?: Record<string, unknown>;
       }>(`${getAuthServiceUrl()}/skills/${skillId}`, {
         headers: authToken ? { Authorization: authToken } : {},
       });
-      return response.data;
+      return {
+        ...response.data,
+        guideContext: buildDocumentGuideContext({
+          enabled:
+            response.data.apiEndpoints?.runtimeMetadata?.sourceType === 'document'
+            || response.data.apiEndpoints?.runtimeMetadata?.sourceType === 'execution_flow_template'
+            || Boolean(response.data.apiEndpoints?.runtimeMetadata?.sourceTemplate?.templateId),
+          skillName: response.data.name,
+          description: response.data.description,
+          goal: response.data.goal,
+          expectedResult: response.data.expectedResult,
+          outputParams: response.data.outputParams,
+          paramsSchema: response.data.paramsSchema as any,
+          runtimeMetadata: response.data.apiEndpoints?.runtimeMetadata,
+        }),
+      };
     } catch (error) {
       this.logger.warn(
         `Failed to load skill schema for ${skillId}: ${error instanceof Error ? error.message : 'unknown'}`,
@@ -574,6 +688,7 @@ export class ChatController {
         user_input: plannerStylePrompt,
         modelId,
         params_schema: paramsSchema,
+        guide_context: skill?.guideContext,
         context: {
           mode: 'waiting_input_resume',
           original_objective: originalObjective,
@@ -1115,6 +1230,49 @@ export class ChatController {
                 }),
               );
 
+              const latestStateEvent = await this.buildLatestExecutionStateEvent(
+                executionId,
+                authToken,
+                {
+                  userId: context.userId,
+                  userRoles: context.userRoles,
+                },
+              );
+
+              if (latestStateEvent?.type === StreamEventType.WAITING_INPUT) {
+                const waitingPayload =
+                  latestStateEvent.data
+                  && typeof latestStateEvent.data === 'object'
+                  && !Array.isArray(latestStateEvent.data)
+                    ? latestStateEvent.data as {
+                        missingInputs?: Array<{
+                          name: string;
+                          group_label?: string;
+                          display_name?: string;
+                          needs_confirmation?: boolean;
+                        }>;
+                        semantic?: WaitingInputSemantic;
+                      }
+                    : {};
+                const remainingMissingInputs = Array.isArray(waitingPayload.missingInputs)
+                  ? waitingPayload.missingInputs
+                  : [];
+                const semantic = waitingPayload.semantic;
+
+                yield {
+                  type: StreamEventType.THOUGHT,
+                  content: this.buildWaitingInputSubmissionFeedback({
+                    executionId,
+                    resolvedFieldNames: Object.keys(waitingInputPayload.input || {}),
+                    remainingMissingInputs,
+                    semantic,
+                  }),
+                };
+
+                yield latestStateEvent;
+                return;
+              }
+
               yield {
                 type: StreamEventType.THOUGHT,
                 content: '信息已提交，任务继续执行。',
@@ -1462,7 +1620,10 @@ export class ChatController {
           requiredInputs?: Array<{
             name?: string;
             description?: string;
+            group_label?: string;
+            display_name?: string;
             missing?: boolean;
+            needs_confirmation?: boolean;
           }>;
           };
       }>(executionId, this.buildControlPlaneRequestOptions(authToken, user));

@@ -651,14 +651,28 @@ export class ExecutionService {
       throw new BadRequestException(`Unexpected input fields: ${invalidKeys.join(', ')}`);
     }
 
+    const normalizedSubmittedInput = Object.fromEntries(
+      missingInputs.map((item) => [item.name, this.normalizeSubmittedInputValue(dto.input?.[item.name], item.type)]),
+    );
+
     const updatedRequiredInputs = requiredInputs.map((item) => {
       if (!submittedKeys.includes(item.name)) {
         return item;
       }
 
+      const normalizedValue = normalizedSubmittedInput[item.name];
+      if (!this.hasMeaningfulSubmittedInputValue(normalizedValue)) {
+        return {
+          ...item,
+          value: undefined,
+          missing: true,
+          source: 'unresolved' as const,
+        };
+      }
+
       return {
         ...item,
-        value: dto.input[item.name],
+        value: normalizedValue,
         missing: false,
         source: 'user_input' as const,
       };
@@ -677,10 +691,10 @@ export class ExecutionService {
     const updatedNormalized = {
       ...normalized,
       ...(totalUsage ? { __usage: totalUsage } : {}),
-      ...dto.input,
+      ...normalizedSubmittedInput,
       input: {
         ...normalizedInputData,
-        ...dto.input,
+        ...normalizedSubmittedInput,
       },
       requiredInputs: updatedRequiredInputs,
     };
@@ -693,7 +707,7 @@ export class ExecutionService {
           inputJson: this.asJsonValue({
             requiredInputs: updatedRequiredInputs.filter((item) => item.missing),
           }),
-          outputJson: this.asJsonValue(dto.input),
+          outputJson: this.asJsonValue(normalizedSubmittedInput),
           endedAt: isFullySubmitted ? new Date() : null,
         },
       }),
@@ -718,7 +732,7 @@ export class ExecutionService {
         : EXECUTION_EVENT_TYPE.EXECUTION_PARTIAL_INPUT_SUBMITTED,
       {
       stepId: dto.stepId,
-      input: dto.input,
+      input: normalizedSubmittedInput,
       remainingMissing: remainingMissingInputs.map(i => i.name),
       },
     );
@@ -1130,12 +1144,101 @@ export class ExecutionService {
           : planDraft.summary,
       steps,
       required_inputs: requiredInputs,
+      semantic: this.reconcilePlanSemantic(planDraft.semantic, requiredInputs),
       risk_summary: {
         ...planDraft.risk_summary,
         level: missingRequiredInputs.length > 0 ? planDraft.risk_summary.level : 'low',
         items: riskItems.length > 0 ? riskItems : ['no_material_risk_detected'],
       },
     };
+  }
+
+  private reconcilePlanSemantic(
+    semantic: PlannerSemantic | undefined,
+    requiredInputs: PlannerRequiredInput[],
+  ): PlannerSemantic | undefined {
+    if (!semantic) {
+      return undefined;
+    }
+
+    const missingRequiredInputs = requiredInputs.filter((item) => item.required && item.missing);
+    const missingFieldNames = new Set(missingRequiredInputs.map((item) => item.name));
+    const groupedMissing = (semantic.groupedMissing || [])
+      .map((group) => {
+        const groupFieldNames = this.resolveSemanticGroupFieldNames(group, requiredInputs);
+        const currentMissingFieldNames = groupFieldNames.filter((name) => missingFieldNames.has(name));
+        if (currentMissingFieldNames.length === 0) {
+          return undefined;
+        }
+
+        return {
+          ...group,
+          fieldNames: groupFieldNames,
+          missingFieldNames: currentMissingFieldNames,
+        };
+      })
+      .filter((group): group is PlannerSemanticGroupedMissing => Boolean(group));
+
+    const coveredMissingNames = new Set(groupedMissing.flatMap((group) => group.missingFieldNames));
+    missingRequiredInputs
+      .filter((item) => !coveredMissingNames.has(item.name))
+      .forEach((item) => {
+        groupedMissing.push({
+          key: item.name,
+          label: item.description || item.name,
+          kind: 'field',
+          blocking: true,
+          required: true,
+          fieldNames: [item.name],
+          missingFieldNames: [item.name],
+          description: item.description || `请补充 ${item.name}`,
+        });
+      });
+
+    const blockingGroups = groupedMissing.filter((group) => group.blocking);
+    const previewReady = blockingGroups.length === 0;
+    const finalReady = groupedMissing.length === 0;
+
+    return {
+      ...semantic,
+      previewReady,
+      finalReady,
+      summary: finalReady
+        ? '文档参数已满足最终渲染要求。'
+        : previewReady
+          ? `文档可以先进入预览，但仍缺少 ${groupedMissing.length} 个业务组。`
+          : `文档仍缺少 ${blockingGroups.length} 个关键业务组。`,
+      groupedMissing,
+      complexity: {
+        ...semantic.complexity,
+        requiredFields: requiredInputs.filter((item) => item.required).length,
+        missingFields: missingRequiredInputs.length,
+      },
+    };
+  }
+
+  private resolveSemanticGroupFieldNames(
+    group: PlannerSemanticGroupedMissing,
+    requiredInputs: PlannerRequiredInput[],
+  ): string[] {
+    if (group.kind === 'array_group') {
+      const groupPrefix = `${group.key}[].`;
+      const fieldNames = requiredInputs
+        .map((item) => item.name)
+        .filter((name) => name === group.key || name.startsWith(groupPrefix));
+      if (fieldNames.length > 0) {
+        return fieldNames;
+      }
+    }
+
+    const fieldNames = Array.isArray(group.fieldNames)
+      ? group.fieldNames.filter((name): name is string => typeof name === 'string' && name.trim().length > 0)
+      : [];
+    if (fieldNames.length > 0) {
+      return Array.from(new Set(fieldNames));
+    }
+
+    return [group.key];
   }
 
   private buildNormalizedInput(
@@ -1670,6 +1773,124 @@ export class ExecutionService {
 
   private getMissingRequiredInputs(execution: Record<string, unknown>): PlannerRequiredInput[] {
     return this.getRequiredInputs(execution).filter((item) => item?.missing);
+  }
+
+  private hasMeaningfulSubmittedInputValue(value: unknown): boolean {
+    if (value === undefined || value === null) {
+      return false;
+    }
+    if (typeof value === 'string') {
+      return value.trim().length > 0;
+    }
+    if (Array.isArray(value)) {
+      return value.some((item) => this.hasMeaningfulSubmittedInputValue(item));
+    }
+    if (typeof value === 'object') {
+      return Object.values(value as Record<string, unknown>).some((item) => this.hasMeaningfulSubmittedInputValue(item));
+    }
+    return true;
+  }
+
+  private normalizeSubmittedInputValue(value: unknown, expectedType: string): unknown {
+    if (value === undefined || value === null) {
+      return undefined;
+    }
+    if (Array.isArray(value)) {
+      const normalized = value
+        .map((item) => this.normalizeSubmittedInputValue(item, expectedType))
+        .filter((item) => item !== undefined);
+      return normalized.length > 0 ? normalized : undefined;
+    }
+    if (typeof value === 'object') {
+      const normalizedEntries = Object.entries(value as Record<string, unknown>)
+        .map(([key, item]) => [key, this.normalizeSubmittedInputValue(item, expectedType)] as const)
+        .filter(([, item]) => item !== undefined);
+      return normalizedEntries.length > 0 ? Object.fromEntries(normalizedEntries) : undefined;
+    }
+    if (typeof value !== 'string') {
+      return value;
+    }
+
+    const trimmed = value.trim();
+    if (!trimmed || this.isPlaceholderTextValue(trimmed)) {
+      return undefined;
+    }
+
+    if (expectedType === 'date') {
+      return this.normalizeDateInputValue(trimmed) || trimmed;
+    }
+
+    return trimmed;
+  }
+
+  private normalizeDateInputValue(value: string): string | undefined {
+    const normalized = value.trim();
+    const isoMatch = normalized.match(/^(\d{4})[\/-](\d{1,2})[\/-](\d{1,2})$/);
+    if (isoMatch) {
+      const [, year, month, day] = isoMatch;
+      return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+    }
+
+    const zhMatch = normalized.match(/^(\d{4})年(\d{1,2})月(\d{1,2})日?$/);
+    if (zhMatch) {
+      const [, year, month, day] = zhMatch;
+      return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+    }
+
+    return undefined;
+  }
+
+  private isPlaceholderTextValue(value: string): boolean {
+    const normalized = value
+      .trim()
+      .toLowerCase()
+      .replace(/\s+/g, '')
+      .replace(/^[`"'“”‘’]+|[`"'“”‘’。．\.,，；;：:、!！?？]+$/g, '');
+
+    if (!normalized) {
+      return true;
+    }
+
+    return new Set([
+      '-',
+      '--',
+      'n/a',
+      'n.a.',
+      'n.a',
+      'na',
+      'none',
+      'null',
+      'undefined',
+      'unknown',
+      'tbd',
+      'pending',
+      'notprovided',
+      'notspecified',
+      'notavailable',
+      '待补充',
+      '待确认',
+      '待定',
+      '暂未提供',
+      '未提供',
+      '未填写',
+      '未确定',
+      '未知',
+      '未说明',
+      '未注明',
+      '未提及',
+      '未明确',
+      '留空',
+      '空字符串',
+      '空值',
+      '暂无',
+      '暂无数据',
+      '无',
+      '无数据',
+      '无具体信息',
+      '不详',
+      'to be confirmed',
+      'to be determined',
+    ]).has(normalized);
   }
 
   private getRequiredInputs(execution: Record<string, unknown>): PlannerRequiredInput[] {

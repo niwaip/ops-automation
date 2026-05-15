@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useReducer, useRef, useState } from 'react';
 import {
   Table, Card, Button, Input, Space, Tag, Typography, Modal, message, Form, Select,
-  Divider, Alert, Collapse, Badge, Popconfirm, Row, Col, Timeline, Switch, Tooltip, InputNumber, Segmented, Drawer
+  Divider, Alert, Collapse, Badge, Popconfirm, Row, Col, Timeline, Switch, Tooltip, InputNumber, Segmented, Drawer, Tabs, Checkbox
 } from 'antd';
 import {
   SearchOutlined, PlusOutlined, EditOutlined, DeleteOutlined, PlayCircleOutlined,
@@ -19,7 +19,7 @@ import {
   WorkflowDsl, ActivityDsl, TemporalValidationResult, DEFAULT_WORKFLOW_DSL, DEFAULT_ACTIVITY_DSL,
   WorkflowCodeResult, WorkflowCodeStreamEvent, WorkflowRealValidationResult, TemplateWorkflowDraft, BrowserWorkflowDraft, TemporalWorkflowSourceTemplate, TemporalWorkflowSourceContext, HttpRequestOptimizeResult, HttpRequestPreviewResult, AiWorkflowDraft, AiWorkflowDraftSession, AiWorkflowDraftSessionListItem, AiWorkflowDraftSessionMessage, BrowserDraftCommandInput, WorkflowInputParamDefinition
 } from '../../api/temporal';
-import { carboneAPI, CarboneTemplate } from '../../api/carbone';
+import { carboneAPI, CarboneSkill, CarboneTemplate } from '../../api/carbone';
 import { templateApi, Template } from '../../api/template';
 import { activityApi } from '../../api/activity';
 import { executionApi } from '../../api/execution';
@@ -51,6 +51,7 @@ const STEP_DURATION_DEFAULTS: Record<StepDurationField, string> = {
   scheduleToCloseTimeout: '5m',
   heartbeatTimeout: '30s',
 };
+const PARAMETER_DESCRIPTION_PREVIEW_LIMIT = 120;
 
 const SECTION_CARD_STYLE: React.CSSProperties = {
   borderRadius: 14,
@@ -91,6 +92,14 @@ const beautifyText = (text: string, useDivider = true): string => {
     .replace(/[ \t]+\n/g, '\n') // 去除行尾空格
     .replace(/\n\s*\n\s*\n+/g, useDivider ? '\n\n---\n\n' : '\n\n') // 将3个及以上的连续换行替换为分割线
     .replace(/^[\s\n]+|[\s\n]+$/g, ''); // 去除首尾空白
+};
+
+const truncateText = (text: string, maxLength = PARAMETER_DESCRIPTION_PREVIEW_LIMIT): string => {
+  const normalized = String(text || '').trim();
+  if (!normalized) {
+    return '';
+  }
+  return normalized.length > maxLength ? `${normalized.slice(0, maxLength)}...` : normalized;
 };
 
 const DURATION_INPUT_WIDTH = 64;
@@ -578,6 +587,11 @@ const normalizeWorkflowInputParamMap = (
       source: value?.source,
       type: value?.type,
       exampleValue: value?.exampleValue,
+      displayName: typeof value?.displayName === 'string' ? value.displayName : '',
+      groupLabel: typeof value?.groupLabel === 'string' ? value.groupLabel : '',
+      paramKind: value?.paramKind,
+      arrayPath: typeof value?.arrayPath === 'string' ? value.arrayPath : '',
+      fieldName: typeof value?.fieldName === 'string' ? value.fieldName : '',
     };
     return acc;
   }, {});
@@ -623,6 +637,9 @@ const buildWorkflowInputParamsFromActivityDsl = (
           description: '',
           required: param.required,
           defaultValue: param.value || '',
+          paramKind: key.includes('[].') ? 'array' : 'scalar',
+          arrayPath: key.includes('[].') ? String(key).split('[].')[0] + '[]' : '',
+          fieldName: key.includes('[].') ? String(key).split('[].')[1] || key : key,
         };
       });
     });
@@ -652,6 +669,11 @@ const mergeWorkflowInputParamMaps = (
       source: preferredValue.source ?? fallbackValue.source,
       type: preferredValue.type ?? fallbackValue.type,
       exampleValue: preferredValue.exampleValue ?? fallbackValue.exampleValue,
+      displayName: preferredValue.displayName || fallbackValue.displayName || '',
+      groupLabel: preferredValue.groupLabel || fallbackValue.groupLabel || '',
+      paramKind: preferredValue.paramKind ?? fallbackValue.paramKind,
+      arrayPath: preferredValue.arrayPath || fallbackValue.arrayPath || '',
+      fieldName: preferredValue.fieldName || fallbackValue.fieldName || '',
     };
     return acc;
   }, {});
@@ -672,6 +694,131 @@ const withNormalizedWorkflowInputParams = (
     ...workflowDsl,
     inputParams: mergedInputParams,
   };
+};
+
+const normalizeWorkflowSkillParamKey = (name: unknown): string => (
+  String(name || '')
+    .trim()
+    .replace(/^\{/, '')
+    .replace(/\}$/, '')
+    .replace(/^#/, '')
+    .replace(/^\//, '')
+    .replace(/^d\./, '')
+    .trim()
+);
+
+const buildWorkflowInputParamMapFromSkill = (
+  skill?: CarboneSkill | null,
+): Record<string, Partial<WorkflowInputParamDefinition>> => {
+  const parameters = Array.isArray(skill?.parameters) ? skill.parameters : [];
+  return parameters.reduce<Record<string, Partial<WorkflowInputParamDefinition>>>((acc, rawParameter) => {
+    const parameter = (rawParameter || {}) as Record<string, unknown>;
+    const key = normalizeWorkflowSkillParamKey(parameter.name);
+    if (!key || acc[key]) {
+      return acc;
+    }
+    const arrayMatch = key.match(/^(.+\[\])\.(.+)$/);
+    acc[key] = {
+      description: typeof parameter.usage === 'string' ? parameter.usage : '',
+      displayName: typeof parameter.displayName === 'string' ? parameter.displayName : '',
+      groupLabel: [
+        parameter.groupLabel,
+        parameter.sheetName,
+        parameter.chapter,
+        parameter.section,
+        parameter.group,
+      ].find((value) => typeof value === 'string' && value.trim()) as string | undefined,
+      paramKind: arrayMatch ? 'array' : 'scalar',
+      arrayPath: arrayMatch?.[1] || '',
+      fieldName: arrayMatch?.[2] || key,
+    };
+    return acc;
+  }, {});
+};
+
+const enrichWorkflowInputParamsWithSkill = (
+  inputParams?: Record<string, WorkflowInputParamDefinition>,
+  skill?: CarboneSkill | null,
+): Record<string, WorkflowInputParamDefinition> => {
+  const normalizedInputParams = normalizeWorkflowInputParamMap(inputParams);
+  if (Object.keys(normalizedInputParams).length === 0) {
+    return normalizedInputParams;
+  }
+  const skillParamMap = buildWorkflowInputParamMapFromSkill(skill);
+  return Object.entries(normalizedInputParams).reduce<Record<string, WorkflowInputParamDefinition>>((acc, [key, value]) => {
+    const metadata = skillParamMap[key] || {};
+    acc[key] = {
+      ...value,
+      description: value.description || metadata.description || '',
+      displayName: value.displayName || metadata.displayName || '',
+      groupLabel: value.groupLabel || metadata.groupLabel || '',
+      paramKind: value.paramKind || metadata.paramKind || (key.includes('[].') ? 'array' : 'scalar'),
+      arrayPath: value.arrayPath || metadata.arrayPath || (key.includes('[].') ? `${key.split('[].')[0]}[]` : ''),
+      fieldName: value.fieldName || metadata.fieldName || (key.includes('[].') ? (key.split('[].')[1] || key) : key),
+    };
+    return acc;
+  }, {});
+};
+
+type GroupedWorkflowInputParams = {
+  key: string;
+  label: string;
+  scalarEntries: Array<[string, WorkflowInputParamDefinition]>;
+  arrayGroups: Array<{
+    arrayPath: string;
+    entries: Array<[string, WorkflowInputParamDefinition]>;
+  }>;
+};
+
+const groupWorkflowInputParams = (
+  inputParams?: Record<string, WorkflowInputParamDefinition>,
+): GroupedWorkflowInputParams[] => {
+  const groupMap = new Map<string, GroupedWorkflowInputParams>();
+  const entries = Object.entries(inputParams || {});
+
+  entries.forEach(([key, param]) => {
+    const explicitLabel = String(param.groupLabel || '').trim();
+    const groupLabel = explicitLabel || '参数';
+    const existing = groupMap.get(groupLabel) || {
+      key: groupLabel,
+      label: groupLabel,
+      scalarEntries: [],
+      arrayGroups: [],
+    };
+
+    const isArray = (param.paramKind === 'array') || key.includes('[].');
+    if (!isArray) {
+      existing.scalarEntries.push([key, param]);
+      groupMap.set(groupLabel, existing);
+      return;
+    }
+
+    const arrayPath = String(param.arrayPath || '').trim() || `${key.split('[].')[0]}[]`;
+    const arrayGroup = existing.arrayGroups.find((item) => item.arrayPath === arrayPath);
+    if (arrayGroup) {
+      arrayGroup.entries.push([key, param]);
+    } else {
+      existing.arrayGroups.push({
+        arrayPath,
+        entries: [[key, param]],
+      });
+    }
+
+    groupMap.set(groupLabel, existing);
+  });
+
+  return Array.from(groupMap.values())
+    .map((group) => ({
+      ...group,
+      scalarEntries: group.scalarEntries.sort((a, b) => a[0].localeCompare(b[0], 'zh-Hans-CN')),
+      arrayGroups: group.arrayGroups
+        .map((arrayGroup) => ({
+          ...arrayGroup,
+          entries: arrayGroup.entries.sort((a, b) => a[0].localeCompare(b[0], 'zh-Hans-CN')),
+        }))
+        .sort((a, b) => a.arrayPath.localeCompare(b.arrayPath, 'zh-Hans-CN')),
+    }))
+    .sort((a, b) => a.label.localeCompare(b.label, 'zh-Hans-CN'));
 };
 
 const extractTemplatePlaceholders = (template: string): string[] => (
@@ -1290,6 +1437,11 @@ const TemporalPage: React.FC = () => {
               source: currentDef?.source ?? def.source,
               type: currentDef?.type ?? def.type,
               exampleValue: currentDef?.exampleValue ?? def.exampleValue,
+              displayName: currentDef?.displayName || def.displayName || '',
+              groupLabel: currentDef?.groupLabel || def.groupLabel || '',
+              paramKind: currentDef?.paramKind ?? def.paramKind,
+              arrayPath: currentDef?.arrayPath || def.arrayPath || '',
+              fieldName: currentDef?.fieldName || def.fieldName || '',
             };
           }
         });
@@ -1306,6 +1458,11 @@ const TemporalPage: React.FC = () => {
               source: currentDef?.source,
               type: currentDef?.type,
               exampleValue: currentDef?.exampleValue,
+              displayName: currentDef?.displayName,
+              groupLabel: currentDef?.groupLabel,
+              paramKind: currentDef?.paramKind ?? (key.includes('[].') ? 'array' : 'scalar'),
+              arrayPath: currentDef?.arrayPath ?? (key.includes('[].') ? `${key.split('[].')[0]}[]` : ''),
+              fieldName: currentDef?.fieldName ?? (key.includes('[].') ? key.split('[].')[1] || key : key),
             };
           }
         });
@@ -1322,6 +1479,11 @@ const TemporalPage: React.FC = () => {
                 source: currentDef?.source,
                 type: currentDef?.type,
                 exampleValue: currentDef?.exampleValue,
+                displayName: currentDef?.displayName,
+                groupLabel: currentDef?.groupLabel,
+                paramKind: currentDef?.paramKind ?? (key.includes('[].') ? 'array' : 'scalar'),
+                arrayPath: currentDef?.arrayPath ?? (key.includes('[].') ? `${key.split('[].')[0]}[]` : ''),
+                fieldName: currentDef?.fieldName ?? (key.includes('[].') ? key.split('[].')[1] || key : key),
               };
             }
           });
@@ -1339,6 +1501,11 @@ const TemporalPage: React.FC = () => {
                 source: currentDef?.source,
                 type: currentDef?.type,
                 exampleValue: currentDef?.exampleValue,
+                displayName: currentDef?.displayName,
+                groupLabel: currentDef?.groupLabel,
+                paramKind: currentDef?.paramKind ?? (key.includes('[].') ? 'array' : 'scalar'),
+                arrayPath: currentDef?.arrayPath ?? (key.includes('[].') ? `${key.split('[].')[0]}[]` : ''),
+                fieldName: currentDef?.fieldName ?? (key.includes('[].') ? key.split('[].')[1] || key : key),
               };
             }
           });
@@ -1641,11 +1808,23 @@ const TemporalPage: React.FC = () => {
     },
   );
 
-  const applyDraftToEditor = (
+  const applyDraftToEditor = async (
     draft: Pick<TemplateWorkflowDraft, 'name' | 'description' | 'taskQueue' | 'workflowDsl' | 'activityDsl'>,
     successMessage: string,
   ) => {
-    const nextWorkflowDsl = withNormalizedWorkflowInputParams(draft.workflowDsl, draft.activityDsl);
+    let nextWorkflowDsl = withNormalizedWorkflowInputParams(draft.workflowDsl, draft.activityDsl);
+    const sourceSkillId = String(nextWorkflowDsl.sourceContext?.sourceTemplate?.skillId || '').trim();
+    if (sourceSkillId && !Object.values(nextWorkflowDsl.inputParams || {}).some((param) => String(param.groupLabel || '').trim())) {
+      try {
+        const sourceSkill = await carboneAPI.getSkill(sourceSkillId);
+        nextWorkflowDsl = {
+          ...nextWorkflowDsl,
+          inputParams: enrichWorkflowInputParamsWithSkill(nextWorkflowDsl.inputParams, sourceSkill),
+        };
+      } catch (error) {
+        // Keep editor usable even if skill enrichment fails.
+      }
+    }
     setEditingWorkflow(null);
     didInitializeCodeSignatureRef.current = false;
     form.setFieldsValue({
@@ -1716,11 +1895,11 @@ const TemporalPage: React.FC = () => {
     setApplyDraftConfirmVisible(true);
   };
 
-  const handleConfirmApplyCurrentDraft = () => {
+  const handleConfirmApplyCurrentDraft = async () => {
     if (!currentAiDraft) {
       return;
     }
-    applyDraftToEditor(currentAiDraft, '已应用 AI 生成的工作流草稿');
+    await applyDraftToEditor(currentAiDraft, '已应用 AI 生成的工作流草稿');
     setApplyDraftConfirmVisible(false);
     setAiDraftDrawerVisible(false);
   };
@@ -1774,7 +1953,7 @@ const TemporalPage: React.FC = () => {
     try {
       setGeneratingTemplateId(template.id);
       const draft: TemplateWorkflowDraft = await temporalWorkflowApi.generateTemplateDraft(template.id);
-      applyDraftToEditor(draft, '已生成模板工作流草稿');
+      await applyDraftToEditor(draft, '已生成模板工作流草稿');
       setTemplateModalVisible(false);
     } catch (error: any) {
       message.error('生成模板工作流失败: ' + (error.message || '未知错误'));
@@ -1808,7 +1987,7 @@ const TemporalPage: React.FC = () => {
         message.warning('该浏览器模板缺少可执行步骤，请先在模板页补充步骤');
         return;
       }
-      applyDraftToEditor(
+      await applyDraftToEditor(
         draft,
         templateSteps.length > 0
           ? `已基于模板步骤生成浏览器工作流草稿（${draft.browserTemplate.commandCount} 个步骤）`
@@ -1824,11 +2003,23 @@ const TemporalPage: React.FC = () => {
     }
   };
 
-  const handleEdit = (workflow: TemporalWorkflowDTO) => {
-    const nextWorkflowDsl = withNormalizedWorkflowInputParams({
+  const handleEdit = async (workflow: TemporalWorkflowDTO) => {
+    let nextWorkflowDsl = withNormalizedWorkflowInputParams({
       ...DEFAULT_WORKFLOW_DSL,
       ...(workflow.workflowDsl || {}),
     }, workflow.activityDsl || DEFAULT_ACTIVITY_DSL);
+    const sourceSkillId = resolveWorkflowSourceSkillId(workflow);
+    if (sourceSkillId && !Object.values(nextWorkflowDsl.inputParams || {}).some((param) => String(param.groupLabel || '').trim())) {
+      try {
+        const sourceSkill = await carboneAPI.getSkill(sourceSkillId);
+        nextWorkflowDsl = {
+          ...nextWorkflowDsl,
+          inputParams: enrichWorkflowInputParamsWithSkill(nextWorkflowDsl.inputParams, sourceSkill),
+        };
+      } catch (error) {
+        // Ignore skill hydration failure and keep original workflow data.
+      }
+    }
     setEditingWorkflow(workflow);
     didInitializeCodeSignatureRef.current = false;
     form.setFieldsValue({ name: workflow.name, description: workflow.description, taskQueue: workflow.taskQueue });
@@ -1900,6 +2091,196 @@ const TemporalPage: React.FC = () => {
     setValidateModalVisible(true);
     validateMutation.mutate({ workflowDsl: { ...workflowDsl, name: workflowName }, activityDsl });
   };
+
+  const groupedWorkflowInputParams = useMemo(
+    () => groupWorkflowInputParams(workflowDsl.inputParams),
+    [workflowDsl.inputParams],
+  );
+
+  const updateSingleWorkflowInputParam = (key: string, nextValue: WorkflowInputParamDefinition) => {
+    setWorkflowDsl((prev) => ({
+      ...prev,
+      inputParams: {
+        ...prev.inputParams,
+        [key]: nextValue,
+      },
+    }));
+  };
+
+  const updateArrayGroupRequiredState = (keys: string[], required: boolean) => {
+    if (keys.length === 0) {
+      return;
+    }
+    setWorkflowDsl((prev) => {
+      const nextInputParams = { ...(prev.inputParams || {}) };
+      keys.forEach((key) => {
+        const current = nextInputParams[key];
+        if (!current) {
+          return;
+        }
+        nextInputParams[key] = {
+          ...current,
+          required,
+        };
+      });
+      return {
+        ...prev,
+        inputParams: nextInputParams,
+      };
+    });
+  };
+
+  const renderInputParamEditor = (key: string, param: WorkflowInputParamDefinition, compactLabel?: boolean) => (
+    <div
+      key={key}
+      style={{
+        display: 'grid',
+        gridTemplateColumns: 'minmax(0, 1fr) auto minmax(160px, 220px)',
+        gap: 10,
+        alignItems: 'center',
+        padding: '12px 14px',
+        border: '1px solid var(--bg-secondary)',
+        borderRadius: 14,
+        background: 'var(--bg-card)',
+        boxShadow: 'var(--shadow-sm)',
+      }}
+    >
+      <div style={{ minWidth: 0, minHeight: 32, display: 'flex', alignItems: 'center' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0, width: '100%' }}>
+          <Tooltip title={key}>
+            <Tag color={param.paramKind === 'array' ? 'purple' : 'blue'} style={{ marginInlineEnd: 0, whiteSpace: 'nowrap' }}>
+              {compactLabel ? (param.fieldName || key) : key}
+            </Tag>
+          </Tooltip>
+          {param.displayName && param.displayName !== key && param.displayName !== param.fieldName ? (
+            <Text strong ellipsis style={{ minWidth: 0 }}>{param.displayName}</Text>
+          ) : null}
+          <Button
+            size="small"
+            danger
+            type="text"
+            onClick={() => {
+              const newParams = { ...workflowDsl.inputParams };
+              delete (newParams as any)[key];
+              setWorkflowDsl({ ...workflowDsl, inputParams: newParams });
+            }}
+            style={{ paddingInline: 4, marginLeft: 'auto', flexShrink: 0 }}
+          >
+            ×
+          </Button>
+        </div>
+      </div>
+      <Checkbox
+        checked={param.required === true}
+        onChange={(event) => updateSingleWorkflowInputParam(key, { ...param, required: event.target.checked })}
+        style={{ alignSelf: 'center', whiteSpace: 'nowrap' }}
+      >
+        必填
+      </Checkbox>
+      <Input
+        value={param.defaultValue || ''}
+        onChange={(event) => updateSingleWorkflowInputParam(key, { ...param, defaultValue: event.target.value })}
+        placeholder="默认值"
+        size="small"
+        style={{ width: '100%' }}
+      />
+      <Tooltip title={param.description || '未填写说明'}>
+        <Text
+          type="secondary"
+          style={{
+            gridColumn: '1 / -1',
+            display: 'block',
+            fontSize: 12,
+            lineHeight: 1.5,
+            paddingTop: 2,
+          }}
+        >
+          {truncateText(param.description || '未填写说明')}
+        </Text>
+      </Tooltip>
+    </div>
+  );
+
+  const renderCollapsibleInputSection = (
+    panelKey: string,
+    title: React.ReactNode,
+    children: React.ReactNode,
+  ) => (
+    <Collapse
+      size="small"
+      defaultActiveKey={[panelKey]}
+      style={{
+        borderRadius: 14,
+        overflow: 'hidden',
+        background: 'var(--bg-card)',
+        border: '1px solid var(--bg-secondary)',
+      }}
+      items={[
+        {
+          key: panelKey,
+          label: title,
+          children,
+          styles: {
+            header: { padding: '12px 14px' },
+            body: { padding: '0 14px 14px' },
+          },
+        },
+      ]}
+    />
+  );
+
+  const renderArrayGroupTitle = (arrayGroup: GroupedWorkflowInputParams['arrayGroups'][number]) => (
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, width: '100%' }}>
+      <Space size={8} wrap>
+        <span>{`循环变量 · ${arrayGroup.arrayPath}`}</span>
+        <Tag color="purple" style={{ margin: 0 }}>{arrayGroup.entries.length} 项</Tag>
+      </Space>
+      <Space size={8} wrap onClick={(event) => event.stopPropagation()}>
+        <Button
+          size="small"
+          onClick={() => updateArrayGroupRequiredState(arrayGroup.entries.map(([entryKey]) => entryKey), true)}
+        >
+          全选
+        </Button>
+        <Button
+          size="small"
+          onClick={() => updateArrayGroupRequiredState(arrayGroup.entries.map(([entryKey]) => entryKey), false)}
+        >
+          清除
+        </Button>
+      </Space>
+    </div>
+  );
+
+  const renderWorkflowInputGroup = (group: GroupedWorkflowInputParams) => (
+    <Space key={group.key} direction="vertical" size={12} style={{ width: '100%' }}>
+      {group.scalarEntries.length > 0 ? (
+        renderCollapsibleInputSection(
+          `${group.key}-scalar`,
+          (
+            <Space size={8} wrap>
+              <span>普通变量</span>
+              <Tag style={{ margin: 0 }}>{group.scalarEntries.length} 项</Tag>
+            </Space>
+          ),
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(360px, 1fr))', gap: 8 }}>
+            {group.scalarEntries.map(([key, param]) => renderInputParamEditor(key, param))}
+          </div>,
+        )
+      ) : null}
+      {group.arrayGroups.map((arrayGroup) => (
+        <div key={`${group.key}-${arrayGroup.arrayPath}`}>
+          {renderCollapsibleInputSection(
+            `${group.key}-${arrayGroup.arrayPath}`,
+            renderArrayGroupTitle(arrayGroup),
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(360px, 1fr))', gap: 8 }}>
+              {arrayGroup.entries.map(([key, param]) => renderInputParamEditor(key, param, true))}
+            </div>,
+          )}
+        </div>
+      ))}
+    </Space>
+  );
 
   const handleGenerateCode = async (errorContext?: string) => {
     const formValues = form.getFieldsValue();
@@ -3011,35 +3392,54 @@ const TemporalPage: React.FC = () => {
   ];
 
   const renderDraftInputParamSummary = (draft: AiWorkflowDraft) => {
-    const entries = Object.entries(draft.workflowDsl.inputParams || {});
-    if (entries.length === 0) {
+    const groups = groupWorkflowInputParams(draft.workflowDsl.inputParams);
+    if (groups.length === 0) {
       return <Text type="secondary">未声明输入参数</Text>;
     }
     return (
       <Space direction="vertical" size={6} style={{ width: '100%' }}>
-        {entries.map(([key, value]) => (
-          <div
-            key={`draft-input-${key}`}
-            style={{
-              display: 'grid',
-              gridTemplateColumns: '96px 64px minmax(0, 1fr)',
-              gap: 8,
-              alignItems: 'start',
-              padding: '8px 10px',
-              border: '1px solid var(--bg-secondary)',
-              borderRadius: 8,
-              background: 'var(--bg-card)',
-            }}
-          >
-            <Tag color="blue" style={{ margin: 0, width: 'fit-content' }}>{key}</Tag>
-            <Tag color={value.required ? 'red' : 'default'} style={{ margin: 0, width: 'fit-content' }}>
-              {value.required ? '必填' : '可选'}
-            </Tag>
-            <Space direction="vertical" size={2} style={{ width: '100%' }}>
-              {value.description ? <Text>{value.description}</Text> : <Text type="secondary">未填写说明</Text>}
-              {value.defaultValue ? <Text type="secondary">默认值: {value.defaultValue}</Text> : null}
+        {groups.map((group) => (
+          <Card key={`draft-group-${group.key}`} size="small" title={group.label}>
+            <Space direction="vertical" size={6} style={{ width: '100%' }}>
+              {group.scalarEntries.map(([key, value]) => (
+                <div
+                  key={`draft-input-${group.key}-${key}`}
+                  style={{
+                    display: 'grid',
+                    gridTemplateColumns: '96px 64px minmax(0, 1fr)',
+                    gap: 8,
+                    alignItems: 'start',
+                    padding: '8px 10px',
+                    border: '1px solid var(--bg-secondary)',
+                    borderRadius: 8,
+                    background: 'var(--bg-card)',
+                  }}
+                >
+                  <Tag color="blue" style={{ margin: 0, width: 'fit-content' }}>{key}</Tag>
+                  <Tag color={value.required ? 'red' : 'default'} style={{ margin: 0, width: 'fit-content' }}>
+                    {value.required ? '必填' : '可选'}
+                  </Tag>
+                  <Space direction="vertical" size={2} style={{ width: '100%' }}>
+                    {value.description ? <Text>{value.description}</Text> : <Text type="secondary">未填写说明</Text>}
+                    {value.defaultValue ? <Text type="secondary">默认值: {value.defaultValue}</Text> : null}
+                  </Space>
+                </div>
+              ))}
+              {group.arrayGroups.map((arrayGroup) => (
+                <Card key={`draft-array-${group.key}-${arrayGroup.arrayPath}`} size="small" title={`循环变量 · ${arrayGroup.arrayPath}`}>
+                  <Space wrap size={[6, 6]}>
+                    {arrayGroup.entries.map(([key, value]) => (
+                      <Tooltip key={`draft-array-tag-${key}`} title={value.description || key}>
+                        <Tag color="purple" style={{ margin: 0 }}>
+                          {value.fieldName || key}
+                        </Tag>
+                      </Tooltip>
+                    ))}
+                  </Space>
+                </Card>
+              ))}
             </Space>
-          </div>
+          </Card>
         ))}
       </Space>
     );
@@ -4611,8 +5011,8 @@ const TemporalPage: React.FC = () => {
               <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 8, width: '100%' }}>
                 <Space size={6} style={{ minWidth: 0 }}>
                   <span>输入参数</span>
-                  <Text type="secondary">（Workflow 入口参数，汇总所有步骤模板变量）</Text>
-                  <Tooltip title="会自动汇总所有步骤里引用到的模板变量，可补充默认值与说明。">
+                  <Text type="secondary">（Workflow 入口参数；有分组信息时按 sheet/分组展示）</Text>
+                  <Tooltip title="模板工作流会优先按 Skill 参数生成入口参数；若携带 sheet/分组信息，会自动分组展示并区分普通变量与循环变量。">
                     <InfoCircleOutlined style={{ color: 'var(--text-light)' }} />
                   </Tooltip>
                 </Space>
@@ -4639,61 +5039,29 @@ const TemporalPage: React.FC = () => {
             styles={{ body: SECTION_CARD_BODY_STYLE }}
           >
             <div style={SOFT_PANEL_STYLE}>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(360px, 1fr))', gap: 8 }}>
-              {Object.entries(workflowDsl.inputParams || {}).map(([key, param]) => (
-                <div
-                  key={key}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 6,
-                    padding: '8px 10px',
-                    border: '1px solid var(--bg-secondary)',
-                    borderRadius: 10,
-                    background: 'var(--bg-card)',
-                  }}
-                >
-                  <Tag color="blue" style={{ marginInlineEnd: 0, whiteSpace: 'nowrap' }}>{key}</Tag>
-                  <Select
-                    value={param.required ? 'required' : 'optional'}
-                    onChange={v => setWorkflowDsl({ ...workflowDsl, inputParams: { ...workflowDsl.inputParams, [key]: { ...param, required: v === 'required' } } })}
-                    size="small"
-                    style={{ width: 88, flexShrink: 0 }}
-                  >
-                    <Option value="required">必填</Option>
-                    <Option value="optional">可选</Option>
-                  </Select>
-                  <Input
-                    value={param.defaultValue || ''}
-                    onChange={e => setWorkflowDsl({ ...workflowDsl, inputParams: { ...workflowDsl.inputParams, [key]: { ...param, defaultValue: e.target.value } } })}
-                    placeholder="默认值"
-                    size="small"
-                    style={{ width: 110, flexShrink: 0 }}
-                  />
-                  <Input
-                    value={param.description || ''}
-                    onChange={e => setWorkflowDsl({ ...workflowDsl, inputParams: { ...workflowDsl.inputParams, [key]: { ...param, description: e.target.value } } })}
-                    placeholder="参数描述"
-                    size="small"
-                    style={{ flex: 1, minWidth: 0 }}
-                  />
-                  <Button
-                    size="small"
-                    danger
-                    type="text"
-                    onClick={() => {
-                      const newParams = { ...workflowDsl.inputParams };
-                      delete (newParams as any)[key];
-                      setWorkflowDsl({ ...workflowDsl, inputParams: newParams });
-                    }}
-                    style={{ paddingInline: 4, flexShrink: 0 }}
-                  >
-                    ×
-                  </Button>
-                </div>
-              ))}
+              {groupedWorkflowInputParams.length <= 1 ? (
+                groupedWorkflowInputParams.length === 0 ? (
+                  <Text type="secondary">当前没有输入参数，可手动添加。</Text>
+                ) : (
+                  renderWorkflowInputGroup(groupedWorkflowInputParams[0])
+                )
+              ) : (
+                <Tabs
+                  type="card"
+                  items={groupedWorkflowInputParams.map((group) => ({
+                    key: group.key,
+                    label: (
+                      <Space size={6}>
+                        <span>{group.label}</span>
+                        {group.scalarEntries.length > 0 ? <Tag style={{ margin: 0 }}>普通 {group.scalarEntries.length}</Tag> : null}
+                        {group.arrayGroups.length > 0 ? <Tag color="purple" style={{ margin: 0 }}>循环 {group.arrayGroups.length}</Tag> : null}
+                      </Space>
+                    ),
+                    children: renderWorkflowInputGroup(group),
+                  }))}
+                />
+              )}
             </div>
-          </div>
           </Card>
         </Form>
 

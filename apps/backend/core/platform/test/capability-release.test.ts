@@ -87,6 +87,159 @@ describe('CapabilityReleaseService', () => {
     );
   });
 
+  it('prefers declared temporal input param types over description heuristics', () => {
+    const { service } = createService();
+
+    const schema = (service as any).buildTemporalParamsSchema({
+      inputParams: {
+        'info.currency': {
+          type: 'string',
+          description: '合同金额币种，如 CNY、USD 等，用于统一财务数据展示格式',
+          required: true,
+          defaultValue: '',
+          exampleValue: 'CNY',
+        },
+        installationCondition: {
+          type: 'string',
+          description: '设备安装条件和乙方配合义务，为顺利安装和验收提供操作指引',
+          required: true,
+          defaultValue: '',
+          exampleValue: '甲方提供场地，乙方负责安装联调',
+        },
+        'info.warrantyPeriod': {
+          type: 'number',
+          description: '质保期月数，决定质保金退还时间节点计算',
+          required: true,
+          defaultValue: '',
+          exampleValue: 24,
+        },
+        'info.includeInstall': {
+          type: 'string',
+          description: '是否包含安装服务，取值是/否，决定合同正文是否展示安装责任划分内容',
+          required: true,
+          defaultValue: '',
+          exampleValue: '是',
+        },
+      },
+    });
+
+    expect(schema).toEqual({
+      properties: expect.objectContaining({
+        'info.currency': expect.objectContaining({ type: 'string', displayName: '合同金额币种' }),
+        installationCondition: expect.objectContaining({ type: 'string', displayName: '设备安装条件和乙方配合义务' }),
+        'info.warrantyPeriod': expect.objectContaining({ type: 'number', displayName: '质保期月数' }),
+        'info.includeInstall': expect.objectContaining({ type: 'string', displayName: '是否包含安装服务' }),
+      }),
+      required: expect.arrayContaining([
+        'info.currency',
+        'installationCondition',
+        'info.warrantyPeriod',
+        'info.includeInstall',
+      ]),
+    });
+  });
+
+  it('omits empty placeholder defaults from published temporal params schema', () => {
+    const { service } = createService();
+
+    const schema = (service as any).buildTemporalParamsSchema({
+      inputParams: {
+        notes: {
+          type: 'string',
+          description: '补充说明',
+          required: false,
+          defaultValue: '',
+        },
+        paymentStages: {
+          type: 'array',
+          description: '付款阶段列表',
+          required: false,
+          defaultValue: [],
+        },
+        timeout: {
+          type: 'number',
+          description: '超时时间',
+          required: false,
+          defaultValue: 30,
+        },
+      },
+    });
+
+    expect(schema.properties.notes).toEqual(
+      expect.not.objectContaining({ default: expect.anything() }),
+    );
+    expect(schema.properties.paymentStages).toEqual(
+      expect.not.objectContaining({ default: expect.anything() }),
+    );
+    expect(schema.properties.timeout).toEqual(
+      expect.objectContaining({ default: 30 }),
+    );
+  });
+
+  it('preserves temporal input presentation metadata for downstream planner semantics', () => {
+    const { service } = createService();
+
+    const schema = (service as any).buildTemporalParamsSchema({
+      inputParams: {
+        'paymentSchedule[].amount': {
+          type: 'number',
+          description: '各付款阶段的应付金额',
+          required: true,
+          displayName: '付款金额',
+          groupLabel: '付款计划',
+          previewBlocking: false,
+          semanticRole: 'payment_amount',
+          extractionHints: ['付款节点金额', '每期应付金额'],
+          confirmationThreshold: 0.82,
+        },
+      },
+    });
+
+    expect(schema).toEqual({
+      properties: expect.objectContaining({
+        'paymentSchedule[].amount': expect.objectContaining({
+          type: 'number',
+          displayName: '付款金额',
+          groupLabel: '付款计划',
+          previewBlocking: false,
+          semanticRole: 'payment_amount',
+          extractionHints: ['付款节点金额', '每期应付金额'],
+          confirmationThreshold: 0.82,
+        }),
+      }),
+      required: ['paymentSchedule[].amount'],
+    });
+  });
+
+  it('falls back to concise description labels when declared displayName is still machine-like', () => {
+    const { service } = createService();
+
+    const schema = (service as any).buildTemporalParamsSchema({
+      inputParams: {
+        'info.partyA': {
+          type: 'string',
+          displayName: 'info.partyA',
+          description: '采购方（甲方）名称，明确合同责任主体及付款义务承担方',
+          required: true,
+        },
+        'deliveryItems[].location': {
+          type: 'string',
+          displayName: 'deliveryItems[].location',
+          description: '设备交付的地理位置，为物流运输、到场签收及安装调试提供地点信息',
+          required: false,
+        },
+      },
+    });
+
+    expect(schema).toEqual({
+      properties: expect.objectContaining({
+        'info.partyA': expect.objectContaining({ displayName: '采购方（甲方）名称' }),
+        'deliveryItems[].location': expect.objectContaining({ displayName: '设备交付的地理位置' }),
+      }),
+      required: ['info.partyA'],
+    });
+  });
+
   it('blocks publishing when tool validation fails', async () => {
     const { service, skillService } = createService();
 
@@ -257,21 +410,63 @@ describe('CapabilityReleaseService', () => {
     });
   });
 
-  it('rejects deploy when non-temporal release has not published skill', async () => {
+  it('allows pre-publish deploy for non-temporal releases to validate runtime wiring', async () => {
     const { service } = createService();
 
-    jest.spyOn(service as any, 'getReleaseOrThrow').mockResolvedValue({
-      id: 'release-no-skill',
-      sourceType: 'browser_recording',
-      publishedSkillId: null,
-      status: 'approved',
+    jest.spyOn(service as any, 'getReleaseOrThrow')
+      .mockResolvedValueOnce({
+        id: 'release-no-skill',
+        sourceType: 'browser_recording',
+        publishedSkillId: null,
+        status: 'approved',
+        sourceId: 'template-1',
+      })
+      .mockResolvedValueOnce({
+        id: 'release-no-skill',
+        sourceType: 'browser_recording',
+        publishedSkillId: null,
+        status: 'deployed',
+        sourceId: 'template-1',
+      });
+    jest.spyOn(service as any, 'getCurrentSnapshotOrThrow').mockResolvedValue({
+      id: 'snapshot-1',
+      sourcePayload: {},
+    });
+    jest.spyOn(service as any, 'resolveBuildForValidation').mockResolvedValue(undefined);
+    jest.spyOn(service as any, 'finishDeployment').mockResolvedValue(undefined);
+    jest.spyOn(service as any, 'insertAuditEvent').mockResolvedValue(undefined);
+    jest.spyOn(service as any, 'getDeploymentOrThrow').mockResolvedValue({
+      id: 'deployment-1',
+      releaseId: 'release-no-skill',
+      status: 'succeeded',
+      success: true,
     });
 
-    await expect(service.deploy('release-no-skill', {}, 'user-1')).rejects.toMatchObject({
-      response: expect.objectContaining({
-        code: 'release_not_published_for_deploy',
-        message: '当前 Release 尚未发布 Skill，不能部署',
+    const result = await service.deploy('release-no-skill', {}, 'user-1');
+
+    expect((service as any).finishDeployment).toHaveBeenCalledWith(
+      expect.any(String),
+      'release-no-skill',
+      'deployed',
+      'succeeded',
+      true,
+      expect.arrayContaining([
+        expect.stringContaining('当前尚未发布 Skill，本次部署用于验证运行链路与参数'),
+      ]),
+      expect.objectContaining({
+        publishedSkillId: null,
+        prePublishDeploy: true,
+        sourceTemplateId: 'template-1',
       }),
+      'template-runtime://template-1',
+      'template-1',
+      null,
+      null,
+      null,
+    );
+    expect(result).toEqual({
+      release: expect.objectContaining({ id: 'release-no-skill', status: 'deployed' }),
+      deployment: expect.objectContaining({ id: 'deployment-1', success: true }),
     });
   });
 

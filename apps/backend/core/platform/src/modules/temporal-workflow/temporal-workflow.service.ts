@@ -71,6 +71,11 @@ export interface WorkflowInputParamDefinition {
   source?: WorkflowInputParamSource;
   type?: WorkflowInputParamType;
   exampleValue?: string | number | boolean;
+  displayName?: string;
+  groupLabel?: string;
+  paramKind?: 'scalar' | 'array';
+  arrayPath?: string;
+  fieldName?: string;
 }
 
 export interface WorkflowDsl {
@@ -410,11 +415,66 @@ export class TemporalWorkflowService {
   }
 
   async deploy(id: string): Promise<TemporalWorkflowDTO> {
+    const existing = await this.prisma.temporalWorkflow.findUnique({ where: { id } });
+    if (!existing) {
+      throw new NotFoundException(`Temporal Workflow 不存在: ${id}`);
+    }
+
+    const workflowDsl = this.parseJson<WorkflowDsl>(existing.workflowDsl);
+    const activityDsl = this.parseJson<ActivityDsl>(existing.activityDsl);
+    const deterministicCode = workflowDsl && activityDsl
+      ? await this.generateDeterministicWorkflowCode(workflowDsl, activityDsl).catch(() => null)
+      : null;
+
     const deployed = await this.prisma.temporalWorkflow.update({
       where: { id },
-      data: { deployedAt: new Date() },
+      data: {
+        deployedAt: new Date(),
+        ...(deterministicCode ? { generatedCode: deterministicCode } : {}),
+      },
     });
+
     return this.toWorkflowDto(deployed);
+  }
+
+  private async generateDeterministicWorkflowCode(
+    workflowDsl: WorkflowDsl,
+    activityDsl: ActivityDsl,
+  ): Promise<string | null> {
+    const enrichedActivities: ActivityDefinition[] = [];
+    const seenActivityKeys = new Set<string>();
+
+    const pushActivity = (activity: ActivityDefinition | null) => {
+      if (!activity) {
+        return;
+      }
+      const activityKey = `${activity.fn}::${activity.name}`;
+      if (seenActivityKeys.has(activityKey)) {
+        return;
+      }
+      seenActivityKeys.add(activityKey);
+      enrichedActivities.push(activity);
+    };
+
+    for (const activity of activityDsl.activities) {
+      const enriched = await this.enrichActivityDefinition(activity);
+      if (enriched.handler === 'browser') {
+        enriched.generatedCode = this.buildDeterministicActivityCode(enriched) || enriched.generatedCode || undefined;
+      } else if (!enriched.generatedCode) {
+        enriched.generatedCode = this.buildDeterministicActivityCode(enriched) || undefined;
+      }
+      pushActivity(enriched);
+    }
+
+    for (const step of workflowDsl.steps.filter((item) => item.type === 'activity')) {
+      pushActivity(await this.resolveActivityDefinition(step, activityDsl));
+    }
+
+    const enrichedActivityDsl: ActivityDsl = {
+      activities: enrichedActivities,
+    };
+
+    return this.buildDeterministicWorkflowCode(workflowDsl, enrichedActivityDsl);
   }
 
   async generateTemplateWorkflowDraft(templateId: string): Promise<TemplateWorkflowDraft> {
@@ -430,20 +490,25 @@ export class TemporalWorkflowService {
     const workflowDescription = analysis.workflowDescription?.trim()
       || `基于模板 ${template.id} 自动生成的 ${documentType} 工作流`;
     const outputName = analysis.outputName?.trim() || `${documentType}-输出`;
-    const variables = this.uniqueVariables(template.variables || []);
-    const inputParamsArray = variables.map((variable) => {
-      const key = this.variableToKey(variable);
-      return {
-        key,
-        value: '',
-        required: true,
-      };
-    });
-    const inputParams = inputParamsArray.reduce<Record<string, { description?: string; required?: boolean; defaultValue?: string }>>((acc, item) => {
+    const paramSeeds = this.buildTemplateWorkflowParamSeeds(template, skill);
+    const inputParamsArray = paramSeeds.map((param) => ({
+      key: param.key,
+      value: '',
+      required: param.required,
+    }));
+    const inputParams = paramSeeds.reduce<Record<string, WorkflowInputParamDefinition>>((acc, item) => {
       acc[item.key] = {
         required: item.required,
         defaultValue: '',
-        description: analysis.inputParamDescriptions?.[item.key]?.trim() || `模板变量 ${item.key}`,
+        description: analysis.inputParamDescriptions?.[item.key]?.trim() || item.description,
+        source: 'inferred_from_template',
+        type: item.type,
+        exampleValue: item.exampleValue,
+        displayName: item.displayName,
+        groupLabel: item.groupLabel,
+        paramKind: item.paramKind,
+        arrayPath: item.arrayPath,
+        fieldName: item.fieldName,
       };
       return acc;
     }, {});
@@ -475,7 +540,7 @@ export class TemporalWorkflowService {
             skillId: template.skillId,
             fileName: template.fileName,
             format: template.format,
-            variableCount: variables.length,
+              variableCount: paramSeeds.length,
           },
         },
         inputParams,
@@ -517,7 +582,7 @@ export class TemporalWorkflowService {
               skillId: template.skillId || null,
               fileName: template.fileName || null,
               format: template.format || 'docx',
-              variableCount: variables.length,
+              variableCount: paramSeeds.length,
               steps: [
                 {
                   name: `渲染${documentType}`,
@@ -541,7 +606,7 @@ export class TemporalWorkflowService {
         skillId: template.skillId,
         fileName: template.fileName,
         format: template.format,
-        variableCount: variables.length,
+        variableCount: paramSeeds.length,
       },
     };
   }
@@ -2193,6 +2258,7 @@ export class TemporalWorkflowService {
     return [
       'from datetime import timedelta',
       'from temporalio import workflow',
+      'import json',
       '',
       (activityDef.generatedCode || '').trim(),
       '',
@@ -2201,10 +2267,25 @@ export class TemporalWorkflowService {
       `    ACTIVITY_START_TO_CLOSE_TIMEOUT = ${workflowTimeoutCode}`,
       '',
       '    @staticmethod',
-      '    def _normalize(value: Any) -> str:',
+      '    def _normalize(value: Any) -> Any:',
       '        if value is None:',
       '            return ""',
-      '        return str(value)',
+      '        if isinstance(value, (str, int, float, bool, dict, list)):',
+      '            return value',
+      '        try:',
+      '            return json.loads(json.dumps(value))',
+      '        except:',
+      '            return str(value)',
+      '',
+      '    @staticmethod',
+      '    def _is_missing(value: Any) -> bool:',
+      '        if value is None:',
+      '            return True',
+      '        if isinstance(value, str):',
+      '            return not value.strip()',
+      '        if isinstance(value, (list, dict)):',
+      '            return len(value) == 0',
+      '        return False',
       '',
       '    @classmethod',
       '    def _build_activity_input(cls, params: Dict[str, Any]) -> Dict[str, Any]:',
@@ -2215,7 +2296,7 @@ export class TemporalWorkflowService {
       '    @staticmethod',
       '    def _validate_required_params(activity_input: Dict[str, Any]) -> None:',
       `        required_params = ${JSON.stringify(requiredParamNames)}`,
-      '        missing_params = [key for key in required_params if not activity_input.get(key, "").strip()]',
+      '        missing_params = [key for key in required_params if cls._is_missing(activity_input.get(key))]',
       '        if missing_params:',
       '            raise ApplicationError(f"缺少必需参数: {\', \'.join(missing_params)}", non_retryable=True)',
       '',
@@ -2262,9 +2343,11 @@ export class TemporalWorkflowService {
     });
     const requiredParamNames = inputParams
       .filter(([, config]) => Boolean(config?.required))
-      .map(([key]) => key);
+      .map(([key]) => key)
+      .filter((key) => !String(key).includes('{#') && !String(key).includes('{/'));
 
     return [
+      'import json',
       'from datetime import timedelta',
       'from typing import Any, Dict',
       '',
@@ -2278,10 +2361,26 @@ export class TemporalWorkflowService {
       `    ACTIVITY_START_TO_CLOSE_TIMEOUT = ${workflowTimeoutCode}`,
       '',
       '    @staticmethod',
-      '    def _normalize(value: Any) -> str:',
+      '    def _normalize(value: Any) -> Any:',
       '        if value is None:',
       '            return ""',
-      '        return str(value)',
+      '        if isinstance(value, (str, int, float, bool, dict, list)):',
+      '            return value',
+      '        try:',
+      '            json.dumps(value, ensure_ascii=False)',
+      '            return value',
+      '        except Exception:',
+      '            return str(value)',
+      '',
+      '    @staticmethod',
+      '    def _is_missing(value: Any) -> bool:',
+      '        if value is None:',
+      '            return True',
+      '        if isinstance(value, str):',
+      '            return value.strip() == ""',
+      '        if isinstance(value, (dict, list)):',
+      '            return len(value) == 0',
+      '        return False',
       '',
       '    @classmethod',
       '    def _build_render_data(cls, params: Dict[str, Any]) -> Dict[str, Any]:',
@@ -2292,7 +2391,7 @@ export class TemporalWorkflowService {
       '    @staticmethod',
       '    def _validate_required_params(render_data: Dict[str, Any]) -> None:',
       `        required_params = ${JSON.stringify(requiredParamNames)}`,
-      '        missing_params = [key for key in required_params if not render_data.get(key, "").strip()]',
+      `        missing_params = [key for key in required_params if ${workflowClassName}._is_missing(render_data.get(key))]`,
       '        if missing_params:',
       '            raise ApplicationError(f"缺少必需参数: {\', \'.join(missing_params)}", non_retryable=True)',
       '',
@@ -3336,22 +3435,23 @@ export class TemporalWorkflowService {
     try {
       const aiOrchestratorUrl = getAiOrchestratorUrl();
       const previewHtml = await this.fetchTemplatePreviewHtml(template.id).catch(() => '');
+      const paramKeys = this.buildTemplateWorkflowParamSeeds(template, skill).map((item) => item.key);
       const prompt = [
         '你是一个企业文档自动化专家，需要根据 Carbone 文档模板信息生成一个“模板工作流草稿”。',
         '目标是生成一个共享 documentRender Activity 可复用的 Temporal Workflow 草稿。',
-        '请根据模板名称、变量、HTML 预览和模板 Skill 信息，推断该文档的业务类型、输入参数说明、输出说明和工作流描述。',
+        '请根据模板名称、参数、HTML 预览和模板 Skill 信息，推断该文档的业务类型、输入参数说明、输出说明和工作流描述。',
         '',
         '输出要求：',
         '1. 只返回一个 JSON 对象，不要输出 Markdown 或解释。',
         '2. JSON 字段只允许包含：documentType, workflowName, workflowDescription, activityDescription, outputName, outputDescription, inputParamDescriptions, extraPrompt。',
-        '3. inputParamDescriptions 必须是对象，key 为模板变量路径，value 为中文描述。',
+        '3. inputParamDescriptions 必须是对象，key 为模板参数路径，value 为中文描述。',
         '4. workflowName 若无法确定，可以输出空字符串。',
-        '5. 不要虚构不存在的模板变量。',
+        '5. 不要虚构不存在的模板参数。',
         '',
         `模板ID: ${template.id}`,
         `模板文件名: ${template.fileName}`,
         `模板格式: ${template.format || 'docx'}`,
-        `模板变量: ${JSON.stringify(this.uniqueVariables(template.variables || []).map((item) => this.variableToKey(item)), null, 2)}`,
+        `模板参数: ${JSON.stringify(paramKeys, null, 2)}`,
         `模板 loops: ${JSON.stringify(template.loops || [], null, 2)}`,
         `模板内置 skillId: ${template.skillId || ''}`,
         `模板 Skill 元数据: ${JSON.stringify(skill || {}, null, 2)}`,
@@ -4882,6 +4982,144 @@ export class TemporalWorkflowService {
       if (typeof value === 'number' && Number.isFinite(value) && value > 0) {
         return value;
       }
+    }
+    return undefined;
+  }
+
+  private buildTemplateWorkflowParamSeeds(
+    template: CarboneTemplateMeta,
+    skill: CarboneSkillMeta | null,
+  ): Array<{
+    key: string;
+    required: boolean;
+    type: WorkflowInputParamType;
+    exampleValue?: string | number | boolean;
+    description: string;
+    displayName?: string;
+    groupLabel?: string;
+    paramKind: 'scalar' | 'array';
+    arrayPath?: string;
+    fieldName?: string;
+  }> {
+    const skillParameters = Array.isArray(skill?.parameters) ? skill.parameters : [];
+    const paramMap = new Map<string, {
+      key: string;
+      required: boolean;
+      type: WorkflowInputParamType;
+      exampleValue?: string | number | boolean;
+      description: string;
+      displayName?: string;
+      groupLabel?: string;
+      paramKind: 'scalar' | 'array';
+      arrayPath?: string;
+      fieldName?: string;
+    }>();
+
+    for (const parameter of skillParameters) {
+      const rawName = String(parameter?.name || '').trim();
+      const key = this.normalizeTemplateWorkflowParamKey(rawName);
+      if (!key || paramMap.has(key)) {
+        continue;
+      }
+
+      const arrayMatch = key.match(/^(.+\[\])\.(.+)$/);
+      paramMap.set(key, {
+        key,
+        required: parameter?.required !== false,
+        type: this.normalizeWorkflowInputParamType(parameter?.dataType, key),
+        exampleValue: this.normalizeWorkflowExampleValue(parameter?.example, parameter?.dataType),
+        description: String(parameter?.usage || parameter?.displayName || `模板参数 ${key}`),
+        displayName: String(parameter?.displayName || key),
+        groupLabel: this.pickFirstNonEmptyString(
+          parameter?.groupLabel,
+          parameter?.sheetName,
+          parameter?.chapter,
+          parameter?.section,
+          parameter?.group,
+        ),
+        paramKind: arrayMatch ? 'array' : 'scalar',
+        arrayPath: arrayMatch?.[1],
+        fieldName: arrayMatch?.[2] || key,
+      });
+    }
+
+    if (paramMap.size > 0) {
+      return Array.from(paramMap.values());
+    }
+
+    const variables = this.uniqueVariables(template.variables || [])
+      .filter((variable) => {
+        const key = this.variableToKey(variable);
+        return !key.includes('{#') && !key.includes('{/');
+      });
+
+    return variables.map((variable) => {
+      const key = this.variableToKey(variable);
+      return {
+        key,
+        required: true,
+        type: 'string' as WorkflowInputParamType,
+        description: `模板参数 ${key}`,
+        displayName: key,
+        paramKind: 'scalar' as const,
+        fieldName: key,
+      };
+    });
+  }
+
+  private normalizeTemplateWorkflowParamKey(name: string): string {
+    const trimmed = String(name || '').trim();
+    if (!trimmed) {
+      return '';
+    }
+
+    return trimmed
+      .replace(/^\{/, '')
+      .replace(/\}$/, '')
+      .replace(/^#/, '')
+      .replace(/^\//, '')
+      .replace(/^d\./, '')
+      .trim();
+  }
+
+  private normalizeWorkflowInputParamType(dataType: unknown, fieldName: string): WorkflowInputParamType {
+    const hint = `${String(dataType || '')} ${String(fieldName || '')}`.toLowerCase();
+    if (/(number|int|float|double|decimal|amount|price|count|qty|quantity|ratio)/.test(hint)) {
+      return 'number';
+    }
+    if (/(bool|boolean|flag|enabled|is[A-Z_]?)/.test(hint)) {
+      return 'boolean';
+    }
+    if (/(date|time|deadline|day)/.test(hint)) {
+      return 'date';
+    }
+    return 'string';
+  }
+
+  private normalizeWorkflowExampleValue(
+    value: unknown,
+    dataType: unknown,
+  ): string | number | boolean | undefined {
+    if (typeof value === 'string') {
+      const trimmed = value.trim();
+      if (!trimmed) {
+        return undefined;
+      }
+      const type = this.normalizeWorkflowInputParamType(dataType, '');
+      if (type === 'number' && /^-?\d+(\.\d+)?$/.test(trimmed.replace(/,/g, ''))) {
+        return Number(trimmed.replace(/,/g, ''));
+      }
+      if (type === 'boolean') {
+        if (/^(true|false)$/i.test(trimmed)) {
+          return trimmed.toLowerCase() === 'true';
+        }
+        if (trimmed === '是') return true;
+        if (trimmed === '否') return false;
+      }
+      return trimmed;
+    }
+    if (typeof value === 'number' || typeof value === 'boolean') {
+      return value;
     }
     return undefined;
   }

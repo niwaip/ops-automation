@@ -6,7 +6,7 @@
 import { Injectable, Logger, OnModuleInit, ForbiddenException, NotFoundException, BadRequestException } from '@nestjs/common';
 import { randomUUID } from 'crypto';
 import { PrismaService } from '../../prisma/prisma.service';
-import { getAiOrchestratorUrl } from '../../config/service-endpoints';
+import { getAiOrchestratorUrl, getCarboneServiceUrl } from '../../config/service-endpoints';
 import {
   SkillConfigDto,
   CreateSkillDTO,
@@ -48,6 +48,17 @@ type PublishedSkillReleaseMeta = {
   status: string;
   deploymentStatus: string;
   sourceType: string;
+};
+
+type CarboneSkillMeta = {
+  id?: string;
+  templateId?: string;
+  parsingGuide?: Record<string, unknown>;
+  dataParsing?: Record<string, unknown>;
+  validation?: Record<string, unknown>;
+  aiInstructions?: string;
+  skillGuideMarkdown?: string;
+  dataExampleJson?: unknown;
 };
 
 /**
@@ -1333,7 +1344,7 @@ ${skillsXml}
     const publicationMap = await this.getPublishedReleaseMap(skillIds);
     const publishedBindingSet = await this.getPublishedSkillBindingSet(skillIds);
     const toolBindingMap = await this.getSkillToolBindingMap(skillIds);
-    return skills
+    const visibleSkills = skills
       .filter((skill) => {
         if (!options?.hideHistoricalPublishedVersions) {
           return true;
@@ -1343,6 +1354,177 @@ ${skillsXml}
         return isCurrentPublished || !hasPublishedHistory;
       })
       .map((skill) => this.toDTO(skill, publicationMap.get(skill.id), toolBindingMap.get(skill.id) || []));
+    return this.enrichDocumentSkillsWithCarboneGuide(
+      visibleSkills,
+      skills.filter((skill) => visibleSkills.some((item) => item.id === skill.id)),
+    );
+  }
+
+  private async enrichDocumentSkillsWithCarboneGuide(
+    skills: SkillConfigDto[],
+    rawSkills: any[],
+  ): Promise<SkillConfigDto[]> {
+    if (!skills.length) {
+      return skills;
+    }
+
+    const rawSkillMap = new Map(rawSkills.map((skill) => [String(skill.id), skill]));
+    return Promise.all(
+      skills.map(async (skill) => {
+        const rawSkill = rawSkillMap.get(skill.id);
+        return this.enrichDocumentSkillWithCarboneGuide(skill, rawSkill);
+      }),
+    );
+  }
+
+  private async enrichDocumentSkillWithCarboneGuide(
+    skill: SkillConfigDto,
+    rawSkill: any,
+  ): Promise<SkillConfigDto> {
+    const currentRuntimeMetadata = skill.apiEndpoints?.runtimeMetadata || {};
+    if (!this.shouldFetchCarboneGuide(rawSkill, currentRuntimeMetadata)) {
+      return skill;
+    }
+
+    const carboneSkillId = this.resolveCarboneSkillId(rawSkill, currentRuntimeMetadata);
+    if (!carboneSkillId) {
+      return skill;
+    }
+
+    try {
+      const carboneSkill = await this.fetchCarboneSkillMeta(carboneSkillId);
+      const mergedRuntimeMetadata = this.mergeRuntimeMetadataWithCarboneGuide(
+        currentRuntimeMetadata,
+        carboneSkill,
+      );
+
+      return {
+        ...skill,
+        apiEndpoints: {
+          ...(skill.apiEndpoints || {}),
+          runtimeMetadata: mergedRuntimeMetadata,
+        },
+      };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'unknown';
+      this.logger.warn(`Failed to enrich document skill ${skill.id} with carbone guide ${carboneSkillId}: ${message}`);
+      return skill;
+    }
+  }
+
+  private shouldFetchCarboneGuide(
+    rawSkill: any,
+    runtimeMetadata: Record<string, unknown>,
+  ): boolean {
+    const sourceType = typeof runtimeMetadata?.sourceType === 'string'
+      ? runtimeMetadata.sourceType
+      : '';
+    const sourceTemplate = (runtimeMetadata?.sourceTemplate && typeof runtimeMetadata.sourceTemplate === 'object')
+      ? runtimeMetadata.sourceTemplate as Record<string, unknown>
+      : undefined;
+    const isDocumentSkill =
+      sourceType === 'document'
+      || sourceType === 'execution_flow_template'
+      || typeof sourceTemplate?.skillId === 'string'
+      || typeof sourceTemplate?.templateId === 'string'
+      || typeof rawSkill?.carboneSkillId === 'string';
+
+    if (!isDocumentSkill) {
+      return false;
+    }
+
+    return !runtimeMetadata.skillGuideMarkdown
+      || !runtimeMetadata.dataExampleJson
+      || !runtimeMetadata.extractionRules
+      || !runtimeMetadata.mappingHints;
+  }
+
+  private resolveCarboneSkillId(
+    rawSkill: any,
+    runtimeMetadata: Record<string, unknown>,
+  ): string | undefined {
+    if (typeof rawSkill?.carboneSkillId === 'string' && rawSkill.carboneSkillId.trim()) {
+      return rawSkill.carboneSkillId.trim();
+    }
+
+    const sourceTemplate = (runtimeMetadata?.sourceTemplate && typeof runtimeMetadata.sourceTemplate === 'object')
+      ? runtimeMetadata.sourceTemplate as Record<string, unknown>
+      : undefined;
+    if (typeof sourceTemplate?.skillId === 'string' && sourceTemplate.skillId.trim()) {
+      return sourceTemplate.skillId.trim();
+    }
+
+    return undefined;
+  }
+
+  private async fetchCarboneSkillMeta(skillId: string): Promise<CarboneSkillMeta> {
+    const carboneBaseUrl = getCarboneServiceUrl();
+    const response = await axios.get<CarboneSkillMeta>(`${carboneBaseUrl}/studio/skill/${skillId}`, {
+      timeout: 15000,
+    });
+    return response.data || {};
+  }
+
+  private mergeRuntimeMetadataWithCarboneGuide(
+    runtimeMetadata: Record<string, unknown>,
+    carboneSkill: CarboneSkillMeta,
+  ): Record<string, unknown> {
+    const parsingGuide = this.asRecord(carboneSkill.parsingGuide);
+    const dataParsing = this.asRecord(carboneSkill.dataParsing);
+    const validation = this.asRecord(carboneSkill.validation);
+    const currentOutputParams = this.asRecord(runtimeMetadata.outputParams);
+    const mergedOutputExample = this.parseJsonRecord(carboneSkill.dataExampleJson) || currentOutputParams;
+
+    return {
+      ...runtimeMetadata,
+      paramCollectionGuidance:
+        this.readText(runtimeMetadata.paramCollectionGuidance)
+        || this.readText(parsingGuide?.overview)
+        || this.readText(carboneSkill.aiInstructions),
+      validationRules:
+        this.readText(runtimeMetadata.validationRules)
+        || (validation ? JSON.stringify(validation, null, 2) : undefined),
+      skillGuideMarkdown:
+        this.readText(runtimeMetadata.skillGuideMarkdown)
+        || this.readText(carboneSkill.skillGuideMarkdown),
+      dataExampleJson:
+        runtimeMetadata.dataExampleJson || mergedOutputExample,
+      extractionRules:
+        runtimeMetadata.extractionRules
+        || (Array.isArray(parsingGuide?.extractionRules) ? parsingGuide.extractionRules : undefined),
+      mappingHints:
+        runtimeMetadata.mappingHints
+        || (Array.isArray(dataParsing?.mappingHints) ? dataParsing.mappingHints : undefined),
+      outputParams:
+        currentOutputParams || mergedOutputExample,
+    };
+  }
+
+  private asRecord(value: unknown): Record<string, any> | undefined {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) {
+      return undefined;
+    }
+    return value as Record<string, any>;
+  }
+
+  private parseJsonRecord(value: unknown): Record<string, unknown> | undefined {
+    if (typeof value === 'string') {
+      try {
+        const parsed = JSON.parse(value);
+        return this.asRecord(parsed);
+      } catch {
+        return undefined;
+      }
+    }
+    return this.asRecord(value);
+  }
+
+  private readText(value: unknown): string | undefined {
+    if (typeof value !== 'string') {
+      return undefined;
+    }
+    const trimmed = value.trim();
+    return trimmed ? trimmed : undefined;
   }
 
   private async getPublishedReleaseMap(skillIds: string[]): Promise<Map<string, PublishedSkillReleaseMeta>> {

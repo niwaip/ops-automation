@@ -537,6 +537,9 @@ export class FileHandler {
 
     const loopEndCellIndex = rowTexts.length - 1 - reverseEndIndex;
     const items = this.resolveLoopItems(data, loopMatch[1]);
+    if (items.length === 0) {
+      return null;
+    }
 
     return {
       sharedCells,

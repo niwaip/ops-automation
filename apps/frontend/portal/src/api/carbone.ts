@@ -40,6 +40,7 @@ export interface CarboneTemplate {
   format: 'docx' | 'xlsx' | 'pptx' | 'html';
   size?: number;
   variables?: string[];
+  parameterCount?: number;
   loops?: Array<{ arrayPath: string }>;
   skillId?: string;
   createdAt?: string;
@@ -51,6 +52,8 @@ export interface CarboneTemplate {
 export interface CarboneSkill {
   id: string;
   templateId: string;
+  templateType?: string;
+  templateDescription?: string;
   parameters?: any[];
   parsingGuide?: string;
   dataParsing?: any;

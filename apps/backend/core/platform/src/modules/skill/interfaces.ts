@@ -20,6 +20,10 @@ export interface SkillRuntimeMetadata {
   expectedResult?: string;
   outputParams?: Record<string, unknown>;
   sourceType?: 'execution_flow_template' | 'temporal_workflow' | string;
+  skillGuideMarkdown?: string;
+  dataExampleJson?: Record<string, unknown> | string;
+  extractionRules?: Array<Record<string, unknown>>;
+  mappingHints?: Array<Record<string, unknown>>;
   sourceTemplate?: {
     templateId?: string;
     skillId?: string;
@@ -104,6 +108,12 @@ export interface ParamsSchema {
     required?: boolean;
     default?: string | number | boolean;
     extractionPrompt?: string;
+    semanticRole?: string;
+    extractionHints?: string[];
+    displayName?: string;
+    groupLabel?: string;
+    previewBlocking?: boolean;
+    confirmationThreshold?: number;
   }>;
   required: string[];
 }

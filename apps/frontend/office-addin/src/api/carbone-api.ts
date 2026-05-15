@@ -428,7 +428,7 @@ class CarboneAPI {
   /**
    * 获取模板列表
    */
-  async getTemplates(): Promise<{
+  async getTemplates(options?: { includeDrafts?: boolean }): Promise<{
     templates: Array<{
       id: string;
       fileName?: string;
@@ -444,9 +444,12 @@ class CarboneAPI {
       `${this.baseUrl}/studio/templates`,
       getAxiosConfig(this.baseUrl)
     );
+    const includeDrafts = options?.includeDrafts === true;
     return {
       ...response.data,
-      templates: (response.data.templates || []).filter((template: { fileName?: string }) => !isDraftDocumentTemplate(template)),
+      templates: includeDrafts
+        ? (response.data.templates || [])
+        : (response.data.templates || []).filter((template: { fileName?: string }) => !isDraftDocumentTemplate(template)),
     };
   }
 
@@ -460,6 +463,7 @@ class CarboneAPI {
     size?: number;
     config?: any;
     suggestions?: any[];
+    variables?: string[];
     skillId?: string;
   }> {
     const response = await axios.get(

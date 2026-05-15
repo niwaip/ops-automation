@@ -40,7 +40,7 @@ export class TemplateRepository {
         where: { id },
         include: {
           skill: {
-            select: { id: true },
+            select: { id: true, parameters: true },
           },
         },
       });
@@ -58,7 +58,7 @@ export class TemplateRepository {
         where: { type: TemplateType.template },
         include: {
           skill: {
-            select: { id: true },
+            select: { id: true, parameters: true },
           },
         },
         orderBy: { createdAt: 'desc' },
@@ -124,9 +124,40 @@ export class TemplateRepository {
   }
 
   async delete(id: string): Promise<void> {
-    await this.prisma.template.delete({
-      where: { id },
-    });
+    try {
+      // 1. 删除关联的渲染输出
+      await this.prisma.renderOutput.deleteMany({
+        where: {
+          OR: [
+            { templateId: id },
+            { markedTemplateId: id },
+          ],
+        },
+      });
+
+      // 2. 删除关联的 Skill
+      await this.prisma.skill.deleteMany({
+        where: { templateId: id },
+      });
+
+      // 3. 删除标记副本及其关联输出 (递归)
+      const markedCopies = await this.prisma.template.findMany({
+        where: { originalId: id },
+        select: { id: true },
+      });
+
+      for (const copy of markedCopies) {
+        await this.delete(copy.id);
+      }
+
+      // 4. 最后删除模板本身
+      await this.prisma.template.delete({
+        where: { id },
+      });
+    } catch (error) {
+      this.logger.error(`Failed to delete template ${id}: ${String(error)}`);
+      throw error;
+    }
   }
 
   private buildUpsertData(filePath: string, meta: TemplateMetaDocument): Prisma.TemplateUncheckedCreateInput {
@@ -180,18 +211,20 @@ export class TemplateRepository {
     templateConfig: unknown;
     configSavedAt: Date | null;
     verifyResult: unknown;
-    skill?: { id: string } | null;
+    skill?: { id: string; parameters: unknown } | null;
     suggestions?: unknown;
   }): TemplateResponse {
     const resolvedLoops = Array.isArray(template.loops) && template.loops.length > 0
       ? template.loops
       : this.extractLoops(template.templateConfig, Array.isArray(template.suggestions) ? template.suggestions : []);
+    const parameterCount = Array.isArray(template.skill?.parameters) ? template.skill.parameters.length : undefined;
     return {
       id: template.id,
       fileName: template.fileName,
       format: template.format,
       size: template.size ?? 0,
       variables: template.variables ?? [],
+      parameterCount,
       loops: resolvedLoops as Array<{ arrayPath: string }>,
       markings: (Array.isArray(template.markings) ? template.markings : undefined) as TemplateResponse['markings'],
       ignoredElements: (Array.isArray(template.ignoredElements) ? template.ignoredElements : undefined) as number[] | undefined,
@@ -206,10 +239,16 @@ export class TemplateRepository {
   }
 
   private extractVariablesFromSuggestions(suggestions: unknown[]): string[] {
+    const seen = new Set<string>();
     return suggestions
       .filter((item): item is { applied?: boolean; suggestedName?: string } => this.isRecord(item))
       .filter((item) => item.applied && typeof item.suggestedName === 'string')
-      .map((item) => item.suggestedName as string);
+      .map((item) => item.suggestedName as string)
+      .filter((name) => {
+        if (seen.has(name)) return false;
+        seen.add(name);
+        return true;
+      });
   }
 
   private extractLoops(config: unknown, suggestions: unknown[]): Array<{ arrayPath: string }> {

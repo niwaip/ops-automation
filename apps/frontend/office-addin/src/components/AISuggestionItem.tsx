@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, useMemo } from 'react';
 import { AISuggestion } from '../taskpane/store';
 
 export const AISuggestionItem: React.FC<{
@@ -25,6 +25,16 @@ export const AISuggestionItem: React.FC<{
 
   // 获取位置信息（使用格式化的显示位置）
   const getPositionInfo = (suggestion: AISuggestion): string => {
+    // 如果有 excel 锚点，优先显示 Excel 位置信息
+    if (suggestion.details?.excelAnchor) {
+      const anchor = suggestion.details.excelAnchor;
+      if (anchor.type === 'cell') {
+        return `单元格: ${anchor.sheetName}!${anchor.address || ''}`;
+      } else if (anchor.type === 'table') {
+        return `表格区域: ${anchor.sheetName}!${anchor.tableName || anchor.startAddress || ''}`;
+      }
+    }
+
     // 优先使用displayPosition
     if (suggestion.details?.displayPosition) {
       return suggestion.details.displayPosition;
@@ -94,6 +104,12 @@ export const AISuggestionItem: React.FC<{
   const descriptionSummary = suggestion.details?.description?.trim() || '';
   const sampleValue = suggestion.originalText?.trim() || '';
 
+  // 检查是否包含无意义的命名（如 field, value, unknown 等）
+  const hasMalformedName = useMemo(() => {
+    const normalizedName = String(suggestion.suggestedName || '').replace(/[{}]/g, '').trim();
+    return /^(?:d\.)?(?:[A-Za-z_][A-Za-z0-9_]*\[\]\.)?(field\d*|textValue|textField\d*|value\d*|var\d*|param\d*|undefined|null|unknown)$/i.test(normalizedName);
+  }, [suggestion.suggestedName]);
+
   return (
     <div
       ref={containerRef}
@@ -136,15 +152,22 @@ export const AISuggestionItem: React.FC<{
                   wordBreak: 'break-word',
                 }}
               >
-                <span className="suggested">{suggestion.suggestedName}</span>
+                <span className="suggested" style={hasMalformedName ? { color: '#ef4444', fontWeight: 'bold' } : undefined}>
+                  {suggestion.suggestedName}
+                </span>
                 {sampleValue && (
                   <>
                     <span className="arrow" style={{ margin: '0 8px', color: '#94a3b8' }}>←</span>
                     <span className="original" style={{ color: '#64748b' }}>{sampleValue}</span>
                   </>
                 )}
+                {suggestion.details?.excelAnchor && (
+                  <span style={{ color: '#0ea5e9', marginLeft: sampleValue ? '8px' : '0', fontSize: '12px', background: '#e0f2fe', padding: '2px 6px', borderRadius: '4px' }}>
+                    📍 {suggestion.details.excelAnchor.type === 'cell' ? suggestion.details.excelAnchor.address : suggestion.details.excelAnchor.tableName || suggestion.details.excelAnchor.startAddress || '区域'}
+                  </span>
+                )}
                 {descriptionSummary && (
-                  <span style={{ color: '#475569', marginLeft: sampleValue ? '8px' : '0' }}>
+                  <span style={{ color: '#475569', marginLeft: '8px' }}>
                     说明: {descriptionSummary}
                   </span>
                 )}

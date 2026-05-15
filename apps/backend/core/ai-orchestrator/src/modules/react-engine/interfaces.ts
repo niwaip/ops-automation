@@ -318,10 +318,17 @@ export interface ApiEndpoint {
 }
 
 export interface SkillRuntimeMetadata {
+  matchSummary?: string;
+  paramCollectionGuidance?: string;
+  validationRules?: string;
   goal?: string;
   expectedResult?: string;
   outputParams?: Record<string, unknown>;
   sourceType?: string;
+  skillGuideMarkdown?: string;
+  dataExampleJson?: Record<string, unknown> | string;
+  extractionRules?: Array<Record<string, unknown>>;
+  mappingHints?: Array<Record<string, unknown>>;
   sourceTemplate?: {
     templateId?: string;
     skillId?: string;
@@ -420,6 +427,12 @@ export interface ParamProperty {
   required: boolean;
   default?: unknown;
   extractionPrompt?: string;
+  semanticRole?: string;
+  extractionHints?: string[];
+  displayName?: string;
+  groupLabel?: string;
+  previewBlocking?: boolean;
+  confirmationThreshold?: number;
 }
 
 /**

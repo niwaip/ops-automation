@@ -10,6 +10,7 @@ interface DraftWorkflowSectionProps {
     skillGuideMarkdown?: string;
   } | null;
   draftId: string | null;
+  draftInfo: { templateType: string; parameterCount: number; savedAt: string } | null;
   draftWorkflowNotice: { type: 'success' | 'error' | 'info'; message: string; lines?: string[] } | null;
   isGeneratingGuide: boolean;
   isVerifying: boolean;
@@ -30,6 +31,7 @@ export const DraftWorkflowSection: React.FC<DraftWorkflowSectionProps> = ({
   isAnalyzing,
   aiSkillGuide,
   draftId,
+  draftInfo,
   draftWorkflowNotice,
   isGeneratingGuide,
   isVerifying,
@@ -44,9 +46,20 @@ export const DraftWorkflowSection: React.FC<DraftWorkflowSectionProps> = ({
   handleLoadDraft,
   handleClearDraft,
 }) => {
-  if (suggestions.length === 0 && !aiSkillGuide && !draftId && !draftWorkflowNotice) {
-    return null;
-  }
+  const formattedDraftTime = draftInfo?.savedAt
+    ? new Date(draftInfo.savedAt).toLocaleString('zh-CN', {
+      hour12: false,
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+    })
+    : '';
+
+  // 移除条件判断，使其始终显示
+  // if (suggestions.length === 0 && !aiSkillGuide && !draftId && !draftWorkflowNotice) {
+  //   return null;
+  // }
 
   return (
     <div className="excel-understanding-card excel-analysis-card">
@@ -87,15 +100,13 @@ export const DraftWorkflowSection: React.FC<DraftWorkflowSectionProps> = ({
             >
               {isSavingDraft ? '暂存中...' : '暂存草稿'}
             </button>
-            {draftId && (
-              <button
-                className="sheet-action-btn"
-                onClick={handleLoadDraft}
-                title="恢复当前暂存副本信息"
-              >
-                载入草稿
-              </button>
-            )}
+            <button
+              className="sheet-action-btn"
+              onClick={handleLoadDraft}
+              title="优先从本地最新暂存恢复草稿，没有本地暂存时再尝试当前副本"
+            >
+              恢复最新草稿
+            </button>
             {draftId && (
               <button
                 className="sheet-action-btn sheet-pair-danger-btn"
@@ -106,6 +117,17 @@ export const DraftWorkflowSection: React.FC<DraftWorkflowSectionProps> = ({
               </button>
             )}
           </div>
+
+          {(draftId || draftInfo) && (
+            <div className="draft-info">
+              <span className="draft-badge">最新草稿</span>
+              <span className="draft-details">
+                {draftInfo?.templateType || 'unknown'} · {draftInfo?.parameterCount || suggestions.length || 0} 参数
+                {formattedDraftTime ? ` · ${formattedDraftTime}` : ''}
+                {draftId ? ` · ID: ${draftId.substring(0, 8)}...` : ''}
+              </span>
+            </div>
+          )}
 
           {draftWorkflowNotice && (
             <div className={`workflow-status-message ${draftWorkflowNotice.type}`}>

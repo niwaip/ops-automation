@@ -35,6 +35,10 @@ import {
   EXECUTION_STATUS_LABELS_EN,
   EXECUTION_STATUS_LABELS_ZH,
 } from '../utils/executionStatusMeta';
+import {
+  buildWaitingInputDisplayGroups,
+  resolveWaitingInputDisplayLabel,
+} from '../utils/waitingInputDisplay';
 
 const { Title, Text } = Typography;
 
@@ -42,10 +46,13 @@ interface RequiredInputField {
   name: string;
   type: string;
   description?: string;
+  display_name?: string;
+  group_label?: string;
   required: boolean;
   value?: unknown;
   missing: boolean;
   source: 'user_input' | 'default' | 'unresolved';
+  needs_confirmation?: boolean;
 }
 
 interface BrowserExecutionStepResult {
@@ -921,6 +928,10 @@ const ExecutionDetailPage: React.FC = () => {
   const requiredInputs = Array.isArray(waitingInputStep?.inputJson?.requiredInputs)
     ? (waitingInputStep.inputJson.requiredInputs as unknown as RequiredInputField[])
     : [];
+  const requiredInputGroups = React.useMemo(
+    () => buildWaitingInputDisplayGroups(requiredInputs),
+    [requiredInputs],
+  );
   const semantic = execution.semantic;
 
   const handleSubmitInput = (values: Record<string, unknown>) => {
@@ -1295,22 +1306,59 @@ const ExecutionDetailPage: React.FC = () => {
               }
             }}
           >
-            {requiredInputs.map((field) => (
-              <Form.Item
-                key={field.name}
-                name={field.name}
-                label={`${field.name} (${field.type})`}
-                extra={field.description || `${text.source}: ${field.source}`}
-                rules={[
-                  {
-                    required: field.required,
-                    message: `${text.provideField} ${field.name}`,
-                  },
-                ]}
-                valuePropName={field.type.toLowerCase() === 'boolean' ? 'checked' : 'value'}
-              >
-                {renderInputField(field)}
-              </Form.Item>
+            {requiredInputGroups.length > 0 ? (
+              <Space direction="vertical" size={16} style={{ width: '100%' }}>
+                {requiredInputGroups.map((group) => (
+                  <Card
+                    key={group.label}
+                    size="small"
+                    title={group.label}
+                    style={{ borderRadius: 12, background: 'var(--bg-card)' }}
+                  >
+                    {group.items.map((field) => (
+                      <React.Fragment key={field.name}>
+                        <Form.Item
+                          name={field.name}
+                        label={`${resolveWaitingInputDisplayLabel(field)} (${field.type})`}
+                          extra={field.description || `${text.source}: ${field.source}`}
+                          rules={[
+                            {
+                              required: field.required,
+                              message: `${text.provideField} ${resolveWaitingInputDisplayLabel(field)}`,
+                            },
+                          ]}
+                          valuePropName={field.type.toLowerCase() === 'boolean' ? 'checked' : 'value'}
+                        >
+                          {renderInputField(field)}
+                        </Form.Item>
+                        {field.needs_confirmation ? (
+                          <Tag color="gold" style={{ marginBottom: 12 }}>待确认</Tag>
+                        ) : null}
+                      </React.Fragment>
+                    ))}
+                  </Card>
+                ))}
+              </Space>
+            ) : requiredInputs.map((field) => (
+              <React.Fragment key={field.name}>
+                <Form.Item
+                  name={field.name}
+                  label={`${resolveWaitingInputDisplayLabel(field)} (${field.type})`}
+                  extra={field.description || `${text.source}: ${field.source}`}
+                  rules={[
+                    {
+                      required: field.required,
+                      message: `${text.provideField} ${resolveWaitingInputDisplayLabel(field)}`,
+                    },
+                  ]}
+                  valuePropName={field.type.toLowerCase() === 'boolean' ? 'checked' : 'value'}
+                >
+                  {renderInputField(field)}
+                </Form.Item>
+                {field.needs_confirmation ? (
+                  <Tag color="gold" style={{ marginBottom: 12 }}>待确认</Tag>
+                ) : null}
+              </React.Fragment>
             ))}
             <Space>
               <Button type="primary" htmlType="submit" loading={submitInputMutation.isLoading}>

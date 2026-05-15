@@ -84,7 +84,7 @@ export const ExcelAnalysisCard: React.FC<{
               }}
               disabled={!applyState.suggestions || applyState.suggestions.filter((s: any) => !s.applied).length === 0}
             >
-              全部应用 ({applyState.suggestions ? applyState.suggestions.filter((s: any) => !s.applied).length : 0})
+              应用 ({applyState.suggestions ? applyState.suggestions.filter((s: any) => !s.applied).length : 0})
             </button>
             <button
               className="apply-all-btn"
@@ -96,7 +96,7 @@ export const ExcelAnalysisCard: React.FC<{
               style={{ backgroundColor: '#f3f4f6', color: '#4b5563', border: '1px solid #d1d5db' }}
               title="重新应用所有已应用的参数"
             >
-              全部重新应用
+              重新应用
             </button>
           </div>
         </div>
@@ -246,6 +246,13 @@ export const ExcelAnalysisCard: React.FC<{
                                 <span className="count">({groupedSuggestions[sheetKey].length})</span>
                               </div>
                               <div className="excel-understanding-actions" onClick={(e) => e.stopPropagation()} style={{ display: 'flex', gap: '6px' }}>
+                                <button
+                                  className="sheet-action-btn"
+                                  onClick={() => onAnalyzePair(pair.id)}
+                                  disabled={isAnalyzing}
+                                >
+                                  重新识别
+                                </button>
                                 <button
                                   className="sheet-action-btn"
                                   onClick={() => applyState.setActiveManualAddGroup(applyState.activeManualAddGroup === sheetKey ? null : sheetKey)}

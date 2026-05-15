@@ -15,6 +15,8 @@ import {
   Header,
   Res,
   Query,
+  HttpCode,
+  Logger,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBody, ApiResponse, ApiQuery } from '@nestjs/swagger';
 import { Response } from 'express';
@@ -144,6 +146,7 @@ interface TemplateInfoForValidation {
 @ApiTags('studio')
 @Controller('studio')
 export class StudioController {
+  private readonly logger = new Logger(StudioController.name);
   private engine: CarboneEngine;
   private templatesDir: string;
   private outputsDir: string;
@@ -244,6 +247,7 @@ export class StudioController {
 
   private normalizeRenderData(data: Record<string, any>): Record<string, any> {
     const normalized: Record<string, any> = {};
+    const arrayGroups = new Map<string, Record<string, unknown>>();
 
     for (const [key, value] of Object.entries(data || {})) {
       // Some callers still send { d: {...} }; unwrap it so the renderer can
@@ -251,6 +255,18 @@ export class StudioController {
       if (key === 'd' && this.isPlainObject(value)) {
         this.mergeObjects(normalized, this.normalizeRenderData(value));
         continue;
+      }
+
+      if (key.includes('[]')) {
+        const [rawPrefix, rawSuffix] = key.split('[]', 2);
+        const prefix = rawPrefix.replace(/\.$/, '').trim();
+        const suffix = String(rawSuffix || '').replace(/^\./, '').trim();
+        if (prefix && suffix) {
+          const entry = arrayGroups.get(prefix) || {};
+          entry[suffix] = value;
+          arrayGroups.set(prefix, entry);
+          continue;
+        }
       }
 
       if (key.includes('.')) {
@@ -269,6 +285,43 @@ export class StudioController {
       }
 
       normalized[key] = value;
+    }
+
+    for (const [prefix, fields] of arrayGroups.entries()) {
+      const fieldEntries = Object.entries(fields);
+      if (fieldEntries.length === 0) {
+        continue;
+      }
+
+      const maxLen = fieldEntries.reduce((acc, [, raw]) => {
+        if (Array.isArray(raw)) {
+          return Math.max(acc, raw.length);
+        }
+        return Math.max(acc, 1);
+      }, 0);
+
+      const rows: Array<Record<string, unknown>> = [];
+      for (let i = 0; i < maxLen; i += 1) {
+        const row: Record<string, unknown> = {};
+        for (const [fieldPath, raw] of fieldEntries) {
+          const valueAtIndex = Array.isArray(raw) ? raw[i] : (i === 0 ? raw : undefined);
+          if (valueAtIndex === undefined) {
+            continue;
+          }
+          if (fieldPath.includes('.')) {
+            this.setNestedValue(row, fieldPath, valueAtIndex);
+          } else {
+            row[fieldPath] = valueAtIndex;
+          }
+        }
+        rows.push(row);
+      }
+
+      if (prefix.includes('.')) {
+        this.setNestedValue(normalized, prefix, rows);
+      } else {
+        normalized[prefix] = rows;
+      }
     }
 
     return normalized;
@@ -431,7 +484,23 @@ export class StudioController {
 
   private async getTemplateMetaWithDbFallback(id: string): Promise<TemplateResponse> {
     const dbMeta = await this.templateRepository.findById(id);
-    return dbMeta ?? this.getTemplateMeta(id);
+    if (!dbMeta) {
+      return this.getTemplateMeta(id);
+    }
+
+    try {
+      const fileMeta = this.getTemplateMeta(id);
+      return {
+        ...dbMeta,
+        skillId: dbMeta.skillId || fileMeta.skillId,
+        templateConfig: dbMeta.templateConfig ?? fileMeta.templateConfig,
+        configSavedAt: dbMeta.configSavedAt || fileMeta.configSavedAt,
+        savedAt: dbMeta.savedAt || fileMeta.savedAt,
+        verifyResult: dbMeta.verifyResult ?? fileMeta.verifyResult,
+      };
+    } catch {
+      return dbMeta;
+    }
   }
 
   private async listTemplateMetasWithDbFallback(): Promise<TemplateResponse[]> {
@@ -580,7 +649,13 @@ export class StudioController {
 
       // 渲染模板
       const templateBuffer = fs.readFileSync(templatePath);
-      const config = meta.templateConfig || {};
+      const loopFallback = Array.isArray(meta.loops) && meta.loops.length > 0
+        ? { tableLoops: meta.loops }
+        : (() => {
+            const inferred = this.extractLoopsFromMeta(meta);
+            return inferred.length > 0 ? { tableLoops: inferred } : {};
+          })();
+      const config = meta.templateConfig || loopFallback || {};
       const markedBuffer = await this.documentStructureService.applyConfigToDocx(templateBuffer, config);
       const outputBuffer = await this.engine.render(markedBuffer, normalizedData, meta.fileName);
 
@@ -1189,31 +1264,41 @@ export class StudioController {
    * 删除模板
    */
   @Post('templates/:id/delete')
+  @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Delete template' })
   async deleteTemplate(@Param('id') id: string): Promise<{ success: boolean }> {
-    const meta = await this.getTemplateMetaWithDbFallback(id);
-    const templatePath = path.join(this.templatesDir, `${id}.${meta.format}`);
-    const metaPath = path.join(this.templatesDir, `${id}.json`);
+    try {
+      const meta = await this.getTemplateMetaWithDbFallback(id);
+      const templatePath = path.join(this.templatesDir, `${id}.${meta.format}`);
+      const metaPath = path.join(this.templatesDir, `${id}.json`);
 
-    if (fs.existsSync(templatePath)) {
-      fs.unlinkSync(templatePath);
-    }
-    if (fs.existsSync(metaPath)) {
-      fs.unlinkSync(metaPath);
-    }
-
-    // 同时删除关联的skill文件
-    if (meta.skillId) {
-      const skillPath = path.join(this.templatesDir, `skill_${meta.skillId}.json`);
-      if (fs.existsSync(skillPath)) {
-        fs.unlinkSync(skillPath);
+      // 1. 删除文件
+      if (fs.existsSync(templatePath)) {
+        fs.unlinkSync(templatePath);
       }
-      await this.skillRepository.delete(meta.skillId).catch(() => undefined);
+      if (fs.existsSync(metaPath)) {
+        fs.unlinkSync(metaPath);
+      }
+
+      // 2. 删除关联的 skill 文件
+      if (meta.skillId) {
+        const skillPath = path.join(this.templatesDir, `skill_${meta.skillId}.json`);
+        if (fs.existsSync(skillPath)) {
+          fs.unlinkSync(skillPath);
+        }
+      }
+
+      // 3. 递归删除数据库记录
+      await this.templateRepository.delete(id);
+
+      return { success: true };
+    } catch (error: unknown) {
+      this.logger.error(`Failed to delete template ${id}: ${error instanceof Error ? error.message : String(error)}`);
+      throw new HttpException(
+        `Failed to delete template: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
     }
-
-    await this.templateRepository.delete(id).catch(() => undefined);
-
-    return { success: true };
   }
 
   /**

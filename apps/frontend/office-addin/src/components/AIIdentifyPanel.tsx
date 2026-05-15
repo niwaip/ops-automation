@@ -70,6 +70,7 @@ export const AIIdentifyPanel: React.FC<Props> = ({ onApplyComplete }) => {
     isGeneratingGuide,
     isVerifying,
     draftId,
+    draftInfo,
     isSavingDraft,
     draftWorkflowNotice,
     handleGenerateAISkillGuide,
@@ -244,27 +245,26 @@ export const AIIdentifyPanel: React.FC<Props> = ({ onApplyComplete }) => {
 
       {/* 已经移除了 ParameterApplySection */}
 
-      {(suggestions.length > 0 || aiSkillGuide || draftId || draftWorkflowNotice) && (
-        <DraftWorkflowSection
-          suggestions={suggestions}
-          isAnalyzing={isAnalyzing}
-          aiSkillGuide={aiSkillGuide}
-          draftId={draftId}
-          draftWorkflowNotice={draftWorkflowNotice}
-          isGeneratingGuide={isGeneratingGuide}
-          isVerifying={isVerifying}
-          isSavingDraft={isSavingDraft}
-          draftWorkflowCollapsed={draftWorkflowCollapsed}
-          guidePreviewCollapsed={guidePreviewCollapsed}
-          setDraftWorkflowCollapsed={setDraftWorkflowCollapsed}
-          setGuidePreviewCollapsed={setGuidePreviewCollapsed}
-          handleGenerateAISkillGuide={handleGenerateAISkillGuide}
-          handleVerifyTemplate={handleVerifyTemplate}
-          handleSaveDraft={handleSaveDraft}
-          handleLoadDraft={handleLoadDraft}
-          handleClearDraft={handleClearDraft}
-        />
-      )}
+      <DraftWorkflowSection
+        suggestions={suggestions}
+        isAnalyzing={isAnalyzing}
+        aiSkillGuide={aiSkillGuide}
+        draftId={draftId}
+        draftInfo={draftInfo}
+        draftWorkflowNotice={draftWorkflowNotice}
+        isGeneratingGuide={isGeneratingGuide}
+        isVerifying={isVerifying}
+        isSavingDraft={isSavingDraft}
+        draftWorkflowCollapsed={draftWorkflowCollapsed}
+        guidePreviewCollapsed={guidePreviewCollapsed}
+        setDraftWorkflowCollapsed={setDraftWorkflowCollapsed}
+        setGuidePreviewCollapsed={setGuidePreviewCollapsed}
+        handleGenerateAISkillGuide={handleGenerateAISkillGuide}
+        handleVerifyTemplate={handleVerifyTemplate}
+        handleSaveDraft={handleSaveDraft}
+        handleLoadDraft={handleLoadDraft}
+        handleClearDraft={handleClearDraft}
+      />
 
       {(aiSkillGuide || aiGeneratedData || previewResult || draftId || saveResult) && (
         <VerifySaveSection
