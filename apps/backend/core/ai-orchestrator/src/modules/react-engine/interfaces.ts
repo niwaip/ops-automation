@@ -390,6 +390,7 @@ export interface SkillMatchResult {
   collectedParams: Record<string, unknown>;
   missingParams: string[];
   paramsSchema: ParamsSchema;
+  executionType?: AvailableSkillDefinition['executionType'];
   templateId?: string;
   carboneSkillId?: string;
   carboneTemplateId?: string;

@@ -1,16 +1,41 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { ModelService } from './model.service';
-import { OpenAICompatibleClient } from '../../client/openai-compatible';
+import * as fs from 'fs';
+import * as os from 'os';
+import * as path from 'path';
+import type { ModelService } from './model.service.js';
 
 describe('ModelService provider credential reuse', () => {
   let service: ModelService;
+  let modelServiceClass: typeof import('./model.service.js').ModelService;
+  let openAICompatibleClientClass: typeof import('../../client/openai-compatible.js').OpenAICompatibleClient;
+  let anthropicMessagesClientClass: typeof import('../../client/anthropic-messages.js').AnthropicMessagesClient;
+  let tempDir: string;
 
   beforeEach(async () => {
+    jest.resetModules();
+    tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'ai-orchestrator-model-service-'));
+    process.env.AI_MODELS_DATA_DIR = tempDir;
+
+    const { ModelService } = require('./model.service');
+    const { OpenAICompatibleClient } = require('../../client/openai-compatible');
+    const { AnthropicMessagesClient } = require('../../client/anthropic-messages');
+    modelServiceClass = ModelService;
+    openAICompatibleClientClass = OpenAICompatibleClient;
+    anthropicMessagesClientClass = AnthropicMessagesClient;
+
     const module: TestingModule = await Test.createTestingModule({
-      providers: [ModelService],
+      providers: [modelServiceClass],
     }).compile();
 
-    service = module.get<ModelService>(ModelService);
+    service = module.get<ModelService>(modelServiceClass);
+  });
+
+  afterEach(() => {
+    delete process.env.AI_MODELS_DATA_DIR;
+    if (tempDir) {
+      fs.rmSync(tempDir, { recursive: true, force: true });
+    }
+    jest.restoreAllMocks();
   });
 
   it('reuses existing provider credentials when appending another model under the same provider', async () => {
@@ -189,7 +214,7 @@ describe('ModelService provider credential reuse', () => {
     });
 
     const listModelsSpy = jest
-      .spyOn(OpenAICompatibleClient.prototype, 'listModels')
+      .spyOn(openAICompatibleClientClass.prototype, 'listModels')
       .mockResolvedValue(['gpt-4o', 'gpt-4.1']);
 
     const result = await service.checkProviderHealth(provider.id);
@@ -223,7 +248,7 @@ describe('ModelService provider credential reuse', () => {
     });
 
     const listModelsSpy = jest
-      .spyOn(OpenAICompatibleClient.prototype, 'listModels')
+      .spyOn(openAICompatibleClientClass.prototype, 'listModels')
       .mockResolvedValue(['abab6.5-chat', 'MiniMax-M2.7', 'abab6.5-chat', 'MiniMax-Text-01']);
 
     const result = await service.listProviderModels(provider.id);
@@ -234,5 +259,43 @@ describe('ModelService provider credential reuse', () => {
     });
 
     listModelsSpy.mockRestore();
+  });
+
+  it('creates an anthropic native client when the model transport is anthropic_messages', async () => {
+    const model = await service.createModel({
+      name: 'claude-sonnet-4-5',
+      provider: 'anthropic',
+      api_endpoint: 'https://api.anthropic.com/v1',
+      api_key: 'anthropic-key',
+      config: {
+        invocation: {
+          transport: 'anthropic_messages',
+        },
+      },
+    });
+
+    expect(service.getClient(model.id)).toBeInstanceOf(anthropicMessagesClientClass);
+    expect(service.getPromptCachingConfig(model.id)).toMatchObject({
+      enabled: true,
+      mode: 'anthropic_explicit',
+      retention: '5m',
+    });
+  });
+
+  it('exposes openai-style prompt caching defaults for standard openai models', async () => {
+    const model = await service.createModel({
+      name: 'gpt-4.1',
+      provider: 'openai',
+      api_endpoint: 'https://api.openai.com/v1',
+      api_key: 'openai-key',
+      config: {},
+    });
+
+    expect(service.getClient(model.id)).toBeInstanceOf(openAICompatibleClientClass);
+    expect(service.getPromptCachingConfig(model.id)).toMatchObject({
+      enabled: true,
+      mode: 'openai_auto',
+      retention: 'in_memory',
+    });
   });
 });

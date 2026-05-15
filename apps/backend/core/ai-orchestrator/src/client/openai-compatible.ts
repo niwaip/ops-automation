@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { ChatMessage, OpenAICompatibleConfig, LLMResponse, LLMUsage, LLMRateLimit } from '../interfaces';
+import { LLMChatRequest } from './llm-client';
 
 type AxiosLikeError = {
   code?: string;
@@ -39,6 +40,8 @@ export class OpenAICompatibleClient {
   private model: string;
   private timeout: number;
   private useJsonMode: boolean;
+  private promptCacheKey?: string;
+  private promptCacheRetention?: 'in_memory' | '24h' | '5m' | '1h';
 
   constructor(config: OpenAICompatibleConfig, timeout: number = 300000) {
     this.baseURL = config.baseURL;
@@ -46,6 +49,8 @@ export class OpenAICompatibleClient {
     this.model = config.model;
     this.timeout = timeout;
     this.useJsonMode = config.useJsonMode || false;
+    this.promptCacheKey = config.promptCacheKey;
+    this.promptCacheRetention = config.promptCacheRetention;
 
     this.client = axios.create({
       baseURL: this.baseURL,
@@ -62,15 +67,22 @@ export class OpenAICompatibleClient {
    * @param messages - Array of chat messages
    * @returns Promise resolving to structured LLM response
    */
-  async chatCompletion(messages: ChatMessage[]): Promise<LLMResponse> {
+  async chatCompletion(request: ChatMessage[] | LLMChatRequest): Promise<LLMResponse> {
     try {
+      const normalized = this.normalizeChatRequest(request);
       const data: any = {
         model: this.model,
-        messages,
+        messages: normalized.messages,
       };
 
-      if (this.useJsonMode) {
+      if (normalized.responseFormat === 'json_object' || this.useJsonMode) {
         data.response_format = { type: 'json_object' };
+      }
+      if (normalized.promptCacheKey) {
+        data.prompt_cache_key = normalized.promptCacheKey;
+      }
+      if (normalized.promptCacheRetention && ['in_memory', '24h'].includes(normalized.promptCacheRetention)) {
+        data.prompt_cache_retention = normalized.promptCacheRetention;
       }
 
       // Use /chat/completions since baseURL already includes /v1
@@ -253,6 +265,12 @@ export class OpenAICompatibleClient {
     if (config.useJsonMode !== undefined) {
       this.useJsonMode = config.useJsonMode;
     }
+    if (config.promptCacheKey !== undefined) {
+      this.promptCacheKey = config.promptCacheKey;
+    }
+    if (config.promptCacheRetention !== undefined) {
+      this.promptCacheRetention = config.promptCacheRetention;
+    }
   }
 
   /**
@@ -264,6 +282,54 @@ export class OpenAICompatibleClient {
       apiKey: this.apiKey,
       model: this.model,
       useJsonMode: this.useJsonMode,
+      promptCacheKey: this.promptCacheKey,
+      promptCacheRetention: this.promptCacheRetention,
+    };
+  }
+
+  private normalizeChatRequest(request: ChatMessage[] | LLMChatRequest): {
+    messages: ChatMessage[];
+    responseFormat?: 'json_object';
+    promptCacheKey?: string;
+    promptCacheRetention?: 'in_memory' | '24h' | '5m' | '1h';
+  } {
+    if (Array.isArray(request)) {
+      return {
+        messages: request,
+        promptCacheKey: this.promptCacheKey,
+        promptCacheRetention: this.promptCacheRetention,
+      };
+    }
+
+    if (request.messages) {
+      return {
+        messages: request.messages,
+        responseFormat: request.responseFormat,
+        promptCacheKey: request.assembly?.promptCacheKey || this.promptCacheKey,
+        promptCacheRetention: request.promptCaching?.retention || this.promptCacheRetention,
+      };
+    }
+
+    if (request.assembly) {
+      const systemPrompt = [request.assembly.staticSystem, request.assembly.skillContext]
+        .filter((section) => typeof section === 'string' && section.trim().length > 0)
+        .join('\n\n');
+
+      return {
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: request.assembly.dynamicUser },
+        ],
+        responseFormat: request.responseFormat,
+        promptCacheKey: request.assembly.promptCacheKey || this.promptCacheKey,
+        promptCacheRetention: request.promptCaching?.retention || this.promptCacheRetention,
+      };
+    }
+
+    return {
+      messages: [],
+      promptCacheKey: this.promptCacheKey,
+      promptCacheRetention: this.promptCacheRetention,
     };
   }
 }

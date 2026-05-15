@@ -1,15 +1,14 @@
 import { Injectable, Logger } from '@nestjs/common';
 import {
-  DocumentGuideContext,
   RecognizeParamsDTO,
   RecognizeParamsResponseDTO,
-  ChatMessage,
   PromptDebugLLMCall,
 } from '../../interfaces';
-import { OpenAICompatibleClient } from '../../client/openai-compatible';
 import { isPlaceholderTextValue } from '../../common/placeholder-value';
 import { ModelService } from '../model/model.service';
-import { inferValueBySemanticSignal } from './semantic-role.registry';
+import { inferValueBySemanticSignal, normalizeSemanticRole } from './semantic-role.registry';
+import { LLMClient } from '../../client/llm-client';
+import { buildPromptAssembly } from './prompt-assembly';
 
 /**
  * Template schema interface for parameter recognition
@@ -31,6 +30,7 @@ interface ParamSchemaProperty {
   extractionPrompt?: string;
   semanticRole?: string;
   extractionHints?: string[];
+  displayName?: string;
 }
 
 /**
@@ -48,7 +48,7 @@ export class RecognizerService {
   /**
    * Set the default AI client for parameter recognition
    */
-  setDefaultClient(_client: OpenAICompatibleClient): void {
+  setDefaultClient(_client: LLMClient): void {
     // Legacy method - no longer needed as we use ModelService
     this.logger.warn('setDefaultClient is deprecated, using ModelService instead');
   }
@@ -59,7 +59,7 @@ export class RecognizerService {
    */
   private async resolveModelRuntime(
     requestedModelId?: string,
-  ): Promise<{ modelId: string; client: OpenAICompatibleClient } | null> {
+  ): Promise<{ modelId: string; client: LLMClient } | null> {
     if (requestedModelId) {
       const resolvedModelId = await this.modelService.resolveModelId(requestedModelId);
       if (resolvedModelId) {
@@ -137,18 +137,14 @@ export class RecognizerService {
       };
     }
 
-    // Build system prompt for parameter extraction
-    const systemPrompt = this.buildSystemPromptFromSchema(
+    const propertiesWithRequired = this.markRequiredFields(properties, dto.params_schema?.required);
+    const promptAssembly = buildPromptAssembly({
       templateName,
-      properties,
-      dto.guide_context,
-    );
-
-    // Build messages for the AI
-    const messages: ChatMessage[] = [
-      { role: 'system', content: systemPrompt },
-      { role: 'user', content: this.buildUserPrompt(dto, properties) },
-    ];
+      properties: propertiesWithRequired,
+      dto,
+      guideContext: dto.guide_context,
+      normalizePromptDefaultValue: (value) => this.normalizePromptDefaultValue(value),
+    });
 
     // Prefer the caller-selected model so planner/debug traces match the chat UI choice.
     const runtime = await this.resolveModelRuntime(dto.modelId);
@@ -163,20 +159,30 @@ export class RecognizerService {
     }
 
     try {
-      const response = await runtime.client.chatCompletion(messages);
+      const response = await runtime.client.chatCompletion({
+        assembly: promptAssembly,
+        responseFormat: 'json_object',
+        promptCaching: this.modelService.getPromptCachingConfig(runtime.modelId),
+      });
       const llmCalls: PromptDebugLLMCall[] = [
         {
           stage: 'recognizer',
           label: '参数识别',
           modelId: runtime.modelId,
-          requestMessages: messages.map((message) => ({
-            role: message.role,
-            content: String(message.content || ''),
-          })),
+          requestMessages: [
+            {
+              role: 'system',
+              content: [promptAssembly.staticSystem, promptAssembly.skillContext].filter(Boolean).join('\n\n'),
+            },
+            {
+              role: 'user',
+              content: promptAssembly.dynamicUser,
+            },
+          ],
           responseText: response.content,
         },
       ];
-      const result = this.parseAIResponse(response.content, properties, dto.user_input);
+      const result = this.parseAIResponse(response.content, propertiesWithRequired, dto.user_input);
       return {
         ...result,
         usage: response.usage,
@@ -188,7 +194,7 @@ export class RecognizerService {
       this.logger.error(`AI call failed: ${error}`);
       // Fallback to basic pattern matching on AI failures
       return {
-        ...this.basicPatternMatching(dto.user_input, properties),
+        ...this.basicPatternMatching(dto.user_input, propertiesWithRequired),
         debug: {
           notes: [
             `recognizer 模型调用失败，已回退到基础模式匹配: ${error instanceof Error ? error.message : String(error)}`,
@@ -196,95 +202,6 @@ export class RecognizerService {
         },
       };
     }
-  }
-
-  /**
-   * Build system prompt for parameter extraction from schema
-   */
-  private buildSystemPromptFromSchema(
-    templateName: string,
-    properties: Record<string, ParamSchemaProperty>,
-    guideContext?: DocumentGuideContext,
-  ): string {
-    const params = Object.entries(properties)
-      .map(([name, schema]) => {
-        const normalizedDefaultValue = this.normalizePromptDefaultValue(schema.default);
-        const defaultStr = normalizedDefaultValue !== undefined ? ` (默认值: ${normalizedDefaultValue})` : '';
-        const hintStr = schema.extractionPrompt ? `；提取提示：${schema.extractionPrompt}` : '';
-        const semanticRoleStr = schema.semanticRole ? `；语义角色：${schema.semanticRole}` : '';
-        const semanticHintsStr = Array.isArray(schema.extractionHints) && schema.extractionHints.length > 0
-          ? `；语义提示：${schema.extractionHints.join('、')}`
-          : '';
-        return `- ${name}: ${schema.type}${schema.description ? ` - ${schema.description}` : ''}${defaultStr}${hintStr}${semanticRoleStr}${semanticHintsStr}`;
-      })
-      .join('\n');
-
-    const isDocumentGuide = guideContext?.mode === 'document_skill';
-    const guideSections = isDocumentGuide
-      ? [
-          guideContext?.templateOverview
-            ? `文档概述：\n${guideContext.templateOverview}`
-            : undefined,
-          guideContext?.paramCollectionGuidance
-            ? `参数识别指导：\n${guideContext.paramCollectionGuidance}`
-            : undefined,
-          guideContext?.guideMarkdown
-            ? `完整模板指南：\n${guideContext.guideMarkdown}`
-            : undefined,
-          guideContext?.validationRules
-            ? `校验规则：\n${guideContext.validationRules}`
-            : undefined,
-          Array.isArray(guideContext?.extractionHints) && guideContext.extractionHints.length > 0
-            ? `补充提示：\n${guideContext.extractionHints.map((item) => `- ${item}`).join('\n')}`
-            : undefined,
-          guideContext?.outputExample
-            ? `最终 JSON 示例（仅用于理解业务结构，不是本轮直接输出格式）：\n${JSON.stringify(guideContext.outputExample, null, 2)}`
-            : undefined,
-        ].filter(Boolean).join('\n\n')
-      : '';
-
-    const arrayOutputRule = Object.keys(properties).some((name) => name.includes('[]'))
-      ? '\n对于数组字段（例如 items[].code、paymentSchedule[].amount），请按字段路径返回数组值，例如 `"items[].code": ["A001", "A002"]`，并保持同一行的数组索引顺序一致。若用户只提供了一组数组信息，也必须返回单元素数组；同一数组组允许只返回当前能确定的列，不要求一次补齐所有字段。'
-      : '';
-
-    return `你是一个参数提取助手。根据用户的输入，为模版"${templateName}"提取以下参数：
-${params}
-
-${guideSections ? `${guideSections}\n\n` : ''}请返回提取的参数作为 JSON 对象。如果你不能确定某个参数的值，请省略它。
-只提取用户当前输入中明确提供、或能从当前输入直接定位到依据的值。禁止根据常见业务惯例、行业默认值、模板示例、历史经验或“通常应该如此”来脑补任何参数。
-如果上面的文档指南里出现了最终渲染用的嵌套 JSON，本轮也不要直接输出该嵌套结构，而是必须返回当前参数列表中的扁平字段键名。${arrayOutputRule}
-同时返回整体置信度分数（0-1）、字段级置信度，以及需要用户确认的不确定字段列表。
-
-响应格式：
-{
-  "params": { ... 提取的参数 ... },
-  "confidence": <整体置信度分数 0-1>,
-  "field_confidences": {
-    "<字段名>": <字段置信度 0-1>
-  },
-  "uncertain_fields": ["<需要确认的字段名>"]
-}`;
-  }
-
-  /**
-   * Build user prompt with context
-   */
-  private buildUserPrompt(
-    dto: RecognizeParamsDTO,
-    properties: Record<string, ParamSchemaProperty>,
-  ): string {
-    let prompt = `User input: "${dto.user_input}"`;
-
-    if (dto.context) {
-      prompt += `\n\nAdditional context: ${JSON.stringify(dto.context)}`;
-    }
-
-    prompt += `\n\nExtract the following parameters: ${Object.keys(properties).join(', ')}`;
-    if (dto.guide_context?.mode === 'document_skill') {
-      prompt += '\n\n注意：如果是文档模板，请结合文档概述、参数用途和示例结构理解业务语义，但最终返回仍必须使用上面列出的扁平字段键名。';
-    }
-
-    return prompt;
   }
 
   private normalizePromptDefaultValue(value: unknown): unknown {
@@ -312,13 +229,12 @@ ${guideSections ? `${guideSections}\n\n` : ''}请返回提取的参数作为 JSO
     userInput: string,
   ): RecognizeParamsResponseDTO {
     try {
-      // Try to extract JSON from the response
-      const jsonMatch = response.match(/\{[\s\S]*\}/);
-      if (!jsonMatch) {
-        return { params: {}, confidence: 0 };
+      const jsonCandidate = this.extractJsonCandidate(response);
+      if (!jsonCandidate) {
+        return this.buildPostProcessedEmptyResponse(properties, userInput);
       }
 
-      const parsed = JSON.parse(jsonMatch[0]);
+      const parsed = JSON.parse(jsonCandidate);
       const params = parsed.params || parsed;
       const confidence = typeof parsed.confidence === 'number' ? parsed.confidence : 0.5;
       const parsedFieldConfidences = this.normalizeFieldConfidences(parsed.field_confidences, properties);
@@ -330,7 +246,7 @@ ${guideSections ? `${guideSections}\n\n` : ''}请返回提取的参数作为 JSO
         if (properties[key]) {
           // Type validation
           const expectedType = properties[key].type;
-          if (this.validateRecognizedValue(key, value, expectedType)) {
+          if (this.validateRecognizedValue(key, value, expectedType, properties[key])) {
             validatedParams[key] = value;
           }
         }
@@ -348,13 +264,45 @@ ${guideSections ? `${guideSections}\n\n` : ''}请返回提取的参数作为 JSO
         field_confidences: this.completeFieldConfidences(
           postProcessed.params,
           parsedFieldConfidences,
-          postProcessed.supplementedFields,
+          postProcessed.supplementedFieldSources,
         ),
         uncertain_fields: uncertainFields.filter((field) => this.hasRecognizedFieldValue(field, postProcessed.params[field])),
       };
     } catch {
-      return { params: {}, confidence: 0 };
+      return this.buildPostProcessedEmptyResponse(properties, userInput);
     }
+  }
+
+  private extractJsonCandidate(response: string): string | undefined {
+    const fencedMatch = response.match(/```(?:json)?\s*([\s\S]*?)```/i);
+    if (fencedMatch?.[1]?.trim()) {
+      return fencedMatch[1].trim();
+    }
+
+    const start = response.indexOf('{');
+    const end = response.lastIndexOf('}');
+    if (start >= 0 && end > start) {
+      return response.slice(start, end + 1);
+    }
+
+    return undefined;
+  }
+
+  private buildPostProcessedEmptyResponse(
+    properties: Record<string, ParamSchemaProperty>,
+    userInput: string,
+  ): RecognizeParamsResponseDTO {
+    const postProcessed = this.postProcessRecognizedParams({}, properties, userInput);
+    return {
+      params: postProcessed.params,
+      confidence: 0,
+      field_confidences: this.completeFieldConfidences(
+        postProcessed.params,
+        {},
+        postProcessed.supplementedFieldSources,
+      ),
+      uncertain_fields: [],
+    };
   }
 
   /**
@@ -369,10 +317,11 @@ ${guideSections ? `${guideSections}\n\n` : ''}请返回提取的参数作为 JSO
     let matchCount = 0;
 
     for (const [key, schema] of Object.entries(properties)) {
+      const escapedKey = this.escapeRegExp(key);
       switch (schema.type) {
         case 'string':
           // Look for quoted strings or common patterns
-          const stringMatch = input.match(new RegExp(`${key}[\\s]*[=:][\\s]*["']?([^"'\n,]+)["']?`, 'i'));
+          const stringMatch = input.match(new RegExp(`${escapedKey}[\\s]*[=:][\\s]*["']?([^"'\n,]+)["']?`, 'i'));
           if (stringMatch && stringMatch[1]) {
             params[key] = stringMatch[1].trim();
             fieldConfidences[key] = 0.72;
@@ -380,7 +329,7 @@ ${guideSections ? `${guideSections}\n\n` : ''}请返回提取的参数作为 JSO
           }
           break;
         case 'number':
-          const numberMatch = input.match(new RegExp(`${key}[\\s]*[=:][\\s]*(\\d+(\\.\\d+)?)`, 'i'));
+          const numberMatch = input.match(new RegExp(`${escapedKey}[\\s]*[=:][\\s]*(\\d+(\\.\\d+)?)`, 'i'));
           if (numberMatch && numberMatch[1]) {
             params[key] = parseFloat(numberMatch[1]);
             fieldConfidences[key] = 0.72;
@@ -388,7 +337,7 @@ ${guideSections ? `${guideSections}\n\n` : ''}请返回提取的参数作为 JSO
           }
           break;
         case 'boolean':
-          const boolMatch = input.match(new RegExp(`${key}[\\s]*[=:][\\s]*(true|false|yes|no)`, 'i'));
+          const boolMatch = input.match(new RegExp(`${escapedKey}[\\s]*[=:][\\s]*(true|false|yes|no)`, 'i'));
           if (boolMatch && boolMatch[1]) {
             params[key] = boolMatch[1].toLowerCase() === 'true' || boolMatch[1].toLowerCase() === 'yes';
             fieldConfidences[key] = 0.68;
@@ -408,7 +357,7 @@ ${guideSections ? `${guideSections}\n\n` : ''}请返回提取的参数作为 JSO
       field_confidences: this.completeFieldConfidences(
         postProcessed.params,
         fieldConfidences,
-        postProcessed.supplementedFields,
+        postProcessed.supplementedFieldSources,
       ),
       uncertain_fields: [],
     };
@@ -440,30 +389,36 @@ ${guideSections ? `${guideSections}\n\n` : ''}请返回提取的参数作为 JSO
     key: string,
     value: unknown,
     expectedType: string,
+    schema?: ParamSchemaProperty,
   ): boolean {
+    const normalizedExpectedType = this.resolveExpectedValueType(key, expectedType, schema);
     if (key.includes('[]') && Array.isArray(value)) {
-      return value.length > 0 && value.every((item) => item !== null && item !== undefined && this.validateType(item, expectedType));
+      return value.length > 0 && value.every((item) => (
+        item !== null
+        && item !== undefined
+        && this.validateType(item, normalizedExpectedType)
+      ));
     }
     if (value === null || value === undefined) {
       return false;
     }
-    return this.validateType(value, expectedType);
+    return this.validateType(value, normalizedExpectedType);
   }
 
   private postProcessRecognizedParams(
     params: Record<string, unknown>,
     properties: Record<string, ParamSchemaProperty>,
     userInput: string,
-  ): { params: Record<string, unknown>; supplementedFields: Set<string> } {
+  ): { params: Record<string, unknown>; supplementedFieldSources: Map<string, 'explicit' | 'semantic'> } {
     const normalizedParams: Record<string, unknown> = {};
-    const supplementedFields = new Set<string>();
+    const supplementedFieldSources = new Map<string, 'explicit' | 'semantic'>();
 
     for (const [key, value] of Object.entries(params)) {
       if (!properties[key]) {
         continue;
       }
 
-      const normalizedValue = this.normalizeRecognizedValue(key, value, properties[key].type);
+      const normalizedValue = this.normalizeRecognizedValue(key, value, properties[key].type, properties[key]);
       if (normalizedValue === undefined) {
         continue;
       }
@@ -475,15 +430,16 @@ ${guideSections ? `${guideSections}\n\n` : ''}请返回提取的参数作为 JSO
       if (schemaCompatibleValue === undefined) {
         continue;
       }
-      if (this.validateRecognizedValue(key, schemaCompatibleValue, properties[key].type)) {
+      if (this.validateRecognizedValue(key, schemaCompatibleValue, properties[key].type, properties[key])) {
         normalizedParams[key] = schemaCompatibleValue;
       }
     }
 
-    this.supplementMissingSemanticParams(normalizedParams, properties, userInput, supplementedFields);
+    this.reconcileExplicitPatternParams(normalizedParams, properties, userInput, supplementedFieldSources);
+    this.supplementMissingSemanticParams(normalizedParams, properties, userInput, supplementedFieldSources);
     return {
       params: normalizedParams,
-      supplementedFields,
+      supplementedFieldSources,
     };
   }
 
@@ -519,14 +475,19 @@ ${guideSections ? `${guideSections}\n\n` : ''}请返回提取的参数作为 JSO
   private completeFieldConfidences(
     params: Record<string, unknown>,
     base: Record<string, number>,
-    supplementedFields: Set<string> = new Set(),
+    supplementedFieldSources: Map<string, 'explicit' | 'semantic'> = new Map(),
   ): Record<string, number> {
     return Object.keys(params).reduce<Record<string, number>>((acc, key) => {
       if (typeof base[key] === 'number') {
         acc[key] = base[key];
         return acc;
       }
-      if (supplementedFields.has(key)) {
+      const supplementedSource = supplementedFieldSources.get(key);
+      if (supplementedSource === 'explicit') {
+        acc[key] = key.includes('[]') ? 0.86 : 0.88;
+        return acc;
+      }
+      if (supplementedSource === 'semantic') {
         acc[key] = key.includes('[]') ? 0.58 : 0.62;
         return acc;
       }
@@ -539,19 +500,44 @@ ${guideSections ? `${guideSections}\n\n` : ''}请返回提取的参数作为 JSO
     key: string,
     value: unknown,
     expectedType: string,
+    schema?: ParamSchemaProperty,
   ): unknown {
-    if (key.includes('[]') && !Array.isArray(value) && this.validateType(value, expectedType)) {
-      return [value];
+    const normalizedExpectedType = this.resolveExpectedValueType(key, expectedType, schema);
+    if (key.includes('[]') && !Array.isArray(value) && this.validateType(value, normalizedExpectedType)) {
+      const normalizedScalar = this.normalizeScalarValue(value, normalizedExpectedType);
+      return normalizedScalar !== undefined ? [normalizedScalar] : undefined;
     }
 
     if (Array.isArray(value)) {
       const normalizedArray = value
-        .map((item) => this.normalizeScalarValue(item, expectedType))
+        .map((item) => this.normalizeScalarValue(item, normalizedExpectedType))
         .filter((item) => item !== undefined);
       return normalizedArray.length > 0 ? normalizedArray : undefined;
     }
 
-    return this.normalizeScalarValue(value, expectedType);
+    return this.normalizeScalarValue(value, normalizedExpectedType);
+  }
+
+  private resolveExpectedValueType(
+    key: string,
+    expectedType: string,
+    schema?: ParamSchemaProperty,
+  ): string {
+    if (expectedType !== 'array') {
+      return expectedType;
+    }
+
+    const signalText = this.buildSignalText(key, schema).toLowerCase();
+    if (/(arrivaldate|installationdate|signdate|date|日期|签署日期|签订日期|到货日期|交付日期|安装完成日期|安装日期)/i.test(signalText)) {
+      return 'date';
+    }
+    if (/(amount|price|ratio|quantity|count|number|subtotal|total|序号|行号|数量|金额|单价|比例|月数)/i.test(signalText)) {
+      return 'number';
+    }
+    if (/(boolean|bool|flag|是否|include|包含)/i.test(signalText)) {
+      return 'boolean';
+    }
+    return 'string';
   }
 
   private normalizeScalarValue(value: unknown, expectedType: string): unknown {
@@ -634,7 +620,7 @@ ${guideSections ? `${guideSections}\n\n` : ''}请返回提取的参数作为 JSO
     params: Record<string, unknown>,
     properties: Record<string, ParamSchemaProperty>,
     userInput: string,
-    supplementedFields: Set<string>,
+    supplementedFieldSources: Map<string, 'explicit' | 'semantic'>,
   ): void {
     const propertyEntries = Object.entries(properties);
     if (propertyEntries.length === 0) {
@@ -647,15 +633,15 @@ ${guideSections ? `${guideSections}\n\n` : ''}请返回提取的参数作为 JSO
         continue;
       }
 
-      const inferred = this.inferFieldValueFromText(key, schema, userInput);
+      const inferred = this.inferFieldValueFromSemanticSignal(key, schema, userInput);
       if (inferred === undefined) {
         continue;
       }
 
-      const normalized = this.normalizeRecognizedValue(key, inferred, schema.type);
-      if (normalized !== undefined && this.validateRecognizedValue(key, normalized, schema.type)) {
+      const normalized = this.normalizeRecognizedValue(key, inferred, schema.type, schema);
+      if (normalized !== undefined && this.validateRecognizedValue(key, normalized, schema.type, schema)) {
         params[key] = normalized;
-        supplementedFields.add(key);
+        supplementedFieldSources.set(key, 'semantic');
       }
     }
   }
@@ -673,13 +659,13 @@ ${guideSections ? `${guideSections}\n\n` : ''}请返回提取的参数作为 JSO
     return true;
   }
 
-  private inferFieldValueFromText(
+  private inferFieldValueFromSemanticSignal(
     key: string,
     schema: ParamSchemaProperty,
     userInput: string,
-  ): string | undefined {
+  ): unknown {
     const extractionHints = Array.isArray(schema.extractionHints) ? schema.extractionHints.join(' ') : '';
-    const hintText = `${key} ${schema.description || ''} ${schema.extractionPrompt || ''} ${extractionHints}`;
+    const hintText = `${this.buildSignalText(key, schema)} ${schema.extractionPrompt || ''} ${extractionHints}`;
 
     return inferValueBySemanticSignal({
       role: schema.semanticRole,
@@ -692,6 +678,638 @@ ${guideSections ? `${guideSections}\n\n` : ''}请返回提取的参数作为 JSO
         extractDateByKeywords: (input, keywords) => this.extractDateByKeywords(input, keywords),
       },
     });
+  }
+
+  private reconcileExplicitPatternParams(
+    params: Record<string, unknown>,
+    properties: Record<string, ParamSchemaProperty>,
+    userInput: string,
+    supplementedFieldSources: Map<string, 'explicit' | 'semantic'>,
+  ): void {
+    for (const [key, schema] of Object.entries(properties)) {
+      const explicit = this.inferFieldValueFromExplicitPatterns(key, schema, userInput);
+      if (explicit === undefined) {
+        continue;
+      }
+
+      const normalized = this.normalizeRecognizedValue(key, explicit, schema.type, schema);
+      if (normalized === undefined || !this.validateRecognizedValue(key, normalized, schema.type, schema)) {
+        continue;
+      }
+
+      if (this.areFieldValuesEquivalent(params[key], normalized)) {
+        continue;
+      }
+
+      params[key] = normalized;
+      supplementedFieldSources.set(key, 'explicit');
+    }
+  }
+
+  private areFieldValuesEquivalent(left: unknown, right: unknown): boolean {
+    return JSON.stringify(left) === JSON.stringify(right);
+  }
+
+  private inferFieldValueFromExplicitPatterns(
+    key: string,
+    schema: ParamSchemaProperty,
+    userInput: string,
+  ): unknown {
+    const aliases = this.buildFieldAliases(key, schema);
+    const isDeliveryArrayField = this.isDeliveryScopedArrayField(key, schema, aliases);
+    const isPaymentArrayField = this.isPaymentClauseArrayField(key, schema, aliases);
+    if (key.includes('[]')) {
+      if (this.hasAliasKeyword(aliases, ['行号', '序号'])) {
+        return this.extractItemSequenceNumbers(userInput);
+      }
+      if (this.hasAliasKeyword(aliases, ['名称'])) {
+        return this.extractEnumeratedItemNames(userInput);
+      }
+      if (key.startsWith('items[]')) {
+        const expectedType = this.resolveExpectedValueType(key, schema.type, schema);
+        const itemValues = this.extractEnumeratedItemFieldValues(
+          userInput,
+          aliases,
+          expectedType === 'date' ? 'date' : expectedType === 'number' ? 'number' : 'string',
+        );
+        if (itemValues && itemValues.length > 0) {
+          return itemValues;
+        }
+      }
+      if (isDeliveryArrayField) {
+        const expectedType = this.resolveExpectedValueType(key, schema.type, schema);
+        if (this.hasExactAliasKeyword(aliases, ['批次'])) {
+          return this.extractBatchValues(userInput);
+        }
+        if (this.hasExactAliasKeyword(aliases, ['地点', '地址'])) {
+          const locations = this.extractDeliveryLocations(userInput);
+          if (locations.length > 0) {
+            return locations;
+          }
+          const location = this.extractLocationValue(userInput);
+          if (location) {
+            return [location];
+          }
+        }
+        if (expectedType === 'date') {
+          const explicitDates = this.extractDateValuesByAliases(userInput, aliases);
+          if (explicitDates && explicitDates.length > 0) {
+            return explicitDates;
+          }
+        }
+        if (expectedType === 'date' || this.hasAliasKeyword(aliases, ['验收方式', '验收类型'])) {
+          const deliveryValues = this.extractBatchScopedFieldValues(
+            userInput,
+            aliases,
+            expectedType === 'date' ? 'date' : 'string',
+          );
+          if (deliveryValues && deliveryValues.length > 0) {
+            return deliveryValues;
+          }
+        }
+      }
+      if (this.hasAliasKeyword(aliases, ['应付金额', '付款金额'])) {
+        return this.extractPaymentAmounts(userInput);
+      }
+      if (this.hasAliasKeyword(aliases, ['付款阶段', '阶段标识'])) {
+        return this.extractPaymentStages(userInput);
+      }
+      if (this.hasAliasKeyword(aliases, ['付款前置条件', '付款条件', '支付条件'])) {
+        return this.extractPaymentConditions(userInput);
+      }
+      if (this.hasAliasKeyword(aliases, ['付款比例', '支付比例', '比例'])) {
+        return this.extractPaymentRatios(userInput);
+      }
+      if (isPaymentArrayField) {
+        return undefined;
+      }
+
+      const expectedType = this.resolveExpectedValueType(key, schema.type, schema);
+      if (expectedType === 'date') {
+        return this.extractAllLabeledValues(userInput, aliases, 'date');
+      }
+      if (expectedType === 'number') {
+        return this.extractAllLabeledValues(userInput, aliases, 'number');
+      }
+      if (this.hasAliasKeyword(aliases, ['验收方式', '验收类型'])) {
+        const explicitAcceptanceValues = this.extractAllLabeledValues(userInput, aliases, 'string');
+        if (Array.isArray(explicitAcceptanceValues) && explicitAcceptanceValues.length > 0) {
+          return explicitAcceptanceValues;
+        }
+        const normalizedAcceptance = this.extractAcceptanceTypeValue(userInput);
+        if (normalizedAcceptance) {
+          return [normalizedAcceptance];
+        }
+      }
+      const explicitValues = this.extractAllLabeledValues(userInput, aliases, 'string');
+      if (Array.isArray(explicitValues) && explicitValues.length > 0) {
+        return explicitValues;
+      }
+
+      return undefined;
+    }
+
+    const expectedType = this.resolveExpectedValueType(key, schema.type, schema);
+    if (this.isBooleanLikeField(aliases)) {
+      const booleanValue = this.extractBooleanLikeValue(userInput, aliases);
+      if (booleanValue !== undefined) {
+        return booleanValue;
+      }
+    }
+
+    if (expectedType === 'number') {
+      return this.extractFirstLabeledValue(userInput, aliases, 'number');
+    }
+    if (expectedType === 'date') {
+      return this.extractFirstLabeledValue(userInput, aliases, 'date');
+    }
+    if (expectedType === 'string' && this.shouldSkipBroadScalarAliasExtraction(aliases)) {
+      return undefined;
+    }
+
+    return this.extractFirstLabeledValue(userInput, aliases, 'string');
+  }
+
+  private isDeliveryScopedArrayField(
+    key: string,
+    schema: ParamSchemaProperty,
+    aliases: string[],
+  ): boolean {
+    if (key.startsWith('deliveryItems[]')) {
+      return true;
+    }
+
+    const semanticRole = normalizeSemanticRole(schema.semanticRole);
+    if (semanticRole && [
+      'delivery_batch',
+      'delivery_location',
+      'acceptance_type',
+      'arrival_date',
+      'installation_date',
+    ].includes(semanticRole)) {
+      return true;
+    }
+
+    return this.hasAliasKeyword(aliases, ['批次', '地点', '地址', '验收方式', '验收类型'])
+      || this.hasDateLikeAlias(aliases);
+  }
+
+  private isPaymentClauseArrayField(
+    key: string,
+    schema: ParamSchemaProperty,
+    aliases: string[],
+  ): boolean {
+    if (key.startsWith('paymentSchedule[]')) {
+      return true;
+    }
+
+    const signalText = this.buildSignalText(key, schema);
+    if (/(付款|支付|payment)/i.test(signalText)) {
+      return true;
+    }
+
+    return aliases.some((alias) => /(付款|支付)/.test(alias));
+  }
+
+  private hasDateLikeAlias(aliases: string[]): boolean {
+    return aliases.some((alias) => /日期|date/i.test(alias));
+  }
+
+  private buildSignalText(key: string, schema?: ParamSchemaProperty): string {
+    return [
+      key,
+      schema?.displayName,
+      schema?.description,
+      schema?.extractionPrompt,
+      ...(Array.isArray(schema?.extractionHints) ? schema!.extractionHints : []),
+    ]
+      .filter((item): item is string => typeof item === 'string' && item.trim().length > 0)
+      .join(' ');
+  }
+
+  private buildFieldAliases(key: string, schema?: ParamSchemaProperty): string[] {
+    const candidates = new Set<string>();
+    const sources = [
+      schema?.displayName,
+      schema?.description,
+      schema?.extractionPrompt,
+      ...(Array.isArray(schema?.extractionHints) ? schema!.extractionHints : []),
+      this.extractKeyLeafLabel(key),
+    ];
+
+    for (const source of sources) {
+      if (typeof source !== 'string' || !source.trim()) {
+        continue;
+      }
+      this.collectAliasVariants(candidates, source);
+      const firstClause = source.split(/[，,；;。]/)[0]?.trim();
+      if (firstClause && firstClause !== source.trim()) {
+        this.collectAliasVariants(candidates, firstClause);
+      }
+    }
+
+    return [...candidates]
+      .map((item) => item.trim())
+      .filter((item) => item.length >= 2)
+      .sort((left, right) => right.length - left.length);
+  }
+
+  private collectAliasVariants(aliases: Set<string>, raw: string): void {
+    const value = raw.trim();
+    if (!value) {
+      return;
+    }
+
+    const variants = new Set<string>([
+      value,
+      value.replace(/\s+/g, ''),
+      value.replace(/[（(][^()（）]+[）)]/g, '').trim(),
+      value.replace(/^是否/, '').trim(),
+      value.replace(/^是否(?:包含|需要|支持|有)/, '').trim(),
+      value.replace(/唯一标识/g, '').trim(),
+      value.replace(/期限月数/g, '期').trim(),
+    ]);
+
+    const parentheticalMatches = [...value.matchAll(/[（(]([^()（）]+)[）)]/g)];
+    for (const match of parentheticalMatches) {
+      if (match[1]) {
+        variants.add(match[1].trim());
+      }
+    }
+
+    for (const variant of variants) {
+      const normalized = variant.trim();
+      if (!normalized || normalized.length < 2) {
+        continue;
+      }
+      aliases.add(normalized);
+      this.addMeaningfulSuffixAliases(aliases, normalized);
+    }
+  }
+
+  private addMeaningfulSuffixAliases(aliases: Set<string>, value: string): void {
+    const exactSuffixes = ['小计', '小计金额', '规格型号'];
+    const standaloneHeadBlacklist = new Set(['名称', '日期', '期']);
+    for (const suffix of exactSuffixes) {
+      if (value.length > suffix.length && value.endsWith(suffix)) {
+        aliases.add(suffix);
+      }
+    }
+
+    const suffixHeads = [
+      '名称',
+      '编号',
+      '币种',
+      '期限',
+      '期',
+      '行号',
+      '序号',
+      '编码',
+      '型号',
+      '单位',
+      '数量',
+      '单价',
+      '金额',
+      '批次',
+      '地点',
+      '地址',
+      '日期',
+      '方式',
+      '类型',
+      '条件',
+      '比例',
+      '阶段',
+      '范围',
+      '标的',
+      '条款',
+      '约定',
+    ];
+    for (const head of suffixHeads) {
+      const match = value.match(new RegExp(`([\\u4e00-\\u9fff]{0,6}${head})$`));
+      if (match?.[1]) {
+        if (!standaloneHeadBlacklist.has(head)) {
+          aliases.add(head);
+        }
+        if (match[1] !== value) {
+          aliases.add(match[1]);
+        }
+
+        const prefix = value
+          .slice(0, -head.length)
+          .replace(/[的之]/g, '')
+          .trim();
+        if (prefix.length >= 2) {
+          const shortPrefix = prefix.slice(-Math.min(2, prefix.length));
+          if (shortPrefix.length >= 2) {
+            aliases.add(`${shortPrefix}${head}`);
+          }
+          if (head === '名称') {
+            aliases.add(shortPrefix);
+          }
+        }
+      }
+    }
+    if (value.includes('小计')) {
+      aliases.add('小计');
+    }
+  }
+
+  private extractKeyLeafLabel(key: string): string | undefined {
+    const leaf = key.split('.').pop()?.replace(/\[\]/g, '').trim();
+    if (!leaf) {
+      return undefined;
+    }
+    return leaf.replace(/_/g, ' ');
+  }
+
+  private hasAliasKeyword(aliases: string[], keywords: string[]): boolean {
+    return aliases.some((alias) => keywords.some((keyword) => alias.includes(keyword)));
+  }
+
+  private hasExactAliasKeyword(aliases: string[], keywords: string[]): boolean {
+    return aliases.some((alias) => {
+      const normalized = alias.trim();
+      return keywords.some((keyword) => normalized === keyword || normalized.endsWith(keyword));
+    });
+  }
+
+  private isBooleanLikeField(aliases: string[]): boolean {
+    return aliases.some((alias) => /^是否/.test(alias) || /(true|false|yes|no)/i.test(alias));
+  }
+
+  private extractBooleanLikeValue(input: string, aliases: string[]): '是' | '否' | undefined {
+    const sortedAliases = [...aliases].sort((left, right) => right.length - left.length);
+    for (const alias of sortedAliases) {
+      const explicitPattern = new RegExp(`${this.escapeRegExp(alias)}\\s*(?:为|是|[:：=])\\s*(是|否|true|false|yes|no|有|无|包含|不包含|需要|不需要)`, 'i');
+      const explicitMatch = input.match(explicitPattern);
+      if (explicitMatch?.[1]) {
+        return this.normalizeBooleanLikeValue(explicitMatch[1]);
+      }
+
+      const coreAlias = alias
+        .replace(/^是否(?:包含|需要|支持|有)?/, '')
+        .replace(/^是否/, '')
+        .trim();
+      if (!coreAlias || coreAlias.length < 2) {
+        continue;
+      }
+
+      if (new RegExp(`(?:不含|不包含|无需|无|不需要).{0,4}${this.escapeRegExp(coreAlias)}`).test(input)) {
+        return '否';
+      }
+      if (new RegExp(`(?:含|包含|有|需要).{0,4}${this.escapeRegExp(coreAlias)}`).test(input)) {
+        return '是';
+      }
+    }
+
+    return undefined;
+  }
+
+  private normalizeBooleanLikeValue(value: string): '是' | '否' | undefined {
+    const normalized = value.trim().toLowerCase();
+    if (['是', 'true', 'yes', '有', '包含', '需要'].includes(normalized)) {
+      return '是';
+    }
+    if (['否', 'false', 'no', '无', '不包含', '不需要'].includes(normalized)) {
+      return '否';
+    }
+    return undefined;
+  }
+
+  private shouldSkipBroadScalarAliasExtraction(aliases: string[]): boolean {
+    const meaningfulAliases = aliases.filter((alias) => /[\u4e00-\u9fff]/.test(alias));
+    if (meaningfulAliases.some((alias) => alias.length >= 4)) {
+      return false;
+    }
+    return meaningfulAliases.every((alias) => ['备注', '说明', '内容', '信息'].includes(alias));
+  }
+
+  private extractFirstLabeledValue(
+    input: string,
+    labels: string[],
+    valueType: 'string' | 'number' | 'date',
+  ): string | number | undefined {
+    const values = this.extractAllLabeledValues(input, labels, valueType);
+    return Array.isArray(values) && values.length > 0 ? values[0] : undefined;
+  }
+
+  private extractAllLabeledValues(
+    input: string,
+    labels: string[],
+    valueType: 'string' | 'number' | 'date',
+  ): Array<string | number> | undefined {
+    const matches: Array<{ index: number; end: number; value: string | number }> = [];
+    const occupiedRanges: Array<{ start: number; end: number }> = [];
+    const sortedLabels = [...labels].sort((left, right) => right.length - left.length);
+    for (const label of sortedLabels) {
+      const pattern = new RegExp(`${this.escapeRegExp(label)}\\s*(?:为|是|[:：=])?\\s*([^，。；;\\n]+)`, 'gi');
+      for (const match of input.matchAll(pattern)) {
+        const normalized = this.normalizeExtractedMatch(match[1], valueType);
+        const start = match.index ?? -1;
+        if (normalized !== undefined && start >= 0) {
+          const end = start + match[0].length;
+          const overlapped = occupiedRanges.some((range) => start < range.end && end > range.start);
+          if (!overlapped) {
+            matches.push({ index: start, end, value: normalized });
+            occupiedRanges.push({ start, end });
+          }
+        }
+      }
+    }
+    if (matches.length === 0) {
+      return undefined;
+    }
+    return matches
+      .sort((left, right) => left.index - right.index)
+      .map((item) => item.value);
+  }
+
+  private normalizeExtractedMatch(
+    value: string | undefined,
+    valueType: 'string' | 'number' | 'date',
+  ): string | number | undefined {
+    const trimmed = String(value || '').trim();
+    if (!trimmed) {
+      return undefined;
+    }
+    if (valueType === 'number') {
+      const numberMatch = trimmed.match(/-?\d+(?:\.\d+)?/);
+      return numberMatch?.[0] ? Number(numberMatch[0]) : undefined;
+    }
+    if (valueType === 'date') {
+      return this.normalizeDateValue(trimmed);
+    }
+    return trimmed.replace(/^(?:为|是)\s*/, '').trim();
+  }
+
+  private extractAllMatches(
+    input: string,
+    pattern: RegExp,
+    valueType: 'string' | 'number' | 'date' = 'string',
+  ): Array<string | number> {
+    const values: Array<string | number> = [];
+    for (const match of input.matchAll(pattern)) {
+      const candidate = match[1] || match[0];
+      const normalized = this.normalizeExtractedMatch(candidate, valueType);
+      if (normalized !== undefined) {
+        values.push(normalized);
+      }
+    }
+    return values;
+  }
+
+  private extractDateValuesByAliases(input: string, aliases: string[]): string[] | undefined {
+    const dateAliases = aliases
+      .filter((alias) => /日期|date/i.test(alias))
+      .sort((left, right) => right.length - left.length);
+    if (dateAliases.length === 0) {
+      return undefined;
+    }
+
+    const alternation = dateAliases.map((alias) => this.escapeRegExp(alias)).join('|');
+    const pattern = new RegExp(
+      `(?:${alternation})\\s*(?:为|是|[:：=])?\\s*(\\d{4}[/-]\\d{1,2}[/-]\\d{1,2}|\\d{4}年\\d{1,2}月\\d{1,2}日?)`,
+      'g',
+    );
+    const values = this.extractAllMatches(input, pattern, 'date') as string[];
+    return values.length > 0 ? values : undefined;
+  }
+
+  private extractItemSequenceNumbers(input: string): number[] | undefined {
+    const values = this.extractAllMatches(input, /(?:^|[：:；;\n])\s*(\d+)\s*[\.、]/gm, 'number');
+    return values.length > 0 ? values as number[] : undefined;
+  }
+
+  private extractEnumeratedItemNames(input: string): string[] | undefined {
+    const names = this.extractAllMatches(input, /(?:^|[：:；;\n])\s*\d+\s*[\.、]\s*([^，。；;\n]+)/gm, 'string');
+    return names.length > 0 ? names as string[] : undefined;
+  }
+
+  private extractEnumeratedItemFieldValues(
+    input: string,
+    labels: string[],
+    valueType: 'string' | 'number' | 'date',
+  ): Array<string | number> | undefined {
+    const blocks = this.extractEnumeratedItemBlocks(input);
+    if (blocks.length === 0) {
+      return undefined;
+    }
+
+    const values = blocks
+      .map((block) => this.extractFirstLabeledValue(block, labels, valueType))
+      .filter((item): item is string | number => item !== undefined);
+
+    return values.length > 0 ? values : undefined;
+  }
+
+  private extractEnumeratedItemBlocks(input: string): string[] {
+    const pattern = /(?:^|[：:；;\n])\s*\d+\s*[\.、]\s*([\s\S]*?)(?=(?:^|[：:；;\n])\s*\d+\s*[\.、]\s*|$)/gm;
+    const blocks: string[] = [];
+    for (const match of input.matchAll(pattern)) {
+      const content = String(match[1] || '').trim();
+      if (content) {
+        blocks.push(content);
+      }
+    }
+    return blocks;
+  }
+
+  private extractBatchScopedFieldValues(
+    input: string,
+    labels: string[],
+    valueType: 'string' | 'number' | 'date',
+  ): Array<string | number> | undefined {
+    const blocks = this.extractBatchBlocks(input);
+    if (blocks.length === 0) {
+      return undefined;
+    }
+
+    const values = blocks
+      .map((block) => this.extractFirstLabeledValue(block, labels, valueType))
+      .filter((item): item is string | number => item !== undefined);
+
+    return values.length > 0 ? values : undefined;
+  }
+
+  private extractBatchBlocks(input: string): string[] {
+    const pattern = /(首批|第[一二三四五六七八九十百千万0-9]+批)[\s\S]*?(?=(首批|第[一二三四五六七八九十百千万0-9]+批)|$)/g;
+    const blocks: string[] = [];
+    for (const match of input.matchAll(pattern)) {
+      const content = String(match[0] || '').trim();
+      if (content) {
+        blocks.push(content);
+      }
+    }
+    return blocks;
+  }
+
+  private extractBatchValues(input: string): string[] | undefined {
+    const values = this.extractAllMatches(
+      input,
+      /(首批|第[一二三四五六七八九十百千万0-9]+批)(?=在|，计划到货日期|，安装完成日期|，验收方式)/g,
+      'string',
+    ) as string[];
+    return values.length > 0 ? values : undefined;
+  }
+
+  private extractDeliveryLocations(input: string): string[] {
+    return this.extractAllMatches(
+      input,
+      /(?:首批|第[一二三四五六七八九十百千万0-9]+批)[^，。；;\n]*?在\s*([^，。；;\n]+?)(?=，(?:计划到货日期|安装完成日期|验收方式)|；|\n|。)/g,
+      'string',
+    ) as string[];
+  }
+
+  private extractPaymentConditions(input: string): string[] | undefined {
+    return this.extractPaymentClauseValues(input, (clause, stage) => {
+      const normalizedClause = clause.startsWith(stage) ? clause.slice(stage.length).trim() : clause;
+      const match = normalizedClause.match(/^([^，。；;\n]+?)\s*支付\s*\d+(?:\.\d+)?%/);
+      return match?.[1]?.trim();
+    });
+  }
+
+  private extractPaymentStages(input: string): string[] | undefined {
+    const clauses = this.extractPaymentClauses(input);
+    const values = clauses.map((item) => item.stage);
+    return values.length > 0 ? values : undefined;
+  }
+
+  private extractPaymentRatios(input: string): number[] | undefined {
+    return this.extractPaymentClauseValues(input, (clause) => {
+      const match = clause.match(/支付\s*(\d+(?:\.\d+)?)%/);
+      return match?.[1] ? Number(match[1]) : undefined;
+    });
+  }
+
+  private extractPaymentAmounts(input: string): number[] | undefined {
+    return this.extractPaymentClauseValues(input, (clause) => {
+      const match = clause.match(/金额\s*(\d+(?:\.\d+)?)/);
+      return match?.[1] ? Number(match[1]) : undefined;
+    });
+  }
+
+  private extractPaymentClauseValues<T extends string | number>(
+    input: string,
+    mapper: (clause: string, stage: string) => T | undefined,
+  ): T[] | undefined {
+    const clauses = this.extractPaymentClauses(input);
+    const values = clauses
+      .map((item) => mapper(item.clause, item.stage))
+      .filter((item): item is T => item !== undefined);
+    return values.length > 0 ? values : undefined;
+  }
+
+  private extractPaymentClauses(input: string): Array<{ stage: string; clause: string }> {
+    const pattern = /(?:^|[：:；;\n])\s*([^，。；;\n]{2,20})[，,]([^；;\n。]*?(?:支付\s*\d+(?:\.\d+)?%|金额\s*\d+(?:\.\d+)?)[^；;\n。]*)/g;
+    const clauses: Array<{ stage: string; clause: string }> = [];
+    for (const match of input.matchAll(pattern)) {
+      const stage = match[1]?.trim();
+      const clause = `${stage || ''}${match[2] || ''}`.trim();
+      if (stage && clause) {
+        clauses.push({ stage, clause });
+      }
+    }
+    return clauses;
   }
 
   private extractBatchValue(input: string): string | undefined {
@@ -788,6 +1406,24 @@ ${guideSections ? `${guideSections}\n\n` : ''}请返回提取的参数作为 JSO
     }
 
     return undefined;
+  }
+
+  private markRequiredFields(
+    properties: Record<string, ParamSchemaProperty>,
+    requiredFields?: string[],
+  ): Record<string, ParamSchemaProperty> {
+    const requiredSet = new Set(requiredFields || []);
+    return Object.entries(properties).reduce<Record<string, ParamSchemaProperty>>((acc, [name, schema]) => {
+      acc[name] = {
+        ...schema,
+        required: schema.required === true || requiredSet.has(name),
+      };
+      return acc;
+    }, {});
+  }
+
+  private escapeRegExp(value: string): string {
+    return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   }
 
   /**
