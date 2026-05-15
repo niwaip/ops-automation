@@ -688,6 +688,12 @@ export class ExecutionService {
       normalized.input && typeof normalized.input === 'object'
         ? (normalized.input as Record<string, unknown>)
         : {};
+    const updatedSemantic = this.reconcilePlanSemantic(
+      normalized.semantic && typeof normalized.semantic === 'object' && !Array.isArray(normalized.semantic)
+        ? normalized.semantic as PlannerSemantic
+        : undefined,
+      updatedRequiredInputs,
+    );
     const updatedNormalized = {
       ...normalized,
       ...(totalUsage ? { __usage: totalUsage } : {}),
@@ -697,6 +703,7 @@ export class ExecutionService {
         ...normalizedSubmittedInput,
       },
       requiredInputs: updatedRequiredInputs,
+      ...(updatedSemantic ? { semantic: updatedSemantic } : {}),
     };
 
     await this.prisma.$transaction([
@@ -763,7 +770,10 @@ export class ExecutionService {
       },
     );
 
-    await this.advanceExecutionFlow(id, runtimeSession.id);
+    this.advanceExecutionFlow(id, runtimeSession.id).catch((err) => {
+      const message = err instanceof Error ? err.message : String(err);
+      this.logger.error(`Failed to asynchronously resume execution ${id}: ${message}`);
+    });
     this.logger.log(`Input submitted and execution ${id} resumed from step ${dto.stepId}`);
     return this.getById(id, requester || { id: userId });
   }

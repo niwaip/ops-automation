@@ -206,6 +206,7 @@ export class ChatController {
     waitingStepId?: string;
     missingInputs: Array<{
       name: string;
+      type?: string;
       description?: string;
       group_label?: string;
       display_name?: string;
@@ -229,13 +230,14 @@ export class ChatController {
         ? waitingStep.inputJson.requiredInputs
         : [];
       const missingInputs = requiredInputs
-        .filter((item: any) => item?.missing !== false && typeof item?.name === 'string' && item.name.trim())
+        .filter((item: any) => item?.missing === true && typeof item?.name === 'string' && item.name.trim())
         .map((item: any) => ({
           name: String(item.name).trim(),
+          type: typeof item.type === 'string' ? item.type : undefined,
           description: typeof item.description === 'string' ? item.description : undefined,
           group_label: typeof item.group_label === 'string' ? item.group_label : undefined,
           display_name: typeof item.display_name === 'string' ? item.display_name : undefined,
-          missing: item.missing !== false,
+          missing: item.missing === true,
           needs_confirmation: item.needs_confirmation === true,
         }));
       return {
@@ -643,7 +645,7 @@ export class ChatController {
 
   private async buildWaitingInputPayload(
     message: string,
-    missingInputs: Array<{ name: string }>,
+    missingInputs: Array<{ name: string; type?: string }>,
     semantic?: WaitingInputSemantic,
     skillId?: string,
     authToken?: string,
@@ -755,6 +757,12 @@ export class ChatController {
     }
 
     if (missingInputs.length === 1) {
+      const normalizedType = String(firstMissingInput?.type || 'string').toLowerCase();
+      if (!['string', 'text'].includes(normalizedType)) {
+        throw new Error(
+          this.buildWaitingInputFollowupHint(missingInputs, semantic),
+        );
+      }
       return {
         input: {
           [firstMissingInput!.name]: message.trim(),
