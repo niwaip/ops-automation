@@ -1,6 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { RecognizerService } from './recognizer.service';
 import { ModelService } from '../model/model.service';
+import { buildPromptAssembly } from './prompt-assembly';
 
 describe('RecognizerService model routing', () => {
   let service: RecognizerService;
@@ -8,6 +9,7 @@ describe('RecognizerService model routing', () => {
     getClient: jest.Mock;
     getDefaultModel: jest.Mock;
     resolveModelId: jest.Mock;
+    getPromptCachingConfig: jest.Mock;
   };
 
   beforeEach(async () => {
@@ -15,6 +17,11 @@ describe('RecognizerService model routing', () => {
       getClient: jest.fn(),
       getDefaultModel: jest.fn(),
       resolveModelId: jest.fn(),
+      getPromptCachingConfig: jest.fn().mockReturnValue({
+        enabled: true,
+        mode: 'openai_auto',
+        retention: 'in_memory',
+      }),
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -26,6 +33,22 @@ describe('RecognizerService model routing', () => {
 
     service = module.get<RecognizerService>(RecognizerService);
   });
+
+  const normalizePromptDefaultValue = (value: unknown): unknown => {
+    if (value === undefined || value === null) {
+      return undefined;
+    }
+    if (typeof value === 'string') {
+      return value.trim().length > 0 ? value : undefined;
+    }
+    if (Array.isArray(value)) {
+      return value.length > 0 ? value : undefined;
+    }
+    if (typeof value === 'object') {
+      return Object.keys(value as Record<string, unknown>).length > 0 ? value : undefined;
+    }
+    return value;
+  };
 
   it('uses the requested modelId before falling back to default', async () => {
     const requestedModelId = 'requested-model-id';
@@ -117,8 +140,8 @@ describe('RecognizerService model routing', () => {
     });
     expect(result.field_confidences).toEqual({
       'items[].code': 0.76,
-      'deliveryItems[].location': 0.58,
-      'deliveryItems[].acceptanceType': 0.58,
+      'deliveryItems[].location': 0.86,
+      'deliveryItems[].acceptanceType': 0.86,
     });
   });
 
@@ -161,7 +184,8 @@ describe('RecognizerService model routing', () => {
       modelId: requestedModelId,
     });
 
-    const systemPrompt = requestedClient.chatCompletion.mock.calls[0]?.[0]?.[0]?.content as string;
+    const request = requestedClient.chatCompletion.mock.calls[0]?.[0];
+    const systemPrompt = [request?.assembly?.staticSystem, request?.assembly?.skillContext].filter(Boolean).join('\n\n');
     expect(systemPrompt).toContain('禁止根据常见业务惯例');
     expect(systemPrompt).toContain('uncertain_fields');
     expect(result.field_confidences).toEqual({
@@ -170,10 +194,104 @@ describe('RecognizerService model routing', () => {
     expect(result.uncertain_fields).toEqual(['amount']);
   });
 
+  it('still post-processes explicit values when the model returns fenced but schema-incompatible json', async () => {
+    const requestedModelId = 'requested-model-id';
+    const requestedClient = {
+      chatCompletion: jest.fn().mockResolvedValue({
+        content: [
+          '<think>先按自己的结构输出</think>',
+          '```json',
+          JSON.stringify({
+            deliverySchedule: [
+              { arrivalDate: '2026-06-10' },
+              { arrivalDate: '2026-06-20' },
+            ],
+          }),
+          '```',
+        ].join('\n'),
+        usage: { prompt_tokens: 1, completion_tokens: 1, total_tokens: 2 },
+      }),
+    };
+
+    service.registerTemplate({
+      template_id: 'fenced-json-template',
+      name: 'Fenced JSON Template',
+      params_schema: {
+        properties: {
+          'deliveryItems[].arrivalDate': {
+            type: 'array',
+            description: '计划到货日期，明确各批次设备的到货时间要求',
+            displayName: '计划到货日期',
+          } as any,
+        },
+      },
+    });
+
+    modelService.resolveModelId.mockResolvedValue(requestedModelId);
+    modelService.getClient.mockImplementation((id: string) => (id === requestedModelId ? requestedClient : null));
+    modelService.getDefaultModel.mockReturnValue({ id: 'default-model-id' });
+
+    const result = await service.recognizeParams({
+      template_id: 'fenced-json-template',
+      user_input: '交付计划分两批：第一批在上海，计划到货日期2026-06-10；第二批在苏州，计划到货日期2026-06-20。',
+      modelId: requestedModelId,
+    });
+
+    expect(result.params).toEqual({
+      'deliveryItems[].arrivalDate': ['2026-06-10', '2026-06-20'],
+    });
+    expect(result.confidence).toBe(0.5);
+    expect(result.field_confidences).toEqual({
+      'deliveryItems[].arrivalDate': 0.86,
+    });
+  });
+
+  it('builds structured waiting_input resume prompt context without duplicated field list', () => {
+    const prompt = buildPromptAssembly({
+      templateName: 'contract-template',
+      dto: {
+        template_id: 'contract-template',
+        user_input: '甲方是ABC公司',
+        context: {
+          mode: 'waiting_input_resume',
+          original_objective: '生成采购合同',
+          missing_inputs: ['partyA', 'signDate'],
+          already_collected: {
+            partyB: 'XYZ科技',
+            amount: 500000,
+          },
+        },
+        guide_context: {
+          mode: 'document_skill',
+          templateOverview: '采购合同模版',
+        },
+      },
+      properties: {
+        partyA: { type: 'string', description: '甲方名称', required: true },
+        signDate: { type: 'date', description: '签署日期', required: true },
+      },
+      normalizePromptDefaultValue,
+    }).dynamicUser;
+
+    expect(prompt).toContain('[本轮模式]');
+    expect(prompt).toContain('补充缺失参数');
+    expect(prompt).toContain('[当前仍缺失字段]');
+    expect(prompt).toContain('partyA、signDate');
+    expect(prompt).toContain('[已确认参数]');
+    expect(prompt).toContain('partyB = XYZ科技');
+    expect(prompt).toContain('amount = 500000');
+    expect(prompt).not.toContain('Extract the following parameters');
+    expect(prompt).not.toContain('Additional context:');
+  });
+
   it('does not include empty placeholder defaults in recognizer prompt text', () => {
-    const prompt = (service as any).buildSystemPromptFromSchema(
-      'Prompt Template',
-      {
+    const prompt = buildPromptAssembly({
+      templateName: 'Prompt Template',
+      dto: {
+        template_id: 'Prompt Template',
+        user_input: '',
+      },
+      properties: {
         notes: {
           type: 'string',
           description: '备注',
@@ -190,12 +308,48 @@ describe('RecognizerService model routing', () => {
           default: 30,
         },
       },
-      undefined,
-    );
+      guideContext: undefined,
+      normalizePromptDefaultValue,
+    }).skillContext;
 
     expect(prompt).not.toContain('notes: string - 备注 (默认值: )');
     expect(prompt).not.toContain('signDate: date - 签订日期 (默认值: )');
     expect(prompt).toContain('timeout: number - 超时时间 (默认值: 30)');
+  });
+
+  it('keeps promptCacheKey stable across different user turns for the same schema', () => {
+    const common = {
+      templateName: 'Prompt Template',
+      properties: {
+        partyA: {
+          type: 'string',
+          description: '甲方名称',
+          required: true,
+        },
+        amount: {
+          type: 'number',
+          description: '合同金额',
+        },
+      },
+      normalizePromptDefaultValue,
+    };
+
+    const first = buildPromptAssembly({
+      ...common,
+      dto: {
+        template_id: 'Prompt Template',
+        user_input: '甲方是ABC公司',
+      },
+    });
+    const second = buildPromptAssembly({
+      ...common,
+      dto: {
+        template_id: 'Prompt Template',
+        user_input: '甲方改成XYZ科技',
+      },
+    });
+
+    expect(first.promptCacheKey).toBe(second.promptCacheKey);
   });
 
   it('drops placeholder text values and prunes uncertain fields that no longer have candidate values', async () => {
@@ -727,5 +881,94 @@ describe('RecognizerService model routing', () => {
     expect(result.field_confidences).toEqual({
       'items[].name': 0.76,
     });
+  });
+
+  it('supplements long procurement-contract fields from explicit Chinese labels even when array schema types are plain array', async () => {
+    const requestedModelId = 'requested-model-id';
+    const requestedClient = {
+      chatCompletion: jest.fn().mockResolvedValue({
+        content: JSON.stringify({
+          params: {},
+          confidence: 0.79,
+        }),
+        usage: { prompt_tokens: 1, completion_tokens: 1, total_tokens: 2 },
+      }),
+    };
+
+    service.registerTemplate({
+      template_id: 'procurement-contract-template',
+      name: 'Procurement Contract Template',
+      params_schema: {
+        properties: {
+          'info.partyA': { type: 'string', description: '采购方（甲方）名称' },
+          'info.partyB': { type: 'string', description: '供应商（乙方）名称' },
+          'info.currency': { type: 'string', description: '合同金额币种' },
+          'info.contractNo': { type: 'string', description: '合同唯一标识编号' },
+          'info.projectName': { type: 'string', description: '关联项目名称' },
+          'info.includeInstall': { type: 'string', description: '是否包含安装服务' },
+          'info.warrantyPeriod': { type: 'number', description: '质保期限月数' },
+          'items[].sequence_no': { type: 'array', description: '采购明细表格的行号' },
+          'items[].name': { type: 'array', description: '采购设备名称' },
+          'items[].code': { type: 'array', description: '设备物料编码' },
+          'items[].spec': { type: 'array', description: '设备规格型号' },
+          'items[].unit': { type: 'array', description: '设备单位' },
+          'items[].quantity': { type: 'array', description: '采购数量' },
+          'items[].unit_price': { type: 'array', description: '设备单价' },
+          'items[].subtotal': { type: 'array', description: '明细行小计金额' },
+          'deliveryItems[].batch': { type: 'array', description: '交付批次' },
+          'deliveryItems[].location': { type: 'array', description: '交付地点' },
+          'deliveryItems[].arrivalDate': { type: 'array', description: '计划到货日期' },
+          'deliveryItems[].installationDate': { type: 'array', description: '安装完成日期' },
+          'deliveryItems[].acceptanceType': { type: 'array', description: '验收方式' },
+          'paymentSchedule[].paymentStage': { type: 'array', description: '付款阶段标识，如预付款、到货款、验收款、质保金等' },
+          'paymentSchedule[].paymentCondition': { type: 'array', description: '付款前置条件' },
+          'paymentSchedule[].ratio': { type: 'array', description: '付款比例' },
+          'paymentSchedule[].amount': { type: 'array', description: '各付款阶段的应付金额' },
+        },
+      },
+    });
+
+    modelService.resolveModelId.mockResolvedValue(requestedModelId);
+    modelService.getClient.mockImplementation((id: string) => (id === requestedModelId ? requestedClient : null));
+    modelService.getDefaultModel.mockReturnValue({ id: 'default-model-id' });
+
+    const result = await service.recognizeParams({
+      template_id: 'procurement-contract-template',
+      user_input: '请生成一份采购合同。合同编号CGHT-2026-0515，签署日期2026-05-15。甲方为上海星海智造科技有限公司，乙方为苏州远航设备有限公司，币种人民币，项目名称为华东工厂产线升级设备采购，含安装服务，质保期24个月。采购标的有两项：1. 伺服压装机，编码SF-100，规格型号SP-300，单位台，数量2，含税单价85000，含税小计170000；2. 工业视觉检测设备，编码VS-200，规格型号IV-900，单位套，数量1，含税单价120000，含税小计120000。交付计划分两批：第一批在上海市浦东新区川沙路88号A栋，计划到货日期2026-06-10，安装完成日期2026-06-15，验收方式为到货+安装验收；第二批在江苏省苏州市工业园区星湖街288号B栋，计划到货日期2026-06-20，安装完成日期2026-06-25，验收方式为到货+安装验收。付款计划三期：预付款，合同签订后5个工作日支付30%，金额87000；到货款，第一批设备到货并验收后支付40%，金额116000；尾款，全部安装调试完成并终验收合格后支付30%，金额87000。',
+      modelId: requestedModelId,
+    });
+
+    expect(result.params).toEqual(expect.objectContaining({
+      'info.partyA': '上海星海智造科技有限公司',
+      'info.partyB': '苏州远航设备有限公司',
+      'info.currency': '人民币',
+      'info.contractNo': 'CGHT-2026-0515',
+      'info.projectName': '华东工厂产线升级设备采购',
+      'info.includeInstall': '是',
+      'info.warrantyPeriod': 24,
+      'items[].sequence_no': [1, 2],
+      'items[].name': ['伺服压装机', '工业视觉检测设备'],
+      'items[].code': ['SF-100', 'VS-200'],
+      'items[].spec': ['SP-300', 'IV-900'],
+      'items[].unit': ['台', '套'],
+      'items[].quantity': [2, 1],
+      'items[].unit_price': [85000, 120000],
+      'items[].subtotal': [170000, 120000],
+      'deliveryItems[].batch': ['第一批', '第二批'],
+      'deliveryItems[].location': ['上海市浦东新区川沙路88号A栋', '江苏省苏州市工业园区星湖街288号B栋'],
+      'deliveryItems[].arrivalDate': ['2026-06-10', '2026-06-20'],
+      'deliveryItems[].installationDate': ['2026-06-15', '2026-06-25'],
+      'deliveryItems[].acceptanceType': ['到货+安装验收', '到货+安装验收'],
+      'paymentSchedule[].paymentStage': ['预付款', '到货款', '尾款'],
+      'paymentSchedule[].paymentCondition': ['合同签订后5个工作日', '第一批设备到货并验收后', '全部安装调试完成并终验收合格后'],
+      'paymentSchedule[].ratio': [30, 40, 30],
+      'paymentSchedule[].amount': [87000, 116000, 87000],
+    }));
+    expect(result.field_confidences).toEqual(expect.objectContaining({
+      'info.partyA': 0.88,
+      'items[].code': 0.86,
+      'deliveryItems[].arrivalDate': 0.86,
+      'paymentSchedule[].amount': 0.86,
+    }));
   });
 });

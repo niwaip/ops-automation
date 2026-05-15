@@ -213,6 +213,11 @@ export class ChatController {
       missing?: boolean;
       needs_confirmation?: boolean;
     }>;
+    allRequiredInputs: Array<{
+      name: string;
+      value?: unknown;
+      missing?: boolean;
+    }>;
   }> {
     try {
       const steps = await this.controlPlaneClient.getExecutionSteps<any[]>(
@@ -240,9 +245,17 @@ export class ChatController {
           missing: item.missing === true,
           needs_confirmation: item.needs_confirmation === true,
         }));
+      const allRequiredInputs = requiredInputs
+        .filter((item: any) => typeof item?.name === 'string' && item.name.trim())
+        .map((item: any) => ({
+          name: String(item.name).trim(),
+          value: item.value,
+          missing: item.missing === true,
+        }));
       return {
         waitingStepId: waitingStep?.id,
         missingInputs,
+        allRequiredInputs,
       };
     } catch (error) {
       this.logger.warn(
@@ -251,6 +264,7 @@ export class ChatController {
       return {
         waitingStepId: undefined,
         missingInputs: [],
+        allRequiredInputs: [],
       };
     }
   }
@@ -646,6 +660,7 @@ export class ChatController {
   private async buildWaitingInputPayload(
     message: string,
     missingInputs: Array<{ name: string; type?: string }>,
+    allRequiredInputs: Array<{ name: string; value?: unknown; missing?: boolean }> = [],
     semantic?: WaitingInputSemantic,
     skillId?: string,
     authToken?: string,
@@ -681,6 +696,12 @@ export class ChatController {
     if (skillId) {
       const skill = await this.loadSkillSchema(skillId, authToken);
       const paramsSchema = this.buildSchemaForMissingInputs(missingInputs, skill?.paramsSchema);
+      const alreadyCollected = Object.fromEntries(
+        allRequiredInputs
+          .filter((item) => item.missing !== true)
+          .filter((item) => item.value !== undefined && item.value !== null)
+          .map((item) => [item.name, item.value] as const),
+      );
 
       // Prefer planner-style re-understanding over rigid JSON-only fallback:
       // combine the original objective and the user's follow-up clarification,
@@ -695,6 +716,7 @@ export class ChatController {
           mode: 'waiting_input_resume',
           original_objective: originalObjective,
           missing_inputs: missingInputs.map((item) => item.name),
+          already_collected: alreadyCollected,
           skill_name: skill?.name,
         },
       });
@@ -724,6 +746,7 @@ export class ChatController {
               mode: 'waiting_input_resume',
               target_skill_id: skillId,
               missing_inputs: missingInputs.map((item) => item.name),
+              already_collected: alreadyCollected,
               original_objective: originalObjective,
               skill_name: skill?.name,
             },
@@ -848,6 +871,37 @@ export class ChatController {
         : undefined,
       llmCalls,
       notes,
+    };
+  }
+
+  private buildExecutionPlanDraft(planDraft: PlanDraftDTO): Record<string, unknown> {
+    return {
+      plan_id: planDraft.plan_id,
+      planner_mode: planDraft.planner_mode,
+      objective: planDraft.objective,
+      summary: planDraft.summary,
+      skill_match: planDraft.skill_match,
+      steps: planDraft.steps,
+      required_inputs: planDraft.required_inputs,
+      risk_summary: planDraft.risk_summary,
+      semantic: planDraft.semantic,
+      usage: planDraft.usage,
+    };
+  }
+
+  private buildExecutionPromptDebug(promptDebug?: Record<string, unknown>): Record<string, unknown> | undefined {
+    if (!promptDebug) {
+      return undefined;
+    }
+
+    return {
+      debugSource: promptDebug.debugSource,
+      systemPrompt: promptDebug.systemPrompt,
+      userPrompt: promptDebug.userPrompt,
+      systemPromptSectionKeys: promptDebug.systemPromptSectionKeys,
+      userPromptSectionKeys: promptDebug.userPromptSectionKeys,
+      modelId: promptDebug.modelId,
+      notes: promptDebug.notes,
     };
   }
 
@@ -1215,6 +1269,7 @@ export class ChatController {
               const waitingInputPayload = await this.buildWaitingInputPayload(
                 body.message,
                 waitingInputDetails.missingInputs,
+                waitingInputDetails.allRequiredInputs,
                 this.extractExecutionSemantic(execution),
                 execution.skillId,
                 authToken,
@@ -1376,6 +1431,8 @@ export class ChatController {
       const plannerPromptDebug = this.canExposePromptDebug(context)
         ? this.buildPlannerPromptDebug(body.message, planDraft)
         : undefined;
+      const executionPromptDebug = this.buildExecutionPromptDebug(plannerPromptDebug);
+      const executionPlanDraft = this.buildExecutionPlanDraft(planDraft);
       const missingInputs = planDraft.required_inputs.filter((input) => input.missing);
       const runtimeType = await this.resolveSkillExecutionRuntimeType(
         planDraft.skill_match.skill_id,
@@ -1397,7 +1454,7 @@ export class ChatController {
               ...(body.idempotencyKey ? { idempotencyKey: body.idempotencyKey } : {}),
               input: {
                 prompt: body.message,
-                ...(plannerPromptDebug ? { __promptDebug: plannerPromptDebug } : {}),
+                ...(executionPromptDebug ? { __promptDebug: executionPromptDebug } : {}),
                 ...Object.fromEntries(
                   planDraft.required_inputs
                     .filter((input) => !input.missing)
@@ -1406,7 +1463,7 @@ export class ChatController {
               },
               runtimeType,
               usage: planDraft.usage,
-              planDraft,
+              planDraft: executionPlanDraft,
             },
             this.buildControlPlaneRequestOptions(authToken, {
               userId: context.userId,
@@ -1480,7 +1537,7 @@ export class ChatController {
             ...(body.idempotencyKey ? { idempotencyKey: body.idempotencyKey } : {}),
             input: {
               prompt: body.message,
-              ...(plannerPromptDebug ? { __promptDebug: plannerPromptDebug } : {}),
+              ...(executionPromptDebug ? { __promptDebug: executionPromptDebug } : {}),
               ...Object.fromEntries(
                 planDraft.required_inputs
                   .filter((i) => !i.missing)
@@ -1489,7 +1546,7 @@ export class ChatController {
             },
             runtimeType,
             usage: planDraft.usage,
-            planDraft,
+            planDraft: executionPlanDraft,
           },
           this.buildControlPlaneRequestOptions(authToken, {
             userId: context.userId,

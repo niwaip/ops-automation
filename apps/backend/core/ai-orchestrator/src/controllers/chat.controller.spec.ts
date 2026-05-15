@@ -47,6 +47,7 @@ describe('ChatController control-plane integration', () => {
       controlPlaneClient,
       recognizerService,
       plannerService,
+      promptDebugSettingsService,
     };
   };
 
@@ -308,6 +309,18 @@ describe('ChatController control-plane integration', () => {
           needs_confirmation: false,
         },
       ],
+      allRequiredInputs: [
+        {
+          name: 'info.partyA',
+          value: undefined,
+          missing: true,
+        },
+        {
+          name: 'info.partyB',
+          value: undefined,
+          missing: false,
+        },
+      ],
     });
   });
 
@@ -408,6 +421,10 @@ describe('ChatController control-plane integration', () => {
     expect(recognizerService.recognizeParams).toHaveBeenCalledWith(
       expect.objectContaining({
         template_id: 'skill-doc-1',
+        context: expect.objectContaining({
+          mode: 'waiting_input_resume',
+          already_collected: {},
+        }),
         guide_context: expect.objectContaining({
           mode: 'document_skill',
           templateOverview: expect.stringContaining('采购合同'),
@@ -456,6 +473,7 @@ describe('ChatController control-plane integration', () => {
           type: 'date',
         },
       ],
+      [],
       undefined,
       undefined,
       undefined,
@@ -749,6 +767,125 @@ describe('ChatController control-plane integration', () => {
         content: '采购合同已生成',
       },
     ]);
+  });
+
+  it('compacts planner debug payload before creating execution', async () => {
+    const {
+      controller,
+      controlPlaneClient,
+      plannerService,
+      promptDebugSettingsService,
+    } = createController();
+
+    promptDebugSettingsService.isPromptDebugEnabled.mockReturnValue(true);
+    const planDraft = {
+      plan_id: 'plan-debug-1',
+      planner_mode: 'skill',
+      objective: '生成采购合同',
+      summary: '已识别技能 采购合同，可以按计划进入执行。',
+      skill_match: {
+        skill_id: 'skill-contract-debug',
+        skill_name: '采购合同',
+        confidence: 0.99,
+      },
+      required_inputs: [
+        {
+          name: 'info.partyA',
+          type: 'string',
+          description: '甲方名称',
+          required: true,
+          missing: false,
+          value: '星海智造科技有限公司',
+          source: 'user_input',
+        },
+      ],
+      steps: [
+        {
+          id: 'step-debug-1',
+          title: 'Render document',
+          description: '执行 document_render 步骤。',
+          kind: 'tool',
+          tool_name: 'document_render',
+          status: 'planned',
+        },
+      ],
+      semantic: undefined,
+      usage: {
+        prompt_tokens: 100,
+        completion_tokens: 20,
+        total_tokens: 120,
+      },
+      risk_summary: {
+        level: 'low',
+        requires_human_review: false,
+        items: ['no_material_risk_detected'],
+      },
+      metadata: {
+        debug: {
+          notes: ['note-1'],
+          llmCalls: [
+            {
+              modelId: 'deepseek-chat',
+              requestMessages: [
+                { role: 'system', content: 'very large system prompt' },
+                { role: 'user', content: 'very large user prompt' },
+              ],
+              responseText: 'very large response text',
+            },
+          ],
+        },
+      },
+    };
+
+    plannerService.generatePlan.mockResolvedValue(planDraft);
+    controlPlaneClient.createExecution.mockResolvedValue({ id: 'execution-debug-1' });
+    jest.spyOn(controller as any, 'resolveSkillExecutionRuntimeType').mockResolvedValue('workflow');
+    jest.spyOn(controller as any, 'observeExecution').mockImplementation(async function* () {
+      return;
+    });
+
+    for await (const _event of (controller as any).handleTaskMode(
+      {
+        message: '请生成采购合同，甲方是星海智造科技有限公司',
+        sessionId: 'session-debug-1',
+      },
+      {
+        sessionId: 'session-debug-1',
+        userId: 'user-debug-1',
+        userRoles: ['admin'],
+        traceId: 'trace-debug-1',
+        history: [],
+      },
+      'Bearer token-debug-1',
+    )) {
+      // consume stream
+    }
+
+    expect(controlPlaneClient.createExecution).toHaveBeenCalledWith(
+      expect.objectContaining({
+        input: expect.objectContaining({
+          prompt: '请生成采购合同，甲方是星海智造科技有限公司',
+          'info.partyA': '星海智造科技有限公司',
+          __promptDebug: expect.objectContaining({
+            debugSource: 'planner',
+            userPrompt: '请生成采购合同，甲方是星海智造科技有限公司',
+            notes: ['note-1'],
+          }),
+        }),
+        planDraft: expect.objectContaining({
+          plan_id: 'plan-debug-1',
+          required_inputs: planDraft.required_inputs,
+          steps: planDraft.steps,
+        }),
+      }),
+      expect.any(Object),
+    );
+
+    const payload = controlPlaneClient.createExecution.mock.calls[0]?.[0];
+    expect(payload.input.__promptDebug.llmCalls).toBeUndefined();
+    expect(payload.input.__promptDebug.llmRequestMessages).toBeUndefined();
+    expect(payload.input.__promptDebug.llmResponseText).toBeUndefined();
+    expect(payload.planDraft.metadata).toBeUndefined();
   });
 
   it('returns immediate waiting_input state without opening event stream', async () => {

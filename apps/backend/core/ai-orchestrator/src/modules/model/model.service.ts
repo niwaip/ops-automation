@@ -2,8 +2,10 @@ import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import * as fs from 'fs';
 import * as path from 'path';
 import { v4 as uuidv4 } from 'uuid';
-import { AIModelDTO, AIModelConfig, AIProviderConfigDTO, AIProviderSummaryDTO, CreateModelDTO, CreateProviderConfigDTO, UpdateProviderConfigDTO, APIKeyReference, ChatMessage, ContentBlock, LLMResponse, AIProviderModelListDTO } from '../../interfaces';
+import { AIModelDTO, AIModelConfig, AIProviderConfigDTO, AIProviderSummaryDTO, CreateModelDTO, CreateProviderConfigDTO, UpdateProviderConfigDTO, APIKeyReference, ChatMessage, LLMResponse, AIProviderModelListDTO } from '../../interfaces';
 import { OpenAICompatibleClient } from '../../client/openai-compatible';
+import { AnthropicMessagesClient } from '../../client/anthropic-messages';
+import { LLMClient, PromptCachingConfig } from '../../client/llm-client';
 
 // Persistence file paths
 const DEFAULT_DATA_DIR = process.env.NODE_ENV === 'test'
@@ -54,7 +56,7 @@ export class ModelService implements OnModuleInit {
   private providerApiKeyReferences: Map<string, APIKeyReference> = new Map();
   private apiKeys: Map<string, string> = new Map();
   private providerApiKeys: Map<string, string> = new Map();
-  private clients: Map<string, OpenAICompatibleClient> = new Map();
+  private clients: Map<string, LLMClient> = new Map();
 
   private normalizeModelConfig(config?: AIModelConfig): AIModelConfig {
     const normalized: AIModelConfig = {
@@ -77,10 +79,64 @@ export class ModelService implements OnModuleInit {
       prefer_for_code: routingPreferences.prefer_for_code === true,
     };
 
+    const invocation = typeof normalized.invocation === 'object' && normalized.invocation
+      ? normalized.invocation
+      : {};
+    const promptCaching = typeof invocation.prompt_caching === 'object' && invocation.prompt_caching
+      ? invocation.prompt_caching
+      : {};
+    normalized.invocation = {
+      transport: invocation.transport,
+      prompt_caching: {
+        enabled: promptCaching.enabled !== false,
+        mode: promptCaching.mode,
+        retention: promptCaching.retention,
+        min_tokens: typeof promptCaching.min_tokens === 'number' ? promptCaching.min_tokens : 1024,
+      },
+    };
+
     normalized.capability_tier = normalized.capability_tier === 'advanced' ? 'advanced' : 'standard';
     normalized.default = normalized.default_scope.global === true;
 
     return normalized;
+  }
+
+  private buildClient(model: AIModelDTO, apiKey: string): LLMClient {
+    const transport = model.config.invocation?.transport
+      || (model.provider === 'anthropic' ? 'anthropic_messages' : 'openai_chat_completions');
+    const promptCaching = this.getPromptCachingConfigForModel(model);
+
+    if (transport === 'anthropic_messages') {
+      return new AnthropicMessagesClient({
+        baseURL: model.api_endpoint,
+        apiKey,
+        model: model.name,
+        provider: model.provider,
+        promptCacheRetention: promptCaching?.retention,
+      });
+    }
+
+    return new OpenAICompatibleClient({
+      baseURL: model.api_endpoint,
+      apiKey,
+      model: model.name,
+      provider: model.provider,
+      promptCacheRetention: promptCaching?.retention,
+    });
+  }
+
+  private getPromptCachingConfigForModel(model: AIModelDTO): PromptCachingConfig | undefined {
+    const configured = model.config.invocation?.prompt_caching;
+    if (configured?.enabled === false) {
+      return configured;
+    }
+
+    return {
+      enabled: configured?.enabled ?? true,
+      mode: configured?.mode || (model.provider === 'anthropic' ? 'anthropic_explicit' : 'openai_auto'),
+      retention: configured?.retention || (model.provider === 'anthropic' ? '5m' : 'in_memory'),
+      min_tokens: typeof configured?.min_tokens === 'number' ? configured.min_tokens : 1024,
+    };
   }
 
   private getDefaultScopeWeight(model: AIModelDTO): number {
@@ -399,11 +455,7 @@ export class ModelService implements OnModuleInit {
           ? this.resolveProviderCredential(providerConfig.id)
           : this.apiKeys.get(id) || this.resolveApiKey(this.apiKeyReferences.get(id)!, id);
         if (apiKey) {
-          const client = new OpenAICompatibleClient({
-            baseURL: model.api_endpoint,
-            apiKey,
-            model: model.name,
-          });
+          const client = this.buildClient(model, apiKey);
           this.clients.set(id, client);
           this.logger.log(`Client initialized for model ${model.name} (${id})`);
         }
@@ -637,11 +689,7 @@ export class ModelService implements OnModuleInit {
 
       const apiKey = this.resolveProviderCredential(id) || this.apiKeys.get(modelId) || this.resolveApiKey(this.apiKeyReferences.get(modelId)!, modelId);
       if (apiKey) {
-        this.clients.set(modelId, new OpenAICompatibleClient({
-          baseURL: updatedModel.api_endpoint,
-          apiKey,
-          model: updatedModel.name,
-        }));
+        this.clients.set(modelId, this.buildClient(updatedModel, apiKey));
       }
     }
 
@@ -925,11 +973,7 @@ export class ModelService implements OnModuleInit {
     }
 
     if (apiKey) {
-      const client = new OpenAICompatibleClient({
-        baseURL: providerConfig.api_endpoint,
-        apiKey,
-        model: dto.name,
-      });
+      const client = this.buildClient(model, apiKey);
       this.clients.set(id, client);
       this.logger.log(`Client initialized for model ${dto.name} (ID: ${id})`);
     }
@@ -1003,11 +1047,7 @@ export class ModelService implements OnModuleInit {
         || this.apiKeys.get(id)
         || this.resolveApiKey(this.apiKeyReferences.get(id)!, id);
       if (apiKey) {
-        const client = new OpenAICompatibleClient({
-          baseURL: updatedModel.api_endpoint,
-          apiKey,
-          model: updatedModel.name,
-        });
+        const client = this.buildClient(updatedModel, apiKey);
         this.clients.set(id, client);
         this.logger.log(`Client reinitialized for model ${updatedModel.name} (ID: ${id})`);
       }
@@ -1060,7 +1100,7 @@ export class ModelService implements OnModuleInit {
   /**
    * Get client for a model (supports UUID, model name, or 'default')
    */
-  getClient(id: string): OpenAICompatibleClient | null {
+  getClient(id: string): LLMClient | null {
     // Handle 'default'
     if (id === 'default') {
       const defaultModel = this.getDefaultModel();
@@ -1081,6 +1121,11 @@ export class ModelService implements OnModuleInit {
       }
     }
     return null;
+  }
+
+  getPromptCachingConfig(id: string): PromptCachingConfig | undefined {
+    const model = this.resolveModelEntity(id);
+    return model ? this.getPromptCachingConfigForModel(model) : undefined;
   }
 
   /**
@@ -1130,7 +1175,7 @@ export class ModelService implements OnModuleInit {
   /**
    * Call a model with a prompt (supports both UUID and model name)
    */
-  async callModel(id: string, prompt: string, type: 'reasoning' | 'auxiliary' = 'reasoning'): Promise<LLMResponse> {
+  async callModel(id: string, prompt: string, _type: 'reasoning' | 'auxiliary' = 'reasoning'): Promise<LLMResponse> {
     const client = this.getClient(id);
     if (!client) {
       throw new Error(`No client initialized for model ${id}`);

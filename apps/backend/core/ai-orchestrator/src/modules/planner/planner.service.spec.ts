@@ -615,8 +615,10 @@ describe('PlannerService - required inputs without hardcoded defaults', () => {
     expect(unitPrice?.value).toEqual([120000]);
     expect(unitPrice?.source).toBe('user_input');
     expect(unitPrice?.missing).toBe(true);
-    expect(unitPrice?.missing_reason).toBe('missing');
+    expect(unitPrice?.needs_confirmation).toBe(true);
+    expect(unitPrice?.missing_reason).toBe('partial_group');
     expect(unitPrice?.description).toContain('当前仅识别 1/3 条');
+    expect(unitPrice?.description).toContain('同组数组条数尚未对齐');
     expect(name?.missing).toBe(false);
   });
 

@@ -6,6 +6,10 @@
 export interface ContentBlock {
   type: 'text' | 'image_url';
   text?: string;
+  cache_control?: {
+    type: 'ephemeral';
+    ttl?: '5m' | '1h';
+  };
   image_url?: {
     url: string;  // 可以是URL或base64 data URI
     detail?: 'low' | 'high' | 'auto';
@@ -22,6 +26,10 @@ export interface OpenAICompatibleConfig {
   apiKey: string;
   model: string;
   useJsonMode?: boolean;
+  provider?: string;
+  promptCacheKey?: string;
+  promptCacheRetention?: 'in_memory' | '24h' | '5m' | '1h';
+  anthropicVersion?: string;
 }
 
 /**
@@ -31,9 +39,14 @@ export interface LLMUsage {
   prompt_tokens: number;
   completion_tokens: number;
   total_tokens: number;
+  prompt_tokens_details?: {
+    cached_tokens?: number;
+  };
   completion_tokens_details?: {
     reasoning_tokens?: number;
   };
+  cache_creation_input_tokens?: number;
+  cache_read_input_tokens?: number;
 }
 
 /**
@@ -78,6 +91,18 @@ export interface ModelRoutingPreferenceConfig {
   prefer_for_code?: boolean;
 }
 
+export interface PromptCachingModelConfig {
+  enabled?: boolean;
+  mode?: 'none' | 'openai_auto' | 'anthropic_auto' | 'anthropic_explicit';
+  retention?: 'in_memory' | '24h' | '5m' | '1h';
+  min_tokens?: number;
+}
+
+export interface ModelInvocationConfig {
+  transport?: 'openai_chat_completions' | 'anthropic_messages';
+  prompt_caching?: PromptCachingModelConfig;
+}
+
 export interface AIModelConfig {
   display_name?: string;
   description?: string;
@@ -93,6 +118,7 @@ export interface AIModelConfig {
   capability_tier?: ModelCapabilityTier;
   default_scope?: ModelDefaultScopeConfig;
   routing_preferences?: ModelRoutingPreferenceConfig;
+  invocation?: ModelInvocationConfig;
   [key: string]: unknown;
 }
 
@@ -305,7 +331,7 @@ export interface RequiredInputDTO {
   source: 'user_input' | 'default' | 'unresolved';
   confidence?: number;
   needs_confirmation?: boolean;
-  missing_reason?: 'missing' | 'low_confidence' | 'overall_low_confidence';
+  missing_reason?: 'missing' | 'low_confidence' | 'overall_low_confidence' | 'partial_group';
   confirmation_threshold?: number;
   preview_blocking?: boolean;
 }

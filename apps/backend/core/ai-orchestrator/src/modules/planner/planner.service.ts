@@ -681,17 +681,21 @@ export class PlannerService {
         ? Boolean(schemaMeta.previewBlocking)
         : undefined;
       const shouldBlockOnConfirmation = required || previewBlocking === true;
-      const needsConfirmation = hasValue && shouldBlockOnConfirmation && (
+      const needsConfidenceConfirmation = hasValue && shouldBlockOnConfirmation && (
         uncertainFields.has(name)
         || (fieldConfidence !== undefined && fieldConfidence < confirmationThreshold)
         || (required && overallLowConfidence)
       );
-      const isValueMissing = !this.hasMeaningfulRequiredInputValue(value) || hasPartialArrayGroupValue;
+      const needsPartialGroupConfirmation = hasPartialArrayGroupValue && shouldBlockOnConfirmation;
+      const needsConfirmation = needsConfidenceConfirmation || needsPartialGroupConfirmation;
+      const isValueMissing = !this.hasMeaningfulRequiredInputValue(value);
       const isBlockingMissing = (required && isValueMissing) || needsConfirmation;
-      const missingReason = isBlockingMissing && needsConfirmation
+      const missingReason = isBlockingMissing && needsConfidenceConfirmation
         ? overallLowConfidence && (fieldConfidence === undefined || fieldConfidence >= RECOGNIZED_FIELD_LOW_CONFIDENCE_THRESHOLD)
           ? 'overall_low_confidence' as const
           : 'low_confidence' as const
+        : isBlockingMissing && needsPartialGroupConfirmation
+          ? 'partial_group' as const
         : isBlockingMissing && required && isValueMissing
           ? 'missing' as const
           : undefined;
@@ -852,7 +856,9 @@ export class PlannerService {
       : '';
     const reason = missingReason === 'overall_low_confidence'
       ? `已识别候选值“${preview}”，但本轮整体识别置信度偏低${confidenceText}，请确认或改写`
-      : `已识别候选值“${preview}”，但该字段置信度偏低${confidenceText}，请确认或改写`;
+      : missingReason === 'partial_group'
+        ? `已识别候选值“${preview}”，但同组数组条数尚未对齐，请确认已识别内容并补齐缺失项`
+        : `已识别候选值“${preview}”，但该字段置信度偏低${confidenceText}，请确认或改写`;
     return base ? `${base}；${reason}` : reason;
   }
 
