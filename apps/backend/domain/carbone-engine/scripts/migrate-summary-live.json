@@ -1,0 +1,642 @@
+{
+  "dryRun": false,
+  "templatesDir": "/Users/chain/Documents/MyProject/ops-automation/.data/carbone-engine/templates",
+  "outputsDir": "/Users/chain/Documents/MyProject/ops-automation/.data/carbone-engine/outputs",
+  "templates": {
+    "scanned": 33,
+    "migrated": 33
+  },
+  "skills": {
+    "scanned": 104,
+    "migrated": 33,
+    "details": {
+      "migrated": [
+        {
+          "file": "/Users/chain/Documents/MyProject/ops-automation/.data/carbone-engine/templates/skill_00663a57-c0cf-4e7e-8bec-028eb2769b28.json",
+          "id": "00663a57-c0cf-4e7e-8bec-028eb2769b28",
+          "templateId": "30c401e6-62b8-48d0-b1c2-85ef4fd8fa7f",
+          "reason": "direct"
+        },
+        {
+          "file": "/Users/chain/Documents/MyProject/ops-automation/.data/carbone-engine/templates/skill_0dcd0056-0646-4c78-a3ab-8358125865c1.json",
+          "id": "0dcd0056-0646-4c78-a3ab-8358125865c1",
+          "templateId": "8b661d44-2f7f-4a17-9f91-73dc8d0c5451",
+          "reason": "direct"
+        },
+        {
+          "file": "/Users/chain/Documents/MyProject/ops-automation/.data/carbone-engine/templates/skill_185c1f48-2e40-45df-bbfc-98e76d7fb495.json",
+          "id": "185c1f48-2e40-45df-bbfc-98e76d7fb495",
+          "templateId": "9f85420e-cc5a-4f77-b04b-81f5e8dc3a0c",
+          "reason": "direct"
+        },
+        {
+          "file": "/Users/chain/Documents/MyProject/ops-automation/.data/carbone-engine/templates/skill_18a4bcae-5d73-4b2f-8d6f-b2ad164c2947.json",
+          "id": "18a4bcae-5d73-4b2f-8d6f-b2ad164c2947",
+          "templateId": "c0a1712f-3cbd-4e38-811f-32b7a9945f0b",
+          "reason": "direct"
+        },
+        {
+          "file": "/Users/chain/Documents/MyProject/ops-automation/.data/carbone-engine/templates/skill_18b9faba-05b6-4daf-a913-fb78c9a577b4.json",
+          "id": "18b9faba-05b6-4daf-a913-fb78c9a577b4",
+          "templateId": "868fedc2-8e9a-4202-a949-eedf0b133394",
+          "reason": "direct"
+        },
+        {
+          "file": "/Users/chain/Documents/MyProject/ops-automation/.data/carbone-engine/templates/skill_21948309-4c1e-4799-a355-78d4311912a5.json",
+          "id": "21948309-4c1e-4799-a355-78d4311912a5",
+          "templateId": "cb96dbf1-5a80-4814-b7d3-a5e8c8bb8ad9",
+          "reason": "direct"
+        },
+        {
+          "file": "/Users/chain/Documents/MyProject/ops-automation/.data/carbone-engine/templates/skill_27b51af8-cadb-4a10-a581-921257430f85.json",
+          "id": "27b51af8-cadb-4a10-a581-921257430f85",
+          "templateId": "df0fb19e-1f8b-4663-b0a5-7888f9744b25",
+          "reason": "direct"
+        },
+        {
+          "file": "/Users/chain/Documents/MyProject/ops-automation/.data/carbone-engine/templates/skill_8865ae32-23b0-4548-b136-44ee99b53e22.json",
+          "id": "8865ae32-23b0-4548-b136-44ee99b53e22",
+          "templateId": "48cd5507-fb0c-43f4-b3e2-d1bb19cb75ab",
+          "reason": "direct"
+        },
+        {
+          "file": "/Users/chain/Documents/MyProject/ops-automation/.data/carbone-engine/templates/skill_31b85e36-081b-47b1-ab01-39abaa5ffc64.json",
+          "id": "31b85e36-081b-47b1-ab01-39abaa5ffc64",
+          "templateId": "d9e7d4b7-c0b9-4d3c-8783-8c78c9636c2d",
+          "reason": "direct"
+        },
+        {
+          "file": "/Users/chain/Documents/MyProject/ops-automation/.data/carbone-engine/templates/skill_4ce226c4-2072-430c-b3c3-e39506d761d9.json",
+          "id": "4ce226c4-2072-430c-b3c3-e39506d761d9",
+          "templateId": "de50855a-a60c-47d6-9750-aa4394dccdd3",
+          "reason": "direct"
+        },
+        {
+          "file": "/Users/chain/Documents/MyProject/ops-automation/.data/carbone-engine/templates/skill_66ea77a3-edbb-4f4b-865c-ad29eb3af398.json",
+          "id": "66ea77a3-edbb-4f4b-865c-ad29eb3af398",
+          "templateId": "a524976c-6ae5-4fee-b343-4c6d2673e150",
+          "reason": "direct"
+        },
+        {
+          "file": "/Users/chain/Documents/MyProject/ops-automation/.data/carbone-engine/templates/skill_670d9e90-f0fb-4625-98db-274eaaedc3c9.json",
+          "id": "670d9e90-f0fb-4625-98db-274eaaedc3c9",
+          "templateId": "94a4cc59-389e-4966-a2cc-ec099bb74e98",
+          "reason": "direct"
+        },
+        {
+          "file": "/Users/chain/Documents/MyProject/ops-automation/.data/carbone-engine/templates/skill_6cc77e85-bfc3-4a66-a989-40d6edcf9ee0.json",
+          "id": "6cc77e85-bfc3-4a66-a989-40d6edcf9ee0",
+          "templateId": "9fdc5dfe-3611-4994-9ff1-d668d9dbbe2a",
+          "reason": "direct"
+        },
+        {
+          "file": "/Users/chain/Documents/MyProject/ops-automation/.data/carbone-engine/templates/skill_724e9136-b775-40f6-bd7c-338aca3f78a6.json",
+          "id": "724e9136-b775-40f6-bd7c-338aca3f78a6",
+          "templateId": "38421f31-10a9-40d1-bdd7-cbd7e003c2c6",
+          "reason": "direct"
+        },
+        {
+          "file": "/Users/chain/Documents/MyProject/ops-automation/.data/carbone-engine/templates/skill_7757265b-f287-4fa3-a5cb-23cb0f28a8e6.json",
+          "id": "7757265b-f287-4fa3-a5cb-23cb0f28a8e6",
+          "templateId": "48793cb6-2a24-42ca-ae4c-7345a0c553d2",
+          "reason": "direct"
+        },
+        {
+          "file": "/Users/chain/Documents/MyProject/ops-automation/.data/carbone-engine/templates/skill_7c0955df-9c33-428c-a1e6-7ad7defa898b.json",
+          "id": "7c0955df-9c33-428c-a1e6-7ad7defa898b",
+          "templateId": "5d2b288c-3af5-47a8-ae9b-6e79594658be",
+          "reason": "direct"
+        },
+        {
+          "file": "/Users/chain/Documents/MyProject/ops-automation/.data/carbone-engine/templates/skill_7ea9b0df-56ff-43b8-8ec6-4a12227c1403.json",
+          "id": "7ea9b0df-56ff-43b8-8ec6-4a12227c1403",
+          "templateId": "1f168fb4-d367-4226-8f44-e4053305270a",
+          "reason": "direct"
+        },
+        {
+          "file": "/Users/chain/Documents/MyProject/ops-automation/.data/carbone-engine/templates/skill_8363c6a4-fd59-4d7e-bd11-6970c0f9542c.json",
+          "id": "8363c6a4-fd59-4d7e-bd11-6970c0f9542c",
+          "templateId": "c4b2c149-43b1-4b34-85ce-e32a1bb4428b",
+          "reason": "direct"
+        },
+        {
+          "file": "/Users/chain/Documents/MyProject/ops-automation/.data/carbone-engine/templates/skill_8b335091-7d5f-4211-b260-dd9fcc2565c9.json",
+          "id": "8b335091-7d5f-4211-b260-dd9fcc2565c9",
+          "templateId": "eee2c1be-934a-42af-ae34-0aeaaf62e48f",
+          "reason": "direct"
+        },
+        {
+          "file": "/Users/chain/Documents/MyProject/ops-automation/.data/carbone-engine/templates/skill_91b3cabd-4842-4337-a16f-345221a681e1.json",
+          "id": "91b3cabd-4842-4337-a16f-345221a681e1",
+          "templateId": "357d65b5-811d-42cf-8d9e-b7ab58199bb1",
+          "reason": "direct"
+        },
+        {
+          "file": "/Users/chain/Documents/MyProject/ops-automation/.data/carbone-engine/templates/skill_943aa1f9-88ae-494d-9ff0-f2078e43cc79.json",
+          "id": "943aa1f9-88ae-494d-9ff0-f2078e43cc79",
+          "templateId": "e920cabb-c16c-480a-b7e7-03f6a89be84f",
+          "reason": "direct"
+        },
+        {
+          "file": "/Users/chain/Documents/MyProject/ops-automation/.data/carbone-engine/templates/skill_aadff22d-6050-4bc0-b732-483eba16d38f.json",
+          "id": "aadff22d-6050-4bc0-b732-483eba16d38f",
+          "templateId": "bcdb2288-8205-41d2-bb05-5ce0d556fa61",
+          "reason": "direct"
+        },
+        {
+          "file": "/Users/chain/Documents/MyProject/ops-automation/.data/carbone-engine/templates/skill_b1dfcb42-5ccd-4ee2-9e3d-758393c57714.json",
+          "id": "b1dfcb42-5ccd-4ee2-9e3d-758393c57714",
+          "templateId": "f763560c-7d0a-4bf3-b267-b6f03bb221a4",
+          "reason": "direct"
+        },
+        {
+          "file": "/Users/chain/Documents/MyProject/ops-automation/.data/carbone-engine/templates/skill_b959e93e-3aa2-45eb-b5c8-ae311e654598.json",
+          "id": "b959e93e-3aa2-45eb-b5c8-ae311e654598",
+          "templateId": "05d976dc-c7f5-454e-a63b-10a39e76934c",
+          "reason": "direct"
+        },
+        {
+          "file": "/Users/chain/Documents/MyProject/ops-automation/.data/carbone-engine/templates/skill_baddba56-c28b-46c2-8337-1da8eeaf8f49.json",
+          "id": "baddba56-c28b-46c2-8337-1da8eeaf8f49",
+          "templateId": "88c190ca-77b9-4e6c-9946-656149c5713a",
+          "reason": "direct"
+        },
+        {
+          "file": "/Users/chain/Documents/MyProject/ops-automation/.data/carbone-engine/templates/skill_c639629f-f1e5-402e-8dc1-cb570b217cae.json",
+          "id": "c639629f-f1e5-402e-8dc1-cb570b217cae",
+          "templateId": "a92d813f-2786-4fd3-84c1-31a9774600d2",
+          "reason": "direct"
+        },
+        {
+          "file": "/Users/chain/Documents/MyProject/ops-automation/.data/carbone-engine/templates/skill_d104a350-66a8-4f1c-ad21-b458d12233b9.json",
+          "id": "d104a350-66a8-4f1c-ad21-b458d12233b9",
+          "templateId": "c6b8e3cf-e572-429c-ae25-e187bf371ad4",
+          "reason": "direct"
+        },
+        {
+          "file": "/Users/chain/Documents/MyProject/ops-automation/.data/carbone-engine/templates/skill_d769d78d-449c-4d63-8795-f9ebe469c6ab.json",
+          "id": "d769d78d-449c-4d63-8795-f9ebe469c6ab",
+          "templateId": "55c906ac-9755-4360-914a-6b5640d06f6a",
+          "reason": "direct"
+        },
+        {
+          "file": "/Users/chain/Documents/MyProject/ops-automation/.data/carbone-engine/templates/skill_df9402a6-d805-4ecc-9309-081d64026dba.json",
+          "id": "df9402a6-d805-4ecc-9309-081d64026dba",
+          "templateId": "5fbd2605-062b-4287-93c7-99e38c66370d",
+          "reason": "direct"
+        },
+        {
+          "file": "/Users/chain/Documents/MyProject/ops-automation/.data/carbone-engine/templates/skill_e058dea6-e752-4c0c-a5d3-779f021068d6.json",
+          "id": "e058dea6-e752-4c0c-a5d3-779f021068d6",
+          "templateId": "6cb5f470-00b3-491e-a8ef-0e699619f96e",
+          "reason": "direct"
+        },
+        {
+          "file": "/Users/chain/Documents/MyProject/ops-automation/.data/carbone-engine/templates/skill_e94935df-77b5-4e77-882f-a4bdbc2d1b8a.json",
+          "id": "e94935df-77b5-4e77-882f-a4bdbc2d1b8a",
+          "templateId": "a02f7d77-34c9-4200-89a4-c341e29002cc",
+          "reason": "direct"
+        },
+        {
+          "file": "/Users/chain/Documents/MyProject/ops-automation/.data/carbone-engine/templates/skill_ec5b5e25-c8cb-45cf-83d1-14ceecc18a41.json",
+          "id": "ec5b5e25-c8cb-45cf-83d1-14ceecc18a41",
+          "templateId": "6b5ef997-e314-408c-b2a8-c43befab8b03",
+          "reason": "direct"
+        },
+        {
+          "file": "/Users/chain/Documents/MyProject/ops-automation/.data/carbone-engine/templates/skill_fc5db3bd-2cb1-4931-9915-078e2f4fc7b9.json",
+          "id": "fc5db3bd-2cb1-4931-9915-078e2f4fc7b9",
+          "templateId": "c896310b-658e-4ae0-a8a9-32ab2a2e4a59",
+          "reason": "direct"
+        }
+      ],
+      "skipped": [
+        {
+          "file": "/Users/chain/Documents/MyProject/ops-automation/.data/carbone-engine/templates/skill_skill-1776267866146.json",
+          "id": "skill-1776267866146",
+          "reason": "missing-templateId"
+        },
+        {
+          "file": "/Users/chain/Documents/MyProject/ops-automation/.data/carbone-engine/templates/skill_skill-1776330365597.json",
+          "id": "skill-1776330365597",
+          "reason": "missing-templateId"
+        },
+        {
+          "file": "/Users/chain/Documents/MyProject/ops-automation/.data/carbone-engine/templates/skill_skill-1776330366435.json",
+          "id": "skill-1776330366435",
+          "reason": "missing-templateId"
+        },
+        {
+          "file": "/Users/chain/Documents/MyProject/ops-automation/.data/carbone-engine/templates/skill_skill-1776332350261.json",
+          "id": "skill-1776332350261",
+          "reason": "missing-templateId"
+        },
+        {
+          "file": "/Users/chain/Documents/MyProject/ops-automation/.data/carbone-engine/templates/skill_skill-1776334183144.json",
+          "id": "skill-1776334183144",
+          "reason": "missing-templateId"
+        },
+        {
+          "file": "/Users/chain/Documents/MyProject/ops-automation/.data/carbone-engine/templates/skill_skill-1776345000488.json",
+          "id": "skill-1776345000488",
+          "reason": "missing-templateId"
+        },
+        {
+          "file": "/Users/chain/Documents/MyProject/ops-automation/.data/carbone-engine/templates/skill_skill-1778394967789.json",
+          "id": "skill-1778394967789",
+          "reason": "missing-templateId"
+        },
+        {
+          "file": "/Users/chain/Documents/MyProject/ops-automation/.data/carbone-engine/templates/skill_skill-1778395366261.json",
+          "id": "skill-1778395366261",
+          "reason": "missing-templateId"
+        },
+        {
+          "file": "/Users/chain/Documents/MyProject/ops-automation/.data/carbone-engine/templates/skill_skill-1778395918153.json",
+          "id": "skill-1778395918153",
+          "reason": "missing-templateId"
+        },
+        {
+          "file": "/Users/chain/Documents/MyProject/ops-automation/.data/carbone-engine/templates/skill_skill-1778396240251.json",
+          "id": "skill-1778396240251",
+          "reason": "missing-templateId"
+        },
+        {
+          "file": "/Users/chain/Documents/MyProject/ops-automation/.data/carbone-engine/templates/skill_skill-1778396303428.json",
+          "id": "skill-1778396303428",
+          "reason": "missing-templateId"
+        },
+        {
+          "file": "/Users/chain/Documents/MyProject/ops-automation/.data/carbone-engine/templates/skill_skill-1778396491593.json",
+          "id": "skill-1778396491593",
+          "reason": "missing-templateId"
+        },
+        {
+          "file": "/Users/chain/Documents/MyProject/ops-automation/.data/carbone-engine/templates/skill_skill-1778397266294.json",
+          "id": "skill-1778397266294",
+          "reason": "missing-templateId"
+        },
+        {
+          "file": "/Users/chain/Documents/MyProject/ops-automation/.data/carbone-engine/templates/skill_skill-1778411787384.json",
+          "id": "skill-1778411787384",
+          "reason": "missing-templateId"
+        },
+        {
+          "file": "/Users/chain/Documents/MyProject/ops-automation/.data/carbone-engine/templates/skill_skill-1778411869800.json",
+          "id": "skill-1778411869800",
+          "reason": "missing-templateId"
+        },
+        {
+          "file": "/Users/chain/Documents/MyProject/ops-automation/.data/carbone-engine/templates/skill_skill-1778412819164.json",
+          "id": "skill-1778412819164",
+          "reason": "missing-templateId"
+        },
+        {
+          "file": "/Users/chain/Documents/MyProject/ops-automation/.data/carbone-engine/templates/skill_skill-1778413533358.json",
+          "id": "skill-1778413533358",
+          "reason": "missing-templateId"
+        },
+        {
+          "file": "/Users/chain/Documents/MyProject/ops-automation/.data/carbone-engine/templates/skill_skill-1778418947136.json",
+          "id": "skill-1778418947136",
+          "reason": "missing-templateId"
+        },
+        {
+          "file": "/Users/chain/Documents/MyProject/ops-automation/.data/carbone-engine/templates/skill_skill-1778418949223.json",
+          "id": "skill-1778418949223",
+          "reason": "missing-templateId"
+        },
+        {
+          "file": "/Users/chain/Documents/MyProject/ops-automation/.data/carbone-engine/templates/skill_skill-1778420382198.json",
+          "id": "skill-1778420382198",
+          "reason": "missing-templateId"
+        },
+        {
+          "file": "/Users/chain/Documents/MyProject/ops-automation/.data/carbone-engine/templates/skill_skill-1778420383666.json",
+          "id": "skill-1778420383666",
+          "reason": "missing-templateId"
+        },
+        {
+          "file": "/Users/chain/Documents/MyProject/ops-automation/.data/carbone-engine/templates/skill_skill-1778421520765.json",
+          "id": "skill-1778421520765",
+          "reason": "missing-templateId"
+        },
+        {
+          "file": "/Users/chain/Documents/MyProject/ops-automation/.data/carbone-engine/templates/skill_skill-1778421521947.json",
+          "id": "skill-1778421521947",
+          "reason": "missing-templateId"
+        },
+        {
+          "file": "/Users/chain/Documents/MyProject/ops-automation/.data/carbone-engine/templates/skill_skill-1778421920995.json",
+          "id": "skill-1778421920995",
+          "reason": "missing-templateId"
+        },
+        {
+          "file": "/Users/chain/Documents/MyProject/ops-automation/.data/carbone-engine/templates/skill_skill-1778427980498.json",
+          "id": "skill-1778427980498",
+          "reason": "missing-templateId"
+        },
+        {
+          "file": "/Users/chain/Documents/MyProject/ops-automation/.data/carbone-engine/templates/skill_skill-1778507814587.json",
+          "id": "skill-1778507814587",
+          "reason": "missing-templateId"
+        },
+        {
+          "file": "/Users/chain/Documents/MyProject/ops-automation/.data/carbone-engine/templates/skill_skill-1778508153893.json",
+          "id": "skill-1778508153893",
+          "reason": "missing-templateId"
+        },
+        {
+          "file": "/Users/chain/Documents/MyProject/ops-automation/.data/carbone-engine/templates/skill_skill-1778511590717.json",
+          "id": "skill-1778511590717",
+          "reason": "missing-templateId"
+        },
+        {
+          "file": "/Users/chain/Documents/MyProject/ops-automation/.data/carbone-engine/templates/skill_skill-1778584946639.json",
+          "id": "skill-1778584946639",
+          "reason": "missing-templateId"
+        },
+        {
+          "file": "/Users/chain/Documents/MyProject/ops-automation/.data/carbone-engine/templates/skill_skill-1778585321325.json",
+          "id": "skill-1778585321325",
+          "reason": "missing-templateId"
+        },
+        {
+          "file": "/Users/chain/Documents/MyProject/ops-automation/.data/carbone-engine/templates/skill_skill-1778585367853.json",
+          "id": "skill-1778585367853",
+          "reason": "missing-templateId"
+        },
+        {
+          "file": "/Users/chain/Documents/MyProject/ops-automation/.data/carbone-engine/templates/skill_skill-1778585923144.json",
+          "id": "skill-1778585923144",
+          "reason": "missing-templateId"
+        },
+        {
+          "file": "/Users/chain/Documents/MyProject/ops-automation/.data/carbone-engine/templates/skill_skill-1778649389686.json",
+          "id": "skill-1778649389686",
+          "reason": "missing-templateId"
+        },
+        {
+          "file": "/Users/chain/Documents/MyProject/ops-automation/.data/carbone-engine/templates/skill_skill-1778650982377.json",
+          "id": "skill-1778650982377",
+          "reason": "missing-templateId"
+        },
+        {
+          "file": "/Users/chain/Documents/MyProject/ops-automation/.data/carbone-engine/templates/skill_skill-1778651103145.json",
+          "id": "skill-1778651103145",
+          "reason": "missing-templateId"
+        },
+        {
+          "file": "/Users/chain/Documents/MyProject/ops-automation/.data/carbone-engine/templates/skill_skill-1778651103846.json",
+          "id": "skill-1778651103846",
+          "reason": "missing-templateId"
+        },
+        {
+          "file": "/Users/chain/Documents/MyProject/ops-automation/.data/carbone-engine/templates/skill_skill-1778651104139.json",
+          "id": "skill-1778651104139",
+          "reason": "missing-templateId"
+        },
+        {
+          "file": "/Users/chain/Documents/MyProject/ops-automation/.data/carbone-engine/templates/skill_skill-1778651874776.json",
+          "id": "skill-1778651874776",
+          "reason": "missing-templateId"
+        },
+        {
+          "file": "/Users/chain/Documents/MyProject/ops-automation/.data/carbone-engine/templates/skill_skill-1778651878098.json",
+          "id": "skill-1778651878098",
+          "reason": "missing-templateId"
+        },
+        {
+          "file": "/Users/chain/Documents/MyProject/ops-automation/.data/carbone-engine/templates/skill_skill-1778652218525.json",
+          "id": "skill-1778652218525",
+          "reason": "missing-templateId"
+        },
+        {
+          "file": "/Users/chain/Documents/MyProject/ops-automation/.data/carbone-engine/templates/skill_skill-1778655281761.json",
+          "id": "skill-1778655281761",
+          "reason": "missing-templateId"
+        },
+        {
+          "file": "/Users/chain/Documents/MyProject/ops-automation/.data/carbone-engine/templates/skill_skill-1778655528690.json",
+          "id": "skill-1778655528690",
+          "reason": "missing-templateId"
+        },
+        {
+          "file": "/Users/chain/Documents/MyProject/ops-automation/.data/carbone-engine/templates/skill_skill-1778656870473.json",
+          "id": "skill-1778656870473",
+          "reason": "missing-templateId"
+        },
+        {
+          "file": "/Users/chain/Documents/MyProject/ops-automation/.data/carbone-engine/templates/skill_skill-1778661138343.json",
+          "id": "skill-1778661138343",
+          "reason": "missing-templateId"
+        },
+        {
+          "file": "/Users/chain/Documents/MyProject/ops-automation/.data/carbone-engine/templates/skill_skill-1778661977697.json",
+          "id": "skill-1778661977697",
+          "reason": "missing-templateId"
+        },
+        {
+          "file": "/Users/chain/Documents/MyProject/ops-automation/.data/carbone-engine/templates/skill_skill-1778663727906.json",
+          "id": "skill-1778663727906",
+          "reason": "missing-templateId"
+        },
+        {
+          "file": "/Users/chain/Documents/MyProject/ops-automation/.data/carbone-engine/templates/skill_skill-1778666270300.json",
+          "id": "skill-1778666270300",
+          "reason": "missing-templateId"
+        },
+        {
+          "file": "/Users/chain/Documents/MyProject/ops-automation/.data/carbone-engine/templates/skill_skill-1778670207255.json",
+          "id": "skill-1778670207255",
+          "reason": "missing-templateId"
+        },
+        {
+          "file": "/Users/chain/Documents/MyProject/ops-automation/.data/carbone-engine/templates/skill_skill-1778672383733.json",
+          "id": "skill-1778672383733",
+          "reason": "missing-templateId"
+        },
+        {
+          "file": "/Users/chain/Documents/MyProject/ops-automation/.data/carbone-engine/templates/skill_skill-1778673747303.json",
+          "id": "skill-1778673747303",
+          "reason": "duplicate-templateId",
+          "templateId": "8b661d44-2f7f-4a17-9f91-73dc8d0c5451",
+          "keptFile": "/Users/chain/Documents/MyProject/ops-automation/.data/carbone-engine/templates/skill_0dcd0056-0646-4c78-a3ab-8358125865c1.json",
+          "keptId": "0dcd0056-0646-4c78-a3ab-8358125865c1"
+        },
+        {
+          "file": "/Users/chain/Documents/MyProject/ops-automation/.data/carbone-engine/templates/skill_skill-1778410727535.json",
+          "id": "skill-1778410727535",
+          "reason": "duplicate-templateId",
+          "templateId": "c0a1712f-3cbd-4e38-811f-32b7a9945f0b",
+          "keptFile": "/Users/chain/Documents/MyProject/ops-automation/.data/carbone-engine/templates/skill_18a4bcae-5d73-4b2f-8d6f-b2ad164c2947.json",
+          "keptId": "18a4bcae-5d73-4b2f-8d6f-b2ad164c2947"
+        },
+        {
+          "file": "/Users/chain/Documents/MyProject/ops-automation/.data/carbone-engine/templates/skill_skill-1778407666189.json",
+          "id": "skill-1778407666189",
+          "reason": "duplicate-templateId",
+          "templateId": "c0a1712f-3cbd-4e38-811f-32b7a9945f0b",
+          "keptFile": "/Users/chain/Documents/MyProject/ops-automation/.data/carbone-engine/templates/skill_18a4bcae-5d73-4b2f-8d6f-b2ad164c2947.json",
+          "keptId": "18a4bcae-5d73-4b2f-8d6f-b2ad164c2947"
+        },
+        {
+          "file": "/Users/chain/Documents/MyProject/ops-automation/.data/carbone-engine/templates/skill_skill-1778410989013.json",
+          "id": "skill-1778410989013",
+          "reason": "duplicate-templateId",
+          "templateId": "c0a1712f-3cbd-4e38-811f-32b7a9945f0b",
+          "keptFile": "/Users/chain/Documents/MyProject/ops-automation/.data/carbone-engine/templates/skill_18a4bcae-5d73-4b2f-8d6f-b2ad164c2947.json",
+          "keptId": "18a4bcae-5d73-4b2f-8d6f-b2ad164c2947"
+        },
+        {
+          "file": "/Users/chain/Documents/MyProject/ops-automation/.data/carbone-engine/templates/skill_2f503b8a-9925-4466-81ac-036a65737d79.json",
+          "id": "2f503b8a-9925-4466-81ac-036a65737d79",
+          "reason": "duplicate-templateId",
+          "templateId": "48cd5507-fb0c-43f4-b3e2-d1bb19cb75ab",
+          "keptFile": "/Users/chain/Documents/MyProject/ops-automation/.data/carbone-engine/templates/skill_8865ae32-23b0-4548-b136-44ee99b53e22.json",
+          "keptId": "8865ae32-23b0-4548-b136-44ee99b53e22"
+        },
+        {
+          "file": "/Users/chain/Documents/MyProject/ops-automation/.data/carbone-engine/templates/skill_skill-1776345563522.json",
+          "id": "skill-1776345563522",
+          "reason": "duplicate-templateId",
+          "templateId": "48cd5507-fb0c-43f4-b3e2-d1bb19cb75ab",
+          "keptFile": "/Users/chain/Documents/MyProject/ops-automation/.data/carbone-engine/templates/skill_8865ae32-23b0-4548-b136-44ee99b53e22.json",
+          "keptId": "8865ae32-23b0-4548-b136-44ee99b53e22"
+        },
+        {
+          "file": "/Users/chain/Documents/MyProject/ops-automation/.data/carbone-engine/templates/skill_skill-1778427881400.json",
+          "id": "skill-1778427881400",
+          "reason": "duplicate-templateId",
+          "templateId": "94a4cc59-389e-4966-a2cc-ec099bb74e98",
+          "keptFile": "/Users/chain/Documents/MyProject/ops-automation/.data/carbone-engine/templates/skill_670d9e90-f0fb-4625-98db-274eaaedc3c9.json",
+          "keptId": "670d9e90-f0fb-4625-98db-274eaaedc3c9"
+        },
+        {
+          "file": "/Users/chain/Documents/MyProject/ops-automation/.data/carbone-engine/templates/skill_skill-1778508425285.json",
+          "id": "skill-1778508425285",
+          "reason": "duplicate-templateId",
+          "templateId": "94a4cc59-389e-4966-a2cc-ec099bb74e98",
+          "keptFile": "/Users/chain/Documents/MyProject/ops-automation/.data/carbone-engine/templates/skill_670d9e90-f0fb-4625-98db-274eaaedc3c9.json",
+          "keptId": "670d9e90-f0fb-4625-98db-274eaaedc3c9"
+        },
+        {
+          "file": "/Users/chain/Documents/MyProject/ops-automation/.data/carbone-engine/templates/skill_skill-1778584680699.json",
+          "id": "skill-1778584680699",
+          "reason": "duplicate-templateId",
+          "templateId": "38421f31-10a9-40d1-bdd7-cbd7e003c2c6",
+          "keptFile": "/Users/chain/Documents/MyProject/ops-automation/.data/carbone-engine/templates/skill_724e9136-b775-40f6-bd7c-338aca3f78a6.json",
+          "keptId": "724e9136-b775-40f6-bd7c-338aca3f78a6"
+        },
+        {
+          "file": "/Users/chain/Documents/MyProject/ops-automation/.data/carbone-engine/templates/skill_skill-1778398625906.json",
+          "id": "skill-1778398625906",
+          "reason": "duplicate-templateId",
+          "templateId": "5d2b288c-3af5-47a8-ae9b-6e79594658be",
+          "keptFile": "/Users/chain/Documents/MyProject/ops-automation/.data/carbone-engine/templates/skill_7c0955df-9c33-428c-a1e6-7ad7defa898b.json",
+          "keptId": "7c0955df-9c33-428c-a1e6-7ad7defa898b"
+        },
+        {
+          "file": "/Users/chain/Documents/MyProject/ops-automation/.data/carbone-engine/templates/skill_skill-1776346597208.json",
+          "id": "skill-1776346597208",
+          "reason": "duplicate-templateId",
+          "templateId": "bcdb2288-8205-41d2-bb05-5ce0d556fa61",
+          "keptFile": "/Users/chain/Documents/MyProject/ops-automation/.data/carbone-engine/templates/skill_aadff22d-6050-4bc0-b732-483eba16d38f.json",
+          "keptId": "aadff22d-6050-4bc0-b732-483eba16d38f"
+        },
+        {
+          "file": "/Users/chain/Documents/MyProject/ops-automation/.data/carbone-engine/templates/skill_skill-1778587945721.json",
+          "id": "skill-1778587945721",
+          "reason": "duplicate-templateId",
+          "templateId": "a92d813f-2786-4fd3-84c1-31a9774600d2",
+          "keptFile": "/Users/chain/Documents/MyProject/ops-automation/.data/carbone-engine/templates/skill_c639629f-f1e5-402e-8dc1-cb570b217cae.json",
+          "keptId": "c639629f-f1e5-402e-8dc1-cb570b217cae"
+        },
+        {
+          "file": "/Users/chain/Documents/MyProject/ops-automation/.data/carbone-engine/templates/skill_skill-1778587153830.json",
+          "id": "skill-1778587153830",
+          "reason": "duplicate-templateId",
+          "templateId": "a92d813f-2786-4fd3-84c1-31a9774600d2",
+          "keptFile": "/Users/chain/Documents/MyProject/ops-automation/.data/carbone-engine/templates/skill_c639629f-f1e5-402e-8dc1-cb570b217cae.json",
+          "keptId": "c639629f-f1e5-402e-8dc1-cb570b217cae"
+        },
+        {
+          "file": "/Users/chain/Documents/MyProject/ops-automation/.data/carbone-engine/templates/skill_skill-1778587153518.json",
+          "id": "skill-1778587153518",
+          "reason": "duplicate-templateId",
+          "templateId": "a92d813f-2786-4fd3-84c1-31a9774600d2",
+          "keptFile": "/Users/chain/Documents/MyProject/ops-automation/.data/carbone-engine/templates/skill_c639629f-f1e5-402e-8dc1-cb570b217cae.json",
+          "keptId": "c639629f-f1e5-402e-8dc1-cb570b217cae"
+        },
+        {
+          "file": "/Users/chain/Documents/MyProject/ops-automation/.data/carbone-engine/templates/skill_skill-1778587152862.json",
+          "id": "skill-1778587152862",
+          "reason": "duplicate-templateId",
+          "templateId": "a92d813f-2786-4fd3-84c1-31a9774600d2",
+          "keptFile": "/Users/chain/Documents/MyProject/ops-automation/.data/carbone-engine/templates/skill_c639629f-f1e5-402e-8dc1-cb570b217cae.json",
+          "keptId": "c639629f-f1e5-402e-8dc1-cb570b217cae"
+        },
+        {
+          "file": "/Users/chain/Documents/MyProject/ops-automation/.data/carbone-engine/templates/skill_skill-1778587131998.json",
+          "id": "skill-1778587131998",
+          "reason": "duplicate-templateId",
+          "templateId": "a92d813f-2786-4fd3-84c1-31a9774600d2",
+          "keptFile": "/Users/chain/Documents/MyProject/ops-automation/.data/carbone-engine/templates/skill_c639629f-f1e5-402e-8dc1-cb570b217cae.json",
+          "keptId": "c639629f-f1e5-402e-8dc1-cb570b217cae"
+        },
+        {
+          "file": "/Users/chain/Documents/MyProject/ops-automation/.data/carbone-engine/templates/skill_skill-1778587131760.json",
+          "id": "skill-1778587131760",
+          "reason": "duplicate-templateId",
+          "templateId": "a92d813f-2786-4fd3-84c1-31a9774600d2",
+          "keptFile": "/Users/chain/Documents/MyProject/ops-automation/.data/carbone-engine/templates/skill_c639629f-f1e5-402e-8dc1-cb570b217cae.json",
+          "keptId": "c639629f-f1e5-402e-8dc1-cb570b217cae"
+        },
+        {
+          "file": "/Users/chain/Documents/MyProject/ops-automation/.data/carbone-engine/templates/skill_skill-1778587131504.json",
+          "id": "skill-1778587131504",
+          "reason": "duplicate-templateId",
+          "templateId": "a92d813f-2786-4fd3-84c1-31a9774600d2",
+          "keptFile": "/Users/chain/Documents/MyProject/ops-automation/.data/carbone-engine/templates/skill_c639629f-f1e5-402e-8dc1-cb570b217cae.json",
+          "keptId": "c639629f-f1e5-402e-8dc1-cb570b217cae"
+        },
+        {
+          "file": "/Users/chain/Documents/MyProject/ops-automation/.data/carbone-engine/templates/skill_skill-1778587130718.json",
+          "id": "skill-1778587130718",
+          "reason": "duplicate-templateId",
+          "templateId": "a92d813f-2786-4fd3-84c1-31a9774600d2",
+          "keptFile": "/Users/chain/Documents/MyProject/ops-automation/.data/carbone-engine/templates/skill_c639629f-f1e5-402e-8dc1-cb570b217cae.json",
+          "keptId": "c639629f-f1e5-402e-8dc1-cb570b217cae"
+        },
+        {
+          "file": "/Users/chain/Documents/MyProject/ops-automation/.data/carbone-engine/templates/skill_skill-1778587114634.json",
+          "id": "skill-1778587114634",
+          "reason": "duplicate-templateId",
+          "templateId": "a92d813f-2786-4fd3-84c1-31a9774600d2",
+          "keptFile": "/Users/chain/Documents/MyProject/ops-automation/.data/carbone-engine/templates/skill_c639629f-f1e5-402e-8dc1-cb570b217cae.json",
+          "keptId": "c639629f-f1e5-402e-8dc1-cb570b217cae"
+        },
+        {
+          "file": "/Users/chain/Documents/MyProject/ops-automation/.data/carbone-engine/templates/skill_skill-1778650495581.json",
+          "id": "skill-1778650495581",
+          "reason": "duplicate-templateId",
+          "templateId": "c6b8e3cf-e572-429c-ae25-e187bf371ad4",
+          "keptFile": "/Users/chain/Documents/MyProject/ops-automation/.data/carbone-engine/templates/skill_d104a350-66a8-4f1c-ad21-b458d12233b9.json",
+          "keptId": "d104a350-66a8-4f1c-ad21-b458d12233b9"
+        },
+        {
+          "file": "/Users/chain/Documents/MyProject/ops-automation/.data/carbone-engine/templates/skill_skill-1778508477029.json",
+          "id": "skill-1778508477029",
+          "reason": "duplicate-templateId",
+          "templateId": "5fbd2605-062b-4287-93c7-99e38c66370d",
+          "keptFile": "/Users/chain/Documents/MyProject/ops-automation/.data/carbone-engine/templates/skill_df9402a6-d805-4ecc-9309-081d64026dba.json",
+          "keptId": "df9402a6-d805-4ecc-9309-081d64026dba"
+        }
+      ]
+    }
+  },
+  "outputs": {
+    "scanned": 101,
+    "migrated": 101
+  }
+}

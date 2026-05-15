@@ -52,6 +52,11 @@ export interface WorkflowInputParamDefinition {
   source?: WorkflowInputParamSource;
   type?: WorkflowInputParamType;
   exampleValue?: string | number | boolean;
+  displayName?: string;
+  groupLabel?: string;
+  paramKind?: 'scalar' | 'array';
+  arrayPath?: string;
+  fieldName?: string;
 }
 
 export interface WorkflowDsl {

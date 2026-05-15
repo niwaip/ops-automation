@@ -39,8 +39,29 @@ import { SessionService } from '../modules/redis/session.service';
 import { PlanDraftDTO } from '../interfaces';
 import { PromptDebugSettingsService } from '../modules/debug-settings/prompt-debug-settings.service';
 import { getAuthServiceUrl } from '../config/service-endpoints';
+import { buildDocumentGuideContext } from '../common/document-guide';
+import { resolveFriendlyInputDisplayName } from '../common/input-label';
 
 const fileStore = new Map<string, { fileName: string; mimeType: string; size: number; content: string }>();
+
+type WaitingInputSemanticGroup = {
+  key: string;
+  label: string;
+  kind: 'field' | 'array_group';
+  blocking: boolean;
+  required: boolean;
+  fieldNames?: string[];
+  missingFieldNames?: string[];
+  description?: string;
+};
+
+type WaitingInputSemantic = {
+  mode?: 'field_level' | 'complex_document';
+  previewReady?: boolean;
+  finalReady?: boolean;
+  summary?: string;
+  groupedMissing?: WaitingInputSemanticGroup[];
+};
 
 const tryParseJsonString = (value: unknown): unknown => {
   if (typeof value !== 'string') {
@@ -186,7 +207,10 @@ export class ChatController {
     missingInputs: Array<{
       name: string;
       description?: string;
+      group_label?: string;
+      display_name?: string;
       missing?: boolean;
+      needs_confirmation?: boolean;
     }>;
   }> {
     try {
@@ -209,7 +233,10 @@ export class ChatController {
         .map((item: any) => ({
           name: String(item.name).trim(),
           description: typeof item.description === 'string' ? item.description : undefined,
+          group_label: typeof item.group_label === 'string' ? item.group_label : undefined,
+          display_name: typeof item.display_name === 'string' ? item.display_name : undefined,
           missing: item.missing !== false,
+          needs_confirmation: item.needs_confirmation === true,
         }));
       return {
         waitingStepId: waitingStep?.id,
@@ -224,6 +251,165 @@ export class ChatController {
         missingInputs: [],
       };
     }
+  }
+
+  private extractExecutionSemantic(execution: unknown): WaitingInputSemantic | undefined {
+    if (!execution || typeof execution !== 'object') {
+      return undefined;
+    }
+
+    const record = execution as Record<string, unknown>;
+    const directSemantic = record.semantic;
+    if (directSemantic && typeof directSemantic === 'object' && !Array.isArray(directSemantic)) {
+      return directSemantic as WaitingInputSemantic;
+    }
+
+    const normalizedInput = record.normalizedInput;
+    if (normalizedInput && typeof normalizedInput === 'object' && !Array.isArray(normalizedInput)) {
+      const embeddedSemantic = (normalizedInput as Record<string, unknown>).semantic;
+      if (embeddedSemantic && typeof embeddedSemantic === 'object' && !Array.isArray(embeddedSemantic)) {
+        return embeddedSemantic as WaitingInputSemantic;
+      }
+    }
+
+    return undefined;
+  }
+
+  private formatWaitingInputMessage(input: {
+    executionId?: string;
+    intro?: string;
+    missingInputs: Array<{
+      name: string;
+      description?: string;
+      group_label?: string;
+      display_name?: string;
+      missing?: boolean;
+      needs_confirmation?: boolean;
+    }>;
+    semantic?: WaitingInputSemantic;
+  }): string {
+    const lines: string[] = [input.intro || '任务需要你补充信息后才能继续执行。'];
+    const groupedMissing = Array.isArray(input.semantic?.groupedMissing)
+      ? input.semantic!.groupedMissing.filter((item) => item?.label)
+      : [];
+    const groupedInputs = input.missingInputs.reduce<Map<string, typeof input.missingInputs>>((acc, item) => {
+      const label = typeof item.group_label === 'string' ? item.group_label.trim() : '';
+      if (!label) {
+        return acc;
+      }
+      const existing = acc.get(label) || [];
+      existing.push(item);
+      acc.set(label, existing);
+      return acc;
+    }, new Map());
+
+    if (input.semantic?.summary) {
+      lines.push(input.semantic.summary);
+    }
+
+    if (groupedMissing.length > 0) {
+      lines.push(`缺少业务组：${groupedMissing.map((item) => item.label).join('、')}`);
+    }
+
+    if (groupedInputs.size > 0) {
+      lines.push('请补充以下信息：');
+      groupedInputs.forEach((items, label) => {
+        lines.push(
+          `${label}：${items.map((item) => this.resolveWaitingInputLabel(item)).join('、')}`,
+        );
+      });
+    } else if (input.missingInputs.length > 0) {
+      lines.push(
+        `${groupedMissing.length > 0 ? '字段兜底' : '缺少参数'}：${input.missingInputs.map((item) => this.resolveWaitingInputLabel(item)).join('、')}`,
+      );
+    } else if (groupedMissing.length === 0) {
+      lines.push('请继续补充必要参数。');
+    }
+
+    if (input.semantic) {
+      lines.push(
+        `可预览：${input.semantic.previewReady ? '是' : '否'}；可正式生成：${input.semantic.finalReady ? '是' : '否'}`,
+      );
+    }
+
+    if (input.executionId) {
+      lines.push(`执行单 ID: ${input.executionId}`);
+    }
+
+    return lines.join('\n\n');
+  }
+
+  private resolveWaitingInputLabel(input: {
+    name: string;
+    description?: string;
+    display_name?: string;
+  }): string {
+    return resolveFriendlyInputDisplayName(input);
+  }
+
+  private buildWaitingInputFollowupHint(
+    missingInputs: Array<{ name: string }>,
+    semantic?: WaitingInputSemantic,
+  ): string {
+    const groupedMissing = Array.isArray(semantic?.groupedMissing)
+      ? semantic!.groupedMissing.filter((item) => item?.label)
+      : [];
+
+    if (groupedMissing.length > 0) {
+      return `当前仍缺少多个业务组：${groupedMissing.map((item) => item.label).join('、')}。请优先按业务组补充，例如：“补充标的清单：设备A 10台，设备B 5台；补充交付计划：第一批5月30日交付。”`;
+    }
+
+    return `当前还缺少多个参数：${missingInputs.map((item) => item.name).join('、')}。请继续用自然语言逐项补充（例如：甲方签字用公司名称、乙方签字用公司名称、附件填写无）。`;
+  }
+
+  private formatFieldNameList(fieldNames: string[], limit = 12): string {
+    const normalized = fieldNames
+      .map((item) => String(item || '').trim())
+      .filter(Boolean);
+    if (normalized.length === 0) {
+      return '无';
+    }
+    if (normalized.length <= limit) {
+      return normalized.join('、');
+    }
+    return `${normalized.slice(0, limit).join('、')} 等 ${normalized.length} 项`;
+  }
+
+  private buildWaitingInputSubmissionFeedback(input: {
+    executionId?: string;
+    resolvedFieldNames: string[];
+    remainingMissingInputs: Array<{ name: string }>;
+    semantic?: WaitingInputSemantic;
+  }): string {
+    const lines = ['已提交补充信息。'];
+    const resolvedCount = input.resolvedFieldNames.length;
+    if (resolvedCount > 0) {
+      lines.push(
+        `本次识别到 ${resolvedCount} 个字段：${this.formatFieldNameList(input.resolvedFieldNames)}`,
+      );
+    }
+
+    const groupedMissing = Array.isArray(input.semantic?.groupedMissing)
+      ? input.semantic.groupedMissing.filter((item) => item?.label)
+      : [];
+    if (groupedMissing.length > 0) {
+      lines.push(`仍缺少业务组：${groupedMissing.map((item) => item.label).join('、')}`);
+    }
+
+    if (input.remainingMissingInputs.length > 0) {
+      lines.push(
+        `仍缺少 ${input.remainingMissingInputs.length} 个字段：${this.formatFieldNameList(input.remainingMissingInputs.map((item) => item.name))}`,
+      );
+      lines.push('已保留当前执行单，请继续补充剩余信息。');
+    } else {
+      lines.push('当前缺失字段已补齐，任务将继续执行。');
+    }
+
+    if (input.executionId) {
+      lines.push(`执行单 ID: ${input.executionId}`);
+    }
+
+    return lines.join('\n\n');
   }
 
   private normalizeContentToText(content: string | ContentBlock[]): string {
@@ -357,6 +543,7 @@ export class ChatController {
     authToken?: string,
   ): Promise<{
     name?: string;
+    description?: string;
     paramsSchema?: {
       properties?: Record<string, {
         type: string;
@@ -366,10 +553,12 @@ export class ChatController {
       }>;
       required?: string[];
     };
+    guideContext?: import('../interfaces').DocumentGuideContext;
   } | null> {
     try {
       const response = await axios.get<{
         name?: string;
+        description?: string;
         paramsSchema?: {
           properties?: Record<string, {
             type: string;
@@ -379,10 +568,31 @@ export class ChatController {
           }>;
           required?: string[];
         };
+        apiEndpoints?: {
+          runtimeMetadata?: import('../modules/react-engine/interfaces').SkillRuntimeMetadata;
+        };
+        goal?: string;
+        expectedResult?: string;
+        outputParams?: Record<string, unknown>;
       }>(`${getAuthServiceUrl()}/skills/${skillId}`, {
         headers: authToken ? { Authorization: authToken } : {},
       });
-      return response.data;
+      return {
+        ...response.data,
+        guideContext: buildDocumentGuideContext({
+          enabled:
+            response.data.apiEndpoints?.runtimeMetadata?.sourceType === 'document'
+            || response.data.apiEndpoints?.runtimeMetadata?.sourceType === 'execution_flow_template'
+            || Boolean(response.data.apiEndpoints?.runtimeMetadata?.sourceTemplate?.templateId),
+          skillName: response.data.name,
+          description: response.data.description,
+          goal: response.data.goal,
+          expectedResult: response.data.expectedResult,
+          outputParams: response.data.outputParams,
+          paramsSchema: response.data.paramsSchema as any,
+          runtimeMetadata: response.data.apiEndpoints?.runtimeMetadata,
+        }),
+      };
     } catch (error) {
       this.logger.warn(
         `Failed to load skill schema for ${skillId}: ${error instanceof Error ? error.message : 'unknown'}`,
@@ -434,6 +644,7 @@ export class ChatController {
   private async buildWaitingInputPayload(
     message: string,
     missingInputs: Array<{ name: string }>,
+    semantic?: WaitingInputSemantic,
     skillId?: string,
     authToken?: string,
     originalObjective?: string,
@@ -477,6 +688,7 @@ export class ChatController {
         user_input: plannerStylePrompt,
         modelId,
         params_schema: paramsSchema,
+        guide_context: skill?.guideContext,
         context: {
           mode: 'waiting_input_resume',
           original_objective: originalObjective,
@@ -551,7 +763,7 @@ export class ChatController {
     }
 
     throw new Error(
-      `当前还缺少多个参数：${missingInputs.map((item) => item.name).join('、')}。请继续用自然语言逐项补充（例如：甲方签字用公司名称、乙方签字用公司名称、附件填写无）。`,
+      this.buildWaitingInputFollowupHint(missingInputs, semantic),
     );
   }
 
@@ -962,8 +1174,10 @@ export class ChatController {
         const execution = await this.controlPlaneClient.getExecution<{
           skillId?: string;
           status: string;
+          semantic?: WaitingInputSemantic;
           normalizedInput?: {
             objective?: string;
+            semantic?: WaitingInputSemantic;
           };
         }>(
           executionId,
@@ -993,6 +1207,7 @@ export class ChatController {
               const waitingInputPayload = await this.buildWaitingInputPayload(
                 body.message,
                 waitingInputDetails.missingInputs,
+                this.extractExecutionSemantic(execution),
                 execution.skillId,
                 authToken,
                 typeof execution.normalizedInput?.objective === 'string'
@@ -1014,6 +1229,49 @@ export class ChatController {
                   userRoles: context.userRoles,
                 }),
               );
+
+              const latestStateEvent = await this.buildLatestExecutionStateEvent(
+                executionId,
+                authToken,
+                {
+                  userId: context.userId,
+                  userRoles: context.userRoles,
+                },
+              );
+
+              if (latestStateEvent?.type === StreamEventType.WAITING_INPUT) {
+                const waitingPayload =
+                  latestStateEvent.data
+                  && typeof latestStateEvent.data === 'object'
+                  && !Array.isArray(latestStateEvent.data)
+                    ? latestStateEvent.data as {
+                        missingInputs?: Array<{
+                          name: string;
+                          group_label?: string;
+                          display_name?: string;
+                          needs_confirmation?: boolean;
+                        }>;
+                        semantic?: WaitingInputSemantic;
+                      }
+                    : {};
+                const remainingMissingInputs = Array.isArray(waitingPayload.missingInputs)
+                  ? waitingPayload.missingInputs
+                  : [];
+                const semantic = waitingPayload.semantic;
+
+                yield {
+                  type: StreamEventType.THOUGHT,
+                  content: this.buildWaitingInputSubmissionFeedback({
+                    executionId,
+                    resolvedFieldNames: Object.keys(waitingInputPayload.input || {}),
+                    remainingMissingInputs,
+                    semantic,
+                  }),
+                };
+
+                yield latestStateEvent;
+                return;
+              }
 
               yield {
                 type: StreamEventType.THOUGHT,
@@ -1118,6 +1376,7 @@ export class ChatController {
       );
 
       if (missingInputs.length > 0) {
+        const waitingInputSemantic = planDraft.semantic;
         yield {
           type: StreamEventType.THOUGHT,
           content: `已识别到技能: ${planDraft.skill_match.skill_name}，正在创建可恢复的执行单...`,
@@ -1149,12 +1408,18 @@ export class ChatController {
 
           yield {
             type: StreamEventType.RESULT,
-            content: `已创建等待补充信息的执行单。执行单 ID: ${response.id}\n\n${planDraft.summary}`,
+            content: this.formatWaitingInputMessage({
+              executionId: response.id,
+              intro: '已创建等待补充信息的执行单。',
+              missingInputs,
+              semantic: waitingInputSemantic,
+            }),
             data: {
               executionId: response.id,
               status: CONTROL_PLANE_EXECUTION_STATUS.WAITING_INPUT,
               hasBusinessResult: false,
               missingInputs,
+              semantic: waitingInputSemantic,
               plan: planDraft,
               usage: planDraft.usage,
               ...(plannerPromptDebug ? { promptDebug: plannerPromptDebug } : {}),
@@ -1178,11 +1443,16 @@ export class ChatController {
 
         yield {
           type: StreamEventType.WAITING_INPUT,
-          content: `已识别到技能 ${planDraft.skill_match.skill_name}，但还缺少必要信息：${missingInputs.map((input) => input.name).join('、')}。\n\n请先补充后再继续。`,
+          content: this.formatWaitingInputMessage({
+            intro: `已识别到技能 ${planDraft.skill_match.skill_name}，但还缺少必要信息。`,
+            missingInputs,
+            semantic: waitingInputSemantic,
+          }),
           data: {
             status: CONTROL_PLANE_EXECUTION_STATUS.WAITING_INPUT,
             hasBusinessResult: false,
             missingInputs,
+            semantic: waitingInputSemantic,
             plan: planDraft,
             ...(plannerPromptDebug ? { promptDebug: plannerPromptDebug } : {}),
           },
@@ -1350,7 +1620,10 @@ export class ChatController {
           requiredInputs?: Array<{
             name?: string;
             description?: string;
+            group_label?: string;
+            display_name?: string;
             missing?: boolean;
+            needs_confirmation?: boolean;
           }>;
           };
       }>(executionId, this.buildControlPlaneRequestOptions(authToken, user));
@@ -1370,16 +1643,20 @@ export class ChatController {
       if (status === CONTROL_PLANE_EXECUTION_STATUS.WAITING_INPUT) {
         const waitingInputDetails = await this.loadWaitingInputDetails(executionId, authToken, user);
         const missingInputs = waitingInputDetails.missingInputs;
+        const semantic = this.extractExecutionSemantic(execution);
         return {
           type: StreamEventType.WAITING_INPUT,
-          content: missingInputs.length > 0
-            ? `任务需要你补充信息后才能继续执行。\n\n缺少参数：${missingInputs.map((item) => item.name).join('、')}\n\n执行单 ID: ${executionId}`
-            : `任务需要你补充信息后才能继续。\n\n执行单 ID: ${executionId}`,
+          content: this.formatWaitingInputMessage({
+            executionId,
+            missingInputs,
+            semantic,
+          }),
           data: {
             executionId,
             status,
             hasBusinessResult: false,
             missingInputs,
+            semantic,
             usage,
           },
         };
@@ -1555,16 +1832,23 @@ export class ChatController {
           const missingInputs = Array.isArray(payload.requiredInputs)
             ? payload.requiredInputs.filter((item: any) => item?.missing)
             : [];
+          const semantic = payload.semantic && typeof payload.semantic === 'object' && !Array.isArray(payload.semantic)
+            ? payload.semantic as WaitingInputSemantic
+            : undefined;
           return {
             type: StreamEventType.WAITING_INPUT,
-            content: missingInputs.length > 0
-              ? `已识别到任务仍需补充信息，请继续输入后再执行。\n\n缺少参数：${missingInputs.map((item: any) => item.name).join('、')}\n\n执行单 ID: ${event.executionId}`
-              : `已识别到任务仍需补充信息，请继续输入后再执行。\n\n执行单 ID: ${event.executionId}`,
+            content: this.formatWaitingInputMessage({
+              executionId: event.executionId,
+              intro: '已识别到任务仍需补充信息，请继续输入后再执行。',
+              missingInputs,
+              semantic,
+            }),
             data: {
               executionId: event.executionId,
               status: payload.newStatus,
               hasBusinessResult: false,
               missingInputs,
+              semantic,
             },
           };
         }
@@ -1626,14 +1910,21 @@ export class ChatController {
         const missingInputs = Array.isArray(payload.requiredInputs)
           ? payload.requiredInputs.filter((item: any) => item?.missing)
           : [];
+        const semantic = payload.semantic && typeof payload.semantic === 'object' && !Array.isArray(payload.semantic)
+          ? payload.semantic as WaitingInputSemantic
+          : undefined;
         return {
           type: StreamEventType.WAITING_INPUT,
-          content: missingInputs.length > 0
-            ? `⏳ 任务需要您的进一步操作或提供信息以继续执行。\n\n缺少参数：${missingInputs.map((item: any) => item.name).join('、')}`
-            : `⏳ 任务需要您的进一步操作或提供信息以继续执行。`,
+          content: this.formatWaitingInputMessage({
+            intro: '⏳ 任务需要您的进一步操作或提供信息以继续执行。',
+            missingInputs,
+            semantic,
+            executionId: event.executionId,
+          }),
           data: {
             executionId: event.executionId,
             missingInputs,
+            semantic,
           },
         };
       }

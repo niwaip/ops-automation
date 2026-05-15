@@ -15,7 +15,9 @@ describe('ChatController control-plane integration', () => {
     const modelService = {
       stripThinkingTags: jest.fn((value: string) => value),
     };
-    const recognizerService = {};
+    const recognizerService = {
+      recognizeParams: jest.fn(),
+    };
     const reactEngineService = {
       execute: jest.fn(),
     };
@@ -43,6 +45,7 @@ describe('ChatController control-plane integration', () => {
     return {
       controller,
       controlPlaneClient,
+      recognizerService,
       plannerService,
     };
   };
@@ -50,19 +53,24 @@ describe('ChatController control-plane integration', () => {
   it('submits waiting_input payload through control-plane client and resumes observation', async () => {
     const { controller, controlPlaneClient } = createController();
 
-    controlPlaneClient.getExecution.mockResolvedValue({
-      skillId: 'skill-1',
-      status: 'waiting_input',
-      normalizedInput: {
-        objective: 'Collect user info',
-        requiredInputs: [
-          {
-            name: 'url',
-            missing: true,
-          },
-        ],
-      },
-    });
+    controlPlaneClient.getExecution
+      .mockResolvedValueOnce({
+        skillId: 'skill-1',
+        status: 'waiting_input',
+        normalizedInput: {
+          objective: 'Collect user info',
+          requiredInputs: [
+            {
+              name: 'url',
+              missing: true,
+            },
+          ],
+        },
+      })
+      .mockResolvedValueOnce({
+        id: 'execution-1',
+        status: 'running',
+      });
     controlPlaneClient.getExecutionSteps.mockResolvedValue([
       {
         id: 'step-1',
@@ -156,6 +164,224 @@ describe('ChatController control-plane integration', () => {
     ]);
   });
 
+  it('reports resolved and remaining fields when waiting_input is only partially filled', async () => {
+    const { controller, controlPlaneClient } = createController();
+
+    controlPlaneClient.getExecution
+      .mockResolvedValueOnce({
+        id: 'execution-partial-1',
+        skillId: 'skill-contract',
+        status: 'waiting_input',
+        normalizedInput: {
+          objective: '生成采购合同',
+          requiredInputs: [
+            { name: 'info.partyA', missing: true },
+            { name: 'info.partyB', missing: true },
+          ],
+        },
+      })
+      .mockResolvedValueOnce({
+        id: 'execution-partial-1',
+        status: 'waiting_input',
+      });
+    controlPlaneClient.getExecutionSteps
+      .mockResolvedValueOnce([
+        {
+          id: 'step-partial-1',
+          status: 'waiting_input',
+          type: 'input_collection',
+          inputJson: {
+            requiredInputs: [
+              {
+                name: 'info.partyA',
+                description: '甲方名称',
+                missing: true,
+              },
+              {
+                name: 'info.partyB',
+                description: '乙方名称',
+                missing: true,
+              },
+            ],
+          },
+        },
+      ])
+      .mockResolvedValueOnce([
+        {
+          id: 'step-partial-1',
+          status: 'waiting_input',
+          type: 'input_collection',
+          inputJson: {
+            requiredInputs: [
+              {
+                name: 'info.partyB',
+                description: '乙方名称',
+                missing: true,
+              },
+            ],
+          },
+        },
+      ]);
+    controlPlaneClient.submitExecutionInput.mockResolvedValue({
+      id: 'execution-partial-1',
+      status: 'waiting_input',
+    });
+
+    const events: Array<{ type: StreamEventType; content: string }> = [];
+    for await (const event of (controller as any).handleTaskMode(
+      {
+        message: '{"info.partyA":"星海智造科技有限公司"}',
+        executionId: 'execution-partial-1',
+      },
+      {
+        sessionId: 'session-partial-1',
+        userId: 'user-partial-1',
+        userRoles: ['employee'],
+        traceId: 'trace-partial-1',
+        history: [],
+        executionId: 'execution-partial-1',
+      },
+      'Bearer token-partial-1',
+    )) {
+      events.push({ type: event.type, content: event.content });
+    }
+
+    expect(events).toEqual([
+      {
+        type: StreamEventType.THOUGHT,
+        content: '正在提交您补充的信息...',
+      },
+      {
+        type: StreamEventType.THOUGHT,
+        content: '已提交补充信息。\n\n本次识别到 1 个字段：info.partyA\n\n仍缺少 1 个字段：info.partyB\n\n已保留当前执行单，请继续补充剩余信息。\n\n执行单 ID: execution-partial-1',
+      },
+      {
+        type: StreamEventType.WAITING_INPUT,
+        content: '任务需要你补充信息后才能继续执行。\n\n缺少参数：乙方名称\n\n执行单 ID: execution-partial-1',
+      },
+    ]);
+  });
+
+  it('passes document guide context into recognizer during waiting_input resume', async () => {
+    const { controller, controlPlaneClient, recognizerService } = createController();
+
+    controlPlaneClient.getExecution
+      .mockResolvedValueOnce({
+        id: 'execution-doc-1',
+        skillId: 'skill-doc-1',
+        status: 'waiting_input',
+        normalizedInput: {
+          objective: '生成采购合同',
+          requiredInputs: [
+            { name: 'info.partyA', missing: true },
+          ],
+        },
+      })
+      .mockResolvedValueOnce({
+        id: 'execution-doc-1',
+        status: 'running',
+      });
+    controlPlaneClient.getExecutionSteps.mockResolvedValue([
+      {
+        id: 'step-doc-1',
+        status: 'waiting_input',
+        type: 'input_collection',
+        inputJson: {
+          requiredInputs: [
+            {
+              name: 'info.partyA',
+              description: '甲方名称',
+              missing: true,
+            },
+          ],
+        },
+      },
+    ]);
+    controlPlaneClient.submitExecutionInput.mockResolvedValue({
+      id: 'execution-doc-1',
+      status: 'running',
+    });
+    recognizerService.recognizeParams.mockResolvedValue({
+      params: {
+        'info.partyA': '星海智造科技有限公司',
+      },
+      confidence: 0.93,
+    });
+
+    jest.spyOn(controller as any, 'loadSkillSchema').mockResolvedValue({
+      name: '采购合同渲染',
+      paramsSchema: {
+        properties: {
+          'info.partyA': {
+            type: 'string',
+            description: '甲方名称',
+          },
+        },
+        required: ['info.partyA'],
+      },
+      guideContext: {
+        mode: 'document_skill',
+        templateOverview: '这是一个采购合同文档模板。',
+        paramCollectionGuidance: '优先识别合同主体信息。',
+        outputExample: {
+          info: {
+            partyA: '星海智造科技有限公司',
+          },
+        },
+      },
+    });
+    jest.spyOn(controller as any, 'observeExecution').mockImplementation(async function* () {
+      yield {
+        type: StreamEventType.RESULT,
+        content: '任务继续执行',
+      };
+    });
+
+    const events: Array<{ type: StreamEventType; content: string }> = [];
+    for await (const event of (controller as any).handleTaskMode(
+      {
+        message: '甲方是星海智造科技有限公司',
+        executionId: 'execution-doc-1',
+      },
+      {
+        sessionId: 'session-doc-1',
+        userId: 'user-doc-1',
+        userRoles: ['employee'],
+        traceId: 'trace-doc-1',
+        history: [],
+        executionId: 'execution-doc-1',
+      },
+      'Bearer token-doc-1',
+    )) {
+      events.push({ type: event.type, content: event.content });
+    }
+
+    expect(recognizerService.recognizeParams).toHaveBeenCalledWith(
+      expect.objectContaining({
+        template_id: 'skill-doc-1',
+        guide_context: expect.objectContaining({
+          mode: 'document_skill',
+          templateOverview: expect.stringContaining('采购合同'),
+          paramCollectionGuidance: expect.stringContaining('合同主体'),
+        }),
+      }),
+    );
+    expect(events).toEqual([
+      {
+        type: StreamEventType.THOUGHT,
+        content: '正在提交您补充的信息...',
+      },
+      {
+        type: StreamEventType.THOUGHT,
+        content: '信息已提交，任务继续执行。',
+      },
+      {
+        type: StreamEventType.RESULT,
+        content: '任务继续执行',
+      },
+    ]);
+  });
+
   it('returns immediate waiting_input state without opening event stream', async () => {
     const { controller, controlPlaneClient } = createController();
 
@@ -197,13 +423,144 @@ describe('ChatController control-plane integration', () => {
     expect(events).toEqual([
       {
         type: StreamEventType.WAITING_INPUT,
-        content: '任务需要你补充信息后才能继续执行。\n\n缺少参数：partyA\n\n执行单 ID: execution-2',
+        content: '任务需要你补充信息后才能继续执行。\n\n缺少参数：甲方公司名称\n\n执行单 ID: execution-2',
         data: {
           executionId: 'execution-2',
           status: 'waiting_input',
           hasBusinessResult: false,
-          missingInputs: [{ name: 'partyA', description: '甲方公司名称', missing: true }],
+          missingInputs: [{
+            name: 'partyA',
+            description: '甲方公司名称',
+            group_label: undefined,
+            display_name: undefined,
+            missing: true,
+            needs_confirmation: false,
+          }],
+          semantic: undefined,
           usage: { total_tokens: 12 },
+        },
+      },
+    ]);
+  });
+
+  it('prefers semantic groupedMissing when waiting_input execution contains business-group summary', async () => {
+    const { controller, controlPlaneClient } = createController();
+
+    controlPlaneClient.getExecution.mockResolvedValue({
+      id: 'execution-semantic-1',
+      status: 'waiting_input',
+      usage: { total_tokens: 18 },
+      semantic: {
+        mode: 'complex_document',
+        previewReady: false,
+        finalReady: false,
+        summary: '文档仍缺少 2 个关键业务组。',
+        groupedMissing: [
+          {
+            key: 'items',
+            label: '标的清单',
+            kind: 'array_group',
+            blocking: true,
+            required: true,
+            missingFieldNames: ['items[].deviceName', 'items[].quantity'],
+          },
+          {
+            key: 'deliveryItems',
+            label: '交付计划',
+            kind: 'array_group',
+            blocking: true,
+            required: true,
+            missingFieldNames: ['deliveryItems[].date'],
+          },
+        ],
+      },
+    });
+    controlPlaneClient.getExecutionSteps.mockResolvedValue([
+      {
+        id: 'step-input-semantic-1',
+        type: 'input_collection',
+        status: 'waiting_input',
+        inputJson: {
+          requiredInputs: [
+            {
+              name: 'items[].deviceName',
+              description: '设备名称',
+              missing: true,
+            },
+            {
+              name: 'deliveryItems[].date',
+              description: '交付日期',
+              missing: true,
+            },
+          ],
+        },
+      },
+    ]);
+
+    const events = [];
+    for await (const event of (controller as any).observeExecution(
+      'execution-semantic-1',
+      'Bearer token-semantic',
+      {
+        userId: 'user-semantic',
+        userRoles: ['employee'],
+      },
+    )) {
+      events.push(event);
+    }
+
+    expect(controlPlaneClient.streamExecutionEvents).not.toHaveBeenCalled();
+    expect(events).toEqual([
+      {
+        type: StreamEventType.WAITING_INPUT,
+        content: '任务需要你补充信息后才能继续执行。\n\n文档仍缺少 2 个关键业务组。\n\n缺少业务组：标的清单、交付计划\n\n字段兜底：设备名称、交付日期\n\n可预览：否；可正式生成：否\n\n执行单 ID: execution-semantic-1',
+        data: {
+          executionId: 'execution-semantic-1',
+          status: 'waiting_input',
+          hasBusinessResult: false,
+          missingInputs: [
+            {
+              name: 'items[].deviceName',
+              description: '设备名称',
+              group_label: undefined,
+              display_name: undefined,
+              missing: true,
+              needs_confirmation: false,
+            },
+            {
+              name: 'deliveryItems[].date',
+              description: '交付日期',
+              group_label: undefined,
+              display_name: undefined,
+              missing: true,
+              needs_confirmation: false,
+            },
+          ],
+          semantic: {
+            mode: 'complex_document',
+            previewReady: false,
+            finalReady: false,
+            summary: '文档仍缺少 2 个关键业务组。',
+            groupedMissing: [
+              {
+                key: 'items',
+                label: '标的清单',
+                kind: 'array_group',
+                blocking: true,
+                required: true,
+                missingFieldNames: ['items[].deviceName', 'items[].quantity'],
+              },
+              {
+                key: 'deliveryItems',
+                label: '交付计划',
+                kind: 'array_group',
+                blocking: true,
+                required: true,
+                missingFieldNames: ['deliveryItems[].date'],
+              },
+            ],
+          },
+          usage: { total_tokens: 18 },
         },
       },
     ]);

@@ -122,8 +122,11 @@ export interface CompileResponse extends TemplateJSON {}
 
 export interface ListTemplatesQuery {
   status?: TemplateStatus;
-  page?: number;
-  limit?: number;
+  excludeDraft?: boolean | string;
+  page?: number | string;
+  limit?: number | string;
+  pageSize?: number | string;
+  search?: string;
 }
 
 export interface ListTemplatesResponse {

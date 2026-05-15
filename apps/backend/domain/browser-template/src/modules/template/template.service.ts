@@ -1,17 +1,33 @@
-import { Injectable, NotFoundException, BadRequestException, ConflictException } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import { v4 as uuidv4 } from 'uuid';
-import { TemplateEntity } from './template.entity';
+import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { CreateTemplateDto, UpdateTemplateDto, PublishTemplateDto } from './template.dto';
 import { TemplateJSON, ListTemplatesQuery, ListTemplatesResponse } from '../../types/template.types';
 import { TemplateValidator } from '../../validators/template.validator';
+import { PrismaService } from '../../prisma/prisma.service';
+
+type DbTemplateStatus = 'DRAFT' | 'REVIEW' | 'PUBLISHED' | 'DEPRECATED' | 'REVOKED';
+
+type TemplateRecord = {
+  id: string;
+  name: string;
+  version: string;
+  status: DbTemplateStatus;
+  description: string | null;
+  paramsSchema: unknown;
+  steps: unknown;
+  guards: unknown;
+  config: unknown;
+  createdBy: string;
+  reviewedBy: string | null;
+  publishedAt: Date | null;
+  createdAt: Date;
+  updatedAt: Date;
+  deprecatedAt: Date | null;
+};
 
 @Injectable()
 export class TemplateService {
   constructor(
-    @InjectRepository(TemplateEntity)
-    private readonly templateRepository: Repository<TemplateEntity>,
+    private readonly prisma: PrismaService,
     private readonly templateValidator: TemplateValidator,
   ) {}
 
@@ -23,9 +39,9 @@ export class TemplateService {
     const baseName = dto.name;
 
     // Auto-increment version if template with same name already exists
-    const existing = await this.templateRepository.findOne({
+    const existing = await this.prisma.template.findFirst({
       where: { name: baseName, version },
-      order: { created_at: 'DESC' },
+      orderBy: { createdAt: 'desc' },
     });
 
     if (existing) {
@@ -35,7 +51,7 @@ export class TemplateService {
       version = `${versionParts[0]}.${versionParts[1]}.${patchVersion}`;
 
       // Check again with new version
-      const existingWithNewVersion = await this.templateRepository.findOne({
+      const existingWithNewVersion = await this.prisma.template.findFirst({
         where: { name: baseName, version },
       });
 
@@ -47,25 +63,32 @@ export class TemplateService {
     }
 
     // Validate template structure before saving
-    const entityToValidate = this.templateRepository.create({
-      id: uuidv4(), // Generate UUID for validation
+    const entityToValidate: TemplateRecord = {
+      id: 'validation-check',
       name: baseName,
       version,
-      description: dto.description,
-      params_schema: dto.params_schema || { type: 'object', properties: {}, required: [] },
+      description: dto.description ?? null,
+      paramsSchema: dto.params_schema || this.getDefaultParamsSchema(),
       steps: dto.steps || [],
       guards: dto.guards || [],
       config: dto.config || {},
-      created_by: dto.created_by,
+      createdBy: dto.created_by,
+      reviewedBy: null,
+      publishedAt: null,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      deprecatedAt: null,
       status: 'DRAFT',
-    });
+    };
     const templateJSON = this.toJSON(entityToValidate);
     const validation = this.templateValidator.validate(templateJSON);
     if (!validation.valid) {
       throw new BadRequestException(`Template validation failed: ${validation.errors.join(', ')}`);
     }
 
-    const saved = await this.templateRepository.save(entityToValidate);
+    const saved = await this.prisma.template.create({
+      data: this.buildCreateData(dto, version),
+    });
     return this.toJSON(saved);
   }
 
@@ -73,24 +96,28 @@ export class TemplateService {
    * List templates with pagination and filtering
    */
   async list(query: ListTemplatesQuery): Promise<ListTemplatesResponse> {
-    const page = query.page || 1;
-    const limit = query.limit || 20;
+    const page = this.parsePositiveInt(query.page, 1);
+    const limit = this.parsePositiveInt(query.limit ?? query.pageSize, 20);
     const skip = (page - 1) * limit;
+    const excludeDraft = query.excludeDraft === true || query.excludeDraft === 'true';
+    const where = query.status
+      ? { status: query.status }
+      : excludeDraft
+        ? { status: { not: 'DRAFT' as const } }
+        : undefined;
 
-    const qb = this.templateRepository.createQueryBuilder('template');
-
-    if (query.status) {
-      qb.where('template.status = :status', { status: query.status });
-    }
-
-    qb.orderBy('template.created_at', 'DESC')
-      .skip(skip)
-      .take(limit);
-
-    const [templates, total] = await qb.getManyAndCount();
+    const [templates, total] = await this.prisma.$transaction([
+      this.prisma.template.findMany({
+        where,
+        orderBy: { createdAt: 'desc' },
+        skip,
+        take: limit,
+      }),
+      this.prisma.template.count({ where }),
+    ]);
 
     return {
-      templates: templates.map((template) => this.toJSON(template)),
+      templates: templates.map((template: TemplateRecord) => this.toJSON(template)),
       total,
       page,
       limit,
@@ -101,7 +128,7 @@ export class TemplateService {
    * Get a template by ID
    */
   async get(id: string): Promise<TemplateJSON> {
-    const template = await this.templateRepository.findOne({ where: { id } });
+    const template = await this.prisma.template.findUnique({ where: { id } });
     if (!template) {
       throw new NotFoundException(`Template with ID "${id}" not found`);
     }
@@ -112,7 +139,7 @@ export class TemplateService {
    * Update a template
    */
   async update(id: string, dto: UpdateTemplateDto): Promise<TemplateJSON> {
-    const template = await this.templateRepository.findOne({ where: { id } });
+    const template = await this.prisma.template.findUnique({ where: { id } });
     if (!template) {
       throw new NotFoundException(`Template with ID "${id}" not found`);
     }
@@ -122,22 +149,27 @@ export class TemplateService {
       throw new BadRequestException(`Cannot update template with status "${template.status}". Only DRAFT templates can be modified.`);
     }
 
-    // Merge updates
-    if (dto.name) template.name = dto.name;
-    if (dto.version) template.version = dto.version;
-    if (dto.description) template.description = dto.description;
-    if (dto.params_schema) template.params_schema = dto.params_schema;
-    if (dto.steps) template.steps = dto.steps;
-    if (dto.guards) template.guards = dto.guards;
-    if (dto.config) template.config = dto.config;
+    const mergedTemplate: TemplateRecord = {
+      ...template,
+      name: dto.name || template.name,
+      version: dto.version || template.version,
+      description: dto.description || template.description,
+      paramsSchema: dto.params_schema || template.paramsSchema,
+      steps: dto.steps || template.steps,
+      guards: dto.guards || template.guards,
+      config: dto.config || template.config,
+    };
 
     // Validate updated template
-    const validation = this.templateValidator.validate(this.toJSON(template));
+    const validation = this.templateValidator.validate(this.toJSON(mergedTemplate));
     if (!validation.valid) {
       throw new BadRequestException(`Template validation failed: ${validation.errors.join(', ')}`);
     }
 
-    const saved = await this.templateRepository.save(template);
+    const saved = await this.prisma.template.update({
+      where: { id },
+      data: this.buildUpdateData(dto),
+    });
     return this.toJSON(saved);
   }
 
@@ -145,7 +177,7 @@ export class TemplateService {
    * Delete a template (only DRAFT or DEPRECATED)
    */
   async delete(id: string): Promise<void> {
-    const template = await this.templateRepository.findOne({ where: { id } });
+    const template = await this.prisma.template.findUnique({ where: { id } });
     if (!template) {
       throw new NotFoundException(`Template with ID "${id}" not found`);
     }
@@ -154,14 +186,14 @@ export class TemplateService {
       throw new BadRequestException(`Cannot delete template with status "${template.status}"`);
     }
 
-    await this.templateRepository.remove(template);
+    await this.prisma.template.delete({ where: { id } });
   }
 
   /**
    * Submit template for review (DRAFT -> REVIEW)
    */
   async submitForReview(id: string): Promise<TemplateJSON> {
-    const template = await this.templateRepository.findOne({ where: { id } });
+    const template = await this.prisma.template.findUnique({ where: { id } });
     if (!template) {
       throw new NotFoundException(`Template with ID "${id}" not found`);
     }
@@ -170,8 +202,10 @@ export class TemplateService {
       throw new BadRequestException(`Cannot submit for review. Current status is "${template.status}", expected DRAFT`);
     }
 
-    template.status = 'REVIEW';
-    const saved = await this.templateRepository.save(template);
+    const saved = await this.prisma.template.update({
+      where: { id },
+      data: { status: 'REVIEW' },
+    });
     return this.toJSON(saved);
   }
 
@@ -179,7 +213,7 @@ export class TemplateService {
    * Publish template (REVIEW -> PUBLISHED)
    */
   async publish(id: string, dto: PublishTemplateDto): Promise<TemplateJSON> {
-    const template = await this.templateRepository.findOne({ where: { id } });
+    const template = await this.prisma.template.findUnique({ where: { id } });
     if (!template) {
       throw new NotFoundException(`Template with ID "${id}" not found`);
     }
@@ -194,11 +228,14 @@ export class TemplateService {
       throw new BadRequestException(`Template validation failed before publishing: ${validation.errors.join(', ')}`);
     }
 
-    template.status = 'PUBLISHED';
-    template.reviewed_by = dto.reviewed_by;
-    template.published_at = new Date();
-
-    const saved = await this.templateRepository.save(template);
+    const saved = await this.prisma.template.update({
+      where: { id },
+      data: {
+        status: 'PUBLISHED',
+        reviewedBy: dto.reviewed_by,
+        publishedAt: new Date(),
+      },
+    });
     return this.toJSON(saved);
   }
 
@@ -206,7 +243,7 @@ export class TemplateService {
    * Deprecate template (PUBLISHED -> DEPRECATED)
    */
   async deprecate(id: string): Promise<TemplateJSON> {
-    const template = await this.templateRepository.findOne({ where: { id } });
+    const template = await this.prisma.template.findUnique({ where: { id } });
     if (!template) {
       throw new NotFoundException(`Template with ID "${id}" not found`);
     }
@@ -215,10 +252,13 @@ export class TemplateService {
       throw new BadRequestException(`Cannot deprecate. Current status is "${template.status}", expected PUBLISHED`);
     }
 
-    template.status = 'DEPRECATED';
-    template.deprecated_at = new Date();
-
-    const saved = await this.templateRepository.save(template);
+    const saved = await this.prisma.template.update({
+      where: { id },
+      data: {
+        status: 'DEPRECATED',
+        deprecatedAt: new Date(),
+      },
+    });
     return this.toJSON(saved);
   }
 
@@ -226,43 +266,82 @@ export class TemplateService {
    * Revoke template (any status -> REVOKED)
    */
   async revoke(id: string): Promise<TemplateJSON> {
-    const template = await this.templateRepository.findOne({ where: { id } });
+    const template = await this.prisma.template.findUnique({ where: { id } });
     if (!template) {
       throw new NotFoundException(`Template with ID "${id}" not found`);
     }
 
-    template.status = 'REVOKED';
-    const saved = await this.templateRepository.save(template);
+    const saved = await this.prisma.template.update({
+      where: { id },
+      data: { status: 'REVOKED' },
+    });
     return this.toJSON(saved);
   }
 
   /**
    * Convert entity to JSON format
    */
-  private toJSON(entity: TemplateEntity): TemplateJSON {
-    const createdAt = entity.created_at?.toISOString() || new Date().toISOString();
-    const updatedAt = entity.updated_at?.toISOString() || new Date().toISOString();
+  private buildCreateData(dto: CreateTemplateDto, version: string) {
+    return {
+      name: dto.name,
+      version,
+      description: dto.description,
+      paramsSchema: (dto.params_schema || this.getDefaultParamsSchema()) as unknown,
+      steps: (dto.steps || []) as unknown,
+      guards: (dto.guards || []) as unknown,
+      config: (dto.config || {}) as unknown,
+      createdBy: dto.created_by,
+      status: 'DRAFT' as const,
+    } as any;
+  }
+
+  private buildUpdateData(dto: UpdateTemplateDto) {
+    const data: Record<string, unknown> = {};
+
+    if (dto.name) data.name = dto.name;
+    if (dto.version) data.version = dto.version;
+    if (dto.description) data.description = dto.description;
+    if (dto.params_schema) data.paramsSchema = dto.params_schema as unknown;
+    if (dto.steps) data.steps = dto.steps as unknown;
+    if (dto.guards) data.guards = dto.guards as unknown;
+    if (dto.config) data.config = dto.config as unknown;
+
+    return data as any;
+  }
+
+  private parsePositiveInt(value: number | string | undefined, fallback: number): number {
+    const parsed = Number(value);
+    return Number.isInteger(parsed) && parsed > 0 ? parsed : fallback;
+  }
+
+  private getDefaultParamsSchema() {
+    return { type: 'object' as const, properties: {}, required: [] as string[] };
+  }
+
+  private toJSON(entity: TemplateRecord): TemplateJSON {
+    const createdAt = entity.createdAt?.toISOString() || new Date().toISOString();
+    const updatedAt = entity.updatedAt?.toISOString() || new Date().toISOString();
     return {
       id: entity.id,
       name: entity.name,
       version: entity.version,
       status: entity.status,
-      description: entity.description,
-      params_schema: entity.params_schema,
-      steps: entity.steps,
-      guards: entity.guards || [],
-      config: entity.config || {},
-      created_by: entity.created_by,
-      reviewed_by: entity.reviewed_by || null,
-      published_at: entity.published_at?.toISOString() || null,
+      description: entity.description || undefined,
+      params_schema: (entity.paramsSchema as TemplateJSON['params_schema']) || this.getDefaultParamsSchema(),
+      steps: (entity.steps as TemplateJSON['steps']) || [],
+      guards: (entity.guards as TemplateJSON['guards']) || [],
+      config: (entity.config as TemplateJSON['config']) || {},
+      created_by: entity.createdBy,
+      reviewed_by: entity.reviewedBy || null,
+      published_at: entity.publishedAt?.toISOString() || null,
       created_at: createdAt,
       updated_at: updatedAt,
-      deprecated_at: entity.deprecated_at?.toISOString() || null,
+      deprecated_at: entity.deprecatedAt?.toISOString() || null,
       metadata: {
-        created_by: entity.created_by,
+        created_by: entity.createdBy,
         created_at: createdAt,
         updated_at: updatedAt,
-        description: entity.description,
+        description: entity.description || undefined,
       },
     };
   }

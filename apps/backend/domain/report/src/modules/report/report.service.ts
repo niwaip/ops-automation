@@ -1,9 +1,7 @@
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Prisma } from '@prisma/client';
 import Redis from 'ioredis';
 import axios from 'axios';
-import { ReportEntity } from './report.entity';
 import { TemplateService } from '../template/template.service';
 import { GeneratorService } from '../generator/generator.service';
 import { AnalyzerService } from '../analyzer/analyzer.service';
@@ -16,7 +14,23 @@ import {
   StepResult,
   ValidationResult,
   ReportSection,
+  ReportTemplateDTO,
 } from '../../interfaces';
+import { PrismaService } from '../../prisma/prisma.service';
+
+type ReportRecord = {
+  id: string;
+  templateId: string;
+  sessionId: string;
+  status: string;
+  resultFile: string | null;
+  aiAnalysis: unknown;
+  validationResults: unknown;
+  notifications: unknown;
+  error: string | null;
+  createdAt: Date;
+  completedAt: Date | null;
+};
 
 @Injectable()
 export class ReportService {
@@ -25,8 +39,7 @@ export class ReportService {
   private readonly sessionBrokerUrl: string;
 
   constructor(
-    @InjectRepository(ReportEntity)
-    private readonly reportRepository: Repository<ReportEntity>,
+    private readonly prisma: PrismaService,
     private readonly templateService: TemplateService,
     private readonly generatorService: GeneratorService,
     private readonly analyzerService: AnalyzerService,
@@ -48,14 +61,13 @@ export class ReportService {
     // Get template
     const template = await this.templateService.findOne(dto.template_id);
 
-    // Create report entity
-    const entity = this.reportRepository.create({
-      template_id: dto.template_id,
-      session_id: dto.session_id,
-      status: 'pending',
+    const saved = await this.prisma.report.create({
+      data: {
+        templateId: dto.template_id,
+        sessionId: dto.session_id,
+        status: 'pending',
+      } satisfies Prisma.ReportUncheckedCreateInput,
     });
-
-    const saved = await this.reportRepository.save(entity);
 
     // Start generation process asynchronously
     this.generateReport(saved.id, template, dto.session_id).catch(error => {
@@ -68,7 +80,7 @@ export class ReportService {
 
   private async generateReport(
     reportId: string,
-    template: any,
+    template: ReportTemplateDTO,
     sessionId: string,
   ): Promise<void> {
     this.logger.log(`Starting report generation for ${reportId}`);
@@ -112,13 +124,16 @@ export class ReportService {
       this.logger.log(`Document generated: ${filePath}`);
 
       // Update report with results
-      await this.reportRepository.update(reportId, {
-        status: 'completed',
-        result_file: filePath,
-        ai_analysis: aiAnalysis,
-        validation_results: validationResults,
-        notifications,
-        completed_at: new Date(),
+      await this.prisma.report.update({
+        where: { id: reportId },
+        data: {
+          status: 'completed',
+          resultFile: filePath,
+          aiAnalysis: aiAnalysis as unknown as Prisma.InputJsonValue,
+          validationResults: validationResults as unknown as Prisma.InputJsonValue,
+          notifications: notifications as unknown as Prisma.InputJsonValue,
+          completedAt: new Date(),
+        },
       });
 
       this.logger.log(`Report ${reportId} completed successfully`);
@@ -265,53 +280,56 @@ export class ReportService {
     status: ReportStatus,
     error?: string,
   ): Promise<void> {
-    await this.reportRepository.update(reportId, {
-      status,
-      error,
+    await this.prisma.report.update({
+      where: { id: reportId },
+      data: {
+        status,
+        error: error ?? null,
+      },
     });
   }
 
   async findAll(): Promise<ReportDTO[]> {
-    const entities = await this.reportRepository.find({
-      order: { created_at: 'DESC' },
-      relations: ['template'],
+    const reports = await this.prisma.report.findMany({
+      orderBy: { createdAt: 'desc' },
+      include: { template: true },
     });
-    return entities.map(this.toDTO);
+    return reports.map((report) => this.toDTO(report));
   }
 
   async findOne(id: string): Promise<ReportDTO> {
-    const entity = await this.reportRepository.findOne({
+    const report = await this.prisma.report.findUnique({
       where: { id },
-      relations: ['template'],
+      include: { template: true },
     });
-    if (!entity) {
+    if (!report) {
       throw new NotFoundException(`Report ${id} not found`);
     }
-    return this.toDTO(entity);
+    return this.toDTO(report);
   }
 
   async findBySession(sessionId: string): Promise<ReportDTO[]> {
-    const entities = await this.reportRepository.find({
-      where: { session_id: sessionId },
-      order: { created_at: 'DESC' },
-      relations: ['template'],
+    const reports = await this.prisma.report.findMany({
+      where: { sessionId },
+      orderBy: { createdAt: 'desc' },
+      include: { template: true },
     });
-    return entities.map(this.toDTO);
+    return reports.map((report) => this.toDTO(report));
   }
 
-  private toDTO(entity: ReportEntity): ReportDTO {
+  private toDTO(entity: ReportRecord): ReportDTO {
     return {
       id: entity.id,
-      template_id: entity.template_id,
-      session_id: entity.session_id,
-      status: entity.status,
-      result_file: entity.result_file || undefined,
-      ai_analysis: entity.ai_analysis || undefined,
-      validation_results: entity.validation_results || undefined,
-      notifications: entity.notifications || undefined,
+      template_id: entity.templateId,
+      session_id: entity.sessionId,
+      status: entity.status as ReportStatus,
+      result_file: entity.resultFile || undefined,
+      ai_analysis: entity.aiAnalysis as ReportDTO['ai_analysis'],
+      validation_results: entity.validationResults as ReportDTO['validation_results'],
+      notifications: entity.notifications as ReportDTO['notifications'],
       error: entity.error || undefined,
-      created_at: entity.created_at,
-      completed_at: entity.completed_at || undefined,
+      created_at: entity.createdAt,
+      completed_at: entity.completedAt || undefined,
     };
   }
 }

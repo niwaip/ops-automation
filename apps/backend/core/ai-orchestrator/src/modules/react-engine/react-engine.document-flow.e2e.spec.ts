@@ -6,6 +6,11 @@ import { ToolExecutor } from './tool-executor';
 import { ModelService } from '../model/model.service';
 import { SessionService } from '../redis/session.service';
 import { ChatRequestDTO, ExecutionContext, StreamEventType } from './interfaces';
+import {
+  DocumentIntakeTool,
+  DocumentParamRecoverTool,
+  DocumentRenderTool,
+} from './tools';
 
 jest.mock('axios');
 
@@ -127,6 +132,9 @@ describe('ReActEngineService Document Flow E2E', () => {
     } as unknown as SessionService;
 
     const toolExecutor = new ToolExecutor();
+    toolExecutor.registerTool(new DocumentIntakeTool());
+    toolExecutor.registerTool(new DocumentRenderTool());
+    toolExecutor.registerTool(new DocumentParamRecoverTool());
     const capabilityResolver = new CapabilityResolver(toolExecutor);
     const modelRouterService = new ModelRouterService(modelService);
     const service = new ReActEngineService(

@@ -36,9 +36,23 @@ services:
     container_name: carbone-engine
     working_dir: /app
     command: >
-      sh -c "npm config set registry https://registry.npmmirror.com && npm install --include=dev && npm run build && npm run start"
+      sh -c "npm config set registry https://registry.npmmirror.com
+      && npm config set fetch-retries 5
+      && npm config set fetch-retry-mintimeout 20000
+      && npm config set fetch-retry-maxtimeout 120000
+      && i=0
+      && until [ $$i -ge 5 ]; do
+        npm install --include=dev && break;
+        i=$$((i+1));
+        echo 'npm install failed, retrying in 10s...';
+        sleep 10;
+      done
+      && [ $$i -lt 5 ]
+      && npm run build
+      && npm run start"
     environment:
       NODE_ENV: production
+      DATABASE_URL: postgresql://${POSTGRES_USER:-ops}:${POSTGRES_PASSWORD:-ops_secret}@postgres:5432/${POSTGRES_DB:-ops}
       PORT: ${CARBONE_ENGINE_PORT:-3009}
       TEMPLATES_DIR: /app/templates
       OUTPUTS_DIR: /app/outputs

@@ -11,6 +11,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import * as fs from 'fs';
 import * as path from 'path';
+import { v4 as uuidv4 } from 'uuid';
 import JSZip from 'jszip';
 import axios from 'axios';
 import { DocumentElement, DocumentStructure, PreserveMarker } from './document-structure.service';
@@ -1216,6 +1217,7 @@ ${parameterList.map(p => `
     "variableName": "partyA_name",
     "significance": "甲方公司名称",
     "fieldType": "text",
+    "chapter": "第一章 协议双方",
     "confidence": 0.95
   }
 ]
@@ -1226,6 +1228,7 @@ ${parameterList.map(p => `
 3. 常见字段: name(名称), address(地址), date(日期), amount(金额), person(代表人)
 4. 日期字段: year(年), month(月), day(日)
 5. 变量名称使用snake_case格式
+6. **章节归类**: 请根据段落内容推断其所属的章节或Sheet名称（如“基本信息”、“费用条款”等）。
 
 只返回JSON数组，不要其他解释。`;
 
@@ -1296,7 +1299,7 @@ ${parameterList.map(p => `
             underlineType: info?.underlineType
           },
           details: {
-            chapter: '正文',
+            chapter: result.chapter || '正文',
             significance: result.significance || '文档填充字段',
             variableName: result.variableName,
             fieldType: result.fieldType || 'text',
@@ -2258,6 +2261,13 @@ ${blankList}
         displayName: parameter?.displayName || cleanName,
       };
 
+      if (!normalizedParameter.groupLabel) {
+        delete normalizedParameter.groupLabel;
+      }
+      if (!normalizedParameter.sheetName) {
+        delete normalizedParameter.sheetName;
+      }
+
       const existing = parameterMap.get(cleanName);
       if (!existing) {
         parameterMap.set(cleanName, normalizedParameter);
@@ -2272,6 +2282,8 @@ ${blankList}
         extractionHint: normalizedParameter.extractionHint || existing.extractionHint,
         example: normalizedParameter.example || existing.example,
         validation: normalizedParameter.validation || existing.validation,
+        groupLabel: normalizedParameter.groupLabel || existing.groupLabel,
+        sheetName: normalizedParameter.sheetName || existing.sheetName,
       });
     };
 
@@ -2279,6 +2291,7 @@ ${blankList}
       const variableName = suggestion?.suggestedName || suggestion?.details?.variableName || '';
       const fieldType = suggestion?.details?.fieldType || this.inferFieldType(variableName, suggestion?.originalText || '');
       const exampleValue = this.buildSkillExampleValue(suggestion?.originalText, fieldType, variableName);
+      const groupMeta = this.resolveSuggestionGroupMeta(suggestion);
 
       if (suggestion?.type === 'loop' || fieldType === 'loop') {
         const arrayPath = suggestion?.details?.arrayPath || variableName;
@@ -2298,6 +2311,8 @@ ${blankList}
               name: cleanName,
               originalText: column.sampleValue || suggestion?.originalText || '',
               displayName: `${tableName}.${column.headerName || cleanName}`,
+              groupLabel: groupMeta.groupLabel,
+              sheetName: groupMeta.sheetName,
               usage:
                 suggestion?.details?.significance
                   ? `${suggestion.details.significance} 其中字段“${column.headerName || cleanName}”用于表格列填充`
@@ -2323,6 +2338,8 @@ ${blankList}
         name: variableName,
         originalText: suggestion?.originalText,
         displayName: suggestion?.details?.variableName || this.normalizeSkillParameterPath(variableName),
+        groupLabel: groupMeta.groupLabel,
+        sheetName: groupMeta.sheetName,
         usage:
           suggestion?.details?.reason
           || suggestion?.details?.significance
@@ -2351,7 +2368,7 @@ ${blankList}
 
     // 构建完整的skill结构
     const skill = {
-      id: `skill-${Date.now()}`,
+      id: uuidv4(),
       version: '1.0',
       templateType,
 
@@ -2425,6 +2442,81 @@ ${blankList}
 
     this.logger.log(`AI Skill Guide generated with ${parameters.length} parameters`);
     return skill;
+  }
+
+  private resolveSuggestionGroupMeta(suggestion: any): { groupLabel?: string; sheetName?: string } {
+    const directCandidates = [
+      suggestion?.details?.excelAnchor?.sheetName,
+      suggestion?.details?.sheetName,
+      suggestion?.details?.chapter,
+      suggestion?.sectionName,
+    ];
+
+    for (const candidate of directCandidates) {
+      const normalized = this.normalizeSkillGroupLabel(candidate);
+      if (normalized) {
+        return { groupLabel: normalized, sheetName: normalized };
+      }
+    }
+
+    const textCandidates = [
+      suggestion?.details?.displayPosition,
+      suggestion?.elementPath,
+      suggestion?.context,
+      suggestion?.details?.context,
+    ];
+
+    for (const candidate of textCandidates) {
+      const inferred = this.extractExcelSheetNameFromText(candidate);
+      const normalized = this.normalizeSkillGroupLabel(inferred);
+      if (normalized) {
+        return { groupLabel: normalized, sheetName: normalized };
+      }
+    }
+
+    return {};
+  }
+
+  private normalizeSkillGroupLabel(value: unknown): string | undefined {
+    const normalized = String(value || '').trim();
+    if (!normalized) {
+      return undefined;
+    }
+
+    const genericLabels = new Set([
+      '参数',
+      '正文',
+      '默认分组',
+      '未归属 Sheet',
+      'unknown_sheet',
+      'sheet',
+    ]);
+
+    return genericLabels.has(normalized) ? undefined : normalized;
+  }
+
+  private extractExcelSheetNameFromText(value: unknown): string | undefined {
+    const text = String(value || '').trim();
+    if (!text) {
+      return undefined;
+    }
+
+    const sheetRefMatch = text.match(/^([^!]+)![$A-Z]+\d+(?::[$A-Z]+\d+)?$/i);
+    if (sheetRefMatch?.[1]) {
+      return sheetRefMatch[1].trim();
+    }
+
+    const pairMatch = text.match(/([^|【\n]+?)\s*↔\s*([^|】\n]+)/);
+    if (pairMatch?.[1]) {
+      return pairMatch[1].trim();
+    }
+
+    const embeddedSheetRefMatch = text.match(/([^\s|【】]+)![$A-Z]+\d+(?::[$A-Z]+\d+)?/i);
+    if (embeddedSheetRefMatch?.[1]) {
+      return embeddedSheetRefMatch[1].trim();
+    }
+
+    return undefined;
   }
 
   /**
@@ -2722,7 +2814,13 @@ ${description}
 
   private sanitizeSkillDataExample(value: unknown): unknown {
     if (Array.isArray(value)) {
-      return value.map((item) => this.sanitizeSkillDataExample(item));
+      const mapped = value.map((item) => this.sanitizeSkillDataExample(item));
+      // 只有当映射后的数组完全没有实质性内容时（比如都是空的占位符被过滤了），才返回 [{}]
+      const hasContent = mapped.some(item => {
+        if (!item || typeof item !== 'object') return !!item;
+        return Object.keys(item).length > 0;
+      });
+      return hasContent ? mapped : [{}];
     }
 
     if (!value || typeof value !== 'object') {
@@ -2943,10 +3041,10 @@ ${parameterRules || '- 暂无参数定义'}
     const dataObj: any = {};
 
     const setValueAtPath = (target: Record<string, any>, rawPath: string, value: unknown) => {
-      const cleanPath = this.normalizeSkillParameterPath(rawPath);
-      if (!cleanPath || this.isPlaceholderSkillParameterPath(cleanPath)) {
-        return;
-      }
+      // 这里的 rawPath 可能是 normalize 后的 "items[].name" 或原始的 "items[i].name"
+      // 我们统一处理，不在这里再次 normalize，因为外部已经处理过了
+      const cleanPath = rawPath.trim();
+      if (!cleanPath) return;
 
       const pathParts = cleanPath.split('.').filter(Boolean);
       let current = target;
@@ -2954,77 +3052,93 @@ ${parameterRules || '- 暂无参数定义'}
       for (let i = 0; i < pathParts.length; i++) {
         const part = pathParts[i];
         
-        // Handle array index: items[0] or items[] or items[i]
-        const arrayMatch = part.match(/^([^\[]+)\[(\d+|i)?\]$/);
+        // 匹配 array 格式: name[0], name[], name[i], 或者单纯的 []
+        const arrayMatch = part.match(/^([^\[]*)\[(\d+|i)?\]$/);
         const isArrayPart = !!arrayMatch;
-        const key = arrayMatch ? arrayMatch[1] : part;
+        const key = arrayMatch ? (arrayMatch[1] || '') : part;
         
-        let arrayIndex = -1;
+        let arrayIndex = 0;
         if (arrayMatch && arrayMatch[2] !== undefined) {
-           if (arrayMatch[2] === 'i') {
-             arrayIndex = 0;
-           } else {
+           if (arrayMatch[2] !== 'i') {
              arrayIndex = parseInt(arrayMatch[2], 10);
            }
-        } else if (isArrayPart) {
-           arrayIndex = 0;
         }
         
         const isLast = i === pathParts.length - 1;
 
         if (isArrayPart) {
+          // 如果 key 为空（说明是像 "items[]." 之后又接了一个 "[]"），则直接在当前 current 上操作
+          if (!key) {
+            if (!Array.isArray(current)) {
+              // 这种情况理论上不应该发生，除非路径格式错误
+              return;
+            }
+            if (isLast) {
+              current[arrayIndex] = value;
+            } else {
+              if (!current[arrayIndex] || typeof current[arrayIndex] !== 'object') {
+                current[arrayIndex] = {};
+              }
+              current = current[arrayIndex];
+            }
+            continue;
+          }
+
           if (!Array.isArray(current[key])) {
             current[key] = [];
           }
           
-          const index = arrayIndex >= 0 ? arrayIndex : 0;
-          
           if (isLast) {
-            current[key][index] = value;
+            // 如果是空对象且已经有值了，不要覆盖
+            if (value && typeof value === 'object' && Object.keys(value).length === 0 && current[key][arrayIndex]) {
+              return;
+            }
+            current[key][arrayIndex] = value;
             return;
           }
 
-          if (!current[key][index] || typeof current[key][index] !== 'object' || Array.isArray(current[key][index])) {
-            current[key][index] = {};
+          if (!current[key][arrayIndex] || typeof current[key][arrayIndex] !== 'object' || Array.isArray(current[key][arrayIndex])) {
+            current[key][arrayIndex] = {};
           }
-          current = current[key][index];
-          continue;
+          current = current[key][arrayIndex];
+        } else {
+          if (isLast) {
+            current[key] = value;
+          } else {
+            if (!current[key] || typeof current[key] !== 'object' || Array.isArray(current[key])) {
+              current[key] = {};
+            }
+            current = current[key];
+          }
         }
-
-        if (isLast) {
-          current[key] = value;
-          return;
-        }
-
-        if (!current[key] || typeof current[key] !== 'object' || Array.isArray(current[key])) {
-          current[key] = {};
-        }
-        current = current[key];
       }
     };
 
-    for (const p of parameters) {
-      const cleanName = this.normalizeSkillParameterPath(p.name || '');
-      if (!cleanName || this.isPlaceholderSkillParameterPath(cleanName)) {
-        continue;
+    // 1. 先初始化表格循环的路径
+    for (const loop of tableLoops) {
+      let arrayPath = this.normalizeSkillParameterPath(loop.arrayPath || '');
+      if (arrayPath) {
+        // 确保以 [] 结尾但不要重复
+        if (!arrayPath.endsWith('[]')) {
+          arrayPath += '[]';
+        }
+        setValueAtPath(dataObj, arrayPath, {});
       }
-      setValueAtPath(dataObj, cleanName, p.example);
     }
 
+    // 2. 填充具体参数示例值 (parameters 中的 name 已经经过 normalize 包含 [])
+    for (const p of parameters) {
+      if (!p.name || this.isPlaceholderSkillParameterPath(p.name)) continue;
+      setValueAtPath(dataObj, p.name, p.example);
+    }
+
+    // 3. 填充表格列映射的示例值 (作为补充)
     for (const loop of tableLoops) {
-      const arrayPath = this.normalizeSkillParameterPath(loop.arrayPath || '');
-      if (!arrayPath) {
-        continue;
-      }
-
-      setValueAtPath(dataObj, `${arrayPath}[]`, {});
-
       if (Array.isArray(loop.columnMappings)) {
         for (const column of loop.columnMappings) {
           const cleanColumnPath = this.normalizeSkillParameterPath(column?.variablePath || '');
-          if (!cleanColumnPath || this.isPlaceholderSkillParameterPath(cleanColumnPath)) {
-            continue;
-          }
+          if (!cleanColumnPath || this.isPlaceholderSkillParameterPath(cleanColumnPath)) continue;
+          
           const sampleValue = this.sanitizeSkillExampleSource(column?.sampleValue) || this.generateExampleValue(
             this.inferFieldType(column?.headerName || cleanColumnPath, String(this.sanitizeSkillExampleSource(column?.sampleValue) || '')),
             cleanColumnPath
@@ -3129,7 +3243,14 @@ ${parameterRules || '- 暂无参数定义'}
       const varPath = this.normalizeSkillParameterPath(p.name || '');
       return `| \`${varPath}\` | ${p.usage || '填写对应值'} | ${p.dataType} | ${p.example} | \`${this.buildSkillCarboneSyntax(p.name, p.dataType)}\` |`;
     }).join('\n');
-    const apiDataExample = JSON.stringify({ data: JSON.parse(dataExampleJson) }, null, 2);
+    let parsedExample;
+    try {
+      parsedExample = typeof dataExampleJson === "string" ? JSON.parse(dataExampleJson) : dataExampleJson;
+    } catch (e) {
+      parsedExample = dataExampleJson;
+    }
+    const formattedDataExample = JSON.stringify(parsedExample, null, 2);
+    const apiDataExample = JSON.stringify({ data: parsedExample }, null, 2);
 
     return `# ${templateType} 模板 Skill Guide
 
@@ -3161,7 +3282,9 @@ ${templateDescription}
 
 ---
 
-## 3. 参数列表
+## 3. 参数列表及说明
+
+此列表主要用于指导如何从自然语言或业务系统中提取数据。参数路径按照所属层级或Sheet页进行了逻辑分组，请注意观察：
 
 | 参数路径 | 用途说明 | 数据类型 | 示例值 | Carbone语法 |
 |----------|----------|----------|--------|-------------|
@@ -3171,10 +3294,10 @@ ${paramTable}
 
 ## 4. 完整数据示例
 
-以下 JSON 结构可直接作为渲染模板的输入数据：
+以下 JSON 结构是经过处理后的最终数据示例，代表了期望的输出格式。请注意观察其中数组和单值字段的处理方式：
 
 \`\`\`json
-${dataExampleJson}
+${formattedDataExample}
 \`\`\`
 
 ---
@@ -3200,7 +3323,7 @@ curl -X POST http://localhost:3009/studio/render \\
   -H "Content-Type: application/json" \\
   -d '{
     "templateId": "your-template-id",
-    "data": ${JSON.stringify(JSON.parse(dataExampleJson))}
+    "data": ${formattedDataExample}
   }'
 \`\`\`
 

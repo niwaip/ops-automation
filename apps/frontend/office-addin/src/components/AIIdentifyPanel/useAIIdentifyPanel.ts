@@ -59,6 +59,30 @@ export function useAIIdentifyPanel(hostAdapter: any, isExcelMode: boolean) {
   const [collapsedSuggestionGroups, setCollapsedSuggestionGroups] = useState<Record<string, boolean>>({});
   const [collapsedPairDetails, setCollapsedPairDetails] = useState<Record<string, boolean>>({});
 
+  const resolveDraftParameterCount = (data: {
+    suggestions?: unknown;
+    parameterCount?: unknown;
+    aiSkillGuide?: { parameters?: unknown } | null;
+    variables?: unknown;
+  }): number => {
+    if (typeof data.parameterCount === 'number' && data.parameterCount > 0) {
+      return data.parameterCount;
+    }
+    if (Array.isArray(data.suggestions) && data.suggestions.length > 0) {
+      return data.suggestions.length;
+    }
+    const skillParameters = data.aiSkillGuide && Array.isArray(data.aiSkillGuide.parameters)
+      ? data.aiSkillGuide.parameters
+      : [];
+    if (skillParameters.length > 0) {
+      return skillParameters.length;
+    }
+    if (Array.isArray(data.variables) && data.variables.length > 0) {
+      return data.variables.length;
+    }
+    return 0;
+  };
+
   const applyDraftSnapshot = (data: any, options?: { logRestore?: boolean }) => {
     if (!data) {
       return;
@@ -94,9 +118,10 @@ export function useAIIdentifyPanel(hostAdapter: any, isExcelMode: boolean) {
       setTemplateName(data.templateName);
     }
     if (data.draftId) {
+      const parameterCount = resolveDraftParameterCount(data);
       setDraftInfo({
         templateType: data.templateType || 'unknown',
-        parameterCount: Array.isArray(data.suggestions) ? data.suggestions.length : 0,
+        parameterCount,
         savedAt: data.savedAt || '',
       });
     }
@@ -112,6 +137,30 @@ export function useAIIdentifyPanel(hostAdapter: any, isExcelMode: boolean) {
     } catch {
       return null;
     }
+  };
+
+  const parseDraftSequence = (fileName?: string): number => {
+    const match = String(fileName || '').trim().match(/^draft-(\d+)/i);
+    return match ? Number(match[1]) : 0;
+  };
+
+  const findLatestBackendDraft = async () => {
+    carboneAPI.setBaseUrl(apiBaseUrl);
+    const response = await carboneAPI.getTemplates({ includeDrafts: true });
+    const templates = Array.isArray(response?.templates) ? response.templates : [];
+    const draftTemplates = templates.filter((template) => String(template.fileName || '').trim().toLowerCase().startsWith('draft-'));
+    if (draftTemplates.length === 0) {
+      return null;
+    }
+    return draftTemplates.sort((a, b) => {
+      const seqDelta = parseDraftSequence(b.fileName) - parseDraftSequence(a.fileName);
+      if (seqDelta !== 0) {
+        return seqDelta;
+      }
+      const timeA = new Date(String(a.createdAt || a.uploadedAt || 0)).getTime() || 0;
+      const timeB = new Date(String(b.createdAt || b.uploadedAt || 0)).getTime() || 0;
+      return timeB - timeA;
+    })[0];
   };
 
   // Recover Draft
@@ -357,9 +406,10 @@ export function useAIIdentifyPanel(hostAdapter: any, isExcelMode: boolean) {
 
       if (result.success) {
         setDraftId(result.templateId || null);
+        const parameterCount = resolveDraftParameterCount({ suggestions: nextSuggestions, aiSkillGuide });
         setDraftInfo({
           templateType: selectedTemplateType,
-          parameterCount: suggestions.length,
+          parameterCount,
           savedAt: new Date().toISOString()
         });
         setDraftWorkflowNotice({
@@ -388,25 +438,30 @@ export function useAIIdentifyPanel(hostAdapter: any, isExcelMode: boolean) {
   };
 
   const handleLoadDraft = async () => {
-    if (!draftId) {
-      setDraftWorkflowNotice({ type: 'info', message: '没有暂存副本可载入' });
-      return;
-    }
-
     try {
       const snapshot = readDraftSnapshot();
-      if (snapshot?.draftId === draftId) {
+      if (snapshot?.draftId) {
+        const parameterCount = resolveDraftParameterCount(snapshot);
         applyDraftSnapshot(snapshot);
         setDraftWorkflowNotice({
           type: 'success',
           message: '✅ 已从本地暂存恢复草稿',
-          lines: [`${snapshot.templateType || selectedTemplateType} · ${snapshot.suggestions?.length || 0} 参数 · ID: ${draftId.substring(0, 8)}...`],
+          lines: [`${snapshot.templateType || selectedTemplateType} · ${parameterCount} 参数 · ID: ${String(snapshot.draftId).substring(0, 8)}...`],
         });
         return;
       }
+      let effectiveDraftId = draftId;
+      if (!effectiveDraftId) {
+        const latestBackendDraft = await findLatestBackendDraft();
+        if (!latestBackendDraft?.id) {
+          setDraftWorkflowNotice({ type: 'info', message: '没有可恢复的本地最新草稿，后端也没有 draft-* 暂存副本' });
+          return;
+        }
+        effectiveDraftId = latestBackendDraft.id;
+      }
 
       carboneAPI.setBaseUrl(apiBaseUrl);
-      const template = await carboneAPI.getTemplate(draftId);
+      const template = await carboneAPI.getTemplate(effectiveDraftId);
       const templateSuggestions = Array.isArray(template.suggestions) ? template.suggestions : [];
       const skill =
         template.skillId
@@ -418,16 +473,22 @@ export function useAIIdentifyPanel(hostAdapter: any, isExcelMode: boolean) {
         templateType: template.config?.templateType || selectedTemplateType,
         suggestions: templateSuggestions,
         aiSkillGuide: skill || aiSkillGuide,
+        parameterCount: resolveDraftParameterCount({
+          suggestions: templateSuggestions,
+          aiSkillGuide: skill || aiSkillGuide,
+          variables: template.variables,
+        }),
+        variables: template.variables,
         templateName: template.fileName?.replace(/\.[^.]+$/, '') || templateName,
-        savedAt: draftInfo?.savedAt || new Date().toISOString(),
+        savedAt: new Date().toISOString(),
       };
 
       applyDraftSnapshot(restoredDraft);
       localStorage.setItem(DRAFT_STORAGE_KEY, JSON.stringify(restoredDraft));
       setDraftWorkflowNotice({
         type: 'success',
-        message: '✅ 已从后端恢复草稿',
-        lines: [`${restoredDraft.templateType} · ${templateSuggestions.length} 参数 · ID: ${draftId.substring(0, 8)}...`],
+        message: draftId ? '✅ 已从后端恢复当前草稿' : '✅ 已从后端恢复最新草稿',
+        lines: [`${restoredDraft.templateType} · ${restoredDraft.parameterCount} 参数 · ID: ${String(effectiveDraftId).substring(0, 8)}...`],
       });
     } catch (error: any) {
       setDraftWorkflowNotice({ type: 'error', message: `载入草稿失败: ${error.message || '未知错误'}` });
@@ -506,6 +567,7 @@ export function useAIIdentifyPanel(hostAdapter: any, isExcelMode: boolean) {
         || undefined;
 
       const result = await carboneAPI.generateSkill({
+        templateId: draftId || undefined,
         suggestions: suggestions.map(s => ({ ...s, applied: true })),
         templateConfig,
         templateType: selectedTemplateType,
@@ -745,6 +807,7 @@ export function useAIIdentifyPanel(hostAdapter: any, isExcelMode: boolean) {
     isGeneratingGuide,
     isVerifying,
     draftId,
+    draftInfo,
     isSavingDraft,
     draftWorkflowNotice,
     handleGenerateAISkillGuide,

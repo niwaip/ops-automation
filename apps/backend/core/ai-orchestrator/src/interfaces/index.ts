@@ -178,14 +178,39 @@ export interface RecognizeParamsDTO {
   user_input: string;
   modelId?: string;
   context?: Record<string, unknown>;
+  guide_context?: DocumentGuideContext;
   // 允许直接传入 params_schema，避免需要预先注册模版
   params_schema?: {
     properties: Record<string, {
       type: string;
       description?: string;
+      extractionPrompt?: string;
       default?: string | number | boolean;
+      semanticRole?: string;
+      extractionHints?: string[];
+      displayName?: string;
+      groupLabel?: string;
+      previewBlocking?: boolean;
+      confirmationThreshold?: number;
     }>;
     required?: string[];
+  };
+}
+
+export interface DocumentGuideContext {
+  mode: 'document_skill';
+  templateOverview?: string;
+  guideMarkdown?: string;
+  paramCollectionGuidance?: string;
+  validationRules?: string;
+  outputExample?: Record<string, unknown>;
+  extractionHints?: string[];
+  sourceTemplate?: {
+    templateId?: string;
+    skillId?: string;
+    fileName?: string;
+    format?: string;
+    variableCount?: number;
   };
 }
 
@@ -204,6 +229,8 @@ export interface PromptDebugLLMCall {
 export interface RecognizeParamsResponseDTO {
   params: Record<string, unknown>;
   confidence: number;
+  field_confidences?: Record<string, number>;
+  uncertain_fields?: string[];
   usage?: LLMUsage;
   debug?: {
     llmCalls?: PromptDebugLLMCall[];
@@ -270,16 +297,54 @@ export interface RequiredInputDTO {
   name: string;
   type: string;
   description?: string;
+  display_name?: string;
+  group_label?: string;
   required: boolean;
   value?: unknown;
   missing: boolean;
   source: 'user_input' | 'default' | 'unresolved';
+  confidence?: number;
+  needs_confirmation?: boolean;
+  missing_reason?: 'missing' | 'low_confidence' | 'overall_low_confidence';
+  confirmation_threshold?: number;
+  preview_blocking?: boolean;
 }
 
 export interface RiskSummaryDTO {
   level: 'low' | 'medium' | 'high';
   requires_human_review: boolean;
   items: string[];
+}
+
+export interface SemanticGroupedMissingDTO {
+  key: string;
+  label: string;
+  kind: 'field' | 'array_group';
+  blocking: boolean;
+  required: boolean;
+  fieldNames: string[];
+  missingFieldNames: string[];
+  description?: string;
+}
+
+export interface PlanSemanticComplexityDTO {
+  category: 'simple' | 'complex_document';
+  totalFields: number;
+  requiredFields: number;
+  missingFields: number;
+  arrayGroups: number;
+  reasonCodes: string[];
+}
+
+export interface PlanSemanticDTO {
+  enabled: boolean;
+  mode: 'field_level' | 'complex_document';
+  previewReady: boolean;
+  finalReady: boolean;
+  fallbackToFieldLevel: boolean;
+  summary?: string;
+  groupedMissing: SemanticGroupedMissingDTO[];
+  complexity: PlanSemanticComplexityDTO;
 }
 
 export interface PlanDraftDTO {
@@ -290,6 +355,7 @@ export interface PlanDraftDTO {
   skill_match?: PlanSkillMatchDTO;
   steps: PlanStepDTO[];
   required_inputs: RequiredInputDTO[];
+  semantic?: PlanSemanticDTO;
   usage?: LLMUsage;
   risk_summary: RiskSummaryDTO;
   metadata?: Record<string, unknown>;

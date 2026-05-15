@@ -1,6 +1,6 @@
-import React, { useEffect, useState } from 'react';
-import { Table, Button, Space, Tag, Card, Typography, Modal, message, Input, Tabs, Descriptions, Alert } from 'antd';
-import { DeleteOutlined, EditOutlined, EyeOutlined, DownloadOutlined, FileWordOutlined, FileExcelOutlined, FilePdfOutlined, SyncOutlined, PlusOutlined } from '@ant-design/icons';
+import React, { useEffect, useMemo, useState } from 'react';
+import { Table, Button, Space, Tag, Card, Typography, Modal, message, Input, Drawer, Descriptions, Alert, Empty } from 'antd';
+import { DeleteOutlined, EditOutlined, DownloadOutlined, FileWordOutlined, FileExcelOutlined, FilePdfOutlined, SyncOutlined, PlusOutlined } from '@ant-design/icons';
 import { carboneAPI, CarboneTemplate, CarboneSkill } from '../api/carbone';
 import { buildOfficeAddinUrl } from '../config/runtime';
 
@@ -8,12 +8,115 @@ const { Title, Text } = Typography;
 const OFFICE_ADDIN_TASKPANE_URL = buildOfficeAddinUrl('/taskpane.html');
 const OFFICE_ADDIN_DOWNLOAD_URL = buildOfficeAddinUrl('/download');
 
+type SkillParameter = {
+  name?: string;
+  displayName?: string;
+  dataType?: string;
+  example?: unknown;
+  required?: boolean;
+  usage?: string;
+};
+
+type ParameterRow = {
+  key: string;
+  fieldName: string;
+  displayName: string;
+  dataType: string;
+  exampleText: string;
+  required: boolean;
+  usage: string;
+};
+
+type SkillOverview = {
+  templateType: string;
+  businessType: string;
+  mainScene: string;
+};
+
+const isDraftDocumentTemplate = (template: CarboneTemplate): boolean => {
+  const fileName = String(template.fileName || '').trim().toLowerCase();
+  return fileName.startsWith('draft-');
+};
+
+const formatExampleValue = (value: unknown): string => {
+  if (value == null) return '-';
+  if (typeof value === 'string') return value;
+  if (typeof value === 'number' || typeof value === 'boolean') return String(value);
+  try {
+    return JSON.stringify(value);
+  } catch {
+    return String(value);
+  }
+};
+
+const toParameterRow = (parameter: SkillParameter, fieldName: string): ParameterRow => ({
+  key: String(parameter.name || fieldName),
+  fieldName,
+  displayName: String(parameter.displayName || fieldName),
+  dataType: String(parameter.dataType || 'text'),
+  exampleText: formatExampleValue(parameter.example),
+  required: Boolean(parameter.required),
+  usage: String(parameter.usage || '-'),
+});
+
+const extractSkillOverview = (skill?: CarboneSkill | null): SkillOverview => {
+  const description = String(skill?.templateDescription || '');
+  const businessType = (description.match(/业务类型：([^\n]+)/)?.[1] || '').trim();
+  const mainScene = (description.match(/主要场景：([^\n]+)/)?.[1] || '').trim();
+
+  return {
+    templateType: String(skill?.templateType || '').trim(),
+    businessType,
+    mainScene,
+  };
+};
+
+const truncateText = (value: string, maxLength = 96): string => {
+  const text = String(value || '').trim();
+  if (!text) return '-';
+  return text.length > maxLength ? `${text.slice(0, maxLength)}...` : text;
+};
+
+const getArrayParameterGroups = (parameters?: SkillParameter[]): Array<{ arrayPath: string; fields: ParameterRow[] }> => {
+  const groups = new Map<string, ParameterRow[]>();
+
+  for (const parameter of parameters || []) {
+    const name = String(parameter?.name || '');
+    const match = name.match(/^([^[]+\[\])\.(.+)$/);
+    if (!match) continue;
+
+    const [, arrayPath, fieldName] = match;
+    if (!groups.has(arrayPath)) {
+      groups.set(arrayPath, []);
+    }
+    groups.get(arrayPath)?.push(toParameterRow(parameter, fieldName));
+  }
+
+  return Array.from(groups.entries())
+    .map(([arrayPath, fields]) => ({
+      arrayPath,
+      fields: fields.sort((a, b) => a.fieldName.localeCompare(b.fieldName, 'zh-Hans-CN')),
+    }))
+    .sort((a, b) => a.arrayPath.localeCompare(b.arrayPath, 'zh-Hans-CN'));
+};
+
+const getScalarParameters = (parameters?: SkillParameter[]): ParameterRow[] => (
+  (parameters || [])
+    .filter((parameter) => {
+      const name = String(parameter?.name || '');
+      return name.length > 0 && !name.includes('[].');
+    })
+    .map((parameter) => toParameterRow(parameter, String(parameter?.name || '')))
+    .sort((a, b) => a.fieldName.localeCompare(b.fieldName, 'zh-Hans-CN'))
+);
+
 const CarboneTemplateListPage: React.FC = () => {
   const [templates, setTemplates] = useState<CarboneTemplate[]>([]);
+  const [skillMap, setSkillMap] = useState<Record<string, CarboneSkill>>({});
   const [loading, setLoading] = useState(false);
   const [selectedTemplate, setSelectedTemplate] = useState<CarboneTemplate | null>(null);
   const [selectedSkill, setSelectedSkill] = useState<CarboneSkill | null>(null);
-  const [detailModalVisible, setDetailModalVisible] = useState(false);
+  const [detailDrawerVisible, setDetailDrawerVisible] = useState(false);
   const [renameModalVisible, setRenameModalVisible] = useState(false);
   const [newName, setNewName] = useState('');
 
@@ -25,12 +128,33 @@ const CarboneTemplateListPage: React.FC = () => {
     setLoading(true);
     try {
       const response = await carboneAPI.getTemplates();
-      // Ensure response is an array
-      const templatesData = Array.isArray(response) ? response : [];
+      // Hide temporary draft copies created during document templating.
+      const templatesData = (Array.isArray(response) ? response : []).filter(
+        (template) => !isDraftDocumentTemplate(template),
+      );
       setTemplates(templatesData);
+
+      const skillResults = await Promise.allSettled(
+        templatesData
+          .filter((template) => Boolean(template.skillId))
+          .map(async (template) => {
+            const skill = await carboneAPI.getSkill(String(template.skillId));
+            return [String(template.skillId), skill] as const;
+          }),
+      );
+
+      const nextSkillMap: Record<string, CarboneSkill> = {};
+      skillResults.forEach((result) => {
+        if (result.status === 'fulfilled') {
+          const [skillId, skill] = result.value;
+          nextSkillMap[skillId] = skill;
+        }
+      });
+      setSkillMap(nextSkillMap);
     } catch (error: any) {
       message.error('加载模板列表失败: ' + (error.message || '未知错误'));
       setTemplates([]); // Ensure templates is always an array on error
+      setSkillMap({});
     } finally {
       setLoading(false);
     }
@@ -78,8 +202,9 @@ const CarboneTemplateListPage: React.FC = () => {
     // 如果有skillId，获取skill详情
     if (template.skillId) {
       try {
-        const skill = await carboneAPI.getSkill(template.skillId);
+        const skill = skillMap[template.skillId] || await carboneAPI.getSkill(template.skillId);
         setSelectedSkill(skill);
+        setSkillMap((prev) => ({ ...prev, [template.skillId as string]: skill }));
       } catch (error: any) {
         message.warning('获取Skill详情失败');
         setSelectedSkill(null);
@@ -88,7 +213,7 @@ const CarboneTemplateListPage: React.FC = () => {
       setSelectedSkill(null);
     }
 
-    setDetailModalVisible(true);
+    setDetailDrawerVisible(true);
   };
 
   const handleOpenRenameModal = (template: CarboneTemplate) => {
@@ -112,52 +237,83 @@ const CarboneTemplateListPage: React.FC = () => {
     }
   };
 
-  const getFormatTag = (format: string) => {
-    const colors: Record<string, string> = {
-      docx: 'blue',
-      xlsx: 'green',
-      pptx: 'orange',
-      html: 'purple',
-    };
-    return <Tag color={colors[format] || 'default'} icon={getFormatIcon(format)}>{format.toUpperCase()}</Tag>;
-  };
-
-  const columns = [
+  const parameterColumns = [
     {
-      title: 'ID',
-      dataIndex: 'id',
-      key: 'id',
-      width: 120,
-      render: (id: string) => <Text copyable={{ text: id }}>{id.substring(0, 8)}...</Text>,
+      title: '字段',
+      dataIndex: 'fieldName',
+      key: 'fieldName',
+      render: (value: string) => <code>{value}</code>,
     },
     {
-      title: '名称',
+      title: '类型',
+      dataIndex: 'dataType',
+      key: 'dataType',
+      width: 90,
+      render: (value: string) => <Tag>{value}</Tag>,
+    },
+    {
+      title: '示例值',
+      dataIndex: 'exampleText',
+      key: 'exampleText',
+      ellipsis: true,
+    },
+    {
+      title: '必填',
+      dataIndex: 'required',
+      key: 'required',
+      width: 90,
+      render: (value: boolean) => value ? <Tag color="red">是</Tag> : <Tag>否</Tag>,
+    },
+    {
+      title: '用途',
+      dataIndex: 'usage',
+      key: 'usage',
+      ellipsis: true,
+    },
+  ];
+
+  const columns = useMemo(() => [
+    {
+      title: '模板',
       dataIndex: 'fileName',
       key: 'fileName',
-      render: (name: string, record: CarboneTemplate) => (
-        <Space>
-          {getFormatIcon(record.format)}
-          <span>{name}</span>
-        </Space>
-      ),
+      render: (name: string, record: CarboneTemplate) => {
+        const skill = record.skillId ? skillMap[record.skillId] : undefined;
+        const overview = extractSkillOverview(skill);
+        return (
+          <Space direction="vertical" size={4}>
+            <Space>
+              {getFormatIcon(record.format)}
+              <Text strong>{name}</Text>
+              {record.skillId ? <Tag color="success">已关联 Skill</Tag> : <Tag>无 Skill</Tag>}
+            </Space>
+            {overview.businessType && <Text type="secondary">{overview.businessType}</Text>}
+          </Space>
+        );
+      },
     },
     {
-      title: '格式',
-      dataIndex: 'format',
-      key: 'format',
-      render: (format: string) => getFormatTag(format),
+      title: 'Skill 类型',
+      key: 'skillType',
+      render: (_: unknown, record: CarboneTemplate) => {
+        const skill = record.skillId ? skillMap[record.skillId] : undefined;
+        const overview = extractSkillOverview(skill);
+        return overview.templateType ? <Tag color="blue">{overview.templateType}</Tag> : <Text type="secondary">未定义</Text>;
+      },
     },
     {
-      title: '变量数',
-      dataIndex: 'variables',
-      key: 'variables',
-      render: (variables: string[]) => <Tag>{variables?.length || 0} 个变量</Tag>,
-    },
-    {
-      title: 'Skill',
-      dataIndex: 'skillId',
-      key: 'skillId',
-      render: (skillId: string) => skillId ? <Tag color="success">已关联</Tag> : <Tag color="default">无</Tag>,
+      title: '用途摘要',
+      key: 'purpose',
+      render: (_: unknown, record: CarboneTemplate) => {
+        const skill = record.skillId ? skillMap[record.skillId] : undefined;
+        const overview = extractSkillOverview(skill);
+        return (
+          <Space direction="vertical" size={2}>
+            <Text>{truncateText(overview.mainScene || overview.businessType || '', 84)}</Text>
+            {overview.businessType && overview.mainScene ? <Text type="secondary">{overview.businessType}</Text> : null}
+          </Space>
+        );
+      },
     },
     {
       title: '更新时间',
@@ -171,20 +327,18 @@ const CarboneTemplateListPage: React.FC = () => {
       render: (_: any, record: CarboneTemplate) => (
         <Space>
           <Button
-            icon={<EyeOutlined />}
-            onClick={() => handleViewDetail(record)}
-          >
-            查看
-          </Button>
-          <Button
             icon={<EditOutlined />}
-            onClick={() => handleOpenRenameModal(record)}
+            onClick={(event) => {
+              event.stopPropagation();
+              handleOpenRenameModal(record);
+            }}
           >
             重命名
           </Button>
           <Button
             icon={<DownloadOutlined />}
-            onClick={() => {
+            onClick={(event) => {
+              event.stopPropagation();
               const url = carboneAPI.getDownloadTemplateUrl(record.id);
               window.open(url, '_blank');
             }}
@@ -194,14 +348,21 @@ const CarboneTemplateListPage: React.FC = () => {
           <Button
             icon={<DeleteOutlined />}
             danger
-            onClick={() => handleDelete(record.id)}
+            onClick={(event) => {
+              event.stopPropagation();
+              handleDelete(record.id);
+            }}
           >
             删除
           </Button>
         </Space>
       ),
     },
-  ];
+  ], [skillMap]);
+
+  const scalarParameters = getScalarParameters(selectedSkill?.parameters);
+  const arrayParameterGroups = getArrayParameterGroups(selectedSkill?.parameters);
+  const selectedOverview = extractSkillOverview(selectedSkill);
 
   return (
     <div style={{ padding: '24px' }}>
@@ -272,116 +433,103 @@ const CarboneTemplateListPage: React.FC = () => {
             rowKey="id"
             loading={loading}
             pagination={{ pageSize: 10 }}
+            onRow={(record) => ({
+              onClick: () => { void handleViewDetail(record); },
+              style: { cursor: 'pointer' },
+            })}
           />
         </Card>
       </Space>
 
-      {/* 详情弹窗 */}
-      <Modal
-        title="模板详情"
-        open={detailModalVisible}
-        onCancel={() => setDetailModalVisible(false)}
-        footer={[
-          <Button key="close" onClick={() => setDetailModalVisible(false)}>
-            关闭
-          </Button>,
-          selectedTemplate && (
-            <Button key="download" type="primary" onClick={() => {
-              const url = carboneAPI.getDownloadTemplateUrl(selectedTemplate.id);
-              window.open(url, '_blank');
-            }}>
+      <Drawer
+        title={selectedTemplate?.fileName || '模板详情'}
+        placement="right"
+        width={860}
+        open={detailDrawerVisible}
+        onClose={() => setDetailDrawerVisible(false)}
+        styles={{ body: { background: 'var(--bg-primary, #f5f7fb)' } }}
+        extra={selectedTemplate ? (
+          <Space>
+            {selectedSkill ? (
+              <Button onClick={() => window.open(carboneAPI.getDownloadSkillUrl(selectedSkill.id), '_blank')}>
+                下载 Skill
+              </Button>
+            ) : null}
+            <Button type="primary" onClick={() => window.open(carboneAPI.getDownloadTemplateUrl(selectedTemplate.id), '_blank')}>
               下载模板
             </Button>
-          ),
-          selectedSkill && (
-            <Button key="downloadSkill" onClick={() => {
-              const url = carboneAPI.getDownloadSkillUrl(selectedSkill.id);
-              window.open(url, '_blank');
-            }}>
-              下载Skill
-            </Button>
-          ),
-        ]}
-        width={800}
+          </Space>
+        ) : undefined}
       >
         {selectedTemplate && (
-          <Tabs
-            items={[
-              {
-                key: 'template',
-                label: '模板信息',
-                children: (
-                  <Descriptions bordered column={2}>
-                    <Descriptions.Item label="ID">{selectedTemplate.id}</Descriptions.Item>
-                    <Descriptions.Item label="名称">{selectedTemplate.fileName}</Descriptions.Item>
-                    <Descriptions.Item label="格式">{getFormatTag(selectedTemplate.format)}</Descriptions.Item>
-                    <Descriptions.Item label="创建时间">{selectedTemplate.createdAt ? new Date(selectedTemplate.createdAt).toLocaleString() : '-'}</Descriptions.Item>
-                    <Descriptions.Item label="更新时间">{selectedTemplate.updatedAt ? new Date(selectedTemplate.updatedAt).toLocaleString() : '-'}</Descriptions.Item>
-                    <Descriptions.Item label="Skill ID">{selectedTemplate.skillId || '无'}</Descriptions.Item>
-                    <Descriptions.Item label="变量列表" span={2}>
-                      {(selectedTemplate.variables?.length ?? 0) > 0 ? (
-                        <Space wrap>
-                          {selectedTemplate.variables?.map((v, i) => <Tag key={i}>{v}</Tag>)}
-                        </Space>
-                      ) : '无'}
-                    </Descriptions.Item>
-                    <Descriptions.Item label="循环配置" span={2}>
-                      {(selectedTemplate.loops?.length ?? 0) > 0 ? (
-                        <Space wrap>
-                          {selectedTemplate.loops?.map((l, i) => <Tag key={i} color="purple">{l.arrayPath}</Tag>)}
-                        </Space>
-                      ) : '无'}
-                    </Descriptions.Item>
-                  </Descriptions>
-                ),
-              },
-              {
-                key: 'skill',
-                label: 'Skill Guide',
-                children: selectedSkill ? (
-                  <div>
-                    <Descriptions bordered column={2}>
-                      <Descriptions.Item label="Skill ID">{selectedSkill.id}</Descriptions.Item>
-                      <Descriptions.Item label="关联模板">{selectedSkill.templateId}</Descriptions.Item>
-                      <Descriptions.Item label="参数数量">{selectedSkill.parameters?.length || 0}</Descriptions.Item>
-                      <Descriptions.Item label="更新时间">{selectedSkill.updatedAt ? new Date(selectedSkill.updatedAt).toLocaleString() : '-'}</Descriptions.Item>
-                    </Descriptions>
-                    {selectedSkill.skillGuideMarkdown && (
-                      <div style={{ marginTop: 16 }}>
-                        <Title level={5}>Skill Guide Markdown</Title>
-                        <pre style={{ background: '#f5f5f5', padding: 12, borderRadius: 4, maxHeight: 300, overflow: 'auto' }}>
-                          {selectedSkill.skillGuideMarkdown}
-                        </pre>
-                      </div>
-                    )}
-                    {selectedSkill.dataExampleJson && (
-                      <div style={{ marginTop: 16 }}>
-                        <Title level={5}>数据示例</Title>
-                        <pre style={{ background: '#f5f5f5', padding: 12, borderRadius: 4, maxHeight: 300, overflow: 'auto' }}>
-                          {JSON.stringify(selectedSkill.dataExampleJson, null, 2)}
-                        </pre>
-                      </div>
-                    )}
-                  </div>
-                ) : (
-                  <Text type="secondary">此模板没有关联的Skill Guide</Text>
-                ),
-              },
-              {
-                key: 'config',
-                label: '配置信息',
-                children: selectedTemplate.config ? (
-                  <pre style={{ background: '#f5f5f5', padding: 12, borderRadius: 4, maxHeight: 300, overflow: 'auto' }}>
-                    {JSON.stringify(selectedTemplate.config, null, 2)}
-                  </pre>
-                ) : (
-                  <Text type="secondary">无配置信息</Text>
-                ),
-              },
-            ]}
-          />
+          <Space direction="vertical" size={16} style={{ width: '100%' }}>
+            <Card
+              size="small"
+              style={{
+                borderRadius: 20,
+                border: '1px solid var(--bg-secondary, #e5e7eb)',
+                boxShadow: 'var(--shadow-lg, 0 12px 32px rgba(15,23,42,0.08))',
+              }}
+            >
+              <Descriptions column={1} size="small" bordered>
+                <Descriptions.Item label="Skill 类型">
+                  {selectedOverview.templateType ? <Tag color="blue">{selectedOverview.templateType}</Tag> : '未定义'}
+                </Descriptions.Item>
+                <Descriptions.Item label="业务类型">{selectedOverview.businessType || '-'}</Descriptions.Item>
+                <Descriptions.Item label="主要场景">{selectedOverview.mainScene || '-'}</Descriptions.Item>
+                <Descriptions.Item label="更新时间">
+                  {selectedTemplate.updatedAt ? new Date(selectedTemplate.updatedAt).toLocaleString() : '-'}
+                </Descriptions.Item>
+                <Descriptions.Item label="循环配置">
+                  {(selectedTemplate.loops?.length ?? 0) > 0 ? (
+                    <Space wrap>
+                      {selectedTemplate.loops?.map((l, i) => <Tag key={i} color="purple">{l.arrayPath}</Tag>)}
+                    </Space>
+                  ) : '无'}
+                </Descriptions.Item>
+              </Descriptions>
+            </Card>
+
+            {!selectedSkill ? (
+              <Card size="small">
+                <Empty description="此模板暂无可用的 Skill 信息" />
+              </Card>
+            ) : (
+              <>
+                {scalarParameters.length > 0 && (
+                  <Card size="small" title="基础参数">
+                    <Table
+                      size="small"
+                      pagination={false}
+                      rowKey="key"
+                      columns={parameterColumns}
+                      dataSource={scalarParameters}
+                      scroll={{ x: 760 }}
+                    />
+                  </Card>
+                )}
+
+                {arrayParameterGroups.map((group) => (
+                  <Card
+                    key={group.arrayPath}
+                    size="small"
+                    title={`数组参数 · ${group.arrayPath}`}
+                  >
+                    <Table
+                      size="small"
+                      pagination={false}
+                      rowKey="key"
+                      columns={parameterColumns}
+                      dataSource={group.fields}
+                      scroll={{ x: 760 }}
+                    />
+                  </Card>
+                ))}
+              </>
+            )}
+          </Space>
         )}
-      </Modal>
+      </Drawer>
 
       {/* 重命名弹窗 */}
       <Modal

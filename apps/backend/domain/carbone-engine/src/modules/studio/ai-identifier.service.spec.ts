@@ -804,6 +804,61 @@ describe('AIIdentifierService', () => {
       });
     });
 
+    it('should preserve excel groupLabel when duplicate suggestions are merged', async () => {
+      const skill = await service.generateAISkillGuide(
+        [
+          {
+            id: 'loop-1',
+            type: 'loop',
+            applied: true,
+            suggestedName: '{#d.items}{/d.items}',
+            originalText: '采购明细',
+            context: '采购明细 ↔ 数据源',
+            details: {
+              fieldType: 'loop',
+              arrayPath: 'd.items',
+              tableName: '采购明细',
+              columnMappings: [
+                {
+                  headerName: '物料编码',
+                  variablePath: 'd.items[].code',
+                  sampleValue: 'RB-6A-001',
+                  columnIndex: 0,
+                },
+              ],
+              excelAnchor: {
+                type: 'table',
+                sheetName: '采购明细',
+                pairIndex: 0,
+                tableName: '采购明细',
+              },
+            },
+          },
+          {
+            id: 'var-1',
+            type: 'variable',
+            applied: true,
+            suggestedName: '{d.items[].code}',
+            originalText: 'RB-6A-001',
+            elementPath: '采购明细!B3',
+            details: {
+              fieldType: 'text',
+            },
+          },
+        ],
+        {
+          tableLoops: [],
+        },
+        'contract',
+        '采购合同模板'
+      );
+
+      const target = skill.parameters.find((p: any) => p.name === 'items[].code');
+      expect(target).toBeDefined();
+      expect(target.groupLabel).toBe('采购明细');
+      expect(target.sheetName).toBe('采购明细');
+    });
+
     it('should handle empty document content', async () => {
       mockedAxios.post.mockResolvedValue({ data: mockAIResponse });
 

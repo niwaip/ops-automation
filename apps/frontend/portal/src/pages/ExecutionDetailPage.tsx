@@ -35,6 +35,10 @@ import {
   EXECUTION_STATUS_LABELS_EN,
   EXECUTION_STATUS_LABELS_ZH,
 } from '../utils/executionStatusMeta';
+import {
+  buildWaitingInputDisplayGroups,
+  resolveWaitingInputDisplayLabel,
+} from '../utils/waitingInputDisplay';
 
 const { Title, Text } = Typography;
 
@@ -42,10 +46,13 @@ interface RequiredInputField {
   name: string;
   type: string;
   description?: string;
+  display_name?: string;
+  group_label?: string;
   required: boolean;
   value?: unknown;
   missing: boolean;
   source: 'user_input' | 'default' | 'unresolved';
+  needs_confirmation?: boolean;
 }
 
 interface BrowserExecutionStepResult {
@@ -628,6 +635,49 @@ const stepStatusIcons: Record<string, React.ReactNode> = {
   skipped: <PauseCircleOutlined />,
 };
 
+const renderSemanticGroupedMissing = (
+  groupedMissing: NonNullable<ExecutionDto['semantic']>['groupedMissing'],
+  labels: {
+    group: string;
+    field: string;
+    blocking: string;
+    previewOk: string;
+  },
+) => {
+  if (!groupedMissing.length) {
+    return null;
+  }
+
+  return (
+    <Space direction="vertical" size={8} style={{ width: '100%' }}>
+      {groupedMissing.map((group) => (
+        <Card
+          key={group.key}
+          size="small"
+          styles={{ body: { padding: 12 } }}
+          style={{ borderRadius: 10, background: 'var(--bg-secondary)' }}
+        >
+          <Space direction="vertical" size={6} style={{ width: '100%' }}>
+            <Space wrap>
+              <Text strong>{group.label}</Text>
+              <Tag color={group.kind === 'array_group' ? 'processing' : 'default'}>
+                {group.kind === 'array_group' ? labels.group : labels.field}
+              </Tag>
+              <Tag color={group.blocking ? 'red' : 'gold'}>
+                {group.blocking ? labels.blocking : labels.previewOk}
+              </Tag>
+            </Space>
+            {group.description ? <Text type="secondary">{group.description}</Text> : null}
+            <Text type="secondary">
+              {group.missingFieldNames.join(', ')}
+            </Text>
+          </Space>
+        </Card>
+      ))}
+    </Space>
+  );
+};
+
 const getBrowserStepColor = (
   _stepResult: BrowserExecutionStepResult,
   index: number,
@@ -715,6 +765,22 @@ const ExecutionDetailPage: React.FC = () => {
     browserFailedStep: isEnglish ? 'Failed Step' : '失败步骤',
     browserFailedAction: isEnglish ? 'Failed Action' : '失败动作',
     browserNoOutput: isEnglish ? 'No structured output' : '暂无结构化输出',
+    semanticOverview: isEnglish ? 'Semantic Overview' : '语义摘要',
+    semanticMode: isEnglish ? 'Semantic Mode' : '语义模式',
+    semanticSummary: isEnglish ? 'Semantic Summary' : '语义总结',
+    previewReady: isEnglish ? 'Preview Ready' : '可预览',
+    finalReady: isEnglish ? 'Final Ready' : '可正式生成',
+    groupedMissing: isEnglish ? 'Missing Business Groups' : '缺失业务组',
+    complexity: isEnglish ? 'Complexity' : '复杂度',
+    missingFields: isEnglish ? 'Missing Fields' : '缺失字段数',
+    arrayGroups: isEnglish ? 'Array Groups' : '数组组数',
+    waitingInputSemanticHint: isEnglish ? 'Business-group hint' : '业务组提示',
+    yes: isEnglish ? 'Yes' : '是',
+    no: isEnglish ? 'No' : '否',
+    groupLabel: isEnglish ? 'Group' : '分组',
+    fieldLabel: isEnglish ? 'Field' : '字段',
+    blockingLabel: isEnglish ? 'Blocking' : '阻塞',
+    previewOkLabel: isEnglish ? 'Preview OK' : '可先预览',
   };
   const statusLabels = isEnglish ? EXECUTION_STATUS_LABELS_EN : EXECUTION_STATUS_LABELS_ZH;
 
@@ -862,6 +928,11 @@ const ExecutionDetailPage: React.FC = () => {
   const requiredInputs = Array.isArray(waitingInputStep?.inputJson?.requiredInputs)
     ? (waitingInputStep.inputJson.requiredInputs as unknown as RequiredInputField[])
     : [];
+  const requiredInputGroups = React.useMemo(
+    () => buildWaitingInputDisplayGroups(requiredInputs),
+    [requiredInputs],
+  );
+  const semantic = execution.semantic;
 
   const handleSubmitInput = (values: Record<string, unknown>) => {
     submitInputMutation.mutate(values);
@@ -878,7 +949,7 @@ const ExecutionDetailPage: React.FC = () => {
       return <Switch />;
     }
 
-    if (normalizedType === 'object' || normalizedType === 'json') {
+    if (normalizedType === 'object' || normalizedType === 'json' || normalizedType === 'array') {
       return <Input.TextArea rows={4} placeholder={text.enterJsonString} />;
     }
 
@@ -892,7 +963,12 @@ const ExecutionDetailPage: React.FC = () => {
         return acc;
       }
 
-      if ((field.type.toLowerCase() === 'object' || field.type.toLowerCase() === 'json') && typeof rawValue === 'string') {
+      if (
+        (field.type.toLowerCase() === 'object'
+          || field.type.toLowerCase() === 'json'
+          || field.type.toLowerCase() === 'array')
+        && typeof rawValue === 'string'
+      ) {
         acc[field.name] = JSON.parse(rawValue) as unknown;
         return acc;
       }
@@ -1206,7 +1282,14 @@ const ExecutionDetailPage: React.FC = () => {
             showIcon
             style={{ marginBottom: 16 }}
             message={text.waitingInput}
-            description={text.waitingInputDesc}
+            description={
+              <Space direction="vertical" size={8}>
+                <Text>{text.waitingInputDesc}</Text>
+                {semantic?.summary ? (
+                  <Text type="secondary">{`${text.waitingInputSemanticHint}: ${semantic.summary}`}</Text>
+                ) : null}
+              </Space>
+            }
           />
           <Form
             form={form}
@@ -1223,22 +1306,59 @@ const ExecutionDetailPage: React.FC = () => {
               }
             }}
           >
-            {requiredInputs.map((field) => (
-              <Form.Item
-                key={field.name}
-                name={field.name}
-                label={`${field.name} (${field.type})`}
-                extra={field.description || `${text.source}: ${field.source}`}
-                rules={[
-                  {
-                    required: field.required,
-                    message: `${text.provideField} ${field.name}`,
-                  },
-                ]}
-                valuePropName={field.type.toLowerCase() === 'boolean' ? 'checked' : 'value'}
-              >
-                {renderInputField(field)}
-              </Form.Item>
+            {requiredInputGroups.length > 0 ? (
+              <Space direction="vertical" size={16} style={{ width: '100%' }}>
+                {requiredInputGroups.map((group) => (
+                  <Card
+                    key={group.label}
+                    size="small"
+                    title={group.label}
+                    style={{ borderRadius: 12, background: 'var(--bg-card)' }}
+                  >
+                    {group.items.map((field) => (
+                      <React.Fragment key={field.name}>
+                        <Form.Item
+                          name={field.name}
+                        label={`${resolveWaitingInputDisplayLabel(field)} (${field.type})`}
+                          extra={field.description || `${text.source}: ${field.source}`}
+                          rules={[
+                            {
+                              required: field.required,
+                              message: `${text.provideField} ${resolveWaitingInputDisplayLabel(field)}`,
+                            },
+                          ]}
+                          valuePropName={field.type.toLowerCase() === 'boolean' ? 'checked' : 'value'}
+                        >
+                          {renderInputField(field)}
+                        </Form.Item>
+                        {field.needs_confirmation ? (
+                          <Tag color="gold" style={{ marginBottom: 12 }}>待确认</Tag>
+                        ) : null}
+                      </React.Fragment>
+                    ))}
+                  </Card>
+                ))}
+              </Space>
+            ) : requiredInputs.map((field) => (
+              <React.Fragment key={field.name}>
+                <Form.Item
+                  name={field.name}
+                  label={`${resolveWaitingInputDisplayLabel(field)} (${field.type})`}
+                  extra={field.description || `${text.source}: ${field.source}`}
+                  rules={[
+                    {
+                      required: field.required,
+                      message: `${text.provideField} ${resolveWaitingInputDisplayLabel(field)}`,
+                    },
+                  ]}
+                  valuePropName={field.type.toLowerCase() === 'boolean' ? 'checked' : 'value'}
+                >
+                  {renderInputField(field)}
+                </Form.Item>
+                {field.needs_confirmation ? (
+                  <Tag color="gold" style={{ marginBottom: 12 }}>待确认</Tag>
+                ) : null}
+              </React.Fragment>
             ))}
             <Space>
               <Button type="primary" htmlType="submit" loading={submitInputMutation.isLoading}>
@@ -1352,6 +1472,49 @@ const ExecutionDetailPage: React.FC = () => {
         </Descriptions>
         )}
       </Card>
+
+      {semantic ? (
+        <Card title={text.semanticOverview} style={{ marginBottom: 16 }}>
+          <Descriptions column={2} size="small" style={{ marginBottom: semantic.groupedMissing.length > 0 ? 16 : 0 }}>
+            <Descriptions.Item label={text.semanticMode}>{semantic.mode}</Descriptions.Item>
+            <Descriptions.Item label={text.complexity}>
+              {semantic.complexity?.category || '-'}
+            </Descriptions.Item>
+            <Descriptions.Item label={text.previewReady}>
+              <Tag color={semantic.previewReady ? 'green' : 'gold'}>
+                {semantic.previewReady ? text.yes : text.no}
+              </Tag>
+            </Descriptions.Item>
+            <Descriptions.Item label={text.finalReady}>
+              <Tag color={semantic.finalReady ? 'green' : 'red'}>
+                {semantic.finalReady ? text.yes : text.no}
+              </Tag>
+            </Descriptions.Item>
+            <Descriptions.Item label={text.missingFields}>
+              {semantic.complexity?.missingFields ?? '-'}
+            </Descriptions.Item>
+            <Descriptions.Item label={text.arrayGroups}>
+              {semantic.complexity?.arrayGroups ?? '-'}
+            </Descriptions.Item>
+            {semantic.summary ? (
+              <Descriptions.Item label={text.semanticSummary} span={2}>
+                {semantic.summary}
+              </Descriptions.Item>
+            ) : null}
+          </Descriptions>
+          {semantic.groupedMissing.length > 0 ? (
+            <div>
+              <Text strong style={{ display: 'block', marginBottom: 12 }}>{text.groupedMissing}</Text>
+              {renderSemanticGroupedMissing(semantic.groupedMissing, {
+                group: text.groupLabel,
+                field: text.fieldLabel,
+                blocking: text.blockingLabel,
+                previewOk: text.previewOkLabel,
+              })}
+            </div>
+          ) : null}
+        </Card>
+      ) : null}
 
       {/* Output */}
       {browserExecutionResult && (

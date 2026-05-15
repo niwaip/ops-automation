@@ -9,6 +9,7 @@ export interface TemplateResponse {
   format: 'docx' | 'xlsx' | 'pptx' | 'html';
   size: number;
   variables: string[];
+  parameterCount?: number;
   loops: Array<{ arrayPath: string }>;
   markings?: Array<{ path: string; text: string; formatters?: string[] }>;
   ignoredElements?: number[];  // 被忽略的元素索引列表

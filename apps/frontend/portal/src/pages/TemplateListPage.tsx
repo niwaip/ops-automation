@@ -45,7 +45,12 @@ const TemplateListPage: React.FC = () => {
   const templatesQuery = useQuery(
     ['templates', { page, pageSize, status: statusFilter, search: searchText }],
     async () => {
-      const result = await templateApi.list({ page, pageSize, status: statusFilter, search: searchText });
+      const result = await templateApi.list({
+        page,
+        pageSize,
+        status: statusFilter,
+        search: searchText,
+      });
       const templates = result.templates || [];
       const creatorIds = Array.from(
         new Set(templates.map((template) => template.created_by).filter(Boolean)),

@@ -16,6 +16,11 @@ function getAxiosConfig(_url: string, options: AxiosRequestConfig = {}): AxiosRe
   return config;
 }
 
+function isDraftDocumentTemplate(template: { fileName?: string }): boolean {
+  const fileName = String(template.fileName || '').trim().toLowerCase();
+  return fileName.startsWith('draft-');
+}
+
 export interface DocumentStructure {
   elements: Array<{
     type: string;
@@ -423,7 +428,7 @@ class CarboneAPI {
   /**
    * 获取模板列表
    */
-  async getTemplates(): Promise<{
+  async getTemplates(options?: { includeDrafts?: boolean }): Promise<{
     templates: Array<{
       id: string;
       fileName?: string;
@@ -439,7 +444,13 @@ class CarboneAPI {
       `${this.baseUrl}/studio/templates`,
       getAxiosConfig(this.baseUrl)
     );
-    return response.data;
+    const includeDrafts = options?.includeDrafts === true;
+    return {
+      ...response.data,
+      templates: includeDrafts
+        ? (response.data.templates || [])
+        : (response.data.templates || []).filter((template: { fileName?: string }) => !isDraftDocumentTemplate(template)),
+    };
   }
 
   /**
@@ -452,6 +463,7 @@ class CarboneAPI {
     size?: number;
     config?: any;
     suggestions?: any[];
+    variables?: string[];
     skillId?: string;
   }> {
     const response = await axios.get(

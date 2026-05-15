@@ -180,7 +180,29 @@ services:
   browser-template:
     <<: *common-node-service
     container_name: ops-browser-template
-    command: sh -c "npm config set registry https://registry.npmmirror.com && npm install --legacy-peer-deps --include=dev && npm run dev"
+    command: >
+      sh -c "npm config set registry https://registry.npmmirror.com
+      && npm config set fetch-retries 5
+      && npm config set fetch-retry-mintimeout 20000
+      && npm config set fetch-retry-maxtimeout 120000
+      && i=0
+      && until [ $$i -ge 5 ]; do
+        npm install --legacy-peer-deps --include=dev && break;
+        i=$$((i+1));
+        echo 'npm install failed, retrying in 10s...';
+        sleep 10;
+      done
+      && [ $$i -lt 5 ]
+      && j=0
+      && until [ $$j -ge 5 ]; do
+        npx prisma generate && break;
+        j=$$((j+1));
+        echo 'prisma generate failed, retrying in 10s...';
+        sleep 10;
+      done
+      && [ $$j -lt 5 ]
+      && npm run build
+      && npm run start"
     environment:
       <<: *common-env
       DB_HOST: postgres
@@ -214,6 +236,10 @@ services:
       ALIBABA_BAILIAN_API_KEY: ${ALIBABA_BAILIAN_API_KEY:-}
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
       DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY:-}
+      DOCUMENT_SEMANTIC_SUBAGENT_ENABLED: ${DOCUMENT_SEMANTIC_SUBAGENT_ENABLED:-true}
+      DOCUMENT_SEMANTIC_PARAM_THRESHOLD: ${DOCUMENT_SEMANTIC_PARAM_THRESHOLD:-8}
+      DOCUMENT_SEMANTIC_MISSING_THRESHOLD: ${DOCUMENT_SEMANTIC_MISSING_THRESHOLD:-4}
+      DOCUMENT_SEMANTIC_ARRAY_GROUP_THRESHOLD: ${DOCUMENT_SEMANTIC_ARRAY_GROUP_THRESHOLD:-2}
     ports:
       - "${AI_ORCHESTRATOR_PORT:-3007}:${AI_ORCHESTRATOR_PORT:-3007}"
     volumes:

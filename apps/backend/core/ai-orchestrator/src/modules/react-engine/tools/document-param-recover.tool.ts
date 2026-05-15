@@ -41,11 +41,26 @@ const isTemplateVisibleInSnapshot = (
     properties: {
       skillId: {
         type: 'string',
-        description: '技能ID',
-        required: true,
+        description: '技能ID；未传时可从上下文中继承',
+        required: false,
+      },
+      userInput: {
+        type: 'string',
+        description: '用户补充的自然语言输入；未传时可回退到上下文中的 originalUserInput',
+        required: false,
+      },
+      errorMessage: {
+        type: 'string',
+        description: '上一步渲染失败的错误信息',
+        required: false,
+      },
+      currentParams: {
+        type: 'object',
+        description: '当前已收集的参数快照',
+        required: false,
       },
     },
-    required: ['skillId'],
+    required: [],
   },
   isDefault: true,
 })
@@ -59,11 +74,26 @@ export class DocumentParamRecoverTool extends BaseTool {
         properties: {
           skillId: {
             type: 'string',
-            description: '技能ID',
-            required: true,
+            description: '技能ID；未传时可从上下文中继承',
+            required: false,
+          },
+          userInput: {
+            type: 'string',
+            description: '用户补充的自然语言输入；未传时可回退到上下文中的 originalUserInput',
+            required: false,
+          },
+          errorMessage: {
+            type: 'string',
+            description: '上一步渲染失败的错误信息',
+            required: false,
+          },
+          currentParams: {
+            type: 'object',
+            description: '当前已收集的参数快照',
+            required: false,
           },
         },
-        required: ['skillId'],
+        required: [],
       },
       { category: 'parameter' },
     );

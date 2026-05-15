@@ -2,6 +2,30 @@ import { ExecutionDto, ExecutionStepDto } from './execution.dto';
 import { ApprovalStatus } from './contracts/approval-status';
 import { ExecutionStatus } from './contracts/execution-status';
 import { ExecutionStepStatus } from './contracts/execution-step-status';
+import type { ExecutionSemantic } from '@ops/contracts';
+
+const asExecutionSemantic = (value: unknown): ExecutionSemantic | null => {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    return null;
+  }
+  const candidate = value as Record<string, unknown>;
+  if (typeof candidate.enabled !== 'boolean') {
+    return null;
+  }
+  if (candidate.mode !== 'field_level' && candidate.mode !== 'complex_document') {
+    return null;
+  }
+  if (typeof candidate.previewReady !== 'boolean' || typeof candidate.finalReady !== 'boolean') {
+    return null;
+  }
+  if (typeof candidate.fallbackToFieldLevel !== 'boolean') {
+    return null;
+  }
+  if (!Array.isArray(candidate.groupedMissing)) {
+    return null;
+  }
+  return candidate as unknown as ExecutionSemantic;
+};
 
 export const mapExecutionToDto = (
   execution: Record<string, unknown>,
@@ -16,6 +40,11 @@ export const mapExecutionToDto = (
     (normalizedInput && typeof normalizedInput === 'object'
       ? (normalizedInput.__usage as Record<string, unknown> | undefined)
       : undefined) || null;
+  const semantic = asExecutionSemantic(
+    normalizedInput && typeof normalizedInput === 'object'
+      ? (normalizedInput.semantic as unknown)
+      : undefined,
+  );
 
   return {
     id: execution.id as string,
@@ -36,6 +65,7 @@ export const mapExecutionToDto = (
     normalizedInputJson: normalizedInput,
     input,
     normalizedInput,
+    semantic,
     result,
     usage,
     failureCode: execution.failureCode as string | null,

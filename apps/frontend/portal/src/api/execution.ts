@@ -6,6 +6,7 @@
 import type {
   ApprovalStatus,
   ExecutionStatus,
+  ExecutionSemantic,
   ExecutionStepStatus,
 } from '@ops/contracts';
 import { apiClient } from './client';
@@ -13,6 +14,7 @@ import { apiClient } from './client';
 export type {
   ApprovalStatus,
   ExecutionStatus,
+  ExecutionSemantic,
   ExecutionStepStatus,
 } from '@ops/contracts';
 
@@ -48,6 +50,7 @@ export interface ExecutionDto {
   // v3 compatibility fields for gradual portal migration.
   input?: Record<string, unknown>;
   normalizedInput?: Record<string, unknown>;
+  semantic?: ExecutionSemantic;
   result?: Record<string, unknown>;
   createdBy?: string;
   createdByName?: string;
@@ -91,6 +94,7 @@ const normalizeExecution = (raw: ExecutionDto): ExecutionDto => ({
   failureReason: raw.failureReason || undefined,
   startedAt: raw.startedAt || undefined,
   endedAt: raw.endedAt || undefined,
+  semantic: raw.semantic || (raw.normalizedInput?.semantic as ExecutionSemantic | undefined) || undefined,
   result: raw.resultJson || undefined,
 });
 

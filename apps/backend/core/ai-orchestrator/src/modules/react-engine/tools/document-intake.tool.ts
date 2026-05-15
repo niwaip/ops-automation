@@ -37,18 +37,23 @@ interface ReportTemplateRegistryItem {
   parameters: {
     type: 'object',
     properties: {
-      fileId: {
+      userInput: {
         type: 'string',
-        description: '已上传文件的ID',
-        required: true,
+        description: '用户当前输入的文档需求描述；未传时可回退到上下文中的 originalUserInput',
+        required: false,
       },
       skillId: {
         type: 'string',
         description: '关联的技能ID（可选）',
         required: false,
       },
+      templateId: {
+        type: 'string',
+        description: '显式指定的模板ID（可选）',
+        required: false,
+      },
     },
-    required: ['fileId'],
+    required: [],
   },
   isDefault: true,
 })
@@ -60,18 +65,23 @@ export class DocumentIntakeTool extends BaseTool {
       {
         type: 'object',
         properties: {
-          fileId: {
+          userInput: {
             type: 'string',
-            description: '已上传文件的ID',
-            required: true,
+            description: '用户当前输入的文档需求描述；未传时可回退到上下文中的 originalUserInput',
+            required: false,
           },
           skillId: {
             type: 'string',
             description: '关联的技能ID（可选）',
             required: false,
           },
+          templateId: {
+            type: 'string',
+            description: '显式指定的模板ID（可选）',
+            required: false,
+          },
         },
-        required: ['fileId'],
+        required: [],
       },
     );
   }

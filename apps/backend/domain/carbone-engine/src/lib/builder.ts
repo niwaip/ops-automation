@@ -47,9 +47,14 @@ export class Builder {
    * 例如: d.user.name -> data.user.name
    */
   evaluatePath(path: string, data: any, context: { loopIndex?: number; parentsData?: any[] } = {}): any {
+    // 移除可能存在的花括号
+    const unwrappedPath = path.startsWith('{') && path.endsWith('}') 
+      ? path.slice(1, -1) 
+      : path;
+      
     // 去掉前缀字符 (d, c, t)
-    const cleanPath = path.replace(/^([cdt])\./, '');
-    const prefixChar = path.charAt(0);
+    const cleanPath = unwrappedPath.replace(/^([cdt])\./, '');
+    const prefixChar = unwrappedPath.charAt(0);
 
     // 选择数据源
     let dataSource: any;
@@ -82,6 +87,7 @@ export class Builder {
         return undefined;
       }
 
+      const prev = current;
       // Handle array index: items[0] or items[]
       const arrayMatch = part.match(/^([^\[]+)\[(\d+)?\]$/);
       if (arrayMatch) {

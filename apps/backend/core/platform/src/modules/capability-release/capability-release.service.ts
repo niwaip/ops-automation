@@ -16,6 +16,7 @@ import {
   getControlPlaneApiUrl,
   getTemporalUiUrl,
 } from '../../config/service-endpoints';
+import { resolveFriendlyInputDisplayName } from '../../common/input-label';
 import { TemporalWorkflowService } from '../temporal-workflow/temporal-workflow.service';
 import { ActivityService } from '../temporal-workflow/temporal-activity.service';
 import { ExecutionFlowTemplateService } from '../execution-flow/execution-flow-template.service';
@@ -3754,13 +3755,45 @@ ${logs.join('\n')}
         ? definition.description.trim()
         : `Workflow 输入参数 ${key}`;
       const defaultValue = definition.defaultValue;
-      const inferredType = this.inferTemporalParamType(defaultValue, description);
+      const normalizedDefaultValue = this.normalizeCapabilityDefaultValue(defaultValue);
+      const inferredType =
+        this.normalizeDeclaredTemporalParamType(definition.type, key)
+        || this.inferTemporalParamType(
+          normalizedDefaultValue !== undefined ? normalizedDefaultValue : definition.exampleValue,
+          description,
+          key,
+        );
+      const displayName = this.resolveTemporalParamDisplayName(key, definition, description);
 
       properties[key] = {
         type: inferredType,
         description,
+        ...(displayName
+          ? { displayName }
+          : {}),
+        ...(typeof definition.groupLabel === 'string' && definition.groupLabel.trim()
+          ? { groupLabel: definition.groupLabel.trim() }
+          : {}),
+        ...(typeof definition.previewBlocking === 'boolean'
+          ? { previewBlocking: definition.previewBlocking }
+          : {}),
+        ...(typeof definition.semanticRole === 'string' && definition.semanticRole.trim()
+          ? { semanticRole: definition.semanticRole.trim() }
+          : {}),
+        ...(Array.isArray(definition.extractionHints)
+          ? {
+              extractionHints: definition.extractionHints
+                .filter((item): item is string => typeof item === 'string' && item.trim().length > 0)
+                .map((item) => item.trim()),
+            }
+          : {}),
+        ...(typeof definition.confirmationThreshold === 'number' && Number.isFinite(definition.confirmationThreshold)
+          ? {
+              confirmationThreshold: Math.max(0, Math.min(1, definition.confirmationThreshold)),
+            }
+          : {}),
         required: Boolean(definition.required),
-        ...(!definition.required && defaultValue !== undefined ? { default: defaultValue } : {}),
+        ...(!definition.required && normalizedDefaultValue !== undefined ? { default: normalizedDefaultValue } : {}),
         extractionPrompt: description,
       };
 
@@ -3793,12 +3826,13 @@ ${logs.join('\n')}
           }
 
           properties[key] = {
-            type: this.inferTemporalParamType(value, description),
+            type: this.normalizeDeclaredTemporalParamType(undefined, key)
+              || this.inferTemporalParamType(value, description, key),
             description,
-            ...(inferredFromActivities[key]?.default !== undefined
-              ? { default: inferredFromActivities[key].default }
-              : key === 'timeout' && value !== undefined
-                ? { default: value }
+            ...(this.normalizeCapabilityDefaultValue(inferredFromActivities[key]?.default) !== undefined
+              ? { default: this.normalizeCapabilityDefaultValue(inferredFromActivities[key]?.default) }
+              : this.normalizeCapabilityDefaultValue(key === 'timeout' ? value : undefined) !== undefined
+                ? { default: this.normalizeCapabilityDefaultValue(value) }
                 : {}),
             ...(inferredFromActivities[key]?.required ? { required: true } : {}),
             extractionPrompt: description,
@@ -3812,6 +3846,37 @@ ${logs.join('\n')}
     }
 
     return { properties, required };
+  }
+
+  private resolveTemporalParamDisplayName(
+    key: string,
+    definition: Record<string, unknown>,
+    description?: string,
+  ): string | undefined {
+    const declaredDisplayName = typeof definition.displayName === 'string'
+      ? definition.displayName.trim()
+      : undefined;
+    return resolveFriendlyInputDisplayName({
+      name: key,
+      display_name: declaredDisplayName,
+      description,
+    });
+  }
+
+  private normalizeCapabilityDefaultValue(value: unknown): unknown {
+    if (value === undefined || value === null) {
+      return undefined;
+    }
+    if (typeof value === 'string') {
+      return value.trim().length > 0 ? value : undefined;
+    }
+    if (Array.isArray(value)) {
+      return value.length > 0 ? value : undefined;
+    }
+    if (typeof value === 'object') {
+      return Object.keys(value as Record<string, unknown>).length > 0 ? value : undefined;
+    }
+    return value;
   }
 
   private inferTemporalParamsFromActivityDsl(
@@ -3997,6 +4062,7 @@ ${logs.join('\n')}
   private inferTemporalParamType(
     defaultValue: unknown,
     description: string,
+    fieldName = '',
   ): 'string' | 'number' | 'date' | 'boolean' {
     if (typeof defaultValue === 'boolean') {
       return 'boolean';
@@ -4020,6 +4086,13 @@ ${logs.join('\n')}
       }
     }
 
+    const semanticHint = `${String(fieldName || '')} ${String(description || '')}`.toLowerCase();
+    if (/(currency|curr|币种|货币)/.test(semanticHint)) {
+      return 'string';
+    }
+    if (/(period|month|months|月数|期数|时长|duration)/.test(semanticHint)) {
+      return 'number';
+    }
     if (/日期|时间|date|time/i.test(description)) {
       return 'date';
     }
@@ -4028,6 +4101,28 @@ ${logs.join('\n')}
     }
     if (/是否|true|false|开关|启用/i.test(description)) {
       return 'boolean';
+    }
+    return 'string';
+  }
+
+  private normalizeDeclaredTemporalParamType(
+    declaredType: unknown,
+    fieldName = '',
+  ): 'string' | 'number' | 'date' | 'boolean' | undefined {
+    const normalized = String(declaredType || '').trim().toLowerCase();
+    if (!normalized) {
+      return undefined;
+    }
+
+    const hint = `${normalized} ${String(fieldName || '').trim().toLowerCase()}`;
+    if (/(date|time|datetime|timestamp)/.test(hint)) {
+      return 'date';
+    }
+    if (/(bool|boolean)/.test(hint)) {
+      return 'boolean';
+    }
+    if (/(number|int|integer|float|double|decimal|amount|price|count|qty|quantity|ratio|percent)/.test(hint)) {
+      return 'number';
     }
     return 'string';
   }

@@ -243,6 +243,183 @@ describe('ExecutionService.submitInputAndResume', () => {
     expect(response).toBe(result);
   });
 
+  it('keeps placeholder-like submitted values as missing inputs', async () => {
+    const { service, prisma } = createService();
+    const executionWithThreeRequiredInputs = {
+      ...baseExecution,
+      normalizedInputJson: {
+        input: {},
+        requiredInputs: [
+          {
+            name: 'otherTerms',
+            type: 'string',
+            required: true,
+            missing: true,
+            source: 'unresolved',
+          },
+          {
+            name: 'installationCondition',
+            type: 'string',
+            required: true,
+            missing: true,
+            source: 'unresolved',
+          },
+          {
+            name: 'deliveryItems[].installationDate',
+            type: 'date',
+            required: true,
+            missing: true,
+            source: 'unresolved',
+          },
+        ],
+      },
+    };
+    const dto: SubmitInputDto = {
+      stepId: 'step-1',
+      input: {
+        otherTerms: '无',
+        installationCondition: '待补充',
+        'deliveryItems[].installationDate': 'N/A',
+      },
+    };
+    const result = {
+      id: 'execution-1',
+      status: 'waiting_input',
+    };
+
+    prisma.execution.findUnique.mockResolvedValue(executionWithThreeRequiredInputs);
+    prisma.executionStep.findUnique.mockResolvedValue(baseStep);
+    prisma.execution.update.mockResolvedValue(undefined);
+    prisma.executionStep.update.mockResolvedValue(undefined);
+    prisma.executionEvent.create.mockResolvedValue(undefined);
+    prisma.runtimeSession.findFirst.mockResolvedValue({ id: 'runtime-1' });
+    jest.spyOn(service, 'getById').mockResolvedValue(result as never);
+
+    const response = await service.submitInputAndResume('execution-1', 'user-1', dto);
+
+    expect(prisma.executionStep.update).toHaveBeenCalledWith({
+      where: { id: 'step-1' },
+      data: {
+        status: 'waiting_input',
+        inputJson: {
+          requiredInputs: [
+            expect.objectContaining({ name: 'otherTerms', missing: true }),
+            expect.objectContaining({ name: 'installationCondition', missing: true }),
+            expect.objectContaining({ name: 'deliveryItems[].installationDate', missing: true }),
+          ],
+        },
+        outputJson: {
+          otherTerms: undefined,
+          installationCondition: undefined,
+          'deliveryItems[].installationDate': undefined,
+        },
+        endedAt: null,
+      },
+    });
+    expect(prisma.execution.update).toHaveBeenCalledWith({
+      where: { id: 'execution-1' },
+      data: {
+        normalizedInputJson: {
+          input: {
+            otherTerms: undefined,
+            installationCondition: undefined,
+            'deliveryItems[].installationDate': undefined,
+          },
+          requiredInputs: [
+            expect.objectContaining({ name: 'otherTerms', missing: true, value: undefined, source: 'unresolved' }),
+            expect.objectContaining({ name: 'installationCondition', missing: true, value: undefined, source: 'unresolved' }),
+            expect.objectContaining({ name: 'deliveryItems[].installationDate', missing: true, value: undefined, source: 'unresolved' }),
+          ],
+          otherTerms: undefined,
+          installationCondition: undefined,
+          'deliveryItems[].installationDate': undefined,
+        },
+        status: 'waiting_input',
+      },
+    });
+    expect((service as any).updateStatus).not.toHaveBeenCalled();
+    expect((service as any).advanceExecutionFlow).not.toHaveBeenCalled();
+    expect(response).toBe(result);
+  });
+
+  it('normalizes submitted date input before resuming execution', async () => {
+    const { service, prisma } = createService();
+    const executionWithDateInput = {
+      ...baseExecution,
+      normalizedInputJson: {
+        input: {},
+        requiredInputs: [
+          {
+            name: 'deliveryItems[].installationDate',
+            type: 'date',
+            required: true,
+            missing: true,
+            source: 'unresolved',
+          },
+        ],
+      },
+    };
+    const result = {
+      id: 'execution-1',
+      status: 'running',
+    };
+    const dto: SubmitInputDto = {
+      stepId: 'step-1',
+      input: {
+        'deliveryItems[].installationDate': '2025/6/7',
+      },
+    };
+
+    prisma.execution.findUnique.mockResolvedValue(executionWithDateInput);
+    prisma.executionStep.findUnique.mockResolvedValue(baseStep);
+    prisma.execution.update.mockResolvedValue(undefined);
+    prisma.executionStep.update.mockResolvedValue(undefined);
+    prisma.executionEvent.create.mockResolvedValue(undefined);
+    prisma.runtimeSession.findFirst.mockResolvedValue({ id: 'runtime-1' });
+    jest.spyOn(service, 'getById').mockResolvedValue(result as never);
+
+    const response = await service.submitInputAndResume('execution-1', 'user-1', dto);
+
+    expect(prisma.execution.update).toHaveBeenCalledWith({
+      where: { id: 'execution-1' },
+      data: {
+        normalizedInputJson: {
+          input: {
+            'deliveryItems[].installationDate': '2025-06-07',
+          },
+          requiredInputs: [
+            {
+              name: 'deliveryItems[].installationDate',
+              type: 'date',
+              required: true,
+              missing: false,
+              source: 'user_input',
+              value: '2025-06-07',
+            },
+          ],
+          'deliveryItems[].installationDate': '2025-06-07',
+        },
+        status: 'queued',
+      },
+    });
+    expect(prisma.executionStep.update).toHaveBeenCalledWith({
+      where: { id: 'step-1' },
+      data: {
+        status: 'succeeded',
+        inputJson: {
+          requiredInputs: [],
+        },
+        outputJson: {
+          'deliveryItems[].installationDate': '2025-06-07',
+        },
+        endedAt: expect.any(Date),
+      },
+    });
+    expect((service as any).updateStatus).toHaveBeenCalledWith('execution-1', 'running');
+    expect((service as any).advanceExecutionFlow).toHaveBeenCalledWith('execution-1', 'runtime-1');
+    expect(response).toBe(result);
+  });
+
   it('starts execution after input submission when runtime session has not been allocated yet', async () => {
     const { service, prisma } = createService();
     const result = {
@@ -270,6 +447,65 @@ describe('ExecutionService.submitInputAndResume', () => {
     expect((service as any).updateStatus).not.toHaveBeenCalled();
     expect((service as any).startExecution).toHaveBeenCalledWith('execution-1');
     expect(response).toBe(result);
+  });
+});
+
+describe('ExecutionService waiting_input semantic passthrough', () => {
+  const createService = () => {
+    const prisma = {
+      execution: {
+        findUnique: jest.fn(),
+      },
+      executionEvent: {
+        create: jest.fn(),
+      },
+      $queryRawUnsafe: jest.fn().mockResolvedValue([]),
+      $transaction: jest.fn((operations: Array<Promise<unknown>>) => Promise.all(operations)),
+    };
+
+    const service = new ExecutionService(prisma as never, {} as never, {} as never, {} as never);
+    const serviceInternals = service as any;
+    jest.spyOn(serviceInternals, 'updateStatus').mockResolvedValue(undefined);
+    jest.spyOn(serviceInternals, 'createEvent').mockResolvedValue(undefined);
+
+    return { service, prisma };
+  };
+
+  it('includes semantic snapshot in runtime waiting_input events when available', async () => {
+    const { service, prisma } = createService();
+    const semantic = {
+      enabled: true,
+      mode: 'complex_document',
+      previewReady: true,
+      finalReady: false,
+      fallbackToFieldLevel: false,
+      groupedMissing: [],
+    };
+    prisma.execution.findUnique.mockResolvedValue({
+      normalizedInputJson: { semantic },
+    });
+
+    await (service as any).enterRuntimeWaitingInput(
+      'execution-1',
+      'runtime-1',
+      'step-1',
+      [{ name: 'url', type: 'string' }],
+      'missing fields',
+    );
+
+    expect((service as any).createEvent).toHaveBeenCalledWith(
+      'execution-1',
+      EXECUTION_EVENT_TYPE.STEP_WAITING_INPUT,
+      expect.objectContaining({
+        requiredInputs: [{ name: 'url', type: 'string' }],
+        reason: 'missing fields',
+        semantic,
+      }),
+      expect.objectContaining({
+        runtimeSessionId: 'runtime-1',
+        stepId: 'step-1',
+      }),
+    );
   });
 });
 
@@ -796,6 +1032,110 @@ describe('ExecutionService.create planner draft reuse', () => {
         skillId: 'skill-1',
         runtimeType: 'workflow',
         status: 'queued',
+      }),
+    });
+  });
+
+  it('refreshes semantic snapshot when provided input already resolves grouped missing fields', async () => {
+    const { service, prisma } = createService();
+
+    const providedPlanDraft = {
+      plan_id: 'plan-1',
+      planner_mode: 'skill',
+      objective: 'generate contract',
+      summary: '仍缺少付款计划',
+      skill_match: {
+        skill_id: 'skill-1',
+        skill_name: '采购合同',
+        confidence: 0.99,
+      },
+      steps: [
+        {
+          id: 'collect-required-inputs',
+          title: 'Collect required inputs',
+          description: '补齐必填参数: paymentSchedule[].amount',
+          kind: 'human_input',
+          status: 'planned',
+        },
+      ],
+      required_inputs: [
+        {
+          name: 'paymentSchedule[].amount',
+          type: 'number',
+          required: true,
+          missing: true,
+          source: 'unresolved',
+          description: '付款金额',
+        },
+      ],
+      semantic: {
+        enabled: true,
+        mode: 'complex_document',
+        previewReady: false,
+        finalReady: false,
+        fallbackToFieldLevel: false,
+        summary: '文档仍缺少 1 个关键业务组。',
+        groupedMissing: [
+          {
+            key: 'paymentSchedule',
+            label: '付款计划',
+            kind: 'array_group',
+            blocking: true,
+            required: true,
+            fieldNames: ['paymentSchedule[].amount'],
+            missingFieldNames: ['paymentSchedule[].amount'],
+            description: '请按业务组补充 付款计划',
+          },
+        ],
+        complexity: {
+          category: 'complex_document',
+          totalFields: 1,
+          requiredFields: 1,
+          missingFields: 1,
+          arrayGroups: 1,
+          reasonCodes: ['array_group_threshold'],
+        },
+      },
+      risk_summary: {
+        level: 'medium',
+        requires_human_review: false,
+        items: ['missing_required_inputs'],
+      },
+    };
+
+    prisma.execution.create.mockResolvedValue({
+      id: 'execution-create-1',
+      requiresApproval: false,
+      createdBy: 'user-1',
+    });
+    prisma.executionEvent.create.mockResolvedValue(undefined);
+
+    await service.create(
+      'user-1',
+      {
+        skillId: 'skill-1',
+        runtimeType: 'workflow',
+        input: { 'paymentSchedule[].amount': [1000] },
+        planDraft: providedPlanDraft as any,
+      },
+      {
+        authToken: 'Bearer token-1',
+      },
+    );
+
+    expect(prisma.execution.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        normalizedInputJson: expect.objectContaining({
+          semantic: expect.objectContaining({
+            previewReady: true,
+            finalReady: true,
+            groupedMissing: [],
+            summary: '文档参数已满足最终渲染要求。',
+            complexity: expect.objectContaining({
+              missingFields: 0,
+            }),
+          }),
+        }),
       }),
     });
   });

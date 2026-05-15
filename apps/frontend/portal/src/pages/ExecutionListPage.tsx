@@ -55,6 +55,10 @@ import {
   EXECUTION_STATUS_COLORS,
   EXECUTION_STATUS_LABELS_ZH,
 } from '../utils/executionStatusMeta';
+import {
+  buildWaitingInputDisplayGroups,
+  resolveWaitingInputDisplayLabel,
+} from '../utils/waitingInputDisplay';
 
 const { Text } = Typography;
 const statusColors = EXECUTION_STATUS_COLORS;
@@ -421,10 +425,13 @@ interface RequiredInputField {
   name: string;
   type: string;
   description?: string;
+  display_name?: string;
+  group_label?: string;
   required: boolean;
   value?: unknown;
   missing: boolean;
   source: 'user_input' | 'default' | 'unresolved';
+  needs_confirmation?: boolean;
 }
 
 interface BrowserExecutionStepResult {
@@ -1021,6 +1028,10 @@ const ExecutionListPage: React.FC = () => {
   const requiredInputs = Array.isArray(waitingInputStep?.inputJson?.requiredInputs)
     ? (waitingInputStep?.inputJson?.requiredInputs as unknown as RequiredInputField[])
     : [];
+  const requiredInputGroups = useMemo(
+    () => buildWaitingInputDisplayGroups(requiredInputs),
+    [requiredInputs],
+  );
 
   const skillNameMap = useMemo(() => {
     const map = new Map<string, string>();
@@ -1693,7 +1704,82 @@ const ExecutionListPage: React.FC = () => {
                             marginBottom: 16,
                           }}
                         >
-                          {requiredInputs.map((field) => (
+                          {requiredInputGroups.length > 0 ? requiredInputGroups.map((group) => (
+                            <div
+                              key={group.label}
+                              style={{
+                                padding: 14,
+                                borderRadius: 14,
+                                border: '1px solid var(--bg-secondary)',
+                                background: 'var(--bg-card)',
+                                boxShadow: 'var(--shadow-sm)',
+                              }}
+                            >
+                              <Text strong style={{ display: 'block', marginBottom: 12 }}>
+                                {group.label}
+                              </Text>
+                              <div
+                                style={{
+                                  display: 'grid',
+                                  gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
+                                  gap: 12,
+                                }}
+                              >
+                                {group.items.map((field) => (
+                                  <div
+                                    key={field.name}
+                                    style={{
+                                      padding: 14,
+                                      borderRadius: 12,
+                                      border: '1px solid var(--bg-secondary)',
+                                      background: 'var(--bg-primary)',
+                                    }}
+                                  >
+                                    <Space size={[6, 6]} wrap style={{ marginBottom: 8 }}>
+                                      <Text strong>{resolveWaitingInputDisplayLabel(field)}</Text>
+                                      <Tag style={{ marginInlineEnd: 0 }}>{field.type}</Tag>
+                                      <Tag
+                                        color={field.required ? 'error' : 'default'}
+                                        style={{ marginInlineEnd: 0 }}
+                                      >
+                                        {field.required ? '必填' : '可选'}
+                                      </Tag>
+                                      {field.needs_confirmation ? (
+                                        <Tag color="gold" style={{ marginInlineEnd: 0 }}>待确认</Tag>
+                                      ) : null}
+                                    </Space>
+                                    <Text
+                                      type="secondary"
+                                      style={{
+                                        display: 'block',
+                                        fontSize: 12,
+                                        minHeight: 36,
+                                        marginBottom: 10,
+                                      }}
+                                    >
+                                      {field.description || `来源: ${field.source}`}
+                                    </Text>
+                                    <Form.Item
+                                      name={field.name}
+                                      style={{ marginBottom: 8 }}
+                                      rules={[
+                                        {
+                                          required: field.required,
+                                          message: `请输入 ${resolveWaitingInputDisplayLabel(field)}`,
+                                        },
+                                      ]}
+                                      valuePropName={field.type.toLowerCase() === 'boolean' ? 'checked' : 'value'}
+                                    >
+                                      {renderInputField(field)}
+                                    </Form.Item>
+                                    <Text type="secondary" style={{ fontSize: 11 }}>
+                                      来源: {field.source}
+                                    </Text>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )) : requiredInputs.map((field) => (
                             <div
                               key={field.name}
                               style={{
@@ -1705,7 +1791,7 @@ const ExecutionListPage: React.FC = () => {
                               }}
                             >
                               <Space size={[6, 6]} wrap style={{ marginBottom: 8 }}>
-                                <Text strong>{field.name}</Text>
+                                <Text strong>{resolveWaitingInputDisplayLabel(field)}</Text>
                                 <Tag style={{ marginInlineEnd: 0 }}>{field.type}</Tag>
                                 <Tag
                                   color={field.required ? 'error' : 'default'}
@@ -1713,6 +1799,9 @@ const ExecutionListPage: React.FC = () => {
                                 >
                                   {field.required ? '必填' : '可选'}
                                 </Tag>
+                                {field.needs_confirmation ? (
+                                  <Tag color="gold" style={{ marginInlineEnd: 0 }}>待确认</Tag>
+                                ) : null}
                               </Space>
                               <Text
                                 type="secondary"
@@ -1731,7 +1820,7 @@ const ExecutionListPage: React.FC = () => {
                                 rules={[
                                   {
                                     required: field.required,
-                                    message: `请输入 ${field.name}`,
+                                    message: `请输入 ${resolveWaitingInputDisplayLabel(field)}`,
                                   },
                                 ]}
                                 valuePropName={field.type.toLowerCase() === 'boolean' ? 'checked' : 'value'}

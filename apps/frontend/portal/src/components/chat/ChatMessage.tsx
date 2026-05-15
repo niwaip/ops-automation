@@ -11,6 +11,10 @@ import remarkGfm from 'remark-gfm';
 import { ChatMessage } from './types';
 import { useAuthStore } from '../../store/authStore';
 import { replaceLocalhostWithCurrentHost } from '../../utils/publicUrl';
+import {
+  buildWaitingInputDisplayGroups,
+  resolveWaitingInputDisplayLabel,
+} from '../../utils/waitingInputDisplay';
 import './ChatMessage.css';
 
 interface ChatMessageProps {
@@ -20,6 +24,14 @@ interface ChatMessageProps {
   onRetry?: (messageId: string) => void;
   onApproveExecution?: (messageId: string, executionId: string) => Promise<void> | void;
   onRejectExecution?: (messageId: string, executionId: string) => Promise<void> | void;
+}
+
+interface WaitingInputField {
+  name: string;
+  description?: string;
+  group_label?: string;
+  display_name?: string;
+  missing?: boolean;
 }
 
 // 解析消息内容，分离思考和最终回答
@@ -201,10 +213,14 @@ const ChatMessageComponent: React.FC<ChatMessageProps> = ({
   const showThinking = message.metadata?.showThinking !== false;
   const isRunning = isTaskMode && message.metadata?.taskStatus === 'running';
   const showRunningState = isTaskMode && (isRunning || (Boolean(isStreaming) && !isWaitingInput && !isPendingApproval && !errorMessage));
-  const missingInputs = (message.metadata?.missingInputs || []).filter((item) => item?.missing !== false);
+  const missingInputs = ((message.metadata?.missingInputs || []) as WaitingInputField[]).filter((item) => item?.missing !== false);
+  const missingInputGroups = useMemo(
+    () => buildWaitingInputDisplayGroups(missingInputs),
+    [missingInputs],
+  );
   const waitingInputLabels = useMemo(
     () => missingInputs
-      .map((item) => (item?.description || item?.name || '').trim())
+      .map((item) => resolveWaitingInputDisplayLabel(item).trim())
       .filter(Boolean),
     [missingInputs],
   );
@@ -566,20 +582,52 @@ const ChatMessageComponent: React.FC<ChatMessageProps> = ({
           {isWaitingInput && missingInputs.length > 0 && (
             <div className="chat-outcome-body">
               <div>请补充以下信息：</div>
-              <ul style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
-                columnGap: 16,
-                rowGap: 6,
-                paddingLeft: 20,
-                marginBottom: 0,
-              }}>
-                {missingInputs.map((item, index) => (
-                  <li key={`${item.name || 'missing'}-${index}`} style={{ minWidth: 0 }}>
-                    {item.description || item.name || '未命名信息'}
-                  </li>
-                ))}
-              </ul>
+              {missingInputGroups.length > 0 ? (
+                <div style={{ display: 'grid', gap: 12 }}>
+                  {missingInputGroups.map((group) => (
+                    <div
+                      key={group.label}
+                      style={{
+                        border: '1px solid var(--bg-secondary)',
+                        borderRadius: 12,
+                        padding: 12,
+                        background: 'var(--bg-card)',
+                      }}
+                    >
+                      <div style={{ fontWeight: 600, marginBottom: 8 }}>{group.label}</div>
+                      <ul style={{
+                        display: 'grid',
+                        gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
+                        columnGap: 16,
+                        rowGap: 6,
+                        paddingLeft: 20,
+                        marginBottom: 0,
+                      }}>
+                        {group.items.map((item, index) => (
+                          <li key={`${group.label}-${item.name || 'missing'}-${index}`} style={{ minWidth: 0 }}>
+                            {resolveWaitingInputDisplayLabel(item)}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <ul style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
+                  columnGap: 16,
+                  rowGap: 6,
+                  paddingLeft: 20,
+                  marginBottom: 0,
+                }}>
+                  {missingInputs.map((item, index) => (
+                    <li key={`${item.name || 'missing'}-${index}`} style={{ minWidth: 0 }}>
+                      {resolveWaitingInputDisplayLabel(item)}
+                    </li>
+                  ))}
+                </ul>
+              )}
             </div>
           )}
           {isPendingApproval && executionId && (
