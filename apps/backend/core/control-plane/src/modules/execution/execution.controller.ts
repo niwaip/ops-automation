@@ -27,6 +27,7 @@ import {
   ApprovalDecisionDto,
   CleanupExecutionsBeforeDateDto,
   ReconcilePhaseTakeoverDto,
+  UpdateWorkflowActivityProgressDto,
 } from './execution.dto';
 import { AuthenticatedRequest } from '../auth/auth.middleware';
 
@@ -81,6 +82,18 @@ export class ExecutionController {
   @ApiResponse({ status: 404, description: 'Execution not found' })
   async getPhases(@Param('id') id: string, @Req() req: AuthenticatedRequest): Promise<ExecutionPhaseDto[]> {
     return this.executionService.getPhases(id, req.user);
+  }
+
+  @Post(':id/phases/progress')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Update workflow activity progress for an execution' })
+  async updateWorkflowActivityProgress(
+    @Param('id') id: string,
+    @Body() dto: UpdateWorkflowActivityProgressDto,
+    @Req() req: AuthenticatedRequest,
+  ): Promise<{ ok: true }> {
+    await this.executionService.updateWorkflowActivityProgress(id, dto, req.user);
+    return { ok: true };
   }
 
   @Post(':id/phases/:phaseKey/takeover')

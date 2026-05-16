@@ -25,12 +25,16 @@ interface CapabilityRuntimeExecuteResult {
   capabilityVersion?: string | null;
   publishedSkillId: string;
   runtime: string;
+  status?: 'completed' | 'failed' | 'blocked' | 'waiting' | 'takeover_required';
   fn?: string;
   taskQueue?: string;
   success: boolean;
   output?: Record<string, unknown> | null;
   result?: Record<string, unknown> | null;
   usage?: LLMUsage;
+  retryable?: boolean;
+  requiresTakeover?: boolean;
+  takeoverReason?: string | null;
   logs: string[];
   error?: string | null;
 }
@@ -69,7 +73,12 @@ export class CapabilityRuntimeAdapter implements RuntimeAdapter {
         executionId: request.executionId,
         stepId: request.stepId,
         runtimeSessionId: request.runtimeSessionId || undefined,
+        phaseKey:
+          typeof request.metadata?.phaseKey === 'string'
+            ? request.metadata.phaseKey
+            : undefined,
         input: request.input,
+        metadata: request.metadata,
       },
     );
 
@@ -77,15 +86,28 @@ export class CapabilityRuntimeAdapter implements RuntimeAdapter {
     const output = runtimeResult.output || runtimeResult.result || undefined;
     const artifacts = this.extractArtifacts(runtimeResult);
     const snapshot = this.extractSnapshot(artifacts);
+    const requiresTakeover = runtimeResult.requiresTakeover === true || runtimeResult.status === 'takeover_required';
+    const status = requiresTakeover
+      ? 'takeover_required'
+      : runtimeResult.status === 'waiting'
+        ? 'waiting'
+        : runtimeResult.status === 'blocked'
+          ? 'blocked'
+          : runtimeResult.success
+            ? 'completed'
+            : 'failed';
 
     return {
       success: runtimeResult.success,
-      status: runtimeResult.success ? 'completed' : 'failed',
+      status,
       output: output || undefined,
       artifacts,
       snapshot,
       errorCode: runtimeResult.success ? undefined : 'CAPABILITY_RUNTIME_FAILED',
       errorMessage: runtimeResult.error || undefined,
+      retryable: runtimeResult.retryable,
+      requiresTakeover,
+      takeoverReason: runtimeResult.takeoverReason || undefined,
       rawResult: runtimeResult as unknown as Record<string, unknown>,
     };
   }

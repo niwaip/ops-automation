@@ -152,7 +152,25 @@ export interface ExecutionPhaseDto {
   createdAt: string;
   updatedAt: string;
   artifacts?: ExecutionPhaseArtifactDto[];
+  steps?: ExecutionPhaseStepDto[];
   takeovers?: ExecutionTakeoverRecordDto[];
+}
+
+export interface ExecutionPhaseStepDto {
+  id: string;
+  phaseId: string;
+  stepIndex: number;
+  stepId?: string;
+  action: string;
+  status: string;
+  input?: Record<string, unknown>;
+  output?: Record<string, unknown>;
+  errorMessage?: string;
+  errorCode?: string;
+  snapshotId?: string;
+  startedAt?: string;
+  endedAt?: string;
+  createdAt: string;
 }
 
 const normalizeExecutionPhaseArtifact = (raw: ExecutionPhaseArtifactDto): ExecutionPhaseArtifactDto => ({
@@ -172,6 +190,18 @@ const normalizeExecutionTakeover = (raw: ExecutionTakeoverRecordDto): ExecutionT
   resolvedAt: raw.resolvedAt || undefined,
 });
 
+const normalizeExecutionPhaseStep = (raw: ExecutionPhaseStepDto): ExecutionPhaseStepDto => ({
+  ...raw,
+  stepId: raw.stepId || undefined,
+  input: raw.input || undefined,
+  output: raw.output || undefined,
+  errorMessage: raw.errorMessage || undefined,
+  errorCode: raw.errorCode || undefined,
+  snapshotId: raw.snapshotId || undefined,
+  startedAt: raw.startedAt || undefined,
+  endedAt: raw.endedAt || undefined,
+});
+
 const normalizeExecutionPhase = (raw: ExecutionPhaseDto): ExecutionPhaseDto => ({
   ...raw,
   runtimeSessionId: raw.runtimeSessionId || undefined,
@@ -185,6 +215,7 @@ const normalizeExecutionPhase = (raw: ExecutionPhaseDto): ExecutionPhaseDto => (
   startedAt: raw.startedAt || undefined,
   completedAt: raw.completedAt || undefined,
   artifacts: raw.artifacts?.map(normalizeExecutionPhaseArtifact) || [],
+  steps: raw.steps?.map(normalizeExecutionPhaseStep) || [],
   takeovers: raw.takeovers?.map(normalizeExecutionTakeover) || [],
 });
 
@@ -244,6 +275,8 @@ export interface ResumeExecutionRequest {
 
 export interface ReconcilePhaseTakeoverRequest {
   comment?: string;
+  resolvedBy?: string;
+  patch?: Record<string, unknown> | null;
 }
 
 export interface ApprovalDecisionRequest {

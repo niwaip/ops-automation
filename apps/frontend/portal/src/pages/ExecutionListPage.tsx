@@ -28,7 +28,6 @@ import {
   message,
   Tooltip,
   Image,
-  Carousel,
   Modal,
   DatePicker,
 } from 'antd';
@@ -39,21 +38,27 @@ import {
   DownloadOutlined,
   PlayCircleOutlined,
   RobotOutlined,
-  CopyOutlined,
   ClockCircleOutlined,
   InfoCircleOutlined,
-  DownOutlined,
-  RightOutlined,
   DeleteOutlined,
 } from '@ant-design/icons';
 import { useMutation, useQuery, useQueryClient } from 'react-query';
-import { executionApi, ExecutionDto, ExecutionPhaseDto, ExecutionStatus, ExecutionStepDto } from '../api/execution';
+import {
+  executionApi,
+  ExecutionDto,
+  ExecutionPhaseArtifactDto,
+  ExecutionPhaseDto,
+  ExecutionPhaseStepDto,
+  ExecutionStatus,
+  ExecutionStepDto,
+} from '../api/execution';
 import { runtimeSessionApi, RuntimeSessionDto } from '../api/runtimeSession';
 import { skillApi } from '../api/skill';
 import { capabilityReleaseApi } from '../api/capabilities';
 import { useChatStore } from '../components/chat';
 import { ListSectionHeader } from '../components/page/PageScaffold';
 import LiveSessionPreviewCard from '../components/runtime/LiveSessionPreviewCard';
+import { runtimeConfig } from '../config/runtime';
 import { useAuthStore } from '../store/authStore';
 import { replaceLocalhostWithCurrentHost } from '../utils/publicUrl';
 import {
@@ -235,28 +240,6 @@ const renderJsonValue = (value: unknown, path = 'root'): React.ReactNode => {
   return String(parsedValue);
 };
 
-const renderJsonBlock = (value: unknown) => (
-  <div
-    style={{
-      margin: 0,
-      padding: 14,
-      whiteSpace: 'pre-wrap',
-      wordBreak: 'break-word',
-      maxHeight: 320,
-      overflow: 'auto',
-      background: 'var(--bg-secondary)',
-      color: 'var(--text-primary)',
-      border: '1px solid var(--bg-secondary)',
-      borderRadius: 12,
-      fontFamily: 'ui-monospace, SFMono-Regular, SF Mono, Consolas, Liberation Mono, Menlo, monospace',
-      fontSize: 13,
-      lineHeight: 1.6,
-    }}
-  >
-    {renderJsonValue(value)}
-  </div>
-);
-
 const detailPanelStyle = {
   marginBottom: 12,
   background: 'var(--bg-card)',
@@ -271,8 +254,6 @@ const renderPanelLabel = (title: string, summary?: string) => (
     {summary ? <Text type="secondary">{summary}</Text> : null}
   </div>
 );
-
-const safeJsonStringify = (value: unknown) => JSON.stringify(value, null, 2);
 
 const extractResultFileName = (value?: Record<string, unknown>): string | undefined => {
   if (!value || typeof value !== 'object') {
@@ -297,30 +278,6 @@ const extractResultFileName = (value?: Record<string, unknown>): string | undefi
   }
 
   return undefined;
-};
-
-const summarizeExecutionResult = (result?: Record<string, unknown> | null) => {
-  if (!result || Object.keys(result).length === 0) {
-    return '暂无结果';
-  }
-
-  const fileName = extractResultFileName(result);
-  if (fileName) {
-    return fileName;
-  }
-
-  const downloadUrl = extractDownloadUrl(result);
-  if (downloadUrl) {
-    return '可下载结果';
-  }
-
-  if (typeof result.status === 'string' && result.status.trim()) {
-    return `状态: ${result.status}`;
-  }
-
-  const keys = Object.keys(result);
-  const preview = keys.slice(0, 3).join('、');
-  return keys.length > 3 ? `${preview} 等 ${keys.length} 项` : preview;
 };
 
 const getStepStatusColor = (status?: string) => {
@@ -359,6 +316,60 @@ const summarizeSteps = (steps?: ExecutionStepDto[], isLoading?: boolean) => {
   return `${steps.length} 个步骤`;
 };
 
+const extractPhaseSortMeta = (phase: ExecutionPhaseDto) => {
+  const key = phase.phaseKey || '';
+  const parentKey = key.split('__')[0] || key;
+  const activityMatch = key.match(/__activity_(\d+)_/i);
+  const systemIndexMatch = parentKey.match(/^phase_(\d+)_/i);
+  return {
+    parentKey,
+    systemIndex: systemIndexMatch ? Number.parseInt(systemIndexMatch[1], 10) : Number.MAX_SAFE_INTEGER,
+    isActivity: Boolean(activityMatch),
+    activityIndex: activityMatch ? Number.parseInt(activityMatch[1], 10) : -1,
+  };
+};
+
+const compareExecutionPhases = (left: ExecutionPhaseDto, right: ExecutionPhaseDto) => {
+  const leftMeta = extractPhaseSortMeta(left);
+  const rightMeta = extractPhaseSortMeta(right);
+
+  if (leftMeta.systemIndex !== rightMeta.systemIndex) {
+    return leftMeta.systemIndex - rightMeta.systemIndex;
+  }
+  if (leftMeta.parentKey !== rightMeta.parentKey) {
+    return leftMeta.parentKey.localeCompare(rightMeta.parentKey);
+  }
+  if (leftMeta.isActivity !== rightMeta.isActivity) {
+    return leftMeta.isActivity ? 1 : -1;
+  }
+  if (leftMeta.activityIndex !== rightMeta.activityIndex) {
+    return leftMeta.activityIndex - rightMeta.activityIndex;
+  }
+
+  const leftTime = new Date(left.startedAt || left.createdAt).getTime();
+  const rightTime = new Date(right.startedAt || right.createdAt).getTime();
+  if (leftTime !== rightTime) {
+    return leftTime - rightTime;
+  }
+  return left.phaseKey.localeCompare(right.phaseKey);
+};
+
+const hasMeaningfulExecutionResult = (value: unknown): boolean => {
+  if (value === undefined || value === null) {
+    return false;
+  }
+  if (typeof value === 'string') {
+    return value.trim().length > 0;
+  }
+  if (Array.isArray(value)) {
+    return value.length > 0;
+  }
+  if (typeof value === 'object') {
+    return Object.keys(value as Record<string, unknown>).length > 0;
+  }
+  return true;
+};
+
 const getRiskBadgeStyle = (riskLevel?: string) => {
   switch ((riskLevel || '').toUpperCase()) {
     case 'L1':
@@ -387,6 +398,8 @@ const getExecutionRowStyle = (status: ExecutionStatus, isDarkTheme: boolean) => 
 };
 
 const isLiveRuntimeSessionState = (state?: string): boolean => state === 'busy' || state === 'ready' || state === 'frozen';
+const isPreviewRuntimeSessionState = (state?: string): boolean =>
+  state === 'allocating' || isLiveRuntimeSessionState(state);
 
 const getRuntimeSessionNovncUrl = (runtimeSession?: RuntimeSessionDto): string | undefined => {
   return typeof runtimeSession?.connectionInfo?.novnc === 'string'
@@ -500,14 +513,6 @@ interface BrowserExecutionResultViewModel {
   snapshotId?: string | null;
 }
 
-interface TimelineNodeCardProps {
-  title: string;
-  subtitle?: string;
-  preview?: React.ReactNode;
-  color?: 'green' | 'red' | 'processing' | 'gray' | 'blue';
-  details?: React.ReactNode;
-}
-
 const renderInputField = (field: RequiredInputField) => {
   const normalizedType = field.type.toLowerCase();
 
@@ -555,7 +560,11 @@ const extractBrowserExecutionResult = (value: unknown): BrowserExecutionResultVi
   ].filter((item): item is Record<string, unknown> => Boolean(item));
 
   for (const candidate of candidates) {
-    const rawStepResults = candidate.stepResults;
+    const rawStepResults = Array.isArray(candidate.stepResults)
+      ? candidate.stepResults
+      : Array.isArray(candidate.results)
+        ? candidate.results
+        : undefined;
     if (!Array.isArray(rawStepResults)) {
       continue;
     }
@@ -564,11 +573,23 @@ const extractBrowserExecutionResult = (value: unknown): BrowserExecutionResultVi
       .filter((item): item is Record<string, unknown> => Boolean(item) && typeof item === 'object' && !Array.isArray(item))
       .map((item) => ({
         stepId: typeof item.stepId === 'string' ? item.stepId : undefined,
-        name: typeof item.name === 'string' ? item.name : undefined,
-        action: typeof item.action === 'string' ? item.action : undefined,
+        name: typeof item.name === 'string'
+          ? item.name
+          : typeof item.command === 'string'
+            ? item.command
+            : undefined,
+        action: typeof item.action === 'string'
+          ? item.action
+          : typeof item.command === 'string'
+            ? item.command
+            : undefined,
         target: typeof item.target === 'string' ? item.target : null,
-        snapshotId: typeof item.snapshotId === 'string' ? item.snapshotId : null,
-        output: asRecord(item.output) || null,
+        snapshotId: typeof item.snapshotId === 'string'
+          ? item.snapshotId
+          : typeof asRecord(item.snapshot)?.id === 'string'
+            ? (asRecord(item.snapshot)?.id as string)
+            : null,
+        output: asRecord(item.output) || item,
       }));
 
     return {
@@ -582,11 +603,6 @@ const extractBrowserExecutionResult = (value: unknown): BrowserExecutionResultVi
   }
 
   return null;
-};
-
-const previewText = (value: unknown, maxLength = 180) => {
-  const text = typeof value === 'string' ? value : JSON.stringify(value, null, 2);
-  return text.length > maxLength ? `${text.slice(0, maxLength)}...` : text;
 };
 
 const sanitizeBrowserOutputForDisplay = (value: unknown): unknown => {
@@ -610,31 +626,6 @@ const sanitizeBrowserOutputForDisplay = (value: unknown): unknown => {
     }, {});
   }
   return value;
-};
-
-const parseBrowserStdoutResult = (stdout: string | undefined): unknown => {
-  if (!stdout) {
-    return undefined;
-  }
-  const marker = '### Result';
-  const codeMarker = '### Ran Playwright code';
-  const startIndex = stdout.indexOf(marker);
-  if (startIndex < 0) {
-    return undefined;
-  }
-
-  const contentStart = startIndex + marker.length;
-  const codeIndex = stdout.indexOf(codeMarker, contentStart);
-  const rawResult = stdout.slice(contentStart, codeIndex >= 0 ? codeIndex : undefined).trim();
-  if (!rawResult) {
-    return undefined;
-  }
-
-  try {
-    return JSON.parse(rawResult);
-  } catch {
-    return rawResult;
-  }
 };
 
 const isLikelyImageUrl = (value: string) => /^https?:\/\/.+\.(png|jpg|jpeg|gif|webp)(\?.*)?$/i.test(value);
@@ -706,266 +697,162 @@ const extractBrowserImageSources = (value: unknown, hint?: string): string[] => 
   return Array.from(found);
 };
 
-const formatWaitSeconds = (durationMs: number | undefined): string | undefined => {
-  if (typeof durationMs !== 'number' || Number.isNaN(durationMs) || durationMs < 0) {
+const getPhaseArtifactPayload = (artifact: ExecutionPhaseArtifactDto): Record<string, unknown> | undefined => {
+  if (!artifact.payload || typeof artifact.payload !== 'object' || Array.isArray(artifact.payload)) {
     return undefined;
   }
-  const seconds = durationMs / 1000;
-  return Number.isInteger(seconds) ? `${seconds}` : seconds.toFixed(1);
+  return artifact.payload;
 };
 
-const resolveBrowserWaitSeconds = (
-  stepResult: BrowserExecutionStepResult,
-  output: Record<string, unknown> | null | undefined,
-): string | undefined => {
-  if (stepResult.action !== 'wait') {
+const getPhaseArtifactPath = (artifact: ExecutionPhaseArtifactDto): string | undefined => {
+  const payload = getPhaseArtifactPayload(artifact);
+  if (typeof payload?.snapshotPath === 'string' && payload.snapshotPath.trim()) {
+    return payload.snapshotPath;
+  }
+  if (typeof payload?.artifactPath === 'string' && payload.artifactPath.trim()) {
+    return payload.artifactPath;
+  }
+  return undefined;
+};
+
+const getBrowserWorkerBaseUrl = (): string | undefined => {
+  try {
+    const runtimeUrl = new URL(runtimeConfig.recorderWsUrl);
+    runtimeUrl.protocol = runtimeUrl.protocol === 'wss:' ? 'https:' : 'http:';
+    runtimeUrl.pathname = '';
+    runtimeUrl.search = '';
+    runtimeUrl.hash = '';
+    return runtimeUrl.toString().replace(/\/$/, '');
+  } catch {
     return undefined;
   }
-  const outputRecord = asRecord(output) || {};
-  const data = asRecord(outputRecord.data) || {};
-  const rawDuration = data.duration;
-  return typeof rawDuration === 'number' ? formatWaitSeconds(rawDuration) : undefined;
 };
 
-const buildBrowserOutputDisplay = (output: Record<string, unknown> | null | undefined) => {
-  if (!output) {
-    return {
-      summary: undefined as unknown,
-      imageSrc: undefined as string | undefined,
-      imageSources: [] as string[],
-      details: undefined as unknown,
-      status: undefined as string | undefined,
-      command: undefined as string | undefined,
-    };
+const buildBrowserWorkerArtifactUrl = (artifactPath?: string): string | undefined => {
+  if (!artifactPath) {
+    return undefined;
+  }
+  const trimmedPath = artifactPath.trim();
+  if (!trimmedPath) {
+    return undefined;
+  }
+  if (/^https?:\/\//i.test(trimmedPath) || trimmedPath.startsWith('data:')) {
+    return trimmedPath;
   }
 
-  const sanitized = asRecord(sanitizeBrowserOutputForDisplay(output)) || {};
-  const status = typeof sanitized.status === 'string' ? sanitized.status : undefined;
-  const command = typeof sanitized.command === 'string' ? sanitized.command : undefined;
-  const data = asRecord(sanitized.data);
-  const stdout = typeof sanitized.stdout === 'string' ? sanitized.stdout : undefined;
-  const stderr = typeof sanitized.stderr === 'string' && sanitized.stderr.trim() ? sanitized.stderr : undefined;
-  const parsedStdoutResult = parseBrowserStdoutResult(stdout);
-  const imageSrc = extractBrowserImageSrc(output);
-  const imageSources = extractBrowserImageSources(output);
-  const summary = data || parsedStdoutResult || {
-    ...(status ? { status } : {}),
-    ...(command ? { command } : {}),
-  };
-
-  return {
-    summary,
-    imageSrc,
-    imageSources,
-    details: {
-      ...(status ? { status } : {}),
-      ...(command ? { command } : {}),
-      ...(data ? { data } : {}),
-      ...(!data && parsedStdoutResult !== undefined ? { result: parsedStdoutResult } : {}),
-      ...(stderr ? { stderr } : {}),
-    },
-    status,
-    command,
-  };
-};
-
-const renderSummaryChips = (
-  items: Array<{ label: string; value: React.ReactNode; color?: string }>,
-) => {
-  const visibleItems = items.filter((item) => item.value !== undefined && item.value !== null && item.value !== '');
-  if (!visibleItems.length) {
-    return null;
+  const fileName = trimmedPath.split('/').filter(Boolean).pop();
+  const browserWorkerBaseUrl = getBrowserWorkerBaseUrl();
+  if (!fileName || !browserWorkerBaseUrl) {
+    return undefined;
   }
 
-  return (
-    <div
-      style={{
-        display: 'flex',
-        flexWrap: 'wrap',
-        gap: 8,
-        justifyContent: 'flex-start',
-      }}
-    >
-      {visibleItems.map((item) => (
-        <Tag
-          key={`${item.label}-${String(item.value)}`}
-          color={item.color}
-          style={{
-            marginInlineEnd: 0,
-            paddingInline: 10,
-            paddingBlock: 4,
-            borderRadius: 999,
-          }}
-        >
-          <Space size={4}>
-            <Text type="secondary">{item.label}</Text>
-            <Text strong>{item.value}</Text>
-          </Space>
-        </Tag>
-      ))}
-    </div>
-  );
+  return `${browserWorkerBaseUrl}/browser/artifacts/${encodeURIComponent(fileName)}`;
 };
 
-const renderTimelineDetails = (
-  sections: Array<{ label: string; value: unknown }>,
-) => {
-  const visibleSections = sections.filter((section) => {
-    if (section.value === undefined || section.value === null) {
-      return false;
-    }
-    if (typeof section.value === 'string') {
-      return section.value.trim().length > 0;
-    }
-    if (Array.isArray(section.value)) {
-      return section.value.length > 0;
-    }
-    if (typeof section.value === 'object') {
-      return Object.keys(section.value as Record<string, unknown>).length > 0;
-    }
-    return true;
-  });
-
-  if (!visibleSections.length) {
-    return null;
+const getPhaseArtifactPreviewSrc = (artifact: ExecutionPhaseArtifactDto): string | undefined => {
+  const payload = getPhaseArtifactPayload(artifact);
+  const payloadImageSrc = extractBrowserImageSrc(payload);
+  if (payloadImageSrc) {
+    return payloadImageSrc;
   }
 
-  return (
-    <Space direction="vertical" size={12} style={{ width: '100%' }}>
-      {visibleSections.map((section) => (
-        <div key={section.label}>
-          <Text strong>{section.label}</Text>
-          <pre style={{ margin: '8px 0 0', whiteSpace: 'pre-wrap', wordBreak: 'break-word', maxHeight: 320, overflow: 'auto' }}>
-            {typeof section.value === 'string' ? section.value : JSON.stringify(section.value, null, 2)}
-          </pre>
-        </div>
-      ))}
-    </Space>
-  );
-};
-
-const getTimelineCardTone = (color?: TimelineNodeCardProps['color']) => {
-  switch (color) {
-    case 'green':
-      return {
-        borderColor: 'rgba(16, 185, 129, 0.28)',
-        background: 'linear-gradient(180deg, rgba(16, 185, 129, 0.12) 0%, var(--bg-card) 100%)',
-        accent: 'var(--success-color)',
-      };
-    case 'red':
-      return {
-        borderColor: 'rgba(239, 68, 68, 0.28)',
-        background: 'linear-gradient(180deg, rgba(239, 68, 68, 0.12) 0%, var(--bg-card) 100%)',
-        accent: 'var(--error-color)',
-      };
-    case 'processing':
-      return {
-        borderColor: 'rgba(59, 130, 246, 0.28)',
-        background: 'linear-gradient(180deg, rgba(59, 130, 246, 0.12) 0%, var(--bg-card) 100%)',
-        accent: 'var(--info-color)',
-      };
-    case 'gray':
-      return {
-        borderColor: 'var(--border-color)',
-        background: 'linear-gradient(180deg, var(--bg-secondary) 0%, var(--bg-card) 100%)',
-        accent: 'var(--text-light)',
-      };
-    case 'blue':
-    default:
-      return {
-        borderColor: 'rgba(99, 102, 241, 0.28)',
-        background: 'linear-gradient(180deg, rgba(99, 102, 241, 0.12) 0%, var(--bg-card) 100%)',
-        accent: 'var(--primary-color)',
-      };
+  const artifactPath = getPhaseArtifactPath(artifact);
+  if (!artifactPath || !/\.(png|jpe?g|gif|webp)$/i.test(artifactPath)) {
+    return undefined;
   }
+
+  return buildBrowserWorkerArtifactUrl(artifactPath);
 };
 
-const TimelineNodeCard: React.FC<TimelineNodeCardProps> = ({
-  title,
-  subtitle,
-  preview,
-  color,
-  details,
-}) => {
-  const [expanded, setExpanded] = useState(false);
-  const canToggle = Boolean(details);
-  const tone = getTimelineCardTone(color);
+const extractWorkflowActivitySnapshotSources = (phase: ExecutionPhaseDto): string[] => {
+  const unique = new Set<string>();
 
-  const toggleExpanded = () => {
-    if (!canToggle) {
-      return;
+  (phase.artifacts || [])
+    .filter((artifact) => artifact.artifactType === 'snapshot')
+    .forEach((artifact) => {
+      const src = getPhaseArtifactPreviewSrc(artifact);
+      if (src) {
+        unique.add(src);
+      }
+    });
+
+  return Array.from(unique);
+};
+
+const extractPhaseStepUrl = (step: ExecutionPhaseStepDto): string | undefined => {
+  const output = asRecord(step.output);
+  const input = asRecord(step.input);
+  const candidates = [
+    output?.pageUrl,
+    output?.url,
+    input?.pageUrl,
+    input?.url,
+    input?.targetUrl,
+    input?.href,
+  ];
+
+  for (const value of candidates) {
+    if (typeof value === 'string' && value.trim()) {
+      return value;
     }
-    setExpanded((value) => !value);
-  };
+  }
 
-  return (
-    <Card
-      size="small"
-      styles={{ body: { padding: 12 } }}
-      style={{
-        borderRadius: 12,
-        borderColor: tone.borderColor,
-        background: tone.background,
-        boxShadow: 'var(--shadow-sm)',
-      }}
-    >
-      <Space direction="vertical" size={8} style={{ width: '100%' }}>
-        <div
-          onClick={toggleExpanded}
-          onKeyDown={(event) => {
-            if ((event.key === 'Enter' || event.key === ' ') && canToggle) {
-              event.preventDefault();
-              toggleExpanded();
-            }
-          }}
-          role={canToggle ? 'button' : undefined}
-          tabIndex={canToggle ? 0 : undefined}
-          style={{
-            width: '100%',
-            cursor: canToggle ? 'pointer' : 'default',
-            borderRadius: 10,
-            padding: 6,
-          }}
-        >
-          <Space style={{ width: '100%', justifyContent: 'space-between' }} align="start">
-            <Space direction="vertical" size={2} style={{ minWidth: 0, flex: 1, alignItems: 'flex-start', textAlign: 'left' }}>
-              <div
-                style={{
-                  width: '100%',
-                  height: 3,
-                  borderRadius: 999,
-                  background: tone.accent,
-                  opacity: 0.18,
-                  marginBottom: 6,
-                }}
-              />
-              <Text strong style={{ width: '100%', textAlign: 'left' }}>{title}</Text>
-              {subtitle ? <Text type="secondary" style={{ width: '100%', textAlign: 'left' }}>{subtitle}</Text> : null}
-            </Space>
-            {details ? (
-              <Button
-                type="text"
-                size="small"
-                icon={expanded ? <DownOutlined /> : <RightOutlined />}
-                style={{
-                  color: tone.accent,
-                  background: 'var(--bg-card)',
-                  borderRadius: 999,
-                }}
-                onClick={(event) => {
-                  event.stopPropagation();
-                  toggleExpanded();
-                }}
-              />
-            ) : null}
-          </Space>
-        </div>
-        {preview ? <div style={{ paddingTop: 4 }}>{preview}</div> : null}
-        {expanded && details ? <div style={{ paddingTop: 4 }}>{details}</div> : null}
-      </Space>
-    </Card>
-  );
+  return undefined;
 };
+
+const extractPhaseStepImageSources = (
+  step: ExecutionPhaseStepDto,
+  artifacts: ExecutionPhaseArtifactDto[],
+): string[] => {
+  const found = new Set<string>(extractBrowserImageSources(step.output));
+  const output = asRecord(step.output);
+  const artifactRecord = asRecord(output?.artifact);
+  const snapshotRecord = asRecord(output?.snapshot);
+  const candidatePaths = [
+    typeof artifactRecord?.path === 'string' ? artifactRecord.path : undefined,
+    typeof snapshotRecord?.path === 'string' ? snapshotRecord.path : undefined,
+  ];
+
+  for (const path of candidatePaths) {
+    const src = buildBrowserWorkerArtifactUrl(path);
+    if (src) {
+      found.add(src);
+    }
+  }
+
+  if (step.snapshotId) {
+    const matchedArtifact = artifacts.find((artifact) => artifact.snapshotId === step.snapshotId);
+    const artifactSrc = matchedArtifact ? getPhaseArtifactPreviewSrc(matchedArtifact) : undefined;
+    if (artifactSrc) {
+      found.add(artifactSrc);
+    }
+  }
+
+  return Array.from(found);
+};
+
+const getVisiblePhaseSteps = (phase: ExecutionPhaseDto): ExecutionPhaseStepDto[] => {
+  const steps = phase.steps || [];
+  if (phase.status !== 'completed') {
+    return steps;
+  }
+
+  const lastFailedIndex = steps.reduce((index, step, currentIndex) => (
+    step.status === 'failed' ? currentIndex : index
+  ), -1);
+
+  if (lastFailedIndex < 0) {
+    return steps;
+  }
+
+  const hasLaterCompletedStep = steps.slice(lastFailedIndex + 1).some((step) => step.status === 'completed');
+  if (!hasLaterCompletedStep) {
+    return steps;
+  }
+
+  return steps.filter((step, index) => !(step.status === 'failed' && index <= lastFailedIndex));
+};
+
 
 const extractDownloadUrl = (result?: Record<string, unknown>): string | undefined => {
   if (!result || typeof result !== 'object') {
@@ -1082,7 +969,57 @@ const ExecutionListPage: React.FC = () => {
       },
     }
   );
-  const selectedBrowserExecutionResult = extractBrowserExecutionResult(selectedExecution?.resultJson);
+  const { data: selectedPhasesData } = useQuery<ExecutionPhaseDto[], Error>(
+    ['execution-phases', selectedExecutionId],
+    () => executionApi.getPhases(selectedExecutionId!),
+    {
+      enabled: !!selectedExecutionId,
+      refetchInterval: () => {
+        if (!selectedExecution) {
+          return false;
+        }
+        return EXECUTION_ACTIVE_POLLING_STATUSES.includes(selectedExecution.status) ? 3000 : false;
+      },
+    }
+  );
+  const selectedExecutionPhases = selectedPhasesData || selectedExecution?.phases || [];
+  const sortedSelectedExecutionPhases = useMemo(
+    () => [...selectedExecutionPhases].sort(compareExecutionPhases),
+    [selectedExecutionPhases],
+  );
+  const effectiveSelectedResultJson = useMemo(() => {
+    const parsedTopLevelResult = tryParseJsonValue(selectedExecution?.resultJson);
+    if (hasMeaningfulExecutionResult(parsedTopLevelResult)) {
+      return parsedTopLevelResult;
+    }
+    const phaseWithOutput = [...sortedSelectedExecutionPhases]
+      .reverse()
+      .find((phase) => hasMeaningfulExecutionResult(tryParseJsonValue(phase.output)));
+    return phaseWithOutput ? tryParseJsonValue(phaseWithOutput.output) : undefined;
+  }, [selectedExecution?.resultJson, sortedSelectedExecutionPhases]);
+  const selectedBrowserExecutionResult = useMemo(
+    () => extractBrowserExecutionResult(selectedExecution?.resultJson) || extractBrowserExecutionResult(effectiveSelectedResultJson),
+    [effectiveSelectedResultJson, selectedExecution?.resultJson],
+  );
+  const displaySelectedPhases = useMemo(() => {
+    const activityPhases = sortedSelectedExecutionPhases.filter((phase) => phase.phaseType === 'workflow_activity');
+    return activityPhases.length > 0 ? activityPhases : sortedSelectedExecutionPhases;
+  }, [sortedSelectedExecutionPhases]);
+  const hasSelectedWorkflowActivityPhases = useMemo(
+    () => sortedSelectedExecutionPhases.some((phase) => phase.phaseType === 'workflow_activity'),
+    [sortedSelectedExecutionPhases],
+  );
+  const isSelectedExecutionActive = Boolean(
+    selectedExecution && EXECUTION_ACTIVE_POLLING_STATUSES.includes(selectedExecution.status),
+  );
+  const shouldShowLegacySteps = sortedSelectedExecutionPhases.length === 0;
+  const currentSelectedPhase = useMemo(
+    () => displaySelectedPhases.find((phase) => phase.phaseKey === selectedExecution?.currentPhaseKey)
+      || displaySelectedPhases.find((phase) => phase.status === 'running')
+      || displaySelectedPhases.find((phase) => ['waiting_takeover', 'resumable', 'pending'].includes(phase.status))
+      || displaySelectedPhases[displaySelectedPhases.length - 1],
+    [displaySelectedPhases, selectedExecution?.currentPhaseKey],
+  );
   const selectedExecutionRuntimeSessionId = selectedExecution?.runtimeSessionId || selectedBrowserExecutionResult?.runtimeSessionId;
   const { data: selectedRuntimeSession } = useQuery(
     ['execution-runtime-session', selectedExecutionRuntimeSessionId],
@@ -1100,6 +1037,14 @@ const ExecutionListPage: React.FC = () => {
     }
   );
   const selectedRuntimeSessionNovncUrl = getRuntimeSessionNovncUrl(selectedRuntimeSession);
+  const lastKnownSelectedRuntimeSessionNovncUrlRef = React.useRef<string | undefined>(undefined);
+  React.useEffect(() => {
+    if (selectedRuntimeSessionNovncUrl) {
+      lastKnownSelectedRuntimeSessionNovncUrlRef.current = selectedRuntimeSessionNovncUrl;
+    }
+  }, [selectedRuntimeSessionNovncUrl]);
+  const stableSelectedRuntimeSessionNovncUrl =
+    selectedRuntimeSessionNovncUrl || lastKnownSelectedRuntimeSessionNovncUrlRef.current;
 
   const waitingInputStep = selectedExecution?.status === 'waiting_input'
     ? selectedSteps?.find((step) =>
@@ -1153,15 +1098,6 @@ const ExecutionListPage: React.FC = () => {
       }, {})
     );
   }, [requiredInputs, resumeForm, selectedExecutionId]);
-
-  const handleCopyJson = async (label: string, value: unknown) => {
-    try {
-      await navigator.clipboard.writeText(safeJsonStringify(value));
-      message.success(`已复制${label} JSON`);
-    } catch {
-      message.error(`复制${label} JSON失败`);
-    }
-  };
 
   const openAiTaskMode = (draft: string, executionId: string) => {
     if (!currentSession) {
@@ -1457,171 +1393,6 @@ const ExecutionListPage: React.FC = () => {
     },
   ];
 
-  const selectedBrowserTimelineItems = selectedBrowserExecutionResult
-    ? [
-        {
-          color: 'gray' as const,
-          children: (
-            <TimelineNodeCard
-              title="浏览器运行信息"
-              subtitle={formatDateTime(selectedExecution?.endedAt || selectedExecution?.updatedAt)}
-              color="gray"
-              preview={renderSummaryChips([
-                { label: '后端', value: selectedBrowserExecutionResult.backend || '-', color: 'blue' },
-                { label: '步骤数', value: selectedBrowserExecutionResult.stepResults.length, color: 'processing' },
-                { label: '状态', value: selectedExecution ? statusLabels[selectedExecution.status] : '-', color: selectedExecution ? statusColors[selectedExecution.status] : 'default' },
-              ])}
-              details={renderTimelineDetails([
-                { label: 'Runtime Session', value: selectedBrowserExecutionResult.runtimeSessionId || '-' },
-                { label: 'Runtime', value: {
-                  backend: selectedBrowserExecutionResult.backend,
-                  runtimeSessionId: selectedBrowserExecutionResult.runtimeSessionId,
-                  stepCount: selectedBrowserExecutionResult.stepResults.length,
-                  failedStep: selectedBrowserExecutionResult.failedStep,
-                  failedAction: selectedBrowserExecutionResult.failedAction,
-                } },
-              ])}
-            />
-          ),
-        },
-        ...selectedBrowserExecutionResult.stepResults.map((stepResult, index) => {
-          const outputDisplay = buildBrowserOutputDisplay(stepResult.output || null);
-          const waitSeconds = resolveBrowserWaitSeconds(stepResult, stepResult.output || null);
-          const isWaitStep = stepResult.action === 'wait';
-          const imageSources = outputDisplay.imageSources.length > 0
-            ? outputDisplay.imageSources
-            : outputDisplay.imageSrc
-              ? [outputDisplay.imageSrc]
-              : [];
-          const stepColor: TimelineNodeCardProps['color'] =
-            selectedBrowserExecutionResult.failedStep && index === selectedBrowserExecutionResult.stepResults.length - 1
-            ? 'red'
-            : 'green';
-
-          return {
-            color: stepColor,
-            children: (
-              <TimelineNodeCard
-                key={`${stepResult.stepId || stepResult.name || stepResult.action || 'browser-step'}-${index}`}
-                title={`步骤 ${index + 1}: ${isWaitStep && waitSeconds ? `wait ${waitSeconds}s` : stepResult.name || stepResult.action || '-'}`}
-                subtitle={
-                  isWaitStep
-                    ? waitSeconds
-                      ? `等待 ${waitSeconds} 秒`
-                      : '等待'
-                    : stepResult.target || outputDisplay.command || stepResult.stepId || '-'
-                }
-                color={stepColor}
-                preview={
-                  <Space direction="vertical" size={10} style={{ width: '100%' }}>
-                    {isWaitStep ? (
-                      renderSummaryChips([
-                        { label: '等待', value: waitSeconds ? `${waitSeconds} 秒` : '-', color: 'processing' },
-                        {
-                          label: 'status',
-                          value: outputDisplay.status || '-',
-                          color: outputDisplay.status === 'success' ? 'green' : 'default',
-                        },
-                      ])
-                    ) : (
-                      <>
-                        {renderSummaryChips([
-                          { label: '动作', value: stepResult.action || '-', color: 'processing' },
-                          { label: '目标', value: stepResult.target || '-', color: 'blue' },
-                          { label: '快照', value: stepResult.snapshotId || '-', color: 'default' },
-                          {
-                            label: 'status',
-                            value: outputDisplay.status || '-',
-                            color: outputDisplay.status === 'success' ? 'green' : 'default',
-                          },
-                        ])}
-                        <Text
-                          type="secondary"
-                          style={{
-                            display: 'block',
-                            textAlign: 'left',
-                            whiteSpace: 'pre-wrap',
-                            wordBreak: 'break-word',
-                            lineHeight: 1.6,
-                          }}
-                        >
-                          {previewText(outputDisplay.summary || '暂无结构化输出', 220)}
-                        </Text>
-                      </>
-                    )}
-                    {imageSources.length > 0 ? (
-                      <div
-                        style={{
-                          marginTop: 4,
-                          borderRadius: 12,
-                          overflow: 'hidden',
-                          border: '1px solid var(--bg-secondary)',
-                          background: 'var(--bg-card)',
-                          padding: 12,
-                        }}
-                      >
-                        <Image.PreviewGroup>
-                          {imageSources.length === 1 ? (
-                            <Image
-                              src={imageSources[0]}
-                              alt={stepResult.name || stepResult.action || 'browser screenshot'}
-                              style={{
-                                width: '100%',
-                                maxHeight: 280,
-                                objectFit: 'contain',
-                                background: 'var(--bg-secondary)',
-                                borderRadius: 8,
-                              }}
-                            />
-                          ) : (
-                            <Carousel dots>
-                              {imageSources.map((src, imageIndex) => (
-                                <div key={`${src}-${imageIndex}`}>
-                                  <div
-                                    style={{
-                                      display: 'flex',
-                                      justifyContent: 'center',
-                                      background: 'var(--bg-secondary)',
-                                      borderRadius: 8,
-                                      padding: 8,
-                                    }}
-                                  >
-                                    <Image
-                                      src={src}
-                                      alt={`${stepResult.name || stepResult.action || 'browser screenshot'}-${imageIndex + 1}`}
-                                      style={{
-                                        maxHeight: 280,
-                                        objectFit: 'contain',
-                                        borderRadius: 8,
-                                      }}
-                                    />
-                                  </div>
-                                </div>
-                              ))}
-                            </Carousel>
-                          )}
-                        </Image.PreviewGroup>
-                      </div>
-                    ) : null}
-                  </Space>
-                }
-                details={renderTimelineDetails([
-                  { label: 'Step', value: {
-                    stepId: stepResult.stepId,
-                    name: stepResult.name,
-                    action: stepResult.action,
-                    target: stepResult.target,
-                    snapshotId: stepResult.snapshotId,
-                  } },
-                  { label: '步骤输出', value: outputDisplay.details || '暂无结构化输出' },
-                ])}
-              />
-            ),
-          };
-        }),
-      ]
-    : [];
-
   const updateExecutionSelection = (executionId?: string) => {
     const nextSearchParams = new URLSearchParams(searchParams);
     if (executionId) {
@@ -1873,13 +1644,54 @@ const ExecutionListPage: React.FC = () => {
               </div>
             </Card>
 
-            {selectedRuntimeSessionNovncUrl && isLiveRuntimeSessionState(selectedRuntimeSession?.state) ? (
+            {stableSelectedRuntimeSessionNovncUrl && (isSelectedExecutionActive || isPreviewRuntimeSessionState(selectedRuntimeSession?.state)) ? (
               <LiveSessionPreviewCard
-                novncUrl={selectedRuntimeSessionNovncUrl}
+                novncUrl={stableSelectedRuntimeSessionNovncUrl}
                 title="实时画面"
                 statusLabel={getRuntimeSessionStatusLabel(selectedRuntimeSession?.state)}
                 height={360}
               />
+            ) : null}
+
+            {displaySelectedPhases.length > 0 ? (
+              <Card title="Activity 进度">
+                <Space direction="vertical" size={12} style={{ width: '100%' }}>
+                  {displaySelectedPhases.map((phase, index) => {
+                    const isCurrentActivity = currentSelectedPhase?.phaseKey === phase.phaseKey;
+
+                    return (
+                      <Card
+                        key={phase.id}
+                        size="small"
+                        style={{
+                          borderRadius: 12,
+                          borderColor: isCurrentActivity ? 'rgba(59, 130, 246, 0.32)' : undefined,
+                          background: isCurrentActivity
+                            ? 'linear-gradient(180deg, rgba(59, 130, 246, 0.10) 0%, var(--bg-card) 100%)'
+                            : undefined,
+                        }}
+                        styles={{ body: { padding: 14 } }}
+                      >
+                        <Space direction="vertical" size={8} style={{ width: '100%' }}>
+                          <Space wrap>
+                            <Text strong>{phase.phaseName || phase.phaseKey || `步骤 ${index + 1}`}</Text>
+                            <Tag>{phase.phaseType}</Tag>
+                            <Tag color={getPhaseStatusColor(phase.status)}>{phase.status}</Tag>
+                            {isCurrentActivity ? <Tag color="processing">当前 Activity</Tag> : null}
+                          </Space>
+                          <Space wrap size={[12, 0]}>
+                            <Text type="secondary">{`Key: ${phase.phaseKey}`}</Text>
+                            <Text type="secondary">{`尝试: ${phase.attempt}`}</Text>
+                            <Text type="secondary">{`步骤数: ${phase.steps?.length || 0}`}</Text>
+                          </Space>
+                          <Text type="secondary">{formatDateTime(phase.startedAt || phase.createdAt)}</Text>
+                          {phase.errorMessage ? <Text type="danger">{phase.errorMessage}</Text> : null}
+                        </Space>
+                      </Card>
+                    );
+                  })}
+                </Space>
+              </Card>
             ) : null}
 
             <Collapse
@@ -1925,15 +1737,23 @@ const ExecutionListPage: React.FC = () => {
                             <Text copyable={{ text: selectedExecutionRuntimeSessionId }}>
                               {selectedExecutionRuntimeSessionId}
                             </Text>
-                            {selectedRuntimeSessionNovncUrl ? (
+                            {stableSelectedRuntimeSessionNovncUrl ? (
                               <Button
                                 type="link"
                                 style={{ paddingInline: 0 }}
-                                onClick={() => window.open(fixLocalhostLink(selectedRuntimeSessionNovncUrl), '_blank', 'noopener,noreferrer')}
+                                onClick={() => window.open(fixLocalhostLink(stableSelectedRuntimeSessionNovncUrl), '_blank', 'noopener,noreferrer')}
                               >
                                 打开实时画面
                               </Button>
-                            ) : null}
+                            ) : (
+                              <Button
+                                type="link"
+                                style={{ paddingInline: 0 }}
+                                onClick={() => navigate(`/executions/${selectedExecution.id}`)}
+                              >
+                                打开详情页
+                              </Button>
+                            )}
                           </Space>
                         ) : (
                           '-'
@@ -2139,27 +1959,41 @@ const ExecutionListPage: React.FC = () => {
                   key: 'phases',
                   label: renderPanelLabel(
                     '阶段',
-                    selectedExecution.phases && selectedExecution.phases.length > 0
-                      ? `${selectedExecution.phases.length} 个阶段 / ${selectedExecution.currentPhaseKey || '已归档'}`
+                    displaySelectedPhases.length > 0
+                      ? `${displaySelectedPhases.length} 个阶段 / ${selectedExecution.currentPhaseKey || '已归档'}`
                       : '暂无阶段记录',
                   ),
                   style: detailPanelStyle,
-                  children: selectedExecution.phases && selectedExecution.phases.length > 0 ? (
-                    <Timeline
-                      items={selectedExecution.phases.map((phase: ExecutionPhaseDto) => ({
-                        color: getPhaseStatusColor(phase.status),
-                        children: (
-                          <Card size="small">
-                            <Space direction="vertical" size={6} style={{ width: '100%' }}>
-                              <Space style={{ width: '100%', justifyContent: 'space-between' }} wrap>
-                                <Space wrap>
-                                  <Text strong>{phase.phaseName || phase.phaseKey}</Text>
-                                  <Tag>{phase.phaseType}</Tag>
-                                  <Tag color={getPhaseStatusColor(phase.status)}>{phase.status}</Tag>
-                                </Space>
-                                <Text type="secondary">{formatDateTime(phase.startedAt || phase.createdAt)}</Text>
-                              </Space>
+                  children: displaySelectedPhases.length > 0 ? (
+                    hasSelectedWorkflowActivityPhases && isSelectedExecutionActive ? (
+                      <Alert
+                        type="info"
+                        showIcon
+                        message="执行进行中"
+                        description="执行中以上方 3 个 Activity 进度为主视图，这里先不展开阶段内部明细；执行完成后再展示截图与补充结果。"
+                      />
+                    ) : (
+                    <Collapse
+                      ghost
+                      expandIconPosition="end"
+                      items={displaySelectedPhases.map((phase: ExecutionPhaseDto) => {
+                        const visiblePhaseSteps = getVisiblePhaseSteps(phase);
+
+                        return {
+                          key: phase.id,
+                          label: renderPanelLabel(
+                            phase.phaseName || phase.phaseKey,
+                            `${phase.status} / ${formatDateTime(phase.startedAt || phase.createdAt)}`,
+                          ),
+                          style: {
+                            ...detailPanelStyle,
+                            marginBottom: 12,
+                          },
+                          children: (
+                            <Space direction="vertical" size={12} style={{ width: '100%' }}>
                               <Space wrap size={[8, 4]}>
+                                <Tag>{phase.phaseType}</Tag>
+                                <Tag color={getPhaseStatusColor(phase.status)}>{phase.status}</Tag>
                                 <Text type="secondary">{`Key: ${phase.phaseKey}`}</Text>
                                 <Text type="secondary">{`尝试: ${phase.attempt}`}</Text>
                                 {phase.runtimeSessionId ? (
@@ -2204,65 +2038,127 @@ const ExecutionListPage: React.FC = () => {
                                   description={phase.errorMessage}
                                 />
                               ) : null}
+                              {phase.phaseType === 'workflow_activity' ? (
+                                <Card size="small" title="Activity 结果" styles={{ body: { padding: 12 } }}>
+                                  <Space direction="vertical" size={10} style={{ width: '100%' }}>
+                                    <Space wrap size={[12, 4]}>
+                                      <Text type="secondary">{`步骤数: ${phase.steps?.length || 0}`}</Text>
+                                      <Text type="secondary">{`截图: ${extractWorkflowActivitySnapshotSources(phase).length}`}</Text>
+                                    </Space>
+                                    {extractWorkflowActivitySnapshotSources(phase).length > 0 ? (
+                                      <Image.PreviewGroup>
+                                        <Space wrap size={12}>
+                                          {extractWorkflowActivitySnapshotSources(phase).map((src, index) => (
+                                            <Image
+                                              key={`${phase.id}-snapshot-${index + 1}`}
+                                              src={src}
+                                              alt={`${phase.phaseName || phase.phaseKey}-snapshot-${index + 1}`}
+                                              style={{
+                                                width: 320,
+                                                maxWidth: '100%',
+                                                maxHeight: 320,
+                                                objectFit: 'contain',
+                                                background: 'var(--bg-secondary)',
+                                                borderRadius: 8,
+                                                border: '1px solid var(--bg-secondary)',
+                                                padding: 6,
+                                              }}
+                                            />
+                                          ))}
+                                        </Space>
+                                      </Image.PreviewGroup>
+                                    ) : (
+                                      <Text type="secondary">该 Activity 暂无可展示截图。</Text>
+                                    )}
+                                  </Space>
+                                </Card>
+                              ) : phase.steps && phase.steps.length > 0 ? (
+                                <Timeline
+                                  items={visiblePhaseSteps.map((step) => {
+                                    const stepUrl = extractPhaseStepUrl(step);
+                                    const stepImageSources = extractPhaseStepImageSources(step, phase.artifacts || []);
+                                    const isWaitStep = step.action === 'wait';
+                                    const isNavigateStep = step.action === 'navigate';
+                                    const isScreenshotStep = step.action === 'screenshot';
+
+                                    return {
+                                      color: getPhaseStatusColor(step.status),
+                                      children: (
+                                        isWaitStep ? (
+                                          <Space wrap style={{ width: '100%', justifyContent: 'space-between' }}>
+                                            <Space wrap>
+                                              <Text strong>等待</Text>
+                                              <Tag color={getPhaseStatusColor(step.status)}>{step.status}</Tag>
+                                            </Space>
+                                            <Text type="secondary">{formatDateTime(step.startedAt || step.createdAt)}</Text>
+                                          </Space>
+                                        ) : (
+                                          <Card size="small">
+                                            <Space direction="vertical" size={10} style={{ width: '100%' }}>
+                                              <Space wrap style={{ width: '100%', justifyContent: 'space-between' }}>
+                                                <Space wrap>
+                                                  <Text strong>
+                                                    {isNavigateStep ? '打开页面' : isScreenshotStep ? '截图' : step.action || `步骤 ${step.stepIndex + 1}`}
+                                                  </Text>
+                                                  <Tag color={getPhaseStatusColor(step.status)}>{step.status}</Tag>
+                                                </Space>
+                                                <Text type="secondary">{formatDateTime(step.startedAt || step.createdAt)}</Text>
+                                              </Space>
+                                              {isNavigateStep ? (
+                                                <Text copyable={stepUrl ? { text: stepUrl } : undefined}>
+                                                  {stepUrl || '-'}
+                                                </Text>
+                                              ) : null}
+                                              {step.errorMessage ? (
+                                                <Alert
+                                                  type="error"
+                                                  showIcon
+                                                  message="步骤执行失败"
+                                                  description={step.errorMessage}
+                                                />
+                                              ) : null}
+                                              {stepImageSources.length > 0 ? (
+                                                <Image.PreviewGroup>
+                                                  <Space wrap size={12}>
+                                                    {stepImageSources.map((src, index) => (
+                                                      <Image
+                                                        key={`${src}-${index}`}
+                                                        src={src}
+                                                        alt={`${phase.phaseName || phase.phaseKey}-step-${index + 1}`}
+                                                        style={{
+                                                          width: 320,
+                                                          maxWidth: '100%',
+                                                          maxHeight: 320,
+                                                          objectFit: 'contain',
+                                                          background: 'var(--bg-secondary)',
+                                                          borderRadius: 8,
+                                                          border: '1px solid var(--bg-secondary)',
+                                                          padding: 6,
+                                                        }}
+                                                      />
+                                                    ))}
+                                                  </Space>
+                                                </Image.PreviewGroup>
+                                              ) : null}
+                                            </Space>
+                                          </Card>
+                                        )
+                                      ),
+                                    };
+                                  })}
+                                />
+                              ) : null}
                             </Space>
-                          </Card>
-                        ),
-                      }))}
+                          ),
+                        };
+                      })}
                     />
+                    )
                   ) : (
                     <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无阶段记录" />
                   ),
                 },
-                {
-                  key: 'result',
-                  label: renderPanelLabel(
-                    '执行结果',
-                    summarizeExecutionResult(selectedExecution.resultJson || null),
-                  ),
-                  style: detailPanelStyle,
-                  children: selectedExecution.resultJson ? (
-                    <Space direction="vertical" size={12} style={{ width: '100%' }}>
-                      <Space style={{ width: '100%', justifyContent: 'space-between' }} wrap>
-                        <Text type="secondary">
-                          {selectedBrowserExecutionResult ? '已按浏览器步骤时间线显示执行结果' : '已格式化显示执行结果 JSON'}
-                        </Text>
-                        <Space wrap>
-                          {extractDownloadUrl(selectedExecution.resultJson) ? (
-                            <Button
-                              size="small"
-                              icon={<DownloadOutlined />}
-                              onClick={() => window.open(extractDownloadUrl(selectedExecution.resultJson!), '_blank', 'noopener,noreferrer')}
-                            >
-                              下载
-                            </Button>
-                          ) : null}
-                          <Button
-                            size="small"
-                            icon={<CopyOutlined />}
-                            onClick={() => void handleCopyJson('执行结果', selectedExecution.resultJson)}
-                          >
-                            复制 JSON
-                          </Button>
-                        </Space>
-                      </Space>
-                      {selectedBrowserExecutionResult ? (
-                        <>
-                          {selectedBrowserExecutionResult.runtimeSessionId ? (
-                            <Text copyable={{ text: selectedBrowserExecutionResult.runtimeSessionId }}>
-                              {`运行会话: ${selectedBrowserExecutionResult.runtimeSessionId}`}
-                            </Text>
-                          ) : null}
-                          <Timeline items={selectedBrowserTimelineItems} />
-                        </>
-                      ) : (
-                        renderJsonBlock(selectedExecution.resultJson)
-                      )}
-                    </Space>
-                  ) : (
-                    <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无结果" />
-                  ),
-                },
-                {
+                ...(shouldShowLegacySteps ? [{
                   key: 'steps',
                   label: renderPanelLabel(
                     '步骤',
@@ -2321,7 +2217,7 @@ const ExecutionListPage: React.FC = () => {
                   ) : (
                     <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无步骤" />
                   ),
-                },
+                }] : []),
               ]}
             />
           </Space>

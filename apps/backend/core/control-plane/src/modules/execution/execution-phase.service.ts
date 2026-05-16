@@ -47,6 +47,20 @@ interface UpsertExecutionPhaseArtifactInput {
   payload?: Record<string, unknown> | null;
 }
 
+interface UpsertExecutionPhaseStepInput {
+  stepIndex: number;
+  stepId?: string | null;
+  action: string;
+  status: string;
+  input?: Record<string, unknown> | null;
+  output?: Record<string, unknown> | null;
+  errorMessage?: string | null;
+  errorCode?: string | null;
+  snapshotId?: string | null;
+  startedAt?: Date | null;
+  endedAt?: Date | null;
+}
+
 @Injectable()
 export class ExecutionPhaseService {
   private readonly logger = new Logger(ExecutionPhaseService.name);
@@ -327,6 +341,82 @@ export class ExecutionPhaseService {
     await this.updateExecutionTakeoverStatus(input.executionId, 'requested');
   }
 
+  async replaceSteps(
+    executionId: string,
+    phaseKey: string,
+    steps: UpsertExecutionPhaseStepInput[],
+  ): Promise<void> {
+    try {
+      const phase = await this.getByExecutionIdAndPhaseKey(executionId, phaseKey);
+      const phaseId = typeof phase?.id === 'string' ? phase.id : String(phase?.id || '').trim();
+      if (!phaseId) {
+        return;
+      }
+
+      await this.prisma.$transaction(async (tx) => {
+        await tx.$executeRawUnsafe(
+          `
+            DELETE FROM execution_phase_steps
+            WHERE phase_id = $1::uuid
+          `,
+          phaseId,
+        );
+
+        for (const step of steps) {
+          await tx.$executeRawUnsafe(
+            `
+              INSERT INTO execution_phase_steps (
+                phase_id,
+                step_index,
+                step_id,
+                action,
+                status,
+                input_json,
+                output_json,
+                error_message,
+                error_code,
+                snapshot_id,
+                started_at,
+                ended_at
+              )
+              VALUES (
+                $1::uuid,
+                $2,
+                $3,
+                $4,
+                $5,
+                CAST($6 AS jsonb),
+                CAST($7 AS jsonb),
+                $8,
+                $9,
+                $10,
+                $11::timestamptz,
+                $12::timestamptz
+              )
+            `,
+            phaseId,
+            step.stepIndex,
+            step.stepId || null,
+            step.action,
+            step.status,
+            this.toJsonString(step.input),
+            this.toJsonString(step.output),
+            step.errorMessage || null,
+            step.errorCode || null,
+            step.snapshotId || null,
+            step.startedAt || null,
+            step.endedAt || null,
+          );
+        }
+      });
+    } catch (error) {
+      if (this.isMissingPhaseTableError(error)) {
+        return;
+      }
+      throw error;
+    }
+  }
+
   async replaceArtifacts(
     executionId: string,
     phaseKey: string,
@@ -461,15 +551,17 @@ export class ExecutionPhaseService {
             };
           }
 
-          const [artifacts, takeovers] = await Promise.all([
+          const [artifacts, takeovers, steps] = await Promise.all([
             this.listArtifactsByPhaseId(phaseId),
             this.listTakeoversByPhaseId(phaseId),
+            this.listStepsByPhaseId(phaseId),
           ]);
 
           return {
             ...phase,
             artifacts,
             takeovers,
+            steps,
           };
         }),
       );
@@ -480,6 +572,39 @@ export class ExecutionPhaseService {
         return [];
       }
 
+      throw error;
+    }
+  }
+
+  private async listStepsByPhaseId(phaseId: string): Promise<RawRecord[]> {
+    try {
+      return await this.prisma.$queryRawUnsafe<RawRecord[]>(
+        `
+          SELECT
+            eps.id,
+            eps.phase_id,
+            eps.step_index,
+            eps.step_id,
+            eps.action,
+            eps.status,
+            eps.input_json,
+            eps.output_json,
+            eps.error_message,
+            eps.error_code,
+            eps.snapshot_id,
+            eps.started_at,
+            eps.ended_at,
+            eps.created_at
+          FROM execution_phase_steps eps
+          WHERE eps.phase_id = $1::uuid
+          ORDER BY eps.step_index ASC
+        `,
+        phaseId,
+      );
+    } catch (error) {
+      if (this.isMissingPhaseTableError(error)) {
+        return [];
+      }
       throw error;
     }
   }

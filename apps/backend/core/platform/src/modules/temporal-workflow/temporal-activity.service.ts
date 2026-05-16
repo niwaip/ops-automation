@@ -50,6 +50,7 @@ export interface BuiltinActivityDTO extends BuiltinActivityDefinition {}
 interface ActivityExecutionOptions {
   timeout?: string;
   retryPolicy?: { maxRetries: number; backoffMs?: number };
+  preferSandboxStreaming?: boolean;
 }
 
 const normalizeInputParams = (
@@ -584,11 +585,11 @@ export class ActivityService {
     input: Record<string, any> | undefined,
     onLog: (log: string) => void,
     options: ActivityExecutionOptions = {},
-  ): Promise<{ success: boolean; result?: any; error?: string }> {
+  ): Promise<{ success: boolean; result?: any; error?: string; workflowId?: string }> {
     const logger = new Logger('ActivityService.executeCodeStreaming');
 
     const validationAgentUrl = this.getActivityValidationAgentUrl();
-    if (validationAgentUrl) {
+    if (validationAgentUrl && !options.preferSandboxStreaming) {
       try {
         onLog(`[${new Date().toISOString()}] 使用 Activity 测试 Worker 执行代码...`);
         return await this.executeCodeViaValidationWorker(
@@ -612,7 +613,7 @@ export class ActivityService {
     if (sandboxUrl) {
       try {
         onLog(`[${new Date().toISOString()}] 使用 Temporal Sandbox Agent 执行代码...`);
-        return await this.executeCodeViaSandboxAgent(sandboxUrl, code, fn, input, onLog);
+        return await this.executeCodeViaSandboxAgentStream(sandboxUrl, code, fn, input, onLog);
       } catch (error) {
         const errorMsg = error instanceof Error ? error.message : 'Unknown error';
         logger.warn(`Sandbox agent failed, falling back to subprocess: ${errorMsg}`);
@@ -823,6 +824,86 @@ export class ActivityService {
       onLog(`[${new Date().toISOString()}] Sandbox Agent 请求失败: ${errorMsg}`);
       throw error; // Re-throw to trigger fallback
     }
+  }
+
+  private async executeCodeViaSandboxAgentStream(
+    sandboxUrl: string,
+    code: string,
+    fn: string,
+    input: Record<string, any> | undefined,
+    onLog: (log: string) => void,
+  ): Promise<{ success: boolean; result?: any; error?: string; workflowId?: string }> {
+    const activityId = `activity-${Date.now()}-${Math.random().toString(36).substring(7)}`;
+    const timeoutMs = Number(process.env.SANDBOX_AGENT_TIMEOUT_MS || 180000);
+
+    onLog(`[${new Date().toISOString()}] 连接到 Sandbox Agent 流式接口: ${sandboxUrl}`);
+    onLog(`[${new Date().toISOString()}] Activity ID: ${activityId}`);
+
+    const response = await fetch(`${sandboxUrl}/execute/stream`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        code,
+        fn_name: fn,
+        activity_id: activityId,
+        input_data: input || {},
+      }),
+      signal: AbortSignal.timeout(timeoutMs),
+    });
+
+    if (!response.ok || !response.body) {
+      throw new Error(`Sandbox Agent 流式请求失败: HTTP ${response.status}`);
+    }
+
+    const decoder = new TextDecoder();
+    let buffer = '';
+    let finalResult: { success: boolean; result?: any; error?: string; workflowId?: string } | null = null;
+
+    for await (const chunk of response.body as any) {
+      buffer += decoder.decode(chunk, { stream: true });
+      let delimiterIndex = buffer.indexOf('\n\n');
+      while (delimiterIndex >= 0) {
+        const rawEvent = buffer.slice(0, delimiterIndex);
+        buffer = buffer.slice(delimiterIndex + 2);
+        const dataLine = rawEvent
+          .split('\n')
+          .find((line) => line.startsWith('data:'));
+        if (!dataLine) {
+          delimiterIndex = buffer.indexOf('\n\n');
+          continue;
+        }
+
+        const payloadText = dataLine.slice(5).trim();
+        if (!payloadText) {
+          delimiterIndex = buffer.indexOf('\n\n');
+          continue;
+        }
+
+        const event = JSON.parse(payloadText) as Record<string, any>;
+        if (event.type === 'log' && typeof event.content === 'string') {
+          onLog(event.content);
+        } else if (event.type === 'error') {
+          throw new Error(typeof event.content === 'string' ? event.content : 'Sandbox Agent 流式执行失败');
+        } else if (event.type === 'done') {
+          finalResult = {
+            success: Boolean(event.success),
+            result: event.result,
+            error: typeof event.error === 'string' ? event.error : undefined,
+            workflowId: typeof event.workflow_id === 'string' ? event.workflow_id : undefined,
+          };
+        }
+
+        delimiterIndex = buffer.indexOf('\n\n');
+      }
+    }
+
+    if (!finalResult) {
+      throw new Error('Sandbox Agent 流式执行未返回最终结果');
+    }
+
+    return finalResult;
   }
 
   /**

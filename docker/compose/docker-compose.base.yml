@@ -76,6 +76,7 @@ services:
       DOCKER_ENV: true
       PORT: ${PLATFORM_PORT:-3001}
       JWT_SECRET: jwt_secret_key_change_in_production
+      INTERNAL_API_SHARED_SECRET: ${INTERNAL_API_SHARED_SECRET:-ops_internal_shared_secret_change_me}
       AI_ORCHESTRATOR_URL: http://${AI_ORCHESTRATOR_HOST:-ai-orchestrator}:${AI_ORCHESTRATOR_PORT:-3007}
       SANDBOX_AGENT_URL: http://temporal-sandbox-agent:8090
       TEMPORAL_SANDBOX_AGENT_URL: http://temporal-sandbox-agent:8090

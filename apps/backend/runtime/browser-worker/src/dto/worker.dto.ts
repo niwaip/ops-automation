@@ -146,6 +146,7 @@ export class SystemHealthResponseDto {
 
 export enum StepAction {
   GOTO = 'goto',
+  NAVIGATE = 'navigate',
   CLICK = 'click',
   FILL = 'fill',
   SCREENSHOT = 'screenshot',
@@ -163,6 +164,7 @@ export enum StepAction {
   LIST_SEARCH_RESULTS = 'list_search_results',
   CLICK_RESULT = 'click_result',
   SWITCH_LATEST_TAB = 'switch_latest_tab',
+  FOCUS_LATEST_PAGE = 'focus_latest_page',
 }
 
 export enum BrowserExecutionBackendDto {
@@ -224,6 +226,7 @@ export class ExecuteStepDto {
     description: 'Action to perform',
     enum: [
       'goto',
+      'navigate',
       'click',
       'fill',
       'screenshot',
@@ -241,6 +244,7 @@ export class ExecuteStepDto {
       'list_search_results',
       'click_result',
       'switch_latest_tab',
+      'focus_latest_page',
     ],
   })
   @IsEnum(StepAction)

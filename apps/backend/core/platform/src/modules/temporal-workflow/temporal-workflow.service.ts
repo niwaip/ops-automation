@@ -2116,6 +2116,21 @@ export class TemporalWorkflowService {
       '            return f"role={target}"',
       '        return target',
       '',
+      '    def _is_retryable_error(message: str) -> bool:',
+      '        if not isinstance(message, str) or not message.strip():',
+      '            return False',
+      '        return bool(re.search(r"does not match any elements|No element found|strict mode violation|timeout|timed out|net::|ECONNRESET|temporarily unavailable", message, re.IGNORECASE))',
+      '',
+      '    def _should_require_takeover(command: str, message: str) -> bool:',
+      '        combined = f"{command} {message}" if command or message else ""',
+      '        if re.search(r"captcha|mfa|2fa|verification|verify|human verification|验证码|二次认证", combined, re.IGNORECASE):',
+      '            return True',
+      '        if not isinstance(message, str) or not message.strip():',
+      '            return False',
+      '        if re.search(r"does not match any elements|No element found|strict mode violation", message, re.IGNORECASE):',
+      '            return command in ("click", "fill", "type", "type_text", "press", "press_key", "click_result")',
+      '        return False',
+      '',
       '    missing_params = [key for key in required_params if _is_missing(input_data.get(key))]',
       '    if missing_params:',
       '        raise ApplicationError(f"缺少必需参数: {\', \'.join(missing_params)}", non_retryable=True)',
@@ -2249,12 +2264,13 @@ export class TemporalWorkflowService {
       '',
       '            activity.heartbeat("browser_init_completed")',
       '',
+      '        preserve_session = False',
       '        execute_payload = {',
       '            "runtimeSessionId": runtime_session_id,',
       '            "backend": selected_backend,',
       '            "commands": commands,',
       '            "includeArtifacts": False,',
-      '            "includeSteps": False,',
+      '            "includeSteps": True,',
       '        }',
       '        activity.logger.info("开始执行浏览器模板命令", extra={"runtimeSessionId": runtime_session_id, "backend": selected_backend})',
       '        try:',
@@ -2268,21 +2284,6 @@ export class TemporalWorkflowService {
       '        if not isinstance(raw_results, list):',
       '            raw_results = []',
       '        failed_results = [item for item in raw_results if isinstance(item, dict) and str(item.get("status") or "").lower() == "error"]',
-      '        if not bool(execute_result.get("success")) and failed_results:',
-      '            first_error = failed_results[0]',
-      '            first_command = str(first_error.get("command") or "unknown")',
-      '            first_message = str(first_error.get("message") or "unknown error")',
-      '            raise ApplicationError(f"browser-worker 执行失败: {execute_result.get(\'message\') or \'unknown error\'}; first_failed_command={first_command}; detail={first_message}", non_retryable=False)',
-      '',
-      '        if not bool(execute_result.get("success")):',
-      '            raise ApplicationError(f"browser-worker 执行失败: {execute_result.get(\'message\') or \'unknown error\'}", non_retryable=False)',
-      '',
-      '        if failed_results:',
-      '            first_error = failed_results[0]',
-      '            first_command = str(first_error.get("command") or "unknown")',
-      '            first_message = str(first_error.get("message") or "unknown error")',
-      '            raise ApplicationError(f"浏览器命令执行失败: command={first_command}; detail={first_message}", non_retryable=False)',
-      '',
       '        summarized_results = []',
       '        artifact_refs = []',
       '        for item in raw_results:',
@@ -2332,6 +2333,37 @@ export class TemporalWorkflowService {
       '                artifact_refs.append(artifact_record)',
       '            summarized_results.append(summary)',
       '',
+      '        first_command = ""',
+      '        first_message = ""',
+      '        failure_message = ""',
+      '        if failed_results:',
+      '            first_error = failed_results[0]',
+      '            first_command = str(first_error.get("command") or "unknown")',
+      '            first_message = str(first_error.get("message") or "unknown error")',
+      '            failure_message = f"browser-worker 执行失败: {execute_result.get(\'message\') or \'unknown error\'}; first_failed_command={first_command}; detail={first_message}"',
+      '        elif not bool(execute_result.get("success")):',
+      '            failure_message = f"browser-worker 执行失败: {execute_result.get(\'message\') or \'unknown error\'}"',
+      '',
+      '        if failure_message:',
+      '            requires_takeover = _should_require_takeover(first_command, first_message or failure_message)',
+      '            if requires_takeover:',
+      '                preserve_session = True',
+      '            return {',
+      '                "status": "takeover_required" if requires_takeover else "failed",',
+      '                "runtimeSessionId": runtime_session_id,',
+      '                "backend": selected_backend,',
+      '                "commandCount": len(commands),',
+      '                "results": summarized_results,',
+      '                "artifacts": artifact_refs,',
+      '                "message": execute_result.get("message"),',
+      '                "errorCode": "BROWSER_WORKER_EXECUTION_FAILED",',
+      '                "errorMessage": failure_message,',
+      '                "failedCommand": first_command or None,',
+      '                "retryable": _is_retryable_error(first_message or failure_message),',
+      '                "requiresTakeover": requires_takeover,',
+      '                "takeoverReason": (f"浏览器页面未进入预期状态，无法继续执行 {first_command or \'当前步骤\'}" if requires_takeover else None),',
+      '            }',
+      '',
       '        activity.heartbeat("browser_execute_completed")',
       '        return {',
       '            "status": "completed",',
@@ -2343,7 +2375,7 @@ export class TemporalWorkflowService {
       '            "message": execute_result.get("message"),',
       '        }',
       '    finally:',
-      '        if cleanup_session:',
+      '        if cleanup_session and not preserve_session:',
       '            activity.logger.info("清理浏览器会话资源", extra={"runtimeSessionId": runtime_session_id})',
       '            try:',
       '                requests.post(f"{browser_worker_base_url}/browser/reset", json={"runtimeSessionId": runtime_session_id}, timeout=30)',
@@ -2555,6 +2587,20 @@ export class TemporalWorkflowService {
         `            "activityName": ${JSON.stringify(activityDef.name)},`,
         '            "result": phase_result,',
         '        })',
+        '        phase_status = str((phase_result or {}).get("status") if isinstance(phase_result, dict) else "").strip().lower()',
+        '        if phase_status in ("failed", "blocked", "waiting", "takeover_required"):',
+        '            return {',
+        '                "status": phase_status or "failed",',
+        '                "runtimeSessionId": runtime_session_id,',
+        '                "backend": backend,',
+        '                "phaseResults": phase_results,',
+        '                "result": phase_result,',
+        '                "errorCode": phase_result.get("errorCode") if isinstance(phase_result, dict) else None,',
+        '                "errorMessage": phase_result.get("errorMessage") if isinstance(phase_result, dict) else None,',
+        '                "retryable": bool(phase_result.get("retryable")) if isinstance(phase_result, dict) else False,',
+        '                "requiresTakeover": bool(phase_result.get("requiresTakeover")) if isinstance(phase_result, dict) else False,',
+        '                "takeoverReason": phase_result.get("takeoverReason") if isinstance(phase_result, dict) else None,',
+        '            }',
       ];
     });
 
@@ -5523,8 +5569,14 @@ export class TemporalWorkflowService {
 
       const normalizedPhaseType = phaseType === 'open' ? 'open' : phaseType === 'transition' ? 'transition' : 'process';
       const shouldStartNewGroup = !currentGroup
-        || currentGroup.phaseType !== normalizedPhaseType
-        || normalizedPhaseType === 'open'
+        || (
+          currentGroup.phaseType !== normalizedPhaseType
+          && !(currentGroup.phaseType === 'open' && normalizedPhaseType === 'process')
+        )
+        || (
+          normalizedPhaseType === 'open'
+          && currentGroup.steps.length > 0
+        )
         || normalizedPhaseType === 'transition';
 
       if (shouldStartNewGroup) {
@@ -5570,14 +5622,234 @@ export class TemporalWorkflowService {
       groups.push(currentGroup);
     }
 
-    return groups.map((group, index) => ({
+    const enrichedGroups = this.enrichBrowserWorkflowPhaseGroups(groups);
+
+    return enrichedGroups.map((group, index) => ({
       name: this.buildBrowserWorkflowPhaseName(group.phaseType, index + 1),
       phaseType: group.phaseType,
       timeout: this.inferBrowserTemplateTimeoutFromSteps(group.steps),
       initializeSession: index === 0,
-      cleanupSession: index === groups.length - 1,
+      cleanupSession: index === enrichedGroups.length - 1,
       steps: group.steps,
     }));
+  }
+
+  private enrichBrowserWorkflowPhaseGroups(
+    groups: BrowserWorkflowActivityPhaseGroup[],
+  ): BrowserWorkflowActivityPhaseGroup[] {
+    return groups.map((group, index) => {
+      if (group.phaseType !== 'open') {
+        return group;
+      }
+      if (group.steps.some((step) => String(step.config?.action || '').trim().toLowerCase() === 'waitforselector')) {
+        return {
+          phaseType: group.phaseType,
+          steps: this.deduplicateBrowserReadyCheckSteps(group.steps),
+        };
+      }
+
+      const readyCheckPlacement = this.buildOpenPhaseReadyCheckStep(
+        group,
+        groups[index + 1],
+      );
+      if (!readyCheckPlacement) {
+        return group;
+      }
+
+      const { step: readyCheckStep, insertAt } = readyCheckPlacement;
+      const hasEquivalentReadyCheck = group.steps.some((step) =>
+        this.isSameBrowserReadyCheckStep(step, readyCheckStep),
+      );
+      if (hasEquivalentReadyCheck) {
+        return {
+          phaseType: group.phaseType,
+          steps: this.deduplicateBrowserReadyCheckSteps(group.steps),
+        };
+      }
+
+      return {
+        phaseType: group.phaseType,
+        steps: this.deduplicateBrowserReadyCheckSteps([
+          ...group.steps.slice(0, insertAt),
+          readyCheckStep,
+          ...group.steps.slice(insertAt),
+        ]),
+      };
+    });
+  }
+
+  private buildOpenPhaseReadyCheckStep(
+    currentGroup: BrowserWorkflowActivityPhaseGroup,
+    nextGroup: BrowserWorkflowActivityPhaseGroup | undefined,
+  ): { step: BrowserWorkflowActivityStep; insertAt: number } | null {
+    const currentGroupReadyCheck = this.findBrowserReadyCheckInsertionPoint(currentGroup);
+    if (currentGroupReadyCheck?.alreadyExists) {
+      return null;
+    }
+    const selector = currentGroupReadyCheck?.selector || this.extractBrowserReadySelectorFromGroup(nextGroup);
+    if (!selector) {
+      return null;
+    }
+
+    return {
+      step: {
+        name: `${(currentGroupReadyCheck?.insertAt ?? currentGroup.steps.length) + 1}. 等待页面可交互`,
+        type: 'browser',
+        timeout: '30s',
+        config: {
+          action: 'waitForSelector',
+          selector,
+          timeoutMs: 15000,
+          duration: 15000,
+        },
+        inputParams: {},
+      },
+      insertAt: currentGroupReadyCheck?.insertAt ?? currentGroup.steps.length,
+    };
+  }
+
+  private findBrowserReadyCheckInsertionPoint(
+    group: BrowserWorkflowActivityPhaseGroup,
+  ): { selector: string; insertAt: number; alreadyExists?: boolean } | null {
+    for (let index = 0; index < group.steps.length; index += 1) {
+      const step = group.steps[index];
+      const action = String(step.config?.action || '').trim().toLowerCase();
+      if (!['fill', 'type', 'type_text', 'click', 'hover', 'press', 'press_key', 'waitforselector'].includes(action)) {
+        continue;
+      }
+
+      const selector = this.extractBrowserReadySelectorFromConfig(step.config);
+      if (!selector) {
+        continue;
+      }
+
+      return {
+        selector,
+        insertAt: index,
+        alreadyExists: action === 'waitforselector',
+      };
+    }
+
+    return null;
+  }
+
+  private deduplicateBrowserReadyCheckSteps(
+    steps: BrowserWorkflowActivityStep[],
+  ): BrowserWorkflowActivityStep[] {
+    const seenSelectors = new Set<string>();
+    return steps.filter((step) => {
+      const action = String(step.config?.action || '').trim().toLowerCase();
+      if (action !== 'waitforselector') {
+        return true;
+      }
+
+      const selector = String(step.config?.selector || '').trim();
+      if (!selector) {
+        return true;
+      }
+      if (seenSelectors.has(selector)) {
+        return false;
+      }
+      seenSelectors.add(selector);
+      return true;
+    });
+  }
+
+  private extractBrowserReadySelectorFromGroup(
+    group: BrowserWorkflowActivityPhaseGroup | undefined,
+  ): string | null {
+    if (!group) {
+      return null;
+    }
+
+    for (const step of group.steps) {
+      const action = String(step.config?.action || '').trim().toLowerCase();
+      if (!['fill', 'type', 'type_text', 'click', 'hover', 'press', 'press_key', 'waitforselector'].includes(action)) {
+        continue;
+      }
+
+      const selector = this.extractBrowserReadySelectorFromConfig(step.config);
+      if (selector) {
+        return selector;
+      }
+    }
+
+    return null;
+  }
+
+  private extractBrowserReadySelectorFromConfig(
+    config: Record<string, unknown> | undefined,
+  ): string | null {
+    if (!config) {
+      return null;
+    }
+
+    const locatorSelector = this.buildBrowserReadySelectorFromLocator(config.locator);
+    if (locatorSelector) {
+      return locatorSelector;
+    }
+
+    for (const candidate of [config.selector, config.target]) {
+      if (typeof candidate !== 'string') {
+        continue;
+      }
+      const normalized = candidate.trim();
+      if (!normalized) {
+        continue;
+      }
+      if (this.isBrowserRuntimeRefSelector(normalized)) {
+        continue;
+      }
+      if (/^https?:\/\//i.test(normalized)) {
+        continue;
+      }
+      return normalized;
+    }
+
+    return null;
+  }
+
+  private buildBrowserReadySelectorFromLocator(locator: unknown): string | null {
+    if (!locator || typeof locator !== 'object' || Array.isArray(locator)) {
+      return null;
+    }
+
+    const locatorRecord = locator as Record<string, unknown>;
+    const locatorType = String(locatorRecord.type || '').trim().toLowerCase();
+    const locatorValue = String(locatorRecord.value || '').trim();
+    if (!locatorValue) {
+      return null;
+    }
+
+    if (locatorType === 'ref' && this.isBrowserRuntimeRefSelector(locatorValue)) {
+      return null;
+    }
+    if (locatorType === 'role') {
+      return `role=${locatorValue}`;
+    }
+    if (locatorType === 'text') {
+      return `text=${locatorValue}`;
+    }
+    if (locatorType === 'test-id') {
+      return `[data-testid="${locatorValue}"]`;
+    }
+    if (locatorType === 'xpath') {
+      return `xpath=${locatorValue}`;
+    }
+
+    return locatorValue;
+  }
+
+  private isBrowserRuntimeRefSelector(value: string): boolean {
+    return /^e\d+$/i.test(value.trim());
+  }
+
+  private isSameBrowserReadyCheckStep(
+    left: BrowserWorkflowActivityStep,
+    right: BrowserWorkflowActivityStep,
+  ): boolean {
+    return String(left.config?.action || '').trim().toLowerCase() === String(right.config?.action || '').trim().toLowerCase()
+      && String(left.config?.selector || '').trim() === String(right.config?.selector || '').trim();
   }
 
   private classifyBrowserWorkflowPhaseType(
@@ -5602,6 +5874,7 @@ export class TemporalWorkflowService {
       return 'open';
     }
     if ([
+      'click',
       'search',
       'smart_search',
       'click_result',

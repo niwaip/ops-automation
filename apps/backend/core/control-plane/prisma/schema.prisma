@@ -276,12 +276,37 @@ model ExecutionPhase {
   // Relations
   execution            Execution                 @relation(fields: [executionId], references: [id], onDelete: Cascade)
   artifacts            ExecutionPhaseArtifact[]
+  steps                ExecutionPhaseStep[]
   takeovers            ExecutionTakeover[]
 
   @@unique([executionId, phaseKey])
   @@index([executionId, status])
   @@index([runtimeSessionId])
   @@map("execution_phases")
+}
+
+// ExecutionPhaseStep - Individual steps within an execution phase
+model ExecutionPhaseStep {
+  id                  String         @id @default(uuid()) @db.Uuid
+  phaseId             String         @map("phase_id") @db.Uuid
+  stepIndex           Int            @map("step_index")
+  stepId              String?        @map("step_id") @db.VarChar(255)
+  action              String         @db.VarChar(100)
+  status              String         @db.VarChar(50)
+  inputJson           Json?          @map("input_json")
+  outputJson          Json?          @map("output_json")
+  errorMessage        String?        @map("error_message") @db.Text
+  errorCode           String?        @map("error_code") @db.VarChar(50)
+  snapshotId          String?        @map("snapshot_id") @db.VarChar(255)
+  startedAt           DateTime?      @map("started_at") @db.Timestamptz
+  endedAt             DateTime?      @map("ended_at") @db.Timestamptz
+  createdAt           DateTime       @default(now()) @map("created_at") @db.Timestamptz
+
+  // Relations
+  phase               ExecutionPhase @relation(fields: [phaseId], references: [id], onDelete: Cascade)
+
+  @@index([phaseId])
+  @@map("execution_phase_steps")
 }
 
 // ExecutionPhaseArtifact - Evidence and page/runtime artifacts for each phase

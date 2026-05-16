@@ -232,7 +232,9 @@ export interface ExecuteCapabilityRuntimeDTO {
   executionId?: string;
   stepId?: string;
   runtimeSessionId?: string;
+  phaseKey?: string;
   input?: Record<string, unknown>;
+  metadata?: Record<string, unknown>;
 }
 
 export interface LLMUsage {
@@ -250,6 +252,7 @@ export interface ExecuteCapabilityRuntimeResultDTO {
   capabilityVersion?: string | null;
   publishedSkillId: string;
   runtime: string;
+  status?: 'completed' | 'failed' | 'blocked' | 'waiting' | 'takeover_required';
   runtimeSessionId?: string | null;
   fn?: string;
   taskQueue?: string;
@@ -259,6 +262,9 @@ export interface ExecuteCapabilityRuntimeResultDTO {
   output?: Record<string, unknown> | null;
   result?: Record<string, unknown> | null;
   usage?: LLMUsage;
+  retryable?: boolean;
+  requiresTakeover?: boolean;
+  takeoverReason?: string | null;
   logs: string[];
   error?: string | null;
 }

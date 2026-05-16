@@ -87,14 +87,6 @@ export class BrowserRuntimeAdapter implements RuntimeAdapter {
   }
 
   async invokeStep(request: RuntimeStepInvokeRequest): Promise<RuntimeStepInvokeResult> {
-    await axios.post<{ success: boolean; message: string }>(
-      `${this.browserWorkerUrl}/browser/init`,
-      {
-        runtimeSessionId: request.runtimeSessionId || '',
-        sessionPreferences: this.resolveSessionPreferences(request),
-      },
-    );
-
     const payload: LegacyBrowserExecuteStepRequest = {
       executionId: request.executionId,
       runtimeSessionId: request.runtimeSessionId || '',

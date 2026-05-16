@@ -171,4 +171,98 @@ describe('execution.mapper', () => {
       }),
     );
   });
+
+  it('derives phase steps from saved runtime output when persisted steps are missing', () => {
+    const dto = mapExecutionToDto({
+      id: 'execution-3',
+      createdBy: 'user-3',
+      skillId: 'skill-3',
+      status: 'completed',
+      runtimeType: 'browser',
+      riskLevel: 'L0',
+      requiresApproval: false,
+      takeoverRequired: false,
+      createdAt: new Date('2026-05-01T00:00:00.000Z'),
+      updatedAt: new Date('2026-05-01T00:01:00.000Z'),
+      phases: [
+        {
+          id: 'phase-legacy-1',
+          executionId: 'execution-3',
+          phaseKey: 'phase_01_execute_skill',
+          phaseName: '执行技能',
+          phaseType: 'system_skill',
+          status: 'completed',
+          attempt: 1,
+          createdAt: new Date('2026-05-01T00:00:30.000Z'),
+          updatedAt: new Date('2026-05-01T00:01:00.000Z'),
+          outputJson: {
+            rawResult: {
+              output: {
+                phaseResults: [
+                  {
+                    stepId: 'step_1',
+                    stepName: '1. 页面打开',
+                    result: {
+                      results: [
+                        {
+                          status: 'success',
+                          command: 'navigate',
+                        },
+                        {
+                          status: 'success',
+                          command: 'screenshot',
+                          snapshot: {
+                            id: 'snapshot-legacy-1',
+                          },
+                        },
+                      ],
+                    },
+                  },
+                  {
+                    stepId: 'step_2',
+                    stepName: '2. 页面处理',
+                    result: {
+                      results: [
+                        {
+                          status: 'success',
+                          command: 'fill',
+                          input: {
+                            value: 'demo',
+                          },
+                        },
+                      ],
+                    },
+                  },
+                ],
+              },
+            },
+          },
+          artifacts: [],
+          takeovers: [],
+        },
+      ],
+    });
+
+    expect(dto.phases?.[0].steps).toEqual([
+      expect.objectContaining({
+        stepIndex: 1,
+        action: 'navigate',
+        status: 'completed',
+      }),
+      expect.objectContaining({
+        stepIndex: 2,
+        action: 'screenshot',
+        status: 'completed',
+        snapshotId: 'snapshot-legacy-1',
+      }),
+      expect.objectContaining({
+        stepIndex: 3,
+        action: 'fill',
+        status: 'completed',
+        input: {
+          value: 'demo',
+        },
+      }),
+    ]);
+  });
 });

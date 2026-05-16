@@ -45,6 +45,7 @@ export class RuntimeStepRequestFactory {
     stepId: string;
     runtimeSessionId: string;
     phaseMetadata?: RuntimeStepPhaseMetadata;
+    step?: Record<string, unknown> | null;
   }): RuntimeStepInvokeRequest | null {
     const capabilityId = this.resolveExecutionCapabilityId(input.execution);
     if (!capabilityId) {
@@ -67,6 +68,20 @@ export class RuntimeStepRequestFactory {
       policyContext: this.buildPolicyContext(input.execution),
       metadata: {
         capabilityVersion: this.resolveExecutionCapabilityVersion(input.execution),
+        executionStepName:
+          typeof input.step?.name === 'string' && input.step.name.trim()
+            ? input.step.name.trim()
+            : undefined,
+        executionStepAction:
+          typeof input.step?.action === 'string' && input.step.action.trim()
+            ? input.step.action.trim()
+            : undefined,
+        executionStepIndex:
+          typeof input.step?.stepIndex === 'number'
+            ? input.step.stepIndex
+            : typeof input.step?.step_index === 'number'
+              ? input.step.step_index
+              : undefined,
         ...(input.phaseMetadata || {}),
       },
     };

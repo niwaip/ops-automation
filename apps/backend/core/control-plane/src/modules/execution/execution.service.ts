@@ -25,6 +25,7 @@ import {
   RuntimeSessionSummaryDto,
   SubmitInputDto,
   ApprovalDecisionDto,
+  UpdateWorkflowActivityProgressDto,
 } from './execution.dto';
 import axios from 'axios';
 import {
@@ -147,6 +148,15 @@ interface ExecutionStepPhaseMetadata {
   phaseKey: string;
   phaseName: string;
   phaseType: string;
+}
+
+interface WorkflowActivityPhaseDefinition {
+  phaseKey: string;
+  phaseName: string;
+  phaseType: string;
+  activityName?: string;
+  parentPhaseKey: string;
+  order: number;
 }
 
 interface ExecutionStepBrowserPhaseConfig {
@@ -310,7 +320,12 @@ export class ExecutionService {
         : undefined;
     const generatedPlanDraft = providedPlanDraft
       || await this.generatePlanDraft(userId, resolvedDto, options?.authToken);
-    const planDraft = this.reconcilePlanDraftWithInput(generatedPlanDraft, resolvedDto.input);
+    const reconciledPlanDraft = this.reconcilePlanDraftWithInput(generatedPlanDraft, resolvedDto.input);
+    const planDraft = await this.rewriteBrowserRecordingPlanDraftWithActivities(
+      reconciledPlanDraft,
+      resolvedSkillId,
+      resolvedDto.input,
+    );
     const plannedCapabilityId = planDraft?.skill_match?.skill_id;
     const effectiveSkillId = plannedCapabilityId || resolvedSkillId;
     const effectiveSkillVersion = resolvedSkillVersion;
@@ -521,6 +536,133 @@ export class ExecutionService {
       .filter((phase): phase is NonNullable<ExecutionDto['phases']>[number] => Boolean(phase));
   }
 
+  async updateWorkflowActivityProgress(
+    executionId: string,
+    dto: UpdateWorkflowActivityProgressDto,
+    requester?: RequestUserContext,
+  ): Promise<void> {
+    const execution = await this.prisma.execution.findUnique({
+      where: { id: executionId },
+    });
+
+    if (!execution) {
+      throw new NotFoundException(`Execution ${executionId} not found`);
+    }
+
+    this.ensureExecutionPermission(execution.createdBy, requester);
+
+    const phases = await this.executionPhaseService.listByExecutionId(executionId);
+    const workflowActivityPhases = phases
+      .filter((phase) => {
+        const phaseType = this.readNonEmptyString(phase.phaseType, phase.phase_type);
+        if (phaseType !== 'workflow_activity') {
+          return false;
+        }
+        const input = this.readRecord(phase.input, phase.input_json);
+        return this.readNonEmptyString(input?.parentPhaseKey) === dto.parentPhaseKey;
+      })
+      .sort((left, right) => {
+        const leftInput = this.readRecord(left.input, left.input_json);
+        const rightInput = this.readRecord(right.input, right.input_json);
+        const leftOrder = Number(leftInput?.order || 0);
+        const rightOrder = Number(rightInput?.order || 0);
+        if (leftOrder !== rightOrder) {
+          return leftOrder - rightOrder;
+        }
+        return String(left.phaseKey || left.phase_key || '').localeCompare(String(right.phaseKey || right.phase_key || ''));
+      });
+
+    if (workflowActivityPhases.length === 0) {
+      return;
+    }
+
+    const currentPhase = workflowActivityPhases.find((phase) => {
+      const input = this.readRecord(phase.input, phase.input_json);
+      const order = Number(input?.order || 0);
+      if (dto.activityOrder && order === dto.activityOrder) {
+        return true;
+      }
+      return Boolean(
+        dto.activityName
+        && this.readNonEmptyString(phase.phaseName, phase.phase_name) === dto.activityName,
+      );
+    });
+
+    if (!currentPhase) {
+      this.logger.warn(
+        `Workflow activity progress ignored for execution ${executionId}: parentPhaseKey=${dto.parentPhaseKey}, activityOrder=${dto.activityOrder ?? '-'}, activityName=${dto.activityName ?? '-'}`,
+      );
+      return;
+    }
+
+    const currentPhaseKey = this.readNonEmptyString(currentPhase.phaseKey, currentPhase.phase_key);
+    const currentPhaseName = this.readNonEmptyString(currentPhase.phaseName, currentPhase.phase_name);
+    const currentPhaseType = this.readNonEmptyString(currentPhase.phaseType, currentPhase.phase_type) || 'workflow_activity';
+    const currentAttempt = Number(currentPhase.attempt || 1);
+    const currentInput = this.readRecord(currentPhase.input, currentPhase.input_json);
+    const currentOutput = this.readRecord(currentPhase.output, currentPhase.output_json);
+    const currentStartedAt = this.toNullableDate(currentPhase.startedAt || currentPhase.started_at);
+    const currentOrder = Number(currentInput?.order || dto.activityOrder || 0);
+    const runtimeSessionId =
+      dto.runtimeSessionId
+      || this.readNonEmptyString(currentPhase.runtimeSessionId, currentPhase.runtime_session_id)
+      || null;
+
+    if (!currentPhaseKey || !currentPhaseName) {
+      return;
+    }
+
+    for (const phase of workflowActivityPhases) {
+      const phaseKey = this.readNonEmptyString(phase.phaseKey, phase.phase_key);
+      if (!phaseKey || phaseKey === currentPhaseKey) {
+        continue;
+      }
+
+      const phaseInput = this.readRecord(phase.input, phase.input_json);
+      const phaseOrder = Number(phaseInput?.order || 0);
+      const phaseStatus = this.readNonEmptyString(phase.status) || 'pending';
+      if (phaseOrder > 0 && currentOrder > 0 && phaseOrder < currentOrder && phaseStatus === 'running') {
+        await this.executionPhaseService.createOrUpdatePhase({
+          executionId,
+          phaseKey,
+          phaseName: this.readNonEmptyString(phase.phaseName, phase.phase_name) || phaseKey,
+          phaseType: this.readNonEmptyString(phase.phaseType, phase.phase_type) || 'workflow_activity',
+          status: 'completed',
+          attempt: Number(phase.attempt || 1),
+          runtimeSessionId:
+            runtimeSessionId
+            || this.readNonEmptyString(phase.runtimeSessionId, phase.runtime_session_id)
+            || null,
+          input: phaseInput,
+          output: this.readRecord(phase.output, phase.output_json),
+          errorCode: null,
+          errorMessage: null,
+          startedAt: this.toNullableDate(phase.startedAt || phase.started_at),
+          completedAt: new Date(),
+        });
+      }
+    }
+
+    const currentStatus = this.readNonEmptyString(currentPhase.status) || 'pending';
+    if (currentStatus !== 'completed') {
+      await this.executionPhaseService.createOrUpdatePhase({
+        executionId,
+        phaseKey: currentPhaseKey,
+        phaseName: currentPhaseName,
+        phaseType: currentPhaseType,
+        status: 'running',
+        attempt: currentAttempt,
+        runtimeSessionId,
+        input: currentInput,
+        output: currentOutput,
+        errorCode: null,
+        errorMessage: null,
+        startedAt: currentStartedAt || new Date(),
+        completedAt: null,
+      });
+    }
+  }
+
   async takeover(id: string, userId: string, dto: TakeoverExecutionDto, requester?: RequestUserContext): Promise<ExecutionDto> {
     const execution = await this.getExecutionOrThrow(id);
     this.ensureExecutionPermission(execution.createdBy, requester || { id: userId });
@@ -552,7 +694,7 @@ export class ExecutionService {
         phaseId: currentPhase.id,
         runtimeSessionId: currentPhase.runtime_session_id || null,
         reason: dto.reason,
-        requestedBy: userId,
+        requestedBy: this.normalizeTakeoverRequestedBy(userId),
       });
     }
 
@@ -582,13 +724,20 @@ export class ExecutionService {
       await this.resolvePhaseTakeoverAndMarkRunning(id, currentPhase, userId, dto.comment);
     }
 
-    await this.exitHumanControlAndResume(id, dto.stepId, currentPhase?.runtime_session_id);
+    const runtimeSessionId = await this.exitHumanControlAndResume(id, dto.stepId, currentPhase?.runtime_session_id);
     await this.createEvent(id, EXECUTION_EVENT_TYPE.EXECUTION_RESUMED, {
       userId,
       stepId: dto.stepId,
       comment: dto.comment,
       ...(currentPhase?.phase_key ? { phaseKey: currentPhase.phase_key } : {}),
     });
+
+    if (runtimeSessionId) {
+      this.advanceExecutionFlow(id, runtimeSessionId).catch((err) => {
+        const message = err instanceof Error ? err.message : String(err);
+        this.logger.error(`Failed to asynchronously resume execution ${id}: ${message}`);
+      });
+    }
 
     this.logger.log(`Execution ${id} resumed`);
     return this.getById(id, requester || { id: userId });
@@ -634,7 +783,7 @@ export class ExecutionService {
       phaseId: phase.id,
       runtimeSessionId: phase.runtime_session_id || null,
       reason: dto.reason,
-      requestedBy: userId,
+      requestedBy: this.normalizeTakeoverRequestedBy(userId),
     });
     await this.createEvent(executionId, EXECUTION_EVENT_TYPE.EXECUTION_TAKEOVER_REQUESTED, {
       userId,
@@ -670,6 +819,7 @@ export class ExecutionService {
       recoveryDecision: {
         reconciledBy: dto.resolvedBy || userId,
         comment: dto.comment || null,
+        patch: dto.patch || null,
       },
       errorCode: null,
       errorMessage: null,
@@ -701,13 +851,20 @@ export class ExecutionService {
 
     const phase = await this.requirePhaseRecord(executionId, phaseKey);
     await this.resolvePhaseTakeoverAndMarkRunning(executionId, phase, userId, dto.comment);
-    await this.exitHumanControlAndResume(executionId, dto.stepId, phase.runtime_session_id);
+    const runtimeSessionId = await this.exitHumanControlAndResume(executionId, dto.stepId, phase.runtime_session_id);
     await this.createEvent(executionId, EXECUTION_EVENT_TYPE.EXECUTION_RESUMED, {
       userId,
       stepId: dto.stepId,
       comment: dto.comment,
       phaseKey,
     });
+
+    if (runtimeSessionId) {
+      this.advanceExecutionFlow(executionId, runtimeSessionId).catch((err) => {
+        const message = err instanceof Error ? err.message : String(err);
+        this.logger.error(`Failed to asynchronously resume execution ${executionId}: ${message}`);
+      });
+    }
 
     return this.getById(executionId, requester || { id: userId });
   }
@@ -1329,9 +1486,17 @@ export class ExecutionService {
         enterPendingApproval: (reason) =>
           this.enterPendingApprovalFromRuntimeStep(executionId, reason),
         takeover: (reason) =>
-          this.takeover(executionId, 'system', {
-            reason,
-          }).then(() => undefined),
+          this.takeover(
+            executionId,
+            'system',
+            {
+              reason,
+            },
+            {
+              id: 'system',
+              role: 'admin',
+            },
+          ).then(() => undefined),
       },
       result,
     );
@@ -1390,6 +1555,16 @@ export class ExecutionService {
     if (requester.id !== executionOwnerId) {
       throw new NotFoundException('Execution not found');
     }
+  }
+
+  private normalizeTakeoverRequestedBy(userId?: string | null): string | null {
+    const value = String(userId || '').trim();
+    if (!value) {
+      return null;
+    }
+    return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value)
+      ? value
+      : null;
   }
 
   private async generatePlanDraft(
@@ -1504,6 +1679,317 @@ export class ExecutionService {
         items: riskItems.length > 0 ? riskItems : ['no_material_risk_detected'],
       },
     };
+  }
+
+  private async rewriteBrowserRecordingPlanDraftWithActivities(
+    planDraft: PlannerPlanDraft | undefined,
+    fallbackCapabilityId?: string,
+    input?: Record<string, unknown>,
+  ): Promise<PlannerPlanDraft | undefined> {
+    if (!planDraft) {
+      return planDraft;
+    }
+    if (planDraft.steps.some((step) => Array.isArray(step.commands) && step.commands.length > 0)) {
+      return planDraft;
+    }
+
+    const capabilityId = planDraft.skill_match?.skill_id || fallbackCapabilityId;
+    if (!capabilityId) {
+      return planDraft;
+    }
+    const resolvedInput = this.buildPlannerResolvedInput(planDraft, input);
+
+    const activitySteps = await this.loadBrowserRecordingPlannerActivitySteps(capabilityId, resolvedInput);
+    if (activitySteps.length === 0) {
+      return planDraft;
+    }
+
+    return {
+      ...planDraft,
+      steps: activitySteps,
+    };
+  }
+
+  private async loadBrowserRecordingPlannerActivitySteps(
+    capabilityId: string,
+    resolvedInput: Record<string, unknown>,
+  ): Promise<PlannerPlanDraft['steps']> {
+    if (!capabilityId) {
+      return [];
+    }
+    if (typeof this.prisma.$queryRawUnsafe !== 'function') {
+      return [];
+    }
+
+    try {
+      const rows = await this.prisma.$queryRawUnsafe<Array<{
+        source_type?: string;
+        source_id?: string;
+        source_payload_json?: unknown;
+        workflow_dsl?: unknown;
+        activity_dsl?: unknown;
+      }>>(
+        `
+          SELECT
+            cr.source_type,
+            cr.source_id,
+            css.source_payload_json,
+            tw.workflow_dsl,
+            tw.activity_dsl
+          FROM capability_releases cr
+          LEFT JOIN capability_source_snapshots css
+            ON css.id = cr.current_source_snapshot_id
+          LEFT JOIN temporal_workflows tw
+            ON tw.id = cr.source_id
+          WHERE cr.published_skill_id = $1::uuid
+            AND cr.archived_at IS NULL
+          ORDER BY cr.updated_at DESC
+          LIMIT 1
+        `,
+        capabilityId,
+      );
+
+      const row = rows[0];
+      if (!row || this.readNonEmptyString(row.source_type) !== 'browser_recording') {
+        return [];
+      }
+
+      const sourcePayload = this.parseJsonRecord(row.source_payload_json);
+      const workflowDsl = this.parseJsonRecord(sourcePayload?.workflowDsl)
+        || this.parseJsonRecord(row.workflow_dsl);
+      const activityDsl = this.parseJsonRecord(sourcePayload?.activityDsl)
+        || this.parseJsonRecord(row.activity_dsl);
+      if (!workflowDsl || !activityDsl) {
+        return [];
+      }
+
+      const workflowSteps = this.readRecordArray(workflowDsl.steps)
+        .filter((step) => this.readNonEmptyString(step.type) === 'activity');
+      const browserActivities = this.readRecordArray(activityDsl.activities)
+        .filter((activity) => this.readNonEmptyString(activity.handler) === 'browser');
+
+      if (workflowSteps.length === 0 || browserActivities.length === 0) {
+        return [];
+      }
+
+      const plannerSteps: PlannerPlanDraft['steps'] = [];
+      workflowSteps.forEach((workflowStep, index) => {
+          const activityLabel = this.readNonEmptyString(
+            workflowStep.name,
+            workflowStep.activityName,
+            workflowStep.activityRef,
+          ) || `Activity ${index + 1}`;
+          const activityKey = this.readNonEmptyString(
+            workflowStep.id,
+            workflowStep.activityName,
+            workflowStep.activityRef,
+            activityLabel,
+          ) || `activity_${index + 1}`;
+          const activityRef = this.readNonEmptyString(workflowStep.activityRef);
+          const matchingActivity = browserActivities.find((activity, activityIndex) => {
+            const fn = this.readNonEmptyString(activity.fn);
+            const name = this.readNonEmptyString(activity.name);
+            if (activityRef && fn && (activityRef === fn || activityRef === `custom:${fn}`)) {
+              return true;
+            }
+            if (name && (name === activityLabel || name === this.readNonEmptyString(workflowStep.activityName))) {
+              return true;
+            }
+            return activityIndex === index;
+          });
+          const commands = this.mapBrowserActivityCommands(
+            this.readRecordArray(this.readRecord(matchingActivity?.config)?.steps),
+            index + 1,
+            activityLabel,
+            resolvedInput,
+          );
+          if (commands.length === 0) {
+            return;
+          }
+
+          plannerSteps.push({
+            id: activityKey,
+            title: activityLabel,
+            description: `执行 ${activityLabel} activity。`,
+            kind: 'tool' as const,
+            status: 'planned' as const,
+            phase_key: `phase_${String(index + 1).padStart(2, '0')}_${this.sanitizePhaseKeyFragment(activityKey)}`,
+            phase_name: activityLabel,
+            phase_type: 'workflow_activity',
+            commands,
+            recovery_policy: {
+              max_auto_retries: 1,
+              allow_human_takeover: true,
+            },
+          });
+      });
+      return plannerSteps;
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error || '');
+      this.logger.warn(`Failed to rewrite browser recording plan draft for capability ${capabilityId}: ${message}`);
+      return [];
+    }
+  }
+
+  private mapBrowserActivityCommands(
+    steps: Record<string, unknown>[],
+    activityOrder: number,
+    activityName: string,
+    resolvedInput: Record<string, unknown>,
+  ): NonNullable<PlannerPlanDraft['steps'][number]['commands']> {
+    const commands: NonNullable<PlannerPlanDraft['steps'][number]['commands']> = [];
+    steps.forEach((step, index) => {
+        const config = this.readRecord(step.config) || {};
+        const normalizedAction = this.normalizeBrowserPhaseCommandAction(
+          this.readNonEmptyString(config.action, step.action),
+        );
+        if (!normalizedAction) {
+          return;
+        }
+
+        const input = this.buildBrowserPhaseCommandInput(
+          normalizedAction,
+          config,
+          resolvedInput,
+        );
+
+        commands.push({
+          step_id: `${this.sanitizePhaseKeyFragment(activityName)}__command_${String(index + 1).padStart(2, '0')}`,
+          capability_type: 'browser.step',
+          action: normalizedAction,
+          input,
+          metadata: {
+            stepName: this.readNonEmptyString(step.name) || `${activityName} command ${index + 1}`,
+            activityName,
+            activityOrder,
+          },
+        });
+    });
+    return commands;
+  }
+
+  private buildBrowserPhaseCommandInput(
+    action: string,
+    config: Record<string, unknown>,
+    resolvedInput: Record<string, unknown>,
+  ): Record<string, unknown> {
+    const resolve = (value: unknown): unknown => this.resolveBrowserTemplateValue(value, resolvedInput);
+    const target = this.readNonEmptyString(
+      resolve(config.target),
+      resolve(config.selector),
+      resolve(config.url),
+      resolve(config.text),
+    );
+    const duration = this.readInteger(resolve(config.duration), resolve(config.timeoutMs));
+    const selector = this.readNonEmptyString(resolve(config.selector), resolve(config.target));
+    const value = this.readNonEmptyString(resolve(config.value), resolve(config.text), resolve(config.query));
+    const text = this.readNonEmptyString(resolve(config.text), resolve(config.value), resolve(config.query));
+    const url = this.readNonEmptyString(resolve(config.url), resolve(config.target));
+
+    const args = (() => {
+      switch (action) {
+        case 'goto':
+        case 'navigate':
+          return Object.fromEntries(
+            Object.entries({ url }).filter(([, item]) => item !== undefined),
+          );
+        case 'fill':
+        case 'type_text':
+          return Object.fromEntries(
+            Object.entries({ selector, value, text }).filter(([, item]) => item !== undefined),
+          );
+        case 'click':
+        case 'hover':
+        case 'screenshot':
+        case 'snapshot':
+        case 'read_page':
+        case 'get_text':
+          return Object.fromEntries(
+            Object.entries({ selector }).filter(([, item]) => item !== undefined),
+          );
+        case 'wait':
+          return Object.fromEntries(
+            Object.entries({ duration, selector }).filter(([, item]) => item !== undefined),
+          );
+        default:
+          return Object.fromEntries(
+            Object.entries({
+              duration,
+              selector,
+              value,
+              text,
+              url,
+            }).filter(([, item]) => item !== undefined),
+          );
+      }
+    })();
+
+    return {
+      ...(target ? { target } : {}),
+      ...(Object.keys(args).length > 0 ? { args } : {}),
+    };
+  }
+
+  private resolveBrowserTemplateValue(
+    value: unknown,
+    resolvedInput: Record<string, unknown>,
+  ): unknown {
+    if (typeof value === 'string') {
+      return value.replace(/\$\{([^}]+)\}/g, (_match, key) => {
+        const resolved = resolvedInput[key.trim()];
+        return resolved === undefined || resolved === null ? '' : String(resolved);
+      });
+    }
+    if (Array.isArray(value)) {
+      return value.map((item) => this.resolveBrowserTemplateValue(item, resolvedInput));
+    }
+    if (value && typeof value === 'object') {
+      return Object.fromEntries(
+        Object.entries(value).map(([key, item]) => [key, this.resolveBrowserTemplateValue(item, resolvedInput)]),
+      );
+    }
+    return value;
+  }
+
+  private buildPlannerResolvedInput(
+    planDraft: PlannerPlanDraft | undefined,
+    input?: Record<string, unknown>,
+  ): Record<string, unknown> {
+    const plannerExtractedInput = (planDraft?.required_inputs || []).reduce<Record<string, unknown>>(
+      (acc, item) => {
+        if (!item || item.missing || item.value === undefined || item.value === null) {
+          return acc;
+        }
+        acc[item.name] = item.value;
+        return acc;
+      },
+      {},
+    );
+
+    return {
+      ...plannerExtractedInput,
+      ...(input || {}),
+    };
+  }
+
+  private normalizeBrowserPhaseCommandAction(action: string | undefined): string | undefined {
+    if (!action) {
+      return undefined;
+    }
+
+    const normalized = action.trim().toLowerCase();
+    switch (normalized) {
+      case 'navigate':
+        return 'goto';
+      case 'waitforselector':
+        return 'wait';
+      case 'press':
+        return 'press_key';
+      case 'type':
+        return 'type_text';
+      default:
+        return normalized;
+    }
   }
 
   private reconcilePlanSemantic(
@@ -1715,6 +2201,7 @@ export class ExecutionService {
       if (!nextStep) {
         this.logger.log(`No more pending steps for execution ${executionId}`);
         if (execution.status === EXECUTION_STATUS.RUNNING) {
+          await this.completeActivePhasesOnExecutionSuccess(executionId, runtimeSessionId);
           await this.updateStatus(executionId, EXECUTION_STATUS.SUCCEEDED);
           this.logger.log(`Execution ${executionId} marked as succeeded`);
           await this.closeRuntimeSessionQuietly(runtimeSessionId, executionId, 'execution_succeeded');
@@ -1933,6 +2420,13 @@ export class ExecutionService {
 
     await this.executionStepService.setCurrentStep(executionId, stepId);
     await this.markPhaseRunningForStep(executionId, runtimeSessionId, phaseMetadata, step);
+    await this.initializeWorkflowActivityPhasesForSkillExecution(
+      executionId,
+      runtimeSessionId,
+      capabilityId,
+      phaseMetadata,
+      step as Record<string, unknown> | null | undefined,
+    );
 
     // Create start event
     await this.createEvent(executionId, EXECUTION_EVENT_TYPE.STEP_STARTED, {
@@ -1958,13 +2452,22 @@ export class ExecutionService {
         stepId,
         runtimeSessionId,
         phaseMetadata,
+        step: step as Record<string, unknown> | null | undefined,
       });
       if (!request) {
         throw new Error('Skill runtime request is missing capability identifier');
       }
 
       const result = await this.runtimeExecutionOrchestrator.executeStep(request);
-      await this.handleSystemSkillStepResult(executionId, runtimeSessionId, stepId, result, phaseMetadata, step as Record<string, unknown> | null | undefined);
+      await this.handleSystemSkillStepResult(
+        executionId,
+        runtimeSessionId,
+        stepId,
+        result,
+        capabilityId,
+        phaseMetadata,
+        step as Record<string, unknown> | null | undefined,
+      );
     } catch (error) {
       const message =
         error instanceof Error
@@ -1974,22 +2477,30 @@ export class ExecutionService {
             : 'Unknown error';
 
       this.logger.error(`Failed to execute system skill step ${stepId}: ${message}`);
-      await this.handleSystemSkillStepResult(executionId, runtimeSessionId, stepId, {
-        success: false,
-        status: 'failed',
-        errorCode: 'CAPABILITY_RUNTIME_FAILED',
-        errorMessage: message,
-        rawResult: {
-          releaseId: '',
-          capabilityId,
-          capabilityVersion,
-          publishedSkillId: capabilityId,
-          runtime: 'capability_runtime',
+      await this.handleSystemSkillStepResult(
+        executionId,
+        runtimeSessionId,
+        stepId,
+        {
           success: false,
-          logs: [],
-          error: message,
+          status: 'failed',
+          errorCode: 'CAPABILITY_RUNTIME_FAILED',
+          errorMessage: message,
+          rawResult: {
+            releaseId: '',
+            capabilityId,
+            capabilityVersion,
+            publishedSkillId: capabilityId,
+            runtime: 'capability_runtime',
+            success: false,
+            logs: [],
+            error: message,
+          },
         },
-      }, phaseMetadata, step as Record<string, unknown> | null | undefined);
+        capabilityId,
+        phaseMetadata,
+        step as Record<string, unknown> | null | undefined,
+      );
     }
   }
 
@@ -2070,9 +2581,17 @@ export class ExecutionService {
     );
 
     if (result.status === 'takeover_required' || result.requiresTakeover) {
-      await this.takeover(executionId, 'system', {
-        reason: result.takeoverReason || result.errorMessage || 'Browser phase requires human takeover',
-      });
+      await this.takeover(
+        executionId,
+        'system',
+        {
+          reason: result.takeoverReason || result.errorMessage || 'Browser phase requires human takeover',
+        },
+        {
+          id: 'system',
+          role: 'admin',
+        },
+      );
       return;
     }
 
@@ -2095,6 +2614,7 @@ export class ExecutionService {
     runtimeSessionId: string,
     stepId: string,
     result: RuntimeStepInvokeResult,
+    capabilityId: string,
     phaseMetadata?: ExecutionStepPhaseMetadata,
     step?: Record<string, unknown> | null,
   ): Promise<void> {
@@ -2117,6 +2637,19 @@ export class ExecutionService {
             failureCode,
             runtimeSessionId,
           }),
+        takeover: async (reason) => {
+          await this.takeover(
+            executionId,
+            'system',
+            {
+              reason,
+            },
+            {
+              id: 'system',
+              role: 'admin',
+            },
+          );
+        },
         enterWaitingInput: (requiredInputs, reason) =>
           this.enterRuntimeWaitingInput(executionId, runtimeSessionId, stepId, requiredInputs, reason),
         enterPendingApproval: (reason) =>
@@ -2125,6 +2658,13 @@ export class ExecutionService {
       result,
     );
     await this.syncPhaseAfterStepResult(executionId, runtimeSessionId, result, phaseMetadata, step);
+    await this.syncWorkflowActivityPhasesAfterSkillResult(
+      executionId,
+      runtimeSessionId,
+      capabilityId,
+      result,
+      phaseMetadata,
+    );
   }
 
   private extractStepBrowserPhaseConfig(
@@ -2376,6 +2916,185 @@ export class ExecutionService {
     });
   }
 
+  private async initializeWorkflowActivityPhasesForSkillExecution(
+    executionId: string,
+    runtimeSessionId: string,
+    capabilityId: string,
+    phaseMetadata?: ExecutionStepPhaseMetadata,
+    step?: Record<string, unknown> | null,
+  ): Promise<void> {
+    if (!phaseMetadata) {
+      return;
+    }
+
+    const activityPhases = await this.loadWorkflowActivityPhaseDefinitions(capabilityId, phaseMetadata.phaseKey);
+    if (activityPhases.length === 0) {
+      return;
+    }
+
+    const sharedInput = {
+      parentPhaseKey: phaseMetadata.phaseKey,
+      parentPhaseName: phaseMetadata.phaseName,
+      parentStepId: typeof step?.id === 'string' ? step.id : null,
+      activityCount: activityPhases.length,
+    };
+
+    for (const activityPhase of activityPhases.slice(1)) {
+      await this.executionPhaseService.createOrUpdatePhase({
+        executionId,
+        phaseKey: activityPhase.phaseKey,
+        phaseName: activityPhase.phaseName,
+        phaseType: activityPhase.phaseType,
+        status: 'pending',
+        attempt: 1,
+        runtimeSessionId,
+        input: {
+          ...sharedInput,
+          order: activityPhase.order,
+          activityName: activityPhase.activityName || activityPhase.phaseName,
+        },
+      });
+    }
+
+    const firstActivityPhase = activityPhases[0];
+    await this.executionPhaseService.markRunning(executionId, firstActivityPhase.phaseKey, {
+      phaseName: firstActivityPhase.phaseName,
+      phaseType: firstActivityPhase.phaseType,
+      attempt: 1,
+      runtimeSessionId,
+      input: {
+        ...sharedInput,
+        order: firstActivityPhase.order,
+        activityName: firstActivityPhase.activityName || firstActivityPhase.phaseName,
+      },
+      precheck: null,
+    });
+  }
+
+  private async syncWorkflowActivityPhasesAfterSkillResult(
+    executionId: string,
+    runtimeSessionId: string,
+    capabilityId: string,
+    result: RuntimeStepInvokeResult,
+    phaseMetadata?: ExecutionStepPhaseMetadata,
+  ): Promise<void> {
+    if (!phaseMetadata) {
+      return;
+    }
+
+    const activityPhases = await this.loadWorkflowActivityPhaseDefinitions(
+      capabilityId,
+      phaseMetadata.phaseKey,
+    );
+    if (activityPhases.length === 0) {
+      return;
+    }
+
+    const runtimePhaseResults = this.extractRuntimePhaseResults(result);
+    if (runtimePhaseResults.length === 0) {
+      const failedActivityPhase = !result.success
+        ? await this.resolveFailedWorkflowActivityPhase(executionId, phaseMetadata.phaseKey, activityPhases)
+        : null;
+      if (!result.success && failedActivityPhase) {
+        await this.executionPhaseService.createOrUpdatePhase({
+          executionId,
+          phaseKey: failedActivityPhase.phaseKey,
+          phaseName: failedActivityPhase.phaseName,
+          phaseType: failedActivityPhase.phaseType,
+          status: result.status === 'takeover_required' || result.requiresTakeover ? 'waiting_takeover' : 'failed',
+          attempt: 1,
+          runtimeSessionId,
+          output: {
+            parentPhaseKey: phaseMetadata.phaseKey,
+            activityName: failedActivityPhase.activityName || failedActivityPhase.phaseName,
+            result: result.output || result.rawResult || null,
+          },
+          recoveryDecision: null,
+          errorCode: result.errorCode || null,
+          errorMessage: result.errorMessage || null,
+          completedAt: result.status === 'takeover_required' || result.requiresTakeover ? null : new Date(),
+        });
+      }
+      return;
+    }
+
+    for (const [index, activityPhase] of activityPhases.entries()) {
+      const phaseResult = runtimePhaseResults[index];
+      if (!phaseResult) {
+        continue;
+      }
+
+      const phaseResultBody = this.readRecord(
+        phaseResult.result,
+        phaseResult.output,
+        phaseResult,
+      ) || phaseResult;
+      const normalizedStatus = this.normalizeRuntimePhaseStepStatus(phaseResultBody);
+      const phaseArtifacts = this.mapRuntimeArtifactsFromActivityPhaseResult(phaseResultBody);
+      const phaseSteps = this.mapRuntimeStepsFromActivityPhaseResult(phaseResultBody, phaseResult);
+      const phaseOutput = {
+        parentPhaseKey: phaseMetadata.phaseKey,
+        activityName: this.readNonEmptyString(
+          phaseResult.activityName,
+          activityPhase.activityName,
+          activityPhase.phaseName,
+        ),
+        stepName: this.readNonEmptyString(phaseResult.stepName, activityPhase.phaseName),
+        result: phaseResultBody,
+      };
+
+      if (normalizedStatus === 'failed') {
+        await this.executionPhaseService.createOrUpdatePhase({
+          executionId,
+          phaseKey: activityPhase.phaseKey,
+          phaseName: activityPhase.phaseName,
+          phaseType: activityPhase.phaseType,
+          status: 'failed',
+          attempt: 1,
+          runtimeSessionId,
+          output: phaseOutput,
+          errorCode: this.readNonEmptyString(phaseResultBody.errorCode, phaseResultBody.error_code) || result.errorCode || null,
+          errorMessage: this.readNonEmptyString(
+            phaseResultBody.errorMessage,
+            phaseResultBody.error_message,
+            phaseResultBody.message,
+          ) || result.errorMessage || null,
+          completedAt: new Date(),
+        });
+      } else if (normalizedStatus === 'waiting_takeover') {
+        await this.executionPhaseService.createOrUpdatePhase({
+          executionId,
+          phaseKey: activityPhase.phaseKey,
+          phaseName: activityPhase.phaseName,
+          phaseType: activityPhase.phaseType,
+          status: 'waiting_takeover',
+          attempt: 1,
+          runtimeSessionId,
+          output: phaseOutput,
+          errorCode: this.readNonEmptyString(phaseResultBody.errorCode, phaseResultBody.error_code) || result.errorCode || null,
+          errorMessage: this.readNonEmptyString(
+            phaseResultBody.errorMessage,
+            phaseResultBody.error_message,
+            phaseResultBody.message,
+          ) || result.errorMessage || null,
+          completedAt: null,
+        });
+      } else {
+        await this.executionPhaseService.markCompleted(executionId, activityPhase.phaseKey, {
+          phaseName: activityPhase.phaseName,
+          phaseType: activityPhase.phaseType,
+          attempt: 1,
+          runtimeSessionId,
+          output: phaseOutput,
+          postcheck: null,
+        });
+      }
+
+      await this.executionPhaseService.replaceArtifacts(executionId, activityPhase.phaseKey, phaseArtifacts);
+      await this.executionPhaseService.replaceSteps(executionId, activityPhase.phaseKey, phaseSteps);
+    }
+  }
+
   private async syncPhaseAfterStepResult(
     executionId: string,
     runtimeSessionId: string,
@@ -2395,6 +3114,7 @@ export class ExecutionService {
       rawResult: result.rawResult || null,
     };
     const phaseArtifacts = this.mapRuntimeArtifactsToPhaseArtifacts(result);
+    const phaseSteps = this.extractPhaseStepsFromRuntimeResult(result, step);
 
     if (result.success) {
       await this.executionPhaseService.markCompleted(executionId, phaseMetadata.phaseKey, {
@@ -2406,6 +3126,7 @@ export class ExecutionService {
         postcheck: null,
       });
       await this.executionPhaseService.replaceArtifacts(executionId, phaseMetadata.phaseKey, phaseArtifacts);
+      await this.executionPhaseService.replaceSteps(executionId, phaseMetadata.phaseKey, phaseSteps);
       return;
     }
 
@@ -2430,6 +3151,7 @@ export class ExecutionService {
       completedAt: mappedStatus === 'failed' ? new Date() : null,
     });
     await this.executionPhaseService.replaceArtifacts(executionId, phaseMetadata.phaseKey, phaseArtifacts);
+    await this.executionPhaseService.replaceSteps(executionId, phaseMetadata.phaseKey, phaseSteps);
   }
 
   private mapRuntimeArtifactsToPhaseArtifacts(result: RuntimeStepInvokeResult): Array<{
@@ -2469,6 +3191,536 @@ export class ExecutionService {
       return metadata.page_fingerprint.trim();
     }
     return undefined;
+  }
+
+  private extractRuntimePhaseResults(result: RuntimeStepInvokeResult): Record<string, unknown>[] {
+    const outputPhaseResults = this.readRecordArray(result.output?.phaseResults);
+    if (outputPhaseResults.length > 0) {
+      return outputPhaseResults;
+    }
+    return this.readRecordArray(result.rawResult?.output, 'phaseResults');
+  }
+
+  private async resolveFailedWorkflowActivityPhase(
+    executionId: string,
+    parentPhaseKey: string,
+    activityPhases: WorkflowActivityPhaseDefinition[],
+  ): Promise<WorkflowActivityPhaseDefinition | null> {
+    if (typeof this.executionPhaseService?.listByExecutionId !== 'function') {
+      return activityPhases[0] || null;
+    }
+
+    const existingPhases = await this.executionPhaseService.listByExecutionId(executionId);
+    const candidatePhases = existingPhases
+      .filter((phase) => {
+        const phaseType = this.readNonEmptyString(phase.phaseType, phase.phase_type);
+        if (phaseType !== 'workflow_activity') {
+          return false;
+        }
+        const input = this.readRecord(phase.input, phase.input_json);
+        return this.readNonEmptyString(input?.parentPhaseKey) === parentPhaseKey;
+      })
+      .sort((left, right) => {
+        const leftInput = this.readRecord(left.input, left.input_json);
+        const rightInput = this.readRecord(right.input, right.input_json);
+        const leftOrder = Number(leftInput?.order || 0);
+        const rightOrder = Number(rightInput?.order || 0);
+        return rightOrder - leftOrder;
+      });
+
+    const activePhase = candidatePhases.find((phase) => {
+      const status = this.readNonEmptyString(phase.status);
+      return status === 'running' || status === 'waiting_takeover' || status === 'resumable';
+    }) || candidatePhases[0];
+
+    const activePhaseKey = activePhase
+      ? this.readNonEmptyString(activePhase.phaseKey, activePhase.phase_key)
+      : undefined;
+    if (!activePhaseKey) {
+      return activityPhases[0] || null;
+    }
+
+    return activityPhases.find((phase) => phase.phaseKey === activePhaseKey) || activityPhases[0] || null;
+  }
+
+  private mapRuntimeArtifactsFromActivityPhaseResult(
+    phaseResultBody: Record<string, unknown>,
+  ): Array<{
+    artifactType: string;
+    snapshotId?: string | null;
+    pageUrl?: string | null;
+    pageFingerprint?: string | null;
+    payload?: Record<string, unknown> | null;
+  }> {
+    const runtimeArtifacts = this.readRecordArray(phaseResultBody, 'artifacts');
+    if (runtimeArtifacts.length === 0) {
+      return [];
+    }
+
+    const mappedArtifacts = runtimeArtifacts
+      .map((artifact) => {
+        const snapshot = this.readRecord(artifact.snapshot);
+        const artifactRecord = this.readRecord(artifact.artifact);
+        const snapshotId = this.readNonEmptyString(artifact.snapshotId, artifact.snapshot_id, snapshot?.id);
+        const snapshotPath = this.readNonEmptyString(snapshot?.path);
+        const artifactPath = this.readNonEmptyString(artifactRecord?.path);
+        const command = this.readNonEmptyString(artifact.command);
+        const status = this.readNonEmptyString(artifact.status);
+
+        if (!snapshotId && !snapshotPath && !artifactPath) {
+          return null;
+        }
+
+        return {
+          artifactType: snapshotId ? 'snapshot' : 'browser_artifact',
+          snapshotId: snapshotId || null,
+          pageUrl: null,
+          pageFingerprint: null,
+          payload: {
+            ...(command ? { command } : {}),
+            ...(status ? { status } : {}),
+            ...(snapshotPath ? { snapshotPath } : {}),
+            ...(artifactPath ? { artifactPath } : {}),
+          },
+        };
+      });
+
+    return mappedArtifacts.filter((item) => item !== null);
+  }
+
+  private mapRuntimeStepsFromActivityPhaseResult(
+    phaseResultBody: Record<string, unknown>,
+    phaseResult?: Record<string, unknown>,
+  ): Array<{
+    stepIndex: number;
+    stepId?: string | null;
+    action: string;
+    status: string;
+    input?: Record<string, unknown> | null;
+    output?: Record<string, unknown> | null;
+    errorMessage?: string | null;
+    errorCode?: string | null;
+    snapshotId?: string | null;
+    startedAt?: Date | null;
+    endedAt?: Date | null;
+  }> {
+    const nestedResults = this.readRecordArray(phaseResultBody, 'results');
+    if (nestedResults.length > 0) {
+      return nestedResults.map((nestedResult, index) => (
+        this.mapRuntimePhaseStepRecord(nestedResult, index + 1, {
+          phaseResult,
+          fallbackAction:
+            this.readNonEmptyString(
+              nestedResult.action,
+              nestedResult.command,
+              phaseResult?.stepName,
+              phaseResult?.activityName,
+            ) || 'execute',
+        })
+      ));
+    }
+
+    return [
+      this.mapRuntimePhaseStepRecord(phaseResultBody, 1, {
+        phaseResult,
+        fallbackAction:
+          this.readNonEmptyString(
+            phaseResult?.stepName,
+            phaseResult?.activityName,
+          ) || 'execute',
+      }),
+    ];
+  }
+
+  private async loadWorkflowActivityPhaseDefinitions(
+    capabilityId: string,
+    parentPhaseKey: string,
+  ): Promise<WorkflowActivityPhaseDefinition[]> {
+    if (!capabilityId) {
+      return [];
+    }
+    if (typeof this.prisma.$queryRawUnsafe !== 'function') {
+      return [];
+    }
+
+    try {
+      const rows = await this.prisma.$queryRawUnsafe<Array<{ source_payload_json?: unknown }>>(
+        `
+          SELECT css.source_payload_json
+          FROM capability_releases cr
+          INNER JOIN capability_source_snapshots css
+            ON css.id = cr.current_source_snapshot_id
+          WHERE cr.published_skill_id = $1::uuid
+            AND cr.archived_at IS NULL
+          ORDER BY cr.updated_at DESC
+          LIMIT 1
+        `,
+        capabilityId,
+      );
+
+      const sourcePayload = this.parseJsonRecord(rows[0]?.source_payload_json);
+      const workflowDsl = this.parseJsonRecord(sourcePayload?.workflowDsl);
+      const workflowSteps = Array.isArray(workflowDsl?.steps)
+        ? workflowDsl.steps.filter((item): item is Record<string, unknown> => Boolean(item) && typeof item === 'object')
+        : [];
+      const activitySteps = workflowSteps.filter((step) => {
+        const stepType = this.readNonEmptyString(step.type);
+        return stepType === 'activity';
+      });
+
+      return activitySteps.map((activityStep, index) => {
+        const activityKeySource = this.readNonEmptyString(
+          activityStep.activityName,
+          activityStep.activityRef,
+          activityStep.name,
+        ) || `activity_${index + 1}`;
+        const activityLabel = this.readNonEmptyString(
+          activityStep.name,
+          activityStep.activityName,
+          activityStep.activityRef,
+        ) || `Activity ${index + 1}`;
+
+        return {
+          phaseKey: `${parentPhaseKey}__activity_${String(index + 1).padStart(2, '0')}_${this.sanitizePhaseKeyFragment(activityKeySource)}`,
+          phaseName: activityLabel,
+          phaseType: 'workflow_activity',
+          activityName: this.readNonEmptyString(activityStep.activityName, activityStep.activityRef, activityLabel) || undefined,
+          parentPhaseKey,
+          order: index + 1,
+        };
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error || '');
+      this.logger.warn(`Failed to load workflow activity phases for capability ${capabilityId}: ${message}`);
+      return [];
+    }
+  }
+
+  private parseJsonRecord(value: unknown): Record<string, unknown> | undefined {
+    if (value && typeof value === 'object' && !Array.isArray(value)) {
+      return value as Record<string, unknown>;
+    }
+    if (typeof value === 'string' && value.trim()) {
+      try {
+        const parsed = JSON.parse(value);
+        return parsed && typeof parsed === 'object' && !Array.isArray(parsed)
+          ? parsed as Record<string, unknown>
+          : undefined;
+      } catch {
+        return undefined;
+      }
+    }
+    return undefined;
+  }
+
+  private async completeActivePhasesOnExecutionSuccess(
+    executionId: string,
+    runtimeSessionId: string,
+  ): Promise<void> {
+    const phases = await this.executionPhaseService.listByExecutionId(executionId);
+    if (!Array.isArray(phases) || phases.length === 0) {
+      return;
+    }
+
+    const completionTime = new Date();
+    const activePhases = phases
+      .filter((phase) => {
+        const status = this.readNonEmptyString(phase.status);
+        return status === 'running' || status === 'waiting_takeover' || status === 'resumable';
+      })
+      .sort((left, right) => {
+        const leftKey = this.readNonEmptyString(left.phaseKey, left.phase_key) || '';
+        const rightKey = this.readNonEmptyString(right.phaseKey, right.phase_key) || '';
+        return leftKey.length - rightKey.length;
+      });
+
+    for (const phase of activePhases) {
+      const phaseKey = this.readNonEmptyString(phase.phaseKey, phase.phase_key);
+      if (!phaseKey) {
+        continue;
+      }
+      await this.executionPhaseService.createOrUpdatePhase({
+        executionId,
+        phaseKey,
+        phaseName: this.readNonEmptyString(phase.phaseName, phase.phase_name) || phaseKey,
+        phaseType: this.readNonEmptyString(phase.phaseType, phase.phase_type) || 'workflow_activity',
+        status: 'completed',
+        attempt: this.readInteger(phase.attempt) || 0,
+        runtimeSessionId: this.readNonEmptyString(phase.runtimeSessionId, phase.runtime_session_id) || runtimeSessionId,
+        input: this.parseJsonRecord(phase.inputJson ?? phase.input_json),
+        output: this.parseJsonRecord(phase.outputJson ?? phase.output_json),
+        precheck: this.parseJsonRecord(phase.precheckJson ?? phase.precheck_json) as BrowserPhaseCheck | undefined,
+        postcheck: this.parseJsonRecord(phase.postcheckJson ?? phase.postcheck_json) as BrowserPhaseCheck | undefined,
+        recoveryDecision: this.parseJsonRecord(phase.recoveryDecision ?? phase.recovery_decision_json),
+        errorCode: null,
+        errorMessage: null,
+        startedAt: this.readDateValue(phase.startedAt, phase.started_at) || null,
+        completedAt: completionTime,
+      });
+    }
+  }
+
+  private sanitizePhaseKeyFragment(value: string): string {
+    const normalized = value.trim().toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '');
+    return normalized || 'activity';
+  }
+
+  private extractPhaseStepsFromRuntimeResult(
+    result: RuntimeStepInvokeResult,
+    step?: Record<string, unknown> | null,
+  ): Array<{
+    stepIndex: number;
+    stepId?: string | null;
+    action: string;
+    status: string;
+    input?: Record<string, unknown> | null;
+    output?: Record<string, unknown> | null;
+    errorMessage?: string | null;
+    errorCode?: string | null;
+    snapshotId?: string | null;
+    startedAt?: Date | null;
+    endedAt?: Date | null;
+  }> {
+    const phaseResults = this.readRecordArray(result.output?.phaseResults).length > 0
+      ? this.readRecordArray(result.output?.phaseResults)
+      : this.readRecordArray(result.rawResult?.output, 'phaseResults');
+
+    if (phaseResults.length > 0) {
+      const flattenedSteps: Array<{
+        stepIndex: number;
+        stepId?: string | null;
+        action: string;
+        status: string;
+        input?: Record<string, unknown> | null;
+        output?: Record<string, unknown> | null;
+        errorMessage?: string | null;
+        errorCode?: string | null;
+        snapshotId?: string | null;
+        startedAt?: Date | null;
+        endedAt?: Date | null;
+      }> = [];
+
+      phaseResults.forEach((phaseResult, phaseIndex) => {
+        const phaseResultBody = this.readRecord(
+          phaseResult.result,
+          phaseResult.output,
+          phaseResult,
+        );
+        const nestedResults = this.readRecordArray(
+          phaseResultBody,
+          'results',
+        );
+
+        if (nestedResults.length > 0) {
+          nestedResults.forEach((nestedResult) => {
+            flattenedSteps.push(
+              this.mapRuntimePhaseStepRecord(nestedResult, flattenedSteps.length + 1, {
+                phaseResult,
+                fallbackAction:
+                  this.readNonEmptyString(
+                    nestedResult.action,
+                    nestedResult.command,
+                    phaseResult.stepName,
+                    phaseResult.phaseName,
+                    phaseResult.name,
+                    step?.action,
+                  ) || 'execute',
+              }),
+            );
+          });
+          return;
+        }
+
+        flattenedSteps.push(
+          this.mapRuntimePhaseStepRecord(phaseResultBody, flattenedSteps.length + 1, {
+            phaseResult,
+            fallbackAction:
+              this.readNonEmptyString(
+                phaseResult.stepName,
+                phaseResult.phaseName,
+                phaseResult.name,
+                step?.action,
+              ) || `phase_${phaseIndex + 1}`,
+          }),
+        );
+      });
+
+      return flattenedSteps;
+    }
+
+    const topLevelStepResults = this.readRecordArray(result.output?.stepResults).length > 0
+      ? this.readRecordArray(result.output?.stepResults)
+      : this.readRecordArray(result.rawResult?.output, 'stepResults');
+    if (topLevelStepResults.length > 0) {
+      return topLevelStepResults.map((stepResult, index) => (
+        this.mapRuntimePhaseStepRecord(stepResult, index + 1, {
+          fallbackAction:
+            this.readNonEmptyString(
+              stepResult.action,
+              stepResult.name,
+              step?.action,
+            ) || 'execute',
+        })
+      ));
+    }
+
+    return [];
+  }
+
+  private mapRuntimePhaseStepRecord(
+    stepRecord: Record<string, unknown>,
+    stepIndex: number,
+    options?: {
+      phaseResult?: Record<string, unknown>;
+      fallbackAction?: string;
+    },
+  ): {
+    stepIndex: number;
+    stepId?: string | null;
+    action: string;
+    status: string;
+    input?: Record<string, unknown> | null;
+    output?: Record<string, unknown> | null;
+    errorMessage?: string | null;
+    errorCode?: string | null;
+    snapshotId?: string | null;
+    startedAt?: Date | null;
+    endedAt?: Date | null;
+  } {
+    const snapshot = this.readRecord(stepRecord.snapshot);
+    const input = this.readRecord(
+      stepRecord.input,
+      stepRecord.args,
+      stepRecord.params,
+    );
+    const output = this.readRecord(
+      stepRecord.output,
+      stepRecord.result,
+      stepRecord.data,
+      stepRecord,
+    );
+
+    return {
+      stepIndex,
+      stepId: this.readNonEmptyString(stepRecord.stepId, stepRecord.step_id, stepRecord.id) || null,
+      action:
+        this.readNonEmptyString(
+          stepRecord.action,
+          stepRecord.command,
+          stepRecord.name,
+          options?.fallbackAction,
+        ) || 'execute',
+      status: this.normalizeRuntimePhaseStepStatus(stepRecord),
+      input,
+      output,
+      errorMessage: this.readNonEmptyString(stepRecord.errorMessage, stepRecord.error_message, stepRecord.message) || null,
+      errorCode: this.readNonEmptyString(stepRecord.errorCode, stepRecord.error_code) || null,
+      snapshotId:
+        this.readNonEmptyString(
+          stepRecord.snapshotId,
+          stepRecord.snapshot_id,
+          snapshot?.id,
+        ) || null,
+      startedAt: null,
+      endedAt: null,
+    };
+  }
+
+  private normalizeRuntimePhaseStepStatus(stepRecord: Record<string, unknown>): string {
+    const explicitStatus = this.readNonEmptyString(stepRecord.status);
+    if (explicitStatus) {
+      const normalized = explicitStatus.toLowerCase();
+      if (normalized === 'success') {
+        return 'completed';
+      }
+      if (normalized === 'error') {
+        return 'failed';
+      }
+      if (normalized === 'takeover_required') {
+        return 'waiting_takeover';
+      }
+      return normalized;
+    }
+
+    if (stepRecord.success === true) {
+      return 'completed';
+    }
+    if (stepRecord.success === false) {
+      return 'failed';
+    }
+    if (this.readNonEmptyString(stepRecord.errorMessage, stepRecord.error_message, stepRecord.message)) {
+      return 'failed';
+    }
+    return 'completed';
+  }
+
+  private readRecordArray(source: unknown, key?: string): Record<string, unknown>[] {
+    const value = key && source && typeof source === 'object'
+      ? (source as Record<string, unknown>)[key]
+      : source;
+    if (!Array.isArray(value)) {
+      return [];
+    }
+    return value.filter((item): item is Record<string, unknown> => Boolean(item) && typeof item === 'object');
+  }
+
+  private readRecord(...values: unknown[]): Record<string, unknown> | null {
+    for (const value of values) {
+      if (value && typeof value === 'object' && !Array.isArray(value)) {
+        return value as Record<string, unknown>;
+      }
+    }
+    return null;
+  }
+
+  private readNonEmptyString(...values: unknown[]): string | undefined {
+    for (const value of values) {
+      if (typeof value === 'string' && value.trim()) {
+        return value.trim();
+      }
+    }
+    return undefined;
+  }
+
+  private readInteger(...values: unknown[]): number | undefined {
+    for (const value of values) {
+      if (typeof value === 'number' && Number.isFinite(value)) {
+        return Math.trunc(value);
+      }
+      if (typeof value === 'string' && value.trim()) {
+        const parsed = Number.parseInt(value, 10);
+        if (Number.isFinite(parsed)) {
+          return parsed;
+        }
+      }
+    }
+    return undefined;
+  }
+
+  private readDateValue(...values: unknown[]): Date | undefined {
+    for (const value of values) {
+      if (value instanceof Date && !Number.isNaN(value.getTime())) {
+        return value;
+      }
+      if (typeof value === 'string' || typeof value === 'number') {
+        const parsed = new Date(value);
+        if (!Number.isNaN(parsed.getTime())) {
+          return parsed;
+        }
+      }
+    }
+    return undefined;
+  }
+
+  private toNullableDate(value: unknown): Date | null {
+    if (value instanceof Date) {
+      return value;
+    }
+    if (typeof value === 'string' || typeof value === 'number') {
+      const parsed = new Date(value);
+      return Number.isNaN(parsed.getTime()) ? null : parsed;
+    }
+    return null;
   }
 
   private async failExecutionFromRuntimeStep(input: {

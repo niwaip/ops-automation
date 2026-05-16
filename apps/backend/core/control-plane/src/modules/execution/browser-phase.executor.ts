@@ -54,8 +54,16 @@ export class BrowserPhaseExecutor {
   async execute(request: BrowserPhaseExecuteRequest): Promise<RuntimePhaseInvokeResult> {
     let phaseCommands = [...request.commands];
 
+    // Check for existing human intervention or recovery patch
+    const existingPhase = await this.executionPhaseService.getByExecutionIdAndPhaseKey(request.executionId, request.phaseKey);
+    const existingDecision = existingPhase?.recovery_decision_json as any;
+    if (existingDecision?.patch) {
+      phaseCommands = this.applyRecoveryPatch(phaseCommands, existingDecision.patch);
+    }
+
     const precheckMatched = await this.isCheckMatched(request.precheck, request.runtimeSessionId);
-    if (precheckMatched) {
+    if (precheckMatched || (phaseCommands.length === 0 && existingDecision?.patch?.type === 'resolve_by_human')) {
+      const isHumanResolved = phaseCommands.length === 0 && existingDecision?.patch?.type === 'resolve_by_human';
       await this.executionPhaseService.markRunning(request.executionId, request.phaseKey, {
         phaseName: request.phaseName,
         phaseType: request.phaseType,
@@ -69,8 +77,9 @@ export class BrowserPhaseExecutor {
         status: 'completed',
         stepResults: [],
         output: {
-          shortCircuitedBy: 'precheck',
-          precheck: request.precheck || null,
+          shortCircuitedBy: precheckMatched ? 'precheck' : 'human_resolved',
+          precheck: precheckMatched ? request.precheck : null,
+          note: isHumanResolved ? existingDecision?.patch?.note : undefined,
         },
       };
       await this.executionPhaseService.markCompleted(request.executionId, request.phaseKey, {
@@ -130,6 +139,11 @@ export class BrowserPhaseExecutor {
           output: postcheckedResult.output || { stepResults: postcheckedResult.stepResults },
           postcheck: request.postcheck || null,
         });
+        await this.persistPhaseSteps(
+          request.executionId,
+          request.phaseKey,
+          postcheckedResult,
+        );
         await this.persistPhaseArtifacts(
           request.executionId,
           request.phaseKey,
@@ -171,6 +185,11 @@ export class BrowserPhaseExecutor {
           errorCode: postcheckedResult.errorCode || 'PHASE_TAKEOVER_REQUIRED',
           errorMessage: postcheckedResult.takeoverReason || postcheckedResult.errorMessage || recoveryDecision.reason,
         });
+        await this.persistPhaseSteps(
+          request.executionId,
+          request.phaseKey,
+          postcheckedResult,
+        );
         await this.persistPhaseArtifacts(
           request.executionId,
           request.phaseKey,
@@ -195,6 +214,11 @@ export class BrowserPhaseExecutor {
         errorCode: postcheckedResult.errorCode || 'PHASE_EXECUTION_FAILED',
         errorMessage: postcheckedResult.errorMessage || recoveryDecision.reason || 'Browser phase execution failed',
       });
+      await this.persistPhaseSteps(
+        request.executionId,
+        request.phaseKey,
+        postcheckedResult,
+      );
       await this.persistPhaseArtifacts(
         request.executionId,
         request.phaseKey,
@@ -237,6 +261,35 @@ export class BrowserPhaseExecutor {
         ...(command.metadata || {}),
       },
     }));
+  }
+
+  private async persistPhaseSteps(
+    executionId: string,
+    phaseKey: string,
+    result: RuntimePhaseInvokeResult,
+  ): Promise<void> {
+    const stepResults = Array.isArray(result.stepResults) ? result.stepResults : [];
+    if (stepResults.length === 0) {
+      return;
+    }
+
+    await this.executionPhaseService.replaceSteps(
+      executionId,
+      phaseKey,
+      stepResults.map((step, index) => ({
+        stepIndex: index + 1,
+        stepId: step.rawResult?.stepId as string || null,
+        action: step.rawResult?.action as string || 'unknown',
+        status: step.status,
+        input: step.rawResult?.input as Record<string, unknown> || null,
+        output: step.output || step.rawResult?.output as Record<string, unknown> || null,
+        errorMessage: step.errorMessage || null,
+        errorCode: step.errorCode || null,
+        snapshotId: step.snapshot?.id || null,
+        startedAt: step.metrics?.durationMs ? new Date(Date.now() - step.metrics.durationMs) : null,
+        endedAt: new Date(),
+      })),
+    );
   }
 
   private async persistPhaseArtifacts(
@@ -304,6 +357,48 @@ export class BrowserPhaseExecutor {
               },
             },
           });
+        }
+        nextCommands.push(command);
+      }
+      return nextCommands;
+    }
+
+    if (patch.type === 'replace_input_value' && patch.inputValues) {
+      return commands.map((command) => {
+        if (command.stepId !== patch.failedStepId) {
+          return command;
+        }
+        return {
+          ...command,
+          input: {
+            ...command.input,
+            ...patch.inputValues,
+          },
+          metadata: {
+            ...(command.metadata || {}),
+            recoveryPatch: {
+              type: patch.type,
+              note: patch.note || null,
+            },
+          },
+        };
+      });
+    }
+
+    if (patch.type === 'resolve_by_human') {
+      const nextCommands: BrowserPhaseCommand[] = [];
+      let foundFailed = false;
+      for (const command of commands) {
+        if (command.stepId === patch.failedStepId) {
+          foundFailed = true;
+          // Skip the failed step if resumeFromStepId is provided and it matches a later step
+          if (!patch.resumeFromStepId || patch.resumeFromStepId === patch.failedStepId) {
+            continue;
+          }
+        }
+        if (foundFailed && patch.resumeFromStepId && command.stepId !== patch.resumeFromStepId && nextCommands.length === 0) {
+          // Skip steps between failed and resume point
+          continue;
         }
         nextCommands.push(command);
       }

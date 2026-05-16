@@ -689,24 +689,29 @@ const extractBrowserWorkflowSteps = (workflow: TemporalWorkflowDTO): Array<Recor
   const activities = Array.isArray(workflow.activityDsl?.activities)
     ? workflow.activityDsl.activities
     : [];
-  const browserActivity = activities.find((activity) => {
-    if (activity?.handler === 'browser') {
-      return true;
+  return activities.flatMap((activity) => {
+    if (!activity) {
+      return [];
     }
-    const config = activity?.config && typeof activity.config === 'object'
+    if (activity.handler !== 'browser') {
+      const config = activity.config && typeof activity.config === 'object'
+        ? activity.config as Record<string, unknown>
+        : {};
+      const steps = Array.isArray(config.steps) ? config.steps : [];
+      if (!steps.some((step) => step && typeof step === 'object')) {
+        return [];
+      }
+    }
+
+    const config = activity.config && typeof activity.config === 'object'
       ? activity.config as Record<string, unknown>
       : {};
-    const steps = Array.isArray(config.steps) ? config.steps : [];
-    return steps.some((step) => step && typeof step === 'object');
+    return Array.isArray(config.steps)
+      ? config.steps.filter(
+        (step): step is Record<string, unknown> => Boolean(step) && typeof step === 'object' && !Array.isArray(step),
+      )
+      : [];
   });
-  const config = browserActivity?.config && typeof browserActivity.config === 'object'
-    ? browserActivity.config as Record<string, unknown>
-    : {};
-  return Array.isArray(config.steps)
-    ? config.steps.filter(
-      (step): step is Record<string, unknown> => Boolean(step) && typeof step === 'object' && !Array.isArray(step),
-    )
-    : [];
 };
 
 const buildBrowserRecordingSourcePayload = (workflow: TemporalWorkflowDTO): Record<string, unknown> => {

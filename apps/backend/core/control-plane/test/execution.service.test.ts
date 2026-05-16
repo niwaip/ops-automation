@@ -1038,6 +1038,7 @@ describe('ExecutionService runtime session close on terminal state', () => {
     const internals = service as any;
     jest.spyOn(internals, 'updateStatus').mockResolvedValue(undefined);
     jest.spyOn(internals, 'closeRuntimeSessionQuietly').mockResolvedValue(undefined);
+    jest.spyOn(internals, 'completeActivePhasesOnExecutionSuccess').mockResolvedValue(undefined);
     jest.spyOn(internals, 'skipPendingSteps').mockResolvedValue(undefined);
 
     return { service, prisma };
@@ -1056,6 +1057,10 @@ describe('ExecutionService runtime session close on terminal state', () => {
     expect((service as any).updateStatus).toHaveBeenCalledWith(
       'execution-terminal-1',
       EXECUTION_STATUS.SUCCEEDED,
+    );
+    expect((service as any).completeActivePhasesOnExecutionSuccess).toHaveBeenCalledWith(
+      'execution-terminal-1',
+      'runtime-terminal-1',
     );
     expect((service as any).closeRuntimeSessionQuietly).toHaveBeenCalledWith(
       'runtime-terminal-1',
@@ -1292,6 +1297,219 @@ describe('ExecutionService.create planner draft reuse', () => {
         }),
       }),
     });
+  });
+
+  it('rewrites browser recording planDraft into workflow activity phases during create', async () => {
+    const { service, prisma } = createService();
+
+    const providedPlanDraft = {
+      plan_id: 'plan-browser-1',
+      planner_mode: 'skill',
+      objective: '登录并进入执行管理',
+      summary: '已识别浏览器技能',
+      skill_match: {
+        skill_id: 'skill-browser-1',
+        skill_name: '登录并进入登录',
+        confidence: 1,
+      },
+      steps: [
+        {
+          id: 'raw-step-1',
+          title: '1. navigate',
+          description: '执行 1. navigate 步骤。',
+          kind: 'tool',
+          status: 'planned',
+          tool_name: '1. navigate',
+        },
+      ],
+      required_inputs: [
+        {
+          name: 'startUrl',
+          type: 'string',
+          required: true,
+          value: 'http://example.test/login',
+          missing: false,
+          source: 'user_input',
+        },
+        {
+          name: 'username',
+          type: 'string',
+          required: true,
+          value: 'tester',
+          missing: false,
+          source: 'user_input',
+        },
+      ],
+      risk_summary: {
+        level: 'low',
+        requires_human_review: false,
+        items: ['no_material_risk_detected'],
+      },
+    };
+
+    prisma.$queryRawUnsafe.mockResolvedValue([
+      {
+        source_type: 'browser_recording',
+        source_payload_json: {},
+        workflow_dsl: {
+          steps: [
+            {
+              id: 'activity_open',
+              name: '1. 页面打开',
+              type: 'activity',
+              activityRef: 'custom:browser_open',
+              activityName: '1. 页面打开',
+            },
+            {
+              id: 'activity_submit',
+              name: '2. 页面迁移',
+              type: 'activity',
+              activityRef: 'custom:browser_submit',
+              activityName: '2. 页面迁移',
+            },
+            {
+              id: 'activity_nav',
+              name: '3. 页面迁移',
+              type: 'activity',
+              activityRef: 'custom:browser_nav',
+              activityName: '3. 页面迁移',
+            },
+          ],
+        },
+        activity_dsl: {
+          activities: [
+            {
+              fn: 'browser_open',
+              name: '1. 页面打开',
+              handler: 'browser',
+              config: {
+                steps: [
+                  {
+                    name: '1. navigate',
+                    type: 'browser',
+                    config: {
+                      action: 'navigate',
+                      url: '${startUrl}',
+                      target: '${startUrl}',
+                    },
+                  },
+                  {
+                    name: '2. fill',
+                    type: 'browser',
+                    config: {
+                      action: 'fill',
+                      selector: 'textbox[name="Enter username"]',
+                      value: '${username}',
+                    },
+                  },
+                ],
+              },
+            },
+            {
+              fn: 'browser_submit',
+              name: '2. 页面迁移',
+              handler: 'browser',
+              config: {
+                steps: [
+                  {
+                    name: '3. click',
+                    type: 'browser',
+                    config: {
+                      action: 'click',
+                      selector: 'button[type="submit"]',
+                    },
+                  },
+                ],
+              },
+            },
+            {
+              fn: 'browser_nav',
+              name: '3. 页面迁移',
+              handler: 'browser',
+              config: {
+                steps: [
+                  {
+                    name: '4. wait for executions',
+                    type: 'browser',
+                    config: {
+                      action: 'waitForSelector',
+                      selector: 'menuitem[name="Executions"]',
+                      timeoutMs: 15000,
+                    },
+                  },
+                ],
+              },
+            },
+          ],
+        },
+      },
+    ]);
+    prisma.execution.create.mockResolvedValue({
+      id: 'execution-create-1',
+      requiresApproval: false,
+      createdBy: 'user-1',
+    });
+    prisma.executionEvent.create.mockResolvedValue(undefined);
+
+    await service.create(
+      'user-1',
+      {
+        skillId: 'skill-browser-1',
+        runtimeType: 'browser',
+        input: {
+          startUrl: 'http://example.test/login',
+          username: 'tester',
+        },
+        planDraft: providedPlanDraft as any,
+      },
+      {
+        authToken: 'Bearer token-1',
+      },
+    );
+
+    const normalizedInput = prisma.execution.create.mock.calls[0][0].data.normalizedInputJson as Record<string, unknown>;
+    const rewrittenSteps = normalizedInput.planSteps as Array<Record<string, unknown>>;
+    expect(rewrittenSteps).toHaveLength(3);
+    expect(rewrittenSteps[0]).toEqual(expect.objectContaining({
+      title: '1. 页面打开',
+      phase_type: 'workflow_activity',
+    }));
+    expect(rewrittenSteps[0].commands).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        action: 'goto',
+        input: expect.objectContaining({
+          target: 'http://example.test/login',
+          args: expect.objectContaining({
+            url: 'http://example.test/login',
+          }),
+        }),
+      }),
+      expect.objectContaining({
+        action: 'fill',
+        input: expect.objectContaining({
+          target: 'textbox[name="Enter username"]',
+          args: expect.objectContaining({
+            selector: 'textbox[name="Enter username"]',
+            value: 'tester',
+          }),
+        }),
+      }),
+    ]));
+    expect(rewrittenSteps[2]).toEqual(expect.objectContaining({
+      title: '3. 页面迁移',
+      commands: [
+        expect.objectContaining({
+          action: 'wait',
+          input: expect.objectContaining({
+            target: 'menuitem[name="Executions"]',
+            args: expect.objectContaining({
+              selector: 'menuitem[name="Executions"]',
+              duration: 15000,
+            }),
+          }),
+        }),
+      ],
+    }));
   });
 
   it('reuses existing execution when the same idempotencyKey is provided', async () => {
@@ -1553,6 +1771,8 @@ describe('ExecutionService phase sync during system execution', () => {
       markRunning: jest.fn().mockResolvedValue(undefined),
       markCompleted: jest.fn().mockResolvedValue(undefined),
       createOrUpdatePhase: jest.fn().mockResolvedValue(undefined),
+      replaceArtifacts: jest.fn().mockResolvedValue(undefined),
+      replaceSteps: jest.fn().mockResolvedValue(undefined),
     };
     const executionStepService = {
       getById: jest.fn().mockResolvedValue({
@@ -1606,7 +1826,629 @@ describe('ExecutionService phase sync during system execution', () => {
         phaseType: 'system_skill',
       }),
     );
+    expect(executionPhaseService.replaceSteps).toHaveBeenCalledWith(
+      'execution-1',
+      'phase_01_login_skill',
+      [],
+    );
     expect(executionPhaseService.createOrUpdatePhase).not.toHaveBeenCalled();
+  });
+
+  it('persists skill runtime phase steps extracted from nested phase results', async () => {
+    const prisma = {
+      execution: {
+        update: jest.fn().mockResolvedValue(undefined),
+      },
+    };
+    const runtimeExecutionOrchestrator = {
+      executeStep: jest.fn().mockResolvedValue({
+        success: true,
+        status: 'completed',
+        output: { result: 'ok' },
+        rawResult: {
+          runtime: 'capability_runtime',
+          releaseId: 'release-1',
+          capabilityId: 'capability-1',
+          publishedSkillId: 'published-skill-1',
+          logs: [],
+          output: {
+            phaseResults: [
+              {
+                stepName: '打开搜索页',
+                result: {
+                  results: [
+                    {
+                      stepId: 'goto-1',
+                      action: 'goto',
+                      status: 'success',
+                      input: {
+                        url: 'https://example.com',
+                      },
+                      output: {
+                        pageUrl: 'https://example.com',
+                      },
+                      snapshot: {
+                        id: 'snapshot-1',
+                      },
+                    },
+                    {
+                      stepId: 'click-1',
+                      action: 'click',
+                      status: 'completed',
+                      input: {
+                        target: 'text=Search',
+                      },
+                      output: {
+                        clicked: true,
+                      },
+                    },
+                  ],
+                },
+              },
+            ],
+          },
+        },
+      }),
+    };
+    const runtimeResultInterpreter = {
+      handleSkillRuntimeResult: jest.fn().mockResolvedValue(undefined),
+      handleBrowserStepResult: jest.fn().mockResolvedValue(undefined),
+    };
+    const runtimeStepRequestFactory = {
+      resolveExecutionCapabilityId: jest.fn().mockReturnValue('capability-1'),
+      resolveExecutionCapabilityVersion: jest.fn().mockReturnValue('v1'),
+      resolveExecutionInput: jest.fn().mockReturnValue({ username: 'test' }),
+      buildSkillRuntimeRequest: jest.fn().mockReturnValue({
+        requestId: 'req-1',
+        executionId: 'execution-1',
+        stepId: 'step-1',
+        runtimeType: 'custom',
+        runtimeSessionId: 'runtime-1',
+        capabilityType: 'skill.runtime',
+        action: 'execute',
+        input: { username: 'test' },
+      }),
+    };
+    const executionPhaseService = {
+      listByExecutionId: jest.fn(),
+      markRunning: jest.fn().mockResolvedValue(undefined),
+      markCompleted: jest.fn().mockResolvedValue(undefined),
+      createOrUpdatePhase: jest.fn().mockResolvedValue(undefined),
+      replaceArtifacts: jest.fn().mockResolvedValue(undefined),
+      replaceSteps: jest.fn().mockResolvedValue(undefined),
+    };
+    const executionStepService = {
+      getById: jest.fn().mockResolvedValue({
+        id: 'step-1',
+        type: 'system',
+        action: 'execute_skill',
+        targetJson: {
+          phaseKey: 'phase_01_execute_skill',
+          phaseName: '执行技能',
+          phaseType: 'system_skill',
+        },
+        inputJson: {
+          description: '执行技能并提取内部步骤',
+        },
+      }),
+      setCurrentStep: jest.fn().mockResolvedValue(undefined),
+      startStep: jest.fn().mockResolvedValue(undefined),
+    };
+
+    const service = new ExecutionService(
+      prisma as never,
+      runtimeExecutionOrchestrator as never,
+      runtimeResultInterpreter as never,
+      runtimeStepRequestFactory as never,
+      undefined,
+      executionPhaseService as never,
+      undefined,
+      executionStepService as never,
+    );
+    jest.spyOn(service as any, 'createEvent').mockResolvedValue(undefined);
+
+    await (service as any).executeSystemSkillStep(
+      { id: 'execution-1', skillId: 'skill-1', runtimeType: 'browser' },
+      'runtime-1',
+      'step-1',
+    );
+
+    expect(executionPhaseService.replaceSteps).toHaveBeenCalledWith(
+      'execution-1',
+      'phase_01_execute_skill',
+      [
+        expect.objectContaining({
+          stepIndex: 1,
+          stepId: 'goto-1',
+          action: 'goto',
+          status: 'completed',
+          snapshotId: 'snapshot-1',
+          input: {
+            url: 'https://example.com',
+          },
+          output: {
+            pageUrl: 'https://example.com',
+          },
+        }),
+        expect.objectContaining({
+          stepIndex: 2,
+          stepId: 'click-1',
+          action: 'click',
+          status: 'completed',
+          input: {
+            target: 'text=Search',
+          },
+          output: {
+            clicked: true,
+          },
+        }),
+      ],
+    );
+  });
+
+  it('prebuilds workflow activity phases before skill runtime finishes', async () => {
+    const prisma = {
+      execution: {
+        update: jest.fn().mockResolvedValue(undefined),
+      },
+      $queryRawUnsafe: jest.fn().mockResolvedValue([
+        {
+          source_payload_json: {
+            workflowDsl: {
+              steps: [
+                {
+                  id: 'activity-step-1',
+                  type: 'activity',
+                  name: '打开登录页',
+                  activityName: 'open_login_page',
+                },
+                {
+                  id: 'activity-step-2',
+                  type: 'activity',
+                  name: '提交登录',
+                  activityName: 'submit_login_form',
+                },
+              ],
+            },
+          },
+        },
+      ]),
+    };
+    const runtimeExecutionOrchestrator = {
+      executeStep: jest.fn().mockResolvedValue({
+        success: true,
+        status: 'completed',
+        output: {
+          phaseResults: [
+            {
+              stepName: '打开登录页',
+              activityName: 'open_login_page',
+              result: {
+                status: 'completed',
+                results: [{ action: 'goto', status: 'success' }],
+              },
+            },
+            {
+              stepName: '提交登录',
+              activityName: 'submit_login_form',
+              result: {
+                status: 'completed',
+                results: [{ action: 'click', status: 'success' }],
+              },
+            },
+          ],
+        },
+        rawResult: {
+          runtime: 'capability_runtime',
+          releaseId: 'release-1',
+          capabilityId: 'published-skill-1',
+          publishedSkillId: 'published-skill-1',
+          logs: [],
+          output: {
+            phaseResults: [
+              {
+                stepName: '打开登录页',
+                activityName: 'open_login_page',
+                result: {
+                  status: 'completed',
+                  results: [{ action: 'goto', status: 'success' }],
+                },
+              },
+              {
+                stepName: '提交登录',
+                activityName: 'submit_login_form',
+                result: {
+                  status: 'completed',
+                  results: [{ action: 'click', status: 'success' }],
+                },
+              },
+            ],
+          },
+        },
+      }),
+    };
+    const runtimeResultInterpreter = {
+      handleSkillRuntimeResult: jest.fn().mockResolvedValue(undefined),
+      handleBrowserStepResult: jest.fn().mockResolvedValue(undefined),
+    };
+    const runtimeStepRequestFactory = {
+      resolveExecutionCapabilityId: jest.fn().mockReturnValue('published-skill-1'),
+      resolveExecutionCapabilityVersion: jest.fn().mockReturnValue('v1'),
+      resolveExecutionInput: jest.fn().mockReturnValue({ username: 'test' }),
+      buildSkillRuntimeRequest: jest.fn().mockReturnValue({
+        requestId: 'req-1',
+        executionId: 'execution-1',
+        stepId: 'step-1',
+        runtimeType: 'custom',
+        runtimeSessionId: 'runtime-1',
+        capabilityType: 'skill.runtime',
+        action: 'execute',
+        input: { username: 'test' },
+      }),
+    };
+    const executionPhaseService = {
+      listByExecutionId: jest.fn(),
+      markRunning: jest.fn().mockResolvedValue(undefined),
+      markCompleted: jest.fn().mockResolvedValue(undefined),
+      createOrUpdatePhase: jest.fn().mockResolvedValue(undefined),
+      replaceArtifacts: jest.fn().mockResolvedValue(undefined),
+      replaceSteps: jest.fn().mockResolvedValue(undefined),
+    };
+    const executionStepService = {
+      getById: jest.fn().mockResolvedValue({
+        id: 'step-1',
+        type: 'system',
+        action: 'execute_skill',
+        targetJson: {
+          phaseKey: 'phase_01_execute_skill',
+          phaseName: '执行技能',
+          phaseType: 'system_skill',
+        },
+        inputJson: {
+          description: '执行技能并实时展示 activity',
+        },
+      }),
+      setCurrentStep: jest.fn().mockResolvedValue(undefined),
+      startStep: jest.fn().mockResolvedValue(undefined),
+    };
+
+    const service = new ExecutionService(
+      prisma as never,
+      runtimeExecutionOrchestrator as never,
+      runtimeResultInterpreter as never,
+      runtimeStepRequestFactory as never,
+      undefined,
+      executionPhaseService as never,
+      undefined,
+      executionStepService as never,
+    );
+    jest.spyOn(service as any, 'createEvent').mockResolvedValue(undefined);
+
+    await (service as any).executeSystemSkillStep(
+      { id: 'execution-1', skillId: 'published-skill-1', runtimeType: 'browser' },
+      'runtime-1',
+      'step-1',
+    );
+
+    expect(executionPhaseService.createOrUpdatePhase).toHaveBeenCalledWith(
+      expect.objectContaining({
+        executionId: 'execution-1',
+        phaseKey: 'phase_01_execute_skill__activity_02_submit_login_form',
+        phaseName: '提交登录',
+        phaseType: 'workflow_activity',
+        status: 'pending',
+      }),
+    );
+    expect(executionPhaseService.markRunning.mock.calls).toEqual(
+      expect.arrayContaining([
+        [
+          'execution-1',
+          'phase_01_execute_skill__activity_01_open_login_page',
+          expect.objectContaining({
+            phaseName: '打开登录页',
+            phaseType: 'workflow_activity',
+            runtimeSessionId: 'runtime-1',
+          }),
+        ],
+      ]),
+    );
+    expect(executionPhaseService.markCompleted.mock.calls).toEqual(
+      expect.arrayContaining([
+        [
+          'execution-1',
+          'phase_01_execute_skill__activity_01_open_login_page',
+          expect.objectContaining({
+            phaseName: '打开登录页',
+            phaseType: 'workflow_activity',
+          }),
+        ],
+        [
+          'execution-1',
+          'phase_01_execute_skill__activity_02_submit_login_form',
+          expect.objectContaining({
+            phaseName: '提交登录',
+            phaseType: 'workflow_activity',
+          }),
+        ],
+      ]),
+    );
+  });
+
+  it('updates current workflow activity while skill runtime is still running', async () => {
+    const prisma = {
+      execution: {
+        findUnique: jest.fn().mockResolvedValue({
+          id: 'execution-1',
+          createdBy: 'user-1',
+        }),
+      },
+    };
+    const executionPhaseService = {
+      listByExecutionId: jest.fn().mockResolvedValue([
+        {
+          phase_key: 'phase_01_execute_skill__activity_01_open',
+          phase_name: '1. 页面打开',
+          phase_type: 'workflow_activity',
+          status: 'running',
+          attempt: 1,
+          runtime_session_id: 'runtime-1',
+          input_json: {
+            parentPhaseKey: 'phase_01_execute_skill',
+            order: 1,
+          },
+          output_json: null,
+          started_at: new Date('2026-05-16T07:00:00.000Z'),
+        },
+        {
+          phase_key: 'phase_01_execute_skill__activity_02_process',
+          phase_name: '2. 页面处理',
+          phase_type: 'workflow_activity',
+          status: 'pending',
+          attempt: 1,
+          runtime_session_id: 'runtime-1',
+          input_json: {
+            parentPhaseKey: 'phase_01_execute_skill',
+            order: 2,
+          },
+          output_json: null,
+          started_at: null,
+        },
+      ]),
+      createOrUpdatePhase: jest.fn().mockResolvedValue(undefined),
+    };
+
+    const service = new ExecutionService(
+      prisma as never,
+      {} as never,
+      {} as never,
+      {} as never,
+      undefined,
+      executionPhaseService as never,
+      undefined,
+      {} as never,
+    );
+
+    await service.updateWorkflowActivityProgress(
+      'execution-1',
+      {
+        parentPhaseKey: 'phase_01_execute_skill',
+        activityOrder: 2,
+        activityName: '2. 页面处理',
+        runtimeSessionId: 'runtime-1',
+      },
+      { id: 'user-1' },
+    );
+
+    expect(executionPhaseService.createOrUpdatePhase).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({
+        executionId: 'execution-1',
+        phaseKey: 'phase_01_execute_skill__activity_01_open',
+        status: 'completed',
+      }),
+    );
+    expect(executionPhaseService.createOrUpdatePhase).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({
+        executionId: 'execution-1',
+        phaseKey: 'phase_01_execute_skill__activity_02_process',
+        status: 'running',
+        runtimeSessionId: 'runtime-1',
+      }),
+    );
+  });
+
+  it('marks the currently running workflow activity as failed when skill runtime fails without phaseResults', async () => {
+    const prisma = {};
+    const executionPhaseService = {
+      listByExecutionId: jest.fn().mockResolvedValue([
+        {
+          phase_key: 'phase_01_execute_skill__activity_01_open',
+          phase_name: '1. 页面打开',
+          phase_type: 'workflow_activity',
+          status: 'completed',
+          input_json: {
+            parentPhaseKey: 'phase_01_execute_skill',
+            order: 1,
+          },
+        },
+        {
+          phase_key: 'phase_01_execute_skill__activity_02_process',
+          phase_name: '2. 页面处理',
+          phase_type: 'workflow_activity',
+          status: 'running',
+          input_json: {
+            parentPhaseKey: 'phase_01_execute_skill',
+            order: 2,
+          },
+        },
+      ]),
+      createOrUpdatePhase: jest.fn().mockResolvedValue(undefined),
+    };
+
+    const service = new ExecutionService(
+      prisma as never,
+      {} as never,
+      {} as never,
+      {} as never,
+      undefined,
+      executionPhaseService as never,
+      undefined,
+      {} as never,
+    );
+
+    jest.spyOn(service as any, 'loadWorkflowActivityPhaseDefinitions').mockResolvedValue([
+      {
+        phaseKey: 'phase_01_execute_skill__activity_01_open',
+        phaseName: '1. 页面打开',
+        phaseType: 'workflow_activity',
+        activityName: '1. 页面打开',
+        parentPhaseKey: 'phase_01_execute_skill',
+        order: 1,
+      },
+      {
+        phaseKey: 'phase_01_execute_skill__activity_02_process',
+        phaseName: '2. 页面处理',
+        phaseType: 'workflow_activity',
+        activityName: '2. 页面处理',
+        parentPhaseKey: 'phase_01_execute_skill',
+        order: 2,
+      },
+    ]);
+
+    await (service as any).syncWorkflowActivityPhasesAfterSkillResult(
+      'execution-1',
+      'runtime-1',
+      'published-skill-1',
+      {
+        success: false,
+        status: 'failed',
+        errorCode: 'CAPABILITY_RUNTIME_FAILED',
+        errorMessage: 'browser-worker 执行失败',
+        output: {
+          temporalLink: 'http://temporal.local/workflow/1',
+        },
+        rawResult: {
+          output: {
+            temporalLink: 'http://temporal.local/workflow/1',
+          },
+        },
+      },
+      {
+        phaseKey: 'phase_01_execute_skill',
+        phaseName: '执行技能',
+        phaseType: 'system_skill',
+      },
+    );
+
+    expect(executionPhaseService.createOrUpdatePhase).toHaveBeenCalledWith(
+      expect.objectContaining({
+        executionId: 'execution-1',
+        phaseKey: 'phase_01_execute_skill__activity_02_process',
+        phaseName: '2. 页面处理',
+        status: 'failed',
+        errorCode: 'CAPABILITY_RUNTIME_FAILED',
+      }),
+    );
+  });
+
+  it('marks workflow activity as waiting_takeover when phaseResults return takeover_required', async () => {
+    const prisma = {};
+    const executionPhaseService = {
+      createOrUpdatePhase: jest.fn().mockResolvedValue(undefined),
+      markCompleted: jest.fn().mockResolvedValue(undefined),
+      replaceArtifacts: jest.fn().mockResolvedValue(undefined),
+      replaceSteps: jest.fn().mockResolvedValue(undefined),
+    };
+
+    const service = new ExecutionService(
+      prisma as never,
+      {} as never,
+      {} as never,
+      {} as never,
+      undefined,
+      executionPhaseService as never,
+      undefined,
+      {} as never,
+    );
+
+    jest.spyOn(service as any, 'loadWorkflowActivityPhaseDefinitions').mockResolvedValue([
+      {
+        phaseKey: 'phase_01_execute_skill__activity_01_open',
+        phaseName: '1. 页面打开',
+        phaseType: 'workflow_activity',
+        activityName: '1. 页面打开',
+        parentPhaseKey: 'phase_01_execute_skill',
+        order: 1,
+      },
+      {
+        phaseKey: 'phase_01_execute_skill__activity_02_process',
+        phaseName: '2. 页面处理',
+        phaseType: 'workflow_activity',
+        activityName: '2. 页面处理',
+        parentPhaseKey: 'phase_01_execute_skill',
+        order: 2,
+      },
+    ]);
+
+    await (service as any).syncWorkflowActivityPhasesAfterSkillResult(
+      'execution-1',
+      'runtime-1',
+      'published-skill-1',
+      {
+        success: false,
+        status: 'takeover_required',
+        errorCode: 'BROWSER_WORKER_EXECUTION_FAILED',
+        errorMessage: '浏览器页面未进入预期状态',
+        requiresTakeover: true,
+        output: {
+          phaseResults: [
+            {
+              result: {
+                status: 'completed',
+                results: [{ status: 'success', command: 'navigate' }],
+              },
+              stepName: '1. 页面打开',
+              activityName: '1. 页面打开',
+            },
+            {
+              result: {
+                status: 'takeover_required',
+                errorCode: 'BROWSER_WORKER_EXECUTION_FAILED',
+                errorMessage: '浏览器页面未进入预期状态',
+                results: [{ status: 'error', command: 'fill', message: 'selector not found' }],
+              },
+              stepName: '2. 页面处理',
+              activityName: '2. 页面处理',
+            },
+          ],
+        },
+      },
+      {
+        phaseKey: 'phase_01_execute_skill',
+        phaseName: '执行技能',
+        phaseType: 'system_skill',
+      },
+    );
+
+    expect(executionPhaseService.markCompleted).toHaveBeenCalledWith(
+      'execution-1',
+      'phase_01_execute_skill__activity_01_open',
+      expect.objectContaining({
+        phaseName: '1. 页面打开',
+      }),
+    );
+    expect(executionPhaseService.createOrUpdatePhase).toHaveBeenCalledWith(
+      expect.objectContaining({
+        executionId: 'execution-1',
+        phaseKey: 'phase_01_execute_skill__activity_02_process',
+        phaseName: '2. 页面处理',
+        status: 'waiting_takeover',
+        errorCode: 'BROWSER_WORKER_EXECUTION_FAILED',
+        errorMessage: '浏览器页面未进入预期状态',
+        completedAt: null,
+      }),
+    );
   });
 });
 
@@ -1977,6 +2819,7 @@ describe('ExecutionService phase takeover lifecycle', () => {
       executionPhaseService as never,
     );
     jest.spyOn(service as any, 'updateStatus').mockResolvedValue(undefined);
+    jest.spyOn(service as any, 'advanceExecutionFlow').mockResolvedValue(undefined);
     jest.spyOn(service, 'getById').mockResolvedValue({ id: 'execution-1' } as never);
 
     await service.resumePhaseTakeover(
@@ -2008,5 +2851,68 @@ describe('ExecutionService phase takeover lifecycle', () => {
       expect.stringContaining('/runtime-sessions/runtime-1/resume'),
       { stepId: 'step-1' },
     );
+    expect((service as any).advanceExecutionFlow).toHaveBeenCalledWith('execution-1', 'runtime-1');
+  });
+
+  it('resumes legacy human_control execution and restarts execution flow asynchronously', async () => {
+    const prisma = {
+      execution: {
+        findUnique: jest.fn().mockResolvedValue({
+          id: 'execution-1',
+          createdBy: 'user-1',
+          status: EXECUTION_STATUS.HUMAN_CONTROL,
+          currentPhaseKey: 'phase_login',
+        }),
+        update: jest.fn().mockResolvedValue(undefined),
+      },
+      runtimeSession: {
+        findFirst: jest.fn().mockResolvedValue({ id: 'runtime-1' }),
+      },
+      executionEvent: {
+        create: jest.fn().mockResolvedValue(undefined),
+      },
+      $queryRawUnsafe: jest.fn().mockResolvedValue([]),
+      $executeRawUnsafe: jest.fn(),
+    };
+    const executionPhaseService = {
+      getByExecutionIdAndPhaseKey: jest.fn().mockResolvedValue({
+        id: 'phase-1',
+        phase_key: 'phase_login',
+        phase_name: '登录阶段',
+        phase_type: 'browser_login',
+        status: 'waiting_takeover',
+        attempt: 2,
+        runtime_session_id: 'runtime-1',
+        input_json: { stepId: 'step-1' },
+      }),
+      resolveTakeoverRecord: jest.fn().mockResolvedValue(undefined),
+      markRunning: jest.fn().mockResolvedValue(undefined),
+      listByExecutionId: jest.fn().mockResolvedValue([]),
+    };
+
+    const service = new ExecutionService(
+      prisma as never,
+      {} as never,
+      {} as never,
+      {} as never,
+      undefined,
+      executionPhaseService as never,
+    );
+    jest.spyOn(service as any, 'updateStatus').mockResolvedValue(undefined);
+    jest.spyOn(service as any, 'advanceExecutionFlow').mockResolvedValue(undefined);
+    jest.spyOn(service, 'getById').mockResolvedValue({ id: 'execution-1' } as never);
+
+    await service.resume(
+      'execution-1',
+      'user-1',
+      { stepId: 'step-1', comment: 'Continue after manual fix' },
+      { id: 'user-1' },
+    );
+
+    expect(mockedAxios.post).toHaveBeenCalledWith(
+      expect.stringContaining('/runtime-sessions/runtime-1/resume'),
+      { stepId: 'step-1' },
+    );
+    expect((service as any).advanceExecutionFlow).toHaveBeenCalledWith('execution-1', 'runtime-1');
   });
 });

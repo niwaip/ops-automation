@@ -1,5 +1,8 @@
-import { Controller, Post, Body } from '@nestjs/common';
+import { Controller, Post, Body, Get, Param, BadRequestException, NotFoundException, Res } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
+import * as fs from 'fs/promises';
+import * as path from 'path';
+import type { Response } from 'express';
 import { BrowserService } from './browser.service';
 import {
   AssertBrowserStateDto,
@@ -20,6 +23,8 @@ import { ExportOptions } from './application/browser-script-export.service';
 @ApiTags('browser')
 @Controller('browser')
 export class BrowserController {
+  private readonly artifactDir = path.join(process.cwd(), 'temp', 'playwright-cli-artifacts');
+
   constructor(private readonly browserService: BrowserService) {}
 
   @Post('init')
@@ -134,5 +139,28 @@ export class BrowserController {
   ): Promise<{ schema: Record<string, any> }> {
     const schema = this.browserService.generateParamsSchema(body.steps);
     return { schema };
+  }
+
+  @Get('artifacts/:filename')
+  @ApiOperation({ summary: 'Serve browser execution artifacts' })
+  @ApiResponse({ status: 200, description: 'Artifact file content' })
+  @ApiResponse({ status: 404, description: 'Artifact not found' })
+  async getArtifact(
+    @Param('filename') filename: string,
+    @Res() res: Response,
+  ): Promise<void> {
+    const normalizedFilename = path.basename(filename || '').trim();
+    if (!normalizedFilename || normalizedFilename !== filename) {
+      throw new BadRequestException('Invalid artifact filename');
+    }
+
+    const artifactPath = path.join(this.artifactDir, normalizedFilename);
+    try {
+      await fs.access(artifactPath);
+    } catch {
+      throw new NotFoundException('Artifact not found');
+    }
+
+    res.sendFile(artifactPath);
   }
 }

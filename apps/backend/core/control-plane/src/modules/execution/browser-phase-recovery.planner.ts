@@ -12,15 +12,17 @@ export interface BrowserPhaseRecoveryPolicy {
 }
 
 export interface BrowserPhaseRecoveryPatch {
-  type: 'replace_selector' | 'append_wait';
+  type: 'replace_selector' | 'append_wait' | 'replace_input_value' | 'resolve_by_human';
   failedStepId: string;
   selector?: string;
   durationMs?: number;
+  inputValues?: Record<string, unknown>;
+  resumeFromStepId?: string;
   note?: string;
 }
 
 export interface BrowserPhaseRecoveryDecision {
-  action: 'retry_same_phase' | 'retry_with_patch' | 'takeover_required' | 'abort';
+  action: 'retry_same_phase' | 'retry_with_patch' | 'takeover_required' | 'resolved_by_human' | 'abort';
   reason: string;
   patch?: BrowserPhaseRecoveryPatch | null;
 }

@@ -345,9 +345,65 @@ export class ExecutionPhaseDto {
   @IsOptional()
   artifacts?: ExecutionPhaseArtifactDto[];
 
+  @ApiProperty({ required: false, type: () => [ExecutionPhaseStepDto] })
+  @IsOptional()
+  steps?: ExecutionPhaseStepDto[];
+
   @ApiProperty({ required: false, type: () => [ExecutionTakeoverRecordDto] })
   @IsOptional()
   takeovers?: ExecutionTakeoverRecordDto[];
+}
+
+export class ExecutionPhaseStepDto {
+  @ApiProperty()
+  id: string;
+
+  @ApiProperty()
+  phaseId: string;
+
+  @ApiProperty()
+  stepIndex: number;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  stepId?: string | null;
+
+  @ApiProperty()
+  action: string;
+
+  @ApiProperty()
+  status: string;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  input?: Record<string, unknown> | null;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  output?: Record<string, unknown> | null;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  errorMessage?: string | null;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  errorCode?: string | null;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  snapshotId?: string | null;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  startedAt?: string | null;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  endedAt?: string | null;
+
+  @ApiProperty()
+  createdAt: string;
 }
 
 export class ExecutionStepDto {
@@ -425,12 +481,18 @@ export class TakeoverExecutionDto {
 
 export class ResumeExecutionDto {
   @ApiProperty({ description: 'Step ID to resume from', required: false })
+  @IsOptional()
+  @IsString()
   stepId?: string;
 
   @ApiProperty({ description: 'Comment about resume action', required: false })
+  @IsOptional()
+  @IsString()
   comment?: string;
 
   @ApiProperty({ description: 'User resuming execution', required: false })
+  @IsOptional()
+  @IsString()
   resumedBy?: string;
 }
 
@@ -446,6 +508,33 @@ export class ReconcilePhaseTakeoverDto {
   @IsOptional()
   @IsString()
   resolvedBy?: string;
+
+  @ApiProperty({ description: 'Optional recovery patch to apply when resuming', required: false })
+  @IsOptional()
+  patch?: Record<string, unknown> | null;
+}
+
+export class UpdateWorkflowActivityProgressDto {
+  @ApiProperty({ description: 'Parent phase key for the workflow skill execution' })
+  @IsString()
+  parentPhaseKey: string;
+
+  @ApiProperty({ description: '1-based activity order within the workflow', required: false })
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  activityOrder?: number;
+
+  @ApiProperty({ description: 'Workflow activity display name', required: false })
+  @IsOptional()
+  @IsString()
+  activityName?: string;
+
+  @ApiProperty({ description: 'Runtime session bound to this workflow execution', required: false })
+  @IsOptional()
+  @IsString()
+  runtimeSessionId?: string;
 }
 
 export class ApprovalDecisionDto {

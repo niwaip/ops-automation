@@ -16,7 +16,19 @@ export const LiveSessionPreviewCard: React.FC<LiveSessionPreviewCardProps> = ({
   statusLabel = '执行中',
   height = 600,
 }) => {
-  const resolvedUrl = replaceLocalhostWithCurrentHost(novncUrl) || novncUrl;
+  const nextResolvedUrl = replaceLocalhostWithCurrentHost(novncUrl) || novncUrl;
+  const [resolvedUrl, setResolvedUrl] = React.useState(nextResolvedUrl);
+
+  React.useEffect(() => {
+    if (nextResolvedUrl) {
+      setResolvedUrl(nextResolvedUrl);
+    }
+  }, [nextResolvedUrl]);
+
+  const iframeSrc = React.useMemo(
+    () => `${resolvedUrl}${resolvedUrl.includes('?') ? '&' : '?'}autoconnect=true&resize=scale`,
+    [resolvedUrl],
+  );
 
   return (
     <Card
@@ -47,7 +59,7 @@ export const LiveSessionPreviewCard: React.FC<LiveSessionPreviewCardProps> = ({
         }}
       >
         <iframe
-          src={`${resolvedUrl}${resolvedUrl.includes('?') ? '&' : '?'}autoconnect=true&resize=scale`}
+          src={iframeSrc}
           style={{ width: '100%', height: '100%', border: 'none' }}
           title="Live Browser Session"
           allow="fullscreen"

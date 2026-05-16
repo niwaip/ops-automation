@@ -105,6 +105,34 @@ describe('PlaywrightCliAdapter', () => {
     ]);
   });
 
+  it('normalizes shorthand role selectors before wait execution', async () => {
+    const adapter = createAdapter();
+    jest.spyOn(adapter, 'ensureDirectories').mockResolvedValue(undefined);
+    jest.spyOn(adapter, 'ensureSessionReady').mockResolvedValue(undefined);
+    const execCliSpy = jest
+      .spyOn(adapter, 'execCli')
+      .mockResolvedValue({
+        stdout: 'ok',
+        stderr: '',
+      });
+
+    const result = await adapter.runCliAction(
+      'wait',
+      { selector: 'textbox[name="Enter username"]', duration: 15000 },
+      'runtime-1',
+    );
+
+    expect(result.command).toBe('wait');
+    expect(execCliSpy).toHaveBeenCalledWith('runtime-1', [
+      'run-code',
+      `async page => {
+          const activePage = page;
+          await activePage.locator("role=textbox[name=\\"Enter username\\"]").first().waitFor({ timeout: 15000 });
+          return "selector-ready";
+        }`,
+    ]);
+  });
+
   it('fails fast when a runtime target ref cannot be resolved', async () => {
     const adapter = createAdapter();
     jest.spyOn(adapter, 'ensureDirectories').mockResolvedValue(undefined);

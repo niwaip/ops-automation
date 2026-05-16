@@ -154,6 +154,7 @@ const extractDownloadUrl = (value: unknown): string | undefined => {
 @Injectable()
 export class CapabilityReleaseService implements OnModuleInit {
   private readonly logger = new Logger(CapabilityReleaseService.name);
+  private readonly controlPlaneApiUrl = getControlPlaneApiUrl();
 
   constructor(
     private readonly prisma: PrismaService,
@@ -328,6 +329,8 @@ export class CapabilityReleaseService implements OnModuleInit {
         capabilityVersion: dto.capabilityVersion,
         runtimeType: dto.runtimeType,
         runtimeSessionId: dto.runtimeSessionId,
+        phaseKey: dto.phaseKey,
+        metadata: dto.metadata,
       },
     );
   }
@@ -459,6 +462,8 @@ export class CapabilityReleaseService implements OnModuleInit {
       capabilityVersion?: string;
       runtimeType?: string;
       runtimeSessionId?: string;
+      phaseKey?: string;
+      metadata?: Record<string, unknown>;
     },
   ): Promise<ExecuteCapabilityRuntimeResultDTO> {
     const releaseRows = await this.prisma.$queryRawUnsafe<any[]>(
@@ -496,19 +501,66 @@ export class CapabilityReleaseService implements OnModuleInit {
         : 'SKILL_TASK_QUEUE';
       const generatedCode = build.generatedCode || '';
 
-      const result = await this.activityService.executeCodeInTemporalSandbox(
+      const logs: string[] = [];
+      const progressTasks: Promise<void>[] = [];
+      let activityOrder = 0;
+      const result = await this.activityService.executeCodeStreaming(
         generatedCode,
         fn,
         taskQueue,
         normalizedInput,
+        (log) => {
+          logs.push(log);
+          const activityName = this.extractWorkflowActivityNameFromLog(log);
+          if (!activityName || !options?.executionId || !options.phaseKey) {
+            return;
+          }
+
+          activityOrder += 1;
+          const progressTask = this.pushWorkflowActivityProgress({
+            executionId: options.executionId,
+            parentPhaseKey: options.phaseKey,
+            runtimeSessionId,
+            activityOrder,
+            activityName,
+            userId,
+          });
+          progressTasks.push(progressTask);
+          void progressTask.catch((error: unknown) => {
+            const message = error instanceof Error ? error.message : String(error || '');
+            this.logger.warn(`Failed to push workflow activity progress: ${message}`);
+          });
+        },
+        {
+          preferSandboxStreaming: true,
+        },
       );
+      await Promise.allSettled(progressTasks);
 
       const rawResult = result.result;
+      const rawResultRecord = rawResult && typeof rawResult === 'object' && !Array.isArray(rawResult)
+        ? rawResult as Record<string, unknown>
+        : null;
+      const runtimeStatus = typeof rawResultRecord?.status === 'string'
+        ? rawResultRecord.status
+        : undefined;
+      const runtimeRequiresTakeover = rawResultRecord?.requiresTakeover === true;
+      const runtimeRetryable = rawResultRecord?.retryable === true;
+      const runtimeTakeoverReason = typeof rawResultRecord?.takeoverReason === 'string'
+        ? rawResultRecord.takeoverReason
+        : null;
+      const runtimeSuccess = rawResultRecord?.success === false
+        ? false
+        : !runtimeStatus || runtimeStatus === 'completed';
+      const effectiveSuccess = result.success && runtimeSuccess && !runtimeRequiresTakeover;
       const downloadUrl = extractDownloadUrl(rawResult);
       const temporalWorkflowId = result.workflowId;
       const temporalLink = temporalWorkflowId 
         ? `${getTemporalUiUrl()}/namespaces/default/workflows/${temporalWorkflowId}`
         : null;
+      const runtimeError = typeof rawResultRecord?.errorMessage === 'string'
+        ? rawResultRecord.errorMessage
+        : result.error || null;
 
       // 允许非对象结果透传，包装为标准对象
       const normalizedResult = (rawResult !== undefined && rawResult !== null)
@@ -531,8 +583,8 @@ export class CapabilityReleaseService implements OnModuleInit {
         release.id,
         'skill_runtime_invoked',
         userId,
-        result.success,
-        result.success
+        effectiveSuccess,
+        effectiveSuccess
           ? `运行时调用 Skill 成功: ${skillId}`
           : `运行时调用 Skill 失败: ${skillId}`,
         {
@@ -558,14 +610,27 @@ export class CapabilityReleaseService implements OnModuleInit {
         runtime: 'temporal_workflow',
         fn,
         taskQueue,
-        success: result.success,
+        status:
+          runtimeRequiresTakeover || runtimeStatus === 'takeover_required'
+            ? 'takeover_required'
+            : runtimeStatus === 'waiting'
+              ? 'waiting'
+              : runtimeStatus === 'blocked'
+                ? 'blocked'
+                : effectiveSuccess
+                  ? 'completed'
+                  : 'failed',
+        success: effectiveSuccess,
         runtimeSessionId,
         downloadUrl: downloadUrl || null,
         temporalWorkflowId: temporalWorkflowId || null,
         output: normalizedResult,
         result: normalizedResult,
-        logs: result.logs || [],
-        error: result.error || null,
+        retryable: runtimeRetryable,
+        requiresTakeover: runtimeRequiresTakeover || runtimeStatus === 'takeover_required',
+        takeoverReason: runtimeTakeoverReason,
+        logs,
+        error: runtimeError,
       };
     }
 
@@ -4748,6 +4813,7 @@ ${logs.join('\n')}
       capabilityVersion?: string;
       runtimeType?: string;
       runtimeSessionId?: string;
+      metadata?: Record<string, unknown>;
     },
   ): Promise<ExecuteCapabilityRuntimeResultDTO> {
     const snapshot = await this.getCurrentSnapshotOrThrow(release);
@@ -4758,6 +4824,9 @@ ${logs.join('\n')}
     const browserWorkerUrl = getBrowserWorkerUrl();
     const runtimeExecutionId = options?.executionId || `capability-runtime-${release.id}`;
     const runtimeSteps = this.buildBrowserRecordingRuntimeSteps(snapshot.sourcePayload, runtimeInput);
+    const executionStepMetadata = this.extractRequestedExecutionStepMetadata(options?.metadata);
+    const targetRuntimeStep = this.resolveRequestedBrowserRecordingStep(runtimeSteps, executionStepMetadata);
+    const runtimeStepsToExecute = targetRuntimeStep ? [targetRuntimeStep] : runtimeSteps;
     const initialUrl = this.pickFirstNonEmptyString(
       runtimeInput.url,
       runtimeSteps.find((step) => step.action === 'goto')?.target,
@@ -4767,24 +4836,28 @@ ${logs.join('\n')}
       `[BrowserRuntime] backend=${backend}`,
       `[BrowserRuntime] runtimeSessionId=${runtimeSessionId}`,
       `[BrowserRuntime] publishedSkillId=${skillId}`,
-      `[BrowserRuntime] stepCount=${runtimeSteps.length}`,
+      `[BrowserRuntime] stepCount=${runtimeStepsToExecute.length}`,
     ];
+    let preserveRuntimeSession = false;
 
     try {
-      await axios.post<{ success: boolean; message?: string }>(
-        `${browserWorkerUrl}/browser/init`,
-        {
-          backend,
-          runtimeSessionId,
-          ...(initialUrl ? { initialUrl } : {}),
-          sessionPreferences: this.resolveBrowserRecordingSessionPreferences(snapshot.sourcePayload),
-        },
-        { timeout: 60000 },
-      );
+      const shouldInitBrowserSession = !options?.runtimeSessionId || !targetRuntimeStep || targetRuntimeStep.action === 'goto';
+      if (shouldInitBrowserSession) {
+        await axios.post<{ success: boolean; message?: string }>(
+          `${browserWorkerUrl}/browser/init`,
+          {
+            backend,
+            runtimeSessionId,
+            ...(initialUrl ? { initialUrl } : {}),
+            sessionPreferences: this.resolveBrowserRecordingSessionPreferences(snapshot.sourcePayload),
+          },
+          { timeout: 60000 },
+        );
+      }
 
       const stepResults: Array<Record<string, unknown>> = [];
-      for (let index = 0; index < runtimeSteps.length; index += 1) {
-        const step = runtimeSteps[index] as {
+      for (let index = 0; index < runtimeStepsToExecute.length; index += 1) {
+        const step = runtimeStepsToExecute[index] as {
           id: string;
           name: string;
           action: string;
@@ -4818,6 +4891,9 @@ ${logs.join('\n')}
         const result = response.data;
         if (!result.success) {
           const message = result.errorMessage || `浏览器步骤执行失败: ${step.action}`;
+          if (result.shouldTakeover) {
+            preserveRuntimeSession = true;
+          }
           logs.push(`[BrowserRuntime][Error] ${message}`);
           return {
             releaseId: release.id,
@@ -4938,7 +5014,7 @@ ${logs.join('\n')}
         error: message,
       };
     } finally {
-      if (shouldResetSession) {
+      if (shouldResetSession && !preserveRuntimeSession) {
         await axios.post(
           `${browserWorkerUrl}/browser/reset`,
           { backend, runtimeSessionId },
@@ -5134,7 +5210,12 @@ ${logs.join('\n')}
       case 'wait':
         return Object.fromEntries(
           Object.entries({
-            duration: pick(resolvedParams.duration, resolvedPayload.duration, resolvedPayload.timeoutMs),
+            duration: pick(
+              resolvedParams.duration,
+              resolvedParams.timeoutMs,
+              resolvedPayload.duration,
+              resolvedPayload.timeoutMs,
+            ),
             selector: pick(resolvedParams.selector, resolvedPayload.selector),
           }).filter(([, value]) => value !== undefined),
         );
@@ -5261,6 +5342,8 @@ ${logs.join('\n')}
     switch (normalized) {
       case 'navigate':
         return 'goto';
+      case 'waitforselector':
+        return 'wait';
       case 'press':
         return 'press_key';
       case 'type':
@@ -5268,6 +5351,56 @@ ${logs.join('\n')}
       default:
         return normalized;
     }
+  }
+
+  private extractRequestedExecutionStepMetadata(
+    metadata?: Record<string, unknown>,
+  ): { name?: string; index?: number } {
+    const name = this.pickFirstNonEmptyString(
+      metadata?.executionStepName,
+      metadata?.stepName,
+    );
+    const rawIndex = metadata?.executionStepIndex ?? metadata?.stepIndex;
+    const index =
+      typeof rawIndex === 'number' && Number.isFinite(rawIndex)
+        ? rawIndex
+        : typeof rawIndex === 'string' && rawIndex.trim() && !Number.isNaN(Number(rawIndex))
+          ? Number(rawIndex)
+          : undefined;
+
+    return {
+      ...(name ? { name } : {}),
+      ...(typeof index === 'number' ? { index } : {}),
+    };
+  }
+
+  private resolveRequestedBrowserRecordingStep(
+    runtimeSteps: Array<{
+      id: string;
+      name: string;
+      action: string;
+      target?: string;
+      args?: Record<string, unknown>;
+    }>,
+    requestedStep: { name?: string; index?: number },
+  ) {
+    if (requestedStep.name) {
+      const matchedByName = runtimeSteps.find((step) => step.name === requestedStep.name);
+      if (matchedByName) {
+        return matchedByName;
+      }
+    }
+
+    if (
+      typeof requestedStep.index === 'number'
+      && Number.isInteger(requestedStep.index)
+      && requestedStep.index > 0
+      && requestedStep.index <= runtimeSteps.length
+    ) {
+      return runtimeSteps[requestedStep.index - 1];
+    }
+
+    return null;
   }
 
   private resolveBrowserRecordingRuntimeValue(
@@ -5375,6 +5508,44 @@ ${logs.join('\n')}
       throw new BadRequestException(errorMessage);
     }
     return record as Record<string, unknown>;
+  }
+
+  private extractWorkflowActivityNameFromLog(log: string): string | null {
+    const match = log.match(/执行(?:浏览器 Phase |共享文档渲染 |共享 HTTP 请求 |共享结构化转换 )?Activity:\s*(.+?)\s*$/);
+    return match && typeof match[1] === 'string' && match[1].trim() ? match[1].trim() : null;
+  }
+
+  private async pushWorkflowActivityProgress(input: {
+    executionId: string;
+    parentPhaseKey: string;
+    runtimeSessionId?: string;
+    activityOrder: number;
+    activityName: string;
+    userId?: string;
+  }): Promise<void> {
+    const internalSecret = process.env.INTERNAL_API_SHARED_SECRET || process.env.JWT_SECRET;
+    if (!internalSecret) {
+      return;
+    }
+
+    await axios.post(
+      `${this.controlPlaneApiUrl}/executions/${input.executionId}/phases/progress`,
+      {
+        parentPhaseKey: input.parentPhaseKey,
+        activityOrder: input.activityOrder,
+        activityName: input.activityName,
+        runtimeSessionId: input.runtimeSessionId,
+      },
+      {
+        timeout: 10000,
+        headers: {
+          'x-internal-auth': internalSecret,
+          'x-user-id': input.userId || 'platform-runtime',
+          'x-user-role': 'admin',
+          'x-user-name': 'platform-runtime',
+        },
+      },
+    );
   }
 
   private parseJson<T = unknown>(value: unknown): T {

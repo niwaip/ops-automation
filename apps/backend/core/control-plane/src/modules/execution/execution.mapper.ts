@@ -3,6 +3,7 @@ import {
   ExecutionDto,
   ExecutionPhaseArtifactDto,
   ExecutionPhaseDto,
+  ExecutionPhaseStepDto,
   ExecutionStepDto,
   ExecutionTakeoverRecordDto,
 } from './execution.dto';
@@ -10,6 +11,127 @@ import { ApprovalStatus } from './contracts/approval-status';
 import { ExecutionStatus } from './contracts/execution-status';
 import { ExecutionStepStatus } from './contracts/execution-step-status';
 import type { ExecutionSemantic } from '@ops/contracts';
+
+const asRecord = (value: unknown): Record<string, unknown> | null => {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    return null;
+  }
+  return value as Record<string, unknown>;
+};
+
+const asRecordArray = (value: unknown): Record<string, unknown>[] => {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+  return value.filter((item): item is Record<string, unknown> => Boolean(item) && typeof item === 'object');
+};
+
+const asNonEmptyString = (...values: unknown[]): string | null => {
+  for (const value of values) {
+    if (typeof value === 'string' && value.trim()) {
+      return value.trim();
+    }
+  }
+  return null;
+};
+
+const normalizeDerivedStepStatus = (step: Record<string, unknown>): string => {
+  const status = asNonEmptyString(step.status);
+  if (status) {
+    const normalized = status.toLowerCase();
+    if (normalized === 'success') {
+      return 'completed';
+    }
+    if (normalized === 'error') {
+      return 'failed';
+    }
+    return normalized;
+  }
+  if (step.success === false) {
+    return 'failed';
+  }
+  return 'completed';
+};
+
+const derivePhaseStepsFromOutput = (
+  phase: Record<string, unknown>,
+): ExecutionPhaseStepDto[] => {
+  const output = asRecord(phase.output || phase.outputJson || phase.output_json);
+  const rawResult = asRecord(output?.rawResult);
+  const runtimeOutput = asRecord(rawResult?.output);
+  const phaseResults = asRecordArray(output?.phaseResults).length > 0
+    ? asRecordArray(output?.phaseResults)
+    : asRecordArray(runtimeOutput?.phaseResults);
+
+  if (phaseResults.length === 0) {
+    return [];
+  }
+
+  const phaseId = String(phase.id || '');
+  const fallbackCreatedAt = (
+    (phase.updatedAt || phase.updated_at || phase.createdAt || phase.created_at) as Date | undefined
+  ) || new Date(0);
+  const derivedSteps: ExecutionPhaseStepDto[] = [];
+
+  phaseResults.forEach((phaseResult, phaseIndex) => {
+    const resultBody = asRecord(phaseResult.result || phaseResult.output || phaseResult) || phaseResult;
+    const nestedResults = asRecordArray(resultBody.results);
+
+    const pushStep = (stepRecord: Record<string, unknown>, fallbackAction: string) => {
+      const input = asRecord(stepRecord.input || stepRecord.args || stepRecord.params) || undefined;
+      const outputRecord = asRecord(stepRecord.output || stepRecord.result || stepRecord.data || stepRecord) || undefined;
+      const snapshot = asRecord(stepRecord.snapshot);
+      const stepIndex = derivedSteps.length + 1;
+      derivedSteps.push({
+        id: `${phaseId}:derived:${stepIndex}`,
+        phaseId,
+        stepIndex,
+        stepId: asNonEmptyString(stepRecord.stepId, stepRecord.step_id, stepRecord.id) || undefined,
+        action: asNonEmptyString(
+          stepRecord.action,
+          stepRecord.command,
+          stepRecord.name,
+          fallbackAction,
+        ) || 'execute',
+        status: normalizeDerivedStepStatus(stepRecord),
+        input,
+        output: outputRecord,
+        errorMessage: asNonEmptyString(stepRecord.errorMessage, stepRecord.error_message, stepRecord.message) || undefined,
+        errorCode: asNonEmptyString(stepRecord.errorCode, stepRecord.error_code) || undefined,
+        snapshotId: asNonEmptyString(stepRecord.snapshotId, stepRecord.snapshot_id, snapshot?.id) || undefined,
+        createdAt: fallbackCreatedAt.toISOString(),
+      });
+    };
+
+    if (nestedResults.length > 0) {
+      nestedResults.forEach((nestedResult) => {
+        pushStep(
+          nestedResult,
+          asNonEmptyString(
+            nestedResult.command,
+            phaseResult.stepName,
+            phaseResult.activityName,
+            phaseResult.phaseName,
+            phaseResult.name,
+          ) || 'execute',
+        );
+      });
+      return;
+    }
+
+    pushStep(
+      resultBody,
+      asNonEmptyString(
+        phaseResult.stepName,
+        phaseResult.activityName,
+        phaseResult.phaseName,
+        phaseResult.name,
+      ) || `phase_${phaseIndex + 1}`,
+    );
+  });
+
+  return derivedSteps;
+};
 
 const asExecutionSemantic = (value: unknown): ExecutionSemantic | null => {
   if (!value || typeof value !== 'object' || Array.isArray(value)) {
@@ -128,6 +250,31 @@ export const mapExecutionTakeoverRecordToDto = (
   };
 };
 
+export const mapExecutionPhaseStepToDto = (
+  step: Record<string, unknown>,
+): ExecutionPhaseStepDto => {
+  return {
+    id: step.id as string,
+    phaseId: (step.phaseId || step.phase_id) as string,
+    stepIndex: (step.stepIndex || step.step_index) as number,
+    stepId: (step.stepId || step.step_id) as string | null,
+    action: step.action as string,
+    status: step.status as string,
+    input: (step.input || step.inputJson || step.input_json) as Record<string, unknown> | null,
+    output: (step.output || step.outputJson || step.output_json) as Record<string, unknown> | null,
+    errorMessage: (step.errorMessage || step.error_message) as string | null,
+    errorCode: (step.errorCode || step.error_code) as string | null,
+    snapshotId: (step.snapshotId || step.snapshot_id) as string | null,
+    startedAt: (step.startedAt || step.started_at)
+      ? ((step.startedAt || step.started_at) as Date).toISOString()
+      : null,
+    endedAt: (step.endedAt || step.ended_at)
+      ? ((step.endedAt || step.ended_at) as Date).toISOString()
+      : null,
+    createdAt: ((step.createdAt || step.created_at) as Date).toISOString(),
+  };
+};
+
 export const mapExecutionPhaseToDto = (
   phase: Record<string, unknown>,
 ): ExecutionPhaseDto => {
@@ -141,6 +288,14 @@ export const mapExecutionPhaseToDto = (
     : Array.isArray(phase.executionTakeovers)
       ? phase.executionTakeovers
       : [];
+  const rawSteps = Array.isArray(phase.steps)
+    ? phase.steps
+    : Array.isArray(phase.executionPhaseSteps)
+      ? phase.executionPhaseSteps
+      : [];
+  const mappedSteps = rawSteps.length > 0
+    ? rawSteps.map((step) => mapExecutionPhaseStepToDto(step as Record<string, unknown>))
+    : derivePhaseStepsFromOutput(phase);
 
   return {
     id: phase.id as string,
@@ -167,6 +322,7 @@ export const mapExecutionPhaseToDto = (
     createdAt: ((phase.createdAt || phase.created_at) as Date).toISOString(),
     updatedAt: ((phase.updatedAt || phase.updated_at) as Date).toISOString(),
     artifacts: rawArtifacts.map((artifact) => mapExecutionPhaseArtifactToDto(artifact as Record<string, unknown>)),
+    steps: mappedSteps,
     takeovers: rawTakeovers.map((takeover) => mapExecutionTakeoverRecordToDto(takeover as Record<string, unknown>)),
   };
 };

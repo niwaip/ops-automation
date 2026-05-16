@@ -29,9 +29,25 @@ export class RuntimeExecutionOrchestrator {
     request: RuntimePhaseInvokeRequest,
   ): Promise<RuntimePhaseInvokeResult> {
     const stepResults: RuntimeStepInvokeResult[] = [];
+    const initializedSessions = new Set<string>();
 
     for (const step of request.steps) {
-      const result = await this.executeStep(step);
+      const adapter = this.runtimeAdapterRegistry.resolve(step);
+      const runtimeSessionId = step.runtimeSessionId || undefined;
+      const adapterRouteKey = adapter.routeKeys?.[0] || `${step.runtimeType}:${step.capabilityType}`;
+      const sessionInitKey = runtimeSessionId ? `${adapterRouteKey}:${runtimeSessionId}` : null;
+
+      if (
+        runtimeSessionId
+        && adapter.initializeSession
+        && sessionInitKey
+        && !initializedSessions.has(sessionInitKey)
+      ) {
+        await adapter.initializeSession(runtimeSessionId);
+        initializedSessions.add(sessionInitKey);
+      }
+
+      const result = await adapter.invokeStep(step);
       stepResults.push(result);
 
       if (!result.success) {

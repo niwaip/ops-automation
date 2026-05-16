@@ -300,7 +300,7 @@ describe('TemporalWorkflowService', () => {
     expect(draft.workflowDsl.steps).toHaveLength(2);
     expect(draft.workflowDsl.steps).toEqual([
       expect.objectContaining({ name: '1. 页面打开' }),
-      expect.objectContaining({ name: '2. 页面处理' }),
+      expect.objectContaining({ name: '2. 页面迁移' }),
     ]);
     expect(draft.browserTemplate.commandCount).toBe(4);
     expect(draft.browserTemplate.placeholders).toEqual(expect.arrayContaining(['username', 'password']));
@@ -309,12 +309,28 @@ describe('TemporalWorkflowService', () => {
       handler: 'browser',
       name: '1. 页面打开',
     }));
-    expect((draft.activityDsl.activities[0].config as any).steps).toHaveLength(1);
+    expect((draft.activityDsl.activities[0].config as any).steps).toHaveLength(4);
+    expect((draft.activityDsl.activities[0].config as any).steps[1]).toEqual(
+      expect.objectContaining({
+        config: expect.objectContaining({
+          action: 'waitForSelector',
+          selector: '#username',
+        }),
+      }),
+    );
     expect((draft.activityDsl.activities[0].config as any).sessionLifecycle).toEqual({
       initializeSession: true,
       cleanupSession: false,
     });
-    expect((draft.activityDsl.activities[1].config as any).steps).toHaveLength(3);
+    expect((draft.activityDsl.activities[1].config as any).steps).toHaveLength(1);
+    expect((draft.activityDsl.activities[1].config as any).steps[0]).toEqual(
+      expect.objectContaining({
+        config: expect.objectContaining({
+          action: 'click',
+          selector: 'button[type=submit]',
+        }),
+      }),
+    );
     expect((draft.activityDsl.activities[1].config as any).sessionLifecycle).toEqual({
       initializeSession: false,
       cleanupSession: true,
@@ -376,7 +392,7 @@ describe('TemporalWorkflowService', () => {
         expect.stringContaining('executionPlan.commands'),
       ]),
     }));
-    expect((draft.activityDsl.activities[1].config as any).steps).toEqual(expect.arrayContaining([
+    expect((draft.activityDsl.activities[0].config as any).steps).toEqual(expect.arrayContaining([
       expect.objectContaining({
         config: expect.objectContaining({
           action: 'fill',
@@ -386,6 +402,15 @@ describe('TemporalWorkflowService', () => {
         }),
       }),
     ]));
+    expect((draft.activityDsl.activities[1].config as any).steps).toEqual([
+      expect.objectContaining({
+        config: expect.objectContaining({
+          action: 'click',
+          target: 'e20',
+          locator: expect.objectContaining({ type: 'ref', value: 'e20' }),
+        }),
+      }),
+    ]);
   });
 
   it('prefers original template steps over structured commands when splitting browser activity', async () => {
@@ -429,10 +454,9 @@ describe('TemporalWorkflowService', () => {
     });
 
     expect(draft.browserTemplate.commandCount).toBe(2);
-    expect(draft.workflowDsl.steps).toHaveLength(2);
+    expect(draft.workflowDsl.steps).toHaveLength(1);
     expect(draft.workflowDsl.steps).toEqual([
       expect.objectContaining({ name: '1. 页面打开' }),
-      expect.objectContaining({ name: '2. 页面处理' }),
     ]);
     expect(draft.workflowDsl.sourceContext).toEqual(expect.objectContaining({
       sourceType: 'browser_template',
@@ -450,6 +474,7 @@ describe('TemporalWorkflowService', () => {
         description: '登录用户名',
       }),
     }));
+    expect(draft.activityDsl.activities).toHaveLength(1);
     expect((draft.activityDsl.activities[0].config as any).steps).toEqual([
       expect.objectContaining({
         config: expect.objectContaining({
@@ -457,8 +482,6 @@ describe('TemporalWorkflowService', () => {
           url: 'http://192.168.100.143:5173/api/sessions/demo/start',
         }),
       }),
-    ]);
-    expect((draft.activityDsl.activities[1].config as any).steps).toEqual([
       expect.objectContaining({
         config: expect.objectContaining({
           action: 'fill',
@@ -467,6 +490,118 @@ describe('TemporalWorkflowService', () => {
           value: '${username}',
         }),
       }),
+    ]);
+  });
+
+  it('keeps navigate and fill in the same activity and splits when click changes page structure', async () => {
+    const { service } = createService();
+
+    const draft = await service.generateBrowserWorkflowDraft({
+      templateId: 'tpl-browser-activity-boundary',
+      name: '页面结构变化切分',
+      templateSteps: [
+        {
+          step_id: 'step_1',
+          action: 'navigate',
+          params: { url: '${startUrl}' },
+        },
+        {
+          step_id: 'step_2',
+          action: 'wait',
+          params: { duration: 1000 },
+        },
+        {
+          step_id: 'step_3',
+          action: 'screenshot',
+          params: {},
+        },
+        {
+          step_id: 'step_4',
+          action: 'waitForSelector',
+          params: { selector: 'textbox[name="Enter username"]', timeoutMs: 15000 },
+        },
+        {
+          step_id: 'step_5',
+          action: 'fill',
+          locator: { type: 'ref', value: 'e_user' },
+          params: { value: '${username}' },
+        },
+        {
+          step_id: 'step_6',
+          action: 'wait',
+          params: { duration: 1000 },
+        },
+        {
+          step_id: 'step_7',
+          action: 'screenshot',
+          params: {},
+        },
+        {
+          step_id: 'step_8',
+          action: 'fill',
+          locator: { type: 'ref', value: 'e_password' },
+          params: { value: '${password}' },
+        },
+        {
+          step_id: 'step_9',
+          action: 'wait',
+          params: { duration: 1000 },
+        },
+        {
+          step_id: 'step_10',
+          action: 'screenshot',
+          params: {},
+        },
+        {
+          step_id: 'step_11',
+          action: 'click',
+          locator: { type: 'ref', value: 'e_submit' },
+          params: {},
+        },
+        {
+          step_id: 'step_12',
+          action: 'wait',
+          params: { duration: 1000 },
+        },
+        {
+          step_id: 'step_13',
+          action: 'screenshot',
+          params: {},
+        },
+      ],
+      paramsSchema: {
+        type: 'object',
+        properties: {
+          startUrl: { type: 'string' },
+          username: { type: 'string' },
+          password: { type: 'string' },
+        },
+        required: ['startUrl', 'username', 'password'],
+      },
+    });
+
+    expect(draft.workflowDsl.steps).toHaveLength(2);
+    expect(draft.workflowDsl.steps).toEqual([
+      expect.objectContaining({ name: '1. 页面打开' }),
+      expect.objectContaining({ name: '2. 页面迁移' }),
+    ]);
+    expect(draft.activityDsl.activities).toHaveLength(2);
+    expect((draft.activityDsl.activities[0].config as any).steps.map((step: any) => step.config.action)).toEqual([
+      'navigate',
+      'wait',
+      'screenshot',
+      'waitForSelector',
+      'fill',
+      'wait',
+      'screenshot',
+      'fill',
+      'wait',
+      'screenshot',
+    ]);
+    expect((draft.activityDsl.activities[1].config as any).steps.map((step: any) => step.config.action)).toEqual([
+      'click',
+      'wait',
+      'screenshot',
     ]);
   });
 
@@ -631,6 +766,12 @@ describe('TemporalWorkflowService', () => {
     expect(result.code).toContain('artifact_path = data.get("path") or data.get("screenshotPath")');
     expect(result.code).toContain('"artifacts": artifact_refs');
     expect(result.code).toContain('phase_results.append({');
+    expect(result.code).toContain('"includeSteps": True');
+    expect(result.code).toContain('requires_takeover = _should_require_takeover');
+    expect(result.code).toContain('preserve_session = False');
+    expect(result.code).toContain('if requires_takeover:');
+    expect(result.code).toContain('preserve_session = True');
+    expect(result.code).toContain('if cleanup_session and not preserve_session:');
   });
 
   it('generates deterministic code for builtin httpRequest with step-level config', async () => {

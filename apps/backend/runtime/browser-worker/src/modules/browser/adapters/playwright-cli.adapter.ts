@@ -601,11 +601,17 @@ export class PlaywrightCliAdapter implements BrowserExecutionAdapter {
   ): Promise<CliActionResult> {
     await this.ensureSessionReady(sessionId);
 
-    const selector = this.readOptionalStringParam(params, ['target', 'selector']);
+    const selector = this.normalizeSemanticRoleSelector(
+      this.readOptionalStringParam(params, ['target', 'selector']) || '',
+    ) || undefined;
     const duration = this.readOptionalNumberParam(params, ['duration']) ?? 1000;
 
     const script = selector
-      ? `async page => { await page.waitForSelector(${JSON.stringify(selector)}, { timeout: ${duration} }); return "selector-ready"; }`
+      ? `async page => {
+          const activePage = page;
+          await activePage.locator(${JSON.stringify(selector)}).first().waitFor({ timeout: ${duration} });
+          return "selector-ready";
+        }`
       : `async page => { await page.waitForTimeout(${duration}); return "waited-${duration}"; }`;
 
     const result = await this.execCli(sessionId, ['run-code', script]);

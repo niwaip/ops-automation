@@ -4,9 +4,9 @@
  * NIW-142: Portal TakeoverWorkbenchPage (Phase 3.3)
  */
 
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
-import { Card, Button, Space, Typography, message, Spin, Alert, Descriptions, Modal } from 'antd';
+import { Card, Button, Space, Typography, message, Spin, Alert, Descriptions, Modal, Radio, Select, Input, Form, Divider } from 'antd';
 import {
   ArrowLeftOutlined,
   PlayCircleOutlined,
@@ -16,9 +16,40 @@ import {
 } from '@ant-design/icons';
 import { useQuery, useMutation, useQueryClient } from 'react-query';
 import { executionApi, ExecutionDto } from '../api/execution';
+import { runtimeSessionApi, RuntimeSessionDto } from '../api/runtimeSession';
 import { runtimeConfig } from '../config/runtime';
+import LiveSessionPreviewCard from '../components/runtime/LiveSessionPreviewCard';
 
 const { Title, Text, Paragraph } = Typography;
+
+const isLiveRuntimeSessionState = (state?: string): boolean => state === 'busy' || state === 'ready' || state === 'frozen';
+const isPreviewRuntimeSessionState = (state?: string): boolean =>
+  state === 'allocating' || isLiveRuntimeSessionState(state);
+
+const getRuntimeSessionNovncUrl = (runtimeSession?: RuntimeSessionDto): string | undefined => {
+  return typeof runtimeSession?.connectionInfo?.novnc === 'string'
+    ? runtimeSession.connectionInfo.novnc
+    : undefined;
+};
+
+const getRuntimeSessionStatusLabel = (state?: string): string => {
+  if (state === 'frozen') {
+    return '人工接管';
+  }
+  if (state === 'ready') {
+    return '已就绪';
+  }
+  if (state === 'busy') {
+    return '执行中';
+  }
+  if (state === 'closed') {
+    return '已关闭';
+  }
+  if (state === 'error') {
+    return '异常';
+  }
+  return '未知';
+};
 
 const TakeoverWorkbenchPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -29,6 +60,11 @@ const TakeoverWorkbenchPage: React.FC = () => {
 
   const [showResumeConfirm, setShowResumeConfirm] = useState(false);
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
+
+  const [resumeAction, setResumeAction] = useState<'retry' | 'resume_from_step' | 'resolve_by_human'>('retry');
+  const [resumeFromStepId, setResumeFromStepId] = useState<string | undefined>(undefined);
+  const [patchNote, setPatchNote] = useState<string>('');
+  const [patchInputValues, setPatchInputValues] = useState<string>('{}');
 
   // Fetch execution details
   const { data: execution, isLoading: isLoadingExecution, error: errorExecution } = useQuery<ExecutionDto, Error>(
@@ -41,6 +77,18 @@ const TakeoverWorkbenchPage: React.FC = () => {
     () => execution?.phases?.find((phase) => phase.phaseKey === phaseKey),
     [execution?.phases, phaseKey],
   );
+
+  const executionRuntimeSessionId = execution?.runtimeSessionId;
+  const { data: runtimeSession } = useQuery(
+    ['runtime-session', executionRuntimeSessionId],
+    () => runtimeSessionApi.getById(executionRuntimeSessionId!),
+    {
+      enabled: !!executionRuntimeSessionId,
+      refetchInterval: execution?.status === 'human_control' ? 5000 : false,
+    },
+  );
+
+  const lastKnownNovncUrlRef = useRef<string | undefined>(undefined);
 
   // Resume mutation
   const resumeMutation = useMutation(
@@ -62,14 +110,46 @@ const TakeoverWorkbenchPage: React.FC = () => {
   );
 
   const reconcileMutation = useMutation(
-    () => (
-      phaseKey
-        ? executionApi.reconcilePhaseTakeover(id!, phaseKey, {})
-        : executionApi.getById(id!)
-    ),
+    () => {
+      if (!phaseKey || !id) return Promise.resolve(null);
+      
+      let patch = null;
+      if (resumeAction === 'resume_from_step' && resumeFromStepId) {
+        patch = {
+          type: 'resolve_by_human',
+          failedStepId: execution?.currentStepId || '',
+          resumeFromStepId: resumeFromStepId,
+          note: patchNote || 'Resumed from specific step by human',
+        };
+      } else if (resumeAction === 'resolve_by_human') {
+        patch = {
+          type: 'resolve_by_human',
+          failedStepId: execution?.currentStepId || '',
+          note: patchNote || 'Marked as resolved by human',
+        };
+      } else if (patchInputValues && patchInputValues !== '{}') {
+        try {
+          const inputValues = JSON.parse(patchInputValues);
+          patch = {
+            type: 'replace_input_value',
+            failedStepId: execution?.currentStepId || '',
+            inputValues,
+            note: patchNote || 'Applied manual input patches',
+          };
+        } catch (e) {
+          message.error('Invalid JSON in input patches');
+          return Promise.reject(new Error('Invalid JSON'));
+        }
+      }
+
+      return executionApi.reconcilePhaseTakeover(id, phaseKey, {
+        comment: patchNote,
+        patch,
+      });
+    },
     {
       onSuccess: () => {
-        message.success(phaseKey ? 'Phase marked resumable' : 'Execution refreshed');
+        message.success(phaseKey ? 'Phase reconciled with patches' : 'Execution refreshed');
         queryClient.invalidateQueries(['execution', id]);
       },
       onError: (error: Error) => {
@@ -103,6 +183,14 @@ const TakeoverWorkbenchPage: React.FC = () => {
     cancelMutation.mutate();
   };
 
+  const runtimeSessionNovncUrl = getRuntimeSessionNovncUrl(runtimeSession);
+
+  useEffect(() => {
+    if (runtimeSessionNovncUrl) {
+      lastKnownNovncUrlRef.current = runtimeSessionNovncUrl;
+    }
+  }, [runtimeSessionNovncUrl]);
+
   if (isLoadingExecution) {
     return (
       <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
@@ -129,7 +217,14 @@ const TakeoverWorkbenchPage: React.FC = () => {
     );
   }
 
-  if (execution.status !== 'human_control') {
+  const shouldKeepWorkbenchVisible = execution.status === 'human_control'
+    || execution.takeoverRequired === true
+    || selectedPhase?.status === 'waiting_takeover'
+    || selectedPhase?.status === 'resumable'
+    || runtimeSession?.state === 'frozen'
+    || runtimeSession?.controlMode === 'human';
+
+  if (!shouldKeepWorkbenchVisible) {
     return (
       <div style={{ padding: 24 }}>
         <Alert
@@ -147,11 +242,13 @@ const TakeoverWorkbenchPage: React.FC = () => {
     );
   }
 
-  // v3 Phase 1 still falls back to a shared noVNC entry until RuntimeSession details
-  // are surfaced through a dedicated execution/runtime query.
   const novncUrl =
+    runtimeSessionNovncUrl ||
+    lastKnownNovncUrlRef.current ||
     (execution.result?.novncUrl as string | undefined) ||
     runtimeConfig.noVncUrl;
+  const shouldShowLivePreview = Boolean(novncUrl)
+    && (isPreviewRuntimeSessionState(runtimeSession?.state) || shouldKeepWorkbenchVisible);
 
   return (
     <div style={{ padding: 24 }}>
@@ -192,26 +289,32 @@ const TakeoverWorkbenchPage: React.FC = () => {
 
       {/* Main Content */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 350px', gap: 24 }}>
-        {/* noVNC Iframe */}
-        <Card
-          title="Browser View"
-          extra={
-            <Button icon={<ReloadOutlined />} onClick={() => window.location.reload()}>
-              Refresh
-            </Button>
-          }
-        >
-          <div style={{ background: '#000', height: '600px', borderRadius: 8, overflow: 'hidden' }}>
-            <iframe
-              src={novncUrl}
-              width="100%"
-              height="100%"
-              style={{ border: 'none' }}
-              title="Browser Takeover"
-              allow="fullscreen"
+        {shouldShowLivePreview ? (
+          <LiveSessionPreviewCard
+            novncUrl={novncUrl}
+            title="当前浏览器会话"
+            statusLabel={getRuntimeSessionStatusLabel(runtimeSession?.state)}
+            height={600}
+          />
+        ) : (
+          <Card
+            title="Browser View"
+            extra={
+              <Button icon={<ReloadOutlined />} onClick={() => window.location.reload()}>
+                Refresh
+              </Button>
+            }
+          >
+            <Alert
+              type="warning"
+              showIcon
+              message="当前会话画面不可用"
+              description={executionRuntimeSessionId
+                ? `已找到运行会话 ${executionRuntimeSessionId}，但尚未拿到可用的 noVNC 连接信息。`
+                : '当前 execution 没有关联的 runtime session。'}
             />
-          </div>
-        </Card>
+          </Card>
+        )}
 
         {/* Control Panel */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
@@ -222,10 +325,25 @@ const TakeoverWorkbenchPage: React.FC = () => {
                 <Text strong style={{ color: 'orange' }}>{execution.status.toUpperCase()}</Text>
               </Descriptions.Item>
               <Descriptions.Item label="Skill ID">{execution.skillId}</Descriptions.Item>
+              <Descriptions.Item label="Runtime Session">
+                {executionRuntimeSessionId ? (
+                  <Text copyable={{ text: executionRuntimeSessionId }}>{executionRuntimeSessionId}</Text>
+                ) : (
+                  <Text type="secondary">Unavailable</Text>
+                )}
+              </Descriptions.Item>
+              <Descriptions.Item label="Session State">
+                <Text>{getRuntimeSessionStatusLabel(runtimeSession?.state)}</Text>
+              </Descriptions.Item>
               <Descriptions.Item label="Created At">
                 {new Date(execution.createdAt).toLocaleString()}
               </Descriptions.Item>
               <Descriptions.Item label="Runtime Type">{execution.runtimeType}</Descriptions.Item>
+              {runtimeSession?.freezeReason ? (
+                <Descriptions.Item label="Freeze Reason">
+                  <Text type="secondary">{runtimeSession.freezeReason}</Text>
+                </Descriptions.Item>
+              ) : null}
               {selectedPhase ? (
                 <>
                   <Descriptions.Item label="Phase">{selectedPhase.phaseName || selectedPhase.phaseKey}</Descriptions.Item>
@@ -235,26 +353,83 @@ const TakeoverWorkbenchPage: React.FC = () => {
             </Descriptions>
           </Card>
 
+          {/* Recovery Options */}
+          <Card title="Recovery Options" size="small">
+            <Form layout="vertical">
+              <Form.Item label="Resume Action">
+                <Radio.Group 
+                  value={resumeAction} 
+                  onChange={(e) => setResumeAction(e.target.value)}
+                  style={{ width: '100%' }}
+                >
+                  <Space direction="vertical">
+                    <Radio value="retry">Retry Phase (from start)</Radio>
+                    <Radio value="resume_from_step">Resume from Specific Step</Radio>
+                    <Radio value="resolve_by_human">Mark as Human Resolved</Radio>
+                  </Space>
+                </Radio.Group>
+              </Form.Item>
+
+              {resumeAction === 'resume_from_step' && (
+                <Form.Item label="Resume From Step">
+                  <Select
+                    placeholder="Select step to resume from"
+                    value={resumeFromStepId}
+                    onChange={setResumeFromStepId}
+                  >
+                    {selectedPhase?.steps?.map(step => (
+                      <Select.Option key={step.id} value={step.stepId || step.id}>
+                        {`${step.stepIndex}. ${step.action} (${step.status})`}
+                      </Select.Option>
+                    ))}
+                  </Select>
+                </Form.Item>
+              )}
+
+              <Divider style={{ margin: '12px 0' }} />
+              
+              <Form.Item label="Input Patches (JSON)">
+                <Input.TextArea
+                  placeholder='{"selector": "#new-id", "value": "new-value"}'
+                  value={patchInputValues}
+                  onChange={(e) => setPatchInputValues(e.target.value)}
+                  rows={3}
+                />
+              </Form.Item>
+
+              <Form.Item label="Resolution Note">
+                <Input.TextArea
+                  placeholder="Explain what was fixed..."
+                  value={patchNote}
+                  onChange={(e) => setPatchNote(e.target.value)}
+                  rows={2}
+                />
+              </Form.Item>
+            </Form>
+          </Card>
+
           {/* Control Buttons */}
           <Card title="Controls" size="small">
             <Space direction="vertical" style={{ width: '100%' }} size="middle">
               <Button
+                type={selectedPhase?.status === 'waiting_takeover' ? 'primary' : 'default'}
                 icon={<ReloadOutlined />}
                 size="large"
                 block
                 onClick={() => reconcileMutation.mutate()}
                 loading={reconcileMutation.isLoading}
-                disabled={!phaseKey}
+                disabled={!phaseKey || selectedPhase?.status === 'resumable'}
               >
-                Mark Phase Reconciled
+                {selectedPhase?.status === 'resumable' ? 'Phase Reconciled' : 'Apply Recovery Options'}
               </Button>
               <Button
-                type="primary"
+                type={selectedPhase?.status === 'resumable' ? 'primary' : 'default'}
                 icon={<PlayCircleOutlined />}
                 size="large"
                 block
                 onClick={() => setShowResumeConfirm(true)}
                 loading={resumeMutation.isLoading}
+                disabled={selectedPhase?.status === 'waiting_takeover'}
               >
                 Resume Execution
               </Button>
@@ -280,7 +455,8 @@ const TakeoverWorkbenchPage: React.FC = () => {
               <ul style={{ marginTop: 8, paddingLeft: 20 }}>
                 <li>Interact with the browser directly through noVNC</li>
                 <li>Fill in forms or navigate as needed</li>
-                <li>Click "Resume Execution" when finished to let the AI continue</li>
+                <li>Click "Apply Recovery Options" after manual fixes to mark the phase resumable</li>
+                <li>Click "Resume Execution" when the phase becomes resumable to let the AI continue</li>
                 <li>Click "Cancel Execution" to abort the execution</li>
               </ul>
             </Paragraph>

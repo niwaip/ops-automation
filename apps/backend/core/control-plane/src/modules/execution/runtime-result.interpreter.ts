@@ -185,8 +185,21 @@ export class RuntimeResultInterpreter {
         stepId: context.stepId,
         result: output,
         error: result.errorMessage,
+        shouldTakeover: Boolean(result.requiresTakeover || result.status === 'takeover_required'),
       },
     );
+
+    if (result.status === 'takeover_required' || result.requiresTakeover) {
+      if (context.takeover) {
+        await context.takeover(result.takeoverReason || result.errorMessage || 'Skill runtime requested human takeover');
+        return;
+      }
+      await context.failExecution(
+        result.errorMessage || 'Skill runtime requested human takeover without handler',
+        result.errorCode || 'CAPABILITY_RUNTIME_TAKEOVER_UNHANDLED',
+      );
+      return;
+    }
 
     if (result.success) {
       await this.persistSkillRuntimeSuccess(context.executionId, output, rawResult.usage);
