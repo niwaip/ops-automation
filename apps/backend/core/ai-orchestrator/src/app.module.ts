@@ -9,6 +9,7 @@ import { RedisModule } from './modules/redis/redis.module';
 import { PrismaModule } from './modules/prisma/prisma.module';
 import { ControlPlaneClientModule } from './client/control-plane-client.module';
 import { PlannerModule } from './modules/planner/planner.module';
+import { BrowserPhaseRecoveryModule } from './modules/browser-phase-recovery/browser-phase-recovery.module';
 import { ModelController } from './controllers/model.controller';
 import { ChatController } from './controllers/chat.controller';
 import { OrchestrationController } from './controllers/orchestration.controller';
@@ -26,6 +27,7 @@ import { DebugSettingsModule } from './modules/debug-settings/debug-settings.mod
     ReActEngineModule,
     RedisModule,
     PlannerModule,
+    BrowserPhaseRecoveryModule,
     DebugSettingsModule,
   ],
   controllers: [ModelController, ChatController, OrchestrationController],

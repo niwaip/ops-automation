@@ -226,9 +226,12 @@ model Execution {
   failureReason       String?           @map("failure_reason") @db.Text
   failureCode         String?           @map("failure_code") @db.VarChar(50)
   currentStepId       String?           @map("current_step_id") @db.Uuid
+  currentPhaseKey     String?           @map("current_phase_key") @db.VarChar(255)
+  currentPhaseStatus  String?           @map("current_phase_status") @db.VarChar(50)
   requiresApproval    Boolean           @default(false) @map("requires_approval")
   approvalStatus      String?           @map("approval_status") @db.VarChar(50)
   takeoverRequired    Boolean           @default(false) @map("takeover_required")
+  takeoverStatus      String?           @map("takeover_status") @db.VarChar(50)
   takeoverReason      String?           @map("takeover_reason") @db.Text
   startedAt           DateTime?         @map("started_at") @db.Timestamptz
   endedAt             DateTime?         @map("ended_at") @db.Timestamptz
@@ -236,6 +239,8 @@ model Execution {
   updatedAt           DateTime          @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
 
   // Relations
+  takeovers           ExecutionTakeover[]
+  phases              ExecutionPhase[]
   steps               ExecutionStep[]
   runtimeSessions     RuntimeSession[]
   events              ExecutionEvent[]
@@ -244,6 +249,80 @@ model Execution {
   @@index([skillId, createdAt(sort: Desc)])
   @@index([status, createdAt(sort: Desc)])
   @@map("executions")
+}
+
+// ExecutionPhase - Phase-level execution boundary for browser/document workflows
+model ExecutionPhase {
+  id                   String                    @id @default(uuid()) @db.Uuid
+  executionId          String                    @map("execution_id") @db.Uuid
+  phaseKey             String                    @map("phase_key") @db.VarChar(255)
+  phaseName            String                    @map("phase_name") @db.VarChar(255)
+  phaseType            String                    @map("phase_type") @db.VarChar(100)
+  status               String                    @db.VarChar(50)
+  attempt              Int                       @default(0)
+  runtimeSessionId     String?                   @map("runtime_session_id") @db.Uuid
+  inputJson            Json?                     @map("input_json")
+  outputJson           Json?                     @map("output_json")
+  precheckJson         Json?                     @map("precheck_json")
+  postcheckJson        Json?                     @map("postcheck_json")
+  recoveryDecisionJson Json?                     @map("recovery_decision_json")
+  errorCode            String?                   @map("error_code") @db.VarChar(50)
+  errorMessage         String?                   @map("error_message") @db.Text
+  startedAt            DateTime?                 @map("started_at") @db.Timestamptz
+  completedAt          DateTime?                 @map("completed_at") @db.Timestamptz
+  createdAt            DateTime                  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt            DateTime                  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  // Relations
+  execution            Execution                 @relation(fields: [executionId], references: [id], onDelete: Cascade)
+  artifacts            ExecutionPhaseArtifact[]
+  takeovers            ExecutionTakeover[]
+
+  @@unique([executionId, phaseKey])
+  @@index([executionId, status])
+  @@index([runtimeSessionId])
+  @@map("execution_phases")
+}
+
+// ExecutionPhaseArtifact - Evidence and page/runtime artifacts for each phase
+model ExecutionPhaseArtifact {
+  id                String         @id @default(uuid()) @db.Uuid
+  phaseId           String         @map("phase_id") @db.Uuid
+  artifactType      String         @map("artifact_type") @db.VarChar(50)
+  snapshotId        String?        @map("snapshot_id") @db.VarChar(255)
+  pageUrl           String?        @map("page_url") @db.Text
+  pageFingerprint   String?        @map("page_fingerprint") @db.VarChar(255)
+  payloadJson       Json?          @map("payload_json")
+  createdAt         DateTime       @default(now()) @map("created_at") @db.Timestamptz
+
+  // Relations
+  phase             ExecutionPhase @relation(fields: [phaseId], references: [id], onDelete: Cascade)
+
+  @@index([phaseId, artifactType])
+  @@map("execution_phase_artifacts")
+}
+
+// ExecutionTakeover - Human takeover records scoped to an execution phase
+model ExecutionTakeover {
+  id                String         @id @default(uuid()) @db.Uuid
+  executionId       String         @map("execution_id") @db.Uuid
+  phaseId           String         @map("phase_id") @db.Uuid
+  runtimeSessionId  String?        @map("runtime_session_id") @db.Uuid
+  status            String         @db.VarChar(50)
+  reason            String?        @db.Text
+  requestedBy       String?        @map("requested_by") @db.Uuid
+  resolvedBy        String?        @map("resolved_by") @db.Uuid
+  resolutionNote    String?        @map("resolution_note") @db.Text
+  createdAt         DateTime       @default(now()) @map("created_at") @db.Timestamptz
+  resolvedAt        DateTime?      @map("resolved_at") @db.Timestamptz
+
+  // Relations
+  execution         Execution      @relation(fields: [executionId], references: [id], onDelete: Cascade)
+  phase             ExecutionPhase @relation(fields: [phaseId], references: [id], onDelete: Cascade)
+
+  @@index([executionId, status])
+  @@index([phaseId])
+  @@map("execution_takeovers")
 }
 
 // RuntimeSession - Runtime resource session (resource truth source)

@@ -21,6 +21,14 @@ interface LegacyBrowserExecuteStepResult {
   success: boolean;
   snapshotId?: string;
   output?: Record<string, unknown>;
+  pageState?: {
+    runtimeSessionId: string;
+    pageUrl?: string;
+    pageTitle?: string;
+    pageFingerprint?: string;
+    readyState?: string;
+    observedAt?: string;
+  };
   errorCode?: string;
   errorMessage?: string;
   shouldTakeover: boolean;
@@ -31,6 +39,21 @@ interface BrowserSessionPreferencesPayload {
   mode?: 'interactive' | 'agent';
   enableCodegen?: boolean;
   headless?: boolean;
+}
+
+interface BrowserPageStateResponse {
+  runtimeSessionId: string;
+  pageUrl?: string;
+  pageTitle?: string;
+  pageFingerprint?: string;
+  readyState?: string;
+  observedAt?: string;
+}
+
+interface BrowserPageAssertionResponse {
+  matched: boolean;
+  pageState: BrowserPageStateResponse;
+  details?: Record<string, unknown>;
 }
 
 @Injectable()
@@ -99,7 +122,12 @@ export class BrowserRuntimeAdapter implements RuntimeAdapter {
         : legacyResult.success
           ? 'completed'
           : 'failed',
-      output: legacyResult.output,
+      output: {
+        ...(legacyResult.output || {}),
+        pageUrl: legacyResult.pageState?.pageUrl || legacyResult.output?.pageUrl || null,
+        pageTitle: legacyResult.pageState?.pageTitle || legacyResult.output?.pageTitle || null,
+        pageFingerprint: legacyResult.pageState?.pageFingerprint || legacyResult.output?.pageFingerprint || null,
+      },
       errorCode: legacyResult.errorCode,
       errorMessage: legacyResult.errorMessage,
       requiresTakeover,
@@ -108,9 +136,62 @@ export class BrowserRuntimeAdapter implements RuntimeAdapter {
         ? {
             id: legacyResult.snapshotId,
             type: 'browser',
+            url: legacyResult.pageState?.pageUrl || undefined,
+            metadata: legacyResult.pageState
+              ? {
+                  pageTitle: legacyResult.pageState.pageTitle || null,
+                  pageFingerprint: legacyResult.pageState.pageFingerprint || null,
+                  readyState: legacyResult.pageState.readyState || null,
+                  observedAt: legacyResult.pageState.observedAt || null,
+                }
+              : undefined,
           }
         : null,
       rawResult: legacyResult as unknown as Record<string, unknown>,
     };
+  }
+
+  async inspectState(input: {
+    runtimeSessionId: string;
+    backend?: 'cli' | 'chrome-devtools';
+  }): Promise<BrowserPageStateResponse> {
+    const response = await axios.post<BrowserPageStateResponse>(
+      `${this.browserWorkerUrl}/browser/inspect-state`,
+      {
+        runtimeSessionId: input.runtimeSessionId,
+        backend: input.backend || 'cli',
+      },
+    );
+    return response.data;
+  }
+
+  async assertState(input: {
+    runtimeSessionId: string;
+    backend?: 'cli' | 'chrome-devtools';
+    pageUrl?: string;
+    pageUrlIncludes?: string;
+    pageTitle?: string;
+    pageTitleIncludes?: string;
+    pageFingerprint?: string;
+    readyState?: string;
+    selectorExists?: string;
+    textIncludes?: string;
+  }): Promise<BrowserPageAssertionResponse> {
+    const response = await axios.post<BrowserPageAssertionResponse>(
+      `${this.browserWorkerUrl}/browser/assert-state`,
+      {
+        runtimeSessionId: input.runtimeSessionId,
+        backend: input.backend || 'cli',
+        pageUrl: input.pageUrl,
+        pageUrlIncludes: input.pageUrlIncludes,
+        pageTitle: input.pageTitle,
+        pageTitleIncludes: input.pageTitleIncludes,
+        pageFingerprint: input.pageFingerprint,
+        readyState: input.readyState,
+        selectorExists: input.selectorExists,
+        textIncludes: input.textIncludes,
+      },
+    );
+    return response.data;
   }
 }

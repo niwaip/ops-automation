@@ -1,6 +1,7 @@
 import apiClient, { ensureFreshAccessToken } from './client';
 import { useAuthStore } from '../store/authStore';
 import { postSseStream } from './streaming';
+import type { TemplateParamsSchema, TemplateStep } from './template';
 
 export interface WorkflowSignalHandler {
   name: string;
@@ -262,6 +263,9 @@ export interface BrowserDraftCommandInput {
 export interface GenerateBrowserDraftDTO {
   script?: string;
   commands?: BrowserDraftCommandInput[];
+  templateId?: string;
+  templateSteps?: TemplateStep[];
+  paramsSchema?: TemplateParamsSchema;
   name?: string;
   description?: string;
   inputParams?: Record<string, WorkflowInputParamDefinition>;
@@ -368,16 +372,16 @@ export const temporalWorkflowApi = {
     });
   },
 
-  validateWorkflowReal: async (code: string, fn: string, input?: Record<string, any>, taskQueue?: string): Promise<WorkflowRealValidationResult> => {
-    return apiClient.post<WorkflowRealValidationResult>('/temporal/validate-code', { code, fn, input, taskQueue });
+  validateWorkflowReal: async (code: string, fn: string, input?: Record<string, any>, taskQueue?: string, timeout?: string): Promise<WorkflowRealValidationResult> => {
+    return apiClient.post<WorkflowRealValidationResult>('/temporal/validate-code', { code, fn, input, taskQueue, timeout });
   },
 
   // SSE streaming real validation with the workflow test worker
-  validateWorkflowRealStream: async (code: string, fn: string, input: Record<string, any>, taskQueue: string | undefined, onEvent: (event: { type: string; content?: string; result?: any; error?: string; success?: boolean; score?: number }) => void): Promise<void> => {
+  validateWorkflowRealStream: async (code: string, fn: string, input: Record<string, any>, taskQueue: string | undefined, onEvent: (event: { type: string; content?: string; result?: any; error?: string; success?: boolean; score?: number }) => void, timeout?: string): Promise<void> => {
     const token = await ensureFreshAccessToken() || useAuthStore.getState().accessToken;
     return postSseStream({
       url: '/api/temporal/validate-code/stream',
-      payload: { code, fn, input, taskQueue },
+      payload: { code, fn, input, taskQueue, timeout },
       token,
       requireDoneEvent: true,
       onEvent: onEvent as (event: { type: string; [key: string]: unknown }) => void,

@@ -29,6 +29,8 @@ import {
   Tooltip,
   Image,
   Carousel,
+  Modal,
+  DatePicker,
 } from 'antd';
 import {
   SearchOutlined,
@@ -42,16 +44,20 @@ import {
   InfoCircleOutlined,
   DownOutlined,
   RightOutlined,
+  DeleteOutlined,
 } from '@ant-design/icons';
 import { useMutation, useQuery, useQueryClient } from 'react-query';
-import { executionApi, ExecutionDto, ExecutionStatus, ExecutionStepDto } from '../api/execution';
+import { executionApi, ExecutionDto, ExecutionPhaseDto, ExecutionStatus, ExecutionStepDto } from '../api/execution';
+import { runtimeSessionApi, RuntimeSessionDto } from '../api/runtimeSession';
 import { skillApi } from '../api/skill';
 import { capabilityReleaseApi } from '../api/capabilities';
 import { useChatStore } from '../components/chat';
 import { ListSectionHeader } from '../components/page/PageScaffold';
+import LiveSessionPreviewCard from '../components/runtime/LiveSessionPreviewCard';
 import { useAuthStore } from '../store/authStore';
 import { replaceLocalhostWithCurrentHost } from '../utils/publicUrl';
 import {
+  EXECUTION_ACTIVE_POLLING_STATUSES,
   EXECUTION_STATUS_COLORS,
   EXECUTION_STATUS_LABELS_ZH,
 } from '../utils/executionStatusMeta';
@@ -59,10 +65,31 @@ import {
   buildWaitingInputDisplayGroups,
   resolveWaitingInputDisplayLabel,
 } from '../utils/waitingInputDisplay';
+import dayjs, { Dayjs } from 'dayjs';
 
 const { Text } = Typography;
 const statusColors = EXECUTION_STATUS_COLORS;
 const statusLabels = EXECUTION_STATUS_LABELS_ZH;
+const getPhaseStatusColor = (status?: string) => {
+  switch (status) {
+    case 'completed':
+      return 'green';
+    case 'running':
+      return 'blue';
+    case 'retrying':
+      return 'gold';
+    case 'waiting_takeover':
+      return 'orange';
+    case 'resumable':
+      return 'cyan';
+    case 'failed':
+      return 'red';
+    case 'aborted':
+      return 'default';
+    default:
+      return 'default';
+  }
+};
 const EXECUTION_STATUS_FILTER_OPTIONS: Array<{ value?: ExecutionStatus; label: string }> = [
   { value: undefined, label: '全部状态' },
   { value: 'running', label: '执行中' },
@@ -357,6 +384,27 @@ const getExecutionRowStyle = (status: ExecutionStatus, isDarkTheme: boolean) => 
     default:
       return { background: 'var(--bg-card)' };
   }
+};
+
+const isLiveRuntimeSessionState = (state?: string): boolean => state === 'busy' || state === 'ready' || state === 'frozen';
+
+const getRuntimeSessionNovncUrl = (runtimeSession?: RuntimeSessionDto): string | undefined => {
+  return typeof runtimeSession?.connectionInfo?.novnc === 'string'
+    ? runtimeSession.connectionInfo.novnc
+    : undefined;
+};
+
+const getRuntimeSessionStatusLabel = (state?: string): string => {
+  if (state === 'frozen') {
+    return '人工接管';
+  }
+  if (state === 'ready') {
+    return '已就绪';
+  }
+  if (state === 'busy') {
+    return '执行中';
+  }
+  return '运行中';
 };
 
 const INPUT_TEXT_CANDIDATE_KEYS = ['user_input', 'prompt', 'task', 'goal', 'instruction', 'query', 'url'] as const;
@@ -985,6 +1033,7 @@ const ExecutionListPage: React.FC = () => {
   const [pageSize, setPageSize] = useState(10);
   const [statusFilter, setStatusFilter] = useState<ExecutionStatus | undefined>();
   const [searchText, setSearchText] = useState('');
+  const [clearBeforeDate, setClearBeforeDate] = useState<Dayjs>(() => dayjs().subtract(2, 'day'));
   const [selectedExecutionId, setSelectedExecutionId] = useState<string | undefined>(
     searchParams.get('executionId') || undefined,
   );
@@ -1009,14 +1058,48 @@ const ExecutionListPage: React.FC = () => {
   const { data: selectedExecution, isLoading: isDetailLoading } = useQuery<ExecutionDto, Error>(
     ['execution', selectedExecutionId],
     () => executionApi.getById(selectedExecutionId!),
-    { enabled: !!selectedExecutionId }
+    {
+      enabled: !!selectedExecutionId,
+      refetchInterval: (data) => {
+        if (!data) {
+          return false;
+        }
+        return EXECUTION_ACTIVE_POLLING_STATUSES.includes(data.status) ? 3000 : false;
+      },
+    }
   );
 
   const { data: selectedSteps, isLoading: isStepsLoading } = useQuery<ExecutionStepDto[], Error>(
     ['execution-steps', selectedExecutionId],
     () => executionApi.getSteps(selectedExecutionId!),
-    { enabled: !!selectedExecutionId }
+    {
+      enabled: !!selectedExecutionId,
+      refetchInterval: () => {
+        if (!selectedExecution) {
+          return false;
+        }
+        return EXECUTION_ACTIVE_POLLING_STATUSES.includes(selectedExecution.status) ? 3000 : false;
+      },
+    }
   );
+  const selectedBrowserExecutionResult = extractBrowserExecutionResult(selectedExecution?.resultJson);
+  const selectedExecutionRuntimeSessionId = selectedExecution?.runtimeSessionId || selectedBrowserExecutionResult?.runtimeSessionId;
+  const { data: selectedRuntimeSession } = useQuery(
+    ['execution-runtime-session', selectedExecutionRuntimeSessionId],
+    () => runtimeSessionApi.getById(selectedExecutionRuntimeSessionId!),
+    {
+      enabled: Boolean(selectedExecutionRuntimeSessionId),
+      refetchInterval: (data) => {
+        if (isLiveRuntimeSessionState(data?.state)) {
+          return 3000;
+        }
+        return selectedExecution && EXECUTION_ACTIVE_POLLING_STATUSES.includes(selectedExecution.status)
+          ? 3000
+          : false;
+      },
+    }
+  );
+  const selectedRuntimeSessionNovncUrl = getRuntimeSessionNovncUrl(selectedRuntimeSession);
 
   const waitingInputStep = selectedExecution?.status === 'waiting_input'
     ? selectedSteps?.find((step) =>
@@ -1118,6 +1201,117 @@ const ExecutionListPage: React.FC = () => {
     }
   );
 
+  const cleanupExecutionsMutation = useMutation(
+    async ({ beforeDate }: { beforeDate: string }) => {
+      const response = await executionApi.cleanupBeforeDate({ beforeDate });
+      return {
+        beforeDate,
+        deletedCount: response.deletedCount,
+      };
+    },
+    {
+      onSuccess: async ({ beforeDate, deletedCount }) => {
+        const cutoff = new Date(`${beforeDate}T00:00:00`).getTime();
+        const selectedExecutionCreatedAt = selectedExecution?.createdAt
+          ? new Date(selectedExecution.createdAt).getTime()
+          : Number.NaN;
+
+        if (selectedExecutionId && Number.isFinite(selectedExecutionCreatedAt) && selectedExecutionCreatedAt < cutoff) {
+          const nextSearchParams = new URLSearchParams(searchParams);
+          nextSearchParams.delete('executionId');
+          setSearchParams(nextSearchParams, { replace: true });
+        }
+
+        await Promise.all([
+          queryClient.invalidateQueries(['executions']),
+          queryClient.invalidateQueries(['dashboard-executions-recent']),
+          queryClient.invalidateQueries(['execution']),
+          queryClient.invalidateQueries(['execution-steps']),
+        ]);
+
+        void message.success(
+          deletedCount > 0
+            ? `已清理 ${beforeDate} 之前的 ${deletedCount} 条执行记录`
+            : `没有找到 ${beforeDate} 之前可清理的执行记录`,
+        );
+      },
+      onError: (error: Error) => {
+        void message.error(`清理执行记录失败：${error.message}`);
+      },
+    }
+  );
+
+  const phaseTakeoverMutation = useMutation(
+    async (phase: ExecutionPhaseDto) => {
+      if (!selectedExecutionId) {
+        throw new Error('未选择执行记录');
+      }
+      return executionApi.takeoverPhase(selectedExecutionId, phase.phaseKey, {
+        reason: phase.errorMessage || phase.errorCode || phase.phaseName || phase.phaseKey,
+      });
+    },
+    {
+      onSuccess: async (_data, phase) => {
+        await Promise.all([
+          queryClient.invalidateQueries(['executions']),
+          queryClient.invalidateQueries(['execution', selectedExecutionId]),
+          queryClient.invalidateQueries(['execution-steps', selectedExecutionId]),
+        ]);
+        void message.success('已发起阶段接管');
+        if (selectedExecutionId) {
+          navigate(`/executions/${selectedExecutionId}/takeover?phaseKey=${encodeURIComponent(phase.phaseKey)}`);
+        }
+      },
+      onError: (error: Error) => {
+        void message.error(`阶段接管失败：${error.message}`);
+      },
+    }
+  );
+
+  const phaseReconcileMutation = useMutation(
+    async (phase: ExecutionPhaseDto) => {
+      if (!selectedExecutionId) {
+        throw new Error('未选择执行记录');
+      }
+      return executionApi.reconcilePhaseTakeover(selectedExecutionId, phase.phaseKey, {});
+    },
+    {
+      onSuccess: async () => {
+        await Promise.all([
+          queryClient.invalidateQueries(['executions']),
+          queryClient.invalidateQueries(['execution', selectedExecutionId]),
+          queryClient.invalidateQueries(['execution-steps', selectedExecutionId]),
+        ]);
+        void message.success('已标记阶段可恢复');
+      },
+      onError: (error: Error) => {
+        void message.error(`阶段处理失败：${error.message}`);
+      },
+    }
+  );
+
+  const phaseResumeMutation = useMutation(
+    async (phase: ExecutionPhaseDto) => {
+      if (!selectedExecutionId) {
+        throw new Error('未选择执行记录');
+      }
+      return executionApi.resumePhaseTakeover(selectedExecutionId, phase.phaseKey, {});
+    },
+    {
+      onSuccess: async () => {
+        await Promise.all([
+          queryClient.invalidateQueries(['executions']),
+          queryClient.invalidateQueries(['execution', selectedExecutionId]),
+          queryClient.invalidateQueries(['execution-steps', selectedExecutionId]),
+        ]);
+        void message.success('已恢复阶段执行');
+      },
+      onError: (error: Error) => {
+        void message.error(`恢复阶段执行失败：${error.message}`);
+      },
+    }
+  );
+
   const handleResumeExecution = async (openInAi: boolean) => {
     if (!selectedExecution || !waitingInputStep) {
       return;
@@ -1209,6 +1403,19 @@ const ExecutionListPage: React.FC = () => {
       ),
     },
     {
+      title: '当前阶段',
+      key: 'phase',
+      width: 220,
+      render: (_: unknown, record: ExecutionDto) => (
+        <Space direction="vertical" size={2}>
+          <Text>{record.currentPhaseKey || '-'}</Text>
+          <Text type="secondary" style={{ fontSize: 12 }}>
+            {record.currentPhaseStatus || '未开始'}
+          </Text>
+        </Space>
+      ),
+    },
+    {
       title: '风险',
       dataIndex: 'riskLevel',
       key: 'riskLevel',
@@ -1250,7 +1457,6 @@ const ExecutionListPage: React.FC = () => {
     },
   ];
 
-  const selectedBrowserExecutionResult = extractBrowserExecutionResult(selectedExecution?.resultJson);
   const selectedBrowserTimelineItems = selectedBrowserExecutionResult
     ? [
         {
@@ -1426,6 +1632,28 @@ const ExecutionListPage: React.FC = () => {
     setSearchParams(nextSearchParams, { replace: true });
   };
 
+  const handleCleanupBeforeDate = () => {
+    if (!clearBeforeDate) {
+      void message.info('请先选择清理日期');
+      return;
+    }
+
+    const beforeDate = clearBeforeDate.format('YYYY-MM-DD');
+    Modal.confirm({
+      title: '清理指定日期之前的执行记录？',
+      content: `将删除 ${beforeDate} 之前创建的执行记录，默认仅清理当前用户自己的记录，此操作不可恢复。`,
+      okText: '确认清理',
+      cancelText: '取消',
+      okButtonProps: {
+        danger: true,
+        loading: cleanupExecutionsMutation.isLoading,
+      },
+      onOk: async () => {
+        await cleanupExecutionsMutation.mutateAsync({ beforeDate });
+      },
+    });
+  };
+
   return (
     <div style={{ padding: 24 }}>
       {/* Table */}
@@ -1497,6 +1725,24 @@ const ExecutionListPage: React.FC = () => {
                 className="btn-pill"
               >
                 刷新
+              </Button>
+              <DatePicker
+                size="middle"
+                value={clearBeforeDate}
+                onChange={(value) => setClearBeforeDate(value ?? dayjs().subtract(2, 'day'))}
+                allowClear={false}
+                format="YYYY-MM-DD"
+                style={{ minWidth: 150 }}
+              />
+              <Button
+                size="middle"
+                danger
+                icon={<DeleteOutlined />}
+                onClick={handleCleanupBeforeDate}
+                loading={cleanupExecutionsMutation.isLoading}
+                className="btn-pill"
+              >
+                清理日期前
               </Button>
               <Button
                 size="middle"
@@ -1627,6 +1873,15 @@ const ExecutionListPage: React.FC = () => {
               </div>
             </Card>
 
+            {selectedRuntimeSessionNovncUrl && isLiveRuntimeSessionState(selectedRuntimeSession?.state) ? (
+              <LiveSessionPreviewCard
+                novncUrl={selectedRuntimeSessionNovncUrl}
+                title="实时画面"
+                statusLabel={getRuntimeSessionStatusLabel(selectedRuntimeSession?.state)}
+                height={360}
+              />
+            ) : null}
+
             <Collapse
               ghost
               expandIconPosition="end"
@@ -1657,6 +1912,32 @@ const ExecutionListPage: React.FC = () => {
                       </Descriptions.Item>
                       <Descriptions.Item label="开始时间">
                         {formatDateTime(selectedExecution.startedAt || selectedExecution.createdAt)}
+                      </Descriptions.Item>
+                      <Descriptions.Item label="当前阶段">
+                        <Space direction="vertical" size={0}>
+                          <Text>{selectedExecution.currentPhaseKey || '-'}</Text>
+                          <Text type="secondary">{selectedExecution.currentPhaseStatus || '未开始'}</Text>
+                        </Space>
+                      </Descriptions.Item>
+                      <Descriptions.Item label="浏览器会话">
+                        {selectedExecutionRuntimeSessionId ? (
+                          <Space wrap>
+                            <Text copyable={{ text: selectedExecutionRuntimeSessionId }}>
+                              {selectedExecutionRuntimeSessionId}
+                            </Text>
+                            {selectedRuntimeSessionNovncUrl ? (
+                              <Button
+                                type="link"
+                                style={{ paddingInline: 0 }}
+                                onClick={() => window.open(fixLocalhostLink(selectedRuntimeSessionNovncUrl), '_blank', 'noopener,noreferrer')}
+                              >
+                                打开实时画面
+                              </Button>
+                            ) : null}
+                          </Space>
+                        ) : (
+                          '-'
+                        )}
                       </Descriptions.Item>
                       <Descriptions.Item label="结束时间">
                         {formatDateTime(selectedExecution.endedAt || undefined)}
@@ -1854,6 +2135,84 @@ const ExecutionListPage: React.FC = () => {
                     </>
                   ),
                 }] : []),
+                {
+                  key: 'phases',
+                  label: renderPanelLabel(
+                    '阶段',
+                    selectedExecution.phases && selectedExecution.phases.length > 0
+                      ? `${selectedExecution.phases.length} 个阶段 / ${selectedExecution.currentPhaseKey || '已归档'}`
+                      : '暂无阶段记录',
+                  ),
+                  style: detailPanelStyle,
+                  children: selectedExecution.phases && selectedExecution.phases.length > 0 ? (
+                    <Timeline
+                      items={selectedExecution.phases.map((phase: ExecutionPhaseDto) => ({
+                        color: getPhaseStatusColor(phase.status),
+                        children: (
+                          <Card size="small">
+                            <Space direction="vertical" size={6} style={{ width: '100%' }}>
+                              <Space style={{ width: '100%', justifyContent: 'space-between' }} wrap>
+                                <Space wrap>
+                                  <Text strong>{phase.phaseName || phase.phaseKey}</Text>
+                                  <Tag>{phase.phaseType}</Tag>
+                                  <Tag color={getPhaseStatusColor(phase.status)}>{phase.status}</Tag>
+                                </Space>
+                                <Text type="secondary">{formatDateTime(phase.startedAt || phase.createdAt)}</Text>
+                              </Space>
+                              <Space wrap size={[8, 4]}>
+                                <Text type="secondary">{`Key: ${phase.phaseKey}`}</Text>
+                                <Text type="secondary">{`尝试: ${phase.attempt}`}</Text>
+                                {phase.runtimeSessionId ? (
+                                  <Text copyable={{ text: phase.runtimeSessionId }}>{`会话: ${phase.runtimeSessionId}`}</Text>
+                                ) : null}
+                              </Space>
+                              <Space wrap>
+                                {selectedExecution.status !== 'human_control' && (phase.status === 'running' || phase.status === 'failed') ? (
+                                  <Button
+                                    size="small"
+                                    onClick={() => phaseTakeoverMutation.mutate(phase)}
+                                    loading={phaseTakeoverMutation.isLoading}
+                                  >
+                                    接管当前阶段
+                                  </Button>
+                                ) : null}
+                                {selectedExecution.status === 'human_control' && phase.status === 'waiting_takeover' ? (
+                                  <Button
+                                    size="small"
+                                    onClick={() => phaseReconcileMutation.mutate(phase)}
+                                    loading={phaseReconcileMutation.isLoading}
+                                  >
+                                    标记已处理
+                                  </Button>
+                                ) : null}
+                                {selectedExecution.status === 'human_control' && (phase.status === 'waiting_takeover' || phase.status === 'resumable') ? (
+                                  <Button
+                                    size="small"
+                                    type="primary"
+                                    onClick={() => phaseResumeMutation.mutate(phase)}
+                                    loading={phaseResumeMutation.isLoading}
+                                  >
+                                    恢复阶段执行
+                                  </Button>
+                                ) : null}
+                              </Space>
+                              {phase.errorMessage ? (
+                                <Alert
+                                  type="error"
+                                  showIcon
+                                  message={phase.errorCode || '阶段失败'}
+                                  description={phase.errorMessage}
+                                />
+                              ) : null}
+                            </Space>
+                          </Card>
+                        ),
+                      }))}
+                    />
+                  ) : (
+                    <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无阶段记录" />
+                  ),
+                },
                 {
                   key: 'result',
                   label: renderPanelLabel(

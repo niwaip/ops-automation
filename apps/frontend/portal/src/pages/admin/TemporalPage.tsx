@@ -17,7 +17,7 @@ import '../../components/chat/ChatMessage.css';
 import {
   temporalWorkflowApi, TemporalWorkflowDTO, CreateTemporalWorkflowDTO,
   WorkflowDsl, ActivityDsl, TemporalValidationResult, DEFAULT_WORKFLOW_DSL, DEFAULT_ACTIVITY_DSL,
-  WorkflowCodeResult, WorkflowCodeStreamEvent, WorkflowRealValidationResult, TemplateWorkflowDraft, BrowserWorkflowDraft, TemporalWorkflowSourceTemplate, TemporalWorkflowSourceContext, HttpRequestOptimizeResult, HttpRequestPreviewResult, AiWorkflowDraft, AiWorkflowDraftSession, AiWorkflowDraftSessionListItem, AiWorkflowDraftSessionMessage, BrowserDraftCommandInput, WorkflowInputParamDefinition
+  WorkflowCodeResult, WorkflowCodeStreamEvent, WorkflowRealValidationResult, TemplateWorkflowDraft, TemporalWorkflowSourceTemplate, TemporalWorkflowSourceContext, HttpRequestOptimizeResult, HttpRequestPreviewResult, AiWorkflowDraft, AiWorkflowDraftSession, AiWorkflowDraftSessionListItem, AiWorkflowDraftSessionMessage, BrowserDraftCommandInput, WorkflowInputParamDefinition
 } from '../../api/temporal';
 import { carboneAPI, CarboneSkill, CarboneTemplate } from '../../api/carbone';
 import { templateApi, Template } from '../../api/template';
@@ -37,7 +37,6 @@ type WorkflowDurationField = 'workflowExecutionTimeout' | 'workflowRunTimeout' |
 type ActivityResourceSource = 'builtin' | 'custom';
 type HttpResponseMode = 'body' | 'full' | 'bodyPath' | 'bodyMap';
 type TemplateModalMode = 'document' | 'browser';
-type BrowserTemplateStep = Template['steps'][number];
 const DEFAULT_DURATION_UNIT: DurationUnit = 's';
 const HTTP_REQUEST_STEP_CONFIG_KEY = '__httpRequest';
 const STRUCTURED_TRANSFORM_STEP_CONFIG_KEY = '__structuredTransform';
@@ -135,270 +134,6 @@ const formatDurationValue = (value?: number | null, unit: DurationUnit = DEFAULT
     return undefined;
   }
   return `${Math.max(0, Number(value))}${unit}`;
-};
-
-const toLocatorSelector = (step: BrowserTemplateStep): string => {
-  if (!step.locator?.value) {
-    return '';
-  }
-  const locatorType = String(step.locator.type || '').toLowerCase();
-  if (locatorType === 'test-id') {
-    return `[data-testid="${step.locator.value}"]`;
-  }
-  return String(step.locator.value);
-};
-
-const buildBrowserInputParamsFromTemplate = (
-  template: Template,
-): Record<string, {
-  description?: string;
-  required?: boolean;
-  defaultValue?: string;
-  source?: 'declared' | 'inferred_from_template' | 'inferred_from_reference_url' | 'merged';
-  type?: 'string' | 'number' | 'boolean' | 'date';
-  exampleValue?: string | number | boolean;
-}> => {
-  const schema = (
-    template?.params_schema
-    || ((template as unknown as { paramsSchema?: Record<string, unknown> })?.paramsSchema)
-    || {}
-  ) as Record<string, unknown>;
-  const properties = schema.properties && typeof schema.properties === 'object'
-    ? schema.properties as Record<string, Record<string, unknown>>
-    : {};
-  const requiredList = Array.isArray(schema.required) ? schema.required.map((item) => String(item)) : [];
-
-  const declaredInputParams = Object.entries(properties).reduce<Record<string, {
-    description?: string;
-    required?: boolean;
-    defaultValue?: string;
-    source?: 'declared' | 'inferred_from_template' | 'inferred_from_reference_url' | 'merged';
-    type?: 'string' | 'number' | 'boolean' | 'date';
-    exampleValue?: string | number | boolean;
-  }>>((acc, [key, propertySchema]) => {
-    const propertyType = String(propertySchema?.type || 'string').toLowerCase();
-    const normalizedType = (['string', 'number', 'boolean', 'date'].includes(propertyType) ? propertyType : 'string') as 'string' | 'number' | 'boolean' | 'date';
-    const defaultValue = propertySchema?.default;
-    const requiredFromSchema = propertySchema?.required === true || requiredList.includes(key);
-    acc[key] = {
-      required: requiredFromSchema,
-      defaultValue: defaultValue === undefined || defaultValue === null ? '' : String(defaultValue),
-      description: String(propertySchema?.description || `模板参数 ${key}`),
-      source: 'declared',
-      type: normalizedType,
-      exampleValue: defaultValue as string | number | boolean,
-    };
-    return acc;
-  }, {});
-
-  if (Object.keys(declaredInputParams).length > 0) {
-    return declaredInputParams;
-  }
-
-  // 兜底：当后端未返回 params_schema 时，尝试从模板步骤推断常用参数
-  const inferredInputParams: Record<string, {
-    description?: string;
-    required?: boolean;
-    defaultValue?: string;
-    source?: 'declared' | 'inferred_from_template' | 'inferred_from_reference_url' | 'merged';
-    type?: 'string' | 'number' | 'boolean' | 'date';
-    exampleValue?: string | number | boolean;
-  }> = {};
-  const steps = Array.isArray(template?.steps) ? template.steps : [];
-  steps.forEach((step) => {
-    const action = String(step?.action || '').toLowerCase();
-    const selector = String(step?.locator?.value || '');
-    const params = step?.params || {};
-    const hint = `${selector} ${String(params?.field || '')} ${String(params?.name || '')}`;
-    const value = String(params?.value || params?.text || '').trim();
-    const url = String(params?.url || params?.targetUrl || params?.href || params?.target || '').trim();
-
-    if (!inferredInputParams.startUrl && action.includes('goto') && url) {
-      inferredInputParams.startUrl = {
-        description: '起始页面地址，默认使用当前录制时的地址',
-        required: false,
-        defaultValue: url,
-        source: 'inferred_from_template',
-        type: 'string',
-        exampleValue: url,
-      };
-    }
-
-    if (!inferredInputParams.username && /(用户名|账号|账户|user\s*name|username|account|email|邮箱|手机号|mobile)/i.test(hint)) {
-      inferredInputParams.username = {
-        description: '登录用户名',
-        required: true,
-        defaultValue: value || '',
-        source: 'inferred_from_template',
-        type: 'string',
-        exampleValue: value || 'test',
-      };
-    }
-
-    if (!inferredInputParams.loginCredential && /(密码|password|passwd|passcode|pin|secret)/i.test(hint)) {
-      inferredInputParams.loginCredential = {
-        description: '登录密码',
-        required: true,
-        defaultValue: value || '',
-        source: 'inferred_from_template',
-        type: 'string',
-        exampleValue: value || 'test123',
-      };
-    }
-  });
-
-  return inferredInputParams;
-};
-
-const buildBrowserActivityStepsFromTemplate = (template: Template): Array<{
-  name: string;
-  type: 'browser';
-  timeout: string;
-  config: Record<string, unknown>;
-  inputParams: Record<string, unknown>;
-}> => {
-  const steps = Array.isArray(template?.steps) ? template.steps : [];
-  return steps.map((step, index) => {
-    const action = String(step.action || '').trim();
-    const selector = toLocatorSelector(step);
-    const params = step.params || {};
-    const config: Record<string, unknown> = {
-      action,
-    };
-
-    if (selector) {
-      config.selector = selector;
-      config.target = selector;
-    }
-
-    const putFirst = (...values: unknown[]) => {
-      const found = values.find((item) => item !== undefined && item !== null && String(item).trim() !== '');
-      return found === undefined ? undefined : found;
-    };
-
-    const url = putFirst(params.url, params.targetUrl, params.href, params.target, params.value);
-    if (url !== undefined) {
-      config.url = String(url);
-      config.target = String(url);
-    }
-
-    const textValue = putFirst(params.value, params.text, params.query, params.keyword, params.content, params.input, params.searchQuery);
-    if (textValue !== undefined) {
-      config.value = String(textValue);
-      config.text = String(textValue);
-      config.query = String(textValue);
-    }
-
-    const keyValue = putFirst(params.key, params.value, params.code);
-    if (keyValue !== undefined) {
-      config.key = String(keyValue);
-    }
-
-    const indexValue = putFirst(params.index, params.resultIndex);
-    if (indexValue !== undefined) {
-      const num = Number(indexValue);
-      config.index = Number.isFinite(num) ? num : 1;
-    }
-
-    const timeoutValue = putFirst(step.wait?.value, params.duration, params.timeoutMs, params.timeout);
-    if (timeoutValue !== undefined) {
-      const num = Number(timeoutValue);
-      config.timeoutMs = Number.isFinite(num) ? num : timeoutValue;
-      config.duration = Number.isFinite(num) ? num : timeoutValue;
-    }
-
-    // 提取步骤中使用的参数占位符
-    const stepInputParams: Record<string, string> = {};
-    const placeholders = new Set<string>([
-      ...extractTemplatePlaceholders(selector || ''),
-      ...extractTemplatePlaceholders(String(config.url || '')),
-      ...extractTemplatePlaceholders(String(config.value || '')),
-      ...extractTemplatePlaceholders(String(config.text || '')),
-      ...extractTemplatePlaceholders(String(config.query || '')),
-      ...extractTemplatePlaceholders(String(config.key || '')),
-    ]);
-
-    placeholders.forEach((p) => {
-      stepInputParams[p] = '';
-    });
-
-    return {
-      name: `${index + 1}. ${action || '浏览器操作'}`,
-      type: 'browser' as const,
-      timeout: '30s',
-      config,
-      inputParams: stepInputParams,
-    };
-  });
-};
-
-const buildBrowserDraftFromTemplateDetail = (template: Template): BrowserWorkflowDraft => {
-  const short = String(Date.now()).slice(-6);
-  const workflowName = String(template?.name || '').trim() || `浏览器模板-${short}-工作流`;
-  const workflowDescription = String(template?.description || '').trim() || '基于浏览器模板直接生成的执行工作流';
-  const activityFn = `browserTemplateRun${short}`;
-  const activitySteps = buildBrowserActivityStepsFromTemplate(template);
-  const inputParams = buildBrowserInputParamsFromTemplate(template);
-
-  return {
-    name: workflowName,
-    description: workflowDescription,
-    taskQueue: 'SKILL_TASK_QUEUE',
-    workflowDsl: {
-      ...DEFAULT_WORKFLOW_DSL,
-      name: workflowName,
-      workflowClassName: `BrowserTemplate${short}Workflow`,
-      workflowDefnName: workflowName,
-      taskQueue: 'SKILL_TASK_QUEUE',
-      sourceContext: {
-        sourceType: 'browser_template',
-        generatedAt: new Date().toISOString(),
-        userDescription: workflowDescription,
-        warnings: [
-          '该草稿直接复用浏览器模板 DSL 与参数定义，不再进行命令二次生成。',
-        ],
-      },
-      inputParams,
-      outputParams: {
-        result: {
-          sourceStep: 'step_1',
-          description: '浏览器执行结果',
-        },
-      },
-      steps: [
-        {
-          id: 'step_1',
-          name: '执行浏览器脚本',
-          type: 'activity',
-          activityRef: `custom:${activityFn}`,
-          activityName: '浏览器自动化执行',
-          startToCloseTimeout: '300s',
-        },
-      ],
-    },
-    activityDsl: {
-      activities: [
-        {
-          name: '浏览器自动化执行',
-          fn: activityFn,
-          timeout: '300s',
-          retryPolicy: { maxRetries: 1, backoffMs: 1000 },
-          handler: 'browser',
-          config: {
-            description: '浏览器模板执行 Activity（直接复用模板 DSL）',
-            templateId: template.id,
-            commandCount: activitySteps.length,
-            steps: activitySteps,
-          },
-        },
-      ],
-    },
-    browserTemplate: {
-      commandCount: activitySteps.length,
-      placeholderCount: Object.keys(inputParams).length,
-      placeholders: Object.keys(inputParams),
-    },
-  };
 };
 
 const resolveApiErrorMessage = (error: any, fallback = '请求失败'): string => {
@@ -1973,16 +1708,18 @@ const TemporalPage: React.FC = () => {
       const executionPlanCommands = Array.isArray(executionPlan?.commands)
         ? executionPlan.commands.filter((command): command is BrowserDraftCommandInput => Boolean(command && typeof command === 'object'))
         : [];
-      const draft = templateSteps.length > 0
-        ? buildBrowserDraftFromTemplateDetail(detail)
-        : executionPlanCommands.length > 0
-          ? await temporalWorkflowApi.generateBrowserDraft({
-          name: detail.name,
-          description: detail.description,
-          commands: executionPlanCommands,
-          inputParams: buildBrowserInputParamsFromTemplate(detail),
-        })
-          : buildBrowserDraftFromTemplateDetail(detail);
+      if (templateSteps.length === 0 && executionPlanCommands.length === 0) {
+        message.warning('该浏览器模板缺少可执行步骤，请先在模板页补充步骤');
+        return;
+      }
+      const draft = await temporalWorkflowApi.generateBrowserDraft({
+        templateId: detail.id,
+        name: detail.name,
+        description: detail.description,
+        templateSteps: templateSteps.length > 0 ? templateSteps : undefined,
+        paramsSchema: detail.params_schema,
+        commands: executionPlanCommands.length > 0 ? executionPlanCommands : undefined,
+      });
       if (!draft.activityDsl.activities[0]?.config?.steps || (draft.activityDsl.activities[0]?.config?.steps as Array<unknown>).length === 0) {
         message.warning('该浏览器模板缺少可执行步骤，请先在模板页补充步骤');
         return;
@@ -1993,7 +1730,7 @@ const TemporalPage: React.FC = () => {
           ? `已基于模板步骤生成浏览器工作流草稿（${draft.browserTemplate.commandCount} 个步骤）`
           : executionPlanCommands.length > 0
             ? `已基于 executionPlan.commands 生成浏览器工作流草稿（${draft.browserTemplate.commandCount} 个步骤）`
-            : `已基于模板 DSL 生成浏览器工作流草稿（${draft.browserTemplate.commandCount} 个步骤）`,
+            : `已生成浏览器工作流草稿（${draft.browserTemplate.commandCount} 个步骤）`,
       );
       setTemplateModalVisible(false);
     } catch (error: any) {

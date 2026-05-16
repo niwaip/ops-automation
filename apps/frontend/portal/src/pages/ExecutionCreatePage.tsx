@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
+  App,
   Alert,
   Button,
   Card,
@@ -16,7 +17,6 @@ import {
   Switch,
   Tag,
   Typography,
-  message,
 } from 'antd';
 import { 
   ArrowLeftOutlined, 
@@ -135,6 +135,7 @@ const normalizeInputValues = (
 };
 
 const ExecutionCreatePage: React.FC = () => {
+  const { message } = App.useApp();
   const { t } = useTranslation('common');
   const navigate = useNavigate();
   const queryClient = useQueryClient();

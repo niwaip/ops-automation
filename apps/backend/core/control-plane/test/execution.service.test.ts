@@ -1327,3 +1327,686 @@ describe('ExecutionService.create planner draft reuse', () => {
     expect(response).toBe(existingExecution);
   });
 });
+
+describe('ExecutionService.cleanupBeforeDate', () => {
+  const createService = () => {
+    const prisma = {
+      execution: {
+        findMany: jest.fn(),
+        deleteMany: jest.fn(),
+      },
+      executionStep: {
+        deleteMany: jest.fn(),
+      },
+      executionEvent: {
+        deleteMany: jest.fn(),
+      },
+      $transaction: jest.fn((operations: Array<Promise<unknown>>) => Promise.all(operations)),
+    };
+
+    const service = new ExecutionService(prisma as never, {} as never, {} as never, {} as never);
+    return { service, prisma };
+  };
+
+  it('deletes executions created before the cutoff for the current user', async () => {
+    const { service, prisma } = createService();
+    prisma.execution.findMany.mockResolvedValue([
+      { id: 'execution-old-1' },
+      { id: 'execution-old-2' },
+    ]);
+    prisma.executionStep.deleteMany.mockResolvedValue({ count: 2 });
+    prisma.executionEvent.deleteMany.mockResolvedValue({ count: 2 });
+    prisma.execution.deleteMany.mockResolvedValue({ count: 2 });
+
+    const result = await service.cleanupBeforeDate('2026-05-13', 'user-1', { id: 'user-1', role: 'employee' } as any);
+
+    expect(prisma.execution.findMany).toHaveBeenCalledWith({
+      where: {
+        createdAt: { lt: new Date('2026-05-13T00:00:00') },
+        createdBy: 'user-1',
+      },
+      select: { id: true },
+    });
+    expect(prisma.executionStep.deleteMany).toHaveBeenCalledWith({
+      where: { executionId: { in: ['execution-old-1', 'execution-old-2'] } },
+    });
+    expect(prisma.executionEvent.deleteMany).toHaveBeenCalledWith({
+      where: { executionId: { in: ['execution-old-1', 'execution-old-2'] } },
+    });
+    expect(prisma.execution.deleteMany).toHaveBeenCalledWith({
+      where: { id: { in: ['execution-old-1', 'execution-old-2'] } },
+    });
+    expect(result).toEqual({
+      success: true,
+      deletedCount: 2,
+      beforeDate: '2026-05-13',
+    });
+  });
+});
+
+describe('ExecutionService.getById with phases', () => {
+  it('includes phase data from executionPhaseService in execution dto', async () => {
+    const prisma = {
+      execution: {
+        findUnique: jest.fn().mockResolvedValue({
+          id: 'execution-1',
+          createdBy: 'user-1',
+          skillId: 'skill-1',
+          status: 'running',
+          runtimeType: 'browser',
+          riskLevel: 'L0',
+          requiresApproval: false,
+          takeoverRequired: false,
+          createdAt: new Date('2026-05-01T00:00:00.000Z'),
+          updatedAt: new Date('2026-05-01T00:00:00.000Z'),
+        }),
+      },
+      runtimeSession: {
+        findFirst: jest.fn().mockResolvedValue({ id: 'runtime-1' }),
+      },
+    };
+
+    const executionPhaseService = {
+      listByExecutionId: jest.fn().mockResolvedValue([
+        {
+          id: 'phase-1',
+          executionId: 'execution-1',
+          phaseKey: 'phase_login',
+          phaseName: '登录阶段',
+          phaseType: 'browser_login',
+          status: 'running',
+          attempt: 1,
+          runtimeSessionId: 'runtime-1',
+          inputJson: { username: 'test' },
+          outputJson: null,
+          precheckJson: { matched: false },
+          postcheckJson: null,
+          recoveryDecisionJson: null,
+          errorCode: null,
+          errorMessage: null,
+          createdAt: new Date('2026-05-01T00:00:00.000Z'),
+          updatedAt: new Date('2026-05-01T00:00:00.000Z'),
+          artifacts: [],
+          takeovers: [],
+        },
+      ]),
+    };
+
+    const service = new ExecutionService(
+      prisma as never,
+      {} as never,
+      {} as never,
+      {} as never,
+      undefined,
+      executionPhaseService as never,
+    );
+
+    const dto = await service.getById('execution-1', { id: 'user-1' });
+
+    expect(executionPhaseService.listByExecutionId).toHaveBeenCalledWith('execution-1');
+    expect(dto.runtimeSessionId).toBe('runtime-1');
+    expect(dto.phases).toHaveLength(1);
+    expect(dto.phases?.[0]).toEqual(
+      expect.objectContaining({
+        phaseKey: 'phase_login',
+        phaseName: '登录阶段',
+        phaseType: 'browser_login',
+      }),
+    );
+  });
+});
+
+describe('ExecutionService.getPhases', () => {
+  it('returns mapped phases after permission check', async () => {
+    const prisma = {
+      execution: {
+        findUnique: jest.fn().mockResolvedValue({
+          id: 'execution-1',
+          createdBy: 'user-1',
+        }),
+      },
+    };
+
+    const executionPhaseService = {
+      listByExecutionId: jest.fn().mockResolvedValue([
+        {
+          id: 'phase-1',
+          execution_id: 'execution-1',
+          phase_key: 'phase_login',
+          phase_name: '登录阶段',
+          phase_type: 'browser_login',
+          status: 'running',
+          attempt: 1,
+          runtime_session_id: 'runtime-1',
+          created_at: new Date('2026-05-01T00:00:00.000Z'),
+          updated_at: new Date('2026-05-01T00:00:00.000Z'),
+          artifacts: [],
+          takeovers: [],
+        },
+      ]),
+    };
+
+    const service = new ExecutionService(
+      prisma as never,
+      {} as never,
+      {} as never,
+      {} as never,
+      undefined,
+      executionPhaseService as never,
+    );
+
+    const phases = await service.getPhases('execution-1', { id: 'user-1' });
+
+    expect(executionPhaseService.listByExecutionId).toHaveBeenCalledWith('execution-1');
+    expect(phases).toEqual([
+      expect.objectContaining({
+        phaseKey: 'phase_login',
+        phaseName: '登录阶段',
+        phaseType: 'browser_login',
+      }),
+    ]);
+  });
+});
+
+describe('ExecutionService phase sync during system execution', () => {
+  it('marks phase running and completed when system step succeeds', async () => {
+    const prisma = {
+      execution: {
+        update: jest.fn().mockResolvedValue(undefined),
+      },
+    };
+    const runtimeExecutionOrchestrator = {
+      executeStep: jest.fn().mockResolvedValue({
+        success: true,
+        status: 'completed',
+        output: { result: 'ok' },
+        rawResult: {
+          runtime: 'capability_runtime',
+          releaseId: 'release-1',
+          capabilityId: 'capability-1',
+          publishedSkillId: 'published-skill-1',
+          logs: [],
+        },
+      }),
+    };
+    const runtimeResultInterpreter = {
+      handleSkillRuntimeResult: jest.fn().mockResolvedValue(undefined),
+      handleBrowserStepResult: jest.fn().mockResolvedValue(undefined),
+    };
+    const runtimeStepRequestFactory = {
+      resolveExecutionCapabilityId: jest.fn().mockReturnValue('capability-1'),
+      resolveExecutionCapabilityVersion: jest.fn().mockReturnValue('v1'),
+      resolveExecutionInput: jest.fn().mockReturnValue({ username: 'test' }),
+      buildSkillRuntimeRequest: jest.fn().mockReturnValue({
+        requestId: 'req-1',
+        executionId: 'execution-1',
+        stepId: 'step-1',
+        runtimeType: 'custom',
+        runtimeSessionId: 'runtime-1',
+        capabilityType: 'skill.runtime',
+        action: 'execute',
+        input: { username: 'test' },
+      }),
+    };
+    const executionPhaseService = {
+      listByExecutionId: jest.fn(),
+      markRunning: jest.fn().mockResolvedValue(undefined),
+      markCompleted: jest.fn().mockResolvedValue(undefined),
+      createOrUpdatePhase: jest.fn().mockResolvedValue(undefined),
+    };
+    const executionStepService = {
+      getById: jest.fn().mockResolvedValue({
+        id: 'step-1',
+        type: 'system',
+        action: 'execute_skill',
+        targetJson: {
+          phaseKey: 'phase_01_login_skill',
+          phaseName: '登录并进入主页',
+          phaseType: 'system_skill',
+        },
+        inputJson: {
+          description: '执行登录技能',
+        },
+      }),
+      setCurrentStep: jest.fn().mockResolvedValue(undefined),
+      startStep: jest.fn().mockResolvedValue(undefined),
+    };
+
+    const service = new ExecutionService(
+      prisma as never,
+      runtimeExecutionOrchestrator as never,
+      runtimeResultInterpreter as never,
+      runtimeStepRequestFactory as never,
+      undefined,
+      executionPhaseService as never,
+      undefined,
+      executionStepService as never,
+    );
+    jest.spyOn(service as any, 'createEvent').mockResolvedValue(undefined);
+
+    await (service as any).executeSystemSkillStep(
+      { id: 'execution-1', skillId: 'skill-1', runtimeType: 'browser' },
+      'runtime-1',
+      'step-1',
+    );
+
+    expect(executionPhaseService.markRunning).toHaveBeenCalledWith(
+      'execution-1',
+      'phase_01_login_skill',
+      expect.objectContaining({
+        phaseName: '登录并进入主页',
+        phaseType: 'system_skill',
+      }),
+    );
+    expect(executionPhaseService.markCompleted).toHaveBeenCalledWith(
+      'execution-1',
+      'phase_01_login_skill',
+      expect.objectContaining({
+        phaseName: '登录并进入主页',
+        phaseType: 'system_skill',
+      }),
+    );
+    expect(executionPhaseService.createOrUpdatePhase).not.toHaveBeenCalled();
+  });
+});
+
+describe('ExecutionService browser phase execution', () => {
+  it('routes execute_browser_phase planner steps through BrowserPhaseExecutor in the main flow', async () => {
+    const prisma = {
+      execution: {
+        findUnique: jest.fn().mockResolvedValue({
+          id: 'execution-1',
+          status: EXECUTION_STATUS.RUNNING,
+        }),
+      },
+    };
+    const executionStepService = {
+      findNextPendingStep: jest.fn().mockResolvedValue({
+        id: 'step-browser-phase',
+        type: 'system',
+        action: 'execute_browser_phase',
+      }),
+    };
+
+    const service = new ExecutionService(
+      prisma as never,
+      {} as never,
+      {} as never,
+      {} as never,
+      undefined,
+      undefined,
+      undefined,
+      executionStepService as never,
+    );
+    jest.spyOn(service as any, 'executeBrowserPhaseStep').mockResolvedValue(undefined);
+
+    await (service as any).advanceExecutionFlow('execution-1', 'runtime-1');
+
+    expect((service as any).executeBrowserPhaseStep).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 'execution-1' }),
+      'runtime-1',
+      'step-browser-phase',
+    );
+  });
+
+  it('reuses browser phase commands/precheck/postcheck/recovery policy when executing planner step', async () => {
+    const browserPhaseExecutor = {
+      execute: jest.fn().mockResolvedValue({
+        success: true,
+        status: 'completed',
+        stepResults: [
+          {
+            success: true,
+            status: 'completed',
+            output: { clicked: true },
+          },
+        ],
+        output: {
+          completedCommands: 2,
+        },
+      }),
+    };
+    const executionStepService = {
+      getById: jest.fn().mockResolvedValue({
+        id: 'step-browser-phase',
+        name: '登录阶段',
+        type: 'system',
+        action: 'execute_browser_phase',
+        targetJson: {
+          plannerStepId: 'planner-step-1',
+          plannerKind: 'tool',
+          phaseKey: 'phase_login',
+          phaseName: '登录阶段',
+          phaseType: 'browser_phase',
+          commands: [
+            {
+              stepId: 'cmd-fill-username',
+              capabilityType: 'browser.step',
+              action: 'fill',
+              input: {
+                target: 'username-input',
+                value: '${username}',
+              },
+            },
+            {
+              stepId: 'cmd-click-submit',
+              capabilityType: 'browser.step',
+              action: 'click',
+              input: {
+                target: 'submit-button',
+              },
+            },
+          ],
+          precheck: {
+            selectorExists: '#login-form',
+          },
+          postcheck: {
+            pageUrlIncludes: '/dashboard',
+          },
+          recoveryPolicy: {
+            maxAutoRetries: 2,
+            allowAiRecovery: true,
+            allowHumanTakeover: true,
+            modelId: 'gpt-5.4',
+          },
+        },
+        inputJson: {
+          description: '复用模板中的登录 phase commands',
+          plannerStatus: 'planned',
+          commands: [
+            {
+              stepId: 'cmd-fill-username',
+              capabilityType: 'browser.step',
+              action: 'fill',
+              input: {
+                target: 'username-input',
+                value: '${username}',
+              },
+            },
+          ],
+          precheck: {
+            selectorExists: '#login-form',
+          },
+          postcheck: {
+            pageUrlIncludes: '/dashboard',
+          },
+          recoveryPolicy: {
+            maxAutoRetries: 2,
+            allowAiRecovery: true,
+            allowHumanTakeover: true,
+            modelId: 'gpt-5.4',
+          },
+        },
+      }),
+      setCurrentStep: jest.fn().mockResolvedValue(undefined),
+      startStep: jest.fn().mockResolvedValue(undefined),
+      finishRuntimeStep: jest.fn().mockResolvedValue(undefined),
+      markStepWaiting: jest.fn().mockResolvedValue(undefined),
+    };
+
+    const service = new ExecutionService(
+      {} as never,
+      {} as never,
+      {} as never,
+      {} as never,
+      undefined,
+      undefined,
+      undefined,
+      executionStepService as never,
+      browserPhaseExecutor as never,
+    );
+    jest.spyOn(service as any, 'createEvent').mockResolvedValue(undefined);
+    jest.spyOn(service as any, 'advanceExecutionFlow').mockResolvedValue(undefined);
+    jest.spyOn(service as any, 'enterRuntimeWaitingInput').mockResolvedValue(undefined);
+    jest.spyOn(service as any, 'enterPendingApprovalFromRuntimeStep').mockResolvedValue(undefined);
+    jest.spyOn(service as any, 'failExecutionFromRuntimeStep').mockResolvedValue(undefined);
+
+    await (service as any).executeBrowserPhaseStep(
+      {
+        id: 'execution-1',
+        skillId: 'skill-login',
+        createdBy: 'user-1',
+        riskLevel: 'L1',
+        requiresApproval: false,
+      },
+      'runtime-1',
+      'step-browser-phase',
+    );
+
+    expect(browserPhaseExecutor.execute).toHaveBeenCalledWith({
+      executionId: 'execution-1',
+      phaseKey: 'phase_login',
+      phaseName: '登录阶段',
+      phaseType: 'browser_phase',
+      runtimeSessionId: 'runtime-1',
+      skillId: 'skill-login',
+      publishedSkillId: 'skill-login',
+      runtimeType: 'browser',
+      policyContext: {
+        riskLevel: 'L1',
+        requiresApproval: false,
+      },
+      traceContext: {
+        userId: 'user-1',
+        actorType: 'system',
+        sourceService: 'control-plane',
+      },
+      commands: [
+        {
+          stepId: 'cmd-fill-username',
+          capabilityType: 'browser.step',
+          action: 'fill',
+          input: {
+            target: 'username-input',
+            value: '${username}',
+          },
+          metadata: undefined,
+        },
+        {
+          stepId: 'cmd-click-submit',
+          capabilityType: 'browser.step',
+          action: 'click',
+          input: {
+            target: 'submit-button',
+          },
+          metadata: undefined,
+        },
+      ],
+      input: {
+        description: '复用模板中的登录 phase commands',
+        plannerStatus: 'planned',
+      },
+      precheck: {
+        selectorExists: '#login-form',
+      },
+      postcheck: {
+        pageUrlIncludes: '/dashboard',
+      },
+      recoveryPolicy: {
+        maxAutoRetries: 2,
+        allowAiRecovery: true,
+        allowHumanTakeover: true,
+        modelId: 'gpt-5.4',
+      },
+    });
+    expect(executionStepService.finishRuntimeStep).toHaveBeenCalledWith(
+      'step-browser-phase',
+      expect.objectContaining({
+        success: true,
+        takeoverTriggered: false,
+        outputJson: expect.objectContaining({
+          status: 'completed',
+          output: {
+            completedCommands: 2,
+          },
+        }),
+      }),
+    );
+    expect((service as any).advanceExecutionFlow).toHaveBeenCalledWith('execution-1', 'runtime-1');
+    expect((service as any).failExecutionFromRuntimeStep).not.toHaveBeenCalled();
+  });
+});
+
+describe('ExecutionService phase takeover lifecycle', () => {
+  beforeEach(() => {
+    mockedAxios.post.mockReset();
+    mockedAxios.post.mockResolvedValue({ data: {} } as never);
+  });
+
+  it('requests phase takeover and freezes runtime session', async () => {
+    const prisma = {
+      execution: {
+        findUnique: jest.fn().mockResolvedValue({
+          id: 'execution-1',
+          createdBy: 'user-1',
+          status: 'running',
+          currentPhaseKey: 'phase_login',
+        }),
+        update: jest.fn().mockResolvedValue(undefined),
+      },
+      runtimeSession: {
+        findFirst: jest.fn().mockResolvedValue({ id: 'runtime-1' }),
+      },
+      executionEvent: {
+        create: jest.fn().mockResolvedValue(undefined),
+      },
+      $queryRawUnsafe: jest.fn().mockResolvedValue([]),
+      $executeRawUnsafe: jest.fn(),
+    };
+    const executionPhaseService = {
+      getByExecutionIdAndPhaseKey: jest.fn().mockResolvedValue({
+        id: 'phase-1',
+        phase_key: 'phase_login',
+        phase_name: '登录阶段',
+        phase_type: 'browser_login',
+        status: 'running',
+        attempt: 1,
+        runtime_session_id: 'runtime-1',
+        output_json: null,
+        postcheck_json: null,
+        error_code: null,
+        error_message: null,
+      }),
+      markWaitingTakeover: jest.fn().mockResolvedValue(undefined),
+      createTakeoverRecord: jest.fn().mockResolvedValue(undefined),
+      listByExecutionId: jest.fn().mockResolvedValue([]),
+    };
+
+    const service = new ExecutionService(
+      prisma as never,
+      {} as never,
+      {} as never,
+      {} as never,
+      undefined,
+      executionPhaseService as never,
+    );
+    jest.spyOn(service, 'getById').mockResolvedValue({ id: 'execution-1' } as never);
+
+    await service.takeoverPhase(
+      'execution-1',
+      'phase_login',
+      'user-1',
+      { reason: 'Captcha detected' },
+      { id: 'user-1' },
+    );
+
+    expect(prisma.execution.update).toHaveBeenCalledWith({
+      where: { id: 'execution-1' },
+      data: {
+        status: EXECUTION_STATUS.HUMAN_CONTROL,
+        takeoverRequired: true,
+        takeoverReason: 'Captcha detected',
+      },
+    });
+    expect(executionPhaseService.markWaitingTakeover).toHaveBeenCalledWith(
+      'execution-1',
+      'phase_login',
+      expect.objectContaining({
+        phaseName: '登录阶段',
+        phaseType: 'browser_login',
+      }),
+    );
+    expect(executionPhaseService.createTakeoverRecord).toHaveBeenCalled();
+    expect(mockedAxios.post).toHaveBeenCalledWith(
+      expect.stringContaining('/runtime-sessions/runtime-1/freeze'),
+      { reason: 'Captcha detected' },
+    );
+  });
+
+  it('resumes phase takeover and resolves takeover record before resuming runtime session', async () => {
+    const prisma = {
+      execution: {
+        findUnique: jest.fn().mockResolvedValue({
+          id: 'execution-1',
+          createdBy: 'user-1',
+          status: EXECUTION_STATUS.HUMAN_CONTROL,
+        }),
+        update: jest.fn().mockResolvedValue(undefined),
+      },
+      runtimeSession: {
+        findFirst: jest.fn().mockResolvedValue({ id: 'runtime-1' }),
+      },
+      executionEvent: {
+        create: jest.fn().mockResolvedValue(undefined),
+      },
+      $queryRawUnsafe: jest.fn().mockResolvedValue([]),
+      $executeRawUnsafe: jest.fn(),
+    };
+    const executionPhaseService = {
+      getByExecutionIdAndPhaseKey: jest.fn().mockResolvedValue({
+        id: 'phase-1',
+        phase_key: 'phase_login',
+        phase_name: '登录阶段',
+        phase_type: 'browser_login',
+        status: 'waiting_takeover',
+        attempt: 2,
+        runtime_session_id: 'runtime-1',
+        input_json: { stepId: 'step-1' },
+      }),
+      resolveTakeoverRecord: jest.fn().mockResolvedValue(undefined),
+      markRunning: jest.fn().mockResolvedValue(undefined),
+      listByExecutionId: jest.fn().mockResolvedValue([]),
+    };
+
+    const service = new ExecutionService(
+      prisma as never,
+      {} as never,
+      {} as never,
+      {} as never,
+      undefined,
+      executionPhaseService as never,
+    );
+    jest.spyOn(service as any, 'updateStatus').mockResolvedValue(undefined);
+    jest.spyOn(service, 'getById').mockResolvedValue({ id: 'execution-1' } as never);
+
+    await service.resumePhaseTakeover(
+      'execution-1',
+      'phase_login',
+      'user-1',
+      { stepId: 'step-1', comment: 'Manual fix complete' },
+      { id: 'user-1' },
+    );
+
+    expect(executionPhaseService.resolveTakeoverRecord).toHaveBeenCalledWith(
+      expect.objectContaining({
+        executionId: 'execution-1',
+        phaseId: 'phase-1',
+        resolvedBy: 'user-1',
+      }),
+    );
+    expect(executionPhaseService.markRunning).toHaveBeenCalledWith(
+      'execution-1',
+      'phase_login',
+      expect.objectContaining({
+        phaseName: '登录阶段',
+        phaseType: 'browser_login',
+        attempt: 2,
+      }),
+    );
+    expect((service as any).updateStatus).toHaveBeenCalledWith('execution-1', EXECUTION_STATUS.RUNNING);
+    expect(mockedAxios.post).toHaveBeenCalledWith(
+      expect.stringContaining('/runtime-sessions/runtime-1/resume'),
+      { stepId: 'step-1' },
+    );
+  });
+});

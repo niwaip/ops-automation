@@ -7,7 +7,8 @@ import { EXECUTION_STATUS, ExecutionStatus } from './contracts/execution-status'
 import { EXECUTION_EVENT_TYPE } from './contracts/execution-event-type';
 import { EXECUTION_STEP_STATUS } from './contracts/execution-step-status';
 import { CreateExecutionEventOptions, ExecutionEventService, ExecutionStreamEventPayload } from './execution-event.service';
-import { mapExecutionStepToDto, mapExecutionToDto } from './execution.mapper';
+import { ExecutionPhaseService } from './execution-phase.service';
+import { mapExecutionPhaseToDto, mapExecutionStepToDto, mapExecutionToDto } from './execution.mapper';
 import { buildPlannedExecutionSteps } from './execution-plan-step.builder';
 import { canTransitionExecutionStatus, isTerminalExecutionStatus } from './execution-transition-policy';
 import { ExecutionStateService } from './execution-state.service';
@@ -19,6 +20,7 @@ import {
   TakeoverExecutionDto,
   ResumeExecutionDto,
   ReleaseHumanControlDto,
+  ReconcilePhaseTakeoverDto,
   ListExecutionsDto,
   RuntimeSessionSummaryDto,
   SubmitInputDto,
@@ -30,10 +32,13 @@ import {
   getAuthServiceUrl,
   getSessionBrokerUrl,
 } from '../../config/service-endpoints';
-import { RuntimeStepInvokeResult } from './runtime-adapter.interface';
+import { RuntimePhaseInvokeResult, RuntimeStepInvokeResult } from './runtime-adapter.interface';
 import { RuntimeExecutionOrchestrator } from './runtime-execution.orchestrator';
 import { RuntimeResultInterpreter } from './runtime-result.interpreter';
 import { RuntimeStepRequestFactory } from './runtime-step-request.factory';
+import { BrowserPhaseExecutor, BrowserPhaseCommand } from './browser-phase.executor';
+import type { BrowserPhaseRecoveryPolicy } from './browser-phase-recovery.planner';
+import type { BrowserPhaseCheck } from './execution.dto';
 
 interface LLMUsage {
   prompt_tokens: number;
@@ -108,6 +113,24 @@ interface PlannerPlanDraft {
     kind: 'skill' | 'tool' | 'human_input' | 'execution';
     tool_name?: string;
     status: 'planned';
+    phase_key?: string;
+    phase_name?: string;
+    phase_type?: string;
+    commands?: Array<{
+      step_id?: string;
+      capability_type?: string;
+      action: string;
+      input?: Record<string, unknown>;
+      metadata?: Record<string, unknown>;
+    }>;
+    precheck?: BrowserPhaseCheck;
+    postcheck?: BrowserPhaseCheck;
+    recovery_policy?: {
+      max_auto_retries?: number;
+      allow_ai_recovery?: boolean;
+      allow_human_takeover?: boolean;
+      model_id?: string;
+    };
   }>;
   required_inputs: PlannerRequiredInput[];
   risk_summary: {
@@ -120,6 +143,35 @@ interface PlannerPlanDraft {
   usage?: LLMUsage;
 }
 
+interface ExecutionStepPhaseMetadata {
+  phaseKey: string;
+  phaseName: string;
+  phaseType: string;
+}
+
+interface ExecutionStepBrowserPhaseConfig {
+  commands: BrowserPhaseCommand[];
+  precheck?: BrowserPhaseCheck;
+  postcheck?: BrowserPhaseCheck;
+  recoveryPolicy?: BrowserPhaseRecoveryPolicy;
+}
+
+interface ExecutionPhaseRecord {
+  id: string;
+  execution_id?: string;
+  phase_key?: string;
+  phase_name?: string;
+  phase_type?: string;
+  status?: string;
+  attempt?: number;
+  runtime_session_id?: string | null;
+  input_json?: Record<string, unknown> | null;
+  output_json?: Record<string, unknown> | null;
+  postcheck_json?: Record<string, unknown> | null;
+  error_code?: string | null;
+  error_message?: string | null;
+}
+
 @Injectable()
 export class ExecutionService {
   private readonly logger = new Logger(ExecutionService.name);
@@ -129,6 +181,7 @@ export class ExecutionService {
 
   private readonly eventSubject = new Subject<ExecutionStreamEventPayload>();
   private readonly executionEventService: ExecutionEventService;
+  private readonly executionPhaseService: ExecutionPhaseService;
   private readonly executionStateService: ExecutionStateService;
   private readonly executionStepService: ExecutionStepService;
 
@@ -138,10 +191,13 @@ export class ExecutionService {
     private readonly runtimeResultInterpreter: RuntimeResultInterpreter,
     private readonly runtimeStepRequestFactory: RuntimeStepRequestFactory,
     executionEventService?: ExecutionEventService,
+    executionPhaseService?: ExecutionPhaseService,
     executionStateService?: ExecutionStateService,
     executionStepService?: ExecutionStepService,
+    private readonly browserPhaseExecutor?: BrowserPhaseExecutor,
   ) {
     this.executionEventService = executionEventService || new ExecutionEventService(prisma);
+    this.executionPhaseService = executionPhaseService || new ExecutionPhaseService(prisma);
     this.executionStateService = executionStateService || new ExecutionStateService(
       prisma,
       this.executionEventService,
@@ -419,7 +475,18 @@ export class ExecutionService {
 
     this.ensureExecutionPermission(execution.createdBy, requester);
 
-    return this.toDto(execution);
+    const runtimeSession = await this.prisma.runtimeSession.findFirst({
+      where: { executionId: id },
+      orderBy: { createdAt: 'desc' },
+      select: { id: true },
+    });
+    const phases = await this.executionPhaseService.listByExecutionId(id);
+
+    return this.toDto({
+      ...execution,
+      runtimeSessionId: runtimeSession?.id || null,
+      phases,
+    });
   }
 
   async getSteps(id: string, requester?: RequestUserContext): Promise<ExecutionStepDto[]> {
@@ -438,7 +505,7 @@ export class ExecutionService {
     return steps.map((s) => this.toStepDto(s));
   }
 
-  async takeover(id: string, userId: string, dto: TakeoverExecutionDto, requester?: RequestUserContext): Promise<ExecutionDto> {
+  async getPhases(id: string, requester?: RequestUserContext) {
     const execution = await this.prisma.execution.findUnique({
       where: { id },
     });
@@ -447,97 +514,202 @@ export class ExecutionService {
       throw new NotFoundException(`Execution ${id} not found`);
     }
 
+    this.ensureExecutionPermission(execution.createdBy, requester);
+
+    return (await this.executionPhaseService.listByExecutionId(id))
+      .map((phase) => mapExecutionPhaseToDto(phase))
+      .filter((phase): phase is NonNullable<ExecutionDto['phases']>[number] => Boolean(phase));
+  }
+
+  async takeover(id: string, userId: string, dto: TakeoverExecutionDto, requester?: RequestUserContext): Promise<ExecutionDto> {
+    const execution = await this.getExecutionOrThrow(id);
     this.ensureExecutionPermission(execution.createdBy, requester || { id: userId });
 
     if (!canTransitionExecutionStatus(execution.status as ExecutionStatus, EXECUTION_STATUS.HUMAN_CONTROL)) {
       throw new BadRequestException(`Cannot takeover from status ${execution.status}`);
     }
 
-    // Update execution
-    await this.prisma.execution.update({
-      where: { id },
-      data: {
-        status: EXECUTION_STATUS.HUMAN_CONTROL,
-        takeoverRequired: true,
-        takeoverReason: dto.reason,
-      },
-    });
+    const currentPhase = await this.getCurrentPhaseRecord(
+      id,
+      (execution as unknown as Record<string, unknown>).currentPhaseKey as string | null | undefined,
+    );
+    await this.enterHumanControl(id, dto.reason, currentPhase?.runtime_session_id);
 
-    // Freeze runtime session
-    const runtimeSession = await this.prisma.runtimeSession.findFirst({
-      where: { executionId: id },
-    });
-
-    if (runtimeSession) {
-      try {
-        // Call new RuntimeSession API (state update is handled by runtime-session service)
-        await axios.post(`${this.sessionBrokerUrl}/runtime-sessions/${runtimeSession.id}/freeze`, {
-          reason: dto.reason,
-        });
-      } catch (error) {
-        this.logger.error(`Failed to freeze runtime session for execution ${id}`);
-      }
+    if (currentPhase) {
+      await this.executionPhaseService.markWaitingTakeover(id, currentPhase.phase_key!, {
+        phaseName: currentPhase.phase_name || currentPhase.phase_key!,
+        phaseType: currentPhase.phase_type || 'workflow_execution',
+        attempt: currentPhase.attempt || 1,
+        runtimeSessionId: currentPhase.runtime_session_id || null,
+        output: currentPhase.output_json || null,
+        postcheck: currentPhase.postcheck_json || null,
+        recoveryDecision: null,
+        errorCode: currentPhase.error_code || null,
+        errorMessage: currentPhase.error_message || dto.reason || null,
+      });
+      await this.executionPhaseService.createTakeoverRecord({
+        executionId: id,
+        phaseId: currentPhase.id,
+        runtimeSessionId: currentPhase.runtime_session_id || null,
+        reason: dto.reason,
+        requestedBy: userId,
+      });
     }
 
-    // Create event
     await this.createEvent(id, EXECUTION_EVENT_TYPE.EXECUTION_TAKEOVER_REQUESTED, {
       userId,
       reason: dto.reason,
+      ...(currentPhase?.phase_key ? { phaseKey: currentPhase.phase_key } : {}),
     });
 
     this.logger.log(`Execution ${id} entered ${EXECUTION_STATUS.HUMAN_CONTROL}`);
-
     return this.getById(id, requester || { id: userId });
   }
 
   async resume(id: string, userId: string, dto: ResumeExecutionDto, requester?: RequestUserContext): Promise<ExecutionDto> {
-    const execution = await this.prisma.execution.findUnique({
-      where: { id },
-    });
-
-    if (!execution) {
-      throw new NotFoundException(`Execution ${id} not found`);
-    }
-
+    const execution = await this.getExecutionOrThrow(id);
     this.ensureExecutionPermission(execution.createdBy, requester || { id: userId });
 
     if (execution.status !== EXECUTION_STATUS.HUMAN_CONTROL) {
       throw new BadRequestException(`Execution ${id} is not in ${EXECUTION_STATUS.HUMAN_CONTROL} status`);
     }
 
-    // Update execution
-    await this.updateStatus(id, EXECUTION_STATUS.RUNNING);
-
-    // Resume runtime session
-    const runtimeSession = await this.prisma.runtimeSession.findFirst({
-      where: { executionId: id },
-    });
-
-    if (runtimeSession) {
-      try {
-        // Call new RuntimeSession API (state update is handled by runtime-session service)
-        await axios.post(`${this.sessionBrokerUrl}/runtime-sessions/${runtimeSession.id}/resume`, {
-          stepId: dto.stepId,
-        });
-      } catch (error) {
-        this.logger.error(`Failed to resume runtime session for execution ${id}`);
-      }
+    const currentPhase = await this.getCurrentPhaseRecord(
+      id,
+      (execution as unknown as Record<string, unknown>).currentPhaseKey as string | null | undefined,
+    );
+    if (currentPhase?.id) {
+      await this.resolvePhaseTakeoverAndMarkRunning(id, currentPhase, userId, dto.comment);
     }
 
-    // Create event
+    await this.exitHumanControlAndResume(id, dto.stepId, currentPhase?.runtime_session_id);
     await this.createEvent(id, EXECUTION_EVENT_TYPE.EXECUTION_RESUMED, {
       userId,
       stepId: dto.stepId,
       comment: dto.comment,
+      ...(currentPhase?.phase_key ? { phaseKey: currentPhase.phase_key } : {}),
     });
 
     this.logger.log(`Execution ${id} resumed`);
-
     return this.getById(id, requester || { id: userId });
   }
 
   async releaseHumanControl(id: string, userId: string, dto: ReleaseHumanControlDto, requester?: RequestUserContext): Promise<ExecutionDto> {
     return this.resume(id, userId, dto, requester);
+  }
+
+  async takeoverPhase(
+    executionId: string,
+    phaseKey: string,
+    userId: string,
+    dto: TakeoverExecutionDto,
+    requester?: RequestUserContext,
+  ): Promise<ExecutionDto> {
+    const execution = await this.getExecutionOrThrow(executionId);
+    this.ensureExecutionPermission(execution.createdBy, requester || { id: userId });
+
+    if (isTerminalExecutionStatus(execution.status as ExecutionStatus)) {
+      throw new BadRequestException(`Cannot takeover phase from terminal execution status ${execution.status}`);
+    }
+
+    const phase = await this.requirePhaseRecord(executionId, phaseKey);
+    if (phase.status === 'completed') {
+      throw new BadRequestException(`Phase ${phaseKey} is already completed`);
+    }
+
+    await this.enterHumanControl(executionId, dto.reason, phase.runtime_session_id);
+    await this.executionPhaseService.markWaitingTakeover(executionId, phase.phase_key!, {
+      phaseName: phase.phase_name || phase.phase_key!,
+      phaseType: phase.phase_type || 'workflow_execution',
+      attempt: phase.attempt || 1,
+      runtimeSessionId: phase.runtime_session_id || null,
+      output: phase.output_json || null,
+      postcheck: phase.postcheck_json || null,
+      recoveryDecision: null,
+      errorCode: phase.error_code || null,
+      errorMessage: phase.error_message || dto.reason || null,
+    });
+    await this.executionPhaseService.createTakeoverRecord({
+      executionId,
+      phaseId: phase.id,
+      runtimeSessionId: phase.runtime_session_id || null,
+      reason: dto.reason,
+      requestedBy: userId,
+    });
+    await this.createEvent(executionId, EXECUTION_EVENT_TYPE.EXECUTION_TAKEOVER_REQUESTED, {
+      userId,
+      reason: dto.reason,
+      phaseKey,
+    });
+
+    return this.getById(executionId, requester || { id: userId });
+  }
+
+  async reconcilePhaseTakeover(
+    executionId: string,
+    phaseKey: string,
+    userId: string,
+    dto: ReconcilePhaseTakeoverDto,
+    requester?: RequestUserContext,
+  ): Promise<ExecutionDto> {
+    const execution = await this.getExecutionOrThrow(executionId);
+    this.ensureExecutionPermission(execution.createdBy, requester || { id: userId });
+
+    if (execution.status !== EXECUTION_STATUS.HUMAN_CONTROL) {
+      throw new BadRequestException(`Execution ${executionId} is not in ${EXECUTION_STATUS.HUMAN_CONTROL} status`);
+    }
+
+    const phase = await this.requirePhaseRecord(executionId, phaseKey);
+    await this.executionPhaseService.markResumable(executionId, phase.phase_key!, {
+      phaseName: phase.phase_name || phase.phase_key!,
+      phaseType: phase.phase_type || 'workflow_execution',
+      attempt: phase.attempt || 1,
+      runtimeSessionId: phase.runtime_session_id || null,
+      output: phase.output_json || null,
+      postcheck: phase.postcheck_json || null,
+      recoveryDecision: {
+        reconciledBy: dto.resolvedBy || userId,
+        comment: dto.comment || null,
+      },
+      errorCode: null,
+      errorMessage: null,
+    });
+    await this.executionPhaseService.resolveTakeoverRecord({
+      executionId,
+      phaseId: phase.id,
+      resolvedBy: dto.resolvedBy || userId,
+      resolutionNote: dto.comment || null,
+      status: 'resolved',
+    });
+
+    return this.getById(executionId, requester || { id: userId });
+  }
+
+  async resumePhaseTakeover(
+    executionId: string,
+    phaseKey: string,
+    userId: string,
+    dto: ResumeExecutionDto,
+    requester?: RequestUserContext,
+  ): Promise<ExecutionDto> {
+    const execution = await this.getExecutionOrThrow(executionId);
+    this.ensureExecutionPermission(execution.createdBy, requester || { id: userId });
+
+    if (execution.status !== EXECUTION_STATUS.HUMAN_CONTROL) {
+      throw new BadRequestException(`Execution ${executionId} is not in ${EXECUTION_STATUS.HUMAN_CONTROL} status`);
+    }
+
+    const phase = await this.requirePhaseRecord(executionId, phaseKey);
+    await this.resolvePhaseTakeoverAndMarkRunning(executionId, phase, userId, dto.comment);
+    await this.exitHumanControlAndResume(executionId, dto.stepId, phase.runtime_session_id);
+    await this.createEvent(executionId, EXECUTION_EVENT_TYPE.EXECUTION_RESUMED, {
+      userId,
+      stepId: dto.stepId,
+      comment: dto.comment,
+      phaseKey,
+    });
+
+    return this.getById(executionId, requester || { id: userId });
   }
 
   async approve(id: string, userId: string, dto: ApprovalDecisionDto, requester?: RequestUserContext): Promise<ExecutionDto> {
@@ -845,8 +1017,29 @@ export class ExecutionService {
       this.prisma.execution.count({ where }),
     ]);
 
+    const runtimeSessions = executions.length > 0
+      ? await this.prisma.runtimeSession.findMany({
+        where: {
+          executionId: {
+            in: executions.map((execution) => execution.id),
+          },
+        },
+        orderBy: { createdAt: 'desc' },
+        select: { id: true, executionId: true },
+      })
+      : [];
+    const runtimeSessionIdByExecutionId = new Map<string, string>();
+    runtimeSessions.forEach((runtimeSession) => {
+      if (!runtimeSessionIdByExecutionId.has(runtimeSession.executionId)) {
+        runtimeSessionIdByExecutionId.set(runtimeSession.executionId, runtimeSession.id);
+      }
+    });
+
     return {
-      data: executions.map((execution) => this.toDto(execution)),
+      data: executions.map((execution) => this.toDto({
+        ...execution,
+        runtimeSessionId: runtimeSessionIdByExecutionId.get(execution.id) || null,
+      })),
       total,
       page,
       pageSize,
@@ -875,6 +1068,153 @@ export class ExecutionService {
         `Failed to close runtime session ${runtimeSessionId} for execution ${executionId} (${reason}): ${errorMessage}`,
       );
     }
+  }
+
+  private async freezeRuntimeSessionQuietly(
+    runtimeSessionId: string | null | undefined,
+    executionId: string,
+    reason: string,
+  ): Promise<void> {
+    if (!runtimeSessionId) {
+      return;
+    }
+
+    try {
+      await axios.post(`${this.sessionBrokerUrl}/runtime-sessions/${runtimeSessionId}/freeze`, { reason });
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      this.logger.warn(
+        `Failed to freeze runtime session ${runtimeSessionId} for execution ${executionId}: ${errorMessage}`,
+      );
+    }
+  }
+
+  private async resumeRuntimeSessionQuietly(
+    runtimeSessionId: string | null | undefined,
+    executionId: string,
+    stepId?: string,
+  ): Promise<void> {
+    if (!runtimeSessionId) {
+      return;
+    }
+
+    try {
+      await axios.post(`${this.sessionBrokerUrl}/runtime-sessions/${runtimeSessionId}/resume`, { stepId });
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      this.logger.warn(
+        `Failed to resume runtime session ${runtimeSessionId} for execution ${executionId}: ${errorMessage}`,
+      );
+    }
+  }
+
+  private async getExecutionOrThrow(id: string) {
+    const execution = await this.prisma.execution.findUnique({
+      where: { id },
+    });
+
+    if (!execution) {
+      throw new NotFoundException(`Execution ${id} not found`);
+    }
+
+    return execution;
+  }
+
+  private async resolveExecutionRuntimeSessionId(
+    executionId: string,
+    preferredRuntimeSessionId?: string | null,
+  ): Promise<string | null> {
+    if (preferredRuntimeSessionId) {
+      return preferredRuntimeSessionId;
+    }
+
+    const runtimeSession = await this.prisma.runtimeSession.findFirst({
+      where: { executionId },
+    });
+    return runtimeSession?.id || null;
+  }
+
+  private async getCurrentPhaseRecord(
+    executionId: string,
+    phaseKey?: string | null,
+  ): Promise<ExecutionPhaseRecord | null> {
+    if (!phaseKey) {
+      return null;
+    }
+
+    return this.executionPhaseService.getByExecutionIdAndPhaseKey(executionId, phaseKey) as unknown as Promise<ExecutionPhaseRecord | null>;
+  }
+
+  private async requirePhaseRecord(
+    executionId: string,
+    phaseKey: string,
+  ): Promise<ExecutionPhaseRecord> {
+    const phase = await this.getCurrentPhaseRecord(executionId, phaseKey);
+    if (!phase?.id) {
+      throw new NotFoundException(`Execution phase ${phaseKey} not found`);
+    }
+    return phase;
+  }
+
+  private async enterHumanControl(
+    executionId: string,
+    reason: string,
+    preferredRuntimeSessionId?: string | null,
+  ): Promise<string | null> {
+    await this.prisma.execution.update({
+      where: { id: executionId },
+      data: {
+        status: EXECUTION_STATUS.HUMAN_CONTROL,
+        takeoverRequired: true,
+        takeoverReason: reason,
+      },
+    });
+
+    const runtimeSessionId = await this.resolveExecutionRuntimeSessionId(executionId, preferredRuntimeSessionId);
+    await this.freezeRuntimeSessionQuietly(runtimeSessionId, executionId, reason);
+    return runtimeSessionId;
+  }
+
+  private async exitHumanControlAndResume(
+    executionId: string,
+    stepId?: string,
+    preferredRuntimeSessionId?: string | null,
+  ): Promise<string | null> {
+    await this.updateStatus(executionId, EXECUTION_STATUS.RUNNING);
+    await this.prisma.execution.update({
+      where: { id: executionId },
+      data: {
+        takeoverRequired: false,
+        takeoverReason: null,
+      },
+    });
+
+    const runtimeSessionId = await this.resolveExecutionRuntimeSessionId(executionId, preferredRuntimeSessionId);
+    await this.resumeRuntimeSessionQuietly(runtimeSessionId, executionId, stepId);
+    return runtimeSessionId;
+  }
+
+  private async resolvePhaseTakeoverAndMarkRunning(
+    executionId: string,
+    phase: ExecutionPhaseRecord,
+    userId: string,
+    resolutionNote?: string,
+  ): Promise<void> {
+    await this.executionPhaseService.resolveTakeoverRecord({
+      executionId,
+      phaseId: phase.id,
+      resolvedBy: userId,
+      resolutionNote: resolutionNote || null,
+      status: 'resolved',
+    });
+    await this.executionPhaseService.markRunning(executionId, phase.phase_key!, {
+      phaseName: phase.phase_name || phase.phase_key!,
+      phaseType: phase.phase_type || 'workflow_execution',
+      attempt: phase.attempt || 1,
+      runtimeSessionId: phase.runtime_session_id || null,
+      input: phase.input_json || null,
+      precheck: null,
+    });
   }
 
   private async bootstrapBrowserExecution(
@@ -962,6 +1302,8 @@ export class ExecutionService {
     runtimeSessionId: string,
     stepId: string,
     result: RuntimeStepInvokeResult,
+    phaseMetadata?: ExecutionStepPhaseMetadata,
+    step?: Record<string, unknown> | null,
   ): Promise<void> {
     await this.runtimeResultInterpreter.handleBrowserStepResult(
       {
@@ -993,6 +1335,7 @@ export class ExecutionService {
       },
       result,
     );
+    await this.syncPhaseAfterStepResult(executionId, runtimeSessionId, result, phaseMetadata, step);
   }
 
   private toDto(execution: any): ExecutionDto {
@@ -1399,6 +1742,12 @@ export class ExecutionService {
         return;
       }
 
+      if (nextStep.type === 'system' && nextStep.action === 'execute_browser_phase') {
+        this.logger.log(`Executing browser phase step for execution ${executionId}, step ${nextStep.id}`);
+        await this.executeBrowserPhaseStep(execution as any, runtimeSessionId, nextStep.id);
+        return;
+      }
+
       if (nextStep.type === 'system') {
         this.logger.log(`Executing system step for execution ${executionId}, step ${nextStep.id} (action: ${nextStep.action})`);
         await this.executeSystemSkillStep(execution as any, runtimeSessionId, nextStep.id);
@@ -1442,7 +1791,10 @@ export class ExecutionService {
     url: string,
   ): Promise<void> {
     const executionId = execution.id as string;
+    const step = await this.executionStepService.getById(stepId);
+    const phaseMetadata = this.extractStepPhaseMetadata(step as Record<string, unknown> | null | undefined);
     await this.executionStepService.setCurrentStep(executionId, stepId);
+    await this.markPhaseRunningForStep(executionId, runtimeSessionId, phaseMetadata, step);
 
     await this.createEvent(
       executionId,
@@ -1466,10 +1818,96 @@ export class ExecutionService {
         runtimeSessionId,
         url,
         executionMode: 'planned_step',
+        phaseMetadata,
       }),
     );
 
-    await this.handleBrowserStepResult(executionId, runtimeSessionId, stepId, result);
+    await this.handleBrowserStepResult(executionId, runtimeSessionId, stepId, result, phaseMetadata, step as Record<string, unknown> | null | undefined);
+  }
+
+  private async executeBrowserPhaseStep(
+    execution: Record<string, unknown>,
+    runtimeSessionId: string,
+    stepId: string,
+  ): Promise<void> {
+    const executionId = execution.id as string;
+    const step = await this.executionStepService.getById(stepId);
+    const phaseMetadata = this.extractStepPhaseMetadata(step as Record<string, unknown> | null | undefined);
+    const browserPhaseConfig = this.extractStepBrowserPhaseConfig(step as Record<string, unknown> | null | undefined);
+
+    if (!phaseMetadata) {
+      await this.skipSingleStep(stepId, executionId, 'Browser phase step is missing phase metadata');
+      await this.advanceExecutionFlow(executionId, runtimeSessionId);
+      return;
+    }
+
+    if (!browserPhaseConfig || browserPhaseConfig.commands.length === 0) {
+      await this.skipSingleStep(stepId, executionId, 'Browser phase step is missing commands');
+      await this.advanceExecutionFlow(executionId, runtimeSessionId);
+      return;
+    }
+
+    if (!this.browserPhaseExecutor) {
+      throw new Error('BrowserPhaseExecutor is not available');
+    }
+
+    await this.executionStepService.setCurrentStep(executionId, stepId);
+    await this.createEvent(
+      executionId,
+      EXECUTION_EVENT_TYPE.STEP_STARTED,
+      {
+        runtimeSessionId,
+        stepId,
+        stepName: step?.name,
+        action: 'execute_browser_phase',
+        phaseKey: phaseMetadata.phaseKey,
+        phaseName: phaseMetadata.phaseName,
+        phaseType: phaseMetadata.phaseType,
+      },
+      {
+        runtimeSessionId,
+        stepId,
+      },
+    );
+    await this.executionStepService.startStep(stepId);
+
+    try {
+      const result = await this.browserPhaseExecutor.execute({
+        executionId,
+        phaseKey: phaseMetadata.phaseKey,
+        phaseName: phaseMetadata.phaseName,
+        phaseType: phaseMetadata.phaseType,
+        runtimeSessionId,
+        skillId:
+          typeof execution.skillId === 'string' && execution.skillId.trim().length > 0
+            ? execution.skillId
+            : undefined,
+        publishedSkillId:
+          typeof execution.skillId === 'string' && execution.skillId.trim().length > 0
+            ? execution.skillId
+            : undefined,
+        runtimeType: 'browser',
+        policyContext: this.buildBrowserPhasePolicyContext(execution),
+        traceContext: this.buildBrowserPhaseTraceContext(execution),
+        commands: browserPhaseConfig.commands,
+        input: this.extractBrowserPhaseInput(step as Record<string, unknown> | null | undefined),
+        precheck: browserPhaseConfig.precheck,
+        postcheck: browserPhaseConfig.postcheck,
+        recoveryPolicy: browserPhaseConfig.recoveryPolicy,
+      });
+
+      await this.handleBrowserPhaseStepResult(executionId, runtimeSessionId, stepId, result);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Browser phase execution failed';
+      this.logger.error(`Failed to execute browser phase step ${stepId}: ${message}`);
+      await this.handleBrowserPhaseStepResult(executionId, runtimeSessionId, stepId, {
+        success: false,
+        status: 'failed',
+        stepResults: [],
+        errorCode: 'BROWSER_PHASE_EXECUTION_FAILED',
+        errorMessage: message,
+      });
+    }
   }
 
   private async executeSystemSkillStep(
@@ -1478,6 +1916,8 @@ export class ExecutionService {
     stepId: string,
   ): Promise<void> {
     const executionId = execution.id as string;
+    const step = await this.executionStepService.getById(stepId);
+    const phaseMetadata = this.extractStepPhaseMetadata(step as Record<string, unknown> | null | undefined);
     this.logger.log(`Executing system skill step ${stepId} for execution ${executionId}`);
     const capabilityId = this.runtimeStepRequestFactory.resolveExecutionCapabilityId(execution);
     if (!capabilityId) {
@@ -1492,6 +1932,7 @@ export class ExecutionService {
     this.logger.log(`Calling auth runtime for capability ${capabilityId} (version: ${capabilityVersion || 'latest'}) with input: ${JSON.stringify(input)}`);
 
     await this.executionStepService.setCurrentStep(executionId, stepId);
+    await this.markPhaseRunningForStep(executionId, runtimeSessionId, phaseMetadata, step);
 
     // Create start event
     await this.createEvent(executionId, EXECUTION_EVENT_TYPE.STEP_STARTED, {
@@ -1516,13 +1957,14 @@ export class ExecutionService {
         execution,
         stepId,
         runtimeSessionId,
+        phaseMetadata,
       });
       if (!request) {
         throw new Error('Skill runtime request is missing capability identifier');
       }
 
       const result = await this.runtimeExecutionOrchestrator.executeStep(request);
-      await this.handleSystemSkillStepResult(executionId, runtimeSessionId, stepId, result);
+      await this.handleSystemSkillStepResult(executionId, runtimeSessionId, stepId, result, phaseMetadata, step as Record<string, unknown> | null | undefined);
     } catch (error) {
       const message =
         error instanceof Error
@@ -1547,8 +1989,105 @@ export class ExecutionService {
           logs: [],
           error: message,
         },
-      });
+      }, phaseMetadata, step as Record<string, unknown> | null | undefined);
     }
+  }
+
+  private async handleBrowserPhaseStepResult(
+    executionId: string,
+    runtimeSessionId: string,
+    stepId: string,
+    result: RuntimePhaseInvokeResult,
+  ): Promise<void> {
+    const phaseOutput = {
+      status: result.status,
+      output: result.output || null,
+      stepResults: result.stepResults,
+      failedStepId: result.failedStepId || null,
+      failedAction: result.failedAction || null,
+      snapshotId: result.snapshotId || null,
+      pageUrl: result.pageUrl || null,
+      pageFingerprint: result.pageFingerprint || null,
+      artifacts: result.artifacts || [],
+      retryable: result.retryable || false,
+      requiresTakeover: result.requiresTakeover || false,
+      takeoverReason: result.takeoverReason || null,
+    };
+
+    if (result.status === 'waiting') {
+      const requiredInputs = this.extractRequiredInputsFromPhaseOutput(result.output);
+      await this.executionStepService.markStepWaiting(stepId, {
+        requiredInputs,
+        outputJson: phaseOutput,
+        errorCode: result.errorCode,
+        errorMessage: result.errorMessage,
+      });
+      await this.enterRuntimeWaitingInput(
+        executionId,
+        runtimeSessionId,
+        stepId,
+        requiredInputs,
+        result.errorMessage,
+      );
+      return;
+    }
+
+    if (result.status === 'blocked') {
+      await this.enterPendingApprovalFromRuntimeStep(
+        executionId,
+        result.errorMessage || 'Browser phase blocked by runtime policy',
+      );
+      return;
+    }
+
+    await this.executionStepService.finishRuntimeStep(stepId, {
+      success: result.success,
+      outputJson: phaseOutput,
+      errorCode: result.errorCode,
+      errorMessage: result.errorMessage,
+      snapshotId: result.snapshotId || undefined,
+      takeoverTriggered: Boolean(result.requiresTakeover || result.status === 'takeover_required'),
+    });
+
+    await this.createEvent(
+      executionId,
+      result.success ? EXECUTION_EVENT_TYPE.STEP_SUCCEEDED : EXECUTION_EVENT_TYPE.STEP_FAILED,
+      {
+        runtimeSessionId,
+        stepId,
+        result: result.output || phaseOutput,
+        error: result.errorMessage,
+        errorCode: result.errorCode,
+        phaseStatus: result.status,
+        failedStepId: result.failedStepId,
+        failedAction: result.failedAction,
+        shouldTakeover: result.requiresTakeover || result.status === 'takeover_required',
+      },
+      {
+        runtimeSessionId,
+        stepId,
+      },
+    );
+
+    if (result.status === 'takeover_required' || result.requiresTakeover) {
+      await this.takeover(executionId, 'system', {
+        reason: result.takeoverReason || result.errorMessage || 'Browser phase requires human takeover',
+      });
+      return;
+    }
+
+    if (result.success) {
+      await this.advanceExecutionFlow(executionId, runtimeSessionId);
+      return;
+    }
+
+    await this.failExecutionFromRuntimeStep({
+      executionId,
+      stepId,
+      failureReason: result.errorMessage || 'Browser phase execution failed',
+      failureCode: result.errorCode || 'BROWSER_PHASE_EXECUTION_FAILED',
+      runtimeSessionId,
+    });
   }
 
   private async handleSystemSkillStepResult(
@@ -1556,6 +2095,8 @@ export class ExecutionService {
     runtimeSessionId: string,
     stepId: string,
     result: RuntimeStepInvokeResult,
+    phaseMetadata?: ExecutionStepPhaseMetadata,
+    step?: Record<string, unknown> | null,
   ): Promise<void> {
     await this.runtimeResultInterpreter.handleSkillRuntimeResult(
       {
@@ -1583,6 +2124,351 @@ export class ExecutionService {
       },
       result,
     );
+    await this.syncPhaseAfterStepResult(executionId, runtimeSessionId, result, phaseMetadata, step);
+  }
+
+  private extractStepBrowserPhaseConfig(
+    step?: Record<string, unknown> | null,
+  ): ExecutionStepBrowserPhaseConfig | undefined {
+    if (!step) {
+      return undefined;
+    }
+
+    const targetJson = this.readJsonRecord(step.targetJson);
+    const inputJson = this.readJsonRecord(step.inputJson);
+    const commands = this.extractBrowserPhaseCommands(
+      targetJson?.commands || inputJson?.commands,
+      typeof step.id === 'string' ? step.id : 'browser_phase_step',
+    );
+
+    if (commands.length === 0) {
+      return undefined;
+    }
+
+    return {
+      commands,
+      precheck: this.extractBrowserPhaseCheck(targetJson?.precheck || inputJson?.precheck),
+      postcheck: this.extractBrowserPhaseCheck(targetJson?.postcheck || inputJson?.postcheck),
+      recoveryPolicy: this.extractBrowserPhaseRecoveryPolicy(
+        targetJson?.recoveryPolicy
+          || targetJson?.recovery_policy
+          || inputJson?.recoveryPolicy
+          || inputJson?.recovery_policy,
+      ),
+    };
+  }
+
+  private extractBrowserPhaseCommands(value: unknown, stepIdPrefix: string): BrowserPhaseCommand[] {
+    if (!Array.isArray(value)) {
+      return [];
+    }
+
+    return value
+      .filter(
+        (command): command is Record<string, unknown> =>
+          Boolean(command)
+          && typeof command === 'object'
+          && !Array.isArray(command)
+          && typeof command.action === 'string'
+          && command.action.trim().length > 0,
+      )
+      .map((command, index) => ({
+        stepId:
+          typeof command.stepId === 'string' && command.stepId.trim().length > 0
+            ? command.stepId.trim()
+            : typeof command.step_id === 'string' && command.step_id.trim().length > 0
+              ? command.step_id.trim()
+              : `${stepIdPrefix}__command_${index + 1}`,
+        capabilityType:
+          typeof command.capabilityType === 'string' && command.capabilityType.trim().length > 0
+            ? command.capabilityType.trim().replace(/_/g, '.')
+            : typeof command.capability_type === 'string' && command.capability_type.trim().length > 0
+              ? command.capability_type.trim().replace(/_/g, '.')
+              : 'browser.step',
+        action: (command.action as string).trim(),
+        input: this.readJsonRecord(command.input) || {},
+        metadata: this.readJsonRecord(command.metadata),
+      }));
+  }
+
+  private extractBrowserPhaseCheck(value: unknown): BrowserPhaseCheck | undefined {
+    const record = this.readJsonRecord(value);
+    return record as BrowserPhaseCheck | undefined;
+  }
+
+  private extractBrowserPhaseRecoveryPolicy(
+    value: unknown,
+  ): BrowserPhaseRecoveryPolicy | undefined {
+    const record = this.readJsonRecord(value);
+    if (!record) {
+      return undefined;
+    }
+
+    const policy: BrowserPhaseRecoveryPolicy = {
+      ...(typeof record.maxAutoRetries === 'number'
+        ? { maxAutoRetries: record.maxAutoRetries }
+        : typeof record.max_auto_retries === 'number'
+          ? { maxAutoRetries: record.max_auto_retries }
+          : {}),
+      ...(typeof record.allowAiRecovery === 'boolean'
+        ? { allowAiRecovery: record.allowAiRecovery }
+        : typeof record.allow_ai_recovery === 'boolean'
+          ? { allowAiRecovery: record.allow_ai_recovery }
+          : {}),
+      ...(typeof record.allowHumanTakeover === 'boolean'
+        ? { allowHumanTakeover: record.allowHumanTakeover }
+        : typeof record.allow_human_takeover === 'boolean'
+          ? { allowHumanTakeover: record.allow_human_takeover }
+          : {}),
+      ...(typeof record.modelId === 'string' && record.modelId.trim().length > 0
+        ? { modelId: record.modelId.trim() }
+        : typeof record.model_id === 'string' && record.model_id.trim().length > 0
+          ? { modelId: record.model_id.trim() }
+          : {}),
+    };
+
+    return Object.keys(policy).length > 0 ? policy : undefined;
+  }
+
+  private extractBrowserPhaseInput(
+    step?: Record<string, unknown> | null,
+  ): Record<string, unknown> | undefined {
+    const inputJson = this.readJsonRecord(step?.inputJson);
+    if (!inputJson) {
+      return undefined;
+    }
+
+    const { commands, precheck, postcheck, recoveryPolicy, recovery_policy, ...phaseInput } = inputJson;
+    return phaseInput;
+  }
+
+  private buildBrowserPhasePolicyContext(
+    execution: Record<string, unknown>,
+  ): {
+    riskLevel?: 'L0' | 'L1' | 'L2' | 'L3';
+    requiresApproval?: boolean;
+  } | undefined {
+    const riskLevel =
+      typeof execution.riskLevel === 'string'
+      && ['L0', 'L1', 'L2', 'L3'].includes(execution.riskLevel)
+        ? execution.riskLevel as 'L0' | 'L1' | 'L2' | 'L3'
+        : undefined;
+    const requiresApproval =
+      typeof execution.requiresApproval === 'boolean' ? execution.requiresApproval : undefined;
+
+    if (riskLevel === undefined && requiresApproval === undefined) {
+      return undefined;
+    }
+
+    return {
+      ...(riskLevel ? { riskLevel } : {}),
+      ...(requiresApproval !== undefined ? { requiresApproval } : {}),
+    };
+  }
+
+  private buildBrowserPhaseTraceContext(
+    execution: Record<string, unknown>,
+  ): {
+    userId?: string;
+    actorType?: 'system';
+    sourceService?: string;
+  } | undefined {
+    const userId =
+      typeof execution.createdBy === 'string' && execution.createdBy.trim().length > 0
+        ? execution.createdBy
+        : undefined;
+    if (!userId) {
+      return undefined;
+    }
+
+    return {
+      userId,
+      actorType: 'system',
+      sourceService: 'control-plane',
+    };
+  }
+
+  private extractRequiredInputsFromPhaseOutput(output?: Record<string, unknown>): unknown[] {
+    if (Array.isArray(output?.requiredInputs)) {
+      return output.requiredInputs;
+    }
+    if (Array.isArray(output?.required_inputs)) {
+      return output.required_inputs;
+    }
+    return [];
+  }
+
+  private readJsonRecord(value: unknown): Record<string, unknown> | undefined {
+    return value && typeof value === 'object' && !Array.isArray(value)
+      ? value as Record<string, unknown>
+      : undefined;
+  }
+
+  private extractStepPhaseMetadata(
+    step?: Record<string, unknown> | null,
+  ): ExecutionStepPhaseMetadata | undefined {
+    if (!step) {
+      return undefined;
+    }
+
+    const targetJson = step.targetJson as Record<string, unknown> | undefined;
+    const inputJson = step.inputJson as Record<string, unknown> | undefined;
+    const phaseKey = typeof targetJson?.phaseKey === 'string'
+      ? targetJson.phaseKey
+      : typeof targetJson?.phase_key === 'string'
+        ? targetJson.phase_key
+        : typeof inputJson?.phaseKey === 'string'
+          ? inputJson.phaseKey
+          : typeof inputJson?.phase_key === 'string'
+            ? inputJson.phase_key
+            : undefined;
+    const phaseName = typeof targetJson?.phaseName === 'string'
+      ? targetJson.phaseName
+      : typeof targetJson?.phase_name === 'string'
+        ? targetJson.phase_name
+        : typeof inputJson?.phaseName === 'string'
+          ? inputJson.phaseName
+          : typeof inputJson?.phase_name === 'string'
+            ? inputJson.phase_name
+            : undefined;
+    const phaseType = typeof targetJson?.phaseType === 'string'
+      ? targetJson.phaseType
+      : typeof targetJson?.phase_type === 'string'
+        ? targetJson.phase_type
+        : typeof inputJson?.phaseType === 'string'
+          ? inputJson.phaseType
+          : typeof inputJson?.phase_type === 'string'
+            ? inputJson.phase_type
+            : undefined;
+
+    if (!phaseKey || !phaseName || !phaseType) {
+      return undefined;
+    }
+
+    return { phaseKey, phaseName, phaseType };
+  }
+
+  private async markPhaseRunningForStep(
+    executionId: string,
+    runtimeSessionId: string,
+    phaseMetadata?: ExecutionStepPhaseMetadata,
+    step?: Record<string, unknown> | null,
+  ): Promise<void> {
+    if (!phaseMetadata) {
+      return;
+    }
+
+    const stepInput = (step?.inputJson as Record<string, unknown> | undefined) || null;
+    const stepTarget = (step?.targetJson as Record<string, unknown> | undefined) || null;
+    await this.executionPhaseService.markRunning(executionId, phaseMetadata.phaseKey, {
+      phaseName: phaseMetadata.phaseName,
+      phaseType: phaseMetadata.phaseType,
+      attempt: 1,
+      runtimeSessionId,
+      input: {
+        stepId: step?.id,
+        stepType: step?.type,
+        action: step?.action,
+        target: stepTarget,
+        input: stepInput,
+      },
+      precheck: null,
+    });
+  }
+
+  private async syncPhaseAfterStepResult(
+    executionId: string,
+    runtimeSessionId: string,
+    result: RuntimeStepInvokeResult,
+    phaseMetadata?: ExecutionStepPhaseMetadata,
+    step?: Record<string, unknown> | null,
+  ): Promise<void> {
+    if (!phaseMetadata) {
+      return;
+    }
+
+    const phaseOutput = {
+      stepId: step?.id,
+      action: step?.action,
+      output: result.output || null,
+      snapshot: result.snapshot || null,
+      rawResult: result.rawResult || null,
+    };
+    const phaseArtifacts = this.mapRuntimeArtifactsToPhaseArtifacts(result);
+
+    if (result.success) {
+      await this.executionPhaseService.markCompleted(executionId, phaseMetadata.phaseKey, {
+        phaseName: phaseMetadata.phaseName,
+        phaseType: phaseMetadata.phaseType,
+        attempt: 1,
+        runtimeSessionId,
+        output: phaseOutput,
+        postcheck: null,
+      });
+      await this.executionPhaseService.replaceArtifacts(executionId, phaseMetadata.phaseKey, phaseArtifacts);
+      return;
+    }
+
+    const mappedStatus = result.status === 'takeover_required'
+      ? 'waiting_takeover'
+      : result.status === 'waiting'
+        ? 'resumable'
+        : 'failed';
+
+    await this.executionPhaseService.createOrUpdatePhase({
+      executionId,
+      phaseKey: phaseMetadata.phaseKey,
+      phaseName: phaseMetadata.phaseName,
+      phaseType: phaseMetadata.phaseType,
+      status: mappedStatus,
+      attempt: 1,
+      runtimeSessionId,
+      output: phaseOutput,
+      recoveryDecision: null,
+      errorCode: result.errorCode || null,
+      errorMessage: result.errorMessage || null,
+      completedAt: mappedStatus === 'failed' ? new Date() : null,
+    });
+    await this.executionPhaseService.replaceArtifacts(executionId, phaseMetadata.phaseKey, phaseArtifacts);
+  }
+
+  private mapRuntimeArtifactsToPhaseArtifacts(result: RuntimeStepInvokeResult): Array<{
+    artifactType: string;
+    snapshotId?: string | null;
+    pageUrl?: string | null;
+    pageFingerprint?: string | null;
+    payload?: Record<string, unknown> | null;
+  }> {
+    if (!Array.isArray(result.artifacts) || result.artifacts.length === 0) {
+      return [];
+    }
+
+    return result.artifacts.map((artifact) => ({
+      artifactType: artifact.type,
+      snapshotId: artifact.id || null,
+      pageUrl: artifact.url || null,
+      pageFingerprint: this.extractPageFingerprintFromArtifactMetadata(artifact.metadata) || null,
+      payload: artifact.metadata || null,
+    }));
+  }
+
+  private extractPageFingerprintFromArtifactMetadata(
+    metadata?: Record<string, unknown>,
+  ): string | undefined {
+    if (!metadata) {
+      return undefined;
+    }
+    const page = metadata.page;
+    if (page && typeof page === 'object' && typeof (page as Record<string, unknown>).fingerprint === 'string') {
+      return ((page as Record<string, unknown>).fingerprint as string).trim() || undefined;
+    }
+    if (typeof metadata.pageFingerprint === 'string' && metadata.pageFingerprint.trim()) {
+      return metadata.pageFingerprint.trim();
+    }
+    if (typeof metadata.page_fingerprint === 'string' && metadata.page_fingerprint.trim()) {
+      return metadata.page_fingerprint.trim();
+    }
+    return undefined;
   }
 
   private async failExecutionFromRuntimeStep(input: {
@@ -1960,5 +2846,68 @@ export class ExecutionService {
 
     this.logger.log(`Execution ${id} deleted by user ${userId}`);
     return { success: true };
+  }
+
+  async cleanupBeforeDate(
+    beforeDate: string,
+    userId: string,
+    requester?: RequestUserContext,
+  ): Promise<{ success: boolean; deletedCount: number; beforeDate: string }> {
+    const cutoff = this.parseCleanupCutoff(beforeDate);
+    const effectiveRequester = requester || { id: userId };
+    const where: Prisma.ExecutionWhereInput = {
+      createdAt: { lt: cutoff },
+    };
+
+    if (effectiveRequester.role !== 'admin') {
+      where.createdBy = effectiveRequester.id;
+    }
+
+    const executions = await this.prisma.execution.findMany({
+      where,
+      select: { id: true },
+    });
+
+    if (executions.length === 0) {
+      return {
+        success: true,
+        deletedCount: 0,
+        beforeDate,
+      };
+    }
+
+    const executionIds = executions.map((execution) => execution.id);
+
+    await this.prisma.$transaction([
+      this.prisma.executionStep.deleteMany({
+        where: { executionId: { in: executionIds } },
+      }),
+      this.prisma.executionEvent.deleteMany({
+        where: { executionId: { in: executionIds } },
+      }),
+      this.prisma.execution.deleteMany({
+        where: { id: { in: executionIds } },
+      }),
+    ]);
+
+    this.logger.log(`Deleted ${executionIds.length} executions before ${beforeDate} by user ${userId}`);
+    return {
+      success: true,
+      deletedCount: executionIds.length,
+      beforeDate,
+    };
+  }
+
+  private parseCleanupCutoff(beforeDate: string): Date {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(beforeDate)) {
+      throw new BadRequestException('beforeDate must use YYYY-MM-DD format');
+    }
+
+    const cutoff = new Date(`${beforeDate}T00:00:00`);
+    if (Number.isNaN(cutoff.getTime())) {
+      throw new BadRequestException('beforeDate is invalid');
+    }
+
+    return cutoff;
   }
 }

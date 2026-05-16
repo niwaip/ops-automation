@@ -41,7 +41,7 @@ async function bootstrap() {
   app.setGlobalPrefix('api');
 
   const port = process.env.PORT || process.env.CONTROL_PLANE_PORT || 3003;
-  await app.listen(port);
+  await app.listen(port, '0.0.0.0');
 
   const publicHost = getPublicHost();
   const publicBaseUrl = `http://${publicHost}:${port}`;

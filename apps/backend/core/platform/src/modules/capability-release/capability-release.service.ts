@@ -479,6 +479,16 @@ export class CapabilityReleaseService implements OnModuleInit {
     if (release.sourceType === 'temporal_workflow') {
       const snapshot = await this.getCurrentSnapshotOrThrow(release);
       const build = await this.resolveTemporalExecutableBuildOrThrow(release, snapshot, undefined, userId);
+      const runtimeSessionId = options?.runtimeSessionId || `capability-runtime-${randomUUID()}`;
+      const normalizedInput: Record<string, any> = {
+        ...(input as Record<string, any> || {}),
+      };
+      if (!normalizedInput.runtimeSessionId) {
+        normalizedInput.runtimeSessionId = runtimeSessionId;
+      }
+      if (!normalizedInput.workflowId) {
+        normalizedInput.workflowId = runtimeSessionId;
+      }
 
       const fn = this.resolveWorkflowFnOrThrow(snapshot.sourcePayload);
       const taskQueue = typeof snapshot.sourcePayload.taskQueue === 'string'
@@ -490,7 +500,7 @@ export class CapabilityReleaseService implements OnModuleInit {
         generatedCode,
         fn,
         taskQueue,
-        input as Record<string, any> | undefined,
+        normalizedInput,
       );
 
       const rawResult = result.result;
@@ -533,6 +543,7 @@ export class CapabilityReleaseService implements OnModuleInit {
           requestedRuntimeType: options?.runtimeType || null,
           executionId: options?.executionId || null,
           stepId: options?.stepId || null,
+          runtimeSessionId,
           fn,
           taskQueue,
           temporalWorkflowId,
@@ -548,6 +559,7 @@ export class CapabilityReleaseService implements OnModuleInit {
         fn,
         taskQueue,
         success: result.success,
+        runtimeSessionId,
         downloadUrl: downloadUrl || null,
         temporalWorkflowId: temporalWorkflowId || null,
         output: normalizedResult,
@@ -1350,6 +1362,7 @@ export class CapabilityReleaseService implements OnModuleInit {
           build.generatedCode,
           fn,
           dto.input as Record<string, any> | undefined,
+          undefined,
           undefined,
           (log: string) => {
             streamedLogs.push(log);
@@ -4020,7 +4033,9 @@ ${logs.join('\n')}
       : trimmed;
 
     const type = String(typeHint || '').toLowerCase();
-    const isUrlLikeKey = /(^|_)(url|uri|link|endpoint|site|website)$|^(url|uri|link)$/i.test(String(key));
+    const normalizedKey = String(key || '').trim();
+    const isUrlLikeKey = /(^|[_-])(url|uri|link|endpoint|site|website)$/i.test(normalizedKey)
+      || /(?:url|uri|link|endpoint|site|website)$/i.test(normalizedKey);
     if (type === 'string' && isUrlLikeKey) {
       return this.normalizeUrlLikeSmokeValue(unquoted);
     }
@@ -4052,8 +4067,25 @@ ${logs.join('\n')}
         ? this.resolveEffectiveTemporalParamsSchema(snapshot.sourcePayload)
         : (this.parseJson(snapshot.sourcePayload.paramsSchema) as Record<string, unknown> | null) || {};
 
+    const suggestedInput = this.buildSuggestedInputFromSchema(schema);
+    if (release.sourceType === 'temporal_workflow') {
+      const workflowDsl = this.parseJson(snapshot.sourcePayload.workflowDsl) as Record<string, unknown> || {};
+      const inputParams = this.parseJson<Record<string, unknown>>(workflowDsl.inputParams) || {};
+      Object.entries(inputParams).forEach(([key, rawValue]) => {
+        const definition = rawValue && typeof rawValue === 'object'
+          ? (rawValue as Record<string, unknown>)
+          : {};
+        if (definition.defaultValue === undefined) {
+          return;
+        }
+        const normalizedDefaultValue = this.normalizeCapabilityDefaultValue(definition.defaultValue);
+        const typeHint = typeof definition.type === 'string' ? definition.type : undefined;
+        suggestedInput[key] = this.normalizeSmokeInputValue(key, normalizedDefaultValue, typeHint);
+      });
+    }
+
     return {
-      ...this.buildSuggestedInputFromSchema(schema),
+      ...suggestedInput,
       smokeTest: true,
       environment,
     };

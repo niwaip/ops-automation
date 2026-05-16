@@ -716,16 +716,17 @@ export class RecognizerService {
     userInput: string,
   ): unknown {
     const aliases = this.buildFieldAliases(key, schema);
+    const isLineItemArrayField = this.isEnumeratedLineItemArrayField(key, schema, aliases);
     const isDeliveryArrayField = this.isDeliveryScopedArrayField(key, schema, aliases);
     const isPaymentArrayField = this.isPaymentClauseArrayField(key, schema, aliases);
     if (key.includes('[]')) {
-      if (this.hasAliasKeyword(aliases, ['行号', '序号'])) {
+      if (isLineItemArrayField && this.hasAliasKeyword(aliases, ['行号', '序号'])) {
         return this.extractItemSequenceNumbers(userInput);
       }
-      if (this.hasAliasKeyword(aliases, ['名称'])) {
+      if (isLineItemArrayField && this.hasAliasKeyword(aliases, ['名称'])) {
         return this.extractEnumeratedItemNames(userInput);
       }
-      if (key.startsWith('items[]')) {
+      if (isLineItemArrayField) {
         const expectedType = this.resolveExpectedValueType(key, schema.type, schema);
         const itemValues = this.extractEnumeratedItemFieldValues(
           userInput,
@@ -852,6 +853,30 @@ export class RecognizerService {
 
     return this.hasAliasKeyword(aliases, ['批次', '地点', '地址', '验收方式', '验收类型'])
       || this.hasDateLikeAlias(aliases);
+  }
+
+  private isEnumeratedLineItemArrayField(
+    key: string,
+    schema: ParamSchemaProperty,
+    aliases: string[],
+  ): boolean {
+    const signalText = this.buildSignalText(key, schema);
+    const hasLineItemContext = /(item|line|row|detail|material|product|sku|物料|设备|明细|标的|清单)/i.test(signalText);
+    const hasLineItemFieldAlias = this.hasAliasKeyword(aliases, [
+      '行号',
+      '序号',
+      '名称',
+      '编码',
+      '型号',
+      '规格',
+      '单位',
+      '数量',
+      '单价',
+      '金额',
+      '小计',
+    ]);
+
+    return hasLineItemContext && hasLineItemFieldAlias;
   }
 
   private isPaymentClauseArrayField(

@@ -250,6 +250,7 @@ export interface ExecuteCapabilityRuntimeResultDTO {
   capabilityVersion?: string | null;
   publishedSkillId: string;
   runtime: string;
+  runtimeSessionId?: string | null;
   fn?: string;
   taskQueue?: string;
   success: boolean;

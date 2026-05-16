@@ -24,7 +24,14 @@ import {
   RightOutlined,
 } from '@ant-design/icons';
 import { useMutation, useQuery, useQueryClient } from 'react-query';
-import { executionApi, ExecutionDto, ExecutionStepDto } from '../api/execution';
+import {
+  executionApi,
+  ExecutionDto,
+  ExecutionPhaseArtifactDto,
+  ExecutionPhaseDto,
+  ExecutionStepDto,
+} from '../api/execution';
+import { runtimeSessionApi, RuntimeSessionDto } from '../api/runtimeSession';
 import { skillApi } from '../api/skill';
 import { capabilityReleaseApi } from '../api/capabilities';
 import { useAuthStore } from '../store/authStore';
@@ -39,6 +46,7 @@ import {
   buildWaitingInputDisplayGroups,
   resolveWaitingInputDisplayLabel,
 } from '../utils/waitingInputDisplay';
+import LiveSessionPreviewCard from '../components/runtime/LiveSessionPreviewCard';
 
 const { Title, Text } = Typography;
 
@@ -82,6 +90,53 @@ interface TimelineNodeCardProps {
 }
 
 const statusColors = EXECUTION_STATUS_COLORS;
+
+const getPhaseStatusColor = (status?: string) => {
+  switch (status) {
+    case 'completed':
+      return 'green';
+    case 'running':
+      return 'blue';
+    case 'retrying':
+      return 'gold';
+    case 'waiting_takeover':
+      return 'orange';
+    case 'resumable':
+      return 'cyan';
+    case 'failed':
+      return 'red';
+    case 'aborted':
+      return 'default';
+    default:
+      return 'default';
+  }
+};
+
+const getPhaseStatusLabel = (status: string | undefined, isEnglish: boolean) => {
+  const labels: Record<string, string> = isEnglish
+    ? {
+        pending: 'Pending',
+        running: 'Running',
+        retrying: 'Retrying',
+        waiting_takeover: 'Waiting Takeover',
+        resumable: 'Resumable',
+        completed: 'Completed',
+        failed: 'Failed',
+        aborted: 'Aborted',
+      }
+    : {
+        pending: '待执行',
+        running: '执行中',
+        retrying: '重试中',
+        waiting_takeover: '待接管',
+        resumable: '可恢复',
+        completed: '已完成',
+        failed: '失败',
+        aborted: '已中止',
+      };
+
+  return status ? (labels[status] || status) : '-';
+};
 
 const fixLocalhostLink = (url?: string): string | undefined => replaceLocalhostWithCurrentHost(url);
 
@@ -208,6 +263,34 @@ const parseBrowserStdoutResult = (stdout: string | undefined): unknown => {
   } catch {
     return rawResult;
   }
+};
+
+const getPhaseArtifactPayload = (artifact: ExecutionPhaseArtifactDto): Record<string, unknown> | undefined => {
+  if (!artifact.payload || typeof artifact.payload !== 'object' || Array.isArray(artifact.payload)) {
+    return undefined;
+  }
+  return artifact.payload;
+};
+
+const getPhaseArtifactCommand = (artifact: ExecutionPhaseArtifactDto): string | undefined => {
+  const payload = getPhaseArtifactPayload(artifact);
+  return typeof payload?.command === 'string' ? payload.command : undefined;
+};
+
+const getPhaseArtifactStatus = (artifact: ExecutionPhaseArtifactDto): string | undefined => {
+  const payload = getPhaseArtifactPayload(artifact);
+  return typeof payload?.status === 'string' ? payload.status : undefined;
+};
+
+const getPhaseArtifactPath = (artifact: ExecutionPhaseArtifactDto): string | undefined => {
+  const payload = getPhaseArtifactPayload(artifact);
+  if (typeof payload?.snapshotPath === 'string' && payload.snapshotPath.trim()) {
+    return payload.snapshotPath;
+  }
+  if (typeof payload?.artifactPath === 'string' && payload.artifactPath.trim()) {
+    return payload.artifactPath;
+  }
+  return undefined;
 };
 
 const isLikelyImageUrl = (value: string) => /^https?:\/\/.+\.(png|jpg|jpeg|gif|webp)(\?.*)?$/i.test(value);
@@ -635,6 +718,27 @@ const stepStatusIcons: Record<string, React.ReactNode> = {
   skipped: <PauseCircleOutlined />,
 };
 
+const isLiveRuntimeSessionState = (state?: string): boolean => state === 'busy' || state === 'ready' || state === 'frozen';
+
+const getRuntimeSessionNovncUrl = (runtimeSession?: RuntimeSessionDto): string | undefined => {
+  return typeof runtimeSession?.connectionInfo?.novnc === 'string'
+    ? runtimeSession.connectionInfo.novnc
+    : undefined;
+};
+
+const getRuntimeSessionStatusLabel = (state?: string, isEnglish?: boolean): string => {
+  if (state === 'frozen') {
+    return isEnglish ? 'Takeover' : '人工接管';
+  }
+  if (state === 'ready') {
+    return isEnglish ? 'Ready' : '已就绪';
+  }
+  if (state === 'busy') {
+    return isEnglish ? 'Running' : '执行中';
+  }
+  return isEnglish ? 'Runtime Active' : '运行中';
+};
+
 const renderSemanticGroupedMissing = (
   groupedMissing: NonNullable<ExecutionDto['semantic']>['groupedMissing'],
   labels: {
@@ -765,6 +869,27 @@ const ExecutionDetailPage: React.FC = () => {
     browserFailedStep: isEnglish ? 'Failed Step' : '失败步骤',
     browserFailedAction: isEnglish ? 'Failed Action' : '失败动作',
     browserNoOutput: isEnglish ? 'No structured output' : '暂无结构化输出',
+    phaseTimeline: isEnglish ? 'Phase Timeline' : '阶段时间线',
+    currentPhase: isEnglish ? 'Current Phase' : '当前阶段',
+    phaseType: isEnglish ? 'Phase Type' : '阶段类型',
+    phaseAttempt: isEnglish ? 'Attempt' : '尝试次数',
+    phaseRuntimeSession: isEnglish ? 'Phase Session' : '阶段会话',
+    phaseArtifacts: isEnglish ? 'Phase Artifacts' : '阶段产物',
+    phaseArtifactCount: isEnglish ? 'Artifact Count' : '产物数量',
+    phaseArtifactType: isEnglish ? 'Artifact Type' : '产物类型',
+    phaseArtifactCommand: isEnglish ? 'Command' : '命令',
+    phaseArtifactStatus: isEnglish ? 'Artifact Status' : '产物状态',
+    phaseArtifactPath: isEnglish ? 'Artifact Path' : '产物路径',
+    phaseArtifactSnapshotId: isEnglish ? 'Snapshot ID' : '快照 ID',
+    phaseArtifactPageFingerprint: isEnglish ? 'Page Fingerprint' : '页面指纹',
+    phaseNoData: isEnglish ? 'No phase records' : '暂无阶段记录',
+    phaseTakeover: isEnglish ? 'Take Over Phase' : '接管当前阶段',
+    phaseReconcile: isEnglish ? 'Mark Reconciled' : '标记已处理',
+    phaseResume: isEnglish ? 'Resume Phase' : '恢复阶段执行',
+    phaseTakeoverSuccess: isEnglish ? 'Phase takeover requested' : '已发起阶段接管',
+    phaseReconcileSuccess: isEnglish ? 'Phase marked resumable' : '已标记阶段可恢复',
+    phaseResumeSuccess: isEnglish ? 'Phase execution resumed' : '已恢复阶段执行',
+    phaseActionFailed: isEnglish ? 'Phase action failed' : '阶段操作失败',
     semanticOverview: isEnglish ? 'Semantic Overview' : '语义摘要',
     semanticMode: isEnglish ? 'Semantic Mode' : '语义模式',
     semanticSummary: isEnglish ? 'Semantic Summary' : '语义总结',
@@ -842,6 +967,46 @@ const ExecutionDetailPage: React.FC = () => {
     return skillNameMap.get(skillId) || skillId;
   };
 
+  const waitingInputStep = execution?.status === 'waiting_input'
+    ? steps?.find((step) =>
+      step.id === execution.currentStepId ||
+      (step.type === 'input_collection' && step.status === 'running')
+    )
+    : undefined;
+
+  const requiredInputs = Array.isArray(waitingInputStep?.inputJson?.requiredInputs)
+    ? (waitingInputStep.inputJson.requiredInputs as unknown as RequiredInputField[])
+    : [];
+  const requiredInputGroups = React.useMemo(
+    () => buildWaitingInputDisplayGroups(requiredInputs),
+    [requiredInputs],
+  );
+  const semantic = execution?.semantic;
+  const parsedResult = tryParseJsonValue(execution?.resultJson) as Record<string, unknown> | undefined;
+  const browserExecutionResult = extractBrowserExecutionResult(execution?.resultJson);
+  const executionPhases = execution?.phases || [];
+  const executionRuntimeSessionId = execution?.runtimeSessionId || browserExecutionResult?.runtimeSessionId;
+  const { data: runtimeSession } = useQuery(
+    ['execution-runtime-session', executionRuntimeSessionId],
+    () => runtimeSessionApi.getById(executionRuntimeSessionId!),
+    {
+      enabled: Boolean(executionRuntimeSessionId),
+      refetchInterval: (data) => {
+        if (isLiveRuntimeSessionState(data?.state)) {
+          return 3000;
+        }
+        return execution && EXECUTION_ACTIVE_POLLING_STATUSES.includes(execution.status) ? 3000 : false;
+      },
+    }
+  );
+  const runtimeSessionNovncUrl = getRuntimeSessionNovncUrl(runtimeSession);
+  const currentPhase = React.useMemo(
+    () => executionPhases.find((phase) => phase.phaseKey === execution?.currentPhaseKey)
+      || executionPhases.find((phase) => phase.status === 'running')
+      || executionPhases[executionPhases.length - 1],
+    [execution?.currentPhaseKey, executionPhases],
+  );
+
   const submitInputMutation = useMutation(
     (values: Record<string, unknown>) => executionApi.submitInput(id!, {
       stepId: waitingInputStep!.id,
@@ -887,6 +1052,54 @@ const ExecutionDetailPage: React.FC = () => {
     }
   );
 
+  const phaseTakeoverMutation = useMutation(
+    (phase: ExecutionPhaseDto) => executionApi.takeoverPhase(id!, phase.phaseKey, {
+      reason: phase.errorMessage || phase.errorCode || phase.phaseName || phase.phaseKey,
+    }),
+    {
+      onSuccess: (_data, phase) => {
+        void message.success(text.phaseTakeoverSuccess);
+        void queryClient.invalidateQueries(['execution', id]);
+        void queryClient.invalidateQueries(['execution-steps', id]);
+        void queryClient.invalidateQueries(['execution-phases', id]);
+        navigate(`/executions/${id}/takeover?phaseKey=${encodeURIComponent(phase.phaseKey)}`);
+      },
+      onError: (error: Error) => {
+        void message.error(`${text.phaseActionFailed}: ${error.message}`);
+      },
+    }
+  );
+
+  const phaseReconcileMutation = useMutation(
+    (phase: ExecutionPhaseDto) => executionApi.reconcilePhaseTakeover(id!, phase.phaseKey, {}),
+    {
+      onSuccess: () => {
+        void message.success(text.phaseReconcileSuccess);
+        void queryClient.invalidateQueries(['execution', id]);
+        void queryClient.invalidateQueries(['execution-steps', id]);
+        void queryClient.invalidateQueries(['execution-phases', id]);
+      },
+      onError: (error: Error) => {
+        void message.error(`${text.phaseActionFailed}: ${error.message}`);
+      },
+    }
+  );
+
+  const phaseResumeMutation = useMutation(
+    (phase: ExecutionPhaseDto) => executionApi.resumePhaseTakeover(id!, phase.phaseKey, {}),
+    {
+      onSuccess: () => {
+        void message.success(text.phaseResumeSuccess);
+        void queryClient.invalidateQueries(['execution', id]);
+        void queryClient.invalidateQueries(['execution-steps', id]);
+        void queryClient.invalidateQueries(['execution-phases', id]);
+      },
+      onError: (error: Error) => {
+        void message.error(`${text.phaseActionFailed}: ${error.message}`);
+      },
+    }
+  );
+
   if (isLoadingExecution) {
     return (
       <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
@@ -917,22 +1130,6 @@ const ExecutionDetailPage: React.FC = () => {
     if (!steps || !execution.currentStepId) return -1;
     return steps.findIndex(s => s.id === execution.currentStepId);
   };
-
-  const waitingInputStep = execution.status === 'waiting_input'
-    ? steps?.find((step) =>
-      step.id === execution.currentStepId ||
-      (step.type === 'input_collection' && step.status === 'running')
-    )
-    : undefined;
-
-  const requiredInputs = Array.isArray(waitingInputStep?.inputJson?.requiredInputs)
-    ? (waitingInputStep.inputJson.requiredInputs as unknown as RequiredInputField[])
-    : [];
-  const requiredInputGroups = React.useMemo(
-    () => buildWaitingInputDisplayGroups(requiredInputs),
-    [requiredInputs],
-  );
-  const semantic = execution.semantic;
 
   const handleSubmitInput = (values: Record<string, unknown>) => {
     submitInputMutation.mutate(values);
@@ -1034,8 +1231,6 @@ const ExecutionDetailPage: React.FC = () => {
     },
   ];
 
-  const parsedResult = tryParseJsonValue(execution.resultJson) as Record<string, unknown> | undefined;
-  const browserExecutionResult = extractBrowserExecutionResult(execution.resultJson);
   const browserTimelineItems = browserExecutionResult
     ? [
         {
@@ -1218,7 +1413,7 @@ const ExecutionDetailPage: React.FC = () => {
           {execution.status === 'human_control' && (
             <Button
               type="primary"
-              onClick={() => navigate(`/executions/${id}/takeover`)}
+              onClick={() => navigate(`/executions/${id}/takeover${currentPhase?.phaseKey ? `?phaseKey=${encodeURIComponent(currentPhase.phaseKey)}` : ''}`)}
             >
               {text.enterTakeoverMode}
             </Button>
@@ -1236,13 +1431,23 @@ const ExecutionDetailPage: React.FC = () => {
           description={
             <div>
               <p>{execution.takeoverReason || text.takeoverDescDefault}</p>
-              <Button
-                type="primary"
-                icon={<UserOutlined />}
-                onClick={() => navigate(`/executions/${id}/takeover`)}
-              >
-                {text.enterTakeoverWorkbench}
-              </Button>
+              <Space wrap>
+                <Button
+                  type="primary"
+                  icon={<UserOutlined />}
+                  onClick={() => navigate(`/executions/${id}/takeover${currentPhase?.phaseKey ? `?phaseKey=${encodeURIComponent(currentPhase.phaseKey)}` : ''}`)}
+                >
+                  {text.enterTakeoverWorkbench}
+                </Button>
+                {currentPhase && (currentPhase.status === 'waiting_takeover' || currentPhase.status === 'resumable') ? (
+                  <Button
+                    onClick={() => phaseResumeMutation.mutate(currentPhase)}
+                    loading={phaseResumeMutation.isLoading}
+                  >
+                    {text.phaseResume}
+                  </Button>
+                ) : null}
+              </Space>
             </div>
           }
           icon={<WarningOutlined />}
@@ -1394,6 +1599,26 @@ const ExecutionDetailPage: React.FC = () => {
                   ) : null}
                 </Space>
               </Descriptions.Item>
+              <Descriptions.Item label={isEnglish ? 'Browser Session' : '浏览器会话'}>
+                {executionRuntimeSessionId ? (
+                  <Space wrap>
+                    <Text copyable={{ text: executionRuntimeSessionId }}>
+                      {executionRuntimeSessionId}
+                    </Text>
+                    {runtimeSessionNovncUrl ? (
+                      <Button
+                        type="link"
+                        style={{ paddingInline: 0 }}
+                        onClick={() => window.open(fixLocalhostLink(runtimeSessionNovncUrl), '_blank', 'noopener,noreferrer')}
+                      >
+                        {isEnglish ? 'Open Live View' : '打开实时画面'}
+                      </Button>
+                    ) : null}
+                  </Space>
+                ) : (
+                  '-'
+                )}
+              </Descriptions.Item>
               <Descriptions.Item label={text.runtimeType}>{execution.runtimeType}</Descriptions.Item>
               <Descriptions.Item label={text.riskLevel}>{execution.riskLevel}</Descriptions.Item>
               <Descriptions.Item label={text.approvalStatus}>{execution.approvalStatus || '-'}</Descriptions.Item>
@@ -1443,6 +1668,26 @@ const ExecutionDetailPage: React.FC = () => {
               ) : null}
             </Space>
           </Descriptions.Item>
+          <Descriptions.Item label={isEnglish ? 'Browser Session' : '浏览器会话'}>
+            {executionRuntimeSessionId ? (
+              <Space wrap>
+                <Text copyable={{ text: executionRuntimeSessionId }}>
+                  {executionRuntimeSessionId}
+                </Text>
+                {runtimeSessionNovncUrl ? (
+                  <Button
+                    type="link"
+                    style={{ paddingInline: 0 }}
+                    onClick={() => window.open(fixLocalhostLink(runtimeSessionNovncUrl), '_blank', 'noopener,noreferrer')}
+                  >
+                    {isEnglish ? 'Open Live View' : '打开实时画面'}
+                  </Button>
+                ) : null}
+              </Space>
+            ) : (
+              '-'
+            )}
+          </Descriptions.Item>
           <Descriptions.Item label={text.runtimeType}>{execution.runtimeType}</Descriptions.Item>
           <Descriptions.Item label={text.riskLevel}>{execution.riskLevel}</Descriptions.Item>
           <Descriptions.Item label={text.approvalStatus}>{execution.approvalStatus || '-'}</Descriptions.Item>
@@ -1470,6 +1715,173 @@ const ExecutionDetailPage: React.FC = () => {
             </Descriptions.Item>
           )}
         </Descriptions>
+        )}
+      </Card>
+
+      <Card title={text.phaseTimeline} style={{ marginBottom: 16 }}>
+        {executionPhases.length > 0 ? (
+          <Space direction="vertical" size={12} style={{ width: '100%' }}>
+            {currentPhase ? (
+              <Alert
+                type="info"
+                showIcon
+                message={`${text.currentPhase}: ${currentPhase.phaseName || currentPhase.phaseKey}`}
+                description={
+                  <Space wrap>
+                    <Tag color={getPhaseStatusColor(currentPhase.status)}>
+                      {getPhaseStatusLabel(currentPhase.status, isEnglish)}
+                    </Tag>
+                    <Text type="secondary">{`${text.phaseType}: ${currentPhase.phaseType}`}</Text>
+                    <Text type="secondary">{`${text.phaseAttempt}: ${currentPhase.attempt}`}</Text>
+                    {execution.status !== 'human_control' && (currentPhase.status === 'running' || currentPhase.status === 'failed') ? (
+                      <Button
+                        size="small"
+                        onClick={() => phaseTakeoverMutation.mutate(currentPhase)}
+                        loading={phaseTakeoverMutation.isLoading}
+                      >
+                        {text.phaseTakeover}
+                      </Button>
+                    ) : null}
+                    {execution.status === 'human_control' && currentPhase.status === 'waiting_takeover' ? (
+                      <Button
+                        size="small"
+                        onClick={() => phaseReconcileMutation.mutate(currentPhase)}
+                        loading={phaseReconcileMutation.isLoading}
+                      >
+                        {text.phaseReconcile}
+                      </Button>
+                    ) : null}
+                    {execution.status === 'human_control' && (currentPhase.status === 'waiting_takeover' || currentPhase.status === 'resumable') ? (
+                      <Button
+                        size="small"
+                        type="primary"
+                        onClick={() => phaseResumeMutation.mutate(currentPhase)}
+                        loading={phaseResumeMutation.isLoading}
+                      >
+                        {text.phaseResume}
+                      </Button>
+                    ) : null}
+                  </Space>
+                }
+              />
+            ) : null}
+            <Timeline
+              items={executionPhases.map((phase: ExecutionPhaseDto) => ({
+                color: getPhaseStatusColor(phase.status),
+                children: (
+                  <Card size="small">
+                    <Space direction="vertical" size={6} style={{ width: '100%' }}>
+                      <Space wrap style={{ justifyContent: 'space-between', width: '100%' }}>
+                        <Space wrap>
+                          <Text strong>{phase.phaseName || phase.phaseKey}</Text>
+                          <Tag>{phase.phaseType}</Tag>
+                          <Tag color={getPhaseStatusColor(phase.status)}>
+                            {getPhaseStatusLabel(phase.status, isEnglish)}
+                          </Tag>
+                        </Space>
+                        <Text type="secondary">{new Date(phase.startedAt || phase.createdAt).toLocaleString()}</Text>
+                      </Space>
+                      <Space wrap size={[8, 4]}>
+                        <Text type="secondary">{`Key: ${phase.phaseKey}`}</Text>
+                        <Text type="secondary">{`${text.phaseAttempt}: ${phase.attempt}`}</Text>
+                        {phase.runtimeSessionId ? (
+                          <Text copyable={{ text: phase.runtimeSessionId }}>{`${text.phaseRuntimeSession}: ${phase.runtimeSessionId}`}</Text>
+                        ) : null}
+                      </Space>
+                      <Space wrap>
+                        {execution.status !== 'human_control' && (phase.status === 'running' || phase.status === 'failed') ? (
+                          <Button
+                            size="small"
+                            onClick={() => phaseTakeoverMutation.mutate(phase)}
+                            loading={phaseTakeoverMutation.isLoading}
+                          >
+                            {text.phaseTakeover}
+                          </Button>
+                        ) : null}
+                        {execution.status === 'human_control' && phase.status === 'waiting_takeover' ? (
+                          <Button
+                            size="small"
+                            onClick={() => phaseReconcileMutation.mutate(phase)}
+                            loading={phaseReconcileMutation.isLoading}
+                          >
+                            {text.phaseReconcile}
+                          </Button>
+                        ) : null}
+                        {execution.status === 'human_control' && (phase.status === 'waiting_takeover' || phase.status === 'resumable') ? (
+                          <Button
+                            size="small"
+                            type="primary"
+                            onClick={() => phaseResumeMutation.mutate(phase)}
+                            loading={phaseResumeMutation.isLoading}
+                          >
+                            {text.phaseResume}
+                          </Button>
+                        ) : null}
+                      </Space>
+                      {phase.errorMessage ? (
+                        <Alert
+                          type="error"
+                          showIcon
+                          message={phase.errorCode || (isEnglish ? 'Phase failed' : '阶段失败')}
+                          description={phase.errorMessage}
+                        />
+                      ) : null}
+                      {phase.artifacts && phase.artifacts.length > 0 ? (
+                        <Card
+                          size="small"
+                          title={`${text.phaseArtifacts} (${phase.artifacts.length})`}
+                          styles={{ body: { padding: 12 } }}
+                        >
+                          <Space direction="vertical" size={8} style={{ width: '100%' }}>
+                            {phase.artifacts.map((artifact) => {
+                              const artifactPath = getPhaseArtifactPath(artifact);
+                              const artifactCommand = getPhaseArtifactCommand(artifact);
+                              const artifactStatus = getPhaseArtifactStatus(artifact);
+
+                              return (
+                                <Card key={artifact.id} size="small" styles={{ body: { padding: 12 } }}>
+                                  <Descriptions column={1} size="small">
+                                    <Descriptions.Item label={text.phaseArtifactType}>
+                                      <Tag>{artifact.artifactType}</Tag>
+                                    </Descriptions.Item>
+                                    <Descriptions.Item label={text.phaseArtifactSnapshotId}>
+                                      {artifact.snapshotId ? (
+                                        <Text copyable={{ text: artifact.snapshotId }}>{artifact.snapshotId}</Text>
+                                      ) : (
+                                        '-'
+                                      )}
+                                    </Descriptions.Item>
+                                    <Descriptions.Item label={text.phaseArtifactCommand}>
+                                      {artifactCommand || '-'}
+                                    </Descriptions.Item>
+                                    <Descriptions.Item label={text.phaseArtifactStatus}>
+                                      {artifactStatus ? <Tag color="blue">{artifactStatus}</Tag> : '-'}
+                                    </Descriptions.Item>
+                                    <Descriptions.Item label={text.phaseArtifactPath}>
+                                      {artifactPath ? (
+                                        <Text copyable={{ text: artifactPath }}>{artifactPath}</Text>
+                                      ) : (
+                                        '-'
+                                      )}
+                                    </Descriptions.Item>
+                                    <Descriptions.Item label={text.phaseArtifactPageFingerprint}>
+                                      {artifact.pageFingerprint || '-'}
+                                    </Descriptions.Item>
+                                  </Descriptions>
+                                </Card>
+                              );
+                            })}
+                          </Space>
+                        </Card>
+                      ) : null}
+                    </Space>
+                  </Card>
+                ),
+              }))}
+            />
+          </Space>
+        ) : (
+          <Empty description={text.phaseNoData} />
         )}
       </Card>
 
@@ -1517,6 +1929,16 @@ const ExecutionDetailPage: React.FC = () => {
       ) : null}
 
       {/* Output */}
+      {runtimeSessionNovncUrl && isLiveRuntimeSessionState(runtimeSession?.state) && (
+        <div style={{ marginBottom: 16 }}>
+          <LiveSessionPreviewCard
+            novncUrl={runtimeSessionNovncUrl}
+            title={isEnglish ? 'Live Browser View' : '实时画面'}
+            statusLabel={getRuntimeSessionStatusLabel(runtimeSession?.state, isEnglish)}
+            height={420}
+          />
+        </div>
+      )}
       {browserExecutionResult && (
         <Card title={text.browserExecutionResult} style={{ marginBottom: 16 }}>
           {browserExecutionResult.runtimeSessionId ? (

@@ -1,4 +1,11 @@
-import { ExecutionDto, ExecutionStepDto } from './execution.dto';
+import {
+  BrowserPhaseCheck,
+  ExecutionDto,
+  ExecutionPhaseArtifactDto,
+  ExecutionPhaseDto,
+  ExecutionStepDto,
+  ExecutionTakeoverRecordDto,
+} from './execution.dto';
 import { ApprovalStatus } from './contracts/approval-status';
 import { ExecutionStatus } from './contracts/execution-status';
 import { ExecutionStepStatus } from './contracts/execution-step-status';
@@ -46,6 +53,12 @@ export const mapExecutionToDto = (
       : undefined,
   );
 
+  const rawPhases = Array.isArray(execution.phases)
+    ? execution.phases
+    : Array.isArray(execution.executionPhases)
+      ? execution.executionPhases
+      : [];
+
   return {
     id: execution.id as string,
     skillId: execution.skillId as string,
@@ -56,6 +69,10 @@ export const mapExecutionToDto = (
     runtimeType: execution.runtimeType as string | null,
     riskLevel: execution.riskLevel as 'L0' | 'L1' | 'L2' | 'L3' | null,
     currentStepId: execution.currentStepId as string | null,
+    runtimeSessionId: (execution.runtimeSessionId || execution.runtime_session_id) as string | null,
+    currentPhaseKey: (execution.currentPhaseKey || execution.current_phase_key) as string | null,
+    currentPhaseStatus: (execution.currentPhaseStatus || execution.current_phase_status) as string | null,
+    takeoverStatus: (execution.takeoverStatus || execution.takeover_status) as string | null,
     requiresApproval: execution.requiresApproval as boolean,
     approvalStatus: execution.approvalStatus as ApprovalStatus | null,
     takeoverRequired: execution.takeoverRequired as boolean,
@@ -76,6 +93,81 @@ export const mapExecutionToDto = (
     updatedAt: (execution.updatedAt as Date).toISOString(),
     createdBy: (execution.createdBy || execution.created_by) as string | null,
     createdByName: (execution.createdByName || execution.created_by_name) as string | null,
+    phases: rawPhases.map((phase) => mapExecutionPhaseToDto(phase as Record<string, unknown>)),
+  };
+};
+
+export const mapExecutionPhaseArtifactToDto = (
+  artifact: Record<string, unknown>,
+): ExecutionPhaseArtifactDto => {
+  return {
+    id: artifact.id as string,
+    artifactType: (artifact.artifactType || artifact.artifact_type) as string,
+    snapshotId: (artifact.snapshotId || artifact.snapshot_id) as string | null,
+    pageUrl: (artifact.pageUrl || artifact.page_url) as string | null,
+    pageFingerprint: (artifact.pageFingerprint || artifact.page_fingerprint) as string | null,
+    payload: (artifact.payload || artifact.payloadJson || artifact.payload_json) as Record<string, unknown> | null,
+    createdAt: ((artifact.createdAt || artifact.created_at) as Date).toISOString(),
+  };
+};
+
+export const mapExecutionTakeoverRecordToDto = (
+  takeover: Record<string, unknown>,
+): ExecutionTakeoverRecordDto => {
+  return {
+    id: takeover.id as string,
+    status: takeover.status as string,
+    reason: takeover.reason as string | null,
+    requestedBy: (takeover.requestedBy || takeover.requested_by) as string | null,
+    resolvedBy: (takeover.resolvedBy || takeover.resolved_by) as string | null,
+    resolutionNote: (takeover.resolutionNote || takeover.resolution_note) as string | null,
+    createdAt: ((takeover.createdAt || takeover.created_at) as Date).toISOString(),
+    resolvedAt: (takeover.resolvedAt || takeover.resolved_at)
+      ? ((takeover.resolvedAt || takeover.resolved_at) as Date).toISOString()
+      : null,
+  };
+};
+
+export const mapExecutionPhaseToDto = (
+  phase: Record<string, unknown>,
+): ExecutionPhaseDto => {
+  const rawArtifacts = Array.isArray(phase.artifacts)
+    ? phase.artifacts
+    : Array.isArray(phase.executionPhaseArtifacts)
+      ? phase.executionPhaseArtifacts
+      : [];
+  const rawTakeovers = Array.isArray(phase.takeovers)
+    ? phase.takeovers
+    : Array.isArray(phase.executionTakeovers)
+      ? phase.executionTakeovers
+      : [];
+
+  return {
+    id: phase.id as string,
+    executionId: (phase.executionId || phase.execution_id) as string,
+    phaseKey: (phase.phaseKey || phase.phase_key) as string,
+    phaseName: (phase.phaseName || phase.phase_name) as string,
+    phaseType: (phase.phaseType || phase.phase_type) as string,
+    status: phase.status as string,
+    attempt: (phase.attempt as number) ?? 0,
+    runtimeSessionId: (phase.runtimeSessionId || phase.runtime_session_id) as string | null,
+    input: (phase.input || phase.inputJson || phase.input_json) as Record<string, unknown> | null,
+    output: (phase.output || phase.outputJson || phase.output_json) as Record<string, unknown> | null,
+    precheck: (phase.precheck || phase.precheckJson || phase.precheck_json) as BrowserPhaseCheck | null,
+    postcheck: (phase.postcheck || phase.postcheckJson || phase.postcheck_json) as BrowserPhaseCheck | null,
+    errorCode: (phase.errorCode || phase.error_code) as string | null,
+    errorMessage: (phase.errorMessage || phase.error_message) as string | null,
+    recoveryDecision: (phase.recoveryDecision || phase.recoveryDecisionJson || phase.recovery_decision_json) as Record<string, unknown> | null,
+    startedAt: (phase.startedAt || phase.started_at)
+      ? ((phase.startedAt || phase.started_at) as Date).toISOString()
+      : null,
+    completedAt: (phase.completedAt || phase.completed_at || phase.endedAt || phase.ended_at)
+      ? ((phase.completedAt || phase.completed_at || phase.endedAt || phase.ended_at) as Date).toISOString()
+      : null,
+    createdAt: ((phase.createdAt || phase.created_at) as Date).toISOString(),
+    updatedAt: ((phase.updatedAt || phase.updated_at) as Date).toISOString(),
+    artifacts: rawArtifacts.map((artifact) => mapExecutionPhaseArtifactToDto(artifact as Record<string, unknown>)),
+    takeovers: rawTakeovers.map((takeover) => mapExecutionTakeoverRecordToDto(takeover as Record<string, unknown>)),
   };
 };
 

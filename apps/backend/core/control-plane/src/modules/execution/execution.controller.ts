@@ -17,6 +17,7 @@ import { ExecutionService } from './execution.service';
 import {
   CreateExecutionDto,
   ExecutionDto,
+  ExecutionPhaseDto,
   ExecutionStepDto,
   TakeoverExecutionDto,
   ResumeExecutionDto,
@@ -24,6 +25,8 @@ import {
   ListExecutionsDto,
   SubmitInputDto,
   ApprovalDecisionDto,
+  CleanupExecutionsBeforeDateDto,
+  ReconcilePhaseTakeoverDto,
 } from './execution.dto';
 import { AuthenticatedRequest } from '../auth/auth.middleware';
 
@@ -70,6 +73,56 @@ export class ExecutionController {
   @ApiResponse({ status: 404, description: 'Execution not found' })
   async getSteps(@Param('id') id: string, @Req() req: AuthenticatedRequest): Promise<ExecutionStepDto[]> {
     return this.executionService.getSteps(id, req.user);
+  }
+
+  @Get(':id/phases')
+  @ApiOperation({ summary: 'Get execution phases' })
+  @ApiResponse({ status: 200, description: 'List of execution phases', type: ExecutionPhaseDto, isArray: true })
+  @ApiResponse({ status: 404, description: 'Execution not found' })
+  async getPhases(@Param('id') id: string, @Req() req: AuthenticatedRequest): Promise<ExecutionPhaseDto[]> {
+    return this.executionService.getPhases(id, req.user);
+  }
+
+  @Post(':id/phases/:phaseKey/takeover')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Request human takeover for a phase' })
+  @ApiResponse({ status: 200, description: 'Phase entered waiting_takeover and execution entered human_control', type: ExecutionDto })
+  async takeoverPhase(
+    @Param('id') id: string,
+    @Param('phaseKey') phaseKey: string,
+    @Body() dto: TakeoverExecutionDto,
+    @Req() req: AuthenticatedRequest,
+  ): Promise<ExecutionDto> {
+    const userId = req.user?.id || 'anonymous';
+    return this.executionService.takeoverPhase(id, phaseKey, userId, dto, req.user);
+  }
+
+  @Post(':id/phases/:phaseKey/reconcile')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Mark a takeover phase as reconciled and resumable' })
+  @ApiResponse({ status: 200, description: 'Phase reconciled', type: ExecutionDto })
+  async reconcilePhaseTakeover(
+    @Param('id') id: string,
+    @Param('phaseKey') phaseKey: string,
+    @Body() dto: ReconcilePhaseTakeoverDto,
+    @Req() req: AuthenticatedRequest,
+  ): Promise<ExecutionDto> {
+    const userId = req.user?.id || 'anonymous';
+    return this.executionService.reconcilePhaseTakeover(id, phaseKey, userId, dto, req.user);
+  }
+
+  @Post(':id/phases/:phaseKey/resume')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Resume execution from a takeover phase' })
+  @ApiResponse({ status: 200, description: 'Execution resumed from phase takeover', type: ExecutionDto })
+  async resumePhaseTakeover(
+    @Param('id') id: string,
+    @Param('phaseKey') phaseKey: string,
+    @Body() dto: ResumeExecutionDto,
+    @Req() req: AuthenticatedRequest,
+  ): Promise<ExecutionDto> {
+    const userId = req.user?.id || 'anonymous';
+    return this.executionService.resumePhaseTakeover(id, phaseKey, userId, dto, req.user);
   }
 
   @Post(':id/takeover')
@@ -201,6 +254,19 @@ export class ExecutionController {
     const userId = req.user?.id || 'anonymous';
     this.logger.log(`Input submission requested for execution ${id} by user ${userId}`);
     return this.executionService.submitInputAndResume(id, userId, dto, req.user);
+  }
+
+  @Post('cleanup')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Delete executions created before the specified date' })
+  @ApiResponse({ status: 200, description: 'Executions deleted successfully' })
+  async cleanupBeforeDate(
+    @Body() dto: CleanupExecutionsBeforeDateDto,
+    @Req() req: AuthenticatedRequest,
+  ): Promise<{ success: boolean; deletedCount: number; beforeDate: string }> {
+    const userId = req.user?.id || 'anonymous';
+    this.logger.log(`Cleanup requested before ${dto.beforeDate} by user ${userId}`);
+    return this.executionService.cleanupBeforeDate(dto.beforeDate, userId, req.user);
   }
 
   @Delete(':id')

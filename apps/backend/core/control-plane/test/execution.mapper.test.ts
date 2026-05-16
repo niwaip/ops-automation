@@ -84,4 +84,91 @@ describe('execution.mapper', () => {
     expect(dto.inputJson).toEqual({ url: 'https://example.com' });
     expect(dto.outputJson).toEqual({ success: true });
   });
+
+  it('maps execution phase records to dto', () => {
+    const dto = mapExecutionToDto({
+      id: 'execution-2',
+      createdBy: 'user-2',
+      skillId: 'skill-2',
+      status: 'running',
+      runtimeType: 'browser',
+      riskLevel: 'L0',
+      currentPhaseKey: 'phase_login',
+      currentPhaseStatus: 'running',
+      takeoverStatus: null,
+      requiresApproval: false,
+      takeoverRequired: false,
+      createdAt: new Date('2026-05-01T00:00:00.000Z'),
+      updatedAt: new Date('2026-05-01T00:00:00.000Z'),
+      phases: [
+        {
+          id: 'phase-1',
+          executionId: 'execution-2',
+          phaseKey: 'phase_login',
+          phaseName: '登录阶段',
+          phaseType: 'browser_login',
+          status: 'running',
+          attempt: 1,
+          runtimeSessionId: 'runtime-1',
+          inputJson: { username: 'test' },
+          outputJson: null,
+          precheckJson: { matched: false },
+          postcheckJson: null,
+          recoveryDecisionJson: null,
+          errorCode: null,
+          errorMessage: null,
+          createdAt: new Date('2026-05-01T00:00:00.000Z'),
+          updatedAt: new Date('2026-05-01T00:00:00.000Z'),
+          artifacts: [
+            {
+              id: 'artifact-1',
+              artifactType: 'snapshot',
+              snapshotId: 'snapshot-1',
+              pageUrl: 'https://example.com/login',
+              pageFingerprint: 'fingerprint-1',
+              payloadJson: { title: 'Login' },
+              createdAt: new Date('2026-05-01T00:00:00.000Z'),
+            },
+          ],
+          takeovers: [
+            {
+              id: 'takeover-1',
+              status: 'requested',
+              reason: 'Captcha detected',
+              requestedBy: 'user-2',
+              resolvedBy: null,
+              resolutionNote: null,
+              createdAt: new Date('2026-05-01T00:00:00.000Z'),
+              resolvedAt: null,
+            },
+          ],
+        },
+      ],
+    });
+
+    expect(dto.currentPhaseKey).toBe('phase_login');
+    expect(dto.currentPhaseStatus).toBe('running');
+    expect(dto.phases).toHaveLength(1);
+    expect(dto.phases?.[0]).toEqual(
+      expect.objectContaining({
+        phaseKey: 'phase_login',
+        phaseName: '登录阶段',
+        phaseType: 'browser_login',
+        status: 'running',
+        attempt: 1,
+      }),
+    );
+    expect(dto.phases?.[0].artifacts?.[0]).toEqual(
+      expect.objectContaining({
+        artifactType: 'snapshot',
+        snapshotId: 'snapshot-1',
+      }),
+    );
+    expect(dto.phases?.[0].takeovers?.[0]).toEqual(
+      expect.objectContaining({
+        status: 'requested',
+        reason: 'Captcha detected',
+      }),
+    );
+  });
 });

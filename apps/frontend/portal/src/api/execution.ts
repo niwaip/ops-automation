@@ -36,6 +36,10 @@ export interface ExecutionDto {
   runtimeType?: string;
   riskLevel?: 'L0' | 'L1' | 'L2' | 'L3';
   currentStepId?: string;
+  runtimeSessionId?: string;
+  currentPhaseKey?: string;
+  currentPhaseStatus?: string;
+  takeoverStatus?: string;
   requiresApproval?: boolean;
   approvalStatus?: ApprovalStatus;
   takeoverRequired?: boolean;
@@ -54,6 +58,7 @@ export interface ExecutionDto {
   result?: Record<string, unknown>;
   createdBy?: string;
   createdByName?: string;
+  phases?: ExecutionPhaseDto[];
 }
 
 // Execution step DTO
@@ -82,11 +87,115 @@ export interface ExecutionStepDto {
   retryCount?: number;
 }
 
+export interface ExecutionPhaseArtifactDto {
+  id: string;
+  artifactType: string;
+  snapshotId?: string;
+  pageUrl?: string;
+  pageFingerprint?: string;
+  payload?: Record<string, unknown>;
+  createdAt: string;
+}
+
+export interface ExecutionTakeoverRecordDto {
+  id: string;
+  status: string;
+  reason?: string;
+  requestedBy?: string;
+  resolvedBy?: string;
+  resolutionNote?: string;
+  createdAt: string;
+  resolvedAt?: string;
+}
+
+export interface BrowserPhaseCheck {
+  matched?: boolean;
+  ok?: boolean;
+  satisfied?: boolean;
+  pageUrl?: string;
+  page_url?: string;
+  pageUrlIncludes?: string;
+  page_url_includes?: string;
+  pageTitle?: string;
+  page_title?: string;
+  pageTitleIncludes?: string;
+  page_title_includes?: string;
+  pageFingerprint?: string;
+  page_fingerprint?: string;
+  readyState?: string;
+  ready_state?: string;
+  selectorExists?: string;
+  selector_exists?: string;
+  textIncludes?: string;
+  text_includes?: string;
+  [key: string]: unknown;
+}
+
+export interface ExecutionPhaseDto {
+  id: string;
+  executionId: string;
+  phaseKey: string;
+  phaseName: string;
+  phaseType: string;
+  status: string;
+  attempt: number;
+  runtimeSessionId?: string;
+  input?: Record<string, unknown>;
+  output?: Record<string, unknown>;
+  precheck?: BrowserPhaseCheck;
+  postcheck?: BrowserPhaseCheck;
+  errorCode?: string;
+  errorMessage?: string;
+  recoveryDecision?: Record<string, unknown>;
+  startedAt?: string;
+  completedAt?: string;
+  createdAt: string;
+  updatedAt: string;
+  artifacts?: ExecutionPhaseArtifactDto[];
+  takeovers?: ExecutionTakeoverRecordDto[];
+}
+
+const normalizeExecutionPhaseArtifact = (raw: ExecutionPhaseArtifactDto): ExecutionPhaseArtifactDto => ({
+  ...raw,
+  snapshotId: raw.snapshotId || undefined,
+  pageUrl: raw.pageUrl || undefined,
+  pageFingerprint: raw.pageFingerprint || undefined,
+  payload: raw.payload || undefined,
+});
+
+const normalizeExecutionTakeover = (raw: ExecutionTakeoverRecordDto): ExecutionTakeoverRecordDto => ({
+  ...raw,
+  reason: raw.reason || undefined,
+  requestedBy: raw.requestedBy || undefined,
+  resolvedBy: raw.resolvedBy || undefined,
+  resolutionNote: raw.resolutionNote || undefined,
+  resolvedAt: raw.resolvedAt || undefined,
+});
+
+const normalizeExecutionPhase = (raw: ExecutionPhaseDto): ExecutionPhaseDto => ({
+  ...raw,
+  runtimeSessionId: raw.runtimeSessionId || undefined,
+  input: raw.input || undefined,
+  output: raw.output || undefined,
+  precheck: raw.precheck || undefined,
+  postcheck: raw.postcheck || undefined,
+  errorCode: raw.errorCode || undefined,
+  errorMessage: raw.errorMessage || undefined,
+  recoveryDecision: raw.recoveryDecision || undefined,
+  startedAt: raw.startedAt || undefined,
+  completedAt: raw.completedAt || undefined,
+  artifacts: raw.artifacts?.map(normalizeExecutionPhaseArtifact) || [],
+  takeovers: raw.takeovers?.map(normalizeExecutionTakeover) || [],
+});
+
 const normalizeExecution = (raw: ExecutionDto): ExecutionDto => ({
   ...raw,
   runtimeType: raw.runtimeType || undefined,
   riskLevel: raw.riskLevel || undefined,
   currentStepId: raw.currentStepId || undefined,
+  currentPhaseKey: raw.currentPhaseKey || undefined,
+  currentPhaseStatus: raw.currentPhaseStatus || undefined,
+  takeoverStatus: raw.takeoverStatus || undefined,
   approvalStatus: raw.approvalStatus || undefined,
   takeoverReason: raw.takeoverReason || undefined,
   resultJson: raw.resultJson || undefined,
@@ -96,6 +205,7 @@ const normalizeExecution = (raw: ExecutionDto): ExecutionDto => ({
   endedAt: raw.endedAt || undefined,
   semantic: raw.semantic || (raw.normalizedInput?.semantic as ExecutionSemantic | undefined) || undefined,
   result: raw.resultJson || undefined,
+  phases: raw.phases?.map(normalizeExecutionPhase) || [],
 });
 
 const normalizeExecutionStep = (raw: ExecutionStepDto): ExecutionStepDto => ({
@@ -132,6 +242,10 @@ export interface ResumeExecutionRequest {
   comment?: string;
 }
 
+export interface ReconcilePhaseTakeoverRequest {
+  comment?: string;
+}
+
 export interface ApprovalDecisionRequest {
   comment?: string;
   decidedBy?: string;
@@ -150,6 +264,10 @@ export interface ListExecutionsRequest {
   pageSize?: number;
   status?: ExecutionStatus;
   skillId?: string;
+}
+
+export interface CleanupExecutionsBeforeDateRequest {
+  beforeDate: string;
 }
 
 // Execution API
@@ -175,6 +293,12 @@ export const executionApi = {
       .then((steps) => steps.map(normalizeExecutionStep));
   },
 
+  getPhases: (id: string) => {
+    return apiClient
+      .get<ExecutionPhaseDto[]>(getExecutionApiUrl(`/executions/${id}/phases`))
+      .then((phases) => phases.map(normalizeExecutionPhase));
+  },
+
   // List executions
   list: (params?: ListExecutionsRequest) => {
     return apiClient
@@ -194,6 +318,24 @@ export const executionApi = {
   takeover: (id: string, data: TakeoverExecutionRequest) => {
     return apiClient
       .post<ExecutionDto>(getExecutionApiUrl(`/executions/${id}/takeover`), data)
+      .then(normalizeExecution);
+  },
+
+  takeoverPhase: (id: string, phaseKey: string, data: TakeoverExecutionRequest) => {
+    return apiClient
+      .post<ExecutionDto>(getExecutionApiUrl(`/executions/${id}/phases/${encodeURIComponent(phaseKey)}/takeover`), data)
+      .then(normalizeExecution);
+  },
+
+  reconcilePhaseTakeover: (id: string, phaseKey: string, data?: ReconcilePhaseTakeoverRequest) => {
+    return apiClient
+      .post<ExecutionDto>(getExecutionApiUrl(`/executions/${id}/phases/${encodeURIComponent(phaseKey)}/reconcile`), data || {})
+      .then(normalizeExecution);
+  },
+
+  resumePhaseTakeover: (id: string, phaseKey: string, data?: ResumeExecutionRequest) => {
+    return apiClient
+      .post<ExecutionDto>(getExecutionApiUrl(`/executions/${id}/phases/${encodeURIComponent(phaseKey)}/resume`), data || {})
       .then(normalizeExecution);
   },
 
@@ -240,6 +382,13 @@ export const executionApi = {
   // Delete execution
   delete: (id: string) => {
     return apiClient.delete<{ success: boolean }>(getExecutionApiUrl(`/executions/${id}`));
+  },
+
+  cleanupBeforeDate: (data: CleanupExecutionsBeforeDateRequest) => {
+    return apiClient.post<{ success: boolean; deletedCount: number; beforeDate: string }>(
+      getExecutionApiUrl('/executions/cleanup'),
+      data,
+    );
   },
 };
 

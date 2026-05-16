@@ -221,6 +221,50 @@ describe('TemporalWorkflowService', () => {
     );
   });
 
+  it('generates required-param validation with the workflow class name for single custom activities', () => {
+    const { service } = createService();
+
+    const workflowDsl = {
+      name: '登录并进入登录',
+      workflowClassName: 'LoginWorkflow',
+      workflowDefnName: '登录并进入登录',
+      taskQueue: 'SKILL_TASK_QUEUE',
+      inputParams: {
+        username: { required: true },
+        password: { required: true },
+      },
+      steps: [
+        {
+          id: 'step_1',
+          name: '执行登录 Activity',
+          type: 'activity' as const,
+          activityName: 'LoginActivity',
+          startToCloseTimeout: '60s',
+        },
+      ],
+    };
+
+    const activityDsl = {
+      activities: [
+        {
+          name: 'LoginActivity',
+          fn: 'run_login_activity',
+          timeout: '60s',
+          handler: 'script' as const,
+          config: {},
+          generatedCode: 'async def run_login_activity(activity_input: dict) -> dict:\n    return activity_input',
+        },
+      ],
+    };
+
+    const code = (service as any).buildDeterministicWorkflowCode(workflowDsl, activityDsl);
+
+    expect(code).toContain(
+      'missing_params = [key for key in required_params if LoginWorkflow._is_missing(activity_input.get(key))]',
+    );
+    expect(code).not.toContain('cls._is_missing(activity_input.get(key))');
+  });
+
   it('registers dedicated builtin aiStructuredTransform activity', () => {
     const { builtinRegistry } = createService();
 
@@ -253,12 +297,28 @@ describe('TemporalWorkflowService', () => {
     expect(draft.workflowDsl.steps[0]).toEqual(expect.objectContaining({
       activityRef: expect.stringMatching(/^custom:/),
     }));
+    expect(draft.workflowDsl.steps).toHaveLength(2);
+    expect(draft.workflowDsl.steps).toEqual([
+      expect.objectContaining({ name: '1. 页面打开' }),
+      expect.objectContaining({ name: '2. 页面处理' }),
+    ]);
     expect(draft.browserTemplate.commandCount).toBe(4);
     expect(draft.browserTemplate.placeholders).toEqual(expect.arrayContaining(['username', 'password']));
+    expect(draft.activityDsl.activities).toHaveLength(2);
     expect(draft.activityDsl.activities[0]).toEqual(expect.objectContaining({
       handler: 'browser',
+      name: '1. 页面打开',
     }));
-    expect((draft.activityDsl.activities[0].config as any).steps).toHaveLength(4);
+    expect((draft.activityDsl.activities[0].config as any).steps).toHaveLength(1);
+    expect((draft.activityDsl.activities[0].config as any).sessionLifecycle).toEqual({
+      initializeSession: true,
+      cleanupSession: false,
+    });
+    expect((draft.activityDsl.activities[1].config as any).steps).toHaveLength(3);
+    expect((draft.activityDsl.activities[1].config as any).sessionLifecycle).toEqual({
+      initializeSession: false,
+      cleanupSession: true,
+    });
   });
 
   it('validates browser recording draft for baidu search mcp scenario', async () => {
@@ -308,13 +368,15 @@ describe('TemporalWorkflowService', () => {
     expect(draft.name).toBe('录制登录工作流');
     expect(draft.browserTemplate.commandCount).toBe(3);
     expect(draft.browserTemplate.placeholders).toEqual(expect.arrayContaining(['username']));
+    expect(draft.workflowDsl.steps).toHaveLength(2);
+    expect(draft.activityDsl.activities).toHaveLength(2);
     expect(draft.workflowDsl.sourceContext).toEqual(expect.objectContaining({
       sourceType: 'browser_template',
       warnings: expect.arrayContaining([
         expect.stringContaining('executionPlan.commands'),
       ]),
     }));
-    expect((draft.activityDsl.activities[0].config as any).steps).toEqual(expect.arrayContaining([
+    expect((draft.activityDsl.activities[1].config as any).steps).toEqual(expect.arrayContaining([
       expect.objectContaining({
         config: expect.objectContaining({
           action: 'fill',
@@ -324,6 +386,88 @@ describe('TemporalWorkflowService', () => {
         }),
       }),
     ]));
+  });
+
+  it('prefers original template steps over structured commands when splitting browser activity', async () => {
+    const { service } = createService();
+
+    const draft = await service.generateBrowserWorkflowDraft({
+      templateId: 'tpl-browser-001',
+      name: '模板步骤优先工作流',
+      description: '直接复用模板原始步骤拆分 activity',
+      templateSteps: [
+        {
+          step_id: 'step_goto',
+          action: 'goto',
+          params: { url: 'http://192.168.100.143:5173/api/sessions/demo/start' },
+        },
+        {
+          step_id: 'step_fill',
+          action: 'fill',
+          locator: { type: 'ref', value: 'e12' },
+          params: { value: '${username}' },
+        },
+      ],
+      paramsSchema: {
+        type: 'object',
+        properties: {
+          username: {
+            type: 'string',
+            description: '登录用户名',
+            default: 'test',
+          },
+        },
+        required: ['username'],
+      },
+      commands: [
+        {
+          tool: 'click',
+          params: { target: 'e99' },
+          description: '这条 command 不应覆盖模板步骤',
+        },
+      ],
+    });
+
+    expect(draft.browserTemplate.commandCount).toBe(2);
+    expect(draft.workflowDsl.steps).toHaveLength(2);
+    expect(draft.workflowDsl.steps).toEqual([
+      expect.objectContaining({ name: '1. 页面打开' }),
+      expect.objectContaining({ name: '2. 页面处理' }),
+    ]);
+    expect(draft.workflowDsl.sourceContext).toEqual(expect.objectContaining({
+      sourceType: 'browser_template',
+      sourceTemplate: expect.objectContaining({
+        templateId: 'tpl-browser-001',
+      }),
+      warnings: expect.arrayContaining([
+        expect.stringContaining('模板原始步骤'),
+      ]),
+    }));
+    expect(draft.workflowDsl.inputParams).toEqual(expect.objectContaining({
+      username: expect.objectContaining({
+        required: true,
+        defaultValue: 'test',
+        description: '登录用户名',
+      }),
+    }));
+    expect((draft.activityDsl.activities[0].config as any).steps).toEqual([
+      expect.objectContaining({
+        config: expect.objectContaining({
+          action: 'goto',
+          url: 'http://192.168.100.143:5173/api/sessions/demo/start',
+        }),
+      }),
+    ]);
+    expect((draft.activityDsl.activities[1].config as any).steps).toEqual([
+      expect.objectContaining({
+        config: expect.objectContaining({
+          action: 'fill',
+          target: 'e12',
+          selector: 'e12',
+          value: '${username}',
+        }),
+      }),
+    ]);
   });
 
   it('preserves declared browser template input params when commands do not expose placeholders', async () => {
@@ -395,7 +539,7 @@ describe('TemporalWorkflowService', () => {
     expect(validation.errors).toEqual([]);
   });
 
-  it('generates deterministic browser activity code that calls browser-worker endpoints', async () => {
+  it('generates deterministic browser phase workflow code that reuses runtime session across activities', async () => {
     const { service } = createService();
 
     const result = await service.generateWorkflowCode(
@@ -415,27 +559,54 @@ describe('TemporalWorkflowService', () => {
         steps: [
           {
             id: 'step_1',
-            name: '执行浏览器脚本',
+            name: '1. 页面打开',
             type: 'activity',
-            activityRef: 'custom:browserTemplateRun000001',
-            activityName: '浏览器自动化执行',
-            startToCloseTimeout: '120s',
+            activityRef: 'custom:browserTemplateRun000001_01',
+            activityName: '1. 页面打开',
+            startToCloseTimeout: '60s',
+          },
+          {
+            id: 'step_2',
+            name: '2. 页面处理',
+            type: 'activity',
+            activityRef: 'custom:browserTemplateRun000001_02',
+            activityName: '2. 页面处理',
+            startToCloseTimeout: '90s',
           },
         ],
       } as any,
       {
         activities: [
           {
-            name: '浏览器自动化执行',
-            fn: 'browserTemplateRun000001',
-            timeout: '120s',
+            name: '1. 页面打开',
+            fn: 'browserTemplateRun000001_01',
+            timeout: '60s',
             handler: 'browser',
             config: {
               steps: [
                 { name: '1. 访问页面', type: 'browser', timeout: '30s', config: { action: 'goto', url: 'https://www.baidu.com' } },
+                { name: '2. 截图', type: 'browser', timeout: '30s', config: { action: 'screenshot' } },
+              ],
+              sessionLifecycle: {
+                initializeSession: true,
+                cleanupSession: false,
+              },
+            },
+          },
+          {
+            name: '2. 页面处理',
+            fn: 'browserTemplateRun000001_02',
+            timeout: '90s',
+            handler: 'browser',
+            config: {
+              steps: [
                 { name: '2. 输入关键字', type: 'browser', timeout: '30s', config: { action: 'fill', selector: '#kw', value: '{keyword}' } },
                 { name: '3. 键盘按键', type: 'browser', timeout: '30s', config: { action: 'press', selector: '#kw', value: 'Enter' } },
               ],
+              sessionLifecycle: {
+                initializeSession: false,
+                cleanupSession: true,
+              },
             },
           },
         ],
@@ -444,11 +615,22 @@ describe('TemporalWorkflowService', () => {
 
     expect(result.code).toContain('/browser/init');
     expect(result.code).toContain('/browser/execute');
+    expect(result.code).toContain('initialize_session = True');
+    expect(result.code).toContain('initialize_session = False');
+    expect(result.code).toContain('cleanup_session = False');
+    expect(result.code).toContain('cleanup_session = True');
     expect(result.code).toContain('"tool": "navigate"');
     expect(result.code).toContain('if action in ("fill", "type", "type_text"):');
     expect(result.code).toContain('"tool": "press_key"');
     expect(result.code).toContain('缺少必需参数');
     expect(result.code).toContain('first_failed_command=');
+    expect(result.code).toContain('shared_activity_input["runtimeSessionId"] = runtime_session_id');
+    expect(result.code).not.toContain('workflow.info()');
+    expect(result.code).toContain('artifact_refs = []');
+    expect(result.code).toContain('snapshot = item.get("snapshot")');
+    expect(result.code).toContain('artifact_path = data.get("path") or data.get("screenshotPath")');
+    expect(result.code).toContain('"artifacts": artifact_refs');
+    expect(result.code).toContain('phase_results.append({');
   });
 
   it('generates deterministic code for builtin httpRequest with step-level config', async () => {
@@ -2861,5 +3043,46 @@ describe('TemporalWorkflowService', () => {
       currentDraftDescription: '根据城市查询天气',
       messageCount: 1,
     }));
+  });
+
+  it('passes timeout through to workflow validation worker', async () => {
+    const { service } = createService();
+
+    mockedAxios.post.mockResolvedValue({
+      data: {
+        success: true,
+        result: {
+          success: true,
+          output: { ok: true },
+        },
+      },
+    } as any);
+
+    const result = await service.validateWorkflowReal(
+      'print("ok")',
+      'BrowserTemplateWorkflow',
+      { startUrl: 'http://127.0.0.1:5173/' },
+      'SKILL_TASK_QUEUE',
+      '300s',
+    );
+
+    expect(result.success).toBe(true);
+    expect(mockedAxios.post).toHaveBeenCalledWith(
+      expect.stringContaining('/validate-workflow'),
+      expect.objectContaining({
+        code: 'print("ok")',
+        fn_name: 'BrowserTemplateWorkflow',
+        input_data: {
+          startUrl: 'http://127.0.0.1:5173/',
+          runtimeSessionId: expect.stringMatching(/^workflow-validate-/),
+          workflowId: expect.stringMatching(/^workflow-validate-/),
+        },
+        task_queue: 'SKILL_TASK_QUEUE',
+        timeout: '300s',
+      }),
+      expect.objectContaining({
+        timeout: expect.any(Number),
+      }),
+    );
   });
 });

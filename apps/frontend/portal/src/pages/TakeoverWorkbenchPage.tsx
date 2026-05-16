@@ -4,8 +4,8 @@
  * NIW-142: Portal TakeoverWorkbenchPage (Phase 3.3)
  */
 
-import React, { useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import React, { useMemo, useState } from 'react';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { Card, Button, Space, Typography, message, Spin, Alert, Descriptions, Modal } from 'antd';
 import {
   ArrowLeftOutlined,
@@ -23,7 +23,9 @@ const { Title, Text, Paragraph } = Typography;
 const TakeoverWorkbenchPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const queryClient = useQueryClient();
+  const phaseKey = searchParams.get('phaseKey') || undefined;
 
   const [showResumeConfirm, setShowResumeConfirm] = useState(false);
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
@@ -35,9 +37,18 @@ const TakeoverWorkbenchPage: React.FC = () => {
     { enabled: !!id }
   );
 
+  const selectedPhase = useMemo(
+    () => execution?.phases?.find((phase) => phase.phaseKey === phaseKey),
+    [execution?.phases, phaseKey],
+  );
+
   // Resume mutation
   const resumeMutation = useMutation(
-    (stepId?: string) => executionApi.releaseHumanControl(id!, { stepId }),
+    (stepId?: string) => (
+      phaseKey
+        ? executionApi.resumePhaseTakeover(id!, phaseKey, { stepId })
+        : executionApi.releaseHumanControl(id!, { stepId })
+    ),
     {
       onSuccess: () => {
         message.success('Execution resumed successfully');
@@ -46,6 +57,23 @@ const TakeoverWorkbenchPage: React.FC = () => {
       },
       onError: (error: Error) => {
         message.error(`Failed to resume: ${error.message}`);
+      },
+    }
+  );
+
+  const reconcileMutation = useMutation(
+    () => (
+      phaseKey
+        ? executionApi.reconcilePhaseTakeover(id!, phaseKey, {})
+        : executionApi.getById(id!)
+    ),
+    {
+      onSuccess: () => {
+        message.success(phaseKey ? 'Phase marked resumable' : 'Execution refreshed');
+        queryClient.invalidateQueries(['execution', id]);
+      },
+      onError: (error: Error) => {
+        message.error(`Failed to reconcile: ${error.message}`);
       },
     }
   );
@@ -149,6 +177,11 @@ const TakeoverWorkbenchPage: React.FC = () => {
               <Text type="secondary">
                 The execution paused at step: {execution.currentStepId || 'Unknown'}
               </Text>
+              {selectedPhase ? (
+                <Text type="secondary" style={{ display: 'block' }}>
+                  Phase: {selectedPhase.phaseName || selectedPhase.phaseKey}
+                </Text>
+              ) : null}
             </div>
           }
           icon={<WarningOutlined />}
@@ -193,12 +226,28 @@ const TakeoverWorkbenchPage: React.FC = () => {
                 {new Date(execution.createdAt).toLocaleString()}
               </Descriptions.Item>
               <Descriptions.Item label="Runtime Type">{execution.runtimeType}</Descriptions.Item>
+              {selectedPhase ? (
+                <>
+                  <Descriptions.Item label="Phase">{selectedPhase.phaseName || selectedPhase.phaseKey}</Descriptions.Item>
+                  <Descriptions.Item label="Phase Status">{selectedPhase.status}</Descriptions.Item>
+                </>
+              ) : null}
             </Descriptions>
           </Card>
 
           {/* Control Buttons */}
           <Card title="Controls" size="small">
             <Space direction="vertical" style={{ width: '100%' }} size="middle">
+              <Button
+                icon={<ReloadOutlined />}
+                size="large"
+                block
+                onClick={() => reconcileMutation.mutate()}
+                loading={reconcileMutation.isLoading}
+                disabled={!phaseKey}
+              >
+                Mark Phase Reconciled
+              </Button>
               <Button
                 type="primary"
                 icon={<PlayCircleOutlined />}

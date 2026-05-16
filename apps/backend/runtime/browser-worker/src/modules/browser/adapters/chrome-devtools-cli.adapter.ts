@@ -1,14 +1,19 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { execFile } from 'child_process';
+import { createHash } from 'crypto';
 import { lookup } from 'dns/promises';
 import * as fs from 'fs/promises';
 import * as path from 'path';
 import { WorkerService } from '../../worker/worker.service';
 import {
+  AssertBrowserStateDto,
+  BrowserPageAssertionResultDto,
+  BrowserPageStateDto,
   BrowserControlStateDto,
   ExecuteStepDto,
   ExecuteStepResultDto,
   FreezeBrowserSessionDto,
+  InspectBrowserStateDto,
   ResumeBrowserSessionDto,
 } from '../../../dto/worker.dto';
 import {
@@ -158,11 +163,22 @@ export class ChromeDevtoolsCliAdapter implements BrowserExecutionAdapter {
         },
         sessionId,
       );
+      const pageState = await this.inspectPageState(sessionId).catch(() => ({
+        runtimeSessionId: sessionId,
+        pageUrl: this.getOrCreateSession(sessionId).lastUrl,
+        observedAt: new Date().toISOString(),
+      } as BrowserPageStateDto));
 
       return {
         success: true,
         snapshotId: result.snapshot?.id,
-        output: result as unknown as Record<string, unknown>,
+        output: {
+          ...(result as unknown as Record<string, unknown>),
+          pageUrl: pageState.pageUrl,
+          pageTitle: pageState.pageTitle,
+          pageFingerprint: pageState.pageFingerprint,
+        },
+        pageState,
         shouldTakeover: false,
       };
     } catch (error: unknown) {
@@ -174,6 +190,29 @@ export class ChromeDevtoolsCliAdapter implements BrowserExecutionAdapter {
         shouldTakeover: false,
       };
     }
+  }
+
+  async inspectState(dto: InspectBrowserStateDto): Promise<BrowserPageStateDto> {
+    return this.inspectPageState(dto.runtimeSessionId || 'default');
+  }
+
+  async assertState(dto: AssertBrowserStateDto): Promise<BrowserPageAssertionResultDto> {
+    const pageState = await this.inspectPageState(dto.runtimeSessionId || 'default');
+    const selectorMatched = dto.selectorExists
+      ? await this.checkSelectorExists(dto.runtimeSessionId || 'default', dto.selectorExists)
+      : undefined;
+    const textMatched = dto.textIncludes
+      ? await this.checkTextIncludes(dto.runtimeSessionId || 'default', dto.textIncludes)
+      : undefined;
+
+    return {
+      matched: this.matchPageAssertion(dto, pageState, selectorMatched, textMatched),
+      pageState,
+      details: {
+        selectorMatched: selectorMatched ?? null,
+        textMatched: textMatched ?? null,
+      },
+    };
   }
 
   async freeze(dto: FreezeBrowserSessionDto): Promise<BrowserControlStateDto> {
@@ -422,6 +461,55 @@ export class ChromeDevtoolsCliAdapter implements BrowserExecutionAdapter {
         result: result.stdout.trim(),
       },
     };
+  }
+
+  private async inspectPageState(sessionId: string): Promise<BrowserPageStateDto> {
+    const session = await this.ensurePageSelected(sessionId);
+    const pages = await this.listPages(sessionId);
+    const current = pages[Math.max(0, (session.currentPageIndex || 1) - 1)] || pages[0];
+    const evalResult = await this.execCli(
+      sessionId,
+      ['evaluate_script', '() => ({ readyState: document.readyState, title: document.title, url: location.href })', '--output-format=json'],
+    );
+    const evaluated = this.parseJsonStdout<Record<string, unknown>>(evalResult.stdout);
+    const pageUrl = typeof evaluated?.url === 'string' && evaluated.url.trim()
+      ? evaluated.url.trim()
+      : current?.url;
+    const pageTitle = typeof evaluated?.title === 'string' && evaluated.title.trim()
+      ? evaluated.title.trim()
+      : current?.title;
+    const readyState = typeof evaluated?.readyState === 'string' ? evaluated.readyState.trim() : '';
+    if (pageUrl) {
+      session.lastUrl = pageUrl;
+    }
+    return {
+      runtimeSessionId: sessionId,
+      pageUrl: pageUrl || undefined,
+      pageTitle: pageTitle || undefined,
+      pageFingerprint: this.buildPageFingerprint(pageUrl, pageTitle),
+      readyState: readyState || undefined,
+      observedAt: new Date().toISOString(),
+    };
+  }
+
+  private async checkSelectorExists(sessionId: string, selector: string): Promise<boolean> {
+    await this.ensurePageSelected(sessionId);
+    const result = await this.execCli(
+      sessionId,
+      ['evaluate_script', `() => ({ matched: Boolean(document.querySelector(${JSON.stringify(selector)})) })`, '--output-format=json'],
+    );
+    const payload = this.parseJsonStdout<Record<string, unknown>>(result.stdout);
+    return Boolean(payload?.matched);
+  }
+
+  private async checkTextIncludes(sessionId: string, text: string): Promise<boolean> {
+    await this.ensurePageSelected(sessionId);
+    const result = await this.execCli(
+      sessionId,
+      ['evaluate_script', `() => ({ matched: (document.body?.innerText || '').includes(${JSON.stringify(text)}) })`, '--output-format=json'],
+    );
+    const payload = this.parseJsonStdout<Record<string, unknown>>(result.stdout);
+    return Boolean(payload?.matched);
   }
 
   private async handleWait(
@@ -698,6 +786,61 @@ export class ChromeDevtoolsCliAdapter implements BrowserExecutionAdapter {
       frozen: session.controlMode === 'HUMAN_CONTROL',
       reason: session.frozenReason,
     };
+  }
+
+  private buildPageFingerprint(url?: string, title?: string): string | undefined {
+    const normalizedUrl = typeof url === 'string' ? url.trim() : '';
+    const normalizedTitle = typeof title === 'string' ? title.trim() : '';
+    if (!normalizedUrl && !normalizedTitle) {
+      return undefined;
+    }
+    return createHash('sha256')
+      .update(`${normalizedUrl}::${normalizedTitle}`)
+      .digest('hex')
+      .slice(0, 24);
+  }
+
+  private matchPageAssertion(
+    dto: AssertBrowserStateDto,
+    pageState: BrowserPageStateDto,
+    selectorMatched?: boolean,
+    textMatched?: boolean,
+  ): boolean {
+    if (dto.pageUrl && pageState.pageUrl !== dto.pageUrl) {
+      return false;
+    }
+    if (dto.pageUrlIncludes && !String(pageState.pageUrl || '').includes(dto.pageUrlIncludes)) {
+      return false;
+    }
+    if (dto.pageTitle && pageState.pageTitle !== dto.pageTitle) {
+      return false;
+    }
+    if (dto.pageTitleIncludes && !String(pageState.pageTitle || '').includes(dto.pageTitleIncludes)) {
+      return false;
+    }
+    if (dto.pageFingerprint && pageState.pageFingerprint !== dto.pageFingerprint) {
+      return false;
+    }
+    if (dto.readyState && pageState.readyState !== dto.readyState) {
+      return false;
+    }
+    if (dto.selectorExists && !selectorMatched) {
+      return false;
+    }
+    if (dto.textIncludes && !textMatched) {
+      return false;
+    }
+
+    return Boolean(
+      dto.pageUrl ||
+      dto.pageUrlIncludes ||
+      dto.pageTitle ||
+      dto.pageTitleIncludes ||
+      dto.pageFingerprint ||
+      dto.readyState ||
+      dto.selectorExists ||
+      dto.textIncludes,
+    );
   }
 
   private async ensureDirectories(): Promise<void> {

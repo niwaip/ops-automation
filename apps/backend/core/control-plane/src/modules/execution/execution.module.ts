@@ -1,9 +1,12 @@
 import { Module } from '@nestjs/common';
+import { BrowserPhaseRecoveryPlanner } from './browser-phase-recovery.planner';
+import { BrowserPhaseExecutor } from './browser-phase.executor';
 import { BrowserRuntimeAdapter } from './browser-runtime.adapter';
 import { CapabilityRuntimeAdapter } from './capability-runtime.adapter';
 import { DocumentRuntimeAdapter } from './document-runtime.adapter';
 import { ExecutionController } from './execution.controller';
 import { ExecutionEventService } from './execution-event.service';
+import { ExecutionPhaseService } from './execution-phase.service';
 import { ExecutionStateService } from './execution-state.service';
 import { ExecutionStepService } from './execution-step.service';
 import { ExecutionService } from './execution.service';
@@ -18,12 +21,15 @@ import { PrismaModule } from '../prisma/prisma.module';
   imports: [PrismaModule],
   controllers: [ExecutionController],
   providers: [
+    BrowserPhaseRecoveryPlanner,
     BrowserRuntimeAdapter,
+    BrowserPhaseExecutor,
     CapabilityRuntimeAdapter,
     DocumentRuntimeAdapter,
     WorkflowRuntimeAdapter,
     ExecutionService,
     ExecutionEventService,
+    ExecutionPhaseService,
     ExecutionStateService,
     ExecutionStepService,
     RuntimeAdapterRegistry,
@@ -32,12 +38,15 @@ import { PrismaModule } from '../prisma/prisma.module';
     RuntimeStepRequestFactory,
   ],
   exports: [
+    BrowserPhaseRecoveryPlanner,
     BrowserRuntimeAdapter,
+    BrowserPhaseExecutor,
     CapabilityRuntimeAdapter,
     DocumentRuntimeAdapter,
     WorkflowRuntimeAdapter,
     ExecutionService,
     ExecutionEventService,
+    ExecutionPhaseService,
     ExecutionStateService,
     ExecutionStepService,
     RuntimeAdapterRegistry,

@@ -2,11 +2,15 @@ import { Controller, Post, Body } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { BrowserService } from './browser.service';
 import {
+  AssertBrowserStateDto,
+  BrowserPageAssertionResultDto,
   BrowserExecutionBackendDto,
   BrowserControlStateDto,
+  BrowserPageStateDto,
   ExecuteStepDto,
   ExecuteStepResultDto,
   FreezeBrowserSessionDto,
+  InspectBrowserStateDto,
   ResumeBrowserSessionDto,
 } from '../../dto/worker.dto';
 import { MCPCommand } from './adapters/browser-execution.adapter';
@@ -48,6 +52,8 @@ export class BrowserController {
       commands: MCPCommand[];
       backend?: BrowserExecutionBackendDto;
       runtimeSessionId?: string;
+      includeArtifacts?: boolean;
+      includeSteps?: boolean;
     },
   ): Promise<{ success: boolean; results: any[]; message?: string; steps?: BrowserActionStep[] }> {
     return this.browserService.executeCommands(body.commands, body);
@@ -73,6 +79,20 @@ export class BrowserController {
   @ApiResponse({ status: 400, description: 'Browser not initialized' })
   async executeStep(@Body() dto: ExecuteStepDto): Promise<ExecuteStepResultDto> {
     return this.browserService.executeStep(dto);
+  }
+
+  @Post('inspect-state')
+  @ApiOperation({ summary: 'Inspect current browser page state' })
+  @ApiResponse({ status: 200, type: BrowserPageStateDto, description: 'Current browser page state' })
+  async inspectState(@Body() dto: InspectBrowserStateDto): Promise<BrowserPageStateDto> {
+    return this.browserService.inspectState(dto);
+  }
+
+  @Post('assert-state')
+  @ApiOperation({ summary: 'Assert browser page state and content conditions' })
+  @ApiResponse({ status: 200, type: BrowserPageAssertionResultDto, description: 'Browser assertion result' })
+  async assertState(@Body() dto: AssertBrowserStateDto): Promise<BrowserPageAssertionResultDto> {
+    return this.browserService.assertState(dto);
   }
 
   @Post('freeze')

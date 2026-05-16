@@ -139,6 +139,73 @@ describe('CapabilityReleaseService', () => {
     });
   });
 
+  it('normalizes camelCase url smoke inputs into valid urls', () => {
+    const { service } = createService();
+
+    const normalized = (service as any).buildSuggestedInputFromSchema({
+      properties: {
+        startUrl: {
+          type: 'string',
+        },
+      },
+    });
+
+    expect(normalized).toEqual({
+      startUrl: 'https://www.bing.com',
+    });
+  });
+
+  it('prefers temporal workflow input defaults when building deploy smoke input', () => {
+    const { service } = createService();
+
+    const smokeInput = (service as any).buildSmokeTestInput(
+      {
+        sourceType: 'temporal_workflow',
+      },
+      {
+        sourcePayload: {
+          workflowDsl: {
+            inputParams: {
+              startUrl: {
+                type: 'string',
+                required: true,
+                defaultValue: 'http://192.168.100.143:5173/',
+              },
+              username: {
+                type: 'string',
+                required: true,
+                defaultValue: 'test',
+              },
+            },
+          },
+          paramsSchema: {
+            required: ['startUrl', 'username'],
+            properties: {
+              startUrl: {
+                type: 'string',
+                required: true,
+                description: '起始页面地址',
+              },
+              username: {
+                type: 'string',
+                required: true,
+                description: '登录用户名',
+              },
+            },
+          },
+        },
+      },
+      'staging',
+    );
+
+    expect(smokeInput).toEqual(expect.objectContaining({
+      startUrl: 'http://192.168.100.143:5173/',
+      username: 'test',
+      smokeTest: true,
+      environment: 'staging',
+    }));
+  });
+
   it('omits empty placeholder defaults from published temporal params schema', () => {
     const { service } = createService();
 
@@ -837,7 +904,18 @@ describe('CapabilityReleaseService', () => {
       'user-1',
     );
 
+    expect(activityService.executeCodeInTemporalSandbox).toHaveBeenCalledWith(
+      'PYTHON_CODE',
+      'WeatherWorkflow',
+      'SKILL_TASK_QUEUE',
+      expect.objectContaining({
+        city: 'shanghai',
+        runtimeSessionId: expect.stringMatching(/^capability-runtime-/),
+        workflowId: expect.stringMatching(/^capability-runtime-/),
+      }),
+    );
     expect(result.success).toBe(true);
+    expect(result.runtimeSessionId).toMatch(/^capability-runtime-/);
     expect(result.output).toEqual({ result: '上海天气：晴，25度' });
     expect(result.result).toEqual({ result: '上海天气：晴，25度' });
   });

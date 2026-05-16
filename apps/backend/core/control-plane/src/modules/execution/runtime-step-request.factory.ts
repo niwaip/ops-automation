@@ -1,6 +1,12 @@
 import { Injectable } from '@nestjs/common';
 import { PolicyContext, RuntimeStepInvokeRequest } from './runtime-adapter.interface';
 
+interface RuntimeStepPhaseMetadata {
+  phaseKey: string;
+  phaseName: string;
+  phaseType: string;
+}
+
 @Injectable()
 export class RuntimeStepRequestFactory {
   buildBrowserGotoRequest(input: {
@@ -9,6 +15,7 @@ export class RuntimeStepRequestFactory {
     runtimeSessionId: string;
     url: string;
     executionMode: 'bootstrap' | 'planned_step';
+    phaseMetadata?: RuntimeStepPhaseMetadata;
   }): RuntimeStepInvokeRequest {
     const executionId = input.execution.id as string;
 
@@ -28,6 +35,7 @@ export class RuntimeStepRequestFactory {
       policyContext: this.buildPolicyContext(input.execution),
       metadata: {
         executionMode: input.executionMode,
+        ...(input.phaseMetadata || {}),
       },
     };
   }
@@ -36,6 +44,7 @@ export class RuntimeStepRequestFactory {
     execution: Record<string, unknown>;
     stepId: string;
     runtimeSessionId: string;
+    phaseMetadata?: RuntimeStepPhaseMetadata;
   }): RuntimeStepInvokeRequest | null {
     const capabilityId = this.resolveExecutionCapabilityId(input.execution);
     if (!capabilityId) {
@@ -58,6 +67,7 @@ export class RuntimeStepRequestFactory {
       policyContext: this.buildPolicyContext(input.execution),
       metadata: {
         capabilityVersion: this.resolveExecutionCapabilityVersion(input.execution),
+        ...(input.phaseMetadata || {}),
       },
     };
   }

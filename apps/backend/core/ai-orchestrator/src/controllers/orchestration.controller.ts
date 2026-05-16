@@ -15,9 +15,12 @@ import { RecognizerService } from '../modules/recognizer/recognizer.service';
 import { DeciderService } from '../modules/decider/decider.service';
 import { ModelService } from '../modules/model/model.service';
 import { PlannerService } from '../modules/planner/planner.service';
+import { BrowserPhaseRecoveryService } from '../modules/browser-phase-recovery/browser-phase-recovery.service';
 import { ToolExecutor } from '../modules/react-engine/tool-executor';
 import type {
   AIAgentDTO,
+  PlanBrowserPhaseRecoveryDTO,
+  PlanBrowserPhaseRecoveryResponseDTO,
   CreateAgentDTO,
   DecideFailureDTO,
   DecideFailureResponseDTO,
@@ -39,6 +42,7 @@ export class OrchestrationController {
     private readonly recognizerService: RecognizerService,
     private readonly deciderService: DeciderService,
     private readonly plannerService: PlannerService,
+    private readonly browserPhaseRecoveryService: BrowserPhaseRecoveryService,
     private readonly toolExecutor: ToolExecutor,
   ) {}
 
@@ -105,6 +109,15 @@ export class OrchestrationController {
       authToken: req.headers.authorization,
       traceId,
     });
+  }
+
+  @Post('browser-phase-recovery/plan')
+  @ApiOperation({ summary: 'Plan a constrained browser phase recovery patch' })
+  @ApiResponse({ status: 200, description: 'Returns a browser phase recovery decision' })
+  async planBrowserPhaseRecovery(
+    @Body() body: PlanBrowserPhaseRecoveryDTO,
+  ): Promise<PlanBrowserPhaseRecoveryResponseDTO> {
+    return this.browserPhaseRecoveryService.planRecovery(body);
   }
 
   @Post('tools/refresh')

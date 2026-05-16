@@ -883,6 +883,55 @@ describe('RecognizerService model routing', () => {
     });
   });
 
+  it('extracts enumerated line-item arrays from schema aliases without relying on an items[] prefix', async () => {
+    const requestedModelId = 'requested-model-id';
+    const requestedClient = {
+      chatCompletion: jest.fn().mockResolvedValue({
+        content: JSON.stringify({
+          params: {},
+          confidence: 0.78,
+        }),
+        usage: { prompt_tokens: 1, completion_tokens: 1, total_tokens: 2 },
+      }),
+    };
+
+    service.registerTemplate({
+      template_id: 'generic-line-item-template',
+      name: 'Generic Line Item Template',
+      params_schema: {
+        properties: {
+          'lineRows[].lineNo': { type: 'array', description: '采购明细行号' },
+          'lineRows[].materialCode': { type: 'array', description: '设备物料编码' },
+          'lineRows[].model': { type: 'array', description: '设备规格型号' },
+          'lineRows[].qty': { type: 'array', description: '采购数量' },
+        },
+      },
+    });
+
+    modelService.resolveModelId.mockResolvedValue(requestedModelId);
+    modelService.getClient.mockImplementation((id: string) => (id === requestedModelId ? requestedClient : null));
+    modelService.getDefaultModel.mockReturnValue({ id: 'default-model-id' });
+
+    const result = await service.recognizeParams({
+      template_id: 'generic-line-item-template',
+      user_input: '采购标的有两项：1. 六轴机械臂，设备物料编码 RB-01，设备规格型号 M-100，采购数量 2；2. 工业相机，设备物料编码 CAM-02，设备规格型号 V-9，采购数量 4。',
+      modelId: requestedModelId,
+    });
+
+    expect(result.params).toEqual({
+      'lineRows[].lineNo': [1, 2],
+      'lineRows[].materialCode': ['RB-01', 'CAM-02'],
+      'lineRows[].model': ['M-100', 'V-9'],
+      'lineRows[].qty': [2, 4],
+    });
+    expect(result.field_confidences).toEqual({
+      'lineRows[].lineNo': 0.86,
+      'lineRows[].materialCode': 0.86,
+      'lineRows[].model': 0.86,
+      'lineRows[].qty': 0.86,
+    });
+  });
+
   it('supplements long procurement-contract fields from explicit Chinese labels even when array schema types are plain array', async () => {
     const requestedModelId = 'requested-model-id';
     const requestedClient = {

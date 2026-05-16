@@ -1,14 +1,19 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { execFile } from 'child_process';
+import { createHash } from 'crypto';
 import { lookup } from 'dns/promises';
 import * as fs from 'fs/promises';
 import * as path from 'path';
 import sharp from 'sharp';
 import {
+  AssertBrowserStateDto,
+  BrowserPageAssertionResultDto,
+  BrowserPageStateDto,
   BrowserControlStateDto,
   ExecuteStepDto,
   ExecuteStepResultDto,
   FreezeBrowserSessionDto,
+  InspectBrowserStateDto,
   ResumeBrowserSessionDto,
 } from '../../../dto/worker.dto';
 import {
@@ -130,16 +135,20 @@ export class PlaywrightCliAdapter implements BrowserExecutionAdapter {
     options?: BrowserExecutionOptions,
   ): Promise<{ success: boolean; results: any[]; message?: string }> {
     const sessionId = options?.runtimeSessionId || 'default';
+    const includeArtifacts = options?.includeArtifacts !== false;
     const results: any[] = [];
 
     const totalCommands = commands.length;
     for (const [index, command] of commands.entries()) {
       try {
         const rawResult = await this.runCliAction(command.tool, command.params || {}, sessionId);
-        const shouldEnrich = this.shouldEnrichCommandResult(command.tool, index, totalCommands);
-        const result = shouldEnrich
+        const shouldEnrich = includeArtifacts && this.shouldEnrichCommandResult(command.tool, index, totalCommands);
+        const enrichedResult = shouldEnrich
           ? await this.enrichResultArtifacts(sessionId, rawResult)
           : rawResult;
+        const result = includeArtifacts
+          ? enrichedResult
+          : this.stripResultArtifacts(enrichedResult);
         results.push(result);
       } catch (error: unknown) {
         const errorMessage = error instanceof Error ? error.message : 'Unknown error';
@@ -203,11 +212,22 @@ export class PlaywrightCliAdapter implements BrowserExecutionAdapter {
         },
         sessionId,
       );
+      const pageState = await this.inspectPageState(sessionId).catch(() => ({
+        runtimeSessionId: sessionId,
+        pageUrl: this.getOrCreateSession(sessionId).lastUrl,
+        observedAt: new Date().toISOString(),
+      } as BrowserPageStateDto));
 
       return {
         success: true,
         snapshotId: result.snapshot?.id,
-        output: result as unknown as Record<string, unknown>,
+        output: {
+          ...(result as unknown as Record<string, unknown>),
+          pageUrl: pageState.pageUrl,
+          pageTitle: pageState.pageTitle,
+          pageFingerprint: pageState.pageFingerprint,
+        },
+        pageState,
         shouldTakeover: false,
       };
     } catch (error: unknown) {
@@ -221,6 +241,32 @@ export class PlaywrightCliAdapter implements BrowserExecutionAdapter {
         shouldTakeover: false,
       };
     }
+  }
+
+  async inspectState(dto: InspectBrowserStateDto): Promise<BrowserPageStateDto> {
+    return this.inspectPageState(dto.runtimeSessionId || 'default');
+  }
+
+  async assertState(dto: AssertBrowserStateDto): Promise<BrowserPageAssertionResultDto> {
+    const pageState = await this.inspectPageState(dto.runtimeSessionId || 'default');
+    const selectorMatched = dto.selectorExists
+      ? await this.checkSelectorExists(dto.runtimeSessionId || 'default', dto.selectorExists)
+      : undefined;
+    const textMatched = dto.textIncludes
+      ? await this.checkTextIncludes(dto.runtimeSessionId || 'default', dto.textIncludes)
+      : undefined;
+
+    const details: Record<string, unknown> = {
+      selectorMatched: selectorMatched ?? null,
+      textMatched: textMatched ?? null,
+    };
+
+    const matched = this.matchPageAssertion(dto, pageState, selectorMatched, textMatched);
+    return {
+      matched,
+      pageState,
+      details,
+    };
   }
 
   async freeze(dto: FreezeBrowserSessionDto): Promise<BrowserControlStateDto> {
@@ -255,53 +301,60 @@ export class PlaywrightCliAdapter implements BrowserExecutionAdapter {
     sessionId: string,
   ): Promise<CliActionResult> {
     await this.ensureDirectories();
+    const normalizedParams = await this.resolveRuntimeTargetRefs(action, params, sessionId);
 
     switch (action) {
       case 'goto':
       case 'navigate':
-        return this.handleNavigate(sessionId, this.requireStringParam(params, ['target', 'url']));
+        return this.handleNavigate(sessionId, this.requireStringParam(normalizedParams, ['target', 'url']));
       case 'click':
-        return this.handleSimpleCommand(sessionId, 'click', [this.requireStringParam(params, ['target', 'selector', 'text'])]);
+        return this.handleSimpleCommand(sessionId, 'click', [
+          this.requireStringParam(normalizedParams, ['target', 'selector', 'text']),
+        ]);
       case 'fill':
         return this.handleSimpleCommand(sessionId, 'fill', [
-          this.requireStringParam(params, ['target', 'selector']),
-          this.requireStringParam(params, ['value', 'text']),
+          this.requireStringParam(normalizedParams, ['target', 'selector']),
+          this.requireStringParam(normalizedParams, ['value', 'text']),
         ]);
       case 'type':
       case 'type_text':
-        return this.handleTypeText(sessionId, params);
+        return this.handleTypeText(sessionId, normalizedParams);
       case 'press':
       case 'press_key':
-        return this.handleSimpleCommand(sessionId, 'press', [this.requireStringParam(params, ['key', 'target'])]);
+        return this.handleSimpleCommand(sessionId, 'press', [
+          this.requireStringParam(normalizedParams, ['key', 'target']),
+        ]);
       case 'hover':
-        return this.handleSimpleCommand(sessionId, 'hover', [this.requireStringParam(params, ['target', 'selector'])]);
+        return this.handleSimpleCommand(sessionId, 'hover', [
+          this.requireStringParam(normalizedParams, ['target', 'selector']),
+        ]);
       case 'drag':
         return this.handleSimpleCommand(sessionId, 'drag', [
-          this.requireStringParam(params, ['src']),
-          this.requireStringParam(params, ['dst']),
+          this.requireStringParam(normalizedParams, ['src']),
+          this.requireStringParam(normalizedParams, ['dst']),
         ]);
       case 'screenshot':
-        return this.handleScreenshot(sessionId, params);
+        return this.handleScreenshot(sessionId, normalizedParams);
       case 'snapshot':
-        return this.handleSnapshot(sessionId, params);
+        return this.handleSnapshot(sessionId, normalizedParams);
       case 'evaluate':
-        return this.handleEvaluate(sessionId, this.requireStringParam(params, ['script']));
+        return this.handleEvaluate(sessionId, this.requireStringParam(normalizedParams, ['script']));
       case 'wait':
-        return this.handleWait(sessionId, params);
+        return this.handleWait(sessionId, normalizedParams);
       case 'scroll':
-        return this.handleScroll(sessionId, params);
+        return this.handleScroll(sessionId, normalizedParams);
       case 'read_page':
       case 'get_text':
-        return this.handleReadPage(sessionId, params);
+        return this.handleReadPage(sessionId, normalizedParams);
       case 'search':
-        return this.handleSearch(sessionId, this.requireStringParam(params, ['query', 'text']));
+        return this.handleSearch(sessionId, this.requireStringParam(normalizedParams, ['query', 'text']));
       case 'smart_search':
-        return this.handleSmartSearch(sessionId, this.requireStringParam(params, ['query', 'text']));
+        return this.handleSmartSearch(sessionId, this.requireStringParam(normalizedParams, ['query', 'text']));
       case 'list_search_results':
       case 'inspect_search_results':
-        return this.handleListSearchResults(sessionId, params);
+        return this.handleListSearchResults(sessionId, normalizedParams);
       case 'click_result':
-        return this.handleClickResult(sessionId, this.requireNumberParam(params, ['index']));
+        return this.handleClickResult(sessionId, this.requireNumberParam(normalizedParams, ['index']));
       case 'switch_latest_tab':
       case 'focus_latest_page':
         return this.handleSwitchLatestTab(sessionId);
@@ -343,8 +396,20 @@ export class PlaywrightCliAdapter implements BrowserExecutionAdapter {
     args: string[],
   ): Promise<CliActionResult> {
     await this.ensureSessionReady(sessionId);
-    const result = await this.execCli(sessionId, [command, ...args]);
-    this.assertNoCliError(result, `${command} failed`);
+    const normalizedArgs = args.map((arg, index) => (
+      index === 0 ? this.normalizeSemanticRoleSelector(arg) : arg
+    ));
+    let result = await this.execCli(sessionId, [command, ...normalizedArgs]);
+    try {
+      this.assertNoCliError(result, `${command} failed`);
+    } catch (error: unknown) {
+      const fallbackArgs = this.buildPlaceholderFallbackArgs(command, normalizedArgs, error);
+      if (!fallbackArgs) {
+        throw error;
+      }
+      result = await this.execCli(sessionId, [command, ...fallbackArgs]);
+      this.assertNoCliError(result, `${command} failed`);
+    }
 
     return {
       status: 'success',
@@ -457,6 +522,77 @@ export class PlaywrightCliAdapter implements BrowserExecutionAdapter {
       stderr: result.stderr,
       data: { result: result.stdout.trim() },
     };
+  }
+
+  private async inspectPageState(sessionId: string): Promise<BrowserPageStateDto> {
+    await this.ensureSessionReady(sessionId);
+    const session = this.getOrCreateSession(sessionId);
+    const activePageExpr = session.preferLatestTab
+      ? '(page.context().pages().length ? page.context().pages()[page.context().pages().length - 1] : page)'
+      : 'page';
+    const script = `async page => {
+      const activePage = ${activePageExpr};
+      await activePage.bringToFront().catch(() => {});
+      const title = await activePage.title().catch(() => '');
+      const url = activePage.url();
+      const readyState = await activePage.evaluate(() => document.readyState).catch(() => '');
+      return JSON.stringify({
+        pageUrl: url,
+        pageTitle: title,
+        readyState,
+      });
+    }`;
+    const result = await this.execCli(sessionId, ['run-code', script]);
+    this.assertNoCliError(result, 'Inspect page state failed');
+    const payload = this.parseJsonStdout<Record<string, unknown>>(result.stdout);
+    const pageUrl = typeof payload?.pageUrl === 'string' ? payload.pageUrl.trim() : '';
+    const pageTitle = typeof payload?.pageTitle === 'string' ? payload.pageTitle.trim() : '';
+    const readyState = typeof payload?.readyState === 'string' ? payload.readyState.trim() : '';
+    if (pageUrl) {
+      session.lastUrl = pageUrl;
+    }
+    return {
+      runtimeSessionId: sessionId,
+      pageUrl: pageUrl || session.lastUrl,
+      pageTitle: pageTitle || undefined,
+      pageFingerprint: this.buildPageFingerprint(pageUrl || session.lastUrl, pageTitle),
+      readyState: readyState || undefined,
+      observedAt: new Date().toISOString(),
+    };
+  }
+
+  private async checkSelectorExists(sessionId: string, selector: string): Promise<boolean> {
+    await this.ensureSessionReady(sessionId);
+    const session = this.getOrCreateSession(sessionId);
+    const activePageExpr = session.preferLatestTab
+      ? '(page.context().pages().length ? page.context().pages()[page.context().pages().length - 1] : page)'
+      : 'page';
+    const script = `async page => {
+      const activePage = ${activePageExpr};
+      const count = await activePage.locator(${JSON.stringify(selector)}).count().catch(() => 0);
+      return JSON.stringify({ matched: count > 0 });
+    }`;
+    const result = await this.execCli(sessionId, ['run-code', script]);
+    this.assertNoCliError(result, 'Check selector existence failed');
+    const payload = this.parseJsonStdout<Record<string, unknown>>(result.stdout);
+    return Boolean(payload?.matched);
+  }
+
+  private async checkTextIncludes(sessionId: string, text: string): Promise<boolean> {
+    await this.ensureSessionReady(sessionId);
+    const session = this.getOrCreateSession(sessionId);
+    const activePageExpr = session.preferLatestTab
+      ? '(page.context().pages().length ? page.context().pages()[page.context().pages().length - 1] : page)'
+      : 'page';
+    const script = `async page => {
+      const activePage = ${activePageExpr};
+      const bodyText = await activePage.evaluate(() => document.body?.innerText || '').catch(() => '');
+      return JSON.stringify({ matched: bodyText.includes(${JSON.stringify(text)}) });
+    }`;
+    const result = await this.execCli(sessionId, ['run-code', script]);
+    this.assertNoCliError(result, 'Check page text failed');
+    const payload = this.parseJsonStdout<Record<string, unknown>>(result.stdout);
+    return Boolean(payload?.matched);
   }
 
   private async handleWait(
@@ -1157,11 +1293,143 @@ export class PlaywrightCliAdapter implements BrowserExecutionAdapter {
     }
   }
 
+  private async resolveRuntimeTargetRefs(
+    action: string,
+    params: Record<string, unknown>,
+    sessionId: string,
+  ): Promise<Record<string, unknown>> {
+    const refKeys = this.getRuntimeTargetRefKeys(action);
+    if (!refKeys.length) {
+      return params;
+    }
+
+    let normalizedParams = params;
+    for (const key of refKeys) {
+      const value = normalizedParams[key];
+      if (!this.isRuntimeTargetRef(value)) {
+        continue;
+      }
+
+      const targetRef = value.trim();
+      const resolvedLocator = await this.generateLocator(targetRef, {
+        runtimeSessionId: sessionId,
+      });
+      if (!resolvedLocator) {
+        throw new Error(`Failed to resolve runtime target ref: ${targetRef}`);
+      }
+
+      if (normalizedParams === params) {
+        normalizedParams = { ...params };
+      }
+      normalizedParams[key] = resolvedLocator;
+    }
+
+    return normalizedParams;
+  }
+
+  private getRuntimeTargetRefKeys(action: string): string[] {
+    switch (action) {
+      case 'click':
+      case 'fill':
+      case 'hover':
+      case 'press':
+      case 'press_key':
+      case 'wait':
+      case 'screenshot':
+      case 'snapshot':
+      case 'read_page':
+      case 'get_text':
+        return ['target', 'selector'];
+      case 'drag':
+        return ['src', 'dst'];
+      default:
+        return [];
+    }
+  }
+
+  private isRuntimeTargetRef(value: unknown): value is string {
+    return typeof value === 'string' && /^e\d+$/i.test(value.trim());
+  }
+
   private assertNoCliError(result: CliExecResult, fallbackMessage: string): void {
     const match = result.stdout.match(/^### Error\s*\n([\s\S]*?)(?:\n### |\s*$)/m);
     if (match?.[1]) {
       throw new Error(match[1].trim() || fallbackMessage);
     }
+  }
+
+  private buildPlaceholderFallbackArgs(
+    command: string,
+    args: string[],
+    error: unknown,
+  ): string[] | undefined {
+    if (command !== 'fill' || args.length < 2) {
+      return undefined;
+    }
+
+    const errorMessage = error instanceof Error ? error.message : String(error || '');
+    if (!/does not match any elements|No element found|strict mode violation/i.test(errorMessage)) {
+      return undefined;
+    }
+
+    const [target, ...restArgs] = args;
+    if (!target) {
+      return undefined;
+    }
+
+    const placeholder = this.extractRoleTextboxName(target);
+    if (!placeholder) {
+      return undefined;
+    }
+
+    return [this.buildPlaceholderSelector(placeholder), ...restArgs];
+  }
+
+  private normalizeSemanticRoleSelector(target: string): string {
+    if (!target || /^role=/i.test(target)) {
+      return target;
+    }
+
+    const match = target.match(/^([a-z_][\w-]*)\[name=(['"]?)(.+?)\2\]$/i);
+    if (!match?.[1] || !match[3]) {
+      return target;
+    }
+
+    const role = match[1].trim();
+    const name = match[3].trim().replace(/"/g, '\\"');
+    if (!role || !name) {
+      return target;
+    }
+
+    return `role=${role}[name="${name}"]`;
+  }
+
+  private extractRoleTextboxName(target: string): string | undefined {
+    const match = target.match(/^(?:role=)?textbox\[name=(['"]?)(.+?)\1\]$/i);
+    return match?.[2]?.trim() || undefined;
+  }
+
+  private stripResultArtifacts(result: CliActionResult): CliActionResult {
+    const stripped: CliActionResult = { ...result };
+    delete stripped.html;
+    delete stripped.screenshot;
+
+    if (stripped.data && typeof stripped.data === 'object') {
+      const data = { ...stripped.data } as Record<string, unknown>;
+      delete data.content;
+      delete data.html;
+      delete data.screenshot;
+      stripped.data = data;
+    }
+
+    return stripped;
+  }
+
+  private buildPlaceholderSelector(placeholder: string): string {
+    const escapedPlaceholder = placeholder
+      .replace(/\\/g, '\\\\')
+      .replace(/"/g, '\\"');
+    return `input[placeholder="${escapedPlaceholder}"], textarea[placeholder="${escapedPlaceholder}"]`;
   }
 
   private async enrichResultArtifacts(
@@ -1438,6 +1706,61 @@ export class PlaywrightCliAdapter implements BrowserExecutionAdapter {
       frozen: session.controlMode === 'HUMAN_CONTROL',
       reason: session.frozenReason,
     };
+  }
+
+  private buildPageFingerprint(url?: string, title?: string): string | undefined {
+    const normalizedUrl = typeof url === 'string' ? url.trim() : '';
+    const normalizedTitle = typeof title === 'string' ? title.trim() : '';
+    if (!normalizedUrl && !normalizedTitle) {
+      return undefined;
+    }
+    return createHash('sha256')
+      .update(`${normalizedUrl}::${normalizedTitle}`)
+      .digest('hex')
+      .slice(0, 24);
+  }
+
+  private matchPageAssertion(
+    dto: AssertBrowserStateDto,
+    pageState: BrowserPageStateDto,
+    selectorMatched?: boolean,
+    textMatched?: boolean,
+  ): boolean {
+    if (dto.pageUrl && pageState.pageUrl !== dto.pageUrl) {
+      return false;
+    }
+    if (dto.pageUrlIncludes && !String(pageState.pageUrl || '').includes(dto.pageUrlIncludes)) {
+      return false;
+    }
+    if (dto.pageTitle && pageState.pageTitle !== dto.pageTitle) {
+      return false;
+    }
+    if (dto.pageTitleIncludes && !String(pageState.pageTitle || '').includes(dto.pageTitleIncludes)) {
+      return false;
+    }
+    if (dto.pageFingerprint && pageState.pageFingerprint !== dto.pageFingerprint) {
+      return false;
+    }
+    if (dto.readyState && pageState.readyState !== dto.readyState) {
+      return false;
+    }
+    if (dto.selectorExists && !selectorMatched) {
+      return false;
+    }
+    if (dto.textIncludes && !textMatched) {
+      return false;
+    }
+
+    return Boolean(
+      dto.pageUrl ||
+      dto.pageUrlIncludes ||
+      dto.pageTitle ||
+      dto.pageTitleIncludes ||
+      dto.pageFingerprint ||
+      dto.readyState ||
+      dto.selectorExists ||
+      dto.textIncludes,
+    );
   }
 
   private async ensureDirectories(): Promise<void> {

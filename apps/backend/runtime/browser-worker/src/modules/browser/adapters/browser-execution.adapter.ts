@@ -1,8 +1,12 @@
 import {
+  AssertBrowserStateDto,
+  BrowserPageAssertionResultDto,
+  BrowserPageStateDto,
   BrowserControlStateDto,
   ExecuteStepDto,
   ExecuteStepResultDto,
   FreezeBrowserSessionDto,
+  InspectBrowserStateDto,
   ResumeBrowserSessionDto,
 } from '../../../dto/worker.dto';
 import { BrowserRuntimeLocator } from '../domain/browser-step.types';
@@ -32,6 +36,8 @@ export interface BrowserInitOptions {
 
 export interface BrowserExecutionOptions {
   runtimeSessionId?: string;
+  includeArtifacts?: boolean;
+  includeSteps?: boolean;
 }
 
 export interface BrowserExecutionAdapter {
@@ -52,6 +58,8 @@ export interface BrowserExecutionAdapter {
   ): Promise<{ success: boolean; results: any[]; message?: string }>;
   resetBrowser(options?: BrowserExecutionOptions): Promise<void>;
   executeStep(dto: ExecuteStepDto): Promise<ExecuteStepResultDto>;
+  inspectState(dto: InspectBrowserStateDto): Promise<BrowserPageStateDto>;
+  assertState(dto: AssertBrowserStateDto): Promise<BrowserPageAssertionResultDto>;
   freeze(dto: FreezeBrowserSessionDto): Promise<BrowserControlStateDto>;
   resume(dto: ResumeBrowserSessionDto): Promise<BrowserControlStateDto>;
   generateLocator?(targetRef: string, options?: BrowserExecutionOptions): Promise<string | undefined>;

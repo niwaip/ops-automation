@@ -1,9 +1,13 @@
 import { Injectable } from '@nestjs/common';
 import {
+  AssertBrowserStateDto,
+  BrowserPageAssertionResultDto,
+  BrowserPageStateDto,
   BrowserControlStateDto,
   ExecuteStepDto,
   ExecuteStepResultDto,
   FreezeBrowserSessionDto,
+  InspectBrowserStateDto,
   ResumeBrowserSessionDto,
 } from '../../../dto/worker.dto';
 import {
@@ -33,21 +37,30 @@ export class BrowserCommandService {
 
   async executeCommands(
     commands: MCPCommand[],
-    options?: { backend?: BrowserExecutionBackend; runtimeSessionId?: string },
+    options?: {
+      backend?: BrowserExecutionBackend;
+      runtimeSessionId?: string;
+      includeArtifacts?: boolean;
+      includeSteps?: boolean;
+    },
   ): Promise<{ success: boolean; results: any[]; message?: string; steps?: BrowserActionStep[] }> {
     const backend = options?.backend || 'cli';
     const adapter = this.getAdapter(backend);
     const adapterOptions = {
       runtimeSessionId: options?.runtimeSessionId,
+      includeArtifacts: options?.includeArtifacts,
+      includeSteps: options?.includeSteps,
     };
     const execution = await adapter.executeCommands(commands, adapterOptions);
-    const steps = await this.browserStepService.buildSteps(
-      commands,
-      execution.results as Array<Record<string, unknown>>,
-      backend,
-      adapter,
-      adapterOptions,
-    );
+    const steps = options?.includeSteps === false
+      ? undefined
+      : await this.browserStepService.buildSteps(
+        commands,
+        execution.results as Array<Record<string, unknown>>,
+        backend,
+        adapter,
+        adapterOptions,
+      );
     return {
       ...execution,
       steps,
@@ -56,6 +69,14 @@ export class BrowserCommandService {
 
   async executeStep(dto: ExecuteStepDto): Promise<ExecuteStepResultDto> {
     return this.getAdapter((dto.backend || 'cli') as BrowserExecutionBackend).executeStep(dto);
+  }
+
+  async inspectState(dto: InspectBrowserStateDto): Promise<BrowserPageStateDto> {
+    return this.getAdapter((dto.backend || 'cli') as BrowserExecutionBackend).inspectState(dto);
+  }
+
+  async assertState(dto: AssertBrowserStateDto): Promise<BrowserPageAssertionResultDto> {
+    return this.getAdapter((dto.backend || 'cli') as BrowserExecutionBackend).assertState(dto);
   }
 
   async freeze(dto: FreezeBrowserSessionDto): Promise<BrowserControlStateDto> {
