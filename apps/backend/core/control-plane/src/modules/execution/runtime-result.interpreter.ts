@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
+import { RECOVERY_MESSAGES } from './recovery-constants';
 import { PrismaService } from '../prisma/prisma.service';
 import { EXECUTION_EVENT_TYPE } from './contracts/execution-event-type';
 import { ExecutionStepService } from './execution-step.service';
@@ -109,7 +110,7 @@ export class RuntimeResultInterpreter {
 
     if (result.status === 'takeover_required' || result.requiresTakeover) {
       if (context.takeover) {
-        await context.takeover(result.takeoverReason || 'Browser runtime requested human takeover');
+        await context.takeover(result.takeoverReason || RECOVERY_MESSAGES.BROWSER_TAKEOVER);
       }
       return;
     }
@@ -191,11 +192,11 @@ export class RuntimeResultInterpreter {
 
     if (result.status === 'takeover_required' || result.requiresTakeover) {
       if (context.takeover) {
-        await context.takeover(result.takeoverReason || result.errorMessage || 'Skill runtime requested human takeover');
+        await context.takeover(result.takeoverReason || result.errorMessage || RECOVERY_MESSAGES.SKILL_TAKEOVER);
         return;
       }
       await context.failExecution(
-        result.errorMessage || 'Skill runtime requested human takeover without handler',
+        result.errorMessage || RECOVERY_MESSAGES.SKILL_TAKEOVER_UNHANDLED,
         result.errorCode || 'CAPABILITY_RUNTIME_TAKEOVER_UNHANDLED',
       );
       return;

@@ -1357,6 +1357,22 @@ export class ExecutionService {
     userId: string,
     resolutionNote?: string,
   ): Promise<void> {
+    const execution = await this.prisma.execution.findUnique({
+      where: { id: executionId },
+      select: { currentStepId: true },
+    });
+    if (execution?.currentStepId) {
+      const currentStep = await this.executionStepService.getById(execution.currentStepId);
+      const currentStepPhase = this.extractStepPhaseMetadata(currentStep as Record<string, unknown> | null | undefined);
+      if (
+        currentStep
+        && currentStep.status === EXECUTION_STEP_STATUS.FAILED
+        && currentStepPhase?.phaseKey === phase.phase_key
+      ) {
+        await this.executionStepService.requeueFailedStep(currentStep.id);
+      }
+    }
+
     await this.executionPhaseService.resolveTakeoverRecord({
       executionId,
       phaseId: phase.id,
@@ -2596,6 +2612,7 @@ export class ExecutionService {
     }
 
     if (result.success) {
+      await this.persistBrowserPhaseSuccess(executionId, runtimeSessionId, phaseOutput);
       await this.advanceExecutionFlow(executionId, runtimeSessionId);
       return;
     }
@@ -3106,12 +3123,32 @@ export class ExecutionService {
       return;
     }
 
+    const phaseLikeResult = result as RuntimeStepInvokeResult & Partial<RuntimePhaseInvokeResult>;
     const phaseOutput = {
       stepId: step?.id,
       action: step?.action,
       output: result.output || null,
       snapshot: result.snapshot || null,
       rawResult: result.rawResult || null,
+      ...(Array.isArray(phaseLikeResult.stepResults)
+        ? { stepResults: phaseLikeResult.stepResults }
+        : {}),
+      ...(Array.isArray(result.artifacts) ? { artifacts: result.artifacts } : {}),
+      ...(typeof phaseLikeResult.status === 'string'
+        ? { status: phaseLikeResult.status }
+        : {}),
+      ...(phaseLikeResult.failedStepId
+        ? { failedStepId: phaseLikeResult.failedStepId }
+        : {}),
+      ...(phaseLikeResult.failedAction
+        ? { failedAction: phaseLikeResult.failedAction }
+        : {}),
+      ...(typeof phaseLikeResult.requiresTakeover === 'boolean'
+        ? { requiresTakeover: phaseLikeResult.requiresTakeover }
+        : {}),
+      ...(phaseLikeResult.takeoverReason
+        ? { takeoverReason: phaseLikeResult.takeoverReason }
+        : {}),
     };
     const phaseArtifacts = this.mapRuntimeArtifactsToPhaseArtifacts(result);
     const phaseSteps = this.extractPhaseStepsFromRuntimeResult(result, step);
@@ -3152,6 +3189,38 @@ export class ExecutionService {
     });
     await this.executionPhaseService.replaceArtifacts(executionId, phaseMetadata.phaseKey, phaseArtifacts);
     await this.executionPhaseService.replaceSteps(executionId, phaseMetadata.phaseKey, phaseSteps);
+  }
+
+  private async persistBrowserPhaseSuccess(
+    executionId: string,
+    runtimeSessionId: string,
+    phaseOutput: Record<string, unknown>,
+  ): Promise<void> {
+    const canReadExecution = typeof this.prisma?.execution?.findUnique === 'function';
+    const canUpdateExecution = typeof this.prisma?.execution?.update === 'function';
+    if (!canReadExecution || !canUpdateExecution) {
+      return;
+    }
+
+    const currentExecution = await this.prisma.execution.findUnique({
+      where: { id: executionId },
+      select: { resultJson: true },
+    });
+
+    const currentResult = this.readRecord(currentExecution?.resultJson) || {};
+    const browserResult = {
+      ...currentResult,
+      ...phaseOutput,
+      runtimeSessionId,
+      backend: typeof currentResult.backend === 'string' ? currentResult.backend : 'browser',
+    };
+
+    await this.prisma.execution.update({
+      where: { id: executionId },
+      data: {
+        resultJson: this.asJsonValue(browserResult),
+      },
+    });
   }
 
   private mapRuntimeArtifactsToPhaseArtifacts(result: RuntimeStepInvokeResult): Array<{

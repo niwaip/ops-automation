@@ -1,6 +1,6 @@
 import { BadRequestException } from '@nestjs/common';
 import axios from 'axios';
-import { APPROVAL_STATUS, EXECUTION_EVENT_TYPE, EXECUTION_STATUS } from '../src/modules/execution';
+import { APPROVAL_STATUS, EXECUTION_EVENT_TYPE, EXECUTION_STATUS, EXECUTION_STEP_STATUS } from '../src/modules/execution';
 import { ExecutionService } from '../src/modules/execution/execution.service';
 import { ApprovalDecisionDto, SubmitInputDto, TakeoverExecutionDto } from '../src/modules/execution/execution.dto';
 
@@ -2687,6 +2687,209 @@ describe('ExecutionService browser phase execution', () => {
     expect((service as any).advanceExecutionFlow).toHaveBeenCalledWith('execution-1', 'runtime-1');
     expect((service as any).failExecutionFromRuntimeStep).not.toHaveBeenCalled();
   });
+
+  it('takes over browser phase failures instead of failing execution when phase result requires takeover', async () => {
+    const browserPhaseExecutor = {
+      execute: jest.fn().mockResolvedValue({
+        success: false,
+        status: 'takeover_required',
+        stepResults: [],
+        output: {
+          failedAction: 'click',
+        },
+        errorCode: 'STEP_EXECUTION_ERROR',
+        errorMessage: 'selector not found',
+        requiresTakeover: true,
+        takeoverReason: 'selector not found',
+      }),
+    };
+    const executionStepService = {
+      getById: jest.fn().mockResolvedValue({
+        id: 'step-browser-phase',
+        name: '迁移阶段',
+        type: 'system',
+        action: 'execute_browser_phase',
+        targetJson: {
+          phaseKey: 'phase_migrate',
+          phaseName: '迁移阶段',
+          phaseType: 'workflow_activity',
+          commands: [
+            {
+              stepId: 'cmd-click-menu',
+              capabilityType: 'browser.step',
+              action: 'click',
+              input: {
+                target: 'menuitem[name="play-circle Executions"]',
+              },
+            },
+          ],
+          recoveryPolicy: {
+            maxAutoRetries: 1,
+            allowHumanTakeover: true,
+          },
+        },
+        inputJson: {
+          description: '执行迁移阶段',
+        },
+      }),
+      setCurrentStep: jest.fn().mockResolvedValue(undefined),
+      startStep: jest.fn().mockResolvedValue(undefined),
+      finishRuntimeStep: jest.fn().mockResolvedValue(undefined),
+      markStepWaiting: jest.fn().mockResolvedValue(undefined),
+    };
+
+    const service = new ExecutionService(
+      {} as never,
+      {} as never,
+      {} as never,
+      {} as never,
+      undefined,
+      undefined,
+      undefined,
+      executionStepService as never,
+      browserPhaseExecutor as never,
+    );
+    jest.spyOn(service as any, 'createEvent').mockResolvedValue(undefined);
+    jest.spyOn(service as any, 'advanceExecutionFlow').mockResolvedValue(undefined);
+    jest.spyOn(service as any, 'enterRuntimeWaitingInput').mockResolvedValue(undefined);
+    jest.spyOn(service as any, 'enterPendingApprovalFromRuntimeStep').mockResolvedValue(undefined);
+    jest.spyOn(service as any, 'failExecutionFromRuntimeStep').mockResolvedValue(undefined);
+    jest.spyOn(service as any, 'takeover').mockResolvedValue(undefined);
+
+    await (service as any).executeBrowserPhaseStep(
+      {
+        id: 'execution-1',
+        skillId: 'skill-login',
+        createdBy: 'user-1',
+        riskLevel: 'L1',
+        requiresApproval: false,
+      },
+      'runtime-1',
+      'step-browser-phase',
+    );
+
+    expect(executionStepService.finishRuntimeStep).toHaveBeenCalledWith(
+      'step-browser-phase',
+      expect.objectContaining({
+        success: false,
+        takeoverTriggered: true,
+        errorCode: 'STEP_EXECUTION_ERROR',
+        errorMessage: 'selector not found',
+        outputJson: expect.objectContaining({
+          status: 'takeover_required',
+          requiresTakeover: true,
+          takeoverReason: 'selector not found',
+        }),
+      }),
+    );
+    expect((service as any).takeover).toHaveBeenCalledWith(
+      'execution-1',
+      'system',
+      {
+        reason: 'selector not found',
+      },
+      {
+        id: 'system',
+        role: 'admin',
+      },
+    );
+    expect((service as any).failExecutionFromRuntimeStep).not.toHaveBeenCalled();
+    expect((service as any).advanceExecutionFlow).not.toHaveBeenCalled();
+  });
+
+  it('persists browser phase stepResults to execution result when phase succeeds', async () => {
+    const prisma = {
+      execution: {
+        findUnique: jest.fn().mockResolvedValue({
+          resultJson: {
+            temporalLink: 'https://temporal.example/workflow/1',
+          },
+        }),
+        update: jest.fn().mockResolvedValue(undefined),
+      },
+    };
+    const executionStepService = {
+      finishRuntimeStep: jest.fn().mockResolvedValue(undefined),
+    };
+
+    const service = new ExecutionService(
+      prisma as never,
+      {} as never,
+      {} as never,
+      {} as never,
+      undefined,
+      undefined,
+      undefined,
+      executionStepService as never,
+    );
+    jest.spyOn(service as any, 'createEvent').mockResolvedValue(undefined);
+    jest.spyOn(service as any, 'advanceExecutionFlow').mockResolvedValue(undefined);
+    jest.spyOn(service as any, 'takeover').mockResolvedValue(undefined);
+    jest.spyOn(service as any, 'failExecutionFromRuntimeStep').mockResolvedValue(undefined);
+
+    await (service as any).handleBrowserPhaseStepResult(
+      'execution-1',
+      'runtime-1',
+      'step-browser-phase',
+      {
+        success: true,
+        status: 'completed',
+        output: {
+          command: 'wait',
+          pageUrl: 'http://localhost:5173/dashboard',
+        },
+        stepResults: [
+          {
+            stepId: '3__command_03',
+            command: 'screenshot',
+            output: {
+              command: 'screenshot',
+              screenshot: 'data:image/png;base64,AAA',
+            },
+          },
+        ],
+        artifacts: [
+          {
+            type: 'browser_artifact',
+            id: 'snapshot-1',
+            metadata: {
+              artifactPath: '/tmp/snapshot-1.png',
+            },
+          },
+        ],
+        snapshotId: 'snapshot-1',
+        pageUrl: 'http://localhost:5173/dashboard',
+        pageFingerprint: 'fingerprint-1',
+      },
+    );
+
+    expect(prisma.execution.update).toHaveBeenCalledWith({
+      where: { id: 'execution-1' },
+      data: {
+        resultJson: expect.objectContaining({
+          temporalLink: 'https://temporal.example/workflow/1',
+          status: 'completed',
+          runtimeSessionId: 'runtime-1',
+          backend: 'browser',
+          stepResults: [
+            expect.objectContaining({
+              stepId: '3__command_03',
+              command: 'screenshot',
+              output: expect.objectContaining({
+                screenshot: 'data:image/png;base64,AAA',
+              }),
+            }),
+          ],
+          artifacts: [
+            expect.objectContaining({
+              id: 'snapshot-1',
+            }),
+          ],
+        }),
+      },
+    });
+    expect((service as any).advanceExecutionFlow).toHaveBeenCalledWith('execution-1', 'runtime-1');
+  });
 });
 
 describe('ExecutionService phase takeover lifecycle', () => {
@@ -2776,13 +2979,18 @@ describe('ExecutionService phase takeover lifecycle', () => {
   });
 
   it('resumes phase takeover and resolves takeover record before resuming runtime session', async () => {
+    const executionFindUnique = jest.fn()
+      .mockResolvedValueOnce({
+        id: 'execution-1',
+        createdBy: 'user-1',
+        status: EXECUTION_STATUS.HUMAN_CONTROL,
+      })
+      .mockResolvedValueOnce({
+        currentStepId: 'step-1',
+      });
     const prisma = {
       execution: {
-        findUnique: jest.fn().mockResolvedValue({
-          id: 'execution-1',
-          createdBy: 'user-1',
-          status: EXECUTION_STATUS.HUMAN_CONTROL,
-        }),
+        findUnique: executionFindUnique,
         update: jest.fn().mockResolvedValue(undefined),
       },
       runtimeSession: {
@@ -2809,6 +3017,18 @@ describe('ExecutionService phase takeover lifecycle', () => {
       markRunning: jest.fn().mockResolvedValue(undefined),
       listByExecutionId: jest.fn().mockResolvedValue([]),
     };
+    const executionStepService = {
+      getById: jest.fn().mockResolvedValue({
+        id: 'step-1',
+        status: EXECUTION_STEP_STATUS.FAILED,
+        targetJson: {
+          phaseKey: 'phase_login',
+          phaseName: '登录阶段',
+          phaseType: 'browser_login',
+        },
+      }),
+      requeueFailedStep: jest.fn().mockResolvedValue(undefined),
+    };
 
     const service = new ExecutionService(
       prisma as never,
@@ -2817,6 +3037,8 @@ describe('ExecutionService phase takeover lifecycle', () => {
       {} as never,
       undefined,
       executionPhaseService as never,
+      undefined,
+      executionStepService as never,
     );
     jest.spyOn(service as any, 'updateStatus').mockResolvedValue(undefined);
     jest.spyOn(service as any, 'advanceExecutionFlow').mockResolvedValue(undefined);
@@ -2846,6 +3068,7 @@ describe('ExecutionService phase takeover lifecycle', () => {
         attempt: 2,
       }),
     );
+    expect(executionStepService.requeueFailedStep).toHaveBeenCalledWith('step-1');
     expect((service as any).updateStatus).toHaveBeenCalledWith('execution-1', EXECUTION_STATUS.RUNNING);
     expect(mockedAxios.post).toHaveBeenCalledWith(
       expect.stringContaining('/runtime-sessions/runtime-1/resume'),
@@ -2855,14 +3078,19 @@ describe('ExecutionService phase takeover lifecycle', () => {
   });
 
   it('resumes legacy human_control execution and restarts execution flow asynchronously', async () => {
+    const executionFindUnique = jest.fn()
+      .mockResolvedValueOnce({
+        id: 'execution-1',
+        createdBy: 'user-1',
+        status: EXECUTION_STATUS.HUMAN_CONTROL,
+        currentPhaseKey: 'phase_login',
+      })
+      .mockResolvedValueOnce({
+        currentStepId: 'step-1',
+      });
     const prisma = {
       execution: {
-        findUnique: jest.fn().mockResolvedValue({
-          id: 'execution-1',
-          createdBy: 'user-1',
-          status: EXECUTION_STATUS.HUMAN_CONTROL,
-          currentPhaseKey: 'phase_login',
-        }),
+        findUnique: executionFindUnique,
         update: jest.fn().mockResolvedValue(undefined),
       },
       runtimeSession: {
@@ -2889,6 +3117,18 @@ describe('ExecutionService phase takeover lifecycle', () => {
       markRunning: jest.fn().mockResolvedValue(undefined),
       listByExecutionId: jest.fn().mockResolvedValue([]),
     };
+    const executionStepService = {
+      getById: jest.fn().mockResolvedValue({
+        id: 'step-1',
+        status: EXECUTION_STEP_STATUS.FAILED,
+        targetJson: {
+          phaseKey: 'phase_login',
+          phaseName: '登录阶段',
+          phaseType: 'browser_login',
+        },
+      }),
+      requeueFailedStep: jest.fn().mockResolvedValue(undefined),
+    };
 
     const service = new ExecutionService(
       prisma as never,
@@ -2897,6 +3137,8 @@ describe('ExecutionService phase takeover lifecycle', () => {
       {} as never,
       undefined,
       executionPhaseService as never,
+      undefined,
+      executionStepService as never,
     );
     jest.spyOn(service as any, 'updateStatus').mockResolvedValue(undefined);
     jest.spyOn(service as any, 'advanceExecutionFlow').mockResolvedValue(undefined);
@@ -2913,6 +3155,7 @@ describe('ExecutionService phase takeover lifecycle', () => {
       expect.stringContaining('/runtime-sessions/runtime-1/resume'),
       { stepId: 'step-1' },
     );
+    expect(executionStepService.requeueFailedStep).toHaveBeenCalledWith('step-1');
     expect((service as any).advanceExecutionFlow).toHaveBeenCalledWith('execution-1', 'runtime-1');
   });
 });

@@ -11,6 +11,7 @@ import {
   Collapse,
   Timeline,
   Table,
+  Steps,
   Tag,
   Button,
   Space,
@@ -58,6 +59,7 @@ import { capabilityReleaseApi } from '../api/capabilities';
 import { useChatStore } from '../components/chat';
 import { ListSectionHeader } from '../components/page/PageScaffold';
 import LiveSessionPreviewCard from '../components/runtime/LiveSessionPreviewCard';
+import InlineRecoveryPanel from '../components/execution/InlineRecoveryPanel';
 import { runtimeConfig } from '../config/runtime';
 import { useAuthStore } from '../store/authStore';
 import { replaceLocalhostWithCurrentHost } from '../utils/publicUrl';
@@ -93,6 +95,24 @@ const getPhaseStatusColor = (status?: string) => {
       return 'default';
     default:
       return 'default';
+  }
+};
+
+const getPhaseStepStatus = (status?: string): 'wait' | 'process' | 'finish' | 'error' => {
+  switch (status) {
+    case 'completed':
+      return 'finish';
+    case 'running':
+    case 'retrying':
+      return 'process';
+    case 'failed':
+    case 'aborted':
+      return 'error';
+    case 'waiting_takeover':
+    case 'resumable':
+    case 'pending':
+    default:
+      return 'wait';
   }
 };
 const EXECUTION_STATUS_FILTER_OPTIONS: Array<{ value?: ExecutionStatus; label: string }> = [
@@ -1187,63 +1207,16 @@ const ExecutionListPage: React.FC = () => {
       });
     },
     {
-      onSuccess: async (_data, phase) => {
+      onSuccess: async () => {
         await Promise.all([
           queryClient.invalidateQueries(['executions']),
           queryClient.invalidateQueries(['execution', selectedExecutionId]),
           queryClient.invalidateQueries(['execution-steps', selectedExecutionId]),
         ]);
         void message.success('已发起阶段接管');
-        if (selectedExecutionId) {
-          navigate(`/executions/${selectedExecutionId}/takeover?phaseKey=${encodeURIComponent(phase.phaseKey)}`);
-        }
       },
       onError: (error: Error) => {
         void message.error(`阶段接管失败：${error.message}`);
-      },
-    }
-  );
-
-  const phaseReconcileMutation = useMutation(
-    async (phase: ExecutionPhaseDto) => {
-      if (!selectedExecutionId) {
-        throw new Error('未选择执行记录');
-      }
-      return executionApi.reconcilePhaseTakeover(selectedExecutionId, phase.phaseKey, {});
-    },
-    {
-      onSuccess: async () => {
-        await Promise.all([
-          queryClient.invalidateQueries(['executions']),
-          queryClient.invalidateQueries(['execution', selectedExecutionId]),
-          queryClient.invalidateQueries(['execution-steps', selectedExecutionId]),
-        ]);
-        void message.success('已标记阶段可恢复');
-      },
-      onError: (error: Error) => {
-        void message.error(`阶段处理失败：${error.message}`);
-      },
-    }
-  );
-
-  const phaseResumeMutation = useMutation(
-    async (phase: ExecutionPhaseDto) => {
-      if (!selectedExecutionId) {
-        throw new Error('未选择执行记录');
-      }
-      return executionApi.resumePhaseTakeover(selectedExecutionId, phase.phaseKey, {});
-    },
-    {
-      onSuccess: async () => {
-        await Promise.all([
-          queryClient.invalidateQueries(['executions']),
-          queryClient.invalidateQueries(['execution', selectedExecutionId]),
-          queryClient.invalidateQueries(['execution-steps', selectedExecutionId]),
-        ]);
-        void message.success('已恢复阶段执行');
-      },
-      onError: (error: Error) => {
-        void message.error(`恢复阶段执行失败：${error.message}`);
       },
     }
   );
@@ -1654,45 +1627,56 @@ const ExecutionListPage: React.FC = () => {
             ) : null}
 
             {displaySelectedPhases.length > 0 ? (
-              <Card title="Activity 进度">
-                <Space direction="vertical" size={12} style={{ width: '100%' }}>
-                  {displaySelectedPhases.map((phase, index) => {
+              <Card title="步骤进度">
+                <Steps
+                  current={Math.max(displaySelectedPhases.findIndex((phase) => phase.phaseKey === currentSelectedPhase?.phaseKey), 0)}
+                  size="small"
+                  responsive
+                  style={{ marginBottom: 16 }}
+                  items={displaySelectedPhases.map((phase, index) => {
                     const isCurrentActivity = currentSelectedPhase?.phaseKey === phase.phaseKey;
-
-                    return (
-                      <Card
-                        key={phase.id}
-                        size="small"
-                        style={{
-                          borderRadius: 12,
-                          borderColor: isCurrentActivity ? 'rgba(59, 130, 246, 0.32)' : undefined,
-                          background: isCurrentActivity
-                            ? 'linear-gradient(180deg, rgba(59, 130, 246, 0.10) 0%, var(--bg-card) 100%)'
-                            : undefined,
-                        }}
-                        styles={{ body: { padding: 14 } }}
-                      >
-                        <Space direction="vertical" size={8} style={{ width: '100%' }}>
-                          <Space wrap>
-                            <Text strong>{phase.phaseName || phase.phaseKey || `步骤 ${index + 1}`}</Text>
-                            <Tag>{phase.phaseType}</Tag>
+                    return {
+                      title: phase.phaseName || phase.phaseKey || `步骤 ${index + 1}`,
+                      status: getPhaseStepStatus(phase.status),
+                      description: (
+                        <Space direction="vertical" size={4}>
+                          <Space wrap size={[8, 4]}>
                             <Tag color={getPhaseStatusColor(phase.status)}>{phase.status}</Tag>
+                            <Tag>{phase.phaseType}</Tag>
                             {isCurrentActivity ? <Tag color="processing">当前 Activity</Tag> : null}
                           </Space>
                           <Space wrap size={[12, 0]}>
-                            <Text type="secondary">{`Key: ${phase.phaseKey}`}</Text>
                             <Text type="secondary">{`尝试: ${phase.attempt}`}</Text>
                             <Text type="secondary">{`步骤数: ${phase.steps?.length || 0}`}</Text>
                           </Space>
-                          <Text type="secondary">{formatDateTime(phase.startedAt || phase.createdAt)}</Text>
                           {phase.errorMessage ? <Text type="danger">{phase.errorMessage}</Text> : null}
                         </Space>
-                      </Card>
-                    );
+                      ),
+                    };
                   })}
-                </Space>
+                />
+                {currentSelectedPhase ? (
+                  <Alert
+                    type="info"
+                    showIcon
+                    message={`当前阶段：${currentSelectedPhase.phaseName || currentSelectedPhase.phaseKey}`}
+                    description={
+                      <Space wrap size={[12, 4]}>
+                        <Text type="secondary">{`Key: ${currentSelectedPhase.phaseKey}`}</Text>
+                        <Text type="secondary">{formatDateTime(currentSelectedPhase.startedAt || currentSelectedPhase.createdAt)}</Text>
+                      </Space>
+                    }
+                  />
+                ) : null}
               </Card>
             ) : null}
+
+            <InlineRecoveryPanel
+              executionId={selectedExecution.id}
+              executionStatus={selectedExecution.status}
+              currentStepId={selectedExecution.currentStepId}
+              phase={currentSelectedPhase}
+            />
 
             <Collapse
               ghost
@@ -2010,25 +1994,6 @@ const ExecutionListPage: React.FC = () => {
                                     接管当前阶段
                                   </Button>
                                 ) : null}
-                                {selectedExecution.status === 'human_control' && phase.status === 'waiting_takeover' ? (
-                                  <Button
-                                    size="small"
-                                    onClick={() => phaseReconcileMutation.mutate(phase)}
-                                    loading={phaseReconcileMutation.isLoading}
-                                  >
-                                    标记已处理
-                                  </Button>
-                                ) : null}
-                                {selectedExecution.status === 'human_control' && (phase.status === 'waiting_takeover' || phase.status === 'resumable') ? (
-                                  <Button
-                                    size="small"
-                                    type="primary"
-                                    onClick={() => phaseResumeMutation.mutate(phase)}
-                                    loading={phaseResumeMutation.isLoading}
-                                  >
-                                    恢复阶段执行
-                                  </Button>
-                                ) : null}
                               </Space>
                               {phase.errorMessage ? (
                                 <Alert
@@ -2158,7 +2123,7 @@ const ExecutionListPage: React.FC = () => {
                     <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无阶段记录" />
                   ),
                 },
-                ...(shouldShowLegacySteps ? [{
+                ...(!displaySelectedPhases.length && shouldShowLegacySteps ? [{
                   key: 'steps',
                   label: renderPanelLabel(
                     '步骤',

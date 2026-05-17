@@ -251,6 +251,19 @@ export class ExecutionStepService {
     });
   }
 
+  async requeueFailedStep(stepId: string): Promise<void> {
+    await this.prisma.executionStep.update({
+      where: { id: stepId },
+      data: {
+        status: EXECUTION_STEP_STATUS.PENDING,
+        errorCode: null,
+        errorMessage: null,
+        startedAt: null,
+        endedAt: null,
+      },
+    });
+  }
+
   async prepareWaitingInputStep(
     executionId: string,
     stepId: string,

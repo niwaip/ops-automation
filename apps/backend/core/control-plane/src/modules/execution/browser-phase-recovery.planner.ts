@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import axios from 'axios';
+import { RECOVERY_MESSAGES, RECOVERY_ACTIONS } from './recovery-constants';
 import { getAiOrchestratorUrl } from '../../config/service-endpoints';
 import type { RuntimePhaseInvokeResult } from './runtime-adapter.interface';
 import type { BrowserPhaseCommand } from './browser-phase.executor';
@@ -47,18 +48,19 @@ export class BrowserPhaseRecoveryPlanner {
     const policy = input.policy || {};
     const maxAutoRetries = Math.max(0, policy.maxAutoRetries || 0);
     const allowHumanTakeover = policy.allowHumanTakeover !== false;
+    const shouldFallbackToHumanTakeover = policy.allowHumanTakeover === true;
 
     if ((input.result.status === 'takeover_required' || input.result.requiresTakeover) && allowHumanTakeover) {
       return {
-        action: 'takeover_required',
-        reason: input.result.takeoverReason || input.result.errorMessage || 'Phase requires human takeover',
+        action: RECOVERY_ACTIONS.TAKEOVER_REQUIRED,
+        reason: input.result.takeoverReason || input.result.errorMessage || RECOVERY_MESSAGES.PHASE_TAKEOVER,
       };
     }
 
     if (input.result.retryable && input.attempt <= maxAutoRetries) {
       return {
-        action: 'retry_same_phase',
-        reason: input.result.errorMessage || `Retry browser phase automatically (attempt ${input.attempt + 1})`,
+        action: RECOVERY_ACTIONS.RETRY_SAME_PHASE,
+        reason: input.result.errorMessage || RECOVERY_MESSAGES.AUTO_RETRY(input.attempt + 1),
       };
     }
 
@@ -69,9 +71,16 @@ export class BrowserPhaseRecoveryPlanner {
       }
     }
 
+    if (shouldFallbackToHumanTakeover) {
+      return {
+        action: RECOVERY_ACTIONS.TAKEOVER_REQUIRED,
+        reason: input.result.takeoverReason || input.result.errorMessage || RECOVERY_MESSAGES.PHASE_TAKEOVER,
+      };
+    }
+
     return {
-      action: 'abort',
-      reason: input.result.errorMessage || 'Browser phase execution failed',
+      action: RECOVERY_ACTIONS.ABORT,
+      reason: input.result.errorMessage || RECOVERY_MESSAGES.BROWSER_FAILED,
     };
   }
 

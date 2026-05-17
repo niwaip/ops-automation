@@ -26,7 +26,6 @@ import CarboneTemplateListPage from './pages/CarboneTemplateListPage';
 import ExecutionListPage from './pages/ExecutionListPage';
 import ExecutionCreatePage from './pages/ExecutionCreatePage';
 import ExecutionDetailPage from './pages/ExecutionDetailPage';
-import TakeoverWorkbenchPage from './pages/TakeoverWorkbenchPage';
 import PublishedSkillDetailPage from './pages/PublishedSkillDetailPage';
 
 const PrivateRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -81,7 +80,6 @@ function App() {
           <Route path="executions" element={<ExecutionListPage />} />
           <Route path="executions/new" element={<ExecutionCreatePage />} />
           <Route path="executions/:id" element={<ExecutionDetailPage />} />
-          <Route path="executions/:id/takeover" element={<TakeoverWorkbenchPage />} />
           <Route path="release-center" element={<Navigate to="/admin/capabilities" replace />} />
           <Route path="admin/capability-releases" element={<Navigate to="/admin/capabilities" replace />} />
           <Route path="admin/execution-flows" element={<Navigate to="/admin/flows" replace />} />

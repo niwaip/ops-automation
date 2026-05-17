@@ -55,6 +55,29 @@ describe('BrowserPhaseRecoveryPlanner', () => {
     });
   });
 
+  it('falls back to takeover_required when human takeover is allowed and recovery cannot continue automatically', async () => {
+    await expect(planner.plan({
+      executionId: 'execution-1',
+      phaseKey: 'phase_login',
+      attempt: 2,
+      commands: [],
+      policy: {
+        maxAutoRetries: 1,
+        allowHumanTakeover: true,
+      },
+      result: {
+        success: false,
+        status: 'failed',
+        stepResults: [],
+        retryable: false,
+        errorMessage: 'selector not found',
+      },
+    })).resolves.toEqual({
+      action: 'takeover_required',
+      reason: 'selector not found',
+    });
+  });
+
   it('returns retry_with_patch from AI planner when retryable failures exhaust auto retries and AI recovery is allowed', async () => {
     mockedAxios.post.mockResolvedValue({
       data: {

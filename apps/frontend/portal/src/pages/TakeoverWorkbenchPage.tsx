@@ -19,6 +19,7 @@ import { executionApi, ExecutionDto } from '../api/execution';
 import { runtimeSessionApi, RuntimeSessionDto } from '../api/runtimeSession';
 import { runtimeConfig } from '../config/runtime';
 import LiveSessionPreviewCard from '../components/runtime/LiveSessionPreviewCard';
+import { RECOVERY_COPY, RECOVERY_RESUME_OPTIONS, RecoveryResumeAction } from '../components/execution/recoveryOptions';
 
 const { Title, Text, Paragraph } = Typography;
 
@@ -61,7 +62,7 @@ const TakeoverWorkbenchPage: React.FC = () => {
   const [showResumeConfirm, setShowResumeConfirm] = useState(false);
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
 
-  const [resumeAction, setResumeAction] = useState<'retry' | 'resume_from_step' | 'resolve_by_human'>('retry');
+  const [resumeAction, setResumeAction] = useState<RecoveryResumeAction>('retry');
   const [resumeFromStepId, setResumeFromStepId] = useState<string | undefined>(undefined);
   const [patchNote, setPatchNote] = useState<string>('');
   const [patchInputValues, setPatchInputValues] = useState<string>('{}');
@@ -119,13 +120,13 @@ const TakeoverWorkbenchPage: React.FC = () => {
           type: 'resolve_by_human',
           failedStepId: execution?.currentStepId || '',
           resumeFromStepId: resumeFromStepId,
-          note: patchNote || 'Resumed from specific step by human',
+          note: patchNote || RECOVERY_COPY.retryNote,
         };
       } else if (resumeAction === 'resolve_by_human') {
         patch = {
           type: 'resolve_by_human',
           failedStepId: execution?.currentStepId || '',
-          note: patchNote || 'Marked as resolved by human',
+          note: patchNote || RECOVERY_COPY.resolveByHumanNote,
         };
       } else if (patchInputValues && patchInputValues !== '{}') {
         try {
@@ -134,11 +135,11 @@ const TakeoverWorkbenchPage: React.FC = () => {
             type: 'replace_input_value',
             failedStepId: execution?.currentStepId || '',
             inputValues,
-            note: patchNote || 'Applied manual input patches',
+            note: patchNote || RECOVERY_COPY.applyPatchNote,
           };
         } catch (e) {
-          message.error('Invalid JSON in input patches');
-          return Promise.reject(new Error('Invalid JSON'));
+          message.error(RECOVERY_COPY.invalidJson);
+          return Promise.reject(new Error(RECOVERY_COPY.invalidJson));
         }
       }
 
@@ -354,26 +355,26 @@ const TakeoverWorkbenchPage: React.FC = () => {
           </Card>
 
           {/* Recovery Options */}
-          <Card title="Recovery Options" size="small">
+          <Card title={RECOVERY_COPY.panelTitle} size="small">
             <Form layout="vertical">
-              <Form.Item label="Resume Action">
+              <Form.Item label={RECOVERY_COPY.resumeAction}>
                 <Radio.Group 
                   value={resumeAction} 
                   onChange={(e) => setResumeAction(e.target.value)}
                   style={{ width: '100%' }}
                 >
                   <Space direction="vertical">
-                    <Radio value="retry">Retry Phase (from start)</Radio>
-                    <Radio value="resume_from_step">Resume from Specific Step</Radio>
-                    <Radio value="resolve_by_human">Mark as Human Resolved</Radio>
+                    {RECOVERY_RESUME_OPTIONS.map((option) => (
+                      <Radio key={option.value} value={option.value}>{option.label}</Radio>
+                    ))}
                   </Space>
                 </Radio.Group>
               </Form.Item>
 
               {resumeAction === 'resume_from_step' && (
-                <Form.Item label="Resume From Step">
+                <Form.Item label={RECOVERY_COPY.resumeFromStep}>
                   <Select
-                    placeholder="Select step to resume from"
+                    placeholder={RECOVERY_COPY.selectStep}
                     value={resumeFromStepId}
                     onChange={setResumeFromStepId}
                   >
@@ -388,18 +389,18 @@ const TakeoverWorkbenchPage: React.FC = () => {
 
               <Divider style={{ margin: '12px 0' }} />
               
-              <Form.Item label="Input Patches (JSON)">
+              <Form.Item label={RECOVERY_COPY.patchJson}>
                 <Input.TextArea
-                  placeholder='{"selector": "#new-id", "value": "new-value"}'
+                  placeholder={RECOVERY_COPY.patchJsonPlaceholder}
                   value={patchInputValues}
                   onChange={(e) => setPatchInputValues(e.target.value)}
                   rows={3}
                 />
               </Form.Item>
 
-              <Form.Item label="Resolution Note">
+              <Form.Item label={RECOVERY_COPY.note}>
                 <Input.TextArea
-                  placeholder="Explain what was fixed..."
+                  placeholder={RECOVERY_COPY.notePlaceholder}
                   value={patchNote}
                   onChange={(e) => setPatchNote(e.target.value)}
                   rows={2}
@@ -420,7 +421,7 @@ const TakeoverWorkbenchPage: React.FC = () => {
                 loading={reconcileMutation.isLoading}
                 disabled={!phaseKey || selectedPhase?.status === 'resumable'}
               >
-                {selectedPhase?.status === 'resumable' ? 'Phase Reconciled' : 'Apply Recovery Options'}
+                {selectedPhase?.status === 'resumable' ? RECOVERY_COPY.successMarkResumable : RECOVERY_COPY.markResumableOnly}
               </Button>
               <Button
                 type={selectedPhase?.status === 'resumable' ? 'primary' : 'default'}
@@ -431,7 +432,7 @@ const TakeoverWorkbenchPage: React.FC = () => {
                 loading={resumeMutation.isLoading}
                 disabled={selectedPhase?.status === 'waiting_takeover'}
               >
-                Resume Execution
+                {RECOVERY_COPY.resumeConfirmOk}
               </Button>
               <Button
                 danger
@@ -441,7 +442,7 @@ const TakeoverWorkbenchPage: React.FC = () => {
                 onClick={() => setShowCancelConfirm(true)}
                 loading={cancelMutation.isLoading}
               >
-                Cancel Execution
+                {RECOVERY_COPY.cancelExecution}
               </Button>
             </Space>
           </Card>

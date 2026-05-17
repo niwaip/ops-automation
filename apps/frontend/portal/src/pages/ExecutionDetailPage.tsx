@@ -17,7 +17,6 @@ import {
   CheckCircleOutlined,
   CloseCircleOutlined,
   ClockCircleOutlined,
-  UserOutlined,
   WarningOutlined,
   ThunderboltOutlined,
   DownOutlined,
@@ -47,6 +46,7 @@ import {
   resolveWaitingInputDisplayLabel,
 } from '../utils/waitingInputDisplay';
 import LiveSessionPreviewCard from '../components/runtime/LiveSessionPreviewCard';
+import InlineRecoveryPanel from '../components/execution/InlineRecoveryPanel';
 
 const { Title, Text } = Typography;
 
@@ -136,6 +136,24 @@ const getPhaseStatusLabel = (status: string | undefined, isEnglish: boolean) => 
       };
 
   return status ? (labels[status] || status) : '-';
+};
+
+const getPhaseStepStatus = (status?: string): 'wait' | 'process' | 'finish' | 'error' => {
+  switch (status) {
+    case 'completed':
+      return 'finish';
+    case 'running':
+    case 'retrying':
+      return 'process';
+    case 'failed':
+    case 'aborted':
+      return 'error';
+    case 'waiting_takeover':
+    case 'resumable':
+    case 'pending':
+    default:
+      return 'wait';
+  }
 };
 
 const fixLocalhostLink = (url?: string): string | undefined => replaceLocalhostWithCurrentHost(url);
@@ -1005,6 +1023,8 @@ const ExecutionDetailPage: React.FC = () => {
     phaseTakeoverSuccess: isEnglish ? 'Phase takeover requested' : '已发起阶段接管',
     phaseReconcileSuccess: isEnglish ? 'Phase marked resumable' : '已标记阶段可恢复',
     phaseResumeSuccess: isEnglish ? 'Phase execution resumed' : '已恢复阶段执行',
+    executionEnded: isEnglish ? 'Execution ended' : '执行已结束',
+    endExecution: isEnglish ? 'End Execution' : '结束执行',
     phaseActionFailed: isEnglish ? 'Phase action failed' : '阶段操作失败',
     semanticOverview: isEnglish ? 'Semantic Overview' : '语义摘要',
     semanticMode: isEnglish ? 'Semantic Mode' : '语义模式',
@@ -1228,21 +1248,6 @@ const ExecutionDetailPage: React.FC = () => {
       },
       onError: (error: Error) => {
         void message.error(`${text.rejectFailed}: ${error.message}`);
-      },
-    }
-  );
-
-  const phaseResumeMutation = useMutation(
-    (phase: ExecutionPhaseDto) => executionApi.resumePhaseTakeover(id!, phase.phaseKey, {}),
-    {
-      onSuccess: () => {
-        void message.success(text.phaseResumeSuccess);
-        void queryClient.invalidateQueries(['execution', id]);
-        void queryClient.invalidateQueries(['execution-steps', id]);
-        void queryClient.invalidateQueries(['execution-phases', id]);
-      },
-      onError: (error: Error) => {
-        void message.error(`${text.phaseActionFailed}: ${error.message}`);
       },
     }
   );
@@ -1552,48 +1557,51 @@ const ExecutionDetailPage: React.FC = () => {
   const executionInfoTemporalLink = fixLocalhostLink((tryParseJsonValue(execution.resultJson) as any)?.temporalLink);
 
   const activityProgressCard: React.ReactNode = displayActivityPhases.length > 0 ? (
-    <Card title={text.activityProgress} style={{ marginBottom: 16 }}>
-      <Space direction="vertical" size={12} style={{ width: '100%' }}>
-        {displayActivityPhases.map((phase, index) => {
+    <Card title={text.stepsProgress} style={{ marginBottom: 16 }}>
+      <Steps
+        current={Math.max(displayActivityPhases.findIndex((phase) => phase.phaseKey === currentPhase?.phaseKey), 0)}
+        size="small"
+        responsive
+        style={{ marginBottom: 16 }}
+        items={displayActivityPhases.map((phase, index) => {
           const isCurrentActivity = currentPhase?.phaseKey === phase.phaseKey;
-          return (
-            <Card
-              key={phase.id}
-              size="small"
-              style={{
-                borderRadius: 12,
-                borderColor: isCurrentActivity ? 'rgba(59, 130, 246, 0.32)' : undefined,
-                background: isCurrentActivity
-                  ? 'linear-gradient(180deg, rgba(59, 130, 246, 0.10) 0%, var(--bg-card) 100%)'
-                  : undefined,
-              }}
-              styles={{ body: { padding: 14 } }}
-            >
-              <Space direction="vertical" size={8} style={{ width: '100%' }}>
-                <Space wrap>
-                  <Text strong>{phase.phaseName || phase.phaseKey || `${text.step} ${index + 1}`}</Text>
-                  <Tag>{phase.phaseType}</Tag>
+          return {
+            title: phase.phaseName || phase.phaseKey || `${text.step} ${index + 1}`,
+            status: getPhaseStepStatus(phase.status),
+            description: (
+              <Space direction="vertical" size={4}>
+                <Space wrap size={[8, 4]}>
                   <Tag color={getPhaseStatusColor(phase.status)}>
                     {getPhaseStatusLabel(phase.status, isEnglish)}
                   </Tag>
+                  <Tag>{phase.phaseType}</Tag>
                   {isCurrentActivity ? <Tag color="processing">{text.currentActivity}</Tag> : null}
                 </Space>
                 <Space wrap size={[12, 0]}>
-                  <Text type="secondary">{`${text.activityKey}: ${phase.phaseKey}`}</Text>
                   <Text type="secondary">{`${text.phaseAttempt}: ${phase.attempt}`}</Text>
                   <Text type="secondary">{`${text.phaseSteps}: ${phase.steps?.length || 0}`}</Text>
                 </Space>
-                <Text type="secondary">
-                  {new Date(phase.startedAt || phase.createdAt).toLocaleString()}
-                </Text>
-                {phase.errorMessage ? (
-                  <Text type="danger">{phase.errorMessage}</Text>
-                ) : null}
+                {phase.errorMessage ? <Text type="danger">{phase.errorMessage}</Text> : null}
               </Space>
-            </Card>
-          );
+            ),
+          };
         })}
-      </Space>
+      />
+      {currentPhase ? (
+        <Alert
+          type="info"
+          showIcon
+          message={`${text.currentPhase}: ${currentPhase.phaseName || currentPhase.phaseKey}`}
+          description={
+            <Space wrap size={[12, 4]}>
+              <Text type="secondary">{`${text.activityKey}: ${currentPhase.phaseKey}`}</Text>
+              <Text type="secondary">
+                {new Date(currentPhase.startedAt || currentPhase.createdAt).toLocaleString()}
+              </Text>
+            </Space>
+          }
+        />
+      ) : null}
     </Card>
   ) : null;
 
@@ -1605,14 +1613,6 @@ const ExecutionDetailPage: React.FC = () => {
           <Button icon={<ArrowLeftOutlined />} onClick={() => navigate('/executions')}>
             {text.backToExecutions}
           </Button>
-          {execution.status === 'human_control' && (
-            <Button
-              type="primary"
-              onClick={() => navigate(`/executions/${id}/takeover${currentPhase?.phaseKey ? `?phaseKey=${encodeURIComponent(currentPhase.phaseKey)}` : ''}`)}
-            >
-              {text.enterTakeoverMode}
-            </Button>
-          )}
         </Space>
         <Title level={2}>{text.details}</Title>
         <Text type="secondary">{text.idLabel}: {execution.id}</Text>
@@ -1626,23 +1626,9 @@ const ExecutionDetailPage: React.FC = () => {
           description={
             <div>
               <p>{execution.takeoverReason || text.takeoverDescDefault}</p>
-              <Space wrap>
-                <Button
-                  type="primary"
-                  icon={<UserOutlined />}
-                  onClick={() => navigate(`/executions/${id}/takeover${currentPhase?.phaseKey ? `?phaseKey=${encodeURIComponent(currentPhase.phaseKey)}` : ''}`)}
-                >
-                  {text.enterTakeoverWorkbench}
-                </Button>
-                {currentPhase && (currentPhase.status === 'waiting_takeover' || currentPhase.status === 'resumable') ? (
-                  <Button
-                    onClick={() => phaseResumeMutation.mutate(currentPhase)}
-                    loading={phaseResumeMutation.isLoading}
-                  >
-                    {text.phaseResume}
-                  </Button>
-                ) : null}
-              </Space>
+              {currentPhase ? (
+                <Text type="secondary">{`${text.currentPhase}: ${currentPhase.phaseName || currentPhase.phaseKey}`}</Text>
+              ) : null}
             </div>
           }
           icon={<WarningOutlined />}
@@ -1858,6 +1844,13 @@ const ExecutionDetailPage: React.FC = () => {
         </div>
       ) : null}
 
+      <InlineRecoveryPanel
+        executionId={execution.id}
+        executionStatus={execution.status}
+        currentStepId={execution.currentStepId}
+        phase={currentPhase}
+      />
+
       {activityProgressCard}
 
       {React.isValidElement(semanticOverviewCard) ? semanticOverviewCard : null}
@@ -1920,7 +1913,7 @@ const ExecutionDetailPage: React.FC = () => {
         </Card>
       ) : null}
 
-      {shouldShowLegacySteps && steps && steps.length > 0 ? (
+      {!displayActivityPhases.length && shouldShowLegacySteps && steps && steps.length > 0 ? (
         <Card title={text.stepsProgress} style={{ marginBottom: 16 }}>
           <Steps
             current={getCurrentStepIndex()}
@@ -1937,7 +1930,7 @@ const ExecutionDetailPage: React.FC = () => {
 
       {/* Steps Table */}
       <Card title={text.stepsDetails}>
-        {shouldShowLegacySteps && steps && steps.length > 0 ? (
+        {!displayActivityPhases.length && shouldShowLegacySteps && steps && steps.length > 0 ? (
           <Table
             columns={stepColumns}
             dataSource={steps}
