@@ -940,7 +940,6 @@ const ExecutionDetailPage: React.FC = () => {
     idLabel: isEnglish ? 'ID' : '执行单 ID',
     takeoverRequired: isEnglish ? 'Human Takeover Required' : '需要人工接管',
     takeoverDescDefault: isEnglish ? 'The execution requires human intervention.' : '该执行需要人工介入处理。',
-    enterTakeoverWorkbench: isEnglish ? 'Enter Takeover Workbench' : '进入人工接管工作台',
     approvalRequired: isEnglish ? 'Approval Required' : '需要审批',
     approvalWaiting: isEnglish ? 'Execution is waiting for approval' : '执行正在等待审批',
     approvalStatusPrefix: isEnglish ? 'Current approval status:' : '当前审批状态：',
@@ -1017,12 +1016,6 @@ const ExecutionDetailPage: React.FC = () => {
     phaseArtifactSnapshotId: isEnglish ? 'Snapshot ID' : '快照 ID',
     phaseArtifactPageFingerprint: isEnglish ? 'Page Fingerprint' : '页面指纹',
     phaseNoData: isEnglish ? 'No phase records' : '暂无阶段记录',
-    phaseTakeover: isEnglish ? 'Take Over Phase' : '接管当前阶段',
-    phaseReconcile: isEnglish ? 'Mark Reconciled' : '标记已处理',
-    phaseResume: isEnglish ? 'Resume Phase' : '恢复阶段执行',
-    phaseTakeoverSuccess: isEnglish ? 'Phase takeover requested' : '已发起阶段接管',
-    phaseReconcileSuccess: isEnglish ? 'Phase marked resumable' : '已标记阶段可恢复',
-    phaseResumeSuccess: isEnglish ? 'Phase execution resumed' : '已恢复阶段执行',
     executionEnded: isEnglish ? 'Execution ended' : '执行已结束',
     endExecution: isEnglish ? 'End Execution' : '结束执行',
     phaseActionFailed: isEnglish ? 'Phase action failed' : '阶段操作失败',
@@ -1205,6 +1198,13 @@ const ExecutionDetailPage: React.FC = () => {
       || displayActivityPhases.find((phase) => ['waiting_takeover', 'resumable', 'pending'].includes(phase.status))
       || displayActivityPhases[displayActivityPhases.length - 1],
     [execution?.currentPhaseKey, displayActivityPhases],
+  );
+  const shouldShowCurrentPhaseInfo = Boolean(
+    execution && (
+      execution.status === 'running'
+      || execution.status === 'human_control'
+      || execution.status === 'failed'
+    ),
   );
 
   const submitInputMutation = useMutation(
@@ -1587,7 +1587,7 @@ const ExecutionDetailPage: React.FC = () => {
           };
         })}
       />
-      {currentPhase ? (
+      {shouldShowCurrentPhaseInfo && currentPhase ? (
         <Alert
           type="info"
           showIcon
@@ -1626,7 +1626,7 @@ const ExecutionDetailPage: React.FC = () => {
           description={
             <div>
               <p>{execution.takeoverReason || text.takeoverDescDefault}</p>
-              {currentPhase ? (
+              {shouldShowCurrentPhaseInfo && currentPhase ? (
                 <Text type="secondary">{`${text.currentPhase}: ${currentPhase.phaseName || currentPhase.phaseKey}`}</Text>
               ) : null}
             </div>

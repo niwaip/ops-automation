@@ -1,9 +1,11 @@
 export const RECOVERY_MESSAGES = {
   BROWSER_TAKEOVER: 'Browser runtime requested human takeover',
+  BROWSER_PHASE_TAKEOVER: 'Browser phase requires human takeover',
   SKILL_TAKEOVER: 'Skill runtime requested human takeover',
   SKILL_TAKEOVER_UNHANDLED: 'Skill runtime requested human takeover without handler',
   PHASE_TAKEOVER: 'Phase requires human takeover',
   BROWSER_FAILED: 'Browser phase execution failed',
+  AI_RECOVERY_FAILED: 'AI browser phase recovery failed',
   AUTO_RETRY: (attempt: number) => `Retry browser phase automatically (attempt ${attempt})`,
 };
 

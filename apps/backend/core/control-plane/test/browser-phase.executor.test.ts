@@ -10,10 +10,12 @@ describe('BrowserPhaseExecutor', () => {
       assertState: jest.fn(),
     };
     const executionPhaseService = {
+      getByExecutionIdAndPhaseKey: jest.fn().mockResolvedValue(null),
       markRunning: jest.fn().mockResolvedValue(undefined),
       markCompleted: jest.fn().mockResolvedValue(undefined),
       markFailed: jest.fn().mockResolvedValue(undefined),
       markWaitingTakeover: jest.fn().mockResolvedValue(undefined),
+      replaceSteps: jest.fn().mockResolvedValue(undefined),
       replaceArtifacts: jest.fn().mockResolvedValue(undefined),
     };
     const runtimeExecutionOrchestrator = {
@@ -78,10 +80,12 @@ describe('BrowserPhaseExecutor', () => {
       assertState: jest.fn(),
     };
     const executionPhaseService = {
+      getByExecutionIdAndPhaseKey: jest.fn().mockResolvedValue(null),
       markRunning: jest.fn().mockResolvedValue(undefined),
       markCompleted: jest.fn().mockResolvedValue(undefined),
       markFailed: jest.fn().mockResolvedValue(undefined),
       markWaitingTakeover: jest.fn().mockResolvedValue(undefined),
+      replaceSteps: jest.fn().mockResolvedValue(undefined),
       replaceArtifacts: jest.fn().mockResolvedValue(undefined),
     };
     const runtimeExecutionOrchestrator = {
@@ -124,10 +128,12 @@ describe('BrowserPhaseExecutor', () => {
       assertState: jest.fn(),
     };
     const executionPhaseService = {
+      getByExecutionIdAndPhaseKey: jest.fn().mockResolvedValue(null),
       markRunning: jest.fn().mockResolvedValue(undefined),
       markCompleted: jest.fn().mockResolvedValue(undefined),
       markFailed: jest.fn().mockResolvedValue(undefined),
       markWaitingTakeover: jest.fn().mockResolvedValue(undefined),
+      replaceSteps: jest.fn().mockResolvedValue(undefined),
       replaceArtifacts: jest.fn().mockResolvedValue(undefined),
     };
     const runtimeExecutionOrchestrator = {
@@ -193,10 +199,12 @@ describe('BrowserPhaseExecutor', () => {
       assertState: jest.fn(),
     };
     const executionPhaseService = {
+      getByExecutionIdAndPhaseKey: jest.fn().mockResolvedValue(null),
       markRunning: jest.fn().mockResolvedValue(undefined),
       markCompleted: jest.fn().mockResolvedValue(undefined),
       markFailed: jest.fn().mockResolvedValue(undefined),
       markWaitingTakeover: jest.fn().mockResolvedValue(undefined),
+      replaceSteps: jest.fn().mockResolvedValue(undefined),
       replaceArtifacts: jest.fn().mockResolvedValue(undefined),
     };
     const runtimeExecutionOrchestrator = {
@@ -265,10 +273,12 @@ describe('BrowserPhaseExecutor', () => {
       assertState: jest.fn(),
     };
     const executionPhaseService = {
+      getByExecutionIdAndPhaseKey: jest.fn().mockResolvedValue(null),
       markRunning: jest.fn().mockResolvedValue(undefined),
       markCompleted: jest.fn().mockResolvedValue(undefined),
       markFailed: jest.fn().mockResolvedValue(undefined),
       markWaitingTakeover: jest.fn().mockResolvedValue(undefined),
+      replaceSteps: jest.fn().mockResolvedValue(undefined),
       replaceArtifacts: jest.fn().mockResolvedValue(undefined),
     };
     const runtimeExecutionOrchestrator = {
@@ -335,10 +345,12 @@ describe('BrowserPhaseExecutor', () => {
       assertState: jest.fn(),
     };
     const executionPhaseService = {
+      getByExecutionIdAndPhaseKey: jest.fn().mockResolvedValue(null),
       markRunning: jest.fn().mockResolvedValue(undefined),
       markCompleted: jest.fn().mockResolvedValue(undefined),
       markFailed: jest.fn().mockResolvedValue(undefined),
       markWaitingTakeover: jest.fn().mockResolvedValue(undefined),
+      replaceSteps: jest.fn().mockResolvedValue(undefined),
       replaceArtifacts: jest.fn().mockResolvedValue(undefined),
     };
     const runtimeExecutionOrchestrator = {
@@ -397,10 +409,12 @@ describe('BrowserPhaseExecutor', () => {
       assertState: jest.fn(),
     };
     const executionPhaseService = {
+      getByExecutionIdAndPhaseKey: jest.fn().mockResolvedValue(null),
       markRunning: jest.fn().mockResolvedValue(undefined),
       markCompleted: jest.fn().mockResolvedValue(undefined),
       markFailed: jest.fn().mockResolvedValue(undefined),
       markWaitingTakeover: jest.fn().mockResolvedValue(undefined),
+      replaceSteps: jest.fn().mockResolvedValue(undefined),
       replaceArtifacts: jest.fn().mockResolvedValue(undefined),
     };
     const runtimeExecutionOrchestrator = {
@@ -464,10 +478,12 @@ describe('BrowserPhaseExecutor', () => {
       }),
     };
     const executionPhaseService = {
+      getByExecutionIdAndPhaseKey: jest.fn().mockResolvedValue(null),
       markRunning: jest.fn().mockResolvedValue(undefined),
       markCompleted: jest.fn().mockResolvedValue(undefined),
       markFailed: jest.fn().mockResolvedValue(undefined),
       markWaitingTakeover: jest.fn().mockResolvedValue(undefined),
+      replaceSteps: jest.fn().mockResolvedValue(undefined),
       replaceArtifacts: jest.fn().mockResolvedValue(undefined),
     };
     const runtimeExecutionOrchestrator = {
@@ -521,10 +537,12 @@ describe('BrowserPhaseExecutor', () => {
       }),
     };
     const executionPhaseService = {
+      getByExecutionIdAndPhaseKey: jest.fn().mockResolvedValue(null),
       markRunning: jest.fn().mockResolvedValue(undefined),
       markCompleted: jest.fn().mockResolvedValue(undefined),
       markFailed: jest.fn().mockResolvedValue(undefined),
       markWaitingTakeover: jest.fn().mockResolvedValue(undefined),
+      replaceSteps: jest.fn().mockResolvedValue(undefined),
       replaceArtifacts: jest.fn().mockResolvedValue(undefined),
     };
     const runtimeExecutionOrchestrator = {

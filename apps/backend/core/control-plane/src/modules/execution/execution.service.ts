@@ -38,6 +38,13 @@ import { RuntimeExecutionOrchestrator } from './runtime-execution.orchestrator';
 import { RuntimeResultInterpreter } from './runtime-result.interpreter';
 import { RuntimeStepRequestFactory } from './runtime-step-request.factory';
 import { BrowserPhaseExecutor, BrowserPhaseCommand } from './browser-phase.executor';
+import {
+  BROWSER_ACTIONS,
+  BROWSER_ERROR_CODES,
+  BROWSER_MESSAGES,
+  BROWSER_RUNTIME,
+} from './browser-execution-constants';
+import { RECOVERY_MESSAGES } from './recovery-constants';
 import type { BrowserPhaseRecoveryPolicy } from './browser-phase-recovery.planner';
 import type { BrowserPhaseCheck } from './execution.dto';
 
@@ -434,10 +441,10 @@ export class ExecutionService {
     // Update status to running
     await this.updateStatus(executionId, EXECUTION_STATUS.RUNNING);
 
-    if (execution.runtimeType !== 'browser') {
+    if (execution.runtimeType !== BROWSER_RUNTIME.TYPE) {
       await this.createEvent(execution.id, EXECUTION_EVENT_TYPE.RUNTIME_SKIPPED, {
         runtimeType: execution.runtimeType,
-        mode: 'non_browser_runtime',
+        mode: BROWSER_RUNTIME.NON_BROWSER_MODE,
       });
       await this.advanceExecutionFlow(execution.id, execution.id);
       this.logger.log(
@@ -1443,7 +1450,7 @@ export class ExecutionService {
       await this.createEvent(execution.id as string, EXECUTION_EVENT_TYPE.STEP_CREATED, {
         runtimeSessionId,
         stepId: step.id,
-        action: 'goto',
+        action: BROWSER_ACTIONS.GOTO,
         url,
       });
     }
@@ -1451,7 +1458,7 @@ export class ExecutionService {
     await this.createEvent(execution.id as string, EXECUTION_EVENT_TYPE.STEP_STARTED, {
       runtimeSessionId,
       stepId: step.id,
-      action: 'goto',
+      action: BROWSER_ACTIONS.GOTO,
       url,
     });
 
@@ -1871,7 +1878,7 @@ export class ExecutionService {
 
         commands.push({
           step_id: `${this.sanitizePhaseKeyFragment(activityName)}__command_${String(index + 1).padStart(2, '0')}`,
-          capability_type: 'browser.step',
+          capability_type: BROWSER_RUNTIME.CAPABILITY_TYPE,
           action: normalizedAction,
           input,
           metadata: {
@@ -1904,7 +1911,7 @@ export class ExecutionService {
 
     const args = (() => {
       switch (action) {
-        case 'goto':
+        case BROWSER_ACTIONS.GOTO:
         case 'navigate':
           return Object.fromEntries(
             Object.entries({ url }).filter(([, item]) => item !== undefined),
@@ -1996,13 +2003,13 @@ export class ExecutionService {
     const normalized = action.trim().toLowerCase();
     switch (normalized) {
       case 'navigate':
-        return 'goto';
+        return BROWSER_ACTIONS.GOTO;
       case 'waitforselector':
-        return 'wait';
+        return BROWSER_ACTIONS.WAIT;
       case 'press':
-        return 'press_key';
+        return BROWSER_ACTIONS.PRESS_KEY;
       case 'type':
-        return 'type_text';
+        return BROWSER_ACTIONS.TYPE_TEXT;
       default:
         return normalized;
     }
@@ -2227,11 +2234,11 @@ export class ExecutionService {
 
       this.logger.log(`Next step for ${executionId}: ${nextStep.id} (type: ${nextStep.type}, action: ${nextStep.action})`);
 
-      if (nextStep.type === 'browser_action' && nextStep.action === 'goto') {
+      if (nextStep.type === BROWSER_RUNTIME.STEP_TYPE && nextStep.action === BROWSER_ACTIONS.GOTO) {
         const stepUrl = this.extractStepUrl(nextStep as any, execution as any);
         if (!stepUrl) {
           this.logger.warn(`Browser goto step ${nextStep.id} is missing target url; skipping`);
-          await this.skipSingleStep(nextStep.id, executionId, 'Browser goto step is missing target url');
+          await this.skipSingleStep(nextStep.id, executionId, BROWSER_MESSAGES.GOTO_MISSING_TARGET);
           continue;
         }
 
@@ -2245,7 +2252,7 @@ export class ExecutionService {
         return;
       }
 
-      if (nextStep.type === 'system' && nextStep.action === 'execute_browser_phase') {
+      if (nextStep.type === 'system' && nextStep.action === BROWSER_ACTIONS.EXECUTE_PHASE) {
         this.logger.log(`Executing browser phase step for execution ${executionId}, step ${nextStep.id}`);
         await this.executeBrowserPhaseStep(execution as any, runtimeSessionId, nextStep.id);
         return;
@@ -2302,7 +2309,7 @@ export class ExecutionService {
     await this.createEvent(
       executionId,
       EXECUTION_EVENT_TYPE.STEP_STARTED,
-      { action: 'goto', url },
+      { action: BROWSER_ACTIONS.GOTO, url },
       {
         runtimeSessionId,
         stepId,
@@ -2320,7 +2327,7 @@ export class ExecutionService {
         stepId,
         runtimeSessionId,
         url,
-        executionMode: 'planned_step',
+        executionMode: BROWSER_RUNTIME.EXECUTION_MODE_PLANNED_STEP,
         phaseMetadata,
       }),
     );
@@ -2339,19 +2346,19 @@ export class ExecutionService {
     const browserPhaseConfig = this.extractStepBrowserPhaseConfig(step as Record<string, unknown> | null | undefined);
 
     if (!phaseMetadata) {
-      await this.skipSingleStep(stepId, executionId, 'Browser phase step is missing phase metadata');
+      await this.skipSingleStep(stepId, executionId, BROWSER_MESSAGES.PHASE_MISSING_METADATA);
       await this.advanceExecutionFlow(executionId, runtimeSessionId);
       return;
     }
 
     if (!browserPhaseConfig || browserPhaseConfig.commands.length === 0) {
-      await this.skipSingleStep(stepId, executionId, 'Browser phase step is missing commands');
+      await this.skipSingleStep(stepId, executionId, BROWSER_MESSAGES.PHASE_MISSING_COMMANDS);
       await this.advanceExecutionFlow(executionId, runtimeSessionId);
       return;
     }
 
     if (!this.browserPhaseExecutor) {
-      throw new Error('BrowserPhaseExecutor is not available');
+      throw new Error(BROWSER_MESSAGES.PHASE_EXECUTOR_UNAVAILABLE);
     }
 
     await this.executionStepService.setCurrentStep(executionId, stepId);
@@ -2362,7 +2369,7 @@ export class ExecutionService {
         runtimeSessionId,
         stepId,
         stepName: step?.name,
-        action: 'execute_browser_phase',
+        action: BROWSER_ACTIONS.EXECUTE_PHASE,
         phaseKey: phaseMetadata.phaseKey,
         phaseName: phaseMetadata.phaseName,
         phaseType: phaseMetadata.phaseType,
@@ -2389,7 +2396,7 @@ export class ExecutionService {
           typeof execution.skillId === 'string' && execution.skillId.trim().length > 0
             ? execution.skillId
             : undefined,
-        runtimeType: 'browser',
+        runtimeType: BROWSER_RUNTIME.TYPE,
         policyContext: this.buildBrowserPhasePolicyContext(execution),
         traceContext: this.buildBrowserPhaseTraceContext(execution),
         commands: browserPhaseConfig.commands,
@@ -2401,13 +2408,13 @@ export class ExecutionService {
 
       await this.handleBrowserPhaseStepResult(executionId, runtimeSessionId, stepId, result);
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Browser phase execution failed';
+      const message = error instanceof Error ? error.message : RECOVERY_MESSAGES.BROWSER_FAILED;
       this.logger.error(`Failed to execute browser phase step ${stepId}: ${message}`);
       await this.handleBrowserPhaseStepResult(executionId, runtimeSessionId, stepId, {
         success: false,
         status: 'failed',
         stepResults: [],
-        errorCode: 'BROWSER_PHASE_EXECUTION_FAILED',
+        errorCode: BROWSER_ERROR_CODES.PHASE_RUNTIME_FAILED,
         errorMessage: message,
       });
     }
@@ -2562,7 +2569,7 @@ export class ExecutionService {
     if (result.status === 'blocked') {
       await this.enterPendingApprovalFromRuntimeStep(
         executionId,
-        result.errorMessage || 'Browser phase blocked by runtime policy',
+        result.errorMessage || BROWSER_MESSAGES.PHASE_BLOCKED,
       );
       return;
     }
@@ -2601,7 +2608,7 @@ export class ExecutionService {
         executionId,
         'system',
         {
-          reason: result.takeoverReason || result.errorMessage || 'Browser phase requires human takeover',
+          reason: result.takeoverReason || result.errorMessage || RECOVERY_MESSAGES.BROWSER_PHASE_TAKEOVER,
         },
         {
           id: 'system',
@@ -2620,8 +2627,8 @@ export class ExecutionService {
     await this.failExecutionFromRuntimeStep({
       executionId,
       stepId,
-      failureReason: result.errorMessage || 'Browser phase execution failed',
-      failureCode: result.errorCode || 'BROWSER_PHASE_EXECUTION_FAILED',
+      failureReason: result.errorMessage || RECOVERY_MESSAGES.BROWSER_FAILED,
+      failureCode: result.errorCode || BROWSER_ERROR_CODES.PHASE_RUNTIME_FAILED,
       runtimeSessionId,
     });
   }
@@ -2741,7 +2748,7 @@ export class ExecutionService {
             ? command.capabilityType.trim().replace(/_/g, '.')
             : typeof command.capability_type === 'string' && command.capability_type.trim().length > 0
               ? command.capability_type.trim().replace(/_/g, '.')
-              : 'browser.step',
+              : BROWSER_RUNTIME.CAPABILITY_TYPE,
         action: (command.action as string).trim(),
         input: this.readJsonRecord(command.input) || {},
         metadata: this.readJsonRecord(command.metadata),

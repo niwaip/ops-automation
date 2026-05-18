@@ -232,22 +232,22 @@
 
 ### 主要代码位置
 
-- `services/portal/src/api/execution.ts`
-- `services/portal/src/pages/ExecutionListPage.tsx`
-- `services/portal/src/pages/ExecutionDetailPage.tsx`
-- `services/portal/src/pages/TakeoverWorkbenchPage.tsx`
+- `apps/frontend/portal/src/api/execution.ts`
+- `apps/frontend/portal/src/pages/ExecutionListPage.tsx`
+- `apps/frontend/portal/src/pages/ExecutionDetailPage.tsx`
+- `apps/frontend/portal/src/components/execution/InlineRecoveryPanel.tsx`
 
 ### 本阶段必须完成的事情
 
 - 列表页可用 `Execution` API 稳定查询
 - 详情页可展示执行状态、步骤和失败信息
-- 接管页可进入并恢复
+- 详情页/列表页内联恢复区可进入并恢复
 - 页面主入口优先围绕 `Execution`，而不是旧 `session`
 
 ### 可并行
 
 - 列表页和详情页
-- 接管页和 execution API client 对齐
+- 内联接管/恢复区和 execution API client 对齐
 
 ### 不应并行
 
@@ -313,7 +313,7 @@
 
 - `ExecutionListPage`
 - `ExecutionDetailPage`
-- `TakeoverWorkbenchPage`
+- `InlineRecoveryPanel`
 
 ### 穿插支持
 
@@ -383,10 +383,10 @@
 1. `services/ai-orchestrator/src/modules/react-engine/interfaces.ts`
 2. `services/ai-orchestrator/src/modules/react-engine/react-engine.service.ts`
 3. `services/ai-orchestrator/src/modules/react-engine/prompt-builder.ts`
-4. `services/portal/src/api/execution.ts`
-5. `services/portal/src/pages/ExecutionListPage.tsx`
-6. `services/portal/src/pages/ExecutionDetailPage.tsx`
-7. `services/portal/src/pages/TakeoverWorkbenchPage.tsx`
+4. `apps/frontend/portal/src/api/execution.ts`
+5. `apps/frontend/portal/src/pages/ExecutionListPage.tsx`
+6. `apps/frontend/portal/src/pages/ExecutionDetailPage.tsx`
+7. `apps/frontend/portal/src/components/execution/InlineRecoveryPanel.tsx`
 
 ---
 

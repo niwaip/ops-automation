@@ -427,7 +427,7 @@ Phase 1 最终交付应包括：
 - Browser step 协议
 - Planner `PlanDraft` 接口
 - Portal Execution 工作台
-- 接管工作台主链
+- 内联接管/恢复主链
 - 执行结束复盘入口
 
 其中建议按两层定义：
@@ -439,7 +439,7 @@ Phase 1 最终交付应包括：
   - Browser step 协议
   - Planner `PlanDraft` 接口
   - Portal 最小 Execution 工作台
-  - 接管工作台主链
+  - 内联接管/恢复主链
 - 预留或条件交付
   - Artifact 展示增强
   - 审批页完整体验

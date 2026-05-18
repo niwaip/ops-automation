@@ -410,11 +410,11 @@
 1. `browser-worker` 或 `control-plane` 判断需接管
 2. `control-plane` 将 `Execution.status = human_control`
 3. `session-broker` 将 `RuntimeSession.control_mode = HUMAN_CONTROL`
-4. `portal` 打开接管工作台
+4. `portal` 在 Execution 页面展示内联接管/恢复区
 
 ### 8.5 恢复执行
 
-1. 用户在接管工作台完成操作
+1. 用户在内联接管/恢复区完成操作
 2. `portal` 调用 `POST /executions/{id}/release-human-control`
 3. `session-broker` 恢复 runtime
 4. `control-plane` 恢复 `Execution.running`

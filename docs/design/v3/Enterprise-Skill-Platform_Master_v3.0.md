@@ -101,7 +101,7 @@ Memory 不是聊天记录归档，而是平台长期资产。
 - Chat UI
 - Office Add-in
 - 审批工作台
-- 接管工作台
+- Execution 内联接管/恢复区
 
 ### 4.2 Planner Plane
 

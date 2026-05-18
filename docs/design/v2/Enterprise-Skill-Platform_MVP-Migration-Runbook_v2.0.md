@@ -187,7 +187,7 @@ MVP 阶段迁移完成后，应达到：
 
 - 新增 `ExecutionStartPage`
 - 新增 `ExecutionDetailPage`
-- 新增 `TakeoverWorkbenchPage`
+- 在 `ExecutionDetailPage` / `ExecutionListPage` 新增内联接管/恢复区
 - Portal 不再直接依赖底层 Runtime API
 
 出口条件：
@@ -311,7 +311,7 @@ MVP 阶段迁移完成后，应达到：
 
 第一阶段动作：
 
-- 新增发起页、详情页、接管页
+- 新增发起页、详情页，并在详情/列表页内联接管与恢复
 - 轮询 `Execution` 状态
 - 基于 `human_control` 展示接管入口
 
@@ -460,7 +460,7 @@ MVP 阶段迁移完成后，应达到：
 ### Phase 4 验收
 
 - Portal 可展示 Execution 详情和 steps
-- 接管工作台可进入并恢复执行
+- 内联接管/恢复区可进入并恢复执行
 
 ### Phase 5 验收
 
@@ -485,7 +485,7 @@ MVP 阶段迁移完成后，应达到：
 
 ### Milestone D：Portal 工作台可演示
 
-- 产出：Execution 详情页 + 接管页
+- 产出：Execution 详情页 + 内联接管/恢复区
 
 ### Milestone E：MVP 演示版本
 

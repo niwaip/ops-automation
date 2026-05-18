@@ -252,7 +252,7 @@
 - [execution.ts](file:///d:/workspace/ops-automation/services/portal/src/api/execution.ts)
 - [ExecutionListPage.tsx](file:///d:/workspace/ops-automation/services/portal/src/pages/ExecutionListPage.tsx)
 - [ExecutionDetailPage.tsx](file:///d:/workspace/ops-automation/services/portal/src/pages/ExecutionDetailPage.tsx)
-- [TakeoverWorkbenchPage.tsx](file:///d:/workspace/ops-automation/services/portal/src/pages/TakeoverWorkbenchPage.tsx)
+- [InlineRecoveryPanel.tsx](file:///Users/chain/Documents/MyProject/ops-automation/apps/frontend/portal/src/components/execution/InlineRecoveryPanel.tsx)
 
 原因：
 

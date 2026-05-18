@@ -7,6 +7,11 @@ import {
   RuntimeStepInvokeRequest,
   RuntimeStepInvokeResult,
 } from './runtime-adapter.interface';
+import {
+  BROWSER_RUNTIME,
+  BROWSER_SESSION_PREFERENCES,
+  BROWSER_WORKER_ENDPOINTS,
+} from './browser-execution-constants';
 
 interface LegacyBrowserExecuteStepRequest {
   executionId: string;
@@ -58,27 +63,24 @@ interface BrowserPageAssertionResponse {
 
 @Injectable()
 export class BrowserRuntimeAdapter implements RuntimeAdapter {
-  readonly runtimeType = 'browser' as const;
-  readonly routeKeys = [buildRuntimeAdapterRouteKey('browser', 'browser.step')] as const;
+  readonly runtimeType = BROWSER_RUNTIME.TYPE;
+  readonly routeKeys = [buildRuntimeAdapterRouteKey(BROWSER_RUNTIME.TYPE, BROWSER_RUNTIME.CAPABILITY_TYPE)] as const;
   private readonly browserWorkerUrl = getBrowserWorkerUrl();
 
   supports(request: RuntimeStepInvokeRequest): boolean {
-    return request.runtimeType === 'browser' && request.capabilityType === 'browser.step';
+    return request.runtimeType === BROWSER_RUNTIME.TYPE
+      && request.capabilityType === BROWSER_RUNTIME.CAPABILITY_TYPE;
   }
 
   private resolveSessionPreferences(
     _request?: RuntimeStepInvokeRequest,
   ): BrowserSessionPreferencesPayload {
-    return {
-      mode: 'interactive',
-      headless: false,
-      enableCodegen: false,
-    };
+    return { ...BROWSER_SESSION_PREFERENCES };
   }
 
   async initializeSession(runtimeSessionId: string): Promise<void> {
     await axios.post<{ success: boolean; message: string }>(
-      `${this.browserWorkerUrl}/browser/init`,
+      `${this.browserWorkerUrl}${BROWSER_WORKER_ENDPOINTS.INIT}`,
       {
         runtimeSessionId,
         sessionPreferences: this.resolveSessionPreferences(),
@@ -100,7 +102,7 @@ export class BrowserRuntimeAdapter implements RuntimeAdapter {
     };
 
     const response = await axios.post<LegacyBrowserExecuteStepResult>(
-      `${this.browserWorkerUrl}/browser/execute-step`,
+      `${this.browserWorkerUrl}${BROWSER_WORKER_ENDPOINTS.EXECUTE_STEP}`,
       payload,
     );
 
@@ -148,10 +150,10 @@ export class BrowserRuntimeAdapter implements RuntimeAdapter {
     backend?: 'cli' | 'chrome-devtools';
   }): Promise<BrowserPageStateResponse> {
     const response = await axios.post<BrowserPageStateResponse>(
-      `${this.browserWorkerUrl}/browser/inspect-state`,
+      `${this.browserWorkerUrl}${BROWSER_WORKER_ENDPOINTS.INSPECT_STATE}`,
       {
         runtimeSessionId: input.runtimeSessionId,
-        backend: input.backend || 'cli',
+        backend: input.backend || BROWSER_RUNTIME.DEFAULT_BACKEND,
       },
     );
     return response.data;
@@ -170,10 +172,10 @@ export class BrowserRuntimeAdapter implements RuntimeAdapter {
     textIncludes?: string;
   }): Promise<BrowserPageAssertionResponse> {
     const response = await axios.post<BrowserPageAssertionResponse>(
-      `${this.browserWorkerUrl}/browser/assert-state`,
+      `${this.browserWorkerUrl}${BROWSER_WORKER_ENDPOINTS.ASSERT_STATE}`,
       {
         runtimeSessionId: input.runtimeSessionId,
-        backend: input.backend || 'cli',
+        backend: input.backend || BROWSER_RUNTIME.DEFAULT_BACKEND,
         pageUrl: input.pageUrl,
         pageUrlIncludes: input.pageUrlIncludes,
         pageTitle: input.pageTitle,

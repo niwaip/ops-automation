@@ -39,7 +39,6 @@ import {
   DownloadOutlined,
   PlayCircleOutlined,
   RobotOutlined,
-  ClockCircleOutlined,
   InfoCircleOutlined,
   DeleteOutlined,
 } from '@ant-design/icons';
@@ -60,6 +59,7 @@ import { useChatStore } from '../components/chat';
 import { ListSectionHeader } from '../components/page/PageScaffold';
 import LiveSessionPreviewCard from '../components/runtime/LiveSessionPreviewCard';
 import InlineRecoveryPanel from '../components/execution/InlineRecoveryPanel';
+import { RECOVERY_COPY } from '../components/execution/recoveryOptions';
 import { runtimeConfig } from '../config/runtime';
 import { useAuthStore } from '../store/authStore';
 import { replaceLocalhostWithCurrentHost } from '../utils/publicUrl';
@@ -77,6 +77,15 @@ import dayjs, { Dayjs } from 'dayjs';
 const { Text } = Typography;
 const statusColors = EXECUTION_STATUS_COLORS;
 const statusLabels = EXECUTION_STATUS_LABELS_ZH;
+const listStatusLabels: Partial<Record<ExecutionStatus, string>> = {
+  running: '执行中',
+  waiting_input: '补参',
+  pending_approval: '审批',
+  human_control: '接管',
+  succeeded: '完成',
+  failed: '失败',
+  cancelled: '取消',
+};
 const getPhaseStatusColor = (status?: string) => {
   switch (status) {
     case 'completed':
@@ -127,6 +136,7 @@ const EXECUTION_STATUS_FILTER_OPTIONS: Array<{ value?: ExecutionStatus; label: s
 ];
 
 const formatDateTime = (date?: string) => (date ? new Date(date).toLocaleString() : '-');
+const formatListDateTime = (date?: string) => (date ? dayjs(date).format('MM-DD HH:mm') : '-');
 
 const summarizeText = (value?: string, maxLength = 64) => {
   if (!value) {
@@ -1040,6 +1050,13 @@ const ExecutionListPage: React.FC = () => {
       || displaySelectedPhases[displaySelectedPhases.length - 1],
     [displaySelectedPhases, selectedExecution?.currentPhaseKey],
   );
+  const shouldShowSelectedCurrentPhaseInfo = Boolean(
+    selectedExecution && (
+      selectedExecution.status === 'running'
+      || selectedExecution.status === 'human_control'
+      || selectedExecution.status === 'failed'
+    ),
+  );
   const selectedExecutionRuntimeSessionId = selectedExecution?.runtimeSessionId || selectedBrowserExecutionResult?.runtimeSessionId;
   const { data: selectedRuntimeSession } = useQuery(
     ['execution-runtime-session', selectedExecutionRuntimeSessionId],
@@ -1152,7 +1169,7 @@ const ExecutionListPage: React.FC = () => {
         ]);
       },
       onError: (error: Error) => {
-        void message.error(`恢复执行失败：${error.message}`);
+        void message.error(`${RECOVERY_COPY.resumeErrorPrefix}：${error.message}`);
       },
     }
   );
@@ -1213,10 +1230,10 @@ const ExecutionListPage: React.FC = () => {
           queryClient.invalidateQueries(['execution', selectedExecutionId]),
           queryClient.invalidateQueries(['execution-steps', selectedExecutionId]),
         ]);
-        void message.success('已发起阶段接管');
+        void message.success(RECOVERY_COPY.successTakeover);
       },
       onError: (error: Error) => {
-        void message.error(`阶段接管失败：${error.message}`);
+        void message.error(`${RECOVERY_COPY.takeoverErrorPrefix}：${error.message}`);
       },
     }
   );
@@ -1274,10 +1291,16 @@ const ExecutionListPage: React.FC = () => {
     {
       title: '技能名称',
       key: 'execution',
-      width: 280,
+      width: 220,
       render: (_: unknown, record: ExecutionDto) => (
         <Space direction="vertical" size={4}>
-          <Text strong style={{ fontSize: 16 }}>{getSkillDisplayName(record.skillId)}</Text>
+          <Text
+            strong
+            ellipsis={{ tooltip: getSkillDisplayName(record.skillId) }}
+            style={{ display: 'block', maxWidth: 200, fontSize: 16 }}
+          >
+            {getSkillDisplayName(record.skillId)}
+          </Text>
         </Space>
       ),
     },
@@ -1285,50 +1308,36 @@ const ExecutionListPage: React.FC = () => {
       title: '开始时间',
       dataIndex: 'startedAt',
       key: 'startedAt',
-      width: 190,
+      width: 140,
       defaultSortOrder: 'descend' as const,
       sorter: (a: ExecutionDto, b: ExecutionDto) => getExecutionTime(a) - getExecutionTime(b),
       render: (_: string | undefined, record: ExecutionDto) => (
-        <Space size={8} wrap={false}>
-          <Text>{formatDateTime(record.startedAt || record.createdAt)}</Text>
-          <Text type="secondary" style={{ fontSize: 12, whiteSpace: 'nowrap' }}>
-            {record.endedAt ? `耗时 ${formatDuration(record)}` : `已运行 ${formatDuration(record)}`}
+        <Space direction="vertical" size={0}>
+          <Text>{formatListDateTime(record.startedAt || record.createdAt)}</Text>
+          <Text type="secondary" style={{ fontSize: 12 }}>
+            {formatDuration(record)}
           </Text>
         </Space>
       ),
     },
     {
       title: '状态',
-      dataIndex: 'status',
       key: 'status',
-      width: 110,
-      render: (status: ExecutionStatus) => (
-        <Tag
-          color={statusColors[status]}
-          style={{ marginInlineEnd: 0, paddingInline: 10, borderRadius: 999, fontWeight: 600 }}
-        >
-          {statusLabels[status]}
-        </Tag>
-      ),
-    },
-    {
-      title: '当前阶段',
-      key: 'phase',
-      width: 220,
+      width: 88,
       render: (_: unknown, record: ExecutionDto) => (
-        <Space direction="vertical" size={2}>
-          <Text>{record.currentPhaseKey || '-'}</Text>
-          <Text type="secondary" style={{ fontSize: 12 }}>
-            {record.currentPhaseStatus || '未开始'}
-          </Text>
-        </Space>
+        <Tag
+          color={statusColors[record.status]}
+          style={{ marginInlineEnd: 0, width: 'fit-content', paddingInline: 10, borderRadius: 999, fontWeight: 600 }}
+        >
+          {listStatusLabels[record.status] || statusLabels[record.status]}
+        </Tag>
       ),
     },
     {
       title: '风险',
       dataIndex: 'riskLevel',
       key: 'riskLevel',
-      width: 80,
+      width: 64,
       render: (riskLevel?: string) => (
         riskLevel ? (
           <span
@@ -1349,7 +1358,7 @@ const ExecutionListPage: React.FC = () => {
     {
       title: '用户输入',
       key: 'input',
-      width: 320,
+      width: 260,
       ellipsis: true,
       render: (_: unknown, record: ExecutionDto) => (
         <Text
@@ -1522,7 +1531,6 @@ const ExecutionListPage: React.FC = () => {
               setPageSize(ps);
             },
           }}
-          scroll={{ x: 1260 }}
           onRow={(record) => ({
             style: {
               cursor: 'pointer',
@@ -1548,138 +1556,9 @@ const ExecutionListPage: React.FC = () => {
           </div>
         ) : selectedExecution ? (
           <Space direction="vertical" size={16} style={{ width: '100%' }}>
-            <Card
-              size="small"
-              style={{
-                borderRadius: 20,
-                border: '1px solid var(--bg-secondary)',
-                boxShadow: 'var(--shadow-lg)',
-                background: selectedExecution.status === 'failed'
-                  ? isDarkTheme
-                    ? 'linear-gradient(180deg, rgba(127, 29, 29, 0.35) 0%, var(--bg-card) 100%)'
-                    : 'linear-gradient(180deg, #fff7f7 0%, #ffffff 100%)'
-                  : isDarkTheme
-                    ? 'linear-gradient(180deg, #243244 0%, var(--bg-card) 100%)'
-                    : 'linear-gradient(180deg, #ffffff 0%, #f7fbff 100%)',
-              }}
-            >
-              <div
-                style={{
-                  display: 'grid',
-                  gridTemplateColumns: 'minmax(0, 1fr) auto',
-                  gap: 16,
-                  alignItems: 'start',
-                }}
-              >
-                <Space direction="vertical" size={12} style={{ width: '100%' }}>
-                  <Space wrap size={8}>
-                    <Text type="secondary">执行单</Text>
-                    <Text
-                      code
-                      style={{
-                        padding: '4px 10px',
-                        borderRadius: 999,
-                        background: 'var(--bg-secondary)',
-                      }}
-                    >
-                      {selectedExecution.id}
-                    </Text>
-                  </Space>
-                  <Space wrap size={[10, 10]}>
-                    <Tag
-                      color={statusColors[selectedExecution.status]}
-                      style={{ marginInlineEnd: 0, paddingInline: 12, borderRadius: 999 }}
-                    >
-                      {statusLabels[selectedExecution.status]}
-                    </Tag>
-                    {selectedExecution.riskLevel ? (
-                      <span
-                        style={{
-                          ...getRiskBadgeStyle(selectedExecution.riskLevel),
-                          padding: '2px 10px',
-                          borderRadius: 999,
-                          fontSize: 12,
-                          fontWeight: 600,
-                        }}
-                      >
-                        {selectedExecution.riskLevel}
-                      </span>
-                    ) : null}
-                  </Space>
-                </Space>
-
-                <Space direction="vertical" size={10} style={{ alignItems: 'flex-end' }}>
-                  <Space size={6}>
-                    <ClockCircleOutlined style={{ color: 'var(--text-light)' }} />
-                    <Text type="secondary">{formatDateTime(selectedExecution.startedAt || selectedExecution.createdAt)}</Text>
-                  </Space>
-                </Space>
-              </div>
-            </Card>
-
-            {stableSelectedRuntimeSessionNovncUrl && (isSelectedExecutionActive || isPreviewRuntimeSessionState(selectedRuntimeSession?.state)) ? (
-              <LiveSessionPreviewCard
-                novncUrl={stableSelectedRuntimeSessionNovncUrl}
-                title="实时画面"
-                statusLabel={getRuntimeSessionStatusLabel(selectedRuntimeSession?.state)}
-                height={360}
-              />
-            ) : null}
-
-            {displaySelectedPhases.length > 0 ? (
-              <Card title="步骤进度">
-                <Steps
-                  current={Math.max(displaySelectedPhases.findIndex((phase) => phase.phaseKey === currentSelectedPhase?.phaseKey), 0)}
-                  size="small"
-                  responsive
-                  style={{ marginBottom: 16 }}
-                  items={displaySelectedPhases.map((phase, index) => {
-                    const isCurrentActivity = currentSelectedPhase?.phaseKey === phase.phaseKey;
-                    return {
-                      title: phase.phaseName || phase.phaseKey || `步骤 ${index + 1}`,
-                      status: getPhaseStepStatus(phase.status),
-                      description: (
-                        <Space direction="vertical" size={4}>
-                          <Space wrap size={[8, 4]}>
-                            <Tag color={getPhaseStatusColor(phase.status)}>{phase.status}</Tag>
-                            <Tag>{phase.phaseType}</Tag>
-                            {isCurrentActivity ? <Tag color="processing">当前 Activity</Tag> : null}
-                          </Space>
-                          <Space wrap size={[12, 0]}>
-                            <Text type="secondary">{`尝试: ${phase.attempt}`}</Text>
-                            <Text type="secondary">{`步骤数: ${phase.steps?.length || 0}`}</Text>
-                          </Space>
-                          {phase.errorMessage ? <Text type="danger">{phase.errorMessage}</Text> : null}
-                        </Space>
-                      ),
-                    };
-                  })}
-                />
-                {currentSelectedPhase ? (
-                  <Alert
-                    type="info"
-                    showIcon
-                    message={`当前阶段：${currentSelectedPhase.phaseName || currentSelectedPhase.phaseKey}`}
-                    description={
-                      <Space wrap size={[12, 4]}>
-                        <Text type="secondary">{`Key: ${currentSelectedPhase.phaseKey}`}</Text>
-                        <Text type="secondary">{formatDateTime(currentSelectedPhase.startedAt || currentSelectedPhase.createdAt)}</Text>
-                      </Space>
-                    }
-                  />
-                ) : null}
-              </Card>
-            ) : null}
-
-            <InlineRecoveryPanel
-              executionId={selectedExecution.id}
-              executionStatus={selectedExecution.status}
-              currentStepId={selectedExecution.currentStepId}
-              phase={currentSelectedPhase}
-            />
-
             <Collapse
               ghost
+              defaultActiveKey={['summary']}
               expandIconPosition="end"
               items={[
                 {
@@ -1709,12 +1588,14 @@ const ExecutionListPage: React.FC = () => {
                       <Descriptions.Item label="开始时间">
                         {formatDateTime(selectedExecution.startedAt || selectedExecution.createdAt)}
                       </Descriptions.Item>
-                      <Descriptions.Item label="当前阶段">
-                        <Space direction="vertical" size={0}>
-                          <Text>{selectedExecution.currentPhaseKey || '-'}</Text>
-                          <Text type="secondary">{selectedExecution.currentPhaseStatus || '未开始'}</Text>
-                        </Space>
-                      </Descriptions.Item>
+                      {shouldShowSelectedCurrentPhaseInfo ? (
+                        <Descriptions.Item label="当前阶段">
+                          <Space direction="vertical" size={0}>
+                            <Text>{selectedExecution.currentPhaseKey || '-'}</Text>
+                            <Text type="secondary">{selectedExecution.currentPhaseStatus || '未开始'}</Text>
+                          </Space>
+                        </Descriptions.Item>
+                      ) : null}
                       <Descriptions.Item label="浏览器会话">
                         {selectedExecutionRuntimeSessionId ? (
                           <Space wrap>
@@ -1764,6 +1645,74 @@ const ExecutionListPage: React.FC = () => {
                     </Descriptions>
                   ),
                 },
+              ]}
+            />
+
+            {stableSelectedRuntimeSessionNovncUrl && (isSelectedExecutionActive || isPreviewRuntimeSessionState(selectedRuntimeSession?.state)) ? (
+              <LiveSessionPreviewCard
+                novncUrl={stableSelectedRuntimeSessionNovncUrl}
+                title="实时画面"
+                statusLabel={getRuntimeSessionStatusLabel(selectedRuntimeSession?.state)}
+                height={360}
+              />
+            ) : null}
+
+            {displaySelectedPhases.length > 0 ? (
+              <Card title="步骤进度">
+                <Steps
+                  current={Math.max(displaySelectedPhases.findIndex((phase) => phase.phaseKey === currentSelectedPhase?.phaseKey), 0)}
+                  size="small"
+                  responsive
+                  style={{ marginBottom: 16 }}
+                  items={displaySelectedPhases.map((phase, index) => {
+                    const isCurrentActivity = currentSelectedPhase?.phaseKey === phase.phaseKey;
+                    return {
+                      title: phase.phaseName || phase.phaseKey || `步骤 ${index + 1}`,
+                      status: getPhaseStepStatus(phase.status),
+                      description: (
+                        <Space direction="vertical" size={4}>
+                          <Space wrap size={[8, 4]}>
+                            <Tag color={getPhaseStatusColor(phase.status)}>{phase.status}</Tag>
+                            <Tag>{phase.phaseType}</Tag>
+                            {isCurrentActivity ? <Tag color="processing">当前 Activity</Tag> : null}
+                          </Space>
+                          <Space wrap size={[12, 0]}>
+                            <Text type="secondary">{`尝试: ${phase.attempt}`}</Text>
+                            <Text type="secondary">{`步骤数: ${phase.steps?.length || 0}`}</Text>
+                          </Space>
+                          {phase.errorMessage ? <Text type="danger">{phase.errorMessage}</Text> : null}
+                        </Space>
+                      ),
+                    };
+                  })}
+                />
+                {shouldShowSelectedCurrentPhaseInfo && currentSelectedPhase ? (
+                  <Alert
+                    type="info"
+                    showIcon
+                    message={`当前阶段：${currentSelectedPhase.phaseName || currentSelectedPhase.phaseKey}`}
+                    description={
+                      <Space wrap size={[12, 4]}>
+                        <Text type="secondary">{`Key: ${currentSelectedPhase.phaseKey}`}</Text>
+                        <Text type="secondary">{formatDateTime(currentSelectedPhase.startedAt || currentSelectedPhase.createdAt)}</Text>
+                      </Space>
+                    }
+                  />
+                ) : null}
+              </Card>
+            ) : null}
+
+            <InlineRecoveryPanel
+              executionId={selectedExecution.id}
+              executionStatus={selectedExecution.status}
+              currentStepId={selectedExecution.currentStepId}
+              phase={currentSelectedPhase}
+            />
+
+            <Collapse
+              ghost
+              expandIconPosition="end"
+              items={[
                 ...(selectedExecution.status === 'waiting_input' && waitingInputStep ? [{
                   key: 'resume',
                   label: renderPanelLabel(
@@ -1777,8 +1726,8 @@ const ExecutionListPage: React.FC = () => {
                         type="warning"
                         showIcon
                         style={{ marginBottom: 16 }}
-                        message="该执行正在等待补充输入"
-                        description="补齐下面参数后可以直接恢复当前执行；也可以先带着参数回到 AI 任务模式，确认后再继续处理。"
+                        message={RECOVERY_COPY.waitingInputTitle}
+                        description={RECOVERY_COPY.waitingInputDesc}
                       />
                       <Form form={resumeForm} layout="vertical">
                         <div
@@ -1925,14 +1874,14 @@ const ExecutionListPage: React.FC = () => {
                             loading={submitInputMutation.isLoading}
                             onClick={() => void handleResumeExecution(false)}
                           >
-                            补参并继续执行
+                            {RECOVERY_COPY.waitingInputContinue}
                           </Button>
                           <Button
                             icon={<RobotOutlined />}
                             loading={submitInputMutation.isLoading}
                             onClick={() => void handleResumeExecution(true)}
                           >
-                            补参后转 AI 任务模式
+                            {RECOVERY_COPY.waitingInputToAi}
                           </Button>
                         </Space>
                       </Form>

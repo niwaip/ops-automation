@@ -238,7 +238,7 @@
 - 前端主入口
 - Execution 页面
 - Capability Release 页面
-- 接管页面
+- Execution 内联接管/恢复区
 
 `v3` 目标归属：
 

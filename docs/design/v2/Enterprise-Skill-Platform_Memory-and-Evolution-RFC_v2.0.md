@@ -64,7 +64,7 @@
    - 调用 `TakeoverService`，将 `RuntimeSession` 置为 `frozen`，`Execution` 状态置为 `human_control`。
    - 系统向发起人发送 IM 通知（包含接管链接）。
 2. **接管 (Takeover)**：
-   - 用户点击链接进入 `Portal` 的接管工作台。
+   - 用户点击链接进入 `Portal` 的 Execution 内联接管/恢复区。
    - 前端通过 WebRTC/noVNC 直接连接到底层的 Browser 实例，画面实时同步。
    - 用户手动点击通过验证码。
 3. **恢复 (Resume)**：

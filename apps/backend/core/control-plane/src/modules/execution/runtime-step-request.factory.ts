@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { PolicyContext, RuntimeStepInvokeRequest } from './runtime-adapter.interface';
+import { BROWSER_ACTIONS, BROWSER_RUNTIME } from './browser-execution-constants';
 
 interface RuntimeStepPhaseMetadata {
   phaseKey: string;
@@ -23,12 +24,12 @@ export class RuntimeStepRequestFactory {
       requestId: `${executionId}:${input.stepId}`,
       executionId,
       stepId: input.stepId,
-      runtimeType: 'browser',
+      runtimeType: BROWSER_RUNTIME.TYPE,
       runtimeSessionId: input.runtimeSessionId,
       skillId: (input.execution.skillId as string | null) || null,
       publishedSkillId: this.resolveExecutionCapabilityId(input.execution) || null,
-      capabilityType: 'browser.step',
-      action: 'goto',
+      capabilityType: BROWSER_RUNTIME.CAPABILITY_TYPE,
+      action: BROWSER_ACTIONS.GOTO,
       input: {
         target: input.url,
       },

@@ -15,6 +15,8 @@ import {
   RuntimeStepInvokeRequest,
   TraceContext,
 } from './runtime-adapter.interface';
+import { RECOVERY_ACTIONS, RECOVERY_MESSAGES } from './recovery-constants';
+import { BROWSER_ACTIONS, BROWSER_ERROR_CODES, BROWSER_RUNTIME } from './browser-execution-constants';
 
 export interface BrowserPhaseCommand {
   stepId: string;
@@ -162,18 +164,18 @@ export class BrowserPhaseExecutor {
         result: postcheckedResult,
         policy: request.recoveryPolicy,
       });
-      if (recoveryDecision.action === 'retry_same_phase' && attempt < maxAttempts) {
+      if (recoveryDecision.action === RECOVERY_ACTIONS.RETRY_SAME_PHASE && attempt < maxAttempts) {
         attempt += 1;
         continue;
       }
 
-      if (recoveryDecision.action === 'retry_with_patch' && recoveryDecision.patch) {
+      if (recoveryDecision.action === RECOVERY_ACTIONS.RETRY_WITH_PATCH && recoveryDecision.patch) {
         phaseCommands = this.applyRecoveryPatch(phaseCommands, recoveryDecision.patch);
         attempt += 1;
         continue;
       }
 
-      if (recoveryDecision.action === 'takeover_required') {
+      if (recoveryDecision.action === RECOVERY_ACTIONS.TAKEOVER_REQUIRED) {
         await this.executionPhaseService.markWaitingTakeover(request.executionId, request.phaseKey, {
           phaseName: request.phaseName,
           phaseType: request.phaseType,
@@ -182,7 +184,7 @@ export class BrowserPhaseExecutor {
           output: postcheckedResult.output || { stepResults: postcheckedResult.stepResults },
           postcheck: request.postcheck || null,
           recoveryDecision: this.serializeRecoveryDecision(recoveryDecision),
-          errorCode: postcheckedResult.errorCode || 'PHASE_TAKEOVER_REQUIRED',
+          errorCode: postcheckedResult.errorCode || BROWSER_ERROR_CODES.PHASE_TAKEOVER_REQUIRED,
           errorMessage: postcheckedResult.takeoverReason || postcheckedResult.errorMessage || recoveryDecision.reason,
         });
         await this.persistPhaseSteps(
@@ -211,8 +213,8 @@ export class BrowserPhaseExecutor {
         output: postcheckedResult.output || { stepResults: postcheckedResult.stepResults },
         postcheck: request.postcheck || null,
         recoveryDecision: this.serializeRecoveryDecision(recoveryDecision),
-        errorCode: postcheckedResult.errorCode || 'PHASE_EXECUTION_FAILED',
-        errorMessage: postcheckedResult.errorMessage || recoveryDecision.reason || 'Browser phase execution failed',
+        errorCode: postcheckedResult.errorCode || BROWSER_ERROR_CODES.PHASE_EXECUTION_FAILED,
+        errorMessage: postcheckedResult.errorMessage || recoveryDecision.reason || RECOVERY_MESSAGES.BROWSER_FAILED,
       });
       await this.persistPhaseSteps(
         request.executionId,
@@ -232,8 +234,8 @@ export class BrowserPhaseExecutor {
       success: false,
       status: 'failed',
       stepResults: [],
-      errorCode: 'PHASE_EXECUTION_FAILED',
-      errorMessage: 'Browser phase execution failed',
+      errorCode: BROWSER_ERROR_CODES.PHASE_EXECUTION_FAILED,
+      errorMessage: RECOVERY_MESSAGES.BROWSER_FAILED,
     };
   }
 
@@ -245,7 +247,7 @@ export class BrowserPhaseExecutor {
       requestId: `${request.executionId}:${request.phaseKey}:${index + 1}`,
       executionId: request.executionId,
       stepId: command.stepId,
-      runtimeType: request.runtimeType || 'browser',
+      runtimeType: request.runtimeType || BROWSER_RUNTIME.TYPE,
       runtimeSessionId: request.runtimeSessionId,
       skillId: request.skillId || null,
       publishedSkillId: request.publishedSkillId || null,
@@ -345,8 +347,8 @@ export class BrowserPhaseExecutor {
         if (command.stepId === patch.failedStepId) {
           nextCommands.push({
             stepId: `${patch.failedStepId}__recovery_wait`,
-            capabilityType: 'browser.step',
-            action: 'wait',
+            capabilityType: BROWSER_RUNTIME.CAPABILITY_TYPE,
+            action: BROWSER_ACTIONS.WAIT,
             input: {
               duration: patch.durationMs || 1000,
             },

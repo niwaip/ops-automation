@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { RECOVERY_MESSAGES } from './recovery-constants';
+import { BROWSER_ERROR_CODES, BROWSER_MESSAGES } from './browser-execution-constants';
 import { PrismaService } from '../prisma/prisma.service';
 import { EXECUTION_EVENT_TYPE } from './contracts/execution-event-type';
 import { ExecutionStepService } from './execution-step.service';
@@ -70,20 +71,20 @@ export class RuntimeResultInterpreter {
         return;
       }
       await context.failExecution(
-        result.errorMessage || 'Browser step entered waiting state without handling',
-        result.errorCode || 'BROWSER_STEP_WAITING_UNHANDLED',
+        result.errorMessage || BROWSER_MESSAGES.STEP_WAITING_UNHANDLED,
+        result.errorCode || BROWSER_ERROR_CODES.STEP_WAITING_UNHANDLED,
       );
       return;
     }
 
     if (result.status === 'blocked') {
       if (context.enterPendingApproval) {
-        await context.enterPendingApproval(result.errorMessage || 'Browser step blocked by runtime policy');
+        await context.enterPendingApproval(result.errorMessage || BROWSER_MESSAGES.STEP_BLOCKED);
         return;
       }
       await context.failExecution(
-        result.errorMessage || 'Browser step blocked by runtime policy',
-        result.errorCode || 'BROWSER_STEP_BLOCKED',
+        result.errorMessage || BROWSER_MESSAGES.STEP_BLOCKED,
+        result.errorCode || BROWSER_ERROR_CODES.STEP_BLOCKED,
       );
       return;
     }
@@ -121,8 +122,8 @@ export class RuntimeResultInterpreter {
     }
 
     await context.failExecution(
-      result.errorMessage || 'Browser step failed',
-      result.errorCode || 'BROWSER_STEP_FAILED',
+      result.errorMessage || BROWSER_MESSAGES.STEP_FAILED,
+      result.errorCode || BROWSER_ERROR_CODES.STEP_FAILED,
     );
   }
 

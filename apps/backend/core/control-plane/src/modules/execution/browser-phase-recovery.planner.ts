@@ -128,15 +128,19 @@ export class BrowserPhaseRecoveryPlanner {
       const action = response.data?.action;
       const reason = typeof response.data?.reason === 'string' && response.data.reason.trim()
         ? response.data.reason.trim()
-        : (input.result.errorMessage || 'AI browser phase recovery failed');
-      if (action !== 'retry_with_patch' && action !== 'takeover_required' && action !== 'abort') {
+        : (input.result.errorMessage || RECOVERY_MESSAGES.AI_RECOVERY_FAILED);
+      if (
+        action !== RECOVERY_ACTIONS.RETRY_WITH_PATCH
+        && action !== RECOVERY_ACTIONS.TAKEOVER_REQUIRED
+        && action !== RECOVERY_ACTIONS.ABORT
+      ) {
         return null;
       }
 
       const patch = this.normalizePatch(response.data?.patch, input.commands);
-      if (action === 'retry_with_patch' && !patch) {
+      if (action === RECOVERY_ACTIONS.RETRY_WITH_PATCH && !patch) {
         return {
-          action: 'abort',
+          action: RECOVERY_ACTIONS.ABORT,
           reason,
           patch: null,
         };

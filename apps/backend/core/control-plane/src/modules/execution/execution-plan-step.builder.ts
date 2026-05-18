@@ -1,6 +1,7 @@
 import { Prisma } from '@prisma/client';
 import type { BrowserPhaseRecoveryPolicy } from './browser-phase-recovery.planner';
 import type { BrowserPhaseCheck } from './execution.dto';
+import { BROWSER_ACTIONS, BROWSER_RUNTIME } from './browser-execution-constants';
 
 export type PlannerStepKind = 'skill' | 'tool' | 'human_input' | 'execution';
 
@@ -59,7 +60,7 @@ const mapPlannerStepType = (planStep: PlannerPlanStepInput): string => {
 
 const mapPlannerStepAction = (planStep: PlannerPlanStepInput): string => {
   if (hasBrowserPhaseCommands(planStep)) {
-    return 'execute_browser_phase';
+    return BROWSER_ACTIONS.EXECUTE_PHASE;
   }
 
   const { kind } = planStep;
@@ -104,7 +105,7 @@ const normalizeBrowserPhaseCommands = (
       capabilityType:
         typeof command.capability_type === 'string' && command.capability_type.trim().length > 0
           ? command.capability_type.trim().replace(/_/g, '.')
-          : 'browser.step',
+          : BROWSER_RUNTIME.CAPABILITY_TYPE,
       action: command.action.trim(),
       input:
         command.input && typeof command.input === 'object' && !Array.isArray(command.input)
@@ -217,9 +218,9 @@ export const buildPlannedExecutionSteps = (
       executionId,
       stepIndex: stepIndex++,
       name: 'Open target page',
-      type: 'browser_action',
+      type: BROWSER_RUNTIME.STEP_TYPE,
       status: 'pending',
-      action: 'goto',
+      action: BROWSER_ACTIONS.GOTO,
       targetJson: {
         url: bootstrapUrl,
         source: 'phase1_bootstrap',
