@@ -249,9 +249,9 @@
 - [interfaces.ts](file:///d:/workspace/ops-automation/services/ai-orchestrator/src/modules/react-engine/interfaces.ts)
 - [react-engine.service.ts](file:///d:/workspace/ops-automation/services/ai-orchestrator/src/modules/react-engine/react-engine.service.ts)
 - [prompt-builder.ts](file:///d:/workspace/ops-automation/services/ai-orchestrator/src/modules/react-engine/prompt-builder.ts)
-- [execution.ts](file:///d:/workspace/ops-automation/services/portal/src/api/execution.ts)
-- [ExecutionListPage.tsx](file:///d:/workspace/ops-automation/services/portal/src/pages/ExecutionListPage.tsx)
-- [ExecutionDetailPage.tsx](file:///d:/workspace/ops-automation/services/portal/src/pages/ExecutionDetailPage.tsx)
+- [execution.ts](file:///Users/chain/Documents/MyProject/ops-automation/apps/frontend/portal/src/api/execution.ts)
+- [ExecutionListPage.tsx](file:///Users/chain/Documents/MyProject/ops-automation/apps/frontend/portal/src/features/executions/pages/ExecutionListPage.tsx)
+- [ExecutionDetailPage.tsx](file:///Users/chain/Documents/MyProject/ops-automation/apps/frontend/portal/src/features/executions/pages/ExecutionDetailPage.tsx)
 - [InlineRecoveryPanel.tsx](file:///Users/chain/Documents/MyProject/ops-automation/apps/frontend/portal/src/components/execution/InlineRecoveryPanel.tsx)
 
 原因：

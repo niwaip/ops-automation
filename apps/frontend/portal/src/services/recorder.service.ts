@@ -3,7 +3,7 @@
  */
 
 import { io, Socket } from 'socket.io-client';
-import { runtimeConfig } from '../config/runtime';
+import { runtimeConfig } from '@/shared/config/runtime';
 
 export type RecorderStatus = 'idle' | 'connecting' | 'recording' | 'paused' | 'stopped' | 'error';
 

@@ -13,7 +13,7 @@ import { useQuery, useMutation, useQueryClient } from 'react-query';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { useNavigate } from 'react-router-dom';
-import '@/components/chat/ChatMessage.css';
+import '@/features/chat/ChatMessage.css';
 import {
   temporalWorkflowApi, TemporalWorkflowDTO, CreateTemporalWorkflowDTO,
   WorkflowDsl, ActivityDsl, TemporalValidationResult, DEFAULT_WORKFLOW_DSL, DEFAULT_ACTIVITY_DSL,
@@ -134,12 +134,24 @@ const formatDurationValue = (value?: number | null, unit: DurationUnit = DEFAULT
   return `${Math.max(0, Number(value))}${unit}`;
 };
 
-const resolveApiErrorMessage = (error: any, fallback = '请求失败'): string => {
-  const responseData = error?.response?.data;
+const resolveApiErrorMessage = (error: unknown, fallback = '请求失败'): string => {
+  const errorRecord = typeof error === 'object' && error !== null
+    ? error as {
+      message?: unknown;
+      response?: {
+        data?: {
+          message?: unknown;
+          code?: unknown;
+          error?: unknown;
+        };
+      };
+    }
+    : undefined;
+  const responseData = errorRecord?.response?.data;
   const messageText = typeof responseData?.message === 'string'
     ? responseData.message
-    : typeof error?.message === 'string'
-      ? error.message
+    : typeof errorRecord?.message === 'string'
+      ? errorRecord.message
       : fallback;
   const codeText = typeof responseData?.code === 'string'
     ? responseData.code
@@ -1499,11 +1511,11 @@ export const WorkflowEditModal: React.FC<WorkflowEditModalProps> = ({ visible, o
         syncAiDraftSessionState(session);
         const draft = session.currentDraft;
         if (draft?.warnings?.length) {
-          message.warning(draft.warnings[0]);
+          void message.warning(draft.warnings[0]);
         }
       },
-      onError: (error: any) => {
-        message.error('生成 AI 工作流草稿失败: ' + (error.message || '未知错误'));
+      onError: (error: unknown) => {
+        void message.error(resolveApiErrorMessage(error, '生成 AI 工作流草稿失败'));
       },
     },
   );
@@ -1517,11 +1529,11 @@ export const WorkflowEditModal: React.FC<WorkflowEditModalProps> = ({ visible, o
           setAiDraftMessages([]);
           setCurrentAiDraft(null);
         }
-        queryClient.invalidateQueries(['temporal-draft-sessions']);
-        message.success('草稿会话已删除');
+        void queryClient.invalidateQueries(['temporal-draft-sessions']);
+        void message.success('草稿会话已删除');
       },
-      onError: (error: any) => {
-        message.error('删除草稿会话失败: ' + (error.message || '未知错误'));
+      onError: (error: unknown) => {
+        void message.error(resolveApiErrorMessage(error, '删除草稿会话失败'));
       },
     },
   );
@@ -1534,11 +1546,11 @@ export const WorkflowEditModal: React.FC<WorkflowEditModalProps> = ({ visible, o
         syncAiDraftSessionState(session);
         const draft = session.currentDraft;
         if (draft?.warnings?.length) {
-          message.warning(draft.warnings[0]);
+          void message.warning(draft.warnings[0]);
         }
       },
-      onError: (error: any) => {
-        message.error('改进 AI 工作流草稿失败: ' + (error.message || '未知错误'));
+      onError: (error: unknown) => {
+        void message.error(resolveApiErrorMessage(error, '改进 AI 工作流草稿失败'));
       },
     },
   );
@@ -1573,8 +1585,8 @@ export const WorkflowEditModal: React.FC<WorkflowEditModalProps> = ({ visible, o
     setLastGeneratedSignature(null);
     setIsGeneratedCodeStale(false);
     setSelectedStepIndexForConfig(nextWorkflowDsl?.steps?.length ? 0 : null);
-    onCancel(true);
-    message.success(successMessage);
+    void onCancel(true);
+    void message.success(successMessage);
   };
 
 
@@ -1583,7 +1595,7 @@ export const WorkflowEditModal: React.FC<WorkflowEditModalProps> = ({ visible, o
 
   const handleGenerateAiDraft = () => {
     if (!aiDraftDescription.trim() && !aiDraftReferenceUrl.trim()) {
-      message.warning('请至少输入工作流说明或参考 URL');
+      void message.warning('请至少输入工作流说明或参考 URL');
       return;
     }
     generateAiDraftMutation.mutate({
@@ -1625,8 +1637,8 @@ export const WorkflowEditModal: React.FC<WorkflowEditModalProps> = ({ visible, o
     try {
       const data = await carboneAPI.getTemplates();
       setTemplates(Array.isArray(data) ? data : []);
-    } catch (error: any) {
-      message.error('加载模板失败: ' + (error.message || '未知错误'));
+    } catch (error: unknown) {
+      void message.error(resolveApiErrorMessage(error, '加载模板失败'));
       setTemplates([]);
     } finally {
       setTemplatesLoading(false);
@@ -1638,8 +1650,8 @@ export const WorkflowEditModal: React.FC<WorkflowEditModalProps> = ({ visible, o
     try {
       const data = await templateApi.list({ page: 1, pageSize: 200 });
       setBrowserTemplates(Array.isArray(data?.templates) ? data.templates : []);
-    } catch (error: any) {
-      message.error('加载浏览器模板失败: ' + (error.message || '未知错误'));
+    } catch (error: unknown) {
+      void message.error(resolveApiErrorMessage(error, '加载浏览器模板失败'));
       setBrowserTemplates([]);
     } finally {
       setBrowserTemplatesLoading(false);
@@ -1664,8 +1676,8 @@ export const WorkflowEditModal: React.FC<WorkflowEditModalProps> = ({ visible, o
       const draft: TemplateWorkflowDraft = await temporalWorkflowApi.generateTemplateDraft(template.id);
       await applyDraftToEditor(draft, '已生成模板工作流草稿');
       setTemplateModalVisible(false);
-    } catch (error: any) {
-      message.error('生成模板工作流失败: ' + (error.message || '未知错误'));
+    } catch (error: unknown) {
+      void message.error(resolveApiErrorMessage(error, '生成模板工作流失败'));
     } finally {
       setGeneratingTemplateId(null);
     }
@@ -1683,7 +1695,7 @@ export const WorkflowEditModal: React.FC<WorkflowEditModalProps> = ({ visible, o
         ? executionPlan.commands.filter((command): command is BrowserDraftCommandInput => Boolean(command && typeof command === 'object'))
         : [];
       if (templateSteps.length === 0 && executionPlanCommands.length === 0) {
-        message.warning('该浏览器模板缺少可执行步骤，请先在模板页补充步骤');
+        void message.warning('该浏览器模板缺少可执行步骤，请先在模板页补充步骤');
         return;
       }
       const draft = await temporalWorkflowApi.generateBrowserDraft({
@@ -1695,7 +1707,7 @@ export const WorkflowEditModal: React.FC<WorkflowEditModalProps> = ({ visible, o
         commands: executionPlanCommands.length > 0 ? executionPlanCommands : undefined,
       });
       if (!draft.activityDsl.activities[0]?.config?.steps || (draft.activityDsl.activities[0]?.config?.steps as Array<unknown>).length === 0) {
-        message.warning('该浏览器模板缺少可执行步骤，请先在模板页补充步骤');
+        void message.warning('该浏览器模板缺少可执行步骤，请先在模板页补充步骤');
         return;
       }
       await applyDraftToEditor(
@@ -1707,8 +1719,8 @@ export const WorkflowEditModal: React.FC<WorkflowEditModalProps> = ({ visible, o
             : `已生成浏览器工作流草稿（${draft.browserTemplate.commandCount} 个步骤）`,
       );
       setTemplateModalVisible(false);
-    } catch (error: any) {
-      message.error('使用浏览器模板生成工作流失败: ' + (error.message || '未知错误'));
+    } catch (error: unknown) {
+      void message.error(resolveApiErrorMessage(error, '使用浏览器模板生成工作流失败'));
     } finally {
       setGeneratingBrowserTemplateId(null);
     }
@@ -1746,7 +1758,7 @@ export const WorkflowEditModal: React.FC<WorkflowEditModalProps> = ({ visible, o
     }
     const skillId = resolveWorkflowSourceSkillId(selectedWorkflow);
     if (!skillId) {
-      message.warning('该工作流未绑定可执行 Skill，请先发布为 Skill 后再创建执行记录');
+      void message.warning('该工作流未绑定可执行 Skill，请先发布为 Skill 后再创建执行记录');
       return;
     }
 
@@ -1757,12 +1769,12 @@ export const WorkflowEditModal: React.FC<WorkflowEditModalProps> = ({ visible, o
         runtimeType: 'browser',
         input: buildExecutionInputFromWorkflow(selectedWorkflow),
       });
-      message.success('已创建执行记录，正在跳转执行详情');
+      void message.success('已创建执行记录，正在跳转执行详情');
       setDetailModalVisible(false);
-      queryClient.invalidateQueries('executions');
+      void queryClient.invalidateQueries('executions');
       navigate(`/executions/${execution.id}`);
-    } catch (error: any) {
-      message.error('创建执行记录失败: ' + (error?.message || '未知错误'));
+    } catch (error: unknown) {
+      void message.error(resolveApiErrorMessage(error, '创建执行记录失败'));
     } finally {
       setCreatingExecutionWorkflowId(null);
     }
@@ -3756,7 +3768,9 @@ export const WorkflowEditModal: React.FC<WorkflowEditModalProps> = ({ visible, o
                     { label: '浏览器模版', value: 'browser' },
                   ]}
                   value={templateModalMode}
-                  onChange={handleTemplateModeChange}
+                  onChange={(value) => {
+                    void handleTemplateModeChange(value);
+                  }}
                 />
               </div>
               {templateModalMode === 'document' ? (
@@ -3770,7 +3784,9 @@ export const WorkflowEditModal: React.FC<WorkflowEditModalProps> = ({ visible, o
                       style={{ width: 240 }}
                       allowClear
                     />
-                    <Button icon={<ReloadOutlined />} onClick={loadDocumentTemplates} loading={templatesLoading} disabled={Boolean(generatingTemplateId)}>刷新</Button>
+                    <Button icon={<ReloadOutlined />} onClick={() => {
+                      void loadDocumentTemplates();
+                    }} loading={templatesLoading} disabled={Boolean(generatingTemplateId)}>刷新</Button>
                   </Space>
                   <div style={{ maxHeight: 520, overflow: 'auto', paddingRight: 4 }}>
                     {(templates || []).filter(t => {
@@ -3791,7 +3807,9 @@ export const WorkflowEditModal: React.FC<WorkflowEditModalProps> = ({ visible, o
                           <Space>
                             <Button
                               type="primary"
-                              onClick={() => handleSelectTemplate(t)}
+                              onClick={() => {
+                                void handleSelectTemplate(t);
+                              }}
                               loading={generatingTemplateId === t.id}
                               disabled={Boolean(generatingTemplateId)}
                             >
@@ -3822,7 +3840,9 @@ export const WorkflowEditModal: React.FC<WorkflowEditModalProps> = ({ visible, o
                       style={{ width: 280 }}
                       allowClear
                     />
-                    <Button icon={<ReloadOutlined />} onClick={loadBrowserTemplates} loading={browserTemplatesLoading} disabled={Boolean(generatingBrowserTemplateId)}>
+                    <Button icon={<ReloadOutlined />} onClick={() => {
+                      void loadBrowserTemplates();
+                    }} loading={browserTemplatesLoading} disabled={Boolean(generatingBrowserTemplateId)}>
                       刷新模板
                     </Button>
                   </Space>
@@ -3845,7 +3865,9 @@ export const WorkflowEditModal: React.FC<WorkflowEditModalProps> = ({ visible, o
                           </Space>
                           <Button
                             type="primary"
-                            onClick={() => handleSelectBrowserTemplate(item)}
+                            onClick={() => {
+                              void handleSelectBrowserTemplate(item);
+                            }}
                             loading={generatingBrowserTemplateId === item.id}
                             disabled={Boolean(generatingBrowserTemplateId)}
                           >
@@ -4955,57 +4977,60 @@ export const WorkflowEditModal: React.FC<WorkflowEditModalProps> = ({ visible, o
                               size="small"
                               type="primary"
                               icon={<RobotOutlined />}
-                              onClick={async () => {
-                                if (selectedStepIndexForConfig === null) return;
-                                const prevIndex = selectedStepIndexForConfig - 1;
-                                if (prevIndex < 0 || !workflowDsl.steps[prevIndex]) {
-                                  message.warning('请将结构化转换步骤放在一个 HTTP 步骤之后');
-                                  return;
-                                }
-                                const prevStep = workflowDsl.steps[prevIndex];
-                                const prevActivity = resolveStepActivity(prevStep);
-                                if (!isHttpRequestActivity(prevActivity, prevStep)) {
-                                  message.warning('上一步不是 HTTP 请求，无法自动生成结构化配置');
-                                  return;
-                                }
-                                try {
-                                  const httpConfig = getStepHttpRequestConfig(prevStep, prevActivity);
-                                  const sampleParams = collectWorkflowInputParams();
-                                  const preview = await temporalWorkflowApi.previewHttpRequestConfig(httpConfig, sampleParams);
-                                  if (!preview.success || !preview.previewResponse) {
-                                    message.error(preview.error || '获取上一步返回样本失败');
+                              onClick={() => {
+                                void (async () => {
+                                  if (selectedStepIndexForConfig === null) return;
+                                  const prevIndex = selectedStepIndexForConfig - 1;
+                                  if (prevIndex < 0 || !workflowDsl.steps[prevIndex]) {
+                                    void message.warning('请将结构化转换步骤放在一个 HTTP 步骤之后');
                                     return;
                                   }
-                                  const userGoal = selectedStepAiPrompt || '请将今天的天气信息提炼为结构化 JSON，包含天气描述与摄氏温度';
-                                  const gen = await temporalWorkflowApi.generateStructuredTransformConfig(
-                                    preview.previewResponse.body ?? preview.previewResponse,
-                                    userGoal,
-                                    selectedStepStructuredTransformConfig,
-                                  );
-                                  if (!gen.success || !gen.config) {
-                                    message.error(gen.error || 'AI 生成结构化配置失败');
+                                  const prevStep = workflowDsl.steps[prevIndex];
+                                  const prevActivity = resolveStepActivity(prevStep);
+                                  if (!isHttpRequestActivity(prevActivity, prevStep)) {
+                                    void message.warning('上一步不是 HTTP 请求，无法自动生成结构化配置');
                                     return;
                                   }
-                                  updateStepStructuredTransformConfig(selectedStepIndexForConfig, {
-                                    contentType: gen.config.contentType || selectedStepStructuredTransformConfig.contentType || 'json',
-                                    contentTemplate: gen.config.contentTemplate || selectedStepStructuredTransformConfig.contentTemplate || '{content}',
-                                    instructionTemplate: gen.config.instructionTemplate || selectedStepStructuredTransformConfig.instructionTemplate || '',
-                                    outputMode: gen.config.outputMode || selectedStepStructuredTransformConfig.outputMode || 'json',
-                                    outputSchema: gen.config.outputSchema || selectedStepStructuredTransformConfig.outputSchema || {},
-                                    contextTemplate: gen.config.contextTemplate || selectedStepStructuredTransformConfig.contextTemplate || '',
-                                    fieldMappings: gen.config.fieldMappings || selectedStepStructuredTransformConfig.fieldMappings || {},
-                                    textTemplate: gen.config.textTemplate || selectedStepStructuredTransformConfig.textTemplate || '',
-                                  });
-                                  if (selectedStep?.id) {
-                                    setStructuredTransformSchemaDrafts((prev) => ({
-                                      ...prev,
-                                      [selectedStep.id as string]: JSON.stringify((gen.config?.outputSchema || {}), null, 2),
-                                    }));
+                                  try {
+                                    const httpConfig = getStepHttpRequestConfig(prevStep, prevActivity);
+                                    const sampleParams = collectWorkflowInputParams();
+                                    const preview = await temporalWorkflowApi.previewHttpRequestConfig(httpConfig, sampleParams);
+                                    if (!preview.success || !preview.previewResponse) {
+                                      void message.error(preview.error || '获取上一步返回样本失败');
+                                      return;
+                                    }
+                                    const userGoal = selectedStepAiPrompt || '请将今天的天气信息提炼为结构化 JSON，包含天气描述与摄氏温度';
+                                    const gen = await temporalWorkflowApi.generateStructuredTransformConfig(
+                                      preview.previewResponse.body ?? preview.previewResponse,
+                                      userGoal,
+                                      selectedStepStructuredTransformConfig,
+                                    );
+                                    if (!gen.success || !gen.config) {
+                                      void message.error(gen.error || 'AI 生成结构化配置失败');
+                                      return;
+                                    }
+                                    const generatedConfig = gen.config;
+                                    updateStepStructuredTransformConfig(selectedStepIndexForConfig, {
+                                      contentType: generatedConfig.contentType || selectedStepStructuredTransformConfig.contentType || 'json',
+                                      contentTemplate: generatedConfig.contentTemplate || selectedStepStructuredTransformConfig.contentTemplate || '{content}',
+                                      instructionTemplate: generatedConfig.instructionTemplate || selectedStepStructuredTransformConfig.instructionTemplate || '',
+                                      outputMode: generatedConfig.outputMode || selectedStepStructuredTransformConfig.outputMode || 'json',
+                                      outputSchema: generatedConfig.outputSchema || selectedStepStructuredTransformConfig.outputSchema || {},
+                                      contextTemplate: generatedConfig.contextTemplate || selectedStepStructuredTransformConfig.contextTemplate || '',
+                                      fieldMappings: generatedConfig.fieldMappings || selectedStepStructuredTransformConfig.fieldMappings || {},
+                                      textTemplate: generatedConfig.textTemplate || selectedStepStructuredTransformConfig.textTemplate || '',
+                                    });
+                                    if (selectedStep?.id) {
+                                      setStructuredTransformSchemaDrafts((prev) => ({
+                                        ...prev,
+                                        [selectedStep.id]: JSON.stringify(generatedConfig.outputSchema || {}, null, 2),
+                                      }));
+                                    }
+                                    void message.success('已生成结构化转换配置');
+                                  } catch (error: unknown) {
+                                    void message.error(resolveApiErrorMessage(error, 'AI 生成结构化配置失败'));
                                   }
-                                  message.success('已生成结构化转换配置');
-                                } catch (e: any) {
-                                  message.error(e.message || 'AI 生成结构化配置失败');
-                                }
+                                })();
                               }}
                             >
                               AI 生成配置
@@ -5407,7 +5432,10 @@ export const WorkflowEditModal: React.FC<WorkflowEditModalProps> = ({ visible, o
         </Space>
       </Modal>\n<Modal title={<Space direction="vertical" size={0}><Text strong>AI 生成的 Workflow 代码</Text><Text type="secondary" style={{ fontSize: 12 }}>显示名称：{currentWorkflowDisplayName} ｜ 类名：{currentWorkflowClassName}</Text></Space>} open={codeModalVisible} onCancel={() => setCodeModalVisible(false)}
         footer={[
-          <Button key="copy" icon={<CodeOutlined />} onClick={() => { navigator.clipboard.writeText(generatedCode || ''); message.success('已复制到剪贴板'); }}>复制代码</Button>,
+          <Button key="copy" icon={<CodeOutlined />} onClick={() => {
+            void navigator.clipboard.writeText(generatedCode || '');
+            void message.success('已复制到剪贴板');
+          }}>复制代码</Button>,
           <Button key="close" onClick={() => setCodeModalVisible(false)}>关闭</Button>
         ]} width={900}>
         {generatedCode && (
@@ -5446,7 +5474,9 @@ export const WorkflowEditModal: React.FC<WorkflowEditModalProps> = ({ visible, o
               <Button
                 type="primary"
                 icon={<ExperimentOutlined />}
-                onClick={handleRealValidation}
+                onClick={() => {
+                  void handleRealValidation();
+                }}
                 style={{ marginTop: 12 }}
               >
                 开始真实验证

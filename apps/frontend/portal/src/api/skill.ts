@@ -1,6 +1,6 @@
 import { apiClient } from './client';
 import { ExecutionFlowStep } from './flows';
-import { useAuthStore } from '../store/authStore';
+import { useAuthStore } from '@/shared/store/authStore';
 
 // Types based on auth service DTOs
 export interface ApiEndpoint {

@@ -1,5 +1,5 @@
 import apiClient, { ensureFreshAccessToken } from './client';
-import { useAuthStore } from '../store/authStore';
+import { useAuthStore } from '@/shared/store/authStore';
 import { postSseStream } from './streaming';
 import type { TemplateParamsSchema, TemplateStep } from './template';
 

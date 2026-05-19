@@ -1,7 +1,7 @@
 import { Navigate, Route, Routes } from 'react-router-dom';
 import MainLayout from '@/app/layouts/MainLayout';
 import { AdminRoute, PrivateRoute } from '@/app/router/guards';
-import { portalRouteEntries } from '@/app/router/routeManifest';
+import { portalPageRoutes, portalRouteEntries } from '@/app/router/routeManifest';
 
 const renderProtectedElement = (
   element: React.ReactElement,
@@ -16,8 +16,8 @@ const renderProtectedElement = (
 
 const AppRoutes: React.FC = () => (
   <Routes>
-    {portalRouteEntries
-      .filter((entry) => 'element' in entry && entry.path === '/login')
+    {portalPageRoutes
+      .filter((entry) => entry.path === '/login')
       .map((entry) => (
         <Route key={entry.path} path={entry.path} element={entry.element} />
       ))}

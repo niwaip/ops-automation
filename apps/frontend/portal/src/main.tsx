@@ -5,9 +5,9 @@ import zhCN from 'antd/locale/zh_CN';
 import enUS from 'antd/locale/en_US';
 import jaJP from 'antd/locale/ja_JP';
 import { QueryClient, QueryClientProvider } from 'react-query';
-import App from './App';
-import { useAuthStore } from './store/authStore';
-import './i18n';
+import App from '@/app/App';
+import { useAuthStore } from '@/shared/store/authStore';
+import '@/shared/i18n';
 import './index.css';
 
 const queryClient = new QueryClient({

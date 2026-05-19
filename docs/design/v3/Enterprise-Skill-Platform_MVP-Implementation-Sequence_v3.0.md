@@ -233,8 +233,8 @@
 ### 主要代码位置
 
 - `apps/frontend/portal/src/api/execution.ts`
-- `apps/frontend/portal/src/pages/ExecutionListPage.tsx`
-- `apps/frontend/portal/src/pages/ExecutionDetailPage.tsx`
+- `apps/frontend/portal/src/features/executions/pages/ExecutionListPage.tsx`
+- `apps/frontend/portal/src/features/executions/pages/ExecutionDetailPage.tsx`
 - `apps/frontend/portal/src/components/execution/InlineRecoveryPanel.tsx`
 
 ### 本阶段必须完成的事情
@@ -384,8 +384,8 @@
 2. `services/ai-orchestrator/src/modules/react-engine/react-engine.service.ts`
 3. `services/ai-orchestrator/src/modules/react-engine/prompt-builder.ts`
 4. `apps/frontend/portal/src/api/execution.ts`
-5. `apps/frontend/portal/src/pages/ExecutionListPage.tsx`
-6. `apps/frontend/portal/src/pages/ExecutionDetailPage.tsx`
+5. `apps/frontend/portal/src/features/executions/pages/ExecutionListPage.tsx`
+6. `apps/frontend/portal/src/features/executions/pages/ExecutionDetailPage.tsx`
 7. `apps/frontend/portal/src/components/execution/InlineRecoveryPanel.tsx`
 
 ---

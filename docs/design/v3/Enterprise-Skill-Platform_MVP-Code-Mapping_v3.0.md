@@ -71,8 +71,8 @@
 - 当前最接近 MVP 体验层的落点
 - 现有入口：
   - `src/api/execution.ts`
-  - `src/pages/ExecutionListPage.tsx`
-  - `src/pages/ExecutionDetailPage.tsx`
+  - `src/features/executions/pages/ExecutionListPage.tsx`
+  - `src/features/executions/pages/ExecutionDetailPage.tsx`
   - `src/components/execution/InlineRecoveryPanel.tsx`
   - `src/components/runtime/LiveSessionPreviewCard.tsx`
 - 判断：
@@ -358,7 +358,7 @@
 
 - 服务：`portal`
 - 主要文件：
-  - `src/pages/ExecutionListPage.tsx`
+- `src/features/executions/pages/ExecutionListPage.tsx`
   - `src/api/execution.ts`
 - 当前状态：
   - 页面和 API client 已存在
@@ -369,7 +369,7 @@
 
 - 服务：`portal`
 - 主要文件：
-  - `src/pages/ExecutionDetailPage.tsx`
+- `src/features/executions/pages/ExecutionDetailPage.tsx`
   - `src/api/execution.ts`
 - 当前状态：
   - 页面已存在，包含 steps progress 和 steps table
@@ -380,8 +380,8 @@
 
 - 服务：`portal`
 - 主要文件：
-  - `src/pages/ExecutionDetailPage.tsx`
-  - `src/pages/ExecutionListPage.tsx`
+- `src/features/executions/pages/ExecutionDetailPage.tsx`
+- `src/features/executions/pages/ExecutionListPage.tsx`
   - `src/components/execution/InlineRecoveryPanel.tsx`
   - `src/components/runtime/LiveSessionPreviewCard.tsx`
   - `src/api/execution.ts`
@@ -503,8 +503,8 @@
 5. `services/browser-worker/src/modules/browser/browser.controller.ts`
 6. `services/ai-orchestrator/src/modules/react-engine/react-engine.service.ts`
 7. `services/portal/src/api/execution.ts`
-8. `services/portal/src/pages/ExecutionListPage.tsx`
-9. `services/portal/src/pages/ExecutionDetailPage.tsx`
+8. `apps/frontend/portal/src/features/executions/pages/ExecutionListPage.tsx`
+9. `apps/frontend/portal/src/features/executions/pages/ExecutionDetailPage.tsx`
 10. `apps/frontend/portal/src/components/execution/InlineRecoveryPanel.tsx`
 
 ---

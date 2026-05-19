@@ -1,7 +1,7 @@
 import React from 'react';
 import { Button, Card, Space, Tag } from 'antd';
 import { EyeOutlined } from '@ant-design/icons';
-import { replaceLocalhostWithCurrentHost } from '../../utils/publicUrl';
+import { replaceLocalhostWithCurrentHost } from '@/shared/lib/publicUrl';
 
 interface LiveSessionPreviewCardProps {
   novncUrl: string;
