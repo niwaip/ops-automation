@@ -399,16 +399,29 @@ export class PlaywrightCliAdapter implements BrowserExecutionAdapter {
     const normalizedArgs = args.map((arg, index) => (
       index === 0 ? this.normalizeSemanticRoleSelector(arg) : arg
     ));
-    let result = await this.execCli(sessionId, [command, ...normalizedArgs]);
+    let result: CliExecResult | undefined;
     try {
+      result = await this.execCli(sessionId, [command, ...normalizedArgs]);
       this.assertNoCliError(result, `${command} failed`);
     } catch (error: unknown) {
       const fallbackArgs = this.buildPlaceholderFallbackArgs(command, normalizedArgs, error);
-      if (!fallbackArgs) {
-        throw error;
+      if (fallbackArgs) {
+        try {
+          result = await this.execCli(sessionId, [command, ...fallbackArgs]);
+          this.assertNoCliError(result, `${command} failed`);
+        } catch (fbError) {
+          result = await this.executeIframeFallback(sessionId, command, fallbackArgs).catch(() => undefined);
+          if (!result) throw fbError;
+        }
+      } else {
+        const errorMessage = error instanceof Error ? error.message : String(error || '');
+        if (/does not match any elements|No element found|Timeout/i.test(errorMessage) || /failed/i.test(errorMessage)) {
+          result = await this.executeIframeFallback(sessionId, command, normalizedArgs).catch(() => undefined);
+          if (!result) throw error;
+        } else {
+          throw error;
+        }
       }
-      result = await this.execCli(sessionId, [command, ...fallbackArgs]);
-      this.assertNoCliError(result, `${command} failed`);
     }
 
     return {
@@ -417,6 +430,60 @@ export class PlaywrightCliAdapter implements BrowserExecutionAdapter {
       stdout: result.stdout,
       stderr: result.stderr,
     };
+  }
+
+  private async executeIframeFallback(
+    sessionId: string,
+    command: string,
+    args: string[],
+  ): Promise<CliExecResult> {
+    const session = this.getOrCreateSession(sessionId);
+    const activePageExpr = session.preferLatestTab
+      ? '(page.context().pages().length ? page.context().pages()[page.context().pages().length - 1] : page)'
+      : 'page';
+
+    const target = args[0];
+    if (!target || typeof target !== 'string' || command === 'press' || command === 'drag') {
+      throw new Error(`Iframe fallback not supported for command: ${command}`);
+    }
+
+    let actionCode = '';
+    if (command === 'click') {
+      actionCode = `await loc.first().click({ force: true, timeout: 5000 });`;
+    } else if (command === 'fill') {
+      actionCode = `await loc.first().fill(${JSON.stringify(args[1] || '')}, { timeout: 5000 });`;
+    } else if (command === 'hover') {
+      actionCode = `await loc.first().hover({ timeout: 5000 });`;
+    } else {
+      throw new Error(`Iframe fallback not supported for command: ${command}`);
+    }
+
+    const script = `async page => {
+      const activePage = ${activePageExpr};
+      const frames = activePage.frames();
+      let found = false;
+      for (const frame of frames) {
+        if (frame === activePage.mainFrame()) continue;
+        const loc = frame.locator(${JSON.stringify(target)});
+        if (await loc.count().catch(() => 0) > 0) {
+          try {
+            ${actionCode}
+            found = true;
+            break;
+          } catch (e) {
+            // ignore and try next frame if action fails
+          }
+        }
+      }
+      if (!found) {
+        throw new Error("Iframe fallback failed to find or interact with element");
+      }
+      return "iframe-fallback-success";
+    }`;
+
+    const result = await this.execCli(sessionId, ['run-code', script]);
+    this.assertNoCliError(result, `Iframe fallback ${command} failed`);
+    return result;
   }
 
   private async handleTypeText(
@@ -460,8 +527,28 @@ export class PlaywrightCliAdapter implements BrowserExecutionAdapter {
     const screenshotPath = path.join(this.artifactDir, `${sessionId}-${Date.now()}.png`);
     const target = this.readOptionalStringParam(params, ['target', 'selector']);
     const fullPage = params.fullPage === true;
-    const result = await this.captureScreenshot(sessionId, screenshotPath, { target, fullPage });
-    this.assertNoCliError(result, 'Screenshot failed');
+    let result = await this.captureScreenshot(sessionId, screenshotPath, { target, fullPage });
+    
+    try {
+      this.assertNoCliError(result, 'Screenshot failed');
+    } catch (error: unknown) {
+      if (target) {
+        const errorMessage = error instanceof Error ? error.message : String(error || '');
+        if (/does not match any elements|No element found|Timeout/i.test(errorMessage) || /failed/i.test(errorMessage)) {
+          try {
+            result = await this.captureIframeScreenshotFallback(sessionId, screenshotPath, target);
+            this.assertNoCliError(result, 'Iframe screenshot failed');
+          } catch (fbError) {
+            throw error; // Throw original error
+          }
+        } else {
+          throw error;
+        }
+      } else {
+        throw error;
+      }
+    }
+    
     const screenshotBase64 = await this.readScreenshotAsBase64(screenshotPath);
 
     return {
@@ -476,6 +563,42 @@ export class PlaywrightCliAdapter implements BrowserExecutionAdapter {
       },
       data: { path: screenshotPath },
     };
+  }
+
+  private async captureIframeScreenshotFallback(
+    sessionId: string,
+    screenshotPath: string,
+    target: string,
+  ): Promise<CliExecResult> {
+    const session = this.getOrCreateSession(sessionId);
+    const activePageExpr = session.preferLatestTab
+      ? '(page.context().pages().length ? page.context().pages()[page.context().pages().length - 1] : page)'
+      : 'page';
+    
+    const script = `async page => {
+      const activePage = ${activePageExpr};
+      const frames = activePage.frames();
+      let locator = null;
+      for (const frame of frames) {
+        if (frame === activePage.mainFrame()) continue;
+        const loc = frame.locator(${JSON.stringify(target)});
+        if (await loc.count().catch(() => 0) > 0) {
+          locator = loc.first();
+          break;
+        }
+      }
+      if (!locator) {
+        throw new Error("Iframe fallback failed to find element for screenshot");
+      }
+      await locator.scrollIntoViewIfNeeded().catch(() => {});
+      await locator.screenshot({
+        path: ${JSON.stringify(screenshotPath)},
+        timeout: ${this.cliActionTimeoutMs},
+      });
+      return JSON.stringify({ path: ${JSON.stringify(screenshotPath)}, target: ${JSON.stringify(target)}, iframe: true });
+    }`;
+    
+    return this.execCli(sessionId, ['run-code', script]);
   }
 
   private async handleSnapshot(
@@ -569,7 +692,14 @@ export class PlaywrightCliAdapter implements BrowserExecutionAdapter {
       : 'page';
     const script = `async page => {
       const activePage = ${activePageExpr};
-      const count = await activePage.locator(${JSON.stringify(selector)}).count().catch(() => 0);
+      let count = await activePage.locator(${JSON.stringify(selector)}).count().catch(() => 0);
+      if (count === 0) {
+        for (const frame of activePage.frames()) {
+          if (frame === activePage.mainFrame()) continue;
+          count = await frame.locator(${JSON.stringify(selector)}).count().catch(() => 0);
+          if (count > 0) break;
+        }
+      }
       return JSON.stringify({ matched: count > 0 });
     }`;
     const result = await this.execCli(sessionId, ['run-code', script]);
@@ -586,8 +716,19 @@ export class PlaywrightCliAdapter implements BrowserExecutionAdapter {
       : 'page';
     const script = `async page => {
       const activePage = ${activePageExpr};
-      const bodyText = await activePage.evaluate(() => document.body?.innerText || '').catch(() => '');
-      return JSON.stringify({ matched: bodyText.includes(${JSON.stringify(text)}) });
+      let bodyText = await activePage.evaluate(() => document.body?.innerText || '').catch(() => '');
+      let matched = bodyText.includes(${JSON.stringify(text)});
+      if (!matched) {
+        for (const frame of activePage.frames()) {
+          if (frame === activePage.mainFrame()) continue;
+          const frameText = await frame.evaluate(() => document.body?.innerText || '').catch(() => '');
+          if (frameText.includes(${JSON.stringify(text)})) {
+            matched = true;
+            break;
+          }
+        }
+      }
+      return JSON.stringify({ matched });
     }`;
     const result = await this.execCli(sessionId, ['run-code', script]);
     this.assertNoCliError(result, 'Check page text failed');
@@ -609,7 +750,21 @@ export class PlaywrightCliAdapter implements BrowserExecutionAdapter {
     const script = selector
       ? `async page => {
           const activePage = page;
-          await activePage.locator(${JSON.stringify(selector)}).first().waitFor({ timeout: ${duration} });
+          let found = false;
+          try {
+            await activePage.locator(${JSON.stringify(selector)}).first().waitFor({ timeout: ${duration} });
+            found = true;
+          } catch (e) {
+            for (const frame of activePage.frames()) {
+              if (frame === activePage.mainFrame()) continue;
+              try {
+                await frame.locator(${JSON.stringify(selector)}).first().waitFor({ timeout: ${duration} });
+                found = true;
+                break;
+              } catch (e2) {}
+            }
+          }
+          if (!found) throw new Error("Timeout waiting for selector in page and iframes");
           return "selector-ready";
         }`
       : `async page => { await page.waitForTimeout(${duration}); return "waited-${duration}"; }`;
@@ -679,14 +834,39 @@ export class PlaywrightCliAdapter implements BrowserExecutionAdapter {
     const script = selector
       ? `async page => {
           const activePage = ${activePageExpr};
-          return await activePage.evaluate(({ selector, maxLength }) => {
+          let text = await activePage.evaluate(({ selector, maxLength }) => {
             const el = document.querySelector(selector);
-            return (el?.textContent || '').slice(0, maxLength);
+            return el ? (el.textContent || '').slice(0, maxLength) : null;
           }, { selector: ${JSON.stringify(selector)}, maxLength: ${maxLength} });
+          
+          if (text === null) {
+            for (const frame of activePage.frames()) {
+              if (frame === activePage.mainFrame()) continue;
+              const frameText = await frame.evaluate(({ selector, maxLength }) => {
+                const el = document.querySelector(selector);
+                return el ? (el.textContent || '').slice(0, maxLength) : null;
+              }, { selector: ${JSON.stringify(selector)}, maxLength: ${maxLength} }).catch(() => null);
+              if (frameText !== null) {
+                text = frameText;
+                break;
+              }
+            }
+          }
+          return text || '';
         }`
       : `async page => {
           const activePage = ${activePageExpr};
-          return await activePage.evaluate((maxLength) => document.body.innerText.slice(0, maxLength), ${maxLength});
+          let text = await activePage.evaluate((maxLength) => document.body ? document.body.innerText.slice(0, maxLength) : '', ${maxLength});
+          if (!text || text.length < 100) {
+            for (const frame of activePage.frames()) {
+              if (frame === activePage.mainFrame()) continue;
+              const frameText = await frame.evaluate((maxLength) => document.body ? document.body.innerText.slice(0, maxLength) : '', ${maxLength}).catch(() => '');
+              if (frameText && frameText.length > text.length) {
+                text = frameText;
+              }
+            }
+          }
+          return text;
         }`;
 
     const result = await this.execCli(sessionId, ['run-code', script]);
