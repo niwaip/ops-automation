@@ -1159,14 +1159,9 @@ export class PlannerService {
   ): NonNullable<RecognizeParamsDTO['params_schema']>['properties'] {
     return Object.fromEntries(
       Object.entries(properties).map(([name, schema]) => {
-        const { required: _required, default: schemaDefault, ...rest } = schema;
+        const { required: _required, default: _schemaDefault, ...rest } = schema;
         const recognizerProperty: NonNullable<RecognizeParamsDTO['params_schema']>['properties'][string] = {
           ...rest,
-          ...(typeof schemaDefault === 'string'
-            || typeof schemaDefault === 'number'
-            || typeof schemaDefault === 'boolean'
-            ? { default: schemaDefault }
-            : {}),
         };
         return [name, recognizerProperty];
       }),

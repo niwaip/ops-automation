@@ -8,6 +8,7 @@ import { Avatar, Button, Modal, Space, Switch, Tag, Typography, message as antdM
 import { UserOutlined, RobotOutlined, FileTextOutlined, DownOutlined, RightOutlined, CopyOutlined, RedoOutlined, CheckOutlined, CloseOutlined, LoadingOutlined, EyeOutlined, DownloadOutlined, ThunderboltOutlined } from '@ant-design/icons';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import { buildBrowserOutputDisplay, extractBrowserExecutionResult } from '@/features/executions/lib/browser';
 import { ChatMessage } from './types';
 import { useAuthStore } from '@/shared/store/authStore';
 import { replaceLocalhostWithCurrentHost } from '@/shared/lib/publicUrl';
@@ -134,7 +135,8 @@ const beautifyText = (text: string, useDivider = true): string => {
   const normalized = text
     .replace(/\r\n/g, '\n') // 统一换行符
     .replace(/[ \t]+\n/g, '\n') // 去除行尾空格
-    .replace(/\n\s*\n\s*\n+/g, useDivider ? '\n\n---\n\n' : '\n\n') // 将3个及以上的连续换行替换为分割线或双换行
+    .replace(/\n\s*\n\s*\n+/g, useDivider ? '\n\n' : '\n\n') // 压缩过多空行，避免聊天内容被拉得过高
+    .replace(/\n\s*\n+/g, '\n\n') // 保留单个空行作为段落分隔
     .replace(/^[\s\n]+|[\s\n]+$/g, ''); // 去除首尾空白
   return normalized;
 };
@@ -146,11 +148,42 @@ const looksLikeVerboseExecutionContent = (text?: string): boolean => {
   return /stepResults|### Ran Playwright code|snapshotId|stdout|executedCommands|任务已完成[,，]?\s*返回结果|```json/i.test(raw);
 };
 
-const compactExecutionText = (text?: string): string => {
+const summarizeBrowserExecutionResult = (value: unknown): string | null => {
+  const result = extractBrowserExecutionResult(value);
+  if (!result || result.stepResults.length === 0) {
+    return null;
+  }
+
+  const lastStep = result.stepResults[result.stepResults.length - 1];
+  const lastOutput = buildBrowserOutputDisplay(lastStep?.output || null);
+  const snapshotCount = new Set(
+    [
+      result.snapshotId,
+      ...result.stepResults.map((step) => step.snapshotId),
+    ].filter((item): item is string => Boolean(item)),
+  ).size;
+  const finalStatus = lastOutput.status === 'success'
+    ? '成功'
+    : lastOutput.status === 'failed'
+      ? '失败'
+      : lastOutput.status || '已完成';
+  const lastAction = lastStep?.name || lastStep?.action || lastOutput.command;
+
+  return [
+    '浏览器执行已完成。',
+    `- 执行步骤：${result.stepResults.length}`,
+    ...(lastAction ? [`- 最后一步：${lastAction}`] : []),
+    `- 最后状态：${finalStatus}`,
+    ...(snapshotCount > 0 ? [`- 快照截图：${snapshotCount} 个`] : []),
+    '- 详细步骤、截图和原始输出请点击下方链接查看。',
+  ].join('\n');
+};
+
+const compactExecutionText = (text?: string, executionResultData?: unknown): string => {
   const raw = String(text || '').trim();
   if (!raw) return '';
   if (looksLikeVerboseExecutionContent(raw)) {
-    return '浏览器执行已完成，详细信息请通过下方链接查看。';
+    return summarizeBrowserExecutionResult(executionResultData) || '浏览器执行已完成，详细信息请通过下方链接查看。';
   }
   return raw;
 };
@@ -299,10 +332,10 @@ const ChatMessageComponent: React.FC<ChatMessageProps> = ({
   const compactAnswer = useMemo(
     () => (
       hasExecutionContext
-        ? compactExecutionText(answerWithoutTaskCheckbox)
+        ? compactExecutionText(answerWithoutTaskCheckbox, finalResultData)
         : answerWithoutTaskCheckbox
     ),
-    [hasExecutionContext, answerWithoutTaskCheckbox],
+    [hasExecutionContext, answerWithoutTaskCheckbox, finalResultData],
   );
   const executionStepCount = useMemo(
     () => getExecutionStepCount(finalResultData),
@@ -316,9 +349,9 @@ const ChatMessageComponent: React.FC<ChatMessageProps> = ({
   const handleCopy = async () => {
     try {
       await navigator.clipboard.writeText(answerWithoutTaskCheckbox || rawContent);
-      antdMessage.success('已复制');
+      void antdMessage.success('已复制');
     } catch {
-      antdMessage.error('复制失败');
+      void antdMessage.error('复制失败');
     }
   };
 
@@ -328,9 +361,9 @@ const ChatMessageComponent: React.FC<ChatMessageProps> = ({
     }
     try {
       await navigator.clipboard.writeText(combinedPromptText);
-      antdMessage.success('Prompt 已复制');
+      void antdMessage.success('Prompt 已复制');
     } catch {
-      antdMessage.error('Prompt 复制失败');
+      void antdMessage.error('Prompt 复制失败');
     }
   };
 
@@ -535,7 +568,10 @@ const ChatMessageComponent: React.FC<ChatMessageProps> = ({
     }
 
     if (finalResult) {
-      const fixedFinalResult = compactExecutionText(beautifyText(fixLocalhostLink(finalResult) || ''));
+      const fixedFinalResult = compactExecutionText(
+        beautifyText(fixLocalhostLink(finalResult) || ''),
+        finalResultData,
+      );
       return (
         <div className="chat-outcome-card success">
           <div className="chat-outcome-title">{hasBusinessResult ? '任务结果' : '任务完成'}</div>
@@ -561,7 +597,10 @@ const ChatMessageComponent: React.FC<ChatMessageProps> = ({
     }
 
     if (finalSummary || waitingInputSummary) {
-      const summaryToDisplay = beautifyText(waitingInputSummary || finalSummary || '');
+      const summaryToDisplay = compactExecutionText(
+        beautifyText(waitingInputSummary || finalSummary || ''),
+        finalResultData,
+      );
       return (
         <div className={`chat-outcome-card ${isWaitingInput || isPendingApproval ? 'waiting' : 'neutral'}`}>
           <div className={`chat-outcome-title ${showRunningState ? 'running' : ''}`}>
@@ -637,7 +676,9 @@ const ChatMessageComponent: React.FC<ChatMessageProps> = ({
                 size="small"
                 icon={<CheckOutlined />}
                 loading={approvalAction === 'approve'}
-                onClick={handleApproveExecution}
+                onClick={() => {
+                  void handleApproveExecution();
+                }}
               >
                 批准
               </Button>
@@ -646,7 +687,9 @@ const ChatMessageComponent: React.FC<ChatMessageProps> = ({
                 size="small"
                 icon={<CloseOutlined />}
                 loading={approvalAction === 'reject'}
-                onClick={handleRejectExecution}
+                onClick={() => {
+                  void handleRejectExecution();
+                }}
               >
                 驳回
               </Button>
@@ -672,7 +715,7 @@ const ChatMessageComponent: React.FC<ChatMessageProps> = ({
         width={960}
         destroyOnHidden
         footer={[
-          <Button key="copy" icon={<CopyOutlined />} onClick={handleCopyPrompt}>
+          <Button key="copy" icon={<CopyOutlined />} onClick={() => { void handleCopyPrompt(); }}>
             复制 Prompt
           </Button>,
           <Button key="close" type="primary" onClick={() => setPromptViewerOpen(false)}>
@@ -800,7 +843,9 @@ const ChatMessageComponent: React.FC<ChatMessageProps> = ({
                       size="small"
                       type="text"
                       icon={<CopyOutlined />}
-                      onClick={handleCopy}
+                      onClick={() => {
+                        void handleCopy();
+                      }}
                       className="chat-action-btn"
                     >
                       复制

@@ -19,7 +19,7 @@ const PROVIDER_API_KEYS_FILE = path.join(DATA_DIR, 'ai-provider-api-keys.json');
 
 interface PersistedModel {
   model: AIModelDTO;
-  apiKeyRef: APIKeyReference;
+  apiKeyRef?: APIKeyReference;
 }
 
 interface PersistedApiKey {
@@ -38,7 +38,7 @@ interface PersistedProviderApiKey {
 }
 
 export interface ModelSelectionPolicyContext {
-  mode?: 'chat' | 'task';
+  mode?: 'chat' | 'task' | 'audio_transcription';
   userRoles?: string[];
 }
 
@@ -70,6 +70,7 @@ export class ModelService implements OnModuleInit {
       global: defaultScope.global === true || normalized.default === true,
       admin_chat: defaultScope.admin_chat === true,
       admin_task: defaultScope.admin_task === true,
+      audio_transcription: defaultScope.audio_transcription === true,
     };
 
     const routingPreferences = typeof normalized.routing_preferences === 'object' && normalized.routing_preferences
@@ -144,6 +145,7 @@ export class ModelService implements OnModuleInit {
     return (scope?.global ? 4 : 0)
       + (scope?.admin_chat ? 3 : 0)
       + (scope?.admin_task ? 3 : 0)
+      + (scope?.audio_transcription ? 3 : 0)
       + (model.config.default === true ? 1 : 0);
   }
 
@@ -238,8 +240,8 @@ export class ModelService implements OnModuleInit {
   }
 
   private syncProviderConfigFromModel(modelId: string, model: AIModelDTO): void {
-    const apiKey = this.apiKeys.get(modelId) || this.resolveApiKey(this.apiKeyReferences.get(modelId)!);
     const modelRef = this.apiKeyReferences.get(modelId);
+    const apiKey = this.apiKeys.get(modelId) || (modelRef ? this.resolveApiKey(modelRef) : null);
     const providerConfig = this.upsertProviderConfig({
       provider: model.provider,
       api_endpoint: model.api_endpoint,
@@ -259,7 +261,7 @@ export class ModelService implements OnModuleInit {
 
   private clearDefaultScopeOnOtherModels(targetModelId: string, config: AIModelConfig): void {
     const targetScope = config.default_scope;
-    if (!targetScope?.global && !targetScope?.admin_chat && !targetScope?.admin_task) {
+    if (!targetScope?.global && !targetScope?.admin_chat && !targetScope?.admin_task && !targetScope?.audio_transcription) {
       return;
     }
 
@@ -284,6 +286,10 @@ export class ModelService implements OnModuleInit {
         nextConfig.default_scope.admin_task = false;
         changed = true;
       }
+      if (targetScope.audio_transcription && nextConfig.default_scope?.audio_transcription) {
+        nextConfig.default_scope.audio_transcription = false;
+        changed = true;
+      }
 
       if (changed) {
         this.models.set(modelId, {
@@ -295,7 +301,7 @@ export class ModelService implements OnModuleInit {
     }
   }
 
-  private selectScopedDefaultModel(scope: 'global' | 'admin_chat' | 'admin_task'): AIModelDTO | null {
+  private selectScopedDefaultModel(scope: 'global' | 'admin_chat' | 'admin_task' | 'audio_transcription'): AIModelDTO | null {
     const activeModels = this.getActiveModelsWithClients();
     return activeModels.find((model) => model.config.default_scope?.[scope] === true) || null;
   }
@@ -370,6 +376,11 @@ export class ModelService implements OnModuleInit {
     const userRoles = context?.userRoles || [];
     const isAdmin = userRoles.includes('admin');
 
+    if (context?.mode === 'audio_transcription') {
+      return this.selectScopedDefaultModel('audio_transcription')
+        || this.getDefaultModel();
+    }
+
     if (isAdmin && context?.mode === 'task') {
       return this.selectScopedDefaultModel('admin_task')
         || this.selectScopedDefaultModel('admin_chat')
@@ -421,7 +432,9 @@ export class ModelService implements OnModuleInit {
         for (const item of persisted) {
           this.models.set(item.model.id, item.model);
           item.model.config = this.normalizeModelConfig(item.model.config);
-          this.apiKeyReferences.set(item.model.id, item.apiKeyRef);
+          if (item.apiKeyRef) {
+            this.apiKeyReferences.set(item.model.id, item.apiKeyRef);
+          }
           this.logger.debug(`Loaded model: ${item.model.name} (${item.model.id})`);
         }
 
@@ -451,9 +464,10 @@ export class ModelService implements OnModuleInit {
       // Initialize clients for loaded models
       for (const [id, model] of this.models) {
         const providerConfig = this.getProviderConfigForModel(model);
+        const modelRef = this.apiKeyReferences.get(id);
         const apiKey = providerConfig
           ? this.resolveProviderCredential(providerConfig.id)
-          : this.apiKeys.get(id) || this.resolveApiKey(this.apiKeyReferences.get(id)!, id);
+          : this.apiKeys.get(id) || (modelRef ? this.resolveApiKey(modelRef, id) : null);
         if (apiKey) {
           const client = this.buildClient(model, apiKey);
           this.clients.set(id, client);
@@ -506,9 +520,7 @@ export class ModelService implements OnModuleInit {
       const modelsData: PersistedModel[] = [];
       for (const [id, model] of this.models) {
         const apiKeyRef = this.apiKeyReferences.get(id);
-        if (apiKeyRef) {
-          modelsData.push({ model, apiKeyRef });
-        }
+        modelsData.push({ model, apiKeyRef });
       }
       fs.writeFileSync(MODELS_FILE, JSON.stringify(modelsData, null, 2));
       this.logger.log(`Wrote ${modelsData.length} models to ${MODELS_FILE}`);
@@ -591,10 +603,10 @@ export class ModelService implements OnModuleInit {
       existing.activeModelCount += model.status === 'active' ? 1 : 0;
       existing.hasCredential = existing.hasCredential || this.hasConfiguredCredential(model.id);
       existing.advancedModelCount += model.config.capability_tier === 'advanced' ? 1 : 0;
-      const scopeKeys = (['global', 'admin_chat', 'admin_task'] as const).filter((scope) => {
+      const scopeKeys = (['global', 'admin_chat', 'admin_task', 'audio_transcription'] as const).filter((scope) => {
         return model.config.default_scope?.[scope] === true;
       });
-      existing.defaultScopes = Array.from(new Set([...existing.defaultScopes, ...scopeKeys]));
+      existing.defaultScopes = Array.from(new Set([...existing.defaultScopes, ...scopeKeys] as any));
       grouped.set(groupKey, existing);
     }
 
@@ -687,7 +699,8 @@ export class ModelService implements OnModuleInit {
       };
       this.models.set(modelId, updatedModel);
 
-      const apiKey = this.resolveProviderCredential(id) || this.apiKeys.get(modelId) || this.resolveApiKey(this.apiKeyReferences.get(modelId)!, modelId);
+      const modelRef = this.apiKeyReferences.get(modelId);
+      const apiKey = this.resolveProviderCredential(id) || this.apiKeys.get(modelId) || (modelRef ? this.resolveApiKey(modelRef, modelId) : null);
       if (apiKey) {
         this.clients.set(modelId, this.buildClient(updatedModel, apiKey));
       }
@@ -1043,9 +1056,10 @@ export class ModelService implements OnModuleInit {
 
     // Reinitialize client if needed
     if (updates.api_endpoint || updates.name || updates.api_key || updates.providerConfigId) {
+      const modelRef = this.apiKeyReferences.get(id);
       const apiKey = this.resolveProviderCredential(providerConfig.id)
         || this.apiKeys.get(id)
-        || this.resolveApiKey(this.apiKeyReferences.get(id)!, id);
+        || (modelRef ? this.resolveApiKey(modelRef, id) : null);
       if (apiKey) {
         const client = this.buildClient(updatedModel, apiKey);
         this.clients.set(id, client);

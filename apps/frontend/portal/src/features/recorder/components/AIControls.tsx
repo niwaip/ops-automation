@@ -164,13 +164,60 @@ interface RecorderDebugChatResponse {
   exportArtifacts?: RecorderDebugExportArtifacts;
 }
 
+interface TemplateInfo {
+  tool: string;
+  params: Record<string, unknown>;
+  description?: string;
+}
+
+interface BrowserCommandExecutionResult {
+  status?: string;
+  message?: string;
+  screenshot?: string;
+  stdout?: string;
+  data?: {
+    url?: string;
+  };
+  template_info?: TemplateInfo;
+}
+
+interface BrowserCommandExecutionResponse {
+  success?: boolean;
+  message?: string;
+  results?: BrowserCommandExecutionResult[];
+}
+
+interface BrowserInitResponse {
+  success?: boolean;
+  message?: string;
+  endpoints?: {
+    novnc?: string;
+    cdp?: string;
+  };
+}
+
+interface CommandHistoryResult {
+  status?: string;
+  message?: string;
+  screenshot?: string;
+  stdout?: string;
+  data?: {
+    url?: string;
+  };
+  template_info?: TemplateInfo;
+  observation?: RecorderDebugObservation;
+  commands?: MCPCommand[];
+  execution?: RecorderDebugChatResponse['execution'];
+  exportArtifacts?: RecorderDebugExportArtifacts;
+}
+
 // Command history entry
 interface CommandHistoryEntry {
   id: string;
   type: 'user' | 'ai' | 'system';
   content: string;
   commands?: MCPCommand[];
-  result?: any;
+  result?: CommandHistoryResult;
   timestamp: Date;
   backend?: ExecutionBackend;
   sessionId?: string;
@@ -237,13 +284,68 @@ const buildCompactHistoryBubbleText = (entry: CommandHistoryEntry): string => {
   if (text.length > 280) {
     return `${text.slice(0, 260)}...（内容已折叠）`;
   }
-  if (text.length > 120 && /^[\s\S]*[\{\[][\s\S]*[\}\]][\s\S]*$/.test(text)) {
+  if (text.length > 120 && /^[\s\S]*(?:\{|\[)[\s\S]*(?:\}|\])[\s\S]*$/.test(text)) {
     return '已返回结构化内容，详细结果已折叠。';
   }
   return text;
 };
 
 const createRuntimeSessionId = () => `recorder-ui-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+
+const resolveErrorMessage = (error: unknown, fallback = '未知错误'): string => {
+  if (typeof error !== 'object' || error === null) {
+    return fallback;
+  }
+
+  const errorRecord = error as {
+    message?: unknown;
+    response?: {
+      data?: {
+        message?: unknown;
+      };
+    };
+  };
+
+  if (typeof errorRecord.response?.data?.message === 'string') {
+    return errorRecord.response.data.message;
+  }
+
+  if (typeof errorRecord.message === 'string') {
+    return errorRecord.message;
+  }
+
+  return fallback;
+};
+
+const getPrimaryExecutionResult = (
+  payload: BrowserCommandExecutionResponse,
+  fallbackMessage: string,
+): BrowserCommandExecutionResult => {
+  const failedResult = payload.results?.find((item) => item.status === 'error');
+  if (failedResult) {
+    return failedResult;
+  }
+
+  const firstResult = payload.results?.[0];
+  if (firstResult) {
+    return firstResult;
+  }
+
+  return {
+    status: payload.success === false ? 'error' : 'success',
+    message: payload.message || fallbackMessage,
+  };
+};
+
+const getStringParam = (params: Record<string, unknown>, key: string): string | undefined => {
+  const value = params[key];
+  return typeof value === 'string' ? value : undefined;
+};
+
+const getNumberParam = (params: Record<string, unknown>, key: string): number | undefined => {
+  const value = params[key];
+  return typeof value === 'number' ? value : undefined;
+};
 
 // Template step - deterministic command for replay
 interface TemplateStep {
@@ -435,7 +537,7 @@ const AIControls: React.FC<AIControlsProps> = ({
     };
   }, []);
 
-  const extractCurrentPageUrl = (result: any): string | undefined => {
+  const extractCurrentPageUrl = (result?: BrowserCommandExecutionResult): string | undefined => {
     const directUrl = typeof result?.data?.url === 'string' ? result.data.url : undefined;
     if (directUrl) {
       return directUrl;
@@ -530,8 +632,8 @@ const AIControls: React.FC<AIControlsProps> = ({
 
   const getScreenshotModeLabel = () => (autoAppendScreenshots ? '含自动截图' : '不含自动截图');
 
-  const getFailedExecutionMessage = (payload: any): string => {
-    const firstFailedResult = payload?.results?.find((item: any) => item?.status === 'error');
+  const getFailedExecutionMessage = (payload?: BrowserCommandExecutionResponse): string => {
+    const firstFailedResult = payload?.results?.find((item) => item.status === 'error');
     return (
       firstFailedResult?.message ||
       payload?.message ||
@@ -539,19 +641,19 @@ const AIControls: React.FC<AIControlsProps> = ({
     );
   };
 
-  const isExecutionFailed = (payload: any): boolean => {
+  const isExecutionFailed = (payload?: BrowserCommandExecutionResponse): boolean => {
     if (!payload) {
       return true;
     }
     if (payload.success === false) {
       return true;
     }
-    return Array.isArray(payload.results) && payload.results.some((item: any) => item?.status === 'error');
+    return Array.isArray(payload.results) && payload.results.some((item) => item.status === 'error');
   };
 
   // Execute MCP commands directly
   const executeCommandMutation = useMutation(
-    async (commands: MCPCommand[]) => {
+    async (commands: MCPCommand[]): Promise<BrowserCommandExecutionResponse> => {
       const commandsWithWait = appendDefaultWaitCommands(commands);
       console.log('[AIControls] Executing commands:', commands, 'backend:', executionBackend);
       return apiClient.post('/browser/execute', {
@@ -561,28 +663,20 @@ const AIControls: React.FC<AIControlsProps> = ({
       });
     },
     {
-      onSuccess: (data: any) => {
+      onSuccess: (data) => {
         const executionFailed = isExecutionFailed(data);
         const resultMessage = getFailedExecutionMessage(data);
         console.log('[AIControls] Commands executed:', data);
         if (executionFailed) {
-          message.error(resultMessage);
+          void message.error(resultMessage);
         } else {
-          message.success(t('recorder:ai.commandExecuted'));
+          void message.success(t('recorder:ai.commandExecuted'));
         }
         // Update last history entry with result
         setHistory((prev) => {
           const last = prev[prev.length - 1];
           if (last && last.type === 'ai') {
-            // Extract the first result from the results array
-            // data structure: { success: true, results: [{ status, message, template_info, ... }] }
-            const firstResult = executionFailed
-              ? (data?.results?.find((item: any) => item?.status === 'error') || {
-                  status: 'error',
-                  message: resultMessage,
-                  data,
-                })
-              : (data?.results?.[0] || data);
+            const firstResult = getPrimaryExecutionResult(data, resultMessage);
             const nextPageUrl = extractCurrentPageUrl(firstResult);
             if (nextPageUrl) {
               setCurrentPageUrl(nextPageUrl);
@@ -592,16 +686,16 @@ const AIControls: React.FC<AIControlsProps> = ({
           return prev;
         });
       },
-      onError: (error: any) => {
+      onError: (error: unknown) => {
         console.error('[AIControls] Command execution failed:', error);
-        message.error(t('recorder:ai.executionFailed'));
+        void message.error(t('recorder:ai.executionFailed'));
         // Add error to history but don't block
         setHistory((prev) => [
           ...prev,
           {
             id: Date.now().toString(),
             type: 'system',
-            content: `执行失败: ${error.message || '未知错误'}，可以继续尝试其他命令`,
+            content: `执行失败: ${resolveErrorMessage(error)}，可以继续尝试其他命令`,
             timestamp: new Date(),
             backend: executionBackend,
           },
@@ -669,7 +763,7 @@ const AIControls: React.FC<AIControlsProps> = ({
           ]);
         }
       },
-      onError: (error: any) => {
+      onError: (error: unknown) => {
         console.error('[AIControls] Parse command failed:', error);
         // Don't show message.error to avoid blocking
         // Add error to history, allow continuing
@@ -678,7 +772,7 @@ const AIControls: React.FC<AIControlsProps> = ({
           {
             id: Date.now().toString(),
             type: 'system',
-            content: `解析失败: ${error.message || '未知错误'}，请尝试其他表达方式`,
+            content: `解析失败: ${resolveErrorMessage(error)}，请尝试其他表达方式`,
             timestamp: new Date(),
             backend: executionBackend,
           },
@@ -689,7 +783,7 @@ const AIControls: React.FC<AIControlsProps> = ({
 
   // Initialize browser session
   const initBrowserMutation = useMutation(
-    async () => {
+    async (): Promise<BrowserInitResponse> => {
       console.log('[AIControls] Initializing browser with backend:', executionBackend);
       return apiClient.post('/browser/init', {
         backend: executionBackend,
@@ -697,12 +791,12 @@ const AIControls: React.FC<AIControlsProps> = ({
       });
     },
     {
-      onSuccess: (data: any) => {
+      onSuccess: (data) => {
         if (!data?.success) {
           const errorMessage = data?.message || '浏览器初始化失败';
           setIsBrowserReady(false);
           onBrowserReady?.(false);
-          message.error(errorMessage);
+          void message.error(errorMessage);
           setHistory((prev) => [
             ...prev,
             {
@@ -720,7 +814,7 @@ const AIControls: React.FC<AIControlsProps> = ({
         if (data.endpoints) {
           onBrowserEndpoints?.(data.endpoints);
         }
-        message.success(t('recorder:ai.browserReady'));
+        void message.success(t('recorder:ai.browserReady'));
         setHistory((prev) => [
           ...prev,
           {
@@ -732,15 +826,15 @@ const AIControls: React.FC<AIControlsProps> = ({
           },
         ]);
       },
-      onError: (error: any) => {
+      onError: (error: unknown) => {
         console.error('[AIControls] Browser init failed:', error);
-        message.error(t('recorder:ai.browserInitFailed'));
+        void message.error(t('recorder:ai.browserInitFailed'));
         setHistory((prev) => [
           ...prev,
           {
             id: Date.now().toString(),
             type: 'system',
-            content: `初始化失败: ${error.message || '未知错误'}，请检查浏览器服务是否运行`,
+            content: `初始化失败: ${resolveErrorMessage(error)}，请检查浏览器服务是否运行`,
             timestamp: new Date(),
             backend: executionBackend,
           },
@@ -810,7 +904,7 @@ const AIControls: React.FC<AIControlsProps> = ({
           message: userMessage,
           backend: executionBackend,
         });
-        const resultPayload: any = {
+        const resultPayload: CommandHistoryResult = {
           status: data.status,
           observation: data.observation,
           commands: data.commands,
@@ -836,14 +930,14 @@ const AIControls: React.FC<AIControlsProps> = ({
         if (data.currentPageUrl || data.observation?.currentPageUrl) {
           setCurrentPageUrl(data.currentPageUrl || data.observation?.currentPageUrl);
         }
-        message.success('对话已处理');
-      } catch (error: any) {
+        void message.success('对话已处理');
+      } catch (error: unknown) {
         setHistory((prev) => [
           ...prev.filter((h) => h.id !== parsingId),
           {
             id: Date.now().toString(),
             type: 'system',
-            content: `处理失败: ${error?.message || '未知错误'}`,
+            content: `处理失败: ${resolveErrorMessage(error)}`,
             timestamp: new Date(),
             backend: executionBackend,
           },
@@ -941,8 +1035,8 @@ const AIControls: React.FC<AIControlsProps> = ({
   };
 
   const handleCopyCommand = (command: MCPCommand) => {
-    navigator.clipboard.writeText(JSON.stringify(command, null, 2));
-    message.success(t('common:copied'));
+    void navigator.clipboard.writeText(JSON.stringify(command, null, 2));
+    void message.success(t('common:copied'));
   };
 
   // Remove step from template
@@ -960,7 +1054,7 @@ const AIControls: React.FC<AIControlsProps> = ({
   // Compile template to executable script with parameter extraction
   const handleCompileTemplate = () => {
     if (templateSteps.length === 0) {
-      message.warning('模版为空，请先添加命令');
+      void message.warning('模版为空，请先添加命令');
       return;
     }
 
@@ -977,7 +1071,7 @@ const AIControls: React.FC<AIControlsProps> = ({
   // Save compiled template to backend
   const handleSaveCompiledTemplate = async () => {
     if (templateSteps.length === 0) {
-      message.warning('模版为空，请先添加命令');
+      void message.warning('模版为空，请先添加命令');
       return;
     }
 
@@ -1057,16 +1151,16 @@ const AIControls: React.FC<AIControlsProps> = ({
         created_by: user?.id || 'ai_recorder',
       });
 
-      message.success(`模版已保存: ${createdTemplate.name}`);
+      void message.success(`模版已保存: ${createdTemplate.name}`);
       setShowScriptModal(false);
       // Store the template ID for immediate testing (don't clear template steps yet)
       setSavedTemplateId(createdTemplate.id);
       setTemplateName('');
-      message.info('模版已保存，可以点击"测试模版"按钮进行测试', 5);
-    } catch (error: any) {
+      void message.info('模版已保存，可以点击"测试模版"按钮进行测试', 5);
+    } catch (error: unknown) {
       console.error('Failed to save compiled template:', error);
-      const errorMsg = error.response?.data?.message || error.message || '未知错误';
-      message.error(`保存失败: ${errorMsg}`);
+      const errorMsg = resolveErrorMessage(error);
+      void message.error(`保存失败: ${errorMsg}`);
     }
   };
 
@@ -1225,75 +1319,90 @@ const AIControls: React.FC<AIControlsProps> = ({
 
     steps.forEach((step, index) => {
       const stepPrefix = `step${index + 1}`;
+      const selector = getStringParam(step.params, 'selector');
+      const text = getStringParam(step.params, 'text');
+      const url = getStringParam(step.params, 'url');
+      const direction = getStringParam(step.params, 'direction');
+      const duration = getNumberParam(step.params, 'duration');
+      const key = getStringParam(step.params, 'key');
+      const query = getStringParam(step.params, 'query');
+      const inputSelector = getStringParam(step.params, 'input_selector');
+      const submitMethod = getStringParam(step.params, 'submit_method');
+      const buttonSelector = getStringParam(step.params, 'button_selector');
+      const amount = getNumberParam(step.params, 'amount');
       lines.push(`  // Step ${index + 1}: ${step.description}`);
 
       switch (step.tool) {
-        case 'navigate':
-          const urlVar = params[`${stepPrefix}_url`] ? `${stepPrefix}_url` : `'${step.params.url}'`;
+        case 'navigate': {
+          const urlVar = params[`${stepPrefix}_url`] ? `${stepPrefix}_url` : `'${url || ''}'`;
           lines.push(`  await page.goto(${urlVar});`);
           break;
+        }
         case 'click':
           if (params[`${stepPrefix}_selector`]) {
             lines.push(`  await page.click(${stepPrefix}_selector);`);
           } else if (params[`${stepPrefix}_text`]) {
             lines.push(`  await page.click('text=' + ${stepPrefix}_text);`);
-          } else if (step.params.selector) {
-            lines.push(`  await page.click('${step.params.selector}');`);
-          } else if (step.params.text) {
-            lines.push(`  await page.click('text=${step.params.text}');`);
+          } else if (selector) {
+            lines.push(`  await page.click('${selector}');`);
+          } else if (text) {
+            lines.push(`  await page.click('text=${text}');`);
           }
           break;
-        case 'fill':
-          const selectorVar = params[`${stepPrefix}_selector`] ? `${stepPrefix}_selector` : `'${step.params.selector}'`;
-          const valueVar = params[`${stepPrefix}_value`] ? `${stepPrefix}_value` : `'${step.params.value}'`;
+        case 'fill': {
+          const selectorVar = params[`${stepPrefix}_selector`] ? `${stepPrefix}_selector` : `'${selector || ''}'`;
+          const valueVar = params[`${stepPrefix}_value`] ? `${stepPrefix}_value` : `'${text || getStringParam(step.params, 'value') || ''}'`;
           lines.push(`  await page.fill(${selectorVar}, ${valueVar});`);
           break;
+        }
         case 'screenshot':
           lines.push(`  await page.screenshot({ path: 'screenshot-${index + 1}.png' });`);
           break;
         case 'scroll':
-          if (step.params.direction === 'down') {
-            const amountVar = params[`${stepPrefix}_amount`] ? `${stepPrefix}_amount` : step.params.amount || 300;
+          if (direction === 'down') {
+            const amountVar = params[`${stepPrefix}_amount`] ? `${stepPrefix}_amount` : String(amount ?? 300);
             lines.push(`  await page.evaluate(() => window.scrollBy(0, ${amountVar}));`);
-          } else if (step.params.direction === 'top') {
+          } else if (direction === 'top') {
             lines.push(`  await page.evaluate(() => window.scrollTo(0, 0));`);
           }
           break;
         case 'wait':
           if (params[`${stepPrefix}_duration`]) {
             lines.push(`  await page.waitForTimeout(${stepPrefix}_duration);`);
-          } else if (step.params.duration) {
-            lines.push(`  await page.waitForTimeout(${step.params.duration});`);
-          } else if (step.params.selector) {
-            lines.push(`  await page.waitForSelector('${step.params.selector}');`);
+          } else if (duration !== undefined) {
+            lines.push(`  await page.waitForTimeout(${String(duration)});`);
+          } else if (selector) {
+            lines.push(`  await page.waitForSelector('${selector}');`);
           }
           break;
         case 'press_key':
-          lines.push(`  await page.keyboard.press('${step.params.key}');`);
+          lines.push(`  await page.keyboard.press('${key || ''}');`);
           break;
-        case 'type_text':
-          const textVar = params[`${stepPrefix}_text`] ? `${stepPrefix}_text` : `'${step.params.text}'`;
+        case 'type_text': {
+          const textVar = params[`${stepPrefix}_text`] ? `${stepPrefix}_text` : `'${text || ''}'`;
           lines.push(`  await page.keyboard.type(${textVar});`);
           break;
+        }
         case 'search':
-        case 'smart_search':
-          const searchQuery = params[`${stepPrefix}_query`] ? `${stepPrefix}_query` : `'${step.params.query}'`;
-          const searchSelector = params[`${stepPrefix}_input_selector`] ? `${stepPrefix}_input_selector` : `'${step.params.input_selector}'`;
+        case 'smart_search': {
+          const searchQuery = params[`${stepPrefix}_query`] ? `${stepPrefix}_query` : `'${query || ''}'`;
+          const searchSelector = params[`${stepPrefix}_input_selector`] ? `${stepPrefix}_input_selector` : `'${inputSelector || ''}'`;
           lines.push(`  // Search: fill search input and submit`);
           lines.push(`  let searchInput;`);
-          if (step.params.input_selector) {
+          if (inputSelector) {
             lines.push(`  searchInput = page.locator(${searchSelector});`);
             lines.push(`  await searchInput.fill(${searchQuery});`);
           } else {
             lines.push(`  searchInput = page.locator('input[type="search"], input[name="q"], [role="searchbox"], input[placeholder*="search" i], input[placeholder*="搜" i]').first();`);
             lines.push(`  await searchInput.fill(${searchQuery});`);
           }
-          if (step.params.submit_method === 'click' && step.params.button_selector) {
-            lines.push(`  await page.click('${step.params.button_selector}');`);
+          if (submitMethod === 'click' && buttonSelector) {
+            lines.push(`  await page.click('${buttonSelector}');`);
           } else {
             lines.push(`  await searchInput.press('Enter');`);
           }
           break;
+        }
         default:
           lines.push(`  // Unknown tool: ${step.tool}`);
       }
@@ -1322,7 +1431,7 @@ const AIControls: React.FC<AIControlsProps> = ({
   // Confirm save template
   const handleConfirmSaveTemplate = async () => {
     if (templateSteps.length === 0) {
-      message.warning('模版为空，请先添加命令');
+      void message.warning('模版为空，请先添加命令');
       return;
     }
 
@@ -1416,29 +1525,27 @@ const AIControls: React.FC<AIControlsProps> = ({
         created_by: user?.id || 'ai_recorder',
       });
 
-      message.success(`模版已保存: ${createdTemplate.name}`);
+      void message.success(`模版已保存: ${createdTemplate.name}`);
       setShowTemplateModal(false);
       handleClearTemplate();
 
       // Store the template ID for immediate testing
       setSavedTemplateId(createdTemplate.id);
-      message.info('模版已保存，可以点击"测试模版"按钮进行测试', 5);
-    } catch (error: any) {
+      void message.info('模版已保存，可以点击"测试模版"按钮进行测试', 5);
+    } catch (error: unknown) {
       console.error('Failed to save template:', error);
-      // Show the actual error message
-      const errorMsg = error.response?.data?.message || error.message || '未知错误';
-      message.error(`保存模版失败: ${errorMsg}`);
+      void message.error(`保存模版失败: ${resolveErrorMessage(error)}`);
     }
   };
 
   // Test saved template
   const handleTestSavedTemplate = async () => {
     if (!savedTemplateId) {
-      message.warning('请先保存模版');
+      void message.warning('请先保存模版');
       return;
     }
     if (!user?.id) {
-      message.warning('用户未登录，请先登录');
+      void message.warning('用户未登录，请先登录');
       return;
     }
 
@@ -1457,13 +1564,13 @@ const AIControls: React.FC<AIControlsProps> = ({
         params: {},
       });
 
-      message.success('测试已启动，跳转到会话详情页');
+      void message.success('测试已启动，跳转到会话详情页');
       navigate(`/sessions/${result.session.id}`);
-    } catch (error: any) {
-      const errorMsg = error.response?.data?.message || error.message || '测试失败';
+    } catch (error: unknown) {
+      const errorMsg = resolveErrorMessage(error, '测试失败');
       if (errorMsg.includes('No available workers')) {
         // Try to reset workers and retry
-        message.warning('Worker 不足，正在重置...');
+        void message.warning('Worker 不足，正在重置...');
         try {
           await workerApi.reset();
           // Retry
@@ -1476,13 +1583,13 @@ const AIControls: React.FC<AIControlsProps> = ({
             template_id: savedTemplateId,
             params: {},
           });
-          message.success('测试已启动，跳转到会话详情页');
+          void message.success('测试已启动，跳转到会话详情页');
           navigate(`/sessions/${result.session.id}`);
-        } catch (retryError: any) {
-          message.error(retryError.response?.data?.message || retryError.message || '测试失败');
+        } catch (retryError: unknown) {
+          void message.error(resolveErrorMessage(retryError, '测试失败'));
         }
       } else {
-        message.error(errorMsg);
+        void message.error(errorMsg);
       }
     } finally {
       setTestLoading(false);
@@ -1494,9 +1601,9 @@ const AIControls: React.FC<AIControlsProps> = ({
     setResetLoading(true);
     try {
       const result = await workerApi.reset();
-      message.success(result.message || 'Worker Pool 已重置');
-    } catch (error: any) {
-      message.error('重置 Worker Pool 失败');
+      void message.success(result.message || 'Worker Pool 已重置');
+    } catch (_error: unknown) {
+      void message.error('重置 Worker Pool 失败');
     } finally {
       setResetLoading(false);
     }
@@ -1504,8 +1611,8 @@ const AIControls: React.FC<AIControlsProps> = ({
 
   // Copy compiled script
   const handleCopyScript = () => {
-    navigator.clipboard.writeText(compiledScript);
-    message.success('脚本已复制到剪贴板');
+    void navigator.clipboard.writeText(compiledScript);
+    void message.success('脚本已复制到剪贴板');
   };
 
   // Download compiled script
@@ -1517,7 +1624,7 @@ const AIControls: React.FC<AIControlsProps> = ({
     a.download = `browser-script-${Date.now()}.js`;
     a.click();
     URL.revokeObjectURL(url);
-    message.success('脚本已下载');
+    void message.success('脚本已下载');
   };
 
   // Auto extract template from history
@@ -1571,19 +1678,19 @@ const AIControls: React.FC<AIControlsProps> = ({
     });
 
     if (extractedSteps.length === 0) {
-      message.warning('历史记录中没有找到确定性命令');
+      void message.warning('历史记录中没有找到确定性命令');
       return;
     }
 
     setTemplateSteps(extractedSteps);
-    message.success(`已从历史记录中提取 ${extractedSteps.length} 个确定性命令`);
+    void message.success(`已从历史记录中提取 ${extractedSteps.length} 个确定性命令`);
   };
 
   // Handle manual recording start
   const handleManualStart = () => {
     let finalUrl = recordUrl.trim();
     if (!finalUrl || finalUrl === 'https://') {
-      message.warning(t('recorder:enterUrl'));
+      void message.warning(t('recorder:enterUrl'));
       return;
     }
     if (!finalUrl.startsWith('http://') && !finalUrl.startsWith('https://')) {
@@ -1787,14 +1894,14 @@ const AIControls: React.FC<AIControlsProps> = ({
 
   const handleExportTemplateFromRecorder = async () => {
     if (!isReactChatMode) {
-      message.warning('请先切到对话调试模式后再导出');
+      void message.warning('请先切到对话调试模式后再导出');
       return;
     }
 
     const sessionId = recorderDebugSessionId;
     const runtimeSessionId = recorderDebugRuntimeSessionId;
     if (!sessionId || !runtimeSessionId) {
-      message.warning('当前还没有可导出的录制会话');
+      void message.warning('当前还没有可导出的录制会话');
       return;
     }
 
@@ -1849,11 +1956,10 @@ const AIControls: React.FC<AIControlsProps> = ({
           backend: executionBackend,
         },
       ]);
-      message.success('已导出到模板列表');
+      void message.success('已导出到模板列表');
       navigate(`/templates/${createdTemplate.id}`);
-    } catch (error: any) {
-      const errorMsg = error?.response?.data?.message || error?.message || '导出失败';
-      message.error(errorMsg);
+    } catch (error: unknown) {
+      void message.error(resolveErrorMessage(error, '导出失败'));
     } finally {
       setExportTemplateLoading(false);
     }
@@ -1861,8 +1967,12 @@ const AIControls: React.FC<AIControlsProps> = ({
 
   const latestReactSuggestedParameters = [...history]
     .reverse()
-    .find((entry) => entry.type === 'ai' && entry.result?.observation?.suggestedParameters?.length > 0)
-    ?.result?.observation?.suggestedParameters as RecorderDebugObservation['suggestedParameters'];
+    .find((entry) => (
+      entry.type === 'ai'
+      && Array.isArray(entry.result?.observation?.suggestedParameters)
+      && entry.result.observation.suggestedParameters.length > 0
+    ))
+    ?.result?.observation?.suggestedParameters;
 
   const handleInsertSuggestedParameter = (name: string) => {
     const template = `${name}: `;
@@ -1886,6 +1996,7 @@ const AIControls: React.FC<AIControlsProps> = ({
       : (predefinedCommands.find(c => c.value === selectedCommand)?.prefix + paramInput.trim()).trim(),
   );
   const canExport = Boolean(recorderDebugSessionId && recorderDebugRuntimeSessionId);
+  const buildRecorderDebugDetailPath = (sessionId: string) => `/recorder-debug/${sessionId}`;
   const actionColumnHeight = 112;
   const primaryActionButtonStyle = {
     height: 44,
@@ -2112,7 +2223,9 @@ const AIControls: React.FC<AIControlsProps> = ({
                                   type="primary"
                                   size="small"
                                   icon={<PlayCircleOutlined />}
-                                  onClick={() => handleExecuteCommands(entry.commands!)}
+                                  onClick={() => {
+                                    void handleExecuteCommands(entry.commands!);
+                                  }}
                                   style={{ marginTop: 8 }}
                                 >
                                   {t('recorder:ai.execute') || '执行命令'}
@@ -2163,7 +2276,7 @@ const AIControls: React.FC<AIControlsProps> = ({
                                       <Button
                                         size="small"
                                         icon={<EyeOutlined />}
-                                        onClick={() => navigate(`/sessions/${entry.sessionId}`)}
+                                        onClick={() => navigate(buildRecorderDebugDetailPath(entry.sessionId!))}
                                       >
                                         查看详情
                                       </Button>
@@ -2171,7 +2284,7 @@ const AIControls: React.FC<AIControlsProps> = ({
                                         size="small"
                                         type="link"
                                         icon={<LinkOutlined />}
-                                        onClick={() => window.open(`/sessions/${entry.sessionId}`, '_blank', 'noopener,noreferrer')}
+                                        onClick={() => window.open(buildRecorderDebugDetailPath(entry.sessionId!), '_blank', 'noopener,noreferrer')}
                                       >
                                         打开链接
                                       </Button>
@@ -2222,7 +2335,7 @@ const AIControls: React.FC<AIControlsProps> = ({
                                         <Button
                                           size="small"
                                           icon={<EyeOutlined />}
-                                          onClick={() => navigate(`/sessions/${entry.sessionId}`)}
+                                          onClick={() => navigate(buildRecorderDebugDetailPath(entry.sessionId!))}
                                         >
                                           查看详情
                                         </Button>
@@ -2230,7 +2343,7 @@ const AIControls: React.FC<AIControlsProps> = ({
                                           size="small"
                                           type="link"
                                           icon={<LinkOutlined />}
-                                          onClick={() => window.open(`/sessions/${entry.sessionId}`, '_blank', 'noopener,noreferrer')}
+                                          onClick={() => window.open(buildRecorderDebugDetailPath(entry.sessionId!), '_blank', 'noopener,noreferrer')}
                                         >
                                           打开链接
                                         </Button>
@@ -2332,7 +2445,7 @@ const AIControls: React.FC<AIControlsProps> = ({
               onPressEnter={(e) => {
                 if (!e.shiftKey) {
                   e.preventDefault();
-                  handleSend();
+                  void handleSend();
                 }
               }}
               disabled={isLoading}
@@ -2361,7 +2474,9 @@ const AIControls: React.FC<AIControlsProps> = ({
             >
               <Button
                 icon={<SendOutlined />}
-                onClick={handleSend}
+                onClick={() => {
+                  void handleSend();
+                }}
                 loading={isLoading}
                 style={{
                   ...primaryActionButtonStyle,
@@ -2374,7 +2489,9 @@ const AIControls: React.FC<AIControlsProps> = ({
                 <Button
                   size="middle"
                   icon={<SaveOutlined />}
-                  onClick={handleExportTemplateFromRecorder}
+                  onClick={() => {
+                    void handleExportTemplateFromRecorder();
+                  }}
                   loading={exportTemplateLoading}
                   style={{
                     ...secondaryActionButtonStyle,
@@ -2409,7 +2526,9 @@ const AIControls: React.FC<AIControlsProps> = ({
               <Button
                 size="small"
                 icon={<CameraOutlined />}
-                onClick={() => handleQuickAction('screenshot')}
+                onClick={() => {
+                  void handleQuickAction('screenshot');
+                }}
                 loading={isLoading && executeCommandMutation.isLoading}
                 title="截取当前页面图片"
               >
@@ -2419,7 +2538,9 @@ const AIControls: React.FC<AIControlsProps> = ({
               <Button
                 size="small"
                 icon={<EyeOutlined />}
-                onClick={() => handleQuickAction('snapshot')}
+                onClick={() => {
+                  void handleQuickAction('snapshot');
+                }}
                 loading={isLoading && executeCommandMutation.isLoading}
                 title="获取页面结构快照"
               >
@@ -2429,7 +2550,9 @@ const AIControls: React.FC<AIControlsProps> = ({
               <Button
                 size="small"
                 icon={<FileSearchOutlined />}
-                onClick={() => handleQuickAction('read_page')}
+                onClick={() => {
+                  void handleQuickAction('read_page');
+                }}
                 loading={isLoading && executeCommandMutation.isLoading}
                 title="读取页面内容"
               >
@@ -2439,7 +2562,9 @@ const AIControls: React.FC<AIControlsProps> = ({
               <Button
                 size="small"
                 icon={<CodeOutlined />}
-                onClick={() => handleQuickAction('get_text')}
+                onClick={() => {
+                  void handleQuickAction('get_text');
+                }}
                 loading={isLoading && executeCommandMutation.isLoading}
                 title="获取页面所有文本"
               >
@@ -2449,7 +2574,9 @@ const AIControls: React.FC<AIControlsProps> = ({
               <Button
                 size="small"
                 icon={<ArrowDownOutlined />}
-                onClick={() => handleQuickAction('scroll', { direction: 'down' })}
+                onClick={() => {
+                  void handleQuickAction('scroll', { direction: 'down' });
+                }}
                 loading={isLoading && executeCommandMutation.isLoading}
                 title="向下滚动页面"
               >
@@ -2459,7 +2586,9 @@ const AIControls: React.FC<AIControlsProps> = ({
               <Button
                 size="small"
                 icon={<CloudUploadOutlined />}
-                onClick={() => handleQuickAction('scroll', { direction: 'top' })}
+                onClick={() => {
+                  void handleQuickAction('scroll', { direction: 'top' });
+                }}
                 loading={isLoading && executeCommandMutation.isLoading}
                 title="滚动到顶部"
               >
@@ -2469,7 +2598,9 @@ const AIControls: React.FC<AIControlsProps> = ({
               <Button
                 size="small"
                 icon={<ClockCircleOutlined />}
-                onClick={() => handleQuickAction('wait', { duration: waitDuration * 1000 })}
+                onClick={() => {
+                  void handleQuickAction('wait', { duration: waitDuration * 1000 });
+                }}
                 loading={isLoading && executeCommandMutation.isLoading}
                 title={`等待 ${waitDuration} 秒`}
               >
@@ -2485,7 +2616,9 @@ const AIControls: React.FC<AIControlsProps> = ({
           <Button
             type="text"
             icon={<DeleteOutlined />}
-            onClick={handleClearHistory}
+            onClick={() => {
+              void handleClearHistory();
+            }}
             style={{ color: '#999', marginTop: 2 }}
           >
             {t('recorder:ai.clearHistory') || '清空记录'}
@@ -2565,7 +2698,9 @@ const AIControls: React.FC<AIControlsProps> = ({
                         type="primary"
                         size="small"
                         icon={<BugOutlined />}
-                        onClick={handleTestSavedTemplate}
+                        onClick={() => {
+                          void handleTestSavedTemplate();
+                        }}
                         loading={testLoading}
                       >
                         测试模版
@@ -2573,7 +2708,9 @@ const AIControls: React.FC<AIControlsProps> = ({
                       <Button
                         size="small"
                         icon={<ReloadOutlined />}
-                        onClick={handleResetWorkers}
+                        onClick={() => {
+                          void handleResetWorkers();
+                        }}
                         loading={resetLoading}
                       >
                         重置 Worker
@@ -2631,7 +2768,9 @@ const AIControls: React.FC<AIControlsProps> = ({
         <Modal
           title="保存模版"
           open={showTemplateModal}
-          onOk={handleConfirmSaveTemplate}
+          onOk={() => {
+            void handleConfirmSaveTemplate();
+          }}
           onCancel={() => setShowTemplateModal(false)}
           okText="保存"
           cancelText="取消"
@@ -2711,7 +2850,9 @@ const AIControls: React.FC<AIControlsProps> = ({
             <Button key="download" icon={<DownloadOutlined />} onClick={handleDownloadScript}>
               下载
             </Button>,
-            <Button key="save" type="primary" icon={<SaveOutlined />} onClick={handleSaveCompiledTemplate}>
+            <Button key="save" type="primary" icon={<SaveOutlined />} onClick={() => {
+              void handleSaveCompiledTemplate();
+            }}>
               保存模版
             </Button>,
           ]}

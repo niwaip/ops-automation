@@ -16,6 +16,7 @@ export interface AIModelConfig {
     global?: boolean;
     admin_chat?: boolean;
     admin_task?: boolean;
+    audio_transcription?: boolean;
   };
   routing_preferences?: {
     prefer_for_code?: boolean;
@@ -70,7 +71,7 @@ export interface AIProviderSummary {
   activeModelCount: number;
   hasCredential: boolean;
   advancedModelCount: number;
-  defaultScopes: Array<'global' | 'admin_chat' | 'admin_task'>;
+  defaultScopes: Array<'global' | 'admin_chat' | 'admin_task' | 'audio_transcription'>;
 }
 
 export interface AIProviderSummaryResponse {

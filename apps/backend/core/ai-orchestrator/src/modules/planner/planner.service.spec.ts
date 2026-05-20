@@ -110,6 +110,16 @@ describe('PlannerService - required inputs without hardcoded defaults', () => {
       expect.objectContaining({
         modelId: 'selected-model-id',
         guide_context: undefined,
+        params_schema: expect.objectContaining({
+          properties: expect.objectContaining({
+            target: expect.not.objectContaining({
+              default: expect.anything(),
+            }),
+            units: expect.not.objectContaining({
+              default: expect.anything(),
+            }),
+          }),
+        }),
       }),
     );
   });

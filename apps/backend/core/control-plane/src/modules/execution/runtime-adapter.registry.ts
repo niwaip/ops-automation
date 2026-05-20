@@ -2,12 +2,14 @@ import { Injectable, ServiceUnavailableException } from '@nestjs/common';
 import { ERROR_CODES } from '@ops/contracts';
 import { BrowserRuntimeAdapter } from './browser-runtime.adapter';
 import { CapabilityRuntimeAdapter } from './capability-runtime.adapter';
+import { DocumentRuntimeAdapter } from './document-runtime.adapter';
 import {
   buildRuntimeAdapterRouteKey,
   RuntimeAdapter,
   RuntimeAdapterRouteKey,
   RuntimeStepInvokeRequest,
 } from './runtime-adapter.interface';
+import { WorkflowRuntimeAdapter } from './workflow-runtime.adapter';
 
 @Injectable()
 export class RuntimeAdapterRegistry {
@@ -17,8 +19,15 @@ export class RuntimeAdapterRegistry {
   constructor(
     browserRuntimeAdapter: BrowserRuntimeAdapter,
     capabilityRuntimeAdapter: CapabilityRuntimeAdapter,
+    documentRuntimeAdapter: DocumentRuntimeAdapter,
+    workflowRuntimeAdapter: WorkflowRuntimeAdapter,
   ) {
-    this.adapters = [browserRuntimeAdapter, capabilityRuntimeAdapter];
+    this.adapters = [
+      browserRuntimeAdapter,
+      capabilityRuntimeAdapter,
+      documentRuntimeAdapter,
+      workflowRuntimeAdapter,
+    ];
     this.registerAdapters(this.adapters);
   }
 

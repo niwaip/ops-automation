@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import axios from 'axios';
 import * as fs from 'fs/promises';
 import { getBrowserWorkerUrl } from '../../config/service-endpoints';
@@ -6,10 +6,10 @@ import { BrowserCommand, BrowserCommandService } from './browser-command.service
 import { ModelService } from '../model/model.service';
 import { RedisService } from '../redis/redis.service';
 
-type RecorderDebugBackend = 'cli' | 'chrome-devtools' | 'mcp';
-type RecorderDebugTurnRole = 'user' | 'assistant' | 'system';
+export type RecorderDebugBackend = 'cli' | 'chrome-devtools' | 'mcp';
+export type RecorderDebugTurnRole = 'user' | 'assistant' | 'system';
 
-interface BrowserExecuteResponse {
+export interface BrowserExecuteResponse {
   success: boolean;
   results: Array<Record<string, any>>;
   message?: string;
@@ -109,7 +109,7 @@ export interface RecorderDebugExportArtifacts {
   };
 }
 
-interface RecorderDebugTurn {
+export interface RecorderDebugTurn {
   role: RecorderDebugTurnRole;
   content: string;
   timestamp: string;
@@ -119,7 +119,7 @@ interface RecorderDebugTurn {
   exportArtifacts?: RecorderDebugExportArtifacts;
 }
 
-interface RecorderDebugSession {
+export interface RecorderDebugSession {
   sessionId: string;
   runtimeSessionId: string;
   backend: RecorderDebugBackend;
@@ -344,6 +344,14 @@ export class RecorderDebugService {
     await this.redisService.del(this.getSessionKey(sessionId));
   }
 
+  async getSession(sessionId: string): Promise<RecorderDebugSession> {
+    const session = await this.loadSession(sessionId);
+    if (!session) {
+      throw new NotFoundException(`Recorder debug session ${sessionId} not found`);
+    }
+    return session;
+  }
+
   private async loadOrCreateSession(
     sessionId: string,
     request: Omit<RecorderDebugChatRequest, 'message'>,
@@ -416,6 +424,11 @@ export class RecorderDebugService {
   private async observePage(session: RecorderDebugSession): Promise<RecorderDebugObservation> {
     const response = await this.executeBrowserCommands(session, [
       {
+        tool: 'snapshot',
+        params: {},
+        description: 'Capture accessibility snapshot',
+      },
+      {
         tool: 'evaluate',
         params: { script: this.buildStructureProbeScript() },
         description: 'Inspect current page structure',
@@ -437,18 +450,35 @@ export class RecorderDebugService {
       || evaluateResult?.result
       || evaluateResult?.stdout,
     ) || {};
+    const snapshotState = await this.loadSnapshotResolutionState(response);
+    const snapshotObservation = snapshotState
+      ? this.buildObservationFromSnapshotState(snapshotState)
+      : undefined;
 
-    const inputs = Array.isArray(structure.inputs) ? structure.inputs : [];
-    const buttons = Array.isArray(structure.buttons) ? structure.buttons : [];
+    const inputs = this.mergeObservedRecords(
+      Array.isArray(structure.inputs) ? structure.inputs : [],
+      snapshotObservation?.inputs || [],
+    );
+    const buttons = this.mergeObservedRecords(
+      Array.isArray(structure.buttons) ? structure.buttons : [],
+      snapshotObservation?.buttons || [],
+    );
     const observation: RecorderDebugObservation = {
       currentPageUrl: structure.url,
       title: structure.title,
       text: textResult?.data?.text || textResult?.text || textResult?.stdout || '',
       inputs,
       buttons,
-      headings: Array.isArray(structure.headings) ? structure.headings : [],
-      links: Array.isArray(structure.links) ? structure.links : [],
+      headings: this.mergeObservedStrings(
+        Array.isArray(structure.headings) ? structure.headings : [],
+        snapshotObservation?.headings || [],
+      ),
+      links: this.mergeObservedStrings(
+        Array.isArray(structure.links) ? structure.links : [],
+        snapshotObservation?.links || [],
+      ),
       suggestedParameters: [],
+      ...(snapshotObservation?.snapshotPath ? { snapshotPath: snapshotObservation.snapshotPath } : {}),
     };
 
     observation.suggestedParameters = this.inferSuggestedParameters(observation);
@@ -700,11 +730,11 @@ export class RecorderDebugService {
       return command;
     }
 
-    const ref = command.tool === 'fill'
-      ? this.resolveSnapshotRefForFill(targetCandidate, snapshotState.nodes)
-      : this.resolveSnapshotRefForAction(targetCandidate, snapshotState.nodes);
+    const resolvedNode = command.tool === 'fill'
+      ? this.resolveSnapshotNodeForFill(targetCandidate, snapshotState.nodes)
+      : this.resolveSnapshotNodeForAction(targetCandidate, snapshotState.nodes);
 
-    if (!ref) {
+    if (!resolvedNode) {
       return command;
     }
 
@@ -712,7 +742,7 @@ export class RecorderDebugService {
       ...command,
       params: {
         ...command.params,
-        target: ref,
+        target: this.buildSnapshotNodeTarget(resolvedNode),
       },
     };
   }
@@ -728,15 +758,35 @@ export class RecorderDebugService {
     return undefined;
   }
 
-  private resolveSnapshotRefForFill(target: string, nodes: SnapshotNode[]): string | undefined {
+  private resolveSnapshotNodeForFill(target: string, nodes: SnapshotNode[]): SnapshotNode | undefined {
     const inputNodes = nodes.filter((node) => ['textbox', 'searchbox', 'combobox', 'textarea', 'input'].includes(node.role));
-    return this.pickBestSnapshotNode(target, inputNodes)?.ref;
+    return this.pickBestSnapshotNode(target, inputNodes);
   }
 
-  private resolveSnapshotRefForAction(target: string, nodes: SnapshotNode[]): string | undefined {
+  private resolveSnapshotNodeForAction(target: string, nodes: SnapshotNode[]): SnapshotNode | undefined {
     const preferredNodes = nodes.filter((node) => ['button', 'link', 'menuitem', 'tab', 'checkbox', 'radio'].includes(node.role));
-    return this.pickBestSnapshotNode(target, preferredNodes)?.ref
-      || this.pickBestSnapshotNode(target, nodes)?.ref;
+    return this.pickBestSnapshotNode(target, preferredNodes)
+      || this.pickBestSnapshotNode(target, nodes);
+  }
+
+  private buildSnapshotNodeTarget(node: SnapshotNode): string {
+    const role = this.mapSnapshotRoleToPlaywrightRole(node.role);
+    const name = (node.name || node.text || '').trim();
+    if (!role || !name) {
+      return node.ref;
+    }
+    return `${role}[name="${name.replace(/"/g, '\\"')}"]`;
+  }
+
+  private mapSnapshotRoleToPlaywrightRole(role: string): string | undefined {
+    const normalized = String(role || '').toLowerCase();
+    if (!normalized) {
+      return undefined;
+    }
+    if (normalized === 'input' || normalized === 'textarea') {
+      return 'textbox';
+    }
+    return normalized;
   }
 
   private pickBestSnapshotNode(target: string, nodes: SnapshotNode[]): SnapshotNode | undefined {
@@ -762,6 +812,9 @@ export class RecorderDebugService {
       .map((item) => this.normalizeSnapshotText(item))
       .filter((item): item is string => Boolean(item));
     const targetVariants = this.expandSnapshotTargetVariants(normalizedTarget);
+    const aliasTargetVariants = targetVariants
+      .map((variant) => this.normalizeSnapshotAliasText(variant))
+      .filter((variant): variant is string => Boolean(variant));
 
     let score = 0;
     for (const variant of targetVariants) {
@@ -771,7 +824,36 @@ export class RecorderDebugService {
         } else if (candidate.includes(variant)) {
           score = Math.max(score, 95);
         } else if (variant.includes(candidate)) {
-          score = Math.max(score, 70);
+          const genericShortFallback = candidate.length < variant.length
+            && this.isGenericSnapshotFallbackCandidate(candidate);
+          if (!genericShortFallback) {
+            score = Math.max(score, 70);
+          }
+        }
+      }
+    }
+
+    for (const aliasVariant of aliasTargetVariants) {
+      for (const candidate of candidates) {
+        const aliasCandidate = this.normalizeSnapshotAliasText(candidate);
+        if (!aliasCandidate) {
+          continue;
+        }
+        if (aliasCandidate === aliasVariant) {
+          score = Math.max(score, 115);
+        } else if (aliasCandidate.includes(aliasVariant) || aliasVariant.includes(aliasCandidate)) {
+          score = Math.max(score, 90);
+        }
+      }
+    }
+
+    const asciiTokens = this.extractAsciiTokens(normalizedTarget);
+    if (asciiTokens.length > 0) {
+      for (const token of asciiTokens) {
+        if (candidates.some((candidate) => candidate.includes(token))) {
+          score += 35;
+        } else if (score > 0) {
+          score = Math.min(score, 55);
         }
       }
     }
@@ -793,6 +875,21 @@ export class RecorderDebugService {
     }
 
     return score;
+  }
+
+  private isGenericSnapshotFallbackCandidate(candidate: string): boolean {
+    return [
+      '登录',
+      'login',
+      'signin',
+      'submit',
+      'button',
+      '确定',
+      '确认',
+      '下一步',
+      '继续',
+      '立即开始',
+    ].includes(candidate);
   }
 
   private expandSnapshotTargetVariants(normalizedTarget: string): string[] {
@@ -823,6 +920,20 @@ export class RecorderDebugService {
       .toLowerCase()
       .replace(/[\s"'`:,.:;|()[\]{}<>【】]/g, '')
       .trim();
+  }
+
+  private normalizeSnapshotAliasText(value: string): string {
+    return value
+      .replace(/用户|会员|入口|方式|按钮|链接|立即|马上|前往|进入|进行|去/g, '')
+      .trim();
+  }
+
+  private extractAsciiTokens(value: string): string[] {
+    const matches = value.match(/[a-z0-9]{2,}/g);
+    if (!matches) {
+      return [];
+    }
+    return [...new Set(matches)];
   }
 
   private async loadSnapshotResolutionState(
@@ -935,6 +1046,72 @@ export class RecorderDebugService {
         } satisfies SnapshotNode;
       })
       .filter((item): item is SnapshotNode => Boolean(item));
+  }
+
+  private buildObservationFromSnapshotState(
+    snapshotState: SnapshotResolutionState,
+  ): Pick<RecorderDebugObservation, 'inputs' | 'buttons' | 'headings' | 'links' | 'snapshotPath'> {
+    const inputs = snapshotState.nodes
+      .filter((node) => ['textbox', 'searchbox', 'combobox', 'textarea', 'input'].includes(node.role))
+      .map((node, index) => ({
+        index,
+        ref: node.ref,
+        role: node.role,
+        label: node.name,
+        text: node.text,
+      }));
+
+    const buttons = snapshotState.nodes
+      .filter((node) => ['button', 'link', 'menuitem', 'tab', 'checkbox', 'radio'].includes(node.role))
+      .map((node, index) => ({
+        index,
+        ref: node.ref,
+        text: node.name || node.text || node.line,
+        role: node.role,
+      }));
+
+    const headings = snapshotState.nodes
+      .filter((node) => node.role === 'heading' && typeof node.name === 'string' && node.name.trim().length > 0)
+      .map((node) => node.name!.trim());
+
+    const links = snapshotState.nodes
+      .filter((node) => node.role === 'link')
+      .map((node) => node.name || node.text || node.line)
+      .filter((value): value is string => typeof value === 'string' && value.trim().length > 0)
+      .map((value) => value.trim());
+
+    return {
+      inputs,
+      buttons,
+      headings: this.mergeObservedStrings(headings),
+      links: this.mergeObservedStrings(links),
+      ...(snapshotState.path ? { snapshotPath: snapshotState.path } : {}),
+    };
+  }
+
+  private mergeObservedRecords<T extends Record<string, unknown>>(...groups: T[][]): T[] {
+    const merged = new Map<string, T>();
+    for (const group of groups) {
+      for (const item of group) {
+        const key = JSON.stringify(item);
+        if (!merged.has(key)) {
+          merged.set(key, item);
+        }
+      }
+    }
+    return [...merged.values()];
+  }
+
+  private mergeObservedStrings(...groups: string[][]): string[] {
+    const merged = new Set<string>();
+    for (const group of groups) {
+      for (const item of group) {
+        if (typeof item === 'string' && item.trim().length > 0) {
+          merged.add(item.trim());
+        }
+      }
+    }
+    return [...merged.values()];
   }
 
   private describeObservedElement(item: Record<string, unknown>): string | undefined {
@@ -2086,6 +2263,16 @@ export class RecorderDebugService {
         elements.forEach(element => {
           if (element.shadowRoot) {
             roots.push(...collectRoots(element.shadowRoot));
+          }
+          if (element instanceof HTMLIFrameElement) {
+            try {
+              const frameDocument = element.contentDocument || element.contentWindow?.document;
+              if (frameDocument) {
+                roots.push(...collectRoots(frameDocument));
+              }
+            } catch (error) {
+              void error;
+            }
           }
         });
         return roots;

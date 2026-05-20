@@ -17,6 +17,24 @@ import { v4 as uuidv4 } from 'uuid';
 
 const PROMPT_DEBUG_STORAGE_KEY = 'portal-prompt-debug-history';
 
+const isPromptDebugRecord = (value: unknown): value is PromptDebugRecord => {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    return false;
+  }
+
+  const record = value as Record<string, unknown>;
+  return (
+    typeof record.id === 'string'
+    && typeof record.messageId === 'string'
+    && typeof record.sourceEventType === 'string'
+    && typeof record.createdAt === 'string'
+    && typeof record.updatedAt === 'string'
+    && !!record.promptDebug
+    && typeof record.promptDebug === 'object'
+    && !Array.isArray(record.promptDebug)
+  );
+};
+
 const loadPromptDebugHistory = (): PromptDebugRecord[] => {
   if (typeof window === 'undefined') {
     return [];
@@ -27,8 +45,8 @@ const loadPromptDebugHistory = (): PromptDebugRecord[] => {
     if (!raw) {
       return [];
     }
-    const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? parsed as PromptDebugRecord[] : [];
+    const parsed: unknown = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed.filter(isPromptDebugRecord) : [];
   } catch {
     return [];
   }

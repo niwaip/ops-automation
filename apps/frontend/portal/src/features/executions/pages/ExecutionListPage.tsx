@@ -6,6 +6,8 @@
 
 import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import {
   Card,
   Collapse,
@@ -40,6 +42,7 @@ import {
   InfoCircleOutlined,
   DeleteOutlined,
 } from '@ant-design/icons';
+import '@/features/chat/ChatMessage.css';
 import { useMutation, useQuery, useQueryClient } from 'react-query';
 import {
   executionApi,
@@ -58,6 +61,7 @@ import InlineRecoveryPanel from '@/features/executions/components/InlineRecovery
 import { RECOVERY_COPY } from '@/features/executions/components/recoveryOptions';
 import {
   extractBrowserExecutionResult,
+  hasBrowserExecutionEvidence,
 } from '@/features/executions/lib/browser';
 import {
   extractPhaseStepImageSources,
@@ -66,9 +70,11 @@ import {
   getVisiblePhaseSteps,
 } from '@/features/executions/lib/artifacts';
 import { hasMeaningfulExecutionResult, tryParseJsonValue } from '@/features/executions/lib/common';
+import { beautifyText } from '@/features/executions/lib/detailView';
 import { normalizeRequiredInputValues, renderRequiredInputField, type RequiredInputField } from '@/features/executions/lib/inputFields';
 import {
   buildAiResumeDraft,
+  extractExecutionDisplayInput,
   extractDownloadUrl,
   summarizeExecutionListInput,
 } from '@/features/executions/lib/listHelpers';
@@ -86,6 +92,7 @@ import {
   getPhaseStatusColor,
   getPhaseStepStatus,
 } from '@/features/executions/lib/phase';
+import { renderJsonValue } from '@/features/executions/lib/json';
 import {
   getRuntimeSessionNovncUrl,
   getRuntimeSessionStatusLabel,
@@ -141,6 +148,133 @@ const detailPanelStyle = {
   boxShadow: 'var(--shadow-sm)',
 };
 
+const BROWSER_ACTIVITY_ACTIONS = new Set([
+  'navigate',
+  'click',
+  'fill',
+  'type',
+  'press',
+  'select',
+  'hover',
+  'scroll',
+  'wait',
+  'screenshot',
+  'upload',
+  'drag',
+]);
+
+const isBrowserWorkflowActivity = (phase: ExecutionPhaseDto): boolean => {
+  if (phase.phaseType !== 'workflow_activity') {
+    return false;
+  }
+
+  if (extractWorkflowActivitySnapshotSources(phase).length > 0) {
+    return true;
+  }
+
+  if (extractBrowserExecutionResult(phase.output)) {
+    return true;
+  }
+
+  return (phase.steps || []).some((step) => {
+    if (step.snapshotId) {
+      return true;
+    }
+
+    if (extractPhaseStepImageSources(step, phase.artifacts || []).length > 0) {
+      return true;
+    }
+
+    const action = step.action?.trim().toLowerCase();
+    return Boolean(action && BROWSER_ACTIVITY_ACTIONS.has(action));
+  });
+};
+
+const renderExecutionPayloadContent = (
+  value: unknown,
+  options?: {
+    emptyText?: string;
+    treatSingleResultFieldAsMarkdown?: boolean;
+  },
+) => {
+  const parsedValue = tryParseJsonValue(value);
+  const emptyText = options?.emptyText || '暂无内容。';
+
+  if (parsedValue === undefined || parsedValue === null || parsedValue === '') {
+    return <Text type="secondary">{emptyText}</Text>;
+  }
+
+  if (typeof parsedValue === 'string') {
+    return (
+      <div
+        className="chat-message-markdown"
+        style={{
+          background: 'var(--bg-secondary)',
+          color: 'var(--text-primary)',
+          border: '1px solid var(--bg-secondary)',
+          padding: 12,
+          borderRadius: 8,
+          lineHeight: '1.6',
+        }}
+      >
+        <ReactMarkdown remarkPlugins={[remarkGfm]}>
+          {beautifyText(parsedValue)}
+        </ReactMarkdown>
+      </div>
+    );
+  }
+
+  const resultRecord = (
+    parsedValue && typeof parsedValue === 'object' && !Array.isArray(parsedValue)
+      ? parsedValue as Record<string, unknown>
+      : undefined
+  );
+  const resultText = typeof resultRecord?.result === 'string' ? resultRecord.result : undefined;
+  const onlyHasResultField = options?.treatSingleResultFieldAsMarkdown && resultRecord
+    ? Object.keys(resultRecord).length === 1
+      && Object.prototype.hasOwnProperty.call(resultRecord, 'result')
+    : false;
+
+  if (resultText && onlyHasResultField) {
+    return (
+      <div
+        className="chat-message-markdown"
+        style={{
+          background: 'var(--bg-secondary)',
+          color: 'var(--text-primary)',
+          border: '1px solid var(--bg-secondary)',
+          padding: 12,
+          borderRadius: 8,
+          lineHeight: '1.6',
+        }}
+      >
+        <ReactMarkdown remarkPlugins={[remarkGfm]}>
+          {beautifyText(resultText)}
+        </ReactMarkdown>
+      </div>
+    );
+  }
+
+  return (
+    <pre
+      style={{
+        background: 'var(--bg-secondary)',
+        color: 'var(--text-primary)',
+        border: '1px solid var(--bg-secondary)',
+        padding: 12,
+        borderRadius: 8,
+        overflow: 'auto',
+        margin: 0,
+        lineHeight: '1.6',
+        whiteSpace: 'pre-wrap',
+        wordBreak: 'break-word',
+      }}
+    >
+      {renderJsonValue(parsedValue)}
+    </pre>
+  );
+};
+
 const renderPanelLabel = (title: string, summary?: string) => (
   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, width: '100%' }}>
     <Text strong>{title}</Text>
@@ -148,26 +282,31 @@ const renderPanelLabel = (title: string, summary?: string) => (
   </div>
 );
 
-const extractResultFileName = (value?: Record<string, unknown>): string | undefined => {
-  if (!value || typeof value !== 'object') {
-    return undefined;
+type ResumeFormValue =
+  | string
+  | number
+  | boolean
+  | Record<string, unknown>
+  | unknown[]
+  | null
+  | undefined;
+
+type ResumeFormValues = Record<string, ResumeFormValue>;
+
+const toResumeFormValue = (value: unknown): ResumeFormValue => {
+  if (
+    value === null
+    || value === undefined
+    || typeof value === 'string'
+    || typeof value === 'number'
+    || typeof value === 'boolean'
+    || Array.isArray(value)
+  ) {
+    return value;
   }
 
-  if (typeof value.fileName === 'string' && value.fileName.trim()) {
-    return value.fileName;
-  }
-
-  const raw = value.raw;
-  if (raw && typeof raw === 'object' && raw !== null) {
-    const rawFileName = (raw as Record<string, unknown>).fileName;
-    if (typeof rawFileName === 'string' && rawFileName.trim()) {
-      return rawFileName;
-    }
-  }
-
-  const nestedResult = value.result;
-  if (nestedResult && typeof nestedResult === 'object') {
-    return extractResultFileName(nestedResult as Record<string, unknown>);
+  if (typeof value === 'object') {
+    return value as Record<string, unknown>;
   }
 
   return undefined;
@@ -177,7 +316,7 @@ const ExecutionListPage: React.FC = () => {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const queryClient = useQueryClient();
-  const [resumeForm] = Form.useForm();
+  const [resumeForm] = Form.useForm<ResumeFormValues>();
   const {
     currentSession,
     createSession,
@@ -272,6 +411,19 @@ const ExecutionListPage: React.FC = () => {
     () => extractBrowserExecutionResult(selectedExecution?.resultJson) || extractBrowserExecutionResult(effectiveSelectedResultJson),
     [effectiveSelectedResultJson, selectedExecution?.resultJson],
   );
+  const selectedExecutionRuntimeSessionId = selectedExecution?.runtimeSessionId || selectedBrowserExecutionResult?.runtimeSessionId;
+  const isSelectedBrowserExecution = useMemo(
+    () => (
+      hasBrowserExecutionEvidence({
+        runtimeType: selectedExecution?.runtimeType,
+        runtimeSessionId: selectedExecutionRuntimeSessionId,
+        browserExecutionResult: selectedBrowserExecutionResult,
+        phases: sortedSelectedExecutionPhases,
+      })
+      || sortedSelectedExecutionPhases.some((phase) => isBrowserWorkflowActivity(phase))
+    ),
+    [selectedBrowserExecutionResult, selectedExecution?.runtimeType, selectedExecutionRuntimeSessionId, sortedSelectedExecutionPhases],
+  );
   const displaySelectedPhases = useMemo(() => {
     const activityPhases = sortedSelectedExecutionPhases.filter((phase) => phase.phaseType === 'workflow_activity');
     return activityPhases.length > 0 ? activityPhases : sortedSelectedExecutionPhases;
@@ -298,10 +450,9 @@ const ExecutionListPage: React.FC = () => {
       || selectedExecution.status === 'failed'
     ),
   );
-  const selectedExecutionRuntimeSessionId = selectedExecution?.runtimeSessionId || selectedBrowserExecutionResult?.runtimeSessionId;
   const { data: selectedRuntimeSession } = useQuery(
     ['execution-runtime-session', selectedExecutionRuntimeSessionId],
-    () => runtimeSessionApi.getById(selectedExecutionRuntimeSessionId!),
+    () => runtimeSessionApi.getByIdOrExecutionId(selectedExecutionRuntimeSessionId!, selectedExecution?.id),
     {
       enabled: Boolean(selectedExecutionRuntimeSessionId),
       refetchInterval: (data) => {
@@ -323,6 +474,9 @@ const ExecutionListPage: React.FC = () => {
   }, [selectedRuntimeSessionNovncUrl]);
   const stableSelectedRuntimeSessionNovncUrl =
     selectedRuntimeSessionNovncUrl || lastKnownSelectedRuntimeSessionNovncUrlRef.current;
+  const selectedExecutionInput = selectedExecution
+    ? extractExecutionDisplayInput(selectedExecution)
+    : undefined;
 
   const waitingInputStep = selectedExecution?.status === 'waiting_input'
     ? selectedSteps?.find((step) =>
@@ -370,10 +524,10 @@ const ExecutionListPage: React.FC = () => {
     }
 
     resumeForm.setFieldsValue(
-      requiredInputs.reduce<Record<string, unknown>>((acc, field) => {
-        acc[field.name] = field.value;
+      requiredInputs.reduce<ResumeFormValues>((acc, field) => {
+        acc[field.name] = toResumeFormValue(field.value);
         return acc;
-      }, {})
+      }, {} as ResumeFormValues)
     );
   }, [requiredInputs, resumeForm, selectedExecutionId]);
 
@@ -493,14 +647,14 @@ const ExecutionListPage: React.FC = () => {
           buildAiResumeDraft(selectedExecution, payload),
           selectedExecution.id,
         );
-        message.success('已切换到 AI 任务模式，待你发送后再继续处理');
+        void message.success('已切换到 AI 任务模式，待你发送后再继续处理');
         return;
       }
 
       submitInputMutation.mutate({ payload });
     } catch (error) {
       if (error instanceof Error) {
-        message.error(error.message);
+        void message.error(error.message);
       }
     }
   };
@@ -626,6 +780,15 @@ const ExecutionListPage: React.FC = () => {
     setSearchParams(nextSearchParams, { replace: true });
   };
 
+  const handleExecutionRowClick = (record: ExecutionDto) => {
+    if (record.status === 'human_control') {
+      navigate(`/executions/${record.id}`);
+      return;
+    }
+
+    updateExecutionSelection(record.id);
+  };
+
   const handleCleanupBeforeDate = () => {
     if (!clearBeforeDate) {
       void message.info('请先选择清理日期');
@@ -714,7 +877,9 @@ const ExecutionListPage: React.FC = () => {
               <Button
                 size="middle"
                 icon={<ReloadOutlined />}
-                onClick={() => refetch()}
+                onClick={() => {
+                  void refetch();
+                }}
                 loading={isFetching}
                 className="btn-pill"
               >
@@ -778,7 +943,7 @@ const ExecutionListPage: React.FC = () => {
               transition: 'background 0.2s ease',
               ...getExecutionRowStyle(record.status, isDarkTheme),
             },
-            onClick: () => updateExecutionSelection(record.id),
+            onClick: () => handleExecutionRowClick(record),
           })}
         />
       </Card>
@@ -889,7 +1054,7 @@ const ExecutionListPage: React.FC = () => {
               ]}
             />
 
-            {stableSelectedRuntimeSessionNovncUrl && (isSelectedExecutionActive || isPreviewRuntimeSessionState(selectedRuntimeSession?.state)) ? (
+            {isSelectedBrowserExecution && stableSelectedRuntimeSessionNovncUrl && (isSelectedExecutionActive || isPreviewRuntimeSessionState(selectedRuntimeSession?.state)) ? (
               <LiveSessionPreviewCard
                 novncUrl={stableSelectedRuntimeSessionNovncUrl}
                 title="实时画面"
@@ -898,7 +1063,31 @@ const ExecutionListPage: React.FC = () => {
               />
             ) : null}
 
-            {displaySelectedPhases.length > 0 ? (
+            {!isSelectedBrowserExecution ? (
+              <Card title="输入与输出">
+                <Space direction="vertical" size={16} style={{ width: '100%' }}>
+                  <div>
+                    <Text strong>输入：</Text>
+                    <div style={{ marginTop: 8 }}>
+                      {renderExecutionPayloadContent(selectedExecutionInput, {
+                        emptyText: '该执行暂无输入内容。',
+                      })}
+                    </div>
+                  </div>
+                  <div>
+                    <Text strong>结果：</Text>
+                    <div style={{ marginTop: 8 }}>
+                      {renderExecutionPayloadContent(effectiveSelectedResultJson, {
+                        emptyText: '该执行暂无结果输出。',
+                        treatSingleResultFieldAsMarkdown: true,
+                      })}
+                    </div>
+                  </div>
+                </Space>
+              </Card>
+            ) : null}
+
+            {isSelectedBrowserExecution && displaySelectedPhases.length > 0 ? (
               <Card title="步骤进度">
                 <Steps
                   current={Math.max(displaySelectedPhases.findIndex((phase) => phase.phaseKey === currentSelectedPhase?.phaseKey), 0)}
@@ -950,11 +1139,12 @@ const ExecutionListPage: React.FC = () => {
               phase={currentSelectedPhase}
             />
 
-            <Collapse
-              ghost
-              expandIconPosition="end"
-              items={[
-                ...(selectedExecution.status === 'waiting_input' && waitingInputStep ? [{
+            {(selectedExecution.status === 'waiting_input' && waitingInputStep) || isSelectedBrowserExecution ? (
+              <Collapse
+                ghost
+                expandIconPosition="end"
+                items={[
+                  ...(selectedExecution.status === 'waiting_input' && waitingInputStep ? [{
                   key: 'resume',
                   label: renderPanelLabel(
                     '继续 / 恢复执行',
@@ -1129,7 +1319,7 @@ const ExecutionListPage: React.FC = () => {
                     </>
                   ),
                 }] : []),
-                {
+                  ...(isSelectedBrowserExecution ? [{
                   key: 'phases',
                   label: renderPanelLabel(
                     '阶段',
@@ -1152,6 +1342,7 @@ const ExecutionListPage: React.FC = () => {
                       expandIconPosition="end"
                       items={displaySelectedPhases.map((phase: ExecutionPhaseDto) => {
                         const visiblePhaseSteps = getVisiblePhaseSteps(phase);
+                        const isBrowserActivityPhase = isBrowserWorkflowActivity(phase);
 
                         return {
                           key: phase.id,
@@ -1170,7 +1361,7 @@ const ExecutionListPage: React.FC = () => {
                                 <Tag color={getPhaseStatusColor(phase.status)}>{phase.status}</Tag>
                                 <Text type="secondary">{`Key: ${phase.phaseKey}`}</Text>
                                 <Text type="secondary">{`尝试: ${phase.attempt}`}</Text>
-                                {phase.runtimeSessionId ? (
+                                {isBrowserActivityPhase && phase.runtimeSessionId ? (
                                   <Text copyable={{ text: phase.runtimeSessionId }}>{`会话: ${phase.runtimeSessionId}`}</Text>
                                 ) : null}
                               </Space>
@@ -1194,39 +1385,48 @@ const ExecutionListPage: React.FC = () => {
                                 />
                               ) : null}
                               {phase.phaseType === 'workflow_activity' ? (
-                                <Card size="small" title="Activity 结果" styles={{ body: { padding: 12 } }}>
-                                  <Space direction="vertical" size={10} style={{ width: '100%' }}>
-                                    <Space wrap size={[12, 4]}>
-                                      <Text type="secondary">{`步骤数: ${phase.steps?.length || 0}`}</Text>
-                                      <Text type="secondary">{`截图: ${extractWorkflowActivitySnapshotSources(phase).length}`}</Text>
+                                isBrowserActivityPhase ? (
+                                  <Card size="small" title="Activity 结果" styles={{ body: { padding: 12 } }}>
+                                    <Space direction="vertical" size={10} style={{ width: '100%' }}>
+                                      <Space wrap size={[12, 4]}>
+                                        <Text type="secondary">{`步骤数: ${phase.steps?.length || 0}`}</Text>
+                                        <Text type="secondary">{`截图: ${extractWorkflowActivitySnapshotSources(phase).length}`}</Text>
+                                      </Space>
+                                      {extractWorkflowActivitySnapshotSources(phase).length > 0 ? (
+                                        <Image.PreviewGroup>
+                                          <Space wrap size={12}>
+                                            {extractWorkflowActivitySnapshotSources(phase).map((src, index) => (
+                                              <Image
+                                                key={`${phase.id}-snapshot-${index + 1}`}
+                                                src={src}
+                                                alt={`${phase.phaseName || phase.phaseKey}-snapshot-${index + 1}`}
+                                                style={{
+                                                  width: 320,
+                                                  maxWidth: '100%',
+                                                  maxHeight: 320,
+                                                  objectFit: 'contain',
+                                                  background: 'var(--bg-secondary)',
+                                                  borderRadius: 8,
+                                                  border: '1px solid var(--bg-secondary)',
+                                                  padding: 6,
+                                                }}
+                                              />
+                                            ))}
+                                          </Space>
+                                        </Image.PreviewGroup>
+                                      ) : (
+                                        <Text type="secondary">该 Activity 暂无可展示截图。</Text>
+                                      )}
                                     </Space>
-                                    {extractWorkflowActivitySnapshotSources(phase).length > 0 ? (
-                                      <Image.PreviewGroup>
-                                        <Space wrap size={12}>
-                                          {extractWorkflowActivitySnapshotSources(phase).map((src, index) => (
-                                            <Image
-                                              key={`${phase.id}-snapshot-${index + 1}`}
-                                              src={src}
-                                              alt={`${phase.phaseName || phase.phaseKey}-snapshot-${index + 1}`}
-                                              style={{
-                                                width: 320,
-                                                maxWidth: '100%',
-                                                maxHeight: 320,
-                                                objectFit: 'contain',
-                                                background: 'var(--bg-secondary)',
-                                                borderRadius: 8,
-                                                border: '1px solid var(--bg-secondary)',
-                                                padding: 6,
-                                              }}
-                                            />
-                                          ))}
-                                        </Space>
-                                      </Image.PreviewGroup>
-                                    ) : (
-                                      <Text type="secondary">该 Activity 暂无可展示截图。</Text>
-                                    )}
-                                  </Space>
-                                </Card>
+                                  </Card>
+                                ) : (
+                                  <Card size="small" title="Activity 输出" styles={{ body: { padding: 12 } }}>
+                                    {renderExecutionPayloadContent(phase.output, {
+                                      emptyText: '该 Activity 暂无输出内容。',
+                                      treatSingleResultFieldAsMarkdown: true,
+                                    })}
+                                  </Card>
+                                )
                               ) : phase.steps && phase.steps.length > 0 ? (
                                 <Timeline
                                   items={visiblePhaseSteps.map((step) => {
@@ -1312,8 +1512,8 @@ const ExecutionListPage: React.FC = () => {
                   ) : (
                     <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无阶段记录" />
                   ),
-                },
-                ...(!displaySelectedPhases.length && shouldShowLegacySteps ? [{
+                  }] : []),
+                  ...(isSelectedBrowserExecution && !displaySelectedPhases.length && shouldShowLegacySteps ? [{
                   key: 'steps',
                   label: renderPanelLabel(
                     '步骤',
@@ -1372,9 +1572,10 @@ const ExecutionListPage: React.FC = () => {
                   ) : (
                     <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无步骤" />
                   ),
-                }] : []),
-              ]}
-            />
+                  }] : []),
+                ]}
+              />
+            ) : null}
           </Space>
         ) : (
           <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="请选择一条执行记录" />

@@ -19,6 +19,7 @@ import SessionDetailPage from '@/features/sessions/pages/SessionDetailPage';
 import TemplateListPage from '@/features/browser-templates/pages/TemplateListPage';
 import TemplateDetailPage from '@/features/browser-templates/pages/TemplateDetailPage';
 import RecorderPage from '@/features/recorder/pages/RecorderPage';
+import RecorderDebugDetailPage from '@/features/recorder/pages/RecorderDebugDetailPage';
 import UserAdminPage from '@/features/admin/users/pages/UserAdminPage';
 import AIModelAdminPage from '@/features/admin/models/pages/AIModelAdminPage';
 import SkillAdminPage from '@/features/admin/skills/pages/SkillAdminPage';
@@ -123,6 +124,7 @@ export const portalRouteEntries: PortalRouteEntry[] = [
   },
   { path: '/templates/:id', element: <TemplateDetailPage />, activeMenuKey: '/templates' },
   { path: '/recorder', element: <RecorderPage /> },
+  { path: '/recorder-debug/:sessionId', element: <RecorderDebugDetailPage />, activeMenuKey: '/recorder' },
   {
     path: '/reports',
     element: <ReportListPage />,

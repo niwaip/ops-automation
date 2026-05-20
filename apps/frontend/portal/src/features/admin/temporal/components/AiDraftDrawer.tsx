@@ -403,7 +403,7 @@ export const AiDraftDrawer: React.FC<AiDraftDrawerProps> = ({ visible, onClose, 
         const messages: string[] = [];
         if (Object.keys(httpConfig).length > 0) {
           if (!String(httpConfig.urlTemplate || '').trim()) {
-            messages.push(`${stepName} 使用了 HTTP 请求能力，但还没有明确的 URL 模板。`);
+            messages.push(`${stepName} 使用了 HTTP 请求能力，但还没有明确的 URL 模版。`);
           }
           if ((httpConfig.responseMode || '') === 'bodyMap' && Object.keys(asPlainRecord(httpConfig.responseFieldMappings)).length === 0) {
             messages.push(`${stepName} 设置了多字段返回，但还没有配置字段映射。`);
@@ -429,7 +429,7 @@ export const AiDraftDrawer: React.FC<AiDraftDrawerProps> = ({ visible, onClose, 
         return messages;
       }),
       ...(stepCallItems.some((item) => item.params.length === 0)
-        ? ['部分步骤没有显式模板变量依赖，请确认这是否是预期行为。']
+        ? ['部分步骤没有显式模版变量依赖，请确认这是否是预期行为。']
         : []),
     ];
 
@@ -563,7 +563,7 @@ export const AiDraftDrawer: React.FC<AiDraftDrawerProps> = ({ visible, onClose, 
                     <div>
                       <div style={{ fontSize: 12, marginBottom: 4 }}>超时: {item.timeout}</div>
                       <div style={{ fontSize: 12 }}>
-                        输入依赖: {item.params.length > 0 ? item.params.join('，') : '无显式模板变量'}
+                        输入依赖: {item.params.length > 0 ? item.params.join('，') : '无显式模版变量'}
                       </div>
                     </div>
                   </div>
@@ -677,7 +677,7 @@ export const AiDraftDrawer: React.FC<AiDraftDrawerProps> = ({ visible, onClose, 
                       <Text type="secondary">字段映射: {Object.entries(transformFieldMappings).map(([k, v]) => `${k} <- ${v}`).join('；')}</Text>
                     ) : null}
                     {!isAiTransform && transformConfig.textTemplate ? (
-                      <Text type="secondary">文本模板: {shorten(String(transformConfig.textTemplate), 80)}</Text>
+                      <Text type="secondary">文本模版: {shorten(String(transformConfig.textTemplate), 80)}</Text>
                     ) : null}
                     {Object.keys(outputSchema).length > 0 ? (
                       <div style={{ background: 'var(--bg-secondary)', borderRadius: 8, padding: 8 }}>

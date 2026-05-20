@@ -1,3 +1,4 @@
+import type { ExecutionPhaseDto } from '@/api/execution';
 import { asRecord, tryParseJsonValue } from '@/features/executions/lib/common';
 
 export interface BrowserExecutionStepResult {
@@ -70,6 +71,35 @@ export const extractBrowserExecutionResult = (value: unknown): BrowserExecutionR
   }
 
   return null;
+};
+
+export const hasBrowserExecutionEvidence = (input: {
+  runtimeType?: string;
+  runtimeSessionId?: string;
+  browserExecutionResult?: BrowserExecutionResultViewModel | null;
+  phases?: Array<Pick<ExecutionPhaseDto, 'runtimeSessionId' | 'output'>>;
+}): boolean => {
+  if (input.browserExecutionResult) {
+    return true;
+  }
+
+  const normalizedRuntimeType = typeof input.runtimeType === 'string'
+    ? input.runtimeType.trim().toLowerCase()
+    : '';
+  if (normalizedRuntimeType !== 'browser') {
+    return false;
+  }
+
+  if (typeof input.runtimeSessionId === 'string' && input.runtimeSessionId.trim().length > 0) {
+    return true;
+  }
+
+  return (input.phases || []).some((phase) => {
+    if (typeof phase.runtimeSessionId === 'string' && phase.runtimeSessionId.trim().length > 0) {
+      return true;
+    }
+    return Boolean(extractBrowserExecutionResult(phase.output));
+  });
 };
 
 export const sanitizeBrowserOutputForDisplay = (value: unknown): unknown => {

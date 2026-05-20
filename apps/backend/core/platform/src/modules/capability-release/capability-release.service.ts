@@ -544,6 +544,9 @@ export class CapabilityReleaseService implements OnModuleInit {
       const runtimeStatus = typeof rawResultRecord?.status === 'string'
         ? rawResultRecord.status
         : undefined;
+      const normalizedRuntimeStatus = typeof runtimeStatus === 'string'
+        ? runtimeStatus.trim().toLowerCase()
+        : undefined;
       const runtimeRequiresTakeover = rawResultRecord?.requiresTakeover === true;
       const runtimeRetryable = rawResultRecord?.retryable === true;
       const runtimeTakeoverReason = typeof rawResultRecord?.takeoverReason === 'string'
@@ -551,7 +554,9 @@ export class CapabilityReleaseService implements OnModuleInit {
         : null;
       const runtimeSuccess = rawResultRecord?.success === false
         ? false
-        : !runtimeStatus || runtimeStatus === 'completed';
+        : rawResultRecord?.success === true
+          ? true
+          : !normalizedRuntimeStatus || ['completed', 'succeeded', 'success', 'rendered'].includes(normalizedRuntimeStatus);
       const effectiveSuccess = result.success && runtimeSuccess && !runtimeRequiresTakeover;
       const downloadUrl = extractDownloadUrl(rawResult);
       const temporalWorkflowId = result.workflowId;
@@ -611,11 +616,11 @@ export class CapabilityReleaseService implements OnModuleInit {
         fn,
         taskQueue,
         status:
-          runtimeRequiresTakeover || runtimeStatus === 'takeover_required'
+          runtimeRequiresTakeover || normalizedRuntimeStatus === 'takeover_required'
             ? 'takeover_required'
-            : runtimeStatus === 'waiting'
+            : normalizedRuntimeStatus === 'waiting'
               ? 'waiting'
-              : runtimeStatus === 'blocked'
+              : normalizedRuntimeStatus === 'blocked'
                 ? 'blocked'
                 : effectiveSuccess
                   ? 'completed'

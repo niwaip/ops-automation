@@ -676,8 +676,12 @@ export class ChatController {
     const parsedObject = this.parseJsonObjectMessage(message);
 
     if (parsedObject) {
+      const parsedParams =
+        parsedObject.params && typeof parsedObject.params === 'object' && !Array.isArray(parsedObject.params)
+          ? parsedObject.params as Record<string, unknown>
+          : parsedObject;
       const allowedKeys = new Set(missingInputs.map((item) => item.name));
-      const filteredEntries = Object.entries(parsedObject).filter(([key]) => allowedKeys.has(key));
+      const filteredEntries = Object.entries(parsedParams).filter(([key]) => allowedKeys.has(key));
       if (filteredEntries.length > 0) {
         return {
           input: Object.fromEntries(filteredEntries),
@@ -915,13 +919,25 @@ export class ChatController {
   ): Promise<string> {
     try {
       const response = await axios.get<{
+        sourceType?: string;
         runtimeType?: string;
       }>(`${getAuthServiceUrl()}/capabilities/runtime/skills/${skillId}/context`, {
         headers: authToken ? { Authorization: authToken } : {},
       });
 
+      if (response.data?.sourceType === 'temporal_workflow') {
+        return 'workflow';
+      }
+
       if (typeof response.data?.runtimeType === 'string' && response.data.runtimeType.trim()) {
-        return response.data.runtimeType;
+        const runtimeType = response.data.runtimeType.trim().toLowerCase();
+        if (runtimeType === 'temporal_worker') {
+          return 'workflow';
+        }
+        if (runtimeType === 'flow_runtime') {
+          return 'custom';
+        }
+        return runtimeType;
       }
     } catch (error) {
       this.logger.warn(
@@ -933,7 +949,7 @@ export class ChatController {
       planDraft.required_inputs.some((input) => input.name.toLowerCase() === 'url')
       || planDraft.steps.some((step) => (step.tool_name || '').toLowerCase().includes('browser'));
 
-    return hasBrowserRequirement ? 'browser' : 'sandbox';
+    return hasBrowserRequirement ? 'browser' : 'custom';
   }
 
   private async resolveAuthenticatedUser(
@@ -1448,7 +1464,14 @@ export class ChatController {
         };
 
         try {
-          const response = await this.controlPlaneClient.createExecution<{ id: string }>(
+          const execution = await this.controlPlaneClient.createExecution<{
+            id: string;
+            status?: string;
+            approvalStatus?: string;
+            usage?: Record<string, unknown>;
+            semantic?: WaitingInputSemantic;
+            normalizedInput?: Record<string, unknown>;
+          }>(
             {
               skillId: planDraft.skill_match.skill_id,
               ...(body.idempotencyKey ? { idempotencyKey: body.idempotencyKey } : {}),
@@ -1471,27 +1494,73 @@ export class ChatController {
             }),
           );
 
-          yield {
-            type: StreamEventType.RESULT,
-            content: this.formatWaitingInputMessage({
-              executionId: response.id,
-              intro: '已创建等待补充信息的执行单。',
-              missingInputs,
-              semantic: waitingInputSemantic,
-            }),
-            data: {
-              executionId: response.id,
-              status: CONTROL_PLANE_EXECUTION_STATUS.WAITING_INPUT,
-              hasBusinessResult: false,
-              missingInputs,
-              semantic: waitingInputSemantic,
-              plan: planDraft,
-              usage: planDraft.usage,
-              ...(plannerPromptDebug ? { promptDebug: plannerPromptDebug } : {}),
-            },
-          };
+          if (execution.status === CONTROL_PLANE_EXECUTION_STATUS.WAITING_INPUT) {
+            const waitingInputDetails = await this.loadWaitingInputDetails(
+              execution.id,
+              authToken,
+              {
+                userId: context.userId,
+                userRoles: context.userRoles,
+              },
+            );
+            const actualMissingInputs = waitingInputDetails.missingInputs;
+            const actualSemantic = this.extractExecutionSemantic(execution) || waitingInputSemantic;
 
-          for await (const event of this.observeExecution(response.id, authToken, {
+            yield {
+              type: StreamEventType.RESULT,
+              content: this.formatWaitingInputMessage({
+                executionId: execution.id,
+                intro: '已创建等待补充信息的执行单。',
+                missingInputs: actualMissingInputs,
+                semantic: actualSemantic,
+              }),
+              data: {
+                executionId: execution.id,
+                status: CONTROL_PLANE_EXECUTION_STATUS.WAITING_INPUT,
+                hasBusinessResult: false,
+                missingInputs: actualMissingInputs,
+                semantic: actualSemantic,
+                plan: planDraft,
+                usage: execution.usage || planDraft.usage,
+                ...(plannerPromptDebug ? { promptDebug: plannerPromptDebug } : {}),
+              },
+            };
+          } else if (execution.status === CONTROL_PLANE_EXECUTION_STATUS.PENDING_APPROVAL) {
+            const approvalIntro = missingInputs.length > 0
+              ? `任务已创建，已应用部分默认参数，但仍需审批。\n\n当前审批状态: ${execution.approvalStatus || CONTROL_PLANE_APPROVAL_STATUS.PENDING}\n执行单 ID: ${execution.id}`
+              : `任务已创建，等待审批。\n\n当前审批状态: ${execution.approvalStatus || CONTROL_PLANE_APPROVAL_STATUS.PENDING}\n执行单 ID: ${execution.id}`;
+            yield {
+              type: StreamEventType.RESULT,
+              content: approvalIntro,
+              data: {
+                executionId: execution.id,
+                status: CONTROL_PLANE_EXECUTION_STATUS.PENDING_APPROVAL,
+                approvalStatus: execution.approvalStatus || CONTROL_PLANE_APPROVAL_STATUS.PENDING,
+                hasBusinessResult: false,
+                plan: planDraft,
+                usage: execution.usage || planDraft.usage,
+                ...(plannerPromptDebug ? { promptDebug: plannerPromptDebug } : {}),
+              },
+            };
+          } else {
+            const startSummary = missingInputs.length > 0
+              ? '已应用默认参数补齐可兜底项，并开始执行。'
+              : planDraft.summary;
+            yield {
+              type: StreamEventType.RESULT,
+              content: `任务已启动。执行单 ID: ${execution.id}\n\n${startSummary}`,
+              data: {
+                executionId: execution.id,
+                status: execution.status || CONTROL_PLANE_EXECUTION_STATUS.QUEUED,
+                hasBusinessResult: false,
+                plan: planDraft,
+                usage: execution.usage || planDraft.usage,
+                ...(plannerPromptDebug ? { promptDebug: plannerPromptDebug } : {}),
+              },
+            };
+          }
+
+          for await (const event of this.observeExecution(execution.id, authToken, {
             userId: context.userId,
             userRoles: context.userRoles,
           })) {
@@ -2141,5 +2210,89 @@ export class ChatController {
       mimeType: file.mimetype,
       size: file.size,
     };
+  }
+
+  @Post('chat/audio/transcriptions')
+  @ApiOperation({ summary: 'Transcribe audio file using the selected model' })
+  @ApiConsumes('multipart/form-data')
+  @ApiResponse({ status: 200, description: 'Audio transcribed successfully' })
+  @UseInterceptors(FileInterceptor('file'))
+  async transcribeAudio(
+    @UploadedFile() file: Express.Multer.File,
+    @Body('modelId') modelId: string,
+  ): Promise<{ text: string }> {
+    this.logger.log(`transcribeAudio called with modelId: ${modelId}`);
+    if (!file) {
+      throw new HttpException('No audio file uploaded', HttpStatus.BAD_REQUEST);
+    }
+    
+    let actualModelId = modelId;
+    if (!actualModelId || actualModelId === 'default' || actualModelId === 'undefined') {
+      const preferredModel = this.modelService.getPreferredDefaultModel({
+        mode: 'audio_transcription',
+      });
+      if (preferredModel) {
+        actualModelId = preferredModel.id;
+        this.logger.log(`Resolved actualModelId to preferred model: ${actualModelId}`);
+      } else {
+        throw new HttpException('No default audio transcription model found', HttpStatus.BAD_REQUEST);
+      }
+    }
+
+    this.logger.log(`Fetching model with actualModelId: ${actualModelId}`);
+    const model = await this.modelService.getModel(actualModelId);
+    if (!model) {
+      this.logger.error(`Model not found for actualModelId: ${actualModelId}`);
+      throw new HttpException('Model not found', HttpStatus.NOT_FOUND);
+    }
+
+    const client = this.modelService.getClient(actualModelId);
+    if (!client) {
+      throw new HttpException('Model client not initialized', HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+
+    const config = client.getConfig();
+    let baseURL = config.baseURL.replace(/\/chat\/completions$/, '').replace(/\/$/, '');
+    
+    // For SiliconFlow, if the base URL ends with /v1, we keep it and append /audio/transcriptions
+    // The API is POST https://api.siliconflow.cn/v1/audio/transcriptions
+
+    const formData = new FormData();
+    const blob = new Blob([file.buffer], { type: file.mimetype });
+    formData.append('file', blob, file.originalname);
+    formData.append('model', model.name);
+
+    this.logger.log(`Transcribing audio with URL: ${baseURL}/audio/transcriptions and model: ${model.name}`);
+    try {
+      const response = await axios.post(`${baseURL}/audio/transcriptions`, formData, {
+        headers: {
+          Authorization: `Bearer ${config.apiKey}`,
+        },
+        maxBodyLength: Infinity,
+        maxContentLength: Infinity,
+      });
+      
+      let text = '';
+      if (typeof response.data === 'string') {
+        text = response.data;
+      } else if (response.data && typeof response.data.text === 'string') {
+        text = response.data.text;
+      } else if (response.data && typeof response.data.result === 'string') {
+        text = response.data.result;
+      } else if (response.data?.data && typeof response.data.data.text === 'string') {
+        text = response.data.data.text;
+      } else {
+        this.logger.warn(`Unexpected transcription response format: ${JSON.stringify(response.data)}`);
+        text = JSON.stringify(response.data);
+      }
+      
+      return { text };
+    } catch (error: any) {
+      this.logger.error(`Audio transcription failed: ${error.message}`, error.response?.data);
+      throw new HttpException(
+        error.response?.data?.error?.message || error.response?.data?.message || 'Audio transcription failed',
+        error.response?.status || HttpStatus.INTERNAL_SERVER_ERROR
+      );
+    }
   }
 }

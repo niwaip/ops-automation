@@ -1,11 +1,15 @@
 import React from 'react';
-import { Alert, Button, Card, Divider, Form, Input, Modal, Radio, Select, Space, Typography, message } from 'antd';
-import { PlayCircleOutlined, ReloadOutlined, StopOutlined } from '@ant-design/icons';
+import { Alert, Button, Card, Form, Modal, Radio, Select, Space, Typography, message } from 'antd';
+import { PlayCircleOutlined, StopOutlined } from '@ant-design/icons';
 import { useMutation, useQueryClient } from 'react-query';
 import { executionApi, ExecutionPhaseDto } from '@/api/execution';
 import { RECOVERY_COPY, RECOVERY_RESUME_OPTIONS, RecoveryResumeAction } from '@/features/executions/components/recoveryOptions';
 
 const { Text } = Typography;
+
+const isRecoveryResumeAction = (value: unknown): value is RecoveryResumeAction => (
+  value === 'retry' || value === 'resolve_by_human' || value === 'resume_from_step'
+);
 
 interface InlineRecoveryPanelProps {
   executionId: string;
@@ -25,12 +29,20 @@ const InlineRecoveryPanel: React.FC<InlineRecoveryPanelProps> = ({
   onAfterSuccess,
 }) => {
   const queryClient = useQueryClient();
-  const [resumeAction, setResumeAction] = React.useState<RecoveryResumeAction>('retry');
+  const [resumeAction, setResumeAction] = React.useState<RecoveryResumeAction>('resume_from_step');
   const [resumeFromStepId, setResumeFromStepId] = React.useState<string | undefined>(undefined);
-  const [patchNote, setPatchNote] = React.useState('');
-  const [patchInputValues, setPatchInputValues] = React.useState('{}');
+  const [showAdvancedStepSelect, setShowAdvancedStepSelect] = React.useState(false);
   const [showResumeConfirm, setShowResumeConfirm] = React.useState(false);
   const [showCancelConfirm, setShowCancelConfirm] = React.useState(false);
+
+  const defaultFailedStepId = React.useMemo(() => {
+    if (currentStepId) return currentStepId;
+    const failedStep = phase?.steps?.find(s => s.status === 'failed');
+    if (failedStep) return failedStep.stepId || failedStep.id;
+    return phase?.steps?.[0]?.stepId || phase?.steps?.[0]?.id;
+  }, [currentStepId, phase?.steps]);
+
+  const activeStepId = resumeFromStepId || defaultFailedStepId;
 
   const invalidateExecutionQueries = React.useCallback(async () => {
     await Promise.all([
@@ -43,12 +55,12 @@ const InlineRecoveryPanel: React.FC<InlineRecoveryPanelProps> = ({
   }, [executionId, onAfterSuccess, queryClient]);
 
   const buildPatch = React.useCallback(() => {
-    if (resumeAction === 'resume_from_step' && resumeFromStepId) {
+    if (resumeAction === 'resume_from_step' && activeStepId) {
       return {
         type: 'resolve_by_human',
         failedStepId: currentStepId || phase?.steps?.[0]?.stepId || phase?.steps?.[0]?.id || '',
-        resumeFromStepId,
-        note: patchNote || RECOVERY_COPY.retryNote,
+        resumeFromStepId: activeStepId,
+        note: RECOVERY_COPY.retryNote,
       };
     }
 
@@ -56,60 +68,38 @@ const InlineRecoveryPanel: React.FC<InlineRecoveryPanelProps> = ({
       return {
         type: 'resolve_by_human',
         failedStepId: currentStepId || phase?.steps?.[0]?.stepId || phase?.steps?.[0]?.id || '',
-        note: patchNote || RECOVERY_COPY.resolveByHumanNote,
+        note: RECOVERY_COPY.resolveByHumanNote,
       };
     }
 
-    if (patchInputValues.trim() && patchInputValues.trim() !== '{}') {
-      try {
-        const inputValues = JSON.parse(patchInputValues) as Record<string, unknown>;
-        return {
-          type: 'replace_input_value',
-          failedStepId: currentStepId || phase?.steps?.[0]?.stepId || phase?.steps?.[0]?.id || '',
-          inputValues,
-          note: patchNote || RECOVERY_COPY.applyPatchNote,
-        };
-      } catch {
-        throw new Error(RECOVERY_COPY.invalidJson);
-      }
-    }
-
     return null;
-  }, [currentStepId, patchInputValues, patchNote, phase?.steps, resumeAction, resumeFromStepId]);
+  }, [currentStepId, phase?.steps, resumeAction, activeStepId]);
 
   const applyRecoveryMutation = useMutation(
-    async ({ resumeAfterApply }: { resumeAfterApply: boolean }) => {
+    async () => {
       const resumePayload = {
-        ...(resumeAction === 'resume_from_step' && resumeFromStepId ? { stepId: resumeFromStepId } : {}),
-        ...(patchNote ? { comment: patchNote } : {}),
+        ...(resumeAction === 'resume_from_step' && activeStepId ? { stepId: activeStepId } : {}),
       };
 
       if (phase) {
         if (phase.status === 'waiting_takeover') {
           await executionApi.reconcilePhaseTakeover(executionId, phase.phaseKey, {
-            comment: patchNote || undefined,
             patch: buildPatch(),
           });
         }
 
-        if (resumeAfterApply) {
-          return executionApi.resumePhaseTakeover(executionId, phase.phaseKey, resumePayload);
-        }
-
-        return executionApi.getById(executionId);
+        return executionApi.resumePhaseTakeover(executionId, phase.phaseKey, resumePayload);
       }
 
       if (executionStatus === 'human_control') {
-        return resumeAfterApply
-          ? executionApi.releaseHumanControl(executionId, resumePayload)
-          : executionApi.getById(executionId);
+        return executionApi.releaseHumanControl(executionId, resumePayload);
       }
 
       throw new Error(RECOVERY_COPY.noRecoverablePhase);
     },
     {
-      onSuccess: async (_data, variables) => {
-        void message.success(variables.resumeAfterApply ? RECOVERY_COPY.successResume : RECOVERY_COPY.successMarkResumable);
+      onSuccess: async () => {
+        void message.success(RECOVERY_COPY.successResume);
         await invalidateExecutionQueries();
       },
       onError: (error: Error) => {
@@ -146,78 +136,86 @@ const InlineRecoveryPanel: React.FC<InlineRecoveryPanelProps> = ({
       <Card title={title || RECOVERY_COPY.panelTitle}>
         <Space direction="vertical" size={16} style={{ width: '100%' }}>
           <Alert
-            type="warning"
+            type={phase?.errorMessage ? 'error' : 'warning'}
             showIcon
             message={phase ? `${RECOVERY_COPY.currentPhase}：${phase.phaseName || phase.phaseKey}` : RECOVERY_COPY.activeHumanControl}
             description={
-              <Space direction="vertical" size={4}>
+              <div style={{ marginTop: 6, display: 'flex', flexDirection: 'column', gap: 6 }}>
                 {phase ? (
-                  <>
-                    <Text type="secondary">{`${RECOVERY_COPY.phaseStatus}：${phase.status}`}</Text>
-                    <Text type="secondary">{`${RECOVERY_COPY.phaseKey}：${phase.phaseKey}`}</Text>
-                  </>
+                  <Space wrap size={16} style={{ rowGap: 0 }}>
+                    <Text type="secondary" style={{ fontSize: 13 }}>{`${RECOVERY_COPY.phaseStatus}：${phase.status}`}</Text>
+                    <Text type="secondary" style={{ fontSize: 13 }}>{`${RECOVERY_COPY.phaseKey}：${phase.phaseKey}`}</Text>
+                  </Space>
                 ) : null}
-                {phase?.errorMessage ? <Text type="danger">{phase.errorMessage}</Text> : null}
-              </Space>
+                {phase && activeStepId ? (
+                  <Space wrap size={8}>
+                    <Text strong style={{ fontSize: 13 }}>错误步骤：</Text>
+                    {!showAdvancedStepSelect ? (
+                      <>
+                        <Text style={{ fontSize: 13 }}>
+                          {(() => {
+                            const step = phase?.steps?.find(s => (s.stepId || s.id) === activeStepId);
+                            if (step) {
+                              return `${step.stepIndex}. ${step.action}`;
+                            }
+                            return activeStepId.length > 20 ? `${activeStepId.slice(0, 8)}...` : activeStepId;
+                          })()}
+                        </Text>
+                        <Button type="link" size="small" style={{ padding: 0, fontSize: 13 }} onClick={() => setShowAdvancedStepSelect(true)}>
+                          修改
+                        </Button>
+                      </>
+                    ) : (
+                      <Select
+                        size="small"
+                        style={{ minWidth: 200 }}
+                        value={activeStepId}
+                        onChange={setResumeFromStepId}
+                        options={(phase?.steps || []).map((step) => ({
+                          value: step.stepId || step.id,
+                          label: `${step.stepIndex}. ${step.action} ${step.status === 'failed' ? '(发生错误的步骤)' : ''}`,
+                        }))}
+                      />
+                    )}
+                  </Space>
+                ) : null}
+                {phase?.errorMessage ? (
+                  <div style={{
+                    marginTop: 4,
+                    padding: '6px 10px',
+                    background: 'rgba(255, 77, 79, 0.08)',
+                    borderRadius: 4,
+                    borderLeft: '3px solid #ff4d4f'
+                  }}>
+                    <Text type="danger" style={{ fontSize: 13, wordBreak: 'break-word', fontFamily: 'monospace' }}>
+                      {phase.errorMessage}
+                    </Text>
+                  </div>
+                ) : null}
+              </div>
             }
           />
 
           <Form layout="vertical">
             <Form.Item label={RECOVERY_COPY.resumeAction}>
-              <Radio.Group value={resumeAction} onChange={(e) => setResumeAction(e.target.value)}>
-                <Space direction="vertical">
+              <Radio.Group
+                value={resumeAction}
+                onChange={(e) => {
+                  if (isRecoveryResumeAction(e.target.value)) {
+                    setResumeAction(e.target.value);
+                  }
+                }}
+              >
+                <Space wrap>
                   {RECOVERY_RESUME_OPTIONS.map((option) => (
                     <Radio key={option.value} value={option.value}>{option.label}</Radio>
                   ))}
                 </Space>
               </Radio.Group>
             </Form.Item>
-
-            {resumeAction === 'resume_from_step' ? (
-              <Form.Item label={RECOVERY_COPY.resumeFromStep}>
-                <Select
-                  placeholder={RECOVERY_COPY.selectStep}
-                  value={resumeFromStepId}
-                  onChange={setResumeFromStepId}
-                  options={(phase?.steps || []).map((step) => ({
-                    value: step.stepId || step.id,
-                    label: `${step.stepIndex}. ${step.action} (${step.status})`,
-                  }))}
-                />
-              </Form.Item>
-            ) : null}
-
-            <Divider style={{ margin: '8px 0 16px' }} />
-
-            <Form.Item label={RECOVERY_COPY.patchJson}>
-              <Input.TextArea
-                rows={3}
-                placeholder={RECOVERY_COPY.patchJsonPlaceholder}
-                value={patchInputValues}
-                onChange={(e) => setPatchInputValues(e.target.value)}
-              />
-            </Form.Item>
-
-            <Form.Item label={RECOVERY_COPY.note}>
-              <Input.TextArea
-                rows={2}
-                placeholder={RECOVERY_COPY.notePlaceholder}
-                value={patchNote}
-                onChange={(e) => setPatchNote(e.target.value)}
-              />
-            </Form.Item>
           </Form>
 
           <Space wrap>
-            {phase?.status === 'waiting_takeover' ? (
-              <Button
-                icon={<ReloadOutlined />}
-                onClick={() => applyRecoveryMutation.mutate({ resumeAfterApply: false })}
-                loading={applyRecoveryMutation.isLoading}
-              >
-                {RECOVERY_COPY.markResumableOnly}
-              </Button>
-            ) : null}
             <Button
               type="primary"
               icon={<PlayCircleOutlined />}
@@ -243,7 +241,7 @@ const InlineRecoveryPanel: React.FC<InlineRecoveryPanelProps> = ({
         open={showResumeConfirm}
         onOk={() => {
           setShowResumeConfirm(false);
-          applyRecoveryMutation.mutate({ resumeAfterApply: true });
+          applyRecoveryMutation.mutate();
         }}
         onCancel={() => setShowResumeConfirm(false)}
         okText={RECOVERY_COPY.resumeConfirmOk}

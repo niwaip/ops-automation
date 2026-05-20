@@ -24,6 +24,32 @@ export class JwtAuthGuard implements CanActivate {
     }
 
     const request = context.switchToHttp().getRequest();
+    const internalSecret = process.env.INTERNAL_API_SHARED_SECRET || process.env.JWT_SECRET;
+    const internalAuth = request.headers['x-internal-auth'];
+    const internalUserId = request.headers['x-user-id'];
+    const internalUserRole = request.headers['x-user-role'];
+    const internalUsername = request.headers['x-user-name'];
+
+    if (
+      internalSecret &&
+      typeof internalAuth === 'string' &&
+      internalAuth === internalSecret &&
+      typeof internalUserId === 'string' &&
+      internalUserId.trim()
+    ) {
+      request.user = {
+        id: internalUserId,
+        username: typeof internalUsername === 'string' && internalUsername.trim()
+          ? internalUsername
+          : internalUserId,
+        role: typeof internalUserRole === 'string' && internalUserRole.trim()
+          ? internalUserRole
+          : 'employee',
+        activeOrgId: null,
+      };
+      return true;
+    }
+
     const authorization = request.headers.authorization;
 
     if (!authorization) {

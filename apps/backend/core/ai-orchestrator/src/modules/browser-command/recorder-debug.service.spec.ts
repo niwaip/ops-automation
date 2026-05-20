@@ -29,6 +29,40 @@ describe('RecorderDebugService', () => {
     {} as any,
   );
 
+  it('rewriteCommandWithSnapshotRefs should match button text with filler words removed', () => {
+    const service = createService();
+    const rewritten = (service as any).rewriteCommandWithSnapshotRefs(
+      {
+        tool: 'click',
+        params: { text: 'RAM登录' },
+        description: '点击 RAM 登录',
+      },
+      {
+        nodes: [
+          {
+            ref: 'e10',
+            role: 'button',
+            name: '登录',
+            line: '- button "登录" [ref=e10]',
+          },
+          {
+            ref: 'e11',
+            role: 'button',
+            name: 'RAM 用户登录',
+            line: '- button "RAM 用户登录" [ref=e11]',
+          },
+        ],
+      },
+    );
+
+    expect(rewritten).toEqual(expect.objectContaining({
+      params: expect.objectContaining({
+        text: 'RAM登录',
+        target: 'button[name="RAM 用户登录"]',
+      }),
+    }));
+  });
+
   it('refreshObservationAfterExecution should preserve newer executed commands from persisted session', async () => {
     const service = createService();
     const persistedSession = {

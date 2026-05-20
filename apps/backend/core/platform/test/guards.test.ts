@@ -63,6 +63,46 @@ describe('JwtAuthGuard', () => {
     );
   });
 
+  it('should allow internal service authentication headers', async () => {
+    reflector.getAllAndOverride.mockReturnValue(false);
+    const originalJwtSecret = process.env.JWT_SECRET;
+    process.env.JWT_SECRET = 'internal-secret';
+    const request = {
+      headers: {
+        'x-internal-auth': 'internal-secret',
+        'x-user-id': 'user-id',
+        'x-user-role': 'admin',
+        'x-user-name': 'internal-user',
+      },
+    } as Record<string, unknown>;
+    const mockContext = {
+      getHandler: jest.fn(),
+      getClass: jest.fn(),
+      switchToHttp: () => ({
+        getRequest: () => request,
+      }),
+    } as unknown as ExecutionContext;
+
+    try {
+      const result = await guard.canActivate(mockContext);
+
+      expect(result).toBe(true);
+      expect(request.user).toEqual({
+        id: 'user-id',
+        username: 'internal-user',
+        role: 'admin',
+        activeOrgId: null,
+      });
+      expect(jwtService.verifyAsync).not.toHaveBeenCalled();
+    } finally {
+      if (originalJwtSecret === undefined) {
+        delete process.env.JWT_SECRET;
+      } else {
+        process.env.JWT_SECRET = originalJwtSecret;
+      }
+    }
+  });
+
   it('should set user on request when token is valid', async () => {
     reflector.getAllAndOverride.mockReturnValue(false);
     jwtService.verifyAsync.mockResolvedValue({
@@ -84,9 +124,10 @@ describe('JwtAuthGuard', () => {
 
     expect(result).toBe(true);
     expect(request.user).toEqual({
-      sub: 'user-id',
+      id: 'user-id',
       username: 'testuser',
       role: 'employee',
+      activeOrgId: null,
     });
   });
 

@@ -9,7 +9,7 @@ import { SendOutlined, PaperClipOutlined, StopOutlined, PlusOutlined, MessageOut
 import type { TextAreaRef } from 'antd/es/input/TextArea';
 import type { RcFile } from 'antd/es/upload';
 import type { UploadedFile, AIModel } from './types';
-import { uploadFile } from './chatApi';
+import { uploadFile, transcribeAudio } from './chatApi';
 import { useChatStore } from './chatStore';
 import './ChatInput.css';
 
@@ -56,6 +56,7 @@ const ChatInput: React.FC<ChatInputProps> = ({
 }) => {
   const [message, setMessage] = useState('');
   const [uploading, setUploading] = useState(false);
+  const [isTranscribing, setIsTranscribing] = useState(false);
   const [speechSupported, setSpeechSupported] = useState(false);
   const [isListening, setIsListening] = useState(false);
   const [speechLanguage, setSpeechLanguage] = useState(() => {
@@ -67,8 +68,8 @@ const ChatInput: React.FC<ChatInputProps> = ({
   });
   const inputRef = useRef<TextAreaRef>(null);
   const recognitionRef = useRef<SpeechRecognition | null>(null);
-  const speechBaseMessageRef = useRef('');
-  const finalTranscriptRef = useRef('');
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioChunksRef = useRef<Blob[]>([]);
 
   const {
     addUploadedFile,
@@ -107,32 +108,10 @@ const ChatInput: React.FC<ChatInputProps> = ({
     return `${baseText.replace(/\s+$/, '')}\n${normalizedSpeechText}`;
   }, []);
 
-  const resolveSpeechErrorMessage = useCallback((error: string) => {
-    const isSecureContextUnavailable =
-      typeof window !== 'undefined'
-      && !window.isSecureContext
-      && window.location.hostname !== 'localhost'
-      && window.location.hostname !== '127.0.0.1';
-
-    if (error === 'not-allowed') {
-      if (isSecureContextUnavailable) {
-        return '当前页面不是安全上下文，请改用 localhost 或 HTTPS 后再启用语音输入。';
-      }
-      return '麦克风权限被拒绝，请先在浏览器站点权限和系统设置里允许麦克风访问。';
-    }
-
-    const errorTextMap: Record<string, string> = {
-      'audio-capture': '未检测到可用麦克风，请检查设备是否连接并已授予系统权限。',
-      'service-not-allowed': '当前浏览器或系统禁止语音识别服务，请检查浏览器站点权限和系统麦克风权限。',
-      'network': '语音识别网络异常，请稍后重试。',
-      'no-speech': '没有检测到语音，请靠近麦克风后重试。',
-      'aborted': '语音识别已取消。',
-    };
-
-    return errorTextMap[error] || `语音识别失败: ${error}`;
-  }, []);
-
   const stopRecognition = useCallback((abort = false) => {
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+      mediaRecorderRef.current.stop();
+    }
     const recognition = recognitionRef.current;
     if (!recognition) {
       return;
@@ -154,7 +133,9 @@ const ChatInput: React.FC<ChatInputProps> = ({
   }, [draftMessage, setDraftMessage]);
 
   useEffect(() => {
-    setSpeechSupported(Boolean(getSpeechRecognitionConstructor()));
+    // 只有当不支持 MediaRecorder 和 SpeechRecognition 都不支持时才禁用
+    const hasMediaRecorder = typeof window !== 'undefined' && 'MediaRecorder' in window;
+    setSpeechSupported(Boolean(getSpeechRecognitionConstructor()) || hasMediaRecorder);
   }, [getSpeechRecognitionConstructor]);
 
   useEffect(() => {
@@ -214,77 +195,60 @@ const ChatInput: React.FC<ChatInputProps> = ({
     }
   };
 
-  const handleSpeechToggle = () => {
-    const SpeechRecognitionConstructor = getSpeechRecognitionConstructor();
-    if (!SpeechRecognitionConstructor) {
-      const isSecureContextUnavailable =
-        typeof window !== 'undefined'
-        && !window.isSecureContext
-        && window.location.hostname !== 'localhost'
-        && window.location.hostname !== '127.0.0.1';
-      void antdMessage.warning(
-        isSecureContextUnavailable
-          ? '当前页面不是安全上下文，请改用 localhost 或 HTTPS 访问后再使用语音输入。'
-          : '当前浏览器不支持语音识别，请使用 Chromium 系浏览器。'
-      );
-      return;
-    }
-
+  const handleSpeechToggle = async () => {
+    // 始终使用后端的录音转写服务，如果不指定模型则使用默认语音识别模型
     if (isListening) {
-      stopRecognition();
+      if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+        mediaRecorderRef.current.stop();
+      }
       return;
     }
 
-    finalTranscriptRef.current = '';
-    speechBaseMessageRef.current = message;
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mediaRecorder = new MediaRecorder(stream);
+      mediaRecorderRef.current = mediaRecorder;
+      audioChunksRef.current = [];
 
-    const recognition = new SpeechRecognitionConstructor();
-    recognition.continuous = true;
-    recognition.interimResults = true;
-    recognition.lang = speechLanguage;
-
-    recognition.onstart = () => {
-      setIsListening(true);
-      void antdMessage.info('语音识别已开始，请开始说话。');
-    };
-
-    recognition.onresult = (event: SpeechRecognitionEvent) => {
-      let nextFinalTranscript = finalTranscriptRef.current;
-      let interimTranscript = '';
-
-      for (let i = event.resultIndex; i < event.results.length; i += 1) {
-        const transcript = event.results[i][0]?.transcript || '';
-        if (event.results[i].isFinal) {
-          nextFinalTranscript += transcript;
-        } else {
-          interimTranscript += transcript;
+      mediaRecorder.ondataavailable = (event) => {
+        if (event.data.size > 0) {
+          audioChunksRef.current.push(event.data);
         }
-      }
+      };
 
-      finalTranscriptRef.current = nextFinalTranscript;
-      setMessage(
-        mergeSpeechText(
-          speechBaseMessageRef.current,
-          `${nextFinalTranscript}${interimTranscript}`
-        )
-      );
-    };
+      mediaRecorder.onstart = () => {
+        setIsListening(true);
+        void antdMessage.info('正在录音，请开始说话，再次点击按钮停止并转写...');
+      };
 
-    recognition.onerror = (event: SpeechRecognitionErrorEvent) => {
-      setIsListening(false);
-      const errorMessage = resolveSpeechErrorMessage(event.error);
-      if (event.error !== 'aborted') {
-        void antdMessage.error(errorMessage);
-      }
-    };
+      mediaRecorder.onstop = async () => {
+        setIsListening(false);
+        setIsTranscribing(true);
+        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+        
+        // 释放麦克风资源
+        stream.getTracks().forEach(track => track.stop());
 
-    recognition.onend = () => {
-      setIsListening(false);
-      recognitionRef.current = null;
-    };
+        try {
+          const text = await transcribeAudio(audioBlob, 'default');
+          if (!text.trim()) {
+            void antdMessage.warning('未识别到语音内容，请重试并靠近麦克风。');
+            return;
+          }
+          setMessage(prev => mergeSpeechText(prev, text));
+        } catch (error: unknown) {
+          void antdMessage.error(error instanceof Error ? error.message : '语音识别失败');
+        } finally {
+          setIsTranscribing(false);
+          mediaRecorderRef.current = null;
+        }
+      };
 
-    recognitionRef.current = recognition;
-    recognition.start();
+      mediaRecorder.start();
+    } catch (error) {
+      console.error('Failed to start MediaRecorder:', error);
+      void antdMessage.error('无法访问麦克风，请检查浏览器权限设置。');
+    }
   };
 
   return (
@@ -415,10 +379,11 @@ const ChatInput: React.FC<ChatInputProps> = ({
           <Button
             type="text"
             icon={<AudioOutlined />}
-            onClick={handleSpeechToggle}
-            disabled={disabled || uploading || !speechSupported}
+            loading={isTranscribing}
+            onClick={() => void handleSpeechToggle()}
+            disabled={disabled || uploading || (!speechSupported && !isTranscribing)}
             title={speechSupported ? (isListening ? '停止语音输入' : '开始语音输入') : '当前浏览器不支持语音输入'}
-            className={isListening ? 'chat-input-voice-btn chat-input-voice-btn-active' : 'chat-input-voice-btn'}
+            className={`chat-input-voice-btn ${isListening ? 'chat-input-voice-btn-active' : ''} ${isTranscribing ? 'transcribing' : ''}`}
           />
 
           {isLoading ? (

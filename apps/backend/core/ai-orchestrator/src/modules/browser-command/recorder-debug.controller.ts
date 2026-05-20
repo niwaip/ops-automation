@@ -1,4 +1,4 @@
-import { Body, Controller, Post } from '@nestjs/common';
+import { Body, Controller, Get, Param, Post } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import { RecorderDebugService } from './recorder-debug.service';
 import type { RecorderDebugChatRequest, RecorderDebugChatResponse } from './recorder-debug.service';
@@ -25,5 +25,11 @@ export class RecorderDebugController {
   async reset(@Body() body: { sessionId: string }) {
     await this.service.resetSession(body.sessionId);
     return { success: true };
+  }
+
+  @Get(':sessionId')
+  @ApiOperation({ summary: 'Get recorder debug session detail' })
+  async getSession(@Param('sessionId') sessionId: string) {
+    return this.service.getSession(sessionId);
   }
 }

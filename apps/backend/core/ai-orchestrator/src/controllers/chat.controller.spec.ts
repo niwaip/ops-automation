@@ -165,6 +165,110 @@ describe('ChatController control-plane integration', () => {
     ]);
   });
 
+  it('accepts standard recognizer json with nested params during waiting_input submission', async () => {
+    const { controller, controlPlaneClient } = createController();
+
+    controlPlaneClient.getExecution
+      .mockResolvedValueOnce({
+        skillId: 'skill-weather',
+        status: 'waiting_input',
+        normalizedInput: {
+          objective: '查询北京天气',
+          requiredInputs: [
+            {
+              name: 'city',
+              missing: true,
+            },
+          ],
+        },
+      })
+      .mockResolvedValueOnce({
+        id: 'execution-weather-1',
+        status: 'running',
+      });
+    controlPlaneClient.getExecutionSteps.mockResolvedValue([
+      {
+        id: 'step-weather-1',
+        status: 'waiting_input',
+        type: 'input_collection',
+        inputJson: {
+          requiredInputs: [
+            {
+              name: 'city',
+              description: '城市名称',
+              missing: true,
+            },
+          ],
+        },
+      },
+    ]);
+    controlPlaneClient.submitExecutionInput.mockResolvedValue({
+      id: 'execution-weather-1',
+    });
+
+    jest.spyOn(controller as any, 'observeExecution').mockImplementation(async function* () {
+      yield {
+        type: StreamEventType.RESULT,
+        content: '天气查询继续执行',
+        data: {
+          executionId: 'execution-weather-1',
+          status: 'running',
+        },
+      };
+    });
+
+    const events: Array<{ type: StreamEventType; content: string }> = [];
+    for await (const event of (controller as any).handleTaskMode(
+      {
+        message: '{"params":{"city":"北京"},"confidence":1,"field_confidences":{"city":1},"uncertain_fields":[]}',
+        executionId: 'execution-weather-1',
+      },
+      {
+        sessionId: 'session-weather-1',
+        userId: 'user-weather-1',
+        userRoles: ['employee'],
+        traceId: 'trace-weather-1',
+        history: [],
+        executionId: 'execution-weather-1',
+      },
+      'Bearer token-weather-1',
+    )) {
+      events.push({ type: event.type, content: event.content });
+    }
+
+    expect(controlPlaneClient.submitExecutionInput).toHaveBeenCalledWith(
+      'execution-weather-1',
+      {
+        stepId: 'step-weather-1',
+        input: {
+          city: '北京',
+        },
+        usage: undefined,
+      },
+      {
+        authToken: 'Bearer token-weather-1',
+        user: {
+          userId: 'user-weather-1',
+          userRoles: ['employee'],
+        },
+      },
+    );
+    expect(events).toEqual([
+      {
+        type: StreamEventType.THOUGHT,
+        content: '正在提交您补充的信息...',
+      },
+      {
+        type: StreamEventType.THOUGHT,
+        content: '信息已提交，任务继续执行。',
+      },
+      {
+        type: StreamEventType.RESULT,
+        content: '天气查询继续执行',
+      },
+    ]);
+  });
+
   it('reports resolved and remaining fields when waiting_input is only partially filled', async () => {
     const { controller, controlPlaneClient } = createController();
 
