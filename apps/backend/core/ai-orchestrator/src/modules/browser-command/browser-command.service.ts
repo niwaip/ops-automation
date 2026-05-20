@@ -14,6 +14,8 @@ export interface BrowserCommand {
     role?: string;
     name?: string;
     exact?: boolean;
+    generatedBy?: string;
+    confidence?: number;
   };
 }
 
@@ -476,14 +478,37 @@ export class BrowserCommandService {
       return null;
     }
 
-    const hasLoginIntent = /(登录|登入|sign\s*in|log\s*in)/i.test(normalizedInput);
-    if (!hasLoginIntent) {
+    const hasCredentialIntent = /(用户名|账号|账户|user(?:name)?|邮箱|email|手机号|mobile|phone|密码|password|pass|验证码|verification|otp|code)/i.test(normalizedInput);
+    const hasSubmitIntent = /(登录|登入|sign\s*in|log\s*in|log\s*on|next|submit|提交)/i.test(normalizedInput);
+    if (!hasCredentialIntent && !hasSubmitIntent) {
       return null;
     }
 
-    const usernameMatch = normalizedInput.match(/(?:用户名|账号|账户|user(?:name)?)\s*(?:是|为|:)?\s*([^\s，。,；;]+)/i);
-    const passwordMatch = normalizedInput.match(/(?:密码|password|pass)\s*(?:是|为|:)?\s*([^\s，。,；;]+)/i);
-    if (!usernameMatch?.[1] || !passwordMatch?.[1]) {
+    const fieldMatches = [
+      this.extractCredentialField(normalizedInput, {
+        selector: '用户名',
+        description: '填写用户名',
+        patterns: [
+          /(?:用户名|账号|账户|user(?:name)?)\s*(?:是|为|:)?\s*([^\s，。,；;]+)/i,
+        ],
+      }),
+      this.extractCredentialField(normalizedInput, {
+        selector: '密码',
+        description: '填写密码',
+        patterns: [
+          /(?:密码|password|pass)\s*(?:是|为|:)?\s*([^\s，。,；;]+)/i,
+        ],
+      }),
+      this.extractCredentialField(normalizedInput, {
+        selector: '验证码',
+        description: '填写验证码',
+        patterns: [
+          /(?:验证码|verification(?:\s+code)?|otp|code)\s*(?:是|为|:)?\s*([^\s，。,；;]+)/i,
+        ],
+      }),
+    ].filter((item): item is { selector: string; value: string; description: string } => Boolean(item));
+
+    if (fieldMatches.length === 0) {
       return null;
     }
 
@@ -501,27 +526,22 @@ export class BrowserCommandService {
       explanations.push(`打开 ${url}`);
     }
 
-    const username = usernameMatch[1].trim();
-    const password = passwordMatch[1].trim();
+    commands.push(...fieldMatches.map((field) => ({
+      tool: 'fill',
+      params: { selector: field.selector, value: field.value },
+      description: field.description,
+    })));
+    explanations.push(`填写${fieldMatches.map((field) => field.selector).join('和')}`);
 
-    commands.push(
-      {
-        tool: 'fill',
-        params: { selector: '用户名', value: username },
-        description: '填写用户名',
-      },
-      {
-        tool: 'fill',
-        params: { selector: '密码', value: password },
-        description: '填写密码',
-      },
-      {
+    const submitTarget = this.extractLoginSubmitTarget(normalizedInput);
+    if (submitTarget) {
+      commands.push({
         tool: 'click',
-        params: { text: '登录' },
-        description: '点击登录',
-      },
-    );
-    explanations.push('填写用户名和密码并提交登录');
+        params: { text: submitTarget },
+        description: `点击${submitTarget}`,
+      });
+      explanations.push(`点击 ${submitTarget}`);
+    }
 
     const trailingAction = normalizedInput.match(
       /(?:然后|并|再|接着|之后|登录成功后)\s*(点击|打开|进入)\s*([^\s，。,；;]+)/i,
@@ -541,6 +561,50 @@ export class BrowserCommandService {
       commands,
       explanation: `将依次${explanations.join('，')}`,
     };
+  }
+
+  private extractCredentialField(
+    input: string,
+    config: {
+      selector: string;
+      description: string;
+      patterns: RegExp[];
+    },
+  ): { selector: string; value: string; description: string } | null {
+    for (const pattern of config.patterns) {
+      const match = input.match(pattern);
+      const value = match?.[1]?.trim();
+      if (value) {
+        return {
+          selector: config.selector,
+          value,
+          description: config.description,
+        };
+      }
+    }
+    return null;
+  }
+
+  private extractLoginSubmitTarget(input: string): string | undefined {
+    if (/\bnext\b/i.test(input)) {
+      return 'Next';
+    }
+    if (/log\s*on/i.test(input)) {
+      return 'Log On';
+    }
+    if (/sign\s*in/i.test(input)) {
+      return 'Sign In';
+    }
+    if (/log\s*in/i.test(input)) {
+      return 'Log In';
+    }
+    if (/(登录|登入)/.test(input)) {
+      return '登录';
+    }
+    if (/(提交|submit)/i.test(input)) {
+      return '提交';
+    }
+    return undefined;
   }
 
   private stripLeadingConnector(text: string): string {
@@ -625,7 +689,7 @@ export class BrowserCommandService {
           success: true,
           commands: [{
             tool: 'click',
-            params: { text: strippedInput },
+            params: { target: `text="${strippedInput}"` },
             description: `点击 ${strippedInput}`,
           }],
           explanation: `将点击包含"${strippedInput}"的元素`,
@@ -831,8 +895,14 @@ export class BrowserCommandService {
             success: true,
             commands: [{
               tool: 'click',
-              params: { text },
+              params: { target: `text="${text}"` },
               description: `点击 ${text}`,
+              locator: {
+                strategy: 'text',
+                value: text,
+                generatedBy: 'system',
+                confidence: 0.2,
+              },
             }],
             explanation: `将点击包含"${text}"的元素`,
           };

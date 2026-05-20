@@ -1,8 +1,9 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Input, Button, Space, Typography, Tag, Empty, message, Divider, Collapse, InputNumber, Modal, List, Tooltip, Switch, Checkbox, Radio } from 'antd';
 import {
   SendOutlined,
+  AudioOutlined,
   RobotOutlined,
   DeleteOutlined,
   CodeOutlined,
@@ -28,11 +29,13 @@ import {
   BugOutlined,
   ReloadOutlined,
 } from '@ant-design/icons';
+import type { TextAreaRef } from 'antd/es/input/TextArea';
 import { useTranslation } from 'react-i18next';
 import { useMutation } from 'react-query';
 import { apiClient } from '@/shared/api/http/client';
 import { templateApi } from '@/api/template';
 import { sessionApi, workerApi } from '@/api/session';
+import { transcribeAudio } from '@/features/chat/chatApi';
 import { useAuthStore } from '@/shared/store/authStore';
 
 const { TextArea } = Input;
@@ -416,6 +419,12 @@ const AIControls: React.FC<AIControlsProps> = ({
   const [waitDuration, setWaitDuration] = useState(0.5);
   const [autoAppendScreenshots, setAutoAppendScreenshots] = useState(true);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<TextAreaRef>(null);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const mediaStreamRef = useRef<MediaStream | null>(null);
+  const audioChunksRef = useRef<Blob[]>([]);
+  const isComposingRef = useRef(false);
+  const suppressInputChangeRef = useRef(false);
 
   // Manual recording URL input
   const [recordUrl, setRecordUrl] = useState('https://');
@@ -444,6 +453,9 @@ const AIControls: React.FC<AIControlsProps> = ({
   const [recorderDebugRuntimeSessionId, setRecorderDebugRuntimeSessionId] = useState<string>();
   const [browserRuntimeSessionId, setBrowserRuntimeSessionId] = useState<string>(createRuntimeSessionId);
   const [isTemplatePanelExpanded, setIsTemplatePanelExpanded] = useState(false);
+  const [speechSupported, setSpeechSupported] = useState(false);
+  const [isListening, setIsListening] = useState(false);
+  const [isTranscribing, setIsTranscribing] = useState(false);
   const latestBrowserSessionRef = useRef<{
     browserRuntimeSessionId?: string;
     recorderDebugRuntimeSessionId?: string;
@@ -458,6 +470,10 @@ const AIControls: React.FC<AIControlsProps> = ({
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [history]);
+
+  useEffect(() => {
+    setSpeechSupported(typeof window !== 'undefined' && 'MediaRecorder' in window);
+  }, []);
 
   useEffect(() => {
     latestBrowserSessionRef.current = {
@@ -518,6 +534,10 @@ const AIControls: React.FC<AIControlsProps> = ({
 
   useEffect(() => {
     return () => {
+      if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+        mediaRecorderRef.current.stop();
+      }
+      mediaStreamRef.current?.getTracks().forEach((track) => track.stop());
       const {
         browserRuntimeSessionId: activeBrowserRuntimeSessionId,
         recorderDebugRuntimeSessionId: activeRecorderDebugRuntimeSessionId,
@@ -536,6 +556,100 @@ const AIControls: React.FC<AIControlsProps> = ({
       ]);
     };
   }, []);
+
+  const mergeSpeechText = useCallback((baseText: string, speechText: string) => {
+    const normalizedSpeechText = speechText.trim();
+    if (!normalizedSpeechText) {
+      return baseText;
+    }
+    if (!baseText.trim()) {
+      return normalizedSpeechText;
+    }
+    return `${baseText.replace(/\s+$/, '')}\n${normalizedSpeechText}`;
+  }, []);
+
+  const clearParamInput = useCallback(() => {
+    suppressInputChangeRef.current = true;
+    setParamInput('');
+
+    const textarea = inputRef.current?.resizableTextArea?.textArea;
+    if (textarea) {
+      textarea.value = '';
+    }
+
+    window.setTimeout(() => {
+      suppressInputChangeRef.current = false;
+      const activeTextarea = inputRef.current?.resizableTextArea?.textArea;
+      if (activeTextarea?.value) {
+        activeTextarea.value = '';
+      }
+    }, 0);
+  }, []);
+
+  const handleParamInputChange = useCallback((value: string) => {
+    if (suppressInputChangeRef.current) {
+      return;
+    }
+    setParamInput(value);
+  }, []);
+
+  const handleSpeechToggle = useCallback(async () => {
+    if (isListening) {
+      if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+        mediaRecorderRef.current.stop();
+      }
+      return;
+    }
+
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mediaRecorder = new MediaRecorder(stream);
+      mediaRecorderRef.current = mediaRecorder;
+      mediaStreamRef.current = stream;
+      audioChunksRef.current = [];
+
+      mediaRecorder.ondataavailable = (event) => {
+        if (event.data.size > 0) {
+          audioChunksRef.current.push(event.data);
+        }
+      };
+
+      mediaRecorder.onstart = () => {
+        setIsListening(true);
+        void message.info('正在录音，请开始说话，再次点击按钮停止并转写...');
+      };
+
+      mediaRecorder.onstop = async () => {
+        setIsListening(false);
+        setIsTranscribing(true);
+        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+
+        mediaStreamRef.current?.getTracks().forEach((track) => track.stop());
+        mediaStreamRef.current = null;
+
+        try {
+          const text = await transcribeAudio(audioBlob, 'default');
+          if (!text.trim()) {
+            void message.warning('未识别到语音内容，请重试并靠近麦克风。');
+            return;
+          }
+
+          setParamInput((prev) => mergeSpeechText(prev, text));
+          inputRef.current?.focus();
+        } catch (error: unknown) {
+          void message.error(error instanceof Error ? error.message : '语音识别失败');
+        } finally {
+          setIsTranscribing(false);
+          mediaRecorderRef.current = null;
+        }
+      };
+
+      mediaRecorder.start();
+    } catch (error) {
+      console.error('Failed to start MediaRecorder:', error);
+      void message.error('无法访问麦克风，请检查浏览器权限设置。');
+    }
+  }, [isListening, mergeSpeechText]);
 
   const extractCurrentPageUrl = (result?: BrowserCommandExecutionResult): string | undefined => {
     const directUrl = typeof result?.data?.url === 'string' ? result.data.url : undefined;
@@ -870,7 +984,7 @@ const AIControls: React.FC<AIControlsProps> = ({
     ]);
 
     // Clear parameter input immediately (keep command selection)
-    setParamInput('');
+    clearParamInput();
 
     // Auto init browser if not ready
     if (!isBrowserReady) {
@@ -951,6 +1065,19 @@ const AIControls: React.FC<AIControlsProps> = ({
       },
     });
   };
+
+  const handleInputKeyDown = useCallback((e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key !== 'Enter' || e.shiftKey) {
+      return;
+    }
+
+    if (e.nativeEvent.isComposing || isComposingRef.current) {
+      return;
+    }
+
+    e.preventDefault();
+    void handleSend();
+  }, [handleSend]);
 
   const handleExecuteCommands = async (commands: MCPCommand[]) => {
     // Auto init browser if not ready
@@ -1996,6 +2123,7 @@ const AIControls: React.FC<AIControlsProps> = ({
       : (predefinedCommands.find(c => c.value === selectedCommand)?.prefix + paramInput.trim()).trim(),
   );
   const canExport = Boolean(recorderDebugSessionId && recorderDebugRuntimeSessionId);
+  const canUseSpeech = speechSupported && !isLoading && !isTranscribing;
   const buildRecorderDebugDetailPath = (sessionId: string) => `/recorder-debug/${sessionId}`;
   const actionColumnHeight = 112;
   const primaryActionButtonStyle = {
@@ -2434,21 +2562,23 @@ const AIControls: React.FC<AIControlsProps> = ({
           <div style={{ display: 'flex', alignItems: 'stretch', gap: 10 }}>
             {/* 参数输入 */}
             <TextArea
+              ref={inputRef}
               value={paramInput}
-              onChange={(e) => setParamInput(e.target.value)}
+              onChange={(e) => handleParamInputChange(e.target.value)}
+              onCompositionStart={() => {
+                isComposingRef.current = true;
+              }}
+              onCompositionEnd={() => {
+                isComposingRef.current = false;
+              }}
               placeholder={
                 isReactChatMode
                   ? '直接描述你的目标，或询问页面结构、需要填写的参数'
                   : (predefinedCommands.find(c => c.value === selectedCommand)?.placeholder || '输入参数')
               }
               autoSize={isReactChatMode ? false : { minRows: 2, maxRows: 4 }}
-              onPressEnter={(e) => {
-                if (!e.shiftKey) {
-                  e.preventDefault();
-                  void handleSend();
-                }
-              }}
-              disabled={isLoading}
+              onKeyDown={handleInputKeyDown}
+              disabled={isLoading || isTranscribing}
               style={{
                 flex: 1,
                 minWidth: 180,
@@ -2484,6 +2614,22 @@ const AIControls: React.FC<AIControlsProps> = ({
                 }}
               >
                 {t('common:send')}
+              </Button>
+              <Button
+                icon={<AudioOutlined />}
+                onClick={() => {
+                  void handleSpeechToggle();
+                }}
+                disabled={!canUseSpeech && !isListening}
+                loading={isTranscribing}
+                type={isListening ? 'primary' : 'default'}
+                style={{
+                  ...secondaryActionButtonStyle,
+                  ...(canUseSpeech || isListening ? {} : mutedActionButtonStyle),
+                }}
+                title={speechSupported ? (isListening ? '停止录音并转写' : '语音输入') : '当前浏览器不支持录音'}
+              >
+                {isListening ? '录音中' : (isTranscribing ? '转写中' : '语音')}
               </Button>
               {isReactChatMode ? (
                 <Button

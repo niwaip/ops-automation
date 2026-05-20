@@ -308,9 +308,7 @@ export class PlaywrightCliAdapter implements BrowserExecutionAdapter {
       case 'navigate':
         return this.handleNavigate(sessionId, this.requireStringParam(normalizedParams, ['target', 'url']));
       case 'click':
-        return this.handleSimpleCommand(sessionId, 'click', [
-          this.requireStringParam(normalizedParams, ['target', 'selector', 'text']),
-        ]);
+        return this.handleClick(sessionId, normalizedParams);
       case 'fill':
         return this.handleSimpleCommand(sessionId, 'fill', [
           this.requireStringParam(normalizedParams, ['target', 'selector']),
@@ -388,6 +386,74 @@ export class PlaywrightCliAdapter implements BrowserExecutionAdapter {
       stderr: result.stderr,
       data: { url },
     };
+  }
+
+  private async handleClick(
+    sessionId: string,
+    params: Record<string, unknown>,
+  ): Promise<CliActionResult> {
+    const explicitTarget = this.readOptionalStringParam(params, ['target', 'selector']);
+    if (explicitTarget) {
+      return this.handleSimpleCommand(sessionId, 'click', [explicitTarget]);
+    }
+
+    const text = this.readOptionalStringParam(params, ['text']);
+    if (!text) {
+      throw new Error('Missing required parameter: target or selector or text');
+    }
+
+    await this.ensureSessionReady(sessionId);
+    const result = await this.execCli(sessionId, ['run-code', this.buildTextClickScript(sessionId, text)]);
+    this.assertNoCliError(result, 'Text click failed');
+
+    return {
+      status: 'success',
+      command: 'click',
+      stdout: result.stdout,
+      stderr: result.stderr,
+      data: { text },
+    };
+  }
+
+  private buildTextClickScript(sessionId: string, text: string): string {
+    const session = this.getOrCreateSession(sessionId);
+    const activePageExpr = session.preferLatestTab
+      ? '(page.context().pages().length ? page.context().pages()[page.context().pages().length - 1] : page)'
+      : 'page';
+
+    return `async page => {
+      const activePage = ${activePageExpr};
+      const clickByText = async (scope) => {
+        const candidates = [
+          scope.getByRole('button', { name: ${JSON.stringify(text)}, exact: false }).first(),
+          scope.getByRole('link', { name: ${JSON.stringify(text)}, exact: false }).first(),
+          scope.getByText(${JSON.stringify(text)}, { exact: false }).first(),
+        ];
+        for (const locator of candidates) {
+          const count = await locator.count().catch(() => 0);
+          if (!count) continue;
+          await locator.scrollIntoViewIfNeeded().catch(() => {});
+          await locator.click({ force: true, timeout: 5000 });
+          return true;
+        }
+        return false;
+      };
+
+      if (await clickByText(activePage).catch(() => false)) {
+        await activePage.waitForTimeout(300).catch(() => {});
+        return JSON.stringify({ text: ${JSON.stringify(text)}, matchedIn: 'page' });
+      }
+
+      for (const frame of activePage.frames()) {
+        if (frame === activePage.mainFrame()) continue;
+        if (await clickByText(frame).catch(() => false)) {
+          await activePage.waitForTimeout(300).catch(() => {});
+          return JSON.stringify({ text: ${JSON.stringify(text)}, matchedIn: 'iframe' });
+        }
+      }
+
+      throw new Error(${JSON.stringify(`Text click failed to find element: ${text}`)});
+    }`;
   }
 
   private async handleSimpleCommand(
@@ -897,14 +963,13 @@ export class PlaywrightCliAdapter implements BrowserExecutionAdapter {
           : message,
       );
     }
-    const pressResult = await this.execCli(sessionId, ['press', 'Enter']);
-    this.assertNoCliError(pressResult, 'Search submit failed');
+    const submitResult = await this.submitSearch(sessionId, 'Search submit failed');
 
     return {
       status: 'success',
       command: 'search',
-      stdout: [fillResult.stdout, pressResult.stdout].filter(Boolean).join('\n'),
-      stderr: [fillResult.stderr, pressResult.stderr].filter(Boolean).join('\n'),
+      stdout: [fillResult.stdout, submitResult.stdout].filter(Boolean).join('\n'),
+      stderr: [fillResult.stderr, submitResult.stderr].filter(Boolean).join('\n'),
       data: { query },
     };
   }
@@ -924,16 +989,27 @@ export class PlaywrightCliAdapter implements BrowserExecutionAdapter {
           : message,
       );
     }
-    const pressResult = await this.execCli(sessionId, ['press', 'Enter']);
-    this.assertNoCliError(pressResult, 'Smart search submit failed');
+    const submitResult = await this.submitSearch(sessionId, 'Smart search submit failed');
 
     return {
       status: 'success',
       command: 'smart_search',
-      stdout: [fillResult.stdout, pressResult.stdout].filter(Boolean).join('\n'),
-      stderr: [fillResult.stderr, pressResult.stderr].filter(Boolean).join('\n'),
+      stdout: [fillResult.stdout, submitResult.stdout].filter(Boolean).join('\n'),
+      stderr: [fillResult.stderr, submitResult.stderr].filter(Boolean).join('\n'),
       data: { query },
     };
+  }
+
+  private async submitSearch(sessionId: string, fallbackMessage: string): Promise<CliExecResult> {
+    try {
+      const submitResult = await this.execCli(sessionId, ['run-code', this.buildSearchSubmitScript(sessionId)]);
+      this.assertNoCliError(submitResult, fallbackMessage);
+      return submitResult;
+    } catch {
+      const pressResult = await this.execCli(sessionId, ['press', 'Enter']);
+      this.assertNoCliError(pressResult, fallbackMessage);
+      return pressResult;
+    }
   }
 
   private async handleListSearchResults(
@@ -1143,6 +1219,134 @@ export class PlaywrightCliAdapter implements BrowserExecutionAdapter {
         minScore: ${minScore},
         errorMessage: ${JSON.stringify(errorMessage)},
         allowLooseFallback: ${allowLooseFallback ? 'true' : 'false'},
+      });
+    }`;
+  }
+
+  private buildSearchSubmitScript(sessionId: string): string {
+    const session = this.getOrCreateSession(sessionId);
+    const activePageExpr = session.preferLatestTab
+      ? '(page.context().pages().length ? page.context().pages()[page.context().pages().length - 1] : page)'
+      : 'page';
+    return `async page => {
+      const activePage = ${activePageExpr};
+      const settleTimeout = ${this.cliPageSettleTimeoutMs};
+      const originalUrl = activePage.url();
+      const originalTitle = await activePage.title().catch(() => '');
+
+      const submitMeta = await activePage.evaluate(() => {
+        const isVisible = element => {
+          if (!(element instanceof HTMLElement)) {
+            return false;
+          }
+          const style = window.getComputedStyle(element);
+          const rect = element.getBoundingClientRect();
+          return style.visibility !== 'hidden'
+            && style.display !== 'none'
+            && rect.width > 0
+            && rect.height > 0;
+        };
+        const isEditable = element => (
+          element instanceof HTMLInputElement
+          || element instanceof HTMLTextAreaElement
+          || element?.isContentEditable === true
+          || ['textbox', 'searchbox', 'combobox'].includes(String(element?.getAttribute?.('role') || '').toLowerCase())
+        );
+        const buttonKeywordPattern = /(search|go|submit|搜|查询|检索|google)/i;
+        const candidates = [
+          document.activeElement,
+          ...document.querySelectorAll('input:not([type="hidden"]):not([disabled])'),
+          ...document.querySelectorAll('textarea:not([disabled])'),
+          ...document.querySelectorAll('[contenteditable="true"]'),
+          ...document.querySelectorAll('[role="textbox"]'),
+          ...document.querySelectorAll('[role="searchbox"]'),
+          ...document.querySelectorAll('[role="combobox"]'),
+        ];
+        const target = candidates.find((candidate) => isEditable(candidate) && isVisible(candidate));
+        if (!(target instanceof HTMLElement)) {
+          throw new Error('No focused search input found after filling query');
+        }
+
+        const pickSubmitControl = root => {
+          if (!(root instanceof Element)) {
+            return null;
+          }
+          const controls = [
+            ...root.querySelectorAll('button, input[type="submit"], input[type="button"]'),
+          ];
+          return controls.find((control) => {
+            if (!(control instanceof HTMLElement) || !isVisible(control)) {
+              return false;
+            }
+            const label = [
+              control.textContent,
+              control.getAttribute('value'),
+              control.getAttribute('aria-label'),
+              control.getAttribute('title'),
+            ].filter(Boolean).join(' ');
+            return buttonKeywordPattern.test(label);
+          }) || controls.find((control) => control instanceof HTMLElement && isVisible(control)) || null;
+        };
+
+        target.focus();
+        const form = target.closest('form');
+        const submitControl = pickSubmitControl(form || target.parentElement || document.body);
+        if (submitControl instanceof HTMLElement) {
+          submitControl.click();
+          return {
+            submitted: true,
+            submitMethod: 'button-click',
+            usedForm: Boolean(form),
+          };
+        }
+
+        if (form instanceof HTMLFormElement) {
+          if (typeof form.requestSubmit === 'function') {
+            form.requestSubmit();
+            return {
+              submitted: true,
+              submitMethod: 'requestSubmit',
+              usedForm: true,
+            };
+          }
+          form.submit();
+          return {
+            submitted: true,
+            submitMethod: 'submit',
+            usedForm: true,
+          };
+        }
+
+        ['keydown', 'keypress', 'keyup'].forEach((type) => {
+          target.dispatchEvent(new KeyboardEvent(type, {
+            key: 'Enter',
+            code: 'Enter',
+            keyCode: 13,
+            which: 13,
+            bubbles: true,
+            cancelable: true,
+          }));
+        });
+        return {
+          submitted: true,
+          submitMethod: 'keyboard-event',
+          usedForm: false,
+        };
+      });
+
+      await activePage.waitForTimeout(150).catch(() => {});
+      await activePage.waitForLoadState('domcontentloaded', { timeout: settleTimeout }).catch(() => {});
+      await activePage.waitForLoadState('networkidle', { timeout: settleTimeout }).catch(() => {});
+      await activePage.waitForTimeout(300).catch(() => {});
+
+      const landedUrl = activePage.url();
+      const landedTitle = await activePage.title().catch(() => '');
+      return JSON.stringify({
+        ...submitMeta,
+        originalUrl,
+        landedUrl,
+        landedTitle,
+        navigationConfirmed: landedUrl !== originalUrl || landedTitle !== originalTitle,
       });
     }`;
   }

@@ -71,6 +71,31 @@ describe('PlaywrightCliAdapter', () => {
     );
   });
 
+  it('uses run-code text click fallback for pure text click commands', async () => {
+    const adapter = createAdapter();
+    jest.spyOn(adapter, 'ensureDirectories').mockResolvedValue(undefined);
+    jest.spyOn(adapter, 'ensureSessionReady').mockResolvedValue(undefined);
+    const execCliSpy = jest
+      .spyOn(adapter, 'execCli')
+      .mockResolvedValue({
+        stdout: 'ok',
+        stderr: '',
+      });
+
+    const result = await adapter.runCliAction(
+      'click',
+      { text: 'RAM登录' },
+      'runtime-1',
+    );
+
+    expect(result.command).toBe('click');
+    expect(execCliSpy).toHaveBeenCalledTimes(1);
+    expect(execCliSpy.mock.calls[0][0]).toBe('runtime-1');
+    expect(execCliSpy.mock.calls[0][1][0]).toBe('run-code');
+    expect(execCliSpy.mock.calls[0][1][1]).toContain(`getByText("RAM登录", { exact: false })`);
+    expect(execCliSpy.mock.calls[0][1][1]).toContain(`getByRole('button', { name: "RAM登录", exact: false })`);
+  });
+
   it('falls back from shorthand textbox role selectors to placeholder inputs on fill', async () => {
     const adapter = createAdapter();
     jest.spyOn(adapter, 'ensureDirectories').mockResolvedValue(undefined);
