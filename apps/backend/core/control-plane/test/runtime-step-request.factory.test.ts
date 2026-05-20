@@ -64,6 +64,11 @@ describe('RuntimeStepRequestFactory', () => {
       },
       stepId: 'step-2',
       runtimeSessionId: 'runtime-2',
+      step: {
+        name: '8. wait',
+        action: 'wait',
+        stepIndex: 8,
+      },
     });
 
     expect(request).toEqual({
@@ -85,6 +90,69 @@ describe('RuntimeStepRequestFactory', () => {
       },
       metadata: {
         capabilityVersion: 'v4',
+        executionStepName: '8. wait',
+        executionStepAction: 'wait',
+        executionStepIndex: 8,
+      },
+    });
+  });
+
+  it('merges execution step metadata with phase metadata for skill runtime requests', () => {
+    const request = factory.buildSkillRuntimeRequest({
+      execution: {
+        id: 'execution-6',
+        skillId: 'skill-6',
+        skillVersion: 'v7',
+        riskLevel: 'L1',
+        requiresApproval: false,
+        normalizedInputJson: {
+          input: {
+            username: 'chain',
+          },
+          capabilityMatch: {
+            capabilityId: 'published-skill-6',
+          },
+        },
+      },
+      stepId: 'step-6',
+      runtimeSessionId: 'runtime-6',
+      phaseMetadata: {
+        phaseKey: 'phase_09_step_9',
+        phaseName: '9. 输入密码后等待',
+        phaseType: 'activity',
+      },
+      step: {
+        name: '9. wait',
+        action: 'wait',
+        step_index: 9,
+      },
+    });
+
+    expect(request).toEqual({
+      requestId: 'execution-6:step-6',
+      executionId: 'execution-6',
+      stepId: 'step-6',
+      runtimeType: 'custom',
+      runtimeSessionId: 'runtime-6',
+      skillId: 'skill-6',
+      publishedSkillId: 'published-skill-6',
+      capabilityType: 'skill.runtime',
+      action: 'execute',
+      input: {
+        username: 'chain',
+      },
+      policyContext: {
+        riskLevel: 'L1',
+        requiresApproval: false,
+      },
+      metadata: {
+        capabilityVersion: 'v7',
+        executionStepName: '9. wait',
+        executionStepAction: 'wait',
+        executionStepIndex: 9,
+        phaseKey: 'phase_09_step_9',
+        phaseName: '9. 输入密码后等待',
+        phaseType: 'activity',
       },
     });
   });

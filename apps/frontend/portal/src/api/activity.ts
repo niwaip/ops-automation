@@ -4,7 +4,7 @@
  */
 
 import apiClient from './client';
-import { useAuthStore } from '../store/authStore';
+import { useAuthStore } from '@/shared/store/authStore';
 import { postSseStream } from './streaming';
 
 // Activity configuration

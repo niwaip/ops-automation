@@ -1,5 +1,12 @@
 import { Injectable } from '@nestjs/common';
 import { PolicyContext, RuntimeStepInvokeRequest } from './runtime-adapter.interface';
+import { BROWSER_ACTIONS, BROWSER_RUNTIME } from './browser-execution-constants';
+
+interface RuntimeStepPhaseMetadata {
+  phaseKey: string;
+  phaseName: string;
+  phaseType: string;
+}
 
 @Injectable()
 export class RuntimeStepRequestFactory {
@@ -9,6 +16,7 @@ export class RuntimeStepRequestFactory {
     runtimeSessionId: string;
     url: string;
     executionMode: 'bootstrap' | 'planned_step';
+    phaseMetadata?: RuntimeStepPhaseMetadata;
   }): RuntimeStepInvokeRequest {
     const executionId = input.execution.id as string;
 
@@ -16,18 +24,19 @@ export class RuntimeStepRequestFactory {
       requestId: `${executionId}:${input.stepId}`,
       executionId,
       stepId: input.stepId,
-      runtimeType: 'browser',
+      runtimeType: BROWSER_RUNTIME.TYPE,
       runtimeSessionId: input.runtimeSessionId,
       skillId: (input.execution.skillId as string | null) || null,
       publishedSkillId: this.resolveExecutionCapabilityId(input.execution) || null,
-      capabilityType: 'browser.step',
-      action: 'goto',
+      capabilityType: BROWSER_RUNTIME.CAPABILITY_TYPE,
+      action: BROWSER_ACTIONS.GOTO,
       input: {
         target: input.url,
       },
       policyContext: this.buildPolicyContext(input.execution),
       metadata: {
         executionMode: input.executionMode,
+        ...(input.phaseMetadata || {}),
       },
     };
   }
@@ -36,6 +45,8 @@ export class RuntimeStepRequestFactory {
     execution: Record<string, unknown>;
     stepId: string;
     runtimeSessionId: string;
+    phaseMetadata?: RuntimeStepPhaseMetadata;
+    step?: Record<string, unknown> | null;
   }): RuntimeStepInvokeRequest | null {
     const capabilityId = this.resolveExecutionCapabilityId(input.execution);
     if (!capabilityId) {
@@ -58,6 +69,21 @@ export class RuntimeStepRequestFactory {
       policyContext: this.buildPolicyContext(input.execution),
       metadata: {
         capabilityVersion: this.resolveExecutionCapabilityVersion(input.execution),
+        executionStepName:
+          typeof input.step?.name === 'string' && input.step.name.trim()
+            ? input.step.name.trim()
+            : undefined,
+        executionStepAction:
+          typeof input.step?.action === 'string' && input.step.action.trim()
+            ? input.step.action.trim()
+            : undefined,
+        executionStepIndex:
+          typeof input.step?.stepIndex === 'number'
+            ? input.step.stepIndex
+            : typeof input.step?.step_index === 'number'
+              ? input.step.step_index
+              : undefined,
+        ...(input.phaseMetadata || {}),
       },
     };
   }

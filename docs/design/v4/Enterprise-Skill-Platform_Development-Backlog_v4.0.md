@@ -101,7 +101,7 @@
 
 ### P2: 协议呈现
 - [ ] 时间线视图支持展示 `v4` 标准化的 `ArtifactRef` 和 `SnapshotRef`。
-- [ ] 接管工作台对齐 `v4` 的 `takeover` 语义。
+- [ ] Execution 内联接管/恢复区对齐 `v4` 的 `takeover` 语义。
 
 ---
 

@@ -12,6 +12,7 @@ export * from './runtime-adapter.registry';
 export * from './runtime-execution.orchestrator';
 export * from './runtime-result.interpreter';
 export * from './runtime-step-request.factory';
+export * from './browser-phase-recovery.planner';
 export * from './browser-runtime.adapter';
 export * from './capability-runtime.adapter';
 export * from './document-runtime.adapter';

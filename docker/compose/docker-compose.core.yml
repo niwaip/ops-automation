@@ -110,9 +110,10 @@ services:
     image: ${DOCKER_REGISTRY:-}node:20-bullseye
     container_name: ops-session-broker
     working_dir: /app
-    command: sh -c "npm config set registry https://registry.npmmirror.com && npm install --legacy-peer-deps && npm run dev"
+    command: sh -c "npm config set registry https://registry.npmmirror.com && npm install --legacy-peer-deps && rm -f tsconfig.tsbuildinfo && npx tsc && node dist/main.js"
     environment:
       NODE_ENV: development
+      DOCKER_ENV: true
       DATABASE_URL: postgresql://${POSTGRES_USER:-ops}:${POSTGRES_PASSWORD:-ops_secret}@postgres:5432/${POSTGRES_DB:-ops}
       REDIS_HOST: redis
       REDIS_PORT: 6379

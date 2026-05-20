@@ -1,9 +1,13 @@
 import { Injectable, OnModuleDestroy } from '@nestjs/common';
 import {
+  AssertBrowserStateDto,
+  BrowserPageAssertionResultDto,
   BrowserControlStateDto,
+  BrowserPageStateDto,
   ExecuteStepDto,
   ExecuteStepResultDto,
   FreezeBrowserSessionDto,
+  InspectBrowserStateDto,
   ResumeBrowserSessionDto,
 } from '../../dto/worker.dto';
 import { BrowserExecutionBackend, MCPCommand } from './adapters/browser-execution.adapter';
@@ -48,7 +52,12 @@ export class BrowserService implements OnModuleDestroy {
 
   async executeCommands(
     commands: MCPCommand[],
-    options?: { backend?: BrowserExecutionBackend; runtimeSessionId?: string },
+    options?: {
+      backend?: BrowserExecutionBackend;
+      runtimeSessionId?: string;
+      includeArtifacts?: boolean;
+      includeSteps?: boolean;
+    },
   ): Promise<{ success: boolean; results: any[]; message?: string; steps?: BrowserActionStep[] }> {
     return this.browserCommandService.executeCommands(commands, options);
   }
@@ -62,6 +71,14 @@ export class BrowserService implements OnModuleDestroy {
 
   async executeStep(dto: ExecuteStepDto): Promise<ExecuteStepResultDto> {
     return this.browserCommandService.executeStep(dto);
+  }
+
+  async inspectState(dto: InspectBrowserStateDto): Promise<BrowserPageStateDto> {
+    return this.browserCommandService.inspectState(dto);
+  }
+
+  async assertState(dto: AssertBrowserStateDto): Promise<BrowserPageAssertionResultDto> {
+    return this.browserCommandService.assertState(dto);
   }
 
   async freeze(dto: FreezeBrowserSessionDto): Promise<BrowserControlStateDto> {

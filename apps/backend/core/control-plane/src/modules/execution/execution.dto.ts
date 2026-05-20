@@ -1,5 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger';
 import {
+  IsDateString,
   IsInt,
   IsObject,
   IsOptional,
@@ -11,6 +12,29 @@ import type { ExecutionSemantic } from '@ops/contracts';
 import { ApprovalStatus, APPROVAL_STATUS_VALUES } from './contracts/approval-status';
 import { ExecutionStatus, EXECUTION_STATUS_VALUES } from './contracts/execution-status';
 import { ExecutionStepStatus, EXECUTION_STEP_STATUS_VALUES } from './contracts/execution-step-status';
+
+export interface BrowserPhaseCheck {
+  [key: string]: unknown;
+  matched?: boolean;
+  ok?: boolean;
+  satisfied?: boolean;
+  pageUrl?: string;
+  page_url?: string;
+  pageUrlIncludes?: string;
+  page_url_includes?: string;
+  pageTitle?: string;
+  page_title?: string;
+  pageTitleIncludes?: string;
+  page_title_includes?: string;
+  pageFingerprint?: string;
+  page_fingerprint?: string;
+  readyState?: string;
+  ready_state?: string;
+  selectorExists?: string;
+  selector_exists?: string;
+  textIncludes?: string;
+  text_includes?: string;
+}
 
 export class CreateExecutionDto {
   @ApiProperty({ description: 'Skill ID', example: 'skill-123', required: false })
@@ -92,6 +116,22 @@ export class ExecutionDto {
   @IsOptional()
   currentStepId?: string | null;
 
+  @ApiProperty({ required: false })
+  @IsOptional()
+  runtimeSessionId?: string | null;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  currentPhaseKey?: string | null;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  currentPhaseStatus?: string | null;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  takeoverStatus?: string | null;
+
   @ApiProperty({ default: false, required: false })
   @IsOptional()
   requiresApproval?: boolean;
@@ -169,6 +209,201 @@ export class ExecutionDto {
   @ApiProperty({ required: false })
   @IsOptional()
   createdByName?: string | null;
+
+  @ApiProperty({ required: false, type: () => [ExecutionPhaseDto] })
+  @IsOptional()
+  phases?: ExecutionPhaseDto[];
+}
+
+export class ExecutionPhaseArtifactDto {
+  @ApiProperty()
+  id: string;
+
+  @ApiProperty()
+  artifactType: string;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  snapshotId?: string | null;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  pageUrl?: string | null;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  pageFingerprint?: string | null;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  payload?: Record<string, unknown> | null;
+
+  @ApiProperty()
+  createdAt: string;
+}
+
+export class ExecutionTakeoverRecordDto {
+  @ApiProperty()
+  id: string;
+
+  @ApiProperty()
+  status: string;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  reason?: string | null;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  requestedBy?: string | null;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  resolvedBy?: string | null;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  resolutionNote?: string | null;
+
+  @ApiProperty()
+  createdAt: string;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  resolvedAt?: string | null;
+}
+
+export class ExecutionPhaseDto {
+  @ApiProperty()
+  id: string;
+
+  @ApiProperty()
+  executionId: string;
+
+  @ApiProperty()
+  phaseKey: string;
+
+  @ApiProperty()
+  phaseName: string;
+
+  @ApiProperty()
+  phaseType: string;
+
+  @ApiProperty()
+  status: string;
+
+  @ApiProperty()
+  attempt: number;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  runtimeSessionId?: string | null;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  input?: Record<string, unknown> | null;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  output?: Record<string, unknown> | null;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  precheck?: BrowserPhaseCheck | null;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  postcheck?: BrowserPhaseCheck | null;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  errorCode?: string | null;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  errorMessage?: string | null;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  recoveryDecision?: Record<string, unknown> | null;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  startedAt?: string | null;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  completedAt?: string | null;
+
+  @ApiProperty()
+  createdAt: string;
+
+  @ApiProperty()
+  updatedAt: string;
+
+  @ApiProperty({ required: false, type: () => [ExecutionPhaseArtifactDto] })
+  @IsOptional()
+  artifacts?: ExecutionPhaseArtifactDto[];
+
+  @ApiProperty({ required: false, type: () => [ExecutionPhaseStepDto] })
+  @IsOptional()
+  steps?: ExecutionPhaseStepDto[];
+
+  @ApiProperty({ required: false, type: () => [ExecutionTakeoverRecordDto] })
+  @IsOptional()
+  takeovers?: ExecutionTakeoverRecordDto[];
+}
+
+export class ExecutionPhaseStepDto {
+  @ApiProperty()
+  id: string;
+
+  @ApiProperty()
+  phaseId: string;
+
+  @ApiProperty()
+  stepIndex: number;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  stepId?: string | null;
+
+  @ApiProperty()
+  action: string;
+
+  @ApiProperty()
+  status: string;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  input?: Record<string, unknown> | null;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  output?: Record<string, unknown> | null;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  errorMessage?: string | null;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  errorCode?: string | null;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  snapshotId?: string | null;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  startedAt?: string | null;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  endedAt?: string | null;
+
+  @ApiProperty()
+  createdAt: string;
 }
 
 export class ExecutionStepDto {
@@ -235,24 +470,72 @@ export class ExecutionStepDto {
 
 export class TakeoverExecutionDto {
   @ApiProperty({ description: 'Reason for takeover', example: 'Captcha detected' })
+  @IsString()
   reason: string;
 
   @ApiProperty({ description: 'User requesting takeover', required: false })
+  @IsOptional()
+  @IsString()
   requestedBy?: string;
 }
 
 export class ResumeExecutionDto {
   @ApiProperty({ description: 'Step ID to resume from', required: false })
+  @IsOptional()
+  @IsString()
   stepId?: string;
 
   @ApiProperty({ description: 'Comment about resume action', required: false })
+  @IsOptional()
+  @IsString()
   comment?: string;
 
   @ApiProperty({ description: 'User resuming execution', required: false })
+  @IsOptional()
+  @IsString()
   resumedBy?: string;
 }
 
 export class ReleaseHumanControlDto extends ResumeExecutionDto {}
+
+export class ReconcilePhaseTakeoverDto {
+  @ApiProperty({ description: 'Comment about the manual intervention outcome', required: false })
+  @IsOptional()
+  @IsString()
+  comment?: string;
+
+  @ApiProperty({ description: 'User reconciling the phase takeover', required: false })
+  @IsOptional()
+  @IsString()
+  resolvedBy?: string;
+
+  @ApiProperty({ description: 'Optional recovery patch to apply when resuming', required: false })
+  @IsOptional()
+  patch?: Record<string, unknown> | null;
+}
+
+export class UpdateWorkflowActivityProgressDto {
+  @ApiProperty({ description: 'Parent phase key for the workflow skill execution' })
+  @IsString()
+  parentPhaseKey: string;
+
+  @ApiProperty({ description: '1-based activity order within the workflow', required: false })
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  activityOrder?: number;
+
+  @ApiProperty({ description: 'Workflow activity display name', required: false })
+  @IsOptional()
+  @IsString()
+  activityName?: string;
+
+  @ApiProperty({ description: 'Runtime session bound to this workflow execution', required: false })
+  @IsOptional()
+  @IsString()
+  runtimeSessionId?: string;
+}
 
 export class ApprovalDecisionDto {
   @ApiProperty({ description: 'Comment about the approval decision', required: false })
@@ -315,4 +598,10 @@ export class SubmitInputDto {
   @IsOptional()
   @IsString()
   submittedBy?: string;
+}
+
+export class CleanupExecutionsBeforeDateDto {
+  @ApiProperty({ description: 'Delete executions created before this date (YYYY-MM-DD)', example: '2026-05-13' })
+  @IsDateString()
+  beforeDate: string;
 }

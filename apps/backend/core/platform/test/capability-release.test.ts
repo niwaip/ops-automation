@@ -26,6 +26,7 @@ describe('CapabilityReleaseService', () => {
     };
     const activityService = {
       executeCodeInTemporalSandbox: jest.fn(),
+      executeCodeStreaming: jest.fn(),
     };
     const skillService = {
       validateSkillToolsPayload: jest.fn(),
@@ -137,6 +138,73 @@ describe('CapabilityReleaseService', () => {
         'info.includeInstall',
       ]),
     });
+  });
+
+  it('normalizes camelCase url smoke inputs into valid urls', () => {
+    const { service } = createService();
+
+    const normalized = (service as any).buildSuggestedInputFromSchema({
+      properties: {
+        startUrl: {
+          type: 'string',
+        },
+      },
+    });
+
+    expect(normalized).toEqual({
+      startUrl: 'https://www.bing.com',
+    });
+  });
+
+  it('prefers temporal workflow input defaults when building deploy smoke input', () => {
+    const { service } = createService();
+
+    const smokeInput = (service as any).buildSmokeTestInput(
+      {
+        sourceType: 'temporal_workflow',
+      },
+      {
+        sourcePayload: {
+          workflowDsl: {
+            inputParams: {
+              startUrl: {
+                type: 'string',
+                required: true,
+                defaultValue: 'http://192.168.100.143:5173/',
+              },
+              username: {
+                type: 'string',
+                required: true,
+                defaultValue: 'test',
+              },
+            },
+          },
+          paramsSchema: {
+            required: ['startUrl', 'username'],
+            properties: {
+              startUrl: {
+                type: 'string',
+                required: true,
+                description: '起始页面地址',
+              },
+              username: {
+                type: 'string',
+                required: true,
+                description: '登录用户名',
+              },
+            },
+          },
+        },
+      },
+      'staging',
+    );
+
+    expect(smokeInput).toEqual(expect.objectContaining({
+      startUrl: 'http://192.168.100.143:5173/',
+      username: 'test',
+      smokeTest: true,
+      environment: 'staging',
+    }));
   });
 
   it('omits empty placeholder defaults from published temporal params schema', () => {
@@ -824,11 +892,13 @@ describe('CapabilityReleaseService', () => {
     });
     jest.spyOn(service as any, 'insertAuditEvent').mockResolvedValue(undefined);
     
-    // Mock activity service to return a string
-    jest.spyOn(activityService, 'executeCodeInTemporalSandbox').mockResolvedValue({
-      success: true,
-      result: '上海天气：晴，25度',
-      logs: ['Log 1'],
+    jest.spyOn(activityService, 'executeCodeStreaming').mockImplementation(async (_code, _fn, _taskQueue, _input, onLog) => {
+      onLog('[2026-05-16T00:00:00.000Z] 启动工作流: WeatherWorkflow');
+      return {
+        success: true,
+        result: '上海天气：晴，25度',
+        workflowId: 'workflow-1',
+      };
     });
 
     const result = await service.executePublishedSkill(
@@ -837,9 +907,108 @@ describe('CapabilityReleaseService', () => {
       'user-1',
     );
 
+    expect(activityService.executeCodeStreaming).toHaveBeenCalledWith(
+      'PYTHON_CODE',
+      'WeatherWorkflow',
+      'SKILL_TASK_QUEUE',
+      expect.objectContaining({
+        city: 'shanghai',
+        runtimeSessionId: expect.stringMatching(/^capability-runtime-/),
+        workflowId: expect.stringMatching(/^capability-runtime-/),
+      }),
+      expect.any(Function),
+      expect.objectContaining({
+        preferSandboxStreaming: true,
+      }),
+    );
     expect(result.success).toBe(true);
-    expect(result.output).toEqual({ result: '上海天气：晴，25度' });
-    expect(result.result).toEqual({ result: '上海天气：晴，25度' });
+    expect(result.runtimeSessionId).toMatch(/^capability-runtime-/);
+    expect(result.output).toEqual({
+      result: '上海天气：晴，25度',
+      temporalLink: 'http://localhost:8088/namespaces/default/workflows/workflow-1',
+    });
+    expect(result.result).toEqual({
+      result: '上海天气：晴，25度',
+      temporalLink: 'http://localhost:8088/namespaces/default/workflows/workflow-1',
+    });
+    expect(result.temporalWorkflowId).toBe('workflow-1');
+  });
+
+  it('pushes workflow activity progress to control-plane while executing temporal workflow', async () => {
+    const { service, prisma, activityService } = createService();
+
+    process.env.INTERNAL_API_SHARED_SECRET = 'internal-secret';
+    mockedAxios.post.mockResolvedValue({ data: { ok: true } } as any);
+
+    prisma.$queryRawUnsafe.mockResolvedValueOnce([{ id: 'release-row-1' }]);
+    jest.spyOn(service as any, 'mapRelease').mockReturnValue({
+      id: 'release-1',
+      sourceType: 'temporal_workflow',
+    });
+    jest.spyOn(service as any, 'getCurrentSnapshotOrThrow').mockResolvedValue({
+      id: 'snapshot-1',
+      sourcePayload: {
+        workflowDsl: {
+          workflowClassName: 'LoginWorkflow',
+        },
+      },
+    });
+    jest.spyOn(service as any, 'resolveTemporalExecutableBuildOrThrow').mockResolvedValue({
+      id: 'build-1',
+      generatedCode: 'PYTHON_CODE',
+    });
+    jest.spyOn(service as any, 'insertAuditEvent').mockResolvedValue(undefined);
+
+    jest.spyOn(activityService, 'executeCodeStreaming').mockImplementation(async (_code, _fn, _taskQueue, _input, onLog) => {
+      onLog('[2026-05-16T00:00:01.000Z] 执行浏览器 Phase Activity: 1. 页面打开');
+      onLog('[2026-05-16T00:00:02.000Z] 执行浏览器 Phase Activity: 2. 页面处理');
+      return {
+        success: true,
+        result: { ok: true },
+        workflowId: 'workflow-2',
+      };
+    });
+
+    const result = await service.executePublishedSkill(
+      'skill-temporal',
+      { city: 'shanghai' },
+      'user-1',
+      {
+        executionId: 'execution-1',
+        runtimeSessionId: 'runtime-1',
+        phaseKey: 'phase_01_execute_skill',
+      },
+    );
+
+    expect(mockedAxios.post).toHaveBeenNthCalledWith(
+      1,
+      'http://localhost:3003/api/executions/execution-1/phases/progress',
+      {
+        parentPhaseKey: 'phase_01_execute_skill',
+        activityOrder: 1,
+        activityName: '1. 页面打开',
+        runtimeSessionId: 'runtime-1',
+      },
+      expect.objectContaining({
+        timeout: 10000,
+        headers: expect.objectContaining({
+          'x-internal-auth': 'internal-secret',
+          'x-user-id': 'user-1',
+        }),
+      }),
+    );
+    expect(mockedAxios.post).toHaveBeenNthCalledWith(
+      2,
+      'http://localhost:3003/api/executions/execution-1/phases/progress',
+      {
+        parentPhaseKey: 'phase_01_execute_skill',
+        activityOrder: 2,
+        activityName: '2. 页面处理',
+        runtimeSessionId: 'runtime-1',
+      },
+      expect.any(Object),
+    );
+    expect(result.success).toBe(true);
   });
 
   it('executes published browser recording skill via browser worker with shared runtime session', async () => {
@@ -934,6 +1103,247 @@ describe('CapabilityReleaseService', () => {
         runtime: 'browser_recording',
         success: true,
       }),
+    );
+  });
+
+  it('executes only the requested browser recording step without reinitializing an existing session', async () => {
+    const { service, prisma } = createService();
+
+    prisma.$queryRawUnsafe.mockResolvedValueOnce([{ id: 'release-row-1' }]);
+    jest.spyOn(service as any, 'mapRelease').mockReturnValue({
+      id: 'release-browser-runtime-target-step',
+      sourceType: 'browser_recording',
+    });
+    jest.spyOn(service as any, 'getCurrentSnapshotOrThrow').mockResolvedValue({
+      id: 'snapshot-browser-target-step',
+      sourcePayload: {
+        executionFlow: [
+          {
+            id: 'step_1',
+            name: '1. navigate',
+            tool: { name: 'browser_step' },
+            input: {
+              action: 'navigate',
+              params: { url: '${url}' },
+            },
+          },
+          {
+            id: 'step_2',
+            name: '2. fill',
+            tool: { name: 'browser_step' },
+            input: {
+              action: 'fill',
+              params: { selector: '#username', value: '${username}' },
+            },
+          },
+          {
+            id: 'step_3',
+            name: '3. click',
+            tool: { name: 'browser_step' },
+            input: {
+              action: 'click',
+              params: { target: '#submit' },
+            },
+          },
+        ],
+      },
+    });
+    jest.spyOn(service as any, 'insertAuditEvent').mockResolvedValue(undefined);
+    mockedAxios.post.mockResolvedValueOnce({
+      data: { success: true, output: { status: 'clicked' } },
+    } as any);
+
+    const result = await service.executePublishedSkill(
+      'skill-browser-runtime',
+      {
+        url: 'https://www.bing.com',
+        username: 'chain',
+      },
+      'user-1',
+      {
+        executionId: 'exec-browser-target-step',
+        stepId: 'step-system-target-step',
+        runtimeSessionId: 'runtime-browser-target-step',
+        metadata: {
+          executionStepName: '3. click',
+          executionStepIndex: 3,
+        },
+      },
+    );
+
+    expect(mockedAxios.post).toHaveBeenCalledTimes(1);
+    expect(mockedAxios.post).toHaveBeenCalledWith(
+      'http://localhost:3004/browser/execute-step',
+      expect.objectContaining({
+        executionId: 'exec-browser-target-step',
+        runtimeSessionId: 'runtime-browser-target-step',
+        stepId: 'step-system-target-step:step_3',
+        action: 'click',
+        target: '#submit',
+      }),
+      { timeout: 120000 },
+    );
+    expect(mockedAxios.post).not.toHaveBeenCalledWith(
+      'http://localhost:3004/browser/init',
+      expect.anything(),
+      expect.anything(),
+    );
+    expect(result).toEqual(
+      expect.objectContaining({
+        releaseId: 'release-browser-runtime-target-step',
+        runtime: 'browser_recording',
+        success: true,
+        output: expect.objectContaining({
+          runtimeSessionId: 'runtime-browser-target-step',
+          stepResults: [
+            expect.objectContaining({
+              stepId: 'step_3',
+              name: '3. click',
+              action: 'click',
+            }),
+          ],
+        }),
+      }),
+    );
+  });
+
+  it('normalizes waitForSelector browser recording steps into wait with selector args', async () => {
+    const { service, prisma } = createService();
+
+    prisma.$queryRawUnsafe.mockResolvedValueOnce([{ id: 'release-row-1' }]);
+    jest.spyOn(service as any, 'mapRelease').mockReturnValue({
+      id: 'release-browser-runtime-wait-selector',
+      sourceType: 'browser_recording',
+    });
+    jest.spyOn(service as any, 'getCurrentSnapshotOrThrow').mockResolvedValue({
+      id: 'snapshot-browser-wait-selector',
+      sourcePayload: {
+        executionFlow: [
+          {
+            id: 'step_1',
+            name: '1. waitForSelector',
+            tool: { name: 'browser_step' },
+            input: {
+              action: 'waitForSelector',
+              params: {
+                selector: 'textbox[name="Enter username"]',
+                timeoutMs: 15000,
+              },
+            },
+          },
+        ],
+      },
+    });
+    jest.spyOn(service as any, 'insertAuditEvent').mockResolvedValue(undefined);
+    mockedAxios.post
+      .mockResolvedValueOnce({ data: { success: true, message: 'initialized' } } as any)
+      .mockResolvedValueOnce({ data: { success: true, output: { status: 'selector-ready' } } } as any);
+
+    const result = await service.executePublishedSkill(
+      'skill-browser-runtime',
+      {},
+      'user-1',
+      {
+        executionId: 'exec-browser-wait-selector',
+        stepId: 'step-system-wait-selector',
+        runtimeSessionId: 'runtime-browser-wait-selector',
+      },
+    );
+
+    expect(mockedAxios.post).toHaveBeenNthCalledWith(
+      2,
+      'http://localhost:3004/browser/execute-step',
+      expect.objectContaining({
+        executionId: 'exec-browser-wait-selector',
+        runtimeSessionId: 'runtime-browser-wait-selector',
+        action: 'wait',
+        target: 'role=textbox[name="Enter username"]',
+        args: {
+          duration: 15000,
+          selector: 'textbox[name="Enter username"]',
+        },
+      }),
+      { timeout: 120000 },
+    );
+    expect(result).toEqual(
+      expect.objectContaining({
+        releaseId: 'release-browser-runtime-wait-selector',
+        runtime: 'browser_recording',
+        success: true,
+      }),
+    );
+  });
+
+  it('preserves browser recording runtime session when a failed step requires takeover', async () => {
+    const { service, prisma } = createService();
+
+    prisma.$queryRawUnsafe.mockResolvedValueOnce([{ id: 'release-row-1' }]);
+    jest.spyOn(service as any, 'mapRelease').mockReturnValue({
+      id: 'release-browser-runtime-1',
+      sourceType: 'browser_recording',
+    });
+    jest.spyOn(service as any, 'getCurrentSnapshotOrThrow').mockResolvedValue({
+      id: 'snapshot-browser-1',
+      sourcePayload: {
+        executionFlow: [
+          {
+            id: 'step_1',
+            name: '1. navigate',
+            tool: { name: 'browser_step' },
+            input: {
+              action: 'navigate',
+              params: { url: '${url}' },
+            },
+          },
+          {
+            id: 'step_2',
+            name: '2. click',
+            tool: { name: 'browser_step' },
+            input: {
+              action: 'click',
+              params: { target: 'role=menuitem[name="play-circle Executions"]' },
+            },
+          },
+        ],
+      },
+    });
+    jest.spyOn(service as any, 'insertAuditEvent').mockResolvedValue(undefined);
+    mockedAxios.post
+      .mockResolvedValueOnce({ data: { success: true, message: 'initialized' } } as any)
+      .mockResolvedValueOnce({ data: { success: true, output: { status: 'navigated' } } } as any)
+      .mockResolvedValueOnce({
+        data: {
+          success: false,
+          errorMessage: 'click failed',
+          shouldTakeover: true,
+          takeoverReason: '页面未进入预期状态',
+        },
+      } as any);
+
+    const result = await service.executePublishedSkill(
+      'skill-browser-runtime',
+      {
+        url: 'https://www.bing.com',
+      },
+      'user-1',
+      {
+        executionId: 'exec-browser-2',
+        stepId: 'step-system-2',
+      },
+    );
+
+    expect(result).toEqual(
+      expect.objectContaining({
+        releaseId: 'release-browser-runtime-1',
+        runtime: 'browser_recording',
+        success: false,
+        error: 'click failed',
+      }),
+    );
+    expect(mockedAxios.post).not.toHaveBeenCalledWith(
+      'http://localhost:3004/browser/reset',
+      expect.anything(),
+      expect.anything(),
     );
   });
 

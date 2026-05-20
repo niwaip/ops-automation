@@ -2,7 +2,7 @@ import { apiClient } from './client';
 import type {
   AppNotification,
   NotificationSource,
-} from '../notifications/types';
+} from '@/shared/notifications/types';
 
 export interface NotificationListResponse {
   items: AppNotification[];

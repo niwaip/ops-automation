@@ -41,6 +41,7 @@ class TemporalSandboxServer:
 
     def _setup_routes(self):
         self._app.router.add_post('/execute', self.handle_execute)
+        self._app.router.add_post('/execute/stream', self.handle_execute_stream)
         self._app.router.add_post('/validate-activity', self.handle_validate_activity)
         self._app.router.add_post('/validate-workflow', self.handle_validate_workflow)
         self._app.router.add_post('/validate-workflow/stream', self.handle_validate_workflow_stream)
@@ -196,6 +197,89 @@ class TemporalSandboxServer:
             import traceback
             logger.error(f"Activity validation failed: {e}\n{traceback.format_exc()}")
             return web.json_response({"error": str(e)}, status=500)
+
+    async def handle_execute_stream(self, request: web.Request) -> web.StreamResponse:
+        """Execute code in sandbox and stream incremental logs via SSE."""
+        try:
+            data = await request.json()
+        except json.JSONDecodeError:
+            response = web.StreamResponse(status=400, headers={
+                'Content-Type': 'text/event-stream',
+                'Cache-Control': 'no-cache',
+                'Connection': 'keep-alive',
+            })
+            await response.prepare(request)
+            await response.write(f"data: {json.dumps({'type': 'error', 'content': 'Invalid JSON'}, ensure_ascii=False)}\n\n".encode('utf-8'))
+            await response.write_eof()
+            return response
+
+        code = data.get('code')
+        fn_name = data.get('fn_name')
+        activity_id = data.get('activity_id') or str(uuid.uuid4())
+        input_data = data.get('input_data', {}) or {}
+        workflow_id = f"agent-session-{activity_id}"
+
+        response = web.StreamResponse(status=200, headers={
+            'Content-Type': 'text/event-stream',
+            'Cache-Control': 'no-cache',
+            'Connection': 'keep-alive',
+            'X-Accel-Buffering': 'no',
+        })
+        await response.prepare(request)
+
+        async def emit(event: dict):
+            await response.write(f"data: {json.dumps(event, ensure_ascii=False)}\n\n".encode('utf-8'))
+
+        if not code or not fn_name:
+            await emit({"type": "error", "content": "code and fn_name are required"})
+            await response.write_eof()
+            return response
+
+        async def emit_log(message: str):
+            await emit({"type": "log", "content": message})
+
+        try:
+            await emit_log(f"[SandboxAgent] 开始执行: {workflow_id}")
+            await emit_log(f"[SandboxAgent] 函数入口: {fn_name}")
+
+            from sandbox_executor import execute_in_sandbox_streaming
+
+            execution_result = await execute_in_sandbox_streaming(
+                code,
+                fn_name,
+                input_data,
+                emit_log,
+                attempt=1,
+            )
+
+            if execution_result.get("success", execution_result.get("error") is None):
+                await emit({
+                    "type": "done",
+                    "success": True,
+                    "result": execution_result.get("result"),
+                    "logs": execution_result.get("logs", []),
+                    "workflow_id": workflow_id,
+                    "activity_id": activity_id,
+                })
+            else:
+                error_msg = execution_result.get("error") or "Sandbox execution failed"
+                await emit({
+                    "type": "done",
+                    "success": False,
+                    "error": error_msg,
+                    "traceback": execution_result.get("traceback"),
+                    "result": execution_result.get("result"),
+                    "logs": execution_result.get("logs", []),
+                    "workflow_id": workflow_id,
+                    "activity_id": activity_id,
+                })
+        except Exception as e:
+            import traceback
+            logger.error(f"Streaming execution failed: {e}\n{traceback.format_exc()}")
+            await emit({"type": "error", "content": str(e)})
+
+        await response.write_eof()
+        return response
 
     async def handle_validate_workflow(self, request: web.Request) -> web.Response:
         """Execute Workflow validation via dedicated Temporal validation workflow."""

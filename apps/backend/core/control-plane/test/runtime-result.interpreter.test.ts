@@ -156,6 +156,7 @@ describe('RuntimeResultInterpreter', () => {
       stepId: 'step-2',
       result: { documentId: 'doc-1' },
       error: undefined,
+      shouldTakeover: false,
     });
     expect(advanceExecutionFlow).toHaveBeenCalled();
     expect(failExecution).not.toHaveBeenCalled();
@@ -285,8 +286,70 @@ describe('RuntimeResultInterpreter', () => {
       stepId: 'step-3',
       result: null,
       error: 'runtime failed',
+      shouldTakeover: false,
     });
     expect(failExecution).toHaveBeenCalledWith('runtime failed', 'CAPABILITY_RUNTIME_FAILED');
+    expect(advanceExecutionFlow).not.toHaveBeenCalled();
+  });
+
+  it('requests takeover when skill runtime returns takeover_required', async () => {
+    const { interpreter, executionStepService } = createInterpreter();
+    const emitEvent = jest.fn().mockResolvedValue(undefined);
+    const advanceExecutionFlow = jest.fn().mockResolvedValue(undefined);
+    const failExecution = jest.fn().mockResolvedValue(undefined);
+    const takeover = jest.fn().mockResolvedValue(undefined);
+
+    await interpreter.handleSkillRuntimeResult(
+      {
+        executionId: 'execution-4',
+        runtimeSessionId: 'runtime-4',
+        stepId: 'step-4',
+        emitEvent,
+        advanceExecutionFlow,
+        failExecution,
+        takeover,
+      },
+      {
+        success: false,
+        status: 'takeover_required',
+        errorCode: 'BROWSER_WORKER_EXECUTION_FAILED',
+        errorMessage: 'page did not reach expected state',
+        requiresTakeover: true,
+        takeoverReason: 'browser page drifted after login',
+        output: {
+          status: 'takeover_required',
+        },
+        rawResult: {
+          runtime: 'temporal_workflow',
+          releaseId: 'release-4',
+          capabilityId: 'capability-4',
+          publishedSkillId: 'published-4',
+          logs: ['takeover'],
+        },
+      },
+    );
+
+    expect(executionStepService.finishSystemSkillStep).toHaveBeenCalledWith('step-4', {
+      success: false,
+      runtime: 'temporal_workflow',
+      releaseId: 'release-4',
+      capabilityId: 'capability-4',
+      capabilityVersion: null,
+      publishedSkillId: 'published-4',
+      result: { status: 'takeover_required' },
+      output: { status: 'takeover_required' },
+      logs: ['takeover'],
+      error: 'page did not reach expected state',
+    });
+    expect(emitEvent).toHaveBeenCalledWith('step.failed', {
+      runtimeSessionId: 'runtime-4',
+      stepId: 'step-4',
+      result: { status: 'takeover_required' },
+      error: 'page did not reach expected state',
+      shouldTakeover: true,
+    });
+    expect(takeover).toHaveBeenCalledWith('browser page drifted after login');
+    expect(failExecution).not.toHaveBeenCalled();
     expect(advanceExecutionFlow).not.toHaveBeenCalled();
   });
 });

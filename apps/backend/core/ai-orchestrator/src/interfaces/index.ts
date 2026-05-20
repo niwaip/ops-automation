@@ -276,6 +276,44 @@ export interface DecideFailureResponseDTO {
   reason: string;
 }
 
+export interface BrowserPhaseRecoveryPatchDTO {
+  type: 'replace_selector' | 'append_wait';
+  failed_step_id: string;
+  selector?: string;
+  duration_ms?: number;
+  note?: string;
+}
+
+export interface PlanBrowserPhaseRecoveryDTO {
+  execution_id: string;
+  phase_key: string;
+  phase_name?: string;
+  phase_type?: string;
+  attempt: number;
+  modelId?: string;
+  commands: Array<{
+    step_id: string;
+    action: string;
+    capability_type?: string;
+    input?: Record<string, unknown>;
+    metadata?: Record<string, unknown>;
+  }>;
+  result: {
+    failed_step_id?: string;
+    failed_action?: string;
+    error_code?: string;
+    error_message?: string;
+    retryable?: boolean;
+    takeover_reason?: string;
+  };
+}
+
+export interface PlanBrowserPhaseRecoveryResponseDTO {
+  action: 'retry_with_patch' | 'takeover_required' | 'abort';
+  reason: string;
+  patch?: BrowserPhaseRecoveryPatchDTO | null;
+}
+
 export interface APIKeyReference {
   reference_id: string;
   secret_type: 'vault' | 'env' | 'k8s_secret';
@@ -310,6 +348,21 @@ export interface PlanSkillMatchDTO {
   match_reason?: string;
 }
 
+export interface PlanStepBrowserPhaseCommandDTO {
+  step_id: string;
+  capability_type?: string;
+  action: string;
+  input?: Record<string, unknown>;
+  metadata?: Record<string, unknown>;
+}
+
+export interface PlanStepBrowserPhaseRecoveryPolicyDTO {
+  max_auto_retries?: number;
+  allow_ai_recovery?: boolean;
+  allow_human_takeover?: boolean;
+  model_id?: string;
+}
+
 export interface PlanStepDTO {
   id: string;
   title: string;
@@ -317,6 +370,13 @@ export interface PlanStepDTO {
   kind: 'skill' | 'tool' | 'human_input' | 'execution';
   tool_name?: string;
   status: 'planned';
+  phase_key?: string;
+  phase_name?: string;
+  phase_type?: string;
+  commands?: PlanStepBrowserPhaseCommandDTO[];
+  precheck?: Record<string, unknown>;
+  postcheck?: Record<string, unknown>;
+  recovery_policy?: PlanStepBrowserPhaseRecoveryPolicyDTO;
 }
 
 export interface RequiredInputDTO {

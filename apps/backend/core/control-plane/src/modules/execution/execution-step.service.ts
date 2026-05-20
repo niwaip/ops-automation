@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { EXECUTION_STEP_STATUS } from './contracts/execution-step-status';
 import { PrismaService } from '../prisma/prisma.service';
+import { BROWSER_ACTIONS, BROWSER_RUNTIME } from './browser-execution-constants';
 
 interface CreateBootstrapGotoStepInput {
   executionId: string;
@@ -77,8 +78,8 @@ export class ExecutionStepService {
     return this.prisma.executionStep.findFirst({
       where: {
         executionId,
-        type: 'browser_action',
-        action: 'goto',
+        type: BROWSER_RUNTIME.STEP_TYPE,
+        action: BROWSER_ACTIONS.GOTO,
         status: EXECUTION_STEP_STATUS.PENDING,
       },
       orderBy: { stepIndex: 'asc' },
@@ -118,9 +119,9 @@ export class ExecutionStepService {
         executionId: input.executionId,
         stepIndex: input.stepIndex,
         name: 'Open target page',
-        type: 'browser_action',
+        type: BROWSER_RUNTIME.STEP_TYPE,
         status: EXECUTION_STEP_STATUS.PENDING,
-        action: 'goto',
+        action: BROWSER_ACTIONS.GOTO,
         targetJson: this.asJsonValue({ url: input.url }),
         inputJson: this.asJsonValue({ url: input.url }),
       },
@@ -247,6 +248,19 @@ export class ExecutionStepService {
         status: EXECUTION_STEP_STATUS.SKIPPED,
         errorMessage: reason,
         endedAt: new Date(),
+      },
+    });
+  }
+
+  async requeueFailedStep(stepId: string): Promise<void> {
+    await this.prisma.executionStep.update({
+      where: { id: stepId },
+      data: {
+        status: EXECUTION_STEP_STATUS.PENDING,
+        errorCode: null,
+        errorMessage: null,
+        startedAt: null,
+        endedAt: null,
       },
     });
   }

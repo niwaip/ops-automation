@@ -740,7 +740,7 @@ interface ExecuteBrowserStepResultDto {
 
 - 发起 Execution
 - 轮询查看状态
-- 进入人工接管页
+- 进入 Execution 页面内联接管区
 - 恢复执行
 - 查看 step log
 
@@ -838,7 +838,7 @@ Portal
 - 查看失败原因
 - 当状态为 `human_control` 时显示进入接管入口
 
-### 13.3 `TakeoverWorkbenchPage`
+### 13.3 `ExecutionDetailPage / ExecutionListPage` 内联接管/恢复区
 
 必须支持：
 

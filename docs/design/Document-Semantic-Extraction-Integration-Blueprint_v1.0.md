@@ -47,7 +47,7 @@
 - Planner： [planner.service.ts](file:///Users/chain/Documents/MyProject/ops-automation/apps/backend/core/ai-orchestrator/src/modules/planner/planner.service.ts)
 - Task 模式与执行单恢复： [chat.controller.ts](file:///Users/chain/Documents/MyProject/ops-automation/apps/backend/core/ai-orchestrator/src/controllers/chat.controller.ts)
 - Execution waiting_input 写入与恢复： [execution.service.ts](file:///Users/chain/Documents/MyProject/ops-automation/apps/backend/core/control-plane/src/modules/execution/execution.service.ts)
-- Portal 执行详情补输入 UI： [ExecutionDetailPage.tsx](file:///Users/chain/Documents/MyProject/ops-automation/apps/frontend/portal/src/pages/ExecutionDetailPage.tsx)
+- Portal 执行详情补输入 UI： [ExecutionDetailPage.tsx](file:///Users/chain/Documents/MyProject/ops-automation/apps/frontend/portal/src/features/executions/pages/ExecutionDetailPage.tsx)
 
 ### 推荐接入点
 
@@ -449,7 +449,7 @@ semantic?: {
 
 ### 当前职责
 
-当前执行详情页在 [ExecutionDetailPage.tsx](file:///Users/chain/Documents/MyProject/ops-automation/apps/frontend/portal/src/pages/ExecutionDetailPage.tsx#L855-L1252) 中：
+当前执行详情页在 [ExecutionDetailPage.tsx](file:///Users/chain/Documents/MyProject/ops-automation/apps/frontend/portal/src/features/executions/pages/ExecutionDetailPage.tsx) 中：
 
 - 从 `waitingInputStep.inputJson.requiredInputs` 取字段；
 - 逐字段渲染 `Form.Item`；
@@ -823,4 +823,3 @@ semantic?: {
 - **第一主战场在 `ai-orchestrator / planner`**
 - **第二主战场在 DTO 透传与 Portal 展示**
 - **control-plane 保持稳定，不做大逻辑重写**
-

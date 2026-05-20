@@ -76,7 +76,7 @@
 - `Execution 列表`
 - `Execution 详情`
 - `审批处理`
-- `接管工作台`
+- `Execution 内联接管/恢复区`
 - `审计查看`
 
 若第一阶段时间紧，可将 `审批处理`、`审计查看` 先以简化页面形式存在。
@@ -205,18 +205,18 @@ MVP 可后置：
 
 若审批功能第一阶段延后，可保留简化占位页。
 
-## 5.6 `TakeoverWorkbenchPage`
+## 5.6 `ExecutionDetailPage / ExecutionListPage` 内联接管/恢复区
 
 用途：
 
-- 提供人工接管入口
+- 在 Execution 页面内提供人工接管入口
 
 必须展示：
 
 - 接管原因
 - 当前 Execution ID
 - 当前 Step
-- 浏览器接管入口
+- 浏览器接管入口或实时预览
 - 接管注意事项
 - 恢复执行按钮
 
@@ -224,7 +224,7 @@ MVP 可后置：
 
 - 打开 noVNC 或受控浏览器连接
 - 用户完成接管后点击 resume
-- 恢复成功后返回 Execution 详情页
+- 恢复成功后继续停留在 Execution 页面
 
 ## 5.7 `AuditViewPage`
 
@@ -296,10 +296,10 @@ ExecutionDetailPage
 ExecutionDetailPage
   -> running
   -> human_control
-  -> 进入 TakeoverWorkbenchPage
+  -> 显示内联接管/恢复区
   -> 人工处理
   -> resume
-  -> 返回 ExecutionDetailPage
+  -> 留在 ExecutionDetailPage
 ```
 
 页面要求：
@@ -344,7 +344,7 @@ ExecutionDetailPage
 - “等待人工接管”
 - 接管原因
 - 当前卡住的 step
-- 进入接管工作台按钮
+- 显示内联接管/恢复区
 
 ### 7.5 `succeeded`
 
@@ -426,15 +426,15 @@ ExecutionDetailPage
 
 ---
 
-## 9. TakeoverWorkbenchPage 详细要求
+## 9. Execution 页面内联接管/恢复区详细要求
 
-### 9.1 页面核心目标
+### 9.1 区域核心目标
 
 - 让用户明确接手当前浏览器
 - 让用户知道自己要处理什么问题
 - 让用户在处理完后把控制权交回系统
 
-### 9.2 页面必须展示
+### 9.2 区域必须展示
 
 - Execution ID
 - Skill 名称
@@ -443,11 +443,11 @@ ExecutionDetailPage
 - 连接状态
 - 接管说明
 
-### 9.3 页面必须具备
+### 9.3 区域必须具备
 
 - 打开 noVNC / 受控连接入口
 - Resume 按钮
-- 返回详情页入口
+- 在当前页面继续查看详情的能力
 
 ### 9.4 Resume 前确认
 
@@ -462,7 +462,7 @@ ExecutionDetailPage
 
 - 当前 Runtime 是否仍处于 frozen
 - 是否需要刷新详情页
-- 是否需要重新进入接管
+- 是否需要重新打开内联接管/恢复区
 
 ---
 
@@ -542,7 +542,7 @@ ExecutionDetailPage
 - Skill 列表页
 - 发起执行页
 - Execution 详情页
-- 接管工作台
+- Execution 内联接管/恢复区
 - 基础审批页
 - 基础审计查看页
 
@@ -570,11 +570,11 @@ ExecutionDetailPage
 - 能正确展示 steps
 - 在 `human_control` 时能显示接管入口
 
-## 14.3 接管工作台
+## 14.3 Execution 页面内联接管/恢复区
 
 - 能显示接管原因和当前 step
 - 能打开浏览器接管连接
-- 点击 resume 后能返回执行详情并继续轮询
+- 点击 resume 后能继续留在执行详情并继续轮询
 
 ## 14.4 审批页
 

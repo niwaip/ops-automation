@@ -146,6 +146,7 @@ export class SystemHealthResponseDto {
 
 export enum StepAction {
   GOTO = 'goto',
+  NAVIGATE = 'navigate',
   CLICK = 'click',
   FILL = 'fill',
   SCREENSHOT = 'screenshot',
@@ -163,12 +164,44 @@ export enum StepAction {
   LIST_SEARCH_RESULTS = 'list_search_results',
   CLICK_RESULT = 'click_result',
   SWITCH_LATEST_TAB = 'switch_latest_tab',
+  FOCUS_LATEST_PAGE = 'focus_latest_page',
 }
 
 export enum BrowserExecutionBackendDto {
   CLI = 'cli',
   CHROME_DEVTOOLS = 'chrome-devtools',
   MCP = 'mcp',
+}
+
+export class BrowserPageStateDto {
+  @ApiProperty({ description: 'Runtime session ID associated with the browser session' })
+  @IsString()
+  runtimeSessionId!: string;
+
+  @ApiProperty({ description: 'Current page URL', required: false })
+  @IsOptional()
+  @IsString()
+  pageUrl?: string;
+
+  @ApiProperty({ description: 'Current page title', required: false })
+  @IsOptional()
+  @IsString()
+  pageTitle?: string;
+
+  @ApiProperty({ description: 'Lightweight page fingerprint for phase reconciliation', required: false })
+  @IsOptional()
+  @IsString()
+  pageFingerprint?: string;
+
+  @ApiProperty({ description: 'Current document readyState', required: false })
+  @IsOptional()
+  @IsString()
+  readyState?: string;
+
+  @ApiProperty({ description: 'Timestamp when the page state was captured', required: false })
+  @IsOptional()
+  @IsString()
+  observedAt?: string;
 }
 
 export class ExecuteStepDto {
@@ -193,6 +226,7 @@ export class ExecuteStepDto {
     description: 'Action to perform',
     enum: [
       'goto',
+      'navigate',
       'click',
       'fill',
       'screenshot',
@@ -210,6 +244,7 @@ export class ExecuteStepDto {
       'list_search_results',
       'click_result',
       'switch_latest_tab',
+      'focus_latest_page',
     ],
   })
   @IsEnum(StepAction)
@@ -248,6 +283,11 @@ export class ExecuteStepResultDto {
   @IsObject()
   output?: Record<string, unknown>;
 
+  @ApiProperty({ description: 'Captured browser page state after step execution', required: false, type: BrowserPageStateDto })
+  @IsOptional()
+  @IsObject()
+  pageState?: BrowserPageStateDto;
+
   @ApiProperty({ description: 'Error code if step failed', required: false })
   @IsOptional()
   @IsString()
@@ -266,6 +306,83 @@ export class ExecuteStepResultDto {
   @IsOptional()
   @IsString()
   takeoverReason?: string;
+}
+
+export class InspectBrowserStateDto {
+  @ApiProperty({ description: 'Runtime session ID associated with the browser session' })
+  @IsString()
+  runtimeSessionId!: string;
+
+  @ApiProperty({ description: 'Browser execution backend', enum: BrowserExecutionBackendDto, required: false, default: BrowserExecutionBackendDto.CLI })
+  @IsOptional()
+  @IsEnum(BrowserExecutionBackendDto)
+  backend?: BrowserExecutionBackendDto;
+}
+
+export class AssertBrowserStateDto {
+  @ApiProperty({ description: 'Runtime session ID associated with the browser session' })
+  @IsString()
+  runtimeSessionId!: string;
+
+  @ApiProperty({ description: 'Browser execution backend', enum: BrowserExecutionBackendDto, required: false, default: BrowserExecutionBackendDto.CLI })
+  @IsOptional()
+  @IsEnum(BrowserExecutionBackendDto)
+  backend?: BrowserExecutionBackendDto;
+
+  @ApiProperty({ description: 'Expected exact page URL', required: false })
+  @IsOptional()
+  @IsString()
+  pageUrl?: string;
+
+  @ApiProperty({ description: 'Expected page URL substring', required: false })
+  @IsOptional()
+  @IsString()
+  pageUrlIncludes?: string;
+
+  @ApiProperty({ description: 'Expected exact page title', required: false })
+  @IsOptional()
+  @IsString()
+  pageTitle?: string;
+
+  @ApiProperty({ description: 'Expected page title substring', required: false })
+  @IsOptional()
+  @IsString()
+  pageTitleIncludes?: string;
+
+  @ApiProperty({ description: 'Expected exact page fingerprint', required: false })
+  @IsOptional()
+  @IsString()
+  pageFingerprint?: string;
+
+  @ApiProperty({ description: 'Expected readyState', required: false })
+  @IsOptional()
+  @IsString()
+  readyState?: string;
+
+  @ApiProperty({ description: 'Selector that should exist on the page', required: false })
+  @IsOptional()
+  @IsString()
+  selectorExists?: string;
+
+  @ApiProperty({ description: 'Text that should exist within page content', required: false })
+  @IsOptional()
+  @IsString()
+  textIncludes?: string;
+}
+
+export class BrowserPageAssertionResultDto {
+  @ApiProperty({ description: 'Whether all provided browser assertions matched' })
+  @IsBoolean()
+  matched!: boolean;
+
+  @ApiProperty({ description: 'Observed browser page state', type: BrowserPageStateDto })
+  @IsObject()
+  pageState!: BrowserPageStateDto;
+
+  @ApiProperty({ description: 'Assertion details for debugging', required: false })
+  @IsOptional()
+  @IsObject()
+  details?: Record<string, unknown>;
 }
 
 export class FreezeBrowserSessionDto {

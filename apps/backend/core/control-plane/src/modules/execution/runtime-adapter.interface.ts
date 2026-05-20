@@ -34,6 +34,14 @@ export interface ArtifactRef {
   metadata?: Record<string, unknown>;
 }
 
+export interface RuntimePhaseArtifact {
+  artifactType: string;
+  snapshotId?: string | null;
+  pageUrl?: string | null;
+  pageFingerprint?: string | null;
+  payload?: Record<string, unknown> | null;
+}
+
 export interface SnapshotRef {
   id: string;
   type?: 'browser' | 'document' | 'workflow' | 'api' | 'custom';
@@ -78,6 +86,34 @@ export interface RuntimeStepInvokeResult {
   snapshot?: SnapshotRef | null;
   metrics?: RuntimeMetrics;
   rawResult?: Record<string, unknown>;
+}
+
+export interface RuntimePhaseInvokeRequest {
+  executionId: string;
+  phaseKey: string;
+  phaseName?: string;
+  phaseType?: string;
+  runtimeSessionId?: string | null;
+  steps: RuntimeStepInvokeRequest[];
+  metadata?: Record<string, unknown>;
+}
+
+export interface RuntimePhaseInvokeResult {
+  success: boolean;
+  status: 'completed' | 'failed' | 'blocked' | 'waiting' | 'takeover_required';
+  stepResults: RuntimeStepInvokeResult[];
+  failedStepId?: string;
+  failedAction?: string;
+  snapshotId?: string | null;
+  pageUrl?: string | null;
+  pageFingerprint?: string | null;
+  artifacts?: RuntimePhaseArtifact[];
+  output?: Record<string, unknown>;
+  errorCode?: string;
+  errorMessage?: string;
+  retryable?: boolean;
+  requiresTakeover?: boolean;
+  takeoverReason?: string;
 }
 
 export interface RuntimeAdapter {

@@ -25,9 +25,9 @@ async function bootstrap() {
   });
 
   const port = process.env.PLATFORM_PORT || process.env.AUTH_PORT || 3001;
-  await app.listen(port);
+  await app.listen(port, '0.0.0.0');
 
-  console.log(`[Platform Service] Running on port ${port}`);
+  console.log(`[Platform Service] Running on port ${port} (IPv4)`);
 }
 
 bootstrap();

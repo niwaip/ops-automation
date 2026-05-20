@@ -261,7 +261,7 @@
 
 **建议涉及文件**
 
-- [ExecutionDetailPage.tsx](file:///Users/chain/Documents/MyProject/ops-automation/apps/frontend/portal/src/pages/ExecutionDetailPage.tsx)
+- [ExecutionDetailPage.tsx](file:///Users/chain/Documents/MyProject/ops-automation/apps/frontend/portal/src/features/executions/pages/ExecutionDetailPage.tsx)
 
 **验收门槛**
 
@@ -361,7 +361,7 @@
 - [chat.controller.ts](file:///Users/chain/Documents/MyProject/ops-automation/apps/backend/core/ai-orchestrator/src/controllers/chat.controller.ts)
 - `PlanDraftDTO` / planner interfaces 定义文件
 - `ExecutionDto` / `ExecutionStepDto` 定义文件
-- [ExecutionDetailPage.tsx](file:///Users/chain/Documents/MyProject/ops-automation/apps/frontend/portal/src/pages/ExecutionDetailPage.tsx)
+- [ExecutionDetailPage.tsx](file:///Users/chain/Documents/MyProject/ops-automation/apps/frontend/portal/src/features/executions/pages/ExecutionDetailPage.tsx)
 
 ### 第一批新增
 
@@ -455,4 +455,3 @@
 ## 7. 一句话总结
 
 > 这次改造的第一优先级不是“重做执行链路”，而是“先把复杂文档任务进入执行链路前的数据质量做好”，因此任务拆解必须以 `Planner 增强 -> DTO 透传 -> Portal 展示升级` 为主线，控制面保持稳定、渐进演进。
-

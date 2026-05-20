@@ -64,6 +64,7 @@ services:
       - REDIS_HOST=redis
       - REDIS_PORT=6379
       - JWT_SECRET=jwt_secret_key_change_in_production
+      - INTERNAL_API_SHARED_SECRET=${INTERNAL_API_SHARED_SECRET:-ops_internal_shared_secret_change_me}
       - PORT=${PLATFORM_PORT:-3001}
       - EXTERNAL_HOST=${HOST_IP:-localhost}
     ports:

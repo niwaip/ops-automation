@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { BrowserActionStep } from '../domain/browser-step.types';
 
 export interface ExportOptions {
@@ -10,8 +10,6 @@ export interface ExportOptions {
 
 @Injectable()
 export class BrowserScriptExportService {
-  private readonly logger = new Logger(BrowserScriptExportService.name);
-
   /**
    * Generates a full Playwright script from a sequence of steps
    */

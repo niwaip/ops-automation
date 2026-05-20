@@ -34,43 +34,55 @@ export class RuntimeSessionService {
   ) {}
 
   async create(dto: CreateRuntimeSessionDto): Promise<RuntimeSessionDto> {
-    // Allocate worker through existing allocation service
+    // Create the runtime session first so the browser worker can bind to the
+    // formal runtimeSessionId. Otherwise the UI session and execution worker may diverge.
+    const runtimeSession = await this.prisma.runtimeSession.create({
+      data: {
+        executionId: dto.executionId,
+        runtimeType: dto.runtimeType || 'browser',
+        workerId: dto.workerId,
+        profileId: dto.profileId || dto.userId,
+        state: 'allocating',
+        controlMode: 'AGENT_RUNNING',
+        connectionInfoJson: this.asJsonValue(dto.connectionInfo),
+        lastActivityAt: new Date(),
+      },
+    });
+
     let workerId = dto.workerId;
     let connectionInfo: Record<string, unknown> | undefined = dto.connectionInfo;
 
-    // If no workerId provided, allocate one
     if (!workerId) {
-      const workerInfo = await this.allocationService.allocateWorker(dto.executionId || 'temp', dto.userId);
+      const workerInfo = await this.allocationService.allocateWorker(runtimeSession.id, dto.userId);
       if (!workerInfo) {
+        await this.prisma.runtimeSession.delete({
+          where: { id: runtimeSession.id },
+        });
         throw new BadRequestException('No available workers in pool');
       }
       workerId = workerInfo.worker_id;
       connectionInfo = workerInfo.endpoints as unknown as Record<string, unknown>;
     }
 
-    // PostgreSQL stores the formal runtime state. Redis only mirrors control data.
-    const runtimeSession = await this.prisma.runtimeSession.create({
+    const updatedRuntimeSession = await this.prisma.runtimeSession.update({
+      where: { id: runtimeSession.id },
       data: {
-        executionId: dto.executionId,
-        runtimeType: dto.runtimeType || 'browser',
         workerId,
-        profileId: dto.profileId || dto.userId,
         state: 'ready',
-        controlMode: 'AGENT_RUNNING',
         connectionInfoJson: this.asJsonValue(connectionInfo),
         lastActivityAt: new Date(),
       },
     });
 
     await this.freezeService.syncRuntimeControlState(
-      runtimeSession.id,
-      runtimeSession.state,
+      updatedRuntimeSession.id,
+      updatedRuntimeSession.state,
       runtimeSession.controlMode as 'AGENT_RUNNING' | 'HUMAN_CONTROL',
     );
 
-    this.logger.log(`RuntimeSession created: ${runtimeSession.id}, worker=${workerId}`);
+    this.logger.log(`RuntimeSession created: ${updatedRuntimeSession.id}, worker=${workerId}`);
 
-    return this.toDto(runtimeSession);
+    return this.toDto(updatedRuntimeSession);
   }
 
   async getById(id: string): Promise<RuntimeSessionDto> {

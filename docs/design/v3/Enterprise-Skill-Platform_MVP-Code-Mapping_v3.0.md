@@ -71,11 +71,12 @@
 - 当前最接近 MVP 体验层的落点
 - 现有入口：
   - `src/api/execution.ts`
-  - `src/pages/ExecutionListPage.tsx`
-  - `src/pages/ExecutionDetailPage.tsx`
-  - `src/pages/TakeoverWorkbenchPage.tsx`
+  - `src/features/executions/pages/ExecutionListPage.tsx`
+  - `src/features/executions/pages/ExecutionDetailPage.tsx`
+  - `src/components/execution/InlineRecoveryPanel.tsx`
+  - `src/components/runtime/LiveSessionPreviewCard.tsx`
 - 判断：
-  - Execution 列表、详情、接管页已有基础雏形，可直接增强
+  - Execution 列表、详情与内联接管/恢复区已有基础雏形，可直接增强
 
 ### `auth`
 
@@ -357,7 +358,7 @@
 
 - 服务：`portal`
 - 主要文件：
-  - `src/pages/ExecutionListPage.tsx`
+- `src/features/executions/pages/ExecutionListPage.tsx`
   - `src/api/execution.ts`
 - 当前状态：
   - 页面和 API client 已存在
@@ -368,22 +369,25 @@
 
 - 服务：`portal`
 - 主要文件：
-  - `src/pages/ExecutionDetailPage.tsx`
+- `src/features/executions/pages/ExecutionDetailPage.tsx`
   - `src/api/execution.ts`
 - 当前状态：
   - 页面已存在，包含 steps progress 和 steps table
 - 落地方式：
   - 直接复用
 
-### `UI-P0-03` Takeover Workbench
+### `UI-P0-03` Execution 内联接管与恢复区
 
 - 服务：`portal`
 - 主要文件：
-  - `src/pages/TakeoverWorkbenchPage.tsx`
+- `src/features/executions/pages/ExecutionDetailPage.tsx`
+- `src/features/executions/pages/ExecutionListPage.tsx`
+  - `src/components/execution/InlineRecoveryPanel.tsx`
+  - `src/components/runtime/LiveSessionPreviewCard.tsx`
   - `src/api/execution.ts`
 - 当前状态：
-  - 页面已存在
-  - `resume/cancel` 已接 execution API
+  - 详情页和列表页已内联接入恢复面板
+  - `resume/cancel/reconcile` 已接 execution API
 - 落地方式：
   - 直接复用并对接真实 runtime 连接信息
 
@@ -454,7 +458,7 @@
 - 应收口到：
   - `ExecutionListPage.tsx`
   - `ExecutionDetailPage.tsx`
-  - `TakeoverWorkbenchPage.tsx`
+  - `InlineRecoveryPanel.tsx`
 - 当前旧语义来源：
   - 旧 `session` 页面和旧 `session` API
 - 处理建议：
@@ -469,7 +473,7 @@
 - `control-plane` 的 `Execution` 基础 API
 - `session-broker` 的 `runtime-sessions` API
 - `browser-worker` 的 `execute-step` DTO 和 controller
-- `portal` 的 Execution 列表、详情、接管页
+- `portal` 的 Execution 列表、详情和内联接管/恢复区
 - `auth` 的 `auth/me` 和 `skills` 查询
 
 ### 重点改造
@@ -499,9 +503,9 @@
 5. `services/browser-worker/src/modules/browser/browser.controller.ts`
 6. `services/ai-orchestrator/src/modules/react-engine/react-engine.service.ts`
 7. `services/portal/src/api/execution.ts`
-8. `services/portal/src/pages/ExecutionListPage.tsx`
-9. `services/portal/src/pages/ExecutionDetailPage.tsx`
-10. `services/portal/src/pages/TakeoverWorkbenchPage.tsx`
+8. `apps/frontend/portal/src/features/executions/pages/ExecutionListPage.tsx`
+9. `apps/frontend/portal/src/features/executions/pages/ExecutionDetailPage.tsx`
+10. `apps/frontend/portal/src/components/execution/InlineRecoveryPanel.tsx`
 
 ---
 

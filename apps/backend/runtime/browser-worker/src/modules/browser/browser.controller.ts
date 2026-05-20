@@ -1,12 +1,19 @@
-import { Controller, Post, Body } from '@nestjs/common';
+import { Controller, Post, Body, Get, Param, BadRequestException, NotFoundException, Res } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
+import * as fs from 'fs/promises';
+import * as path from 'path';
+import type { Response } from 'express';
 import { BrowserService } from './browser.service';
 import {
+  AssertBrowserStateDto,
+  BrowserPageAssertionResultDto,
   BrowserExecutionBackendDto,
   BrowserControlStateDto,
+  BrowserPageStateDto,
   ExecuteStepDto,
   ExecuteStepResultDto,
   FreezeBrowserSessionDto,
+  InspectBrowserStateDto,
   ResumeBrowserSessionDto,
 } from '../../dto/worker.dto';
 import { MCPCommand } from './adapters/browser-execution.adapter';
@@ -16,6 +23,8 @@ import { ExportOptions } from './application/browser-script-export.service';
 @ApiTags('browser')
 @Controller('browser')
 export class BrowserController {
+  private readonly artifactDir = path.join(process.cwd(), 'temp', 'playwright-cli-artifacts');
+
   constructor(private readonly browserService: BrowserService) {}
 
   @Post('init')
@@ -48,6 +57,8 @@ export class BrowserController {
       commands: MCPCommand[];
       backend?: BrowserExecutionBackendDto;
       runtimeSessionId?: string;
+      includeArtifacts?: boolean;
+      includeSteps?: boolean;
     },
   ): Promise<{ success: boolean; results: any[]; message?: string; steps?: BrowserActionStep[] }> {
     return this.browserService.executeCommands(body.commands, body);
@@ -73,6 +84,20 @@ export class BrowserController {
   @ApiResponse({ status: 400, description: 'Browser not initialized' })
   async executeStep(@Body() dto: ExecuteStepDto): Promise<ExecuteStepResultDto> {
     return this.browserService.executeStep(dto);
+  }
+
+  @Post('inspect-state')
+  @ApiOperation({ summary: 'Inspect current browser page state' })
+  @ApiResponse({ status: 200, type: BrowserPageStateDto, description: 'Current browser page state' })
+  async inspectState(@Body() dto: InspectBrowserStateDto): Promise<BrowserPageStateDto> {
+    return this.browserService.inspectState(dto);
+  }
+
+  @Post('assert-state')
+  @ApiOperation({ summary: 'Assert browser page state and content conditions' })
+  @ApiResponse({ status: 200, type: BrowserPageAssertionResultDto, description: 'Browser assertion result' })
+  async assertState(@Body() dto: AssertBrowserStateDto): Promise<BrowserPageAssertionResultDto> {
+    return this.browserService.assertState(dto);
   }
 
   @Post('freeze')
@@ -114,5 +139,28 @@ export class BrowserController {
   ): Promise<{ schema: Record<string, any> }> {
     const schema = this.browserService.generateParamsSchema(body.steps);
     return { schema };
+  }
+
+  @Get('artifacts/:filename')
+  @ApiOperation({ summary: 'Serve browser execution artifacts' })
+  @ApiResponse({ status: 200, description: 'Artifact file content' })
+  @ApiResponse({ status: 404, description: 'Artifact not found' })
+  async getArtifact(
+    @Param('filename') filename: string,
+    @Res() res: Response,
+  ): Promise<void> {
+    const normalizedFilename = path.basename(filename || '').trim();
+    if (!normalizedFilename || normalizedFilename !== filename) {
+      throw new BadRequestException('Invalid artifact filename');
+    }
+
+    const artifactPath = path.join(this.artifactDir, normalizedFilename);
+    try {
+      await fs.access(artifactPath);
+    } catch {
+      throw new NotFoundException('Artifact not found');
+    }
+
+    res.sendFile(artifactPath);
   }
 }

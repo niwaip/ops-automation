@@ -160,4 +160,161 @@ describe('execution-plan-step.builder', () => {
       targetJson: { plannerStepId: 'plan-step-5', plannerKind: 'skill' },
     });
   });
+
+  it('adds bootstrap phase metadata and planner phase metadata to generated steps', () => {
+    const { steps, bootstrapUrl } = buildPlannedExecutionSteps(
+      'execution-6',
+      {
+        plannerMode: 'fallback',
+        url: 'https://example.com/login',
+      },
+      {
+        steps: [
+          {
+            id: 'login-skill',
+            title: '登录并进入主页',
+            description: '执行登录技能',
+            kind: 'skill',
+            status: 'planned',
+          },
+        ],
+      },
+    );
+
+    expect(bootstrapUrl).toBe('https://example.com/login');
+    expect(steps).toHaveLength(2);
+    expect(steps[0].targetJson).toEqual(
+      expect.objectContaining({
+        phaseKey: 'phase_bootstrap_navigation',
+        phaseName: 'Open target page',
+        phaseType: 'browser_navigation',
+      }),
+    );
+    expect(steps[1].targetJson).toEqual(
+      expect.objectContaining({
+        phaseKey: 'phase_01_login_skill',
+        phaseName: '登录并进入主页',
+        phaseType: 'system_skill',
+      }),
+    );
+    expect(steps[1].inputJson).toEqual(
+      expect.objectContaining({
+        phaseKey: 'phase_01_login_skill',
+        phaseName: '登录并进入主页',
+        phaseType: 'system_skill',
+      }),
+    );
+  });
+
+  it('preserves browser phase commands and recovery config on planned execution steps', () => {
+    const { steps } = buildPlannedExecutionSteps(
+      'execution-7',
+      {
+        plannerMode: 'skill',
+      },
+      {
+        steps: [
+          {
+            id: 'plan-step-browser-phase',
+            title: '执行登录阶段',
+            description: '复用模板中的登录 phase commands',
+            kind: 'tool',
+            status: 'planned',
+            phase_key: 'phase_login',
+            phase_name: '登录阶段',
+            phase_type: 'browser_phase',
+            commands: [
+              {
+                step_id: 'cmd-fill-username',
+                capability_type: 'browser_step',
+                action: 'fill',
+                input: {
+                  target: 'username-input',
+                  value: '${username}',
+                },
+                metadata: {
+                  source: 'template_step',
+                },
+              },
+              {
+                step_id: 'cmd-click-submit',
+                action: 'click',
+                input: {
+                  target: 'submit-button',
+                },
+              },
+            ],
+            precheck: {
+              selectorExists: '#login-form',
+            },
+            postcheck: {
+              pageUrlIncludes: '/dashboard',
+            },
+            recovery_policy: {
+              max_auto_retries: 2,
+              allow_ai_recovery: true,
+              allow_human_takeover: true,
+              model_id: 'gpt-5.4',
+            },
+          },
+        ],
+      },
+    );
+
+    expect(steps).toHaveLength(1);
+    expect(steps[0]).toMatchObject({
+      stepIndex: 1,
+      type: 'system',
+      action: 'execute_browser_phase',
+      targetJson: {
+        plannerStepId: 'plan-step-browser-phase',
+        plannerKind: 'tool',
+        phaseKey: 'phase_login',
+        phaseName: '登录阶段',
+        phaseType: 'browser_phase',
+        precheck: {
+          selectorExists: '#login-form',
+        },
+        postcheck: {
+          pageUrlIncludes: '/dashboard',
+        },
+        recoveryPolicy: {
+          maxAutoRetries: 2,
+          allowAiRecovery: true,
+          allowHumanTakeover: true,
+          modelId: 'gpt-5.4',
+        },
+      },
+      inputJson: {
+        description: '复用模板中的登录 phase commands',
+        plannerStatus: 'planned',
+      },
+    });
+    expect(steps[0].targetJson).toEqual(
+      expect.objectContaining({
+        commands: [
+          {
+            stepId: 'cmd-fill-username',
+            capabilityType: 'browser.step',
+            action: 'fill',
+            input: {
+              target: 'username-input',
+              value: '${username}',
+            },
+            metadata: {
+              source: 'template_step',
+            },
+          },
+          {
+            stepId: 'cmd-click-submit',
+            capabilityType: 'browser.step',
+            action: 'click',
+            input: {
+              target: 'submit-button',
+            },
+          },
+        ],
+      }),
+    );
+  });
 });
