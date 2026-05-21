@@ -3,6 +3,11 @@ import axios from 'axios';
 import * as fs from 'fs/promises';
 import { getBrowserWorkerUrl } from '../../config/service-endpoints';
 import { BrowserCommand, BrowserCommandService, ParseBrowserCommandResponse } from './browser-command.service';
+import {
+  ExecutionReconcileService,
+  ReconcileAfterTakeoverRequest,
+  ReconcileAfterTakeoverResponse,
+} from './execution-reconcile.service';
 import { ModelService } from '../model/model.service';
 import { RedisService } from '../redis/redis.service';
 
@@ -199,6 +204,7 @@ export class RecorderDebugService {
     private readonly browserCommandService: BrowserCommandService,
     private readonly modelService: ModelService,
     private readonly redisService: RedisService,
+    private readonly executionReconcileService: ExecutionReconcileService,
   ) {}
 
   async chat(request: RecorderDebugChatRequest): Promise<RecorderDebugChatResponse> {
@@ -390,6 +396,95 @@ export class RecorderDebugService {
       throw new NotFoundException(`Recorder debug session ${sessionId} not found`);
     }
     return session;
+  }
+
+  async reconcileAfterTakeover(
+    input: ReconcileAfterTakeoverRequest,
+  ): Promise<ReconcileAfterTakeoverResponse> {
+    return this.executionReconcileService.reconcile(input);
+  }
+
+  buildResumePrompt(input: ReconcileAfterTakeoverRequest): string {
+    return this.executionReconcileService.buildResumePrompt(input);
+  }
+
+  mergeManualPatchSteps(
+    originalCommands: BrowserCommand[],
+    patchSteps: ReconcileAfterTakeoverRequest['patchSteps'],
+    failedCommand?: ReconcileAfterTakeoverRequest['failedCommand'],
+  ): BrowserCommand[] {
+    const failedIndex = failedCommand
+      ? originalCommands.findIndex((command) => {
+          if (command.tool !== failedCommand.tool) {
+            return false;
+          }
+          if (command.description && failedCommand.description) {
+            return command.description === failedCommand.description;
+          }
+          return JSON.stringify(command.params || {}) === JSON.stringify(failedCommand.params || {});
+        })
+      : -1;
+
+    const mappedPatchCommands: BrowserCommand[] = [];
+    for (const step of patchSteps) {
+      if (step.action === 'navigate' && typeof step.params?.url === 'string') {
+        mappedPatchCommands.push({
+          tool: 'navigate',
+          params: { url: step.params.url },
+          description: step.scriptFragment || '手动补录导航',
+        });
+        continue;
+      }
+      if (step.action === 'click') {
+        mappedPatchCommands.push({
+          tool: 'click',
+          params: { ...(step.params || {}) },
+          description: step.scriptFragment || '手动补录点击',
+        });
+        continue;
+      }
+      if (step.action === 'hover') {
+        mappedPatchCommands.push({
+          tool: 'hover',
+          params: { ...(step.params || {}) },
+          description: step.scriptFragment || '手动补录悬停',
+        });
+        continue;
+      }
+      if (step.action === 'fill' && step.params?.value !== undefined) {
+        mappedPatchCommands.push({
+          tool: 'fill',
+          params: { ...(step.params || {}) },
+          description: step.scriptFragment || '手动补录输入',
+        });
+        continue;
+      }
+      if ((step.action === 'press' || step.action === 'press_key') && typeof step.params?.key === 'string') {
+        mappedPatchCommands.push({
+          tool: 'press_key',
+          params: { key: step.params.key },
+          description: step.scriptFragment || '手动补录按键',
+        });
+        continue;
+      }
+      if (step.action === 'switch_latest_tab' || step.action === 'focus_latest_page') {
+        mappedPatchCommands.push({
+          tool: 'switch_latest_tab',
+          params: {},
+          description: step.scriptFragment || '手动补录切换最新标签页',
+        });
+      }
+    }
+
+    if (failedIndex < 0) {
+      return [...mappedPatchCommands, ...originalCommands];
+    }
+
+    return [
+      ...originalCommands.slice(0, failedIndex),
+      ...mappedPatchCommands,
+      ...originalCommands.slice(failedIndex + 1),
+    ];
   }
 
   private async loadOrCreateSession(

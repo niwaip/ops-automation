@@ -1,6 +1,8 @@
 import { Injectable, Logger, OnModuleDestroy } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import * as http from 'http';
+import { URL } from 'url';
+import { WorkerService } from '../worker/worker.service';
 
 export type RecorderStatus = 'idle' | 'connecting' | 'recording' | 'paused' | 'stopped' | 'error';
 
@@ -11,6 +13,12 @@ interface BrowserSession {
   script: string;
   cdpPort: number;
   noVncPort: number;
+  codegenBaseUrl: string;
+}
+
+interface StartBrowserOptions {
+  codegenBaseUrl?: string;
+  reuseBrowser?: boolean;
 }
 
 @Injectable()
@@ -22,7 +30,10 @@ export class RecorderService implements OnModuleDestroy {
   private readonly codegenHost = process.env.CHROME_REMOTE_DEBUGGING_HOST || 'ops-browser-chrome';
   private readonly codegenPort = parseInt(process.env.CODEGEN_API_PORT || '3011', 10);
 
-  constructor(private eventEmitter: EventEmitter2) {}
+  constructor(
+    private eventEmitter: EventEmitter2,
+    private readonly workerService: WorkerService,
+  ) {}
 
   async onModuleDestroy() {
     for (const [id, _session] of this.sessions) {
@@ -30,15 +41,25 @@ export class RecorderService implements OnModuleDestroy {
     }
   }
 
-  async startBrowser(sessionId: string, startUrl: string): Promise<{ cdpPort: number; noVncPort: number }> {
+  async startBrowser(
+    sessionId: string,
+    startUrl: string,
+    options?: StartBrowserOptions,
+  ): Promise<{ cdpPort: number; noVncPort: number }> {
+    const codegenBaseUrl = this.resolveCodegenBaseUrl(options?.codegenBaseUrl);
     this.logger.log(`Starting codegen for session ${sessionId}`);
-    this.logger.log(`Calling codegen API at http://${this.codegenHost}:${this.codegenPort}`);
+    this.logger.log(`Calling codegen API at ${codegenBaseUrl}`);
 
     // Check if codegen API is available
-    await this.waitForCodegenApi();
+    await this.waitForCodegenApi(codegenBaseUrl);
 
     // Start codegen via API
-    const success = await this.startCodegen(sessionId, startUrl);
+    const success = await this.startCodegen(
+      sessionId,
+      startUrl,
+      codegenBaseUrl,
+      options?.reuseBrowser === true,
+    );
     if (!success) {
       throw new Error('Failed to start codegen');
     }
@@ -50,6 +71,7 @@ export class RecorderService implements OnModuleDestroy {
       script: '',
       cdpPort: 9222,
       noVncPort: 6080,
+      codegenBaseUrl,
     };
 
     this.sessions.set(sessionId, session);
@@ -60,11 +82,26 @@ export class RecorderService implements OnModuleDestroy {
     return { cdpPort: 9222, noVncPort: 6080 };
   }
 
-  private async waitForCodegenApi(maxAttempts = 30): Promise<void> {
+  async startTakeoverRecording(
+    runtimeSessionId: string,
+    options?: {
+      startUrl?: string;
+      reuseExistingPage?: boolean;
+    },
+  ): Promise<{ sessionId: string }> {
+    const codegenBaseUrl = await this.resolveTakeoverCodegenBaseUrl(runtimeSessionId);
+    await this.startBrowser(runtimeSessionId, options?.startUrl || 'about:blank', {
+      codegenBaseUrl,
+      reuseBrowser: options?.reuseExistingPage === true,
+    });
+    return { sessionId: runtimeSessionId };
+  }
+
+  private async waitForCodegenApi(codegenBaseUrl: string, maxAttempts = 30): Promise<void> {
     for (let i = 0; i < maxAttempts; i++) {
       try {
         await new Promise<void>((resolve, reject) => {
-          const req = http.get(`http://${this.codegenHost}:${this.codegenPort}/health`, (res) => {
+          const req = http.get(`${codegenBaseUrl}/status`, (res) => {
             if (res.statusCode === 200) {
               resolve();
             } else {
@@ -77,7 +114,7 @@ export class RecorderService implements OnModuleDestroy {
             reject(new Error('Timeout'));
           });
         });
-        this.logger.log(`Codegen API is ready at http://${this.codegenHost}:${this.codegenPort}`);
+        this.logger.log(`Codegen API is ready at ${codegenBaseUrl}`);
         return;
       } catch {
         await new Promise((r) => setTimeout(r, 500));
@@ -86,10 +123,15 @@ export class RecorderService implements OnModuleDestroy {
     throw new Error('Codegen API not available');
   }
 
-  private async startCodegen(sessionId: string, url: string): Promise<boolean> {
+  private async startCodegen(
+    sessionId: string,
+    url: string,
+    codegenBaseUrl: string,
+    reuseBrowser = false,
+  ): Promise<boolean> {
     return new Promise<boolean>((resolve) => {
       const req = http.get(
-        `http://${this.codegenHost}:${this.codegenPort}/start?session=${encodeURIComponent(sessionId)}&url=${encodeURIComponent(url)}`,
+        `${codegenBaseUrl}/start?session=${encodeURIComponent(sessionId)}&url=${encodeURIComponent(url)}&reuse_browser=${reuseBrowser ? 'true' : 'false'}`,
         (res) => {
           let data = '';
           res.on('data', (chunk) => data += chunk);
@@ -124,7 +166,7 @@ export class RecorderService implements OnModuleDestroy {
       }
 
       try {
-        const script = await this.getScript();
+        const script = await this.getScript(session.codegenBaseUrl);
         if (script && script !== session.script) {
           session.script = script;
           this.logger.log(`Script updated for session ${sessionId}`);
@@ -143,9 +185,9 @@ export class RecorderService implements OnModuleDestroy {
     }
   }
 
-  private async getScript(): Promise<string> {
+  private async getScript(codegenBaseUrl: string): Promise<string> {
     return new Promise<string>((resolve, reject) => {
-      const req = http.get(`http://${this.codegenHost}:${this.codegenPort}/script`, (res) => {
+      const req = http.get(`${codegenBaseUrl}/script`, (res) => {
         let data = '';
         res.on('data', (chunk) => data += chunk);
         res.on('end', () => {
@@ -182,7 +224,7 @@ export class RecorderService implements OnModuleDestroy {
     // Stop codegen via API and get final script
     try {
       const result = await new Promise<any>((resolve, reject) => {
-        const req = http.get(`http://${this.codegenHost}:${this.codegenPort}/stop`, (res) => {
+        const req = http.get(`${session.codegenBaseUrl}/stop`, (res) => {
           let data = '';
           res.on('data', (chunk) => data += chunk);
           res.on('end', () => {
@@ -212,6 +254,17 @@ export class RecorderService implements OnModuleDestroy {
     this.sessions.delete(sessionId);
   }
 
+  async stopTakeoverRecording(
+    runtimeSessionId: string,
+  ): Promise<{ rawScript: string; recordedAt: string }> {
+    const sessionBeforeStop = this.sessions.get(runtimeSessionId);
+    await this.stopBrowser(runtimeSessionId);
+    return {
+      rawScript: sessionBeforeStop?.script || '',
+      recordedAt: new Date().toISOString(),
+    };
+  }
+
   getSession(sessionId: string): BrowserSession | undefined {
     return this.sessions.get(sessionId);
   }
@@ -221,5 +274,33 @@ export class RecorderService implements OnModuleDestroy {
     if (session) {
       session.script = script;
     }
+  }
+
+  private async resolveTakeoverCodegenBaseUrl(runtimeSessionId: string): Promise<string> {
+    const internalCodegenUrl = this.workerService.getInternalCodegenUrl(runtimeSessionId);
+    if (internalCodegenUrl) {
+      return this.resolveCodegenBaseUrl(internalCodegenUrl);
+    }
+
+    const worker = await this.workerService.getWorkerByRuntimeSessionId(runtimeSessionId);
+    if (!worker) {
+      throw new Error(`No browser worker found for runtime session ${runtimeSessionId}`);
+    }
+
+    const fallbackInternalCodegenUrl = this.workerService.getInternalCodegenUrl(runtimeSessionId);
+    if (!fallbackInternalCodegenUrl) {
+      throw new Error(`Codegen is not enabled for runtime session ${runtimeSessionId}`);
+    }
+
+    return this.resolveCodegenBaseUrl(fallbackInternalCodegenUrl);
+  }
+
+  private resolveCodegenBaseUrl(rawUrl?: string): string {
+    if (!rawUrl) {
+      return `http://${this.codegenHost}:${this.codegenPort}`;
+    }
+
+    const parsed = new URL(rawUrl);
+    return `${parsed.protocol}//${parsed.host}`;
   }
 }

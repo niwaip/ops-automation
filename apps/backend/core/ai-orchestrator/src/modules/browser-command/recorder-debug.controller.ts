@@ -2,6 +2,10 @@ import { Body, Controller, Get, Param, Post } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import { RecorderDebugService } from './recorder-debug.service';
 import type { RecorderDebugChatRequest, RecorderDebugChatResponse } from './recorder-debug.service';
+import type {
+  ReconcileAfterTakeoverRequest,
+  ReconcileAfterTakeoverResponse,
+} from './execution-reconcile.service';
 
 @ApiTags('AI-Recorder-Debug')
 @Controller('ai/recorder-debug')
@@ -18,6 +22,12 @@ export class RecorderDebugController {
   @ApiOperation({ summary: 'Export CLI script and internal skill draft' })
   async export(@Body() body: Omit<RecorderDebugChatRequest, 'message'> & { userGoal?: string }) {
     return this.service.exportArtifacts(body);
+  }
+
+  @Post('reconcile')
+  @ApiOperation({ summary: 'Reconcile browser execution after manual takeover' })
+  async reconcile(@Body() body: ReconcileAfterTakeoverRequest): Promise<ReconcileAfterTakeoverResponse> {
+    return this.service.reconcileAfterTakeover(body);
   }
 
   @Post('reset')

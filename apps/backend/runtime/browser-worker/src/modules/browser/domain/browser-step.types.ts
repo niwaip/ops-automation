@@ -1,5 +1,6 @@
 export interface BrowserRuntimeLocator {
   strategy: 'role' | 'label' | 'placeholder' | 'testid' | 'text' | 'css' | 'ref';
+  type?: 'role' | 'label' | 'placeholder' | 'testid' | 'text' | 'css' | 'ref';
   value: string;
   expression?: string;
   role?: string;
@@ -57,7 +58,7 @@ export interface BrowserError {
 
 export interface BrowserActionStep {
   id: string;
-  source: 'ai' | 'manual' | 'imported';
+  source: 'ai' | 'manual' | 'manual_takeover' | 'imported';
   backend: string;
   action: string;
   status: 'pending' | 'success' | 'error';

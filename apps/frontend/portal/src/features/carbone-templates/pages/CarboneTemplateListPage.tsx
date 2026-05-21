@@ -1,6 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import {
-  Alert,
   Button,
   Card,
   Descriptions,
@@ -298,20 +297,13 @@ const CarboneTemplateListPage: React.FC = () => {
           <Space direction="vertical" size={12} style={{ width: '100%' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
               <div>
-                <Title level={4} style={{ marginBottom: 8 }}>Carbone 模板</Title>
+                <Title level={4} style={{ marginBottom: 8 }}>文档模版</Title>
                 <Text type="secondary">
                   统一管理通过 Office Add-in 生成并保存的 Word、Excel、PPT 模板。旧的 `report-templates`
                   创建入口已合并到这里。
                 </Text>
               </div>
               <Space wrap>
-                <Button
-                  type="primary"
-                  icon={<PlusOutlined />}
-                  onClick={() => window.open(OFFICE_ADDIN_TASKPANE_URL, '_blank', 'noopener,noreferrer')}
-                >
-                  打开 Office Add-in
-                </Button>
                 <Button
                   icon={<DownloadOutlined />}
                   onClick={() => window.open(OFFICE_ADDIN_DOWNLOAD_URL, '_blank', 'noopener,noreferrer')}
@@ -320,19 +312,6 @@ const CarboneTemplateListPage: React.FC = () => {
                 </Button>
               </Space>
             </div>
-
-            <Alert
-              type="info"
-              showIcon
-              message="从 0 到 1 的模板创建流程"
-              description={(
-                <Space direction="vertical" size={4}>
-                  <Text>1. 在本机启动并安装 Carbone Office Add-in。</Text>
-                  <Text>2. 在 Word 或 Excel 中打开原始文档，通过 Add-in 标注变量、预览并保存模板。</Text>
-                  <Text>3. 保存成功后，模板会自动出现在当前列表中，后续可继续查看、下载、重命名和删除。</Text>
-                </Space>
-              )}
-            />
           </Space>
         </Card>
 

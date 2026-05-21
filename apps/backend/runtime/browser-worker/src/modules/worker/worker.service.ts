@@ -299,10 +299,18 @@ export class WorkerService implements OnModuleInit, OnModuleDestroy {
     if (existingWorkerId) {
       const existingWorker = this.workers.get(existingWorkerId);
       if (existingWorker?.status === 'running') {
-        return this.getWorker(existingWorkerId);
-      }
+        if (!this.requiresWorkerRecreation(existingWorker, options)) {
+          return this.getWorker(existingWorkerId);
+        }
 
-      if (existingWorker) {
+        this.logger.log(
+          `Recreating worker ${existingWorkerId} for runtime ${runtimeSessionId} to apply updated session options`,
+        );
+        await this.deleteWorker(existingWorkerId).catch((error: unknown) => {
+          const errorMessage = error instanceof Error ? error.message : String(error);
+          this.logger.warn(`Failed to delete outdated worker ${existingWorkerId}: ${errorMessage}`);
+        });
+      } else if (existingWorker) {
         this.logger.warn(
           `Existing worker ${existingWorkerId} for runtime ${runtimeSessionId} is ${existingWorker.status}, recreating`,
         );
@@ -394,6 +402,37 @@ export class WorkerService implements OnModuleInit, OnModuleDestroy {
       return undefined;
     }
     return worker ? `http://${worker.container_ip}:3011` : undefined;
+  }
+
+  private requiresWorkerRecreation(
+    worker: ManagedWorkerStatus,
+    options?: SessionWorkerOptions,
+  ): boolean {
+    if (!options) {
+      return false;
+    }
+
+    const requestedMode = options.mode;
+    if (requestedMode && worker.mode !== requestedMode) {
+      return true;
+    }
+
+    const requestedHeadless = options.headless;
+    if (typeof requestedHeadless === 'boolean' && worker.headless !== requestedHeadless) {
+      return true;
+    }
+
+    const effectiveRequestedCodegen = typeof options.enableCodegen === 'boolean'
+      ? ((requestedHeadless ?? worker.headless) ? false : options.enableCodegen)
+      : undefined;
+    if (
+      typeof effectiveRequestedCodegen === 'boolean'
+      && worker.enable_codegen !== effectiveRequestedCodegen
+    ) {
+      return true;
+    }
+
+    return false;
   }
 
   // Method to check if worker is healthy (called by health service)

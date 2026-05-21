@@ -36,6 +36,12 @@ import { apiClient } from '@/shared/api/http/client';
 import { templateApi } from '@/api/template';
 import { sessionApi, workerApi } from '@/api/session';
 import { transcribeAudio } from '@/features/chat/chatApi';
+import type { RecorderTakeoverViewState } from '@/features/recorder/lib/types';
+import recorderRuntimeService, {
+  type ReconcileAfterTakeoverResponse,
+  type RecorderPatchStep,
+  type RecorderTakeoverObservation,
+} from '@/services/recorder.service';
 import { useAuthStore } from '@/shared/store/authStore';
 
 const { TextArea } = Input;
@@ -190,6 +196,32 @@ interface BrowserCommandExecutionResponse {
   results?: BrowserCommandExecutionResult[];
 }
 
+type TakeoverUiMode =
+  | 'idle'
+  | 'required'
+  | 'recording'
+  | 'reconciling'
+  | 'ready_to_resume'
+  | 'resuming';
+
+interface TakeoverUiState {
+  mode: TakeoverUiMode;
+  runtimeSessionId?: string;
+  sessionId?: string;
+  backend?: ExecutionBackend;
+  takeoverSessionId?: string;
+  reason?: string;
+  originalCommands: MCPCommand[];
+  failedCommand?: MCPCommand & {
+    errorMessage?: string;
+  };
+  patchSteps: RecorderPatchStep[];
+  observation?: RecorderTakeoverObservation;
+  strategy?: ReconcileAfterTakeoverResponse['strategy'];
+  explanation?: string;
+  resumeCommands: MCPCommand[];
+}
+
 interface BrowserInitResponse {
   success?: boolean;
   message?: string;
@@ -340,6 +372,45 @@ const getPrimaryExecutionResult = (
   };
 };
 
+const createIdleTakeoverState = (): TakeoverUiState => ({
+  mode: 'idle',
+  originalCommands: [],
+  patchSteps: [],
+  resumeCommands: [],
+});
+
+const describeTakeoverCommand = (command: MCPCommand): string => {
+  const params = command.params || {};
+  const target = [
+    typeof params.target === 'string' ? params.target : undefined,
+    typeof params.selector === 'string' ? params.selector : undefined,
+    typeof params.text === 'string' ? params.text : undefined,
+    typeof params.url === 'string' ? params.url : undefined,
+    typeof params.key === 'string' ? params.key : undefined,
+  ].find((value): value is string => Boolean(value && value.trim()));
+
+  return target ? `${command.tool}: ${target}` : command.tool;
+};
+
+const describePatchStep = (step: RecorderPatchStep): string => {
+  const params = step.params || {};
+  const target = [
+    typeof params.target === 'string' ? params.target : undefined,
+    typeof params.selector === 'string' ? params.selector : undefined,
+    typeof params.text === 'string' ? params.text : undefined,
+    typeof params.url === 'string' ? params.url : undefined,
+    typeof params.key === 'string' ? params.key : undefined,
+    typeof step.locator?.name === 'string' ? step.locator.name : undefined,
+    typeof step.locator?.value === 'string' ? step.locator.value : undefined,
+  ].find((value): value is string => Boolean(value && value.trim()));
+
+  return target ? `${step.action}: ${target}` : step.action;
+};
+
+const pickFailedCommand = (commands: MCPCommand[]): MCPCommand | undefined => {
+  return commands.find((command) => command.tool !== 'wait') || commands[0];
+};
+
 const getStringParam = (params: Record<string, unknown>, key: string): string | undefined => {
   const value = params[key];
   return typeof value === 'string' ? value : undefined;
@@ -367,6 +438,7 @@ interface AIControlsProps {
   onBrowserReady?: (ready: boolean) => void;
   // Browser endpoints callback
   onBrowserEndpoints?: (endpoints: { novnc?: string; cdp?: string }) => void;
+  onTakeoverStateChange?: (state: RecorderTakeoverViewState) => void;
   // Manual mode props
   recorderStatus?: 'idle' | 'connecting' | 'recording' | 'paused' | 'stopped' | 'error';
   isConnected?: boolean;
@@ -393,6 +465,7 @@ const AIControls: React.FC<AIControlsProps> = ({
   onDisconnect,
   onBrowserReady,
   onBrowserEndpoints,
+  onTakeoverStateChange,
   recordedScript = '',
 }) => {
   const { t } = useTranslation(['common', 'recorder']);
@@ -452,6 +525,7 @@ const AIControls: React.FC<AIControlsProps> = ({
   const [recorderDebugSessionId, setRecorderDebugSessionId] = useState<string>();
   const [recorderDebugRuntimeSessionId, setRecorderDebugRuntimeSessionId] = useState<string>();
   const [browserRuntimeSessionId, setBrowserRuntimeSessionId] = useState<string>(createRuntimeSessionId);
+  const [takeoverState, setTakeoverState] = useState<TakeoverUiState>(createIdleTakeoverState);
   const [isTemplatePanelExpanded, setIsTemplatePanelExpanded] = useState(false);
   const [speechSupported, setSpeechSupported] = useState(false);
   const [isListening, setIsListening] = useState(false);
@@ -483,6 +557,22 @@ const AIControls: React.FC<AIControlsProps> = ({
     };
   }, [browserRuntimeSessionId, recorderDebugRuntimeSessionId, executionBackend]);
 
+  useEffect(() => {
+    onTakeoverStateChange?.({
+      mode: takeoverState.mode,
+      runtimeSessionId: takeoverState.runtimeSessionId,
+      sessionId: takeoverState.sessionId,
+      backend: takeoverState.backend,
+      takeoverSessionId: takeoverState.takeoverSessionId,
+      reason: takeoverState.reason,
+      strategy: takeoverState.strategy,
+      explanation: takeoverState.explanation,
+      currentPageUrl: takeoverState.observation?.currentPageUrl,
+      patchStepCount: takeoverState.patchSteps.length,
+      resumeCommandCount: takeoverState.resumeCommands.length,
+    });
+  }, [onTakeoverStateChange, takeoverState]);
+
   const cleanupBrowserSessions = async (
     sessions: Array<{ runtimeSessionId?: string; backend: ExecutionBackend }>,
   ) => {
@@ -510,6 +600,47 @@ const AIControls: React.FC<AIControlsProps> = ({
     );
   };
 
+  const resetTakeoverState = useCallback(() => {
+    setTakeoverState(createIdleTakeoverState());
+  }, []);
+
+  const markTakeoverRequired = useCallback((input: {
+    runtimeSessionId?: string;
+    sessionId?: string;
+    backend: ExecutionBackend;
+    reason: string;
+    originalCommands: MCPCommand[];
+    failedCommand?: MCPCommand;
+  }) => {
+    const runtimeSessionId = input.runtimeSessionId?.trim();
+    if (!runtimeSessionId) {
+      return;
+    }
+
+    setTakeoverState((prev) => {
+      if (prev.mode === 'recording' || prev.mode === 'reconciling' || prev.mode === 'ready_to_resume' || prev.mode === 'resuming') {
+        return prev;
+      }
+
+      return {
+        mode: 'required',
+        runtimeSessionId,
+        sessionId: input.sessionId,
+        backend: input.backend,
+        reason: input.reason,
+        originalCommands: input.originalCommands,
+        failedCommand: input.failedCommand
+          ? {
+              ...input.failedCommand,
+              errorMessage: input.reason,
+            }
+          : undefined,
+        patchSteps: [],
+        resumeCommands: [],
+      };
+    });
+  }, []);
+
   useEffect(() => {
     setIsBrowserReady(false);
     onBrowserReady?.(false);
@@ -526,7 +657,8 @@ const AIControls: React.FC<AIControlsProps> = ({
     setRecorderDebugSessionId(undefined);
     setRecorderDebugRuntimeSessionId(undefined);
     setBrowserRuntimeSessionId(createRuntimeSessionId());
-  }, [executionBackend]);
+    resetTakeoverState();
+  }, [executionBackend, resetTakeoverState]);
 
   useEffect(() => {
     setIsTemplatePanelExpanded(!isReactChatMode);
@@ -777,13 +909,21 @@ const AIControls: React.FC<AIControlsProps> = ({
       });
     },
     {
-      onSuccess: (data) => {
+      onSuccess: (data, commands) => {
         const executionFailed = isExecutionFailed(data);
         const resultMessage = getFailedExecutionMessage(data);
         console.log('[AIControls] Commands executed:', data);
         if (executionFailed) {
+          markTakeoverRequired({
+            runtimeSessionId: browserRuntimeSessionId,
+            backend: executionBackend,
+            reason: resultMessage,
+            originalCommands: commands,
+            failedCommand: pickFailedCommand(commands),
+          });
           void message.error(resultMessage);
         } else {
+          setTakeoverState((prev) => (prev.mode === 'required' ? createIdleTakeoverState() : prev));
           void message.success(t('recorder:ai.commandExecuted'));
         }
         // Update last history entry with result
@@ -902,6 +1042,9 @@ const AIControls: React.FC<AIControlsProps> = ({
       return apiClient.post('/browser/init', {
         backend: executionBackend,
         runtimeSessionId: browserRuntimeSessionId,
+        sessionPreferences: {
+          enableCodegen: true,
+        },
       });
     },
     {
@@ -1044,6 +1187,20 @@ const AIControls: React.FC<AIControlsProps> = ({
         if (data.currentPageUrl || data.observation?.currentPageUrl) {
           setCurrentPageUrl(data.currentPageUrl || data.observation?.currentPageUrl);
         }
+        if (data.execution && isExecutionFailed(data.execution as BrowserCommandExecutionResponse)) {
+          const failureReason = getFailedExecutionMessage(data.execution as BrowserCommandExecutionResponse);
+          markTakeoverRequired({
+            runtimeSessionId: data.runtimeSessionId,
+            sessionId: data.sessionId,
+            backend: executionBackend,
+            reason: failureReason,
+            originalCommands: data.commands || [],
+            failedCommand: pickFailedCommand(data.commands || []),
+          });
+          void message.warning('检测到浏览器执行失败，可进入人工接管');
+        } else {
+          setTakeoverState((prev) => (prev.mode === 'required' ? createIdleTakeoverState() : prev));
+        }
         void message.success('对话已处理');
       } catch (error: unknown) {
         setHistory((prev) => [
@@ -1140,6 +1297,7 @@ const AIControls: React.FC<AIControlsProps> = ({
     setRecorderDebugSessionId(undefined);
     setRecorderDebugRuntimeSessionId(undefined);
     setBrowserRuntimeSessionId(createRuntimeSessionId());
+    resetTakeoverState();
   };
 
   const handleExecutionBackendChange = async (nextBackend: ExecutionBackend) => {
@@ -1159,6 +1317,145 @@ const AIControls: React.FC<AIControlsProps> = ({
     ]);
 
     setExecutionBackend(nextBackend);
+  };
+
+  const handleStartTakeover = async () => {
+    if (takeoverState.mode !== 'required' || !takeoverState.runtimeSessionId) {
+      return;
+    }
+
+    try {
+      const response = await recorderRuntimeService.startTakeover({
+        runtimeSessionId: takeoverState.runtimeSessionId,
+        sessionId: takeoverState.sessionId,
+        backend: takeoverState.backend || executionBackend,
+        failedCommand: takeoverState.failedCommand,
+        reason: takeoverState.reason,
+      });
+      setTakeoverState((prev) => ({
+        ...prev,
+        mode: 'recording',
+        takeoverSessionId: response.takeoverSessionId,
+      }));
+      if (response.endpoints) {
+        onBrowserEndpoints?.(response.endpoints);
+      }
+      void message.success('已进入人工接管模式');
+    } catch (error: unknown) {
+      void message.error(resolveErrorMessage(error, '进入人工接管失败'));
+    }
+  };
+
+  const handleStopTakeover = async () => {
+    if (
+      takeoverState.mode !== 'recording'
+      || !takeoverState.runtimeSessionId
+      || !takeoverState.takeoverSessionId
+    ) {
+      return;
+    }
+
+    setTakeoverState((prev) => ({
+      ...prev,
+      mode: 'reconciling',
+    }));
+
+    try {
+      const stopped = await recorderRuntimeService.stopTakeover({
+        runtimeSessionId: takeoverState.runtimeSessionId,
+        takeoverSessionId: takeoverState.takeoverSessionId,
+      });
+
+      if (stopped.observation.currentPageUrl) {
+        setCurrentPageUrl(stopped.observation.currentPageUrl);
+      }
+
+      const reconcileRequest = {
+        sessionId: takeoverState.sessionId || recorderDebugSessionId || stopped.runtimeSessionId,
+        runtimeSessionId: stopped.runtimeSessionId,
+        backend: takeoverState.backend || executionBackend,
+        failedCommand: takeoverState.failedCommand,
+        originalCommands: takeoverState.originalCommands,
+        patchSteps: stopped.patchSteps,
+        observation: stopped.observation,
+      };
+
+      try {
+        const reconcile = await recorderRuntimeService.reconcileAfterTakeover(reconcileRequest);
+        setTakeoverState((prev) => ({
+          ...prev,
+          mode: 'ready_to_resume',
+          patchSteps: stopped.patchSteps,
+          observation: stopped.observation,
+          strategy: reconcile.strategy,
+          explanation: reconcile.explanation,
+          resumeCommands: reconcile.resumeCommands,
+        }));
+        void message.success('已生成恢复方案');
+      } catch (error: unknown) {
+        setTakeoverState((prev) => ({
+          ...prev,
+          mode: 'ready_to_resume',
+          patchSteps: stopped.patchSteps,
+          observation: stopped.observation,
+          explanation: resolveErrorMessage(error, '恢复方案生成失败'),
+          resumeCommands: [],
+        }));
+        void message.warning('已结束接管，但恢复方案生成失败');
+      }
+    } catch (error: unknown) {
+      setTakeoverState((prev) => ({
+        ...prev,
+        mode: 'recording',
+      }));
+      void message.error(resolveErrorMessage(error, '结束人工接管失败'));
+    }
+  };
+
+  const handleResumeAfterTakeover = async () => {
+    if (
+      takeoverState.mode !== 'ready_to_resume'
+      || !takeoverState.runtimeSessionId
+      || takeoverState.resumeCommands.length === 0
+    ) {
+      return;
+    }
+
+    setTakeoverState((prev) => ({
+      ...prev,
+      mode: 'resuming',
+    }));
+
+    try {
+      const resumed = await recorderRuntimeService.resumeAfterTakeover({
+        runtimeSessionId: takeoverState.runtimeSessionId,
+        takeoverSessionId: takeoverState.takeoverSessionId,
+        backend: takeoverState.backend || executionBackend,
+        strategy: takeoverState.strategy,
+        resumeCommands: takeoverState.resumeCommands,
+      });
+
+      setHistory((prev) => [
+        ...prev,
+        {
+          id: Date.now().toString(),
+          type: 'system',
+          content: resumed.success
+            ? `已按 ${takeoverState.strategy || '恢复方案'} 继续执行`
+            : '恢复执行返回失败状态，请查看详情后重试',
+          timestamp: new Date(),
+          backend: takeoverState.backend || executionBackend,
+        },
+      ]);
+      resetTakeoverState();
+      void message.success(resumed.success ? '已恢复 AI 执行' : '恢复执行完成，但结果为失败');
+    } catch (error: unknown) {
+      setTakeoverState((prev) => ({
+        ...prev,
+        mode: 'ready_to_resume',
+      }));
+      void message.error(resolveErrorMessage(error, '恢复执行失败'));
+    }
   };
 
   const handleCopyCommand = (command: MCPCommand) => {
@@ -2500,6 +2797,135 @@ const AIControls: React.FC<AIControlsProps> = ({
 
         {/* Input area - 3列2行布局 */}
         <div style={{ marginTop: 0, flexShrink: 0 }}>
+          {takeoverState.mode !== 'idle' && (
+            <div
+              style={{
+                marginBottom: 8,
+                padding: '10px 12px',
+                borderRadius: 10,
+                background: isDarkTheme ? '#111827' : '#fff7e6',
+                border: isDarkTheme ? '1px solid #374151' : '1px solid #ffe7ba',
+              }}
+            >
+              <Space direction="vertical" size={8} style={{ width: '100%' }}>
+                <Space wrap>
+                  <Tag color={
+                    takeoverState.mode === 'required'
+                      ? 'warning'
+                      : takeoverState.mode === 'recording'
+                        ? 'processing'
+                        : takeoverState.mode === 'reconciling'
+                          ? 'blue'
+                          : takeoverState.mode === 'ready_to_resume'
+                            ? 'success'
+                            : 'purple'
+                  }>
+                    {{
+                      required: '等待人工接管',
+                      recording: '人工接管中',
+                      reconciling: '生成恢复方案中',
+                      ready_to_resume: '可继续执行',
+                      resuming: '恢复执行中',
+                    }[takeoverState.mode] || '接管处理中'}
+                  </Tag>
+                  {takeoverState.strategy ? (
+                    <Tag color="processing">{takeoverState.strategy}</Tag>
+                  ) : null}
+                  {takeoverState.patchSteps.length > 0 ? (
+                    <Tag>{`patchSteps: ${takeoverState.patchSteps.length}`}</Tag>
+                  ) : null}
+                </Space>
+                <Text style={{ whiteSpace: 'pre-wrap' }}>
+                  {takeoverState.explanation
+                    || takeoverState.reason
+                    || '检测到执行失败，建议进入人工接管完成补录后再恢复执行。'}
+                </Text>
+                {takeoverState.observation?.currentPageUrl ? (
+                  <Text type="secondary" style={{ fontSize: 12 }}>
+                    当前页面: {takeoverState.observation.currentPageUrl}
+                  </Text>
+                ) : null}
+                {(takeoverState.patchSteps.length > 0 || takeoverState.resumeCommands.length > 0) ? (
+                  <Collapse
+                    size="small"
+                    ghost
+                    items={[
+                      ...(takeoverState.patchSteps.length > 0 ? [{
+                        key: 'patch-steps',
+                        label: `补录步骤 (${takeoverState.patchSteps.length})`,
+                        children: (
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                            {takeoverState.patchSteps.map((step, index) => (
+                              <div
+                                key={`${step.id || step.action}-${index}`}
+                                style={{
+                                  padding: '6px 8px',
+                                  borderRadius: 8,
+                                  background: isDarkTheme ? '#0b1220' : '#fff',
+                                  border: isDarkTheme ? '1px solid #374151' : '1px solid #f0f0f0',
+                                  fontSize: 12,
+                                }}
+                              >
+                                {describePatchStep(step)}
+                              </div>
+                            ))}
+                          </div>
+                        ),
+                      }] : []),
+                      ...(takeoverState.resumeCommands.length > 0 ? [{
+                        key: 'resume-commands',
+                        label: `恢复命令 (${takeoverState.resumeCommands.length})`,
+                        children: (
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                            {takeoverState.resumeCommands.map((command, index) => (
+                              <div
+                                key={`${command.tool}-${index}`}
+                                style={{
+                                  padding: '6px 8px',
+                                  borderRadius: 8,
+                                  background: isDarkTheme ? '#0b1220' : '#fff',
+                                  border: isDarkTheme ? '1px solid #374151' : '1px solid #f0f0f0',
+                                  fontSize: 12,
+                                }}
+                              >
+                                {describeTakeoverCommand(command)}
+                              </div>
+                            ))}
+                          </div>
+                        ),
+                      }] : []),
+                    ]}
+                  />
+                ) : null}
+                <Space wrap>
+                  {takeoverState.mode === 'required' ? (
+                    <Button type="primary" onClick={() => { void handleStartTakeover(); }}>
+                      人工接管
+                    </Button>
+                  ) : null}
+                  {takeoverState.mode === 'recording' ? (
+                    <Button type="primary" onClick={() => { void handleStopTakeover(); }}>
+                      结束接管
+                    </Button>
+                  ) : null}
+                  {takeoverState.mode === 'ready_to_resume' ? (
+                    <Button
+                      type="primary"
+                      disabled={takeoverState.resumeCommands.length === 0}
+                      onClick={() => { void handleResumeAfterTakeover(); }}
+                    >
+                      继续执行
+                    </Button>
+                  ) : null}
+                  {takeoverState.mode !== 'recording' && takeoverState.mode !== 'reconciling' && takeoverState.mode !== 'resuming' ? (
+                    <Button onClick={resetTakeoverState}>
+                      关闭
+                    </Button>
+                  ) : null}
+                </Space>
+              </Space>
+            </div>
+          )}
           {isReactChatMode && latestReactSuggestedParameters && latestReactSuggestedParameters.length > 0 && (
             <div
               style={{

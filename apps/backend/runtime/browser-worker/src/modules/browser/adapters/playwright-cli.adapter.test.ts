@@ -1,4 +1,6 @@
 // @ts-nocheck
+jest.mock('dockerode', () => jest.fn(() => ({})), { virtual: true });
+
 import { PlaywrightCliAdapter } from './playwright-cli.adapter';
 
 describe('PlaywrightCliAdapter', () => {
@@ -148,14 +150,12 @@ describe('PlaywrightCliAdapter', () => {
     );
 
     expect(result.command).toBe('wait');
-    expect(execCliSpy).toHaveBeenCalledWith('runtime-1', [
-      'run-code',
-      `async page => {
-          const activePage = page;
-          await activePage.locator("role=textbox[name=\\"Enter username\\"]").first().waitFor({ timeout: 15000 });
-          return "selector-ready";
-        }`,
-    ]);
+    expect(execCliSpy).toHaveBeenCalledTimes(1);
+    expect(execCliSpy.mock.calls[0][0]).toBe('runtime-1');
+    expect(execCliSpy.mock.calls[0][1][0]).toBe('run-code');
+    expect(execCliSpy.mock.calls[0][1][1]).toContain('activePage.locator("role=textbox[name=\\"Enter username\\"]")');
+    expect(execCliSpy.mock.calls[0][1][1]).toContain('waitFor({ timeout: 15000 })');
+    expect(execCliSpy.mock.calls[0][1][1]).toContain('Timeout waiting for selector in page and iframes');
   });
 
   it('fails fast when a runtime target ref cannot be resolved', async () => {

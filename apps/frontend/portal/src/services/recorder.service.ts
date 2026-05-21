@@ -4,6 +4,7 @@
 
 import { io, Socket } from 'socket.io-client';
 import { runtimeConfig } from '@/shared/config/runtime';
+import { apiClient } from '@/shared/api/http/client';
 
 export type RecorderStatus = 'idle' | 'connecting' | 'recording' | 'paused' | 'stopped' | 'error';
 
@@ -46,6 +47,130 @@ export interface ValidationResult {
   valid: boolean;
   errors: string[];
   warnings: string[];
+}
+
+export type RecorderTakeoverBackend = 'cli' | 'chrome-devtools';
+
+export interface RecorderTakeoverCommand {
+  tool: string;
+  params: Record<string, unknown>;
+  description?: string;
+  locator?: {
+    strategy?: string;
+    value?: string;
+    expression?: string;
+    role?: string;
+    name?: string;
+  };
+}
+
+export interface RecorderPatchStep {
+  id?: string;
+  action: string;
+  params?: Record<string, unknown>;
+  locator?: {
+    type?: 'selector' | 'role' | 'text' | 'label' | 'placeholder' | 'testid';
+    value?: string;
+    role?: string;
+    name?: string;
+  };
+  source?: 'ai' | 'manual' | 'manual_takeover';
+  backend?: 'cli' | 'chrome-devtools' | 'legacy';
+  replayable?: boolean;
+  scriptFragment?: string;
+  createdAt?: string;
+}
+
+export interface RecorderTakeoverObservation {
+  currentPageUrl?: string;
+  title?: string;
+  text?: string;
+  snapshotPath?: string;
+  screenshotPath?: string;
+  timestamp?: string;
+}
+
+export interface StartTakeoverRequest {
+  runtimeSessionId: string;
+  sessionId?: string;
+  backend: RecorderTakeoverBackend;
+  failedStepId?: string;
+  failedCommand?: RecorderTakeoverCommand & {
+    errorMessage?: string;
+    errorCode?: string;
+  };
+  reason?: string;
+}
+
+export interface StartTakeoverResponse {
+  success: boolean;
+  runtimeSessionId: string;
+  takeoverSessionId: string;
+  status: 'frozen' | 'recording';
+  controlMode: 'HUMAN_CONTROL';
+  endpoints?: {
+    novnc?: string;
+    cdp?: string;
+  };
+  startedAt: string;
+}
+
+export interface StopTakeoverRequest {
+  runtimeSessionId: string;
+  takeoverSessionId: string;
+  keepHumanControl?: boolean;
+}
+
+export interface StopTakeoverResponse {
+  success: boolean;
+  runtimeSessionId: string;
+  takeoverSessionId: string;
+  status: 'reconciling' | 'ready_to_resume';
+  patchScript: {
+    rawScript: string;
+    lineCount: number;
+    parserVersion: string;
+    recordedAt: string;
+  };
+  patchSteps: RecorderPatchStep[];
+  observation: RecorderTakeoverObservation;
+}
+
+export interface ReconcileAfterTakeoverRequest {
+  sessionId: string;
+  runtimeSessionId: string;
+  backend?: RecorderTakeoverBackend;
+  failedStepId?: string;
+  failedCommand?: RecorderTakeoverCommand & {
+    errorMessage?: string;
+    errorCode?: string;
+  };
+  originalCommands: RecorderTakeoverCommand[];
+  patchSteps: RecorderPatchStep[];
+  observation: RecorderTakeoverObservation;
+}
+
+export interface ReconcileAfterTakeoverResponse {
+  strategy: 'replace_failed_step' | 'insert_patch_steps' | 'replan_from_current_state';
+  explanation: string;
+  confidence?: number;
+  resumeCommands: RecorderTakeoverCommand[];
+}
+
+export interface ResumeAfterTakeoverRequest {
+  runtimeSessionId: string;
+  backend: RecorderTakeoverBackend;
+  takeoverSessionId?: string;
+  strategy?: ReconcileAfterTakeoverResponse['strategy'];
+  resumeCommands: RecorderTakeoverCommand[];
+}
+
+export interface ResumeAfterTakeoverResponse {
+  success: boolean;
+  runtimeSessionId: string;
+  status: 'resuming' | 'completed' | 'error';
+  results: Array<Record<string, unknown>>;
+  generatedSteps?: Array<Record<string, unknown>>;
 }
 
 const WS_URL = runtimeConfig.recorderWsUrl;
@@ -143,6 +268,34 @@ class RecorderService {
       return;
     }
     this.socket.emit('RESUME');
+  }
+
+  startTakeover(request: StartTakeoverRequest): Promise<StartTakeoverResponse> {
+    return apiClient.post('/browser/takeover/start', request);
+  }
+
+  stopTakeover(request: StopTakeoverRequest): Promise<StopTakeoverResponse> {
+    return apiClient.post('/browser/takeover/stop', request);
+  }
+
+  reconcileAfterTakeover(
+    request: ReconcileAfterTakeoverRequest,
+  ): Promise<ReconcileAfterTakeoverResponse> {
+    return apiClient.post('/ai/recorder-debug/reconcile', request);
+  }
+
+  resumeAfterTakeover(
+    request: ResumeAfterTakeoverRequest,
+  ): Promise<ResumeAfterTakeoverResponse> {
+    return apiClient.post('/browser/takeover/resume', request);
+  }
+
+  getTakeoverState(runtimeSessionId: string) {
+    return apiClient.get<{
+      runtimeSessionId: string;
+      runtime?: Record<string, unknown>;
+      takeover?: Record<string, unknown>;
+    }>(`/browser/takeover/${encodeURIComponent(runtimeSessionId)}`);
   }
 
   disconnect(): void {

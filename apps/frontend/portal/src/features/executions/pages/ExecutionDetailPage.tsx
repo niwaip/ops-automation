@@ -84,6 +84,36 @@ const statusColors = EXECUTION_STATUS_COLORS;
 
 const fixLocalhostLink = (url?: string): string | undefined => replaceLocalhostWithCurrentHost(url);
 
+const getRecoveryPatchSummary = (patch: unknown, isEnglish: boolean): string | undefined => {
+  const record = asRecord(tryParseJsonValue(patch));
+  if (!record) {
+    return undefined;
+  }
+
+  const type = typeof record.type === 'string' ? record.type : undefined;
+  const selector = typeof record.selector === 'string' ? record.selector : undefined;
+  const durationMs = typeof record.duration_ms === 'number' ? record.duration_ms : undefined;
+  const note = typeof record.note === 'string' ? record.note : undefined;
+
+  if (type === 'append_wait') {
+    return isEnglish
+      ? `Append wait ${durationMs ?? 0}ms`
+      : `追加等待 ${durationMs ?? 0}ms`;
+  }
+  if (type === 'replace_selector') {
+    return isEnglish
+      ? `Replace selector: ${selector || '-'}`
+      : `替换选择器: ${selector || '-'}`;
+  }
+  if (type === 'resolve_by_human') {
+    return isEnglish
+      ? `Resolved by human${note ? `: ${note}` : ''}`
+      : `人工处理${note ? `: ${note}` : ''}`;
+  }
+
+  return type || undefined;
+};
+
 const BROWSER_ACTIVITY_ACTIONS = new Set([
   'navigate',
   'click',
@@ -859,6 +889,95 @@ const ExecutionDetailPage: React.FC = () => {
       ) : null}
     </Card>
   ) : null;
+  const currentPhaseRecoveryDecision = asRecord(tryParseJsonValue(currentPhase?.recoveryDecision));
+  const currentPhaseTakeovers = currentPhase?.takeovers || [];
+  const latestTakeoverRecord = currentPhaseTakeovers.length > 0
+    ? currentPhaseTakeovers[currentPhaseTakeovers.length - 1]
+    : undefined;
+  const takeoverRecoveryCard: React.ReactNode = currentPhase && (currentPhaseTakeovers.length > 0 || currentPhaseRecoveryDecision) ? (
+    <Card title={isEnglish ? 'Takeover Recovery' : '接管恢复信息'} style={{ marginBottom: 16 }}>
+      <Space direction="vertical" size={16} style={{ width: '100%' }}>
+        <Descriptions column={2} size="small">
+          <Descriptions.Item label={text.currentPhase}>
+            {currentPhase.phaseName || currentPhase.phaseKey}
+          </Descriptions.Item>
+          <Descriptions.Item label={text.status}>
+            <Tag color={getPhaseStatusColor(currentPhase.status)}>
+              {getPhaseStatusLabel(currentPhase.status, isEnglish)}
+            </Tag>
+          </Descriptions.Item>
+          <Descriptions.Item label={isEnglish ? 'Latest Takeover' : '最近接管'}>
+            {latestTakeoverRecord ? (
+              <Space wrap size={[8, 4]}>
+                <Tag color={latestTakeoverRecord.status === 'resolved' ? 'green' : latestTakeoverRecord.status === 'requested' ? 'orange' : 'default'}>
+                  {latestTakeoverRecord.status}
+                </Tag>
+                <Text type="secondary">
+                  {new Date(latestTakeoverRecord.createdAt).toLocaleString()}
+                </Text>
+              </Space>
+            ) : '-'}
+          </Descriptions.Item>
+          <Descriptions.Item label={isEnglish ? 'Recovery Patch' : '恢复补丁'}>
+            {getRecoveryPatchSummary(currentPhaseRecoveryDecision?.patch, isEnglish) || '-'}
+          </Descriptions.Item>
+          <Descriptions.Item label={text.failureReason} span={2}>
+            {latestTakeoverRecord?.reason || currentPhase.errorMessage || '-'}
+          </Descriptions.Item>
+          <Descriptions.Item label={isEnglish ? 'Resolution Note' : '处理说明'} span={2}>
+            {latestTakeoverRecord?.resolutionNote
+              || (typeof currentPhaseRecoveryDecision?.comment === 'string' ? currentPhaseRecoveryDecision.comment : '-')}
+          </Descriptions.Item>
+        </Descriptions>
+
+        {currentPhaseTakeovers.length > 0 ? (
+          <Timeline
+            items={currentPhaseTakeovers.map((takeover) => ({
+              color: takeover.status === 'resolved' ? 'green' : takeover.status === 'requested' ? 'orange' : 'gray',
+              children: (
+                <Space direction="vertical" size={4} style={{ width: '100%' }}>
+                  <Space wrap size={[8, 4]}>
+                    <Tag color={takeover.status === 'resolved' ? 'green' : takeover.status === 'requested' ? 'orange' : 'default'}>
+                      {takeover.status}
+                    </Tag>
+                    <Text>{new Date(takeover.createdAt).toLocaleString()}</Text>
+                    {takeover.resolvedAt ? (
+                      <Text type="secondary">
+                        {`${isEnglish ? 'Resolved at' : '完成于'} ${new Date(takeover.resolvedAt).toLocaleString()}`}
+                      </Text>
+                    ) : null}
+                  </Space>
+                  {takeover.reason ? <Text>{takeover.reason}</Text> : null}
+                  {(takeover.requestedBy || takeover.resolvedBy) ? (
+                    <Space wrap size={[12, 4]}>
+                      {takeover.requestedBy ? (
+                        <Text type="secondary">{`${isEnglish ? 'Requested by' : '发起人'}: ${takeover.requestedBy}`}</Text>
+                      ) : null}
+                      {takeover.resolvedBy ? (
+                        <Text type="secondary">{`${isEnglish ? 'Resolved by' : '处理人'}: ${takeover.resolvedBy}`}</Text>
+                      ) : null}
+                    </Space>
+                  ) : null}
+                  {takeover.resolutionNote ? (
+                    <Text type="secondary">{takeover.resolutionNote}</Text>
+                  ) : null}
+                </Space>
+              ),
+            }))}
+          />
+        ) : null}
+
+        {currentPhaseRecoveryDecision ? (
+          <div>
+            <Text strong>{isEnglish ? 'Recovery Decision Payload' : '恢复决策详情'}</Text>
+            <pre style={{ background: 'var(--bg-secondary)', color: 'var(--text-primary)', border: '1px solid var(--bg-secondary)', padding: 12, borderRadius: 8, overflow: 'auto', marginTop: 8, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+              {renderJsonValue(currentPhaseRecoveryDecision)}
+            </pre>
+          </div>
+        ) : null}
+      </Space>
+    </Card>
+  ) : null;
 
   return (
     <div style={{ padding: 24 }}>
@@ -1113,6 +1232,8 @@ const ExecutionDetailPage: React.FC = () => {
         currentStepId={execution.currentStepId}
         phase={currentPhase}
       />
+
+      {takeoverRecoveryCard}
 
       {activityProgressCard}
 

@@ -17,6 +17,24 @@
 - `doc/AI-PlaywrightCLI-Codegen-Takeover-Design.md`
 - `doc/AI-PlaywrightCLI-Codegen-Takeover-Implementation-Plan.md`
 
+## 1.1 当前代码对齐说明（2026-05-20）
+
+本文中的 DTO 与伪代码大部分已经有实际代码落点，因此阅读时需要区分：
+
+- 已落地部分
+  - `takeover.types.ts`
+  - `takeover.controller.ts`
+  - `takeover-orchestrator.service.ts`
+  - `codegen-script-parser.service.ts`
+  - `execution-reconcile.service.ts`
+
+- 已进入增强阶段的部分
+  - parser 规则覆盖率
+  - patch step 到 resume command 的映射质量
+  - 前端 patch 可视化与恢复体验
+
+后文仍保留伪代码形式，但应默认把它视为“代码对齐说明”，而不是纯新建草案。
+
 ## 2. 命名约定
 
 建议统一以下命名：
@@ -228,7 +246,7 @@ export interface StopTakeoverResponse {
         "role": "button",
         "name": "平台登录"
       },
-      "source": "manual"
+      "source": "manual_takeover"
     }
   ],
   "observation": {
@@ -314,7 +332,7 @@ export interface ReconcileAfterTakeoverResponse {
         "role": "button",
         "name": "平台登录"
       },
-      "source": "manual"
+      "source": "manual_takeover"
     }
   ],
   "observation": {
@@ -434,7 +452,7 @@ export interface BrowserActionStep {
   action: string;
   params?: Record<string, unknown>;
   locator?: {
-    type?: 'selector' | 'role' | 'text' | 'label' | 'placeholder';
+    type?: 'selector' | 'role' | 'text' | 'label' | 'placeholder' | 'testid';
     value?: string;
     role?: string;
     name?: string;
@@ -634,8 +652,28 @@ export class CodegenScriptParserService {
         continue;
       }
 
+      if (line.includes('getByRole(') && line.includes('.fill(')) {
+        steps.push(this.toRoleFillStep(line, context));
+        continue;
+      }
+
       if (line.includes('getByText(') && line.endsWith('.click();')) {
         steps.push(this.toTextClickStep(line, context));
+        continue;
+      }
+
+      if (line.includes('getByLabel(')) {
+        steps.push(this.toLabelStep(line, context));
+        continue;
+      }
+
+      if (line.includes('getByPlaceholder(')) {
+        steps.push(this.toPlaceholderStep(line, context));
+        continue;
+      }
+
+      if (line.includes('getByTestId(')) {
+        steps.push(this.toTestIdStep(line, context));
         continue;
       }
 
@@ -659,6 +697,8 @@ export class CodegenScriptParserService {
 
 - 第一版允许 parser 不完整
 - 但要记录无法解析的行数，便于后续补规则
+- 当前实现已覆盖 `getByLabel`、`getByPlaceholder`、`getByTestId`、`getByRole(...).fill()`
+- 下一阶段建议继续补 `hover`、`check`、`selectOption`、iframe、tab
 
 ## 8.3 ExecutionReconcileService
 
@@ -776,7 +816,11 @@ type TakeoverErrorCode =
 - `codegen-script-parser.service.spec.ts`
   - `page.goto` -> `navigate`
   - `getByRole(...).click()` -> `click`
+  - `getByRole(...).fill()` -> `fill`
   - `getByText(...).click()` -> `click`
+  - `getByLabel(...).fill()` -> `fill`
+  - `getByPlaceholder(...).fill()` -> `fill`
+  - `getByTestId(...).click()` -> `click`
   - `keyboard.press()` -> `press`
 
 ## 12.2 orchestration

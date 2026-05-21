@@ -17,6 +17,24 @@
 - `doc/AI-PlaywrightCLI-Codegen-Takeover-Implementation-Plan.md`
 - `doc/AI-PlaywrightCLI-Codegen-Takeover-DTO-and-Pseudocode.md`
 
+## 1.1 截至当前状态（2026-05-20）
+
+基于当前代码仓库，本任务拆解需要从“排期文档”调整为“状态追踪文档”来使用：
+
+- M1 / P0
+  - 主链路已基本完成
+  - takeover DTO、controller、orchestrator、parser、前端 UI、resume 主路径均已存在
+  - 当前仍待补强的是集成验证和 parser 规则覆盖率
+
+- M2 / P1
+  - 主链路已基本完成
+  - `ExecutionReconcileService`、`reconcile` API、前端恢复策略展示已具备
+  - 当前仍待补强的是更多策略场景、patch 可视化和自动恢复质量
+
+- M3 / P2
+  - 尚未系统推进
+  - 仍以无缝 takeover 体验、审计历史、连续性优化为主
+
 ## 2. 里程碑定义
 
 ### M1：P0 最小闭环可用
@@ -33,6 +51,11 @@
 - 前后端接口可联调
 - UI 可完成接管和恢复
 
+当前判断：
+
+- 已基本满足
+- 仍建议补一次完整端到端联调，避免“单测通过但真实链路掉链子”
+
 ### M2：P1 自动恢复策略
 
 目标：
@@ -43,6 +66,11 @@
 上线标准：
 
 - 至少覆盖登录失败、弹窗遮挡、错误点击三类常见场景
+
+当前判断：
+
+- 骨架已落地
+- 真实场景覆盖仍需继续补充回归样例
 
 ### M3：P2 无缝接管体验
 
@@ -73,6 +101,19 @@
 建议 owner 只是参考，可按团队实际情况调整。
 
 ## 4. P0 任务拆解
+
+当前状态概览：
+
+- `P0-A` 已完成
+- `P0-B` 已完成
+- `P0-C` 已完成
+- `P0-D` 已完成
+- `P0-E` 已完成并进入增强阶段
+- `P0-F` 已完成
+- `P0-G` 已完成
+- `P0-H` 已完成
+- `P0-I` 已完成
+- `P0-J` 部分完成，仍需补真实联调验证
 
 ## P0-A：定义类型与协议
 
@@ -202,7 +243,11 @@
 - `page.click(...)`
 - `page.fill(...)`
 - `page.getByRole(...).click()`
+- `page.getByRole(...).fill()`
 - `page.getByText(...).click()`
+- `page.getByLabel(...).click()/fill()`
+- `page.getByPlaceholder(...).click()/fill()`
+- `page.getByTestId(...).click()/fill()`
 - `page.keyboard.press(...)`
 
 ### 建议 owner
@@ -357,6 +402,14 @@
 
 ## 5. P1 任务拆解
 
+当前状态概览：
+
+- `P1-A` 已完成
+- `P1-B` 已完成
+- `P1-C` 已基本完成
+- `P1-D` 进行中
+- `P1-E` 待补自动恢复联调
+
 ## P1-A：实现 ExecutionReconcileService
 
 ### 任务说明
@@ -456,6 +509,11 @@
 - 支持更多 locator 形式
 - patch steps 可视化可读
 
+当前判断：
+
+- “支持更多 locator 形式”已在持续推进
+- 下一步建议优先补 `hover`、`check`、`selectOption`、iframe、tab
+
 ## P1-E：P1 典型场景自动恢复测试
 
 ### 核心场景
@@ -482,6 +540,12 @@
 - 三种策略至少各成功一次
 
 ## 6. P2 任务拆解
+
+当前状态概览：
+
+- `P2-A` 未开始
+- `P2-B` 未开始
+- `P2-C` 未开始
 
 ## P2-A：优化同 session takeover 体验
 
@@ -638,12 +702,11 @@ P0-E -> P1-D
 
 ## 11. 最终建议
 
-如果现在要开始真正执行，我建议实际起手顺序是：
+如果基于当前代码继续推进，我建议实际顺序改为：
 
-1. 先建 5 个 P0 issue
-2. 优先做 Runtime 的 DTO、controller、recorder bridge、parser
-3. 并行让前端把 takeover UI 骨架先搭出来
-4. AI 侧先做最简 continue/resume，再补 reconcile
-5. 先跑通闭环，再追求自动化恢复质量
+1. 先补 `P0-J` / `P1-E` 联调与自动恢复回归
+2. 再推进 `P1-D`，继续扩 parser 规则与 patch 可视化
+3. 然后进入 `P2-A`，逐步优化同 session takeover 体验
+4. 最后补 `P2-B` / `P2-C` 的历史审计与自动化恢复优化
 
-这能最大化降低复杂度，同时尽快验证这条混合路线的真实价值。
+这更符合当前状态，也能让投入集中在成功率、可观测性和真实体验上。

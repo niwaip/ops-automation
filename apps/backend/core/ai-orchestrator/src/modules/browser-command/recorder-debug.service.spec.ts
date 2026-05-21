@@ -27,10 +27,12 @@ describe('RecorderDebugService', () => {
     browserCommandService?: Record<string, unknown>;
     modelService?: Record<string, unknown>;
     redisService?: Record<string, unknown>;
+    executionReconcileService?: Record<string, unknown>;
   }) => new RecorderDebugService(
     (overrides?.browserCommandService || {}) as any,
     (overrides?.modelService || {}) as any,
     (overrides?.redisService || {}) as any,
+    (overrides?.executionReconcileService || {}) as any,
   );
 
   it('rewriteCommandWithSnapshotRefs should match button text with filler words removed', () => {
@@ -65,6 +67,33 @@ describe('RecorderDebugService', () => {
         target: 'button[name="RAM 用户登录"]',
       }),
     }));
+  });
+
+  it('reconcileAfterTakeover should delegate to execution reconcile service', async () => {
+    const reconcile = jest.fn().mockResolvedValue({
+      strategy: 'replace_failed_step',
+      explanation: 'ok',
+      confidence: 0.9,
+      resumeCommands: [],
+    });
+    const service = createService({
+      executionReconcileService: { reconcile, buildResumePrompt: jest.fn() },
+    });
+    const request = {
+      sessionId: 'session-1',
+      runtimeSessionId: 'runtime-1',
+      originalCommands: [],
+      patchSteps: [],
+      observation: {},
+    };
+
+    await expect(service.reconcileAfterTakeover(request as any)).resolves.toEqual({
+      strategy: 'replace_failed_step',
+      explanation: 'ok',
+      confidence: 0.9,
+      resumeCommands: [],
+    });
+    expect(reconcile).toHaveBeenCalledWith(request);
   });
 
   it('rewriteCommandWithSnapshotRefs should keep original target when only generic node matches', () => {

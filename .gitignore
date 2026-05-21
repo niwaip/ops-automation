@@ -92,3 +92,11 @@ apps/backend/runtime/browser-worker/.playwright-cli/page-*.yml
 
 # Office temp files
 **/~$*.*
+
+# Word documents
+*.doc
+*.docx
+*.docm
+*.dot
+*.dotx
+*.dotm

@@ -36,6 +36,34 @@
 - 第一阶段不替换现有所有手动录制逻辑。
 - 第一阶段不要求 100% 自动恢复，允许用户确认恢复方案。
 
+## 2.1 当前落地情况（2026-05-20）
+
+截至当前代码实现，本设计中的主链路已经从“方案阶段”进入“已落地可继续增强”阶段：
+
+- `browser-worker`
+  - 已存在 `takeover.types.ts`
+  - 已存在 `takeover.controller.ts`
+  - 已存在 `takeover-orchestrator.service.ts`
+  - 已存在 `codegen-script-parser.service.ts`
+  - `recorder.service.ts` 已支持 `startTakeoverRecording()` / `stopTakeoverRecording()`
+  - `browser-session.registry.ts` 已扩展 takeover 相关状态字段
+
+- `ai-orchestrator`
+  - 已存在 `execution-reconcile.service.ts`
+  - `recorder-debug.service.ts` 已提供 `reconcileAfterTakeover()` / `buildResumePrompt()`
+  - `recorder-debug.controller.ts` 已提供 `POST /ai/recorder-debug/reconcile`
+
+- `portal`
+  - `AIControls.tsx` 已具备失败后进入 takeover、结束接管、恢复执行的 UI 闭环
+  - `services/recorder.service.ts` 已具备 `startTakeover()` / `stopTakeover()` / `resumeAfterTakeover()`
+  - `RecorderPage.tsx` 已展示 takeover 状态
+
+当前更准确的定位是：
+
+- P0 最小闭环已基本落地
+- P1 自动 reconcile 已基本落地
+- 后续重点从“有没有链路”转向“parser 覆盖率、恢复质量、无缝体验、联调验证”
+
 ## 3. 核心原则
 
 ### 3.1 同一运行时标识
@@ -349,7 +377,14 @@ interface ResumeAfterTakeoverResponse {
 - `await page.locator("...").click()`
 - `await page.locator("...").fill("...")`
 - `await page.getByRole("button", { name: "..." }).click()`
+- `await page.getByRole("textbox", { name: "..." }).fill("...")`
 - `await page.getByText("...").click()`
+- `await page.getByLabel("...").click()`
+- `await page.getByLabel("...").fill("...")`
+- `await page.getByPlaceholder("...").click()`
+- `await page.getByPlaceholder("...").fill("...")`
+- `await page.getByTestId("...").click()`
+- `await page.getByTestId("...").fill("...")`
 - `await page.keyboard.press("Enter")`
 
 输出时统一映射为：
@@ -367,6 +402,12 @@ interface ResumeAfterTakeoverResponse {
 - tab 切换
 - 更复杂的 locator 组合
 - `hover` / `drag` / `check` / `selectOption`
+
+当前实现状态补充：
+
+- 已有单测覆盖 `goto`、`page.fill`、`page.locator(...).fill()`、`getByRole(...).click()`、`getByText(...).click()`、`keyboard.press()`
+- 已补充覆盖 `getByLabel`、`getByPlaceholder`、`getByTestId`、`getByRole(...).fill()`
+- 下一阶段建议优先补 `hover` / `check` / `selectOption` / iframe / tab 相关规则
 
 ## 10. 恢复决策逻辑
 
@@ -421,6 +462,11 @@ interface ResumeAfterTakeoverResponse {
 - 做一次页面 re-observe
 - 允许用户手动触发 AI 续跑
 
+当前状态：
+
+- 主链路已落地
+- 仍需补真实联调与更多异常场景回归
+
 ### P1：自动 reconcile
 
 - 新增 `ExecutionReconcileService`
@@ -428,11 +474,21 @@ interface ResumeAfterTakeoverResponse {
 - 自动生成 `resumeCommands`
 - 前端展示 patch steps 和恢复说明
 
+当前状态：
+
+- 主能力已落地
+- 当前主要待增强项是 patch step -> resume command 的覆盖面，以及更多真实页面恢复案例
+
 ### P2：无缝接管体验
 
 - 优化为真正同 session 的 takeover 体验
 - 完善 noVNC、manual recording、CLI session 的状态同步
 - 增加恢复历史、操作审计、patch 可视化
+
+当前状态：
+
+- 仍是后续重点方向
+- 当前实现更偏“可用闭环”，尚未达到真正无缝 takeover 体验
 
 ## 12. 测试建议
 

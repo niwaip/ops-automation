@@ -18,6 +18,29 @@
 - `apps/backend/core/ai-orchestrator`
 - `apps/frontend/portal`
 
+## 1.1 当前实现快照（2026-05-20）
+
+基于当前代码仓库，本文中的 P0 与 P1 已不再是纯计划项，而是已经有较完整实现：
+
+- `browser-worker`
+  - takeover DTO、controller、orchestrator、parser 已存在
+  - `recorder.service.ts` 已具备 takeover bridge 能力
+  - `browser-session.registry.ts` 已纳入 takeover 状态
+
+- `ai-orchestrator`
+  - `execution-reconcile.service.ts` 已存在
+  - `recorder-debug.service.ts` / `recorder-debug.controller.ts` 已接入 reconcile
+
+- `portal`
+  - takeover 开始、结束、恢复执行的 UI 与 API 调用已存在
+  - takeover 状态展示已接入页面
+
+因此本文后续阅读方式建议调整为：
+
+- P0：从“待开发”调整为“已基本完成，待联调回归”
+- P1：从“规划中”调整为“主链路已落地，待增强覆盖率和体验”
+- P2：仍为后续演进方向
+
 ## 2. 实施原则
 
 ### 2.1 先闭环，后无缝
@@ -82,6 +105,11 @@
 - 页面可重新观测
 - 用户可点击“继续执行”，由 AI 基于当前状态重新规划
 
+当前状态：
+
+- 已基本达成
+- 当前剩余工作主要是补真实联调、补更多 parser 规则、补异常场景回归
+
 ## 3.2 P1：自动 reconcile
 
 目标：
@@ -100,6 +128,13 @@
 - 常见登录失败、弹窗遮挡、错误点击三类场景可自动给出恢复方案
 - 失败上下文和 patch steps 被统一纳入恢复 prompt
 
+当前状态：
+
+- 主能力已落地
+- 已存在 `ExecutionReconcileService`
+- 已存在 `reconcile` API
+- 当前仍需继续推进 resume command 覆盖率、前端 patch 可视化细节和更多用例验证
+
 ## 3.3 P2：无缝 takeover
 
 目标：
@@ -117,6 +152,11 @@
 
 - 用户明显感知是在“当前执行流”上接管，而不是重开一次独立录制
 - takeover 历史可以在 UI 中查看
+
+当前状态：
+
+- 尚未系统推进
+- 仍是接下来的主要体验优化方向
 
 ## 4. 文件级任务拆解
 
@@ -561,17 +601,32 @@ export class ExecutionReconcileService {
 - 改造 `browser.module.ts`
 - 扩展 `browser-session.registry.ts`
 
+当前判断：
+
+- 上述主项已基本落地
+- 继续工作的重点转为 parser 规则扩展和 recorder/runtime 的更深绑定
+
 ## 7.2 ai-orchestrator
 
 - 扩展 `recorder-debug.controller.ts`，增加 `reconcile`
 - 新增 `execution-reconcile.service.ts`
 - 扩展 `browser-command.module.ts`
 
+当前判断：
+
+- 上述主项已基本落地
+- 后续重点是恢复策略质量、提示词稳定性和更多 case 的策略分流
+
 ## 7.3 portal
 
 - `AIControls.tsx` 增加失败恢复 UI
 - 增加 takeover 的 API 调用
 - 页面上显示 patch steps 数量和恢复策略
+
+当前判断：
+
+- 上述主项已基本落地
+- 后续重点是 patch steps 明细可视化、恢复历史与更平滑的用户引导
 
 ## 8. MVP 验收场景
 
@@ -633,14 +688,12 @@ export class ExecutionReconcileService {
 
 ## 10. 推荐下一步
 
-如果进入开发阶段，建议按以下顺序提交：
+基于当前进度，建议按以下顺序继续推进：
 
-1. `takeover.types.ts`
-2. `takeover-orchestrator.service.ts`
-3. `takeover.controller.ts`
-4. `codegen-script-parser.service.ts`
-5. `recorder.service.ts` 的 takeover 扩展
-6. `recorder-debug.controller.ts` 和 `execution-reconcile.service.ts`
-7. `AIControls.tsx` 失败恢复 UI
+1. 扩展 `codegen-script-parser.service.ts` 对 `hover`、`check`、`selectOption`、iframe、tab 的支持
+2. 增强 `ExecutionReconcileService` 的恢复命令映射与策略质量
+3. 补 takeover 端到端联调用例，验证 `AI fail -> takeover -> patch -> resume`
+4. 增加 patch 可视化、恢复历史、审计字段
+5. 再推进真正同 session 的无缝 takeover 体验
 
-这样可以保证每一步都可测、可回滚、可渐进上线。
+这样更符合当前代码现状，也能把后续投入聚焦在成功率和体验上，而不是重复补已有骨架。
