@@ -74,7 +74,7 @@ export const getWorkflowValidationAgentUrl = (): string => {
     return 'http://temporal-sandbox-agent:8090';
   }
 
-  return 'http://host.docker.internal:8090';
+  return 'http://localhost:8090';
 };
 
 export const getTemporalUiUrl = (): string => {

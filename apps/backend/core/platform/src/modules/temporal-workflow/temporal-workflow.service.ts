@@ -4652,9 +4652,11 @@ export class TemporalWorkflowService {
     const normalizedSteps = await Promise.all(
       (normalized.steps || []).map((step) => this.normalizeWorkflowStep(step, activityDsl)),
     );
+    const finalName = this.normalizeName(workflowName || normalized.name || '未命名工作流');
     return {
       ...normalized,
-      name: this.normalizeName(workflowName || normalized.name || '未命名工作流'),
+      name: finalName,
+      workflowClassName: this.normalizeWorkflowClassName(normalized.workflowClassName, finalName),
       taskQueue: this.normalizeTaskQueue(taskQueue || normalized.taskQueue),
       steps: normalizedSteps,
     };

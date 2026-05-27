@@ -148,7 +148,7 @@ const TemporalPage: React.FC = () => {
     onOk: () => deleteMutation.mutate(id)
   });
 
-  const handleSaveWorkflow = (data: { workflowDsl: any; activityDsl: any; name: string; description: string; taskQueue?: string }) => {
+  const handleSaveWorkflow = (data: { workflowDsl: any; activityDsl: any; name: string; description: string; taskQueue?: string; generatedCode?: string }) => {
     const payload = {
       name: data.name,
       description: data.description,
@@ -158,6 +158,7 @@ const TemporalPage: React.FC = () => {
         name: data.name,
       },
       activityDsl: data.activityDsl,
+      generatedCode: data.generatedCode,
     };
     if (editingWorkflow) {
       updateMutation.mutate({ id: editingWorkflow.id, data: payload });

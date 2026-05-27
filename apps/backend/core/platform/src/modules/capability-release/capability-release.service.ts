@@ -3734,8 +3734,9 @@ ${logs.join('\n')}
         ? workflowDsl.workflowClassName.trim()
         : '';
     if (!workflowClassName) {
+      const workflowName = String(payload.name || '未命名工作流');
       throw new BadRequestException(
-        '当前工作流缺少 workflowDsl.workflowClassName，请在工作流页面设置函数名称并重新同步后再验证/部署',
+        `工作流 "${workflowName}" 缺少 Python 类名 (workflowDsl.workflowClassName)。请在工作流编辑页面的“高级配置”中设置类名，点击 AI 生成代码并保存，然后重新同步到 Release。`,
       );
     }
     return workflowClassName;
@@ -4083,6 +4084,8 @@ ${logs.join('\n')}
         acc[key] = [];
       } else if (type === 'object') {
         acc[key] = {};
+      } else if (type === 'date') {
+        acc[key] = new Date().toISOString().split('T')[0];
       } else {
         acc[key] = this.normalizeSmokeInputValue(key, `test_${key}`, type);
       }
@@ -4149,8 +4152,10 @@ ${logs.join('\n')}
           return;
         }
         const normalizedDefaultValue = this.normalizeCapabilityDefaultValue(definition.defaultValue);
-        const typeHint = typeof definition.type === 'string' ? definition.type : undefined;
-        suggestedInput[key] = this.normalizeSmokeInputValue(key, normalizedDefaultValue, typeHint);
+        if (normalizedDefaultValue !== undefined) {
+          const typeHint = typeof definition.type === 'string' ? definition.type : undefined;
+          suggestedInput[key] = this.normalizeSmokeInputValue(key, normalizedDefaultValue, typeHint);
+        }
       });
     }
 
