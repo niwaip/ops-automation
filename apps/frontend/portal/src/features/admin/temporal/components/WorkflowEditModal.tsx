@@ -1602,7 +1602,6 @@ export const WorkflowEditModal: React.FC<WorkflowEditModalProps> = ({
     setLastGeneratedSignature(null);
     setIsGeneratedCodeStale(false);
     setSelectedStepIndexForConfig(nextWorkflowDsl?.steps?.length ? 0 : null);
-    void onCancel(true);
     void message.success(successMessage);
   };
 
