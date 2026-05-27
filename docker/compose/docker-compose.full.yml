@@ -172,6 +172,7 @@ services:
       sh -c "npm config set registry https://registry.npmmirror.com && npm install --include=dev && npm run build && npm run start"
     environment:
       - NODE_ENV=production
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-ops}:${POSTGRES_PASSWORD:-ops_secret}@postgres:5432/${POSTGRES_DB:-ops}
       - PORT=${CARBONE_ENGINE_PORT:-3009}
       - TEMPLATES_DIR=/app/templates
       - OUTPUTS_DIR=/app/outputs

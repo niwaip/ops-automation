@@ -14,5 +14,35 @@ describe('Builder', () => {
     const result = builder.buildXML(xml, { name: 'X' });
     expect(result.xml).toBe('<root><t>X</t><t>X</t></root>');
   });
-});
 
+  it('renders explicit docx table loops as separate rows without concatenating adjacent cells', () => {
+    const builder = new Builder();
+    const xml = [
+      '<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">',
+      '<w:body>',
+      '<w:tbl>',
+      '<w:tr><w:tc><w:p><w:r><w:t>项目</w:t></w:r></w:p></w:tc><w:tc><w:p><w:r><w:t>维护费</w:t></w:r></w:p></w:tc></w:tr>',
+      '<w:tr>',
+      '<w:tc><w:p><w:r><w:t>{#d.items}{d.items[].projectName_cn}</w:t></w:r></w:p></w:tc>',
+      '<w:tc><w:p><w:r><w:t>{d.items[].maintenanceFee_jp}{/d.items}</w:t></w:r></w:p></w:tc>',
+      '</w:tr>',
+      '</w:tbl>',
+      '</w:body>',
+      '</w:document>',
+    ].join('');
+
+    const result = builder.buildXML(xml, {
+      items: [
+        { projectName_cn: '企业管理系统升级', maintenanceFee_jp: '人民元280,000円' },
+        { projectName_cn: '系统集成与部署', maintenanceFee_jp: '人民元120,000円' },
+      ],
+    });
+
+    expect(result.xml).toContain('<w:t>企业管理系统升级</w:t>');
+    expect(result.xml).toContain('<w:t>系统集成与部署</w:t>');
+    expect(result.xml).toContain('<w:t>人民元280,000円</w:t>');
+    expect(result.xml).toContain('<w:t>人民元120,000円</w:t>');
+    expect(result.xml).toContain('</w:tr><w:tr>');
+    expect(result.xml).not.toContain('人民元280,000円系统集成与部署');
+  });
+});

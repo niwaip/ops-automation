@@ -10,6 +10,8 @@ export interface TemplateResponse {
   size: number;
   variables: string[];
   parameterCount?: number;
+  suggestions?: any[];
+  rawSuggestions?: any[];
   loops: Array<{ arrayPath: string }>;
   markings?: Array<{ path: string; text: string; formatters?: string[] }>;
   ignoredElements?: number[];  // 被忽略的元素索引列表

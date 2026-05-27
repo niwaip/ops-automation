@@ -98,9 +98,15 @@ export const DebugLogPanel: React.FC = () => {
 
     if (
       text.includes('生成ai指南') ||
+      text.includes('生成 ai 指南') ||
+      text.includes('开始生成 ai 指南') ||
+      text.includes('ai 指南生成完成') ||
+      text.includes('ai指南') ||
+      text.includes('ai 指南') ||
       text.includes('暂存副本') ||
       text.includes('副本已') ||
       text.includes('载入暂存副本') ||
+      text.includes('恢复草稿') ||
       text.includes('清除暂存副本') ||
       text.includes('验证模版配置') ||
       text.includes('验证成功') ||
@@ -125,27 +131,19 @@ export const DebugLogPanel: React.FC = () => {
     return 'other';
   };
 
-  const latestLogsByModule = useMemo(() => {
-    const latestMap = new Map<DebugModuleKey, DebugLogEntry>();
-
-    debugLogs.forEach((log) => {
-      if (!log || !log.message) return;
-      latestMap.set(classifyLogModule(log), log);
-    });
-
-    return DEBUG_MODULES
-      .map((module) => {
-        const log = latestMap.get(module.key);
-        if (!log) {
-          return null;
-        }
+  const orderedLogs = useMemo(() => {
+    return [...debugLogs]
+      .filter((log) => Boolean(log && log.message))
+      .reverse()
+      .map((log) => {
+        const moduleKey = classifyLogModule(log);
+        const moduleLabel = DEBUG_MODULES.find((module) => module.key === moduleKey)?.label || '其他';
         return {
-          moduleKey: module.key,
-          moduleLabel: module.label,
+          moduleKey,
+          moduleLabel,
           log,
         };
-      })
-      .filter((item): item is { moduleKey: DebugModuleKey; moduleLabel: string; log: DebugLogEntry } => Boolean(item));
+      });
   }, [debugLogs]);
 
   if (!showDebugPanel) return null;
@@ -169,7 +167,7 @@ export const DebugLogPanel: React.FC = () => {
    * 复制所有日志到剪贴板
    */
   const copyAllLogsToClipboard = async () => {
-    const allLogsText = latestLogsByModule.map(({ moduleLabel, log }) =>
+    const allLogsText = orderedLogs.map(({ moduleLabel, log }) =>
       `【${moduleLabel}】 [${log?.level ? log.level.toUpperCase() : 'INFO'}] ${formatLogTime(log?.timestamp)} - ${log?.message || ''}\n${log?.details || ''}`
     ).join('\n\n');
     try {
@@ -206,7 +204,7 @@ export const DebugLogPanel: React.FC = () => {
       <div className="flow-log-header">
         <h3>流程日志</h3>
         <div className="flow-log-actions">
-          <button onClick={copyAllLogsToClipboard} disabled={latestLogsByModule.length === 0}>
+          <button onClick={copyAllLogsToClipboard} disabled={orderedLogs.length === 0}>
             {copySuccess === 'all' ? '✓ 已复制' : '📋 复制全部'}
           </button>
           <button onClick={clearDebugLogs}>清空</button>
@@ -215,10 +213,10 @@ export const DebugLogPanel: React.FC = () => {
       </div>
 
       <div className="flow-log-content">
-        {latestLogsByModule.length === 0 ? (
+        {orderedLogs.length === 0 ? (
           <div className="flow-log-empty">暂无日志</div>
         ) : (
-          latestLogsByModule.map(({ moduleKey, moduleLabel, log }) => {
+          orderedLogs.map(({ moduleKey, moduleLabel, log }) => {
             if (!log) return null;
             return (
               <div key={log.id} className="flow-log-entry module-log-entry" style={{ borderColor: getLevelColor(log.level) }}>
@@ -263,7 +261,7 @@ export const DebugLogPanel: React.FC = () => {
       </div>
 
       <div className="flow-log-footer">
-        <span>显示 {latestLogsByModule.length} 个模块的最新日志</span>
+        <span>显示全部日志，最新在最上方</span>
         <span>原始日志 {debugLogs.length} 条</span>
       </div>
     </div>

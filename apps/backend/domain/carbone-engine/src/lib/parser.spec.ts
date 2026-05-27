@@ -85,12 +85,64 @@ describe('Parser', () => {
         </table>
       `;
       const markers = parser.findMarkers(xml);
-      const loops = parser.detectLoops(xml, markers);
+      parser.detectLoops(xml, markers);
 
       // 循环检测依赖于特定的模式匹配
       // 验证markers包含数组标记
       const arrayMarkers = markers.filter(m => m.isArray);
       expect(arrayMarkers.length).toBeGreaterThan(0);
+    });
+
+    it('expands explicit docx table loops to the full row container', () => {
+      const xml = [
+        '<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">',
+        '<w:body>',
+        '<w:tbl>',
+        '<w:tr><w:tc><w:p><w:r><w:t>项目</w:t></w:r></w:p></w:tc><w:tc><w:p><w:r><w:t>维护费</w:t></w:r></w:p></w:tc></w:tr>',
+        '<w:tr>',
+        '<w:tc><w:p><w:r><w:t>{#d.items}{d.items[].projectName_cn}</w:t></w:r></w:p></w:tc>',
+        '<w:tc><w:p><w:r><w:t>{d.items[].maintenanceFee_jp}{/d.items}</w:t></w:r></w:p></w:tc>',
+        '</w:tr>',
+        '<w:tr><w:tc><w:p><w:r><w:t/></w:r></w:p></w:tc><w:tc><w:p><w:r><w:t/></w:r></w:p></w:tc></w:tr>',
+        '</w:tbl>',
+        '</w:body>',
+        '</w:document>',
+      ].join('');
+
+      const loops = parser.detectLoops(xml, parser.findMarkers(xml));
+      const explicitLoop = loops.find((loop) => loop.loopType === 'explicit');
+
+      expect(explicitLoop).toBeDefined();
+      expect(explicitLoop?.arrayPath).toBe('d.items');
+      expect(explicitLoop?.templateUnit.startsWith('<w:tr>')).toBe(true);
+      expect(explicitLoop?.templateUnit.endsWith('</w:tr>')).toBe(true);
+      expect(xml.slice(explicitLoop!.startPos, explicitLoop!.startPos + 5)).toBe('<w:tr');
+      expect(xml.slice(explicitLoop!.endPos - '</w:tr>'.length, explicitLoop!.endPos)).toBe('</w:tr>');
+      expect(explicitLoop?.templateUnit).toContain('{#d.items}');
+      expect(explicitLoop?.templateUnit).toContain('{/d.items}');
+    });
+
+    it('normalizes implicit docx loop bounds to full row boundaries', () => {
+      const xml = [
+        '<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">',
+        '<w:body>',
+        '<w:tbl>',
+        '<w:tr><w:tc><w:p><w:r><w:t>项目</w:t></w:r></w:p></w:tc></w:tr>',
+        '<w:tr><w:tc><w:p><w:r><w:t>{d.items[i].name}</w:t></w:r></w:p></w:tc></w:tr>',
+        '<w:tr><w:tc><w:p><w:r><w:t>{d.items[i+1].name}</w:t></w:r></w:p></w:tc></w:tr>',
+        '</w:tbl>',
+        '</w:body>',
+        '</w:document>',
+      ].join('');
+
+      const loops = parser.detectLoops(xml, parser.findMarkers(xml));
+      const implicitLoop = loops.find((loop) => loop.arrayPath === 'd.items' && loop.loopType === 'implicit');
+
+      expect(implicitLoop).toBeDefined();
+      expect(xml.slice(implicitLoop!.startPos, implicitLoop!.startPos + 5)).toBe('<w:tr');
+      expect(xml.slice(implicitLoop!.endPos - '</w:tr>'.length, implicitLoop!.endPos)).toBe('</w:tr>');
+      expect(implicitLoop?.templateUnit.startsWith('<w:tr>')).toBe(true);
+      expect(implicitLoop?.templateUnit.endsWith('</w:tr>')).toBe(true);
     });
   });
 
@@ -107,8 +159,8 @@ describe('Parser', () => {
 
     it('should clean array indices from variables', () => {
       const markers = [
-        { pos: 0, name: 'd.items[i].name', formatters: [], isArray: true, arrayPath: 'd.items' },
-        { pos: 10, name: 'd.items[i+1].name', formatters: [], isArray: true, arrayPath: 'd.items' }
+        { pos: 0, length: 17, name: 'd.items[i].name', formatters: [], isArray: true, arrayPath: 'd.items' },
+        { pos: 10, length: 19, name: 'd.items[i+1].name', formatters: [], isArray: true, arrayPath: 'd.items' }
       ];
       const variables = parser.extractVariables(markers);
 

@@ -20,6 +20,7 @@ type TemplateMetaDocument = {
   skillId?: string;
   config?: unknown;
   suggestions?: unknown;
+  rawSuggestions?: unknown;
   verifyResult?: unknown;
   hasValidFile?: boolean;
   type?: string;
@@ -213,6 +214,7 @@ export class TemplateRepository {
     verifyResult: unknown;
     skill?: { id: string; parameters: unknown } | null;
     suggestions?: unknown;
+    rawSuggestions?: unknown;
   }): TemplateResponse {
     const resolvedLoops = Array.isArray(template.loops) && template.loops.length > 0
       ? template.loops
@@ -225,6 +227,8 @@ export class TemplateRepository {
       size: template.size ?? 0,
       variables: template.variables ?? [],
       parameterCount,
+      suggestions: Array.isArray(template.suggestions) ? template.suggestions as any[] : undefined,
+      rawSuggestions: Array.isArray(template.rawSuggestions) ? template.rawSuggestions as any[] : undefined,
       loops: resolvedLoops as Array<{ arrayPath: string }>,
       markings: (Array.isArray(template.markings) ? template.markings : undefined) as TemplateResponse['markings'],
       ignoredElements: (Array.isArray(template.ignoredElements) ? template.ignoredElements : undefined) as number[] | undefined,

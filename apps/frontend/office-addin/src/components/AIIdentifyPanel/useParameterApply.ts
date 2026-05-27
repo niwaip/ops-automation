@@ -1,5 +1,6 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useAppStore, AISuggestion } from '../../taskpane/store';
+import { OfficeHelper } from '../../utils/office-api';
 
 export function useParameterApply(hostAdapter: any, isExcelMode: boolean) {
   const store = useAppStore();
@@ -55,6 +56,20 @@ export function useParameterApply(hostAdapter: any, isExcelMode: boolean) {
     };
   }, [hostAdapter]);
 
+  useEffect(() => {
+    if (hostAdapter?.host !== 'word') {
+      return undefined;
+    }
+
+    OfficeHelper.Word.setDebugLogger((level, message, details) => {
+      addDebugLog(level, message, details);
+    });
+
+    return () => {
+      OfficeHelper.Word.clearDebugLogger();
+    };
+  }, [addDebugLog, hostAdapter]);
+
   const suggestVariableNameFromText = (text: string): string => {
     const normalized = text.trim();
     if (!normalized) return 'd.textValue';
@@ -69,22 +84,400 @@ export function useParameterApply(hostAdapter: any, isExcelMode: boolean) {
     return 'd.textValue';
   };
 
-  const applySuggestionToDocument = async (suggestion: AISuggestion, onApplyComplete?: () => void): Promise<boolean> => {
+  type BatchApplyItem = {
+    suggestion: AISuggestion;
+    sourceSuggestions: AISuggestion[];
+    targetKey?: string;
+  };
+
+  const normalizeSuggestionPath = (value: string): string => (
+    String(value || '')
+      .replace(/[{}]/g, '')
+      .trim()
+  );
+
+  const extractSuggestionLanguageSuffix = (value: string): 'zh' | 'ja' | undefined => {
+    const normalizedPath = normalizeSuggestionPath(value);
+    if (/(?:_|\.)(?:cn|zh)$/iu.test(normalizedPath)) {
+      return 'zh';
+    }
+    if (/(?:_|\.)(?:jp|ja)$/iu.test(normalizedPath)) {
+      return 'ja';
+    }
+    return undefined;
+  };
+
+  const getSuggestionLanguageHint = (suggestion: AISuggestion): 'zh' | 'ja' | 'en' | 'mixed' | 'unknown' => (
+    suggestion.details?.currentLanguageHint
+    || extractSuggestionLanguageSuffix(suggestion.suggestedName)
+    || 'unknown'
+  );
+
+  const stripSuggestionLanguageSuffix = (value: string): string => (
+    normalizeSuggestionPath(value)
+      .replace(/(?:_|\.)(?:cn|zh|jp|ja)$/iu, '')
+      .trim()
+  );
+
+  const isWordTableCellTarget = (targetKey: string | undefined): boolean => (
+    Boolean(targetKey) && String(targetKey).startsWith('word:table-cell:')
+  );
+
+  const isWordTableLoopCellTarget = (targetKey: string | undefined): boolean => (
+    Boolean(targetKey) && String(targetKey).startsWith('word:table-loop-cell:')
+  );
+
+  const buildSuggestionPairKey = (suggestion: AISuggestion): string | undefined => {
+    const candidateId = String(suggestion.details?.candidateId || '').trim();
+    const peerCandidateId = String(suggestion.details?.peerCandidateId || '').trim();
+    if (candidateId && peerCandidateId) {
+      return `candidate-pair:${[candidateId, peerCandidateId].sort().join('|')}`;
+    }
+
+    const language = getSuggestionLanguageHint(suggestion);
+    const basePath = stripSuggestionLanguageSuffix(suggestion.suggestedName);
+    if ((language === 'zh' || language === 'ja') && basePath) {
+      return `path-pair:${basePath}`;
+    }
+
+    return undefined;
+  };
+
+  const hasBilingualSuggestionPair = (items: AISuggestion[]): boolean => {
+    const languagesByPair = new Map<string, Set<'zh' | 'ja'>>();
+
+    items.forEach((item) => {
+      const pairKey = buildSuggestionPairKey(item);
+      const language = getSuggestionLanguageHint(item);
+      if (!pairKey || (language !== 'zh' && language !== 'ja')) {
+        return;
+      }
+      const current = languagesByPair.get(pairKey) || new Set<'zh' | 'ja'>();
+      current.add(language);
+      languagesByPair.set(pairKey, current);
+    });
+
+    return Array.from(languagesByPair.values()).some((languages) =>
+      languages.has('zh') && languages.has('ja')
+    );
+  };
+
+  const sortSuggestionsForMergedApply = (items: AISuggestion[]): AISuggestion[] => {
+    const firstIndexByPairKey = new Map<string, number>();
+    items.forEach((item, index) => {
+      const pairKey = buildSuggestionPairKey(item);
+      if (pairKey && !firstIndexByPairKey.has(pairKey)) {
+        firstIndexByPairKey.set(pairKey, index);
+      }
+    });
+
+    const getLanguageOrder = (suggestion: AISuggestion): number => {
+      const language = getSuggestionLanguageHint(suggestion);
+      if (language === 'zh') {
+        return 0;
+      }
+      if (language === 'ja') {
+        return 1;
+      }
+      return 9;
+    };
+
+    return [...items].sort((left, right) => {
+      const leftPairKey = buildSuggestionPairKey(left);
+      const rightPairKey = buildSuggestionPairKey(right);
+      const leftPairIndex = firstIndexByPairKey.get(leftPairKey || '') ?? Number.MAX_SAFE_INTEGER;
+      const rightPairIndex = firstIndexByPairKey.get(rightPairKey || '') ?? Number.MAX_SAFE_INTEGER;
+      const leftPairOrdinal = typeof left.details?.pairOrdinal === 'number' ? left.details.pairOrdinal : Number.MAX_SAFE_INTEGER;
+      const rightPairOrdinal = typeof right.details?.pairOrdinal === 'number' ? right.details.pairOrdinal : Number.MAX_SAFE_INTEGER;
+
+      if (leftPairKey && rightPairKey && leftPairKey === rightPairKey) {
+        return getLanguageOrder(left) - getLanguageOrder(right);
+      }
+
+      if (leftPairOrdinal !== rightPairOrdinal) {
+        return leftPairOrdinal - rightPairOrdinal;
+      }
+
+      if (leftPairIndex !== rightPairIndex) {
+        return leftPairIndex - rightPairIndex;
+      }
+
+      return items.indexOf(left) - items.indexOf(right);
+    });
+  };
+
+  const buildMergedSuggestionName = (items: AISuggestion[]): string => {
+    const orderedSuggestions = sortSuggestionsForMergedApply(items);
+    return Array.from(new Set(
+      orderedSuggestions
+        .map((item) => String(item.suggestedName || '').trim())
+        .filter(Boolean)
+    )).join('\n');
+  };
+
+  const shouldMergeSuggestionsForTarget = (targetKey: string | undefined, items: AISuggestion[]): boolean => {
+    if (!targetKey || items.length <= 1) {
+      return false;
+    }
+
+    if (isWordTableLoopCellTarget(targetKey)) {
+      return false;
+    }
+
+    return isWordTableCellTarget(targetKey) && hasBilingualSuggestionPair(items);
+  };
+
+  const formatSuggestionSummaryLine = (suggestion: AISuggestion, index: number): string => (
+    [
+      `${index + 1}. ${suggestion.originalText || suggestion.elementPath || suggestion.id}`,
+      `marker=${String(suggestion.suggestedName || '').trim() || '(empty)'}`,
+      `candidateId=${String(suggestion.details?.candidateId || '').trim() || '(none)'}`,
+      `lang=${getSuggestionLanguageHint(suggestion)}`,
+    ].join(' | ')
+  );
+
+  const formatApplyDebugBlock = (
+    title: string,
+    item: BatchApplyItem,
+    extraLines: Array<string | undefined> = [],
+  ): string => (
+    [
+      `[${title}]`,
+      `target=${item.targetKey || item.suggestion.elementPath || 'unknown'}`,
+      `sourceCount=${item.sourceSuggestions.length}`,
+      ...extraLines.filter(Boolean),
+      'sources:',
+      ...sortSuggestionsForMergedApply(item.sourceSuggestions).map(formatSuggestionSummaryLine),
+      'mergedOutput:',
+      item.suggestion.suggestedName || '(empty)',
+    ].join('\n')
+  );
+
+  const extractWordLoopArrayPath = (suggestion: AISuggestion): string => {
+    const directPath = String(suggestion.details?.arrayPath || '').trim();
+    if (directPath) {
+      return directPath.replace(/\[(?:i(?:\+\d+)?)?\]$/u, '');
+    }
+
+    const normalizedName = String(suggestion.suggestedName || '').trim();
+    const loopMatch = normalizedName.match(/\{#([^}]+)\}/u);
+    if (loopMatch?.[1]) {
+      return loopMatch[1].trim();
+    }
+
+    const variableMatch = normalizedName
+      .replace(/[{}]/g, '')
+      .match(/^(d\.[A-Za-z_][A-Za-z0-9_.]*)\[(?:i(?:\+\d+)?)?\]\.[A-Za-z_][A-Za-z0-9_]*$/u);
+    return variableMatch?.[1]?.trim() || '';
+  };
+
+  const buildSuggestionTargetKey = (suggestion: AISuggestion): string | undefined => {
+    const wordAnchor = suggestion.details?.wordAnchor as
+      | {
+          type?: string;
+          contentControlId?: number;
+          tableIndex?: number;
+          rowIndex?: number;
+          cellIndex?: number;
+          paragraphIndex?: number;
+          start?: number;
+          end?: number;
+        }
+      | undefined;
+
+    const normalizedSuggestedName = String(suggestion.suggestedName || '').trim();
+    const isWordTableLoopRelated = wordAnchor?.type === 'table-cell' && (
+      suggestion.type === 'loop'
+      || Boolean(String(suggestion.details?.arrayPath || '').trim())
+      || /\{#.+\}\{\/.+\}/u.test(normalizedSuggestedName)
+      || /\[[^\]]*\]\./u.test(normalizedSuggestedName.replace(/[{}]/g, ''))
+    );
+
+    // 循环表格需要按列分别写入下一行，并自动补开始/结束标记，不能再按原锚点合并成多行文本。
+    if (isWordTableLoopRelated) {
+      const loopArrayPath = extractWordLoopArrayPath(suggestion);
+      if (
+        suggestion.type !== 'loop'
+        && typeof wordAnchor?.tableIndex === 'number'
+        && typeof wordAnchor?.rowIndex === 'number'
+        && typeof wordAnchor?.cellIndex === 'number'
+        && loopArrayPath
+      ) {
+        return `word:table-loop-cell:${wordAnchor.tableIndex}:${wordAnchor.rowIndex}:${wordAnchor.cellIndex}:${loopArrayPath}`;
+      }
+      return undefined;
+    }
+
+    if (wordAnchor?.type === 'content-control' && typeof wordAnchor.contentControlId === 'number') {
+      return `word:content-control:${wordAnchor.contentControlId}`;
+    }
+
+    if (
+      wordAnchor?.type === 'table-cell'
+      && typeof wordAnchor.tableIndex === 'number'
+      && typeof wordAnchor.rowIndex === 'number'
+      && typeof wordAnchor.cellIndex === 'number'
+    ) {
+      return `word:table-cell:${wordAnchor.tableIndex}:${wordAnchor.rowIndex}:${wordAnchor.cellIndex}`;
+    }
+
+    if (
+      wordAnchor?.type === 'text-range'
+      && typeof wordAnchor.paragraphIndex === 'number'
+      && typeof wordAnchor.start === 'number'
+      && typeof wordAnchor.end === 'number'
+    ) {
+      return `word:text-range:${wordAnchor.paragraphIndex}:${wordAnchor.start}:${wordAnchor.end}`;
+    }
+
+    const underlineInfo = suggestion.underlineInfo;
+    if (
+      typeof underlineInfo?.paragraphIndex === 'number'
+      && typeof underlineInfo?.position?.start === 'number'
+      && typeof underlineInfo?.position?.end === 'number'
+    ) {
+      return `word:underline:${underlineInfo.paragraphIndex}:${underlineInfo.position.start}:${underlineInfo.position.end}`;
+    }
+
+    const excelAnchor = suggestion.details?.excelAnchor as
+      | { type?: string; sheetName?: string; address?: string; tableName?: string; pairIndex?: number }
+      | undefined;
+    if (excelAnchor?.type === 'cell' && excelAnchor.sheetName && excelAnchor.address) {
+      return `excel:cell:${excelAnchor.sheetName}:${excelAnchor.address}`;
+    }
+    if (excelAnchor?.type === 'table' && excelAnchor.sheetName && excelAnchor.tableName) {
+      return `excel:table:${excelAnchor.sheetName}:${excelAnchor.tableName}:${excelAnchor.pairIndex ?? 'na'}`;
+    }
+
+    const contextKey = String(suggestion.context || suggestion.details?.context || '').trim();
+    if (contextKey) {
+      return `context:${contextKey}`;
+    }
+
+    return undefined;
+  };
+
+  const buildBatchApplyItems = (items: AISuggestion[]): BatchApplyItem[] => {
+    const indexedItems = items.map((suggestion, index) => ({
+      suggestion,
+      index,
+      targetKey: buildSuggestionTargetKey(suggestion),
+    }));
+    const groupedIndexes = new Set<number>();
+    const indexedSuggestionsByTarget = new Map<string, Array<typeof indexedItems[number]>>();
+
+    indexedItems.forEach((entry) => {
+      if (!entry.targetKey) {
+        return;
+      }
+      const current = indexedSuggestionsByTarget.get(entry.targetKey) || [];
+      current.push(entry);
+      indexedSuggestionsByTarget.set(entry.targetKey, current);
+    });
+
+    const result: BatchApplyItem[] = [];
+    indexedItems.forEach((entry) => {
+      if (groupedIndexes.has(entry.index)) {
+        return;
+      }
+
+      const targetEntries = entry.targetKey
+        ? (indexedSuggestionsByTarget.get(entry.targetKey) || [])
+        : [];
+      const sourceSuggestions = shouldMergeSuggestionsForTarget(
+        entry.targetKey,
+        targetEntries.map((item) => item.suggestion)
+      )
+        ? targetEntries.map((item) => item.suggestion)
+        : [entry.suggestion];
+
+      if (sourceSuggestions.length > 1) {
+        targetEntries.forEach((item) => groupedIndexes.add(item.index));
+      } else {
+        groupedIndexes.add(entry.index);
+      }
+
+      result.push({
+        suggestion: sourceSuggestions.length > 1
+          ? {
+              ...entry.suggestion,
+              suggestedName: buildMergedSuggestionName(sourceSuggestions),
+            }
+          : entry.suggestion,
+        sourceSuggestions,
+        targetKey: entry.targetKey,
+      });
+    });
+
+    return result;
+  };
+
+  const applySuggestionToDocument = async (
+    suggestion: AISuggestion,
+    onApplyComplete?: () => void
+  ): Promise<{ success: boolean; reason?: string }> => {
     try {
       const capabilities = await hostAdapter.getCapabilities();
       if (!capabilities.canApplySuggestion) {
         addDebugLog('warn', '当前宿主暂不支持应用建议', capabilities.warnings?.join('\n'));
-        return false;
+        return {
+          success: false,
+          reason: capabilities.warnings?.join('\n') || '当前宿主暂不支持应用建议',
+        };
       }
 
       await hostAdapter.applySuggestion(suggestion);
       applySuggestion(suggestion.id);
       addDebugLog('info', `应用建议成功`, `${suggestion.originalText} → ${suggestion.suggestedName}`);
       onApplyComplete?.();
-      return true;
+      return { success: true };
     } catch (error: any) {
-      addDebugLog('error', '应用建议失败', error.message);
-      return false;
+      const reason = error?.message || '未知错误';
+      addDebugLog('error', '应用建议失败', `${suggestion.originalText} → ${suggestion.suggestedName}\n${reason}`);
+      return { success: false, reason };
+    }
+  };
+
+  const applyBatchItemToDocument = async (
+    item: BatchApplyItem,
+    onApplyComplete?: () => void
+  ): Promise<{ success: boolean; reason?: string; logBlock?: string }> => {
+    try {
+      const capabilities = await hostAdapter.getCapabilities();
+      if (!capabilities.canApplySuggestion) {
+        return {
+          success: false,
+          reason: capabilities.warnings?.join('\n') || '当前宿主暂不支持应用建议',
+          logBlock: formatApplyDebugBlock('apply-skipped', item, [
+            `reason=${capabilities.warnings?.join(' | ') || '当前宿主暂不支持应用建议'}`,
+          ]),
+        };
+      }
+
+      await hostAdapter.applySuggestion(item.suggestion);
+      item.sourceSuggestions.forEach((sourceSuggestion) => applySuggestion(sourceSuggestion.id));
+      onApplyComplete?.();
+      return {
+        success: true,
+        logBlock: formatApplyDebugBlock(
+          item.sourceSuggestions.length > 1 ? 'apply-merged-success' : 'apply-success',
+          item,
+          item.targetKey?.startsWith('word:table-loop-cell:')
+            ? [`arrayPath=${extractWordLoopArrayPath(item.suggestion) || '(none)'}`]
+            : [],
+        ),
+      };
+    } catch (error: any) {
+      const reason = error?.message || '未知错误';
+      return {
+        success: false,
+        reason,
+        logBlock: formatApplyDebugBlock(
+          item.sourceSuggestions.length > 1 ? 'apply-merged-failed' : 'apply-failed',
+          item,
+          [`reason=${reason}`],
+        ),
+      };
     }
   };
 
@@ -111,19 +504,32 @@ export function useParameterApply(hostAdapter: any, isExcelMode: boolean) {
     }
 
     const actionLabel = mode === 'apply' ? '应用' : '重新应用';
+    setPreviewAction(mode);
+    setPreviewContent(generatePreviewSummary(items, actionLabel));
+    setShowPreview(false);
 
-    if (supportsSuggestionPreview && (!showPreview || previewAction !== mode)) {
-      setPreviewAction(mode);
-      setPreviewContent(generatePreviewSummary(items, actionLabel));
-      setShowPreview(true);
-      return;
-    }
+    const batchItems = buildBatchApplyItems(items);
+    const mergedSuggestionCount = batchItems.reduce(
+      (total, item) => total + Math.max(0, item.sourceSuggestions.length - 1),
+      0
+    );
 
     let successCount = 0;
-    for (const suggestion of items) {
-      const applied = await applySuggestionToDocument(suggestion, onApplyComplete);
-      if (applied) {
+    let successSuggestionCount = 0;
+    const failedReasons: string[] = [];
+    const batchLogBlocks: string[] = [];
+    for (const item of batchItems) {
+      const result = await applyBatchItemToDocument(item, onApplyComplete);
+      if (result.logBlock) {
+        batchLogBlocks.push(result.logBlock);
+      }
+      if (result.success) {
         successCount += 1;
+        successSuggestionCount += item.sourceSuggestions.length;
+      } else {
+        failedReasons.push(
+          `${item.suggestion.originalText || item.suggestion.elementPath || item.suggestion.suggestedName}: ${result.reason || '未知错误'}`
+        );
       }
     }
 
@@ -131,7 +537,21 @@ export function useParameterApply(hostAdapter: any, isExcelMode: boolean) {
     setPreviewContent('');
     setPreviewAction('apply');
     setCollapsed(true);
-    addDebugLog('info', `${actionLabel}完成`, `成功${actionLabel}了 ${successCount} / ${items.length} 个建议`);
+    addDebugLog(
+      failedReasons.length > 0 ? 'warn' : 'info',
+      `${actionLabel}完成`,
+      [
+        `成功${actionLabel}了 ${successSuggestionCount} / ${items.length} 个建议`,
+        `实际写入目标 ${successCount} / ${batchItems.length} 个`,
+        mergedSuggestionCount > 0 ? `同锚点合并 ${mergedSuggestionCount} 条建议，避免后写覆盖前写` : undefined,
+        failedReasons.length > 0 ? '' : undefined,
+        failedReasons.length > 0 ? '失败原因:' : undefined,
+        ...(failedReasons.length > 0 ? failedReasons.slice(0, 10).map((item, index) => `${index + 1}. ${item}`) : []),
+        batchLogBlocks.length > 0 ? '' : undefined,
+        batchLogBlocks.length > 0 ? '应用明细:' : undefined,
+        ...(batchLogBlocks.length > 0 ? [batchLogBlocks.join('\n\n')] : []),
+      ].filter(Boolean).join('\n')
+    );
   };
 
   const handleApplyAll = async (onApplyComplete?: () => void) => {
@@ -358,8 +778,7 @@ export function useParameterApply(hostAdapter: any, isExcelMode: boolean) {
   const handleReapplyGroup = async (groupName: string, onApplyComplete?: () => void) => {
     try {
       const groupItems = groupedSuggestions[groupName] || [];
-      const applied = groupItems.filter((s) => s.applied);
-      await applySuggestionBatch(applied, 'reapply', onApplyComplete);
+      await applySuggestionBatch(groupItems, 'reapply', onApplyComplete);
     } catch (error) {
       const message = error instanceof Error ? error.message : '未知错误';
       addDebugLog('error', `重新应用分组[${groupName}]失败`, message);

@@ -29,7 +29,7 @@ type AiModelsResponse = {
 
 type AiTestResponse = {
   success?: boolean;
-  response?: string;
+  response?: any;
   error?: string;
 };
 
@@ -597,15 +597,7 @@ export class AIIdentifierService {
         analysisNotes: [`文档类型: ${documentUnderstanding.documentType}`, `主要用途: ${documentUnderstanding.mainPurpose}`]
       };
 
-      const variableMappings: VariableMapping[] = finalSuggestions.map((s, idx) => ({
-        path: s.variablePath,
-        sampleValue: s.originalText,
-        index: idx,
-        type: (s.details?.fieldType as any) || 'text',
-        reason: s.significance,
-        usage: s.details?.usage,
-        fieldType: s.details?.fieldType
-      }));
+      const variableMappings = this.buildVariableMappingsFromSuggestions(finalSuggestions);
 
       const documentStats = {
         totalElements: finalSuggestions.length,
@@ -1144,6 +1136,27 @@ ${fullContent.substring(0, Math.min(1000, fullContent.length))}
         formatter: null
       }
     }));
+  }
+
+  private buildVariableMappingsFromSuggestions(suggestions: any[]): VariableMapping[] {
+    return suggestions.reduce<VariableMapping[]>((acc, suggestion, idx) => {
+        const path = suggestion?.variablePath || suggestion?.suggestedName;
+        if (!path) {
+          return acc;
+        }
+
+        acc.push({
+          path,
+          sampleValue: suggestion?.originalText || suggestion?.sampleValue || '',
+          index: idx,
+          type: (suggestion?.details?.fieldType || suggestion?.fieldType || 'text') as VariableMapping['type'],
+          reason: suggestion?.significance || suggestion?.details?.significance || '',
+          usage: suggestion?.details?.usage || suggestion?.usage,
+          fieldType: suggestion?.details?.fieldType || suggestion?.fieldType
+        });
+
+        return acc;
+      }, []);
   }
 
   /**
@@ -2246,6 +2259,15 @@ ${blankList}
       ? suggestions.filter((s) => s?.applied)
       : [];
     const effectiveTableLoops = this.buildSkillTableLoops(appliedSuggestions, templateConfig);
+    this.logger.log(
+      `[skill-debug] generateAISkillGuide suggestions=${Array.isArray(suggestions) ? suggestions.length : 0} appliedSuggestions=${appliedSuggestions.length} tableLoops=${effectiveTableLoops.length}`,
+    );
+    this.logger.log(
+      `[skill-debug] appliedSuggestionNames=${appliedSuggestions
+        .map((suggestion) => String(suggestion?.suggestedName || suggestion?.details?.variableName || '').trim())
+        .filter(Boolean)
+        .join(', ') || 'none'}`,
+    );
 
     const parameterMap = new Map<string, any>();
     const registerParameter = (parameter: any) => {
@@ -2270,9 +2292,14 @@ ${blankList}
 
       const existing = parameterMap.get(cleanName);
       if (!existing) {
+        this.logger.log(`[skill-debug] register parameter raw=${parameter?.name || 'empty'} clean=${cleanName}`);
         parameterMap.set(cleanName, normalizedParameter);
         return;
       }
+
+      this.logger.log(
+        `[skill-debug] merge duplicate parameter clean=${cleanName} incomingRaw=${parameter?.name || 'empty'}`,
+      );
 
       parameterMap.set(cleanName, {
         ...existing,
@@ -2359,6 +2386,9 @@ ${blankList}
     }
 
     const parameters = Array.from(parameterMap.values());
+    this.logger.log(
+      `[skill-debug] finalParameters=${parameters.length} names=${parameters.map((parameter) => parameter.name).join(', ') || 'none'}`,
+    );
 
     // 根据模板类型生成特定的AI指导
     const templateDescription = this.generateTemplateDescription(templateType, documentDescription, parameters);
@@ -2527,7 +2557,18 @@ ${blankList}
    * 本方法只需要简单引用Skill Guide的内容，不需要额外处理。
    * 这样模板和Skill Guide可以方便迁移。
    */
-  async generateParametersFromDescription(description: string, skill: any): Promise<any> {
+  async generateParametersFromDescription(description: string, skill: any): Promise<{
+    success: boolean;
+    generatedData?: any;
+    error?: string;
+    debugInfo?: {
+      rawAiResponse?: string;
+      cleanedAiResponse?: string;
+      extractedJson?: string;
+      parseError?: string;
+      upstreamError?: string;
+    };
+  }> {
     this.logger.log(`Generating parameters from description: ${description}`);
 
     const sanitizedParameters = Array.isArray(skill.parameters)
@@ -2593,11 +2634,14 @@ ${description}
 1. 输出结构必须与"参考数据结构"完全一致
 2. 键名不要包含 \`{d.\` 或 \`}\`，使用纯字段名如 partyA、name、address
 3. 日期格式 YYYY-MM-DD，今天是 ${new Date().toISOString().split('T')[0]}
-4. 只返回JSON对象，不要解释文字，不要markdown代码块`;
+4. 优先使用用户描述、参数示例值、参考数据结构中的真实业务值；只有确实缺失时，才补充合理的业务默认值
+5. 不要生成“示例值”“测试数据”“xxx公司”这类空泛占位内容，尽量保持公司名、项目名、物料编码、金额、日期等值贴近参考示例
+6. 如果参考数据结构里存在数组/循环字段，除非用户明确要求仅 1 条，否则至少生成 2 条数据，并让不同条目在编号、名称、编码、数量、金额等关键字段上有合理差异
+7. 只返回JSON对象，不要解释文字，不要markdown代码块`;
 
     // 直接调用AI服务
     const aiOrchestratorUrl = getAiOrchestratorUrl();
-    const aiModelId = await this.resolveActiveAiModelId();
+    const aiModelId = process.env.AI_MODEL_ID?.trim() || 'default';
 
     this.logger.log(`Calling AI service for parameter generation at ${aiOrchestratorUrl}/ai/models/${aiModelId}/test`);
 
@@ -2611,40 +2655,335 @@ ${description}
       this.logger.log('AI service responded successfully for parameter generation');
 
       // 解析返回结果
-      let content = response.data?.response || '';
+      if (response.data?.success === false) {
+        const upstreamError = String(response.data?.error || 'AI service returned unsuccessful response');
+        this.logger.error(`AI service returned unsuccessful response for parameter generation: ${upstreamError}`);
+        return {
+          success: false,
+          error: `Failed to generate parameters: ${upstreamError}`,
+          debugInfo: {
+            rawAiResponse: this.stringifyAiResponse(response.data?.response).slice(0, 4000),
+            cleanedAiResponse: this.normalizeJsonLikeText(this.stringifyAiResponse(response.data?.response)).slice(0, 4000),
+            upstreamError,
+          },
+        };
+      }
+
+      const rawResponse = response.data?.response;
+      const directObject = this.tryNormalizeGeneratedParameters(rawResponse);
+      if (directObject !== undefined) {
+        this.logger.log(`Generated parameters successfully: ${JSON.stringify(directObject, null, 2).substring(0, 200)}...`);
+        return {
+          success: true,
+          generatedData: directObject,
+          debugInfo: {
+            rawAiResponse: this.stringifyAiResponse(rawResponse).slice(0, 4000),
+            cleanedAiResponse: this.stringifyAiResponse(rawResponse).slice(0, 4000),
+          },
+        };
+      }
+
+      const rawContent = this.stringifyAiResponse(rawResponse);
+      const content = this.normalizeJsonLikeText(rawContent);
       this.logger.log(`AI response content (first 500 chars): ${content.substring(0, 500)}`);
 
-      // 清理markdown代码块标记
-      content = content.replace(/```json\s*/gi, '').replace(/```\s*/g, '').trim();
+      const debugInfo = {
+        rawAiResponse: rawContent.slice(0, 4000),
+        cleanedAiResponse: content.slice(0, 4000),
+        upstreamError: response.data?.error ? String(response.data.error) : undefined,
+      };
 
-      // 直接解析JSON对象
+      if (!content.trim()) {
+        const emptyResponseError = response.data?.error
+          ? `AI returned empty response: ${String(response.data.error)}`
+          : 'AI returned empty response';
+        this.logger.error(`Failed to generate parameters: ${emptyResponseError}`);
+        return {
+          success: false,
+          error: `Failed to generate parameters: ${emptyResponseError}`,
+          debugInfo,
+        };
+      }
+
+      // 直接解析 JSON 对象
       try {
         const generatedData = JSON.parse(content);
         this.logger.log(`Generated parameters successfully: ${JSON.stringify(generatedData, null, 2).substring(0, 200)}...`);
-        return generatedData;
+        return {
+          success: true,
+          generatedData,
+          debugInfo,
+        };
       } catch (parseError) {
         this.logger.error(`Failed to parse AI response as JSON: ${parseError}`);
         this.logger.error(`Raw content: ${content}`);
 
-        // 尝试提取JSON对象（后备方案）
-        const objectMatch = content.match(/\{[\s\S]*\}/);
-        if (objectMatch) {
+        // 尝试提取首个平衡的 JSON 对象（后备方案）
+        const extractedObject = this.extractJsonCandidate(rawContent);
+        if (extractedObject) {
           try {
-            const extractedData = JSON.parse(objectMatch[0]);
+            const extractedData = JSON.parse(this.normalizeJsonLikeText(extractedObject));
             this.logger.log(`Extracted JSON object successfully`);
-            return extractedData;
+            return {
+              success: true,
+              generatedData: extractedData,
+              debugInfo: {
+                ...debugInfo,
+                extractedJson: extractedObject.slice(0, 4000),
+              },
+            };
           } catch (e) {
             this.logger.error(`Failed to parse extracted JSON: ${e}`);
+            return {
+              success: false,
+              error: 'Failed to parse AI generated parameters',
+              debugInfo: {
+                ...debugInfo,
+                extractedJson: extractedObject.slice(0, 4000),
+                parseError: String(e),
+              },
+            };
           }
         }
 
-        throw new Error('Failed to parse AI generated parameters');
+        return {
+          success: false,
+          error: 'Failed to parse AI generated parameters',
+          debugInfo: {
+            ...debugInfo,
+            parseError: String(parseError),
+          },
+        };
       }
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : 'Unknown error';
       this.logger.error(`AI service call failed for parameter generation: ${message}`);
-      throw new Error(`Failed to generate parameters: ${message}`);
+      return {
+        success: false,
+        error: `Failed to generate parameters: ${message}`,
+      };
     }
+  }
+
+  private stripMarkdownCodeFences(content: string): string {
+    return String(content || '')
+      .replace(/```json\s*/gi, '')
+      .replace(/```javascript\s*/gi, '')
+      .replace(/```js\s*/gi, '')
+      .replace(/```\s*/g, '')
+      .replace(/^\s*json\s*/i, '')
+      .trim();
+  }
+
+  private stringifyAiResponse(content: unknown): string {
+    if (typeof content === 'string') {
+      return content;
+    }
+
+    if (content == null) {
+      return '';
+    }
+
+    try {
+      return JSON.stringify(content);
+    } catch {
+      return String(content);
+    }
+  }
+
+  private tryNormalizeGeneratedParameters(content: unknown): unknown {
+    if (content && typeof content === 'object' && !Array.isArray(content)) {
+      return content;
+    }
+
+    const text = this.stringifyAiResponse(content);
+    if (!text.trim()) {
+      return undefined;
+    }
+
+    const direct = this.tryParseJsonValue(this.normalizeJsonLikeText(text));
+    if (direct !== undefined) {
+      return direct;
+    }
+
+    const extracted = this.extractJsonCandidate(text);
+    if (!extracted) {
+      return undefined;
+    }
+
+    return this.tryParseJsonValue(this.normalizeJsonLikeText(extracted));
+  }
+
+  private tryParseJsonValue(content: string): unknown {
+    try {
+      return JSON.parse(content);
+    } catch {
+      return undefined;
+    }
+  }
+
+  private extractJsonCandidate(content: string): string | null {
+    const fencedMatch = String(content || '').match(/```(?:json|javascript|js)?\s*([\s\S]*?)```/i);
+    if (fencedMatch?.[1]?.trim()) {
+      return fencedMatch[1].trim();
+    }
+
+    return this.extractFirstBalancedJsonObject(content);
+  }
+
+  private normalizeJsonLikeText(content: string): string {
+    const withoutFences = this.stripMarkdownCodeFences(String(content || ''))
+      .replace(/^\uFEFF/, '')
+      .replace(/[\u201C\u201D]/g, '"')
+      .replace(/[\u2018\u2019]/g, '\'');
+
+    const withoutComments = this.stripJsonLikeComments(withoutFences);
+    return this.removeTrailingCommas(withoutComments).trim();
+  }
+
+  private stripJsonLikeComments(content: string): string {
+    let result = '';
+    let inString = false;
+    let escaped = false;
+
+    for (let index = 0; index < content.length; index += 1) {
+      const char = content[index];
+      const nextChar = content[index + 1];
+
+      if (escaped) {
+        result += char;
+        escaped = false;
+        continue;
+      }
+
+      if (char === '\\') {
+        result += char;
+        escaped = true;
+        continue;
+      }
+
+      if (char === '"') {
+        result += char;
+        inString = !inString;
+        continue;
+      }
+
+      if (!inString && char === '/' && nextChar === '/') {
+        index += 2;
+        while (index < content.length && content[index] !== '\n') {
+          index += 1;
+        }
+        if (index < content.length) {
+          result += '\n';
+        }
+        continue;
+      }
+
+      if (!inString && char === '/' && nextChar === '*') {
+        index += 2;
+        while (index < content.length - 1 && !(content[index] === '*' && content[index + 1] === '/')) {
+          index += 1;
+        }
+        index += 1;
+        continue;
+      }
+
+      result += char;
+    }
+
+    return result;
+  }
+
+  private removeTrailingCommas(content: string): string {
+    let result = '';
+    let inString = false;
+    let escaped = false;
+
+    for (let index = 0; index < content.length; index += 1) {
+      const char = content[index];
+
+      if (escaped) {
+        result += char;
+        escaped = false;
+        continue;
+      }
+
+      if (char === '\\') {
+        result += char;
+        escaped = true;
+        continue;
+      }
+
+      if (char === '"') {
+        result += char;
+        inString = !inString;
+        continue;
+      }
+
+      if (!inString && char === ',') {
+        let lookahead = index + 1;
+        while (lookahead < content.length && /\s/.test(content[lookahead])) {
+          lookahead += 1;
+        }
+        if (content[lookahead] === '}' || content[lookahead] === ']') {
+          continue;
+        }
+      }
+
+      result += char;
+    }
+
+    return result;
+  }
+
+  private extractFirstBalancedJsonObject(content: string): string | null {
+    const text = String(content || '');
+    let start = -1;
+    let depth = 0;
+    let inString = false;
+    let escaped = false;
+
+    for (let index = 0; index < text.length; index += 1) {
+      const char = text[index];
+
+      if (escaped) {
+        escaped = false;
+        continue;
+      }
+
+      if (char === '\\') {
+        escaped = true;
+        continue;
+      }
+
+      if (char === '"') {
+        inString = !inString;
+        continue;
+      }
+
+      if (inString) {
+        continue;
+      }
+
+      if (char === '{') {
+        if (start < 0) {
+          start = index;
+        }
+        depth += 1;
+        continue;
+      }
+
+      if (char === '}') {
+        if (depth > 0) {
+          depth -= 1;
+          if (depth === 0 && start >= 0) {
+            return text.slice(start, index + 1);
+          }
+        }
+      }
+    }
+
+    return null;
   }
 
   /**
@@ -2836,29 +3175,6 @@ ${description}
     }
 
     return sanitized;
-  }
-
-  private async resolveActiveAiModelId(): Promise<string> {
-    const configuredModelId = process.env.AI_MODEL_ID?.trim();
-    const modelsResponse = await axios.get<AiModelsResponse>(`${this.aiOrchestratorUrl}/ai/models`, {
-      timeout: 5000,
-    });
-    const models = modelsResponse.data.models || [];
-
-    if (configuredModelId) {
-      const configuredModel = models.find((model) => model.id === configuredModelId && model.status === 'active');
-      if (configuredModel) {
-        return configuredModel.id;
-      }
-      this.logger.warn(`Configured AI_MODEL_ID ${configuredModelId} is unavailable, falling back to active model`);
-    }
-
-    const activeModel = models.find((model) => model.status === 'active');
-    if (!activeModel?.id) {
-      throw new Error('No active AI models available');
-    }
-
-    return activeModel.id;
   }
 
   /**
@@ -3123,6 +3439,7 @@ ${parameterRules || '- 暂无参数定义'}
           arrayPath += '[]';
         }
         setValueAtPath(dataObj, arrayPath, {});
+        setValueAtPath(dataObj, arrayPath.replace(/\[\]$/g, '[1]'), {});
       }
     }
 
@@ -3130,6 +3447,13 @@ ${parameterRules || '- 暂无参数定义'}
     for (const p of parameters) {
       if (!p.name || this.isPlaceholderSkillParameterPath(p.name)) continue;
       setValueAtPath(dataObj, p.name, p.example);
+      if (String(p.name).includes('[]')) {
+        setValueAtPath(
+          dataObj,
+          this.buildIndexedSkillParameterPath(p.name, 1),
+          this.buildLoopExampleValueForIndex(p.example, p.dataType, p.name, 1),
+        );
+      }
     }
 
     // 3. 填充表格列映射的示例值 (作为补充)
@@ -3144,11 +3468,90 @@ ${parameterRules || '- 暂无参数定义'}
             cleanColumnPath
           );
           setValueAtPath(dataObj, cleanColumnPath, sampleValue);
+          if (cleanColumnPath.includes('[]')) {
+            const inferredFieldType = this.inferFieldType(
+              column?.headerName || cleanColumnPath,
+              String(this.sanitizeSkillExampleSource(column?.sampleValue) || ''),
+            );
+            setValueAtPath(
+              dataObj,
+              this.buildIndexedSkillParameterPath(cleanColumnPath, 1),
+              this.buildLoopExampleValueForIndex(sampleValue, inferredFieldType, cleanColumnPath, 1),
+            );
+          }
         }
       }
     }
 
     return JSON.stringify(dataObj, null, 2);
+  }
+
+  private buildIndexedSkillParameterPath(variablePath: string, index: number): string {
+    return this.normalizeSkillParameterPath(variablePath).replace(/\[\]/g, `[${index}]`);
+  }
+
+  private buildLoopExampleValueForIndex(
+    baseValue: unknown,
+    fieldType: string,
+    variablePath: string,
+    index: number,
+  ): string {
+    const base = this.sanitizeSkillExampleSource(baseValue) || this.generateExampleValue(fieldType, variablePath);
+    if (index <= 0) {
+      return base;
+    }
+
+    const cleanPath = this.normalizeSkillParameterPath(variablePath || '');
+    const lastPart = (cleanPath.split('.').pop() || '').toLowerCase();
+
+    if (/(^|\.)(seq|serialno|serialnumber|lineno|lineno|lineNo)$/i.test(cleanPath) || lastPart === 'seq') {
+      return String(index + 1);
+    }
+
+    if (/(quantity|qty|count|num)$/i.test(lastPart)) {
+      const numeric = Number(String(base).replace(/[^\d.-]/g, ''));
+      return Number.isFinite(numeric) && numeric > 0 ? String(numeric + index) : String(index + 1);
+    }
+
+    if (/(materialcode|itemcode|productcode|sku|code)$/i.test(lastPart)) {
+      const matched = String(base).match(/^(.*?)(\d+)$/);
+      if (matched) {
+        return `${matched[1]}${String(Number(matched[2]) + index).padStart(matched[2].length, '0')}`;
+      }
+      return `${base}-${index + 1}`;
+    }
+
+    if (/(devicename|productname|itemname|goodsname)$/i.test(lastPart)) {
+      const fallbackNames = ['工业机器人', '智能控制柜', '视觉检测单元', '伺服驱动模组'];
+      return fallbackNames[index % fallbackNames.length];
+    }
+
+    if (/(model|spec|specification)$/i.test(lastPart)) {
+      const fallbackModels = ['XR-600', 'XR-610', 'XR-620', 'XR-630'];
+      return fallbackModels[index % fallbackModels.length];
+    }
+
+    if (/(unitprice|price)$/i.test(lastPart)) {
+      const numeric = Number(String(base).replace(/[^\d.-]/g, ''));
+      if (Number.isFinite(numeric) && numeric > 0) {
+        return (numeric + index * 1000).toLocaleString('en-US', {
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 2,
+        });
+      }
+    }
+
+    if (/(subtotal|amount|total)$/i.test(lastPart)) {
+      const numeric = Number(String(base).replace(/[^\d.-]/g, ''));
+      if (Number.isFinite(numeric) && numeric > 0) {
+        return (numeric + index * 5000).toLocaleString('en-US', {
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 2,
+        });
+      }
+    }
+
+    return base;
   }
 
   private extractLoopColumnMappings(
@@ -4065,6 +4468,9 @@ curl -X POST http://localhost:3009/studio/render \\
    */
   private headerToVariableName(header: string): string {
     const mappings: Record<string, string> = {
+      'start': 'start',
+      '开始': 'start',
+      '起始': 'start',
       'step': 'step',
       '步骤': 'step',
       'action': 'action',
@@ -4096,6 +4502,7 @@ curl -X POST http://localhost:3009/studio/render \\
    */
   private getSampleValue(varName: string): string {
     const samples: Record<string, string> = {
+      'start': '开始执行',
       'step': '1',
       'action': '点击按钮',
       'result': '成功',
@@ -4572,11 +4979,14 @@ ${elementSummary}
    - 例如：分组包含 "Step 3: screenshot" 文本 + 图片，表示每个步骤都有截图
    - 应该生成：groupLoops 中包含这组元素，使用 arrayPath 如 d.steps
    - 这样在渲染时，每个步骤都会显示对应的截图
+6. **标题保护（重要）**：文档 title/主标题/封面标题 默认必须放进 staticElements，不要同时放进 variableMappings；只有用户明确要求“标题可替换/标题参数化”时，才允许输出标题变量
+7. **单独元素替换（重要）**：非表格、非分组循环的单个段落/单元格替换，必须输出到 variableMappings；如果同一个元素里有多个参数，允许输出多条 variableMappings，并且这些记录共享同一个 elementIndex，不要合并丢失
 
 表格循环配置：
 - 步骤表格使用 arrayPath: d.steps
 - 列映射必须包含 columnIndex，对应表格列的位置（从0开始）
 - 列映射示例：columnIndex=0 → d.steps[].step, columnIndex=1 → d.steps[].action
+- 循环列要尽量完整覆盖模板行中的字段，不要只给循环开始/结束标记；如果表头或正文里出现“开始/起始/start”“结果/result”“状态/status”“名称/name”等字段，也要补充到 columnMappings 中
 
 分组循环配置：
 - 当用户创建分组时，这组元素应该作为循环体重复出现
@@ -4601,6 +5011,7 @@ ${elementSummary}
 - elementIndex 是列表左侧的编号（1-based）
 - columnIndex 是表格列的索引（0-based）
 - 分组循环优先级高于单独的 combinedVariables，如果用户创建了分组，应该在 groupLoops 中处理
+- 不要把 staticElements 中的 title 再重复输出到 variableMappings
 - 只返回JSON，不要解释`;
     }
 
@@ -4618,10 +5029,12 @@ ${elementSummary}
 ${elementSummary}
 
 规则：
-1. "### xxx" 标题 → staticElements (保留)
+1. "### xxx" 标题、title、主标题、封面标题 → staticElements (保留)，默认不要放进 variableMappings
 2. 表格 → tableLoops (循环)，必须包含 elementIndex 和 columnMappings（带 columnIndex）
 3. 图片 → variableMappings (type=image)，路径格式如 d.screenshots[].url
 4. 含"日志/上下文/总结/分析"的段落 → variableMappings，使用对照表标准路径
+5. 单个段落/单元格如果需要替换，必须写入 variableMappings；同一 elementIndex 可以有多条 variableMappings，表示该元素内有多个替换参数
+6. 对于步骤/流程/明细类循环，columnMappings 要尽量完整列出正文中的字段；遇到“开始/起始/start”“结果/result”“状态/status”“名称/name”等列时，不要遗漏
 
 返回JSON格式：
 {
@@ -4668,14 +5081,20 @@ ${elementSummary}
       const mergedMappings = this.mergePathMappings(pathMappings, DEFAULT_PATH_MAPPINGS);
 
       // 3. 使用合并后的对照表规范化配置中的路径
+      const staticElements = Array.isArray(parsed.staticElements) ? parsed.staticElements : [];
+      const rawVariableMappings = Array.isArray(parsed.variableMappings)
+        ? parsed.variableMappings
+        : Array.isArray(parsed.mappings)
+          ? parsed.mappings
+          : [];
       const config: TemplateConfig = {
         templateType: parsed.templateType || '通用文档',
-        staticElements: parsed.staticElements || [],
+        staticElements,
         tableLoops: this.validateTableLoops(parsed.tableLoops || [], elements, mergedMappings),
         imageLoops: [],
         groupLoops: this.validateGroupLoops(parsed.groupLoops || []),
         combinedVariables: this.validateCombinedVariables(parsed.combinedVariables || [], elements),
-        variableMappings: this.validateVariableMappings(parsed.variableMappings || [], elements, mergedMappings),
+        variableMappings: this.validateVariableMappings(rawVariableMappings, elements, mergedMappings, staticElements),
         analysisNotes: parsed.analysisNotes || [],
       };
 
@@ -4764,14 +5183,18 @@ ${elementSummary}
           let columnMappings = loop.columnMappings;
           // 如果没有列映射，或者列映射是通用名称，则从实际表头重新生成
           if (!columnMappings || columnMappings.length === 0 ||
-              (columnMappings.length === 1 && !columnMappings[0].headerName?.includes('|')) ||
+              (columnMappings.length === 1 && !this.hasCompositeTableHeader(columnMappings[0].headerName)) ||
               isGenericColumnNames(columnMappings)) {
             // 使用表格结构中的表头信息生成列映射
             columnMappings = this.generateColumnMappingsFromHeaders(tableElement, loop.arrayPath || 'd.items');
           } else {
             // 规范化AI返回的列映射
-            columnMappings = this.normalizeColumnMappings(columnMappings, loop.arrayPath || 'd.items', pathMappings);
+            columnMappings = this.normalizeColumnMappings(columnMappings, loop.arrayPath || 'd.items');
           }
+
+          this.logger.debug(
+            `[table-loop] normalized tableIndex=${elementIndex} arrayPath=${loop.arrayPath || 'd.items'} columns=${columnMappings.length}`,
+          );
 
           result.push({
             tableIndex: elementIndex,
@@ -4798,13 +5221,7 @@ ${elementSummary}
 
     for (let i = 0; i < headers.length; i++) {
       const header = headers[i].text || '';
-      const varName = this.headerToVariableName(header);
-      mappings.push({
-        headerName: header,
-        variablePath: `${arrayPath}[].${varName}`,
-        sampleValue: this.getSampleValue(varName),
-        columnIndex: i,
-      });
+      mappings.push(...this.expandColumnMappingsForHeader(header, arrayPath, i));
     }
 
     // 如果没有tableHeaders，从headerRow解析
@@ -4822,31 +5239,121 @@ ${elementSummary}
    * 规范化AI返回的列映射
    * 使用参数对照表规范化变量路径
    */
-  private normalizeColumnMappings(mappings: any[], arrayPath: string, pathMappings?: PathMappingRule[]): ColumnMapping[] {
-    return mappings.map((mapping, index) => {
+  private normalizeColumnMappings(mappings: any[], arrayPath: string): ColumnMapping[] {
+    return mappings.flatMap((mapping, index) => {
       // 使用columnIndex（优先AI返回的，否则使用数组索引）
       const columnIndex = mapping.columnIndex !== undefined ? mapping.columnIndex : index;
 
-      // 优先使用 headerName 转换字段名，确保与表格头一致
-      let varName = '';
-      if (mapping.headerName) {
-        // 使用 headerToVariableName 方法转换表头名称
-        varName = this.headerToVariableName(mapping.headerName);
-      } else if (mapping.variablePath) {
-        // 从 variablePath 提取字段名
-        const fieldMatch = mapping.variablePath.match(/\[\]\.(\w+)$/);
-        varName = fieldMatch ? fieldMatch[1] : `col${columnIndex}`;
-      } else {
-        varName = `col${columnIndex}`;
-      }
+      return this.expandColumnMappingsForHeader(
+        mapping.headerName || `Column ${columnIndex + 1}`,
+        arrayPath,
+        columnIndex,
+        mapping.variablePath,
+        mapping.sampleValue,
+      );
+    });
+  }
+
+  private expandColumnMappingsForHeader(
+    rawHeader: string,
+    arrayPath: string,
+    columnIndex: number,
+    originalVariablePath?: string,
+    sampleValue?: string,
+  ): ColumnMapping[] {
+    const headerSegments = this.splitCompositeTableHeader(rawHeader);
+    const preferredBaseName = this.extractTableLoopBaseVarName(originalVariablePath);
+    const usedNames = new Set<string>();
+
+    return headerSegments.map((header, segmentIndex) => {
+      const language = this.detectTableHeaderLanguage(header);
+      const derivedBaseName = preferredBaseName || this.headerToVariableName(header);
+      const varName = this.buildTableLoopVarName(
+        derivedBaseName,
+        language,
+        usedNames,
+        segmentIndex,
+      );
+      usedNames.add(varName);
 
       return {
-        headerName: mapping.headerName || `Column ${columnIndex + 1}`,
+        headerName: header,
         variablePath: `${arrayPath}[].${varName}`,
-        sampleValue: mapping.sampleValue || this.getSampleValue(varName),
-        columnIndex: columnIndex,
+        sampleValue: sampleValue || this.getSampleValue(derivedBaseName),
+        columnIndex,
       };
     });
+  }
+
+  private splitCompositeTableHeader(rawHeader: string): string[] {
+    const normalizedHeader = String(rawHeader || '')
+      .replace(/\r/g, '\n')
+      .trim();
+    if (!normalizedHeader) {
+      return [''];
+    }
+
+    const parts = normalizedHeader
+      .split(/\n+|\|/u)
+      .map((part) => part.trim())
+      .filter(Boolean);
+
+    return parts.length > 0 ? parts : [normalizedHeader];
+  }
+
+  private hasCompositeTableHeader(rawHeader: unknown): boolean {
+    return this.splitCompositeTableHeader(String(rawHeader || '')).length > 1;
+  }
+
+  private extractTableLoopBaseVarName(variablePath?: string): string | undefined {
+    const fieldMatch = String(variablePath || '').match(/\[\]\.(\w+)$/);
+    if (!fieldMatch) {
+      return undefined;
+    }
+    return fieldMatch[1].replace(/_(zh|ja|en)$/i, '');
+  }
+
+  private detectTableHeaderLanguage(header: string): 'zh' | 'ja' | 'en' | undefined {
+    const normalized = String(header || '')
+      .replace(/[_＿\-—.·:：|/\\()[\]{}<>\d\s]+/gu, '')
+      .trim();
+    if (!normalized) {
+      return undefined;
+    }
+
+    const hasKana = /[\p{Script=Hiragana}\p{Script=Katakana}]/u.test(normalized);
+    const hasHan = /\p{Script=Han}/u.test(normalized);
+    const hasLatin = /[A-Za-z]/u.test(normalized);
+
+    if (hasKana) {
+      return 'ja';
+    }
+    if (hasHan && !hasLatin) {
+      return 'zh';
+    }
+    if (hasLatin && !hasHan) {
+      return 'en';
+    }
+    return undefined;
+  }
+
+  private buildTableLoopVarName(
+    baseName: string,
+    language: 'zh' | 'ja' | 'en' | undefined,
+    usedNames: Set<string>,
+    segmentIndex: number,
+  ): string {
+    const normalizedBase = baseName || `col${segmentIndex}`;
+    if (language) {
+      const languageScopedName = `${normalizedBase}_${language}`;
+      if (!usedNames.has(languageScopedName)) {
+        return languageScopedName;
+      }
+    }
+    if (!usedNames.has(normalizedBase)) {
+      return normalizedBase;
+    }
+    return `${normalizedBase}_${segmentIndex + 1}`;
   }
 
   /**
@@ -4857,8 +5364,19 @@ ${elementSummary}
    * 验证并补充变量映射配置
    * 使用参数对照表规范化变量路径
    */
-  private validateVariableMappings(mappings: any[], elements: DocumentElement[], pathMappings?: PathMappingRule[]): VariableMapping[] {
+  private validateVariableMappings(
+    mappings: any[],
+    elements: DocumentElement[],
+    pathMappings?: PathMappingRule[],
+    staticElements?: StaticElement[]
+  ): VariableMapping[] {
     const result: VariableMapping[] = [];
+    const protectedTitleTexts = new Set<string>(
+      (Array.isArray(staticElements) ? staticElements : [])
+        .filter((item) => String(item?.type || '').trim() === 'title')
+        .map((item) => String(item?.content || '').trim())
+        .filter(Boolean)
+    );
 
     for (const mapping of mappings) {
       // 转换 1-based 索引为 0-based
@@ -4870,6 +5388,10 @@ ${elementSummary}
         // 修正变量路径（使用参数对照表）
         let path = mapping.path || `d.var_${index}`;
         path = this.normalizeVariablePath(path, pathMappings);
+
+        if (this.shouldSkipProtectedTitleVariableMapping(path, element, mapping, protectedTitleTexts)) {
+          continue;
+        }
 
         // 检测元素类型，图片类型需要特殊处理
         let type = mapping.type || 'text';
@@ -4986,7 +5508,7 @@ ${elementSummary}
     if (!path) return path;
 
     // 提取数组部分和字段部分
-    const arrayMatch = path.match(/^(d\.\w+)\[\]\.(\w+)$/);
+    const arrayMatch = path.match(/^(d\.[A-Za-z0-9_.]+)\[\]\.(\w+)$/);
     if (arrayMatch) {
       const arrayPath = arrayMatch[1];
       const fieldName = arrayMatch[2];
@@ -5003,6 +5525,10 @@ ${elementSummary}
    */
   private normalizeFieldName(fieldName: string): string {
     const fieldMappings: Record<string, string> = {
+      'starttime': 'start',
+      'startTime': 'start',
+      'begin': 'start',
+      '开始': 'start',
       'stepaction': 'action',
       'stepAction': 'action',
       'stepResult': 'result',
@@ -5014,6 +5540,31 @@ ${elementSummary}
     };
 
     return fieldMappings[fieldName] || fieldName.toLowerCase();
+  }
+
+  private shouldSkipProtectedTitleVariableMapping(
+    path: string,
+    element: DocumentElement,
+    mapping: any,
+    protectedTitleTexts: Set<string>
+  ): boolean {
+    if (protectedTitleTexts.size === 0) {
+      return false;
+    }
+
+    const normalizedPath = String(path || '').trim().toLowerCase();
+    const elementText = String(element?.text || element?.content || '').trim();
+    const mappingText = String(mapping?.sampleValue || mapping?.content || '').trim();
+    const isProtectedTitle =
+      String(element?.type || '').trim() === 'title'
+      || protectedTitleTexts.has(elementText)
+      || protectedTitleTexts.has(mappingText);
+
+    if (!isProtectedTitle) {
+      return false;
+    }
+
+    return /(^d\.title$|\.title$)/u.test(normalizedPath);
   }
 
   /**

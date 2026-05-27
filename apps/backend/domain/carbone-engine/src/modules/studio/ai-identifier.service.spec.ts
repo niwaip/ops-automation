@@ -95,6 +95,11 @@ describe('AIIdentifierService', () => {
     // 设置环境变量用于测试
     process.env.AI_ORCHESTRATOR_URL = 'http://localhost:3007';
     process.env.AI_MODEL_ID = 'test-model-id';
+    mockedAxios.get.mockResolvedValue({
+      data: {
+        models: [{ id: 'test-model-id', status: 'active' }],
+      },
+    } as any);
   });
 
   afterEach(() => {
@@ -187,6 +192,11 @@ describe('AIIdentifierService', () => {
       // 验证结果
       expect(result).toBeDefined();
       expect(result.suggestions).toBeDefined();
+      expect(result.suggestions[0]).toMatchObject({
+        path: '{d.partyA.name}',
+        sampleValue: '______',
+        type: 'text',
+      });
 
       // 验证进度回调被调用多次（多阶段）
       expect(progressCallback).toHaveBeenCalled();
@@ -725,6 +735,225 @@ describe('AIIdentifierService', () => {
   // 测试10: 边界情况
   // ============================================
   describe('Edge Cases', () => {
+    it('should parse generated parameters from fenced JSON with comments and trailing commas', async () => {
+      mockedAxios.post.mockResolvedValueOnce({
+        data: {
+          success: true,
+          response: `下面是生成结果：
+\`\`\`json
+{
+  // 合同主体
+  "partyA": {
+    "name": "甲方公司",
+  },
+  "partyB": {
+    "name": "乙方公司" // 对方主体
+  },
+}
+\`\`\``,
+        },
+      } as any);
+
+      const result = await service.generateParametersFromDescription('生成一份合同参数', {
+        parameters: [{ name: 'partyA.name' }, { name: 'partyB.name' }],
+        dataExampleJson: {
+          partyA: { name: '' },
+          partyB: { name: '' },
+        },
+        templateType: 'contract',
+      });
+
+      expect(result.success).toBe(true);
+      expect(result.generatedData).toEqual({
+        partyA: { name: '甲方公司' },
+        partyB: { name: '乙方公司' },
+      });
+    });
+
+    it('should accept object responses from AI service when parameters are already structured', async () => {
+      mockedAxios.post.mockResolvedValueOnce({
+        data: {
+          success: true,
+          response: {
+            partyA: { name: '甲方公司' },
+            partyB: { name: '乙方公司' },
+          },
+        },
+      } as any);
+
+      const result = await service.generateParametersFromDescription('生成一份合同参数', {
+        parameters: [{ name: 'partyA.name' }, { name: 'partyB.name' }],
+        dataExampleJson: {
+          partyA: { name: '' },
+          partyB: { name: '' },
+        },
+        templateType: 'contract',
+      });
+
+      expect(result.success).toBe(true);
+      expect(result.generatedData).toEqual({
+        partyA: { name: '甲方公司' },
+        partyB: { name: '乙方公司' },
+      });
+    });
+
+    it('filters duplicate title variable mappings when title is already protected as static', () => {
+      const config = (service as any).parseAIAnalysisResponse(
+        JSON.stringify({
+          templateType: '合同',
+          staticElements: [
+            {
+              type: 'title',
+              content: '技术服务合同',
+              reason: '标题保持静态',
+            },
+          ],
+          variableMappings: [
+            {
+              elementIndex: 1,
+              path: 'd.title',
+              type: 'text',
+              reason: '误识别为标题变量',
+            },
+            {
+              elementIndex: 2,
+              path: 'd.partyAName',
+              type: 'text',
+              reason: '委托方名称',
+            },
+          ],
+        }),
+        [
+          { id: 'title-1', type: 'title', text: '技术服务合同' },
+          { id: 'p-1', type: 'paragraph', text: '委托方：' },
+        ]
+      );
+
+      expect(config.staticElements).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            type: 'title',
+            content: '技术服务合同',
+          }),
+        ])
+      );
+      expect(config.variableMappings).toEqual([
+        expect.objectContaining({
+          path: 'd.partyAName',
+          index: 1,
+        }),
+      ]);
+    });
+
+    it('keeps loop start and result columns in generated suggestions', () => {
+      const suggestions = service.generateVariableSuggestions([], {
+        templateType: '运维自动化报告',
+        staticElements: [],
+        tableLoops: [
+          {
+            tableIndex: 0,
+            headerRow: '开始 | 结果',
+            dataRowCount: 1,
+            arrayPath: 'd.steps',
+            reason: '步骤循环',
+            confidence: 0.9,
+            columnMappings: [
+              {
+                headerName: '开始',
+                variablePath: 'd.steps[].start',
+                sampleValue: '开始执行',
+                columnIndex: 0,
+              },
+              {
+                headerName: '结果',
+                variablePath: 'd.steps[].result',
+                sampleValue: '执行成功',
+                columnIndex: 1,
+              },
+            ],
+          },
+        ],
+        imageLoops: [],
+        combinedVariables: [],
+        variableMappings: [],
+        analysisNotes: [],
+      });
+
+      expect(suggestions).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            path: 'd.steps[].start',
+          }),
+          expect.objectContaining({
+            path: 'd.steps[].result',
+          }),
+        ])
+      );
+    });
+
+    it('expands newline-based bilingual table headers into same-column mappings', () => {
+      const mappings = (service as any).normalizeColumnMappings(
+        [
+          {
+            headerName: '名称\nName',
+            variablePath: 'd.items[].name',
+            sampleValue: '示例名称',
+            columnIndex: 0,
+          },
+        ],
+        'd.items',
+      );
+
+      expect(mappings).toEqual([
+        expect.objectContaining({
+          headerName: '名称',
+          variablePath: 'd.items[].name_zh',
+          columnIndex: 0,
+        }),
+        expect.objectContaining({
+          headerName: 'Name',
+          variablePath: 'd.items[].name_en',
+          columnIndex: 0,
+        }),
+      ]);
+    });
+
+    it('expands table header cells with bilingual lines when generating fallback mappings', () => {
+      const mappings = (service as any).generateColumnMappingsFromHeaders(
+        {
+          tableHeaders: [
+            { text: '名称\nName', index: 0 },
+            { text: '状态\nStatus', index: 1 },
+          ],
+          headerRow: '名称 | 状态',
+        },
+        'd.items',
+      );
+
+      expect(mappings).toEqual([
+        expect.objectContaining({
+          headerName: '名称',
+          variablePath: 'd.items[].name_zh',
+          columnIndex: 0,
+        }),
+        expect.objectContaining({
+          headerName: 'Name',
+          variablePath: 'd.items[].name_en',
+          columnIndex: 0,
+        }),
+        expect.objectContaining({
+          headerName: '状态',
+          variablePath: 'd.items[].status_zh',
+          columnIndex: 1,
+        }),
+        expect.objectContaining({
+          headerName: 'Status',
+          variablePath: 'd.items[].status_en',
+          columnIndex: 1,
+        }),
+      ]);
+    });
+
     it('should generate skill guide with array parameters from loop column mappings', async () => {
       const skill = await service.generateAISkillGuide(
         [
@@ -795,13 +1024,64 @@ describe('AIIdentifierService', () => {
       const exampleData = JSON.parse(skill.dataExampleJson);
       expect(exampleData.contract.contractNo).toBe('PC-2026-001');
       expect(Array.isArray(exampleData.contract.procurementDetails)).toBe(true);
+      expect(exampleData.contract.procurementDetails).toHaveLength(2);
       expect(exampleData.contract.procurementDetails[0]).toMatchObject({
         seq: '1',
         materialCode: 'RB-6A-001',
         quantity: '2',
-        unitPrice: '185,000.00',
-        subtotal: '740,000.00',
       });
+      expect(exampleData.contract.procurementDetails[1]).toMatchObject({
+        seq: '2',
+        materialCode: 'RB-6A-002',
+        quantity: '3',
+      });
+    });
+
+    it('should instruct AI to prefer real sample values and generate at least two loop rows', async () => {
+      mockedAxios.post.mockResolvedValueOnce({
+        data: {
+          success: true,
+          response: {
+            contract: {
+              procurementDetails: [
+                { seq: '1', materialCode: 'RB-6A-001' },
+                { seq: '2', materialCode: 'RB-6A-002' },
+              ],
+            },
+          },
+        },
+      } as any);
+
+      await service.generateParametersFromDescription('请生成采购合同的默认实例数据', {
+        parameters: [
+          { name: 'contract.procurementDetails[].seq', dataType: 'number', example: '1' },
+          { name: 'contract.procurementDetails[].materialCode', dataType: 'text', example: 'RB-6A-001' },
+        ],
+        dataExampleJson: {
+          contract: {
+            procurementDetails: [
+              { seq: '1', materialCode: 'RB-6A-001' },
+              { seq: '2', materialCode: 'RB-6A-002' },
+            ],
+          },
+        },
+        templateType: 'contract',
+      });
+
+      expect(mockedAxios.post).toHaveBeenLastCalledWith(
+        'http://localhost:3007/ai/models/test-model-id/test',
+        expect.objectContaining({
+          prompt: expect.stringContaining('优先使用用户描述、参数示例值、参考数据结构中的真实业务值'),
+        }),
+        expect.any(Object),
+      );
+      expect(mockedAxios.post).toHaveBeenLastCalledWith(
+        'http://localhost:3007/ai/models/test-model-id/test',
+        expect.objectContaining({
+          prompt: expect.stringContaining('如果参考数据结构里存在数组/循环字段，除非用户明确要求仅 1 条，否则至少生成 2 条数据'),
+        }),
+        expect.any(Object),
+      );
     });
 
     it('should preserve excel groupLabel when duplicate suggestions are merged', async () => {

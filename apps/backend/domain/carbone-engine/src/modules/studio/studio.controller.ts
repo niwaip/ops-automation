@@ -31,6 +31,19 @@ import { TemplateResponse, RenderResponse } from './studio.types';
 import { TemplateRepository } from './template.repository';
 import { SkillRepository } from './skill.repository';
 import { RenderOutputRepository } from './render-output.repository';
+import {
+  WorkflowCompareResult,
+  WorkflowFieldCandidate,
+  WorkflowAnalyzeResult,
+  WorkflowRecognizeResult,
+  WorkflowUnderstandResult,
+  TemplateWorkflowService,
+  WorkflowBindingPlan,
+  WorkflowDocumentIR,
+  WorkflowSaveMeta,
+  WorkflowTemplateFieldSpec,
+  WorkflowTermAssets,
+} from './template-workflow.service';
 
 // DTOs with proper initialization
 export class UploadTemplateDto {
@@ -109,6 +122,8 @@ export class SaveMarkingsDto {
 export class SaveTemplateConfigDto {
   templateId!: string;
   templateConfig!: any;  // TemplateConfig from AI analysis
+  suggestions?: any[];
+  rawSuggestions?: any[];
 }
 
 export class ValidateDto {
@@ -127,6 +142,45 @@ export class RenderWithSkillDto {
   skillId!: string;
   params!: Record<string, any>;
   outputFormat?: 'docx' | 'xlsx' | 'pptx' | 'pdf' | 'html';
+}
+
+export class TemplateAnalyzeDto {
+  workflowId?: string;
+  templateId?: string;
+  templateDocumentIr!: WorkflowDocumentIR;
+  sampleDocument?: {
+    fileName?: string;
+    contentBase64?: string;
+  };
+  candidateFields?: WorkflowFieldCandidate[];
+  prefetchedUnderstanding?: WorkflowUnderstandResult;
+  sourceLanguage?: string;
+  targetLanguages?: string[];
+  termAssets?: WorkflowTermAssets;
+  options?: {
+    enableTermMatch?: boolean;
+    enableLayoutDetection?: boolean;
+  };
+}
+
+export class TemplateUnderstandDto extends TemplateAnalyzeDto {}
+export class TemplateCompareDto extends TemplateAnalyzeDto {}
+
+export class TemplateSaveDto {
+  templateId?: string;
+  templateMeta?: WorkflowSaveMeta;
+  templateDocumentIr!: WorkflowDocumentIR;
+  templateFieldSpecs!: WorkflowTemplateFieldSpec[];
+  saveMode?: 'draft_or_publish' | 'draft' | 'publish';
+}
+
+export class TemplateRenderDataDto {
+  templateId!: string;
+  userInput!: string;
+  sourceLanguage?: string;
+  targetLanguages?: string[];
+  userOverrides?: Record<string, unknown>;
+  termAssets?: WorkflowTermAssets;
 }
 
 export interface ValidateResponse {
@@ -158,6 +212,7 @@ export class StudioController {
     private readonly templateRepository: TemplateRepository,
     private readonly skillRepository: SkillRepository,
     private readonly renderOutputRepository: RenderOutputRepository,
+    private readonly templateWorkflowService: TemplateWorkflowService,
   ) {
     this.engine = new CarboneEngine();
     this.templatesDir = process.env.TEMPLATES_DIR || path.join(process.cwd(), 'templates');
@@ -495,6 +550,8 @@ export class StudioController {
         skillId: dbMeta.skillId || fileMeta.skillId,
         templateConfig: dbMeta.templateConfig ?? fileMeta.templateConfig,
         configSavedAt: dbMeta.configSavedAt || fileMeta.configSavedAt,
+        suggestions: dbMeta.suggestions ?? fileMeta.suggestions,
+        rawSuggestions: dbMeta.rawSuggestions ?? fileMeta.rawSuggestions,
         savedAt: dbMeta.savedAt || fileMeta.savedAt,
         verifyResult: dbMeta.verifyResult ?? fileMeta.verifyResult,
       };
@@ -596,6 +653,84 @@ export class StudioController {
     }
   }
 
+  private buildWorkflowMetaDocument(
+    id: string,
+    dto: TemplateSaveDto,
+    workflowResult: {
+      version: number;
+      bindingPlanVersion: number;
+      status: string;
+      carboneBindingPlan: WorkflowBindingPlan;
+      updatedAt: string;
+    },
+    existingMeta?: Record<string, any>,
+  ): Record<string, any> {
+    const format = String(existingMeta?.format || 'docx');
+    const templateName = dto.templateMeta?.templateName || existingMeta?.fileName || `draft-${id}.${format}`;
+    const templateConfig = {
+      ...(this.isPlainObject(existingMeta?.templateConfig) ? existingMeta.templateConfig : {}),
+      templateWorkflow: {
+        workflowVersion: 'p0-template-workflow',
+        templateDocumentIr: dto.templateDocumentIr,
+        templateFieldSpecs: dto.templateFieldSpecs,
+        carboneBindingPlan: workflowResult.carboneBindingPlan,
+        languageProfile: {
+          sourceLanguage: dto.templateMeta?.sourceLanguage || 'zh',
+          targetLanguages: dto.templateMeta?.targetLanguages || [],
+          documentMode: dto.templateMeta?.documentMode || 'single_or_bilingual',
+        },
+        termAssets: dto.templateMeta?.termAssets,
+        status: workflowResult.status,
+        version: workflowResult.version,
+        bindingPlanVersion: workflowResult.bindingPlanVersion,
+      },
+    };
+
+    return {
+      ...(existingMeta || {}),
+      id,
+      type: existingMeta?.type || 'template',
+      format,
+      fileName: templateName,
+      hasValidFile: existingMeta?.hasValidFile ?? false,
+      variables: workflowResult.carboneBindingPlan.bindings.map((binding) => binding.variablePath),
+      loops: existingMeta?.loops || [],
+      templateConfig,
+      configSavedAt: workflowResult.updatedAt,
+      createdAt: existingMeta?.createdAt || workflowResult.updatedAt,
+      updatedAt: workflowResult.updatedAt,
+    };
+  }
+
+  private readWorkflowConfig(meta: Record<string, any>): {
+    templateFieldSpecs: WorkflowTemplateFieldSpec[];
+    carboneBindingPlan?: WorkflowBindingPlan;
+    sourceLanguage?: string;
+    targetLanguages?: string[];
+    termAssets?: WorkflowTermAssets;
+  } {
+    const workflow = this.isPlainObject(meta?.templateConfig?.templateWorkflow)
+      ? meta.templateConfig.templateWorkflow
+      : undefined;
+    return {
+      templateFieldSpecs: Array.isArray(workflow?.templateFieldSpecs)
+        ? workflow.templateFieldSpecs as WorkflowTemplateFieldSpec[]
+        : [],
+      carboneBindingPlan: this.isPlainObject(workflow?.carboneBindingPlan)
+        ? workflow.carboneBindingPlan as WorkflowBindingPlan
+        : undefined,
+      sourceLanguage: typeof workflow?.languageProfile?.sourceLanguage === 'string'
+        ? workflow.languageProfile.sourceLanguage
+        : undefined,
+      targetLanguages: Array.isArray(workflow?.languageProfile?.targetLanguages)
+        ? workflow.languageProfile.targetLanguages as string[]
+        : undefined,
+      termAssets: this.isPlainObject(workflow?.termAssets)
+        ? workflow.termAssets as WorkflowTermAssets
+        : undefined,
+    };
+  }
+
   /**
    * 获取模板信息
    */
@@ -623,6 +758,155 @@ export class StudioController {
   async getLoops(@Param('id') id: string): Promise<{ loops: Array<{ arrayPath: string }> }> {
     const meta = await this.getTemplateMetaWithDbFallback(id);
     return { loops: meta.loops };
+  }
+
+  @Post('template/analyze')
+  @ApiOperation({ summary: 'Analyze template document IR with optional sample document' })
+  @ApiBody({ type: TemplateAnalyzeDto })
+  async analyzeTemplateWorkflow(@Body() dto: TemplateAnalyzeDto): Promise<WorkflowAnalyzeResult> {
+    if (!this.isPlainObject(dto.templateDocumentIr)) {
+      throw new HttpException('templateDocumentIr 不能为空', HttpStatus.BAD_REQUEST);
+    }
+
+    const result = this.templateWorkflowService.analyzeTemplate(
+      dto.templateDocumentIr,
+      dto.sampleDocument,
+      dto.sourceLanguage || 'zh',
+      dto.targetLanguages || [],
+      dto.termAssets,
+    );
+
+    return result;
+  }
+
+  @Post('template/compare')
+  @ApiOperation({ summary: 'Compare template structure with sample document and build candidate fields' })
+  @ApiBody({ type: TemplateCompareDto })
+  async compareTemplateWorkflow(@Body() dto: TemplateCompareDto): Promise<WorkflowCompareResult> {
+    if (!this.isPlainObject(dto.templateDocumentIr)) {
+      throw new HttpException('templateDocumentIr 不能为空', HttpStatus.BAD_REQUEST);
+    }
+
+    return this.templateWorkflowService.compareTemplate(
+      dto.templateDocumentIr,
+      dto.sampleDocument,
+      dto.sourceLanguage || 'zh',
+      dto.targetLanguages || [],
+      dto.termAssets,
+      dto.workflowId,
+    );
+  }
+
+  @Post('template/understand')
+  @ApiOperation({ summary: 'Understand template and sample document before field recognition' })
+  @ApiBody({ type: TemplateUnderstandDto })
+  async understandTemplateWorkflow(@Body() dto: TemplateUnderstandDto): Promise<WorkflowUnderstandResult> {
+    if (!this.isPlainObject(dto.templateDocumentIr)) {
+      throw new HttpException('templateDocumentIr 不能为空', HttpStatus.BAD_REQUEST);
+    }
+
+    return this.templateWorkflowService.understandTemplate(
+      dto.templateDocumentIr,
+      dto.sampleDocument,
+      dto.sourceLanguage || 'zh',
+      dto.targetLanguages || [],
+      dto.termAssets,
+      dto.candidateFields,
+    );
+  }
+
+  @Post('template/recognize')
+  @ApiOperation({ summary: 'Recognize workflow fields from template and sample document' })
+  @ApiBody({ type: TemplateAnalyzeDto })
+  async recognizeTemplateWorkflow(@Body() dto: TemplateAnalyzeDto): Promise<WorkflowRecognizeResult> {
+    if (!this.isPlainObject(dto.templateDocumentIr)) {
+      throw new HttpException('templateDocumentIr 不能为空', HttpStatus.BAD_REQUEST);
+    }
+
+    return this.templateWorkflowService.recognizeTemplate(
+      dto.templateDocumentIr,
+      dto.sampleDocument,
+      dto.sourceLanguage || 'zh',
+      dto.targetLanguages || [],
+      dto.termAssets,
+      dto.candidateFields,
+      dto.prefetchedUnderstanding,
+    );
+  }
+
+  @Post('template/save')
+  @ApiOperation({ summary: 'Save template field specs and compiled binding plan' })
+  @ApiBody({ type: TemplateSaveDto })
+  async saveTemplateWorkflow(@Body() dto: TemplateSaveDto): Promise<{
+    templateId: string;
+    version: number;
+    bindingPlanVersion: number;
+    status: string;
+    updatedAt: string;
+  }> {
+    if (!Array.isArray(dto.templateFieldSpecs) || dto.templateFieldSpecs.length === 0) {
+      throw new HttpException('TPL_001: templateFieldSpecs 不能为空', HttpStatus.BAD_REQUEST);
+    }
+
+    const templateId = dto.templateId || uuidv4();
+    const workflowResult = this.templateWorkflowService.compileAndPersistTemplate(
+      templateId,
+      dto.templateMeta,
+      dto.templateFieldSpecs,
+      dto.saveMode,
+    );
+
+    const metaPath = path.join(this.templatesDir, `${templateId}.json`);
+    const existingMeta = fs.existsSync(metaPath)
+      ? JSON.parse(fs.readFileSync(metaPath, 'utf-8'))
+      : undefined;
+    const nextMeta = this.buildWorkflowMetaDocument(templateId, dto, workflowResult, existingMeta);
+
+    fs.writeFileSync(metaPath, JSON.stringify(nextMeta, null, 2));
+    await this.syncTemplateMetaToDb(templateId, nextMeta as Record<string, any> & { format: string }, fs.existsSync(path.join(this.templatesDir, `${templateId}.${nextMeta.format}`))
+      ? path.join(this.templatesDir, `${templateId}.${nextMeta.format}`)
+      : metaPath);
+
+    return {
+      templateId: workflowResult.templateId,
+      version: workflowResult.version,
+      bindingPlanVersion: workflowResult.bindingPlanVersion,
+      status: workflowResult.status,
+      updatedAt: workflowResult.updatedAt,
+    };
+  }
+
+  @Post('template/render-data')
+  @ApiOperation({ summary: 'Generate render data from user input and saved template field specs' })
+  @ApiBody({ type: TemplateRenderDataDto })
+  async renderTemplateData(@Body() dto: TemplateRenderDataDto): Promise<{
+    data: Record<string, unknown>;
+    sourceTrace: Record<string, unknown>;
+    warnings: string[];
+    missingFields: string[];
+    needsReviewFields: string[];
+  }> {
+    const meta = await this.getTemplateMetaWithDbFallback(dto.templateId);
+    const workflow = this.readWorkflowConfig(meta as Record<string, any>);
+    if (workflow.templateFieldSpecs.length === 0) {
+      throw new HttpException('TPL_002: 当前模板尚未保存 TemplateFieldSpec', HttpStatus.BAD_REQUEST);
+    }
+
+    return this.templateWorkflowService.renderData(
+      dto.userInput,
+      workflow.templateFieldSpecs,
+      workflow.carboneBindingPlan,
+      dto.sourceLanguage || workflow.sourceLanguage || 'zh',
+      dto.targetLanguages || workflow.targetLanguages || [],
+      dto.userOverrides,
+      dto.termAssets || workflow.termAssets,
+    ) as {
+      data: Record<string, unknown>;
+      sourceTrace: Record<string, unknown>;
+      warnings: string[];
+      missingFields: string[];
+      needsReviewFields: string[];
+    };
   }
 
   /**
@@ -1486,6 +1770,10 @@ export class StudioController {
       // 生成变量建议和循环配置
       const suggestions = this.aiIdentifierService.generateVariableSuggestions?.(elements, config) || [];
       const loops = config.tableLoops || [];
+      await this.cacheTemplateSuggestions(id, meta, {
+        templateConfig: config,
+        suggestions,
+      });
 
       // 返回最终结果
       res.write(`data: ${JSON.stringify({
@@ -1538,6 +1826,7 @@ export class StudioController {
         dto.manualMarkings,
         dto.markingSummary
       );
+      await this.cacheTemplateSuggestions(id, meta, result);
       return result;
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : 'Unknown error';
@@ -1754,6 +2043,8 @@ export class StudioController {
     const updatedMeta = {
       ...meta,
       templateConfig: dto.templateConfig,
+      suggestions: Array.isArray(dto.suggestions) ? dto.suggestions : meta.suggestions,
+      rawSuggestions: Array.isArray(dto.rawSuggestions) ? dto.rawSuggestions : meta.rawSuggestions,
       configSavedAt: new Date().toISOString()
     };
 
@@ -1775,11 +2066,15 @@ export class StudioController {
   async getTemplateConfig(@Param('id') id: string): Promise<{
     templateConfig?: any;
     configSavedAt?: string;
+    suggestions?: any[];
+    rawSuggestions?: any[];
   }> {
     const meta = this.getTemplateMeta(id);
     return {
       templateConfig: meta.templateConfig || null,
-      configSavedAt: meta.configSavedAt
+      configSavedAt: meta.configSavedAt,
+      suggestions: Array.isArray(meta.suggestions) ? meta.suggestions : undefined,
+      rawSuggestions: Array.isArray(meta.rawSuggestions) ? meta.rawSuggestions : undefined,
     };
   }
 
@@ -2315,6 +2610,14 @@ export class StudioController {
       meta.templateConfig = this.aiIdentifierService.normalizeTemplateConfig(meta.templateConfig);
     }
 
+    if (!Array.isArray(meta.suggestions)) {
+      meta.suggestions = [];
+    }
+
+    if (!Array.isArray(meta.rawSuggestions)) {
+      meta.rawSuggestions = [];
+    }
+
     // 如果 config.variables 是对象而非数组，从 suggestions 中提取变量列表
     if (!meta.variables || !Array.isArray(meta.variables)) {
       if (meta.suggestions && Array.isArray(meta.suggestions)) {
@@ -2331,6 +2634,109 @@ export class StudioController {
     }
 
     return meta;
+  }
+
+  private async cacheTemplateSuggestions(
+    id: string,
+    meta: TemplateResponse,
+    result: Pick<AIIdentifyResponse, 'suggestions' | 'rawSuggestions' | 'templateConfig'>,
+  ): Promise<void> {
+    const nextSuggestions = Array.isArray(result.suggestions) ? result.suggestions : [];
+    const nextRawSuggestions = Array.isArray(result.rawSuggestions) ? result.rawSuggestions : [];
+    if (nextSuggestions.length === 0 && nextRawSuggestions.length === 0) {
+      return;
+    }
+
+    const metaPath = path.join(this.templatesDir, `${id}.json`);
+    const updatedMeta = {
+      ...meta,
+      suggestions: nextSuggestions.length > 0 ? nextSuggestions : (Array.isArray(meta.suggestions) ? meta.suggestions : []),
+      rawSuggestions: nextRawSuggestions.length > 0 ? nextRawSuggestions : (Array.isArray(meta.rawSuggestions) ? meta.rawSuggestions : []),
+      templateConfig: result.templateConfig ?? meta.templateConfig,
+    };
+
+    fs.writeFileSync(metaPath, JSON.stringify(updatedMeta, null, 2));
+    await this.syncTemplateMetaToDb(id, updatedMeta);
+  }
+
+  private mergeSkillGuideSuggestions(cachedSuggestions?: any[], incomingSuggestions?: any[]): any[] {
+    const merged = new Map<string, any>();
+
+    const upsertSuggestion = (suggestion: any) => {
+      if (!suggestion || typeof suggestion !== 'object') {
+        return;
+      }
+
+      const key = this.buildSkillGuideSuggestionKey(suggestion);
+      if (!key) {
+        return;
+      }
+
+      const existing = merged.get(key);
+      if (!existing) {
+        merged.set(key, suggestion);
+        return;
+      }
+
+      merged.set(key, {
+        ...existing,
+        ...suggestion,
+        details: {
+          ...(existing.details || {}),
+          ...(suggestion.details || {}),
+        },
+        applied: Boolean(existing.applied || suggestion.applied),
+      });
+    };
+
+    for (const suggestion of Array.isArray(cachedSuggestions) ? cachedSuggestions : []) {
+      upsertSuggestion(suggestion);
+    }
+
+    for (const suggestion of Array.isArray(incomingSuggestions) ? incomingSuggestions : []) {
+      upsertSuggestion(suggestion);
+    }
+
+    return Array.from(merged.values());
+  }
+
+  private buildSkillGuideSuggestionKey(suggestion: any): string | null {
+    const candidates = [
+      suggestion?.id,
+      suggestion?.suggestedName,
+      suggestion?.details?.variableName,
+      suggestion?.details?.arrayPath,
+      suggestion?.variablePath,
+    ];
+
+    for (const candidate of candidates) {
+      const normalized = String(candidate || '').trim();
+      if (normalized) {
+        return normalized;
+      }
+    }
+
+    const originalText = String(suggestion?.originalText || '').trim();
+    const elementPath = String(suggestion?.elementPath || '').trim();
+    if (originalText || elementPath) {
+      return `${suggestion?.type || 'variable'}:${originalText}:${elementPath}`;
+    }
+
+    return null;
+  }
+
+  private mergeSkillGuideTemplateConfig(cachedTemplateConfig?: any, incomingTemplateConfig?: any): any {
+    const cachedConfig = cachedTemplateConfig && typeof cachedTemplateConfig === 'object'
+      ? cachedTemplateConfig
+      : {};
+    const incomingConfig = incomingTemplateConfig && typeof incomingTemplateConfig === 'object'
+      ? incomingTemplateConfig
+      : {};
+
+    return {
+      ...cachedConfig,
+      ...incomingConfig,
+    };
   }
 
   private generateOutputFileName(templateName: string, format: string): string {
@@ -2397,9 +2803,25 @@ export class StudioController {
     error?: string;
   }> {
     try {
-      const suggestions = body.suggestions || [];
+      const templateMeta = body.templateId ? this.getTemplateMeta(body.templateId) : undefined;
+      const suggestions = this.mergeSkillGuideSuggestions(
+        templateMeta?.suggestions,
+        body.suggestions,
+      );
       const templateType = body.templateType || 'custom';
-      const templateConfig = body.templateConfig || {};
+      const templateConfig = this.mergeSkillGuideTemplateConfig(
+        templateMeta?.templateConfig,
+        body.templateConfig,
+      );
+      this.logger.log(
+        `[skill-debug] generate-skill templateId=${body.templateId || 'none'} incomingSuggestions=${Array.isArray(body.suggestions) ? body.suggestions.length : 0} cachedSuggestions=${Array.isArray(templateMeta?.suggestions) ? templateMeta!.suggestions!.length : 0} mergedSuggestions=${suggestions.length} templateType=${templateType}`,
+      );
+      this.logger.log(
+        `[skill-debug] mergedSuggestionNames=${suggestions
+          .map((suggestion) => String(suggestion?.suggestedName || suggestion?.details?.variableName || '').trim())
+          .filter(Boolean)
+          .join(', ') || 'none'}`,
+      );
 
       // 调用服务层方法生成skill
       const skill = await this.aiIdentifierService.generateAISkillGuide(
@@ -2407,6 +2829,9 @@ export class StudioController {
         templateConfig,
         templateType,
         body.documentDescription
+      );
+      this.logger.log(
+        `[skill-debug] generatedSkillParameters=${Array.isArray(skill?.parameters) ? skill.parameters.length : 0}`,
       );
 
       // 保存skill文件
@@ -2623,6 +3048,13 @@ export class StudioController {
     success: boolean;
     generatedData?: any;
     error?: string;
+    debugInfo?: {
+      rawAiResponse?: string;
+      cleanedAiResponse?: string;
+      extractedJson?: string;
+      parseError?: string;
+      upstreamError?: string;
+    };
   }> {
     try {
       // 获取skill
@@ -2636,15 +3068,12 @@ export class StudioController {
       }
 
       // 调用AI生成参数
-      const generatedData = await this.aiIdentifierService.generateParametersFromDescription(
+      const result = await this.aiIdentifierService.generateParametersFromDescription(
         body.description,
         skill
       );
 
-      return {
-        success: true,
-        generatedData,
-      };
+      return result;
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : 'Unknown error';
       return {

@@ -11,6 +11,8 @@ interface DraftWorkflowSectionProps {
   } | null;
   draftId: string | null;
   draftInfo: { templateType: string; parameterCount: number; savedAt: string } | null;
+  workflowDraftInfo?: unknown;
+  latestBackendDraftInfo: { id: string; fileName: string; savedAt: string } | null;
   draftWorkflowNotice: { type: 'success' | 'error' | 'info'; message: string; lines?: string[] } | null;
   isGeneratingGuide: boolean;
   isVerifying: boolean;
@@ -32,6 +34,8 @@ export const DraftWorkflowSection: React.FC<DraftWorkflowSectionProps> = ({
   aiSkillGuide,
   draftId,
   draftInfo,
+  workflowDraftInfo: _workflowDraftInfo,
+  latestBackendDraftInfo,
   draftWorkflowNotice,
   isGeneratingGuide,
   isVerifying,
@@ -48,6 +52,15 @@ export const DraftWorkflowSection: React.FC<DraftWorkflowSectionProps> = ({
 }) => {
   const formattedDraftTime = draftInfo?.savedAt
     ? new Date(draftInfo.savedAt).toLocaleString('zh-CN', {
+      hour12: false,
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+    })
+    : '';
+  const formattedLatestBackendDraftTime = latestBackendDraftInfo?.savedAt
+    ? new Date(latestBackendDraftInfo.savedAt).toLocaleString('zh-CN', {
       hour12: false,
       month: '2-digit',
       day: '2-digit',
@@ -125,6 +138,17 @@ export const DraftWorkflowSection: React.FC<DraftWorkflowSectionProps> = ({
                 {draftInfo?.templateType || 'unknown'} · {draftInfo?.parameterCount || suggestions.length || 0} 参数
                 {formattedDraftTime ? ` · ${formattedDraftTime}` : ''}
                 {draftId ? ` · ID: ${draftId.substring(0, 8)}...` : ''}
+              </span>
+            </div>
+          )}
+
+          {latestBackendDraftInfo && (
+            <div className="draft-info">
+              <span className="draft-badge">可载入模板</span>
+              <span className="draft-details">
+                {latestBackendDraftInfo.fileName}
+                {formattedLatestBackendDraftTime ? ` · ${formattedLatestBackendDraftTime}` : ''}
+                {latestBackendDraftInfo.id ? ` · ID: ${latestBackendDraftInfo.id.substring(0, 8)}...` : ''}
               </span>
             </div>
           )}

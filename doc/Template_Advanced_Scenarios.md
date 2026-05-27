@@ -107,6 +107,59 @@ Carbone Engine
 - 根据模板配置生成 `sourceLanguage` 值，或进一步派生目标语言值
 - 渲染并输出最终文档
 
+### 3.2.1 Word Add-in 前端五步主流程
+
+结合当前 Excel 端“先形成分析上下文，再做参数识别”的交互经验，Word 端不应再把“参数识别”作为第一屏，而应调整为以下五步主流程：
+
+1. 第一步：上传真实样本文件  
+   页面第一屏应优先展示真实文件上传区。用户先打开当前模板，再上传一份与模板结构接近的真实 `docx` 文件。该样本是后续文档对比、全局理解和参数识别的基础输入。
+2. 第二步：模板对比与待定参数发现  
+   系统先将“当前打开模板”和“上传真实样本”做结构化对比，输出待定参数候选及其位置、语段、章节归属、样本值和语言关系。此阶段不直接做最终字段命名，而是先形成一份待定参数候选池。
+3. 第三步：AI 全局理解  
+   系统基于“真实原文 + 待定参数候选池”执行 AI 全局理解，输出文档主题、章节结构、关键实体、实体关系、术语候选、版式特征以及章节级摘要，为后续按章节识别提供统一上下文。
+4. 第四步：用户补充语言信息  
+   在看到全局理解结果后，用户再补充语言配置信息，例如：
+   - 默认单语言中文：`sourceLanguage=zh`，`targetLanguages=[]`
+   - 中日双语：`sourceLanguage=zh`，`targetLanguages=["ja"]`
+   - 中英双语（适用于中美业务场景）：`sourceLanguage=zh`，`targetLanguages=["en"]`
+   该步骤的目标是让语言配置建立在文档整体理解结果之上，而不是先验写死在识别前。
+5. 第五步：AI 参数识别  
+   在完成文档对比、全局理解和语言补充后，再基于“当前打开模板 + 上传真实样本 + 待定参数候选池 + 整体理解摘要 + 语言配置”执行 AI 驱动的参数识别。此阶段应尽量对齐 Excel 当前的主链路：
+   - 先有一份可缓存的全局理解结果，作为整次识别的统一上下文
+   - 先按章节做文本全文宽松比较，形成一批待定参数候选；该候选阶段不依赖字段词典做预命中判断，而是保留更宽松的文本相似候选，供后续 AI 重新识别
+   - 再按章节/段落块/表格块逐组调用 AI，结合全局理解、当前章节摘要和待定参数候选，循环生成块级字段建议
+   - 每个块都保留结构化的 `contextAnalysis`，至少覆盖请求摘要、原始响应摘要、缓存命中、fallback 原因、重试信息和错误信息
+   - 最终在服务端统一做字段去重、命名归一、风险标记、规则校验与失败回退
+   - 结构锚点、字段词典、术语库与版式特征作为 AI 提示增强、后处理校验与 fallback，而不是主识别流程；字段词典当前仅作为兜底能力保留，若后续需要再单独配置
+
+在第五步完成后，后续统一进入“应用参数 -> 生成 AI 指南 -> 保存模板/编译绑定计划 -> 预览与发布”的产出链路。
+
+这意味着 Word 端的页面布局和状态流转要显式区分“模板对比与候选发现”“AI 全局理解”“语言补充”“AI 参数识别”几个阶段，而不是把上传样本、模板预览和字段识别全部堆在同一块区域中。
+
+### 3.2.2 参考 Excel 的 AI 驱动主链路
+
+参考 Excel 当前实现，Word 端第三步建议明确采用如下主链路：
+
+1. 先基于模板数据与上传真实数据执行结构化对比，并按章节做文本全文宽松比较，发现一批“待定参数候选”；该阶段不依赖字段词典做主判断，而是尽量保留宽松候选，明确每个候选的锚点位置、样本值、所在语段、所在章节和语言关系。
+2. 再对“真实原文 + 待定参数候选池”执行一次 AI 全局理解，得到 `understandingSummary`、章节摘要和实体关系信息，并允许缓存复用。
+3. 用户基于全局理解结果补充 `sourceLanguage` / `targetLanguages` 等语言信息。
+4. 然后将文档拆成可解释块，例如章节块、成对段落块、表格区域块、标题块或混排块。
+5. 对每个块循环调用 AI，请求中显式带入：
+   - `understandingSummary`
+   - 当前章节摘要
+   - 当前块内命中的待定参数候选列表
+   - 当前块正文与样本文本摘录
+   - 结构锚点提示
+   - 字段词典 / 术语命中 / 枚举提示（仅作为增强与兜底，不参与候选主筛选）
+   - 当前块所属章节、布局类型、语言关系
+   - 用户补充后的语言配置
+6. 服务端按块收集 `blockResults`，并记录每个块的成功/失败、重试次数、原始返回和 fallback 原因。
+7. 仅在块级结果合并之后，才统一执行字段去重、命名归一、置信度合并、高风险拦截和规则补全。
+8. 若某些块 AI 调用失败，可局部回退到规则识别；若整批块均失败，再整体退回规则结果。
+9. 字段确认完成后，继续进入应用参数、生成 AI 指南、保存模板、编译绑定计划和预览发布链路。
+
+该设计的核心是：**先结构化对比并发现待定参数候选，再做 AI 全局理解，然后由用户补充语言信息，最后按章节分块识别并进入产出链路**。也就是说，规则不再承担主识别职责，而是作为 AI 主流程的增强层、约束层和回退层。
+
 ### 3.3 通用化设计原则
 
 为了兼容现有单语言模板，并支持中日、中英以及未来更多双语模板，系统设计应避免对某一语言对或某一合同样式做硬编码，统一遵循以下原则：
@@ -116,7 +169,7 @@ Carbone Engine
 3. 字段语义优先，不依赖某一固定段落顺序。
 4. 排版模式可扩展，不假设双语文本一定是“上一段中文、下一段外文”。
 5. 样本文档先规范化，再识别与对齐。
-6. 识别逻辑分层，优先使用结构、锚点、字段特征和配置，最后才交由 LLM 推断。
+6. 识别逻辑分层，主流程由 AI 基于整体理解和分块上下文生成字段建议；候选发现阶段按章节执行文本全文宽松比较，不依赖字段词典；结构、锚点、字段特征、词典和术语资产作为提示增强、校验约束与失败兜底。
 
 建议在模板元数据中引入语言配置，例如：
 
@@ -129,6 +182,32 @@ Carbone Engine
   }
 }
 ```
+
+这里需要统一约定：
+
+1. `sourceLanguage` 只表示源语言，不应重复出现在 `targetLanguages` 中。
+2. `targetLanguages` 只表示需要派生或渲染的目标语言列表；单语言模板可为空数组。
+3. 若模板需要同时输出源语言和目标语言变量，源语言变量由 `sourceLanguage` 决定，目标语言变量由 `targetLanguages` 决定，而不是把源语言再塞入目标语言列表。
+
+### 3.3.1 工作流会话与缓存约定
+
+为保证“五步式工作台”在前端重试、回退、重新上传、语言修改时仍可稳定续接，建议在模板建模阶段引入统一的工作流会话标识 `workflowId`。
+
+建议约定如下：
+
+1. `workflowId` 在用户进入本次模板分析工作台时生成，并贯穿 `compare -> understand -> recognize -> save` 全流程。
+2. `compareId`、`understandingId`、`analysisId` 是各阶段结果 ID，用于调试、回放和缓存命中说明，但不替代全局 `workflowId`。
+3. `templateDocumentIr`、`sampleDocument`、`candidateFields`、`understandingSummary` 在接口中可继续作为显式输入或快照传递，但服务端应以 `workflowId` 关联当前会话上下文与缓存结果。
+4. 前端再次进入后续步骤时，应优先传递 `workflowId` + 当前步骤需要覆盖的显式输入，而不是默认全量重算。
+5. 服务端应在返回体中显式标记缓存命中情况，如 `cacheStatus.compareHit`、`cacheStatus.understandingHit`、`cacheStatus.recognitionHit`。
+
+建议的失效规则如下：
+
+1. 重新上传真实样本：使 `compare`、`understand`、`recognize` 结果全部失效。
+2. 当前模板 `templateDocumentIr` 发生变化：使 `compare`、`understand`、`recognize` 结果全部失效。
+3. `candidateFields` 被人工改写或重新生成：使 `understand`、`recognize` 结果失效。
+4. `languageProfile` 变化：至少使 `recognize` 结果失效；若语言识别本身影响整体理解，可按配置决定是否连带使 `understand` 失效。
+5. 仅查看前一步结果或重复点击当前步骤：在输入未变化时应直接复用当前 `workflowId` 下的缓存结果。
 
 ---
 
@@ -467,13 +546,219 @@ Excel 模板可通过双 Sheet 形成“空白模板 + 真实样本”的天然�
 
 ### 5.3 前端 Add-in 交互设计
 
-在“参数识别”步骤中增加如下区域：
+建议将 Word 端交互从“单块参数识别页”调整为“五步式工作台”，并借鉴 Excel 当前的“先形成上下文，再做字段识别”的结构。
 
-1. 当前模板预览区：展示当前打开的空白 Word 模板。
-2. 样本上传区：支持拖拽或选择一份已签署或已填写的历史合同。
-3. 样本说明区：提示用户上传与当前模板结构接近的真实文件。
-4. 识别结果区：展示系统建议的字段名、样本值、语言关系和置信度。
-5. 人工确认区：允许用户修改字段名、字段类型和翻译策略。
+#### 第一步：真实样本上传
+
+页面顶部首先展示样本导入区，而不是参数识别按钮。该区域应包含：
+
+1. 当前模板说明区：显示当前打开的是空白模板，并提示后续识别会同时使用模板和样本。
+2. 样本上传区：支持拖拽或选择 1 份已签署或已填写的历史 `docx` 合同。
+3. 样本说明区：明确提示用户上传与当前模板结构接近的真实文件。
+4. 上传状态区：显示文件名、大小、最近上传时间以及是否已准备好进入理解阶段。
+
+#### 第二步：模板对比与待定参数发现
+
+上传成功后，先进入“模板对比”区域。该区域建议独立于整体理解区，承担如下职责：
+
+1. 基于“当前打开模板 + 上传真实样本”执行结构化对比，而不是立即进入最终字段命名。
+2. 输出待定参数候选及其 `anchor`、位置、语段、样本值、章节归属和语言关系。
+3. 展示对比结果摘要，例如发现了多少候选、哪些章节存在高置信度可变字段、哪些块仍需人工关注。
+4. 对候选发现结果做缓存，避免模板和样本未变化时重复执行对比。
+
+#### 第三步：AI 全局理解
+
+在待定参数候选池形成后，再进入“整体理解”区域。该区域承担如下职责：
+
+1. 基于“真实原文 + 待定参数候选池”执行 AI 全局理解。
+2. 输出文档主题、主要章节、段落结构、关键业务实体、实体关系、术语候选和版式特征。
+3. 输出章节级摘要和候选参数的章节聚类结果，为第四步和第五步提供上下文。
+4. 对“模板 + 样本 + 候选池”的理解结果做缓存，避免重复请求。
+
+#### 第四步：用户补充语言信息
+
+在全局理解结果返回后，再让用户补充语言配置信息。该区域建议承担如下职责：
+
+1. 允许设置
+   - 默认中文单语言
+   - 中文 -> 日文
+   - 中文 -> 英文（适用于中美业务场景）
+   - 后续扩展更多目标语言
+2. 让用户基于整体理解结果确认源语言、目标语言和文档模式，而不是在理解前做先验设置。
+3. 若用户修改语言配置，应提示后续参数识别需要重新执行。
+
+#### 第五步：AI 参数识别
+
+在完成模板对比、全局理解和语言补充后，再进入字段识别区。该区的职责应与 Excel 参数识别阶段尽量一致：
+
+1. 基于“当前打开模板 + 上传真实样本 + 待定参数候选池 + 整体理解摘要 + 语言配置”执行 AI 驱动的字段识别，而不是仅依赖规则发现。
+2. 先按章节执行文本全文宽松比较，整理当前章节的待定参数候选，再把文档按章节、成对段落、表格区域或其他可解释块拆分，逐块调用 AI 生成字段建议。
+3. 每个块都应输出独立的 `blockResults`，包括 `blockId`、`blockType`、`title`、`aiCallSucceeded`、`suggestionCount`、`warnings`、`retryCount`、`fallback` 等信息。
+4. 输出字段名、字段类型、样本值、语言关系、策略、风险与置信度，并保留对应块级上下文，便于人工核对。
+5. 结构锚点、字段词典、术语库、样本命中结果应作为 AI 的提示输入、后处理校验和失败兜底，而不是最终主结果来源；字段词典当前默认仅承担兜底角色，暂不作为独立配置项进入主流程。
+6. 支持人工确认、字段重命名、策略调整与风险标记。
+7. 识别完成后，继续进入“应用参数 -> 生成 AI 指南 -> 保存模板 / 预览 / 发布”的后续产出流程。
+
+建议将 `blockResults` 的最小结构进一步标准化，至少包含：
+
+- `blockId`
+- `blockType`
+- `title`
+- `sectionId`
+- `sectionTitle`
+- `aiCallSucceeded`
+- `resultStatus`
+- `suggestionCount`
+- `retryCount`
+- `durationMs`
+- `errorCode`
+- `fallback`
+- `fallbackReason`
+- `warnings`
+
+其中：
+
+1. `resultStatus` 建议与任务级语义保持一致，可取 `success`、`partial_success`、`fallback_success`、`failed`。
+2. `errorCode` 用于表达块级失败原因，例如超时、解析失败、响应格式错误、低置信度拒收等。
+3. `fallbackReason` 用于解释为什么当前块进入规则兜底或局部降级。
+4. `durationMs` 用于支撑块级慢调用定位和性能观测。
+
+#### 页面布局建议
+
+Word 页面建议按以下顺序自上而下排列：
+
+1. 样本上传区
+2. 模板对比与待定参数发现区
+3. AI 整体理解区
+4. 语言补充区
+5. 参数识别区
+6. 参数应用与 AI 指南区
+7. 预览与保存区
+8. 调试日志与错误区
+
+该布局的关键原则是：**先上传真实文件，再做模板对比和待定参数发现，接着执行 AI 全局理解，由用户补充语言信息，最后进入按章节的 AI 参数识别，并沿用统一的参数应用、AI 指南与模板产出流程。**
+
+#### 5.3.1 页面文案建议
+
+为降低用户理解成本，建议在三步式工作台中直接使用面向任务的文案，而不是技术实现导向的文案。
+
+1. 第一步主标题：`上传真实文件`
+2. 第一步副标题：`请上传一份与当前模板结构接近的历史 Word 文件，系统将结合模板与真实内容进行对比、理解和识别。`
+3. 第一步主按钮：`上传真实文件`
+4. 第一步完成态文案：`已上传 1 份真实文件，可继续进行模板对比`
+5. 第二步主标题：`模板对比`
+6. 第二步副标题：`系统将先对比当前模板与真实文件，生成待定参数、位置和语段信息。`
+7. 第二步主按钮：`开始对比`
+8. 第二步完成态文案：`已生成待定参数候选，可继续进行 AI 全局理解`
+9. 第三步主标题：`AI 全局理解`
+10. 第三步副标题：`系统将基于真实原文和待定参数候选，理解文档的章节、实体关系和整体语义。`
+11. 第三步主按钮：`开始理解`
+12. 第三步完成态文案：`整体理解完成，可继续补充语言信息`
+13. 第四步主标题：`语言补充`
+14. 第四步配置标题：`多语言设置`
+15. 第四步配置选项：
+   - `默认中文`
+   - `中文 + 日文`
+   - `中文 + 英文`
+16. 第四步完成态文案：`语言信息已确认，可继续识别参数`
+17. 第五步主标题：`AI 参数识别`
+18. 第五步副标题：`系统将根据当前模板、真实文件、待定参数候选和整体理解结果，按章节逐步生成可配置参数建议。`
+19. 第五步主按钮：`开始识别参数`
+20. 第五步完成态文案：`AI 参数识别完成，可进入参数应用、AI 指南、预览和保存流程`
+
+#### 5.3.2 按钮与交互规则建议
+
+建议在前端显式控制按钮可用状态，避免用户在上下文不完整时误触发后续步骤。
+
+1. `上传真实文件`：始终可点击；上传成功后显示替换入口 `重新上传`
+2. `开始对比`：仅当“当前模板已打开”且“真实文件已上传”时可点击
+3. `开始理解`：仅当模板对比完成并已生成待定参数候选池时可点击
+4. `多语言设置`：仅当整体理解完成后可编辑；若修改配置，应提示后续参数识别需要重新执行
+5. `开始识别参数`：仅当整体理解完成且语言信息已确认后可点击；识别过程中应允许展示阶段性章节/块级进度
+6. `应用参数`、`生成 AI 指南`、`保存模板`：仅当参数识别结果已生成且用户完成必要确认后可点击
+
+#### 5.3.3 状态流转建议
+
+建议 Word Add-in 前端至少维护以下页面级状态，确保流程与页面布局一致：
+
+1. `template_ready`：用户已打开模板，但尚未上传真实文件
+2. `sample_uploaded`：真实文件已上传，等待执行模板对比
+3. `comparing`：正在执行模板与真实文件的结构化对比
+4. `compare_ready`：待定参数候选已生成，允许进入 AI 全局理解
+5. `understanding`：正在执行“真实原文 + 待定参数候选池”的 AI 全局理解
+6. `understanding_ready`：整体理解完成，允许用户查看摘要、实体关系和章节信息
+7. `language_ready`：用户已确认语言配置，允许进入 AI 参数识别
+8. `recognizing`：正在执行按章节的 AI 参数识别
+9. `recognition_ready`：AI 参数识别完成，允许用户确认字段并进入应用参数、AI 指南、预览、保存与发布流程
+10. `error`：上传、对比、理解或识别失败，页面应保留已完成步骤并支持重试
+
+建议状态流转如下：
+
+1. `template_ready -> sample_uploaded`：用户上传真实文件成功
+2. `sample_uploaded -> comparing`：用户点击 `开始对比`
+3. `comparing -> compare_ready`：模板对比成功返回，形成待定参数候选池
+4. `compare_ready -> understanding`：用户点击 `开始理解`
+5. `understanding -> understanding_ready`：整体理解成功返回
+6. `understanding_ready -> language_ready`：用户确认语言配置
+7. `language_ready -> recognizing`：用户点击 `开始识别参数`
+8. `recognizing -> recognition_ready`：AI 参数识别成功返回
+9. 任一步骤失败均进入 `error` 子状态，但不应丢失已上传文件、已完成的对比结果、已完成的理解结果与已选语言配置
+
+#### 5.3.4 页面区域联动建议
+
+为了让页面看起来更像“分阶段工作台”而不是“一个很长的表单”，建议增加以下联动规则：
+
+1. 第一步完成前，第二步和第三步默认折叠并置灰
+2. 第二步运行中，页面应显示模板对比进度、候选统计和待定参数骨架屏
+3. 第二步完成后，第三步自动展开，并把待定参数候选池作为整体理解输入摘要展示在顶部
+4. 第三步完成后，第四步自动展开，要求用户基于整体理解结果补充语言信息
+5. 第五步识别过程中，可附带展示当前正在分析的章节/块
+6. 第五步完成后，识别区保留字段表格，同时在下方显式暴露 `应用参数`、`生成 AI 指南`、`预览`、`保存模板` 等后续入口
+7. 如果用户重新上传真实文件，应提示“模板对比结果、整体理解结果和参数识别结果将失效，需要重新执行”
+
+#### 5.3.5 异步执行与进度反馈建议
+
+由于模板对比、AI 全局理解和按章节/块 AI 参数识别都可能持续数秒到数十秒，尤其第五步会循环执行多次块级 AI 调用，因此前后端协议建议默认采用“提交任务 + 查询进度”的异步模式，而不是假设所有接口都能在一次同步请求内稳定完成。
+
+建议遵循以下原则：
+
+1. `compare`、`understand`、`recognize` 三步都允许返回异步任务句柄 `jobId`。
+2. 前端在拿到 `jobId` 后，通过轮询或流式事件持续获取当前步骤进度。
+3. 第五步应重点返回块级进度，例如总块数、已完成块数、失败块数、当前块标题。
+4. 用户在重新上传样本、修改语言配置或主动中止时，应允许取消当前任务，避免旧结果回写到新状态。
+5. 任务失败时，不应只返回一个通用错误，而应保留阶段、块、重试和 fallback 维度的诊断信息。
+
+建议最小进度模型至少包含：
+
+- `jobId`
+- `workflowId`
+- `step`，如 `compare`、`understand`、`recognize`
+- `status`，如 `queued`、`running`、`succeeded`、`failed`、`cancelled`
+- `progressPercent`
+- `currentStageText`
+- `blockProgress`，用于识别阶段的块级进度
+- `warnings`
+- `error`
+
+其中 `blockProgress` 建议至少包含：
+
+```json
+{
+  "totalBlocks": 12,
+  "completedBlocks": 5,
+  "failedBlocks": 1,
+  "runningBlockId": "block_006",
+  "runningBlockTitle": "付款条款",
+  "lastCompletedBlockId": "block_005"
+}
+```
+
+前端状态与异步协议的映射建议如下：
+
+1. `comparing`、`understanding`、`recognizing` 三个页面状态，均应对应一个处于 `queued/running` 的后端任务。
+2. 若任务状态变为 `succeeded`，前端再切换到 `compare_ready`、`understanding_ready`、`recognition_ready`。
+3. 若任务状态变为 `failed/cancelled`，前端进入当前步骤对应的 `error` 子状态，但保留此前成功阶段的缓存结果。
+4. 若 `recognize` 过程中只存在部分块失败，前端仍可展示已完成字段结果，同时提示失败块、fallback 和是否允许局部重试。
 
 ### 5.4 DocumentIR 设计
 
@@ -701,7 +986,7 @@ Excel 模板可通过双 Sheet 形成“空白模板 + 真实样本”的天然�
     "ja": "広州日産通商貿易有限公司",
     "en": "Guangzhou Nissan Trading Co., Ltd."
   },
-  "generationPolicyHint": "dictionary_first",
+  "generationPolicyHint": "section_text_compare_first",
   "confidence": 0.96
 }
 ```
@@ -712,7 +997,21 @@ Excel 模板可通过双 Sheet 形成“空白模板 + 真实样本”的天然�
 - 便于前端确认页展示“候选结果”
 - 便于后续人工修订和再次训练字段命名模型
 
+在 AI 主驱动链路下，可进一步将 `FieldCandidateIR` 视为“待定参数候选池”。也就是说，在真正进入按章节的 AI 参数识别前，系统应先基于模板数据和上传真实数据，按章节做文本全文宽松比较，整理出一批待定参数候选。这里的“候选”强调的是宽松预筛，而不是基于字段词典的强约束命中，并至少为每个候选补齐以下信息：
+
+- 候选参数 ID
+- 锚点位置与原始 block / token 位置
+- 对应样本值
+- 所在语段摘录
+- 所属章节
+- 语言关系与布局关系
+- 初步字段类型提示
+
+后续块级 prompt 不应从零开始要求 AI 自由发现所有字段，而应让 AI 在“全局理解 + 当前章节上下文 + 待定参数候选池”的基础上完成识别、命名、归类和冲突消解。
+
 ### 5.5 后端处理流程
+
+先明确本节的总原则：**后端主链路应采用“结构化对比与候选发现 -> AI 全局理解 -> 用户补充语言 -> AI 分块识别 -> 服务端合并校验 -> 参数应用与模板产出”的六段式流程**。候选发现阶段应优先按章节做文本全文宽松比较，而不是依赖字段词典预命中；文档结构特征、锚点规则、字段词典、术语库和枚举映射继续保留，但其角色从“主识别器”调整为“提示构造器、校验器和 fallback 生成器”。
 
 #### 步骤 1：空白模板解析
 
@@ -726,14 +1025,51 @@ Excel 模板可通过双 Sheet 形成“空白模板 + 真实样本”的天然�
 - 提取段落、表格、语言块等结构
 - 记录真实文本值与周边上下文
 
-#### 步骤 3：结构化对齐
+#### 步骤 3：待定参数候选发现与分块准备
 
-对齐策略建议按以下顺序进行：
+该步骤的目标不是直接产出最终字段，而是基于模板数据和上传真实数据，先按章节做文本全文宽松比较，发现待定参数候选，并为后续块级 AI 识别构造稳定上下文。此处候选发现应尽量放宽内容匹配条件，避免过早用字段词典收紧范围；对齐策略建议按以下顺序进行：
 
 1. 文档大纲对齐：按标题、条款编号、区块顺序对齐
 2. 语言块对齐：识别源语言块与目标语言块是否互为对应
-3. 段落级对齐：比较前缀文本、样式、位置、长度
-4. 字段级对齐：在空白区或占位区附近寻找样本值
+3. 章节内全文宽松比较：在当前章节范围内比较样本值、上下文语义、相邻文本和布局特征，尽可能保留宽松候选
+4. 段落级对齐：比较前缀文本、样式、位置、长度
+5. 字段级对齐：在空白区或占位区附近寻找样本值
+
+该步骤的输出不应只是若干零散规则命中，而应产出一份待定参数候选池，至少包含：
+
+- `candidateId`
+- `sourceBlockId`
+- `anchorText`
+- `sampleValue`
+- `segmentText`
+- `sectionId` / `sectionTitle`
+- `fieldTypeHint`
+- `generationPolicyHint`
+- `confidence`
+
+其中 `generationPolicyHint` 在该阶段仅表示候选生成方式，例如章节全文宽松比较、结构锚点匹配或样本邻域命中；不应等价理解为最终字段策略，也不应默认由字段词典决定。
+
+#### 步骤 4：AI 全局理解
+
+在待定参数候选池形成后，再基于“真实原文 + 待定参数候选池”执行 AI 全局理解。该步骤建议输出：
+
+- `understandingSummary`
+- `entityGraph` 或等价的实体关系摘要
+- `sectionSummaries`
+- `candidateGroupingBySection`
+- `terminologyCandidates`
+- `layoutProfile`
+
+该步骤的目标不是直接做最终字段命名，而是建立章节级、实体级和候选字段级的统一上下文。
+
+#### 步骤 5：用户补充语言信息
+
+该步骤由前端触发、后端持久化，核心目标是让用户在看完整体理解结果后，再确认：
+
+- `sourceLanguage`
+- `targetLanguages`
+- `documentMode`
+- 是否需要重新执行后续识别
 
 #### 5.5.1 常见双语排版模式抽象
 
@@ -783,18 +1119,34 @@ Excel 模板可通过双 Sheet 形成“空白模板 + 真实样本”的天然�
 }
 ```
 
-#### 步骤 4：字段推断
+#### 步骤 6：块级 AI 字段推断
 
-基于以下信息推断字段名与字段类型：
+基于以下信息，对每个块单独调用 AI 推断字段名、字段类型和语言关系：
 
+- `understandingSummary`
+- `entityGraph` 或实体关系摘要
+- 当前章节信息
+- 当前块命中的待定参数候选列表
+- 当前块正文与样本文本摘录
 - 锚点文本，例如 `委托方:`、`乙方指定银行帐号为:`
 - 样本值内容特征，例如像公司名、金额、日期还是账号
 - 跨语言对应块之间的语义关系
 - 历史字段命名先验
+- 字段词典、术语库、枚举映射和布局特征提示
+- 用户补充后的语言配置
 
-#### 步骤 5：生成识别结果
+#### 步骤 7：服务端结果合并与规则校验
 
-为每个字段生成如下信息：
+在所有块完成 AI 推断后，再统一生成最终识别结果。该阶段建议完成：
+
+- 字段去重与命名归一
+- 跨块冲突消解
+- 高风险字段标记
+- 术语命中与枚举命中校验
+- 金额、日期、银行账号等规则型二次校验
+- 失败块的 fallback 补全
+
+最终为每个字段输出如下信息：
 
 - 建议字段名
 - 字段类型
@@ -802,6 +1154,259 @@ Excel 模板可通过双 Sheet 形成“空白模板 + 真实样本”的天然�
 - 语言映射关系
 - 生成策略
 - 置信度
+- `sourceBlockId`
+- `termMatch` / `resolution`
+
+同时建议对每个块保留标准化结果对象，最小结构示例如下：
+
+```json
+{
+  "blockId": "block_001",
+  "blockType": "paired_paragraphs",
+  "title": "合同头部与主体信息",
+  "sectionId": "sec-header-001",
+  "sectionTitle": "合同头部",
+  "aiCallSucceeded": true,
+  "resultStatus": "success",
+  "suggestionCount": 3,
+  "retryCount": 1,
+  "durationMs": 2840,
+  "errorCode": null,
+  "fallback": null,
+  "fallbackReason": null,
+  "warnings": []
+}
+```
+
+建议约束：
+
+1. `aiCallSucceeded=false` 不一定意味着整块 `failed`，若规则兜底成功，可使用 `resultStatus=fallback_success`。
+2. `retryCount` 仅统计当前块内部 AI 重试次数，不包含整个任务级重试。
+3. `errorCode` 为空表示当前块未发生阻断性错误。
+4. `warnings` 用于保留块级非阻断告警，例如候选不足、术语未命中、置信度偏低。
+
+除 `blockResults` 外，建议本次识别任务再保留一个结构化 `contextAnalysis` 对象，统一承载调试、缓存与回退信息，而不是把 `promptRequestText`、`rawAiResponse`、`fallback` 等字段零散平铺在返回体根节点。
+
+推荐最小结构如下：
+
+```json
+{
+  "usedAI": true,
+  "globalUnderstandingUsedAI": true,
+  "resultSource": "ai+rule_fallback",
+  "requestTrace": {
+    "executor": "studio",
+    "promptTemplateVersion": "word-recognize-v2",
+    "requestCount": 12,
+    "lastRequestSummary": "当前块为付款条款，候选数 2"
+  },
+  "responseTrace": {
+    "successBlockCount": 10,
+    "failedBlockCount": 2,
+    "lastResponseSummary": "最近一次返回 3 个字段建议"
+  },
+  "fallbackTrace": {
+    "usedFallback": true,
+    "fallbackLevel": "block",
+    "fallbackReason": "block_timeout",
+    "fallbackBlockIds": ["block_009"]
+  },
+  "cacheTrace": {
+    "compareHit": false,
+    "understandingHit": true,
+    "recognitionHit": false
+  },
+  "debugArtifacts": {
+    "promptRequestText": "最近一次有效块级请求原文",
+    "rawAiResponse": "最近一次有效块级原始返回"
+  }
+}
+```
+
+建议约束：
+
+1. `requestTrace` 用于记录请求侧观测信息，不承担结果语义。
+2. `responseTrace` 用于记录块级成功/失败统计和最近一次有效返回摘要。
+3. `fallbackTrace` 用于解释本次识别是否发生 block 级或 task 级 fallback，以及影响范围。
+4. `cacheTrace` 用于统一表达缓存命中，后续可替代零散的 `cacheStatus` 展示。
+5. `debugArtifacts` 用于保留最近一次有效请求原文和原始响应；若考虑返回体体积，也可只返回摘要并把完整内容写入日志系统。
+
+#### 步骤 8：参数应用与模板产出
+
+在字段确认完成后，后续应显式进入产出链路，而不是只停留在“识别完成”：
+
+- 应用参数到当前模板预览态
+- 生成 AI 指南
+- 保存模板定义
+- 编译 `CarboneBindingPlan`
+- 预览、发布与后续渲染
+
+#### 5.5.3 AI 参数识别 Prompt 设计
+
+参考 Excel 当前“先全局理解，再带着候选上下文逐组识别”的模式，Word 第三步建议将 prompt 拆成两层：
+
+1. 全局理解 prompt：负责基于“真实原文 + 待定参数候选池”输出 `understandingSummary`、章节摘要、实体关系、布局判断、术语候选。
+2. 章节/块级识别 prompt：负责在指定章节内，根据待定参数候选列表完成字段识别。这里的候选列表应来自章节级文本全文宽松比较，而不是字典预筛结果。
+
+其中块级识别 prompt 的输入应至少包含：
+
+- `understandingSummary`
+- 当前章节标题与章节摘要
+- 当前块正文
+- 当前块对应的样本文本摘录
+- 当前块命中的待定参数候选列表
+- 每个候选的锚点位置、所在语段、样本值和类型提示
+- 当前章节全文宽松比较命中的相似片段或上下文摘录
+- 字段词典、术语命中、枚举命中、布局特征（仅作为增强、校验与兜底）
+
+块级识别 prompt 的任务目标建议明确为：
+
+1. 不从整份文档自由发散识别字段，而是优先处理当前章节内的待定参数候选。
+2. 候选判断优先依据当前章节中的完整文本比较与上下文语义，而不是依据字段词典是否命中。
+3. 判断每个候选是否应成为正式字段，或应被判定为固定正文。
+4. 为有效候选输出标准字段名、字段类型、语言关系、策略和风险等级。
+5. 若当前块缺乏足够证据，允许返回 `needsReview`，而不是虚构字段。
+
+全局理解 prompt 的任务目标建议明确为：
+
+1. 不对整篇文档做无约束摘要，而是围绕待定参数候选池组织理解结果。
+2. 输出章节级结构、关键实体、实体关系和候选字段所在章节的聚类信息。
+3. 为后续语言补充和章节级 AI 参数识别提供稳定上下文。
+
+#### 5.5.4 待定参数候选输入示例
+
+为了避免块级识别 prompt 输入过于抽象，建议在服务端先把候选池压缩为当前章节或当前块相关的最小输入结构，再交给 AI。
+
+示例：
+
+```json
+{
+  "section": {
+    "sectionId": "sec-payment-001",
+    "sectionTitle": "付款条款",
+    "sectionSummary": "本章节主要描述付款方式、付款期限、收款账户与金额表达。"
+  },
+  "block": {
+    "blockId": "p-0032",
+    "blockType": "paired_paragraphs",
+    "layoutType": "paired_paragraphs",
+    "templateText": "乙方指定银行帐号为：<blank>",
+    "sampleText": "乙方指定银行帐号为：6222000000000000"
+  },
+  "candidateFields": [
+    {
+      "candidateId": "fc-bank-account-01",
+      "anchorText": "乙方指定银行帐号为：",
+      "sourceBlockId": "p-0032",
+      "segmentText": "乙方指定银行帐号为：6222000000000000",
+      "sampleValue": "6222000000000000",
+      "fieldTypeHint": "bank_account",
+      "generationPolicyHint": "format_only",
+      "confidence": 0.95
+    },
+    {
+      "candidateId": "fc-payment-deadline-01",
+      "anchorText": "收到发票后",
+      "sourceBlockId": "p-0033",
+      "segmentText": "甲方应在收到发票后10个工作日内付款。",
+      "sampleValue": "10个工作日",
+      "fieldTypeHint": "duration_days",
+      "generationPolicyHint": "enum_mapping",
+      "confidence": 0.78
+    }
+  ]
+}
+```
+
+该结构的关键点是：
+
+- 每次只传当前章节或当前块真正相关的候选，避免无关字段干扰。
+- 候选必须同时保留锚点、位置、语段和样本值，避免 AI 只看到孤立值。
+- `fieldTypeHint` 与 `generationPolicyHint` 只作为提示，不直接替代 AI 判断。
+
+#### 5.5.5 章节/块级识别 Prompt 示例
+
+建议在实现中使用模板化 prompt，而不是在代码里零散拼字符串。以下是一个可直接指导实现的块级 prompt 示例：
+
+```text
+【系统角色】
+你是合同模板参数识别助手。你的任务不是自由发明字段，而是基于当前章节、当前块文本和待定参数候选列表，识别哪些候选应成为正式模板字段。
+
+【全局理解】
+{understandingSummary}
+
+【当前章节】
+- 标题: {sectionTitle}
+- 摘要: {sectionSummary}
+
+【当前块信息】
+- blockId: {blockId}
+- blockType: {blockType}
+- layoutType: {layoutType}
+- 模板文本: {templateText}
+- 样本文本: {sampleText}
+
+【待定参数候选】
+{candidateFieldsJson}
+
+【字段词典与术语提示】
+{fieldDictionaryHints}
+{termHints}
+{enumHints}
+
+【识别要求】
+1. 仅处理当前章节和当前块相关的候选参数。
+2. 优先根据锚点、样本值、语段语义和章节上下文判断字段含义。
+3. 若候选只是固定正文或说明性文本，不要输出为正式字段。
+4. 若候选证据不足，请标记 `needsReview=true`，不要虚构字段名。
+5. 对高风险字段如金额、银行账号、日期，必须保守处理。
+
+【输出要求】
+返回合法 JSON，字段包括：
+- candidateId
+- accepted
+- fieldId
+- fieldType
+- policy
+- sample
+- riskLevel
+- confidence
+- needsReview
+- reason
+```
+
+建议配套的块级返回示例：
+
+```json
+{
+  "results": [
+    {
+      "candidateId": "fc-bank-account-01",
+      "accepted": true,
+      "fieldId": "bankAccount",
+      "fieldType": "bank_account",
+      "policy": "format_only",
+      "sample": "6222000000000000",
+      "riskLevel": "high",
+      "confidence": 0.98,
+      "needsReview": true,
+      "reason": "锚点明确指向收款账号，样本值符合银行账号格式，但属于高风险字段。"
+    },
+    {
+      "candidateId": "fc-payment-deadline-01",
+      "accepted": true,
+      "fieldId": "paymentDeadlineDays",
+      "fieldType": "duration_days",
+      "policy": "enum_mapping",
+      "sample": "10个工作日",
+      "riskLevel": "medium",
+      "confidence": 0.87,
+      "needsReview": false,
+      "reason": "候选位于付款条款章节，语段语义明确指向付款期限。"
+    }
+  ]
+}
+```
 
 ### 5.6 字段识别结果示例
 
@@ -836,15 +1441,15 @@ Excel 模板可通过双 Sheet 形成“空白模板 + 真实样本”的天然�
 
 ### 5.7.1 建议的识别优先级
 
-为避免过早依赖大模型，建议按以下优先级逐层识别：
+为与 Excel 当前主链路保持一致，建议将第三步识别明确为 **AI 主驱动、规则强约束**。具体优先级如下：
 
-1. 显式结构特征：内容控件、下划线、表格单元格、段落样式
-2. 锚点规则：例如 `委托方:`、`No.:`、`Dated:`、`Acceptance:`
-3. 文本类型识别：金额、日期、账号、公司名、地点
-4. 语言块关系：源语言块和目标语言块的对应关系
-5. LLM 推断：仅用于字段命名、策略建议和歧义消解
+1. AI 全局理解：先生成 `understandingSummary`，给后续所有块提供统一语义背景。
+2. AI 块级识别：以章节/段落块/表格块为单位循环调用 AI，直接生成字段建议。
+3. 规则增强提示：将显式结构特征、锚点规则、文本类型识别、语言块关系作为 prompt 输入和约束条件带给 AI。
+4. 服务端规则校验：对 AI 返回结果执行术语命中、枚举命中、金额/日期/账号一致性等二次校验。
+5. 失败回退：仅当单块或整批 AI 未成功返回可用结果时，才退回规则识别或启发式结果。
 
-这样可以保证方案既通用，又不会因为文档样式变化而过度波动。
+这样可以保证主流程与 Excel 一致，既让 AI 承担字段召回和语义判断的主要职责，又通过规则层控制结果稳定性和风险边界。
 
 ### 5.7.2 字段对齐算法设计
 
@@ -1140,6 +1745,75 @@ Carbone Render Data
 ```
 
 这意味着前端模板编辑器保存的，不应只是“字段名列表”，而应保存一份可编译的字段定义与绑定计划。
+
+### 8.2.1 从识别结果到正式字段定义的转换
+
+为了让“AI 参数识别 -> 字段确认 -> 保存模板”真正形成闭环，建议在 `FieldCandidateIR` 与正式 `TemplateFieldSpec` 之间增加一个前端可编辑中间层 `TemplateFieldSpecDraft`。
+
+建议处理链路细化为：
+
+```text
+FieldCandidateIR / recognized fields
+  -> 服务端合并与命名归一
+RecognizedField
+  -> 前端人工确认 / 风险处理 / 策略调整
+TemplateFieldSpecDraft
+  -> 保存前校验 / 编译
+TemplateFieldSpec
+```
+
+其中：
+
+1. `RecognizedField`：表示 `template/recognize` 返回给前端的最终识别结果，适合展示和确认，但还不是最终持久化对象。
+2. `TemplateFieldSpecDraft`：表示前端确认页中可编辑、可保存前校验的草稿对象。
+3. `TemplateFieldSpec`：表示通过确认和校验后的正式模板字段定义。
+
+建议 `RecognizedField` 至少包含：
+
+- `fieldId`
+- `type`
+- `policy`
+- `required`
+- `riskLevel`
+- `sample`
+- `confidence`
+- `needsReview`
+- `sourceBlockId`
+- `sourceBindings` 或可转换出 `sourceBindings` 的锚点信息
+- `termMatch`
+- `warnings`
+
+建议 `TemplateFieldSpecDraft` 至少包含：
+
+```json
+{
+  "fieldId": "partyAName",
+  "valueMode": "scalar",
+  "type": "legal_entity_name",
+  "sourceLanguage": "zh",
+  "targetLanguages": ["ja"],
+  "policy": "dictionary_first",
+  "required": true,
+  "riskLevel": "high",
+  "sourceBindings": [],
+  "renderConfig": {
+    "flattenForCarbone": true
+  },
+  "confirmation": {
+    "confirmedByUser": true,
+    "editedFromRecognizedField": false,
+    "manualOverride": false
+  }
+}
+```
+
+保存前建议执行以下转换规则：
+
+1. `template/recognize` 返回的 `fields` 先映射为 `TemplateFieldSpecDraft[]`，供前端确认页展示和编辑。
+2. 用户修改 `fieldId`、`type`、`policy`、`required`、`targetLanguages`、`renderConfig` 后，只更新 draft，不直接改写识别原始结果。
+3. 高风险字段若 `needsReview=true` 且未明确确认，不允许进入 `template/save`。
+4. `sourceBindings` 若缺失但字段为人工新增，应在 draft 中显式标记 `manualOverride=true` 或等价来源标记。
+5. 只有通过前端确认与保存前校验的 draft，才编译为正式 `TemplateFieldSpec` 并进入 `CarboneBindingPlan` 编译阶段。
 
 ### 8.3 `TemplateFieldSpec` 建议结构
 
@@ -1809,55 +2483,104 @@ Template Metadata Store
 3. User -> Word Add-in
    上传真实样本文档 sample.docx
 
-4. Word Add-in -> AI Orchestrator
-   POST /template/analyze
-   body = { templateDocumentIr, sampleDocument, targetLanguages }
+4. User -> Word Add-in
+   触发“模板对比”
 
-5. AI Orchestrator -> Template Analysis Service
-   转发模板分析请求
+5. Word Add-in -> Template Analysis Service
+   POST /template/compare
+   body = { templateDocumentIr, sampleDocument }
 
 6. Template Analysis Service -> Template Analysis Service
-   规范化样本文档
-   解析 sampleDocumentIr
-   识别 bilingualLayoutType
+   先执行模板与样本的结构化预处理
+   解析 templateDocumentIr / sampleDocumentIr
+   执行结构化对齐与差异比对
+   生成待定参数候选池
 
-7. Template Analysis Service -> Template Analysis Service
-   执行结构对齐
-   发现字段候选
-   生成 FieldCandidateIR
+7. Template Analysis Service -> Word Add-in
+   返回 candidateFields / compareSummary / warnings
 
-8. Template Analysis Service -> Termbase Service
-   查询字段命名词典、术语库、枚举表
+8. User -> Word Add-in
+   基于真实原文与待定参数候选触发“AI 全局理解”
 
-9. Termbase Service -> Template Analysis Service
-   返回 matchedFieldId / termMatch / enumMatch
+9. Word Add-in -> Template Analysis Service
+   POST /template/understand
+   body = { templateDocumentIr, sampleDocument, candidateFields }
 
 10. Template Analysis Service -> AI Orchestrator
+    基于“真实原文 + 待定参数候选池 + 结构线索”调用 AI 生成整体理解摘要、章节摘要与实体关系信息
+
+11. AI Orchestrator -> Template Analysis Service
+    返回 understandingSummary / sectionSummaries / entityGraph / warnings
+
+12. Template Analysis Service -> Word Add-in
+    返回整体理解结果
+
+13. User -> Word Add-in
+    基于整体理解结果补充 sourceLanguage / targetLanguages / documentMode
+
+14. User -> Word Add-in
+    触发“AI 参数识别”
+
+15. Word Add-in -> Template Analysis Service
+    POST /template/recognize
+    body = { templateDocumentIr, sampleDocument, candidateFields, understandingSummary, languageProfile }
+
+16. Template Analysis Service -> Template Analysis Service
+    若“模板 + 样本 + candidateFields”存在可复用缓存，则直接加载 understandingSummary
+    否则继续使用当前请求携带的整体理解结果
+    按章节切分文档块
+    为每个章节块组装候选、锚点、术语和布局提示
+
+17. Template Analysis Service -> AI Orchestrator
+    对每个章节块发送“整体理解摘要 + 当前章节摘要 + 候选池 + 当前块上下文 + 语言配置”
+    循环生成字段建议
+
+18. AI Orchestrator -> Template Analysis Service
+    返回块级字段建议和块级调试信息
+
+19. Template Analysis Service -> Termbase Service
+    查询字段命名词典、术语库、枚举表
+
+20. Termbase Service -> Template Analysis Service
+    返回 matchedFieldId / termMatch / enumMatch
+
+21. Template Analysis Service -> Template Analysis Service
+    合并块级结果
+    执行字段去重、命名归一、风险标记与规则校验
+    记录 blockResults / retryCount / fallback / contextAnalysis
+    必要时使用规则结果做兜底补全
+
+22. Template Analysis Service -> Word Add-in
     返回字段建议:
-    { fields, confidence, termMatch, warnings }
+    { fields, blockResults, contextAnalysis, confidence, termMatch, warnings }
 
-11. AI Orchestrator -> Word Add-in
-    返回模板分析结果
-
-12. User -> Word Add-in
+23. User -> Word Add-in
     人工确认字段名、字段类型、策略、必填项
 
-13. Word Add-in -> AI Orchestrator
+24. Word Add-in -> Word Add-in
+    应用参数到当前模板预览态
+    生成 AI 指南草稿
+
+25. Word Add-in -> AI Orchestrator
     POST /template/save
-    body = { templateId?, templateDocumentIr, templateFieldSpecs }
+    body = { templateId?, templateDocumentIr, templateFieldSpecs, languageProfile }
 
-14. AI Orchestrator -> Template Metadata Store
+26. AI Orchestrator -> Template Metadata Store
     保存 TemplateFieldSpec 和模板元数据
+    编译 CarboneBindingPlan
 
-15. AI Orchestrator -> Word Add-in
-    返回保存成功和模板 ID
+27. AI Orchestrator -> Word Add-in
+    返回保存成功、模板 ID、AI 指南引用与可预览状态
 ```
 
 #### 10.2.1 关键说明
 
 1. `templateDocumentIr` 应以前端实时提取结果为准，避免后端再次猜测模板结构。
-2. 字段建议结果必须区分“自动命中”和“待人工确认”，不能混为同一置信度。
-3. 模板保存时应持久化 `TemplateFieldSpec`，而不是只保存平铺变量名列表。
+2. Word 端应先完成模板对比并形成待定参数候选池，再执行 AI 全局理解，避免理解阶段缺少候选上下文。
+3. 语言配置应建立在整体理解结果之上，而不是在理解前先验写死。
+4. 第五步返回结果应同时包含 `fields` 与 `blockResults`，便于前端展示 AI 主流程和块级失败回退。
+5. `contextAnalysis` 至少应覆盖缓存命中、块级调用、重试次数、fallback 原因和原始响应片段。
+6. 模板保存时应持久化 `TemplateFieldSpec`，而不是只保存平铺变量名列表。
 
 ### 10.3 运行时生成链路时序图
 
@@ -1985,7 +2708,7 @@ Review Queue / Manual Review
 
 若按 P0 范围落地，建议优先打通以下最短路径：
 
-1. 模板建模链路的步骤 1 到 15。
+1. 模板建模链路中的“上传样本 -> 对比候选发现 -> AI 全局理解 -> 语言补充 -> AI 参数识别 -> 保存模板”主分支。
 2. 运行时生成链路的步骤 1 到 13。
 3. 异常回退链路中“未命中 -> 前端确认 -> 重新生成”的主分支。
 
@@ -2000,37 +2723,98 @@ P0 可暂缓内容：
 
 ## 11. 系统接口建议
 
-### 11.1 模板分析接口
+### 11.1 模板建模阶段接口概览
+
+为了严格落地“上传真实 Word -> 对比 -> 全局理解 -> 用户补充语言 -> 按章节识别”的主流程，模板建模阶段建议至少拆成以下接口：
+
+1. `POST /template/compare`
+   - 输入：`workflowId + templateDocumentIr + sampleDocument`
+   - 输出：`workflowId + compareId + candidateFields + compareSummary`
+   - 用途：生成待定参数候选、位置、语段和章节归属
+2. `POST /template/understand`
+   - 输入：`workflowId + templateDocumentIr + sampleDocument + candidateFields`
+   - 输出：`workflowId + understandingId + understandingSummary + sectionSummaries + entityGraph`
+   - 用途：基于真实原文和候选池做 AI 全局理解
+3. `POST /template/recognize`
+   - 输入：`workflowId + templateDocumentIr + sampleDocument + candidateFields + understandingSummary + languageProfile`
+   - 输出：`workflowId + analysisId + fields + blockResults + contextAnalysis`
+   - 用途：按章节执行 AI 参数识别
+
+### 11.1.1 异步任务协议建议
+
+为匹配前文的分阶段进度展示与块级识别过程，建议 `compare`、`understand`、`recognize` 三个接口都支持异步提交模式。
+
+建议最小接口集合如下：
+
+1. `POST /template/compare`
+   - 支持同步直返结果，或返回 `{ workflowId, jobId, accepted: true }`
+2. `POST /template/understand`
+   - 支持同步直返结果，或返回 `{ workflowId, jobId, accepted: true }`
+3. `POST /template/recognize`
+   - 支持同步直返结果，或返回 `{ workflowId, jobId, accepted: true }`
+4. `GET /template/jobs/{jobId}`
+   - 返回任务状态、阶段进度、块级进度、最近告警与结果摘要
+5. `POST /template/jobs/{jobId}/cancel`
+   - 取消仍在执行中的任务
+
+P0 如需控制复杂度，建议至少实现：
+
+1. `recognize` 采用异步任务模式
+2. `compare`、`understand` 允许先保留同步模式，但接口层预留 `jobId` 扩展位
+3. 前端统一按“若返回 `jobId` 则轮询，否则按同步结果处理”的方式实现
+
+### 11.1.2 任务状态与进度字段建议
+
+建议所有异步任务统一返回如下最小结构：
 
 ```json
 {
-  "templateDocumentIr": {},
-  "sampleDocument": {
-    "fileName": "合同_已签_2023.docx",
-    "contentBase64": "..."
+  "jobId": "job_rec_001",
+  "workflowId": "wf_001",
+  "step": "recognize",
+  "status": "running",
+  "resultStatus": null,
+  "progressPercent": 42,
+  "currentStageText": "正在识别付款条款",
+  "blockProgress": {
+    "totalBlocks": 12,
+    "completedBlocks": 5,
+    "failedBlocks": 1,
+    "runningBlockId": "block_006",
+    "runningBlockTitle": "付款条款"
   },
-  "targetLanguages": ["zh", "ja"]
+  "warnings": [],
+  "resultPreview": {
+    "fieldCount": 8,
+    "lastCompletedBlockId": "block_005"
+  },
+  "error": null
 }
 ```
 
-返回：
+建议约束：
 
-```json
-{
-  "fields": [
-    {
-      "fieldId": "partyAName",
-      "type": "legal_entity_name",
-      "policy": "dictionary_first",
-      "sample": {
-        "zh": "广州日产通商贸易有限公司",
-        "ja": "広州日産通商貿易有限公司"
-      },
-      "confidence": 0.96
-    }
-  ]
-}
-```
+1. `status=queued/running` 时，`resultPreview` 可返回阶段性摘要，但不返回最终可保存的 `fields`。
+2. `status=succeeded` 时，`GET /template/jobs/{jobId}` 可返回最终结果，或返回可获取最终结果的 `analysisId/compareId/understandingId`。
+3. `status=failed` 时，`error` 应至少包含 `code`、`message`、`retryable`。
+4. `status=cancelled` 时，不应再写入新的阶段结果，也不应覆盖前端现有成功缓存。
+
+这里建议显式区分 `status` 与 `resultStatus`：
+
+1. `status` 表示任务执行态，只描述任务是否还在跑、是否结束、是否失败或取消。
+2. `resultStatus` 表示任务结果态，仅在 `status=succeeded` 时出现，用于表达结果质量。
+3. 建议 `resultStatus` 取值为：
+   - `success`：全部关键块成功，结果可直接进入下一步
+   - `partial_success`：存在块失败、局部 fallback 或需人工关注，但仍产出了可用结果
+   - `fallback_success`：AI 主流程整体失败或大面积失败，最终主要依赖规则/启发式结果产出
+
+推荐语义边界如下：
+
+1. 若任务本身执行完成，且已经返回可展示、可确认的 `fields`，则 `status` 应为 `succeeded`，即使其中包含失败块。
+2. 若仅部分块失败，但系统已合并出可用识别结果，则使用 `status=succeeded + resultStatus=partial_success`，而不是 `status=failed`。
+3. 若 AI 主流程不可用，但规则 fallback 成功产出结果，则使用 `status=succeeded + resultStatus=fallback_success`，并在 `contextAnalysis.fallback` 中说明来源。
+4. 只有当任务没有产出可用阶段结果，且前端无法进入下一步时，才使用 `status=failed`。
+5. 前端按钮是否允许继续，建议由 `status + resultStatus + warnings + needsReview` 共同决定，而不是只看 `status`。
 
 ### 11.2 运行时参数生成接口
 
@@ -2038,7 +2822,8 @@ P0 可暂缓内容：
 {
   "templateId": "tpl_sj6113",
   "userInput": "甲方是广州日产通商贸易有限公司，项目是无线网络设备更新，付款方式是一次支付。",
-  "targetLanguages": ["zh", "ja"]
+  "sourceLanguage": "zh",
+  "targetLanguages": ["ja"]
 }
 ```
 
@@ -2063,23 +2848,23 @@ P0 可暂缓内容：
 
 为了避免 P0 开发阶段因接口字段反复变动导致联调成本上升，建议先冻结以下最小 DTO 集合。
 
-#### 11.3.1 `POST /template/analyze`
+#### 11.3.1 `POST /template/compare`
 
 请求体建议：
 
 ```json
 {
+  "workflowId": "wf_001",
   "templateId": "optional_for_update",
   "templateDocumentIr": {},
   "sampleDocument": {
     "fileName": "合同_已签_2023.docx",
     "contentBase64": "..."
   },
-  "sourceLanguage": "zh",
-  "targetLanguages": ["ja"],
   "options": {
-    "enableTermMatch": true,
-    "enableLayoutDetection": true
+    "includeAnchorPosition": true,
+    "includeSegmentText": true,
+    "groupBySection": true
   }
 }
 ```
@@ -2088,6 +2873,124 @@ P0 可暂缓内容：
 
 ```json
 {
+  "workflowId": "wf_001",
+  "compareId": "cmp_001",
+  "candidateFields": [
+    {
+      "candidateId": "fc_001",
+      "sourceBlockId": "p-0032",
+      "anchorText": "乙方指定银行帐号为：",
+      "sampleValue": "6222000000000000",
+      "segmentText": "乙方指定银行帐号为：6222000000000000",
+      "sectionId": "sec-payment-001",
+      "sectionTitle": "付款条款",
+      "fieldTypeHint": "bank_account",
+      "confidence": 0.95
+    }
+  ],
+  "compareSummary": {
+    "candidateCount": 12,
+    "sectionCount": 5,
+    "warnings": []
+  },
+  "cacheStatus": {
+    "compareHit": false
+  }
+}
+```
+
+#### 11.3.2 `POST /template/understand`
+
+请求体建议：
+
+```json
+{
+  "workflowId": "wf_001",
+  "templateId": "optional_for_update",
+  "templateDocumentIr": {},
+  "sampleDocument": {
+    "fileName": "合同_已签_2023.docx",
+    "contentBase64": "..."
+  },
+  "candidateFields": [],
+  "options": {
+    "enableEntityGraph": true,
+    "enableSectionSummary": true,
+    "enableTerminologyHints": true
+  }
+}
+```
+
+返回体建议：
+
+```json
+{
+  "workflowId": "wf_001",
+  "understandingId": "und_001",
+  "understandingSummary": {
+    "documentTitle": "技术服务合同",
+    "understandingSummaryText": "这是一份以服务范围、付款和验收为核心的合同模板。",
+    "sectionHints": ["合同头部", "付款条款", "验收"],
+    "terminologyCandidates": ["项目名称", "付款方式"],
+    "layoutFeatures": ["paired_paragraphs", "tables:2"]
+  },
+  "sectionSummaries": [
+    {
+      "sectionId": "sec-payment-001",
+      "sectionTitle": "付款条款",
+      "summary": "本章节主要涉及付款方式、付款期限和收款账户。"
+    }
+  ],
+  "entityGraph": {
+    "entities": ["甲方", "乙方", "项目名称", "付款方式", "银行账号"],
+    "relations": ["甲方-付款给-乙方", "付款方式-约束-付款期限"]
+  },
+  "warnings": [],
+  "cacheStatus": {
+    "understandingHit": false
+  }
+}
+```
+
+#### 11.3.3 `POST /template/recognize`
+
+请求体建议：
+
+```json
+{
+  "workflowId": "wf_001",
+  "templateId": "optional_for_update",
+  "templateDocumentIr": {},
+  "sampleDocument": {
+    "fileName": "合同_已签_2023.docx",
+    "contentBase64": "..."
+  },
+  "candidateFields": [],
+  "understandingSummary": {
+    "documentTitle": "技术服务合同",
+    "understandingSummaryText": "这是一份中日双语技术服务合同，已识别出合同头部、服务内容、付款条款、验收等主要章节。",
+    "sectionHints": ["技术服务合同", "验收"],
+    "terminologyCandidates": ["项目名称", "付款方式"],
+    "layoutFeatures": ["paired_paragraphs", "tables:2"]
+  },
+  "languageProfile": {
+    "sourceLanguage": "zh",
+    "targetLanguages": ["ja"],
+    "documentMode": "single_or_bilingual"
+  },
+  "options": {
+    "enableTermMatch": true,
+    "enableLayoutDetection": true,
+    "enableAiRecognition": true
+  }
+}
+```
+
+返回体建议：
+
+```json
+{
+  "workflowId": "wf_001",
   "analysisId": "ana_001",
   "languageProfile": {
     "sourceLanguage": "zh",
@@ -2110,26 +3013,150 @@ P0 可暂缓内容：
         "scope": "tenant"
       },
       "confidence": 0.96,
-      "needsReview": false
+      "needsReview": false,
+      "sourceBlockId": "block_001"
     }
   ],
-  "warnings": []
+  "blockResults": [
+    {
+      "blockId": "block_001",
+      "blockType": "paired_paragraphs",
+      "title": "合同头部与主体信息",
+      "sectionId": "sec-header-001",
+      "sectionTitle": "合同头部",
+      "aiCallSucceeded": true,
+      "resultStatus": "success",
+      "suggestionCount": 3,
+      "retryCount": 1,
+      "durationMs": 2840,
+      "errorCode": null,
+      "fallback": null,
+      "fallbackReason": null,
+      "warnings": []
+    }
+  ],
+  "contextAnalysis": {
+    "usedAI": true,
+    "globalUnderstandingUsedAI": true,
+    "resultSource": "ai+rule_fallback",
+    "requestTrace": {
+      "executor": "studio",
+      "promptTemplateVersion": "word-recognize-v2",
+      "requestCount": 12,
+      "lastRequestSummary": "当前块为合同头部与主体信息，候选数 3"
+    },
+    "responseTrace": {
+      "successBlockCount": 11,
+      "failedBlockCount": 1,
+      "lastResponseSummary": "最近一次返回 3 个字段建议"
+    },
+    "fallbackTrace": {
+      "usedFallback": false,
+      "fallbackLevel": null,
+      "fallbackReason": null,
+      "fallbackBlockIds": []
+    },
+    "cacheTrace": {
+      "compareHit": false,
+      "understandingHit": true,
+      "recognitionHit": false
+    },
+    "debugArtifacts": {
+      "promptRequestText": "当前块的 AI 请求原文",
+      "rawAiResponse": "当前块的 AI 原始返回"
+    }
+  },
+  "warnings": [],
+  "cacheStatus": {
+    "recognitionHit": false
+  }
 }
 ```
 
 P0 必填字段建议：
 
+- `workflowId`
 - `templateDocumentIr`
-- `sourceLanguage`
 - `sampleDocument.contentBase64`
+- `candidateFields`
+- `understandingSummary`
+- `languageProfile.sourceLanguage`
 
 P0 可选字段建议：
 
 - `templateId`
-- `targetLanguages`
 - `options`
 
-#### 11.3.2 `POST /template/save`
+返回体补充约束建议：
+
+1. `fields` 为最终合并后的字段建议，供前端确认表格直接消费。
+2. `blockResults` 用于展示块级进度、块级召回情况和失败定位，不直接作为最终保存结构。
+3. `contextAnalysis` 应至少拆分为 `requestTrace`、`responseTrace`、`fallbackTrace`、`cacheTrace`、`debugArtifacts` 五个子结构。
+4. `debugArtifacts.promptRequestText` 与 `debugArtifacts.rawAiResponse` 至少应保留最近一次有效块级调用内容，便于调试。
+5. 若 AI 调用失败但规则兜底产出结果，应通过 `contextAnalysis.fallbackTrace` 明确说明。
+6. `blockResults` 中应至少补齐 `resultStatus`、`retryCount`、`durationMs`、`errorCode`、`fallbackReason`，便于前端调试面板和后端观测统一消费。
+
+#### 11.3.3.1 `GET /template/jobs/{jobId}`
+
+返回体建议：
+
+```json
+{
+  "jobId": "job_rec_001",
+  "workflowId": "wf_001",
+  "step": "recognize",
+  "status": "running",
+  "resultStatus": null,
+  "progressPercent": 42,
+  "currentStageText": "正在识别付款条款",
+  "blockProgress": {
+    "totalBlocks": 12,
+    "completedBlocks": 5,
+    "failedBlocks": 1,
+    "runningBlockId": "block_006",
+    "runningBlockTitle": "付款条款",
+    "lastCompletedBlockId": "block_005"
+  },
+  "warnings": [],
+  "error": null
+}
+```
+
+P0 建议约束：
+
+1. 至少支持查询 `recognize` 任务进度。
+2. `progressPercent` 建议由块级完成比例和阶段内固定步骤共同计算，不要求绝对精确，但应单调递增。
+3. 若任务已完成，允许在同一个查询接口中附带最终 `analysisId` 或最终 `fields` 摘要。
+4. 若任务已完成且存在局部失败，应返回 `status=succeeded` 与 `resultStatus=partial_success`，并在 `blockProgress` 或 `warnings` 中说明失败块。
+
+#### 11.3.3.2 `POST /template/jobs/{jobId}/cancel`
+
+请求体建议：
+
+```json
+{
+  "workflowId": "wf_001",
+  "reason": "user_reupload_sample_or_change_language"
+}
+```
+
+返回体建议：
+
+```json
+{
+  "jobId": "job_rec_001",
+  "workflowId": "wf_001",
+  "status": "cancelled"
+}
+```
+
+P0 建议约束：
+
+1. 至少支持取消仍处于 `queued/running` 的 `recognize` 任务。
+2. 取消成功后，不应再回写新的块级识别结果。
+3. 若任务已结束，再调用取消接口应返回幂等结果，而不是报系统异常。
+
+#### 11.3.4 `POST /template/save`
 
 请求体建议：
 
@@ -2166,8 +3193,9 @@ P0 约束建议：
 2. `templateMeta.sourceLanguage` 必填。
 3. 若 `targetLanguages` 为空，则按单语言模板处理。
 4. `saveMode=publish` 时必须先通过基础校验。
+5. `templateFieldSpecs` 应来自字段确认后的 `TemplateFieldSpecDraft[]`，而不是直接把 `template/recognize` 的原始 `fields` 不加转换地透传保存。
 
-#### 11.3.3 `POST /template/render-data`
+#### 11.3.5 `POST /template/render-data`
 
 请求体建议：
 
@@ -2345,7 +3373,7 @@ TemplateMeta.currentVersion
 
 1. 提取当前 Word 文档并生成 `templateDocumentIr`。
 2. 负责样本上传、字段确认、风险提示和模板保存交互。
-3. 调用后端接口并展示 `warnings`、`missingFields`、`needsReviewFields`。
+3. 调用后端接口并展示 `warnings`、`missingFields`、`needsReviewFields`、异步任务进度与块级状态。
 4. 不在前端实现字段命名、术语命中和渲染编译逻辑。
 
 建议不要放在前端的逻辑：
@@ -2359,7 +3387,7 @@ TemplateMeta.currentVersion
 
 建议职责：
 
-1. 作为统一 API 入口，承接 `template/analyze`、`template/save`、`template/render-data`。
+1. 作为统一 AI 调用入口，承接整体理解与块级参数识别所需的 prompt 请求。
 2. 编排模板分析服务、运行时生成服务、术语服务和渲染服务。
 3. 负责组装统一响应结构和错误码。
 4. 不承载复杂领域规则本体，只做编排和聚合。
@@ -2375,9 +3403,10 @@ TemplateMeta.currentVersion
 建议职责：
 
 1. 样本文档规范化与 `DocumentIR` 解析。
-2. 文档结构对齐、布局识别、字段候选发现。
-3. 字段命名建议、字段类型建议、置信度打分。
-4. 输出 `FieldCandidateIR` 和字段分析结果。
+2. 文档结构对齐、布局识别、块级切分与整体理解上下文生成。
+3. 为整体理解和块级参数识别构造 AI prompt，并调用 AI Orchestrator。
+4. 合并 AI 返回结果，完成字段命名建议、字段类型建议、置信度打分与规则兜底。
+5. 输出 `FieldCandidateIR` 和字段分析结果。
 
 核心输入：
 
@@ -2451,7 +3480,7 @@ draft
 
 建议补充规则：
 
-1. `draft -> analyzed`：成功完成 `template/analyze`。
+1. `draft -> analyzed`：成功完成 `template/understand` 或 `template/recognize` 的首次分析。
 2. `analyzed -> reviewing`：字段建议已返回，等待人工确认。
 3. `reviewing -> ready`：`template/save` 成功且编译出合法 `CarboneBindingPlan`。
 4. `ready -> published`：通过发布校验并执行发布动作。
@@ -2475,6 +3504,7 @@ draft
 
 - `TPL_`：模板分析与模板保存相关
 - `DOC_`：文档解析与 `DocumentIR` 相关
+- `JOB_`：异步任务提交、查询、取消与任务状态相关
 - `TERM_`：术语、枚举、格式规则相关
 - `GEN_`：运行时字段生成相关
 - `RND_`：Carbone 渲染相关
@@ -2488,6 +3518,11 @@ draft
 | `DOC_001` | 样本文档解析失败 | 返回错误并保留上传重试 |
 | `DOC_002` | `DocumentIR` 结构不合法 | 记录日志并阻止分析 |
 | `DOC_003` | 布局识别失败 | 降级为基础识别，并返回 `warnings` |
+| `JOB_001` | `jobId` 不存在或已过期 | 返回任务不存在，提示前端刷新当前工作流 |
+| `JOB_002` | 任务状态不允许取消 | 返回幂等结果或提示任务已结束 |
+| `JOB_003` | 任务被新工作流输入淘汰 | 返回已失效，提示重新发起当前步骤 |
+| `JOB_004` | 任务执行超时 | 返回可重试错误，并保留已完成阶段摘要 |
+| `JOB_005` | 块级部分失败但整体可用 | 不阻断流程，返回 `status=succeeded + resultStatus=partial_success` |
 | `TERM_001` | 术语未命中 | 返回 `needsReviewFields`，不静默翻译 |
 | `TERM_002` | 枚举未命中 | 返回人工确认建议值 |
 | `TERM_003` | 格式规则缺失 | 降级为默认格式并返回告警 |
@@ -2506,6 +3541,13 @@ draft
 3. 模板结构错误、绑定计划错误、渲染失败属于阻断型错误，不应静默继续。
 4. 术语未命中可回退到人工确认，但不能直接替换为自由翻译结果。
 
+针对异步任务补充约束：
+
+1. 任务超时、网络中断、单块 AI 失败等可恢复场景，应尽量返回 `retryable=true`。
+2. 已有阶段性结果且可继续人工确认的场景，应优先返回 `partial_success`，而不是简单标记整个任务失败。
+3. 若任务被用户取消或被新输入淘汰，应明确区分 `cancelled` 与 `JOB_003`，避免前端误以为是系统异常。
+4. `fallback_success` 不是静默降级，必须通过 `warnings`、`contextAnalysis.fallback` 或 `resultStatus` 对前端显式暴露。
+
 ### 11.8 推荐实现顺序
 
 为了让这份文档可直接指导代码落地，建议开发顺序与模块依赖保持一致。
@@ -2514,18 +3556,23 @@ draft
 
 1. 定义 `TemplateMeta`、`TemplateFieldSpec`、`CarboneBindingPlan` 持久化模型。
 2. 实现 `template/save` 所需的最小保存与版本管理能力。
-3. 实现 `template/analyze` 的最小分析链路。
-4. 实现 `template/render-data` 的最小生成链路。
-5. 接入 Carbone 渲染。
-6. 最后补术语增强、复杂版式识别和多样本增强。
+3. 实现 `template/compare` 的最小文档对比链路，稳定生成待定参数候选池。
+4. 实现 `template/understand` 的最小 AI 全局理解链路。
+5. 实现 `template/recognize` 的最小按章节 AI 识别链路。
+6. 实现 `template/render-data` 的最小生成链路。
+7. 接入 Carbone 渲染。
+8. 最后补术语增强、复杂版式识别和多样本增强。
 
 #### 11.8.2 前端优先顺序
 
-1. 样本上传与分析触发
-2. 字段建议结果展示
-3. 字段确认与保存
-4. 渲染预览与错误展示
-5. 风险字段确认增强
+1. 样本上传与模板对比触发
+2. 待定参数候选结果展示
+3. AI 全局理解结果展示
+4. 语言补充与确认
+5. 字段建议结果展示
+6. 字段确认与保存
+7. 渲染预览与错误展示
+8. 风险字段确认增强
 
 #### 11.8.3 联调检查清单
 
@@ -2552,6 +3599,7 @@ draft
 - 支持主体名称、项目名称、金额、付款方式、银行账号等关键字段
 - 打通样本文档规范化和 `DocumentIR` 解析链路
 - 支持最基础的 `paired_paragraphs` 布局识别
+- 打通“对比候选发现 -> 全局理解 -> 语言补充 -> 按章节识别”的建模主链路
 
 #### 12.1.1 P0 范围边界
 
@@ -2567,17 +3615,26 @@ draft
 
 P0 前端建议拆成以下任务：
 
-1. 增加“真实样本上传”入口，支持选择 1 份 `docx` 样本。
-2. 增加“模板分析”触发入口，提交当前模板的 `DocumentIR` 与样本文件。
-3. 增加字段识别结果页，展示 `fieldId`、类型、样本值、策略、置信度。
-4. 增加人工确认表单，允许修改字段名、字段类型、策略和必填属性。
-5. 增加模板保存动作，提交 `TemplateFieldSpec` 和模板元数据。
+1. 调整 Word 页主布局，使第一步成为“真实样本上传”，支持选择 1 份 `docx` 样本。
+2. 增加“模板对比”触发入口，对当前模板与样本执行结构化对比，生成待定参数候选池。
+3. 增加“AI 全局理解”触发入口，基于真实原文和候选池执行全局内容理解。
+4. 增加语言配置区，要求在整体理解完成后补充默认中文、中文 -> 日文、中文 -> 英文等配置。
+5. 增加“参数识别”触发入口，在语言补充完成后再执行 AI 驱动的按章节字段识别。
+6. 增加块级识别结果页，展示当前章节/段落块/表格块的 AI 建议、字段来源上下文、置信度与风险。
+7. 增加字段识别结果页，汇总 `fieldId`、类型、样本值、策略、置信度与来源块。
+8. 增加人工确认表单，允许修改字段名、字段类型、策略和必填属性。
+9. 增加“应用参数”“生成 AI 指南”“保存模板”动作，串起识别后的产出闭环。
 
 前端交付物建议包括：
 
-- 模板分析页
+- 五步式 Word 模板分析页
 - 样本上传组件
+- 模板对比与待定参数候选组件
+- 整体理解摘要卡片
+- 语言配置组件
+- 块级识别进度与结果组件
 - 字段确认表格
+- 参数应用与 AI 指南组件
 - 模板保存请求模型
 
 #### 12.1.3 工作流 B：模板分析服务
@@ -2587,10 +3644,13 @@ P0 后端模板分析链路建议拆成以下任务：
 1. 接收当前模板 `DocumentIR` 和 1 份样本文档。
 2. 完成样本文档规范化，包括控制字符、翻译残留标记、空白占位清洗。
 3. 将样本文档解析为统一 `DocumentIR`。
-4. 实现基础块级对齐，仅支持标题和相邻段落级顺序对齐。
-5. 实现字段候选发现，覆盖下划线、空白区、内容控件、简单表格单元格。
-6. 基于锚点词典和文本特征输出 `FieldCandidateIR`。
-7. 输出字段建议结果，供前端确认和模板保存。
+4. 实现模板与样本的结构化对比链路，先产出待定参数候选池以及位置、语段、章节归属。
+5. 实现 AI 全局理解链路：基于真实原文、候选池、布局线索生成 `understandingSummary`、`sectionSummaries` 和 `entityGraph`。
+6. 实现基础块级切分与对齐，仅支持标题、相邻段落和简单表格区域的可解释分块。
+7. 为每个块生成结构锚点、字段候选、术语命中、版式特征等 AI 提示上下文。
+8. 实现块级 AI 识别链路，对每个章节块循环调用 AI 生成字段建议。
+9. 在服务端合并块级结果，完成字段去重、命名归一、风险标记、一致性校验与规则兜底。
+10. 输出最终字段建议结果，供前端确认、应用参数、生成 AI 指南和模板保存。
 
 P0 必须先稳定支持的字段类型：
 
@@ -2644,7 +3704,8 @@ P0 资产侧建议拆成以下任务：
 2. 建立单语言可复用的基础术语库，并补齐中日双语术语映射结构。
 3. 建立 `paymentMode` 等关键枚举映射表。
 4. 建立金额、日期的基础格式规则配置。
-5. 在运行时返回结果中记录最小来源信息，如 `matchedTermId` 或 `resolution`。
+5. 为整体理解与块级识别补充提示模板，使字段词典、术语库、枚举映射可直接作为 AI prompt 上下文输入。
+6. 在运行时返回结果中记录最小来源信息，如 `matchedTermId`、`sourceBlockId` 或 `resolution`。
 
 P0 首批建议预置的资产范围：
 
@@ -2662,10 +3723,11 @@ P0 不建议一开始追求大而全测试集，建议围绕关键闭环做小�
 
 1. 准备 1 份单语言样本和 1 到 2 份中日双语合同模板样本。
 2. 准备对应的空白模板和真实样本文档。
-3. 验证字段识别结果是否能正确命中首批字段。
-4. 验证中文输入后是否能生成正确的单语言或中日变量 JSON。
-5. 验证 Carbone 渲染出的文档中关键字段是否落位正确。
-6. 验证金额、公司名、银行账号等高风险字段在缺失或冲突时能被拦截。
+3. 验证整体理解摘要是否能稳定输出章节结构、语言分布、术语候选与版式特征。
+4. 验证 AI 参数识别结果是否能正确命中首批字段，并能保留块级来源上下文。
+5. 验证中文输入后是否能生成正确的单语言或中日变量 JSON。
+6. 验证 Carbone 渲染出的文档中关键字段是否落位正确。
+7. 验证金额、公司名、银行账号等高风险字段在缺失或冲突时能被拦截。
 
 建议至少准备三类测试样例：
 
@@ -2677,20 +3739,113 @@ P0 不建议一开始追求大而全测试集，建议围绕关键闭环做小�
 
 如果按串联依赖拆分，建议里程碑如下：
 
-1. M1：打通模板 `DocumentIR` + 样本文档解析 + 字段候选输出。
-2. M2：打通字段确认保存 + `TemplateFieldSpec` 持久化 + 映射编译。
-3. M3：打通中文输入生成 + 术语/枚举/格式规则命中 + Carbone 渲染。
-4. M4：完成 P0 样例验收和高风险字段拦截。
+1. M1：打通模板 `DocumentIR` + 样本文档解析 + AI 整体理解摘要输出。
+2. M2：打通块级切分 + 块级 AI 参数识别 + 结果合并与规则兜底。
+3. M3：打通字段确认保存 + `TemplateFieldSpec` 持久化 + 映射编译。
+4. M4：打通中文输入生成 + 术语/枚举/格式规则命中 + Carbone 渲染，并完成 P0 样例验收和高风险字段拦截。
 
 #### 12.1.9 P0 完成判定
 
 建议将“P0 完成”定义为以下条件同时满足：
 
-1. 用户可在 Add-in 中上传 1 份真实样本并得到字段建议结果。
-2. 用户可确认并保存不少于 6 个关键字段定义。
-3. 系统可基于中文输入生成单语言渲染 JSON，并在双语模板下生成中日双语渲染 JSON。
-4. Carbone 可成功渲染至少 1 份真实合同模板。
-5. 金额、公司名、银行账号三类高风险字段具备基础校验和人工确认能力。
+1. 用户可在 Add-in 中上传 1 份真实样本，并成功进入整体理解阶段。
+2. 用户可基于模板 + 样本获得一份全局理解摘要，并完成语言配置。
+3. 用户可在整体理解之后触发 AI 参数识别，并得到带来源上下文的字段建议结果。
+4. 用户可确认保存不少于 6 个关键字段定义。
+5. 系统可基于中文输入生成单语言渲染 JSON，并在双语模板下生成中日或中英渲染 JSON。
+6. Carbone 可成功渲染至少 1 份真实合同模板。
+7. 金额、公司名、银行账号三类高风险字段具备基础校验和人工确认能力。
+
+#### 12.1.10 目标设计与现有实现差距
+
+为避免设计文档与当前代码实现脱节，建议明确记录当前主链路与目标设计之间的差距：
+
+1. 当前 Word 三步式页面已经拆出“整体理解”和“参数识别”两个阶段，但第三步后端仍以规则识别为主，尚未切换为块级 AI 识别主流程。
+2. 当前整体理解阶段已能调用 AI 生成 `understandingSummary`，但该摘要尚未作为第三步块级识别的强约束上下文传入完整 AI 识别链路。
+3. 当前第三步尚缺少“先基于模板数据和上传真实数据发现待定参数候选，再按章节识别”的独立中间层，导致 AI prompt 仍偏向从零开始自由发现字段。
+4. 当前 Word 工作流接口仍偏向返回合并后的 `fields`，缺少面向前端展示的 `blockResults`、块级调试信息和块级失败回退信息。
+5. 当前前端虽然已有 `analysisExecutor`、`thinking`、`useMultiStage` 等配置，但 Word 工作流接口尚未完整消费这些配置，未真正接入类似 Excel 的“全局理解缓存 + executor 驱动分块调用 + 重试回退”识别方式。
+6. 当前字段词典、术语库、枚举映射主要用于规则命中和运行时生成，尚未系统化地转化为整体理解与块级识别的 prompt 组成部分。
+7. 当前调试信息主要覆盖整体理解阶段，参数识别阶段尚缺少“每个块发送给 AI 的请求原文、原始返回、失败原因、重试情况、fallback 原因”的统一记录结构。
+8. 当前风险标记、`needsReview` 与字段置信度更多来自规则分析；切换到 AI 主流程后，需要重新定义 AI 置信度、规则校验结果与人工确认优先级之间的合并规则。
+
+建议按以下顺序补齐差距：
+
+1. 先在 `template/recognize` 中引入待定参数候选发现步骤，并把候选的位置、语段、章节信息纳入上下文结构。
+2. 再补齐 `understandingSummary + blockResults + contextAnalysis` 的完整返回结构。
+3. 然后实现按章节切分与块级 AI 调用闭环，保证第三步真正变为 AI 主驱动。
+4. 再把字段词典、术语库、枚举映射纳入 prompt 组装逻辑，并保留规则兜底。
+5. 最后补齐前端块级进度展示、调试日志、失败回退展示和人工确认体验。
+
+#### 12.1.11 代码改造清单
+
+为便于从设计直接落到代码，建议按现有仓库结构拆分如下改造清单。
+
+前端 Add-in：
+
+1. 调整 `apps/frontend/office-addin/src/components/WordIdentifyPanel.tsx`，使第三步从“直接请求合并后的字段结果”升级为“展示块级 AI 识别进度 + 汇总最终字段结果”。
+2. 在 `WordIdentifyPanel.tsx` 中增加块级状态视图，包括 `blockResults`、当前识别中的块、块级错误与块级重试提示。
+3. 调整 `apps/frontend/office-addin/src/api/carbone-api.ts` 的 `recognizeTemplateWorkflow()` 类型定义，补充 `blockResults`、`contextAnalysis`、`sourceBlockId` 等字段。
+4. 在 `apps/frontend/office-addin/src/components/AIIdentifyPanel/useAIIdentifyPanel.ts` 中补充 Word 模式下的调试展示逻辑，使其能输出识别阶段的 prompt、原始返回、块级重试与回退信息。
+5. 参考 `apps/frontend/office-addin/src/components/ExcelSheetPairsTab.tsx` 与 `apps/frontend/office-addin/src/services/suggestion-service.ts`，为 Word 模式补齐“全局理解缓存 + 分块识别进度 + 调试日志”的一致体验。
+
+后端接口层：
+
+1. 调整 `apps/backend/domain/carbone-engine/src/modules/studio/studio.controller.ts` 中 `POST /template/recognize` 的 DTO 与返回结构，显式支持 `understandingSummary` 输入。
+2. 为 `template/recognize` 返回体补充 `blockResults`、结构化 `contextAnalysis`、`sourceBlockId` 等字段，保证前端能显示 AI 主流程与规则兜底的来源差异。
+3. 保持 `POST /template/understand` 与 `POST /template/recognize` 的职责分离：前者负责全局理解，后者负责块级 AI 参数识别。
+
+后端模板分析服务：
+
+1. 重构 `apps/backend/domain/carbone-engine/src/modules/studio/template-workflow.service.ts`，将当前以 `discoverFields()` 为主的第三步识别链路拆成：
+   - 待定参数候选发现
+   - 块级切分
+   - 块级 prompt 组装
+   - 块级 AI 调用
+   - 结果合并
+   - 规则校验与兜底
+2. 保留现有 `discoverFields()`、词典匹配、术语命中逻辑，但其职责从“主识别器”调整为“提示生成器、校验器和 fallback 生成器”。
+3. 在 `template-workflow.service.ts` 中新增待定参数候选结构，至少包含 `candidateId`、`sourceBlockId`、`anchorText`、`sampleValue`、`segmentText`、`sectionId`、`fieldTypeHint`。
+4. 在 `template-workflow.service.ts` 中新增块级识别结果结构，至少包含 `blockId`、`blockType`、`title`、`sectionId`、`sectionTitle`、`aiCallSucceeded`、`resultStatus`、`suggestionCount`、`retryCount`、`durationMs`、`errorCode`、`fallback`、`fallbackReason`、`warnings`。
+5. 在结果合并阶段实现字段去重、命名归一、跨块冲突消解、风险标记和 `needsReview` 生成规则。
+
+AI 调用与 Prompt：
+
+1. 在 `template-workflow.service.ts` 中新增 Word 块级识别 prompt 构造器，输入应至少包含：
+   - `understandingSummary`
+   - 当前章节标题 / 章节摘要
+   - 当前块命中的待定参数候选列表
+   - 当前块正文
+   - 结构锚点提示
+   - 字段词典提示
+   - 术语命中提示
+   - 样本文本摘录
+   - 候选参数的位置、语段、样本值和字段类型提示
+2. 保持整体理解 prompt 与块级识别 prompt 分离，避免一个 prompt 同时承担“全局理解”和“字段生成”两种职责。
+3. 统一 AI 响应解析策略，支持标准 JSON、轻度格式污染修复和失败重试，并把每次调用的请求摘要、响应摘要、fallback 信息与最近一次有效请求原文/原始返回写入结构化 `contextAnalysis`。
+4. 如需复用 Excel 的 executor 经验，可参考 `apps/frontend/office-addin/src/services/analysis-executor.ts` 的 `ChatAnalysisExecutor` 行为，但 Word 工作流应优先在后端集中管理 prompt 和重试策略。
+
+术语与规则资产：
+
+1. 梳理字段词典、术语库、枚举映射在 `template-workflow.service.ts` 中的使用路径，将其拆分为“prompt 输入”和“后处理校验”两个阶段。
+2. 对金额、日期、银行账号、公司名等高风险字段保留规则型二次校验，避免 AI 返回直接进入可保存状态。
+3. 在字段结果中保留 `matchedTermId`、`resolution`、`sourceBlockId` 等来源信息，便于调试与人工确认。
+
+调试与观测：
+
+1. 扩展当前 Word 调试日志，使“整体理解”和“参数识别”都能记录结构化 `contextAnalysis`，至少覆盖 `requestTrace`、`responseTrace`、`fallbackTrace`、`cacheTrace`、`debugArtifacts`。
+2. 为块级识别补充最小观测字段：块数量、成功块数、失败块数、重试次数、fallback 原因。
+3. 在失败场景中区分：
+   - 整体理解失败但可回退为规则摘要
+   - 单个块 AI 失败但整体识别可继续
+   - 全量块失败，只能回退为规则识别结果
+
+测试与验收：
+
+1. 为 `template-workflow.service.ts` 增加针对块级识别合并逻辑的单元测试。
+2. 为 `studio.controller.ts` 增加 `template/recognize` 响应结构测试，确保 `blockResults` 与 `contextAnalysis` 不会被遗漏。
+3. 增加至少一条从 Word Add-in 到 `template/understand -> template/recognize -> template/save` 的集成链路测试。
+4. 准备带中日双语段落、简单表格、噪音样本的验收样例，验证 AI 主流程与规则兜底都能稳定工作。
 
 ### 12.2 P1：增强字段识别与人工确认
 

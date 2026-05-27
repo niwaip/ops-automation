@@ -8,7 +8,7 @@
   <Version>1.0.0</Version>
   <ProviderName>Carbone</ProviderName>
   <DefaultLocale>en-US</DefaultLocale>
-  <DisplayName DefaultValue="Carbone Template Assistant"/>
+  <DisplayName DefaultValue="Carbone Template Assistant for Word"/>
   <Description DefaultValue="AI-assisted Carbone template generator for Word"/>
   <IconUrl DefaultValue="https://localhost:3000/assets/icon-32.png"/>
   <HighResolutionIconUrl DefaultValue="https://localhost:3000/assets/icon-64.png"/>
@@ -88,7 +88,7 @@
         <bt:String id="GetStarted.Title" DefaultValue="Welcome to Carbone Template Assistant"/>
         <bt:String id="Group.Label" DefaultValue="Carbone"/>
         <bt:String id="TaskpaneButton.Label" DefaultValue="Carbone Assistant"/>
-        <bt:String id="TaskpaneButton.Title" DefaultValue="Open Carbone Template Assistant"/>
+        <bt:String id="TaskpaneButton.Title" DefaultValue="Open Carbone Template Assistant for Word"/>
       </bt:ShortStrings>
       <bt:LongStrings>
         <bt:String id="GetStarted.Description" DefaultValue="AI-powered document analysis and template generation"/>

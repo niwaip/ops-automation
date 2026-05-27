@@ -1755,7 +1755,7 @@ function summarizeSuggestionSources(suggestions: AISuggestion[]): {
   };
 }
 
-function enrichWordSuggestionAnchors(documentIR: DocumentIR, suggestions: AISuggestion[]): AISuggestion[] {
+export function enrichWordSuggestionAnchors(documentIR: DocumentIR, suggestions: AISuggestion[]): AISuggestion[] {
   const contentControlAnchors = documentIR.anchors.filter((anchor) => anchor.type === 'word-content-control');
   const tableCellAnchors = documentIR.anchors.filter(
     (anchor) => anchor.type === 'word-range' && anchor.ref?.anchorSource === 'table-cell'

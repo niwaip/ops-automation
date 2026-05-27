@@ -2,8 +2,9 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { OfficeHelper } from '../utils/office-api';
 import { ExcelSheetPairState, useAppStore } from '../taskpane/store';
 import { analyzeExcelWorkbookUnderstanding } from '../services/suggestion-service';
+import { getHostScopedStorageKey } from '../utils/host-storage';
 
-const EXCEL_UNDERSTANDING_CACHE_STORAGE_KEY = 'office-addin:excel-understanding-cache:v1';
+const EXCEL_UNDERSTANDING_CACHE_STORAGE_KEY = getHostScopedStorageKey('excel', 'understanding-cache:v1');
 
 interface ExcelUnderstandingCacheEntry {
   cacheKey: string;

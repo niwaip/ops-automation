@@ -1,9 +1,11 @@
 import { useState } from 'react';
 import { carboneAPI } from '../api/carbone-api';
 import { buildPreviewData, getUploadedFileFormat } from './TemplateConfigPanel.helpers';
+import { getHostScopedStorageKey, type ScopedOfficeHost } from '../utils/host-storage';
 
 interface UseTemplateWorkflowProps {
   apiBaseUrl: string;
+  officeType: ScopedOfficeHost;
   templateConfig: any;
   suggestions: any[];
   templateName: string;
@@ -15,6 +17,7 @@ interface UseTemplateWorkflowProps {
 
 export function useTemplateWorkflow({
   apiBaseUrl,
+  officeType,
   templateConfig,
   suggestions,
   templateName,
@@ -23,6 +26,9 @@ export function useTemplateWorkflow({
   addDebugLog,
   loadTemplateSource,
 }: UseTemplateWorkflowProps) {
+  const lastTemplateIdKey = getHostScopedStorageKey(officeType, 'lastTemplateId');
+  const lastTemplateDownloadUrlKey = getHostScopedStorageKey(officeType, 'lastTemplateDownloadUrl');
+  const lastSkillIdKey = getHostScopedStorageKey(officeType, 'lastSkillId');
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
   const [validationWarnings, setValidationWarnings] = useState<string[]>([]);
   const [previewData, setPreviewData] = useState<Record<string, any>>({});
@@ -124,9 +130,9 @@ export function useTemplateWorkflow({
 
       if (result.success) {
         setStatusMessage(`完整模板保存成功！模板ID: ${result.templateId}`);
-        localStorage.setItem('lastTemplateId', result.templateId || '');
-        localStorage.setItem('lastTemplateDownloadUrl', result.downloadUrl || '');
-        localStorage.setItem('lastSkillId', result.skillId || '');
+        localStorage.setItem(lastTemplateIdKey, result.templateId || '');
+        localStorage.setItem(lastTemplateDownloadUrlKey, result.downloadUrl || '');
+        localStorage.setItem(lastSkillIdKey, result.skillId || '');
         console.log('保存结果:', result);
       } else {
         setStatusMessage(`保存失败: ${result.error || '未知错误'}`);
@@ -209,8 +215,8 @@ export function useTemplateWorkflow({
       if (result.success) {
         setStatusMessage(`模板生成成功！模板ID: ${result.templateId || '未知'}`);
         if (result.templateId) {
-          localStorage.setItem('lastTemplateId', result.templateId);
-          localStorage.setItem('lastTemplateDownloadUrl', result.downloadUrl || '');
+          localStorage.setItem(lastTemplateIdKey, result.templateId);
+          localStorage.setItem(lastTemplateDownloadUrlKey, result.downloadUrl || '');
         }
         console.log('生成的模板:', result);
       } else {
@@ -249,7 +255,7 @@ export function useTemplateWorkflow({
         setGeneratedSkill(result.skill);
         setCurrentStep(3);
         setStatusMessage(`AI指南生成成功！包含 ${result.skill.parameters?.length || 0} 个变量`);
-        localStorage.setItem('lastSkillId', result.skillId || '');
+        localStorage.setItem(lastSkillIdKey, result.skillId || '');
         console.log('生成的Skill:', result.skill);
       } else {
         setStatusMessage(`AI指南生成失败: ${result.error || '未知错误'}`);
@@ -351,9 +357,9 @@ export function useTemplateWorkflow({
 
       if (result.success) {
         setStatusMessage(`完整模板保存成功！模板ID: ${result.templateId}`);
-        localStorage.setItem('lastTemplateId', result.templateId || '');
-        localStorage.setItem('lastTemplateDownloadUrl', result.downloadUrl || '');
-        localStorage.setItem('lastSkillId', result.skillId || '');
+        localStorage.setItem(lastTemplateIdKey, result.templateId || '');
+        localStorage.setItem(lastTemplateDownloadUrlKey, result.downloadUrl || '');
+        localStorage.setItem(lastSkillIdKey, result.skillId || '');
         console.log('保存结果:', result);
       } else {
         setStatusMessage(`保存失败: ${result.error || '未知错误'}`);
