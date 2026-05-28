@@ -121,9 +121,10 @@ export function buildWordSectionAnalysisChatPrompt(request: StructuredAnalyzeReq
    - \`suggestedName\` 必须是带业务语义的英文 ASCII 路径，例如 \`d.payment.days\`、\`d.contract.amount\`。
    - 严禁把整句话拼音或直译作为变量名，必须围绕 \`parameterSlot\` 中 \`[参数]\` 所在位置的真实业务含义来命名。
 4. 双语字段处理：
-   - bilingualGroups 中属于同一组的中日候选，必须使用相同的基准路径，仅以后缀区分。
-   - 中文使用 \`_cn\`（如 \`d.fee.totalAmount_cn\`），日文使用 \`_jp\`（如 \`d.fee.totalAmount_jp\`）。
-   - 不要把同一业务含义拆成两个无关路径。
+   - 如果模板本身就是中日两个独立占位符，允许为同一业务含义生成成对的 \`_cn\` / \`_jp\` 字段，例如 \`d.payment.method_cn\` 与 \`d.payment.method_jp\`。
+   - 这一类 \`_cn\` / \`_jp\` 字段已经是最终模板变量名，严禁再追加第二层 \`_zh\` / \`_ja\` 后缀。
+   - 只有当 bilingualGroups 明确表示两侧文本应共享同一个业务槽位时，才共享同一个 JSON 字段路径（例如都使用 \`d.partyA.name\`）。
+   - 严禁同时输出“共享字段”与“_cn/_jp 拆分字段”两套命名；同一业务含义只能选择一种表达方式。
 5. 循环（Loop）的使用极其严格：
    - 只有当候选明显属于表格列或重复列表时，才能输出 \`type: "loop"\`。
    - 普通段落中的句内填空必须作为独立 \`variable\`，不能错误嵌套进循环。

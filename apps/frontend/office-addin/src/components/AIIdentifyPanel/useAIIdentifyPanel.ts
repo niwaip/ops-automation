@@ -42,10 +42,10 @@ export function useAIIdentifyPanel(hostAdapter: any, isExcelMode: boolean) {
   const [showErrorDetails, setShowErrorDetails] = useState(false);
   const [analysisSummary, setAnalysisSummary] = useState<AnalysisSummary | null>(null);
   const [stagedSuggestions, setStagedSuggestions] = useState<typeof suggestions>([]);
-  const [workflowSourceLanguage, setWorkflowSourceLanguage] = useState('zh');
-  const [workflowTargetLanguages, setWorkflowTargetLanguages] = useState<string[]>([]);
+  const [assetSourceLanguage, setAssetSourceLanguage] = useState('zh');
+  const [assetTargetLanguages, setAssetTargetLanguages] = useState<string[]>([]);
 
-  // Workflow states
+  // Template Asset states
   const [aiSkillGuide, setAiSkillGuide] = useState<any>(null);
   const [isGeneratingGuide, setIsGeneratingGuide] = useState(false);
   const [isVerifying, setIsVerifying] = useState(false);
@@ -57,7 +57,7 @@ export function useAIIdentifyPanel(hostAdapter: any, isExcelMode: boolean) {
     fileName: string;
     savedAt: string;
   } | null>(null);
-  const [workflowDraftInfo, setWorkflowDraftInfo] = useState<{
+  const [templateAssetDraftInfo, setTemplateAssetDraftInfo] = useState<{
     fieldCount: number;
     status?: string;
     sourceLanguage?: string;
@@ -66,12 +66,12 @@ export function useAIIdentifyPanel(hostAdapter: any, isExcelMode: boolean) {
     fields: TemplateFieldSpec[];
     termAssets?: WorkflowTermAssets;
   } | null>(null);
-  const [workflowFieldSpecsDraft, setWorkflowFieldSpecsDraft] = useState<TemplateFieldSpec[]>([]);
-  const [workflowTermAssetsDraft, setWorkflowTermAssetsDraft] = useState<WorkflowTermAssets | null>(null);
-  const [workflowTermAssetsText, setWorkflowTermAssetsText] = useState('');
-  const [isSavingWorkflowFieldSpecs, setIsSavingWorkflowFieldSpecs] = useState(false);
+  const [templateFieldSpecsDraft, setTemplateFieldSpecsDraft] = useState<TemplateFieldSpec[]>([]);
+  const [templateTermAssetsDraft, setTemplateTermAssetsDraft] = useState<WorkflowTermAssets | null>(null);
+  const [templateTermAssetsText, setTemplateTermAssetsText] = useState('');
+  const [isSavingTemplateAssetManifest, setIsSavingTemplateAssetManifest] = useState(false);
   const [isSavingDraft, setIsSavingDraft] = useState(false);
-  const [draftWorkflowNotice, setDraftWorkflowNotice] = useState<{
+  const [templateAssetNotice, setTemplateAssetNotice] = useState<{
     type: 'success' | 'error' | 'info';
     message: string;
     lines?: string[];
@@ -83,7 +83,7 @@ export function useAIIdentifyPanel(hostAdapter: any, isExcelMode: boolean) {
   const [isGeneratingParams, setIsGeneratingParams] = useState(false);
   const [aiGenerateResult, setAiGenerateResult] = useState<{ success: boolean; message: string } | null>(null);
   const [previewResult, setPreviewResult] = useState<{ success: boolean; message: string; previewUrl?: string; downloadUrl?: string; generatedData?: any } | null>(null);
-  const [workflowRenderDiagnostics, setWorkflowRenderDiagnostics] = useState<TemplateRenderDataResponse | null>(null);
+  const [templateAssetRenderDiagnostics, setTemplateAssetRenderDiagnostics] = useState<TemplateRenderDataResponse | null>(null);
   const [isPreviewing, setIsPreviewing] = useState(false);
   const [templateName, setTemplateName] = useState('');
   const [saveResult, setSaveResult] = useState<{ success: boolean; message: string } | null>(null);
@@ -162,12 +162,13 @@ export function useAIIdentifyPanel(hostAdapter: any, isExcelMode: boolean) {
         savedAt: data.savedAt || '',
       });
     }
-    if (data.workflowDraftInfo) {
-      setWorkflowDraftInfo(data.workflowDraftInfo);
-      setWorkflowTermAssetsDraft(data.workflowDraftInfo.termAssets || null);
-      setWorkflowTermAssetsText(
-        data.workflowDraftInfo.termAssets
-          ? JSON.stringify(data.workflowDraftInfo.termAssets, null, 2)
+    const restoredTemplateAssetDraftInfo = data.templateAssetDraftInfo || data.workflowDraftInfo;
+    if (restoredTemplateAssetDraftInfo) {
+      setTemplateAssetDraftInfo(restoredTemplateAssetDraftInfo);
+      setTemplateTermAssetsDraft(restoredTemplateAssetDraftInfo.termAssets || null);
+      setTemplateTermAssetsText(
+        restoredTemplateAssetDraftInfo.termAssets
+          ? JSON.stringify(restoredTemplateAssetDraftInfo.termAssets, null, 2)
           : ''
       );
     }
@@ -247,28 +248,28 @@ export function useAIIdentifyPanel(hostAdapter: any, isExcelMode: boolean) {
   }, [apiBaseUrl, hostDocumentFormat]);
 
   useEffect(() => {
-    setWorkflowFieldSpecsDraft(workflowDraftInfo?.fields || []);
-    setWorkflowTermAssetsDraft(workflowDraftInfo?.termAssets || null);
-    setWorkflowTermAssetsText(
-      workflowDraftInfo?.termAssets
-        ? JSON.stringify(workflowDraftInfo.termAssets, null, 2)
+    setTemplateFieldSpecsDraft(templateAssetDraftInfo?.fields || []);
+    setTemplateTermAssetsDraft(templateAssetDraftInfo?.termAssets || null);
+    setTemplateTermAssetsText(
+      templateAssetDraftInfo?.termAssets
+        ? JSON.stringify(templateAssetDraftInfo.termAssets, null, 2)
         : ''
     );
-  }, [workflowDraftInfo]);
+  }, [templateAssetDraftInfo]);
 
   useEffect(() => {
-    if (!workflowDraftInfo) {
+    if (!templateAssetDraftInfo) {
       return;
     }
-    if (workflowDraftInfo.sourceLanguage) {
-      setWorkflowSourceLanguage(normalizeLanguageCode(workflowDraftInfo.sourceLanguage));
+    if (templateAssetDraftInfo.sourceLanguage) {
+      setAssetSourceLanguage(normalizeLanguageCode(templateAssetDraftInfo.sourceLanguage));
     }
-    setWorkflowTargetLanguages(
+    setAssetTargetLanguages(
       Array.from(
-        new Set((workflowDraftInfo.targetLanguages || []).map((lang) => normalizeLanguageCode(lang)).filter(Boolean))
+        new Set((templateAssetDraftInfo.targetLanguages || []).map((lang) => normalizeLanguageCode(lang)).filter(Boolean))
       )
     );
-  }, [workflowDraftInfo]);
+  }, [templateAssetDraftInfo]);
 
   const loadTemplateSource = async () => {
     const source = await exportTemplateSource(hostAdapter);
@@ -287,7 +288,7 @@ export function useAIIdentifyPanel(hostAdapter: any, isExcelMode: boolean) {
     return normalized.split(/[-_]/)[0] || 'zh';
   };
 
-  const getWorkflowTargetLanguages = (): string[] => workflowTargetLanguages;
+  const getAssetTargetLanguages = (): string[] => assetTargetLanguages;
 
   const normalizeSuggestedFieldId = (suggestedName: string): string => {
     const normalized = String(suggestedName || '')
@@ -376,7 +377,7 @@ export function useAIIdentifyPanel(hostAdapter: any, isExcelMode: boolean) {
     return prefixMatch?.[1] || matched.slice(0, 40);
   };
 
-  const buildSourceBindings = (suggestion: (typeof suggestions)[number]): NonNullable<TemplateFieldSpec['sourceBindings']> => {
+  const buildTemplateAssetSourceBindings = (suggestion: (typeof suggestions)[number]): NonNullable<TemplateFieldSpec['sourceBindings']> => {
     const sourceBinding: NonNullable<TemplateFieldSpec['sourceBindings']>[number] = {
       blockId: suggestion.id,
       lang: 'zh',
@@ -418,7 +419,7 @@ export function useAIIdentifyPanel(hostAdapter: any, isExcelMode: boolean) {
     return [sourceBinding];
   };
 
-  const buildWorkflowFieldSpecs = (
+  const buildTemplateAssetFieldSpecs = (
     analyzedFields: TemplateAnalyzeResponse['fields'],
     sourceLanguage: string,
     targetLanguages: string[]
@@ -461,7 +462,7 @@ export function useAIIdentifyPanel(hostAdapter: any, isExcelMode: boolean) {
           riskLevel: existing?.riskLevel || inferredShape.riskLevel,
           sourceBindings: [
             ...(existing?.sourceBindings || []),
-            ...buildSourceBindings(suggestion),
+            ...buildTemplateAssetSourceBindings(suggestion),
           ],
           renderConfig: existing?.renderConfig || {
             flattenForCarbone: true,
@@ -474,7 +475,7 @@ export function useAIIdentifyPanel(hostAdapter: any, isExcelMode: boolean) {
     return Array.from(fieldMap.values());
   };
 
-  const prepareWorkflowDraftPayload = async (): Promise<{
+  const prepareTemplateAssetDraftPayload = async (): Promise<{
     templateDocumentIr: Awaited<ReturnType<typeof hostAdapter.extractDocument>>;
     fieldSpecs: TemplateFieldSpec[];
     sourceLanguage: string;
@@ -483,10 +484,10 @@ export function useAIIdentifyPanel(hostAdapter: any, isExcelMode: boolean) {
   }> => {
     const templateDocumentIr = await hostAdapter.extractDocument();
     const sourceLanguage = normalizeLanguageCode(
-      workflowSourceLanguage || (templateDocumentIr?.metadata?.language as string | undefined)
+      assetSourceLanguage || (templateDocumentIr?.metadata?.language as string | undefined)
     );
-    const targetLanguages = getWorkflowTargetLanguages();
-    const effectiveTermAssets = getEffectiveWorkflowTermAssets();
+    const targetLanguages = getAssetTargetLanguages();
+    const effectiveTermAssets = getEffectiveTemplateTermAssets();
 
     let analyzeResponse: TemplateAnalyzeResponse = {
       analysisId: '',
@@ -512,14 +513,14 @@ export function useAIIdentifyPanel(hostAdapter: any, isExcelMode: boolean) {
 
     return {
       templateDocumentIr,
-      fieldSpecs: buildWorkflowFieldSpecs(analyzeResponse.fields, sourceLanguage, targetLanguages),
+      fieldSpecs: buildTemplateAssetFieldSpecs(analyzeResponse.fields, sourceLanguage, targetLanguages),
       sourceLanguage,
       targetLanguages,
       warnings: analyzeResponse.warnings || [],
     };
   };
 
-  const extractWorkflowDraftInfo = (workflow?: TemplateWorkflowSummary | null) => {
+  const extractTemplateAssetDraftInfo = (workflow?: TemplateWorkflowSummary | null) => {
     const fields = Array.isArray(workflow?.templateFieldSpecs) ? workflow?.templateFieldSpecs : [];
     if (fields.length === 0) {
       return null;
@@ -536,7 +537,7 @@ export function useAIIdentifyPanel(hostAdapter: any, isExcelMode: boolean) {
     };
   };
 
-  const parseWorkflowTermAssetsText = (
+  const parseTemplateTermAssetsText = (
     rawText: string
   ): { value: WorkflowTermAssets | null; error?: string } => {
     const trimmed = String(rawText || '').trim();
@@ -554,11 +555,11 @@ export function useAIIdentifyPanel(hostAdapter: any, isExcelMode: boolean) {
     }
   };
 
-  const getEffectiveWorkflowTermAssets = (
+  const getEffectiveTemplateTermAssets = (
     options?: { rawText?: string; fallbackToDraftState?: boolean }
   ): { value: WorkflowTermAssets | null; error?: string } => {
-    const rawText = options?.rawText ?? workflowTermAssetsText;
-    const parsed = parseWorkflowTermAssetsText(rawText);
+    const rawText = options?.rawText ?? templateTermAssetsText;
+    const parsed = parseTemplateTermAssetsText(rawText);
     if (parsed.error) {
       return parsed;
     }
@@ -568,36 +569,36 @@ export function useAIIdentifyPanel(hostAdapter: any, isExcelMode: boolean) {
     if (options?.fallbackToDraftState === false) {
       return { value: null };
     }
-    return { value: workflowTermAssetsDraft || workflowDraftInfo?.termAssets || null };
+    return { value: templateTermAssetsDraft || templateAssetDraftInfo?.termAssets || null };
   };
 
   const buildTermAssetExample = (
     kind: 'fieldDictionary' | 'termbase' | 'enumMappings',
     targetFieldId?: string
   ): WorkflowTermAssets => {
-    const current = getEffectiveWorkflowTermAssets().value || {};
+    const current = getEffectiveTemplateTermAssets().value || {};
     const preferredField = targetFieldId
-      ? workflowFieldSpecsDraft.find((field) => field.fieldId === targetFieldId)
-        || workflowDraftInfo?.fields.find((field) => field.fieldId === targetFieldId)
+      ? templateFieldSpecsDraft.find((field) => field.fieldId === targetFieldId)
+        || templateAssetDraftInfo?.fields.find((field) => field.fieldId === targetFieldId)
       : undefined;
     const dictionaryField = preferredField && preferredField.policy === 'dictionary_first'
       ? preferredField
-      : workflowFieldSpecsDraft.find((field) => field.policy === 'dictionary_first')
-      || workflowDraftInfo?.fields.find((field) => field.policy === 'dictionary_first')
+      : templateFieldSpecsDraft.find((field) => field.policy === 'dictionary_first')
+      || templateAssetDraftInfo?.fields.find((field) => field.policy === 'dictionary_first')
       || preferredField
-      || workflowFieldSpecsDraft[0]
-      || workflowDraftInfo?.fields[0];
+      || templateFieldSpecsDraft[0]
+      || templateAssetDraftInfo?.fields[0];
     const enumField = preferredField && preferredField.policy === 'enum_mapping'
       ? preferredField
-      : workflowFieldSpecsDraft.find((field) => field.policy === 'enum_mapping')
-      || workflowDraftInfo?.fields.find((field) => field.policy === 'enum_mapping');
+      : templateFieldSpecsDraft.find((field) => field.policy === 'enum_mapping')
+      || templateAssetDraftInfo?.fields.find((field) => field.policy === 'enum_mapping');
     const sourceLanguage = dictionaryField?.sourceLanguage
-      || workflowSourceLanguage
-      || workflowDraftInfo?.sourceLanguage
+      || assetSourceLanguage
+      || templateAssetDraftInfo?.sourceLanguage
       || 'zh';
     const targetLanguage = dictionaryField?.targetLanguages?.[0]
-      || workflowTargetLanguages[0]
-      || workflowDraftInfo?.targetLanguages?.[0]
+      || assetTargetLanguages[0]
+      || templateAssetDraftInfo?.targetLanguages?.[0]
       || 'ja';
 
     if (kind === 'fieldDictionary') {
@@ -671,15 +672,15 @@ export function useAIIdentifyPanel(hostAdapter: any, isExcelMode: boolean) {
     };
   };
 
-  const handleAppendWorkflowTermAssetExample = (
+  const handleAppendTemplateTermAssetExample = (
     kind: 'fieldDictionary' | 'termbase' | 'enumMappings',
     targetFieldId?: string
   ) => {
     const nextValue = buildTermAssetExample(kind, targetFieldId);
     const nextText = JSON.stringify(nextValue, null, 2);
-    setWorkflowTermAssetsDraft(nextValue);
-    setWorkflowTermAssetsText(nextText);
-    setDraftWorkflowNotice({
+    setTemplateTermAssetsDraft(nextValue);
+    setTemplateTermAssetsText(nextText);
+    setTemplateAssetNotice({
       type: 'info',
       message: kind === 'fieldDictionary'
         ? `已追加字段词典示例项${targetFieldId ? `: ${targetFieldId}` : ''}`
@@ -689,7 +690,7 @@ export function useAIIdentifyPanel(hostAdapter: any, isExcelMode: boolean) {
     });
   };
 
-  const sanitizeWorkflowFieldSpecs = (specs: TemplateFieldSpec[]): {
+  const sanitizeTemplateFieldSpecs = (specs: TemplateFieldSpec[]): {
     specs: TemplateFieldSpec[];
     duplicateFieldIds: string[];
     emptyFieldCount: number;
@@ -725,28 +726,28 @@ export function useAIIdentifyPanel(hostAdapter: any, isExcelMode: boolean) {
     };
   };
 
-  const persistWorkflowFieldSpecs = async (
+  const persistTemplateFieldSpecs = async (
     specs: TemplateFieldSpec[],
     options?: { silent?: boolean }
   ): Promise<boolean> => {
     if (!draftId) {
       if (!options?.silent) {
-        setDraftWorkflowNotice({ type: 'error', message: '请先暂存副本后再保存字段定义' });
+        setTemplateAssetNotice({ type: 'error', message: '请先暂存副本后再保存字段定义' });
       }
       return false;
     }
 
     if (!Array.isArray(specs) || specs.length === 0) {
       if (!options?.silent) {
-        setDraftWorkflowNotice({ type: 'error', message: '当前没有可保存的字段定义' });
+        setTemplateAssetNotice({ type: 'error', message: '当前没有可保存的字段定义' });
       }
       return false;
     }
 
-    const sanitizedResult = sanitizeWorkflowFieldSpecs(specs);
+    const sanitizedResult = sanitizeTemplateFieldSpecs(specs);
     if (sanitizedResult.emptyFieldCount > 0) {
       if (!options?.silent) {
-        setDraftWorkflowNotice({
+        setTemplateAssetNotice({
           type: 'error',
           message: `存在 ${sanitizedResult.emptyFieldCount} 个空字段名，请先补全后再保存`,
         });
@@ -755,7 +756,7 @@ export function useAIIdentifyPanel(hostAdapter: any, isExcelMode: boolean) {
     }
     if (sanitizedResult.duplicateFieldIds.length > 0) {
       if (!options?.silent) {
-        setDraftWorkflowNotice({
+        setTemplateAssetNotice({
           type: 'error',
           message: '字段定义中存在重复 fieldId',
           lines: sanitizedResult.duplicateFieldIds.map((fieldId) => `重复字段: ${fieldId}`),
@@ -764,10 +765,10 @@ export function useAIIdentifyPanel(hostAdapter: any, isExcelMode: boolean) {
       return false;
     }
 
-    const parsedTermAssets = getEffectiveWorkflowTermAssets({ fallbackToDraftState: false });
+    const parsedTermAssets = getEffectiveTemplateTermAssets({ fallbackToDraftState: false });
     if (parsedTermAssets.error) {
       if (!options?.silent) {
-        setDraftWorkflowNotice({
+        setTemplateAssetNotice({
           type: 'error',
           message: parsedTermAssets.error,
         });
@@ -775,13 +776,13 @@ export function useAIIdentifyPanel(hostAdapter: any, isExcelMode: boolean) {
       return false;
     }
 
-    setIsSavingWorkflowFieldSpecs(true);
+    setIsSavingTemplateAssetManifest(true);
     try {
       carboneAPI.setBaseUrl(apiBaseUrl);
       const templateDocumentIr = await hostAdapter.extractDocument();
       const sourceLanguage = normalizeLanguageCode(
         (templateDocumentIr?.metadata?.language as string | undefined)
-          || workflowDraftInfo?.sourceLanguage
+          || templateAssetDraftInfo?.sourceLanguage
       );
       const targetLanguages = Array.from(new Set(specs.flatMap((field) => field.targetLanguages || [])));
       const saveResult = await carboneAPI.saveTemplateWorkflow({
@@ -798,7 +799,7 @@ export function useAIIdentifyPanel(hostAdapter: any, isExcelMode: boolean) {
         saveMode: 'draft',
       });
 
-      const nextWorkflowDraftInfo = {
+      const nextTemplateAssetDraftInfo = {
         fieldCount: sanitizedResult.specs.length,
         status: saveResult.status,
         sourceLanguage,
@@ -807,22 +808,23 @@ export function useAIIdentifyPanel(hostAdapter: any, isExcelMode: boolean) {
         fields: sanitizedResult.specs,
         termAssets: parsedTermAssets.value || undefined,
       };
-      setWorkflowDraftInfo(nextWorkflowDraftInfo);
-      setWorkflowFieldSpecsDraft(sanitizedResult.specs);
-      setWorkflowTermAssetsDraft(parsedTermAssets.value);
+      setTemplateAssetDraftInfo(nextTemplateAssetDraftInfo);
+      setTemplateFieldSpecsDraft(sanitizedResult.specs);
+      setTemplateTermAssetsDraft(parsedTermAssets.value);
 
       const snapshot = readDraftSnapshot();
       if (snapshot?.draftId === draftId) {
         localStorage.setItem(draftStorageKey, JSON.stringify({
           ...snapshot,
-          workflowDraftInfo: nextWorkflowDraftInfo,
+          templateAssetDraftInfo: nextTemplateAssetDraftInfo,
+          workflowDraftInfo: nextTemplateAssetDraftInfo,
         }));
       }
 
       if (!options?.silent) {
-        setDraftWorkflowNotice({
+        setTemplateAssetNotice({
           type: 'success',
-          message: '✅ 字段定义已保存到工作流',
+          message: '✅ 字段定义已保存到模板资产清单',
           lines: [
             `${sanitizedResult.specs.length} 个字段 · 状态 ${saveResult.status}`,
             `绑定计划版本 ${saveResult.bindingPlanVersion}`,
@@ -832,22 +834,22 @@ export function useAIIdentifyPanel(hostAdapter: any, isExcelMode: boolean) {
       return true;
     } catch (error: any) {
       if (!options?.silent) {
-        setDraftWorkflowNotice({
+        setTemplateAssetNotice({
           type: 'error',
           message: `字段定义保存失败: ${error?.message || '未知错误'}`,
         });
       }
       return false;
     } finally {
-      setIsSavingWorkflowFieldSpecs(false);
+      setIsSavingTemplateAssetManifest(false);
     }
   };
 
-  const handleWorkflowFieldSpecChange = (
+  const handleTemplateFieldSpecChange = (
     index: number,
     patch: Partial<TemplateFieldSpec>
   ) => {
-    setWorkflowFieldSpecsDraft((current) => current.map((field, fieldIndex) => (
+    setTemplateFieldSpecsDraft((current) => current.map((field, fieldIndex) => (
       fieldIndex === index
         ? {
             ...field,
@@ -857,39 +859,65 @@ export function useAIIdentifyPanel(hostAdapter: any, isExcelMode: boolean) {
     )));
   };
 
-  const handleWorkflowFieldTargetLanguagesChange = (index: number, rawValue: string) => {
+  const handleTemplateFieldTargetLanguagesChange = (index: number, rawValue: string) => {
     const targetLanguages = rawValue
       .split(',')
       .map((item) => normalizeLanguageCode(item))
       .filter(Boolean);
-    handleWorkflowFieldSpecChange(index, {
+    handleTemplateFieldSpecChange(index, {
       targetLanguages: Array.from(new Set(targetLanguages)),
     });
   };
 
-  const handleSaveWorkflowFieldSpecs = async () => {
-    await persistWorkflowFieldSpecs(workflowFieldSpecsDraft);
+  const handleSaveTemplateFieldSpecs = async () => {
+    if (templateFieldSpecsDraft.length > 0) {
+      await persistTemplateFieldSpecs(templateFieldSpecsDraft);
+      return;
+    }
+
+    if (!draftId) {
+      setTemplateAssetNotice({ type: 'error', message: '请先暂存模板资产后再保存字段定义' });
+      return;
+    }
+
+    try {
+      const workflowPayload = await prepareTemplateAssetDraftPayload();
+      if (workflowPayload.fieldSpecs.length === 0) {
+        setTemplateAssetNotice({
+          type: 'error',
+          message: '当前模板未识别到可保存的模板资产字段',
+        });
+        return;
+      }
+      setTemplateFieldSpecsDraft(workflowPayload.fieldSpecs);
+      await persistTemplateFieldSpecs(workflowPayload.fieldSpecs);
+    } catch (error: any) {
+      setTemplateAssetNotice({
+        type: 'error',
+        message: `生成模板资产字段失败: ${error?.message || '未知错误'}`,
+      });
+    }
   };
 
-  const handleResetWorkflowFieldSpecs = () => {
-    setWorkflowFieldSpecsDraft(workflowDraftInfo?.fields || []);
-    setWorkflowTermAssetsDraft(workflowDraftInfo?.termAssets || null);
-    setWorkflowTermAssetsText(
-      workflowDraftInfo?.termAssets
-        ? JSON.stringify(workflowDraftInfo.termAssets, null, 2)
+  const handleResetTemplateFieldSpecs = () => {
+    setTemplateFieldSpecsDraft(templateAssetDraftInfo?.fields || []);
+    setTemplateTermAssetsDraft(templateAssetDraftInfo?.termAssets || null);
+    setTemplateTermAssetsText(
+      templateAssetDraftInfo?.termAssets
+        ? JSON.stringify(templateAssetDraftInfo.termAssets, null, 2)
         : ''
     );
-    setDraftWorkflowNotice({
+    setTemplateAssetNotice({
       type: 'info',
       message: '已恢复到最近一次保存的字段定义',
     });
   };
 
-  const handleWorkflowTermAssetsTextChange = (value: string) => {
-    setWorkflowTermAssetsText(value);
-    const parsed = getEffectiveWorkflowTermAssets({ rawText: value, fallbackToDraftState: false });
+  const handleTemplateTermAssetsTextChange = (value: string) => {
+    setTemplateTermAssetsText(value);
+    const parsed = getEffectiveTemplateTermAssets({ rawText: value, fallbackToDraftState: false });
     if (!parsed.error) {
-      setWorkflowTermAssetsDraft(parsed.value);
+      setTemplateTermAssetsDraft(parsed.value);
     }
   };
 
@@ -959,6 +987,7 @@ export function useAIIdentifyPanel(hostAdapter: any, isExcelMode: boolean) {
             thinking: retryCount > 0 ? true : analysisThinkingEnabled,
             aiOrchestratorBaseUrl,
             aiOrchestratorAuthToken,
+            skill: aiSkillGuide,
             excelGlobalUnderstandingCache: isExcelMode && excelWorkbookUnderstanding.summary
               ? {
                   summary: excelWorkbookUnderstanding.summary,
@@ -1088,7 +1117,7 @@ export function useAIIdentifyPanel(hostAdapter: any, isExcelMode: boolean) {
 
   const handleSaveDraft = async () => {
     if (!aiSkillGuide) {
-      setDraftWorkflowNotice({ type: 'error', message: '请先生成AI指南' });
+      setTemplateAssetNotice({ type: 'error', message: '请先生成模板指南' });
       return;
     }
 
@@ -1163,60 +1192,19 @@ export function useAIIdentifyPanel(hostAdapter: any, isExcelMode: boolean) {
       if (result.success) {
         setDraftId(result.templateId || null);
         const parameterCount = resolveDraftParameterCount({ suggestions: nextSuggestions, aiSkillGuide });
-        const workflowLines: string[] = [];
-        let nextWorkflowDraftInfo: typeof workflowDraftInfo = null;
-
-        if (result.templateId) {
-          try {
-            const workflowPayload = await prepareWorkflowDraftPayload();
-            if (workflowPayload.fieldSpecs.length > 0) {
-              const workflowSaveResult = await carboneAPI.saveTemplateWorkflow({
-                templateId: result.templateId,
-                templateMeta: {
-                  templateName: `draft-${Date.now()}`,
-                  sourceLanguage: workflowPayload.sourceLanguage,
-                  targetLanguages: workflowPayload.targetLanguages,
-                  documentMode: workflowPayload.targetLanguages.length > 0 ? 'single_or_bilingual' : 'single_language',
-                  termAssets: workflowTermAssetsDraft || undefined,
-                },
-                templateDocumentIr: workflowPayload.templateDocumentIr,
-                templateFieldSpecs: workflowPayload.fieldSpecs,
-                saveMode: 'draft',
-              });
-              workflowLines.push(
-                `工作流字段已保存 ${workflowPayload.fieldSpecs.length} 个，状态 ${workflowSaveResult.status}`
-              );
-              workflowLines.push(...workflowPayload.warnings);
-              nextWorkflowDraftInfo = {
-                fieldCount: workflowPayload.fieldSpecs.length,
-                status: workflowSaveResult.status,
-                sourceLanguage: workflowPayload.sourceLanguage,
-                targetLanguages: workflowPayload.targetLanguages,
-                bindingPlanVersion: workflowSaveResult.bindingPlanVersion,
-                fields: workflowPayload.fieldSpecs,
-                termAssets: workflowTermAssetsDraft || undefined,
-              };
-              setWorkflowDraftInfo(nextWorkflowDraftInfo);
-            } else {
-              workflowLines.push('未生成可用的 TemplateFieldSpec，已保留旧版草稿链路');
-              setWorkflowDraftInfo(null);
-            }
-          } catch (error: any) {
-            addDebugLog('warn', '模板工作流保存失败', error?.message || '未知错误');
-            workflowLines.push(`模板工作流保存失败，已回退到旧链路: ${error?.message || '未知错误'}`);
-            setWorkflowDraftInfo(null);
-          }
-        }
+        const assetLines: string[] = [
+          '当前暂存仅保存模板资产与可选指南，不会直接创建工作流。',
+        ];
 
         setDraftInfo({
           templateType: selectedTemplateType,
           parameterCount,
           savedAt: new Date().toISOString()
         });
-        setDraftWorkflowNotice({
+        setTemplateAssetNotice({
           type: 'success',
-          message: `✅ 副本已暂存！ID: ${result.templateId}`,
-          lines: workflowLines.length > 0 ? workflowLines : undefined,
+          message: `✅ 模板资产暂存成功！ID: ${result.templateId}`,
+          lines: assetLines.length > 0 ? assetLines : undefined,
         });
 
         localStorage.setItem(draftStorageKey, JSON.stringify({
@@ -1228,16 +1216,21 @@ export function useAIIdentifyPanel(hostAdapter: any, isExcelMode: boolean) {
           aiSkillGuide,
           aiDescription,
           aiGeneratedData,
-          workflowDraftInfo: nextWorkflowDraftInfo || undefined,
+          templateAssetDraftInfo: undefined,
+          workflowDraftInfo: undefined,
           templateName,
           savedAt: new Date().toISOString()
         }));
+        setTemplateAssetDraftInfo(null);
+        setTemplateFieldSpecsDraft([]);
+        setTemplateTermAssetsDraft(null);
+        setTemplateTermAssetsText('');
       } else {
-        setDraftWorkflowNotice({ type: 'error', message: `暂存失败: ${result.error || '未知错误'}` });
+        setTemplateAssetNotice({ type: 'error', message: `暂存失败: ${result.error || '未知错误'}` });
       }
       await refreshLatestBackendDraftInfo();
     } catch (error: any) {
-      setDraftWorkflowNotice({ type: 'error', message: `暂存失败: ${error.message}` });
+      setTemplateAssetNotice({ type: 'error', message: `暂存失败: ${error.message}` });
     } finally {
       setIsSavingDraft(false);
     }
@@ -1253,14 +1246,14 @@ export function useAIIdentifyPanel(hostAdapter: any, isExcelMode: boolean) {
           if (snapshot?.draftId) {
             const parameterCount = resolveDraftParameterCount(snapshot);
             applyDraftSnapshot(snapshot);
-            setDraftWorkflowNotice({
+            setTemplateAssetNotice({
               type: 'success',
               message: '✅ 已从本地暂存恢复草稿',
               lines: [`${snapshot.templateType || selectedTemplateType} · ${parameterCount} 参数 · ID: ${String(snapshot.draftId).substring(0, 8)}...`],
             });
             return;
           }
-          setDraftWorkflowNotice({ type: 'info', message: '没有可恢复的本地最新草稿，后端也没有 draft-* 暂存副本' });
+          setTemplateAssetNotice({ type: 'info', message: '没有可恢复的本地最新草稿，后端也没有 draft-* 暂存副本' });
           return;
         }
         effectiveDraftId = latestBackendDraft.id;
@@ -1279,7 +1272,8 @@ export function useAIIdentifyPanel(hostAdapter: any, isExcelMode: boolean) {
         templateType: template.config?.templateType || selectedTemplateType,
         suggestions: templateSuggestions,
         aiSkillGuide: skill || aiSkillGuide,
-        workflowDraftInfo: extractWorkflowDraftInfo(template.templateWorkflow),
+        templateAssetDraftInfo: extractTemplateAssetDraftInfo(template.templateWorkflow),
+        workflowDraftInfo: extractTemplateAssetDraftInfo(template.templateWorkflow),
         parameterCount: resolveDraftParameterCount({
           suggestions: templateSuggestions,
           aiSkillGuide: skill || aiSkillGuide,
@@ -1301,34 +1295,34 @@ export function useAIIdentifyPanel(hostAdapter: any, isExcelMode: boolean) {
         '已从后端恢复草稿',
         `draftId=${effectiveDraftId}，恢复 ${templateSuggestions.length} 个参数，优先级高于本地暂存`
       );
-      setDraftWorkflowNotice({
+      setTemplateAssetNotice({
         type: 'success',
-        message: draftId || snapshot?.draftId ? '✅ 已从后端恢复当前草稿' : '✅ 已从后端恢复最新草稿',
+        message: draftId || snapshot?.draftId ? '✅ 已从后端恢复当前模板资产暂存' : '✅ 已从后端恢复最新模板资产暂存',
         lines: [`${restoredDraft.templateType} · ${restoredDraft.parameterCount} 参数 · ID: ${String(effectiveDraftId).substring(0, 8)}...`],
       });
       await refreshLatestBackendDraftInfo();
     } catch (error: any) {
-      setDraftWorkflowNotice({ type: 'error', message: `载入草稿失败: ${error.message || '未知错误'}` });
+      setTemplateAssetNotice({ type: 'error', message: `载入草稿失败: ${error.message || '未知错误'}` });
     }
   };
 
   const handleClearDraft = (options?: { silent?: boolean }) => {
     setDraftId(null);
     setDraftInfo(null);
-    setWorkflowDraftInfo(null);
-    setWorkflowFieldSpecsDraft([]);
-    setWorkflowTermAssetsDraft(null);
-    setWorkflowTermAssetsText('');
-    setWorkflowRenderDiagnostics(null);
+    setTemplateAssetDraftInfo(null);
+    setTemplateFieldSpecsDraft([]);
+    setTemplateTermAssetsDraft(null);
+    setTemplateTermAssetsText('');
+    setTemplateAssetRenderDiagnostics(null);
     localStorage.removeItem(draftStorageKey);
     if (!options?.silent) {
-      setDraftWorkflowNotice({ type: 'info', message: '🗑️ 已清除暂存副本' });
+      setTemplateAssetNotice({ type: 'info', message: '🗑️ 已清除暂存副本' });
     }
   };
 
   const handleVerifyTemplate = async () => {
     if (suggestions.length === 0) {
-      setDraftWorkflowNotice({ type: 'error', message: '请先进行AI识别或手动添加参数' });
+      setTemplateAssetNotice({ type: 'error', message: '请先进行AI识别或手动添加参数' });
       return;
     }
 
@@ -1355,20 +1349,20 @@ export function useAIIdentifyPanel(hostAdapter: any, isExcelMode: boolean) {
       const result = await carboneAPI.validateTemplate(JSON.stringify(configToValidate));
 
       if (result.valid) {
-        setDraftWorkflowNotice({
+        setTemplateAssetNotice({
           type: 'success',
           message: '✅ 验证成功！模版配置有效',
           lines: result.warnings && result.warnings.length > 0 ? result.warnings : undefined,
         });
       } else {
-        setDraftWorkflowNotice({
+        setTemplateAssetNotice({
           type: 'error',
           message: '❌ 验证失败',
           lines: result.errors,
         });
       }
     } catch (error: any) {
-      setDraftWorkflowNotice({ type: 'error', message: `验证失败: ${error.message}` });
+      setTemplateAssetNotice({ type: 'error', message: `验证失败: ${error.message}` });
     } finally {
       setIsVerifying(false);
     }
@@ -1418,18 +1412,18 @@ export function useAIIdentifyPanel(hostAdapter: any, isExcelMode: boolean) {
           `返回 ${generatedParameterNames.length} 个 parameters，名称=${generatedParameterNames.join(', ') || 'none'}`
         );
         setAiSkillGuide(result.skill);
-        setDraftWorkflowNotice({
+        setTemplateAssetNotice({
           type: 'success',
           message: '✅ 指南已生成',
           lines: [`包含 ${result.skill.parameters?.length || 0} 个参数`],
         });
       } else {
         addDebugLog('warn', 'AI 指南生成失败', result.error || '未知错误');
-        setDraftWorkflowNotice({ type: 'error', message: `生成AI指南失败: ${result.error || '未知错误'}` });
+        setTemplateAssetNotice({ type: 'error', message: `生成模板指南失败: ${result.error || '未知错误'}` });
       }
     } catch (error: any) {
       addDebugLog('error', 'AI 指南生成异常', error.message || '未知错误');
-      setDraftWorkflowNotice({ type: 'error', message: `生成AI指南失败: ${error.message}` });
+      setTemplateAssetNotice({ type: 'error', message: `生成模板指南失败: ${error.message}` });
     } finally {
       setIsGeneratingGuide(false);
     }
@@ -1437,7 +1431,7 @@ export function useAIIdentifyPanel(hostAdapter: any, isExcelMode: boolean) {
 
   const handleGenerateParameters = async () => {
     if (!aiSkillGuide) {
-      setAiGenerateResult({ success: false, message: '请先生成AI指南' });
+      setAiGenerateResult({ success: false, message: '请先生成模板指南' });
       return;
     }
 
@@ -1447,78 +1441,11 @@ export function useAIIdentifyPanel(hostAdapter: any, isExcelMode: boolean) {
     setAiGenerateResult(null);
     setPreviewResult(null); // Clear old preview results when generating new parameters
     setAiGeneratedData(null); // Clear old generated data
-    setWorkflowRenderDiagnostics(null);
+    setTemplateAssetRenderDiagnostics(null);
 
     try {
       const effectiveDescription = currentDescription.trim();
       carboneAPI.setBaseUrl(apiBaseUrl);
-
-      const canUseTemplateWorkflow = Boolean(
-        draftId
-        && effectiveDescription
-        && !effectiveDescription.trim().startsWith('{')
-      );
-
-      if (canUseTemplateWorkflow) {
-        let retryCount = 0;
-        while (retryCount <= AI_AUTO_RETRY_MAX_RETRIES) {
-          try {
-            if (retryCount > 0) {
-              addDebugLog(
-                'warn',
-                '生成渲染数据自动重试',
-                `第 ${retryCount} 次重试，thinking=${retryCount > 0 ? 'on' : analysisThinkingEnabled ? 'on' : 'off'}`
-              );
-            }
-
-            const workflowResult = await carboneAPI.generateTemplateRenderData({
-              templateId: draftId!,
-              userInput: effectiveDescription,
-              termAssets: workflowTermAssetsDraft || undefined,
-              thinking: retryCount > 0 ? true : analysisThinkingEnabled,
-            } as any);
-
-            setWorkflowRenderDiagnostics(workflowResult);
-            setAiGeneratedData(workflowResult.data);
-            setAiDescription(JSON.stringify(workflowResult.data, null, 2));
-            setAiGenerateResult({
-              success: true,
-              message: workflowResult.needsReviewFields.length > 0 || workflowResult.missingFields.length > 0
-                ? '⚠️ 已生成渲染数据，但仍有待确认字段'
-                : '✅ 已按模板工作流生成渲染数据',
-            });
-
-            const workflowNoticeLines = [
-              ...workflowResult.warnings,
-              ...(workflowResult.missingFields.length > 0
-                ? [`缺失字段: ${workflowResult.missingFields.join(', ')}`]
-                : []),
-              ...(workflowResult.needsReviewFields.length > 0
-                ? [`待确认字段: ${workflowResult.needsReviewFields.join(', ')}`]
-                : []),
-            ];
-            if (workflowNoticeLines.length > 0) {
-              setDraftWorkflowNotice({
-                type: workflowResult.needsReviewFields.length > 0 ? 'info' : 'success',
-                message: '模板工作流已返回结构化渲染数据',
-                lines: workflowNoticeLines,
-              });
-            }
-            return;
-          } catch (error: any) {
-            if (retryCount < AI_AUTO_RETRY_MAX_RETRIES) {
-              addDebugLog(
-                'warn',
-                '生成渲染数据失败，准备重试',
-                `第 ${retryCount + 1} 次尝试失败: ${error?.message || '未知错误'}`
-              );
-              retryCount++;
-              continue;
-            }
-            throw error;
-          }
-        }
-      }
 
       const fallbackDescription = effectiveDescription || '请基于当前 Skill Guide 生成一份默认实例参数，要求优先使用真实业务示例值、字段完整、值合理、可直接用于预览；如果存在循环数组，默认生成至少 2 条数据。';
       let retryCount = 0;
@@ -1540,7 +1467,7 @@ export function useAIIdentifyPanel(hostAdapter: any, isExcelMode: boolean) {
 
         if (result.success && result.generatedData) {
           setAiGeneratedData(result.generatedData);
-          setWorkflowRenderDiagnostics(null);
+          setTemplateAssetRenderDiagnostics(null);
           setAiDescription(JSON.stringify(result.generatedData, null, 2));
           setAiGenerateResult({
             success: true,
@@ -1608,7 +1535,7 @@ export function useAIIdentifyPanel(hostAdapter: any, isExcelMode: boolean) {
 
   const handlePreviewWithAIParams = async () => {
     if (!aiSkillGuide) {
-      setPreviewResult({ success: false, message: '请先生成AI指南' });
+      setPreviewResult({ success: false, message: '请先生成模板指南' });
       return;
     }
 
@@ -1684,7 +1611,7 @@ export function useAIIdentifyPanel(hostAdapter: any, isExcelMode: boolean) {
 
   const handleSaveTemplateAndGuide = async () => {
     if (!aiSkillGuide) {
-      setSaveResult({ success: false, message: '请先生成AI指南' });
+      setSaveResult({ success: false, message: '请先生成模板指南' });
       return;
     }
 
@@ -1699,14 +1626,17 @@ export function useAIIdentifyPanel(hostAdapter: any, isExcelMode: boolean) {
     try {
       carboneAPI.setBaseUrl(apiBaseUrl);
       const finalTemplateName = templateName.trim() || `${selectedTemplateType}-template-${Date.now()}`;
-
-      if (workflowFieldSpecsDraft.length > 0) {
-        const workflowSaved = await persistWorkflowFieldSpecs(workflowFieldSpecsDraft, { silent: true });
-        if (!workflowSaved) {
-          setSaveResult({ success: false, message: '保存模板前同步字段定义失败，请先处理字段确认区中的错误' });
-          return;
-        }
-      }
+      const publishFieldSpecs = templateFieldSpecsDraft.length > 0
+        ? templateFieldSpecsDraft
+        : (templateAssetDraftInfo?.fields || []);
+      const publishSourceLanguage = normalizeLanguageCode(assetSourceLanguage || templateAssetDraftInfo?.sourceLanguage);
+      const publishTargetLanguages = Array.from(
+        new Set(
+          (assetTargetLanguages.length > 0 ? assetTargetLanguages : (templateAssetDraftInfo?.targetLanguages || []))
+            .map((lang) => normalizeLanguageCode(lang))
+            .filter(Boolean)
+        )
+      );
       
       const saveParams: any = {
         templateId: draftId,
@@ -1717,12 +1647,24 @@ export function useAIIdentifyPanel(hostAdapter: any, isExcelMode: boolean) {
         templateName: finalTemplateName
       };
 
+      if (publishFieldSpecs.length > 0) {
+        saveParams.templateMeta = {
+          templateName: finalTemplateName,
+          sourceLanguage: publishSourceLanguage,
+          targetLanguages: publishTargetLanguages,
+          documentMode: publishTargetLanguages.length > 0 ? 'single_or_bilingual' : 'single_language',
+          termAssets: templateTermAssetsDraft || templateAssetDraftInfo?.termAssets || undefined,
+        };
+        saveParams.templateFieldSpecs = publishFieldSpecs;
+        saveParams.templateDocumentIr = await hostAdapter.extractDocument();
+      }
+
       const result = await carboneAPI.saveTemplateFull(saveParams);
 
       if (result.success) {
         setSaveResult({
           success: true,
-          message: `✅ 最终保存成功！模板ID: ${result.templateId || 'N/A'}, 指南ID: ${result.skillId || 'N/A'}`
+          message: `✅ 模板资产发布成功！模板ID: ${result.templateId || 'N/A'}, 指南ID: ${result.skillId || 'N/A'}`
         });
         handleClearDraft({ silent: true });
       } else {
@@ -1758,10 +1700,10 @@ export function useAIIdentifyPanel(hostAdapter: any, isExcelMode: boolean) {
     setShowErrorDetails,
     analysisSummary,
     stagedSuggestions,
-    workflowSourceLanguage,
-    setWorkflowSourceLanguage,
-    workflowTargetLanguages,
-    setWorkflowTargetLanguages,
+    assetSourceLanguage,
+    setAssetSourceLanguage,
+    assetTargetLanguages,
+    setAssetTargetLanguages,
     handleAnalyze,
     handleCommitStagedSuggestions,
     handleClearStagedSuggestions,
@@ -1774,14 +1716,14 @@ export function useAIIdentifyPanel(hostAdapter: any, isExcelMode: boolean) {
     draftId,
     draftInfo,
     latestBackendDraftInfo,
-    workflowDraftInfo,
-    workflowFieldSpecsDraft,
-    workflowTermAssetsDraft,
-    workflowTermAssetsText,
-    workflowRenderDiagnostics,
-    isSavingWorkflowFieldSpecs,
+    templateAssetDraftInfo,
+    templateFieldSpecsDraft,
+    templateTermAssetsDraft,
+    templateTermAssetsText,
+    templateAssetRenderDiagnostics,
+    isSavingTemplateAssetManifest,
     isSavingDraft,
-    draftWorkflowNotice,
+    templateAssetNotice,
     handleGenerateAISkillGuide,
     handleVerifyTemplate,
     handleSaveDraft,
@@ -1798,15 +1740,32 @@ export function useAIIdentifyPanel(hostAdapter: any, isExcelMode: boolean) {
     setTemplateName,
     saveResult,
     isSaving,
+    workflowSourceLanguage: assetSourceLanguage,
+    setWorkflowSourceLanguage: setAssetSourceLanguage,
+    workflowTargetLanguages: assetTargetLanguages,
+    setWorkflowTargetLanguages: setAssetTargetLanguages,
+    workflowDraftInfo: templateAssetDraftInfo,
+    workflowFieldSpecsDraft: templateFieldSpecsDraft,
+    workflowTermAssetsDraft: templateTermAssetsDraft,
+    workflowTermAssetsText: templateTermAssetsText,
+    workflowRenderDiagnostics: templateAssetRenderDiagnostics,
+    isSavingWorkflowFieldSpecs: isSavingTemplateAssetManifest,
+    draftWorkflowNotice: templateAssetNotice,
+    handleWorkflowFieldSpecChange: handleTemplateFieldSpecChange,
+    handleWorkflowFieldTargetLanguagesChange: handleTemplateFieldTargetLanguagesChange,
+    handleWorkflowTermAssetsTextChange: handleTemplateTermAssetsTextChange,
+    handleAppendWorkflowTermAssetExample: handleAppendTemplateTermAssetExample,
+    handleSaveWorkflowFieldSpecs: handleSaveTemplateFieldSpecs,
+    handleResetWorkflowFieldSpecs: handleResetTemplateFieldSpecs,
     handleAiDescriptionChange,
     handleGenerateParameters,
     handlePreviewWithAIParams,
-    handleWorkflowFieldSpecChange,
-    handleWorkflowFieldTargetLanguagesChange,
-    handleWorkflowTermAssetsTextChange,
-    handleAppendWorkflowTermAssetExample,
-    handleSaveWorkflowFieldSpecs,
-    handleResetWorkflowFieldSpecs,
+    handleTemplateFieldSpecChange,
+    handleTemplateFieldTargetLanguagesChange,
+    handleTemplateTermAssetsTextChange,
+    handleAppendTemplateTermAssetExample,
+    handleSaveTemplateFieldSpecs,
+    handleResetTemplateFieldSpecs,
     handleSaveTemplateAndGuide,
 
     collapsedSuggestionGroups,

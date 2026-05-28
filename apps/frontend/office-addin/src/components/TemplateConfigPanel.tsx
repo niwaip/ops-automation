@@ -10,7 +10,7 @@ import { createHostAdapter } from '../adapters';
 import { exportTemplateSource } from '../services/template-source-service';
 import { FORMATTER_OPTIONS, TEMPLATE_TYPE_OPTIONS, getTemplateTypeIcon, type FormatterOption, type TemplateTypeOption } from './TemplateConfigPanel.constants';
 import { TemplateManager } from './TemplateManager';
-import { useTemplateWorkflow } from './useTemplateWorkflow';
+import { useTemplateAssetManager } from './useTemplateWorkflow';
 import { getHostScopedStorageKey } from '../utils/host-storage';
 import { getOfficeUploadConfig, isValidOfficeUpload, readFileAsBase64 } from '../utils/office-file-upload';
 
@@ -94,7 +94,7 @@ export const TemplateConfigPanel: React.FC<TemplateConfigPanelProps> = ({
     handleSaveWithUploadedFile,
     handlePreview,
     handleGenerateTemplate,
-  } = useTemplateWorkflow({
+  } = useTemplateAssetManager({
     apiBaseUrl,
     officeType,
     templateConfig,
@@ -191,15 +191,15 @@ export const TemplateConfigPanel: React.FC<TemplateConfigPanelProps> = ({
           </div>
           <div className={`step ${currentStep >= 2 ? 'active' : ''}`}>
             <span className="step-num">2</span>
-            <span className="step-text">生成AI指南</span>
+            <span className="step-text">生成模板指南</span>
           </div>
           <div className={`step ${currentStep >= 3 ? 'active' : ''}`}>
             <span className="step-num">3</span>
-            <span className="step-text">预览验证</span>
+            <span className="step-text">预览模板资产</span>
           </div>
           <div className={`step ${currentStep >= 4 ? 'active' : ''}`}>
             <span className="step-num">4</span>
-            <span className="step-text">保存模板</span>
+            <span className="step-text">发布模板资产</span>
           </div>
         </div>
       )}
@@ -385,7 +385,7 @@ export const TemplateConfigPanel: React.FC<TemplateConfigPanelProps> = ({
               onClick={handleGenerateSkill}
               disabled={loadingStates.skillGenerate || currentStep < 2}
             >
-              {loadingStates.skillGenerate ? '生成中...' : '2. 生成AI指南'}
+              {loadingStates.skillGenerate ? '生成中...' : '2. 生成模板指南'}
             </button>
 
             <button
@@ -393,7 +393,7 @@ export const TemplateConfigPanel: React.FC<TemplateConfigPanelProps> = ({
               onClick={handleSkillPreview}
               disabled={loadingStates.skillPreview || currentStep < 3 || !generatedSkill}
             >
-              {loadingStates.skillPreview ? '预览中...' : '3. 预览验证'}
+              {loadingStates.skillPreview ? '预览中...' : '3. 预览模板资产'}
             </button>
 
             <button
@@ -401,7 +401,7 @@ export const TemplateConfigPanel: React.FC<TemplateConfigPanelProps> = ({
               onClick={handleFullSave}
               disabled={loadingStates.fullSave || currentStep < 4}
             >
-              {loadingStates.fullSave ? '保存中...' : '4. 保存模板'}
+              {loadingStates.fullSave ? '发布中...' : '4. 发布模板资产'}
             </button>
           </div>
 

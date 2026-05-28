@@ -198,6 +198,11 @@ const TemporalPage: React.FC = () => {
         <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
           <Space size={6}>
             <Text strong style={{ color: 'var(--primary-color)', fontSize: 14 }}>{name}</Text>
+            {r.sourceTemplate?.templateAssetVersion && (
+              <Tag color="purple" style={{ margin: 0, fontSize: 10, lineHeight: '14px', height: 16 }}>
+                v{r.sourceTemplate.templateAssetVersion}
+              </Tag>
+            )}
           </Space>
           {r.workflowDsl?.workflowClassName && <Text type="secondary" style={{ fontSize: 12, fontFamily: 'monospace' }}>{r.workflowDsl.workflowClassName}</Text>}
           <Text type="secondary" style={{ fontSize: 12 }}>{r.taskQueue}</Text>

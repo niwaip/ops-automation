@@ -27,7 +27,20 @@ import { CarboneEngine } from '../../lib/engine';
 import { PreviewService } from './preview.service';
 import { AIIdentifierService, AIIdentifyResponse } from './ai-identifier.service';
 import { DocumentStructureService, DocumentStructure } from './document-structure.service';
-import { TemplateResponse, RenderResponse } from './studio.types';
+import {
+  DEFAULT_RENDER_PLAN_VERSION,
+  TEMPLATE_ASSET_MANIFEST_VERSION,
+  TEMPLATE_ASSET_SOURCE_LEGACY,
+  TEMPLATE_DOCUMENT_MODE_BILINGUAL,
+  TEMPLATE_DOCUMENT_MODE_SINGLE_LANGUAGE,
+  TEMPLATE_WORKFLOW_SCHEMA_VERSION,
+  TemplateResponse,
+  RenderResponse,
+  RenderPlan,
+  TemplateAssetManifest,
+  TemplateAssetExportPayload,
+  TemplateAssetImportPayload,
+} from './studio.types';
 import { TemplateRepository } from './template.repository';
 import { SkillRepository } from './skill.repository';
 import { RenderOutputRepository } from './render-output.repository';
@@ -39,6 +52,7 @@ import {
   WorkflowUnderstandResult,
   TemplateWorkflowService,
   WorkflowBindingPlan,
+  WorkflowSaveResult,
   WorkflowDocumentIR,
   WorkflowSaveMeta,
   WorkflowTemplateFieldSpec,
@@ -80,6 +94,8 @@ export class DirectAIIdentifyDto {
   documentContent!: string;           // 文档文本内容（从Office获取）
   documentType!: 'docx' | 'xlsx' | 'pptx' | 'text';  // 文档类型
   templateType?: string;              // 模板类型：report, invoice, contract, certificate 等
+  skillId?: string;                   // AI Skill ID
+  skill?: any;                        // AI Skill 对象
   context?: string;                   // 上下文信息（如文档用途描述）
   customRules?: Array<{               // 自定义识别规则
     pattern: string;
@@ -147,6 +163,8 @@ export class RenderWithSkillDto {
 export class TemplateAnalyzeDto {
   workflowId?: string;
   templateId?: string;
+  skillId?: string;
+  skill?: any;
   templateDocumentIr!: WorkflowDocumentIR;
   sampleDocument?: {
     fileName?: string;
@@ -172,6 +190,16 @@ export class TemplateSaveDto {
   templateDocumentIr!: WorkflowDocumentIR;
   templateFieldSpecs!: WorkflowTemplateFieldSpec[];
   saveMode?: 'draft_or_publish' | 'draft' | 'publish';
+}
+
+export class TemplateAssetExportDto implements TemplateAssetExportPayload {
+  templateId!: string;
+  includeBinary!: boolean;
+}
+
+export class TemplateAssetImportDto implements TemplateAssetImportPayload {
+  manifest!: TemplateAssetManifest;
+  templateBinary?: string;
 }
 
 export class TemplateRenderDataDto {
@@ -229,6 +257,19 @@ export class StudioController {
 
   private isPlainObject(value: unknown): value is Record<string, any> {
     return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
+  }
+
+  private resolveDocumentMode(targetLanguages?: string[], explicitDocumentMode?: string): string {
+    if (typeof explicitDocumentMode === 'string' && explicitDocumentMode.trim()) {
+      return explicitDocumentMode;
+    }
+    return Array.isArray(targetLanguages) && targetLanguages.length > 0
+      ? TEMPLATE_DOCUMENT_MODE_BILINGUAL
+      : TEMPLATE_DOCUMENT_MODE_SINGLE_LANGUAGE;
+  }
+
+  private resolveRenderPlanVersion(renderPlan?: RenderPlan, explicitVersion?: number): number {
+    return Number(explicitVersion || renderPlan?.version || DEFAULT_RENDER_PLAN_VERSION);
   }
 
   private parsePathSegments(pathValue: string): Array<string | number> {
@@ -549,6 +590,7 @@ export class StudioController {
         ...dbMeta,
         skillId: dbMeta.skillId || fileMeta.skillId,
         templateConfig: dbMeta.templateConfig ?? fileMeta.templateConfig,
+        templateAssetManifest: dbMeta.templateAssetManifest ?? fileMeta.templateAssetManifest,
         configSavedAt: dbMeta.configSavedAt || fileMeta.configSavedAt,
         suggestions: dbMeta.suggestions ?? fileMeta.suggestions,
         rawSuggestions: dbMeta.rawSuggestions ?? fileMeta.rawSuggestions,
@@ -655,35 +697,36 @@ export class StudioController {
 
   private buildWorkflowMetaDocument(
     id: string,
-    dto: TemplateSaveDto,
-    workflowResult: {
-      version: number;
-      bindingPlanVersion: number;
-      status: string;
-      carboneBindingPlan: WorkflowBindingPlan;
-      updatedAt: string;
+    dto: Pick<TemplateSaveDto, 'templateMeta' | 'templateFieldSpecs'> & {
+      templateDocumentIr?: WorkflowDocumentIR;
     },
+    workflowResult: WorkflowSaveResult,
     existingMeta?: Record<string, any>,
   ): Record<string, any> {
     const format = String(existingMeta?.format || 'docx');
     const templateName = dto.templateMeta?.templateName || existingMeta?.fileName || `draft-${id}.${format}`;
+    const existingTemplateWorkflow = this.isPlainObject(existingMeta?.templateConfig?.templateWorkflow)
+      ? existingMeta.templateConfig.templateWorkflow
+      : undefined;
     const templateConfig = {
       ...(this.isPlainObject(existingMeta?.templateConfig) ? existingMeta.templateConfig : {}),
       templateWorkflow: {
-        workflowVersion: 'p0-template-workflow',
-        templateDocumentIr: dto.templateDocumentIr,
+        workflowVersion: TEMPLATE_WORKFLOW_SCHEMA_VERSION,
+        templateDocumentIr: dto.templateDocumentIr || existingTemplateWorkflow?.templateDocumentIr,
         templateFieldSpecs: dto.templateFieldSpecs,
         carboneBindingPlan: workflowResult.carboneBindingPlan,
+        renderPlan: workflowResult.renderPlan,
         languageProfile: {
           sourceLanguage: dto.templateMeta?.sourceLanguage || 'zh',
           targetLanguages: dto.templateMeta?.targetLanguages || [],
-          documentMode: dto.templateMeta?.documentMode || 'single_or_bilingual',
+          documentMode: this.resolveDocumentMode(dto.templateMeta?.targetLanguages, dto.templateMeta?.documentMode),
         },
         termAssets: dto.templateMeta?.termAssets,
         status: workflowResult.status,
         version: workflowResult.version,
         bindingPlanVersion: workflowResult.bindingPlanVersion,
       },
+      templateAssetManifest: workflowResult.templateAssetManifest,
     };
 
     return {
@@ -702,9 +745,65 @@ export class StudioController {
     };
   }
 
+  private buildLegacyTemplateAssetManifest(
+    meta: Record<string, any>,
+    workflow: Record<string, any> | undefined,
+  ): TemplateAssetManifest | undefined {
+    if (!workflow || !Array.isArray(workflow.templateFieldSpecs) || workflow.templateFieldSpecs.length === 0) {
+      return undefined;
+    }
+
+    const sourceLanguage = typeof workflow?.languageProfile?.sourceLanguage === 'string'
+      ? workflow.languageProfile.sourceLanguage
+      : 'zh';
+    const targetLanguages = Array.isArray(workflow?.languageProfile?.targetLanguages)
+      ? workflow.languageProfile.targetLanguages as string[]
+      : [];
+    const documentMode = typeof workflow?.languageProfile?.documentMode === 'string'
+      ? workflow.languageProfile.documentMode
+      : (targetLanguages.length > 0 ? 'single_or_bilingual' : 'single_language');
+    const legacyRenderPlan = this.isPlainObject(workflow?.renderPlan)
+      ? workflow.renderPlan as RenderPlan
+      : this.isPlainObject(workflow?.carboneBindingPlan)
+        ? workflow.carboneBindingPlan as RenderPlan
+        : undefined;
+
+    if (!legacyRenderPlan) {
+      return undefined;
+    }
+
+    return {
+      assetVersion: TEMPLATE_ASSET_MANIFEST_VERSION,
+      templateId: String(meta?.id || ''),
+      fileName: String(meta?.fileName || ''),
+      format: String(meta?.format || 'docx'),
+      fieldCount: workflow.templateFieldSpecs.length,
+      templateFieldSpecs: workflow.templateFieldSpecs as WorkflowTemplateFieldSpec[],
+      languageProfile: {
+        sourceLanguage,
+        targetLanguages,
+        documentMode,
+      },
+      renderPlan: legacyRenderPlan,
+      renderPlanVersion: this.resolveRenderPlanVersion(
+        legacyRenderPlan,
+        Number(workflow?.bindingPlanVersion || workflow?.version || DEFAULT_RENDER_PLAN_VERSION),
+      ),
+      termAssets: this.isPlainObject(workflow?.termAssets)
+        ? workflow.termAssets as WorkflowTermAssets
+        : undefined,
+      metadata: {
+        generatedAt: String(meta?.updatedAt || meta?.configSavedAt || new Date().toISOString()),
+        source: TEMPLATE_ASSET_SOURCE_LEGACY,
+      },
+    };
+  }
+
   private readWorkflowConfig(meta: Record<string, any>): {
     templateFieldSpecs: WorkflowTemplateFieldSpec[];
     carboneBindingPlan?: WorkflowBindingPlan;
+    renderPlan?: RenderPlan;
+    templateAssetManifest?: TemplateAssetManifest;
     sourceLanguage?: string;
     targetLanguages?: string[];
     termAssets?: WorkflowTermAssets;
@@ -712,22 +811,31 @@ export class StudioController {
     const workflow = this.isPlainObject(meta?.templateConfig?.templateWorkflow)
       ? meta.templateConfig.templateWorkflow
       : undefined;
+
+    const manifest = this.isPlainObject(meta?.templateConfig?.templateAssetManifest)
+      ? meta.templateConfig.templateAssetManifest as TemplateAssetManifest
+      : this.buildLegacyTemplateAssetManifest(meta, workflow);
+
     return {
-      templateFieldSpecs: Array.isArray(workflow?.templateFieldSpecs)
+      templateFieldSpecs: manifest?.templateFieldSpecs || (Array.isArray(workflow?.templateFieldSpecs)
         ? workflow.templateFieldSpecs as WorkflowTemplateFieldSpec[]
-        : [],
+        : []),
       carboneBindingPlan: this.isPlainObject(workflow?.carboneBindingPlan)
         ? workflow.carboneBindingPlan as WorkflowBindingPlan
         : undefined,
-      sourceLanguage: typeof workflow?.languageProfile?.sourceLanguage === 'string'
+      renderPlan: manifest?.renderPlan || (this.isPlainObject(workflow?.renderPlan)
+        ? workflow.renderPlan as RenderPlan
+        : undefined),
+      templateAssetManifest: manifest,
+      sourceLanguage: manifest?.languageProfile?.sourceLanguage || (typeof workflow?.languageProfile?.sourceLanguage === 'string'
         ? workflow.languageProfile.sourceLanguage
-        : undefined,
-      targetLanguages: Array.isArray(workflow?.languageProfile?.targetLanguages)
+        : undefined),
+      targetLanguages: manifest?.languageProfile?.targetLanguages || (Array.isArray(workflow?.languageProfile?.targetLanguages)
         ? workflow.languageProfile.targetLanguages as string[]
-        : undefined,
-      termAssets: this.isPlainObject(workflow?.termAssets)
+        : undefined),
+      termAssets: manifest?.termAssets || (this.isPlainObject(workflow?.termAssets)
         ? workflow.termAssets as WorkflowTermAssets
-        : undefined,
+        : undefined),
     };
   }
 
@@ -823,6 +931,18 @@ export class StudioController {
       throw new HttpException('templateDocumentIr 不能为空', HttpStatus.BAD_REQUEST);
     }
 
+    let skill = dto.skill;
+    if (!skill && dto.skillId) {
+      const skillPath = path.join(this.templatesDir, `skill_${dto.skillId}.json`);
+      if (fs.existsSync(skillPath)) {
+        try {
+          skill = JSON.parse(fs.readFileSync(skillPath, 'utf-8'));
+        } catch (e) {
+          this.logger.warn(`Failed to parse skill file: ${skillPath}`);
+        }
+      }
+    }
+
     return this.templateWorkflowService.recognizeTemplate(
       dto.templateDocumentIr,
       dto.sampleDocument,
@@ -831,6 +951,7 @@ export class StudioController {
       dto.termAssets,
       dto.candidateFields,
       dto.prefetchedUnderstanding,
+      skill,
     );
   }
 
@@ -843,23 +964,27 @@ export class StudioController {
     bindingPlanVersion: number;
     status: string;
     updatedAt: string;
+    templateAssetManifest?: TemplateAssetManifest;
   }> {
     if (!Array.isArray(dto.templateFieldSpecs) || dto.templateFieldSpecs.length === 0) {
       throw new HttpException('TPL_001: templateFieldSpecs 不能为空', HttpStatus.BAD_REQUEST);
     }
 
     const templateId = dto.templateId || uuidv4();
-    const workflowResult = this.templateWorkflowService.compileAndPersistTemplate(
-      templateId,
-      dto.templateMeta,
-      dto.templateFieldSpecs,
-      dto.saveMode,
-    );
-
     const metaPath = path.join(this.templatesDir, `${templateId}.json`);
     const existingMeta = fs.existsSync(metaPath)
       ? JSON.parse(fs.readFileSync(metaPath, 'utf-8'))
       : undefined;
+
+    const format = String(existingMeta?.format || 'docx');
+    const workflowResult: WorkflowSaveResult = this.templateWorkflowService.compileAndPersistTemplate(
+      templateId,
+      dto.templateMeta,
+      dto.templateFieldSpecs,
+      dto.saveMode,
+      format,
+    );
+
     const nextMeta = this.buildWorkflowMetaDocument(templateId, dto, workflowResult, existingMeta);
 
     fs.writeFileSync(metaPath, JSON.stringify(nextMeta, null, 2));
@@ -873,7 +998,96 @@ export class StudioController {
       bindingPlanVersion: workflowResult.bindingPlanVersion,
       status: workflowResult.status,
       updatedAt: workflowResult.updatedAt,
+      templateAssetManifest: workflowResult.templateAssetManifest,
     };
+  }
+
+  @Post('template/export')
+  @ApiOperation({ summary: 'Export template asset manifest with optional binary' })
+  @ApiBody({ type: TemplateAssetExportDto })
+  async exportTemplateAsset(@Body() dto: TemplateAssetExportDto): Promise<TemplateAssetImportPayload> {
+    const meta = await this.getTemplateMetaWithDbFallback(dto.templateId);
+    const workflow = this.readWorkflowConfig(meta as Record<string, any>);
+    if (!workflow.templateAssetManifest) {
+      throw new HttpException('TPL_003: 当前模板缺少可导出的模板资产清单', HttpStatus.BAD_REQUEST);
+    }
+
+    let templateBinary: string | undefined;
+    if (dto.includeBinary) {
+      const templatePath = path.join(this.templatesDir, `${dto.templateId}.${meta.format}`);
+      if (!fs.existsSync(templatePath)) {
+        throw new HttpException('TPL_004: 模板二进制文件不存在，无法导出完整资产包', HttpStatus.BAD_REQUEST);
+      }
+      templateBinary = fs.readFileSync(templatePath).toString('base64');
+    }
+
+    return {
+      manifest: workflow.templateAssetManifest,
+      templateBinary,
+    };
+  }
+
+  @Post('template/import')
+  @ApiOperation({ summary: 'Import template asset manifest with optional binary' })
+  @ApiBody({ type: TemplateAssetImportDto })
+  async importTemplateAsset(@Body() dto: TemplateAssetImportDto): Promise<TemplateResponse> {
+    if (!this.isPlainObject(dto?.manifest)) {
+      throw new HttpException('TPL_005: manifest 不能为空', HttpStatus.BAD_REQUEST);
+    }
+
+    const manifest = dto.manifest;
+    const templateId = String(manifest.templateId || uuidv4()).trim() || uuidv4();
+    const format = String(manifest.format || 'docx');
+    const renderPlan = manifest.renderPlan;
+    const metaPath = path.join(this.templatesDir, `${templateId}.json`);
+    const filePath = path.join(this.templatesDir, `${templateId}.${format}`);
+    const existingMeta = fs.existsSync(metaPath)
+      ? JSON.parse(fs.readFileSync(metaPath, 'utf-8'))
+      : undefined;
+
+    if (dto.templateBinary) {
+      fs.writeFileSync(filePath, Buffer.from(dto.templateBinary, 'base64'));
+    }
+
+    const nextMeta = {
+      ...(existingMeta || {}),
+      id: templateId,
+      type: existingMeta?.type || 'template',
+      format,
+      fileName: String(manifest.fileName || existingMeta?.fileName || `imported-${templateId}.${format}`),
+      hasValidFile: dto.templateBinary ? true : (existingMeta?.hasValidFile ?? false),
+      variables: Array.isArray(renderPlan?.bindings)
+        ? renderPlan.bindings.map((binding) => binding.variablePath)
+        : [],
+      loops: existingMeta?.loops || [],
+      templateConfig: {
+        ...(this.isPlainObject(existingMeta?.templateConfig) ? existingMeta.templateConfig : {}),
+        templateWorkflow: {
+          workflowVersion: TEMPLATE_WORKFLOW_SCHEMA_VERSION,
+          templateFieldSpecs: Array.isArray(manifest.templateFieldSpecs) ? manifest.templateFieldSpecs : [],
+          carboneBindingPlan: renderPlan,
+          renderPlan,
+          languageProfile: manifest.languageProfile,
+          termAssets: manifest.termAssets,
+          status: 'ready',
+          version: this.resolveRenderPlanVersion(renderPlan),
+          bindingPlanVersion: this.resolveRenderPlanVersion(renderPlan, manifest.renderPlanVersion),
+        },
+        templateAssetManifest: manifest,
+      },
+      configSavedAt: String(manifest.metadata?.generatedAt || new Date().toISOString()),
+      createdAt: existingMeta?.createdAt || String(manifest.metadata?.generatedAt || new Date().toISOString()),
+      updatedAt: new Date().toISOString(),
+    };
+
+    fs.writeFileSync(metaPath, JSON.stringify(nextMeta, null, 2));
+    await this.syncTemplateMetaToDb(
+      templateId,
+      nextMeta as Record<string, any> & { format: string },
+      fs.existsSync(filePath) ? filePath : metaPath,
+    );
+
+    return this.getTemplateMeta(templateId);
   }
 
   @Post('template/render-data')
@@ -1850,13 +2064,26 @@ export class StudioController {
     @Body() dto: DirectAIIdentifyDto
   ): Promise<AIIdentifyResponse> {
     try {
+      let skill = dto.skill;
+      if (!skill && dto.skillId) {
+        const skillPath = path.join(this.templatesDir, `skill_${dto.skillId}.json`);
+        if (fs.existsSync(skillPath)) {
+          try {
+            skill = JSON.parse(fs.readFileSync(skillPath, 'utf-8'));
+          } catch (e) {
+            this.logger.warn(`Failed to parse skill file: ${skillPath}`);
+          }
+        }
+      }
+
       // 直接对文档内容进行AI分析
       const result = await this.aiIdentifierService.identifyFromContent(
         dto.documentContent,
         dto.documentType,
         dto.templateType || 'report',
         dto.context,
-        dto.customRules
+        dto.customRules,
+        skill
       );
       return result;
     } catch (error: unknown) {
@@ -1882,6 +2109,18 @@ export class StudioController {
     @Body() dto: DirectAIIdentifyDto
   ): Promise<AIIdentifyResponse> {
     try {
+      let skill = dto.skill;
+      if (!skill && dto.skillId) {
+        const skillPath = path.join(this.templatesDir, `skill_${dto.skillId}.json`);
+        if (fs.existsSync(skillPath)) {
+          try {
+            skill = JSON.parse(fs.readFileSync(skillPath, 'utf-8'));
+          } catch (e) {
+            this.logger.warn(`Failed to parse skill file: ${skillPath}`);
+          }
+        }
+      }
+
       // 调用多阶段AI识别服务（传入下划线和格式信息）
       const result = await this.aiIdentifierService.identifyFromContentMultiStage(
         dto.documentContent,
@@ -1893,7 +2132,8 @@ export class StudioController {
           console.log(`[MultiStage Progress] ${progress.stageName}: ${progress.progress}% - ${progress.message}`);
         },
         dto.underlineInfo,    // 下划线信息
-        dto.paragraphFormats  // 段落格式信息
+        dto.paragraphFormats, // 段落格式信息
+        skill
       );
       return result;
     } catch (error: unknown) {
@@ -2633,6 +2873,17 @@ export class StudioController {
       meta.loops = this.extractLoopsFromMeta(meta);
     }
 
+    const workflow = this.readWorkflowConfig(meta as Record<string, any>);
+    if (workflow.templateAssetManifest) {
+      meta.templateAssetManifest = workflow.templateAssetManifest;
+    }
+    if (Array.isArray(workflow.templateFieldSpecs) && workflow.templateFieldSpecs.length > 0) {
+      meta.parameterCount = workflow.templateFieldSpecs.length;
+    }
+    if ((!meta.variables || !Array.isArray(meta.variables) || meta.variables.length === 0) && workflow.renderPlan?.bindings?.length) {
+      meta.variables = workflow.renderPlan.bindings.map((binding) => binding.variablePath);
+    }
+
     return meta;
   }
 
@@ -3096,6 +3347,9 @@ export class StudioController {
         documentContent: { type: 'string', description: 'Document content (base64)' },
         suggestions: { type: 'array', description: 'Applied suggestions' },
         templateConfig: { type: 'object', description: 'Template configuration' },
+        templateMeta: { type: 'object', description: 'Template asset metadata' },
+        templateDocumentIr: { type: 'object', description: 'Template document IR for persisted asset metadata' },
+        templateFieldSpecs: { type: 'array', description: 'Template asset field specs' },
         skill: { type: 'object', description: 'AI Skill guide' },
         skillId: { type: 'string', description: 'Existing skill ID to associate' },
         format: { type: 'string', description: 'Document format' },
@@ -3109,6 +3363,9 @@ export class StudioController {
       documentContent?: string;  // 如果使用已有模版ID，可以不传
       suggestions?: any[];
       templateConfig?: any;
+      templateMeta?: WorkflowSaveMeta;
+      templateDocumentIr?: WorkflowDocumentIR;
+      templateFieldSpecs?: WorkflowTemplateFieldSpec[];
       skill?: any;
       skillId?: string;
       format?: string;
@@ -3146,6 +3403,9 @@ export class StudioController {
       }
 
       const templateName = body.templateName || `template_${templateId}`;
+      const normalizedTemplateFileName = templateName.toLowerCase().endsWith(`.${format.toLowerCase()}`)
+        ? templateName
+        : `${templateName}.${format}`;
 
       // 如果是新模版，保存模板文件
       if (isNewTemplate && body.documentContent) {
@@ -3188,17 +3448,66 @@ export class StudioController {
         existingMeta = JSON.parse(fs.readFileSync(metaPath, 'utf-8'));
       }
 
-      fs.writeFileSync(metaPath, JSON.stringify({
-        ...existingMeta,
-        id: templateId,
-        format,
-        fileName: `${templateName}.${format}`,
-        config: templateConfig,
-        suggestions: body.suggestions || [],
-        skillId,
-        updatedAt: new Date().toISOString(),
-        createdAt: existingMeta.createdAt || new Date().toISOString(),
-      }));
+      const normalizedTemplateMeta = this.isPlainObject(body.templateMeta)
+        ? {
+            ...body.templateMeta,
+            templateName: normalizedTemplateFileName,
+          } as WorkflowSaveMeta
+        : undefined;
+      const normalizedTemplateFieldSpecs = Array.isArray(body.templateFieldSpecs)
+        ? body.templateFieldSpecs.filter((field): field is WorkflowTemplateFieldSpec => this.isPlainObject(field))
+        : [];
+      const hasTemplateAssetPayload = normalizedTemplateFieldSpecs.length > 0;
+      const hasValidFile = existingMeta?.hasValidFile ?? fs.existsSync(path.join(this.templatesDir, `${templateId}.${format}`));
+
+      let nextMeta: Record<string, any>;
+      if (hasTemplateAssetPayload) {
+        const workflowResult = this.templateWorkflowService.compileAndPersistTemplate(
+          templateId,
+          normalizedTemplateMeta,
+          normalizedTemplateFieldSpecs,
+          'publish',
+          format,
+        );
+
+        nextMeta = {
+          ...this.buildWorkflowMetaDocument(
+            templateId,
+            {
+              templateMeta: normalizedTemplateMeta,
+              templateDocumentIr: body.templateDocumentIr,
+              templateFieldSpecs: normalizedTemplateFieldSpecs,
+            },
+            workflowResult,
+            {
+              ...(existingMeta || {}),
+              format,
+              fileName: normalizedTemplateFileName,
+              hasValidFile,
+            },
+          ),
+          config: templateConfig,
+          suggestions: body.suggestions || [],
+          skillId,
+          updatedAt: workflowResult.updatedAt,
+          createdAt: existingMeta.createdAt || workflowResult.updatedAt,
+        };
+      } else {
+        nextMeta = {
+          ...existingMeta,
+          id: templateId,
+          format,
+          fileName: normalizedTemplateFileName,
+          config: templateConfig,
+          suggestions: body.suggestions || [],
+          skillId,
+          hasValidFile,
+          updatedAt: new Date().toISOString(),
+          createdAt: existingMeta.createdAt || new Date().toISOString(),
+        };
+      }
+
+      fs.writeFileSync(metaPath, JSON.stringify(nextMeta));
       const latestMeta = JSON.parse(fs.readFileSync(metaPath, 'utf-8'));
       await this.syncTemplateMetaToDb(templateId, latestMeta);
 

@@ -3,6 +3,15 @@ import axios from 'axios';
 import JSZip from 'jszip';
 import { getAiOrchestratorUrl } from '../../config/service-endpoints';
 import { buildWorkflowUnderstandingPromptText } from './template-workflow.prompt';
+import {
+  DEFAULT_RENDER_PLAN_VERSION,
+  TEMPLATE_ASSET_MANIFEST_VERSION,
+  TEMPLATE_ASSET_SOURCE_OFFICE_ADDIN,
+  TEMPLATE_DOCUMENT_MODE_BILINGUAL,
+  TEMPLATE_DOCUMENT_MODE_SINGLE_LANGUAGE,
+  TemplateAssetManifest,
+  RenderPlan,
+} from './studio.types';
 
 type Primitive = string | number | boolean | null;
 
@@ -52,6 +61,7 @@ export interface WorkflowTemplateFieldSpec {
   fieldId: string;
   valueMode?: 'scalar' | 'object' | 'list';
   type: string;
+  description?: string;
   sourceLanguage?: string;
   targetLanguages?: string[];
   policy?: 'dictionary_first' | 'enum_mapping' | 'format_only' | 'llm_translate';
@@ -69,6 +79,7 @@ export interface WorkflowFieldDictionaryEntry {
   aliases: string[];
   fieldId: string;
   type: string;
+  description?: string;
   policy: WorkflowTemplateFieldSpec['policy'];
   riskLevel: NonNullable<WorkflowTemplateFieldSpec['riskLevel']>;
   required?: boolean;
@@ -167,6 +178,7 @@ export interface WorkflowFieldCandidate {
   anchorText: string;
   sampleValue: string;
   segmentText: string;
+  description?: string;
   sectionId?: string;
   sectionTitle?: string;
   fieldTypeHint?: string;
@@ -319,6 +331,7 @@ interface WorkflowRecognitionAiSuggestion {
   candidateId?: string;
   fieldId?: string;
   fieldType?: string;
+  description?: string;
   type?: string;
   policy?: WorkflowTemplateFieldSpec['policy'];
   riskLevel?: WorkflowTemplateFieldSpec['riskLevel'];
@@ -370,6 +383,7 @@ export interface WorkflowSaveMeta {
   targetLanguages?: string[];
   documentMode?: string;
   termAssets?: WorkflowTermAssets;
+  addinVersion?: string;
 }
 
 export interface WorkflowSaveResult {
@@ -379,6 +393,8 @@ export interface WorkflowSaveResult {
   status: 'draft' | 'ready' | 'published';
   updatedAt: string;
   carboneBindingPlan: WorkflowBindingPlan;
+  renderPlan?: RenderPlan;
+  templateAssetManifest?: TemplateAssetManifest;
 }
 
 export interface WorkflowRenderResult {
@@ -394,6 +410,7 @@ const GLOBAL_FIELD_DICTIONARY: WorkflowFieldDictionaryEntry[] = [
     aliases: ['委托方', '甲方', '买方', 'entrusting party', 'buyer', '委託者'],
     fieldId: 'partyAName',
     type: 'legal_entity_name',
+    description: '委托方（甲方）名称',
     policy: 'dictionary_first',
     riskLevel: 'high',
     required: true,
@@ -405,6 +422,7 @@ const GLOBAL_FIELD_DICTIONARY: WorkflowFieldDictionaryEntry[] = [
     aliases: ['受托方', '乙方', '卖方', 'seller', '受託者'],
     fieldId: 'partyBName',
     type: 'legal_entity_name',
+    description: '受托方（乙方）名称',
     policy: 'dictionary_first',
     riskLevel: 'high',
     required: true,
@@ -416,6 +434,7 @@ const GLOBAL_FIELD_DICTIONARY: WorkflowFieldDictionaryEntry[] = [
     aliases: ['项目名称', '项目', 'project name', '件名'],
     fieldId: 'projectName',
     type: 'project_name',
+    description: '项目名称',
     policy: 'dictionary_first',
     riskLevel: 'medium',
     required: true,
@@ -427,6 +446,7 @@ const GLOBAL_FIELD_DICTIONARY: WorkflowFieldDictionaryEntry[] = [
     aliases: ['服务地点', '服务场所', '交货地点', 'delivery place', 'service location', '場所'],
     fieldId: 'serviceLocation',
     type: 'geo_name',
+    description: '服务地点/履行地点',
     policy: 'dictionary_first',
     riskLevel: 'medium',
     scope: 'global',
@@ -437,6 +457,7 @@ const GLOBAL_FIELD_DICTIONARY: WorkflowFieldDictionaryEntry[] = [
     aliases: ['交货地点', 'delivery place'],
     fieldId: 'deliveryLocation',
     type: 'geo_name',
+    description: '交货地点',
     policy: 'dictionary_first',
     riskLevel: 'medium',
     scope: 'global',
@@ -447,6 +468,7 @@ const GLOBAL_FIELD_DICTIONARY: WorkflowFieldDictionaryEntry[] = [
     aliases: ['技术服务费总额', '服务费总额', '合同总额', '总金额', '总价', 'amount'],
     fieldId: 'serviceFeeTotal',
     type: 'currency_amount',
+    description: '技术服务费总额（含税）',
     policy: 'format_only',
     riskLevel: 'high',
     required: true,
@@ -458,6 +480,7 @@ const GLOBAL_FIELD_DICTIONARY: WorkflowFieldDictionaryEntry[] = [
     aliases: ['付款方式', '支付方式', 'payment mode', 'payment method'],
     fieldId: 'paymentMode',
     type: 'enum',
+    description: '付款方式',
     policy: 'enum_mapping',
     riskLevel: 'medium',
     required: true,
@@ -469,6 +492,7 @@ const GLOBAL_FIELD_DICTIONARY: WorkflowFieldDictionaryEntry[] = [
     aliases: ['银行账号', '银行账户', 'bank account', 'account no'],
     fieldId: 'bankAccount',
     type: 'bank_account',
+    description: '银行账号',
     policy: 'format_only',
     riskLevel: 'high',
     scope: 'global',
@@ -479,6 +503,7 @@ const GLOBAL_FIELD_DICTIONARY: WorkflowFieldDictionaryEntry[] = [
     aliases: ['签订日期', '签约日期', 'dated', 'date'],
     fieldId: 'signingDate',
     type: 'date',
+    description: '合同签订日期',
     policy: 'format_only',
     riskLevel: 'high',
     scope: 'global',
@@ -489,6 +514,7 @@ const GLOBAL_FIELD_DICTIONARY: WorkflowFieldDictionaryEntry[] = [
     aliases: ['验收期限', '验收天数', 'acceptance days'],
     fieldId: 'acceptanceDays',
     type: 'number',
+    description: '甲方验收时间限制天数',
     policy: 'format_only',
     riskLevel: 'medium',
     scope: 'global',
@@ -499,6 +525,7 @@ const GLOBAL_FIELD_DICTIONARY: WorkflowFieldDictionaryEntry[] = [
     aliases: ['付款期限', '付款截止天数', 'payment deadline'],
     fieldId: 'paymentDeadlineDays',
     type: 'number',
+    description: '首次付款截止天数',
     policy: 'format_only',
     riskLevel: 'medium',
     scope: 'global',
@@ -509,6 +536,7 @@ const GLOBAL_FIELD_DICTIONARY: WorkflowFieldDictionaryEntry[] = [
     aliases: ['服务内容', '服务范围', 'scope of service'],
     fieldId: 'serviceScopeSummary',
     type: 'text',
+    description: '技术服务内容概要',
     policy: 'llm_translate',
     riskLevel: 'medium',
     scope: 'global',
@@ -600,6 +628,15 @@ const GLOBAL_ENUM_MAPPINGS: Record<string, WorkflowEnumItem[]> = {
 @Injectable()
 export class TemplateWorkflowService {
   private readonly logger = new Logger(TemplateWorkflowService.name);
+
+  private resolveDocumentMode(targetLanguages?: string[], explicitDocumentMode?: string): string {
+    if (typeof explicitDocumentMode === 'string' && explicitDocumentMode.trim()) {
+      return explicitDocumentMode;
+    }
+    return Array.isArray(targetLanguages) && targetLanguages.length > 0
+      ? TEMPLATE_DOCUMENT_MODE_BILINGUAL
+      : TEMPLATE_DOCUMENT_MODE_SINGLE_LANGUAGE;
+  }
 
   async understandTemplate(
     templateDocumentIr: WorkflowDocumentIR,
@@ -777,6 +814,7 @@ export class TemplateWorkflowService {
     termAssets?: WorkflowTermAssets,
     candidateFields?: WorkflowFieldCandidate[],
     prefetchedUnderstanding?: WorkflowUnderstandResult,
+    skill?: any,
   ): Promise<WorkflowRecognizeResult> {
     const assets = this.resolveAssets(termAssets);
     const analyzeResult = this.analyzeTemplate(
@@ -853,6 +891,7 @@ export class TemplateWorkflowService {
         sourceLanguage,
         targetLanguages,
         assets,
+        skill,
       });
       requestCount += 1;
       lastPromptRequestText = promptRequestText;
@@ -1220,11 +1259,22 @@ export class TemplateWorkflowService {
     sourceLanguage: string;
     targetLanguages: string[];
     assets: WorkflowResolvedAssets;
+    skill?: any;
   }): string {
     const targetLanguageText = input.targetLanguages.length > 0
       ? input.targetLanguages.join(', ')
       : 'single_language';
     const candidateFieldsJson = JSON.stringify(input.block.candidates.slice(0, 8), null, 2);
+    
+    // 提取 Skill 中的参数情报
+    const skillParameters = input.skill?.parameters || [];
+    const skillHints = Array.isArray(skillParameters) 
+      ? skillParameters
+          .map((p: any) => `- ${p.name}: ${p.usage || ''} | 类型: ${p.dataType || 'text'} | 提取提示: ${p.extractionHint || ''}`)
+          .join('\n')
+      : '';
+    const skillDescription = input.skill?.templateDescription || '';
+
     const relatedFieldIds = new Set(
       input.block.candidates
         .map((candidate) => candidate.fieldIdHint)
@@ -1262,13 +1312,18 @@ export class TemplateWorkflowService {
 
     return `你是合同模板参数识别助手。请基于当前章节、当前块文本和待定参数候选列表，识别哪些候选应成为正式模板字段。
 
+${skillDescription ? `【AI 指南：文档背景】\n${skillDescription}\n` : ''}
+
 要求：
 1. 仅处理当前块相关的候选，不要扩散到整篇文档。
 2. 优先依据当前章节内的完整文本比较、块上下文和候选片段判断，不要把字段词典是否命中当作唯一依据。
-3. 若候选只是固定正文，不要输出为字段。
-4. 若证据不足，请保守返回 needsReview=true。
-5. 必须返回 JSON 对象，不要 markdown，不要代码块。
-6. suggestions、warnings 必须分别是数组。
+3. 即使字段不在“字段词典提示”中，只要根据 templateText 和 sampleText 判断其具有明确的业务参数含义（如付款比例、验收天数、服务期限等），也必须将其识别为字段。
+4. **特别注意**：参考下方的【AI 指南：参数情报】，如果候选文本符合指南中的描述和提取提示，请务必将其映射为指南中定义的参数名（name）。
+5. 若候选只是固定正文，不要输出为字段。
+6. 若证据不足，请保守返回 needsReview=true。
+7. 必须返回 JSON 对象，不要 markdown，不要代码块。
+8. suggestions、warnings 必须分别是数组。
+9. 对于不在词典且不在 AI 指南中的新字段，请根据业务含义自拟一个简洁的 camelCase 风格的 fieldId。
 
 返回格式：
 {
@@ -1301,6 +1356,8 @@ export class TemplateWorkflowService {
 - blockType: ${input.block.blockType}
 - templateText: ${input.block.templateText || '无'}
 - sampleText: ${input.block.sampleText || '无'}
+
+${skillHints ? `【AI 指南：参数情报（优先参考）】\n${skillHints}\n` : ''}
 
 【当前块候选】
 ${candidateFieldsJson || '[]'}
@@ -1427,6 +1484,7 @@ ${enumHints || '无'}
       fieldId,
       valueMode: 'scalar',
       type: fieldType,
+      description: matchedCandidate?.description || suggestion.description,
       sourceLanguage,
       targetLanguages,
       policy,
@@ -1491,6 +1549,38 @@ ${enumHints || '无'}
     return camel || raw;
   }
 
+  private resolveTemplateFieldLanguage(fieldId: string): string | undefined {
+    const normalized = this.safeText(fieldId);
+    if (!normalized) {
+      return undefined;
+    }
+
+    const underscoreMatch = normalized.match(/(?:^|_)(cn|zh|jp|ja)$/i);
+    if (underscoreMatch) {
+      return this.mapTemplateLanguageSuffix(underscoreMatch[1]);
+    }
+
+    const camelMatch = normalized.match(/(Cn|Zh|Jp|Ja)$/);
+    if (camelMatch) {
+      return this.mapTemplateLanguageSuffix(camelMatch[1]);
+    }
+
+    return undefined;
+  }
+
+  private mapTemplateLanguageSuffix(suffix: string): string | undefined {
+    switch (suffix.toLowerCase()) {
+      case 'cn':
+      case 'zh':
+        return 'zh';
+      case 'jp':
+      case 'ja':
+        return 'ja';
+      default:
+        return undefined;
+    }
+  }
+
   private inferPolicyFromType(fieldType: string): WorkflowTemplateFieldSpec['policy'] {
     if (fieldType === 'enum') {
       return 'enum_mapping';
@@ -1532,11 +1622,63 @@ ${enumHints || '无'}
     return Math.max(0, Math.min(1, fallback));
   }
 
+  /**
+   * 构建模板资产清单
+   */
+  buildTemplateAssetManifest(
+    templateId: string,
+    fileName: string,
+    format: string,
+    templateFieldSpecs: WorkflowTemplateFieldSpec[],
+    languageProfile: WorkflowLanguageProfile,
+    termAssets?: WorkflowTermAssets,
+    source = TEMPLATE_ASSET_SOURCE_OFFICE_ADDIN,
+    addinVersion?: string,
+  ): TemplateAssetManifest {
+    const renderPlan = this.compileBindingPlan(
+      templateId,
+      DEFAULT_RENDER_PLAN_VERSION,
+      templateFieldSpecs,
+      languageProfile.sourceLanguage,
+      languageProfile.targetLanguages,
+    );
+
+    return {
+      assetVersion: TEMPLATE_ASSET_MANIFEST_VERSION,
+      templateId,
+      fileName,
+      format,
+      fieldCount: templateFieldSpecs.length,
+      templateFieldSpecs,
+      languageProfile,
+      renderPlan: {
+        templateId: renderPlan.templateId,
+        version: renderPlan.version,
+        bindings: renderPlan.bindings.map((b) => ({
+          fieldId: b.fieldId,
+          variablePath: b.variablePath,
+          valueSelector: b.valueSelector,
+          language: b.language,
+          transform: b.transform,
+          required: b.required,
+        })),
+      },
+      renderPlanVersion: renderPlan.version,
+      termAssets,
+      metadata: {
+        generatedAt: new Date().toISOString(),
+        source,
+        addinVersion,
+      },
+    };
+  }
+
   compileAndPersistTemplate(
     templateId: string,
     templateMeta: WorkflowSaveMeta | undefined,
     templateFieldSpecs: WorkflowTemplateFieldSpec[],
     saveMode: 'draft_or_publish' | 'draft' | 'publish' | undefined,
+    templateFormat = 'docx', // 新增：支持传入格式
   ): WorkflowSaveResult {
     const version = 1;
     const carboneBindingPlan = this.compileBindingPlan(
@@ -1548,6 +1690,23 @@ ${enumHints || '无'}
     );
     const status = saveMode === 'publish' ? 'published' : carboneBindingPlan.bindings.length > 0 ? 'ready' : 'draft';
 
+    const languageProfile: WorkflowLanguageProfile = {
+      sourceLanguage: templateMeta?.sourceLanguage || 'zh',
+      targetLanguages: templateMeta?.targetLanguages || [],
+      documentMode: this.resolveDocumentMode(templateMeta?.targetLanguages, templateMeta?.documentMode),
+    };
+
+    const templateAssetManifest = this.buildTemplateAssetManifest(
+      templateId,
+      templateMeta?.templateName || `template-${templateId}`,
+      templateFormat,
+      templateFieldSpecs,
+      languageProfile,
+      templateMeta?.termAssets,
+      TEMPLATE_ASSET_SOURCE_OFFICE_ADDIN,
+      templateMeta?.addinVersion,
+    );
+
     return {
       templateId,
       version,
@@ -1555,6 +1714,8 @@ ${enumHints || '无'}
       status,
       updatedAt: new Date().toISOString(),
       carboneBindingPlan,
+      renderPlan: templateAssetManifest.renderPlan,
+      templateAssetManifest,
     };
   }
 
@@ -1711,6 +1872,7 @@ ${enumHints || '无'}
       fieldId: dictionaryMatch.fieldId,
       valueMode: 'scalar',
       type: dictionaryMatch.type,
+      description: dictionaryMatch.description,
       sourceLanguage: languageProfile.sourceLanguage,
       targetLanguages: languageProfile.targetLanguages,
       policy: dictionaryMatch.policy,
@@ -3792,6 +3954,25 @@ ${enumHints || '无'}
         continue;
       }
 
+      // Template-authored language fields like `paymentMethod_cn` are already
+      // final variable names and should not be expanded to a second `_zh/_ja` layer.
+      const explicitFieldLanguage = this.resolveTemplateFieldLanguage(spec.fieldId);
+      if (explicitFieldLanguage) {
+        const variablePath = spec.fieldId;
+        if (!seen.has(variablePath)) {
+          seen.add(variablePath);
+          bindings.push({
+            fieldId: spec.fieldId,
+            variablePath,
+            valueSelector: `${spec.fieldId}.${explicitFieldLanguage}`,
+            language: explicitFieldLanguage,
+            transform: this.inferTransform(spec),
+            required: Boolean(spec.required),
+          });
+        }
+        continue;
+      }
+
       const languages = Array.from(new Set([
         spec.sourceLanguage || sourceLanguage,
         ...(spec.targetLanguages || []),
@@ -4356,17 +4537,17 @@ ${enumHints || '无'}
       case 'partyAName':
         return matchValue([
           /甲方(?:是|为)?([^，。；]+)/u,
-          /委托方[:：]?\s*([^，。；]+)/u,
+          /委托方(?:是|为)?[:：]?\s*([^，。；]+)/u,
         ]);
       case 'partyBName':
         return matchValue([
           /乙方(?:是|为)?([^，。；]+)/u,
-          /受托方[:：]?\s*([^，。；]+)/u,
+          /受托方(?:是|为)?[:：]?\s*([^，。；]+)/u,
         ]);
       case 'projectName':
         return matchValue([
           /项目(?:名称)?(?:是|为)?([^，。；]+)/u,
-          /件名[:：]?\s*([^，。；]+)/u,
+          /件名(?:是|为)?[:：]?\s*([^，。；]+)/u,
         ]);
       case 'serviceLocation':
       case 'deliveryLocation':

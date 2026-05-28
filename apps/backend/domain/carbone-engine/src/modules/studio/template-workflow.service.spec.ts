@@ -5,6 +5,11 @@ import {
   WorkflowTemplateFieldSpec,
   WorkflowTermAssets,
 } from './template-workflow.service';
+import {
+  DEFAULT_RENDER_PLAN_VERSION,
+  TEMPLATE_ASSET_MANIFEST_VERSION,
+  TEMPLATE_ASSET_SOURCE_OFFICE_ADDIN,
+} from './studio.types';
 
 describe('TemplateWorkflowService', () => {
   let service: TemplateWorkflowService;
@@ -1548,6 +1553,63 @@ describe('TemplateWorkflowService', () => {
     );
   });
 
+  it('does not re-expand template-authored language fields in binding plan', () => {
+    const fieldSpecs: WorkflowTemplateFieldSpec[] = [
+      {
+        fieldId: 'contractPartyAName_cn',
+        type: 'legal_entity_name',
+        sourceLanguage: 'zh',
+        targetLanguages: ['ja'],
+        policy: 'dictionary_first',
+        required: true,
+      },
+      {
+        fieldId: 'contractPartyAName_jp',
+        type: 'legal_entity_name',
+        sourceLanguage: 'zh',
+        targetLanguages: ['ja'],
+        policy: 'dictionary_first',
+        required: true,
+      },
+      {
+        fieldId: 'paymentFirstDays',
+        type: 'number',
+        sourceLanguage: 'zh',
+        targetLanguages: ['ja'],
+        policy: 'format_only',
+        required: true,
+      },
+    ];
+
+    const bindingPlan = service.compileBindingPlan('tpl_demo', 1, fieldSpecs, 'zh', ['ja']);
+
+    expect(bindingPlan.bindings).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          variablePath: 'contractPartyAName_cn',
+          valueSelector: 'contractPartyAName_cn.zh',
+          language: 'zh',
+        }),
+        expect.objectContaining({
+          variablePath: 'contractPartyAName_jp',
+          valueSelector: 'contractPartyAName_jp.ja',
+          language: 'ja',
+        }),
+        expect.objectContaining({
+          variablePath: 'paymentFirstDays_zh',
+          valueSelector: 'paymentFirstDays.zh',
+          language: 'zh',
+        }),
+        expect.objectContaining({
+          variablePath: 'paymentFirstDays_ja',
+          valueSelector: 'paymentFirstDays.ja',
+          language: 'ja',
+        }),
+      ])
+    );
+    expect(bindingPlan.bindings).toHaveLength(4);
+  });
+
   it('generates render data with dictionary, enum and format rules', () => {
     const fieldSpecs: WorkflowTemplateFieldSpec[] = [
       {
@@ -2103,6 +2165,61 @@ describe('TemplateWorkflowService', () => {
           fieldIds: ['projectName'],
         }),
       ])
+    );
+  });
+
+  it('builds template asset manifest from field specs and language profile', () => {
+    const fieldSpecs: WorkflowTemplateFieldSpec[] = [
+      {
+        fieldId: 'partyAName',
+        type: 'legal_entity_name',
+        sourceLanguage: 'zh',
+        targetLanguages: ['ja'],
+        policy: 'dictionary_first',
+        required: true,
+      },
+    ];
+
+    const manifest = service.buildTemplateAssetManifest(
+      'tpl_asset_demo',
+      'contract.docx',
+      'docx',
+      fieldSpecs,
+      {
+        sourceLanguage: 'zh',
+        targetLanguages: ['ja'],
+        documentMode: 'single_or_bilingual',
+      },
+      undefined,
+      TEMPLATE_ASSET_SOURCE_OFFICE_ADDIN,
+      '1.2.3',
+    );
+
+    expect(manifest).toEqual(
+      expect.objectContaining({
+        assetVersion: TEMPLATE_ASSET_MANIFEST_VERSION,
+        templateId: 'tpl_asset_demo',
+        fileName: 'contract.docx',
+        format: 'docx',
+        fieldCount: 1,
+        renderPlanVersion: DEFAULT_RENDER_PLAN_VERSION,
+        metadata: expect.objectContaining({
+          source: TEMPLATE_ASSET_SOURCE_OFFICE_ADDIN,
+          addinVersion: '1.2.3',
+        }),
+      }),
+    );
+    expect(manifest.renderPlan.bindings).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          fieldId: 'partyAName',
+          variablePath: 'partyAName_zh',
+        }),
+        expect.objectContaining({
+          fieldId: 'partyAName',
+          variablePath: 'partyAName_ja',
+        }),
+      ]),
     );
   });
 

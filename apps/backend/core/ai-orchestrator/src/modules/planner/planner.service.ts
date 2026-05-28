@@ -20,6 +20,7 @@ import { buildDocumentGuideContext } from '../../common/document-guide';
 import { resolveFriendlyInputDisplayName } from '../../common/input-label';
 import { isPlaceholderTextValue } from '../../common/placeholder-value';
 import { RecognizerService } from '../recognizer/recognizer.service';
+import { ModelService } from '../model/model.service';
 import { AvailableSkillDefinition, SkillMatchResult } from '../react-engine/interfaces';
 
 type SkillListResponse = {
@@ -38,6 +39,12 @@ type SkillCacheEntry<T> = {
   expiresAt: number;
   value: T;
 };
+
+export interface PlannerMatchPhaseResult {
+  objective: string;
+  matchedSkill: SkillMatchResult | null;
+  hasVisibleSkills: boolean;
+}
 
 const DOCUMENT_SEMANTIC_ENABLED = (process.env.DOCUMENT_SEMANTIC_SUBAGENT_ENABLED || 'true').toLowerCase() !== 'false';
 const DOCUMENT_COMPLEX_PARAM_THRESHOLD = Number(process.env.DOCUMENT_SEMANTIC_PARAM_THRESHOLD || 8);
@@ -60,7 +67,10 @@ export class PlannerService {
   private readonly skillByIdCache = new Map<string, SkillCacheEntry<AvailableSkillDefinition | null>>();
   private readonly flowSchemaCache = new Map<string, SkillCacheEntry<ExecutionFlowTemplateResponse['paramsSchema'] | undefined>>();
 
-  constructor(private readonly recognizerService: RecognizerService) {}
+  constructor(
+    private readonly recognizerService: RecognizerService,
+    private readonly modelService: ModelService,
+  ) {}
 
   async generatePlan(input: {
     request: GeneratePlanDTO;
@@ -68,6 +78,19 @@ export class PlannerService {
     authToken?: string;
     traceId?: string;
   }): Promise<PlanDraftDTO> {
+    const matchPhase = await this.matchSkillPhase(input);
+    return this.completePlanFromMatchPhase({
+      ...input,
+      matchPhase,
+    });
+  }
+
+  async matchSkillPhase(input: {
+    request: GeneratePlanDTO;
+    userId?: string;
+    authToken?: string;
+    traceId?: string;
+  }): Promise<PlannerMatchPhaseResult> {
     const objective = input.request.user_input.trim();
     const targetSkillId = typeof input.request.context?.target_skill_id === 'string'
       ? input.request.context.target_skill_id.trim()
@@ -82,16 +105,52 @@ export class PlannerService {
       input.request.context,
     );
 
+    return {
+      objective,
+      matchedSkill,
+      hasVisibleSkills: availableSkills.length > 0,
+    };
+  }
+
+  async completePlanFromMatchPhase(input: {
+    request: GeneratePlanDTO;
+    userId?: string;
+    authToken?: string;
+    traceId?: string;
+    matchPhase: PlannerMatchPhaseResult;
+  }): Promise<PlanDraftDTO> {
+    const { objective, matchedSkill, hasVisibleSkills } = input.matchPhase;
+
     if (!matchedSkill) {
-      return this.buildFallbackPlan(objective, availableSkills.length > 0);
+      return this.buildFallbackPlan(objective, hasVisibleSkills);
     }
 
+    return this.buildSkillPlan({
+      objective,
+      matchedSkill,
+      modelId: input.request.modelId,
+      context: input.request.context,
+    });
+  }
+
+  private async buildSkillPlan(input: {
+    objective: string;
+    matchedSkill: SkillMatchResult;
+    modelId?: string;
+    context?: Record<string, unknown>;
+  }): Promise<PlanDraftDTO> {
+    const { objective, matchedSkill } = input;
     const isDocumentSkill = this.isDocumentTask(matchedSkill);
+    const autoFillMissingRequired = Boolean(
+      input.context
+      && typeof (input.context as Record<string, unknown>).auto_fill_missing_required === 'boolean'
+      && (input.context as Record<string, unknown>).auto_fill_missing_required === true,
+    );
     const recognized = await this.recognizerService.recognizeParams({
       template_id: matchedSkill.skillId,
       user_input: objective,
-      modelId: input.request.modelId,
-      context: input.request.context,
+      modelId: input.modelId,
+      context: input.context,
       guide_context: buildDocumentGuideContext({
         enabled: isDocumentSkill,
         skillName: matchedSkill.skillName,
@@ -107,17 +166,27 @@ export class PlannerService {
         required: matchedSkill.paramsSchema?.required || [],
       },
     });
+    const enrichedRecognized = await this.applyBilingualCompletionToRecognized(
+      recognized,
+      matchedSkill.paramsSchema,
+    );
+    const adjustedRecognized = autoFillMissingRequired
+      ? this.applyEndToEndAutofill(enrichedRecognized, matchedSkill.paramsSchema)
+      : enrichedRecognized;
 
     // 累积消耗
-    const totalUsage = this.sumUsage(matchedSkill.usage, recognized.usage);
+    const totalUsage = this.sumUsage(matchedSkill.usage, enrichedRecognized.usage);
 
     const semanticContext = this.buildDocumentSemanticContext(
       matchedSkill,
-      this.buildRequiredInputs(matchedSkill, recognized),
+      this.buildRequiredInputs(matchedSkill, adjustedRecognized, { relaxConfirmationBlocking: autoFillMissingRequired }),
     );
     const requiredInputs = semanticContext.requiredInputs;
     const steps = this.buildPlanSteps(matchedSkill, requiredInputs);
     const missingInputs = requiredInputs.filter((item) => item.missing);
+    // #region debug-point A:planner-recognition
+    (()=>{const fs=require('fs');let u='http://127.0.0.1:7777/event',s='contract-param-recognition';try{const e=fs.readFileSync('.dbg/contract-param-recognition.env','utf8');u=e.match(/DEBUG_SERVER_URL=(.+)/)?.[1]||u;s=e.match(/DEBUG_SESSION_ID=(.+)/)?.[1]||s}catch{}fetch(u,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:s,runId:'pre-fix',hypothesisId:'A',location:'planner.service.ts:164',msg:'[DEBUG] planner built skill plan',data:{skillId:matchedSkill.skillId,skillName:matchedSkill.skillName,objective,recognizedKeys:Object.keys(recognized?.params||{}),recognizedParams:recognized?.params||{},requiredInputs:requiredInputs.map((item)=>({name:item.name,missing:item.missing,value:item.value})),missingInputs:missingInputs.map((item)=>item.name),semanticGroupedMissing:semanticContext.semantic?.groupedMissing||[]},ts:Date.now()})}).catch(()=>{});})();
+    // #endregion
     // Missing required inputs should be handled by waiting_input, not approval.
     const requiresHumanReview = false;
     const baseSummary = missingInputs.length > 0
@@ -638,11 +707,15 @@ export class PlannerService {
   private buildRequiredInputs(
     matchedSkill: SkillMatchResult,
     recognized: RecognizeParamsResponseDTO,
+    options?: {
+      relaxConfirmationBlocking?: boolean;
+    },
   ): RequiredInputDTO[] {
     const recognizedParams = recognized.params || {};
     const uncertainFields = new Set(recognized.uncertain_fields || []);
     const fieldConfidences = recognized.field_confidences || {};
     const overallLowConfidence = (recognized.confidence || 0) < RECOGNITION_RESULT_LOW_CONFIDENCE_THRESHOLD;
+    const relaxConfirmationBlocking = Boolean(options?.relaxConfirmationBlocking);
     const arrayGroupTargetCounts = this.buildArrayGroupTargetCounts(
       matchedSkill.paramsSchema?.properties || {},
       recognizedParams,
@@ -684,14 +757,14 @@ export class PlannerService {
       const needsConfidenceConfirmation = hasValue && shouldBlockOnConfirmation && (
         uncertainFields.has(name)
         || (fieldConfidence !== undefined && fieldConfidence < confirmationThreshold)
-        || (required && overallLowConfidence)
+        || (fieldConfidence === undefined && required && overallLowConfidence)
       );
       const needsPartialGroupConfirmation = hasPartialArrayGroupValue && shouldBlockOnConfirmation;
       const needsConfirmation = needsConfidenceConfirmation || needsPartialGroupConfirmation;
       const isValueMissing = !this.hasMeaningfulRequiredInputValue(value);
-      const isBlockingMissing = (required && isValueMissing) || needsConfirmation;
+      const isBlockingMissing = (required && isValueMissing) || (!relaxConfirmationBlocking && needsConfirmation);
       const missingReason = isBlockingMissing && needsConfidenceConfirmation
-        ? overallLowConfidence && (fieldConfidence === undefined || fieldConfidence >= RECOGNIZED_FIELD_LOW_CONFIDENCE_THRESHOLD)
+        ? fieldConfidence === undefined && overallLowConfidence
           ? 'overall_low_confidence' as const
           : 'low_confidence' as const
         : isBlockingMissing && needsPartialGroupConfirmation
@@ -739,6 +812,293 @@ export class PlannerService {
         ...(missingReason ? { missing_reason: missingReason } : {}),
       };
     });
+  }
+
+  private identifyBilingualPairs(
+    schema: SkillMatchResult['paramsSchema'],
+  ): Array<{ base: string; aKey: string; bKey: string; aLang: 'zh' | 'ja' | 'en'; bLang: 'zh' | 'ja' | 'en' }> {
+    const keys = Object.keys(schema.properties || {});
+    const pairs: Array<{ base: string; aKey: string; bKey: string; aLang: 'zh' | 'ja' | 'en'; bLang: 'zh' | 'ja' | 'en' }> = [];
+    const patterns: Array<{ aSuffix: string; aLang: 'zh'; bSuffix: string; bLang: 'ja' | 'en' }> = [
+      { aSuffix: '_cn', aLang: 'zh', bSuffix: '_jp', bLang: 'ja' },
+      { aSuffix: '_cn', aLang: 'zh', bSuffix: '_en', bLang: 'en' },
+      { aSuffix: '_zh', aLang: 'zh', bSuffix: '_ja', bLang: 'ja' },
+      { aSuffix: '_zh', aLang: 'zh', bSuffix: '_en', bLang: 'en' },
+    ];
+    const seen = new Set<string>();
+
+    for (const key of keys) {
+      for (const pattern of patterns) {
+        if (!key.endsWith(pattern.aSuffix)) {
+          continue;
+        }
+        const base = key.slice(0, -pattern.aSuffix.length);
+        const bKey = `${base}${pattern.bSuffix}`;
+        if (!keys.includes(bKey)) {
+          continue;
+        }
+        const stableKey = [key, bKey].sort().join('::');
+        if (seen.has(stableKey)) {
+          continue;
+        }
+        seen.add(stableKey);
+        pairs.push({ base, aKey: key, bKey, aLang: pattern.aLang, bLang: pattern.bLang });
+      }
+    }
+
+    return pairs;
+  }
+
+  private applyEndToEndAutofill(
+    recognized: RecognizeParamsResponseDTO,
+    schema: SkillMatchResult['paramsSchema'],
+  ): RecognizeParamsResponseDTO {
+    const required = Array.isArray(schema?.required)
+      ? schema.required.filter((item): item is string => typeof item === 'string' && item.length > 0)
+      : [];
+
+    if (required.length === 0) {
+      return recognized;
+    }
+
+    const params: Record<string, unknown> = { ...(recognized.params || {}) };
+    const fieldConfidences: Record<string, number> = { ...(recognized.field_confidences || {}) } as Record<string, number>;
+
+    const getSchemaType = (name: string): string | undefined => {
+      const prop = schema?.properties?.[name] as unknown as { type?: string } | undefined;
+      return prop?.type;
+    };
+
+    const buildPlaceholder = (name: string, type: string | undefined): unknown => {
+      const jp = name.endsWith('_jp') || name.endsWith('_ja');
+      if (type === 'number') {
+        if (/(?:days|Days)/.test(name) || name.includes('.days')) {
+          return 30;
+        }
+        if (/(?:copyCount|CopyCount)/.test(name)) {
+          return 2;
+        }
+        return 0;
+      }
+      if (type === 'boolean') {
+        return false;
+      }
+      if (type === 'array') {
+        return [];
+      }
+      if (type === 'object') {
+        return {};
+      }
+      return jp ? '（未記入）' : '（待补充）';
+    };
+
+    const resolveLanguageCounterpartKey = (name: string): string | undefined => {
+      if (name.endsWith('_jp')) {
+        return `${name.slice(0, -3)}_cn`;
+      }
+      if (name.endsWith('_ja')) {
+        return `${name.slice(0, -3)}_zh`;
+      }
+      if (name.endsWith('_en')) {
+        return `${name.slice(0, -3)}_cn`;
+      }
+      return undefined;
+    };
+
+    const ensureArrayFieldValues = (arrayFieldName: string): void => {
+      const match = arrayFieldName.match(/^([a-zA-Z0-9_]+)\[\]\.(.+)$/);
+      if (!match) {
+        return;
+      }
+      const baseArrayKey = match[1];
+      const fieldKey = match[2];
+      if (!baseArrayKey || !fieldKey) {
+        return;
+      }
+      const schemaType = getSchemaType(arrayFieldName);
+      const existingArray = params[baseArrayKey];
+      const hasMeaningfulArrayValue = this.hasMeaningfulRequiredInputValue(this.normalizeMeaningfulInputValue(params[arrayFieldName]));
+      if (hasMeaningfulArrayValue) {
+        return;
+      }
+
+      if (Array.isArray(existingArray) && existingArray.length > 0 && typeof existingArray[0] === 'object' && existingArray[0]) {
+        const mapped = existingArray.map((item) => {
+          const value = (item as Record<string, unknown>)[fieldKey];
+          const normalized = this.normalizeMeaningfulInputValue(value);
+          return normalized !== undefined ? normalized : buildPlaceholder(arrayFieldName, schemaType);
+        });
+        params[arrayFieldName] = mapped;
+        return;
+      }
+
+      params[arrayFieldName] = [buildPlaceholder(arrayFieldName, schemaType)];
+    };
+
+    for (const name of required) {
+      const normalizedExisting = this.normalizeMeaningfulInputValue(params[name]);
+      if (this.hasMeaningfulRequiredInputValue(normalizedExisting)) {
+        continue;
+      }
+
+      if (/^[a-zA-Z0-9_]+\[\]\./.test(name)) {
+        ensureArrayFieldValues(name);
+        if (typeof fieldConfidences[name] !== 'number') {
+          fieldConfidences[name] = 0.6;
+        }
+        continue;
+      }
+
+      const counterpartKey = resolveLanguageCounterpartKey(name);
+      if (counterpartKey) {
+        const normalizedCounterpart = this.normalizeMeaningfulInputValue(params[counterpartKey]);
+        if (this.hasMeaningfulRequiredInputValue(normalizedCounterpart)) {
+          params[name] = normalizedCounterpart;
+          if (typeof fieldConfidences[name] !== 'number') {
+            fieldConfidences[name] = typeof fieldConfidences[counterpartKey] === 'number'
+              ? Math.max(0.6, Math.min(1, fieldConfidences[counterpartKey] as number))
+              : 0.6;
+          }
+          continue;
+        }
+      }
+
+      params[name] = buildPlaceholder(name, getSchemaType(name));
+      if (typeof fieldConfidences[name] !== 'number') {
+        fieldConfidences[name] = 0.6;
+      }
+    }
+
+    return {
+      ...recognized,
+      params,
+      field_confidences: fieldConfidences,
+    };
+  }
+
+  private async applyBilingualCompletionToRecognized(
+    recognized: RecognizeParamsResponseDTO,
+    schema: SkillMatchResult['paramsSchema'],
+  ): Promise<RecognizeParamsResponseDTO> {
+    const bilingualPairs = this.identifyBilingualPairs(schema);
+    if (bilingualPairs.length === 0) {
+      return recognized;
+    }
+
+    const params: Record<string, unknown> = { ...(recognized.params || {}) };
+    const fieldConfidences: Record<string, number> = { ...(recognized.field_confidences || {}) } as Record<string, number>;
+    const translateBatches: Record<string, Record<string, string>> = {};
+
+    const enqueueTranslate = (
+      sourceLang: 'zh' | 'ja' | 'en',
+      targetLang: 'zh' | 'ja' | 'en',
+      targetKey: string,
+      value: string,
+    ) => {
+      const batchKey = `${sourceLang}::${targetLang}`;
+      if (!translateBatches[batchKey]) {
+        translateBatches[batchKey] = {};
+      }
+      translateBatches[batchKey][targetKey] = value;
+    };
+
+    for (const pair of bilingualPairs) {
+      const prop = schema.properties[pair.aKey] || schema.properties[pair.bKey];
+      const aValue = this.normalizeMeaningfulInputValue(params[pair.aKey]);
+      const bValue = this.normalizeMeaningfulInputValue(params[pair.bKey]);
+
+      const normalizedA = this.hasMeaningfulRequiredInputValue(aValue) ? aValue : undefined;
+      const normalizedB = this.hasMeaningfulRequiredInputValue(bValue) ? bValue : undefined;
+
+      if (normalizedA !== undefined && normalizedB === undefined) {
+        if (prop?.type !== 'string') {
+          params[pair.bKey] = normalizedA;
+          if (typeof fieldConfidences[pair.aKey] === 'number' && typeof fieldConfidences[pair.bKey] !== 'number') {
+            fieldConfidences[pair.bKey] = Math.max(0, Math.min(1, fieldConfidences[pair.aKey] as number));
+          }
+          continue;
+        }
+        if (typeof normalizedA === 'string' && normalizedA.trim() && !isPlaceholderTextValue(normalizedA)) {
+          enqueueTranslate(pair.aLang, pair.bLang, pair.bKey, normalizedA.trim());
+          if (typeof fieldConfidences[pair.aKey] === 'number' && typeof fieldConfidences[pair.bKey] !== 'number') {
+            fieldConfidences[pair.bKey] = Math.max(0.8, Math.min(0.95, fieldConfidences[pair.aKey] as number));
+          }
+        }
+        continue;
+      }
+
+      if (normalizedB !== undefined && normalizedA === undefined) {
+        if (prop?.type !== 'string') {
+          params[pair.aKey] = normalizedB;
+          if (typeof fieldConfidences[pair.bKey] === 'number' && typeof fieldConfidences[pair.aKey] !== 'number') {
+            fieldConfidences[pair.aKey] = Math.max(0, Math.min(1, fieldConfidences[pair.bKey] as number));
+          }
+          continue;
+        }
+        if (typeof normalizedB === 'string' && normalizedB.trim() && !isPlaceholderTextValue(normalizedB)) {
+          enqueueTranslate(pair.bLang, pair.aLang, pair.aKey, normalizedB.trim());
+          if (typeof fieldConfidences[pair.bKey] === 'number' && typeof fieldConfidences[pair.aKey] !== 'number') {
+            fieldConfidences[pair.aKey] = Math.max(0.8, Math.min(0.95, fieldConfidences[pair.bKey] as number));
+          }
+        }
+      }
+    }
+
+    for (const [batchKey, batch] of Object.entries(translateBatches)) {
+      const [sourceLang, targetLang] = batchKey.split('::') as ['zh' | 'ja' | 'en', 'zh' | 'ja' | 'en'];
+      if (Object.keys(batch).length === 0) continue;
+      const translated = await this.batchTranslate(batch, sourceLang, targetLang);
+      Object.assign(params, translated);
+      for (const key of Object.keys(translated)) {
+        if (typeof fieldConfidences[key] !== 'number') {
+          fieldConfidences[key] = 0.85;
+        }
+      }
+    }
+
+    const nextFieldConfidences = Object.keys(fieldConfidences).length > 0
+      ? fieldConfidences
+      : recognized.field_confidences;
+
+    return {
+      ...recognized,
+      params,
+      ...(nextFieldConfidences ? { field_confidences: nextFieldConfidences } : {}),
+    };
+  }
+
+  private async batchTranslate(
+    data: Record<string, string>,
+    sourceLang: 'zh' | 'ja' | 'en',
+    targetLang: 'zh' | 'ja' | 'en',
+  ): Promise<Record<string, string>> {
+    const langNameMap: Record<'zh' | 'ja' | 'en', string> = {
+      zh: '中文',
+      ja: '日语',
+      en: '英文',
+    };
+    const sourceName = langNameMap[sourceLang];
+    const targetName = langNameMap[targetLang];
+    const prompt = `你是一个专业的合同翻译助手。请将以下 JSON 对象中的值从${sourceName}翻译成${targetName}。
+要求：
+1. 保持 JSON 结构不变，只翻译值。
+2. 翻译应准确、专业，符合法律/商务合同语境。
+3. 直接返回翻译后的 JSON 对象，不要包含任何解释或代码块标签。
+待翻译内容：
+${JSON.stringify(data, null, 2)}`;
+
+    try {
+      const response = await this.modelService.callModel('default', prompt, 'auxiliary');
+      const cleanContent = response.content.replace(/```json|```/g, '').trim();
+      const parsed = JSON.parse(cleanContent);
+      if (parsed && typeof parsed === 'object') {
+        return parsed as Record<string, string>;
+      }
+      return { ...data };
+    } catch (error) {
+      this.logger.warn(`Planner bilingual translation failed: ${error instanceof Error ? error.message : String(error)}`);
+      return { ...data };
+    }
   }
 
   private buildArrayGroupTargetCounts(
@@ -1059,12 +1419,12 @@ export class PlannerService {
 
     missingRequiredInputs.forEach((item) => {
       const arrayGroupKey = this.extractArrayGroupKey(item.name, item.type);
-      const key = arrayGroupKey || item.name;
+      const key = arrayGroupKey || this.normalizeSemanticMissingKey(item.name);
       const existing = groups.get(key);
       const kind = arrayGroupKey ? 'array_group' as const : 'field' as const;
       const label = arrayGroupKey
-        ? this.resolveBusinessGroupLabel(arrayGroupKey, item)
-        : item.display_name || item.description || item.name;
+        ? this.normalizeSemanticMissingLabel(this.resolveBusinessGroupLabel(arrayGroupKey, item))
+        : this.normalizeSemanticMissingLabel(item.display_name || item.description || item.name);
       const blocking = this.resolvePreviewBlocking(key, item);
 
       if (existing) {
@@ -1091,6 +1451,30 @@ export class PlannerService {
     });
 
     return Array.from(groups.values());
+  }
+
+  private normalizeSemanticMissingKey(value: string): string {
+    const normalized = String(value || '').trim();
+    if (!normalized) {
+      return '';
+    }
+
+    return normalized
+      .replace(/[._-](?:zh|ja|cn|jp)$/iu, '')
+      .trim();
+  }
+
+  private normalizeSemanticMissingLabel(value: string): string {
+    const normalized = String(value || '').trim();
+    if (!normalized) {
+      return '';
+    }
+
+    return normalized
+      .replace(/\s*[（(](?:中文|日文|日语|中文格式|日文格式|日语格式|zh|ja|cn|jp)[）)]\s*$/iu, '')
+      .replace(/(.*?)(?:中文|日文|日语)(名称|姓名|地址|电话|联系电话|传真号码|邮政编码|签字人|项目名称|服务名称|日期|期限|地点|金额|费率|费用|编号|信息|场所|份数)$/u, '$1$2')
+      .replace(/[._-](?:zh|ja|cn|jp)$/iu, '')
+      .trim();
   }
 
   private extractArrayGroupKey(name: string, type?: string): string | undefined {

@@ -5,13 +5,14 @@
 
 import { Injectable } from '@nestjs/common';
 import { BaseTool } from './base.tool';
-import { ToolResult, ExecutionContext, ParamProperty } from '../interfaces';
+import { ToolResult, ExecutionContext, ParamProperty, ParamsSchema } from '../interfaces';
 import { Tool } from '../decorators/tool.decorator';
+import { ModelService } from '../../model/model.service';
 
 @Injectable()
 @Tool({
   name: 'param_collect',
-  description: '收集并验证技能执行所需的参数。检查参数是否完整，提取缺失参数列表。',
+  description: '收集并验证技能执行所需的参数。检查参数是否完整，提取缺失参数列表。支持双语参数(_cn/_jp)自动对齐与批量翻译。',
   parameters: {
     type: 'object',
     properties: {
@@ -36,10 +37,10 @@ import { Tool } from '../decorators/tool.decorator';
   isDefault: true,
 })
 export class ParamCollectTool extends BaseTool {
-  constructor() {
+  constructor(private readonly modelService: ModelService) {
     super(
       'param_collect',
-      '收集并验证技能执行所需的参数。检查参数是否完整，提取缺失参数列表。',
+      '收集并验证技能执行所需的参数。检查参数是否完整，提取缺失参数列表。支持双语参数(_cn/_jp)自动对齐与批量翻译。',
       {
         type: 'object',
         properties: {
@@ -68,214 +69,253 @@ export class ParamCollectTool extends BaseTool {
     params: Record<string, unknown>,
     context: ExecutionContext,
   ): Promise<ToolResult> {
-    // skillId is kept for API compatibility but not used directly
-    const _skillId = params.skillId as string;
     const userInput = params.userInput as string;
     const existingParams = (params.existingParams as Record<string, unknown>) || {};
-
-    // 合并已有参数
     const collectedParams = { ...existingParams };
 
-    // 使用AI从用户输入中提取参数
-    // 这里需要结合上下文中的skill信息
-    if (context.skill && context.skill.paramsSchema) {
-      const schema = context.skill.paramsSchema;
+    if (!context.skill || !context.skill.paramsSchema) {
+      return {
+        success: false,
+        output: '未找到Skill配置，无法收集参数',
+        data: { error: 'skill_not_found' },
+      };
+    }
 
-      // 遍历参数schema，尝试从输入中提取
-      for (const [key, prop] of Object.entries(schema.properties)) {
-        if (collectedParams[key] !== undefined) continue;
+    const schema = context.skill.paramsSchema;
+    const bilingualPairs = this.identifyBilingualPairs(schema);
+    const isBilingualMode = bilingualPairs.length > 0;
 
-        const extracted = await this.extractParam(userInput, key, prop);
-        if (extracted !== null) {
-          collectedParams[key] = extracted;
-        }
-      }
-
-      // 更新缺失参数列表
-      let missingParams = schema.required.filter(
-        (key) => collectedParams[key] === undefined || collectedParams[key] === null,
-      );
-
-      // 兜底：用户补充轮次中，若仅缺一个字符串参数，且输入像“上海”这种直接答案，则自动填充
-      if (missingParams.length === 1) {
-        const fallbackKey = missingParams[0];
-        if (fallbackKey) {
-          const fallbackProp = schema.properties[fallbackKey];
-          if (fallbackProp?.type === 'string' && this.isLikelySingleFieldAnswer(userInput)) {
-            collectedParams[fallbackKey] = userInput.trim();
-            missingParams = schema.required.filter(
-              (key) => collectedParams[key] === undefined || collectedParams[key] === null,
-            );
-          }
-        }
-      }
-
-      if (missingParams.length === 0) {
-        return {
-          success: true,
-          output: `参数收集完成，共收集 ${Object.keys(collectedParams).length} 个参数。`,
-          data: { params: collectedParams, allParamsReady: true },
-        };
-      } else {
-        const prompts = missingParams.map((key) => {
-          const prop = schema.properties[key];
-          return `- ${prop?.description || key}`;
-        });
-
-        const output = `为了执行技能 "${context.skill.skillName}"，我还需要以下信息：\n${prompts.join('\n')}\n\n请补充这些参数。`;
-
-        return {
-          success: false,
-          output,
-          data: { params: collectedParams, missingParams, prompts },
-          requiresUserInput: true,
-          userInputPrompt: output,
-        };
+    // 1. 使用 AI 语义提取
+    this.logger.debug(`Using AI to extract params from: "${userInput}"`);
+    const aiExtracted = await this.aiExtractParams(userInput, schema);
+    for (const [key, value] of Object.entries(aiExtracted)) {
+      if (value !== undefined && value !== null && collectedParams[key] === undefined) {
+        collectedParams[key] = value;
       }
     }
 
-    return {
-      success: false,
-      output: '未找到Skill配置，无法收集参数',
-      data: { error: 'skill_not_found' },
-    };
+    // 2. 正则提取兜底
+    for (const [key, prop] of Object.entries(schema.properties)) {
+      if (collectedParams[key] !== undefined) continue;
+      const extracted = await this.extractParam(userInput, key, prop);
+      if (extracted !== null) {
+        collectedParams[key] = extracted;
+      }
+    }
+
+    // 3. 计算缺失参数 (逻辑层面)
+    let missingParams = schema.required.filter(
+      (key) => collectedParams[key] === undefined || collectedParams[key] === null,
+    );
+
+    // 4. 双语对齐逻辑
+    if (isBilingualMode) {
+      missingParams = missingParams.filter(key => {
+        const pair = bilingualPairs.find(p => p.cn === key || p.jp === key);
+        if (pair) {
+          return collectedParams[pair.cn] === undefined && collectedParams[pair.jp] === undefined;
+        }
+        return true;
+      });
+    }
+
+    // 5. 兜底处理：单字段回答
+    if (missingParams.length === 1) {
+      const fallbackKey = missingParams[0];
+      if (fallbackKey) {
+        const fallbackProp = schema.properties[fallbackKey];
+        if (fallbackProp?.type === 'string' && this.isLikelySingleFieldAnswer(userInput)) {
+          collectedParams[fallbackKey] = userInput.trim();
+          missingParams = [];
+        }
+      }
+    }
+
+    // 6. 最终判定
+    if (missingParams.length === 0) {
+      if (isBilingualMode) {
+        await this.syncAndTranslateBilingualParams(collectedParams, bilingualPairs, schema);
+      }
+      return {
+        success: true,
+        output: `参数收集完成，共收集 ${Object.keys(collectedParams).length} 个参数。`,
+        data: { params: collectedParams, allParamsReady: true },
+      };
+    } else {
+      const prompts = this.generateDeDupedPrompts(missingParams, bilingualPairs, schema);
+      const output = `为了执行技能 "${context.skill.skillName}"，我还需要以下信息：\n${prompts.join('\n')}\n\n请补充这些参数。`;
+      return {
+        success: false,
+        output,
+        data: { params: collectedParams, missingParams, prompts },
+        requiresUserInput: true,
+        userInputPrompt: output,
+      };
+    }
   }
 
-  /**
-   * 从文本中提取特定参数
-   */
+  private async aiExtractParams(
+    text: string,
+    schema: ParamsSchema
+  ): Promise<Record<string, unknown>> {
+    const prompt = `你是一个精准的参数提取助手。请从用户的输入中提取文档所需的参数。
+用户输入：
+"${text}"
+参数定义 (JSON Schema):
+${JSON.stringify(schema, null, 2)}
+要求：
+1. 仅提取明确提到的信息，不要猜测。
+2. 返回一个干净的 JSON 对象，Key 必须与参数定义一致。
+3. 如果是日期，请转换为 YYYY-MM-DD 格式。
+4. 如果是双语参数对（如 _cn 和 _jp 结尾），优先将提取到的内容填入其对应的语言字段中。
+5. 不要返回任何解释或 Markdown 代码块标签。
+直接返回 JSON：`;
+
+    try {
+      const response = await this.modelService.callModel('default', prompt, 'auxiliary');
+      const cleanContent = response.content.replace(/```json|```/g, '').trim();
+      return JSON.parse(cleanContent);
+    } catch (e) {
+      this.logger.warn(`AI Parameter extraction failed: ${e instanceof Error ? e.message : String(e)}`);
+      return {};
+    }
+  }
+
+  private identifyBilingualPairs(schema: ParamsSchema): Array<{ base: string; cn: string; jp: string }> {
+    const pairs: Array<{ base: string; cn: string; jp: string }> = [];
+    const keys = Object.keys(schema.properties);
+    keys.forEach(key => {
+      if (key.endsWith('_cn')) {
+        const base = key.slice(0, -3);
+        const jpKey = `${base}_jp`;
+        if (keys.includes(jpKey)) {
+          pairs.push({ base, cn: key, jp: jpKey });
+        }
+      }
+    });
+    return pairs;
+  }
+
+  private generateDeDupedPrompts(
+    missingParams: string[], 
+    pairs: Array<{ base: string; cn: string; jp: string }>,
+    schema: ParamsSchema
+  ): string[] {
+    const processedBases = new Set<string>();
+    const prompts: string[] = [];
+    missingParams.forEach(key => {
+      const pair = pairs.find(p => p.cn === key || p.jp === key);
+      if (pair) {
+        if (processedBases.has(pair.base)) return;
+        processedBases.add(pair.base);
+        const prop = schema.properties[pair.cn] || schema.properties[pair.jp];
+        const desc = prop?.description || pair.base;
+        const cleanDesc = desc.replace(/（中文）|\(中文\)|（日文）|\(日文\)|_cn|_jp/g, '').trim();
+        prompts.push(`- ${cleanDesc}`);
+      } else {
+        const prop = schema.properties[key];
+        prompts.push(`- ${prop?.description || key}`);
+      }
+    });
+    return prompts;
+  }
+
+  private async syncAndTranslateBilingualParams(
+    params: Record<string, unknown>,
+    pairs: Array<{ base: string; cn: string; jp: string }>,
+    schema: ParamsSchema
+  ): Promise<void> {
+    const translateBatch: Record<string, string> = {};
+    const jpToCnBatch: Record<string, string> = {};
+    for (const pair of pairs) {
+      const cnValue = params[pair.cn];
+      const jpValue = params[pair.jp];
+      const prop = schema.properties[pair.cn];
+      if (cnValue !== undefined && jpValue === undefined) {
+        if (prop.type === 'number' || prop.type === 'date' || prop.type === 'boolean') {
+          params[pair.jp] = cnValue;
+        } else if (typeof cnValue === 'string' && cnValue.trim()) {
+          translateBatch[pair.jp] = cnValue;
+        }
+      } else if (jpValue !== undefined && cnValue === undefined) {
+        if (prop.type === 'number' || prop.type === 'date' || prop.type === 'boolean') {
+          params[pair.cn] = jpValue;
+        } else if (typeof jpValue === 'string' && jpValue.trim()) {
+          jpToCnBatch[pair.cn] = jpValue;
+        }
+      }
+    }
+    if (Object.keys(translateBatch).length > 0) {
+      const results = await this.batchTranslate(translateBatch, 'zh', 'ja');
+      Object.assign(params, results);
+    }
+    if (Object.keys(jpToCnBatch).length > 0) {
+      const results = await this.batchTranslate(jpToCnBatch, 'ja', 'zh');
+      Object.assign(params, results);
+    }
+  }
+
+  private async batchTranslate(
+    data: Record<string, string>,
+    sourceLang: string,
+    targetLang: string
+  ): Promise<Record<string, string>> {
+    const sourceName = sourceLang === 'zh' ? '中文' : '日语';
+    const targetName = targetLang === 'ja' ? '日语' : '中文';
+    const prompt = `你是一个专业的合同翻译助手。请将以下 JSON 对象中的值从${sourceName}翻译成${targetName}。
+要求：
+1. 保持 JSON 结构不变，只翻译值。
+2. 翻译应准确、专业，符合法律/商务合同语境。
+3. 直接返回翻译后的 JSON 对象，不要包含任何解释或代码块标签。
+待翻译内容：
+${JSON.stringify(data, null, 2)}`;
+    try {
+      const response = await this.modelService.callModel('default', prompt, 'auxiliary');
+      const cleanContent = response.content.replace(/```json|```/g, '').trim();
+      return JSON.parse(cleanContent);
+    } catch (error) {
+      this.logger.error(`Batch translation failed: ${error instanceof Error ? error.message : String(error)}`);
+      const fallback: Record<string, string> = {};
+      Object.entries(data).forEach(([key, value]) => { fallback[key] = value; });
+      return fallback;
+    }
+  }
+
   private async extractParam(
     text: string,
     paramName: string,
     prop: ParamProperty,
   ): Promise<unknown | null> {
-    // 简单的模式匹配，后续可以增强为AI提取
     const patterns: Record<string, RegExp[]> = {
-      date: [
-        /\d{4}[-\/年]\d{1,2}[-\/月]\d{1,2}[日]?/,
-        /\d{4}-\d{2}-\d{2}/,
-      ],
+      date: [/\d{4}[-\/年]\d{1,2}[-\/月]\d{1,2}[日]?/, /\d{4}-\d{2}-\d{2}/],
       number: [/[\d,]+\.?\d*/],
       amount: [/[\d,]+\.?\d*元/, /[\d,]+\.?\d*万/, /[\d,]+\.?\d*美元/],
     };
-
     const typePatterns = patterns[prop.type] || [];
-
     for (const pattern of typePatterns) {
       const match = text.match(pattern);
-      if (match) {
-        return this.formatValue(match[0], prop.type);
-      }
+      if (match) return this.formatValue(match[0], prop.type);
     }
-
-    // 对于string类型，尝试关键词匹配
-    if (prop.type === 'string' && prop.extractionPrompt) {
-      // 使用提示词进行智能提取（这里简化处理）
-      const keywords = this.extractKeywords(text, paramName);
-      if (keywords) {
-        return keywords;
-      }
-    }
-
-    return null;
-  }
-
-  /**
-   * 提取关键词
-   */
-  private extractKeywords(text: string, paramName: string): string | null {
-    // 针对特定参数名进行匹配 - 改进的中文语境识别
-    const paramPatterns: Record<string, RegExp[]> = {
-      '甲方名称': [
-        /和\s*([^，。,\n]+?)\s*签订/,  // "和X签订"
-        /甲方[是为：:]*([^，。,\n]+)/,
-        /与\s*([^，。,\n]+?)\s*签订/,  // "与X签订"
-      ],
-      '乙方名称': [
-        /我是乙方[^，。,\n]*在[^，。,\n]*的\s*([^，。,\n]+)/,  // "我是乙方，在XX的恒生银行" -> 恒生银行
-        /我是乙方[^，。,\n]*在\s*([^，。,\n]+)/,  // "我是乙方，在恒生银行" -> 恒生银行
-        /乙方[是为：:]*([^，。,\n]+)/,
-        /乙方\s*[:：]?\s*([^，。,\n]+)/,
-      ],
-      '签订日期': [
-        /签订日[是为是：:]*([^，。,\n]+)/,
-        /签订日期[是为是：:]*([^，。,\n]+)/,
-        /日期[是为：:]*([^，。,\n]+)/,
-      ],
-      '保密期限': [
-        /保密[期间期限][是为：:]*([^，。,\n]+)/,
-        /保密期间\s*([^\s，。,\n]+)/,
-        /期限\s*[:：]?\s*([^，。,\n]+)/,
-      ],
-      '保密范围': [
-        /签订关于\s*([^，。,\n]+?)\s*的\s*保密/,  // "签订关于X的保密协议"
-        /保密范围[是为：:]*([^，。,\n]+)/,
-      ],
-      '甲方地址': [
-        /甲方[^，。,\n]*地址[是为：:]*([^，。,\n]+)/,
-        /甲方[^，。,\n]*在\s*([^，。,\n]+)/,
-      ],
-      '乙方地址': [
-        /乙方[^，。,\n]*地址[是为：:]*([^，。,\n]+)/,
-        /乙方[^，。,\n]*在\s*([^，。,\n]+)/,
-        /我是乙方[^，。,\n]*在\s*([^，。,\n]+)/,  // "我是乙方，在X" -> X是地址
-      ],
-      '用人单位名称': [
-        /用人单位[是为：:]*([^，。,\n]+)/,
-        /公司[名为：:]*([^，。,\n]+)/,
-      ],
-      '劳动者姓名': [
-        /劳动者[姓名是为：:]*([^，。,\n]+)/,
-        /员工[姓名是为：:]*([^，。,\n]+)/,
-        /姓名[是为：:]*([^，。,\n]+)/,
-      ],
-      '项目名称': [
-        /项目[名为：:]*([^，。,\n]+)/,
-        /关于\s*([^，。,\n]+?)\s*的/,  // "关于X的"
-      ],
-    };
-
-    const patterns = paramPatterns[paramName] || [];
-    for (const pattern of patterns) {
-      const match = text.match(pattern);
-      if (match && match[1]) {
-        return match[1].trim();
-      }
-    }
-
     return null;
   }
 
   private isLikelySingleFieldAnswer(text: string): boolean {
     const normalized = text.trim();
-    if (!normalized) return false;
-    if (normalized.length > 12) return false;
-
-    // 排除明显“整句提问/指令”，避免把完整请求句误当成单字段答案
+    if (!normalized || normalized.length > 12) return false;
     const excludedKeywords = ['查询', '帮我', '请', '?', '？', '怎么', '如何'];
-    if (excludedKeywords.some((keyword) => normalized.includes(keyword))) {
-      return false;
-    }
-
-    return true;
+    return !excludedKeywords.some((keyword) => normalized.includes(keyword));
   }
 
-  /**
-   * 格式化提取的值
-   */
   private formatValue(value: string, type: string): unknown {
     switch (type) {
-      case 'date':
-        return value.replace(/[年月日]/g, '-').replace(/[^\d-]/g, '');
-      case 'number':
-        return parseFloat(value.replace(/,/g, ''));
+      case 'date': return value.replace(/[年月日]/g, '-').replace(/[^\d-]/g, '');
+      case 'number': return parseFloat(value.replace(/,/g, ''));
       case 'amount':
         const num = parseFloat(value.replace(/[,元万美元]/g, ''));
         if (value.includes('万')) return num * 10000;
         if (value.includes('美元')) return { value: num, currency: 'USD' };
         return { value: num, currency: 'CNY' };
-      default:
-        return value;
+      default: return value;
     }
   }
 }

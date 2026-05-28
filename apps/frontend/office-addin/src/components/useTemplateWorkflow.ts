@@ -3,7 +3,7 @@ import { carboneAPI } from '../api/carbone-api';
 import { buildPreviewData, getUploadedFileFormat } from './TemplateConfigPanel.helpers';
 import { getHostScopedStorageKey, type ScopedOfficeHost } from '../utils/host-storage';
 
-interface UseTemplateWorkflowProps {
+interface UseTemplateAssetManagerProps {
   apiBaseUrl: string;
   officeType: ScopedOfficeHost;
   templateConfig: any;
@@ -15,7 +15,7 @@ interface UseTemplateWorkflowProps {
   loadTemplateSource: () => Promise<{ documentContent: string; format: string; isBinaryFile: boolean }>;
 }
 
-export function useTemplateWorkflow({
+export function useTemplateAssetManager({
   apiBaseUrl,
   officeType,
   templateConfig,
@@ -25,7 +25,7 @@ export function useTemplateWorkflow({
   uploadedFileBase64,
   addDebugLog,
   loadTemplateSource,
-}: UseTemplateWorkflowProps) {
+}: UseTemplateAssetManagerProps) {
   const lastTemplateIdKey = getHostScopedStorageKey(officeType, 'lastTemplateId');
   const lastTemplateDownloadUrlKey = getHostScopedStorageKey(officeType, 'lastTemplateDownloadUrl');
   const lastSkillIdKey = getHostScopedStorageKey(officeType, 'lastSkillId');
@@ -53,7 +53,7 @@ export function useTemplateWorkflow({
 
   const handlePreviewWithUploadedFile = async () => {
     if (!uploadedFileBase64 || !generatedSkill) {
-      setStatusMessage('请先上传文档文件并生成AI指南');
+      setStatusMessage('请先上传文档文件并生成模板指南');
       return;
     }
 
@@ -110,12 +110,12 @@ export function useTemplateWorkflow({
 
   const handleSaveWithUploadedFile = async () => {
     if (!uploadedFileBase64 || !generatedSkill) {
-      setStatusMessage('请先上传文档文件并完成AI指南生成');
+      setStatusMessage('请先上传文档文件并完成模板指南生成');
       return;
     }
 
     setLoadingStates((prev) => ({ ...prev, fullSave: true }));
-    setStatusMessage('正在保存完整模板...');
+    setStatusMessage('正在保存模板资产...');
 
     try {
       carboneAPI.setBaseUrl(apiBaseUrl);
@@ -129,7 +129,7 @@ export function useTemplateWorkflow({
       });
 
       if (result.success) {
-        setStatusMessage(`完整模板保存成功！模板ID: ${result.templateId}`);
+        setStatusMessage(`模板资产保存成功！模板ID: ${result.templateId}`);
         localStorage.setItem(lastTemplateIdKey, result.templateId || '');
         localStorage.setItem(lastTemplateDownloadUrlKey, result.downloadUrl || '');
         localStorage.setItem(lastSkillIdKey, result.skillId || '');
@@ -138,7 +138,7 @@ export function useTemplateWorkflow({
         setStatusMessage(`保存失败: ${result.error || '未知错误'}`);
       }
     } catch (error: any) {
-      console.error('保存完整模板失败:', error);
+      console.error('保存模板资产失败:', error);
       setStatusMessage(`保存失败: ${error.message || '未知错误'}`);
     } finally {
       setLoadingStates((prev) => ({ ...prev, fullSave: false }));
@@ -158,7 +158,7 @@ export function useTemplateWorkflow({
       setValidationWarnings(result.warnings || []);
 
       if (result.valid) {
-        setStatusMessage('验证通过，可继续生成AI指南');
+        setStatusMessage('验证通过，可继续生成模板指南');
         setCurrentStep(2);
       } else {
         setStatusMessage('验证失败，请检查错误');
@@ -234,13 +234,13 @@ export function useTemplateWorkflow({
   const handleGenerateSkill = async () => {
     const appliedSuggestions = suggestions.filter((s) => s.applied);
     if (appliedSuggestions.length === 0) {
-      setStatusMessage('请先在AI识别面板中应用建议，再生成AI指南');
+      setStatusMessage('请先在AI识别面板中应用建议，再生成模板指南');
       setValidationErrors(['当前没有已应用的变量。请返回AI识别面板，点击"应用全部"或逐个应用建议后再继续。']);
       return;
     }
 
     setLoadingStates((prev) => ({ ...prev, skillGenerate: true }));
-    setStatusMessage(`正在生成AI使用指南（${appliedSuggestions.length}个变量）...`);
+    setStatusMessage(`正在生成模板指南（${appliedSuggestions.length}个变量）...`);
 
     try {
       carboneAPI.setBaseUrl(apiBaseUrl);
@@ -254,15 +254,15 @@ export function useTemplateWorkflow({
       if (result.success && result.skill) {
         setGeneratedSkill(result.skill);
         setCurrentStep(3);
-        setStatusMessage(`AI指南生成成功！包含 ${result.skill.parameters?.length || 0} 个变量`);
+        setStatusMessage(`模板指南生成成功！包含 ${result.skill.parameters?.length || 0} 个变量`);
         localStorage.setItem(lastSkillIdKey, result.skillId || '');
         console.log('生成的Skill:', result.skill);
       } else {
-        setStatusMessage(`AI指南生成失败: ${result.error || '未知错误'}`);
+        setStatusMessage(`模板指南生成失败: ${result.error || '未知错误'}`);
       }
     } catch (error: any) {
-      console.error('生成AI指南失败:', error);
-      setStatusMessage(`生成AI指南失败: ${error.message || '未知错误'}`);
+      console.error('生成模板指南失败:', error);
+      setStatusMessage(`生成模板指南失败: ${error.message || '未知错误'}`);
     } finally {
       setLoadingStates((prev) => ({ ...prev, skillGenerate: false }));
     }
@@ -270,12 +270,12 @@ export function useTemplateWorkflow({
 
   const handleSkillPreview = async () => {
     if (!generatedSkill) {
-      setStatusMessage('请先生成AI指南');
+      setStatusMessage('请先生成模板指南');
       return;
     }
 
     setLoadingStates((prev) => ({ ...prev, skillPreview: true }));
-    setStatusMessage('正在使用AI指南进行预览验证...');
+    setStatusMessage('正在使用模板指南进行预览验证...');
 
     try {
       const { documentContent, format, isBinaryFile } = await loadTemplateSource();
@@ -331,12 +331,12 @@ export function useTemplateWorkflow({
 
   const handleFullSave = async () => {
     if (!generatedSkill) {
-      setStatusMessage('请先完成AI指南生成和预览验证');
+      setStatusMessage('请先完成模板指南生成和预览验证');
       return;
     }
 
     setLoadingStates((prev) => ({ ...prev, fullSave: true }));
-    setStatusMessage('正在保存完整模板...');
+    setStatusMessage('正在保存模板资产...');
 
     try {
       const { documentContent, format, isBinaryFile } = await loadTemplateSource();
@@ -356,7 +356,7 @@ export function useTemplateWorkflow({
       });
 
       if (result.success) {
-        setStatusMessage(`完整模板保存成功！模板ID: ${result.templateId}`);
+        setStatusMessage(`模板资产保存成功！模板ID: ${result.templateId}`);
         localStorage.setItem(lastTemplateIdKey, result.templateId || '');
         localStorage.setItem(lastTemplateDownloadUrlKey, result.downloadUrl || '');
         localStorage.setItem(lastSkillIdKey, result.skillId || '');
@@ -365,7 +365,7 @@ export function useTemplateWorkflow({
         setStatusMessage(`保存失败: ${result.error || '未知错误'}`);
       }
     } catch (error: any) {
-      console.error('保存完整模板失败:', error);
+      console.error('保存模板资产失败:', error);
       setStatusMessage(`保存失败: ${error.message || '未知错误'}`);
     } finally {
       setLoadingStates((prev) => ({ ...prev, fullSave: false }));
@@ -394,3 +394,6 @@ export function useTemplateWorkflow({
     handleGenerateTemplate,
   };
 }
+
+// Backward-compatible alias while callers migrate off the old name.
+export const useTemplateWorkflow = useTemplateAssetManager;

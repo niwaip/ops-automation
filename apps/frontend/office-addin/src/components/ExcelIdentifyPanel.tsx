@@ -44,13 +44,9 @@ export const ExcelIdentifyPanel: React.FC<Props> = ({ onApplyComplete }) => {
     draftId,
     draftInfo,
     latestBackendDraftInfo,
-    workflowDraftInfo,
-    workflowFieldSpecsDraft,
-    workflowTermAssetsText,
-    workflowRenderDiagnostics,
-    isSavingWorkflowFieldSpecs,
+    templateAssetDraftInfo,
     isSavingDraft,
-    draftWorkflowNotice,
+    templateAssetNotice,
     handleGenerateAISkillGuide,
     handleVerifyTemplate,
     handleSaveDraft,
@@ -62,12 +58,6 @@ export const ExcelIdentifyPanel: React.FC<Props> = ({ onApplyComplete }) => {
     aiGenerateResult,
     previewResult,
     isPreviewing,
-    handleWorkflowFieldSpecChange,
-    handleWorkflowFieldTargetLanguagesChange,
-    handleWorkflowTermAssetsTextChange,
-    handleAppendWorkflowTermAssetExample,
-    handleSaveWorkflowFieldSpecs,
-    handleResetWorkflowFieldSpecs,
     templateName,
     setTemplateName,
     saveResult,
@@ -117,8 +107,8 @@ export const ExcelIdentifyPanel: React.FC<Props> = ({ onApplyComplete }) => {
         draftId={draftId}
         draftInfo={draftInfo}
         latestBackendDraftInfo={latestBackendDraftInfo}
-        workflowDraftInfo={workflowDraftInfo}
-        draftWorkflowNotice={draftWorkflowNotice}
+        templateAssetDraftInfo={templateAssetDraftInfo}
+        templateAssetNotice={templateAssetNotice}
         isGeneratingGuide={isGeneratingGuide}
         isVerifying={isVerifying}
         isSavingDraft={isSavingDraft}
@@ -140,11 +130,6 @@ export const ExcelIdentifyPanel: React.FC<Props> = ({ onApplyComplete }) => {
           aiGeneratedData={aiGeneratedData}
           previewResult={previewResult}
           draftId={draftId}
-          workflowDraftInfo={workflowDraftInfo}
-          workflowFieldSpecsDraft={workflowFieldSpecsDraft}
-          workflowTermAssetsText={workflowTermAssetsText}
-          workflowRenderDiagnostics={workflowRenderDiagnostics}
-          isSavingWorkflowFieldSpecs={isSavingWorkflowFieldSpecs}
           saveResult={saveResult}
           verifySaveCollapsed={verifySaveCollapsed}
           setVerifySaveCollapsed={setVerifySaveCollapsed}
@@ -157,12 +142,6 @@ export const ExcelIdentifyPanel: React.FC<Props> = ({ onApplyComplete }) => {
           aiGenerateResult={aiGenerateResult}
           isPreviewing={isPreviewing}
           handlePreviewWithAIParams={handlePreviewWithAIParams}
-          handleWorkflowFieldSpecChange={handleWorkflowFieldSpecChange}
-          handleWorkflowFieldTargetLanguagesChange={handleWorkflowFieldTargetLanguagesChange}
-          handleWorkflowTermAssetsTextChange={handleWorkflowTermAssetsTextChange}
-          handleAppendWorkflowTermAssetExample={handleAppendWorkflowTermAssetExample}
-          handleSaveWorkflowFieldSpecs={handleSaveWorkflowFieldSpecs}
-          handleResetWorkflowFieldSpecs={handleResetWorkflowFieldSpecs}
           previewInlineSupported={false}
           apiBaseUrl={apiBaseUrl}
           getDownloadLabel={getDownloadLabel}

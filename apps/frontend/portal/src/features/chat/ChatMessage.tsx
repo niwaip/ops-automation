@@ -14,6 +14,7 @@ import { useAuthStore } from '@/shared/store/authStore';
 import { replaceLocalhostWithCurrentHost } from '@/shared/lib/publicUrl';
 import {
   buildWaitingInputDisplayGroups,
+  dedupeWaitingInputDisplayFields,
   resolveWaitingInputDisplayLabel,
 } from '@/shared/lib/waitingInputDisplay';
 import './ChatMessage.css';
@@ -246,7 +247,12 @@ const ChatMessageComponent: React.FC<ChatMessageProps> = ({
   const showThinking = message.metadata?.showThinking !== false;
   const isRunning = isTaskMode && message.metadata?.taskStatus === 'running';
   const showRunningState = isTaskMode && (isRunning || (Boolean(isStreaming) && !isWaitingInput && !isPendingApproval && !errorMessage));
-  const missingInputs = ((message.metadata?.missingInputs || []) as WaitingInputField[]).filter((item) => item?.missing !== false);
+  const missingInputs = useMemo(
+    () => dedupeWaitingInputDisplayFields(
+      ((message.metadata?.missingInputs || []) as WaitingInputField[]).filter((item) => item?.missing !== false),
+    ),
+    [message.metadata?.missingInputs],
+  );
   const missingInputGroups = useMemo(
     () => buildWaitingInputDisplayGroups(missingInputs),
     [missingInputs],
@@ -605,7 +611,13 @@ const ChatMessageComponent: React.FC<ChatMessageProps> = ({
         <div className={`chat-outcome-card ${isWaitingInput || isPendingApproval ? 'waiting' : 'neutral'}`}>
           <div className={`chat-outcome-title ${showRunningState ? 'running' : ''}`}>
             {showRunningState && <LoadingOutlined className="chat-running-icon" />}
-            {isWaitingInput ? '等待输入' : isPendingApproval ? '等待审批' : showRunningState ? '执行中' : '任务状态'}
+            {isWaitingInput
+              ? '等待输入'
+              : isPendingApproval
+                ? '等待审批'
+                : showRunningState
+                  ? (executionId || executionStatus ? '执行中' : '规划中')
+                  : '任务状态'}
           </div>
           <div className="chat-outcome-meta">
             {executionStatus && <span>状态：{executionStatus}</span>}

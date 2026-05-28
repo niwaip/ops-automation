@@ -11,9 +11,9 @@ interface DraftWorkflowSectionProps {
   } | null;
   draftId: string | null;
   draftInfo: { templateType: string; parameterCount: number; savedAt: string } | null;
-  workflowDraftInfo?: unknown;
+  templateAssetDraftInfo?: unknown;
   latestBackendDraftInfo: { id: string; fileName: string; savedAt: string } | null;
-  draftWorkflowNotice: { type: 'success' | 'error' | 'info'; message: string; lines?: string[] } | null;
+  templateAssetNotice: { type: 'success' | 'error' | 'info'; message: string; lines?: string[] } | null;
   isGeneratingGuide: boolean;
   isVerifying: boolean;
   isSavingDraft: boolean;
@@ -34,9 +34,9 @@ export const DraftWorkflowSection: React.FC<DraftWorkflowSectionProps> = ({
   aiSkillGuide,
   draftId,
   draftInfo,
-  workflowDraftInfo: _workflowDraftInfo,
+  templateAssetDraftInfo: _templateAssetDraftInfo,
   latestBackendDraftInfo,
-  draftWorkflowNotice,
+  templateAssetNotice,
   isGeneratingGuide,
   isVerifying,
   isSavingDraft,
@@ -70,7 +70,7 @@ export const DraftWorkflowSection: React.FC<DraftWorkflowSectionProps> = ({
     : '';
 
   // 移除条件判断，使其始终显示
-  // if (suggestions.length === 0 && !aiSkillGuide && !draftId && !draftWorkflowNotice) {
+  // if (suggestions.length === 0 && !aiSkillGuide && !draftId && !templateAssetNotice) {
   //   return null;
   // }
 
@@ -81,8 +81,8 @@ export const DraftWorkflowSection: React.FC<DraftWorkflowSectionProps> = ({
         onClick={() => setDraftWorkflowCollapsed((value) => !value)}
       >
         <div>
-          <h3>制作草稿</h3>
-          <p>统一处理指南生成、模板验证和副本暂存，先把草稿准备完整再进入后续验证保存。</p>
+          <h3>模板资产准备</h3>
+          <p>统一处理指南生成、模板验证和资产暂存，先把模板资产准备完整再进入后续发布。</p>
         </div>
         <div className="excel-understanding-actions" onClick={(e) => e.stopPropagation()}>
           {/* 这里可以放动作按钮 */}
@@ -111,14 +111,14 @@ export const DraftWorkflowSection: React.FC<DraftWorkflowSectionProps> = ({
               onClick={handleSaveDraft}
               disabled={isSavingDraft || !aiSkillGuide}
             >
-              {isSavingDraft ? '暂存中...' : '暂存草稿'}
+              {isSavingDraft ? '暂存中...' : '暂存模板资产'}
             </button>
             <button
               className="sheet-action-btn"
               onClick={handleLoadDraft}
-              title="优先从本地最新暂存恢复草稿，没有本地暂存时再尝试当前副本"
+              title="优先从本地最新暂存恢复模板资产，没有本地暂存时再尝试当前副本"
             >
-              恢复最新草稿
+              恢复最新暂存
             </button>
             {draftId && (
               <button
@@ -133,7 +133,7 @@ export const DraftWorkflowSection: React.FC<DraftWorkflowSectionProps> = ({
 
           {(draftId || draftInfo) && (
             <div className="draft-info">
-              <span className="draft-badge">最新草稿</span>
+              <span className="draft-badge">最新暂存</span>
               <span className="draft-details">
                 {draftInfo?.templateType || 'unknown'} · {draftInfo?.parameterCount || suggestions.length || 0} 参数
                 {formattedDraftTime ? ` · ${formattedDraftTime}` : ''}
@@ -153,12 +153,12 @@ export const DraftWorkflowSection: React.FC<DraftWorkflowSectionProps> = ({
             </div>
           )}
 
-          {draftWorkflowNotice && (
-            <div className={`workflow-status-message ${draftWorkflowNotice.type}`}>
-              <div className="workflow-status-title">{draftWorkflowNotice.message}</div>
-              {draftWorkflowNotice.lines && draftWorkflowNotice.lines.length > 0 && (
+          {templateAssetNotice && (
+            <div className={`workflow-status-message ${templateAssetNotice.type}`}>
+              <div className="workflow-status-title">{templateAssetNotice.message}</div>
+              {templateAssetNotice.lines && templateAssetNotice.lines.length > 0 && (
                 <div className="workflow-status-lines">
-                  {draftWorkflowNotice.lines.map((line, i) => <div key={i}>{line}</div>)}
+                  {templateAssetNotice.lines.map((line, i) => <div key={i}>{line}</div>)}
                 </div>
               )}
             </div>

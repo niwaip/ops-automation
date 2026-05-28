@@ -3023,9 +3023,6 @@ export const WordIdentifyPanel: React.FC<Props> = ({ onApplyComplete }) => {
     draftId,
     draftInfo,
     latestBackendDraftInfo,
-    workflowDraftInfo,
-    workflowTermAssetsText,
-    workflowRenderDiagnostics,
     isSavingDraft,
     draftWorkflowNotice,
     handleGenerateAISkillGuide,
@@ -3039,8 +3036,6 @@ export const WordIdentifyPanel: React.FC<Props> = ({ onApplyComplete }) => {
     aiGenerateResult,
     previewResult,
     isPreviewing,
-    handleWorkflowTermAssetsTextChange,
-    handleAppendWorkflowTermAssetExample,
     templateName,
     setTemplateName,
     saveResult,
@@ -5427,7 +5422,7 @@ export const WordIdentifyPanel: React.FC<Props> = ({ onApplyComplete }) => {
                       draftId={draftId}
                       draftInfo={draftInfo}
                       latestBackendDraftInfo={latestBackendDraftInfo}
-                      draftWorkflowNotice={draftWorkflowNotice}
+                      templateAssetNotice={draftWorkflowNotice}
                       isGeneratingGuide={isGeneratingGuide}
                       isVerifying={isVerifying}
                       isSavingDraft={isSavingDraft}
@@ -5451,9 +5446,6 @@ export const WordIdentifyPanel: React.FC<Props> = ({ onApplyComplete }) => {
                     aiGeneratedData={aiGeneratedData}
                     previewResult={previewResult}
                     draftId={draftId}
-                    workflowDraftInfo={workflowDraftInfo}
-                    workflowTermAssetsText={workflowTermAssetsText}
-                    workflowRenderDiagnostics={workflowRenderDiagnostics}
                     saveResult={saveResult}
                     verifySaveCollapsed={verifySaveCollapsed}
                     setVerifySaveCollapsed={setVerifySaveCollapsed}
@@ -5466,8 +5458,6 @@ export const WordIdentifyPanel: React.FC<Props> = ({ onApplyComplete }) => {
                     aiGenerateResult={aiGenerateResult}
                     isPreviewing={isPreviewing}
                     handlePreviewWithAIParams={handlePreviewWithAIParams}
-                    handleWorkflowTermAssetsTextChange={handleWorkflowTermAssetsTextChange}
-                    handleAppendWorkflowTermAssetExample={handleAppendWorkflowTermAssetExample}
                     previewInlineSupported={previewInlineSupported}
                     apiBaseUrl={apiBaseUrl}
                     getDownloadLabel={getDownloadLabel}

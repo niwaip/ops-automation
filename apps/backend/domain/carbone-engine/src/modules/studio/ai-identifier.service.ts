@@ -377,7 +377,8 @@ export class AIIdentifierService {
     documentType: string,
     templateType: string,
     context?: string,
-    customRules?: Array<{ pattern: string; targetPath: string; description?: string }>
+    customRules?: Array<{ pattern: string; targetPath: string; description?: string }>,
+    skill?: any,
   ): Promise<AIIdentifyResponse> {
     this.logger.log(`Direct AI identify from content, type: ${templateType}, content length: ${documentContent.length}`);
 
@@ -387,7 +388,14 @@ export class AIIdentifierService {
 
     // 2. 调用AI分析空白部分，生成变量建议
     // 返回建议以及是否使用了AI的标记
-    const { suggestions, usedAI } = await this.analyzeBlankPatternsWithAI(blankPatterns, documentContent, templateType, context, customRules);
+    const { suggestions, usedAI } = await this.analyzeBlankPatternsWithAI(
+      blankPatterns,
+      documentContent,
+      templateType,
+      context,
+      customRules,
+      skill
+    );
 
     // 记录识别方式（AI还是规则）
     this.logger.log(`识别方式: ${usedAI ? 'AI智能识别' : '规则匹配（AI服务不可用）'}`);
@@ -475,7 +483,8 @@ export class AIIdentifierService {
         alignment?: string;
         isTitle?: boolean;
       };
-    }>
+    }>,
+    skill?: any,
   ): Promise<AIIdentifyResponse> {
     this.logger.log(`开始多阶段AI识别, 类型: ${templateType}, 内容长度: ${documentContent.length}`);
 
@@ -1899,7 +1908,8 @@ ${parameterList.map(p => `
     fullContent: string,
     templateType: string,
     context?: string,
-    customRules?: Array<{ pattern: string; targetPath: string; description?: string }>
+    customRules?: Array<{ pattern: string; targetPath: string; description?: string }>,
+    skill?: any
   ): Promise<{ suggestions: any[]; usedAI: boolean }> {
     if (patterns.length === 0) {
       return { suggestions: [], usedAI: false };
@@ -1926,7 +1936,15 @@ ${parameterList.map(p => `
         this.logger.log(`处理第${batchIndex + 1}批，共${batchPatterns.length}个空白`);
 
         // 构建针对这批空白的提示（包含完整文档上下文）
-        const prompt = this.buildAIPromptForBlanks(batchPatterns, fullContent, templateType, context, customRules, batchIndex * batchSize);
+        const prompt = this.buildAIPromptForBlanks(
+          batchPatterns,
+          fullContent,
+          templateType,
+          context,
+          customRules,
+          batchIndex * batchSize,
+          skill
+        );
 
         try {
           const aiResponse = await this.callAIService(prompt);
@@ -1996,7 +2014,8 @@ ${parameterList.map(p => `
     templateType: string,
     context?: string,
     customRules?: Array<{ pattern: string; targetPath: string; description?: string }>,
-    startIndex: number = 0  // 空白的起始索引（用于分批处理）
+    startIndex: number = 0, // 空白的起始索引（用于分批处理）
+    skill?: any
   ): string {
     const templateTypeDescriptions: Record<string, string> = {
       'report': '报告文档，包含标题、日期、正文、总结等',
@@ -2008,6 +2027,15 @@ ${parameterList.map(p => `
     };
 
     const typeDesc = templateTypeDescriptions[templateType] || templateTypeDescriptions['report'];
+
+    // 提取 Skill 中的参数情报
+    const skillParameters = skill?.parameters || [];
+    const skillHints = Array.isArray(skillParameters) 
+      ? skillParameters
+          .map((p: any) => `- ${p.name}: ${p.usage || ''} | 提取提示: ${p.extractionHint || ''}`)
+          .join('\n')
+      : '';
+    const skillDescription = skill?.templateDescription || '';
 
     // 提取文档前800字符作为背景（增加上下文长度）
     const background = fullContent.substring(0, Math.min(800, fullContent.length));
@@ -2044,6 +2072,8 @@ ${parameterList.map(p => `
 
     return `你是一个专业的文档模板化专家。请仔细分析以下文档中的空白填充部分，根据上下文语义为每个空白建议合适的Carbone模板变量。
 
+${skillDescription ? `【AI 指南：文档背景】\n${skillDescription}\n` : ''}
+
 文档类型: ${typeDesc}
 ${context ? `用户说明: ${context}` : ''}
 ${customRulesPrompt}
@@ -2051,6 +2081,8 @@ ${contractSemanticGuide}
 
 【文档背景内容】
 ${background}
+
+${skillHints ? `【AI 指南：参数情报（优先参考）】\n如果文档内容符合以下参数描述，请务必映射到对应的参数名：\n${skillHints}\n` : ''}
 
 【需要分析的空白部分】（共${patterns.length}个）
 ${blankList}

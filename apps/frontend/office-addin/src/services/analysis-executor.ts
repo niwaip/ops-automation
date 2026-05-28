@@ -47,6 +47,7 @@ export interface StructuredAnalyzeRequest {
   documentContent: string;
   documentType: 'docx' | 'xlsx' | 'pptx';
   templateType: string;
+  skill?: any;
   context?: string;
   underlineInfo?: Array<Record<string, unknown>>;
   paragraphFormats?: Array<Record<string, unknown>>;

@@ -12,8 +12,8 @@ const DEBUG_MODULES: Array<{ key: DebugModuleKey; label: string }> = [
   { key: 'understanding', label: '理解文档' },
   { key: 'identify', label: '参数识别' },
   { key: 'apply', label: '参数应用' },
-  { key: 'draft', label: '制作草稿' },
-  { key: 'verifySave', label: '验证保存' },
+  { key: 'draft', label: '资产暂存' },
+  { key: 'verifySave', label: '验证与发布' },
   { key: 'other', label: '其他' },
 ];
 
@@ -123,6 +123,7 @@ export const DebugLogPanel: React.FC = () => {
       text.includes('模板生成失败') ||
       text.includes('模版已生成') ||
       text.includes('最终保存成功') ||
+      text.includes('模板资产发布') ||
       text.includes('保存失败')
     ) {
       return 'verifySave';
@@ -216,7 +217,7 @@ export const DebugLogPanel: React.FC = () => {
         {orderedLogs.length === 0 ? (
           <div className="flow-log-empty">暂无日志</div>
         ) : (
-          orderedLogs.map(({ moduleKey, moduleLabel, log }) => {
+          orderedLogs.map(({ moduleLabel, log }) => {
             if (!log) return null;
             return (
               <div key={log.id} className="flow-log-entry module-log-entry" style={{ borderColor: getLevelColor(log.level) }}>

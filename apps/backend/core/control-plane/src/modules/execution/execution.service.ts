@@ -1048,6 +1048,9 @@ export class ExecutionService {
 
     const remainingMissingInputs = updatedRequiredInputs.filter((item) => item.required && this.isBlockingRequiredInput(item));
     const isFullySubmitted = remainingMissingInputs.length === 0;
+    // #region debug-point E:submit-input-merge
+    (()=>{const fs=require('fs');let u='http://127.0.0.1:7777/event',s='contract-param-recognition';try{const e=fs.readFileSync('.dbg/contract-param-recognition.env','utf8');u=e.match(/DEBUG_SERVER_URL=(.+)/)?.[1]||u;s=e.match(/DEBUG_SESSION_ID=(.+)/)?.[1]||s}catch{}fetch(u,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:s,runId:'pre-fix',hypothesisId:'E',location:'execution.service.ts:1049',msg:'[DEBUG] control-plane merged waiting_input submission',data:{executionId:id,stepId:dto.stepId,allowedKeys:Array.from(allowedKeys),submittedKeys,normalizedSubmittedInput,updatedRequiredInputs:updatedRequiredInputs.map((item)=>({name:item.name,missing:item.missing,value:item.value,source:item.source})),remainingMissing:remainingMissingInputs.map((item)=>item.name),isFullySubmitted},ts:Date.now()})}).catch(()=>{});})();
+    // #endregion
     const currentUsage = normalized.__usage as unknown as LLMUsage | undefined;
     const submittedUsage = dto.usage as unknown as LLMUsage | undefined;
     const totalUsage = this.sumUsage(currentUsage, submittedUsage);
@@ -2254,21 +2257,46 @@ export class ExecutionService {
           missingFieldNames: currentMissingFieldNames,
         };
       })
-      .filter((group): group is PlannerSemanticGroupedMissing => Boolean(group));
+      .filter((group): group is PlannerSemanticGroupedMissing => Boolean(group))
+      .reduce<PlannerSemanticGroupedMissing[]>((acc, group) => {
+        const normalizedGroup = this.normalizeSemanticGroupedMissing(group);
+        const existing = acc.find((item) => item.key === normalizedGroup.key && item.kind === normalizedGroup.kind);
+        if (!existing) {
+          acc.push(normalizedGroup);
+          return acc;
+        }
+        existing.blocking = existing.blocking || normalizedGroup.blocking;
+        existing.required = existing.required || normalizedGroup.required;
+        existing.fieldNames = Array.from(new Set([...(existing.fieldNames || []), ...(normalizedGroup.fieldNames || [])]));
+        existing.missingFieldNames = Array.from(new Set([
+          ...(existing.missingFieldNames || []),
+          ...(normalizedGroup.missingFieldNames || []),
+        ]));
+        existing.label = this.normalizeSemanticMissingLabel(existing.label || normalizedGroup.label);
+        existing.description = existing.description || normalizedGroup.description;
+        return acc;
+      }, []);
 
     const coveredMissingNames = new Set(groupedMissing.flatMap((group) => group.missingFieldNames));
     missingRequiredInputs
       .filter((item) => !coveredMissingNames.has(item.name))
       .forEach((item) => {
+        const normalizedKey = this.normalizeSemanticMissingKey(item.name);
+        const existing = groupedMissing.find((group) => group.key === normalizedKey && group.kind === 'field');
+        if (existing) {
+          existing.fieldNames = Array.from(new Set([...(existing.fieldNames || []), item.name]));
+          existing.missingFieldNames = Array.from(new Set([...(existing.missingFieldNames || []), item.name]));
+          return;
+        }
         groupedMissing.push({
-          key: item.name,
-          label: item.description || item.name,
+          key: normalizedKey,
+          label: this.normalizeSemanticMissingLabel(item.description || item.name),
           kind: 'field',
           blocking: true,
           required: true,
           fieldNames: [item.name],
           missingFieldNames: [item.name],
-          description: item.description || `请补充 ${item.name}`,
+          description: `请补充 ${this.normalizeSemanticMissingLabel(item.description || item.name)}`,
         });
       });
 
@@ -2316,6 +2344,44 @@ export class ExecutionService {
     }
 
     return [group.key];
+  }
+
+  private normalizeSemanticGroupedMissing(group: PlannerSemanticGroupedMissing): PlannerSemanticGroupedMissing {
+    if (group.kind === 'array_group') {
+      return group;
+    }
+
+    return {
+      ...group,
+      key: this.normalizeSemanticMissingKey(group.key),
+      label: this.normalizeSemanticMissingLabel(group.label),
+      description: typeof group.description === 'string' && group.description.trim()
+        ? group.description
+        : `请补充 ${this.normalizeSemanticMissingLabel(group.label || group.key)}`,
+    };
+  }
+
+  private normalizeSemanticMissingKey(value: string): string {
+    const normalized = String(value || '').trim();
+    if (!normalized) {
+      return '';
+    }
+
+    return normalized
+      .replace(/[._-](?:zh|ja|cn|jp)$/iu, '')
+      .trim();
+  }
+
+  private normalizeSemanticMissingLabel(value: string): string {
+    const normalized = String(value || '').trim();
+    if (!normalized) {
+      return '';
+    }
+
+    return normalized
+      .replace(/\s*[（(](?:中文|日文|日语|zh|ja|cn|jp)[）)]\s*$/iu, '')
+      .replace(/[._-](?:zh|ja|cn|jp)$/iu, '')
+      .trim();
   }
 
   private buildNormalizedInput(

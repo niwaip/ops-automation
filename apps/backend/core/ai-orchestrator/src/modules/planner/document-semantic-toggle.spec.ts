@@ -88,7 +88,8 @@ describe('PlannerService document semantic bypass toggle', () => {
 
     const { PlannerService } = require('./planner.service');
     const recognizerService = { recognizeParams: jest.fn() };
-    const service = new PlannerService(recognizerService as any);
+    const modelService = { callModel: jest.fn() };
+    const service = new PlannerService(recognizerService as any, modelService as any);
 
     const skill = buildSkill();
     const match = buildMatch(skill);
@@ -105,8 +106,8 @@ describe('PlannerService document semantic bypass toggle', () => {
     });
 
     expect(plan.semantic).toBeUndefined();
-    expect(plan.required_inputs.some((item: { name: string }) => item.name === '{#d.items}{/d.items}')).toBe(true);
-    expect(plan.required_inputs.some((item: { name: string }) => item.name === '__rowIndex')).toBe(true);
+    expect(plan.required_inputs.some((item: { name: string }) => item.name === '{#d.items}{/d.items}')).toBe(false);
+    expect(plan.required_inputs.some((item: { name: string }) => item.name === '__rowIndex')).toBe(false);
 
     process.env.DOCUMENT_SEMANTIC_SUBAGENT_ENABLED = originalValue;
   });

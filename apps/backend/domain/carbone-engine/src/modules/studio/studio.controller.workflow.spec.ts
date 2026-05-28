@@ -2,6 +2,7 @@ import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
 import { StudioController, TemplateRenderDataDto, TemplateSaveDto } from './studio.controller';
+import { DEFAULT_RENDER_PLAN_VERSION, TEMPLATE_ASSET_MANIFEST_VERSION } from './studio.types';
 import { TemplateWorkflowService } from './template-workflow.service';
 
 describe('StudioController template workflow', () => {
@@ -128,7 +129,151 @@ describe('StudioController template workflow', () => {
         }),
       ])
     );
+    expect(result.templateAssetManifest).toEqual(
+      expect.objectContaining({
+        assetVersion: TEMPLATE_ASSET_MANIFEST_VERSION,
+        fieldCount: 1,
+        renderPlanVersion: DEFAULT_RENDER_PLAN_VERSION,
+      }),
+    );
+    expect(savedMeta.templateConfig.templateAssetManifest).toEqual(
+      expect.objectContaining({
+        assetVersion: TEMPLATE_ASSET_MANIFEST_VERSION,
+        fieldCount: 1,
+      }),
+    );
     expect(templateRepository.upsertFromMeta).toHaveBeenCalled();
+  });
+
+  it('exports and imports template asset payloads', async () => {
+    const templateId = 'tpl-asset-roundtrip';
+    const binaryContent = Buffer.from('template-binary-demo');
+    fs.writeFileSync(path.join(templatesDir, `${templateId}.docx`), binaryContent);
+
+    const saveResult = await controller.saveTemplateWorkflow({
+      templateId,
+      templateMeta: {
+        templateName: 'asset-roundtrip.docx',
+        sourceLanguage: 'zh',
+        targetLanguages: ['ja'],
+        documentMode: 'single_or_bilingual',
+      },
+      templateDocumentIr: {
+        host: 'word',
+        elements: [
+          {
+            id: 'p-1',
+            type: 'paragraph',
+            text: '委托方：______________',
+          },
+        ],
+      },
+      templateFieldSpecs: [
+        {
+          fieldId: 'partyAName',
+          type: 'legal_entity_name',
+          sourceLanguage: 'zh',
+          targetLanguages: ['ja'],
+          policy: 'dictionary_first',
+          required: true,
+        },
+      ],
+      saveMode: 'publish',
+    });
+
+    const exported = await controller.exportTemplateAsset({
+      templateId: saveResult.templateId,
+      includeBinary: true,
+    });
+
+    expect(exported.manifest).toEqual(
+      expect.objectContaining({
+        templateId,
+        assetVersion: TEMPLATE_ASSET_MANIFEST_VERSION,
+      }),
+    );
+    expect(exported.templateBinary).toBe(binaryContent.toString('base64'));
+
+    const imported = await controller.importTemplateAsset({
+      manifest: {
+        ...exported.manifest,
+        templateId: 'tpl-imported-roundtrip',
+        fileName: 'imported-roundtrip.docx',
+      },
+      templateBinary: exported.templateBinary,
+    });
+
+    expect(imported.templateAssetManifest).toEqual(
+      expect.objectContaining({
+        templateId: 'tpl-imported-roundtrip',
+        assetVersion: TEMPLATE_ASSET_MANIFEST_VERSION,
+      }),
+    );
+    expect(fs.existsSync(path.join(templatesDir, 'tpl-imported-roundtrip.docx'))).toBe(true);
+  });
+
+  it('persists template asset manifest when saveTemplateFull receives field specs', async () => {
+    const result = await controller.saveTemplateFull({
+      documentContent: Buffer.from('template-binary-demo').toString('base64'),
+      format: 'docx',
+      templateName: 'published-asset-template',
+      templateMeta: {
+        templateName: 'published-asset-template',
+        sourceLanguage: 'zh',
+        targetLanguages: ['ja'],
+        documentMode: 'single_or_bilingual',
+      },
+      templateDocumentIr: {
+        host: 'word',
+        elements: [
+          {
+            id: 'p-1',
+            type: 'paragraph',
+            text: '委托方：______________',
+          },
+        ],
+      },
+      templateFieldSpecs: [
+        {
+          fieldId: 'partyAName',
+          type: 'legal_entity_name',
+          sourceLanguage: 'zh',
+          targetLanguages: ['ja'],
+          policy: 'dictionary_first',
+          required: true,
+        },
+      ],
+      suggestions: [
+        {
+          suggestedName: '{d.partyAName_zh}',
+          originalText: '委托方：',
+          applied: true,
+        },
+      ],
+      skill: {
+        version: '1.0',
+        parameters: [],
+      },
+    });
+
+    expect(result.success).toBe(true);
+    expect(result.templateId).toBeTruthy();
+
+    const metaPath = path.join(templatesDir, `${result.templateId}.json`);
+    const savedMeta = JSON.parse(fs.readFileSync(metaPath, 'utf-8'));
+    expect(savedMeta.templateConfig.templateAssetManifest).toEqual(
+      expect.objectContaining({
+        assetVersion: TEMPLATE_ASSET_MANIFEST_VERSION,
+        fieldCount: 1,
+        fileName: 'published-asset-template.docx',
+      }),
+    );
+    expect(savedMeta.templateConfig.templateWorkflow.renderPlan).toEqual(
+      expect.objectContaining({
+        version: DEFAULT_RENDER_PLAN_VERSION,
+      }),
+    );
+    expect(savedMeta.skillId).toBeTruthy();
   });
 
   it('returns compare candidates from compare endpoint', async () => {

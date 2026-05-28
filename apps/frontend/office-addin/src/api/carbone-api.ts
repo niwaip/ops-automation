@@ -58,6 +58,8 @@ export interface DocumentStructure {
     documentContent: string;           // 文档文本内容（从Office获取）
     documentType: 'docx' | 'xlsx' | 'pptx' | 'text';  // 文档类型
     templateType?: string;              // 模板类型：report, invoice, contract, certificate 等
+    skillId?: string;                   // AI Skill ID
+    skill?: any;                        // AI Skill 对象
     context?: string;                   // 上下文信息（如文档用途描述）
     customRules?: Array<{               // 自定义识别规则
       pattern: string;
@@ -222,6 +224,8 @@ export interface TemplateFieldCandidate {
 export interface TemplateAnalyzeRequest {
   workflowId?: string;
   templateId?: string;
+  skillId?: string;
+  skill?: any;
   templateDocumentIr: DocumentIR;
   sampleDocument?: {
     fileName?: string;
@@ -461,9 +465,69 @@ export interface TemplateDetailResponse {
   config?: any;
   templateConfig?: any;
   templateWorkflow?: TemplateWorkflowSummary;
+  templateAssetManifest?: TemplateAssetManifest; // 新增：模板资产清单
   suggestions?: any[];
   variables?: string[];
   skillId?: string;
+}
+
+/**
+ * 渲染计划 (Render Plan)
+ * 原 carboneBindingPlan 的更名与收敛版本
+ */
+export interface RenderPlan {
+  templateId: string;
+  version: number;
+  bindings: Array<{
+    fieldId: string;
+    variablePath: string;
+    valueSelector: string;
+    language?: string;
+    transform: string;
+    required: boolean;
+  }>;
+}
+
+/**
+ * 模板资产清单 (Template Asset Manifest)
+ * 包含模板的所有语义信息，可独立于数据库存在
+ */
+export interface TemplateAssetManifest {
+  assetVersion: string; // 清单结构版本，例如 "1.0"
+  templateId: string;
+  fileName: string;
+  format: string;
+  fieldCount: number;
+  templateFieldSpecs: TemplateFieldSpec[];
+  languageProfile: {
+    sourceLanguage: string;
+    targetLanguages: string[];
+    documentMode: string;
+  };
+  renderPlan: RenderPlan;
+  renderPlanVersion: number;
+  termAssets?: WorkflowTermAssets;
+  metadata: {
+    generatedAt: string;
+    source: string;          // 例如 "office-addin"
+    addinVersion?: string;
+  };
+}
+
+/**
+ * 模板资产导出负载
+ */
+export interface TemplateAssetExportPayload {
+  templateId: string;
+  includeBinary: boolean;
+}
+
+/**
+ * 模板资产导入负载
+ */
+export interface TemplateAssetImportPayload {
+  manifest: TemplateAssetManifest;
+  templateBinary?: string; // Base64
 }
 
 class CarboneAPI {
@@ -915,6 +979,10 @@ class CarboneAPI {
     }
   }
 
+  /**
+   * 保存模板资产清单
+   * 兼容期内仍复用旧接口名，语义已收敛为字段定义 + renderPlan 资产保存。
+   */
   async saveTemplateWorkflow(request: TemplateSaveRequest): Promise<TemplateSaveResponse> {
     const response = await axios.post(
       `${this.baseUrl}/studio/template/save`,
@@ -934,14 +1002,23 @@ class CarboneAPI {
   }
 
   /**
-   * 保存完整模板（包含模板文件和AI Skill）
-   * 支持复用已有模版ID（从预览生成的模版）
+   * 保存完整模板资产（包含模板文件，以及可选 AI Guide / Skill）
+   * 支持复用已有模版ID（从预览生成的模版）。
    */
   async saveTemplateFull(request: {
     templateId?: string;  // 复用已有模版ID
     documentContent?: string;  // 如果使用已有模版ID，可以不传
     suggestions: AISuggestion[];
     templateConfig?: TemplateConfig;
+    templateMeta?: {
+      templateName?: string;
+      sourceLanguage?: string;
+      targetLanguages?: string[];
+      documentMode?: string;
+      termAssets?: WorkflowTermAssets;
+    };
+    templateDocumentIr?: DocumentIR;
+    templateFieldSpecs?: TemplateFieldSpec[];
     skill?: any;
     skillId?: string;
     format?: string;

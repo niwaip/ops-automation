@@ -29,6 +29,7 @@ export interface AnalyzeDocumentOptions {
   thinking?: boolean;
   aiOrchestratorBaseUrl?: string;
   aiOrchestratorAuthToken?: string;
+  skill?: any;
   excelGlobalUnderstandingCache?: {
     summary: string;
     promptRequestText?: string;
@@ -1861,6 +1862,7 @@ export async function analyzeDocumentWithAI(
     documentContent,
     documentType,
     templateType: options.templateType,
+    skill: options.skill,
     context: buildDocumentContext(documentIR, options.templateType),
     underlineInfo: adapter.host === 'word' ? extractWordUnderlineInfo(documentIR) : undefined,
     paragraphFormats: adapter.host === 'word' ? extractWordParagraphFormats(documentIR) : undefined,

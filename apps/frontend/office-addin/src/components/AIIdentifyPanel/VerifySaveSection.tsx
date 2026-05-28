@@ -1,9 +1,4 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import {
-  TemplateFieldSpec,
-  TemplateRenderDataResponse,
-  WorkflowTermAssets,
-} from '../../api/carbone-api';
 import { AISuggestion } from '../../taskpane/store';
 
 interface VerifySaveSectionProps {
@@ -15,19 +10,6 @@ interface VerifySaveSectionProps {
   aiGeneratedData: any;
   previewResult: { success: boolean; message: string; previewUrl?: string; downloadUrl?: string; generatedData?: any } | null;
   draftId: string | null;
-  workflowDraftInfo: {
-    fieldCount: number;
-    status?: string;
-    sourceLanguage?: string;
-    targetLanguages?: string[];
-    bindingPlanVersion?: number;
-    fields: TemplateFieldSpec[];
-    termAssets?: WorkflowTermAssets;
-  } | null;
-  workflowFieldSpecsDraft?: TemplateFieldSpec[];
-  workflowTermAssetsText: string;
-  workflowRenderDiagnostics: TemplateRenderDataResponse | null;
-  isSavingWorkflowFieldSpecs?: boolean;
   saveResult: { success: boolean; message: string } | null;
   verifySaveCollapsed: boolean;
   setVerifySaveCollapsed: React.Dispatch<React.SetStateAction<boolean>>;
@@ -40,15 +22,6 @@ interface VerifySaveSectionProps {
   aiGenerateResult: { success: boolean; message: string } | null;
   isPreviewing: boolean;
   handlePreviewWithAIParams: () => void;
-  handleWorkflowFieldSpecChange?: (index: number, patch: Partial<TemplateFieldSpec>) => void;
-  handleWorkflowFieldTargetLanguagesChange?: (index: number, values: string[]) => void;
-  handleWorkflowTermAssetsTextChange: (value: string) => void;
-  handleAppendWorkflowTermAssetExample: (
-    kind: 'fieldDictionary' | 'termbase' | 'enumMappings',
-    targetFieldId?: string
-  ) => void;
-  handleSaveWorkflowFieldSpecs?: () => void;
-  handleResetWorkflowFieldSpecs?: () => void;
   previewInlineSupported: boolean;
   apiBaseUrl: string;
   getDownloadLabel: () => string;
@@ -95,9 +68,6 @@ export const VerifySaveSection: React.FC<VerifySaveSectionProps> = ({
   aiGeneratedData,
   previewResult,
   draftId,
-  workflowDraftInfo,
-  workflowTermAssetsText,
-  workflowRenderDiagnostics,
   saveResult,
   verifySaveCollapsed,
   setVerifySaveCollapsed,
@@ -110,8 +80,6 @@ export const VerifySaveSection: React.FC<VerifySaveSectionProps> = ({
   aiGenerateResult,
   isPreviewing,
   handlePreviewWithAIParams,
-  handleWorkflowTermAssetsTextChange,
-  handleAppendWorkflowTermAssetExample,
   previewInlineSupported,
   apiBaseUrl,
   getDownloadLabel,
@@ -124,15 +92,6 @@ export const VerifySaveSection: React.FC<VerifySaveSectionProps> = ({
   if (!aiSkillGuide && !aiGeneratedData && !previewResult && !draftId && !saveResult) {
     return null;
   }
-
-  const workflowSourceTraceEntries = Object.entries(workflowRenderDiagnostics?.sourceTrace || {});
-  const termAssetsSummary = workflowDraftInfo?.termAssets
-    ? [
-        `字段词典 ${(workflowDraftInfo.termAssets.fieldDictionary || []).length}`,
-        `术语 ${(workflowDraftInfo.termAssets.termbase || []).length}`,
-        `枚举 ${(Object.keys(workflowDraftInfo.termAssets.enumMappings || {})).length}`,
-      ].join(' · ')
-    : '未配置模板级术语资产';
   const generatedDataSectionPreviews = useMemo(() => {
     if (!aiGeneratedData || typeof aiGeneratedData !== 'object' || Array.isArray(aiGeneratedData)) {
       return [];
@@ -206,8 +165,8 @@ export const VerifySaveSection: React.FC<VerifySaveSectionProps> = ({
         onClick={() => setVerifySaveCollapsed((value) => !value)}
       >
         <div>
-          <h3>验证保存</h3>
-          <p>统一处理参数生成、预览验证和最终保存，使用草稿或 AI 参数完成端到端确认。</p>
+          <h3>验证与发布</h3>
+          <p>统一处理参数生成、预览验证和模板资产发布，使用暂存副本或 AI 参数完成端到端确认。</p>
         </div>
         <div className="excel-understanding-actions" onClick={(e) => e.stopPropagation()}>
           {/* 这里可以放动作按钮 */}
@@ -320,46 +279,6 @@ export const VerifySaveSection: React.FC<VerifySaveSectionProps> = ({
                 </div>
               )}
 
-              {workflowRenderDiagnostics && (
-                <div className="ai-params-preview">
-                  <div className="ai-params-preview-header">🧭 渲染诊断</div>
-                  {(workflowRenderDiagnostics.warnings.length > 0
-                    || workflowRenderDiagnostics.missingFields.length > 0
-                    || workflowRenderDiagnostics.needsReviewFields.length > 0) && (
-                    <div style={{ display: 'grid', gap: 6, marginBottom: 12 }}>
-                      {workflowRenderDiagnostics.warnings.length > 0 && (
-                        <div className="ai-params-hint">警告: {workflowRenderDiagnostics.warnings.join(' | ')}</div>
-                      )}
-                      {workflowRenderDiagnostics.missingFields.length > 0 && (
-                        <div className="ai-params-hint">缺失字段: {workflowRenderDiagnostics.missingFields.join(', ')}</div>
-                      )}
-                      {workflowRenderDiagnostics.needsReviewFields.length > 0 && (
-                        <div className="ai-params-hint">待确认字段: {workflowRenderDiagnostics.needsReviewFields.join(', ')}</div>
-                      )}
-                    </div>
-                  )}
-                  {workflowSourceTraceEntries.length > 0 && (
-                    <div style={{ display: 'grid', gap: 10 }}>
-                      {workflowSourceTraceEntries.map(([fieldId, trace]) => (
-                        <div
-                          key={fieldId}
-                          style={{
-                            border: '1px solid #d9d9d9',
-                            borderRadius: 8,
-                            padding: 10,
-                            background: '#fff',
-                          }}
-                        >
-                          <div style={{ fontWeight: 600, marginBottom: 6 }}>{fieldId}</div>
-                          <pre className="ai-params-content" style={{ margin: 0 }}>
-                            {JSON.stringify(trace, null, 2)}
-                          </pre>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              )}
             </div>
           )}
 
@@ -388,55 +307,6 @@ export const VerifySaveSection: React.FC<VerifySaveSectionProps> = ({
           )}
 
           {draftId && (
-            <div className="ai-params-preview">
-              <div
-                className="ai-params-preview-header"
-                style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}
-              >
-                <span>
-                  🗂️ 模板级术语资产
-                  <span className="ai-params-hint" style={{ marginLeft: 8 }}>
-                    {termAssetsSummary}
-                  </span>
-                </span>
-                <div className="ai-params-buttons">
-                  <button
-                    className="sheet-action-btn"
-                    type="button"
-                    onClick={() => handleAppendWorkflowTermAssetExample('fieldDictionary')}
-                  >
-                    添加字段词典示例
-                  </button>
-                  <button
-                    className="sheet-action-btn"
-                    type="button"
-                    onClick={() => handleAppendWorkflowTermAssetExample('termbase')}
-                  >
-                    添加术语示例
-                  </button>
-                  <button
-                    className="sheet-action-btn"
-                    type="button"
-                    onClick={() => handleAppendWorkflowTermAssetExample('enumMappings')}
-                  >
-                    添加枚举示例
-                  </button>
-                </div>
-              </div>
-              <div className="ai-params-hint" style={{ marginBottom: 8 }}>
-                填写 `fieldDictionary`、`termbase`、`enumMappings` 的 JSON；保存工作流后写入模板草稿，生成数据时也优先使用这里的模板级覆盖。
-              </div>
-              <textarea
-                className="ai-description-input"
-                placeholder={'{\n  "termbase": [],\n  "enumMappings": {}\n}'}
-                value={workflowTermAssetsText}
-                onChange={(e) => handleWorkflowTermAssetsTextChange(e.target.value)}
-                rows={12}
-              />
-            </div>
-          )}
-
-          {draftId && (
             <div className="template-name-input-container">
               <label className="template-name-label">模板名称:</label>
               <input
@@ -454,9 +324,9 @@ export const VerifySaveSection: React.FC<VerifySaveSectionProps> = ({
             className="final-save-btn"
             onClick={handleSaveTemplateAndGuide}
             disabled={isSaving || !draftId}
-            title={!draftId ? '请先暂存副本' : '从副本正式保存'}
+            title={!draftId ? '请先暂存模板资产' : '从暂存副本发布模板资产'}
           >
-            {isSaving ? '⏳ 保存中...' : '💾 保存模板'}
+            {isSaving ? '⏳ 发布中...' : '💾 发布模板资产'}
           </button>
 
           {saveResult && (

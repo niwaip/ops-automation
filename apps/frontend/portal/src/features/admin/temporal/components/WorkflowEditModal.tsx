@@ -4377,6 +4377,20 @@ export const WorkflowEditModal: React.FC<WorkflowEditModalProps> = ({
                         <Col span={12}><Text><strong>模版文件:</strong> {selectedWorkflow.sourceTemplate.fileName || '无'}</Text></Col>
                         <Col span={12}><Text><strong>格式:</strong> <Tag>{selectedWorkflow.sourceTemplate.format || '未知'}</Tag></Text></Col>
                         <Col span={12}><Text><strong>变量数:</strong> {selectedWorkflow.sourceTemplate.variableCount ?? '-'}</Text></Col>
+                        <Col span={12}><Text><strong>资产版本:</strong> {selectedWorkflow.sourceTemplate.templateAssetVersion ? <Tag color="purple">{selectedWorkflow.sourceTemplate.templateAssetVersion}</Tag> : '旧链路兼容'}</Text></Col>
+                        <Col span={12}><Text><strong>渲染计划版本:</strong> {selectedWorkflow.sourceTemplate.renderPlanVersion ? <Tag color="geekblue">v{selectedWorkflow.sourceTemplate.renderPlanVersion}</Tag> : '无'}</Text></Col>
+                        <Col span={12}><Text><strong>字段数:</strong> {selectedWorkflow.sourceContext?.templateAssetSummary?.fieldCount ?? '-'}</Text></Col>
+                        <Col span={12}><Text><strong>资产来源:</strong> {selectedWorkflow.sourceContext?.templateAssetSummary?.source || '无'}</Text></Col>
+                        {selectedWorkflow.sourceContext?.templateAssetSummary ? (
+                          <Col span={24}>
+                            <Alert
+                              type="info"
+                              showIcon
+                              message="模板资产摘要"
+                              description={`当前工作流基于模板资产 ${selectedWorkflow.sourceContext.templateAssetSummary.assetVersion} 生成，renderPlan 版本 ${selectedWorkflow.sourceContext.templateAssetSummary.renderPlanVersion}，字段数 ${selectedWorkflow.sourceContext.templateAssetSummary.fieldCount}。`}
+                            />
+                          </Col>
+                        ) : null}
                         <Col span={24}>
                           <Alert
                             type="info"
@@ -4502,6 +4516,9 @@ export const WorkflowEditModal: React.FC<WorkflowEditModalProps> = ({
                           {currentSourceTemplate.fileName ? <Tag>文件: {currentSourceTemplate.fileName}</Tag> : null}
                           {currentSourceTemplate.format ? <Tag>格式: {currentSourceTemplate.format}</Tag> : null}
                           {currentSourceTemplate.variableCount !== undefined ? <Tag>变量数: {currentSourceTemplate.variableCount}</Tag> : null}
+                          {currentSourceTemplate.templateAssetVersion ? <Tag color="purple">资产版本: {currentSourceTemplate.templateAssetVersion}</Tag> : <Tag>资产版本: 旧链路兼容</Tag>}
+                          {currentSourceTemplate.renderPlanVersion ? <Tag color="geekblue">渲染计划: v{currentSourceTemplate.renderPlanVersion}</Tag> : null}
+                          {currentSourceContext?.templateAssetSummary?.fieldCount !== undefined ? <Tag>资产字段数: {currentSourceContext.templateAssetSummary.fieldCount}</Tag> : null}
                         </Space>
                       }
                     />
