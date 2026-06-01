@@ -640,7 +640,7 @@ const ExecutionListPage: React.FC = () => {
 
     try {
       const values = await resumeForm.validateFields();
-      const payload = normalizeRequiredInputValues(values, requiredInputs);
+      const payload = normalizeRequiredInputValues(values, requiredInputs, { treatArrayAsJson: true });
 
       if (openInAi) {
         openAiTaskMode(
@@ -1235,7 +1235,7 @@ const ExecutionListPage: React.FC = () => {
                                       ]}
                                       valuePropName={field.type.toLowerCase() === 'boolean' ? 'checked' : 'value'}
                                     >
-                                      {renderRequiredInputField(field)}
+                                      {renderRequiredInputField(field, { treatArrayAsJson: true })}
                                     </Form.Item>
                                     <Text type="secondary" style={{ fontSize: 11 }}>
                                       来源: {field.source}
@@ -1290,7 +1290,7 @@ const ExecutionListPage: React.FC = () => {
                                 ]}
                                 valuePropName={field.type.toLowerCase() === 'boolean' ? 'checked' : 'value'}
                               >
-                                {renderRequiredInputField(field)}
+                                {renderRequiredInputField(field, { treatArrayAsJson: true })}
                               </Form.Item>
                               <Text type="secondary" style={{ fontSize: 11 }}>
                                 来源: {field.source}

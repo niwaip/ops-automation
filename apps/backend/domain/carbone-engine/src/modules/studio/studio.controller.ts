@@ -72,6 +72,9 @@ export class RenderDto {
   templateId!: string;
   data!: Record<string, any>;
   outputFormat?: 'docx' | 'xlsx' | 'pptx' | 'pdf' | 'html';
+  sourceLanguage?: string;
+  targetLanguages?: string[];
+  prepareLocalizedRenderData?: boolean;
 }
 
 export class PreviewDto {
@@ -1106,7 +1109,7 @@ export class StudioController {
       throw new HttpException('TPL_002: 当前模板尚未保存 TemplateFieldSpec', HttpStatus.BAD_REQUEST);
     }
 
-    return this.templateWorkflowService.renderData(
+    return await this.templateWorkflowService.renderData(
       dto.userInput,
       workflow.templateFieldSpecs,
       workflow.carboneBindingPlan,
@@ -1130,9 +1133,32 @@ export class StudioController {
   @ApiOperation({ summary: 'Render template with data' })
   @ApiBody({ type: RenderDto })
   async renderTemplate(@Body() dto: RenderDto): Promise<RenderResponse> {
-    const meta = this.getTemplateMeta(dto.templateId);
+    const meta = await this.getTemplateMetaWithDbFallback(dto.templateId);
+    const workflow = this.readWorkflowConfig(meta as Record<string, any>);
     const templatePath = path.join(this.templatesDir, `${dto.templateId}.${meta.format}`);
-    const normalizedData = this.normalizeRenderData(dto.data || {});
+    let renderInputData = dto.data || {};
+    const sourceLanguage = dto.sourceLanguage || workflow.sourceLanguage || 'zh';
+    const targetLanguages = Array.isArray(dto.targetLanguages)
+      ? dto.targetLanguages
+      : (workflow.targetLanguages || []);
+
+    if (
+      dto.prepareLocalizedRenderData === true
+      && workflow.templateFieldSpecs.length > 0
+    ) {
+      const workflowRenderData = await this.templateWorkflowService.renderData(
+        '',
+        workflow.templateFieldSpecs,
+        workflow.carboneBindingPlan,
+        sourceLanguage,
+        targetLanguages,
+        dto.data || {},
+        workflow.termAssets,
+      );
+      renderInputData = workflowRenderData.data;
+    }
+
+    const normalizedData = this.normalizeRenderData(renderInputData);
 
     if (!fs.existsSync(templatePath)) {
       throw new HttpException('Template file not found', HttpStatus.NOT_FOUND);
@@ -3274,11 +3300,11 @@ export class StudioController {
   }
 
   /**
-   * AI生成参数数据
-   * 根据用户描述和Skill Guide，调用AI生成具体的参数值
+   * 已下线的旧参数生成入口
+   * 文档参数识别已统一收敛到 planner -> execution -> waiting_input 主链路
    */
   @Post('generate-parameters')
-  @ApiOperation({ summary: 'Generate parameters from user description using AI and Skill Guide' })
+  @ApiOperation({ summary: 'Deprecated legacy generate-parameters endpoint (disabled)' })
   @ApiBody({
     schema: {
       type: 'object',
@@ -3290,48 +3316,20 @@ export class StudioController {
     },
   })
   async generateParameters(
-    @Body() body: {
+    @Body() _body: {
       description: string;
       skill?: any;
       skillId?: string;
     },
-  ): Promise<{
-    success: boolean;
-    generatedData?: any;
-    error?: string;
-    debugInfo?: {
-      rawAiResponse?: string;
-      cleanedAiResponse?: string;
-      extractedJson?: string;
-      parseError?: string;
-      upstreamError?: string;
-    };
-  }> {
-    try {
-      // 获取skill
-      let skill = body.skill;
-      if (body.skillId && !skill) {
-        skill = await this.getSkillWithDbFallback(body.skillId);
-      }
-
-      if (!skill) {
-        return { success: false, error: 'Skill not found' };
-      }
-
-      // 调用AI生成参数
-      const result = await this.aiIdentifierService.generateParametersFromDescription(
-        body.description,
-        skill
-      );
-
-      return result;
-    } catch (error: unknown) {
-      const message = error instanceof Error ? error.message : 'Unknown error';
-      return {
+  ): Promise<never> {
+    throw new HttpException(
+      {
         success: false,
-        error: message,
-      };
-    }
+        error:
+          'generate-parameters 已下线。请改用统一文档主链路：skill match -> planner -> execution -> waiting_input -> render。',
+      },
+      HttpStatus.GONE,
+    );
   }
 
   /**

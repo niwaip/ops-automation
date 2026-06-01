@@ -16,6 +16,7 @@ import {
   RefineAiWorkflowDraftSessionDTO,
   BrowserWorkflowDraft,
   GenerateBrowserWorkflowDraftDTO,
+  CompileTemplateWorkflowDraftDTO,
 } from './temporal-workflow.service';
 import { TemporalWorkflow } from '@prisma/client';
 
@@ -122,6 +123,14 @@ export class TemporalWorkflowController {
     @Body() data: { templateId: string },
   ): Promise<import('./temporal-workflow.service').TemplateWorkflowDraft> {
     return this.temporalWorkflowService.generateTemplateWorkflowDraft(data.templateId);
+  }
+
+  @Post('compile-template-draft')
+  @ApiOperation({ summary: 'Compile template-based workflow draft on backend with policy overrides' })
+  async compileTemplateDraft(
+    @Body() data: CompileTemplateWorkflowDraftDTO,
+  ): Promise<import('./temporal-workflow.service').TemplateWorkflowDraft> {
+    return this.temporalWorkflowService.compileTemplateWorkflowDraft(data);
   }
 
   @Post('generate-browser-draft')

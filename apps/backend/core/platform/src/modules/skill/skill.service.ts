@@ -18,6 +18,8 @@ import {
   SkillToolBinding,
   SkillToolValidationMessage,
   SkillToolValidationResult,
+  SkillRuntimeMetadata,
+  WorkflowInputPolicy,
 } from './interfaces';
 import axios from 'axios';
 import { ExecutionFlowTemplateService } from '../execution-flow/execution-flow-template.service';
@@ -89,16 +91,10 @@ const DEFAULT_SKILLS: CreateSkillDTO[] = [
       },
       required: ['templateName', 'title'],
     },
-    tools: ['document_intake', 'document_render'],
+    tools: ['document_render'],
     executionFlow: [
       {
         id: 'step1',
-        name: '选择模板',
-        type: 'tool',
-        tool: { name: 'document_intake' },
-      },
-      {
-        id: 'step2',
         name: '渲染文档',
         type: 'tool',
         tool: { name: 'document_render' },
@@ -1354,10 +1350,121 @@ ${skillsXml}
         return isCurrentPublished || !hasPublishedHistory;
       })
       .map((skill) => this.toDTO(skill, publicationMap.get(skill.id), toolBindingMap.get(skill.id) || []));
-    return this.enrichDocumentSkillsWithCarboneGuide(
+    const visibleRawSkills = skills.filter((skill) => visibleSkills.some((item) => item.id === skill.id));
+    const skillsWithWorkflowInputPolicy = await this.enrichSkillsWithWorkflowInputPolicy(
       visibleSkills,
-      skills.filter((skill) => visibleSkills.some((item) => item.id === skill.id)),
+      visibleRawSkills,
     );
+    return this.enrichDocumentSkillsWithCarboneGuide(
+      skillsWithWorkflowInputPolicy,
+      visibleRawSkills,
+    );
+  }
+
+  private async enrichSkillsWithWorkflowInputPolicy(
+    skills: SkillConfigDto[],
+    rawSkills: any[],
+  ): Promise<SkillConfigDto[]> {
+    if (!skills.length) {
+      return skills;
+    }
+
+    const rawSkillMap = new Map(rawSkills.map((skill) => [String(skill.id), skill]));
+    return Promise.all(
+      skills.map(async (skill) => {
+        const rawSkill = rawSkillMap.get(skill.id);
+        return this.enrichSkillWithWorkflowInputPolicy(skill, rawSkill);
+      }),
+    );
+  }
+
+  private async enrichSkillWithWorkflowInputPolicy(
+    skill: SkillConfigDto,
+    rawSkill: any,
+  ): Promise<SkillConfigDto> {
+    const templateIds = Array.isArray(rawSkill?.executionFlowTemplateIds)
+      ? rawSkill.executionFlowTemplateIds
+          .map((value: unknown) => String(value || '').trim())
+          .filter(Boolean)
+      : [];
+    if (templateIds.length === 0) {
+      return skill;
+    }
+
+    const currentRuntimeMetadata = (skill.apiEndpoints?.runtimeMetadata || {}) as Record<string, unknown>;
+    const existingWorkflowInputPolicy = this.asRecord(currentRuntimeMetadata.workflowInputPolicy);
+    const workflowInputPolicy = await this.loadWorkflowInputPolicyFromTemplates(templateIds);
+    if (!workflowInputPolicy || Object.keys(workflowInputPolicy.params || {}).length === 0) {
+      return skill;
+    }
+
+    const mergedWorkflowInputPolicy = this.mergeWorkflowInputPolicies(
+      existingWorkflowInputPolicy as WorkflowInputPolicy | undefined,
+      workflowInputPolicy,
+    );
+
+    return {
+      ...skill,
+      apiEndpoints: {
+        ...(skill.apiEndpoints || {}),
+        runtimeMetadata: {
+          ...currentRuntimeMetadata,
+          workflowInputPolicy: mergedWorkflowInputPolicy,
+        } as SkillRuntimeMetadata,
+      },
+    };
+  }
+
+  private async loadWorkflowInputPolicyFromTemplates(
+    templateIds: string[],
+  ): Promise<WorkflowInputPolicy | undefined> {
+    const mergedParams = (await Promise.all(
+      templateIds.map(async (templateId) => {
+        try {
+          const template = await this.executionFlowService.getTemplate(templateId);
+          return this.asRecord(template?.inputPolicy?.params) || {};
+        } catch (error) {
+          const message = error instanceof Error ? error.message : 'unknown';
+          this.logger.warn(`Failed to load workflow input policy from template ${templateId}: ${message}`);
+          return {};
+        }
+      }),
+    )).reduce<Record<string, unknown>>((acc, params) => ({
+      ...acc,
+      ...params,
+    }), {});
+
+    if (Object.keys(mergedParams).length === 0) {
+      return undefined;
+    }
+
+    return {
+      params: mergedParams as WorkflowInputPolicy['params'],
+    };
+  }
+
+  private mergeWorkflowInputPolicies(
+    existingPolicy: WorkflowInputPolicy | undefined,
+    templatePolicy: WorkflowInputPolicy,
+  ): WorkflowInputPolicy {
+    const existingParams = this.asRecord(existingPolicy?.params) || {};
+    const templateParams = this.asRecord(templatePolicy.params) || {};
+    const mergedParams = Object.keys({
+      ...existingParams,
+      ...templateParams,
+    }).reduce<Record<string, Record<string, unknown>>>((acc, key) => {
+      const existingEntry = this.asRecord(existingParams[key]) || {};
+      const templateEntry = this.asRecord(templateParams[key]) || {};
+      acc[key] = {
+        ...existingEntry,
+        ...templateEntry,
+      };
+      return acc;
+    }, {});
+
+    return {
+      params: mergedParams as WorkflowInputPolicy['params'],
+    };
   }
 
   private async enrichDocumentSkillsWithCarboneGuide(
@@ -1381,7 +1488,7 @@ ${skillsXml}
     skill: SkillConfigDto,
     rawSkill: any,
   ): Promise<SkillConfigDto> {
-    const currentRuntimeMetadata = skill.apiEndpoints?.runtimeMetadata || {};
+    const currentRuntimeMetadata = (skill.apiEndpoints?.runtimeMetadata || {}) as Record<string, unknown>;
     if (!this.shouldFetchCarboneGuide(rawSkill, currentRuntimeMetadata)) {
       return skill;
     }
@@ -1400,6 +1507,10 @@ ${skillsXml}
 
       return {
         ...skill,
+        paramsSchema: this.hydrateParamsSchemaRenderPaths(
+          skill.paramsSchema,
+          mergedRuntimeMetadata,
+        ),
         apiEndpoints: {
           ...(skill.apiEndpoints || {}),
           runtimeMetadata: mergedRuntimeMetadata,
@@ -1498,6 +1609,115 @@ ${skillsXml}
       outputParams:
         currentOutputParams || mergedOutputExample,
     };
+  }
+
+  private hydrateParamsSchemaRenderPaths(
+    paramsSchema: SkillConfigDto['paramsSchema'],
+    runtimeMetadata: Record<string, unknown>,
+  ): SkillConfigDto['paramsSchema'] {
+    const properties = this.asRecord(paramsSchema?.properties);
+    if (!properties) {
+      return paramsSchema;
+    }
+
+    const mappingIndex = this.buildRuntimeMappingIndex(runtimeMetadata);
+    if (mappingIndex.size === 0) {
+      return paramsSchema;
+    }
+
+    let changed = false;
+    const nextProperties = Object.fromEntries(
+      Object.entries(properties).map(([name, rawProperty]) => {
+        const property = this.asRecord(rawProperty) || {};
+        const existingRenderPath = property.renderPath;
+        const alreadyHasRenderPath = typeof existingRenderPath === 'string'
+          ? existingRenderPath.trim().length > 0
+          : Array.isArray(existingRenderPath)
+            ? existingRenderPath.some((item) => typeof item === 'string' && item.trim().length > 0)
+            : false;
+        if (alreadyHasRenderPath) {
+          return [name, rawProperty];
+        }
+
+        const renderPaths = this.resolveRuntimeRenderPathsForParam(name, mappingIndex);
+        if (renderPaths.length === 0) {
+          return [name, rawProperty];
+        }
+
+        changed = true;
+        return [
+          name,
+          {
+            ...property,
+            renderPath: renderPaths.length === 1 ? renderPaths[0] : renderPaths,
+          },
+        ];
+      }),
+    );
+
+    if (!changed) {
+      return paramsSchema;
+    }
+
+    return {
+      ...paramsSchema,
+      properties: nextProperties as SkillConfigDto['paramsSchema']['properties'],
+    };
+  }
+
+  private buildRuntimeMappingIndex(
+    runtimeMetadata: Record<string, unknown>,
+  ): Map<string, string[]> {
+    const mappingIndex = new Map<string, string[]>();
+    const mappingHints = Array.isArray(runtimeMetadata.mappingHints)
+      ? runtimeMetadata.mappingHints
+      : [];
+
+    mappingHints.forEach((hint) => {
+      const record = this.asRecord(hint);
+      const parameterName = this.readText(record?.parameter);
+      const renderPath = this.normalizeRuntimeMappingPath(this.readText(record?.path));
+      if (!parameterName || !renderPath) {
+        return;
+      }
+
+      const existing = mappingIndex.get(parameterName) || [];
+      if (!existing.includes(renderPath)) {
+        mappingIndex.set(parameterName, [...existing, renderPath]);
+      }
+    });
+
+    return mappingIndex;
+  }
+
+  private resolveRuntimeRenderPathsForParam(
+    paramName: string,
+    mappingIndex: Map<string, string[]>,
+  ): string[] {
+    const directMatch = mappingIndex.get(paramName);
+    if (directMatch?.length) {
+      return directMatch;
+    }
+
+    const variantMatches = Array.from(mappingIndex.entries())
+      .filter(([name]) => name.startsWith(`${paramName}_`))
+      .flatMap(([, renderPaths]) => renderPaths);
+
+    return Array.from(new Set(variantMatches));
+  }
+
+  private normalizeRuntimeMappingPath(path: string | undefined): string | undefined {
+    if (!path) {
+      return undefined;
+    }
+
+    const trimmed = path.trim();
+    const carboneBindingMatch = trimmed.match(/^\{#?d\.([^}:]+)(?::[^}]*)?\}$/);
+    if (carboneBindingMatch?.[1]) {
+      return carboneBindingMatch[1].trim();
+    }
+
+    return trimmed.replace(/^data\./, '').trim() || undefined;
   }
 
   private asRecord(value: unknown): Record<string, any> | undefined {

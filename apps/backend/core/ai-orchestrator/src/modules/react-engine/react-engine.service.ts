@@ -50,7 +50,7 @@ import { CONTROL_PLANE_EXECUTION_STATUS } from '../../client/control-plane.contr
 const DEFAULT_CONFIG: ReActConfig = {
   maxIterations: 10,  // 增加到10次，支持更复杂的多步骤流程
   modelId: 'default',
-  tools: ['skill_match', 'document_intake', 'generate_parameters', 'preview_params', 'document_render', 'document_param_recover', 'param_collect', 'user_ask', 'file_parse', 'api_call', 'flow_execute'],
+  tools: ['skill_match', 'preview_params', 'document_render', 'param_collect', 'user_ask', 'file_parse', 'api_call', 'flow_execute'],
   mode: 'task',
 };
 
@@ -594,13 +594,7 @@ export class ReActEngineService {
         state.thought = `[自动执行] 进入预编译流程步骤 ${context.currentFlowStep + 1}: ${flowTool}`;
 
         // 自动构建参数
-        if (flowTool === 'generate_parameters') {
-          const originalUserMessage = messages.find(m => m.role === 'user' && !m.metadata?.isReAct);
-          state.actionInput = { 
-            skillId: context.skill.carboneSkillId, 
-            description: typeof originalUserMessage?.content === 'string' ? originalUserMessage.content : '' 
-          };
-        } else if (flowTool === 'document_render') {
+        if (flowTool === 'document_render') {
           state.actionInput = {
             templateId: context.skill.carboneTemplateId,
             data: context.collectedParams || {}

@@ -1044,9 +1044,6 @@ ${JSON.stringify(data, null, 2)}`;
 
     const skill = skillId ? await this.loadSkillSchema(skillId, authToken) : null;
     const parsedObject = this.parseJsonObjectMessage(message);
-    // #region debug-point B:waiting-input-entry
-    (()=>{const fs=require('fs');let u='http://127.0.0.1:7777/event',s='contract-param-recognition';try{const e=fs.readFileSync('.dbg/contract-param-recognition.env','utf8');u=e.match(/DEBUG_SERVER_URL=(.+)/)?.[1]||u;s=e.match(/DEBUG_SESSION_ID=(.+)/)?.[1]||s}catch{}fetch(u,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:s,runId:'pre-fix',hypothesisId:'B',location:'chat.controller.ts:958',msg:'[DEBUG] waiting_input payload start',data:{skillId,missingInputs:missingInputs.map((item)=>({name:item.name,type:item.type})),allRequiredInputs:allRequiredInputs.map((item)=>({name:item.name,missing:item.missing,value:item.value})),message,parsedObjectKeys:parsedObject&&typeof parsedObject==='object'?Object.keys((parsedObject.params&&typeof parsedObject.params==='object'&&!Array.isArray(parsedObject.params)?parsedObject.params:parsedObject) as Record<string, unknown>):[]},ts:Date.now()})}).catch(()=>{});})();
-    // #endregion
 
     if (parsedObject) {
       const parsedParams =
@@ -1064,9 +1061,6 @@ ${JSON.stringify(data, null, 2)}`;
           message,
           modelId,
         );
-        // #region debug-point B:waiting-input-json-hit
-        (()=>{const fs=require('fs');let u='http://127.0.0.1:7777/event',s='contract-param-recognition';try{const e=fs.readFileSync('.dbg/contract-param-recognition.env','utf8');u=e.match(/DEBUG_SERVER_URL=(.+)/)?.[1]||u;s=e.match(/DEBUG_SESSION_ID=(.+)/)?.[1]||s}catch{}fetch(u,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:s,runId:'pre-fix',hypothesisId:'B',location:'chat.controller.ts:969',msg:'[DEBUG] waiting_input accepted json payload',data:{allowedKeys:Array.from(allowedKeys),filteredEntries:Object.fromEntries(filteredEntries),expandedInput:expanded.input},ts:Date.now()})}).catch(()=>{});})();
-        // #endregion
         return {
           input: expanded.input,
           usage: expanded.usage,
@@ -1114,9 +1108,6 @@ ${JSON.stringify(data, null, 2)}`;
         value !== null &&
         !(typeof value === 'string' && value.trim() === '')
       ));
-      // #region debug-point C:waiting-input-recognizer
-      (()=>{const fs=require('fs');let u='http://127.0.0.1:7777/event',s='contract-param-recognition';try{const e=fs.readFileSync('.dbg/contract-param-recognition.env','utf8');u=e.match(/DEBUG_SERVER_URL=(.+)/)?.[1]||u;s=e.match(/DEBUG_SESSION_ID=(.+)/)?.[1]||s}catch{}fetch(u,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:s,runId:'pre-fix',hypothesisId:'C',location:'chat.controller.ts:1019',msg:'[DEBUG] waiting_input recognizer result',data:{skillId,recognizedParams:recognized?.params||{},recognizedEntries:Object.fromEntries(recognizedEntries),missingInputs:missingInputs.map((item)=>item.name),alreadyCollected},ts:Date.now()})}).catch(()=>{});})();
-      // #endregion
 
       if (recognizedEntries.length > 0) {
         const expanded = await this.expandWaitingInputBilingualPayload(
@@ -1127,9 +1118,6 @@ ${JSON.stringify(data, null, 2)}`;
           message,
           modelId,
         );
-        // #region debug-point C:waiting-input-recognizer-expanded
-        (()=>{const fs=require('fs');let u='http://127.0.0.1:7777/event',s='contract-param-recognition';try{const e=fs.readFileSync('.dbg/contract-param-recognition.env','utf8');u=e.match(/DEBUG_SERVER_URL=(.+)/)?.[1]||u;s=e.match(/DEBUG_SESSION_ID=(.+)/)?.[1]||s}catch{}fetch(u,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:s,runId:'pre-fix',hypothesisId:'C',location:'chat.controller.ts:1026',msg:'[DEBUG] waiting_input recognizer expanded payload',data:{expandedInput:expanded.input},ts:Date.now()})}).catch(()=>{});})();
-        // #endregion
         return {
           input: expanded.input,
           usage: this.sumUsage(recognized.usage, expanded.usage),
@@ -1167,9 +1155,6 @@ ${JSON.stringify(data, null, 2)}`;
             value !== null &&
             !(typeof value === 'string' && value.trim() === '')
           ));
-        // #region debug-point D:waiting-input-planner-fallback
-        (()=>{const fs=require('fs');let u='http://127.0.0.1:7777/event',s='contract-param-recognition';try{const e=fs.readFileSync('.dbg/contract-param-recognition.env','utf8');u=e.match(/DEBUG_SERVER_URL=(.+)/)?.[1]||u;s=e.match(/DEBUG_SESSION_ID=(.+)/)?.[1]||s}catch{}fetch(u,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:s,runId:'pre-fix',hypothesisId:'D',location:'chat.controller.ts:1061',msg:'[DEBUG] waiting_input planner fallback result',data:{allowedKeys:Array.from(allowedKeys),plannedRequiredInputs:(planDraft.required_inputs||[]).map((item)=>({name:item.name,missing:item.missing,value:item.value})),plannedResolvedEntries:Object.fromEntries(plannedResolvedEntries)},ts:Date.now()})}).catch(()=>{});})();
-        // #endregion
 
         if (plannedResolvedEntries.length > 0) {
           const expanded = await this.expandWaitingInputBilingualPayload(
@@ -1811,15 +1796,6 @@ ${JSON.stringify(data, null, 2)}`;
       content: '正在规划任务...',
     };
 
-    const autoFillMissingRequired = Boolean(
-      (body.config && typeof (body.config as any).autoFillMissingRequired === 'boolean'
-        ? (body.config as any).autoFillMissingRequired
-        : false)
-      || (typeof body.message === 'string'
-        && body.message.includes('端对端')
-        && body.message.includes('技术服务合同')),
-    );
-
     const plannerInput = {
       request: {
         user_input: body.message,
@@ -1829,7 +1805,6 @@ ${JSON.stringify(data, null, 2)}`;
           sessionId: body.sessionId,
           uploadedFiles: body.files,
           history: context.history,
-          ...(autoFillMissingRequired ? { auto_fill_missing_required: true } : {}),
         },
       },
       userId: context.userId,

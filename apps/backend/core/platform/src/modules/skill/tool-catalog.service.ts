@@ -40,13 +40,6 @@ const SYSTEM_TOOL_CATALOG: ToolCatalogSeed[] = [
     runtimeType: 'skill',
   },
   {
-    name: 'document_generate',
-    displayName: '文档生成',
-    description: '根据技能和参数生成文档。',
-    category: 'execution',
-    runtimeType: 'document',
-  },
-  {
     name: 'user_ask',
     displayName: '用户追问',
     description: '向用户追问或确认缺失信息。',
@@ -62,33 +55,12 @@ const SYSTEM_TOOL_CATALOG: ToolCatalogSeed[] = [
     runtimeType: 'file',
   },
   {
-    name: 'generate_parameters',
-    displayName: '参数生成',
-    description: '使用 AI 生成模板参数。',
-    category: 'parameter',
-    runtimeType: 'document',
-  },
-  {
     name: 'document_render',
     displayName: '文档渲染',
     description: '调用文档引擎渲染模板。',
     category: 'execution',
     runtimeType: 'document',
     riskLevel: 'L1',
-  },
-  {
-    name: 'document_intake',
-    displayName: '文档模板选择',
-    description: '选择文档模板并补充上下文。',
-    category: 'execution',
-    runtimeType: 'document',
-  },
-  {
-    name: 'document_param_recover',
-    displayName: '文档参数恢复',
-    description: '恢复缺失文档参数。',
-    category: 'parameter',
-    runtimeType: 'document',
   },
   {
     name: 'preview_params',

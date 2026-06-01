@@ -50,7 +50,7 @@ describe('PlannerService document semantic bypass toggle', () => {
     carboneTemplateId: 'carbone-tpl-1',
     carboneSkillId: 'carbone-skill-1',
     executionFlowTemplateIds: ['flow-1'],
-    executionFlow: ['generate_parameters', 'document_render'],
+    executionFlow: ['document_render'],
     apiEndpoints: {
       runtimeMetadata: {
         sourceType: 'document',
@@ -81,7 +81,7 @@ describe('PlannerService document semantic bypass toggle', () => {
     outputParams: undefined,
   });
 
-  it('falls back to legacy field-level required_inputs when bypass is disabled', async () => {
+  it('falls back to field-level required_inputs when semantic grouping is disabled', async () => {
     const originalValue = process.env.DOCUMENT_SEMANTIC_SUBAGENT_ENABLED;
     process.env.DOCUMENT_SEMANTIC_SUBAGENT_ENABLED = 'false';
     jest.resetModules();

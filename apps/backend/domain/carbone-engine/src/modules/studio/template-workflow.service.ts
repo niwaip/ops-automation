@@ -405,6 +405,13 @@ export interface WorkflowRenderResult {
   needsReviewFields: string[];
 }
 
+interface WorkflowRenderTranslationCandidate {
+  fieldId: string;
+  sourceLanguage: string;
+  sourceText: string;
+  pendingLanguages: string[];
+}
+
 const GLOBAL_FIELD_DICTIONARY: WorkflowFieldDictionaryEntry[] = [
   {
     aliases: ['委托方', '甲方', '买方', 'entrusting party', 'buyer', '委託者'],
@@ -1719,7 +1726,7 @@ ${enumHints || '无'}
     };
   }
 
-  renderData(
+  async renderData(
     userInput: string,
     templateFieldSpecs: WorkflowTemplateFieldSpec[],
     carboneBindingPlan: WorkflowBindingPlan | undefined,
@@ -1727,12 +1734,13 @@ ${enumHints || '无'}
     targetLanguages: string[] = [],
     userOverrides?: Record<string, unknown>,
     termAssets?: WorkflowTermAssets,
-  ): WorkflowRenderResult {
+  ): Promise<WorkflowRenderResult> {
     const warnings: string[] = [];
     const missingFields: string[] = [];
     const needsReviewFields: string[] = [];
     const sourceTrace: Record<string, Record<string, unknown>> = {};
     const fieldValueMap = new Map<string, Record<string, unknown>>();
+    const translationCandidates: WorkflowRenderTranslationCandidate[] = [];
     const assets = this.resolveAssets(termAssets);
 
     for (const spec of templateFieldSpecs) {
@@ -1744,12 +1752,30 @@ ${enumHints || '无'}
         userOverrides,
         assets,
       );
+      this.applyLocalizedLanguageAliases(fieldResult.value, sourceLanguage, targetLanguages);
       fieldValueMap.set(spec.fieldId, fieldResult.value);
+      const translationCandidate = this.buildRenderTranslationCandidate(
+        spec,
+        fieldResult.value,
+        sourceLanguage,
+        targetLanguages,
+      );
+      if (translationCandidate) {
+        translationCandidates.push(translationCandidate);
+      }
       sourceTrace[spec.fieldId] = fieldResult.sourceTrace;
       warnings.push(...fieldResult.warnings);
       missingFields.push(...fieldResult.missingFields);
       needsReviewFields.push(...fieldResult.needsReviewFields);
     }
+
+    await this.applyBatchRenderTranslations(
+      translationCandidates,
+      fieldValueMap,
+      sourceTrace,
+      warnings,
+      needsReviewFields,
+    );
 
     const bindings = carboneBindingPlan?.bindings || this.compileBindingPlan(
       'ad_hoc',
@@ -3794,6 +3820,44 @@ ${enumHints || '无'}
       missingFields.push(spec.fieldId);
     }
 
+    if (overrideValue && typeof overrideValue === 'object' && !Array.isArray(overrideValue)) {
+      const localizedOverride = overrideValue as Record<string, unknown>;
+      const localizedKeys = Array.from(new Set([
+        'source',
+        'value',
+        ...this.getLanguageAliases(sourceLanguage),
+        ...targetLangs.flatMap((lang) => this.getLanguageAliases(lang)),
+      ]));
+      const hasLocalizedValue = localizedKeys.some((key) => localizedOverride[key] !== undefined);
+      if (hasLocalizedValue) {
+        const sourceText = this.safeText(
+          this.readLocalizedFieldValue(localizedOverride, sourceLanguage)
+          ?? localizedOverride.source
+          ?? localizedOverride.value,
+        );
+        if (localizedOverride.source !== undefined || sourceText) {
+          resolvedValue.source = this.safeText(localizedOverride.source) || sourceText;
+        }
+        if (localizedOverride.value !== undefined) {
+          resolvedValue.value = localizedOverride.value;
+        }
+        if (this.readLocalizedFieldValue(localizedOverride, sourceLanguage) !== undefined || sourceText) {
+          this.setLocalizedValue(resolvedValue, sourceLanguage, sourceText);
+        }
+        for (const lang of targetLangs) {
+          const langText = this.safeText(this.readLocalizedFieldValue(localizedOverride, lang));
+          this.setLocalizedValue(
+            resolvedValue,
+            lang,
+            langText || (lang === sourceLanguage ? sourceText : ''),
+          );
+        }
+        sourceTrace.resolution = 'localized_override';
+        sourceTrace.valueMode = 'scalar';
+        return { value: resolvedValue, sourceTrace, warnings, missingFields, needsReviewFields };
+      }
+    }
+
     if (spec.policy === 'dictionary_first') {
       const normalizedSource = this.safeText(sourceValue);
       const termMatch = normalizedSource
@@ -3804,14 +3868,12 @@ ${enumHints || '无'}
         resolvedValue[sourceLanguage] = termMatch.translations[sourceLanguage] || termMatch.sourceValue;
         for (const lang of targetLangs) {
           resolvedValue[lang] = termMatch.translations[lang];
-          if (!termMatch.translations[lang]) {
-            needsReviewFields.push(spec.fieldId);
-          }
         }
         sourceTrace.resolution = 'dictionary_hit';
         sourceTrace.termId = termMatch.termId;
         sourceTrace.scope = termMatch.scope || 'global';
         sourceTrace.termVersion = termMatch.version;
+        sourceTrace.pendingTranslations = targetLangs.filter((lang) => !termMatch.translations[lang]);
       } else {
         resolvedValue.source = normalizedSource || '';
         resolvedValue[sourceLanguage] = normalizedSource || '';
@@ -3913,14 +3975,280 @@ ${enumHints || '无'}
       resolvedValue[lang] = lang === sourceLanguage ? textValue : '';
     }
     if (textValue && targetLangs.some((lang) => lang !== sourceLanguage)) {
-      warnings.push(`字段 ${spec.fieldId} 暂未启用自动翻译，目标语言待人工确认`);
-      needsReviewFields.push(spec.fieldId);
-      sourceTrace.resolution = 'pending_generation';
+      sourceTrace.resolution = 'pending_translation';
+      sourceTrace.pendingTranslations = targetLangs.filter((lang) => lang !== sourceLanguage);
     } else {
       sourceTrace.resolution = textValue ? 'copy' : 'missing';
     }
 
     return { value: resolvedValue, sourceTrace, warnings, missingFields, needsReviewFields };
+  }
+
+  private buildRenderTranslationCandidate(
+    spec: WorkflowTemplateFieldSpec,
+    value: Record<string, unknown>,
+    sourceLanguage: string,
+    targetLanguages: string[],
+  ): WorkflowRenderTranslationCandidate | undefined {
+    if (!this.isAutoTranslatableTextField(spec)) {
+      return undefined;
+    }
+
+    const sourceText = this.safeText(
+      this.readLocalizedFieldValue(value, sourceLanguage)
+      ?? value.source
+      ?? value.value,
+    );
+    if (!sourceText || this.shouldSkipAutomaticTranslationText(sourceText)) {
+      return undefined;
+    }
+
+    const pendingLanguages = Array.from(new Set(targetLanguages))
+      .map((lang) => this.normalizeTranslationLanguage(lang))
+      .filter((lang): lang is string => Boolean(lang) && lang !== this.normalizeTranslationLanguage(sourceLanguage))
+      .filter((lang) => !this.safeText(this.readLocalizedFieldValue(value, lang)));
+    if (pendingLanguages.length === 0) {
+      return undefined;
+    }
+
+    return {
+      fieldId: spec.fieldId,
+      sourceLanguage: this.normalizeTranslationLanguage(sourceLanguage),
+      sourceText,
+      pendingLanguages,
+    };
+  }
+
+  private async applyBatchRenderTranslations(
+    candidates: WorkflowRenderTranslationCandidate[],
+    fieldValueMap: Map<string, Record<string, unknown>>,
+    sourceTrace: Record<string, Record<string, unknown>>,
+    warnings: string[],
+    needsReviewFields: string[],
+  ): Promise<void> {
+    if (candidates.length === 0) {
+      return;
+    }
+
+    const batches = new Map<string, Record<string, string>>();
+    for (const candidate of candidates) {
+      for (const targetLanguage of candidate.pendingLanguages) {
+        const batchKey = `${candidate.sourceLanguage}::${targetLanguage}`;
+        const batch = batches.get(batchKey) || {};
+        batch[candidate.fieldId] = candidate.sourceText;
+        batches.set(batchKey, batch);
+      }
+    }
+
+    for (const [batchKey, batch] of batches.entries()) {
+      const [sourceLanguage, targetLanguage] = batchKey.split('::');
+      const translated = await this.batchTranslateRenderFields(batch, sourceLanguage, targetLanguage);
+      Object.entries(translated).forEach(([fieldId, translatedText]) => {
+        const fieldValue = fieldValueMap.get(fieldId);
+        if (!fieldValue || !translatedText.trim()) {
+          return;
+        }
+        this.setLocalizedValue(fieldValue, targetLanguage, translatedText.trim());
+        const trace = sourceTrace[fieldId] || {};
+        const translatedTargets = Array.isArray(trace.translatedTargets)
+          ? trace.translatedTargets.map((item) => String(item))
+          : [];
+        if (!translatedTargets.includes(targetLanguage)) {
+          translatedTargets.push(targetLanguage);
+        }
+        trace.translatedTargets = translatedTargets;
+        trace.translationProvider = 'ai_orchestrator';
+        trace.translationMode = 'batch';
+        if (trace.resolution === 'pending_translation') {
+          trace.resolution = 'llm_translated';
+        }
+        sourceTrace[fieldId] = trace;
+      });
+    }
+
+    for (const candidate of candidates) {
+      const fieldValue = fieldValueMap.get(candidate.fieldId);
+      if (!fieldValue) {
+        continue;
+      }
+      const unresolvedTargets = candidate.pendingLanguages.filter((lang) => {
+        const translatedText = this.safeText(this.readLocalizedFieldValue(fieldValue, lang));
+        return !translatedText;
+      });
+      if (unresolvedTargets.length === 0) {
+        continue;
+      }
+      warnings.push(`字段 ${candidate.fieldId} 自动翻译失败，目标语言待人工确认`);
+      needsReviewFields.push(candidate.fieldId);
+      const trace = sourceTrace[candidate.fieldId] || {};
+      trace.pendingTranslations = unresolvedTargets;
+      trace.translationFailed = true;
+      sourceTrace[candidate.fieldId] = trace;
+    }
+  }
+
+  private async batchTranslateRenderFields(
+    batch: Record<string, string>,
+    sourceLanguage: string,
+    targetLanguage: string,
+    retryCount = 0,
+  ): Promise<Record<string, string>> {
+    if (Object.keys(batch).length === 0) {
+      return {};
+    }
+
+    const aiOrchestratorUrl = getAiOrchestratorUrl();
+    const aiModelId = process.env.AI_MODEL_ID || 'default';
+    const maxRetries = 2;
+    const sourceName = this.getTranslationLanguageName(sourceLanguage);
+    const targetName = this.getTranslationLanguageName(targetLanguage);
+    const prompt = [
+      `你是一个专业的商务文档翻译助手。请将以下 JSON 对象中的值从${sourceName}翻译成${targetName}。`,
+      '要求：',
+      '1. 保持 JSON 结构和 key 完全不变，只翻译字符串值。',
+      '2. 术语、公司名、项目名采用正式商务表达。',
+      '3. 如果值本身是数字、日期、金额或无需翻译的符号，请保持原样。',
+      '4. 直接返回 JSON 对象，不要包含解释、代码块或额外文本。',
+      '待翻译内容：',
+      JSON.stringify(batch, null, 2),
+    ].join('\n');
+
+    try {
+      const response = await axios.post<{ response?: string }>(
+        `${aiOrchestratorUrl}/ai/models/${aiModelId}/test`,
+        { prompt },
+        { timeout: 180000 },
+      );
+      const content = String(response.data?.response || '')
+        .replace(/```json\s*/gi, '')
+        .replace(/```\s*/g, '')
+        .trim();
+      const parsed = this.tryParseJsonObject(content);
+      if (!parsed) {
+        throw new Error('AI 翻译结果不是有效 JSON');
+      }
+      return Object.entries(parsed).reduce<Record<string, string>>((acc, [key, value]) => {
+        const translatedText = this.safeText(value);
+        if (translatedText) {
+          acc[key] = translatedText;
+        }
+        return acc;
+      }, {});
+    } catch (error) {
+      if (retryCount < maxRetries) {
+        return this.batchTranslateRenderFields(batch, sourceLanguage, targetLanguage, retryCount + 1);
+      }
+      this.logger.warn(`批量翻译失败 (${sourceLanguage} -> ${targetLanguage}): ${error instanceof Error ? error.message : String(error)}`);
+      return {};
+    }
+  }
+
+  private isAutoTranslatableTextField(spec: WorkflowTemplateFieldSpec): boolean {
+    if ((spec.valueMode || 'scalar') !== 'scalar') {
+      return false;
+    }
+    if (spec.policy === 'enum_mapping') {
+      return false;
+    }
+    const normalizedType = String(spec.type || '').trim().toLowerCase();
+    return ![
+      'number',
+      'boolean',
+      'date',
+      'currency_amount',
+      'bank_account',
+      'table_row',
+    ].includes(normalizedType);
+  }
+
+  private shouldSkipAutomaticTranslationText(value: string): boolean {
+    const normalized = String(value || '').trim();
+    if (!normalized) {
+      return true;
+    }
+    if (/^(true|false|yes|no|是|否)$/iu.test(normalized)) {
+      return true;
+    }
+    if (/^-?[\d,.]+%?$/u.test(normalized)) {
+      return true;
+    }
+    if (/^[¥￥$€]?\s*[\d,.]+(?:元|円|日元|人民币|人民元|CNY|JPY|USD|EUR)?$/iu.test(normalized)) {
+      return true;
+    }
+    if (/^\d{4}[-/.年]\d{1,2}[-/.月]\d{1,2}日?$/u.test(normalized)) {
+      return true;
+    }
+    return false;
+  }
+
+  private applyLocalizedLanguageAliases(
+    value: Record<string, unknown>,
+    sourceLanguage: string,
+    targetLanguages: string[],
+  ): void {
+    const languages = Array.from(new Set([sourceLanguage, ...targetLanguages]));
+    for (const language of languages) {
+      const localizedValue = this.readLocalizedFieldValue(value, language);
+      if (localizedValue !== undefined) {
+        this.setLocalizedValue(value, language, localizedValue);
+      }
+    }
+  }
+
+  private readLocalizedFieldValue(
+    value: Record<string, unknown>,
+    language: string,
+  ): unknown {
+    for (const candidate of this.getLanguageAliases(language)) {
+      if (value[candidate] !== undefined) {
+        return value[candidate];
+      }
+    }
+    return undefined;
+  }
+
+  private setLocalizedValue(
+    target: Record<string, unknown>,
+    language: string,
+    value: unknown,
+  ): void {
+    for (const candidate of this.getLanguageAliases(language)) {
+      target[candidate] = value;
+    }
+  }
+
+  private getLanguageAliases(language: string): string[] {
+    const normalized = this.normalizeTranslationLanguage(language);
+    switch (normalized) {
+      case 'zh':
+        return ['zh', 'cn'];
+      case 'ja':
+        return ['ja', 'jp'];
+      case 'en':
+        return ['en'];
+      default:
+        return normalized ? [normalized] : [];
+    }
+  }
+
+  private normalizeTranslationLanguage(language: string | undefined): string {
+    const normalized = String(language || '').trim().toLowerCase();
+    if (normalized === 'cn') return 'zh';
+    if (normalized === 'jp') return 'ja';
+    return normalized;
+  }
+
+  private getTranslationLanguageName(language: string): string {
+    switch (this.normalizeTranslationLanguage(language)) {
+      case 'zh':
+        return '中文';
+      case 'ja':
+        return '日语';
+      case 'en':
+        return '英文';
+      default:
+        return language || '目标语言';
+    }
   }
 
   compileBindingPlan(

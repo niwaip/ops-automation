@@ -1,5 +1,46 @@
 const MACHINE_LIKE_LABEL_PATTERN = /^[A-Za-z0-9_.\[\]-]+$/;
 
+const PURPOSE_PREFIX_PATTERNS = [
+  /^用于(?:渲染|规定|约定|配置|控制|生成|填写|展示|补充|说明|确定)?/u,
+  /^用来(?:渲染|规定|约定|配置|控制|生成|填写|展示|补充|说明|确定)?/u,
+];
+
+const CONTEXT_PREFIX_PATTERNS = [
+  /^合同文本中的/u,
+  /^合同文本里(?:的)?/u,
+  /^合同中约定(?:的)?/u,
+  /^合同中(?:的)?/u,
+  /^文档中的/u,
+  /^文档里(?:的)?/u,
+  /^模板中的/u,
+  /^模板里(?:的)?/u,
+];
+
+const CONTEXT_SUFFIX_PATTERNS = [
+  /占位符$/u,
+];
+
+const stripFriendlyInputLabelBoilerplate = (label: string): string => {
+  let normalized = String(label || '').replace(/\s+/g, ' ').trim();
+  if (!normalized) {
+    return '';
+  }
+
+  PURPOSE_PREFIX_PATTERNS.forEach((pattern) => {
+    normalized = normalized.replace(pattern, '').trim();
+  });
+
+  CONTEXT_PREFIX_PATTERNS.forEach((pattern) => {
+    normalized = normalized.replace(pattern, '').trim();
+  });
+
+  CONTEXT_SUFFIX_PATTERNS.forEach((pattern) => {
+    normalized = normalized.replace(pattern, '').trim();
+  });
+
+  return normalized || String(label || '').replace(/\s+/g, ' ').trim();
+};
+
 export const deriveFriendlyInputLabel = (
   description?: string,
   maxLength = 32,
@@ -9,7 +50,9 @@ export const deriveFriendlyInputLabel = (
     return undefined;
   }
 
-  const concise = normalized.split(/[，,；;。:：]/)[0]?.trim();
+  const concise = stripFriendlyInputLabelBoilerplate(
+    normalized.split(/[，,；;。:：]/)[0]?.trim() || '',
+  );
   if (!concise) {
     return undefined;
   }

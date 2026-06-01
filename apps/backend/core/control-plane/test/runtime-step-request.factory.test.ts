@@ -1,3 +1,4 @@
+import { Logger } from '@nestjs/common';
 import { RuntimeStepRequestFactory } from '../src/modules/execution/runtime-step-request.factory';
 
 describe('RuntimeStepRequestFactory', () => {
@@ -249,6 +250,242 @@ describe('RuntimeStepRequestFactory', () => {
       },
       metadata: {
         capabilityVersion: 'v6',
+      },
+    });
+  });
+
+  it('maps document paramResolution bindings into input.data for document runtime requests', () => {
+    const request = factory.buildSkillRuntimeRequest({
+      execution: {
+        id: 'execution-7',
+        skillId: 'skill-7',
+        skillVersion: 'v8',
+        runtimeType: 'document',
+        riskLevel: 'L0',
+        requiresApproval: false,
+        normalizedInputJson: {
+          input: {
+            contractNo: 'HT-2026-001',
+            customerName: 'Alice',
+            outputFormat: 'pdf',
+            data: {
+              existing: 'keep-me',
+            },
+          },
+          paramResolution: {
+            contractNo: {
+              final: true,
+              value: 'HT-2026-001',
+              template_binding: 'contract.no',
+            },
+            customerName: {
+              final: true,
+              value: 'Alice',
+              render_path: 'party.customerName',
+            },
+          },
+          skillMatch: {
+            skill_id: 'published-skill-7',
+          },
+        },
+      },
+      stepId: 'step-7',
+      runtimeSessionId: 'runtime-7',
+    });
+
+    expect(request).toEqual({
+      requestId: 'execution-7:step-7',
+      executionId: 'execution-7',
+      stepId: 'step-7',
+      runtimeType: 'document',
+      runtimeSessionId: 'runtime-7',
+      skillId: 'skill-7',
+      publishedSkillId: 'published-skill-7',
+      capabilityType: 'document.render',
+      action: 'render',
+      input: {
+        outputFormat: 'pdf',
+        data: {
+          existing: 'keep-me',
+          contract: {
+            no: 'HT-2026-001',
+          },
+          party: {
+            customerName: 'Alice',
+          },
+        },
+      },
+      policyContext: {
+        riskLevel: 'L0',
+        requiresApproval: false,
+      },
+      metadata: {
+        capabilityVersion: 'v8',
+      },
+    });
+  });
+
+  it('fans out multi-path bindings and preserves array rows for document runtime requests', () => {
+    const request = factory.buildSkillRuntimeRequest({
+      execution: {
+        id: 'execution-7b',
+        skillId: 'skill-7b',
+        skillVersion: 'v8',
+        runtimeType: 'document',
+        riskLevel: 'L0',
+        requiresApproval: false,
+        normalizedInputJson: {
+          input: {
+            partyA: 'Party A Global Ltd',
+            outputFormat: 'docx',
+          },
+          paramResolution: {
+            partyA: {
+              final: true,
+              value: 'Party A Global Ltd',
+              render_path: ['contract.partyA_cn', 'contract.partyA_jp'],
+            },
+            'items[].productName': {
+              final: true,
+              value: ['MES Upgrade', 'Cloud Gateway'],
+              render_path: ['items[].productName_cn', 'items[].productName_jp'],
+            },
+            'items[].quantity': {
+              final: true,
+              value: [2, 1],
+              render_path: ['items[].quantity_cn', 'items[].quantity_jp'],
+            },
+          },
+          skillMatch: {
+            skill_id: 'published-skill-7b',
+          },
+        },
+      },
+      stepId: 'step-7b',
+      runtimeSessionId: 'runtime-7b',
+    });
+
+    expect(request?.input).toEqual({
+      outputFormat: 'docx',
+      data: {
+        contract: {
+          partyA_cn: 'Party A Global Ltd',
+          partyA_jp: 'Party A Global Ltd',
+        },
+        items: [
+          {
+            productName_cn: 'MES Upgrade',
+            productName_jp: 'MES Upgrade',
+            quantity_cn: 2,
+            quantity_jp: 2,
+          },
+          {
+            productName_cn: 'Cloud Gateway',
+            productName_jp: 'Cloud Gateway',
+            quantity_cn: 1,
+            quantity_jp: 1,
+          },
+        ],
+      },
+    });
+  });
+
+  it('logs a warning when document paramResolution entries exist but none can be mapped', () => {
+    const warnSpy = jest.spyOn(Logger.prototype, 'warn').mockImplementation(() => undefined);
+
+    const request = factory.buildSkillRuntimeRequest({
+      execution: {
+        id: 'execution-8',
+        skillId: 'skill-8',
+        skillVersion: 'v9',
+        runtimeType: 'document',
+        riskLevel: 'L0',
+        requiresApproval: false,
+        normalizedInputJson: {
+          input: {
+            contractNo: 'HT-2026-002',
+            outputFormat: 'docx',
+          },
+          paramResolution: {
+            contractNo: {
+              final: false,
+              value: 'HT-2026-002',
+              render_path: 'contract.no',
+            },
+            customerName: {
+              final: true,
+              value: 'Alice',
+            },
+          },
+          skillMatch: {
+            skill_id: 'published-skill-8',
+          },
+        },
+      },
+      stepId: 'step-8',
+      runtimeSessionId: 'runtime-8',
+    });
+
+    expect(request?.input).toEqual({
+      contractNo: 'HT-2026-002',
+      outputFormat: 'docx',
+    });
+    expect(warnSpy).toHaveBeenCalledWith(
+      expect.stringContaining('Document runtime payload resolved zero mapped fields for execution execution-8'),
+    );
+
+    warnSpy.mockRestore();
+  });
+
+  it('maps bilingual object values onto localized render paths for document runtime requests', () => {
+    const request = factory.buildSkillRuntimeRequest({
+      execution: {
+        id: 'execution-8b',
+        skillId: 'skill-8b',
+        skillVersion: 'v10',
+        runtimeType: 'document',
+        riskLevel: 'L0',
+        requiresApproval: false,
+        normalizedInputJson: {
+          input: {
+            outputFormat: 'docx',
+          },
+          paramResolution: {
+            'contract.signingDate': {
+              final: true,
+              value: {
+                cn: '2026-05-28',
+                jp: '2026-05-28',
+              },
+              render_path: ['contract.signingDate_cn', 'contract.signingDate_jp'],
+            },
+            'contract.projectName': {
+              final: true,
+              value: {
+                cn: 'MES Upgrade Integration Project',
+                jp: 'MES Upgrade Integration Project',
+              },
+              render_path: ['contract.projectName_cn', 'contract.projectName_jp'],
+            },
+          },
+          skillMatch: {
+            skill_id: 'published-skill-8b',
+          },
+        },
+      },
+      stepId: 'step-8b',
+      runtimeSessionId: 'runtime-8b',
+    });
+
+    expect(request?.input).toEqual({
+      outputFormat: 'docx',
+      data: {
+        contract: {
+          signingDate_cn: '2026-05-28',
+          signingDate_jp: '2026-05-28',
+          projectName_cn: 'MES Upgrade Integration Project',
+          projectName_jp: 'MES Upgrade Integration Project',
+        },
       },
     });
   });

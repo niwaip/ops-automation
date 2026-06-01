@@ -1610,7 +1610,7 @@ describe('TemplateWorkflowService', () => {
     expect(bindingPlan.bindings).toHaveLength(4);
   });
 
-  it('generates render data with dictionary, enum and format rules', () => {
+  it('generates render data with dictionary, enum and format rules', async () => {
     const fieldSpecs: WorkflowTemplateFieldSpec[] = [
       {
         fieldId: 'partyAName',
@@ -1647,7 +1647,7 @@ describe('TemplateWorkflowService', () => {
     ];
     const bindingPlan = service.compileBindingPlan('tpl_demo', 1, fieldSpecs, 'zh', ['ja']);
 
-    const result = service.renderData(
+    const result = await service.renderData(
       '甲方是广州日产通商贸易有限公司，项目是无线网络设备更新，技术服务费总额为人民币137,000元，付款方式是一次支付。',
       fieldSpecs,
       bindingPlan,
@@ -1670,7 +1670,7 @@ describe('TemplateWorkflowService', () => {
     expect(result.needsReviewFields).toHaveLength(0);
   });
 
-  it('preserves list values in binding plan and render data', () => {
+  it('preserves list values in binding plan and render data', async () => {
     const fieldSpecs: WorkflowTemplateFieldSpec[] = [
       {
         fieldId: 'lineItems',
@@ -1682,7 +1682,7 @@ describe('TemplateWorkflowService', () => {
     ];
 
     const bindingPlan = service.compileBindingPlan('tpl_demo', 1, fieldSpecs, 'zh', []);
-    const result = service.renderData(
+    const result = await service.renderData(
       '',
       fieldSpecs,
       bindingPlan,
@@ -1710,7 +1710,7 @@ describe('TemplateWorkflowService', () => {
     expect(result.missingFields).toHaveLength(0);
   });
 
-  it('parses bilingual tabular text into list values for loop rendering', () => {
+  it('parses bilingual tabular text into list values for loop rendering', async () => {
     const fieldSpecs: WorkflowTemplateFieldSpec[] = [
       {
         fieldId: 'lineItems',
@@ -1724,7 +1724,7 @@ describe('TemplateWorkflowService', () => {
     ];
 
     const bindingPlan = service.compileBindingPlan('tpl_demo', 1, fieldSpecs, 'zh', ['ja']);
-    const result = service.renderData(
+    const result = await service.renderData(
       [
         '项目\t品名\t数量\t维护费',
         'プロジェクト\t品名\t数量\tメンテ料',
@@ -1779,7 +1779,7 @@ describe('TemplateWorkflowService', () => {
     );
   });
 
-  it('keeps single-language tabular rows unchanged for loop rendering', () => {
+  it('keeps single-language tabular rows unchanged for loop rendering', async () => {
     const fieldSpecs: WorkflowTemplateFieldSpec[] = [
       {
         fieldId: 'lineItems',
@@ -1791,7 +1791,7 @@ describe('TemplateWorkflowService', () => {
     ];
 
     const bindingPlan = service.compileBindingPlan('tpl_demo', 1, fieldSpecs, 'zh', []);
-    const result = service.renderData(
+    const result = await service.renderData(
       [
         '项目\t品名\t数量\t维护费',
         '企业信息化系统升级\t系统开发服务\t1\t¥50,000/年',
@@ -1819,7 +1819,7 @@ describe('TemplateWorkflowService', () => {
     ]);
   });
 
-  it('normalizes bilingual table overrides for multi-parameter cells', () => {
+  it('normalizes bilingual table overrides for multi-parameter cells', async () => {
     const fieldSpecs: WorkflowTemplateFieldSpec[] = [
       {
         fieldId: 'lineItems',
@@ -1833,7 +1833,7 @@ describe('TemplateWorkflowService', () => {
     ];
 
     const bindingPlan = service.compileBindingPlan('tpl_demo', 1, fieldSpecs, 'zh', ['ja']);
-    const result = service.renderData(
+    const result = await service.renderData(
       '',
       fieldSpecs,
       bindingPlan,
@@ -1871,7 +1871,7 @@ describe('TemplateWorkflowService', () => {
     ]);
   });
 
-  it('prefers template scoped assets over tenant and global defaults', () => {
+  it('prefers template scoped assets over tenant and global defaults', async () => {
     const fieldSpecs: WorkflowTemplateFieldSpec[] = [
       {
         fieldId: 'projectName',
@@ -1925,7 +1925,7 @@ describe('TemplateWorkflowService', () => {
     };
     const bindingPlan = service.compileBindingPlan('tpl_demo', 1, fieldSpecs, 'zh', ['ja']);
 
-    const result = service.renderData(
+    const result = await service.renderData(
       '项目是无线网络设备更新，付款方式是一次支付。',
       fieldSpecs,
       bindingPlan,
@@ -1955,6 +1955,117 @@ describe('TemplateWorkflowService', () => {
         scope: 'template',
         enumVersion: 2,
       })
+    );
+  });
+
+  it('batch translates scalar text fields once and skips non-text fields', async () => {
+    const fieldSpecs: WorkflowTemplateFieldSpec[] = [
+      {
+        fieldId: 'contractPartyAName',
+        type: 'legal_entity_name',
+        sourceLanguage: 'zh',
+        targetLanguages: ['ja'],
+        policy: 'llm_translate',
+        required: true,
+      },
+      {
+        fieldId: 'paymentDays',
+        type: 'number',
+        sourceLanguage: 'zh',
+        targetLanguages: ['ja'],
+        policy: 'format_only',
+        required: true,
+      },
+      {
+        fieldId: 'signingDate',
+        type: 'date',
+        sourceLanguage: 'zh',
+        targetLanguages: ['ja'],
+        policy: 'format_only',
+        required: true,
+      },
+    ];
+    const bindingPlan = service.compileBindingPlan('tpl_demo', 1, fieldSpecs, 'zh', ['ja']);
+    const postSpy = jest.spyOn(axios, 'post').mockResolvedValue({
+      data: {
+        response: JSON.stringify({
+          contractPartyAName: '上海クラウドドキュメント科技有限公司',
+        }),
+      },
+    } as any);
+
+    const result = await service.renderData(
+      '',
+      fieldSpecs,
+      bindingPlan,
+      'zh',
+      ['ja'],
+      {
+        contractPartyAName: '上海云章科技有限公司',
+        paymentDays: '30',
+        signingDate: '2026-06-01',
+      },
+    );
+
+    expect(postSpy).toHaveBeenCalledTimes(1);
+    expect(result.data).toEqual(
+      expect.objectContaining({
+        contractPartyAName_zh: '上海云章科技有限公司',
+        contractPartyAName_ja: '上海クラウドドキュメント科技有限公司',
+        paymentDays_zh: '30',
+        paymentDays_ja: '30',
+        signingDate_zh: '2026年06月01日',
+        signingDate_ja: '2026年06月01日',
+      }),
+    );
+    expect(result.sourceTrace.contractPartyAName).toEqual(
+      expect.objectContaining({
+        resolution: 'llm_translated',
+        translationMode: 'batch',
+        translatedTargets: ['ja'],
+      }),
+    );
+  });
+
+  it('accepts cn/jp localized overrides and reuses aliases without extra translation', async () => {
+    const fieldSpecs: WorkflowTemplateFieldSpec[] = [
+      {
+        fieldId: 'contractPartyAName',
+        type: 'legal_entity_name',
+        sourceLanguage: 'zh',
+        targetLanguages: ['ja'],
+        policy: 'llm_translate',
+        required: true,
+      },
+    ];
+    const bindingPlan = service.compileBindingPlan('tpl_demo', 1, fieldSpecs, 'zh', ['ja']);
+    const postSpy = jest.spyOn(axios, 'post');
+
+    const result = await service.renderData(
+      '',
+      fieldSpecs,
+      bindingPlan,
+      'zh',
+      ['ja'],
+      {
+        contractPartyAName: {
+          cn: '上海云章科技有限公司',
+          jp: '上海クラウドドキュメント科技有限公司',
+        },
+      },
+    );
+
+    expect(postSpy).not.toHaveBeenCalled();
+    expect(result.data).toEqual(
+      expect.objectContaining({
+        contractPartyAName_zh: '上海云章科技有限公司',
+        contractPartyAName_ja: '上海クラウドドキュメント科技有限公司',
+      }),
+    );
+    expect(result.sourceTrace.contractPartyAName).toEqual(
+      expect.objectContaining({
+        resolution: 'localized_override',
+      }),
     );
   });
 

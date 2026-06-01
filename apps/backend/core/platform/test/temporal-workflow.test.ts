@@ -30,6 +30,9 @@ describe('TemporalWorkflowService', () => {
       user: {
         findFirst: jest.fn(),
       },
+      skillConfig: {
+        findUnique: jest.fn(),
+      },
     };
 
     const builtinRegistry = new BuiltinActivityRegistry();
@@ -215,6 +218,416 @@ describe('TemporalWorkflowService', () => {
                 activityName: 'httpRequest',
               }),
             ],
+          }),
+        }),
+      }),
+    );
+  });
+
+  it('materializes workflow inputPolicy from inputParams and normalizes explicit overrides on create', async () => {
+    const { service, prisma } = createService();
+
+    prisma.temporalWorkflow.create.mockImplementation(async ({ data }) => ({
+      id: 'workflow-policy-1',
+      name: data.name,
+      description: data.description,
+      taskQueue: data.taskQueue,
+      workflowDsl: data.workflowDsl,
+      activityDsl: data.activityDsl,
+      generatedCode: data.generatedCode,
+      isActive: data.isActive,
+      deployedAt: null,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    }));
+
+    await service.create({
+      name: '策略工作流',
+      taskQueue: 'SKILL_TASK_QUEUE',
+      workflowDsl: {
+        name: '策略工作流',
+        taskQueue: 'SKILL_TASK_QUEUE',
+        inputParams: {
+          username: {
+            type: 'string',
+            required: true,
+            defaultValue: 'demo-user',
+            description: '登录用户名',
+          },
+          region: {
+            type: 'string',
+            required: false,
+            description: '区域',
+          },
+        },
+        inputPolicy: {
+          params: {
+            username: {
+              requiredMode: 'conditional',
+              templateBinding: 'account.username',
+              valueSourcePriority: [' user_input ', '', 'external'],
+              confirmationThreshold: 2,
+            },
+          },
+        },
+        steps: [
+          {
+            id: 'step_1',
+            name: '渲染文档',
+            type: 'activity',
+            activityName: 'documentRender',
+          },
+        ],
+      },
+      activityDsl: {
+        activities: [],
+      },
+    });
+
+    expect(prisma.temporalWorkflow.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          workflowDsl: expect.objectContaining({
+            inputPolicy: {
+              params: {
+                username: {
+                  enabled: true,
+                  requiredMode: 'conditional',
+                  defaultValue: 'demo-user',
+                  templateBinding: 'account.username',
+                  valueSourcePriority: ['user_input', 'external'],
+                  confirmationThreshold: 1,
+                },
+                region: {
+                  enabled: true,
+                  requiredMode: 'optional',
+                },
+              },
+            },
+          }),
+        }),
+      }),
+    );
+  });
+
+  it('keeps inputPolicy aligned with latest inputParams required and localized defaults on update', async () => {
+    const { service, prisma } = createService();
+
+    prisma.temporalWorkflow.findUnique.mockResolvedValue({
+      id: 'workflow-policy-2',
+      name: '策略工作流',
+      description: null,
+      taskQueue: 'SKILL_TASK_QUEUE',
+      workflowDsl: {
+        name: '策略工作流',
+        taskQueue: 'SKILL_TASK_QUEUE',
+        inputParams: {
+          'contract.partyA': {
+            type: 'string',
+            required: true,
+            defaultValue: '',
+            renderPath: ['contract.partyA_cn', 'contract.partyA_jp'],
+          },
+        },
+        inputPolicy: {
+          params: {
+            'contract.partyA': {
+              enabled: true,
+              requiredMode: 'always',
+            },
+          },
+        },
+        steps: [],
+      },
+      activityDsl: { activities: [] },
+      generatedCode: null,
+      isActive: true,
+      deployedAt: null,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+    prisma.temporalWorkflow.update.mockImplementation(async ({ data }) => ({
+      id: 'workflow-policy-2',
+      name: data.name ?? '策略工作流',
+      description: data.description ?? null,
+      taskQueue: data.taskQueue ?? 'SKILL_TASK_QUEUE',
+      workflowDsl: data.workflowDsl,
+      activityDsl: data.activityDsl ?? { activities: [] },
+      generatedCode: data.generatedCode ?? null,
+      isActive: data.isActive ?? true,
+      deployedAt: null,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    }));
+
+    await service.update('workflow-policy-2', {
+      workflowDsl: {
+        name: '策略工作流',
+        taskQueue: 'SKILL_TASK_QUEUE',
+        inputParams: {
+          'contract.partyA': {
+            type: 'string',
+            required: false,
+            defaultValue: '',
+            localizedDefaultValue: {
+              cn: '阿',
+              jp: 'ashi',
+            },
+            renderPath: ['contract.partyA_cn', 'contract.partyA_jp'],
+          },
+        },
+        inputPolicy: {
+          params: {
+            'contract.partyA': {
+              enabled: true,
+              requiredMode: 'always',
+            },
+          },
+        },
+        steps: [],
+      },
+    });
+
+    expect(prisma.temporalWorkflow.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          workflowDsl: expect.objectContaining({
+            inputPolicy: {
+              params: {
+                'contract.partyA': {
+                  enabled: true,
+                  requiredMode: 'optional',
+                  defaultValue: {
+                    cn: '阿',
+                    jp: 'ashi',
+                  },
+                },
+              },
+            },
+          }),
+        }),
+      }),
+    );
+  });
+
+  it('rejects workflow inputPolicy keys that are not declared in the source skill schema', async () => {
+    const { service, prisma } = createService();
+
+    prisma.skillConfig.findUnique.mockResolvedValue({
+      paramsSchema: {
+        properties: {
+          username: { type: 'string', description: '登录用户名' },
+        },
+      },
+    });
+
+    await expect(service.create({
+      name: '非法策略工作流',
+      taskQueue: 'SKILL_TASK_QUEUE',
+      workflowDsl: {
+        name: '非法策略工作流',
+        taskQueue: 'SKILL_TASK_QUEUE',
+        sourceContext: {
+          sourceTemplate: {
+            skillId: 'skill-1',
+          },
+        },
+        inputParams: {
+          username: {
+            type: 'string',
+            required: true,
+          },
+        },
+        inputPolicy: {
+          params: {
+            password: {
+              requiredMode: 'always',
+            },
+          },
+        },
+        steps: [
+          {
+            id: 'step_1',
+            name: '渲染文档',
+            type: 'activity',
+            activityName: 'documentRender',
+          },
+        ],
+      },
+      activityDsl: {
+        activities: [],
+      },
+    })).rejects.toThrow('workflowDsl.inputPolicy.params 包含未注册参数: password');
+  });
+
+  it('rejects illegal strategy fields inside workflow inputPolicy param entries', async () => {
+    const { service } = createService();
+
+    await expect(service.create({
+      name: '非法策略字段工作流',
+      taskQueue: 'SKILL_TASK_QUEUE',
+      workflowDsl: {
+        name: '非法策略字段工作流',
+        taskQueue: 'SKILL_TASK_QUEUE',
+        inputParams: {
+          username: {
+            type: 'string',
+            required: true,
+          },
+        },
+        inputPolicy: {
+          params: {
+            username: {
+              required: true,
+            } as any,
+          },
+        },
+        steps: [
+          {
+            id: 'step_1',
+            name: '渲染文档',
+            type: 'activity',
+            activityName: 'documentRender',
+          },
+        ],
+      },
+      activityDsl: {
+        activities: [],
+      },
+    })).rejects.toThrow('workflowDsl.inputPolicy.params.username 包含非法字段: required');
+  });
+
+  it('rejects workflow inputPolicy defaultValue that does not match the declared param type', async () => {
+    const { service } = createService();
+
+    await expect(service.create({
+      name: '非法默认值工作流',
+      taskQueue: 'SKILL_TASK_QUEUE',
+      workflowDsl: {
+        name: '非法默认值工作流',
+        taskQueue: 'SKILL_TASK_QUEUE',
+        inputParams: {
+          retryCount: {
+            type: 'number',
+            required: false,
+          },
+        },
+        inputPolicy: {
+          params: {
+            retryCount: {
+              defaultValue: '3',
+            },
+          },
+        },
+        steps: [
+          {
+            id: 'step_1',
+            name: '渲染文档',
+            type: 'activity',
+            activityName: 'documentRender',
+          },
+        ],
+      },
+      activityDsl: {
+        activities: [],
+      },
+    })).rejects.toThrow('workflowDsl.inputPolicy.params.retryCount.defaultValue 与参数类型 number 不兼容');
+  });
+
+  it('accepts localized workflow inputPolicy defaultValue when each localized value matches the declared type', async () => {
+    const { service, prisma } = createService();
+
+    prisma.temporalWorkflow.findUnique.mockResolvedValue({
+      id: 'workflow-policy-localized',
+      name: '多语言默认值工作流',
+      description: null,
+      taskQueue: 'SKILL_TASK_QUEUE',
+      workflowDsl: {
+        name: '多语言默认值工作流',
+        taskQueue: 'SKILL_TASK_QUEUE',
+        inputParams: {
+          'contract.partyA': {
+            type: 'string',
+            required: false,
+            defaultValue: '',
+            renderPath: ['contract.partyA_cn', 'contract.partyA_jp'],
+          },
+        },
+        inputPolicy: {
+          params: {
+            'contract.partyA': {
+              enabled: true,
+              requiredMode: 'optional',
+            },
+          },
+        },
+        steps: [],
+      },
+      activityDsl: { activities: [] },
+      generatedCode: null,
+      isActive: true,
+      deployedAt: null,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+    prisma.temporalWorkflow.update.mockImplementation(async ({ data }) => ({
+      id: 'workflow-policy-localized',
+      name: data.name ?? '多语言默认值工作流',
+      description: data.description ?? null,
+      taskQueue: data.taskQueue ?? 'SKILL_TASK_QUEUE',
+      workflowDsl: data.workflowDsl,
+      activityDsl: data.activityDsl ?? { activities: [] },
+      generatedCode: data.generatedCode ?? null,
+      isActive: data.isActive ?? true,
+      deployedAt: null,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    }));
+
+    await expect(service.update('workflow-policy-localized', {
+      workflowDsl: {
+        name: '多语言默认值工作流',
+        taskQueue: 'SKILL_TASK_QUEUE',
+        inputParams: {
+          'contract.partyA': {
+            type: 'string',
+            required: false,
+            defaultValue: '',
+            renderPath: ['contract.partyA_cn', 'contract.partyA_jp'],
+          },
+        },
+        inputPolicy: {
+          params: {
+            'contract.partyA': {
+              enabled: true,
+              requiredMode: 'optional',
+              defaultValue: {
+                cn: '阿',
+                jp: 'ashi',
+              },
+            },
+          },
+        },
+        steps: [],
+      },
+    })).resolves.toEqual(expect.objectContaining({
+      id: 'workflow-policy-localized',
+    }));
+
+    expect(prisma.temporalWorkflow.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          workflowDsl: expect.objectContaining({
+            inputPolicy: {
+              params: {
+                'contract.partyA': expect.objectContaining({
+                  defaultValue: {
+                    cn: '阿',
+                    jp: 'ashi',
+                  },
+                }),
+              },
+            },
           }),
         }),
       }),
@@ -2078,6 +2491,427 @@ describe('TemporalWorkflowService', () => {
     expect(enabled).toBe(true);
   });
 
+  it('keeps source and english localized variants for canonical template params', () => {
+    const { service } = createService();
+
+    const seeds = (service as any).buildTemplateWorkflowParamSeeds(
+      {
+        id: 'tpl-bilingual-en',
+        fileName: 'contract.docx',
+        suggestions: [
+          {
+            suggestedName: 'projectName',
+            originalText: '项目名称（中文）',
+            details: { description: '项目名称（中文）' },
+          },
+          {
+            suggestedName: 'projectName_en',
+            originalText: '项目名称（英文）',
+            details: { description: '项目名称（英文）' },
+          },
+        ],
+        templateAssetManifest: {
+          assetVersion: '1',
+          fieldCount: 2,
+          languageProfile: {
+            sourceLanguage: 'zh',
+            targetLanguages: ['en'],
+          },
+          templateFieldSpecs: [
+            {
+              fieldId: 'projectName',
+              description: '项目名称',
+              required: true,
+              type: 'string',
+            },
+          ],
+          renderPlan: {
+            bindings: [
+              {
+                fieldId: 'projectName',
+                variablePath: 'd.projectName',
+                required: true,
+              },
+              {
+                fieldId: 'projectName',
+                variablePath: 'd.projectName_en',
+                required: true,
+              },
+            ],
+          },
+        },
+      },
+      {
+        parameters: [
+          {
+            name: 'projectName',
+            required: true,
+            dataType: 'string',
+            displayName: '项目名称（中文）',
+          },
+          {
+            name: 'projectName_en',
+            required: true,
+            dataType: 'string',
+            displayName: '项目名称（英文）',
+          },
+        ],
+      },
+    );
+
+    expect(seeds).toHaveLength(1);
+    expect(seeds[0]).toEqual(expect.objectContaining({
+      key: 'projectName',
+      displayName: '项目名称',
+      localizedVariants: ['zh', 'en'],
+      renderPath: ['projectName', 'projectName_en'],
+    }));
+  });
+
+  it('materializes renderPath and default templateBinding in generated template workflow drafts', async () => {
+    const { service } = createService();
+
+    jest.spyOn(service as any, 'fetchCarboneTemplate').mockResolvedValue({
+      id: 'tpl-tech-service',
+      fileName: 'technical-service-contract.docx',
+      format: 'docx',
+      skillId: 'skill-tech-service',
+      variables: ['{d.contract.partyA_cn}'],
+      templateAssetManifest: {
+        assetVersion: '1.0',
+        renderPlanVersion: 2,
+        metadata: {
+          source: 'office-addin',
+        },
+        languageProfile: {
+          sourceLanguage: 'zh',
+          targetLanguages: [],
+        },
+        templateFieldSpecs: [
+          {
+            fieldId: 'contract.partyA',
+            description: '甲方名称',
+            required: true,
+            type: 'string',
+          },
+        ],
+        renderPlan: {
+          bindings: [
+            {
+              fieldId: 'contract.partyA',
+              variablePath: 'd.contract.partyA_cn',
+              required: true,
+            },
+          ],
+        },
+      },
+    });
+    jest.spyOn(service as any, 'fetchCarboneSkill').mockResolvedValue({
+      id: 'skill-tech-service',
+      parameters: [
+        {
+          name: 'contract.partyA',
+          required: true,
+          dataType: 'string',
+          displayName: '甲方名称',
+          usage: '合同甲方名称',
+        },
+      ],
+    });
+    jest.spyOn(service as any, 'analyzeTemplateWorkflow').mockResolvedValue({
+      workflowName: '技术服务合同渲染工作流',
+      workflowDescription: '生成技术服务合同',
+      activityDescription: '渲染技术服务合同',
+      outputName: '技术服务合同-输出',
+      inputParamDescriptions: {
+        'contract.partyA': '合同甲方名称',
+      },
+    });
+
+    const draft = await service.generateTemplateWorkflowDraft('tpl-tech-service');
+
+    expect(draft.workflowDsl.inputParams).toEqual(expect.objectContaining({
+      'contract.partyA': expect.objectContaining({
+      renderPath: 'contract.partyA_cn',
+      }),
+    }));
+    expect(draft.workflowDsl.inputPolicy).toEqual({
+      params: {
+        'contract.partyA': expect.objectContaining({
+          enabled: true,
+          requiredMode: 'always',
+          templateBinding: 'contract.partyA_cn',
+        }),
+      },
+    });
+  });
+
+  it('derives renderPath from template variables when template asset manifest is missing', async () => {
+    const { service } = createService();
+
+    jest.spyOn(service as any, 'fetchCarboneTemplate').mockResolvedValue({
+      id: 'tpl-tech-service-legacy',
+      fileName: 'technical-service-contract.docx',
+      format: 'docx',
+      skillId: 'skill-tech-service-legacy',
+      variables: [
+        '{d.contract.partyA.name_cn}',
+        '{d.contract.partyA.name_jp}',
+        '{d.otherTerms.title_jp}',
+      ],
+    });
+    jest.spyOn(service as any, 'fetchCarboneSkill').mockResolvedValue({
+      id: 'skill-tech-service-legacy',
+      parameters: [
+        {
+          name: 'contract.partyA.name',
+          required: true,
+          dataType: 'string',
+          displayName: '甲方名称',
+          usage: '合同甲方名称',
+        },
+        {
+          name: 'otherTerms.title',
+          required: true,
+          dataType: 'string',
+          displayName: '其他条款标题',
+          usage: '其他条款标题',
+        },
+      ],
+    });
+    jest.spyOn(service as any, 'analyzeTemplateWorkflow').mockResolvedValue({
+      workflowName: '技术服务合同渲染工作流',
+      workflowDescription: '生成技术服务合同',
+      activityDescription: '渲染技术服务合同',
+      outputName: '技术服务合同-输出',
+      inputParamDescriptions: {
+        'contract.partyA.name': '合同甲方名称',
+        'otherTerms.title': '其他条款标题',
+      },
+    });
+
+    const draft = await service.generateTemplateWorkflowDraft('tpl-tech-service-legacy');
+
+    expect(draft.workflowDsl.inputParams).toEqual(expect.objectContaining({
+      'contract.partyA.name': expect.objectContaining({
+        renderPath: ['contract.partyA.name_cn', 'contract.partyA.name_jp'],
+      }),
+      'otherTerms.title': expect.objectContaining({
+        renderPath: 'otherTerms.title_jp',
+      }),
+    }));
+    expect(draft.workflowDsl.inputPolicy).toEqual({
+      params: {
+        'contract.partyA.name': expect.objectContaining({
+          enabled: true,
+          requiredMode: 'always',
+        }),
+        'otherTerms.title': expect.objectContaining({
+          enabled: true,
+          requiredMode: 'always',
+          templateBinding: 'otherTerms.title_jp',
+        }),
+      },
+    });
+  });
+
+  it('compiles template workflow draft on backend and ignores frontend templateBinding overrides', async () => {
+    const { service, prisma } = createService();
+
+    jest.spyOn(service as any, 'fetchCarboneTemplate').mockResolvedValue({
+      id: 'tpl-tech-service',
+      fileName: 'technical-service-contract.docx',
+      format: 'docx',
+      skillId: 'skill-tech-service',
+      templateAssetManifest: {
+        assetVersion: '1.0',
+        fieldCount: 1,
+        renderPlanVersion: 3,
+        renderPlan: {
+          version: 3,
+          bindings: [
+            {
+              fieldId: 'contract.partyA',
+              variablePath: 'd.contract.partyA_cn',
+              required: true,
+            },
+          ],
+        },
+      },
+    });
+    jest.spyOn(service as any, 'fetchCarboneSkill').mockResolvedValue({
+      id: 'skill-tech-service',
+      parameters: [
+        {
+          name: 'contract.partyA',
+          required: true,
+          dataType: 'string',
+          displayName: '甲方名称',
+          usage: '合同甲方名称',
+        },
+      ],
+    });
+    jest.spyOn(service as any, 'analyzeTemplateWorkflow').mockResolvedValue({
+      workflowName: '技术服务合同渲染工作流',
+      workflowDescription: '生成技术服务合同',
+      activityDescription: '渲染技术服务合同',
+      outputName: '技术服务合同-输出',
+      inputParamDescriptions: {
+        'contract.partyA': '合同甲方名称',
+      },
+    });
+    prisma.skillConfig.findUnique.mockResolvedValue({
+      paramsSchema: {
+        properties: {
+          'contract.partyA': {
+            type: 'string',
+            description: '合同甲方名称',
+          },
+        },
+      },
+    });
+
+    const draft = await service.compileTemplateWorkflowDraft({
+      templateId: 'tpl-tech-service',
+      name: '合同编译结果',
+      inputPolicy: {
+        params: {
+          'contract.partyA': {
+            requiredMode: 'optional',
+            templateBinding: 'frontend.override.binding',
+          },
+        },
+      },
+    });
+
+    expect(draft.name).toBe('合同编译结果');
+    expect(draft.workflowDsl.inputPolicy).toEqual({
+      params: {
+        'contract.partyA': expect.objectContaining({
+          enabled: true,
+          requiredMode: 'optional',
+          templateBinding: 'contract.partyA_cn',
+        }),
+      },
+    });
+  });
+
+  it('maps fixed document workflow inputs with templateBinding and renderPath when generating code', async () => {
+    const { service, builtinRegistry } = createService();
+    const workflowDsl = {
+      name: '技术服务合同工作流',
+      workflowClassName: 'TechnicalServiceContractWorkflow',
+      workflowDefnName: '技术服务合同工作流',
+      taskQueue: 'SKILL_TASK_QUEUE',
+      inputParams: {
+        'contract.partyA': {
+          required: true,
+          description: '甲方名称',
+          renderPath: ['contract.partyA_cn', 'contract.partyA_jp'],
+        },
+        'contract.partyB': {
+          required: true,
+          description: '乙方名称',
+          renderPath: 'contract.partyB_cn',
+        },
+        contractNumber: {
+          required: true,
+          description: '合同编号',
+        },
+        'contract.signingDate': {
+          required: true,
+          description: '签署日期',
+          renderPath: ['contract.signingDate_cn', 'contract.signingDate_jp'],
+        },
+        customerName: {
+          required: false,
+          description: '客户名称',
+          renderPath: 'legacy.customerName',
+        },
+      },
+      inputPolicy: {
+        params: {
+          'contract.signingDate': {
+            requiredMode: 'optional',
+          },
+          customerName: {
+            templateBinding: 'contract.customer.fullName',
+          },
+        },
+      },
+      steps: [
+        {
+          id: 'step_1',
+          name: '渲染技术服务合同',
+          type: 'activity' as const,
+          activityRef: 'builtin:documentRender',
+          activityName: 'documentRender',
+          startToCloseTimeout: '60s',
+        },
+      ],
+    };
+    const builtinActivity = builtinRegistry.getByKey('documentRender');
+    expect(builtinActivity).toBeTruthy();
+    if (!builtinActivity) {
+      throw new Error('builtin documentRender activity not found');
+    }
+    const documentActivityDef = {
+      name: builtinActivity.name,
+      fn: builtinActivity.fn,
+      timeout: builtinActivity.timeout,
+      retryPolicy: builtinActivity.retryPolicy,
+      handler: builtinActivity.handler,
+      generatedCode: builtinActivity.generatedCode,
+      config: {
+        templateId: 'tpl-tech-service',
+        format: 'docx',
+        outputName: '技术服务合同',
+        steps: [
+          {
+            type: 'carbone',
+            config: {
+              templateId: 'tpl-tech-service',
+              format: 'docx',
+              outputName: '技术服务合同',
+            },
+          },
+        ],
+      },
+    };
+
+    const code = (service as any).buildFixedDocumentRenderWorkflowCode(
+      workflowDsl,
+      documentActivityDef,
+      workflowDsl.steps[0],
+    );
+
+    expect(code).toBeTruthy();
+    expect(code).toContain('"contract.partyA": [');
+    expect(code).toContain('"contract.partyA_cn"');
+    expect(code).toContain('"contract.partyA_jp"');
+    expect(code).toContain('"customerName": [');
+    expect(code).toContain('"contract.customer.fullName"');
+    expect(code).toContain('normalized_params = self._normalize_params(params or {})');
+    expect(code).toContain('self._validate_required_params(normalized_params)');
+    expect(code).not.toContain('render_data = self._build_render_data(normalized_params)');
+    expect(code).toContain('def _extract_binding_locale(path: str) -> str | None:');
+    expect(code).toContain('resolved_value = cls._resolve_localized_binding_value(path, value)');
+    expect(code).toContain('locale_candidates = ["cn", "zh"] if locale == "cn" else ["jp", "ja"]');
+    expect(code).toContain('array_match = re.match(r"^(.*)\\[\\]\\.(.+)$", str(path or "").strip())');
+    expect(code).toContain('missing_params = [key for key in required_params if TechnicalServiceContractWorkflow._is_missing(params.get(key))]');
+    expect(code).toContain('"data": normalized_params');
+    expect(code).toContain('"prepareLocalizedRenderData": True');
+    expect(code).toContain('"contract.signingDate": [');
+    expect(code).toContain('"contract.signingDate_cn"');
+    expect(code).toContain('"contract.signingDate_jp"');
+    const requiredParamsMatch = code.match(/required_params = \[(.*?)\]/s);
+    expect(requiredParamsMatch?.[1]).toContain('"contract.partyA"');
+    expect(requiredParamsMatch?.[1]).toContain('"contract.partyB"');
+    expect(requiredParamsMatch?.[1]).toContain('"contractNumber"');
+    expect(requiredParamsMatch?.[1]).not.toContain('"contract.signingDate"');
+    expect(requiredParamsMatch?.[1]).not.toContain('"customerName"');
+  });
+
   it('preserves template placeholders even before workflow input params are fully declared', () => {
     const { service } = createService();
 
@@ -2097,6 +2931,23 @@ describe('TemporalWorkflowService', () => {
     expect(normalizedHttpConfig.urlTemplate).toBe('https://wttr.in/{city}');
     expect(normalizedHttpConfig.queryTemplate).toEqual({ lang: '{lang}' });
     expect(normalizedTransformConfig.textTemplate).toBe('{city}今天天气如下：当前温度{celsius}℃');
+  });
+
+  it('keeps bankAccount typed as string when inferring workflow input params', () => {
+    const { service } = createService();
+
+    expect((service as any).inferWorkflowInputParamType(
+      'payment.bankAccount',
+      '乙方指定的银行账户信息，包括开户行和账号',
+      '',
+      '乙方指定银行帐号为',
+    )).toBe('string');
+    expect((service as any).normalizeWorkflowInputParamType(undefined, 'payment.bankAccount')).toBe('string');
+    expect((service as any).buildGenericAiDraftSampleValue(
+      'payment.bankAccount',
+      '乙方指定的银行账户信息，包括开户行和账号',
+      '',
+    )).toBe('sample_payment_bankaccount');
   });
 
   it('serializes object contextTemplate without destroying placeholders', () => {

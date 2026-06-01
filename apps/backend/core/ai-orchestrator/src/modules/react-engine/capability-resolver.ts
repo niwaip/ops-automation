@@ -227,12 +227,8 @@ export class CapabilityResolver {
         return false;
       }
 
-      if (tool.name === 'document_intake' || tool.name === 'document_render' || tool.name === 'document_param_recover') {
+      if (tool.name === 'document_render') {
         return hasDocumentSkill;
-      }
-
-      if (tool.name === 'generate_parameters') {
-        return visibleSkills.some((skill) => Boolean(skill.carboneSkillId));
       }
 
       return true;

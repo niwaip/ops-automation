@@ -45,11 +45,33 @@ export type WorkflowInputParamSource =
   | 'merged';
 
 export type WorkflowInputParamType = 'string' | 'number' | 'boolean' | 'date';
+export type WorkflowLocalizedValueMap = Record<string, string | number | boolean>;
+export type WorkflowParamRequiredMode = 'always' | 'conditional' | 'optional' | 'system_required';
+export type WorkflowPolicyDefaultValue = string | number | boolean | WorkflowLocalizedValueMap;
+
+export interface WorkflowParamPolicy {
+  enabled?: boolean;
+  requiredMode?: WorkflowParamRequiredMode;
+  defaultValue?: WorkflowPolicyDefaultValue;
+  defaultValueResolver?: string;
+  valueSourcePriority?: string[];
+  confirmationThreshold?: number;
+  previewBlocking?: boolean;
+  validationRules?: Record<string, unknown>[];
+  transformRule?: string;
+  templateBinding?: string;
+}
+
+export interface WorkflowInputPolicy {
+  params?: Record<string, WorkflowParamPolicy>;
+}
 
 export interface WorkflowInputParamDefinition {
   description?: string;
   required?: boolean;
   defaultValue?: string;
+  localizedDefaultValue?: WorkflowLocalizedValueMap;
+  localizedVariants?: string[];
   source?: WorkflowInputParamSource;
   type?: WorkflowInputParamType;
   exampleValue?: string | number | boolean;
@@ -58,6 +80,7 @@ export interface WorkflowInputParamDefinition {
   paramKind?: 'scalar' | 'array';
   arrayPath?: string;
   fieldName?: string;
+  renderPath?: string | string[];
 }
 
 export interface WorkflowDsl {
@@ -71,6 +94,8 @@ export interface WorkflowDsl {
   sourceContext?: TemporalWorkflowSourceContext;
   // Entry parameters - aggregate template variables and explicit inputs from workflow steps
   inputParams?: Record<string, WorkflowInputParamDefinition>;
+  // Workflow-level parameter policy derived from or overriding inputParams
+  inputPolicy?: WorkflowInputPolicy;
   // Output parameters - defaults to last step's output, can be customized
   outputParams?: Record<string, { description?: string; sourceStep?: string }>;
   // Extra guidance for AI code generation
@@ -245,6 +270,14 @@ export interface TemplateWorkflowDraft {
   };
 }
 
+export interface CompileTemplateWorkflowDraftDTO {
+  templateId: string;
+  name?: string;
+  description?: string;
+  taskQueue?: string;
+  inputPolicy?: WorkflowInputPolicy;
+}
+
 export interface BrowserWorkflowDraft {
   name: string;
   description: string;
@@ -400,6 +433,10 @@ export const temporalWorkflowApi = {
 
   generateTemplateDraft: async (templateId: string): Promise<TemplateWorkflowDraft> => {
     return apiClient.post<TemplateWorkflowDraft>('/temporal/generate-template-draft', { templateId });
+  },
+
+  compileTemplateDraft: async (data: CompileTemplateWorkflowDraftDTO): Promise<TemplateWorkflowDraft> => {
+    return apiClient.post<TemplateWorkflowDraft>('/temporal/compile-template-draft', data);
   },
 
   generateBrowserDraft: async (data: GenerateBrowserDraftDTO): Promise<BrowserWorkflowDraft> => {

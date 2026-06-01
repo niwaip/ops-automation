@@ -11,6 +11,9 @@ describe('StudioController template workflow', () => {
     normalizeTemplateConfig: jest.Mock;
     generateAISkillGuide: jest.Mock;
   };
+  let documentStructureService: {
+    applyConfigToDocx: jest.Mock;
+  };
   let templateRepository: {
     findById: jest.Mock;
     upsertFromMeta: jest.Mock;
@@ -40,11 +43,14 @@ describe('StudioController template workflow', () => {
         parameters: [],
       }),
     };
+    documentStructureService = {
+      applyConfigToDocx: jest.fn(async (buffer) => buffer),
+    };
 
     controller = new StudioController(
       {} as any,
       aiIdentifierService as any,
-      {} as any,
+      documentStructureService as any,
       templateRepository as any,
       {
         findById: jest.fn().mockResolvedValue(null),
@@ -408,6 +414,94 @@ describe('StudioController template workflow', () => {
       })
     );
     expect(result.needsReviewFields).toHaveLength(0);
+  });
+
+  it('prepares localized render data before render when requested', async () => {
+    const templateId = 'tpl-render-before-translate';
+    fs.writeFileSync(path.join(templatesDir, `${templateId}.docx`), Buffer.from('template-binary-demo'));
+
+    await controller.saveTemplateWorkflow({
+      templateId,
+      templateMeta: {
+        templateName: 'render-before-translate.docx',
+        sourceLanguage: 'zh',
+        targetLanguages: ['ja'],
+        documentMode: 'single_or_bilingual',
+      },
+      templateDocumentIr: {
+        host: 'word',
+        elements: [
+          {
+            id: 'p-1',
+            type: 'paragraph',
+            text: '委托方：______________',
+          },
+        ],
+      },
+      templateFieldSpecs: [
+        {
+          fieldId: 'partyAName',
+          type: 'legal_entity_name',
+          sourceLanguage: 'zh',
+          targetLanguages: ['ja'],
+          policy: 'llm_translate',
+          required: true,
+        },
+      ],
+      saveMode: 'draft',
+    });
+
+    const renderDataSpy = jest.spyOn((controller as any).templateWorkflowService, 'renderData').mockResolvedValue({
+      data: {
+        partyAName_zh: '上海云章科技有限公司',
+        partyAName_ja: '上海クラウドドキュメント科技有限公司',
+      },
+      sourceTrace: {
+        partyAName: {
+          resolution: 'llm_translated',
+        },
+      },
+      warnings: [],
+      missingFields: [],
+      needsReviewFields: [],
+    });
+    jest.spyOn((controller as any).engine, 'validateData').mockReturnValue({ valid: true, missing: [] });
+    const renderSpy = jest.spyOn((controller as any).engine, 'render').mockResolvedValue(Buffer.from('rendered-output'));
+
+    const result = await controller.renderTemplate({
+      templateId,
+      data: {
+        partyAName: '上海云章科技有限公司',
+      },
+      sourceLanguage: 'zh',
+      targetLanguages: ['ja'],
+      prepareLocalizedRenderData: true,
+    });
+
+    expect(renderDataSpy).toHaveBeenCalledWith(
+      '',
+      expect.arrayContaining([
+        expect.objectContaining({
+          fieldId: 'partyAName',
+        }),
+      ]),
+      expect.anything(),
+      'zh',
+      ['ja'],
+      {
+        partyAName: '上海云章科技有限公司',
+      },
+      undefined,
+    );
+    expect(renderSpy).toHaveBeenCalledWith(
+      expect.any(Buffer),
+      expect.objectContaining({
+        partyAName_zh: '上海云章科技有限公司',
+        partyAName_ja: '上海クラウドドキュメント科技有限公司',
+      }),
+      'render-before-translate.docx',
+    );
+    expect(result.downloadUrl).toMatch(/^\/studio\/download\//);
   });
 
   it('returns block results and context analysis from recognize endpoint', async () => {

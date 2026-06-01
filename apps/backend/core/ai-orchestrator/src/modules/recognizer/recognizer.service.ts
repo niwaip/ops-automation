@@ -237,12 +237,13 @@ export class RecognizerService {
       const parsed = JSON.parse(jsonCandidate);
       const params = parsed.params || parsed;
       const confidence = typeof parsed.confidence === 'number' ? parsed.confidence : 0.5;
+      const normalizedParams = this.normalizeSchemaCompatibleParams(params, properties);
       const parsedFieldConfidences = this.normalizeFieldConfidences(parsed.field_confidences, properties);
       const uncertainFields = this.normalizeUncertainFields(parsed.uncertain_fields, properties);
 
       // Validate and filter params against schema
       const validatedParams: Record<string, unknown> = {};
-      for (const [key, value] of Object.entries(params)) {
+      for (const [key, value] of Object.entries(normalizedParams)) {
         if (properties[key]) {
           // Type validation
           const expectedType = properties[key].type;
@@ -271,6 +272,116 @@ export class RecognizerService {
     } catch {
       return this.buildPostProcessedEmptyResponse(properties, userInput);
     }
+  }
+
+  private normalizeSchemaCompatibleParams(
+    value: unknown,
+    properties: Record<string, ParamSchemaProperty>,
+  ): Record<string, unknown> {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) {
+      return {};
+    }
+
+    const flattened = this.flattenNestedResponse(value);
+    return Object.entries(flattened).reduce<Record<string, unknown>>((acc, [key, rawValue]) => {
+      const resolvedKey = this.resolveSchemaPathKey(key, properties);
+      if (!resolvedKey) {
+        return acc;
+      }
+      acc[resolvedKey] = rawValue;
+      return acc;
+    }, {});
+  }
+
+  private flattenNestedResponse(
+    value: unknown,
+    prefix = '',
+    acc: Record<string, unknown> = {},
+  ): Record<string, unknown> {
+    if (value === null || value === undefined) {
+      return acc;
+    }
+
+    if (Array.isArray(value)) {
+      if (!prefix) {
+        return acc;
+      }
+
+      const objectItems = value.filter((item): item is Record<string, unknown> => this.isPlainRecord(item));
+      if (objectItems.length === value.length) {
+        for (const item of objectItems) {
+          this.flattenNestedResponse(item, `${prefix}[]`, acc);
+        }
+        return acc;
+      }
+
+      this.mergeFlattenedValue(acc, prefix, value);
+      return acc;
+    }
+
+    if (this.isPlainRecord(value)) {
+      for (const [key, nestedValue] of Object.entries(value)) {
+        const nextPrefix = prefix ? `${prefix}.${key}` : key;
+        this.flattenNestedResponse(nestedValue, nextPrefix, acc);
+      }
+      return acc;
+    }
+
+    if (prefix) {
+      this.mergeFlattenedValue(acc, prefix, value);
+    }
+
+    return acc;
+  }
+
+  private mergeFlattenedValue(
+    acc: Record<string, unknown>,
+    key: string,
+    value: unknown,
+  ): void {
+    if (value === null || value === undefined) {
+      return;
+    }
+
+    if (key.includes('[]')) {
+      const nextValues = Array.isArray(value) ? value : [value];
+      const normalizedValues = nextValues.filter((item) => item !== null && item !== undefined);
+      if (normalizedValues.length === 0) {
+        return;
+      }
+      const existing = acc[key];
+      if (Array.isArray(existing)) {
+        acc[key] = [...existing, ...normalizedValues];
+        return;
+      }
+      if (existing !== undefined) {
+        acc[key] = [existing, ...normalizedValues];
+        return;
+      }
+      acc[key] = normalizedValues;
+      return;
+    }
+
+    if (acc[key] === undefined) {
+      acc[key] = value;
+    }
+  }
+
+  private resolveSchemaPathKey(
+    candidate: string,
+    properties: Record<string, ParamSchemaProperty>,
+  ): string | undefined {
+    const normalizedCandidates = [
+      candidate,
+      candidate.replace(/\[(\d+)\]/g, '[]'),
+      candidate.replace(/\.(\d+)(?=\.|$)/g, '[]'),
+    ];
+
+    return normalizedCandidates.find((item, index) => normalizedCandidates.indexOf(item) === index && Boolean(properties[item]));
+  }
+
+  private isPlainRecord(value: unknown): value is Record<string, unknown> {
+    return typeof value === 'object' && value !== null && !Array.isArray(value);
   }
 
   private extractJsonCandidate(response: string): string | undefined {
@@ -447,15 +558,13 @@ export class RecognizerService {
     value: unknown,
     properties: Record<string, ParamSchemaProperty>,
   ): Record<string, number> {
-    if (!value || typeof value !== 'object' || Array.isArray(value)) {
-      return {};
-    }
-
-    return Object.entries(value as Record<string, unknown>).reduce<Record<string, number>>((acc, [key, score]) => {
-      if (!properties[key] || typeof score !== 'number' || Number.isNaN(score)) {
+    const normalized = this.normalizeSchemaCompatibleParams(value, properties);
+    return Object.entries(normalized).reduce<Record<string, number>>((acc, [key, score]) => {
+      const normalizedScore = this.normalizeConfidenceScore(score);
+      if (normalizedScore === undefined) {
         return acc;
       }
-      acc[key] = Math.max(0, Math.min(1, score));
+      acc[key] = normalizedScore;
       return acc;
     }, {});
   }
@@ -468,8 +577,22 @@ export class RecognizerService {
       return [];
     }
     return value
-      .filter((item): item is string => typeof item === 'string' && Boolean(properties[item]))
+      .map((item) => (typeof item === 'string' ? this.resolveSchemaPathKey(item, properties) : undefined))
+      .filter((item): item is string => typeof item === 'string')
       .filter((item, index, array) => array.indexOf(item) === index);
+  }
+
+  private normalizeConfidenceScore(value: unknown): number | undefined {
+    if (typeof value === 'number' && !Number.isNaN(value)) {
+      return Math.max(0, Math.min(1, value));
+    }
+    if (Array.isArray(value)) {
+      const firstNumeric = value.find((item): item is number => typeof item === 'number' && !Number.isNaN(item));
+      if (typeof firstNumeric === 'number') {
+        return Math.max(0, Math.min(1, firstNumeric));
+      }
+    }
+    return undefined;
   }
 
   private completeFieldConfidences(

@@ -393,7 +393,7 @@ const ExecutionCreatePage: React.FC = () => {
       applyGeneratedParamsToForm(result.params || {});
       handleCloseAiModal();
     } catch (error) {
-      void message.error(error instanceof Error ? error.message : 'AI生成参数失败');
+      void message.error(error instanceof Error ? error.message : '参数识别失败');
     } finally {
       setAiGenerating(false);
     }
@@ -478,7 +478,7 @@ const ExecutionCreatePage: React.FC = () => {
               >
                 <Space style={{ marginBottom: 12 }}>
                   <Button icon={<RobotOutlined />} onClick={handleOpenAiModal} disabled={!selectedSkillId}>
-                    AI生成参数
+                    智能识别参数
                   </Button>
                 </Space>
                 {selectedSkillId && selectedSkillQuery.isFetching ? (
@@ -642,17 +642,17 @@ const ExecutionCreatePage: React.FC = () => {
         </Space>
       </div>
       <Modal
-        title="AI生成参数"
+        title="智能识别参数"
         open={aiModalOpen}
         onCancel={handleCloseAiModal}
         onOk={() => void handleAiGenerate()}
-        okText={aiGenerating ? '正在生成...' : '生成并填充'}
+        okText={aiGenerating ? '正在识别...' : '识别并填充'}
         confirmLoading={aiGenerating}
       >
         <Space direction="vertical" style={{ width: '100%' }}>
           <Input.TextArea
             rows={4}
-            placeholder="请输入你的需求描述，AI将基于技能的参数Schema自动识别并填充"
+            placeholder="请输入你的需求描述，系统将基于技能参数 schema 自动识别并填充"
             value={aiTextInput}
             onChange={(e) => setAiTextInput(e.target.value)}
           />

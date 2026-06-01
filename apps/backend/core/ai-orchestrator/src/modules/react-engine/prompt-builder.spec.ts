@@ -8,25 +8,25 @@ import { CapabilitySnapshot, ToolDefinition } from './interfaces';
 
 describe('prompt-builder', () => {
   it('builds system prompt with roadmap-aligned sections', () => {
-    const documentIntakeTool: ToolDefinition = {
-      name: 'document_intake',
-      description: '选择模板并提取参数',
+    const documentRenderTool: ToolDefinition = {
+      name: 'document_render',
+      description: '渲染文档',
       category: 'execution',
       parameters: {
         type: 'object',
         properties: {
-          userInput: {
+          data: {
             type: 'string',
-            description: '用户输入',
+            description: '渲染数据',
           },
         },
-        required: ['userInput'],
+        required: ['data'],
       },
       validateParams: () => ({ valid: true, missing: [] }),
       execute: jest.fn() as any,
     };
     const tools: ToolDefinition[] = [
-      documentIntakeTool,
+      documentRenderTool,
     ];
 
     const capabilitySnapshot: CapabilitySnapshot = {
@@ -36,10 +36,10 @@ describe('prompt-builder', () => {
       mode: 'task',
       visibleTools: [
         {
-          name: 'document_intake',
-          description: '选择模板并提取参数',
+          name: 'document_render',
+          description: '渲染文档',
           category: 'execution',
-          parameters: documentIntakeTool.parameters,
+          parameters: documentRenderTool.parameters,
           exposure: 'prompt_and_runtime',
         },
       ],
@@ -65,7 +65,7 @@ describe('prompt-builder', () => {
       },
       policies: {
         requireConfirmToolNames: [],
-        requireApprovalToolNames: ['document_intake'],
+        requireApprovalToolNames: ['document_render'],
         requireHumanReviewOnWrite: false,
         documentTemplateClarificationEnabled: true,
       },
@@ -90,23 +90,23 @@ describe('prompt-builder', () => {
     expect(prompt).toContain('## Capability Policy');
     expect(prompt).toContain('## Tool Spec');
     expect(prompt).toContain('## Skill Index');
-    expect(prompt).toContain('需要审批的工具: document_intake');
+    expect(prompt).toContain('需要审批的工具: document_render');
   });
 
   it('builds structured system sections with stable keys and sources', () => {
     const tool: ToolDefinition = {
-      name: 'document_intake',
-      description: '选择模板并提取参数',
+      name: 'document_render',
+      description: '渲染文档',
       category: 'execution',
       parameters: {
         type: 'object',
         properties: {
-          userInput: {
+          data: {
             type: 'string',
-            description: '用户输入',
+            description: '渲染数据',
           },
         },
-        required: ['userInput'],
+        required: ['data'],
       },
       validateParams: () => ({ valid: true, missing: [] }),
       execute: jest.fn() as any,
@@ -134,8 +134,8 @@ describe('prompt-builder', () => {
         mode: 'task',
         visibleTools: [
           {
-            name: 'document_intake',
-            description: '选择模板并提取参数',
+            name: 'document_render',
+            description: '渲染文档',
             category: 'execution',
             parameters: tool.parameters,
             exposure: 'prompt_and_runtime',

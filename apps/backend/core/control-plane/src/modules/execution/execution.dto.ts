@@ -13,6 +13,74 @@ import { ApprovalStatus, APPROVAL_STATUS_VALUES } from './contracts/approval-sta
 import { ExecutionStatus, EXECUTION_STATUS_VALUES } from './contracts/execution-status';
 import { ExecutionStepStatus, EXECUTION_STEP_STATUS_VALUES } from './contracts/execution-step-status';
 
+export type ExecutionParamSource =
+  | 'user_input'
+  | 'default'
+  | 'workflow_default'
+  | 'recognized'
+  | 'external'
+  | 'unresolved';
+
+export type ExecutionParamRequiredMode =
+  | 'always'
+  | 'conditional'
+  | 'optional'
+  | 'system_required';
+
+export interface ExecutionRequiredInput {
+  name: string;
+  type: string;
+  description?: string;
+  required: boolean;
+  required_mode?: ExecutionParamRequiredMode;
+  value?: unknown;
+  missing: boolean;
+  source: ExecutionParamSource;
+  source_priority?: string[];
+  confidence?: number;
+  needs_confirmation?: boolean;
+  confirmation_threshold?: number;
+  missing_reason?: string;
+  display_name?: string;
+  group_label?: string;
+  render_path?: string | string[];
+  template_binding?: string;
+  preview_blocking?: boolean;
+}
+
+export interface ExecutionParamResolutionEntry {
+  type: string;
+  required: boolean;
+  value?: unknown;
+  source: ExecutionParamSource;
+  requiredMode: ExecutionParamRequiredMode;
+  valueSourcePriority?: string[];
+  missing: boolean;
+  needsConfirmation?: boolean;
+  confirmed?: boolean;
+  final: boolean;
+  description?: string;
+  display_name?: string;
+  group_label?: string;
+  render_path?: string | string[];
+  template_binding?: string;
+  confidence?: number;
+  confirmation_threshold?: number;
+  missing_reason?: string;
+  preview_blocking?: boolean;
+}
+
+export interface ExecutionNormalizedInputJson extends Record<string, unknown> {
+  objective?: string;
+  plannerMode?: string;
+  plannerSummary?: string;
+  requiredInputs?: ExecutionRequiredInput[];
+  input?: Record<string, unknown>;
+  paramResolution?: Record<string, ExecutionParamResolutionEntry>;
+  semantic?: ExecutionSemantic | null;
+  __usage?: Record<string, unknown>;
+}
+
 export interface BrowserPhaseCheck {
   [key: string]: unknown;
   matched?: boolean;
@@ -158,7 +226,7 @@ export class ExecutionDto {
 
   @ApiProperty({ required: false })
   @IsOptional()
-  normalizedInputJson?: Record<string, unknown> | null;
+  normalizedInputJson?: ExecutionNormalizedInputJson | null;
 
   @ApiProperty({ required: false })
   @IsOptional()
@@ -166,7 +234,7 @@ export class ExecutionDto {
 
   @ApiProperty({ required: false })
   @IsOptional()
-  normalizedInput?: Record<string, unknown> | null;
+  normalizedInput?: ExecutionNormalizedInputJson | null;
 
   @ApiProperty({ required: false })
   @IsOptional()

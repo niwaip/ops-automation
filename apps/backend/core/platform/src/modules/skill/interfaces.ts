@@ -38,6 +38,30 @@ export interface SkillRuntimeMetadata {
     type?: string;
     activityName?: string;
   }>;
+  workflowInputPolicy?: WorkflowInputPolicy;
+}
+
+export type WorkflowParamRequiredMode =
+  | 'always'
+  | 'conditional'
+  | 'optional'
+  | 'system_required';
+
+export interface WorkflowParamPolicy {
+  enabled?: boolean;
+  requiredMode?: WorkflowParamRequiredMode;
+  defaultValue?: unknown;
+  defaultValueResolver?: string;
+  valueSourcePriority?: string[];
+  confirmationThreshold?: number;
+  previewBlocking?: boolean;
+  validationRules?: Array<Record<string, unknown>>;
+  transformRule?: string;
+  templateBinding?: string;
+}
+
+export interface WorkflowInputPolicy {
+  params: Record<string, WorkflowParamPolicy>;
 }
 
 export type ToolCatalogStatus = 'active' | 'disabled' | 'deprecated';
@@ -105,16 +129,22 @@ export interface ParamsSchema {
   properties: Record<string, {
     type: 'string' | 'number' | 'date' | 'boolean';
     description: string;
+    /** @deprecated 过渡兼容字段；模板级必填策略应迁移到 workflowInputPolicy.params.requiredMode */
     required?: boolean;
+    /** @deprecated 过渡兼容字段；模板级默认值应迁移到 workflowInputPolicy.params.defaultValue */
     default?: string | number | boolean;
     extractionPrompt?: string;
     semanticRole?: string;
     extractionHints?: string[];
     displayName?: string;
     groupLabel?: string;
+    renderPath?: string | string[];
+    /** @deprecated 过渡兼容字段；预览阻断策略应迁移到 workflowInputPolicy.params.previewBlocking */
     previewBlocking?: boolean;
+    /** @deprecated 过渡兼容字段；确认阈值应迁移到 workflowInputPolicy.params.confirmationThreshold */
     confirmationThreshold?: number;
   }>;
+  /** @deprecated 过渡兼容字段；模板级 required 列表应迁移到 workflowInputPolicy.params.requiredMode */
   required: string[];
 }
 
@@ -130,13 +160,7 @@ export interface CreateSkillDTO {
   executionFlow?: Array<Record<string, unknown>>; // 手动编排/追加的步骤
   tools?: string[];
   apiEndpoints?: {
-    runtimeMetadata?: {
-      goal?: string;
-      expectedResult?: string;
-      outputParams?: Record<string, unknown>;
-      sourceType?: string;
-      taskQueue?: string;
-    };
+    runtimeMetadata?: SkillRuntimeMetadata;
   };
 }
 
@@ -154,13 +178,7 @@ export interface SkillConfigDto {
   tools: string[];
   effectiveTools?: string[];
   apiEndpoints?: {
-    runtimeMetadata?: {
-      goal?: string;
-      expectedResult?: string;
-      outputParams?: Record<string, unknown>;
-      sourceType?: string;
-      taskQueue?: string;
-    };
+    runtimeMetadata?: SkillRuntimeMetadata;
   };
   isActive: boolean;
   configStatus?: string;

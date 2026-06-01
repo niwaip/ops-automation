@@ -1,6 +1,7 @@
 import {
   BrowserPhaseCheck,
   ExecutionDto,
+  ExecutionNormalizedInputJson,
   ExecutionPhaseArtifactDto,
   ExecutionPhaseDto,
   ExecutionPhaseStepDto,
@@ -160,7 +161,7 @@ export const mapExecutionToDto = (
   execution: Record<string, unknown>,
 ): ExecutionDto => {
   const normalizedInput =
-    (execution.normalizedInputJson || execution.normalized_input_json) as Record<string, unknown> | null;
+    (execution.normalizedInputJson || execution.normalized_input_json) as ExecutionNormalizedInputJson | null;
   const input =
     (execution.inputJson || execution.input_json) as Record<string, unknown> | null;
   const result =

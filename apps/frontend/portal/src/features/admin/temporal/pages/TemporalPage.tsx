@@ -10,7 +10,7 @@ import { useTranslation } from 'react-i18next';
 import { useQuery, useMutation, useQueryClient } from 'react-query';
 import { useNavigate } from 'react-router-dom';
 import {
-  temporalWorkflowApi, TemporalWorkflowDTO, CreateTemporalWorkflowDTO, WorkflowDsl
+  temporalWorkflowApi, TemporalWorkflowDTO, CreateTemporalWorkflowDTO, WorkflowDsl, CompileTemplateWorkflowDraftDTO
 } from '@/api/temporal';
 import { executionApi } from '@/api/execution';
 import { ListSectionHeader } from '@/components/page/PageScaffold';
@@ -148,7 +148,39 @@ const TemporalPage: React.FC = () => {
     onOk: () => deleteMutation.mutate(id)
   });
 
-  const handleSaveWorkflow = (data: { workflowDsl: any; activityDsl: any; name: string; description: string; taskQueue?: string; generatedCode?: string }) => {
+  const handleSaveWorkflow = async (
+    data:
+      | { workflowDsl: any; activityDsl: any; name: string; description: string; taskQueue?: string; generatedCode?: string }
+      | (CompileTemplateWorkflowDraftDTO & { generatedCode?: string }),
+  ) => {
+    if ('templateId' in data) {
+      try {
+        // #region debug-point B:compile-request
+        fetch('http://127.0.0.1:7777/event', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ sessionId: 'template-save-values-lost', runId: 'pre-fix', hypothesisId: 'B', location: 'TemporalPage.tsx:156', msg: '[DEBUG] page sending compile-template-draft request', data: { workflowId: editingWorkflow?.id || null, templateId: data.templateId, name: data.name || null, taskQueue: data.taskQueue || null, inputPolicyKeys: Object.keys(data.inputPolicy?.params || {}).slice(0, 8), inputPolicyPreview: Object.entries(data.inputPolicy?.params || {}).slice(0, 3) }, ts: Date.now() }) }).catch(() => {});
+        // #endregion
+        const compiledDraft = await temporalWorkflowApi.compileTemplateDraft(data);
+        // #region debug-point B:compile-response
+        fetch('http://127.0.0.1:7777/event', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ sessionId: 'template-save-values-lost', runId: 'pre-fix', hypothesisId: 'B', location: 'TemporalPage.tsx:158', msg: '[DEBUG] page received compile-template-draft response', data: { workflowId: editingWorkflow?.id || null, compiledName: compiledDraft.name, compiledTaskQueue: compiledDraft.taskQueue, compiledInputParamCount: Object.keys(compiledDraft.workflowDsl?.inputParams || {}).length, compiledInputParamKeys: Object.keys(compiledDraft.workflowDsl?.inputParams || {}).slice(0, 8), compiledInputParamPreview: Object.entries(compiledDraft.workflowDsl?.inputParams || {}).slice(0, 3), compiledPolicyKeys: Object.keys(compiledDraft.workflowDsl?.inputPolicy?.params || {}).slice(0, 8), compiledPolicyPreview: Object.entries(compiledDraft.workflowDsl?.inputPolicy?.params || {}).slice(0, 3) }, ts: Date.now() }) }).catch(() => {});
+        // #endregion
+        const payload = {
+          name: compiledDraft.name,
+          description: compiledDraft.description,
+          taskQueue: compiledDraft.taskQueue || 'SKILL_TASK_QUEUE',
+          workflowDsl: compiledDraft.workflowDsl,
+          activityDsl: compiledDraft.activityDsl,
+          generatedCode: data.generatedCode,
+        };
+        if (editingWorkflow) {
+          updateMutation.mutate({ id: editingWorkflow.id, data: payload });
+        } else {
+          createMutation.mutate(payload);
+        }
+      } catch (error) {
+        message.error('模板工作流编译失败');
+      }
+      return;
+    }
+
     const payload = {
       name: data.name,
       description: data.description,
@@ -309,6 +341,7 @@ const TemporalPage: React.FC = () => {
         onSave={handleSaveWorkflow}
         initialWorkflow={editingWorkflow}
         initialDraftDsl={draftWorkflowDsl}
+        loading={createMutation.isLoading || updateMutation.isLoading}
         openTemplatePickerOnOpen={openTemplatePickerOnEditOpen}
         initialTemplatePickerMode="document"
       />

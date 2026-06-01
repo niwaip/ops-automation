@@ -34,30 +34,27 @@ const { TextArea } = Input;
 const DEFAULT_STEP_TEMPLATES: Record<string, ExecutionFlowStep> = {
   ai_match: {
     type: 'text',
-    name: 'AI语义匹配',
-    content: '根据用户输入自动识别意图并匹配最佳技能',
-    expectedOutput: '匹配到的技能ID和参数',
+    name: '技能匹配',
+    content: '根据用户输入匹配最佳技能并读取 paramsSchema',
+    expectedOutput: '匹配到的技能、模板和参数 schema',
   },
   collect_params: {
     type: 'text',
-    name: '收集参数',
-    content: '通过对话收集用户需要的参数',
-    expectedOutput: '完整的参数集合',
+    name: '参数识别',
+    content: '基于 paramsSchema 识别扁平字段参数',
+    expectedOutput: '已识别参数与缺失字段',
   },
   generate_params: {
-    type: 'api',
-    name: 'AI生成参数',
-    api: {
-      endpoint: '/api/ai/generate-params',
-      method: 'POST',
-    },
-    expectedOutput: 'AI提取的参数JSON',
+    type: 'text',
+    name: '缺失补参',
+    content: '进入 waiting_input，通过自然语言继续补齐阻塞字段',
+    expectedOutput: '满足执行条件的确认参数',
   },
   user_confirm: {
     type: 'text',
-    name: '用户确认',
-    content: '展示参数并等待用户确认',
-    expectedOutput: '用户确认结果',
+    name: '执行创建',
+    content: '创建 execution 并沉淀 normalizedInputJson.input',
+    expectedOutput: '可恢复的执行单',
   },
   render_document: {
     type: 'api',
@@ -66,7 +63,7 @@ const DEFAULT_STEP_TEMPLATES: Record<string, ExecutionFlowStep> = {
       endpoint: '/api/carbone/render',
       method: 'POST',
     },
-    expectedOutput: '渲染后的文档URL',
+    expectedOutput: '渲染后的文档结果',
   },
 };
 
