@@ -40,6 +40,7 @@ const TemporalPage: React.FC = () => {
   const [editModalVisible, setEditModalVisible] = useState(false);
   const [editingWorkflow, setEditingWorkflow] = useState<TemporalWorkflowDTO | null>(null);
   const [draftWorkflowDsl, setDraftWorkflowDsl] = useState<WorkflowDsl | null>(null);
+  const [openTemplatePickerOnEditOpen, setOpenTemplatePickerOnEditOpen] = useState(false);
   
   const [detailModalVisible, setDetailModalVisible] = useState(false);
   const [selectedWorkflow, setSelectedWorkflow] = useState<TemporalWorkflowDTO | null>(null);
@@ -118,12 +119,21 @@ const TemporalPage: React.FC = () => {
   const handleCreate = () => {
     setEditingWorkflow(null);
     setDraftWorkflowDsl(null);
+    setOpenTemplatePickerOnEditOpen(false);
+    setEditModalVisible(true);
+  };
+
+  const handleCreateFromTemplate = () => {
+    setEditingWorkflow(null);
+    setDraftWorkflowDsl(null);
+    setOpenTemplatePickerOnEditOpen(true);
     setEditModalVisible(true);
   };
 
   const handleEdit = async (workflow: TemporalWorkflowDTO) => {
     setEditingWorkflow(workflow);
     setDraftWorkflowDsl(null);
+    setOpenTemplatePickerOnEditOpen(false);
     setEditModalVisible(true);
   };
 
@@ -138,7 +148,7 @@ const TemporalPage: React.FC = () => {
     onOk: () => deleteMutation.mutate(id)
   });
 
-  const handleSaveWorkflow = (data: { workflowDsl: any; activityDsl: any; name: string; description: string; taskQueue?: string }) => {
+  const handleSaveWorkflow = (data: { workflowDsl: any; activityDsl: any; name: string; description: string; taskQueue?: string; generatedCode?: string }) => {
     const payload = {
       name: data.name,
       description: data.description,
@@ -148,6 +158,7 @@ const TemporalPage: React.FC = () => {
         name: data.name,
       },
       activityDsl: data.activityDsl,
+      generatedCode: data.generatedCode,
     };
     if (editingWorkflow) {
       updateMutation.mutate({ id: editingWorkflow.id, data: payload });
@@ -187,6 +198,11 @@ const TemporalPage: React.FC = () => {
         <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
           <Space size={6}>
             <Text strong style={{ color: 'var(--primary-color)', fontSize: 14 }}>{name}</Text>
+            {r.sourceTemplate?.templateAssetVersion && (
+              <Tag color="purple" style={{ margin: 0, fontSize: 10, lineHeight: '14px', height: 16 }}>
+                v{r.sourceTemplate.templateAssetVersion}
+              </Tag>
+            )}
           </Space>
           {r.workflowDsl?.workflowClassName && <Text type="secondary" style={{ fontSize: 12, fontFamily: 'monospace' }}>{r.workflowDsl.workflowClassName}</Text>}
           <Text type="secondary" style={{ fontSize: 12 }}>{r.taskQueue}</Text>
@@ -247,6 +263,7 @@ const TemporalPage: React.FC = () => {
               <Text type="secondary" style={{ fontSize: 13 }}>共 {filteredWorkflows.length} 条</Text>
               <Button size="middle" icon={<ReloadOutlined />} onClick={() => workflowsQuery.refetch()} className="btn-pill">刷新</Button>
               <Button size="middle" icon={<RobotOutlined />} onClick={openAiDraftModal} className="btn-pill">AI 创建</Button>
+              <Button size="middle" icon={<FolderOpenOutlined />} onClick={handleCreateFromTemplate} className="btn-pill">通过模版创建工作流</Button>
               <Button size="middle" icon={<PlusOutlined />} type="primary" onClick={handleCreate} className="btn-pill">创建工作流</Button>
             </Space>
           )}
@@ -278,16 +295,22 @@ const TemporalPage: React.FC = () => {
           setAiDraftDrawerVisible(false);
           setEditingWorkflow(null);
           setDraftWorkflowDsl(dsl.workflowDsl as WorkflowDsl);
+          setOpenTemplatePickerOnEditOpen(false);
           setEditModalVisible(true);
         }}
       />
       
       <WorkflowEditModal
         visible={editModalVisible}
-        onCancel={() => setEditModalVisible(false)}
+        onCancel={() => {
+          setOpenTemplatePickerOnEditOpen(false);
+          setEditModalVisible(false);
+        }}
         onSave={handleSaveWorkflow}
         initialWorkflow={editingWorkflow}
         initialDraftDsl={draftWorkflowDsl}
+        openTemplatePickerOnOpen={openTemplatePickerOnEditOpen}
+        initialTemplatePickerMode="document"
       />
     </div>
   );

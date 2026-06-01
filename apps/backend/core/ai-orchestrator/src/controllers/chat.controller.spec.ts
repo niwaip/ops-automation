@@ -27,6 +27,8 @@ describe('ChatController control-plane integration', () => {
     };
     const plannerService = {
       generatePlan: jest.fn(),
+      matchSkillPhase: jest.fn(),
+      completePlanFromMatchPhase: jest.fn(),
     };
     const promptDebugSettingsService = {
       isPromptDebugEnabled: jest.fn(() => false),
@@ -165,6 +167,110 @@ describe('ChatController control-plane integration', () => {
     ]);
   });
 
+  it('accepts standard recognizer json with nested params during waiting_input submission', async () => {
+    const { controller, controlPlaneClient } = createController();
+
+    controlPlaneClient.getExecution
+      .mockResolvedValueOnce({
+        skillId: 'skill-weather',
+        status: 'waiting_input',
+        normalizedInput: {
+          objective: '查询北京天气',
+          requiredInputs: [
+            {
+              name: 'city',
+              missing: true,
+            },
+          ],
+        },
+      })
+      .mockResolvedValueOnce({
+        id: 'execution-weather-1',
+        status: 'running',
+      });
+    controlPlaneClient.getExecutionSteps.mockResolvedValue([
+      {
+        id: 'step-weather-1',
+        status: 'waiting_input',
+        type: 'input_collection',
+        inputJson: {
+          requiredInputs: [
+            {
+              name: 'city',
+              description: '城市名称',
+              missing: true,
+            },
+          ],
+        },
+      },
+    ]);
+    controlPlaneClient.submitExecutionInput.mockResolvedValue({
+      id: 'execution-weather-1',
+    });
+
+    jest.spyOn(controller as any, 'observeExecution').mockImplementation(async function* () {
+      yield {
+        type: StreamEventType.RESULT,
+        content: '天气查询继续执行',
+        data: {
+          executionId: 'execution-weather-1',
+          status: 'running',
+        },
+      };
+    });
+
+    const events: Array<{ type: StreamEventType; content: string }> = [];
+    for await (const event of (controller as any).handleTaskMode(
+      {
+        message: '{"params":{"city":"北京"},"confidence":1,"field_confidences":{"city":1},"uncertain_fields":[]}',
+        executionId: 'execution-weather-1',
+      },
+      {
+        sessionId: 'session-weather-1',
+        userId: 'user-weather-1',
+        userRoles: ['employee'],
+        traceId: 'trace-weather-1',
+        history: [],
+        executionId: 'execution-weather-1',
+      },
+      'Bearer token-weather-1',
+    )) {
+      events.push({ type: event.type, content: event.content });
+    }
+
+    expect(controlPlaneClient.submitExecutionInput).toHaveBeenCalledWith(
+      'execution-weather-1',
+      {
+        stepId: 'step-weather-1',
+        input: {
+          city: '北京',
+        },
+        usage: undefined,
+      },
+      {
+        authToken: 'Bearer token-weather-1',
+        user: {
+          userId: 'user-weather-1',
+          userRoles: ['employee'],
+        },
+      },
+    );
+    expect(events).toEqual([
+      {
+        type: StreamEventType.THOUGHT,
+        content: '正在提交您补充的信息...',
+      },
+      {
+        type: StreamEventType.THOUGHT,
+        content: '信息已提交，任务继续执行。',
+      },
+      {
+        type: StreamEventType.RESULT,
+        content: '天气查询继续执行',
+      },
+    ]);
+  });
+
   it('reports resolved and remaining fields when waiting_input is only partially filled', async () => {
     const { controller, controlPlaneClient } = createController();
 
@@ -254,7 +360,7 @@ describe('ChatController control-plane integration', () => {
       },
       {
         type: StreamEventType.THOUGHT,
-        content: '已提交补充信息。\n\n本次识别到 1 个字段：info.partyA\n\n仍缺少 1 个字段：info.partyB\n\n已保留当前执行单，请继续补充剩余信息。\n\n执行单 ID: execution-partial-1',
+        content: '已提交补充信息。\n\n本次识别到 1 个字段：info.partyA\n\n仍缺少 1 个字段：乙方名称\n\n已保留当前执行单，请继续补充剩余信息。\n\n执行单 ID: execution-partial-1',
       },
       {
         type: StreamEventType.WAITING_INPUT,
@@ -485,6 +591,57 @@ describe('ChatController control-plane integration', () => {
     );
   });
 
+  it('accepts labeled key-value text for multiple string waiting_input fields', async () => {
+    const { controller, recognizerService, plannerService } = createController();
+
+    recognizerService.recognizeParams.mockResolvedValue({
+      params: {},
+      confidence: 0.1,
+    });
+    plannerService.generatePlan.mockResolvedValue({
+      required_inputs: [],
+      usage: undefined,
+    });
+
+    const payload = await (controller as any).buildWaitingInputPayload(
+      '服务项目产品名称：无线网络设备更新。\n服务项目名称：无线网络设备更新技术服务。',
+      [
+        {
+          name: 'serviceProductName',
+          type: 'string',
+          description: '服务项目产品名称',
+        },
+        {
+          name: 'serviceItemName',
+          type: 'string',
+          description: '服务项目名称',
+        },
+      ],
+      [],
+      {
+        groupedMissing: [
+          {
+            key: 'serviceSpec',
+            label: '服务规格书 / サービス仕様書',
+          },
+        ],
+      } as any,
+      undefined,
+      undefined,
+      '补充合同信息',
+      'user-multi-1',
+      'selected-model-id',
+    );
+
+    expect(payload).toEqual({
+      input: {
+        serviceProductName: '无线网络设备更新。',
+        serviceItemName: '无线网络设备更新技术服务。',
+      },
+      usage: undefined,
+    });
+  });
+
   it('runs task mode through planner, waiting_input, resume, and final result across two turns', async () => {
     const { controller, controlPlaneClient, plannerService } = createController();
     const executionId = 'execution-chain-1';
@@ -574,8 +731,20 @@ describe('ChatController control-plane integration', () => {
       },
     };
 
-    plannerService.generatePlan.mockResolvedValue(planDraft);
-    controlPlaneClient.createExecution.mockResolvedValue({ id: executionId });
+    plannerService.matchSkillPhase.mockResolvedValue({
+      objective: '生成采购合同',
+      matchedSkill: {
+        skillId: 'skill-contract',
+        skillName: '采购合同',
+        confidence: 0.96,
+      },
+      hasVisibleSkills: true,
+    });
+    plannerService.completePlanFromMatchPhase.mockResolvedValue(planDraft);
+    controlPlaneClient.createExecution.mockResolvedValue({
+      id: executionId,
+      status: 'waiting_input',
+    });
     controlPlaneClient.getExecution
       .mockResolvedValueOnce({
         id: executionId,
@@ -610,26 +779,7 @@ describe('ChatController control-plane integration', () => {
       status: 'running',
     });
 
-    jest.spyOn(controller as any, 'resolveSkillExecutionRuntimeType').mockResolvedValue('workflow');
     jest.spyOn(controller as any, 'observeExecution')
-      .mockImplementationOnce(async function* () {
-        yield {
-          type: StreamEventType.WAITING_INPUT,
-          content: `任务需要你补充信息后才能继续执行。\n\n缺少参数：甲方名称\n\n执行单 ID: ${executionId}`,
-          data: {
-            executionId,
-            status: 'waiting_input',
-            hasBusinessResult: false,
-            missingInputs: [
-              {
-                name: 'info.partyA',
-                description: '甲方名称',
-                missing: true,
-              },
-            ],
-          },
-        };
-      })
       .mockImplementationOnce(async function* () {
         yield {
           type: StreamEventType.RESULT,
@@ -664,7 +814,7 @@ describe('ChatController control-plane integration', () => {
       firstTurnEvents.push({ type: event.type, content: event.content });
     }
 
-    expect(plannerService.generatePlan).toHaveBeenCalledWith({
+    expect(plannerService.matchSkillPhase).toHaveBeenCalledWith({
       request: {
         user_input: '帮我生成采购合同',
         user_id: 'user-chain-1',
@@ -679,6 +829,19 @@ describe('ChatController control-plane integration', () => {
       authToken: 'Bearer token-chain-1',
       traceId: 'trace-chain-1',
     });
+    expect(plannerService.completePlanFromMatchPhase).toHaveBeenCalledWith(
+      expect.objectContaining({
+        matchPhase: {
+          objective: '生成采购合同',
+          matchedSkill: {
+            skillId: 'skill-contract',
+            skillName: '采购合同',
+            confidence: 0.96,
+          },
+          hasVisibleSkills: true,
+        },
+      }),
+    );
     expect(controlPlaneClient.createExecution).toHaveBeenCalledWith(
       {
         skillId: 'skill-contract',
@@ -686,7 +849,6 @@ describe('ChatController control-plane integration', () => {
           prompt: '帮我生成采购合同',
           contractType: '采购合同',
         },
-        runtimeType: 'workflow',
         usage: planDraft.usage,
         planDraft,
       },
@@ -705,15 +867,15 @@ describe('ChatController control-plane integration', () => {
       },
       {
         type: StreamEventType.THOUGHT,
+        content: '已识别到技能: 采购合同，正在识别参数...',
+      },
+      {
+        type: StreamEventType.THOUGHT,
         content: '已识别到技能: 采购合同，正在创建可恢复的执行单...',
       },
       {
         type: StreamEventType.RESULT,
         content: `已创建等待补充信息的执行单。\n\n文档仍缺少 1 个关键业务组。\n\n缺少业务组：甲方名称\n\n字段兜底：甲方名称\n\n可预览：否；可正式生成：否\n\n执行单 ID: ${executionId}`,
-      },
-      {
-        type: StreamEventType.WAITING_INPUT,
-        content: `任务需要你补充信息后才能继续执行。\n\n缺少参数：甲方名称\n\n执行单 ID: ${executionId}`,
       },
     ]);
 
@@ -837,9 +999,17 @@ describe('ChatController control-plane integration', () => {
       },
     };
 
-    plannerService.generatePlan.mockResolvedValue(planDraft);
+    plannerService.matchSkillPhase.mockResolvedValue({
+      objective: '生成采购合同',
+      matchedSkill: {
+        skillId: 'skill-contract-debug',
+        skillName: '采购合同',
+        confidence: 0.99,
+      },
+      hasVisibleSkills: true,
+    });
+    plannerService.completePlanFromMatchPhase.mockResolvedValue(planDraft);
     controlPlaneClient.createExecution.mockResolvedValue({ id: 'execution-debug-1' });
-    jest.spyOn(controller as any, 'resolveSkillExecutionRuntimeType').mockResolvedValue('workflow');
     jest.spyOn(controller as any, 'observeExecution').mockImplementation(async function* () {
       return;
     });
@@ -1219,7 +1389,8 @@ describe('ChatController control-plane integration', () => {
         },
       ],
     });
-    expect(plannerService.generatePlan).not.toHaveBeenCalled();
+    expect(plannerService.matchSkillPhase).not.toHaveBeenCalled();
+    expect(plannerService.completePlanFromMatchPhase).not.toHaveBeenCalled();
     expect(controlPlaneClient.createExecution).not.toHaveBeenCalled();
   });
 
@@ -1248,7 +1419,8 @@ describe('ChatController control-plane integration', () => {
     expect(res.write.mock.calls[0][0]).toContain('任务模式需要登录后使用，请重新登录后重试。');
     expect(res.write.mock.calls[0][0]).toContain('"errorCode":"AUTH_LOGIN_REQUIRED"');
     expect(res.end).toHaveBeenCalled();
-    expect(plannerService.generatePlan).not.toHaveBeenCalled();
+    expect(plannerService.matchSkillPhase).not.toHaveBeenCalled();
+    expect(plannerService.completePlanFromMatchPhase).not.toHaveBeenCalled();
     expect(controlPlaneClient.createExecution).not.toHaveBeenCalled();
   });
 });

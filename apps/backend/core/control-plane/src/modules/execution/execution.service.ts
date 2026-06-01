@@ -70,6 +70,15 @@ interface PlannerRequiredInput {
   value?: unknown;
   missing: boolean;
   source: 'user_input' | 'default' | 'unresolved';
+  confidence?: number;
+  needs_confirmation?: boolean;
+  confirmation_threshold?: number;
+  missing_reason?: string;
+}
+
+interface SkillSchemaProperty {
+  type?: string;
+  default?: unknown;
 }
 
 interface PlannerSkillMatch {
@@ -195,6 +204,7 @@ export class ExecutionService {
   private readonly sessionBrokerUrl = getSessionBrokerUrl();
   private readonly authServiceUrl = getAuthServiceUrl();
   private readonly aiOrchestratorUrl = getAiOrchestratorUrl();
+  private readonly internalApiSharedSecret = process.env.INTERNAL_API_SHARED_SECRET || process.env.JWT_SECRET;
 
   private readonly eventSubject = new Subject<ExecutionStreamEventPayload>();
   private readonly executionEventService: ExecutionEventService;
@@ -293,9 +303,11 @@ export class ExecutionService {
       throw new BadRequestException('skillId or capabilityId is required');
     }
 
-    if (options?.authToken) {
-      await this.assertSkillAccessibleByUser(resolvedSkillId, options.authToken);
-    }
+    await this.assertSkillAccessibleByUser(
+      resolvedSkillId,
+      options?.authToken,
+      { id: userId, role: 'employee' },
+    );
 
     const resolvedDto: CreateExecutionDto = {
       ...dto,
@@ -319,6 +331,12 @@ export class ExecutionService {
       }
     }
 
+    const runtimeDefaultInput = await this.fetchSkillDefaultInput(
+      resolvedSkillId,
+      options?.authToken,
+      { id: userId, role: 'employee' },
+    );
+
     const providedPlanDraft =
       resolvedDto.planDraft
       && typeof resolvedDto.planDraft === 'object'
@@ -328,15 +346,20 @@ export class ExecutionService {
     const generatedPlanDraft = providedPlanDraft
       || await this.generatePlanDraft(userId, resolvedDto, options?.authToken);
     const reconciledPlanDraft = this.reconcilePlanDraftWithInput(generatedPlanDraft, resolvedDto.input);
-    const planDraft = await this.rewriteBrowserRecordingPlanDraftWithActivities(
+    const defaultedPlanDraft = this.applyRuntimeDefaultsToPlanDraft(
       reconciledPlanDraft,
+      runtimeDefaultInput,
+    );
+    const planDraft = await this.rewriteBrowserRecordingPlanDraftWithActivities(
+      defaultedPlanDraft,
       resolvedSkillId,
       resolvedDto.input,
+      runtimeDefaultInput,
     );
     const plannedCapabilityId = planDraft?.skill_match?.skill_id;
     const effectiveSkillId = plannedCapabilityId || resolvedSkillId;
     const effectiveSkillVersion = resolvedSkillVersion;
-    const normalizedInput = this.buildNormalizedInput(resolvedDto, planDraft);
+    const normalizedInput = this.buildNormalizedInput(resolvedDto, planDraft, runtimeDefaultInput);
 
     // 注入 usage 到 normalizedInput 中以便持久化
     const usage = planDraft?.usage || resolvedDto.usage;
@@ -344,6 +367,11 @@ export class ExecutionService {
       (normalizedInput as any).__usage = usage;
     }
 
+    const executionRuntimeType = this.resolveExecutionRuntimeType(
+      resolvedDto.runtimeType,
+      planDraft,
+      normalizedInput,
+    );
     const execution = await this.prisma.execution.create({
       data: {
         createdBy: userId,
@@ -352,7 +380,7 @@ export class ExecutionService {
         status: planDraft?.risk_summary.requires_human_review
           ? EXECUTION_STATUS.PENDING_APPROVAL
           : EXECUTION_STATUS.QUEUED,
-        runtimeType: resolvedDto.runtimeType || 'browser',
+        runtimeType: executionRuntimeType,
         inputJson: this.asJsonValue(resolvedDto.input),
         normalizedInputJson: this.asJsonValue(normalizedInput),
         riskLevel: this.mapPlannerRiskLevel(planDraft),
@@ -402,7 +430,7 @@ export class ExecutionService {
     await this.createPlannedSteps(execution.id, normalizedInput, planDraft);
 
     const hasMissingRequiredInputs = Boolean(
-      planDraft?.required_inputs?.some((item) => item.required && item.missing),
+      planDraft?.required_inputs?.some((item) => item.required && this.isBlockingRequiredInput(item)),
     );
 
     this.logger.log(`Execution created: ${execution.id}`);
@@ -970,7 +998,7 @@ export class ExecutionService {
 
     const normalized = (execution.normalizedInputJson as Record<string, unknown>) || {};
     const requiredInputs = this.getRequiredInputs(execution);
-    const missingInputs = requiredInputs.filter((item) => item?.missing);
+    const missingInputs = requiredInputs.filter((item) => this.isBlockingRequiredInput(item));
 
     if (missingInputs.length === 0) {
       throw new BadRequestException(`Execution ${id} has no missing input to submit`);
@@ -1003,6 +1031,8 @@ export class ExecutionService {
           value: undefined,
           missing: true,
           source: 'unresolved' as const,
+          needs_confirmation: false,
+          missing_reason: undefined,
         };
       }
 
@@ -1011,11 +1041,16 @@ export class ExecutionService {
         value: normalizedValue,
         missing: false,
         source: 'user_input' as const,
+        needs_confirmation: false,
+        missing_reason: undefined,
       };
     });
 
-    const remainingMissingInputs = updatedRequiredInputs.filter((item) => item.required && item.missing);
+    const remainingMissingInputs = updatedRequiredInputs.filter((item) => item.required && this.isBlockingRequiredInput(item));
     const isFullySubmitted = remainingMissingInputs.length === 0;
+    // #region debug-point E:submit-input-merge
+    (()=>{const fs=require('fs');let u='http://127.0.0.1:7777/event',s='contract-param-recognition';try{const e=fs.readFileSync('.dbg/contract-param-recognition.env','utf8');u=e.match(/DEBUG_SERVER_URL=(.+)/)?.[1]||u;s=e.match(/DEBUG_SESSION_ID=(.+)/)?.[1]||s}catch{}fetch(u,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:s,runId:'pre-fix',hypothesisId:'E',location:'execution.service.ts:1049',msg:'[DEBUG] control-plane merged waiting_input submission',data:{executionId:id,stepId:dto.stepId,allowedKeys:Array.from(allowedKeys),submittedKeys,normalizedSubmittedInput,updatedRequiredInputs:updatedRequiredInputs.map((item)=>({name:item.name,missing:item.missing,value:item.value,source:item.source})),remainingMissing:remainingMissingInputs.map((item)=>item.name),isFullySubmitted},ts:Date.now()})}).catch(()=>{});})();
+    // #endregion
     const currentUsage = normalized.__usage as unknown as LLMUsage | undefined;
     const submittedUsage = dto.usage as unknown as LLMUsage | undefined;
     const totalUsage = this.sumUsage(currentUsage, submittedUsage);
@@ -1538,15 +1573,43 @@ export class ExecutionService {
     return value as Prisma.JsonValue;
   }
 
+  private buildAuthServiceHeaders(
+    authToken?: string,
+    requester?: RequestUserContext,
+  ): Record<string, string> | undefined {
+    if (typeof authToken === 'string' && authToken.trim().length > 0) {
+      return {
+        Authorization: authToken,
+      };
+    }
+
+    if (
+      this.internalApiSharedSecret
+      && typeof requester?.id === 'string'
+      && requester.id.trim().length > 0
+    ) {
+      return {
+        'X-Internal-Auth': this.internalApiSharedSecret,
+        'X-User-Id': requester.id,
+        'X-User-Role': requester.role || 'employee',
+      };
+    }
+
+    return undefined;
+  }
+
   private async assertSkillAccessibleByUser(
     skillId: string,
-    authToken: string,
+    authToken?: string,
+    requester?: RequestUserContext,
   ): Promise<void> {
+    const headers = this.buildAuthServiceHeaders(authToken, requester);
+    if (!headers) {
+      throw new BadRequestException('Unable to verify skill permission');
+    }
     try {
       await axios.get(`${this.authServiceUrl}/skills/${skillId}`, {
-        headers: {
-          Authorization: authToken,
-        },
+        headers,
         timeout: 10000,
       });
     } catch (error) {
@@ -1562,6 +1625,69 @@ export class ExecutionService {
       const message = error instanceof Error ? error.message : 'unknown error';
       this.logger.warn(`Failed to verify skill permission for ${skillId}: ${message}`);
       throw new BadRequestException('Unable to verify skill permission');
+    }
+  }
+
+  private async fetchSkillDefaultInput(
+    skillId: string,
+    authToken?: string,
+    requester?: RequestUserContext,
+  ): Promise<Record<string, unknown>> {
+    try {
+      const headers = this.buildAuthServiceHeaders(authToken, requester);
+      const response = await axios.get<{
+        paramsSchema?: {
+          properties?: Record<string, SkillSchemaProperty>;
+        };
+        executionFlowTemplateIds?: string[];
+      }>(`${this.authServiceUrl}/skills/${skillId}`, {
+        headers,
+        timeout: 10000,
+      });
+      const templateIds = Array.isArray(response.data?.executionFlowTemplateIds)
+        ? response.data.executionFlowTemplateIds.filter((id): id is string => typeof id === 'string' && id.trim().length > 0)
+        : [];
+      const templateSchemas = await Promise.all(
+        templateIds.map(async (templateId) => {
+          try {
+            const templateResponse = await axios.get<{
+              paramsSchema?: {
+                properties?: Record<string, SkillSchemaProperty>;
+              };
+            }>(`${this.authServiceUrl}/flows/${templateId}`, {
+              headers,
+              timeout: 10000,
+            });
+            return templateResponse.data?.paramsSchema;
+          } catch (error) {
+            const message = error instanceof Error ? error.message : 'unknown error';
+            this.logger.warn(`Failed to load runtime defaults from flow ${templateId}: ${message}`);
+            return undefined;
+          }
+        }),
+      );
+
+      return [
+        response.data?.paramsSchema,
+        ...templateSchemas,
+      ].reduce<Record<string, unknown>>((acc, schema) => {
+        const properties = schema?.properties || {};
+        Object.entries(properties).forEach(([name, property]) => {
+          const normalizedDefault = this.normalizeSubmittedInputValue(
+            property?.default,
+            String(property?.type || 'string'),
+          );
+          if (!this.hasMeaningfulSubmittedInputValue(normalizedDefault)) {
+            return;
+          }
+          acc[name] = normalizedDefault;
+        });
+        return acc;
+      }, {});
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'unknown error';
+      this.logger.warn(`Failed to load runtime defaults for skill ${skillId}: ${message}`);
+      return {};
     }
   }
 
@@ -1605,7 +1731,7 @@ export class ExecutionService {
           context: {
             skillId: dto.skillId,
             skillVersion: dto.skillVersion,
-            runtimeType: dto.runtimeType || 'browser',
+            runtimeType: this.normalizeExecutionRuntimeType(dto.runtimeType),
             executionInput: dto.input,
           },
         },
@@ -1635,7 +1761,7 @@ export class ExecutionService {
 
     return JSON.stringify({
       skillId: dto.skillId,
-      runtimeType: dto.runtimeType || 'browser',
+      runtimeType: this.normalizeExecutionRuntimeType(dto.runtimeType),
       input,
     });
   }
@@ -1647,30 +1773,68 @@ export class ExecutionService {
     if (!planDraft || !input) {
       return planDraft;
     }
+    const resolvedInput = planDraft.required_inputs.reduce<Record<string, unknown>>((acc, item) => {
+      if (!Object.prototype.hasOwnProperty.call(input, item.name)) {
+        return acc;
+      }
+      const normalizedValue = this.normalizeSubmittedInputValue(input[item.name], item.type);
+      if (!this.hasMeaningfulSubmittedInputValue(normalizedValue)) {
+        return acc;
+      }
+      acc[item.name] = normalizedValue;
+      return acc;
+    }, {});
+    return this.reconcilePlanDraftWithResolvedValues(planDraft, resolvedInput, 'user_input');
+  }
+
+  private applyRuntimeDefaultsToPlanDraft(
+    planDraft: PlannerPlanDraft | undefined,
+    runtimeDefaultInput: Record<string, unknown>,
+  ): PlannerPlanDraft | undefined {
+    return this.reconcilePlanDraftWithResolvedValues(planDraft, runtimeDefaultInput, 'default');
+  }
+
+  private reconcilePlanDraftWithResolvedValues(
+    planDraft: PlannerPlanDraft | undefined,
+    resolvedInput: Record<string, unknown>,
+    source: PlannerRequiredInput['source'],
+  ): PlannerPlanDraft | undefined {
+    if (!planDraft || Object.keys(resolvedInput || {}).length === 0) {
+      return planDraft;
+    }
 
     const requiredInputs = planDraft.required_inputs.map((item) => {
-      if (!item.required || !item.missing) {
+      if (!this.isBlockingRequiredInput(item) || !Object.prototype.hasOwnProperty.call(resolvedInput, item.name)) {
         return item;
       }
 
-      if (!Object.prototype.hasOwnProperty.call(input, item.name)) {
+      const value = resolvedInput[item.name];
+      if (!this.hasMeaningfulSubmittedInputValue(value)) {
         return item;
       }
 
-      const value = input[item.name];
-      if (value === undefined || value === null || value === '') {
-        return item;
+      // Planner may provide a candidate value that still requires human confirmation.
+      // Keep it blocking until the user explicitly submits a value.
+      if (item.needs_confirmation && source !== 'user_input') {
+        return {
+          ...item,
+          value,
+          source,
+          missing: true,
+        };
       }
 
       return {
         ...item,
         value,
         missing: false,
-        source: 'user_input' as const,
+        source,
+        needs_confirmation: false,
+        missing_reason: undefined,
       };
     });
 
-    const missingRequiredInputs = requiredInputs.filter((item) => item.required && item.missing);
+    const missingRequiredInputs = requiredInputs.filter((item) => item.required && this.isBlockingRequiredInput(item));
     const riskItems = missingRequiredInputs.length > 0
       ? Array.from(new Set([...planDraft.risk_summary.items, 'missing_required_inputs']))
       : planDraft.risk_summary.items.filter((item) => item !== 'missing_required_inputs');
@@ -1704,10 +1868,53 @@ export class ExecutionService {
     };
   }
 
+  private normalizeExecutionRuntimeType(runtimeType?: string | null): 'browser' | 'document' | 'workflow' | 'custom' {
+    const normalized = typeof runtimeType === 'string' ? runtimeType.trim().toLowerCase() : '';
+    if (normalized === 'browser') {
+      return 'browser';
+    }
+    if (normalized === 'document') {
+      return 'document';
+    }
+    if (normalized === 'workflow' || normalized === 'temporal_worker') {
+      return 'workflow';
+    }
+    if (normalized === 'custom' || normalized === 'flow_runtime' || normalized === 'sandbox') {
+      return 'custom';
+    }
+    return 'custom';
+  }
+
+  private resolveExecutionRuntimeType(
+    runtimeType?: string | null,
+    planDraft?: PlannerPlanDraft,
+    normalizedInput?: Record<string, unknown>,
+  ): 'browser' | 'document' | 'workflow' | 'custom' {
+    const normalized = this.normalizeExecutionRuntimeType(runtimeType);
+    if (normalized !== 'custom') {
+      return normalized;
+    }
+
+    const hasBrowserPhaseCommands = Boolean(
+      planDraft?.steps?.some((step) => Array.isArray(step.commands) && step.commands.length > 0),
+    );
+    if (hasBrowserPhaseCommands) {
+      return BROWSER_RUNTIME.TYPE;
+    }
+
+    const bootstrapUrl = typeof normalizedInput?.url === 'string' ? normalizedInput.url.trim() : '';
+    if (/^https?:\/\//i.test(bootstrapUrl)) {
+      return BROWSER_RUNTIME.TYPE;
+    }
+
+    return normalized;
+  }
+
   private async rewriteBrowserRecordingPlanDraftWithActivities(
     planDraft: PlannerPlanDraft | undefined,
     fallbackCapabilityId?: string,
     input?: Record<string, unknown>,
+    runtimeDefaultInput?: Record<string, unknown>,
   ): Promise<PlannerPlanDraft | undefined> {
     if (!planDraft) {
       return planDraft;
@@ -1720,7 +1927,7 @@ export class ExecutionService {
     if (!capabilityId) {
       return planDraft;
     }
-    const resolvedInput = this.buildPlannerResolvedInput(planDraft, input);
+    const resolvedInput = this.buildPlannerResolvedInput(planDraft, input, runtimeDefaultInput);
 
     const activitySteps = await this.loadBrowserRecordingPlannerActivitySteps(capabilityId, resolvedInput);
     if (activitySteps.length === 0) {
@@ -1958,10 +2165,19 @@ export class ExecutionService {
     resolvedInput: Record<string, unknown>,
   ): unknown {
     if (typeof value === 'string') {
-      return value.replace(/\$\{([^}]+)\}/g, (_match, key) => {
-        const resolved = resolvedInput[key.trim()];
+      const resolvePlaceholder = (rawKey: string): string => {
+        const resolved = resolvedInput[rawKey.trim()];
         return resolved === undefined || resolved === null ? '' : String(resolved);
-      });
+      };
+
+      return [
+        /\$\{\s*([^}]+?)\s*\}/g,
+        /\{\{\s*([^}]+?)\s*\}\}/g,
+        /\{([A-Za-z0-9_.\[\]-]+)\}/g,
+      ].reduce(
+        (current, pattern) => current.replace(pattern, (_match, key) => resolvePlaceholder(String(key))),
+        value,
+      );
     }
     if (Array.isArray(value)) {
       return value.map((item) => this.resolveBrowserTemplateValue(item, resolvedInput));
@@ -1977,6 +2193,7 @@ export class ExecutionService {
   private buildPlannerResolvedInput(
     planDraft: PlannerPlanDraft | undefined,
     input?: Record<string, unknown>,
+    runtimeDefaultInput?: Record<string, unknown>,
   ): Record<string, unknown> {
     const plannerExtractedInput = (planDraft?.required_inputs || []).reduce<Record<string, unknown>>(
       (acc, item) => {
@@ -1990,6 +2207,7 @@ export class ExecutionService {
     );
 
     return {
+      ...(runtimeDefaultInput || {}),
       ...plannerExtractedInput,
       ...(input || {}),
     };
@@ -2039,21 +2257,46 @@ export class ExecutionService {
           missingFieldNames: currentMissingFieldNames,
         };
       })
-      .filter((group): group is PlannerSemanticGroupedMissing => Boolean(group));
+      .filter((group): group is PlannerSemanticGroupedMissing => Boolean(group))
+      .reduce<PlannerSemanticGroupedMissing[]>((acc, group) => {
+        const normalizedGroup = this.normalizeSemanticGroupedMissing(group);
+        const existing = acc.find((item) => item.key === normalizedGroup.key && item.kind === normalizedGroup.kind);
+        if (!existing) {
+          acc.push(normalizedGroup);
+          return acc;
+        }
+        existing.blocking = existing.blocking || normalizedGroup.blocking;
+        existing.required = existing.required || normalizedGroup.required;
+        existing.fieldNames = Array.from(new Set([...(existing.fieldNames || []), ...(normalizedGroup.fieldNames || [])]));
+        existing.missingFieldNames = Array.from(new Set([
+          ...(existing.missingFieldNames || []),
+          ...(normalizedGroup.missingFieldNames || []),
+        ]));
+        existing.label = this.normalizeSemanticMissingLabel(existing.label || normalizedGroup.label);
+        existing.description = existing.description || normalizedGroup.description;
+        return acc;
+      }, []);
 
     const coveredMissingNames = new Set(groupedMissing.flatMap((group) => group.missingFieldNames));
     missingRequiredInputs
       .filter((item) => !coveredMissingNames.has(item.name))
       .forEach((item) => {
+        const normalizedKey = this.normalizeSemanticMissingKey(item.name);
+        const existing = groupedMissing.find((group) => group.key === normalizedKey && group.kind === 'field');
+        if (existing) {
+          existing.fieldNames = Array.from(new Set([...(existing.fieldNames || []), item.name]));
+          existing.missingFieldNames = Array.from(new Set([...(existing.missingFieldNames || []), item.name]));
+          return;
+        }
         groupedMissing.push({
-          key: item.name,
-          label: item.description || item.name,
+          key: normalizedKey,
+          label: this.normalizeSemanticMissingLabel(item.description || item.name),
           kind: 'field',
           blocking: true,
           required: true,
           fieldNames: [item.name],
           missingFieldNames: [item.name],
-          description: item.description || `请补充 ${item.name}`,
+          description: `请补充 ${this.normalizeSemanticMissingLabel(item.description || item.name)}`,
         });
       });
 
@@ -2103,9 +2346,48 @@ export class ExecutionService {
     return [group.key];
   }
 
+  private normalizeSemanticGroupedMissing(group: PlannerSemanticGroupedMissing): PlannerSemanticGroupedMissing {
+    if (group.kind === 'array_group') {
+      return group;
+    }
+
+    return {
+      ...group,
+      key: this.normalizeSemanticMissingKey(group.key),
+      label: this.normalizeSemanticMissingLabel(group.label),
+      description: typeof group.description === 'string' && group.description.trim()
+        ? group.description
+        : `请补充 ${this.normalizeSemanticMissingLabel(group.label || group.key)}`,
+    };
+  }
+
+  private normalizeSemanticMissingKey(value: string): string {
+    const normalized = String(value || '').trim();
+    if (!normalized) {
+      return '';
+    }
+
+    return normalized
+      .replace(/[._-](?:zh|ja|cn|jp)$/iu, '')
+      .trim();
+  }
+
+  private normalizeSemanticMissingLabel(value: string): string {
+    const normalized = String(value || '').trim();
+    if (!normalized) {
+      return '';
+    }
+
+    return normalized
+      .replace(/\s*[（(](?:中文|日文|日语|zh|ja|cn|jp)[）)]\s*$/iu, '')
+      .replace(/[._-](?:zh|ja|cn|jp)$/iu, '')
+      .trim();
+  }
+
   private buildNormalizedInput(
     dto: CreateExecutionDto,
     planDraft?: PlannerPlanDraft,
+    runtimeDefaultInput?: Record<string, unknown>,
   ): Record<string, unknown> {
     const rawInput = dto.input || {};
     const promptDebugCandidate = (rawInput as Record<string, unknown>).__promptDebug;
@@ -2123,6 +2405,7 @@ export class ExecutionService {
     );
     // Runtime execution should use planner-extracted params (e.g. city) while preserving explicit user input.
     const mergedInput = {
+      ...(runtimeDefaultInput || {}),
       ...plannerExtractedInput,
       ...input,
     };
@@ -3996,7 +4279,7 @@ export class ExecutionService {
   }
 
   private getMissingRequiredInputs(execution: Record<string, unknown>): PlannerRequiredInput[] {
-    return this.getRequiredInputs(execution).filter((item) => item?.missing);
+    return this.getRequiredInputs(execution).filter((item) => this.isBlockingRequiredInput(item));
   }
 
   private hasMeaningfulSubmittedInputValue(value: unknown): boolean {
@@ -4124,6 +4407,13 @@ export class ExecutionService {
       : [];
 
     return requiredInputs;
+  }
+
+  private isBlockingRequiredInput(item?: PlannerRequiredInput | null): boolean {
+    if (!item) {
+      return false;
+    }
+    return item.missing === true || item.needs_confirmation === true;
   }
 
   private extractStepUrl(

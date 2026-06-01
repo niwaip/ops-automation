@@ -2,6 +2,7 @@ import type { ExecutionDto } from '@/api/execution';
 import { asRecord } from '@/features/executions/lib/common';
 
 const INPUT_TEXT_CANDIDATE_KEYS = ['user_input', 'prompt', 'task', 'goal', 'instruction', 'query', 'url'] as const;
+const HIDDEN_INPUT_KEYS = new Set(['promptDebug']);
 
 const summarizeText = (value?: string, maxLength = 64) => {
   if (!value) {
@@ -36,7 +37,7 @@ const summarizeInputShape = (value?: Record<string, unknown>) => {
     return '';
   }
 
-  const keys = Object.keys(value).filter((key) => !key.startsWith('__') && key !== 'promptDebug');
+  const keys = Object.keys(value).filter((key) => !key.startsWith('__') && !HIDDEN_INPUT_KEYS.has(key));
   if (keys.length === 0) {
     return '';
   }
@@ -45,14 +46,38 @@ const summarizeInputShape = (value?: Record<string, unknown>) => {
   return keys.length > 3 ? `${preview} 等 ${keys.length} 项` : preview;
 };
 
-export const summarizeExecutionListInput = (record: ExecutionDto) => {
+export const extractExecutionDisplayInput = (record: ExecutionDto): Record<string, unknown> | undefined => {
   const normalizedInput = asRecord(record.normalizedInput);
-  const nestedNormalizedInput = asRecord(normalizedInput?.input);
+  const normalizedUserInput = asRecord(normalizedInput?.input);
+  const rawInput = asRecord(record.input);
+  const source = normalizedUserInput && Object.keys(normalizedUserInput).length > 0
+    ? normalizedUserInput
+    : rawInput;
+
+  if (!source) {
+    return undefined;
+  }
+
+  const filteredEntries = Object.entries(source).filter(([key, value]) => {
+    if (!key || key.startsWith('__') || HIDDEN_INPUT_KEYS.has(key)) {
+      return false;
+    }
+    return value !== undefined;
+  });
+
+  return filteredEntries.length > 0
+    ? Object.fromEntries(filteredEntries)
+    : undefined;
+};
+
+export const summarizeExecutionListInput = (record: ExecutionDto) => {
+  const visibleInput = extractExecutionDisplayInput(record);
+  const normalizedInput = asRecord(record.normalizedInput);
 
   const summary = summarizeText(
-    extractInputText(asRecord(record.input))
-      || (typeof normalizedInput?.objective === 'string' ? normalizedInput.objective : undefined)
-      || extractInputText(nestedNormalizedInput),
+    extractInputText(visibleInput)
+      || extractInputText(asRecord(record.input))
+      || (typeof normalizedInput?.objective === 'string' ? normalizedInput.objective : undefined),
     72,
   );
 
@@ -61,9 +86,8 @@ export const summarizeExecutionListInput = (record: ExecutionDto) => {
   }
 
   return (
-    summarizeInputShape(asRecord(record.input))
-    || summarizeInputShape(nestedNormalizedInput)
-    || summarizeInputShape(normalizedInput)
+    summarizeInputShape(visibleInput)
+    || summarizeInputShape(asRecord(record.input))
     || '暂无输入'
   );
 };

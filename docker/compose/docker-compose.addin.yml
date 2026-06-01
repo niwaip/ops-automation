@@ -19,7 +19,10 @@ services:
       - ENABLE_HTTPS=true
       - CERT_PATH=/app/certs
       - NODE_ENV=production
-      - CARBONE_ENGINE_URL=http://host.docker.internal:3009
+      - CARBONE_ENGINE_URL=http://${CARBONE_ENGINE_HOST:-carbone-engine}:${CARBONE_ENGINE_PORT:-3009}
+      - CARBONE_ENGINE_PROXY_TIMEOUT_MS=360000
+    networks:
+      - ops-network
     healthcheck:
       test:
         - CMD-SHELL
@@ -49,10 +52,13 @@ services:
       - VITE_AI_ORCHESTRATOR_PROXY_TARGET=http://${HOST_IP:-localhost}:${AI_ORCHESTRATOR_PORT:-3007}
       - NODE_ENV=development
       - DOCKER=true
+    networks:
+      - ops-network
     depends_on:
       - carbone-api
     restart: unless-stopped
 
 networks:
-  carbone-network:
+  ops-network:
     external: true
+    name: ${NETWORK_NAME:-ops-network}

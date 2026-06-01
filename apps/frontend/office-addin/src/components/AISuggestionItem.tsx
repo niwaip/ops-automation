@@ -55,6 +55,44 @@ export const AISuggestionItem: React.FC<{
     return suggestion.originalText || '未知位置';
   };
 
+  const getAnchorInfo = (suggestion: AISuggestion): string => {
+    const wordAnchor = suggestion.details?.wordAnchor;
+    if (wordAnchor?.type === 'content-control' && typeof wordAnchor.contentControlId === 'number') {
+      return `Word 内容控件 #${wordAnchor.contentControlId}`;
+    }
+    if (
+      wordAnchor?.type === 'table-cell'
+      && typeof wordAnchor.tableIndex === 'number'
+      && typeof wordAnchor.rowIndex === 'number'
+      && typeof wordAnchor.cellIndex === 'number'
+    ) {
+      return `Word 表格 T${wordAnchor.tableIndex} R${wordAnchor.rowIndex} C${wordAnchor.cellIndex}`;
+    }
+    if (
+      wordAnchor?.type === 'text-range'
+      && typeof wordAnchor.paragraphIndex === 'number'
+      && typeof wordAnchor.start === 'number'
+      && typeof wordAnchor.end === 'number'
+    ) {
+      return `Word 段落 #${wordAnchor.paragraphIndex} 锚点 ${wordAnchor.start}-${wordAnchor.end}`;
+    }
+
+    const excelAnchor = suggestion.details?.excelAnchor;
+    if (excelAnchor?.type === 'cell') {
+      return `Excel 单元格 ${excelAnchor.sheetName}!${excelAnchor.address || ''}`;
+    }
+    if (excelAnchor?.type === 'table') {
+      return `Excel 表格 ${excelAnchor.sheetName}!${excelAnchor.tableName || excelAnchor.startAddress || '区域'}`;
+    }
+
+    return '未绑定精确锚点';
+  };
+
+  const hasPreciseAnchor = Boolean(
+    suggestion.details?.wordAnchor
+    || suggestion.details?.excelAnchor
+  );
+
   // 处理编辑确认
   const handleEditConfirm = () => {
     if (editValue !== suggestion.suggestedName && onUpdateName) {
@@ -103,6 +141,44 @@ export const AISuggestionItem: React.FC<{
   };
   const descriptionSummary = suggestion.details?.description?.trim() || '';
   const sampleValue = suggestion.originalText?.trim() || '';
+  const summaryValue = sampleValue || '暂无样本值';
+  const riskLevel = suggestion.details?.riskLevel || 'low';
+  const riskLabelMap: Record<'low' | 'medium' | 'high', string> = {
+    low: '低风险',
+    medium: '中风险',
+    high: '高风险',
+  };
+  const needsReview = suggestion.details?.needsReview === true;
+  const confidenceLevel = suggestion.confidence >= 0.9
+    ? 'high'
+    : suggestion.confidence >= 0.75
+      ? 'medium'
+      : 'low';
+  const badgeStyleMap = {
+    base: {
+      fontSize: '12px',
+      padding: '2px 8px',
+      borderRadius: '999px',
+      display: 'inline-flex',
+      alignItems: 'center',
+      lineHeight: 1.4,
+    } as React.CSSProperties,
+    risk: {
+      high: { background: '#fee2e2', color: '#b91c1c' },
+      medium: { background: '#fef3c7', color: '#92400e' },
+      low: { background: '#dcfce7', color: '#166534' },
+    },
+    confidence: {
+      high: { background: '#dbeafe', color: '#1d4ed8' },
+      medium: { background: '#ede9fe', color: '#6d28d9' },
+      low: { background: '#fff1f2', color: '#be123c' },
+    },
+    review: {
+      pending: { background: '#fff7ed', color: '#c2410c' },
+      ready: { background: '#dcfce7', color: '#166534' },
+    },
+    neutral: { background: '#f1f5f9', color: '#64748b' },
+  };
 
   // 检查是否包含无意义的命名（如 field, value, unknown 等）
   const hasMalformedName = useMemo(() => {
@@ -116,112 +192,165 @@ export const AISuggestionItem: React.FC<{
       className={`suggestion-item ${suggestion.applied ? 'applied' : ''}`}
       onBlurCapture={handleCardBlur}
     >
-      <div className="suggestion-header" onClick={() => setExpanded(!expanded)}>
-        <div className="suggestion-content" onDoubleClick={(event) => {
-          event.stopPropagation();
-          enterEditMode();
-        }}>
-          {isEditing ? (
-            <input
-              type="text"
-              className="edit-input"
-              value={editValue}
-              onChange={(e) => setEditValue(e.target.value)}
-              onClick={(e) => e.stopPropagation()}
-              onDoubleClick={(e) => e.stopPropagation()}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') {
-                  handleEditConfirm();
-                } else if (e.key === 'Escape') {
-                  handleEditCancel();
-                }
-              }}
-              autoFocus
-            />
-          ) : (
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div
-                style={{
-                  fontSize: '13px',
-                  lineHeight: 1.6,
-                  color: '#0f172a',
-                  display: '-webkit-box',
-                  WebkitLineClamp: 3,
-                  WebkitBoxOrient: 'vertical',
-                  overflow: 'hidden',
-                  wordBreak: 'break-word',
+      <div
+        className="suggestion-header"
+        role="button"
+        tabIndex={0}
+        onClick={() => setExpanded(!expanded)}
+        onKeyDown={(event) => {
+          if (event.key === 'Enter' || event.key === ' ') {
+            event.preventDefault();
+            setExpanded((current) => !current);
+          }
+        }}
+      >
+        <div
+          className="suggestion-summary"
+          onDoubleClick={(event) => {
+            event.stopPropagation();
+            enterEditMode();
+          }}
+        >
+          <div className="suggestion-summary-row">
+            <span className="suggestion-summary-label">参数名</span>
+            {isEditing ? (
+              <input
+                type="text"
+                className="edit-input suggestion-summary-input"
+                value={editValue}
+                onChange={(e) => setEditValue(e.target.value)}
+                onClick={(e) => e.stopPropagation()}
+                onDoubleClick={(e) => e.stopPropagation()}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    handleEditConfirm();
+                  } else if (e.key === 'Escape') {
+                    handleEditCancel();
+                  }
                 }}
+                autoFocus
+              />
+            ) : (
+              <span
+                className="suggested suggestion-summary-name"
+                style={hasMalformedName ? { color: '#ef4444', fontWeight: 'bold' } : undefined}
               >
-                <span className="suggested" style={hasMalformedName ? { color: '#ef4444', fontWeight: 'bold' } : undefined}>
-                  {suggestion.suggestedName}
-                </span>
-                {sampleValue && (
-                  <>
-                    <span className="arrow" style={{ margin: '0 8px', color: '#94a3b8' }}>←</span>
-                    <span className="original" style={{ color: '#64748b' }}>{sampleValue}</span>
-                  </>
-                )}
-                {suggestion.details?.excelAnchor && (
-                  <span style={{ color: '#0ea5e9', marginLeft: sampleValue ? '8px' : '0', fontSize: '12px', background: '#e0f2fe', padding: '2px 6px', borderRadius: '4px' }}>
-                    📍 {suggestion.details.excelAnchor.type === 'cell' ? suggestion.details.excelAnchor.address : suggestion.details.excelAnchor.tableName || suggestion.details.excelAnchor.startAddress || '区域'}
-                  </span>
-                )}
-                {descriptionSummary && (
-                  <span style={{ color: '#475569', marginLeft: '8px' }}>
-                    说明: {descriptionSummary}
-                  </span>
-                )}
-              </div>
-            </div>
-          )}
+                {suggestion.suggestedName}
+              </span>
+            )}
+          </div>
+          <div className="suggestion-summary-row">
+            <span className="suggestion-summary-label">参数值</span>
+            <span className="original suggestion-summary-value">{summaryValue}</span>
+          </div>
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          {suggestion.applied && <span className="applied-badge">已应用</span>}
-          <button
-            className="dismiss-btn"
-            onClick={(event) => {
-              event.stopPropagation();
-              onDismiss();
-            }}
-          >
-            删除
-          </button>
+        <div className="suggestion-summary-toggle">
+          <span className={`suggestion-chevron ${expanded ? 'expanded' : ''}`}>⌄</span>
         </div>
       </div>
 
       {expanded && (
-        <div className="suggestion-details" style={{ marginTop: '12px', paddingTop: '12px', borderTop: '1px solid #e2e8f0' }}>
-          <div className="suggestion-meta-row" style={{ marginBottom: '12px', display: 'flex', gap: '12px' }}>
+        <div className="suggestion-details">
+          <div className="suggestion-meta-row" style={{ marginBottom: '12px', display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
             <span className={`suggestion-source-badge source-${suggestion.details?.source || 'heuristic'}`}>
               来源: {sourceLabelMap[suggestion.details?.source || 'heuristic'] || '未知'}
             </span>
             <span className="suggestion-field-type" style={{ fontSize: '12px', color: '#64748b', background: '#f1f5f9', padding: '2px 6px', borderRadius: '4px' }}>
               类型: {suggestion.details?.fieldType || 'text'}
             </span>
-            <span className="confidence-badge" style={{ fontSize: '12px', color: '#64748b', background: '#f1f5f9', padding: '2px 6px', borderRadius: '4px' }}>
+            <span style={{ ...badgeStyleMap.base, ...badgeStyleMap.risk[riskLevel] }}>
+              风险: {riskLabelMap[riskLevel]}
+            </span>
+            <span style={{ ...badgeStyleMap.base, ...badgeStyleMap.confidence[confidenceLevel] }}>
               置信度: {Math.round(suggestion.confidence * 100)}%
             </span>
+            <span style={{ ...badgeStyleMap.base, ...(needsReview ? badgeStyleMap.review.pending : badgeStyleMap.review.ready) }}>
+              状态: {needsReview ? '待人工确认' : '可继续应用'}
+            </span>
+            {suggestion.details?.policy && (
+              <span style={{ ...badgeStyleMap.base, ...badgeStyleMap.neutral }}>
+                策略: {suggestion.details.policy}
+              </span>
+            )}
+            {suggestion.details?.termMatchStatus && (
+              <span style={{ ...badgeStyleMap.base, ...(suggestion.details.termMatchStatus === 'matched'
+                ? { background: '#ecfeff', color: '#0f766e' }
+                : badgeStyleMap.neutral) }}>
+                术语: {suggestion.details.termMatchStatus === 'matched'
+                  ? `已命中${suggestion.details.termMatchTermId ? ` (${suggestion.details.termMatchTermId})` : ''}`
+                  : '未命中'}
+              </span>
+            )}
           </div>
 
-          <div className="suggestion-context" style={{ marginBottom: '8px' }}>
-            <span className="context-label" style={{ fontWeight: 600 }}>文档位置:</span>
-            <span className="context-text position-format" style={{ marginLeft: '4px' }}>{getPositionInfo(suggestion)}</span>
-          </div>
-
-          {suggestion.details?.significance && (
-            <div className="suggestion-significance" style={{ marginBottom: '8px' }}>
-              <span className="significance-label" style={{ fontWeight: 600 }}>用途说明:</span>
-              <span className="significance-text" style={{ marginLeft: '4px' }}>{suggestion.details.significance}</span>
+          <div className="suggestion-detail-grid">
+            <div className="suggestion-detail-item">
+              <span className="suggestion-detail-label">文档位置</span>
+              <span className="context-text position-format">{getPositionInfo(suggestion)}</span>
             </div>
-          )}
-          {suggestion.details?.formatter && (
-            <p style={{ marginBottom: '8px' }}><span style={{ fontWeight: 600 }}>建议格式化器:</span> <code>{suggestion.details.formatter}</code></p>
-          )}
+            <div className="suggestion-detail-item">
+              <span className="suggestion-detail-label">字段类型</span>
+              <span className="suggestion-detail-value">{suggestion.details?.fieldType || 'text'}</span>
+            </div>
+            <div className="suggestion-detail-item">
+              <span className="suggestion-detail-label">定位状态</span>
+              <span className="suggestion-detail-value" style={{ color: hasPreciseAnchor ? '#166534' : '#b45309' }}>
+                {hasPreciseAnchor ? '已绑定精确锚点' : '仅能使用弱定位'}
+              </span>
+            </div>
+            <div className="suggestion-detail-item suggestion-detail-item-block">
+              <span className="suggestion-detail-label">定位锚点</span>
+              <span className="suggestion-detail-value">{getAnchorInfo(suggestion)}</span>
+            </div>
+            <div className="suggestion-detail-item">
+              <span className="suggestion-detail-label">原始分数</span>
+              <span className="suggestion-detail-value">{suggestion.confidence.toFixed(2)}</span>
+            </div>
+            {suggestion.details?.excelAnchor && (
+              <div className="suggestion-detail-item">
+                <span className="suggestion-detail-label">锚点位置</span>
+                <span className="suggestion-detail-value">
+                  {suggestion.details.excelAnchor.type === 'cell'
+                    ? suggestion.details.excelAnchor.address
+                    : suggestion.details.excelAnchor.tableName || suggestion.details.excelAnchor.startAddress || '区域'}
+                </span>
+              </div>
+            )}
+            {descriptionSummary && (
+              <div className="suggestion-detail-item suggestion-detail-item-block">
+                <span className="suggestion-detail-label">参数说明</span>
+                <span className="suggestion-detail-value">{descriptionSummary}</span>
+              </div>
+            )}
+            {suggestion.details?.significance && (
+              <div className="suggestion-detail-item suggestion-detail-item-block">
+                <span className="suggestion-detail-label">用途说明</span>
+                <span className="suggestion-detail-value">{suggestion.details.significance}</span>
+              </div>
+            )}
+            {suggestion.details?.formatter && (
+              <div className="suggestion-detail-item suggestion-detail-item-block">
+                <span className="suggestion-detail-label">建议格式化器</span>
+                <code className="suggestion-detail-code">{suggestion.details.formatter}</code>
+              </div>
+            )}
+          </div>
+
+          <div style={{ marginBottom: '8px', color: '#475569', fontSize: '13px', lineHeight: 1.6 }}>
+            {needsReview
+              ? '该字段建议在保存或发布前做人工确认。'
+              : '该字段当前可直接进入后续确认或应用流程。'}
+            {riskLevel === 'high' ? ' 由于属于高风险字段，建议重点复核样本值与锚点。' : ''}
+            {suggestion.confidence < 0.75 ? ' 当前置信度偏低，建议结合原文位置再次确认。' : ''}
+          </div>
 
           <div className="suggestion-actions" style={{ marginTop: '16px', display: 'flex', gap: '8px' }}>
             {!isEditing ? (
               <>
+                <button className="dismiss-btn" onClick={enterEditMode}>
+                  编辑
+                </button>
                 {!suggestion.applied ? (
                   <button className="apply-btn" onClick={onApply}>
                     ✅ 应用
@@ -236,6 +365,9 @@ export const AISuggestionItem: React.FC<{
                     🔄 重新应用
                   </button>
                 )}
+                <button className="dismiss-btn" onClick={onDismiss}>
+                  删除
+                </button>
               </>
             ) : (
               <>

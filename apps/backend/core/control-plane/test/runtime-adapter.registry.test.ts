@@ -30,10 +30,24 @@ describe('RuntimeAdapterRegistry', () => {
       supports: jest.fn().mockReturnValue(false),
       invokeStep: jest.fn(),
     };
+    const documentAdapter: RuntimeAdapter = {
+      runtimeType: 'document',
+      routeKeys: [buildRuntimeAdapterRouteKey('document', 'document.render')],
+      supports: jest.fn().mockReturnValue(false),
+      invokeStep: jest.fn(),
+    };
+    const workflowAdapter: RuntimeAdapter = {
+      runtimeType: 'workflow',
+      routeKeys: [buildRuntimeAdapterRouteKey('workflow', 'workflow.run')],
+      supports: jest.fn().mockReturnValue(false),
+      invokeStep: jest.fn(),
+    };
 
     const registry = new RuntimeAdapterRegistry(
       browserAdapter as never,
       capabilityAdapter as never,
+      documentAdapter as never,
+      workflowAdapter as never,
     );
 
     const resolved = registry.resolve(baseRequest);
@@ -55,10 +69,24 @@ describe('RuntimeAdapterRegistry', () => {
       supports: jest.fn().mockReturnValue(false),
       invokeStep: jest.fn(),
     };
+    const documentAdapter: RuntimeAdapter = {
+      runtimeType: 'document',
+      routeKeys: [],
+      supports: jest.fn().mockReturnValue(false),
+      invokeStep: jest.fn(),
+    };
+    const workflowAdapter: RuntimeAdapter = {
+      runtimeType: 'workflow',
+      routeKeys: [],
+      supports: jest.fn().mockReturnValue(false),
+      invokeStep: jest.fn(),
+    };
 
     const registry = new RuntimeAdapterRegistry(
       browserAdapter as never,
       capabilityAdapter as never,
+      documentAdapter as never,
+      workflowAdapter as never,
     );
 
     const resolved = registry.resolve(baseRequest);
@@ -80,10 +108,24 @@ describe('RuntimeAdapterRegistry', () => {
       supports: jest.fn().mockReturnValue(false),
       invokeStep: jest.fn(),
     };
+    const documentAdapter: RuntimeAdapter = {
+      runtimeType: 'document',
+      routeKeys: [],
+      supports: jest.fn().mockReturnValue(false),
+      invokeStep: jest.fn(),
+    };
+    const workflowAdapter: RuntimeAdapter = {
+      runtimeType: 'workflow',
+      routeKeys: [],
+      supports: jest.fn().mockReturnValue(false),
+      invokeStep: jest.fn(),
+    };
 
     const registry = new RuntimeAdapterRegistry(
       browserAdapter as never,
       capabilityAdapter as never,
+      documentAdapter as never,
+      workflowAdapter as never,
     );
 
     try {
@@ -99,5 +141,49 @@ describe('RuntimeAdapterRegistry', () => {
       });
       expect(response.registeredRoutes).toEqual([]);
     }
+  });
+
+  it('resolves workflow adapter by explicit route key', () => {
+    const browserAdapter: RuntimeAdapter = {
+      runtimeType: 'browser',
+      routeKeys: [buildRuntimeAdapterRouteKey('browser', 'browser.step')],
+      supports: jest.fn().mockReturnValue(false),
+      invokeStep: jest.fn(),
+    };
+    const capabilityAdapter: RuntimeAdapter = {
+      runtimeType: 'custom',
+      routeKeys: [buildRuntimeAdapterRouteKey('custom', 'skill.runtime')],
+      supports: jest.fn().mockReturnValue(false),
+      invokeStep: jest.fn(),
+    };
+    const documentAdapter: RuntimeAdapter = {
+      runtimeType: 'document',
+      routeKeys: [buildRuntimeAdapterRouteKey('document', 'document.render')],
+      supports: jest.fn().mockReturnValue(false),
+      invokeStep: jest.fn(),
+    };
+    const workflowAdapter: RuntimeAdapter = {
+      runtimeType: 'workflow',
+      routeKeys: [buildRuntimeAdapterRouteKey('workflow', 'workflow.run')],
+      supports: jest.fn().mockReturnValue(false),
+      invokeStep: jest.fn(),
+    };
+
+    const registry = new RuntimeAdapterRegistry(
+      browserAdapter as never,
+      capabilityAdapter as never,
+      documentAdapter as never,
+      workflowAdapter as never,
+    );
+
+    const request: RuntimeStepInvokeRequest = {
+      ...baseRequest,
+      runtimeType: 'workflow',
+      capabilityType: 'workflow.run',
+    };
+
+    const resolved = registry.resolve(request);
+    expect(resolved).toBe(workflowAdapter);
+    expect(workflowAdapter.supports).not.toHaveBeenCalled();
   });
 });

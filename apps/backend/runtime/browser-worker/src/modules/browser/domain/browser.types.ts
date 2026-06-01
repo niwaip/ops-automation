@@ -1,3 +1,5 @@
+import type { TakeoverStatus } from './takeover.types';
+
 export type BrowserExecutionBackend = 'cli' | 'chrome-devtools' | 'mcp';
 
 export interface BrowserSessionPreferences {
@@ -29,5 +31,10 @@ export interface BrowserRuntimeSessionState {
   endpoints?: BrowserEndpoints;
   controlMode?: 'AGENT_RUNNING' | 'HUMAN_CONTROL';
   reason?: string;
+  takeoverStatus?: TakeoverStatus;
+  activeTakeoverSessionId?: string;
+  lastFailedStepId?: string;
+  lastFailureReason?: string;
+  lastObservationAt?: string;
   updatedAt: string;
 }

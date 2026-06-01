@@ -22,7 +22,6 @@ import {
   ExecutionPhaseDto,
   ExecutionStepDto,
 } from '@/api/execution';
-import type { ExecutionSemantic } from '@/api/execution';
 import { runtimeSessionApi } from '@/api/runtimeSession';
 import { skillApi } from '@/api/skill';
 import { capabilityReleaseApi } from '@/api/capabilities';
@@ -31,8 +30,13 @@ import TimelineNodeCard from '@/features/executions/components/TimelineNodeCard'
 import {
   buildBrowserOutputDisplay,
   extractBrowserExecutionResult,
+  hasBrowserExecutionEvidence,
 } from '@/features/executions/lib/browser';
-import { hasMeaningfulExecutionResult, tryParseJsonValue } from '@/features/executions/lib/common';
+import { asRecord, hasMeaningfulExecutionResult, tryParseJsonValue } from '@/features/executions/lib/common';
+import {
+  extractPhaseStepImageSources,
+  extractWorkflowActivitySnapshotSources,
+} from '@/features/executions/lib/artifacts';
 import {
   beautifyText,
   getBrowserStepColor,
@@ -46,6 +50,7 @@ import {
 } from '@/features/executions/lib/detailView';
 import { normalizeRequiredInputValues, renderRequiredInputField, type RequiredInputField } from '@/features/executions/lib/inputFields';
 import { renderJsonValue } from '@/features/executions/lib/json';
+import { extractExecutionDisplayInput } from '@/features/executions/lib/listHelpers';
 import {
   compareExecutionPhases,
   getPhaseStatusColor,
@@ -78,6 +83,145 @@ const { Title, Text } = Typography;
 const statusColors = EXECUTION_STATUS_COLORS;
 
 const fixLocalhostLink = (url?: string): string | undefined => replaceLocalhostWithCurrentHost(url);
+
+const getRecoveryPatchSummary = (patch: unknown, isEnglish: boolean): string | undefined => {
+  const record = asRecord(tryParseJsonValue(patch));
+  if (!record) {
+    return undefined;
+  }
+
+  const type = typeof record.type === 'string' ? record.type : undefined;
+  const selector = typeof record.selector === 'string' ? record.selector : undefined;
+  const durationMs = typeof record.duration_ms === 'number' ? record.duration_ms : undefined;
+  const note = typeof record.note === 'string' ? record.note : undefined;
+
+  if (type === 'append_wait') {
+    return isEnglish
+      ? `Append wait ${durationMs ?? 0}ms`
+      : `追加等待 ${durationMs ?? 0}ms`;
+  }
+  if (type === 'replace_selector') {
+    return isEnglish
+      ? `Replace selector: ${selector || '-'}`
+      : `替换选择器: ${selector || '-'}`;
+  }
+  if (type === 'resolve_by_human') {
+    return isEnglish
+      ? `Resolved by human${note ? `: ${note}` : ''}`
+      : `人工处理${note ? `: ${note}` : ''}`;
+  }
+
+  return type || undefined;
+};
+
+const BROWSER_ACTIVITY_ACTIONS = new Set([
+  'navigate',
+  'click',
+  'fill',
+  'type',
+  'press',
+  'select',
+  'hover',
+  'scroll',
+  'wait',
+  'screenshot',
+  'upload',
+  'drag',
+]);
+
+const isBrowserWorkflowActivity = (phase: ExecutionPhaseDto): boolean => {
+  if (phase.phaseType !== 'workflow_activity') {
+    return false;
+  }
+
+  if (extractWorkflowActivitySnapshotSources(phase).length > 0) {
+    return true;
+  }
+
+  if (extractBrowserExecutionResult(phase.output)) {
+    return true;
+  }
+
+  return (phase.steps || []).some((step) => {
+    if (step.snapshotId) {
+      return true;
+    }
+
+    if (extractPhaseStepImageSources(step, phase.artifacts || []).length > 0) {
+      return true;
+    }
+
+    const action = step.action?.trim().toLowerCase();
+    return Boolean(action && BROWSER_ACTIVITY_ACTIONS.has(action));
+  });
+};
+
+const renderExecutionPayloadContent = (
+  value: unknown,
+  emptyText: string,
+  treatSingleResultFieldAsMarkdown = false,
+) => {
+  const parsedValue = tryParseJsonValue(value);
+
+  if (parsedValue === undefined || parsedValue === null || parsedValue === '') {
+    return <Text type="secondary">{emptyText}</Text>;
+  }
+
+  if (typeof parsedValue === 'string') {
+    return (
+      <div
+        className="chat-message-markdown"
+        style={{
+          background: 'var(--bg-secondary)',
+          color: 'var(--text-primary)',
+          border: '1px solid var(--bg-secondary)',
+          padding: 12,
+          borderRadius: 8,
+          marginTop: 8,
+          lineHeight: '1.6',
+        }}
+      >
+        <ReactMarkdown remarkPlugins={[remarkGfm]}>
+          {beautifyText(parsedValue)}
+        </ReactMarkdown>
+      </div>
+    );
+  }
+
+  const resultObj = asRecord(parsedValue);
+  const resultText = typeof resultObj?.result === 'string' ? resultObj.result : undefined;
+  const onlyHasResultField = treatSingleResultFieldAsMarkdown && resultObj
+    ? Object.keys(resultObj).length === 1
+      && Object.prototype.hasOwnProperty.call(resultObj, 'result')
+    : false;
+
+  if (resultText && onlyHasResultField) {
+    return (
+      <div
+        className="chat-message-markdown"
+        style={{
+          background: 'var(--bg-secondary)',
+          color: 'var(--text-primary)',
+          border: '1px solid var(--bg-secondary)',
+          padding: 12,
+          borderRadius: 8,
+          marginTop: 8,
+          lineHeight: '1.6',
+        }}
+      >
+        <ReactMarkdown remarkPlugins={[remarkGfm]}>
+          {beautifyText(resultText)}
+        </ReactMarkdown>
+      </div>
+    );
+  }
+
+  return (
+    <pre style={{ background: 'var(--bg-secondary)', color: 'var(--text-primary)', border: '1px solid var(--bg-secondary)', padding: 12, borderRadius: 8, overflow: 'auto', marginTop: 8, lineHeight: '1.6', whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+      {renderJsonValue(parsedValue)}
+    </pre>
+  );
+};
 
 const ExecutionDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -283,8 +427,8 @@ const ExecutionDetailPage: React.FC = () => {
     () => buildWaitingInputDisplayGroups(requiredInputs),
     [requiredInputs],
   );
-  const semantic: ExecutionSemantic | undefined = execution?.semantic as ExecutionSemantic | undefined;
-  const parsedResult = tryParseJsonValue(execution?.resultJson) as Record<string, unknown> | undefined;
+  const semantic = execution?.semantic;
+  const parsedResult = asRecord(tryParseJsonValue(execution?.resultJson));
   const browserExecutionResult = extractBrowserExecutionResult(execution?.resultJson);
   const executionPhases = phasesData || execution?.phases || [];
   const sortedExecutionPhases = React.useMemo(
@@ -318,18 +462,39 @@ const ExecutionDetailPage: React.FC = () => {
     () => browserExecutionResult || extractBrowserExecutionResult(effectiveResultJson),
     [browserExecutionResult, effectiveResultJson],
   );
+  const phaseRuntimeSessionId = React.useMemo(
+    () => [...sortedExecutionPhases]
+      .reverse()
+      .find((phase) => typeof phase.runtimeSessionId === 'string' && phase.runtimeSessionId.trim().length > 0)
+      ?.runtimeSessionId,
+    [sortedExecutionPhases],
+  );
+  const executionRuntimeSessionId =
+    execution?.runtimeSessionId || effectiveBrowserExecutionResult?.runtimeSessionId || phaseRuntimeSessionId;
+  const isBrowserExecution = React.useMemo(
+    () => (
+      hasBrowserExecutionEvidence({
+        runtimeType: execution?.runtimeType,
+        runtimeSessionId: executionRuntimeSessionId,
+        browserExecutionResult: effectiveBrowserExecutionResult,
+        phases: sortedExecutionPhases,
+      })
+      || sortedExecutionPhases.some((phase) => isBrowserWorkflowActivity(phase))
+    ),
+    [effectiveBrowserExecutionResult, execution?.runtimeType, executionRuntimeSessionId, sortedExecutionPhases],
+  );
+  const displayRuntimeType = isBrowserExecution ? 'browser' : (execution?.runtimeType || '-');
   const hasWorkflowActivityPhases = workflowActivityPhases.length > 0;
   const shouldShowLegacySteps = React.useMemo(
     () => sortedExecutionPhases.length === 0,
     [sortedExecutionPhases],
   );
   const semanticOverviewCard: React.ReactNode = semantic
-    ? <SemanticOverviewCard semantic={semantic as ExecutionSemantic} text={text} />
+    ? <SemanticOverviewCard semantic={semantic} text={text} />
     : null;
-  const executionRuntimeSessionId = execution?.runtimeSessionId || effectiveBrowserExecutionResult?.runtimeSessionId;
   const { data: runtimeSession } = useQuery(
     ['execution-runtime-session', executionRuntimeSessionId],
-    () => runtimeSessionApi.getById(executionRuntimeSessionId!),
+    () => runtimeSessionApi.getByIdOrExecutionId(executionRuntimeSessionId!, execution?.id),
     {
       enabled: Boolean(executionRuntimeSessionId),
       refetchInterval: (data) => {
@@ -348,6 +513,7 @@ const ExecutionDetailPage: React.FC = () => {
     }
   }, [runtimeSessionNovncUrl]);
   const stableRuntimeSessionNovncUrl = runtimeSessionNovncUrl || lastKnownRuntimeSessionNovncUrlRef.current;
+  const executionInput = execution ? extractExecutionDisplayInput(execution) : undefined;
   const currentPhase = React.useMemo(
     () => displayActivityPhases.find((phase) => phase.phaseKey === execution?.currentPhaseKey)
       || displayActivityPhases.find((phase) => phase.status === 'running')
@@ -670,9 +836,12 @@ const ExecutionDetailPage: React.FC = () => {
         }),
       ]
     : [];
-  const executionInfoTemporalLink = fixLocalhostLink((tryParseJsonValue(execution.resultJson) as any)?.temporalLink);
+  const executionInfoRecord = asRecord(tryParseJsonValue(execution.resultJson));
+  const executionInfoTemporalLink = fixLocalhostLink(
+    typeof executionInfoRecord?.temporalLink === 'string' ? executionInfoRecord.temporalLink : undefined,
+  );
 
-  const activityProgressCard: React.ReactNode = displayActivityPhases.length > 0 ? (
+  const activityProgressCard: React.ReactNode = isBrowserExecution && displayActivityPhases.length > 0 ? (
     <Card title={text.stepsProgress} style={{ marginBottom: 16 }}>
       <Steps
         current={Math.max(displayActivityPhases.findIndex((phase) => phase.phaseKey === currentPhase?.phaseKey), 0)}
@@ -718,6 +887,95 @@ const ExecutionDetailPage: React.FC = () => {
           }
         />
       ) : null}
+    </Card>
+  ) : null;
+  const currentPhaseRecoveryDecision = asRecord(tryParseJsonValue(currentPhase?.recoveryDecision));
+  const currentPhaseTakeovers = currentPhase?.takeovers || [];
+  const latestTakeoverRecord = currentPhaseTakeovers.length > 0
+    ? currentPhaseTakeovers[currentPhaseTakeovers.length - 1]
+    : undefined;
+  const takeoverRecoveryCard: React.ReactNode = currentPhase && (currentPhaseTakeovers.length > 0 || currentPhaseRecoveryDecision) ? (
+    <Card title={isEnglish ? 'Takeover Recovery' : '接管恢复信息'} style={{ marginBottom: 16 }}>
+      <Space direction="vertical" size={16} style={{ width: '100%' }}>
+        <Descriptions column={2} size="small">
+          <Descriptions.Item label={text.currentPhase}>
+            {currentPhase.phaseName || currentPhase.phaseKey}
+          </Descriptions.Item>
+          <Descriptions.Item label={text.status}>
+            <Tag color={getPhaseStatusColor(currentPhase.status)}>
+              {getPhaseStatusLabel(currentPhase.status, isEnglish)}
+            </Tag>
+          </Descriptions.Item>
+          <Descriptions.Item label={isEnglish ? 'Latest Takeover' : '最近接管'}>
+            {latestTakeoverRecord ? (
+              <Space wrap size={[8, 4]}>
+                <Tag color={latestTakeoverRecord.status === 'resolved' ? 'green' : latestTakeoverRecord.status === 'requested' ? 'orange' : 'default'}>
+                  {latestTakeoverRecord.status}
+                </Tag>
+                <Text type="secondary">
+                  {new Date(latestTakeoverRecord.createdAt).toLocaleString()}
+                </Text>
+              </Space>
+            ) : '-'}
+          </Descriptions.Item>
+          <Descriptions.Item label={isEnglish ? 'Recovery Patch' : '恢复补丁'}>
+            {getRecoveryPatchSummary(currentPhaseRecoveryDecision?.patch, isEnglish) || '-'}
+          </Descriptions.Item>
+          <Descriptions.Item label={text.failureReason} span={2}>
+            {latestTakeoverRecord?.reason || currentPhase.errorMessage || '-'}
+          </Descriptions.Item>
+          <Descriptions.Item label={isEnglish ? 'Resolution Note' : '处理说明'} span={2}>
+            {latestTakeoverRecord?.resolutionNote
+              || (typeof currentPhaseRecoveryDecision?.comment === 'string' ? currentPhaseRecoveryDecision.comment : '-')}
+          </Descriptions.Item>
+        </Descriptions>
+
+        {currentPhaseTakeovers.length > 0 ? (
+          <Timeline
+            items={currentPhaseTakeovers.map((takeover) => ({
+              color: takeover.status === 'resolved' ? 'green' : takeover.status === 'requested' ? 'orange' : 'gray',
+              children: (
+                <Space direction="vertical" size={4} style={{ width: '100%' }}>
+                  <Space wrap size={[8, 4]}>
+                    <Tag color={takeover.status === 'resolved' ? 'green' : takeover.status === 'requested' ? 'orange' : 'default'}>
+                      {takeover.status}
+                    </Tag>
+                    <Text>{new Date(takeover.createdAt).toLocaleString()}</Text>
+                    {takeover.resolvedAt ? (
+                      <Text type="secondary">
+                        {`${isEnglish ? 'Resolved at' : '完成于'} ${new Date(takeover.resolvedAt).toLocaleString()}`}
+                      </Text>
+                    ) : null}
+                  </Space>
+                  {takeover.reason ? <Text>{takeover.reason}</Text> : null}
+                  {(takeover.requestedBy || takeover.resolvedBy) ? (
+                    <Space wrap size={[12, 4]}>
+                      {takeover.requestedBy ? (
+                        <Text type="secondary">{`${isEnglish ? 'Requested by' : '发起人'}: ${takeover.requestedBy}`}</Text>
+                      ) : null}
+                      {takeover.resolvedBy ? (
+                        <Text type="secondary">{`${isEnglish ? 'Resolved by' : '处理人'}: ${takeover.resolvedBy}`}</Text>
+                      ) : null}
+                    </Space>
+                  ) : null}
+                  {takeover.resolutionNote ? (
+                    <Text type="secondary">{takeover.resolutionNote}</Text>
+                  ) : null}
+                </Space>
+              ),
+            }))}
+          />
+        ) : null}
+
+        {currentPhaseRecoveryDecision ? (
+          <div>
+            <Text strong>{isEnglish ? 'Recovery Decision Payload' : '恢复决策详情'}</Text>
+            <pre style={{ background: 'var(--bg-secondary)', color: 'var(--text-primary)', border: '1px solid var(--bg-secondary)', padding: 12, borderRadius: 8, overflow: 'auto', marginTop: 8, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+              {renderJsonValue(currentPhaseRecoveryDecision)}
+            </pre>
+          </div>
+        ) : null}
+      </Space>
     </Card>
   ) : null;
 
@@ -918,7 +1176,7 @@ const ExecutionDetailPage: React.FC = () => {
               '-'
             )}
           </Descriptions.Item>
-          <Descriptions.Item label={text.runtimeType}>{execution.runtimeType}</Descriptions.Item>
+          <Descriptions.Item label={text.runtimeType}>{displayRuntimeType}</Descriptions.Item>
           <Descriptions.Item label={text.riskLevel}>{execution.riskLevel}</Descriptions.Item>
           <Descriptions.Item label={text.approvalStatus}>{execution.approvalStatus || '-'}</Descriptions.Item>
           <Descriptions.Item label={text.createdAt}>
@@ -957,7 +1215,7 @@ const ExecutionDetailPage: React.FC = () => {
         </Descriptions>
       </Card>
 
-      {stableRuntimeSessionNovncUrl && (isExecutionActive || isPreviewRuntimeSessionState(runtimeSession?.state)) ? (
+      {isBrowserExecution && stableRuntimeSessionNovncUrl && (isExecutionActive || isPreviewRuntimeSessionState(runtimeSession?.state)) ? (
         <div style={{ marginBottom: 16 }}>
           <LiveSessionPreviewCard
             novncUrl={stableRuntimeSessionNovncUrl}
@@ -975,12 +1233,27 @@ const ExecutionDetailPage: React.FC = () => {
         phase={currentPhase}
       />
 
+      {takeoverRecoveryCard}
+
       {activityProgressCard}
 
       {React.isValidElement(semanticOverviewCard) ? semanticOverviewCard : null}
 
       {/* Output */}
-      {effectiveBrowserExecutionResult && !isExecutionActive && !hasWorkflowActivityPhases ? (
+      {!isBrowserExecution ? (
+        <Card title={text.inputOutput} style={{ marginBottom: 16 }}>
+          <div style={{ marginBottom: 16 }}>
+            <Text strong>{text.input}:</Text>
+            {renderExecutionPayloadContent(executionInput, isEnglish ? 'No input' : '暂无输入内容')}
+          </div>
+          <div>
+            <Text strong>{text.result}:</Text>
+            {renderExecutionPayloadContent(effectiveResultJson, isEnglish ? 'No result output' : '暂无结果输出', true)}
+          </div>
+        </Card>
+      ) : null}
+
+      {isBrowserExecution && effectiveBrowserExecutionResult && !isExecutionActive && !hasWorkflowActivityPhases ? (
         <Card title={text.browserExecutionResult} style={{ marginBottom: 16 }}>
           {effectiveBrowserExecutionResult.runtimeSessionId ? (
             <div style={{ marginBottom: 12 }}>
@@ -993,51 +1266,7 @@ const ExecutionDetailPage: React.FC = () => {
         </Card>
       ) : null}
 
-      {effectiveResultJson && !effectiveBrowserExecutionResult && !isExecutionActive ? (
-        <Card title={text.inputOutput} style={{ marginBottom: 16 }}>
-          <div>
-            <Text strong>{text.result}:</Text>
-            {(() => {
-              const resultObj = effectiveResultJson as any;
-              const hasResult = resultObj && typeof resultObj === 'object' && 'result' in resultObj && typeof resultObj.result === 'string';
-
-              const filteredResult = resultObj && typeof resultObj === 'object' && !Array.isArray(resultObj)
-                ? { ...resultObj }
-                : resultObj;
-              const remainingKeys = filteredResult && typeof filteredResult === 'object' && !Array.isArray(filteredResult)
-                ? Object.keys(filteredResult)
-                : [];
-              const onlyHasResultField = remainingKeys.length === 1 && remainingKeys[0] === 'result';
-
-              if (hasResult && onlyHasResultField) {
-                return (
-                  <div className="chat-message-markdown" style={{ 
-                    background: 'var(--bg-secondary)', 
-                    color: 'var(--text-primary)', 
-                    border: '1px solid var(--bg-secondary)', 
-                    padding: 12, 
-                    borderRadius: 8, 
-                    marginTop: 8,
-                    lineHeight: '1.6'
-                  }}>
-                    <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                      {beautifyText(resultObj.result)}
-                    </ReactMarkdown>
-                  </div>
-                );
-              }
-
-              return (
-                <pre style={{ background: 'var(--bg-secondary)', color: 'var(--text-primary)', border: '1px solid var(--bg-secondary)', padding: 12, borderRadius: 8, overflow: 'auto', marginTop: 8, lineHeight: '1.6' }}>
-                  {renderJsonValue(filteredResult)}
-                </pre>
-              );
-            })()}
-          </div>
-        </Card>
-      ) : null}
-
-      {!displayActivityPhases.length && shouldShowLegacySteps && steps && steps.length > 0 ? (
+      {isBrowserExecution && !displayActivityPhases.length && shouldShowLegacySteps && steps && steps.length > 0 ? (
         <Card title={text.stepsProgress} style={{ marginBottom: 16 }}>
           <Steps
             current={getCurrentStepIndex()}
@@ -1053,8 +1282,9 @@ const ExecutionDetailPage: React.FC = () => {
       ) : null}
 
       {/* Steps Table */}
-      <Card title={text.stepsDetails}>
-        {!displayActivityPhases.length && shouldShowLegacySteps && steps && steps.length > 0 ? (
+      {isBrowserExecution ? (
+        <Card title={text.stepsDetails}>
+          {!displayActivityPhases.length && shouldShowLegacySteps && steps && steps.length > 0 ? (
           <Table
             columns={stepColumns}
             dataSource={steps}
@@ -1062,7 +1292,7 @@ const ExecutionDetailPage: React.FC = () => {
             pagination={false}
             size="small"
           />
-        ) : (
+          ) : (
           <Alert
             type="info"
             showIcon
@@ -1071,8 +1301,9 @@ const ExecutionDetailPage: React.FC = () => {
               ? 'This execution is driven by phases and activity steps. Legacy execution steps are hidden to avoid showing stale error records.'
               : '该执行当前以阶段与 Activity 步骤为主视图，已隐藏旧版顶层步骤，避免继续显示恢复前的历史错误。'}
           />
-        )}
-      </Card>
+          )}
+        </Card>
+      ) : null}
     </div>
   );
 };

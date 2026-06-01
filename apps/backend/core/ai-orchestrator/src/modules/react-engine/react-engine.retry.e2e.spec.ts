@@ -93,11 +93,11 @@ describe('ReActEngineService Retry E2E', () => {
       attemptedModelIds: ['default'],
     });
     expect(resultEvent?.data?.meta).toMatchObject({
-      systemPromptSectionKeys: expect.arrayContaining(['system_policy', 'capability_policy', 'tool_spec', 'skill_index']),
+      systemPromptSectionKeys: expect.arrayContaining(['system_policy', 'capability_policy', 'skill_index']),
       userPromptSectionKeys: expect.arrayContaining(['task_input', 'routing_state', 'prompt_assembly_state', 'execution_request']),
     });
     expect(resultEvent?.data?.promptAssembly).toMatchObject({
-      systemPromptSectionKeys: expect.arrayContaining(['system_policy', 'capability_policy', 'tool_spec', 'skill_index']),
+      systemPromptSectionKeys: expect.arrayContaining(['system_policy', 'capability_policy', 'skill_index']),
       userPromptSectionKeys: expect.arrayContaining(['task_input', 'routing_state', 'prompt_assembly_state', 'execution_request']),
     });
     expect(resultEvent?.data?.decisionContext).toMatchObject({
@@ -106,13 +106,13 @@ describe('ReActEngineService Retry E2E', () => {
         attemptedModelIds: ['default'],
       },
       promptAssembly: {
-        systemPromptSectionKeys: expect.arrayContaining(['system_policy', 'capability_policy', 'tool_spec', 'skill_index']),
+        systemPromptSectionKeys: expect.arrayContaining(['system_policy', 'capability_policy', 'skill_index']),
         userPromptSectionKeys: expect.arrayContaining(['task_input', 'routing_state', 'prompt_assembly_state', 'execution_request']),
       },
     });
     expect(chatCompletion.mock.calls[1]?.[0]?.[1]?.content).toContain('systemSections=');
     expect(chatCompletion.mock.calls[1]?.[0]?.[1]?.content).toContain('## Prompt Assembly State');
-    expect(chatCompletion.mock.calls[1]?.[0]?.[1]?.content).toContain('tool_spec');
+    expect(chatCompletion.mock.calls[1]?.[0]?.[1]?.content).toContain('system_policy>capability_policy>skill_index');
     expect(chatCompletion).toHaveBeenCalledTimes(2);
     expect(sessionService.deleteSession).toHaveBeenCalledWith('retry-session');
   });
@@ -214,11 +214,11 @@ describe('ReActEngineService Retry E2E', () => {
       attemptedModelIds: ['primary-model'],
     });
     expect(providerErrorEvent?.data?.meta).toMatchObject({
-      systemPromptSectionKeys: expect.arrayContaining(['system_policy', 'capability_policy', 'tool_spec', 'skill_index']),
+      systemPromptSectionKeys: expect.arrayContaining(['system_policy', 'capability_policy', 'skill_index']),
       userPromptSectionKeys: expect.arrayContaining(['task_input', 'routing_state', 'execution_request']),
     });
     expect(providerErrorEvent?.data?.promptAssembly).toMatchObject({
-      systemPromptSectionKeys: expect.arrayContaining(['system_policy', 'capability_policy', 'tool_spec', 'skill_index']),
+      systemPromptSectionKeys: expect.arrayContaining(['system_policy', 'capability_policy', 'skill_index']),
       userPromptSectionKeys: expect.arrayContaining(['task_input', 'routing_state', 'execution_request']),
     });
     expect(providerErrorEvent?.data?.decisionContext).toMatchObject({
@@ -227,7 +227,7 @@ describe('ReActEngineService Retry E2E', () => {
         attemptedModelIds: ['primary-model'],
       },
       promptAssembly: {
-        systemPromptSectionKeys: expect.arrayContaining(['system_policy', 'capability_policy', 'tool_spec', 'skill_index']),
+        systemPromptSectionKeys: expect.arrayContaining(['system_policy', 'capability_policy', 'skill_index']),
         userPromptSectionKeys: expect.arrayContaining(['task_input', 'routing_state', 'execution_request']),
       },
     });
@@ -243,7 +243,7 @@ describe('ReActEngineService Retry E2E', () => {
         routingReason: 'provider_error',
       },
       promptAssembly: {
-        systemPromptSectionKeys: expect.arrayContaining(['system_policy', 'capability_policy', 'tool_spec', 'skill_index']),
+        systemPromptSectionKeys: expect.arrayContaining(['system_policy', 'capability_policy', 'skill_index']),
         userPromptSectionKeys: expect.arrayContaining(['task_input', 'routing_state', 'prompt_assembly_state', 'execution_request']),
       },
     });
@@ -363,7 +363,7 @@ describe('ReActEngineService Retry E2E', () => {
         routingReason: 'protocol_error',
       },
       promptAssembly: {
-        systemPromptSectionKeys: expect.arrayContaining(['system_policy', 'capability_policy', 'tool_spec', 'skill_index']),
+        systemPromptSectionKeys: expect.arrayContaining(['system_policy', 'capability_policy', 'skill_index']),
         userPromptSectionKeys: expect.arrayContaining(['task_input', 'routing_state', 'prompt_assembly_state', 'execution_request']),
       },
     });

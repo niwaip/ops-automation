@@ -164,6 +164,8 @@ export interface TemporalWorkflowSourceTemplate {
   fileName?: string;
   format?: string;
   variableCount?: number;
+  templateAssetVersion?: string; // 新增：资产版本
+  renderPlanVersion?: number;    // 新增：渲染计划版本
 }
 
 export interface TemporalWorkflowSourceContext {
@@ -173,6 +175,12 @@ export interface TemporalWorkflowSourceContext {
   generatedAt?: string;
   warnings?: string[];
   sourceTemplate?: TemporalWorkflowSourceTemplate | null;
+  templateAssetSummary?: {      // 新增：资产摘要
+    assetVersion: string;
+    renderPlanVersion: number;
+    fieldCount: number;
+    source: string;
+  };
 }
 
 export interface TemporalWorkflowDTO extends TemporalWorkflow {
@@ -209,6 +217,8 @@ export interface TemplateWorkflowDraft {
     fileName?: string;
     format?: string;
     variableCount: number;
+    templateAssetVersion?: string; // 新增
+    renderPlanVersion?: number;    // 新增
   };
 }
 
@@ -288,6 +298,28 @@ interface CarboneTemplateMeta {
   variables?: string[];
   skillId?: string;
   loops?: Array<{ arrayPath: string }>;
+  templateAssetManifest?: {
+    assetVersion: string;
+    fieldCount: number;
+    templateFieldSpecs?: Array<{
+      fieldId: string;
+      description?: string;
+      required?: boolean;
+      type?: string;
+    }>;
+    renderPlan?: {
+      version?: number;
+      bindings?: Array<{
+        fieldId: string;
+        variablePath: string;
+        required?: boolean;
+      }>;
+    };
+    renderPlanVersion?: number;
+    metadata?: {
+      source?: string;
+    };
+  };
 }
 
 interface CarboneSkillMeta {
@@ -537,6 +569,16 @@ export class TemporalWorkflowService {
     const template = await this.fetchCarboneTemplate(templateId);
     const skill = template.skillId ? await this.fetchCarboneSkill(template.skillId).catch(() => null) : null;
     const analysis = await this.analyzeTemplateWorkflow(template, skill);
+    const templateAssetManifest = template.templateAssetManifest;
+    const templateAssetVersion = templateAssetManifest?.assetVersion;
+    const renderPlanVersion = this.resolveTemplateAssetRenderPlanVersion(templateAssetManifest);
+    const templateAssetSource = this.resolveTemplateAssetSource(templateAssetManifest);
+    const generationWarnings: string[] = [];
+    if (!templateAssetManifest) {
+      generationWarnings.push('当前模板缺少完整模板资产清单，已回退为基于 variables 的兼容草稿；建议先在 Addin 中保存模板资产。');
+    } else if (!templateAssetManifest.renderPlan?.bindings?.length) {
+      generationWarnings.push('当前模板资产缺少 renderPlan 绑定信息，已尽量基于字段定义生成草稿，请人工确认输入参数。');
+    }
     const short = this.slugFromTemplate(template.id);
     const fileBaseName = this.stripTemplateExtension(template.fileName || template.id);
     const documentType = analysis.documentType?.trim() || fileBaseName || `模板${short}`;
@@ -547,6 +589,7 @@ export class TemporalWorkflowService {
       || `基于模板 ${template.id} 自动生成的 ${documentType} 工作流`;
     const outputName = analysis.outputName?.trim() || `${documentType}-输出`;
     const paramSeeds = this.buildTemplateWorkflowParamSeeds(template, skill);
+    const resolvedTemplateFieldCount = this.resolveTemplateAssetFieldCount(templateAssetManifest, paramSeeds.length);
     const inputParamsArray = paramSeeds.map((param) => ({
       key: param.key,
       value: '',
@@ -591,13 +634,22 @@ export class TemporalWorkflowService {
         sourceContext: {
           sourceType: 'template',
           generatedAt: new Date().toISOString(),
+          warnings: generationWarnings,
           sourceTemplate: {
             templateId: template.id,
             skillId: template.skillId,
             fileName: template.fileName,
             format: template.format,
-              variableCount: paramSeeds.length,
+            variableCount: paramSeeds.length,
+            templateAssetVersion,
+            renderPlanVersion,
           },
+          templateAssetSummary: templateAssetManifest && templateAssetVersion ? {
+            assetVersion: templateAssetVersion,
+            renderPlanVersion: renderPlanVersion ?? 1,
+            fieldCount: resolvedTemplateFieldCount,
+            source: templateAssetSource,
+          } : undefined,
         },
         inputParams,
         outputParams: {
@@ -609,6 +661,8 @@ export class TemporalWorkflowService {
         extraPrompt: analysis.extraPrompt?.trim() || [
           `该工作流用于生成 ${documentType} 文档。`,
           `模板ID: ${template.id}`,
+          templateAssetVersion ? `模板资产版本: ${templateAssetVersion}` : '',
+          renderPlanVersion ? `渲染计划版本: ${renderPlanVersion}` : '',
           template.skillId ? `模板内置 Skill ID: ${template.skillId}` : '',
           '工作流只负责编排与参数校验，真正的渲染由共享 documentRender Activity 执行。',
         ].filter(Boolean).join('\n'),
@@ -639,6 +693,10 @@ export class TemporalWorkflowService {
               fileName: template.fileName || null,
               format: template.format || 'docx',
               variableCount: paramSeeds.length,
+              templateAssetVersion: templateAssetVersion || null,
+              renderPlanVersion: renderPlanVersion || null,
+              templateFieldCount: templateAssetManifest ? resolvedTemplateFieldCount : null,
+              templateAssetSource: templateAssetManifest ? templateAssetSource : null,
               steps: [
                 {
                   name: `渲染${documentType}`,
@@ -648,6 +706,8 @@ export class TemporalWorkflowService {
                     templateId: template.id,
                     format: template.format || 'docx',
                     outputName,
+                    templateAssetVersion: templateAssetVersion || null,
+                    renderPlanVersion: renderPlanVersion || null,
                   },
                   inputParams: inputParamsArray,
                 },
@@ -663,6 +723,8 @@ export class TemporalWorkflowService {
         fileName: template.fileName,
         format: template.format,
         variableCount: paramSeeds.length,
+        templateAssetVersion,
+        renderPlanVersion,
       },
     };
   }
@@ -4652,9 +4714,11 @@ export class TemporalWorkflowService {
     const normalizedSteps = await Promise.all(
       (normalized.steps || []).map((step) => this.normalizeWorkflowStep(step, activityDsl)),
     );
+    const finalName = this.normalizeName(workflowName || normalized.name || '未命名工作流');
     return {
       ...normalized,
-      name: this.normalizeName(workflowName || normalized.name || '未命名工作流'),
+      name: finalName,
+      workflowClassName: this.normalizeWorkflowClassName(normalized.workflowClassName, finalName),
       taskQueue: this.normalizeTaskQueue(taskQueue || normalized.taskQueue),
       steps: normalizedSteps,
     };
@@ -5377,22 +5441,85 @@ export class TemporalWorkflowService {
       arrayPath?: string;
       fieldName?: string;
     }>();
+    const manifestBindings = Array.isArray(template.templateAssetManifest?.renderPlan?.bindings)
+      ? template.templateAssetManifest?.renderPlan?.bindings
+      : [];
+    const skillParameterKeys = skillParameters
+      .map((parameter) => this.normalizeTemplateWorkflowParamKey(String(parameter?.name || '').trim()))
+      .filter(Boolean);
+    const manifestFieldMap = new Map(
+      Array.isArray(template.templateAssetManifest?.templateFieldSpecs)
+        ? template.templateAssetManifest.templateFieldSpecs.map((field) => [field.fieldId, field])
+        : [],
+    );
+    const bilingualBaseKeyByVariant = this.buildBilingualBaseKeyMap([
+      ...skillParameterKeys,
+      ...manifestBindings.map((binding) => this.variableToKey(binding.variablePath)).filter(Boolean),
+      ...this.uniqueVariables(template.variables || []).map((variable) => this.variableToKey(variable)).filter(Boolean),
+    ]);
+    const bindingFieldIdByKey = manifestBindings.reduce<Map<string, string>>((acc, binding) => {
+      const bindingKey = this.variableToKey(binding.variablePath);
+      const fieldId = String(binding.fieldId || '').trim();
+      if (bindingKey && fieldId) {
+        acc.set(bindingKey, fieldId);
+      }
+      return acc;
+    }, new Map());
 
     for (const parameter of skillParameters) {
       const rawName = String(parameter?.name || '').trim();
-      const key = this.normalizeTemplateWorkflowParamKey(rawName);
-      if (!key || paramMap.has(key)) {
+      const rawKey = this.normalizeTemplateWorkflowParamKey(rawName);
+      const key = bindingFieldIdByKey.get(rawKey) || bilingualBaseKeyByVariant.get(rawKey) || rawKey;
+      if (!key) {
+        continue;
+      }
+      const field = manifestFieldMap.get(key);
+      const description = this.resolveTemplateWorkflowParamLabel(
+        field?.description,
+        parameter?.usage,
+        parameter?.displayName,
+        `模板参数 ${key}`,
+      );
+      const displayName = this.resolveTemplateWorkflowParamLabel(
+        parameter?.displayName,
+        parameter?.usage,
+        field?.description,
+        key,
+      );
+
+      const arrayMatch = key.match(/^(.+\[\])\.(.+)$/);
+      const existing = paramMap.get(key);
+      if (existing) {
+        existing.required = existing.required || parameter?.required !== false;
+        existing.displayName = this.pickFirstNonEmptyString(
+          existing.displayName,
+          displayName,
+        );
+        existing.description = this.pickFirstNonEmptyString(
+          existing.description,
+          description,
+        ) || existing.description;
+        existing.groupLabel = this.pickFirstNonEmptyString(
+          existing.groupLabel,
+          parameter?.groupLabel,
+          parameter?.sheetName,
+          parameter?.chapter,
+          parameter?.section,
+          parameter?.group,
+        );
+        if (existing.exampleValue === undefined) {
+          existing.exampleValue = this.normalizeWorkflowExampleValue(parameter?.example, parameter?.dataType);
+        }
         continue;
       }
 
-      const arrayMatch = key.match(/^(.+\[\])\.(.+)$/);
       paramMap.set(key, {
         key,
         required: parameter?.required !== false,
-        type: this.normalizeWorkflowInputParamType(parameter?.dataType, key),
+        type: this.normalizeWorkflowInputParamType(parameter?.dataType ?? field?.type, key),
         exampleValue: this.normalizeWorkflowExampleValue(parameter?.example, parameter?.dataType),
-        description: String(parameter?.usage || parameter?.displayName || `模板参数 ${key}`),
-        displayName: String(parameter?.displayName || key),
+        description,
+        displayName,
         groupLabel: this.pickFirstNonEmptyString(
           parameter?.groupLabel,
           parameter?.sheetName,
@@ -5402,12 +5529,49 @@ export class TemporalWorkflowService {
         ),
         paramKind: arrayMatch ? 'array' : 'scalar',
         arrayPath: arrayMatch?.[1],
-        fieldName: arrayMatch?.[2] || key,
+        fieldName: field?.fieldId || arrayMatch?.[2] || key,
       });
     }
 
     if (paramMap.size > 0) {
       return Array.from(paramMap.values());
+    }
+    if (manifestBindings.length > 0) {
+      const seen = new Set<string>();
+      return manifestBindings
+        .filter((binding) => {
+          const rawKey = this.variableToKey(binding.variablePath);
+          const key = String(binding.fieldId || '').trim()
+            || bilingualBaseKeyByVariant.get(rawKey)
+            || rawKey;
+          if (!key || seen.has(key)) {
+            return false;
+          }
+          seen.add(key);
+          return true;
+        })
+        .map((binding) => {
+          const rawKey = this.variableToKey(binding.variablePath);
+          const key = String(binding.fieldId || '').trim()
+            || bilingualBaseKeyByVariant.get(rawKey)
+            || rawKey;
+          const field = manifestFieldMap.get(binding.fieldId);
+          return {
+            key,
+            required: binding.required !== false && field?.required !== false,
+            type: this.normalizeWorkflowInputParamType(field?.type, key),
+            description: this.resolveTemplateWorkflowParamLabel(
+              field?.description,
+              `模板参数 ${key}`,
+            ),
+            displayName: this.resolveTemplateWorkflowParamLabel(
+              field?.description,
+              key,
+            ),
+            paramKind: 'scalar' as const,
+            fieldName: field?.fieldId || key,
+          };
+        });
     }
 
     const variables = this.uniqueVariables(template.variables || [])
@@ -5416,9 +5580,23 @@ export class TemporalWorkflowService {
         return !key.includes('{#') && !key.includes('{/');
       });
 
-    return variables.map((variable) => {
-      const key = this.variableToKey(variable);
-      return {
+    const seen = new Set<string>();
+    return variables.reduce<Array<{
+      key: string;
+      required: boolean;
+      type: WorkflowInputParamType;
+      description: string;
+      displayName?: string;
+      paramKind: 'scalar' | 'array';
+      fieldName?: string;
+    }>>((acc, variable) => {
+      const rawKey = this.variableToKey(variable);
+      const key = bilingualBaseKeyByVariant.get(rawKey) || rawKey;
+      if (!key || seen.has(key)) {
+        return acc;
+      }
+      seen.add(key);
+      acc.push({
         key,
         required: true,
         type: 'string' as WorkflowInputParamType,
@@ -5426,8 +5604,30 @@ export class TemporalWorkflowService {
         displayName: key,
         paramKind: 'scalar' as const,
         fieldName: key,
-      };
-    });
+      });
+      return acc;
+    }, []);
+  }
+
+  private resolveTemplateAssetRenderPlanVersion(templateAssetManifest?: CarboneTemplateMeta['templateAssetManifest']): number | undefined {
+    if (!templateAssetManifest) {
+      return undefined;
+    }
+    return templateAssetManifest.renderPlanVersion || templateAssetManifest.renderPlan?.version || 1;
+  }
+
+  private resolveTemplateAssetFieldCount(
+    templateAssetManifest?: CarboneTemplateMeta['templateAssetManifest'],
+    fallbackFieldCount = 0,
+  ): number {
+    if (!templateAssetManifest) {
+      return fallbackFieldCount;
+    }
+    return templateAssetManifest.fieldCount || templateAssetManifest.templateFieldSpecs?.length || fallbackFieldCount;
+  }
+
+  private resolveTemplateAssetSource(templateAssetManifest?: CarboneTemplateMeta['templateAssetManifest']): string {
+    return templateAssetManifest?.metadata?.source || 'unknown';
   }
 
   private normalizeTemplateWorkflowParamKey(name: string): string {
@@ -5443,6 +5643,54 @@ export class TemporalWorkflowService {
       .replace(/^\//, '')
       .replace(/^d\./, '')
       .trim();
+  }
+
+  private resolveTemplateWorkflowParamLabel(...candidates: unknown[]): string {
+    for (const candidate of candidates) {
+      const normalized = this.normalizeTemplateWorkflowParamLabel(candidate);
+      if (normalized) {
+        return normalized;
+      }
+    }
+    return '模板参数';
+  }
+
+  private normalizeTemplateWorkflowParamLabel(value: unknown): string | undefined {
+    const trimmed = String(value || '').trim();
+    if (!trimmed) {
+      return undefined;
+    }
+    if (/^[A-Za-z0-9_.[\]-]+$/u.test(trimmed)) {
+      return undefined;
+    }
+
+    const withoutLanguageMarker = trimmed
+      .replace(/\s*[（(](?:中文|日文|日语|日语翻译|zh|ja|cn|jp)[）)]\s*$/iu, '')
+      .replace(/[_-](?:zh|ja|cn|jp)$/iu, '')
+      .trim();
+
+    return withoutLanguageMarker || trimmed;
+  }
+
+  private buildBilingualBaseKeyMap(keys: string[]): Map<string, string> {
+    const normalizedKeys = Array.from(new Set(keys.map((item) => String(item || '').trim()).filter(Boolean)));
+    const keySet = new Set(normalizedKeys);
+    const map = new Map<string, string>();
+    const languageVariants = ['cn', 'jp', 'zh', 'ja'];
+
+    normalizedKeys.forEach((key) => {
+      const match = key.match(/^(.*?)([_-](?:cn|jp|zh|ja))$/iu);
+      if (!match?.[1]) {
+        return;
+      }
+      const baseKey = match[1];
+      const hasSibling = languageVariants.some((lang) => keySet.has(`${baseKey}_${lang}`) || keySet.has(`${baseKey}-${lang}`));
+      if (hasSibling) {
+        map.set(key, baseKey);
+      }
+    });
+
+    return map;
   }
 
   private normalizeWorkflowInputParamType(dataType: unknown, fieldName: string): WorkflowInputParamType {

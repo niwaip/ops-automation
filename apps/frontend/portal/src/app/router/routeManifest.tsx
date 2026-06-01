@@ -19,6 +19,7 @@ import SessionDetailPage from '@/features/sessions/pages/SessionDetailPage';
 import TemplateListPage from '@/features/browser-templates/pages/TemplateListPage';
 import TemplateDetailPage from '@/features/browser-templates/pages/TemplateDetailPage';
 import RecorderPage from '@/features/recorder/pages/RecorderPage';
+import RecorderDebugDetailPage from '@/features/recorder/pages/RecorderDebugDetailPage';
 import UserAdminPage from '@/features/admin/users/pages/UserAdminPage';
 import AIModelAdminPage from '@/features/admin/models/pages/AIModelAdminPage';
 import SkillAdminPage from '@/features/admin/skills/pages/SkillAdminPage';
@@ -98,48 +99,6 @@ export const portalRouteEntries: PortalRouteEntry[] = [
   },
   { path: '/executions/new', element: <ExecutionCreatePage />, activeMenuKey: '/executions' },
   { path: '/executions/:id', element: <ExecutionDetailPage />, activeMenuKey: '/executions' },
-  { path: '/sessions', element: <SessionListPage /> },
-  { path: '/sessions/new', element: <SessionStartPage />, activeMenuKey: '/sessions' },
-  { path: '/sessions/:id', element: <SessionDetailPage />, activeMenuKey: '/sessions' },
-  {
-    path: '/carbone-templates',
-    element: <CarboneTemplateListPage />,
-    nav: {
-      key: '/carbone-templates',
-      group: 'root',
-      labelKey: 'carboneTemplates',
-      icon: <FileWordOutlined />,
-    },
-  },
-  {
-    path: '/templates',
-    element: <TemplateListPage />,
-    nav: {
-      key: '/templates',
-      group: 'root',
-      label: '浏览器模版',
-      icon: <FileTextOutlined />,
-    },
-  },
-  { path: '/templates/:id', element: <TemplateDetailPage />, activeMenuKey: '/templates' },
-  { path: '/recorder', element: <RecorderPage /> },
-  {
-    path: '/reports',
-    element: <ReportListPage />,
-  },
-  { path: '/reports/:id', element: <ReportDetailPage />, activeMenuKey: '/reports' },
-  {
-    path: '/published-skills',
-    element: <PublishedSkillDetailPage />,
-    nav: {
-      key: '/published-skills',
-      group: 'root',
-      label: '可用技能',
-      icon: <ThunderboltOutlined />,
-      requiresAdmin: true,
-    },
-  },
-  { path: '/published-skills/:skillId', element: <PublishedSkillDetailPage />, activeMenuKey: '/published-skills' },
   {
     path: '/admin/activities',
     element: <ActivityPage />,
@@ -178,6 +137,49 @@ export const portalRouteEntries: PortalRouteEntry[] = [
   },
   { path: '/admin/capability-studio', element: <CapabilityStudioPage />, requiresAdmin: true, activeMenuKey: '/admin/capabilities' },
   { path: '/admin/capability-builds/:buildId', element: <CapabilityBuildDetailPage />, requiresAdmin: true, activeMenuKey: '/admin/capabilities' },
+  {
+    path: '/published-skills',
+    element: <PublishedSkillDetailPage />,
+    nav: {
+      key: '/published-skills',
+      group: 'root',
+      label: '可用技能',
+      icon: <ThunderboltOutlined />,
+      requiresAdmin: true,
+    },
+  },
+  { path: '/published-skills/:skillId', element: <PublishedSkillDetailPage />, activeMenuKey: '/published-skills' },
+  { path: '/sessions', element: <SessionListPage /> },
+  { path: '/sessions/new', element: <SessionStartPage />, activeMenuKey: '/sessions' },
+  { path: '/sessions/:id', element: <SessionDetailPage />, activeMenuKey: '/sessions' },
+  {
+    path: '/carbone-templates',
+    element: <CarboneTemplateListPage />,
+    nav: {
+      key: '/carbone-templates',
+      group: 'root',
+      labelKey: 'carboneTemplates',
+      icon: <FileWordOutlined />,
+    },
+  },
+  {
+    path: '/templates',
+    element: <TemplateListPage />,
+    nav: {
+      key: '/templates',
+      group: 'root',
+      label: '浏览器模版',
+      icon: <FileTextOutlined />,
+    },
+  },
+  { path: '/templates/:id', element: <TemplateDetailPage />, activeMenuKey: '/templates' },
+  { path: '/recorder', element: <RecorderPage /> },
+  { path: '/recorder-debug/:sessionId', element: <RecorderDebugDetailPage />, activeMenuKey: '/recorder' },
+  {
+    path: '/reports',
+    element: <ReportListPage />,
+  },
+  { path: '/reports/:id', element: <ReportDetailPage />, activeMenuKey: '/reports' },
   {
     path: '/admin/flows',
     element: <FlowsPage />,

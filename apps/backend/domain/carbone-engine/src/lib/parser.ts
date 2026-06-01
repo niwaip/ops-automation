@@ -5,6 +5,7 @@
 
 export interface Marker {
   pos: number;
+  length: number;
   name: string;
   formatters: string[];
   isArray: boolean;
@@ -83,8 +84,6 @@ export class Parser {
   findMarkers(xml: string): Marker[] {
     const markers: Marker[] = [];
     let match;
-    let offset = 0;
-    let previousLength = 0;
 
     while ((match = CARBONE_MARKER_REGEX.exec(xml)) !== null) {
       const fullMarker = match[0];
@@ -121,14 +120,13 @@ export class Parser {
       }
 
       markers.push({
-        pos: match.index - previousLength,
+        pos: match.index,
+        length: fullMarker.length,
         name: `${contextChar}.${pathPart}`,
         formatters,
         isArray,
         arrayPath
       });
-
-      previousLength += fullMarker.length;
     }
 
     return markers;
@@ -165,14 +163,14 @@ export class Parser {
    */
   private detectExplicitLoops(xml: string): LoopInfo[] {
     const loops: LoopInfo[] = [];
-    const loopStack: { arrayPath: string; startPos: number; depth: number }[] = [];
+    const loopStack: { arrayPath: string; markerPos: number; startPos: number; depth: number }[] = [];
 
     // 重置正则表达式
     LOOP_START_REGEX.lastIndex = 0;
     LOOP_END_REGEX.lastIndex = 0;
 
     // 找到所有的循环开始和结束标记
-    const loopMarkers: { type: 'start' | 'end'; pos: number; arrayPath: string }[] = [];
+    const loopMarkers: { type: 'start' | 'end'; pos: number; endPos: number; arrayPath: string }[] = [];
 
     let startMatch;
     while ((startMatch = LOOP_START_REGEX.exec(xml)) !== null) {
@@ -181,6 +179,7 @@ export class Parser {
       loopMarkers.push({
         type: 'start',
         pos: startMatch.index,
+        endPos: startMatch.index + startMatch[0].length,
         arrayPath: `${contextChar}.${path}`
       });
     }
@@ -192,6 +191,7 @@ export class Parser {
       loopMarkers.push({
         type: 'end',
         pos: endMatch.index,
+        endPos: endMatch.index + endMatch[0].length,
         arrayPath: `${contextChar}.${path}`
       });
     }
@@ -204,11 +204,12 @@ export class Parser {
       if (marker.type === 'start') {
         // 计算深度
         const depth = loopStack.length + 1;
-        const parentPath = loopStack.length > 0 ? loopStack[loopStack.length - 1].arrayPath : undefined;
+        const startPos = this.resolveLoopBounds(xml, marker.pos, marker.endPos).startPos;
 
         loopStack.push({
           arrayPath: marker.arrayPath,
-          startPos: marker.pos,
+          markerPos: marker.pos,
+          startPos,
           depth
         });
       } else if (marker.type === 'end') {
@@ -216,9 +217,9 @@ export class Parser {
         const matchingStart = loopStack.find(s => s.arrayPath === marker.arrayPath);
 
         if (matchingStart) {
-          // 提取模板内容（不包括开始和结束标记）
-          const startPos = matchingStart.startPos;
-          const endPos = marker.pos + xml.substring(marker.pos).indexOf('}') + 1;
+          const bounds = this.resolveLoopBounds(xml, matchingStart.markerPos, marker.endPos);
+          const startPos = bounds.startPos;
+          const endPos = bounds.endPos;
           const templateUnit = xml.substring(startPos, endPos);
 
           // 计算父循环路径
@@ -229,7 +230,7 @@ export class Parser {
 
           loops.push({
             arrayPath: marker.arrayPath,
-            startPos: matchingStart.startPos,
+            startPos,
             endPos,
             templateUnit,
             depth: matchingStart.depth,
@@ -247,6 +248,74 @@ export class Parser {
     }
 
     return loops;
+  }
+
+  /**
+   * 将循环边界统一提升到 Word 的行级容器。
+   * 在表格中按整行截取；不在表格中时退化为整段落。
+   */
+  private resolveLoopBounds(
+    xml: string,
+    markerStartPos: number,
+    markerEndPos: number
+  ): { startPos: number; endPos: number } {
+    const startLine = this.findContainingWordLine(xml, markerStartPos);
+    const endLine = this.findContainingWordLine(xml, markerEndPos - 1);
+
+    if (startLine && endLine) {
+      return {
+        startPos: startLine.start,
+        endPos: endLine.end,
+      };
+    }
+
+    return {
+      startPos: markerStartPos,
+      endPos: markerEndPos,
+    };
+  }
+
+  private findContainingWordLine(
+    xml: string,
+    position: number
+  ): { start: number; end: number } | null {
+    return this.findContainingWordRow(xml, position) || this.findContainingWordParagraph(xml, position);
+  }
+
+  private findContainingWordRow(
+    xml: string,
+    position: number
+  ): { start: number; end: number } | null {
+    const rowPattern = /<w:tr\b[^>]*>[\s\S]*?<\/w:tr>/g;
+    let match: RegExpExecArray | null;
+
+    while ((match = rowPattern.exec(xml)) !== null) {
+      const start = match.index;
+      const end = start + match[0].length;
+      if (position >= start && position < end) {
+        return { start, end };
+      }
+    }
+
+    return null;
+  }
+
+  private findContainingWordParagraph(
+    xml: string,
+    position: number
+  ): { start: number; end: number } | null {
+    const paragraphPattern = /<w:p\b[^>]*>[\s\S]*?<\/w:p>/g;
+    let match: RegExpExecArray | null;
+
+    while ((match = paragraphPattern.exec(xml)) !== null) {
+      const start = match.index;
+      const end = start + match[0].length;
+      if (position >= start && position < end) {
+        return { start, end };
+      }
+    }
+
+    return null;
   }
 
   /**
@@ -279,15 +348,17 @@ export class Parser {
       const endMarker = sortedMarkers.find(m => m.name.includes('[i+1]'));
 
       if (startMarker && endMarker) {
+        const bounds = this.resolveLoopBounds(xml, startMarker.pos, endMarker.pos + endMarker.length);
+
         // 计算嵌套深度
-        const depth = this.calculateLoopDepth(startMarker.pos, existingLoops);
-        const parentLoop = this.findParentLoop(startMarker.pos, existingLoops);
+        const depth = this.calculateLoopDepth(bounds.startPos, existingLoops);
+        const parentLoop = this.findParentLoop(bounds.startPos, existingLoops);
 
         loops.push({
           arrayPath,
-          startPos: startMarker.pos,
-          endPos: endMarker.pos,
-          templateUnit: xml.substring(startMarker.pos, endMarker.pos + 10),
+          startPos: bounds.startPos,
+          endPos: bounds.endPos,
+          templateUnit: xml.substring(bounds.startPos, bounds.endPos),
           depth,
           parentLoop,
           loopType: 'implicit'

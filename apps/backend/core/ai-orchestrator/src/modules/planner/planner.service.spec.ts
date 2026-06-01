@@ -6,12 +6,19 @@ import { AvailableSkillDefinition, SkillMatchResult } from '../react-engine/inte
 describe('PlannerService - required inputs without hardcoded defaults', () => {
   let service: PlannerService;
   let recognizerService: { recognizeParams: jest.Mock };
+  let modelService: { callModel: jest.Mock };
 
   beforeEach(() => {
     recognizerService = {
       recognizeParams: jest.fn(),
     };
-    service = new PlannerService(recognizerService as unknown as RecognizerService);
+    modelService = {
+      callModel: jest.fn(),
+    };
+    service = new PlannerService(
+      recognizerService as unknown as RecognizerService,
+      modelService as any,
+    );
   });
 
   afterEach(() => {
@@ -110,6 +117,16 @@ describe('PlannerService - required inputs without hardcoded defaults', () => {
       expect.objectContaining({
         modelId: 'selected-model-id',
         guide_context: undefined,
+        params_schema: expect.objectContaining({
+          properties: expect.objectContaining({
+            target: expect.not.objectContaining({
+              default: expect.anything(),
+            }),
+            units: expect.not.objectContaining({
+              default: expect.anything(),
+            }),
+          }),
+        }),
       }),
     );
   });
@@ -854,6 +871,292 @@ describe('PlannerService - required inputs without hardcoded defaults', () => {
     expect(target?.missing).toBe(true);
     expect(target?.needs_confirmation).toBe(true);
     expect(target?.missing_reason).toBe('overall_low_confidence');
+  });
+
+  it('does not let low overall confidence override a high-confidence field value', async () => {
+    const skill: AvailableSkillDefinition = {
+      skillId: 'generic-query',
+      skillName: 'genericQueryService',
+      description: 'Query external data by target',
+      triggerKeywords: ['查询', '检索'],
+      paramsSchema: {
+        properties: {
+          target: {
+            type: 'string',
+            description: '查询目标',
+          } as any,
+        },
+        required: ['target'],
+      },
+      templateId: 'tpl-generic-query',
+      carboneTemplateId: undefined,
+      carboneSkillId: undefined,
+      executionFlowTemplateIds: [],
+      executionFlow: [],
+      apiEndpoints: undefined,
+      goal: 'Get current external data',
+      expectedResult: 'Current result for the requested target',
+      outputParams: undefined,
+    };
+
+    const match: SkillMatchResult = {
+      skillId: skill.skillId,
+      skillName: skill.skillName,
+      matchedKeywords: ['查询'],
+      confidence: 0.9,
+      collectedParams: {},
+      missingParams: ['target'],
+      paramsSchema: skill.paramsSchema,
+      templateId: skill.templateId,
+      carboneTemplateId: undefined,
+      carboneSkillId: undefined,
+      executionFlowTemplateIds: [],
+      executionFlow: [],
+      apiEndpoints: undefined,
+      matchReason: 'test',
+      goal: skill.goal,
+      expectedResult: skill.expectedResult,
+      outputParams: undefined,
+    };
+
+    jest.spyOn(service as any, 'loadAvailableSkills').mockResolvedValue([skill] as AvailableSkillDefinition[]);
+    jest.spyOn(service as any, 'matchSkill').mockResolvedValue(match);
+    jest.spyOn(recognizerService, 'recognizeParams').mockResolvedValue({
+      params: {
+        target: '工业产值',
+      },
+      confidence: 0.3,
+      field_confidences: {
+        target: 0.96,
+      },
+    });
+
+    const plan = await service.generatePlan({
+      request: { user_input: '帮我查工业产值', user_id: 'u1', modelId: 'selected-model-id' } as any,
+      userId: 'u1',
+      authToken: 'Bearer test',
+      traceId: 'trace-1',
+    });
+
+    const target = plan.required_inputs.find((i) => i.name === 'target');
+    expect(target?.value).toBe('工业产值');
+    expect(target?.missing).toBe(false);
+    expect(target?.needs_confirmation).toBe(false);
+    expect(target?.missing_reason).toBeUndefined();
+  });
+
+  it('fills bilingual *_cn/*_jp params during the planner recognition phase', async () => {
+    const skill: AvailableSkillDefinition = {
+      skillId: 'document-contract',
+      skillName: 'documentContractService',
+      description: 'Generate contract document',
+      triggerKeywords: ['合同'],
+      paramsSchema: {
+        properties: {
+          acceptance_days_cn: {
+            type: 'number',
+            description: '验收期限天数（中文）',
+          } as any,
+          acceptance_days_jp: {
+            type: 'number',
+            description: '验收期限天数（日文）',
+          } as any,
+          contract_partyA_cn: {
+            type: 'string',
+            description: '委托方名称（中文）',
+          } as any,
+          contract_partyA_jp: {
+            type: 'string',
+            description: '委托方名称（日文）',
+          } as any,
+        },
+        required: ['acceptance_days_cn', 'acceptance_days_jp', 'contract_partyA_cn', 'contract_partyA_jp'],
+      },
+      templateId: 'tpl-contract',
+      carboneTemplateId: 'carbone-tpl-1',
+      carboneSkillId: 'carbone-skill-1',
+      executionFlowTemplateIds: ['flow-1'],
+      executionFlow: ['generate_parameters', 'document_render'],
+      apiEndpoints: {
+        runtimeMetadata: {
+          sourceType: 'document',
+        },
+      } as any,
+      goal: 'Generate contract',
+      expectedResult: 'Completed contract document',
+      outputParams: undefined,
+    };
+
+    const match: SkillMatchResult = {
+      skillId: skill.skillId,
+      skillName: skill.skillName,
+      matchedKeywords: ['合同'],
+      confidence: 0.9,
+      collectedParams: {},
+      missingParams: [],
+      paramsSchema: skill.paramsSchema,
+      templateId: skill.templateId,
+      carboneTemplateId: skill.carboneTemplateId,
+      carboneSkillId: skill.carboneSkillId,
+      executionFlowTemplateIds: skill.executionFlowTemplateIds || [],
+      executionFlow: skill.executionFlow || [],
+      apiEndpoints: skill.apiEndpoints,
+      matchReason: 'test',
+      goal: skill.goal,
+      expectedResult: skill.expectedResult,
+      outputParams: undefined,
+    };
+
+    jest.spyOn(service as any, 'loadAvailableSkills').mockResolvedValue([skill] as AvailableSkillDefinition[]);
+    jest.spyOn(service as any, 'matchSkill').mockResolvedValue(match);
+    jest.spyOn(recognizerService, 'recognizeParams').mockResolvedValue({
+      params: {
+        acceptance_days_cn: 30,
+        contract_partyA_cn: '广州日产通商贸易有限公司',
+      },
+      confidence: 0.92,
+      field_confidences: {
+        acceptance_days_cn: 0.95,
+        contract_partyA_cn: 0.97,
+      },
+    });
+    modelService.callModel.mockResolvedValue({
+      content: JSON.stringify({
+        contract_partyA_jp: '広州日産通商貿易有限公司',
+      }),
+      usage: undefined,
+    });
+
+    const plan = await service.generatePlan({
+      request: {
+        user_input: '创建技术服务合同 验收期限为30天，委托方名称为广州日产通商贸易有限公司',
+        user_id: 'u1',
+        modelId: 'selected-model-id',
+      } as any,
+      userId: 'u1',
+      authToken: 'Bearer test',
+      traceId: 'trace-1',
+    });
+
+    const acceptanceCn = plan.required_inputs.find((i) => i.name === 'acceptance_days_cn');
+    const acceptanceJp = plan.required_inputs.find((i) => i.name === 'acceptance_days_jp');
+    const partyACn = plan.required_inputs.find((i) => i.name === 'contract_partyA_cn');
+    const partyAJp = plan.required_inputs.find((i) => i.name === 'contract_partyA_jp');
+
+    expect(acceptanceCn?.missing).toBe(false);
+    expect(acceptanceJp?.missing).toBe(false);
+    expect(acceptanceJp?.value).toBe(30);
+    expect(partyACn?.missing).toBe(false);
+    expect(partyAJp?.missing).toBe(false);
+    expect(partyAJp?.value).toBe('広州日産通商貿易有限公司');
+    expect(modelService.callModel).toHaveBeenCalledTimes(1);
+  });
+
+  it('fills bilingual *_cn/*_en params during the planner recognition phase', async () => {
+    const skill: AvailableSkillDefinition = {
+      skillId: 'document-contract-en',
+      skillName: 'documentContractServiceEn',
+      description: 'Generate contract document (CN/EN)',
+      triggerKeywords: ['合同'],
+      paramsSchema: {
+        properties: {
+          contract_partyA_cn: {
+            type: 'string',
+            description: '委托方名称（中文）',
+          } as any,
+          contract_partyA_en: {
+            type: 'string',
+            description: '委托方名称（英文）',
+          } as any,
+          acceptance_days_cn: {
+            type: 'number',
+            description: '验收期限天数（中文）',
+          } as any,
+          acceptance_days_en: {
+            type: 'number',
+            description: '验收期限天数（英文）',
+          } as any,
+        },
+        required: ['acceptance_days_cn', 'acceptance_days_en', 'contract_partyA_cn', 'contract_partyA_en'],
+      },
+      templateId: 'tpl-contract-en',
+      carboneTemplateId: 'carbone-tpl-en',
+      carboneSkillId: 'carbone-skill-en',
+      executionFlowTemplateIds: ['flow-en'],
+      executionFlow: ['generate_parameters', 'document_render'],
+      apiEndpoints: {
+        runtimeMetadata: {
+          sourceType: 'document',
+        },
+      } as any,
+      goal: 'Generate contract',
+      expectedResult: 'Completed contract document',
+      outputParams: undefined,
+    };
+
+    const match: SkillMatchResult = {
+      skillId: skill.skillId,
+      skillName: skill.skillName,
+      matchedKeywords: ['合同'],
+      confidence: 0.9,
+      collectedParams: {},
+      missingParams: [],
+      paramsSchema: skill.paramsSchema,
+      templateId: skill.templateId,
+      carboneTemplateId: skill.carboneTemplateId,
+      carboneSkillId: skill.carboneSkillId,
+      executionFlowTemplateIds: skill.executionFlowTemplateIds || [],
+      executionFlow: skill.executionFlow || [],
+      apiEndpoints: skill.apiEndpoints,
+      matchReason: 'test',
+      goal: skill.goal,
+      expectedResult: skill.expectedResult,
+      outputParams: undefined,
+    };
+
+    jest.spyOn(service as any, 'loadAvailableSkills').mockResolvedValue([skill] as AvailableSkillDefinition[]);
+    jest.spyOn(service as any, 'matchSkill').mockResolvedValue(match);
+    jest.spyOn(recognizerService, 'recognizeParams').mockResolvedValue({
+      params: {
+        acceptance_days_cn: 30,
+        contract_partyA_cn: '广州日产通商贸易有限公司',
+      },
+      confidence: 0.92,
+      field_confidences: {
+        acceptance_days_cn: 0.95,
+        contract_partyA_cn: 0.97,
+      },
+    });
+    modelService.callModel.mockResolvedValue({
+      content: JSON.stringify({
+        contract_partyA_en: 'Guangzhou Nissan Trading Co., Ltd.',
+      }),
+      usage: undefined,
+    });
+
+    const plan = await service.generatePlan({
+      request: {
+        user_input: '创建技术服务合同 验收期限为30天，委托方名称为广州日产通商贸易有限公司',
+        user_id: 'u1',
+        modelId: 'selected-model-id',
+      } as any,
+      userId: 'u1',
+      authToken: 'Bearer test',
+      traceId: 'trace-1',
+    });
+
+    const acceptanceCn = plan.required_inputs.find((i) => i.name === 'acceptance_days_cn');
+    const acceptanceEn = plan.required_inputs.find((i) => i.name === 'acceptance_days_en');
+    const partyACn = plan.required_inputs.find((i) => i.name === 'contract_partyA_cn');
+    const partyAEn = plan.required_inputs.find((i) => i.name === 'contract_partyA_en');
+
+    expect(acceptanceCn?.missing).toBe(false);
+    expect(acceptanceEn?.missing).toBe(false);
+    expect(acceptanceEn?.value).toBe(30);
+    expect(partyACn?.missing).toBe(false);
+    expect(partyAEn?.missing).toBe(false);
+    expect(partyAEn?.value).toBe('Guangzhou Nissan Trading Co., Ltd.');
+    expect(modelService.callModel).toHaveBeenCalledTimes(1);
   });
 
   it('respects schema-provided confirmation threshold before asking user to confirm', async () => {

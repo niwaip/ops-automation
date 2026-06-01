@@ -1,7 +1,11 @@
-import { Body, Controller, Post } from '@nestjs/common';
+import { Body, Controller, Get, Param, Post } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import { RecorderDebugService } from './recorder-debug.service';
 import type { RecorderDebugChatRequest, RecorderDebugChatResponse } from './recorder-debug.service';
+import type {
+  ReconcileAfterTakeoverRequest,
+  ReconcileAfterTakeoverResponse,
+} from './execution-reconcile.service';
 
 @ApiTags('AI-Recorder-Debug')
 @Controller('ai/recorder-debug')
@@ -20,10 +24,22 @@ export class RecorderDebugController {
     return this.service.exportArtifacts(body);
   }
 
+  @Post('reconcile')
+  @ApiOperation({ summary: 'Reconcile browser execution after manual takeover' })
+  async reconcile(@Body() body: ReconcileAfterTakeoverRequest): Promise<ReconcileAfterTakeoverResponse> {
+    return this.service.reconcileAfterTakeover(body);
+  }
+
   @Post('reset')
   @ApiOperation({ summary: 'Reset recorder debug session' })
   async reset(@Body() body: { sessionId: string }) {
     await this.service.resetSession(body.sessionId);
     return { success: true };
+  }
+
+  @Get(':sessionId')
+  @ApiOperation({ summary: 'Get recorder debug session detail' })
+  async getSession(@Param('sessionId') sessionId: string) {
+    return this.service.getSession(sessionId);
   }
 }

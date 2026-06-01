@@ -133,7 +133,10 @@ function buildDynamicUserContextSection(
 
   sections.push(`[本轮用户输入]\n${dto.user_input}`);
   if (guideContext?.mode === 'document_skill') {
-    sections.push('注意：如果是文档模板，请结合文档概述、参数用途和示例结构理解业务语义，但最终返回仍必须使用扁平字段键名。');
+    sections.push([
+      '注意：如果是文档模板，请结合文档概述、参数用途和示例结构理解业务语义，但最终返回仍必须使用扁平字段键名。',
+      '注意：禁止把 Carbone 模板变量语法（如 {d.xxx}、{#...}、{/...}）写进 JSON key；key 必须与 paramsSchema 中的字段路径完全一致，且不应包含 { 或 }。',
+    ].join('\n'));
   }
   return sections.join('\n\n');
 }

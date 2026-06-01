@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { Button, Card, Col, message, Row } from 'antd';
+import { Alert, Button, Card, Col, message, Row, Space, Tag, Typography } from 'antd';
 import { ArrowLeftOutlined } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
 import { useMutation } from 'react-query';
@@ -12,6 +12,7 @@ import type {
   MCPCommand,
   RecorderPageState,
   RecorderPreviewMode,
+  RecorderTakeoverViewState,
 } from '@/features/recorder/lib/types';
 import recorderService, {
   type CompiledTemplate,
@@ -20,6 +21,8 @@ import recorderService, {
 } from '@/services/recorder.service';
 import { useAuthStore } from '@/shared/store/authStore';
 import { templateApi, type CompileResult } from '@/api/template';
+
+const { Text } = Typography;
 
 const RecorderPage: React.FC = () => {
   const { t } = useTranslation(['common', 'recorder', 'session']);
@@ -39,6 +42,11 @@ const RecorderPage: React.FC = () => {
   const [validation, setValidation] = useState<ValidationResult | null>(null);
   const [hasExecuted, setHasExecuted] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
+  const [takeoverState, setTakeoverState] = useState<RecorderTakeoverViewState>({
+    mode: 'idle',
+    patchStepCount: 0,
+    resumeCommandCount: 0,
+  });
 
   const leftSpan = hasExecuted || isExpanded ? 6 : 10;
   const rightSpan = hasExecuted || isExpanded ? 18 : 14;
@@ -209,6 +217,20 @@ const RecorderPage: React.FC = () => {
     : previewMode === 'shared'
       ? defaultNoVncUrl
       : null;
+  const activeTakeover = takeoverState.mode !== 'idle';
+  const takeoverAlertType = takeoverState.mode === 'ready_to_resume'
+    ? 'success'
+    : takeoverState.mode === 'required'
+      ? 'warning'
+      : 'info';
+  const takeoverModeLabelMap: Record<RecorderTakeoverViewState['mode'], string> = {
+    idle: '空闲',
+    required: '等待人工接管',
+    recording: '人工接管中',
+    reconciling: '生成恢复方案中',
+    ready_to_resume: '可恢复执行',
+    resuming: '恢复执行中',
+  };
 
   return (
     <div
@@ -236,6 +258,41 @@ const RecorderPage: React.FC = () => {
         isExpanded={isExpanded}
         onToggleExpand={handleToggleExpand}
       />
+
+      {activeTakeover ? (
+        <Alert
+          type={takeoverAlertType}
+          showIcon
+          style={{ marginBottom: 8, borderRadius: 12 }}
+          message={
+            <Space wrap>
+              <span>{takeoverModeLabelMap[takeoverState.mode]}</span>
+              {takeoverState.strategy ? <Tag color="processing">{takeoverState.strategy}</Tag> : null}
+              {takeoverState.patchStepCount > 0 ? <Tag>{`patch ${takeoverState.patchStepCount}`}</Tag> : null}
+              {takeoverState.resumeCommandCount > 0 ? <Tag>{`resume ${takeoverState.resumeCommandCount}`}</Tag> : null}
+            </Space>
+          }
+          description={
+            <Space direction="vertical" size={4}>
+              <Text>
+                {takeoverState.explanation
+                  || takeoverState.reason
+                  || '当前浏览器执行处于人工接管恢复流程中。'}
+              </Text>
+              <Space wrap size={[12, 4]}>
+                {takeoverState.currentPageUrl ? (
+                  <Text type="secondary">{`页面: ${takeoverState.currentPageUrl}`}</Text>
+                ) : null}
+                {takeoverState.runtimeSessionId ? (
+                  <Text type="secondary" copyable={{ text: takeoverState.runtimeSessionId }}>
+                    {`会话: ${takeoverState.runtimeSessionId}`}
+                  </Text>
+                ) : null}
+              </Space>
+            </Space>
+          }
+        />
+      ) : null}
 
       <Row gutter={[8, 8]} style={{ flex: 1, minHeight: 0 }}>
         <Col
@@ -270,6 +327,7 @@ const RecorderPage: React.FC = () => {
             <AIControls
               onCommandExecuted={handleAICommandExecuted}
               onBrowserReady={setIsBrowserInitialized}
+              onTakeoverStateChange={setTakeoverState}
               onBrowserEndpoints={(endpoints) => {
                 if (endpoints.novnc) {
                   setDynamicNoVncUrl(endpoints.novnc);

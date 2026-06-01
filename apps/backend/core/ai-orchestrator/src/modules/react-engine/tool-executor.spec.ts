@@ -140,6 +140,23 @@ describe('ToolExecutor', () => {
 
   it('allows approval-required tools when approval is present in context', async () => {
     const executor = new ToolExecutor();
+    executor.registerTool({
+      name: 'api_call',
+      description: '调用外部 API',
+      category: 'execution',
+      parameters: {
+        type: 'object',
+        properties: {
+          endpoint: { type: 'string', description: 'API endpoint' },
+        },
+        required: ['endpoint'],
+      },
+      validateParams: () => ({ valid: false, missing: ['endpoint'] }),
+      execute: async () => ({
+        success: true,
+        output: 'should not reach execute',
+      }),
+    });
     const apiVisibleTool = baseContext.capabilitySnapshot!.visibleTools[1]!;
     const context: ExecutionContext = {
       ...baseContext,

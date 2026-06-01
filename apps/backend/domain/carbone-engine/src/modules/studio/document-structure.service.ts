@@ -190,6 +190,7 @@ export class DocumentStructureParser {
                   }
                 }
               }
+
             }
           }
           // 如果当前段落是图片，且前一个段落是 "Step X: screenshot" 文本，标记为图片（已被前一个段落引用）
@@ -377,17 +378,44 @@ export class DocumentStructureParser {
     }
 
     // 3. 应用变量映射 (Variable Mappings - AI生成)
-    if (config.variableMappings && Array.isArray(config.variableMappings)) {
-      for (const mapping of config.variableMappings) {
+    const variableMappings = Array.isArray(config.variableMappings)
+      ? config.variableMappings
+      : Array.isArray(config.mappings)
+        ? config.mappings
+        : [];
+    if (variableMappings.length > 0) {
+      const protectedTitleTexts = new Set<string>(
+        (Array.isArray(config.staticElements) ? config.staticElements : [])
+          .filter((item: any) => this.safeText(item?.type) === 'title')
+          .map((item: any) => this.safeText(item?.content))
+          .filter(Boolean)
+      );
+      const groupedTextMappings = new Map<number, string[]>();
+
+      for (const mapping of variableMappings) {
         if (ignoredIndices.has(mapping.index)) continue;
         
         const node = elements[mapping.index];
         if (!node) continue;
+        if (this.shouldSkipProtectedTitleMapping(mapping, node, protectedTitleTexts)) continue;
 
         if (mapping.type === 'image' || this.isImageElement(node)) {
           this.injectImageVariable(node, mapping.path);
         } else if (mapping.path) {
-          this.injectTextToElement(node, `{${mapping.path}}`);
+          const textMappings = groupedTextMappings.get(mapping.index) || [];
+          textMappings.push(`{${mapping.path}}`);
+          groupedTextMappings.set(mapping.index, textMappings);
+        }
+      }
+
+      for (const [index, texts] of groupedTextMappings.entries()) {
+        const node = elements[index];
+        if (!node) continue;
+        this.injectTextLinesToElement(node, texts);
+        if (texts.length > 1) {
+          console.log(
+            `[DocumentStructure] merged variable mappings for index=${index}: ${texts.join(' | ')}`,
+          );
         }
       }
     }
@@ -402,7 +430,7 @@ export class DocumentStructureParser {
         const localName = table.localName || table.tagName.split(':').pop();
         if (localName !== 'tbl') continue;
 
-        this.applyTableLoop(doc, table, tableLoop);
+        this.applyTableLoop(table, tableLoop);
       }
     }
 
@@ -552,6 +580,59 @@ export class DocumentStructureParser {
     }
   }
 
+  private injectTextLinesToElement(element: any, texts: string[]): void {
+    const lines = texts.map((text) => this.safeText(text)).filter(Boolean);
+    if (lines.length === 0) {
+      return;
+    }
+
+    if (lines.length === 1) {
+      this.injectTextToElement(element, lines[0]);
+      return;
+    }
+
+    const textNodes = Array.from(element.getElementsByTagNameNS('*', 't'));
+    if (textNodes.length === 0) {
+      this.injectTextToElement(element, lines.join('\n'));
+      return;
+    }
+
+    const firstT: any = textNodes[0];
+    while (firstT.firstChild) {
+      firstT.removeChild(firstT.firstChild);
+    }
+    firstT.appendChild(element.ownerDocument.createTextNode(lines[0]));
+    firstT.setAttribute('xml:space', 'preserve');
+
+    for (let i = 1; i < textNodes.length; i++) {
+      const t: any = textNodes[i];
+      if (t.parentNode) {
+        t.parentNode.removeChild(t);
+      }
+    }
+
+    const doc = element.ownerDocument;
+    const wNS = DocumentStructureParser.WORD_NS.w;
+    const baseRun = firstT.parentNode;
+    const paragraph = baseRun?.parentNode;
+
+    if (!paragraph) {
+      this.injectTextToElement(element, lines.join('\n'));
+      return;
+    }
+
+    for (let i = 1; i < lines.length; i++) {
+      const run = doc.createElementNS(wNS, 'w:r');
+      const lineBreak = doc.createElementNS(wNS, 'w:br');
+      const textNode = doc.createElementNS(wNS, 'w:t');
+      textNode.setAttribute('xml:space', 'preserve');
+      textNode.appendChild(doc.createTextNode(lines[i]));
+      run.appendChild(lineBreak);
+      run.appendChild(textNode);
+      paragraph.appendChild(run);
+    }
+  }
+
   /**
    * 在元素文本前添加前缀
    */
@@ -586,7 +667,7 @@ export class DocumentStructureParser {
    * 处理表格循环注入
    * 正确顺序：先替换单元格变量，再添加循环标记，最后删除多余数据行
    */
-  private applyTableLoop(doc: any, table: any, tableLoop: any): void {
+  private applyTableLoop(table: any, tableLoop: any): void {
     // 获取所有行 - 使用静态数组避免live collection问题
     const rowsArray: any[] = Array.from(table.getElementsByTagNameNS('*', 'tr'));
     if (rowsArray.length < 2) return;
@@ -596,16 +677,23 @@ export class DocumentStructureParser {
     const cells = dataRow.getElementsByTagNameNS('*', 'tc');
     if (cells.length === 0) return;
 
-    // 1. 先处理列映射 - 替换单元格内容为变量
+    // 1. 先处理列映射 - 保留单元格原文本，在新行追加变量
     if (tableLoop.columnMappings && Array.isArray(tableLoop.columnMappings)) {
+      const columnTexts = new Map<number, string[]>();
       for (let i = 0; i < tableLoop.columnMappings.length; i++) {
         const mapping = tableLoop.columnMappings[i];
         const columnIndex = mapping.columnIndex !== undefined ? mapping.columnIndex : i;
-        if (columnIndex < cells.length && mapping.variablePath) {
-          const cell = cells[columnIndex];
-          // 替换单元格内容为变量标记
-          this.injectTextToElement(cell, `{${mapping.variablePath}}`);
+        if (columnIndex >= cells.length || !mapping.variablePath) {
+          continue;
         }
+        const texts = columnTexts.get(columnIndex) || [];
+        texts.push(`{${mapping.variablePath}}`);
+        columnTexts.set(columnIndex, texts);
+      }
+
+      for (const [columnIndex, texts] of columnTexts.entries()) {
+        const cell = cells[columnIndex];
+        this.appendTextLinesToCell(cell, texts);
       }
     }
 
@@ -634,6 +722,7 @@ export class DocumentStructureParser {
     if (firstT) {
       const current = firstT.textContent || '';
       firstT.textContent = text + current;
+      firstT.setAttribute('xml:space', 'preserve');
     }
   }
 
@@ -643,6 +732,47 @@ export class DocumentStructureParser {
     if (lastT) {
       const current = lastT.textContent || '';
       lastT.textContent = current + text;
+      lastT.setAttribute('xml:space', 'preserve');
+    }
+  }
+
+  private appendTextLinesToCell(cell: any, texts: string[]): void {
+    const lines = texts.map((text) => this.safeText(text)).filter(Boolean);
+    if (lines.length === 0) {
+      return;
+    }
+
+    const doc = cell.ownerDocument;
+    const wNS = DocumentStructureParser.WORD_NS.w;
+    const paragraphs: any[] = Array.from(cell.getElementsByTagNameNS('*', 'p'));
+    let targetParagraph: any = paragraphs[paragraphs.length - 1];
+
+    if (!targetParagraph) {
+      targetParagraph = doc.createElementNS(wNS, 'w:p');
+      cell.appendChild(targetParagraph);
+    }
+
+    let startIndex = 0;
+    if (!this.safeText(this.getNodeText(cell))) {
+      const firstRun = doc.createElementNS(wNS, 'w:r');
+      const firstTextNode = doc.createElementNS(wNS, 'w:t');
+      firstTextNode.setAttribute('xml:space', 'preserve');
+      firstTextNode.appendChild(doc.createTextNode(lines[0]));
+      firstRun.appendChild(firstTextNode);
+      targetParagraph.appendChild(firstRun);
+      startIndex = 1;
+    }
+
+    for (let i = startIndex; i < lines.length; i++) {
+      const run = doc.createElementNS(wNS, 'w:r');
+      const lineBreak = doc.createElementNS(wNS, 'w:br');
+      const textNode = doc.createElementNS(wNS, 'w:t');
+      textNode.setAttribute('xml:space', 'preserve');
+      textNode.appendChild(doc.createTextNode(lines[i]));
+
+      run.appendChild(lineBreak);
+      run.appendChild(textNode);
+      targetParagraph.appendChild(run);
     }
   }
 
@@ -702,6 +832,31 @@ export class DocumentStructureParser {
       text += textNodes[i].textContent || '';
     }
     return text;
+  }
+
+  private shouldSkipProtectedTitleMapping(mapping: any, node: any, protectedTitleTexts: Set<string>): boolean {
+    if (protectedTitleTexts.size === 0) {
+      return false;
+    }
+
+    const normalizedPath = this.safeText(mapping?.path).toLowerCase();
+    if (!/(^d\.title$|\.title$)/u.test(normalizedPath)) {
+      return false;
+    }
+
+    const candidateTexts = [
+      this.getNodeText(node),
+      mapping?.sampleValue,
+      mapping?.content,
+    ]
+      .map((value) => this.safeText(value))
+      .filter(Boolean);
+
+    return candidateTexts.some((text) => protectedTitleTexts.has(text));
+  }
+
+  private safeText(value: any): string {
+    return String(value ?? '').trim();
   }
 
   private async parseStyles(stylesXml: string): Promise<Record<string, string>> {

@@ -1,12 +1,45 @@
 import { carboneAPI } from '../api/carbone-api';
 import { DocumentIR, HostType } from '../adapters/document-ir';
 import { AISuggestion } from '../taskpane/store';
-import { buildPairAnalysisChatPrompt } from './analysis-pair-prompt';
+import { buildPairAnalysisChatPrompt, buildWordSectionAnalysisChatPrompt } from './analysis-pair-prompt';
 import { buildGeneralPromptTemplate, buildGlobalUnderstandingPromptTemplate } from './analysis-chat-prompt-templates';
 
 export type AnalysisExecutorKind = 'studio' | 'chat';
 
-export type AnalysisStage = 'general' | 'excel-global-understanding' | 'excel-pair-analysis';
+export type AnalysisStage = 'general' | 'excel-global-understanding' | 'excel-pair-analysis' | 'word-section-analysis';
+
+export interface WordSectionPromptCandidate {
+  candidateId: string;
+  sourceBlockId?: string;
+  anchorText: string;
+  parameterSlot?: string;
+  sampleValue?: string;
+  fieldIdHint?: string;
+  fieldTypeHint?: string;
+  generationPolicyHint?: string;
+  language?: 'zh' | 'ja' | 'en' | 'mixed' | 'unknown';
+  paragraphIndex?: number;
+  candidateType?: 'variable' | 'loop_column';
+  loopGroupKey?: string;
+  tableIndex?: number;
+  rowIndex?: number;
+  cellIndex?: number;
+}
+
+export interface WordSectionPromptBilingualGroup {
+  groupKey: string;
+  pairType: 'candidate_pair';
+  zhCandidateIds: string[];
+  jpCandidateIds: string[];
+}
+
+export interface WordSectionPromptAcceptedSuggestion {
+  candidateId: string;
+  suggestedName: string;
+  type: 'variable' | 'loop' | 'format' | 'image' | 'table';
+  fieldType?: string;
+  confidence?: number;
+}
 
 export interface StructuredAnalyzeRequest {
   host: HostType;
@@ -14,6 +47,7 @@ export interface StructuredAnalyzeRequest {
   documentContent: string;
   documentType: 'docx' | 'xlsx' | 'pptx';
   templateType: string;
+  skill?: any;
   context?: string;
   underlineInfo?: Array<Record<string, unknown>>;
   paragraphFormats?: Array<Record<string, unknown>>;
@@ -23,6 +57,13 @@ export interface StructuredAnalyzeRequest {
   diffSummary?: string;
   diffOverview?: string;
   candidateFieldList?: string;
+  bilingualCandidatePairs?: string;
+  wordSectionCandidates?: WordSectionPromptCandidate[];
+  wordSectionBilingualGroups?: WordSectionPromptBilingualGroup[];
+  wordSectionAcceptedSuggestions?: WordSectionPromptAcceptedSuggestion[];
+  wordSectionRoundIndex?: number;
+  wordSectionMaxRounds?: number;
+  chatSessionId?: string;
 }
 
 export class ChatAnalysisError extends Error {
@@ -420,6 +461,12 @@ function trimAfterLastMarker(content: string, markers: string[]): string {
   return text.replace(/^[\s:：】\]\[]+/, '').trim();
 }
 
+function findStructuredHeadingStart(text: string): number | null {
+  const headingPattern = /(?:^|\n)(###\s+.+|第[一二三四五六七八九十百千万零两0-9０-９]+[章节条編部節款項目][^\n]*|[一二三四五六七八九十]+、.+|[（(][^（）()\n]{1,20}[)）]|(?:article|Article|ARTICLE)\s*[0-9]+[^\n]*)/u;
+  const match = text.match(headingPattern);
+  return typeof match?.index === 'number' ? match.index : null;
+}
+
 function sanitizeGlobalUnderstandingText(content: string): string {
   let text = extractReadableTextContent(content);
   if (!text) {
@@ -432,9 +479,9 @@ function sanitizeGlobalUnderstandingText(content: string): string {
     '请直接输出“对整份工作簿的理解内容”，使用自然语言分段描述，不要返回 JSON。',
   ]);
 
-  const headingMatch = text.match(/(?:^|\n)(###\s+.+|[一二三四五六七八九十]+、.+)/);
-  if (headingMatch && headingMatch.index && headingMatch.index > 0) {
-    const candidate = text.slice(headingMatch.index).trim();
+  const headingStart = findStructuredHeadingStart(text);
+  if (typeof headingStart === 'number' && headingStart > 0) {
+    const candidate = text.slice(headingStart).trim();
     if (candidate.length >= Math.max(40, text.length / 4)) {
       text = candidate;
     }
@@ -447,9 +494,9 @@ function sanitizeGlobalUnderstandingText(content: string): string {
   ];
   const hasLeadingError = errorLeadPatterns.some((pattern) => text.startsWith(pattern) || text.includes(`"${pattern}"`));
   if (hasLeadingError) {
-    const laterHeading = text.match(/(?:\n|^)(###\s+.+|[一二三四五六七八九十]+、.+)/);
-    if (laterHeading && typeof laterHeading.index === 'number') {
-      text = text.slice(laterHeading.index).trim();
+    const laterHeadingStart = findStructuredHeadingStart(text);
+    if (typeof laterHeadingStart === 'number') {
+      text = text.slice(laterHeadingStart).trim();
     }
   }
 
@@ -1063,6 +1110,12 @@ function buildDefaultDescription(
       : `AI 根据 ${request.pairLabel || '当前对照组'} 的留白与真实值差异识别为参数字段`;
   }
 
+  if (request.analysisStage === 'word-section-analysis') {
+    return suggestionType === 'loop'
+      ? `AI 根据 ${request.pairLabel || '当前章节'} 的明细结构识别为循环块`
+      : `AI 根据 ${request.pairLabel || '当前章节'} 的语义内容识别为参数字段`;
+  }
+
   if (request.analysisStage === 'excel-global-understanding') {
     return 'AI 生成的全局真实数据理解摘要';
   }
@@ -1084,7 +1137,9 @@ function getRecordString(record: Record<string, unknown>, keys: string[]): strin
 
 function buildFallbackChapterFromLabel(request: StructuredAnalyzeRequest): string | undefined {
   // 移除硬编码的业务章节分类映射，直接返回对照组名称或 undefined
-  return request.analysisStage === 'excel-pair-analysis' ? request.pairLabel : undefined;
+  return request.analysisStage === 'excel-pair-analysis' || request.analysisStage === 'word-section-analysis'
+    ? request.pairLabel
+    : undefined;
 }
 
 function buildDetailedFallbackDescription(label: string, suggestionType: AISuggestion['type']): string {
@@ -1325,6 +1380,8 @@ function normalizeChatSuggestions(value: unknown, request: StructuredAnalyzeRequ
       const fieldType = normalizeTextValue(details.fieldType)
         || fallbackFieldType
         || (suggestionType === 'loop' ? 'loop' : 'text');
+      const candidateId = normalizeTextValue(details.candidateId)
+        || normalizeTextValue(record.candidateId);
 
       return {
         id: String(record.id || `chat-suggestion-${index}`),
@@ -1374,6 +1431,7 @@ function normalizeChatSuggestions(value: unknown, request: StructuredAnalyzeRequ
           beforeBlank: normalizeTextValue(details.beforeBlank),
           afterBlank: normalizeTextValue(details.afterBlank),
           fieldType,
+          candidateId,
         },
       } satisfies AISuggestion;
     })
@@ -1414,6 +1472,10 @@ function buildChatAnalysisPrompt(request: StructuredAnalyzeRequest): string {
 
   if (request.analysisStage === 'excel-pair-analysis') {
     return buildPairAnalysisChatPrompt(request);
+  }
+
+  if (request.analysisStage === 'word-section-analysis') {
+    return buildWordSectionAnalysisChatPrompt(request);
   }
 
   return buildGeneralChatPrompt(request);
@@ -1488,7 +1550,7 @@ class ChatAnalysisExecutor implements StructuredAnalysisExecutor {
         headers,
         body: JSON.stringify({
           message: promptRequestText,
-          sessionId: `office-addin-analysis-${Date.now()}`,
+          sessionId: request.chatSessionId || `office-addin-analysis-${Date.now()}`,
           config: {
             mode: 'chat',
             thinking: this.options.thinking !== false,

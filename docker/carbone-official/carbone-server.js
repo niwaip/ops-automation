@@ -18,6 +18,7 @@ const HTTP_PORT = process.env.CARBONE_API_PORT || 3100;
 const HTTPS_PORT = process.env.CARBONE_API_HTTPS_PORT || 3443;
 const ENABLE_HTTPS = process.env.ENABLE_HTTPS === 'true';
 const CARBONE_ENGINE_URL = process.env.CARBONE_ENGINE_URL || 'http://carbone-engine:3009';
+const CARBONE_ENGINE_PROXY_TIMEOUT_MS = Number(process.env.CARBONE_ENGINE_PROXY_TIMEOUT_MS || 120000);
 
 // CORS 配置 - 允许 Office Add-in 访问
 app.use((req, res, next) => {
@@ -74,13 +75,20 @@ const proxyToEngine = (req, res, targetPath) => {
 
   // 检查是否是multipart请求
   const isMultipart = req.headers['content-type'] && req.headers['content-type'].includes('multipart');
+  let requestBody = null;
+
+  if (isMultipart && req.rawBody) {
+    requestBody = req.rawBody;
+  } else if (req.body !== undefined && req.method !== 'GET' && req.method !== 'HEAD') {
+    requestBody = Buffer.from(JSON.stringify(req.body));
+  }
 
   const options = {
     method: req.method,
     headers: {
       'Content-Type': req.headers['content-type'] || 'application/json',
       'Authorization': req.headers['authorization'] || '',
-      'Content-Length': req.headers['content-length'] || '0',
+      'Content-Length': requestBody ? String(requestBody.length) : '0',
     }
   };
 
@@ -122,8 +130,16 @@ const proxyToEngine = (req, res, targetPath) => {
     }
   });
 
+  proxyReq.setTimeout(CARBONE_ENGINE_PROXY_TIMEOUT_MS, () => {
+    console.error(`[Proxy Timeout] ${req.method} ${targetUrl}`);
+    proxyReq.destroy(new Error('Proxy request timeout'));
+  });
+
   proxyReq.on('error', (error) => {
     console.error(`[Proxy Error] ${error.message}`);
+    if (res.headersSent) {
+      return;
+    }
     res.status(500).json({
       error: 'Failed to connect to carbone-engine service',
       details: error.message,
@@ -131,13 +147,8 @@ const proxyToEngine = (req, res, targetPath) => {
     });
   });
 
-  // 发送请求体
-  // multipart请求：直接流式传输原始数据
-  // JSON请求：发送解析后的body
-  if (isMultipart && req.rawBody) {
-    proxyReq.write(req.rawBody);
-  } else if (req.body && Object.keys(req.body).length > 0) {
-    proxyReq.write(JSON.stringify(req.body));
+  if (requestBody) {
+    proxyReq.write(requestBody);
   }
 
   proxyReq.end();

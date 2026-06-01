@@ -544,6 +544,9 @@ export class CapabilityReleaseService implements OnModuleInit {
       const runtimeStatus = typeof rawResultRecord?.status === 'string'
         ? rawResultRecord.status
         : undefined;
+      const normalizedRuntimeStatus = typeof runtimeStatus === 'string'
+        ? runtimeStatus.trim().toLowerCase()
+        : undefined;
       const runtimeRequiresTakeover = rawResultRecord?.requiresTakeover === true;
       const runtimeRetryable = rawResultRecord?.retryable === true;
       const runtimeTakeoverReason = typeof rawResultRecord?.takeoverReason === 'string'
@@ -551,7 +554,9 @@ export class CapabilityReleaseService implements OnModuleInit {
         : null;
       const runtimeSuccess = rawResultRecord?.success === false
         ? false
-        : !runtimeStatus || runtimeStatus === 'completed';
+        : rawResultRecord?.success === true
+          ? true
+          : !normalizedRuntimeStatus || ['completed', 'succeeded', 'success', 'rendered'].includes(normalizedRuntimeStatus);
       const effectiveSuccess = result.success && runtimeSuccess && !runtimeRequiresTakeover;
       const downloadUrl = extractDownloadUrl(rawResult);
       const temporalWorkflowId = result.workflowId;
@@ -611,11 +616,11 @@ export class CapabilityReleaseService implements OnModuleInit {
         fn,
         taskQueue,
         status:
-          runtimeRequiresTakeover || runtimeStatus === 'takeover_required'
+          runtimeRequiresTakeover || normalizedRuntimeStatus === 'takeover_required'
             ? 'takeover_required'
-            : runtimeStatus === 'waiting'
+            : normalizedRuntimeStatus === 'waiting'
               ? 'waiting'
-              : runtimeStatus === 'blocked'
+              : normalizedRuntimeStatus === 'blocked'
                 ? 'blocked'
                 : effectiveSuccess
                   ? 'completed'
@@ -3729,8 +3734,9 @@ ${logs.join('\n')}
         ? workflowDsl.workflowClassName.trim()
         : '';
     if (!workflowClassName) {
+      const workflowName = String(payload.name || '未命名工作流');
       throw new BadRequestException(
-        '当前工作流缺少 workflowDsl.workflowClassName，请在工作流页面设置函数名称并重新同步后再验证/部署',
+        `工作流 "${workflowName}" 缺少 Python 类名 (workflowDsl.workflowClassName)。请在工作流编辑页面的“高级配置”中设置类名，点击 AI 生成代码并保存，然后重新同步到 Release。`,
       );
     }
     return workflowClassName;
@@ -4078,6 +4084,8 @@ ${logs.join('\n')}
         acc[key] = [];
       } else if (type === 'object') {
         acc[key] = {};
+      } else if (type === 'date') {
+        acc[key] = new Date().toISOString().split('T')[0];
       } else {
         acc[key] = this.normalizeSmokeInputValue(key, `test_${key}`, type);
       }
@@ -4144,8 +4152,10 @@ ${logs.join('\n')}
           return;
         }
         const normalizedDefaultValue = this.normalizeCapabilityDefaultValue(definition.defaultValue);
-        const typeHint = typeof definition.type === 'string' ? definition.type : undefined;
-        suggestedInput[key] = this.normalizeSmokeInputValue(key, normalizedDefaultValue, typeHint);
+        if (normalizedDefaultValue !== undefined) {
+          const typeHint = typeof definition.type === 'string' ? definition.type : undefined;
+          suggestedInput[key] = this.normalizeSmokeInputValue(key, normalizedDefaultValue, typeHint);
+        }
       });
     }
 

@@ -4,11 +4,471 @@
  */
 
 import { OfficeAppType } from '../taskpane/store';
+import { getWordHeaderAliasCandidates } from './word-parameter-rules';
+
+const WORD_BLANK_PATTERNS = [
+  /[＿_]{2,}/g,
+  /[ 　\t]{2,}/g,
+  /：\s{2,}/g,
+  /:\s{2,}/g,
+  /[\s＿_　]{2,}/g,
+];
+
+function stripWordContextSnippet(contextSnippet: string): string {
+  return String(contextSnippet || '')
+    .split(/\r?\n/u)
+    .map((line) => line.replace(/^[.\u2026]+|[.\u2026]+$/gu, '').trim())
+    .filter(Boolean)
+    .join('\n')
+    .trim();
+}
+
+function extractLongestWordBlank(text: string): string {
+  let longestBlank = '';
+  for (const pattern of WORD_BLANK_PATTERNS) {
+    const matches = text.match(pattern);
+    if (!matches || matches.length === 0) {
+      continue;
+    }
+    const currentLongest = matches.reduce((left, right) => (left.length >= right.length ? left : right), '');
+    if (currentLongest.length > longestBlank.length) {
+      longestBlank = currentLongest;
+    }
+  }
+  return longestBlank;
+}
+
+function extractWordLabelValueTarget(text: string): { labelText: string; valueText: string } | null {
+  const lines = stripWordContextSnippet(text)
+    .split(/\n+/u)
+    .map((line) => line.trim())
+    .filter(Boolean);
+
+  for (const line of lines) {
+    const labelMatch = /(^|[\s(（【[])([^，。；;\n]{1,24}[：:])/u.exec(line);
+    if (!labelMatch || typeof labelMatch.index !== 'number') {
+      continue;
+    }
+
+    const labelText = labelMatch[2].trim();
+    const labelCore = labelText.replace(/[：:]$/u, '').trim();
+    if (!labelCore) {
+      continue;
+    }
+    if (/[，。；;]/u.test(labelCore)) {
+      continue;
+    }
+    if (/(?:如下|如下所示|说明如下|约定如下|内容如下|条款如下|方式如下|时间如下|支付如下)$/u.test(labelCore)) {
+      continue;
+    }
+
+    const valueStart = labelMatch.index + labelMatch[0].length;
+    const afterLabel = line.slice(valueStart).trim();
+    if (!afterLabel) {
+      continue;
+    }
+
+    const nextLabelMatch = /(^|[\s(（【[])[^，。；;\n]{1,24}[：:]/u.exec(afterLabel);
+    let valueText = nextLabelMatch && typeof nextLabelMatch.index === 'number' && nextLabelMatch.index > 0
+      ? afterLabel.slice(0, nextLabelMatch.index)
+      : afterLabel;
+
+    valueText = valueText.replace(/[，。；;]+$/u, '').trim();
+    if (!valueText || valueText.length > 120) {
+      continue;
+    }
+
+    return { labelText, valueText };
+  }
+
+  return null;
+}
+
+function extractWordMultilineLabelValueTarget(text: string): { labelText: string; valueText: string } | null {
+  const lines = stripWordContextSnippet(text)
+    .split(/\n+/u)
+    .map((line) => line.trim())
+    .filter(Boolean);
+
+  for (let index = 0; index < lines.length - 1; index += 1) {
+    const labelText = lines[index];
+    const valueText = lines[index + 1];
+    if (!/[：:]$/u.test(labelText)) {
+      continue;
+    }
+
+    const labelCore = labelText.replace(/[：:]$/u, '').trim();
+    if (!labelCore || /[，。；;]/u.test(labelCore)) {
+      continue;
+    }
+    if (!valueText || /[：:]$/u.test(valueText)) {
+      continue;
+    }
+    if (valueText.length > 120) {
+      continue;
+    }
+
+    return {
+      labelText,
+      valueText: valueText.replace(/[，。；;]+$/u, '').trim(),
+    };
+  }
+
+  return null;
+}
+
+function extractWordStandaloneLabelTarget(text: string): string | null {
+  const lines = stripWordContextSnippet(text)
+    .split(/\n+/u)
+    .map((line) => line.trim())
+    .filter(Boolean);
+
+  for (const line of lines) {
+    if (!/[：:]$/u.test(line)) {
+      continue;
+    }
+    const labelCore = line.replace(/[：:]$/u, '').trim();
+    if (!labelCore || /[，。；;]/u.test(labelCore)) {
+      continue;
+    }
+    return line;
+  }
+
+  return null;
+}
+
+type UnderlineFallbackLanguage = 'zh' | 'ja' | 'en' | 'mixed' | 'unknown';
+
+type UnderlineSpaceCandidate = {
+  paragraphIndex: number;
+  paragraphText: string;
+  text: string;
+  start: number;
+  end: number;
+  blankIndex: number;
+  blankCount: number;
+  blankLength: number;
+  hasUnderlineFormat: boolean;
+  foundByContext: boolean;
+  mirrorShape: string;
+  language: UnderlineFallbackLanguage;
+  hasKana: boolean;
+};
+
+function detectUnderlineFallbackLanguage(text: string): UnderlineFallbackLanguage {
+  const sourceText = String(text || '');
+  const hasZh = /[\u4e00-\u9fff]/u.test(sourceText);
+  const hasJaKana = /[\u3040-\u30ff]/u.test(sourceText);
+  const hasEn = /[A-Za-z]/.test(sourceText);
+  const languageCount = Number(hasZh) + Number(hasJaKana) + Number(hasEn);
+
+  if (languageCount > 1) {
+    return 'mixed';
+  }
+  if (hasJaKana) {
+    return 'ja';
+  }
+  if (hasZh) {
+    return 'zh';
+  }
+  if (hasEn) {
+    return 'en';
+  }
+  return 'unknown';
+}
+
+function buildUnderlineMirrorShape(text: string): string {
+  const sourceText = String(text || '');
+  let result = '';
+  let previousToken = '';
+
+  const pushToken = (token: string) => {
+    if (!token) {
+      return;
+    }
+    if (token === previousToken) {
+      return;
+    }
+    result += token;
+    previousToken = token;
+  };
+
+  for (const char of sourceText) {
+    if (/[ 　\t_＿]/u.test(char)) {
+      pushToken('_');
+      continue;
+    }
+    if (/[：:]/u.test(char)) {
+      pushToken(':');
+      continue;
+    }
+    if (/[。．.!！？?]/u.test(char)) {
+      pushToken('.');
+      continue;
+    }
+    if (/[、，,；;]/u.test(char)) {
+      pushToken(',');
+      continue;
+    }
+    if (/[0-9０-９]/u.test(char)) {
+      pushToken('9');
+      continue;
+    }
+    if (/[A-Za-z]/.test(char)) {
+      pushToken('A');
+      continue;
+    }
+    if (/[\u3040-\u30ff\u3400-\u9fff]/u.test(char)) {
+      pushToken('X');
+      continue;
+    }
+    pushToken('#');
+  }
+
+  return result;
+}
+
+function canUseMirrorUnderlineFallback(
+  current: UnderlineSpaceCandidate,
+  counterpart: UnderlineSpaceCandidate,
+): boolean {
+  if (current.hasUnderlineFormat || !counterpart.hasUnderlineFormat) {
+    return false;
+  }
+  if (current.blankCount !== counterpart.blankCount || current.blankIndex !== counterpart.blankIndex) {
+    return false;
+  }
+  if (current.blankLength !== counterpart.blankLength) {
+    return false;
+  }
+  if (!current.mirrorShape || current.mirrorShape !== counterpart.mirrorShape) {
+    return false;
+  }
+  if (Math.abs(current.paragraphIndex - counterpart.paragraphIndex) > 1) {
+    return false;
+  }
+
+  const languagePair = new Set([current.language, counterpart.language]);
+  if (languagePair.has('en') || languagePair.has('unknown')) {
+    return false;
+  }
+
+  // Prefer bilingual-adjacent paragraphs, but still allow same-shape CJK mirrors
+  // when one side contains Kana and the other does not.
+  if (current.language === counterpart.language && current.hasKana === counterpart.hasKana) {
+    return false;
+  }
+
+  return true;
+}
+
+function buildWordContextSearchTexts(contextSnippet: string): string[] {
+  const normalizedSnippet = stripWordContextSnippet(contextSnippet);
+  if (!normalizedSnippet) {
+    return [];
+  }
+
+  const lines = normalizedSnippet
+    .split(/\n+/u)
+    .map((line) => line.trim())
+    .filter((line) => line.length >= 2);
+
+  const aliasLines = lines.flatMap((line) => {
+    const standaloneLabel = extractWordStandaloneLabelTarget(line);
+    if (standaloneLabel) {
+      return getWordHeaderAliasCandidates(standaloneLabel);
+    }
+
+    const labelValueTarget = extractWordLabelValueTarget(line);
+    if (labelValueTarget?.labelText) {
+      return getWordHeaderAliasCandidates(labelValueTarget.labelText);
+    }
+
+    return [];
+  });
+
+  const preferredLines = lines.filter((line) => extractLongestWordBlank(line) || extractWordLabelValueTarget(line));
+  return Array.from(new Set([...preferredLines, ...aliasLines, ...lines])).slice(0, 10);
+}
+
+function buildWordInsertionSearchSnippets(text: string, fromEnd: boolean): string[] {
+  const normalized = String(text || '');
+  if (!normalized) {
+    return [];
+  }
+
+  const snippets = fromEnd
+    ? [normalized.slice(-24), normalized.slice(-16), normalized.slice(-8)]
+    : [normalized.slice(0, 24), normalized.slice(0, 16), normalized.slice(0, 8)];
+
+  return Array.from(new Set(
+    snippets
+      .map((snippet) => snippet.trim())
+      .filter((snippet) => snippet.length >= 2)
+  ));
+}
+
+async function insertWordTextAtParagraphPosition(
+  paragraph: Word.Paragraph,
+  paragraphText: string,
+  position: number,
+  replacementText: string,
+): Promise<boolean> {
+  const safePosition = Math.max(0, Math.min(position, paragraphText.length));
+  const beforeText = paragraphText.slice(0, safePosition);
+  const afterText = paragraphText.slice(safePosition);
+
+  const beforeSnippets = buildWordInsertionSearchSnippets(beforeText, true);
+  for (const snippet of beforeSnippets) {
+    const snippetSearch = paragraph.search(snippet, {
+      matchCase: true,
+      matchWholeWord: false,
+    });
+    snippetSearch.load('items');
+    await paragraph.context.sync();
+
+    if (snippetSearch.items.length === 0) {
+      continue;
+    }
+
+    snippetSearch.items[snippetSearch.items.length - 1].insertText(replacementText, Word.InsertLocation.end);
+    await paragraph.context.sync();
+    return true;
+  }
+
+  const afterSnippets = buildWordInsertionSearchSnippets(afterText, false);
+  for (const snippet of afterSnippets) {
+    const snippetSearch = paragraph.search(snippet, {
+      matchCase: true,
+      matchWholeWord: false,
+    });
+    snippetSearch.load('items');
+    await paragraph.context.sync();
+
+    if (snippetSearch.items.length === 0) {
+      continue;
+    }
+
+    snippetSearch.items[0].insertText(replacementText, Word.InsertLocation.start);
+    await paragraph.context.sync();
+    return true;
+  }
+
+  return false;
+}
+
+async function replaceWordValueNearLabel(
+  context: Word.RequestContext,
+  labelText: string,
+  valueText: string,
+  replacementText: string,
+): Promise<boolean> {
+  const paragraphs = context.document.body.paragraphs;
+  paragraphs.load('items');
+  await context.sync();
+
+  for (const paragraph of paragraphs.items) {
+    paragraph.load('text');
+  }
+  await context.sync();
+
+  const normalizedLabel = String(labelText || '').trim();
+  const normalizedValue = String(valueText || '').trim();
+  if (!normalizedLabel || !normalizedValue) {
+    return false;
+  }
+
+  for (let index = 0; index < paragraphs.items.length; index += 1) {
+    const paragraph = paragraphs.items[index];
+    const paragraphText = String(paragraph.text || '');
+    if (!paragraphText.includes(normalizedLabel)) {
+      continue;
+    }
+
+    if (paragraphText.includes(normalizedValue)) {
+      const valueSearch = paragraph.search(normalizedValue, {
+        matchCase: false,
+        matchWholeWord: false,
+      });
+      valueSearch.load('items');
+      await context.sync();
+
+      if (valueSearch.items.length > 0) {
+        valueSearch.items[0].insertText(replacementText, Word.InsertLocation.replace);
+        await context.sync();
+        return true;
+      }
+    }
+
+    const nextParagraph = paragraphs.items[index + 1];
+    if (!nextParagraph) {
+      continue;
+    }
+    const nextParagraphText = String(nextParagraph.text || '');
+    if (!nextParagraphText.includes(normalizedValue)) {
+      continue;
+    }
+
+    const valueSearch = nextParagraph.search(normalizedValue, {
+      matchCase: false,
+      matchWholeWord: false,
+    });
+    valueSearch.load('items');
+    await context.sync();
+
+    if (valueSearch.items.length > 0) {
+      valueSearch.items[0].insertText(replacementText, Word.InsertLocation.replace);
+      await context.sync();
+      return true;
+    }
+  }
+
+  return false;
+}
+
+async function insertWordValueAfterLabel(
+  foundRange: Word.Range,
+  labelText: string,
+  replacementText: string,
+): Promise<boolean> {
+  const normalizedLabel = String(labelText || '').trim();
+  const normalizedFoundText = String(foundRange.text || '').trim();
+  if (!normalizedLabel || !normalizedFoundText) {
+    return false;
+  }
+
+  if (normalizedFoundText === normalizedLabel || normalizedFoundText.endsWith(normalizedLabel)) {
+    foundRange.insertText(replacementText, Word.InsertLocation.end);
+    return true;
+  }
+
+  const labelSearch = foundRange.search(normalizedLabel, {
+    matchCase: false,
+    matchWholeWord: false,
+  });
+  labelSearch.load('items');
+  await foundRange.context.sync();
+
+  if (labelSearch.items.length === 0) {
+    return false;
+  }
+
+  labelSearch.items[0].insertText(replacementText, Word.InsertLocation.end);
+  return true;
+}
 
 /**
  * 获取当前 Office 应用类型
  */
 export function getOfficeType(): OfficeAppType {
+  switch (Office.context?.host) {
+    case Office.HostType.Word:
+      return 'word';
+    case Office.HostType.Excel:
+      return 'excel';
+    case Office.HostType.PowerPoint:
+      return 'ppt';
+  }
   if (typeof Word !== 'undefined') return 'word';
   if (typeof Excel !== 'undefined') return 'excel';
   if (typeof PowerPoint !== 'undefined') return 'ppt';
@@ -25,10 +485,794 @@ function hasZipHeader(base64: string): boolean {
   }
 }
 
+const DocumentFileAPI = {
+  async getFileContentBase64(): Promise<string> {
+    const documentWithContentApi = Office.context.document as Office.Document & {
+      getFileContentAsync?: (
+        fileType: Office.FileType,
+        callback: (result: Office.AsyncResult<string | ArrayBuffer>) => void
+      ) => void;
+    };
+
+    if (!documentWithContentApi.getFileContentAsync) {
+      throw new Error('getFileContentAsync不支持');
+    }
+
+    return new Promise((resolve, reject) => {
+      documentWithContentApi.getFileContentAsync?.(
+        Office.FileType.Compressed,
+        (result: Office.AsyncResult<string | ArrayBuffer>) => {
+          if (result.status !== Office.AsyncResultStatus.Succeeded) {
+            console.warn('getFileContentAsync失败:', result.error?.message);
+            reject(new Error(result.error?.message || 'getFileContentAsync失败'));
+            return;
+          }
+
+          const data = result.value;
+          const dataLength =
+            typeof data === 'string'
+              ? data.length
+              : data instanceof ArrayBuffer
+                ? data.byteLength
+                : 0;
+          console.log(
+            'getFileContentAsync成功，数据类型:',
+            typeof data,
+            'isArrayBuffer:',
+            data instanceof ArrayBuffer,
+            '长度:',
+            dataLength
+          );
+
+          let base64: string;
+          if (typeof data === 'string') {
+            base64 = data;
+          } else if (data instanceof ArrayBuffer) {
+            const bytes = new Uint8Array(data);
+            let binary = '';
+            for (let i = 0; i < bytes.length; i++) {
+              binary += String.fromCharCode(bytes[i]);
+            }
+            base64 = btoa(binary);
+          } else {
+            base64 = String(data);
+          }
+
+          resolve(base64);
+        }
+      );
+    });
+  },
+
+  async getCompressedDocumentBase64(): Promise<string> {
+    return new Promise((resolve, reject) => {
+      const SLICE_SIZE = 4194304;
+
+      Office.context.document.getFileAsync(
+        Office.FileType.Compressed,
+        { sliceSize: SLICE_SIZE },
+        (result) => {
+          console.log('getFileAsync result:', result.status, 'sliceSize:', SLICE_SIZE);
+
+          if (result.status !== Office.AsyncResultStatus.Succeeded) {
+            const errorMsg = result.error?.message || '未知错误';
+            console.error('获取文件失败:', errorMsg);
+            reject(new Error(`获取文件失败: ${errorMsg}`));
+            return;
+          }
+
+          const file = result.value;
+          const sliceCount = file.sliceCount;
+          console.log('sliceCount:', sliceCount);
+
+          if (sliceCount === 0) {
+            file.closeAsync();
+            reject(new Error('文件切片数为0'));
+            return;
+          }
+
+          const slices: string[] = [];
+          let failedSlices = 0;
+
+          const getSlice = (sliceIndex: number) => {
+            if (sliceIndex >= sliceCount) {
+              if (failedSlices > 0) {
+                file.closeAsync();
+                reject(new Error(`${failedSlices}个切片获取失败`));
+                return;
+              }
+
+              file.closeAsync();
+              const fullBase64 = slices.join('');
+              console.log(`获取文件成功，共${sliceCount}个切片，base64长度: ${fullBase64.length}`);
+              console.log(`base64前50字符: ${fullBase64.substring(0, 50)}`);
+
+              try {
+                const decoded = atob(fullBase64.substring(0, 100));
+                console.log('解码后前10字节:', decoded.substring(0, 10));
+                console.log('是否PK开头:', decoded.substring(0, 2) === 'PK');
+
+                if (decoded.substring(0, 2) !== 'PK') {
+                  console.warn('警告：返回的数据不是有效的压缩 Office 文件（无PK header）');
+                }
+              } catch (e) {
+                console.warn('base64验证失败:', e);
+              }
+
+              resolve(fullBase64);
+              return;
+            }
+
+            file.getSliceAsync(sliceIndex, (sliceResult) => {
+              console.log(`getSliceAsync(${sliceIndex}) result:`, sliceResult.status);
+
+              if (sliceResult.status === Office.AsyncResultStatus.Succeeded) {
+                const sliceData = sliceResult.value.data;
+                console.log(
+                  `slice ${sliceIndex} data type:`,
+                  typeof sliceData,
+                  'isArrayBuffer:',
+                  sliceData instanceof ArrayBuffer,
+                  'length:',
+                  sliceData?.length
+                );
+
+                let base64Slice: string;
+
+                if (typeof sliceData === 'string') {
+                  base64Slice = sliceData;
+                } else if (sliceData instanceof ArrayBuffer) {
+                  const bytes = new Uint8Array(sliceData);
+                  let binary = '';
+                  for (let i = 0; i < bytes.length; i++) {
+                    binary += String.fromCharCode(bytes[i]);
+                  }
+                  base64Slice = btoa(binary);
+                  console.log(`slice ${sliceIndex} converted from ArrayBuffer to base64, length:`, base64Slice.length);
+                } else if (sliceData && typeof sliceData === 'object') {
+                  try {
+                    const bytes = new Uint8Array(sliceData as any);
+                    let binary = '';
+                    for (let i = 0; i < bytes.length; i++) {
+                      binary += String.fromCharCode(bytes[i]);
+                    }
+                    base64Slice = btoa(binary);
+                  } catch (e) {
+                    console.warn(`slice ${sliceIndex} data format unknown, treating as string`);
+                    base64Slice = String(sliceData);
+                  }
+                } else {
+                  console.error(`slice ${sliceIndex} data is null or undefined`);
+                  failedSlices++;
+                  getSlice(sliceIndex + 1);
+                  return;
+                }
+
+                slices.push(base64Slice);
+                getSlice(sliceIndex + 1);
+              } else {
+                failedSlices++;
+                const errorMsg = sliceResult.error?.message || '未知错误';
+                console.error(`获取切片${sliceIndex}失败:`, errorMsg);
+                getSlice(sliceIndex + 1);
+              }
+            });
+          };
+
+          getSlice(0);
+        }
+      );
+    });
+  },
+};
+
+function escapeWordRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+function extractWordLoopArrayPath(value: string): string {
+  const normalized = String(value || '').trim();
+  if (!normalized) {
+    return '';
+  }
+
+  const loopMatch = normalized.match(/\{#([^}]+)\}/u);
+  if (loopMatch?.[1]) {
+    return loopMatch[1].trim().replace(/\[(?:i(?:\+\d+)?)?\]$/u, '');
+  }
+
+  const variableMatch = normalized
+    .replace(/[{}]/g, '')
+    .match(/^(d\.[A-Za-z_][A-Za-z0-9_.]*)\[(?:i(?:\+\d+)?)?\]\.[A-Za-z_][A-Za-z0-9_]*$/u);
+  if (variableMatch?.[1]) {
+    return variableMatch[1].trim();
+  }
+
+  return normalized
+    .replace(/[{}]/g, '')
+    .replace(/\[(?:i(?:\+\d+)?)?\]$/u, '')
+    .trim();
+}
+
+function stripWordLoopMarkers(value: string, arrayPath: string): string {
+  const normalizedArrayPath = extractWordLoopArrayPath(arrayPath);
+  if (!normalizedArrayPath) {
+    return String(value || '');
+  }
+
+  const startMarker = `{#${normalizedArrayPath}}`;
+  const endMarker = `{/${normalizedArrayPath}}`;
+  return String(value || '')
+    .replace(new RegExp(escapeWordRegExp(startMarker), 'gu'), '')
+    .replace(new RegExp(escapeWordRegExp(endMarker), 'gu'), '')
+    .trim();
+}
+
+async function withWordTargetTableRow<T>(
+  context: Word.RequestContext,
+  tableIndex: number,
+  sourceRowIndex: number,
+  callback: (targetRow: Word.TableRow, metadata: { columnCount: number; targetRowIndex: number }) => Promise<T>,
+  options?: { suppressLocateLog?: boolean },
+): Promise<T | null> {
+  const tables = context.document.body.tables;
+  tables.load('items');
+  await context.sync();
+
+  if (tableIndex < 0 || tableIndex >= tables.items.length) {
+    return null;
+  }
+
+  const table = tables.items[tableIndex];
+  const rows = table.rows;
+  rows.load('items');
+  await context.sync();
+
+  if (sourceRowIndex < 0 || sourceRowIndex >= rows.items.length) {
+    return null;
+  }
+
+  const sourceRow = rows.items[sourceRowIndex];
+  const sourceCells = sourceRow.cells;
+  sourceCells.load('items');
+  await context.sync();
+
+  const columnCount = Math.max(sourceCells.items.length || 0, 1);
+  for (const cell of sourceCells.items) {
+    cell.load('cellIndex');
+    cell.body.load('text');
+  }
+  await context.sync();
+
+  if (!options?.suppressLocateLog) {
+    WordAPI.emitDebugLog(
+      'debug',
+      '循环表格定位目标行',
+      [
+        `表格: ${tableIndex}`,
+        `源行: ${sourceRowIndex}`,
+        `当前总行数: ${rows.items.length}`,
+        `列数: ${columnCount}`,
+        `源行内容: ${formatWordTableRowSnapshot(sourceCells.items)}`,
+      ].join('\n'),
+    );
+  }
+
+  let targetRowIndex = sourceRowIndex + 1;
+
+  if (targetRowIndex >= rows.items.length) {
+    try {
+      const emptyRowValues = [Array.from({ length: columnCount }, () => '')];
+      const tableWithAddRows = table as unknown as {
+        addRows?: (insertLocation?: string, rowCount?: number, values?: string[][]) => void;
+      };
+      if (typeof tableWithAddRows.addRows === 'function') {
+        tableWithAddRows.addRows('After', 1, emptyRowValues);
+        await context.sync();
+        rows.load('items');
+        await context.sync();
+        WordAPI.emitDebugLog(
+          'debug',
+          '循环表格已尝试创建下一行',
+          `表格: ${tableIndex}\n源行: ${sourceRowIndex}\n创建后总行数: ${rows.items.length}`,
+        );
+      }
+    } catch (error) {
+      console.warn('withWordTargetTableRow addRows error:', error);
+      WordAPI.emitDebugLog(
+        'warn',
+        '循环表格创建下一行失败',
+        `表格: ${tableIndex}\n源行: ${sourceRowIndex}\n${error instanceof Error ? error.message : String(error)}`,
+      );
+    }
+  }
+
+  if (targetRowIndex >= rows.items.length) {
+    WordAPI.emitDebugLog(
+      'error',
+      '循环表格未找到可写入的下一行',
+      [
+        `表格: ${tableIndex}`,
+        `源行: ${sourceRowIndex}`,
+        `当前总行数: ${rows.items.length}`,
+        '已停止应用，避免回退覆盖源行/表头行。',
+      ].join('\n'),
+    );
+    return null;
+  }
+
+  const targetRow = rows.items[targetRowIndex];
+  if (!targetRow) {
+    WordAPI.emitDebugLog(
+      'error',
+      '循环表格目标行不存在',
+      `表格: ${tableIndex}\n源行: ${sourceRowIndex}\n目标行: ${targetRowIndex}`,
+    );
+    return null;
+  }
+
+  return callback(targetRow, { columnCount, targetRowIndex });
+}
+
+async function loadWordTableRowCells(
+  context: Word.RequestContext,
+  row: Word.TableRow,
+): Promise<Word.TableCell[]> {
+  const cells = row.cells;
+  cells.load('items');
+  await context.sync();
+
+  for (const cell of cells.items) {
+    cell.load('cellIndex');
+    cell.body.load('text');
+  }
+  await context.sync();
+
+  return cells.items;
+}
+
+function formatWordTableCellSnapshot(cell: Word.TableCell): string {
+  const cellIndex = Number(cell.cellIndex || 0);
+  const rawText = String(cell.body.text || '').replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+  const normalizedText = rawText
+    .split('\n')
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .join(' / ');
+  return `[c${cellIndex}] ${normalizedText || '(blank)'}`;
+}
+
+function formatWordTableCellParagraphSnapshot(paragraphTexts: string[]): string {
+  if (!paragraphTexts.length) {
+    return '(no paragraphs)';
+  }
+  return paragraphTexts
+    .map((text, index) => `p${index}: ${JSON.stringify(String(text || '').replace(/\r\n/g, '\n').replace(/\r/g, '\n'))}`)
+    .join('\n');
+}
+
+function formatWordTableRowSnapshot(cells: Word.TableCell[]): string {
+  if (!cells.length) {
+    return '(empty row)';
+  }
+  return cells
+    .slice()
+    .sort((left, right) => Number(left.cellIndex || 0) - Number(right.cellIndex || 0))
+    .map((cell) => formatWordTableCellSnapshot(cell))
+    .join(' | ');
+}
+
+async function loadWordTableCellParagraphs(
+  context: Word.RequestContext,
+  cell: Word.TableCell,
+): Promise<Array<{ paragraph: Word.Paragraph; text: string }>> {
+  const paragraphs = cell.body.paragraphs;
+  paragraphs.load('items');
+  await context.sync();
+
+  for (const paragraph of paragraphs.items) {
+    paragraph.load('text');
+  }
+  await context.sync();
+
+  return paragraphs.items.map((paragraph) => ({
+    paragraph,
+    text: String(paragraph.text || ''),
+  }));
+}
+
+function getWordTableCellByColumn(
+  cells: Word.TableCell[],
+  columnIndex: number,
+): Word.TableCell | null {
+  if (!cells.length) {
+    return null;
+  }
+
+  const exactMatch = cells.find((cell) => Number(cell.cellIndex) === columnIndex);
+  if (exactMatch) {
+    return exactMatch;
+  }
+
+  const sorted = [...cells].sort(
+    (left, right) => Math.abs(Number(left.cellIndex || 0) - columnIndex) - Math.abs(Number(right.cellIndex || 0) - columnIndex)
+  );
+  return sorted[0] || null;
+}
+
+function findWordFirstNonEmptyParagraphIndex(paragraphTexts: string[]): number {
+  const matchIndex = paragraphTexts.findIndex((text) => String(text || '').trim().length > 0);
+  return matchIndex >= 0 ? matchIndex : 0;
+}
+
+function findWordLastNonEmptyParagraphIndex(paragraphTexts: string[]): number {
+  for (let index = paragraphTexts.length - 1; index >= 0; index -= 1) {
+    if (String(paragraphTexts[index] || '').trim().length > 0) {
+      return index;
+    }
+  }
+  return Math.max(paragraphTexts.length - 1, 0);
+}
+
+function findWordReplacementParagraphIndex(
+  paragraphTexts: string[],
+  replacementText: string,
+): number {
+  const normalizedReplacement = String(replacementText || '').trim();
+  if (!normalizedReplacement) {
+    return findWordFirstNonEmptyParagraphIndex(paragraphTexts);
+  }
+
+  const existingIndex = paragraphTexts.findIndex((text) => String(text || '').trim() === normalizedReplacement);
+  if (existingIndex >= 0) {
+    return existingIndex;
+  }
+
+  const fieldLeaf = normalizedReplacement
+    .replace(/[{}]/g, '')
+    .split('.')
+    .pop()
+    || '';
+
+  if (/_((cn)|(zh)|(zhcn))$/iu.test(fieldLeaf)) {
+    return 0;
+  }
+  if (/_((jp)|(ja))$/iu.test(fieldLeaf)) {
+    return paragraphTexts.length > 1 ? 1 : 0;
+  }
+  if (/_en$/iu.test(fieldLeaf)) {
+    return paragraphTexts.length > 2 ? 2 : Math.max(paragraphTexts.length - 1, 0);
+  }
+
+  const emptyIndex = paragraphTexts.findIndex((text) => String(text || '').trim().length === 0);
+  if (emptyIndex >= 0) {
+    return emptyIndex;
+  }
+
+  return findWordLastNonEmptyParagraphIndex(paragraphTexts);
+}
+
+function shouldAppendWordReplacementParagraph(
+  paragraphTexts: string[],
+  replacementText: string,
+  targetIndex: number,
+): boolean {
+  const normalizedReplacement = String(replacementText || '').trim();
+  if (!normalizedReplacement) {
+    return false;
+  }
+
+  if (paragraphTexts.some((text) => String(text || '').trim() === normalizedReplacement)) {
+    return false;
+  }
+
+  if (paragraphTexts.some((text) => String(text || '').trim().length === 0)) {
+    return false;
+  }
+
+  const currentTargetText = String(paragraphTexts[targetIndex] || '').trim();
+  if (!currentTargetText) {
+    return false;
+  }
+
+  return currentTargetText !== normalizedReplacement;
+}
+
+function splitWordReplacementParagraphs(replacementText: string): string[] {
+  const normalizedText = String(replacementText || '').replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+  const parts = normalizedText
+    .split('\n')
+    .map((part) => part.trim())
+    .filter((part) => part.length > 0);
+  return parts.length > 0 ? parts : [String(replacementText || '').trim()];
+}
+
+function isWordMarkerOnlyParagraph(text: string, marker: string): boolean {
+  return String(text || '').trim() === marker;
+}
+
+type WordTableCellReplacementResult = {
+  updated: boolean;
+  debugInfo: {
+    cellIndex: number;
+    arrayPath: string;
+    replacementText: string;
+    includeStart: boolean;
+    includeEnd: boolean;
+    beforeParagraphTexts: string[];
+    contentParagraphTextsBefore: string[];
+    targetParagraphIndex: number;
+    appendNewParagraph: boolean;
+    afterParagraphTexts: string[];
+  };
+};
+
+async function replaceWordTableCellTextPreservingParagraphs(
+  context: Word.RequestContext,
+  cell: Word.TableCell,
+  options: {
+    replacementText?: string;
+    arrayPath?: string;
+    includeStart?: boolean;
+    includeEnd?: boolean;
+  },
+): Promise<WordTableCellReplacementResult> {
+  const normalizedArrayPath = extractWordLoopArrayPath(options.arrayPath || '');
+  const startMarker = normalizedArrayPath ? `{#${normalizedArrayPath}}` : '';
+  const endMarker = normalizedArrayPath ? `{/${normalizedArrayPath}}` : '';
+  const paragraphEntries = await loadWordTableCellParagraphs(context, cell);
+  const cellIndex = Number(cell.cellIndex || 0);
+  const normalizedReplacement = String(options.replacementText || '').trim();
+
+  if (paragraphEntries.length === 0) {
+    const fallbackValue = normalizedArrayPath
+      ? buildWordLoopWrappedCellText({
+          existingText: String(cell.body.text || ''),
+          replacementText: options.replacementText,
+          arrayPath: normalizedArrayPath,
+          includeStart: Boolean(options.includeStart),
+          includeEnd: Boolean(options.includeEnd),
+        })
+      : String(options.replacementText || '');
+    cell.value = fallbackValue;
+    await context.sync();
+    return {
+      updated: true,
+      debugInfo: {
+        cellIndex,
+        arrayPath: normalizedArrayPath,
+        replacementText: normalizedReplacement,
+        includeStart: Boolean(options.includeStart),
+        includeEnd: Boolean(options.includeEnd),
+        beforeParagraphTexts: [],
+        contentParagraphTextsBefore: [],
+        targetParagraphIndex: 0,
+        appendNewParagraph: false,
+        afterParagraphTexts: fallbackValue ? [fallbackValue] : [],
+      },
+    };
+  }
+
+  const paragraphStates = paragraphEntries.map((entry) => ({
+    paragraph: entry.paragraph,
+    originalText: entry.text,
+    cleanedText: normalizedArrayPath ? stripWordLoopMarkers(entry.text, normalizedArrayPath) : entry.text,
+    isStartMarkerOnly: Boolean(startMarker) && isWordMarkerOnlyParagraph(entry.text, startMarker),
+    isEndMarkerOnly: Boolean(endMarker) && isWordMarkerOnlyParagraph(entry.text, endMarker),
+  }));
+
+  const contentParagraphs = paragraphStates.filter((entry) => !entry.isStartMarkerOnly && !entry.isEndMarkerOnly);
+  const contentParagraphTexts = contentParagraphs.map((entry) => entry.cleanedText);
+  const beforeParagraphTexts = paragraphEntries.map((entry) => entry.text);
+  const contentParagraphTextsBefore = [...contentParagraphTexts];
+  let targetParagraphIndex = findWordFirstNonEmptyParagraphIndex(contentParagraphTextsBefore);
+  let appendNewParagraph = false;
+
+  if (typeof options.replacementText === 'string') {
+    const replacementParagraphs = splitWordReplacementParagraphs(options.replacementText);
+    targetParagraphIndex = findWordReplacementParagraphIndex(contentParagraphTexts, replacementParagraphs[0] || options.replacementText);
+    if (replacementParagraphs.length <= 1) {
+      appendNewParagraph = shouldAppendWordReplacementParagraph(
+        contentParagraphTexts,
+        normalizedReplacement,
+        targetParagraphIndex,
+      );
+      if (appendNewParagraph) {
+        contentParagraphTexts.push(normalizedReplacement);
+      } else {
+        contentParagraphTexts[targetParagraphIndex] = normalizedReplacement;
+      }
+    } else {
+      replacementParagraphs.forEach((paragraphText, paragraphOffset) => {
+        const destinationIndex = targetParagraphIndex + paragraphOffset;
+        if (destinationIndex < contentParagraphTexts.length) {
+          contentParagraphTexts[destinationIndex] = paragraphText;
+          return;
+        }
+        contentParagraphTexts.push(paragraphText);
+        appendNewParagraph = true;
+      });
+    }
+  }
+
+  contentParagraphs.forEach((entry, index) => {
+    const nextText = contentParagraphTexts[index] ?? '';
+    if (nextText === entry.originalText) {
+      return;
+    }
+    const paragraphRange = entry.paragraph.getRange(Word.RangeLocation.content);
+    paragraphRange.insertText(nextText, Word.InsertLocation.replace);
+  });
+
+  if (contentParagraphTexts.length > contentParagraphs.length) {
+    let insertAnchor: any = contentParagraphs[contentParagraphs.length - 1]?.paragraph
+      || paragraphEntries[paragraphEntries.length - 1]?.paragraph;
+    const cellBody = cell.body as any;
+    for (let index = contentParagraphs.length; index < contentParagraphTexts.length; index += 1) {
+      const paragraphText = contentParagraphTexts[index];
+      if (!paragraphText) {
+        continue;
+      }
+
+      if (typeof cellBody.insertParagraph === 'function') {
+        insertAnchor = cellBody.insertParagraph(paragraphText, 'End');
+        continue;
+      }
+
+      if (insertAnchor && typeof insertAnchor.insertParagraph === 'function') {
+        insertAnchor = insertAnchor.insertParagraph(paragraphText, 'After');
+      }
+    }
+  }
+
+  const existingStartMarkerParagraph = paragraphStates.find((entry) => entry.isStartMarkerOnly);
+  if (startMarker) {
+    if (options.includeStart) {
+      if (existingStartMarkerParagraph) {
+        if (existingStartMarkerParagraph.originalText !== startMarker) {
+          existingStartMarkerParagraph.paragraph
+            .getRange(Word.RangeLocation.content)
+            .insertText(startMarker, Word.InsertLocation.replace);
+        }
+      } else {
+        const cellBody = cell.body as any;
+        if (typeof cellBody.insertParagraph === 'function') {
+          cellBody.insertParagraph(startMarker, 'Start');
+        } else {
+          const firstContentParagraph: any = contentParagraphs[0]?.paragraph || paragraphEntries[0]?.paragraph;
+          if (firstContentParagraph && typeof firstContentParagraph.insertParagraph === 'function') {
+            firstContentParagraph.insertParagraph(startMarker, 'Before');
+          }
+        }
+      }
+    } else if (existingStartMarkerParagraph) {
+      existingStartMarkerParagraph.paragraph
+        .getRange(Word.RangeLocation.whole)
+        .insertText('', Word.InsertLocation.replace);
+    }
+  }
+
+  const existingEndMarkerParagraph = paragraphStates.find((entry) => entry.isEndMarkerOnly);
+  if (endMarker) {
+    if (options.includeEnd) {
+      if (existingEndMarkerParagraph) {
+        if (existingEndMarkerParagraph.originalText !== endMarker) {
+          existingEndMarkerParagraph.paragraph
+            .getRange(Word.RangeLocation.content)
+            .insertText(endMarker, Word.InsertLocation.replace);
+        }
+      } else {
+        const cellBody = cell.body as any;
+        if (typeof cellBody.insertParagraph === 'function') {
+          cellBody.insertParagraph(endMarker, 'End');
+        } else {
+          const lastContentParagraph: any = contentParagraphs[contentParagraphs.length - 1]?.paragraph
+            || paragraphEntries[paragraphEntries.length - 1]?.paragraph;
+          if (lastContentParagraph && typeof lastContentParagraph.insertParagraph === 'function') {
+            lastContentParagraph.insertParagraph(endMarker, 'After');
+          }
+        }
+      }
+    } else if (existingEndMarkerParagraph) {
+      existingEndMarkerParagraph.paragraph
+        .getRange(Word.RangeLocation.whole)
+        .insertText('', Word.InsertLocation.replace);
+    }
+  }
+
+  await context.sync();
+  const afterParagraphEntries = await loadWordTableCellParagraphs(context, cell);
+  return {
+    updated: true,
+    debugInfo: {
+      cellIndex,
+      arrayPath: normalizedArrayPath,
+      replacementText: normalizedReplacement,
+      includeStart: Boolean(options.includeStart),
+      includeEnd: Boolean(options.includeEnd),
+      beforeParagraphTexts,
+      contentParagraphTextsBefore,
+      targetParagraphIndex,
+      appendNewParagraph,
+      afterParagraphTexts: afterParagraphEntries.map((entry) => entry.text),
+    },
+  };
+}
+
+function buildWordLoopWrappedCellText(options: {
+  existingText: string;
+  replacementText?: string;
+  arrayPath: string;
+  includeStart: boolean;
+  includeEnd: boolean;
+}): string {
+  const normalizedArrayPath = extractWordLoopArrayPath(options.arrayPath);
+  const cleanContent = stripWordLoopMarkers(options.existingText, normalizedArrayPath);
+  const contentLines = cleanContent
+    .split(/\r?\n/u)
+    .map((line) => line.trim())
+    .filter(Boolean);
+
+  if (typeof options.replacementText === 'string') {
+    const normalizedReplacement = String(options.replacementText || '').trim();
+    if (!normalizedReplacement) {
+      // keep existing content lines
+    } else if (!contentLines.includes(normalizedReplacement)) {
+      contentLines.push(normalizedReplacement);
+    }
+  }
+
+  if (!normalizedArrayPath) {
+    return contentLines.join('\n');
+  }
+
+  if (options.includeStart) {
+    contentLines.unshift(`{#${normalizedArrayPath}}`);
+  }
+  if (options.includeEnd) {
+    contentLines.push(`{/${normalizedArrayPath}}`);
+  }
+
+  return contentLines.join('\n');
+}
+
 /**
  * Word 操作
  */
 export const WordAPI = {
+  _lastUnderlineDebugReport: '' as string,
+  _debugLogger: null as null | ((level: 'info' | 'warn' | 'error' | 'debug', message: string, details?: string) => void),
+
+  getLastUnderlineDebugReport(): string {
+    return this._lastUnderlineDebugReport || '';
+  },
+
+  clearLastUnderlineDebugReport(): void {
+    this._lastUnderlineDebugReport = '';
+  },
+
+  setDebugLogger(
+    logger: ((level: 'info' | 'warn' | 'error' | 'debug', message: string, details?: string) => void) | null
+  ): void {
+    this._debugLogger = logger;
+  },
+
+  clearDebugLogger(): void {
+    this._debugLogger = null;
+  },
+
+  emitDebugLog(level: 'info' | 'warn' | 'error' | 'debug', message: string, details?: string): void {
+    this._debugLogger?.(level, message, details);
+    const consoleMethod = level === 'error'
+      ? 'error'
+      : level === 'warn'
+        ? 'warn'
+        : level === 'debug'
+          ? 'debug'
+          : 'log';
+    console[consoleMethod](`[WORD LOOP] ${message}`, details || '');
+  },
+
   /**
    * 获取文档全部内容（纯文本）
    */
@@ -109,126 +1353,7 @@ export const WordAPI = {
    * 使用更大的sliceSize（4MB）提高可靠性
    */
   async getDocumentFileBase64(): Promise<string> {
-    return new Promise((resolve, reject) => {
-      // 使用4MB sliceSize（推荐值）
-      const SLICE_SIZE = 4194304;
-
-      // Office JS API: Document.getFileAsync
-      // 使用Office.FileType.Compressed获取docx文件的base64切片
-      Office.context.document.getFileAsync(Office.FileType.Compressed, { sliceSize: SLICE_SIZE }, (result) => {
-        console.log('getFileAsync result:', result.status, 'sliceSize:', SLICE_SIZE);
-
-        if (result.status === Office.AsyncResultStatus.Succeeded) {
-          const file = result.value;
-          const sliceCount = file.sliceCount;
-          console.log('sliceCount:', sliceCount);
-
-          if (sliceCount === 0) {
-            file.closeAsync();
-            reject(new Error('文件切片数为0'));
-            return;
-          }
-
-          const slices: string[] = [];
-          let failedSlices = 0;
-
-          const getSlice = (sliceIndex: number) => {
-            if (sliceIndex >= sliceCount) {
-              // 所有切片已处理完毕
-              if (failedSlices > 0) {
-                file.closeAsync();
-                reject(new Error(`${failedSlices}个切片获取失败`));
-                return;
-              }
-
-              // 组合所有slice为完整base64
-              file.closeAsync();
-              const fullBase64 = slices.join('');
-              console.log(`获取文件成功，共${sliceCount}个切片，base64长度: ${fullBase64.length}`);
-              console.log(`base64前50字符: ${fullBase64.substring(0, 50)}`);
-
-              // 验证base64解码后是否是有效的zip文件（PK开头）
-              try {
-                const decoded = atob(fullBase64.substring(0, 100));
-                console.log('解码后前10字节:', decoded.substring(0, 10));
-                console.log('是否PK开头:', decoded.substring(0, 2) === 'PK');
-
-                if (decoded.substring(0, 2) !== 'PK') {
-                  console.warn('警告：返回的数据不是有效的docx格式（无PK header）');
-                  // 不reject，仍然返回数据，让上层处理
-                }
-              } catch (e) {
-                console.warn('base64验证失败:', e);
-              }
-
-              resolve(fullBase64);
-              return;
-            }
-
-            file.getSliceAsync(sliceIndex, (sliceResult) => {
-              console.log(`getSliceAsync(${sliceIndex}) result:`, sliceResult.status);
-
-              if (sliceResult.status === Office.AsyncResultStatus.Succeeded) {
-                const sliceData = sliceResult.value.data;
-                console.log(`slice ${sliceIndex} data type:`, typeof sliceData, 'isArrayBuffer:', sliceData instanceof ArrayBuffer, 'length:', sliceData?.length);
-
-                // 处理不同平台返回的数据格式
-                // 某些Office版本返回base64字符串，某些返回ArrayBuffer（raw binary）
-                let base64Slice: string;
-
-                if (typeof sliceData === 'string') {
-                  // 已经是base64字符串，直接使用
-                  base64Slice = sliceData;
-                } else if (sliceData instanceof ArrayBuffer) {
-                  // raw binary数据，需要转换为base64
-                  const bytes = new Uint8Array(sliceData);
-                  let binary = '';
-                  for (let i = 0; i < bytes.length; i++) {
-                    binary += String.fromCharCode(bytes[i]);
-                  }
-                  base64Slice = btoa(binary);
-                  console.log(`slice ${sliceIndex} converted from ArrayBuffer to base64, length:`, base64Slice.length);
-                } else if (sliceData && typeof sliceData === 'object') {
-                  // 可能是其他格式，尝试转换
-                  try {
-                    // 尝试作为Uint8Array处理
-                    const bytes = new Uint8Array(sliceData as any);
-                    let binary = '';
-                    for (let i = 0; i < bytes.length; i++) {
-                      binary += String.fromCharCode(bytes[i]);
-                    }
-                    base64Slice = btoa(binary);
-                  } catch (e) {
-                    console.warn(`slice ${sliceIndex} data format unknown, treating as string`);
-                    base64Slice = String(sliceData);
-                  }
-                } else {
-                  console.error(`slice ${sliceIndex} data is null or undefined`);
-                  failedSlices++;
-                  getSlice(sliceIndex + 1);
-                  return;
-                }
-
-                slices.push(base64Slice);
-                getSlice(sliceIndex + 1);
-              } else {
-                failedSlices++;
-                const errorMsg = sliceResult.error?.message || '未知错误';
-                console.error(`获取切片${sliceIndex}失败:`, errorMsg);
-                // 继续尝试获取下一个切片
-                getSlice(sliceIndex + 1);
-              }
-            });
-          };
-
-          getSlice(0);
-        } else {
-          const errorMsg = result.error?.message || '未知错误';
-          console.error('获取文件失败:', errorMsg);
-          reject(new Error(`获取文件失败: ${errorMsg}`));
-        }
-      });
-    });
+    return DocumentFileAPI.getCompressedDocumentBase64();
   },
 
   /**
@@ -272,47 +1397,7 @@ export const WordAPI = {
    * 直接返回base64编码的文件内容
    */
   async getFileContentBase64(): Promise<string> {
-    // 检查是否支持getFileContentAsync（较新的API）
-    const documentWithContentApi = Office.context.document as Office.Document & {
-      getFileContentAsync?: (
-        fileType: Office.FileType,
-        callback: (result: Office.AsyncResult<string | ArrayBuffer>) => void
-      ) => void;
-    };
-
-    if (documentWithContentApi.getFileContentAsync) {
-      return new Promise((resolve, reject) => {
-        documentWithContentApi.getFileContentAsync?.(Office.FileType.Compressed, (result: Office.AsyncResult<string | ArrayBuffer>) => {
-          if (result.status === Office.AsyncResultStatus.Succeeded) {
-            const data = result.value;
-            const dataLength = typeof data === 'string' ? data.length : data instanceof ArrayBuffer ? data.byteLength : 0;
-            console.log('getFileContentAsync成功，数据类型:', typeof data, 'isArrayBuffer:', data instanceof ArrayBuffer, '长度:', dataLength);
-
-            // 处理不同数据格式
-            let base64: string;
-            if (typeof data === 'string') {
-              base64 = data;
-            } else if (data instanceof ArrayBuffer) {
-              const bytes = new Uint8Array(data);
-              let binary = '';
-              for (let i = 0; i < bytes.length; i++) {
-                binary += String.fromCharCode(bytes[i]);
-              }
-              base64 = btoa(binary);
-            } else {
-              // 尝试其他格式
-              base64 = String(data);
-            }
-
-            resolve(base64);
-          } else {
-            console.warn('getFileContentAsync失败:', result.error?.message);
-            reject(new Error(result.error?.message || 'getFileContentAsync失败'));
-          }
-        });
-      });
-    }
-    throw new Error('getFileContentAsync不支持');
+    return DocumentFileAPI.getFileContentBase64();
   },
 
   /**
@@ -480,11 +1565,11 @@ export const WordAPI = {
             const cells = row.cells;
             cells.load('items');
             await context.sync();
-            const rowContent = cells.items.map((cell) => {
+            cells.items.forEach((cell) => {
               cell.body.load('text');
-              return cell.body.text;
             });
             await context.sync();
+            const rowContent = cells.items.map((cell) => cell.body.text);
             content.push(rowContent);
           }
           tableData.push({
@@ -604,7 +1689,8 @@ export const WordAPI = {
             await context.sync();
 
             for (const cell of cells.items) {
-              cell.load('rowIndex,cellIndex,value');
+              cell.load('rowIndex,cellIndex');
+              cell.body.load('text');
             }
             await context.sync();
 
@@ -613,7 +1699,7 @@ export const WordAPI = {
                 tableIndex,
                 rowIndex: cell.rowIndex,
                 cellIndex: cell.cellIndex,
-                text: cell.value || '',
+                text: cell.body.text || '',
               });
             }
           }
@@ -747,6 +1833,20 @@ export const WordAPI = {
     return new Promise((resolve) => {
       Word.run(async (context) => {
         const result: any[] = [];
+        const spaceCandidates: UnderlineSpaceCandidate[] = [];
+        const warrantyDebugLines: string[] = [];
+        const pushWarrantyDebug = (line: string) => {
+          warrantyDebugLines.push(line);
+          console.log(line);
+        };
+        const detectionStats = {
+          spaceRanges: 0,
+          contextHits: 0,
+          directHits: 0,
+          noSearchResult: 0,
+          filteredByUnderline: 0,
+          searchErrors: 0,
+        };
 
         console.log('[DEBUG] 开始检测下划线参数位置...');
 
@@ -762,8 +1862,15 @@ export const WordAPI = {
             paragraph.load('text');
             await context.sync();
 
-            const fullText = paragraph.text;
-            if (!fullText || fullText.trim().length < 2) continue;
+            const fullText = paragraph.text || '';
+            if (!fullText || fullText.length < 2) continue;
+            const isWarrantyDebugParagraph = /保修期|アフターサービス保証期間|年内|年とする/u.test(fullText);
+            const paragraphLanguage = detectUnderlineFallbackLanguage(fullText);
+            const paragraphHasKana = /[\u3040-\u30ff]/u.test(fullText);
+
+            if (isWarrantyDebugParagraph) {
+              pushWarrantyDebug(`[DEBUG][WARRANTY] 段落${pIdx} 原文: ${JSON.stringify(fullText)}`);
+            }
 
             // ===== 步骤1：分类查找空白区域 =====
             // A. 下划线字符：直接作为参数
@@ -795,6 +1902,21 @@ export const WordAPI = {
             const totalBlankCount = underlineCharMatches.length + spaceMatches.length;
             if (totalBlankCount === 0) continue;
             console.log(`[DEBUG] 段落 ${pIdx}: 发现 ${underlineCharMatches.length} 个下划线字符 + ${spaceMatches.length} 个空格区域`);
+            if (isWarrantyDebugParagraph) {
+              pushWarrantyDebug(
+                `[DEBUG][WARRANTY] 段落${pIdx} 空白统计: underlineChar=${underlineCharMatches.length}, spaces=${spaceMatches.length}`
+              );
+              underlineCharMatches.forEach((underlineMatch, underlineIndex) => {
+                pushWarrantyDebug(
+                  `[DEBUG][WARRANTY] 段落${pIdx} 下划线字符#${underlineIndex + 1}: ${underlineMatch.start}-${underlineMatch.end} ${JSON.stringify(underlineMatch.text)}`
+                );
+              });
+              spaceMatches.forEach((spaceMatch, spaceIndex) => {
+                pushWarrantyDebug(
+                  `[DEBUG][WARRANTY] 段落${pIdx} 空格候选#${spaceIndex + 1}: ${spaceMatch.start}-${spaceMatch.end} ${JSON.stringify(spaceMatch.text)}`
+                );
+              });
+            }
 
             // ===== 步骤2：下划线字符直接加入结果 =====
             // 下划线字符（_）本身就是参数标记，不需要检查 font.underline
@@ -811,64 +1933,275 @@ export const WordAPI = {
             }
 
             // ===== 步骤3：空格区域检查 font.underline =====
-            // 简化逻辑：对每个正则匹配的空格区域，检查是否有下划线格式
-            // 正则匹配的位置是准确的，直接使用
-            for (const spaceMatch of spaceMatches) {
+            for (let spaceIndex = 0; spaceIndex < spaceMatches.length; spaceIndex += 1) {
+              const spaceMatch = spaceMatches[spaceIndex];
+              detectionStats.spaceRanges += 1;
+              const candidateMeta: UnderlineSpaceCandidate = {
+                paragraphIndex: pIdx,
+                paragraphText: fullText,
+                text: spaceMatch.text,
+                start: spaceMatch.start,
+                end: spaceMatch.end,
+                blankIndex: spaceIndex,
+                blankCount: spaceMatches.length,
+                blankLength: spaceMatch.text.length,
+                hasUnderlineFormat: false,
+                foundByContext: false,
+                mirrorShape: buildUnderlineMirrorShape(fullText),
+                language: paragraphLanguage,
+                hasKana: paragraphHasKana,
+              };
               try {
-                // 搜索这个空格文本，检查是否有下划线格式
-                const searchResults = paragraph.search(spaceMatch.text, {
-                  matchCase: false,
-                  matchWholeWord: false
-                });
-                searchResults.load('items');
-                await context.sync();
+                const blankText = spaceMatch.text;
+                let hasUnderlineFormat = false;
+                let foundByContext = false;
+                let countedUnderlineFilter = false;
 
-                if (searchResults.items.length === 0) {
-                  console.log(`[DEBUG] 段落${pIdx} 位置${spaceMatch.start}: 未找到空格文本`);
-                  continue;
+                // 优先使用上下文扩展文本定位，避免直接搜索纯空格带来的误命中或漏命中。
+                const extendBefore = 4;
+                const extendAfter = 4;
+                const extendedStart = Math.max(0, spaceMatch.start - extendBefore);
+                const extendedEnd = Math.min(fullText.length, spaceMatch.end + extendAfter);
+                const extendedText = fullText.substring(extendedStart, extendedEnd);
+
+                if (isWarrantyDebugParagraph) {
+                  pushWarrantyDebug(
+                    `[DEBUG][WARRANTY] 段落${pIdx} 空格${spaceMatch.start}-${spaceMatch.end}: 扩展上下文 ${JSON.stringify(extendedText)}`
+                  );
                 }
 
-                for (const foundRange of searchResults.items) {
-                  foundRange.load('text,font/underline');
-                }
-                await context.sync();
+                if (extendedText.length > blankText.length) {
+                  const extSearchResults = paragraph.search(extendedText, {
+                    matchCase: true,
+                    matchWholeWord: false,
+                  });
+                  extSearchResults.load('items');
+                  await context.sync();
 
-                // 检查是否有任何一个匹配有下划线格式
-                // 对于纯空格文本，通常所有匹配都会有相同的格式
-                const hasUnderlineFormat = searchResults.items.some(foundRange => {
-                  const underline = foundRange.font.underline;
-                  return underline && underline !== 'None' && underline !== 'Mixed';
-                });
+                  if (extSearchResults.items.length > 0) {
+                    const extRange = extSearchResults.items[0];
+                    const blankInExt = extRange.search(blankText, {
+                      matchCase: false,
+                      matchWholeWord: false,
+                    });
+                    blankInExt.load('items');
+                    await context.sync();
+
+                    if (blankInExt.items.length > 0) {
+                      for (const foundRange of blankInExt.items) {
+                        foundRange.load('text,font/underline');
+                      }
+                      await context.sync();
+
+                      if (isWarrantyDebugParagraph) {
+                        pushWarrantyDebug(
+                          `[DEBUG][WARRANTY] 段落${pIdx} 空格${spaceMatch.start}-${spaceMatch.end}: 上下文命中 ${blankInExt.items.length} 个空格 range`
+                        );
+                        blankInExt.items.forEach((foundRange, foundIndex) => {
+                          pushWarrantyDebug(
+                            `[DEBUG][WARRANTY] 段落${pIdx} 上下文range#${foundIndex + 1}: text=${JSON.stringify(foundRange.text)} underline=${String(foundRange.font.underline)}`
+                          );
+                        });
+                      }
+
+                      hasUnderlineFormat = blankInExt.items.some((foundRange) => {
+                        const underline = foundRange.font.underline;
+                        return underline && underline !== 'None' && underline !== 'Mixed';
+                      });
+                      foundByContext = hasUnderlineFormat;
+                      candidateMeta.hasUnderlineFormat = hasUnderlineFormat;
+                      candidateMeta.foundByContext = foundByContext;
+
+                      if (!hasUnderlineFormat) {
+                        detectionStats.filteredByUnderline += 1;
+                        countedUnderlineFilter = true;
+                        console.log(
+                          `[DEBUG] 段落${pIdx} 位置${spaceMatch.start}-${spaceMatch.end}: 上下文定位成功，但空格区域 underline 为 None/Mixed`
+                        );
+                      }
+                    } else {
+                      if (isWarrantyDebugParagraph) {
+                        pushWarrantyDebug(
+                          `[DEBUG][WARRANTY] 段落${pIdx} 空格${spaceMatch.start}-${spaceMatch.end}: 上下文内没有找到空格片段`
+                        );
+                      }
+                      console.log(
+                        `[DEBUG] 段落${pIdx} 位置${spaceMatch.start}-${spaceMatch.end}: 上下文命中，但在上下文内未找到空格片段`
+                      );
+                    }
+                  } else {
+                    if (isWarrantyDebugParagraph) {
+                      pushWarrantyDebug(
+                        `[DEBUG][WARRANTY] 段落${pIdx} 空格${spaceMatch.start}-${spaceMatch.end}: 扩展上下文未命中`
+                      );
+                    }
+                    console.log(
+                      `[DEBUG] 段落${pIdx} 位置${spaceMatch.start}-${spaceMatch.end}: 未找到扩展上下文 "${extendedText}"`
+                    );
+                  }
+                }
+
+                if (!hasUnderlineFormat) {
+                  const searchResults = paragraph.search(blankText, {
+                    matchCase: false,
+                    matchWholeWord: false
+                  });
+                  searchResults.load('items');
+                  await context.sync();
+
+                  if (isWarrantyDebugParagraph) {
+                    pushWarrantyDebug(
+                      `[DEBUG][WARRANTY] 段落${pIdx} 空格${spaceMatch.start}-${spaceMatch.end}: 直接搜索命中 ${searchResults.items.length} 个 range`
+                    );
+                  }
+
+                  if (searchResults.items.length === 0) {
+                    detectionStats.noSearchResult += 1;
+                    console.log(`[DEBUG] 段落${pIdx} 位置${spaceMatch.start}: 未找到空格文本`);
+                    continue;
+                  }
+
+                  for (const foundRange of searchResults.items) {
+                    foundRange.load('text,font/underline');
+                  }
+                  await context.sync();
+
+                  if (isWarrantyDebugParagraph) {
+                    searchResults.items.forEach((foundRange, foundIndex) => {
+                      pushWarrantyDebug(
+                        `[DEBUG][WARRANTY] 段落${pIdx} 直接range#${foundIndex + 1}: text=${JSON.stringify(foundRange.text)} underline=${String(foundRange.font.underline)}`
+                      );
+                    });
+                  }
+
+                  hasUnderlineFormat = searchResults.items.some((foundRange) => {
+                    const underline = foundRange.font.underline;
+                    return underline && underline !== 'None' && underline !== 'Mixed';
+                  });
+                  candidateMeta.hasUnderlineFormat = hasUnderlineFormat;
+
+                  if (!hasUnderlineFormat) {
+                    if (!countedUnderlineFilter) {
+                      detectionStats.filteredByUnderline += 1;
+                    }
+                    console.log(
+                      `[DEBUG] 段落${pIdx} 位置${spaceMatch.start}-${spaceMatch.end}: 直接搜索命中，但空格区域 underline 为 None/Mixed`
+                    );
+                  }
+                }
 
                 if (hasUnderlineFormat) {
-                  // 直接使用正则匹配的位置加入结果
+                  if (foundByContext) {
+                    detectionStats.contextHits += 1;
+                  } else {
+                    detectionStats.directHits += 1;
+                  }
                   result.push({
-                    text: spaceMatch.text,
-                    underlineType: 'Single',
+                    text: blankText,
+                    underlineType: foundByContext ? 'SingleContext' : 'Single',
                     index: result.length,
                     paragraphIndex: pIdx,
                     paragraphText: fullText,
                     position: { start: spaceMatch.start, end: spaceMatch.end }
                   });
                   console.log(`[DEBUG] ✓ 下划线空格: 段落${pIdx} 位置${spaceMatch.start}-${spaceMatch.end}`);
+                  if (isWarrantyDebugParagraph) {
+                    pushWarrantyDebug(
+                      `[DEBUG][WARRANTY] 段落${pIdx} 空格${spaceMatch.start}-${spaceMatch.end}: 已写入结果，类型=${foundByContext ? 'SingleContext' : 'Single'}`
+                    );
+                  }
+                } else if (isWarrantyDebugParagraph) {
+                  pushWarrantyDebug(
+                    `[DEBUG][WARRANTY] 段落${pIdx} 空格${spaceMatch.start}-${spaceMatch.end}: 未写入结果，原因=underline 未通过或搜索未命中`
+                  );
                 }
               } catch (searchErr) {
+                detectionStats.searchErrors += 1;
                 console.warn('[DEBUG] 空格搜索错误:', searchErr);
               }
+              spaceCandidates.push(candidateMeta);
             }
           }
         } catch (formatErr) {
           console.warn('[DEBUG] 格式检测总错误:', formatErr);
         }
 
+        const confirmedCandidateKeys = new Set(
+          result.map((entry) => `${entry.paragraphIndex}:${entry.position.start}:${entry.position.end}`)
+        );
+        const paragraphCandidateMap = new Map<number, UnderlineSpaceCandidate[]>();
+        spaceCandidates.forEach((candidate) => {
+          const currentList = paragraphCandidateMap.get(candidate.paragraphIndex) || [];
+          currentList.push(candidate);
+          paragraphCandidateMap.set(candidate.paragraphIndex, currentList);
+        });
+
+        paragraphCandidateMap.forEach((candidates) => {
+          candidates.sort((left, right) => left.start - right.start);
+        });
+
+        const fallbackCandidates: typeof result = [];
+        spaceCandidates.forEach((candidate) => {
+          if (candidate.hasUnderlineFormat) {
+            return;
+          }
+
+          const fallbackKey = `${candidate.paragraphIndex}:${candidate.start}:${candidate.end}`;
+          if (confirmedCandidateKeys.has(fallbackKey)) {
+            return;
+          }
+
+          const neighborParagraphs = [
+            paragraphCandidateMap.get(candidate.paragraphIndex - 1) || [],
+            paragraphCandidateMap.get(candidate.paragraphIndex + 1) || [],
+          ].flat();
+
+          const mirroredSource = neighborParagraphs.find((neighbor) =>
+            canUseMirrorUnderlineFallback(candidate, neighbor)
+          );
+
+          if (!mirroredSource) {
+            return;
+          }
+
+          fallbackCandidates.push({
+            text: candidate.text,
+            underlineType: 'bilingual-mirror-fallback',
+            index: 0,
+            paragraphIndex: candidate.paragraphIndex,
+            paragraphText: candidate.paragraphText,
+            position: { start: candidate.start, end: candidate.end },
+          });
+          confirmedCandidateKeys.add(fallbackKey);
+
+          const isWarrantyDebugParagraph = /保修期|アフターサービス保証期間|年内|年とする/u.test(candidate.paragraphText);
+          if (isWarrantyDebugParagraph) {
+            pushWarrantyDebug(
+              `[DEBUG][WARRANTY] 段落${candidate.paragraphIndex} 空格${candidate.start}-${candidate.end}: 镜像兜底生效，参考段落${mirroredSource.paragraphIndex} 同序号空格已确认 underline`
+            );
+          }
+        });
+
+        if (fallbackCandidates.length > 0) {
+          fallbackCandidates.forEach((item) => result.push(item));
+        }
+
+        WordAPI._lastUnderlineDebugReport = warrantyDebugLines.length > 0
+          ? warrantyDebugLines.join('\n')
+          : '本次未捕获到保修期 / アフターサービス保証期間 相关段落的定向下划线调试信息。';
+
         console.log('[DEBUG] 最终检测到', result.length, '个参数位置');
+        console.log('[DEBUG] 下划线空格检测统计:', detectionStats);
         // 按段落索引优先排序，然后按位置排序（文档顺序）
         resolve(result.sort((a, b) => {
           if (a.paragraphIndex !== b.paragraphIndex) {
             return a.paragraphIndex - b.paragraphIndex;
           }
           return a.position.start - b.position.start;
-        }));
+        }).map((entry, index) => ({
+          ...entry,
+          index,
+        })));
       }).catch((e) => { console.error('[DEBUG] underline总错误:', e); resolve([]); });
     });
   },
@@ -1009,6 +2342,20 @@ export const WordAPI = {
             paragraph.load('text');
             await context.sync();
             fullText = paragraph.text;
+          }
+
+          if (startPos >= endPos) {
+            const inserted = await insertWordTextAtParagraphPosition(
+              paragraph,
+              fullText,
+              startPos,
+              replacement
+            );
+            if (inserted) {
+              console.log(`[DEBUG] ✓ 已插入（定位点）: 位置${startPos} -> "${replacement}"`);
+              resolve(true);
+              return;
+            }
           }
 
           // 方法1：直接搜索空白文本（最简单可靠）
@@ -1223,30 +2570,88 @@ export const WordAPI = {
         }
 
         const cell = tables.items[tableIndex].getCell(rowIndex, cellIndex);
-        cell.load('value');
-        await context.sync();
+        try {
+          const wholeRange = cell.body.getRange(Word.RangeLocation.whole);
+          wholeRange.load('text');
+          await context.sync();
+          if (String(wholeRange.text || '').trim()) {
+            wholeRange.font.highlightColor = 'yellow';
+            wholeRange.select();
+            await context.sync();
+            resolve(true);
+            return;
+          }
+        } catch (wholeRangeError) {
+          console.warn('highlightTableCell whole-range error:', wholeRangeError);
+        }
 
-        if (!cell.value) {
+        try {
+          const table = tables.items[tableIndex];
+          const rows = table.rows;
+          rows.load('items');
+          await context.sync();
+
+          const pickVisibleFallbackCell = async (targetRowIndex: number): Promise<Word.TableCell | null> => {
+            if (targetRowIndex < 0 || targetRowIndex >= rows.items.length) {
+              return null;
+            }
+            const targetRow = rows.items[targetRowIndex];
+            const cells = targetRow.cells;
+            cells.load('items');
+            await context.sync();
+
+            for (const candidateCell of cells.items) {
+              candidateCell.load('cellIndex');
+              candidateCell.body.load('text');
+            }
+            await context.sync();
+
+            const visibleCells = cells.items
+              .filter((candidateCell) => String(candidateCell.body.text || '').trim())
+              .sort((left, right) =>
+                Math.abs((left.cellIndex || 0) - cellIndex) - Math.abs((right.cellIndex || 0) - cellIndex)
+              );
+
+            return visibleCells[0] || null;
+          };
+
+          const fallbackCell = await pickVisibleFallbackCell(rowIndex)
+            || await pickVisibleFallbackCell(0);
+
+          if (fallbackCell) {
+            const fallbackRange = fallbackCell.body.getRange(Word.RangeLocation.whole);
+            fallbackRange.font.highlightColor = 'yellow';
+          }
+
+          const targetRange = cell.body.getRange(Word.RangeLocation.whole);
+          targetRange.select();
+          await context.sync();
+
+          if (fallbackCell) {
+            resolve(true);
+            return;
+          }
+
+          const paragraphs = cell.body.paragraphs;
+          paragraphs.load('items');
+          await context.sync();
+
+          if (paragraphs.items.length > 0) {
+            for (const paragraph of paragraphs.items) {
+              const range = paragraph.getRange(Word.RangeLocation.whole);
+              range.font.highlightColor = 'yellow';
+            }
+            paragraphs.items[0].getRange(Word.RangeLocation.whole).select();
+            await context.sync();
+            resolve(true);
+            return;
+          }
+
           resolve(false);
-          return;
-        }
-
-        const paragraphs = cell.body.paragraphs;
-        paragraphs.load('items');
-        await context.sync();
-
-        if (paragraphs.items.length === 0) {
+        } catch (rangeError) {
+          console.warn('highlightTableCell paragraph fallback error:', rangeError);
           resolve(false);
-          return;
         }
-
-        for (const paragraph of paragraphs.items) {
-          const range = paragraph.getRange(Word.RangeLocation.whole);
-          range.font.highlightColor = 'yellow';
-        }
-        paragraphs.items[0].getRange(Word.RangeLocation.whole).select();
-        await context.sync();
-        resolve(true);
       }).catch((error) => {
         console.warn('highlightTableCell error:', error);
         resolve(false);
@@ -1267,16 +2672,247 @@ export const WordAPI = {
         await context.sync();
 
         if (tableIndex < 0 || tableIndex >= tables.items.length) {
+          WordAPI.emitDebugLog('error', '普通表格单元格写入失败', `表格: ${tableIndex}\n行: ${rowIndex}\n列: ${cellIndex}\n原因: 表格索引越界`);
           resolve(false);
           return;
         }
 
-        const cell = tables.items[tableIndex].getCell(rowIndex, cellIndex);
-        cell.value = replacementText;
+        const table = tables.items[tableIndex];
+        const rows = table.rows;
+        rows.load('items');
         await context.sync();
-        resolve(true);
+
+        if (rowIndex < 0 || rowIndex >= rows.items.length) {
+          WordAPI.emitDebugLog(
+            'error',
+            '普通表格单元格写入失败',
+            `表格: ${tableIndex}\n行: ${rowIndex}\n列: ${cellIndex}\n原因: 目标行不存在`
+          );
+          resolve(false);
+          return;
+        }
+
+        const targetRow = rows.items[rowIndex];
+        const rowCells = await loadWordTableRowCells(context, targetRow);
+        const targetCell = getWordTableCellByColumn(rowCells, cellIndex);
+        if (!targetCell) {
+          WordAPI.emitDebugLog(
+            'error',
+            '普通表格单元格写入失败',
+            [
+              `表格: ${tableIndex}`,
+              `行: ${rowIndex}`,
+              `列: ${cellIndex}`,
+              `目标行内容: ${formatWordTableRowSnapshot(rowCells)}`,
+              '原因: 未找到可写入单元格',
+            ].join('\n'),
+          );
+          resolve(false);
+          return;
+        }
+
+        const updated = await replaceWordTableCellTextPreservingParagraphs(context, targetCell, {
+          replacementText,
+        });
+        if (!updated.updated) {
+          WordAPI.emitDebugLog(
+            'warn',
+            '普通表格单元格写入未完成',
+            [
+              `表格: ${tableIndex}`,
+              `行: ${rowIndex}`,
+              `请求列: ${cellIndex}`,
+              `实际命中列: ${updated.debugInfo.cellIndex}`,
+              `写入内容: ${replacementText || '(empty)'}`,
+              `目标行列索引: ${rowCells.map((cell) => Number(cell.cellIndex || 0)).join(', ') || '(none)'}`,
+              '目标单元格原始段落:',
+              formatWordTableCellParagraphSnapshot(updated.debugInfo.beforeParagraphTexts),
+              '目标单元格内容段落:',
+              formatWordTableCellParagraphSnapshot(updated.debugInfo.contentParagraphTextsBefore),
+              `命中目标段落: p${updated.debugInfo.targetParagraphIndex}`,
+              `是否追加新段落: ${updated.debugInfo.appendNewParagraph ? 'yes' : 'no'}`,
+              '目标单元格写入后段落:',
+              formatWordTableCellParagraphSnapshot(updated.debugInfo.afterParagraphTexts),
+            ].join('\n'),
+          );
+        }
+        resolve(updated.updated);
       }).catch((error) => {
         console.warn('replaceTableCellText error:', error);
+        WordAPI.emitDebugLog(
+          'error',
+          '普通表格单元格写入异常',
+          [
+            `表格: ${tableIndex}`,
+            `行: ${rowIndex}`,
+            `列: ${cellIndex}`,
+            `写入内容: ${replacementText || '(empty)'}`,
+            error instanceof Error ? error.message : String(error),
+          ].join('\n'),
+        );
+        resolve(false);
+      });
+    });
+  },
+
+  async applyLoopTableMarkersOnNextRow(
+    tableIndex: number,
+    rowIndex: number,
+    arrayPath: string
+  ): Promise<boolean> {
+    return new Promise((resolve) => {
+      Word.run(async (context) => {
+        const normalizedArrayPath = extractWordLoopArrayPath(arrayPath);
+        if (!normalizedArrayPath) {
+          WordAPI.emitDebugLog('warn', '循环表格标记跳过', `表格: ${tableIndex}\n源行: ${rowIndex}\n原因: arrayPath 为空`);
+          resolve(false);
+          return;
+        }
+
+        const updated = await withWordTargetTableRow(
+          context,
+          tableIndex,
+          rowIndex,
+          async (targetRow, { columnCount, targetRowIndex }) => {
+            const beforeCells = await loadWordTableRowCells(context, targetRow);
+            const beforeSummary = formatWordTableRowSnapshot(beforeCells);
+            const targetCells = beforeCells;
+            const firstCell = getWordTableCellByColumn(targetCells, 0);
+            const lastCell = getWordTableCellByColumn(targetCells, Math.max(columnCount - 1, 0));
+
+            if (!firstCell || !lastCell) {
+              WordAPI.emitDebugLog(
+                'error',
+                '循环表格标记失败',
+                [
+                  `表格: ${tableIndex}`,
+                  `源行: ${rowIndex}`,
+                  `目标行: ${targetRowIndex}`,
+                  `目标行内容: ${beforeSummary}`,
+                  '原因: 未找到首列或末列单元格',
+                ].join('\n'),
+              );
+              return false;
+            }
+
+            await replaceWordTableCellTextPreservingParagraphs(context, firstCell, {
+              arrayPath: normalizedArrayPath,
+              includeStart: true,
+              includeEnd: firstCell === lastCell,
+            });
+
+            if (lastCell !== firstCell) {
+              await replaceWordTableCellTextPreservingParagraphs(context, lastCell, {
+                arrayPath: normalizedArrayPath,
+                includeEnd: true,
+                includeStart: false,
+              });
+            }
+
+            const afterCells = await loadWordTableRowCells(context, targetRow);
+            WordAPI.emitDebugLog(
+              'debug',
+              '循环表格标记已写入',
+              [
+                `表格: ${tableIndex}`,
+                `源行: ${rowIndex}`,
+                `目标行: ${targetRowIndex}`,
+                `arrayPath: ${normalizedArrayPath}`,
+                `写入前: ${beforeSummary}`,
+                `写入后: ${formatWordTableRowSnapshot(afterCells)}`,
+              ].join('\n'),
+            );
+            return true;
+          }
+        );
+
+        resolve(Boolean(updated));
+      }).catch((error) => {
+        console.warn('applyLoopTableMarkersOnNextRow error:', error);
+        resolve(false);
+      });
+    });
+  },
+
+  async replaceTableCellTextOnNextRow(
+    tableIndex: number,
+    rowIndex: number,
+    cellIndex: number,
+    replacementText: string,
+    arrayPath?: string
+  ): Promise<boolean> {
+    return new Promise((resolve) => {
+      Word.run(async (context) => {
+        const normalizedArrayPath = extractWordLoopArrayPath(arrayPath || '');
+
+        const updated = await withWordTargetTableRow(
+          context,
+          tableIndex,
+          rowIndex,
+          async (targetRow, { columnCount, targetRowIndex }) => {
+            const beforeCells = await loadWordTableRowCells(context, targetRow);
+            const beforeSummary = formatWordTableRowSnapshot(beforeCells);
+            const targetCells = beforeCells;
+            const targetCell = getWordTableCellByColumn(targetCells, cellIndex);
+            if (!targetCell) {
+              WordAPI.emitDebugLog(
+                'error',
+                '循环表格列写入失败',
+                [
+                  `表格: ${tableIndex}`,
+                  `源行: ${rowIndex}`,
+                  `目标行: ${targetRowIndex}`,
+                  `目标列: ${cellIndex}`,
+                  `目标行内容: ${beforeSummary}`,
+                  '原因: 未找到目标单元格',
+                ].join('\n'),
+              );
+              return false;
+            }
+
+            const replaced = await replaceWordTableCellTextPreservingParagraphs(context, targetCell, {
+              replacementText,
+              arrayPath: normalizedArrayPath || undefined,
+              includeStart: cellIndex <= 0,
+              includeEnd: cellIndex >= Math.max(columnCount - 1, 0),
+            });
+            const afterCells = await loadWordTableRowCells(context, targetRow);
+            if (!replaced.updated) {
+              WordAPI.emitDebugLog(
+                'warn',
+                '循环表格列写入未完成',
+                [
+                  `表格: ${tableIndex}`,
+                  `源行: ${rowIndex}`,
+                  `目标行: ${targetRowIndex}`,
+                  `请求列: ${cellIndex}`,
+                  `实际命中列: ${replaced.debugInfo.cellIndex}`,
+                  `arrayPath: ${normalizedArrayPath || '(none)'}`,
+                  `写入内容: ${replacementText || '(empty)'}`,
+                  `目标行列索引: ${targetCells.map((cell) => Number(cell.cellIndex || 0)).join(', ') || '(none)'}`,
+                  `includeStart: ${replaced.debugInfo.includeStart ? 'yes' : 'no'}`,
+                  `includeEnd: ${replaced.debugInfo.includeEnd ? 'yes' : 'no'}`,
+                  `写入前行: ${beforeSummary}`,
+                  `写入后行: ${formatWordTableRowSnapshot(afterCells)}`,
+                  '目标单元格原始段落:',
+                  formatWordTableCellParagraphSnapshot(replaced.debugInfo.beforeParagraphTexts),
+                  '目标单元格内容段落:',
+                  formatWordTableCellParagraphSnapshot(replaced.debugInfo.contentParagraphTextsBefore),
+                  `命中目标段落: p${replaced.debugInfo.targetParagraphIndex}`,
+                  `是否追加新段落: ${replaced.debugInfo.appendNewParagraph ? 'yes' : 'no'}`,
+                  '目标单元格写入后段落:',
+                  formatWordTableCellParagraphSnapshot(replaced.debugInfo.afterParagraphTexts),
+                ].join('\n'),
+              );
+            }
+            return replaced.updated;
+          },
+          { suppressLocateLog: true }
+        );
+
+        resolve(Boolean(updated));
+      }).catch((error) => {
+        console.warn('replaceTableCellTextOnNextRow error:', error);
         resolve(false);
       });
     });
@@ -1358,22 +2994,53 @@ export const WordAPI = {
   async clearAllHighlights(): Promise<void> {
     return new Promise((resolve) => {
       Word.run(async (context) => {
+        const clearHighlightColor = null as any;
+
+        // 先清正文整段范围，再补清表格和内容控件，避免只清普通段落导致遗漏。
+        const bodyRange = context.document.body.getRange(Word.RangeLocation.whole);
+        bodyRange.font.highlightColor = clearHighlightColor;
+
         // 获取文档中的所有段落
         const paragraphs = context.document.body.paragraphs;
         paragraphs.load('items');
+        const tables = context.document.body.tables;
+        tables.load('items');
+        const controls = context.document.contentControls;
+        controls.load('items');
         await context.sync();
 
         // 清除每个段落的高亮
         for (const paragraph of paragraphs.items) {
           const range = paragraph.getRange(Word.RangeLocation.whole);
-          range.load('font/highlightColor');
+          range.font.highlightColor = clearHighlightColor;
+        }
+
+        // 清除内容控件的高亮
+        for (const control of controls.items) {
+          const range = control.getRange(Word.RangeLocation.whole);
+          range.font.highlightColor = clearHighlightColor;
+        }
+
+        // 清除表格单元格内的高亮
+        for (const table of tables.items) {
+          const rows = table.rows;
+          rows.load('items');
           await context.sync();
 
-          // 如果有高亮，清除它
-          if (range.font.highlightColor && range.font.highlightColor !== 'none') {
-            range.font.highlightColor = 'none';
+          for (const row of rows.items) {
+            const cells = row.cells;
+            cells.load('items');
+            await context.sync();
+
+            for (const cell of cells.items) {
+              const cellRange = cell.body.getRange(Word.RangeLocation.whole);
+              cellRange.font.highlightColor = clearHighlightColor;
+            }
           }
         }
+
+        // 把当前选择收回到文档开头，避免用户把“选中态”误认为高亮还没清掉。
+        context.document.body.getRange(Word.RangeLocation.start).select();
 
         // 同步更改
         await context.sync();
@@ -1404,8 +3071,9 @@ export const WordAPI = {
         await context.sync();
 
         const count = searchResults.items.length;
+        const clearHighlightColor = null as any;
         for (const item of searchResults.items) {
-          item.font.highlightColor = 'none';
+          item.font.highlightColor = clearHighlightColor;
         }
         await context.sync();
         resolve(count);
@@ -1427,8 +3095,8 @@ export const WordAPI = {
           .replace(/[\.\.\.]*$/, '')
           .trim();
 
-        // 如果上下文太短，返回未找到
-        if (searchText.length < 5) {
+        // 独立标签（如“签订日期：”）通常只有 4-5 个字符，也需要支持安全定位。
+        if (searchText.length < 2) {
           resolve({ found: false, blankText: '' });
           return;
         }
@@ -1478,6 +3146,8 @@ export const WordAPI = {
         }
 
         const foundRange = searchResults.items[0];
+        foundRange.load('text');
+        await context.sync();
 
         // ===== 步骤3: 只高亮空白部分 =====
         if (blankText && blankText.length >= 2) {
@@ -1578,98 +3248,111 @@ export const WordAPI = {
   ): Promise<{ success: boolean; replacedText: string }> {
     return new Promise((resolve, reject) => {
       Word.run(async (context) => {
-        // 从上下文片段中提取关键文本
-        let searchText = contextSnippet
-          .replace(/^[\.\.\.]*/, '')
-          .replace(/[\.\.\.]*$/, '')
-          .trim();
-
-        if (searchText.length < 5) {
+        const searchTexts = buildWordContextSearchTexts(contextSnippet);
+        if (searchTexts.length === 0) {
           resolve({ success: false, replacedText: '' });
           return;
         }
 
-        // ===== 步骤1: 提取空白部分 =====
-        const blankPatterns = [
-          /[＿_]{2,}/g,     // 下划线（至少2个）
-          /[ 　]{3,}/g,     // 多个空格（至少3个）
-          /：\s{2,}/g,      // 中文冒号后的空白
-          /:\s{2,}/g,       // 英文冒号后的空白
-          /[\s＿_　]{2,}/g, // 任何空白序列
-        ];
-
-        let blankText = '';
-        for (const pattern of blankPatterns) {
-          const matches = searchText.match(pattern);
-          if (matches && matches.length > 0) {
-            blankText = matches.reduce((a, b) => a.length >= b.length ? a : b);
-            break;
+        for (const searchText of searchTexts) {
+          if (searchText.length < 2) {
+            continue;
           }
-        }
 
-        // ===== 步骤2: 搜索上下文定位 =====
-        const searchResults = context.document.body.search(searchText, {
-          matchCase: false,
-          matchWholeWord: false
-        });
-        searchResults.load('items');
-        await context.sync();
-
-        if (searchResults.items.length === 0) {
-          resolve({ success: false, replacedText: '' });
-          return;
-        }
-
-        const foundRange = searchResults.items[0];
-
-        // ===== 步骤3: 只替换空白部分 =====
-        if (blankText && blankText.length >= 2) {
-          // 在找到的上下文范围内精确搜索空白部分
-          const blankSearch = foundRange.search(blankText, {
+          const searchResults = context.document.body.search(searchText, {
             matchCase: false,
             matchWholeWord: false
           });
-          blankSearch.load('items');
+          searchResults.load('items');
           await context.sync();
 
-          if (blankSearch.items.length > 0) {
-            // 只替换空白部分，保留上下文中的标签
-            const blankMatch = blankSearch.items[0];
-            blankMatch.insertText(replacementText, Word.InsertLocation.replace);
-            await context.sync();
-
-            console.log(`精确替换空白: "${blankText}" → "${replacementText}"`);
-            resolve({ success: true, replacedText: blankText });
-            return;
+          if (searchResults.items.length === 0) {
+            continue;
           }
-        }
 
-        // ===== 后备方案: 在原文中查找空白 =====
-        const foundText = foundRange.text;
+          const candidateRanges = searchResults.items.slice(0, 3);
+          for (const foundRange of candidateRanges) {
+            foundRange.load('text');
+          }
+          await context.sync();
 
-        for (const pattern of blankPatterns) {
-          const matches = foundText.match(pattern);
-          if (matches && matches.length > 0) {
-            const foundBlank = matches[0];
-            const innerSearch = foundRange.search(foundBlank, {
+          for (const foundRange of candidateRanges) {
+            const foundText = foundRange.text || searchText;
+            const blankText = extractLongestWordBlank(searchText) || extractLongestWordBlank(foundText);
+            if (blankText && blankText.length >= 2) {
+              const blankSearch = foundRange.search(blankText, {
+                matchCase: false,
+                matchWholeWord: false
+              });
+              blankSearch.load('items');
+              await context.sync();
+
+              if (blankSearch.items.length > 0) {
+                blankSearch.items[0].insertText(replacementText, Word.InsertLocation.replace);
+                await context.sync();
+
+                console.log(`精确替换空白: "${blankText}" → "${replacementText}"`);
+                resolve({ success: true, replacedText: blankText });
+                return;
+              }
+            }
+
+            const labelValueTarget = extractWordLabelValueTarget(searchText) || extractWordLabelValueTarget(foundText);
+            if (!labelValueTarget?.valueText) {
+              const multilineLabelValueTarget = extractWordMultilineLabelValueTarget(searchText)
+                || extractWordMultilineLabelValueTarget(foundText);
+              if (multilineLabelValueTarget?.valueText) {
+                const replaced = await replaceWordValueNearLabel(
+                  context,
+                  multilineLabelValueTarget.labelText,
+                  multilineLabelValueTarget.valueText,
+                  replacementText
+                );
+                if (replaced) {
+                  console.log(`精确替换跨行标签后内容: "${multilineLabelValueTarget.valueText}" → "${replacementText}"`);
+                  resolve({ success: true, replacedText: multilineLabelValueTarget.valueText });
+                  return;
+                }
+              }
+
+              const standaloneLabelText = extractWordStandaloneLabelTarget(searchText)
+                || extractWordStandaloneLabelTarget(foundText);
+              if (!standaloneLabelText) {
+                continue;
+              }
+
+              const inserted = await insertWordValueAfterLabel(
+                foundRange,
+                standaloneLabelText,
+                replacementText
+              );
+              if (inserted) {
+                await context.sync();
+                console.log(`精确插入标签后内容: "${standaloneLabelText}" + "${replacementText}"`);
+                resolve({ success: true, replacedText: standaloneLabelText });
+                return;
+              }
+              continue;
+            }
+
+            const valueSearch = foundRange.search(labelValueTarget.valueText, {
               matchCase: false,
               matchWholeWord: false
             });
-            innerSearch.load('items');
+            valueSearch.load('items');
             await context.sync();
 
-            if (innerSearch.items.length > 0) {
-              innerSearch.items[0].insertText(replacementText, Word.InsertLocation.replace);
+            if (valueSearch.items.length > 0) {
+              valueSearch.items[0].insertText(replacementText, Word.InsertLocation.replace);
               await context.sync();
 
-              console.log(`后备替换空白: "${foundBlank}" → "${replacementText}"`);
-              resolve({ success: true, replacedText: foundBlank });
+              console.log(`精确替换标签后内容: "${labelValueTarget.valueText}" → "${replacementText}"`);
+              resolve({ success: true, replacedText: labelValueTarget.valueText });
               return;
             }
           }
         }
 
-        // 完全找不到空白特征
         resolve({ success: false, replacedText: '' });
       }).catch((error) => {
         reject(error);
@@ -1691,6 +3374,30 @@ export const WordAPI = {
     });
   },
 
+  async focusParagraph(paragraphIndex: number): Promise<boolean> {
+    return new Promise((resolve) => {
+      Word.run(async (context) => {
+        const paragraphs = context.document.body.paragraphs;
+        paragraphs.load('items');
+        await context.sync();
+
+        if (paragraphIndex < 0 || paragraphIndex >= paragraphs.items.length) {
+          resolve(false);
+          return;
+        }
+
+        const range = paragraphs.items[paragraphIndex].getRange(Word.RangeLocation.whole);
+        range.select();
+        range.font.highlightColor = 'yellow';
+        await context.sync();
+        resolve(true);
+      }).catch((error) => {
+        console.warn('focusParagraph error:', error);
+        resolve(false);
+      });
+    });
+  },
+
   /**
    * 在选中位置插入循环标记
    */
@@ -1698,6 +3405,8 @@ export const WordAPI = {
     return new Promise((resolve, reject) => {
       Word.run(async (context) => {
         const selection = context.document.getSelection();
+        selection.load('text');
+        await context.sync();
         const originalText = selection.text;
 
         // 包装为循环标记 {#d.array} ... {/d.array}
@@ -1839,7 +3548,7 @@ export const ExcelAPI = {
     mode: 'base64' | 'json';
   }> {
     try {
-      const base64 = await WordAPI.getFileContentBase64();
+      const base64 = await DocumentFileAPI.getFileContentBase64();
       if (base64 && base64.length > 0) {
         return {
           content: base64,
@@ -1853,7 +3562,7 @@ export const ExcelAPI = {
     }
 
     try {
-      const base64 = await WordAPI.getDocumentFileBase64();
+      const base64 = await DocumentFileAPI.getCompressedDocumentBase64();
       if (base64 && base64.length > 0) {
         return {
           content: base64,

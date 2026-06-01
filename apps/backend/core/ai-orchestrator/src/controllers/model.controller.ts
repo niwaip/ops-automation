@@ -22,6 +22,50 @@ export class ModelController {
     private readonly promptDebugSettingsService: PromptDebugSettingsService,
   ) {}
 
+  private scorePromptTestModel(model: AIModelDTO): number {
+    const defaultScope = model.config?.default_scope || {};
+    const inputModes = Array.isArray(model.config?.input)
+      ? model.config.input.map((item) => String(item).toLowerCase())
+      : [];
+    const hasAudioInput = inputModes.includes('audio');
+    const isAudioTranscriptionDefault = defaultScope.audio_transcription === true;
+
+    return (
+      (defaultScope.admin_task ? 100 : 0)
+      + (defaultScope.global ? 90 : 0)
+      + (defaultScope.admin_chat ? 80 : 0)
+      + (!isAudioTranscriptionDefault ? 40 : 0)
+      + (!hasAudioInput ? 20 : 0)
+      + (model.config?.capability_tier === 'advanced' ? 10 : 0)
+    );
+  }
+
+  private async resolveDefaultPromptTestModel(): Promise<AIModelDTO | null> {
+    const activeModels = await this.modelService.listModels();
+    if (activeModels.length === 0) {
+      return null;
+    }
+
+    return [...activeModels]
+      .sort((left, right) => this.scorePromptTestModel(right) - this.scorePromptTestModel(left))[0] || null;
+  }
+
+  private async resolveTestableModel(id: string): Promise<AIModelDTO | null> {
+    if (id === 'default') {
+      const defaultModel = await this.resolveDefaultPromptTestModel();
+      return defaultModel
+        ? { ...defaultModel, hasApiKey: defaultModel.hasApiKey !== false }
+        : null;
+    }
+
+    const directModel = await this.modelService.getModel(id);
+    if (directModel) {
+      return directModel;
+    }
+
+    return this.modelService.getModelByName(id);
+  }
+
   @Get('models')
   @ApiOperation({ summary: 'List all registered AI models' })
   async listModels(): Promise<{ models: AIModelDTO[] }> {
@@ -218,12 +262,12 @@ export class ModelController {
   @Post('models/:id/test-config')
   @ApiOperation({ summary: 'Test model configuration using stored API key' })
   async testModelConfig(@Param('id') id: string): Promise<{ success: boolean; response?: string; error?: string }> {
-    const model = await this.modelService.getModel(id);
+    const model = await this.resolveTestableModel(id);
     if (!model) {
       throw new HttpException('Model not found', HttpStatus.NOT_FOUND);
     }
     try {
-      const response = await this.modelService.callModel(id, 'Hello, this is a test.');
+      const response = await this.modelService.callModel(model.id, 'Hello, this is a test.');
       return { success: true, response: response.content };
     } catch (error: unknown) {
       const errorMsg = error instanceof Error ? error.message : 'Unknown error';
@@ -234,12 +278,12 @@ export class ModelController {
   @Post('models/:id/test')
   @ApiOperation({ summary: 'Test an AI model with a prompt' })
   async testModel(@Param('id') id: string, @Body() body: { prompt: string }): Promise<{ success: boolean; response?: string; error?: string }> {
-    const model = await this.modelService.getModel(id);
+    const model = await this.resolveTestableModel(id);
     if (!model) {
       throw new HttpException('Model not found', HttpStatus.NOT_FOUND);
     }
     try {
-      const response = await this.modelService.callModel(id, body.prompt || 'Hello, this is a test.');
+      const response = await this.modelService.callModel(model.id, body.prompt || 'Hello, this is a test.');
       return { success: true, response: response.content };
     } catch (error: unknown) {
       const errorMsg = error instanceof Error ? error.message : 'Unknown error';
@@ -254,7 +298,7 @@ export class ModelController {
     @Body() body: { prompt: string },
     @Res() res: Response,
   ): Promise<void> {
-    const model = await this.modelService.getModel(id);
+    const model = await this.resolveTestableModel(id);
     if (!model) {
       res.status(404).json({ error: 'Model not found' });
       return;
@@ -266,7 +310,7 @@ export class ModelController {
     res.setHeader('X-Accel-Buffering', 'no');
 
     try {
-      await this.modelService.callModelStream(id, body.prompt || 'Hello, this is a test.', (chunk: string) => {
+      await this.modelService.callModelStream(model.id, body.prompt || 'Hello, this is a test.', (chunk: string) => {
         res.write(`data: ${JSON.stringify({ chunk })}\n\n`);
       });
       res.write(`data: ${JSON.stringify({ done: true })}\n\n`);

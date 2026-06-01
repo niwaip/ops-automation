@@ -48,6 +48,7 @@ const DEFAULT_SCOPE_OPTIONS = [
   { label: '全体默认模型', value: 'global' },
   { label: '管理员 AI 默认', value: 'admin_chat' },
   { label: '管理员任务默认', value: 'admin_task' },
+  { label: '语音识别默认', value: 'audio_transcription' },
 ];
 
 const ROUTING_TAG_OPTIONS = [
@@ -63,6 +64,7 @@ const scopeTagMeta: Record<string, { label: string; color: string }> = {
   global: { label: '全体默认', color: 'blue' },
   admin_chat: { label: '管理员 AI', color: 'purple' },
   admin_task: { label: '管理员任务', color: 'magenta' },
+  audio_transcription: { label: '语音识别', color: 'orange' },
 };
 
 function mapConfigToFormValues(config?: AIModelConfig) {
@@ -98,6 +100,7 @@ function buildConfigFromValues(values: Record<string, unknown>): AIModelConfig {
       global: defaultScopes.includes('global'),
       admin_chat: defaultScopes.includes('admin_chat'),
       admin_task: defaultScopes.includes('admin_task'),
+      audio_transcription: defaultScopes.includes('audio_transcription'),
     },
     routing_preferences: {
       prefer_for_code: values.prefer_for_code === true,
@@ -676,6 +679,7 @@ const AIModelAdminPage: React.FC = () => {
           {!record.config?.default_scope?.global
             && !record.config?.default_scope?.admin_chat
             && !record.config?.default_scope?.admin_task
+            && !record.config?.default_scope?.audio_transcription
             && record.config?.routing_preferences?.prefer_for_code !== true
             && (!record.config?.routing_tags || record.config.routing_tags.length === 0) && (
               <Text type="secondary">常规模型</Text>

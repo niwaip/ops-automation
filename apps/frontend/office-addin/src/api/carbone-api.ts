@@ -6,6 +6,9 @@
 import axios, { AxiosRequestConfig } from 'axios';
 import { AISuggestion, TemplateConfig } from '../taskpane/store';
 import { officeAddinRuntimeConfig } from '../config/runtime';
+import { DocumentIR } from '../adapters/document-ir';
+
+const LONG_RUNNING_WORKFLOW_TIMEOUT_MS = 360000;
 
 // 获取 axios 配置（根据 URL 是否为 HTTPS）
 // 注意：浏览器环境不需要 httpsAgent，浏览器会自动处理 TLS
@@ -19,6 +22,14 @@ function getAxiosConfig(_url: string, options: AxiosRequestConfig = {}): AxiosRe
 function isDraftDocumentTemplate(template: { fileName?: string }): boolean {
   const fileName = String(template.fileName || '').trim().toLowerCase();
   return fileName.startsWith('draft-');
+}
+
+function normalizeWorkflowLookupText(value: unknown): string {
+  return String(value ?? '')
+    .trim()
+    .toLowerCase()
+    .replace(/[（）()]/g, '')
+    .replace(/\s+/g, '');
 }
 
 export interface DocumentStructure {
@@ -47,6 +58,8 @@ export interface DocumentStructure {
     documentContent: string;           // 文档文本内容（从Office获取）
     documentType: 'docx' | 'xlsx' | 'pptx' | 'text';  // 文档类型
     templateType?: string;              // 模板类型：report, invoice, contract, certificate 等
+    skillId?: string;                   // AI Skill ID
+    skill?: any;                        // AI Skill 对象
     context?: string;                   // 上下文信息（如文档用途描述）
     customRules?: Array<{               // 自定义识别规则
       pattern: string;
@@ -107,6 +120,416 @@ export interface GenerateTemplateResponse {
   hasValidFile?: boolean;
 }
 
+export interface TemplateFieldSpec {
+  fieldId: string;
+  valueMode?: 'scalar' | 'object' | 'list';
+  type: string;
+  sourceLanguage?: string;
+  targetLanguages?: string[];
+  policy?: 'dictionary_first' | 'enum_mapping' | 'format_only' | 'llm_translate';
+  required?: boolean;
+  riskLevel?: 'low' | 'medium' | 'high';
+  sourceBindings?: Array<{
+    blockId?: string;
+    tokenId?: string;
+    lang?: string;
+    anchor?: {
+      prefix?: string;
+      suffix?: string;
+    };
+  }>;
+  renderConfig?: {
+    flattenForCarbone?: boolean;
+    includeCanonicalValue?: boolean;
+  };
+}
+
+export interface WorkflowFieldDictionaryEntry {
+  aliases: string[];
+  fieldId: string;
+  type: string;
+  policy?: TemplateFieldSpec['policy'];
+  riskLevel?: TemplateFieldSpec['riskLevel'];
+  required?: boolean;
+  scope?: 'global' | 'tenant' | 'template';
+  status?: 'draft' | 'reviewed' | 'approved' | 'active' | 'deprecated';
+  version?: number;
+}
+
+export interface WorkflowTermEntry {
+  termId: string;
+  applicableFieldIds: string[];
+  sourceLanguage?: string;
+  sourceValue: string;
+  normalizedSourceValue?: string;
+  translations: Record<string, string>;
+  scope?: 'global' | 'tenant' | 'template';
+  status?: 'draft' | 'reviewed' | 'approved' | 'active' | 'deprecated';
+  version?: number;
+}
+
+export interface WorkflowEnumItem {
+  code: string;
+  labels: Record<string, string>;
+  aliases: string[];
+  scope?: 'global' | 'tenant' | 'template';
+  status?: 'draft' | 'reviewed' | 'approved' | 'active' | 'deprecated';
+  version?: number;
+}
+
+export interface WorkflowTermAssets {
+  fieldDictionary?: WorkflowFieldDictionaryEntry[];
+  termbase?: WorkflowTermEntry[];
+  enumMappings?: Record<string, WorkflowEnumItem[]>;
+}
+
+export interface TemplateFieldCandidate {
+  candidateId: string;
+  sourceBlockId: string;
+  anchorText: string;
+  localAnchorText?: string;
+  parameterSlot?: string;
+  sampleValue: string;
+  segmentText: string;
+  sectionId?: string;
+  sectionTitle?: string;
+  fieldTypeHint?: string;
+  generationPolicyHint?: string;
+  confidence: number;
+  fieldIdHint?: string;
+  matchText?: string;
+  matchReason?: string;
+  compareMode?: 'section_loose_compare' | 'global_probe_fallback' | 'structure_only';
+  sectionMatchScore?: number;
+  location?: {
+    blockType?: string;
+    paragraphIndex?: number;
+    tableIndex?: number;
+    rowIndex?: number;
+    cellIndex?: number;
+    contentControlId?: number;
+    anchorStart?: number;
+    anchorEnd?: number;
+  };
+  languageRelation?: {
+    mode: 'single_language' | 'adjacent_bilingual_block' | 'same_block_mixed_language' | 'unknown';
+    currentLanguageHint?: 'zh' | 'ja' | 'en' | 'mixed' | 'unknown';
+    peerBlockId?: string;
+    peerLanguageHint?: 'zh' | 'ja' | 'en' | 'mixed' | 'unknown';
+    peerCandidateId?: string;
+    pairOrdinal?: number;
+  };
+}
+
+export interface TemplateAnalyzeRequest {
+  workflowId?: string;
+  templateId?: string;
+  skillId?: string;
+  skill?: any;
+  templateDocumentIr: DocumentIR;
+  sampleDocument?: {
+    fileName?: string;
+    contentBase64?: string;
+  };
+  candidateFields?: TemplateFieldCandidate[];
+  prefetchedUnderstanding?: TemplateUnderstandResponse;
+  sourceLanguage?: string;
+  targetLanguages?: string[];
+  termAssets?: WorkflowTermAssets;
+  options?: {
+    enableTermMatch?: boolean;
+    enableLayoutDetection?: boolean;
+    templateType?: string;
+    useMultiStage?: boolean;
+    analysisExecutor?: 'studio' | 'chat';
+    thinking?: boolean;
+  };
+}
+
+export interface TemplateAnalyzeResponse {
+  analysisId: string;
+  languageProfile: {
+    sourceLanguage: string;
+    targetLanguages: string[];
+    documentMode: string;
+  };
+  fields: Array<TemplateFieldSpec & {
+    sample?: Record<string, string>;
+    termMatch?: {
+      status: 'matched' | 'unmatched';
+      termId?: string;
+      scope?: 'global' | 'tenant' | 'template';
+    };
+    confidence: number;
+    needsReview: boolean;
+  }>;
+  warnings: string[];
+}
+
+export interface TemplateRecognizeBlockResult {
+  blockId: string;
+  blockType: string;
+  title?: string;
+  sectionTitle?: string;
+  sourceExcerpt?: string;
+  suggestionCount: number;
+  fieldIds: string[];
+  aiCallSucceeded: boolean;
+  resultStatus: 'succeeded' | 'partial_success' | 'fallback_success' | 'failed' | 'empty';
+  warnings: string[];
+  retryCount: number;
+  durationMs: number;
+  errorCode?: string;
+  fallbackReason?: string;
+  contextAnalysis?: {
+    requestSummary?: string;
+    responseSummary?: string;
+    cacheHit?: boolean;
+    fallbackReason?: string;
+    retryCount?: number;
+    errorMessage?: string;
+  };
+}
+
+export interface TemplateRecognizeContextAnalysis {
+  requestedAI: boolean;
+  usedAI: boolean;
+  globalUnderstandingUsedAI?: boolean;
+  resultSource?: 'ai' | 'rule_fallback' | 'ai+rule_fallback';
+  resultStatus: 'succeeded' | 'partial_success' | 'fallback_success' | 'failed';
+  requestTrace: {
+    summary: string;
+    sampleFileName?: string;
+    blockCount: number;
+    candidateFieldCount: number;
+    requestCount?: number;
+    promptTemplateVersion?: string;
+    lastRequestSummary?: string;
+  };
+  responseTrace: {
+    summary: string;
+    mergedFieldCount: number;
+    recognizedBlockCount: number;
+    successBlockCount?: number;
+    failedBlockCount?: number;
+    lastResponseSummary?: string;
+  };
+  fallbackTrace: {
+    usedFallback: boolean;
+    reason?: string;
+    fallbackBlockCount: number;
+    fallbackLevel?: 'block' | 'task';
+    fallbackBlockIds?: string[];
+  };
+  cacheTrace: {
+    compareHit?: boolean;
+    understandingHit?: boolean;
+    recognitionHit: boolean;
+  };
+  debugArtifacts?: {
+    promptRequestText?: string;
+    rawAiResponse?: string;
+  };
+}
+
+export interface TemplateRecognizeResponse extends TemplateAnalyzeResponse {
+  blockResults: TemplateRecognizeBlockResult[];
+  contextAnalysis: TemplateRecognizeContextAnalysis;
+}
+
+export interface TemplateCompareResponse {
+  workflowId: string;
+  compareId: string;
+  candidateFields: TemplateFieldCandidate[];
+  compareSummary: {
+    candidateCount: number;
+    sectionCount: number;
+    sections: Array<{
+      sectionId: string;
+      sectionTitle: string;
+      candidateCount: number;
+      matchedCandidateCount: number;
+      unmatchedCandidateCount: number;
+      highConfidenceCandidateCount: number;
+      compareStatus: 'aligned' | 'partial' | 'attention';
+      compareMode: 'section_loose_compare' | 'global_probe_fallback' | 'structure_only';
+      looseMatchScore: number;
+      topAnchors: string[];
+      samplePreview?: string;
+    }>;
+    warnings: string[];
+  };
+  cacheStatus: {
+    compareHit: boolean;
+  };
+}
+
+export interface TemplateUnderstandResponse {
+  analysisId: string;
+  languageProfile: {
+    sourceLanguage: string;
+    targetLanguages: string[];
+    documentMode: string;
+  };
+  summary: {
+    documentTitle?: string;
+    understandingSummaryText?: string;
+    sampleFileName?: string;
+    paragraphCount: number;
+    tableCount: number;
+    sectionHints: string[];
+    terminologyCandidates: string[];
+    fieldCandidateIds: string[];
+    layoutFeatures: string[];
+  };
+  warnings: string[];
+  contextAnalysis?: {
+    usedAI: boolean;
+    aiServiceUrl?: string;
+    promptRequestText?: string;
+    rawAiResponse?: string;
+  };
+}
+
+export interface TemplateSaveRequest {
+  templateId?: string;
+  templateMeta?: {
+    templateName?: string;
+    sourceLanguage?: string;
+    targetLanguages?: string[];
+    documentMode?: string;
+    termAssets?: WorkflowTermAssets;
+  };
+  templateDocumentIr: DocumentIR;
+  templateFieldSpecs: TemplateFieldSpec[];
+  saveMode?: 'draft_or_publish' | 'draft' | 'publish';
+}
+
+export interface TemplateSaveResponse {
+  templateId: string;
+  version: number;
+  bindingPlanVersion: number;
+  status: string;
+  updatedAt: string;
+}
+
+export interface TemplateRenderDataRequest {
+  templateId: string;
+  userInput: string;
+  sourceLanguage?: string;
+  targetLanguages?: string[];
+  userOverrides?: Record<string, unknown>;
+  termAssets?: WorkflowTermAssets;
+  thinking?: boolean;
+}
+
+export interface TemplateRenderDataResponse {
+  data: Record<string, unknown>;
+  sourceTrace: Record<string, unknown>;
+  warnings: string[];
+  missingFields: string[];
+  needsReviewFields: string[];
+}
+
+export interface TemplateWorkflowSummary {
+  workflowVersion?: string;
+  templateFieldSpecs?: TemplateFieldSpec[];
+  carboneBindingPlan?: {
+    templateId?: string;
+    version?: number;
+    bindings?: Array<{
+      fieldId: string;
+      variablePath: string;
+      valueSelector: string;
+      language?: string;
+      transform: string;
+      required: boolean;
+    }>;
+  };
+  languageProfile?: {
+    sourceLanguage?: string;
+    targetLanguages?: string[];
+    documentMode?: string;
+  };
+  termAssets?: WorkflowTermAssets;
+  status?: string;
+  version?: number;
+  bindingPlanVersion?: number;
+}
+
+export interface TemplateDetailResponse {
+  id: string;
+  fileName?: string;
+  format: string;
+  size?: number;
+  config?: any;
+  templateConfig?: any;
+  templateWorkflow?: TemplateWorkflowSummary;
+  templateAssetManifest?: TemplateAssetManifest; // 新增：模板资产清单
+  suggestions?: any[];
+  variables?: string[];
+  skillId?: string;
+}
+
+/**
+ * 渲染计划 (Render Plan)
+ * 原 carboneBindingPlan 的更名与收敛版本
+ */
+export interface RenderPlan {
+  templateId: string;
+  version: number;
+  bindings: Array<{
+    fieldId: string;
+    variablePath: string;
+    valueSelector: string;
+    language?: string;
+    transform: string;
+    required: boolean;
+  }>;
+}
+
+/**
+ * 模板资产清单 (Template Asset Manifest)
+ * 包含模板的所有语义信息，可独立于数据库存在
+ */
+export interface TemplateAssetManifest {
+  assetVersion: string; // 清单结构版本，例如 "1.0"
+  templateId: string;
+  fileName: string;
+  format: string;
+  fieldCount: number;
+  templateFieldSpecs: TemplateFieldSpec[];
+  languageProfile: {
+    sourceLanguage: string;
+    targetLanguages: string[];
+    documentMode: string;
+  };
+  renderPlan: RenderPlan;
+  renderPlanVersion: number;
+  termAssets?: WorkflowTermAssets;
+  metadata: {
+    generatedAt: string;
+    source: string;          // 例如 "office-addin"
+    addinVersion?: string;
+  };
+}
+
+/**
+ * 模板资产导出负载
+ */
+export interface TemplateAssetExportPayload {
+  templateId: string;
+  includeBinary: boolean;
+}
+
+/**
+ * 模板资产导入负载
+ */
+export interface TemplateAssetImportPayload {
+  manifest: TemplateAssetManifest;
+  templateBinary?: string; // Base64
+}
+
 class CarboneAPI {
   private baseUrl: string;
 
@@ -116,6 +539,121 @@ class CarboneAPI {
 
   setBaseUrl(url: string) {
     this.baseUrl = url;
+  }
+
+  private buildUnderstandFallbackFromAnalyze(
+    request: TemplateAnalyzeRequest,
+    analyzeResult: TemplateAnalyzeResponse
+  ): TemplateUnderstandResponse {
+    return {
+      analysisId: analyzeResult.analysisId,
+      languageProfile: analyzeResult.languageProfile,
+      summary: {
+        documentTitle: request.templateDocumentIr?.metadata?.title || request.sampleDocument?.fileName,
+        understandingSummaryText: undefined,
+        sampleFileName: request.sampleDocument?.fileName,
+        paragraphCount: request.templateDocumentIr?.stats?.paragraphCount
+          || request.templateDocumentIr?.elements?.filter((element) => element?.type === 'paragraph').length
+          || 0,
+        tableCount: request.templateDocumentIr?.stats?.tableCount
+          || request.templateDocumentIr?.elements?.filter((element) => element?.type === 'table').length
+          || 0,
+        sectionHints: [],
+        terminologyCandidates: analyzeResult.fields
+          .filter((field) => field.termMatch?.status === 'matched')
+          .map((field) => field.fieldId)
+          .slice(0, 8),
+        fieldCandidateIds: request.candidateFields?.length
+          ? request.candidateFields.map((field) => field.fieldIdHint || field.candidateId)
+          : analyzeResult.fields.map((field) => field.fieldId),
+        layoutFeatures: analyzeResult.languageProfile.documentMode
+          ? [analyzeResult.languageProfile.documentMode]
+          : [],
+      },
+      warnings: [
+        '当前后端未开放 understand 接口，已自动降级为 analyze 结果生成整体理解摘要。',
+        ...(analyzeResult.warnings || []),
+      ],
+    };
+  }
+
+  private buildRecognizeFallbackFromAnalyze(
+    request: TemplateAnalyzeRequest,
+    analyzeResult: TemplateAnalyzeResponse
+  ): TemplateRecognizeResponse {
+    const elements = Array.isArray(request.templateDocumentIr?.elements)
+      ? request.templateDocumentIr.elements
+      : [];
+    const blockResults = elements
+      .filter((element) => ['paragraph', 'table', 'cell'].includes(String(element?.type || '')))
+      .map((element) => {
+        const blockId = String(element?.id || '');
+        const normalizedExcerpt = normalizeWorkflowLookupText(element?.text);
+        const matchedFields = analyzeResult.fields.filter((field) =>
+          (field.sourceBindings || []).some((binding) => {
+            if (String(binding.blockId || '') === blockId) {
+              return true;
+            }
+            const anchorPrefix = normalizeWorkflowLookupText(binding.anchor?.prefix);
+            return Boolean(anchorPrefix) && normalizedExcerpt.includes(anchorPrefix);
+          })
+        );
+        return {
+          blockId,
+          blockType: String(element?.type || 'paragraph'),
+          title: String(element?.text || '').trim().slice(0, 24) || blockId,
+          sectionTitle: String(element?.text || '').trim().slice(0, 24) || blockId,
+          sourceExcerpt: String(element?.text || '').trim().slice(0, 120),
+          suggestionCount: matchedFields.length,
+          fieldIds: matchedFields.map((field) => field.fieldId),
+          aiCallSucceeded: false,
+          resultStatus: matchedFields.length > 0 ? 'fallback_success' : 'empty',
+          warnings: matchedFields.length > 0 ? [] : ['当前块未识别到字段候选'],
+          retryCount: 0,
+          durationMs: 0,
+          fallbackReason: matchedFields.length > 0 ? 'rule_based_block_scan' : undefined,
+          contextAnalysis: {
+            requestSummary: `块 ${blockId || 'unknown'} 已进入识别队列`,
+            responseSummary: matchedFields.length > 0
+              ? `通过回退链路识别到 ${matchedFields.length} 个字段`
+              : '当前块未返回字段候选',
+            cacheHit: false,
+            fallbackReason: matchedFields.length > 0 ? 'rule_based_block_scan' : undefined,
+            retryCount: 0,
+          },
+        } as TemplateRecognizeBlockResult;
+      });
+
+    return {
+      ...analyzeResult,
+      blockResults,
+      contextAnalysis: {
+        requestedAI: true,
+        usedAI: false,
+        resultStatus: analyzeResult.fields.length > 0 ? 'fallback_success' : 'succeeded',
+        requestTrace: {
+          summary: '当前后端未开放 recognize 接口，已自动降级为 analyze 结果构造块级识别视图。',
+          sampleFileName: request.sampleDocument?.fileName,
+          blockCount: blockResults.length,
+          candidateFieldCount: analyzeResult.fields.length,
+        },
+        responseTrace: {
+          summary: analyzeResult.fields.length > 0
+            ? `已合并 ${analyzeResult.fields.length} 个字段候选`
+            : '当前未返回字段候选',
+          mergedFieldCount: analyzeResult.fields.length,
+          recognizedBlockCount: blockResults.filter((block) => block.suggestionCount > 0).length,
+        },
+        fallbackTrace: {
+          usedFallback: true,
+          reason: 'recognize 接口不可用，前端已回退到 analyze 结果',
+          fallbackBlockCount: blockResults.filter((block) => block.resultStatus === 'fallback_success').length,
+        },
+        cacheTrace: {
+          recognitionHit: false,
+        },
+      },
+    };
   }
 
   /**
@@ -367,10 +905,18 @@ class CarboneAPI {
     description: string;  // 用户描述/元数据内容
     skill?: any;
     skillId?: string;
+    thinking?: boolean;
   }): Promise<{
     success: boolean;
     generatedData?: any;
     error?: string;
+    debugInfo?: {
+      rawAiResponse?: string;
+      cleanedAiResponse?: string;
+      extractedJson?: string;
+      parseError?: string;
+      upstreamError?: string;
+    };
   }> {
     const response = await axios.post(
       `${this.baseUrl}/studio/generate-parameters`,
@@ -380,15 +926,99 @@ class CarboneAPI {
     return response.data;
   }
 
+  async analyzeTemplateWorkflow(request: TemplateAnalyzeRequest): Promise<TemplateAnalyzeResponse> {
+    const response = await axios.post(
+      `${this.baseUrl}/studio/template/analyze`,
+      request,
+      getAxiosConfig(this.baseUrl, { timeout: 60000 })
+    );
+    return response.data;
+  }
+
+  async compareTemplateWorkflow(request: TemplateAnalyzeRequest): Promise<TemplateCompareResponse> {
+    const response = await axios.post(
+      `${this.baseUrl}/studio/template/compare`,
+      request,
+      getAxiosConfig(this.baseUrl, { timeout: 60000 })
+    );
+    return response.data;
+  }
+
+  async understandTemplateWorkflow(request: TemplateAnalyzeRequest): Promise<TemplateUnderstandResponse> {
+    try {
+      const response = await axios.post(
+        `${this.baseUrl}/studio/template/understand`,
+        request,
+        getAxiosConfig(this.baseUrl, { timeout: LONG_RUNNING_WORKFLOW_TIMEOUT_MS })
+      );
+      return response.data;
+    } catch (error: any) {
+      if (error?.response?.status !== 404) {
+        throw error;
+      }
+
+      const analyzeResult = await this.analyzeTemplateWorkflow(request);
+      return this.buildUnderstandFallbackFromAnalyze(request, analyzeResult);
+    }
+  }
+
+  async recognizeTemplateWorkflow(request: TemplateAnalyzeRequest): Promise<TemplateRecognizeResponse> {
+    try {
+      const response = await axios.post(
+        `${this.baseUrl}/studio/template/recognize`,
+        request,
+        getAxiosConfig(this.baseUrl, { timeout: LONG_RUNNING_WORKFLOW_TIMEOUT_MS })
+      );
+      return response.data;
+    } catch (error: any) {
+      if (error?.response?.status !== 404) {
+        throw error;
+      }
+      const analyzeResult = await this.analyzeTemplateWorkflow(request);
+      return this.buildRecognizeFallbackFromAnalyze(request, analyzeResult);
+    }
+  }
+
   /**
-   * 保存完整模板（包含模板文件和AI Skill）
-   * 支持复用已有模版ID（从预览生成的模版）
+   * 保存模板资产清单
+   * 兼容期内仍复用旧接口名，语义已收敛为字段定义 + renderPlan 资产保存。
+   */
+  async saveTemplateWorkflow(request: TemplateSaveRequest): Promise<TemplateSaveResponse> {
+    const response = await axios.post(
+      `${this.baseUrl}/studio/template/save`,
+      request,
+      getAxiosConfig(this.baseUrl, { timeout: 60000 })
+    );
+    return response.data;
+  }
+
+  async generateTemplateRenderData(request: TemplateRenderDataRequest): Promise<TemplateRenderDataResponse> {
+    const response = await axios.post(
+      `${this.baseUrl}/studio/template/render-data`,
+      request,
+      getAxiosConfig(this.baseUrl, { timeout: 60000 })
+    );
+    return response.data;
+  }
+
+  /**
+   * 保存完整模板资产（包含模板文件，以及可选 AI Guide / Skill）
+   * 支持复用已有模版ID（从预览生成的模版）。
    */
   async saveTemplateFull(request: {
     templateId?: string;  // 复用已有模版ID
     documentContent?: string;  // 如果使用已有模版ID，可以不传
     suggestions: AISuggestion[];
     templateConfig?: TemplateConfig;
+    templateMeta?: {
+      templateName?: string;
+      sourceLanguage?: string;
+      targetLanguages?: string[];
+      documentMode?: string;
+      termAssets?: WorkflowTermAssets;
+    };
+    templateDocumentIr?: DocumentIR;
+    templateFieldSpecs?: TemplateFieldSpec[];
     skill?: any;
     skillId?: string;
     format?: string;
@@ -456,21 +1086,16 @@ class CarboneAPI {
   /**
    * 获取模板详情
    */
-  async getTemplate(templateId: string): Promise<{
-    id: string;
-    fileName?: string;
-    format: string;
-    size?: number;
-    config?: any;
-    suggestions?: any[];
-    variables?: string[];
-    skillId?: string;
-  }> {
+  async getTemplate(templateId: string): Promise<TemplateDetailResponse> {
     const response = await axios.get(
       `${this.baseUrl}/studio/templates/${templateId}`,
       getAxiosConfig(this.baseUrl)
     );
-    return response.data;
+    const templateWorkflow = response.data?.templateWorkflow || response.data?.templateConfig?.templateWorkflow;
+    return {
+      ...response.data,
+      templateWorkflow,
+    };
   }
 
   /**

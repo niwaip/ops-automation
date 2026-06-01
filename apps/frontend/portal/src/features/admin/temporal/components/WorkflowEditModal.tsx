@@ -669,6 +669,14 @@ const extractHttpPreviewBody = (value: unknown): unknown => {
   return looksLikeHttpPreview ? record.body : value;
 };
 
+const getStringRecordField = (value: unknown, key: string): string | undefined => {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    return undefined;
+  }
+  const field = (value as Record<string, unknown>)[key];
+  return typeof field === 'string' ? field : undefined;
+};
+
 interface RealValidationState {
   visible: boolean;
   isStreaming: boolean;
@@ -800,7 +808,16 @@ const codeGenerationReducer = (state: CodeGenerationState, action: CodeGeneratio
   }
 };
 
-export const WorkflowEditModal: React.FC<WorkflowEditModalProps> = ({ visible, onCancel, onSave, initialWorkflow, initialDraftDsl, loading }: WorkflowEditModalProps) => {
+export const WorkflowEditModal: React.FC<WorkflowEditModalProps> = ({
+  visible,
+  onCancel,
+  onSave,
+  initialWorkflow,
+  initialDraftDsl,
+  loading,
+  openTemplatePickerOnOpen = false,
+  initialTemplatePickerMode = 'document',
+}: WorkflowEditModalProps) => {
 
         useEffect(() => {
             if (visible) {
@@ -1198,7 +1215,7 @@ export const WorkflowEditModal: React.FC<WorkflowEditModalProps> = ({ visible, o
       }
       const currentDefinitions = prev.inputParams || {};
       // 分析所有步骤（不仅是第一个），提取自动生成的参数
-      // 浏览器模板场景下，所有步骤都在 activityDsl.activities[0].config.steps 中
+      // 浏览器模版场景下，所有步骤都在 activityDsl.activities[0].config.steps 中
       const discoveredParams: Record<string, WorkflowInputParamDefinition> = {};
 
       prev.steps.forEach((step) => {
@@ -1292,7 +1309,7 @@ export const WorkflowEditModal: React.FC<WorkflowEditModalProps> = ({ visible, o
         }
       });
 
-      // 关键：保留不在步骤中但用户手动追加或从模板带入的参数
+      // 关键：保留不在步骤中但用户手动追加或从模版带入的参数
       const mergedParams = { ...discoveredParams };
       Object.entries(currentDefinitions).forEach(([key, definition]) => {
         if (!mergedParams[key]) {
@@ -1381,10 +1398,10 @@ export const WorkflowEditModal: React.FC<WorkflowEditModalProps> = ({ visible, o
     {
       onSuccess: (result) => {
         setValidationResult(result);
-        message.success('验证完成');
+        void message.success('验证完成');
       },
-      onError: (error: any) => {
-        message.error(resolveApiErrorMessage(error, '验证失败'));
+      onError: (error: unknown) => {
+        void message.error(resolveApiErrorMessage(error, '验证失败'));
       },
     }
   );
@@ -1435,10 +1452,10 @@ export const WorkflowEditModal: React.FC<WorkflowEditModalProps> = ({ visible, o
           [variables.stepId]: result.explanation || 'AI 已生成可应用的优化建议',
         }));
       },
-      onError: (error: any, variables) => {
+      onError: (error: unknown, variables) => {
         setHttpAiErrors((prev) => ({
           ...prev,
-          [variables.stepId]: `AI 优化失败: ${error.message || 'Unknown error'}`,
+          [variables.stepId]: `AI 优化失败: ${resolveApiErrorMessage(error, 'Unknown error')}`,
         }));
       },
     },
@@ -1475,10 +1492,10 @@ export const WorkflowEditModal: React.FC<WorkflowEditModalProps> = ({ visible, o
           }));
         }
       },
-      onError: (error: any, variables) => {
+      onError: (error: unknown, variables) => {
         setHttpAiErrors((prev) => ({
           ...prev,
-          [variables.stepId]: `获取当前配置响应失败: ${error.message || 'Unknown error'}`,
+          [variables.stepId]: `获取当前配置响应失败: ${resolveApiErrorMessage(error, 'Unknown error')}`,
         }));
       },
     },
@@ -1494,9 +1511,9 @@ export const WorkflowEditModal: React.FC<WorkflowEditModalProps> = ({ visible, o
     try {
       const session = await temporalWorkflowApi.getAiDraftSession(sessionId);
       syncAiDraftSessionState(session);
-      message.success('已恢复草稿会话');
-    } catch (error: any) {
-      message.error('恢复草稿会话失败: ' + (error.message || '未知错误'));
+      void message.success('已恢复草稿会话');
+    } catch (error: unknown) {
+      void message.error(`恢复草稿会话失败: ${resolveApiErrorMessage(error, '未知错误')}`);
     }
   };
 
@@ -1585,7 +1602,6 @@ export const WorkflowEditModal: React.FC<WorkflowEditModalProps> = ({ visible, o
     setLastGeneratedSignature(null);
     setIsGeneratedCodeStale(false);
     setSelectedStepIndexForConfig(nextWorkflowDsl?.steps?.length ? 0 : null);
-    void onCancel(true);
     void message.success(successMessage);
   };
 
@@ -1638,7 +1654,7 @@ export const WorkflowEditModal: React.FC<WorkflowEditModalProps> = ({ visible, o
       const data = await carboneAPI.getTemplates();
       setTemplates(Array.isArray(data) ? data : []);
     } catch (error: unknown) {
-      void message.error(resolveApiErrorMessage(error, '加载模板失败'));
+      void message.error(resolveApiErrorMessage(error, '加载模版失败'));
       setTemplates([]);
     } finally {
       setTemplatesLoading(false);
@@ -1651,7 +1667,7 @@ export const WorkflowEditModal: React.FC<WorkflowEditModalProps> = ({ visible, o
       const data = await templateApi.list({ page: 1, pageSize: 200 });
       setBrowserTemplates(Array.isArray(data?.templates) ? data.templates : []);
     } catch (error: unknown) {
-      void message.error(resolveApiErrorMessage(error, '加载浏览器模板失败'));
+      void message.error(resolveApiErrorMessage(error, '加载浏览器模版失败'));
       setBrowserTemplates([]);
     } finally {
       setBrowserTemplatesLoading(false);
@@ -1670,14 +1686,31 @@ export const WorkflowEditModal: React.FC<WorkflowEditModalProps> = ({ visible, o
     }
   };
 
+  useEffect(() => {
+    if (!visible) {
+      setTemplateModalVisible(false);
+      return;
+    }
+    if (!openTemplatePickerOnOpen) {
+      return;
+    }
+    setTemplateModalMode(initialTemplatePickerMode);
+    setTemplateModalVisible(true);
+    if (initialTemplatePickerMode === 'browser') {
+      void loadBrowserTemplates();
+      return;
+    }
+    void loadDocumentTemplates();
+  }, [visible, openTemplatePickerOnOpen, initialTemplatePickerMode]);
+
   const handleSelectTemplate = async (template: CarboneTemplate) => {
     try {
       setGeneratingTemplateId(template.id);
       const draft: TemplateWorkflowDraft = await temporalWorkflowApi.generateTemplateDraft(template.id);
-      await applyDraftToEditor(draft, '已生成模板工作流草稿');
+      await applyDraftToEditor(draft, '已生成模版工作流草稿');
       setTemplateModalVisible(false);
     } catch (error: unknown) {
-      void message.error(resolveApiErrorMessage(error, '生成模板工作流失败'));
+      void message.error(resolveApiErrorMessage(error, '生成模版工作流失败'));
     } finally {
       setGeneratingTemplateId(null);
     }
@@ -1695,7 +1728,7 @@ export const WorkflowEditModal: React.FC<WorkflowEditModalProps> = ({ visible, o
         ? executionPlan.commands.filter((command): command is BrowserDraftCommandInput => Boolean(command && typeof command === 'object'))
         : [];
       if (templateSteps.length === 0 && executionPlanCommands.length === 0) {
-        void message.warning('该浏览器模板缺少可执行步骤，请先在模板页补充步骤');
+        void message.warning('该浏览器模版缺少可执行步骤，请先在模版页补充步骤');
         return;
       }
       const draft = await temporalWorkflowApi.generateBrowserDraft({
@@ -1707,20 +1740,20 @@ export const WorkflowEditModal: React.FC<WorkflowEditModalProps> = ({ visible, o
         commands: executionPlanCommands.length > 0 ? executionPlanCommands : undefined,
       });
       if (!draft.activityDsl.activities[0]?.config?.steps || (draft.activityDsl.activities[0]?.config?.steps as Array<unknown>).length === 0) {
-        void message.warning('该浏览器模板缺少可执行步骤，请先在模板页补充步骤');
+        void message.warning('该浏览器模版缺少可执行步骤，请先在模版页补充步骤');
         return;
       }
       await applyDraftToEditor(
         draft,
         templateSteps.length > 0
-          ? `已基于模板步骤生成浏览器工作流草稿（${draft.browserTemplate.commandCount} 个步骤）`
+          ? `已基于模版步骤生成浏览器工作流草稿（${draft.browserTemplate.commandCount} 个步骤）`
           : executionPlanCommands.length > 0
             ? `已基于 executionPlan.commands 生成浏览器工作流草稿（${draft.browserTemplate.commandCount} 个步骤）`
             : `已生成浏览器工作流草稿（${draft.browserTemplate.commandCount} 个步骤）`,
       );
       setTemplateModalVisible(false);
     } catch (error: unknown) {
-      void message.error(resolveApiErrorMessage(error, '使用浏览器模板生成工作流失败'));
+      void message.error(resolveApiErrorMessage(error, '使用浏览器模版生成工作流失败'));
     } finally {
       setGeneratingBrowserTemplateId(null);
     }
@@ -2016,7 +2049,7 @@ export const WorkflowEditModal: React.FC<WorkflowEditModalProps> = ({ visible, o
               } else if (forceAiGeneration && result.generationMode === 'ai') {
                 message.success('代码生成成功（已强制使用 AI 生成）');
               } else if (result.generationMode === 'deterministic') {
-                message.success('代码生成成功（固定模板模式）');
+                message.success('代码生成成功（固定模版模式）');
               } else {
                 message.success('代码生成成功');
               }
@@ -2150,24 +2183,28 @@ export const WorkflowEditModal: React.FC<WorkflowEditModalProps> = ({ visible, o
       }));
       return;
     }
-    let suggestedConfig: Record<string, any>;
+    let suggestedConfig: Record<string, unknown>;
     try {
-      suggestedConfig = JSON.parse(suggestedDraft);
-    } catch (error: any) {
+      const parsedConfig: unknown = JSON.parse(suggestedDraft);
+      if (!parsedConfig || typeof parsedConfig !== 'object' || Array.isArray(parsedConfig)) {
+        throw new Error('AI 优化结果不是合法 JSON 对象');
+      }
+      suggestedConfig = parsedConfig as Record<string, unknown>;
+    } catch (error: unknown) {
       setHttpAiErrors((prev) => ({
         ...prev,
-        [selectedStep.id as string]: `AI 优化结果不是合法 JSON: ${error.message || '解析失败'}`,
+        [selectedStep.id as string]: `AI 优化结果不是合法 JSON: ${resolveApiErrorMessage(error, '解析失败')}`,
       }));
       return;
     }
-    const currentConfig = selectedStepHttpConfig as Record<string, any>;
+    const currentConfig = selectedStepHttpConfig as Record<string, unknown>;
     const changedKeys = Object.keys(suggestedConfig).filter((key) => (
-      JSON.stringify(currentConfig[key]) !== JSON.stringify((suggestedConfig as Record<string, any>)[key])
+      JSON.stringify(currentConfig[key]) !== JSON.stringify(suggestedConfig[key])
     ));
     updateStepHttpRequestConfig(selectedStepIndexForConfig, suggestedConfig as Partial<HttpRequestStepConfig>);
     setHttpAiSuggestedConfigs((prev) => ({
       ...prev,
-      [selectedStep.id as string]: suggestedConfig,
+      [selectedStep.id as string]: suggestedConfig as Record<string, any>,
     }));
     setStepConfigActiveKeys(['activity-input', 'result-processing']);
     setHttpAiErrors((prev) => {
@@ -2178,19 +2215,19 @@ export const WorkflowEditModal: React.FC<WorkflowEditModalProps> = ({ visible, o
     setHttpAiApplySummaries((prev) => ({
       ...prev,
       [selectedStep.id as string]: changedKeys.length > 0
-        ? changedKeys.map((key) => `${key}: ${JSON.stringify((suggestedConfig as Record<string, any>)[key])}`)
+        ? changedKeys.map((key) => `${key}: ${JSON.stringify(suggestedConfig[key])}`)
         : ['AI 建议与当前配置一致，没有产生新的字段变化'],
     }));
   };
 
   const handleOpenRealValidation = () => {
-    if (!generatedCode) { message.warning('请先生成代码'); return; }
+    if (!generatedCode) { void message.warning('请先生成代码'); return; }
     const inputParams = collectWorkflowInputParams();
     dispatchRealValidation({ type: 'OPEN', payload: inputParams });
   };
 
   const handleRealValidation = async () => {
-    if (!generatedCode) { message.warning('请先生成代码'); return; }
+    if (!generatedCode) { void message.warning('请先生成代码'); return; }
     const fn = workflowDsl.workflowClassName?.trim() || (workflowDsl.name.replace(/\s+/g, '') + 'Workflow');
     dispatchRealValidation({ type: 'START' });
 
@@ -2220,14 +2257,15 @@ export const WorkflowEditModal: React.FC<WorkflowEditModalProps> = ({ visible, o
               defaultSuccessScore: 100,
               defaultFailureScore: 0,
             });
+            const rawResult: unknown = event.result as unknown;
             dispatchRealValidation({
               type: 'SET_RESULT',
               payload: {
-              success: normalized.success,
-              logs: [],
-              result: event.result,
-              error: normalized.error,
-              score: normalized.score,
+                success: normalized.success,
+                logs: [],
+                result: rawResult as WorkflowRealValidationResult['result'],
+                error: normalized.error,
+                score: normalized.score,
               },
             });
           } else if (event.type === 'error') {
@@ -2243,15 +2281,16 @@ export const WorkflowEditModal: React.FC<WorkflowEditModalProps> = ({ visible, o
           }
         }
       );
-    } catch (error: any) {
-      appendRealValidationLog(`错误: ${error.message}`);
-      message.error(error.message || '真实验证启动失败');
+    } catch (error: unknown) {
+      const errorMessage = resolveApiErrorMessage(error, '真实验证启动失败');
+      appendRealValidationLog(`错误: ${errorMessage}`);
+      void message.error(errorMessage);
       dispatchRealValidation({
         type: 'SET_RESULT',
         payload: {
           success: false,
           logs: [],
-          error: error.message,
+          error: errorMessage,
           score: 0,
         },
       });
@@ -2259,7 +2298,7 @@ export const WorkflowEditModal: React.FC<WorkflowEditModalProps> = ({ visible, o
   };
 
   const handleSave = () => {
-    form.validateFields().then((values) => {
+    void form.validateFields().then((values: { name?: string; description?: string; taskQueue?: string }) => {
       const workflowName = values.name || workflowDsl.name;
       const data: CreateTemporalWorkflowDTO = {
         name: workflowName,
@@ -2284,6 +2323,8 @@ export const WorkflowEditModal: React.FC<WorkflowEditModalProps> = ({ visible, o
         generatedCode: generatedCode || undefined,
       };
       onSave(data);
+    }).catch((error: unknown) => {
+      void message.error(resolveApiErrorMessage(error, '表单校验失败'));
     });
   };
   const handleAddStep = () => {
@@ -2294,7 +2335,7 @@ export const WorkflowEditModal: React.FC<WorkflowEditModalProps> = ({ visible, o
     }
   };
   const handleRemoveStep = (index: number) => setWorkflowDsl({ ...workflowDsl, steps: workflowDsl.steps.filter((_, i) => i !== index) });
-  const handleUpdateStep = (index: number, field: string, value: any) => { const updated = [...workflowDsl.steps]; updated[index] = { ...updated[index], [field]: value }; setWorkflowDsl({ ...workflowDsl, steps: updated }); };
+  const handleUpdateStep = (index: number, field: string, value: unknown) => { const updated = [...workflowDsl.steps]; updated[index] = { ...updated[index], [field]: value }; setWorkflowDsl({ ...workflowDsl, steps: updated }); };
 
   const handleOpenActivitySelector = (stepIndex: number) => { setSelectingStepIndex(stepIndex); setSelectActivityModalVisible(true); };
 
@@ -2388,8 +2429,10 @@ export const WorkflowEditModal: React.FC<WorkflowEditModalProps> = ({ visible, o
     if (realValidationState.result) {
       const errors: string[] = [];
       if (realValidationState.result.error) errors.push(`验证错误: ${realValidationState.result.error}`);
-      if (realValidationState.result.result?.error) errors.push(`执行错误: ${realValidationState.result.result.error}`);
-      if (realValidationState.result.result?.traceback) errors.push(`堆栈: ${realValidationState.result.result.traceback}`);
+      const validationExecutionError = getStringRecordField(realValidationState.result.result, 'error');
+      const validationTraceback = getStringRecordField(realValidationState.result.result, 'traceback');
+      if (validationExecutionError) errors.push(`执行错误: ${validationExecutionError}`);
+      if (validationTraceback) errors.push(`堆栈: ${validationTraceback}`);
       if (realValidationState.logs.length > 0) errors.push(`日志:\n${realValidationState.logs.join('\n')}`);
       if (errors.length > 0) {
         errorContext = `上次真实验证失败，请修复以下问题:\n\n${errors.join('\n\n')}`;
@@ -2784,7 +2827,7 @@ export const WorkflowEditModal: React.FC<WorkflowEditModalProps> = ({ visible, o
               <Input
                 size="small"
                 value={typeof value === 'string' ? value : JSON.stringify(value)}
-                placeholder="来源路径或模板变量"
+                placeholder="来源路径或模版变量"
                 onChange={(e) => {
                   updateStepStructuredTransformConfig(selectedStepIndexForConfig, {
                     fieldMappings: {
@@ -2850,7 +2893,7 @@ export const WorkflowEditModal: React.FC<WorkflowEditModalProps> = ({ visible, o
       return;
     }
     try {
-      const parsed = JSON.parse(trimmed);
+      const parsed: unknown = JSON.parse(trimmed);
       if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
         throw new Error('需要输入 JSON 对象');
       }
@@ -2861,10 +2904,10 @@ export const WorkflowEditModal: React.FC<WorkflowEditModalProps> = ({ visible, o
       if (selectedStepIndexForConfig !== null) {
         updateStepStructuredTransformConfig(selectedStepIndexForConfig, { outputSchema: parsed as Record<string, any> });
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       setStructuredTransformSchemaErrors((prev) => ({
         ...prev,
-        [stepId]: error.message || 'JSON 解析失败',
+        [stepId]: resolveApiErrorMessage(error, 'JSON 解析失败'),
       }));
     }
   };
@@ -3273,7 +3316,7 @@ export const WorkflowEditModal: React.FC<WorkflowEditModalProps> = ({ visible, o
         const messages: string[] = [];
         if (Object.keys(httpConfig).length > 0) {
           if (!String(httpConfig.urlTemplate || '').trim()) {
-            messages.push(`${stepName} 使用了 HTTP 请求能力，但还没有明确的 URL 模板。`);
+            messages.push(`${stepName} 使用了 HTTP 请求能力，但还没有明确的 URL 模版。`);
           }
           if ((httpConfig.responseMode || '') === 'bodyMap' && Object.keys(asPlainRecord(httpConfig.responseFieldMappings)).length === 0) {
             messages.push(`${stepName} 设置了多字段返回，但还没有配置字段映射。`);
@@ -3299,7 +3342,7 @@ export const WorkflowEditModal: React.FC<WorkflowEditModalProps> = ({ visible, o
         return messages;
       }),
       ...(stepCallItems.some((item) => item.params.length === 0)
-        ? ['部分步骤没有显式模板变量依赖，请确认这是否是预期行为。']
+        ? ['部分步骤没有显式模版变量依赖，请确认这是否是预期行为。']
         : []),
     ];
 
@@ -3433,7 +3476,7 @@ export const WorkflowEditModal: React.FC<WorkflowEditModalProps> = ({ visible, o
                     <div>
                       <div style={{ fontSize: 12, marginBottom: 4 }}>超时: {item.timeout}</div>
                       <div style={{ fontSize: 12 }}>
-                        输入依赖: {item.params.length > 0 ? item.params.join('，') : '无显式模板变量'}
+                        输入依赖: {item.params.length > 0 ? item.params.join('，') : '无显式模版变量'}
                       </div>
                     </div>
                   </div>
@@ -3547,7 +3590,7 @@ export const WorkflowEditModal: React.FC<WorkflowEditModalProps> = ({ visible, o
                       <Text type="secondary">字段映射: {Object.entries(transformFieldMappings).map(([k, v]) => `${k} <- ${v}`).join('；')}</Text>
                     ) : null}
                     {!isAiTransform && transformConfig.textTemplate ? (
-                      <Text type="secondary">文本模板: {shorten(String(transformConfig.textTemplate), 80)}</Text>
+                      <Text type="secondary">文本模版: {shorten(String(transformConfig.textTemplate), 80)}</Text>
                     ) : null}
                     {Object.keys(outputSchema).length > 0 ? (
                       <div style={{ background: 'var(--bg-secondary)', borderRadius: 8, padding: 8 }}>
@@ -3739,7 +3782,8 @@ export const WorkflowEditModal: React.FC<WorkflowEditModalProps> = ({ visible, o
   );
 
   return (
-    <>\n<Modal title="选择工作单元" open={selectActivityModalVisible} onCancel={() => { setSelectActivityModalVisible(false); setSelectingStepIndex(null); }} footer={null} width={600}>
+    <>
+      <Modal title="选择工作单元" open={selectActivityModalVisible} onCancel={() => { setSelectActivityModalVisible(false); setSelectingStepIndex(null); }} footer={null} width={600}>
               <Alert message="选择一个工作单元关联到工作流步骤" type="info" showIcon style={{ marginBottom: 16 }} />
               <div style={{ maxHeight: 400, overflow: 'auto' }}>
                 {activityResources.map(activity => (
@@ -3754,8 +3798,9 @@ export const WorkflowEditModal: React.FC<WorkflowEditModalProps> = ({ visible, o
                 ))}
                 {activityResources.length === 0 && <Alert message="暂无工作单元，请先创建" type="warning" showIcon />}
               </div>
-            </Modal>\n<Modal
-              title="模板工作流"
+      </Modal>
+      <Modal
+              title="模版工作流"
               open={templateModalVisible}
               onCancel={() => setTemplateModalVisible(false)}
               footer={null}
@@ -3777,7 +3822,7 @@ export const WorkflowEditModal: React.FC<WorkflowEditModalProps> = ({ visible, o
                 <>
                   <Space style={{ marginBottom: 12, width: '100%', justifyContent: 'space-between' }}>
                     <Input
-                      placeholder="搜索模板..."
+                      placeholder="搜索模版..."
                       prefix={<SearchOutlined />}
                       value={templateSearch}
                       onChange={(e) => setTemplateSearch(e.target.value)}
@@ -3813,14 +3858,14 @@ export const WorkflowEditModal: React.FC<WorkflowEditModalProps> = ({ visible, o
                               loading={generatingTemplateId === t.id}
                               disabled={Boolean(generatingTemplateId)}
                             >
-                              {generatingTemplateId === t.id ? '生成中...' : '用此模板生成'}
+                              {generatingTemplateId === t.id ? '生成中...' : '用此模版生成'}
                             </Button>
                           </Space>
                         </Space>
                       </Card>
                     ))}
                     {(!templates || templates.length === 0) && (
-                      <Alert message="暂无模板，或加载失败" type="warning" showIcon />
+                      <Alert message="暂无模版，或加载失败" type="warning" showIcon />
                     )}
                   </div>
                 </>
@@ -3829,11 +3874,11 @@ export const WorkflowEditModal: React.FC<WorkflowEditModalProps> = ({ visible, o
                   <Alert
                     type="info"
                     showIcon
-                    message="请选择已生成的浏览器模板，系统将自动转换为 Browser Activity 工作流草稿"
+                    message="请选择已生成的浏览器模版，系统将自动转换为 Browser Activity 工作流草稿"
                   />
                   <Space style={{ width: '100%', justifyContent: 'space-between' }}>
                     <Input
-                      placeholder="搜索已生成浏览器模板..."
+                      placeholder="搜索已生成浏览器模版..."
                       prefix={<SearchOutlined />}
                       value={browserTemplateSearch}
                       onChange={(e) => setBrowserTemplateSearch(e.target.value)}
@@ -3843,7 +3888,7 @@ export const WorkflowEditModal: React.FC<WorkflowEditModalProps> = ({ visible, o
                     <Button icon={<ReloadOutlined />} onClick={() => {
                       void loadBrowserTemplates();
                     }} loading={browserTemplatesLoading} disabled={Boolean(generatingBrowserTemplateId)}>
-                      刷新模板
+                      刷新模版
                     </Button>
                   </Space>
                   <div style={{ maxHeight: 280, overflow: 'auto', paddingRight: 4 }}>
@@ -3871,18 +3916,19 @@ export const WorkflowEditModal: React.FC<WorkflowEditModalProps> = ({ visible, o
                             loading={generatingBrowserTemplateId === item.id}
                             disabled={Boolean(generatingBrowserTemplateId)}
                           >
-                            {generatingBrowserTemplateId === item.id ? '生成中...' : '用此浏览器模板生成'}
+                            {generatingBrowserTemplateId === item.id ? '生成中...' : '用此浏览器模版生成'}
                           </Button>
                         </Space>
                       </Card>
                     ))}
                     {(!browserTemplates || browserTemplates.length === 0) && (
-                      <Alert message="暂无已生成浏览器模板，或加载失败" type="warning" showIcon />
+                      <Alert message="暂无已生成浏览器模版，或加载失败" type="warning" showIcon />
                     )}
                   </div>
                 </Space>
               )}
-            </Modal>\n<Drawer
+      </Modal>
+      <Drawer
               title={<Space><RobotOutlined /><span>AI 辅助工作流编排</span></Space>}
               open={aiDraftDrawerVisible}
               onClose={() => setAiDraftDrawerVisible(false)}
@@ -3926,7 +3972,9 @@ export const WorkflowEditModal: React.FC<WorkflowEditModalProps> = ({ visible, o
                             block
                             icon={<ThunderboltOutlined />}
                             loading={generateAiDraftMutation.isLoading}
-                            onClick={handleGenerateAiDraft}
+                            onClick={() => {
+                              handleGenerateAiDraft();
+                            }}
                           >
                             生成初始草稿
                           </Button>
@@ -3940,7 +3988,9 @@ export const WorkflowEditModal: React.FC<WorkflowEditModalProps> = ({ visible, o
                             size="small"
                             icon={<ReloadOutlined />}
                             loading={aiDraftSessionsQuery.isFetching}
-                            onClick={() => aiDraftSessionsQuery.refetch()}
+                            onClick={() => {
+                              void aiDraftSessionsQuery.refetch();
+                            }}
                           >
                             刷新
                           </Button>
@@ -3971,7 +4021,9 @@ export const WorkflowEditModal: React.FC<WorkflowEditModalProps> = ({ visible, o
                                         okText="删除"
                                         cancelText="取消"
                                         okButtonProps={{ danger: true, loading: deleteAiDraftSessionMutation.isLoading }}
-                                        onConfirm={() => handleDeleteAiDraftSession(session.sessionId)}
+                                        onConfirm={() => {
+                                          handleDeleteAiDraftSession(session.sessionId);
+                                        }}
                                       >
                                         <Button
                                           size="small"
@@ -3982,7 +4034,9 @@ export const WorkflowEditModal: React.FC<WorkflowEditModalProps> = ({ visible, o
                                           删除
                                         </Button>
                                       </Popconfirm>
-                                      <Button size="small" type="primary" onClick={() => handleResumeAiDraftSession(session.sessionId)}>
+                                      <Button size="small" type="primary" onClick={() => {
+                                        void handleResumeAiDraftSession(session.sessionId);
+                                      }}>
                                         继续
                                       </Button>
                                     </Space>
@@ -4171,7 +4225,9 @@ export const WorkflowEditModal: React.FC<WorkflowEditModalProps> = ({ visible, o
                       <Button
                         type="primary"
                         icon={<SendOutlined />}
-                        onClick={handleRefineAiDraft}
+                        onClick={() => {
+                          handleRefineAiDraft();
+                        }}
                         loading={refineAiDraftMutation.isLoading}
                         style={{ height: 'auto' }}
                       />
@@ -4179,11 +4235,14 @@ export const WorkflowEditModal: React.FC<WorkflowEditModalProps> = ({ visible, o
                   </div>
                 )}
               </div>
-            </Drawer>\n<Modal
+      </Drawer>
+      <Modal
               title="应用草稿前确认"
               open={applyDraftConfirmVisible}
               onCancel={() => setApplyDraftConfirmVisible(false)}
-              onOk={handleConfirmApplyCurrentDraft}
+              onOk={() => {
+                void handleConfirmApplyCurrentDraft();
+              }}
               okText="确认应用"
               cancelText="取消"
               width={720}
@@ -4248,7 +4307,8 @@ export const WorkflowEditModal: React.FC<WorkflowEditModalProps> = ({ visible, o
                   </Card>
                 </Space>
               ) : null}
-            </Modal>\n<Modal
+      </Modal>
+      <Modal
               title={<Space size={8}><ThunderboltOutlined style={{ color: 'var(--primary-color)' }} /><span>工作流详情</span></Space>}
               open={detailModalVisible}
               onCancel={() => setDetailModalVisible(false)}
@@ -4279,7 +4339,9 @@ export const WorkflowEditModal: React.FC<WorkflowEditModalProps> = ({ visible, o
                       <Button
                         type="primary"
                         icon={<PlayCircleOutlined />}
-                        onClick={handleCreateExecutionFromWorkflow}
+                        onClick={() => {
+                          void handleCreateExecutionFromWorkflow();
+                        }}
                         loading={creatingExecutionWorkflowId === selectedWorkflow.id}
                         disabled={!resolveWorkflowSourceSkillId(selectedWorkflow)}
                       >
@@ -4310,17 +4372,31 @@ export const WorkflowEditModal: React.FC<WorkflowEditModalProps> = ({ visible, o
                   {selectedWorkflow.sourceTemplate && (
                     <Card size="small" style={SECTION_CARD_STYLE} styles={{ body: { padding: 14 } }}>
                       <Row gutter={[12, 10]}>
-                        <Col span={12}><Text><strong>模板 ID:</strong> <Tag color="purple">{selectedWorkflow.sourceTemplate.templateId || '无'}</Tag></Text></Col>
-                        <Col span={12}><Text><strong>模板内置 Skill:</strong> {selectedWorkflow.sourceTemplate.skillId ? <Tag color="geekblue">{selectedWorkflow.sourceTemplate.skillId}</Tag> : '无'}</Text></Col>
-                        <Col span={12}><Text><strong>模板文件:</strong> {selectedWorkflow.sourceTemplate.fileName || '无'}</Text></Col>
+                        <Col span={12}><Text><strong>模版 ID:</strong> <Tag color="purple">{selectedWorkflow.sourceTemplate.templateId || '无'}</Tag></Text></Col>
+                        <Col span={12}><Text><strong>模版内置 Skill:</strong> {selectedWorkflow.sourceTemplate.skillId ? <Tag color="geekblue">{selectedWorkflow.sourceTemplate.skillId}</Tag> : '无'}</Text></Col>
+                        <Col span={12}><Text><strong>模版文件:</strong> {selectedWorkflow.sourceTemplate.fileName || '无'}</Text></Col>
                         <Col span={12}><Text><strong>格式:</strong> <Tag>{selectedWorkflow.sourceTemplate.format || '未知'}</Tag></Text></Col>
                         <Col span={12}><Text><strong>变量数:</strong> {selectedWorkflow.sourceTemplate.variableCount ?? '-'}</Text></Col>
+                        <Col span={12}><Text><strong>资产版本:</strong> {selectedWorkflow.sourceTemplate.templateAssetVersion ? <Tag color="purple">{selectedWorkflow.sourceTemplate.templateAssetVersion}</Tag> : '旧链路兼容'}</Text></Col>
+                        <Col span={12}><Text><strong>渲染计划版本:</strong> {selectedWorkflow.sourceTemplate.renderPlanVersion ? <Tag color="geekblue">v{selectedWorkflow.sourceTemplate.renderPlanVersion}</Tag> : '无'}</Text></Col>
+                        <Col span={12}><Text><strong>字段数:</strong> {selectedWorkflow.sourceContext?.templateAssetSummary?.fieldCount ?? '-'}</Text></Col>
+                        <Col span={12}><Text><strong>资产来源:</strong> {selectedWorkflow.sourceContext?.templateAssetSummary?.source || '无'}</Text></Col>
+                        {selectedWorkflow.sourceContext?.templateAssetSummary ? (
+                          <Col span={24}>
+                            <Alert
+                              type="info"
+                              showIcon
+                              message="模板资产摘要"
+                              description={`当前工作流基于模板资产 ${selectedWorkflow.sourceContext.templateAssetSummary.assetVersion} 生成，renderPlan 版本 ${selectedWorkflow.sourceContext.templateAssetSummary.renderPlanVersion}，字段数 ${selectedWorkflow.sourceContext.templateAssetSummary.fieldCount}。`}
+                            />
+                          </Col>
+                        ) : null}
                         <Col span={24}>
                           <Alert
                             type="info"
                             showIcon
                             message="后续 Skill 关联说明"
-                            description="当 Capability Release 以该 Temporal Workflow 作为 sourceType=temporal_workflow 发布时，Skill 会继承这里的工作流 DSL、参数定义与输出定义；模板 ID / 内置 Skill ID 则作为来源情报继续用于理解该工作流来自哪个 Carbone 模板。"
+                            description="当 Capability Release 以该 Temporal Workflow 作为 sourceType=temporal_workflow 发布时，Skill 会继承这里的工作流 DSL、参数定义与输出定义；模版 ID / 内置 Skill ID 则作为来源情报继续用于理解该工作流来自哪个 Carbone 模版。"
                           />
                         </Col>
                       </Row>
@@ -4363,7 +4439,8 @@ export const WorkflowEditModal: React.FC<WorkflowEditModalProps> = ({ visible, o
                   </Collapse>
                 </Space>
               )}
-            </Modal>\n<Modal title={<div style={{ textAlign: 'center', width: '100%' }}><Space direction="vertical" size={2}><Space size={8}><ThunderboltOutlined style={{ color: 'var(--primary-color)' }} /><Text strong style={{ fontSize: 18 }}>{editingWorkflow ? '编辑工作流' : '创建工作流'}</Text></Space><Text type="secondary" style={{ fontSize: 12 }}>配置工作流基础信息、执行参数、步骤编排与 AI 代码生成</Text></Space></div>} open={visible} onOk={handleSave} onCancel={() => onCancel(false)}
+      </Modal>
+      <Modal title={<div style={{ textAlign: 'center', width: '100%' }}><Space direction="vertical" size={2}><Space size={8}><ThunderboltOutlined style={{ color: 'var(--primary-color)' }} /><Text strong style={{ fontSize: 18 }}>{editingWorkflow ? '编辑工作流' : '创建工作流'}</Text></Space><Text type="secondary" style={{ fontSize: 12 }}>配置工作流基础信息、执行参数、步骤编排与 AI 代码生成</Text></Space></div>} open={visible} onOk={handleSave} onCancel={() => onCancel(false)}
               footer={
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, justifyContent: 'flex-end', alignItems: 'center' }}>
                   <Space size={6} style={{ marginRight: 'auto' }}>
@@ -4374,12 +4451,14 @@ export const WorkflowEditModal: React.FC<WorkflowEditModalProps> = ({ visible, o
                       onChange={setForceAiGeneration}
                       disabled={codeGenerationState.isStreaming}
                     />
-                    <Tooltip title="开启后会跳过固定模板编译路径，即使当前 DSL 命中确定性模式，也会直接走 AI 代码生成。">
+                    <Tooltip title="开启后会跳过固定模版编译路径，即使当前 DSL 命中确定性模式，也会直接走 AI 代码生成。">
                       <InfoCircleOutlined style={{ color: 'var(--text-secondary)' }} />
                     </Tooltip>
                   </Space>
                   <Button size="small" key="validate" icon={<PlayCircleOutlined />} onClick={handleValidate}>验证DSL</Button>
-                  <Button size="small" key="generate" icon={<RobotOutlined />} onClick={() => handleGenerateCode()} loading={codeGenerationState.isStreaming}>AI生成代码</Button>
+                  <Button size="small" key="generate" icon={<RobotOutlined />} onClick={() => {
+                    void handleGenerateCode();
+                  }} loading={codeGenerationState.isStreaming}>AI生成代码</Button>
                   <Button size="small" key="realValidation" icon={<ExperimentOutlined />} onClick={handleOpenRealValidation} loading={realValidationState.isStreaming} disabled={!generatedCode}>真实验证</Button>
                   <Button size="small" key="viewCode" icon={<CodeOutlined />} onClick={() => setCodeModalVisible(true)} disabled={!generatedCode}>查看代码</Button>
                   <Button size="small" key="cancel" onClick={() => onCancel(false)}>取消</Button>
@@ -4403,7 +4482,7 @@ export const WorkflowEditModal: React.FC<WorkflowEditModalProps> = ({ visible, o
                       type={currentSourceContext.sourceType === 'template' ? 'info' : 'success'}
                       showIcon
                       style={{ marginBottom: 12 }}
-                      message={currentSourceContext.sourceType === 'template' ? '当前工作流来自模板' : '当前工作流包含 AI 草稿来源信息'}
+                      message={currentSourceContext.sourceType === 'template' ? '当前工作流来自模版' : '当前工作流包含 AI 草稿来源信息'}
                       description={
                         <Space direction="vertical" size={8} style={{ width: '100%' }}>
                           <Space wrap size={[8, 8]}>
@@ -4429,14 +4508,17 @@ export const WorkflowEditModal: React.FC<WorkflowEditModalProps> = ({ visible, o
                       type="info"
                       showIcon
                       style={{ marginBottom: 12 }}
-                      message="当前工作流来自模板"
+                      message="当前工作流来自模版"
                       description={
                         <Space wrap size={[8, 8]}>
-                          <Tag color="purple">模板 ID: {currentSourceTemplate.templateId || '无'}</Tag>
+                          <Tag color="purple">模版 ID: {currentSourceTemplate.templateId || '无'}</Tag>
                           {currentSourceTemplate.skillId ? <Tag color="geekblue">内置 Skill: {currentSourceTemplate.skillId}</Tag> : <Tag>内置 Skill: 无</Tag>}
                           {currentSourceTemplate.fileName ? <Tag>文件: {currentSourceTemplate.fileName}</Tag> : null}
                           {currentSourceTemplate.format ? <Tag>格式: {currentSourceTemplate.format}</Tag> : null}
                           {currentSourceTemplate.variableCount !== undefined ? <Tag>变量数: {currentSourceTemplate.variableCount}</Tag> : null}
+                          {currentSourceTemplate.templateAssetVersion ? <Tag color="purple">资产版本: {currentSourceTemplate.templateAssetVersion}</Tag> : <Tag>资产版本: 旧链路兼容</Tag>}
+                          {currentSourceTemplate.renderPlanVersion ? <Tag color="geekblue">渲染计划: v{currentSourceTemplate.renderPlanVersion}</Tag> : null}
+                          {currentSourceContext?.templateAssetSummary?.fieldCount !== undefined ? <Tag>资产字段数: {currentSourceContext.templateAssetSummary.fieldCount}</Tag> : null}
                         </Space>
                       }
                     />
@@ -4550,7 +4632,7 @@ export const WorkflowEditModal: React.FC<WorkflowEditModalProps> = ({ visible, o
                       <Space size={6} style={{ minWidth: 0 }}>
                         <span>输入参数</span>
                         <Text type="secondary">（Workflow 入口参数；有分组信息时按 sheet/分组展示）</Text>
-                        <Tooltip title="模板工作流会优先按 Skill 参数生成入口参数；若携带 sheet/分组信息，会自动分组展示并区分普通变量与循环变量。">
+                        <Tooltip title="模版工作流会优先按 Skill 参数生成入口参数；若携带 sheet/分组信息，会自动分组展示并区分普通变量与循环变量。">
                           <InfoCircleOutlined style={{ color: 'var(--text-light)' }} />
                         </Tooltip>
                       </Space>
@@ -4810,7 +4892,7 @@ export const WorkflowEditModal: React.FC<WorkflowEditModalProps> = ({ visible, o
                                       style={{ width: '100%', height: 32 }}
                                     />
                                   </Form.Item>
-                                  <Form.Item label={renderTipLabel('URL 模板', '可填写固定 URL，或使用 {city} 这类占位符进行动态拼装。')} style={{ marginBottom: 10 }}>
+                                  <Form.Item label={renderTipLabel('URL 模版', '可填写固定 URL，或使用 {city} 这类占位符进行动态拼装。')} style={{ marginBottom: 10 }}>
                                     <Input
                                       size="middle"
                                       value={selectedStepHttpConfig.urlTemplate || ''}
@@ -4951,10 +5033,10 @@ export const WorkflowEditModal: React.FC<WorkflowEditModalProps> = ({ visible, o
                             type={isAiStructuredTransform ? 'warning' : 'info'}
                             showIcon
                             style={{ marginBottom: 10 }}
-                            message={isAiStructuredTransform ? '当前为 AI 结构化转换：适合归纳、摘要、模糊理解。' : '当前为固定规则结构化转换：默认优先使用字段映射和文本模板，不调用 AI。'}
+                            message={isAiStructuredTransform ? '当前为 AI 结构化转换：适合归纳、摘要、模糊理解。' : '当前为固定规则结构化转换：默认优先使用字段映射和文本模版，不调用 AI。'}
                           />
 
-                          <Form.Item label={renderTipLabel('内容模板', '输入待处理内容，可填固定文本或 {html}/{payload} 这类占位符。')} style={{ marginBottom: 10 }}>
+                          <Form.Item label={renderTipLabel('内容模版', '输入待处理内容，可填固定文本或 {html}/{payload} 这类占位符。')} style={{ marginBottom: 10 }}>
                             <Input.TextArea
                               rows={5}
                               value={selectedStepStructuredTransformConfig.contentTemplate || ''}
@@ -4963,7 +5045,7 @@ export const WorkflowEditModal: React.FC<WorkflowEditModalProps> = ({ visible, o
                             />
                           </Form.Item>
 
-                          <Form.Item label={renderTipLabel('处理规则', isAiStructuredTransform ? 'AI 转换时必须提供清晰规则，说明如何提取、清洗、映射字段，以及如何组织返回结果。' : '固定规则模式下该字段可作为备注说明，真正执行优先依赖字段映射和文本模板。')} style={{ marginBottom: 10 }}>
+                          <Form.Item label={renderTipLabel('处理规则', isAiStructuredTransform ? 'AI 转换时必须提供清晰规则，说明如何提取、清洗、映射字段，以及如何组织返回结果。' : '固定规则模式下该字段可作为备注说明，真正执行优先依赖字段映射和文本模版。')} style={{ marginBottom: 10 }}>
                             <Input.TextArea
                               rows={4}
                               value={selectedStepStructuredTransformConfig.instructionTemplate || ''}
@@ -5059,7 +5141,7 @@ export const WorkflowEditModal: React.FC<WorkflowEditModalProps> = ({ visible, o
                           )}
 
                           {!isAiStructuredTransform && (selectedStepStructuredTransformConfig.outputMode || 'json') === 'text' && (
-                            <Form.Item label={renderTipLabel('文本模板', '固定规则文本输出时，优先使用模板拼接最终文本，可引用 fieldMappings 或输入字段。')} style={{ marginBottom: 10 }}>
+                            <Form.Item label={renderTipLabel('文本模版', '固定规则文本输出时，优先使用模版拼接最终文本，可引用 fieldMappings 或输入字段。')} style={{ marginBottom: 10 }}>
                               <Input.TextArea
                                 rows={4}
                                 value={selectedStepStructuredTransformConfig.textTemplate || ''}
@@ -5388,7 +5470,8 @@ export const WorkflowEditModal: React.FC<WorkflowEditModalProps> = ({ visible, o
             <Input.TextArea rows={3} placeholder="例如：&#10;- 该工作流需要处理中文内容，请使用 utf-8 编码&#10;- 返回结果需要包含完整的错误处理逻辑&#10;- 第三方 API 调用需要添加重试机制" value={workflowDsl.extraPrompt || ''} onChange={e => setWorkflowDsl({ ...workflowDsl, extraPrompt: e.target.value || undefined })} />
           </Form.Item>
         </Card>
-      </Modal>\n<Modal title="验证工作流 DSL" open={validateModalVisible} onCancel={() => setValidateModalVisible(false)} footer={[<Button onClick={() => setValidateModalVisible(false)}>关闭</Button>]} width={700}>
+      </Modal>
+      <Modal title="验证工作流 DSL" open={validateModalVisible} onCancel={() => setValidateModalVisible(false)} footer={[<Button onClick={() => setValidateModalVisible(false)}>关闭</Button>]} width={700}>
         {validationResult ? (
           <Space direction="vertical" style={{ width: '100%' }}>
             <Alert type={validationResult.isValid ? 'success' : 'error'} message={validationResult.isValid ? '验证通过' : '验证失败'} showIcon />
@@ -5397,7 +5480,8 @@ export const WorkflowEditModal: React.FC<WorkflowEditModalProps> = ({ visible, o
             {validationResult.warnings.length > 0 && <Alert type="warning" message="警告" description={<ul>{validationResult.warnings.map((w, i) => <li key={i}>{w}</li>)}</ul>} />}
           </Space>
         ) : <Alert type="info" message="点击验证按钮开始验证" />}
-      </Modal>\n<Modal
+      </Modal>
+      <Modal
         title="AI 生成代码状态"
         open={codeGenerationState.visible}
         onCancel={() => {
@@ -5416,7 +5500,7 @@ export const WorkflowEditModal: React.FC<WorkflowEditModalProps> = ({ visible, o
               message={codeGenerationState.result.success ? '代码生成完成' : '代码生成失败'}
               description={codeGenerationState.result.error || (
                 codeGenerationState.result.generationMode === 'deterministic'
-                  ? '本次命中固定模板编译路径。'
+                  ? '本次命中固定模版编译路径。'
                   : `共尝试 ${codeGenerationState.result.attempts || 1} 次生成。`
               )}
               showIcon
@@ -5430,7 +5514,8 @@ export const WorkflowEditModal: React.FC<WorkflowEditModalProps> = ({ visible, o
             </div>
           </Card>
         </Space>
-      </Modal>\n<Modal title={<Space direction="vertical" size={0}><Text strong>AI 生成的 Workflow 代码</Text><Text type="secondary" style={{ fontSize: 12 }}>显示名称：{currentWorkflowDisplayName} ｜ 类名：{currentWorkflowClassName}</Text></Space>} open={codeModalVisible} onCancel={() => setCodeModalVisible(false)}
+      </Modal>
+      <Modal title={<Space direction="vertical" size={0}><Text strong>AI 生成的 Workflow 代码</Text><Text type="secondary" style={{ fontSize: 12 }}>显示名称：{currentWorkflowDisplayName} ｜ 类名：{currentWorkflowClassName}</Text></Space>} open={codeModalVisible} onCancel={() => setCodeModalVisible(false)}
         footer={[
           <Button key="copy" icon={<CodeOutlined />} onClick={() => {
             void navigator.clipboard.writeText(generatedCode || '');
@@ -5443,7 +5528,8 @@ export const WorkflowEditModal: React.FC<WorkflowEditModalProps> = ({ visible, o
             {generatedCode}
           </pre>
         )}
-      </Modal>\n<Modal title="真实验证结果" open={realValidationState.visible} onCancel={() => dispatchRealValidation({ type: 'CLOSE' })} footer={realValidationModalFooter} width={800}>
+      </Modal>
+      <Modal title="真实验证结果" open={realValidationState.visible} onCancel={() => dispatchRealValidation({ type: 'CLOSE' })} footer={realValidationModalFooter} width={800}>
         <Space direction="vertical" style={{ width: '100%' }}>
           {realValidationState.isStreaming && <Alert type="info" message="真实验证进行中..." showIcon />}
 
@@ -5525,7 +5611,8 @@ export const WorkflowEditModal: React.FC<WorkflowEditModalProps> = ({ visible, o
             </div>
           </Card>
         </Space>
-      </Modal>\n</>
+      </Modal>
+    </>
   );
 };
 
@@ -5538,4 +5625,6 @@ export interface WorkflowEditModalProps {
   initialWorkflow?: any | null;
   initialDraftDsl?: any | null;
   loading?: boolean;
+  openTemplatePickerOnOpen?: boolean;
+  initialTemplatePickerMode?: TemplateModalMode;
 }

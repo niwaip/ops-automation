@@ -122,6 +122,8 @@ export interface TemporalWorkflowSourceTemplate {
   fileName?: string;
   format?: string;
   variableCount?: number;
+  templateAssetVersion?: string; // 新增：资产版本
+  renderPlanVersion?: number;    // 新增：渲染计划版本
 }
 
 export interface TemporalWorkflowSourceContext {
@@ -131,6 +133,12 @@ export interface TemporalWorkflowSourceContext {
   generatedAt?: string;
   warnings?: string[];
   sourceTemplate?: TemporalWorkflowSourceTemplate | null;
+  templateAssetSummary?: {      // 新增：资产摘要
+    assetVersion: string;
+    renderPlanVersion: number;
+    fieldCount: number;
+    source: string;
+  };
 }
 
 export interface TemporalWorkflowDTO {
@@ -232,6 +240,8 @@ export interface TemplateWorkflowDraft {
     fileName?: string;
     format?: string;
     variableCount: number;
+    templateAssetVersion?: string; // 新增
+    renderPlanVersion?: number;    // 新增
   };
 }
 

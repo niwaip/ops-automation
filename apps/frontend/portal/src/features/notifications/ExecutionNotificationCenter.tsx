@@ -16,6 +16,8 @@ import {
 
 const { Text } = Typography;
 type NotificationViewMode = 'action_required' | 'all';
+const ACTIVE_POLLING_INTERVAL_MS = 10000;
+const IDLE_POLLING_INTERVAL_MS = 60000;
 
 const buildNotificationContent = (
   item: AppNotification,
@@ -142,6 +144,10 @@ const getSourceText = (
 const isExecutionStatusValue = (value?: string): value is typeof EXECUTION_STATUS_VALUES[number] =>
   typeof value === 'string' && EXECUTION_STATUS_VALUES.includes(value as typeof EXECUTION_STATUS_VALUES[number]);
 
+const hasPendingExecutionNotifications = (notifications: AppNotification[]) => (
+  notifications.some((item) => item.source === 'execution' && item.requiresAction)
+);
+
 const ExecutionNotificationCenter: React.FC = () => {
   const { notification } = App.useApp();
   const navigate = useNavigate();
@@ -158,7 +164,11 @@ const ExecutionNotificationCenter: React.FC = () => {
     ['header-notifications'],
     () => notificationApi.list({ limit: 100 }),
     {
-      refetchInterval: 10000,
+      refetchInterval: (latestData) => (
+        hasPendingExecutionNotifications(latestData?.items ?? items)
+          ? ACTIVE_POLLING_INTERVAL_MS
+          : IDLE_POLLING_INTERVAL_MS
+      ),
       keepPreviousData: true,
     },
   );
@@ -187,7 +197,7 @@ const ExecutionNotificationCenter: React.FC = () => {
           message: contentMeta.title,
           description: contentMeta.description,
           placement: 'topRight',
-          duration: item.requiresAction ? 0 : 6,
+          duration: item.category === 'waiting_input' ? 5 : (item.requiresAction ? 0 : 6),
           onClick: () => handleOpenNotification(item),
         });
       });

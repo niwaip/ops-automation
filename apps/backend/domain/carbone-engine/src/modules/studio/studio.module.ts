@@ -10,6 +10,7 @@ import { DocumentStructureService } from './document-structure.service';
 import { TemplateRepository } from './template.repository';
 import { SkillRepository } from './skill.repository';
 import { RenderOutputRepository } from './render-output.repository';
+import { TemplateWorkflowService } from './template-workflow.service';
 
 @Module({
   controllers: [StudioController],
@@ -20,6 +21,7 @@ import { RenderOutputRepository } from './render-output.repository';
     TemplateRepository,
     SkillRepository,
     RenderOutputRepository,
+    TemplateWorkflowService,
   ],
 })
 export class StudioModule {}

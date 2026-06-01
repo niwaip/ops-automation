@@ -85,4 +85,78 @@ describe('ModelController provider governance', () => {
 
     listModelsSpy.mockRestore();
   });
+
+  it('tests the configured default model through the default alias', async () => {
+    await controller.createModel({
+      name: 'gpt-4o-default',
+      provider: 'openai',
+      api_endpoint: 'https://api.openai.com/v1',
+      api_key: 'model-key',
+      config: {
+        default_scope: {
+          global: true,
+        },
+      },
+    });
+
+    const chatCompletionSpy = jest
+      .spyOn(OpenAICompatibleClient.prototype, 'chatCompletion')
+      .mockResolvedValue({
+        content: '{"ok":true}',
+      });
+
+    const result = await controller.testModel('default', { prompt: 'ping' });
+
+    expect(result).toEqual({
+      success: true,
+      response: '{"ok":true}',
+    });
+    expect(chatCompletionSpy).toHaveBeenCalledWith([
+      { role: 'user', content: 'ping' },
+    ]);
+
+    chatCompletionSpy.mockRestore();
+  });
+
+  it('prefers the task default model over audio transcription when testing the default alias', async () => {
+    await controller.createModel({
+      name: 'speech-model',
+      provider: 'openai',
+      api_endpoint: 'https://api.openai.com/v1',
+      api_key: 'speech-key',
+      config: {
+        default_scope: {
+          audio_transcription: true,
+        },
+      },
+    });
+    const taskModel = await controller.createModel({
+      name: 'task-model',
+      provider: 'openai',
+      api_endpoint: 'https://api.openai.com/v1',
+      api_key: 'task-key',
+      config: {
+        default_scope: {
+          admin_task: true,
+        },
+      },
+    });
+
+    const chatCompletionSpy = jest
+      .spyOn(OpenAICompatibleClient.prototype, 'chatCompletion')
+      .mockResolvedValue({
+        content: '{"ok":true}',
+      });
+
+    const result = await controller.testModel('default', { prompt: 'ping' });
+
+    expect(result).toEqual({
+      success: true,
+      response: '{"ok":true}',
+    });
+    expect(chatCompletionSpy).toHaveBeenCalledTimes(1);
+    expect((chatCompletionSpy.mock.instances[0] as any)?.model).toBe(taskModel.name);
+
+    chatCompletionSpy.mockRestore();
+  });
 });

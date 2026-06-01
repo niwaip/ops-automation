@@ -251,6 +251,46 @@ Carbone Template ID: ${skill.carboneTemplateId || '无'}
       activeSkillSection += `输出契约: ${JSON.stringify(skill.outputParams, null, 2)}\n`;
     }
 
+    const runtimeMetadata = (skill.apiEndpoints && typeof skill.apiEndpoints === 'object')
+      ? (skill.apiEndpoints as { runtimeMetadata?: Record<string, unknown> }).runtimeMetadata
+      : undefined;
+    const isDocumentSkill = Boolean(skill.carboneSkillId)
+      || runtimeMetadata?.sourceType === 'document';
+
+    if (isDocumentSkill) {
+      const guideMarkdown = typeof runtimeMetadata?.skillGuideMarkdown === 'string'
+        ? runtimeMetadata.skillGuideMarkdown.trim()
+        : '';
+      const paramCollectionGuidance = typeof runtimeMetadata?.paramCollectionGuidance === 'string'
+        ? runtimeMetadata.paramCollectionGuidance.trim()
+        : '';
+      const validationRules = typeof runtimeMetadata?.validationRules === 'string'
+        ? runtimeMetadata.validationRules.trim()
+        : '';
+      const dataExampleJson = runtimeMetadata?.dataExampleJson;
+
+      const guideParts: string[] = [];
+      if (paramCollectionGuidance) {
+        guideParts.push(`参数识别指导：\n${clipPromptText(paramCollectionGuidance, 800)}`);
+      }
+      if (guideMarkdown) {
+        guideParts.push(`模板指南摘要：\n${clipPromptText(guideMarkdown, 1400)}`);
+      }
+      if (validationRules) {
+        guideParts.push(`校验规则：\n${clipPromptText(validationRules, 800)}`);
+      }
+      if (dataExampleJson !== undefined) {
+        guideParts.push(`输出结构模板（dataExampleJson）：\n${clipPromptText(JSON.stringify(dataExampleJson, null, 2), 1200)}`);
+      }
+
+      if (guideParts.length > 0) {
+        activeSkillSection += `\n\nAI Skill Guide（文档）：
+- 生成用于 document_render 的 data 时，优先以 dataExampleJson 作为输出结构模板（结构需一致）。
+- 禁止把 Carbone 变量语法（如 {d.xxx}、{#...}、{/...}）写进 JSON key；key 必须为纯字段名，不包含 { 或 }。
+\n${guideParts.join('\n\n')}\n`;
+      }
+    }
+
     if (skill.carboneSkillId) {
       activeSkillSection += `\n重要提示：此技能已配置Carbone文档能力，下一步优先调用 document_intake 工具，参数为:
 {

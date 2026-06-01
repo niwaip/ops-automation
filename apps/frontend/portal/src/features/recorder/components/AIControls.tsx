@@ -1,8 +1,9 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Input, Button, Space, Typography, Tag, Empty, message, Divider, Collapse, InputNumber, Modal, List, Tooltip, Switch, Checkbox, Radio } from 'antd';
 import {
   SendOutlined,
+  AudioOutlined,
   RobotOutlined,
   DeleteOutlined,
   CodeOutlined,
@@ -28,11 +29,19 @@ import {
   BugOutlined,
   ReloadOutlined,
 } from '@ant-design/icons';
+import type { TextAreaRef } from 'antd/es/input/TextArea';
 import { useTranslation } from 'react-i18next';
 import { useMutation } from 'react-query';
 import { apiClient } from '@/shared/api/http/client';
 import { templateApi } from '@/api/template';
 import { sessionApi, workerApi } from '@/api/session';
+import { transcribeAudio } from '@/features/chat/chatApi';
+import type { RecorderTakeoverViewState } from '@/features/recorder/lib/types';
+import recorderRuntimeService, {
+  type ReconcileAfterTakeoverResponse,
+  type RecorderPatchStep,
+  type RecorderTakeoverObservation,
+} from '@/services/recorder.service';
 import { useAuthStore } from '@/shared/store/authStore';
 
 const { TextArea } = Input;
@@ -164,13 +173,86 @@ interface RecorderDebugChatResponse {
   exportArtifacts?: RecorderDebugExportArtifacts;
 }
 
+interface TemplateInfo {
+  tool: string;
+  params: Record<string, unknown>;
+  description?: string;
+}
+
+interface BrowserCommandExecutionResult {
+  status?: string;
+  message?: string;
+  screenshot?: string;
+  stdout?: string;
+  data?: {
+    url?: string;
+  };
+  template_info?: TemplateInfo;
+}
+
+interface BrowserCommandExecutionResponse {
+  success?: boolean;
+  message?: string;
+  results?: BrowserCommandExecutionResult[];
+}
+
+type TakeoverUiMode =
+  | 'idle'
+  | 'required'
+  | 'recording'
+  | 'reconciling'
+  | 'ready_to_resume'
+  | 'resuming';
+
+interface TakeoverUiState {
+  mode: TakeoverUiMode;
+  runtimeSessionId?: string;
+  sessionId?: string;
+  backend?: ExecutionBackend;
+  takeoverSessionId?: string;
+  reason?: string;
+  originalCommands: MCPCommand[];
+  failedCommand?: MCPCommand & {
+    errorMessage?: string;
+  };
+  patchSteps: RecorderPatchStep[];
+  observation?: RecorderTakeoverObservation;
+  strategy?: ReconcileAfterTakeoverResponse['strategy'];
+  explanation?: string;
+  resumeCommands: MCPCommand[];
+}
+
+interface BrowserInitResponse {
+  success?: boolean;
+  message?: string;
+  endpoints?: {
+    novnc?: string;
+    cdp?: string;
+  };
+}
+
+interface CommandHistoryResult {
+  status?: string;
+  message?: string;
+  screenshot?: string;
+  stdout?: string;
+  data?: {
+    url?: string;
+  };
+  template_info?: TemplateInfo;
+  observation?: RecorderDebugObservation;
+  commands?: MCPCommand[];
+  execution?: RecorderDebugChatResponse['execution'];
+  exportArtifacts?: RecorderDebugExportArtifacts;
+}
+
 // Command history entry
 interface CommandHistoryEntry {
   id: string;
   type: 'user' | 'ai' | 'system';
   content: string;
   commands?: MCPCommand[];
-  result?: any;
+  result?: CommandHistoryResult;
   timestamp: Date;
   backend?: ExecutionBackend;
   sessionId?: string;
@@ -237,13 +319,107 @@ const buildCompactHistoryBubbleText = (entry: CommandHistoryEntry): string => {
   if (text.length > 280) {
     return `${text.slice(0, 260)}...（内容已折叠）`;
   }
-  if (text.length > 120 && /^[\s\S]*[\{\[][\s\S]*[\}\]][\s\S]*$/.test(text)) {
+  if (text.length > 120 && /^[\s\S]*(?:\{|\[)[\s\S]*(?:\}|\])[\s\S]*$/.test(text)) {
     return '已返回结构化内容，详细结果已折叠。';
   }
   return text;
 };
 
 const createRuntimeSessionId = () => `recorder-ui-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+
+const resolveErrorMessage = (error: unknown, fallback = '未知错误'): string => {
+  if (typeof error !== 'object' || error === null) {
+    return fallback;
+  }
+
+  const errorRecord = error as {
+    message?: unknown;
+    response?: {
+      data?: {
+        message?: unknown;
+      };
+    };
+  };
+
+  if (typeof errorRecord.response?.data?.message === 'string') {
+    return errorRecord.response.data.message;
+  }
+
+  if (typeof errorRecord.message === 'string') {
+    return errorRecord.message;
+  }
+
+  return fallback;
+};
+
+const getPrimaryExecutionResult = (
+  payload: BrowserCommandExecutionResponse,
+  fallbackMessage: string,
+): BrowserCommandExecutionResult => {
+  const failedResult = payload.results?.find((item) => item.status === 'error');
+  if (failedResult) {
+    return failedResult;
+  }
+
+  const firstResult = payload.results?.[0];
+  if (firstResult) {
+    return firstResult;
+  }
+
+  return {
+    status: payload.success === false ? 'error' : 'success',
+    message: payload.message || fallbackMessage,
+  };
+};
+
+const createIdleTakeoverState = (): TakeoverUiState => ({
+  mode: 'idle',
+  originalCommands: [],
+  patchSteps: [],
+  resumeCommands: [],
+});
+
+const describeTakeoverCommand = (command: MCPCommand): string => {
+  const params = command.params || {};
+  const target = [
+    typeof params.target === 'string' ? params.target : undefined,
+    typeof params.selector === 'string' ? params.selector : undefined,
+    typeof params.text === 'string' ? params.text : undefined,
+    typeof params.url === 'string' ? params.url : undefined,
+    typeof params.key === 'string' ? params.key : undefined,
+  ].find((value): value is string => Boolean(value && value.trim()));
+
+  return target ? `${command.tool}: ${target}` : command.tool;
+};
+
+const describePatchStep = (step: RecorderPatchStep): string => {
+  const params = step.params || {};
+  const target = [
+    typeof params.target === 'string' ? params.target : undefined,
+    typeof params.selector === 'string' ? params.selector : undefined,
+    typeof params.text === 'string' ? params.text : undefined,
+    typeof params.url === 'string' ? params.url : undefined,
+    typeof params.key === 'string' ? params.key : undefined,
+    typeof step.locator?.name === 'string' ? step.locator.name : undefined,
+    typeof step.locator?.value === 'string' ? step.locator.value : undefined,
+  ].find((value): value is string => Boolean(value && value.trim()));
+
+  return target ? `${step.action}: ${target}` : step.action;
+};
+
+const pickFailedCommand = (commands: MCPCommand[]): MCPCommand | undefined => {
+  return commands.find((command) => command.tool !== 'wait') || commands[0];
+};
+
+const getStringParam = (params: Record<string, unknown>, key: string): string | undefined => {
+  const value = params[key];
+  return typeof value === 'string' ? value : undefined;
+};
+
+const getNumberParam = (params: Record<string, unknown>, key: string): number | undefined => {
+  const value = params[key];
+  return typeof value === 'number' ? value : undefined;
+};
 
 // Template step - deterministic command for replay
 interface TemplateStep {
@@ -262,6 +438,7 @@ interface AIControlsProps {
   onBrowserReady?: (ready: boolean) => void;
   // Browser endpoints callback
   onBrowserEndpoints?: (endpoints: { novnc?: string; cdp?: string }) => void;
+  onTakeoverStateChange?: (state: RecorderTakeoverViewState) => void;
   // Manual mode props
   recorderStatus?: 'idle' | 'connecting' | 'recording' | 'paused' | 'stopped' | 'error';
   isConnected?: boolean;
@@ -288,6 +465,7 @@ const AIControls: React.FC<AIControlsProps> = ({
   onDisconnect,
   onBrowserReady,
   onBrowserEndpoints,
+  onTakeoverStateChange,
   recordedScript = '',
 }) => {
   const { t } = useTranslation(['common', 'recorder']);
@@ -314,6 +492,12 @@ const AIControls: React.FC<AIControlsProps> = ({
   const [waitDuration, setWaitDuration] = useState(0.5);
   const [autoAppendScreenshots, setAutoAppendScreenshots] = useState(true);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<TextAreaRef>(null);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const mediaStreamRef = useRef<MediaStream | null>(null);
+  const audioChunksRef = useRef<Blob[]>([]);
+  const isComposingRef = useRef(false);
+  const suppressInputChangeRef = useRef(false);
 
   // Manual recording URL input
   const [recordUrl, setRecordUrl] = useState('https://');
@@ -341,7 +525,11 @@ const AIControls: React.FC<AIControlsProps> = ({
   const [recorderDebugSessionId, setRecorderDebugSessionId] = useState<string>();
   const [recorderDebugRuntimeSessionId, setRecorderDebugRuntimeSessionId] = useState<string>();
   const [browserRuntimeSessionId, setBrowserRuntimeSessionId] = useState<string>(createRuntimeSessionId);
+  const [takeoverState, setTakeoverState] = useState<TakeoverUiState>(createIdleTakeoverState);
   const [isTemplatePanelExpanded, setIsTemplatePanelExpanded] = useState(false);
+  const [speechSupported, setSpeechSupported] = useState(false);
+  const [isListening, setIsListening] = useState(false);
+  const [isTranscribing, setIsTranscribing] = useState(false);
   const latestBrowserSessionRef = useRef<{
     browserRuntimeSessionId?: string;
     recorderDebugRuntimeSessionId?: string;
@@ -358,12 +546,32 @@ const AIControls: React.FC<AIControlsProps> = ({
   }, [history]);
 
   useEffect(() => {
+    setSpeechSupported(typeof window !== 'undefined' && 'MediaRecorder' in window);
+  }, []);
+
+  useEffect(() => {
     latestBrowserSessionRef.current = {
       browserRuntimeSessionId,
       recorderDebugRuntimeSessionId,
       executionBackend,
     };
   }, [browserRuntimeSessionId, recorderDebugRuntimeSessionId, executionBackend]);
+
+  useEffect(() => {
+    onTakeoverStateChange?.({
+      mode: takeoverState.mode,
+      runtimeSessionId: takeoverState.runtimeSessionId,
+      sessionId: takeoverState.sessionId,
+      backend: takeoverState.backend,
+      takeoverSessionId: takeoverState.takeoverSessionId,
+      reason: takeoverState.reason,
+      strategy: takeoverState.strategy,
+      explanation: takeoverState.explanation,
+      currentPageUrl: takeoverState.observation?.currentPageUrl,
+      patchStepCount: takeoverState.patchSteps.length,
+      resumeCommandCount: takeoverState.resumeCommands.length,
+    });
+  }, [onTakeoverStateChange, takeoverState]);
 
   const cleanupBrowserSessions = async (
     sessions: Array<{ runtimeSessionId?: string; backend: ExecutionBackend }>,
@@ -392,6 +600,47 @@ const AIControls: React.FC<AIControlsProps> = ({
     );
   };
 
+  const resetTakeoverState = useCallback(() => {
+    setTakeoverState(createIdleTakeoverState());
+  }, []);
+
+  const markTakeoverRequired = useCallback((input: {
+    runtimeSessionId?: string;
+    sessionId?: string;
+    backend: ExecutionBackend;
+    reason: string;
+    originalCommands: MCPCommand[];
+    failedCommand?: MCPCommand;
+  }) => {
+    const runtimeSessionId = input.runtimeSessionId?.trim();
+    if (!runtimeSessionId) {
+      return;
+    }
+
+    setTakeoverState((prev) => {
+      if (prev.mode === 'recording' || prev.mode === 'reconciling' || prev.mode === 'ready_to_resume' || prev.mode === 'resuming') {
+        return prev;
+      }
+
+      return {
+        mode: 'required',
+        runtimeSessionId,
+        sessionId: input.sessionId,
+        backend: input.backend,
+        reason: input.reason,
+        originalCommands: input.originalCommands,
+        failedCommand: input.failedCommand
+          ? {
+              ...input.failedCommand,
+              errorMessage: input.reason,
+            }
+          : undefined,
+        patchSteps: [],
+        resumeCommands: [],
+      };
+    });
+  }, []);
+
   useEffect(() => {
     setIsBrowserReady(false);
     onBrowserReady?.(false);
@@ -408,7 +657,8 @@ const AIControls: React.FC<AIControlsProps> = ({
     setRecorderDebugSessionId(undefined);
     setRecorderDebugRuntimeSessionId(undefined);
     setBrowserRuntimeSessionId(createRuntimeSessionId());
-  }, [executionBackend]);
+    resetTakeoverState();
+  }, [executionBackend, resetTakeoverState]);
 
   useEffect(() => {
     setIsTemplatePanelExpanded(!isReactChatMode);
@@ -416,6 +666,10 @@ const AIControls: React.FC<AIControlsProps> = ({
 
   useEffect(() => {
     return () => {
+      if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+        mediaRecorderRef.current.stop();
+      }
+      mediaStreamRef.current?.getTracks().forEach((track) => track.stop());
       const {
         browserRuntimeSessionId: activeBrowserRuntimeSessionId,
         recorderDebugRuntimeSessionId: activeRecorderDebugRuntimeSessionId,
@@ -435,7 +689,101 @@ const AIControls: React.FC<AIControlsProps> = ({
     };
   }, []);
 
-  const extractCurrentPageUrl = (result: any): string | undefined => {
+  const mergeSpeechText = useCallback((baseText: string, speechText: string) => {
+    const normalizedSpeechText = speechText.trim();
+    if (!normalizedSpeechText) {
+      return baseText;
+    }
+    if (!baseText.trim()) {
+      return normalizedSpeechText;
+    }
+    return `${baseText.replace(/\s+$/, '')}\n${normalizedSpeechText}`;
+  }, []);
+
+  const clearParamInput = useCallback(() => {
+    suppressInputChangeRef.current = true;
+    setParamInput('');
+
+    const textarea = inputRef.current?.resizableTextArea?.textArea;
+    if (textarea) {
+      textarea.value = '';
+    }
+
+    window.setTimeout(() => {
+      suppressInputChangeRef.current = false;
+      const activeTextarea = inputRef.current?.resizableTextArea?.textArea;
+      if (activeTextarea?.value) {
+        activeTextarea.value = '';
+      }
+    }, 0);
+  }, []);
+
+  const handleParamInputChange = useCallback((value: string) => {
+    if (suppressInputChangeRef.current) {
+      return;
+    }
+    setParamInput(value);
+  }, []);
+
+  const handleSpeechToggle = useCallback(async () => {
+    if (isListening) {
+      if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+        mediaRecorderRef.current.stop();
+      }
+      return;
+    }
+
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mediaRecorder = new MediaRecorder(stream);
+      mediaRecorderRef.current = mediaRecorder;
+      mediaStreamRef.current = stream;
+      audioChunksRef.current = [];
+
+      mediaRecorder.ondataavailable = (event) => {
+        if (event.data.size > 0) {
+          audioChunksRef.current.push(event.data);
+        }
+      };
+
+      mediaRecorder.onstart = () => {
+        setIsListening(true);
+        void message.info('正在录音，请开始说话，再次点击按钮停止并转写...');
+      };
+
+      mediaRecorder.onstop = async () => {
+        setIsListening(false);
+        setIsTranscribing(true);
+        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+
+        mediaStreamRef.current?.getTracks().forEach((track) => track.stop());
+        mediaStreamRef.current = null;
+
+        try {
+          const text = await transcribeAudio(audioBlob, 'default');
+          if (!text.trim()) {
+            void message.warning('未识别到语音内容，请重试并靠近麦克风。');
+            return;
+          }
+
+          setParamInput((prev) => mergeSpeechText(prev, text));
+          inputRef.current?.focus();
+        } catch (error: unknown) {
+          void message.error(error instanceof Error ? error.message : '语音识别失败');
+        } finally {
+          setIsTranscribing(false);
+          mediaRecorderRef.current = null;
+        }
+      };
+
+      mediaRecorder.start();
+    } catch (error) {
+      console.error('Failed to start MediaRecorder:', error);
+      void message.error('无法访问麦克风，请检查浏览器权限设置。');
+    }
+  }, [isListening, mergeSpeechText]);
+
+  const extractCurrentPageUrl = (result?: BrowserCommandExecutionResult): string | undefined => {
     const directUrl = typeof result?.data?.url === 'string' ? result.data.url : undefined;
     if (directUrl) {
       return directUrl;
@@ -530,8 +878,8 @@ const AIControls: React.FC<AIControlsProps> = ({
 
   const getScreenshotModeLabel = () => (autoAppendScreenshots ? '含自动截图' : '不含自动截图');
 
-  const getFailedExecutionMessage = (payload: any): string => {
-    const firstFailedResult = payload?.results?.find((item: any) => item?.status === 'error');
+  const getFailedExecutionMessage = (payload?: BrowserCommandExecutionResponse): string => {
+    const firstFailedResult = payload?.results?.find((item) => item.status === 'error');
     return (
       firstFailedResult?.message ||
       payload?.message ||
@@ -539,19 +887,19 @@ const AIControls: React.FC<AIControlsProps> = ({
     );
   };
 
-  const isExecutionFailed = (payload: any): boolean => {
+  const isExecutionFailed = (payload?: BrowserCommandExecutionResponse): boolean => {
     if (!payload) {
       return true;
     }
     if (payload.success === false) {
       return true;
     }
-    return Array.isArray(payload.results) && payload.results.some((item: any) => item?.status === 'error');
+    return Array.isArray(payload.results) && payload.results.some((item) => item.status === 'error');
   };
 
   // Execute MCP commands directly
   const executeCommandMutation = useMutation(
-    async (commands: MCPCommand[]) => {
+    async (commands: MCPCommand[]): Promise<BrowserCommandExecutionResponse> => {
       const commandsWithWait = appendDefaultWaitCommands(commands);
       console.log('[AIControls] Executing commands:', commands, 'backend:', executionBackend);
       return apiClient.post('/browser/execute', {
@@ -561,28 +909,28 @@ const AIControls: React.FC<AIControlsProps> = ({
       });
     },
     {
-      onSuccess: (data: any) => {
+      onSuccess: (data, commands) => {
         const executionFailed = isExecutionFailed(data);
         const resultMessage = getFailedExecutionMessage(data);
         console.log('[AIControls] Commands executed:', data);
         if (executionFailed) {
-          message.error(resultMessage);
+          markTakeoverRequired({
+            runtimeSessionId: browserRuntimeSessionId,
+            backend: executionBackend,
+            reason: resultMessage,
+            originalCommands: commands,
+            failedCommand: pickFailedCommand(commands),
+          });
+          void message.error(resultMessage);
         } else {
-          message.success(t('recorder:ai.commandExecuted'));
+          setTakeoverState((prev) => (prev.mode === 'required' ? createIdleTakeoverState() : prev));
+          void message.success(t('recorder:ai.commandExecuted'));
         }
         // Update last history entry with result
         setHistory((prev) => {
           const last = prev[prev.length - 1];
           if (last && last.type === 'ai') {
-            // Extract the first result from the results array
-            // data structure: { success: true, results: [{ status, message, template_info, ... }] }
-            const firstResult = executionFailed
-              ? (data?.results?.find((item: any) => item?.status === 'error') || {
-                  status: 'error',
-                  message: resultMessage,
-                  data,
-                })
-              : (data?.results?.[0] || data);
+            const firstResult = getPrimaryExecutionResult(data, resultMessage);
             const nextPageUrl = extractCurrentPageUrl(firstResult);
             if (nextPageUrl) {
               setCurrentPageUrl(nextPageUrl);
@@ -592,16 +940,16 @@ const AIControls: React.FC<AIControlsProps> = ({
           return prev;
         });
       },
-      onError: (error: any) => {
+      onError: (error: unknown) => {
         console.error('[AIControls] Command execution failed:', error);
-        message.error(t('recorder:ai.executionFailed'));
+        void message.error(t('recorder:ai.executionFailed'));
         // Add error to history but don't block
         setHistory((prev) => [
           ...prev,
           {
             id: Date.now().toString(),
             type: 'system',
-            content: `执行失败: ${error.message || '未知错误'}，可以继续尝试其他命令`,
+            content: `执行失败: ${resolveErrorMessage(error)}，可以继续尝试其他命令`,
             timestamp: new Date(),
             backend: executionBackend,
           },
@@ -669,7 +1017,7 @@ const AIControls: React.FC<AIControlsProps> = ({
           ]);
         }
       },
-      onError: (error: any) => {
+      onError: (error: unknown) => {
         console.error('[AIControls] Parse command failed:', error);
         // Don't show message.error to avoid blocking
         // Add error to history, allow continuing
@@ -678,7 +1026,7 @@ const AIControls: React.FC<AIControlsProps> = ({
           {
             id: Date.now().toString(),
             type: 'system',
-            content: `解析失败: ${error.message || '未知错误'}，请尝试其他表达方式`,
+            content: `解析失败: ${resolveErrorMessage(error)}，请尝试其他表达方式`,
             timestamp: new Date(),
             backend: executionBackend,
           },
@@ -689,20 +1037,23 @@ const AIControls: React.FC<AIControlsProps> = ({
 
   // Initialize browser session
   const initBrowserMutation = useMutation(
-    async () => {
+    async (): Promise<BrowserInitResponse> => {
       console.log('[AIControls] Initializing browser with backend:', executionBackend);
       return apiClient.post('/browser/init', {
         backend: executionBackend,
         runtimeSessionId: browserRuntimeSessionId,
+        sessionPreferences: {
+          enableCodegen: true,
+        },
       });
     },
     {
-      onSuccess: (data: any) => {
+      onSuccess: (data) => {
         if (!data?.success) {
           const errorMessage = data?.message || '浏览器初始化失败';
           setIsBrowserReady(false);
           onBrowserReady?.(false);
-          message.error(errorMessage);
+          void message.error(errorMessage);
           setHistory((prev) => [
             ...prev,
             {
@@ -720,7 +1071,7 @@ const AIControls: React.FC<AIControlsProps> = ({
         if (data.endpoints) {
           onBrowserEndpoints?.(data.endpoints);
         }
-        message.success(t('recorder:ai.browserReady'));
+        void message.success(t('recorder:ai.browserReady'));
         setHistory((prev) => [
           ...prev,
           {
@@ -732,15 +1083,15 @@ const AIControls: React.FC<AIControlsProps> = ({
           },
         ]);
       },
-      onError: (error: any) => {
+      onError: (error: unknown) => {
         console.error('[AIControls] Browser init failed:', error);
-        message.error(t('recorder:ai.browserInitFailed'));
+        void message.error(t('recorder:ai.browserInitFailed'));
         setHistory((prev) => [
           ...prev,
           {
             id: Date.now().toString(),
             type: 'system',
-            content: `初始化失败: ${error.message || '未知错误'}，请检查浏览器服务是否运行`,
+            content: `初始化失败: ${resolveErrorMessage(error)}，请检查浏览器服务是否运行`,
             timestamp: new Date(),
             backend: executionBackend,
           },
@@ -776,7 +1127,7 @@ const AIControls: React.FC<AIControlsProps> = ({
     ]);
 
     // Clear parameter input immediately (keep command selection)
-    setParamInput('');
+    clearParamInput();
 
     // Auto init browser if not ready
     if (!isBrowserReady) {
@@ -810,7 +1161,7 @@ const AIControls: React.FC<AIControlsProps> = ({
           message: userMessage,
           backend: executionBackend,
         });
-        const resultPayload: any = {
+        const resultPayload: CommandHistoryResult = {
           status: data.status,
           observation: data.observation,
           commands: data.commands,
@@ -836,14 +1187,28 @@ const AIControls: React.FC<AIControlsProps> = ({
         if (data.currentPageUrl || data.observation?.currentPageUrl) {
           setCurrentPageUrl(data.currentPageUrl || data.observation?.currentPageUrl);
         }
-        message.success('对话已处理');
-      } catch (error: any) {
+        if (data.execution && isExecutionFailed(data.execution as BrowserCommandExecutionResponse)) {
+          const failureReason = getFailedExecutionMessage(data.execution as BrowserCommandExecutionResponse);
+          markTakeoverRequired({
+            runtimeSessionId: data.runtimeSessionId,
+            sessionId: data.sessionId,
+            backend: executionBackend,
+            reason: failureReason,
+            originalCommands: data.commands || [],
+            failedCommand: pickFailedCommand(data.commands || []),
+          });
+          void message.warning('检测到浏览器执行失败，可进入人工接管');
+        } else {
+          setTakeoverState((prev) => (prev.mode === 'required' ? createIdleTakeoverState() : prev));
+        }
+        void message.success('对话已处理');
+      } catch (error: unknown) {
         setHistory((prev) => [
           ...prev.filter((h) => h.id !== parsingId),
           {
             id: Date.now().toString(),
             type: 'system',
-            content: `处理失败: ${error?.message || '未知错误'}`,
+            content: `处理失败: ${resolveErrorMessage(error)}`,
             timestamp: new Date(),
             backend: executionBackend,
           },
@@ -857,6 +1222,19 @@ const AIControls: React.FC<AIControlsProps> = ({
       },
     });
   };
+
+  const handleInputKeyDown = useCallback((e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key !== 'Enter' || e.shiftKey) {
+      return;
+    }
+
+    if (e.nativeEvent.isComposing || isComposingRef.current) {
+      return;
+    }
+
+    e.preventDefault();
+    void handleSend();
+  }, [handleSend]);
 
   const handleExecuteCommands = async (commands: MCPCommand[]) => {
     // Auto init browser if not ready
@@ -919,6 +1297,7 @@ const AIControls: React.FC<AIControlsProps> = ({
     setRecorderDebugSessionId(undefined);
     setRecorderDebugRuntimeSessionId(undefined);
     setBrowserRuntimeSessionId(createRuntimeSessionId());
+    resetTakeoverState();
   };
 
   const handleExecutionBackendChange = async (nextBackend: ExecutionBackend) => {
@@ -940,9 +1319,148 @@ const AIControls: React.FC<AIControlsProps> = ({
     setExecutionBackend(nextBackend);
   };
 
+  const handleStartTakeover = async () => {
+    if (takeoverState.mode !== 'required' || !takeoverState.runtimeSessionId) {
+      return;
+    }
+
+    try {
+      const response = await recorderRuntimeService.startTakeover({
+        runtimeSessionId: takeoverState.runtimeSessionId,
+        sessionId: takeoverState.sessionId,
+        backend: takeoverState.backend || executionBackend,
+        failedCommand: takeoverState.failedCommand,
+        reason: takeoverState.reason,
+      });
+      setTakeoverState((prev) => ({
+        ...prev,
+        mode: 'recording',
+        takeoverSessionId: response.takeoverSessionId,
+      }));
+      if (response.endpoints) {
+        onBrowserEndpoints?.(response.endpoints);
+      }
+      void message.success('已进入人工接管模式');
+    } catch (error: unknown) {
+      void message.error(resolveErrorMessage(error, '进入人工接管失败'));
+    }
+  };
+
+  const handleStopTakeover = async () => {
+    if (
+      takeoverState.mode !== 'recording'
+      || !takeoverState.runtimeSessionId
+      || !takeoverState.takeoverSessionId
+    ) {
+      return;
+    }
+
+    setTakeoverState((prev) => ({
+      ...prev,
+      mode: 'reconciling',
+    }));
+
+    try {
+      const stopped = await recorderRuntimeService.stopTakeover({
+        runtimeSessionId: takeoverState.runtimeSessionId,
+        takeoverSessionId: takeoverState.takeoverSessionId,
+      });
+
+      if (stopped.observation.currentPageUrl) {
+        setCurrentPageUrl(stopped.observation.currentPageUrl);
+      }
+
+      const reconcileRequest = {
+        sessionId: takeoverState.sessionId || recorderDebugSessionId || stopped.runtimeSessionId,
+        runtimeSessionId: stopped.runtimeSessionId,
+        backend: takeoverState.backend || executionBackend,
+        failedCommand: takeoverState.failedCommand,
+        originalCommands: takeoverState.originalCommands,
+        patchSteps: stopped.patchSteps,
+        observation: stopped.observation,
+      };
+
+      try {
+        const reconcile = await recorderRuntimeService.reconcileAfterTakeover(reconcileRequest);
+        setTakeoverState((prev) => ({
+          ...prev,
+          mode: 'ready_to_resume',
+          patchSteps: stopped.patchSteps,
+          observation: stopped.observation,
+          strategy: reconcile.strategy,
+          explanation: reconcile.explanation,
+          resumeCommands: reconcile.resumeCommands,
+        }));
+        void message.success('已生成恢复方案');
+      } catch (error: unknown) {
+        setTakeoverState((prev) => ({
+          ...prev,
+          mode: 'ready_to_resume',
+          patchSteps: stopped.patchSteps,
+          observation: stopped.observation,
+          explanation: resolveErrorMessage(error, '恢复方案生成失败'),
+          resumeCommands: [],
+        }));
+        void message.warning('已结束接管，但恢复方案生成失败');
+      }
+    } catch (error: unknown) {
+      setTakeoverState((prev) => ({
+        ...prev,
+        mode: 'recording',
+      }));
+      void message.error(resolveErrorMessage(error, '结束人工接管失败'));
+    }
+  };
+
+  const handleResumeAfterTakeover = async () => {
+    if (
+      takeoverState.mode !== 'ready_to_resume'
+      || !takeoverState.runtimeSessionId
+      || takeoverState.resumeCommands.length === 0
+    ) {
+      return;
+    }
+
+    setTakeoverState((prev) => ({
+      ...prev,
+      mode: 'resuming',
+    }));
+
+    try {
+      const resumed = await recorderRuntimeService.resumeAfterTakeover({
+        runtimeSessionId: takeoverState.runtimeSessionId,
+        takeoverSessionId: takeoverState.takeoverSessionId,
+        backend: takeoverState.backend || executionBackend,
+        strategy: takeoverState.strategy,
+        resumeCommands: takeoverState.resumeCommands,
+      });
+
+      setHistory((prev) => [
+        ...prev,
+        {
+          id: Date.now().toString(),
+          type: 'system',
+          content: resumed.success
+            ? `已按 ${takeoverState.strategy || '恢复方案'} 继续执行`
+            : '恢复执行返回失败状态，请查看详情后重试',
+          timestamp: new Date(),
+          backend: takeoverState.backend || executionBackend,
+        },
+      ]);
+      resetTakeoverState();
+      void message.success(resumed.success ? '已恢复 AI 执行' : '恢复执行完成，但结果为失败');
+    } catch (error: unknown) {
+      setTakeoverState((prev) => ({
+        ...prev,
+        mode: 'ready_to_resume',
+      }));
+      void message.error(resolveErrorMessage(error, '恢复执行失败'));
+    }
+  };
+
   const handleCopyCommand = (command: MCPCommand) => {
-    navigator.clipboard.writeText(JSON.stringify(command, null, 2));
-    message.success(t('common:copied'));
+    void navigator.clipboard.writeText(JSON.stringify(command, null, 2));
+    void message.success(t('common:copied'));
   };
 
   // Remove step from template
@@ -960,7 +1478,7 @@ const AIControls: React.FC<AIControlsProps> = ({
   // Compile template to executable script with parameter extraction
   const handleCompileTemplate = () => {
     if (templateSteps.length === 0) {
-      message.warning('模版为空，请先添加命令');
+      void message.warning('模版为空，请先添加命令');
       return;
     }
 
@@ -977,7 +1495,7 @@ const AIControls: React.FC<AIControlsProps> = ({
   // Save compiled template to backend
   const handleSaveCompiledTemplate = async () => {
     if (templateSteps.length === 0) {
-      message.warning('模版为空，请先添加命令');
+      void message.warning('模版为空，请先添加命令');
       return;
     }
 
@@ -1057,16 +1575,16 @@ const AIControls: React.FC<AIControlsProps> = ({
         created_by: user?.id || 'ai_recorder',
       });
 
-      message.success(`模版已保存: ${createdTemplate.name}`);
+      void message.success(`模版已保存: ${createdTemplate.name}`);
       setShowScriptModal(false);
       // Store the template ID for immediate testing (don't clear template steps yet)
       setSavedTemplateId(createdTemplate.id);
       setTemplateName('');
-      message.info('模版已保存，可以点击"测试模版"按钮进行测试', 5);
-    } catch (error: any) {
+      void message.info('模版已保存，可以点击"测试模版"按钮进行测试', 5);
+    } catch (error: unknown) {
       console.error('Failed to save compiled template:', error);
-      const errorMsg = error.response?.data?.message || error.message || '未知错误';
-      message.error(`保存失败: ${errorMsg}`);
+      const errorMsg = resolveErrorMessage(error);
+      void message.error(`保存失败: ${errorMsg}`);
     }
   };
 
@@ -1225,75 +1743,90 @@ const AIControls: React.FC<AIControlsProps> = ({
 
     steps.forEach((step, index) => {
       const stepPrefix = `step${index + 1}`;
+      const selector = getStringParam(step.params, 'selector');
+      const text = getStringParam(step.params, 'text');
+      const url = getStringParam(step.params, 'url');
+      const direction = getStringParam(step.params, 'direction');
+      const duration = getNumberParam(step.params, 'duration');
+      const key = getStringParam(step.params, 'key');
+      const query = getStringParam(step.params, 'query');
+      const inputSelector = getStringParam(step.params, 'input_selector');
+      const submitMethod = getStringParam(step.params, 'submit_method');
+      const buttonSelector = getStringParam(step.params, 'button_selector');
+      const amount = getNumberParam(step.params, 'amount');
       lines.push(`  // Step ${index + 1}: ${step.description}`);
 
       switch (step.tool) {
-        case 'navigate':
-          const urlVar = params[`${stepPrefix}_url`] ? `${stepPrefix}_url` : `'${step.params.url}'`;
+        case 'navigate': {
+          const urlVar = params[`${stepPrefix}_url`] ? `${stepPrefix}_url` : `'${url || ''}'`;
           lines.push(`  await page.goto(${urlVar});`);
           break;
+        }
         case 'click':
           if (params[`${stepPrefix}_selector`]) {
             lines.push(`  await page.click(${stepPrefix}_selector);`);
           } else if (params[`${stepPrefix}_text`]) {
             lines.push(`  await page.click('text=' + ${stepPrefix}_text);`);
-          } else if (step.params.selector) {
-            lines.push(`  await page.click('${step.params.selector}');`);
-          } else if (step.params.text) {
-            lines.push(`  await page.click('text=${step.params.text}');`);
+          } else if (selector) {
+            lines.push(`  await page.click('${selector}');`);
+          } else if (text) {
+            lines.push(`  await page.click('text=${text}');`);
           }
           break;
-        case 'fill':
-          const selectorVar = params[`${stepPrefix}_selector`] ? `${stepPrefix}_selector` : `'${step.params.selector}'`;
-          const valueVar = params[`${stepPrefix}_value`] ? `${stepPrefix}_value` : `'${step.params.value}'`;
+        case 'fill': {
+          const selectorVar = params[`${stepPrefix}_selector`] ? `${stepPrefix}_selector` : `'${selector || ''}'`;
+          const valueVar = params[`${stepPrefix}_value`] ? `${stepPrefix}_value` : `'${text || getStringParam(step.params, 'value') || ''}'`;
           lines.push(`  await page.fill(${selectorVar}, ${valueVar});`);
           break;
+        }
         case 'screenshot':
           lines.push(`  await page.screenshot({ path: 'screenshot-${index + 1}.png' });`);
           break;
         case 'scroll':
-          if (step.params.direction === 'down') {
-            const amountVar = params[`${stepPrefix}_amount`] ? `${stepPrefix}_amount` : step.params.amount || 300;
+          if (direction === 'down') {
+            const amountVar = params[`${stepPrefix}_amount`] ? `${stepPrefix}_amount` : String(amount ?? 300);
             lines.push(`  await page.evaluate(() => window.scrollBy(0, ${amountVar}));`);
-          } else if (step.params.direction === 'top') {
+          } else if (direction === 'top') {
             lines.push(`  await page.evaluate(() => window.scrollTo(0, 0));`);
           }
           break;
         case 'wait':
           if (params[`${stepPrefix}_duration`]) {
             lines.push(`  await page.waitForTimeout(${stepPrefix}_duration);`);
-          } else if (step.params.duration) {
-            lines.push(`  await page.waitForTimeout(${step.params.duration});`);
-          } else if (step.params.selector) {
-            lines.push(`  await page.waitForSelector('${step.params.selector}');`);
+          } else if (duration !== undefined) {
+            lines.push(`  await page.waitForTimeout(${String(duration)});`);
+          } else if (selector) {
+            lines.push(`  await page.waitForSelector('${selector}');`);
           }
           break;
         case 'press_key':
-          lines.push(`  await page.keyboard.press('${step.params.key}');`);
+          lines.push(`  await page.keyboard.press('${key || ''}');`);
           break;
-        case 'type_text':
-          const textVar = params[`${stepPrefix}_text`] ? `${stepPrefix}_text` : `'${step.params.text}'`;
+        case 'type_text': {
+          const textVar = params[`${stepPrefix}_text`] ? `${stepPrefix}_text` : `'${text || ''}'`;
           lines.push(`  await page.keyboard.type(${textVar});`);
           break;
+        }
         case 'search':
-        case 'smart_search':
-          const searchQuery = params[`${stepPrefix}_query`] ? `${stepPrefix}_query` : `'${step.params.query}'`;
-          const searchSelector = params[`${stepPrefix}_input_selector`] ? `${stepPrefix}_input_selector` : `'${step.params.input_selector}'`;
+        case 'smart_search': {
+          const searchQuery = params[`${stepPrefix}_query`] ? `${stepPrefix}_query` : `'${query || ''}'`;
+          const searchSelector = params[`${stepPrefix}_input_selector`] ? `${stepPrefix}_input_selector` : `'${inputSelector || ''}'`;
           lines.push(`  // Search: fill search input and submit`);
           lines.push(`  let searchInput;`);
-          if (step.params.input_selector) {
+          if (inputSelector) {
             lines.push(`  searchInput = page.locator(${searchSelector});`);
             lines.push(`  await searchInput.fill(${searchQuery});`);
           } else {
             lines.push(`  searchInput = page.locator('input[type="search"], input[name="q"], [role="searchbox"], input[placeholder*="search" i], input[placeholder*="搜" i]').first();`);
             lines.push(`  await searchInput.fill(${searchQuery});`);
           }
-          if (step.params.submit_method === 'click' && step.params.button_selector) {
-            lines.push(`  await page.click('${step.params.button_selector}');`);
+          if (submitMethod === 'click' && buttonSelector) {
+            lines.push(`  await page.click('${buttonSelector}');`);
           } else {
             lines.push(`  await searchInput.press('Enter');`);
           }
           break;
+        }
         default:
           lines.push(`  // Unknown tool: ${step.tool}`);
       }
@@ -1322,7 +1855,7 @@ const AIControls: React.FC<AIControlsProps> = ({
   // Confirm save template
   const handleConfirmSaveTemplate = async () => {
     if (templateSteps.length === 0) {
-      message.warning('模版为空，请先添加命令');
+      void message.warning('模版为空，请先添加命令');
       return;
     }
 
@@ -1416,29 +1949,27 @@ const AIControls: React.FC<AIControlsProps> = ({
         created_by: user?.id || 'ai_recorder',
       });
 
-      message.success(`模版已保存: ${createdTemplate.name}`);
+      void message.success(`模版已保存: ${createdTemplate.name}`);
       setShowTemplateModal(false);
       handleClearTemplate();
 
       // Store the template ID for immediate testing
       setSavedTemplateId(createdTemplate.id);
-      message.info('模版已保存，可以点击"测试模版"按钮进行测试', 5);
-    } catch (error: any) {
+      void message.info('模版已保存，可以点击"测试模版"按钮进行测试', 5);
+    } catch (error: unknown) {
       console.error('Failed to save template:', error);
-      // Show the actual error message
-      const errorMsg = error.response?.data?.message || error.message || '未知错误';
-      message.error(`保存模版失败: ${errorMsg}`);
+      void message.error(`保存模版失败: ${resolveErrorMessage(error)}`);
     }
   };
 
   // Test saved template
   const handleTestSavedTemplate = async () => {
     if (!savedTemplateId) {
-      message.warning('请先保存模版');
+      void message.warning('请先保存模版');
       return;
     }
     if (!user?.id) {
-      message.warning('用户未登录，请先登录');
+      void message.warning('用户未登录，请先登录');
       return;
     }
 
@@ -1457,13 +1988,13 @@ const AIControls: React.FC<AIControlsProps> = ({
         params: {},
       });
 
-      message.success('测试已启动，跳转到会话详情页');
+      void message.success('测试已启动，跳转到会话详情页');
       navigate(`/sessions/${result.session.id}`);
-    } catch (error: any) {
-      const errorMsg = error.response?.data?.message || error.message || '测试失败';
+    } catch (error: unknown) {
+      const errorMsg = resolveErrorMessage(error, '测试失败');
       if (errorMsg.includes('No available workers')) {
         // Try to reset workers and retry
-        message.warning('Worker 不足，正在重置...');
+        void message.warning('Worker 不足，正在重置...');
         try {
           await workerApi.reset();
           // Retry
@@ -1476,13 +2007,13 @@ const AIControls: React.FC<AIControlsProps> = ({
             template_id: savedTemplateId,
             params: {},
           });
-          message.success('测试已启动，跳转到会话详情页');
+          void message.success('测试已启动，跳转到会话详情页');
           navigate(`/sessions/${result.session.id}`);
-        } catch (retryError: any) {
-          message.error(retryError.response?.data?.message || retryError.message || '测试失败');
+        } catch (retryError: unknown) {
+          void message.error(resolveErrorMessage(retryError, '测试失败'));
         }
       } else {
-        message.error(errorMsg);
+        void message.error(errorMsg);
       }
     } finally {
       setTestLoading(false);
@@ -1494,9 +2025,9 @@ const AIControls: React.FC<AIControlsProps> = ({
     setResetLoading(true);
     try {
       const result = await workerApi.reset();
-      message.success(result.message || 'Worker Pool 已重置');
-    } catch (error: any) {
-      message.error('重置 Worker Pool 失败');
+      void message.success(result.message || 'Worker Pool 已重置');
+    } catch (_error: unknown) {
+      void message.error('重置 Worker Pool 失败');
     } finally {
       setResetLoading(false);
     }
@@ -1504,8 +2035,8 @@ const AIControls: React.FC<AIControlsProps> = ({
 
   // Copy compiled script
   const handleCopyScript = () => {
-    navigator.clipboard.writeText(compiledScript);
-    message.success('脚本已复制到剪贴板');
+    void navigator.clipboard.writeText(compiledScript);
+    void message.success('脚本已复制到剪贴板');
   };
 
   // Download compiled script
@@ -1517,7 +2048,7 @@ const AIControls: React.FC<AIControlsProps> = ({
     a.download = `browser-script-${Date.now()}.js`;
     a.click();
     URL.revokeObjectURL(url);
-    message.success('脚本已下载');
+    void message.success('脚本已下载');
   };
 
   // Auto extract template from history
@@ -1571,19 +2102,19 @@ const AIControls: React.FC<AIControlsProps> = ({
     });
 
     if (extractedSteps.length === 0) {
-      message.warning('历史记录中没有找到确定性命令');
+      void message.warning('历史记录中没有找到确定性命令');
       return;
     }
 
     setTemplateSteps(extractedSteps);
-    message.success(`已从历史记录中提取 ${extractedSteps.length} 个确定性命令`);
+    void message.success(`已从历史记录中提取 ${extractedSteps.length} 个确定性命令`);
   };
 
   // Handle manual recording start
   const handleManualStart = () => {
     let finalUrl = recordUrl.trim();
     if (!finalUrl || finalUrl === 'https://') {
-      message.warning(t('recorder:enterUrl'));
+      void message.warning(t('recorder:enterUrl'));
       return;
     }
     if (!finalUrl.startsWith('http://') && !finalUrl.startsWith('https://')) {
@@ -1787,14 +2318,14 @@ const AIControls: React.FC<AIControlsProps> = ({
 
   const handleExportTemplateFromRecorder = async () => {
     if (!isReactChatMode) {
-      message.warning('请先切到对话调试模式后再导出');
+      void message.warning('请先切到对话调试模式后再导出');
       return;
     }
 
     const sessionId = recorderDebugSessionId;
     const runtimeSessionId = recorderDebugRuntimeSessionId;
     if (!sessionId || !runtimeSessionId) {
-      message.warning('当前还没有可导出的录制会话');
+      void message.warning('当前还没有可导出的录制会话');
       return;
     }
 
@@ -1849,11 +2380,10 @@ const AIControls: React.FC<AIControlsProps> = ({
           backend: executionBackend,
         },
       ]);
-      message.success('已导出到模板列表');
+      void message.success('已导出到模板列表');
       navigate(`/templates/${createdTemplate.id}`);
-    } catch (error: any) {
-      const errorMsg = error?.response?.data?.message || error?.message || '导出失败';
-      message.error(errorMsg);
+    } catch (error: unknown) {
+      void message.error(resolveErrorMessage(error, '导出失败'));
     } finally {
       setExportTemplateLoading(false);
     }
@@ -1861,8 +2391,12 @@ const AIControls: React.FC<AIControlsProps> = ({
 
   const latestReactSuggestedParameters = [...history]
     .reverse()
-    .find((entry) => entry.type === 'ai' && entry.result?.observation?.suggestedParameters?.length > 0)
-    ?.result?.observation?.suggestedParameters as RecorderDebugObservation['suggestedParameters'];
+    .find((entry) => (
+      entry.type === 'ai'
+      && Array.isArray(entry.result?.observation?.suggestedParameters)
+      && entry.result.observation.suggestedParameters.length > 0
+    ))
+    ?.result?.observation?.suggestedParameters;
 
   const handleInsertSuggestedParameter = (name: string) => {
     const template = `${name}: `;
@@ -1886,6 +2420,8 @@ const AIControls: React.FC<AIControlsProps> = ({
       : (predefinedCommands.find(c => c.value === selectedCommand)?.prefix + paramInput.trim()).trim(),
   );
   const canExport = Boolean(recorderDebugSessionId && recorderDebugRuntimeSessionId);
+  const canUseSpeech = speechSupported && !isLoading && !isTranscribing;
+  const buildRecorderDebugDetailPath = (sessionId: string) => `/recorder-debug/${sessionId}`;
   const actionColumnHeight = 112;
   const primaryActionButtonStyle = {
     height: 44,
@@ -2112,7 +2648,9 @@ const AIControls: React.FC<AIControlsProps> = ({
                                   type="primary"
                                   size="small"
                                   icon={<PlayCircleOutlined />}
-                                  onClick={() => handleExecuteCommands(entry.commands!)}
+                                  onClick={() => {
+                                    void handleExecuteCommands(entry.commands!);
+                                  }}
                                   style={{ marginTop: 8 }}
                                 >
                                   {t('recorder:ai.execute') || '执行命令'}
@@ -2163,7 +2701,7 @@ const AIControls: React.FC<AIControlsProps> = ({
                                       <Button
                                         size="small"
                                         icon={<EyeOutlined />}
-                                        onClick={() => navigate(`/sessions/${entry.sessionId}`)}
+                                        onClick={() => navigate(buildRecorderDebugDetailPath(entry.sessionId!))}
                                       >
                                         查看详情
                                       </Button>
@@ -2171,7 +2709,7 @@ const AIControls: React.FC<AIControlsProps> = ({
                                         size="small"
                                         type="link"
                                         icon={<LinkOutlined />}
-                                        onClick={() => window.open(`/sessions/${entry.sessionId}`, '_blank', 'noopener,noreferrer')}
+                                        onClick={() => window.open(buildRecorderDebugDetailPath(entry.sessionId!), '_blank', 'noopener,noreferrer')}
                                       >
                                         打开链接
                                       </Button>
@@ -2222,7 +2760,7 @@ const AIControls: React.FC<AIControlsProps> = ({
                                         <Button
                                           size="small"
                                           icon={<EyeOutlined />}
-                                          onClick={() => navigate(`/sessions/${entry.sessionId}`)}
+                                          onClick={() => navigate(buildRecorderDebugDetailPath(entry.sessionId!))}
                                         >
                                           查看详情
                                         </Button>
@@ -2230,7 +2768,7 @@ const AIControls: React.FC<AIControlsProps> = ({
                                           size="small"
                                           type="link"
                                           icon={<LinkOutlined />}
-                                          onClick={() => window.open(`/sessions/${entry.sessionId}`, '_blank', 'noopener,noreferrer')}
+                                          onClick={() => window.open(buildRecorderDebugDetailPath(entry.sessionId!), '_blank', 'noopener,noreferrer')}
                                         >
                                           打开链接
                                         </Button>
@@ -2259,6 +2797,135 @@ const AIControls: React.FC<AIControlsProps> = ({
 
         {/* Input area - 3列2行布局 */}
         <div style={{ marginTop: 0, flexShrink: 0 }}>
+          {takeoverState.mode !== 'idle' && (
+            <div
+              style={{
+                marginBottom: 8,
+                padding: '10px 12px',
+                borderRadius: 10,
+                background: isDarkTheme ? '#111827' : '#fff7e6',
+                border: isDarkTheme ? '1px solid #374151' : '1px solid #ffe7ba',
+              }}
+            >
+              <Space direction="vertical" size={8} style={{ width: '100%' }}>
+                <Space wrap>
+                  <Tag color={
+                    takeoverState.mode === 'required'
+                      ? 'warning'
+                      : takeoverState.mode === 'recording'
+                        ? 'processing'
+                        : takeoverState.mode === 'reconciling'
+                          ? 'blue'
+                          : takeoverState.mode === 'ready_to_resume'
+                            ? 'success'
+                            : 'purple'
+                  }>
+                    {{
+                      required: '等待人工接管',
+                      recording: '人工接管中',
+                      reconciling: '生成恢复方案中',
+                      ready_to_resume: '可继续执行',
+                      resuming: '恢复执行中',
+                    }[takeoverState.mode] || '接管处理中'}
+                  </Tag>
+                  {takeoverState.strategy ? (
+                    <Tag color="processing">{takeoverState.strategy}</Tag>
+                  ) : null}
+                  {takeoverState.patchSteps.length > 0 ? (
+                    <Tag>{`patchSteps: ${takeoverState.patchSteps.length}`}</Tag>
+                  ) : null}
+                </Space>
+                <Text style={{ whiteSpace: 'pre-wrap' }}>
+                  {takeoverState.explanation
+                    || takeoverState.reason
+                    || '检测到执行失败，建议进入人工接管完成补录后再恢复执行。'}
+                </Text>
+                {takeoverState.observation?.currentPageUrl ? (
+                  <Text type="secondary" style={{ fontSize: 12 }}>
+                    当前页面: {takeoverState.observation.currentPageUrl}
+                  </Text>
+                ) : null}
+                {(takeoverState.patchSteps.length > 0 || takeoverState.resumeCommands.length > 0) ? (
+                  <Collapse
+                    size="small"
+                    ghost
+                    items={[
+                      ...(takeoverState.patchSteps.length > 0 ? [{
+                        key: 'patch-steps',
+                        label: `补录步骤 (${takeoverState.patchSteps.length})`,
+                        children: (
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                            {takeoverState.patchSteps.map((step, index) => (
+                              <div
+                                key={`${step.id || step.action}-${index}`}
+                                style={{
+                                  padding: '6px 8px',
+                                  borderRadius: 8,
+                                  background: isDarkTheme ? '#0b1220' : '#fff',
+                                  border: isDarkTheme ? '1px solid #374151' : '1px solid #f0f0f0',
+                                  fontSize: 12,
+                                }}
+                              >
+                                {describePatchStep(step)}
+                              </div>
+                            ))}
+                          </div>
+                        ),
+                      }] : []),
+                      ...(takeoverState.resumeCommands.length > 0 ? [{
+                        key: 'resume-commands',
+                        label: `恢复命令 (${takeoverState.resumeCommands.length})`,
+                        children: (
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                            {takeoverState.resumeCommands.map((command, index) => (
+                              <div
+                                key={`${command.tool}-${index}`}
+                                style={{
+                                  padding: '6px 8px',
+                                  borderRadius: 8,
+                                  background: isDarkTheme ? '#0b1220' : '#fff',
+                                  border: isDarkTheme ? '1px solid #374151' : '1px solid #f0f0f0',
+                                  fontSize: 12,
+                                }}
+                              >
+                                {describeTakeoverCommand(command)}
+                              </div>
+                            ))}
+                          </div>
+                        ),
+                      }] : []),
+                    ]}
+                  />
+                ) : null}
+                <Space wrap>
+                  {takeoverState.mode === 'required' ? (
+                    <Button type="primary" onClick={() => { void handleStartTakeover(); }}>
+                      人工接管
+                    </Button>
+                  ) : null}
+                  {takeoverState.mode === 'recording' ? (
+                    <Button type="primary" onClick={() => { void handleStopTakeover(); }}>
+                      结束接管
+                    </Button>
+                  ) : null}
+                  {takeoverState.mode === 'ready_to_resume' ? (
+                    <Button
+                      type="primary"
+                      disabled={takeoverState.resumeCommands.length === 0}
+                      onClick={() => { void handleResumeAfterTakeover(); }}
+                    >
+                      继续执行
+                    </Button>
+                  ) : null}
+                  {takeoverState.mode !== 'recording' && takeoverState.mode !== 'reconciling' && takeoverState.mode !== 'resuming' ? (
+                    <Button onClick={resetTakeoverState}>
+                      关闭
+                    </Button>
+                  ) : null}
+                </Space>
+              </Space>
+            </div>
+          )}
           {isReactChatMode && latestReactSuggestedParameters && latestReactSuggestedParameters.length > 0 && (
             <div
               style={{
@@ -2321,21 +2988,23 @@ const AIControls: React.FC<AIControlsProps> = ({
           <div style={{ display: 'flex', alignItems: 'stretch', gap: 10 }}>
             {/* 参数输入 */}
             <TextArea
+              ref={inputRef}
               value={paramInput}
-              onChange={(e) => setParamInput(e.target.value)}
+              onChange={(e) => handleParamInputChange(e.target.value)}
+              onCompositionStart={() => {
+                isComposingRef.current = true;
+              }}
+              onCompositionEnd={() => {
+                isComposingRef.current = false;
+              }}
               placeholder={
                 isReactChatMode
                   ? '直接描述你的目标，或询问页面结构、需要填写的参数'
                   : (predefinedCommands.find(c => c.value === selectedCommand)?.placeholder || '输入参数')
               }
               autoSize={isReactChatMode ? false : { minRows: 2, maxRows: 4 }}
-              onPressEnter={(e) => {
-                if (!e.shiftKey) {
-                  e.preventDefault();
-                  handleSend();
-                }
-              }}
-              disabled={isLoading}
+              onKeyDown={handleInputKeyDown}
+              disabled={isLoading || isTranscribing}
               style={{
                 flex: 1,
                 minWidth: 180,
@@ -2361,7 +3030,9 @@ const AIControls: React.FC<AIControlsProps> = ({
             >
               <Button
                 icon={<SendOutlined />}
-                onClick={handleSend}
+                onClick={() => {
+                  void handleSend();
+                }}
                 loading={isLoading}
                 style={{
                   ...primaryActionButtonStyle,
@@ -2370,11 +3041,29 @@ const AIControls: React.FC<AIControlsProps> = ({
               >
                 {t('common:send')}
               </Button>
+              <Button
+                icon={<AudioOutlined />}
+                onClick={() => {
+                  void handleSpeechToggle();
+                }}
+                disabled={!canUseSpeech && !isListening}
+                loading={isTranscribing}
+                type={isListening ? 'primary' : 'default'}
+                style={{
+                  ...secondaryActionButtonStyle,
+                  ...(canUseSpeech || isListening ? {} : mutedActionButtonStyle),
+                }}
+                title={speechSupported ? (isListening ? '停止录音并转写' : '语音输入') : '当前浏览器不支持录音'}
+              >
+                {isListening ? '录音中' : (isTranscribing ? '转写中' : '语音')}
+              </Button>
               {isReactChatMode ? (
                 <Button
                   size="middle"
                   icon={<SaveOutlined />}
-                  onClick={handleExportTemplateFromRecorder}
+                  onClick={() => {
+                    void handleExportTemplateFromRecorder();
+                  }}
                   loading={exportTemplateLoading}
                   style={{
                     ...secondaryActionButtonStyle,
@@ -2409,7 +3098,9 @@ const AIControls: React.FC<AIControlsProps> = ({
               <Button
                 size="small"
                 icon={<CameraOutlined />}
-                onClick={() => handleQuickAction('screenshot')}
+                onClick={() => {
+                  void handleQuickAction('screenshot');
+                }}
                 loading={isLoading && executeCommandMutation.isLoading}
                 title="截取当前页面图片"
               >
@@ -2419,7 +3110,9 @@ const AIControls: React.FC<AIControlsProps> = ({
               <Button
                 size="small"
                 icon={<EyeOutlined />}
-                onClick={() => handleQuickAction('snapshot')}
+                onClick={() => {
+                  void handleQuickAction('snapshot');
+                }}
                 loading={isLoading && executeCommandMutation.isLoading}
                 title="获取页面结构快照"
               >
@@ -2429,7 +3122,9 @@ const AIControls: React.FC<AIControlsProps> = ({
               <Button
                 size="small"
                 icon={<FileSearchOutlined />}
-                onClick={() => handleQuickAction('read_page')}
+                onClick={() => {
+                  void handleQuickAction('read_page');
+                }}
                 loading={isLoading && executeCommandMutation.isLoading}
                 title="读取页面内容"
               >
@@ -2439,7 +3134,9 @@ const AIControls: React.FC<AIControlsProps> = ({
               <Button
                 size="small"
                 icon={<CodeOutlined />}
-                onClick={() => handleQuickAction('get_text')}
+                onClick={() => {
+                  void handleQuickAction('get_text');
+                }}
                 loading={isLoading && executeCommandMutation.isLoading}
                 title="获取页面所有文本"
               >
@@ -2449,7 +3146,9 @@ const AIControls: React.FC<AIControlsProps> = ({
               <Button
                 size="small"
                 icon={<ArrowDownOutlined />}
-                onClick={() => handleQuickAction('scroll', { direction: 'down' })}
+                onClick={() => {
+                  void handleQuickAction('scroll', { direction: 'down' });
+                }}
                 loading={isLoading && executeCommandMutation.isLoading}
                 title="向下滚动页面"
               >
@@ -2459,7 +3158,9 @@ const AIControls: React.FC<AIControlsProps> = ({
               <Button
                 size="small"
                 icon={<CloudUploadOutlined />}
-                onClick={() => handleQuickAction('scroll', { direction: 'top' })}
+                onClick={() => {
+                  void handleQuickAction('scroll', { direction: 'top' });
+                }}
                 loading={isLoading && executeCommandMutation.isLoading}
                 title="滚动到顶部"
               >
@@ -2469,7 +3170,9 @@ const AIControls: React.FC<AIControlsProps> = ({
               <Button
                 size="small"
                 icon={<ClockCircleOutlined />}
-                onClick={() => handleQuickAction('wait', { duration: waitDuration * 1000 })}
+                onClick={() => {
+                  void handleQuickAction('wait', { duration: waitDuration * 1000 });
+                }}
                 loading={isLoading && executeCommandMutation.isLoading}
                 title={`等待 ${waitDuration} 秒`}
               >
@@ -2485,7 +3188,9 @@ const AIControls: React.FC<AIControlsProps> = ({
           <Button
             type="text"
             icon={<DeleteOutlined />}
-            onClick={handleClearHistory}
+            onClick={() => {
+              void handleClearHistory();
+            }}
             style={{ color: '#999', marginTop: 2 }}
           >
             {t('recorder:ai.clearHistory') || '清空记录'}
@@ -2565,7 +3270,9 @@ const AIControls: React.FC<AIControlsProps> = ({
                         type="primary"
                         size="small"
                         icon={<BugOutlined />}
-                        onClick={handleTestSavedTemplate}
+                        onClick={() => {
+                          void handleTestSavedTemplate();
+                        }}
                         loading={testLoading}
                       >
                         测试模版
@@ -2573,7 +3280,9 @@ const AIControls: React.FC<AIControlsProps> = ({
                       <Button
                         size="small"
                         icon={<ReloadOutlined />}
-                        onClick={handleResetWorkers}
+                        onClick={() => {
+                          void handleResetWorkers();
+                        }}
                         loading={resetLoading}
                       >
                         重置 Worker
@@ -2631,7 +3340,9 @@ const AIControls: React.FC<AIControlsProps> = ({
         <Modal
           title="保存模版"
           open={showTemplateModal}
-          onOk={handleConfirmSaveTemplate}
+          onOk={() => {
+            void handleConfirmSaveTemplate();
+          }}
           onCancel={() => setShowTemplateModal(false)}
           okText="保存"
           cancelText="取消"
@@ -2711,7 +3422,9 @@ const AIControls: React.FC<AIControlsProps> = ({
             <Button key="download" icon={<DownloadOutlined />} onClick={handleDownloadScript}>
               下载
             </Button>,
-            <Button key="save" type="primary" icon={<SaveOutlined />} onClick={handleSaveCompiledTemplate}>
+            <Button key="save" type="primary" icon={<SaveOutlined />} onClick={() => {
+              void handleSaveCompiledTemplate();
+            }}>
               保存模版
             </Button>,
           ]}

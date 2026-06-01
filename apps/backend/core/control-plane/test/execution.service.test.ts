@@ -8,6 +8,105 @@ jest.mock('axios');
 
 const mockedAxios = axios as jest.Mocked<typeof axios>;
 
+describe('ExecutionService.fetchSkillDefaultInput', () => {
+  beforeEach(() => {
+    mockedAxios.get.mockReset();
+  });
+
+  it('merges defaults from skill schema and linked flow template schemas', async () => {
+    mockedAxios.get
+      .mockResolvedValueOnce({
+        data: {
+          paramsSchema: {
+            properties: {
+              prompt: { type: 'string' },
+              username: { type: 'string', default: 'skill-user' },
+            },
+          },
+          executionFlowTemplateIds: ['flow-1'],
+        },
+      } as never)
+      .mockResolvedValueOnce({
+        data: {
+          paramsSchema: {
+            properties: {
+              username: { type: 'string', default: 'flow-user' },
+              loginCredential: { type: 'string', default: 'secret' },
+              retryCount: { type: 'number', default: 3 },
+            },
+          },
+        },
+      } as never);
+
+    const service = new ExecutionService({} as never, {} as never, {} as never, {} as never);
+
+    await expect((service as any).fetchSkillDefaultInput('skill-1', 'Bearer token-1')).resolves.toEqual({
+      username: 'flow-user',
+      loginCredential: 'secret',
+      retryCount: 3,
+    });
+    expect(mockedAxios.get).toHaveBeenNthCalledWith(
+      1,
+      expect.stringContaining('/skills/skill-1'),
+      {
+        headers: { Authorization: 'Bearer token-1' },
+        timeout: 10000,
+      },
+    );
+    expect(mockedAxios.get).toHaveBeenNthCalledWith(
+      2,
+      expect.stringContaining('/flows/flow-1'),
+      {
+        headers: { Authorization: 'Bearer token-1' },
+        timeout: 10000,
+      },
+    );
+  });
+
+  it('uses internal auth headers when no bearer token is available', async () => {
+    const originalInternalSecret = process.env.INTERNAL_API_SHARED_SECRET;
+    process.env.INTERNAL_API_SHARED_SECRET = 'internal-secret';
+    mockedAxios.get.mockResolvedValue({
+      data: {
+        paramsSchema: {
+          properties: {
+            startUrl: { type: 'string', default: 'http://example.test/login' },
+          },
+        },
+        executionFlowTemplateIds: [],
+      },
+    } as never);
+
+    try {
+      const service = new ExecutionService({} as never, {} as never, {} as never, {} as never);
+
+      await expect((service as any).fetchSkillDefaultInput('skill-1', undefined, {
+        id: 'user-1',
+        role: 'admin',
+      })).resolves.toEqual({
+        startUrl: 'http://example.test/login',
+      });
+      expect(mockedAxios.get).toHaveBeenCalledWith(
+        expect.stringContaining('/skills/skill-1'),
+        {
+          headers: {
+            'X-Internal-Auth': 'internal-secret',
+            'X-User-Id': 'user-1',
+            'X-User-Role': 'admin',
+          },
+          timeout: 10000,
+        },
+      );
+    } finally {
+      if (originalInternalSecret === undefined) {
+        delete process.env.INTERNAL_API_SHARED_SECRET;
+      } else {
+        process.env.INTERNAL_API_SHARED_SECRET = originalInternalSecret;
+      }
+    }
+  });
+});
+
 describe('ExecutionService.submitInputAndResume', () => {
   const baseExecution = {
     id: 'execution-1',
@@ -88,22 +187,24 @@ describe('ExecutionService.submitInputAndResume', () => {
     expect(prisma.execution.update).toHaveBeenCalledWith({
       where: { id: 'execution-1' },
       data: {
-        normalizedInputJson: {
+        normalizedInputJson: expect.objectContaining({
           input: {
             url: 'https://example.com',
           },
           requiredInputs: [
-            {
+            expect.objectContaining({
               name: 'url',
               type: 'string',
               required: true,
               missing: false,
               source: 'user_input',
+              needs_confirmation: false,
+              missing_reason: undefined,
               value: 'https://example.com',
-            },
+            }),
           ],
           url: 'https://example.com',
-        },
+        }),
         status: 'queued',
       },
     });
@@ -212,29 +313,31 @@ describe('ExecutionService.submitInputAndResume', () => {
     expect(prisma.execution.update).toHaveBeenCalledWith({
       where: { id: 'execution-1' },
       data: {
-        normalizedInputJson: {
-          input: {
+        normalizedInputJson: expect.objectContaining({
+          input: expect.objectContaining({
             url: 'https://example.com',
-          },
+          }),
           requiredInputs: [
-            {
+            expect.objectContaining({
               name: 'url',
               type: 'string',
               required: true,
               missing: false,
               source: 'user_input',
+              needs_confirmation: false,
+              missing_reason: undefined,
               value: 'https://example.com',
-            },
-            {
+            }),
+            expect.objectContaining({
               name: 'account',
               type: 'string',
               required: true,
               missing: true,
               source: 'unresolved',
-            },
+            }),
           ],
           url: 'https://example.com',
-        },
+        }),
         status: 'waiting_input',
       },
     });
@@ -500,22 +603,24 @@ describe('ExecutionService.submitInputAndResume', () => {
     expect(prisma.execution.update).toHaveBeenCalledWith({
       where: { id: 'execution-1' },
       data: {
-        normalizedInputJson: {
+        normalizedInputJson: expect.objectContaining({
           input: {
             'deliveryItems[].installationDate': '2025-06-07',
           },
           requiredInputs: [
-            {
+            expect.objectContaining({
               name: 'deliveryItems[].installationDate',
               type: 'date',
               required: true,
               missing: false,
               source: 'user_input',
+              needs_confirmation: false,
+              missing_reason: undefined,
               value: '2025-06-07',
-            },
+            }),
           ],
           'deliveryItems[].installationDate': '2025-06-07',
-        },
+        }),
         status: 'queued',
       },
     });
@@ -1110,6 +1215,7 @@ describe('ExecutionService.create planner draft reuse', () => {
       },
       executionStep: {
         createMany: jest.fn(),
+        findFirst: jest.fn(),
         findUnique: jest.fn(),
         update: jest.fn(),
       },
@@ -1126,6 +1232,7 @@ describe('ExecutionService.create planner draft reuse', () => {
     const service = new ExecutionService(prisma as never, {} as never, {} as never, {} as never);
     const serviceInternals = service as any;
     jest.spyOn(serviceInternals, 'assertSkillAccessibleByUser').mockResolvedValue(undefined);
+    jest.spyOn(serviceInternals, 'fetchSkillDefaultInput').mockResolvedValue({});
     jest.spyOn(serviceInternals, 'generatePlanDraft').mockResolvedValue(undefined);
     jest.spyOn(serviceInternals, 'createPlannedSteps').mockResolvedValue(undefined);
     jest.spyOn(serviceInternals, 'startExecution').mockResolvedValue(undefined);
@@ -1510,6 +1617,550 @@ describe('ExecutionService.create planner draft reuse', () => {
         }),
       ],
     }));
+  });
+
+  it('applies runtime defaults after planning so browser steps can execute without treating defaults as user input', async () => {
+    const { service, prisma } = createService();
+
+    const providedPlanDraft = {
+      plan_id: 'plan-browser-defaults-1',
+      planner_mode: 'skill',
+      objective: '登录主页',
+      summary: '仍缺少 3 个关键输入。',
+      skill_match: {
+        skill_id: 'skill-browser-1',
+        skill_name: '登录并进入登录',
+        confidence: 1,
+      },
+      steps: [
+        {
+          id: 'collect-required-inputs',
+          title: 'Collect required inputs',
+          description: '补齐必填参数: startUrl, username, loginCredential',
+          kind: 'human_input',
+          status: 'planned',
+        },
+      ],
+      required_inputs: [
+        {
+          name: 'startUrl',
+          type: 'string',
+          required: true,
+          missing: true,
+          source: 'unresolved',
+          description: '起始页面地址',
+        },
+        {
+          name: 'username',
+          type: 'string',
+          required: true,
+          missing: true,
+          source: 'unresolved',
+          description: '登录用户名',
+        },
+        {
+          name: 'loginCredential',
+          type: 'string',
+          required: true,
+          missing: true,
+          source: 'unresolved',
+          description: '登录密码',
+        },
+      ],
+      risk_summary: {
+        level: 'medium',
+        requires_human_review: false,
+        items: ['missing_required_inputs'],
+      },
+    };
+
+    prisma.$queryRawUnsafe.mockResolvedValue([
+      {
+        source_type: 'browser_recording',
+        source_payload_json: {},
+        workflow_dsl: {
+          steps: [
+            {
+              id: 'activity_open',
+              name: '1. 页面打开',
+              type: 'activity',
+              activityRef: 'custom:browser_open',
+              activityName: '1. 页面打开',
+            },
+          ],
+        },
+        activity_dsl: {
+          activities: [
+            {
+              fn: 'browser_open',
+              name: '1. 页面打开',
+              handler: 'browser',
+              config: {
+                steps: [
+                  {
+                    name: '1. navigate',
+                    type: 'browser',
+                    config: {
+                      action: 'navigate',
+                      url: '${startUrl}',
+                    },
+                  },
+                  {
+                    name: '2. fill username',
+                    type: 'browser',
+                    config: {
+                      action: 'fill',
+                      selector: 'textbox[name="Enter username"]',
+                      value: '${username}',
+                    },
+                  },
+                  {
+                    name: '3. fill password',
+                    type: 'browser',
+                    config: {
+                      action: 'fill',
+                      selector: 'textbox[name="Enter password"]',
+                      value: '${loginCredential}',
+                    },
+                  },
+                ],
+              },
+            },
+          ],
+        },
+      },
+    ]);
+    (service as any).fetchSkillDefaultInput.mockResolvedValue({
+      startUrl: 'http://example.test/login',
+      username: 'tester',
+      loginCredential: 'secret',
+    });
+    prisma.execution.create.mockResolvedValue({
+      id: 'execution-create-1',
+      requiresApproval: false,
+      createdBy: 'user-1',
+    });
+    prisma.executionEvent.create.mockResolvedValue(undefined);
+
+    await service.create(
+      'user-1',
+      {
+        skillId: 'skill-browser-1',
+        runtimeType: 'browser',
+        input: {
+          prompt: '登录主页',
+        },
+        planDraft: providedPlanDraft as any,
+      },
+      {
+        authToken: 'Bearer token-1',
+      },
+    );
+
+    const normalizedInput = prisma.execution.create.mock.calls[0][0].data.normalizedInputJson as Record<string, unknown>;
+    expect(normalizedInput.input).toEqual({
+      prompt: '登录主页',
+      startUrl: 'http://example.test/login',
+      username: 'tester',
+      loginCredential: 'secret',
+    });
+    expect(normalizedInput.requiredInputs).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        name: 'startUrl',
+        value: 'http://example.test/login',
+        missing: false,
+        source: 'default',
+      }),
+      expect.objectContaining({
+        name: 'username',
+        value: 'tester',
+        missing: false,
+        source: 'default',
+      }),
+      expect.objectContaining({
+        name: 'loginCredential',
+        value: 'secret',
+        missing: false,
+        source: 'default',
+      }),
+    ]));
+    expect(normalizedInput.planSteps).toEqual([
+      expect.objectContaining({
+        commands: expect.arrayContaining([
+          expect.objectContaining({
+            action: 'goto',
+            input: expect.objectContaining({
+              target: 'http://example.test/login',
+              args: expect.objectContaining({
+                url: 'http://example.test/login',
+              }),
+            }),
+          }),
+          expect.objectContaining({
+            action: 'fill',
+            input: expect.objectContaining({
+              args: expect.objectContaining({
+                value: 'tester',
+              }),
+            }),
+          }),
+          expect.objectContaining({
+            action: 'fill',
+            input: expect.objectContaining({
+              args: expect.objectContaining({
+                value: 'secret',
+              }),
+            }),
+          }),
+        ]),
+      }),
+    ]);
+    expect((service as any).startExecution).toHaveBeenCalledWith('execution-create-1');
+  });
+
+  it('keeps confirmation-required defaults in waiting_input instead of auto-starting execution', async () => {
+    const { service, prisma } = createService();
+
+    const providedPlanDraft = {
+      plan_id: 'plan-browser-confirmation-1',
+      planner_mode: 'skill',
+      objective: '登录主页',
+      summary: '仍缺少 1 个关键输入。',
+      skill_match: {
+        skill_id: 'skill-browser-1',
+        skill_name: '登录并进入登录',
+        confidence: 1,
+      },
+      steps: [
+        {
+          id: 'collect-required-inputs',
+          title: 'Collect required inputs',
+          description: '补齐必填参数: loginCredential',
+          kind: 'human_input',
+          status: 'planned',
+        },
+      ],
+      required_inputs: [
+        {
+          name: 'loginCredential',
+          type: 'string',
+          required: true,
+          missing: true,
+          source: 'unresolved',
+          value: 'test123',
+          needs_confirmation: true,
+          missing_reason: 'overall_low_confidence',
+          description: '登录密码',
+        },
+      ],
+      risk_summary: {
+        level: 'medium',
+        requires_human_review: false,
+        items: ['missing_required_inputs'],
+      },
+    };
+
+    (service as any).fetchSkillDefaultInput.mockResolvedValue({
+      loginCredential: 'test123',
+    });
+    prisma.execution.create.mockResolvedValue({
+      id: 'execution-create-confirmation',
+      requiresApproval: false,
+      createdBy: 'user-1',
+    });
+    prisma.executionEvent.create.mockResolvedValue(undefined);
+    prisma.executionStep.findFirst.mockResolvedValue({
+      id: 'step-waiting-input',
+      executionId: 'execution-create-confirmation',
+      type: 'input_collection',
+      status: 'pending',
+    });
+    jest.spyOn(service as any, 'enterWaitingInput').mockResolvedValue(undefined);
+
+    await service.create(
+      'user-1',
+      {
+        skillId: 'skill-browser-1',
+        runtimeType: 'browser',
+        input: {
+          prompt: '登录主页',
+        },
+        planDraft: providedPlanDraft as any,
+      },
+      {
+        authToken: 'Bearer token-1',
+      },
+    );
+
+    const normalizedInput = prisma.execution.create.mock.calls[0][0].data.normalizedInputJson as Record<string, unknown>;
+    expect(normalizedInput.requiredInputs).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        name: 'loginCredential',
+        value: 'test123',
+        source: 'default',
+        missing: true,
+        needs_confirmation: true,
+        missing_reason: 'overall_low_confidence',
+      }),
+    ]));
+    expect((service as any).enterWaitingInput).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 'execution-create-confirmation' }),
+      'step-waiting-input',
+    );
+    expect((service as any).startExecution).not.toHaveBeenCalled();
+  });
+
+  it('treats explicit user input as confirmation and clears confirmation gating during create', async () => {
+    const { service, prisma } = createService();
+
+    const providedPlanDraft = {
+      plan_id: 'plan-browser-confirmation-2',
+      planner_mode: 'skill',
+      objective: '登录主页',
+      summary: '仍缺少 1 个关键输入。',
+      skill_match: {
+        skill_id: 'skill-browser-1',
+        skill_name: '登录并进入登录',
+        confidence: 1,
+      },
+      steps: [
+        {
+          id: 'collect-required-inputs',
+          title: 'Collect required inputs',
+          description: '补齐必填参数: loginCredential',
+          kind: 'human_input',
+          status: 'planned',
+        },
+      ],
+      required_inputs: [
+        {
+          name: 'loginCredential',
+          type: 'string',
+          required: true,
+          missing: true,
+          source: 'unresolved',
+          value: 'test123',
+          needs_confirmation: true,
+          missing_reason: 'overall_low_confidence',
+          description: '登录密码',
+        },
+      ],
+      risk_summary: {
+        level: 'medium',
+        requires_human_review: false,
+        items: ['missing_required_inputs'],
+      },
+    };
+
+    (service as any).fetchSkillDefaultInput.mockResolvedValue({
+      loginCredential: 'test123',
+    });
+    prisma.execution.create.mockResolvedValue({
+      id: 'execution-create-confirmed',
+      requiresApproval: false,
+      createdBy: 'user-1',
+    });
+    prisma.executionEvent.create.mockResolvedValue(undefined);
+
+    await service.create(
+      'user-1',
+      {
+        skillId: 'skill-browser-1',
+        runtimeType: 'browser',
+        input: {
+          loginCredential: 'test1234',
+        },
+        planDraft: providedPlanDraft as any,
+      },
+      {
+        authToken: 'Bearer token-1',
+      },
+    );
+
+    const normalizedInput = prisma.execution.create.mock.calls[0][0].data.normalizedInputJson as Record<string, unknown>;
+    expect(normalizedInput.requiredInputs).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        name: 'loginCredential',
+        value: 'test1234',
+        source: 'user_input',
+        missing: false,
+        needs_confirmation: false,
+        missing_reason: undefined,
+      }),
+    ]));
+    expect((service as any).startExecution).toHaveBeenCalledWith('execution-create-confirmed');
+  });
+
+  it('resolves browser template placeholders written as brace variants', async () => {
+    const { service, prisma } = createService();
+
+    const providedPlanDraft = {
+      plan_id: 'plan-browser-placeholder-variants-1',
+      planner_mode: 'skill',
+      objective: '登录主页',
+      summary: '仍缺少 3 个关键输入。',
+      skill_match: {
+        skill_id: 'skill-browser-1',
+        skill_name: '登录并进入登录',
+        confidence: 1,
+      },
+      steps: [
+        {
+          id: 'collect-required-inputs',
+          title: 'Collect required inputs',
+          description: '补齐必填参数: startUrl, username, loginCredential',
+          kind: 'human_input',
+          status: 'planned',
+        },
+      ],
+      required_inputs: [
+        {
+          name: 'startUrl',
+          type: 'string',
+          required: true,
+          missing: true,
+          source: 'unresolved',
+          description: '起始页面地址',
+        },
+        {
+          name: 'username',
+          type: 'string',
+          required: true,
+          missing: true,
+          source: 'unresolved',
+          description: '登录用户名',
+        },
+        {
+          name: 'loginCredential',
+          type: 'string',
+          required: true,
+          missing: true,
+          source: 'unresolved',
+          description: '登录密码',
+        },
+      ],
+      risk_summary: {
+        level: 'medium',
+        requires_human_review: false,
+        items: ['missing_required_inputs'],
+      },
+    };
+
+    prisma.$queryRawUnsafe.mockResolvedValue([
+      {
+        source_type: 'browser_recording',
+        source_payload_json: {},
+        workflow_dsl: {
+          steps: [
+            {
+              id: 'activity_open',
+              name: '1. 页面打开',
+              type: 'activity',
+              activityRef: 'custom:browser_open',
+              activityName: '1. 页面打开',
+            },
+          ],
+        },
+        activity_dsl: {
+          activities: [
+            {
+              fn: 'browser_open',
+              name: '1. 页面打开',
+              handler: 'browser',
+              config: {
+                steps: [
+                  {
+                    name: '1. navigate',
+                    type: 'browser',
+                    config: {
+                      action: 'navigate',
+                      url: '{startUrl}',
+                    },
+                  },
+                  {
+                    name: '2. fill username',
+                    type: 'browser',
+                    config: {
+                      action: 'fill',
+                      selector: 'textbox[name="Enter username"]',
+                      value: '{username}',
+                    },
+                  },
+                  {
+                    name: '3. fill password',
+                    type: 'browser',
+                    config: {
+                      action: 'fill',
+                      selector: 'textbox[name="Enter password"]',
+                      value: '{{loginCredential}}',
+                    },
+                  },
+                ],
+              },
+            },
+          ],
+        },
+      },
+    ]);
+    (service as any).fetchSkillDefaultInput.mockResolvedValue({
+      startUrl: 'http://example.test/login',
+      username: 'tester',
+      loginCredential: 'secret',
+    });
+    prisma.execution.create.mockResolvedValue({
+      id: 'execution-create-2',
+      requiresApproval: false,
+      createdBy: 'user-1',
+    });
+    prisma.executionEvent.create.mockResolvedValue(undefined);
+
+    await service.create(
+      'user-1',
+      {
+        skillId: 'skill-browser-1',
+        runtimeType: 'browser',
+        input: {
+          prompt: '登录主页',
+        },
+        planDraft: providedPlanDraft as any,
+      },
+      {
+        authToken: 'Bearer token-1',
+      },
+    );
+
+    const normalizedInput = prisma.execution.create.mock.calls[0][0].data.normalizedInputJson as Record<string, unknown>;
+    expect(normalizedInput.planSteps).toEqual([
+      expect.objectContaining({
+        commands: expect.arrayContaining([
+          expect.objectContaining({
+            action: 'goto',
+            input: expect.objectContaining({
+              target: 'http://example.test/login',
+              args: expect.objectContaining({
+                url: 'http://example.test/login',
+              }),
+            }),
+          }),
+          expect.objectContaining({
+            action: 'fill',
+            input: expect.objectContaining({
+              args: expect.objectContaining({
+                value: 'tester',
+              }),
+            }),
+          }),
+          expect.objectContaining({
+            action: 'fill',
+            input: expect.objectContaining({
+              args: expect.objectContaining({
+                value: 'secret',
+              }),
+            }),
+          }),
+        ]),
+      }),
+    ]);
   });
 
   it('reuses existing execution when the same idempotencyKey is provided', async () => {

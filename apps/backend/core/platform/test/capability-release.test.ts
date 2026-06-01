@@ -934,6 +934,54 @@ describe('CapabilityReleaseService', () => {
     expect(result.temporalWorkflowId).toBe('workflow-1');
   });
 
+  it('treats rendered temporal workflow output as success', async () => {
+    const { service, prisma, activityService } = createService();
+
+    prisma.$queryRawUnsafe.mockResolvedValueOnce([{ id: 'release-row-1' }]);
+    jest.spyOn(service as any, 'mapRelease').mockReturnValue({
+      id: 'release-1',
+      sourceType: 'temporal_workflow',
+    });
+    jest.spyOn(service as any, 'getCurrentSnapshotOrThrow').mockResolvedValue({
+      id: 'snapshot-1',
+      sourcePayload: {
+        workflowDsl: {
+          workflowClassName: 'RenderWorkflow',
+        },
+      },
+    });
+    jest.spyOn(service as any, 'resolveTemporalExecutableBuildOrThrow').mockResolvedValue({
+      id: 'build-1',
+      generatedCode: 'PYTHON_CODE',
+    });
+    jest.spyOn(service as any, 'insertAuditEvent').mockResolvedValue(undefined);
+
+    jest.spyOn(activityService, 'executeCodeStreaming').mockResolvedValue({
+      success: true,
+      result: {
+        status: 'rendered',
+        fileName: '保密协议.docx',
+        downloadUrl: 'http://localhost:3009/studio/download/doc-1',
+      },
+      workflowId: 'workflow-rendered-1',
+    });
+
+    const result = await service.executePublishedSkill(
+      'skill-temporal',
+      { contractNo: 'NDA-001' },
+      'user-1',
+    );
+
+    expect(result.success).toBe(true);
+    expect(result.status).toBe('completed');
+    expect(result.output).toEqual({
+      status: 'rendered',
+      fileName: '保密协议.docx',
+      downloadUrl: 'http://localhost:3009/studio/download/doc-1',
+      temporalLink: 'http://localhost:8088/namespaces/default/workflows/workflow-rendered-1',
+    });
+  });
+
   it('pushes workflow activity progress to control-plane while executing temporal workflow', async () => {
     const { service, prisma, activityService } = createService();
 

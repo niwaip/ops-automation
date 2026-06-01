@@ -5,6 +5,7 @@
 
 import { create } from 'zustand';
 import { officeAddinRuntimeConfig } from '../config/runtime';
+import { getDefaultTemplateFormatForHost } from '../utils/host-storage';
 
 // AI 识别结果类型
 export interface AISuggestion {
@@ -44,12 +45,25 @@ export interface AISuggestion {
     beforeBlank?: string;  // 空白前文本
     afterBlank?: string;  // 空白后文本
     fieldType?: string;  // 字段类型（text/date/number等）
+    policy?: string;
+    riskLevel?: 'low' | 'medium' | 'high';
+    needsReview?: boolean;
+    termMatchStatus?: 'matched' | 'unmatched';
+    termMatchTermId?: string;
+    candidateId?: string;
+    peerCandidateId?: string;
+    currentLanguageHint?: 'zh' | 'ja' | 'en' | 'mixed' | 'unknown';
+    pairOrdinal?: number;
     wordAnchor?: {
-      type: 'content-control' | 'table-cell';
+      type: 'content-control' | 'table-cell' | 'text-range';
       contentControlId?: number;
       tableIndex?: number;
       rowIndex?: number;
       cellIndex?: number;
+      paragraphIndex?: number;
+      start?: number;
+      end?: number;
+      paragraphText?: string;
     };
     excelAnchor?: {
       type: 'cell' | 'table';
@@ -183,7 +197,14 @@ interface AppState {
 
 export const useAppStore = create<AppState>((set) => ({
   officeType: 'word',
-  setOfficeType: (type) => set({ officeType: type }),
+  setOfficeType: (type) =>
+    set((state) => ({
+      officeType: type,
+      templateConfig: {
+        ...state.templateConfig,
+        formatType: getDefaultTemplateFormatForHost(type),
+      },
+    })),
 
   isAnalyzing: false,
   suggestions: [],

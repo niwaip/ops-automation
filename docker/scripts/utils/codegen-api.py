@@ -32,6 +32,7 @@ except ImportError:
 codegen_process = None
 codegen_output = None
 current_session = None
+codegen_storage_state = None
 CODEGEN_DIR = "/tmp/codegen"
 
 # Global state for AI control mode
@@ -43,17 +44,82 @@ ai_mode_active = False
 
 os.makedirs(CODEGEN_DIR, exist_ok=True)
 
-def start_codegen(session_id, url):
+def resolve_active_browser_state():
+    """Inspect the live Chrome instance exposed by CDP and export storage state."""
+    if not PLAYWRIGHT_AVAILABLE:
+        return {
+            "connected": False,
+            "reason": "playwright_unavailable",
+        }
+
+    inspector_playwright = None
+    inspector_browser = None
+    storage_path = None
+    try:
+        inspector_playwright = sync_playwright().start()
+        inspector_browser = inspector_playwright.chromium.connect_over_cdp("http://127.0.0.1:9222")
+        contexts = inspector_browser.contexts
+        context = contexts[0] if contexts else None
+        pages = context.pages if context else []
+        page = pages[-1] if pages else None
+        url = page.url if page else None
+        title = page.title() if page else None
+
+        if context:
+            storage_path = os.path.join(CODEGEN_DIR, f"storage-{int(time.time() * 1000)}.json")
+            context.storage_state(path=storage_path)
+
+        return {
+            "connected": True,
+            "url": url,
+            "title": title,
+            "page_count": len(pages),
+            "storage_path": storage_path,
+        }
+    except Exception as e:
+        if storage_path and os.path.exists(storage_path):
+            try:
+                os.remove(storage_path)
+            except Exception:
+                pass
+        return {
+            "connected": False,
+            "reason": str(e),
+        }
+    finally:
+        try:
+            if inspector_browser:
+                inspector_browser.close()
+        except Exception:
+            pass
+        try:
+            if inspector_playwright:
+                inspector_playwright.stop()
+        except Exception:
+            pass
+
+def start_codegen(session_id, url, reuse_browser=False):
     """Start playwright codegen process"""
-    global codegen_process, codegen_output, current_session
+    global codegen_process, codegen_output, current_session, codegen_storage_state
 
     if codegen_process and codegen_process.poll() is None:
         stop_codegen()
 
     current_session = session_id
     codegen_output = os.path.join(CODEGEN_DIR, f"{session_id}.js")
+    codegen_storage_state = None
+
+    browser_state = None
+    if reuse_browser:
+        browser_state = resolve_active_browser_state()
+        live_url = browser_state.get("url") if browser_state else None
+        if live_url:
+            url = live_url
+        codegen_storage_state = browser_state.get("storage_path") if browser_state else None
 
     print(f"[INFO] Starting codegen for session {session_id}, URL: {url}")
+    if browser_state:
+        print(f"[INFO] Browser state reuse: {json.dumps(browser_state)}")
 
     env = os.environ.copy()
     env["DISPLAY"] = ":99"
@@ -65,8 +131,10 @@ def start_codegen(session_id, url):
         "--target", "javascript",
         "--output", codegen_output,
         "--viewport-size", "1920,1080",
-        url
     ]
+    if codegen_storage_state and os.path.exists(codegen_storage_state):
+        cmd.extend(["--load-storage", codegen_storage_state])
+    cmd.append(url)
 
     print(f"[INFO] Command: {' '.join(cmd)}")
     codegen_process = subprocess.Popen(
@@ -183,7 +251,7 @@ def start_codegen(session_id, url):
 
 def stop_codegen():
     """Stop codegen process and return generated script"""
-    global codegen_process, codegen_output, current_session
+    global codegen_process, codegen_output, current_session, codegen_storage_state
 
     script = ""
 
@@ -205,9 +273,13 @@ def stop_codegen():
         os.remove(codegen_output)
         print(f"[INFO] Script length: {len(script)} chars")
 
+    if codegen_storage_state and os.path.exists(codegen_storage_state):
+        os.remove(codegen_storage_state)
+
     codegen_process = None
     codegen_output = None
     current_session = None
+    codegen_storage_state = None
 
     return script
 
@@ -1364,13 +1436,14 @@ class CodegenHandler(BaseHTTPRequestHandler):
         if path == '/start':
             session = params.get('session', [None])[0]
             url = params.get('url', [None])[0]
+            reuse_browser = params.get('reuse_browser', ['false'])[0].lower() in ('1', 'true', 'yes')
 
             if not session or not url:
                 self.send_json({'error': 'Missing session or url parameter'}, 400)
                 return
 
-            if start_codegen(session, url):
-                self.send_json({'status': 'started', 'session': session})
+            if start_codegen(session, url, reuse_browser=reuse_browser):
+                self.send_json({'status': 'started', 'session': session, 'reuse_browser': reuse_browser})
             else:
                 self.send_json({'error': 'Failed to start codegen'}, 500)
 
@@ -1392,6 +1465,9 @@ class CodegenHandler(BaseHTTPRequestHandler):
 
         elif path == '/health':
             self.send_json({'status': 'ok'})
+
+        elif path == '/browser-state':
+            self.send_json(resolve_active_browser_state())
 
         # AI Control mode endpoints
         elif path == '/ai/start':

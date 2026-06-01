@@ -97,7 +97,7 @@ export const CodeGenerationModal: React.FC<CodeGenerationModalProps> = ({
               } else if (forceAiGeneration && result.generationMode === 'ai') {
                 message.success('代码生成成功（已强制使用 AI 生成）');
               } else if (result.generationMode === 'deterministic') {
-                message.success('代码生成成功（固定模板模式）');
+                message.success('代码生成成功（固定模版模式）');
               } else {
                 message.success('代码生成成功');
               }
@@ -147,7 +147,7 @@ export const CodeGenerationModal: React.FC<CodeGenerationModalProps> = ({
             message={state.result.success ? '代码生成完成' : '代码生成失败'}
             description={state.result.error || (
               state.result.generationMode === 'deterministic'
-                ? '本次命中固定模板编译路径。'
+                ? '本次命中固定模版编译路径。'
                 : `共尝试 ${state.result.attempts || 1} 次生成。`
             )}
             showIcon

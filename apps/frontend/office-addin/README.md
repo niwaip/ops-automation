@@ -110,6 +110,7 @@ powershell -ExecutionPolicy Bypass -File .\office-addin-wizard.ps1 -HostName <OF
 - 证书安装
 - 证书状态确认
 - Word/Excel/PowerPoint 安装
+- Word + Excel 一键安装
 - 深度解析
 
 旧的 `check-addin-cert.ps1`、`setup-word-addin.ps1`、`diagnose-word-addin.ps1` 仅保留为兼容包装层。
@@ -130,6 +131,12 @@ OFFICE_ADDIN_TLS_HOSTS=localhost,127.0.0.1,192.168.100.143
 
 ## Sideload 测试
 
+推荐采用“按宿主拆分 manifest”的方式：
+- Word 使用 `manifest-word.xml`
+- Excel 使用 `manifest-excel.xml`
+- 两者是独立加载项，`Id` 不同，可同时安装、分别启用，互不影响
+- 日常开发时分别执行对应 sideload 命令，不要用 Word manifest 去装 Excel，也不要反过来混用
+
 ```bash
 # Word
 npm run sideload:word
@@ -140,6 +147,12 @@ npm run sideload:excel
 # PowerPoint
 npm run sideload:ppt
 ```
+
+如果你需要同时验证 Word 和 Excel：
+
+1. Windows 向导优先使用菜单 `6`，一次安装 Word + Excel
+2. 或命令行分别执行 `npm run sideload:word` 和 `npm run sideload:excel`
+3. 后续各自在对应宿主中独立打开任务窗格即可
 
 ## 项目结构
 

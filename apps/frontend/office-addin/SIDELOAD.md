@@ -47,11 +47,22 @@ powershell -ExecutionPolicy Bypass -File .\office-addin-wizard.ps1 -HostName ${O
    - `3` 安装 Word
    - `4` 安装 Excel
    - `5` 安装 PowerPoint
-   - `6` 深度解析
+   - `6` 一次安装 Word + Excel
+   - `7` 深度解析
+
+推荐顺序：
+- 首次机器安装优先走 `1 -> 2 -> 6`
+- 菜单 `6` 会连续注册 `manifest-word.xml` 和 `manifest-excel.xml`，并在最后汇总两边注册状态
+- 安装完成后分别打开 Word 和 Excel，在各自宿主里验证加载项是否出现
 
 ---
 
 ## 方法二：命令行自动加载
+
+最佳实践：
+- Word 和 Excel 使用不同 manifest，分别侧载
+- 两个加载项可以同时存在，因为宿主不同且 `Id` 不同
+- 如果要同时开发两个宿主，请分别执行 Word 和 Excel 的安装步骤，不要混用 manifest
 
 ```bash
 # 安装工具
